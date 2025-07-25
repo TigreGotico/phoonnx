@@ -203,7 +203,6 @@ class Graphemes:
     def _normalize_text(text: str) -> str:
         """
         Normalize input text by applying a series of transformations.
-        This is a static method now part of Graphemes, previously in TTSTokenizer.
         """
         text = text.lower()
         text = text.replace(";", ",")
@@ -380,3 +379,4 @@ if __name__ == "__main__":
     text = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
 
     print(coto.phonemize(text))
+    # este e uN sistema De kombersjon de teksto a BoT eN liNgwa GaleGa BaseaDo eN rreDes newronajs artifiTjajs teN eN konta ke as fuNTjonaliDaDes iNkluiDas nesta paSina ofreTeNse unikamente koN fiNs De DemostraTjoN se tes alGuN komentarjo suSestjoN ow Detektas alGum proBlema Durante a DemostraTjom ponte eN kontakto koNnosko

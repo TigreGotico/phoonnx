@@ -1,6 +1,11 @@
+import json
+import string
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Mapping, Optional, Sequence, Dict
+from typing import Any, Mapping, Optional, Sequence
+from phoonnx.phoneme_ids import (load_phoneme_ids, BlankBetween,
+                                 DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN, DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
+
 
 DEFAULT_NOISE_SCALE = 0.667
 DEFAULT_LENGTH_SCALE = 1.0
@@ -15,6 +20,8 @@ except ImportError:
 
 class PhonemeType(str, Enum):
     ESPEAK = "espeak"
+    GRUUT = "gruut"
+    EPITRAN = "epitran"
     BYT5 = "byt5"
     UNICODE = "unicode"
     COTOVIA = "cotovia"
@@ -51,48 +58,160 @@ class VoiceConfig:
     noise_scale: float = DEFAULT_NOISE_SCALE
     noise_w_scale: float = DEFAULT_NOISE_W_SCALE
 
-    # fields for grapheme-based models
-    characters_config: Optional[Dict[str, Any]] = field(default_factory=dict)
-    """Configuration for Graphemes class (characters, punctuations, pad)."""
-    add_blank: bool = False
-    """Whether to add blank tokens between characters for grapheme models."""
-    use_eos_bos: bool = False
-    """Whether to add BOS/EOS tokens for grapheme models."""
+    # tokenization settings
+    blank_at_start: bool = True
+    blank_at_end: bool = True
+    include_whitespace: Optional[bool] = True
+    pad_token: Optional[str] = DEFAULT_PAD_TOKEN
+    blank_token: Optional[str] = DEFAULT_PAD_TOKEN
+    bos_token: Optional[str] = DEFAULT_BOS_TOKEN
+    eos_token: Optional[str] = DEFAULT_EOS_TOKEN
+    word_sep_token: Optional[str] = DEFAULT_BLANK_WORD_TOKEN
+    blank_between: BlankBetween = BlankBetween.TOKENS_AND_WORDS
 
+    # fields for grapheme-based models
+    character_set: Optional[str] = string.printable
+    punctuation: Optional[str] = string.punctuation
 
     @staticmethod
-    def from_dict(config: dict[str, Any]) -> "VoiceConfig":
+    def is_mimic3(config: dict[str, Any]) -> bool:
+        # https://huggingface.co/mukowaty/mimic3-voices
+
+        # mimic3 models indicate a phonemizer strategy in their config
+        if ("phonemizer" not in config or
+                not isinstance(config["phonemizer"], str)):
+            return False
+
+        # mimic3 models include a "phonemes" section with token info
+        if "phonemes" not in config or not isinstance(config["phonemes"], dict):
+            return False
+
+        # validate phonemizer type as expected by mimic3
+        phonemizer = config["phonemizer"]
+        # class Phonemizer(str, Enum):
+        #     SYMBOLS = "symbols"
+        #     GRUUT = "gruut"
+        #     ESPEAK = "espeak"
+        #     EPITRAN = "epitran"
+        if phonemizer not in ["symbols", "gruut", "espeak", "epitran"]:
+            return False
+
+        return True
+
+    @staticmethod
+    def is_piper(config: dict[str, Any]) -> bool:
+        # piper models indicate a phonemizer strategy in their config
+        if ("phoneme_type" not in config or
+                not isinstance(config["phoneme_type"], str)):
+            return False
+
+        # piper models include a "phoneme_id_map" section mapping phonemes to int
+        if "phoneme_id_map" not in config or not isinstance(config["phoneme_id_map"], dict):
+            return False
+
+        # validate phonemizer type as expected by piper
+        phonemizer = config["phoneme_type"]
+        if phonemizer not in ["text", "espeak"]:
+            return False
+
+        return True
+
+    @staticmethod
+    def is_coqui_vits(config: dict[str, Any]) -> bool:
+        # coqui vits grapheme models include a "characters" section with token info
+        if "characters" not in config or not isinstance(config["characters"], dict):
+            return False
+
+        # double check this was trained with coqui
+        if config["characters"].get("characters_class", "") != "TTS.tts.models.vits.VitsCharacters":
+            return False
+
+        return True
+
+    @staticmethod
+    def is_phoonnx(config: dict[str, Any]) -> bool:
+        # phoonnx models indicate a phonemizer strategy in their config
+        if ("phoneme_type" not in config or
+                not isinstance(config["phoneme_type"], str)):
+            return False
+
+        if "lang_code" not in config:
+            return False
+
+        # validate phonemizer type as expected
+        phonemizer = config["phoneme_type"]
+        if phonemizer not in list(PhonemeType):
+            return False
+
+        return True
+
+    @staticmethod
+    def is_cotovia(config: dict[str, Any]) -> bool:
+        # no way to determine unless explicitly configured unfortunately
+        # afaik only the sabela galician model uses this
+        # will fallback to coqui "graphemes" if "cotovia" not specified,
+        # this will work but will make mistakes
+        if (not VoiceConfig.is_coqui_vits(config)
+                or not VoiceConfig.is_phoonnx(config)):
+            return False
+
+        return config["phoneme_type"] == PhonemeType.COTOVIA
+
+    @staticmethod
+    def from_dict(config: dict[str, Any],
+                  phonemes_txt: Optional[str] = None) -> "VoiceConfig":
         """Load configuration from a dictionary."""
-        inference = config.get("inference", {})
-        lang_code = config.get("lang_code")
+        lang_code = "und"
+        phoneme_type_str = PhonemeType.BYT5.value
 
-        if "phoneme_type" not in config:
-            if "espeak" in config:
-                LOG.debug(f"Autodetected phonemizer type: {PhonemeType.ESPEAK}")
-                config["phoneme_type"] = PhonemeType.ESPEAK
-            elif "characters" in config:
-                LOG.debug(f"Autodetected phonemizer type: {PhonemeType.GRAPHEMES}")
-                config["phoneme_type"] = PhonemeType.GRAPHEMES
+        if phonemes_txt:
+            # either from mimic3 models or as an override at runtime
+            with open(phonemes_txt, "r", encoding="utf-8") as ids_file:
+                config["phoneme_id_map"] = load_phoneme_ids(ids_file)
 
-        phoneme_type_str = config.get("phoneme_type", PhonemeType.BYT5.value)
+        blank_type = BlankBetween.WORDS
+        add_blank = config.get("add_blank", True)
+        if add_blank:
+            blank_type = BlankBetween.TOKENS_AND_WORDS
 
-        # piper TTS models compat
-        if phoneme_type_str == "text":
-            phoneme_type_str = PhonemeType.UNICODE.value
-        elif phoneme_type_str == "espeak":
-            lang_code = lang_code or config["espeak"].get("voice", "")
+        # check if model was specifically made for this framework
+        if VoiceConfig.is_phoonnx(config):
+            lang_code = config.get("lang_code")
+            phoneme_type_str = config.get("phoneme_type")
+
+        # check if model was trained for PiperTTS
+        elif VoiceConfig.is_piper(config):
+            lang_code = (config.get("language", {}).get("code") or
+                         config.get("espeak", {}).get("voice"))
+            phoneme_type_str = config.get("phoneme_type", PhonemeType.ESPEAK.value)
+            if phoneme_type_str == "text":
+                phoneme_type_str = PhonemeType.UNICODE.value
+
+        # check if model was trained for Mimic3
+        elif VoiceConfig.is_mimic3(config):
+            if not phonemes_txt:
+                raise ValueError("mimic3 models require an external phonemes.txt file in addition to the config")
+            lang_code = config.get("text_language")
+            phoneme_type_str = config.get("phonemizer", PhonemeType.GRUUT.value)
+            # read phoneme settings
+            phoneme_cfg = config.get("phonemes", {})
+            blank_type = BlankBetween(phoneme_cfg.get("blank_between", "tokens_and_words"))
+            config.update(phoneme_cfg)
+
+            if phoneme_type_str == "symbols":
+                # TODO
+                phoneme_type_str = PhonemeType.GRAPHEMES.value
+
+        # check if model was trained with Coqui
+        elif VoiceConfig.is_coqui_vits(config):
+            # NOTE: lang code usually not provided :(
+            characters_config = config.get("characters", {})
+            config.update(characters_config)
+            phoneme_type_str = PhonemeType.GRAPHEMES.value
 
         phoneme_type = PhonemeType(phoneme_type_str)
-
         LOG.debug(f"phonemizer: {phoneme_type}")
-
-        # Handle phoneme_id_map for phoneme-based models
-        phoneme_id_map = config.get("phoneme_id_map")
-
-        # Fields for grapheme-based models
-        characters_config = config.get("characters")
-        add_blank = config.get("add_blank", True)
-        use_eos_bos = config.get("use_eos_bos", False)
+        inference = config.get("inference", {})
 
         return VoiceConfig(
             num_symbols=config.get("num_symbols", 256),
@@ -102,39 +221,21 @@ class VoiceConfig:
             length_scale=inference.get("length_scale", DEFAULT_LENGTH_SCALE),
             noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
             lang_code=lang_code,
-            phoneme_id_map=phoneme_id_map,
+            phoneme_id_map=config.get("phoneme_id_map"),
             phoneme_type=phoneme_type,
             speaker_id_map=config.get("speaker_id_map", {}),
-            characters_config=characters_config,
-            add_blank=add_blank,
-            use_eos_bos=use_eos_bos
+            character_set=config.get("characters"),
+            punctuation=config.get("punctuations"),
+            blank_between=blank_type,
+            include_whitespace=config.get("include_whitespace", True),
+            blank_at_start=config.get("blank_at_start", True),
+            blank_at_end=config.get("blank_at_end", True),
+            pad_token=config.get("pad", DEFAULT_PAD_TOKEN),
+            blank_token=config.get("blank", DEFAULT_BLANK_TOKEN),
+            bos_token=config.get("bos", DEFAULT_BOS_TOKEN),
+            eos_token=config.get("eos", DEFAULT_EOS_TOKEN),
+            word_sep_token=config.get("word_sep_token") or config.get("blank_word", " ")
         )
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert configuration to a dictionary."""
-        config_dict = {
-            "audio": {
-                "sample_rate": self.sample_rate,
-            },
-            "espeak": { # Keep for compatibility, even if lang_code is elsewhere
-                "voice": self.lang_code,
-            },
-            "phoneme_type": self.phoneme_type.value,
-            "num_symbols": self.num_symbols,
-            "num_speakers": self.num_speakers,
-            "inference": {
-                "noise_scale": self.noise_scale,
-                "length_scale": self.length_scale,
-                "noise_w": self.noise_w_scale,
-            },
-            "phoneme_id_map": self.phoneme_id_map,
-            "speaker_id_map": self.speaker_id_map,
-            # fields for grapheme models
-            "characters": self.characters_config,
-            "add_blank": self.add_blank,
-            "use_eos_bos": self.use_eos_bos,
-        }
-        return config_dict
 
 
 @dataclass
@@ -160,3 +261,38 @@ class SynthesisConfig:
     """Multiplier for audio samples (< 1 is quieter, > 1 is louder)."""
 
     enable_phonetic_spellings: bool = True
+
+
+if __name__ == "__main__":
+    config_files = [
+        "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia_vits.json",
+        "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits.json",
+        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_gruut.json",
+        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_espeak.json",
+        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_epitran.json",
+        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_symbols.json",
+        "/home/miro/PycharmProjects/phoonnx_tts/piper_espeak.json"
+    ]
+    phoneme_txts = [
+        None,
+        None,
+        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
+        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
+        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
+        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
+        None
+    ]
+    print("Testing model config file parsing\n###############")
+    for idx, cfile in enumerate(config_files):
+        print(f"\nConfig file: {cfile}")
+        with open(cfile) as f:
+            config = json.load(f)
+        print("Mimic3:", VoiceConfig.is_mimic3(config))
+        print("Piper:", VoiceConfig.is_piper(config))
+        print("Coqui:", VoiceConfig.is_coqui_vits(config))
+        print("Cotovia:", VoiceConfig.is_cotovia(config))
+        print("Phoonx:", VoiceConfig.is_phoonnx(config))
+        cfg = VoiceConfig.from_dict(config, phoneme_txts[idx])
+        print(cfg)
+
+

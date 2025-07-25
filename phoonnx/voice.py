@@ -13,8 +13,8 @@ import onnxruntime
 
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig
 from phoonnx.graphemes import Graphemes, CotoviaGraphemes
-from phoonnx.phoneme_ids import phonemes_to_ids, DEFAULT_PHONEME_ID_MAP
-from phoonnx.phonemizers import ByT5Phonemizer, EspeakPhonemizer, RawPhonemizedChunks
+from phoonnx.phoneme_ids import phonemes_to_ids, BlankBetween
+from phoonnx.phonemizers import Phonemizer, RawPhonemizedChunks, EspeakPhonemizer, ByT5Phonemizer, GruutPhonemizer, EpitranPhonemizer
 from phoonnx.tashkeel import TashkeelDiacritizer
 
 _PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
@@ -112,8 +112,7 @@ class TTSVoice:
 
     phonetic_spellings: Optional[PhoneticSpellings] = None
 
-    espeak_phonemizer: Optional[EspeakPhonemizer] = None
-    byt5_phonemizer: Optional[ByT5Phonemizer] = None
+    phonemizer: Optional[Phonemizer] = None
 
     cotovia_phonemizer: Optional[CotoviaGraphemes] = None
     graphemes_tokenizer: Optional[Graphemes] = None
@@ -129,29 +128,25 @@ class TTSVoice:
         except FileNotFoundError:
             pass
 
-        if self.config.phoneme_type == PhonemeType.ESPEAK and self.espeak_phonemizer is None:
-            self.espeak_phonemizer = EspeakPhonemizer()
-        if self.config.phoneme_type == PhonemeType.BYT5 and self.byt5_phonemizer is None:
-            self.byt5_phonemizer = ByT5Phonemizer()
+        if self.config.phoneme_type == PhonemeType.ESPEAK and self.phonemizer is None:
+            self.phonemizer = EspeakPhonemizer()
+        elif self.config.phoneme_type == PhonemeType.BYT5 and self.phonemizer is None:
+            self.phonemizer = ByT5Phonemizer()
+        elif self.config.phoneme_type == PhonemeType.GRUUT and self.phonemizer is None:
+            self.phonemizer = GruutPhonemizer()
+        elif self.config.phoneme_type == PhonemeType.EPITRAN and self.phonemizer is None:
+            self.phonemizer = EpitranPhonemizer()
         if self.config.phoneme_type == PhonemeType.COTOVIA and self.cotovia_phonemizer is None:
             # cotovia_bin_path can be passed via config if needed, for now use default search
             self.cotovia_phonemizer = CotoviaGraphemes()
         if self.config.phoneme_type in [PhonemeType.GRAPHEMES, PhonemeType.COTOVIA] and self.graphemes_tokenizer is None:
-            # Use characters_config from VoiceConfig to initialize Graphemes
-            characters = self.config.characters_config.get("characters")
-            punctuations = self.config.characters_config.get("punctuations")
-            pad = self.config.characters_config.get("pad")
-            eos = self.config.characters_config.get("eos")
-            bos = self.config.characters_config.get("bos")
-            blank = self.config.characters_config.get("blank", "<BLNK>") # Default blank token
-
             self.graphemes_tokenizer = Graphemes(
-                characters=characters,
-                punctuations=punctuations,
-                pad=pad,
-                eos=eos,
-                bos=bos,
-                blank=blank
+                characters=self.config.character_set,
+                punctuations=self.config.punctuation,
+                pad=self.config.pad_token,
+                eos=self.config.eos_token,
+                bos=self.config.bos_token,
+                blank=self.config.blank_token
             )
 
 
@@ -163,6 +158,8 @@ class TTSVoice:
     def load(
             model_path: Union[str, Path],
             config_path: Optional[Union[str, Path]] = None,
+            phonemes_txt: Optional[str] = None,
+            phoneme_map: Optional[str] = None,
             use_cuda: bool = False
     ) -> "TTSVoice":
         """
@@ -193,7 +190,7 @@ class TTSVoice:
             providers = ["CPUExecutionProvider"]
 
         return TTSVoice(
-            config=VoiceConfig.from_dict(config_dict),
+            config=VoiceConfig.from_dict(config_dict, phonemes_txt),
             session=onnxruntime.InferenceSession(
                 str(model_path),
                 sess_options=onnxruntime.SessionOptions(),
@@ -274,19 +271,10 @@ class TTSVoice:
                 )
 
             # Phonemization
-            if self.config.phoneme_type == PhonemeType.BYT5:
-                raw_phonemes = self.byt5_phonemizer.phonemize(
-                    text_part, self.config.lang_code
-                )
-                text_part_phonemes = self._process_phones(raw_phonemes)
-            elif self.config.phoneme_type == PhonemeType.ESPEAK:
-                raw_phonemes = self.espeak_phonemizer.phonemize(
-                    text_part, self.config.lang_code
-                )
-                text_part_phonemes = self._process_phones(raw_phonemes)
-            else:
-                raise ValueError(f"Invalid phonemizer config: {self.config.phoneme_type}")
-
+            raw_phonemes = self.phonemizer.phonemize(
+                text_part, self.config.lang_code
+            )
+            text_part_phonemes = self._process_phones(raw_phonemes)
             phonemes.extend(text_part_phonemes)
 
         if phonemes and (not phonemes[-1]):
@@ -302,22 +290,19 @@ class TTSVoice:
         :param phonemes: List of phonemes (or characters for grapheme models).
         :return: List of phoneme ids.
         """
-        # If the model is grapheme-based, the "phonemes" here are actually characters
-        # and the IDs are already generated by Graphemes.text_to_ids.
-        if self.config.phoneme_type in [PhonemeType.GRAPHEMES, PhonemeType.COTOVIA]:
-            # This case should ideally not be reached if synthesize handles it correctly
-            # by getting IDs directly from graphemes_tokenizer.
-            # However, if it does, we need to map characters to IDs using the grapheme vocab.
-            if self.graphemes_tokenizer is None:
-                raise RuntimeError("Graphemes tokenizer not initialized for GRAPHEMES phoneme type.")
-            return [self.graphemes_tokenizer.char_to_id(p) for p in phonemes]
-
         # For phoneme-based models, use the phoneme_id_map
         if self.config.phoneme_id_map is None:
-            LOG.warning("phoneme_id_map is None. Using DEFAULT_PHONEME_ID_MAP.")
-            return phonemes_to_ids(phonemes, DEFAULT_PHONEME_ID_MAP)
-
-        return phonemes_to_ids(phonemes, self.config.phoneme_id_map)
+            raise ValueError("self.config.phoneme_id_map is None")
+        return phonemes_to_ids(phonemes, self.config.phoneme_id_map,
+                                blank_token = self.config.blank_token,
+                                bos_token = self.config.bos_token,
+                                eos_token = self.config.eos_token,
+                                word_sep_token = self.config.word_sep_token,
+                                include_whitespace = self.config.include_whitespace,
+                                blank_at_start = self.config.blank_at_start,
+                                blank_at_end = self.config.blank_at_end,
+                                blank_between = BlankBetween.TOKENS_AND_WORDS,
+                               )
 
     def synthesize(
             self,
@@ -354,8 +339,8 @@ class TTSVoice:
             all_phoneme_ids_for_synthesis = [
                 self.graphemes_tokenizer.text_to_ids(
                     text,
-                    add_blank=self.config.add_blank,
-                    use_eos_bos=self.config.use_eos_bos
+                    add_blank=self.config.blank_between in [BlankBetween.TOKENS, BlankBetween.TOKENS_AND_WORDS],
+                    use_eos_bos=bool(self.config.eos_token) and bool(self.config.bos_token)
                 )
             ]
         else:
@@ -480,6 +465,8 @@ class TTSVoice:
             sid = np.array([speaker_id], dtype=np.int64)
             args["sid"] = sid
 
+        #print("phonnx inputs:")
+        #print(args)
         # Synthesize through onnx
         audio = self.session.run(
             None,
@@ -494,48 +481,48 @@ if __name__ == "__main__":
 
     syn_config = SynthesisConfig(enable_phonetic_spellings=True)
 
-    model = "/home/miro/PycharmProjects/piper/src/miro_pt-PT.onnx"
-    config = model + ".json"
+    model = "/home/miro/PycharmProjects/phoonnx_tts/miro_en-GB.onnx"
+    config = "/home/miro/PycharmProjects/phoonnx_tts/piper_espeak.json"
 
-    voice = TTSVoice.load(model_path=model, config_path=config, use_cuda=False)
-    # manually load byt5 phonemizer (model requests espeak)
-    voice.byt5_phonemizer = ByT5Phonemizer()
 
-    sentence = "A rainbow is a meteorological phenomenon that is caused by reflection, refraction and dispersion of light in water droplets resulting in a spectrum of light appearing in the sky."
-    sentence = "hey mycroft"
-   # sentence = "OpenVoiceOS"
+    voice = TTSVoice.load(model_path=model, config_path=config,  use_cuda=False)
+    byt5_phonemizer = ByT5Phonemizer()
+    gruut_phonemizer = GruutPhonemizer()
+    espeak_phonemizer = EspeakPhonemizer()
 
-    for phonemizer_type in [PhonemeType.ESPEAK, PhonemeType.BYT5]:
+    sentence = "A rainbow is a meteorological phenomenon that is caused by reflection, refraction and dispersion of light in water droplets resulting in a spectrum of light appearing in the sky. It takes the form of a multi-colored circular arc. Rainbows caused by sunlight always appear in the section of sky directly opposite the Sun."
+
+    for phonemizer_type, phonemizer in [
+        (PhonemeType.ESPEAK, espeak_phonemizer),
+        (PhonemeType.BYT5, byt5_phonemizer),
+        (PhonemeType.GRUUT, gruut_phonemizer)
+    ]:
         voice.config.phoneme_type = phonemizer_type
+        voice.phonemizer = phonemizer
 
-        slug = "".join([c for c in sentence if c not in string.punctuation]).replace(" ", "_")
-        slug += f"_{phonemizer_type.value}_{voice.config.lang_code}"
+        slug = f"piper_{phonemizer_type.value}_{voice.config.lang_code}"
         with wave.open(f"{slug}.wav", "wb") as wav_file:
             voice.synthesize_wav(sentence, wav_file, syn_config)
 
 
-
-    model = "/home/miro/PycharmProjects/ovos-tts-plugin-nos/celtia/model.onnx"
-    config = "/home/miro/PycharmProjects/ovos-tts-plugin-nos/celtia/config.json"
-
-    voice = TTSVoice.load(model_path=model, config_path=config, use_cuda=False)
-
-    sentence = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
-    sentence = "hey mycroft"
-    #sentence = "OpenVoiceOS"
-
-    slug = "".join([c for c in sentence if c not in string.punctuation]).replace(" ", "_")
-    slug += f"_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
-    with wave.open(f"{slug[-25:]}.wav", "wb") as wav_file:
-        voice.synthesize_wav(sentence, wav_file, syn_config)
+    model = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/generator.onnx"
+    config = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/config.json"
+    phonemes_txt = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt"
+    phoneme_map = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phoneme_map.txt"
 
 
-    model = "/home/miro/PycharmProjects/ovos-tts-plugin-nos/sabela/model.onnx"
-    config = "/home/miro/PycharmProjects/ovos-tts-plugin-nos/sabela/config.json"
+    voice = TTSVoice.load(model_path=model, config_path=config,
+                          phonemes_txt=phonemes_txt, phoneme_map=phoneme_map,
+                          use_cuda=False)
 
-    voice = TTSVoice.load(model_path=model, config_path=config, use_cuda=False)
+    for phonemizer_type, phonemizer in [
+        (PhonemeType.ESPEAK, espeak_phonemizer),
+        (PhonemeType.BYT5, byt5_phonemizer),
+        (PhonemeType.GRUUT, gruut_phonemizer)
+    ]:
+        voice.config.phoneme_type = phonemizer_type
+        voice.phonemizer = phonemizer
 
-    slug = "".join([c for c in sentence if c not in string.punctuation]).replace(" ", "_")
-    slug += f"_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
-    with wave.open(f"{slug[-25:]}.wav", "wb") as wav_file:
-        voice.synthesize_wav(sentence, wav_file, syn_config)
+        slug = f"mimic3_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
+        with wave.open(f"{slug}.wav", "wb") as wav_file:
+            voice.synthesize_wav(sentence, wav_file, syn_config)

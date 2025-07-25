@@ -1,12 +1,23 @@
 """Utilities for converting phonemes to ids."""
 
-import logging
-from collections.abc import Mapping, Sequence
-from typing import Optional
+from collections.abc import Sequence
+from enum import Enum
+from typing import Optional, TextIO, Dict, List, Union, Set, Mapping
 
-_LOGGER = logging.getLogger(__name__)
+try:
+    from ovos_utils.log import LOG
+except ImportError:
+    import logging
 
-DEFAULT_PHONEME_ID_MAP: dict[str, list[int]] = {
+    LOG = logging.getLogger(__name__)
+    LOG.setLevel("DEBUG")
+
+PHONEME_ID_LIST = List[int]
+PHONEME_ID_MAP = Dict[str, int]
+PHONEME_LIST = List[str]
+PHONEME_WORD_LIST = List[PHONEME_LIST]
+
+DEFAULT_PIPER_PHONEME_ID_MAP: Dict[str, PHONEME_ID_LIST] = {
     "_": [0],
     "^": [1],
     "$": [2],
@@ -170,31 +181,242 @@ DEFAULT_PHONEME_ID_MAP: dict[str, list[int]] = {
     "ʷ": [160],
 }
 
-PAD = "_"  # padding (0)
-BOS = "^"  # beginning of sentence
-EOS = "$"  # end of sentence
+DEFAULT_PAD_TOKEN = DEFAULT_BLANK_TOKEN = "_"  # padding (0)
+DEFAULT_BOS_TOKEN = "^"  # beginning of sentence
+DEFAULT_EOS_TOKEN = "$"  # end of sentence
+DEFAULT_BLANK_WORD_TOKEN = "#"  # padding between words
+
+STRESS: Set[str] = {"ˈ", "ˌ"}
+"""Default stress characters"""
+
+PUNCTUATION_MAP: Mapping[str, str] = {";": ",", ":": ",", "?": ".", "!": "."}
+"""Default punctuation simplification into short (,) and long (.) pauses"""
+
+
+class BlankBetween(str, Enum):
+    """Placement of blank tokens"""
+
+    TOKENS = "tokens"
+    """Blank between every token/phoneme"""
+
+    WORDS = "words"
+    """Blank between every word"""
+
+    TOKENS_AND_WORDS = "tokens_and_words"
+    """Blank between every token/phoneme and every word (may be different symbols)"""
 
 
 def phonemes_to_ids(
-    phonemes: list[str],
-    id_map: Optional[Mapping[str, Sequence[int]]] = None,
-) -> list[int]:
+        phonemes: PHONEME_LIST,
+        id_map: Optional[Mapping[str, Union[int, Sequence[int]]]] = None,
+        blank_token: Optional[str] = DEFAULT_BLANK_TOKEN,
+        bos_token: Optional[str] = DEFAULT_BOS_TOKEN,
+        eos_token: Optional[str] = DEFAULT_EOS_TOKEN,
+        word_sep_token: Optional[str] = DEFAULT_BLANK_WORD_TOKEN,
+        include_whitespace: Optional[bool] = True,
+        blank_at_start: bool = True,
+        blank_at_end: bool = True,
+        blank_between: BlankBetween = BlankBetween.TOKENS_AND_WORDS,
+) -> PHONEME_ID_LIST:
     """Phonemes to ids."""
+    if not phonemes:
+        return []
     if not id_map:
-        id_map = DEFAULT_PHONEME_ID_MAP
+        id_map = DEFAULT_PIPER_PHONEME_ID_MAP
+
+    # compat with piper-style mapping that uses lists
+    id_map = {k: v if isinstance(v, list) else [v]
+              for k, v in id_map.items()}
 
     ids: list[int] = []
-    ids.extend(id_map[BOS])
-    ids.extend(id_map[PAD])
+    if bos_token is not None:
+        ids.extend(id_map[bos_token])
+    if blank_token is not None and blank_at_start:
+        ids.extend(id_map[blank_token])
 
-    for phoneme in phonemes:
+    blank_between_tokns = (blank_token is not None and
+                           blank_between in [BlankBetween.TOKENS, BlankBetween.TOKENS_AND_WORDS])
+    blank_between_words = (blank_token is not None and
+                           blank_between in [BlankBetween.WORDS, BlankBetween.TOKENS_AND_WORDS])
+
+    for idx, phoneme in enumerate(phonemes):
         if phoneme not in id_map:
-            _LOGGER.warning("Missing phoneme from id map: %s", phoneme)
+            LOG.warning("Missing phoneme from id map: %s", phoneme)
             continue
 
-        ids.extend(id_map[phoneme])
-        ids.extend(id_map[PAD])
+        if phoneme == " ":
+            if include_whitespace:
+                ids.extend(id_map[phoneme])
+                if blank_between_tokns:
+                    ids.extend(id_map[blank_token])
 
-    ids.extend(id_map[EOS])
+            elif blank_between_words:
+                ids.extend(id_map[word_sep_token])
+                if blank_between_tokns:
+                    ids.extend(id_map[blank_token])
+        else:
+            ids.extend(id_map[phoneme])
+
+            if blank_between_tokns and idx < len(phonemes) - 1:
+                ids.extend(id_map[blank_token])
+
+    if blank_token is not None and blank_at_end:
+        if not include_whitespace and word_sep_token and blank_between_words:
+            if blank_between_tokns:
+                ids.extend(id_map[blank_token])
+            ids.extend(id_map[word_sep_token])
+            if blank_between_tokns:
+                ids.extend(id_map[blank_token])
+        else:
+            ids.extend(id_map[blank_token])
+    if eos_token is not None:
+        ids.extend(id_map[eos_token])
 
     return ids
+
+
+def load_phoneme_ids(phonemes_file: TextIO) -> PHONEME_ID_MAP:
+    """
+    Load phoneme id mapping from a text file.
+    Format is ID<space>PHONEME
+    Comments start with #
+
+    Args:
+        phonemes_file: text file
+
+    Returns:
+        dict with phoneme -> id
+    """
+    phoneme_to_id = {}
+    for line in phonemes_file:
+        line = line.strip("\r\n")
+        if (not line) or line.startswith("#") or (" " not in line):
+            # Exclude blank lines, comments, or malformed lines
+            continue
+
+        phoneme_id, phoneme_str = line.split(" ", maxsplit=1)
+        phoneme_to_id[phoneme_str] = int(phoneme_id)
+
+    return phoneme_to_id
+
+
+def load_phoneme_map(phoneme_map_file: TextIO) -> Dict[str, List[str]]:
+    """
+    Load phoneme/phoneme mapping from a text file.
+    Format is FROM_PHONEME<space>TO_PHONEME[<space>TO_PHONEME...]
+    Comments start with #
+
+    Args:
+        phoneme_map_file: text file
+
+    Returns:
+        dict with from_phoneme -> [to_phoneme, to_phoneme, ...]
+    """
+    phoneme_map = {}
+    for line in phoneme_map_file:
+        line = line.strip("\r\n")
+        if (not line) or line.startswith("#") or (" " not in line):
+            # Exclude blank lines, comments, or malformed lines
+            continue
+
+        from_phoneme, to_phonemes_str = line.split(" ", maxsplit=1)
+        if not to_phonemes_str.strip():
+            # To whitespace
+            phoneme_map[from_phoneme] = [" "]
+        else:
+            # To one or more non-whitespace phonemes
+            phoneme_map[from_phoneme] = to_phonemes_str.split()
+
+    return phoneme_map
+
+
+if __name__ == "__main__":
+    phoneme_ids_path = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt"
+    with open(phoneme_ids_path, "r", encoding="utf-8") as ids_file:
+        phoneme_to_id = load_phoneme_ids(ids_file)
+    print(phoneme_to_id)
+
+    phoneme_map_path = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phoneme_map.txt"
+    with open(phoneme_map_path, "r", encoding="utf-8") as map_file:
+        phoneme_map = load_phoneme_map(map_file)
+    # print(phoneme_map)
+
+    from phoonnx.phonemizers import EspeakPhonemizer
+
+    # test original mimic3 code
+    from phonemes2ids import phonemes2ids as mimic3_phonemes2ids
+
+    # test original piper code
+    from piper.phoneme_ids import phonemes_to_ids as piper_phonemes_to_ids
+
+    espeak = EspeakPhonemizer()
+    phone_str: str = espeak.phonemize_string("hello world", "en")
+
+    phones: PHONEME_LIST = list(phone_str)
+    phone_words: PHONEME_WORD_LIST = [list(w) for w in phone_str.split()]
+    print(phone_str)
+    print(phones) # piper style
+    print(phone_words) # mimic3 style
+
+    mapping = {k: v[0] for k, v in DEFAULT_PIPER_PHONEME_ID_MAP.items()}
+    ref_args = {
+        "blank_between": BlankBetween.TOKENS,
+        "blank_at_start": True,
+        "blank_at_end": True,
+    }
+    args = {
+        "blank_between": BlankBetween.WORDS,
+        "blank_at_start": True,
+        "blank_at_end": True,
+    }
+    print("\n#### piper  (tokens_and_words + include_whitespace)")
+    print("reference", piper_phonemes_to_ids(phones))
+    print("phonnx   ", phonemes_to_ids(phones,
+                                       id_map=mapping, include_whitespace=True))
+
+    print("\n#### mimic3  (words)")
+    print("reference", mimic3_phonemes2ids(phone_words,
+                                           mapping,
+                                           bos=DEFAULT_BOS_TOKEN,
+                                           eos=DEFAULT_EOS_TOKEN,
+                                           blank=DEFAULT_PAD_TOKEN,
+                                           blank_at_end=True,
+                                           blank_at_start=True,
+                                           blank_word=DEFAULT_BLANK_WORD_TOKEN,
+                                           blank_between=BlankBetween.WORDS,
+                                           auto_bos_eos=True))
+    print("phonnx   ", phonemes_to_ids(phones,
+                                       id_map=mapping,
+                                       include_whitespace=False,
+                                       blank_between=BlankBetween.WORDS))
+
+    print("\n#### mimic3  (tokens)")
+    print("reference", mimic3_phonemes2ids(phone_words,
+                                           mapping,
+                                           bos=DEFAULT_BOS_TOKEN,
+                                           eos=DEFAULT_EOS_TOKEN,
+                                           blank=DEFAULT_PAD_TOKEN,
+                                           blank_at_end=True,
+                                           blank_at_start=True,
+                                           blank_word=DEFAULT_BLANK_WORD_TOKEN,
+                                           blank_between=BlankBetween.TOKENS,
+                                           auto_bos_eos=True))
+    print("phonnx   ", phonemes_to_ids(phones,
+                                       id_map=mapping,
+                                       include_whitespace=False,
+                                       blank_between=BlankBetween.TOKENS))
+    print("\n#### mimic3  (tokens_and_words)")
+    print("reference", mimic3_phonemes2ids(phone_words,
+                                           mapping,
+                                           bos=DEFAULT_BOS_TOKEN,
+                                           eos=DEFAULT_EOS_TOKEN,
+                                           blank=DEFAULT_PAD_TOKEN,
+                                           blank_at_end=True,
+                                           blank_at_start=True,
+                                           blank_word=DEFAULT_BLANK_WORD_TOKEN,
+                                           blank_between=BlankBetween.TOKENS_AND_WORDS,
+                                           auto_bos_eos=True))
+    print("phonnx   ", phonemes_to_ids(phones,
+                                       id_map=mapping,
+                                       include_whitespace=False,
+                                       blank_between=BlankBetween.TOKENS_AND_WORDS))

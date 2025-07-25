@@ -1,16 +1,120 @@
+import abc
 import json
 import os
 import re
+import string
 import subprocess
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Union
 
 import numpy as np
 import onnxruntime
 import requests
-from langcodes import closest_match
+from langcodes import tag_distance
+from quebra_frases import sentence_tokenize
 
-# Convert input text to a list of (phonemes, terminator, end_of_sentence) tuples.
+# list of (substring, terminator, end_of_sentence) tuples.
+TextChunks = List[Tuple[str, str, bool]]
+# list of (phonemes, terminator, end_of_sentence) tuples.
 RawPhonemizedChunks = List[Tuple[str, str, bool]]
+
+class BasePhonemizer(metaclass=abc.ABCMeta):
+
+    @abc.abstractmethod
+    def phonemize_string(self, text: str, lang: str) -> str:
+        raise NotImplementedError
+
+    def phonemize(self, text: str, lang: str) -> RawPhonemizedChunks:
+        if not text:
+            return [('', '', True)]
+        results: RawPhonemizedChunks = []
+        for chunk, punct, eos in self.chunk_text(text):
+            phoneme_str = self.phonemize_string(chunk, lang)
+            results += [(self.remove_punctuation(phoneme_str), punct, True)]
+        return results
+
+    @staticmethod
+    def match_lang(target_lang: str, valid_langs: List[str]) -> str:
+        """
+        Validates and returns the closest supported language code.
+
+        Args:
+            target_lang (str): The language code to validate.
+
+        Returns:
+            str: The validated language code.
+
+        Raises:
+            ValueError: If the language code is unsupported.
+        """
+        if target_lang in valid_langs:
+            return target_lang
+        best_lang = "und"
+        best_distance = 10000000
+        for l in valid_langs:
+            try:
+                distance: int = tag_distance(l, target_lang)
+            except:
+                try:
+                    l = f"{l.split('-')[0]}-{l.split('-')[1]}"
+                    distance: int = tag_distance(l, target_lang)
+                except:
+                    try:
+                        distance: int = tag_distance(l.split('-')[0], target_lang)
+                    except:
+                        continue
+            if distance < best_distance:
+                best_lang, best_distance = l, distance
+
+        # If the score is low (meaning a good match), return the language
+        if best_distance <= 10:
+            return best_lang
+        # Otherwise, raise an error for unsupported language
+        raise ValueError(f"unsupported language code: {target_lang}")
+
+    @staticmethod
+    def remove_punctuation(text):
+        """
+        Removes all punctuation characters from a string.
+        Punctuation characters are defined by string.punctuation.
+        """
+        # Create a regex pattern that matches any character in string.punctuation
+        punctuation_pattern = r"[" + re.escape(string.punctuation) + r"]"
+        return re.sub(punctuation_pattern, '', text).strip()
+
+    @staticmethod
+    def chunk_text(text: str, delimiters: Optional[List[str]] = None) -> TextChunks:
+        if not text:
+            return [('', '', True)]
+
+        results: TextChunks = []
+        delimiters = delimiters or [", ", ":", ";", "...", "|"]
+
+        # Create a regex pattern that matches any of the delimiters
+        delimiter_pattern = re.escape(delimiters[0])
+        for delimiter in delimiters[1:]:
+            delimiter_pattern += f"|{re.escape(delimiter)}"
+
+        for sentence in sentence_tokenize(text):
+            # Default punctuation if no specific punctuation found
+            default_punc = sentence[-1] if sentence[-1] in string.punctuation else "."
+
+            # Use regex to split the sentence by any of the delimiters
+            parts = re.split(f'({delimiter_pattern})', sentence)
+
+            # Group parts into chunks (text + delimiter)
+            chunks = []
+            for i in range(0, len(parts), 2):
+                # If there's a delimiter after the text, use it
+                delimiter = parts[i + 1] if i + 1 < len(parts) else default_punc
+
+                # Last chunk is marked as complete
+                is_last = (i + 2 >= len(parts))
+
+                chunks.append((parts[i].strip(), delimiter.strip(), is_last))
+
+            results.extend(chunks)
+
+        return results
 
 
 class EspeakError(Exception):
@@ -18,13 +122,15 @@ class EspeakError(Exception):
     pass
 
 
-class ByT5Phonemizer:
+class ByT5Phonemizer(BasePhonemizer):
     """
     A phonemizer class that uses a ByT5 ONNX model to convert text into phonemes.
     It mimics the clause-by-clause segmentation behavior of the piper TTS implementation
     """
     TOKENIZER_CONFIG_URL = "https://huggingface.co/OpenVoiceOS/g2p-multilingual-byt5-tiny-8l-ipa-childes-onnx/resolve/main/tokenizer_config.json"
     MODEL_URL = "https://huggingface.co/OpenVoiceOS/g2p-multilingual-byt5-tiny-8l-ipa-childes-onnx/resolve/main/byt5_g2p_model.onnx"
+    BYT5_LANGS = ['ca', 'cy', 'da', 'de', 'en-na', 'en-uk', 'es', 'et', 'eu', 'fa', 'fr', 'ga', 'hr', 'hu', 'id', 'is',
+                  'it', 'ja', 'ko', 'nl', 'no', 'pl', 'pt', 'pt-br', 'qu', 'ro', 'sr', 'sv', 'tr', 'zh', 'zh-yue']
 
     def __init__(self, onnx_model_path: Optional[str] = None, tokenizer_config: Optional[str] = None):
         """
@@ -81,8 +187,8 @@ class ByT5Phonemizer:
         with open(self.tokenizer_config, "r") as f:
             self.tokens: Dict[str, int] = json.load(f).get("added_tokens_decoder", {})
 
-    @staticmethod
-    def get_lang(target_lang: str) -> str:
+    @classmethod
+    def get_lang(cls, target_lang: str) -> str:
         """
         Validates and returns the closest supported language code.
 
@@ -95,16 +201,11 @@ class ByT5Phonemizer:
         Raises:
             ValueError: If the language code is unsupported.
         """
-        # Define the list of supported language codes
-        LANGS = "ca,cy,da,de,en-na,en-uk,es,et,eu,fa,fr,ga,hr,hu,id,is,it,ja,ko,nl,no,pl,pt,pt-br,qu,ro,sr,sv,tr,zh,zh-yue".split(
-            ",")
-        # Find the closest match and its score
-        lang, score = closest_match(target_lang, LANGS)
-        # If the score is low (meaning a good match), return the language
-        if score <= 10:
-            return lang
-        # Otherwise, raise an error for unsupported language
-        raise ValueError(f"unsupported language code: {target_lang}")
+        if target_lang.lower() in ["en-us", "en_us"]:
+            return "en-na"  # english north america
+
+        # Find the closest match
+        return cls.match_lang(target_lang, cls.BYT5_LANGS)
 
     def _decode_phones(self, preds: List[int]) -> str:
         """
@@ -214,96 +315,48 @@ class ByT5Phonemizer:
         # Decode the generated token IDs into phonemes
         return self._decode_phones(generated_ids)
 
-    def phonemize(self, text: str, lang: str) -> RawPhonemizedChunks:
-        """
-        Generates phonemes for the given text using the ByT5 ONNX model.
-        This function attempts to mimic the clause-by-clause segmentation
-        behavior of the C extension by heuristically splitting the input text
-        based on common punctuation marks.
-
-        Args:
-            text (str): The input text to convert to phonemes.
-            lang (str): The language of the input text.
-
-        Returns:
-            list: A list of tuples, where each tuple contains:
-                  (phonemes_string, terminator_character, is_sentence_end_boolean).
-                  - phonemes_string: The IPA phonemes for the text segment.
-                  - terminator_character: The punctuation mark that ended the segment (e.g., '.', ',').
-                                          Empty string if the segment is the end of the input text
-                                          and does not end with a recognized terminator.
-                  - is_sentence_end_boolean: True if the segment ends with a sentence-ending
-                                             punctuation (., ?, !), False otherwise.
-        """
-        if not text:
-            return [('', '', True)]
-
-        # Regex to split text by common sentence/clause terminators, keeping the delimiters.
-        # This creates a list like ['text_part_1', 'delimiter_1', 'text_part_2', 'delimiter_2', ..., 'text_part_N', '']
-        # The last empty string handles cases where the text ends with a delimiter.
-        # We use re.split with a capturing group for the delimiter.
-        parts: List[str] = re.split(r'([.?!,:;])', text)
-
-        results: RawPhonemizedChunks = []
-        current_segment_buffer: List[str] = []  # Buffer to accumulate text parts before a delimiter
-
-        # Determine if the last part of the original text ends with punctuation
-        # This helps in deciding the 'is_sentence_end' for the final segment
-        ends_with_punctuation: bool = bool(text and re.search(r'[.?!,:;]\s*$', text))
-
-        for i, part in enumerate(parts):
-            if part is None:
-                continue  # Should not happen with re.split, but for safety
-
-            # Strip leading/trailing whitespace from the part
-            stripped_part: str = part.strip()
-
-            if re.match(r'[.?!,:;]', stripped_part):  # If the stripped_part is a delimiter
-                terminator_str: str = stripped_part
-                is_sentence_end: bool = (terminator_str in ['.', '?', '!'])
-
-                # Join the buffered text parts to form the segment text
-                segment_text: str = " ".join(current_segment_buffer).strip()
-
-                if segment_text:
-                    # Get phonemes for the accumulated text before this delimiter
-                    phonemes: str = self._infer_onnx(segment_text, lang)
-                    results.append((phonemes, terminator_str, is_sentence_end))
-                else:
-                    # If the segment_text is empty, it means we encountered consecutive delimiters
-                    # or a delimiter at the very beginning.
-                    # In such cases, we'll get phonemes for the punctuation itself.
-                    phonemes_for_punc: str = self._infer_onnx(terminator_str, lang)
-                    if not phonemes_for_punc:
-                        phonemes_for_punc = terminator_str  # Fallback if model returns empty for punctuation
-                    results.append((phonemes_for_punc, terminator_str, is_sentence_end))
-
-                current_segment_buffer = []  # Reset buffer for the next segment
-            else:
-                # If the part is text, add it to the buffer if not empty
-                if stripped_part:
-                    current_segment_buffer.append(stripped_part)
-
-        # Handle any remaining text in the buffer that didn't end with a delimiter
-        if current_segment_buffer:
-            remaining_text: str = " ".join(current_segment_buffer).strip()
-            if remaining_text:
-                phonemes: str = self._infer_onnx(remaining_text, lang)
-
-                # For the very last segment without an explicit terminator,
-                # assume it's a sentence end to match Piper's behavior.
-                is_sentence_end_for_last_segment: bool = not ends_with_punctuation
-
-                results.append((phonemes, "", is_sentence_end_for_last_segment))
-
-        return results
+    def phonemize_string(self, text: str, lang: str) -> str:
+        return self._infer_onnx(text, lang)
 
 
-class EspeakPhonemizer:
+class EspeakPhonemizer(BasePhonemizer):
     """
     A phonemizer class that uses the espeak-ng command-line tool to convert text into phonemes.
     It segments the input text heuristically based on punctuation to mimic clause-by-clause processing.
     """
+    ESPEAK_LANGS = ['es-419', 'ca', 'qya', 'ga', 'et', 'ky', 'io', 'fa-latn', 'en-gb', 'fo', 'haw', 'kl',
+                    'ta', 'ml', 'gd', 'sd', 'es', 'hy', 'ur', 'ro', 'hi', 'or', 'ti', 'ca-va', 'om', 'tr', 'pa',
+                    'smj', 'mk', 'bg', 'cv', "fr", 'fi', 'en-gb-x-rp', 'ru', 'mt', 'an', 'mr', 'pap', 'vi', 'id',
+                    'fr-be', 'ltg', 'my', 'nl', 'shn', 'ba', 'az', 'cmn', 'da', 'as', 'sw',
+                    'piqd', 'en-us', 'hr', 'it', 'ug', 'th', 'mi', 'cy', 'ru-lv', 'ia', 'tt', 'hu', 'xex', 'te', 'ne',
+                    'eu', 'ja', 'bpy', 'hak', 'cs', 'en-gb-scotland', 'hyw', 'uk', 'pt', 'bn', 'mto', 'yue',
+                    'be', 'gu', 'sv', 'sl', 'cmn-latn-pinyin', 'lfn', 'lv', 'fa', 'sjn', 'nog', 'ms',
+                    'vi-vn-x-central', 'lt', 'kn', 'he', 'qu', 'ca-ba', 'quc', 'nb', 'sk', 'tn', 'py', 'si', 'de',
+                    'ar', 'en-gb-x-gbcwmd', 'bs', 'qdb', 'sq', 'sr', 'tk', 'en-029', 'ht', 'ru-cl', 'af', 'pt-br',
+                    'fr-ch', 'ka', 'en-gb-x-gbclan', 'ko', 'is', 'ca-nw', 'gn', 'kok', 'la', 'lb', 'am', 'kk', 'ku',
+                    'kaa', 'jbo', 'eo', 'uz', 'nci', 'vi-vn-x-south', 'el', 'pl', 'grc', ]
+
+    @classmethod
+    def get_lang(cls, target_lang: str) -> str:
+        """
+        Validates and returns the closest supported language code.
+
+        Args:
+            target_lang (str): The language code to validate.
+
+        Returns:
+            str: The validated language code.
+
+        Raises:
+            ValueError: If the language code is unsupported.
+        """
+        if target_lang.lower() == "en-gb":
+            return "en-gb-x-rp"
+        if target_lang in cls.ESPEAK_LANGS:
+            return target_lang
+        if target_lang.lower().split("-")[0] in cls.ESPEAK_LANGS:
+            return target_lang.lower().split("-")[0]
+        return cls.match_lang(target_lang, cls.ESPEAK_LANGS)
 
     @staticmethod
     def _run_espeak_command(args: List[str], input_text: str = None, check: bool = True) -> str:
@@ -349,105 +402,119 @@ class EspeakPhonemizer:
         except Exception as e:
             raise EspeakError(f"An unexpected error occurred while running espeak-ng: {e}")
 
+    def phonemize_string(self, text: str, lang: str) -> str:
+        lang = self.get_lang(lang)
+        return self._run_espeak_command(
+            ['-q', '-x', '--ipa', '-v', lang],
+            input_text=text
+        )
+
+
+class GruutPhonemizer(BasePhonemizer):
+    """
+    A phonemizer class that uses the Gruut library to convert text into phonemes.
+    Note: Gruut's internal segmentation is sentence-based
+    """
+    GRUUT_LANGS = ["en", "ar", "ca", "cs", "de", "es", "fa", "fr", "it", "lb", "nl", "pt", "ru", "sv", "sw"]
+
     @classmethod
-    def phonemize(cls, text: str, lang: str) -> RawPhonemizedChunks:
+    def get_lang(cls, target_lang: str) -> str:
         """
-        Generates phonemes for the given text using espeak-ng CLI.
-        This function attempts to mimic the clause-by-clause segmentation
-        behavior of the piper TTS implementation
+        Validates and returns the closest supported language code.
 
         Args:
-            text (str): The input text to convert to phonemes.
-            lang (str): The language code for the text (e.g., "en-gb").
+            target_lang (str): The language code to validate.
 
         Returns:
-            list: A list of tuples, where each tuple contains:
-                  (phonemes_string, terminator_character, is_sentence_end_boolean).
-                  - phonemes_string: The IPA phonemes for the text segment.
-                  - terminator_character: The punctuation mark that ended the segment (e.g., '.', ',').
-                                          Empty string if the segment is the end of the input text
-                                          and does not end with a recognized terminator.
-                  - is_sentence_end_boolean: True if the segment ends with a sentence-ending
-                                             punctuation (., ?, !), False otherwise.
+            str: The validated language code.
 
         Raises:
-            EspeakError: If espeak-ng is not initialized or if a subprocess call fails.
+            ValueError: If the language code is unsupported.
         """
-        if not text:
-            return [('', '', True)]
+        return cls.match_lang(target_lang, cls.GRUUT_LANGS)
 
-        # Regex to split text by common sentence/clause terminators, keeping the delimiters.
-        # This creates a list like ['text_part_1', 'delimiter_1', 'text_part_2', 'delimiter_2', ..., 'text_part_N', '']
-        # The last empty string handles cases where the text ends with a delimiter.
-        # We use re.split with a capturing group for the delimiter.
-        parts: List[str] = re.split(r'([.?!,:;])', text)
+    def _text_to_phonemes(self, text: str, lang: Optional[str] = None):
+        """
+        Generates phonemes for text using Gruut's sentence processing.
+        Yields lists of word phonemes for each sentence.
+        """
+        lang = self.get_lang(lang)
+        import gruut
+        for sentence in gruut.sentences(text, lang=lang):
+            sent_phonemes = [w.phonemes for w in sentence if w.phonemes]
+            if sentence.text.endswith("?"):
+                sent_phonemes[-1] = ["?"]
+            elif sentence.text.endswith("!"):
+                sent_phonemes[-1] = ["!"]
+            elif sentence.text.endswith(".") or sent_phonemes[-1] == ["‖"]:
+                sent_phonemes[-1] = ["."]
+            if sent_phonemes:
+                yield sent_phonemes
 
-        results: RawPhonemizedChunks = []
-        current_segment_buffer: List[str] = []  # Buffer to accumulate text parts before a delimiter
+    def phonemize_string(self, text: str, lang: str) -> str:
+        pho = ""
+        for sent_phonemes in self._text_to_phonemes(text, lang):
+            pho += " ".join(["".join(w) for w in sent_phonemes]) + " "
+        return pho.strip()
 
-        # Determine if the last part of the original text ends with punctuation
-        # This helps in deciding the 'is_sentence_end' for the final segment
-        ends_with_punctuation: bool = bool(text and re.search(r'[.?!,:;]\s*$', text))
 
-        for i, part in enumerate(parts):
-            if part is None:
-                continue  # Should not happen with re.split, but for safety
+class EpitranPhonemizer(BasePhonemizer):
+    """
+    A phonemizer class that uses the Gruut library to convert text into phonemes.
+    Note: Gruut's internal segmentation is sentence-based
+    """
+    EPITRAN_LANGS = ['hsn-Latn', 'ful-Latn', 'jpn-Ktkn-red', 'tel-Telu', 'nld-Latn', 'aze-Latn', 'amh-Ethi-pp',
+                     'msa-Latn', 'spa-Latn-eu', 'ori-Orya', 'bxk-Latn', 'spa-Latn', 'kir-Cyrl', 'lij-Latn', 'kin-Latn',
+                     'ces-Latn', 'sin-Sinh', 'urd-Arab', 'vie-Latn', 'gan-Latn', 'fra-Latn', 'nan-Latn', 'kaz-Latn',
+                     'swe-Latn', 'jpn-Ktkn', 'tam-Taml', 'sag-Latn', 'csb-Latn', 'pii-latn_Holopainen2019', 'yue-Latn',
+                     'got-Latn', 'tur-Latn', 'aar-Latn', 'jav-Latn', 'ita-Latn', 'sna-Latn', 'ilo-Latn', 'tam-Taml-red',
+                     'kmr-Latn-red', 'uzb-Cyrl', 'amh-Ethi', 'mya-Mymr', 'aii-Syrc', 'lit-Latn', 'kmr-Latn',
+                     'hat-Latn-bab', 'ltc-Latn-bax', 'Goth2Latn', 'quy-Latn', 'hau-Latn', 'ood-Latn-alv', 'vie-Latn-so',
+                     'run-Latn', 'orm-Latn', 'ind-Latn', 'kir-Latn', 'mal-Mlym', 'ben-Beng-red', 'hun-Latn', 'uew',
+                     'sqi-Latn', 'jpn-Hrgn', 'deu-Latn-np', 'xho-Latn', 'fra-Latn-rev', 'fra-Latn-np', 'kaz-Cyrl-bab',
+                     'jpn-Hrgn-red', 'Latn2Goth', 'glg-Latn', 'uig-Arab', 'amh-Ethi-red', 'zul-Latn', 'hin-Deva',
+                     'uzb-Latn', 'tir-Ethi-red', 'kaz-Cyrl', 'mlt-Latn', 'deu-Latn-nar', 'est-Latn', 'eng-Latn',
+                     'pii-latn_Wiktionary', 'ckb-Arab', 'nya-Latn', 'mon-Cyrl-bab', 'fra-Latn-p', 'ood-Latn-sax',
+                     'ukr-Cyrl', 'tgl-Latn-red', 'lsm-Latn', 'kor-Hang', 'lav-Latn', 'generic-Latn', 'tur-Latn-red',
+                     'srp-Latn', 'tir-Ethi', 'kbd-Cyrl', 'hrv-Latn', 'srp-Cyrl', 'tpi-Latn', 'khm-Khmr', 'jam-Latn',
+                     'ben-Beng-east', 'por-Latn', 'cmn-Latn', 'cat-Latn', 'tha-Thai', 'ara-Arab', 'ben-Beng',
+                     'fin-Latn', 'hmn-Latn', 'lez-Cyrl', 'fas-Arab', 'lao-Laoo-prereform', 'mar-Deva', 'yor-Latn',
+                     'ron-Latn', 'tgl-Latn', 'lao-Laoo', 'deu-Latn', 'pan-Guru', 'tuk-Latn', 'tir-Ethi-pp', 'rus-Cyrl',
+                     'swa-Latn-red', 'ceb-Latn', 'wuu-Latn', 'hak-Latn', 'mri-Latn', 'epo-Latn', 'pol-Latn',
+                     'tur-Latn-bab', 'kat-Geor', 'tgk-Cyrl', 'aze-Cyrl', 'vie-Latn-ce', 'swa-Latn', 'tuk-Cyrl',
+                     'vie-Latn-no', 'nan-Latn-tl', 'zha-Latn', 'cjy-Latn', 'ava-Cyrl', 'som-Latn', 'kir-Arab']
 
-            # Strip leading/trailing whitespace from the part
-            stripped_part: str = part.strip()
+    def __init__(self):
+        import epitran
+        self.epitran = epitran
+        self._epis: Dict[str, epitran.Epitran] = {}
 
-            if re.match(r'[.?!,:;]', stripped_part):  # If the stripped_part is a delimiter
-                terminator_str: str = stripped_part
-                is_sentence_end: bool = (terminator_str in ['.', '?', '!'])
+    @classmethod
+    def get_lang(cls, target_lang: str) -> str:
+        """
+        Validates and returns the closest supported language code.
 
-                # Join the buffered text parts to form the segment text
-                segment_text: str = " ".join(current_segment_buffer).strip()
+        Args:
+            target_lang (str): The language code to validate.
 
-                if segment_text:
-                    # Get phonemes for the accumulated text before this delimiter
-                    raw_phonemes_output: str = cls._run_espeak_command(
-                        ['-q', '-x', '--ipa', '-v', lang],
-                        input_text=segment_text
-                    )
-                    # Extract only the last line, which should be the pure phonemes
-                    phonemes: str = raw_phonemes_output.splitlines()[-1].strip() if raw_phonemes_output else ""
-                    results.append((phonemes, terminator_str, is_sentence_end))
-                else:
-                    # If the segment_text is empty, it means we encountered consecutive delimiters
-                    # or a delimiter at the very beginning.
-                    # In such cases, we'll use the punctuation itself as phonemes as a fallback.
-                    raw_phonemes_output: str = cls._run_espeak_command(
-                        ['-q', '-x', '--ipa', '-v', lang],
-                        input_text=terminator_str
-                    )
-                    phonemes_for_punc: str = raw_phonemes_output.splitlines()[-1].strip() if raw_phonemes_output else ""
-                    if not phonemes_for_punc:  # Fallback if espeak-ng returns empty or only diagnostic for punctuation
-                        phonemes_for_punc = terminator_str
-                    results.append((phonemes_for_punc, terminator_str, is_sentence_end))
+        Returns:
+            str: The validated language code.
 
-                current_segment_buffer = []  # Reset buffer for the next segment
-            else:
-                # If the part is text, add it to the buffer if not empty
-                if stripped_part:
-                    current_segment_buffer.append(stripped_part)
+        Raises:
+            ValueError: If the language code is unsupported.
+        """
+        return cls.match_lang(target_lang, cls.EPITRAN_LANGS)
 
-        # Handle any remaining text in the buffer that didn't end with a delimiter
-        if current_segment_buffer:
-            remaining_text: str = " ".join(current_segment_buffer).strip()
-            if remaining_text:
-                raw_phonemes_output: str = cls._run_espeak_command(
-                    ['-q', '-x', '--ipa', '-v', lang],
-                    input_text=remaining_text
-                )
-                phonemes: str = raw_phonemes_output.splitlines()[-1].strip() if raw_phonemes_output else ""
+    def phonemize_string(self, text: str, lang: str) -> str:
+        lang = self.get_lang(lang)
+        epi = self._epis.get(lang)
+        if epi is None:
+            epi = self.epitran.Epitran(lang)
+            self._epis[lang] = epi
+        return epi.transliterate(text)
 
-                # For the very last segment without an explicit terminator,
-                # assume it's a sentence end to match Piper's behavior.
-                is_sentence_end_for_last_segment: bool = not ends_with_punctuation
 
-                results.append((phonemes, "", is_sentence_end_for_last_segment))
-
-        return results
+Phonemizer = Union[ByT5Phonemizer, EspeakPhonemizer, GruutPhonemizer, EpitranPhonemizer]
 
 
 if __name__ == "__main__":
@@ -455,29 +522,57 @@ if __name__ == "__main__":
 
     byt5 = ByT5Phonemizer()
     espeak = EspeakPhonemizer()
+    gruut = GruutPhonemizer()
+    epitr = EpitranPhonemizer()
 
-    lang = "en-gb"
+    lang = "nl"
+    sentence = "DJ's en bezoekers van Tomorrowland waren woensdagavond dolblij toen het paradepaardje van het festival alsnog opende in Oostenrijk op de Mainstage.\nWant het optreden van Metallica, waar iedereen zo blij mee was, zou hoe dan ook doorgaan, aldus de DJ die het nieuws aankondigde."
+
+    print(f"\n--- Getting phonemes for '{sentence}' ---")
+    text1 = sentence
+    phonemes1 = espeak.phonemize(text1, lang)
+    phonemes1b = gruut.phonemize(text1, lang)
+    phonemes1c = byt5.phonemize(text1, lang)
+    phonemes1d = epitr.phonemize(text1, lang)
+    print(f" Espeak  Phonemes: {phonemes1}")
+    print(f" Gruut   Phonemes: {phonemes1b}")
+    print(f" byt5    Phonemes: {phonemes1c}")
+    print(f" Epitran Phonemes: {phonemes1d}")
+
+    exit()
 
     print("\n--- Getting phonemes for 'Hello, world. How are you?' ---")
     text1 = "Hello, world. How are you?"
     phonemes1 = espeak.phonemize(text1, lang)
+    phonemes1b = gruut.phonemize(text1, lang)
     phonemes1c = byt5.phonemize(text1, lang)
-    print(f"  Espeak Phonemes: {phonemes1}")
-    print(f"   byt5  Phonemes: {phonemes1c}")
+    phonemes1d = epitr.phonemize(text1, lang)
+    print(f" Espeak  Phonemes: {phonemes1}")
+    print(f" Gruut   Phonemes: {phonemes1b}")
+    print(f" byt5    Phonemes: {phonemes1c}")
+    print(f" Epitran Phonemes: {phonemes1d}")
 
     print("\n--- Getting phonemes for 'This is a test: a quick one; and done!' ---")
     text2 = "This is a test: a quick one; and done!"
     phonemes2 = espeak.phonemize(text2, lang)
+    phonemes2b = gruut.phonemize(text2, lang)
     phonemes2c = byt5.phonemize(text2, lang)
+    phonemes2d = epitr.phonemize(text2, lang)
     print(f"  Espeak Phonemes: {phonemes2}")
+    print(f"  Gruut Phonemes: {phonemes2b}")
     print(f"   byt5  Phonemes: {phonemes2c}")
+    print(f" Epitran Phonemes: {phonemes2d}")
 
     print("\n--- Getting phonemes for 'Just a phrase without punctuation' ---")
     text3 = "Just a phrase without punctuation"
     phonemes3 = espeak.phonemize(text3, lang)
+    phonemes3b = gruut.phonemize(text3, lang)
     phonemes3c = byt5.phonemize(text3, lang)
+    phonemes3d = epitr.phonemize(text3, lang)
     print(f"  Espeak Phonemes: {phonemes3}")
+    print(f"  Gruut Phonemes: {phonemes3b}")
     print(f"   byt5  Phonemes: {phonemes3c}")
+    print(f" Epitran Phonemes: {phonemes3d}")
 
     """
     --- Getting phonemes for 'Hello, world. How are you?' ---
