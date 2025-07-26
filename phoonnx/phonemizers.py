@@ -4,6 +4,7 @@ import os
 import re
 import string
 import subprocess
+import platform
 from typing import List, Tuple, Dict, Optional, Union
 
 import numpy as np
@@ -514,7 +515,142 @@ class EpitranPhonemizer(BasePhonemizer):
         return epi.transliterate(text)
 
 
-Phonemizer = Union[ByT5Phonemizer, EspeakPhonemizer, GruutPhonemizer, EpitranPhonemizer]
+class CotoviaError(Exception):
+    """Custom exception for cotovia related errors."""
+    pass
+
+
+class CotoviaPhonemizer(BasePhonemizer):
+    """
+    A phonemizer class that uses the Cotovia TTS binary to convert text into phonemes.
+    It processes the input sentence through a command-line phonemization tool, applying multiple
+    regular expression transformations to clean and normalize the phonetic representation.
+    """
+
+    def __init__(self, cotovia_bin_path: Optional[str] = None):
+        """
+        Initializes the CotoviaPhonemizer.
+
+        Args:
+            cotovia_bin_path (str, optional): Path to the Cotovia TTS binary.
+                                              If None, it will try to find it in common locations.
+        """
+        self.cotovia_bin = cotovia_bin_path or self.find_cotovia()
+        if not os.path.exists(self.cotovia_bin):
+            raise FileNotFoundError(f"Cotovia binary not found at {self.cotovia_bin}. "
+                                    "Please ensure it's installed or provide the correct path.")
+
+    @staticmethod
+    def find_cotovia() -> str:
+        """
+        Attempts to find the cotovia binary in common locations.
+        """
+        path = subprocess.run(["which", "cotovia"], capture_output=True, text=True).stdout.strip()
+        if path and os.path.isfile(path):
+            return path
+
+        # Fallback to bundled binaries
+        local_path = f"{os.path.dirname(__file__)}/cotovia/cotovia_{platform.machine()}"
+        if os.path.isfile(local_path):
+            return local_path
+
+        # Last resort common system path
+        if os.path.isfile("/usr/bin/cotovia"):
+            return "/usr/bin/cotovia"
+
+        return "cotovia"  # Return "cotovia" to let subprocess raise FileNotFoundError if not found in PATH
+
+    def phonemize_string(self, text: str, lang: str) -> str:
+        """
+        Converts a given sentence into phonemes using the Cotovia TTS binary.
+
+        Processes the input sentence through a command-line phonemization tool, applying multiple regular expression transformations to clean and normalize the phonetic representation.
+
+        Parameters:
+            text (str): The input text to be phonemized
+            lang (str): The language code (ignored by Cotovia, but required by BasePhonemizer)
+
+        Returns:
+            str: A cleaned and normalized phonetic representation of the input sentence
+
+        Notes:
+            - Uses subprocess to execute the Cotovia TTS binary
+            - Applies multiple regex substitutions to improve punctuation and spacing
+            - Converts text from ISO-8859-1 to UTF-8 encoding
+        """
+        cmd = f'echo "{text}" | {self.cotovia_bin} -t -n -S | iconv -f iso88591 -t utf8'
+        str_ext = subprocess.check_output(cmd, shell=True).decode("utf-8")
+
+        ## fix punctuation in cotovia output - from official inference script
+
+        # substitute ' ·\n' by ...
+        str_ext = re.sub(r" ·", r"...", str_ext)
+
+        # remove spaces before , . ! ? ; : ) ] of the extended string
+        str_ext = re.sub(r"\s+([.,!?;:)\]])", r"\1", str_ext)
+
+        # remove spaces after ( [ ¡ ¿ of the extended string
+        str_ext = re.sub(r"([\(\[¡¿])\s+", r"\1", str_ext)
+
+        # remove unwanted spaces between quotations marks
+        str_ext = re.sub(r'"\s*([^"]*?)\s*"', r'"\1"', str_ext)
+
+        # substitute '- text -' to '-text-'
+        str_ext = re.sub(r"-\s*([^-]*?)\s*-", r"-\1-", str_ext)
+
+        # remove initial question marks
+        str_ext = re.sub(r"[¿¡]", r"", str_ext)
+
+        # eliminate extra spaces
+        str_ext = re.sub(r"\s+", r" ", str_ext)
+
+        str_ext = re.sub(r"(\d+)\s*-\s*(\d+)", r"\1 \2", str_ext)
+
+        ### - , ' and () by commas
+        # substitute '- text -' to ', text,'
+        str_ext = re.sub(r"(\w+)\s+-([^-]*?)-\s+([^-]*?)", r"\1, \\2, ", str_ext)
+
+        # substitute ' - ' by ', '
+        str_ext = re.sub(r"(\w+[!\?]?)\s+-\s*", r"\1, ", str_ext)
+
+        # substitute ' ( text )' to ', text,'
+        str_ext = re.sub(r"(\w+)\s*\(\s*([^\(\)]*?)\s*\)", r"\1, \\2,", str_ext)
+
+        return str_ext
+
+
+class GraphemePhonemizer(BasePhonemizer):
+    """
+    A phonemizer class that treats input text as graphemes (characters).
+    It performs text normalization and returns the normalized text as a string
+    of characters.
+    """
+    # Regular expression matching whitespace:
+    whitespace_re = re.compile(r"\s+")
+
+    def phonemize_string(self, text: str, lang: str) -> str:
+        """
+        Normalizes input text by applying a series of transformations
+        and returns it as a sequence of graphemes.
+
+        Parameters:
+            text (str): Input text to be converted to graphemes.
+            lang (str): The language code (ignored for grapheme phonemization,
+                        but required by BasePhonemizer).
+
+        Returns:
+            str: A normalized string of graphemes.
+        """
+        text = text.lower()
+        text = text.replace(";", ",")
+        text = text.replace("-", " ")
+        text = text.replace(":", ",")
+        text = re.sub(r"[\<\>\(\)\[\]\"]+", "", text)
+        text = re.sub(self.whitespace_re, " ", text).strip()
+        return text
+
+
+Phonemizer = Union[ByT5Phonemizer, EspeakPhonemizer, GruutPhonemizer, EpitranPhonemizer, CotoviaPhonemizer, GraphemePhonemizer]
 
 
 if __name__ == "__main__":
@@ -524,10 +660,12 @@ if __name__ == "__main__":
     espeak = EspeakPhonemizer()
     gruut = GruutPhonemizer()
     epitr = EpitranPhonemizer()
+    cotovia = CotoviaPhonemizer()
+    grapheme_ph = GraphemePhonemizer()
 
     lang = "nl"
     sentence = "DJ's en bezoekers van Tomorrowland waren woensdagavond dolblij toen het paradepaardje van het festival alsnog opende in Oostenrijk op de Mainstage.\nWant het optreden van Metallica, waar iedereen zo blij mee was, zou hoe dan ook doorgaan, aldus de DJ die het nieuws aankondigde."
-
+    sentence = "Een regenboog is een gekleurde cirkelboog die aan de hemel waargenomen kan worden als de, laagstaande, zon tegen een nevel van waterdruppeltjes aan schijnt en de zon zich achter de waarnemer bevindt. Het is een optisch effect dat wordt veroorzaakt door de breking en weerspiegeling van licht in de waterdruppels."
     print(f"\n--- Getting phonemes for '{sentence}' ---")
     text1 = sentence
     phonemes1 = espeak.phonemize(text1, lang)
@@ -539,7 +677,7 @@ if __name__ == "__main__":
     print(f" byt5    Phonemes: {phonemes1c}")
     print(f" Epitran Phonemes: {phonemes1d}")
 
-    exit()
+    lang = "en-gb"
 
     print("\n--- Getting phonemes for 'Hello, world. How are you?' ---")
     text1 = "Hello, world. How are you?"
@@ -574,16 +712,12 @@ if __name__ == "__main__":
     print(f"   byt5  Phonemes: {phonemes3c}")
     print(f" Epitran Phonemes: {phonemes3d}")
 
-    """
-    --- Getting phonemes for 'Hello, world. How are you?' ---
-      Espeak Phonemes: [('həlˈəʊ', ',', False), ('wˈɜːld', '.', True), ('hˈaʊ ɑː juː', '?', True)]
-       byt5  Phonemes: [('hələʊ', ',', False), ('wɜːld', '.', True), ('haʊ ɑː juː', '?', True)]
-    
-    --- Getting phonemes for 'This is a test: a quick one; and done!' ---
-      Espeak Phonemes: [('ðɪs ɪz ɐ tˈɛst', ':', False), ('ɐ kwˈɪk wˌɒn', ';', False), ('and dˈʌn', '!', True)]
-       byt5  Phonemes: [('ðɪs ɪz ɐ tʰestʰ', ':', False), ('ɐ kʰwɪkʰ wɒn', ';', False), ('ænd dʌn', '!', True)]
-    
-    --- Getting phonemes for 'Just a phrase without punctuation' ---
-      Espeak Phonemes: [('dʒˈʌst ɐ fɹˈeɪz wɪðˌaʊt pˌʌŋktʃuːˈeɪʃən', '', True)]
-       byt5  Phonemes: [('d̠ʒʌstʰ ɐ fɹeɪz wɪðaʊtʰ pʰʌŋkʰt̠ʃuːeɪʃən', '', True)]
-    """
+    lang = "gl"
+    text_gl = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
+    print(f"\n--- Getting phonemes for '{text_gl}' (Cotovia) ---")
+    phonemes_cotovia = cotovia.phonemize(text_gl, lang)
+    print(f"  Cotovia Phonemes: {phonemes_cotovia}")
+
+    print(f"\n--- Getting graphemes for '{text1}' (GraphemePhonemizer) ---")
+    graphemes1 = grapheme_ph.phonemize(text_gl, lang)
+    print(f"  Graphemes: {graphemes1}")

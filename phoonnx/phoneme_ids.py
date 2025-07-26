@@ -229,19 +229,55 @@ def phonemes_to_ids(
               for k, v in id_map.items()}
 
     ids: list[int] = []
+    blank_id = blank_token if isinstance(blank_token, int) \
+        else id_map.get(blank_token, len(id_map)) if blank_token \
+        else len(id_map)
+    eos_id = eos_token if isinstance(eos_token, int) \
+        else id_map.get(eos_token, len(id_map)) if eos_token \
+        else len(id_map)
+    bos_id = eos_token if isinstance(bos_token, int) \
+        else id_map.get(bos_token, len(id_map)) if bos_token \
+        else len(id_map)
+
     if bos_token is not None:
-        ids.extend(id_map[bos_token])
+        ids.extend(bos_id)
     if blank_token is not None and blank_at_start:
-        ids.extend(id_map[blank_token])
+        ids.extend(blank_id)
 
     blank_between_tokns = (blank_token is not None and
                            blank_between in [BlankBetween.TOKENS, BlankBetween.TOKENS_AND_WORDS])
     blank_between_words = (blank_token is not None and
                            blank_between in [BlankBetween.WORDS, BlankBetween.TOKENS_AND_WORDS])
 
-    for idx, phoneme in enumerate(phonemes):
+    # first pre-process phoneme_map to check for dipthongs having their own phoneme_id
+    # common in mimic3 models
+    compound_phonemes = sorted((k for k in id_map if len(k) > 1), key=len, reverse=True)
+    i = 0
+    while i < len(phonemes):
+        matched = False
+
+        # Try to match compound phonemes starting at index i
+        for compound in compound_phonemes:
+            n = len(compound)
+            joined = ''.join(phonemes[i:i + n])
+            if joined == compound:
+                ids.extend(id_map[compound])
+                if blank_between_tokns and i + n < len(phonemes):
+                    ids.extend(id_map[blank_token])
+                i += n
+                matched = True
+                break
+
+        if matched:
+            continue
+
+        phoneme = phonemes[i]
         if phoneme not in id_map:
+            if phoneme == " " and not include_whitespace:
+                i += 1
+                continue
             LOG.warning("Missing phoneme from id map: %s", phoneme)
+            i += 1
             continue
 
         if phoneme == " ":
@@ -249,31 +285,29 @@ def phonemes_to_ids(
                 ids.extend(id_map[phoneme])
                 if blank_between_tokns:
                     ids.extend(id_map[blank_token])
-
             elif blank_between_words:
                 ids.extend(id_map[word_sep_token])
                 if blank_between_tokns:
                     ids.extend(id_map[blank_token])
         else:
             ids.extend(id_map[phoneme])
-
-            if blank_between_tokns and idx < len(phonemes) - 1:
+            if blank_between_tokns and i < len(phonemes) - 1:
                 ids.extend(id_map[blank_token])
+        i += 1
 
     if blank_token is not None and blank_at_end:
         if not include_whitespace and word_sep_token and blank_between_words:
             if blank_between_tokns:
-                ids.extend(id_map[blank_token])
+                ids.extend(blank_id)
             ids.extend(id_map[word_sep_token])
             if blank_between_tokns:
-                ids.extend(id_map[blank_token])
+                ids.extend(blank_id)
         else:
-            ids.extend(id_map[blank_token])
+            ids.extend(blank_id)
     if eos_token is not None:
-        ids.extend(id_map[eos_token])
+        ids.extend(eos_id)
 
     return ids
-
 
 def load_phoneme_ids(phonemes_file: TextIO) -> PHONEME_ID_MAP:
     """
@@ -359,16 +393,6 @@ if __name__ == "__main__":
     print(phone_words) # mimic3 style
 
     mapping = {k: v[0] for k, v in DEFAULT_PIPER_PHONEME_ID_MAP.items()}
-    ref_args = {
-        "blank_between": BlankBetween.TOKENS,
-        "blank_at_start": True,
-        "blank_at_end": True,
-    }
-    args = {
-        "blank_between": BlankBetween.WORDS,
-        "blank_at_start": True,
-        "blank_at_end": True,
-    }
     print("\n#### piper  (tokens_and_words + include_whitespace)")
     print("reference", piper_phonemes_to_ids(phones))
     print("phonnx   ", phonemes_to_ids(phones,

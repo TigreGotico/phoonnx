@@ -12,9 +12,9 @@ import numpy as np
 import onnxruntime
 
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig
-from phoonnx.graphemes import Graphemes, CotoviaGraphemes
 from phoonnx.phoneme_ids import phonemes_to_ids, BlankBetween
-from phoonnx.phonemizers import Phonemizer, RawPhonemizedChunks, EspeakPhonemizer, ByT5Phonemizer, GruutPhonemizer, EpitranPhonemizer
+from phoonnx.phonemizers import (Phonemizer, RawPhonemizedChunks, EspeakPhonemizer, ByT5Phonemizer, GruutPhonemizer,
+                                 EpitranPhonemizer, CotoviaPhonemizer, GraphemePhonemizer)
 from phoonnx.tashkeel import TashkeelDiacritizer
 
 _PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
@@ -114,9 +114,6 @@ class TTSVoice:
 
     phonemizer: Optional[Phonemizer] = None
 
-    cotovia_phonemizer: Optional[CotoviaGraphemes] = None
-    graphemes_tokenizer: Optional[Graphemes] = None
-
     # For Arabic text only
     use_tashkeel: bool = True
     tashkeel_diacritizier: Optional[TashkeelDiacritizer] = None  # For Arabic text only
@@ -136,18 +133,10 @@ class TTSVoice:
             self.phonemizer = GruutPhonemizer()
         elif self.config.phoneme_type == PhonemeType.EPITRAN and self.phonemizer is None:
             self.phonemizer = EpitranPhonemizer()
-        if self.config.phoneme_type == PhonemeType.COTOVIA and self.cotovia_phonemizer is None:
-            # cotovia_bin_path can be passed via config if needed, for now use default search
-            self.cotovia_phonemizer = CotoviaGraphemes()
-        if self.config.phoneme_type in [PhonemeType.GRAPHEMES, PhonemeType.COTOVIA] and self.graphemes_tokenizer is None:
-            self.graphemes_tokenizer = Graphemes(
-                characters=self.config.character_set,
-                punctuations=self.config.punctuation,
-                pad=self.config.pad_token,
-                eos=self.config.eos_token,
-                bos=self.config.bos_token,
-                blank=self.config.blank_token
-            )
+        elif self.config.phoneme_type == PhonemeType.COTOVIA and self.phonemizer is None:
+            self.phonemizer = CotoviaPhonemizer()
+        elif self.config.phoneme_type == PhonemeType.GRAPHEMES:
+            self.phonemizer = GraphemePhonemizer()
 
 
         # compat with piper arabic models
@@ -324,32 +313,12 @@ class TTSVoice:
         if self.phonetic_spellings and syn_config.enable_phonetic_spellings:
             text = self.phonetic_spellings.apply(text)
 
-        # Determine phoneme_ids based on phoneme_type
-        if self.config.phoneme_type in [PhonemeType.GRAPHEMES, PhonemeType.COTOVIA]:
-            if self.graphemes_tokenizer is None:
-                raise RuntimeError("Graphemes tokenizer not initialized for GRAPHEMES phoneme type.")
-
-            if self.config.phoneme_type == PhonemeType.COTOVIA:
-                # NOTE: cotovia phonemizer is used as a pre-processing
-                # step for text since it does not output IPA
-                text = self.cotovia_phonemizer.phonemize(text)
-
-            # For grapheme models, we get IDs directly
-            # Graphemes.text_to_ids already applies add_blank and use_eos_bos based on config
-            all_phoneme_ids_for_synthesis = [
-                self.graphemes_tokenizer.text_to_ids(
-                    text,
-                    add_blank=self.config.blank_between in [BlankBetween.TOKENS, BlankBetween.TOKENS_AND_WORDS],
-                    use_eos_bos=bool(self.config.eos_token) and bool(self.config.bos_token)
-                )
-            ]
-        else:
-            # For phoneme-based models (ESPEAK, BYT5), use the existing phonemize -> phonemes_to_ids flow
-            sentence_phonemes = self.phonemize(text)
-            LOG.debug("phonemes=%s", sentence_phonemes)
-            all_phoneme_ids_for_synthesis = [
-                self.phonemes_to_ids(phonemes) for phonemes in sentence_phonemes if phonemes
-            ]
+        # All phonemization goes through the unified self.phonemize method
+        sentence_phonemes = self.phonemize(text)
+        LOG.debug("phonemes=%s", sentence_phonemes)
+        all_phoneme_ids_for_synthesis = [
+            self.phonemes_to_ids(phonemes) for phonemes in sentence_phonemes if phonemes
+        ]
 
         for phoneme_ids in all_phoneme_ids_for_synthesis:
             if not phoneme_ids:
@@ -481,6 +450,47 @@ if __name__ == "__main__":
 
     syn_config = SynthesisConfig(enable_phonetic_spellings=True)
 
+
+    # Test grapheme model directly
+    print("\n################")
+    print("## coqui vits")
+    model = "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits/model.onnx"
+    config = "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits/config.json"
+
+    sentence = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
+
+    voice = TTSVoice.load(model_path=model, config_path=config, use_cuda=False)
+    print("-", voice.config.phoneme_type)
+    print(voice.config)
+    phones = voice.phonemize(sentence)
+    print(phones)
+    print(voice.phonemes_to_ids(phones[0]))
+    voice.config.lang_code = "gl-ES"
+    slug = f"vits_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
+    with wave.open(f"{slug}.wav", "wb") as wav_file:
+        voice.synthesize_wav(sentence, wav_file, syn_config)
+
+    # Test cotovia phonemizer
+    print("\n################")
+    print("## cotovia coqui vits")
+    model = "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia/model.onnx"
+    config = "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia/config.json"
+
+    sentence = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
+
+    voice = TTSVoice.load(model_path=model, config_path=config, use_cuda=False)
+    print("-", voice.config.phoneme_type)
+    print(voice.config)
+    phones = voice.phonemize(sentence)
+    print(phones)
+    print(voice.phonemes_to_ids(phones[0]))
+
+    voice.config.lang_code = "gl-ES"
+    slug = f"vits_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
+    with wave.open(f"{slug}.wav", "wb") as wav_file:
+        voice.synthesize_wav(sentence, wav_file, syn_config)
+
+    # test piper
     model = "/home/miro/PycharmProjects/phoonnx_tts/miro_en-GB.onnx"
     config = "/home/miro/PycharmProjects/phoonnx_tts/piper_espeak.json"
 
@@ -489,22 +499,29 @@ if __name__ == "__main__":
     byt5_phonemizer = ByT5Phonemizer()
     gruut_phonemizer = GruutPhonemizer()
     espeak_phonemizer = EspeakPhonemizer()
+    epitran_phonemizer = EpitranPhonemizer()
+    cotovia_phonemizer = CotoviaPhonemizer()
 
     sentence = "A rainbow is a meteorological phenomenon that is caused by reflection, refraction and dispersion of light in water droplets resulting in a spectrum of light appearing in the sky. It takes the form of a multi-colored circular arc. Rainbows caused by sunlight always appear in the section of sky directly opposite the Sun."
 
+    print("\n################")
+    print("## piper")
     for phonemizer_type, phonemizer in [
         (PhonemeType.ESPEAK, espeak_phonemizer),
         (PhonemeType.BYT5, byt5_phonemizer),
-        (PhonemeType.GRUUT, gruut_phonemizer)
+        (PhonemeType.GRUUT, gruut_phonemizer),
+        (PhonemeType.EPITRAN, epitran_phonemizer)
     ]:
         voice.config.phoneme_type = phonemizer_type
         voice.phonemizer = phonemizer
+        print("-", phonemizer_type)
 
         slug = f"piper_{phonemizer_type.value}_{voice.config.lang_code}"
         with wave.open(f"{slug}.wav", "wb") as wav_file:
             voice.synthesize_wav(sentence, wav_file, syn_config)
 
-
+    print("\n################")
+    print("## mimic3")
     model = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/generator.onnx"
     config = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/config.json"
     phonemes_txt = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt"
@@ -514,15 +531,15 @@ if __name__ == "__main__":
     voice = TTSVoice.load(model_path=model, config_path=config,
                           phonemes_txt=phonemes_txt, phoneme_map=phoneme_map,
                           use_cuda=False)
-
     for phonemizer_type, phonemizer in [
         (PhonemeType.ESPEAK, espeak_phonemizer),
         (PhonemeType.BYT5, byt5_phonemizer),
-        (PhonemeType.GRUUT, gruut_phonemizer)
+        (PhonemeType.GRUUT, gruut_phonemizer),
+        (PhonemeType.EPITRAN, epitran_phonemizer)
     ]:
         voice.config.phoneme_type = phonemizer_type
         voice.phonemizer = phonemizer
-
+        print("-", phonemizer_type)
         slug = f"mimic3_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
         with wave.open(f"{slug}.wav", "wb") as wav_file:
             voice.synthesize_wav(sentence, wav_file, syn_config)

@@ -69,10 +69,6 @@ class VoiceConfig:
     word_sep_token: Optional[str] = DEFAULT_BLANK_WORD_TOKEN
     blank_between: BlankBetween = BlankBetween.TOKENS_AND_WORDS
 
-    # fields for grapheme-based models
-    character_set: Optional[str] = string.printable
-    punctuation: Optional[str] = string.punctuation
-
     @staticmethod
     def is_mimic3(config: dict[str, Any]) -> bool:
         # https://huggingface.co/mukowaty/mimic3-voices
@@ -161,26 +157,18 @@ class VoiceConfig:
     def from_dict(config: dict[str, Any],
                   phonemes_txt: Optional[str] = None) -> "VoiceConfig":
         """Load configuration from a dictionary."""
-        lang_code = "und"
-        phoneme_type_str = PhonemeType.BYT5.value
+        blank_type = BlankBetween.TOKENS_AND_WORDS
+        lang_code = config.get("lang_code")
+        phoneme_type_str = config.get("phoneme_type")
+        phoneme_id_map = config.get("phoneme_id_map")
 
         if phonemes_txt:
             # either from mimic3 models or as an override at runtime
             with open(phonemes_txt, "r", encoding="utf-8") as ids_file:
-                config["phoneme_id_map"] = load_phoneme_ids(ids_file)
-
-        blank_type = BlankBetween.WORDS
-        add_blank = config.get("add_blank", True)
-        if add_blank:
-            blank_type = BlankBetween.TOKENS_AND_WORDS
-
-        # check if model was specifically made for this framework
-        if VoiceConfig.is_phoonnx(config):
-            lang_code = config.get("lang_code")
-            phoneme_type_str = config.get("phoneme_type")
+                phoneme_id_map = load_phoneme_ids(ids_file)
 
         # check if model was trained for PiperTTS
-        elif VoiceConfig.is_piper(config):
+        if VoiceConfig.is_piper(config):
             lang_code = (config.get("language", {}).get("code") or
                          config.get("espeak", {}).get("voice"))
             phoneme_type_str = config.get("phoneme_type", PhonemeType.ESPEAK.value)
@@ -199,20 +187,64 @@ class VoiceConfig:
             config.update(phoneme_cfg)
 
             if phoneme_type_str == "symbols":
-                # TODO
+                # Mimic3 "symbols" models are grapheme models
+                # symbol map comes from phonemes_txt
                 phoneme_type_str = PhonemeType.GRAPHEMES.value
 
         # check if model was trained with Coqui
+        # NOTE: cotovia is included here
         elif VoiceConfig.is_coqui_vits(config):
+            if VoiceConfig.is_cotovia(config):
+                phoneme_type_str = PhonemeType.COTOVIA.value
+            else:
+                phoneme_type_str = PhonemeType.GRAPHEMES.value
+
             # NOTE: lang code usually not provided :(
             characters_config = config.get("characters", {})
+            if config.get("add_blank", True):
+                blank_type = BlankBetween.TOKENS
+                characters_config["blank"] = characters_config.get("blank") or "<BLNK>"
             config.update(characters_config)
-            phoneme_type_str = PhonemeType.GRAPHEMES.value
+            # For Coqui VITS grapheme models, build phoneme_id_map from characters
+            characters = characters_config.get("characters")
+            punctuations = characters_config.get("punctuations")
+
+            if not config.get("enable_eos_bos_chars", True):
+                config["bos"] = config["eos"] = None
+
+            # Construct vocabulary based on the order defined in the original Graphemes class
+            # [PAD, EOS, BOS, BLANK, CHARACTERS, PUNCTUATIONS]
+            vocab_list = []
+
+            if characters_config.get("pad") is not None:
+                vocab_list.append(characters_config["pad"])
+
+            # ?? - haven't see any coqui model
+            # adding bos and eos to vocab_list
+
+            #if characters_config.get("eos") is not None:
+            #    vocab_list.append(characters_config["eos"])
+            #if characters_config.get("bos") is not None:
+            #    vocab_list.append(characters_config["bos"])
+
+            if punctuations:
+                vocab_list.extend(list(punctuations))
+            if characters:
+                vocab_list.extend(list(characters))
+
+
+            if characters_config.get("blank") is not None:
+                vocab_list.append(characters_config["blank"])
+
+            # Ensure unique characters and sort if needed (though not strictly necessary for map creation)
+            # This part of logic was previously in Graphemes, now implicitly handled by set/list conversion
+            phoneme_id_map = {char: idx for idx, char in enumerate(vocab_list)}
 
         phoneme_type = PhonemeType(phoneme_type_str)
         LOG.debug(f"phonemizer: {phoneme_type}")
         inference = config.get("inference", {})
 
+        include_whitespace = " " in config.get("characters", "") or " " in config.get("phoneme_id_map", {})
         return VoiceConfig(
             num_symbols=config.get("num_symbols", 256),
             num_speakers=config.get("num_speakers", 1),
@@ -221,13 +253,11 @@ class VoiceConfig:
             length_scale=inference.get("length_scale", DEFAULT_LENGTH_SCALE),
             noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
             lang_code=lang_code,
-            phoneme_id_map=config.get("phoneme_id_map"),
+            phoneme_id_map=phoneme_id_map,
             phoneme_type=phoneme_type,
             speaker_id_map=config.get("speaker_id_map", {}),
-            character_set=config.get("characters"),
-            punctuation=config.get("punctuations"),
             blank_between=blank_type,
-            include_whitespace=config.get("include_whitespace", True),
+            include_whitespace=include_whitespace,
             blank_at_start=config.get("blank_at_start", True),
             blank_at_end=config.get("blank_at_end", True),
             pad_token=config.get("pad", DEFAULT_PAD_TOKEN),
