@@ -23,6 +23,7 @@ class PhonemeType(str, Enum):
     GRUUT = "gruut"
     EPITRAN = "epitran"
     BYT5 = "byt5"
+    CHARSIU = "charsiu"  # technically same as byt5, but needs special handling for whitespace
     UNICODE = "unicode"
     COTOVIA = "cotovia"
     GRAPHEMES = "graphemes"
@@ -38,10 +39,13 @@ class VoiceConfig:
     num_speakers: int
     """Number of speakers."""
 
+    num_langs: int
+    """Number of langs."""
+
     sample_rate: int
     """Sample rate of output audio."""
 
-    lang_code: str
+    lang_code: Optional[str]
     """Name of espeak-ng voice or alphabet."""
 
     phoneme_id_map: Optional[Mapping[str, Sequence[int]]]
@@ -52,6 +56,9 @@ class VoiceConfig:
 
     speaker_id_map: Mapping[str, int] = field(default_factory=dict)
     """Speaker -> id"""
+
+    lang_id_map: Mapping[str, int] = field(default_factory=dict)
+    """lang-code -> id"""
 
     # Inference settings
     length_scale: float = DEFAULT_LENGTH_SCALE
@@ -68,6 +75,9 @@ class VoiceConfig:
     eos_token: Optional[str] = DEFAULT_EOS_TOKEN
     word_sep_token: Optional[str] = DEFAULT_BLANK_WORD_TOKEN
     blank_between: BlankBetween = BlankBetween.TOKENS_AND_WORDS
+
+    def __post_init__(self):
+        self.lang_code = self.lang_code or "und"
 
     @staticmethod
     def is_mimic3(config: dict[str, Any]) -> bool:
@@ -96,6 +106,8 @@ class VoiceConfig:
 
     @staticmethod
     def is_piper(config: dict[str, Any]) -> bool:
+        if "piper_version" in config:
+            return True
         # piper models indicate a phonemizer strategy in their config
         if ("phoneme_type" not in config or
                 not isinstance(config["phoneme_type"], str)):
@@ -119,7 +131,8 @@ class VoiceConfig:
             return False
 
         # double check this was trained with coqui
-        if config["characters"].get("characters_class", "") != "TTS.tts.models.vits.VitsCharacters":
+        if config["characters"].get("characters_class", "") not in ["TTS.tts.models.vits.VitsCharacters",
+                                                                    "TTS.tts.utils.text.characters.Graphemes"]:
             return False
 
         return True
@@ -155,25 +168,37 @@ class VoiceConfig:
 
     @staticmethod
     def from_dict(config: dict[str, Any],
-                  phonemes_txt: Optional[str] = None) -> "VoiceConfig":
+                  phonemes_txt: Optional[str] = None,
+                  lang_code: Optional[str] = None,
+                  phoneme_type_str: Optional[str] = None) -> "VoiceConfig":
         """Load configuration from a dictionary."""
         blank_type = BlankBetween.TOKENS_AND_WORDS
-        lang_code = config.get("lang_code")
-        phoneme_type_str = config.get("phoneme_type")
+        lang_code = lang_code or config.get("lang_code")
+        phoneme_type_str = phoneme_type_str or config.get("phoneme_type")
         phoneme_id_map = config.get("phoneme_id_map")
 
         if phonemes_txt:
-            # either from mimic3 models or as an override at runtime
-            with open(phonemes_txt, "r", encoding="utf-8") as ids_file:
-                phoneme_id_map = load_phoneme_ids(ids_file)
+            if phonemes_txt.endswith(".txt"):
+                # either from mimic3 models or as an override at runtime
+                with open(phonemes_txt, "r", encoding="utf-8") as ids_file:
+                    phoneme_id_map = load_phoneme_ids(ids_file)
+            elif phonemes_txt.endswith(".json"):
+                with open(phonemes_txt) as ids_file:
+                    phoneme_id_map = json.load(ids_file)
 
         # check if model was trained for PiperTTS
         if VoiceConfig.is_piper(config):
-            lang_code = (config.get("language", {}).get("code") or
+            lang_code = lang_code or (config.get("language", {}).get("code") or
                          config.get("espeak", {}).get("voice"))
             phoneme_type_str = config.get("phoneme_type", PhonemeType.ESPEAK.value)
             if phoneme_type_str == "text":
                 phoneme_type_str = PhonemeType.UNICODE.value
+
+            # not configurable in piper
+            config["pad"] =  DEFAULT_PAD_TOKEN
+            config["blank"] = DEFAULT_BLANK_TOKEN
+            config["bos"] = DEFAULT_BOS_TOKEN
+            config["eos"] = DEFAULT_EOS_TOKEN
 
         # check if model was trained for Mimic3
         elif VoiceConfig.is_mimic3(config):
@@ -199,7 +224,11 @@ class VoiceConfig:
             else:
                 phoneme_type_str = PhonemeType.GRAPHEMES.value
 
-            # NOTE: lang code usually not provided :(
+            # NOTE: lang code usually not provided and often wrong :(
+            ds = config.get("datasets", [])
+            if ds and not lang_code:
+                lang_code = ds[0].get("language")
+
             characters_config = config.get("characters", {})
             if config.get("add_blank", True):
                 blank_type = BlankBetween.TOKENS
@@ -246,6 +275,7 @@ class VoiceConfig:
 
         include_whitespace = " " in config.get("characters", "") or " " in config.get("phoneme_id_map", {})
         return VoiceConfig(
+            num_langs=config.get("num_langs", 1),
             num_symbols=config.get("num_symbols", 256),
             num_speakers=config.get("num_speakers", 1),
             sample_rate=config.get("audio", {}).get("sample_rate", 16000),
@@ -260,10 +290,10 @@ class VoiceConfig:
             include_whitespace=include_whitespace,
             blank_at_start=config.get("blank_at_start", True),
             blank_at_end=config.get("blank_at_end", True),
-            pad_token=config.get("pad", DEFAULT_PAD_TOKEN),
-            blank_token=config.get("blank", DEFAULT_BLANK_TOKEN),
-            bos_token=config.get("bos", DEFAULT_BOS_TOKEN),
-            eos_token=config.get("eos", DEFAULT_EOS_TOKEN),
+            pad_token=config.get("pad"),
+            blank_token=config.get("blank"),
+            bos_token=config.get("bos"),
+            eos_token=config.get("eos"),
             word_sep_token=config.get("word_sep_token") or config.get("blank_word", " ")
         )
 
@@ -274,6 +304,9 @@ class SynthesisConfig:
 
     speaker_id: Optional[int] = None
     """Index of speaker to use (multi-speaker voices only)."""
+
+    lang_id: Optional[int] = None
+    """Index of lang to use (multi-lang voices only)."""
 
     length_scale: Optional[float] = None
     """Phoneme length scale (< 1 is faster, > 1 is slower)."""
@@ -301,7 +334,8 @@ if __name__ == "__main__":
         "/home/miro/PycharmProjects/phoonnx_tts/mimic3_espeak.json",
         "/home/miro/PycharmProjects/phoonnx_tts/mimic3_epitran.json",
         "/home/miro/PycharmProjects/phoonnx_tts/mimic3_symbols.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/piper_espeak.json"
+        "/home/miro/PycharmProjects/phoonnx_tts/piper_espeak.json",
+        "/home/miro/PycharmProjects/phoonnx_tts/vits-coqui-pt-cv/config.json"
     ]
     phoneme_txts = [
         None,
@@ -310,6 +344,7 @@ if __name__ == "__main__":
         "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
         "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
         "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
+        None,
         None
     ]
     print("Testing model config file parsing\n###############")

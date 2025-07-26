@@ -230,14 +230,14 @@ def phonemes_to_ids(
 
     ids: list[int] = []
     blank_id = blank_token if isinstance(blank_token, int) \
-        else id_map.get(blank_token, len(id_map)) if blank_token \
-        else len(id_map)
+        else id_map.get(blank_token, [len(id_map)]) if blank_token \
+        else [len(id_map)]
     eos_id = eos_token if isinstance(eos_token, int) \
-        else id_map.get(eos_token, len(id_map)) if eos_token \
-        else len(id_map)
+        else id_map.get(eos_token, [len(id_map)]) if eos_token \
+        else [len(id_map)]
     bos_id = eos_token if isinstance(bos_token, int) \
-        else id_map.get(bos_token, len(id_map)) if bos_token \
-        else len(id_map)
+        else id_map.get(bos_token, [len(id_map)]) if bos_token \
+        else [len(id_map)]
 
     if bos_token is not None:
         ids.extend(bos_id)
@@ -263,7 +263,7 @@ def phonemes_to_ids(
             if joined == compound:
                 ids.extend(id_map[compound])
                 if blank_between_tokns and i + n < len(phonemes):
-                    ids.extend(id_map[blank_token])
+                    ids.extend(blank_id)
                 i += n
                 matched = True
                 break
@@ -284,15 +284,15 @@ def phonemes_to_ids(
             if include_whitespace:
                 ids.extend(id_map[phoneme])
                 if blank_between_tokns:
-                    ids.extend(id_map[blank_token])
+                    ids.extend(blank_id)
             elif blank_between_words:
                 ids.extend(id_map[word_sep_token])
                 if blank_between_tokns:
-                    ids.extend(id_map[blank_token])
+                    ids.extend(blank_id)
         else:
             ids.extend(id_map[phoneme])
             if blank_between_tokns and i < len(phonemes) - 1:
-                ids.extend(id_map[blank_token])
+                ids.extend(blank_id)
         i += 1
 
     if blank_token is not None and blank_at_end:
@@ -328,7 +328,14 @@ def load_phoneme_ids(phonemes_file: TextIO) -> PHONEME_ID_MAP:
             # Exclude blank lines, comments, or malformed lines
             continue
 
-        phoneme_id, phoneme_str = line.split(" ", maxsplit=1)
+        if line.strip().isdigit(): # phoneme is whitespace
+            phoneme_str = " "
+            phoneme_id = int(line)
+        else:
+            phoneme_id, phoneme_str = line.split(" ", maxsplit=1)
+            if phoneme_str.isdigit():
+                phoneme_id, phoneme_str = phoneme_str, phoneme_id
+
         phoneme_to_id[phoneme_str] = int(phoneme_id)
 
     return phoneme_to_id

@@ -149,6 +149,8 @@ class TTSVoice:
             config_path: Optional[Union[str, Path]] = None,
             phonemes_txt: Optional[str] = None,
             phoneme_map: Optional[str] = None,
+            lang_code: Optional[str] = None,
+            phoneme_type_str: Optional[str] = None,
             use_cuda: bool = False
     ) -> "TTSVoice":
         """
@@ -179,7 +181,10 @@ class TTSVoice:
             providers = ["CPUExecutionProvider"]
 
         return TTSVoice(
-            config=VoiceConfig.from_dict(config_dict, phonemes_txt),
+            config=VoiceConfig.from_dict(config_dict,
+                                         phonemes_txt=phonemes_txt,
+                                         lang_code=lang_code,
+                                         phoneme_type_str=phoneme_type_str),
             session=onnxruntime.InferenceSession(
                 str(model_path),
                 sess_options=onnxruntime.SessionOptions(),
@@ -396,47 +401,39 @@ class TTSVoice:
         if syn_config is None:
             syn_config = SynthesisConfig()
 
-        speaker_id = syn_config.speaker_id
+        langid = syn_config.lang_id or 0
+        speaker_id = syn_config.speaker_id or 0
         length_scale = syn_config.length_scale
         noise_scale = syn_config.noise_scale
         noise_w_scale = syn_config.noise_w_scale
 
-        if length_scale is None:
-            length_scale = self.config.length_scale
-
-        if noise_scale is None:
-            noise_scale = self.config.noise_scale
-
-        if noise_w_scale is None:
-            noise_w_scale = self.config.noise_w_scale
+        expected_args = [model_input.name for model_input in self.session.get_inputs()]
+        #print("Expected ONNX Inputs:", expected_args)
 
         phoneme_ids_array = np.expand_dims(np.array(phoneme_ids, dtype=np.int64), 0)
         phoneme_ids_lengths = np.array([phoneme_ids_array.shape[1]], dtype=np.int64)
-        scales = np.array(
-            [noise_scale, length_scale, noise_w_scale],
-            dtype=np.float32,
-        )
-
         args = {
             "input": phoneme_ids_array,
-            "input_lengths": phoneme_ids_lengths,
-            "scales": scales,
+            "input_lengths": phoneme_ids_lengths
         }
 
-        if self.config.num_speakers <= 1:
-            speaker_id = None
+        if length_scale is None:
+            length_scale = self.config.length_scale
+        if noise_scale is None:
+            noise_scale = self.config.noise_scale
+        if noise_w_scale is None:
+            noise_w_scale = self.config.noise_w_scale
+        if "scales" in expected_args:
+            args["scales"] = np.array(
+                [noise_scale, length_scale, noise_w_scale],
+                dtype=np.float32,
+            )
 
-        if (self.config.num_speakers > 1) and (speaker_id is None):
-            # Default speaker
-            speaker_id = 0
+        args["langid"]  = np.array([langid], dtype=np.int64)
+        args["sid"] = np.array([speaker_id], dtype=np.int64)
 
-        if speaker_id is not None:
-            sid = np.array([speaker_id], dtype=np.int64)
-            args["sid"] = sid
-
-        #print("phonnx inputs:")
-        #print(args)
-        # Synthesize through onnx
+        # different models can be used and args may differ
+        args = {k:v for k, v in args.items() if k in expected_args}
         audio = self.session.run(
             None,
             args,
@@ -449,47 +446,27 @@ class TTSVoice:
 if __name__ == "__main__":
 
     syn_config = SynthesisConfig(enable_phonetic_spellings=True)
-
-
     # Test grapheme model directly
     print("\n################")
     print("## coqui vits")
-    model = "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits/model.onnx"
-    config = "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits/config.json"
+    model = "/home/miro/Downloads/model_file.pth.tar.onnx"
+    config = "/home/miro/Downloads/config(2).json"
 
-    sentence = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
+    sentence = "Um arco-íris, também popularmente denominado arco-da-velha, é um fenômeno óptico e meteorológico que separa a luz do sol em seu espectro contínuo quando o sol brilha sobre gotículas de água suspensas no ar."
 
-    voice = TTSVoice.load(model_path=model, config_path=config, use_cuda=False)
-    print("-", voice.config.phoneme_type)
-    print(voice.config)
-    phones = voice.phonemize(sentence)
-    print(phones)
-    print(voice.phonemes_to_ids(phones[0]))
-    voice.config.lang_code = "gl-ES"
-    slug = f"vits_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
-    with wave.open(f"{slug}.wav", "wb") as wav_file:
-        voice.synthesize_wav(sentence, wav_file, syn_config)
-
-    # Test cotovia phonemizer
-    print("\n################")
-    print("## cotovia coqui vits")
-    model = "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia/model.onnx"
-    config = "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia/config.json"
-
-    sentence = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
-
-    voice = TTSVoice.load(model_path=model, config_path=config, use_cuda=False)
+    voice = TTSVoice.load(model_path=model, config_path=config,
+                          use_cuda=False)
     print("-", voice.config.phoneme_type)
     print(voice.config)
     phones = voice.phonemize(sentence)
     print(phones)
     print(voice.phonemes_to_ids(phones[0]))
 
-    voice.config.lang_code = "gl-ES"
     slug = f"vits_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
     with wave.open(f"{slug}.wav", "wb") as wav_file:
         voice.synthesize_wav(sentence, wav_file, syn_config)
 
+    exit()
     # test piper
     model = "/home/miro/PycharmProjects/phoonnx_tts/miro_en-GB.onnx"
     config = "/home/miro/PycharmProjects/phoonnx_tts/piper_espeak.json"
@@ -543,3 +520,43 @@ if __name__ == "__main__":
         slug = f"mimic3_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
         with wave.open(f"{slug}.wav", "wb") as wav_file:
             voice.synthesize_wav(sentence, wav_file, syn_config)
+
+    # Test grapheme model directly
+    print("\n################")
+    print("## coqui vits")
+    model = "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits/model.onnx"
+    config = "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits/config.json"
+
+    sentence = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
+
+    voice = TTSVoice.load(model_path=model, config_path=config,
+                          use_cuda=False, lang_code="gl-ES")
+    print("-", voice.config.phoneme_type)
+    print(voice.config)
+    phones = voice.phonemize(sentence)
+    print(phones)
+    print(voice.phonemes_to_ids(phones[0]))
+
+    slug = f"vits_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
+    with wave.open(f"{slug}.wav", "wb") as wav_file:
+        voice.synthesize_wav(sentence, wav_file, syn_config)
+
+    # Test cotovia phonemizer
+    print("\n################")
+    print("## cotovia coqui vits")
+    model = "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia/model.onnx"
+    config = "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia/config.json"
+
+    sentence = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
+
+    voice = TTSVoice.load(model_path=model, config_path=config,
+                          use_cuda=False, lang_code="gl-ES")
+    print("-", voice.config.phoneme_type)
+    print(voice.config)
+    phones = voice.phonemize(sentence)
+    print(phones)
+    print(voice.phonemes_to_ids(phones[0]))
+
+    slug = f"vits_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
+    with wave.open(f"{slug}.wav", "wb") as wav_file:
+        voice.synthesize_wav(sentence, wav_file, syn_config)

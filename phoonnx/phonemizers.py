@@ -320,6 +320,49 @@ class ByT5Phonemizer(BasePhonemizer):
         return self._infer_onnx(text, lang)
 
 
+
+class CharsiuPhonemizer(ByT5Phonemizer):
+    """
+    A phonemizer class that uses a Charsiu ByT5 ONNX model to convert text into phonemes.
+    It mimics the clause-by-clause segmentation behavior of the piper TTS implementation
+    """
+    MODEL_URL = "https://huggingface.co/Jarbas/charsiu_g2p_multilingual_byT5_tiny_16_layers_100_onnx/resolve/main/charsiu_g2p_multilingual_byT5_tiny_16_layers_100.onnx"
+    BYT5_LANGS = ['ady', 'afr', 'sqi', 'amh', 'ara', 'arg', 'arm-e', 'arm-w', 'aze', 'bak', 'eus', 'bel', 'ben', 'bos',
+                  'bul', 'bur', 'cat', 'yue', 'zho-t', 'zho-s', 'min', 'cze', 'dan', 'dut', 'eng-uk', 'eng-us', 'epo',
+                  'est', 'fin', 'fra', 'fra-qu', 'gla', 'geo', 'ger', 'gre', 'grc', 'grn', 'guj', 'hin', 'hun', 'ido',
+                  'ind', 'ina', 'ita', 'jam', 'jpn', 'kaz', 'khm', 'kor', 'kur', 'lat-clas', 'lat-eccl', 'lit', 'ltz',
+                  'mac', 'mlt', 'tts', 'nob', 'ori', 'pap', 'fas', 'pol', 'por-po', 'por-bz', 'ron', 'rus', 'san',
+                  'srp', 'hbs-latn', 'hbs-cyrl', 'snd', 'slo', 'slv', 'spa', 'spa-latin', 'spa-me', 'swa', 'swe', 'tgl',
+                  'tam', 'tat', 'tha', 'tur', 'tuk', 'ukr', 'vie-n', 'vie-c', 'vie-s', 'wel-nw', 'wel-sw', 'ice', 'ang',
+                  'gle', 'enm', 'syc', 'glg', 'sme', 'egy']
+
+
+    @classmethod
+    def get_lang(cls, target_lang: str) -> str:
+        """
+        Validates and returns the closest supported language code.
+
+        Args:
+            target_lang (str): The language code to validate.
+
+        Returns:
+            str: The validated language code.
+
+        Raises:
+            ValueError: If the language code is unsupported.
+        """
+        if target_lang.lower() in ["en-us", "en_us"]:
+            return "en-na"  # english north america
+
+        # Find the closest match
+        return cls.match_lang(target_lang, cls.BYT5_LANGS)
+
+    def phonemize_string(self, text: str, lang: str) -> str:
+        # charsiu models can't handle whitespace, need to be phonemized word by word
+        return " ".join([self._infer_onnx(w, lang) for w in text.split()])
+
+
+
 class EspeakPhonemizer(BasePhonemizer):
     """
     A phonemizer class that uses the espeak-ng command-line tool to convert text into phonemes.
@@ -660,22 +703,9 @@ if __name__ == "__main__":
     espeak = EspeakPhonemizer()
     gruut = GruutPhonemizer()
     epitr = EpitranPhonemizer()
+    charsiu = CharsiuPhonemizer()
     cotovia = CotoviaPhonemizer()
     grapheme_ph = GraphemePhonemizer()
-
-    lang = "nl"
-    sentence = "DJ's en bezoekers van Tomorrowland waren woensdagavond dolblij toen het paradepaardje van het festival alsnog opende in Oostenrijk op de Mainstage.\nWant het optreden van Metallica, waar iedereen zo blij mee was, zou hoe dan ook doorgaan, aldus de DJ die het nieuws aankondigde."
-    sentence = "Een regenboog is een gekleurde cirkelboog die aan de hemel waargenomen kan worden als de, laagstaande, zon tegen een nevel van waterdruppeltjes aan schijnt en de zon zich achter de waarnemer bevindt. Het is een optisch effect dat wordt veroorzaakt door de breking en weerspiegeling van licht in de waterdruppels."
-    print(f"\n--- Getting phonemes for '{sentence}' ---")
-    text1 = sentence
-    phonemes1 = espeak.phonemize(text1, lang)
-    phonemes1b = gruut.phonemize(text1, lang)
-    phonemes1c = byt5.phonemize(text1, lang)
-    phonemes1d = epitr.phonemize(text1, lang)
-    print(f" Espeak  Phonemes: {phonemes1}")
-    print(f" Gruut   Phonemes: {phonemes1b}")
-    print(f" byt5    Phonemes: {phonemes1c}")
-    print(f" Epitran Phonemes: {phonemes1d}")
 
     lang = "en-gb"
 
@@ -685,10 +715,12 @@ if __name__ == "__main__":
     phonemes1b = gruut.phonemize(text1, lang)
     phonemes1c = byt5.phonemize(text1, lang)
     phonemes1d = epitr.phonemize(text1, lang)
+    phonemes1e = charsiu.phonemize(text1, lang)
     print(f" Espeak  Phonemes: {phonemes1}")
     print(f" Gruut   Phonemes: {phonemes1b}")
     print(f" byt5    Phonemes: {phonemes1c}")
     print(f" Epitran Phonemes: {phonemes1d}")
+    print(f" Charsiu Phonemes: {phonemes1e}")
 
     print("\n--- Getting phonemes for 'This is a test: a quick one; and done!' ---")
     text2 = "This is a test: a quick one; and done!"
@@ -696,10 +728,12 @@ if __name__ == "__main__":
     phonemes2b = gruut.phonemize(text2, lang)
     phonemes2c = byt5.phonemize(text2, lang)
     phonemes2d = epitr.phonemize(text2, lang)
+    phonemes2e = charsiu.phonemize(text2, lang)
     print(f"  Espeak Phonemes: {phonemes2}")
     print(f"  Gruut Phonemes: {phonemes2b}")
     print(f"   byt5  Phonemes: {phonemes2c}")
     print(f" Epitran Phonemes: {phonemes2d}")
+    print(f" Charsiu Phonemes: {phonemes2e}")
 
     print("\n--- Getting phonemes for 'Just a phrase without punctuation' ---")
     text3 = "Just a phrase without punctuation"
@@ -707,10 +741,12 @@ if __name__ == "__main__":
     phonemes3b = gruut.phonemize(text3, lang)
     phonemes3c = byt5.phonemize(text3, lang)
     phonemes3d = epitr.phonemize(text3, lang)
+    phonemes3e = charsiu.phonemize(text3, lang)
     print(f"  Espeak Phonemes: {phonemes3}")
     print(f"  Gruut Phonemes: {phonemes3b}")
     print(f"   byt5  Phonemes: {phonemes3c}")
     print(f" Epitran Phonemes: {phonemes3d}")
+    print(f" Charsiu Phonemes: {phonemes3e}")
 
     lang = "gl"
     text_gl = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
@@ -721,3 +757,21 @@ if __name__ == "__main__":
     print(f"\n--- Getting graphemes for '{text1}' (GraphemePhonemizer) ---")
     graphemes1 = grapheme_ph.phonemize(text_gl, lang)
     print(f"  Graphemes: {graphemes1}")
+
+
+    exit()
+    lang = "nl"
+    sentence = "DJ's en bezoekers van Tomorrowland waren woensdagavond dolblij toen het paradepaardje van het festival alsnog opende in Oostenrijk op de Mainstage.\nWant het optreden van Metallica, waar iedereen zo blij mee was, zou hoe dan ook doorgaan, aldus de DJ die het nieuws aankondigde."
+    sentence = "Een regenboog is een gekleurde cirkelboog die aan de hemel waargenomen kan worden als de, laagstaande, zon tegen een nevel van waterdruppeltjes aan schijnt en de zon zich achter de waarnemer bevindt. Het is een optisch effect dat wordt veroorzaakt door de breking en weerspiegeling van licht in de waterdruppels."
+    print(f"\n--- Getting phonemes for '{sentence}' ---")
+    text1 = sentence
+    phonemes1 = espeak.phonemize(text1, lang)
+    phonemes1b = gruut.phonemize(text1, lang)
+    phonemes1c = byt5.phonemize(text1, lang)
+    phonemes1d = epitr.phonemize(text1, lang)
+    phonemes1e = charsiu.phonemize(text1, lang)
+    print(f" Espeak  Phonemes: {phonemes1}")
+    print(f" Gruut   Phonemes: {phonemes1b}")
+    print(f" byt5    Phonemes: {phonemes1c}")
+    print(f" Epitran Phonemes: {phonemes1d}")
+    print(f" Charsiu Phonemes: {phonemes1e}")
