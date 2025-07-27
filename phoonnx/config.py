@@ -19,14 +19,16 @@ except ImportError:
 
 
 class PhonemeType(str, Enum):
+    RAW = "raw"  # direct phonemes
     ESPEAK = "espeak"
     GRUUT = "gruut"
     EPITRAN = "epitran"
     BYT5 = "byt5"
     CHARSIU = "charsiu"  # technically same as byt5, but needs special handling for whitespace
     UNICODE = "unicode"
-    COTOVIA = "cotovia"
     GRAPHEMES = "graphemes"
+    COTOVIA = "cotovia"  # galician  (no ipa!)
+    PHONIKUD = "phonikud"  # hebrew
 
 
 @dataclass
@@ -335,7 +337,8 @@ if __name__ == "__main__":
         "/home/miro/PycharmProjects/phoonnx_tts/mimic3_epitran.json",
         "/home/miro/PycharmProjects/phoonnx_tts/mimic3_symbols.json",
         "/home/miro/PycharmProjects/phoonnx_tts/piper_espeak.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/vits-coqui-pt-cv/config.json"
+        "/home/miro/PycharmProjects/phoonnx_tts/vits-coqui-pt-cv/config.json",
+        "/home/miro/PycharmProjects/phoonnx_tts/phonikud/model.config.json"
     ]
     phoneme_txts = [
         None,
@@ -344,6 +347,7 @@ if __name__ == "__main__":
         "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
         "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
         "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
+        None,
         None,
         None
     ]

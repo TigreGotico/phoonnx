@@ -110,3 +110,44 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
             results.extend(chunks)
 
         return results
+
+
+
+class RawPhonemes(BasePhonemizer):
+    """no phonemization, text is phonemes already"""
+
+    def phonemize_string(self, text: str, lang: str) -> str:
+        return text
+
+
+
+class GraphemePhonemizer(BasePhonemizer):
+    """
+    A phonemizer class that treats input text as graphemes (characters).
+    It performs text normalization and returns the normalized text as a string
+    of characters.
+    """
+    # Regular expression matching whitespace:
+    whitespace_re = re.compile(r"\s+")
+
+    def phonemize_string(self, text: str, lang: str) -> str:
+        """
+        Normalizes input text by applying a series of transformations
+        and returns it as a sequence of graphemes.
+
+        Parameters:
+            text (str): Input text to be converted to graphemes.
+            lang (str): The language code (ignored for grapheme phonemization,
+                        but required by BasePhonemizer).
+
+        Returns:
+            str: A normalized string of graphemes.
+        """
+        text = text.lower()
+        text = text.replace(";", ",")
+        text = text.replace("-", " ")
+        text = text.replace(":", ",")
+        text = re.sub(r"[\<\>\(\)\[\]\"]+", "", text)
+        text = re.sub(self.whitespace_re, " ", text).strip()
+        return text
+

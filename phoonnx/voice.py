@@ -13,7 +13,7 @@ import onnxruntime
 
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig
 from phoonnx.phoneme_ids import phonemes_to_ids, BlankBetween
-from phoonnx.phonemizers import (Phonemizer, RawPhonemizedChunks, EspeakPhonemizer, ByT5Phonemizer, GruutPhonemizer,
+from phoonnx.phonemizers import (Phonemizer, RawPhonemes, RawPhonemizedChunks, EspeakPhonemizer, ByT5Phonemizer, GruutPhonemizer,
                                  EpitranPhonemizer, CotoviaPhonemizer, GraphemePhonemizer)
 from phoonnx.thirdparty.tashkeel import TashkeelDiacritizer
 
@@ -133,10 +133,14 @@ class TTSVoice:
             self.phonemizer = GruutPhonemizer()
         elif self.config.phoneme_type == PhonemeType.EPITRAN and self.phonemizer is None:
             self.phonemizer = EpitranPhonemizer()
+        elif self.config.phoneme_type == PhonemeType.PHONIKUD:
+            self.phonemizer = PhonikudPhonemizer()
         elif self.config.phoneme_type == PhonemeType.COTOVIA and self.phonemizer is None:
             self.phonemizer = CotoviaPhonemizer()
         elif self.config.phoneme_type == PhonemeType.GRAPHEMES:
             self.phonemizer = GraphemePhonemizer()
+        elif self.config.phoneme_type == PhonemeType.RAW:
+            self.phonemizer = RawPhonemes()
 
         # compat with piper arabic models
         if self.config.lang_code.split("-")[0] == "ar" and self.use_tashkeel and self.tashkeel_diacritizier is None:
@@ -445,23 +449,39 @@ class TTSVoice:
 if __name__ == "__main__":
 
     syn_config = SynthesisConfig(enable_phonetic_spellings=True)
-    # Test grapheme model directly
+
+    # test hebrew piper
+    model = "/home/miro/PycharmProjects/phoonnx_tts/phonikud/model.onnx"
+    config = "/home/miro/PycharmProjects/phoonnx_tts/phonikud/model.config.json"
+
+    voice = TTSVoice.load(model_path=model, config_path=config, use_cuda=False)
+
+    # hebrew phonemes (raw input model)
+    from phonemizers.he import PhonikudPhonemizer
+    pho = PhonikudPhonemizer(diacritics=True)
+    sentence = "הכוח לשנות מתחיל ברגע שבו אתה מאמין שזה אפשרי!"
+    sentence = pho.phonemize_string(sentence, "he")
+    print(sentence)
+
     print("\n################")
-    print("## coqui vits")
-    model = "/home/miro/Downloads/model_file.pth.tar.onnx"
-    config = "/home/miro/Downloads/config(2).json"
+    print("## piper hebrew (raw)")
 
-    sentence = "Um arco-íris, também popularmente denominado arco-da-velha, é um fenômeno óptico e meteorológico que separa a luz do sol em seu espectro contínuo quando o sol brilha sobre gotículas de água suspensas no ar."
-
-    voice = TTSVoice.load(model_path=model, config_path=config,
-                          use_cuda=False)
     print("-", voice.config.phoneme_type)
-    print(voice.config)
-    phones = voice.phonemize(sentence)
-    print(phones)
-    print(voice.phonemes_to_ids(phones[0]))
 
-    slug = f"vits_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
+    slug = f"phonikud_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
+    with wave.open(f"{slug}.wav", "wb") as wav_file:
+        voice.synthesize_wav(sentence, wav_file, syn_config)
+
+
+    print("\n################")
+    print("## piper hebrew (phonikud)")
+
+    sentence = "הכוח לשנות מתחיל ברגע שבו אתה מאמין שזה אפשרי!"
+    voice.config.phoneme_type = PhonemeType.PHONIKUD
+    voice.phonemizer = pho
+
+
+    slug = f"phonikud_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
     with wave.open(f"{slug}.wav", "wb") as wav_file:
         voice.synthesize_wav(sentence, wav_file, syn_config)
 
