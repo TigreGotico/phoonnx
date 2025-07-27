@@ -1,121 +1,16 @@
-import abc
+"""multilingual phonemizers"""
+
 import json
 import os
 import re
-import string
 import subprocess
-import platform
-from typing import List, Tuple, Dict, Optional, Union
+from typing import List, Dict, Optional
 
 import numpy as np
 import onnxruntime
 import requests
-from langcodes import tag_distance
-from quebra_frases import sentence_tokenize
 
-# list of (substring, terminator, end_of_sentence) tuples.
-TextChunks = List[Tuple[str, str, bool]]
-# list of (phonemes, terminator, end_of_sentence) tuples.
-RawPhonemizedChunks = List[Tuple[str, str, bool]]
-
-class BasePhonemizer(metaclass=abc.ABCMeta):
-
-    @abc.abstractmethod
-    def phonemize_string(self, text: str, lang: str) -> str:
-        raise NotImplementedError
-
-    def phonemize(self, text: str, lang: str) -> RawPhonemizedChunks:
-        if not text:
-            return [('', '', True)]
-        results: RawPhonemizedChunks = []
-        for chunk, punct, eos in self.chunk_text(text):
-            phoneme_str = self.phonemize_string(chunk, lang)
-            results += [(self.remove_punctuation(phoneme_str), punct, True)]
-        return results
-
-    @staticmethod
-    def match_lang(target_lang: str, valid_langs: List[str]) -> str:
-        """
-        Validates and returns the closest supported language code.
-
-        Args:
-            target_lang (str): The language code to validate.
-
-        Returns:
-            str: The validated language code.
-
-        Raises:
-            ValueError: If the language code is unsupported.
-        """
-        if target_lang in valid_langs:
-            return target_lang
-        best_lang = "und"
-        best_distance = 10000000
-        for l in valid_langs:
-            try:
-                distance: int = tag_distance(l, target_lang)
-            except:
-                try:
-                    l = f"{l.split('-')[0]}-{l.split('-')[1]}"
-                    distance: int = tag_distance(l, target_lang)
-                except:
-                    try:
-                        distance: int = tag_distance(l.split('-')[0], target_lang)
-                    except:
-                        continue
-            if distance < best_distance:
-                best_lang, best_distance = l, distance
-
-        # If the score is low (meaning a good match), return the language
-        if best_distance <= 10:
-            return best_lang
-        # Otherwise, raise an error for unsupported language
-        raise ValueError(f"unsupported language code: {target_lang}")
-
-    @staticmethod
-    def remove_punctuation(text):
-        """
-        Removes all punctuation characters from a string.
-        Punctuation characters are defined by string.punctuation.
-        """
-        # Create a regex pattern that matches any character in string.punctuation
-        punctuation_pattern = r"[" + re.escape(string.punctuation) + r"]"
-        return re.sub(punctuation_pattern, '', text).strip()
-
-    @staticmethod
-    def chunk_text(text: str, delimiters: Optional[List[str]] = None) -> TextChunks:
-        if not text:
-            return [('', '', True)]
-
-        results: TextChunks = []
-        delimiters = delimiters or [", ", ":", ";", "...", "|"]
-
-        # Create a regex pattern that matches any of the delimiters
-        delimiter_pattern = re.escape(delimiters[0])
-        for delimiter in delimiters[1:]:
-            delimiter_pattern += f"|{re.escape(delimiter)}"
-
-        for sentence in sentence_tokenize(text):
-            # Default punctuation if no specific punctuation found
-            default_punc = sentence[-1] if sentence[-1] in string.punctuation else "."
-
-            # Use regex to split the sentence by any of the delimiters
-            parts = re.split(f'({delimiter_pattern})', sentence)
-
-            # Group parts into chunks (text + delimiter)
-            chunks = []
-            for i in range(0, len(parts), 2):
-                # If there's a delimiter after the text, use it
-                delimiter = parts[i + 1] if i + 1 < len(parts) else default_punc
-
-                # Last chunk is marked as complete
-                is_last = (i + 2 >= len(parts))
-
-                chunks.append((parts[i].strip(), delimiter.strip(), is_last))
-
-            results.extend(chunks)
-
-        return results
+from phoonnx.phonemizers.base import BasePhonemizer
 
 
 class EspeakError(Exception):
@@ -126,8 +21,8 @@ class EspeakError(Exception):
 class ByT5Phonemizer(BasePhonemizer):
     """
     A phonemizer class that uses a ByT5 ONNX model to convert text into phonemes.
-    It mimics the clause-by-clause segmentation behavior of the piper TTS implementation
     """
+    # TODO - support multiple models
     TOKENIZER_CONFIG_URL = "https://huggingface.co/OpenVoiceOS/g2p-multilingual-byt5-tiny-8l-ipa-childes-onnx/resolve/main/tokenizer_config.json"
     MODEL_URL = "https://huggingface.co/OpenVoiceOS/g2p-multilingual-byt5-tiny-8l-ipa-childes-onnx/resolve/main/byt5_g2p_model.onnx"
     BYT5_LANGS = ['ca', 'cy', 'da', 'de', 'en-na', 'en-uk', 'es', 'et', 'eu', 'fa', 'fr', 'ga', 'hr', 'hu', 'id', 'is',
@@ -320,12 +215,11 @@ class ByT5Phonemizer(BasePhonemizer):
         return self._infer_onnx(text, lang)
 
 
-
 class CharsiuPhonemizer(ByT5Phonemizer):
     """
     A phonemizer class that uses a Charsiu ByT5 ONNX model to convert text into phonemes.
-    It mimics the clause-by-clause segmentation behavior of the piper TTS implementation
     """
+    # TODO - support multiple models
     MODEL_URL = "https://huggingface.co/Jarbas/charsiu_g2p_multilingual_byT5_tiny_16_layers_100_onnx/resolve/main/charsiu_g2p_multilingual_byT5_tiny_16_layers_100.onnx"
     BYT5_LANGS = ['ady', 'afr', 'sqi', 'amh', 'ara', 'arg', 'arm-e', 'arm-w', 'aze', 'bak', 'eus', 'bel', 'ben', 'bos',
                   'bul', 'bur', 'cat', 'yue', 'zho-t', 'zho-s', 'min', 'cze', 'dan', 'dut', 'eng-uk', 'eng-us', 'epo',
@@ -335,7 +229,6 @@ class CharsiuPhonemizer(ByT5Phonemizer):
                   'srp', 'hbs-latn', 'hbs-cyrl', 'snd', 'slo', 'slv', 'spa', 'spa-latin', 'spa-me', 'swa', 'swe', 'tgl',
                   'tam', 'tat', 'tha', 'tur', 'tuk', 'ukr', 'vie-n', 'vie-c', 'vie-s', 'wel-nw', 'wel-sw', 'ice', 'ang',
                   'gle', 'enm', 'syc', 'glg', 'sme', 'egy']
-
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
@@ -360,7 +253,6 @@ class CharsiuPhonemizer(ByT5Phonemizer):
     def phonemize_string(self, text: str, lang: str) -> str:
         # charsiu models can't handle whitespace, need to be phonemized word by word
         return " ".join([self._infer_onnx(w, lang) for w in text.split()])
-
 
 
 class EspeakPhonemizer(BasePhonemizer):
@@ -558,110 +450,6 @@ class EpitranPhonemizer(BasePhonemizer):
         return epi.transliterate(text)
 
 
-class CotoviaError(Exception):
-    """Custom exception for cotovia related errors."""
-    pass
-
-
-class CotoviaPhonemizer(BasePhonemizer):
-    """
-    A phonemizer class that uses the Cotovia TTS binary to convert text into phonemes.
-    It processes the input sentence through a command-line phonemization tool, applying multiple
-    regular expression transformations to clean and normalize the phonetic representation.
-    """
-
-    def __init__(self, cotovia_bin_path: Optional[str] = None):
-        """
-        Initializes the CotoviaPhonemizer.
-
-        Args:
-            cotovia_bin_path (str, optional): Path to the Cotovia TTS binary.
-                                              If None, it will try to find it in common locations.
-        """
-        self.cotovia_bin = cotovia_bin_path or self.find_cotovia()
-        if not os.path.exists(self.cotovia_bin):
-            raise FileNotFoundError(f"Cotovia binary not found at {self.cotovia_bin}. "
-                                    "Please ensure it's installed or provide the correct path.")
-
-    @staticmethod
-    def find_cotovia() -> str:
-        """
-        Attempts to find the cotovia binary in common locations.
-        """
-        path = subprocess.run(["which", "cotovia"], capture_output=True, text=True).stdout.strip()
-        if path and os.path.isfile(path):
-            return path
-
-        # Fallback to bundled binaries
-        local_path = f"{os.path.dirname(__file__)}/cotovia/cotovia_{platform.machine()}"
-        if os.path.isfile(local_path):
-            return local_path
-
-        # Last resort common system path
-        if os.path.isfile("/usr/bin/cotovia"):
-            return "/usr/bin/cotovia"
-
-        return "cotovia"  # Return "cotovia" to let subprocess raise FileNotFoundError if not found in PATH
-
-    def phonemize_string(self, text: str, lang: str) -> str:
-        """
-        Converts a given sentence into phonemes using the Cotovia TTS binary.
-
-        Processes the input sentence through a command-line phonemization tool, applying multiple regular expression transformations to clean and normalize the phonetic representation.
-
-        Parameters:
-            text (str): The input text to be phonemized
-            lang (str): The language code (ignored by Cotovia, but required by BasePhonemizer)
-
-        Returns:
-            str: A cleaned and normalized phonetic representation of the input sentence
-
-        Notes:
-            - Uses subprocess to execute the Cotovia TTS binary
-            - Applies multiple regex substitutions to improve punctuation and spacing
-            - Converts text from ISO-8859-1 to UTF-8 encoding
-        """
-        cmd = f'echo "{text}" | {self.cotovia_bin} -t -n -S | iconv -f iso88591 -t utf8'
-        str_ext = subprocess.check_output(cmd, shell=True).decode("utf-8")
-
-        ## fix punctuation in cotovia output - from official inference script
-
-        # substitute ' ·\n' by ...
-        str_ext = re.sub(r" ·", r"...", str_ext)
-
-        # remove spaces before , . ! ? ; : ) ] of the extended string
-        str_ext = re.sub(r"\s+([.,!?;:)\]])", r"\1", str_ext)
-
-        # remove spaces after ( [ ¡ ¿ of the extended string
-        str_ext = re.sub(r"([\(\[¡¿])\s+", r"\1", str_ext)
-
-        # remove unwanted spaces between quotations marks
-        str_ext = re.sub(r'"\s*([^"]*?)\s*"', r'"\1"', str_ext)
-
-        # substitute '- text -' to '-text-'
-        str_ext = re.sub(r"-\s*([^-]*?)\s*-", r"-\1-", str_ext)
-
-        # remove initial question marks
-        str_ext = re.sub(r"[¿¡]", r"", str_ext)
-
-        # eliminate extra spaces
-        str_ext = re.sub(r"\s+", r" ", str_ext)
-
-        str_ext = re.sub(r"(\d+)\s*-\s*(\d+)", r"\1 \2", str_ext)
-
-        ### - , ' and () by commas
-        # substitute '- text -' to ', text,'
-        str_ext = re.sub(r"(\w+)\s+-([^-]*?)-\s+([^-]*?)", r"\1, \\2, ", str_ext)
-
-        # substitute ' - ' by ', '
-        str_ext = re.sub(r"(\w+[!\?]?)\s+-\s*", r"\1, ", str_ext)
-
-        # substitute ' ( text )' to ', text,'
-        str_ext = re.sub(r"(\w+)\s*\(\s*([^\(\)]*?)\s*\)", r"\1, \\2,", str_ext)
-
-        return str_ext
-
-
 class GraphemePhonemizer(BasePhonemizer):
     """
     A phonemizer class that treats input text as graphemes (characters).
@@ -693,7 +481,40 @@ class GraphemePhonemizer(BasePhonemizer):
         return text
 
 
-Phonemizer = Union[ByT5Phonemizer, EspeakPhonemizer, GruutPhonemizer, EpitranPhonemizer, CotoviaPhonemizer, GraphemePhonemizer]
+class MisakiPhonemizer(BasePhonemizer):
+    """
+    https://github.com/hexgrad/misaki
+    """
+    MISAKI_LANGS = ['en', 'ko', 'ja', 'vi', 'zh', 'he']
+
+    def __init__(self):
+        import epitran
+        self.epitran = epitran
+        self._epis: Dict[str, epitran.Epitran] = {}
+
+    @classmethod
+    def get_lang(cls, target_lang: str) -> str:
+        """
+        Validates and returns the closest supported language code.
+
+        Args:
+            target_lang (str): The language code to validate.
+
+        Returns:
+            str: The validated language code.
+
+        Raises:
+            ValueError: If the language code is unsupported.
+        """
+        return cls.match_lang(target_lang, cls.MISAKI_LANGS)
+
+    def phonemize_string(self, text: str, lang: str) -> str:
+        lang = self.get_lang(lang)
+        epi = self._epis.get(lang)
+        if epi is None:
+            epi = self.epitran.Epitran(lang)
+            self._epis[lang] = epi
+        return epi.transliterate(text)
 
 
 if __name__ == "__main__":
@@ -704,62 +525,30 @@ if __name__ == "__main__":
     gruut = GruutPhonemizer()
     epitr = EpitranPhonemizer()
     charsiu = CharsiuPhonemizer()
-    cotovia = CotoviaPhonemizer()
     grapheme_ph = GraphemePhonemizer()
 
     lang = "en-gb"
 
-    print("\n--- Getting phonemes for 'Hello, world. How are you?' ---")
     text1 = "Hello, world. How are you?"
+
+    print(f"\n--- Getting graphemes for '{text1}' (GraphemePhonemizer) ---")
+    graphemes1 = grapheme_ph.phonemize(text1, lang)
+    print(f"  Graphemes: {graphemes1}")
+
+
+    print("\n--- Getting phonemes for 'Hello, world. How are you?' ---")
     phonemes1 = espeak.phonemize(text1, lang)
     phonemes1b = gruut.phonemize(text1, lang)
     phonemes1c = byt5.phonemize(text1, lang)
     phonemes1d = epitr.phonemize(text1, lang)
     phonemes1e = charsiu.phonemize(text1, lang)
-    print(f" Espeak  Phonemes: {phonemes1}")
-    print(f" Gruut   Phonemes: {phonemes1b}")
-    print(f" byt5    Phonemes: {phonemes1c}")
-    print(f" Epitran Phonemes: {phonemes1d}")
-    print(f" Charsiu Phonemes: {phonemes1e}")
-
-    print("\n--- Getting phonemes for 'This is a test: a quick one; and done!' ---")
-    text2 = "This is a test: a quick one; and done!"
-    phonemes2 = espeak.phonemize(text2, lang)
-    phonemes2b = gruut.phonemize(text2, lang)
-    phonemes2c = byt5.phonemize(text2, lang)
-    phonemes2d = epitr.phonemize(text2, lang)
-    phonemes2e = charsiu.phonemize(text2, lang)
-    print(f"  Espeak Phonemes: {phonemes2}")
-    print(f"  Gruut Phonemes: {phonemes2b}")
-    print(f"   byt5  Phonemes: {phonemes2c}")
-    print(f" Epitran Phonemes: {phonemes2d}")
-    print(f" Charsiu Phonemes: {phonemes2e}")
-
-    print("\n--- Getting phonemes for 'Just a phrase without punctuation' ---")
-    text3 = "Just a phrase without punctuation"
-    phonemes3 = espeak.phonemize(text3, lang)
-    phonemes3b = gruut.phonemize(text3, lang)
-    phonemes3c = byt5.phonemize(text3, lang)
-    phonemes3d = epitr.phonemize(text3, lang)
-    phonemes3e = charsiu.phonemize(text3, lang)
-    print(f"  Espeak Phonemes: {phonemes3}")
-    print(f"  Gruut Phonemes: {phonemes3b}")
-    print(f"   byt5  Phonemes: {phonemes3c}")
-    print(f" Epitran Phonemes: {phonemes3d}")
-    print(f" Charsiu Phonemes: {phonemes3e}")
-
-    lang = "gl"
-    text_gl = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
-    print(f"\n--- Getting phonemes for '{text_gl}' (Cotovia) ---")
-    phonemes_cotovia = cotovia.phonemize(text_gl, lang)
-    print(f"  Cotovia Phonemes: {phonemes_cotovia}")
-
-    print(f"\n--- Getting graphemes for '{text1}' (GraphemePhonemizer) ---")
-    graphemes1 = grapheme_ph.phonemize(text_gl, lang)
-    print(f"  Graphemes: {graphemes1}")
+    print(f" Espeak         Phonemes: {phonemes1}")
+    print(f" Gruut          Phonemes: {phonemes1b}")
+    print(f" byt5           Phonemes: {phonemes1c}")
+    print(f" Epitran        Phonemes: {phonemes1d}")
+    print(f" Charsiu        Phonemes: {phonemes1e}")
 
 
-    exit()
     lang = "nl"
     sentence = "DJ's en bezoekers van Tomorrowland waren woensdagavond dolblij toen het paradepaardje van het festival alsnog opende in Oostenrijk op de Mainstage.\nWant het optreden van Metallica, waar iedereen zo blij mee was, zou hoe dan ook doorgaan, aldus de DJ die het nieuws aankondigde."
     sentence = "Een regenboog is een gekleurde cirkelboog die aan de hemel waargenomen kan worden als de, laagstaande, zon tegen een nevel van waterdruppeltjes aan schijnt en de zon zich achter de waarnemer bevindt. Het is een optisch effect dat wordt veroorzaakt door de breking en weerspiegeling van licht in de waterdruppels."

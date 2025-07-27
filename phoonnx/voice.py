@@ -15,7 +15,7 @@ from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig
 from phoonnx.phoneme_ids import phonemes_to_ids, BlankBetween
 from phoonnx.phonemizers import (Phonemizer, RawPhonemizedChunks, EspeakPhonemizer, ByT5Phonemizer, GruutPhonemizer,
                                  EpitranPhonemizer, CotoviaPhonemizer, GraphemePhonemizer)
-from phoonnx.tashkeel import TashkeelDiacritizer
+from phoonnx.thirdparty.tashkeel import TashkeelDiacritizer
 
 _PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
 
@@ -137,7 +137,6 @@ class TTSVoice:
             self.phonemizer = CotoviaPhonemizer()
         elif self.config.phoneme_type == PhonemeType.GRAPHEMES:
             self.phonemizer = GraphemePhonemizer()
-
 
         # compat with piper arabic models
         if self.config.lang_code.split("-")[0] == "ar" and self.use_tashkeel and self.tashkeel_diacritizier is None:
