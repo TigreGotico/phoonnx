@@ -14,7 +14,7 @@ import onnxruntime
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig
 from phoonnx.phoneme_ids import phonemes_to_ids, BlankBetween
 from phoonnx.phonemizers import (Phonemizer, RawPhonemes, RawPhonemizedChunks, EspeakPhonemizer, ByT5Phonemizer, GruutPhonemizer,
-                                 EpitranPhonemizer, CotoviaPhonemizer, GraphemePhonemizer)
+                                 EpitranPhonemizer, MantoqPhonemizer, CotoviaPhonemizer, GraphemePhonemizer)
 from phoonnx.thirdparty.tashkeel import TashkeelDiacritizer
 
 _PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
@@ -135,6 +135,8 @@ class TTSVoice:
             self.phonemizer = EpitranPhonemizer()
         elif self.config.phoneme_type == PhonemeType.PHONIKUD:
             self.phonemizer = PhonikudPhonemizer()
+        elif self.config.phoneme_type == PhonemeType.MANTOQ:
+            self.phonemizer = MantoqPhonemizer()
         elif self.config.phoneme_type == PhonemeType.COTOVIA and self.phonemizer is None:
             self.phonemizer = CotoviaPhonemizer()
         elif self.config.phoneme_type == PhonemeType.GRAPHEMES:
@@ -195,7 +197,8 @@ class TTSVoice:
             )
         )
 
-    def _process_phones(self, raw_phones: RawPhonemizedChunks) -> PhonemizedChunks:
+    @staticmethod
+    def _process_phones(raw_phones: RawPhonemizedChunks) -> PhonemizedChunks:
         """Text to phonemes grouped by sentence."""
 
         all_phonemes: list[list[str]] = []
@@ -287,7 +290,6 @@ class TTSVoice:
         :param phonemes: List of phonemes (or characters for grapheme models).
         :return: List of phoneme ids.
         """
-        # For phoneme-based models, use the phoneme_id_map
         if self.config.phoneme_id_map is None:
             raise ValueError("self.config.phoneme_id_map is None")
         return phonemes_to_ids(phonemes, self.config.phoneme_id_map,
@@ -317,7 +319,7 @@ class TTSVoice:
 
         LOG.debug("text=%s", text)
 
-        # user defined word-level replacements to force correct pronounciation
+        # user defined word-level replacements to force correct pronunciation
         if self.phonetic_spellings and syn_config.enable_phonetic_spellings:
             text = self.phonetic_spellings.apply(text)
 
@@ -456,32 +458,27 @@ if __name__ == "__main__":
 
     voice = TTSVoice.load(model_path=model, config_path=config, use_cuda=False)
 
+    print("\n################")
     # hebrew phonemes (raw input model)
     from phonemizers.he import PhonikudPhonemizer
     pho = PhonikudPhonemizer(diacritics=True)
     sentence = "הכוח לשנות מתחיל ברגע שבו אתה מאמין שזה אפשרי!"
     sentence = pho.phonemize_string(sentence, "he")
-    print(sentence)
 
-    print("\n################")
     print("## piper hebrew (raw)")
-
     print("-", voice.config.phoneme_type)
-
-    slug = f"phonikud_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
+    slug = f"piper_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
     with wave.open(f"{slug}.wav", "wb") as wav_file:
         voice.synthesize_wav(sentence, wav_file, syn_config)
 
-
     print("\n################")
-    print("## piper hebrew (phonikud)")
-
     sentence = "הכוח לשנות מתחיל ברגע שבו אתה מאמין שזה אפשרי!"
     voice.config.phoneme_type = PhonemeType.PHONIKUD
     voice.phonemizer = pho
 
-
-    slug = f"phonikud_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
+    print("## piper hebrew (phonikud)")
+    print("-", voice.config.phoneme_type)
+    slug = f"piper_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
     with wave.open(f"{slug}.wav", "wb") as wav_file:
         voice.synthesize_wav(sentence, wav_file, syn_config)
 

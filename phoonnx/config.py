@@ -29,6 +29,7 @@ class PhonemeType(str, Enum):
     GRAPHEMES = "graphemes"
     COTOVIA = "cotovia"  # galician  (no ipa!)
     PHONIKUD = "phonikud"  # hebrew
+    MANTOQ = "mantoq"  # arabic
 
 
 @dataclass
