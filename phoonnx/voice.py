@@ -1,20 +1,29 @@
 import json
 import os.path
 import re
-import string
 import unicodedata
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Optional, Union, Dict
-from langcodes import closest_match
+
 import numpy as np
 import onnxruntime
+from langcodes import closest_match
 
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig
 from phoonnx.phoneme_ids import phonemes_to_ids, BlankBetween
-from phoonnx.phonemizers import (Phonemizer, RawPhonemes, RawPhonemizedChunks, EspeakPhonemizer, ByT5Phonemizer, GruutPhonemizer,
-                                 EpitranPhonemizer, MantoqPhonemizer, CotoviaPhonemizer, GraphemePhonemizer)
+from phoonnx.phonemizers import Phonemizer, RawPhonemes, RawPhonemizedChunks, GraphemePhonemizer
+from phoonnx.phonemizers.ar import MantoqPhonemizer
+from phoonnx.phonemizers.en import DeepPhonemizer, OpenPhonemizer, G2PEnPhonemizer
+from phoonnx.phonemizers.gl import CotoviaPhonemizer
+from phoonnx.phonemizers.he import PhonikudPhonemizer
+from phoonnx.phonemizers.ko import KoG2PPhonemizer, G2PKPhonemizer
+from phoonnx.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, MisakiPhonemizer,
+                                     GruutPhonemizer, ByT5Phonemizer, CharsiuPhonemizer)
+from phoonnx.phonemizers.vi import VIPhonemePhonemizer
+from phoonnx.phonemizers.zh import (G2pCPhonemizer, G2pMPhonemizer, PypinyinPhonemizer,
+                                    XpinyinPhonemizer, JiebaPhonemizer)
 from phoonnx.thirdparty.tashkeel import TashkeelDiacritizer
 
 _PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
@@ -23,8 +32,10 @@ try:
     from ovos_utils.log import LOG
 except ImportError:
     import logging
+
     LOG = logging.getLogger(__name__)
     LOG.setLevel("DEBUG")
+
 
 @dataclass
 class PhoneticSpellings:
@@ -56,6 +67,7 @@ class PhoneticSpellings:
             # Replace using regex with case insensitivity
             text = re.sub(pattern, v, text, flags=re.IGNORECASE)
         return text
+
 
 @dataclass
 class AudioChunk:
@@ -124,25 +136,51 @@ class TTSVoice:
             self.phonetic_spellings = PhoneticSpellings.from_lang(self.config.lang_code)
         except FileNotFoundError:
             pass
-
-        if self.config.phoneme_type == PhonemeType.ESPEAK and self.phonemizer is None:
-            self.phonemizer = EspeakPhonemizer()
-        elif self.config.phoneme_type == PhonemeType.BYT5 and self.phonemizer is None:
-            self.phonemizer = ByT5Phonemizer()
-        elif self.config.phoneme_type == PhonemeType.GRUUT and self.phonemizer is None:
-            self.phonemizer = GruutPhonemizer()
-        elif self.config.phoneme_type == PhonemeType.EPITRAN and self.phonemizer is None:
-            self.phonemizer = EpitranPhonemizer()
-        elif self.config.phoneme_type == PhonemeType.PHONIKUD:
-            self.phonemizer = PhonikudPhonemizer()
-        elif self.config.phoneme_type == PhonemeType.MANTOQ:
-            self.phonemizer = MantoqPhonemizer()
-        elif self.config.phoneme_type == PhonemeType.COTOVIA and self.phonemizer is None:
-            self.phonemizer = CotoviaPhonemizer()
-        elif self.config.phoneme_type == PhonemeType.GRAPHEMES:
-            self.phonemizer = GraphemePhonemizer()
-        elif self.config.phoneme_type == PhonemeType.RAW:
-            self.phonemizer = RawPhonemes()
+        if self.phonemizer is None:
+            if self.config.phoneme_type == PhonemeType.ESPEAK:
+                self.phonemizer = EspeakPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.BYT5:
+                self.phonemizer = ByT5Phonemizer()
+            elif self.config.phoneme_type == PhonemeType.CHARSIU:
+                self.phonemizer = CharsiuPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.GRUUT:
+                self.phonemizer = GruutPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.EPITRAN:
+                self.phonemizer = EpitranPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.MISAKI:
+                self.phonemizer = MisakiPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.DEEPPHONEMIZER:
+                self.phonemizer = DeepPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.OPENPHONEMIZER:
+                self.phonemizer = OpenPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.G2PEN:
+                self.phonemizer = G2PEnPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.PHONIKUD:
+                self.phonemizer = PhonikudPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.MANTOQ:
+                self.phonemizer = MantoqPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.VIPHONEME:
+                self.phonemizer = VIPhonemePhonemizer()
+            elif self.config.phoneme_type == PhonemeType.KOG2PK:
+                self.phonemizer = KoG2PPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.G2PK:
+                self.phonemizer = G2PKPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.PYPINYIN:
+                self.phonemizer = PypinyinPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.XPINYIN:
+                self.phonemizer = XpinyinPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.JIEBA:
+                self.phonemizer = JiebaPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.G2PC:
+                self.phonemizer = G2pCPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.G2PM:
+                self.phonemizer = G2pMPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.COTOVIA:
+                self.phonemizer = CotoviaPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.GRAPHEMES:
+                self.phonemizer = GraphemePhonemizer()
+            elif self.config.phoneme_type == PhonemeType.RAW:
+                self.phonemizer = RawPhonemes()
 
         # compat with piper arabic models
         if self.config.lang_code.split("-")[0] == "ar" and self.use_tashkeel and self.tashkeel_diacritizier is None:
@@ -257,7 +295,7 @@ class TTSVoice:
                 if (i > 0) and (text_parts[i - 1].endswith(" ")):
                     phonemes[-1].append(" ")
 
-                phonemes[-1].extend(list(text_part[2:-2].strip())) # Ensure characters are split
+                phonemes[-1].extend(list(text_part[2:-2].strip()))  # Ensure characters are split
 
                 if (i < (len(text_parts)) - 1) and (text_parts[i + 1].startswith(" ")):
                     phonemes[-1].append(" ")
@@ -293,14 +331,14 @@ class TTSVoice:
         if self.config.phoneme_id_map is None:
             raise ValueError("self.config.phoneme_id_map is None")
         return phonemes_to_ids(phonemes, self.config.phoneme_id_map,
-                                blank_token = self.config.blank_token,
-                                bos_token = self.config.bos_token,
-                                eos_token = self.config.eos_token,
-                                word_sep_token = self.config.word_sep_token,
-                                include_whitespace = self.config.include_whitespace,
-                                blank_at_start = self.config.blank_at_start,
-                                blank_at_end = self.config.blank_at_end,
-                                blank_between = BlankBetween.TOKENS_AND_WORDS,
+                               blank_token=self.config.blank_token,
+                               bos_token=self.config.bos_token,
+                               eos_token=self.config.eos_token,
+                               word_sep_token=self.config.word_sep_token,
+                               include_whitespace=self.config.include_whitespace,
+                               blank_at_start=self.config.blank_at_start,
+                               blank_at_end=self.config.blank_at_end,
+                               blank_between=BlankBetween.TOKENS_AND_WORDS,
                                )
 
     def synthesize(
@@ -413,7 +451,7 @@ class TTSVoice:
         noise_w_scale = syn_config.noise_w_scale
 
         expected_args = [model_input.name for model_input in self.session.get_inputs()]
-        #print("Expected ONNX Inputs:", expected_args)
+        # print("Expected ONNX Inputs:", expected_args)
 
         phoneme_ids_array = np.expand_dims(np.array(phoneme_ids, dtype=np.int64), 0)
         phoneme_ids_lengths = np.array([phoneme_ids_array.shape[1]], dtype=np.int64)
@@ -434,18 +472,17 @@ class TTSVoice:
                 dtype=np.float32,
             )
 
-        args["langid"]  = np.array([langid], dtype=np.int64)
+        args["langid"] = np.array([langid], dtype=np.int64)
         args["sid"] = np.array([speaker_id], dtype=np.int64)
 
         # different models can be used and args may differ
-        args = {k:v for k, v in args.items() if k in expected_args}
+        args = {k: v for k, v in args.items() if k in expected_args}
         audio = self.session.run(
             None,
             args,
         )[0].squeeze()
 
         return audio
-
 
 
 if __name__ == "__main__":
@@ -460,7 +497,6 @@ if __name__ == "__main__":
 
     print("\n################")
     # hebrew phonemes (raw input model)
-    from phonemizers.he import PhonikudPhonemizer
     pho = PhonikudPhonemizer(diacritics=True)
     sentence = "הכוח לשנות מתחיל ברגע שבו אתה מאמין שזה אפשרי!"
     sentence = pho.phonemize_string(sentence, "he")
@@ -487,8 +523,7 @@ if __name__ == "__main__":
     model = "/home/miro/PycharmProjects/phoonnx_tts/miro_en-GB.onnx"
     config = "/home/miro/PycharmProjects/phoonnx_tts/piper_espeak.json"
 
-
-    voice = TTSVoice.load(model_path=model, config_path=config,  use_cuda=False)
+    voice = TTSVoice.load(model_path=model, config_path=config, use_cuda=False)
     byt5_phonemizer = ByT5Phonemizer()
     gruut_phonemizer = GruutPhonemizer()
     espeak_phonemizer = EspeakPhonemizer()
@@ -519,7 +554,6 @@ if __name__ == "__main__":
     config = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/config.json"
     phonemes_txt = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt"
     phoneme_map = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phoneme_map.txt"
-
 
     voice = TTSVoice.load(model_path=model, config_path=config,
                           phonemes_txt=phonemes_txt, phoneme_map=phoneme_map,

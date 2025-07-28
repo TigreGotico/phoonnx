@@ -129,7 +129,7 @@ class OpenPhonemizer(BasePhonemizer):
         return self.phonemizer(text)
 
 
-class G2P_EN(BasePhonemizer):
+class G2PEnPhonemizer(BasePhonemizer):
     """
     https://github.com/Kyubyong/g2p
     """
@@ -187,7 +187,7 @@ if __name__ == "__main__":
     epitr = EpitranPhonemizer()
     charsiu = CharsiuPhonemizer()
     openphon = OpenPhonemizer()
-    g2pen = G2P_EN()
+    g2pen = G2PEnPhonemizer()
     dp = DeepPhonemizer()
 
     lang = "en-gb"

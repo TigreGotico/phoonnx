@@ -2,7 +2,6 @@
 
 import json
 import os
-import re
 import subprocess
 from typing import List, Dict, Optional
 
@@ -454,12 +453,10 @@ class MisakiPhonemizer(BasePhonemizer):
     """
     https://github.com/hexgrad/misaki
     """
-    MISAKI_LANGS = ['en', 'ko', 'ja', 'vi', 'zh', 'he']
+    MISAKI_LANGS = ['en-US', 'en-GB', 'ko', 'ja', 'vi', 'zh']
 
     def __init__(self):
-        import epitran
-        self.epitran = epitran
-        self._epis: Dict[str, epitran.Epitran] = {}
+        self.g2p_en = self.g2p_zh = self.g2p_ko = self.g2p_vi = self.g2p_ja = None
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
@@ -477,13 +474,46 @@ class MisakiPhonemizer(BasePhonemizer):
         """
         return cls.match_lang(target_lang, cls.MISAKI_LANGS)
 
-    def phonemize_string(self, text: str, lang: str) -> str:
+    def _get_phonemizer(self, lang: str):
+        """lazy load language specific phonemizer on first usage
+        NOTE: this can be slow
+        """
         lang = self.get_lang(lang)
-        epi = self._epis.get(lang)
-        if epi is None:
-            epi = self.epitran.Epitran(lang)
-            self._epis[lang] = epi
-        return epi.transliterate(text)
+
+        if lang == "zh":
+            if self.g2p_zh is None:
+                from misaki.zh_frontend import ZHFrontend
+                self.g2p_zh = ZHFrontend()
+            return self.g2p_zh
+        elif lang == "ko":
+            if self.g2p_ko is None:
+                from misaki.ko import KOG2P
+                self.g2p_ko = KOG2P()
+            return self.g2p_ko
+        elif lang == "vi":
+            if self.g2p_vi is None:
+                from misaki.vi import VIG2P
+                self.g2p_vi = VIG2P()
+            return self.g2p_vi
+        elif lang == "ja":
+            if self.g2p_ja is None:
+                from misaki.ja import JAG2P
+                self.g2p_ja = JAG2P()
+            return self.g2p_ja
+        else:
+            if self.g2p_en is None:
+                from misaki import en
+                self.g2p_en = en.G2P()
+            if lang == "en-GB":
+                self.g2p_en.british = True
+            elif lang == "en-US":
+                self.g2p_en.british = False
+            return self.g2p_en
+
+    def phonemize_string(self, text: str, lang: str) -> str:
+        pho = self._get_phonemizer(lang)
+        phonemes, tokens = pho(text)
+        return phonemes
 
 
 if __name__ == "__main__":
@@ -494,16 +524,11 @@ if __name__ == "__main__":
     gruut = GruutPhonemizer()
     epitr = EpitranPhonemizer()
     charsiu = CharsiuPhonemizer()
-    grapheme_ph = GraphemePhonemizer()
+    misaki = MisakiPhonemizer()
 
     lang = "en-gb"
 
     text1 = "Hello, world. How are you?"
-
-    print(f"\n--- Getting graphemes for '{text1}' (GraphemePhonemizer) ---")
-    graphemes1 = grapheme_ph.phonemize(text1, lang)
-    print(f"  Graphemes: {graphemes1}")
-
 
     print("\n--- Getting phonemes for 'Hello, world. How are you?' ---")
     phonemes1 = espeak.phonemize(text1, lang)
@@ -511,11 +536,13 @@ if __name__ == "__main__":
     phonemes1c = byt5.phonemize(text1, lang)
     phonemes1d = epitr.phonemize(text1, lang)
     phonemes1e = charsiu.phonemize(text1, lang)
+    phonemes1f = misaki.phonemize(text1, lang)
     print(f" Espeak         Phonemes: {phonemes1}")
     print(f" Gruut          Phonemes: {phonemes1b}")
     print(f" byt5           Phonemes: {phonemes1c}")
     print(f" Epitran        Phonemes: {phonemes1d}")
     print(f" Charsiu        Phonemes: {phonemes1e}")
+    print(f" Misaki         Phonemes: {phonemes1f}")
 
 
     lang = "nl"

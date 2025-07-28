@@ -20,16 +20,31 @@ except ImportError:
 
 class PhonemeType(str, Enum):
     RAW = "raw"  # direct phonemes
+    UNICODE = "unicode"  # unicode codepoints
+    GRAPHEMES = "graphemes" # text characters
+
+    MISAKI = "misaki"
     ESPEAK = "espeak"
     GRUUT = "gruut"
     EPITRAN = "epitran"
     BYT5 = "byt5"
     CHARSIU = "charsiu"  # technically same as byt5, but needs special handling for whitespace
-    UNICODE = "unicode"
-    GRAPHEMES = "graphemes"
+
+    DEEPPHONEMIZER = "deepphonemizer" # en
+    OPENPHONEMIZER = "openphonemizer" # en
+    G2PEN = "g2pen" # en
+
     COTOVIA = "cotovia"  # galician  (no ipa!)
     PHONIKUD = "phonikud"  # hebrew
     MANTOQ = "mantoq"  # arabic
+    VIPHONEME = "viphoneme" # vietnamese
+    G2PK = "g2pk" # korean
+    KOG2PK = "kog2p" # korean
+    G2PC = "g2pc" # chinese
+    G2PM = "g2pm" # chinese
+    PYPINYIN = "pypinyin" # chinese
+    XPINYIN = "xpinyin" # chinese
+    JIEBA = "jieba" # chinese  (not a real phonemizer!)
 
 
 @dataclass
