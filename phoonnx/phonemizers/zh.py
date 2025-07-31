@@ -1,10 +1,9 @@
 import abc
 from typing import List
 
-import jieba
 
-from pinyin_to_ipa import pinyin_to_ipa
 from phoonnx.phonemizers.base import BasePhonemizer
+from phoonnx.thirdparty.zh_num import num2str
 
 
 class JiebaPhonemizer(BasePhonemizer):
@@ -41,18 +40,20 @@ class JiebaPhonemizer(BasePhonemizer):
         Returns:
             str: Tokenized text with words separated by spaces.
         """
+        import jieba
         lang = self.get_lang(lang)
         seg_list = jieba.cut(text, cut_all=False)
+        seg_list = [num2str(w) if w.isdigit() else w for w in seg_list]
         return " ".join(seg_list)
 
 
-class BaseChinesePhonemizer(BasePhonemizer):
+class BaseChinesePinyinPhonemizer(BasePhonemizer):
     """
-    Base class for Chinese phonemizers using different G2P libraries.
+    Base class for Chinese phonemizers using different pinyin G2P libraries.
     Supports optional IPA conversion and segmentation via Jieba.
     """
 
-    def __init__(self, ipa: bool = False, jieba: bool = True):
+    def __init__(self, ipa: bool = False, jieba: bool = True, retone=True):
         """
         Initializes the phonemizer.
 
@@ -62,6 +63,9 @@ class BaseChinesePhonemizer(BasePhonemizer):
         """
         self.ipa = ipa
         self.jieba = jieba
+        self.retone = retone
+        from pinyin_to_ipa import pinyin_to_ipa
+        self.pinyin_to_ipa = pinyin_to_ipa
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
@@ -80,6 +84,16 @@ class BaseChinesePhonemizer(BasePhonemizer):
         # this check is here only to throw an exception if invalid language is provided
         return cls.match_lang(target_lang, ["zh"])
 
+    @staticmethod
+    def _retone(p):
+        p = p.replace('˧˩˧', '↓')  # third tone
+        p = p.replace('˧˥', '↗')  # second tone
+        p = p.replace('˥˩', '↘')  # fourth tone
+        p = p.replace('˥', '→')  # first tone
+        p = p.replace(chr(635) + chr(809), 'ɨ').replace(chr(633) + chr(809), 'ɨ')
+        assert chr(809) not in p, p
+        return p
+
     def to_ipa(self, phones: List[str]) -> List[str]:
         """
         Converts a list of pinyin syllables to IPA. Falls back to the original syllable if conversion fails.
@@ -92,11 +106,19 @@ class BaseChinesePhonemizer(BasePhonemizer):
         """
         ipa_phones: List[str] = []
         for p in phones:
+            if p == " ":
+                ipa_phones.append(" ")
+                continue
+            pho_str = ""
             for sp in p.split():  # G2P might return phrases with multiple syllables
                 try:
-                    ipa_phones.append(pinyin_to_ipa(sp.strip())[0][0])
+                    pho = self.pinyin_to_ipa(sp.strip())[0][0]
+                    if self.retone:
+                        pho = self._retone(pho)
+                    pho_str += pho
                 except Exception:
-                    ipa_phones.append(sp)
+                    pass
+            ipa_phones.append(pho_str)
         return ipa_phones
 
     def phonemize_string(self, text: str, lang: str = "zh") -> str:
@@ -113,13 +135,17 @@ class BaseChinesePhonemizer(BasePhonemizer):
         phones: List[str] = []
         lang = self.get_lang(lang)
         if self.jieba:
+            import jieba
             for chunk in jieba.cut(text, cut_all=False):
+                if chunk.isdigit():
+                    chunk = num2str(chunk)
                 phones += self.get_pinyin(chunk)
+                phones += [" "]  # keep jieba whitespace
         else:
             phones = self.get_pinyin(text)
         if self.ipa:
             phones = self.to_ipa(phones)
-        return " ".join(phones)
+        return "".join(phones)
 
     @abc.abstractmethod
     def get_pinyin(self, text: str) -> List[str]:
@@ -135,7 +161,7 @@ class BaseChinesePhonemizer(BasePhonemizer):
         return NotImplemented
 
 
-class G2pCPhonemizer(BaseChinesePhonemizer):
+class G2pCPhonemizer(BaseChinesePinyinPhonemizer):
     """
     Phonemizer using g2pc (BERT-based Grapheme-to-Phoneme converter).
     """
@@ -155,10 +181,11 @@ class G2pCPhonemizer(BaseChinesePhonemizer):
         Returns:
             List[str]: Pinyin tokens.
         """
+        print(self.g2p(text))
         return [a[3] for a in self.g2p(text)]
 
 
-class G2pMPhonemizer(BaseChinesePhonemizer):
+class G2pMPhonemizer(BaseChinesePinyinPhonemizer):
     """
     Phonemizer using g2pM (statistical G2P converter).
     """
@@ -183,7 +210,7 @@ class G2pMPhonemizer(BaseChinesePhonemizer):
         return self.g2p(text, tone=self.tone, char_split=self.char_split)
 
 
-class XpinyinPhonemizer(BaseChinesePhonemizer):
+class XpinyinPhonemizer(BaseChinesePinyinPhonemizer):
     """
     Phonemizer using xpinyin (basic pinyin generator with optional tone marks).
     """
@@ -207,7 +234,7 @@ class XpinyinPhonemizer(BaseChinesePhonemizer):
         return self.g2p.get_pinyin(text, tone_marks=self.tone_marks).split("-")
 
 
-class PypinyinPhonemizer(BaseChinesePhonemizer):
+class PypinyinPhonemizer(BaseChinesePinyinPhonemizer):
     """
     Phonemizer using pypinyin (comprehensive and accurate pinyin library).
     """
@@ -235,15 +262,19 @@ if __name__ == "__main__":
     text = "然而，他红了20年以后，他竟退出了大家的视线。"
 
     pho = JiebaPhonemizer()
-    pho1 = G2pCPhonemizer()
-    pho2 = G2pMPhonemizer()
-    pho3 = XpinyinPhonemizer()
-    pho4 = PypinyinPhonemizer()
+    pho1 = G2pCPhonemizer(ipa=True)
+    pho2 = G2pMPhonemizer(ipa=True)
+    pho3 = XpinyinPhonemizer(ipa=True)
+    pho4 = PypinyinPhonemizer(ipa=True)
+
+    from phoonnx.phonemizers.mul import MisakiPhonemizer
+
+    pho5 = MisakiPhonemizer()
 
     print(f"\n--- Getting phonemes for '{text}' ---")
 
-    phones = pho.phonemize(text, lang)
-    print(f" Jieba: {phones}")
+    phones = pho5.phonemize(text, lang)
+    print(f" Misaki: {phones}")
 
     phones = pho1.phonemize(text, lang)
     print(f" G2pC: {phones}")
@@ -256,6 +287,9 @@ if __name__ == "__main__":
 
     phones = pho4.phonemize(text, lang)
     print(f" Pypinyin: {phones}")
+
+    phones = pho.phonemize(text, lang)
+    print(f" Jieba: {phones}")
 
     #
     exit()

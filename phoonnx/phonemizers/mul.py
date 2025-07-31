@@ -482,8 +482,8 @@ class MisakiPhonemizer(BasePhonemizer):
 
         if lang == "zh":
             if self.g2p_zh is None:
-                from misaki.zh_frontend import ZHFrontend
-                self.g2p_zh = ZHFrontend()
+                from misaki.zh import ZHG2P
+                self.g2p_zh = ZHG2P()
             return self.g2p_zh
         elif lang == "ko":
             if self.g2p_ko is None:
@@ -542,6 +542,7 @@ if __name__ == "__main__":
     print(f" byt5           Phonemes: {phonemes1c}")
     print(f" Epitran        Phonemes: {phonemes1d}")
     print(f" Charsiu        Phonemes: {phonemes1e}")
+
     print(f" Misaki         Phonemes: {phonemes1f}")
 
 

@@ -24,6 +24,7 @@ from phoonnx.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, Misaki
 from phoonnx.phonemizers.vi import VIPhonemePhonemizer
 from phoonnx.phonemizers.zh import (G2pCPhonemizer, G2pMPhonemizer, PypinyinPhonemizer,
                                     XpinyinPhonemizer, JiebaPhonemizer)
+from phoonnx.phonemizers.ja import CutletPhonemizer, OpenJTaklPhonemizer, PyKakasiPhonemizer
 from phoonnx.thirdparty.tashkeel import TashkeelDiacritizer
 
 _PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
@@ -155,6 +156,12 @@ class TTSVoice:
                 self.phonemizer = OpenPhonemizer()
             elif self.config.phoneme_type == PhonemeType.G2PEN:
                 self.phonemizer = G2PEnPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.OPENJTALK:
+                self.phonemizer = OpenJTaklPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.PYKAKASI:
+                self.phonemizer = PyKakasiPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.CUTLET:
+                self.phonemizer = CutletPhonemizer()
             elif self.config.phoneme_type == PhonemeType.PHONIKUD:
                 self.phonemizer = PhonikudPhonemizer()
             elif self.config.phoneme_type == PhonemeType.MANTOQ:

@@ -1,4 +1,4 @@
-from g2pk import G2p
+
 
 from phoonnx.phonemizers.base import BasePhonemizer
 from phoonnx.thirdparty.hangul2ipa import hangul2ipa
@@ -7,6 +7,7 @@ from phoonnx.thirdparty.hangul2ipa import hangul2ipa
 class G2PKPhonemizer(BasePhonemizer):
 
     def __init__(self, descriptive=True, group_vowels=True, to_syl=True, ipa=True):
+        from g2pk import G2p
         self.g2p = G2p()
         self.descriptive = descriptive
         self.group_vowels = group_vowels

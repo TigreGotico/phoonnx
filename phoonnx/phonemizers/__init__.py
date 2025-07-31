@@ -6,6 +6,7 @@ from phoonnx.phonemizers.gl import CotoviaPhonemizer
 from phoonnx.phonemizers.vi import VIPhonemePhonemizer
 from phoonnx.phonemizers.he import PhonikudPhonemizer
 from phoonnx.phonemizers.ar import MantoqPhonemizer
+from phoonnx.phonemizers.ja import PyKakasiPhonemizer, CutletPhonemizer, OpenJTaklPhonemizer
 from phoonnx.phonemizers.ko import KoG2PPhonemizer, G2PKPhonemizer
 from phoonnx.phonemizers.zh import (G2pCPhonemizer, G2pMPhonemizer, PypinyinPhonemizer,
                                     XpinyinPhonemizer, JiebaPhonemizer)
@@ -19,6 +20,9 @@ Phonemizer = Union[
     EspeakPhonemizer,
     GruutPhonemizer,
     EpitranPhonemizer,
+    OpenJTaklPhonemizer,
+    CutletPhonemizer,
+    PyKakasiPhonemizer,
     VIPhonemePhonemizer,
     G2PKPhonemizer,
     KoG2PPhonemizer,

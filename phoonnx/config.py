@@ -34,6 +34,9 @@ class PhonemeType(str, Enum):
     OPENPHONEMIZER = "openphonemizer" # en
     G2PEN = "g2pen" # en
 
+    OPENJTALK = "openjtalk" # ja
+    CUTLET = "cutlet" # ja
+    PYKAKASI = "pykakasi" # ja
     COTOVIA = "cotovia"  # galician  (no ipa!)
     PHONIKUD = "phonikud"  # hebrew
     MANTOQ = "mantoq"  # arabic
