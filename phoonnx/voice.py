@@ -22,6 +22,7 @@ from phoonnx.phonemizers.ko import KoG2PPhonemizer, G2PKPhonemizer
 from phoonnx.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, MisakiPhonemizer,
                                      GruutPhonemizer, ByT5Phonemizer, CharsiuPhonemizer)
 from phoonnx.phonemizers.vi import VIPhonemePhonemizer
+from phoonnx.phonemizers.fa import PersianPhonemizer
 from phoonnx.phonemizers.zh import (G2pCPhonemizer, G2pMPhonemizer, PypinyinPhonemizer,
                                     XpinyinPhonemizer, JiebaPhonemizer)
 from phoonnx.phonemizers.ja import CutletPhonemizer, OpenJTaklPhonemizer, PyKakasiPhonemizer
@@ -162,6 +163,8 @@ class TTSVoice:
                 self.phonemizer = PyKakasiPhonemizer()
             elif self.config.phoneme_type == PhonemeType.CUTLET:
                 self.phonemizer = CutletPhonemizer()
+            elif self.config.phoneme_type == PhonemeType.G2PFA:
+                self.phonemizer = PersianPhonemizer()
             elif self.config.phoneme_type == PhonemeType.PHONIKUD:
                 self.phonemizer = PhonikudPhonemizer()
             elif self.config.phoneme_type == PhonemeType.MANTOQ:

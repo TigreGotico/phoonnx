@@ -17,7 +17,7 @@ PHONEME_ID_MAP = Dict[str, int]
 PHONEME_LIST = List[str]
 PHONEME_WORD_LIST = List[PHONEME_LIST]
 
-DEFAULT_PIPER_PHONEME_ID_MAP: Dict[str, PHONEME_ID_LIST] = {
+DEFAULT_IPA_PHONEME_ID_MAP: Dict[str, PHONEME_ID_LIST] = {
     "_": [0],
     "^": [1],
     "$": [2],
@@ -222,7 +222,7 @@ def phonemes_to_ids(
     if not phonemes:
         return []
     if not id_map:
-        id_map = DEFAULT_PIPER_PHONEME_ID_MAP
+        id_map = DEFAULT_IPA_PHONEME_ID_MAP
 
     # compat with piper-style mapping that uses lists
     id_map = {k: v if isinstance(v, list) else [v]
@@ -399,7 +399,7 @@ if __name__ == "__main__":
     print(phones) # piper style
     print(phone_words) # mimic3 style
 
-    mapping = {k: v[0] for k, v in DEFAULT_PIPER_PHONEME_ID_MAP.items()}
+    mapping = {k: v[0] for k, v in DEFAULT_IPA_PHONEME_ID_MAP.items()}
     print("\n#### piper  (tokens_and_words + include_whitespace)")
     print("reference", piper_phonemes_to_ids(phones))
     print("phonnx   ", phonemes_to_ids(phones,

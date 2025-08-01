@@ -34,6 +34,7 @@ class PhonemeType(str, Enum):
     OPENPHONEMIZER = "openphonemizer" # en
     G2PEN = "g2pen" # en
 
+    G2PFA = "g2pfa"
     OPENJTALK = "openjtalk" # ja
     CUTLET = "cutlet" # ja
     PYKAKASI = "pykakasi" # ja
