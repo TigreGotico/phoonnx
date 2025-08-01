@@ -350,7 +350,8 @@ class GruutPhonemizer(BasePhonemizer):
     A phonemizer class that uses the Gruut library to convert text into phonemes.
     Note: Gruut's internal segmentation is sentence-based
     """
-    GRUUT_LANGS = ["en", "ar", "ca", "cs", "de", "es", "fa", "fr", "it", "lb", "nl", "pt", "ru", "sv", "sw"]
+    GRUUT_LANGS = ["en", "ar", "ca", "cs", "de", "es", "fa", "fr", "it",
+                   "lb", "nl", "pt", "ru", "sv", "sw"]
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:

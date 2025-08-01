@@ -1,0 +1,8 @@
+g2pM
+misaki[zh]
+epitran
+pypinyin
+xpinyin
+pinyin_to_ipa
+jieba
+#g2pc

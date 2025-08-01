@@ -163,7 +163,8 @@ class BaseChinesePinyinPhonemizer(BasePhonemizer):
 
 class G2pCPhonemizer(BaseChinesePinyinPhonemizer):
     """
-    Phonemizer using g2pc (BERT-based Grapheme-to-Phoneme converter).
+    Phonemizer using g2pc (CRF-based Grapheme-to-Phoneme converter).
+    https://github.com/Kyubyong/g2pC
     """
 
     def __init__(self, ipa: bool = False, jieba: bool = True):
@@ -187,7 +188,8 @@ class G2pCPhonemizer(BaseChinesePinyinPhonemizer):
 
 class G2pMPhonemizer(BaseChinesePinyinPhonemizer):
     """
-    Phonemizer using g2pM (statistical G2P converter).
+    Phonemizer using g2pM - A Neural Grapheme-to-Phoneme Conversion Package for Mandarin Chinese
+    https://github.com/kakaobrain/g2pm
     """
 
     def __init__(self, tone: bool = True, char_split: bool = False, ipa: bool = False, jieba: bool = True):

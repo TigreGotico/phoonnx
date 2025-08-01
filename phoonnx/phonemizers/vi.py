@@ -2,7 +2,7 @@ from phoonnx.phonemizers.base import BasePhonemizer
 
 
 class VIPhonemePhonemizer(BasePhonemizer):
-
+    """https://github.com/v-nhandt21/Viphoneme"""
     def __init__(self):
         from viphoneme import vi2IPA
         self.g2p = vi2IPA

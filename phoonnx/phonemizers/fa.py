@@ -3,7 +3,7 @@ from phoonnx.phonemizers.base import BasePhonemizer
 
 
 class PersianPhonemizer(BasePhonemizer):
-
+    """https://github.com/de-mh/persian_phonemizer"""
     def __init__(self, ipa=True):
         from persian_phonemizer import Phonemizer
         output_format = "IPA" if ipa else 'eraab'

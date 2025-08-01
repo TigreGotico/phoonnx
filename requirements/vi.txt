@@ -1,0 +1,7 @@
+misaki[vi]
+epitran
+
+viphoneme
+underthesea
+eng_to_ipa
+vinorm
