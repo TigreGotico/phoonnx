@@ -1,11 +1,11 @@
 import json
-import string
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping, Optional, Sequence
 from phoonnx.phoneme_ids import (load_phoneme_ids, BlankBetween,
-                                 DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN, DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
-
+                                 DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
+                                 DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
+from phoonnx.phonemizers import Phonemizer
 
 DEFAULT_NOISE_SCALE = 0.667
 DEFAULT_LENGTH_SCALE = 1.0
@@ -346,6 +346,72 @@ class SynthesisConfig:
     """Multiplier for audio samples (< 1 is quieter, > 1 is louder)."""
 
     enable_phonetic_spellings: bool = True
+
+
+def get_phonemizer(phoneme_type: PhonemeType) -> Phonemizer:
+    from phoonnx.phonemizers import (EpitranPhonemizer, EspeakPhonemizer, OpenPhonemizer, OpenJTaklPhonemizer,
+                                     ByT5Phonemizer, CharsiuPhonemizer, DeepPhonemizer, PersianPhonemizer,
+                                     G2pCPhonemizer, G2pMPhonemizer, G2PKPhonemizer, G2PEnPhonemizer,
+                                     GruutPhonemizer, GraphemePhonemizer, MantoqPhonemizer, MisakiPhonemizer,
+                                     KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
+                                     CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer, XpinyinPhonemizer,
+                                     JiebaPhonemizer, RawPhonemes)
+    if phoneme_type == PhonemeType.ESPEAK:
+        phonemizer = EspeakPhonemizer()
+    elif phoneme_type == PhonemeType.BYT5:
+        phonemizer = ByT5Phonemizer()
+    elif phoneme_type == PhonemeType.CHARSIU:
+        phonemizer = CharsiuPhonemizer()
+    elif phoneme_type == PhonemeType.GRUUT:
+        phonemizer = GruutPhonemizer()
+    elif phoneme_type == PhonemeType.EPITRAN:
+        phonemizer = EpitranPhonemizer()
+    elif phoneme_type == PhonemeType.MISAKI:
+        phonemizer = MisakiPhonemizer()
+    elif phoneme_type == PhonemeType.DEEPPHONEMIZER:
+        phonemizer = DeepPhonemizer()
+    elif phoneme_type == PhonemeType.OPENPHONEMIZER:
+        phonemizer = OpenPhonemizer()
+    elif phoneme_type == PhonemeType.G2PEN:
+        phonemizer = G2PEnPhonemizer()
+    elif phoneme_type == PhonemeType.OPENJTALK:
+        phonemizer = OpenJTaklPhonemizer()
+    elif phoneme_type == PhonemeType.PYKAKASI:
+        phonemizer = PyKakasiPhonemizer()
+    elif phoneme_type == PhonemeType.CUTLET:
+        phonemizer = CutletPhonemizer()
+    elif phoneme_type == PhonemeType.G2PFA:
+        phonemizer = PersianPhonemizer()
+    elif phoneme_type == PhonemeType.PHONIKUD:
+        phonemizer = PhonikudPhonemizer()
+    elif phoneme_type == PhonemeType.MANTOQ:
+        phonemizer = MantoqPhonemizer()
+    elif phoneme_type == PhonemeType.VIPHONEME:
+        phonemizer = VIPhonemePhonemizer()
+    elif phoneme_type == PhonemeType.KOG2PK:
+        phonemizer = KoG2PPhonemizer()
+    elif phoneme_type == PhonemeType.G2PK:
+        phonemizer = G2PKPhonemizer()
+    elif phoneme_type == PhonemeType.PYPINYIN:
+        phonemizer = PypinyinPhonemizer()
+    elif phoneme_type == PhonemeType.XPINYIN:
+        phonemizer = XpinyinPhonemizer()
+    elif phoneme_type == PhonemeType.JIEBA:
+        phonemizer = JiebaPhonemizer()
+    elif phoneme_type == PhonemeType.G2PC:
+        phonemizer = G2pCPhonemizer()
+    elif phoneme_type == PhonemeType.G2PM:
+        phonemizer = G2pMPhonemizer()
+    elif phoneme_type == PhonemeType.COTOVIA:
+        phonemizer = CotoviaPhonemizer()
+    elif phoneme_type == PhonemeType.GRAPHEMES:
+        phonemizer = GraphemePhonemizer()
+    elif phoneme_type == PhonemeType.RAW:
+        phonemizer = RawPhonemes()
+    else:
+        raise ValueError("invalid phonemizer")
+    return phonemizer
+
 
 
 if __name__ == "__main__":

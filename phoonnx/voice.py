@@ -1,7 +1,6 @@
 import json
 import os.path
 import re
-import unicodedata
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -11,21 +10,10 @@ import numpy as np
 import onnxruntime
 from langcodes import closest_match
 
-from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig
+from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, get_phonemizer
 from phoonnx.phoneme_ids import phonemes_to_ids, BlankBetween
-from phoonnx.phonemizers import Phonemizer, RawPhonemes, RawPhonemizedChunks, GraphemePhonemizer
-from phoonnx.phonemizers.ar import MantoqPhonemizer
-from phoonnx.phonemizers.en import DeepPhonemizer, OpenPhonemizer, G2PEnPhonemizer
-from phoonnx.phonemizers.gl import CotoviaPhonemizer
-from phoonnx.phonemizers.he import PhonikudPhonemizer
-from phoonnx.phonemizers.ko import KoG2PPhonemizer, G2PKPhonemizer
-from phoonnx.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, MisakiPhonemizer,
-                                     GruutPhonemizer, ByT5Phonemizer, CharsiuPhonemizer)
-from phoonnx.phonemizers.vi import VIPhonemePhonemizer
-from phoonnx.phonemizers.fa import PersianPhonemizer
-from phoonnx.phonemizers.zh import (G2pCPhonemizer, G2pMPhonemizer, PypinyinPhonemizer,
-                                    XpinyinPhonemizer, JiebaPhonemizer)
-from phoonnx.phonemizers.ja import CutletPhonemizer, OpenJTaklPhonemizer, PyKakasiPhonemizer
+from phoonnx.phonemizers import Phonemizer
+from phoonnx.phonemizers.base import PhonemizedChunks
 from phoonnx.thirdparty.tashkeel import TashkeelDiacritizer
 
 _PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
@@ -115,9 +103,6 @@ class AudioChunk:
         return self.audio_int16_array.tobytes()
 
 
-PhonemizedChunks = list[list[str]]
-
-
 @dataclass
 class TTSVoice:
     session: onnxruntime.InferenceSession
@@ -139,58 +124,7 @@ class TTSVoice:
         except FileNotFoundError:
             pass
         if self.phonemizer is None:
-            if self.config.phoneme_type == PhonemeType.ESPEAK:
-                self.phonemizer = EspeakPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.BYT5:
-                self.phonemizer = ByT5Phonemizer()
-            elif self.config.phoneme_type == PhonemeType.CHARSIU:
-                self.phonemizer = CharsiuPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.GRUUT:
-                self.phonemizer = GruutPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.EPITRAN:
-                self.phonemizer = EpitranPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.MISAKI:
-                self.phonemizer = MisakiPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.DEEPPHONEMIZER:
-                self.phonemizer = DeepPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.OPENPHONEMIZER:
-                self.phonemizer = OpenPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.G2PEN:
-                self.phonemizer = G2PEnPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.OPENJTALK:
-                self.phonemizer = OpenJTaklPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.PYKAKASI:
-                self.phonemizer = PyKakasiPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.CUTLET:
-                self.phonemizer = CutletPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.G2PFA:
-                self.phonemizer = PersianPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.PHONIKUD:
-                self.phonemizer = PhonikudPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.MANTOQ:
-                self.phonemizer = MantoqPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.VIPHONEME:
-                self.phonemizer = VIPhonemePhonemizer()
-            elif self.config.phoneme_type == PhonemeType.KOG2PK:
-                self.phonemizer = KoG2PPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.G2PK:
-                self.phonemizer = G2PKPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.PYPINYIN:
-                self.phonemizer = PypinyinPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.XPINYIN:
-                self.phonemizer = XpinyinPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.JIEBA:
-                self.phonemizer = JiebaPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.G2PC:
-                self.phonemizer = G2pCPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.G2PM:
-                self.phonemizer = G2pMPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.COTOVIA:
-                self.phonemizer = CotoviaPhonemizer()
-            elif self.config.phoneme_type == PhonemeType.GRAPHEMES:
-                self.phonemizer = GraphemePhonemizer()
-            elif self.config.phoneme_type == PhonemeType.RAW:
-                self.phonemizer = RawPhonemes()
+            self.phonemizer = get_phonemizer(self.config.phoneme_type)
 
         # compat with piper arabic models
         if self.config.lang_code.split("-")[0] == "ar" and self.use_tashkeel and self.tashkeel_diacritizier is None:
@@ -245,37 +179,6 @@ class TTSVoice:
             )
         )
 
-    @staticmethod
-    def _process_phones(raw_phones: RawPhonemizedChunks) -> PhonemizedChunks:
-        """Text to phonemes grouped by sentence."""
-
-        all_phonemes: list[list[str]] = []
-        sentence_phonemes: list[str] = []
-
-        for phonemes_str, terminator_str, end_of_sentence in raw_phones:
-            # Filter out (lang) switch (flags).
-            # These surround words from languages other than the current voice.
-            phonemes_str = re.sub(r"\([^)]+\)", "", phonemes_str)
-
-            # Keep punctuation even though it's not technically a phoneme
-            phonemes_str += terminator_str
-            if terminator_str in (",", ":", ";"):
-                # Not a sentence boundary
-                phonemes_str += " "
-
-            # Decompose phonemes into UTF-8 codepoints.
-            # This separates accent characters into separate "phonemes".
-            sentence_phonemes.extend(list(unicodedata.normalize("NFD", phonemes_str)))
-
-            if end_of_sentence:
-                all_phonemes.append(sentence_phonemes)
-                sentence_phonemes = []
-
-        if sentence_phonemes:
-            all_phonemes.append(sentence_phonemes)
-
-        return all_phonemes
-
     def phonemize(self, text: str) -> PhonemizedChunks:
         """
         Text to phonemes grouped by sentence.
@@ -283,15 +186,7 @@ class TTSVoice:
         :param text: Text to phonemize.
         :return: List of phonemes for each sentence.
         """
-        # This method's behavior depends heavily on the phoneme_type.
-        # For GRAPHEMES, it will return a list of characters as "phonemes"
-        # For others, it will return actual phonemes.
-
         phonemes: list[list[str]] = []
-
-        if self.config.phoneme_type == PhonemeType.UNICODE:
-            # Phonemes = codepoints
-            return [list(unicodedata.normalize("NFD", text))]
 
         text_parts = _PHONEME_BLOCK_PATTERN.split(text)
 
@@ -319,11 +214,10 @@ class TTSVoice:
                 )
 
             # Phonemization
-            raw_phonemes = self.phonemizer.phonemize(
+            phonemes = self.phonemizer.phonemize(
                 text_part, self.config.lang_code
             )
-            text_part_phonemes = self._process_phones(raw_phonemes)
-            phonemes.extend(text_part_phonemes)
+            phonemes.extend(phonemes)
 
         if phonemes and (not phonemes[-1]):
             # Remove empty phonemes
@@ -496,6 +390,9 @@ class TTSVoice:
 
 
 if __name__ == "__main__":
+    from phoonnx.phonemizers.gl import CotoviaPhonemizer
+    from phoonnx.phonemizers.he import PhonikudPhonemizer
+    from phoonnx.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, GruutPhonemizer, ByT5Phonemizer)
 
     syn_config = SynthesisConfig(enable_phonetic_spellings=True)
 

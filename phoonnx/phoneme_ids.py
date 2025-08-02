@@ -184,7 +184,7 @@ DEFAULT_IPA_PHONEME_ID_MAP: Dict[str, PHONEME_ID_LIST] = {
 DEFAULT_PAD_TOKEN = DEFAULT_BLANK_TOKEN = "_"  # padding (0)
 DEFAULT_BOS_TOKEN = "^"  # beginning of sentence
 DEFAULT_EOS_TOKEN = "$"  # end of sentence
-DEFAULT_BLANK_WORD_TOKEN = "#"  # padding between words
+DEFAULT_BLANK_WORD_TOKEN = " "  # padding between words
 
 STRESS: Set[str] = {"ˈ", "ˌ"}
 """Default stress characters"""

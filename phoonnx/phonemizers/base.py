@@ -1,7 +1,8 @@
 import abc
 import re
 import string
-from typing import List, Tuple, Optional
+import unicodedata
+from typing import List, Tuple, Optional, Literal
 
 from langcodes import tag_distance
 from quebra_frases import sentence_tokenize
@@ -11,6 +12,8 @@ TextChunks = List[Tuple[str, str, bool]]
 # list of (phonemes, terminator, end_of_sentence) tuples.
 RawPhonemizedChunks = List[Tuple[str, str, bool]]
 
+PhonemizedChunks = list[list[str]]
+
 
 class BasePhonemizer(metaclass=abc.ABCMeta):
 
@@ -18,14 +21,34 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
     def phonemize_string(self, text: str, lang: str) -> str:
         raise NotImplementedError
 
-    def phonemize(self, text: str, lang: str) -> RawPhonemizedChunks:
+    def phonemize_to_list(self, text: str, lang: str) -> List[str]:
+        return list(self.phonemize_string(text, lang))
+
+    def phonemize(self, text: str, lang: str) -> PhonemizedChunks:
         if not text:
             return [('', '', True)]
         results: RawPhonemizedChunks = []
         for chunk, punct, eos in self.chunk_text(text):
             phoneme_str = self.phonemize_string(chunk, lang)
-            results += [(self.remove_punctuation(phoneme_str), punct, True)]
-        return results
+            results += [(phoneme_str, punct, True)]
+        return self._process_phones(results)
+
+    @staticmethod
+    def _process_phones(raw_phones: RawPhonemizedChunks) -> PhonemizedChunks:
+        """Text to phonemes grouped by sentence."""
+        all_phonemes: list[list[str]] = []
+        sentence_phonemes: list[str] = []
+        for phonemes_str, terminator_str, end_of_sentence in raw_phones:
+            # Filter out (lang) switch (flags).
+            # These surround words from languages other than the current voice.
+            phonemes_str = re.sub(r"\([^)]+\)", "", phonemes_str)
+            sentence_phonemes.extend(list(phonemes_str))
+            if end_of_sentence:
+                all_phonemes.append(sentence_phonemes)
+                sentence_phonemes = []
+        if sentence_phonemes:
+            all_phonemes.append(sentence_phonemes)
+        return all_phonemes
 
     @staticmethod
     def match_lang(target_lang: str, valid_langs: List[str]) -> str:
@@ -91,7 +114,7 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
 
         for sentence in sentence_tokenize(text):
             # Default punctuation if no specific punctuation found
-            default_punc = sentence[-1] if sentence[-1] in string.punctuation else "."
+            default_punc = sentence[-1] if sentence and sentence[-1] in string.punctuation else "."
 
             # Use regex to split the sentence by any of the delimiters
             parts = re.split(f'({delimiter_pattern})', sentence)
@@ -112,13 +135,14 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
         return results
 
 
+### all the 3 below are essentially the same thing
+# no phonemization really happens
 
 class RawPhonemes(BasePhonemizer):
     """no phonemization, text is phonemes already"""
 
     def phonemize_string(self, text: str, lang: str) -> str:
         return text
-
 
 
 class GraphemePhonemizer(BasePhonemizer):
@@ -151,3 +175,35 @@ class GraphemePhonemizer(BasePhonemizer):
         text = re.sub(self.whitespace_re, " ", text).strip()
         return text
 
+
+class UnicodeCodepointPhonemizer(BasePhonemizer):
+    """Phonemes = codepoints
+    normalization also splits accents and punctuation into it's own codepoints
+    """
+
+    def __init__(self, form: Literal["NFC", "NFD", "NFKC", "NFKD"] = "NFD"):
+        self.form = form
+
+    def phonemize_string(self, text: str, lang: str) -> str:
+        # Phonemes = codepoints
+        return unicodedata.normalize(self.form, text)
+
+
+if __name__ == "__main__":
+    raw = RawPhonemes()
+    grap = GraphemePhonemizer()
+    uni = UnicodeCodepointPhonemizer()
+
+    text = "olá, quem são vocês?"
+    lang = "pt"
+    print(raw.phonemize(text, lang))
+    print(grap.phonemize(text, lang))
+    print(uni.phonemize(text, lang))
+
+    print(raw.phonemize_string(text, lang))
+    print(grap.phonemize_string(text, lang))
+    print(uni.phonemize_string(text, lang))
+
+    print(raw.phonemize_to_list(text, lang))
+    print(grap.phonemize_to_list(text, lang))
+    print(uni.phonemize_to_list(text, lang))
