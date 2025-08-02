@@ -12,7 +12,8 @@ from multiprocessing import JoinableQueue, Process, Queue
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple, Any
 
-from phoonnx.config import PhonemeType, get_phonemizer, Phonemizer
+from phoonnx.config import PhonemeType, get_phonemizer, Alphabet
+from phoonnx.phonemizers import Phonemizer
 from phoonnx.phoneme_ids import (phonemes_to_ids, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN,
                                  DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN)
 from phoonnx_train.norm_audio import cache_norm_audio, make_silence_detector
@@ -277,20 +278,19 @@ def main() -> None:
     # Start the final map with the required special tokens
     final_phoneme_id_map = DEFAULT_SPECIAL_PHONEME_ID_MAP.copy()
 
+    # If using an IPA phonemizer, ensure all default IPA phonemes are included
+    if phonemizer.alphabet == Alphabet.IPA:
+        all_phonemes = set(DEFAULT_IPA_PHONEME_ID_MAP.keys())
+    else: # TODO - more default ids for other alphabets
+        all_phonemes = set()
+
     # Get a set of all unique phonemes from the dataset
-    all_dataset_phonemes = set()
     for utt in utterances:
         try:
-            phonemes_list =phonemizer.phonemize_to_list(casing(utt.text), args.language)
-            all_dataset_phonemes.update(phonemes_list)
+            phonemes_list = phonemizer.phonemize_to_list(casing(utt.text), args.language)
+            all_phonemes.update(phonemes_list)
         except Exception:
             _LOGGER.warning("Could not phonemize text for utterance: %s", utt.audio_path)
-
-    # If using an IPA phonemizer, ensure all default IPA phonemes are included
-    if hasattr(phonemizer, 'alphabet') and phonemizer.alphabet == "ipa":
-        all_phonemes = all_dataset_phonemes.union(DEFAULT_IPA_PHONEME_ID_MAP.keys())
-    else:
-        all_phonemes = all_dataset_phonemes
 
     # Append new phonemes, sorted, to the map
     # We filter out the special tokens that are already in the map
@@ -318,7 +318,7 @@ def main() -> None:
         "lang_code": args.language,
         "inference": {"noise_scale": 0.667, "length_scale": 1, "noise_w": 0.8},
         "phoneme_type": args.phoneme_type.value,
-        "phoneme_map": {},  # This can be populated if needed, but not required for VITS
+        "alphabet": phonemizer.alphabet,
         "phoneme_id_map": final_phoneme_id_map,
         "num_symbols": len(final_phoneme_id_map),
         "num_speakers": len(speaker_counts) if is_multispeaker else 1,

@@ -1,6 +1,6 @@
 from typing import Union
 
-from phoonnx.phonemizers.base import BasePhonemizer, RawPhonemes, GraphemePhonemizer, TextChunks, RawPhonemizedChunks
+from phoonnx.phonemizers.base import BasePhonemizer, UnicodeCodepointPhonemizer, RawPhonemes, GraphemePhonemizer, TextChunks, RawPhonemizedChunks
 from phoonnx.phonemizers.en import DeepPhonemizer, OpenPhonemizer, G2PEnPhonemizer
 from phoonnx.phonemizers.gl import CotoviaPhonemizer
 from phoonnx.phonemizers.vi import VIPhonemePhonemizer
@@ -17,6 +17,7 @@ from phoonnx.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, Misaki
 Phonemizer = Union[
     MisakiPhonemizer,
     ByT5Phonemizer,
+    UnicodeCodepointPhonemizer,
     CharsiuPhonemizer,
     EspeakPhonemizer,
     GruutPhonemizer,

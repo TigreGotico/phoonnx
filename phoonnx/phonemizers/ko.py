@@ -2,17 +2,20 @@
 
 from phoonnx.phonemizers.base import BasePhonemizer
 from phoonnx.thirdparty.hangul2ipa import hangul2ipa
+from phoonnx.config import Alphabet
 
 
 class G2PKPhonemizer(BasePhonemizer):
 
-    def __init__(self, descriptive=True, group_vowels=True, to_syl=True, ipa=True):
+    def __init__(self, descriptive=True, group_vowels=True, to_syl=True,
+                 alphabet=Alphabet.IPA):
+        assert alphabet in [Alphabet.IPA, Alphabet.HANGUL]
         from g2pk import G2p
         self.g2p = G2p()
         self.descriptive = descriptive
         self.group_vowels = group_vowels
         self.to_syl = to_syl
-        self.ipa = ipa
+        super().__init__(alphabet)
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
@@ -38,17 +41,18 @@ class G2PKPhonemizer(BasePhonemizer):
         p = self.g2p(text, descriptive=self.descriptive,
                      group_vowels=self.group_vowels,
                      to_syl=self.to_syl)
-        if self.ipa:
+        if self.alphabet == Alphabet.IPA:
             return hangul2ipa(p)
         return p
 
 
 class KoG2PPhonemizer(BasePhonemizer):
     """https://github.com/scarletcho/KoG2P"""
-    def __init__(self, ipa=True):
+    def __init__(self,   alphabet=Alphabet.IPA):
+        assert alphabet in [Alphabet.IPA, Alphabet.HANGUL]
         from phoonnx.thirdparty.kog2p import runKoG2P
         self.g2p = runKoG2P
-        self.ipa = ipa
+        super().__init__(alphabet)
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
@@ -72,15 +76,15 @@ class KoG2PPhonemizer(BasePhonemizer):
         """
         lang = self.get_lang(lang)
         p = self.g2p(text)
-        if self.ipa:
+        if self.alphabet == Alphabet.IPA:
             return hangul2ipa(p)
         return p
 
 
 if __name__ == "__main__":
 
-    pho = G2PKPhonemizer()
-    pho2 = KoG2PPhonemizer()
+    pho = G2PKPhonemizer(ipa=False)
+    pho2 = KoG2PPhonemizer(ipa=False)
     lang = "ko"
 
     text = "터미널에서 원하는 문자열을 함께 입력해 사용할 수 있습니다."

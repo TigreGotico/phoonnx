@@ -6,6 +6,7 @@ from typing import List, Tuple, Optional, Literal
 
 from langcodes import tag_distance
 from quebra_frases import sentence_tokenize
+from phoonnx.config import Alphabet
 
 # list of (substring, terminator, end_of_sentence) tuples.
 TextChunks = List[Tuple[str, str, bool]]
@@ -16,6 +17,9 @@ PhonemizedChunks = list[list[str]]
 
 
 class BasePhonemizer(metaclass=abc.ABCMeta):
+    def __init__(self, alphabet: Alphabet = Alphabet.UNICODE):
+        super().__init__()
+        self.alphabet = alphabet
 
     @abc.abstractmethod
     def phonemize_string(self, text: str, lang: str) -> str:
@@ -183,6 +187,7 @@ class UnicodeCodepointPhonemizer(BasePhonemizer):
 
     def __init__(self, form: Literal["NFC", "NFD", "NFKC", "NFKD"] = "NFD"):
         self.form = form
+        super().__init__(Alphabet.UNICODE)
 
     def phonemize_string(self, text: str, lang: str) -> str:
         # Phonemes = codepoints

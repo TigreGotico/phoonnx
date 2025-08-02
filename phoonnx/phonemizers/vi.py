@@ -1,4 +1,5 @@
 from phoonnx.phonemizers.base import BasePhonemizer
+from phoonnx.config import Alphabet
 
 
 class VIPhonemePhonemizer(BasePhonemizer):
@@ -6,6 +7,7 @@ class VIPhonemePhonemizer(BasePhonemizer):
     def __init__(self):
         from viphoneme import vi2IPA
         self.g2p = vi2IPA
+        super().__init__(Alphabet.IPA)
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:

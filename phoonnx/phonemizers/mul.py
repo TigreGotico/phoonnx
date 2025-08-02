@@ -8,7 +8,7 @@ from typing import List, Dict, Optional
 import numpy as np
 import onnxruntime
 import requests
-
+from phoonnx.config import Alphabet
 from phoonnx.phonemizers.base import BasePhonemizer
 
 
@@ -36,6 +36,7 @@ class ByT5Phonemizer(BasePhonemizer):
             onnx_model_path (str, optional): Path to the ONNX model file. If None, it will be downloaded.
             tokenizer_config (str, optional): Path to the tokenizer configuration JSON file. If None, it will be downloaded.
         """
+        super().__init__(Alphabet.IPA)
         # Define the local data path for models and configs
         data_path = os.path.expanduser("~/.local/share/byt5_phonemizer")
         os.makedirs(data_path, exist_ok=True)  # Ensure the directory exists
@@ -229,6 +230,9 @@ class CharsiuPhonemizer(ByT5Phonemizer):
                   'tam', 'tat', 'tha', 'tur', 'tuk', 'ukr', 'vie-n', 'vie-c', 'vie-s', 'wel-nw', 'wel-sw', 'ice', 'ang',
                   'gle', 'enm', 'syc', 'glg', 'sme', 'egy']
 
+    def __init__(self):
+        super().__init__(Alphabet.IPA)
+
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
         """
@@ -270,6 +274,9 @@ class EspeakPhonemizer(BasePhonemizer):
                     'ar', 'en-gb-x-gbcwmd', 'bs', 'qdb', 'sq', 'sr', 'tk', 'en-029', 'ht', 'ru-cl', 'af', 'pt-br',
                     'fr-ch', 'ka', 'en-gb-x-gbclan', 'ko', 'is', 'ca-nw', 'gn', 'kok', 'la', 'lb', 'am', 'kk', 'ku',
                     'kaa', 'jbo', 'eo', 'uz', 'nci', 'vi-vn-x-south', 'el', 'pl', 'grc', ]
+
+    def __init__(self):
+        super().__init__(Alphabet.IPA)
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
@@ -353,6 +360,9 @@ class GruutPhonemizer(BasePhonemizer):
     GRUUT_LANGS = ["en", "ar", "ca", "cs", "de", "es", "fa", "fr", "it",
                    "lb", "nl", "pt", "ru", "sv", "sw"]
 
+    def __init__(self):
+        super().__init__(Alphabet.IPA)
+
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
         """
@@ -421,6 +431,7 @@ class EpitranPhonemizer(BasePhonemizer):
                      'vie-Latn-no', 'nan-Latn-tl', 'zha-Latn', 'cjy-Latn', 'ava-Cyrl', 'som-Latn', 'kir-Arab']
 
     def __init__(self):
+        super().__init__(Alphabet.IPA)
         import epitran
         self.epitran = epitran
         self._epis: Dict[str, epitran.Epitran] = {}
@@ -457,6 +468,7 @@ class MisakiPhonemizer(BasePhonemizer):
     MISAKI_LANGS = ['en-US', 'en-GB', 'ko', 'ja', 'vi', 'zh']
 
     def __init__(self):
+        super().__init__(Alphabet.IPA)
         self.g2p_en = self.g2p_zh = self.g2p_ko = self.g2p_vi = self.g2p_ja = None
 
     @classmethod

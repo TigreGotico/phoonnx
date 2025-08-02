@@ -3,6 +3,7 @@ import os.path
 import requests
 
 from phoonnx.phonemizers.base import BasePhonemizer
+from phoonnx.config import Alphabet
 
 
 class PhonikudPhonemizer(BasePhonemizer):
@@ -24,6 +25,7 @@ class PhonikudPhonemizer(BasePhonemizer):
                 with open(model, "wb") as f:
                     f.write(data)
         self.phonikud = Phonikud(model) if diacritics else None
+        super().__init__(Alphabet.IPA)
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:

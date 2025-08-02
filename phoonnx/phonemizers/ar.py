@@ -1,8 +1,11 @@
 from phoonnx.phonemizers.base import BasePhonemizer
 from phoonnx.thirdparty.mantoq import g2p as mantoq
-
+from phoonnx.config import Alphabet
 
 class MantoqPhonemizer(BasePhonemizer):
+
+    def __init__(self):
+        super().__init__(Alphabet.IPA)
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
@@ -26,7 +29,7 @@ class MantoqPhonemizer(BasePhonemizer):
         """
         lang = self.get_lang(lang)
         normalized_text, phonemes = mantoq(text)
-        return " ".join(phonemes).replace("_+_", " ")
+        return "".join(phonemes).replace("_+_", " ")
 
 
 if __name__ == "__main__":

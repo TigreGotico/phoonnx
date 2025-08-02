@@ -1,13 +1,15 @@
 from phoonnx.phonemizers.base import BasePhonemizer
-
+from phoonnx.config import Alphabet
 
 
 class PersianPhonemizer(BasePhonemizer):
     """https://github.com/de-mh/persian_phonemizer"""
-    def __init__(self, ipa=True):
+    def __init__(self, alphabet=Alphabet.IPA):
         from persian_phonemizer import Phonemizer
-        output_format = "IPA" if ipa else 'eraab'
+        assert alphabet in [Alphabet.ERAAB, Alphabet.IPA]
+        output_format = "IPA" if alphabet == Alphabet.IPA else 'eraab'
         self.g2p = Phonemizer(output_format)
+        super().__init__(alphabet)
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:

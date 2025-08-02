@@ -5,7 +5,7 @@ from typing import Any, Mapping, Optional, Sequence
 from phoonnx.phoneme_ids import (load_phoneme_ids, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
-from phoonnx.phonemizers import Phonemizer
+
 
 DEFAULT_NOISE_SCALE = 0.667
 DEFAULT_LENGTH_SCALE = 1.0
@@ -16,6 +16,23 @@ try:
 except ImportError:
     import logging
     LOG = logging.getLogger(__name__)
+
+
+class Alphabet(str, Enum):
+    UNICODE = "unicode"
+    IPA = "ipa"
+    ARPA = "arpa" # en
+    HANGUL = "hangul" # ko
+    KANA = "kana" # ja
+    HIRA = "hira" # ja
+    HEPBURN = "hepburn" # ja romanization
+    KUNREI = "kunrei" # ja romanization
+    NIHON = "nihon" # ja romanization
+    PINYIN = "pinyin" # zh
+    ERAAB = "eraab" # fa
+    COTOVIA = "cotovia" # gl
+    HANZI = "hanzi" # zh
+
 
 
 class PhonemeType(str, Enum):
@@ -348,14 +365,14 @@ class SynthesisConfig:
     enable_phonetic_spellings: bool = True
 
 
-def get_phonemizer(phoneme_type: PhonemeType) -> Phonemizer:
+def get_phonemizer(phoneme_type: PhonemeType) -> 'Phonemizer':
     from phoonnx.phonemizers import (EpitranPhonemizer, EspeakPhonemizer, OpenPhonemizer, OpenJTaklPhonemizer,
                                      ByT5Phonemizer, CharsiuPhonemizer, DeepPhonemizer, PersianPhonemizer,
                                      G2pCPhonemizer, G2pMPhonemizer, G2PKPhonemizer, G2PEnPhonemizer,
                                      GruutPhonemizer, GraphemePhonemizer, MantoqPhonemizer, MisakiPhonemizer,
                                      KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
                                      CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer, XpinyinPhonemizer,
-                                     JiebaPhonemizer, RawPhonemes)
+                                     UnicodeCodepointPhonemizer, JiebaPhonemizer, RawPhonemes)
     if phoneme_type == PhonemeType.ESPEAK:
         phonemizer = EspeakPhonemizer()
     elif phoneme_type == PhonemeType.BYT5:
@@ -404,6 +421,8 @@ def get_phonemizer(phoneme_type: PhonemeType) -> Phonemizer:
         phonemizer = G2pMPhonemizer()
     elif phoneme_type == PhonemeType.COTOVIA:
         phonemizer = CotoviaPhonemizer()
+    elif phoneme_type == PhonemeType.UNICODE:
+        phonemizer = UnicodeCodepointPhonemizer()
     elif phoneme_type == PhonemeType.GRAPHEMES:
         phonemizer = GraphemePhonemizer()
     elif phoneme_type == PhonemeType.RAW:

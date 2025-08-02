@@ -4,6 +4,7 @@ import requests
 
 from phoonnx.thirdparty.arpa2ipa import arpa_to_ipa_lookup
 from phoonnx.phonemizers.base import BasePhonemizer
+from phoonnx.config import Alphabet
 
 
 class DeepPhonemizer(BasePhonemizer):
@@ -24,6 +25,11 @@ class DeepPhonemizer(BasePhonemizer):
         torch.serialization.add_safe_globals([dp.preprocessing.text.Preprocessor])
         torch.serialization.add_safe_globals([dp.preprocessing.text.LanguageTokenizer])
         torch.serialization.add_safe_globals([dp.preprocessing.text.SequenceTokenizer])
+
+        if "ipa" in model:
+            super().__init__(Alphabet.IPA)
+        else:
+            super().__init__(Alphabet.ARPA)
 
         if not os.path.isfile(model):
             if model in self.MODELS:
@@ -94,6 +100,7 @@ class OpenPhonemizer(BasePhonemizer):
         torch.serialization.add_safe_globals([dp.preprocessing.text.SequenceTokenizer])
 
         self.phonemizer = OpenPhonemizer()
+        super().__init__(Alphabet.IPA)
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
@@ -134,12 +141,14 @@ class G2PEnPhonemizer(BasePhonemizer):
     https://github.com/Kyubyong/g2p
     """
 
-    def __init__(self):
+    def __init__(self, alphabet=Alphabet.IPA):
+        assert alphabet in [Alphabet.IPA, Alphabet.ARPA]
         import nltk
         nltk.download('averaged_perceptron_tagger_eng')
         nltk.download('cmudict')
         from g2p_en import G2p
         self.g2p = G2p()
+        super().__init__(alphabet)
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
@@ -172,7 +181,9 @@ class G2PEnPhonemizer(BasePhonemizer):
             str: A normalized string of graphemes.
         """
         lang = self.get_lang(lang)
-        # NOTE: this model returns ARPA not IPA, need to map phonemes
+        # NOTE: this model returns ARPA not IPA, may need to map phonemes
+        if self.alphabet == Alphabet.ARPA:
+            return self.g2p(text)
         return "".join([arpa_to_ipa_lookup.get(pho, pho) for pho in self.g2p(text)])
 
 

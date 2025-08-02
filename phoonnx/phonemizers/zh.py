@@ -4,6 +4,7 @@ from typing import List
 
 from phoonnx.phonemizers.base import BasePhonemizer
 from phoonnx.thirdparty.zh_num import num2str
+from phoonnx.config import Alphabet
 
 
 class JiebaPhonemizer(BasePhonemizer):
@@ -11,6 +12,8 @@ class JiebaPhonemizer(BasePhonemizer):
     A non-phonemizing class that simply uses Jieba to segment Chinese text
     into words with spaces for token separation.
     """
+    def __init__(self):
+        super().__init__(Alphabet.HANZI)
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
@@ -53,7 +56,7 @@ class BaseChinesePinyinPhonemizer(BasePhonemizer):
     Supports optional IPA conversion and segmentation via Jieba.
     """
 
-    def __init__(self, ipa: bool = False, jieba: bool = True, retone=True):
+    def __init__(self, alphabet=Alphabet.PINYIN, jieba: bool = True, retone=True):
         """
         Initializes the phonemizer.
 
@@ -61,7 +64,8 @@ class BaseChinesePinyinPhonemizer(BasePhonemizer):
             ipa (bool): Whether to convert pinyin to IPA.
             jieba (bool): Whether to segment text using Jieba before phonemization.
         """
-        self.ipa = ipa
+        assert alphabet in [Alphabet.PINYIN, Alphabet.IPA]
+        super().__init__(alphabet)
         self.jieba = jieba
         self.retone = retone
         from pinyin_to_ipa import pinyin_to_ipa
@@ -121,17 +125,7 @@ class BaseChinesePinyinPhonemizer(BasePhonemizer):
             ipa_phones.append(pho_str)
         return ipa_phones
 
-    def phonemize_string(self, text: str, lang: str = "zh") -> str:
-        """
-        Converts input text to a space-separated phoneme string.
-
-        Args:
-            text (str): The input sentence.
-            lang (str): Language code (must be "zh").
-
-        Returns:
-            str: Space-separated phoneme string.
-        """
+    def phonemize_to_list(self, text: str, lang: str) -> List[str]:
         phones: List[str] = []
         lang = self.get_lang(lang)
         if self.jieba:
@@ -143,8 +137,22 @@ class BaseChinesePinyinPhonemizer(BasePhonemizer):
                 phones += [" "]  # keep jieba whitespace
         else:
             phones = self.get_pinyin(text)
-        if self.ipa:
+        if self.alphabet == Alphabet.IPA:
             phones = self.to_ipa(phones)
+        return phones
+
+    def phonemize_string(self, text: str, lang: str = "zh") -> str:
+        """
+        Converts input text to a space-separated phoneme string.
+
+        Args:
+            text (str): The input sentence.
+            lang (str): Language code (must be "zh").
+
+        Returns:
+            str: Space-separated phoneme string.
+        """
+        phones: List[str] = self.phonemize_to_list(text, lang)
         return "".join(phones)
 
     @abc.abstractmethod
@@ -167,10 +175,10 @@ class G2pCPhonemizer(BaseChinesePinyinPhonemizer):
     https://github.com/Kyubyong/g2pC
     """
 
-    def __init__(self, ipa: bool = False, jieba: bool = True):
+    def __init__(self, alphabet=Alphabet.PINYIN, jieba: bool = True):
         from g2pc import G2pC
         self.g2p = G2pC()
-        super().__init__(ipa, jieba)
+        super().__init__(alphabet, jieba)
 
     def get_pinyin(self, text: str) -> List[str]:
         """
@@ -182,7 +190,6 @@ class G2pCPhonemizer(BaseChinesePinyinPhonemizer):
         Returns:
             List[str]: Pinyin tokens.
         """
-        print(self.g2p(text))
         return [a[3] for a in self.g2p(text)]
 
 
@@ -192,12 +199,12 @@ class G2pMPhonemizer(BaseChinesePinyinPhonemizer):
     https://github.com/kakaobrain/g2pm
     """
 
-    def __init__(self, tone: bool = True, char_split: bool = False, ipa: bool = False, jieba: bool = True):
+    def __init__(self, alphabet=Alphabet.PINYIN, tone: bool = True, char_split: bool = False, jieba: bool = True):
         from g2pM import G2pM
         self.g2p = G2pM()
         self.tone = tone
         self.char_split = char_split
-        super().__init__(ipa, jieba)
+        super().__init__(alphabet, jieba)
 
     def get_pinyin(self, text: str) -> List[str]:
         """
@@ -217,11 +224,11 @@ class XpinyinPhonemizer(BaseChinesePinyinPhonemizer):
     Phonemizer using xpinyin (basic pinyin generator with optional tone marks).
     """
 
-    def __init__(self, tone_marks: str = "numbers", ipa: bool = False, jieba: bool = True):
+    def __init__(self, alphabet=Alphabet.PINYIN, tone_marks: str = "numbers", jieba: bool = True):
         from xpinyin import Pinyin
         self.g2p = Pinyin()
         self.tone_marks = tone_marks
-        super().__init__(ipa, jieba)
+        super().__init__(alphabet, jieba)
 
     def get_pinyin(self, text: str) -> List[str]:
         """
@@ -241,10 +248,10 @@ class PypinyinPhonemizer(BaseChinesePinyinPhonemizer):
     Phonemizer using pypinyin (comprehensive and accurate pinyin library).
     """
 
-    def __init__(self, ipa: bool = False, jieba: bool = True):
+    def __init__(self, alphabet=Alphabet.PINYIN, jieba: bool = True):
         from pypinyin import pinyin
         self.g2p = pinyin
-        super().__init__(ipa, jieba)
+        super().__init__(alphabet, jieba)
 
     def get_pinyin(self, text: str) -> List[str]:
         """
@@ -264,10 +271,10 @@ if __name__ == "__main__":
     text = "然而，他红了20年以后，他竟退出了大家的视线。"
 
     pho = JiebaPhonemizer()
-    pho1 = G2pCPhonemizer(ipa=True)
-    pho2 = G2pMPhonemizer(ipa=True)
-    pho3 = XpinyinPhonemizer(ipa=True)
-    pho4 = PypinyinPhonemizer(ipa=True)
+    #pho1 = G2pCPhonemizer(ipa=True)
+    pho2 = G2pMPhonemizer()
+    pho3 = XpinyinPhonemizer()
+    pho4 = PypinyinPhonemizer()
 
     from phoonnx.phonemizers.mul import MisakiPhonemizer
 
@@ -275,22 +282,22 @@ if __name__ == "__main__":
 
     print(f"\n--- Getting phonemes for '{text}' ---")
 
-    phones = pho5.phonemize(text, lang)
+    phones = pho5.phonemize_to_list(text, lang)
     print(f" Misaki: {phones}")
 
-    phones = pho1.phonemize(text, lang)
-    print(f" G2pC: {phones}")
+    #phones = pho1.phonemize(text, lang)
+    #print(f" G2pC: {phones}")
 
-    phones = pho2.phonemize(text, lang)
+    phones = pho2.phonemize_to_list(text, lang)
     print(f" G2pM: {phones}")
 
-    phones = pho3.phonemize(text, lang)
+    phones = pho3.phonemize_to_list(text, lang)
     print(f" Xpinyin: {phones}")
 
-    phones = pho4.phonemize(text, lang)
+    phones = pho4.phonemize_to_list(text, lang)
     print(f" Pypinyin: {phones}")
 
-    phones = pho.phonemize(text, lang)
+    phones = pho.phonemize_to_list(text, lang)
     print(f" Jieba: {phones}")
 
     #
