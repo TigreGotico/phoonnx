@@ -257,9 +257,9 @@ UNITS = {
     "en": {
         "€": "euros",
         "%": "per cent",
-        "ºC": "degrees celsius",
-        "ºF": "degrees fahrenheit",
-        "ºK": "degrees kelvin",
+        "°C": "degrees celsius",
+        "°F": "degrees fahrenheit",
+        "°K": "degrees kelvin",
         "°": "degrees",
         "$": "dollars",
         "£": "pounds",
@@ -287,9 +287,9 @@ UNITS = {
     "pt": {
         "€": "euros",
         "%": "por cento",
-        "ºC": "graus celsius",
-        "ºF": "graus fahrenheit",
-        "ºK": "graus kelvin",
+        "°C": "graus celsius",
+        "°F": "graus fahrenheit",
+        "°K": "graus kelvin",
         "°": "graus",
         "$": "dólares",
         "£": "libras",
@@ -308,9 +308,9 @@ UNITS = {
     "es": {
         "€": "euros",
         "%": "por ciento",
-        "ºC": "grados celsius",
-        "ºF": "grados fahrenheit",
-        "ºK": "grados kelvin",
+        "°C": "grados celsius",
+        "°F": "grados fahrenheit",
+        "°K": "grados kelvin",
         "°": "grados",
         "$": "dólares",
         "£": "libras",
@@ -325,9 +325,9 @@ UNITS = {
     "fr": {
         "€": "euros",
         "%": "pour cent",
-        "ºC": "degrés celsius",
-        "ºF": "degrés fahrenheit",
-        "ºK": "degrés kelvin",
+        "°C": "degrés celsius",
+        "°F": "degrés fahrenheit",
+        "°K": "degrés kelvin",
         "°": "degrés",
         "$": "dollars",
         "£": "livres",
@@ -342,9 +342,9 @@ UNITS = {
     "de": {
         "€": "Euro",
         "%": "Prozent",
-        "ºC": "Grad Celsius",
-        "ºF": "Grad Fahrenheit",
-        "ºK": "Grad Kelvin",
+        "°C": "Grad Celsius",
+        "°F": "Grad Fahrenheit",
+        "°K": "Grad Kelvin",
         "°": "Grad",
         "$": "Dollar",
         "£": "Pfund",
@@ -548,6 +548,7 @@ def _normalize_units(text: str, full_lang: str) -> str:
     This function handles symbolic and alphanumeric units separately
     to avoid issues with word boundaries.
     """
+    text = text.replace("º", "°") # these characters look the same... but...
     lang_code = full_lang.split("-")[0]
     if lang_code in UNITS:
         # Determine number separators for the language
