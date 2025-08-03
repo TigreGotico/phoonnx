@@ -658,9 +658,6 @@ def normalize(text: str, lang: str) -> str:
     normalized_words = [_normalize_word(word, full_lang, rbnf_engine) for word in words]
     dialog = " ".join(normalized_words)
 
-    # uncomment for easy debug
-    #if any(s in dialog for s in string.digits):
-    #    print(f"normalized dialog: '{text}' -> '{dialog}'")
     return dialog
 
 
