@@ -70,7 +70,7 @@ setup(
     install_requires=required('requirements/requirements.txt'),
     extras_require={
         x.split(".")[0]: required(f'requirements/{x}')
-        for x in os.listdir(f"{os.path.dirname(__file__)}/requirements")
+        for x in os.listdir(f"{BASEDIR}/requirements")
         if x.endswith(".txt") and x != "requirements.txt"
 
     },
