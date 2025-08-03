@@ -12,6 +12,7 @@ from multiprocessing import JoinableQueue, Process, Queue
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple, Any, Set, Union
 
+from phoonnx.util import normalize
 from phoonnx.config import PhonemeType, get_phonemizer, Alphabet
 from phoonnx.phonemizers import Phonemizer
 from phoonnx.phoneme_ids import (phonemes_to_ids, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN,
@@ -153,7 +154,8 @@ def phonemize_worker(
             for utt in utterance_batch:
                 try:
                     # Phonemize the text
-                    utt.phonemes = phonemizer.phonemize_to_list(casing(utt.text), args.language)
+                    norm_utt = casing(normalize(utt.text, args.language))
+                    utt.phonemes = phonemizer.phonemize_to_list(norm_utt, args.language)
 
                     # Process audio if not skipping
                     if not args.skip_audio:

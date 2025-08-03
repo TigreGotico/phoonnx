@@ -1,7 +1,7 @@
-from phoonnx.thirdparty.mantoq.lib.buck import symbols
-from phoonnx.thirdparty.mantoq.lib.buck.tokenization import (arabic_to_phonemes, phon_to_id_,
+from phoonnx.thirdparty.mantoq.buck import symbols
+from phoonnx.thirdparty.mantoq.buck.tokenization import (arabic_to_phonemes, phon_to_id_,
                                     phonemes_to_tokens, simplify_phonemes)
-from phoonnx.thirdparty.mantoq.lib.buck.tokenization import tokens_to_ids as _tokens_to_id
+from phoonnx.thirdparty.mantoq.buck.tokenization import tokens_to_ids as _tokens_to_id
 from phoonnx.thirdparty.mantoq.num2words import num2words
 import warnings
 from phoonnx.thirdparty.tashkeel import TashkeelDiacritizer
