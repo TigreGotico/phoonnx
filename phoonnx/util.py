@@ -595,6 +595,8 @@ def _normalize_units(text: str, full_lang: str) -> str:
                 # Remove thousands separator and replace decimal separator for parsing
                 if thousands_separator in number and decimal_separator in number:
                     number = number.replace(thousands_separator, "").replace(decimal_separator, ".")
+                elif decimal_separator != ".":
+                    number = number.replace(decimal_separator, ".")
                 unit_symbol = match.group(2)
                 unit_word = alphanumeric_units[unit_symbol]
                 return f"{pronounce_number(float(number) if '.' in number else int(number), full_lang)} {unit_word}"
