@@ -4,42 +4,12 @@ from datetime import date
 import sys
 import os
 
-# Add the parent directory to the path to import the module
-sys.path.insert(0, os.path.abspath('.'))
-
-# Import the functions from the util module - adjust path based on actual structure
-try:
-    from phoonnx.util import (
-        normalize, _get_number_separators, _normalize_number_word,
-        _normalize_dates_and_times, _normalize_word_hyphen_digit,
-        _normalize_units, _normalize_word, is_fraction,
-        pronounce_date, pronounce_time, CONTRACTIONS, TITLES, UNITS
-    )
-except ImportError:
-    # Fallback import path in case the module is structured differently
-    try:
-        from ovos_tts_server.util import (
-            normalize, _get_number_separators, _normalize_number_word,
-            _normalize_dates_and_times, _normalize_word_hyphen_digit,
-            _normalize_units, _normalize_word, is_fraction,
-            pronounce_date, pronounce_time, CONTRACTIONS, TITLES, UNITS
-        )
-    except ImportError:
-        # If neither works, we'll mock the imports for testing structure
-        normalize = MagicMock()
-        _get_number_separators = MagicMock()
-        _normalize_number_word = MagicMock()
-        _normalize_dates_and_times = MagicMock()
-        _normalize_word_hyphen_digit = MagicMock()
-        _normalize_units = MagicMock()
-        _normalize_word = MagicMock()
-        is_fraction = MagicMock()
-        pronounce_date = MagicMock()
-        pronounce_time = MagicMock()
-        CONTRACTIONS = {"en": {"can't": "can not", "I'm": "I am"}}
-        TITLES = {"en": {"Dr.": "Doctor", "Prof.": "Professor"}}
-        UNITS = {"en": {"°C": "degrees celsius", "kg": "kilograms"}}
-
+from phoonnx.util import (
+    normalize, _get_number_separators, _normalize_number_word,
+    _normalize_dates_and_times, _normalize_word_hyphen_digit,
+    _normalize_units, _normalize_word, is_fraction,
+    pronounce_date, pronounce_time, CONTRACTIONS, TITLES, UNITS
+)
 
 class TestUtilFunctions(unittest.TestCase):
     """Comprehensive test suite for util.py functions."""
