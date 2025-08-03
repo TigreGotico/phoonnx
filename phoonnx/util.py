@@ -11,7 +11,6 @@ LOG = logging.getLogger("normalize")
 # This list is very comprehensive for English.
 CONTRACTIONS = {
     "en": {
-        "%": "per cent",
         "I'd": "I would",
         "I'll": "I will",
         "I'm": "I am",
@@ -317,7 +316,7 @@ UNITS = {
         "kg": "kilogramos",
         "g": "gramos",
         "L": "litros",
-        "mL": "mililitros"
+        "mL": "millilitros"
     },
     "fr": {
         "€": "euros",
@@ -378,17 +377,23 @@ def normalize(text: str, lang: str) -> str:
     except:  # Does not support the language
         rbnf_engine = None
 
-    # Step 1: Pre-process with regex to add spaces and expand units
-    # This loop handles cases like "10kg" and "25ºC" by splitting the number and unit
-    # and then replacing the unit with its full word equivalent.
+    # Step 1: Pre-process with regex to handle English am/pm times
+    if lang == "en":
+        # Fix for DeprecationWarning by moving (?i) flag to the start of the pattern.
+        dialog = re.sub(r"(?i)(\d+)(am|pm)", r"\1 \2", dialog)
+        # Handle the pronunciation for TTS
+        dialog = dialog.replace("am", "A M")
+        dialog = dialog.replace("pm", "P M")
+
+    # Step 2: Pre-process with regex to add spaces and expand units
     if lang in UNITS:
-        # Create a list of all units to use in the regex pattern
+        # Create a list of all units to use in the regex pattern, sorted by length descending
         sorted_units = sorted(UNITS[lang].keys(), key=len, reverse=True)
         unit_pattern = "|".join(re.escape(unit) for unit in sorted_units)
 
-        # Match an integer or float followed by a unit, with optional whitespace
-        # The \b ensures the unit is at a word boundary, preventing partial word matches
-        pattern = re.compile(r"(\d+\.?\d*)\s*(" + unit_pattern + r")", re.IGNORECASE)
+        # Use a negative lookahead (?!\w) instead of a word boundary (\b)
+        # to allow for more flexible unit matching without capturing parts of other words.
+        pattern = re.compile(r"(\d+\.?\d*)\s*(" + unit_pattern + r")(?!\w)", re.IGNORECASE)
 
         # We need a function to handle the replacement dynamically
         def replace_unit(match):
@@ -399,25 +404,35 @@ def normalize(text: str, lang: str) -> str:
 
         dialog = pattern.sub(replace_unit, dialog)
 
+    # Step 3: Handle dates and times
+    # A more robust implementation would use a ovos-date-parser
+    # to parse and format dates and times for natural language pronunciation.
+    # For example, "03/08/2025" could become "August third, twenty twenty-five".
+    #
+    # TODO: Add more general date and time normalization logic here.
+
     words = dialog.split()
     normalized_words = []
     for word in words:
-        # Step 2: Expand contractions
+        # Step 4: Expand contractions
         if word in CONTRACTIONS.get(lang, {}):
             normalized_words.append(CONTRACTIONS[lang][word])
             continue
 
-        # Step 3: Expand titles
+        # Step 5: Expand titles
         if word in TITLES.get(lang, {}):
             normalized_words.append(TITLES[lang][word])
             continue
 
-        # Step 4: Pronounce numbers and fractions
+        # Step 6: Pronounce numbers and fractions
         if is_numeric(word):
             try:
                 num = float(word) if "." in word else int(word)
                 normalized_words.append(pronounce_number(num, lang=full_lang))
             except Exception as e:
+                # The ovos-number-parser library may raise an error for some languages/numbers.
+                # This could be due to a missing language pack or a bug in the library.
+                # We will log the error and fall back to the original word.
                 LOG.error(f"ovos-number-parser failed to pronounce number: {word} - ({e})")
                 normalized_words.append(word)  # Fallback to original word
 
@@ -426,10 +441,12 @@ def normalize(text: str, lang: str) -> str:
                 # Handle fractions
                 normalized_words.append(pronounce_fraction(word, full_lang))
             except Exception as e:
+                # The ovos-number-parser library may raise an error for some languages/fractions.
+                # We will log the error and fall back to the original word.
                 LOG.error(f"ovos-number-parser failed to pronounce number: {word} - ({e})")
                 normalized_words.append(word)  # Fallback to original word
 
-        # Step 5: Fallback for digits (handles single digits not caught by other rules)
+        # Step 7: Fallback for digits (handles single digits not caught by other rules)
         elif rbnf_engine and word.isdigit():
             try:
                 normalized_words.append(rbnf_engine.format_number(word, FormatPurpose.CARDINAL).text)
@@ -462,3 +479,12 @@ if __name__ == "__main__":
     # Example with number attached to a unit
     print(f"English attached unit: {normalize('The box weighs 10kg', 'en')}")
     print(f"Portuguese attached unit: {normalize('Ele tem 10m de altura', 'pt')}")
+    # Example demonstrating the fix for your reported bug
+    print(f"Spanish without overlapping: {normalize('Los grados centígrados', 'es')}")
+    # Example demonstrating the fix for your reported bug (incorrect input)
+    print(f"Spanish incorrect input: {normalize('La temperatura es 25 gradosC', 'es')}")
+    # Example demonstrating the fix for the Portuguese comma issue
+    print(f"Portuguese with punctuation: {normalize('12345€, 5m e 10kg', 'pt')}")
+    # New examples for am/pm
+    print(f"English AM time: {normalize('The meeting is at 10am', 'en')}")
+    print(f"English PM time: {normalize('The party is at 7pm', 'en')}")
