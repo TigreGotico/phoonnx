@@ -7,6 +7,7 @@ from typing import List, Tuple, Optional, Literal
 from langcodes import tag_distance
 from quebra_frases import sentence_tokenize
 from phoonnx.config import Alphabet
+from phoonnx.util import normalize
 
 # list of (substring, terminator, end_of_sentence) tuples.
 TextChunks = List[Tuple[str, str, bool]]
@@ -32,8 +33,9 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
         if not text:
             return [('', '', True)]
         results: RawPhonemizedChunks = []
+        text = normalize(text, lang)
         for chunk, punct, eos in self.chunk_text(text):
-            phoneme_str = self.phonemize_string(chunk, lang)
+            phoneme_str = self.phonemize_string(self.remove_punctuation(chunk), lang)
             results += [(phoneme_str, punct, True)]
         return self._process_phones(results)
 

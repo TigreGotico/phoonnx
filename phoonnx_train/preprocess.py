@@ -10,13 +10,14 @@ from collections import Counter
 from dataclasses import dataclass
 from multiprocessing import JoinableQueue, Process, Queue
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple, Any
+from typing import Dict, Iterable, List, Optional, Tuple, Any, Set, Union
 
 from phoonnx.config import PhonemeType, get_phonemizer, Alphabet
 from phoonnx.phonemizers import Phonemizer
 from phoonnx.phoneme_ids import (phonemes_to_ids, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN,
                                  DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN)
 from phoonnx_train.norm_audio import cache_norm_audio, make_silence_detector
+from tqdm import tqdm
 
 _VERSION = "0.0.0"
 _LOGGER = logging.getLogger("preprocess")
@@ -88,7 +89,9 @@ def ljspeech_dataset(args: argparse.Namespace) -> Iterable[Utterance]:
     with open(metadata_path, "r", encoding="utf-8") as csv_file:
         reader = csv.reader(csv_file, delimiter="|")
         for row in reader:
-            assert len(row) >= 2, "Not enough columns in metadata row"
+            if len(row) < 2:
+                _LOGGER.warning(f"Skipping malformed row: {row}")
+                continue
 
             filename: str = row[0]
             text: str = row[-1]
@@ -131,25 +134,26 @@ def phonemize_worker(
         result_queue: Queue,
         phonemizer: Phonemizer,
 ):
-    """Worker process for phonemization and audio processing."""
+    """
+    Worker process for phonemization and audio processing.
+    Returns the utterance and the unique phonemes found in its batch.
+    """
     try:
         casing = get_text_casing(args.text_casing)
         silence_detector = make_silence_detector()
 
         while True:
             # Get a batch of utterances to process
-            utterance_batch = task_queue.get()
+            utterance_batch: Union[List[Utterance], None] = task_queue.get()
             if utterance_batch is None:
                 # Signal to exit
                 task_queue.task_done()
                 break
 
-            for utt, final_phoneme_id_map in utterance_batch:
+            for utt in utterance_batch:
                 try:
                     # Phonemize the text
                     utt.phonemes = phonemizer.phonemize_to_list(casing(utt.text), args.language)
-                    # Apply phoneme IDs
-                    utt.phoneme_ids = phonemes_to_ids(utt.phonemes, id_map=final_phoneme_id_map)
 
                     # Process audio if not skipping
                     if not args.skip_audio:
@@ -160,10 +164,11 @@ def phonemize_worker(
                             args.sample_rate,
                         )
 
-                    result_queue.put(utt)
+                    # Put the processed utterance and its phonemes into the result queue
+                    result_queue.put((utt, set(utt.phonemes)))
                 except Exception:
                     _LOGGER.exception("Failed to process utterance: %s", utt.audio_path)
-                    result_queue.put(None)
+                    result_queue.put((None, set()))
 
             task_queue.task_done()
 
@@ -175,7 +180,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Preprocess a TTS dataset for training a VITS-style model."
     )
-    # Arguments... (same as original script)
     parser.add_argument(
         "--input-dir", required=True, help="Directory with audio dataset"
     )
@@ -204,6 +208,17 @@ def main() -> None:
         choices=list(PhonemeType),
         default=PhonemeType.ESPEAK,
         help="Type of phonemes to use (default: espeak)",
+    )
+    parser.add_argument(
+        "--alphabet",
+        choices=list(Alphabet),
+        default=Alphabet.IPA,
+        help="Casing applied to utterance text",
+    )
+    parser.add_argument(
+        "--phonemizer-model",
+        default="",
+        help="phonemizer model, if applicable",
     )
     parser.add_argument(
         "--text-casing",
@@ -270,30 +285,64 @@ def main() -> None:
     else:
         _LOGGER.info("Single speaker dataset")
 
-    # --- Pass 1: Phonemize all text to build the complete phoneme map ---
-    _LOGGER.info("Pass 1: Building a complete phoneme map...")
-    phonemizer = get_phonemizer(args.phoneme_type)
-    casing = get_text_casing(args.text_casing)
+    # --- Single Pass: Process audio/phonemes and collect results ---
+    # Set up multiprocessing
+    args.max_workers = args.max_workers if args.max_workers is not None and args.max_workers > 0 else os.cpu_count()
+    _LOGGER.info("Starting single pass processing with %d workers...", args.max_workers)
 
-    # Start the final map with the required special tokens
+    # Initialize the phonemizer only once in the main process
+    phonemizer = get_phonemizer(args.phoneme_type, args.alphabet, args.phonemizer_model)
+
+    batch_size = max(1, int(num_utterances / (args.max_workers * 2)))
+
+    task_queue: "Queue[Optional[List[Utterance]]]" = JoinableQueue()
+    # The result queue will hold tuples of (Utterance, set(phonemes))
+    result_queue: "Queue[Optional[Tuple[Utterance, Set[str]]]]" = Queue()
+
+    # Start workers
+    processes = [
+        Process(
+            target=phonemize_worker,
+            args=(args, task_queue, result_queue, phonemizer)
+        )
+        for _ in range(args.max_workers)
+    ]
+
+    for proc in processes:
+        proc.start()
+
+    # Populate the task queue with batches
+    task_count = 0
+    for utt_batch in batched(utterances, batch_size):
+        task_queue.put(utt_batch)
+        task_count += len(utt_batch)
+
+    # Signal workers to stop
+    for _ in range(args.max_workers):
+        task_queue.put(None)
+
+    # Collect results from the queue with a progress bar
+    processed_utterances: List[Utterance] = []
+    all_phonemes: Set[str] = set()
+    for _ in tqdm(range(task_count), desc="Processing utterances"):
+        utt, unique_phonemes = result_queue.get()
+        if utt is not None:
+            processed_utterances.append(utt)
+            all_phonemes.update(unique_phonemes)
+
+    # Wait for workers to finish
+    task_queue.join()
+    for proc in processes:
+        proc.join()
+
+    # --- Build the final phoneme map from the collected phonemes ---
+    _LOGGER.info("Building a complete phoneme map from collected phonemes...")
+
     final_phoneme_id_map = DEFAULT_SPECIAL_PHONEME_ID_MAP.copy()
-
-    # If using an IPA phonemizer, ensure all default IPA phonemes are included
     if phonemizer.alphabet == Alphabet.IPA:
-        all_phonemes = set(DEFAULT_IPA_PHONEME_ID_MAP.keys())
-    else: # TODO - more default ids for other alphabets
-        all_phonemes = set()
+        all_phonemes.update(DEFAULT_IPA_PHONEME_ID_MAP.keys())
 
-    # Get a set of all unique phonemes from the dataset
-    for utt in utterances:
-        try:
-            phonemes_list = phonemizer.phonemize_to_list(casing(utt.text), args.language)
-            all_phonemes.update(phonemes_list)
-        except Exception:
-            _LOGGER.warning("Could not phonemize text for utterance: %s", utt.audio_path)
-
-    # Append new phonemes, sorted, to the map
-    # We filter out the special tokens that are already in the map
+    # Filter out special tokens that are already in the map
     existing_keys = set(final_phoneme_id_map.keys())
     new_phonemes = sorted([p for p in all_phonemes if p not in existing_keys])
 
@@ -317,8 +366,9 @@ def main() -> None:
         },
         "lang_code": args.language,
         "inference": {"noise_scale": 0.667, "length_scale": 1, "noise_w": 0.8},
+        "alphabet": phonemizer.alphabet.value,
         "phoneme_type": args.phoneme_type.value,
-        "alphabet": phonemizer.alphabet,
+        "phonemizer_model": args.phonemizer_model,
         "phoneme_id_map": final_phoneme_id_map,
         "num_symbols": len(final_phoneme_id_map),
         "num_speakers": len(speaker_counts) if is_multispeaker else 1,
@@ -329,57 +379,16 @@ def main() -> None:
     with open(args.output_dir / "config.json", "w", encoding="utf-8") as config_file:
         json.dump(config, config_file, ensure_ascii=False, indent=2)
 
-    # --- Pass 2: Process audio and write dataset.jsonl ---
-    _LOGGER.info("Pass 2: Processing audio and writing dataset.jsonl...")
-
-    # Set up multiprocessing
-    args.max_workers = args.max_workers if args.max_workers is not None and args.max_workers > 0 else os.cpu_count()
-    batch_size = max(1, int(num_utterances / (args.max_workers * 2)))
-
-    task_queue: "Queue[Optional[List[Tuple[Utterance, Dict[str, int]]]]]" = JoinableQueue()
-    result_queue: "Queue[Optional[Utterance]]" = Queue()
-
-    # Start workers
-    processes = [
-        Process(
-            target=phonemize_worker,
-            args=(args, task_queue, result_queue, phonemizer)
-        )
-        for _ in range(args.max_workers)
-    ]
-
-    for proc in processes:
-        proc.start()
-
-    # Populate the task queue with batches
-    task_count = 0
-    for utt_batch in batched(utterances, batch_size):
-        # We need to pass the final_phoneme_id_map to the workers
-        task_queue.put([(u, final_phoneme_id_map) for u in utt_batch])
-        task_count += len(utt_batch)
-
-    # Signal workers to stop
-    for _ in range(args.max_workers):
-        task_queue.put(None)
-
-    processed_utterances = []
-    # Collect results from the queue
-    for _ in range(task_count):
-        utt = result_queue.get()
-        if utt is not None:
-            processed_utterances.append(utt)
-
-    # Wait for workers to finish
-    task_queue.join()
-    for proc in processes:
-        proc.join()
-
-    # Write the final dataset.jsonl
+    # --- Apply final phoneme IDs and write dataset.jsonl ---
     _LOGGER.info("Writing dataset.jsonl...")
     with open(args.output_dir / "dataset.jsonl", "w", encoding="utf-8") as dataset_file:
         for utt in processed_utterances:
             if utt.speaker is not None:
                 utt.speaker_id = speaker_ids[utt.speaker]
+
+            # Apply the final phoneme ID map to each utterance
+            if utt.phonemes:
+                utt.phoneme_ids = phonemes_to_ids(utt.phonemes, id_map=final_phoneme_id_map)
 
             json.dump(
                 utt.asdict(),

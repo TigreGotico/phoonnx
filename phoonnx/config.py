@@ -93,6 +93,11 @@ class VoiceConfig:
     phoneme_type: PhonemeType
     """espeak, byt5, text, cotovia, or graphemes."""
 
+    alphabet: Optional[Alphabet]
+
+    phonemizer_model: Optional[str]
+    """for phonemizers that allow changing base model """
+
     speaker_id_map: Mapping[str, int] = field(default_factory=dict)
     """Speaker -> id"""
 
@@ -215,6 +220,7 @@ class VoiceConfig:
         lang_code = lang_code or config.get("lang_code")
         phoneme_type_str = phoneme_type_str or config.get("phoneme_type")
         phoneme_id_map = config.get("phoneme_id_map")
+        alphabet = config.get("alphabet")
 
         if phonemes_txt:
             if phonemes_txt.endswith(".txt"):
@@ -232,6 +238,9 @@ class VoiceConfig:
             phoneme_type_str = config.get("phoneme_type", PhonemeType.ESPEAK.value)
             if phoneme_type_str == "text":
                 phoneme_type_str = PhonemeType.UNICODE.value
+                alphabet = Alphabet.UNICODE
+            else:
+                alphabet = Alphabet.IPA
 
             # not configurable in piper
             config["pad"] =  DEFAULT_PAD_TOKEN
@@ -254,14 +263,19 @@ class VoiceConfig:
                 # Mimic3 "symbols" models are grapheme models
                 # symbol map comes from phonemes_txt
                 phoneme_type_str = PhonemeType.GRAPHEMES.value
+                alphabet = Alphabet.UNICODE
+            else:
+                alphabet = Alphabet.IPA
 
         # check if model was trained with Coqui
         # NOTE: cotovia is included here
         elif VoiceConfig.is_coqui_vits(config):
             if VoiceConfig.is_cotovia(config):
                 phoneme_type_str = PhonemeType.COTOVIA.value
+                alphabet = Alphabet.COTOVIA
             else:
                 phoneme_type_str = PhonemeType.GRAPHEMES.value
+                alphabet = Alphabet.UNICODE
 
             # NOTE: lang code usually not provided and often wrong :(
             ds = config.get("datasets", [])
@@ -322,6 +336,8 @@ class VoiceConfig:
             length_scale=inference.get("length_scale", DEFAULT_LENGTH_SCALE),
             noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
             lang_code=lang_code,
+            alphabet=alphabet,
+            phonemizer_model=config.get("phonemizer_model"),
             phoneme_id_map=phoneme_id_map,
             phoneme_type=phoneme_type,
             speaker_id_map=config.get("speaker_id_map", {}),
@@ -365,7 +381,9 @@ class SynthesisConfig:
     enable_phonetic_spellings: bool = True
 
 
-def get_phonemizer(phoneme_type: PhonemeType) -> 'Phonemizer':
+def get_phonemizer(phoneme_type: PhonemeType,
+                   alphabet: Alphabet = Alphabet.IPA,
+                   model: Optional[str] = None) -> 'Phonemizer':
     from phoonnx.phonemizers import (EpitranPhonemizer, EspeakPhonemizer, OpenPhonemizer, OpenJTaklPhonemizer,
                                      ByT5Phonemizer, CharsiuPhonemizer, DeepPhonemizer, PersianPhonemizer,
                                      G2pCPhonemizer, G2pMPhonemizer, G2PKPhonemizer, G2PEnPhonemizer,
@@ -376,9 +394,9 @@ def get_phonemizer(phoneme_type: PhonemeType) -> 'Phonemizer':
     if phoneme_type == PhonemeType.ESPEAK:
         phonemizer = EspeakPhonemizer()
     elif phoneme_type == PhonemeType.BYT5:
-        phonemizer = ByT5Phonemizer()
+        phonemizer = ByT5Phonemizer(model)
     elif phoneme_type == PhonemeType.CHARSIU:
-        phonemizer = CharsiuPhonemizer()
+        phonemizer = CharsiuPhonemizer(model)
     elif phoneme_type == PhonemeType.GRUUT:
         phonemizer = GruutPhonemizer()
     elif phoneme_type == PhonemeType.EPITRAN:
@@ -386,19 +404,19 @@ def get_phonemizer(phoneme_type: PhonemeType) -> 'Phonemizer':
     elif phoneme_type == PhonemeType.MISAKI:
         phonemizer = MisakiPhonemizer()
     elif phoneme_type == PhonemeType.DEEPPHONEMIZER:
-        phonemizer = DeepPhonemizer()
+        phonemizer = DeepPhonemizer(model)
     elif phoneme_type == PhonemeType.OPENPHONEMIZER:
         phonemizer = OpenPhonemizer()
     elif phoneme_type == PhonemeType.G2PEN:
-        phonemizer = G2PEnPhonemizer()
+        phonemizer = G2PEnPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.OPENJTALK:
-        phonemizer = OpenJTaklPhonemizer()
+        phonemizer = OpenJTaklPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.PYKAKASI:
-        phonemizer = PyKakasiPhonemizer()
+        phonemizer = PyKakasiPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.CUTLET:
-        phonemizer = CutletPhonemizer()
+        phonemizer = CutletPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.G2PFA:
-        phonemizer = PersianPhonemizer()
+        phonemizer = PersianPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.PHONIKUD:
         phonemizer = PhonikudPhonemizer()
     elif phoneme_type == PhonemeType.MANTOQ:
@@ -406,19 +424,19 @@ def get_phonemizer(phoneme_type: PhonemeType) -> 'Phonemizer':
     elif phoneme_type == PhonemeType.VIPHONEME:
         phonemizer = VIPhonemePhonemizer()
     elif phoneme_type == PhonemeType.KOG2PK:
-        phonemizer = KoG2PPhonemizer()
+        phonemizer = KoG2PPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.G2PK:
-        phonemizer = G2PKPhonemizer()
+        phonemizer = G2PKPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.PYPINYIN:
-        phonemizer = PypinyinPhonemizer()
+        phonemizer = PypinyinPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.XPINYIN:
-        phonemizer = XpinyinPhonemizer()
+        phonemizer = XpinyinPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.JIEBA:
         phonemizer = JiebaPhonemizer()
     elif phoneme_type == PhonemeType.G2PC:
-        phonemizer = G2pCPhonemizer()
+        phonemizer = G2pCPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.G2PM:
-        phonemizer = G2pMPhonemizer()
+        phonemizer = G2pMPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.COTOVIA:
         phonemizer = CotoviaPhonemizer()
     elif phoneme_type == PhonemeType.UNICODE:

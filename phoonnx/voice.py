@@ -124,9 +124,11 @@ class TTSVoice:
         except FileNotFoundError:
             pass
         if self.phonemizer is None:
-            self.phonemizer = get_phonemizer(self.config.phoneme_type)
+            self.phonemizer = get_phonemizer(self.config.phoneme_type,
+                                             self.config.alphabet,
+                                             self.config.phonemizer_model)
 
-        # compat with piper arabic models
+        # compat with piper arabic models - TODO move to espeak phonemizer
         if self.config.lang_code.split("-")[0] == "ar" and self.use_tashkeel and self.tashkeel_diacritizier is None:
             self.tashkeel_diacritizier = TashkeelDiacritizer()
 

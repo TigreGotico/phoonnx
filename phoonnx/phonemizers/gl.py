@@ -27,7 +27,6 @@ class CotoviaPhonemizer(BasePhonemizer):
             cotovia_bin_path (str, optional): Path to the Cotovia TTS binary.
                                               If None, it will try to find it in common locations.
         """
-        self.alphabet = "cotovia"
         self.cotovia_bin = cotovia_bin_path or self.find_cotovia()
         if not os.path.exists(self.cotovia_bin):
             raise FileNotFoundError(f"Cotovia binary not found at {self.cotovia_bin}. "

@@ -16,36 +16,47 @@ class EspeakError(Exception):
     """Custom exception for espeak-ng related errors."""
     pass
 
-
 class ByT5Phonemizer(BasePhonemizer):
     """
     A phonemizer class that uses a ByT5 ONNX model to convert text into phonemes.
     """
-    # TODO - support multiple models
+    MODEL2URL = {
+        "OpenVoiceOS/g2p-mbyt5-12l-ipa-childes-espeak-onnx": "https://huggingface.co/OpenVoiceOS/g2p-mbyt5-12l-ipa-childes-espeak-onnx/resolve/main/fdemelo_g2p-mbyt5-12l-ipa-childes-espeak.onnx",
+    #    "OpenVoiceOS/g2p-multilingual-byt5-tiny-8l-ipa-childes-onnx": "https://huggingface.co/OpenVoiceOS/g2p-multilingual-byt5-tiny-8l-ipa-childes-onnx/resolve/main/byt5_g2p_model.onnx"
+    }
     TOKENIZER_CONFIG_URL = "https://huggingface.co/OpenVoiceOS/g2p-multilingual-byt5-tiny-8l-ipa-childes-onnx/resolve/main/tokenizer_config.json"
-    MODEL_URL = "https://huggingface.co/OpenVoiceOS/g2p-multilingual-byt5-tiny-8l-ipa-childes-onnx/resolve/main/byt5_g2p_model.onnx"
-    BYT5_LANGS = ['ca', 'cy', 'da', 'de', 'en-na', 'en-uk', 'es', 'et', 'eu', 'fa', 'fr', 'ga', 'hr', 'hu', 'id', 'is',
-                  'it', 'ja', 'ko', 'nl', 'no', 'pl', 'pt', 'pt-br', 'qu', 'ro', 'sr', 'sv', 'tr', 'zh', 'zh-yue']
 
-    def __init__(self, onnx_model_path: Optional[str] = None, tokenizer_config: Optional[str] = None):
+    BYT5_LANGS =['ca-ES', 'cy-GB', 'da-DK', 'de-DE', 'en-GB', 'en-US', 'es-ES', 'et-EE', 'eu-ES', 'fa-IR', 'fr-FR',
+                 'ga-IE', 'hr-HR', 'hu-HU', 'id-ID', 'is-IS', 'it-IT', 'ja-JP', 'ko-KR', 'nb-NO', 'nl-NL', 'pl-PL',
+                 'pt-BR', 'pt-PT', 'qu-PE', 'ro-RO', 'sr-RS', 'sv-SE', 'tr-TR', 'yue-CN', 'zh-CN']
+
+    _LEGACY_MODELS = ["g2p-multilingual-byt5-tiny-8l-ipa-childes-onnx"]
+    _LEGACY_LANGS = ['ca', 'cy', 'da', 'de', 'en-na', 'en-uk', 'es', 'et', 'eu', 'fa', 'fr', 'ga', 'hr', 'hu', 'id', 'is',
+                   'it', 'ja', 'ko', 'nl', 'no', 'pl', 'pt', 'pt-br', 'qu', 'ro', 'sr', 'sv', 'tr', 'zh', 'zh-yue']
+
+    def __init__(self, model: Optional[str] = None, tokenizer_config: Optional[str] = None,
+                 use_cuda=bool(os.environ.get("CUDA", False))):
         """
         Initializes the ByT5Phonemizer with the ONNX model and tokenizer configuration.
         If paths are not provided, it attempts to download them to a local directory.
 
         Args:
-            onnx_model_path (str, optional): Path to the ONNX model file. If None, it will be downloaded.
+            model (str, optional): Path to the ONNX model file. If None, it will be downloaded.
             tokenizer_config (str, optional): Path to the tokenizer configuration JSON file. If None, it will be downloaded.
         """
         super().__init__(Alphabet.IPA)
+        model = model or "OpenVoiceOS/g2p-mbyt5-12l-ipa-childes-espeak-onnx"
         # Define the local data path for models and configs
-        data_path = os.path.expanduser("~/.local/share/byt5_phonemizer")
+        data_path = os.path.expanduser("~/.local/share/phoonnx")
         os.makedirs(data_path, exist_ok=True)  # Ensure the directory exists
 
         # Determine the actual paths for the model and tokenizer config
-        if onnx_model_path is None:
-            self.onnx_model_path = os.path.join(data_path, "byt5_g2p_model.onnx")
+        if model in self.MODEL2URL:
+            base = os.path.join(data_path, model)
+            os.makedirs(base, exist_ok=True)
+            self.onnx_model_path = os.path.join(base, self.MODEL2URL[model].split("/")[-1])
         else:
-            self.onnx_model_path = onnx_model_path
+            self.onnx_model_path = model
 
         if tokenizer_config is None:
             self.tokenizer_config = os.path.join(data_path, "tokenizer_config.json")
@@ -54,9 +65,11 @@ class ByT5Phonemizer(BasePhonemizer):
 
         # Download model if it doesn't exist
         if not os.path.exists(self.onnx_model_path):
-            print(f"Downloading ONNX model from {self.MODEL_URL} to {self.onnx_model_path}...")
+            if model not in self.MODEL2URL:
+                raise ValueError("unknown model")
+            print(f"Downloading ONNX model from {self.MODEL2URL[model]} to {self.onnx_model_path}...")
             try:
-                response = requests.get(self.MODEL_URL, stream=True)
+                response = requests.get(self.MODEL2URL[model], stream=True)
                 response.raise_for_status()  # Raise an exception for HTTP errors
                 with open(self.onnx_model_path, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
@@ -78,8 +91,17 @@ class ByT5Phonemizer(BasePhonemizer):
             except requests.exceptions.RequestException as e:
                 raise IOError(f"Failed to download tokenizer config: {e}")
 
-        # TODO - GPU support (optional dependencies only)
-        self.session = onnxruntime.InferenceSession(self.onnx_model_path, providers=['CPUExecutionProvider'])
+        if use_cuda:
+            providers = [
+                (
+                    "CUDAExecutionProvider",
+                    {"cudnn_conv_algo_search": "HEURISTIC"},
+                )
+            ]
+            #LOG.debug("Using CUDA")
+        else:
+            providers = ["CPUExecutionProvider"]
+        self.session = onnxruntime.InferenceSession(self.onnx_model_path, providers=providers)
         with open(self.tokenizer_config, "r") as f:
             self.tokens: Dict[str, int] = json.load(f).get("added_tokens_decoder", {})
 
@@ -97,9 +119,6 @@ class ByT5Phonemizer(BasePhonemizer):
         Raises:
             ValueError: If the language code is unsupported.
         """
-        if target_lang.lower() in ["en-us", "en_us"]:
-            return "en-na"  # english north america
-
         # Find the closest match
         return cls.match_lang(target_lang, cls.BYT5_LANGS)
 
@@ -219,8 +238,10 @@ class CharsiuPhonemizer(ByT5Phonemizer):
     """
     A phonemizer class that uses a Charsiu ByT5 ONNX model to convert text into phonemes.
     """
-    # TODO - support multiple models
-    MODEL_URL = "https://huggingface.co/Jarbas/charsiu_g2p_multilingual_byT5_tiny_16_layers_100_onnx/resolve/main/charsiu_g2p_multilingual_byT5_tiny_16_layers_100.onnx"
+    # TODO - more models
+    MODEL2URL = {
+        "Jarbas/charsiu_g2p_multilingual_byT5_tiny_16_layers_100_onnx": "https://huggingface.co/Jarbas/charsiu_g2p_multilingual_byT5_tiny_16_layers_100_onnx/resolve/main/charsiu_g2p_multilingual_byT5_tiny_16_layers_100.onnx"
+    }
     BYT5_LANGS = ['ady', 'afr', 'sqi', 'amh', 'ara', 'arg', 'arm-e', 'arm-w', 'aze', 'bak', 'eus', 'bel', 'ben', 'bos',
                   'bul', 'bur', 'cat', 'yue', 'zho-t', 'zho-s', 'min', 'cze', 'dan', 'dut', 'eng-uk', 'eng-us', 'epo',
                   'est', 'fin', 'fra', 'fra-qu', 'gla', 'geo', 'ger', 'gre', 'grc', 'grn', 'guj', 'hin', 'hun', 'ido',
@@ -230,8 +251,18 @@ class CharsiuPhonemizer(ByT5Phonemizer):
                   'tam', 'tat', 'tha', 'tur', 'tuk', 'ukr', 'vie-n', 'vie-c', 'vie-s', 'wel-nw', 'wel-sw', 'ice', 'ang',
                   'gle', 'enm', 'syc', 'glg', 'sme', 'egy']
 
-    def __init__(self):
-        super().__init__(Alphabet.IPA)
+    def __init__(self, model: Optional[str] = None, tokenizer_config: Optional[str] = None,
+                 use_cuda=bool(os.environ.get("CUDA", False))):
+        """
+        Initializes the ByT5Phonemizer with the ONNX model and tokenizer configuration.
+        If paths are not provided, it attempts to download them to a local directory.
+
+        Args:
+            model (str, optional): Path to the ONNX model file. If None, it will be downloaded.
+            tokenizer_config (str, optional): Path to the tokenizer configuration JSON file. If None, it will be downloaded.
+        """
+        model = model or "Jarbas/charsiu_g2p_multilingual_byT5_tiny_16_layers_100_onnx"
+        super().__init__(model, tokenizer_config, use_cuda)
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
@@ -247,9 +278,6 @@ class CharsiuPhonemizer(ByT5Phonemizer):
         Raises:
             ValueError: If the language code is unsupported.
         """
-        if target_lang.lower() in ["en-us", "en_us"]:
-            return "en-na"  # english north america
-
         # Find the closest match
         return cls.match_lang(target_lang, cls.BYT5_LANGS)
 
@@ -388,6 +416,8 @@ class GruutPhonemizer(BasePhonemizer):
         import gruut
         for sentence in gruut.sentences(text, lang=lang):
             sent_phonemes = [w.phonemes for w in sentence if w.phonemes]
+            if sentence and not sent_phonemes:
+                raise RuntimeError(f"did you install gruut[{lang}] ?")
             if sentence.text.endswith("?"):
                 sent_phonemes[-1] = ["?"]
             elif sentence.text.endswith("!"):
