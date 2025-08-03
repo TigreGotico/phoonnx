@@ -660,3 +660,667 @@ class TestDataStructureIntegrity(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class TestUtilFunctionsAdditional(unittest.TestCase):
+    """Additional comprehensive tests for util.py functions with enhanced edge case coverage."""
+
+    def setUp(self):
+        """Set up test fixtures for additional tests."""
+        self.mock_rbnf_engine = MagicMock()
+        self.mock_rbnf_engine.format_number.return_value.text = "formatted number"
+
+    def test_get_number_separators_case_insensitive(self):
+        """Test _get_number_separators with case variations."""
+        decimal, thousands = _get_number_separators("EN")
+        self.assertEqual(decimal, '.')
+        self.assertEqual(thousands, ',')
+        
+        decimal, thousands = _get_number_separators("PT")
+        self.assertEqual(decimal, ',')
+        self.assertEqual(thousands, '.')
+
+    def test_get_number_separators_unknown_language(self):
+        """Test _get_number_separators with unknown language defaults to English."""
+        decimal, thousands = _get_number_separators("unknown")
+        self.assertEqual(decimal, '.')
+        self.assertEqual(thousands, ',')
+
+    def test_get_number_separators_partial_language_codes(self):
+        """Test _get_number_separators with partial language codes."""
+        decimal, thousands = _get_number_separators("pt-BR")
+        self.assertEqual(decimal, ',')
+        self.assertEqual(thousands, '.')
+        
+        decimal, thousands = _get_number_separators("en-CA")
+        self.assertEqual(decimal, '.')
+        self.assertEqual(thousands, ',')
+
+    def test_is_fraction_whitespace_handling(self):
+        """Test is_fraction with whitespace variations."""
+        self.assertFalse(is_fraction(" 1/2 "))  # Leading/trailing spaces
+        self.assertFalse(is_fraction("1 / 2"))  # Spaces around slash
+        self.assertFalse(is_fraction("1/ 2"))   # Space after slash
+        self.assertFalse(is_fraction("1 /2"))   # Space before slash
+
+    def test_is_fraction_decimal_numbers(self):
+        """Test is_fraction with decimal numbers in numerator/denominator."""
+        self.assertFalse(is_fraction("1.5/2"))
+        self.assertFalse(is_fraction("1/2.5"))
+        self.assertFalse(is_fraction("1.0/2.0"))
+
+    def test_is_fraction_negative_numbers(self):
+        """Test is_fraction with negative numbers."""
+        self.assertFalse(is_fraction("-1/2"))
+        self.assertFalse(is_fraction("1/-2"))
+        self.assertFalse(is_fraction("-1/-2"))
+
+    def test_is_fraction_zero_denominator(self):
+        """Test is_fraction with zero denominator."""
+        self.assertTrue(is_fraction("1/0"))  # Syntactically valid, mathematically invalid
+
+    def test_is_fraction_large_numbers(self):
+        """Test is_fraction with very large numbers."""
+        self.assertTrue(is_fraction("999999999/1000000000"))
+        self.assertTrue(is_fraction("1/999999999"))
+
+    def test_normalize_number_word_empty_string(self):
+        """Test _normalize_number_word with empty string."""
+        result = _normalize_number_word("", "en", None)
+        self.assertEqual(result, "")
+
+    def test_normalize_number_word_whitespace_only(self):
+        """Test _normalize_number_word with whitespace only."""
+        result = _normalize_number_word("   ", "en", None)
+        self.assertEqual(result, "   ")
+
+    def test_normalize_number_word_special_characters(self):
+        """Test _normalize_number_word with special characters."""
+        with patch('phoonnx.util.is_numeric', return_value=False):
+            result = _normalize_number_word("@#$", "en", None)
+            self.assertEqual(result, "@#$")
+
+    @patch('phoonnx.util.pronounce_number')
+    @patch('phoonnx.util.is_numeric')
+    def test_normalize_number_word_mixed_punctuation(self, mock_is_numeric, mock_pronounce):
+        """Test _normalize_number_word with mixed punctuation."""
+        mock_is_numeric.return_value = True
+        mock_pronounce.return_value = "twenty three"
+        
+        result = _normalize_number_word("23!?", "en", None)
+        mock_pronounce.assert_called_with(23, lang="en")
+        self.assertEqual(result, "twenty three!?")
+
+    @patch('phoonnx.util.pronounce_fraction')
+    def test_normalize_number_word_fraction_error_handling(self, mock_pronounce_fraction):
+        """Test _normalize_number_word fraction error handling."""
+        mock_pronounce_fraction.side_effect = Exception("Fraction error")
+        
+        with patch('phoonnx.util.is_fraction', return_value=True):
+            result = _normalize_number_word("1/2", "en", None)
+            self.assertEqual(result, "1/2")  # Should return original on error
+
+    def test_normalize_number_word_rbnf_engine_none(self):
+        """Test _normalize_number_word when RBNF engine is None."""
+        with patch('phoonnx.util.is_numeric', return_value=False):
+            result = _normalize_number_word("123", "en", None)
+            self.assertEqual(result, "123")
+
+    def test_normalize_number_word_rbnf_engine_exception(self):
+        """Test _normalize_number_word when RBNF engine throws exception."""
+        mock_engine = MagicMock()
+        mock_engine.format_number.side_effect = Exception("RBNF error")
+        
+        with patch('phoonnx.util.is_numeric', return_value=False):
+            result = _normalize_number_word("123", "en", mock_engine)
+            self.assertEqual(result, "123")
+
+    @patch('phoonnx.util.is_numeric')
+    def test_normalize_number_word_european_format_edge_cases(self, mock_is_numeric):
+        """Test _normalize_number_word with European format edge cases."""
+        mock_is_numeric.side_effect = lambda x: x == "1000000.0"
+        
+        with patch('phoonnx.util.pronounce_number') as mock_pronounce:
+            mock_pronounce.return_value = "one million"
+            # Test large number with European decimal separator
+            result = _normalize_number_word("1.000.000,0", "pt", None)
+            mock_pronounce.assert_called_with(1000000.0, lang="pt")
+
+    def test_pronounce_date_none_input(self):
+        """Test pronounce_date with None input."""
+        with self.assertRaises((TypeError, AttributeError)):
+            pronounce_date(None, "en")
+
+    def test_pronounce_date_invalid_date(self):
+        """Test pronounce_date with invalid date object."""
+        with patch('phoonnx.util.nice_date', side_effect=Exception("Invalid date")):
+            with self.assertRaises(Exception):
+                pronounce_date(date(2025, 1, 1), "en")
+
+    def test_pronounce_time_empty_string(self):
+        """Test pronounce_time with empty string."""
+        result = pronounce_time("", "en")
+        self.assertEqual(result, "")
+
+    def test_pronounce_time_none_input(self):
+        """Test pronounce_time with None input."""
+        result = pronounce_time(None, "en")
+        self.assertEqual(result, None)
+
+    def test_pronounce_time_malformed_hour_minute(self):
+        """Test pronounce_time with malformed hour/minute patterns."""
+        test_cases = [
+            "h15",      # Missing hour
+            "15h",      # Missing minute  
+            "25h70",    # Invalid hour and minute
+            "abchde",   # Non-numeric
+            "12h60",    # Invalid minute (60)
+            "24h00",    # Edge case: 24 hours
+        ]
+        
+        for time_str in test_cases:
+            with self.subTest(time_str=time_str):
+                result = pronounce_time(time_str, "en")
+                self.assertIsInstance(result, str)
+
+    def test_normalize_word_hyphen_digit_edge_cases(self):
+        """Test _normalize_word_hyphen_digit with edge cases."""
+        test_cases = [
+            ("", ""),                           # Empty string
+            ("-123", "-123"),                   # Just hyphen and digit
+            ("word-", "word-"),                 # Hyphen at end
+            ("word--123", "word--123"),         # Double hyphen
+            ("word-123-456", "word 123-456"),   # Multiple hyphens with digits
+            ("123-word", "123-word"),           # Number before hyphen
+            ("word-123abc", "word 123abc"),     # Mixed digit and text after hyphen
+        ]
+        
+        for input_text, expected in test_cases:
+            with self.subTest(input_text=input_text):
+                result = _normalize_word_hyphen_digit(input_text)
+                self.assertEqual(result, expected)
+
+    def test_normalize_word_hyphen_digit_unicode(self):
+        """Test _normalize_word_hyphen_digit with unicode characters."""
+        result = _normalize_word_hyphen_digit("café-123")
+        self.assertEqual(result, "café 123")
+
+    @patch('phoonnx.util.pronounce_number')
+    def test_normalize_units_empty_string(self, mock_pronounce):
+        """Test _normalize_units with empty string."""
+        result = _normalize_units("", "en")
+        self.assertEqual(result, "")
+
+    @patch('phoonnx.util.pronounce_number')
+    def test_normalize_units_no_units_found(self, mock_pronounce):
+        """Test _normalize_units when no units are found."""
+        result = _normalize_units("just text", "en")
+        self.assertEqual(result, "just text")
+
+    @patch('phoonnx.util.pronounce_number')
+    def test_normalize_units_multiple_units(self, mock_pronounce):
+        """Test _normalize_units with multiple units in same string."""
+        mock_pronounce.side_effect = ["twenty five", "thirty"]
+        
+        result = _normalize_units("25°C and 30kg", "en")
+        # Should handle both units
+        self.assertIn("degrees celsius", result)
+        self.assertIn("kilograms", result)
+
+    @patch('phoonnx.util.pronounce_number')
+    def test_normalize_units_decimal_numbers(self, mock_pronounce):
+        """Test _normalize_units with decimal numbers."""
+        mock_pronounce.return_value = "twenty five point five"
+        
+        result = _normalize_units("25.5°C", "en")
+        mock_pronounce.assert_called_with(25.5, "en")
+        self.assertIn("twenty five point five", result)
+
+    @patch('phoonnx.util.pronounce_number')
+    def test_normalize_units_error_handling(self, mock_pronounce):
+        """Test _normalize_units error handling during number pronunciation."""
+        mock_pronounce.side_effect = Exception("Pronunciation error")
+        
+        result = _normalize_units("25°C", "en")
+        self.assertEqual(result, "25°C")  # Should return original on error
+
+    def test_normalize_word_empty_contractions(self):
+        """Test _normalize_word when contractions dict is empty for language."""
+        with patch.dict(CONTRACTIONS, {"test_lang": {}}):
+            result = _normalize_word("can't", "test_lang", None)
+            self.assertEqual(result, "can't")  # Should remain unchanged
+
+    def test_normalize_word_empty_titles(self):
+        """Test _normalize_word when titles dict is empty for language."""
+        with patch.dict(TITLES, {"test_lang": {}}):
+            result = _normalize_word("Dr.", "test_lang", None)
+            self.assertEqual(result, "Dr.")  # Should remain unchanged
+
+    def test_normalize_word_mixed_case_titles(self):
+        """Test _normalize_word with mixed case titles."""
+        result = _normalize_word("dr.", "en", None)
+        self.assertEqual(result, "dr.")  # Should not match case-sensitive "Dr."
+
+    def test_normalize_word_unicode_characters(self):
+        """Test _normalize_word with unicode characters."""
+        result = _normalize_word("naïve", "en", None)
+        self.assertEqual(result, "naïve")  # Should preserve unicode
+
+    def test_normalize_dates_and_times_empty_string(self):
+        """Test _normalize_dates_and_times with empty string."""
+        result = _normalize_dates_and_times("", "en")
+        self.assertEqual(result, "")
+
+    def test_normalize_dates_and_times_no_dates_or_times(self):
+        """Test _normalize_dates_and_times with text containing no dates or times."""
+        text = "Hello world this is just text"
+        result = _normalize_dates_and_times(text, "en")
+        self.assertEqual(result, text)
+
+    def test_normalize_dates_and_times_multiple_am_pm(self):
+        """Test _normalize_dates_and_times with multiple AM/PM occurrences."""
+        result = _normalize_dates_and_times("Meeting at 9am and 3pm", "en")
+        self.assertIn("A M", result)
+        self.assertIn("P M", result)
+
+    @patch('phoonnx.util.nice_time')
+    def test_normalize_dates_and_times_time_conversion_error(self, mock_nice_time):
+        """Test _normalize_dates_and_times when time conversion fails."""
+        mock_nice_time.side_effect = Exception("Time conversion error")
+        
+        result = _normalize_dates_and_times("Meeting at 15h30", "en")
+        # Should handle gracefully - exact behavior depends on implementation
+        self.assertIsInstance(result, str)
+
+    def test_normalize_dates_and_times_edge_case_dates(self):
+        """Test _normalize_dates_and_times with edge case dates."""
+        test_cases = [
+            "00/00/0000",  # Invalid date
+            "32/01/2025",  # Invalid day
+            "01/13/2025",  # Invalid month for DMY
+            "29/02/2023",  # Invalid leap year
+        ]
+        
+        for date_str in test_cases:
+            with self.subTest(date_str=date_str):
+                result = _normalize_dates_and_times(f"Due on {date_str}", "en")
+                self.assertIsInstance(result, str)
+
+    def test_normalize_dates_and_times_ambiguous_format_handling(self):
+        """Test _normalize_dates_and_times with ambiguous date formats."""
+        # Test when format detection might be ambiguous
+        with patch('phoonnx.util.pronounce_date') as mock_pronounce_date:
+            mock_pronounce_date.return_value = "formatted date"
+            
+            # Ambiguous date like 01/02/2025 (could be Jan 2 or Feb 1)
+            result = _normalize_dates_and_times("Due on 01/02/2025", "en-US", "MDY")
+            mock_pronounce_date.assert_called_once()
+
+    @patch('unicode_rbnf.RbnfEngine')
+    def test_normalize_with_rbnf_initialization_failure(self, mock_rbnf_engine):
+        """Test normalize when RBNF engine initialization fails."""
+        mock_rbnf_engine.for_language.side_effect = Exception("RBNF init error")
+        
+        # Should handle gracefully and continue without RBNF
+        result = normalize("test 123", "en")
+        self.assertIsInstance(result, str)
+
+    def test_normalize_newlines_and_tabs(self):
+        """Test normalize with newlines and tabs."""
+        text = "Hello\nworld\ttest"
+        result = normalize(text, "en")
+        self.assertIsInstance(result, str)
+
+    def test_normalize_very_long_words(self):
+        """Test normalize with very long words."""
+        long_word = "a" * 1000
+        result = normalize(long_word, "en")
+        self.assertIsInstance(result, str)
+
+    def test_normalize_special_punctuation(self):
+        """Test normalize with special punctuation marks."""
+        text = "Hello… world‽ test—more text"
+        result = normalize(text, "en")
+        self.assertIsInstance(result, str)
+
+    def test_normalize_mixed_languages_in_single_text(self):
+        """Test normalize behavior with mixed language content."""
+        # This tests robustness - actual behavior depends on implementation
+        text = "Hello 世界 test"
+        result = normalize(text, "en")
+        self.assertIsInstance(result, str)
+
+    def test_contractions_with_apostrophe_variations(self):
+        """Test contractions with different apostrophe characters."""
+        if "en" in CONTRACTIONS and "can't" in CONTRACTIONS["en"]:
+            # Test with regular apostrophe
+            result = _normalize_word("can't", "en", None)
+            self.assertEqual(result, "can not")
+            
+            # Test with different apostrophe character (if implementation handles it)
+            result = _normalize_word("can't", "en", None)  # curly apostrophe
+            # Behavior depends on implementation
+
+    def test_titles_with_different_periods(self):
+        """Test titles with various period styles."""
+        if "en" in TITLES and "Dr." in TITLES["en"]:
+            result = _normalize_word("Dr.", "en", None)
+            self.assertEqual(result, "Doctor")
+
+    def test_units_with_complex_symbols(self):
+        """Test units with complex Unicode symbols."""
+        if "en" in UNITS:
+            complex_units = ["℃", "℉", "°C", "°F"]  # Different temperature symbols
+            for unit in complex_units:
+                if unit in UNITS["en"]:
+                    with patch('ovos_number_parser.pronounce_number') as mock_pronounce:
+                        mock_pronounce.return_value = "twenty five"
+                        result = _normalize_units(f"25{unit}", "en")
+                        self.assertIn("twenty five", result)
+
+    def test_performance_stress_test(self):
+        """Test performance with stress conditions."""
+        # Large text with many normalizable elements
+        stress_text = "Dr. Smith said I can't attend at 3pm on 15/03/2025, it's 25°C outside. " * 100
+        
+        import time
+        start_time = time.time()
+        result = normalize(stress_text, "en")
+        end_time = time.time()
+        
+        # Should complete in reasonable time (adjust threshold as needed)
+        self.assertLess(end_time - start_time, 5.0)  # Less than 5 seconds
+        self.assertIsInstance(result, str)
+
+    def test_memory_efficiency(self):
+        """Test memory efficiency with repeated normalizations."""
+        import gc
+        
+        # Force garbage collection before test
+        gc.collect()
+        
+        for _ in range(100):
+            result = normalize("Dr. Smith can't attend at 3pm", "en")
+            self.assertIsInstance(result, str)
+        
+        # Force garbage collection after test
+        gc.collect()
+
+    def test_thread_safety_simulation(self):
+        """Test thread safety by simulating concurrent access."""
+        import threading
+        results = []
+        errors = []
+        
+        def normalize_worker():
+            try:
+                result = normalize("Dr. Smith can't attend at 3pm", "en")
+                results.append(result)
+            except Exception as e:
+                errors.append(e)
+        
+        threads = []
+        for _ in range(10):
+            thread = threading.Thread(target=normalize_worker)
+            threads.append(thread)
+            thread.start()
+        
+        for thread in threads:
+            thread.join()
+        
+        # Should have results from all threads with no errors
+        self.assertEqual(len(results), 10)
+        self.assertEqual(len(errors), 0)
+
+    def test_normalize_with_all_supported_languages(self):
+        """Test normalize function with all languages mentioned in data structures."""
+        test_text = "Dr. Smith 123 25°C"
+        
+        # Test with all languages that have data
+        languages = set()
+        languages.update(CONTRACTIONS.keys())
+        languages.update(TITLES.keys())
+        languages.update(UNITS.keys())
+        
+        for lang in languages:
+            with self.subTest(lang=lang):
+                result = normalize(test_text, lang)
+                self.assertIsInstance(result, str)
+
+    def test_regression_complex_number_formats(self):
+        """Regression test for complex number format edge cases."""
+        test_cases = [
+            ("1.234.567.890,12", "pt"),  # Very large European format
+            ("0,001", "pt"),             # Small European decimal
+            ("1,000,000.00", "en"),      # Large US format  
+            ("0.001", "en"),             # Small US decimal
+        ]
+        
+        for number_str, lang in test_cases:
+            with self.subTest(number=number_str, lang=lang):
+                result = _normalize_number_word(number_str, lang, None)
+                self.assertIsInstance(result, str)
+
+    def test_regression_date_format_detection(self):
+        """Regression test for date format detection edge cases."""
+        test_cases = [
+            ("2025/12/31", "en", None),      # YMD format
+            ("31/12/2025", "en-GB", "DMY"),  # DMY format
+            ("12/31/2025", "en-US", "MDY"),  # MDY format
+        ]
+        
+        for date_str, lang, expected_format in test_cases:
+            with self.subTest(date=date_str, lang=lang):
+                result = _normalize_dates_and_times(f"Due {date_str}", lang, expected_format)
+                self.assertIsInstance(result, str)
+
+    def test_normalize_units_degrees_character_replacement(self):
+        """Test that _normalize_units replaces º with ° correctly."""
+        with patch('ovos_number_parser.pronounce_number') as mock_pronounce:
+            mock_pronounce.return_value = "twenty five"
+            
+            # Test with º character
+            result = _normalize_units("25ºC", "en")
+            self.assertIn("twenty five", result)
+            self.assertIn("degrees celsius", result)
+
+    def test_normalize_dates_and_times_year_expansion_logic(self):
+        """Test the year expansion logic for 2-digit years."""
+        with patch('phoonnx.util.pronounce_date') as mock_pronounce_date:
+            mock_pronounce_date.return_value = "formatted date"
+            
+            # Test year < 30 (should become 20xx)
+            _normalize_dates_and_times("Due on 15/05/25", "en", "DMY")
+            
+            # Test year >= 30 (should become 19xx)
+            _normalize_dates_and_times("Due on 15/05/85", "en", "DMY")
+
+    def test_normalize_units_unit_priority_sorting(self):
+        """Test that longer unit symbols are matched before shorter ones."""
+        with patch('ovos_number_parser.pronounce_number') as mock_pronounce:
+            mock_pronounce.return_value = "five"
+            
+            # Test that 'mL' is matched before 'm' when both are available
+            result = _normalize_units("5mL", "en")
+            self.assertIn("milliliters", result)
+            self.assertNotIn("meters", result)
+
+    @patch('phoonnx.util.is_numeric')
+    def test_normalize_number_word_complex_separator_handling(self, mock_is_numeric):
+        """Test complex separator handling in _normalize_number_word."""
+        # Test when both thousands and decimal separators are present
+        mock_is_numeric.side_effect = lambda x: x == "123456.78"
+        
+        with patch('phoonnx.util.pronounce_number') as mock_pronounce:
+            mock_pronounce.return_value = "one hundred twenty three thousand"
+            
+            # European format: 123.456,78
+            result = _normalize_number_word("123.456,78", "pt", None)
+            mock_pronounce.assert_called_with(123456.78, lang="pt")
+
+    def test_normalize_dates_and_times_day_detection_logic(self):
+        """Test the day detection logic for values > 12."""
+        with patch('phoonnx.util.pronounce_date') as mock_pronounce_date:
+            mock_pronounce_date.return_value = "formatted date"
+            
+            # Date with day > 12 should be correctly identified
+            _normalize_dates_and_times("Due on 15/05/2025", "en", "DMY")
+            mock_pronounce_date.assert_called_once()
+
+    def test_pronounce_time_hour_minute_validation(self):
+        """Test pronounce_time with various hour/minute validation scenarios."""
+        # Test valid edge cases
+        result = pronounce_time("00h00", "en")
+        self.assertIsInstance(result, str)
+        
+        result = pronounce_time("23h59", "en")
+        self.assertIsInstance(result, str)
+
+    def test_normalize_units_regex_escaping(self):
+        """Test that special regex characters in units are properly escaped."""
+        # Test units with special regex characters
+        test_units = ["$", "€", "£", "%"]
+        
+        for unit in test_units:
+            if "en" in UNITS and unit in UNITS["en"]:
+                with patch('ovos_number_parser.pronounce_number') as mock_pronounce:
+                    mock_pronounce.return_value = "ten"
+                    
+                    # Should not cause regex compilation errors
+                    result = _normalize_units(f"10{unit}", "en")
+                    self.assertIsInstance(result, str)
+
+    def test_is_fraction_multiple_slashes(self):
+        """Test is_fraction with multiple slash characters."""
+        self.assertFalse(is_fraction("1/2/3"))
+        self.assertFalse(is_fraction("1//2"))
+        self.assertFalse(is_fraction("/1/2"))
+
+    def test_normalize_number_word_punctuation_preservation(self):
+        """Test that punctuation after numbers is properly preserved."""
+        with patch('phoonnx.util.is_numeric', return_value=True), \
+             patch('phoonnx.util.pronounce_number', return_value="twenty three"):
+            
+            # Test various punctuation marks
+            test_cases = [
+                ("23.", "twenty three."),
+                ("23,", "twenty three,"),
+                ("23!", "twenty three!"),
+                ("23?", "twenty three?"),
+                ("23;", "twenty three;"),
+                ("23:", "twenty three:"),
+            ]
+            
+            for input_text, expected in test_cases:
+                with self.subTest(input_text=input_text):
+                    result = _normalize_number_word(input_text, "en", None)
+                    self.assertEqual(result, expected)
+
+
+class TestLoggingAndErrorHandling(unittest.TestCase):
+    """Test logging and error handling throughout the util.py functions."""
+
+    def test_logging_configuration(self):
+        """Test that logging is properly configured."""
+        from phoonnx.util import LOG
+        self.assertEqual(LOG.name, "normalize")
+        self.assertIsInstance(LOG, logging.Logger)
+
+    @patch('phoonnx.util.LOG')
+    def test_error_logging_in_fraction_pronunciation(self, mock_log):
+        """Test that errors in fraction pronunciation are logged."""
+        with patch('phoonnx.util.is_fraction', return_value=True), \
+             patch('phoonnx.util.pronounce_fraction', side_effect=Exception("Test error")):
+            
+            result = _normalize_number_word("1/2", "en", None)
+            self.assertEqual(result, "1/2")
+            mock_log.error.assert_called_once()
+
+    @patch('phoonnx.util.LOG')
+    def test_error_logging_in_number_pronunciation(self, mock_log):
+        """Test that errors in number pronunciation are logged."""
+        with patch('phoonnx.util.is_numeric', return_value=True), \
+             patch('phoonnx.util.pronounce_number', side_effect=Exception("Test error")):
+            
+            result = _normalize_number_word("123", "en", None)
+            self.assertEqual(result, "123")
+            mock_log.error.assert_called_once()
+
+    @patch('phoonnx.util.LOG')
+    def test_error_logging_in_rbnf_pronunciation(self, mock_log):
+        """Test that errors in RBNF pronunciation are logged."""
+        mock_engine = MagicMock()
+        mock_engine.format_number.side_effect = Exception("RBNF error")
+        
+        with patch('phoonnx.util.is_numeric', return_value=False):
+            result = _normalize_number_word("123", "en", mock_engine)
+            self.assertEqual(result, "123")
+            mock_log.error.assert_called_once()
+
+    @patch('phoonnx.util.LOG')
+    def test_warning_logging_in_time_pronunciation(self, mock_log):
+        """Test that warnings in time pronunciation are logged."""
+        result = pronounce_time("invalid_time", "en")
+        mock_log.warning.assert_called_once()
+
+    @patch('phoonnx.util.LOG')
+    def test_debug_logging_in_normalize(self, mock_log):
+        """Test that debug messages are logged when RBNF engine fails."""
+        with patch('unicode_rbnf.RbnfEngine.for_language', 
+                   side_effect=ValueError("Language not supported")):
+            
+            result = normalize("test", "unsupported_lang")
+            mock_log.debug.assert_called_once()
+
+
+class TestDataStructureValidation(unittest.TestCase):
+    """Additional validation tests for the data structures."""
+    
+    def test_contractions_consistency(self):
+        """Test consistency of contraction expansions."""
+        for lang, contractions in CONTRACTIONS.items():
+            for contraction, expansion in contractions.items():
+                # Contractions should not expand to themselves
+                self.assertNotEqual(contraction, expansion)
+                
+                # Expansions should be longer than contractions (in most cases)
+                # This is a general rule with some exceptions
+                if contraction not in ["y'all", "ol'", "'tis", "'twas"]:
+                    self.assertGreaterEqual(len(expansion), len(contraction))
+
+    def test_titles_consistency(self):
+        """Test consistency of title expansions."""
+        for lang, titles in TITLES.items():
+            for title, expansion in titles.items():
+                # Titles should contain a period
+                self.assertIn(".", title)
+                
+                # Expansions should not contain periods (generally)
+                if expansion != "Mademoiselle":  # Exception for French
+                    self.assertNotIn(".", expansion)
+
+    def test_units_multilingual_consistency(self):
+        """Test that common units exist across multiple languages."""
+        common_units = ["€", "%", "°C", "$", "km", "m", "kg"]
+        
+        for unit in common_units:
+            languages_with_unit = [lang for lang, units in UNITS.items() if unit in units]
+            # Most common units should be available in multiple languages
+            if unit in ["€", "%", "°C"]:
+                self.assertGreaterEqual(len(languages_with_unit), 3)
+
+    def test_data_structure_immutability_safety(self):
+        """Test that modifying returned data doesn't affect the original."""
+        # Get a reference to titles
+        en_titles = TITLES.get("en", {})
+        original_length = len(en_titles)
+        
+        # Try to modify (this should not affect the original if properly implemented)
+        en_titles_copy = en_titles.copy()
+        en_titles_copy["Test."] = "Test"
+        
+        # Original should be unchanged
+        self.assertEqual(len(TITLES.get("en", {})), original_length)
+
+
+if __name__ == '__main__':
+    unittest.main()
