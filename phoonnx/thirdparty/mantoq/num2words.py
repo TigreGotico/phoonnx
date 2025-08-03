@@ -1,9 +1,9 @@
 import re
 from functools import partial
 
-from phoonnx.thirdparty.mantoq.lib.pyarabic import araby
-from phoonnx.thirdparty.mantoq.lib.pyarabic import number as arnum
-from phoonnx.thirdparty.mantoq.lib.pyarabic.trans import normalize_digits
+from phoonnx.thirdparty.mantoq.pyarabic import araby
+from phoonnx.thirdparty.mantoq.pyarabic import number as arnum
+from phoonnx.thirdparty.mantoq.pyarabic.trans import normalize_digits
 
 NUM_REGEX = re.compile(r"\d+")
 PERCENT_NO_DIAC = "بالمئة"

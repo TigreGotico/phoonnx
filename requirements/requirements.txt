@@ -3,3 +3,4 @@ onnxruntime
 quebra-frases
 langcodes
 ovos-number-parser>0.3.3a1
+ovos-date-parser
