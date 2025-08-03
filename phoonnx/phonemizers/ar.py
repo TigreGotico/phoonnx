@@ -5,7 +5,7 @@ from phoonnx.config import Alphabet
 class MantoqPhonemizer(BasePhonemizer):
 
     def __init__(self):
-        super().__init__(Alphabet.IPA)
+        super().__init__(Alphabet.MANTOQ)
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:

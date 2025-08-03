@@ -6,7 +6,6 @@ from phoonnx.phoneme_ids import (load_phoneme_ids, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
 
-
 DEFAULT_NOISE_SCALE = 0.667
 DEFAULT_LENGTH_SCALE = 1.0
 DEFAULT_NOISE_W_SCALE = 0.8
@@ -22,6 +21,8 @@ class Alphabet(str, Enum):
     UNICODE = "unicode"
     IPA = "ipa"
     ARPA = "arpa" # en
+    SAMPA = "sampa"
+    XSAMPA = "x-sampa"
     HANGUL = "hangul" # ko
     KANA = "kana" # ja
     HIRA = "hira" # ja
@@ -32,6 +33,7 @@ class Alphabet(str, Enum):
     ERAAB = "eraab" # fa
     COTOVIA = "cotovia" # gl
     HANZI = "hanzi" # zh
+    MANTOQ = "mantoq" # ar
 
 
 
