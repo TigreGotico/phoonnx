@@ -35,6 +35,7 @@ jobs:
           python -m pip install build wheel unicode-rbnf
       - name: Install core repo
         run: |
+          pip install -r requirements/requirements.txt
           pip install -e .
       - name: Install test dependencies
         run: |
