@@ -499,6 +499,10 @@ def _normalize_dates_and_times(text: str, full_lang: str, date_format: str = "DM
             # If no 4-digit year, it's ambiguous, assume a 2-digit year.
             # We'll assume the last part is the year based on common patterns.
             year = p3
+            # Expand 2-digit year to 4-digit year
+            if year < 100:
+                # Assume years 00-29 are 2000-2029, 30-99 are 1930-1999
+                year = 2000 + year if year < 30 else 1900 + year
             rest_parts = [p1, p2]
 
         # From the remaining parts, try to determine day and month
@@ -567,8 +571,11 @@ def _normalize_units(text: str, full_lang: str) -> str:
                 number = number_str.replace(thousands_separator, "").replace(decimal_separator, ".")
                 unit_symbol = match.group(2)
                 unit_word = symbolic_units[unit_symbol]
-                return f"{pronounce_number(float(number), full_lang)} {unit_word}"
-
+                try:
+                    return f"{pronounce_number(float(number), full_lang)} {unit_word}"
+                except Exception as e:
+                    LOG.error(f"Failed to pronounce number with unit: {number_str}{unit_symbol} - ({e})")
+                    return match.group(0)
             text = symbolic_pattern.sub(replace_symbolic, text)
 
         # Create regex pattern for alphanumeric units and replace them next
@@ -596,7 +603,6 @@ def _normalize_word(word: str, full_lang: str, rbnf_engine) -> str:
     Helper function to normalize a single word.
     """
     lang_code = full_lang.split("-")[0]
-    cleaned_word = word.rstrip(string.punctuation)
 
     if word in CONTRACTIONS.get(lang_code, {}):
         return CONTRACTIONS[lang_code][word]
@@ -646,14 +652,15 @@ def normalize(text: str, lang: str) -> str:
     rbnf_engine = None
     try:
         rbnf_engine = RbnfEngine.for_language(lang_code)
-    except:
-        pass  # The language may not be supported by RBNF
+    except (ValueError, KeyError) as e:
+        LOG.debug(f"RBNF engine not available for language '{lang_code}': {e}")
 
     normalized_words = [_normalize_word(word, full_lang, rbnf_engine) for word in words]
     dialog = " ".join(normalized_words)
 
-    if any(s in dialog for s in string.digits):
-        print(f"normalized dialog: '{text}' -> '{dialog}'")
+    # uncomment for easy debug
+    #if any(s in dialog for s in string.digits):
+    #    print(f"normalized dialog: '{text}' -> '{dialog}'")
     return dialog
 
 
