@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.2a1](https://github.com/TigreGotico/phoonnx/tree/0.0.2a1) (2025-08-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.0.1a1...0.0.2a1)
+
+**Merged pull requests:**
+
+- fix: decimal separator handling in unit expansion [\#6](https://github.com/TigreGotico/phoonnx/pull/6) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.0.1a1](https://github.com/TigreGotico/phoonnx/tree/0.0.1a1) (2025-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.0.0...0.0.1a1)
