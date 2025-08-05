@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.0a1](https://github.com/TigreGotico/phoonnx/tree/0.1.0a1) (2025-08-05)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.0.2a2...0.1.0a1)
+
+**Closed issues:**
+
+- cotovia phonemizer - allow IPA output [\#13](https://github.com/TigreGotico/phoonnx/issues/13)
+
+**Merged pull requests:**
+
+- feat: arabic2ipa [\#16](https://github.com/TigreGotico/phoonnx/pull/16) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.0.2a2](https://github.com/TigreGotico/phoonnx/tree/0.0.2a2) (2025-08-05)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.0.2a1...0.0.2a2)
