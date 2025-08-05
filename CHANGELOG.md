@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.2a2](https://github.com/TigreGotico/phoonnx/tree/0.0.2a2) (2025-08-05)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.0.2a1...0.0.2a2)
+
+**Merged pull requests:**
+
+- cotovia2ipa [\#14](https://github.com/TigreGotico/phoonnx/pull/14) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.0.2a1](https://github.com/TigreGotico/phoonnx/tree/0.0.2a1) (2025-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.0.1a1...0.0.2a1)
