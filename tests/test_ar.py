@@ -4,9 +4,6 @@ from unittest.mock import patch
 import sys
 import os
 
-# Add the project root to Python path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from phoonnx.phonemizers.ar import MantoqPhonemizer
 from phoonnx.phonemizers.base import BasePhonemizer
 from phoonnx.config import Alphabet
