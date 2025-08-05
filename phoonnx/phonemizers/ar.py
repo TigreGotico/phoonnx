@@ -7,6 +7,8 @@ from phoonnx.thirdparty.bw2ipa import translate as bw2ipa
 class MantoqPhonemizer(BasePhonemizer):
 
     def __init__(self, alphabet=Alphabet.MANTOQ):
+        if alphabet not in [Alphabet.IPA, Alphabet.MANTOQ]:
+            raise ValueError("unsupported alphabet")
         super().__init__(alphabet)
 
     @classmethod
