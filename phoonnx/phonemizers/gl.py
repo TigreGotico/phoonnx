@@ -12,6 +12,57 @@ class CotoviaError(Exception):
     pass
 
 
+COTOVIA2IPA = {
+    "pau": " ",
+    "a": "a",
+    "E": "ɛ",
+    "e": "e",
+    "i": "i",
+    "j": "j",
+    "O": "ɔ",
+    "o": "o",
+    "u": "u",
+    "w": "w",
+    "p": "p",
+    "b": "b",
+    "B": "β",
+    "t": "t",
+    "d": "d",
+    "D": "ð",
+    "k": "k",
+    "g": "g",
+    "G": "ɣ",
+    "f": "f",
+    "T": "θ",
+    "s": "s",
+    "S": "ʃ",
+    "tS": "tʃ",
+    "m": "m",
+    "n": "n",
+    "J": "ɲ",
+    "N": "ŋ",
+    "l": "l",
+    "Z": "ʎ",
+    "jj": "ʎ",
+    "L": "ʎ",
+    "r": "ɾ",
+    "rr": "r",
+    "X": "x"
+}
+
+
+def cotovia2ipa(text: str) -> str:
+    """
+    Converts a string of Cotovía phonemes to IPA.
+    """
+    # Sort the dictionary keys by length in descending order to handle multi-character phonemes first
+    sorted_cotovia_keys = sorted(COTOVIA2IPA.keys(), key=len, reverse=True)
+    ipa_str = text
+    for cotovia_char in sorted_cotovia_keys:
+        ipa_str = ipa_str.replace(cotovia_char, COTOVIA2IPA[cotovia_char])
+    return ipa_str
+
+
 class CotoviaPhonemizer(BasePhonemizer):
     """
     A phonemizer class that uses the Cotovia TTS binary to convert text into phonemes.
@@ -19,7 +70,7 @@ class CotoviaPhonemizer(BasePhonemizer):
     regular expression transformations to clean and normalize the phonetic representation.
     """
 
-    def __init__(self, cotovia_bin_path: Optional[str] = None):
+    def __init__(self, cotovia_bin_path: Optional[str] = None, alphabet: Alphabet = Alphabet.IPA):
         """
         Initializes the CotoviaPhonemizer.
 
@@ -31,7 +82,7 @@ class CotoviaPhonemizer(BasePhonemizer):
         if not os.path.exists(self.cotovia_bin):
             raise FileNotFoundError(f"Cotovia binary not found at {self.cotovia_bin}. "
                                     "Please ensure it's installed or provide the correct path.")
-        super().__init__(Alphabet.COTOVIA)
+        super().__init__(alphabet)
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
@@ -127,6 +178,8 @@ class CotoviaPhonemizer(BasePhonemizer):
         # substitute ' ( text )' to ', text,'
         str_ext = re.sub(r"(\w+)\s*\(\s*([^\(\)]*?)\s*\)", r"\1, \\2,", str_ext)
 
+        if self.alphabet == Alphabet.IPA:
+            return cotovia2ipa(str_ext)
         return str_ext
 
 
@@ -138,5 +191,5 @@ if __name__ == "__main__":
     lang = "gl"
     text_gl = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
     print(f"\n--- Getting phonemes for '{text_gl}' (Cotovia) ---")
-    phonemes_cotovia = cotovia.phonemize(text_gl, lang)
+    phonemes_cotovia = cotovia.phonemize_string(text_gl, lang)
     print(f"  Cotovia Phonemes: {phonemes_cotovia}")
