@@ -383,14 +383,22 @@ def main() -> None:
 
     # --- Apply final phoneme IDs and write dataset.jsonl ---
     _LOGGER.info("Writing dataset.jsonl...")
+    valid_utterances_count = 0
     with open(args.output_dir / "dataset.jsonl", "w", encoding="utf-8") as dataset_file:
         for utt in processed_utterances:
-            if utt.speaker is not None:
+            if is_multispeaker and utt.speaker is not None:
+                if utt.speaker not in speaker_ids:
+                    _LOGGER.error("Speaker '%s' not in speaker_id_map. This indicates an issue with your metadata.csv file.", utt.speaker)
+                    continue
                 utt.speaker_id = speaker_ids[utt.speaker]
 
             # Apply the final phoneme ID map to each utterance
             if utt.phonemes:
                 utt.phoneme_ids = phonemes_to_ids(utt.phonemes, id_map=final_phoneme_id_map)
+
+            if not utt.phoneme_ids:
+                _LOGGER.warning("Skipping utterance with invalid phoneme_ids before writing: %s", utt.audio_path)
+                continue
 
             json.dump(
                 utt.asdict(),
@@ -399,8 +407,9 @@ def main() -> None:
                 cls=PathEncoder,
             )
             print("", file=dataset_file)
+            valid_utterances_count += 1
 
-    _LOGGER.info("Preprocessing complete.")
+    _LOGGER.info("Preprocessing complete. Wrote %d valid utterances to dataset.jsonl.", valid_utterances_count)
 
 
 # -----------------------------------------------------------------------------
