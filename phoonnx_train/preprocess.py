@@ -105,7 +105,9 @@ def ljspeech_dataset(args: argparse.Namespace) -> Iterable[Utterance]:
 
             wav_path = None
             for wav_dir in wav_dirs:
-                potential_paths = [wav_dir / filename, wav_dir / f"{filename}.wav"]
+                potential_paths = [wav_dir / filename,
+                                   wav_dir / f"{filename}.wav",
+                                   wav_dir / f"{filename.lstrip('0')}.wav"]
                 for path in potential_paths:
                     if path.exists():
                         wav_path = path
@@ -156,7 +158,8 @@ def phonemize_worker(
                     # Phonemize the text
                     norm_utt = casing(normalize(utt.text, args.language))
                     utt.phonemes = phonemizer.phonemize_to_list(norm_utt, args.language)
-
+                    if not utt.phonemes:
+                        raise RuntimeError(f"Phonemes not found for '{norm_utt}'")
                     # Process audio if not skipping
                     if not args.skip_audio:
                         utt.audio_norm_path, utt.audio_spec_path = cache_norm_audio(

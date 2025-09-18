@@ -69,6 +69,8 @@ class PiperDataset(Dataset):
             self.utterances.extend(
                 PiperDataset.load_dataset(dataset_path, max_phoneme_ids=max_phoneme_ids)
             )
+        if not self.utterances:
+            raise ValueError("No utterances loaded")
 
     def __len__(self):
         return len(self.utterances)
@@ -120,6 +122,8 @@ class PiperDataset(Dataset):
     @staticmethod
     def load_utterance(line: str) -> Utterance:
         utt_dict = json.loads(line)
+        if not utt_dict["phoneme_ids"]:
+            raise ValueError(f"invalid utterance line - phoneme_ids not set ({line})")
         return Utterance(
             phoneme_ids=utt_dict["phoneme_ids"],
             audio_norm_path=Path(utt_dict["audio_norm_path"]),
