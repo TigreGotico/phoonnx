@@ -8,6 +8,7 @@ from typing import List, Dict, Optional
 import numpy as np
 import onnxruntime
 import requests
+
 from phoonnx.config import Alphabet
 from phoonnx.phonemizers.base import BasePhonemizer
 
@@ -15,6 +16,7 @@ from phoonnx.phonemizers.base import BasePhonemizer
 class EspeakError(Exception):
     """Custom exception for espeak-ng related errors."""
     pass
+
 
 class ByT5Phonemizer(BasePhonemizer):
     """
@@ -587,7 +589,6 @@ if __name__ == "__main__":
     print(f" Charsiu        Phonemes: {phonemes1e}")
 
     print(f" Misaki         Phonemes: {phonemes1f}")
-
 
     lang = "nl"
     sentence = "DJ's en bezoekers van Tomorrowland waren woensdagavond dolblij toen het paradepaardje van het festival alsnog opende in Oostenrijk op de Mainstage.\nWant het optreden van Metallica, waar iedereen zo blij mee was, zou hoe dan ook doorgaan, aldus de DJ die het nieuws aankondigde."

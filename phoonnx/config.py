@@ -382,6 +382,9 @@ class SynthesisConfig:
 
     enable_phonetic_spellings: bool = True
 
+    """for arabic and hebrew models"""
+    add_diacritics: bool = True
+
 
 def get_phonemizer(phoneme_type: PhonemeType,
                    alphabet: Alphabet = Alphabet.IPA,

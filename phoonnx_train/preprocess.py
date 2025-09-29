@@ -19,8 +19,8 @@ from phoonnx.phoneme_ids import (phonemes_to_ids, DEFAULT_IPA_PHONEME_ID_MAP, DE
                                  DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN)
 from phoonnx_train.norm_audio import cache_norm_audio, make_silence_detector
 from tqdm import tqdm
+from phoonnx.version import VERSION_STR
 
-_VERSION = "0.0.0"
 _LOGGER = logging.getLogger("preprocess")
 
 # Base phoneme map
@@ -155,11 +155,18 @@ def phonemize_worker(
 
             for utt in utterance_batch:
                 try:
+                    # normalize text (case, numbers....)
+                    utterance = casing(normalize( utt.text, args.language))
+
+                    # add diacritics
+                    if args.add_diacritics:
+                        utterance = phonemizer.add_diacritics(utterance, args.language)
+
                     # Phonemize the text
-                    norm_utt = casing(normalize(utt.text, args.language))
-                    utt.phonemes = phonemizer.phonemize_to_list(norm_utt, args.language)
+                    utt.phonemes = phonemizer.phonemize_to_list(utterance, args.language)
                     if not utt.phonemes:
-                        raise RuntimeError(f"Phonemes not found for '{norm_utt}'")
+                        raise RuntimeError(f"Phonemes not found for '{utterance}'")
+
                     # Process audio if not skipping
                     if not args.skip_audio:
                         utt.audio_norm_path, utt.audio_spec_path = cache_norm_audio(
@@ -245,6 +252,9 @@ def main() -> None:
     parser.add_argument(
         "--debug", action="store_true", help="Print DEBUG messages to the console"
     )
+    parser.add_argument(
+        "--add-diacritics", action="store_true", help="Add diacritics to text (phonemizer specific)"
+    )
     args = parser.parse_args()
 
     # Setup
@@ -296,7 +306,9 @@ def main() -> None:
     _LOGGER.info("Starting single pass processing with %d workers...", args.max_workers)
 
     # Initialize the phonemizer only once in the main process
-    phonemizer = get_phonemizer(args.phoneme_type, args.alphabet, args.phonemizer_model)
+    phonemizer = get_phonemizer(args.phoneme_type,
+                                args.alphabet,
+                                args.phonemizer_model)
 
     batch_size = max(1, int(num_utterances / (args.max_workers * 2)))
 
@@ -370,7 +382,10 @@ def main() -> None:
             "quality": audio_quality,
         },
         "lang_code": args.language,
-        "inference": {"noise_scale": 0.667, "length_scale": 1, "noise_w": 0.8},
+        "inference": {"noise_scale": 0.667,
+                      "length_scale": 1,
+                      "noise_w": 0.8,
+                      "add_diacritics": args.add_diacritics},
         "alphabet": phonemizer.alphabet.value,
         "phoneme_type": args.phoneme_type.value,
         "phonemizer_model": args.phonemizer_model,
@@ -378,7 +393,7 @@ def main() -> None:
         "num_symbols": len(final_phoneme_id_map),
         "num_speakers": len(speaker_counts) if is_multispeaker else 1,
         "speaker_id_map": speaker_ids,
-        "phoonnx_version": _VERSION,
+        "phoonnx_version": VERSION_STR,
     }
 
     with open(args.output_dir / "config.json", "w", encoding="utf-8") as config_file:

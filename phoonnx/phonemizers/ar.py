@@ -1,7 +1,7 @@
-from phoonnx.phonemizers.base import BasePhonemizer
-from phoonnx.thirdparty.mantoq import g2p as mantoq
 from phoonnx.config import Alphabet
+from phoonnx.phonemizers.base import BasePhonemizer
 from phoonnx.thirdparty.bw2ipa import translate as bw2ipa
+from phoonnx.thirdparty.mantoq import g2p as mantoq
 
 
 class MantoqPhonemizer(BasePhonemizer):
@@ -39,7 +39,7 @@ class MantoqPhonemizer(BasePhonemizer):
 
         # The phonemes are a list of characters, we join them into a string
         # and replace the word separator token with a space.
-        phonemes =  "".join(phonemes).replace("_+_", " ")
+        phonemes = "".join(phonemes).replace("_+_", " ")
 
         if self.alphabet == Alphabet.IPA:
             # If the alphabet is IPA, we use the bw2ipa function to translate
@@ -51,56 +51,48 @@ class MantoqPhonemizer(BasePhonemizer):
 
 
 if __name__ == "__main__":
+    from phoonnx.phonemizers.mul import EspeakPhonemizer
+
+    espeak = EspeakPhonemizer()
+
     # Initialize phonemizers for both MANTOQ and IPA alphabets
-    pho_mantoq = MantoqPhonemizer()
-    pho_ipa = MantoqPhonemizer(alphabet=Alphabet.IPA)
+    pho_mantoq = MantoqPhonemizer(alphabet=Alphabet.IPA)
 
-    text1 = "مرحبا بالعالم"
-    print(f"Original Text: {text1}")
-    print(f"  Mantoq Phonemizer: {pho_mantoq.phonemize_string(text1, 'ar')}")
-    print(f"  IPA Phonemizer:    {pho_ipa.phonemize_string(text1, 'ar')}")
-    print("-" * 20)
 
-    text2 = "ذهب الطالب إلى المكتبة لقراءة كتاب عن تاريخ الأندلس."
-    print(f"Original Text: {text2}")
-    print(f"  Mantoq Phonemizer: {pho_mantoq.phonemize_string(text2, 'ar')}")
-    print(f"  IPA Phonemizer:    {pho_ipa.phonemize_string(text2, 'ar')}")
-    print("-" * 20)
+    def compare(text):
+        print(f"Original Text: {text}")
+        print(f"  Mantoq: {pho_mantoq.phonemize_string(text, 'ar')}")
+        print(f"  Espeak: {espeak.phonemize_string(text, 'ar')}")
 
-    # --- New Test Cases to check bw2ipa logic ---
-    print("--- New Test Cases for bw2ipa logic ---")
+        ts = pho_mantoq.add_diacritics(text, 'ar')
+        print(f"Tashkeel Text: {ts}")
+        print(f"  Mantoq: {pho_mantoq.phonemize_string(ts, 'ar')}")
+        print(f"  Espeak: {espeak.phonemize_string(ts, 'ar')}")
+        print("\n#########################")
+
+
+    text = "مرحبا بالعالم"
+    compare(text)
+
+    text = "ذهب الطالب إلى المكتبة لقراءة كتاب عن تاريخ الأندلس."
+    compare(text)
 
     # 1. Test for gemination of a sun letter (e.g., ash-shams)
-    text3 = "الشمس"
-    print(f"Original Text: '{text3}'")
-    print(f"  Mantoq Phonemizer: {pho_mantoq.phonemize_string(text3, 'ar')}")
-    print(f"  IPA Phonemizer:    {pho_ipa.phonemize_string(text3, 'ar')}")
-    print("-" * 20)
+    text = "الشمس"
+    compare(text)
 
     # 2. Test for long vowels (e.g., 'fil' - elephant)
-    text4 = "فيل"
-    print(f"Original Text: '{text4}'")
-    print(f"  Mantoq Phonemizer: {pho_mantoq.phonemize_string(text4, 'ar')}")
-    print(f"  IPA Phonemizer:    {pho_ipa.phonemize_string(text4, 'ar')}")
-    print("-" * 20)
+    text = "فيل"
+    compare(text)
 
     # 3. Test for glide (e.g., 'yawm' - day)
-    text5 = "يوم"
-    print(f"Original Text: '{text5}'")
-    print(f"  Mantoq Phonemizer: {pho_mantoq.phonemize_string(text5, 'ar')}")
-    print(f"  IPA Phonemizer:    {pho_ipa.phonemize_string(text5, 'ar')}")
-    print("-" * 20)
+    text = "يوم"
+    compare(text)
 
     # 4. Test for long vowels (e.g., 'suwr' - wall)
-    text6 = "سور"
-    print(f"Original Text: '{text6}'")
-    print(f"  Mantoq Phonemizer: {pho_mantoq.phonemize_string(text6, 'ar')}")
-    print(f"  IPA Phonemizer:    {pho_ipa.phonemize_string(text6, 'ar')}")
-    print("-" * 20)
+    text = "سور"
+    compare(text)
 
     # 5. Test for glide (e.g., 'law' - if)
-    text7 = "لو"
-    print(f"Original Text: '{text7}'")
-    print(f"  Mantoq Phonemizer: {pho_mantoq.phonemize_string(text7, 'ar')}")
-    print(f"  IPA Phonemizer:    {pho_ipa.phonemize_string(text7, 'ar')}")
-    print("-" * 20)
+    text = "لو"
+    compare(text)
