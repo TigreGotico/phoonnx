@@ -39,9 +39,134 @@ This step produces:
 * `dataset.jsonl`: Normalized utterances with phoneme IDs and audio references.
 * Cached normalized audio + spectrograms (in `cache/`).
 
+
+Perfect — we should definitely explain the **normalization step** clearly in the training guide since it’s a key part of preprocessing. Based on the code you shared, here’s how I’d add it into the **TRAINING.md**:
+
 ---
 
-## 2. Understanding `config.json`
+## 2. Training a Model
+
+Train a [VITS](https://arxiv.org/abs/2106.06103)-style model using PyTorch Lightning.
+
+```bash
+python -m phoonnx \
+  --dataset-dir /path/to/output \
+  --quality medium \
+  --max_epochs 500 \
+  --gpus 1
+```
+
+### Options
+
+* `--dataset-dir`: Path containing `config.json` and `dataset.jsonl`.
+* `--quality`: Model size (`x-low`, `medium`, `high`).
+* `--checkpoint-epochs`: Save checkpoints every *N* epochs.
+* `--resume_from_checkpoint`: Resume from a previous run.
+* `--resume_from_single_speaker_checkpoint`: Convert single-speaker checkpoint to multi-speaker training.
+* `--seed`: Random seed (default `1234`).
+
+PyTorch Lightning arguments are also supported (e.g., `--max_epochs`, `--accelerator gpu`, etc.).
+
+---
+
+## 3. Exporting to ONNX
+
+After training, export the model to ONNX for efficient inference.
+
+```bash
+python export_onnx.py \
+  checkpoints/epoch=500-step=100000.ckpt \
+  model.onnx
+```
+
+---
+
+## 4. Workflow Summary
+
+1. **Prepare dataset** in LJSpeech-style format.
+2. **Preprocess**:
+
+   ```bash
+   python preprocess.py --input-dir ... --output-dir ... --language en-us --sample-rate 22050
+   ```
+3. **Train**:
+
+   ```bash
+   python -m phoonnx --dataset-dir ... --quality medium --max_epochs 500
+   ```
+4. **Export**:
+
+   ```bash
+   python export_onnx.py checkpoint.ckpt model.onnx
+   ```
+
+
+---
+
+## 5. Text Normalization (Preprocessing Step)
+
+During preprocessing, all input text is **normalized** before phonemization. This ensures consistent training data and makes the phonemizer’s job easier.
+
+Normalization in `phoonnx` is powered by:
+
+* **[ovos-number-parser](https://github.com/OpenVoiceOS/ovos-number-parser)** – Expands numbers and fractions into words.
+* **[ovos-date-parser](https://github.com/OpenVoiceOS/ovos-date-parser)** – Converts dates and times into spoken forms.
+* **[unicode-rbnf](https://github.com/Elvenson/unicode-rbnf)** – Fallback for language-specific number formatting rules.
+* Custom mappings for contractions, titles, and units.
+
+**What Happens in Normalization**
+
+1. **Dates & Times**
+
+   * Detects and expands dates (`08/03/2025` → `eighth of March twenty twenty five`).
+   * Converts times to spoken forms (`19h30` → `nineteen thirty`).
+
+2. **Numbers & Fractions**
+
+   * Expands numbers (`123` → `one hundred twenty three`).
+   * Handles locale-specific decimal/thousands separators:
+
+     * English: `1,234.56` → `one thousand two hundred thirty four point five six`
+     * Portuguese/Spanish/French/German: `1.234,56` → `mil duzentos e trinta e quatro vírgula cinquenta e seis`
+   * Expands fractions (`3/4` → `three quarters`).
+
+3. **Units & Symbols**
+
+   * Converts units and symbols into words (`25ºC` → `twenty five degrees celsius`, `5kg` → `five kilograms`).
+
+4. **Contractions & Titles**
+
+   * Expands contractions (`I’m` → `I am`, `won’t` → `will not`).
+   * Expands titles (`Dr.` → `Doctor`, `Sr.` → `Senhor`, `Mme` → `Madame`).
+
+5. **Hyphenated Words with Digits**
+
+   * Fixes cases like `sub-23` → `sub 23`.
+
+6. **Language Awareness**
+
+   * Uses the provided `--language` code to decide rules.
+   * If the code isn’t exact, `phoonnx` uses the [`langcodes`](https://pypi.org/project/langcodes/) library to map it to a valid phonemizer language.
+
+**Example**
+
+Input:
+
+```
+"I'm Dr. Prof. 3/3 0.5% of 12345€, 5ft, and 10kg"
+```
+
+Normalized (English):
+
+```
+"I am Doctor Professor three thirds zero point five per cent of twelve thousand three hundred forty five euros five feet and ten kilograms"
+```
+
+👉 This normalization step runs automatically inside **`preprocess.py`** before phonemization, so you don’t need to do it manually.
+
+---
+
+## 6. Understanding `config.json`
 
 The `config.json` file stores dataset and training parameters. A typical example looks like this:
 
@@ -95,65 +220,7 @@ The `config.json` file stores dataset and training parameters. A typical example
 
 ---
 
-## 3. Training a Model
-
-Train a [VITS](https://arxiv.org/abs/2106.06103)-style model using PyTorch Lightning.
-
-```bash
-python -m phoonnx \
-  --dataset-dir /path/to/output \
-  --quality medium \
-  --max_epochs 500 \
-  --gpus 1
-```
-
-### Options
-
-* `--dataset-dir`: Path containing `config.json` and `dataset.jsonl`.
-* `--quality`: Model size (`x-low`, `medium`, `high`).
-* `--checkpoint-epochs`: Save checkpoints every *N* epochs.
-* `--resume_from_checkpoint`: Resume from a previous run.
-* `--resume_from_single_speaker_checkpoint`: Convert single-speaker checkpoint to multi-speaker training.
-* `--seed`: Random seed (default `1234`).
-
-PyTorch Lightning arguments are also supported (e.g., `--max_epochs`, `--accelerator gpu`, etc.).
-
----
-
-## 4. Exporting to ONNX
-
-After training, export the model to ONNX for efficient inference.
-
-```bash
-python export_onnx.py \
-  checkpoints/epoch=500-step=100000.ckpt \
-  model.onnx
-```
-
----
-
-## 5. Workflow Summary
-
-1. **Prepare dataset** in LJSpeech-style format.
-2. **Preprocess**:
-
-   ```bash
-   python preprocess.py --input-dir ... --output-dir ... --language en-us --sample-rate 22050
-   ```
-3. **Train**:
-
-   ```bash
-   python -m phoonnx --dataset-dir ... --quality medium --max_epochs 500
-   ```
-4. **Export**:
-
-   ```bash
-   python export_onnx.py checkpoint.ckpt model.onnx
-   ```
-
----
-
-## 6. Tips
+## 7. Tips
 
 * Use `--debug` to troubleshoot preprocessing.
 * Always match `--sample-rate` to your dataset’s audio files.
