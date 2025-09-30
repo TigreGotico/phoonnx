@@ -6,8 +6,8 @@ from phoonnx.thirdparty.mantoq import g2p as mantoq
 
 class MantoqPhonemizer(BasePhonemizer):
 
-    def __init__(self, alphabet=Alphabet.MANTOQ):
-        if alphabet not in [Alphabet.IPA, Alphabet.MANTOQ]:
+    def __init__(self, alphabet=Alphabet.BUCKWALTER):
+        if alphabet not in [Alphabet.IPA, Alphabet.BUCKWALTER]:
             raise ValueError("unsupported alphabet")
         super().__init__(alphabet)
 

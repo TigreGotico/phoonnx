@@ -33,7 +33,7 @@ class Alphabet(str, Enum):
     ERAAB = "eraab" # fa
     COTOVIA = "cotovia" # gl
     HANZI = "hanzi" # zh
-    MANTOQ = "mantoq" # ar
+    BUCKWALTER = "buckwalter" # ar
 
 
 
