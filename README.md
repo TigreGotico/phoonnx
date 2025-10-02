@@ -80,8 +80,8 @@ wrap, and the output alphabets they can generate.
 
 ***
 
-| Language(s)         | Phonemizer Class       | Source/Library                                                                                                     | Output Alphabets             | Notes                                                                                                                                       |
-|:--------------------|:-----------------------|:-------------------------------------------------------------------------------------------------------------------|:-----------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------|
+| Language(s)         | Phonemizer Class       | Source/Library                                                                                                     | Output Alphabets             | 
+|:--------------------|:-----------------------|:-------------------------------------------------------------------------------------------------------------------|:-----------------------------|
 | **Multilingual**    | `ByT5Phonemizer`       | [OpenVoiceOS ByT5](https://huggingface.co/collections/OpenVoiceOS/g2p-models-6886a8d612825c3fe65befa0) ONNX Models | IPA                          | High-quality, model-based G2P for an extensive list of languages.                                                                           |
 | **Multilingual**    | `CharsiuPhonemizer`    | [Charsiu](https://github.com/lingjzhu/CharsiuG2P) ByT5 ONNX Model                                                  | IPA                          | Very extensive multilingual support, including many regional dialects and variants (e.g., `eng-uk`, `spa-me`, `zho-s`).                     |
 | **Multilingual**    | `EspeakPhonemizer`     | `espeak-ng` command-line tool                                                                                      | IPA                          | Broad language coverage, relying on the widely-used `espeak-ng` engine.                                                                     |
