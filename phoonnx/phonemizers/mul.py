@@ -438,8 +438,6 @@ class GruutPhonemizer(BasePhonemizer):
 
 class EpitranPhonemizer(BasePhonemizer):
     """
-    A phonemizer class that uses the Gruut library to convert text into phonemes.
-    Note: Gruut's internal segmentation is sentence-based
     """
     EPITRAN_LANGS = ['hsn-Latn', 'ful-Latn', 'jpn-Ktkn-red', 'tel-Telu', 'nld-Latn', 'aze-Latn', 'amh-Ethi-pp',
                      'msa-Latn', 'spa-Latn-eu', 'ori-Orya', 'bxk-Latn', 'spa-Latn', 'kir-Cyrl', 'lij-Latn', 'kin-Latn',
