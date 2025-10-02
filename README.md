@@ -54,20 +54,28 @@ audio_chunk = voice.synthesize(text, synthesis_config=synthesis_config)
 audio_chunk.write_wav("output.wav")
 ```
 
-### Preprocessing Datasets
+### Training
 
-Use the `preprocess.py` script to prepare your audio and text data for training:
+See the dedicated [training.md](/TRAINING.md)
 
-```bash
-python phoonnx_train/preprocess.py --dataset-dir /path/to/my/dataset --output-dir /path/to/output
-```
+### Credits
 
-### Exporting Models
+Phoonnx is built in the shoulders of giants
 
-After training, you can export a PyTorch Lightning checkpoint (`.ckpt`) to an ONNX model:
+- [jaywalnut310/vits](https://github.com/jaywalnut310/vits) - the original VITS implementation, the back-bone architecture of phoonnx models
+- [MycroftAI/mimic3](https://github.com/MycroftAI/mimic3) and [rhasspy/piper](https://github.com/rhasspy/piper) - for inspiration and reference implementation of a phonemizer for pre-processing inputs
 
-```bash
-python phoonnx_train/export_onnx.py /path/to/my/model.ckpt output.onnx
-```
+Individual languages greatly benefit from domain-specific knowledge, for convenience phoonnx also bundles code from
 
-This script will convert the model to an ONNX file with an `opset_version` of 15.
+- [uvigo/cotovia](https://github.com/TigreGotico/cotovia-mirror) for galician phonemization (pre-compiled binaries bundled)
+- [mush42/mantoq](https://github.com/mush42/mantoq) for arabic phonemization
+- [mush42/libtashkeel](https://github.com/mush42/libtashkeel) for arabic diacritics
+- [scarletcho/KoG2P](https://github.com/scarletcho/KoG2P) for korean phonemization
+- [stannam/hangul_to_ipa](https://github.com/stannam/hangul_to_ipa) a converter from Hangul to IPA
+- [chorusai/arpa2ipa](https://github.com/chorusai/arpa2ipa) a converter from Arpabet to IPA
+- [PaddlePaddle/PaddleSpeech](https://github.com/PaddlePaddle/PaddleSpeech/blob/8097a56be811a540f4f62a95a9094296c374351a/paddlespeech/t2s/frontend/zh_normalization/) for chinese number verbalization
+
+phoonnx can also optionally use the following external phonemizers if explicitly installed:
+
+- [Kyubyong/g2pK](https://github.com/Kyubyong/g2pK) for Korean phonemizer
+- TODO list all of them
