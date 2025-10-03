@@ -257,9 +257,9 @@ UNITS = {
     "en": {
         "€": "euros",
         "%": "per cent",
-        "ºC": "degrees celsius",
-        "ºF": "degrees fahrenheit",
-        "ºK": "degrees kelvin",
+        "°C": "degrees celsius",
+        "°F": "degrees fahrenheit",
+        "°K": "degrees kelvin",
         "°": "degrees",
         "$": "dollars",
         "£": "pounds",
@@ -287,9 +287,9 @@ UNITS = {
     "pt": {
         "€": "euros",
         "%": "por cento",
-        "ºC": "graus celsius",
-        "ºF": "graus fahrenheit",
-        "ºK": "graus kelvin",
+        "°C": "graus celsius",
+        "°F": "graus fahrenheit",
+        "°K": "graus kelvin",
         "°": "graus",
         "$": "dólares",
         "£": "libras",
@@ -308,9 +308,9 @@ UNITS = {
     "es": {
         "€": "euros",
         "%": "por ciento",
-        "ºC": "grados celsius",
-        "ºF": "grados fahrenheit",
-        "ºK": "grados kelvin",
+        "°C": "grados celsius",
+        "°F": "grados fahrenheit",
+        "°K": "grados kelvin",
         "°": "grados",
         "$": "dólares",
         "£": "libras",
@@ -325,9 +325,9 @@ UNITS = {
     "fr": {
         "€": "euros",
         "%": "pour cent",
-        "ºC": "degrés celsius",
-        "ºF": "degrés fahrenheit",
-        "ºK": "degrés kelvin",
+        "°C": "degrés celsius",
+        "°F": "degrés fahrenheit",
+        "°K": "degrés kelvin",
         "°": "degrés",
         "$": "dollars",
         "£": "livres",
@@ -342,9 +342,9 @@ UNITS = {
     "de": {
         "€": "Euro",
         "%": "Prozent",
-        "ºC": "Grad Celsius",
-        "ºF": "Grad Fahrenheit",
-        "ºK": "Grad Kelvin",
+        "°C": "Grad Celsius",
+        "°F": "Grad Fahrenheit",
+        "°K": "Grad Kelvin",
         "°": "Grad",
         "$": "Dollar",
         "£": "Pfund",
@@ -548,6 +548,7 @@ def _normalize_units(text: str, full_lang: str) -> str:
     This function handles symbolic and alphanumeric units separately
     to avoid issues with word boundaries.
     """
+    text = text.replace("º", "°") # these characters look the same... but...
     lang_code = full_lang.split("-")[0]
     if lang_code in UNITS:
         # Determine number separators for the language
@@ -566,15 +567,18 @@ def _normalize_units(text: str, full_lang: str) -> str:
             symbolic_pattern = re.compile(number_pattern_str + r"\s*(" + symbolic_pattern_str + r")", re.IGNORECASE)
 
             def replace_symbolic(match):
-                number_str = match.group(1)
+                number = match.group(1)
                 # Remove thousands separator and replace decimal separator for parsing
-                number = number_str.replace(thousands_separator, "").replace(decimal_separator, ".")
+                if thousands_separator in number and decimal_separator in number:
+                    number = number.replace(thousands_separator, "").replace(decimal_separator, ".")
+                elif decimal_separator != "." and decimal_separator in number:
+                    number = number.replace(decimal_separator, ".")
                 unit_symbol = match.group(2)
                 unit_word = symbolic_units[unit_symbol]
                 try:
-                    return f"{pronounce_number(float(number), full_lang)} {unit_word}"
+                    return f"{pronounce_number(float(number) if '.' in number else int(number), full_lang)} {unit_word}"
                 except Exception as e:
-                    LOG.error(f"Failed to pronounce number with unit: {number_str}{unit_symbol} - ({e})")
+                    LOG.error(f"Failed to pronounce number with unit: {number}{unit_symbol} - ({e})")
                     return match.group(0)
             text = symbolic_pattern.sub(replace_symbolic, text)
 
@@ -587,12 +591,15 @@ def _normalize_units(text: str, full_lang: str) -> str:
                                               re.IGNORECASE)
 
             def replace_alphanumeric(match):
-                number_str = match.group(1)
+                number = match.group(1)
                 # Remove thousands separator and replace decimal separator for parsing
-                number = number_str.replace(thousands_separator, "").replace(decimal_separator, ".")
+                if thousands_separator in number and decimal_separator in number:
+                    number = number.replace(thousands_separator, "").replace(decimal_separator, ".")
+                elif decimal_separator != "." and decimal_separator in number:
+                    number = number.replace(decimal_separator, ".")
                 unit_symbol = match.group(2)
                 unit_word = alphanumeric_units[unit_symbol]
-                return f"{pronounce_number(float(number), full_lang)} {unit_word}"
+                return f"{pronounce_number(float(number) if '.' in number else int(number), full_lang)} {unit_word}"
 
             text = alphanumeric_pattern.sub(replace_alphanumeric, text)
     return text
@@ -666,7 +673,8 @@ if __name__ == "__main__":
 
     # General normalization examples
     print("General English example: " + normalize('I\'m Dr. Prof. 3/3 0.5% of 12345€, 5ft, and 10kg', 'en'))
-    print(f"General Portuguese example: {normalize('Dr. Prof. 3/3 0.5% de 12345€, 5m, e 10kg', 'pt')}")
+    print(f"Word Salad Portuguese (Dr. Prof. 3/3 0,5% de 12345€, 5m, e 10kg): {normalize('Dr. Prof. 3/3 0,5% de 12345€, 5m, e 10kg', 'pt')}")
+    print(f"Word Salad Portuguese (Dr. Prof. 3/3 0.5% de 12345€, 5m, e 10kg): {normalize('Dr. Prof. 3/3 0.5% de 12345€, 5m, e 10kg', 'pt')}")
 
     # Portuguese examples with comma decimal separator
     print("\n--- Portuguese Decimal Separator Examples ---")
@@ -690,10 +698,10 @@ if __name__ == "__main__":
 
     # Portuguese dates and times
     print("\n--- Portuguese Date & Time Examples ---")
-    print(f"Portuguese date (DMY format): {normalize('A data é 03/08/2025', 'pt')}")
-    print(f"Portuguese ambiguous date (DMY assumed): {normalize('O relatório é para 15/05/2025', 'pt')}")
-    print(f"Portuguese date with dashes: {normalize('O evento é no dia 25-10-2024', 'pt')}")
-    print(f"Portuguese military time: {normalize('O encontro é às 14h30', 'pt')}")
+    print(f"Portuguese date (A data é 03/08/2025): {normalize('A data é 03/08/2025', 'pt')}")
+    print(f"Portuguese ambiguous date (O relatório é para 15/05/2025): {normalize('O relatório é para 15/05/2025', 'pt')}")
+    print(f"Portuguese date with dashes (O evento é no dia 25-10-2024): {normalize('O evento é no dia 25-10-2024', 'pt')}")
+    print(f"Portuguese military time (O encontro é às 14h30): {normalize('O encontro é às 14h30', 'pt')}")
 
     # Other examples
     print(f"\n--- Other Examples ---")

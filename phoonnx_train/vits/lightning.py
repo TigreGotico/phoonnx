@@ -299,9 +299,9 @@ class VitsModel(pl.LightningModule):
             test_audio = test_audio * (1.0 / max(0.01, abs(test_audio.max())))
 
             tag = test_utt.text or str(utt_idx)
-            self.logger.experiment.add_audio(
-                tag, test_audio, sample_rate=self.hparams.sample_rate
-            )
+           # self.logger.experiment.add_audio(
+           #     tag, test_audio, sample_rate=self.hparams.sample_rate
+           # )
 
         return val_loss
 

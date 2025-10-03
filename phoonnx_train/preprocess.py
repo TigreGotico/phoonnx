@@ -19,8 +19,8 @@ from phoonnx.phoneme_ids import (phonemes_to_ids, DEFAULT_IPA_PHONEME_ID_MAP, DE
                                  DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN)
 from phoonnx_train.norm_audio import cache_norm_audio, make_silence_detector
 from tqdm import tqdm
+from phoonnx.version import VERSION_STR
 
-_VERSION = "0.0.0"
 _LOGGER = logging.getLogger("preprocess")
 
 # Base phoneme map
@@ -105,7 +105,9 @@ def ljspeech_dataset(args: argparse.Namespace) -> Iterable[Utterance]:
 
             wav_path = None
             for wav_dir in wav_dirs:
-                potential_paths = [wav_dir / filename, wav_dir / f"{filename}.wav"]
+                potential_paths = [wav_dir / filename,
+                                   wav_dir / f"{filename}.wav",
+                                   wav_dir / f"{filename.lstrip('0')}.wav"]
                 for path in potential_paths:
                     if path.exists():
                         wav_path = path
@@ -153,9 +155,17 @@ def phonemize_worker(
 
             for utt in utterance_batch:
                 try:
+                    # normalize text (case, numbers....)
+                    utterance = casing(normalize( utt.text, args.language))
+
+                    # add diacritics
+                    if args.add_diacritics:
+                        utterance = phonemizer.add_diacritics(utterance, args.language)
+
                     # Phonemize the text
-                    norm_utt = casing(normalize(utt.text, args.language))
-                    utt.phonemes = phonemizer.phonemize_to_list(norm_utt, args.language)
+                    utt.phonemes = phonemizer.phonemize_to_list(utterance, args.language)
+                    if not utt.phonemes:
+                        raise RuntimeError(f"Phonemes not found for '{utterance}'")
 
                     # Process audio if not skipping
                     if not args.skip_audio:
@@ -242,6 +252,9 @@ def main() -> None:
     parser.add_argument(
         "--debug", action="store_true", help="Print DEBUG messages to the console"
     )
+    parser.add_argument(
+        "--add-diacritics", action="store_true", help="Add diacritics to text (phonemizer specific)"
+    )
     args = parser.parse_args()
 
     # Setup
@@ -293,7 +306,9 @@ def main() -> None:
     _LOGGER.info("Starting single pass processing with %d workers...", args.max_workers)
 
     # Initialize the phonemizer only once in the main process
-    phonemizer = get_phonemizer(args.phoneme_type, args.alphabet, args.phonemizer_model)
+    phonemizer = get_phonemizer(args.phoneme_type,
+                                args.alphabet,
+                                args.phonemizer_model)
 
     batch_size = max(1, int(num_utterances / (args.max_workers * 2)))
 
@@ -367,7 +382,10 @@ def main() -> None:
             "quality": audio_quality,
         },
         "lang_code": args.language,
-        "inference": {"noise_scale": 0.667, "length_scale": 1, "noise_w": 0.8},
+        "inference": {"noise_scale": 0.667,
+                      "length_scale": 1,
+                      "noise_w": 0.8,
+                      "add_diacritics": args.add_diacritics},
         "alphabet": phonemizer.alphabet.value,
         "phoneme_type": args.phoneme_type.value,
         "phonemizer_model": args.phonemizer_model,
@@ -375,7 +393,7 @@ def main() -> None:
         "num_symbols": len(final_phoneme_id_map),
         "num_speakers": len(speaker_counts) if is_multispeaker else 1,
         "speaker_id_map": speaker_ids,
-        "phoonnx_version": _VERSION,
+        "phoonnx_version": VERSION_STR,
     }
 
     with open(args.output_dir / "config.json", "w", encoding="utf-8") as config_file:
@@ -383,14 +401,22 @@ def main() -> None:
 
     # --- Apply final phoneme IDs and write dataset.jsonl ---
     _LOGGER.info("Writing dataset.jsonl...")
+    valid_utterances_count = 0
     with open(args.output_dir / "dataset.jsonl", "w", encoding="utf-8") as dataset_file:
         for utt in processed_utterances:
-            if utt.speaker is not None:
+            if is_multispeaker and utt.speaker is not None:
+                if utt.speaker not in speaker_ids:
+                    _LOGGER.error("Speaker '%s' not in speaker_id_map. This indicates an issue with your metadata.csv file.", utt.speaker)
+                    continue
                 utt.speaker_id = speaker_ids[utt.speaker]
 
             # Apply the final phoneme ID map to each utterance
             if utt.phonemes:
                 utt.phoneme_ids = phonemes_to_ids(utt.phonemes, id_map=final_phoneme_id_map)
+
+            if not utt.phoneme_ids:
+                _LOGGER.warning("Skipping utterance with invalid phoneme_ids before writing: %s", utt.audio_path)
+                continue
 
             json.dump(
                 utt.asdict(),
@@ -399,8 +425,9 @@ def main() -> None:
                 cls=PathEncoder,
             )
             print("", file=dataset_file)
+            valid_utterances_count += 1
 
-    _LOGGER.info("Preprocessing complete.")
+    _LOGGER.info("Preprocessing complete. Wrote %d valid utterances to dataset.jsonl.", valid_utterances_count)
 
 
 # -----------------------------------------------------------------------------

@@ -1,30 +1,12 @@
-import os.path
-
-import requests
-
-from phoonnx.phonemizers.base import BasePhonemizer
 from phoonnx.config import Alphabet
+from phoonnx.phonemizers.base import BasePhonemizer
 
 
 class PhonikudPhonemizer(BasePhonemizer):
-    dl_url = "https://huggingface.co/thewh1teagle/phonikud-onnx/resolve/main/phonikud-1.0.int8.onnx"
 
-    def __init__(self, model: str = None, diacritics=True):
-        from phonikud_onnx import Phonikud
+    def __init__(self):
         from phonikud import phonemize
         self.g2p = phonemize
-        self.diacritics = diacritics
-        if model is None:
-            base_path = os.path.expanduser("~/.local/share/phonikud")
-            fname = self.dl_url.split("/")[-1]
-            model = f"{base_path}/{fname}"
-            if not os.path.isfile(model):
-                os.makedirs(base_path, exist_ok=True)
-                # TODO - streaming download
-                data = requests.get(self.dl_url).content
-                with open(model, "wb") as f:
-                    f.write(data)
-        self.phonikud = Phonikud(model) if diacritics else None
         super().__init__(Alphabet.IPA)
 
     @classmethod
@@ -48,19 +30,18 @@ class PhonikudPhonemizer(BasePhonemizer):
         """
         """
         lang = self.get_lang(lang)
-        if self.diacritics:
-            text = self.phonikud.add_diacritics(text)
         return self.g2p(text)
 
 
 if __name__ == "__main__":
-    #text = "מתכת יקרה"
+    # text = "מתכת יקרה"
     text = 'שָׁלוֹם עוֹלָם'
 
-    pho = PhonikudPhonemizer(diacritics=False)
+    pho = PhonikudPhonemizer()
     lang = "he"
 
     print(f"\n--- Getting phonemes for '{text}' ---")
+    # text = pho.add_diacritics(text, lang)
     phonemes = pho.phonemize(text, lang)
     print(f"  Phonemes: {phonemes}")
     # --- Getting phonemes for 'שָׁלוֹם עוֹלָם' ---

@@ -8,6 +8,8 @@ from langcodes import tag_distance
 from quebra_frases import sentence_tokenize
 from phoonnx.config import Alphabet
 from phoonnx.util import normalize
+from phoonnx.thirdparty.phonikud import PhonikudDiacritizer
+from phoonnx.thirdparty.tashkeel import TashkeelDiacritizer
 
 # list of (substring, terminator, end_of_sentence) tuples.
 TextChunks = List[Tuple[str, str, bool]]
@@ -18,9 +20,26 @@ PhonemizedChunks = list[list[str]]
 
 
 class BasePhonemizer(metaclass=abc.ABCMeta):
-    def __init__(self, alphabet: Alphabet = Alphabet.UNICODE):
+    def __init__(self, alphabet: Alphabet = Alphabet.UNICODE,
+                 taskeen_threshold: Optional[float] = 0.8):
         super().__init__()
         self.alphabet = alphabet
+
+        self.taskeen_threshold = taskeen_threshold  # arabic only
+        self._tashkeel: Optional[TashkeelDiacritizer] = None
+        self._phonikud: Optional[PhonikudDiacritizer] = None # hebrew only
+
+    @property
+    def phonikud(self) -> PhonikudDiacritizer:
+        if self._phonikud is None:
+            self._phonikud = PhonikudDiacritizer()
+        return self._phonikud
+
+    @property
+    def tashkeel(self) -> TashkeelDiacritizer:
+        if self._tashkeel is None:
+            self._tashkeel = TashkeelDiacritizer()
+        return self._tashkeel
 
     @abc.abstractmethod
     def phonemize_string(self, text: str, lang: str) -> str:
@@ -28,6 +47,13 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
 
     def phonemize_to_list(self, text: str, lang: str) -> List[str]:
         return list(self.phonemize_string(text, lang))
+
+    def add_diacritics(self, text: str, lang: str) -> str:
+        if lang.startswith("he"):
+            return self.phonikud.diacritize(text)
+        elif lang.startswith("ar"):
+            return self.tashkeel.diacritize(text, self.taskeen_threshold)
+        return text
 
     def phonemize(self, text: str, lang: str) -> PhonemizedChunks:
         if not text:

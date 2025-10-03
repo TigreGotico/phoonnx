@@ -3,14 +3,6 @@ from phoonnx.thirdparty.mantoq.buck.tokenization import (arabic_to_phonemes, pho
                                     phonemes_to_tokens, simplify_phonemes)
 from phoonnx.thirdparty.mantoq.buck.tokenization import tokens_to_ids as _tokens_to_id
 from phoonnx.thirdparty.mantoq.num2words import num2words
-import warnings
-from phoonnx.thirdparty.tashkeel import TashkeelDiacritizer
-try:
-    import onnxruntime
-
-    _TASHKEEL_AVAILABLE = True
-except ImportError:
-    _TASHKEEL_AVAILABLE = False
 
 _DIACRITIZER_INST = None
 
@@ -29,29 +21,12 @@ QUOTES_TABLE = str.maketrans(QUOTES, '"' * len(QUOTES))
 BRACKETS_TABLE = str.maketrans("[]{}", "()()")
 
 
-
-
-def tashkeel(text: str) -> str:
-    global _DIACRITIZER_INST
-    if not _TASHKEEL_AVAILABLE:
-        warnings.warn(
-            "Warning: The Tashkeel feature will not be available. Please re-install with the `libtashkeel` extra.",
-            UserWarning,
-        )
-        return text
-    if _DIACRITIZER_INST is None:
-        _DIACRITIZER_INST = TashkeelDiacritizer()
-    return _DIACRITIZER_INST.diacritize(text)
-
 def g2p(
     text: str,
-    add_tashkeel: bool = True,
     process_numbers: bool = True,
     append_eos: bool = False,
-) -> list[str]:
+) -> tuple[str, list[str]]:
     text = text.translate(AR_SPECIAL_PUNCS_TABLE).translate(QUOTES_TABLE).translate(BRACKETS_TABLE)
-    if add_tashkeel:
-        text = tashkeel(text)
     if process_numbers:
         text = num2words(text)
     normalized_text = text

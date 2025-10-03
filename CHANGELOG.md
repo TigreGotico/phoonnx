@@ -1,13 +1,48 @@
 # Changelog
 
-## [0.0.0a2](https://github.com/TigreGotico/phoonnx/tree/0.0.0a2) (2025-08-03)
+## [0.1.0a3](https://github.com/TigreGotico/phoonnx/tree/0.1.0a3) (2025-10-03)
 
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/c98b63dedf62c824a9e0e85fca13ddd719550d82...0.0.0a2)
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.1.0a1...0.1.0a3)
 
 **Merged pull requests:**
 
-- packaging [\#3](https://github.com/TigreGotico/phoonnx/pull/3) ([JarbasAl](https://github.com/JarbasAl))
-- feat: date normalization + packaging [\#1](https://github.com/TigreGotico/phoonnx/pull/1) ([JarbasAl](https://github.com/JarbasAl))
+- Feat/sherpa-piper-export-compat [\#19](https://github.com/TigreGotico/phoonnx/pull/19) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.1.0a1](https://github.com/TigreGotico/phoonnx/tree/0.1.0a1) (2025-08-05)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.0.2a2...0.1.0a1)
+
+**Closed issues:**
+
+- cotovia phonemizer - allow IPA output [\#13](https://github.com/TigreGotico/phoonnx/issues/13)
+
+**Merged pull requests:**
+
+- feat: arabic2ipa [\#16](https://github.com/TigreGotico/phoonnx/pull/16) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.0.2a2](https://github.com/TigreGotico/phoonnx/tree/0.0.2a2) (2025-08-05)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.0.2a1...0.0.2a2)
+
+**Merged pull requests:**
+
+- cotovia2ipa [\#14](https://github.com/TigreGotico/phoonnx/pull/14) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.0.2a1](https://github.com/TigreGotico/phoonnx/tree/0.0.2a1) (2025-08-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.0.1a1...0.0.2a1)
+
+**Merged pull requests:**
+
+- fix: decimal separator handling in unit expansion [\#6](https://github.com/TigreGotico/phoonnx/pull/6) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.0.1a1](https://github.com/TigreGotico/phoonnx/tree/0.0.1a1) (2025-08-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.0.0...0.0.1a1)
+
+**Merged pull requests:**
+
+- fix: tests [\#4](https://github.com/TigreGotico/phoonnx/pull/4) ([JarbasAl](https://github.com/JarbasAl))
 
 
 

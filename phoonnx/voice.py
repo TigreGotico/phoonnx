@@ -14,7 +14,6 @@ from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, get_phonem
 from phoonnx.phoneme_ids import phonemes_to_ids, BlankBetween
 from phoonnx.phonemizers import Phonemizer
 from phoonnx.phonemizers.base import PhonemizedChunks
-from phoonnx.thirdparty.tashkeel import TashkeelDiacritizer
 
 _PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
 
@@ -113,11 +112,6 @@ class TTSVoice:
 
     phonemizer: Optional[Phonemizer] = None
 
-    # For Arabic text only
-    use_tashkeel: bool = True
-    tashkeel_diacritizier: Optional[TashkeelDiacritizer] = None  # For Arabic text only
-    taskeen_threshold: Optional[float] = 0.8
-
     def __post_init__(self):
         try:
             self.phonetic_spellings = PhoneticSpellings.from_lang(self.config.lang_code)
@@ -127,10 +121,6 @@ class TTSVoice:
             self.phonemizer = get_phonemizer(self.config.phoneme_type,
                                              self.config.alphabet,
                                              self.config.phonemizer_model)
-
-        # compat with piper arabic models - TODO move to espeak phonemizer
-        if self.config.lang_code.split("-")[0] == "ar" and self.use_tashkeel and self.tashkeel_diacritizier is None:
-            self.tashkeel_diacritizier = TashkeelDiacritizer()
 
     @staticmethod
     def load(
@@ -209,12 +199,6 @@ class TTSVoice:
 
                 continue
 
-            # Arabic diacritization
-            if self.config.lang_code.split("-")[0] == "ar" and self.use_tashkeel:
-                text_part = self.tashkeel_diacritizier(
-                    text_part, taskeen_threshold=self.taskeen_threshold
-                )
-
             # Phonemization
             phonemes = self.phonemizer.phonemize(
                 text_part, self.config.lang_code
@@ -266,6 +250,10 @@ class TTSVoice:
         # user defined word-level replacements to force correct pronunciation
         if self.phonetic_spellings and syn_config.enable_phonetic_spellings:
             text = self.phonetic_spellings.apply(text)
+
+        if syn_config.add_diacritics:
+            text = self.phonemizer.add_diacritics(text, self.config.lang_code)
+            LOG.debug("text+diacritics=%s", text)
 
         # All phonemization goes through the unified self.phonemize method
         sentence_phonemes = self.phonemize(text)
