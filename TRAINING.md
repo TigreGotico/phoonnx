@@ -21,16 +21,20 @@ python preprocess.py \
 * `--input-dir`: Path to your dataset (must contain `metadata.csv` in [LJSpeech format](https://keithito.com/LJ-Speech-Dataset/)).
 * `--output-dir`: Directory for processed files (`config.json`, `dataset.jsonl`).
 * `--language`: Language code (e.g., `en-us`).
-  > The language code is passed to the phonemizer. `phoonnx` uses the [langcodes](https://pypi.org/project/langcodes/) library internally to normalize and “correct” the code if needed.
+    > The language code is passed to the phonemizer. `phoonnx` uses the [langcodes](https://pypi.org/project/langcodes/) library internally to normalize and “correct” the code if needed.
 * `--sample-rate`: Target audio sample rate (e.g., `22050`).
-* `--single-speaker`: Treat dataset as single speaker.
-* `--speaker-id`: Manually assign ID for single-speaker training.
-* `--phoneme-type`: Phoneme system (`espeak`, `gruut`, `byt5`, etc.).
-* `--alphabet`: Alphabet (`ipa`, `unicode`, `arpa`, `pinyin`, depending on phonemizer).
+* `--cache-dir`: Optional directory to store cached processed audio files (defaults to `<output-dir>/cache/<sample-rate>`).
+* `--max-workers`: Maximum number of multiprocessing workers to use.
+* `--single-speaker`: Treat the dataset as **single speaker** regardless of `metadata.csv` contents. **Cannot** be used with `--speaker-id`.
+* `--speaker-id`: Manually assign a **numeric ID** for single-speaker training (only used if the dataset is single-speaker). **Cannot** be used with `--single-speaker`.
+* `--phoneme-type`: Phoneme system (`espeak`, `gruut`, `byt5`, etc.). (Default: `espeak`).
+* `--alphabet`: Phoneme alphabet (`ipa`, `unicode`, `arpa`, `pinyin`, etc.). The choices depend on the selected phonemizer. (Default: `ipa`).
 * `--phonemizer-model`: Optional pretrained model (currently applies only to **ByT5-based phonemizers**).
-* `--text-casing`: Adjust text casing (`lower`, `upper`, `casefold`).
-* `--skip-audio`: Skip audio normalization (for text-only runs).
-* `--add-diacritics`: Add diacritics (only meaningful for **Hebrew (phonikud)** and **Arabic (tashkeel)**).
+* `--text-casing`: Adjust text casing **before normalization** (`ignore`, `lower`, `upper`, `casefold`). (Default: `ignore`).
+* `--skip-audio`: Skip audio normalization and caching (for text-only runs).
+* `--add-diacritics`: Add diacritics to text **after normalization** but **before phonemization**. (Only meaningful for **Hebrew (phonikud)** and **Arabic (tashkeel)**, depending on the phonemizer).
+* `--dataset-name`: Name of dataset to put in `config.json`.
+* `--audio-quality`: Audio quality label to put in `config.json`.
 * `--debug`: Verbose logging.
 
 This step produces:
@@ -71,15 +75,27 @@ PyTorch Lightning arguments are also supported (e.g., `--max_epochs`, `--acceler
 
 ## 3. Exporting to ONNX
 
-After training, export the model to ONNX for efficient inference.
+After training, export the model checkpoint (`.ckpt`) to the ONNX format for efficient, cross-platform inference.
 
 ```bash
 python export_onnx.py \
   checkpoints/epoch=500-step=100000.ckpt \
-  model.onnx
+  --config /path/to/output/config.json \
+  --output-dir ./exported \
+  --generate-tokens \
+  --piper
 ```
 
----
+### Options
+
+* **Positional Argument: CHECKPOINT**
+    * Path to the PyTorch checkpoint file (`.ckpt`).
+* `-c`, `--config`: Path to the model configuration JSON file (`config.json`). **Required** for metadata and token map.
+* `-o`, `--output-dir`: Output directory for the ONNX file and associated assets.
+* `-t`, `--generate-tokens`: Generate a **`tokens.txt`** file alongside the ONNX model. Required by some inference engines (e.g., Sherpa).
+* `-p`, `--piper`: Generate a Piper-compatible **`.json`** file alongside the ONNX model, setting appropriate metadata flags.
+
+-----
 
 ## 4. Workflow Summary
 
