@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.0a3](https://github.com/TigreGotico/phoonnx/tree/0.1.0a3) (2025-10-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.1.0a1...0.1.0a3)
+
+**Merged pull requests:**
+
+- Feat/sherpa-piper-export-compat [\#19](https://github.com/TigreGotico/phoonnx/pull/19) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.1.0a1](https://github.com/TigreGotico/phoonnx/tree/0.1.0a1) (2025-08-05)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.0.2a2...0.1.0a1)
