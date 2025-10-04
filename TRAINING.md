@@ -66,7 +66,13 @@ This step produces:
 **Example Usage**
 
 ```bash
-python preprocess.py --input-dir /path/to/dataset/ --output-dir /tmp/tts_train --language eu --sample-rate 22050 --phoneme-type espeak --alphabet ipa
+python preprocess.py  \
+  --input-dir /path/to/dataset/  \
+  --output-dir /tmp/tts_train  \
+  --language en  \
+  --sample-rate 22050  \
+  --phoneme-type espeak  \
+  --alphabet ipa
 ```
 
 ---
@@ -75,30 +81,74 @@ python preprocess.py --input-dir /path/to/dataset/ --output-dir /tmp/tts_train -
 
 Train a [VITS](https://arxiv.org/abs/2106.06103)-style model using PyTorch Lightning.
 
+```
+Usage: train.py [OPTIONS]
+
+Options:
+  --dataset-dir DIRECTORY         Path to pre-processed dataset directory
+                                  [required]
+  --checkpoint-epochs INTEGER     Save checkpoint every N epochs (default: 1)
+  --quality [x-low|medium|high]   Quality/size of model (default: medium)
+  --resume-from-single-speaker-checkpoint TEXT
+                                  For multi-speaker models only. Converts a
+                                  single-speaker checkpoint to multi-speaker
+                                  and resumes training
+  --seed INTEGER                  Random seed (default: 1234)
+  --max-epochs INTEGER            Stop training once this number of epochs is
+                                  reached (default: 1000)
+  --devices INTEGER               Number of devices or list of device IDs to
+                                  train on (default: 1)
+  --accelerator TEXT              Hardware accelerator to use (cpu, gpu, tpu,
+                                  mps, etc.)  (default: "auto")
+  --default-root-dir DIRECTORY    Default root directory for logs and
+                                  checkpoints (default: None)
+  --precision INTEGER             Precision used in training (e.g. 16, 32,
+                                  bf16) (default: 32)
+  --learning-rate FLOAT           Learning rate for optimizer (default: 2e-4)
+  --batch-size INTEGER            Training batch size (default: 16)
+  --num-workers INTEGER           Number of data loader workers (default: 1)
+  --validation-split FLOAT        Proportion of data used for validation
+                                  (default: 0.05)
+  --help                          Show this message and exit.
+```
+
+
+**Example Usage**
+
 ```bash
-python -m phoonnx \
+python train.py \
   --dataset-dir /path/to/output \
   --quality medium \
   --max_epochs 500 \
   --gpus 1
 ```
 
-### Options
-
-* `--dataset-dir`: Path containing `config.json` and `dataset.jsonl`.
-* `--quality`: Model size (`x-low`, `medium`, `high`).
-* `--checkpoint-epochs`: Save checkpoints every *N* epochs.
-* `--resume_from_checkpoint`: Resume from a previous run.
-* `--resume_from_single_speaker_checkpoint`: Convert single-speaker checkpoint to multi-speaker training.
-* `--seed`: Random seed (default `1234`).
-
-PyTorch Lightning arguments are also supported (e.g., `--max_epochs`, `--accelerator gpu`, etc.).
 
 ---
 
 ## 3. Exporting to ONNX
 
 After training, export the model checkpoint (`.ckpt`) to the ONNX format for efficient, cross-platform inference.
+
+```
+Usage: export_onnx.py [OPTIONS] CHECKPOINT
+
+  Export a VITS model checkpoint to ONNX format.
+
+Options:
+  -c, --config PATH      Path to the model configuration JSON file.
+  -o, --output-dir PATH  Output directory for the ONNX model. (Default:
+                         current directory)
+  -t, --generate-tokens  Generate tokens.txt alongside the ONNX model. Some
+                         inference engines need this (eg. sherpa)
+  -p, --piper            Generate a piper compatible .json file alongside the
+                         ONNX model.
+  --help                 Show this message and exit.
+```
+
+
+**Example Usage**
+
 
 ```bash
 python export_onnx.py \
@@ -108,15 +158,6 @@ python export_onnx.py \
   --generate-tokens \
   --piper
 ```
-
-### Options
-
-* **Positional Argument: CHECKPOINT**
-    * Path to the PyTorch checkpoint file (`.ckpt`).
-* `-c`, `--config`: Path to the model configuration JSON file (`config.json`). **Required** for metadata and token map.
-* `-o`, `--output-dir`: Output directory for the ONNX file and associated assets.
-* `-t`, `--generate-tokens`: Generate a **`tokens.txt`** file alongside the ONNX model. Required by some inference engines (e.g., Sherpa).
-* `-p`, `--piper`: Generate a Piper-compatible **`.json`** file alongside the ONNX model, setting appropriate metadata flags.
 
 -----
 
@@ -131,7 +172,7 @@ python export_onnx.py \
 3. **Train**:
 
    ```bash
-   python -m phoonnx --dataset-dir ... --quality medium --max_epochs 500
+   python train.py --dataset-dir ... --quality medium --max_epochs 500
    ```
 4. **Export**:
 
