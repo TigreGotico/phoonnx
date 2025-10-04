@@ -48,6 +48,8 @@ class PhonemeType(str, Enum):
     EPITRAN = "epitran"
     BYT5 = "byt5"
     CHARSIU = "charsiu"  # technically same as byt5, but needs special handling for whitespace
+    TRANSPHONE = "transphone"
+    MIRANDESE = "mwl_phonemizer"
 
     DEEPPHONEMIZER = "deepphonemizer" # en
     OPENPHONEMIZER = "openphonemizer" # en
@@ -392,6 +394,7 @@ def get_phonemizer(phoneme_type: PhonemeType,
     from phoonnx.phonemizers import (EpitranPhonemizer, EspeakPhonemizer, OpenPhonemizer, OpenJTaklPhonemizer,
                                      ByT5Phonemizer, CharsiuPhonemizer, DeepPhonemizer, PersianPhonemizer,
                                      G2pCPhonemizer, G2pMPhonemizer, G2PKPhonemizer, G2PEnPhonemizer,
+                                     TransphonePhonemizer, MirandesePhonemizer,
                                      GruutPhonemizer, GraphemePhonemizer, MantoqPhonemizer, MisakiPhonemizer,
                                      KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
                                      CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer, XpinyinPhonemizer,
@@ -408,6 +411,10 @@ def get_phonemizer(phoneme_type: PhonemeType,
         phonemizer = EpitranPhonemizer()
     elif phoneme_type == PhonemeType.MISAKI:
         phonemizer = MisakiPhonemizer()
+    elif phoneme_type == PhonemeType.TRANSPHONE:
+        phonemizer = TransphonePhonemizer()
+    elif phoneme_type == PhonemeType.MIRANDESE:
+        phonemizer = MirandesePhonemizer()
     elif phoneme_type == PhonemeType.DEEPPHONEMIZER:
         phonemizer = DeepPhonemizer(model)
     elif phoneme_type == PhonemeType.OPENPHONEMIZER:
