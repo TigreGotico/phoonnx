@@ -1,5 +1,4 @@
 from phoonnx.phonemizers.base import BasePhonemizer, Alphabet
-from mwl_phonemizer import CRFOrthoCorrector
 
 
 class MirandesePhonemizer(BasePhonemizer):
@@ -7,6 +6,7 @@ class MirandesePhonemizer(BasePhonemizer):
 
     def __init__(self):
         super().__init__(Alphabet.IPA)
+        from mwl_phonemizer import CRFOrthoCorrector
         self.pho = CRFOrthoCorrector()
 
     @classmethod
