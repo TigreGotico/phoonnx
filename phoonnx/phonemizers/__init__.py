@@ -11,8 +11,9 @@ from phoonnx.phonemizers.ja import PyKakasiPhonemizer, CutletPhonemizer, OpenJTa
 from phoonnx.phonemizers.ko import KoG2PPhonemizer, G2PKPhonemizer
 from phoonnx.phonemizers.zh import (G2pCPhonemizer, G2pMPhonemizer, PypinyinPhonemizer,
                                     XpinyinPhonemizer, JiebaPhonemizer)
-from phoonnx.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, MisakiPhonemizer,
-                                     GruutPhonemizer, ByT5Phonemizer, CharsiuPhonemizer)
+from phoonnx.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, MisakiPhonemizer, GoruutPhonemizer,
+                                     GruutPhonemizer, ByT5Phonemizer, CharsiuPhonemizer, TransphonePhonemizer)
+from phoonnx.phonemizers.mwl import MirandesePhonemizer
 
 Phonemizer = Union[
     MisakiPhonemizer,
@@ -21,7 +22,10 @@ Phonemizer = Union[
     CharsiuPhonemizer,
     EspeakPhonemizer,
     GruutPhonemizer,
+    GoruutPhonemizer,
     EpitranPhonemizer,
+    TransphonePhonemizer,
+    MirandesePhonemizer,
     OpenJTaklPhonemizer,
     CutletPhonemizer,
     PyKakasiPhonemizer,

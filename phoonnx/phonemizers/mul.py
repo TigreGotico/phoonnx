@@ -436,6 +436,187 @@ class GruutPhonemizer(BasePhonemizer):
         return pho.strip()
 
 
+class GoruutPhonemizer(BasePhonemizer):
+    """
+    A phonemizer class that uses the pygoruut library to convert text into phonemes.
+    https://github.com/neurlang/pygoruut/
+    """
+    GORUUT_LANGS_NON_STD = [
+        'BengaliDhaka', 'BengaliRahr', 'MalayArab', 'VietnameseCentral', 'VietnameseSouthern',
+        'EnglishAmerican', 'EnglishBritish', 'NahuatlClassical', 'Hebrew2', 'Hebrew3',
+        'MinnanTawianese', 'MinnanHokkien', 'MinnanTawianese2', 'MinnanHokkien2']
+    ISO639 = {
+        "af": "Afrikaans",
+        "am": "Amharic",
+        "ar": "Arabic",
+        "az": "Azerbaijani",
+        "be": "Belarusian",
+        "bn": "Bengali",
+        "my": "Burmese",
+        "ceb": "Cebuano",
+        "ce": "Chechen",
+        "zh": "ChineseMandarin",
+        "cs": "Czech",
+        "da": "Danish",
+        "nl": "Dutch",
+        "dz": "Dzongkha",
+        "en": "English",
+        "eo": "Esperanto",
+        "fa": "Farsi",
+        "fi": "Finnish",
+        "fr": "French",
+        "de": "German",
+        "el": "Greek",
+        "gu": "Gujarati",
+        "ha": "Hausa",
+        "he": "Hebrew",
+        "hi": "Hindi",
+        "hu": "Hungarian",
+        "is": "Icelandic",
+        "id": "Indonesian",
+        "tts": "Isan",
+        "it": "Italian",
+        "jam": "Jamaican",
+        "ja": "Japanese",
+        "jv": "Javanese",
+        "kk": "Kazakh",
+        "ko": "Korean",
+        "lb": "Luxembourgish",
+        "mk": "Macedonian",
+        "ml": "Malayalam",
+        "ms": "MalayLatin",
+        "mt": "Maltese",
+        "mr": "Marathi",
+        "mn": "Mongolian",
+        "ne": "Nepali",
+        "no": "Norwegian",
+        "ps": "Pashto",
+        "pl": "Polish",
+        "pt": "Portuguese",
+        "pa": "Punjabi",
+        "ro": "Romanian",
+        "ru": "Russian",
+        "sk": "Slovak",
+        "es": "Spanish",
+        "sw": "Swahili",
+        "sv": "Swedish",
+        "ta": "Tamil",
+        "te": "Telugu",
+        "th": "Thai",
+        "bo": "Tibetan",
+        "tr": "Turkish",
+        "uk": "Ukrainian",
+        "ur": "Urdu",
+        "ug": "Uyghur",
+        "vi": "VietnameseNorthern",
+        "zu": "Zulu",
+        "hy": "Armenian",
+        "eu": "Basque",
+        "bg": "Bulgarian",
+        "ca": "Catalan",
+        "ny": "Chichewa",
+        "hr": "Croatian",
+        "et": "Estonian",
+        "gl": "Galician",
+        "ka": "Georgian",
+        "km": "KhmerCentral",
+        "lo": "Lao",
+        "lv": "Latvian",
+        "lt": "Lithuanian",
+        "sr": "Serbian",
+        "tl": "Tagalog",
+        "yo": "Yoruba",
+        "sq": "Albanian",
+        "an": "Aragonese",
+        "as": "Assamese",
+        "ba": "Bashkir",
+        "bpy": "BishnupriyaManipuri",
+        "bs": "Bosnian",
+        "chr": "Cherokee",
+        "cu": "Chuvash",
+        "gla": "GaelicScottish",
+        "gle": "GaelicIrish",
+        "kl": "Greenlandic",
+        "gn": "Guarani",
+        "ht": "HaitianCreole",
+        "haw": "Hawaiian",
+        "io": "Ido",
+        "ia": "Interlingua",
+        "kn": "Kannada",
+        "quc": "Kiche",
+        "kok": "Konkani",
+        "ku": "Kurdish",
+        "ky": "Kyrgyz",
+        "qdb": "LangBelta",
+        "ltg": "Latgalian",
+        "la": "LatinClassical",
+        "lat": "LatinEcclesiastical",
+        "lfn": "LinguaFrancaNova",
+        "jbo": "Lojban",
+        "smj": "LuleSaami",
+        "mi": "Maori",
+        "nah": "NahuatlCentral",
+        "nci": "NahuatlMecayapan",
+        "ncz": "NahuatlTetelcingo",
+        "nog": "Nogai",
+        "om": "Oromo",
+        "pap": "Papiamento",
+        "qu": "Quechua",
+        "qya": "Quenya",
+        "tn": "Setswana",
+        "shn": "ShanTaiYai",
+        "sjn": "Sindarin",
+        "sd": "Sindhi",
+        "si": "Sinhala",
+        "sl": "Slovenian",
+        "tt": "Tatar",
+        "tk": "Turkmen",
+        "uz": "Uzbek",
+        "cyw": "WelshNorth",
+        "cys": "WelshSouth",
+        "yue": "Cantonese"
+    }
+
+    def __init__(self, remote_url=None):
+        super().__init__(Alphabet.IPA)
+        from pygoruut.pygoruut import Pygoruut
+        from pygoruut.pygoruut_languages import PygoruutLanguages
+
+        self.pygoruut_langs = PygoruutLanguages()
+        if remote_url is not None:
+            # 'https://hashtron.cloud'
+            self.pygoruut = Pygoruut(api=remote_url)
+        else:
+            self.pygoruut = Pygoruut()
+
+    @classmethod
+    def get_lang(cls, target_lang: str) -> str:
+        """
+        Validates and returns the closest supported language code.
+
+        Args:
+            target_lang (str): The language code to validate.
+
+        Returns:
+            str: The validated language code.
+
+        Raises:
+            ValueError: If the language code is unsupported.
+        """
+        if target_lang in cls.GORUUT_LANGS_NON_STD:
+            return target_lang
+        if target_lang.lower() == "en-us":
+            return 'EnglishAmerican'
+        if target_lang.lower() == "en-gb" or target_lang.lower() == "en-uk":
+            return 'EnglishBritish'
+        lang = cls.match_lang(target_lang, list(cls.ISO639))
+        return cls.ISO639[lang]
+
+    def phonemize_string(self, text: str, lang: str) -> str:
+        lang = self.get_lang(lang)
+        return str(self.pygoruut.phonemize(language=lang, sentence=text))
+
+
 class EpitranPhonemizer(BasePhonemizer):
     """
     """
@@ -1178,6 +1359,7 @@ if __name__ == "__main__":
     byt5 = ByT5Phonemizer()
     espeak = EspeakPhonemizer()
     gruut = GruutPhonemizer()
+    goruut = GoruutPhonemizer(remote_url='https://hashtron.cloud')
     epitr = EpitranPhonemizer()
     charsiu = CharsiuPhonemizer()
     misaki = MisakiPhonemizer()
@@ -1194,6 +1376,7 @@ if __name__ == "__main__":
     phonemes1e = charsiu.phonemize(text1, lang)
     phonemes1f = misaki.phonemize(text1, lang)
     phonemes1g = tphone.phonemize(text1, lang)
+    phonemes1h = goruut.phonemize(text1, lang)
     print(f" Espeak         Phonemes: {phonemes1}")
     print(f" Gruut          Phonemes: {phonemes1b}")
     print(f" byt5           Phonemes: {phonemes1c}")
@@ -1201,6 +1384,7 @@ if __name__ == "__main__":
     print(f" Charsiu        Phonemes: {phonemes1e}")
     print(f" Misaki         Phonemes: {phonemes1f}")
     print(f" Transphone     Phonemes: {phonemes1g}")
+    print(f" Goruut         Phonemes: {phonemes1h}")
 
     lang = "nl"
     sentence = "DJ's en bezoekers van Tomorrowland waren woensdagavond dolblij toen het paradepaardje van het festival alsnog opende in Oostenrijk op de Mainstage.\nWant het optreden van Metallica, waar iedereen zo blij mee was, zou hoe dan ook doorgaan, aldus de DJ die het nieuws aankondigde."
