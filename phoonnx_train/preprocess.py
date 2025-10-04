@@ -287,8 +287,8 @@ def phonemize_worker(
     "-w",
     "--max-workers",
     "max_workers",
-    type=int,
-    default=None,
+    type=click.IntRange(min=1),
+    default=os.cpu_count() or 1,
     help="Maximum number of worker processes to use for parallel processing. Defaults to CPU count.",
 )
 @click.option(
@@ -391,7 +391,7 @@ def cli(
         language=language,
         sample_rate=sample_rate,
         cache_dir=cache_dir or output_dir / "cache" / str(sample_rate),
-        max_workers=max_workers or os.cpu_count(),
+        max_workers=max_workers or os.cpu_count() or 1,
         single_speaker=single_speaker,
         speaker_id=speaker_id,
         phoneme_type=PhonemeType(phoneme_type),
