@@ -26,6 +26,8 @@ class MirandesePhonemizer(BasePhonemizer):
         return cls.match_lang(target_lang, cls._LANGS)
 
     def phonemize_string(self, text: str, lang: str) -> str:
+        # Validate language is supported
+        lang = self.get_lang(lang)
         return self.pho.phonemize_sentence(text)
 
 
