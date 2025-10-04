@@ -30,6 +30,7 @@ def load_state_dict(model, saved_state_dict):
 @click.option('--dataset-dir', required=True, type=click.Path(exists=True, file_okay=False), help='Path to pre-processed dataset directory')
 @click.option('--checkpoint-epochs', default=1, type=int, help='Save checkpoint every N epochs (default: 1)')
 @click.option('--quality', default='medium', type=click.Choice(['x-low', 'medium', 'high']), help='Quality/size of model (default: medium)')
+@click.option('--resume-from-checkpoint', default=None, help='Load an existing checkpoint and resume training')
 @click.option('--resume-from-single-speaker-checkpoint', help='For multi-speaker models only. Converts a single-speaker checkpoint to multi-speaker and resumes training')
 @click.option('--seed', type=int, default=1234, help='Random seed (default: 1234)')
 # Common Trainer options
@@ -47,6 +48,7 @@ def main(
     dataset_dir,
     checkpoint_epochs,
     quality,
+    resume_from_checkpoint,
     resume_from_single_speaker_checkpoint,
     seed,
     max_epochs,
@@ -86,6 +88,7 @@ def main(
         accelerator=accelerator,
         default_root_dir=default_root_dir,
         precision=precision,
+        resume_from_checkpoint=resume_from_checkpoint
     )
 
     if checkpoint_epochs is not None:

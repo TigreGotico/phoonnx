@@ -89,6 +89,8 @@ Options:
                                   [required]
   --checkpoint-epochs INTEGER     Save checkpoint every N epochs (default: 1)
   --quality [x-low|medium|high]   Quality/size of model (default: medium)
+  --resume-from-checkpoint TEXT   Load an existing checkpoint and resume
+                                  training
   --resume-from-single-speaker-checkpoint TEXT
                                   For multi-speaker models only. Converts a
                                   single-speaker checkpoint to multi-speaker
@@ -117,10 +119,12 @@ Options:
 
 ```bash
 python train.py \
-  --dataset-dir /path/to/output \
+  --dataset-dir /tmp/tts_train \
   --quality medium \
-  --max_epochs 500 \
-  --gpus 1
+  --max_epochs 1000 \
+  --batch-size 8 \
+  --accelerator gpu \
+  --resume_from_checkpoint /path/to/previous.ckpt
 ```
 
 
