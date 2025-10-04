@@ -42,7 +42,7 @@ def load_state_dict(model, saved_state_dict):
 # Model-specific arguments
 @click.option('--learning-rate', type=float, default=2e-4, help='Learning rate for optimizer (default: 2e-4)')
 @click.option('--batch-size', type=int, default=16, help='Training batch size (default: 16)')
-@click.option('--num-workers', type=click.IntRange(min=1), default=1, help='Number of data loader workers (default: 1)')
+@click.option('--num-workers', type=click.IntRange(min=1), default=os.cpu_count() or 1, help='Number of data loader workers (default: CPU count)')
 @click.option('--validation-split', type=float, default=0.05, help='Proportion of data used for validation (default: 0.05)')
 def main(
     dataset_dir,

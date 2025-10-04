@@ -22,16 +22,23 @@ Options:
                                   [required]
   -o, --output-dir DIRECTORY      Directory to write output files for training
                                   (config.json, dataset.jsonl)  [required]
-  -l, --language TEXT             phonemizer language code (e.g., 'en',
-                                  'es', 'fr')  [required]
-  -r, --sample-rate INTEGER       Target sample rate for voice (hertz, e.g.,
-                                  22050)  [required]
+  -l, --language TEXT             phonemizer language code (e.g., 'en', 'es',
+                                  'fr')  [required]
+  -c, --prev-config FILE          Optional path to a previous config.json from
+                                  which to reuse phoneme_id_map. (for fine-tuning
+                                  only)
+  --drop-extra-phonemes BOOLEAN   If training data has more symbols than base
+                                  model, discard new symbols. (for fine-tuning
+                                  only)
+  -r, --sample-rate INTEGER       Target sample rate for voice (hertz,
+                                  Default: 22050)
   --cache-dir DIRECTORY           Directory to cache processed audio files.
                                   Defaults to <output-dir>/cache/<sample-
                                   rate>.
-  -w, --max-workers INTEGER       Maximum number of worker processes to use
+  -w, --max-workers INTEGER RANGE
+                                  Maximum number of worker processes to use
                                   for parallel processing. Defaults to CPU
-                                  count.
+                                  count.  [x>=1]
   --single-speaker                Force treating the dataset as single
                                   speaker, ignoring metadata speaker columns.
   --speaker-id INTEGER            Specify a fixed speaker ID (0, 1, etc.) for
@@ -69,6 +76,7 @@ This step produces:
 python preprocess.py  \
   --input-dir /path/to/dataset/  \
   --output-dir /tmp/tts_train  \
+  --prev-config /path/to/previous.ckpt.json  \
   --language en  \
   --sample-rate 22050  \
   --phoneme-type espeak  \
