@@ -23,6 +23,8 @@ Phonemizer = Union[
     EspeakPhonemizer,
     GruutPhonemizer,
     EpitranPhonemizer,
++   TransphonePhonemizer,
+    MirandesePhonemizer,
     OpenJTaklPhonemizer,
     CutletPhonemizer,
     PyKakasiPhonemizer,
