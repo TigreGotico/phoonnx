@@ -23,7 +23,7 @@ Phonemizer = Union[
     EspeakPhonemizer,
     GruutPhonemizer,
     EpitranPhonemizer,
-+   TransphonePhonemizer,
+    TransphonePhonemizer,
     MirandesePhonemizer,
     OpenJTaklPhonemizer,
     CutletPhonemizer,
