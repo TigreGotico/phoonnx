@@ -8,34 +8,60 @@ This document explains how to prepare data, train models, and export them to ONN
 
 Before training, you need to preprocess your dataset into a format compatible with `phoonnx`.
 
-```bash
-python preprocess.py \
-  --input-dir /path/to/dataset \
-  --output-dir /path/to/output \
-  --language en-us \
-  --sample-rate 22050
+
 ```
+Usage: preprocess.py [OPTIONS]
 
-### Supported Options
+  Preprocess a TTS dataset (e.g., LJSpeech format) for training a VITS-style
+  model. This script handles text normalization, phonemization, and optional
+  audio caching.
 
-* `--input-dir`: Path to your dataset (must contain `metadata.csv` in [LJSpeech format](https://keithito.com/LJ-Speech-Dataset/)).
-* `--output-dir`: Directory for processed files (`config.json`, `dataset.jsonl`).
-* `--language`: Language code (e.g., `en-us`).
-    > The language code is passed to the phonemizer. `phoonnx` uses the [langcodes](https://pypi.org/project/langcodes/) library internally to normalize and “correct” the code if needed.
-* `--sample-rate`: Target audio sample rate (e.g., `22050`).
-* `--cache-dir`: Optional directory to store cached processed audio files (defaults to `<output-dir>/cache/<sample-rate>`).
-* `--max-workers`: Maximum number of multiprocessing workers to use.
-* `--single-speaker`: Treat the dataset as **single speaker** regardless of `metadata.csv` contents. **Cannot** be used with `--speaker-id`.
-* `--speaker-id`: Manually assign a **numeric ID** for single-speaker training (only used if the dataset is single-speaker). **Cannot** be used with `--single-speaker`.
-* `--phoneme-type`: Phoneme system (`espeak`, `gruut`, `byt5`, etc.). (Default: `espeak`).
-* `--alphabet`: Phoneme alphabet (`ipa`, `unicode`, `arpa`, `pinyin`, etc.). The choices depend on the selected phonemizer. (Default: `ipa`).
-* `--phonemizer-model`: Optional pretrained model (currently applies only to **ByT5-based phonemizers**).
-* `--text-casing`: Adjust text casing **before normalization** (`ignore`, `lower`, `upper`, `casefold`). (Default: `ignore`).
-* `--skip-audio`: Skip audio normalization and caching (for text-only runs).
-* `--add-diacritics`: Add diacritics to text **after normalization** but **before phonemization**. (Only meaningful for **Hebrew (phonikud)** and **Arabic (tashkeel)**, depending on the phonemizer).
-* `--dataset-name`: Name of dataset to put in `config.json`.
-* `--audio-quality`: Audio quality label to put in `config.json`.
-* `--debug`: Verbose logging.
+Options:
+  -i, --input-dir DIRECTORY       Directory with audio dataset (e.g.,
+                                  containing metadata.csv and wavs/)
+                                  [required]
+  -o, --output-dir DIRECTORY      Directory to write output files for training
+                                  (config.json, dataset.jsonl)  [required]
+  -l, --language TEXT             phonemizer language code (e.g., 'en', 'es',
+                                  'fr')  [required]
+  -c, --prev-config FILE          Optional path to a previous config.json from
+                                  which to reuse phoneme_id_map. (for fine-tuning
+                                  only)
+  --drop-extra-phonemes BOOLEAN   If training data has more symbols than base
+                                  model, discard new symbols. (for fine-tuning
+                                  only)
+  -r, --sample-rate INTEGER       Target sample rate for voice (hertz,
+                                  Default: 22050)
+  --cache-dir DIRECTORY           Directory to cache processed audio files.
+                                  Defaults to <output-dir>/cache/<sample-
+                                  rate>.
+  -w, --max-workers INTEGER RANGE
+                                  Maximum number of worker processes to use
+                                  for parallel processing. Defaults to CPU
+                                  count.  [x>=1]
+  --single-speaker                Force treating the dataset as single
+                                  speaker, ignoring metadata speaker columns.
+  --speaker-id INTEGER            Specify a fixed speaker ID (0, 1, etc.) for
+                                  a single speaker dataset.
+  --phoneme-type [raw|unicode|graphemes|misaki|espeak|gruut|goruut|epitran|byt5|charsiu|transphone|mwl_phonemizer|deepphonemizer|openphonemizer|g2pen|g2pfa|openjtalk|cutlet|pykakasi|cotovia|phonikud|mantoq|viphoneme|g2pk|kog2p|g2pc|g2pm|pypinyin|xpinyin|jieba]
+                                  Type of phonemes to use.
+  --alphabet [unicode|ipa|arpa|sampa|x-sampa|hangul|kana|hira|hepburn|kunrei|nihon|pinyin|eraab|cotovia|hanzi|buckwalter]
+                                  Phoneme alphabet to use (e.g., IPA).
+  --phonemizer-model TEXT         Path or name of a custom phonemizer model,
+                                  if applicable.
+  --text-casing [ignore|lower|upper|casefold]
+                                  Casing applied to utterance text before
+                                  phonemization.
+  --dataset-name TEXT             Name of dataset to put in config (default:
+                                  name of <output_dir>/../).
+  --audio-quality TEXT            Audio quality description to put in config
+                                  (default: name of <output_dir>).
+  --skip-audio                    Do not preprocess or cache audio files.
+  --debug                         Print DEBUG messages to the console.
+  --add-diacritics                Add diacritics to text (phonemizer specific,
+                                  e.g., to denote stress).
+  -h, --help                      Show this message and exit.
+```
 
 This step produces:
 
@@ -44,7 +70,18 @@ This step produces:
 * Cached normalized audio + spectrograms (in `cache/`).
 
 
-Perfect — we should definitely explain the **normalization step** clearly in the training guide since it’s a key part of preprocessing. Based on the code you shared, here’s how I’d add it into the **TRAINING.md**:
+**Example Usage**
+
+```bash
+python preprocess.py  \
+  --input-dir /path/to/dataset/  \
+  --output-dir /tmp/tts_train  \
+  --prev-config /path/to/previous.ckpt.json  \
+  --language en  \
+  --sample-rate 22050  \
+  --phoneme-type espeak  \
+  --alphabet ipa
+```
 
 ---
 
@@ -52,30 +89,78 @@ Perfect — we should definitely explain the **normalization step** clearly in t
 
 Train a [VITS](https://arxiv.org/abs/2106.06103)-style model using PyTorch Lightning.
 
-```bash
-python -m phoonnx \
-  --dataset-dir /path/to/output \
-  --quality medium \
-  --max_epochs 500 \
-  --gpus 1
+```
+Usage: train.py [OPTIONS]
+
+Options:
+  --dataset-dir DIRECTORY         Path to pre-processed dataset directory
+                                  [required]
+  --checkpoint-epochs INTEGER     Save checkpoint every N epochs (default: 1)
+  --quality [x-low|medium|high]   Quality/size of model (default: medium)
+  --resume-from-checkpoint TEXT   Load an existing checkpoint and resume
+                                  training
+  --resume-from-single-speaker-checkpoint TEXT
+                                  For multi-speaker models only. Converts a
+                                  single-speaker checkpoint to multi-speaker
+                                  and resumes training
+  --seed INTEGER                  Random seed (default: 1234)
+  --max-epochs INTEGER            Stop training once this number of epochs is
+                                  reached (default: 1000)
+  --devices INTEGER               Number of devices or list of device IDs to
+                                  train on (default: 1)
+  --accelerator TEXT              Hardware accelerator to use (cpu, gpu, tpu,
+                                  mps, etc.)  (default: "auto")
+  --default-root-dir DIRECTORY    Default root directory for logs and
+                                  checkpoints (default: None)
+  --precision INTEGER             Precision used in training (e.g. 16, 32,
+                                  bf16) (default: 32)
+  --learning-rate FLOAT           Learning rate for optimizer (default: 2e-4)
+  --batch-size INTEGER            Training batch size (default: 16)
+  --num-workers INTEGER           Number of data loader workers (default: 1)
+  --validation-split FLOAT        Proportion of data used for validation
+                                  (default: 0.05)
+  --help                          Show this message and exit.
 ```
 
-### Options
 
-* `--dataset-dir`: Path containing `config.json` and `dataset.jsonl`.
-* `--quality`: Model size (`x-low`, `medium`, `high`).
-* `--checkpoint-epochs`: Save checkpoints every *N* epochs.
-* `--resume_from_checkpoint`: Resume from a previous run.
-* `--resume_from_single_speaker_checkpoint`: Convert single-speaker checkpoint to multi-speaker training.
-* `--seed`: Random seed (default `1234`).
+**Example Usage**
 
-PyTorch Lightning arguments are also supported (e.g., `--max_epochs`, `--accelerator gpu`, etc.).
+```bash
+python train.py \
+  --dataset-dir /tmp/tts_train \
+  --quality medium \
+  --max_epochs 1000 \
+  --batch-size 8 \
+  --accelerator gpu \
+  --resume_from_checkpoint /path/to/previous.ckpt
+```
+
 
 ---
 
 ## 3. Exporting to ONNX
 
 After training, export the model checkpoint (`.ckpt`) to the ONNX format for efficient, cross-platform inference.
+
+```
+Usage: export_onnx.py [OPTIONS] CHECKPOINT
+
+  Export a VITS model checkpoint to ONNX format.
+
+Options:
+  -c, --config PATH      Path to the model configuration JSON file.
+  -o, --output-dir PATH  Output directory for the ONNX model. (Default:
+                         current directory)
+  -t, --generate-tokens  Generate tokens.txt alongside the ONNX model. Some
+                         inference engines need this (eg. sherpa)
+  -p, --piper            Generate a piper compatible .json file alongside the
+                         ONNX model.
+  --help                 Show this message and exit.
+```
+
+
+**Example Usage**
+
 
 ```bash
 python export_onnx.py \
@@ -85,15 +170,6 @@ python export_onnx.py \
   --generate-tokens \
   --piper
 ```
-
-### Options
-
-* **Positional Argument: CHECKPOINT**
-    * Path to the PyTorch checkpoint file (`.ckpt`).
-* `-c`, `--config`: Path to the model configuration JSON file (`config.json`). **Required** for metadata and token map.
-* `-o`, `--output-dir`: Output directory for the ONNX file and associated assets.
-* `-t`, `--generate-tokens`: Generate a **`tokens.txt`** file alongside the ONNX model. Required by some inference engines (e.g., Sherpa).
-* `-p`, `--piper`: Generate a Piper-compatible **`.json`** file alongside the ONNX model, setting appropriate metadata flags.
 
 -----
 
@@ -108,7 +184,7 @@ python export_onnx.py \
 3. **Train**:
 
    ```bash
-   python -m phoonnx --dataset-dir ... --quality medium --max_epochs 500
+   python train.py --dataset-dir ... --quality medium --max_epochs 500
    ```
 4. **Export**:
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import argparse
 import csv
 import dataclasses
 import itertools
@@ -10,13 +9,16 @@ from collections import Counter
 from dataclasses import dataclass
 from multiprocessing import JoinableQueue, Process, Queue
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple, Any, Set, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Any, Set, Union, Callable
 
+import click
 from phoonnx.util import normalize
 from phoonnx.config import PhonemeType, get_phonemizer, Alphabet
 from phoonnx.phonemizers import Phonemizer
-from phoonnx.phoneme_ids import (phonemes_to_ids, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN,
-                                 DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN)
+from phoonnx.phoneme_ids import (
+    phonemes_to_ids, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN,
+    DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN
+)
 from phoonnx_train.norm_audio import cache_norm_audio, make_silence_detector
 from tqdm import tqdm
 from phoonnx.version import VERSION_STR
@@ -46,7 +48,7 @@ class Utterance:
     audio_spec_path: Optional[Path] = None
 
     def asdict(self) -> Dict[str, Any]:
-        """Custom asdict to handle Path objects."""
+        """Custom asdict to handle Path objects for JSON serialization."""
         data = dataclasses.asdict(self)
         for key, value in data.items():
             if isinstance(value, Path):
@@ -57,14 +59,31 @@ class Utterance:
 class PathEncoder(json.JSONEncoder):
     """JSON encoder for Path objects."""
 
-    def default(self, o):
+    def default(self, o: Any) -> Union[str, Any]:
+        """
+        Converts Path objects to strings for serialization.
+
+        Args:
+            o: The object to serialize.
+
+        Returns:
+            The serialized string representation or the default JSON serialization.
+        """
         if isinstance(o, Path):
             return str(o)
         return super().default(o)
 
 
-def get_text_casing(casing: str):
-    """Returns a function to apply text casing based on a string."""
+def get_text_casing(casing: str) -> Callable[[str], str]:
+    """
+    Returns a function to apply text casing based on a string name.
+
+    Args:
+        casing: The name of the casing function ('lower', 'upper', 'casefold', or 'ignore').
+
+    Returns:
+        A callable function (str) -> str.
+    """
     if casing == "lower":
         return str.lower
     if casing == "upper":
@@ -74,18 +93,46 @@ def get_text_casing(casing: str):
     return lambda s: s
 
 
-def ljspeech_dataset(args: argparse.Namespace) -> Iterable[Utterance]:
+@dataclass
+class PreprocessorConfig:
+    """Dataclass to hold all runtime configuration, mimicking argparse.Namespace."""
+    input_dir: Path
+    output_dir: Path
+    language: str
+    sample_rate: int
+    cache_dir: Path
+    max_workers: int
+    single_speaker: bool
+    speaker_id: Optional[int]
+    phoneme_type: PhonemeType
+    alphabet: Alphabet
+    phonemizer_model: str
+    text_casing: str
+    dataset_name: Optional[str]
+    audio_quality: Optional[str]
+    skip_audio: bool
+    debug: bool
+    add_diacritics: bool
+
+
+def ljspeech_dataset(config: PreprocessorConfig) -> Iterable[Utterance]:
     """
     Generator for LJSpeech-style dataset.
     Loads metadata and resolves audio file paths.
+
+    Args:
+        config: The configuration object containing dataset parameters.
+
+    Yields:
+        Utterance: A fully populated Utterance object.
     """
-    dataset_dir = args.input_dir
+    dataset_dir = config.input_dir
     metadata_path = dataset_dir / "metadata.csv"
     if not metadata_path.exists():
         _LOGGER.error(f"Missing metadata file: {metadata_path}")
         return
 
-    wav_dirs = [dataset_dir / "wav", dataset_dir / "wavs"]
+    wav_dirs: List[Path] = [dataset_dir / "wav", dataset_dir / "wavs"]
 
     with open(metadata_path, "r", encoding="utf-8") as csv_file:
         reader = csv.reader(csv_file, delimiter="|")
@@ -98,16 +145,18 @@ def ljspeech_dataset(args: argparse.Namespace) -> Iterable[Utterance]:
             text: str = row[-1]
             speaker: Optional[str] = None
 
-            if not args.single_speaker and len(row) > 2:
+            if not config.single_speaker and len(row) > 2:
                 speaker = row[1]
             else:
                 speaker = None
 
-            wav_path = None
+            wav_path: Optional[Path] = None
             for wav_dir in wav_dirs:
-                potential_paths = [wav_dir / filename,
-                                   wav_dir / f"{filename}.wav",
-                                   wav_dir / f"{filename.lstrip('0')}.wav"]
+                potential_paths: List[Path] = [
+                    wav_dir / filename,
+                    wav_dir / f"{filename}.wav",
+                    wav_dir / f"{filename.lstrip('0')}.wav"
+                ]
                 for path in potential_paths:
                     if path.exists():
                         wav_path = path
@@ -115,34 +164,40 @@ def ljspeech_dataset(args: argparse.Namespace) -> Iterable[Utterance]:
                 if wav_path:
                     break
 
-            if not args.skip_audio and not wav_path:
+            if not config.skip_audio and not wav_path:
                 _LOGGER.warning("Missing audio file for filename: %s", filename)
                 continue
 
-            if not args.skip_audio and wav_path and wav_path.stat().st_size == 0:
+            if not config.skip_audio and wav_path and wav_path.stat().st_size == 0:
                 _LOGGER.warning("Empty audio file: %s", wav_path)
                 continue
 
+            # Ensure wav_path is Path or None, and is never accessed if skip_audio is true
             yield Utterance(
                 text=text,
-                audio_path=wav_path,
+                audio_path=wav_path or Path(""), # Use empty path if skipping audio, should not be used
                 speaker=speaker,
-                speaker_id=args.speaker_id,
+                speaker_id=config.speaker_id,
             )
 
 
 def phonemize_worker(
-        args: argparse.Namespace,
+        config: PreprocessorConfig,
         task_queue: JoinableQueue,
         result_queue: Queue,
         phonemizer: Phonemizer,
-):
+) -> None:
     """
     Worker process for phonemization and audio processing.
-    Returns the utterance and the unique phonemes found in its batch.
+
+    Args:
+        config: The configuration object containing runtime parameters.
+        task_queue: Queue for receiving batches of Utterance objects.
+        result_queue: Queue for sending processed results (Utterance, set of phonemes).
+        phonemizer: The initialized Phonemizer instance.
     """
     try:
-        casing = get_text_casing(args.text_casing)
+        casing: Callable[[str], str] = get_text_casing(config.text_casing)
         silence_detector = make_silence_detector()
 
         while True:
@@ -155,28 +210,30 @@ def phonemize_worker(
 
             for utt in utterance_batch:
                 try:
-                    # normalize text (case, numbers....)
-                    utterance = casing(normalize( utt.text, args.language))
+                    # Normalize text (case, numbers, etc.)
+                    utterance: str = casing(normalize(utt.text, config.language))
 
-                    # add diacritics
-                    if args.add_diacritics:
-                        utterance = phonemizer.add_diacritics(utterance, args.language)
+                    # Add diacritics
+                    if config.add_diacritics:
+                        utterance = phonemizer.add_diacritics(utterance, config.language)
 
                     # Phonemize the text
-                    utt.phonemes = phonemizer.phonemize_to_list(utterance, args.language)
+                    utt.phonemes = [p for p in phonemizer.phonemize_to_list(utterance, config.language)
+                                    if p != "\n"] # HACK: not sure where this is coming from
                     if not utt.phonemes:
                         raise RuntimeError(f"Phonemes not found for '{utterance}'")
 
                     # Process audio if not skipping
-                    if not args.skip_audio:
+                    if not config.skip_audio:
                         utt.audio_norm_path, utt.audio_spec_path = cache_norm_audio(
                             utt.audio_path,
-                            args.cache_dir,
+                            config.cache_dir,
                             silence_detector,
-                            args.sample_rate,
+                            config.sample_rate,
                         )
 
                     # Put the processed utterance and its phonemes into the result queue
+                    # The result is a tuple of (Utterance, set of unique phonemes in that utterance)
                     result_queue.put((utt, set(utt.phonemes)))
                 except Exception:
                     _LOGGER.exception("Failed to process utterance: %s", utt.audio_path)
@@ -188,109 +245,212 @@ def phonemize_worker(
         _LOGGER.exception("Worker process failed")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Preprocess a TTS dataset for training a VITS-style model."
+@click.command(context_settings={"help_option_names": ["-h", "--help"]})
+@click.option(
+    "-i",
+    "--input-dir",
+    "input_dir",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    required=True,
+    help="Directory with audio dataset (e.g., containing metadata.csv and wavs/)",
+)
+@click.option(
+    "-o",
+    "--output-dir",
+    "output_dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    required=True,
+    help="Directory to write output files for training (config.json, dataset.jsonl)",
+)
+@click.option(
+    "-l",
+    "--language",
+    "language",
+    required=True,
+    help="phonemizer language code (e.g., 'en', 'es', 'fr')",
+)
+@click.option(
+    "-c",
+    "--prev-config",
+    "prev_config",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Optional path to a previous config.json from which to reuse phoneme_id_map. (for fine-tuning only)",
+)
+@click.option(
+    "--drop-extra-phonemes",
+    "drop_extra_phonemes",
+    type=bool,
+    default=True,
+    help="If training data has more symbols than base model, discard new symbols. (for fine-tuning only)",
+)
+@click.option(
+    "-r",
+    "--sample-rate",
+    "sample_rate",
+    type=int,
+    default=22050,
+    help="Target sample rate for voice (hertz, Default: 22050)",
+)
+@click.option(
+    "--cache-dir",
+    "cache_dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="Directory to cache processed audio files. Defaults to <output-dir>/cache/<sample-rate>.",
+)
+@click.option(
+    "-w",
+    "--max-workers",
+    "max_workers",
+    type=click.IntRange(min=1),
+    default=os.cpu_count() or 1,
+    help="Maximum number of worker processes to use for parallel processing. Defaults to CPU count.",
+)
+@click.option(
+    "--single-speaker",
+    "single_speaker",
+    is_flag=True,
+    help="Force treating the dataset as single speaker, ignoring metadata speaker columns.",
+)
+@click.option(
+    "--speaker-id",
+    "speaker_id",
+    type=int,
+    default=None,
+    help="Specify a fixed speaker ID (0, 1, etc.) for a single speaker dataset.",
+)
+@click.option(
+    "--phoneme-type",
+    "phoneme_type",
+    type=click.Choice([p.value for p in PhonemeType]),
+    default=PhonemeType.ESPEAK.value,
+    help="Type of phonemes to use.",
+)
+@click.option(
+    "--alphabet",
+    "alphabet",
+    type=click.Choice([a.value for a in Alphabet]),
+    default=Alphabet.IPA.value,
+    help="Phoneme alphabet to use (e.g., IPA).",
+)
+@click.option(
+    "--phonemizer-model",
+    "phonemizer_model",
+    default="",
+    help="Path or name of a custom phonemizer model, if applicable.",
+)
+@click.option(
+    "--text-casing",
+    "text_casing",
+    type=click.Choice(("ignore", "lower", "upper", "casefold")),
+    default="ignore",
+    help="Casing applied to utterance text before phonemization.",
+)
+@click.option(
+    "--dataset-name",
+    "dataset_name",
+    default=None,
+    help="Name of dataset to put in config (default: name of <output_dir>/../).",
+)
+@click.option(
+    "--audio-quality",
+    "audio_quality",
+    default=None,
+    help="Audio quality description to put in config (default: name of <output_dir>).",
+)
+@click.option(
+    "--skip-audio",
+    "skip_audio",
+    is_flag=True,
+    help="Do not preprocess or cache audio files.",
+)
+@click.option(
+    "--debug",
+    "debug",
+    is_flag=True,
+    help="Print DEBUG messages to the console.",
+)
+@click.option(
+    "--add-diacritics",
+    "add_diacritics",
+    is_flag=True,
+    help="Add diacritics to text (phonemizer specific, e.g., to denote stress).",
+)
+def cli(
+    input_dir: Path,
+    output_dir: Path,
+    language: str,
+    prev_config: Path,
+    drop_extra_phonemes: bool,
+    sample_rate: int,
+    cache_dir: Optional[Path],
+    max_workers: Optional[int],
+    single_speaker: bool,
+    speaker_id: Optional[int],
+    phoneme_type: str,
+    alphabet: str,
+    phonemizer_model: str,
+    text_casing: str,
+    dataset_name: Optional[str],
+    audio_quality: Optional[str],
+    skip_audio: bool,
+    debug: bool,
+    add_diacritics: bool,
+) -> None:
+    """
+    Preprocess a TTS dataset (e.g., LJSpeech format) for training a VITS-style model.
+    This script handles text normalization, phonemization, and optional audio caching.
+    """
+    # Create a config object from click arguments for easier passing
+    config = PreprocessorConfig(
+        input_dir=input_dir,
+        output_dir=output_dir,
+        language=language,
+        sample_rate=sample_rate,
+        cache_dir=cache_dir or output_dir / "cache" / str(sample_rate),
+        max_workers=max_workers or os.cpu_count() or 1,
+        single_speaker=single_speaker,
+        speaker_id=speaker_id,
+        phoneme_type=PhonemeType(phoneme_type),
+        alphabet=Alphabet(alphabet),
+        phonemizer_model=phonemizer_model,
+        text_casing=text_casing,
+        dataset_name=dataset_name,
+        audio_quality=audio_quality,
+        skip_audio=skip_audio,
+        debug=debug,
+        add_diacritics=add_diacritics,
     )
-    parser.add_argument(
-        "--input-dir", required=True, help="Directory with audio dataset"
-    )
-    parser.add_argument(
-        "--output-dir",
-        required=True,
-        help="Directory to write output files for training",
-    )
-    parser.add_argument("--language", required=True, help="eSpeak-ng voice")
-    parser.add_argument(
-        "--sample-rate",
-        type=int,
-        required=True,
-        help="Target sample rate for voice (hertz)",
-    )
-    parser.add_argument("--cache-dir", help="Directory to cache processed audio files")
-    parser.add_argument("--max-workers", type=int)
-    parser.add_argument(
-        "--single-speaker", action="store_true", help="Force single speaker dataset"
-    )
-    parser.add_argument(
-        "--speaker-id", type=int, help="Add speaker id to single speaker dataset"
-    )
-    parser.add_argument(
-        "--phoneme-type",
-        choices=list(PhonemeType),
-        default=PhonemeType.ESPEAK,
-        help="Type of phonemes to use (default: espeak)",
-    )
-    parser.add_argument(
-        "--alphabet",
-        choices=list(Alphabet),
-        default=Alphabet.IPA,
-        help="Casing applied to utterance text",
-    )
-    parser.add_argument(
-        "--phonemizer-model",
-        default="",
-        help="phonemizer model, if applicable",
-    )
-    parser.add_argument(
-        "--text-casing",
-        choices=("ignore", "lower", "upper", "casefold"),
-        default="ignore",
-        help="Casing applied to utterance text",
-    )
-    parser.add_argument(
-        "--dataset-name",
-        help="Name of dataset to put in config (default: name of <ouput_dir>/../)",
-    )
-    parser.add_argument(
-        "--audio-quality",
-        help="Audio quality to put in config (default: name of <output_dir>)",
-    )
-    parser.add_argument(
-        "--skip-audio", action="store_true", help="Don't preprocess audio"
-    )
-    parser.add_argument(
-        "--debug", action="store_true", help="Print DEBUG messages to the console"
-    )
-    parser.add_argument(
-        "--add-diacritics", action="store_true", help="Add diacritics to text (phonemizer specific)"
-    )
-    args = parser.parse_args()
 
-    # Setup
-    level = logging.DEBUG if args.debug else logging.INFO
+    # Setup logging
+    level = logging.DEBUG if config.debug else logging.INFO
     logging.basicConfig(level=level)
     logging.getLogger().setLevel(level)
     logging.getLogger("numba").setLevel(logging.WARNING)
 
-    if args.single_speaker and (args.speaker_id is not None):
+    # Validation
+    if config.single_speaker and (config.speaker_id is not None):
         _LOGGER.fatal("--single-speaker and --speaker-id cannot both be provided")
-        return
+        raise click.Abort()
 
-    args.input_dir = Path(args.input_dir)
-    args.output_dir = Path(args.output_dir)
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    args.cache_dir = (
-        Path(args.cache_dir)
-        if args.cache_dir
-        else args.output_dir / "cache" / str(args.sample_rate)
-    )
-    args.cache_dir.mkdir(parents=True, exist_ok=True)
-    args.phoneme_type = PhonemeType(args.phoneme_type)
+    # Create directories
+    config.output_dir.mkdir(parents=True, exist_ok=True)
+    config.cache_dir.mkdir(parents=True, exist_ok=True)
 
     # Load all utterances from the dataset
     _LOGGER.info("Loading utterances from dataset...")
-    utterances = list(ljspeech_dataset(args))
+    utterances: List[Utterance] = list(ljspeech_dataset(config))
     if not utterances:
         _LOGGER.error("No valid utterances found in dataset.")
         return
 
-    num_utterances = len(utterances)
+    num_utterances: int = len(utterances)
     _LOGGER.info("Found %d utterances.", num_utterances)
 
-    # Count speakers
+    # Count speakers and assign IDs
     speaker_counts: Counter[str] = Counter(u.speaker for u in utterances if u.speaker)
-    is_multispeaker = len(speaker_counts) > 1
+    is_multispeaker: bool = len(speaker_counts) > 1
     speaker_ids: Dict[str, int] = {}
     if is_multispeaker:
         _LOGGER.info("%s speakers detected", len(speaker_counts))
@@ -301,48 +461,47 @@ def main() -> None:
         _LOGGER.info("Single speaker dataset")
 
     # --- Single Pass: Process audio/phonemes and collect results ---
-    # Set up multiprocessing
-    args.max_workers = args.max_workers if args.max_workers is not None and args.max_workers > 0 else os.cpu_count()
-    _LOGGER.info("Starting single pass processing with %d workers...", args.max_workers)
+    _LOGGER.info("Starting single pass processing with %d workers...", config.max_workers)
 
     # Initialize the phonemizer only once in the main process
-    phonemizer = get_phonemizer(args.phoneme_type,
-                                args.alphabet,
-                                args.phonemizer_model)
+    phonemizer: Phonemizer = get_phonemizer(config.phoneme_type,
+                                            config.alphabet,
+                                            config.phonemizer_model)
 
-    batch_size = max(1, int(num_utterances / (args.max_workers * 2)))
+    batch_size: int = max(1, int(num_utterances / (config.max_workers * 2)))
 
-    task_queue: "Queue[Optional[List[Utterance]]]" = JoinableQueue()
+    task_queue: "JoinableQueue[Optional[List[Utterance]]]" = JoinableQueue()
     # The result queue will hold tuples of (Utterance, set(phonemes))
-    result_queue: "Queue[Optional[Tuple[Utterance, Set[str]]]]" = Queue()
+    result_queue: "Queue[Tuple[Optional[Utterance], Set[str]]]" = Queue()
 
     # Start workers
-    processes = [
+    processes: List[Process] = [
         Process(
             target=phonemize_worker,
-            args=(args, task_queue, result_queue, phonemizer)
+            args=(config, task_queue, result_queue, phonemizer)
         )
-        for _ in range(args.max_workers)
+        for _ in range(config.max_workers)
     ]
 
     for proc in processes:
         proc.start()
 
     # Populate the task queue with batches
-    task_count = 0
+    task_count: int = 0
     for utt_batch in batched(utterances, batch_size):
         task_queue.put(utt_batch)
         task_count += len(utt_batch)
 
     # Signal workers to stop
-    for _ in range(args.max_workers):
+    for _ in range(config.max_workers):
         task_queue.put(None)
 
     # Collect results from the queue with a progress bar
     processed_utterances: List[Utterance] = []
     all_phonemes: Set[str] = set()
     for _ in tqdm(range(task_count), desc="Processing utterances"):
-        utt, unique_phonemes = result_queue.get()
+        result: Tuple[Optional[Utterance], Set[str]] = result_queue.get()
+        utt, unique_phonemes = result
         if utt is not None:
             processed_utterances.append(utt)
             all_phonemes.update(unique_phonemes)
@@ -352,43 +511,69 @@ def main() -> None:
     for proc in processes:
         proc.join()
 
+
     # --- Build the final phoneme map from the collected phonemes ---
-    _LOGGER.info("Building a complete phoneme map from collected phonemes...")
+    _LOGGER.info("Building a phoneme map from collected dataset phonemes...")
 
-    final_phoneme_id_map = DEFAULT_SPECIAL_PHONEME_ID_MAP.copy()
-    if phonemizer.alphabet == Alphabet.IPA:
-        all_phonemes.update(DEFAULT_IPA_PHONEME_ID_MAP.keys())
+    if prev_config:
+        with open(prev_config) as f:
+            prev_phoneme_id_map = json.load(f)["phoneme_id_map"]
+        _LOGGER.info(f"Loaded phoneme map from previous config: '{prev_config}'")
+        all_phonemes.update(prev_phoneme_id_map.keys())
+        final_phoneme_id_map = prev_phoneme_id_map
+        _LOGGER.info("previous phoneme map contains %d symbols.", len(final_phoneme_id_map))
+    else:
+        final_phoneme_id_map: Dict[str, int] = DEFAULT_SPECIAL_PHONEME_ID_MAP.copy()
+        if phonemizer.alphabet == Alphabet.IPA:
+            all_phonemes.update(DEFAULT_IPA_PHONEME_ID_MAP.keys())
 
-    # Filter out special tokens that are already in the map
-    existing_keys = set(final_phoneme_id_map.keys())
-    new_phonemes = sorted([p for p in all_phonemes if p not in existing_keys])
+    # Filter out tokens that are already in the map
+    existing_keys: Set[str] = set(final_phoneme_id_map.keys())
+    new_phonemes: List[str] = sorted([p for p in all_phonemes
+                                      if p not in existing_keys]
+                                     )
 
-    current_id = len(final_phoneme_id_map)
+    _LOGGER.info("Collected %d new symbols.", len(new_phonemes))
+
+    finetune_error = prev_config and len(new_phonemes)
+    if finetune_error:
+        if not drop_extra_phonemes:
+            raise ValueError("training data contains different phonemes than previous phoneme map! Can not finetune model")
+        else:
+            _LOGGER.error("training data contains different phonemes than previous phoneme map! "
+                          "Discarding new phonemes to still allow model finetuning")
+
+    current_id: int = len(final_phoneme_id_map)
     for pho in new_phonemes:
-        final_phoneme_id_map[pho] = current_id
-        current_id += 1
+        if finetune_error:
+            _LOGGER.info(f"Discarded phoneme: {pho}")
+        else:
+            final_phoneme_id_map[pho] = current_id
+            current_id += 1
+            _LOGGER.debug(f"New phoneme: {pho}")
 
-    _LOGGER.info("Final phoneme map contains %d symbols.", len(final_phoneme_id_map))
+    if new_phonemes:
+        _LOGGER.info("Final phoneme map contains %d symbols.", len(final_phoneme_id_map))
 
     # --- Write the final config.json ---
     _LOGGER.info("Writing dataset config...")
-    audio_quality = args.audio_quality or args.output_dir.name
-    dataset_name = args.dataset_name or args.output_dir.parent.name
+    audio_quality = config.audio_quality or config.output_dir.name
+    dataset_name = config.dataset_name or config.output_dir.parent.name
 
-    config = {
+    config_data: Dict[str, Any] = {
         "dataset": dataset_name,
         "audio": {
-            "sample_rate": args.sample_rate,
+            "sample_rate": config.sample_rate,
             "quality": audio_quality,
         },
-        "lang_code": args.language,
+        "lang_code": config.language,
         "inference": {"noise_scale": 0.667,
                       "length_scale": 1,
                       "noise_w": 0.8,
-                      "add_diacritics": args.add_diacritics},
+                      "add_diacritics": config.add_diacritics},
         "alphabet": phonemizer.alphabet.value,
-        "phoneme_type": args.phoneme_type.value,
-        "phonemizer_model": args.phonemizer_model,
+        "phoneme_type": config.phoneme_type.value,
+        "phonemizer_model": config.phonemizer_model,
         "phoneme_id_map": final_phoneme_id_map,
         "num_symbols": len(final_phoneme_id_map),
         "num_speakers": len(speaker_counts) if is_multispeaker else 1,
@@ -396,13 +581,13 @@ def main() -> None:
         "phoonnx_version": VERSION_STR,
     }
 
-    with open(args.output_dir / "config.json", "w", encoding="utf-8") as config_file:
-        json.dump(config, config_file, ensure_ascii=False, indent=2)
+    with open(config.output_dir / "config.json", "w", encoding="utf-8") as config_file:
+        json.dump(config_data, config_file, ensure_ascii=False, indent=2)
 
     # --- Apply final phoneme IDs and write dataset.jsonl ---
     _LOGGER.info("Writing dataset.jsonl...")
-    valid_utterances_count = 0
-    with open(args.output_dir / "dataset.jsonl", "w", encoding="utf-8") as dataset_file:
+    valid_utterances_count: int = 0
+    with open(config.output_dir / "dataset.jsonl", "w", encoding="utf-8") as dataset_file:
         for utt in processed_utterances:
             if is_multispeaker and utt.speaker is not None:
                 if utt.speaker not in speaker_ids:
@@ -432,8 +617,17 @@ def main() -> None:
 
 # -----------------------------------------------------------------------------
 
-def batched(iterable, n):
-    "Batch data into lists of length n. The last batch may be shorter."
+def batched(iterable: Iterable[Any], n: int) -> Iterable[List[Any]]:
+    """
+    Batch data from an iterable into lists of length n. The last batch may be shorter.
+
+    Args:
+        iterable: The input iterable to be batched.
+        n: The desired size of each batch.
+
+    Yields:
+        List[Any]: A list representing a batch of items.
+    """
     if n < 1:
         raise ValueError("n must be at least one")
     it = iter(iterable)
@@ -444,4 +638,4 @@ def batched(iterable, n):
 
 
 if __name__ == "__main__":
-    main()
+    cli()

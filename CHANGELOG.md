@@ -1,28 +1,28 @@
 # Changelog
 
-## [0.2.0a2](https://github.com/TigreGotico/phoonnx/tree/0.2.0a2) (2025-10-04)
+## [0.2.3a1](https://github.com/TigreGotico/phoonnx/tree/0.2.3a1) (2025-10-04)
 
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.0a1...0.2.0a2)
-
-**Merged pull requests:**
-
-- fix: optional import [\#25](https://github.com/TigreGotico/phoonnx/pull/25) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.2.0a1](https://github.com/TigreGotico/phoonnx/tree/0.2.0a1) (2025-10-04)
-
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.1.1a1...0.2.0a1)
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.2a1...0.2.3a1)
 
 **Merged pull requests:**
 
-- feat: goruut phonemizer [\#23](https://github.com/TigreGotico/phoonnx/pull/23) ([JarbasAl](https://github.com/JarbasAl))
+- fix: missing import [\#33](https://github.com/TigreGotico/phoonnx/pull/33) ([JarbasAl](https://github.com/JarbasAl))
 
-## [0.1.1a1](https://github.com/TigreGotico/phoonnx/tree/0.1.1a1) (2025-10-04)
+## [0.2.2a1](https://github.com/TigreGotico/phoonnx/tree/0.2.2a1) (2025-10-04)
 
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.1.0...0.1.1a1)
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.1a1...0.2.2a1)
 
 **Merged pull requests:**
 
-- Feat/mwl [\#21](https://github.com/TigreGotico/phoonnx/pull/21) ([JarbasAl](https://github.com/JarbasAl))
+- fix:finetuning\_phoneme\_map [\#31](https://github.com/TigreGotico/phoonnx/pull/31) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.2.1a1](https://github.com/TigreGotico/phoonnx/tree/0.2.1a1) (2025-10-04)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.0...0.2.1a1)
+
+**Merged pull requests:**
+
+- Click [\#27](https://github.com/TigreGotico/phoonnx/pull/27) ([JarbasAl](https://github.com/JarbasAl))
 
 
 
