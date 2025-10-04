@@ -218,7 +218,8 @@ def phonemize_worker(
                         utterance = phonemizer.add_diacritics(utterance, config.language)
 
                     # Phonemize the text
-                    utt.phonemes = phonemizer.phonemize_to_list(utterance, config.language)
+                    utt.phonemes = [p for p in phonemizer.phonemize_to_list(utterance, config.language)
+                                    if p != "\n"] # HACK: not sure where this is coming from
                     if not utt.phonemes:
                         raise RuntimeError(f"Phonemes not found for '{utterance}'")
 
@@ -269,12 +270,27 @@ def phonemize_worker(
     help="phonemizer language code (e.g., 'en', 'es', 'fr')",
 )
 @click.option(
+    "-c",
+    "--prev-config",
+    "prev_config",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Optional path to a previous config.json from which to reuse phoneme_id_map. (for fine-tuning only)",
+)
+@click.option(
+    "--drop-extra-phonemes",
+    "drop_extra_phonemes",
+    type=bool,
+    default=True,
+    help="If training data has more symbols than base model, discard new symbols. (for fine-tuning only)",
+)
+@click.option(
     "-r",
     "--sample-rate",
     "sample_rate",
     type=int,
-    required=True,
-    help="Target sample rate for voice (hertz, e.g., 22050)",
+    default=22050,
+    help="Target sample rate for voice (hertz, Default: 22050)",
 )
 @click.option(
     "--cache-dir",
@@ -365,6 +381,8 @@ def cli(
     input_dir: Path,
     output_dir: Path,
     language: str,
+    prev_config: Path,
+    drop_extra_phonemes: bool,
     sample_rate: int,
     cache_dir: Optional[Path],
     max_workers: Optional[int],
@@ -493,23 +511,49 @@ def cli(
     for proc in processes:
         proc.join()
 
+
     # --- Build the final phoneme map from the collected phonemes ---
-    _LOGGER.info("Building a complete phoneme map from collected phonemes...")
+    _LOGGER.info("Building a phoneme map from collected dataset phonemes...")
 
-    final_phoneme_id_map: Dict[str, int] = DEFAULT_SPECIAL_PHONEME_ID_MAP.copy()
-    if phonemizer.alphabet == Alphabet.IPA:
-        all_phonemes.update(DEFAULT_IPA_PHONEME_ID_MAP.keys())
+    if prev_config:
+        with open(prev_config) as f:
+            prev_phoneme_id_map = json.load(f)["phoneme_id_map"]
+        _LOGGER.info(f"Loaded phoneme map from previous config: '{prev_config}'")
+        all_phonemes.update(prev_phoneme_id_map.keys())
+        final_phoneme_id_map = prev_phoneme_id_map
+        _LOGGER.info("previous phoneme map contains %d symbols.", len(final_phoneme_id_map))
+    else:
+        final_phoneme_id_map: Dict[str, int] = DEFAULT_SPECIAL_PHONEME_ID_MAP.copy()
+        if phonemizer.alphabet == Alphabet.IPA:
+            all_phonemes.update(DEFAULT_IPA_PHONEME_ID_MAP.keys())
 
-    # Filter out special tokens that are already in the map
+    # Filter out tokens that are already in the map
     existing_keys: Set[str] = set(final_phoneme_id_map.keys())
-    new_phonemes: List[str] = sorted([p for p in all_phonemes if p not in existing_keys])
+    new_phonemes: List[str] = sorted([p for p in all_phonemes
+                                      if p not in existing_keys]
+                                     )
+
+    _LOGGER.info("Collected %d new symbols.", len(new_phonemes))
+
+    finetune_error = prev_config and len(new_phonemes)
+    if finetune_error:
+        if not drop_extra_phonemes:
+            raise ValueError("training data contains different phonemes than previous phoneme map! Can not finetune model")
+        else:
+            _LOGGER.error("training data contains different phonemes than previous phoneme map! "
+                          "Discarding new phonemes to still allow model finetuning")
 
     current_id: int = len(final_phoneme_id_map)
     for pho in new_phonemes:
-        final_phoneme_id_map[pho] = current_id
-        current_id += 1
+        if finetune_error:
+            _LOGGER.info(f"Discarded phoneme: {pho}")
+        else:
+            final_phoneme_id_map[pho] = current_id
+            current_id += 1
+            _LOGGER.debug(f"New phoneme: {pho}")
 
-    _LOGGER.info("Final phoneme map contains %d symbols.", len(final_phoneme_id_map))
+    if new_phonemes:
+        _LOGGER.info("Final phoneme map contains %d symbols.", len(final_phoneme_id_map))
 
     # --- Write the final config.json ---
     _LOGGER.info("Writing dataset config...")
