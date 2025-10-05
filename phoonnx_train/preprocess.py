@@ -32,7 +32,7 @@ DEFAULT_SPECIAL_PHONEME_ID_MAP: Dict[str, int] = {
     DEFAULT_EOS_TOKEN: 2,
     DEFAULT_BLANK_WORD_TOKEN: 3,
 }
-
+MAX_PHONEMES = 256
 # -----------------------------------------------------------------------------
 
 @dataclass
@@ -517,12 +517,15 @@ def cli(
 
     if prev_config:
         with open(prev_config) as f:
-            prev_phoneme_id_map = json.load(f)["phoneme_id_map"]
+            cfg = json.load(f)
+        prev_phoneme_id_map = cfg["phoneme_id_map"]
+        prev_num_symbols = cfg.get("num_symbols", MAX_PHONEMES)
         _LOGGER.info(f"Loaded phoneme map from previous config: '{prev_config}'")
         all_phonemes.update(prev_phoneme_id_map.keys())
         final_phoneme_id_map = prev_phoneme_id_map
-        _LOGGER.info("previous phoneme map contains %d symbols.", len(final_phoneme_id_map))
+        _LOGGER.info("previous phoneme map contains %d phonemes.", len(final_phoneme_id_map))
     else:
+        prev_num_symbols = MAX_PHONEMES
         final_phoneme_id_map: Dict[str, int] = DEFAULT_SPECIAL_PHONEME_ID_MAP.copy()
         if phonemizer.alphabet == Alphabet.IPA:
             all_phonemes.update(DEFAULT_IPA_PHONEME_ID_MAP.keys())
@@ -533,7 +536,7 @@ def cli(
                                       if p not in existing_keys]
                                      )
 
-    _LOGGER.info("Collected %d new symbols.", len(new_phonemes))
+    _LOGGER.info("Collected %d new phonemes.", len(new_phonemes))
 
     finetune_error = prev_config and len(new_phonemes)
     if finetune_error:
@@ -553,7 +556,7 @@ def cli(
             _LOGGER.debug(f"New phoneme: {pho}")
 
     if new_phonemes:
-        _LOGGER.info("Final phoneme map contains %d symbols.", len(final_phoneme_id_map))
+        _LOGGER.info("Final phoneme map contains %d phonemes.", len(final_phoneme_id_map))
 
     # --- Write the final config.json ---
     _LOGGER.info("Writing dataset config...")
@@ -575,7 +578,7 @@ def cli(
         "phoneme_type": config.phoneme_type.value,
         "phonemizer_model": config.phonemizer_model,
         "phoneme_id_map": final_phoneme_id_map,
-        "num_symbols": len(final_phoneme_id_map),
+        "num_symbols": prev_num_symbols if prev_config else len(final_phoneme_id_map),
         "num_speakers": len(speaker_counts) if is_multispeaker else 1,
         "speaker_id_map": speaker_ids,
         "phoonnx_version": VERSION_STR,
