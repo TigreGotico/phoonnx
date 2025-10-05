@@ -123,14 +123,19 @@ def main(
     _LOGGER.debug(f"Config params: num_symbols={num_symbols} num_speakers={num_speakers} sample_rate={sample_rate}")
 
     if resume_from_checkpoint:
-        # TODO - add a flag to use params from config vs from checkpoint in case of mismatch
+        # TODO (?) - add a flag to use params from config vs from checkpoint in case of mismatch
         ckpt = VitsModel.load_from_checkpoint(resume_from_checkpoint, dataset=None)
         _LOGGER.debug(f"Checkpoint params: num_symbols={ckpt.model_g.n_vocab} num_speakers={ckpt.model_g.n_speakers} sample_rate={ckpt.hparams.sample_rate}")
         if ckpt.model_g.n_vocab != num_symbols:
             _LOGGER.warning(f"Checkpoint num_symbols={ckpt.model_g.n_vocab} does not match config num_symbols={num_symbols}")
-            if ckpt.model_g.n_vocab > num_symbols:
-                num_symbols = ckpt.model_g.n_vocab
-                _LOGGER.info(f"Training with num_symbols={num_symbols}")
+            #-------------
+            # commented out this code because this is not supposed to happen if you used the preprocess.py script
+            # uncomment if you want to use the encoder from checkpoint + update num_symbols in the .json file manually
+            #-------------
+            #if ckpt.model_g.n_vocab > num_symbols and not discard_encoder:
+            #    num_symbols = ckpt.model_g.n_vocab
+            #    _LOGGER.info(f"Training with num_symbols={num_symbols}")
+            ###############
         if ckpt.model_g.n_speakers != num_speakers:
             _LOGGER.warning(f"Checkpoint num_speakers={ckpt.model_g.n_speakers} does not match config num_speakers={num_speakers}")
             #num_speakers = ckpt.model_g.n_speakers
