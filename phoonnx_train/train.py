@@ -44,6 +44,7 @@ def load_state_dict(model, saved_state_dict):
 @click.option('--batch-size', type=int, default=16, help='Training batch size (default: 16)')
 @click.option('--num-workers', type=click.IntRange(min=1), default=os.cpu_count() or 1, help='Number of data loader workers (default: CPU count)')
 @click.option('--validation-split', type=float, default=0.05, help='Proportion of data used for validation (default: 0.05)')
+@click.option('--discard-encoder', type=bool, default=False, help='Discard the encoder weights from base checkpoint (default: False)')
 def main(
     dataset_dir,
     checkpoint_epochs,
@@ -60,6 +61,7 @@ def main(
     batch_size,
     num_workers,
     validation_split,
+    discard_encoder
 ):
     logging.basicConfig(level=logging.DEBUG)
 
@@ -73,22 +75,18 @@ def main(
     config_path = dataset_dir / 'config.json'
     dataset_path = dataset_dir / 'dataset.jsonl'
 
-    print(f"INFO - config_path: '{config_path}'")
-    print(f"INFO - dataset_path: '{dataset_path}'")
+    _LOGGER.info(f"config_path: '{config_path}'")
+    _LOGGER.info(f"dataset_path: '{dataset_path}'")
 
     with open(config_path, 'r', encoding='utf-8') as config_file:
         config = json.load(config_file)
-        num_symbols = int(config['num_symbols'])
-        num_speakers = int(config['num_speakers'])
-        sample_rate = int(config['audio']['sample_rate'])
 
     trainer = Trainer(
         max_epochs=max_epochs,
         devices=devices,
         accelerator=accelerator,
         default_root_dir=default_root_dir,
-        precision=precision,
-        resume_from_checkpoint=resume_from_checkpoint
+        precision=precision
     )
 
     if checkpoint_epochs is not None:
@@ -119,7 +117,27 @@ def main(
             'upsample_kernel_sizes': (16, 16, 4, 4),
         })
 
-    print(f"VitsModel params: num_symbols={num_symbols} num_speakers={num_speakers} sample_rate={sample_rate}")
+    num_symbols = int(config['num_symbols'])
+    num_speakers = int(config['num_speakers'])
+    sample_rate = int(config['audio']['sample_rate'])
+    _LOGGER.debug(f"Config params: num_symbols={num_symbols} num_speakers={num_speakers} sample_rate={sample_rate}")
+
+    if resume_from_checkpoint:
+        # TODO - add a flag to use params from config vs from checkpoint in case of mismatch
+        ckpt = VitsModel.load_from_checkpoint(resume_from_checkpoint, dataset=None)
+        _LOGGER.debug(f"Checkpoint params: num_symbols={ckpt.model_g.n_vocab} num_speakers={ckpt.model_g.n_speakers} sample_rate={ckpt.hparams.sample_rate}")
+        if ckpt.model_g.n_vocab != num_symbols:
+            _LOGGER.warning(f"Checkpoint num_symbols={ckpt.model_g.n_vocab} does not match config num_symbols={num_symbols}")
+            if ckpt.model_g.n_vocab > num_symbols:
+                num_symbols = ckpt.model_g.n_vocab
+                _LOGGER.info(f"Training with num_symbols={num_symbols}")
+        if ckpt.model_g.n_speakers != num_speakers:
+            _LOGGER.warning(f"Checkpoint num_speakers={ckpt.model_g.n_speakers} does not match config num_speakers={num_speakers}")
+            #num_speakers = ckpt.model_g.n_speakers
+        if ckpt.hparams.sample_rate != sample_rate:
+            _LOGGER.warning(f"Checkpoint sample_rate={ckpt.hparams.sample_rate} does not match config sample_rate={sample_rate}")
+            #sample_rate = ckpt.hparams.sample_rate
+
     model = VitsModel(
         num_symbols=num_symbols,
         num_speakers=num_speakers,
@@ -127,6 +145,31 @@ def main(
         dataset=[dataset_path],
         **dict_args,
     )
+    _LOGGER.info(f"VitsModel params: num_symbols={num_symbols} num_speakers={num_speakers} sample_rate={sample_rate}")
+
+    if resume_from_checkpoint:
+        saved_state_dict = ckpt.state_dict()
+
+        # Filter the state dictionary by removing the encoder weights
+        enc_key = 'model_g.enc_p.emb.weight'
+        if enc_key in saved_state_dict:
+            saved_shape = saved_state_dict[enc_key].shape
+            current_shape = model.state_dict()[enc_key].shape
+            if saved_shape[0] != current_shape[0]:
+                _LOGGER.warning(
+                    "Size mismatch detected for '%s': saved shape %s vs current shape %s. ",
+                    enc_key, saved_shape, current_shape
+                )
+                discard_encoder = True
+
+            if discard_encoder:
+                _LOGGER.warning(
+                    "Skipping encoder weights from the checkpoint. (will be randomly initialized)"
+                )
+                saved_state_dict.pop(enc_key)
+
+        load_state_dict(model, saved_state_dict)
+        _LOGGER.info("Successfully loaded model weights.")
 
     if resume_from_single_speaker_checkpoint:
         assert num_speakers > 1, "--resume-from-single-speaker-checkpoint is only for multi-speaker models."
@@ -143,7 +186,7 @@ def main(
         load_state_dict(model.model_d, model_single.model_d.state_dict())
         _LOGGER.info('Successfully converted single-speaker checkpoint to multi-speaker')
 
-    print('training started!!')
+    _LOGGER.info('training started!!')
     trainer.fit(model)
 
 
