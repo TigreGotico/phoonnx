@@ -203,7 +203,6 @@ class TTSVoice:
             phonemes = self.phonemizer.phonemize(
                 text_part, self.config.lang_code
             )
-            phonemes.extend(phonemes)
 
         if phonemes and (not phonemes[-1]):
             # Remove empty phonemes
