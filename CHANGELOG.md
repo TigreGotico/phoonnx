@@ -1,12 +1,12 @@
 # Changelog
 
-## [0.2.4a1](https://github.com/TigreGotico/phoonnx/tree/0.2.4a1) (2025-10-05)
+## [0.2.5a1](https://github.com/TigreGotico/phoonnx/tree/0.2.5a1) (2025-10-05)
 
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.3...0.2.4a1)
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.4...0.2.5a1)
 
 **Merged pull requests:**
 
-- fix: finetuning from previous checkpoint [\#35](https://github.com/TigreGotico/phoonnx/pull/35) ([JarbasAl](https://github.com/JarbasAl))
+- fix: piper json export [\#37](https://github.com/TigreGotico/phoonnx/pull/37) ([JarbasAl](https://github.com/JarbasAl))
 
 
 
