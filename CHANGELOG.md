@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.6a1](https://github.com/TigreGotico/phoonnx/tree/0.2.6a1) (2025-10-05)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.5a1...0.2.6a1)
+
+**Merged pull requests:**
+
+- fix: double synth [\#39](https://github.com/TigreGotico/phoonnx/pull/39) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.2.5a1](https://github.com/TigreGotico/phoonnx/tree/0.2.5a1) (2025-10-05)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.4...0.2.5a1)
