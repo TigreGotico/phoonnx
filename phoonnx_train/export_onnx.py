@@ -113,7 +113,8 @@ def convert_to_piper(config_path: Path, output_path: Path = Path("piper.json")) 
         "phoneme_map": {},
         "audio": config.get("audio", {}),
         "inference": config.get("inference", {}),
-        "phoneme_id_map": {k: [v] for k, v in config.get("phoneme_id_map", {}).items()},
+        "phoneme_id_map": {k: [v] if not isinstance(v, list) else v
+                           for k, v in config.get("phoneme_id_map", {}).items()},
         "espeak": {
             "voice": config.get("lang_code", "")
         },
