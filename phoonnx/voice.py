@@ -330,6 +330,9 @@ class TTSVoice:
                     ids_to_check: List[int] = [expected_id]
 
                     if phoneme != eos_token:
+                        # TODO - handle models without padding
+                        #  some models trained directly on graphemes (eg. using coqui) may not have padding at all
+                        #  low-priority since only affects models not trained with phoonnx/piper
                         ids_to_check.append(pad_id)
 
                     start_phoneme_id_idx = phoneme_id_idx
@@ -452,9 +455,6 @@ class TTSVoice:
             noise_scale = self.config.noise_scale
         if noise_w_scale is None:
             noise_w_scale = self.config.noise_w_scale
-
-        phoneme_ids_array = np.expand_dims(np.array(phoneme_ids, dtype=np.int64), 0)
-        phoneme_ids_lengths = np.array([phoneme_ids_array.shape[1]], dtype=np.int64)
 
         if "scales" in expected_args:
             args["scales"] = np.array(
