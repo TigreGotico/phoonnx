@@ -1,11 +1,10 @@
-import itertools
 import json
 import os.path
 import re
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional, Union, Dict, Tuple
+from typing import Any, Iterable, Optional, Union, Dict, Tuple, List
 
 import numpy as np
 import onnxruntime
@@ -283,10 +282,15 @@ class TTSVoice:
         sentence_phonemes = self.phonemize(text)
         LOG.debug("phonemes=%s", sentence_phonemes)
 
+        pad_token = self.config.pad_token or DEFAULT_PAD_TOKEN
+        bos_token = self.config.bos_token or DEFAULT_BOS_TOKEN
+        eos_token = self.config.eos_token or DEFAULT_EOS_TOKEN
+
+        pad_id = self.config.phoneme_id_map.get(pad_token, 0)
+
         for phonemes in sentence_phonemes:
             if not phonemes:
                 continue
-
             phoneme_ids = self.phonemes_to_ids(phonemes)
 
             phoneme_id_samples: Optional[np.ndarray] = None
@@ -314,21 +318,19 @@ class TTSVoice:
             audio = np.clip(audio, -1.0, 1.0).astype(np.float32)
 
             phoneme_alignments: Optional[list[PhonemeAlignment]] = None
-            if (phoneme_id_samples is not None) and (
-                    len(phoneme_id_samples) == len(phoneme_ids)
-            ):
-                pad_ids = self.config.phoneme_id_map.get(DEFAULT_PAD_TOKEN, [])
+            if phoneme_id_samples is not None and len(phoneme_id_samples) == len(phoneme_ids):
                 phoneme_id_idx = 0
                 phoneme_alignments = []
                 alignment_failed = False
-                for phoneme in itertools.chain([DEFAULT_BOS_TOKEN], phonemes, [DEFAULT_EOS_TOKEN]):
-                    expected_ids = self.config.phoneme_id_map.get(phoneme, [])
+                token_seq = [bos_token] + phonemes + [eos_token]
 
-                    ids_to_check: Iterable[int]
-                    if phoneme != DEFAULT_EOS_TOKEN:
-                        ids_to_check = itertools.chain(expected_ids, pad_ids)
-                    else:
-                        ids_to_check = expected_ids
+                for phoneme in token_seq:
+                    expected_id = self.config.phoneme_id_map.get(phoneme, [])
+
+                    ids_to_check: List[int] = [expected_id]
+
+                    if phoneme != eos_token:
+                        ids_to_check.append(pad_id)
 
                     start_phoneme_id_idx = phoneme_id_idx
                     for phoneme_id in ids_to_check:

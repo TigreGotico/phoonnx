@@ -237,7 +237,7 @@ def add_phoneme_alignment_output(model_path: Path, output_path: Optional[Path] =
     help="Output directory for the ONNX model. (Default: current directory)"
 )
 @click.option(
-    "-t",
+    "-a",
     "--add-phoneme-alignment",
     is_flag=True,
     help="Add a phoneme alignment output tensor to the onnx model. (might cause compatibility issues with 3rd party frameworks)"
