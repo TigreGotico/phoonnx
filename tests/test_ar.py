@@ -27,9 +27,9 @@ class TestMantoqPhonemizer(unittest.TestCase):
 
     # Constructor and Initialization Tests
     def test_init_default_alphabet(self):
-        """Test initialization with default MANTOQ alphabet."""
+        """Test initialization with default BUCKWALTER alphabet."""
         phonemizer = MantoqPhonemizer()
-        self.assertEqual(phonemizer.alphabet, Alphabet.MANTOQ)
+        self.assertEqual(phonemizer.alphabet, Alphabet.BUCKWALTER)
         self.assertIsInstance(phonemizer, BasePhonemizer)
 
     def test_init_ipa_alphabet(self):
@@ -138,10 +138,10 @@ class TestMantoqPhonemizer(unittest.TestCase):
                 instance_result = self.phonemizer_mantoq.get_lang(code)
                 self.assertEqual(class_result, instance_result)
 
-    # Basic Phonemization Tests with MANTOQ alphabet
+    # Basic Phonemization Tests with BUCKWALTER alphabet
     @patch('phoonnx.phonemizers.ar.mantoq')
     def test_phonemize_string_mantoq_basic(self, mock_mantoq):
-        """Test basic phonemize_string functionality with MANTOQ alphabet."""
+        """Test basic phonemize_string functionality with BUCKWALTER alphabet."""
         mock_mantoq.return_value = ("مرحبا", ['m', 'a', 'r', 'h', 'a', 'b', 'a'])
 
         result = self.phonemizer_mantoq.phonemize_string("مرحبا", "ar")
@@ -374,7 +374,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
                     mock_mantoq.return_value = (arabic_text, mock_phonemes)
                     mock_bw2ipa.return_value = f"ipa_{arabic_text}"
 
-                    # Test MANTOQ alphabet
+                    # Test BUCKWALTER alphabet
                     result_mantoq = self.phonemizer_mantoq.phonemize_string(arabic_text, "ar")
                     self.assertIsInstance(result_mantoq, str)
 
@@ -511,7 +511,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
                 patch('phoonnx.phonemizers.ar.bw2ipa') as mock_bw2ipa:
             mock_mantoq.return_value = ("text", ['t', 'e', 's', 't'])
 
-            # Test MANTOQ path (should not call bw2ipa)
+            # Test BUCKWALTER path (should not call bw2ipa)
             mock_bw2ipa.reset_mock()
             mantoq_result = self.phonemizer_mantoq.phonemize_string("مرحبا", "ar")
             mock_bw2ipa.assert_not_called()
@@ -528,13 +528,13 @@ class TestMantoqPhonemizer(unittest.TestCase):
 
     def test_alphabet_attribute_consistency(self):
         """Test that alphabet attribute remains consistent throughout object lifecycle."""
-        # Test MANTOQ phonemizer
-        self.assertEqual(self.phonemizer_mantoq.alphabet, Alphabet.MANTOQ)
+        # Test BUCKWALTER phonemizer
+        self.assertEqual(self.phonemizer_mantoq.alphabet, Alphabet.BUCKWALTER)
         with patch('phoonnx.phonemizers.ar.mantoq') as mock_mantoq:
             mock_mantoq.return_value = ("text", [])
             self.phonemizer_mantoq.phonemize_string("test", "ar")
             # Alphabet should remain unchanged after phonemization
-            self.assertEqual(self.phonemizer_mantoq.alphabet, Alphabet.MANTOQ)
+            self.assertEqual(self.phonemizer_mantoq.alphabet, Alphabet.BUCKWALTER)
 
         # Test IPA phonemizer
         self.assertEqual(self.phonemizer_ipa.alphabet, Alphabet.IPA)
@@ -560,7 +560,7 @@ class TestMantoqPhonemizerIntegration(unittest.TestCase):
         self.phonemizer_ipa = MantoqPhonemizer(alphabet=Alphabet.IPA)
 
     def test_full_pipeline_mantoq_alphabet(self):
-        """Test complete phonemization pipeline for MANTOQ alphabet."""
+        """Test complete phonemization pipeline for BUCKWALTER alphabet."""
         with patch('phoonnx.phonemizers.ar.mantoq') as mock_mantoq:
             # Simulate realistic mantoq output
             mock_mantoq.return_value = (
@@ -636,7 +636,7 @@ class TestMantoqPhonemizerIntegration(unittest.TestCase):
 
         for arabic_text in test_cases:
             with self.subTest(text=arabic_text):
-                # Test with MANTOQ alphabet
+                # Test with BUCKWALTER alphabet
                 result_mantoq = self.phonemizer_mantoq.phonemize_string(arabic_text, "ar")
                 self.assertIsInstance(result_mantoq, str)
                 self.assertGreater(len(result_mantoq), 0)
@@ -646,7 +646,7 @@ class TestMantoqPhonemizerIntegration(unittest.TestCase):
                 self.assertIsInstance(result_ipa, str)
                 self.assertGreater(len(result_ipa), 0)
 
-                # Results should be different (MANTOQ vs IPA)
+                # Results should be different (BUCKWALTER vs IPA)
                 self.assertNotEqual(result_mantoq, result_ipa)
 
 
