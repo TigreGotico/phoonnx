@@ -1,16 +1,18 @@
+import itertools
 import json
 import os.path
 import re
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional, Union, Dict
+from typing import Any, Iterable, Optional, Union, Dict, Tuple
 
 import numpy as np
 import onnxruntime
 from langcodes import closest_match
 
-from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, get_phonemizer
+from phoonnx.config import (PhonemeType, VoiceConfig, SynthesisConfig, get_phonemizer,
+                            DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
 from phoonnx.phoneme_ids import phonemes_to_ids, BlankBetween
 from phoonnx.phonemizers import Phonemizer
 from phoonnx.phonemizers.base import PhonemizedChunks
@@ -59,6 +61,12 @@ class PhoneticSpellings:
 
 
 @dataclass
+class PhonemeAlignment:
+    phoneme: str
+    num_samples: int
+
+
+@dataclass
 class AudioChunk:
     """Chunk of raw audio."""
 
@@ -74,8 +82,23 @@ class AudioChunk:
     audio_float_array: np.ndarray
     """Audio data as float numpy array in [-1, 1]."""
 
+    phonemes: list[str]
+    """Phonemes that produced this audio chunk."""
+
+    phoneme_ids: list[int]
+    """Phoneme ids that produced this audio chunk."""
+
+    phoneme_id_samples: Optional[np.ndarray] = None
+    """Number of audio samples for each phoneme id (alignments)."""
+
+    phoneme_alignments: Optional[list[PhonemeAlignment]] = None
+    """Alignments between phonemes and audio samples."""
+
+    # ---
+
     _audio_int16_array: Optional[np.ndarray] = None
     _audio_int16_bytes: Optional[bytes] = None
+    _phoneme_alignments: Optional[list[PhonemeAlignment]] = None
     _MAX_WAV_VALUE: float = 32767.0
 
     @property
@@ -234,12 +257,14 @@ class TTSVoice:
             self,
             text: str,
             syn_config: Optional[SynthesisConfig] = None,
+            include_alignments: bool = False,
     ) -> Iterable[AudioChunk]:
         """
         Synthesize one audio chunk per sentence from from text.
 
         :param text: Text to synthesize.
         :param syn_config: Synthesis configuration.
+        :param include_alignments: If True and the model supports it, include phoneme/audio alignments.
         """
         if syn_config is None:
             syn_config = SynthesisConfig()
@@ -257,15 +282,23 @@ class TTSVoice:
         # All phonemization goes through the unified self.phonemize method
         sentence_phonemes = self.phonemize(text)
         LOG.debug("phonemes=%s", sentence_phonemes)
-        all_phoneme_ids_for_synthesis = [
-            self.phonemes_to_ids(phonemes) for phonemes in sentence_phonemes if phonemes
-        ]
 
-        for phoneme_ids in all_phoneme_ids_for_synthesis:
-            if not phoneme_ids:
+        for phonemes in sentence_phonemes:
+            if not phonemes:
                 continue
 
-            audio = self.phoneme_ids_to_audio(phoneme_ids, syn_config)
+            phoneme_ids = self.phonemes_to_ids(phonemes)
+
+            phoneme_id_samples: Optional[np.ndarray] = None
+            audio_result = self.phoneme_ids_to_audio(
+                phoneme_ids, syn_config, include_alignments=include_alignments
+            )
+            if isinstance(audio_result, tuple):
+                # Audio + alignments
+                audio, phoneme_id_samples = audio_result
+            else:
+                # Audio only
+                audio = audio_result
 
             if syn_config.normalize_audio:
                 max_val = np.max(np.abs(audio))
@@ -280,11 +313,62 @@ class TTSVoice:
 
             audio = np.clip(audio, -1.0, 1.0).astype(np.float32)
 
+            phoneme_alignments: Optional[list[PhonemeAlignment]] = None
+            if (phoneme_id_samples is not None) and (
+                    len(phoneme_id_samples) == len(phoneme_ids)
+            ):
+                pad_ids = self.config.phoneme_id_map.get(DEFAULT_PAD_TOKEN, [])
+                phoneme_id_idx = 0
+                phoneme_alignments = []
+                alignment_failed = False
+                for phoneme in itertools.chain([DEFAULT_BOS_TOKEN], phonemes, [DEFAULT_EOS_TOKEN]):
+                    expected_ids = self.config.phoneme_id_map.get(phoneme, [])
+
+                    ids_to_check: Iterable[int]
+                    if phoneme != DEFAULT_EOS_TOKEN:
+                        ids_to_check = itertools.chain(expected_ids, pad_ids)
+                    else:
+                        ids_to_check = expected_ids
+
+                    start_phoneme_id_idx = phoneme_id_idx
+                    for phoneme_id in ids_to_check:
+                        if phoneme_id_idx >= len(phoneme_ids):
+                            # Ran out of phoneme ids
+                            alignment_failed = True
+                            break
+
+                        if phoneme_id != phoneme_ids[phoneme_id_idx]:
+                            # Bad alignment
+                            alignment_failed = True
+                            break
+
+                        phoneme_id_idx += 1
+
+                    if alignment_failed:
+                        break
+
+                    phoneme_alignments.append(
+                        PhonemeAlignment(
+                            phoneme=phoneme,
+                            num_samples=sum(
+                                phoneme_id_samples[start_phoneme_id_idx:phoneme_id_idx]
+                            ),
+                        )
+                    )
+
+                if alignment_failed:
+                    phoneme_alignments = None
+                    LOG.debug("Phoneme alignment failed")
+
             yield AudioChunk(
                 sample_rate=self.config.sample_rate,
                 sample_width=2,
                 sample_channels=1,
                 audio_float_array=audio,
+                phonemes=phonemes,
+                phoneme_ids=phoneme_ids,
+                phoneme_id_samples=phoneme_id_samples,
+                phoneme_alignments=phoneme_alignments,
             )
 
     def synthesize_wav(
@@ -325,14 +409,21 @@ class TTSVoice:
             wav_file.writeframes(audio_chunk.audio_int16_bytes)
 
     def phoneme_ids_to_audio(
-            self, phoneme_ids: list[int], syn_config: Optional[SynthesisConfig] = None
-    ) -> np.ndarray:
+            self, phoneme_ids: list[int],
+            syn_config: Optional[SynthesisConfig] = None,
+            include_alignments: bool = False
+    ) -> Union[np.ndarray, Tuple[np.ndarray, Optional[np.ndarray]]]:
         """
         Synthesize raw audio from phoneme ids.
 
         :param phoneme_ids: List of phoneme ids.
         :param syn_config: Synthesis configuration.
+        :param include_alignments: Return samples per phoneme id if True.
         :return: Audio float numpy array from voice model (unnormalized, in range [-1, 1]).
+
+        If include_alignments is True and the voice model supports it, the return
+        value will be a tuple instead with (audio, phoneme_id_samples) where
+        phoneme_id_samples contains the number of audio samples per phoneme id.
         """
         if syn_config is None:
             syn_config = SynthesisConfig()
@@ -359,6 +450,10 @@ class TTSVoice:
             noise_scale = self.config.noise_scale
         if noise_w_scale is None:
             noise_w_scale = self.config.noise_w_scale
+
+        phoneme_ids_array = np.expand_dims(np.array(phoneme_ids, dtype=np.int64), 0)
+        phoneme_ids_lengths = np.array([phoneme_ids_array.shape[1]], dtype=np.int64)
+
         if "scales" in expected_args:
             args["scales"] = np.array(
                 [noise_scale, length_scale, noise_w_scale],
@@ -370,12 +465,26 @@ class TTSVoice:
 
         # different models can be used and args may differ
         args = {k: v for k, v in args.items() if k in expected_args}
-        audio = self.session.run(
+
+        # Synthesize through onnx
+        result = self.session.run(
             None,
             args,
-        )[0].squeeze()
+        )
+        audio = result[0].squeeze()
+        if not include_alignments:
+            return audio
 
-        return audio
+        if len(result) == 1:
+            # Alignment is not available from voice model
+            return audio, None
+
+        # Number of samples for each phoneme id
+        phoneme_id_samples = (result[1].squeeze() * self.config.hop_length).astype(
+            np.int64
+        )
+
+        return audio, phoneme_id_samples
 
 
 if __name__ == "__main__":

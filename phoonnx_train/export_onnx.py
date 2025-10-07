@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-import click
-import logging
 import json
+import logging
 import os
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, Set
 
+import click
 import torch
+
 from phoonnx_train.vits.lightning import VitsModel
-from phoonnx.version import VERSION_STR
 
 # Basic logging configuration
 logging.basicConfig(level=logging.DEBUG)
@@ -131,12 +131,97 @@ def convert_to_piper(config_path: Path, output_path: Path = Path("piper.json")) 
         json.dump(piper_config, f, indent=4, ensure_ascii=False)
 
 
+def add_phoneme_alignment_output(model_path: Path, output_path: Optional[Path] = None, tensor_name: str = "autodetect") -> None:
+    """
+    Adds a tensor representing phoneme durations to the ONNX model's graph outputs.
+
+    This might cause compatibility issues with other frameworks (eg. piper)
+
+    Args:
+        model_path: Path to the input ONNX model file.
+        output_path: Path where the modified ONNX model will be saved.
+                     If empty, it defaults to the input path.
+        tensor_name: The name of the tensor to mark as an output.
+                     If "autodetect", it looks for a unique output of a 'Ceil' node.
+
+    Returns:
+        None: The function saves the modified model to `output_path`.
+    """
+    import onnx
+
+    # Use model_path for default output_path (overwrite)
+    output_path = output_path or model_path
+
+    # Load the ONNX model
+    try:
+        model: onnx.ModelProto = onnx.load(model_path)
+    except Exception as e:
+        _LOGGER.fatal(f"Failed to load ONNX model from {model_path}: {e}")
+        return
+
+    ceil_tensor_name: str
+    if tensor_name != "autodetect":
+        ceil_tensor_name = tensor_name
+    else:
+        ceil_tensor_names: Set[str] = set()
+        for node in model.graph.node:
+            # Check for nodes with the operation type "Ceil"
+            if node.op_type != "Ceil":
+                continue
+
+            # Add all output tensor names of the 'Ceil' node
+            ceil_tensor_names.update(node.output)
+
+        if not ceil_tensor_names:
+            _LOGGER.fatal(f"No ceil tensors detected in {model_path}. Use --tensor-name manually.")
+            return
+
+        if len(ceil_tensor_names) > 1:
+            # Format the set of names nicely for the error message
+            names_str = ', '.join(sorted(list(ceil_tensor_names)))
+            _LOGGER.fatal(
+                f"Multiple ceil tensors detected in {model_path}. Use --tensor-name manually: {names_str}"
+            )
+            return
+
+        # Get the single detected tensor name
+        ceil_tensor_name = next(iter(ceil_tensor_names))
+
+        _LOGGER.info(f"Detected tensor name: {ceil_tensor_name}")
+
+    # Check if the tensor is already an output of the graph
+    if any(output.name == ceil_tensor_name for output in model.graph.output):
+        _LOGGER.fatal(
+            f"Tensor '{ceil_tensor_name}' is already marked as output. Aborting."
+        )
+        return
+
+    # Create a new ValueInfoProto for the output
+    ceil_value_info = onnx.helper.ValueInfoProto()
+
+    # Set the name of the output tensor
+    ceil_value_info.name = ceil_tensor_name
+
+    # Append the new output to the graph's output list
+    model.graph.output.append(ceil_value_info)
+
+    # Save the modified model
+    try:
+        onnx.save(model, output_path)
+    except Exception as e:
+        _LOGGER.fatal(f"Failed to save modified ONNX model to {output_path}: {e}")
+        return
+
+    _LOGGER.info(f"Successfully wrote modified model with new output '{ceil_tensor_name}' to {output_path}")
+
+
+
 # --- Main Logic using Click ---
 @click.command(help="Export a VITS model checkpoint to ONNX format.")
 @click.argument(
     "checkpoint",
     type=click.Path(exists=True, path_type=Path),
-  #  help="Path to the PyTorch checkpoint file (*.ckpt)."
+    #  help="Path to the PyTorch checkpoint file (*.ckpt)."
 )
 @click.option(
     "-c",
@@ -148,8 +233,14 @@ def convert_to_piper(config_path: Path, output_path: Path = Path("piper.json")) 
     "-o",
     "--output-dir",
     type=click.Path(path_type=Path),
-    default=Path(os.getcwd()), # Set default to current working directory
+    default=Path(os.getcwd()),  # Set default to current working directory
     help="Output directory for the ONNX model. (Default: current directory)"
+)
+@click.option(
+    "-t",
+    "--add-phoneme-alignment",
+    is_flag=True,
+    help="Add a phoneme alignment output tensor to the onnx model. (might cause compatibility issues with 3rd party frameworks)"
 )
 @click.option(
     "-t",
@@ -167,6 +258,7 @@ def cli(
         checkpoint: Path,
         config: Path,
         output_dir: Path,
+        add_phoneme_alignment: bool,
         generate_tokens: bool,
         piper: bool,
 ) -> None:
@@ -199,7 +291,6 @@ def cli(
     except Exception as e:
         _LOGGER.error(f"Error loading config file {config}: {e}")
         return
-
 
     alphabet: str = model_config.get("alphabet", "")
     phoneme_type: str = model_config.get("phoneme_type", "")
@@ -248,7 +339,8 @@ def cli(
     # -------------------------------------------------------------------------
     # Define ONNX-compatible forward function
 
-    def infer_forward(text: torch.Tensor, text_lengths: torch.Tensor, scales: torch.Tensor, sid: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def infer_forward(text: torch.Tensor, text_lengths: torch.Tensor,
+                      scales: torch.Tensor, sid: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         Custom forward pass for ONNX export, simplifying the input scales and
         returning only the audio tensor with shape [B, 1, T].
@@ -352,6 +444,11 @@ def cli(
     except Exception as e:
         _LOGGER.error(f"Failed to add metadata to exported model {model_output}: {e}")
 
+    if add_phoneme_alignment:
+        try:
+            add_phoneme_alignment_output(model_output)
+        except Exception as e:
+            _LOGGER.error(f"Failed to add phoneme_alignment output to exported model {model_output}: {e}")
     _LOGGER.info("Export complete.")
 
 

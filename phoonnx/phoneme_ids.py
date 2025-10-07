@@ -189,6 +189,10 @@ DEFAULT_BLANK_WORD_TOKEN = " "  # padding between words
 STRESS: Set[str] = {"ˈ", "ˌ"}
 """Default stress characters"""
 
+# TODO - consider keeping ? to help intonation with questions
+#  in some languages (eg. Portuguese) this is the
+#  only difference between a statement and a question
+#  and it is important for tone
 PUNCTUATION_MAP: Mapping[str, str] = {";": ",", ":": ",", "?": ".", "!": "."}
 """Default punctuation simplification into short (,) and long (.) pauses"""
 

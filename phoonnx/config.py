@@ -9,6 +9,7 @@ from phoonnx.phoneme_ids import (load_phoneme_ids, BlankBetween,
 DEFAULT_NOISE_SCALE = 0.667
 DEFAULT_LENGTH_SCALE = 1.0
 DEFAULT_NOISE_W_SCALE = 0.8
+DEFAULT_HOP_LENGTH = 256
 
 try:
     from ovos_utils.log import LOG
@@ -113,6 +114,8 @@ class VoiceConfig:
     length_scale: float = DEFAULT_LENGTH_SCALE
     noise_scale: float = DEFAULT_NOISE_SCALE
     noise_w_scale: float = DEFAULT_NOISE_W_SCALE
+
+    hop_length: int = DEFAULT_HOP_LENGTH
 
     # tokenization settings
     blank_at_start: bool = True
@@ -340,6 +343,7 @@ class VoiceConfig:
             noise_scale=inference.get("noise_scale", DEFAULT_NOISE_SCALE),
             length_scale=inference.get("length_scale", DEFAULT_LENGTH_SCALE),
             noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
+            hop_length=config.get("hop_length", DEFAULT_HOP_LENGTH),
             lang_code=lang_code,
             alphabet=alphabet,
             phonemizer_model=config.get("phonemizer_model"),
