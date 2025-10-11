@@ -377,6 +377,16 @@ def phonemize_worker(
     is_flag=True,
     help="Add diacritics to text (phonemizer specific, e.g., to denote stress).",
 )
+@click.option(
+    "--jsonl-audio-path",
+    default=None,
+    help="override audio_path base directory (everything before '/wav') in generated dataset.jsonl"
+)
+@click.option(
+    "--jsonl-audio-spec-path",
+    default=None,
+    help="override audio_norm_path/audio_spec_path base directory (everything before '/cache') in generated dataset.jsonl"
+)
 def cli(
     input_dir: Path,
     output_dir: Path,
@@ -397,6 +407,8 @@ def cli(
     skip_audio: bool,
     debug: bool,
     add_diacritics: bool,
+    jsonl_audio_path: Optional[str],
+    jsonl_audio_spec_path: Optional[str],
 ) -> None:
     """
     Preprocess a TTS dataset (e.g., LJSpeech format) for training a VITS-style model.
@@ -608,6 +620,17 @@ def cli(
             if not utt.phoneme_ids:
                 _LOGGER.warning("Skipping utterance with invalid phoneme_ids before writing: %s", utt.audio_path)
                 continue
+
+            # apply path overrides if needed
+            # this allows pre-processing the dataset in one system and then train in other
+            if jsonl_audio_path:
+                base_path, fname = str(utt.audio_path).split("/wav/")
+                utt.audio_path = Path(f"{jsonl_audio_path}/wav/{fname}")
+            if jsonl_audio_spec_path:
+                base_path, fname = str(utt.audio_norm_path).split("/cache/")
+                utt.audio_norm_path = Path(f"{jsonl_audio_spec_path}/cache/{fname}")
+                base_path, fname = str(utt.audio_spec_path).split("/cache/")
+                utt.audio_spec_path = Path(f"{jsonl_audio_spec_path}/cache/{fname}")
 
             json.dump(
                 utt.asdict(),
