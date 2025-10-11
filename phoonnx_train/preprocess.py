@@ -518,7 +518,10 @@ def cli(
     if prev_config:
         with open(prev_config) as f:
             cfg = json.load(f)
-        prev_phoneme_id_map = cfg["phoneme_id_map"]
+        # flatten list, same models (eg. piper) use a list of ids
+        prev_phoneme_id_map = {k: v if not isinstance(v, list) else v[0]
+                               for k, v in cfg["phoneme_id_map"].items()}
+
         prev_num_symbols = cfg.get("num_symbols", MAX_PHONEMES)
         _LOGGER.info(f"Loaded phoneme map from previous config: '{prev_config}'")
         all_phonemes.update(prev_phoneme_id_map.keys())
