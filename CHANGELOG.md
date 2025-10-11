@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.6a2](https://github.com/TigreGotico/phoonnx/tree/0.2.6a2) (2025-10-11)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.6a1...0.2.6a2)
+
+**Merged pull requests:**
+
+- add kaggle notebook for training [\#42](https://github.com/TigreGotico/phoonnx/pull/42) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.2.6a1](https://github.com/TigreGotico/phoonnx/tree/0.2.6a1) (2025-10-05)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.5a1...0.2.6a1)
