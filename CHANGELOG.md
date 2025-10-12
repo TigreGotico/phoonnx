@@ -1,28 +1,20 @@
 # Changelog
 
-## [0.2.6a2](https://github.com/TigreGotico/phoonnx/tree/0.2.6a2) (2025-10-11)
+## [0.3.0a1](https://github.com/TigreGotico/phoonnx/tree/0.3.0a1) (2025-10-12)
 
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.6a1...0.2.6a2)
-
-**Merged pull requests:**
-
-- add kaggle notebook for training [\#42](https://github.com/TigreGotico/phoonnx/pull/42) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.2.6a1](https://github.com/TigreGotico/phoonnx/tree/0.2.6a1) (2025-10-05)
-
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.5a1...0.2.6a1)
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.7a1...0.3.0a1)
 
 **Merged pull requests:**
 
-- fix: double synth [\#39](https://github.com/TigreGotico/phoonnx/pull/39) ([JarbasAl](https://github.com/JarbasAl))
+- feat: add tugaphone [\#46](https://github.com/TigreGotico/phoonnx/pull/46) ([JarbasAl](https://github.com/JarbasAl))
 
-## [0.2.5a1](https://github.com/TigreGotico/phoonnx/tree/0.2.5a1) (2025-10-05)
+## [0.2.7a1](https://github.com/TigreGotico/phoonnx/tree/0.2.7a1) (2025-10-11)
 
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.4...0.2.5a1)
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.6...0.2.7a1)
 
 **Merged pull requests:**
 
-- fix: piper json export [\#37](https://github.com/TigreGotico/phoonnx/pull/37) ([JarbasAl](https://github.com/JarbasAl))
+- allow overriding paths in generated dataset.jsonl [\#44](https://github.com/TigreGotico/phoonnx/pull/44) ([JarbasAl](https://github.com/JarbasAl))
 
 
 

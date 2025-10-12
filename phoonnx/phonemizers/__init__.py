@@ -7,6 +7,7 @@ from phoonnx.phonemizers.vi import VIPhonemePhonemizer
 from phoonnx.phonemizers.he import PhonikudPhonemizer
 from phoonnx.phonemizers.ar import MantoqPhonemizer
 from phoonnx.phonemizers.fa import PersianPhonemizer
+from phoonnx.phonemizers.pt import TugaphonePhonemizer
 from phoonnx.phonemizers.ja import PyKakasiPhonemizer, CutletPhonemizer, OpenJTaklPhonemizer
 from phoonnx.phonemizers.ko import KoG2PPhonemizer, G2PKPhonemizer
 from phoonnx.phonemizers.zh import (G2pCPhonemizer, G2pMPhonemizer, PypinyinPhonemizer,
@@ -18,6 +19,7 @@ from phoonnx.phonemizers.mwl import MirandesePhonemizer
 Phonemizer = Union[
     MisakiPhonemizer,
     ByT5Phonemizer,
+    TugaphonePhonemizer,
     UnicodeCodepointPhonemizer,
     CharsiuPhonemizer,
     EspeakPhonemizer,
