@@ -56,6 +56,7 @@ class PhonemeType(str, Enum):
     OPENPHONEMIZER = "openphonemizer" # en
     G2PEN = "g2pen" # en
 
+    TUGAPHONE = "tugaphone"  # pt
     G2PFA = "g2pfa"
     OPENJTALK = "openjtalk" # ja
     CUTLET = "cutlet" # ja
@@ -395,7 +396,7 @@ def get_phonemizer(phoneme_type: PhonemeType,
     from phoonnx.phonemizers import (EpitranPhonemizer, EspeakPhonemizer, OpenPhonemizer, OpenJTaklPhonemizer,
                                      ByT5Phonemizer, CharsiuPhonemizer, DeepPhonemizer, PersianPhonemizer,
                                      G2pCPhonemizer, G2pMPhonemizer, G2PKPhonemizer, G2PEnPhonemizer,
-                                     TransphonePhonemizer, MirandesePhonemizer, GoruutPhonemizer,
+                                     TransphonePhonemizer, MirandesePhonemizer, GoruutPhonemizer, TugaphonePhonemizer,
                                      GruutPhonemizer, GraphemePhonemizer, MantoqPhonemizer, MisakiPhonemizer,
                                      KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
                                      CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer, XpinyinPhonemizer,
@@ -404,6 +405,8 @@ def get_phonemizer(phoneme_type: PhonemeType,
         phonemizer = EspeakPhonemizer()
     elif phoneme_type == PhonemeType.BYT5:
         phonemizer = ByT5Phonemizer(model)
+    elif phoneme_type == PhonemeType.TUGAPHONE:
+        phonemizer = TugaphonePhonemizer()
     elif phoneme_type == PhonemeType.CHARSIU:
         phonemizer = CharsiuPhonemizer(model)
     elif phoneme_type == PhonemeType.GRUUT:
