@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0a1](https://github.com/TigreGotico/phoonnx/tree/0.3.0a1) (2025-10-12)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.7a1...0.3.0a1)
+
+**Merged pull requests:**
+
+- feat: add tugaphone [\#46](https://github.com/TigreGotico/phoonnx/pull/46) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.2.7a1](https://github.com/TigreGotico/phoonnx/tree/0.2.7a1) (2025-10-11)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.6...0.2.7a1)
