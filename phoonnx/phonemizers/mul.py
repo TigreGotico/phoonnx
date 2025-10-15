@@ -12,11 +12,6 @@ import requests
 from phoonnx.config import Alphabet
 from phoonnx.phonemizers.base import BasePhonemizer
 
-# Flag to suppress/hide the terminal window on Windows (CREATE_NO_WINDOW)
-if os.name == 'nt':
-    CREATE_NO_WINDOW = 0x08000000
-else:
-    CREATE_NO_WINDOW = 0
 
 class EspeakError(Exception):
     """Custom exception for espeak-ng related errors."""
@@ -367,7 +362,7 @@ class EspeakPhonemizer(BasePhonemizer):
 
         # Add 'creationflags' to hide the terminal window on Windows
         if os.name == 'nt':
-            subprocess_args['creationflags'] = CREATE_NO_WINDOW 
+            subprocess_args['creationflags'] = 0x08000000
 
         try:
             process: subprocess.CompletedProcess = subprocess.run(
