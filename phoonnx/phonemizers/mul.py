@@ -12,6 +12,11 @@ import requests
 from phoonnx.config import Alphabet
 from phoonnx.phonemizers.base import BasePhonemizer
 
+# Flag to suppress/hide the terminal window on Windows (CREATE_NO_WINDOW)
+if os.name == 'nt':
+    CREATE_NO_WINDOW = 0x08000000
+else:
+    CREATE_NO_WINDOW = 0
 
 class EspeakError(Exception):
     """Custom exception for espeak-ng related errors."""
@@ -349,15 +354,25 @@ class EspeakPhonemizer(BasePhonemizer):
             EspeakError: If espeak-ng command is not found, or if the subprocess call fails.
         """
         command: List[str] = ['espeak-ng'] + args
+        
+        # Standard arguments for subprocess.run
+        subprocess_args = {
+            'input': input_text,
+            'capture_output': True,
+            'text': True,
+            'check': check,
+            'encoding': 'utf-8',
+            'errors': 'replace' # Replaces unencodable characters with a placeholder
+        }
+
+        # Add 'creationflags' to hide the terminal window on Windows
+        if os.name == 'nt':
+            subprocess_args['creationflags'] = CREATE_NO_WINDOW 
+
         try:
             process: subprocess.CompletedProcess = subprocess.run(
                 command,
-                input=input_text,
-                capture_output=True,
-                text=True,
-                check=check,
-                encoding='utf-8',
-                errors='replace'  # Replaces unencodable characters with a placeholder
+                **subprocess_args # Use the dynamic arguments
             )
             return process.stdout.strip()
         except FileNotFoundError:
@@ -380,7 +395,6 @@ class EspeakPhonemizer(BasePhonemizer):
             ['-q', '-x', '--ipa', '-v', lang],
             input_text=text
         )
-
 
 class GruutPhonemizer(BasePhonemizer):
     """
