@@ -349,15 +349,25 @@ class EspeakPhonemizer(BasePhonemizer):
             EspeakError: If espeak-ng command is not found, or if the subprocess call fails.
         """
         command: List[str] = ['espeak-ng'] + args
+        
+        # Standard arguments for subprocess.run
+        subprocess_args = {
+            'input': input_text,
+            'capture_output': True,
+            'text': True,
+            'check': check,
+            'encoding': 'utf-8',
+            'errors': 'replace' # Replaces unencodable characters with a placeholder
+        }
+
+        # Add 'creationflags' to hide the terminal window on Windows
+        if os.name == 'nt':
+            subprocess_args['creationflags'] = 0x08000000
+
         try:
             process: subprocess.CompletedProcess = subprocess.run(
                 command,
-                input=input_text,
-                capture_output=True,
-                text=True,
-                check=check,
-                encoding='utf-8',
-                errors='replace'  # Replaces unencodable characters with a placeholder
+                **subprocess_args # Use the dynamic arguments
             )
             return process.stdout.strip()
         except FileNotFoundError:
@@ -380,7 +390,6 @@ class EspeakPhonemizer(BasePhonemizer):
             ['-q', '-x', '--ipa', '-v', lang],
             input_text=text
         )
-
 
 class GruutPhonemizer(BasePhonemizer):
     """
