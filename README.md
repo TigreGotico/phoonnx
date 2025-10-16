@@ -98,7 +98,7 @@ voice synthesis parameters usually come from the model `.json` file, but you can
     "module": "ovos-tts-plugin-phoonnx",
     "ovos-tts-plugin-phoonnx": {
       "voice": "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone",
-      "enable_phonetic_spelling": true,
+      "enable_phonetic_spellings": true,
       "noise_scale": 0.667,
       "length_scale": 1,
       "noise_w": 0.8,
