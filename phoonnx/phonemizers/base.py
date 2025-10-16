@@ -7,7 +7,7 @@ from typing import List, Tuple, Optional, Literal
 from langcodes import tag_distance
 from quebra_frases import sentence_tokenize
 from phoonnx.config import Alphabet
-from phoonnx.util import normalize
+from phoonnx.util import normalize, match_lang
 from phoonnx.thirdparty.phonikud import PhonikudDiacritizer
 from phoonnx.thirdparty.tashkeel import TashkeelDiacritizer
 
@@ -96,30 +96,11 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
         Raises:
             ValueError: If the language code is unsupported.
         """
-        if target_lang in valid_langs:
-            return target_lang
-        best_lang = "und"
-        best_distance = 10000000
-        for l in valid_langs:
-            try:
-                distance: int = tag_distance(l, target_lang)
-            except:
-                try:
-                    l = f"{l.split('-')[0]}-{l.split('-')[1]}"
-                    distance: int = tag_distance(l, target_lang)
-                except:
-                    try:
-                        distance: int = tag_distance(l.split('-')[0], target_lang)
-                    except:
-                        continue
-            if distance < best_distance:
-                best_lang, best_distance = l, distance
-
-        # If the score is low (meaning a good match), return the language
-        if best_distance <= 10:
-            return best_lang
-        # Otherwise, raise an error for unsupported language
-        raise ValueError(f"unsupported language code: {target_lang}")
+        lang = match_lang(target_lang, valid_langs)
+        if not lang:
+            # raise an error for unsupported language
+            raise ValueError(f"unsupported language code: {target_lang}")
+        return lang
 
     @staticmethod
     def remove_punctuation(text):

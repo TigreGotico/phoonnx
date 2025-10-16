@@ -17,6 +17,15 @@ except ImportError:
     LOG = logging.getLogger(__name__)
 
 
+class Engine(str, Enum):
+    """voices trained with these frameworks are explicitly supported.
+    This mainly affects the format of .json file and possibly tokenization"""
+    PHOONNX = "phoonnx"
+    PIPER = "piper"
+    MIMIC3 = "mimic3"
+    COQUI = "coqui"
+
+
 class Alphabet(str, Enum):
     UNICODE = "unicode"
     IPA = "ipa"
@@ -110,6 +119,9 @@ class VoiceConfig:
     lang_id_map: Mapping[str, int] = field(default_factory=dict)
     """lang-code -> id"""
 
+    # Info about what framework was used to train the model
+    engine: Engine = Engine.PHOONNX
+
     # Inference settings
     length_scale: float = DEFAULT_LENGTH_SCALE
     noise_scale: float = DEFAULT_NOISE_SCALE
@@ -189,20 +201,7 @@ class VoiceConfig:
 
     @staticmethod
     def is_phoonnx(config: dict[str, Any]) -> bool:
-        # phoonnx models indicate a phonemizer strategy in their config
-        if ("phoneme_type" not in config or
-                not isinstance(config["phoneme_type"], str)):
-            return False
-
-        if "lang_code" not in config:
-            return False
-
-        # validate phonemizer type as expected
-        phonemizer = config["phoneme_type"]
-        if phonemizer not in list(PhonemeType):
-            return False
-
-        return True
+        return "phoonnx_version" in config
 
     @staticmethod
     def is_cotovia(config: dict[str, Any]) -> bool:
@@ -227,6 +226,7 @@ class VoiceConfig:
         phoneme_type_str = phoneme_type_str or config.get("phoneme_type")
         phoneme_id_map = config.get("phoneme_id_map")
         alphabet = config.get("alphabet")
+        engine = Engine.PHOONNX
 
         if phonemes_txt:
             if phonemes_txt.endswith(".txt"):
@@ -237,8 +237,12 @@ class VoiceConfig:
                 with open(phonemes_txt) as ids_file:
                     phoneme_id_map = json.load(ids_file)
 
+        if VoiceConfig.is_phoonnx(config):
+            pass
         # check if model was trained for PiperTTS
-        if VoiceConfig.is_piper(config):
+        elif VoiceConfig.is_piper(config):
+            engine = Engine.PIPER
+
             lang_code = lang_code or (config.get("language", {}).get("code") or
                          config.get("espeak", {}).get("voice"))
             phoneme_type_str = config.get("phoneme_type", PhonemeType.ESPEAK.value)
@@ -256,6 +260,8 @@ class VoiceConfig:
 
         # check if model was trained for Mimic3
         elif VoiceConfig.is_mimic3(config):
+            engine = Engine.MIMIC3
+
             if not phonemes_txt:
                 raise ValueError("mimic3 models require an external phonemes.txt file in addition to the config")
             lang_code = config.get("text_language")
@@ -276,6 +282,8 @@ class VoiceConfig:
         # check if model was trained with Coqui
         # NOTE: cotovia is included here
         elif VoiceConfig.is_coqui_vits(config):
+            engine = Engine.COQUI
+
             if VoiceConfig.is_cotovia(config):
                 phoneme_type_str = PhonemeType.COTOVIA.value
                 alphabet = Alphabet.COTOVIA
@@ -343,6 +351,7 @@ class VoiceConfig:
             noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
             lang_code=lang_code,
             alphabet=alphabet,
+            engine=engine,
             phonemizer_model=config.get("phonemizer_model"),
             phoneme_id_map=phoneme_id_map,
             phoneme_type=phoneme_type,

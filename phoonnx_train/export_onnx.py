@@ -109,7 +109,7 @@ def convert_to_piper(config_path: Path, output_path: Path = Path("piper.json")) 
         config: Dict[str, Any] = json.load(file)
 
     piper_config = {
-        "phoneme_type": "espeak" if config.get("phoneme_type", "") == "espeak" else "raw",
+        "phoneme_type": "espeak", # TODO - add a check for supported espeak languages, throw error if unsupported
         "phoneme_map": {},
         "audio": config.get("audio", {}),
         "inference": config.get("inference", {}),
