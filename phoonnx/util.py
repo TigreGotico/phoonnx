@@ -1,15 +1,62 @@
 import datetime
-import logging
 import re
 import string
 from datetime import date
+from typing import Union, List, Tuple
 
+from langcodes import tag_distance
 from ovos_date_parser import nice_time, nice_date
-from ovos_number_parser import pronounce_number, is_fractional, pronounce_fraction
+from ovos_number_parser import pronounce_number, pronounce_fraction
 from ovos_number_parser.util import is_numeric
 from unicode_rbnf import RbnfEngine, FormatPurpose
 
-LOG = logging.getLogger("normalize")
+try:
+    from ovos_utils.log import LOG
+except ImportError:
+    import logging
+
+    LOG = logging.getLogger("phoonnx")
+
+
+def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Tuple[str, int]:
+    """
+    Validates and returns the closest supported language code.
+
+    Args:
+        target_lang (str): The language code to validate.
+
+    Returns:
+        str: The validated language code.
+
+    Raises:
+        ValueError: If the language code is unsupported.
+    """
+    if isinstance(valid_langs, str):
+        valid_langs = [valid_langs]
+    if target_lang in valid_langs:
+        return target_lang, 0
+    best_lang = "und"
+    best_distance = 10000000
+    for l in valid_langs:
+        try:
+            distance: int = tag_distance(l, target_lang)
+        except:
+            try:
+                l = f"{l.split('-')[0]}-{l.split('-')[1]}"
+                distance: int = tag_distance(l, target_lang)
+            except:
+                try:
+                    distance: int = tag_distance(l.split('-')[0], target_lang)
+                except:
+                    continue
+        if distance < best_distance:
+            best_lang, best_distance = l, distance
+
+    # If the score is low (meaning a good match), return the language
+    if best_distance <= 10:
+        return best_lang, best_distance
+    return "und", 10000
+
 
 # A dictionary of common contractions and their expanded forms.
 # This list is very comprehensive for English.
@@ -548,7 +595,7 @@ def _normalize_units(text: str, full_lang: str) -> str:
     This function handles symbolic and alphanumeric units separately
     to avoid issues with word boundaries.
     """
-    text = text.replace("º", "°") # these characters look the same... but...
+    text = text.replace("º", "°")  # these characters look the same... but...
     lang_code = full_lang.split("-")[0]
     if lang_code in UNITS:
         # Determine number separators for the language
@@ -580,6 +627,7 @@ def _normalize_units(text: str, full_lang: str) -> str:
                 except Exception as e:
                     LOG.error(f"Failed to pronounce number with unit: {number}{unit_symbol} - ({e})")
                     return match.group(0)
+
             text = symbolic_pattern.sub(replace_symbolic, text)
 
         # Create regex pattern for alphanumeric units and replace them next
@@ -673,8 +721,10 @@ if __name__ == "__main__":
 
     # General normalization examples
     print("General English example: " + normalize('I\'m Dr. Prof. 3/3 0.5% of 12345€, 5ft, and 10kg', 'en'))
-    print(f"Word Salad Portuguese (Dr. Prof. 3/3 0,5% de 12345€, 5m, e 10kg): {normalize('Dr. Prof. 3/3 0,5% de 12345€, 5m, e 10kg', 'pt')}")
-    print(f"Word Salad Portuguese (Dr. Prof. 3/3 0.5% de 12345€, 5m, e 10kg): {normalize('Dr. Prof. 3/3 0.5% de 12345€, 5m, e 10kg', 'pt')}")
+    print(
+        f"Word Salad Portuguese (Dr. Prof. 3/3 0,5% de 12345€, 5m, e 10kg): {normalize('Dr. Prof. 3/3 0,5% de 12345€, 5m, e 10kg', 'pt')}")
+    print(
+        f"Word Salad Portuguese (Dr. Prof. 3/3 0.5% de 12345€, 5m, e 10kg): {normalize('Dr. Prof. 3/3 0.5% de 12345€, 5m, e 10kg', 'pt')}")
 
     # Portuguese examples with comma decimal separator
     print("\n--- Portuguese Decimal Separator Examples ---")
@@ -699,8 +749,10 @@ if __name__ == "__main__":
     # Portuguese dates and times
     print("\n--- Portuguese Date & Time Examples ---")
     print(f"Portuguese date (A data é 03/08/2025): {normalize('A data é 03/08/2025', 'pt')}")
-    print(f"Portuguese ambiguous date (O relatório é para 15/05/2025): {normalize('O relatório é para 15/05/2025', 'pt')}")
-    print(f"Portuguese date with dashes (O evento é no dia 25-10-2024): {normalize('O evento é no dia 25-10-2024', 'pt')}")
+    print(
+        f"Portuguese ambiguous date (O relatório é para 15/05/2025): {normalize('O relatório é para 15/05/2025', 'pt')}")
+    print(
+        f"Portuguese date with dashes (O evento é no dia 25-10-2024): {normalize('O evento é no dia 25-10-2024', 'pt')}")
     print(f"Portuguese military time (O encontro é às 14h30): {normalize('O encontro é às 14h30', 'pt')}")
 
     # Other examples

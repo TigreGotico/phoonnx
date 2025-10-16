@@ -2,6 +2,7 @@ import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping, Optional, Sequence
+from phoonnx.util import LOG
 from phoonnx.phoneme_ids import (load_phoneme_ids, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
@@ -10,11 +11,14 @@ DEFAULT_NOISE_SCALE = 0.667
 DEFAULT_LENGTH_SCALE = 1.0
 DEFAULT_NOISE_W_SCALE = 0.8
 
-try:
-    from ovos_utils.log import LOG
-except ImportError:
-    import logging
-    LOG = logging.getLogger(__name__)
+
+class Engine(str, Enum):
+    """voices trained with these frameworks are explicitly supported.
+    This mainly affects the format of .json file and possibly tokenization"""
+    PHOONNX = "phoonnx"
+    PIPER = "piper"
+    MIMIC3 = "mimic3"
+    COQUI = "coqui"
 
 
 class Alphabet(str, Enum):
@@ -110,10 +114,14 @@ class VoiceConfig:
     lang_id_map: Mapping[str, int] = field(default_factory=dict)
     """lang-code -> id"""
 
+    # Info about what framework was used to train the model
+    engine: Engine = Engine.PHOONNX
+
     # Inference settings
     length_scale: float = DEFAULT_LENGTH_SCALE
     noise_scale: float = DEFAULT_NOISE_SCALE
     noise_w_scale: float = DEFAULT_NOISE_W_SCALE
+    add_diacritics: bool = None # arabic and hebrew
 
     # tokenization settings
     blank_at_start: bool = True
@@ -127,6 +135,15 @@ class VoiceConfig:
     blank_between: BlankBetween = BlankBetween.TOKENS_AND_WORDS
 
     def __post_init__(self):
+        """
+        Finalize dataclass defaults after initialization.
+        
+        If `add_diacritics` is None, sets it to False; if `lang_code` is present and starts with "ar", sets `add_diacritics` to True. Ensures `lang_code` is set to "und" when not provided.
+        """
+        if self.add_diacritics is None:
+            self.add_diacritics = False
+            if self.lang_code and self.lang_code.startswith("ar"):
+                self.add_diacritics = True
         self.lang_code = self.lang_code or "und"
 
     @staticmethod
@@ -189,44 +206,37 @@ class VoiceConfig:
 
     @staticmethod
     def is_phoonnx(config: dict[str, Any]) -> bool:
-        # phoonnx models indicate a phonemizer strategy in their config
-        if ("phoneme_type" not in config or
-                not isinstance(config["phoneme_type"], str)):
-            return False
-
-        if "lang_code" not in config:
-            return False
-
-        # validate phonemizer type as expected
-        phonemizer = config["phoneme_type"]
-        if phonemizer not in list(PhonemeType):
-            return False
-
-        return True
-
-    @staticmethod
-    def is_cotovia(config: dict[str, Any]) -> bool:
-        # no way to determine unless explicitly configured unfortunately
-        # afaik only the sabela galician model uses this
-        # will fallback to coqui "graphemes" if "cotovia" not specified,
-        # this will work but will make mistakes
-        if (not VoiceConfig.is_coqui_vits(config)
-                or not VoiceConfig.is_phoonnx(config)):
-            return False
-
-        return config["phoneme_type"] == PhonemeType.COTOVIA
+        return "phoonnx_version" in config
 
     @staticmethod
     def from_dict(config: dict[str, Any],
                   phonemes_txt: Optional[str] = None,
                   lang_code: Optional[str] = None,
                   phoneme_type_str: Optional[str] = None) -> "VoiceConfig":
-        """Load configuration from a dictionary."""
+        """
+        Create a VoiceConfig from a configuration dictionary and an optional external phonemes file.
+        
+        Constructs a VoiceConfig by deriving engine, alphabet, phoneme mapping, and inference/synthesis settings from the provided config and optional phonemes_txt. Detects model type (Phoonnx, Piper, Mimic3, Coqui) and applies model-specific defaults and mappings; optional lang_code and phoneme_type_str override values in the config.
+        
+        Parameters:
+            config (dict[str, Any]): Parsed model configuration dictionary.
+            phonemes_txt (Optional[str]): Path to an external phonemes file (.txt or .json) used to build or override the phoneme id mapping.
+            lang_code (Optional[str]): Optional language code to override the config's language.
+            phoneme_type_str (Optional[str]): Optional phoneme type name to override the config's phoneme type.
+        
+        Returns:
+            VoiceConfig: A populated VoiceConfig instance with fields set from the config and any provided phonemes file.
+        
+        Raises:
+            ValueError: If the model is detected as Mimic3 but no phonemes_txt is provided.
+        """
         blank_type = BlankBetween.TOKENS_AND_WORDS
         lang_code = lang_code or config.get("lang_code")
         phoneme_type_str = phoneme_type_str or config.get("phoneme_type")
         phoneme_id_map = config.get("phoneme_id_map")
         alphabet = config.get("alphabet")
+        engine = Engine.PHOONNX
+        diacritics = False
 
         if phonemes_txt:
             if phonemes_txt.endswith(".txt"):
@@ -237,10 +247,25 @@ class VoiceConfig:
                 with open(phonemes_txt) as ids_file:
                     phoneme_id_map = json.load(ids_file)
 
+        if VoiceConfig.is_phoonnx(config):
+            engine = Engine.PHOONNX
+
+            lang_code = lang_code or config.get("lang_code")
+            phoneme_type_str = config.get("phoneme_type", PhonemeType.ESPEAK.value)
+            alphabet = Alphabet(config.get("alphabet", "ipa"))
+            diacritics = config.get("inference", {}).get("add_diacritics", True)
+
+            config["pad"] =  DEFAULT_PAD_TOKEN
+            config["blank"] = DEFAULT_BLANK_TOKEN
+            config["bos"] = DEFAULT_BOS_TOKEN
+            config["eos"] = DEFAULT_EOS_TOKEN
         # check if model was trained for PiperTTS
-        if VoiceConfig.is_piper(config):
+        elif VoiceConfig.is_piper(config):
+            engine = Engine.PIPER
+
             lang_code = lang_code or (config.get("language", {}).get("code") or
                          config.get("espeak", {}).get("voice"))
+            diacritics = lang_code.startswith("ar")
             phoneme_type_str = config.get("phoneme_type", PhonemeType.ESPEAK.value)
             if phoneme_type_str == "text":
                 phoneme_type_str = PhonemeType.UNICODE.value
@@ -256,6 +281,8 @@ class VoiceConfig:
 
         # check if model was trained for Mimic3
         elif VoiceConfig.is_mimic3(config):
+            engine = Engine.MIMIC3
+
             if not phonemes_txt:
                 raise ValueError("mimic3 models require an external phonemes.txt file in addition to the config")
             lang_code = config.get("text_language")
@@ -274,14 +301,10 @@ class VoiceConfig:
                 alphabet = Alphabet.IPA
 
         # check if model was trained with Coqui
-        # NOTE: cotovia is included here
         elif VoiceConfig.is_coqui_vits(config):
-            if VoiceConfig.is_cotovia(config):
-                phoneme_type_str = PhonemeType.COTOVIA.value
-                alphabet = Alphabet.COTOVIA
-            else:
-                phoneme_type_str = PhonemeType.GRAPHEMES.value
-                alphabet = Alphabet.UNICODE
+            engine = Engine.COQUI
+            phoneme_type_str = PhonemeType.GRAPHEMES.value
+            alphabet = Alphabet.UNICODE
 
             # NOTE: lang code usually not provided and often wrong :(
             ds = config.get("datasets", [])
@@ -341,8 +364,10 @@ class VoiceConfig:
             noise_scale=inference.get("noise_scale", DEFAULT_NOISE_SCALE),
             length_scale=inference.get("length_scale", DEFAULT_LENGTH_SCALE),
             noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
+            add_diacritics=diacritics,
             lang_code=lang_code,
             alphabet=alphabet,
+            engine=engine,
             phonemizer_model=config.get("phonemizer_model"),
             phoneme_id_map=phoneme_id_map,
             phoneme_type=phoneme_type,
@@ -500,9 +525,7 @@ if __name__ == "__main__":
         print("Mimic3:", VoiceConfig.is_mimic3(config))
         print("Piper:", VoiceConfig.is_piper(config))
         print("Coqui:", VoiceConfig.is_coqui_vits(config))
-        print("Cotovia:", VoiceConfig.is_cotovia(config))
         print("Phoonx:", VoiceConfig.is_phoonnx(config))
         cfg = VoiceConfig.from_dict(config, phoneme_txts[idx])
         print(cfg)
-
 
