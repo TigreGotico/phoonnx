@@ -36,7 +36,8 @@ class PhoonnxTTSPlugin(TTS):
         self.model_manager = TTSModelManager()
         try:
             self.model_manager.refresh_voices()
-        except:
+        except Exception as exc:
+            LOG.warning(f"Voice refresh failed; retrying with cached voices: {exc}")
             self.model_manager.load()
 
         self.voices: Dict[str, TTSVoice] = {}
