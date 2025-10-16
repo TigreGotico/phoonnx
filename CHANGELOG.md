@@ -1,20 +1,13 @@
 # Changelog
 
-## [0.3.0a1](https://github.com/TigreGotico/phoonnx/tree/0.3.0a1) (2025-10-12)
+## [0.4.0a1](https://github.com/TigreGotico/phoonnx/tree/0.4.0a1) (2025-10-16)
 
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.7a1...0.3.0a1)
-
-**Merged pull requests:**
-
-- feat: add tugaphone [\#46](https://github.com/TigreGotico/phoonnx/pull/46) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.2.7a1](https://github.com/TigreGotico/phoonnx/tree/0.2.7a1) (2025-10-11)
-
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.2.6...0.2.7a1)
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.3.0...0.4.0a1)
 
 **Merged pull requests:**
 
-- allow overriding paths in generated dataset.jsonl [\#44](https://github.com/TigreGotico/phoonnx/pull/44) ([JarbasAl](https://github.com/JarbasAl))
+- feat: model manager [\#49](https://github.com/TigreGotico/phoonnx/pull/49) ([JarbasAl](https://github.com/JarbasAl))
+- Support for Windows OS [\#48](https://github.com/TigreGotico/phoonnx/pull/48) ([timonvanhasselt](https://github.com/timonvanhasselt))
 
 
 
