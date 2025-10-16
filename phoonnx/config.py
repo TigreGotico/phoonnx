@@ -214,22 +214,22 @@ class VoiceConfig:
                   lang_code: Optional[str] = None,
                   phoneme_type_str: Optional[str] = None) -> "VoiceConfig":
         """
-                  Create a VoiceConfig from a configuration dictionary and an optional external phonemes file.
-                  
-                  Constructs a VoiceConfig by deriving engine, alphabet, phoneme mapping, and inference/synthesis settings from the provided config and optional phonemes_txt. Detects model type (Phoonnx, Piper, Mimic3, Coqui) and applies model-specific defaults and mappings; optional lang_code and phoneme_type_str override values in the config.
-                  
-                  Parameters:
-                      config (dict[str, Any]): Parsed model configuration dictionary.
-                      phonemes_txt (Optional[str]): Path to an external phonemes file (.txt or .json) used to build or override the phoneme id mapping.
-                      lang_code (Optional[str]): Optional language code to override the config's language.
-                      phoneme_type_str (Optional[str]): Optional phoneme type name to override the config's phoneme type.
-                  
-                  Returns:
-                      VoiceConfig: A populated VoiceConfig instance with fields set from the config and any provided phonemes file.
-                  
-                  Raises:
-                      ValueError: If the model is detected as Mimic3 but no phonemes_txt is provided.
-                  """
+        Create a VoiceConfig from a configuration dictionary and an optional external phonemes file.
+        
+        Constructs a VoiceConfig by deriving engine, alphabet, phoneme mapping, and inference/synthesis settings from the provided config and optional phonemes_txt. Detects model type (Phoonnx, Piper, Mimic3, Coqui) and applies model-specific defaults and mappings; optional lang_code and phoneme_type_str override values in the config.
+        
+        Parameters:
+            config (dict[str, Any]): Parsed model configuration dictionary.
+            phonemes_txt (Optional[str]): Path to an external phonemes file (.txt or .json) used to build or override the phoneme id mapping.
+            lang_code (Optional[str]): Optional language code to override the config's language.
+            phoneme_type_str (Optional[str]): Optional phoneme type name to override the config's phoneme type.
+        
+        Returns:
+            VoiceConfig: A populated VoiceConfig instance with fields set from the config and any provided phonemes file.
+        
+        Raises:
+            ValueError: If the model is detected as Mimic3 but no phonemes_txt is provided.
+        """
         blank_type = BlankBetween.TOKENS_AND_WORDS
         lang_code = lang_code or config.get("lang_code")
         phoneme_type_str = phoneme_type_str or config.get("phoneme_type")
