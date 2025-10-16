@@ -91,6 +91,7 @@ class TTSModelInfo:
                     for chunk in r.iter_content(chunk_size=8192):
                         if chunk:
                             f.write(chunk)
+
     def load(self) -> TTSVoice:
         model_path = self.voice_path / "model.onnx"
         config_path = self.voice_path / "model.json"
@@ -102,7 +103,7 @@ class TTSModelInfo:
                               phonemes_txt=str(tokens_path) if self.tokens_url else None)
 
         # override phoneme_type, if config.json is wrong
-        if self.phoneme_type != voice.phoneme_type:
+        if self.phoneme_type != voice.config.phoneme_type:
             voice.phoneme_type = self.phoneme_type
             voice.phonemizer = get_phonemizer(self.phoneme_type,
                                               alphabet=voice.config.alphabet,
@@ -197,7 +198,7 @@ class TTSModelManager:
         mimic3_voices = r.json()
         for k, v in mimic3_voices.items():
             try:
-                lang = standardize_lang_tag(k.split("/")[0])
+                lang = standardize_tag(k.split("/")[0])
                 speaker_map = {s: idx for idx, s in enumerate(v["speakers"])}
                 config_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/config.json"
                 model_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/generator.onnx"
@@ -267,11 +268,11 @@ class TTSModelManager:
             ))
 
     @property
-    def all_voices(self) -> Iterable[TTSModelInfo]:
-        return self.voices.values()
+    def all_voices(self) -> List[TTSModelInfo]:
+        return list(self.voices.values())
 
     @property
-    def supported_langs(self) -> Iterable[str]:
+    def supported_langs(self) -> List[str]:
         return sorted(set(l.lang for l in self.all_voices))
 
 
@@ -313,3 +314,5 @@ if __name__ == "__main__":
     # 'is-IS', 'it-IT', 'jv-ID', 'ka-GE', 'kk-KZ', 'ko-KO', 'lb-LU', 'lv-LV', 'ml-IN', 'ne-NP', 'nl', 'nl-BE', 'nl-NL',
     # 'no-NO', 'pl-PL', 'pt-BR', 'pt-PT', 'ro-RO', 'ru-RU', 'sk-SK', 'sl-SI', 'sr-RS', 'sv-SE', 'sw', 'sw-CD',
     # 'te-IN', 'tn-ZA', 'tr-TR', 'uk-GB', 'uk-UA', 'vi-VN', 'yo', 'zh-CN']
+
+    manager.all_voices[0].load()
