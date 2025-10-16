@@ -185,10 +185,12 @@ class TTSModelManager:
 
     def get_mimic3_voice_list(self):
         voice_list = "https://raw.githubusercontent.com/MycroftAI/mimic3/refs/heads/master/mimic3_tts/voices.json"
-        mimic3_voices = requests.get(voice_list, timeout=30).json()
+        r = requests.get(voice_list, timeout=30)
+        r.raise_for_status()
+        mimic3_voices = r.json()
         for k, v in mimic3_voices.items():
             try:
-                lang = standardize_tag(k.split("/")[0])
+                lang = standardize_lang_tag(k.split("/")[0])
                 speaker_map = {s: idx for idx, s in enumerate(v["speakers"])}
                 config_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/config.json"
                 model_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/generator.onnx"
