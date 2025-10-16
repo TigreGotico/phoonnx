@@ -18,12 +18,9 @@ multiple languages and phonemic alphabets. The library is also designed to work 
 ## Features
 
 - **Efficient Inference:** Leverages `onnxruntime` for fast and efficient TTS synthesis.
-- **Multilingual Support:** Supports a wide range of languages and phonemic alphabets, including IPA, ARPA, Hangul (
-  Korean), and Pinyin (Chinese).
-- **Multiple Phonemizers:** Integrates with various phonemizers like eSpeak, Gruut, and Epitran to convert text to
-  phonemes.
-- **Advanced Text Normalization:** Includes robust utilities for expanding contractions and pronouncing numbers and
-  dates.
+- **Multilingual Support:** Supports a wide range of languages and phonemic alphabets, including IPA, ARPA, Hangul (Korean), and Pinyin (Chinese).
+- **Multiple Phonemizers:** Integrates with various phonemizers like eSpeak, Gruut, and Epitran to convert text to phonemes.
+- **Advanced Text Normalization:** Includes robust utilities for expanding contractions and pronouncing numbers and dates.
 - **Dataset Preprocessing:** Provides a command-line tool to prepare LJSpeech-style datasets for training.
 - **Model Export:** A script is included to convert trained models into the ONNX format, ready for deployment.
 
@@ -43,8 +40,7 @@ pip install phoonnx
 
 ### Synthesizing Speech
 
-The main component for inference is the `TTSVoice` class. You can load a model and synthesize speech from text as
-follows:
+The main component for inference is the `TTSVoice` class. You can load a model and synthesize speech from text as follows:
 
 ```python
 import wave
@@ -93,7 +89,7 @@ Once installed, it can be configured as a standard TTS engine and automatically 
   }
 ```
 
-if `"voice"` is not provided then the first model that supports that language will be selected
+if `"voice"` is not provided then the first model that supports your language will be selected
 
 voice synthesis parameters usually come from the model `.json` file, but you can override them (globally) in `mycroft.conf`
 
@@ -113,7 +109,7 @@ voice synthesis parameters usually come from the model `.json` file, but you can
 
 ### Command Line Interface (CLI)
 
-The `phoonnx_cli.py` provides a set of tools to manage and interact with the available TTS voice models. 
+Phoonnx includes a command line utility, `phoonnx-voices` provides a set of tools to manage and interact with the available TTS voice models. 
 
 This is particularly useful for pre-downloading models and viewing supported languages.
 
