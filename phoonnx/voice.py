@@ -14,16 +14,10 @@ from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, get_phonem
 from phoonnx.phoneme_ids import phonemes_to_ids, BlankBetween
 from phoonnx.phonemizers import Phonemizer
 from phoonnx.phonemizers.base import PhonemizedChunks
+from phoonnx.util import LOG
+
 
 _PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
-
-try:
-    from ovos_utils.log import LOG
-except ImportError:
-    import logging
-
-    LOG = logging.getLogger(__name__)
-    LOG.setLevel("DEBUG")
 
 
 @dataclass

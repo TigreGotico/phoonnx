@@ -15,7 +15,7 @@ try:
 except ImportError:
     import logging
 
-    LOG = logging.getLogger(__name__)
+    LOG = logging.getLogger("phoonnx")
 
 
 def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Tuple[str, int]:

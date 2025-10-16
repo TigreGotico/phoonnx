@@ -2,6 +2,7 @@ import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping, Optional, Sequence
+from phoonnx.util import LOG
 from phoonnx.phoneme_ids import (load_phoneme_ids, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
@@ -9,12 +10,6 @@ from phoonnx.phoneme_ids import (load_phoneme_ids, BlankBetween,
 DEFAULT_NOISE_SCALE = 0.667
 DEFAULT_LENGTH_SCALE = 1.0
 DEFAULT_NOISE_W_SCALE = 0.8
-
-try:
-    from ovos_utils.log import LOG
-except ImportError:
-    import logging
-    LOG = logging.getLogger(__name__)
 
 
 class Engine(str, Enum):
