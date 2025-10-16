@@ -83,13 +83,15 @@ class TTSModelInfo:
                 f.write(tokens)
 
     def download_model(self):
+    def download_model(self):
         model_path = self.voice_path / "model.onnx"
         if not model_path.is_file():
-            r = requests.get(self.model_url, timeout=120)  # Longer timeout for model file
-            r.raise_for_status()
-            with open(model_path, "wb") as f:
-                f.write(r.content)
-
+            with requests.get(self.model_url, timeout=120, stream=True) as r:
+                r.raise_for_status()
+                with open(model_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
     def load(self) -> TTSVoice:
         model_path = self.voice_path / "model.onnx"
         config_path = self.voice_path / "model.json"
