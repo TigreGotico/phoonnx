@@ -204,18 +204,6 @@ class VoiceConfig:
         return "phoonnx_version" in config
 
     @staticmethod
-    def is_cotovia(config: dict[str, Any]) -> bool:
-        # no way to determine unless explicitly configured unfortunately
-        # afaik only the sabela galician model uses this
-        # will fallback to coqui "graphemes" if "cotovia" not specified,
-        # this will work but will make mistakes
-        if (not VoiceConfig.is_coqui_vits(config)
-                or not VoiceConfig.is_phoonnx(config)):
-            return False
-
-        return config["phoneme_type"] == PhonemeType.COTOVIA
-
-    @staticmethod
     def from_dict(config: dict[str, Any],
                   phonemes_txt: Optional[str] = None,
                   lang_code: Optional[str] = None,
@@ -280,16 +268,10 @@ class VoiceConfig:
                 alphabet = Alphabet.IPA
 
         # check if model was trained with Coqui
-        # NOTE: cotovia is included here
         elif VoiceConfig.is_coqui_vits(config):
             engine = Engine.COQUI
-
-            if VoiceConfig.is_cotovia(config):
-                phoneme_type_str = PhonemeType.COTOVIA.value
-                alphabet = Alphabet.COTOVIA
-            else:
-                phoneme_type_str = PhonemeType.GRAPHEMES.value
-                alphabet = Alphabet.UNICODE
+            phoneme_type_str = PhonemeType.GRAPHEMES.value
+            alphabet = Alphabet.UNICODE
 
             # NOTE: lang code usually not provided and often wrong :(
             ds = config.get("datasets", [])
@@ -509,7 +491,6 @@ if __name__ == "__main__":
         print("Mimic3:", VoiceConfig.is_mimic3(config))
         print("Piper:", VoiceConfig.is_piper(config))
         print("Coqui:", VoiceConfig.is_coqui_vits(config))
-        print("Cotovia:", VoiceConfig.is_cotovia(config))
         print("Phoonx:", VoiceConfig.is_phoonnx(config))
         cfg = VoiceConfig.from_dict(config, phoneme_txts[idx])
         print(cfg)

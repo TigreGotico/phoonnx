@@ -23,6 +23,7 @@ class TTSModelInfo:
     tokens_url: Optional[str] = None  # mimic3/sherpa provide phoneme_map in this format
     phoneme_map_url: Optional[str] = None  # json lookup table for phoneme replacement
     config: Optional[VoiceConfig] = None
+    phoneme_type: Optional[PhonemeType] = None
 
     def __post_init__(self):
         os.makedirs(self.voice_path, exist_ok=True)
@@ -46,6 +47,11 @@ class TTSModelInfo:
 
             self.config.lang_code = self.lang  # sometimes the config is wrong
 
+        if not self.phoneme_type:
+            self.phoneme_type = self.config.phoneme_type
+        else:
+            self.config.phoneme_type = self.phoneme_type
+
     @property
     def alphabet(self) -> Alphabet:
         return self.config.alphabet
@@ -53,10 +59,6 @@ class TTSModelInfo:
     @property
     def engine(self) -> Engine:
         return self.config.engine
-
-    @property
-    def phoneme_type(self) -> PhonemeType:
-        return self.config.phoneme_type
 
     @property
     def voice_path(self) -> Path:
@@ -84,7 +86,7 @@ class TTSModelInfo:
             with open(model_path, "wb") as f:
                 f.write(r.content)
 
-    def load(self, phoneme_type: Optional[PhonemeType] = None) -> TTSVoice:
+    def load(self) -> TTSVoice:
         model_path = self.voice_path / "model.onnx"
         config_path = self.voice_path / "model.json"
         tokens_path = self.voice_path / "tokens.txt"
@@ -94,10 +96,9 @@ class TTSModelInfo:
                               config_path=config_path,
                               phonemes_txt=str(tokens_path) if self.tokens_url else None)
 
-        # override phoneme_type at runtime
-        if phoneme_type:
-            voice.phoneme_type = phoneme_type
-            voice.phonemizer = get_phonemizer(phoneme_type)
+        # override phoneme_type, if config.json is wrong
+        voice.phoneme_type = self.phoneme_type
+        voice.phonemizer = get_phonemizer(self.phoneme_type)
         return voice
 
 
@@ -123,6 +124,7 @@ class TTSModelManager:
         for voice_id, voice_info in self.voices.items():
             self.cache[voice_id] = {"voice_id": voice_info.voice_id,
                                     "model_url": voice_info.model_url,
+                                    "phoneme_type": voice_info.phoneme_type,
                                     "lang": voice_info.lang,
                                     "tokens_url": voice_info.tokens_url,
                                     "phoneme_map_url": voice_info.phoneme_map_url,
@@ -134,6 +136,7 @@ class TTSModelManager:
         self.cache[voice_info.voice_id] = {"voice_id": voice_info.voice_id,
                                            "model_url": voice_info.model_url,
                                            "tokens_url": voice_info.tokens_url,
+                                           "phoneme_type": voice_info.phoneme_type,
                                            "phoneme_map_url": voice_info.phoneme_map_url,
                                            "lang": voice_info.lang,
                                            "config_url": voice_info.config_url}
@@ -152,7 +155,8 @@ class TTSModelManager:
             voice_id="proxectonos/sabela",
             lang="gl-ES",
             model_url="https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/model.onnx",
-            config_url="https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/config.json"
+            config_url="https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/config.json",
+            phoneme_type=PhonemeType.COTOVIA
         ))
         self.add_voice(TTSModelInfo(
             voice_id="proxectonos/celtia",
@@ -242,6 +246,16 @@ class TTSModelManager:
                 except Exception:
                     continue  # not all langs have male + female
 
+    def get_phonikud_voice_list(self):
+        self.add_voice(
+            TTSModelInfo(
+                voice_id="thewh1teagle/phonikud",
+                lang="he",
+                model_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.onnx",
+                config_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.config.json",
+                phoneme_type=PhonemeType.PHONIKUD
+            ))
+
     @property
     def all_voices(self) -> Iterable[TTSModelInfo]:
         return self.voices.values()
@@ -253,10 +267,11 @@ class TTSModelManager:
 
 if __name__ == "__main__":
     manager = TTSModelManager()
-    # manager.clear()
+    manager.clear()
     # manager.load()
     manager.get_ovos_voice_list()
     manager.get_proxectonos_voice_list()
+    manager.get_phonikud_voice_list()
     manager.get_piper_voice_list()
     manager.get_mimic3_voice_list()
     manager.save()
@@ -264,8 +279,8 @@ if __name__ == "__main__":
     print(f"Total voices: {len(manager.all_voices)}")
     print(f"Total langs: {len(manager.supported_langs)}")
 
-    # Total voices: 213
-    # Total langs: 59
+    # Total voices: 214
+    # Total langs: 60
 
     for voice in manager.get_lang_voices('pt-PT'):
         print(voice)
