@@ -83,7 +83,6 @@ class TTSModelInfo:
                 f.write(tokens)
 
     def download_model(self):
-    def download_model(self):
         model_path = self.voice_path / "model.onnx"
         if not model_path.is_file():
             with requests.get(self.model_url, timeout=120, stream=True) as r:
