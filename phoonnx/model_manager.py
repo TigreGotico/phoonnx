@@ -2,7 +2,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Dict, Iterable
+from typing import Optional, Dict, Iterable, List
 
 import requests
 from json_database import JsonStorageXDG, JsonStorage
@@ -135,25 +135,27 @@ class TTSModelManager:
                                            "model_url": voice_info.model_url,
                                            "tokens_url": voice_info.tokens_url,
                                            "phoneme_map_url": voice_info.phoneme_map_url,
-                                    "lang": voice_info.lang,
+                                           "lang": voice_info.lang,
                                            "config_url": voice_info.config_url}
 
-    def get_lang_voices(self, lang: str) -> Iterable[TTSModelInfo]:
-        # TODO - sort by lang distance
-        for voice_id, voice_info in self.voices.items():
-            if match_lang(voice_info.lang, lang):
-                yield voice_info
+    def get_lang_voices(self, lang: str) -> List[TTSModelInfo]:
+        voices = sorted(
+            [
+                (voice_info, match_lang(voice_info.lang, lang)[-1])
+                for voice_info in self.voices.values()
+            ], key=lambda k: k[1])
+        return [v[0] for v in voices if v[1] < 10]
 
     # helpers to get official voice models
     def get_proxectonos_voice_list(self):
         self.add_voice(TTSModelInfo(
-            voice_id="proxectono/sabela",
+            voice_id="proxectonos/sabela",
             lang="gl-ES",
             model_url="https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/model.onnx",
             config_url="https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/config.json"
         ))
         self.add_voice(TTSModelInfo(
-            voice_id="proxectono/celtia",
+            voice_id="proxectonos/celtia",
             lang="gl-ES",
             model_url="https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/model.onnx",
             config_url="https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/config.json"
@@ -251,14 +253,13 @@ class TTSModelManager:
 
 if __name__ == "__main__":
     manager = TTSModelManager()
-    #manager.clear()
-    #manager.load()
+    # manager.clear()
+    # manager.load()
     manager.get_ovos_voice_list()
     manager.get_proxectonos_voice_list()
     manager.get_piper_voice_list()
     manager.get_mimic3_voice_list()
     manager.save()
-
 
     print(f"Total voices: {len(manager.all_voices)}")
     print(f"Total langs: {len(manager.supported_langs)}")
@@ -266,7 +267,7 @@ if __name__ == "__main__":
     # Total voices: 213
     # Total langs: 59
 
-    for voice in manager.get_lang_voices('pt'):
+    for voice in manager.get_lang_voices('pt-PT'):
         print(voice)
 
     print(manager.supported_langs)
@@ -275,5 +276,3 @@ if __name__ == "__main__":
     # 'it-IT', 'jv-ID', 'ka-GE', 'kk-KZ', 'ko-KO', 'lb-LU', 'lv-LV', 'ml-IN', 'ne-NP', 'nl', 'nl-BE', 'nl-NL',
     # 'no-NO', 'pl-PL', 'pt-BR', 'pt-PT', 'ro-RO', 'ru-RU', 'sk-SK', 'sl-SI', 'sr-RS', 'sv-SE', 'sw', 'sw-CD',
     # 'te-IN', 'tn-ZA', 'tr-TR', 'uk-GB', 'uk-UA', 'vi-VN', 'yo', 'zh-CN']
-
-

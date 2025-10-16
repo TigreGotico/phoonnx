@@ -2,7 +2,7 @@ import datetime
 import re
 import string
 from datetime import date
-from typing import Optional, Union, List
+from typing import Union, List, Tuple
 
 from langcodes import tag_distance
 from ovos_date_parser import nice_time, nice_date
@@ -18,7 +18,7 @@ except ImportError:
     LOG = logging.getLogger(__name__)
 
 
-def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Optional[str]:
+def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Tuple[str, int]:
     """
     Validates and returns the closest supported language code.
 
@@ -34,7 +34,7 @@ def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Optional
     if isinstance(valid_langs, str):
         valid_langs = [valid_langs]
     if target_lang in valid_langs:
-        return target_lang
+        return target_lang, 0
     best_lang = "und"
     best_distance = 10000000
     for l in valid_langs:
@@ -54,8 +54,8 @@ def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Optional
 
     # If the score is low (meaning a good match), return the language
     if best_distance <= 10:
-        return best_lang
-    return None
+        return best_lang, best_distance
+    return "und", 10000
 
 
 # A dictionary of common contractions and their expanded forms.
