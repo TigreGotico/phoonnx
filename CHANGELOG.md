@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.2a1](https://github.com/TigreGotico/phoonnx/tree/0.5.2a1) (2025-10-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.1a1...0.5.2a1)
+
+**Merged pull requests:**
+
+- fix: ovos plugin config loading [\#57](https://github.com/TigreGotico/phoonnx/pull/57) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.5.1a1](https://github.com/TigreGotico/phoonnx/tree/0.5.1a1) (2025-10-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.0a2...0.5.1a1)
