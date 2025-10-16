@@ -2,16 +2,16 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Dict, Iterable, List
+from typing import Optional, Dict, List
 
 import requests
 from json_database import JsonStorageXDG, JsonStorage
 from langcodes import standardize_tag
 
 from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet
+from phoonnx.util import LOG
 from phoonnx.util import match_lang
 from phoonnx.voice import TTSVoice
-from phoonnx.util import LOG
 
 
 @dataclass
@@ -119,6 +119,14 @@ class TTSModelManager:
         else:
             self.cache = JsonStorageXDG("voices", subfolder="phoonnx")
 
+    @property
+    def all_voices(self) -> List[TTSModelInfo]:
+        return list(self.voices.values())
+
+    @property
+    def supported_langs(self) -> List[str]:
+        return sorted(set(l.lang for l in self.all_voices))
+
     def clear(self):
         self.cache.clear()
         self.voices = {}
@@ -157,6 +165,14 @@ class TTSModelManager:
                 for voice_info in self.voices.values()
             ], key=lambda k: k[1])
         return [v[0] for v in voices if v[1] < 10]
+
+    def refresh_voices(self):
+        self.get_ovos_voice_list()
+        self.get_proxectonos_voice_list()
+        self.get_phonikud_voice_list()
+        self.get_piper_voice_list()
+        self.get_mimic3_voice_list()
+        self.cache.store()
 
     # helpers to get official voice models
     def get_proxectonos_voice_list(self):
@@ -267,24 +283,12 @@ class TTSModelManager:
                 phoneme_type=PhonemeType.PHONIKUD
             ))
 
-    @property
-    def all_voices(self) -> List[TTSModelInfo]:
-        return list(self.voices.values())
-
-    @property
-    def supported_langs(self) -> List[str]:
-        return sorted(set(l.lang for l in self.all_voices))
-
 
 if __name__ == "__main__":
     manager = TTSModelManager()
     manager.clear()
     # manager.load()
-    manager.get_ovos_voice_list()
-    manager.get_proxectonos_voice_list()
-    manager.get_phonikud_voice_list()
-    manager.get_piper_voice_list()
-    manager.get_mimic3_voice_list()
+    manager.refresh_voices()
     manager.save()
 
     print(f"Total voices: {len(manager.all_voices)}")
@@ -306,7 +310,6 @@ if __name__ == "__main__":
     # TTSModelInfo(voice_id='piper_pt_BR-edresson-low', lang='pt-BR', model_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/edresson/low/pt_BR-edresson-low.onnx', config_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/edresson/low/pt_BR-edresson-low.onnx.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=130, num_speakers=1, num_langs=1, sample_rate=16000, lang_code='pt-BR', phoneme_id_map={'_': [0], '^': [1], '$': [2], ' ': [3], '!': [4], "'": [5], '(': [6], ')': [7], ',': [8], '-': [9], '.': [10], ':': [11], ';': [12], '?': [13], 'a': [14], 'b': [15], 'c': [16], 'd': [17], 'e': [18], 'f': [19], 'h': [20], 'i': [21], 'j': [22], 'k': [23], 'l': [24], 'm': [25], 'n': [26], 'o': [27], 'p': [28], 'q': [29], 'r': [30], 's': [31], 't': [32], 'u': [33], 'v': [34], 'w': [35], 'x': [36], 'y': [37], 'z': [38], 'æ': [39], 'ç': [40], 'ð': [41], 'ø': [42], 'ħ': [43], 'ŋ': [44], 'œ': [45], 'ǀ': [46], 'ǁ': [47], 'ǂ': [48], 'ǃ': [49], 'ɐ': [50], 'ɑ': [51], 'ɒ': [52], 'ɓ': [53], 'ɔ': [54], 'ɕ': [55], 'ɖ': [56], 'ɗ': [57], 'ɘ': [58], 'ə': [59], 'ɚ': [60], 'ɛ': [61], 'ɜ': [62], 'ɞ': [63], 'ɟ': [64], 'ɠ': [65], 'ɡ': [66], 'ɢ': [67], 'ɣ': [68], 'ɤ': [69], 'ɥ': [70], 'ɦ': [71], 'ɧ': [72], 'ɨ': [73], 'ɪ': [74], 'ɫ': [75], 'ɬ': [76], 'ɭ': [77], 'ɮ': [78], 'ɯ': [79], 'ɰ': [80], 'ɱ': [81], 'ɲ': [82], 'ɳ': [83], 'ɴ': [84], 'ɵ': [85], 'ɶ': [86], 'ɸ': [87], 'ɹ': [88], 'ɺ': [89], 'ɻ': [90], 'ɽ': [91], 'ɾ': [92], 'ʀ': [93], 'ʁ': [94], 'ʂ': [95], 'ʃ': [96], 'ʄ': [97], 'ʈ': [98], 'ʉ': [99], 'ʊ': [100], 'ʋ': [101], 'ʌ': [102], 'ʍ': [103], 'ʎ': [104], 'ʏ': [105], 'ʐ': [106], 'ʑ': [107], 'ʒ': [108], 'ʔ': [109], 'ʕ': [110], 'ʘ': [111], 'ʙ': [112], 'ʛ': [113], 'ʜ': [114], 'ʝ': [115], 'ʟ': [116], 'ʡ': [117], 'ʢ': [118], 'ʲ': [119], 'ˈ': [120], 'ˌ': [121], 'ː': [122], 'ˑ': [123], '˞': [124], 'β': [125], 'θ': [126], 'χ': [127], 'ᵻ': [128], 'ⱱ': [129]}, phoneme_type=<PhonemeType.ESPEAK: 'espeak'>, alphabet=<Alphabet.IPA: 'ipa'>, phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine=<Engine.PIPER: 'piper'>, length_scale=1, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token='_', blank_token='_', bos_token='^', eos_token='$', word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.ESPEAK: 'espeak'>)
     # TTSModelInfo(voice_id='piper_pt_BR-faber-medium', lang='pt-BR', model_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx', config_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=1, num_langs=1, sample_rate=22050, lang_code='pt-BR', phoneme_id_map={'_': [0], '^': [1], '$': [2], ' ': [3], '!': [4], "'": [5], '(': [6], ')': [7], ',': [8], '-': [9], '.': [10], ':': [11], ';': [12], '?': [13], 'a': [14], 'b': [15], 'c': [16], 'd': [17], 'e': [18], 'f': [19], 'h': [20], 'i': [21], 'j': [22], 'k': [23], 'l': [24], 'm': [25], 'n': [26], 'o': [27], 'p': [28], 'q': [29], 'r': [30], 's': [31], 't': [32], 'u': [33], 'v': [34], 'w': [35], 'x': [36], 'y': [37], 'z': [38], 'æ': [39], 'ç': [40], 'ð': [41], 'ø': [42], 'ħ': [43], 'ŋ': [44], 'œ': [45], 'ǀ': [46], 'ǁ': [47], 'ǂ': [48], 'ǃ': [49], 'ɐ': [50], 'ɑ': [51], 'ɒ': [52], 'ɓ': [53], 'ɔ': [54], 'ɕ': [55], 'ɖ': [56], 'ɗ': [57], 'ɘ': [58], 'ə': [59], 'ɚ': [60], 'ɛ': [61], 'ɜ': [62], 'ɞ': [63], 'ɟ': [64], 'ɠ': [65], 'ɡ': [66], 'ɢ': [67], 'ɣ': [68], 'ɤ': [69], 'ɥ': [70], 'ɦ': [71], 'ɧ': [72], 'ɨ': [73], 'ɪ': [74], 'ɫ': [75], 'ɬ': [76], 'ɭ': [77], 'ɮ': [78], 'ɯ': [79], 'ɰ': [80], 'ɱ': [81], 'ɲ': [82], 'ɳ': [83], 'ɴ': [84], 'ɵ': [85], 'ɶ': [86], 'ɸ': [87], 'ɹ': [88], 'ɺ': [89], 'ɻ': [90], 'ɽ': [91], 'ɾ': [92], 'ʀ': [93], 'ʁ': [94], 'ʂ': [95], 'ʃ': [96], 'ʄ': [97], 'ʈ': [98], 'ʉ': [99], 'ʊ': [100], 'ʋ': [101], 'ʌ': [102], 'ʍ': [103], 'ʎ': [104], 'ʏ': [105], 'ʐ': [106], 'ʑ': [107], 'ʒ': [108], 'ʔ': [109], 'ʕ': [110], 'ʘ': [111], 'ʙ': [112], 'ʛ': [113], 'ʜ': [114], 'ʝ': [115], 'ʟ': [116], 'ʡ': [117], 'ʢ': [118], 'ʲ': [119], 'ˈ': [120], 'ˌ': [121], 'ː': [122], 'ˑ': [123], '˞': [124], 'β': [125], 'θ': [126], 'χ': [127], 'ᵻ': [128], 'ⱱ': [129], '0': [130], '1': [131], '2': [132], '3': [133], '4': [134], '5': [135], '6': [136], '7': [137], '8': [138], '9': [139], '̧': [140], '̃': [141], '̪': [142], '̯': [143], '̩': [144], 'ʰ': [145], 'ˤ': [146], 'ε': [147], '↓': [148], '#': [149], '"': [150], '↑': [151]}, phoneme_type=<PhonemeType.ESPEAK: 'espeak'>, alphabet=<Alphabet.IPA: 'ipa'>, phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine=<Engine.PIPER: 'piper'>, length_scale=1, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token='_', blank_token='_', bos_token='^', eos_token='$', word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.ESPEAK: 'espeak'>)
     # TTSModelInfo(voice_id='piper_pt_BR-jeff-medium', lang='pt-BR', model_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/jeff/medium/pt_BR-jeff-medium.onnx', config_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/jeff/medium/pt_BR-jeff-medium.onnx.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=1, num_langs=1, sample_rate=22050, lang_code='pt-BR', phoneme_id_map={'_': [0], '^': [1], '$': [2], ' ': [3], '!': [4], "'": [5], '(': [6], ')': [7], ',': [8], '-': [9], '.': [10], ':': [11], ';': [12], '?': [13], 'a': [14], 'b': [15], 'c': [16], 'd': [17], 'e': [18], 'f': [19], 'h': [20], 'i': [21], 'j': [22], 'k': [23], 'l': [24], 'm': [25], 'n': [26], 'o': [27], 'p': [28], 'q': [29], 'r': [30], 's': [31], 't': [32], 'u': [33], 'v': [34], 'w': [35], 'x': [36], 'y': [37], 'z': [38], 'æ': [39], 'ç': [40], 'ð': [41], 'ø': [42], 'ħ': [43], 'ŋ': [44], 'œ': [45], 'ǀ': [46], 'ǁ': [47], 'ǂ': [48], 'ǃ': [49], 'ɐ': [50], 'ɑ': [51], 'ɒ': [52], 'ɓ': [53], 'ɔ': [54], 'ɕ': [55], 'ɖ': [56], 'ɗ': [57], 'ɘ': [58], 'ə': [59], 'ɚ': [60], 'ɛ': [61], 'ɜ': [62], 'ɞ': [63], 'ɟ': [64], 'ɠ': [65], 'ɡ': [66], 'ɢ': [67], 'ɣ': [68], 'ɤ': [69], 'ɥ': [70], 'ɦ': [71], 'ɧ': [72], 'ɨ': [73], 'ɪ': [74], 'ɫ': [75], 'ɬ': [76], 'ɭ': [77], 'ɮ': [78], 'ɯ': [79], 'ɰ': [80], 'ɱ': [81], 'ɲ': [82], 'ɳ': [83], 'ɴ': [84], 'ɵ': [85], 'ɶ': [86], 'ɸ': [87], 'ɹ': [88], 'ɺ': [89], 'ɻ': [90], 'ɽ': [91], 'ɾ': [92], 'ʀ': [93], 'ʁ': [94], 'ʂ': [95], 'ʃ': [96], 'ʄ': [97], 'ʈ': [98], 'ʉ': [99], 'ʊ': [100], 'ʋ': [101], 'ʌ': [102], 'ʍ': [103], 'ʎ': [104], 'ʏ': [105], 'ʐ': [106], 'ʑ': [107], 'ʒ': [108], 'ʔ': [109], 'ʕ': [110], 'ʘ': [111], 'ʙ': [112], 'ʛ': [113], 'ʜ': [114], 'ʝ': [115], 'ʟ': [116], 'ʡ': [117], 'ʢ': [118], 'ʲ': [119], 'ˈ': [120], 'ˌ': [121], 'ː': [122], 'ˑ': [123], '˞': [124], 'β': [125], 'θ': [126], 'χ': [127], 'ᵻ': [128], 'ⱱ': [129], '0': [130], '1': [131], '2': [132], '3': [133], '4': [134], '5': [135], '6': [136], '7': [137], '8': [138], '9': [139], '̧': [140], '̃': [141], '̪': [142], '̯': [143], '̩': [144], 'ʰ': [145], 'ˤ': [146], 'ε': [147], '↓': [148], '#': [149], '"': [150], '↑': [151], '̺': [152], '̻': [153], 'g': [154], 'ʦ': [155], 'X': [156], '̝': [157], '̊': [158], 'ɝ': [159], 'ʷ': [160]}, phoneme_type=<PhonemeType.ESPEAK: 'espeak'>, alphabet=<Alphabet.IPA: 'ipa'>, phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine=<Engine.PIPER: 'piper'>, length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token='_', blank_token='_', bos_token='^', eos_token='$', word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.ESPEAK: 'espeak'>)
-
 
     print(manager.supported_langs)
     # ['af-ZA', 'ar-JO', 'bn', 'ca-ES', 'cs-CZ', 'cy-GB', 'da-DK', 'de-DE', 'el-GR', 'en-GB', 'en-US', 'es-AR',
