@@ -78,10 +78,10 @@ class PhoonnxTTSPlugin(TTS):
             voice = self.get_default_voice(lang or self.lang)
             model = self.get_model(voice.voice_id)
 
-    with wave.open(wav_file, "wb") as wav_out:
-        model.synthesize_wav(sentence, wav_out, self.synth_params)
+        with wave.open(wav_file, "wb") as wav_out:
+            model.synthesize_wav(sentence, wav_out, self.synth_params)
 
-    return wav_file, None
+        return wav_file, None
 
 
 if __name__ == "__main__":
