@@ -24,27 +24,42 @@ class PhoonnxTTSPlugin(TTS):
     engines = {}
 
     def __init__(self, config=None):
+        """
+        Initialize the PhoonnxTTSPlugin, prepare the model manager, and load an initial voice.
+        
+        Creates a TTSModelManager and attempts to refresh available voices; if refresh fails the manager falls back to loading voices. If a non-default voice is configured on the instance, that voice is loaded and cached in self.voices. Otherwise the language-specific default voice is determined, loaded, and stored in self.voices.
+        
+        Parameters:
+            config (dict|None): Configuration passed to the base TTS initializer; may influence plugin behavior (e.g., selected voice or language).
+        """
         super().__init__(config=config)
-
-        self.synth_params = SynthesisConfig(
-            enable_phonetic_spellings=self.config.get("enable_phonetic_spelling", True),
-            noise_scale=self.config.get("noise-scale"),  # generator noise
-            length_scale=self.config.get("length-scale"),  # Phoneme length
-            noise_w_scale=self.config.get("noise-w")  # Phoneme width noise
-        )
-
         self.model_manager = TTSModelManager()
         try:
             self.model_manager.refresh_voices()
-        except:
+        except Exception as exc:
+            LOG.warning(f"Voice refresh failed; retrying with cached voices: {exc}")
             self.model_manager.load()
 
-        default = self.get_default_voice(self.lang)
-        self.voices: Dict[str, TTSVoice] = {
-            default.voice_id: default.load()
-        }
+        self.voices: Dict[str, TTSVoice] = {}
+        if self.voice and self.voice != "default":
+            self.voices[self.voice] = self.get_model(self.voice)
+        else:
+            default = self.get_default_voice(self.lang)
+            self.voices[default.voice_id] = self.get_model(default.voice_id)
 
     def get_default_voice(self, lang: str) -> TTSModelInfo:
+        """
+        Selects the default TTS model for the given language.
+        
+        Parameters:
+        	lang (str): Language tag used to look up available voices (e.g., "en-US", "pt-PT").
+        
+        Returns:
+        	TTSModelInfo: The first/default voice model info for the specified language.
+        
+        Raises:
+        	ValueError: If no voices are available for the given language.
+        """
         voices = self.model_manager.get_lang_voices(lang)
         if not voices:
             raise ValueError(f"No voices available for language: {lang}")
@@ -60,26 +75,34 @@ class PhoonnxTTSPlugin(TTS):
         return self.voices[voice_id]
 
     def get_tts(self, sentence, wav_file, lang=None, voice=None):
-        """Generate WAV and phonemes.
-
-        Arguments:
-            sentence (str): sentence to generate audio for
-            wav_file (str): output file
-            lang (str): optional lang override
-            voice (str): optional voice override
-            speaker (int): optional speaker override
-
+        """
+        Synthesize speech for a sentence and write the audio to the specified WAV file.
+        
+        Parameters:
+            sentence (str): Text to synthesize.
+            wav_file (str): Path to the output WAV file that will be written.
+            lang (str, optional): Language override used to select the default voice when no `voice` is provided.
+            voice (str, optional): Voice identifier override to select a specific model.
+        
         Returns:
-            tuple ((str) file location, (str) generated phonemes)
+            tuple: (wav_file, phonemes) where `wav_file` is the path to the written WAV file and `phonemes` is `None` when phoneme output is not produced.
         """
         if voice:
+            voice_info = self.model_manager.voices[voice]
             model = self.get_model(voice)
         else:
-            voice = self.get_default_voice(lang or self.lang)
-            model = self.get_model(voice.voice_id)
+            voice_info = self.get_default_voice(lang or self.lang)
+            model = self.get_model(voice_info.voice_id)
 
+        synth_params = SynthesisConfig(
+            enable_phonetic_spellings=self.config.get("enable_phonetic_spelling", True),
+            add_diacritics=self.config.get("add_diacritics", voice_info.config.add_diacritics), # arabic and hebrew only
+            noise_scale=self.config.get("noise-scale", voice_info.config.noise_scale),  # generator noise
+            length_scale=self.config.get("length-scale", voice_info.config.length_scale),  # Phoneme length
+            noise_w_scale=self.config.get("noise-w", voice_info.config.noise_w_scale)  # Phoneme width noise
+        )
         with wave.open(wav_file, "wb") as wav_out:
-            model.synthesize_wav(sentence, wav_out, self.synth_params)
+            model.synthesize_wav(sentence, wav_out, synth_params)
 
         return wav_file, None
 

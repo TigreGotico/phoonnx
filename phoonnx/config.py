@@ -121,6 +121,7 @@ class VoiceConfig:
     length_scale: float = DEFAULT_LENGTH_SCALE
     noise_scale: float = DEFAULT_NOISE_SCALE
     noise_w_scale: float = DEFAULT_NOISE_W_SCALE
+    add_diacritics: bool = None # arabic and hebrew
 
     # tokenization settings
     blank_at_start: bool = True
@@ -134,6 +135,15 @@ class VoiceConfig:
     blank_between: BlankBetween = BlankBetween.TOKENS_AND_WORDS
 
     def __post_init__(self):
+        """
+        Finalize dataclass defaults after initialization.
+        
+        If `add_diacritics` is None, sets it to False; if `lang_code` is present and starts with "ar", sets `add_diacritics` to True. Ensures `lang_code` is set to "und" when not provided.
+        """
+        if self.add_diacritics is None:
+            self.add_diacritics = False
+            if self.lang_code and self.lang_code.startswith("ar"):
+                self.add_diacritics = True
         self.lang_code = self.lang_code or "und"
 
     @staticmethod
@@ -203,13 +213,30 @@ class VoiceConfig:
                   phonemes_txt: Optional[str] = None,
                   lang_code: Optional[str] = None,
                   phoneme_type_str: Optional[str] = None) -> "VoiceConfig":
-        """Load configuration from a dictionary."""
+        """
+        Create a VoiceConfig from a configuration dictionary and an optional external phonemes file.
+        
+        Constructs a VoiceConfig by deriving engine, alphabet, phoneme mapping, and inference/synthesis settings from the provided config and optional phonemes_txt. Detects model type (Phoonnx, Piper, Mimic3, Coqui) and applies model-specific defaults and mappings; optional lang_code and phoneme_type_str override values in the config.
+        
+        Parameters:
+            config (dict[str, Any]): Parsed model configuration dictionary.
+            phonemes_txt (Optional[str]): Path to an external phonemes file (.txt or .json) used to build or override the phoneme id mapping.
+            lang_code (Optional[str]): Optional language code to override the config's language.
+            phoneme_type_str (Optional[str]): Optional phoneme type name to override the config's phoneme type.
+        
+        Returns:
+            VoiceConfig: A populated VoiceConfig instance with fields set from the config and any provided phonemes file.
+        
+        Raises:
+            ValueError: If the model is detected as Mimic3 but no phonemes_txt is provided.
+        """
         blank_type = BlankBetween.TOKENS_AND_WORDS
         lang_code = lang_code or config.get("lang_code")
         phoneme_type_str = phoneme_type_str or config.get("phoneme_type")
         phoneme_id_map = config.get("phoneme_id_map")
         alphabet = config.get("alphabet")
         engine = Engine.PHOONNX
+        diacritics = False
 
         if phonemes_txt:
             if phonemes_txt.endswith(".txt"):
@@ -226,6 +253,7 @@ class VoiceConfig:
             lang_code = lang_code or config.get("lang_code")
             phoneme_type_str = config.get("phoneme_type", PhonemeType.ESPEAK.value)
             alphabet = Alphabet(config.get("alphabet", "ipa"))
+            diacritics = config.get("inference", {}).get("add_diacritics", True)
 
             config["pad"] =  DEFAULT_PAD_TOKEN
             config["blank"] = DEFAULT_BLANK_TOKEN
@@ -237,6 +265,7 @@ class VoiceConfig:
 
             lang_code = lang_code or (config.get("language", {}).get("code") or
                          config.get("espeak", {}).get("voice"))
+            diacritics = lang_code.startswith("ar")
             phoneme_type_str = config.get("phoneme_type", PhonemeType.ESPEAK.value)
             if phoneme_type_str == "text":
                 phoneme_type_str = PhonemeType.UNICODE.value
@@ -335,6 +364,7 @@ class VoiceConfig:
             noise_scale=inference.get("noise_scale", DEFAULT_NOISE_SCALE),
             length_scale=inference.get("length_scale", DEFAULT_LENGTH_SCALE),
             noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
+            add_diacritics=diacritics,
             lang_code=lang_code,
             alphabet=alphabet,
             engine=engine,
@@ -498,5 +528,4 @@ if __name__ == "__main__":
         print("Phoonx:", VoiceConfig.is_phoonnx(config))
         cfg = VoiceConfig.from_dict(config, phoneme_txts[idx])
         print(cfg)
-
 
