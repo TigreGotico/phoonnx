@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.2a2](https://github.com/TigreGotico/phoonnx/tree/0.5.2a2) (2025-10-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.2a1...0.5.2a2)
+
+**Merged pull requests:**
+
+- docs: update README.md [\#60](https://github.com/TigreGotico/phoonnx/pull/60) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.5.2a1](https://github.com/TigreGotico/phoonnx/tree/0.5.2a1) (2025-10-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.1a1...0.5.2a1)
