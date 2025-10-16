@@ -221,7 +221,16 @@ class VoiceConfig:
                     phoneme_id_map = json.load(ids_file)
 
         if VoiceConfig.is_phoonnx(config):
-            pass
+            engine = Engine.PHOONNX
+
+            lang_code = lang_code or config.get("lang_code")
+            phoneme_type_str = config.get("phoneme_type", PhonemeType.ESPEAK.value)
+            alphabet = Alphabet(config.get("alphabet", "ipa"))
+
+            config["pad"] =  DEFAULT_PAD_TOKEN
+            config["blank"] = DEFAULT_BLANK_TOKEN
+            config["bos"] = DEFAULT_BOS_TOKEN
+            config["eos"] = DEFAULT_EOS_TOKEN
         # check if model was trained for PiperTTS
         elif VoiceConfig.is_piper(config):
             engine = Engine.PIPER
