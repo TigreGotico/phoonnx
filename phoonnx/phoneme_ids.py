@@ -3,14 +3,8 @@
 from collections.abc import Sequence
 from enum import Enum
 from typing import Optional, TextIO, Dict, List, Union, Set, Mapping
+from phoonnx.util import LOG
 
-try:
-    from ovos_utils.log import LOG
-except ImportError:
-    import logging
-
-    LOG = logging.getLogger(__name__)
-    LOG.setLevel("DEBUG")
 
 PHONEME_ID_LIST = List[int]
 PHONEME_ID_MAP = Dict[str, int]
