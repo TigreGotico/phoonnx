@@ -1,5 +1,5 @@
 import click
-from model_manager import TTSModelManager, TTSModelInfo
+from phoonnx.model_manager import TTSModelManager, TTSModelInfo
 import requests
 
 
