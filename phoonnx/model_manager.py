@@ -184,7 +184,7 @@ class TTSModelManager:
 
     def get_mimic3_voice_list(self):
         voice_list = "https://raw.githubusercontent.com/MycroftAI/mimic3/refs/heads/master/mimic3_tts/voices.json"
-        mimic3_voices = requests.get(voice_list).json()
+        mimic3_voices = requests.get(voice_list, timeout=30).json()
         for k, v in mimic3_voices.items():
             try:
                 lang = standardize_lang_tag(k.split("/")[0])
@@ -204,8 +204,8 @@ class TTSModelManager:
                 voice_info.config.lang = lang
                 voice_info.config.speaker_id_map = speaker_map
                 self.add_voice(voice_info)
-            except Exception:
-                print(f"Failed to get voice info for {k}")
+            except Exception as e:
+                LOG.error(f"Failed to get voice info for {k}: {e}")
 
     def get_ovos_voice_list(self):
         phoonnx = [
