@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1a1](https://github.com/TigreGotico/phoonnx/tree/0.5.1a1) (2025-10-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.0a2...0.5.1a1)
+
+**Merged pull requests:**
+
+- fix: phoonnx config loading [\#55](https://github.com/TigreGotico/phoonnx/pull/55) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.5.0a2](https://github.com/TigreGotico/phoonnx/tree/0.5.0a2) (2025-10-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.0a1...0.5.0a2)
