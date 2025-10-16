@@ -121,6 +121,7 @@ class VoiceConfig:
     length_scale: float = DEFAULT_LENGTH_SCALE
     noise_scale: float = DEFAULT_NOISE_SCALE
     noise_w_scale: float = DEFAULT_NOISE_W_SCALE
+    add_diacritics: bool = None # arabic and hebrew
 
     # tokenization settings
     blank_at_start: bool = True
@@ -134,6 +135,10 @@ class VoiceConfig:
     blank_between: BlankBetween = BlankBetween.TOKENS_AND_WORDS
 
     def __post_init__(self):
+        if self.add_diacritics is None:
+            self.add_diacritics = False
+            if self.lang_code and self.lang_code.startswith("ar"):
+                self.add_diacritics = True
         self.lang_code = self.lang_code or "und"
 
     @staticmethod
@@ -210,6 +215,7 @@ class VoiceConfig:
         phoneme_id_map = config.get("phoneme_id_map")
         alphabet = config.get("alphabet")
         engine = Engine.PHOONNX
+        diacritics = False
 
         if phonemes_txt:
             if phonemes_txt.endswith(".txt"):
@@ -226,6 +232,7 @@ class VoiceConfig:
             lang_code = lang_code or config.get("lang_code")
             phoneme_type_str = config.get("phoneme_type", PhonemeType.ESPEAK.value)
             alphabet = Alphabet(config.get("alphabet", "ipa"))
+            diacritics = config.get("inference", {}).get("add_diacritics", True)
 
             config["pad"] =  DEFAULT_PAD_TOKEN
             config["blank"] = DEFAULT_BLANK_TOKEN
@@ -237,6 +244,7 @@ class VoiceConfig:
 
             lang_code = lang_code or (config.get("language", {}).get("code") or
                          config.get("espeak", {}).get("voice"))
+            diacritics = lang_code.startswith("ar")
             phoneme_type_str = config.get("phoneme_type", PhonemeType.ESPEAK.value)
             if phoneme_type_str == "text":
                 phoneme_type_str = PhonemeType.UNICODE.value
@@ -335,6 +343,7 @@ class VoiceConfig:
             noise_scale=inference.get("noise_scale", DEFAULT_NOISE_SCALE),
             length_scale=inference.get("length_scale", DEFAULT_LENGTH_SCALE),
             noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
+            add_diacritics=diacritics,
             lang_code=lang_code,
             alphabet=alphabet,
             engine=engine,

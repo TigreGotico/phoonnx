@@ -25,24 +25,21 @@ class PhoonnxTTSPlugin(TTS):
 
     def __init__(self, config=None):
         super().__init__(config=config)
-
-        self.synth_params = SynthesisConfig(
-            enable_phonetic_spellings=self.config.get("enable_phonetic_spelling", True),
-            noise_scale=self.config.get("noise-scale"),  # generator noise
-            length_scale=self.config.get("length-scale"),  # Phoneme length
-            noise_w_scale=self.config.get("noise-w")  # Phoneme width noise
-        )
-
         self.model_manager = TTSModelManager()
         try:
             self.model_manager.refresh_voices()
         except:
             self.model_manager.load()
 
-        default = self.get_default_voice(self.lang)
-        self.voices: Dict[str, TTSVoice] = {
-            default.voice_id: default.load()
-        }
+        if self.voice and self.voice != "default":
+            self.voices: Dict[str, TTSVoice] = {
+                self.voice: self.get_model(self.voice)
+            }
+        else:
+            default = self.get_default_voice(self.lang)
+            self.voices: Dict[str, TTSVoice] = {
+                default.voice_id: default.load()
+            }
 
     def get_default_voice(self, lang: str) -> TTSModelInfo:
         voices = self.model_manager.get_lang_voices(lang)
@@ -67,19 +64,26 @@ class PhoonnxTTSPlugin(TTS):
             wav_file (str): output file
             lang (str): optional lang override
             voice (str): optional voice override
-            speaker (int): optional speaker override
 
         Returns:
             tuple ((str) file location, (str) generated phonemes)
         """
         if voice:
+            voice_info = self.model_manager.voices[voice]
             model = self.get_model(voice)
         else:
-            voice = self.get_default_voice(lang or self.lang)
-            model = self.get_model(voice.voice_id)
+            voice_info = self.get_default_voice(lang or self.lang)
+            model = self.get_model(voice_info.voice_id)
 
+        synth_params = SynthesisConfig(
+            enable_phonetic_spellings=self.config.get("enable_phonetic_spelling", True),
+            add_diacritics=self.config.get("add_diacritics", voice_info.config.add_diacritics), # arabic and hebrew only
+            noise_scale=self.config.get("noise-scale", voice_info.config.noise_scale),  # generator noise
+            length_scale=self.config.get("length-scale", voice_info.config.length_scale),  # Phoneme length
+            noise_w_scale=self.config.get("noise-w", voice_info.config.noise_w_scale)  # Phoneme width noise
+        )
         with wave.open(wav_file, "wb") as wav_out:
-            model.synthesize_wav(sentence, wav_out, self.synth_params)
+            model.synthesize_wav(sentence, wav_out, synth_params)
 
         return wav_file, None
 
