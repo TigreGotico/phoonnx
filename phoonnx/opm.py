@@ -39,15 +39,12 @@ class PhoonnxTTSPlugin(TTS):
         except:
             self.model_manager.load()
 
+        self.voices: Dict[str, TTSVoice] = {}
         if self.voice and self.voice != "default":
-            self.voices: Dict[str, TTSVoice] = {
-                self.voice: self.get_model(self.voice)
-            }
+            self.voices[self.voice] = self.get_model(self.voice)
         else:
             default = self.get_default_voice(self.lang)
-            self.voices: Dict[str, TTSVoice] = {
-                default.voice_id: default.load()
-            }
+            self.voices[default.voice_id] = self.get_model(default.voice_id)
 
     def get_default_voice(self, lang: str) -> TTSModelInfo:
         """
