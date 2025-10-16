@@ -24,6 +24,14 @@ class PhoonnxTTSPlugin(TTS):
     engines = {}
 
     def __init__(self, config=None):
+        """
+        Initialize the PhoonnxTTSPlugin, prepare the model manager, and load an initial voice.
+        
+        Creates a TTSModelManager and attempts to refresh available voices; if refresh fails the manager falls back to loading voices. If a non-default voice is configured on the instance, that voice is loaded and cached in self.voices. Otherwise the language-specific default voice is determined, loaded, and stored in self.voices.
+        
+        Parameters:
+            config (dict|None): Configuration passed to the base TTS initializer; may influence plugin behavior (e.g., selected voice or language).
+        """
         super().__init__(config=config)
         self.model_manager = TTSModelManager()
         try:
@@ -42,6 +50,18 @@ class PhoonnxTTSPlugin(TTS):
             }
 
     def get_default_voice(self, lang: str) -> TTSModelInfo:
+        """
+        Selects the default TTS model for the given language.
+        
+        Parameters:
+        	lang (str): Language tag used to look up available voices (e.g., "en-US", "pt-PT").
+        
+        Returns:
+        	TTSModelInfo: The first/default voice model info for the specified language.
+        
+        Raises:
+        	ValueError: If no voices are available for the given language.
+        """
         voices = self.model_manager.get_lang_voices(lang)
         if not voices:
             raise ValueError(f"No voices available for language: {lang}")
@@ -57,16 +77,17 @@ class PhoonnxTTSPlugin(TTS):
         return self.voices[voice_id]
 
     def get_tts(self, sentence, wav_file, lang=None, voice=None):
-        """Generate WAV and phonemes.
-
-        Arguments:
-            sentence (str): sentence to generate audio for
-            wav_file (str): output file
-            lang (str): optional lang override
-            voice (str): optional voice override
-
+        """
+        Synthesize speech for a sentence and write the audio to the specified WAV file.
+        
+        Parameters:
+            sentence (str): Text to synthesize.
+            wav_file (str): Path to the output WAV file that will be written.
+            lang (str, optional): Language override used to select the default voice when no `voice` is provided.
+            voice (str, optional): Voice identifier override to select a specific model.
+        
         Returns:
-            tuple ((str) file location, (str) generated phonemes)
+            tuple: (wav_file, phonemes) where `wav_file` is the path to the written WAV file and `phonemes` is `None` when phoneme output is not produced.
         """
         if voice:
             voice_info = self.model_manager.voices[voice]
