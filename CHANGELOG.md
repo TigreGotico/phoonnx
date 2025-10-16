@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0a1](https://github.com/TigreGotico/phoonnx/tree/0.5.0a1) (2025-10-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.4.0a1...0.5.0a1)
+
+**Merged pull requests:**
+
+- feat: opm and cli interface [\#51](https://github.com/TigreGotico/phoonnx/pull/51) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.4.0a1](https://github.com/TigreGotico/phoonnx/tree/0.4.0a1) (2025-10-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.3.0...0.4.0a1)
