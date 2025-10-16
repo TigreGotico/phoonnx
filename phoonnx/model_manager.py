@@ -68,21 +68,25 @@ class TTSModelInfo:
         config_path = self.voice_path / "model.json"
         if not config_path.is_file():
             r = requests.get(self.config_url, timeout=30)
+            r.raise_for_status()
             cfg = r.json()  # validate received json
-            with open(config_path, "w") as f:
+            with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(cfg, f, ensure_ascii=False, indent=4)
 
     def download_phoneme_map(self):
         tokens_path = self.voice_path / "tokens.txt"
         if self.tokens_url and not tokens_path.is_file():
-            tokens = requests.get(self.tokens_url, timeout=30).text
-            with open(tokens_path, "w") as f:
+            r = requests.get(self.tokens_url, timeout=30)
+            r.raise_for_status()
+            tokens = r.text
+            with open(tokens_path, "w", encoding="utf-8") as f:
                 f.write(tokens)
 
     def download_model(self):
         model_path = self.voice_path / "model.onnx"
         if not model_path.is_file():
             r = requests.get(self.model_url, timeout=120)  # Longer timeout for model file
+            r.raise_for_status()
             with open(model_path, "wb") as f:
                 f.write(r.content)
 
@@ -99,7 +103,9 @@ class TTSModelInfo:
         # override phoneme_type, if config.json is wrong
         if self.phoneme_type != voice.phoneme_type:
             voice.phoneme_type = self.phoneme_type
-            voice.phonemizer = get_phonemizer(self.phoneme_type)
+            voice.phonemizer = get_phonemizer(self.phoneme_type,
+                                              alphabet=voice.config.alphabet,
+                                              model=voice.config.phonemizer_model)
         return voice
 
 
