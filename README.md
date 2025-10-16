@@ -117,22 +117,22 @@ This is particularly useful for pre-downloading models and viewing supported lan
 
 ```bash
 # Update the local cache of all available voices from upstream sources
-python phoonnx_cli.py update-cache
+phoonnx-voices update-cache
 
 # List all supported languages
-python phoonnx_cli.py list-langs
+phoonnx-voices list-langs
 
 # List all available voices (simple list)
-python phoonnx_cli.py list-voices
+phoonnx-voices list-voices
 
 # List all voices with detailed info
-python phoonnx_cli.py list-voices --verbose
+phoonnx-voices list-voices --verbose
 
 # List voices for a specific language (e.g., Portuguese)
-python phoonnx_cli.py list-voices --lang pt-PT
+phoonnx-voices list-voices --lang pt-PT
 
 # Download the model files for a specific voice ID
-python phoonnx_cli.py download OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone
+phoonnx-voices download OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone
 ```
 
 -----
