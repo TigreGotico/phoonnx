@@ -97,7 +97,7 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
             ValueError: If the language code is unsupported.
         """
         lang, score = match_lang(target_lang, valid_langs)
-        if score < 10:
+        if score > 10:
             # raise an error for unsupported language
             raise ValueError(f"unsupported language code: {target_lang}")
         return lang

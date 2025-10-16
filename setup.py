@@ -48,6 +48,7 @@ def get_version():
 
 extra_files = package_files('phoonnx')
 
+PLUGIN_ENTRY_POINT = 'ovos-tts-plugin-phoonnx = phoonnx.opm:PhoonnxTTSPlugin'
 
 setup(
     name='phoonnx',
@@ -78,5 +79,11 @@ setup(
     license='',
     author='JarbasAi',
     author_email='jarbasai@mailfence.com',
-    description=''
+    description='',
+    entry_points={
+        'mycroft.plugin.tts': PLUGIN_ENTRY_POINT,
+        'console_scripts': [
+            'phoonnx-voices=phoonnx.cli:cli'
+        ]
+    }
 )
