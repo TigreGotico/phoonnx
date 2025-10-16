@@ -67,7 +67,7 @@ class TTSModelInfo:
     def download_config(self):
         config_path = self.voice_path / "model.json"
         if not config_path.is_file():
-            r = requests.get(self.config_url)
+            r = requests.get(self.config_url, timeout=30)
             cfg = r.json()  # validate received json
             with open(config_path, "w") as f:
                 json.dump(cfg, f, ensure_ascii=False, indent=4)
@@ -75,14 +75,14 @@ class TTSModelInfo:
     def download_phoneme_map(self):
         tokens_path = self.voice_path / "tokens.txt"
         if self.tokens_url and not tokens_path.is_file():
-            tokens = requests.get(self.tokens_url).text
+            tokens = requests.get(self.tokens_url, timeout=30).text
             with open(tokens_path, "w") as f:
                 f.write(tokens)
 
     def download_model(self):
         model_path = self.voice_path / "model.onnx"
         if not model_path.is_file():
-            r = requests.get(self.model_url)
+            r = requests.get(self.model_url, timeout=120)  # Longer timeout for model file
             with open(model_path, "wb") as f:
                 f.write(r.content)
 
