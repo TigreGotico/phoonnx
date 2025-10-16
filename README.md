@@ -4,12 +4,16 @@
 
 A Python library for multilingual phonemization and Text-to-Speech (TTS) using ONNX models.
 
+-----
+
 ## Introduction
 
 `phoonnx` is a comprehensive toolkit for performing high-quality, efficient TTS inference using ONNX-compatible models.
 It provides a flexible framework for text normalization, phonemization, and speech synthesis, with built-in support for
 multiple languages and phonemic alphabets. The library is also designed to work with models trained using
 `phoonnx_train`, including utilities for dataset preprocessing and exporting models to the ONNX format.
+
+-----
 
 ## Features
 
@@ -23,6 +27,8 @@ multiple languages and phonemic alphabets. The library is also designed to work 
 - **Dataset Preprocessing:** Provides a command-line tool to prepare LJSpeech-style datasets for training.
 - **Model Export:** A script is included to convert trained models into the ONNX format, ready for deployment.
 
+-----
+
 ## Installation
 
 As `phoonnx` is available on PyPI, you can install it using pip.
@@ -30,6 +36,8 @@ As `phoonnx` is available on PyPI, you can install it using pip.
 ```bash
 pip install phoonnx
 ```
+
+-----
 
 ## Usage
 
@@ -64,9 +72,80 @@ with wave.open(f"{slug}.wav", "wb") as wav_file:
 
 ```
 
+-----
+
+## Integration and Management
+
+`phoonnx` provides out-of-the-box integration for Open Voice OS and a powerful command-line interface for voice model management.
+
+### Open Voice OS Plugin
+
+`phoonnx` includes a native OVOS TTS plugin `ovos-tts-plugin-phoonnx` which allows the library to work seamlessly within the Open Voice OS ecosystem. 
+
+Once installed, it can be configured as a standard TTS engine and automatically manages model fetching and loading.
+
+```json
+  "tts": {
+    "module": "ovos-tts-plugin-phoonnx",
+    "ovos-tts-plugin-phoonnx": {
+      "voice": "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone"
+    }
+  }
+```
+
+if `"voice"` is not provided then the first model that supports that language will be selected
+
+voice synthesis parameters usually come from the model `.json` file, but you can override them (globally) in `mycroft.conf`
+
+```json
+  "tts": {
+    "module": "ovos-tts-plugin-phoonnx",
+    "ovos-tts-plugin-phoonnx": {
+      "voice": "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone",
+      "enable_phonetic_spelling": true,
+      "noise_scale": 0.667,
+      "length_scale": 1,
+      "noise_w": 0.8,
+      "add_diacritics": false
+    }
+  }
+```
+
+### Command Line Interface (CLI)
+
+The `phoonnx_cli.py` provides a set of tools to manage and interact with the available TTS voice models. 
+
+This is particularly useful for pre-downloading models and viewing supported languages.
+
+#### Usage
+
+```bash
+# Update the local cache of all available voices from upstream sources
+python phoonnx_cli.py update-cache
+
+# List all supported languages
+python phoonnx_cli.py list-langs
+
+# List all available voices (simple list)
+python phoonnx_cli.py list-voices
+
+# List all voices with detailed info
+python phoonnx_cli.py list-voices --verbose
+
+# List voices for a specific language (e.g., Portuguese)
+python phoonnx_cli.py list-voices --lang pt-PT
+
+# Download the model files for a specific voice ID
+python phoonnx_cli.py download OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone
+```
+
+-----
+
 ### Training
 
 See the dedicated [training.md](/TRAINING.md)
+
+-----
 
 ## Supported Phonemizers
 
@@ -108,6 +187,8 @@ wrap, and the output alphabets they can generate.
 | **Korean (ko)**     | `KoG2PPhonemizer`      | [KoG2P](https://github.com/scarletcho/KoG2P)                                                                       | IPA, HANGUL                  | Provides G2P for Korean, with optional IPA conversion.                                                                                      |
 | **Persian (fa)**    | `PersianPhonemizer`    | [persian_phonemizer](https://github.com/de-mh/persian_phonemizer)                                                  | ERAAB, IPA                   | Supports both standard IPA and the native ERAAB (diacritical) representations.                                                              |
 | **Vietnamese (vi)** | `VIPhonemePhonemizer`  | [Viphoneme](https://github.com/v-nhandt21/Viphoneme)                                                               | IPA                          | Uses the `viphoneme` library for Vietnamese G2P.                                                                                            |
+
+-----
 
 ### Credits
 
