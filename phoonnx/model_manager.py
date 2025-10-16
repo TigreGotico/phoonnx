@@ -267,6 +267,13 @@ class TTSModelManager:
                 phoneme_type=PhonemeType.PHONIKUD
             ))
 
+    def refresh_voices(self):
+        self.get_ovos_voice_list()
+        self.get_proxectonos_voice_list()
+        self.get_phonikud_voice_list()
+        self.get_piper_voice_list()
+        self.get_mimic3_voice_list()
+
     @property
     def all_voices(self) -> List[TTSModelInfo]:
         return list(self.voices.values())
@@ -280,11 +287,7 @@ if __name__ == "__main__":
     manager = TTSModelManager()
     manager.clear()
     # manager.load()
-    manager.get_ovos_voice_list()
-    manager.get_proxectonos_voice_list()
-    manager.get_phonikud_voice_list()
-    manager.get_piper_voice_list()
-    manager.get_mimic3_voice_list()
+    manager.refresh_voices()
     manager.save()
 
     print(f"Total voices: {len(manager.all_voices)}")

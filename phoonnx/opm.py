@@ -34,7 +34,10 @@ class PhoonnxTTSPlugin(TTS):
         )
 
         self.model_manager = TTSModelManager()
-        self.model_manager.load()
+        try:
+            self.model_manager.refresh_voices()
+        except:
+            self.model_manager.load()
 
         default = self.get_default_voice(self.lang)
         self.voices: Dict[str, TTSVoice] = {
