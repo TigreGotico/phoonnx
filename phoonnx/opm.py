@@ -45,7 +45,10 @@ class PhoonnxTTSPlugin(TTS):
         }
 
     def get_default_voice(self, lang: str) -> TTSModelInfo:
-        return self.model_manager.get_lang_voices(lang)[0]
+        voices = self.model_manager.get_lang_voices(lang)
+        if not voices:
+            raise ValueError(f"No voices available for language: {lang}")
+        return voices[0]
 
     def get_model(self, voice_id: str) -> TTSVoice:
         if voice_id in self.voices:
