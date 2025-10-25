@@ -45,6 +45,10 @@ class TTSModelInfo:
     speaker_encoder_url: Optional[str] = None
     speaker_encoder_type: Optional[str] = None
 
+    # user-friendly name for UIs/CLIs; may contain "{engine}"/"{phoneme_type}"
+    # placeholders that get resolved once those fields are known
+    display_name: Optional[str] = None
+
     @property
     def config(self) -> VoiceConfig:
         # lazy loaded
@@ -133,6 +137,18 @@ class TTSModelInfo:
             self.alphabet = Alphabet(self.alphabet)
         if not isinstance(self.phoneme_type, PhonemeType) and isinstance(self.phoneme_type, str):
             self.phoneme_type = PhonemeType(self.phoneme_type)
+
+        # resolve "{engine}"/"{phoneme_type}" placeholders in display_name,
+        # if those fields are already known (avoids triggering a config
+        # download just to format a label)
+        if self.display_name and "{" in self.display_name:
+            try:
+                self.display_name = self.display_name.format(
+                    engine=self.engine.value if self.engine else "",
+                    phoneme_type=self.phoneme_type.value if self.phoneme_type else "",
+                )
+            except (AttributeError, KeyError):
+                LOG.warning(f"Could not format display_name for {self.voice_id}.")
 
     @property
     def voice_path(self) -> Path:
@@ -447,7 +463,8 @@ class TTSModelManager:
                                     "phoneme_map_url": voice_info.phoneme_map_url,
                                     "alphabet": voice_info.alphabet,
                                     "engine": voice_info.engine,
-                                    "config_url": voice_info.config_url}
+                                    "config_url": voice_info.config_url,
+                                    "display_name": voice_info.display_name}
         self.cache.store()
 
     def add_voice(self, voice_info: TTSModelInfo):
@@ -473,7 +490,8 @@ class TTSModelManager:
                                            "config_url": voice_info.config_url,
                                            "vocoder_url": voice_info.vocoder_url,
                                            "vocoder_config_url": voice_info.vocoder_config_url,
-                                           "vocoder_type": voice_info.vocoder_type}
+                                           "vocoder_type": voice_info.vocoder_type,
+                                           "display_name": voice_info.display_name}
 
     def get_lang_voices(self, lang: str) -> List[TTSModelInfo]:
         voices = sorted(
@@ -521,6 +539,82 @@ class TTSModelManager:
 
         if store:
             self.cache.store()
+
+    def get_available_voice_ids_by_source(self) -> Dict[str, List[str]]:
+        """
+        List all voice IDs bundled with phoonnx, grouped by source.
+
+        Reads the ``voice_index`` JSON files that ship with the package
+        directly (plain ``json.load``, no ``TTSModelInfo`` construction),
+        so this performs no network access and downloads no model/config
+        files - suitable for a quick "what's available" listing before
+        committing to downloading a specific voice via ``download_voice_by_id``.
+
+        Returns:
+            Dict[str, List[str]]: mapping of source name to sorted voice IDs.
+        """
+        base_path = Path(os.path.dirname(__file__)) / "voice_index"
+        sources = {
+            "ovos": "OVOS.json",
+            "mms": "MMS.json",
+            "proxectonos": "proxectonos.json",
+            "piper": "piper.json",
+            "piper_community": "piper_community.json",
+            "phonikud": "phonikud.json",
+            "neurlang": "neurlang.json",
+            "mimic3": "mimic3.json",
+            "transformers_community": "transformers_community.json",
+            "optispeech": "optispeech.json",
+            "glowtts": "glowtts.json",
+            "mixertts": "mixertts.json",
+            "fastpitch": "fastpitch.json",
+            "coqui_community": "coqui_community.json",
+            "vits2": "vits2.json",
+            "styletts2": "styletts2.json",
+            "coqui_vits": "coqui_vits.json",
+            "bsc": "BSC.json",
+        }
+        result: Dict[str, List[str]] = {}
+        for source, filename in sources.items():
+            path = base_path / filename
+            if not path.is_file():
+                continue
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            result[source] = sorted(data.keys())
+        return result
+
+    def download_voice_by_id(self, voice_id: str) -> bool:
+        """
+        Download a single voice's model (and side files) by its ID.
+
+        Looks the voice up in the in-memory registry first (populated via
+        ``load()``/``merge_default_voices()``); if not found there, falls
+        back to the bundled voice indexes so a voice can be downloaded
+        on-demand without first loading the full catalog into memory.
+
+        Returns:
+            bool: True if the voice was found and its download was attempted,
+            False if the voice ID could not be resolved.
+        """
+        voice_info = self.voices.get(voice_id)
+        if not voice_info:
+            base_path = Path(os.path.dirname(__file__)) / "voice_index"
+            for filename in os.listdir(base_path):
+                if not filename.endswith(".json"):
+                    continue
+                with open(base_path / filename, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if voice_id in data:
+                    voice_info = TTSModelInfo(**data[voice_id])
+                    break
+
+        if not voice_info:
+            LOG.error(f"Cannot find voice information for ID: {voice_id}")
+            return False
+
+        voice_info.download_model()
+        return True
 
 
 
