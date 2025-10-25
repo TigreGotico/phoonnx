@@ -7,6 +7,8 @@ import requests
 def print_voice_info(voice: TTSModelInfo):
     """Prints detailed info about a single voice."""
     click.echo(f"  ID:          {voice.voice_id}")
+    if voice.display_name:
+        click.echo(f"  Name:        {voice.display_name}")
     click.echo(f"  Language:    {voice.lang}")
     click.echo(f"  Engine:      {voice.engine.value}")
     click.echo(f"  Phoneme Type: {voice.phoneme_type}")
@@ -82,7 +84,6 @@ def list_langs():
     for l in manager.supported_langs:
         click.echo(f" - {l}")
 
-
 @cli.command(name="list-voices")
 @click.option("--lang", default=None, help="Filter voices by language code (e.g., 'en-US' or 'pt-PT').")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed information for each voice.")
@@ -110,8 +111,40 @@ def list_voices(lang, verbose):
         if verbose:
             print_voice_info(voice)
         else:
-            click.echo(f"* {voice.voice_id} ({voice.lang})")
+            if voice.display_name:
+                click.echo(f"* {voice.display_name} ({voice.lang})")
+            else:
+                click.echo(f"* {voice.voice_id} ({voice.lang})")
 
+@cli.command(name="list-available")
+def list_available():
+    """
+    Lists all voice IDs available from upstream sources (Piper, Mimic3, etc.),
+    even if they are not yet in the local cache. (Requires network connection)
+    """
+    manager = TTSModelManager()
+    
+    click.echo("Fetching all available voice IDs from upstream sources (Piper, Mimic3, OVOS, etc.)...")
+    
+    try:
+        available_voices = manager.get_all_available_voice_ids()
+    except requests.exceptions.RequestException as e:
+        click.echo(f"\nError: Could not fetch available voice lists due to a network or connection error.", err=True)
+        click.echo(f"Details: {e}", err=True)
+        return
+    except Exception as e:
+        click.echo(f"An unexpected error occurred while fetching available voice lists: {e}", err=True)
+        return
+
+    total_voices = sum(len(ids) for ids in available_voices.values())
+    click.echo(f"\nTotal available voices found (from all sources): {total_voices}\n")
+    
+    for source, voice_ids in available_voices.items():
+        click.echo(f"--- {source.upper()} Voices ({len(voice_ids)}) ---")
+        for voice_id in voice_ids:
+            click.echo(f"  {voice_id}")
+        click.echo("-" * 40)
+    click.echo("Hint: Use 'update-cache' to download the configuration for these voices, or use 'download <VOICE_ID>' to download a specific voice directly.")
 
 @cli.command(name="download")
 @click.argument("voice_id", type=str)
