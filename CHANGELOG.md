@@ -1,53 +1,12 @@
 # Changelog
 
-## [0.5.2a2](https://github.com/TigreGotico/phoonnx/tree/0.5.2a2) (2025-10-16)
+## [0.5.3a1](https://github.com/TigreGotico/phoonnx/tree/0.5.3a1) (2025-11-05)
 
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.2a1...0.5.2a2)
-
-**Merged pull requests:**
-
-- docs: update README.md [\#60](https://github.com/TigreGotico/phoonnx/pull/60) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.5.2a1](https://github.com/TigreGotico/phoonnx/tree/0.5.2a1) (2025-10-16)
-
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.1a1...0.5.2a1)
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.2...0.5.3a1)
 
 **Merged pull requests:**
 
-- fix: ovos plugin config loading [\#57](https://github.com/TigreGotico/phoonnx/pull/57) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.5.1a1](https://github.com/TigreGotico/phoonnx/tree/0.5.1a1) (2025-10-16)
-
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.0a2...0.5.1a1)
-
-**Merged pull requests:**
-
-- fix: phoonnx config loading [\#55](https://github.com/TigreGotico/phoonnx/pull/55) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.5.0a2](https://github.com/TigreGotico/phoonnx/tree/0.5.0a2) (2025-10-16)
-
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.0a1...0.5.0a2)
-
-**Merged pull requests:**
-
-- hotfix: bot messed up indentation [\#53](https://github.com/TigreGotico/phoonnx/pull/53) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.5.0a1](https://github.com/TigreGotico/phoonnx/tree/0.5.0a1) (2025-10-16)
-
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.4.0a1...0.5.0a1)
-
-**Merged pull requests:**
-
-- feat: opm and cli interface [\#51](https://github.com/TigreGotico/phoonnx/pull/51) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.4.0a1](https://github.com/TigreGotico/phoonnx/tree/0.4.0a1) (2025-10-16)
-
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.3.0...0.4.0a1)
-
-**Merged pull requests:**
-
-- feat: model manager [\#49](https://github.com/TigreGotico/phoonnx/pull/49) ([JarbasAl](https://github.com/JarbasAl))
-- Support for Windows OS [\#48](https://github.com/TigreGotico/phoonnx/pull/48) ([timonvanhasselt](https://github.com/timonvanhasselt))
+- add OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx [\#65](https://github.com/TigreGotico/phoonnx/pull/65) ([JarbasAl](https://github.com/JarbasAl))
 
 
 
