@@ -34,11 +34,7 @@ class PhoonnxTTSPlugin(TTS):
         """
         super().__init__(config=config)
         self.model_manager = TTSModelManager()
-        try:
-            self.model_manager.refresh_voices()
-        except Exception as exc:
-            LOG.warning(f"Voice refresh failed; retrying with cached voices: {exc}")
-            self.model_manager.load()
+        self.model_manager.load()
 
         self.voices: Dict[str, TTSVoice] = {}
         if self.voice and self.voice != "default":
@@ -46,6 +42,13 @@ class PhoonnxTTSPlugin(TTS):
         else:
             default = self.get_default_voice(self.lang)
             self.voices[default.voice_id] = self.get_model(default.voice_id)
+
+    def maybe_refresh_voices(self):
+        if len(self.model_manager.all_voices) == 0:
+            try:
+                self.model_manager.refresh_voices()
+            except Exception as exc:
+                LOG.warning(f"Voice refresh failed: {exc}")
 
     def get_default_voice(self, lang: str) -> TTSModelInfo:
         """
@@ -60,12 +63,14 @@ class PhoonnxTTSPlugin(TTS):
         Raises:
         	ValueError: If no voices are available for the given language.
         """
+        self.maybe_refresh_voices()
         voices = self.model_manager.get_lang_voices(lang)
         if not voices:
             raise ValueError(f"No voices available for language: {lang}")
         return voices[0]
 
     def get_model(self, voice_id: str) -> TTSVoice:
+        self.maybe_refresh_voices()
         if voice_id in self.voices:
             return self.voices[voice_id]
         if voice_id not in self.model_manager.voices:
@@ -87,7 +92,7 @@ class PhoonnxTTSPlugin(TTS):
         Returns:
             tuple: (wav_file, phonemes) where `wav_file` is the path to the written WAV file and `phonemes` is `None` when phoneme output is not produced.
         """
-        if voice:
+        if voice and voice != "default":
             voice_info = self.model_manager.voices[voice]
             model = self.get_model(voice)
         else:
