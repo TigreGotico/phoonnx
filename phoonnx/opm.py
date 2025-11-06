@@ -35,6 +35,7 @@ class PhoonnxTTSPlugin(TTS):
         super().__init__(config=config)
         self.model_manager = TTSModelManager()
         self.model_manager.load()
+        self.refresh_voices()
 
         self.voices: Dict[str, TTSVoice] = {}
         if self.voice and self.voice != "default":
@@ -43,8 +44,8 @@ class PhoonnxTTSPlugin(TTS):
             default = self.get_default_voice(self.lang)
             self.voices[default.voice_id] = self.get_model(default.voice_id)
 
-    def maybe_refresh_voices(self):
-        if len(self.model_manager.all_voices) == 0:
+    def refresh_voices(self, force=False):
+        if not self.model_manager.voices or force:
             try:
                 self.model_manager.refresh_voices()
             except Exception as exc:
@@ -63,18 +64,23 @@ class PhoonnxTTSPlugin(TTS):
         Raises:
         	ValueError: If no voices are available for the given language.
         """
-        self.maybe_refresh_voices()
         voices = self.model_manager.get_lang_voices(lang)
         if not voices:
-            raise ValueError(f"No voices available for language: {lang}")
+            LOG.info(f"{lang} voices not found - refreshing voice list")
+            self.refresh_voices(force=True)
+            voices = self.model_manager.get_lang_voices(lang)
+            if not voices:
+                raise ValueError(f"No voices available for language: {lang}")
         return voices[0]
 
     def get_model(self, voice_id: str) -> TTSVoice:
-        self.maybe_refresh_voices()
         if voice_id in self.voices:
             return self.voices[voice_id]
         if voice_id not in self.model_manager.voices:
-            raise Exception(f"Unknown voice: {voice_id}")
+            LOG.info(f"{voice_id} not found - refreshing voice list")
+            self.refresh_voices(force=True)
+            if voice_id not in self.model_manager.voices:
+                raise Exception(f"Unknown voice: {voice_id}")
         LOG.debug(f"Using voice: {voice_id}")
         self.voices[voice_id] = self.model_manager.voices[voice_id].load()
         return self.voices[voice_id]
