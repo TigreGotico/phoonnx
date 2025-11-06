@@ -25,20 +25,17 @@ class PhoonnxTTSPlugin(TTS):
 
     def __init__(self, config=None):
         """
-        Initialize the PhoonnxTTSPlugin, prepare the model manager, and load an initial voice.
+        Initialize the PhoonnxTTSPlugin, set up the model manager, and load an initial voice.
         
-        Creates a TTSModelManager and attempts to refresh available voices; if refresh fails the manager falls back to loading voices. If a non-default voice is configured on the instance, that voice is loaded and cached in self.voices. Otherwise the language-specific default voice is determined, loaded, and stored in self.voices.
+        Creates a TTSModelManager, loads available models, calls refresh_voices(), and caches either the configured non-default voice or the language-specific default voice in self.voices.
         
         Parameters:
-            config (dict|None): Configuration passed to the base TTS initializer; may influence plugin behavior (e.g., selected voice or language).
+            config (dict | None): Configuration passed to the base TTS initializer.
         """
         super().__init__(config=config)
         self.model_manager = TTSModelManager()
-        try:
-            self.model_manager.refresh_voices()
-        except Exception as exc:
-            LOG.warning(f"Voice refresh failed; retrying with cached voices: {exc}")
-            self.model_manager.load()
+        self.model_manager.load()
+        self.refresh_voices()
 
         self.voices: Dict[str, TTSVoice] = {}
         if self.voice and self.voice != "default":
@@ -46,6 +43,19 @@ class PhoonnxTTSPlugin(TTS):
         else:
             default = self.get_default_voice(self.lang)
             self.voices[default.voice_id] = self.get_model(default.voice_id)
+
+    def refresh_voices(self, force=False):
+        """
+        Refresh available voices from the model manager when none are loaded or when forcing an update.
+        
+        Parameters:
+        	force (bool): If True, force a refresh even if voices are already present.
+        """
+        if not self.model_manager.voices or force:
+            try:
+                self.model_manager.refresh_voices()
+            except Exception as exc:
+                LOG.warning(f"Voice refresh failed: {exc}")
 
     def get_default_voice(self, lang: str) -> TTSModelInfo:
         """
@@ -62,32 +72,51 @@ class PhoonnxTTSPlugin(TTS):
         """
         voices = self.model_manager.get_lang_voices(lang)
         if not voices:
-            raise ValueError(f"No voices available for language: {lang}")
+            LOG.info(f"{lang} voices not found - refreshing voice list")
+            self.refresh_voices(force=True)
+            voices = self.model_manager.get_lang_voices(lang)
+            if not voices:
+                raise ValueError(f"No voices available for language: {lang}")
         return voices[0]
 
     def get_model(self, voice_id: str) -> TTSVoice:
+        """
+        Retrieve and cache the TTSVoice instance for a given voice identifier.
+        
+        Parameters:
+            voice_id (str): Identifier of the voice to load.
+        
+        Returns:
+            TTSVoice: The loaded voice model corresponding to `voice_id`.
+        
+        Raises:
+            Exception: If `voice_id` is not found after refreshing available voices.
+        """
         if voice_id in self.voices:
             return self.voices[voice_id]
         if voice_id not in self.model_manager.voices:
-            raise Exception(f"Unknown voice: {voice_id}")
+            LOG.info(f"{voice_id} not found - refreshing voice list")
+            self.refresh_voices(force=True)
+            if voice_id not in self.model_manager.voices:
+                raise Exception(f"Unknown voice: {voice_id}")
         LOG.debug(f"Using voice: {voice_id}")
         self.voices[voice_id] = self.model_manager.voices[voice_id].load()
         return self.voices[voice_id]
 
     def get_tts(self, sentence, wav_file, lang=None, voice=None):
         """
-        Synthesize speech for a sentence and write the audio to the specified WAV file.
+        Synthesize the given text into speech and write the result to the specified WAV file.
         
         Parameters:
             sentence (str): Text to synthesize.
-            wav_file (str): Path to the output WAV file that will be written.
-            lang (str, optional): Language override used to select the default voice when no `voice` is provided.
-            voice (str, optional): Voice identifier override to select a specific model.
+            wav_file (str): Path where the WAV audio will be written.
+            lang (str, optional): Language hint used to select a default voice when `voice` is not provided.
+            voice (str, optional): Specific voice identifier to use; treat `None` or `"default"` as no explicit selection.
         
         Returns:
-            tuple: (wav_file, phonemes) where `wav_file` is the path to the written WAV file and `phonemes` is `None` when phoneme output is not produced.
+            tuple: (`wav_file`, `phonemes`) where `wav_file` is the path to the written WAV file and `phonemes` is `None` when no phoneme output is produced.
         """
-        if voice:
+        if voice and voice != "default":
             voice_info = self.model_manager.voices[voice]
             model = self.get_model(voice)
         else:

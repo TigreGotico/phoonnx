@@ -176,6 +176,8 @@ class TTSModelManager:
 
     # helpers to get official voice models
     def get_proxectonos_voice_list(self):
+        # NOTE: these are models trained with coqui
+        #  we need to explicitly assign phonemizer
         self.add_voice(TTSModelInfo(
             voice_id="proxectonos/sabela",
             lang="gl-ES",
@@ -187,7 +189,15 @@ class TTSModelManager:
             voice_id="proxectonos/celtia",
             lang="gl-ES",
             model_url="https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/model.onnx",
-            config_url="https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/config.json"
+            config_url="https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/config.json",
+            phoneme_type=PhonemeType.UNICODE  # already the default if not provided for coqui models
+        ))
+        self.add_voice(TTSModelInfo(
+            voice_id="proxectonos/icia",
+            lang="gl-ES",
+            model_url="https://huggingface.co/OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx/resolve/main/model.onnx",
+            config_url="https://huggingface.co/OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx/resolve/main/config.json",
+            phoneme_type=PhonemeType.COTOVIA
         ))
 
     def get_piper_voice_list(self):
@@ -274,6 +284,8 @@ class TTSModelManager:
                     continue  # not all langs have male + female
 
     def get_phonikud_voice_list(self):
+        # NOTE: trained with piper + raw phonemes
+        #  we need to explicitly assign phonemizer
         self.add_voice(
             TTSModelInfo(
                 voice_id="thewh1teagle/phonikud",
@@ -281,7 +293,8 @@ class TTSModelManager:
                 model_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.onnx",
                 config_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.config.json",
                 phoneme_type=PhonemeType.PHONIKUD
-            ))
+            )
+        )
 
 
 if __name__ == "__main__":
