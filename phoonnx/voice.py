@@ -242,7 +242,7 @@ class TTSVoice:
 
         # All phonemization goes through the unified self.phonemize method
         sentence_phonemes = self.phonemize(text)
-        LOG.info("phonemes=%s", sentence_phonemes)
+        LOG.debug("phonemes=%s", sentence_phonemes)
         all_phoneme_ids_for_synthesis = [
             self.phonemes_to_ids(phonemes) for phonemes in sentence_phonemes if phonemes
         ]
