@@ -1,0 +1,50 @@
+/*
+
+Project Coordinators:
+______________________
+
+Manuel González González, University of Santiago de Compostela, Spain.
+Eduardo Rodríguez Banga, Universidade de Vigo, Spain.
+Carmen García Mateo, Universidade de Vigo, Spain.
+
+
+
+ENGINEERING TEAM (main contributors to programming and signal processing developments):
+_________________________________________________________________________________________
+
+Xavier Fernández Salgado 
+Francisco Campillo Díaz 
+Francisco Méndez Pazó 
+Gonzalo Iglesias Iglesias
+Camilo Giráldez Ruibal
+Leandro Rodríguez Liñares
+Laura Docío Fernández
+
+
+TEAM OF LINGUISTS (main contributors to the collection of language resources and linguistic support):
+_____________________________________________________________________________________________________
+
+Elisa Fernández Rei
+Ruth Losada Soto
+Elisa Roca Rodríguez 
+Lorena Seijo Pereiro
+Luís Xuncal Pereira 
+Ana Martínez Ínsua 
+Lidia Gómez García
+Ana Escourido Pernas
+Concepción Diéguez Diéguez
+Monserrat Arza Rodríguez
+Zoraida Barral Rodríguez
+
+
+
+ACKNOWLEDGEMENTS
+_________________ 
+
+- We wish to thank the recorded voice talents for their collaboration in providing their voices.
+
+- We are also grateful to ERDF, the Spanish Ministry of Education, and the Galicia Regional Government
+for their support along the years through a number of projects.
+
+
+*/

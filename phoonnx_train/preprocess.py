@@ -12,16 +12,15 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple, Any, Set, Union, Callable
 
 import click
-from phoonnx.util import normalize
+from tqdm import tqdm
+
 from phoonnx.config import PhonemeType, get_phonemizer, Alphabet
 from phoonnx.phonemizers import Phonemizer
-from phoonnx.phoneme_ids import (
-    phonemes_to_ids, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN,
-    DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN
-)
-from phoonnx_train.norm_audio import cache_norm_audio, make_silence_detector
-from tqdm import tqdm
+from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, \
+    DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN
+from phoonnx.util import normalize
 from phoonnx.version import VERSION_STR
+from phoonnx_train.norm_audio import cache_norm_audio, make_silence_detector
 
 _LOGGER = logging.getLogger("preprocess")
 
@@ -605,6 +604,9 @@ def cli(
     # --- Apply final phoneme IDs and write dataset.jsonl ---
     _LOGGER.info("Writing dataset.jsonl...")
     valid_utterances_count: int = 0
+
+    tokenizer = TTSTokenizer.from_phoonnx_config(config_data)
+
     with open(config.output_dir / "dataset.jsonl", "w", encoding="utf-8") as dataset_file:
         for utt in processed_utterances:
             if is_multispeaker and utt.speaker is not None:
@@ -615,7 +617,7 @@ def cli(
 
             # Apply the final phoneme ID map to each utterance
             if utt.phonemes:
-                utt.phoneme_ids = phonemes_to_ids(utt.phonemes, id_map=final_phoneme_id_map)
+                utt.phoneme_ids = tokenizer.tokenize(utt.phonemes)
 
             if not utt.phoneme_ids:
                 _LOGGER.warning("Skipping utterance with invalid phoneme_ids before writing: %s", utt.audio_path)

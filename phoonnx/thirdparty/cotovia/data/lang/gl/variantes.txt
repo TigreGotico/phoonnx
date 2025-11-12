@@ -1,0 +1,482 @@
+# $Id: variantes.txt,v 1.2 2004/01/23 11:03:20 fmendez Exp $
+# $Name:  $
+
+#Fichero de transcripciones alternativas.
+#Formato:
+# <importancia>
+# "<regexp ortografica>" "<regexp fonética>" "<sustitución>"
+#  excepción1, excepción2, ...., excepciónn.
+#
+#
+# Explicación:
+# Importancia es un entero de 1 a 4 indicando menor a mayor importancia de la
+# regla.
+# Las expresiones regulares indican los patrones de búsqueda y sustitución:
+#   <regexp ortográfica> se aplica sobre la palabra ortográfica
+#  Si la expresión se encuentra, entonces se aplica <regexp fonética> sobre
+# la transcripción fonética, y se sustituye la cadena por la indicada
+# en sustitución, que puede estar vacía.
+# La lista de excepciones es de longitud arbitraria y puede estar vacía.
+
+
+3
+"á$"	"a$"	"an"
+cá, acá, abacá, 
+barbacá, 
+cacaracá, á, 
+reboldá, sofá, 
+trigá, alá, 
+alalá, oxalá, 
+abelá, acolá, 
+millá, mamá, 
+panamá, eiramá, 
+maná, lanzoá, 
+papá, albará, 
+bacará, aimará, 
+prá, bacarrá, 
+cuartá, paxá, 
+raxá, pá.
+
+2
+"á$"	"a$"	"ana"
+cá, acá, abacá, 
+barbacá, 
+cacaracá, á, 
+reboldá, sofá, 
+trigá, alá, 
+alalá, oxalá, 
+abelá, acolá, 
+millá, mamá, 
+panamá, eiramá, 
+maná, lanzoá, 
+papá, albará, 
+bacará, aimará, 
+prá, bacarrá, 
+cuartá, paxá, 
+raxá, pá.
+
+2
+"b$"	"[bB]$"    ""
+
+2
+"c$"	"k$"    ""
+
+1
+"ación$" "aTio[nN]$" "aToN"
+
+2
+"ade$" "a[dD]e$" "a"
+abade.
+
+1
+"ade$" "a[dD]e$" "aT"
+2
+"ais$" "ais$" "ales"
+1
+"ais$" "ais$" "as"
+
+#2
+#"án$" "a[nN]$" "ana"
+
+#gabán, tabán, bambán, can, astracán, furacán, lavacán, mexacán, lobicán, volcán, cancán, adán, rabadán, carrandán, dindán, cardán, lordán, meán, fan, afán, celofán, iatagán, tobogán, slogan, chan, cachán, rechán, khan, gabián, radián, cotián, clan, flan, plan, carallán, man, carcamán, gardamán, adramán, xamán, caimán, solimán, electroimán, bosquimán, dolman, talismán, cornán, soán, pan, ganapán, mazapán, tulipán, champán, catamarán, trimarán, alacrán, temperán, serán, verán, chafrán, sasafrán, azafrán, refrán, gran, corán, alcorán, lorán, ferrán, serrán, alcatrán, faisán, tan, harmatán, titán, tantán, fustán, van, alcaraván, esparaván, diván, volován, buxán, mazán.
+
+#2
+#"aio$" "aio$" "aZo"
+2
+"aio" "aio" "aZo"
+
+
+#2
+#"aior$" "aior$" "aZor"
+
+2
+"aión$" "aioN$" "aZoN"
+2
+"aión$" "aion$" "aZon"
+
+#2
+#"án$" "an$" "ano"
+
+#gabán, pillabán, tabán, galbán, bambán, lombán, barbán, loubán, can, astracán, furacán, lavacán, mexacán, lobicán, corricán, burricán, volcán, cancán, adán, rabadán, carrandán, dindán, cardán, lordán, deán, meán, fan, afán, celofán, cagán, barragán, iatagán, barregán, pertegán, baleigán, barrigán, tobogán,chan, cachán, pachán, rechán, larchán, lerchán, khan, gaián, arraián, gabián, radián, gardián, rufián, cotián, alán, bocalán, chalán, palán, testalán, clan, tecelán, canelán, cornelán, capelán, castelán, flan, pailán, leilán, folán, cacholán, choulán, cachamoulán, carroulán, porcallán, farfallán, cangallán, bergallán, vergallán, nugallán, zampallán, carallán, parvallán, guedellán, orellán, ullán, barullán, man, carcamán, gardamán, adramán, xamán, imán, caimán, solimán, electroimán, bosquimán, dolman, talismán, cornán, gañán, mariñán, soán, sanxoán, pan, ganapán, papán, mazapán, tulipán, champán, larpán, paspán, catamarán, trimarán, alacrán, balandrán, pelandrán, temperán, serán, chafrán, sasafrán, azafrán, refrán, langrán, tanguelleirán, toleirán, buleirán, palleirán, carneirán, mentirán, corán, alcorán, lorán, temporán, carrán, marrán, ferrán, serrán, burrán, alcatrán, pastrán, zalapastrán, costrán, palafustrán, mourán, aresán, faisán, tan, batán, charlatán, harmatán, cornetán, ermitán, capitán, titán, sultán, tantán, carnotán, testán, sacristán, sancristán, mangostán, fustán, orangután, brután, truán, van, alcaraván, esparaván, diván, volován, xan, buxán, lacazán, folgazán, alazán, mazán, cabezán, barbuzán, louzán.
+
+
+#2
+#"án$" "aN$" "aNo"
+
+#gabán, pillabán, tabán, galbán, bambán, lombán, barbán, loubán, can, astracán, furacán, lavacán, mexacán, lobicán, corricán, burricán, volcán, cancán, adán, rabadán, carrandán, dindán, cardán, lordán, deán, meán, fan, afán, celofán, cagán, barragán, iatagán, barregán, pertegán, baleigán, barrigán, tobogán,chan, cachán, pachán, rechán, larchán, lerchán, khan, gaián, arraián, gabián, radián, gardián, rufián, cotián, alán, bocalán, chalán, palán, testalán, clan, tecelán, canelán, cornelán, capelán, castelán, flan, pailán, leilán, folán, cacholán, choulán, cachamoulán, carroulán, porcallán, farfallán, cangallán, bergallán, vergallán, nugallán, zampallán, carallán, parvallán, guedellán, orellán, ullán, barullán, man, carcamán, gardamán, adramán, xamán, imán, caimán, solimán, electroimán, bosquimán, dolman, talismán, cornán, gañán, mariñán, soán, sanxoán, pan, ganapán, papán, mazapán, tulipán, champán, larpán, paspán, catamarán, trimarán, alacrán, balandrán, pelandrán, temperán, serán, chafrán, sasafrán, azafrán, refrán, langrán, tanguelleirán, toleirán, buleirán, palleirán, carneirán, mentirán, corán, alcorán, lorán, temporán, carrán, marrán, ferrán, serrán, burrán, alcatrán, pastrán, zalapastrán, costrán, palafustrán, mourán, aresán, faisán, tan, batán, charlatán, harmatán, cornetán, ermitán, capitán, titán, sultán, tantán, carnotán, testán, sacristán, sancristán, mangostán, fustán, orangután, brután, truán, van, alcaraván, esparaván, diván, volován, xan, buxán, lacazán, folgazán, alazán, mazán, cabezán, barbuzán, louzán.
+
+
+#2
+#"án$" "an$" "ao"
+
+#gabán, pillabán, tabán, galbán, bambán, lombán, barbán, loubán, can, astracán, furacán, lavacán, mexacán, lobicán, corricán, burricán, volcán, cancán, adán, rabadán, carrandán, dindán, cardán, lordán, deán, meán, fan, afán, celofán, cagán, barragán, iatagán, barregán, pertegán, baleigán, barrigán, tobogán,chan, cachán, pachán, rechán, larchán, lerchán, khan, gaián, arraián, gabián, radián, gardián, rufián, cotián, alán, bocalán, chalán, palán, testalán, clan, tecelán, canelán, cornelán, capelán, castelán, flan, pailán, leilán, folán, cacholán, choulán, cachamoulán, carroulán, porcallán, farfallán, cangallán, bergallán, vergallán, nugallán, zampallán, carallán, parvallán, guedellán, orellán, ullán, barullán, man, carcamán, gardamán, adramán, xamán, imán, caimán, solimán, electroimán, bosquimán, dolman, talismán, cornán, gañán, mariñán, soán, sanxoán, pan, ganapán, papán, mazapán, tulipán, champán, larpán, paspán, catamarán, trimarán, alacrán, balandrán, pelandrán, temperán, serán, chafrán, sasafrán, azafrán, refrán, langrán, tanguelleirán, toleirán, buleirán, palleirán, carneirán, mentirán, corán, alcorán, lorán, temporán, carrán, marrán, ferrán, serrán, burrán, alcatrán, pastrán, zalapastrán, costrán, palafustrán, mourán, aresán, faisán, tan, batán, charlatán, harmatán, cornetán, ermitán, capitán, titán, sultán, tantán, carnotán, testán, sacristán, sancristán, mangostán, fustán, orangután, brután, truán, van, alcaraván, esparaván, diván, volován, xan, buxán, lacazán, folgazán, alazán, mazán, cabezán, barbuzán, louzán.
+
+
+2
+"^man$" "man" "mao"
+
+2
+"^man$" "maN" "mao"
+
+
+2
+"áns$" "a[Nn]s$" "anos"
+gabáns, pillabáns, tabáns, galbáns, bambáns, lombáns, barbán, loubáns, cans, astracáns, furacáns, lavacáns, mexacáns, lobicáns, corricáns, burricáns, volcáns, cancáns, adáns, rabadáns, carrandáns, dindáns, cardáns, lordáns, deáns, meáns, fans, afáns, celofáns, cagáns, barragáns, iatagáns, barregáns, pertegáns, baleigáns, barrigáns, tobogáns,chans, cacháns, pacháns, recháns, larcháns, lercháns, khans, gaiáns, arraiáns, gabiáns, radiáns, gardiáns, rufiáns, cotiáns, aláns, bocaláns, chaláns, paláns, testaláns, clans, teceláns, caneláns, corneláns, capeláns, casteláns, flans, pailáns, leiláns, foláns, cacholáns, chouláns, cachamouláns, carrouláns, porcalláns, farfalláns, cangalláns, bergalláns, vergalláns, nugalláns, zampalláns, caralláns, parvalláns, guedelláns, orelláns, ulláns, barulláns, mans, carcamánss, gardamáns, adramáns, xamáns, imáns, caimáns, solimáns, electroimáns, bosquimáns, dolmans, talismánss, cornáns, gañáns, mariñásn, soáns, sanxoáns, pans, ganapáns, papáns, mazapáns, tulipáns, champáns, larpáns, paspáns, catamaráns, trimaráns, alacráns, balandráns, pelandráns, temperáns, seráns, chafráns, sasafráns, azafráns, refráns, langráns, tanguelleiráns, toleiráns, buleiráns, palleiráns, carneiráns, mentiráns, coráns, alcoráns, loráns, temporáns, carráns, marráns, ferráns, serráns, burráns, alcatráns, pastráns, zalapastráns, costráns, palafustráns, mouráns, aresáns, faisáns, batáns, charlatáns, harmatáns, cornetáns, ermitáns, capitáns, titáns, sultáns, tantáns, carnotáns, testáns, sacristáns, sancristáns, mangostáns, fustáns, orangutáns, brutáns, truáns, vans, alcaraváns, esparaváns, diváns, volováns, xans, buxáns, lacazáns, folgazáns, alazáns, mazáns, cabezáns, barbuzáns, louzáns.
+
+#2
+
+#"ás$" "as" "ans"
+
+#ás, agás, antigás, plexiglás, paspallás, ananás, compás, radiocompás, hipocrás, raigrás, augarrás, atrás, detrás.  
+
+#2
+
+#"ás$" "as" "anas"
+
+#ás, agás, antigás, plexiglás, paspallás, ananás, compás, radiocompás, hipocrás, raigrás, augarrás, atrás, detrás.
+
+2
+"bc" "[bB]T" "T"
+
+1
+"ble$" "[bB]le$" "bel"
+
+
+1
+"ble$" "[bB]le$" "bre"
+
+3
+"bm" "[bB]m" "m"
+
+#2
+#"br" "[bB]r" "bl"
+
+3
+"bs" "[bB]s" "s"
+
+1
+"bución$" "[bB]uTio[nN]$" "buTon"
+
+2
+ "bd" "[bB][dD]" "d"
+
+1
+"buinte$" "[bB]uinte$" "buZente"
+
+
+1
+"buinte$" "[bB]uinte$" "buente"
+
+
+
+2
+ "bm" "[bB]m" "d"
+
+
+2
+ "bn" "[bB]n" "n"
+2
+ "vn" "[bB]n" "n"
+
+#2
+#"^branc[aou]" "[bB]rank" "blank"
+#"^branc" "^[bB]rank" "blank"
+#brancellao.
+
+2
+"^brand" "^[bB]ran[dD]" "bland"
+
+
+#2
+#"^branqu[ei]" "^[bB]rank" "blank"
+
+2
+ "bt" "[bB]t" "t"
+
+4
+ "bv" "[bB][bB]" "b"
+
+3
+ "bx" "[bB]S" "S"
+
+3
+ "bx" "[bB]S" "uS"
+
+
+2
+ "bx" "[bB]S" "bs"
+
+2
+ "bx" "[bB]S" "s"
+
+1
+"calidade" "kali[dD]a[dD]e" "kualidade"
+1
+"^cando$" "kan[dD]o" "kuando"
+1
+"^canto$" "kanto" "kuanto"
+1
+"^cartos$" "kartos" "kuartos"
+1
+"^catro$" "katro" "kuatro"
+1
+"^caderna$" "ka[dD]erna" "kuaderna"
+1
+"^caderno$" "ka[dD]erno" "kuaderno"
+1
+"^cadrado$" "ka[dD]rado" "kuadrado"
+1
+"^cadrar$" "ka[dD]rar" "kuadrar"
+1
+"^cadro$" "ka[dD]ro" "kuadro"
+
+
+2
+"z$" "T$" "s"
+
+1
+"[aeo]cc" "kT" "T"
+
+3
+"[iu]cc" "kT" "T"
+
+1
+"cluinte$" "kluinte" "kluente"
+1
+"cluinte$" "kluinte" "kluZente"
+
+2
+"cd" "k[dD]" "d"
+
+2
+"cd" "k[dD]" "Td"
+
+4
+"^cn" "^kn" "n"
+
+2
+"cn" "kn" "n"
+
+2
+"cn" "kn" "nn"
+2
+"cn" "kn" "Tn"
+2
+"^consp" "koNsp" "kosp"
+2
+"cr" "kr" "kl"
+
+1
+"[aeo]ct" "kt" "t"
+
+2
+"[aeo]ct" "kt" "Tt"
+
+3
+"[iu]ct" "kt" "t"
+
+1
+"[iu]ct" "kt" "Tt"
+
+4
+"d$" "[dD]$" ""
+
+4
+"d$" "[dD]$" "T"
+
+2
+"^deza" "[dD]eTa" "daTa"
+
+2
+"doiro$" "[dD]oiro$" "deiro"
+
+1
+"dm" "[dD]m" "mm"
+1
+"dm" "[dD]m" "m"
+1
+"dm" "[dD]m" "Tm"
+2
+"ds" "[dD]s" "s"
+1
+"ds" "[dD]s" "Ts"
+2
+"dv" "[dD]b" "Tb"
+1
+"dv" "[dD]b" "b"
+
+2
+"crenza" "kreNTa" "kreeNTa"
+
+
+2
+"eis$" "eis$" "eles"
+
+1
+"emento$" "imento$" "imento"
+
+2
+"eit" "eit" "et"
+
+2
+"encia$" "e[nN]Tia$" "enTa"
+1
+"aente$" "ae[nN]te$" "ainte"
+1
+"aente$" "ae[nN]te$" "aZente"
+2
+"enza$" "e[nN]Ta$" "enTia"
+
+2
+"erxer$" "erSer$" "erSir"
+
+2
+"prezo$" "preTo$" "preTio"
+
+2
+"fluente$" "fluente$" "fluinte"
+2
+"fluente$" "fluente$" "fluZente"
+
+2
+"g[aou]" "[gG]" "x"
+
+2
+"gu[ei]" "[gG]" "x"
+
+2
+"gr" "[gG]" "x"
+2
+"gm" "[gG]m" "m"
+2
+"gm" "[gG]m" "Nm"
+2
+"gn" "[gG]n" "NN"
+2
+"gn" "[gG]n" "N"
+4
+"^gn" "[gG]n" "N"
+2
+"ís$" "is$" "iles"
+3
+"ins" "i[nN]s" "is"
+3
+"ite$" "ite$" "itis"
+3
+"x" "ks" "s"
+2
+"k$" "k$" ""
+1
+"lución$" "luTio[nN]" "luTon"
+4
+"ll$" "Z$" "l"
+3
+"m$" "m$" "n"
+4
+"^mn" "^mn" "n"
+3
+"mn" "mn" "nn"
+2
+"nc$" "nk$" "n"
+3
+"nd$" "nd$" "n"
+3
+"ng$" "n[gG]$" "n"
+4
+"ngs" "n[gG]s" "ns"
+2
+"nm" "[Nn]m" "m"
+2
+"nm" "[nN]m" "mm"
+2
+"nn" "[nN][nN]" "n"
+1
+"nsc" "[nN]sk" "sk"
+2
+"nst" "[Nn]st" "st"
+1
+"nución$" "nuTion$" "nuTon"
+2
+"oia$" "oia$" "oZa"
+
+2
+"oit" "oit" "uit"
+1
+"ointe" "ointe" "oente"
+1
+"oínte$" "ointe$" "oZente"
+2
+"ois$" "ois$" "oles"
+despois.
+2
+"óns$" "ons$" "os"
+1
+"óns$" "ons$" "ois"
+2
+"pc" "pT" "T"
+1
+"pc" "pT" "TT"
+3
+"^post" "post" "pos"
+1
+"^prace" "praTe" "plaTe"
+1
+"^praga$" "^pla[gG]a$" "plaga"
+1
+"^praia$" "^praia$" "plaia"
+4
+"ps" "ps" "s"
+3
+"pt" "pt" "t"
+2
+"rd$" "r[dD]$" "r"
+3
+"rg$" "r[gG]$" "r"
+2
+"stm" "stm" "sm"
+3
+"st$" "st$" "s"
+2
+"t$" "t$" ""
+3
+"tb" "t[bB]" "b"
+3
+"tc" "tT" "T"
+1
+"tm" "tm" "m"
+1
+"tm" "tm" "Tm"
+2
+"tn" "t[nN]" "n"
+3
+"tn" "t[nN]" "Nn"
+
+1
+"tn" "t[nN]" "Tn"
+3
+"^trans" "^tra[nN]s" "tras"
+2
+"ude$" "u[dD]e$" "u"
+2
+"ude$" "u[dD]e$" "uT"
+1
+"tución$" "tuTion" "tuTon"
+1
+"tuinte$" "tuinte$" "tuZente"
+1
+"tuinte$" "tuinte$" "tuente"
+2
+"uis$" "uis$" "ules"
+2
+"verter$" "[bB]erter$" "bertir"
+2
+"x" "S" "s"
+4
+"n" "N" "n"
+2
+"c[ei]" "T" "s"
+
+2
+"z[aou]" "T" "s"
+2
+"vecentos$" "[bB]eTentos$" "beTientos"

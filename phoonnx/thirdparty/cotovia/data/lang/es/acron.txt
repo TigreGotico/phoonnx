@@ -1,0 +1,108 @@
+#
+# $Id: acron.txt,v 1.3 2007/11/15 10:56:58 giglesia Exp $
+# $Name:  $
+#
+AAVV,asociación de vecinos
+ACB,acebé
+ADN,adeene
+AM,aeme
+ARN,a erre ene
+ATS,ateese
+BBC,bebecé
+BBVA,bebe uve a
+BNG,bloque nacionalista gallego
+BP,bepé
+CCAA,comunidades autónomas
+CCOO,comisiones obreras
+CD,cedé
+CD-ROM,cederrón
+CDG,centro dramático gallego
+CEG,confederación de empresarios gallegos
+CEOE,ceoé
+CF,club de fútbol
+CGAC,centro gallego de arte contemporánea
+CGT,confederación general del trabajo
+CIG,ciga
+CNT,ceneté
+CSIC,consejo superior de investigación científica
+CV,caballos de vapor
+DEP,descanse en paz
+DNI,de ene i,@deneí
+DO, denominación de origen
+DOG,dóga
+DXP,dirección xeral da policía
+DXT,dexeté
+EEUU, estados unidos
+EGB,e ge be
+EH,e ache
+ERC,esquerra republicana de cataluña
+ETT,eteté
+EdeG,esquerda de galicia
+FBI,efe beí
+FEG,federación ecologista gallega
+FM,efe eme
+FMI,fondo monetario internacional
+FP,efe pe
+HB,ache be
+I+D,i más de
+IBM,ibe eme
+IGSV,igué ese uve
+IGVS,instituto gallego de vivenda y suelo
+ILG,instituto de la lengua gallega
+IML,instituto de medicina legal
+INM,instituto nacional de meteorología
+IPC,i pecé
+IRPF,i erre pe efe
+ISBN,i ese be ene
+ISSN,i ese ese ene
+KFOR,kafor
+KGB,kagebé
+KO,kao
+LBRL,lei de bases de régimen local
+LH,lei hipotecaria
+LP,elepé
+LPA,lei de procedimiento administrativo
+LRU,lei de reforma universitaria
+MLNB,movimiento de liberación nacional vasco
+OMC,organización mundial del comercio
+OMS,organización mundial de la salud
+ONG,o ene ge
+#ONGs,o ene ges
+ONGS,o ene ges
+PC,pecé
+PCG,pecegé
+PCLN,partido comunista de liberación nacional
+PGIDT,plan gallego de investigación y desenvolvimiento tecnológico
+PIB,pib
+PNB,producto nacional bruto
+PNG,pe ene ga
+PNV,pe ene uve
+PP,partido popular
+PPdG,@pepe de galicia,pepé de ge
+PPdeG,pepé de ge
+PSC,partido socialista de cataluña
+PSOE,pesoe
+PSdeG,pése degé
+PVP,pe uve pe
+RIP,rip
+RSU,residuos sólidos urbanos
+RTVE,radio televisión española
+RTVG,radio televisión de galicia
+SGAE,sociedad general de autores de españa
+SMI,sistema monetario internacional
+SOS,ese oese
+TAV,tren de alta velocidad
+TC,tribunal constitucional
+TV,televisión
+TVE,televisión española
+TVG,televisión de galicia
+UE,unión europea
+UGT,ugeté
+UHF,u ache efe
+UHT,u ache te
+UPG,upegé
+UUAA,uniones agrarias
+VHF,uve ache efe
+VHS,uve ache ese
+VIH,virus del sida
+WC,uvecé

@@ -111,7 +111,7 @@ class CotoviaPhonemizer(BasePhonemizer):
             return path
 
         # Fallback to bundled binaries
-        local_path = f"{os.path.dirname(os.path.dirname(__file__))}/thirdparty/cotovia/cotovia_{platform.machine()}"
+        local_path = f"{os.path.dirname(os.path.dirname(__file__))}/thirdparty/cotovia/bin/cotovia_{platform.machine()}"
         if os.path.isfile(local_path):
             return local_path
 

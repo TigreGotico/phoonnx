@@ -11,9 +11,9 @@ import onnxruntime
 from langcodes import closest_match
 
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, get_phonemizer
-from phoonnx.phoneme_ids import phonemes_to_ids, BlankBetween
 from phoonnx.phonemizers import Phonemizer
 from phoonnx.phonemizers.base import PhonemizedChunks
+from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
 
@@ -99,11 +99,8 @@ class AudioChunk:
 @dataclass
 class TTSVoice:
     session: onnxruntime.InferenceSession
-
     config: VoiceConfig
-
     phonetic_spellings: Optional[PhoneticSpellings] = None
-
     phonemizer: Optional[Phonemizer] = None
 
     def __post_init__(self):
@@ -116,6 +113,10 @@ class TTSVoice:
                                              self.config.alphabet,
                                              self.config.phonemizer_model)
 
+    @property
+    def tokenizer(self) -> TTSTokenizer:
+        return self.config.tokenizer
+
     @staticmethod
     def load(
             model_path: Union[str, Path],
@@ -124,6 +125,7 @@ class TTSVoice:
             phoneme_map: Optional[str] = None,
             lang_code: Optional[str] = None,
             phoneme_type_str: Optional[str] = None,
+            alphabet_str: Optional[str] = None,
             use_cuda: bool = False
     ) -> "TTSVoice":
         """
@@ -155,6 +157,7 @@ class TTSVoice:
 
         return TTSVoice(
             config=VoiceConfig.from_dict(config_dict,
+                                         alphabet=alphabet_str,
                                          phonemes_txt=phonemes_txt,
                                          lang_code=lang_code,
                                          phoneme_type_str=phoneme_type_str),
@@ -211,18 +214,7 @@ class TTSVoice:
         :param phonemes: List of phonemes (or characters for grapheme models).
         :return: List of phoneme ids.
         """
-        if self.config.phoneme_id_map is None:
-            raise ValueError("self.config.phoneme_id_map is None")
-        return phonemes_to_ids(phonemes, self.config.phoneme_id_map,
-                               blank_token=self.config.blank_token,
-                               bos_token=self.config.bos_token,
-                               eos_token=self.config.eos_token,
-                               word_sep_token=self.config.word_sep_token,
-                               include_whitespace=self.config.include_whitespace,
-                               blank_at_start=self.config.blank_at_start,
-                               blank_at_end=self.config.blank_at_end,
-                               blank_between=BlankBetween.TOKENS_AND_WORDS,
-                               )
+        return self.tokenizer.tokenize(phonemes)
 
     def synthesize(
             self,
@@ -250,7 +242,7 @@ class TTSVoice:
 
         # All phonemization goes through the unified self.phonemize method
         sentence_phonemes = self.phonemize(text)
-        LOG.debug("phonemes=%s", sentence_phonemes)
+        LOG.info("phonemes=%s", sentence_phonemes)
         all_phoneme_ids_for_synthesis = [
             self.phonemes_to_ids(phonemes) for phonemes in sentence_phonemes if phonemes
         ]

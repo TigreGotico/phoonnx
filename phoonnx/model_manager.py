@@ -24,6 +24,7 @@ class TTSModelInfo:
     phoneme_map_url: Optional[str] = None  # json lookup table for phoneme replacement
     config: Optional[VoiceConfig] = None
     phoneme_type: Optional[PhonemeType] = None
+    alphabet: Optional[Alphabet] = None
 
     def __post_init__(self):
         os.makedirs(self.voice_path, exist_ok=True)
@@ -47,14 +48,15 @@ class TTSModelInfo:
 
             self.config.lang_code = self.lang  # sometimes the config is wrong
 
+        if not self.alphabet:
+            self.alphabet = self.config.alphabet
+        else:
+            self.config.alphabet = self.alphabet
+
         if not self.phoneme_type:
             self.phoneme_type = self.config.phoneme_type
         else:
             self.config.phoneme_type = self.phoneme_type
-
-    @property
-    def alphabet(self) -> Alphabet:
-        return self.config.alphabet
 
     @property
     def engine(self) -> Engine:
@@ -100,13 +102,16 @@ class TTSModelInfo:
 
         voice = TTSVoice.load(model_path=model_path,
                               config_path=config_path,
+                              lang_code=self.config.lang_code,
+                              phoneme_type_str=self.config.phoneme_type.value,
+                              alphabet_str=self.config.alphabet.value,
                               phonemes_txt=str(tokens_path) if self.tokens_url else None)
-
         # override phoneme_type, if config.json is wrong
-        if self.phoneme_type != voice.config.phoneme_type:
+        if self.phoneme_type != voice.config.phoneme_type or self.alphabet != voice.config.alphabet:
             voice.phoneme_type = self.phoneme_type
+            voice.config.alphabet = self.alphabet
             voice.phonemizer = get_phonemizer(self.phoneme_type,
-                                              alphabet=voice.config.alphabet,
+                                              alphabet=self.alphabet,
                                               model=voice.config.phonemizer_model)
         return voice
 
@@ -145,6 +150,7 @@ class TTSModelManager:
                                     "lang": voice_info.lang,
                                     "tokens_url": voice_info.tokens_url,
                                     "phoneme_map_url": voice_info.phoneme_map_url,
+                                    "alphabet": voice_info.alphabet,
                                     "config_url": voice_info.config_url}
         self.cache.store()
 
@@ -155,6 +161,7 @@ class TTSModelManager:
                                            "tokens_url": voice_info.tokens_url,
                                            "phoneme_type": voice_info.phoneme_type,
                                            "phoneme_map_url": voice_info.phoneme_map_url,
+                                           "alphabet": voice_info.alphabet,
                                            "lang": voice_info.lang,
                                            "config_url": voice_info.config_url}
 
@@ -178,27 +185,26 @@ class TTSModelManager:
     def get_proxectonos_voice_list(self):
         # NOTE: these are models trained with coqui
         #  we need to explicitly assign phonemizer
-        self.add_voice(TTSModelInfo(
-            voice_id="proxectonos/sabela",
-            lang="gl-ES",
-            model_url="https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/model.onnx",
-            config_url="https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/config.json",
-            phoneme_type=PhonemeType.COTOVIA
-        ))
-        self.add_voice(TTSModelInfo(
-            voice_id="proxectonos/celtia",
-            lang="gl-ES",
-            model_url="https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/model.onnx",
-            config_url="https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/config.json",
-            phoneme_type=PhonemeType.UNICODE  # already the default if not provided for coqui models
-        ))
-        self.add_voice(TTSModelInfo(
-            voice_id="proxectonos/icia",
-            lang="gl-ES",
-            model_url="https://huggingface.co/OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx/resolve/main/model.onnx",
-            config_url="https://huggingface.co/OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx/resolve/main/config.json",
-            phoneme_type=PhonemeType.COTOVIA
-        ))
+        for voice in ["brais", "celtia"]:
+            self.add_voice(TTSModelInfo(
+                voice_id=f"proxectonos/{voice}",
+                lang="gl-ES",
+                model_url=f"https://huggingface.co/OpenVoiceOS/proxectonos-{voice}-vits-graphemes-onnx/resolve/main/model.onnx",
+                config_url=f"https://huggingface.co/OpenVoiceOS/proxectonos-{voice}-vits-graphemes-onnx/resolve/main/config.json",
+                phoneme_type=PhonemeType.GRAPHEMES,
+                alphabet=Alphabet.UNICODE
+            ))
+        for voice in ["sabela", "icia", "paulo", "iago"]:
+            self.add_voice(TTSModelInfo(
+                voice_id=f"proxectonos/{voice}",
+                lang="gl-ES",
+                model_url=f"https://huggingface.co/OpenVoiceOS/proxectonos-{voice}-vits-phonemes-onnx/resolve/main/model.onnx",
+                config_url=f"https://huggingface.co/OpenVoiceOS/proxectonos-{voice}-vits-phonemes-onnx/resolve/main/config.json",
+                phoneme_type=PhonemeType.COTOVIA,
+                alphabet=Alphabet.COTOVIA
+
+            ))
+
 
     def get_piper_voice_list(self):
         base = "https://huggingface.co/rhasspy/piper-voices/resolve/main/"
