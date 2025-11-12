@@ -685,8 +685,17 @@ def is_fraction(word: str) -> bool:
 
 def normalize(text: str, lang: str) -> str:
     """
-    Normalizes a text string by expanding contractions, titles, and pronouncing
-    numbers, units, and fractions.
+    Normalize a text string for speech by expanding contractions and titles and converting dates, times, numbers, units, and fractions into spoken forms.
+    
+    Parameters:
+        text (str): Input text to normalize.
+        lang (str): Locale language tag (e.g., "en", "en-US") that determines language-specific rules.
+    
+    Returns:
+        str: The normalized text with expanded contractions and titles and with dates, times, numbers, units, and fractions converted to their spoken equivalents.
+    
+    Notes:
+        Date and time normalization is attempted for the locale and is silently skipped if unsupported. Numeric formatting may use a locale RBNF engine when available; otherwise a fallback is used.
     """
     full_lang = lang
     lang_code = full_lang.split("-")[0]
