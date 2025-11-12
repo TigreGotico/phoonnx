@@ -279,7 +279,7 @@ class TTSModelManager:
             model = repo.replace('-onnx-kss', '-kss')
             url = f"https://huggingface.co/neurlang/{repo}/resolve/main/{model}.onnx"
             voice = TTSModelInfo(
-                voice_id="piper_" + f"neurlang/{lang}_{repo}",
+                voice_id="piper_" + f"neurlang/{lang}_{repo.replace('piper-onnx-', '')}",
                 lang=lang,
                 model_url=url,
                 config_url=url + ".json",
