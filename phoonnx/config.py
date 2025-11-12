@@ -256,7 +256,7 @@ class VoiceConfig:
             if phonemes_txt.endswith(".txt"):
                 # either from mimic3 models or as an override at runtime
                 with open(phonemes_txt, "r", encoding="utf-8") as ids_file:
-                    tokenizer = TTSTokenizer.from_tokens_txt(phonemes_txt)
+                    tokenizer = TTSTokenizer.from_tokens_txt(ids_file.read())
             elif phonemes_txt.endswith(".json"):
                 with open(phonemes_txt) as ids_file:
                     tokenizer.vocabulary.char2idx = json.load(ids_file)
