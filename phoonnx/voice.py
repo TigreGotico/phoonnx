@@ -143,21 +143,21 @@ class TTSVoice:
             use_cuda: bool = False
     ) -> "TTSVoice":
         """
-            Load a TTS voice ONNX model and its configuration into a TTSVoice instance.
-            
-            Parameters:
-                model_path (str | Path): Path to the ONNX voice model file.
-                config_path (str | Path, optional): Path to the JSON voice configuration. If omitted, defaults to model_path + ".json".
-                phonemes_txt (str, optional): Optional phonemes definition or file content to override the config's phoneme list.
-                phoneme_map (str, optional): Optional phoneme mapping specification or file path used to map phonemes (may be None).
-                lang_code (str, optional): Language code to override or set in the loaded voice configuration.
-                phoneme_type_str (str, optional): Phoneme type identifier to override the configuration (for example, "arpabet" or "ipa").
-                alphabet_str (str, optional): Alphabet override to pass into the VoiceConfig during load.
-                use_cuda (bool): If true, prefer CUDA execution provider for ONNX Runtime; otherwise use the CPU provider.
-            
-            Returns:
-                TTSVoice: A TTSVoice instance prepared with the loaded ONNX session and merged configuration.
-            """
+        Load a TTS voice ONNX model and its configuration into a TTSVoice instance.
+        
+        Parameters:
+            model_path (str | Path): Path to the ONNX voice model file.
+            config_path (str | Path, optional): Path to the JSON voice configuration. If omitted, defaults to model_path + ".json".
+            phonemes_txt (str, optional): Optional phonemes definition or file content to override the config's phoneme list.
+            phoneme_map (str, optional): Optional phoneme mapping specification or file path used to map phonemes (may be None).
+            lang_code (str, optional): Language code to override or set in the loaded voice configuration.
+            phoneme_type_str (str, optional): Phoneme type identifier to override the configuration (for example, "arpabet" or "ipa").
+            alphabet_str (str, optional): Alphabet override to pass into the VoiceConfig during load.
+            use_cuda (bool): If true, prefer CUDA execution provider for ONNX Runtime; otherwise use the CPU provider.
+        
+        Returns:
+            TTSVoice: A TTSVoice instance prepared with the loaded ONNX session and merged configuration.
+        """
         if config_path is None:
             config_path = f"{model_path}.json"
             LOG.debug("Guessing voice config path: %s", config_path)
