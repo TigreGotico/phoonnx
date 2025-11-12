@@ -219,6 +219,45 @@ class TTSModelManager:
         self.cache.store()
 
     # helpers to get official voice models
+    def get_ovos_voice_list(self):
+        phoonnx = [
+            "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone",
+            "OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone",
+            "OpenVoiceOS/phoonnx_eu-ES_miro_espeak",
+            "OpenVoiceOS/phoonnx_eu-ES_dii_espeak",
+            "OpenVoiceOS/phoonnx_ar-SA_miro_espeak_V2",
+            "OpenVoiceOS/phoonnx_ar-SA_dii_espeak",
+            "OpenVoiceOS/phoonnx_sv-SE_miro_espeak",
+            "OpenVoiceOS/phoonnx_da-DK_miro_espeak",
+            "OpenVoiceOS/phoonnx_es-ES_dii_espeak"
+        ]
+        for repo in phoonnx:
+            lang = repo.split("phoonnx_")[-1].split("_")[0]
+            voice = f"miro_{lang}" if "miro" in repo else f"dii_{lang}"
+            self.add_voice(TTSModelInfo(
+                lang=lang,
+                voice_id=repo,
+                model_url=f"https://huggingface.co/{repo}/resolve/main/{voice}.onnx",
+                config_url=f"https://huggingface.co/{repo}/resolve/main/{voice}.json",
+            ))
+
+        piper_ovos = [
+            "en-GB", "pt-BR", "pt-PT", "es-ES", "it-IT",
+            "nl-NL", "de-DE", "fr-FR", "en-US"
+        ]
+        for lang in piper_ovos:
+            for voice in ["miro", "dii"]:
+                repo = f"OpenVoiceOS/pipertts_{lang}_{voice}"
+                try:
+                    self.add_voice(TTSModelInfo(
+                        lang=lang,
+                        voice_id=repo,
+                        model_url=f"https://huggingface.co/{repo}/resolve/main/{voice}_{lang}.onnx",
+                        config_url=f"https://huggingface.co/{repo}/resolve/main/{voice}_{lang}.onnx.json",
+                    ))
+                except Exception:
+                    continue  # not all langs have male + female
+
     def get_proxectonos_voice_list(self):
         # NOTE: these are models trained with coqui
         #  we need to explicitly assign phonemizer
@@ -287,6 +326,56 @@ class TTSModelManager:
             )
             self.add_voice(voice)
 
+    def get_mimic3_voice_list(self):
+        voice_list = "https://raw.githubusercontent.com/MycroftAI/mimic3/refs/heads/master/mimic3_tts/voices.json"
+        r = requests.get(voice_list, timeout=30)
+        r.raise_for_status()
+        mimic3_voices = r.json()
+        for k, v in mimic3_voices.items():
+            try:
+                lang = standardize_tag(k.split("/")[0])
+                speaker_map = {s: idx for idx, s in enumerate(v["speakers"])}
+                config_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/config.json"
+                model_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/generator.onnx"
+                tokens_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/phonemes.txt"
+                phoneme_map_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/phoneme_map.txt"
+                voice_info = TTSModelInfo(
+                    voice_id="mimic3_" + k,
+                    lang=lang,
+                    config_url=config_url,
+                    tokens_url=tokens_url,
+                    model_url=model_url,
+                    phoneme_map_url=phoneme_map_url
+                )
+                voice_info.config.lang = lang
+                voice_info.config.speaker_id_map = speaker_map
+                self.add_voice(voice_info)
+            except Exception as e:
+                LOG.error(f"Failed to get voice info for {k}: {e}")
+
+    def get_phonikud_voice_list(self):
+        # NOTE: trained with piper + raw phonemes
+        #  we need to explicitly assign phonemizer
+        self.add_voice(
+            TTSModelInfo(
+                voice_id="thewh1teagle/phonikud",
+                lang="he",
+                model_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.onnx",
+                config_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.config.json",
+                phoneme_type=PhonemeType.PHONIKUD
+            )
+        )
+        self.add_voice(
+            TTSModelInfo(
+                voice_id="thewh1teagle/phonikud-shaul",
+                lang="he",
+                model_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/shaul.onnx",
+                config_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.config.json",
+                phoneme_type=PhonemeType.PHONIKUD
+            )
+        )
+
+    # community models sourced from around the web
     def get_piper_community_voice_list(self):
         """NOTE: piper often merges models upstream, there will be duplicates when we link the original here"""
         # https://huggingface.co/mbarnig/lb_rhasspy_piper_tts
@@ -342,14 +431,14 @@ class TTSModelManager:
 
         # https://huggingface.co/SubZeroAI/piper-swedish-tts-multispeaker
         # TODO - 401 - needs login and approval in HF
-        #url = f"https://huggingface.co/SubZeroAI/piper-swedish-tts-multispeaker/resolve/main/piper-swedish-tts-multispeaker.onnx"
-        #voice = TTSModelInfo(
+        # url = f"https://huggingface.co/SubZeroAI/piper-swedish-tts-multispeaker/resolve/main/piper-swedish-tts-multispeaker.onnx"
+        # voice = TTSModelInfo(
         #    voice_id="piper_" + "SubZeroAI/sv-SE_multispeaker",
         #    lang="sv-SE",
         #    model_url=url,
         #    config_url=url + ".json",
-        #)
-        #self.add_voice(voice)
+        # )
+        # self.add_voice(voice)
 
         # https://huggingface.co/larcanio/piper-voices
         url = f"https://huggingface.co/larcanio/piper-voices/resolve/main/es_AR-daniela-high.onnx"
@@ -743,7 +832,6 @@ class TTSModelManager:
             )
             self.add_voice(voice)
 
-
         # TODO - unknown phonemizer type?
         # https://huggingface.co/tiennguyenbnbk/male_vivoice_piper_viphone
 
@@ -752,7 +840,6 @@ class TTSModelManager:
         # https://huggingface.co/BibEBobberson/Piper
         # https://huggingface.co/Beesa/Piper_brawlstars
         # https://huggingface.co/BornSaint/piper-TTS
-
 
         # https://huggingface.co/HirCoir/Piper-TTS-Laura
         url = f"https://huggingface.co/HirCoir/Piper-TTS-Laura/resolve/main/es_MX-laura-high.onnx"
@@ -788,94 +875,6 @@ class TTSModelManager:
     def get_coqui_community_voice_list(self):
         pass  # placeholder
 
-    def get_mimic3_voice_list(self):
-        voice_list = "https://raw.githubusercontent.com/MycroftAI/mimic3/refs/heads/master/mimic3_tts/voices.json"
-        r = requests.get(voice_list, timeout=30)
-        r.raise_for_status()
-        mimic3_voices = r.json()
-        for k, v in mimic3_voices.items():
-            try:
-                lang = standardize_tag(k.split("/")[0])
-                speaker_map = {s: idx for idx, s in enumerate(v["speakers"])}
-                config_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/config.json"
-                model_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/generator.onnx"
-                tokens_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/phonemes.txt"
-                phoneme_map_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/phoneme_map.txt"
-                voice_info = TTSModelInfo(
-                    voice_id="mimic3_" + k,
-                    lang=lang,
-                    config_url=config_url,
-                    tokens_url=tokens_url,
-                    model_url=model_url,
-                    phoneme_map_url=phoneme_map_url
-                )
-                voice_info.config.lang = lang
-                voice_info.config.speaker_id_map = speaker_map
-                self.add_voice(voice_info)
-            except Exception as e:
-                LOG.error(f"Failed to get voice info for {k}: {e}")
-
-    def get_ovos_voice_list(self):
-        phoonnx = [
-            "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone",
-            "OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone",
-            "OpenVoiceOS/phoonnx_eu-ES_miro_espeak",
-            "OpenVoiceOS/phoonnx_eu-ES_dii_espeak",
-            "OpenVoiceOS/phoonnx_ar-SA_miro_espeak_V2",
-            "OpenVoiceOS/phoonnx_ar-SA_dii_espeak",
-            "OpenVoiceOS/phoonnx_sv-SE_miro_espeak",
-            "OpenVoiceOS/phoonnx_da-DK_miro_espeak",
-            "OpenVoiceOS/phoonnx_es-ES_dii_espeak"
-        ]
-        for repo in phoonnx:
-            lang = repo.split("phoonnx_")[-1].split("_")[0]
-            voice = f"miro_{lang}" if "miro" in repo else f"dii_{lang}"
-            self.add_voice(TTSModelInfo(
-                lang=lang,
-                voice_id=repo,
-                model_url=f"https://huggingface.co/{repo}/resolve/main/{voice}.onnx",
-                config_url=f"https://huggingface.co/{repo}/resolve/main/{voice}.json",
-            ))
-
-        piper_ovos = [
-            "en-GB", "pt-BR", "pt-PT", "es-ES", "it-IT",
-            "nl-NL", "de-DE", "fr-FR", "en-US"
-        ]
-        for lang in piper_ovos:
-            for voice in ["miro", "dii"]:
-                repo = f"OpenVoiceOS/pipertts_{lang}_{voice}"
-                try:
-                    self.add_voice(TTSModelInfo(
-                        lang=lang,
-                        voice_id=repo,
-                        model_url=f"https://huggingface.co/{repo}/resolve/main/{voice}_{lang}.onnx",
-                        config_url=f"https://huggingface.co/{repo}/resolve/main/{voice}_{lang}.onnx.json",
-                    ))
-                except Exception:
-                    continue  # not all langs have male + female
-
-    def get_phonikud_voice_list(self):
-        # NOTE: trained with piper + raw phonemes
-        #  we need to explicitly assign phonemizer
-        self.add_voice(
-            TTSModelInfo(
-                voice_id="thewh1teagle/phonikud",
-                lang="he",
-                model_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.onnx",
-                config_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.config.json",
-                phoneme_type=PhonemeType.PHONIKUD
-            )
-        )
-        self.add_voice(
-            TTSModelInfo(
-                voice_id="thewh1teagle/phonikud-shaul",
-                lang="he",
-                model_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/shaul.onnx",
-                config_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.config.json",
-                phoneme_type=PhonemeType.PHONIKUD
-            )
-        )
-
 
 if __name__ == "__main__":
     manager = TTSModelManager()
@@ -887,8 +886,8 @@ if __name__ == "__main__":
     print(f"Total voices: {len(manager.all_voices)}")
     print(f"Total langs: {len(manager.supported_langs)}")
 
-    # Total voices: 214
-    # Total langs: 60
+    # Total voices: 284
+    # Total langs: 67
 
     for voice in manager.get_lang_voices('pt-PT'):
         print(voice)
@@ -905,10 +904,11 @@ if __name__ == "__main__":
     # TTSModelInfo(voice_id='piper_pt_BR-jeff-medium', lang='pt-BR', model_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/jeff/medium/pt_BR-jeff-medium.onnx', config_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/jeff/medium/pt_BR-jeff-medium.onnx.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=1, num_langs=1, sample_rate=22050, lang_code='pt-BR', phoneme_id_map={'_': [0], '^': [1], '$': [2], ' ': [3], '!': [4], "'": [5], '(': [6], ')': [7], ',': [8], '-': [9], '.': [10], ':': [11], ';': [12], '?': [13], 'a': [14], 'b': [15], 'c': [16], 'd': [17], 'e': [18], 'f': [19], 'h': [20], 'i': [21], 'j': [22], 'k': [23], 'l': [24], 'm': [25], 'n': [26], 'o': [27], 'p': [28], 'q': [29], 'r': [30], 's': [31], 't': [32], 'u': [33], 'v': [34], 'w': [35], 'x': [36], 'y': [37], 'z': [38], 'æ': [39], 'ç': [40], 'ð': [41], 'ø': [42], 'ħ': [43], 'ŋ': [44], 'œ': [45], 'ǀ': [46], 'ǁ': [47], 'ǂ': [48], 'ǃ': [49], 'ɐ': [50], 'ɑ': [51], 'ɒ': [52], 'ɓ': [53], 'ɔ': [54], 'ɕ': [55], 'ɖ': [56], 'ɗ': [57], 'ɘ': [58], 'ə': [59], 'ɚ': [60], 'ɛ': [61], 'ɜ': [62], 'ɞ': [63], 'ɟ': [64], 'ɠ': [65], 'ɡ': [66], 'ɢ': [67], 'ɣ': [68], 'ɤ': [69], 'ɥ': [70], 'ɦ': [71], 'ɧ': [72], 'ɨ': [73], 'ɪ': [74], 'ɫ': [75], 'ɬ': [76], 'ɭ': [77], 'ɮ': [78], 'ɯ': [79], 'ɰ': [80], 'ɱ': [81], 'ɲ': [82], 'ɳ': [83], 'ɴ': [84], 'ɵ': [85], 'ɶ': [86], 'ɸ': [87], 'ɹ': [88], 'ɺ': [89], 'ɻ': [90], 'ɽ': [91], 'ɾ': [92], 'ʀ': [93], 'ʁ': [94], 'ʂ': [95], 'ʃ': [96], 'ʄ': [97], 'ʈ': [98], 'ʉ': [99], 'ʊ': [100], 'ʋ': [101], 'ʌ': [102], 'ʍ': [103], 'ʎ': [104], 'ʏ': [105], 'ʐ': [106], 'ʑ': [107], 'ʒ': [108], 'ʔ': [109], 'ʕ': [110], 'ʘ': [111], 'ʙ': [112], 'ʛ': [113], 'ʜ': [114], 'ʝ': [115], 'ʟ': [116], 'ʡ': [117], 'ʢ': [118], 'ʲ': [119], 'ˈ': [120], 'ˌ': [121], 'ː': [122], 'ˑ': [123], '˞': [124], 'β': [125], 'θ': [126], 'χ': [127], 'ᵻ': [128], 'ⱱ': [129], '0': [130], '1': [131], '2': [132], '3': [133], '4': [134], '5': [135], '6': [136], '7': [137], '8': [138], '9': [139], '̧': [140], '̃': [141], '̪': [142], '̯': [143], '̩': [144], 'ʰ': [145], 'ˤ': [146], 'ε': [147], '↓': [148], '#': [149], '"': [150], '↑': [151], '̺': [152], '̻': [153], 'g': [154], 'ʦ': [155], 'X': [156], '̝': [157], '̊': [158], 'ɝ': [159], 'ʷ': [160]}, phoneme_type=<PhonemeType.ESPEAK: 'espeak'>, alphabet=<Alphabet.IPA: 'ipa'>, phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine=<Engine.PIPER: 'piper'>, length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token='_', blank_token='_', bos_token='^', eos_token='$', word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.ESPEAK: 'espeak'>)
 
     print(manager.supported_langs)
-    # ['af-ZA', 'ar-JO', 'bn', 'ca-ES', 'cs-CZ', 'cy-GB', 'da-DK', 'de-DE', 'el-GR', 'en-GB', 'en-US', 'es-AR',
-    # 'es-ES', 'es-MX', 'fa', 'fa-IR', 'fi-FI', 'fr-FR', 'gl-ES', 'gu-IN', 'ha-NE', 'he', 'hi-IN', 'hu-HU', 'id-ID',
-    # 'is-IS', 'it-IT', 'jv-ID', 'ka-GE', 'kk-KZ', 'ko-KO', 'lb-LU', 'lv-LV', 'ml-IN', 'ne-NP', 'nl', 'nl-BE', 'nl-NL',
-    # 'no-NO', 'pl-PL', 'pt-BR', 'pt-PT', 'ro-RO', 'ru-RU', 'sk-SK', 'sl-SI', 'sr-RS', 'sv-SE', 'sw', 'sw-CD',
-    # 'te-IN', 'tn-ZA', 'tr-TR', 'uk-GB', 'uk-UA', 'vi-VN', 'yo', 'zh-CN']
+    # ['af-ZA', 'ar', 'ar-JO', 'ar-SA', 'bg-BG', 'bn', 'ca-ES', 'cs-CZ', 'cy-GB', 'da-DK', 'de-DE', 'el-GR', 'en',
+    # 'en-GB', 'en-IE', 'en-US', 'es-AR', 'es-ES', 'es-MX', 'eu-ES', 'fa', 'fa-IR', 'fi-FI', 'fr-FR', 'gl-ES', 'gu-IN',
+    # 'ha-NE', 'he', 'hi-IN', 'hu-HU', 'hy-AM', 'id-ID', 'is-IS', 'it-IT', 'jv-ID', 'ka-GE', 'kk-KZ', 'ko-KO', 'lb-LU',
+    # 'lv-LV', 'ml-IN', 'ne-NP', 'nl', 'nl-BE', 'nl-NL', 'no-NO', 'pl-PL', 'pt-BR', 'pt-PT', 'ro-RO', 'ru-RU', 'sk-SK',
+    # 'sl-SI', 'sr-RS', 'sv-SE', 'sw', 'sw-CD', 'tdt-TL', 'te-IN', 'tn-ZA', 'tr-TR', 'uk-GB', 'uk-UA', 'vi-VN', 'yo',
+    # 'zh-CN', 'zh-TW']
 
     manager.all_voices[0].load()
