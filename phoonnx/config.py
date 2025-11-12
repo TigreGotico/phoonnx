@@ -285,8 +285,8 @@ class VoiceConfig:
             diacritics = lang_code.startswith("ar")
             phoneme_type_str = phoneme_type_str or config.get("phoneme_type", PhonemeType.ESPEAK.value)
             if phoneme_type_str == "text":
-                phoneme_type_str = phoneme_type_str or PhonemeType.UNICODE.value
-                alphabet = alphabet or Alphabet.UNICODE
+                phoneme_type_str = PhonemeType.UNICODE.value
+                alphabet = Alphabet.UNICODE
             else:
                 alphabet = alphabet or Alphabet.IPA
 
@@ -315,8 +315,8 @@ class VoiceConfig:
             if phoneme_type_str == "symbols":
                 # Mimic3 "symbols" models are grapheme models
                 # symbol map comes from phonemes_txt
-                phoneme_type_str = phoneme_type_str or PhonemeType.GRAPHEMES.value
-                alphabet = alphabet or Alphabet.UNICODE
+                phoneme_type_str = PhonemeType.GRAPHEMES.value
+                alphabet = Alphabet.UNICODE
             else:
                 alphabet = alphabet or Alphabet.IPA
 
