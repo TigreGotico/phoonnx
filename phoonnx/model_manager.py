@@ -208,6 +208,11 @@ class TTSModelManager:
         return [v[0] for v in voices if v[1] < 10]
 
     def refresh_voices(self):
+        """
+        Refresh the in-memory voice catalog from all known sources and persist the updated cache.
+        
+        This repopulates the manager's voices by fetching entries from the configured sources (official and community manifests) and then stores the resulting voice metadata to the persistent cache.
+        """
         self.get_ovos_voice_list()
         self.get_proxectonos_voice_list()
         self.get_piper_voice_list()
@@ -220,6 +225,11 @@ class TTSModelManager:
 
     # helpers to get official voice models
     def get_ovos_voice_list(self):
+        """
+        Register OpenVoiceOS phoonnx and Piper TTS voices into the manager's voice catalog.
+        
+        Adds TTSModelInfo entries for a hardcoded set of phoonnx Hugging Face repositories and for a set of common Piper languages. For each entry the method constructs model and config URLs pointing to the repository's main branch on Hugging Face and calls add_voice to register the voice. Missing voice variants are skipped silently.
+        """
         phoonnx = [
             "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone",
             "OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone",
@@ -262,9 +272,9 @@ class TTSModelManager:
         # NOTE: these are models trained with coqui
         #  we need to explicitly assign phonemizer
         """
-        Add Proxectonos voice entries (Galician) to the manager's registry.
+        Add Proxectonos (Galician) TTS model entries to the manager.
         
-        Adds two grapheme-based voices ("brais", "celtia") with PhonemeType.GRAPHEMES and Alphabet.UNICODE, and four phoneme-based voices ("sabela", "icia", "paulo", "iago") with PhonemeType.COTOVIA and Alphabet.COTOVIA. Each entry uses model and config URLs from the OpenVoiceOS Proxectonos Hugging Face repositories and is registered via add_voice.
+        Adds two grapheme-based voices ("brais", "celtia") with PhonemeType.GRAPHEMES and Alphabet.UNICODE, and four phoneme-based voices ("sabela", "icia", "paulo", "iago") with PhonemeType.COTOVIA and Alphabet.COTOVIA. Each entry includes model and config URLs pointing to the corresponding OpenVoiceOS Proxectonos Hugging Face repositories.
         """
         for voice in ["brais", "celtia"]:
             self.add_voice(TTSModelInfo(
@@ -309,6 +319,11 @@ class TTSModelManager:
                 print(f"Failed to get voice info for {v['key']}")
 
     def get_neurlang_voice_list(self):
+        """
+        Populate the manager with a fixed set of NeurLang Piper voices.
+        
+        Adds four NeurLang Piper TTSModelInfo entries (Arabic, British English, Slovak, Korean), each configured to use the `GORUUT` phoneme type and stored under voice IDs prefixed with `piper_neurlang/`.
+        """
         for repo, lang in [
             ("piper-onnx-zayd0-arabic-diacritized", "ar"),
             ("piper-onnx-jane-eyre-english-british", "en-GB"),
@@ -327,6 +342,11 @@ class TTSModelManager:
             self.add_voice(voice)
 
     def get_mimic3_voice_list(self):
+        """
+        Fetch and register Mimic3 TTS voices from Mycroft's voices manifest.
+        
+        Fetches the remote Mimic3 voices manifest, constructs TTSModelInfo entries for each voice (including config, model, tokens, and phoneme map URLs), sets the voice's language and speaker_id_map, and adds the voice to the manager. Individual voice failures are logged and do not interrupt processing.
+        """
         voice_list = "https://raw.githubusercontent.com/MycroftAI/mimic3/refs/heads/master/mimic3_tts/voices.json"
         r = requests.get(voice_list, timeout=30)
         r.raise_for_status()
@@ -356,6 +376,11 @@ class TTSModelManager:
     def get_phonikud_voice_list(self):
         # NOTE: trained with piper + raw phonemes
         #  we need to explicitly assign phonemizer
+        """
+        Register Phonikud-trained Hebrew Piper voices in the manager's catalog.
+        
+        Adds two TTSModelInfo entries for Phonikud-based Hebrew voices and marks them with PhonemeType.PHONIKUD so the phonemizer is assigned explicitly.
+        """
         self.add_voice(
             TTSModelInfo(
                 voice_id="thewh1teagle/phonikud",
@@ -377,7 +402,11 @@ class TTSModelManager:
 
     # community models sourced from around the web
     def get_piper_community_voice_list(self):
-        """NOTE: piper often merges models upstream, there will be duplicates when we link the original here"""
+        """
+        Register a collection of community-sourced Piper TTS voices into the manager.
+        
+        Adds hardcoded Piper community voice entries (voice_id, lang, model_url, config_url) to the manager by calling self.add_voice. Some entries may require Hugging Face authentication or special handling (archives, nested archives), and duplicate models can appear because Piper models are sometimes merged upstream.
+        """
         # https://huggingface.co/mbarnig/lb_rhasspy_piper_tts
         for voice in ["androgynous", "femaleLOD", "marylux"]:
             url = f"https://huggingface.co/mbarnig/lb_rhasspy_piper_tts/resolve/main/lb/lb_LU/{voice}/medium/lb_LU-{voice}-medium.onnx"
@@ -873,6 +902,11 @@ class TTSModelManager:
         # https://huggingface.co/HirCoir/piper-voice-es_MX-Cortana-CE-Legacy
 
     def get_coqui_community_voice_list(self):
+        """
+        Add Coqui community voice entries to the manager.
+        
+        This method is a placeholder and currently performs no action. Intended to discover Coqui community TTS model manifests and add corresponding TTSModelInfo entries to self.voices when implemented.
+        """
         pass  # placeholder
 
 
