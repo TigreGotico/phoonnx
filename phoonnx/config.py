@@ -259,7 +259,7 @@ class VoiceConfig:
                 with open(phonemes_txt, "r", encoding="utf-8") as ids_file:
                     tokenizer = TTSTokenizer.from_tokens_txt(ids_file.read())
             elif phonemes_txt.endswith(".json"):
-                with open(phonemes_txt) as ids_file:
+                with open(phonemes_txt, "r", encoding="utf-8") as ids_file:
                     tokenizer.vocabulary.char2idx = json.load(ids_file)
 
         if VoiceConfig.is_phoonnx(config):

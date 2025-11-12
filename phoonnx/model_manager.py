@@ -66,7 +66,7 @@ class TTSModelInfo:
     @property
     def engine(self) -> Engine:
         """
-        Return the Engine instance used by this voice's configuration.
+        Return the Engine type used by this voice's configuration.
         
         Returns:
             Engine: The engine configured for this voice.
