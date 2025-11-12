@@ -1,20 +1,12 @@
 # Changelog
 
-## [0.5.4a1](https://github.com/TigreGotico/phoonnx/tree/0.5.4a1) (2025-11-06)
+## [1.0.0a1](https://github.com/TigreGotico/phoonnx/tree/1.0.0a1) (2025-11-12)
 
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.3a1...0.5.4a1)
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.4...1.0.0a1)
 
-**Merged pull requests:**
+**Breaking changes:**
 
-- fix: opm voice handling [\#67](https://github.com/TigreGotico/phoonnx/pull/67) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.5.3a1](https://github.com/TigreGotico/phoonnx/tree/0.5.3a1) (2025-11-05)
-
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.2...0.5.3a1)
-
-**Merged pull requests:**
-
-- add OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx [\#65](https://github.com/TigreGotico/phoonnx/pull/65) ([JarbasAl](https://github.com/JarbasAl))
+- refactor!: tokenizer class + deprecate phoneme\_ids.py [\#70](https://github.com/TigreGotico/phoonnx/pull/70) ([JarbasAl](https://github.com/JarbasAl))
 
 
 
