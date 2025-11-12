@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0a1](https://github.com/TigreGotico/phoonnx/tree/1.1.0a1) (2025-11-12)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.0.0a1...1.1.0a1)
+
+**Merged pull requests:**
+
+- feat: community piper voices + pygoruut support [\#73](https://github.com/TigreGotico/phoonnx/pull/73) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.0.0a1](https://github.com/TigreGotico/phoonnx/tree/1.0.0a1) (2025-11-12)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/0.5.4...1.0.0a1)
