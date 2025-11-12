@@ -214,13 +214,15 @@ class Vocabulary:
     @staticmethod
     def from_phoonnx_config(cfg: Dict[str, Any]) -> 'Vocabulary':
         """
-        Creates a Vocabulary instance from a phoonnx configuration dictionary.
-
+        Builds a Vocabulary from a phoonnx configuration dictionary.
+        
         Parameters:
-            cfg: The phoonnx configuration dictionary.
-
+            cfg (Dict[str, Any]): Configuration mapping expected to contain "phoneme_id_map"
+                (mapping phoneme strings to integer IDs). Optional keys "pad", "eos", "bos",
+                and "blank" override the corresponding special token names; defaults are used when absent.
+        
         Returns:
-            A Vocabulary instance.
+            Vocabulary: Vocabulary populated with the parsed char-to-index map and configured special tokens.
         """
         char2idx: Dict[str, int] = cfg.get("phoneme_id_map", {})
         pad: Optional[str] = cfg.get("pad") or DEFAULT_PAD_TOKEN
@@ -253,14 +255,14 @@ class Vocabulary:
     @staticmethod
     def from_mimic3_config(cfg: Dict[str, Any], tokens_txt: str) -> 'Vocabulary':
         """
-        Creates a Vocabulary instance from a Mimic3 configuration dictionary and a tokens.txt content.
-
+        Build a Vocabulary from a Mimic3 configuration dictionary and the contents of a tokens.txt file.
+        
         Parameters:
-            cfg: The Mimic3 configuration dictionary.
-            tokens_txt: The content of the tokens.txt file, mapping IDs to tokens.
-
+            cfg (Dict[str, Any]): Mimic3 configuration dict; special token names are read from the "phonemes" section.
+            tokens_txt (str): Raw text of a tokens.txt file that maps token strings to numeric IDs.
+        
         Returns:
-            A Vocabulary instance.
+            Vocabulary: A Vocabulary populated from the tokens file with special tokens (pad, bos, eos, blank, blank_word) set from the configuration when present.
         """
         voc: 'Vocabulary' = Vocabulary.from_tokens_txt(tokens_txt)
         voc.pad = cfg.get("phonemes", {}).get("pad") or cfg.get("phonemes", {}).get("phoneme_separator")
@@ -294,18 +296,21 @@ class Vocabulary:
     @staticmethod
     def from_coqui_config(cfg: Dict[str, Any]) -> 'Vocabulary':
         """
-        Creates a Vocabulary instance from a Coqui TTS configuration dictionary.
-
-        This method handles different character class formats used in Coqui (VitsCharacters, Graphemes).
-
+        Build a Vocabulary from a Coqui TTS configuration dictionary.
+        
+        Supports Coqui character classes `TTS.tts.models.vits.VitsCharacters` and
+        `TTS.tts.utils.text.characters.Graphemes`; maps configured characters, punctuations,
+        and special tokens (pad, bos, eos, blank) to integer IDs according to Coqui's settings.
+        
         Parameters:
-            cfg: The Coqui configuration dictionary.
-
+            cfg (Dict[str, Any]): Coqui TTS configuration dictionary containing a "characters" section.
+        
         Returns:
-            A Vocabulary instance.
-
+            Vocabulary: A Vocabulary whose char2idx maps each token to its index and whose
+            special-token fields (pad, eos, bos, blank) are set from the configuration.
+        
         Raises:
-            ValueError: If an unsupported Coqui tokenizer class is found.
+            ValueError: If the configuration specifies an unsupported Coqui tokenizer class.
         """
         characters_cfg: Dict[str, Any] = cfg.get("characters", {})
         pad: Optional[str] = characters_cfg.get("pad")
@@ -351,77 +356,71 @@ class Vocabulary:
 
     @property
     def idx2char(self) -> Dict[int, str]:
-        """Returns the inverse mapping of ID to character."""
+        """
+        Map token IDs to their corresponding characters.
+        
+        Returns:
+            idx2char (Dict[int, str]): A dictionary mapping each token ID to its character.
+        """
         return {idx: char for char, idx in self.char2idx.items()}
 
     @property
     def pad_id(self) -> Optional[int]:
         """
-        Returns the ID for the **padding character**.
-
-        If a padding character is defined, returns its corresponding ID from the vocabulary.
-        Returns `None` if the padding token is not defined or not in the vocabulary.
-
+        Get the vocabulary ID for the padding token.
+        
         Returns:
-            Optional[int]: The ID of the padding character or None.
+            Optional[int]: The padding token's ID if a padding token is defined and present in the vocabulary, `None` otherwise.
         """
         return self.char2idx.get(self.pad) if self.pad else None
 
     @property
     def blank_id(self) -> Optional[int]:
         """
-        Returns the ID of the **blank token** (inter-phoneme blank) in the vocabulary.
-
-        Returns `None` if the blank token is not defined or not in the vocabulary.
-
+        Get the vocabulary ID for the blank (inter-phoneme) token.
+        
         Returns:
-            Optional[int]: The ID of the blank token or None.
+            The ID of the blank token, or `None` if the blank token is not defined or not present in the vocabulary.
         """
         return self.char2idx.get(self.blank) if self.blank else None
 
     @property
     def blank_word_id(self) -> Optional[int]:
         """
-        Returns the ID of the **word-level blank token** (separator between words) in the vocabulary.
-
-        Returns `None` if the word blank token is not defined or not in the vocabulary.
-
+        Return the ID of the word-level blank token used to separate words.
+        
         Returns:
-            Optional[int]: The ID of the word blank token or None.
+            Optional[int]: The ID of the word blank token, or `None` if it is not defined or not present in the vocabulary.
         """
         return self.char2idx.get(self.blank_word) if self.blank_word else None
 
     @property
     def eos_id(self) -> Optional[int]:
         """
-        Returns the ID for the **end-of-sequence (EOS) token**.
-
-        Returns `None` if the EOS token is not defined or not in the vocabulary.
-
+        Get the ID of the end-of-sequence (EOS) token.
+        
         Returns:
-            Optional[int]: The ID of the end-of-sequence token or None.
+            Optional[int]: The EOS token ID, or `None` if the EOS token is not set or not found in the vocabulary.
         """
         return self.char2idx.get(self.eos) if self.eos else None
 
     @property
     def bos_id(self) -> Optional[int]:
         """
-        Returns the ID for the **beginning-of-sequence (BOS) token**.
-
-        Returns `None` if the BOS token is not defined or not in the vocabulary.
-
+        Get the vocabulary ID for the beginning-of-sequence (BOS) token.
+        
         Returns:
-            Optional[int]: The vocabulary ID for the beginning-of-sequence token or None.
+            bos_id (Optional[int]): The ID for the BOS token if defined and present in the vocabulary, `None` otherwise.
         """
         return self.char2idx.get(self.bos) if self.bos else None
 
     @property
     def num_chars(self) -> int:
         """
-        Returns the total number of characters in the vocabulary.
-
+        Return the number of entries in the vocabulary.
+        
         Returns:
-            int: The number of unique characters in the vocabulary.
+            int: Number of mapped characters (length of char2idx).
         """
         return len(self.char2idx)
 
@@ -442,37 +441,45 @@ class TTSTokenizer:
 
     @property
     def pad_id(self) -> Optional[int]:
-        """Returns the ID for the padding character from the vocabulary, or None."""
+        """
+        Get the padding token ID from the vocabulary.
+        
+        Returns:
+            int or None: ID of the padding token if defined, otherwise None.
+        """
         return self.vocabulary.pad_id
 
     @property
     def blank_id(self) -> Optional[int]:
-        """Returns the ID for the inter-phoneme blank token from the vocabulary, or None."""
+        """
+        Get the vocabulary ID used as the inter-phoneme blank token.
+        
+        Returns:
+            int: ID of the inter-phoneme blank token, or `None` if the token is not defined.
+        """
         return self.vocabulary.blank_id
 
     @property
     def blank_word_id(self) -> Optional[int]:
-        """Returns the ID for the inter-word blank token from the vocabulary, or None."""
+        """
+        Get the token ID used for word-level blanks from the tokenizer's vocabulary.
+        
+        Returns:
+            blank_word_id (Optional[int]): The ID of the inter-word blank token, or None if not defined.
+        """
         return self.vocabulary.blank_word_id
 
     def encode(self, text: Union[str, List[str]]) -> List[int]:
         """
-        Encode a string of text into a sequence of token IDs based on the character vocabulary.
-
-        This method converts each character in the input text to its corresponding token ID.
-        If `add_blank_word` is enabled and the character is a space (" "), it is mapped to
-        the `blank_word_id`. Characters not found in the vocabulary are mapped to `None`
-        and logged as a warning for the first occurrence.
-
+        Map input characters (string or list of single-character strings) to their vocabulary token IDs.
+        
+        If `add_blank_word` is enabled, space characters are mapped to the vocabulary's blank-word token. Unknown characters are discarded from the returned sequence but their first occurrences are recorded in `self.not_found_characters`. If `add_blank_word` and `blank_at_end` are enabled and a blank-word token exists, a trailing blank-word token is appended.
+        
         Parameters:
-            text (str): The input text to be tokenized.
-
+            text (str | List[str]): Input text as a string or a list of single-character strings to encode.
+        
         Returns:
-            List[int]: A list of token IDs representing the input text.
-
-        Notes:
-            - Out-of-vocabulary characters are silently discarded.
-            - Unique out-of-vocabulary characters are tracked and logged with a debug message.
+            List[int]: Sequence of token IDs corresponding to the input characters, with unknown characters removed.
         """
         token_ids: List[Optional[int]] = []
         for char in text:
@@ -501,19 +508,15 @@ class TTSTokenizer:
 
     def tokenize(self, text: Union[str, List[str]]) -> List[int]:
         """
-        Convert text (phonemes or graphemes) to a sequence of token IDs.
-
-        Applies a series of transformations to the input text:
-        1. **Encoding**: Converts text characters/phonemes to base token IDs (`self.encode`).
-        2. **Inter-character Blank Insertion**: Optionally inserts the blank character (`blank_id`) between tokens.
-        3. **Start/End Blank Insertion**: Optionally prepends/appends a blank character.
-        4. **BOS/EOS Padding**: Optionally adds beginning-of-sequence (BOS) and end-of-sequence (EOS) tokens.
-
+        Map input phonemes or graphemes to a sequence of vocabulary token IDs.
+        
+        Applies optional inter-character blank insertion, optional leading/trailing blank insertion, and optional BOS/EOS padding according to the tokenizer's configuration.
+        
         Parameters:
-            text (str): Input text (phonemes or graphemes) to be converted to token IDs.
-
+            text (str | List[str]): Input text (phonemes or graphemes) or a list of token strings to convert.
+        
         Returns:
-            List[int]: A sequence of token IDs after applying configured transformations.
+            List[int]: Sequence of token IDs after applying the configured transformations.
         """
         token_ids: List[int] = self.encode(text)
 
@@ -531,13 +534,13 @@ class TTSTokenizer:
 
     def pad_with_bos_eos(self, token_sequence: List[int]) -> List[int]:
         """
-        Pad a character sequence with beginning-of-sequence (BOS) and end-of-sequence (EOS) tokens.
-
+        Pad a token sequence with the vocabulary's BOS (beginning-of-sequence) and EOS (end-of-sequence) tokens.
+        
         Parameters:
-            token_sequence (List[int]): A list of character token IDs to be padded.
-
+            token_sequence (List[int]): Sequence of token IDs to wrap.
+        
         Returns:
-            List[int]: A new list with BOS token prepended and EOS token appended to the original sequence.
+            List[int]: A new list with the vocabulary's BOS prepended and EOS appended. If the vocabulary does not define BOS or EOS, returns the original sequence unchanged.
         """
         bos_id = self.vocabulary.bos_id
         eos_id = self.vocabulary.eos_id
@@ -551,16 +554,18 @@ class TTSTokenizer:
 
     def intersperse_blank_char(self, token_sequence: List[int]) -> List[int]:
         """
-        Intersperses the blank character between characters in a sequence.
-
-        This method creates a new sequence where the blank character is inserted between each
-        original character, with optional blank tokens at the beginning and end of the sequence.
-
+        Insert blank tokens between token IDs, optionally adding a leading and/or trailing blank.
+        
+        If the tokenizer's vocabulary has no blank token defined, the original sequence is returned unchanged.
+        The method respects the tokenizer flags `blank_at_start` and `blank_at_end`. When `blank_at_end` is
+        True, a trailing blank will be ensured even if the interleaving logic would not produce one.
+        
         Parameters:
-            token_sequence (List[int]): A list of character IDs to be interspersed with blank tokens.
-
+            token_sequence (List[int]): Sequence of token IDs to intersperse with blank tokens.
+        
         Returns:
-            List[int]: A new sequence with blank tokens inserted according to configuration.
+            List[int]: New sequence with blank token IDs interleaved according to tokenizer configuration,
+            or the original sequence if no blank token is available.
         """
         blank_id = self.vocabulary.blank_id
         if blank_id is None:
@@ -584,13 +589,15 @@ class TTSTokenizer:
     @staticmethod
     def from_phoonnx_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':
         """
-        Factory method to create a TTSTokenizer from a phoonnx configuration.
-
+        Create a TTSTokenizer configured from a phoonnx configuration.
+        
         Parameters:
-            cfg: The phoonnx configuration dictionary.
-
+            cfg (Dict[str, Any]): Phoonnx configuration dictionary used to construct the vocabulary
+                and tokenizer options.
+        
         Returns:
-            A configured TTSTokenizer instance.
+            TTSTokenizer: A tokenizer configured with phoonnx defaults (inter-character blanks enabled,
+            blanks at start and end enabled, BOS/EOS wrapping enabled, and word-blank mapping disabled).
         """
         voc: Vocabulary = Vocabulary.from_phoonnx_config(cfg)
         # Default settings for phoonnx
@@ -606,13 +613,13 @@ class TTSTokenizer:
     @staticmethod
     def from_piper_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':
         """
-        Factory method to create a TTSTokenizer from a Piper configuration.
-
+        Create a TTSTokenizer configured from a Piper configuration.
+        
         Parameters:
-            cfg: The Piper configuration dictionary.
-
+            cfg (Dict[str, Any]): Piper configuration dictionary containing phoneme/token mappings and optional special token names.
+        
         Returns:
-            A configured TTSTokenizer instance.
+            TTSTokenizer: Tokenizer configured with the Vocabulary derived from `cfg` and Piper-oriented defaults for blank and BOS/EOS handling.
         """
         voc: Vocabulary = Vocabulary.from_piper_config(cfg)
         # Default settings for Piper
@@ -659,14 +666,15 @@ class TTSTokenizer:
     @staticmethod
     def from_tokens_txt(tokens_txt: str) -> 'TTSTokenizer':
         """
-        Factory method to create a TTSTokenizer only from a tokens.txt file content,
-        using a set of default settings.
-
+        Create a TTSTokenizer from the contents of a tokens.txt file using conservative defaults.
+        
         Parameters:
-            tokens_txt: The content of the tokens.txt file.
-
+            tokens_txt (str): Contents of a tokens.txt file that maps token strings to IDs.
+        
         Returns:
-            A configured TTSTokenizer instance.
+            TTSTokenizer: A tokenizer built from the parsed vocabulary configured with
+            add_blank_char=True, add_blank_word=True, blank_at_end=True, blank_at_start=True,
+            and use_eos_bos=True.
         """
         voc: Vocabulary = Vocabulary.from_tokens_txt(tokens_txt)
         # Conservative defaults if only tokens.txt is available
@@ -682,13 +690,18 @@ class TTSTokenizer:
     @staticmethod
     def from_coqui_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':
         """
-        Factory method to create a TTSTokenizer from a Coqui configuration.
-
+        Create a TTSTokenizer configured from a Coqui TTS configuration.
+        
+        Interprets the following Coqui config keys:
+        - "add_blank": enable inter-character blank insertion and control blank placement at start/end.
+        - "enable_eos_bos_chars": enable wrapping token sequences with BOS/EOS.
+        This factory does not enable word-level blank mapping (blank_word is False).
+        
         Parameters:
-            cfg: The Coqui configuration dictionary.
-
+            cfg (Dict[str, Any]): Coqui configuration dictionary.
+        
         Returns:
-            A configured TTSTokenizer instance.
+            TTSTokenizer: Tokenizer instance configured according to the provided Coqui config.
         """
         voc: Vocabulary = Vocabulary.from_coqui_config(cfg)
         add_blank_word: bool = False
@@ -707,6 +720,16 @@ if __name__ == "__main__":
 
 
     def _test_mimic3_compat(phone_str: str, cfg_path: str, tokens_path: str) -> None:
+        """
+        Run compatibility checks against Mimic3's phonemes2ids and print tokenization comparisons.
+        
+        Builds a Vocabulary from the provided Mimic3 config and tokens file, then for multiple combinations of blank placement and BOS/EOS usage constructs a TTSTokenizer and prints both the tokenizer's output and the result of Mimic3's phonemes2ids for comparison. Outputs are printed to stdout.
+        
+        Parameters:
+            phone_str (str): Space-separated phoneme string to test (words separated by spaces).
+            cfg_path (str): Path to the Mimic3 JSON configuration file.
+            tokens_path (str): Path to the Mimic3 tokens.txt content file.
+        """
         print("\n## Testing mimic3 compat")
         # test original mimic3 code
         from phonemes2ids import phonemes2ids as mimic3_phonemes2ids

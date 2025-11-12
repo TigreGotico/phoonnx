@@ -104,7 +104,15 @@ class CotoviaPhonemizer(BasePhonemizer):
     @staticmethod
     def find_cotovia() -> str:
         """
-        Attempts to find the cotovia binary in common locations.
+        Locate the Cotovia executable on the system.
+        
+        Searches common locations in this order: the PATH (via `which cotovia`), a bundled binary at
+        thirdparty/cotovia/bin/cotovia_<arch> relative to the package, and `/usr/bin/cotovia`.
+        If none are found, returns the string `"cotovia"` so callers can rely on the system PATH or
+        allow subprocess to raise a FileNotFoundError when invoked.
+        
+        Returns:
+            str: Filesystem path to the Cotovia binary, or the literal `"cotovia"` if not found.
         """
         path = subprocess.run(["which", "cotovia"], capture_output=True, text=True).stdout.strip()
         if path and os.path.isfile(path):
