@@ -213,23 +213,23 @@ class VoiceConfig:
                   phoneme_type_str: Optional[str] = None,
                   alphabet: Optional[str] = None) -> "VoiceConfig":
         """
-                  Create a VoiceConfig from a model configuration dictionary and optional external phoneme data.
-                  
-                  Builds a VoiceConfig by detecting the model engine (PhoonNX, Piper, Mimic3, or Coqui), deriving tokenizer and alphabet, and applying model-specific defaults and inference settings. Provided optional arguments override corresponding values found in the config.
-                  
-                  Parameters:
-                      config (dict[str, Any]): Parsed model configuration dictionary.
-                      phonemes_txt (Optional[str]): Path to an external phonemes file (.txt or .json) used to build or override the tokenizer vocabulary.
-                      lang_code (Optional[str]): Language code to override the config's language selection.
-                      phoneme_type_str (Optional[str]): Phoneme type name to override the config's phoneme_type value.
-                      alphabet (Optional[str]): Alphabet name to override or supply the resulting VoiceConfig alphabet.
-                  
-                  Returns:
-                      VoiceConfig: A populated VoiceConfig instance with tokenizer, alphabet, engine, phoneme_type, inference settings, and token tokens derived from the inputs.
-                  
-                  Raises:
-                      ValueError: If the config is identified as a Mimic3 model but no phonemes_txt is provided.
-                  """
+        Create a VoiceConfig from a model configuration dictionary and optional external phoneme data.
+        
+        Builds a VoiceConfig by detecting the model engine (PhoonNX, Piper, Mimic3, or Coqui), deriving tokenizer and alphabet, and applying model-specific defaults and inference settings. Provided optional arguments override corresponding values found in the config.
+        
+        Parameters:
+            config (dict[str, Any]): Parsed model configuration dictionary.
+            phonemes_txt (Optional[str]): Path to an external phonemes file (.txt or .json) used to build or override the tokenizer vocabulary.
+            lang_code (Optional[str]): Language code to override the config's language selection.
+            phoneme_type_str (Optional[str]): Phoneme type name to override the config's phoneme_type value.
+            alphabet (Optional[str]): Alphabet name to override or supply the resulting VoiceConfig alphabet.
+        
+        Returns:
+            VoiceConfig: A populated VoiceConfig instance with tokenizer, alphabet, engine, phoneme_type, inference settings, and token tokens derived from the inputs.
+        
+        Raises:
+            ValueError: If the config is identified as a Mimic3 model but no phonemes_txt is provided.
+        """
         blank_type = BlankBetween.TOKENS_AND_WORDS
         lang_code = lang_code or config.get("lang_code")
         phoneme_type_str = phoneme_type_str or config.get("phoneme_type")
@@ -404,27 +404,27 @@ def get_phonemizer(phoneme_type: PhonemeType,
                    alphabet: Alphabet = Alphabet.IPA,
                    model: Optional[str] = None) -> 'Phonemizer':
     """
-                   Create a phonemizer instance for the specified phonemeization strategy.
-                   
-                   Parameters:
-                       phoneme_type (PhonemeType): The phonemizer type to instantiate.
-                       alphabet (Alphabet): Alphabet or orthography to pass to phonemizers that require it (defaults to IPA).
-                       model (Optional[str]): Optional model identifier or path used by phonemizers that load external models.
-                   
-                   Returns:
-                       Phonemizer: An instance configured for the requested phonemeization strategy.
-                   
-                   Raises:
-                       ValueError: If the provided `phoneme_type` is not supported.
-                   """
-                   from phoonnx.phonemizers import (EpitranPhonemizer, EspeakPhonemizer, OpenPhonemizer, OpenJTaklPhonemizer,
-                                     ByT5Phonemizer, CharsiuPhonemizer, DeepPhonemizer, PersianPhonemizer,
-                                     G2pCPhonemizer, G2pMPhonemizer, G2PKPhonemizer, G2PEnPhonemizer,
-                                     TransphonePhonemizer, MirandesePhonemizer, GoruutPhonemizer, TugaphonePhonemizer,
-                                     GruutPhonemizer, GraphemePhonemizer, MantoqPhonemizer, MisakiPhonemizer,
-                                     KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
-                                     CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer, XpinyinPhonemizer,
-                                     UnicodeCodepointPhonemizer, JiebaPhonemizer, RawPhonemes)
+    Create a phonemizer instance for the specified phonemeization strategy.
+     
+    Parameters:
+        phoneme_type (PhonemeType): The phonemizer type to instantiate.
+        alphabet (Alphabet): Alphabet or orthography to pass to phonemizers that require it (defaults to IPA).
+        model (Optional[str]): Optional model identifier or path used by phonemizers that load external models.
+     
+    Returns:
+        Phonemizer: An instance configured for the requested phonemeization strategy.
+     
+    Raises:
+        ValueError: If the provided `phoneme_type` is not supported.
+    """
+    from phoonnx.phonemizers import (EpitranPhonemizer, EspeakPhonemizer, OpenPhonemizer, OpenJTaklPhonemizer,
+                       ByT5Phonemizer, CharsiuPhonemizer, DeepPhonemizer, PersianPhonemizer,
+                       G2pCPhonemizer, G2pMPhonemizer, G2PKPhonemizer, G2PEnPhonemizer,
+                       TransphonePhonemizer, MirandesePhonemizer, GoruutPhonemizer, TugaphonePhonemizer,
+                       GruutPhonemizer, GraphemePhonemizer, MantoqPhonemizer, MisakiPhonemizer,
+                       KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
+                       CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer, XpinyinPhonemizer,
+                       UnicodeCodepointPhonemizer, JiebaPhonemizer, RawPhonemes)
     if phoneme_type == PhonemeType.ESPEAK:
         phonemizer = EspeakPhonemizer()
     elif phoneme_type == PhonemeType.BYT5:
