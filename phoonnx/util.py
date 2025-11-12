@@ -694,7 +694,10 @@ def normalize(text: str, lang: str) -> str:
 
     # Step 1: Handle dates and times with ovos-date-parser
     date_format = "MDY" if full_lang.lower() == "en-us" else "DMY"
-    dialog = _normalize_dates_and_times(dialog, full_lang, date_format)
+    try:
+        dialog = _normalize_dates_and_times(dialog, full_lang, date_format)
+    except:  # throws exception on unsupported langs
+        pass
 
     # Step 2: Normalize words with hyphens and digits
     dialog = _normalize_word_hyphen_digit(dialog)

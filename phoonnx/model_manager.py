@@ -210,9 +210,12 @@ class TTSModelManager:
     def refresh_voices(self):
         self.get_ovos_voice_list()
         self.get_proxectonos_voice_list()
-        self.get_phonikud_voice_list()
         self.get_piper_voice_list()
         self.get_mimic3_voice_list()
+        self.get_phonikud_voice_list()
+        self.get_neurlang_voice_list()
+        self.get_piper_community_voice_list()
+        self.get_coqui_community_voice_list()
         self.cache.store()
 
     # helpers to get official voice models
@@ -244,7 +247,6 @@ class TTSModelManager:
 
             ))
 
-
     def get_piper_voice_list(self):
         """
         Fetches the Piper voices manifest from the Rhasspy piper-voices repository and registers each voice in the manager.
@@ -266,6 +268,525 @@ class TTSModelManager:
                 self.add_voice(voice)
             except Exception:
                 print(f"Failed to get voice info for {v['key']}")
+
+    def get_neurlang_voice_list(self):
+        for repo, lang in [
+            ("piper-onnx-zayd0-arabic-diacritized", "ar"),
+            ("piper-onnx-jane-eyre-english-british", "en-GB"),
+            ("piper-onnx-slovakspeech-female-slovak", "sl-SI"),
+            ("piper-onnx-kss-korean", "ko-KO"),
+        ]:
+            model = repo.replace('-onnx-kss', '-kss')
+            url = f"https://huggingface.co/neurlang/{repo}/resolve/main/{model}.onnx"
+            voice = TTSModelInfo(
+                voice_id="piper_" + f"neurlang/{lang}_{repo}",
+                lang=lang,
+                model_url=url,
+                config_url=url + ".json",
+                phoneme_type=PhonemeType.GORUUT
+            )
+            self.add_voice(voice)
+
+    def get_piper_community_voice_list(self):
+        """NOTE: piper often merges models upstream, there will be duplicates when we link the original here"""
+        # https://huggingface.co/mbarnig/lb_rhasspy_piper_tts
+        for voice in ["androgynous", "femaleLOD", "marylux"]:
+            url = f"https://huggingface.co/mbarnig/lb_rhasspy_piper_tts/resolve/main/lb/lb_LU/{voice}/medium/lb_LU-{voice}-medium.onnx"
+            voice = TTSModelInfo(
+                voice_id="piper_" + f"mbarnig/lb-LU_{voice}",
+                lang="lb-LU",
+                model_url=url,
+                config_url=url + ".json",
+            )
+            self.add_voice(voice)
+
+        # https://huggingface.co/superkeka/piper-tts-luka
+        url = f"https://huggingface.co/superkeka/piper-tts-luka/resolve/main/ru/ru_RU/luka/medium/ru_RU-luka-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "superkeka/ru-RU_luka",
+            lang="ru-RU",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/davit312/piper-TTS-Armenian
+        url = f"https://huggingface.co/davit312/piper-TTS-Armenian/resolve/main/v3/hy_AM-gor-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "davit312/hy-AM_gor",
+            lang="hy-AM",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/raphaelmerx/piper-voices
+        url = f"https://huggingface.co/raphaelmerx/piper-voices/resolve/main/tdt/tdt_TL/joao/medium/tdt_TL-joao-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "raphaelmerx/tdt-TL_joao",
+            lang="tdt-TL",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/wezzmeister/piper-voices
+        url = f"https://huggingface.co/wezzmeister/piper-voices/resolve/main/sv_SE-lisa-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "wezzmeister/sv-SE_lisa",
+            lang="sv-SE",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/SubZeroAI/piper-swedish-tts-multispeaker
+        # TODO - 401 - needs login and approval in HF
+        #url = f"https://huggingface.co/SubZeroAI/piper-swedish-tts-multispeaker/resolve/main/piper-swedish-tts-multispeaker.onnx"
+        #voice = TTSModelInfo(
+        #    voice_id="piper_" + "SubZeroAI/sv-SE_multispeaker",
+        #    lang="sv-SE",
+        #    model_url=url,
+        #    config_url=url + ".json",
+        #)
+        #self.add_voice(voice)
+
+        # https://huggingface.co/larcanio/piper-voices
+        url = f"https://huggingface.co/larcanio/piper-voices/resolve/main/es_AR-daniela-high.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "larcanio/es-AR_daniela",
+            lang="es-AR",
+            model_url=url,
+            config_url=url.replace(".onnx", ".json")
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/friyin/vits-piper-es_ES-friyin-high
+        url = f"https://huggingface.co/friyin/vits-piper-es_ES-carlfm-high/resolve/main/es_ES-carlfm-high.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "friyin/es-ES_friyin",
+            lang="es-ES",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/Wiseyak/piper_tts
+        url = f"https://huggingface.co/Wiseyak/piper_tts/resolve/main/ne-seto_bagh-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "Wiseyak/ne-NP_seto_bagh",
+            lang="ne-NP",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/colafly/piper_zh_tw
+        url = f"https://huggingface.co/colafly/piper_zh_tw/resolve/main/yt-chinese_female.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "colafly/zh-TW_yt-chinese_female",
+            lang="zh-TW",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/ppisljar/piper_si_artur
+        url = f"https://huggingface.co/ppisljar/piper_si_artur/resolve/main/model.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "ppisljar/sl-SI_artur",
+            lang="sl-SI",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/giganticlab/piper-id_ID-news_tts-medium
+        url = f"https://huggingface.co/giganticlab/piper-id_ID-news_tts-medium/resolve/main/model.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "giganticlab/id-ID_news",
+            lang="id-ID",
+            model_url=url,
+            config_url=url.replace("model.onnx", "config.json"),
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/phcatan9921/piper_tts
+        url = f"https://huggingface.co/phcatan9921/piper_tts/resolve/main/vi_VN-vais1000-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "phcatan9921/vi-VN_vais1000",
+            lang="vi-VN",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://github.com/phatjkk/vits-tts-vietnamese
+        url = f"https://github.com/phatjkk/vits-tts-vietnamese/raw/refs/heads/main/pretrained_vi.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "phatjkk/vi-VN_InfoRe",
+            lang="vi-VN",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/RaivisDejus/Piper-lv_LV-Aivars-medium
+        url = f"https://huggingface.co/RaivisDejus/Piper-lv_LV-Aivars-medium/resolve/main/lv_LV-aivars-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "RaivisDejus/lv-LV_Aivars",
+            lang="lv-LV",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/PravalX/piper-voices
+        for voice in ["priyamvada", "pratham"]:
+            url = f"https://huggingface.co/PravalX/piper-voices/resolve/main/hi/hi_IN/{voice}/medium/hi_IN-{voice}-medium.onnx"
+            voice = TTSModelInfo(
+                voice_id="piper_" + f"PravalX/hi-IN_{voice}",
+                lang="hi-IN",
+                model_url=url,
+                config_url=url + ".json",
+            )
+            self.add_voice(voice)
+
+        # https://huggingface.co/WitoldG/polish_piper_models
+        for voice in ["jarvis", "justyna", "meski", "zenski"]:
+            url = f"https://huggingface.co/WitoldG/polish_piper_models/resolve/main/pl_PL-{voice}_wg_glos-medium.onnx"
+            voice = TTSModelInfo(
+                voice_id="piper_" + f"WitoldG/pl-PL_{voice}",
+                lang="pl-PL",
+                model_url=url,
+                config_url=url + ".json",
+            )
+            self.add_voice(voice)
+
+        # https://huggingface.co/srxz/sage-voice-pt-br
+        url = "https://huggingface.co/srxz/sage-voice-pt-br/resolve/main/pt_BR-sage_13364-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "srxz/pt-BR_sage",
+            lang="pt-BR",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/Thomcles/Piper-TTS-Czech
+        for qual in ["medium", "high"]:
+            url = f"https://huggingface.co/Thomcles/Piper-TTS-Czech/resolve/main/{qual}/model.onnx"
+            voice = TTSModelInfo(
+                voice_id="piper_" + f"Thomcles/cs-CZ_honza_{qual}",
+                lang="cs-CZ",
+                model_url=url,
+                config_url=url + ".json",
+            )
+            self.add_voice(voice)
+
+        # https://huggingface.co/AsmoKoskinen/Piper_Finnish_Model
+        url = "https://huggingface.co/AsmoKoskinen/Piper_Finnish_Model/resolve/main/fi_FI-asmo-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "AsmoKoskinen/fi-FI_asmo",
+            lang="fi-FI",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/gyroing/Persian-Piper-Model-gyro
+        url = "https://huggingface.co/gyroing/Persian-Piper-Model-gyro/resolve/main/fa_IR-gyro-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "gyroing/fa-IR_gyro",
+            lang="fa-IR",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/mah92/Reza-And-Ibrahim-FA_EN-Piper-TTS-Model
+        url = "https://huggingface.co/mah92/Reza-And-Ibrahim-FA_EN-Piper-TTS-Model/resolve/main/fa_en-rezahedayatfar-ibrahimwalk-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "mah92/fa-IR_Reza-And-Ibrahim",
+            lang="fa-IR",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/Einrich99/PiperTTS-UGO-Italian
+        url = "https://huggingface.co/Einrich99/PiperTTS-UGO-Italian/resolve/main/medium/it_IT-ugo-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "Einrich99/it-IT_ugo",
+            lang="it-IT",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/paolapersico1/Piper-TTS-Italian
+        url = "https://huggingface.co/paolapersico1/Piper-TTS-Italian/resolve/main/paola/medium/it_IT-paola-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "paolapersico1/it-IT_paola",
+            lang="it-IT",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/kirys79/piper_italiano
+        url = f"https://huggingface.co/kirys79/piper_italiano/resolve/main/Aurora/it_IT-aurora-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "kirys79/it-IT_Aurora",
+            lang="it-IT",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+        url = "https://huggingface.co/kirys79/piper_italiano/resolve/main/Giorgio/giorgio-epoch%3D5028-step%3D1098436.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "kirys79/it-IT_Giorgio",
+            lang="it-IT",
+            model_url=url,
+            config_url=url.replace(".onnx", ".json"),
+        )
+        self.add_voice(voice)
+        url = f"https://huggingface.co/kirys79/piper_italiano/resolve/main/Leonardo/leonardo-epoch%3D2024-step%3D996300.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "kirys79/it-IT_Leonardo",
+            lang="it-IT",
+            model_url=url,
+            config_url=url.replace(".onnx", ".json"),
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/nardocolin/nardocolin-pipertts
+        url = "https://huggingface.co/nardocolin/nardocolin-pipertts/resolve/main/high/colin-voice_high.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "nardocolin/en-GB_Colin",
+            lang="en-GB",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/Da-Bob/piper-mikev3
+        url = "https://huggingface.co/Da-Bob/piper-mikev3/resolve/main/mikev3.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "Da-Bob/en-US_mikev3",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/agentvibes/piper-custom-voices
+        for voice, lang in [("kristin", "en-US"), ("jenny", "en-IE"), ("16Speakers", "en")]:
+            url = f"https://huggingface.co/agentvibes/piper-custom-voices/resolve/main/{voice}.onnx"
+            voice = TTSModelInfo(
+                voice_id="piper_" + f"agentvibe/{lang}_{voice}",
+                lang=lang,
+                model_url=url,
+                config_url=url + ".json",
+            )
+            self.add_voice(voice)
+
+        # HAV0X1014/KF-PiperTTS-voices
+        for voice, qual in [("Cheetah", "high"), ("KingCheetah", "medium"), ("silverfox", "medium")]:
+            url = f"https://huggingface.co/HAV0X1014/KF-PiperTTS-voices/resolve/main/{voice}/en_US-{voice.lower()}-{qual}.onnx"
+            voice = TTSModelInfo(
+                voice_id="piper_" + f"agentvibe/en-US_{voice}",
+                lang="en-US",
+                model_url=url,
+                config_url=url + ".json",
+            )
+            self.add_voice(voice)
+
+        # https://huggingface.co/campwill/HAL-9000-Piper-TTS
+        url = "https://huggingface.co/campwill/HAL-9000-Piper-TTS/resolve/main/hal.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "campwill/en-US_HAL-9000",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/redromnon/piper-tts-elise
+        url = "https://huggingface.co/redromnon/piper-tts-elise/resolve/main/en_US-elisa-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "redromnon/en-US_elise",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/poisson-fish/piper-vasco
+        url = "https://huggingface.co/poisson-fish/piper-vasco/resolve/main/onnx/vasco.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "poisson-fish/en-US_vasco",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/rokeya71/VITS-Piper-GlaDOS-en-onnx
+        url = "https://huggingface.co/rokeya71/VITS-Piper-GlaDOS-en-onnx/resolve/main/glados.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "rokeya71/en-US_GlaDOS",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/Aquaaa123/piper-tts-pda-subnautica
+        url = "https://huggingface.co/Aquaaa123/piper-tts-pda-subnautica/resolve/main/pda.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "Aquaaa123/en-US_pda-subnautica",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/drewThomasson/piper_tts_finetune_death_from_puss_and_boots
+        url = "https://huggingface.co/drewThomasson/piper_tts_finetune_death_from_puss_and_boots/resolve/main/en_US-death-high_onnx/en_US-death-high.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + "drewThomasson/en-US_death_from_puss_and_boots",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/samarthshrivas/piper-finetune-Andrew-Huberman
+        url = "https://huggingface.co/samarthshrivas/piper-finetune-Andrew-Huberman/resolve/main/lightning_logs/version_2/checkpoints/epoch%3D2609-step%3D1364440.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + f"samarthshrivas/en-US_Andrew-Huberman",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/swqg-messiah/kusaal_chitti_piper
+        url = "https://huggingface.co/swqg-messiah/kusaal_chitti_piper/resolve/main/chitti.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + f"swqg-messiah/en-US_chitti",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/jstlntch/Scaramouche_or_Wanderer_voice_model_for_piper
+        url = "https://huggingface.co/jstlntch/Scaramouche_or_Wanderer_voice_model_for_piper/resolve/main/model.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + f"jstlntchh/en_Scaramouche",
+            lang="en",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/Rikels/piper-dutch
+        url = "https://huggingface.co/Rikels/piper-dutch/resolve/main/anna.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + f"Rikels/nl-NL_anna",
+            lang="nl-NL",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/systemofapwne/piper-de-glados
+        for qual in ["high", "medium", "low"]:
+            url = f"https://huggingface.co/systemofapwne/piper-de-glados/resolve/main/de/de_DE/glados/{qual}/de_DE-glados-{qual}.onnx"
+            voice = TTSModelInfo(
+                voice_id="piper_" + f"systemofapwne/de-DE_glados_{qual}",
+                lang="de-DE",
+                model_url=url,
+                config_url=url + ".json",
+            )
+            self.add_voice(voice)
+
+            url = f"https://huggingface.co/systemofapwne/piper-de-glados/resolve/main/de/de_DE/glados-turret/{qual}/de_DE-glados-turret-{qual}.onnx"
+            voice = TTSModelInfo(
+                voice_id="piper_" + f"systemofapwne/de-DE_glados-turret_{qual}",
+                lang="de-DE",
+                model_url=url,
+                config_url=url + ".json",
+            )
+            self.add_voice(voice)
+
+        # https://huggingface.co/nullnullvier/kantodel
+        url = "https://huggingface.co/nullnullvier/kantodel/resolve/main/kantodel.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + f"nullnullvier/de-DE_kantodel",
+            lang="de-DE",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/domoskanonos/piper-tts-models
+        for voice, qual in [("domoskanonos", "high"), ("sebastian100", "medium"), ("sebastian121", "medium")]:
+            url = f"https://huggingface.co/domoskanonos/piper-tts-models/resolve/main/de-{voice}-{qual}.onnx"
+            voice = TTSModelInfo(
+                voice_id="piper_" + f"domoskanonos/de-DE_{voice}",
+                lang="de-DE",
+                model_url=url,
+                config_url=url + ".json",
+            )
+            self.add_voice(voice)
+
+
+        # TODO - unknown phonemizer type?
+        # https://huggingface.co/tiennguyenbnbk/male_vivoice_piper_viphone
+
+        # TODO - these models are inside a .tar.gz/.zip and will need special handling
+        # https://huggingface.co/MysticonsLover/PiperWillowbrook
+        # https://huggingface.co/BibEBobberson/Piper
+        # https://huggingface.co/Beesa/Piper_brawlstars
+        # https://huggingface.co/BornSaint/piper-TTS
+
+
+        # https://huggingface.co/HirCoir/Piper-TTS-Laura
+        url = f"https://huggingface.co/HirCoir/Piper-TTS-Laura/resolve/main/es_MX-laura-high.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + f"HirCoir/es-MX_Laura",
+            lang="es-MX",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # TODO - 401 - needs auth and approval in hugging face
+        # https://huggingface.co/HirCoir/HirCoir/piper-emma-neuronal
+        # https://huggingface.co/HirCoir/piper-sorah-neuronal
+        # https://huggingface.co/HirCoir/piper-voice-es-mx-lucas-melor
+        # https://huggingface.co/HirCoir/piper-voice-es-mx-veritasium
+        # https://huggingface.co/HirCoir/piper-voice-es-mx-1peso-de-salsa
+        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-sorah-v2
+        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-sorahv2
+        # https://huggingface.co/HirCoir/piper-checkpoint-es-ar-elena
+        # https://huggingface.co/HirCoir/piper-checkpoint-yiseni
+        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-dark
+        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-maney
+        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-yahir
+        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-1peso-de-salsa
+        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-laurav2
+        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-veritsasium
+        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-lilith
+        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-towi
+        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-cortana-ce-legacy
+        # https://huggingface.co/HirCoir/piper-voice-es_MX-Cortana-CE-Legacy
+
+    def get_coqui_community_voice_list(self):
+        pass  # placeholder
 
     def get_mimic3_voice_list(self):
         voice_list = "https://raw.githubusercontent.com/MycroftAI/mimic3/refs/heads/master/mimic3_tts/voices.json"
@@ -341,6 +862,15 @@ class TTSModelManager:
                 voice_id="thewh1teagle/phonikud",
                 lang="he",
                 model_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.onnx",
+                config_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.config.json",
+                phoneme_type=PhonemeType.PHONIKUD
+            )
+        )
+        self.add_voice(
+            TTSModelInfo(
+                voice_id="thewh1teagle/phonikud-shaul",
+                lang="he",
+                model_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/shaul.onnx",
                 config_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.config.json",
                 phoneme_type=PhonemeType.PHONIKUD
             )

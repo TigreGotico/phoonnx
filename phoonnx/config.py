@@ -288,6 +288,10 @@ class VoiceConfig:
             if phoneme_type_str == "text":
                 phoneme_type_str = PhonemeType.UNICODE.value
                 alphabet = Alphabet.UNICODE
+            elif phoneme_type_str == "pygoruut":
+                # special case: neurlang models
+                phoneme_type_str = PhonemeType.GORUUT.value
+                alphabet = Alphabet.IPA
             else:
                 alphabet = alphabet or Alphabet.IPA
 
