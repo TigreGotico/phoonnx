@@ -800,6 +800,132 @@ class TTSModelManager:
         )
         self.add_voice(voice)
 
+        # https://brycebeattie.com/files/tts
+        for voice, model, lang in [
+            ("LJSpeech-medium", "lj-med", "en-US"),
+            ("LJSpeech-high", "ljspeech", "en-US"),
+            ("Jenny-Dioco", "jenny", "en-GB"),
+            ("Clean100", "clean100", "en-US"),
+            ("Cori-high", "cori-high", "en-GB"),
+            ("Cori-medium", "cori-med", "en-GB"),
+            ("Kristin", "kristin", "en-US"),
+            ("John", "john", "en-US"),
+            ("Bryce", "bryce", "en-US"),
+            ("Norman", "norman", "en-US"),
+            ("ManyVoice", "mv2", "en"),
+        ]:
+            url = f"https://sfo3.digitaloceanspaces.com/bkmdls/{model}.onnx"
+            voice = TTSModelInfo(
+                voice_id="piper_" + f"brycebeattie/{lang}_{voice}",
+                lang=lang,
+                model_url=url,
+                config_url=url + ".json",
+            )
+            self.add_voice(voice)
+
+        # https://github.com/simoniz0r/piper-voice-models
+        for voice in ["bobby", "carl", "eminem", "patrick"]:
+            url = f"https://github.com/simoniz0r/piper-voice-models/releases/download/{voice}/en_US-{voice}-medium.onnx"
+            voice = TTSModelInfo(
+                voice_id="piper_" + f"simoniz0r/en-US_{voice}",
+                lang="en-US",
+                model_url=url,
+                config_url=url + ".json",
+            )
+            self.add_voice(voice)
+
+        # https://github.com/dividebysandwich/piper-voice-models
+        for voice, model in [("Data", "en_US-data_7024-medium"),
+                             ("Picard", "en_US-picard_7399-medium"),
+                             ("HAL9000-denoised", "en_US-hal_6409-medium"),
+                             ("HAL9000-no-denoise", "en_US-hal_12894-medium")]:
+            url = f"https://github.com/dividebysandwich/piper-voice-models/raw/refs/heads/main/{voice}/{model}.onnx"
+            voice = TTSModelInfo(
+                voice_id="piper_" + f"dividebysandwich/en-US_{voice}",
+                lang="en-US",
+                model_url=url,
+                config_url=url + ".json",
+            )
+            self.add_voice(voice)
+
+        # https://huggingface.co/russdill/kronk
+        url = "https://huggingface.co/russdill/kronk/resolve/main/en/en_US/kronk/medium/kronk-medium.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + f"russdill/en-US_kronk",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/davet2001/cave_johnson1
+        url = "https://huggingface.co/davet2001/cave_johnson1/resolve/main/cave_johnson1.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + f"davet2001/en-US_cave_johnson",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/davet2001/wheatley1
+        url = "https://huggingface.co/davet2001/wheatley1/resolve/main/wheatley1.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + f"davet2001/en-US_wheatley",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://github.com/robit-man/combine_overwatch_onnx
+        url = "https://github.com/robit-man/combine_overwatch_onnx/raw/refs/heads/main/overwatch.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + f"robit-man/en-US_overwatch",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://github.com/DJMalachite/PiperVoiceModels
+        url = "https://github.com/DJMalachite/PiperVoiceModels/raw/refs/heads/main/Titanfall2/BT7274/BT7274.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + f"DJMalachite/en-US_BT7274",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://github.com/hopkira/k9_piper_voice
+        url = "https://github.com/hopkira/k9_piper_voice/raw/refs/heads/main/k9_model.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + f"hopkira/en-US_k9",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+        url = "https://github.com/hopkira/k9_piper_voice/raw/refs/heads/main/k9_2449_model.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + f"hopkira/en-US_k9_2449",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
+        # https://github.com/1liminal1/xiaozhi-esphome
+        url = "https://github.com/1liminal1/xiaozhi-esphome/raw/refs/heads/main/piper-voices/en_US-bmo_voice.onnx"
+        voice = TTSModelInfo(
+            voice_id="piper_" + f"1liminal1/en-US_bmo",
+            lang="en-US",
+            model_url=url,
+            config_url=url + ".json",
+        )
+        self.add_voice(voice)
+
         # https://huggingface.co/jstlntch/Scaramouche_or_Wanderer_voice_model_for_piper
         url = "https://huggingface.co/jstlntch/Scaramouche_or_Wanderer_voice_model_for_piper/resolve/main/model.onnx"
         voice = TTSModelInfo(
@@ -865,6 +991,7 @@ class TTSModelManager:
         # https://huggingface.co/tiennguyenbnbk/male_vivoice_piper_viphone
 
         # TODO - these models are inside a .tar.gz/.zip and will need special handling
+        # https://github.com/GraceDabbieri/piper-tts-voices
         # https://huggingface.co/MysticonsLover/PiperWillowbrook
         # https://huggingface.co/BibEBobberson/Piper
         # https://huggingface.co/Beesa/Piper_brawlstars
@@ -901,6 +1028,10 @@ class TTSModelManager:
         # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-cortana-ce-legacy
         # https://huggingface.co/HirCoir/piper-voice-es_MX-Cortana-CE-Legacy
 
+        # TODO - these will need to be mirrored somewhere else to allow download
+        # https://www.nexusmods.com/skyrimspecialedition/mods/98631
+        # https://www.nexusmods.com/fallout4/mods/79747
+
     def get_coqui_community_voice_list(self):
         """
         Add Coqui community voice entries to the manager.
@@ -920,7 +1051,7 @@ if __name__ == "__main__":
     print(f"Total voices: {len(manager.all_voices)}")
     print(f"Total langs: {len(manager.supported_langs)}")
 
-    # Total voices: 284
+    # Total voices: 314
     # Total langs: 67
 
     for voice in manager.get_lang_voices('pt-PT'):
