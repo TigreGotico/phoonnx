@@ -213,22 +213,23 @@ class VoiceConfig:
                   phoneme_type_str: Optional[str] = None,
                   alphabet: Optional[str] = None) -> "VoiceConfig":
         """
-        Create a VoiceConfig from a configuration dictionary and an optional external phonemes file.
-        
-        Constructs a VoiceConfig by deriving engine, alphabet, phoneme mapping, and inference/synthesis settings from the provided config and optional phonemes_txt. Detects model type (Phoonnx, Piper, Mimic3, Coqui) and applies model-specific defaults and mappings; optional lang_code and phoneme_type_str override values in the config.
-        
-        Parameters:
-            config (dict[str, Any]): Parsed model configuration dictionary.
-            phonemes_txt (Optional[str]): Path to an external phonemes file (.txt or .json) used to build or override the phoneme id mapping.
-            lang_code (Optional[str]): Optional language code to override the config's language.
-            phoneme_type_str (Optional[str]): Optional phoneme type name to override the config's phoneme type.
-        
-        Returns:
-            VoiceConfig: A populated VoiceConfig instance with fields set from the config and any provided phonemes file.
-        
-        Raises:
-            ValueError: If the model is detected as Mimic3 but no phonemes_txt is provided.
-        """
+                  Create a VoiceConfig from a model configuration dictionary and optional external phoneme data.
+                  
+                  Builds a VoiceConfig by detecting the model engine (PhoonNX, Piper, Mimic3, or Coqui), deriving tokenizer and alphabet, and applying model-specific defaults and inference settings. Provided optional arguments override corresponding values found in the config.
+                  
+                  Parameters:
+                      config (dict[str, Any]): Parsed model configuration dictionary.
+                      phonemes_txt (Optional[str]): Path to an external phonemes file (.txt or .json) used to build or override the tokenizer vocabulary.
+                      lang_code (Optional[str]): Language code to override the config's language selection.
+                      phoneme_type_str (Optional[str]): Phoneme type name to override the config's phoneme_type value.
+                      alphabet (Optional[str]): Alphabet name to override or supply the resulting VoiceConfig alphabet.
+                  
+                  Returns:
+                      VoiceConfig: A populated VoiceConfig instance with tokenizer, alphabet, engine, phoneme_type, inference settings, and token tokens derived from the inputs.
+                  
+                  Raises:
+                      ValueError: If the config is identified as a Mimic3 model but no phonemes_txt is provided.
+                  """
         blank_type = BlankBetween.TOKENS_AND_WORDS
         lang_code = lang_code or config.get("lang_code")
         phoneme_type_str = phoneme_type_str or config.get("phoneme_type")
@@ -402,7 +403,21 @@ class SynthesisConfig:
 def get_phonemizer(phoneme_type: PhonemeType,
                    alphabet: Alphabet = Alphabet.IPA,
                    model: Optional[str] = None) -> 'Phonemizer':
-    from phoonnx.phonemizers import (EpitranPhonemizer, EspeakPhonemizer, OpenPhonemizer, OpenJTaklPhonemizer,
+    """
+                   Create a phonemizer instance for the specified phonemeization strategy.
+                   
+                   Parameters:
+                       phoneme_type (PhonemeType): The phonemizer type to instantiate.
+                       alphabet (Alphabet): Alphabet or orthography to pass to phonemizers that require it (defaults to IPA).
+                       model (Optional[str]): Optional model identifier or path used by phonemizers that load external models.
+                   
+                   Returns:
+                       Phonemizer: An instance configured for the requested phonemeization strategy.
+                   
+                   Raises:
+                       ValueError: If the provided `phoneme_type` is not supported.
+                   """
+                   from phoonnx.phonemizers import (EpitranPhonemizer, EspeakPhonemizer, OpenPhonemizer, OpenJTaklPhonemizer,
                                      ByT5Phonemizer, CharsiuPhonemizer, DeepPhonemizer, PersianPhonemizer,
                                      G2pCPhonemizer, G2pMPhonemizer, G2PKPhonemizer, G2PEnPhonemizer,
                                      TransphonePhonemizer, MirandesePhonemizer, GoruutPhonemizer, TugaphonePhonemizer,
@@ -512,4 +527,3 @@ if __name__ == "__main__":
         print("Phoonx:", VoiceConfig.is_phoonnx(config))
         cfg = VoiceConfig.from_dict(config, phoneme_txts[idx])
         print(cfg)
-

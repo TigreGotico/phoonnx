@@ -104,6 +104,14 @@ class TTSVoice:
     phonemizer: Optional[Phonemizer] = None
 
     def __post_init__(self):
+        """
+        Initialize optional phonetic resources after dataclass construction.
+        
+        Attempts to load phonetic spellings for the voice's language and, if a phonemizer was not provided, selects and assigns one based on the voice configuration.
+        
+        Notes:
+        - If no phonetic spellings file is found for the configured language, the absence is ignored.
+        """
         try:
             self.phonetic_spellings = PhoneticSpellings.from_lang(self.config.lang_code)
         except FileNotFoundError:
@@ -115,6 +123,12 @@ class TTSVoice:
 
     @property
     def tokenizer(self) -> TTSTokenizer:
+        """
+        Return the tokenizer configured for this voice.
+        
+        Returns:
+            TTSTokenizer: The TTSTokenizer instance from the voice configuration.
+        """
         return self.config.tokenizer
 
     @staticmethod
@@ -129,13 +143,21 @@ class TTSVoice:
             use_cuda: bool = False
     ) -> "TTSVoice":
         """
-        Load an ONNX model and config.
-
-        :param model_path: Path to ONNX voice model.
-        :param config_path: Path to JSON voice config (defaults to model_path + ".json").
-        :param use_cuda: True if CUDA (GPU) should be used instead of CPU.
-        :return: Voice object.
-        """
+            Load a TTS voice ONNX model and its configuration into a TTSVoice instance.
+            
+            Parameters:
+                model_path (str | Path): Path to the ONNX voice model file.
+                config_path (str | Path, optional): Path to the JSON voice configuration. If omitted, defaults to model_path + ".json".
+                phonemes_txt (str, optional): Optional phonemes definition or file content to override the config's phoneme list.
+                phoneme_map (str, optional): Optional phoneme mapping specification or file path used to map phonemes (may be None).
+                lang_code (str, optional): Language code to override or set in the loaded voice configuration.
+                phoneme_type_str (str, optional): Phoneme type identifier to override the configuration (for example, "arpabet" or "ipa").
+                alphabet_str (str, optional): Alphabet override to pass into the VoiceConfig during load.
+                use_cuda (bool): If true, prefer CUDA execution provider for ONNX Runtime; otherwise use the CPU provider.
+            
+            Returns:
+                TTSVoice: A TTSVoice instance prepared with the loaded ONNX session and merged configuration.
+            """
         if config_path is None:
             config_path = f"{model_path}.json"
             LOG.debug("Guessing voice config path: %s", config_path)
@@ -209,10 +231,13 @@ class TTSVoice:
 
     def phonemes_to_ids(self, phonemes: list[str]) -> list[int]:
         """
-        Phonemes to ids.
-
-        :param phonemes: List of phonemes (or characters for grapheme models).
-        :return: List of phoneme ids.
+        Convert a sequence of phoneme tokens (or characters for grapheme models) into token IDs.
+        
+        Parameters:
+            phonemes (list[str]): Sequence of phoneme strings or individual characters to be tokenized.
+        
+        Returns:
+            list[int]: Token IDs corresponding to each input phoneme or character.
         """
         return self.tokenizer.tokenize(phonemes)
 
@@ -222,11 +247,17 @@ class TTSVoice:
             syn_config: Optional[SynthesisConfig] = None,
     ) -> Iterable[AudioChunk]:
         """
-        Synthesize one audio chunk per sentence from from text.
-
-        :param text: Text to synthesize.
-        :param syn_config: Synthesis configuration.
-        """
+            Synthesize speech from input text, yielding one AudioChunk per sentence.
+            
+            Generates sentence-level audio by phonemizing the input text and synthesizing each sentence into a float32 PCM audio array in the range [-1.0, 1.0]. If enabled in the synthesis configuration, user-provided phonetic spellings and diacritic augmentation are applied before phonemization. Output audio may be normalized and volume-scaled according to the configuration; samples are clipped to [-1.0, 1.0].
+            
+            Parameters:
+                text (str): The input text to synthesize.
+                syn_config (Optional[SynthesisConfig]): Optional synthesis options (e.g., enable_phonetic_spellings, add_diacritics, normalize_audio, volume). If omitted, a default SynthesisConfig is used.
+            
+            Returns:
+                Iterable[AudioChunk]: An iterable that yields one AudioChunk per synthesized sentence. Each AudioChunk contains a float32 audio array, sample rate taken from the voice config, 2-byte sample width, and 1 channel.
+            """
         if syn_config is None:
             syn_config = SynthesisConfig()
 
