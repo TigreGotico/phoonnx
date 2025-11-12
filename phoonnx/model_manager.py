@@ -24,8 +24,14 @@ class TTSModelInfo:
     phoneme_map_url: Optional[str] = None  # json lookup table for phoneme replacement
     config: Optional[VoiceConfig] = None
     phoneme_type: Optional[PhonemeType] = None
+    alphabet: Optional[Alphabet] = None
 
     def __post_init__(self):
+        """
+        Initialize the TTSModelInfo instance by ensuring local cache files exist and synchronizing its configuration, alphabet, and phoneme type.
+        
+        If no VoiceConfig was provided, ensure the voice cache directory exists, download and load the model config (model.json), apply a known phoneme-type compatibility fix, and—when a tokens URL is present—download the tokens file and construct the VoiceConfig using it. Always set the loaded config's language code from this instance's `lang`. After loading (or when a config was provided), ensure `alphabet` and `phoneme_type` on the dataclass and on the loaded config are consistent by propagating values from whichever side is present.
+        """
         os.makedirs(self.voice_path, exist_ok=True)
         if not self.config:
             config_path = self.voice_path / "model.json"
@@ -47,17 +53,24 @@ class TTSModelInfo:
 
             self.config.lang_code = self.lang  # sometimes the config is wrong
 
+        if not self.alphabet:
+            self.alphabet = self.config.alphabet
+        else:
+            self.config.alphabet = self.alphabet
+
         if not self.phoneme_type:
             self.phoneme_type = self.config.phoneme_type
         else:
             self.config.phoneme_type = self.phoneme_type
 
     @property
-    def alphabet(self) -> Alphabet:
-        return self.config.alphabet
-
-    @property
     def engine(self) -> Engine:
+        """
+        Return the Engine type used by this voice's configuration.
+        
+        Returns:
+            Engine: The engine configured for this voice.
+        """
         return self.config.engine
 
     @property
@@ -93,6 +106,14 @@ class TTSModelInfo:
                             f.write(chunk)
 
     def load(self) -> TTSVoice:
+        """
+        Load and return a TTSVoice for this model, ensuring the ONNX model is downloaded and the voice configuration is applied.
+        
+        Loads a TTSVoice from the cached model and config files (and tokens file if available). If this TTSModelInfo specifies a different phoneme type or alphabet than the loaded voice, updates the loaded voice's phoneme_type and alphabet and rebuilds its phonemizer accordingly.
+        
+        Returns:
+            TTSVoice: The configured TTSVoice instance ready for synthesis.
+        """
         model_path = self.voice_path / "model.onnx"
         config_path = self.voice_path / "model.json"
         tokens_path = self.voice_path / "tokens.txt"
@@ -100,13 +121,16 @@ class TTSModelInfo:
 
         voice = TTSVoice.load(model_path=model_path,
                               config_path=config_path,
+                              lang_code=self.config.lang_code,
+                              phoneme_type_str=self.config.phoneme_type.value,
+                              alphabet_str=self.config.alphabet.value,
                               phonemes_txt=str(tokens_path) if self.tokens_url else None)
-
         # override phoneme_type, if config.json is wrong
-        if self.phoneme_type != voice.config.phoneme_type:
+        if self.phoneme_type != voice.config.phoneme_type or self.alphabet != voice.config.alphabet:
             voice.phoneme_type = self.phoneme_type
+            voice.config.alphabet = self.alphabet
             voice.phonemizer = get_phonemizer(self.phoneme_type,
-                                              alphabet=voice.config.alphabet,
+                                              alphabet=self.alphabet,
                                               model=voice.config.phonemizer_model)
         return voice
 
@@ -137,6 +161,13 @@ class TTSModelManager:
                        for voice_id, voice_dict in self.cache.items()}
 
     def save(self):
+        """
+        Persist current in-memory voice metadata to the configured cache storage.
+        
+        Clears the cache, writes each managed voice's public metadata (voice_id, model_url,
+        phoneme_type, lang, tokens_url, phoneme_map_url, alphabet, config_url) into the cache,
+        and then stores the cache to disk.
+        """
         self.cache.clear()
         for voice_id, voice_info in self.voices.items():
             self.cache[voice_id] = {"voice_id": voice_info.voice_id,
@@ -145,16 +176,26 @@ class TTSModelManager:
                                     "lang": voice_info.lang,
                                     "tokens_url": voice_info.tokens_url,
                                     "phoneme_map_url": voice_info.phoneme_map_url,
+                                    "alphabet": voice_info.alphabet,
                                     "config_url": voice_info.config_url}
         self.cache.store()
 
     def add_voice(self, voice_info: TTSModelInfo):
+        """
+        Add or update a TTS voice in the manager's in-memory registry and persist its public metadata to the cache.
+        
+        This stores the given TTSModelInfo under its voice_id in memory and writes a curated subset of its fields (voice_id, model_url, tokens_url, phoneme_type, phoneme_map_url, alphabet, lang, config_url) into the persistent cache, overwriting any existing entry for the same voice_id.
+        
+        Parameters:
+            voice_info (TTSModelInfo): The voice metadata to add or update.
+        """
         self.voices[voice_info.voice_id] = voice_info
         self.cache[voice_info.voice_id] = {"voice_id": voice_info.voice_id,
                                            "model_url": voice_info.model_url,
                                            "tokens_url": voice_info.tokens_url,
                                            "phoneme_type": voice_info.phoneme_type,
                                            "phoneme_map_url": voice_info.phoneme_map_url,
+                                           "alphabet": voice_info.alphabet,
                                            "lang": voice_info.lang,
                                            "config_url": voice_info.config_url}
 
@@ -178,29 +219,38 @@ class TTSModelManager:
     def get_proxectonos_voice_list(self):
         # NOTE: these are models trained with coqui
         #  we need to explicitly assign phonemizer
-        self.add_voice(TTSModelInfo(
-            voice_id="proxectonos/sabela",
-            lang="gl-ES",
-            model_url="https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/model.onnx",
-            config_url="https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/config.json",
-            phoneme_type=PhonemeType.COTOVIA
-        ))
-        self.add_voice(TTSModelInfo(
-            voice_id="proxectonos/celtia",
-            lang="gl-ES",
-            model_url="https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/model.onnx",
-            config_url="https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/config.json",
-            phoneme_type=PhonemeType.UNICODE  # already the default if not provided for coqui models
-        ))
-        self.add_voice(TTSModelInfo(
-            voice_id="proxectonos/icia",
-            lang="gl-ES",
-            model_url="https://huggingface.co/OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx/resolve/main/model.onnx",
-            config_url="https://huggingface.co/OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx/resolve/main/config.json",
-            phoneme_type=PhonemeType.COTOVIA
-        ))
+        """
+        Add Proxectonos voice entries (Galician) to the manager's registry.
+        
+        Adds two grapheme-based voices ("brais", "celtia") with PhonemeType.GRAPHEMES and Alphabet.UNICODE, and four phoneme-based voices ("sabela", "icia", "paulo", "iago") with PhonemeType.COTOVIA and Alphabet.COTOVIA. Each entry uses model and config URLs from the OpenVoiceOS Proxectonos Hugging Face repositories and is registered via add_voice.
+        """
+        for voice in ["brais", "celtia"]:
+            self.add_voice(TTSModelInfo(
+                voice_id=f"proxectonos/{voice}",
+                lang="gl-ES",
+                model_url=f"https://huggingface.co/OpenVoiceOS/proxectonos-{voice}-vits-graphemes-onnx/resolve/main/model.onnx",
+                config_url=f"https://huggingface.co/OpenVoiceOS/proxectonos-{voice}-vits-graphemes-onnx/resolve/main/config.json",
+                phoneme_type=PhonemeType.GRAPHEMES,
+                alphabet=Alphabet.UNICODE
+            ))
+        for voice in ["sabela", "icia", "paulo", "iago"]:
+            self.add_voice(TTSModelInfo(
+                voice_id=f"proxectonos/{voice}",
+                lang="gl-ES",
+                model_url=f"https://huggingface.co/OpenVoiceOS/proxectonos-{voice}-vits-phonemes-onnx/resolve/main/model.onnx",
+                config_url=f"https://huggingface.co/OpenVoiceOS/proxectonos-{voice}-vits-phonemes-onnx/resolve/main/config.json",
+                phoneme_type=PhonemeType.COTOVIA,
+                alphabet=Alphabet.COTOVIA
+
+            ))
+
 
     def get_piper_voice_list(self):
+        """
+        Fetches the Piper voices manifest from the Rhasspy piper-voices repository and registers each voice in the manager.
+        
+        Downloads the voices.json manifest, creates a TTSModelInfo for each entry (deriving a voice_id prefixed with "piper_", a standardized language tag, and the first ONNX and JSON file URLs from the entry), and calls add_voice to store it. If an entry cannot be processed, prints a failure message for that voice.
+        """
         base = "https://huggingface.co/rhasspy/piper-voices/resolve/main/"
         voice_list = "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.json"
         piper_voices = requests.get(voice_list).json()

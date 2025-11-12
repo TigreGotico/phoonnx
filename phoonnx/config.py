@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping, Optional, Sequence
 from phoonnx.util import LOG
-from phoonnx.phoneme_ids import (load_phoneme_ids, BlankBetween,
+from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
 
@@ -97,9 +97,6 @@ class VoiceConfig:
     lang_code: Optional[str]
     """Name of espeak-ng voice or alphabet."""
 
-    phoneme_id_map: Optional[Mapping[str, Sequence[int]]]
-    """Phoneme -> [id,]. Used for phoneme-based models."""
-
     phoneme_type: PhonemeType
     """espeak, byt5, text, cotovia, or graphemes."""
 
@@ -124,6 +121,7 @@ class VoiceConfig:
     add_diacritics: bool = None # arabic and hebrew
 
     # tokenization settings
+    tokenizer: Optional[TTSTokenizer] = None
     blank_at_start: bool = True
     blank_at_end: bool = True
     include_whitespace: Optional[bool] = True
@@ -212,53 +210,73 @@ class VoiceConfig:
     def from_dict(config: dict[str, Any],
                   phonemes_txt: Optional[str] = None,
                   lang_code: Optional[str] = None,
-                  phoneme_type_str: Optional[str] = None) -> "VoiceConfig":
+                  phoneme_type_str: Optional[str] = None,
+                  alphabet: Optional[str] = None) -> "VoiceConfig":
         """
-        Create a VoiceConfig from a configuration dictionary and an optional external phonemes file.
+        Create a VoiceConfig from a model configuration dictionary and optional external phoneme data.
         
-        Constructs a VoiceConfig by deriving engine, alphabet, phoneme mapping, and inference/synthesis settings from the provided config and optional phonemes_txt. Detects model type (Phoonnx, Piper, Mimic3, Coqui) and applies model-specific defaults and mappings; optional lang_code and phoneme_type_str override values in the config.
+        Builds a VoiceConfig by detecting the model engine (PhoonNX, Piper, Mimic3, or Coqui), deriving tokenizer and alphabet, and applying model-specific defaults and inference settings. Provided optional arguments override corresponding values found in the config.
         
         Parameters:
             config (dict[str, Any]): Parsed model configuration dictionary.
-            phonemes_txt (Optional[str]): Path to an external phonemes file (.txt or .json) used to build or override the phoneme id mapping.
-            lang_code (Optional[str]): Optional language code to override the config's language.
-            phoneme_type_str (Optional[str]): Optional phoneme type name to override the config's phoneme type.
+            phonemes_txt (Optional[str]): Path to an external phonemes file (.txt or .json) used to build or override the tokenizer vocabulary.
+            lang_code (Optional[str]): Language code to override the config's language selection.
+            phoneme_type_str (Optional[str]): Phoneme type name to override the config's phoneme_type value.
+            alphabet (Optional[str]): Alphabet name to override or supply the resulting VoiceConfig alphabet.
         
         Returns:
-            VoiceConfig: A populated VoiceConfig instance with fields set from the config and any provided phonemes file.
+            VoiceConfig: A populated VoiceConfig instance with tokenizer, alphabet, engine, phoneme_type, inference settings, and token tokens derived from the inputs.
         
         Raises:
-            ValueError: If the model is detected as Mimic3 but no phonemes_txt is provided.
+            ValueError: If the config is identified as a Mimic3 model but no phonemes_txt is provided.
         """
         blank_type = BlankBetween.TOKENS_AND_WORDS
         lang_code = lang_code or config.get("lang_code")
         phoneme_type_str = phoneme_type_str or config.get("phoneme_type")
-        phoneme_id_map = config.get("phoneme_id_map")
-        alphabet = config.get("alphabet")
+        alphabet = alphabet or config.get("alphabet")
         engine = Engine.PHOONNX
         diacritics = False
+        tokenizer = TTSTokenizer(
+            Vocabulary(
+                char2idx=config.get("phoneme_id_map", {}),
+                pad=DEFAULT_PAD_TOKEN,
+                eos=DEFAULT_EOS_TOKEN,
+                bos=DEFAULT_BOS_TOKEN,
+                blank=DEFAULT_BLANK_TOKEN,
+                blank_word=DEFAULT_BLANK_WORD_TOKEN
+            ),
+            add_blank_char=True,
+            add_blank_word=False,
+            use_eos_bos=True,
+            blank_at_end=True,
+            blank_at_start=True
+        )
+        include_whitespace = " " in tokenizer.vocabulary.char2idx
 
         if phonemes_txt:
             if phonemes_txt.endswith(".txt"):
                 # either from mimic3 models or as an override at runtime
                 with open(phonemes_txt, "r", encoding="utf-8") as ids_file:
-                    phoneme_id_map = load_phoneme_ids(ids_file)
+                    tokenizer = TTSTokenizer.from_tokens_txt(ids_file.read())
             elif phonemes_txt.endswith(".json"):
-                with open(phonemes_txt) as ids_file:
-                    phoneme_id_map = json.load(ids_file)
+                with open(phonemes_txt, "r", encoding="utf-8") as ids_file:
+                    tokenizer.vocabulary.char2idx = json.load(ids_file)
 
         if VoiceConfig.is_phoonnx(config):
             engine = Engine.PHOONNX
 
             lang_code = lang_code or config.get("lang_code")
-            phoneme_type_str = config.get("phoneme_type", PhonemeType.ESPEAK.value)
-            alphabet = Alphabet(config.get("alphabet", "ipa"))
+            phoneme_type_str = phoneme_type_str or config.get("phoneme_type", PhonemeType.ESPEAK.value)
+            alphabet = alphabet or Alphabet(config.get("alphabet", "ipa"))
             diacritics = config.get("inference", {}).get("add_diacritics", True)
 
             config["pad"] =  DEFAULT_PAD_TOKEN
             config["blank"] = DEFAULT_BLANK_TOKEN
             config["bos"] = DEFAULT_BOS_TOKEN
             config["eos"] = DEFAULT_EOS_TOKEN
+
+            tokenizer = TTSTokenizer.from_phoonnx_config(config)
+
         # check if model was trained for PiperTTS
         elif VoiceConfig.is_piper(config):
             engine = Engine.PIPER
@@ -266,18 +284,21 @@ class VoiceConfig:
             lang_code = lang_code or (config.get("language", {}).get("code") or
                          config.get("espeak", {}).get("voice"))
             diacritics = lang_code.startswith("ar")
-            phoneme_type_str = config.get("phoneme_type", PhonemeType.ESPEAK.value)
+            phoneme_type_str = phoneme_type_str or config.get("phoneme_type", PhonemeType.ESPEAK.value)
             if phoneme_type_str == "text":
                 phoneme_type_str = PhonemeType.UNICODE.value
                 alphabet = Alphabet.UNICODE
             else:
-                alphabet = Alphabet.IPA
+                alphabet = alphabet or Alphabet.IPA
 
             # not configurable in piper
             config["pad"] =  DEFAULT_PAD_TOKEN
             config["blank"] = DEFAULT_BLANK_TOKEN
+            config["blank_word"] = DEFAULT_BLANK_WORD_TOKEN
             config["bos"] = DEFAULT_BOS_TOKEN
             config["eos"] = DEFAULT_EOS_TOKEN
+
+            tokenizer = TTSTokenizer.from_piper_config(config)
 
         # check if model was trained for Mimic3
         elif VoiceConfig.is_mimic3(config):
@@ -286,7 +307,7 @@ class VoiceConfig:
             if not phonemes_txt:
                 raise ValueError("mimic3 models require an external phonemes.txt file in addition to the config")
             lang_code = config.get("text_language")
-            phoneme_type_str = config.get("phonemizer", PhonemeType.GRUUT.value)
+            phoneme_type_str = phoneme_type_str or config.get("phonemizer", PhonemeType.GRUUT.value)
             # read phoneme settings
             phoneme_cfg = config.get("phonemes", {})
             blank_type = BlankBetween(phoneme_cfg.get("blank_between", "tokens_and_words"))
@@ -298,65 +319,30 @@ class VoiceConfig:
                 phoneme_type_str = PhonemeType.GRAPHEMES.value
                 alphabet = Alphabet.UNICODE
             else:
-                alphabet = Alphabet.IPA
+                alphabet = alphabet or Alphabet.IPA
+
+            tokenizer = TTSTokenizer.from_mimic3_config(config, phonemes_txt)
 
         # check if model was trained with Coqui
         elif VoiceConfig.is_coqui_vits(config):
             engine = Engine.COQUI
-            phoneme_type_str = PhonemeType.GRAPHEMES.value
-            alphabet = Alphabet.UNICODE
+            phoneme_type_str = phoneme_type_str or PhonemeType.GRAPHEMES.value
+            alphabet = alphabet or Alphabet.UNICODE
 
             # NOTE: lang code usually not provided and often wrong :(
             ds = config.get("datasets", [])
             if ds and not lang_code:
                 lang_code = ds[0].get("language")
 
-            characters_config = config.get("characters", {})
-            if config.get("add_blank", True):
-                blank_type = BlankBetween.TOKENS
-                characters_config["blank"] = characters_config.get("blank") or "<BLNK>"
-            config.update(characters_config)
-            # For Coqui VITS grapheme models, build phoneme_id_map from characters
-            characters = characters_config.get("characters")
-            punctuations = characters_config.get("punctuations")
-
-            if not config.get("enable_eos_bos_chars", True):
-                config["bos"] = config["eos"] = None
-
-            # Construct vocabulary based on the order defined in the original Graphemes class
-            # [PAD, EOS, BOS, BLANK, CHARACTERS, PUNCTUATIONS]
-            vocab_list = []
-
-            if characters_config.get("pad") is not None:
-                vocab_list.append(characters_config["pad"])
-
-            # ?? - haven't see any coqui model
-            # adding bos and eos to vocab_list
-
-            #if characters_config.get("eos") is not None:
-            #    vocab_list.append(characters_config["eos"])
-            #if characters_config.get("bos") is not None:
-            #    vocab_list.append(characters_config["bos"])
-
-            if punctuations:
-                vocab_list.extend(list(punctuations))
-            if characters:
-                vocab_list.extend(list(characters))
-
-
-            if characters_config.get("blank") is not None:
-                vocab_list.append(characters_config["blank"])
-
-            # Ensure unique characters and sort if needed (though not strictly necessary for map creation)
-            # This part of logic was previously in Graphemes, now implicitly handled by set/list conversion
-            phoneme_id_map = {char: idx for idx, char in enumerate(vocab_list)}
+            tokenizer = TTSTokenizer.from_coqui_config(config)
+            include_whitespace = " " in config.get("characters", "") or " " in tokenizer.vocabulary.char2idx
 
         phoneme_type = PhonemeType(phoneme_type_str)
         LOG.debug(f"phonemizer: {phoneme_type}")
         inference = config.get("inference", {})
 
-        include_whitespace = " " in config.get("characters", "") or " " in config.get("phoneme_id_map", {})
         return VoiceConfig(
+            tokenizer=tokenizer,
             num_langs=config.get("num_langs", 1),
             num_symbols=config.get("num_symbols", 256),
             num_speakers=config.get("num_speakers", 1),
@@ -366,10 +352,9 @@ class VoiceConfig:
             noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
             add_diacritics=diacritics,
             lang_code=lang_code,
-            alphabet=alphabet,
+            alphabet=Alphabet(alphabet),
             engine=engine,
             phonemizer_model=config.get("phonemizer_model"),
-            phoneme_id_map=phoneme_id_map,
             phoneme_type=phoneme_type,
             speaker_id_map=config.get("speaker_id_map", {}),
             blank_between=blank_type,
@@ -418,14 +403,28 @@ class SynthesisConfig:
 def get_phonemizer(phoneme_type: PhonemeType,
                    alphabet: Alphabet = Alphabet.IPA,
                    model: Optional[str] = None) -> 'Phonemizer':
+    """
+    Create a phonemizer instance for the specified phonemeization strategy.
+     
+    Parameters:
+        phoneme_type (PhonemeType): The phonemizer type to instantiate.
+        alphabet (Alphabet): Alphabet or orthography to pass to phonemizers that require it (defaults to IPA).
+        model (Optional[str]): Optional model identifier or path used by phonemizers that load external models.
+     
+    Returns:
+        Phonemizer: An instance configured for the requested phonemeization strategy.
+     
+    Raises:
+        ValueError: If the provided `phoneme_type` is not supported.
+    """
     from phoonnx.phonemizers import (EpitranPhonemizer, EspeakPhonemizer, OpenPhonemizer, OpenJTaklPhonemizer,
-                                     ByT5Phonemizer, CharsiuPhonemizer, DeepPhonemizer, PersianPhonemizer,
-                                     G2pCPhonemizer, G2pMPhonemizer, G2PKPhonemizer, G2PEnPhonemizer,
-                                     TransphonePhonemizer, MirandesePhonemizer, GoruutPhonemizer, TugaphonePhonemizer,
-                                     GruutPhonemizer, GraphemePhonemizer, MantoqPhonemizer, MisakiPhonemizer,
-                                     KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
-                                     CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer, XpinyinPhonemizer,
-                                     UnicodeCodepointPhonemizer, JiebaPhonemizer, RawPhonemes)
+                       ByT5Phonemizer, CharsiuPhonemizer, DeepPhonemizer, PersianPhonemizer,
+                       G2pCPhonemizer, G2pMPhonemizer, G2PKPhonemizer, G2PEnPhonemizer,
+                       TransphonePhonemizer, MirandesePhonemizer, GoruutPhonemizer, TugaphonePhonemizer,
+                       GruutPhonemizer, GraphemePhonemizer, MantoqPhonemizer, MisakiPhonemizer,
+                       KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
+                       CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer, XpinyinPhonemizer,
+                       UnicodeCodepointPhonemizer, JiebaPhonemizer, RawPhonemes)
     if phoneme_type == PhonemeType.ESPEAK:
         phonemizer = EspeakPhonemizer()
     elif phoneme_type == PhonemeType.BYT5:
@@ -481,7 +480,7 @@ def get_phonemizer(phoneme_type: PhonemeType,
     elif phoneme_type == PhonemeType.G2PM:
         phonemizer = G2pMPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.COTOVIA:
-        phonemizer = CotoviaPhonemizer()
+        phonemizer = CotoviaPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.UNICODE:
         phonemizer = UnicodeCodepointPhonemizer()
     elif phoneme_type == PhonemeType.GRAPHEMES:
@@ -528,4 +527,3 @@ if __name__ == "__main__":
         print("Phoonx:", VoiceConfig.is_phoonnx(config))
         cfg = VoiceConfig.from_dict(config, phoneme_txts[idx])
         print(cfg)
-

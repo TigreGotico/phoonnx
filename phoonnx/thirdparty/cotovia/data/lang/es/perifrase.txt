@@ -1,0 +1,35 @@
+#
+# $Id: perifrase.txt,v 1.1 2007/07/18 09:58:52 fmendez Exp $
+# $Name:  $
+#
+# verbo + infinitivo	a
+# verbo + participio	b
+# verbo + xerundio	c
+# verbo + a + infinitivo	d
+# verbo + de + infinitivo	e
+# verbo + en + infinitivo	f
+# verbo + para + infinitivo	g
+# verbo + por + infinitivo	h
+# verbo + que + infinitivo	i
+# verbo + por + participio	j
+acabar,e
+andar,c
+comenzar,d
+continuar,c
+dar,e
+deber,ea
+dejar,eb
+echar,d
+empezar,d
+#estar,gcb
+estar,gc
+haber,ieb
+ir,dc
+llevar,cb
+poder,a
+poner,d
+romper,d
+seguir,c
+tener,ib
+venir,d
+volver,d
