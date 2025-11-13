@@ -1,0 +1,80 @@
+{
+    "hf_community/projecte-aina/tts-ca-coqui-vits-multispeaker": {
+        "voice_id": "hf_community/projecte-aina/tts-ca-coqui-vits-multispeaker",
+        "model_url": "https://huggingface.co/projecte-aina/tts-ca-coqui-vits-multispeaker/resolve/main/model/vits_ca.onnx",
+        "phoneme_type": "unicode",
+        "lang": "ca-ES",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "coqui",
+        "config_url": "https://huggingface.co/projecte-aina/tts-ca-coqui-vits-multispeaker/resolve/main/model/config.json"
+    },
+    "hf_community/denZLS/luxembourgish-male-vits-tts": {
+        "voice_id": "hf_community/denZLS/luxembourgish-male-vits-tts",
+        "model_url": "https://huggingface.co/Jarbas/luxembourgish-male-vits-tts-onnx/resolve/main/checkpoint_53442.pth.onnx",
+        "phoneme_type": "unicode",
+        "lang": "lb-LU",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "coqui",
+        "config_url": "https://huggingface.co/Jarbas/luxembourgish-male-vits-tts-onnx/resolve/main/config.json"
+    },
+    "hf_community/denZLS/luxembourgish-female-vits-tts": {
+        "voice_id": "hf_community/denZLS/luxembourgish-female-vits-tts",
+        "model_url": "https://huggingface.co/Jarbas/luxembourgish-female-vits-tts-onnx/resolve/main/checkpoint_53442.pth.onnx",
+        "phoneme_type": "unicode",
+        "lang": "lb-LU",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "coqui",
+        "config_url": "https://huggingface.co/Jarbas/luxembourgish-female-vits-tts-onnx/resolve/main/config.json"
+    },
+    "hf_community/anzorq/kbd-vits-tts-female": {
+        "voice_id": "hf_community/anzorq/kbd-vits-tts-female",
+        "model_url": "https://huggingface.co/anzorq/kbd-vits-tts-female/resolve/main/onnx/kbd_vits_female.onnx",
+        "phoneme_type": "unicode",
+        "lang": "kbd",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "coqui",
+        "config_url": "https://huggingface.co/anzorq/kbd-vits-tts-female/resolve/main/config.json"
+    },
+    "hf_community/anzorq/kbd-vits-tts-male": {
+        "voice_id": "hf_community/anzorq/kbd-vits-tts-male",
+        "model_url": "https://huggingface.co/anzorq/kbd-vits-tts-male/resolve/main/onnx/kbd_vits_male.onnx",
+        "phoneme_type": "unicode",
+        "lang": "kbd",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "coqui",
+        "config_url": "https://huggingface.co/anzorq/kbd-vits-tts-male/resolve/main/config.json"
+    },
+    "hf_community/jerichosiahaya/vits-tts-id": {
+        "voice_id": "hf_community/jerichosiahaya/vits-tts-id",
+        "model_url": "https://huggingface.co/jerichosiahaya/vits-tts-id/resolve/main/model.onnx",
+        "phoneme_type": "unicode",
+        "lang": "id-ID",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "coqui",
+        "config_url": "https://huggingface.co/jerichosiahaya/vits-tts-id/resolve/main/config.json"
+    }
+}

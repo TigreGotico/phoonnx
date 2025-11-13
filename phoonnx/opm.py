@@ -53,7 +53,7 @@ class PhoonnxTTSPlugin(TTS):
         """
         if not self.model_manager.voices or force:
             try:
-                self.model_manager.refresh_voices()
+                self.model_manager.merge_default_voices()
             except Exception as exc:
                 LOG.warning(f"Voice refresh failed: {exc}")
 

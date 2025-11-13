@@ -1,0 +1,54 @@
+{
+    "piper_neurlang/ar_zayd0-arabic-diacritized": {
+        "voice_id": "piper_neurlang/ar_zayd0-arabic-diacritized",
+        "model_url": "https://huggingface.co/neurlang/piper-onnx-zayd0-arabic-diacritized/resolve/main/piper-onnx-zayd0-arabic-diacritized.onnx",
+        "phoneme_type": "goruut",
+        "lang": "ar",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/neurlang/piper-onnx-zayd0-arabic-diacritized/resolve/main/piper-onnx-zayd0-arabic-diacritized.onnx.json"
+    },
+    "piper_neurlang/en-GB_jane-eyre-english-british": {
+        "voice_id": "piper_neurlang/en-GB_jane-eyre-english-british",
+        "model_url": "https://huggingface.co/neurlang/piper-onnx-jane-eyre-english-british/resolve/main/piper-onnx-jane-eyre-english-british.onnx",
+        "phoneme_type": "goruut",
+        "lang": "en-GB",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/neurlang/piper-onnx-jane-eyre-english-british/resolve/main/piper-onnx-jane-eyre-english-british.onnx.json"
+    },
+    "piper_neurlang/sl-SI_slovakspeech-female-slovak": {
+        "voice_id": "piper_neurlang/sl-SI_slovakspeech-female-slovak",
+        "model_url": "https://huggingface.co/neurlang/piper-onnx-slovakspeech-female-slovak/resolve/main/piper-onnx-slovakspeech-female-slovak.onnx",
+        "phoneme_type": "goruut",
+        "lang": "sl-SI",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/neurlang/piper-onnx-slovakspeech-female-slovak/resolve/main/piper-onnx-slovakspeech-female-slovak.onnx.json"
+    },
+    "piper_neurlang/ko-KO_kss-korean": {
+        "voice_id": "piper_neurlang/ko-KO_kss-korean",
+        "model_url": "https://huggingface.co/neurlang/piper-onnx-kss-korean/resolve/main/piper-kss-korean.onnx",
+        "phoneme_type": "goruut",
+        "lang": "ko-KO",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/neurlang/piper-onnx-kss-korean/resolve/main/piper-kss-korean.onnx.json"
+    }
+}
