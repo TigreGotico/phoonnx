@@ -13,6 +13,8 @@ It provides a flexible framework for text normalization, phonemization, and spee
 multiple languages and phonemic alphabets. The library is also designed to work with models trained using
 `phoonnx_train`, including utilities for dataset preprocessing and exporting models to the ONNX format.
 
+It supports over 1000 languages and voices from various frameworks (phoonnx, piper, mimic3, coqui, MMS, transformers). The full list can be found in [VOICES.md](./VOICES.md)
+
 -----
 
 ## Features

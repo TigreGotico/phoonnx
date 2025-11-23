@@ -1,6 +1,7 @@
 import json
 from dataclasses import dataclass, field
 from enum import Enum
+from langcodes import standardize_tag
 from typing import Any, Mapping, Optional, Union, Dict
 from phoonnx.util import LOG
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
@@ -150,7 +151,11 @@ class VoiceConfig:
             self.add_diacritics = False
             if self.lang_code and self.lang_code.startswith("ar"):
                 self.add_diacritics = True
-        self.lang_code = self.lang_code or "und"
+
+        try:
+            self.lang_code = standardize_tag(self.lang_code)
+        except:
+            self.lang_code = self.lang_code or "und"
 
     @staticmethod
     def is_mimic3(config: dict[str, Any]) -> bool:
