@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0a1](https://github.com/TigreGotico/phoonnx/tree/1.3.0a1) (2025-11-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.2.0a1...1.3.0a1)
+
+**Merged pull requests:**
+
+- feat: MMS/transformers voices support [\#78](https://github.com/TigreGotico/phoonnx/pull/78) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.2.0a1](https://github.com/TigreGotico/phoonnx/tree/1.2.0a1) (2025-11-12)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.1.0a1...1.2.0a1)
