@@ -259,7 +259,7 @@ class TTSModelManager:
                     model_url=f"https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/{lang}/model.onnx",
                     vocab_url=f"https://huggingface.co/facebook/mms-tts-{lang}/resolve/main/vocab.json",
                     tokenizer_config_url=f"https://huggingface.co/facebook/mms-tts-{lang}/resolve/main/tokenizer_config.json",
-                    phoneme_type=PhonemeType.UNICODE,
+                    phoneme_type=PhonemeType.GRAPHEMES,
                     alphabet=Alphabet.UNICODE,
                     engine=Engine.TRANSFORMERS
                 )
@@ -973,7 +973,7 @@ class TTSModelManager:
             lang="ca-ES",
             model_url="https://huggingface.co/projecte-aina/tts-ca-coqui-vits-multispeaker/resolve/main/model/vits_ca.onnx",
             config_url="https://huggingface.co/projecte-aina/tts-ca-coqui-vits-multispeaker/resolve/main/model/config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.COQUI
         )
@@ -985,7 +985,7 @@ class TTSModelManager:
             lang="lb-LU",
             model_url="https://huggingface.co/Jarbas/luxembourgish-male-vits-tts-onnx/resolve/main/checkpoint_53442.pth.onnx",
             config_url="https://huggingface.co/Jarbas/luxembourgish-male-vits-tts-onnx/resolve/main/config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.COQUI
         )
@@ -997,7 +997,7 @@ class TTSModelManager:
             lang="lb-LU",
             model_url="https://huggingface.co/Jarbas/luxembourgish-female-vits-tts-onnx/resolve/main/checkpoint_53442.pth.onnx",
             config_url="https://huggingface.co/Jarbas/luxembourgish-female-vits-tts-onnx/resolve/main/config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.COQUI
         )
@@ -1010,7 +1010,7 @@ class TTSModelManager:
             lang="kbd",
             model_url=f"{base}/onnx/kbd_vits_female.onnx",
             config_url=f"{base}/config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.COQUI
         )
@@ -1023,7 +1023,7 @@ class TTSModelManager:
             lang="kbd",
             model_url=f"{base}/onnx/kbd_vits_male.onnx",
             config_url=f"{base}/config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.COQUI
         )
@@ -1037,7 +1037,7 @@ class TTSModelManager:
         #    lang="id-ID",
         #    model_url="https://huggingface.co/jerichosiahaya/vits-tts-id/resolve/main/model.onnx",
         #    config_url="https://huggingface.co/jerichosiahaya/vits-tts-id/resolve/main/config.json",
-        #    phoneme_type=PhonemeType.UNICODE,
+        #    phoneme_type=PhonemeType.GRAPHEMES,
         #    alphabet=Alphabet.UNICODE,
         #    engine=Engine.COQUI
         #)
@@ -1064,7 +1064,7 @@ class TTSModelManager:
             model_url=f"{base}/onnx/model.onnx",
             vocab_url=f"{base}/vocab.json",
             tokenizer_config_url=f"{base}/tokenizer_config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.TRANSFORMERS
         )
@@ -1079,7 +1079,7 @@ class TTSModelManager:
             model_url=f"{base}/onnx/model.onnx",
             vocab_url=f"{base}/vocab.json",
             tokenizer_config_url=f"{base}/tokenizer_config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.TRANSFORMERS
         )
@@ -1093,7 +1093,7 @@ class TTSModelManager:
             model_url=f"{base}/onnx/model.onnx",
             vocab_url=f"{base}/vocab.json",
             tokenizer_config_url=f"{base}/tokenizer_config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.TRANSFORMERS
         )
@@ -1107,7 +1107,7 @@ class TTSModelManager:
             model_url=f"{base}/onnx/model.onnx",
             vocab_url=f"{base}/vocab.json",
             tokenizer_config_url=f"{base}/tokenizer_config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.PINYIN,
             engine=Engine.TRANSFORMERS
         )
@@ -1122,7 +1122,7 @@ class TTSModelManager:
         #    model_url=f"{base}/model.onnx",
         #    vocab_url=f"{base}/vocab.json",
         #    tokenizer_config_url=f"{base}/tokenizer_config.json",
-        #    phoneme_type=PhonemeType.UNICODE,
+        #    phoneme_type=PhonemeType.GRAPHEMES,
         #    alphabet=Alphabet.UNICODE,
         #    engine=Engine.TRANSFORMERS
         #)
@@ -1137,7 +1137,7 @@ class TTSModelManager:
                 model_url=f"{base}/model.onnx",
                 vocab_url=f"{base}/vocab.json",
                 tokenizer_config_url=f"{base}/tokenizer_config.json",
-                phoneme_type=PhonemeType.UNICODE,
+                phoneme_type=PhonemeType.GRAPHEMES,
                 alphabet=Alphabet.UNICODE,
                 engine=Engine.TRANSFORMERS
             )
@@ -1151,7 +1151,7 @@ class TTSModelManager:
             model_url=f"{base}/model.onnx",
             vocab_url=f"{base}/vocab.json",
             tokenizer_config_url=f"{base}/tokenizer_config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.TRANSFORMERS
         )
@@ -1165,7 +1165,7 @@ class TTSModelManager:
             model_url=f"{base}/onnx/model.onnx",
             vocab_url=f"{base}/vocab.json",
             tokenizer_config_url=f"{base}/tokenizer_config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.TRANSFORMERS
         )
@@ -1179,7 +1179,7 @@ class TTSModelManager:
             model_url=f"{base}/onnx/model.onnx",
             vocab_url=f"{base}/vocab.json",
             tokenizer_config_url=f"{base}/tokenizer_config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.TRANSFORMERS
         )
@@ -1193,7 +1193,7 @@ class TTSModelManager:
             model_url=f"{base}/onnx/model.onnx",
             vocab_url=f"{base}/vocab.json",
             tokenizer_config_url=f"{base}/tokenizer_config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.TRANSFORMERS
         )
@@ -1207,7 +1207,7 @@ class TTSModelManager:
             model_url=f"{base}/onnx/model.onnx",
             vocab_url=f"{base}/vocab.json",
             tokenizer_config_url=f"{base}/tokenizer_config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.TRANSFORMERS
         )
@@ -1221,7 +1221,7 @@ class TTSModelManager:
             model_url=f"{base}/onnx/model.onnx",
             vocab_url=f"{base}/vocab.json",
             tokenizer_config_url=f"{base}/tokenizer_config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.TRANSFORMERS
         )
@@ -1235,7 +1235,7 @@ class TTSModelManager:
             model_url=f"{base}/onnx/model.onnx",
             vocab_url=f"{base}/vocab.json",
             tokenizer_config_url=f"{base}/tokenizer_config.json",
-            phoneme_type=PhonemeType.UNICODE,
+            phoneme_type=PhonemeType.GRAPHEMES,
             alphabet=Alphabet.UNICODE,
             engine=Engine.TRANSFORMERS
         )

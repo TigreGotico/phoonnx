@@ -459,7 +459,7 @@ def get_phonemizer(phoneme_type: PhonemeType,
                        GruutPhonemizer, GraphemePhonemizer, MantoqPhonemizer, MisakiPhonemizer,
                        KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
                        CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer, XpinyinPhonemizer,
-                       UnicodeCodepointPhonemizer, JiebaPhonemizer, RawPhonemes)
+                       UnicodeCodepointPhonemizer, JiebaPhonemizer)
     if phoneme_type == PhonemeType.ESPEAK:
         phonemizer = EspeakPhonemizer()
     elif phoneme_type == PhonemeType.BYT5:
@@ -520,8 +520,6 @@ def get_phonemizer(phoneme_type: PhonemeType,
         phonemizer = UnicodeCodepointPhonemizer()
     elif phoneme_type == PhonemeType.GRAPHEMES:
         phonemizer = GraphemePhonemizer()
-    elif phoneme_type == PhonemeType.RAW:
-        phonemizer = RawPhonemes()
     else:
         raise ValueError("invalid phonemizer")
     return phonemizer
