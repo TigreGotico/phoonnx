@@ -148,16 +148,6 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
         return results
 
 
-### all the 3 below are essentially the same thing
-# no phonemization really happens
-
-class RawPhonemes(BasePhonemizer):
-    """no phonemization, text is phonemes already"""
-
-    def phonemize_string(self, text: str, lang: str) -> str:
-        return text
-
-
 class GraphemePhonemizer(BasePhonemizer):
     """
     A phonemizer class that treats input text as graphemes (characters).
@@ -204,20 +194,16 @@ class UnicodeCodepointPhonemizer(BasePhonemizer):
 
 
 if __name__ == "__main__":
-    raw = RawPhonemes()
     grap = GraphemePhonemizer()
     uni = UnicodeCodepointPhonemizer()
 
     text = "olá, quem são vocês?"
     lang = "pt"
-    print(raw.phonemize(text, lang))
     print(grap.phonemize(text, lang))
     print(uni.phonemize(text, lang))
 
-    print(raw.phonemize_string(text, lang))
     print(grap.phonemize_string(text, lang))
     print(uni.phonemize_string(text, lang))
 
-    print(raw.phonemize_to_list(text, lang))
     print(grap.phonemize_to_list(text, lang))
     print(uni.phonemize_to_list(text, lang))

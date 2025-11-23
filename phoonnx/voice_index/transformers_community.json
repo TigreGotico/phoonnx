@@ -2,7 +2,7 @@
     "hf_community/NorHsangPha/mms-tts-shn-Shan": {
         "voice_id": "hf_community/NorHsangPha/mms-tts-shn-Shan",
         "model_url": "https://huggingface.co/Jarbas/NorHsangPha-mms-tts-shn-onnx/resolve/main/onnx/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "shn",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/Jarbas/NorHsangPha-mms-tts-shn-onnx/resolve/main/tokenizer_config.json",
@@ -15,8 +15,8 @@
     "hf_community/ylacombe/vits_ljs_welsh_female_monospeaker": {
         "voice_id": "hf_community/ylacombe/vits_ljs_welsh_female_monospeaker",
         "model_url": "https://huggingface.co/BricksDisplay/vits-eng-welsh-female/resolve/main/onnx/model.onnx",
-        "phoneme_type": "unicode",
-        "lang": "en-cy",
+        "phoneme_type": "graphemes",
+        "lang": "en-CY",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/BricksDisplay/vits-eng-welsh-female/resolve/main/tokenizer_config.json",
         "vocab_url": "https://huggingface.co/BricksDisplay/vits-eng-welsh-female/resolve/main/vocab.json",
@@ -28,7 +28,7 @@
     "hf_community/kakao-enterprise/vits-ljs-eng": {
         "voice_id": "hf_community/kakao-enterprise/vits-ljs-eng",
         "model_url": "https://huggingface.co/BricksDisplay/vits-eng/resolve/main/onnx/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "en-US",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/BricksDisplay/vits-eng/resolve/main/tokenizer_config.json",
@@ -41,7 +41,7 @@
     "hf_community/BricksDisplay/vits-cmn": {
         "voice_id": "hf_community/BricksDisplay/vits-cmn",
         "model_url": "https://huggingface.co/BricksDisplay/vits-cmn/resolve/main/onnx/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "zh-CN",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/BricksDisplay/vits-cmn/resolve/main/tokenizer_config.json",
@@ -54,7 +54,7 @@
     "hf_community/utrobinmv/tts_ru_free_hf_vits_low_multispeaker": {
         "voice_id": "hf_community/utrobinmv/tts_ru_free_hf_vits_low_multispeaker",
         "model_url": "https://huggingface.co/utrobinmv/tts_ru_free_hf_vits_low_multispeaker/resolve/main/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "ru-RU",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/utrobinmv/tts_ru_free_hf_vits_low_multispeaker/resolve/main/tokenizer_config.json",
@@ -67,8 +67,8 @@
     "hf_community/ylacombe/mms-mar-finetuned-monospeaker": {
         "voice_id": "hf_community/ylacombe/mms-mar-finetuned-monospeaker",
         "model_url": "https://huggingface.co/ylacombe/mms-mar-finetuned-monospeaker/resolve/main/onnx/model.onnx",
-        "phoneme_type": "unicode",
-        "lang": "mar",
+        "phoneme_type": "graphemes",
+        "lang": "mr",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/ylacombe/mms-mar-finetuned-monospeaker/resolve/main/tokenizer_config.json",
         "vocab_url": "https://huggingface.co/ylacombe/mms-mar-finetuned-monospeaker/resolve/main/vocab.json",
@@ -80,8 +80,8 @@
     "hf_community/ylacombe/mms-guj-finetuned-monospeaker": {
         "voice_id": "hf_community/ylacombe/mms-guj-finetuned-monospeaker",
         "model_url": "https://huggingface.co/ylacombe/mms-guj-finetuned-monospeaker/resolve/main/onnx/model.onnx",
-        "phoneme_type": "unicode",
-        "lang": "guj",
+        "phoneme_type": "graphemes",
+        "lang": "gu",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/ylacombe/mms-guj-finetuned-monospeaker/resolve/main/tokenizer_config.json",
         "vocab_url": "https://huggingface.co/ylacombe/mms-guj-finetuned-monospeaker/resolve/main/vocab.json",
@@ -93,8 +93,8 @@
     "hf_community/ylacombe/mms-tam-finetuned-monospeaker": {
         "voice_id": "hf_community/ylacombe/mms-tam-finetuned-monospeaker",
         "model_url": "https://huggingface.co/ylacombe/mms-tam-finetuned-monospeaker/resolve/main/onnx/model.onnx",
-        "phoneme_type": "unicode",
-        "lang": "tam",
+        "phoneme_type": "graphemes",
+        "lang": "ta",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/ylacombe/mms-tam-finetuned-monospeaker/resolve/main/tokenizer_config.json",
         "vocab_url": "https://huggingface.co/ylacombe/mms-tam-finetuned-monospeaker/resolve/main/vocab.json",
@@ -106,7 +106,7 @@
     "hf_community/ylacombe/mms-spa-finetuned-colombian-monospeaker": {
         "voice_id": "hf_community/ylacombe/mms-spa-finetuned-colombian-monospeaker",
         "model_url": "https://huggingface.co/ylacombe/mms-spa-finetuned-colombian-monospeaker/resolve/main/onnx/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "es-CO",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/ylacombe/mms-spa-finetuned-colombian-monospeaker/resolve/main/tokenizer_config.json",
@@ -119,7 +119,7 @@
     "hf_community/ylacombe/mms-spa-finetuned-argentinian-monospeaker": {
         "voice_id": "hf_community/ylacombe/mms-spa-finetuned-argentinian-monospeaker",
         "model_url": "https://huggingface.co/ylacombe/mms-spa-finetuned-argentinian-monospeaker/resolve/main/onnx/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "es-AR",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/ylacombe/mms-spa-finetuned-argentinian-monospeaker/resolve/main/tokenizer_config.json",
@@ -132,7 +132,7 @@
     "hf_community/ylacombe/mms-spa-finetuned-chilean-monospeaker": {
         "voice_id": "hf_community/ylacombe/mms-spa-finetuned-chilean-monospeaker",
         "model_url": "https://huggingface.co/ylacombe/mms-spa-finetuned-chilean-monospeaker/resolve/main/onnx/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "es-CL",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/ylacombe/mms-spa-finetuned-chilean-monospeaker/resolve/main/tokenizer_config.json",
