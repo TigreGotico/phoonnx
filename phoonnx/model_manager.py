@@ -275,10 +275,10 @@ class TTSModelManager:
             self.cache.store()
 
 
+
 if __name__ == "__main__":
     manager = TTSModelManager()
-    manager.clear()
-    manager.merge_default_voices(store=True)
+    manager.merge_default_voices(store=True)  # load and cache known voice models
 
     print(f"Total voices: {len(manager.all_voices)}")
     print(f"Total langs: {len(manager.supported_langs)}")
@@ -384,3 +384,56 @@ if __name__ == "__main__":
     # 'yka', 'yli', 'yo', 'yor', 'yre', 'yua', 'yuz', 'yva', 'zaa', 'zab', 'zac', 'zad', 'zae', 'zai', 'zam', 'zao',
     # 'zaq', 'zar', 'zas', 'zav', 'zaw', 'zca', 'zga', 'zh-CN', 'zh-TW', 'zim', 'ziw', 'zlm', 'zmz', 'zne', 'zos',
     # 'zpc', 'zpg', 'zpi', 'zpl', 'zpm', 'zpo', 'zpt', 'zpu', 'zpz', 'ztq', 'zty', 'zyb', 'zyp', 'zza']
+
+
+    def generate_voices_markdown(manager: TTSModelManager, output_file: str = "../VOICES.md"):
+        """
+        Generates a Markdown table of all supported voices and saves it to a file.
+
+        Args:
+            manager (TTSModelManager): The manager with loaded voices.
+            output_file (str): The name of the file to save the markdown table to.
+        """
+
+        # Sort voices by language code (lang) then by voice ID
+        sorted_voices = sorted(
+            manager.all_voices,
+            key=lambda v: (v.lang.lower(), v.voice_id.lower())
+        )
+
+        markdown_output = [
+            "## Supported Voices",
+            "",
+            f"**Total Voices:** {len(sorted_voices)}",
+            f"**Total Languages:** {len(manager.supported_langs)}",
+            "",
+            "| Voice ID | Language Code | Engine | Phoneme Type |",
+            "| :--- | :--- | :--- | :--- |"
+        ]
+
+        for voice in sorted_voices:
+            # Get the value from the Enum object, handling None/string if post_init didn't run
+            engine = voice.engine.value if hasattr(voice.engine, 'value') else str(voice.engine)
+            phoneme_type = voice.phoneme_type.value if hasattr(voice.phoneme_type, 'value') else str(voice.phoneme_type)
+
+            # Format the row for the markdown table
+            row = (
+                f"| `{voice.voice_id}` | `{voice.lang}` | "
+                f"`{engine}` | `{phoneme_type}` |"
+            )
+            markdown_output.append(row)
+
+        # Write the output to the specified file
+        try:
+            with open(output_file, "w", encoding="utf-8") as f:
+                f.write("\n".join(markdown_output))
+            print(f"\n✅ Successfully generated and saved voice table to: **{output_file}**")
+        except IOError as e:
+            print(f"\n❌ Error writing to file {output_file}: {e}")
+            print("\n--- Start of Markdown Output ---")
+            print("\n".join(markdown_output))
+            print("--- End of Markdown Output ---")
+
+
+    generate_voices_markdown(manager, output_file="../VOICES.md")
+
