@@ -1,7 +1,11 @@
 ## Supported Voices
 
 **Total Voices:** 1464
-**Total Languages:** 1205
+**Total Languages:** 1199
+
+> ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic)
+
+> ⚠️ some models are duplicated, piper is known to mirror community voices and those will often show up twice (under piper and under original author)
 
 | Voice ID | Language Code | Engine | Phoneme Type |
 | :--- | :--- | :--- | :--- |
@@ -30,7 +34,7 @@
 | `facebook/mms-tts-aha-Ahanta` | `aha` | `transformers` | `unicode` |
 | `facebook/mms-tts-ahk-Akha` | `ahk` | `transformers` | `unicode` |
 | `facebook/mms-tts-aia-Arosi` | `aia` | `transformers` | `unicode` |
-| `facebook/mms-tts-aka-Akan` | `aka` | `transformers` | `unicode` |
+| `facebook/mms-tts-aka-Akan` | `ak` | `transformers` | `unicode` |
 | `facebook/mms-tts-akb-Batak Angkola` | `akb` | `transformers` | `unicode` |
 | `facebook/mms-tts-ake-Akawaio` | `ake` | `transformers` | `unicode` |
 | `facebook/mms-tts-akp-Siwu` | `akp` | `transformers` | `unicode` |
@@ -38,9 +42,9 @@
 | `facebook/mms-tts-alp-Alune` | `alp` | `transformers` | `unicode` |
 | `facebook/mms-tts-alt-Altai, Southern` | `alt` | `transformers` | `unicode` |
 | `facebook/mms-tts-alz-Alur` | `alz` | `transformers` | `unicode` |
+| `facebook/mms-tts-amh-Amharic` | `am` | `transformers` | `unicode` |
 | `facebook/mms-tts-ame-Yanesha’` | `ame` | `transformers` | `unicode` |
 | `facebook/mms-tts-amf-Hamer-Banna` | `amf` | `transformers` | `unicode` |
-| `facebook/mms-tts-amh-Amharic` | `amh` | `transformers` | `unicode` |
 | `facebook/mms-tts-ami-Amis` | `ami` | `transformers` | `unicode` |
 | `facebook/mms-tts-amk-Ambai` | `amk` | `transformers` | `unicode` |
 | `facebook/mms-tts-ann-Obolo` | `ann` | `transformers` | `unicode` |
@@ -48,22 +52,22 @@
 | `facebook/mms-tts-aoz-Uab Meto` | `aoz` | `transformers` | `unicode` |
 | `facebook/mms-tts-apb-Sa’a` | `apb` | `transformers` | `unicode` |
 | `facebook/mms-tts-apr-Arop-Lokep` | `apr` | `transformers` | `unicode` |
+| `facebook/mms-tts-ara-Arabic` | `ar` | `transformers` | `unicode` |
 | `piper_neurlang/ar_zayd0-arabic-diacritized` | `ar` | `piper` | `goruut` |
 | `piper/ar_JO-kareem-low` | `ar-JO` | `piper` | `espeak` |
 | `piper/ar_JO-kareem-medium` | `ar-JO` | `piper` | `espeak` |
 | `OpenVoiceOS/phoonnx_ar-SA_dii_espeak` | `ar-SA` | `phoonnx` | `espeak` |
 | `OpenVoiceOS/phoonnx_ar-SA_miro_espeak_V2` | `ar-SA` | `phoonnx` | `espeak` |
-| `facebook/mms-tts-ara-Arabic` | `ara` | `transformers` | `unicode` |
 | `facebook/mms-tts-arl-Arabela` | `arl` | `transformers` | `unicode` |
+| `facebook/mms-tts-asm-Assamese` | `as` | `transformers` | `unicode` |
 | `facebook/mms-tts-asa-Asu` | `asa` | `transformers` | `unicode` |
 | `facebook/mms-tts-asg-Cishingini` | `asg` | `transformers` | `unicode` |
-| `facebook/mms-tts-asm-Assamese` | `asm` | `transformers` | `unicode` |
 | `facebook/mms-tts-ata-Pele-Ata` | `ata` | `transformers` | `unicode` |
 | `facebook/mms-tts-atb-Zaiwa` | `atb` | `transformers` | `unicode` |
 | `facebook/mms-tts-atg-Ivbie North-Okpela-Arhe` | `atg` | `transformers` | `unicode` |
 | `facebook/mms-tts-ati-Attié` | `ati` | `transformers` | `unicode` |
 | `facebook/mms-tts-atq-Aralle-Tabulahan` | `atq` | `transformers` | `unicode` |
-| `facebook/mms-tts-ava-Avar` | `ava` | `transformers` | `unicode` |
+| `facebook/mms-tts-ava-Avar` | `av` | `transformers` | `unicode` |
 | `facebook/mms-tts-avn-Avatime` | `avn` | `transformers` | `unicode` |
 | `facebook/mms-tts-avu-Avokaya` | `avu` | `transformers` | `unicode` |
 | `facebook/mms-tts-awa-Awadhi` | `awa` | `transformers` | `unicode` |
@@ -73,11 +77,10 @@
 | `facebook/mms-tts-ayz-Mai Brat` | `ayz` | `transformers` | `unicode` |
 | `facebook/mms-tts-azb-Azerbaijani, South` | `azb` | `transformers` | `unicode` |
 | `facebook/mms-tts-azg-Amuzgo, San Pedro Amuzgos` | `azg` | `transformers` | `unicode` |
-| `facebook/mms-tts-azj-script_cyrillic-Azerbaijani, North` | `azj-script_cyrillic` | `transformers` | `unicode` |
-| `facebook/mms-tts-azj-script_latin-Azerbaijani, North` | `azj-script_latin` | `transformers` | `unicode` |
+| `facebook/mms-tts-azj-script_cyrillic-Azerbaijani, North` | `azj-cyrillic-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-azj-script_latin-Azerbaijani, North` | `azj-latin-script` | `transformers` | `unicode` |
 | `facebook/mms-tts-azz-Nahuatl, Highland Puebla` | `azz` | `transformers` | `unicode` |
-| `facebook/mms-tts-bak-Bashkort` | `bak` | `transformers` | `unicode` |
-| `facebook/mms-tts-bam-Bamanankan` | `bam` | `transformers` | `unicode` |
+| `facebook/mms-tts-bak-Bashkort` | `ba` | `transformers` | `unicode` |
 | `facebook/mms-tts-ban-Bali` | `ban` | `transformers` | `unicode` |
 | `facebook/mms-tts-bao-Waimaha` | `bao` | `transformers` | `unicode` |
 | `facebook/mms-tts-bav-Vengo` | `bav` | `transformers` | `unicode` |
@@ -85,8 +88,8 @@
 | `facebook/mms-tts-bbb-Barai` | `bbb` | `transformers` | `unicode` |
 | `facebook/mms-tts-bbc-Batak Toba` | `bbc` | `transformers` | `unicode` |
 | `facebook/mms-tts-bbo-Konabéré` | `bbo` | `transformers` | `unicode` |
-| `facebook/mms-tts-bcc-script_arabic-Balochi, Southern` | `bcc-script_arabic` | `transformers` | `unicode` |
-| `facebook/mms-tts-bcc-script_latin-Balochi, Southern` | `bcc-script_latin` | `transformers` | `unicode` |
+| `facebook/mms-tts-bcc-script_arabic-Balochi, Southern` | `bcc-arabic-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-bcc-script_latin-Balochi, Southern` | `bcc-latin-script` | `transformers` | `unicode` |
 | `facebook/mms-tts-bcl-Bikol, Central` | `bcl` | `transformers` | `unicode` |
 | `facebook/mms-tts-bcw-Bana` | `bcw` | `transformers` | `unicode` |
 | `facebook/mms-tts-bdg-Bonggi` | `bdg` | `transformers` | `unicode` |
@@ -96,13 +99,13 @@
 | `facebook/mms-tts-bdv-Bodo Parja` | `bdv` | `transformers` | `unicode` |
 | `facebook/mms-tts-beh-Biali` | `beh` | `transformers` | `unicode` |
 | `facebook/mms-tts-bem-Bemba` | `bem` | `transformers` | `unicode` |
-| `facebook/mms-tts-ben-Bengali` | `ben` | `transformers` | `unicode` |
 | `facebook/mms-tts-bep-Behoa` | `bep` | `transformers` | `unicode` |
 | `facebook/mms-tts-bex-Jur Modo` | `bex` | `transformers` | `unicode` |
 | `facebook/mms-tts-bfa-Bari` | `bfa` | `transformers` | `unicode` |
 | `facebook/mms-tts-bfo-Birifor, Malba` | `bfo` | `transformers` | `unicode` |
 | `facebook/mms-tts-bfy-Bagheli` | `bfy` | `transformers` | `unicode` |
 | `facebook/mms-tts-bfz-Pahari, Mahasu` | `bfz` | `transformers` | `unicode` |
+| `facebook/mms-tts-bul-Bulgarian` | `bg` | `transformers` | `unicode` |
 | `piper/bg_BG-dimitar-medium` | `bg-BG` | `piper` | `espeak` |
 | `facebook/mms-tts-bgc-Haryanvi` | `bgc` | `transformers` | `unicode` |
 | `facebook/mms-tts-bgq-Bagri` | `bgq` | `transformers` | `unicode` |
@@ -112,9 +115,9 @@
 | `facebook/mms-tts-bha-Bharia` | `bha` | `transformers` | `unicode` |
 | `facebook/mms-tts-bht-Bhattiyali` | `bht` | `transformers` | `unicode` |
 | `facebook/mms-tts-bhz-Bada` | `bhz` | `transformers` | `unicode` |
+| `facebook/mms-tts-bis-Bislama` | `bi` | `transformers` | `unicode` |
 | `facebook/mms-tts-bib-Bisa` | `bib` | `transformers` | `unicode` |
 | `facebook/mms-tts-bim-Bimoba` | `bim` | `transformers` | `unicode` |
-| `facebook/mms-tts-bis-Bislama` | `bis` | `transformers` | `unicode` |
 | `facebook/mms-tts-biv-Birifor, Southern` | `biv` | `transformers` | `unicode` |
 | `facebook/mms-tts-bjr-Binumarien` | `bjr` | `transformers` | `unicode` |
 | `facebook/mms-tts-bjv-Bedjond` | `bjv` | `transformers` | `unicode` |
@@ -126,16 +129,18 @@
 | `facebook/mms-tts-blt-Tai Dam` | `blt` | `transformers` | `unicode` |
 | `facebook/mms-tts-blx-Ayta, Mag-Indi` | `blx` | `transformers` | `unicode` |
 | `facebook/mms-tts-blz-Balantak` | `blz` | `transformers` | `unicode` |
+| `facebook/mms-tts-bam-Bamanankan` | `bm` | `transformers` | `unicode` |
 | `facebook/mms-tts-bmq-Bomu` | `bmq` | `transformers` | `unicode` |
 | `facebook/mms-tts-bmr-Muinane` | `bmr` | `transformers` | `unicode` |
 | `facebook/mms-tts-bmu-Somba-Siawari` | `bmu` | `transformers` | `unicode` |
 | `facebook/mms-tts-bmv-Bum` | `bmv` | `transformers` | `unicode` |
+| `facebook/mms-tts-ben-Bengali` | `bn` | `transformers` | `unicode` |
 | `mimic3/bn/multi_low` | `bn` | `mimic3` | `espeak` |
 | `facebook/mms-tts-bng-Benga` | `bng` | `transformers` | `unicode` |
 | `facebook/mms-tts-bno-Bantoanon` | `bno` | `transformers` | `unicode` |
 | `facebook/mms-tts-bnp-Bola` | `bnp` | `transformers` | `unicode` |
+| `facebook/mms-tts-bod-Tibetan, Central` | `bo` | `transformers` | `unicode` |
 | `facebook/mms-tts-boa-Bora` | `boa` | `transformers` | `unicode` |
-| `facebook/mms-tts-bod-Tibetan, Central` | `bod` | `transformers` | `unicode` |
 | `facebook/mms-tts-boj-Anjam` | `boj` | `transformers` | `unicode` |
 | `facebook/mms-tts-bom-Berom` | `bom` | `transformers` | `unicode` |
 | `facebook/mms-tts-bor-Borôro` | `bor` | `transformers` | `unicode` |
@@ -156,7 +161,6 @@
 | `facebook/mms-tts-btt-Bete-Bendi` | `btt` | `transformers` | `unicode` |
 | `facebook/mms-tts-btx-Batak Karo` | `btx` | `transformers` | `unicode` |
 | `facebook/mms-tts-bud-Ntcham` | `bud` | `transformers` | `unicode` |
-| `facebook/mms-tts-bul-Bulgarian` | `bul` | `transformers` | `unicode` |
 | `facebook/mms-tts-bus-Bokobaru` | `bus` | `transformers` | `unicode` |
 | `facebook/mms-tts-bvc-Baelelea` | `bvc` | `transformers` | `unicode` |
 | `facebook/mms-tts-bvz-Bauzi` | `bvz` | `transformers` | `unicode` |
@@ -166,20 +170,20 @@
 | `facebook/mms-tts-bzh-Buang, Mapos` | `bzh` | `transformers` | `unicode` |
 | `facebook/mms-tts-bzi-Bisu` | `bzi` | `transformers` | `unicode` |
 | `facebook/mms-tts-bzj-Belize English Creole` | `bzj` | `transformers` | `unicode` |
+| `facebook/mms-tts-cat-Catalan` | `ca` | `transformers` | `unicode` |
 | `piper/ca_ES-upc_ona-medium` | `ca-ES` | `piper` | `espeak` |
 | `piper/ca_ES-upc_ona-x_low` | `ca-ES` | `piper` | `espeak` |
 | `piper/ca_ES-upc_pau-x_low` | `ca-ES` | `piper` | `espeak` |
 | `facebook/mms-tts-caa-Ch’orti’` | `caa` | `transformers` | `unicode` |
 | `facebook/mms-tts-cab-Garifuna` | `cab` | `transformers` | `unicode` |
-| `facebook/mms-tts-cak-dialect_central-Kaqchikel` | `cak-dialect_central` | `transformers` | `unicode` |
+| `facebook/mms-tts-cak-dialect_central-Kaqchikel` | `cak-central-dialect` | `transformers` | `unicode` |
+| `facebook/mms-tts-cak-dialect_western-Kaqchikel` | `cak-dialect-western` | `transformers` | `unicode` |
+| `facebook/mms-tts-cak-dialect_yepocapa-Kaqchikel` | `cak-dialect-yepocapa` | `transformers` | `unicode` |
 | `facebook/mms-tts-cak-dialect_santodomingoxenacoj-Kaqchikel` | `cak-dialect_santodomingoxenacoj` | `transformers` | `unicode` |
 | `facebook/mms-tts-cak-dialect_southcentral-Kaqchikel` | `cak-dialect_southcentral` | `transformers` | `unicode` |
-| `facebook/mms-tts-cak-dialect_western-Kaqchikel` | `cak-dialect_western` | `transformers` | `unicode` |
-| `facebook/mms-tts-cak-dialect_yepocapa-Kaqchikel` | `cak-dialect_yepocapa` | `transformers` | `unicode` |
 | `facebook/mms-tts-cap-Chipaya` | `cap` | `transformers` | `unicode` |
 | `facebook/mms-tts-car-Carib` | `car` | `transformers` | `unicode` |
 | `facebook/mms-tts-cas-Tsimané` | `cas` | `transformers` | `unicode` |
-| `facebook/mms-tts-cat-Catalan` | `cat` | `transformers` | `unicode` |
 | `facebook/mms-tts-cax-Chiquitano` | `cax` | `transformers` | `unicode` |
 | `facebook/mms-tts-cbc-Carapana` | `cbc` | `transformers` | `unicode` |
 | `facebook/mms-tts-cbi-Chachi` | `cbi` | `transformers` | `unicode` |
@@ -191,14 +195,13 @@
 | `facebook/mms-tts-cce-Chopi` | `cce` | `transformers` | `unicode` |
 | `facebook/mms-tts-cco-Chinantec, Comaltepec` | `cco` | `transformers` | `unicode` |
 | `facebook/mms-tts-cdj-Churahi` | `cdj` | `transformers` | `unicode` |
+| `facebook/mms-tts-che-Chechen` | `ce` | `transformers` | `unicode` |
 | `facebook/mms-tts-ceb-Cebuano` | `ceb` | `transformers` | `unicode` |
 | `facebook/mms-tts-ceg-Chamacoco` | `ceg` | `transformers` | `unicode` |
 | `facebook/mms-tts-cek-Chin, Eastern Khumi` | `cek` | `transformers` | `unicode` |
 | `facebook/mms-tts-cfm-Chin, Falam` | `cfm` | `transformers` | `unicode` |
 | `facebook/mms-tts-cgc-Kagayanen` | `cgc` | `transformers` | `unicode` |
-| `facebook/mms-tts-che-Chechen` | `che` | `transformers` | `unicode` |
 | `facebook/mms-tts-chf-Chontal, Tabasco` | `chf` | `transformers` | `unicode` |
-| `facebook/mms-tts-chv-Chuvash` | `chv` | `transformers` | `unicode` |
 | `facebook/mms-tts-chz-Chinantec, Ozumacín` | `chz` | `transformers` | `unicode` |
 | `facebook/mms-tts-cjo-Ashéninka, Pajonal` | `cjo` | `transformers` | `unicode` |
 | `facebook/mms-tts-cjp-Cabécar` | `cjp` | `transformers` | `unicode` |
@@ -209,8 +212,8 @@
 | `facebook/mms-tts-cle-Chinantec, Lealao` | `cle` | `transformers` | `unicode` |
 | `facebook/mms-tts-cly-Chatino, Eastern Highland` | `cly` | `transformers` | `unicode` |
 | `facebook/mms-tts-cme-Cerma` | `cme` | `transformers` | `unicode` |
-| `facebook/mms-tts-cmo-script_khmer-Mnong, Central` | `cmo-script_khmer` | `transformers` | `unicode` |
-| `facebook/mms-tts-cmo-script_latin-Mnong, Central` | `cmo-script_latin` | `transformers` | `unicode` |
+| `facebook/mms-tts-cmo-script_khmer-Mnong, Central` | `cmo-khmer-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-cmo-script_latin-Mnong, Central` | `cmo-latin-script` | `transformers` | `unicode` |
 | `facebook/mms-tts-cmr-Mro-Khimi` | `cmr` | `transformers` | `unicode` |
 | `facebook/mms-tts-cnh-Chin, Hakha` | `cnh` | `transformers` | `unicode` |
 | `facebook/mms-tts-cni-Asháninka` | `cni` | `transformers` | `unicode` |
@@ -226,7 +229,7 @@
 | `facebook/mms-tts-cpb-Ashéninka, Ucayali-Yurúa` | `cpb` | `transformers` | `unicode` |
 | `facebook/mms-tts-cpu-Ashéninka, Pichis` | `cpu` | `transformers` | `unicode` |
 | `facebook/mms-tts-crh-Crimean Tatar` | `crh` | `transformers` | `unicode` |
-| `facebook/mms-tts-crk-script_latin-Cree, Plains` | `crk-script_latin` | `transformers` | `unicode` |
+| `facebook/mms-tts-crk-script_latin-Cree, Plains` | `crk-latin-script` | `transformers` | `unicode` |
 | `facebook/mms-tts-crk-script_syllabics-Cree, Plains` | `crk-script_syllabics` | `transformers` | `unicode` |
 | `facebook/mms-tts-crn-Cora, El Nayar` | `crn` | `transformers` | `unicode` |
 | `facebook/mms-tts-crq-Chorote, Iyo’wujwa` | `crq` | `transformers` | `unicode` |
@@ -246,13 +249,14 @@
 | `facebook/mms-tts-cui-Cuiba` | `cui` | `transformers` | `unicode` |
 | `facebook/mms-tts-cuk-Kuna, San Blas` | `cuk` | `transformers` | `unicode` |
 | `facebook/mms-tts-cul-Kulina` | `cul` | `transformers` | `unicode` |
+| `facebook/mms-tts-chv-Chuvash` | `cv` | `transformers` | `unicode` |
 | `facebook/mms-tts-cwa-Kabwa` | `cwa` | `transformers` | `unicode` |
 | `facebook/mms-tts-cwe-Kwere` | `cwe` | `transformers` | `unicode` |
 | `facebook/mms-tts-cwt-Kuwaataay` | `cwt` | `transformers` | `unicode` |
+| `facebook/mms-tts-cym-Welsh` | `cy` | `transformers` | `unicode` |
 | `piper/cy_GB-bu_tts-medium` | `cy-GB` | `piper` | `espeak` |
 | `piper/cy_GB-gwryw_gogleddol-medium` | `cy-GB` | `piper` | `espeak` |
 | `facebook/mms-tts-cya-Chatino, Nopala` | `cya` | `transformers` | `unicode` |
-| `facebook/mms-tts-cym-Welsh` | `cym` | `transformers` | `unicode` |
 | `OpenVoiceOS/phoonnx_da-DK_miro_espeak` | `da-DK` | `phoonnx` | `espeak` |
 | `piper/da_DK-talesyntese-medium` | `da-DK` | `piper` | `espeak` |
 | `facebook/mms-tts-daa-Dangaléat` | `daa` | `transformers` | `unicode` |
@@ -261,6 +265,7 @@
 | `facebook/mms-tts-dbj-Ida’an` | `dbj` | `transformers` | `unicode` |
 | `facebook/mms-tts-dbq-Daba` | `dbq` | `transformers` | `unicode` |
 | `facebook/mms-tts-ddn-Dendi` | `ddn` | `transformers` | `unicode` |
+| `facebook/mms-tts-deu-German, Standard` | `de` | `transformers` | `unicode` |
 | `mimic3/de_DE/m-ailabs_low` | `de-DE` | `mimic3` | `gruut` |
 | `mimic3/de_DE/thorsten-emotion_low` | `de-DE` | `mimic3` | `gruut` |
 | `mimic3/de_DE/thorsten_low` | `de-DE` | `mimic3` | `gruut` |
@@ -288,7 +293,6 @@
 | `piper_community/systemofapwne/de-DE_glados_medium` | `de-DE` | `piper` | `espeak` |
 | `facebook/mms-tts-ded-Dedua` | `ded` | `transformers` | `unicode` |
 | `facebook/mms-tts-des-Desano` | `des` | `transformers` | `unicode` |
-| `facebook/mms-tts-deu-German, Standard` | `deu` | `transformers` | `unicode` |
 | `facebook/mms-tts-dga-Dagaare, Southern` | `dga` | `transformers` | `unicode` |
 | `facebook/mms-tts-dgi-Dagara, Northern` | `dgi` | `transformers` | `unicode` |
 | `facebook/mms-tts-dgk-Dagba` | `dgk` | `transformers` | `unicode` |
@@ -299,7 +303,6 @@
 | `facebook/mms-tts-dig-Chidigo` | `dig` | `transformers` | `unicode` |
 | `facebook/mms-tts-dik-Dinka, Southwestern` | `dik` | `transformers` | `unicode` |
 | `facebook/mms-tts-dip-Dinka, Northeastern` | `dip` | `transformers` | `unicode` |
-| `facebook/mms-tts-div-Maldivian` | `div` | `transformers` | `unicode` |
 | `facebook/mms-tts-djk-Aukan` | `djk` | `transformers` | `unicode` |
 | `facebook/mms-tts-dnj-dialect_blowowest-Dan` | `dnj-dialect_blowowest` | `transformers` | `unicode` |
 | `facebook/mms-tts-dnj-dialect_gweetaawueast-Dan` | `dnj-dialect_gweetaawueast` | `transformers` | `unicode` |
@@ -312,22 +315,25 @@
 | `facebook/mms-tts-dtp-Kadazan Dusun` | `dtp` | `transformers` | `unicode` |
 | `facebook/mms-tts-dts-Dogon, Toro So` | `dts` | `transformers` | `unicode` |
 | `facebook/mms-tts-dug-Chiduruma` | `dug` | `transformers` | `unicode` |
+| `facebook/mms-tts-div-Maldivian` | `dv` | `transformers` | `unicode` |
 | `facebook/mms-tts-dwr-Dawro` | `dwr` | `transformers` | `unicode` |
 | `facebook/mms-tts-dyi-Sénoufo, Djimini` | `dyi` | `transformers` | `unicode` |
 | `facebook/mms-tts-dyo-Jola-Fonyi` | `dyo` | `transformers` | `unicode` |
 | `facebook/mms-tts-dyu-Jula` | `dyu` | `transformers` | `unicode` |
-| `facebook/mms-tts-dzo-Dzongkha` | `dzo` | `transformers` | `unicode` |
+| `facebook/mms-tts-dzo-Dzongkha` | `dz` | `transformers` | `unicode` |
+| `facebook/mms-tts-ewe-Éwé` | `ee` | `transformers` | `unicode` |
 | `facebook/mms-tts-eip-Lik` | `eip` | `transformers` | `unicode` |
 | `facebook/mms-tts-eka-Ekajuk` | `eka` | `transformers` | `unicode` |
+| `facebook/mms-tts-ell-Greek` | `el` | `transformers` | `unicode` |
 | `mimic3/el_GR/rapunzelina_low` | `el-GR` | `mimic3` | `espeak` |
 | `piper/el_GR-rapunzelina-low` | `el-GR` | `piper` | `espeak` |
 | `piper/el_GR-rapunzelina-medium` | `el-GR` | `piper` | `espeak` |
-| `facebook/mms-tts-ell-Greek` | `ell` | `transformers` | `unicode` |
 | `facebook/mms-tts-emp-Emberá, Northern` | `emp` | `transformers` | `unicode` |
+| `facebook/mms-tts-eng-English` | `en` | `transformers` | `unicode` |
 | `piper_community/agentvibe/en_16Speakers` | `en` | `piper` | `espeak` |
 | `piper_community/brycebeattie/en_ManyVoice` | `en` | `piper` | `espeak` |
 | `piper_community/jstlntchh/en_Scaramouche` | `en` | `piper` | `espeak` |
-| `hf_community/ylacombe/vits_ljs_welsh_female_monospeaker` | `en-cy` | `transformers` | `unicode` |
+| `hf_community/ylacombe/vits_ljs_welsh_female_monospeaker` | `en-CY` | `transformers` | `unicode` |
 | `mimic3/en_UK/apope_low` | `en-GB` | `mimic3` | `gruut` |
 | `OpenVoiceOS/pipertts_en-GB_dii` | `en-GB` | `piper` | `espeak` |
 | `OpenVoiceOS/pipertts_en-GB_miro` | `en-GB` | `piper` | `espeak` |
@@ -418,8 +424,8 @@
 | `piper_community/simoniz0r/en-US_patrick` | `en-US` | `piper` | `espeak` |
 | `piper_community/swqg-messiah/en-US_chitti` | `en-US` | `piper` | `espeak` |
 | `facebook/mms-tts-enb-Markweeta` | `enb` | `transformers` | `unicode` |
-| `facebook/mms-tts-eng-English` | `eng` | `transformers` | `unicode` |
 | `facebook/mms-tts-enx-Enxet` | `enx` | `transformers` | `unicode` |
+| `facebook/mms-tts-spa-Spanish` | `es` | `transformers` | `unicode` |
 | `hf_community/ylacombe/mms-spa-finetuned-argentinian-monospeaker` | `es-AR` | `transformers` | `unicode` |
 | `piper/es_AR-daniela-high` | `es-AR` | `piper` | `espeak` |
 | `piper_community/larcanio/es-AR_daniela` | `es-AR` | `piper` | `espeak` |
@@ -440,12 +446,12 @@
 | `piper_community/HirCoir/es-MX_Laura` | `es-MX` | `piper` | `espeak` |
 | `facebook/mms-tts-ese-Ese Ejja` | `ese` | `transformers` | `unicode` |
 | `facebook/mms-tts-ess-Yupik, Saint Lawrence Island` | `ess` | `transformers` | `unicode` |
+| `facebook/mms-tts-eus-Basque` | `eu` | `transformers` | `unicode` |
 | `OpenVoiceOS/phoonnx_eu-ES_dii_espeak` | `eu-ES` | `phoonnx` | `espeak` |
 | `OpenVoiceOS/phoonnx_eu-ES_miro_espeak` | `eu-ES` | `phoonnx` | `espeak` |
-| `facebook/mms-tts-eus-Basque` | `eus` | `transformers` | `unicode` |
 | `facebook/mms-tts-evn-Evenki` | `evn` | `transformers` | `unicode` |
-| `facebook/mms-tts-ewe-Éwé` | `ewe` | `transformers` | `unicode` |
 | `facebook/mms-tts-eza-Ezaa` | `eza` | `transformers` | `unicode` |
+| `facebook/mms-tts-fas-Persian` | `fa` | `transformers` | `unicode` |
 | `mimic3/fa/haaniye_low` | `fa` | `mimic3` | `espeak` |
 | `piper/fa_IR-amir-medium` | `fa-IR` | `piper` | `espeak` |
 | `piper/fa_IR-ganji-medium` | `fa-IR` | `piper` | `espeak` |
@@ -455,18 +461,20 @@
 | `piper_community/gyroing/fa-IR_gyro` | `fa-IR` | `piper` | `espeak` |
 | `piper_community/mah92/fa-IR_Reza-And-Ibrahim` | `fa-IR` | `piper` | `espeak` |
 | `facebook/mms-tts-fal-Fali, South` | `fal` | `transformers` | `unicode` |
-| `facebook/mms-tts-fao-Faroese` | `fao` | `transformers` | `unicode` |
 | `facebook/mms-tts-far-Fataleka` | `far` | `transformers` | `unicode` |
-| `facebook/mms-tts-fas-Persian` | `fas` | `transformers` | `unicode` |
+| `facebook/mms-tts-ful-Fulah` | `ff` | `transformers` | `unicode` |
+| `facebook/mms-tts-fin-Finnish` | `fi` | `transformers` | `unicode` |
 | `mimic3/fi_FI/harri-tapani-ylilammi_low` | `fi-FI` | `mimic3` | `espeak` |
 | `piper/fi_FI-harri-low` | `fi-FI` | `piper` | `espeak` |
 | `piper/fi_FI-harri-medium` | `fi-FI` | `piper` | `espeak` |
 | `piper_community/AsmoKoskinen/fi-FI_asmo` | `fi-FI` | `piper` | `espeak` |
-| `facebook/mms-tts-fij-Fijian` | `fij` | `transformers` | `unicode` |
-| `facebook/mms-tts-fin-Finnish` | `fin` | `transformers` | `unicode` |
+| `facebook/mms-tts-tgl-Tagalog` | `fil` | `transformers` | `unicode` |
+| `facebook/mms-tts-fij-Fijian` | `fj` | `transformers` | `unicode` |
 | `facebook/mms-tts-flr-Fuliiru` | `flr` | `transformers` | `unicode` |
 | `facebook/mms-tts-fmu-Muria, Far Western` | `fmu` | `transformers` | `unicode` |
+| `facebook/mms-tts-fao-Faroese` | `fo` | `transformers` | `unicode` |
 | `facebook/mms-tts-fon-Fon` | `fon` | `transformers` | `unicode` |
+| `facebook/mms-tts-fra-French` | `fr` | `transformers` | `unicode` |
 | `mimic3/fr_FR/m-ailabs_low` | `fr-FR` | `mimic3` | `gruut` |
 | `mimic3/fr_FR/siwis_low` | `fr-FR` | `mimic3` | `gruut` |
 | `mimic3/fr_FR/tom_low` | `fr-FR` | `mimic3` | `gruut` |
@@ -478,11 +486,9 @@
 | `piper/fr_FR-siwis-medium` | `fr-FR` | `piper` | `espeak` |
 | `piper/fr_FR-tom-medium` | `fr-FR` | `piper` | `espeak` |
 | `piper/fr_FR-upmc-medium` | `fr-FR` | `piper` | `espeak` |
-| `facebook/mms-tts-fra-French` | `fra` | `transformers` | `unicode` |
 | `facebook/mms-tts-frd-Fordata` | `frd` | `transformers` | `unicode` |
-| `facebook/mms-tts-ful-Fulah` | `ful` | `transformers` | `unicode` |
-| `facebook/mms-tts-gag-script_cyrillic-Gagauz` | `gag-script_cyrillic` | `transformers` | `unicode` |
-| `facebook/mms-tts-gag-script_latin-Gagauz` | `gag-script_latin` | `transformers` | `unicode` |
+| `facebook/mms-tts-gag-script_cyrillic-Gagauz` | `gag-cyrillic-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-gag-script_latin-Gagauz` | `gag-latin-script` | `transformers` | `unicode` |
 | `facebook/mms-tts-gai-Mbore` | `gai` | `transformers` | `unicode` |
 | `facebook/mms-tts-gam-Kandawo` | `gam` | `transformers` | `unicode` |
 | `facebook/mms-tts-gau-Gadaba, Mudhili` | `gau` | `transformers` | `unicode` |
@@ -508,25 +514,25 @@
 | `facebook/mms-tts-gld-Nanai` | `gld` | `transformers` | `unicode` |
 | `facebook/mms-tts-glk-Gilaki` | `glk` | `transformers` | `unicode` |
 | `facebook/mms-tts-gmv-Gamo` | `gmv` | `transformers` | `unicode` |
+| `facebook/mms-tts-grn-Guarani` | `gn` | `transformers` | `unicode` |
 | `facebook/mms-tts-gna-Kaansa` | `gna` | `transformers` | `unicode` |
 | `facebook/mms-tts-gnd-Zulgo-Gemzek` | `gnd` | `transformers` | `unicode` |
 | `facebook/mms-tts-gng-Ngangam` | `gng` | `transformers` | `unicode` |
-| `facebook/mms-tts-gof-script_latin-Gofa` | `gof-script_latin` | `transformers` | `unicode` |
+| `facebook/mms-tts-gof-script_latin-Gofa` | `gof-latin-script` | `transformers` | `unicode` |
 | `facebook/mms-tts-gog-Gogo` | `gog` | `transformers` | `unicode` |
 | `facebook/mms-tts-gor-Gorontalo` | `gor` | `transformers` | `unicode` |
 | `facebook/mms-tts-gqr-Gor` | `gqr` | `transformers` | `unicode` |
 | `facebook/mms-tts-grc-Greek, Ancient` | `grc` | `transformers` | `unicode` |
 | `facebook/mms-tts-gri-Ghari` | `gri` | `transformers` | `unicode` |
-| `facebook/mms-tts-grn-Guarani` | `grn` | `transformers` | `unicode` |
 | `facebook/mms-tts-grt-Garo` | `grt` | `transformers` | `unicode` |
 | `facebook/mms-tts-gso-Gbaya, Southwest` | `gso` | `transformers` | `unicode` |
+| `facebook/mms-tts-guj-Gujarati` | `gu` | `transformers` | `unicode` |
+| `hf_community/ylacombe/mms-guj-finetuned-monospeaker` | `gu` | `transformers` | `unicode` |
 | `mimic3/gu_IN/cmu-indic_low` | `gu-IN` | `mimic3` | `espeak` |
 | `facebook/mms-tts-gub-Guajajára` | `gub` | `transformers` | `unicode` |
 | `facebook/mms-tts-guc-Wayuu` | `guc` | `transformers` | `unicode` |
 | `facebook/mms-tts-gud-Dida, Yocoboué` | `gud` | `transformers` | `unicode` |
 | `facebook/mms-tts-guh-Guahibo` | `guh` | `transformers` | `unicode` |
-| `facebook/mms-tts-guj-Gujarati` | `guj` | `transformers` | `unicode` |
-| `hf_community/ylacombe/mms-guj-finetuned-monospeaker` | `guj` | `transformers` | `unicode` |
 | `facebook/mms-tts-guk-Gumuz` | `guk` | `transformers` | `unicode` |
 | `facebook/mms-tts-gum-Misak` | `gum` | `transformers` | `unicode` |
 | `facebook/mms-tts-guo-Guayabero` | `guo` | `transformers` | `unicode` |
@@ -539,18 +545,18 @@
 | `facebook/mms-tts-gwr-Gwere` | `gwr` | `transformers` | `unicode` |
 | `facebook/mms-tts-gym-Ngäbere` | `gym` | `transformers` | `unicode` |
 | `facebook/mms-tts-gyr-Guarayu` | `gyr` | `transformers` | `unicode` |
+| `facebook/mms-tts-hau-Hausa` | `ha` | `transformers` | `unicode` |
 | `mimic3/ha_NE/openbible_low` | `ha-NE` | `mimic3` | `epitran` |
 | `facebook/mms-tts-had-Hatam` | `had` | `transformers` | `unicode` |
 | `facebook/mms-tts-hag-Hanga` | `hag` | `transformers` | `unicode` |
 | `facebook/mms-tts-hak-Chinese, Hakka` | `hak` | `transformers` | `unicode` |
 | `facebook/mms-tts-hap-Hupla` | `hap` | `transformers` | `unicode` |
-| `facebook/mms-tts-hat-Haitian Creole` | `hat` | `transformers` | `unicode` |
-| `facebook/mms-tts-hau-Hausa` | `hau` | `transformers` | `unicode` |
 | `facebook/mms-tts-hay-Haya` | `hay` | `transformers` | `unicode` |
-| `phonikud/phonikud` | `he` | `piper` | `phonikud` |
-| `phonikud/shaul` | `he` | `piper` | `phonikud` |
-| `facebook/mms-tts-heb-Hebrew` | `heb` | `transformers` | `unicode` |
+| `facebook/mms-tts-heb-Hebrew` | `he` | `transformers` | `unicode` |
+| `phonikud/phonikud` | `he-IL` | `piper` | `phonikud` |
+| `phonikud/shaul` | `he-IL` | `piper` | `phonikud` |
 | `facebook/mms-tts-heh-Hehe` | `heh` | `transformers` | `unicode` |
+| `facebook/mms-tts-hin-Hindi` | `hi` | `transformers` | `unicode` |
 | `piper/hi_IN-pratham-medium` | `hi-IN` | `piper` | `espeak` |
 | `piper/hi_IN-priyamvada-medium` | `hi-IN` | `piper` | `espeak` |
 | `piper/hi_IN-rohan-medium` | `hi-IN` | `piper` | `espeak` |
@@ -559,7 +565,6 @@
 | `facebook/mms-tts-hif-Hindi, Fiji` | `hif` | `transformers` | `unicode` |
 | `facebook/mms-tts-hig-Kamwe` | `hig` | `transformers` | `unicode` |
 | `facebook/mms-tts-hil-Hiligaynon` | `hil` | `transformers` | `unicode` |
-| `facebook/mms-tts-hin-Hindi` | `hin` | `transformers` | `unicode` |
 | `facebook/mms-tts-hlb-Halbi` | `hlb` | `transformers` | `unicode` |
 | `facebook/mms-tts-hlt-Chin, Matu` | `hlt` | `transformers` | `unicode` |
 | `facebook/mms-tts-hne-Chhattisgarhi` | `hne` | `transformers` | `unicode` |
@@ -567,14 +572,15 @@
 | `facebook/mms-tts-hns-Hindustani, Sarnami` | `hns` | `transformers` | `unicode` |
 | `facebook/mms-tts-hoc-Ho` | `hoc` | `transformers` | `unicode` |
 | `facebook/mms-tts-hoy-Holiya` | `hoy` | `transformers` | `unicode` |
+| `facebook/mms-tts-hat-Haitian Creole` | `ht` | `transformers` | `unicode` |
 | `facebook/mms-tts-hto-Witoto, Minika` | `hto` | `transformers` | `unicode` |
+| `facebook/mms-tts-hun-Hungarian` | `hu` | `transformers` | `unicode` |
 | `mimic3/hu_HU/diana-majlinger_low` | `hu-HU` | `mimic3` | `espeak` |
 | `piper/hu_HU-anna-medium` | `hu-HU` | `piper` | `espeak` |
 | `piper/hu_HU-berta-medium` | `hu-HU` | `piper` | `espeak` |
 | `piper/hu_HU-imre-medium` | `hu-HU` | `piper` | `espeak` |
 | `facebook/mms-tts-hub-Wampís` | `hub` | `transformers` | `unicode` |
 | `facebook/mms-tts-hui-Huli` | `hui` | `transformers` | `unicode` |
-| `facebook/mms-tts-hun-Hungarian` | `hun` | `transformers` | `unicode` |
 | `facebook/mms-tts-hus-dialect_centralveracruz-Huastec` | `hus-dialect_centralveracruz` | `transformers` | `unicode` |
 | `facebook/mms-tts-hus-dialect_westernpotosino-Huastec` | `hus-dialect_westernpotosino` | `transformers` | `unicode` |
 | `facebook/mms-tts-huu-Witoto, Murui` | `huu` | `transformers` | `unicode` |
@@ -585,6 +591,7 @@
 | `facebook/mms-tts-hyw-Armenian, Western` | `hyw` | `transformers` | `unicode` |
 | `facebook/mms-tts-iba-Iban` | `iba` | `transformers` | `unicode` |
 | `facebook/mms-tts-icr-Islander English Creole` | `icr` | `transformers` | `unicode` |
+| `facebook/mms-tts-ind-Indonesian` | `id` | `transformers` | `unicode` |
 | `piper/id_ID-news_tts-medium` | `id-ID` | `piper` | `espeak` |
 | `piper_community/giganticlab/id-ID_news` | `id-ID` | `piper` | `espeak` |
 | `facebook/mms-tts-idd-Ede Idaca` | `idd` | `transformers` | `unicode` |
@@ -600,17 +607,16 @@
 | `facebook/mms-tts-ilo-Ilocano` | `ilo` | `transformers` | `unicode` |
 | `facebook/mms-tts-imo-Imbongu` | `imo` | `transformers` | `unicode` |
 | `facebook/mms-tts-inb-Inga` | `inb` | `transformers` | `unicode` |
-| `facebook/mms-tts-ind-Indonesian` | `ind` | `transformers` | `unicode` |
 | `facebook/mms-tts-iou-Tuma-Irumu` | `iou` | `transformers` | `unicode` |
 | `facebook/mms-tts-ipi-Ipili` | `ipi` | `transformers` | `unicode` |
 | `facebook/mms-tts-iqw-Ikwo` | `iqw` | `transformers` | `unicode` |
 | `facebook/mms-tts-iri-Rigwe` | `iri` | `transformers` | `unicode` |
 | `facebook/mms-tts-irk-Iraqw` | `irk` | `transformers` | `unicode` |
+| `facebook/mms-tts-isl-Icelandic` | `is` | `transformers` | `unicode` |
 | `piper/is_IS-bui-medium` | `is-IS` | `piper` | `espeak` |
 | `piper/is_IS-salka-medium` | `is-IS` | `piper` | `espeak` |
 | `piper/is_IS-steinn-medium` | `is-IS` | `piper` | `espeak` |
 | `piper/is_IS-ugla-medium` | `is-IS` | `piper` | `espeak` |
-| `facebook/mms-tts-isl-Icelandic` | `isl` | `transformers` | `unicode` |
 | `mimic3/it_IT/mls_low` | `it-IT` | `mimic3` | `gruut` |
 | `mimic3/it_IT/riccardo-fasol_low` | `it-IT` | `mimic3` | `gruut` |
 | `OpenVoiceOS/pipertts_it-IT_dii` | `it-IT` | `piper` | `espeak` |
@@ -631,7 +637,6 @@
 | `facebook/mms-tts-izz-Izii` | `izz` | `transformers` | `unicode` |
 | `facebook/mms-tts-jac-Jakalteko` | `jac` | `transformers` | `unicode` |
 | `facebook/mms-tts-jam-Jamaican English Creole` | `jam` | `transformers` | `unicode` |
-| `facebook/mms-tts-jav-Javanese` | `jav` | `transformers` | `unicode` |
 | `facebook/mms-tts-jbu-Jukun Takum` | `jbu` | `transformers` | `unicode` |
 | `facebook/mms-tts-jen-Dza` | `jen` | `transformers` | `unicode` |
 | `facebook/mms-tts-jic-Tol` | `jic` | `transformers` | `unicode` |
@@ -640,6 +645,7 @@
 | `facebook/mms-tts-jmd-Yamdena` | `jmd` | `transformers` | `unicode` |
 | `facebook/mms-tts-jun-Juang` | `jun` | `transformers` | `unicode` |
 | `facebook/mms-tts-juy-Juray` | `juy` | `transformers` | `unicode` |
+| `facebook/mms-tts-jav-Javanese` | `jv` | `transformers` | `unicode` |
 | `mimic3/jv_ID/google-gmu_low` | `jv-ID` | `mimic3` | `epitran` |
 | `facebook/mms-tts-jvn-Javanese, Suriname` | `jvn` | `transformers` | `unicode` |
 | `piper/ka_GE-natia-medium` | `ka-GE` | `piper` | `espeak` |
@@ -647,11 +653,9 @@
 | `facebook/mms-tts-kab-Amazigh` | `kab` | `transformers` | `unicode` |
 | `facebook/mms-tts-kac-Jingpho` | `kac` | `transformers` | `unicode` |
 | `facebook/mms-tts-kak-Kalanguya` | `kak` | `transformers` | `unicode` |
-| `facebook/mms-tts-kan-Kannada` | `kan` | `transformers` | `unicode` |
 | `facebook/mms-tts-kao-Xaasongaxango` | `kao` | `transformers` | `unicode` |
 | `facebook/mms-tts-kaq-Capanahua` | `kaq` | `transformers` | `unicode` |
 | `facebook/mms-tts-kay-Kamayurá` | `kay` | `transformers` | `unicode` |
-| `facebook/mms-tts-kaz-Kazakh` | `kaz` | `transformers` | `unicode` |
 | `facebook/mms-tts-kbo-Keliko` | `kbo` | `transformers` | `unicode` |
 | `facebook/mms-tts-kbp-Kabiyè` | `kbp` | `transformers` | `unicode` |
 | `facebook/mms-tts-kbq-Kamano` | `kbq` | `transformers` | `unicode` |
@@ -674,21 +678,19 @@
 | `facebook/mms-tts-key-Kupia` | `key` | `transformers` | `unicode` |
 | `facebook/mms-tts-kez-Kukele` | `kez` | `transformers` | `unicode` |
 | `facebook/mms-tts-kfb-Kolami, Northwestern` | `kfb` | `transformers` | `unicode` |
-| `facebook/mms-tts-kff-script_telugu-Koya` | `kff-script_telugu` | `transformers` | `unicode` |
+| `facebook/mms-tts-kff-script_telugu-Koya` | `kff-script-telugu` | `transformers` | `unicode` |
 | `facebook/mms-tts-kfw-Naga, Kharam` | `kfw` | `transformers` | `unicode` |
 | `facebook/mms-tts-kfx-Pahari, Kullu` | `kfx` | `transformers` | `unicode` |
 | `facebook/mms-tts-khg-Tibetan, Khams` | `khg` | `transformers` | `unicode` |
-| `facebook/mms-tts-khm-Khmer` | `khm` | `transformers` | `unicode` |
 | `facebook/mms-tts-khq-Songhay, Koyra Chiini` | `khq` | `transformers` | `unicode` |
+| `facebook/mms-tts-kik-Gikuyu` | `ki` | `transformers` | `unicode` |
 | `facebook/mms-tts-kia-Kim` | `kia` | `transformers` | `unicode` |
 | `facebook/mms-tts-kij-Kilivila` | `kij` | `transformers` | `unicode` |
-| `facebook/mms-tts-kik-Gikuyu` | `kik` | `transformers` | `unicode` |
-| `facebook/mms-tts-kin-Kinyarwanda` | `kin` | `transformers` | `unicode` |
-| `facebook/mms-tts-kir-Kyrgyz` | `kir` | `transformers` | `unicode` |
 | `facebook/mms-tts-kjb-Q’anjob’al` | `kjb` | `transformers` | `unicode` |
 | `facebook/mms-tts-kje-Kisar` | `kje` | `transformers` | `unicode` |
 | `facebook/mms-tts-kjg-Khmu` | `kjg` | `transformers` | `unicode` |
 | `facebook/mms-tts-kjh-Khakas` | `kjh` | `transformers` | `unicode` |
+| `facebook/mms-tts-kaz-Kazakh` | `kk` | `transformers` | `unicode` |
 | `piper/kk_KZ-iseke-x_low` | `kk-KZ` | `piper` | `espeak` |
 | `piper/kk_KZ-issai-high` | `kk-KZ` | `piper` | `espeak` |
 | `piper/kk_KZ-raya-x_low` | `kk-KZ` | `piper` | `espeak` |
@@ -698,23 +700,25 @@
 | `facebook/mms-tts-klu-Klao` | `klu` | `transformers` | `unicode` |
 | `facebook/mms-tts-klv-Maskelynes` | `klv` | `transformers` | `unicode` |
 | `facebook/mms-tts-klw-Tado` | `klw` | `transformers` | `unicode` |
+| `facebook/mms-tts-khm-Khmer` | `km` | `transformers` | `unicode` |
 | `facebook/mms-tts-kma-Konni` | `kma` | `transformers` | `unicode` |
 | `facebook/mms-tts-kmd-Kalinga, Majukayang` | `kmd` | `transformers` | `unicode` |
 | `facebook/mms-tts-kml-Kalinga, Tanudan` | `kml` | `transformers` | `unicode` |
-| `facebook/mms-tts-kmr-script_arabic-Kurdish, Northern` | `kmr-script_arabic` | `transformers` | `unicode` |
-| `facebook/mms-tts-kmr-script_cyrillic-Kurdish, Northern` | `kmr-script_cyrillic` | `transformers` | `unicode` |
-| `facebook/mms-tts-kmr-script_latin-Kurdish, Northern` | `kmr-script_latin` | `transformers` | `unicode` |
+| `facebook/mms-tts-kmr-script_arabic-Kurdish, Northern` | `kmr-arabic-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-kmr-script_cyrillic-Kurdish, Northern` | `kmr-cyrillic-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-kmr-script_latin-Kurdish, Northern` | `kmr-latin-script` | `transformers` | `unicode` |
 | `facebook/mms-tts-kmu-Kanite` | `kmu` | `transformers` | `unicode` |
+| `facebook/mms-tts-kan-Kannada` | `kn` | `transformers` | `unicode` |
 | `facebook/mms-tts-knb-Kalinga, Lubuagan` | `knb` | `transformers` | `unicode` |
 | `facebook/mms-tts-kne-Kankanaey` | `kne` | `transformers` | `unicode` |
 | `facebook/mms-tts-knf-Mankanya` | `knf` | `transformers` | `unicode` |
 | `facebook/mms-tts-knj-Akateko` | `knj` | `transformers` | `unicode` |
 | `facebook/mms-tts-knk-Kuranko` | `knk` | `transformers` | `unicode` |
 | `facebook/mms-tts-kno-Kono` | `kno` | `transformers` | `unicode` |
+| `facebook/mms-tts-kor-Korean` | `ko` | `transformers` | `unicode` |
 | `mimic3/ko_KO/kss_low` | `ko-KO` | `mimic3` | `espeak` |
 | `piper_neurlang/ko-KO_kss-korean` | `ko-KO` | `piper` | `goruut` |
 | `facebook/mms-tts-kog-Kogi` | `kog` | `transformers` | `unicode` |
-| `facebook/mms-tts-kor-Korean` | `kor` | `transformers` | `unicode` |
 | `facebook/mms-tts-kpq-Korupun-Sela` | `kpq` | `transformers` | `unicode` |
 | `facebook/mms-tts-kps-Tehit` | `kps` | `transformers` | `unicode` |
 | `facebook/mms-tts-kpv-Komi-Zyrian` | `kpv` | `transformers` | `unicode` |
@@ -749,6 +753,7 @@
 | `facebook/mms-tts-kxf-Kawyaw` | `kxf` | `transformers` | `unicode` |
 | `facebook/mms-tts-kxm-Khmer, Northern` | `kxm` | `transformers` | `unicode` |
 | `facebook/mms-tts-kxv-Kuvi` | `kxv` | `transformers` | `unicode` |
+| `facebook/mms-tts-kir-Kyrgyz` | `ky` | `transformers` | `unicode` |
 | `facebook/mms-tts-kyb-Kalinga, Butbut` | `kyb` | `transformers` | `unicode` |
 | `facebook/mms-tts-kyc-Kyaka` | `kyc` | `transformers` | `unicode` |
 | `facebook/mms-tts-kyf-Kouya` | `kyf` | `transformers` | `unicode` |
@@ -758,13 +763,11 @@
 | `facebook/mms-tts-kyu-Kayah, Western` | `kyu` | `transformers` | `unicode` |
 | `facebook/mms-tts-kyz-Kayabí` | `kyz` | `transformers` | `unicode` |
 | `facebook/mms-tts-kzf-Kaili, Da’a` | `kzf` | `transformers` | `unicode` |
+| `facebook/mms-tts-lat-Latin` | `la` | `transformers` | `unicode` |
 | `facebook/mms-tts-lac-Lacandon` | `lac` | `transformers` | `unicode` |
 | `facebook/mms-tts-laj-Lango` | `laj` | `transformers` | `unicode` |
 | `facebook/mms-tts-lam-Lamba` | `lam` | `transformers` | `unicode` |
-| `facebook/mms-tts-lao-Lao` | `lao` | `transformers` | `unicode` |
 | `facebook/mms-tts-las-Lama` | `las` | `transformers` | `unicode` |
-| `facebook/mms-tts-lat-Latin` | `lat` | `transformers` | `unicode` |
-| `facebook/mms-tts-lav-Latvian` | `lav` | `transformers` | `unicode` |
 | `facebook/mms-tts-law-Lauje` | `law` | `transformers` | `unicode` |
 | `piper/lb_LU-marylux-medium` | `lb-LU` | `piper` | `espeak` |
 | `piper_community/mbarnig/lb-LU_androgynous` | `lb-LU` | `piper` | `espeak` |
@@ -778,6 +781,7 @@
 | `facebook/mms-tts-lem-Nomaande` | `lem` | `transformers` | `unicode` |
 | `facebook/mms-tts-lew-Kaili, Ledo` | `lew` | `transformers` | `unicode` |
 | `facebook/mms-tts-lex-Luang` | `lex` | `transformers` | `unicode` |
+| `facebook/mms-tts-lug-Ganda` | `lg` | `transformers` | `unicode` |
 | `facebook/mms-tts-lgg-Lugbara` | `lgg` | `transformers` | `unicode` |
 | `facebook/mms-tts-lgl-Wala` | `lgl` | `transformers` | `unicode` |
 | `facebook/mms-tts-lhu-Lahu` | `lhu` | `transformers` | `unicode` |
@@ -793,6 +797,7 @@
 | `facebook/mms-tts-lme-Pévé` | `lme` | `transformers` | `unicode` |
 | `facebook/mms-tts-lnd-Lundayeh` | `lnd` | `transformers` | `unicode` |
 | `facebook/mms-tts-lns-Lamnso’` | `lns` | `transformers` | `unicode` |
+| `facebook/mms-tts-lao-Lao` | `lo` | `transformers` | `unicode` |
 | `facebook/mms-tts-lob-Lobi` | `lob` | `transformers` | `unicode` |
 | `facebook/mms-tts-lok-Loko` | `lok` | `transformers` | `unicode` |
 | `facebook/mms-tts-lom-Loma` | `lom` | `transformers` | `unicode` |
@@ -801,7 +806,7 @@
 | `facebook/mms-tts-lsi-Lacid` | `lsi` | `transformers` | `unicode` |
 | `facebook/mms-tts-lsm-Saamya-Gwe` | `lsm` | `transformers` | `unicode` |
 | `facebook/mms-tts-luc-Aringa` | `luc` | `transformers` | `unicode` |
-| `facebook/mms-tts-lug-Ganda` | `lug` | `transformers` | `unicode` |
+| `facebook/mms-tts-lav-Latvian` | `lv` | `transformers` | `unicode` |
 | `piper/lv_LV-aivars-medium` | `lv-LV` | `piper` | `espeak` |
 | `piper_community/RaivisDejus/lv-LV_Aivars` | `lv-LV` | `piper` | `espeak` |
 | `facebook/mms-tts-lwo-Luwo` | `lwo` | `transformers` | `unicode` |
@@ -810,18 +815,14 @@
 | `facebook/mms-tts-maa-dialect_sanantonio-Mazatec, San Jerónimo Tecóatl` | `maa-dialect_sanantonio` | `transformers` | `unicode` |
 | `facebook/mms-tts-mad-Madura` | `mad` | `transformers` | `unicode` |
 | `facebook/mms-tts-mag-Magahi` | `mag` | `transformers` | `unicode` |
-| `facebook/mms-tts-mah-Marshallese` | `mah` | `transformers` | `unicode` |
 | `facebook/mms-tts-mai-Maithili` | `mai` | `transformers` | `unicode` |
 | `facebook/mms-tts-maj-Mazatec, Jalapa de Díaz` | `maj` | `transformers` | `unicode` |
 | `facebook/mms-tts-mak-Makasar` | `mak` | `transformers` | `unicode` |
-| `facebook/mms-tts-mal-Malayalam` | `mal` | `transformers` | `unicode` |
-| `facebook/mms-tts-mam-dialect_central-Mam` | `mam-dialect_central` | `transformers` | `unicode` |
-| `facebook/mms-tts-mam-dialect_northern-Mam` | `mam-dialect_northern` | `transformers` | `unicode` |
-| `facebook/mms-tts-mam-dialect_southern-Mam` | `mam-dialect_southern` | `transformers` | `unicode` |
-| `facebook/mms-tts-mam-dialect_western-Mam` | `mam-dialect_western` | `transformers` | `unicode` |
+| `facebook/mms-tts-mam-dialect_central-Mam` | `mam-central-dialect` | `transformers` | `unicode` |
+| `facebook/mms-tts-mam-dialect_northern-Mam` | `mam-dialect-northern` | `transformers` | `unicode` |
+| `facebook/mms-tts-mam-dialect_southern-Mam` | `mam-dialect-southern` | `transformers` | `unicode` |
+| `facebook/mms-tts-mam-dialect_western-Mam` | `mam-dialect-western` | `transformers` | `unicode` |
 | `facebook/mms-tts-maq-Mazatec, Chiquihuitlán` | `maq` | `transformers` | `unicode` |
-| `facebook/mms-tts-mar-Marathi` | `mar` | `transformers` | `unicode` |
-| `hf_community/ylacombe/mms-mar-finetuned-monospeaker` | `mar` | `transformers` | `unicode` |
 | `facebook/mms-tts-maw-Mampruli` | `maw` | `transformers` | `unicode` |
 | `facebook/mms-tts-maz-Mazahua, Central` | `maz` | `transformers` | `unicode` |
 | `facebook/mms-tts-mbb-Manobo, Western Bukidnon` | `mbb` | `transformers` | `unicode` |
@@ -855,10 +856,12 @@
 | `facebook/mms-tts-mfq-Moba` | `mfq` | `transformers` | `unicode` |
 | `facebook/mms-tts-mfy-Mayo` | `mfy` | `transformers` | `unicode` |
 | `facebook/mms-tts-mfz-Mabaan` | `mfz` | `transformers` | `unicode` |
+| `facebook/mms-tts-mlg-Malagasy` | `mg` | `transformers` | `unicode` |
 | `facebook/mms-tts-mgd-Moru` | `mgd` | `transformers` | `unicode` |
 | `facebook/mms-tts-mge-Mango` | `mge` | `transformers` | `unicode` |
 | `facebook/mms-tts-mgh-Makhuwa-Meetto` | `mgh` | `transformers` | `unicode` |
 | `facebook/mms-tts-mgo-Meta’` | `mgo` | `transformers` | `unicode` |
+| `facebook/mms-tts-mah-Marshallese` | `mh` | `transformers` | `unicode` |
 | `facebook/mms-tts-mhi-Ma’di` | `mhi` | `transformers` | `unicode` |
 | `facebook/mms-tts-mhr-Mari, Meadow` | `mhr` | `transformers` | `unicode` |
 | `facebook/mms-tts-mhu-Digaro-Mishmi` | `mhu` | `transformers` | `unicode` |
@@ -881,10 +884,11 @@
 | `facebook/mms-tts-mjv-Mannan` | `mjv` | `transformers` | `unicode` |
 | `facebook/mms-tts-mkl-Mokole` | `mkl` | `transformers` | `unicode` |
 | `facebook/mms-tts-mkn-Malay, Kupang` | `mkn` | `transformers` | `unicode` |
+| `facebook/mms-tts-mal-Malayalam` | `ml` | `transformers` | `unicode` |
 | `piper/ml_IN-arjun-medium` | `ml-IN` | `piper` | `espeak` |
 | `piper/ml_IN-meera-medium` | `ml-IN` | `piper` | `espeak` |
-| `facebook/mms-tts-mlg-Malagasy` | `mlg` | `transformers` | `unicode` |
 | `facebook/mms-tts-mmg-Ambrym, North` | `mmg` | `transformers` | `unicode` |
+| `facebook/mms-tts-mon-Mongolian` | `mn` | `transformers` | `unicode` |
 | `facebook/mms-tts-mnb-Muna` | `mnb` | `transformers` | `unicode` |
 | `facebook/mms-tts-mnf-Mundani` | `mnf` | `transformers` | `unicode` |
 | `facebook/mms-tts-mnk-Mandinka` | `mnk` | `transformers` | `unicode` |
@@ -892,7 +896,6 @@
 | `facebook/mms-tts-mnx-Sougb` | `mnx` | `transformers` | `unicode` |
 | `facebook/mms-tts-moa-Mwan` | `moa` | `transformers` | `unicode` |
 | `facebook/mms-tts-mog-Mongondow` | `mog` | `transformers` | `unicode` |
-| `facebook/mms-tts-mon-Mongolian` | `mon` | `transformers` | `unicode` |
 | `facebook/mms-tts-mop-Maya, Mopán` | `mop` | `transformers` | `unicode` |
 | `facebook/mms-tts-mor-Moro` | `mor` | `transformers` | `unicode` |
 | `facebook/mms-tts-mos-Mòoré` | `mos` | `transformers` | `unicode` |
@@ -906,6 +909,8 @@
 | `facebook/mms-tts-mqf-Momuna` | `mqf` | `transformers` | `unicode` |
 | `facebook/mms-tts-mqj-Mamasa` | `mqj` | `transformers` | `unicode` |
 | `facebook/mms-tts-mqn-Moronene` | `mqn` | `transformers` | `unicode` |
+| `facebook/mms-tts-mar-Marathi` | `mr` | `transformers` | `unicode` |
+| `hf_community/ylacombe/mms-mar-finetuned-monospeaker` | `mr` | `transformers` | `unicode` |
 | `facebook/mms-tts-mrw-Maranao` | `mrw` | `transformers` | `unicode` |
 | `facebook/mms-tts-msy-Aruamu` | `msy` | `transformers` | `unicode` |
 | `facebook/mms-tts-mtd-Mualang` | `mtd` | `transformers` | `unicode` |
@@ -923,7 +928,7 @@
 | `facebook/mms-tts-mxq-Mixe, Juquila` | `mxq` | `transformers` | `unicode` |
 | `facebook/mms-tts-mxt-Mixtec, Jamiltepec` | `mxt` | `transformers` | `unicode` |
 | `facebook/mms-tts-mxv-Mixtec, Metlatónoc` | `mxv` | `transformers` | `unicode` |
-| `facebook/mms-tts-mya-Burmese` | `mya` | `transformers` | `unicode` |
+| `facebook/mms-tts-mya-Burmese` | `my` | `transformers` | `unicode` |
 | `facebook/mms-tts-myb-Mbay` | `myb` | `transformers` | `unicode` |
 | `facebook/mms-tts-myk-Sénoufo, Mamara` | `myk` | `transformers` | `unicode` |
 | `facebook/mms-tts-myl-Moma` | `myl` | `transformers` | `unicode` |
@@ -975,6 +980,7 @@
 | `facebook/mms-tts-nim-Nilamba` | `nim` | `transformers` | `unicode` |
 | `facebook/mms-tts-nin-Ninzo` | `nin` | `transformers` | `unicode` |
 | `facebook/mms-tts-nko-Nkonya` | `nko` | `transformers` | `unicode` |
+| `facebook/mms-tts-nld-Dutch` | `nl` | `transformers` | `unicode` |
 | `mimic3/nl/bart-de-leeuw_low` | `nl` | `mimic3` | `gruut` |
 | `mimic3/nl/flemishguy_low` | `nl` | `mimic3` | `gruut` |
 | `mimic3/nl/nathalie_low` | `nl` | `mimic3` | `gruut` |
@@ -993,7 +999,6 @@
 | `piper/nl_NL-ronnie-medium` | `nl-NL` | `piper` | `espeak` |
 | `piper_community/Rikels/nl-NL_anna` | `nl-NL` | `piper` | `espeak` |
 | `facebook/mms-tts-nlc-Nalca` | `nlc` | `transformers` | `unicode` |
-| `facebook/mms-tts-nld-Dutch` | `nld` | `transformers` | `unicode` |
 | `facebook/mms-tts-nlg-Gela` | `nlg` | `transformers` | `unicode` |
 | `facebook/mms-tts-nlk-Yali, Ninia` | `nlk` | `transformers` | `unicode` |
 | `facebook/mms-tts-nmz-Nawdm` | `nmz` | `transformers` | `unicode` |
@@ -1016,31 +1021,31 @@
 | `facebook/mms-tts-nuz-Nahuatl, Tlamacazapa` | `nuz` | `transformers` | `unicode` |
 | `facebook/mms-tts-nwb-Nyabwa` | `nwb` | `transformers` | `unicode` |
 | `facebook/mms-tts-nxq-Naxi` | `nxq` | `transformers` | `unicode` |
-| `facebook/mms-tts-nya-Chichewa` | `nya` | `transformers` | `unicode` |
+| `facebook/mms-tts-nya-Chichewa` | `ny` | `transformers` | `unicode` |
 | `facebook/mms-tts-nyf-Kigiryama` | `nyf` | `transformers` | `unicode` |
 | `facebook/mms-tts-nyn-Nyankore` | `nyn` | `transformers` | `unicode` |
 | `facebook/mms-tts-nyo-Nyoro` | `nyo` | `transformers` | `unicode` |
 | `facebook/mms-tts-nyy-Nyakyusa-Ngonde` | `nyy` | `transformers` | `unicode` |
 | `facebook/mms-tts-nzi-Nzema` | `nzi` | `transformers` | `unicode` |
 | `facebook/mms-tts-obo-Manobo, Obo` | `obo` | `transformers` | `unicode` |
-| `facebook/mms-tts-ojb-script_latin-Ojibwa, Northwestern` | `ojb-script_latin` | `transformers` | `unicode` |
+| `facebook/mms-tts-ojb-script_latin-Ojibwa, Northwestern` | `ojb-latin-script` | `transformers` | `unicode` |
 | `facebook/mms-tts-ojb-script_syllabics-Ojibwa, Northwestern` | `ojb-script_syllabics` | `transformers` | `unicode` |
 | `facebook/mms-tts-oku-Oku` | `oku` | `transformers` | `unicode` |
 | `facebook/mms-tts-old-Mochi` | `old` | `transformers` | `unicode` |
+| `facebook/mms-tts-orm-Oromo` | `om` | `transformers` | `unicode` |
 | `facebook/mms-tts-omw-Tairora, South` | `omw` | `transformers` | `unicode` |
 | `facebook/mms-tts-onb-Lingao` | `onb` | `transformers` | `unicode` |
 | `facebook/mms-tts-ood-Tohono O’odham` | `ood` | `transformers` | `unicode` |
-| `facebook/mms-tts-orm-Oromo` | `orm` | `transformers` | `unicode` |
 | `facebook/mms-tts-ory-Odia` | `ory` | `transformers` | `unicode` |
-| `facebook/mms-tts-oss-Ossetic` | `oss` | `transformers` | `unicode` |
+| `facebook/mms-tts-oss-Ossetic` | `os` | `transformers` | `unicode` |
 | `facebook/mms-tts-ote-Otomi, Mezquital` | `ote` | `transformers` | `unicode` |
 | `facebook/mms-tts-otq-Otomi, Querétaro` | `otq` | `transformers` | `unicode` |
 | `facebook/mms-tts-ozm-Koonzime` | `ozm` | `transformers` | `unicode` |
+| `facebook/mms-tts-pan-Punjabi, Eastern` | `pa` | `transformers` | `unicode` |
 | `facebook/mms-tts-pab-Parecís` | `pab` | `transformers` | `unicode` |
 | `facebook/mms-tts-pad-Paumarí` | `pad` | `transformers` | `unicode` |
 | `facebook/mms-tts-pag-Pangasinan` | `pag` | `transformers` | `unicode` |
 | `facebook/mms-tts-pam-Kapampangan` | `pam` | `transformers` | `unicode` |
-| `facebook/mms-tts-pan-Punjabi, Eastern` | `pan` | `transformers` | `unicode` |
 | `facebook/mms-tts-pao-Paiute, Northern` | `pao` | `transformers` | `unicode` |
 | `facebook/mms-tts-pap-Papiamentu` | `pap` | `transformers` | `unicode` |
 | `facebook/mms-tts-pau-Palauan` | `pau` | `transformers` | `unicode` |
@@ -1057,6 +1062,7 @@
 | `facebook/mms-tts-pis-Pijin` | `pis` | `transformers` | `unicode` |
 | `facebook/mms-tts-pjt-Pitjantjatjara` | `pjt` | `transformers` | `unicode` |
 | `facebook/mms-tts-pkb-Kipfokomo` | `pkb` | `transformers` | `unicode` |
+| `facebook/mms-tts-pol-Polish` | `pl` | `transformers` | `unicode` |
 | `mimic3/pl_PL/m-ailabs_low` | `pl-PL` | `mimic3` | `espeak` |
 | `piper/pl_PL-darkman-medium` | `pl-PL` | `piper` | `espeak` |
 | `piper/pl_PL-gosia-medium` | `pl-PL` | `piper` | `espeak` |
@@ -1070,11 +1076,9 @@
 | `facebook/mms-tts-plw-Palawano, Brooke’s Point` | `plw` | `transformers` | `unicode` |
 | `facebook/mms-tts-pmf-Pamona` | `pmf` | `transformers` | `unicode` |
 | `facebook/mms-tts-pny-Pinyin` | `pny` | `transformers` | `unicode` |
-| `facebook/mms-tts-poh-dialect_eastern-Poqomchi’` | `poh-dialect_eastern` | `transformers` | `unicode` |
-| `facebook/mms-tts-poh-dialect_western-Poqomchi’` | `poh-dialect_western` | `transformers` | `unicode` |
+| `facebook/mms-tts-poh-dialect_eastern-Poqomchi’` | `poh-dialect-eastern` | `transformers` | `unicode` |
+| `facebook/mms-tts-poh-dialect_western-Poqomchi’` | `poh-dialect-western` | `transformers` | `unicode` |
 | `facebook/mms-tts-poi-Popoluca, Highland` | `poi` | `transformers` | `unicode` |
-| `facebook/mms-tts-pol-Polish` | `pol` | `transformers` | `unicode` |
-| `facebook/mms-tts-por-Portuguese` | `por` | `transformers` | `unicode` |
 | `facebook/mms-tts-poy-Pogolo` | `poy` | `transformers` | `unicode` |
 | `facebook/mms-tts-ppk-Uma` | `ppk` | `transformers` | `unicode` |
 | `facebook/mms-tts-pps-Popoloca, San Luís Temalacayuca` | `pps` | `transformers` | `unicode` |
@@ -1083,6 +1087,7 @@
 | `facebook/mms-tts-prt-Prai` | `prt` | `transformers` | `unicode` |
 | `facebook/mms-tts-pse-Malay, Central` | `pse` | `transformers` | `unicode` |
 | `facebook/mms-tts-pss-Kaulong` | `pss` | `transformers` | `unicode` |
+| `facebook/mms-tts-por-Portuguese` | `pt` | `transformers` | `unicode` |
 | `OpenVoiceOS/pipertts_pt-BR_dii` | `pt-BR` | `piper` | `espeak` |
 | `OpenVoiceOS/pipertts_pt-BR_miro` | `pt-BR` | `piper` | `espeak` |
 | `piper/pt_BR-cadu-medium` | `pt-BR` | `piper` | `espeak` |
@@ -1102,9 +1107,9 @@
 | `facebook/mms-tts-pww-Karen, Pwo Northern` | `pww` | `transformers` | `unicode` |
 | `facebook/mms-tts-pxm-Mixe, Quetzaltepec` | `pxm` | `transformers` | `unicode` |
 | `facebook/mms-tts-qub-Quechua, Huallaga` | `qub` | `transformers` | `unicode` |
-| `facebook/mms-tts-quc-dialect_central-K’iche’` | `quc-dialect_central` | `transformers` | `unicode` |
+| `facebook/mms-tts-quc-dialect_central-K’iche’` | `quc-central-dialect` | `transformers` | `unicode` |
+| `facebook/mms-tts-quc-dialect_north-K’iche’` | `quc-dialect-north` | `transformers` | `unicode` |
 | `facebook/mms-tts-quc-dialect_east-K’iche’` | `quc-dialect_east` | `transformers` | `unicode` |
-| `facebook/mms-tts-quc-dialect_north-K’iche’` | `quc-dialect_north` | `transformers` | `unicode` |
 | `facebook/mms-tts-quf-Quechua, Lambayeque` | `quf` | `transformers` | `unicode` |
 | `facebook/mms-tts-quh-Quechua, South Bolivian` | `quh` | `transformers` | `unicode` |
 | `facebook/mms-tts-qul-Quechua, North Bolivian` | `qul` | `transformers` | `unicode` |
@@ -1135,24 +1140,26 @@
 | `facebook/mms-tts-rel-Rendille` | `rel` | `transformers` | `unicode` |
 | `facebook/mms-tts-rgu-Rikou` | `rgu` | `transformers` | `unicode` |
 | `facebook/mms-tts-rhg-Rohingya` | `rhg` | `transformers` | `unicode` |
-| `facebook/mms-tts-rif-script_arabic-Tarifit` | `rif-script_arabic` | `transformers` | `unicode` |
-| `facebook/mms-tts-rif-script_latin-Tarifit` | `rif-script_latin` | `transformers` | `unicode` |
+| `facebook/mms-tts-rif-script_arabic-Tarifit` | `rif-arabic-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-rif-script_latin-Tarifit` | `rif-latin-script` | `transformers` | `unicode` |
 | `facebook/mms-tts-ril-Riang Lang` | `ril` | `transformers` | `unicode` |
 | `facebook/mms-tts-rim-Nyaturu` | `rim` | `transformers` | `unicode` |
 | `facebook/mms-tts-rjs-Rajbanshi` | `rjs` | `transformers` | `unicode` |
 | `facebook/mms-tts-rkt-Rangpuri` | `rkt` | `transformers` | `unicode` |
-| `facebook/mms-tts-rmc-script_cyrillic-Romani, Carpathian` | `rmc-script_cyrillic` | `transformers` | `unicode` |
-| `facebook/mms-tts-rmc-script_latin-Romani, Carpathian` | `rmc-script_latin` | `transformers` | `unicode` |
+| `facebook/mms-tts-rmc-script_cyrillic-Romani, Carpathian` | `rmc-cyrillic-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-rmc-script_latin-Romani, Carpathian` | `rmc-latin-script` | `transformers` | `unicode` |
 | `facebook/mms-tts-rmo-Romani, Sinte` | `rmo` | `transformers` | `unicode` |
-| `facebook/mms-tts-rmy-script_cyrillic-Romani, Vlax` | `rmy-script_cyrillic` | `transformers` | `unicode` |
-| `facebook/mms-tts-rmy-script_latin-Romani, Vlax` | `rmy-script_latin` | `transformers` | `unicode` |
+| `facebook/mms-tts-rmy-script_cyrillic-Romani, Vlax` | `rmy-cyrillic-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-rmy-script_latin-Romani, Vlax` | `rmy-latin-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-run-Rundi` | `rn` | `transformers` | `unicode` |
 | `facebook/mms-tts-rng-Ronga` | `rng` | `transformers` | `unicode` |
 | `facebook/mms-tts-rnl-Ranglong` | `rnl` | `transformers` | `unicode` |
+| `facebook/mms-tts-ron-Romanian` | `ro` | `transformers` | `unicode` |
 | `piper/ro_RO-mihai-medium` | `ro-RO` | `piper` | `espeak` |
 | `facebook/mms-tts-rol-Romblomanon` | `rol` | `transformers` | `unicode` |
-| `facebook/mms-tts-ron-Romanian` | `ron` | `transformers` | `unicode` |
 | `facebook/mms-tts-rop-Kriol` | `rop` | `transformers` | `unicode` |
 | `facebook/mms-tts-rro-Waima` | `rro` | `transformers` | `unicode` |
+| `facebook/mms-tts-rus-Russian` | `ru` | `transformers` | `unicode` |
 | `hf_community/utrobinmv/tts_ru_free_hf_vits_low_multispeaker` | `ru-RU` | `transformers` | `unicode` |
 | `mimic3/ru_RU/multi_low` | `ru-RU` | `mimic3` | `gruut` |
 | `piper/ru_RU-denis-medium` | `ru-RU` | `piper` | `espeak` |
@@ -1163,10 +1170,8 @@
 | `facebook/mms-tts-rub-Gungu` | `rub` | `transformers` | `unicode` |
 | `facebook/mms-tts-ruf-Luguru` | `ruf` | `transformers` | `unicode` |
 | `facebook/mms-tts-rug-Roviana` | `rug` | `transformers` | `unicode` |
-| `facebook/mms-tts-run-Rundi` | `run` | `transformers` | `unicode` |
-| `facebook/mms-tts-rus-Russian` | `rus` | `transformers` | `unicode` |
+| `facebook/mms-tts-kin-Kinyarwanda` | `rw` | `transformers` | `unicode` |
 | `facebook/mms-tts-sab-Buglere` | `sab` | `transformers` | `unicode` |
-| `facebook/mms-tts-sag-Sango` | `sag` | `transformers` | `unicode` |
 | `facebook/mms-tts-sah-Yakut` | `sah` | `transformers` | `unicode` |
 | `facebook/mms-tts-saj-Sahu` | `saj` | `transformers` | `unicode` |
 | `facebook/mms-tts-saq-Samburu` | `saq` | `transformers` | `unicode` |
@@ -1182,6 +1187,7 @@
 | `facebook/mms-tts-seh-Sena` | `seh` | `transformers` | `unicode` |
 | `facebook/mms-tts-ses-Songhay, Koyraboro Senni` | `ses` | `transformers` | `unicode` |
 | `facebook/mms-tts-sey-Paicoca` | `sey` | `transformers` | `unicode` |
+| `facebook/mms-tts-sag-Sango` | `sg` | `transformers` | `unicode` |
 | `facebook/mms-tts-sgb-Ayta, Mag-antsi` | `sgb` | `transformers` | `unicode` |
 | `facebook/mms-tts-sgj-Surgujia` | `sgj` | `transformers` | `unicode` |
 | `facebook/mms-tts-sgw-Sebat Bet Gurage` | `sgw` | `transformers` | `unicode` |
@@ -1202,19 +1208,18 @@
 | `piper_neurlang/sl-SI_slovakspeech-female-slovak` | `sl-SI` | `piper` | `goruut` |
 | `facebook/mms-tts-sld-Sissala` | `sld` | `transformers` | `unicode` |
 | `facebook/mms-tts-slu-Selaru` | `slu` | `transformers` | `unicode` |
+| `facebook/mms-tts-smo-Samoan` | `sm` | `transformers` | `unicode` |
 | `facebook/mms-tts-sml-Sama, Central` | `sml` | `transformers` | `unicode` |
-| `facebook/mms-tts-smo-Samoan` | `smo` | `transformers` | `unicode` |
-| `facebook/mms-tts-sna-Shona` | `sna` | `transformers` | `unicode` |
+| `facebook/mms-tts-sna-Shona` | `sn` | `transformers` | `unicode` |
 | `facebook/mms-tts-sne-Bidayuh, Bau` | `sne` | `transformers` | `unicode` |
 | `facebook/mms-tts-snn-Siona` | `snn` | `transformers` | `unicode` |
 | `facebook/mms-tts-snp-Siane` | `snp` | `transformers` | `unicode` |
 | `facebook/mms-tts-snw-Selee` | `snw` | `transformers` | `unicode` |
-| `facebook/mms-tts-som-Somali` | `som` | `transformers` | `unicode` |
+| `facebook/mms-tts-som-Somali` | `so` | `transformers` | `unicode` |
 | `facebook/mms-tts-soy-Miyobe` | `soy` | `transformers` | `unicode` |
-| `facebook/mms-tts-spa-Spanish` | `spa` | `transformers` | `unicode` |
 | `facebook/mms-tts-spp-Sénoufo, Supyire` | `spp` | `transformers` | `unicode` |
 | `facebook/mms-tts-spy-Sabaot` | `spy` | `transformers` | `unicode` |
-| `facebook/mms-tts-sqi-Albanian` | `sqi` | `transformers` | `unicode` |
+| `facebook/mms-tts-sqi-Albanian` | `sq` | `transformers` | `unicode` |
 | `piper/sr_RS-serbski_institut-medium` | `sr-RS` | `piper` | `espeak` |
 | `facebook/mms-tts-sri-Siriano` | `sri` | `transformers` | `unicode` |
 | `facebook/mms-tts-srm-Saramaccan` | `srm` | `transformers` | `unicode` |
@@ -1222,34 +1227,33 @@
 | `facebook/mms-tts-srx-Sirmauri` | `srx` | `transformers` | `unicode` |
 | `facebook/mms-tts-stn-Owa` | `stn` | `transformers` | `unicode` |
 | `facebook/mms-tts-stp-Tepehuan, Southeastern` | `stp` | `transformers` | `unicode` |
+| `facebook/mms-tts-sun-Sunda` | `su` | `transformers` | `unicode` |
 | `facebook/mms-tts-suc-Subanon, Western` | `suc` | `transformers` | `unicode` |
 | `facebook/mms-tts-suk-Sukuma` | `suk` | `transformers` | `unicode` |
-| `facebook/mms-tts-sun-Sunda` | `sun` | `transformers` | `unicode` |
 | `facebook/mms-tts-sur-Mwaghavul` | `sur` | `transformers` | `unicode` |
 | `facebook/mms-tts-sus-Susu` | `sus` | `transformers` | `unicode` |
 | `facebook/mms-tts-suv-Puroik` | `suv` | `transformers` | `unicode` |
 | `facebook/mms-tts-suz-Sunwar` | `suz` | `transformers` | `unicode` |
+| `facebook/mms-tts-swe-Swedish` | `sv` | `transformers` | `unicode` |
 | `OpenVoiceOS/phoonnx_sv-SE_miro_espeak` | `sv-SE` | `phoonnx` | `espeak` |
 | `piper/sv_SE-lisa-medium` | `sv-SE` | `piper` | `espeak` |
 | `piper/sv_SE-nst-medium` | `sv-SE` | `piper` | `espeak` |
 | `piper_community/wezzmeister/sv-SE_lisa` | `sv-SE` | `piper` | `espeak` |
 | `mimic3/sw/lanfrica_low` | `sw` | `mimic3` | `gruut` |
 | `piper/sw_CD-lanfrica-medium` | `sw-CD` | `piper` | `espeak` |
-| `facebook/mms-tts-swe-Swedish` | `swe` | `transformers` | `unicode` |
 | `facebook/mms-tts-swh-Swahili` | `swh` | `transformers` | `unicode` |
 | `facebook/mms-tts-sxb-Suba` | `sxb` | `transformers` | `unicode` |
 | `facebook/mms-tts-sxn-Sangir` | `sxn` | `transformers` | `unicode` |
 | `facebook/mms-tts-sya-Siang` | `sya` | `transformers` | `unicode` |
 | `facebook/mms-tts-syl-Sylheti` | `syl` | `transformers` | `unicode` |
 | `facebook/mms-tts-sza-Semelai` | `sza` | `transformers` | `unicode` |
+| `facebook/mms-tts-tam-Tamil` | `ta` | `transformers` | `unicode` |
+| `hf_community/ylacombe/mms-tam-finetuned-monospeaker` | `ta` | `transformers` | `unicode` |
 | `facebook/mms-tts-tac-Tarahumara, Western` | `tac` | `transformers` | `unicode` |
 | `facebook/mms-tts-taj-Tamang, Eastern` | `taj` | `transformers` | `unicode` |
-| `facebook/mms-tts-tam-Tamil` | `tam` | `transformers` | `unicode` |
-| `hf_community/ylacombe/mms-tam-finetuned-monospeaker` | `tam` | `transformers` | `unicode` |
 | `facebook/mms-tts-tao-Yami` | `tao` | `transformers` | `unicode` |
 | `facebook/mms-tts-tap-Taabwa` | `tap` | `transformers` | `unicode` |
 | `facebook/mms-tts-taq-Tamasheq` | `taq` | `transformers` | `unicode` |
-| `facebook/mms-tts-tat-Tatar` | `tat` | `transformers` | `unicode` |
 | `facebook/mms-tts-tav-Tatuyo` | `tav` | `transformers` | `unicode` |
 | `facebook/mms-tts-tbc-Takia` | `tbc` | `transformers` | `unicode` |
 | `facebook/mms-tts-tbg-Tairora, North` | `tbg` | `transformers` | `unicode` |
@@ -1263,13 +1267,13 @@
 | `facebook/mms-tts-tcz-Chin, Thado` | `tcz` | `transformers` | `unicode` |
 | `facebook/mms-tts-tdj-Tajio` | `tdj` | `transformers` | `unicode` |
 | `piper_community/raphaelmerx/tdt-TL_joao` | `tdt-TL` | `piper` | `espeak` |
+| `facebook/mms-tts-tel-Telugu` | `te` | `transformers` | `unicode` |
 | `mimic3/te_IN/cmu-indic_low` | `te-IN` | `mimic3` | `epitran` |
 | `piper/te_IN-maya-medium` | `te-IN` | `piper` | `espeak` |
 | `piper/te_IN-padmavathi-medium` | `te-IN` | `piper` | `espeak` |
 | `piper/te_IN-venkatesh-medium` | `te-IN` | `piper` | `espeak` |
 | `facebook/mms-tts-ted-Krumen, Tepo` | `ted` | `transformers` | `unicode` |
 | `facebook/mms-tts-tee-Tepehua, Huehuetla` | `tee` | `transformers` | `unicode` |
-| `facebook/mms-tts-tel-Telugu` | `tel` | `transformers` | `unicode` |
 | `facebook/mms-tts-tem-Themne` | `tem` | `transformers` | `unicode` |
 | `facebook/mms-tts-teo-Ateso` | `teo` | `transformers` | `unicode` |
 | `facebook/mms-tts-ter-Terêna` | `ter` | `transformers` | `unicode` |
@@ -1277,17 +1281,18 @@
 | `facebook/mms-tts-tew-Tewa` | `tew` | `transformers` | `unicode` |
 | `facebook/mms-tts-tex-Tennet` | `tex` | `transformers` | `unicode` |
 | `facebook/mms-tts-tfr-Teribe` | `tfr` | `transformers` | `unicode` |
+| `facebook/mms-tts-tgk-Tajik` | `tg` | `transformers` | `unicode` |
 | `facebook/mms-tts-tgj-Tagin` | `tgj` | `transformers` | `unicode` |
-| `facebook/mms-tts-tgk-Tajik` | `tgk` | `transformers` | `unicode` |
-| `facebook/mms-tts-tgl-Tagalog` | `tgl` | `transformers` | `unicode` |
 | `facebook/mms-tts-tgo-Sudest` | `tgo` | `transformers` | `unicode` |
 | `facebook/mms-tts-tgp-Tangoa` | `tgp` | `transformers` | `unicode` |
-| `facebook/mms-tts-tha-Thai` | `tha` | `transformers` | `unicode` |
+| `facebook/mms-tts-tha-Thai` | `th` | `transformers` | `unicode` |
 | `facebook/mms-tts-thk-Kitharaka` | `thk` | `transformers` | `unicode` |
 | `facebook/mms-tts-thl-Tharu, Dangaura` | `thl` | `transformers` | `unicode` |
+| `facebook/mms-tts-tir-Tigrigna` | `ti` | `transformers` | `unicode` |
 | `facebook/mms-tts-tih-Murut, Timugon` | `tih` | `transformers` | `unicode` |
 | `facebook/mms-tts-tik-Tikar` | `tik` | `transformers` | `unicode` |
-| `facebook/mms-tts-tir-Tigrigna` | `tir` | `transformers` | `unicode` |
+| `facebook/mms-tts-tuk-script_arabic-Turkmen` | `tk-arabic-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-tuk-script_latin-Turkmen` | `tk-latin-script` | `transformers` | `unicode` |
 | `facebook/mms-tts-tkr-Tsakhur` | `tkr` | `transformers` | `unicode` |
 | `facebook/mms-tts-tlb-Tobelo` | `tlb` | `transformers` | `unicode` |
 | `facebook/mms-tts-tlj-Talinga-Bwisi` | `tlj` | `transformers` | `unicode` |
@@ -1311,6 +1316,7 @@
 | `facebook/mms-tts-tpm-Tampulma` | `tpm` | `transformers` | `unicode` |
 | `facebook/mms-tts-tpp-Tepehua, Pisaflores` | `tpp` | `transformers` | `unicode` |
 | `facebook/mms-tts-tpt-Tepehua, Tlachichilco` | `tpt` | `transformers` | `unicode` |
+| `facebook/mms-tts-tur-Turkish` | `tr` | `transformers` | `unicode` |
 | `piper/tr_TR-dfki-medium` | `tr-TR` | `piper` | `espeak` |
 | `piper/tr_TR-fahrettin-medium` | `tr-TR` | `piper` | `espeak` |
 | `piper/tr_TR-fettah-medium` | `tr-TR` | `piper` | `espeak` |
@@ -1318,17 +1324,15 @@
 | `facebook/mms-tts-tri-Trió` | `tri` | `transformers` | `unicode` |
 | `facebook/mms-tts-trn-Trinitario` | `trn` | `transformers` | `unicode` |
 | `facebook/mms-tts-trs-Triqui, Chicahuaxtla` | `trs` | `transformers` | `unicode` |
-| `facebook/mms-tts-tso-Tsonga` | `tso` | `transformers` | `unicode` |
+| `facebook/mms-tts-tso-Tsonga` | `ts` | `transformers` | `unicode` |
 | `facebook/mms-tts-tsz-Purepecha` | `tsz` | `transformers` | `unicode` |
+| `facebook/mms-tts-tat-Tatar` | `tt` | `transformers` | `unicode` |
 | `facebook/mms-tts-ttc-Tektiteko` | `ttc` | `transformers` | `unicode` |
 | `facebook/mms-tts-tte-Bwanabwana` | `tte` | `transformers` | `unicode` |
-| `facebook/mms-tts-ttq-script_tifinagh-Tamajaq, Tawallammat` | `ttq-script_tifinagh` | `transformers` | `unicode` |
+| `facebook/mms-tts-ttq-script_tifinagh-Tamajaq, Tawallammat` | `ttq-script-tifinagh` | `transformers` | `unicode` |
 | `facebook/mms-tts-tue-Tuyuca` | `tue` | `transformers` | `unicode` |
 | `facebook/mms-tts-tuf-Tunebo, Central` | `tuf` | `transformers` | `unicode` |
-| `facebook/mms-tts-tuk-script_arabic-Turkmen` | `tuk-script_arabic` | `transformers` | `unicode` |
-| `facebook/mms-tts-tuk-script_latin-Turkmen` | `tuk-script_latin` | `transformers` | `unicode` |
 | `facebook/mms-tts-tuo-Tucano` | `tuo` | `transformers` | `unicode` |
-| `facebook/mms-tts-tur-Turkish` | `tur` | `transformers` | `unicode` |
 | `facebook/mms-tts-tvw-Sedoa` | `tvw` | `transformers` | `unicode` |
 | `facebook/mms-tts-twb-Tawbuid` | `twb` | `transformers` | `unicode` |
 | `facebook/mms-tts-twe-Teiwa` | `twe` | `transformers` | `unicode` |
@@ -1337,31 +1341,32 @@
 | `facebook/mms-tts-txq-Tii` | `txq` | `transformers` | `unicode` |
 | `facebook/mms-tts-txu-Kayapó` | `txu` | `transformers` | `unicode` |
 | `facebook/mms-tts-tye-Kyanga` | `tye` | `transformers` | `unicode` |
-| `facebook/mms-tts-tzh-dialect_tenejapa-Tzeltal` | `tzh-dialect_tenejapa` | `transformers` | `unicode` |
-| `facebook/mms-tts-tzj-dialect_eastern-Tz’utujil` | `tzj-dialect_eastern` | `transformers` | `unicode` |
-| `facebook/mms-tts-tzj-dialect_western-Tz’utujil` | `tzj-dialect_western` | `transformers` | `unicode` |
-| `facebook/mms-tts-tzo-dialect_chamula-Tzotzil` | `tzo-dialect_chamula` | `transformers` | `unicode` |
+| `facebook/mms-tts-tzh-dialect_tenejapa-Tzeltal` | `tzh-dialect-tenejapa` | `transformers` | `unicode` |
+| `facebook/mms-tts-tzj-dialect_eastern-Tz’utujil` | `tzj-dialect-eastern` | `transformers` | `unicode` |
+| `facebook/mms-tts-tzj-dialect_western-Tz’utujil` | `tzj-dialect-western` | `transformers` | `unicode` |
+| `facebook/mms-tts-tzo-dialect_chamula-Tzotzil` | `tzo-chamula-dialect` | `transformers` | `unicode` |
 | `facebook/mms-tts-udm-Udmurt` | `udm` | `transformers` | `unicode` |
 | `facebook/mms-tts-udu-Uduk` | `udu` | `transformers` | `unicode` |
-| `facebook/mms-tts-uig-script_arabic-Uyghur` | `uig-script_arabic` | `transformers` | `unicode` |
-| `facebook/mms-tts-uig-script_cyrillic-Uyghur` | `uig-script_cyrillic` | `transformers` | `unicode` |
+| `facebook/mms-tts-uig-script_arabic-Uyghur` | `ug-arabic-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-uig-script_cyrillic-Uyghur` | `ug-cyrillic-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-ukr-Ukrainian` | `uk` | `transformers` | `unicode` |
 | `mimic3/uk_UK/m-ailabs_low` | `uk-GB` | `mimic3` | `graphemes` |
 | `piper/uk_UA-lada-x_low` | `uk-UA` | `piper` | `espeak` |
 | `piper/uk_UA-ukrainian_tts-medium` | `uk-UA` | `piper` | `unicode` |
-| `facebook/mms-tts-ukr-Ukrainian` | `ukr` | `transformers` | `unicode` |
 | `facebook/mms-tts-unr-Mundari` | `unr` | `transformers` | `unicode` |
 | `facebook/mms-tts-upv-Uripiv-Wala-Rano-Atchin` | `upv` | `transformers` | `unicode` |
+| `facebook/mms-tts-urd-script_arabic-Urdu` | `ur-arabic-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-urd-script_latin-Urdu` | `ur-latin-script` | `transformers` | `unicode` |
 | `facebook/mms-tts-ura-Urarina` | `ura` | `transformers` | `unicode` |
 | `facebook/mms-tts-urb-Kaapor` | `urb` | `transformers` | `unicode` |
-| `facebook/mms-tts-urd-script_arabic-Urdu` | `urd-script_arabic` | `transformers` | `unicode` |
 | `facebook/mms-tts-urd-script_devanagari-Urdu` | `urd-script_devanagari` | `transformers` | `unicode` |
-| `facebook/mms-tts-urd-script_latin-Urdu` | `urd-script_latin` | `transformers` | `unicode` |
 | `facebook/mms-tts-urk-Urak Lawoi’` | `urk` | `transformers` | `unicode` |
 | `facebook/mms-tts-urt-Urat` | `urt` | `transformers` | `unicode` |
 | `facebook/mms-tts-ury-Orya` | `ury` | `transformers` | `unicode` |
 | `facebook/mms-tts-usp-Uspanteko` | `usp` | `transformers` | `unicode` |
-| `facebook/mms-tts-uzb-script_cyrillic-Uzbek` | `uzb-script_cyrillic` | `transformers` | `unicode` |
+| `facebook/mms-tts-uzb-script_cyrillic-Uzbek` | `uz-cyrillic-script` | `transformers` | `unicode` |
 | `facebook/mms-tts-vag-Vagla` | `vag` | `transformers` | `unicode` |
+| `facebook/mms-tts-vie-Vietnamese` | `vi` | `transformers` | `unicode` |
 | `mimic3/vi_VN/vais1000_low` | `vi-VN` | `mimic3` | `espeak` |
 | `piper/vi_VN-25hours_single-low` | `vi-VN` | `piper` | `espeak` |
 | `piper/vi_VN-vais1000-medium` | `vi-VN` | `piper` | `espeak` |
@@ -1369,14 +1374,13 @@
 | `piper_community/phatjkk/vi-VN_InfoRe` | `vi-VN` | `piper` | `espeak` |
 | `piper_community/phcatan9921/vi-VN_vais1000` | `vi-VN` | `piper` | `espeak` |
 | `facebook/mms-tts-vid-Vidunda` | `vid` | `transformers` | `unicode` |
-| `facebook/mms-tts-vie-Vietnamese` | `vie` | `transformers` | `unicode` |
 | `facebook/mms-tts-vif-Vili` | `vif` | `transformers` | `unicode` |
 | `facebook/mms-tts-vmw-Makhuwa` | `vmw` | `transformers` | `unicode` |
 | `facebook/mms-tts-vmy-Mazatec, Ayautla` | `vmy` | `transformers` | `unicode` |
 | `facebook/mms-tts-vun-Vunjo` | `vun` | `transformers` | `unicode` |
 | `facebook/mms-tts-vut-Vute` | `vut` | `transformers` | `unicode` |
-| `facebook/mms-tts-wal-script_ethiopic-Wolaytta` | `wal-script_ethiopic` | `transformers` | `unicode` |
-| `facebook/mms-tts-wal-script_latin-Wolaytta` | `wal-script_latin` | `transformers` | `unicode` |
+| `facebook/mms-tts-wal-script_ethiopic-Wolaytta` | `wal-ethiopic-script` | `transformers` | `unicode` |
+| `facebook/mms-tts-wal-script_latin-Wolaytta` | `wal-latin-script` | `transformers` | `unicode` |
 | `facebook/mms-tts-wap-Wapishana` | `wap` | `transformers` | `unicode` |
 | `facebook/mms-tts-war-Waray-Waray` | `war` | `transformers` | `unicode` |
 | `facebook/mms-tts-waw-Waiwai` | `waw` | `transformers` | `unicode` |
@@ -1424,8 +1428,8 @@
 | `facebook/mms-tts-yea-Ravula` | `yea` | `transformers` | `unicode` |
 | `facebook/mms-tts-yka-Yakan` | `yka` | `transformers` | `unicode` |
 | `facebook/mms-tts-yli-Yali, Angguruk` | `yli` | `transformers` | `unicode` |
+| `facebook/mms-tts-yor-Yoruba` | `yo` | `transformers` | `unicode` |
 | `mimic3/yo/openbible_low` | `yo` | `mimic3` | `epitran` |
-| `facebook/mms-tts-yor-Yoruba` | `yor` | `transformers` | `unicode` |
 | `facebook/mms-tts-yre-Yaouré` | `yre` | `transformers` | `unicode` |
 | `facebook/mms-tts-yua-Maya, Yucatec` | `yua` | `transformers` | `unicode` |
 | `facebook/mms-tts-yuz-Yuracare` | `yuz` | `transformers` | `unicode` |

@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Dict, List, Any
-
+from langcodes import standardize_tag
 import requests
 from json_database import JsonStorageXDG, JsonStorage
 
@@ -60,6 +60,11 @@ class TTSModelInfo:
 
             self.config = self.config or VoiceConfig.from_dict(config)
             self.config.lang_code = self.lang  # sometimes the config is wrong
+
+        try:
+            self.config.lang_code = self.lang = standardize_tag(self.config.lang_code)
+        except:
+            pass
 
         if not self.alphabet:
             self.alphabet = self.config.alphabet
@@ -406,6 +411,10 @@ if __name__ == "__main__":
             "",
             f"**Total Voices:** {len(sorted_voices)}",
             f"**Total Languages:** {len(manager.supported_langs)}",
+            "",
+            "> ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic)",
+            "",
+            "> ⚠️ some models are duplicated, piper is known to mirror community voices and those will often show up twice (under piper and under original author)",
             "",
             "| Voice ID | Language Code | Engine | Phoneme Type |",
             "| :--- | :--- | :--- | :--- |"

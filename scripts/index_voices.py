@@ -230,7 +230,7 @@ class TTSModelManager:
         self.add_voice(
             TTSModelInfo(
                 voice_id="phonikud/phonikud",
-                lang="he",
+                lang="he-IL",
                 model_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.onnx",
                 config_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.config.json",
                 phoneme_type=PhonemeType.PHONIKUD,
@@ -240,7 +240,7 @@ class TTSModelManager:
         self.add_voice(
             TTSModelInfo(
                 voice_id="phonikud/shaul",
-                lang="he",
+                lang="he-IL",
                 model_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/shaul.onnx",
                 config_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.config.json",
                 phoneme_type=PhonemeType.PHONIKUD,
@@ -255,7 +255,7 @@ class TTSModelManager:
             try:
                 voice = TTSModelInfo(
                     voice_id=f"facebook/mms-tts-{lang}-{data['Language Name']}",
-                    lang=lang,
+                    lang = standardize_tag(lang),
                     model_url=f"https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/{lang}/model.onnx",
                     vocab_url=f"https://huggingface.co/facebook/mms-tts-{lang}/resolve/main/vocab.json",
                     tokenizer_config_url=f"https://huggingface.co/facebook/mms-tts-{lang}/resolve/main/tokenizer_config.json",
@@ -1032,16 +1032,16 @@ class TTSModelManager:
 
         # jerichosiahaya/vits-tts-id
         # TODO - no onnx model, convert and upload to hf
-        voice = TTSModelInfo(
-            voice_id=f"hf_community/jerichosiahaya/vits-tts-id",
-            lang="id-ID",
-            model_url="https://huggingface.co/jerichosiahaya/vits-tts-id/resolve/main/model.onnx",
-            config_url="https://huggingface.co/jerichosiahaya/vits-tts-id/resolve/main/config.json",
-            phoneme_type=PhonemeType.UNICODE,
-            alphabet=Alphabet.UNICODE,
-            engine=Engine.COQUI
-        )
-        self.add_voice(voice)
+        #voice = TTSModelInfo(
+        #    voice_id=f"hf_community/jerichosiahaya/vits-tts-id",
+        #    lang="id-ID",
+        #    model_url="https://huggingface.co/jerichosiahaya/vits-tts-id/resolve/main/model.onnx",
+        #    config_url="https://huggingface.co/jerichosiahaya/vits-tts-id/resolve/main/config.json",
+        #    phoneme_type=PhonemeType.UNICODE,
+        #    alphabet=Alphabet.UNICODE,
+        #    engine=Engine.COQUI
+        #)
+        #self.add_voice(voice)
 
     def get_transformers_community_voice_list(self):
         # TODO - models that need to be converted to onnx
