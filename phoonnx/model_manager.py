@@ -1,15 +1,13 @@
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 
 import requests
 from json_database import JsonStorageXDG, JsonStorage
-from langcodes import standardize_tag
 
 from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet
-from phoonnx.util import LOG
 from phoonnx.util import match_lang
 from phoonnx.voice import TTSVoice
 
@@ -19,12 +17,16 @@ class TTSModelInfo:
     voice_id: str
     lang: str  # not always present in config.json and often wrong if present
     model_url: str
-    config_url: str
+    config_url: Optional[str] = None  # some models only provide tokens.txt
+    vocab_url: Optional[str] = None  # transformers provides vocab.json with tokens
+    tokenizer_config_url: Optional[str] = None  # transformers provides tokenizer_config.json with metadata
     tokens_url: Optional[str] = None  # mimic3/sherpa provide phoneme_map in this format
     phoneme_map_url: Optional[str] = None  # json lookup table for phoneme replacement
     config: Optional[VoiceConfig] = None
     phoneme_type: Optional[PhonemeType] = None
     alphabet: Optional[Alphabet] = None
+    engine: Optional[Engine] = None
+    vocab_override: Optional[Dict[str, int]] = field(default_factory=dict)
 
     def __post_init__(self):
         """
@@ -34,23 +36,29 @@ class TTSModelInfo:
         """
         os.makedirs(self.voice_path, exist_ok=True)
         if not self.config:
-            config_path = self.voice_path / "model.json"
-            if not config_path.is_file():
-                self.download_config()
-            with open(config_path, "r") as f:
-                config = json.load(f)
-
-            # HACK: seen in some published piper voices
-            # "es_MX-ald-medium"
-            if config.get('phoneme_type', "") == "PhonemeType.ESPEAK":
-                config["phoneme_type"] = "espeak"
-            #####
-            if self.tokens_url:
-                self.download_phoneme_map()
-                self.config = VoiceConfig.from_dict(config, phonemes_txt=str(self.voice_path / "tokens.txt"))
+            if self.config_url:
+                config = self.download_config()
+                # HACK: seen in some published piper voices
+                # "es_MX-ald-medium"
+                if config.get('phoneme_type', "") == "PhonemeType.ESPEAK":
+                    config["phoneme_type"] = "espeak"
             else:
-                self.config = VoiceConfig.from_dict(config)
+                config = {"phoneme_type": "unicode", "alphabet": "unicode"}
 
+            if self.vocab_override:
+                self.config = VoiceConfig.from_dict(config, vocab=self.vocab_override)
+            elif self.vocab_url:
+                vocab = self.download_vocab()
+                if self.tokenizer_config_url:
+                    tokenizer_config = self.download_tokenizer_config()
+                else:
+                    tokenizer_config = {}
+                self.config = VoiceConfig.from_dict(config, vocab=vocab, tokenizer_config=tokenizer_config)
+            if self.tokens_url:
+                self.download_tokens_txt()
+                self.config = VoiceConfig.from_dict(config, tokens_txt=str(self.voice_path / "tokens.txt"))
+
+            self.config = self.config or VoiceConfig.from_dict(config)
             self.config.lang_code = self.lang  # sometimes the config is wrong
 
         if not self.alphabet:
@@ -63,21 +71,24 @@ class TTSModelInfo:
         else:
             self.config.phoneme_type = self.phoneme_type
 
-    @property
-    def engine(self) -> Engine:
-        """
-        Return the Engine type used by this voice's configuration.
-        
-        Returns:
-            Engine: The engine configured for this voice.
-        """
-        return self.config.engine
+        if not self.engine:
+            self.engine = self.config.engine
+        else:
+            self.config.engine = self.engine
+
+        # cast strings to enum for consistency
+        if not isinstance(self.engine, Engine) and isinstance(self.engine, str):
+            self.engine = Engine(self.engine)
+        if not isinstance(self.alphabet, Alphabet) and isinstance(self.alphabet, str):
+            self.alphabet = Alphabet(self.alphabet)
+        if not isinstance(self.phoneme_type, PhonemeType) and isinstance(self.phoneme_type, str):
+            self.phoneme_type = PhonemeType(self.phoneme_type)
 
     @property
     def voice_path(self) -> Path:
         return Path(os.path.expanduser("~")) / ".cache" / "phoonnx" / "voices" / self.voice_id
 
-    def download_config(self):
+    def download_config(self) -> Dict[str, Any]:
         config_path = self.voice_path / "model.json"
         if not config_path.is_file():
             r = requests.get(self.config_url, timeout=30)
@@ -85,8 +96,35 @@ class TTSModelInfo:
             cfg = r.json()  # validate received json
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(cfg, f, ensure_ascii=False, indent=4)
+            return cfg
+        with open(config_path, "r") as f:
+            return json.load(f)
 
-    def download_phoneme_map(self):
+    def download_tokenizer_config(self) -> Dict[str, Any]:
+        config_path = self.voice_path / "tokenizer_config.json"
+        if not config_path.is_file():
+            r = requests.get(self.tokenizer_config_url, timeout=30)
+            r.raise_for_status()
+            cfg = r.json()  # validate received json
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(cfg, f, ensure_ascii=False, indent=4)
+            return cfg
+        with open(config_path, "r") as f:
+            return json.load(f)
+
+    def download_vocab(self) -> Dict[str, Any]:
+        vocab_path = self.voice_path / "vocab.json"
+        if self.vocab_url and not vocab_path.is_file():
+            r = requests.get(self.vocab_url, timeout=30)
+            r.raise_for_status()
+            cfg = r.json()
+            with open(vocab_path, "w", encoding="utf-8") as f:
+                json.dump(cfg, f)
+            return cfg
+        with open(vocab_path, "r") as f:
+            return json.load(f)
+
+    def download_tokens_txt(self) -> str:
         tokens_path = self.voice_path / "tokens.txt"
         if self.tokens_url and not tokens_path.is_file():
             r = requests.get(self.tokens_url, timeout=30)
@@ -94,6 +132,9 @@ class TTSModelInfo:
             tokens = r.text
             with open(tokens_path, "w", encoding="utf-8") as f:
                 f.write(tokens)
+            return tokens
+        with open(tokens_path, "r") as f:
+            return f.read()
 
     def download_model(self):
         model_path = self.voice_path / "model.onnx"
@@ -116,14 +157,18 @@ class TTSModelInfo:
         """
         model_path = self.voice_path / "model.onnx"
         config_path = self.voice_path / "model.json"
+        vocab_path = self.voice_path / "vocab.json"
+        tokenizer_config_path = self.voice_path / "tokenizer_config.json"
         tokens_path = self.voice_path / "tokens.txt"
         self.download_model()
 
         voice = TTSVoice.load(model_path=model_path,
                               config_path=config_path,
+                              vocab_path=vocab_path,
+                              tokenizer_config_path=tokenizer_config_path,
                               lang_code=self.config.lang_code,
-                              phoneme_type_str=self.config.phoneme_type.value,
-                              alphabet_str=self.config.alphabet.value,
+                              phoneme_type_str=self.config.phoneme_type,
+                              alphabet_str=self.config.alphabet,
                               phonemes_txt=str(tokens_path) if self.tokens_url else None)
         # override phoneme_type, if config.json is wrong
         if self.phoneme_type != voice.config.phoneme_type or self.alphabet != voice.config.alphabet:
@@ -175,8 +220,11 @@ class TTSModelManager:
                                     "phoneme_type": voice_info.phoneme_type,
                                     "lang": voice_info.lang,
                                     "tokens_url": voice_info.tokens_url,
+                                    "tokenizer_config_url": voice_info.tokenizer_config_url,
+                                    "vocab_url": voice_info.vocab_url,
                                     "phoneme_map_url": voice_info.phoneme_map_url,
                                     "alphabet": voice_info.alphabet,
+                                    "engine": voice_info.engine,
                                     "config_url": voice_info.config_url}
         self.cache.store()
 
@@ -193,9 +241,12 @@ class TTSModelManager:
         self.cache[voice_info.voice_id] = {"voice_id": voice_info.voice_id,
                                            "model_url": voice_info.model_url,
                                            "tokens_url": voice_info.tokens_url,
+                                           "tokenizer_config_url": voice_info.tokenizer_config_url,
+                                           "vocab_url": voice_info.vocab_url,
                                            "phoneme_type": voice_info.phoneme_type,
                                            "phoneme_map_url": voice_info.phoneme_map_url,
                                            "alphabet": voice_info.alphabet,
+                                           "engine": voice_info.engine,
                                            "lang": voice_info.lang,
                                            "config_url": voice_info.config_url}
 
@@ -207,873 +258,129 @@ class TTSModelManager:
             ], key=lambda k: k[1])
         return [v[0] for v in voices if v[1] < 10]
 
-    def refresh_voices(self):
-        """
-        Refresh the in-memory voice catalog from all known sources and persist the updated cache.
-        
-        This repopulates the manager's voices by fetching entries from the configured sources (official and community manifests) and then stores the resulting voice metadata to the persistent cache.
-        """
-        self.get_ovos_voice_list()
-        self.get_proxectonos_voice_list()
-        self.get_piper_voice_list()
-        self.get_mimic3_voice_list()
-        self.get_phonikud_voice_list()
-        self.get_neurlang_voice_list()
-        self.get_piper_community_voice_list()
-        self.get_coqui_community_voice_list()
-        self.cache.store()
-
-    # helpers to get official voice models
-    def get_ovos_voice_list(self):
-        """
-        Register OpenVoiceOS phoonnx and Piper TTS voices into the manager's voice catalog.
-        
-        Adds TTSModelInfo entries for a hardcoded set of phoonnx Hugging Face repositories and for a set of common Piper languages. For each entry the method constructs model and config URLs pointing to the repository's main branch on Hugging Face and calls add_voice to register the voice. Missing voice variants are skipped silently.
-        """
-        phoonnx = [
-            "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone",
-            "OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone",
-            "OpenVoiceOS/phoonnx_eu-ES_miro_espeak",
-            "OpenVoiceOS/phoonnx_eu-ES_dii_espeak",
-            "OpenVoiceOS/phoonnx_ar-SA_miro_espeak_V2",
-            "OpenVoiceOS/phoonnx_ar-SA_dii_espeak",
-            "OpenVoiceOS/phoonnx_sv-SE_miro_espeak",
-            "OpenVoiceOS/phoonnx_da-DK_miro_espeak",
-            "OpenVoiceOS/phoonnx_es-ES_dii_espeak"
-        ]
-        for repo in phoonnx:
-            lang = repo.split("phoonnx_")[-1].split("_")[0]
-            voice = f"miro_{lang}" if "miro" in repo else f"dii_{lang}"
-            self.add_voice(TTSModelInfo(
-                lang=lang,
-                voice_id=repo,
-                model_url=f"https://huggingface.co/{repo}/resolve/main/{voice}.onnx",
-                config_url=f"https://huggingface.co/{repo}/resolve/main/{voice}.json",
-            ))
-
-        piper_ovos = [
-            "en-GB", "pt-BR", "pt-PT", "es-ES", "it-IT",
-            "nl-NL", "de-DE", "fr-FR", "en-US"
-        ]
-        for lang in piper_ovos:
-            for voice in ["miro", "dii"]:
-                repo = f"OpenVoiceOS/pipertts_{lang}_{voice}"
-                try:
-                    self.add_voice(TTSModelInfo(
-                        lang=lang,
-                        voice_id=repo,
-                        model_url=f"https://huggingface.co/{repo}/resolve/main/{voice}_{lang}.onnx",
-                        config_url=f"https://huggingface.co/{repo}/resolve/main/{voice}_{lang}.onnx.json",
-                    ))
-                except Exception:
-                    continue  # not all langs have male + female
-
-    def get_proxectonos_voice_list(self):
-        # NOTE: these are models trained with coqui
-        #  we need to explicitly assign phonemizer
-        """
-        Add Proxectonos (Galician) TTS model entries to the manager.
-        
-        Adds two grapheme-based voices ("brais", "celtia") with PhonemeType.GRAPHEMES and Alphabet.UNICODE, and four phoneme-based voices ("sabela", "icia", "paulo", "iago") with PhonemeType.COTOVIA and Alphabet.COTOVIA. Each entry includes model and config URLs pointing to the corresponding OpenVoiceOS Proxectonos Hugging Face repositories.
-        """
-        for voice in ["brais", "celtia"]:
-            self.add_voice(TTSModelInfo(
-                voice_id=f"proxectonos/{voice}",
-                lang="gl-ES",
-                model_url=f"https://huggingface.co/OpenVoiceOS/proxectonos-{voice}-vits-graphemes-onnx/resolve/main/model.onnx",
-                config_url=f"https://huggingface.co/OpenVoiceOS/proxectonos-{voice}-vits-graphemes-onnx/resolve/main/config.json",
-                phoneme_type=PhonemeType.GRAPHEMES,
-                alphabet=Alphabet.UNICODE
-            ))
-        for voice in ["sabela", "icia", "paulo", "iago"]:
-            self.add_voice(TTSModelInfo(
-                voice_id=f"proxectonos/{voice}",
-                lang="gl-ES",
-                model_url=f"https://huggingface.co/OpenVoiceOS/proxectonos-{voice}-vits-phonemes-onnx/resolve/main/model.onnx",
-                config_url=f"https://huggingface.co/OpenVoiceOS/proxectonos-{voice}-vits-phonemes-onnx/resolve/main/config.json",
-                phoneme_type=PhonemeType.COTOVIA,
-                alphabet=Alphabet.COTOVIA
-
-            ))
-
-    def get_piper_voice_list(self):
-        """
-        Fetches the Piper voices manifest from the Rhasspy piper-voices repository and registers each voice in the manager.
-        
-        Downloads the voices.json manifest, creates a TTSModelInfo for each entry (deriving a voice_id prefixed with "piper_", a standardized language tag, and the first ONNX and JSON file URLs from the entry), and calls add_voice to store it. If an entry cannot be processed, prints a failure message for that voice.
-        """
-        base = "https://huggingface.co/rhasspy/piper-voices/resolve/main/"
-        voice_list = "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.json"
-        piper_voices = requests.get(voice_list).json()
-
-        for v in piper_voices.values():
-            try:
-                voice = TTSModelInfo(
-                    voice_id="piper_" + v["key"],
-                    lang=standardize_tag(v["key"].split("-")[0]),
-                    model_url=base + [a for a in v["files"] if a.endswith(".onnx")][0],
-                    config_url=base + [a for a in v["files"] if a.endswith(".json")][0],
-                )
-                self.add_voice(voice)
-            except Exception:
-                print(f"Failed to get voice info for {v['key']}")
-
-    def get_neurlang_voice_list(self):
-        """
-        Populate the manager with a fixed set of NeurLang Piper voices.
-        
-        Adds four NeurLang Piper TTSModelInfo entries (Arabic, British English, Slovak, Korean), each configured to use the `GORUUT` phoneme type and stored under voice IDs prefixed with `piper_neurlang/`.
-        """
-        for repo, lang in [
-            ("piper-onnx-zayd0-arabic-diacritized", "ar"),
-            ("piper-onnx-jane-eyre-english-british", "en-GB"),
-            ("piper-onnx-slovakspeech-female-slovak", "sl-SI"),
-            ("piper-onnx-kss-korean", "ko-KO"),
-        ]:
-            model = repo.replace('-onnx-kss', '-kss')
-            url = f"https://huggingface.co/neurlang/{repo}/resolve/main/{model}.onnx"
-            voice = TTSModelInfo(
-                voice_id="piper_" + f"neurlang/{lang}_{repo.replace('piper-onnx-', '')}",
-                lang=lang,
-                model_url=url,
-                config_url=url + ".json",
-                phoneme_type=PhonemeType.GORUUT
-            )
-            self.add_voice(voice)
-
-    def get_mimic3_voice_list(self):
-        """
-        Fetch and register Mimic3 TTS voices from Mycroft's voices manifest.
-        
-        Fetches the remote Mimic3 voices manifest, constructs TTSModelInfo entries for each voice (including config, model, tokens, and phoneme map URLs), sets the voice's language and speaker_id_map, and adds the voice to the manager. Individual voice failures are logged and do not interrupt processing.
-        """
-        voice_list = "https://raw.githubusercontent.com/MycroftAI/mimic3/refs/heads/master/mimic3_tts/voices.json"
-        r = requests.get(voice_list, timeout=30)
-        r.raise_for_status()
-        mimic3_voices = r.json()
-        for k, v in mimic3_voices.items():
-            try:
-                lang = standardize_tag(k.split("/")[0])
-                speaker_map = {s: idx for idx, s in enumerate(v["speakers"])}
-                config_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/config.json"
-                model_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/generator.onnx"
-                tokens_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/phonemes.txt"
-                phoneme_map_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/phoneme_map.txt"
-                voice_info = TTSModelInfo(
-                    voice_id="mimic3_" + k,
-                    lang=lang,
-                    config_url=config_url,
-                    tokens_url=tokens_url,
-                    model_url=model_url,
-                    phoneme_map_url=phoneme_map_url
-                )
-                voice_info.config.lang = lang
-                voice_info.config.speaker_id_map = speaker_map
-                self.add_voice(voice_info)
-            except Exception as e:
-                LOG.error(f"Failed to get voice info for {k}: {e}")
-
-    def get_phonikud_voice_list(self):
-        # NOTE: trained with piper + raw phonemes
-        #  we need to explicitly assign phonemizer
-        """
-        Register Phonikud-trained Hebrew Piper voices in the manager's catalog.
-        
-        Adds two TTSModelInfo entries for Phonikud-based Hebrew voices and marks them with PhonemeType.PHONIKUD so the phonemizer is assigned explicitly.
-        """
-        self.add_voice(
-            TTSModelInfo(
-                voice_id="thewh1teagle/phonikud",
-                lang="he",
-                model_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.onnx",
-                config_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.config.json",
-                phoneme_type=PhonemeType.PHONIKUD
-            )
-        )
-        self.add_voice(
-            TTSModelInfo(
-                voice_id="thewh1teagle/phonikud-shaul",
-                lang="he",
-                model_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/shaul.onnx",
-                config_url="https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.config.json",
-                phoneme_type=PhonemeType.PHONIKUD
-            )
-        )
-
-    # community models sourced from around the web
-    def get_piper_community_voice_list(self):
-        """
-        Register a collection of community-sourced Piper TTS voices into the manager.
-        
-        Adds hardcoded Piper community voice entries (voice_id, lang, model_url, config_url) to the manager by calling self.add_voice. Some entries may require Hugging Face authentication or special handling (archives, nested archives), and duplicate models can appear because Piper models are sometimes merged upstream.
-        """
-        # https://huggingface.co/mbarnig/lb_rhasspy_piper_tts
-        for voice in ["androgynous", "femaleLOD", "marylux"]:
-            url = f"https://huggingface.co/mbarnig/lb_rhasspy_piper_tts/resolve/main/lb/lb_LU/{voice}/medium/lb_LU-{voice}-medium.onnx"
-            voice = TTSModelInfo(
-                voice_id="piper_" + f"mbarnig/lb-LU_{voice}",
-                lang="lb-LU",
-                model_url=url,
-                config_url=url + ".json",
-            )
-            self.add_voice(voice)
-
-        # https://huggingface.co/superkeka/piper-tts-luka
-        url = f"https://huggingface.co/superkeka/piper-tts-luka/resolve/main/ru/ru_RU/luka/medium/ru_RU-luka-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "superkeka/ru-RU_luka",
-            lang="ru-RU",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/davit312/piper-TTS-Armenian
-        url = f"https://huggingface.co/davit312/piper-TTS-Armenian/resolve/main/v3/hy_AM-gor-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "davit312/hy-AM_gor",
-            lang="hy-AM",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/raphaelmerx/piper-voices
-        url = f"https://huggingface.co/raphaelmerx/piper-voices/resolve/main/tdt/tdt_TL/joao/medium/tdt_TL-joao-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "raphaelmerx/tdt-TL_joao",
-            lang="tdt-TL",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/wezzmeister/piper-voices
-        url = f"https://huggingface.co/wezzmeister/piper-voices/resolve/main/sv_SE-lisa-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "wezzmeister/sv-SE_lisa",
-            lang="sv-SE",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/SubZeroAI/piper-swedish-tts-multispeaker
-        # TODO - 401 - needs login and approval in HF
-        # url = f"https://huggingface.co/SubZeroAI/piper-swedish-tts-multispeaker/resolve/main/piper-swedish-tts-multispeaker.onnx"
-        # voice = TTSModelInfo(
-        #    voice_id="piper_" + "SubZeroAI/sv-SE_multispeaker",
-        #    lang="sv-SE",
-        #    model_url=url,
-        #    config_url=url + ".json",
-        # )
-        # self.add_voice(voice)
-
-        # https://huggingface.co/larcanio/piper-voices
-        url = f"https://huggingface.co/larcanio/piper-voices/resolve/main/es_AR-daniela-high.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "larcanio/es-AR_daniela",
-            lang="es-AR",
-            model_url=url,
-            config_url=url.replace(".onnx", ".json")
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/friyin/vits-piper-es_ES-friyin-high
-        url = f"https://huggingface.co/friyin/vits-piper-es_ES-carlfm-high/resolve/main/es_ES-carlfm-high.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "friyin/es-ES_friyin",
-            lang="es-ES",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/Wiseyak/piper_tts
-        url = f"https://huggingface.co/Wiseyak/piper_tts/resolve/main/ne-seto_bagh-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "Wiseyak/ne-NP_seto_bagh",
-            lang="ne-NP",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/colafly/piper_zh_tw
-        url = f"https://huggingface.co/colafly/piper_zh_tw/resolve/main/yt-chinese_female.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "colafly/zh-TW_yt-chinese_female",
-            lang="zh-TW",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/ppisljar/piper_si_artur
-        url = f"https://huggingface.co/ppisljar/piper_si_artur/resolve/main/model.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "ppisljar/sl-SI_artur",
-            lang="sl-SI",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/giganticlab/piper-id_ID-news_tts-medium
-        url = f"https://huggingface.co/giganticlab/piper-id_ID-news_tts-medium/resolve/main/model.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "giganticlab/id-ID_news",
-            lang="id-ID",
-            model_url=url,
-            config_url=url.replace("model.onnx", "config.json"),
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/phcatan9921/piper_tts
-        url = f"https://huggingface.co/phcatan9921/piper_tts/resolve/main/vi_VN-vais1000-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "phcatan9921/vi-VN_vais1000",
-            lang="vi-VN",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://github.com/phatjkk/vits-tts-vietnamese
-        url = f"https://github.com/phatjkk/vits-tts-vietnamese/raw/refs/heads/main/pretrained_vi.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "phatjkk/vi-VN_InfoRe",
-            lang="vi-VN",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/RaivisDejus/Piper-lv_LV-Aivars-medium
-        url = f"https://huggingface.co/RaivisDejus/Piper-lv_LV-Aivars-medium/resolve/main/lv_LV-aivars-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "RaivisDejus/lv-LV_Aivars",
-            lang="lv-LV",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/PravalX/piper-voices
-        for voice in ["priyamvada", "pratham"]:
-            url = f"https://huggingface.co/PravalX/piper-voices/resolve/main/hi/hi_IN/{voice}/medium/hi_IN-{voice}-medium.onnx"
-            voice = TTSModelInfo(
-                voice_id="piper_" + f"PravalX/hi-IN_{voice}",
-                lang="hi-IN",
-                model_url=url,
-                config_url=url + ".json",
-            )
-            self.add_voice(voice)
-
-        # https://huggingface.co/WitoldG/polish_piper_models
-        for voice in ["jarvis", "justyna", "meski", "zenski"]:
-            url = f"https://huggingface.co/WitoldG/polish_piper_models/resolve/main/pl_PL-{voice}_wg_glos-medium.onnx"
-            voice = TTSModelInfo(
-                voice_id="piper_" + f"WitoldG/pl-PL_{voice}",
-                lang="pl-PL",
-                model_url=url,
-                config_url=url + ".json",
-            )
-            self.add_voice(voice)
-
-        # https://huggingface.co/srxz/sage-voice-pt-br
-        url = "https://huggingface.co/srxz/sage-voice-pt-br/resolve/main/pt_BR-sage_13364-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "srxz/pt-BR_sage",
-            lang="pt-BR",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/Thomcles/Piper-TTS-Czech
-        for qual in ["medium", "high"]:
-            url = f"https://huggingface.co/Thomcles/Piper-TTS-Czech/resolve/main/{qual}/model.onnx"
-            voice = TTSModelInfo(
-                voice_id="piper_" + f"Thomcles/cs-CZ_honza_{qual}",
-                lang="cs-CZ",
-                model_url=url,
-                config_url=url + ".json",
-            )
-            self.add_voice(voice)
-
-        # https://huggingface.co/AsmoKoskinen/Piper_Finnish_Model
-        url = "https://huggingface.co/AsmoKoskinen/Piper_Finnish_Model/resolve/main/fi_FI-asmo-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "AsmoKoskinen/fi-FI_asmo",
-            lang="fi-FI",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/gyroing/Persian-Piper-Model-gyro
-        url = "https://huggingface.co/gyroing/Persian-Piper-Model-gyro/resolve/main/fa_IR-gyro-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "gyroing/fa-IR_gyro",
-            lang="fa-IR",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/mah92/Reza-And-Ibrahim-FA_EN-Piper-TTS-Model
-        url = "https://huggingface.co/mah92/Reza-And-Ibrahim-FA_EN-Piper-TTS-Model/resolve/main/fa_en-rezahedayatfar-ibrahimwalk-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "mah92/fa-IR_Reza-And-Ibrahim",
-            lang="fa-IR",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/Einrich99/PiperTTS-UGO-Italian
-        url = "https://huggingface.co/Einrich99/PiperTTS-UGO-Italian/resolve/main/medium/it_IT-ugo-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "Einrich99/it-IT_ugo",
-            lang="it-IT",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/paolapersico1/Piper-TTS-Italian
-        url = "https://huggingface.co/paolapersico1/Piper-TTS-Italian/resolve/main/paola/medium/it_IT-paola-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "paolapersico1/it-IT_paola",
-            lang="it-IT",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/kirys79/piper_italiano
-        url = f"https://huggingface.co/kirys79/piper_italiano/resolve/main/Aurora/it_IT-aurora-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "kirys79/it-IT_Aurora",
-            lang="it-IT",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-        url = "https://huggingface.co/kirys79/piper_italiano/resolve/main/Giorgio/giorgio-epoch%3D5028-step%3D1098436.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "kirys79/it-IT_Giorgio",
-            lang="it-IT",
-            model_url=url,
-            config_url=url.replace(".onnx", ".json"),
-        )
-        self.add_voice(voice)
-        url = f"https://huggingface.co/kirys79/piper_italiano/resolve/main/Leonardo/leonardo-epoch%3D2024-step%3D996300.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "kirys79/it-IT_Leonardo",
-            lang="it-IT",
-            model_url=url,
-            config_url=url.replace(".onnx", ".json"),
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/nardocolin/nardocolin-pipertts
-        url = "https://huggingface.co/nardocolin/nardocolin-pipertts/resolve/main/high/colin-voice_high.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "nardocolin/en-GB_Colin",
-            lang="en-GB",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/Da-Bob/piper-mikev3
-        url = "https://huggingface.co/Da-Bob/piper-mikev3/resolve/main/mikev3.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "Da-Bob/en-US_mikev3",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/agentvibes/piper-custom-voices
-        for voice, lang in [("kristin", "en-US"), ("jenny", "en-IE"), ("16Speakers", "en")]:
-            url = f"https://huggingface.co/agentvibes/piper-custom-voices/resolve/main/{voice}.onnx"
-            voice = TTSModelInfo(
-                voice_id="piper_" + f"agentvibe/{lang}_{voice}",
-                lang=lang,
-                model_url=url,
-                config_url=url + ".json",
-            )
-            self.add_voice(voice)
-
-        # HAV0X1014/KF-PiperTTS-voices
-        for voice, qual in [("Cheetah", "high"), ("KingCheetah", "medium"), ("silverfox", "medium")]:
-            url = f"https://huggingface.co/HAV0X1014/KF-PiperTTS-voices/resolve/main/{voice}/en_US-{voice.lower()}-{qual}.onnx"
-            voice = TTSModelInfo(
-                voice_id="piper_" + f"agentvibe/en-US_{voice}",
-                lang="en-US",
-                model_url=url,
-                config_url=url + ".json",
-            )
-            self.add_voice(voice)
-
-        # https://huggingface.co/campwill/HAL-9000-Piper-TTS
-        url = "https://huggingface.co/campwill/HAL-9000-Piper-TTS/resolve/main/hal.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "campwill/en-US_HAL-9000",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/redromnon/piper-tts-elise
-        url = "https://huggingface.co/redromnon/piper-tts-elise/resolve/main/en_US-elisa-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "redromnon/en-US_elise",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/poisson-fish/piper-vasco
-        url = "https://huggingface.co/poisson-fish/piper-vasco/resolve/main/onnx/vasco.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "poisson-fish/en-US_vasco",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/rokeya71/VITS-Piper-GlaDOS-en-onnx
-        url = "https://huggingface.co/rokeya71/VITS-Piper-GlaDOS-en-onnx/resolve/main/glados.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "rokeya71/en-US_GlaDOS",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/Aquaaa123/piper-tts-pda-subnautica
-        url = "https://huggingface.co/Aquaaa123/piper-tts-pda-subnautica/resolve/main/pda.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "Aquaaa123/en-US_pda-subnautica",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/drewThomasson/piper_tts_finetune_death_from_puss_and_boots
-        url = "https://huggingface.co/drewThomasson/piper_tts_finetune_death_from_puss_and_boots/resolve/main/en_US-death-high_onnx/en_US-death-high.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + "drewThomasson/en-US_death_from_puss_and_boots",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/samarthshrivas/piper-finetune-Andrew-Huberman
-        url = "https://huggingface.co/samarthshrivas/piper-finetune-Andrew-Huberman/resolve/main/lightning_logs/version_2/checkpoints/epoch%3D2609-step%3D1364440.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + f"samarthshrivas/en-US_Andrew-Huberman",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/swqg-messiah/kusaal_chitti_piper
-        url = "https://huggingface.co/swqg-messiah/kusaal_chitti_piper/resolve/main/chitti.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + f"swqg-messiah/en-US_chitti",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://brycebeattie.com/files/tts
-        for voice, model, lang in [
-            ("LJSpeech-medium", "lj-med", "en-US"),
-            ("LJSpeech-high", "ljspeech", "en-US"),
-            ("Jenny-Dioco", "jenny", "en-GB"),
-            ("Clean100", "clean100", "en-US"),
-            ("Cori-high", "cori-high", "en-GB"),
-            ("Cori-medium", "cori-med", "en-GB"),
-            ("Kristin", "kristin", "en-US"),
-            ("John", "john", "en-US"),
-            ("Bryce", "bryce", "en-US"),
-            ("Norman", "norman", "en-US"),
-            ("ManyVoice", "mv2", "en"),
-        ]:
-            url = f"https://sfo3.digitaloceanspaces.com/bkmdls/{model}.onnx"
-            voice = TTSModelInfo(
-                voice_id="piper_" + f"brycebeattie/{lang}_{voice}",
-                lang=lang,
-                model_url=url,
-                config_url=url + ".json",
-            )
-            self.add_voice(voice)
-
-        # https://github.com/simoniz0r/piper-voice-models
-        for voice in ["bobby", "carl", "eminem", "patrick"]:
-            url = f"https://github.com/simoniz0r/piper-voice-models/releases/download/{voice}/en_US-{voice}-medium.onnx"
-            voice = TTSModelInfo(
-                voice_id="piper_" + f"simoniz0r/en-US_{voice}",
-                lang="en-US",
-                model_url=url,
-                config_url=url + ".json",
-            )
-            self.add_voice(voice)
-
-        # https://github.com/dividebysandwich/piper-voice-models
-        for voice, model in [("Data", "en_US-data_7024-medium"),
-                             ("Picard", "en_US-picard_7399-medium"),
-                             ("HAL9000-denoised", "en_US-hal_6409-medium"),
-                             ("HAL9000-no-denoise", "en_US-hal_12894-medium")]:
-            url = f"https://github.com/dividebysandwich/piper-voice-models/raw/refs/heads/main/{voice}/{model}.onnx"
-            voice = TTSModelInfo(
-                voice_id="piper_" + f"dividebysandwich/en-US_{voice}",
-                lang="en-US",
-                model_url=url,
-                config_url=url + ".json",
-            )
-            self.add_voice(voice)
-
-        # https://huggingface.co/russdill/kronk
-        url = "https://huggingface.co/russdill/kronk/resolve/main/en/en_US/kronk/medium/kronk-medium.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + f"russdill/en-US_kronk",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/davet2001/cave_johnson1
-        url = "https://huggingface.co/davet2001/cave_johnson1/resolve/main/cave_johnson1.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + f"davet2001/en-US_cave_johnson",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/davet2001/wheatley1
-        url = "https://huggingface.co/davet2001/wheatley1/resolve/main/wheatley1.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + f"davet2001/en-US_wheatley",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://github.com/robit-man/combine_overwatch_onnx
-        url = "https://github.com/robit-man/combine_overwatch_onnx/raw/refs/heads/main/overwatch.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + f"robit-man/en-US_overwatch",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://github.com/DJMalachite/PiperVoiceModels
-        url = "https://github.com/DJMalachite/PiperVoiceModels/raw/refs/heads/main/Titanfall2/BT7274/BT7274.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + f"DJMalachite/en-US_BT7274",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://github.com/hopkira/k9_piper_voice
-        url = "https://github.com/hopkira/k9_piper_voice/raw/refs/heads/main/k9_model.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + f"hopkira/en-US_k9",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-        url = "https://github.com/hopkira/k9_piper_voice/raw/refs/heads/main/k9_2449_model.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + f"hopkira/en-US_k9_2449",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://github.com/1liminal1/xiaozhi-esphome
-        url = "https://github.com/1liminal1/xiaozhi-esphome/raw/refs/heads/main/piper-voices/en_US-bmo_voice.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + f"1liminal1/en-US_bmo",
-            lang="en-US",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/jstlntch/Scaramouche_or_Wanderer_voice_model_for_piper
-        url = "https://huggingface.co/jstlntch/Scaramouche_or_Wanderer_voice_model_for_piper/resolve/main/model.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + f"jstlntchh/en_Scaramouche",
-            lang="en",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/Rikels/piper-dutch
-        url = "https://huggingface.co/Rikels/piper-dutch/resolve/main/anna.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + f"Rikels/nl-NL_anna",
-            lang="nl-NL",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/systemofapwne/piper-de-glados
-        for qual in ["high", "medium", "low"]:
-            url = f"https://huggingface.co/systemofapwne/piper-de-glados/resolve/main/de/de_DE/glados/{qual}/de_DE-glados-{qual}.onnx"
-            voice = TTSModelInfo(
-                voice_id="piper_" + f"systemofapwne/de-DE_glados_{qual}",
-                lang="de-DE",
-                model_url=url,
-                config_url=url + ".json",
-            )
-            self.add_voice(voice)
-
-            url = f"https://huggingface.co/systemofapwne/piper-de-glados/resolve/main/de/de_DE/glados-turret/{qual}/de_DE-glados-turret-{qual}.onnx"
-            voice = TTSModelInfo(
-                voice_id="piper_" + f"systemofapwne/de-DE_glados-turret_{qual}",
-                lang="de-DE",
-                model_url=url,
-                config_url=url + ".json",
-            )
-            self.add_voice(voice)
-
-        # https://huggingface.co/nullnullvier/kantodel
-        url = "https://huggingface.co/nullnullvier/kantodel/resolve/main/kantodel.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + f"nullnullvier/de-DE_kantodel",
-            lang="de-DE",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # https://huggingface.co/domoskanonos/piper-tts-models
-        for voice, qual in [("domoskanonos", "high"), ("sebastian100", "medium"), ("sebastian121", "medium")]:
-            url = f"https://huggingface.co/domoskanonos/piper-tts-models/resolve/main/de-{voice}-{qual}.onnx"
-            voice = TTSModelInfo(
-                voice_id="piper_" + f"domoskanonos/de-DE_{voice}",
-                lang="de-DE",
-                model_url=url,
-                config_url=url + ".json",
-            )
-            self.add_voice(voice)
-
-        # TODO - unknown phonemizer type?
-        # https://huggingface.co/tiennguyenbnbk/male_vivoice_piper_viphone
-
-        # TODO - these models are inside a .tar.gz/.zip and will need special handling
-        # https://github.com/GraceDabbieri/piper-tts-voices
-        # https://huggingface.co/MysticonsLover/PiperWillowbrook
-        # https://huggingface.co/BibEBobberson/Piper
-        # https://huggingface.co/Beesa/Piper_brawlstars
-        # https://huggingface.co/BornSaint/piper-TTS
-
-        # https://huggingface.co/HirCoir/Piper-TTS-Laura
-        url = f"https://huggingface.co/HirCoir/Piper-TTS-Laura/resolve/main/es_MX-laura-high.onnx"
-        voice = TTSModelInfo(
-            voice_id="piper_" + f"HirCoir/es-MX_Laura",
-            lang="es-MX",
-            model_url=url,
-            config_url=url + ".json",
-        )
-        self.add_voice(voice)
-
-        # TODO - 401 - needs auth and approval in hugging face
-        # https://huggingface.co/HirCoir/HirCoir/piper-emma-neuronal
-        # https://huggingface.co/HirCoir/piper-sorah-neuronal
-        # https://huggingface.co/HirCoir/piper-voice-es-mx-lucas-melor
-        # https://huggingface.co/HirCoir/piper-voice-es-mx-veritasium
-        # https://huggingface.co/HirCoir/piper-voice-es-mx-1peso-de-salsa
-        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-sorah-v2
-        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-sorahv2
-        # https://huggingface.co/HirCoir/piper-checkpoint-es-ar-elena
-        # https://huggingface.co/HirCoir/piper-checkpoint-yiseni
-        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-dark
-        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-maney
-        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-yahir
-        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-1peso-de-salsa
-        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-laurav2
-        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-veritsasium
-        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-lilith
-        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-towi
-        # https://huggingface.co/HirCoir/piper-checkpoint-es-mx-cortana-ce-legacy
-        # https://huggingface.co/HirCoir/piper-voice-es_MX-Cortana-CE-Legacy
-
-        # TODO - these will need to be mirrored somewhere else to allow download
-        # https://www.nexusmods.com/skyrimspecialedition/mods/98631
-        # https://www.nexusmods.com/fallout4/mods/79747
-
-    def get_coqui_community_voice_list(self):
-        """
-        Add Coqui community voice entries to the manager.
-        
-        This method is a placeholder and currently performs no action. Intended to discover Coqui community TTS model manifests and add corresponding TTSModelInfo entries to self.voices when implemented.
-        """
-        pass  # placeholder
+    def merge_default_voices(self, store=False):
+        base_path = Path(os.path.dirname(__file__)) / "voice_index"
+        self.cache.update(JsonStorage(str(base_path / "OVOS.json")))
+        self.cache.update(JsonStorage(str(base_path / "MMS.json")))
+        self.cache.update(JsonStorage(str(base_path / "proxectonos.json")))
+        self.cache.update(JsonStorage(str(base_path / "piper.json")))
+        self.cache.update(JsonStorage(str(base_path / "phonikud.json")))
+        self.cache.update(JsonStorage(str(base_path / "neurlang.json")))
+        self.cache.update(JsonStorage(str(base_path / "mimic3.json")))
+        self.cache.update(JsonStorage(str(base_path / "transformers_community.json")))
+        self.cache.update(JsonStorage(str(base_path / "piper_community.json")))
+        self.voices = {voice_id: TTSModelInfo(**voice_dict)
+                       for voice_id, voice_dict in self.cache.items()}
+        if store:
+            self.cache.store()
 
 
 if __name__ == "__main__":
     manager = TTSModelManager()
     manager.clear()
-    # manager.load()
-    manager.refresh_voices()
-    manager.save()
+    manager.merge_default_voices(store=True)
 
     print(f"Total voices: {len(manager.all_voices)}")
     print(f"Total langs: {len(manager.supported_langs)}")
 
-    # Total voices: 314
-    # Total langs: 67
+    # Total voices: 1462
+    # Total langs: 1205
 
-    for voice in manager.get_lang_voices('pt-PT'):
+    for voice in manager.get_lang_voices("gl"):
         print(voice)
-    # TTSModelInfo(voice_id='OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone', lang='pt-PT', model_url='https://huggingface.co/OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone/resolve/main/miro_pt-PT.onnx', config_url='https://huggingface.co/OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone/resolve/main/miro_pt-PT.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=1, num_langs=1, sample_rate=22050, lang_code='pt-PT', phoneme_id_map={' ': 3, '!': 4, '"': 150, '#': 149, '$': 2, "'": 5, '(': 6, ')': 7, ',': 8, '-': 9, '.': 10, '0': 130, '1': 131, '2': 132, '3': 133, '4': 134, '5': 135, '6': 136, '7': 137, '8': 138, '9': 139, ':': 11, ';': 12, '?': 13, 'X': 156, '^': 1, '_': 0, 'a': 14, 'b': 15, 'c': 16, 'd': 17, 'e': 18, 'f': 19, 'g': 154, 'h': 20, 'i': 21, 'j': 22, 'k': 23, 'l': 24, 'm': 25, 'n': 26, 'o': 27, 'p': 28, 'q': 29, 'r': 30, 's': 31, 't': 32, 'u': 33, 'v': 34, 'w': 35, 'x': 36, 'y': 37, 'z': 38, 'æ': 39, 'ç': 40, 'ð': 41, 'ø': 42, 'ħ': 43, 'ŋ': 44, 'œ': 45, 'ǀ': 46, 'ǁ': 47, 'ǂ': 48, 'ǃ': 49, 'ɐ': 50, 'ɑ': 51, 'ɒ': 52, 'ɓ': 53, 'ɔ': 54, 'ɕ': 55, 'ɖ': 56, 'ɗ': 57, 'ɘ': 58, 'ə': 59, 'ɚ': 60, 'ɛ': 61, 'ɜ': 62, 'ɞ': 63, 'ɟ': 64, 'ɠ': 65, 'ɡ': 66, 'ɢ': 67, 'ɣ': 68, 'ɤ': 69, 'ɥ': 70, 'ɦ': 71, 'ɧ': 72, 'ɨ': 73, 'ɪ': 74, 'ɫ': 75, 'ɬ': 76, 'ɭ': 77, 'ɮ': 78, 'ɯ': 79, 'ɰ': 80, 'ɱ': 81, 'ɲ': 82, 'ɳ': 83, 'ɴ': 84, 'ɵ': 85, 'ɶ': 86, 'ɸ': 87, 'ɹ': 88, 'ɺ': 89, 'ɻ': 90, 'ɽ': 91, 'ɾ': 92, 'ʀ': 93, 'ʁ': 94, 'ʂ': 95, 'ʃ': 96, 'ʄ': 97, 'ʈ': 98, 'ʉ': 99, 'ʊ': 100, 'ʋ': 101, 'ʌ': 102, 'ʍ': 103, 'ʎ': 104, 'ʏ': 105, 'ʐ': 106, 'ʑ': 107, 'ʒ': 108, 'ʔ': 109, 'ʕ': 110, 'ʘ': 111, 'ʙ': 112, 'ʛ': 113, 'ʜ': 114, 'ʝ': 115, 'ʟ': 116, 'ʡ': 117, 'ʢ': 118, 'ʦ': 155, 'ʰ': 145, 'ʲ': 119, 'ˈ': 120, 'ˌ': 121, 'ː': 122, 'ˑ': 123, '˞': 124, 'ˤ': 146, '̃': 141, '̊': 158, '̝': 157, '̧': 140, '̩': 144, '̪': 142, '̯': 143, '̺': 152, '̻': 153, 'β': 125, 'ε': 147, 'θ': 126, 'χ': 127, 'ᵻ': 128, '↑': 151, '↓': 148, 'ⱱ': 129}, phoneme_type=<PhonemeType.TUGAPHONE: 'tugaphone'>, alphabet='ipa', phonemizer_model='', speaker_id_map={}, lang_id_map={}, engine=<Engine.PHOONNX: 'phoonnx'>, length_scale=1, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.TUGAPHONE: 'tugaphone'>)
-    # TTSModelInfo(voice_id='OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone', lang='pt-PT', model_url='https://huggingface.co/OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone/resolve/main/dii_pt-PT.onnx', config_url='https://huggingface.co/OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone/resolve/main/dii_pt-PT.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=1, num_langs=1, sample_rate=22050, lang_code='pt-PT', phoneme_id_map={' ': 3, '!': 4, '"': 150, '#': 149, '$': 2, "'": 5, '(': 6, ')': 7, ',': 8, '-': 9, '.': 10, '0': 130, '1': 131, '2': 132, '3': 133, '4': 134, '5': 135, '6': 136, '7': 137, '8': 138, '9': 139, ':': 11, ';': 12, '?': 13, 'X': 156, '^': 1, '_': 0, 'a': 14, 'b': 15, 'c': 16, 'd': 17, 'e': 18, 'f': 19, 'g': 154, 'h': 20, 'i': 21, 'j': 22, 'k': 23, 'l': 24, 'm': 25, 'n': 26, 'o': 27, 'p': 28, 'q': 29, 'r': 30, 's': 31, 't': 32, 'u': 33, 'v': 34, 'w': 35, 'x': 36, 'y': 37, 'z': 38, 'æ': 39, 'ç': 40, 'ð': 41, 'ø': 42, 'ħ': 43, 'ŋ': 44, 'œ': 45, 'ǀ': 46, 'ǁ': 47, 'ǂ': 48, 'ǃ': 49, 'ɐ': 50, 'ɑ': 51, 'ɒ': 52, 'ɓ': 53, 'ɔ': 54, 'ɕ': 55, 'ɖ': 56, 'ɗ': 57, 'ɘ': 58, 'ə': 59, 'ɚ': 60, 'ɛ': 61, 'ɜ': 62, 'ɞ': 63, 'ɟ': 64, 'ɠ': 65, 'ɡ': 66, 'ɢ': 67, 'ɣ': 68, 'ɤ': 69, 'ɥ': 70, 'ɦ': 71, 'ɧ': 72, 'ɨ': 73, 'ɪ': 74, 'ɫ': 75, 'ɬ': 76, 'ɭ': 77, 'ɮ': 78, 'ɯ': 79, 'ɰ': 80, 'ɱ': 81, 'ɲ': 82, 'ɳ': 83, 'ɴ': 84, 'ɵ': 85, 'ɶ': 86, 'ɸ': 87, 'ɹ': 88, 'ɺ': 89, 'ɻ': 90, 'ɽ': 91, 'ɾ': 92, 'ʀ': 93, 'ʁ': 94, 'ʂ': 95, 'ʃ': 96, 'ʄ': 97, 'ʈ': 98, 'ʉ': 99, 'ʊ': 100, 'ʋ': 101, 'ʌ': 102, 'ʍ': 103, 'ʎ': 104, 'ʏ': 105, 'ʐ': 106, 'ʑ': 107, 'ʒ': 108, 'ʔ': 109, 'ʕ': 110, 'ʘ': 111, 'ʙ': 112, 'ʛ': 113, 'ʜ': 114, 'ʝ': 115, 'ʟ': 116, 'ʡ': 117, 'ʢ': 118, 'ʦ': 155, 'ʰ': 145, 'ʲ': 119, 'ˈ': 120, 'ˌ': 121, 'ː': 122, 'ˑ': 123, '˞': 124, 'ˤ': 146, '̃': 141, '̊': 158, '̝': 157, '̧': 140, '̩': 144, '̪': 142, '̯': 143, '̺': 152, '̻': 153, 'β': 125, 'ε': 147, 'θ': 126, 'χ': 127, 'ᵻ': 128, '↑': 151, '↓': 148, 'ⱱ': 129}, phoneme_type=<PhonemeType.TUGAPHONE: 'tugaphone'>, alphabet='ipa', phonemizer_model='', speaker_id_map={}, lang_id_map={}, engine=<Engine.PHOONNX: 'phoonnx'>, length_scale=1, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.TUGAPHONE: 'tugaphone'>)
-    # TTSModelInfo(voice_id='OpenVoiceOS/pipertts_pt-PT_miro', lang='pt-PT', model_url='https://huggingface.co/OpenVoiceOS/pipertts_pt-PT_miro/resolve/main/miro_pt-PT.onnx', config_url='https://huggingface.co/OpenVoiceOS/pipertts_pt-PT_miro/resolve/main/miro_pt-PT.onnx.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=1, num_langs=1, sample_rate=22050, lang_code='pt-PT', phoneme_id_map={' ': [3], '!': [4], '"': [150], '#': [149], '$': [2], "'": [5], '(': [6], ')': [7], ',': [8], '-': [9], '.': [10], '0': [130], '1': [131], '2': [132], '3': [133], '4': [134], '5': [135], '6': [136], '7': [137], '8': [138], '9': [139], ':': [11], ';': [12], '?': [13], 'X': [156], '^': [1], '_': [0], 'a': [14], 'b': [15], 'c': [16], 'd': [17], 'e': [18], 'f': [19], 'g': [154], 'h': [20], 'i': [21], 'j': [22], 'k': [23], 'l': [24], 'm': [25], 'n': [26], 'o': [27], 'p': [28], 'q': [29], 'r': [30], 's': [31], 't': [32], 'u': [33], 'v': [34], 'w': [35], 'x': [36], 'y': [37], 'z': [38], 'æ': [39], 'ç': [40], 'ð': [41], 'ø': [42], 'ħ': [43], 'ŋ': [44], 'œ': [45], 'ǀ': [46], 'ǁ': [47], 'ǂ': [48], 'ǃ': [49], 'ɐ': [50], 'ɑ': [51], 'ɒ': [52], 'ɓ': [53], 'ɔ': [54], 'ɕ': [55], 'ɖ': [56], 'ɗ': [57], 'ɘ': [58], 'ə': [59], 'ɚ': [60], 'ɛ': [61], 'ɜ': [62], 'ɞ': [63], 'ɟ': [64], 'ɠ': [65], 'ɡ': [66], 'ɢ': [67], 'ɣ': [68], 'ɤ': [69], 'ɥ': [70], 'ɦ': [71], 'ɧ': [72], 'ɨ': [73], 'ɪ': [74], 'ɫ': [75], 'ɬ': [76], 'ɭ': [77], 'ɮ': [78], 'ɯ': [79], 'ɰ': [80], 'ɱ': [81], 'ɲ': [82], 'ɳ': [83], 'ɴ': [84], 'ɵ': [85], 'ɶ': [86], 'ɸ': [87], 'ɹ': [88], 'ɺ': [89], 'ɻ': [90], 'ɽ': [91], 'ɾ': [92], 'ʀ': [93], 'ʁ': [94], 'ʂ': [95], 'ʃ': [96], 'ʄ': [97], 'ʈ': [98], 'ʉ': [99], 'ʊ': [100], 'ʋ': [101], 'ʌ': [102], 'ʍ': [103], 'ʎ': [104], 'ʏ': [105], 'ʐ': [106], 'ʑ': [107], 'ʒ': [108], 'ʔ': [109], 'ʕ': [110], 'ʘ': [111], 'ʙ': [112], 'ʛ': [113], 'ʜ': [114], 'ʝ': [115], 'ʟ': [116], 'ʡ': [117], 'ʢ': [118], 'ʦ': [155], 'ʰ': [145], 'ʲ': [119], 'ˈ': [120], 'ˌ': [121], 'ː': [122], 'ˑ': [123], '˞': [124], 'ˤ': [146], '̃': [141], '̊': [158], '̝': [157], '̧': [140], '̩': [144], '̪': [142], '̯': [143], '̺': [152], '̻': [153], 'β': [125], 'ε': [147], 'θ': [126], 'χ': [127], 'ᵻ': [128], '↑': [151], '↓': [148], 'ⱱ': [129]}, phoneme_type=<PhonemeType.ESPEAK: 'espeak'>, alphabet=<Alphabet.IPA: 'ipa'>, phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine=<Engine.PIPER: 'piper'>, length_scale=1, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token='_', blank_token='_', bos_token='^', eos_token='$', word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.ESPEAK: 'espeak'>)
-    # TTSModelInfo(voice_id='OpenVoiceOS/pipertts_pt-PT_dii', lang='pt-PT', model_url='https://huggingface.co/OpenVoiceOS/pipertts_pt-PT_dii/resolve/main/dii_pt-PT.onnx', config_url='https://huggingface.co/OpenVoiceOS/pipertts_pt-PT_dii/resolve/main/dii_pt-PT.onnx.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=1, num_langs=1, sample_rate=22050, lang_code='pt-PT', phoneme_id_map={' ': [3], '!': [4], '"': [150], '#': [149], '$': [2], "'": [5], '(': [6], ')': [7], ',': [8], '-': [9], '.': [10], '0': [130], '1': [131], '2': [132], '3': [133], '4': [134], '5': [135], '6': [136], '7': [137], '8': [138], '9': [139], ':': [11], ';': [12], '?': [13], 'X': [156], '^': [1], '_': [0], 'a': [14], 'b': [15], 'c': [16], 'd': [17], 'e': [18], 'f': [19], 'g': [154], 'h': [20], 'i': [21], 'j': [22], 'k': [23], 'l': [24], 'm': [25], 'n': [26], 'o': [27], 'p': [28], 'q': [29], 'r': [30], 's': [31], 't': [32], 'u': [33], 'v': [34], 'w': [35], 'x': [36], 'y': [37], 'z': [38], 'æ': [39], 'ç': [40], 'ð': [41], 'ø': [42], 'ħ': [43], 'ŋ': [44], 'œ': [45], 'ǀ': [46], 'ǁ': [47], 'ǂ': [48], 'ǃ': [49], 'ɐ': [50], 'ɑ': [51], 'ɒ': [52], 'ɓ': [53], 'ɔ': [54], 'ɕ': [55], 'ɖ': [56], 'ɗ': [57], 'ɘ': [58], 'ə': [59], 'ɚ': [60], 'ɛ': [61], 'ɜ': [62], 'ɞ': [63], 'ɟ': [64], 'ɠ': [65], 'ɡ': [66], 'ɢ': [67], 'ɣ': [68], 'ɤ': [69], 'ɥ': [70], 'ɦ': [71], 'ɧ': [72], 'ɨ': [73], 'ɪ': [74], 'ɫ': [75], 'ɬ': [76], 'ɭ': [77], 'ɮ': [78], 'ɯ': [79], 'ɰ': [80], 'ɱ': [81], 'ɲ': [82], 'ɳ': [83], 'ɴ': [84], 'ɵ': [85], 'ɶ': [86], 'ɸ': [87], 'ɹ': [88], 'ɺ': [89], 'ɻ': [90], 'ɽ': [91], 'ɾ': [92], 'ʀ': [93], 'ʁ': [94], 'ʂ': [95], 'ʃ': [96], 'ʄ': [97], 'ʈ': [98], 'ʉ': [99], 'ʊ': [100], 'ʋ': [101], 'ʌ': [102], 'ʍ': [103], 'ʎ': [104], 'ʏ': [105], 'ʐ': [106], 'ʑ': [107], 'ʒ': [108], 'ʔ': [109], 'ʕ': [110], 'ʘ': [111], 'ʙ': [112], 'ʛ': [113], 'ʜ': [114], 'ʝ': [115], 'ʟ': [116], 'ʡ': [117], 'ʢ': [118], 'ʦ': [155], 'ʰ': [145], 'ʲ': [119], 'ˈ': [120], 'ˌ': [121], 'ː': [122], 'ˑ': [123], '˞': [124], 'ˤ': [146], '̃': [141], '̊': [158], '̝': [157], '̧': [140], '̩': [144], '̪': [142], '̯': [143], '̺': [152], '̻': [153], 'β': [125], 'ε': [147], 'θ': [126], 'χ': [127], 'ᵻ': [128], '↑': [151], '↓': [148], 'ⱱ': [129]}, phoneme_type=<PhonemeType.ESPEAK: 'espeak'>, alphabet=<Alphabet.IPA: 'ipa'>, phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine=<Engine.PIPER: 'piper'>, length_scale=1, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token='_', blank_token='_', bos_token='^', eos_token='$', word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.ESPEAK: 'espeak'>)
-    # TTSModelInfo(voice_id='piper_pt_PT-tugão-medium', lang='pt-PT', model_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_PT/tugão/medium/pt_PT-tugão-medium.onnx', config_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_PT/tugão/medium/pt_PT-tugão-medium.onnx.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=1, num_langs=1, sample_rate=22050, lang_code='pt-PT', phoneme_id_map={' ': [3], '!': [4], '"': [150], '#': [149], '$': [2], "'": [5], '(': [6], ')': [7], ',': [8], '-': [9], '.': [10], '0': [130], '1': [131], '2': [132], '3': [133], '4': [134], '5': [135], '6': [136], '7': [137], '8': [138], '9': [139], ':': [11], ';': [12], '?': [13], 'X': [156], '^': [1], '_': [0], 'a': [14], 'b': [15], 'c': [16], 'd': [17], 'e': [18], 'f': [19], 'g': [154], 'h': [20], 'i': [21], 'j': [22], 'k': [23], 'l': [24], 'm': [25], 'n': [26], 'o': [27], 'p': [28], 'q': [29], 'r': [30], 's': [31], 't': [32], 'u': [33], 'v': [34], 'w': [35], 'x': [36], 'y': [37], 'z': [38], 'æ': [39], 'ç': [40], 'ð': [41], 'ø': [42], 'ħ': [43], 'ŋ': [44], 'œ': [45], 'ǀ': [46], 'ǁ': [47], 'ǂ': [48], 'ǃ': [49], 'ɐ': [50], 'ɑ': [51], 'ɒ': [52], 'ɓ': [53], 'ɔ': [54], 'ɕ': [55], 'ɖ': [56], 'ɗ': [57], 'ɘ': [58], 'ə': [59], 'ɚ': [60], 'ɛ': [61], 'ɜ': [62], 'ɞ': [63], 'ɟ': [64], 'ɠ': [65], 'ɡ': [66], 'ɢ': [67], 'ɣ': [68], 'ɤ': [69], 'ɥ': [70], 'ɦ': [71], 'ɧ': [72], 'ɨ': [73], 'ɪ': [74], 'ɫ': [75], 'ɬ': [76], 'ɭ': [77], 'ɮ': [78], 'ɯ': [79], 'ɰ': [80], 'ɱ': [81], 'ɲ': [82], 'ɳ': [83], 'ɴ': [84], 'ɵ': [85], 'ɶ': [86], 'ɸ': [87], 'ɹ': [88], 'ɺ': [89], 'ɻ': [90], 'ɽ': [91], 'ɾ': [92], 'ʀ': [93], 'ʁ': [94], 'ʂ': [95], 'ʃ': [96], 'ʄ': [97], 'ʈ': [98], 'ʉ': [99], 'ʊ': [100], 'ʋ': [101], 'ʌ': [102], 'ʍ': [103], 'ʎ': [104], 'ʏ': [105], 'ʐ': [106], 'ʑ': [107], 'ʒ': [108], 'ʔ': [109], 'ʕ': [110], 'ʘ': [111], 'ʙ': [112], 'ʛ': [113], 'ʜ': [114], 'ʝ': [115], 'ʟ': [116], 'ʡ': [117], 'ʢ': [118], 'ʦ': [155], 'ʰ': [145], 'ʲ': [119], 'ˈ': [120], 'ˌ': [121], 'ː': [122], 'ˑ': [123], '˞': [124], 'ˤ': [146], '̃': [141], '̊': [158], '̝': [157], '̧': [140], '̩': [144], '̪': [142], '̯': [143], '̺': [152], '̻': [153], 'β': [125], 'ε': [147], 'θ': [126], 'χ': [127], 'ᵻ': [128], '↑': [151], '↓': [148], 'ⱱ': [129]}, phoneme_type=<PhonemeType.ESPEAK: 'espeak'>, alphabet=<Alphabet.IPA: 'ipa'>, phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine=<Engine.PIPER: 'piper'>, length_scale=1, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token='_', blank_token='_', bos_token='^', eos_token='$', word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.ESPEAK: 'espeak'>)
-    # TTSModelInfo(voice_id='OpenVoiceOS/pipertts_pt-BR_miro', lang='pt-BR', model_url='https://huggingface.co/OpenVoiceOS/pipertts_pt-BR_miro/resolve/main/miro_pt-BR.onnx', config_url='https://huggingface.co/OpenVoiceOS/pipertts_pt-BR_miro/resolve/main/miro_pt-BR.onnx.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=1, num_langs=1, sample_rate=22050, lang_code='pt-BR', phoneme_id_map={' ': [3], '!': [4], '"': [150], '#': [149], '$': [2], "'": [5], '(': [6], ')': [7], ',': [8], '-': [9], '.': [10], '0': [130], '1': [131], '2': [132], '3': [133], '4': [134], '5': [135], '6': [136], '7': [137], '8': [138], '9': [139], ':': [11], ';': [12], '?': [13], 'X': [156], '^': [1], '_': [0], 'a': [14], 'b': [15], 'c': [16], 'd': [17], 'e': [18], 'f': [19], 'g': [154], 'h': [20], 'i': [21], 'j': [22], 'k': [23], 'l': [24], 'm': [25], 'n': [26], 'o': [27], 'p': [28], 'q': [29], 'r': [30], 's': [31], 't': [32], 'u': [33], 'v': [34], 'w': [35], 'x': [36], 'y': [37], 'z': [38], 'æ': [39], 'ç': [40], 'ð': [41], 'ø': [42], 'ħ': [43], 'ŋ': [44], 'œ': [45], 'ǀ': [46], 'ǁ': [47], 'ǂ': [48], 'ǃ': [49], 'ɐ': [50], 'ɑ': [51], 'ɒ': [52], 'ɓ': [53], 'ɔ': [54], 'ɕ': [55], 'ɖ': [56], 'ɗ': [57], 'ɘ': [58], 'ə': [59], 'ɚ': [60], 'ɛ': [61], 'ɜ': [62], 'ɞ': [63], 'ɟ': [64], 'ɠ': [65], 'ɡ': [66], 'ɢ': [67], 'ɣ': [68], 'ɤ': [69], 'ɥ': [70], 'ɦ': [71], 'ɧ': [72], 'ɨ': [73], 'ɪ': [74], 'ɫ': [75], 'ɬ': [76], 'ɭ': [77], 'ɮ': [78], 'ɯ': [79], 'ɰ': [80], 'ɱ': [81], 'ɲ': [82], 'ɳ': [83], 'ɴ': [84], 'ɵ': [85], 'ɶ': [86], 'ɸ': [87], 'ɹ': [88], 'ɺ': [89], 'ɻ': [90], 'ɽ': [91], 'ɾ': [92], 'ʀ': [93], 'ʁ': [94], 'ʂ': [95], 'ʃ': [96], 'ʄ': [97], 'ʈ': [98], 'ʉ': [99], 'ʊ': [100], 'ʋ': [101], 'ʌ': [102], 'ʍ': [103], 'ʎ': [104], 'ʏ': [105], 'ʐ': [106], 'ʑ': [107], 'ʒ': [108], 'ʔ': [109], 'ʕ': [110], 'ʘ': [111], 'ʙ': [112], 'ʛ': [113], 'ʜ': [114], 'ʝ': [115], 'ʟ': [116], 'ʡ': [117], 'ʢ': [118], 'ʦ': [155], 'ʰ': [145], 'ʲ': [119], 'ˈ': [120], 'ˌ': [121], 'ː': [122], 'ˑ': [123], '˞': [124], 'ˤ': [146], '̃': [141], '̊': [158], '̝': [157], '̧': [140], '̩': [144], '̪': [142], '̯': [143], '̺': [152], '̻': [153], 'β': [125], 'ε': [147], 'θ': [126], 'χ': [127], 'ᵻ': [128], '↑': [151], '↓': [148], 'ⱱ': [129]}, phoneme_type=<PhonemeType.ESPEAK: 'espeak'>, alphabet=<Alphabet.IPA: 'ipa'>, phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine=<Engine.PIPER: 'piper'>, length_scale=1, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token='_', blank_token='_', bos_token='^', eos_token='$', word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.ESPEAK: 'espeak'>)
-    # TTSModelInfo(voice_id='OpenVoiceOS/pipertts_pt-BR_dii', lang='pt-BR', model_url='https://huggingface.co/OpenVoiceOS/pipertts_pt-BR_dii/resolve/main/dii_pt-BR.onnx', config_url='https://huggingface.co/OpenVoiceOS/pipertts_pt-BR_dii/resolve/main/dii_pt-BR.onnx.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=1, num_langs=1, sample_rate=22050, lang_code='pt-BR', phoneme_id_map={' ': [3], '!': [4], '"': [150], '#': [149], '$': [2], "'": [5], '(': [6], ')': [7], ',': [8], '-': [9], '.': [10], '0': [130], '1': [131], '2': [132], '3': [133], '4': [134], '5': [135], '6': [136], '7': [137], '8': [138], '9': [139], ':': [11], ';': [12], '?': [13], 'X': [156], '^': [1], '_': [0], 'a': [14], 'b': [15], 'c': [16], 'd': [17], 'e': [18], 'f': [19], 'g': [154], 'h': [20], 'i': [21], 'j': [22], 'k': [23], 'l': [24], 'm': [25], 'n': [26], 'o': [27], 'p': [28], 'q': [29], 'r': [30], 's': [31], 't': [32], 'u': [33], 'v': [34], 'w': [35], 'x': [36], 'y': [37], 'z': [38], 'æ': [39], 'ç': [40], 'ð': [41], 'ø': [42], 'ħ': [43], 'ŋ': [44], 'œ': [45], 'ǀ': [46], 'ǁ': [47], 'ǂ': [48], 'ǃ': [49], 'ɐ': [50], 'ɑ': [51], 'ɒ': [52], 'ɓ': [53], 'ɔ': [54], 'ɕ': [55], 'ɖ': [56], 'ɗ': [57], 'ɘ': [58], 'ə': [59], 'ɚ': [60], 'ɛ': [61], 'ɜ': [62], 'ɞ': [63], 'ɟ': [64], 'ɠ': [65], 'ɡ': [66], 'ɢ': [67], 'ɣ': [68], 'ɤ': [69], 'ɥ': [70], 'ɦ': [71], 'ɧ': [72], 'ɨ': [73], 'ɪ': [74], 'ɫ': [75], 'ɬ': [76], 'ɭ': [77], 'ɮ': [78], 'ɯ': [79], 'ɰ': [80], 'ɱ': [81], 'ɲ': [82], 'ɳ': [83], 'ɴ': [84], 'ɵ': [85], 'ɶ': [86], 'ɸ': [87], 'ɹ': [88], 'ɺ': [89], 'ɻ': [90], 'ɽ': [91], 'ɾ': [92], 'ʀ': [93], 'ʁ': [94], 'ʂ': [95], 'ʃ': [96], 'ʄ': [97], 'ʈ': [98], 'ʉ': [99], 'ʊ': [100], 'ʋ': [101], 'ʌ': [102], 'ʍ': [103], 'ʎ': [104], 'ʏ': [105], 'ʐ': [106], 'ʑ': [107], 'ʒ': [108], 'ʔ': [109], 'ʕ': [110], 'ʘ': [111], 'ʙ': [112], 'ʛ': [113], 'ʜ': [114], 'ʝ': [115], 'ʟ': [116], 'ʡ': [117], 'ʢ': [118], 'ʦ': [155], 'ʰ': [145], 'ʲ': [119], 'ˈ': [120], 'ˌ': [121], 'ː': [122], 'ˑ': [123], '˞': [124], 'ˤ': [146], '̃': [141], '̊': [158], '̝': [157], '̧': [140], '̩': [144], '̪': [142], '̯': [143], '̺': [152], '̻': [153], 'β': [125], 'ε': [147], 'θ': [126], 'χ': [127], 'ᵻ': [128], '↑': [151], '↓': [148], 'ⱱ': [129]}, phoneme_type=<PhonemeType.ESPEAK: 'espeak'>, alphabet=<Alphabet.IPA: 'ipa'>, phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine=<Engine.PIPER: 'piper'>, length_scale=1, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token='_', blank_token='_', bos_token='^', eos_token='$', word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.ESPEAK: 'espeak'>)
-    # TTSModelInfo(voice_id='piper_pt_BR-cadu-medium', lang='pt-BR', model_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/cadu/medium/pt_BR-cadu-medium.onnx', config_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/cadu/medium/pt_BR-cadu-medium.onnx.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=1, num_langs=1, sample_rate=22050, lang_code='pt-BR', phoneme_id_map={'_': [0], '^': [1], '$': [2], ' ': [3], '!': [4], "'": [5], '(': [6], ')': [7], ',': [8], '-': [9], '.': [10], ':': [11], ';': [12], '?': [13], 'a': [14], 'b': [15], 'c': [16], 'd': [17], 'e': [18], 'f': [19], 'h': [20], 'i': [21], 'j': [22], 'k': [23], 'l': [24], 'm': [25], 'n': [26], 'o': [27], 'p': [28], 'q': [29], 'r': [30], 's': [31], 't': [32], 'u': [33], 'v': [34], 'w': [35], 'x': [36], 'y': [37], 'z': [38], 'æ': [39], 'ç': [40], 'ð': [41], 'ø': [42], 'ħ': [43], 'ŋ': [44], 'œ': [45], 'ǀ': [46], 'ǁ': [47], 'ǂ': [48], 'ǃ': [49], 'ɐ': [50], 'ɑ': [51], 'ɒ': [52], 'ɓ': [53], 'ɔ': [54], 'ɕ': [55], 'ɖ': [56], 'ɗ': [57], 'ɘ': [58], 'ə': [59], 'ɚ': [60], 'ɛ': [61], 'ɜ': [62], 'ɞ': [63], 'ɟ': [64], 'ɠ': [65], 'ɡ': [66], 'ɢ': [67], 'ɣ': [68], 'ɤ': [69], 'ɥ': [70], 'ɦ': [71], 'ɧ': [72], 'ɨ': [73], 'ɪ': [74], 'ɫ': [75], 'ɬ': [76], 'ɭ': [77], 'ɮ': [78], 'ɯ': [79], 'ɰ': [80], 'ɱ': [81], 'ɲ': [82], 'ɳ': [83], 'ɴ': [84], 'ɵ': [85], 'ɶ': [86], 'ɸ': [87], 'ɹ': [88], 'ɺ': [89], 'ɻ': [90], 'ɽ': [91], 'ɾ': [92], 'ʀ': [93], 'ʁ': [94], 'ʂ': [95], 'ʃ': [96], 'ʄ': [97], 'ʈ': [98], 'ʉ': [99], 'ʊ': [100], 'ʋ': [101], 'ʌ': [102], 'ʍ': [103], 'ʎ': [104], 'ʏ': [105], 'ʐ': [106], 'ʑ': [107], 'ʒ': [108], 'ʔ': [109], 'ʕ': [110], 'ʘ': [111], 'ʙ': [112], 'ʛ': [113], 'ʜ': [114], 'ʝ': [115], 'ʟ': [116], 'ʡ': [117], 'ʢ': [118], 'ʲ': [119], 'ˈ': [120], 'ˌ': [121], 'ː': [122], 'ˑ': [123], '˞': [124], 'β': [125], 'θ': [126], 'χ': [127], 'ᵻ': [128], 'ⱱ': [129], '0': [130], '1': [131], '2': [132], '3': [133], '4': [134], '5': [135], '6': [136], '7': [137], '8': [138], '9': [139], '̧': [140], '̃': [141], '̪': [142], '̯': [143], '̩': [144], 'ʰ': [145], 'ˤ': [146], 'ε': [147], '↓': [148], '#': [149], '"': [150], '↑': [151], '̺': [152], '̻': [153], 'g': [154], 'ʦ': [155], 'X': [156], '̝': [157], '̊': [158], 'ɝ': [159], 'ʷ': [160]}, phoneme_type=<PhonemeType.ESPEAK: 'espeak'>, alphabet=<Alphabet.IPA: 'ipa'>, phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine=<Engine.PIPER: 'piper'>, length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token='_', blank_token='_', bos_token='^', eos_token='$', word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.ESPEAK: 'espeak'>)
-    # TTSModelInfo(voice_id='piper_pt_BR-edresson-low', lang='pt-BR', model_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/edresson/low/pt_BR-edresson-low.onnx', config_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/edresson/low/pt_BR-edresson-low.onnx.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=130, num_speakers=1, num_langs=1, sample_rate=16000, lang_code='pt-BR', phoneme_id_map={'_': [0], '^': [1], '$': [2], ' ': [3], '!': [4], "'": [5], '(': [6], ')': [7], ',': [8], '-': [9], '.': [10], ':': [11], ';': [12], '?': [13], 'a': [14], 'b': [15], 'c': [16], 'd': [17], 'e': [18], 'f': [19], 'h': [20], 'i': [21], 'j': [22], 'k': [23], 'l': [24], 'm': [25], 'n': [26], 'o': [27], 'p': [28], 'q': [29], 'r': [30], 's': [31], 't': [32], 'u': [33], 'v': [34], 'w': [35], 'x': [36], 'y': [37], 'z': [38], 'æ': [39], 'ç': [40], 'ð': [41], 'ø': [42], 'ħ': [43], 'ŋ': [44], 'œ': [45], 'ǀ': [46], 'ǁ': [47], 'ǂ': [48], 'ǃ': [49], 'ɐ': [50], 'ɑ': [51], 'ɒ': [52], 'ɓ': [53], 'ɔ': [54], 'ɕ': [55], 'ɖ': [56], 'ɗ': [57], 'ɘ': [58], 'ə': [59], 'ɚ': [60], 'ɛ': [61], 'ɜ': [62], 'ɞ': [63], 'ɟ': [64], 'ɠ': [65], 'ɡ': [66], 'ɢ': [67], 'ɣ': [68], 'ɤ': [69], 'ɥ': [70], 'ɦ': [71], 'ɧ': [72], 'ɨ': [73], 'ɪ': [74], 'ɫ': [75], 'ɬ': [76], 'ɭ': [77], 'ɮ': [78], 'ɯ': [79], 'ɰ': [80], 'ɱ': [81], 'ɲ': [82], 'ɳ': [83], 'ɴ': [84], 'ɵ': [85], 'ɶ': [86], 'ɸ': [87], 'ɹ': [88], 'ɺ': [89], 'ɻ': [90], 'ɽ': [91], 'ɾ': [92], 'ʀ': [93], 'ʁ': [94], 'ʂ': [95], 'ʃ': [96], 'ʄ': [97], 'ʈ': [98], 'ʉ': [99], 'ʊ': [100], 'ʋ': [101], 'ʌ': [102], 'ʍ': [103], 'ʎ': [104], 'ʏ': [105], 'ʐ': [106], 'ʑ': [107], 'ʒ': [108], 'ʔ': [109], 'ʕ': [110], 'ʘ': [111], 'ʙ': [112], 'ʛ': [113], 'ʜ': [114], 'ʝ': [115], 'ʟ': [116], 'ʡ': [117], 'ʢ': [118], 'ʲ': [119], 'ˈ': [120], 'ˌ': [121], 'ː': [122], 'ˑ': [123], '˞': [124], 'β': [125], 'θ': [126], 'χ': [127], 'ᵻ': [128], 'ⱱ': [129]}, phoneme_type=<PhonemeType.ESPEAK: 'espeak'>, alphabet=<Alphabet.IPA: 'ipa'>, phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine=<Engine.PIPER: 'piper'>, length_scale=1, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token='_', blank_token='_', bos_token='^', eos_token='$', word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.ESPEAK: 'espeak'>)
-    # TTSModelInfo(voice_id='piper_pt_BR-faber-medium', lang='pt-BR', model_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx', config_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=1, num_langs=1, sample_rate=22050, lang_code='pt-BR', phoneme_id_map={'_': [0], '^': [1], '$': [2], ' ': [3], '!': [4], "'": [5], '(': [6], ')': [7], ',': [8], '-': [9], '.': [10], ':': [11], ';': [12], '?': [13], 'a': [14], 'b': [15], 'c': [16], 'd': [17], 'e': [18], 'f': [19], 'h': [20], 'i': [21], 'j': [22], 'k': [23], 'l': [24], 'm': [25], 'n': [26], 'o': [27], 'p': [28], 'q': [29], 'r': [30], 's': [31], 't': [32], 'u': [33], 'v': [34], 'w': [35], 'x': [36], 'y': [37], 'z': [38], 'æ': [39], 'ç': [40], 'ð': [41], 'ø': [42], 'ħ': [43], 'ŋ': [44], 'œ': [45], 'ǀ': [46], 'ǁ': [47], 'ǂ': [48], 'ǃ': [49], 'ɐ': [50], 'ɑ': [51], 'ɒ': [52], 'ɓ': [53], 'ɔ': [54], 'ɕ': [55], 'ɖ': [56], 'ɗ': [57], 'ɘ': [58], 'ə': [59], 'ɚ': [60], 'ɛ': [61], 'ɜ': [62], 'ɞ': [63], 'ɟ': [64], 'ɠ': [65], 'ɡ': [66], 'ɢ': [67], 'ɣ': [68], 'ɤ': [69], 'ɥ': [70], 'ɦ': [71], 'ɧ': [72], 'ɨ': [73], 'ɪ': [74], 'ɫ': [75], 'ɬ': [76], 'ɭ': [77], 'ɮ': [78], 'ɯ': [79], 'ɰ': [80], 'ɱ': [81], 'ɲ': [82], 'ɳ': [83], 'ɴ': [84], 'ɵ': [85], 'ɶ': [86], 'ɸ': [87], 'ɹ': [88], 'ɺ': [89], 'ɻ': [90], 'ɽ': [91], 'ɾ': [92], 'ʀ': [93], 'ʁ': [94], 'ʂ': [95], 'ʃ': [96], 'ʄ': [97], 'ʈ': [98], 'ʉ': [99], 'ʊ': [100], 'ʋ': [101], 'ʌ': [102], 'ʍ': [103], 'ʎ': [104], 'ʏ': [105], 'ʐ': [106], 'ʑ': [107], 'ʒ': [108], 'ʔ': [109], 'ʕ': [110], 'ʘ': [111], 'ʙ': [112], 'ʛ': [113], 'ʜ': [114], 'ʝ': [115], 'ʟ': [116], 'ʡ': [117], 'ʢ': [118], 'ʲ': [119], 'ˈ': [120], 'ˌ': [121], 'ː': [122], 'ˑ': [123], '˞': [124], 'β': [125], 'θ': [126], 'χ': [127], 'ᵻ': [128], 'ⱱ': [129], '0': [130], '1': [131], '2': [132], '3': [133], '4': [134], '5': [135], '6': [136], '7': [137], '8': [138], '9': [139], '̧': [140], '̃': [141], '̪': [142], '̯': [143], '̩': [144], 'ʰ': [145], 'ˤ': [146], 'ε': [147], '↓': [148], '#': [149], '"': [150], '↑': [151]}, phoneme_type=<PhonemeType.ESPEAK: 'espeak'>, alphabet=<Alphabet.IPA: 'ipa'>, phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine=<Engine.PIPER: 'piper'>, length_scale=1, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token='_', blank_token='_', bos_token='^', eos_token='$', word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.ESPEAK: 'espeak'>)
-    # TTSModelInfo(voice_id='piper_pt_BR-jeff-medium', lang='pt-BR', model_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/jeff/medium/pt_BR-jeff-medium.onnx', config_url='https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/jeff/medium/pt_BR-jeff-medium.onnx.json', tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=1, num_langs=1, sample_rate=22050, lang_code='pt-BR', phoneme_id_map={'_': [0], '^': [1], '$': [2], ' ': [3], '!': [4], "'": [5], '(': [6], ')': [7], ',': [8], '-': [9], '.': [10], ':': [11], ';': [12], '?': [13], 'a': [14], 'b': [15], 'c': [16], 'd': [17], 'e': [18], 'f': [19], 'h': [20], 'i': [21], 'j': [22], 'k': [23], 'l': [24], 'm': [25], 'n': [26], 'o': [27], 'p': [28], 'q': [29], 'r': [30], 's': [31], 't': [32], 'u': [33], 'v': [34], 'w': [35], 'x': [36], 'y': [37], 'z': [38], 'æ': [39], 'ç': [40], 'ð': [41], 'ø': [42], 'ħ': [43], 'ŋ': [44], 'œ': [45], 'ǀ': [46], 'ǁ': [47], 'ǂ': [48], 'ǃ': [49], 'ɐ': [50], 'ɑ': [51], 'ɒ': [52], 'ɓ': [53], 'ɔ': [54], 'ɕ': [55], 'ɖ': [56], 'ɗ': [57], 'ɘ': [58], 'ə': [59], 'ɚ': [60], 'ɛ': [61], 'ɜ': [62], 'ɞ': [63], 'ɟ': [64], 'ɠ': [65], 'ɡ': [66], 'ɢ': [67], 'ɣ': [68], 'ɤ': [69], 'ɥ': [70], 'ɦ': [71], 'ɧ': [72], 'ɨ': [73], 'ɪ': [74], 'ɫ': [75], 'ɬ': [76], 'ɭ': [77], 'ɮ': [78], 'ɯ': [79], 'ɰ': [80], 'ɱ': [81], 'ɲ': [82], 'ɳ': [83], 'ɴ': [84], 'ɵ': [85], 'ɶ': [86], 'ɸ': [87], 'ɹ': [88], 'ɺ': [89], 'ɻ': [90], 'ɽ': [91], 'ɾ': [92], 'ʀ': [93], 'ʁ': [94], 'ʂ': [95], 'ʃ': [96], 'ʄ': [97], 'ʈ': [98], 'ʉ': [99], 'ʊ': [100], 'ʋ': [101], 'ʌ': [102], 'ʍ': [103], 'ʎ': [104], 'ʏ': [105], 'ʐ': [106], 'ʑ': [107], 'ʒ': [108], 'ʔ': [109], 'ʕ': [110], 'ʘ': [111], 'ʙ': [112], 'ʛ': [113], 'ʜ': [114], 'ʝ': [115], 'ʟ': [116], 'ʡ': [117], 'ʢ': [118], 'ʲ': [119], 'ˈ': [120], 'ˌ': [121], 'ː': [122], 'ˑ': [123], '˞': [124], 'β': [125], 'θ': [126], 'χ': [127], 'ᵻ': [128], 'ⱱ': [129], '0': [130], '1': [131], '2': [132], '3': [133], '4': [134], '5': [135], '6': [136], '7': [137], '8': [138], '9': [139], '̧': [140], '̃': [141], '̪': [142], '̯': [143], '̩': [144], 'ʰ': [145], 'ˤ': [146], 'ε': [147], '↓': [148], '#': [149], '"': [150], '↑': [151], '̺': [152], '̻': [153], 'g': [154], 'ʦ': [155], 'X': [156], '̝': [157], '̊': [158], 'ɝ': [159], 'ʷ': [160]}, phoneme_type=<PhonemeType.ESPEAK: 'espeak'>, alphabet=<Alphabet.IPA: 'ipa'>, phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine=<Engine.PIPER: 'piper'>, length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, blank_at_start=True, blank_at_end=True, include_whitespace=True, pad_token='_', blank_token='_', bos_token='^', eos_token='$', word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.ESPEAK: 'espeak'>)
+        # TTSModelInfo(voice_id='proxectonos/brais', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-graphemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-graphemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='graphemes', alphabet='unicode', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '!': 1, '¡': 2, "'": 3, '(': 4, ')': 5, ',': 6, '-': 7, '.': 8, ':': 9, ';': 10, '¿': 11, '?': 12, ' ': 13, '"': 14, '\n': 15, 'A': 16, 'B': 17, 'C': 18, 'D': 19, 'E': 20, 'F': 21, 'G': 22, 'H': 23, 'I': 24, 'J': 25, 'K': 26, 'L': 27, 'M': 28, 'N': 29, 'O': 30, 'P': 31, 'Q': 32, 'R': 33, 'S': 34, 'T': 35, 'U': 36, 'V': 37, 'W': 38, 'X': 39, 'Y': 40, 'Z': 41, 'Ç': 42, 'Á': 43, 'É': 44, 'Í': 45, 'Ï': 46, 'Ó': 47, 'Ú': 48, 'Ü': 49, 'a': 50, 'b': 51, 'c': 52, 'd': 53, 'e': 54, 'f': 55, 'g': 56, 'h': 57, 'i': 58, 'j': 59, 'k': 60, 'l': 61, 'm': 62, 'n': 63, 'o': 64, 'p': 65, 'q': 66, 'r': 67, 's': 68, 't': 69, 'u': 70, 'v': 71, 'w': 72, 'x': 73, 'y': 74, 'z': 75, 'ñ': 76, 'á': 77, 'é': 78, 'í': 79, 'ï': 80, 'ó': 81, 'ú': 82, 'ü': 83, '<BLNK>': 84}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.GRAPHEMES: 'graphemes'>, alphabet=<Alphabet.UNICODE: 'unicode'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
+        # TTSModelInfo(voice_id='proxectonos/celtia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='graphemes', alphabet='unicode', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'_': 0, '!': 1, '"': 2, '(': 3, ')': 4, ',': 5, '-': 6, '.': 7, ':': 8, ';': 9, '?': 10, '¡': 11, '¿': 12, ' ': 13, 'A': 14, 'B': 15, 'C': 16, 'D': 17, 'E': 18, 'F': 19, 'G': 20, 'H': 21, 'I': 22, 'J': 23, 'K': 24, 'L': 25, 'M': 26, 'N': 27, 'O': 28, 'P': 29, 'Q': 30, 'R': 31, 'S': 32, 'T': 33, 'U': 34, 'V': 35, 'X': 36, 'Y': 37, 'Z': 38, 'a': 39, 'b': 40, 'c': 41, 'd': 42, 'e': 43, 'f': 44, 'g': 45, 'h': 46, 'i': 47, 'j': 48, 'k': 49, 'l': 50, 'm': 51, 'n': 52, 'o': 53, 'p': 54, 'q': 55, 'r': 56, 's': 57, 't': 58, 'u': 59, 'v': 60, 'w': 61, 'x': 62, 'y': 63, 'z': 64, 'Á': 65, 'É': 66, 'Í': 67, 'Ó': 68, 'Ú': 69, 'á': 70, 'é': 71, 'í': 72, 'ñ': 73, 'ó': 74, 'ú': 75, 'ü': 76, '<BLNK>': 77}, pad='_', eos='*', bos='^', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.GRAPHEMES: 'graphemes'>, alphabet=<Alphabet.UNICODE: 'unicode'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
+        # TTSModelInfo(voice_id='proxectonos/brais-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '!': 1, '¡': 2, "'": 3, '(': 4, ')': 5, ',': 6, '-': 7, '.': 8, ':': 9, ';': 10, '¿': 11, '?': 12, ' ': 13, '"': 14, '\n': 15, 'A': 16, 'B': 17, 'C': 18, 'D': 19, 'E': 20, 'F': 21, 'G': 22, 'H': 23, 'I': 24, 'J': 25, 'K': 26, 'L': 27, 'M': 28, 'N': 29, 'O': 30, 'P': 31, 'Q': 32, 'R': 33, 'S': 34, 'T': 35, 'U': 36, 'V': 37, 'W': 38, 'X': 39, 'Y': 40, 'Z': 41, 'Ç': 42, 'Á': 43, 'É': 44, 'Í': 45, 'Ó': 46, 'Ú': 47, 'Ü': 48, 'a': 49, 'b': 50, 'c': 51, 'd': 52, 'e': 53, 'f': 54, 'g': 55, 'h': 56, 'i': 57, 'j': 58, 'k': 59, 'l': 60, 'm': 61, 'n': 62, 'o': 63, 'p': 64, 'q': 65, 'r': 66, 's': 67, 't': 68, 'u': 69, 'v': 70, 'w': 71, 'x': 72, 'y': 73, 'z': 74, 'ñ': 75, 'á': 76, 'é': 77, 'í': 78, 'ó': 79, 'ú': 80, 'ü': 81, '<BLNK>': 82}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
+        # TTSModelInfo(voice_id='proxectonos/celtia-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '!': 1, '¡': 2, "'": 3, '(': 4, ')': 5, ',': 6, '-': 7, '.': 8, ':': 9, ';': 10, '¿': 11, '?': 12, ' ': 13, '"': 14, '\n': 15, 'A': 16, 'B': 17, 'C': 18, 'D': 19, 'E': 20, 'F': 21, 'G': 22, 'H': 23, 'I': 24, 'J': 25, 'K': 26, 'L': 27, 'M': 28, 'N': 29, 'O': 30, 'P': 31, 'Q': 32, 'R': 33, 'S': 34, 'T': 35, 'U': 36, 'V': 37, 'W': 38, 'X': 39, 'Y': 40, 'Z': 41, 'Ç': 42, 'Á': 43, 'É': 44, 'Í': 45, 'Ó': 46, 'Ú': 47, 'Ü': 48, 'a': 49, 'b': 50, 'c': 51, 'd': 52, 'e': 53, 'f': 54, 'g': 55, 'h': 56, 'i': 57, 'j': 58, 'k': 59, 'l': 60, 'm': 61, 'n': 62, 'o': 63, 'p': 64, 'q': 65, 'r': 66, 's': 67, 't': 68, 'u': 69, 'v': 70, 'w': 71, 'x': 72, 'y': 73, 'z': 74, 'ñ': 75, 'á': 76, 'é': 77, 'í': 78, 'ó': 79, 'ú': 80, 'ü': 81, '<BLNK>': 82}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
+        # TTSModelInfo(voice_id='proxectonos/sabela-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '!': 1, '¡': 2, "'": 3, '(': 4, ')': 5, ',': 6, '-': 7, '.': 8, ':': 9, ';': 10, '¿': 11, '?': 12, ' ': 13, '"': 14, '\n': 15, 'A': 16, 'B': 17, 'C': 18, 'D': 19, 'E': 20, 'F': 21, 'G': 22, 'H': 23, 'I': 24, 'J': 25, 'K': 26, 'L': 27, 'M': 28, 'N': 29, 'O': 30, 'P': 31, 'Q': 32, 'R': 33, 'S': 34, 'T': 35, 'U': 36, 'V': 37, 'W': 38, 'X': 39, 'Y': 40, 'Z': 41, 'Ç': 42, 'Á': 43, 'É': 44, 'Í': 45, 'Ó': 46, 'Ú': 47, 'Ü': 48, 'a': 49, 'b': 50, 'c': 51, 'd': 52, 'e': 53, 'f': 54, 'g': 55, 'h': 56, 'i': 57, 'j': 58, 'k': 59, 'l': 60, 'm': 61, 'n': 62, 'o': 63, 'p': 64, 'q': 65, 'r': 66, 's': 67, 't': 68, 'u': 69, 'v': 70, 'w': 71, 'x': 72, 'y': 73, 'z': 74, 'ñ': 75, 'á': 76, 'é': 77, 'í': 78, 'ó': 79, 'ú': 80, 'ü': 81, '<BLNK>': 82}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
+        # TTSModelInfo(voice_id='proxectonos/icia-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '<EOS>': 1, '<BOS>': 2, '<BLNK>': 3, '\n': 4, '"': 5, 'A': 6, 'B': 7, 'C': 8, 'D': 9, 'E': 10, 'F': 11, 'G': 12, 'H': 13, 'I': 14, 'J': 15, 'K': 16, 'L': 17, 'M': 18, 'N': 19, 'O': 20, 'P': 21, 'Q': 22, 'R': 23, 'S': 24, 'T': 25, 'U': 26, 'V': 27, 'W': 28, 'X': 29, 'Y': 30, 'Z': 31, 'a': 32, 'b': 33, 'c': 34, 'd': 35, 'e': 36, 'f': 37, 'g': 38, 'h': 39, 'i': 40, 'j': 41, 'k': 42, 'l': 43, 'm': 44, 'n': 45, 'o': 46, 'p': 47, 'q': 48, 'r': 49, 's': 50, 't': 51, 'u': 52, 'v': 53, 'w': 54, 'x': 55, 'y': 56, 'z': 57, 'Á': 58, 'Ç': 59, 'É': 60, 'Í': 61, 'Ó': 62, 'Ú': 63, 'Ü': 64, 'á': 65, 'é': 66, 'í': 67, 'ñ': 68, 'ó': 69, 'ú': 70, 'ü': 71, '!': 72, '¡': 73, "'": 74, '(': 75, ')': 76, ',': 77, '-': 78, '.': 79, ':': 80, ';': 81, '¿': 82, '?': 83, ' ': 84}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
+        # TTSModelInfo(voice_id='proxectonos/paulo-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-paulo-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-paulo-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '<EOS>': 1, '<BOS>': 2, '<BLNK>': 3, 'A': 4, 'B': 5, 'C': 6, 'D': 7, 'E': 8, 'F': 9, 'G': 10, 'H': 11, 'I': 12, 'J': 13, 'K': 14, 'L': 15, 'M': 16, 'N': 17, 'O': 18, 'P': 19, 'Q': 20, 'R': 21, 'S': 22, 'T': 23, 'U': 24, 'V': 25, 'W': 26, 'X': 27, 'Y': 28, 'Z': 29, 'a': 30, 'b': 31, 'c': 32, 'd': 33, 'e': 34, 'f': 35, 'g': 36, 'h': 37, 'i': 38, 'j': 39, 'k': 40, 'l': 41, 'm': 42, 'n': 43, 'o': 44, 'p': 45, 'q': 46, 'r': 47, 's': 48, 't': 49, 'u': 50, 'v': 51, 'w': 52, 'x': 53, 'y': 54, 'z': 55, 'Á': 56, 'Ç': 57, 'É': 58, 'Í': 59, 'Ó': 60, 'Ú': 61, 'Ü': 62, 'á': 63, 'é': 64, 'í': 65, 'ñ': 66, 'ó': 67, 'ú': 68, 'ü': 69, '!': 70, '¡': 71, "'": 72, '(': 73, ')': 74, ',': 75, '-': 76, '.': 77, ':': 78, ';': 79, '¿': 80, '?': 81, ' ': 82, '"': 83, '\n': 84}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
+        # TTSModelInfo(voice_id='proxectonos/iago-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-iago-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-iago-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '<EOS>': 1, '<BOS>': 2, '<BLNK>': 3, 'A': 4, 'B': 5, 'C': 6, 'D': 7, 'E': 8, 'F': 9, 'G': 10, 'H': 11, 'I': 12, 'J': 13, 'K': 14, 'L': 15, 'M': 16, 'N': 17, 'O': 18, 'P': 19, 'Q': 20, 'R': 21, 'S': 22, 'T': 23, 'U': 24, 'V': 25, 'W': 26, 'X': 27, 'Y': 28, 'Z': 29, 'a': 30, 'b': 31, 'c': 32, 'd': 33, 'e': 34, 'f': 35, 'g': 36, 'h': 37, 'i': 38, 'j': 39, 'k': 40, 'l': 41, 'm': 42, 'n': 43, 'o': 44, 'p': 45, 'q': 46, 'r': 47, 's': 48, 't': 49, 'u': 50, 'v': 51, 'w': 52, 'x': 53, 'y': 54, 'z': 55, 'Á': 56, 'Ç': 57, 'É': 58, 'Í': 59, 'Ó': 60, 'Ú': 61, 'Ü': 62, 'á': 63, 'é': 64, 'í': 65, 'ñ': 66, 'ó': 67, 'ú': 68, 'ü': 69, '!': 70, '¡': 71, "'": 72, '(': 73, ')': 74, ',': 75, '-': 76, '.': 77, ':': 78, ';': 79, '¿': 80, '?': 81, ' ': 82, '"': 83, '\n': 84}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
 
     print(manager.supported_langs)
-    # ['af-ZA', 'ar', 'ar-JO', 'ar-SA', 'bg-BG', 'bn', 'ca-ES', 'cs-CZ', 'cy-GB', 'da-DK', 'de-DE', 'el-GR', 'en',
-    # 'en-GB', 'en-IE', 'en-US', 'es-AR', 'es-ES', 'es-MX', 'eu-ES', 'fa', 'fa-IR', 'fi-FI', 'fr-FR', 'gl-ES', 'gu-IN',
-    # 'ha-NE', 'he', 'hi-IN', 'hu-HU', 'hy-AM', 'id-ID', 'is-IS', 'it-IT', 'jv-ID', 'ka-GE', 'kk-KZ', 'ko-KO', 'lb-LU',
-    # 'lv-LV', 'ml-IN', 'ne-NP', 'nl', 'nl-BE', 'nl-NL', 'no-NO', 'pl-PL', 'pt-BR', 'pt-PT', 'ro-RO', 'ru-RU', 'sk-SK',
-    # 'sl-SI', 'sr-RS', 'sv-SE', 'sw', 'sw-CD', 'tdt-TL', 'te-IN', 'tn-ZA', 'tr-TR', 'uk-GB', 'uk-UA', 'vi-VN', 'yo',
-    # 'zh-CN', 'zh-TW']
-
-    manager.all_voices[0].load()
+    # ['abi', 'abp', 'aca', 'acd', 'ace', 'acf', 'ach', 'acn', 'acr', 'acu', 'ade', 'adh', 'adj', 'adx', 'aeu',
+    # 'af-ZA', 'agd', 'agg', 'agn', 'agr', 'agu', 'agx', 'aha', 'ahk', 'aia', 'aka', 'akb', 'ake', 'akp', 'alj',
+    # 'alp', 'alt', 'alz', 'ame', 'amf', 'amh', 'ami', 'amk', 'ann', 'any', 'aoz', 'apb', 'apr', 'ar', 'ar-JO',
+    # 'ar-SA', 'ara', 'arl', 'asa', 'asg', 'asm', 'ata', 'atb', 'atg', 'ati', 'atq', 'ava', 'avn', 'avu', 'awa', 'awb',
+    # 'ayo', 'ayr', 'ayz', 'azb', 'azg', 'azj-script_cyrillic', 'azj-script_latin', 'azz', 'bak', 'bam', 'ban', 'bao',
+    # 'bav', 'bba', 'bbb', 'bbc', 'bbo', 'bcc-script_arabic', 'bcc-script_latin', 'bcl', 'bcw', 'bdg', 'bdh', 'bdq',
+    # 'bdu', 'bdv', 'beh', 'bem', 'ben', 'bep', 'bex', 'bfa', 'bfo', 'bfy', 'bfz', 'bg-BG', 'bgc', 'bgq', 'bgr', 'bgt',
+    # 'bgw', 'bha', 'bht', 'bhz', 'bib', 'bim', 'bis', 'biv', 'bjr', 'bjv', 'bjw', 'bjz', 'bkd', 'bkv', 'blh', 'blt',
+    # 'blx', 'blz', 'bmq', 'bmr', 'bmu', 'bmv', 'bn', 'bng', 'bno', 'bnp', 'boa', 'bod', 'boj', 'bom', 'bor', 'bov',
+    # 'box', 'bpr', 'bps', 'bqc', 'bqi', 'bqj', 'bqp', 'bru', 'bsc', 'bsq', 'bss', 'btd', 'bts', 'btt', 'btx', 'bud',
+    # 'bul', 'bus', 'bvc', 'bvz', 'bwq', 'bwu', 'byr', 'bzh', 'bzi', 'bzj', 'ca-ES', 'caa', 'cab',
+    # 'cak-dialect_central', 'cak-dialect_santodomingoxenacoj', 'cak-dialect_southcentral', 'cak-dialect_western',
+    # 'cak-dialect_yepocapa', 'cap', 'car', 'cas', 'cat', 'cax', 'cbc', 'cbi', 'cbr', 'cbs', 'cbt', 'cbu', 'cbv', 'cce',
+    # 'cco', 'cdj', 'ceb', 'ceg', 'cek', 'cfm', 'cgc', 'che', 'chf', 'chv', 'chz', 'cjo', 'cjp', 'cjs', 'cko', 'ckt',
+    # 'cla', 'cle', 'cly', 'cme', 'cmo-script_khmer', 'cmo-script_latin', 'cmr', 'cnh', 'cni', 'cnl', 'cnt', 'coe',
+    # 'cof', 'cok', 'con', 'cot', 'cou', 'cpa', 'cpb', 'cpu', 'crh', 'crk-script_latin', 'crk-script_syllabics', 'crn',
+    # 'crq', 'crs', 'crt', 'cs-CZ', 'csk', 'cso', 'ctd', 'ctg', 'cto', 'ctu', 'cuc', 'cui', 'cuk', 'cul', 'cwa', 'cwe',
+    # 'cwt', 'cy-GB', 'cya', 'cym', 'da-DK', 'daa', 'dah', 'dar', 'dbj', 'dbq', 'ddn', 'de-DE', 'ded', 'des', 'deu',
+    # 'dga', 'dgi', 'dgk', 'dgo', 'dgr', 'dhi', 'did', 'dig', 'dik', 'dip', 'div', 'djk', 'dnj-dialect_blowowest',
+    # 'dnj-dialect_gweetaawueast', 'dnt', 'dnw', 'dop', 'dos', 'dsh', 'dso', 'dtp', 'dts', 'dug', 'dwr', 'dyi', 'dyo',
+    # 'dyu', 'dzo', 'eip', 'eka', 'el-GR', 'ell', 'emp', 'en', 'en-GB', 'en-IE', 'en-US', 'en-cy', 'enb', 'eng', 'enx',
+    # 'es-AR', 'es-CL', 'es-CO', 'es-ES', 'es-MX', 'ese', 'ess', 'eu-ES', 'eus', 'evn', 'ewe', 'eza', 'fa', 'fa-IR',
+    # 'fal', 'fao', 'far', 'fas', 'fi-FI', 'fij', 'fin', 'flr', 'fmu', 'fon', 'fr-FR', 'fra', 'frd', 'ful',
+    # 'gag-script_cyrillic', 'gag-script_latin', 'gai', 'gam', 'gau', 'gbi', 'gbk', 'gbm', 'gbo', 'gde', 'geb', 'gej',
+    # 'gil', 'gjn', 'gkn', 'gl-ES', 'gld', 'glk', 'gmv', 'gna', 'gnd', 'gng', 'gof-script_latin', 'gog', 'gor', 'gqr',
+    # 'grc', 'gri', 'grn', 'grt', 'gso', 'gu-IN', 'gub', 'guc', 'gud', 'guh', 'guj', 'guk', 'gum', 'guo', 'guq', 'guu',
+    # 'gux', 'gvc', 'gvl', 'gwi', 'gwr', 'gym', 'gyr', 'ha-NE', 'had', 'hag', 'hak', 'hap', 'hat', 'hau', 'hay', 'he',
+    # 'heb', 'heh', 'hi-IN', 'hif', 'hig', 'hil', 'hin', 'hlb', 'hlt', 'hne', 'hnn', 'hns', 'hoc', 'hoy', 'hto', 'hu-HU',
+    # 'hub', 'hui', 'hun', 'hus-dialect_centralveracruz', 'hus-dialect_westernpotosino', 'huu', 'huv', 'hvn', 'hwc',
+    # 'hy-AM', 'hyw', 'iba', 'icr', 'id-ID', 'idd', 'ifa', 'ifb', 'ife', 'ifk', 'ifu', 'ify', 'ign', 'ikk', 'ilb', 'ilo',
+    # 'imo', 'inb', 'ind', 'iou', 'ipi', 'iqw', 'iri', 'irk', 'is-IS', 'isl', 'it-IT', 'itl', 'itv',
+    # 'ixl-dialect_sangasparchajul', 'ixl-dialect_sanjuancotzal', 'ixl-dialect_santamarianebaj', 'izr', 'izz', 'jac',
+    # 'jam', 'jav', 'jbu', 'jen', 'jic', 'jiv', 'jmc', 'jmd', 'jun', 'juy', 'jv-ID', 'jvn', 'ka-GE', 'kaa', 'kab',
+    # 'kac', 'kak', 'kan', 'kao', 'kaq', 'kay', 'kaz', 'kbo', 'kbp', 'kbq', 'kbr', 'kby', 'kca', 'kcg', 'kdc', 'kde',
+    # 'kdh', 'kdi', 'kdj', 'kdl', 'kdn', 'kdt', 'kek', 'ken', 'keo', 'ker', 'key', 'kez', 'kfb', 'kff-script_telugu',
+    # 'kfw', 'kfx', 'khg', 'khm', 'khq', 'kia', 'kij', 'kik', 'kin', 'kir', 'kjb', 'kje', 'kjg', 'kjh', 'kk-KZ', 'kki',
+    # 'kkj', 'kle', 'klu', 'klv', 'klw', 'kma', 'kmd', 'kml', 'kmr-script_arabic', 'kmr-script_cyrillic',
+    # 'kmr-script_latin', 'kmu', 'knb', 'kne', 'knf', 'knj', 'knk', 'kno', 'ko-KO', 'kog', 'kor', 'kpq', 'kps', 'kpv',
+    # 'kpy', 'kpz', 'kqe', 'kqp', 'kqr', 'kqy', 'krc', 'kri', 'krj', 'krl', 'krr', 'krs', 'kru', 'ksb', 'ksr', 'kss',
+    # 'ktb', 'ktj', 'kub', 'kue', 'kum', 'kus', 'kvn', 'kvw', 'kwd', 'kwf', 'kwi', 'kxc', 'kxf', 'kxm', 'kxv', 'kyb',
+    # 'kyc', 'kyf', 'kyg', 'kyo', 'kyq', 'kyu', 'kyz', 'kzf', 'lac', 'laj', 'lam', 'lao', 'las', 'lat', 'lav', 'law',
+    # 'lb-LU', 'lbj', 'lbw', 'lcp', 'lee', 'lef', 'lem', 'lew', 'lex', 'lgg', 'lgl', 'lhu', 'lia', 'lid', 'lif', 'lip',
+    # 'lis', 'lje', 'ljp', 'llg', 'lln', 'lme', 'lnd', 'lns', 'lob', 'lok', 'lom', 'lon', 'loq', 'lsi', 'lsm', 'luc',
+    # 'lug', 'lv-LV', 'lwo', 'lww', 'lzz', 'maa-dialect_sanantonio', 'mad', 'mag', 'mah', 'mai', 'maj', 'mak', 'mal',
+    # 'mam-dialect_central', 'mam-dialect_northern', 'mam-dialect_southern', 'mam-dialect_western', 'maq', 'mar', 'maw',
+    # 'maz', 'mbb', 'mbc', 'mbh', 'mbj', 'mbt', 'mbu', 'mbz', 'mca', 'mcb', 'mcd', 'mco', 'mcp', 'mcq', 'mcu', 'mda',
+    # 'mdv', 'mdy', 'med', 'mee', 'mej', 'men', 'meq', 'met', 'mev', 'mfe', 'mfh', 'mfi', 'mfk', 'mfq', 'mfy', 'mfz',
+    # 'mgd', 'mge', 'mgh', 'mgo', 'mhi', 'mhr', 'mhu', 'mhx', 'mhy', 'mib', 'mie', 'mif', 'mih', 'mil', 'mim', 'min',
+    # 'mio', 'mip', 'miq', 'mit', 'miy', 'miz', 'mjl', 'mjv', 'mkl', 'mkn', 'ml-IN', 'mlg', 'mmg', 'mnb', 'mnf', 'mnk',
+    # 'mnw', 'mnx', 'moa', 'mog', 'mon', 'mop', 'mor', 'mos', 'mox', 'moz', 'mpg', 'mpm', 'mpp', 'mpx', 'mqb', 'mqf',
+    # 'mqj', 'mqn', 'mrw', 'msy', 'mtd', 'mtj', 'mto', 'muh', 'mup', 'mur', 'muv', 'muy', 'mvp', 'mwq', 'mwv', 'mxb',
+    # 'mxq', 'mxt', 'mxv', 'mya', 'myb', 'myk', 'myl', 'myv', 'myx', 'myy', 'mza', 'mzi', 'mzj', 'mzk', 'mzm', 'mzw',
+    # 'nab', 'nag', 'nan', 'nas', 'naw', 'nca', 'nch', 'ncj', 'ncl', 'ncu', 'ndj', 'ndp', 'ndv', 'ndy', 'ndz', 'ne-NP',
+    # 'neb', 'new', 'nfa', 'nfr', 'nga', 'ngl', 'ngp', 'ngu', 'nhe', 'nhi', 'nhu', 'nhw', 'nhx', 'nhy', 'nia', 'nij',
+    # 'nim', 'nin', 'nko', 'nl', 'nl-BE', 'nl-NL', 'nlc', 'nld', 'nlg', 'nlk', 'nmz', 'nnb', 'nnq', 'nnw', 'no-NO',
+    # 'noa', 'nod', 'nog', 'not', 'npl', 'npy', 'nst', 'nsu', 'ntm', 'ntr', 'nuj', 'nus', 'nuz', 'nwb', 'nxq', 'nya',
+    # 'nyf', 'nyn', 'nyo', 'nyy', 'nzi', 'obo', 'ojb-script_latin', 'ojb-script_syllabics', 'oku', 'old', 'omw', 'onb',
+    # 'ood', 'orm', 'ory', 'oss', 'ote', 'otq', 'ozm', 'pab', 'pad', 'pag', 'pam', 'pan', 'pao', 'pap', 'pau', 'pbb',
+    # 'pbc', 'pbi', 'pce', 'pcm', 'peg', 'pez', 'pib', 'pil', 'pir', 'pis', 'pjt', 'pkb', 'pl-PL', 'pls', 'plw', 'pmf',
+    # 'pny', 'poh-dialect_eastern', 'poh-dialect_western', 'poi', 'pol', 'por', 'poy', 'ppk', 'pps', 'prf', 'prk', 'prt',
+    # 'pse', 'pss', 'pt-BR', 'pt-PT', 'ptu', 'pui', 'pwg', 'pww', 'pxm', 'qub', 'quc-dialect_central', 'quc-dialect_east',
+    # 'quc-dialect_north', 'quf', 'quh', 'qul', 'quw', 'quy', 'quz', 'qvc', 'qve', 'qvh', 'qvm', 'qvn', 'qvo', 'qvs',
+    # 'qvw', 'qvz', 'qwh', 'qxh', 'qxl', 'qxn', 'qxo', 'qxr', 'rah', 'rai', 'rap', 'rav', 'raw', 'rej', 'rel', 'rgu',
+    # 'rhg', 'rif-script_arabic', 'rif-script_latin', 'ril', 'rim', 'rjs', 'rkt', 'rmc-script_cyrillic',
+    # 'rmc-script_latin', 'rmo', 'rmy-script_cyrillic', 'rmy-script_latin', 'rng', 'rnl', 'ro-RO', 'rol', 'ron', 'rop',
+    # 'rro', 'ru-RU', 'rub', 'ruf', 'rug', 'run', 'rus', 'sab', 'sag', 'sah', 'saj', 'saq', 'sas', 'sba', 'sbd', 'sbl',
+    # 'sbp', 'sch', 'sck', 'sda', 'sea', 'seh', 'ses', 'sey', 'sgb', 'sgj', 'sgw', 'shi', 'shk', 'shn', 'sho', 'shp',
+    # 'sid', 'sig', 'sil', 'sja', 'sjm', 'sk-SK', 'sl-SI', 'sld', 'slu', 'sml', 'smo', 'sna', 'sne', 'snn', 'snp',
+    # 'snw', 'som', 'soy', 'spa', 'spp', 'spy', 'sqi', 'sr-RS', 'sri', 'srm', 'srn', 'srx', 'stn', 'stp', 'suc', 'suk',
+    # 'sun', 'sur', 'sus', 'suv', 'suz', 'sv-SE', 'sw', 'sw-CD', 'swe', 'swh', 'sxb', 'sxn', 'sya', 'syl', 'sza', 'tac',
+    # 'taj', 'tam', 'tao', 'tap', 'taq', 'tat', 'tav', 'tbc', 'tbg', 'tbk', 'tbl', 'tby', 'tbz', 'tca', 'tcc', 'tcs',
+    # 'tcz', 'tdj', 'tdt-TL', 'te-IN', 'ted', 'tee', 'tel', 'tem', 'teo', 'ter', 'tes', 'tew', 'tex', 'tfr', 'tgj',
+    # 'tgk', 'tgl', 'tgo', 'tgp', 'tha', 'thk', 'thl', 'tih', 'tik', 'tir', 'tkr', 'tlb', 'tlj', 'tly', 'tmc', 'tmf',
+    # 'tn-ZA', 'tna', 'tng', 'tnk', 'tnn', 'tnp', 'tnr', 'tnt', 'tob', 'toc', 'toh', 'tom', 'tos', 'tpi', 'tpm', 'tpp',
+    # 'tpt', 'tr-TR', 'trc', 'tri', 'trn', 'trs', 'tso', 'tsz', 'ttc', 'tte', 'ttq-script_tifinagh', 'tue', 'tuf',
+    # 'tuk-script_arabic', 'tuk-script_latin', 'tuo', 'tur', 'tvw', 'twb', 'twe', 'twu', 'txa', 'txq', 'txu', 'tye',
+    # 'tzh-dialect_tenejapa', 'tzj-dialect_eastern', 'tzj-dialect_western', 'tzo-dialect_chamula', 'udm', 'udu',
+    # 'uig-script_arabic', 'uig-script_cyrillic', 'uk-GB', 'uk-UA', 'ukr', 'unr', 'upv', 'ura', 'urb',
+    # 'urd-script_arabic', 'urd-script_devanagari', 'urd-script_latin', 'urk', 'urt', 'ury', 'usp',
+    # 'uzb-script_cyrillic', 'vag', 'vi-VN', 'vid', 'vie', 'vif', 'vmw', 'vmy', 'vun', 'vut', 'wal-script_ethiopic',
+    # 'wal-script_latin', 'wap', 'war', 'waw', 'way', 'wba', 'wlo', 'wlx', 'wmw', 'wob', 'wsg', 'wwa', 'xal', 'xdy',
+    # 'xed', 'xer', 'xmm', 'xnj', 'xnr', 'xog', 'xon', 'xrb', 'xsb', 'xsm', 'xsr', 'xsu', 'xta', 'xtd', 'xte', 'xtm',
+    # 'xtn', 'xua', 'xuo', 'yaa', 'yad', 'yal', 'yam', 'yao', 'yas', 'yat', 'yaz', 'yba', 'ybb', 'ycl', 'ycn', 'yea',
+    # 'yka', 'yli', 'yo', 'yor', 'yre', 'yua', 'yuz', 'yva', 'zaa', 'zab', 'zac', 'zad', 'zae', 'zai', 'zam', 'zao',
+    # 'zaq', 'zar', 'zas', 'zav', 'zaw', 'zca', 'zga', 'zh-CN', 'zh-TW', 'zim', 'ziw', 'zlm', 'zmz', 'zne', 'zos',
+    # 'zpc', 'zpg', 'zpi', 'zpl', 'zpm', 'zpo', 'zpt', 'zpu', 'zpz', 'ztq', 'zty', 'zyb', 'zyp', 'zza']

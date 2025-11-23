@@ -264,7 +264,7 @@ class Vocabulary:
         Returns:
             Vocabulary: A Vocabulary populated from the tokens file with special tokens (pad, bos, eos, blank, blank_word) set from the configuration when present.
         """
-        voc: 'Vocabulary' = Vocabulary.from_tokens_txt(tokens_txt)
+        voc: 'Vocabulary' = Vocabulary.from_tokens_txt(tokens_txt, id_first=True)
         voc.pad = cfg.get("phonemes", {}).get("pad") or cfg.get("phonemes", {}).get("phoneme_separator")
         voc.eos = cfg.get("phonemes", {}).get("eos")
         voc.bos = cfg.get("phonemes", {}).get("bos")
@@ -273,7 +273,7 @@ class Vocabulary:
         return voc
 
     @staticmethod
-    def from_tokens_txt(tokens_txt: str) -> 'Vocabulary':
+    def from_tokens_txt(tokens_txt: str, id_first: bool = False) -> 'Vocabulary':
         """
         Creates a Vocabulary instance by parsing a tokens.txt style string (ID token per line).
 
@@ -284,14 +284,21 @@ class Vocabulary:
             A Vocabulary instance with character-to-index mapping.
         """
         char2idx: Dict[str, int] = {}
+        blank_tok = None
         for line in tokens_txt.split("\n"):
             try:
-                idx_str, token = line.split(" ", 1)
+                if id_first:
+                    idx_str, token = line.split(" ", 1)
+                else:
+                    token, idx_str = line.split(" ", 1)
                 char2idx[token] = int(idx_str)
+                if int(idx_str) == 0:
+                    blank_tok = token
             except ValueError:
                 # Skip empty lines or malformed lines
                 pass
-        return Vocabulary(char2idx=char2idx)
+
+        return Vocabulary(char2idx=char2idx, blank=blank_tok)
 
     @staticmethod
     def from_coqui_config(cfg: Dict[str, Any]) -> 'Vocabulary':
@@ -437,7 +444,6 @@ class TTSTokenizer:
     use_eos_bos: bool
     blank_at_end: bool
     blank_at_start: bool
-    not_found_characters: Set[str] = field(default_factory=set)
 
     @property
     def pad_id(self) -> Optional[int]:
@@ -481,22 +487,33 @@ class TTSTokenizer:
         Returns:
             List[int]: Sequence of token IDs corresponding to the input characters, with unknown characters removed.
         """
+        # first pre-process phoneme_map to check for dipthongs having their own phoneme_id
+        # common in mimic3 models
+        compound_toks = sorted((k for k in self.vocabulary.char2idx
+                                if len(k) > 1), key=len, reverse=True)
+
         token_ids: List[Optional[int]] = []
-        for char in text:
-            idx: Optional[int] = None
-            if self.add_blank_word and char == " ":
+
+        compound_idxs: List[int] = []
+
+        for i, char in enumerate(text):
+            if i in compound_idxs:
+                idx = None
+            elif self.add_blank_word and char == " ":
                 idx = self.blank_word_id
             else:
                 idx = self.vocabulary.char2idx.get(char)
 
-            if idx is not None:
-                token_ids.append(idx)
-            else:
-                token_ids.append(None)  # Append None for later filtering
-                # discard but store not found characters
-                if char not in self.not_found_characters:
-                    self.not_found_characters.add(char)
-                    # LOG.warning(f" [!] Character {repr(char)} not found in the vocabulary. Discarding it.")
+                # Try to match compound phonemes starting at index i
+                for compound in compound_toks:
+                    n = len(compound)
+                    joined = ''.join(text[i:i + n])
+                    if joined == compound:
+                        idx = self.vocabulary.char2idx[compound]
+                        compound_idxs += [i for i in range(i, i+n)]
+                        break
+
+            token_ids.append(idx)
 
         # NOTE: mimic3 adds an extra word_blank at end, so we match that behaviour here
         #  instead of ending [..., BLANK, EOS] it ends with [..., BLANK, BLANK_WORD, BLANK, EOS]
@@ -651,20 +668,15 @@ class TTSTokenizer:
         blank_at_start: bool = phonemes_cfg.get("blank_at_start", True)
         use_eos_bos: bool = phonemes_cfg.get("auto_bos_eos", True)
 
-        add_blank: bool = True  # intersperse blank char
-        add_blank_word: bool = True  # treat space as blank word token
-
-        if blank_between == BlankBetween.WORDS:
-            add_blank = False
-        elif blank_between == BlankBetween.TOKENS:
-            add_blank_word = False
+        add_blank: bool = blank_between != BlankBetween.WORDS  # intersperse blank char
+        add_blank_word: bool = blank_between != BlankBetween.TOKENS
 
         return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
                             blank_at_end=blank_at_end, blank_at_start=blank_at_start,
                             use_eos_bos=use_eos_bos)
 
     @staticmethod
-    def from_tokens_txt(tokens_txt: str) -> 'TTSTokenizer':
+    def from_tokens_txt(tokens_txt: str, id_first=False) -> 'TTSTokenizer':
         """
         Create a TTSTokenizer from the contents of a tokens.txt file using conservative defaults.
         
@@ -676,13 +688,12 @@ class TTSTokenizer:
             add_blank_char=True, add_blank_word=True, blank_at_end=True, blank_at_start=True,
             and use_eos_bos=True.
         """
-        voc: Vocabulary = Vocabulary.from_tokens_txt(tokens_txt)
-        # Conservative defaults if only tokens.txt is available
-        add_blank_word: bool = True
+        voc: Vocabulary = Vocabulary.from_tokens_txt(tokens_txt, id_first)
+        add_blank_word: bool = False
         add_blank: bool = True
         blank_at_end: bool = True
         blank_at_start: bool = True
-        use_eos_bos: bool = True
+        use_eos_bos: bool = False
         return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
                             blank_at_end=blank_at_end, blank_at_start=blank_at_start,
                             use_eos_bos=use_eos_bos)
