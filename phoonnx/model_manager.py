@@ -412,7 +412,7 @@ if __name__ == "__main__":
             f"**Total Voices:** {len(sorted_voices)}",
             f"**Total Languages:** {len(manager.supported_langs)}",
             "",
-            "> ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic)",
+            "> ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)",
             "",
             "> ⚠️ some models are duplicated, piper is known to mirror community voices and those will often show up twice (under piper and under original author)",
             "",

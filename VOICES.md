@@ -3,7 +3,7 @@
 **Total Voices:** 1464
 **Total Languages:** 1199
 
-> ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic)
+> ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
 
 > ⚠️ some models are duplicated, piper is known to mirror community voices and those will often show up twice (under piper and under original author)
 
