@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0a2](https://github.com/TigreGotico/phoonnx/tree/1.3.0a2) (2025-11-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.0a1...1.3.0a2)
+
+**Merged pull requests:**
+
+- documentation: supported voices and languages [\#80](https://github.com/TigreGotico/phoonnx/pull/80) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.3.0a1](https://github.com/TigreGotico/phoonnx/tree/1.3.0a1) (2025-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.2.0a1...1.3.0a1)
