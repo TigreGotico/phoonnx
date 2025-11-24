@@ -22,7 +22,10 @@ def normalize_lang(lang: str) -> str:
     if lang == "tgl" or lang == "tl":
         # HACK: langcodes erroneously (debatable) changes this one to "fil"
         return "tl"
-    return standardize_tag(lang)
+    try:
+        return standardize_tag(lang)
+    except:
+        return lang
 
 
 def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Tuple[str, int]:

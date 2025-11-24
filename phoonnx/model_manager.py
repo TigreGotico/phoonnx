@@ -63,10 +63,7 @@ class TTSModelInfo:
             self.config = self.config or VoiceConfig.from_dict(config)
             self.config.lang_code = self.lang  # sometimes the config is wrong
 
-        try:
-            self.config.lang_code = self.lang = normalize_lang(self.config.lang_code)
-        except:
-            pass
+        self.config.lang_code = self.lang = normalize_lang(self.config.lang_code)
 
         if not self.alphabet:
             self.alphabet = self.config.alphabet

@@ -150,10 +150,7 @@ class VoiceConfig:
             if self.lang_code and self.lang_code.startswith("ar"):
                 self.add_diacritics = True
 
-        try:
-            self.lang_code = normalize_lang(self.lang_code)
-        except:
-            self.lang_code = self.lang_code or "und"
+        self.lang_code = normalize_lang(self.lang_code or "und")
 
     @staticmethod
     def is_mimic3(config: dict[str, Any]) -> bool:

@@ -256,10 +256,7 @@ class TTSModelManager:
                 # manually specify variant
                 std_lang = "pt-BR"
             else:
-                try:
-                    std_lang = normalize_lang(lang)
-                except Exception as e:
-                    std_lang = lang
+                std_lang = normalize_lang(lang)
 
             ascii_lang = unicodedata.normalize('NFKD', lang).encode('ascii', 'ignore').decode('ascii')
             if lang in ["ubu", "ubl", "tzo-dialect_chenalhó"]:
