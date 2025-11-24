@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0a4](https://github.com/TigreGotico/phoonnx/tree/1.3.0a4) (2025-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.0a3...1.3.0a4)
+
+**Merged pull requests:**
+
+- Refactor/drop raw phonemizer [\#84](https://github.com/TigreGotico/phoonnx/pull/84) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.3.0a3](https://github.com/TigreGotico/phoonnx/tree/1.3.0a3) (2025-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.0a2...1.3.0a3)
