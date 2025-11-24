@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1a1](https://github.com/TigreGotico/phoonnx/tree/1.3.1a1) (2025-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.0a4...1.3.1a1)
+
+**Merged pull requests:**
+
+- fix: improve lang code standardization [\#86](https://github.com/TigreGotico/phoonnx/pull/86) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.3.0a4](https://github.com/TigreGotico/phoonnx/tree/1.3.0a4) (2025-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.0a3...1.3.0a4)
