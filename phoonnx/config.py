@@ -133,9 +133,9 @@ class VoiceConfig:
 
     def __post_init__(self):
         """
-        Finalize dataclass defaults after initialization.
+        Normalize and finalize VoiceConfig fields after dataclass initialization.
         
-        If `add_diacritics` is None, sets it to False; if `lang_code` is present and starts with "ar", sets `add_diacritics` to True. Ensures `lang_code` is set to "und" when not provided.
+        Casts string values for `engine`, `alphabet`, and `phoneme_type` to their corresponding Enum types when present as strings. If `add_diacritics` is None, sets it to False and enables it when `lang_code` starts with "ar". Ensures `lang_code` is normalized via `normalize_lang`, defaulting to "und" when unspecified.
         """
         # cast strings to enum for consistency
         if not isinstance(self.engine, Engine) and isinstance(self.engine, str):
@@ -157,6 +157,15 @@ class VoiceConfig:
         # https://huggingface.co/mukowaty/mimic3-voices
 
         # mimic3 models indicate a phonemizer strategy in their config
+        """
+        Determine whether a model configuration matches patterns used by Mimic3 voice models.
+        
+        Parameters:
+            config (dict[str, Any]): Model configuration dictionary to inspect.
+        
+        Returns:
+            `true` if the dict indicates a Mimic3 model (contains a string `phonemizer`, a dict `phonemes`, and a recognized phonemizer name `symbols`, `gruut`, `espeak`, or `epitran`), `false` otherwise.
+        """
         if ("phonemizer" not in config or
                 not isinstance(config["phonemizer"], str)):
             return False

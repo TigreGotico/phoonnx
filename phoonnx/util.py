@@ -19,6 +19,14 @@ except ImportError:
 
 
 def normalize_lang(lang: str) -> str:
+    """
+    Normalize a language tag to a canonical form.
+    
+    If the input is "tgl" or "tl", return "tl". Otherwise attempt to convert the tag to a standardized form and, if that cannot be obtained, return the original input unchanged.
+    
+    Returns:
+        The normalized language tag (e.g., "en-US", "pt", "tl") or the original `lang` if normalization fails.
+    """
     if lang == "tgl" or lang == "tl":
         # HACK: langcodes erroneously (debatable) changes this one to "fil"
         return "tl"
@@ -30,16 +38,16 @@ def normalize_lang(lang: str) -> str:
 
 def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Tuple[str, int]:
     """
-    Validates and returns the closest supported language code.
-
-    Args:
-        target_lang (str): The language code to validate.
-
+    Finds the best matching supported language tag for a requested language code.
+    
+    Parameters:
+        target_lang (str): The requested language tag to match (e.g., "en-US", "pt").
+        valid_langs (Union[str, List[str]]): One or more supported language tags to match against.
+    
     Returns:
-        str: The validated language code.
-
-    Raises:
-        ValueError: If the language code is unsupported.
+        tuple[str, int]: A pair (matched_language, distance) where `matched_language` is the closest supported tag
+        (or "und" if no sufficiently close match was found) and `distance` is the tag distance score
+        (lower is better). A distance of 0 indicates an exact match.
     """
     if isinstance(valid_langs, str):
         valid_langs = [valid_langs]

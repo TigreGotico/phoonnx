@@ -140,9 +140,9 @@ class TTSModelManager:
 
     def get_piper_voice_list(self):
         """
-        Fetches the Piper voices manifest from the Rhasspy piper-voices repository and registers each voice in the manager.
-
-        Downloads the voices.json manifest, creates a TTSModelInfo for each entry (deriving a voice_id prefixed with "piper_", a standardized language tag, and the first ONNX and JSON file URLs from the entry), and calls add_voice to store it. If an entry cannot be processed, prints a failure message for that voice.
+        Register Piper voices from the Rhasspy piper-voices manifest into the manager.
+        
+        For each manifest entry a TTSModelInfo is created with a voice_id prefixed by "piper/", a normalized language tag, model and config URLs, and engine set to PIPER. Voices are added to the manager; entries that cannot be processed print a failure message.
         """
         base = "https://huggingface.co/rhasspy/piper-voices/resolve/main/"
         voice_list = "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.json"
@@ -187,9 +187,9 @@ class TTSModelManager:
 
     def get_mimic3_voice_list(self):
         """
-        Fetch and register Mimic3 TTS voices from Mycroft's voices manifest.
-
-        Fetches the remote Mimic3 voices manifest, constructs TTSModelInfo entries for each voice (including config, model, tokens, and phoneme map URLs), sets the voice's language and speaker_id_map, and adds the voice to the manager. Individual voice failures are logged and do not interrupt processing.
+        Register Mimic3 TTS voices from Mycroft's voices manifest into the manager.
+        
+        For each entry in the remote manifest, create a TTSModelInfo with language, config, model, token, and phoneme-map URLs, set the voice's config.lang_code and config.speaker_id_map, and add it to the registry. Failures for individual voices are logged and do not interrupt processing.
         """
         voice_list = "https://raw.githubusercontent.com/MycroftAI/mimic3/refs/heads/master/mimic3_tts/voices.json"
         r = requests.get(voice_list, timeout=30)
@@ -248,6 +248,11 @@ class TTSModelManager:
         )
 
     def get_mms_voice_list(self):
+        """
+        Register MMS multilingual (Facebook MMS) voices into the manager from the remote manifest.
+        
+        Fetches a languages-supported JSON from Hugging Face and, for each entry, creates and adds a TTSModelInfo describing the voice. Language codes are normalized with normalize_lang except the code "por", which is mapped to "pt-BR". An ASCII-safe language token is derived for vocab/tokenizer URLs. For the three special-language codes "ubu", "ubl", and "tzo-dialect_chenalhó", the voice metadata uses a tokens URL; all entries use PhonemeType.GRAPHEMES, Alphabet.UNICODE, and Engine.TRANSFORMERS.
+        """
         url = "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/raw/main/languages-supported.json"
         for data in requests.get(url).json():
             lang = data["Iso Code"]
