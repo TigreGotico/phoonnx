@@ -1,4 +1,30 @@
 {
+    "OpenVoiceOS/phoonnx_gl-ES_miro_unicode": {
+        "voice_id": "OpenVoiceOS/phoonnx_gl-ES_miro_unicode",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx_gl-ES_miro_unicode/resolve/main/miro_gl-ES.onnx",
+        "phoneme_type": "unicode",
+        "lang": "gl-ES",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "phoonnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx_gl-ES_miro_unicode/resolve/main/miro_gl-ES.json"
+    },
+    "OpenVoiceOS/phoonnx_pt-PT_miro_unicode": {
+        "voice_id": "OpenVoiceOS/phoonnx_pt-PT_miro_unicode",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx_pt-PT_miro_unicode/resolve/main/miro_pt-PT.onnx",
+        "phoneme_type": "unicode",
+        "lang": "pt-PT",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "phoonnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx_pt-PT_miro_unicode/resolve/main/miro_pt-PT.json"
+    },
     "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone": {
         "voice_id": "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone",
         "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone/resolve/main/miro_pt-PT.onnx",
@@ -310,31 +336,5 @@
         "alphabet": "ipa",
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/pipertts_en-US_miro/resolve/main/miro_en-US.onnx.json"
-    },
-    "OpenVoiceOS/phoonnx_gl-ES_miro_unicode": {
-        "voice_id": "OpenVoiceOS/phoonnx_gl-ES_miro_unicode",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx_gl-ES_miro_unicode/resolve/main/miro_gl-ES.onnx",
-        "phoneme_type": "unicode",
-        "lang": "gl-ES",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "unicode",
-        "engine": "phoonnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx_gl-ES_miro_unicode/resolve/main/miro_gl-ES.json"
-    },
-    "OpenVoiceOS/phoonnx_pt-PT_miro_unicode": {
-        "voice_id": "OpenVoiceOS/phoonnx_pt-PT_miro_unicode",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx_pt-PT_miro_unicode/resolve/main/miro_pt-PT.onnx",
-        "phoneme_type": "unicode",
-        "lang": "pt-PT",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "unicode",
-        "engine": "phoonnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx_pt-PT_miro_unicode/resolve/main/miro_pt-PT.json"
     }
 }

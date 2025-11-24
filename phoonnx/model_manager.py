@@ -43,7 +43,7 @@ class TTSModelInfo:
                 if config.get('phoneme_type', "") == "PhonemeType.ESPEAK":
                     config["phoneme_type"] = "espeak"
             else:
-                config = {"phoneme_type": "unicode", "alphabet": "unicode"}
+                config = {"phoneme_type": "graphemes", "alphabet": "unicode"}
 
             if self.vocab_override:
                 self.config = VoiceConfig.from_dict(config, vocab=self.vocab_override)
@@ -57,6 +57,9 @@ class TTSModelInfo:
             if self.tokens_url:
                 self.download_tokens_txt()
                 self.config = VoiceConfig.from_dict(config, tokens_txt=str(self.voice_path / "tokens.txt"))
+
+            if self.phoneme_type:
+                config["phoneme_type"] = self.phoneme_type
 
             self.config = self.config or VoiceConfig.from_dict(config)
             self.config.lang_code = self.lang  # sometimes the config is wrong

@@ -44,7 +44,6 @@ class Alphabet(str, Enum):
 
 
 class PhonemeType(str, Enum):
-    RAW = "raw"  # direct phonemes
     UNICODE = "unicode"  # unicode codepoints
     GRAPHEMES = "graphemes" # text characters
 

@@ -1,7 +1,7 @@
 ## Supported Voices
 
-**Total Voices:** 1464
-**Total Languages:** 1199
+**Total Voices:** 1472
+**Total Languages:** 1207
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
 
@@ -176,11 +176,14 @@
 | `piper/ca_ES-upc_pau-x_low` | `ca-ES` | `piper` | `espeak` |
 | `facebook/mms-tts-caa-Ch’orti’` | `caa` | `transformers` | `graphemes` |
 | `facebook/mms-tts-cab-Garifuna` | `cab` | `transformers` | `graphemes` |
+| `facebook/mms-tts-cac-dialect_sanmateoixtatán-Chuj` | `cac-dialect_sanmateoixtatán` | `transformers` | `graphemes` |
+| `facebook/mms-tts-cac-dialect_sansebastiáncoatán-Chuj` | `cac-dialect_sansebastiáncoatán` | `transformers` | `graphemes` |
 | `facebook/mms-tts-cak-dialect_central-Kaqchikel` | `cak-central-dialect` | `transformers` | `graphemes` |
 | `facebook/mms-tts-cak-dialect_western-Kaqchikel` | `cak-dialect-western` | `transformers` | `graphemes` |
 | `facebook/mms-tts-cak-dialect_yepocapa-Kaqchikel` | `cak-dialect-yepocapa` | `transformers` | `graphemes` |
-| `facebook/mms-tts-cak-dialect_santodomingoxenacoj-Kaqchikel` | `cak-dialect_santodomingoxenacoj` | `transformers` | `unicode` |
-| `facebook/mms-tts-cak-dialect_southcentral-Kaqchikel` | `cak-dialect_southcentral` | `transformers` | `unicode` |
+| `facebook/mms-tts-cak-dialect_santamaríadejesús-Kaqchikel` | `cak-dialect_santamaríadejesús` | `transformers` | `graphemes` |
+| `facebook/mms-tts-cak-dialect_santodomingoxenacoj-Kaqchikel` | `cak-dialect_santodomingoxenacoj` | `transformers` | `graphemes` |
+| `facebook/mms-tts-cak-dialect_southcentral-Kaqchikel` | `cak-dialect_southcentral` | `transformers` | `graphemes` |
 | `facebook/mms-tts-cap-Chipaya` | `cap` | `transformers` | `graphemes` |
 | `facebook/mms-tts-car-Carib` | `car` | `transformers` | `graphemes` |
 | `facebook/mms-tts-cas-Tsimané` | `cas` | `transformers` | `graphemes` |
@@ -230,7 +233,7 @@
 | `facebook/mms-tts-cpu-Ashéninka, Pichis` | `cpu` | `transformers` | `graphemes` |
 | `facebook/mms-tts-crh-Crimean Tatar` | `crh` | `transformers` | `graphemes` |
 | `facebook/mms-tts-crk-script_latin-Cree, Plains` | `crk-latin-script` | `transformers` | `graphemes` |
-| `facebook/mms-tts-crk-script_syllabics-Cree, Plains` | `crk-script_syllabics` | `transformers` | `unicode` |
+| `facebook/mms-tts-crk-script_syllabics-Cree, Plains` | `crk-script_syllabics` | `transformers` | `graphemes` |
 | `facebook/mms-tts-crn-Cora, El Nayar` | `crn` | `transformers` | `graphemes` |
 | `facebook/mms-tts-crq-Chorote, Iyo’wujwa` | `crq` | `transformers` | `graphemes` |
 | `facebook/mms-tts-crs-Seychelles French Creole` | `crs` | `transformers` | `graphemes` |
@@ -304,8 +307,8 @@
 | `facebook/mms-tts-dik-Dinka, Southwestern` | `dik` | `transformers` | `graphemes` |
 | `facebook/mms-tts-dip-Dinka, Northeastern` | `dip` | `transformers` | `graphemes` |
 | `facebook/mms-tts-djk-Aukan` | `djk` | `transformers` | `graphemes` |
-| `facebook/mms-tts-dnj-dialect_blowowest-Dan` | `dnj-dialect_blowowest` | `transformers` | `unicode` |
-| `facebook/mms-tts-dnj-dialect_gweetaawueast-Dan` | `dnj-dialect_gweetaawueast` | `transformers` | `unicode` |
+| `facebook/mms-tts-dnj-dialect_blowowest-Dan` | `dnj-dialect_blowowest` | `transformers` | `graphemes` |
+| `facebook/mms-tts-dnj-dialect_gweetaawueast-Dan` | `dnj-dialect_gweetaawueast` | `transformers` | `graphemes` |
 | `facebook/mms-tts-dnt-Dani, Mid Grand Valley` | `dnt` | `transformers` | `graphemes` |
 | `facebook/mms-tts-dnw-Dani, Western` | `dnw` | `transformers` | `graphemes` |
 | `facebook/mms-tts-dop-Lukpa` | `dop` | `transformers` | `graphemes` |
@@ -581,8 +584,8 @@
 | `piper/hu_HU-imre-medium` | `hu-HU` | `piper` | `espeak` |
 | `facebook/mms-tts-hub-Wampís` | `hub` | `transformers` | `graphemes` |
 | `facebook/mms-tts-hui-Huli` | `hui` | `transformers` | `graphemes` |
-| `facebook/mms-tts-hus-dialect_centralveracruz-Huastec` | `hus-dialect_centralveracruz` | `transformers` | `unicode` |
-| `facebook/mms-tts-hus-dialect_westernpotosino-Huastec` | `hus-dialect_westernpotosino` | `transformers` | `unicode` |
+| `facebook/mms-tts-hus-dialect_centralveracruz-Huastec` | `hus-dialect_centralveracruz` | `transformers` | `graphemes` |
+| `facebook/mms-tts-hus-dialect_westernpotosino-Huastec` | `hus-dialect_westernpotosino` | `transformers` | `graphemes` |
 | `facebook/mms-tts-huu-Witoto, Murui` | `huu` | `transformers` | `graphemes` |
 | `facebook/mms-tts-huv-Huave, San Mateo del Mar` | `huv` | `transformers` | `graphemes` |
 | `facebook/mms-tts-hvn-Hawu` | `hvn` | `transformers` | `graphemes` |
@@ -630,9 +633,9 @@
 | `piper_community/paolapersico1/it-IT_paola` | `it-IT` | `piper` | `espeak` |
 | `facebook/mms-tts-itl-Itelmen` | `itl` | `transformers` | `graphemes` |
 | `facebook/mms-tts-itv-Itawit` | `itv` | `transformers` | `graphemes` |
-| `facebook/mms-tts-ixl-dialect_sangasparchajul-Ixil` | `ixl-dialect_sangasparchajul` | `transformers` | `unicode` |
-| `facebook/mms-tts-ixl-dialect_sanjuancotzal-Ixil` | `ixl-dialect_sanjuancotzal` | `transformers` | `unicode` |
-| `facebook/mms-tts-ixl-dialect_santamarianebaj-Ixil` | `ixl-dialect_santamarianebaj` | `transformers` | `unicode` |
+| `facebook/mms-tts-ixl-dialect_sangasparchajul-Ixil` | `ixl-dialect_sangasparchajul` | `transformers` | `graphemes` |
+| `facebook/mms-tts-ixl-dialect_sanjuancotzal-Ixil` | `ixl-dialect_sanjuancotzal` | `transformers` | `graphemes` |
+| `facebook/mms-tts-ixl-dialect_santamarianebaj-Ixil` | `ixl-dialect_santamarianebaj` | `transformers` | `graphemes` |
 | `facebook/mms-tts-izr-Izere` | `izr` | `transformers` | `graphemes` |
 | `facebook/mms-tts-izz-Izii` | `izz` | `transformers` | `graphemes` |
 | `facebook/mms-tts-jac-Jakalteko` | `jac` | `transformers` | `graphemes` |
@@ -812,7 +815,8 @@
 | `facebook/mms-tts-lwo-Luwo` | `lwo` | `transformers` | `graphemes` |
 | `facebook/mms-tts-lww-Lewo` | `lww` | `transformers` | `graphemes` |
 | `facebook/mms-tts-lzz-Laz` | `lzz` | `transformers` | `graphemes` |
-| `facebook/mms-tts-maa-dialect_sanantonio-Mazatec, San Jerónimo Tecóatl` | `maa-dialect_sanantonio` | `transformers` | `unicode` |
+| `facebook/mms-tts-maa-dialect_sanantonio-Mazatec, San Jerónimo Tecóatl` | `maa-dialect_sanantonio` | `transformers` | `graphemes` |
+| `facebook/mms-tts-maa-dialect_sanjerónimo-Mazatec, San Jerónimo Tecóatl` | `maa-dialect_sanjerónimo` | `transformers` | `graphemes` |
 | `facebook/mms-tts-mad-Madura` | `mad` | `transformers` | `graphemes` |
 | `facebook/mms-tts-mag-Magahi` | `mag` | `transformers` | `graphemes` |
 | `facebook/mms-tts-mai-Maithili` | `mai` | `transformers` | `graphemes` |
@@ -1029,7 +1033,7 @@
 | `facebook/mms-tts-nzi-Nzema` | `nzi` | `transformers` | `graphemes` |
 | `facebook/mms-tts-obo-Manobo, Obo` | `obo` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ojb-script_latin-Ojibwa, Northwestern` | `ojb-latin-script` | `transformers` | `graphemes` |
-| `facebook/mms-tts-ojb-script_syllabics-Ojibwa, Northwestern` | `ojb-script_syllabics` | `transformers` | `unicode` |
+| `facebook/mms-tts-ojb-script_syllabics-Ojibwa, Northwestern` | `ojb-script_syllabics` | `transformers` | `graphemes` |
 | `facebook/mms-tts-oku-Oku` | `oku` | `transformers` | `graphemes` |
 | `facebook/mms-tts-old-Mochi` | `old` | `transformers` | `graphemes` |
 | `facebook/mms-tts-orm-Oromo` | `om` | `transformers` | `graphemes` |
@@ -1109,7 +1113,7 @@
 | `facebook/mms-tts-qub-Quechua, Huallaga` | `qub` | `transformers` | `graphemes` |
 | `facebook/mms-tts-quc-dialect_central-K’iche’` | `quc-central-dialect` | `transformers` | `graphemes` |
 | `facebook/mms-tts-quc-dialect_north-K’iche’` | `quc-dialect-north` | `transformers` | `graphemes` |
-| `facebook/mms-tts-quc-dialect_east-K’iche’` | `quc-dialect_east` | `transformers` | `unicode` |
+| `facebook/mms-tts-quc-dialect_east-K’iche’` | `quc-dialect_east` | `transformers` | `graphemes` |
 | `facebook/mms-tts-quf-Quechua, Lambayeque` | `quf` | `transformers` | `graphemes` |
 | `facebook/mms-tts-quh-Quechua, South Bolivian` | `quh` | `transformers` | `graphemes` |
 | `facebook/mms-tts-qul-Quechua, North Bolivian` | `qul` | `transformers` | `graphemes` |
@@ -1342,9 +1346,13 @@
 | `facebook/mms-tts-txu-Kayapó` | `txu` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tye-Kyanga` | `tye` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tzh-dialect_tenejapa-Tzeltal` | `tzh-dialect-tenejapa` | `transformers` | `graphemes` |
+| `facebook/mms-tts-tzh-dialect_bachajón-Tzeltal` | `tzh-dialect_bachajón` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tzj-dialect_eastern-Tz’utujil` | `tzj-dialect-eastern` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tzj-dialect_western-Tz’utujil` | `tzj-dialect-western` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tzo-dialect_chamula-Tzotzil` | `tzo-chamula-dialect` | `transformers` | `graphemes` |
+| `facebook/mms-tts-tzo-dialect_chenalhó-Tzotzil` | `tzo-dialect_chenalhó` | `transformers` | `graphemes` |
+| `facebook/mms-tts-ubl-Bikol, Buhi’non` | `ubl` | `transformers` | `graphemes` |
+| `facebook/mms-tts-ubu-Umbu-Ungu` | `ubu` | `transformers` | `graphemes` |
 | `facebook/mms-tts-udm-Udmurt` | `udm` | `transformers` | `graphemes` |
 | `facebook/mms-tts-udu-Uduk` | `udu` | `transformers` | `graphemes` |
 | `facebook/mms-tts-uig-script_arabic-Uyghur` | `ug-arabic-script` | `transformers` | `graphemes` |
@@ -1359,7 +1367,7 @@
 | `facebook/mms-tts-urd-script_latin-Urdu` | `ur-latin-script` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ura-Urarina` | `ura` | `transformers` | `graphemes` |
 | `facebook/mms-tts-urb-Kaapor` | `urb` | `transformers` | `graphemes` |
-| `facebook/mms-tts-urd-script_devanagari-Urdu` | `urd-script_devanagari` | `transformers` | `unicode` |
+| `facebook/mms-tts-urd-script_devanagari-Urdu` | `urd-script_devanagari` | `transformers` | `graphemes` |
 | `facebook/mms-tts-urk-Urak Lawoi’` | `urk` | `transformers` | `graphemes` |
 | `facebook/mms-tts-urt-Urat` | `urt` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ury-Orya` | `ury` | `transformers` | `graphemes` |
