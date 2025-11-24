@@ -1455,6 +1455,19 @@
         "engine": "transformers",
         "config_url": null
     },
+    "facebook/mms-tts-ubl-Bikol, Buhi’non": {
+        "voice_id": "facebook/mms-tts-ubl-Bikol, Buhi’non",
+        "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/ubl/model.onnx",
+        "phoneme_type": "graphemes",
+        "lang": "ubl",
+        "tokens_url": "https://huggingface.co/facebook/mms-tts/blob/main/full_models/ubl/vocab.txt",
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "transformers",
+        "config_url": null
+    },
     "facebook/mms-tts-bcl-Bikol, Central": {
         "voice_id": "facebook/mms-tts-bcl-Bikol, Central",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/bcl/model.onnx",
@@ -2469,6 +2482,32 @@
         "engine": "transformers",
         "config_url": null
     },
+    "facebook/mms-tts-cac-dialect_sansebastiáncoatán-Chuj": {
+        "voice_id": "facebook/mms-tts-cac-dialect_sansebastiáncoatán-Chuj",
+        "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/cac-dialect_sansebastiáncoatán/model.onnx",
+        "phoneme_type": "graphemes",
+        "lang": "cac-dialect_sansebastiáncoatán",
+        "tokens_url": null,
+        "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-cac-dialect_sansebastiancoatan/resolve/main/tokenizer_config.json",
+        "vocab_url": "https://huggingface.co/facebook/mms-tts-cac-dialect_sansebastiancoatan/resolve/main/vocab.json",
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "transformers",
+        "config_url": null
+    },
+    "facebook/mms-tts-cac-dialect_sanmateoixtatán-Chuj": {
+        "voice_id": "facebook/mms-tts-cac-dialect_sanmateoixtatán-Chuj",
+        "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/cac-dialect_sanmateoixtatán/model.onnx",
+        "phoneme_type": "graphemes",
+        "lang": "cac-dialect_sanmateoixtatán",
+        "tokens_url": null,
+        "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-cac-dialect_sanmateoixtatan/resolve/main/tokenizer_config.json",
+        "vocab_url": "https://huggingface.co/facebook/mms-tts-cac-dialect_sanmateoixtatan/resolve/main/vocab.json",
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "transformers",
+        "config_url": null
+    },
     "facebook/mms-tts-ckt-Chukchi": {
         "voice_id": "facebook/mms-tts-ckt-Chukchi",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/ckt/model.onnx",
@@ -2602,7 +2641,7 @@
     "facebook/mms-tts-crk-script_syllabics-Cree, Plains": {
         "voice_id": "facebook/mms-tts-crk-script_syllabics-Cree, Plains",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/crk-script_syllabics/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "crk-script_syllabics",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-crk-script_syllabics/resolve/main/tokenizer_config.json",
@@ -2706,7 +2745,7 @@
     "facebook/mms-tts-dnj-dialect_gweetaawueast-Dan": {
         "voice_id": "facebook/mms-tts-dnj-dialect_gweetaawueast-Dan",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/dnj-dialect_gweetaawueast/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "dnj-dialect_gweetaawueast",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-dnj-dialect_gweetaawueast/resolve/main/tokenizer_config.json",
@@ -2719,7 +2758,7 @@
     "facebook/mms-tts-dnj-dialect_blowowest-Dan": {
         "voice_id": "facebook/mms-tts-dnj-dialect_blowowest-Dan",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/dnj-dialect_blowowest/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "dnj-dialect_blowowest",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-dnj-dialect_blowowest/resolve/main/tokenizer_config.json",
@@ -4201,7 +4240,7 @@
     "facebook/mms-tts-hus-dialect_westernpotosino-Huastec": {
         "voice_id": "facebook/mms-tts-hus-dialect_westernpotosino-Huastec",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/hus-dialect_westernpotosino/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "hus-dialect_westernpotosino",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-hus-dialect_westernpotosino/resolve/main/tokenizer_config.json",
@@ -4214,7 +4253,7 @@
     "facebook/mms-tts-hus-dialect_centralveracruz-Huastec": {
         "voice_id": "facebook/mms-tts-hus-dialect_centralveracruz-Huastec",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/hus-dialect_centralveracruz/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "hus-dialect_centralveracruz",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-hus-dialect_centralveracruz/resolve/main/tokenizer_config.json",
@@ -4565,7 +4604,7 @@
     "facebook/mms-tts-ixl-dialect_sanjuancotzal-Ixil": {
         "voice_id": "facebook/mms-tts-ixl-dialect_sanjuancotzal-Ixil",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/ixl-dialect_sanjuancotzal/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "ixl-dialect_sanjuancotzal",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-ixl-dialect_sanjuancotzal/resolve/main/tokenizer_config.json",
@@ -4578,7 +4617,7 @@
     "facebook/mms-tts-ixl-dialect_sangasparchajul-Ixil": {
         "voice_id": "facebook/mms-tts-ixl-dialect_sangasparchajul-Ixil",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/ixl-dialect_sangasparchajul/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "ixl-dialect_sangasparchajul",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-ixl-dialect_sangasparchajul/resolve/main/tokenizer_config.json",
@@ -4591,7 +4630,7 @@
     "facebook/mms-tts-ixl-dialect_santamarianebaj-Ixil": {
         "voice_id": "facebook/mms-tts-ixl-dialect_santamarianebaj-Ixil",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/ixl-dialect_santamarianebaj/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "ixl-dialect_santamarianebaj",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-ixl-dialect_santamarianebaj/resolve/main/tokenizer_config.json",
@@ -5238,10 +5277,23 @@
         "engine": "transformers",
         "config_url": null
     },
+    "facebook/mms-tts-cak-dialect_santamaríadejesús-Kaqchikel": {
+        "voice_id": "facebook/mms-tts-cak-dialect_santamaríadejesús-Kaqchikel",
+        "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/cak-dialect_santamaríadejesús/model.onnx",
+        "phoneme_type": "graphemes",
+        "lang": "cak-dialect_santamaríadejesús",
+        "tokens_url": null,
+        "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-cak-dialect_santamariadejesus/resolve/main/tokenizer_config.json",
+        "vocab_url": "https://huggingface.co/facebook/mms-tts-cak-dialect_santamariadejesus/resolve/main/vocab.json",
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "transformers",
+        "config_url": null
+    },
     "facebook/mms-tts-cak-dialect_southcentral-Kaqchikel": {
         "voice_id": "facebook/mms-tts-cak-dialect_southcentral-Kaqchikel",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/cak-dialect_southcentral/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "cak-dialect_southcentral",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-cak-dialect_southcentral/resolve/main/tokenizer_config.json",
@@ -5280,7 +5332,7 @@
     "facebook/mms-tts-cak-dialect_santodomingoxenacoj-Kaqchikel": {
         "voice_id": "facebook/mms-tts-cak-dialect_santodomingoxenacoj-Kaqchikel",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/cak-dialect_santodomingoxenacoj/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "cak-dialect_santodomingoxenacoj",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-cak-dialect_santodomingoxenacoj/resolve/main/tokenizer_config.json",
@@ -6541,7 +6593,7 @@
     "facebook/mms-tts-quc-dialect_east-K’iche’": {
         "voice_id": "facebook/mms-tts-quc-dialect_east-K’iche’",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/quc-dialect_east/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "quc-dialect_east",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-quc-dialect_east/resolve/main/tokenizer_config.json",
@@ -7945,11 +7997,24 @@
     "facebook/mms-tts-maa-dialect_sanantonio-Mazatec, San Jerónimo Tecóatl": {
         "voice_id": "facebook/mms-tts-maa-dialect_sanantonio-Mazatec, San Jerónimo Tecóatl",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/maa-dialect_sanantonio/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "maa-dialect_sanantonio",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-maa-dialect_sanantonio/resolve/main/tokenizer_config.json",
         "vocab_url": "https://huggingface.co/facebook/mms-tts-maa-dialect_sanantonio/resolve/main/vocab.json",
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "transformers",
+        "config_url": null
+    },
+    "facebook/mms-tts-maa-dialect_sanjerónimo-Mazatec, San Jerónimo Tecóatl": {
+        "voice_id": "facebook/mms-tts-maa-dialect_sanjerónimo-Mazatec, San Jerónimo Tecóatl",
+        "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/maa-dialect_sanjerónimo/model.onnx",
+        "phoneme_type": "graphemes",
+        "lang": "maa-dialect_sanjerónimo",
+        "tokens_url": null,
+        "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-maa-dialect_sanjeronimo/resolve/main/tokenizer_config.json",
+        "vocab_url": "https://huggingface.co/facebook/mms-tts-maa-dialect_sanjeronimo/resolve/main/vocab.json",
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "transformers",
@@ -9869,7 +9934,7 @@
     "facebook/mms-tts-ojb-script_syllabics-Ojibwa, Northwestern": {
         "voice_id": "facebook/mms-tts-ojb-script_syllabics-Ojibwa, Northwestern",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/ojb-script_syllabics/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "ojb-script_syllabics",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-ojb-script_syllabics/resolve/main/tokenizer_config.json",
@@ -13285,6 +13350,19 @@
         "engine": "transformers",
         "config_url": null
     },
+    "facebook/mms-tts-tzh-dialect_bachajón-Tzeltal": {
+        "voice_id": "facebook/mms-tts-tzh-dialect_bachajón-Tzeltal",
+        "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/tzh-dialect_bachajón/model.onnx",
+        "phoneme_type": "graphemes",
+        "lang": "tzh-dialect_bachajón",
+        "tokens_url": null,
+        "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-tzh-dialect_bachajon/resolve/main/tokenizer_config.json",
+        "vocab_url": "https://huggingface.co/facebook/mms-tts-tzh-dialect_bachajon/resolve/main/vocab.json",
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "transformers",
+        "config_url": null
+    },
     "facebook/mms-tts-tzh-dialect_tenejapa-Tzeltal": {
         "voice_id": "facebook/mms-tts-tzh-dialect_tenejapa-Tzeltal",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/tzh-dialect_tenejapa/model.onnx",
@@ -13293,6 +13371,19 @@
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-tzh-dialect_tenejapa/resolve/main/tokenizer_config.json",
         "vocab_url": "https://huggingface.co/facebook/mms-tts-tzh-dialect_tenejapa/resolve/main/vocab.json",
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "transformers",
+        "config_url": null
+    },
+    "facebook/mms-tts-tzo-dialect_chenalhó-Tzotzil": {
+        "voice_id": "facebook/mms-tts-tzo-dialect_chenalhó-Tzotzil",
+        "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/tzo-dialect_chenalhó/model.onnx",
+        "phoneme_type": "graphemes",
+        "lang": "tzo-dialect_chenalhó",
+        "tokens_url": "https://huggingface.co/facebook/mms-tts/blob/main/full_models/tzo-dialect_chenalhó/vocab.txt",
+        "tokenizer_config_url": null,
+        "vocab_url": null,
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "transformers",
@@ -13402,6 +13493,19 @@
         "engine": "transformers",
         "config_url": null
     },
+    "facebook/mms-tts-ubu-Umbu-Ungu": {
+        "voice_id": "facebook/mms-tts-ubu-Umbu-Ungu",
+        "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/ubu/model.onnx",
+        "phoneme_type": "graphemes",
+        "lang": "ubu",
+        "tokens_url": "https://huggingface.co/facebook/mms-tts/blob/main/full_models/ubu/vocab.txt",
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "unicode",
+        "engine": "transformers",
+        "config_url": null
+    },
     "facebook/mms-tts-urk-Urak Lawoi’": {
         "voice_id": "facebook/mms-tts-urk-Urak Lawoi’",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/urk/model.onnx",
@@ -13444,7 +13548,7 @@
     "facebook/mms-tts-urd-script_devanagari-Urdu": {
         "voice_id": "facebook/mms-tts-urd-script_devanagari-Urdu",
         "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/urd-script_devanagari/model.onnx",
-        "phoneme_type": "unicode",
+        "phoneme_type": "graphemes",
         "lang": "urd-script_devanagari",
         "tokens_url": null,
         "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-urd-script_devanagari/resolve/main/tokenizer_config.json",

@@ -63,18 +63,5 @@
         "alphabet": "unicode",
         "engine": "coqui",
         "config_url": "https://huggingface.co/anzorq/kbd-vits-tts-male/resolve/main/config.json"
-    },
-    "hf_community/jerichosiahaya/vits-tts-id": {
-        "voice_id": "hf_community/jerichosiahaya/vits-tts-id",
-        "model_url": "https://huggingface.co/jerichosiahaya/vits-tts-id/resolve/main/model.onnx",
-        "phoneme_type": "unicode",
-        "lang": "id-ID",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "unicode",
-        "engine": "coqui",
-        "config_url": "https://huggingface.co/jerichosiahaya/vits-tts-id/resolve/main/config.json"
     }
 }

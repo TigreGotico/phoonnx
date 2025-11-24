@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import Dict, List
+import unicodedata
 
 import requests
 from json_database import JsonStorage
 from langcodes import standardize_tag
-
 from phoonnx.config import PhonemeType, Engine, Alphabet
 from phoonnx.model_manager import TTSModelInfo
 from phoonnx.util import LOG
@@ -252,20 +252,35 @@ class TTSModelManager:
         url = "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/raw/main/languages-supported.json"
         for data in requests.get(url).json():
             lang = data["Iso Code"]
+
             try:
+                std_lang = standardize_tag(lang)
+            except Exception as e:
+                std_lang = lang
+
+            ascii_lang = unicodedata.normalize('NFKD', lang).encode('ascii', 'ignore').decode('ascii')
+            if lang in ["ubu", "ubl", "tzo-dialect_chenalhó"]:
                 voice = TTSModelInfo(
                     voice_id=f"facebook/mms-tts-{lang}-{data['Language Name']}",
-                    lang = standardize_tag(lang),
+                    lang=std_lang,
                     model_url=f"https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/{lang}/model.onnx",
-                    vocab_url=f"https://huggingface.co/facebook/mms-tts-{lang}/resolve/main/vocab.json",
-                    tokenizer_config_url=f"https://huggingface.co/facebook/mms-tts-{lang}/resolve/main/tokenizer_config.json",
+                    tokens_url=f"https://huggingface.co/facebook/mms-tts/blob/main/full_models/{lang}/vocab.txt",
                     phoneme_type=PhonemeType.GRAPHEMES,
                     alphabet=Alphabet.UNICODE,
                     engine=Engine.TRANSFORMERS
                 )
-            except:
-                # there are some invalid voices in the .json
-                continue
+            else:
+                voice = TTSModelInfo(
+                    voice_id=f"facebook/mms-tts-{lang}-{data['Language Name']}",
+                    lang=std_lang,
+                    model_url=f"https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/{lang}/model.onnx",
+                    vocab_url=f"https://huggingface.co/facebook/mms-tts-{ascii_lang}/resolve/main/vocab.json",
+                    tokenizer_config_url=f"https://huggingface.co/facebook/mms-tts-{ascii_lang}/resolve/main/tokenizer_config.json",
+                    phoneme_type=PhonemeType.GRAPHEMES,
+                    alphabet=Alphabet.UNICODE,
+                    engine=Engine.TRANSFORMERS
+                )
+
             self.add_voice(voice)
 
     # community models sourced from around the web
