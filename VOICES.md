@@ -1,7 +1,7 @@
 ## Supported Voices
 
 **Total Voices:** 1472
-**Total Languages:** 1207
+**Total Languages:** 1206
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
 
@@ -471,7 +471,6 @@
 | `piper/fi_FI-harri-low` | `fi-FI` | `piper` | `espeak` |
 | `piper/fi_FI-harri-medium` | `fi-FI` | `piper` | `espeak` |
 | `piper_community/AsmoKoskinen/fi-FI_asmo` | `fi-FI` | `piper` | `espeak` |
-| `facebook/mms-tts-tgl-Tagalog` | `fil` | `transformers` | `graphemes` |
 | `facebook/mms-tts-fij-Fijian` | `fj` | `transformers` | `graphemes` |
 | `facebook/mms-tts-flr-Fuliiru` | `flr` | `transformers` | `graphemes` |
 | `facebook/mms-tts-fmu-Muria, Far Western` | `fmu` | `transformers` | `graphemes` |
@@ -1091,7 +1090,7 @@
 | `facebook/mms-tts-prt-Prai` | `prt` | `transformers` | `graphemes` |
 | `facebook/mms-tts-pse-Malay, Central` | `pse` | `transformers` | `graphemes` |
 | `facebook/mms-tts-pss-Kaulong` | `pss` | `transformers` | `graphemes` |
-| `facebook/mms-tts-por-Portuguese` | `pt` | `transformers` | `graphemes` |
+| `facebook/mms-tts-por-Portuguese` | `pt-BR` | `transformers` | `graphemes` |
 | `OpenVoiceOS/pipertts_pt-BR_dii` | `pt-BR` | `piper` | `espeak` |
 | `OpenVoiceOS/pipertts_pt-BR_miro` | `pt-BR` | `piper` | `espeak` |
 | `piper/pt_BR-cadu-medium` | `pt-BR` | `piper` | `espeak` |
@@ -1298,6 +1297,7 @@
 | `facebook/mms-tts-tuk-script_arabic-Turkmen` | `tk-arabic-script` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tuk-script_latin-Turkmen` | `tk-latin-script` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tkr-Tsakhur` | `tkr` | `transformers` | `graphemes` |
+| `facebook/mms-tts-tgl-Tagalog` | `tl` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tlb-Tobelo` | `tlb` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tlj-Talinga-Bwisi` | `tlj` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tly-Talysh` | `tly` | `transformers` | `graphemes` |

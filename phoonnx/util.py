@@ -9,13 +9,23 @@ from ovos_date_parser import nice_time, nice_date
 from ovos_number_parser import pronounce_number, pronounce_fraction
 from ovos_number_parser.util import is_numeric
 from unicode_rbnf import RbnfEngine, FormatPurpose
-
+from langcodes import standardize_tag
 try:
     from ovos_utils.log import LOG
 except ImportError:
     import logging
 
     LOG = logging.getLogger("phoonnx")
+
+
+def normalize_lang(lang: str) -> str:
+    if lang == "tgl" or lang == "tl":
+        # HACK: langcodes erroneously (debatable) changes this one to "fil"
+        return "tl"
+    try:
+        return standardize_tag(lang)
+    except:
+        return lang
 
 
 def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Tuple[str, int]:
