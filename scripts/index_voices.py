@@ -4,10 +4,9 @@ import unicodedata
 
 import requests
 from json_database import JsonStorage
-from langcodes import standardize_tag
 from phoonnx.config import PhonemeType, Engine, Alphabet
 from phoonnx.model_manager import TTSModelInfo
-from phoonnx.util import LOG
+from phoonnx.util import LOG, normalize_lang
 
 
 class TTSModelManager:
@@ -153,7 +152,7 @@ class TTSModelManager:
             try:
                 voice = TTSModelInfo(
                     voice_id="piper/" + v["key"],
-                    lang=standardize_tag(v["key"].split("-")[0]),
+                    lang=normalize_lang(v["key"].split("-")[0]),
                     model_url=base + [a for a in v["files"] if a.endswith(".onnx")][0],
                     config_url=base + [a for a in v["files"] if a.endswith(".json")][0],
                     engine=Engine.PIPER
@@ -198,7 +197,7 @@ class TTSModelManager:
         mimic3_voices = r.json()
         for k, v in mimic3_voices.items():
             try:
-                lang = standardize_tag(k.split("/")[0])
+                lang = normalize_lang(k.split("/")[0])
                 speaker_map = {s: idx for idx, s in enumerate(v["speakers"])}
                 config_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/config.json"
                 model_url = f"https://huggingface.co/mukowaty/mimic3-voices/resolve/main/voices/{k}/generator.onnx"
@@ -253,10 +252,14 @@ class TTSModelManager:
         for data in requests.get(url).json():
             lang = data["Iso Code"]
 
-            try:
-                std_lang = standardize_tag(lang)
-            except Exception as e:
-                std_lang = lang
+            if lang == "por":
+                # manually specify variant
+                std_lang = "pt-BR"
+            else:
+                try:
+                    std_lang = normalize_lang(lang)
+                except Exception as e:
+                    std_lang = lang
 
             ascii_lang = unicodedata.normalize('NFKD', lang).encode('ascii', 'ignore').decode('ascii')
             if lang in ["ubu", "ubl", "tzo-dialect_chenalhó"]:

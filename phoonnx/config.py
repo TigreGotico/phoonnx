@@ -1,9 +1,8 @@
 import json
 from dataclasses import dataclass, field
 from enum import Enum
-from langcodes import standardize_tag
 from typing import Any, Mapping, Optional, Union, Dict
-from phoonnx.util import LOG
+from phoonnx.util import LOG, normalize_lang
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
@@ -152,7 +151,7 @@ class VoiceConfig:
                 self.add_diacritics = True
 
         try:
-            self.lang_code = standardize_tag(self.lang_code)
+            self.lang_code = normalize_lang(self.lang_code)
         except:
             self.lang_code = self.lang_code or "und"
 

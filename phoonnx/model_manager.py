@@ -3,12 +3,11 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Dict, List, Any
-from langcodes import standardize_tag
 import requests
 from json_database import JsonStorageXDG, JsonStorage
 
 from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet
-from phoonnx.util import match_lang
+from phoonnx.util import match_lang, normalize_lang
 from phoonnx.voice import TTSVoice
 
 
@@ -65,7 +64,7 @@ class TTSModelInfo:
             self.config.lang_code = self.lang  # sometimes the config is wrong
 
         try:
-            self.config.lang_code = self.lang = standardize_tag(self.config.lang_code)
+            self.config.lang_code = self.lang = normalize_lang(self.config.lang_code)
         except:
             pass
 
@@ -286,6 +285,7 @@ class TTSModelManager:
 
 if __name__ == "__main__":
     manager = TTSModelManager()
+    manager.cache.clear()
     manager.merge_default_voices(store=True)  # load and cache known voice models
 
     print(f"Total voices: {len(manager.all_voices)}")
