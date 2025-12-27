@@ -201,3 +201,7 @@ def mantoq_to_ipa(text, add_stress=True):
         last_ipa = tok
 
     return "".join(ipa_out)
+
+
+# backwards compat alias
+bw2ipa = mantoq_to_ipa
