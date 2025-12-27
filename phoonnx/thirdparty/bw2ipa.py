@@ -1,66 +1,207 @@
-# -*- coding: UTF8 -*-
-"""
-This script translates Buckwalter-transcribed Modern Standard Arabic to IPA.
+# translate.py
+# Deterministic Mantoq → IPA converter
+# Assumes the input is already tokenized using the Mantoq inventory.
 
-This relies on Mantoq tokenization that uses separate tokens for vowel length and consonant gemination.
+# ---------------------------------------------------------------------------
+# Token → IPA maps
+# ---------------------------------------------------------------------------
 
-by Casimiro Ferreira with help of Gemini July 2025.
-"""
-
-import re
-
-# This dictionary maps a single Buckwalter character to its most common IPA equivalent.
-char_dict = {
-    'a': 'a', 'A': 'aː', 'b': 'b', 'c': 'x', 'd': 'd', 'D': 'dˤ', 'e': 'e', 'E': 'ʕ',
-    'f': 'f', 'g': 'ɣ', 'h': 'h', 'H': 'ħ', 'i': 'i', 'I': 'iː', 'j': 'ʒ', 'k': 'k',
-    'l': 'l', 'm': 'm', 'n': 'n', 'p': 'p', 'q': 'q', 'r': 'r', 'R': 'r', 's': 's',
-    'S': 'sˤ', 't': 't', 'T': 'tˤ', 'u': 'u', 'U': 'uː', 'v': 'v', 'w': 'w', 'x': 'x',
-    'y': 'j', 'z': 'z', 'Z': 'ðˤ', '\'': 'ʔ', '<': 'ʔ', 'o': 'o', '-': ' ',
-    '*': 'ð', '$': 'ʃ'
+CONSONANTS = {
+    "b":  "b",
+    "t":  "t",
+    "^":  "θ",
+    "j":  "d͡ʒ",
+    "H":  "ħ",
+    "x":  "x",
+    "d":  "d",
+    "*":  "ð",
+    "r":  "r",
+    "z":  "z",
+    "s":  "s",
+    "$":  "ʃ",
+    "S":  "sˤ",
+    "D":  "dˤ",
+    "T":  "tˤ",
+    "Z":  "ðˤ",
+    "E":  "ʕ",
+    "g":  "ɣ",
+    "f":  "f",
+    "q":  "q",
+    "k":  "k",
+    "l":  "l",
+    "m":  "m",
+    "n":  "n",
+    "h":  "h",
+    "w":  "w",
+    "y":  "j",
+    "v":  "v"
 }
-_vowels = {'a', 'i', 'u', 'aː', 'iː', 'uː'}
+
+VOWELS = {
+    "a":    "a",
+    "aa":   "aː",
+    "aaaa": "aːː",
+    "i":    "i",
+    "ii":   "iː",
+    "u":    "u",
+    "uu":   "uː",
+}
 
 
-def translate(buckwalter_text: str) -> str:
+# Punctuation is passed through unchanged:
+PUNCTUATION = set(list(".,;:!?()[]{}\"'"))
+
+# ---------------------------------------------------------------------------
+# Tokenizer
+# ---------------------------------------------------------------------------
+
+def tokenize_mantoq(text):
     """
-    Translates a Buckwalter-transcribed string into an IPA string.
+    Tokenize Mantoq string deterministically.
 
-    Args:
-        buckwalter_text (str): The Buckwalter string to translate.
-
-    Returns:
-        str: The translated IPA string.
+    Priority:
+        1. _dbl_
+        2. aaaa
+        3. ii / uu / aa
+        4. single char tokens
+        5. punctuation and raw chars are passed through
     """
-    ipa_list = []
+    tokens = []
     i = 0
-    while i < len(buckwalter_text):
-        # Check for the longest token first. The new Mantoq tokenization
-        # seems to use a 5-character token.
-        token = buckwalter_text[i:i + 5]
+    L = len(text)
 
-        # If the previous character was a vowel, we assume it's a long vowel
-        # marker (ː). Otherwise, we assume it's a geminated consonant.
-        if token == '_dbl_':
-            if ipa_list and ipa_list[-1] in _vowels:
-                ipa_list.append('ː')  # Add length marker for long vowels
-            elif ipa_list:
-                ipa_list.append(ipa_list[-1])  # Duplicate the consonant
+    while i < L:
+
+        # doubling marker
+        if text.startswith("_dbl_", i):
+            tokens.append("_dbl_")
             i += 5
             continue
 
-        # Check for multi-character mappings from char_dict
-        two_char_token = buckwalter_text[i:i + 2]
-        if two_char_token in char_dict:
-            ipa_list.append(char_dict[two_char_token])
+        # word separator
+        if text.startswith("_+_", i):
+            tokens.append("_+_")
+            i += 3
+            continue
+
+        # longest vowel first
+        if text.startswith("aaaa", i):
+            tokens.append("aaaa")
+            i += 4
+            continue
+
+        if text.startswith("aa", i):
+            tokens.append("aa")
             i += 2
             continue
 
-        # Handle single characters
-        single_char = buckwalter_text[i]
-        if single_char in char_dict:
-            ipa_list.append(char_dict[single_char])
-        else:
-            ipa_list.append(single_char)
+        if text.startswith("ii", i):
+            tokens.append("ii")
+            i += 2
+            continue
+
+        if text.startswith("uu", i):
+            tokens.append("uu")
+            i += 2
+            continue
+
+        # single-character consonant or vowel
+        ch = text[i]
+
+        if ch in CONSONANTS or ch in VOWELS:
+            tokens.append(ch)
+            i += 1
+            continue
+        if ch == "<":
+            tokens.append("ʔ")
+            i += 1
+            continue
+
+        # punctuation
+        if ch in PUNCTUATION:
+            tokens.append(ch)
+            i += 1
+            continue
+
+        # fallback: pass through unknown characters
+        tokens.append(ch)
         i += 1
 
-    return ''.join(ipa_list)
+    return tokens
+
+# ---------------------------------------------------------------------------
+# IPA Assembly
+# ---------------------------------------------------------------------------
+
+def apply_doubling(prev_token, prev_ipa):
+    """
+    Mantoq doubling rule:
+       - If previous token is a vowel token: lengthen it.
+       - If previous token is a consonant: mark gemination using ː.
+    """
+    if prev_token in VOWELS:
+        # ensure single long marker; long tokens already contain ː
+        if prev_ipa.endswith("ː"):
+            return prev_ipa + "ː"
+        return prev_ipa + "ː"
+
+    if prev_token in CONSONANTS:
+        # consonant gemination: use length mark, not duplication
+        if prev_ipa.endswith("ː"):
+            return prev_ipa  # already geminated
+        return prev_ipa + "ː"
+
+    return prev_ipa
+
+
+def mantoq_to_ipa(text):
+    tokens = tokenize_mantoq(text)
+
+    ipa_out = []
+    last_token = None
+    last_ipa = None
+
+    for tok in tokens:
+
+        # doubling applies to the previous symbol
+        if tok == "_dbl_":
+            if last_token is None:
+                continue
+            new_ipa = apply_doubling(last_token, last_ipa)
+            ipa_out[-1] = new_ipa
+            last_ipa = new_ipa
+            continue
+
+        # explicit word separation
+        if tok == "_+_":
+            ipa_out.append(" ")
+            last_token = tok
+            last_ipa = " "
+            continue
+
+        # vowels
+        if tok in VOWELS:
+            ipa_val = VOWELS[tok]
+            ipa_out.append(ipa_val)
+            last_token = tok
+            last_ipa = ipa_val
+            continue
+
+        # consonants
+        if tok in CONSONANTS:
+            ipa_val = CONSONANTS[tok]
+            ipa_out.append(ipa_val)
+            last_token = tok
+            last_ipa = ipa_val
+            continue
+
+        # punctuation and fallthrough
+        ipa_out.append(tok)
+        last_token = tok
+        last_ipa = tok
+
+    return "".join(ipa_out)
+
+
+# backwards compat alias
+bw2ipa = mantoq_to_ipa
