@@ -154,7 +154,7 @@ def apply_doubling(prev_token, prev_ipa):
     return prev_ipa
 
 
-def mantoq_to_ipa(text, add_stress=True):
+def mantoq_to_ipa(text):
     tokens = tokenize_mantoq(text)
 
     ipa_out = []
