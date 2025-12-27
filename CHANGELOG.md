@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1a2](https://github.com/TigreGotico/phoonnx/tree/1.3.1a2) (2025-12-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.1a1...1.3.1a2)
+
+**Merged pull requests:**
+
+- chore: Configure Renovate [\#89](https://github.com/TigreGotico/phoonnx/pull/89) ([renovate[bot]](https://github.com/apps/renovate))
+
 ## [1.3.1a1](https://github.com/TigreGotico/phoonnx/tree/1.3.1a1) (2025-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.0a4...1.3.1a1)
