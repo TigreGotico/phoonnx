@@ -23,7 +23,7 @@ jobs:
     needs: publish_alpha
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Send message to Matrix bots channel
         id: matrix-chat-message
         uses: fadenb/matrix-chat-message@v0.0.6
@@ -39,7 +39,7 @@ jobs:
     if: success()  # Ensure this job only runs if the previous job succeeds
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: dev
           fetch-depth: 0 # otherwise, there would be errors pushing refs to the destination repository.
@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout dev branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: dev
 

@@ -19,7 +19,7 @@ jobs:
     if: success()  # Ensure this job only runs if the previous job succeeds
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: dev
           fetch-depth: 0 # otherwise, there would be errors pushing refs to the destination repository.
@@ -47,7 +47,7 @@ jobs:
     if: success()  # Ensure this job only runs if the previous job succeeds
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # otherwise, there would be errors pushing refs to the destination repository.
           ref: master
