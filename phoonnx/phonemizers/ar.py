@@ -30,8 +30,16 @@ class MantoqPhonemizer(BasePhonemizer):
 
     def phonemize_string(self, text: str, lang: str = "ar") -> str:
         """
-        Phonemizes an Arabic string using the Mantoq G2P tool.
-        If the alphabet is set to IPA, it then converts the result using bw2ipa.
+        Phonemizes Arabic text using the Mantoq grapheme-to-phoneme tool.
+        
+        The function normalizes the input text, obtains Mantoq phonemes, joins them into a string and replaces the internal word separator token `_+_` with a space. If the instance alphabet is Alphabet.IPA, the phonemes are converted to IPA; otherwise the Buckwalter-like phoneme string is returned.
+        
+        Parameters:
+            text (str): Arabic input text to phonemize.
+            lang (str): Target language code; validated and mapped by the class (defaults to "ar").
+        
+        Returns:
+            str: Phonemized text in IPA when the instance alphabet is Alphabet.IPA, otherwise a Buckwalter-like phoneme string with word separators as spaces.
         """
         lang = self.get_lang(lang)
         # The mantoq function returns a tuple of (normalized_text, phonemes)

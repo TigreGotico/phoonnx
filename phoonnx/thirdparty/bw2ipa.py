@@ -57,14 +57,15 @@ PUNCTUATION = set(list(".,;:!?()[]{}\"'"))
 
 def tokenize_mantoq(text):
     """
-    Tokenize Mantoq string deterministically.
-
-    Priority:
-        1. _dbl_
-        2. aaaa
-        3. ii / uu / aa
-        4. single char tokens
-        5. punctuation and raw chars are passed through
+    Deterministically tokenizes a Mantoq string into Mantoq tokens and punctuation.
+    
+    Recognized tokens (in order of priority): the doubling marker "_dbl_", the word separator "_+_", the long vowel "aaaa", the long/lengthened vowels "aa", "ii", "uu", single-character consonants and vowels (from the module's CONSONANTS and VOWELS mappings), the glottal-stop marker "<" (returned as "ʔ"), and punctuation characters (from PUNCTUATION). Any unrecognized character is returned as a single-character token.
+    
+    Parameters:
+        text (str): Input Mantoq-formatted text.
+    
+    Returns:
+        list[str]: Ordered list of tokens representing the input sequence.
     """
     tokens = []
     i = 0
@@ -135,9 +136,17 @@ def tokenize_mantoq(text):
 
 def apply_doubling(prev_token, prev_ipa):
     """
-    Mantoq doubling rule:
-       - If previous token is a vowel token: lengthen it.
-       - If previous token is a consonant: mark gemination using ː.
+    Apply the Mantoq doubling rule to the IPA for a previously processed token.
+    
+    Parameters:
+        prev_token (str): The original Mantoq token that was converted to `prev_ipa`.
+        prev_ipa (str): The IPA string produced for `prev_token` before doubling.
+    
+    Returns:
+        str: The IPA string after applying doubling:
+            - If `prev_token` is a vowel token: append the length marker "ː" (an additional "ː" is appended even if one is already present).
+            - If `prev_token` is a consonant token: append "ː" unless `prev_ipa` already ends with "ː".
+            - Otherwise: return `prev_ipa` unchanged.
     """
     if prev_token in VOWELS:
         # ensure single long marker; long tokens already contain ː
@@ -155,6 +164,18 @@ def apply_doubling(prev_token, prev_ipa):
 
 
 def mantoq_to_ipa(text, add_stress=True):
+    """
+    Convert a Mantoq-formatted string into its IPA transcription.
+    
+    Tokenizes the input deterministically, applies the Mantoq doubling rule for the "_dbl_" token, treats "_+_" as an explicit word separator, maps vowel and consonant tokens via the module's VOWELS and CONSONANTS tables, and passes punctuation or unknown characters through unchanged.
+    
+    Parameters:
+        text (str): Input string in Mantoq orthography.
+        add_stress (bool): If true, include stress-related markers in the output when available (default True).
+    
+    Returns:
+        str: The assembled IPA transcription of the input.
+    """
     tokens = tokenize_mantoq(text)
 
     ipa_out = []

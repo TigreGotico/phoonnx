@@ -187,9 +187,9 @@ class TTSModelManager:
 
     def get_mimic3_voice_list(self):
         """
-        Fetch and register Mimic3 TTS voices from Mycroft's voices manifest.
-
-        Fetches the remote Mimic3 voices manifest, constructs TTSModelInfo entries for each voice (including config, model, tokens, and phoneme map URLs), sets the voice's language and speaker_id_map, and adds the voice to the manager. Individual voice failures are logged and do not interrupt processing.
+        Populate the manager with Mimic3 TTS voices fetched from Mycroft's remote manifest.
+        
+        Fetches the remote Mimic3 voices manifest, constructs a TTSModelInfo for each entry (setting config URLs, model URL, token and phoneme map URLs, lang code, and speaker ID mapping), and registers each voice via add_voice. Individual voice errors are logged and processing continues for remaining entries.
         """
         voice_list = "https://raw.githubusercontent.com/MycroftAI/mimic3/refs/heads/master/mimic3_tts/voices.json"
         r = requests.get(voice_list, timeout=30)
@@ -248,6 +248,11 @@ class TTSModelManager:
         )
 
     def get_mms_voice_list(self):
+        """
+        Populate the manager with MMS multilingual TTS voice entries derived from the MMS manifest.
+        
+        Reads a remote languages-supported JSON manifest and registers a TTSModelInfo for each entry via self.add_voice. For each language it sets a generated voice_id, a model URL (ONNX), phoneme_type to GRAPHEMES, alphabet to UNICODE, and engine to TRANSFORMERS. For most languages the entry includes vocab and tokenizer_config URLs derived from an ASCII-normalized language code; the languages "ubu", "ubl", and "tzo-dialect_chenalhó" instead reference a tokens_url. The ISO code "por" is mapped to "pt-BR" when producing the voice lang field.
+        """
         url = "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/raw/main/languages-supported.json"
         for data in requests.get(url).json():
             lang = data["Iso Code"]

@@ -29,9 +29,13 @@ class TTSModelInfo:
 
     def __post_init__(self):
         """
-        Initialize the TTSModelInfo instance by ensuring local cache files exist and synchronizing its configuration, alphabet, and phoneme type.
+        Ensure the local voice cache exists and initialize or synchronize this instance's configuration, language, alphabet, phoneme type, and engine.
         
-        If no VoiceConfig was provided, ensure the voice cache directory exists, download and load the model config (model.json), apply a known phoneme-type compatibility fix, and—when a tokens URL is present—download the tokens file and construct the VoiceConfig using it. Always set the loaded config's language code from this instance's `lang`. After loading (or when a config was provided), ensure `alphabet` and `phoneme_type` on the dataclass and on the loaded config are consistent by propagating values from whichever side is present.
+        If no VoiceConfig is present, build or load one from available URLs and overrides (config_url, vocab_url, tokenizer_config_url, tokens_url, or vocab_override). Set the config's language code from the instance and normalize it using normalize_lang. Propagate values so that self and self.config agree for alphabet, phoneme_type, and engine. Convert string values for engine, alphabet, and phoneme_type into their corresponding enum instances when applicable.
+        
+        Side effects:
+        - May create the voice cache directory.
+        - May download and write model/config/tokenizer/vocab/tokens files to the voice cache.
         """
         os.makedirs(self.voice_path, exist_ok=True)
         if not self.config:
@@ -445,4 +449,3 @@ if __name__ == "__main__":
 
 
     generate_voices_markdown(manager, output_file="../VOICES.md")
-
