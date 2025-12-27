@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.2a2](https://github.com/TigreGotico/phoonnx/tree/1.3.2a2) (2025-12-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.2a1...1.3.2a2)
+
+## [1.3.2a1](https://github.com/TigreGotico/phoonnx/tree/1.3.2a1) (2025-12-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.1a2...1.3.2a1)
+
+**Merged pull requests:**
+
+- chore\(deps\): update actions/setup-python action to v6 [\#96](https://github.com/TigreGotico/phoonnx/pull/96) ([renovate[bot]](https://github.com/apps/renovate))
+- chore\(deps\): update actions/checkout action to v6 [\#92](https://github.com/TigreGotico/phoonnx/pull/92) ([renovate[bot]](https://github.com/apps/renovate))
+- fix: mantoq2ipa + improve lang code normalization [\#90](https://github.com/TigreGotico/phoonnx/pull/90) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.3.1a2](https://github.com/TigreGotico/phoonnx/tree/1.3.1a2) (2025-12-27)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.1a1...1.3.1a2)
