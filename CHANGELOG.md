@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.2a4](https://github.com/TigreGotico/phoonnx/tree/1.3.2a4) (2026-01-14)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.2a3...1.3.2a4)
+
+**Merged pull requests:**
+
+- add more voices [\#99](https://github.com/TigreGotico/phoonnx/pull/99) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.3.2a3](https://github.com/TigreGotico/phoonnx/tree/1.3.2a3) (2025-12-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.2a2...1.3.2a3)
+
 ## [1.3.2a2](https://github.com/TigreGotico/phoonnx/tree/1.3.2a2) (2025-12-27)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.2a1...1.3.2a2)
