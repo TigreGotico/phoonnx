@@ -68,6 +68,13 @@ class TTSModelManager:
         Adds TTSModelInfo entries for a hardcoded set of phoonnx Hugging Face repositories and for a set of common Piper languages. For each entry the method constructs model and config URLs pointing to the repository's main branch on Hugging Face and calls add_voice to register the voice. Missing voice variants are skipped silently.
         """
         phoonnx = [
+            "OpenVoiceOS/phoonnx_oc_miro_unicode",
+            "OpenVoiceOS/phoonnx_oc_dii_unicode",
+            "OpenVoiceOS/phoonnx_an_miro_unicode",
+            "OpenVoiceOS/phoonnx_an_dii_unicode",
+            "OpenVoiceOS/phoonnx_ast_miro_unicode",
+            "OpenVoiceOS/phoonnx_ast_dii_unicode",
+            "OpenVoiceOS/phoonnx_ca_miro_espeak",
             "OpenVoiceOS/phoonnx_gl-ES_miro_unicode",
             "OpenVoiceOS/phoonnx_pt-PT_miro_unicode",
             "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone",
@@ -290,6 +297,26 @@ class TTSModelManager:
         
         Adds hardcoded Piper community voice entries (voice_id, lang, model_url, config_url) to the manager by calling self.add_voice. Some entries may require Hugging Face authentication or special handling (archives, nested archives), and duplicate models can appear because Piper models are sometimes merged upstream.
         """
+        # https://huggingface.co/ISTNetworks/piper-qatar-tts
+        voice = TTSModelInfo(
+            voice_id="piper_community/" + "ISTNetworks/piper-qatar-tts",
+            lang="ar-QA",
+            model_url="https://huggingface.co/ISTNetworks/piper-qatar-tts/resolve/main/models/qatar_spk4_epoch2472.onnx",
+            config_url="https://huggingface.co/ISTNetworks/piper-qatar-tts/resolve/main/models/qatar_spk4_epoch2472.onnx.json",
+            engine=Engine.PIPER,
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/vadimbelsky/arabic-emirati-female-piper
+        voice = TTSModelInfo(
+            voice_id="piper_community/" + "vadimbelsky/arabic-emirati-female-piper",
+            lang="ar-AE",
+            model_url="https://huggingface.co/vadimbelsky/arabic-emirati-female-piper/resolve/main/arabic-emirati-female-model.onnx",
+            config_url="https://huggingface.co/vadimbelsky/arabic-emirati-female-piper/resolve/main/arabic-emirati-female-model.onnx.json",
+            engine=Engine.PIPER,
+        )
+        self.add_voice(voice)
+
         # https://huggingface.co/mbarnig/lb_rhasspy_piper_tts
         for voice in ["androgynous", "femaleLOD", "marylux"]:
             url = f"https://huggingface.co/mbarnig/lb_rhasspy_piper_tts/resolve/main/lb/lb_LU/{voice}/medium/lb_LU-{voice}-medium.onnx"

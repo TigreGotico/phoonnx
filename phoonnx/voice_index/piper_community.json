@@ -1155,5 +1155,31 @@
         "alphabet": "ipa",
         "engine": "piper",
         "config_url": "https://huggingface.co/HirCoir/Piper-TTS-Laura/resolve/main/es_MX-laura-high.onnx.json"
+    },
+    "piper_community/ISTNetworks/piper-qatar-tts": {
+        "voice_id": "piper_community/ISTNetworks/piper-qatar-tts",
+        "model_url": "https://huggingface.co/ISTNetworks/piper-qatar-tts/resolve/main/models/qatar_spk4_epoch2472.onnx",
+        "phoneme_type": "espeak",
+        "lang": "ar-QA",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/ISTNetworks/piper-qatar-tts/resolve/main/models/qatar_spk4_epoch2472.onnx.json"
+    },
+    "piper_community/vadimbelsky/arabic-emirati-female-piper": {
+        "voice_id": "piper_community/vadimbelsky/arabic-emirati-female-piper",
+        "model_url": "https://huggingface.co/vadimbelsky/arabic-emirati-female-piper/resolve/main/arabic-emirati-female-model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "ar-AE",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/vadimbelsky/arabic-emirati-female-piper/resolve/main/arabic-emirati-female-model.onnx.json"
     }
 }
