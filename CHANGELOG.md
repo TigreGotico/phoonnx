@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.2a5](https://github.com/TigreGotico/phoonnx/tree/1.3.2a5) (2026-01-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.2a4...1.3.2a5)
+
+**Merged pull requests:**
+
+- 📝 Add docstrings to `patch-2` [\#102](https://github.com/TigreGotico/phoonnx/pull/102) ([coderabbitai[bot]](https://github.com/apps/coderabbitai))
+
 ## [1.3.2a4](https://github.com/TigreGotico/phoonnx/tree/1.3.2a4) (2026-01-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.2a3...1.3.2a4)
