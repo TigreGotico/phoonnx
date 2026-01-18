@@ -93,6 +93,14 @@ class TTSModelInfo:
         return Path(os.path.expanduser("~")) / ".cache" / "phoonnx" / "voices" / self.voice_id
 
     def download_config(self) -> Dict[str, Any]:
+        """
+        Ensure the model configuration file exists locally and return its parsed contents.
+        
+        If the configuration file is not present in the voice cache directory, download it from the instance's configured URL and save it as model.json; otherwise load the existing file.
+        
+        Returns:
+            dict: Parsed JSON configuration for the TTS model.
+        """
         config_path = self.voice_path / "model.json"
         if not config_path.is_file():
             r = requests.get(self.config_url, timeout=30)
@@ -101,10 +109,22 @@ class TTSModelInfo:
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(cfg, f, ensure_ascii=False, indent=4)
             return cfg
-        with open(config_path, "r") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     def download_tokenizer_config(self) -> Dict[str, Any]:
+        """
+        Download and cache the tokenizer configuration for this voice, returning it as a parsed dictionary.
+        
+        If a local cached file exists, it is loaded and returned; otherwise the configuration is fetched from the configured URL, saved to the voice cache, and returned.
+        
+        Returns:
+            dict: The tokenizer configuration parsed from JSON.
+        
+        Raises:
+            requests.HTTPError: If the HTTP request for the tokenizer configuration returns an error status.
+            json.JSONDecodeError: If a retrieved or cached file contains invalid JSON.
+        """
         config_path = self.voice_path / "tokenizer_config.json"
         if not config_path.is_file():
             r = requests.get(self.tokenizer_config_url, timeout=30)
@@ -113,22 +133,47 @@ class TTSModelInfo:
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(cfg, f, ensure_ascii=False, indent=4)
             return cfg
-        with open(config_path, "r") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     def download_vocab(self) -> Dict[str, Any]:
+        """
+        Load the voice vocabulary from the local cache or download it from the configured URL.
+        
+        If a cached vocab.json exists in the voice's cache directory, it is read and returned.
+        If no cached file exists and `vocab_url` is set, the vocabulary JSON is fetched from that URL,
+        saved to the cache as vocab.json (UTF-8), and the parsed dictionary is returned.
+        
+        Returns:
+            dict: The vocabulary mapping loaded from vocab.json.
+        
+        Raises:
+            requests.RequestException: On network errors or non-success HTTP responses.
+            OSError: On file read/write errors.
+        """
         vocab_path = self.voice_path / "vocab.json"
         if self.vocab_url and not vocab_path.is_file():
             r = requests.get(self.vocab_url, timeout=30)
             r.raise_for_status()
             cfg = r.json()
             with open(vocab_path, "w", encoding="utf-8") as f:
-                json.dump(cfg, f)
+                json.dump(cfg, f, ensure_ascii=False)
             return cfg
-        with open(vocab_path, "r") as f:
+        with open(vocab_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     def download_tokens_txt(self) -> str:
+        """
+        Ensure a local tokens.txt exists for this voice and return its contents.
+        
+        If `tokens_url` is set and the file does not exist in the voice cache directory, download the tokens file, save it to the cache using UTF-8 encoding, and return its text. If the file already exists, read and return its contents.
+        
+        Returns:
+            str: Contents of the tokens file.
+        
+        Raises:
+            requests.exceptions.RequestException: If the HTTP request to `tokens_url` fails or the response status is not successful.
+        """
         tokens_path = self.voice_path / "tokens.txt"
         if self.tokens_url and not tokens_path.is_file():
             r = requests.get(self.tokens_url, timeout=30)
@@ -137,10 +182,20 @@ class TTSModelInfo:
             with open(tokens_path, "w", encoding="utf-8") as f:
                 f.write(tokens)
             return tokens
-        with open(tokens_path, "r") as f:
+        with open(tokens_path, "r", encoding="utf-8") as f:
             return f.read()
 
     def download_model(self):
+        """
+        Download the ONNX model file for this voice into the voice cache directory if it does not already exist.
+        
+        Saves the remote file as voice_path / "model.onnx" in binary mode.
+        
+        Raises:
+            requests.HTTPError: if the HTTP response indicates an error status.
+            requests.RequestException: on network-related errors during download.
+            OSError: on filesystem errors while writing the file.
+        """
         model_path = self.voice_path / "model.onnx"
         if not model_path.is_file():
             with requests.get(self.model_url, timeout=120, stream=True) as r:
@@ -445,4 +500,3 @@ if __name__ == "__main__":
 
 
     generate_voices_markdown(manager, output_file="../VOICES.md")
-
