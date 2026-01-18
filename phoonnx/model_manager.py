@@ -101,7 +101,7 @@ class TTSModelInfo:
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(cfg, f, ensure_ascii=False, indent=4)
             return cfg
-        with open(config_path, "r") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     def download_tokenizer_config(self) -> Dict[str, Any]:
@@ -113,7 +113,7 @@ class TTSModelInfo:
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(cfg, f, ensure_ascii=False, indent=4)
             return cfg
-        with open(config_path, "r") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     def download_vocab(self) -> Dict[str, Any]:
@@ -123,9 +123,9 @@ class TTSModelInfo:
             r.raise_for_status()
             cfg = r.json()
             with open(vocab_path, "w", encoding="utf-8") as f:
-                json.dump(cfg, f)
+                json.dump(cfg, f, ensure_ascii=False)
             return cfg
-        with open(vocab_path, "r") as f:
+        with open(vocab_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     def download_tokens_txt(self) -> str:
@@ -137,7 +137,7 @@ class TTSModelInfo:
             with open(tokens_path, "w", encoding="utf-8") as f:
                 f.write(tokens)
             return tokens
-        with open(tokens_path, "r") as f:
+        with open(tokens_path, "r", encoding="utf-8") as f:
             return f.read()
 
     def download_model(self):
@@ -445,4 +445,3 @@ if __name__ == "__main__":
 
 
     generate_voices_markdown(manager, output_file="../VOICES.md")
-
