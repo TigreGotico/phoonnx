@@ -222,6 +222,7 @@ class VoiceConfig:
                   tokens_txt: Optional[str] = None,  # sherpa/mimic3
                   lang_code: Optional[str] = None,
                   phoneme_type: Optional[Union[str, PhonemeType]] = None,
+                  engine: Optional[Union[str, Engine]] = None,
                   alphabet: Optional[Union[str, Alphabet]] = None) -> "VoiceConfig":
         """
         Create a VoiceConfig from a model configuration dictionary and optional external phoneme data.
@@ -245,11 +246,10 @@ class VoiceConfig:
         lang_code = lang_code or config.get("lang_code")
         phoneme_type = phoneme_type or config.get("phoneme_type")
         alphabet = alphabet or config.get("alphabet")
-        engine = Engine.PHOONNX
         diacritics = False
 
         if VoiceConfig.is_phoonnx(config):
-            engine = Engine.PHOONNX
+            engine =  engine or Engine.PHOONNX
 
             lang_code = lang_code or config.get("lang_code")
             phoneme_type = phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK)
@@ -265,7 +265,7 @@ class VoiceConfig:
 
         # check if model was trained for PiperTTS
         elif VoiceConfig.is_piper(config):
-            engine = Engine.PIPER
+            engine =  engine or Engine.PIPER
 
             lang_code = lang_code or (config.get("language", {}).get("code") or
                          config.get("espeak", {}).get("voice"))
@@ -292,7 +292,7 @@ class VoiceConfig:
 
         # check if model was trained for Mimic3
         elif VoiceConfig.is_mimic3(config):
-            engine = Engine.MIMIC3
+            engine =  engine or Engine.MIMIC3
 
             if not tokens_txt:
                 raise ValueError("mimic3 models require an external phonemes.txt file in addition to the config")
@@ -315,7 +315,7 @@ class VoiceConfig:
 
         # check if model was trained with Coqui
         elif VoiceConfig.is_coqui_vits(config):
-            engine = Engine.COQUI
+            engine =  engine or Engine.COQUI
             phoneme_type = phoneme_type or PhonemeType.GRAPHEMES
             alphabet = alphabet or Alphabet.UNICODE
 
@@ -372,7 +372,7 @@ class VoiceConfig:
         phoneme_type = PhonemeType(phoneme_type) if isinstance(phoneme_type, str) else phoneme_type
         LOG.debug(f"phonemizer: {phoneme_type}")
         inference = config.get("inference", {})
-
+        engine = engine or Engine.PHOONNX
         return VoiceConfig(
             tokenizer=tokenizer,
             num_langs=config.get("num_langs", 1),
