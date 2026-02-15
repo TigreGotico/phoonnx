@@ -124,6 +124,18 @@ class VitsModel(pl.LightningModule):
         num_test_examples: int,
         max_phoneme_ids: Optional[int] = None,
     ):
+        """
+        Load dataset from configuration, construct a PhoonnxDataset, and split it into training, testing, and validation subsets stored on the instance.
+        
+        Parameters:
+            validation_split (float): Fraction of the full dataset to reserve for validation (between 0 and 1).
+            num_test_examples (int): Exact number of examples to reserve for the test set.
+            max_phoneme_ids (Optional[int]): If provided, limit the dataset to examples with phoneme IDs up to this value.
+        
+        Behavior:
+            If the instance hyperparameters do not specify a dataset, the method logs a debug message and returns without modifying dataset attributes.
+            Otherwise, it creates a PhoonnxDataset from the configured dataset path, computes sizes for train/test/validation using `validation_split` and `num_test_examples`, and assigns the resulting subsets to `self._train_dataset`, `self._test_dataset`, and `self._val_dataset`.
+        """
         if self.hparams.dataset is None:
             _LOGGER.debug("No dataset to load")
             return
