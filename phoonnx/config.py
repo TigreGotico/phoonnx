@@ -225,23 +225,26 @@ class VoiceConfig:
                   engine: Optional[Union[str, Engine]] = None,
                   alphabet: Optional[Union[str, Alphabet]] = None) -> "VoiceConfig":
         """
-        Create a VoiceConfig from a model configuration dictionary and optional external phoneme data.
-        
-        Builds a VoiceConfig by detecting the model engine (Phoonnx, Piper, Mimic3, Transformers or Coqui), deriving tokenizer and alphabet, and applying model-specific defaults and inference settings. Provided optional arguments override corresponding values found in the config.
-        
-        Parameters:
-            config (dict[str, Any]): Parsed model configuration dictionary.
-            tokens_txt (Optional[str]): Path to an external tokens file (.txt or .json) used to build or override the tokenizer vocabulary.
-            lang_code (Optional[str]): Language code to override the config's language selection.
-            phoneme_type (Optional[PhonemeType]): Phoneme type name to override the config's phoneme_type value.
-            alphabet (Optional[Alphabet]): Alphabet name to override or supply the resulting VoiceConfig alphabet.
-        
-        Returns:
-            VoiceConfig: A populated VoiceConfig instance with tokenizer, alphabet, engine, phoneme_type, inference settings, and token tokens derived from the inputs.
-        
-        Raises:
-            ValueError: If the config is identified as a Mimic3 model but no phonemes_txt is provided.
-        """
+                  Create a VoiceConfig from a model configuration dictionary and optional external tokenizer or phoneme data.
+                  
+                  Builds a VoiceConfig by detecting the model engine (Phoonnx, Piper, Mimic3, Transformers, or Coqui), deriving or constructing the tokenizer and alphabet, applying engine-specific defaults and inference settings, and letting explicit arguments override values found in the config.
+                  
+                  Parameters:
+                      config (dict[str, Any]): Parsed model configuration dictionary.
+                      vocab (Optional[Dict[str, Any]]): Optional tokenizer vocabulary for transformer-style models.
+                      tokenizer_config (Optional[Dict[str, Any]]): Optional tokenizer metadata (used for transformer vocab handling).
+                      tokens_txt (Optional[str]): Path to an external tokens file (.txt or .json) used to build or override the tokenizer vocabulary.
+                      lang_code (Optional[str]): Language code to override or supply the resulting VoiceConfig language.
+                      phoneme_type (Optional[Union[str, PhonemeType]]): Phonemizer type name to override or supply the resulting VoiceConfig phoneme_type.
+                      engine (Optional[Union[str, Engine]]): Engine override that takes precedence over detected engine.
+                      alphabet (Optional[Union[str, Alphabet]]): Alphabet override to use for phonemization/tokenization.
+                  
+                  Returns:
+                      VoiceConfig: A populated VoiceConfig instance with tokenizer, engine, alphabet, phoneme_type, inference settings, and token-related fields derived from the inputs.
+                  
+                  Raises:
+                      ValueError: If the config is identified as a Mimic3 model but no tokens_txt is provided.
+                  """
         blank_type = BlankBetween.TOKENS_AND_WORDS
         lang_code = lang_code or config.get("lang_code")
         phoneme_type = phoneme_type or config.get("phoneme_type")

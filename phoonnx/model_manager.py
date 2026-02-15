@@ -30,12 +30,12 @@ class TTSModelInfo:
     def config(self) -> VoiceConfig:
         # lazy loaded
         """
-        Return the model's VoiceConfig, loading and synchronizing it on first access.
+        Load and cache the voice's VoiceConfig on first access.
         
-        On first access, load or construct a VoiceConfig from cached files or remote URLs and apply any provided vocab, tokenizer, or tokens overrides; normalize and propagate language, alphabet, phoneme type, and engine values between the dataclass and the loaded config. Subsequent accesses return the cached VoiceConfig.
+        If a remote config URL or local vocab/tokenizer/tokens URLs are provided, those assets are downloaded and applied; any provided overrides (vocab_override, phoneme_type, alphabet, engine, lang) are honored. Language, alphabet, phoneme_type, and engine values are normalized and synchronized back to the dataclass. Subsequent accesses return the cached VoiceConfig.
         
         Returns:
-            VoiceConfig: The loaded and normalized voice configuration instance.
+            VoiceConfig: The loaded and normalized voice configuration.
         """
         if not self._config:
             if self.config_url:
@@ -98,9 +98,9 @@ class TTSModelInfo:
 
     def __post_init__(self):
         """
-        Initialize internal state for TTSModelInfo and normalize persisted values.
+        Prepare internal state and normalize persisted values for a TTSModelInfo instance.
         
-        Sets up the private config storage, ensures the voice cache directory exists, and converts string representations of engine, alphabet, and phoneme_type into their corresponding Enum values so the instance fields are normalized.
+        Ensures the private `_config` is initialized to `None`, creates the voice cache directory at `voice_path` if missing, and converts any string representations of `engine`, `alphabet`, and `phoneme_type` into their corresponding Enum members so the instance fields are normalized.
         """
         self._config: Optional[VoiceConfig] = None
         os.makedirs(self.voice_path, exist_ok=True)
