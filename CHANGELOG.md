@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.3a2](https://github.com/TigreGotico/phoonnx/tree/1.3.3a2) (2026-02-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.3a1...1.3.3a2)
+
+**Merged pull requests:**
+
+- lazy load voice info config [\#107](https://github.com/TigreGotico/phoonnx/pull/107) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.3.3a1](https://github.com/TigreGotico/phoonnx/tree/1.3.3a1) (2026-02-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.2a5...1.3.3a1)
