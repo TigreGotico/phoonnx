@@ -28,6 +28,7 @@ class Alphabet(str, Enum):
     ARPA = "arpa" # en
     SAMPA = "sampa"
     XSAMPA = "x-sampa"
+    RFE = "rfe" # https://en.wikipedia.org/wiki/RFE_Phonetic_Alphabet
     HANGUL = "hangul" # ko
     KANA = "kana" # ja
     HIRA = "hira" # ja

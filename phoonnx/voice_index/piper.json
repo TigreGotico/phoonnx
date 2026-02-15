@@ -1819,32 +1819,6 @@
         "engine": "piper",
         "config_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/tr/tr_TR/dfki/medium/tr_TR-dfki-medium.onnx.json"
     },
-    "piper/tr_TR-fahrettin-medium": {
-        "voice_id": "piper/tr_TR-fahrettin-medium",
-        "model_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/tr/tr_TR/fahrettin/medium/tr_TR-fahrettin-medium.onnx",
-        "phoneme_type": "espeak",
-        "lang": "tr-TR",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/tr/tr_TR/fahrettin/medium/tr_TR-fahrettin-medium.onnx.json"
-    },
-    "piper/tr_TR-fettah-medium": {
-        "voice_id": "piper/tr_TR-fettah-medium",
-        "model_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/tr/tr_TR/fettah/medium/tr_TR-fettah-medium.onnx",
-        "phoneme_type": "espeak",
-        "lang": "tr-TR",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/tr/tr_TR/fettah/medium/tr_TR-fettah-medium.onnx.json"
-    },
     "piper/uk_UA-lada-x_low": {
         "voice_id": "piper/uk_UA-lada-x_low",
         "model_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/uk/uk_UA/lada/x_low/uk_UA-lada-x_low.onnx",

@@ -1,4 +1,69 @@
 {
+    "piper_community/vadimbelsky/arabic-emirati-female-piper": {
+        "voice_id": "piper_community/vadimbelsky/arabic-emirati-female-piper",
+        "model_url": "https://huggingface.co/vadimbelsky/arabic-emirati-female-piper/resolve/main/arabic-emirati-female-model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "ar-AE",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/vadimbelsky/arabic-emirati-female-piper/resolve/main/arabic-emirati-female-model.onnx.json"
+    },
+    "piper_community/MahtaFetrat/Mana-Persian-Piper": {
+        "voice_id": "piper_community/MahtaFetrat/Mana-Persian-Piper",
+        "model_url": "https://huggingface.co/MahtaFetrat/Mana-Persian-Piper/resolve/main/fa_IR-mana-medium.onnx",
+        "phoneme_type": "espeak",
+        "lang": "fa-IR",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/MahtaFetrat/Mana-Persian-Piper/resolve/main/fa_IR-mana-medium.onnx.json"
+    },
+    "piper_community/SadeghK/amir": {
+        "voice_id": "piper_community/SadeghK/amir",
+        "model_url": "https://huggingface.co/SadeghK/persian-text-to-speech/resolve/main/farsi/amir/epoch%3D5261-step%3D2455712.onnx",
+        "phoneme_type": "espeak",
+        "lang": "fa-IR",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/SadeghK/persian-text-to-speech/resolve/main/farsi/amir/epoch%3D5261-step%3D2455712.onnx.json"
+    },
+    "piper_community/SadeghK/ganji": {
+        "voice_id": "piper_community/SadeghK/ganji",
+        "model_url": "https://huggingface.co/SadeghK/persian-text-to-speech/resolve/main/farsi/ganji/epoch%3D5719-step%3D2609600-ganji.onnx",
+        "phoneme_type": "espeak",
+        "lang": "fa-IR",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/SadeghK/persian-text-to-speech/resolve/main/farsi/ganji/epoch%3D5719-step%3D2609600-ganji.onnx.json"
+    },
+    "piper_community/SadeghK/ganji-adabi": {
+        "voice_id": "piper_community/SadeghK/ganji-adabi",
+        "model_url": "https://huggingface.co/SadeghK/persian-text-to-speech/resolve/main/farsi/ganji-adabi/epoch%3D6363-step%3D2694608-ganji-adabi.onnx",
+        "phoneme_type": "espeak",
+        "lang": "fa-IR",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/SadeghK/persian-text-to-speech/resolve/main/farsi/ganji-adabi/epoch%3D6363-step%3D2694608-ganji-adabi.onnx.json"
+    },
     "piper_community/mbarnig/lb-LU_androgynous": {
         "voice_id": "piper_community/mbarnig/lb-LU_androgynous",
         "model_url": "https://huggingface.co/mbarnig/lb_rhasspy_piper_tts/resolve/main/lb/lb_LU/androgynous/medium/lb_LU-androgynous-medium.onnx",
@@ -1104,45 +1169,6 @@
         "engine": "piper",
         "config_url": "https://huggingface.co/nullnullvier/kantodel/resolve/main/kantodel.onnx.json"
     },
-    "piper_community/domoskanonos/de-DE_domoskanonos": {
-        "voice_id": "piper_community/domoskanonos/de-DE_domoskanonos",
-        "model_url": "https://huggingface.co/domoskanonos/piper-tts-models/resolve/main/de-domoskanonos-high.onnx",
-        "phoneme_type": "espeak",
-        "lang": "de-DE",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/domoskanonos/piper-tts-models/resolve/main/de-domoskanonos-high.onnx.json"
-    },
-    "piper_community/domoskanonos/de-DE_sebastian100": {
-        "voice_id": "piper_community/domoskanonos/de-DE_sebastian100",
-        "model_url": "https://huggingface.co/domoskanonos/piper-tts-models/resolve/main/de-sebastian100-medium.onnx",
-        "phoneme_type": "espeak",
-        "lang": "de-DE",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/domoskanonos/piper-tts-models/resolve/main/de-sebastian100-medium.onnx.json"
-    },
-    "piper_community/domoskanonos/de-DE_sebastian121": {
-        "voice_id": "piper_community/domoskanonos/de-DE_sebastian121",
-        "model_url": "https://huggingface.co/domoskanonos/piper-tts-models/resolve/main/de-sebastian121-medium.onnx",
-        "phoneme_type": "espeak",
-        "lang": "de-DE",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/domoskanonos/piper-tts-models/resolve/main/de-sebastian121-medium.onnx.json"
-    },
     "piper_community/HirCoir/es-MX_Laura": {
         "voice_id": "piper_community/HirCoir/es-MX_Laura",
         "model_url": "https://huggingface.co/HirCoir/Piper-TTS-Laura/resolve/main/es_MX-laura-high.onnx",
@@ -1155,31 +1181,5 @@
         "alphabet": "ipa",
         "engine": "piper",
         "config_url": "https://huggingface.co/HirCoir/Piper-TTS-Laura/resolve/main/es_MX-laura-high.onnx.json"
-    },
-    "piper_community/ISTNetworks/piper-qatar-tts": {
-        "voice_id": "piper_community/ISTNetworks/piper-qatar-tts",
-        "model_url": "https://huggingface.co/ISTNetworks/piper-qatar-tts/resolve/main/models/qatar_spk4_epoch2472.onnx",
-        "phoneme_type": "espeak",
-        "lang": "ar-QA",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/ISTNetworks/piper-qatar-tts/resolve/main/models/qatar_spk4_epoch2472.onnx.json"
-    },
-    "piper_community/vadimbelsky/arabic-emirati-female-piper": {
-        "voice_id": "piper_community/vadimbelsky/arabic-emirati-female-piper",
-        "model_url": "https://huggingface.co/vadimbelsky/arabic-emirati-female-piper/resolve/main/arabic-emirati-female-model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "ar-AE",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/vadimbelsky/arabic-emirati-female-piper/resolve/main/arabic-emirati-female-model.onnx.json"
     }
 }
