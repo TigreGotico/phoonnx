@@ -118,7 +118,7 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
             return [('', '', True)]
 
         results: TextChunks = []
-        delimiters = delimiters or [", ", ":", ";", "...", "|"]
+        delimiters = delimiters or [":", ";", "...", "|"]
 
         # Create a regex pattern that matches any of the delimiters
         delimiter_pattern = re.escape(delimiters[0])
@@ -190,7 +190,7 @@ class UnicodeCodepointPhonemizer(BasePhonemizer):
 
     def phonemize_string(self, text: str, lang: str) -> str:
         # Phonemes = codepoints
-        return unicodedata.normalize(self.form, text)
+        return unicodedata.normalize("NFD", text)
 
 
 if __name__ == "__main__":

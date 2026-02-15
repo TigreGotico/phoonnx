@@ -44,7 +44,7 @@ class Batch:
     speaker_ids: Optional[LongTensor] = None
 
 
-class PiperDataset(Dataset):
+class PhoonnxDataset(Dataset):
     """
     Dataset format:
 
@@ -67,7 +67,7 @@ class PiperDataset(Dataset):
             dataset_path = Path(dataset_path)
             _LOGGER.debug("Loading dataset: %s", dataset_path)
             self.utterances.extend(
-                PiperDataset.load_dataset(dataset_path, max_phoneme_ids=max_phoneme_ids)
+                PhoonnxDataset.load_dataset(dataset_path, max_phoneme_ids=max_phoneme_ids)
             )
         if not self.utterances:
             raise ValueError("No utterances loaded")
@@ -101,7 +101,7 @@ class PiperDataset(Dataset):
                     continue
 
                 try:
-                    utt = PiperDataset.load_utterance(line)
+                    utt = PhoonnxDataset.load_utterance(line)
                     if (max_phoneme_ids is None) or (
                         len(utt.phoneme_ids) <= max_phoneme_ids
                     ):

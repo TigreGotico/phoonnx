@@ -80,8 +80,8 @@ class TTSModelManager:
             "OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone",
             "OpenVoiceOS/phoonnx_eu-ES_miro_espeak",
             "OpenVoiceOS/phoonnx_eu-ES_dii_espeak",
-            "OpenVoiceOS/phoonnx_ar-SA_miro_espeak_V2",
-            "OpenVoiceOS/phoonnx_ar-SA_dii_espeak",
+            "OpenVoiceOS/phoonnx_ar_miro_espeak_V2",
+            "OpenVoiceOS/phoonnx_ar_dii_espeak",
             "OpenVoiceOS/phoonnx_sv-SE_miro_espeak",
             "OpenVoiceOS/phoonnx_da-DK_miro_espeak",
             "OpenVoiceOS/phoonnx_es-ES_dii_espeak"
@@ -297,15 +297,16 @@ class TTSModelManager:
         
         Adds hardcoded Piper community voice entries (voice_id, lang, model_url, config_url) to the manager by calling self.add_voice. Some entries may require Hugging Face authentication or special handling (archives, nested archives), and duplicate models can appear because Piper models are sometimes merged upstream.
         """
+        # 404 now, seems model was removed...
         # https://huggingface.co/ISTNetworks/piper-qatar-tts
-        voice = TTSModelInfo(
-            voice_id="piper_community/" + "ISTNetworks/piper-qatar-tts",
-            lang="ar-QA",
-            model_url="https://huggingface.co/ISTNetworks/piper-qatar-tts/resolve/main/models/qatar_spk4_epoch2472.onnx",
-            config_url="https://huggingface.co/ISTNetworks/piper-qatar-tts/resolve/main/models/qatar_spk4_epoch2472.onnx.json",
-            engine=Engine.PIPER,
-        )
-        self.add_voice(voice)
+        #voice = TTSModelInfo(
+        #    voice_id="piper_community/" + "ISTNetworks/piper-qatar-tts",
+        #    lang="ar-QA",
+        #    model_url="https://huggingface.co/ISTNetworks/piper-qatar-tts/resolve/main/models/qatar_spk4_epoch2472.onnx",
+        #    config_url="https://huggingface.co/ISTNetworks/piper-qatar-tts/resolve/main/models/qatar_spk4_epoch2472.onnx.json",
+        #    engine=Engine.PIPER,
+        #)
+        #self.add_voice(voice)
 
         # https://huggingface.co/vadimbelsky/arabic-emirati-female-piper
         voice = TTSModelInfo(
@@ -313,6 +314,41 @@ class TTSModelManager:
             lang="ar-AE",
             model_url="https://huggingface.co/vadimbelsky/arabic-emirati-female-piper/resolve/main/arabic-emirati-female-model.onnx",
             config_url="https://huggingface.co/vadimbelsky/arabic-emirati-female-piper/resolve/main/arabic-emirati-female-model.onnx.json",
+            engine=Engine.PIPER,
+        )
+        self.add_voice(voice)
+
+        # https://huggingface.co/MahtaFetrat/Mana-Persian-Piper
+        voice = TTSModelInfo(
+            voice_id="piper_community/" + "MahtaFetrat/Mana-Persian-Piper",
+            lang="fa-IR",
+            model_url="https://huggingface.co/MahtaFetrat/Mana-Persian-Piper/resolve/main/fa_IR-mana-medium.onnx",
+            config_url="https://huggingface.co/MahtaFetrat/Mana-Persian-Piper/resolve/main/fa_IR-mana-medium.onnx.json",
+            engine=Engine.PIPER,
+        )
+        self.add_voice(voice)
+        # https://huggingface.co/SadeghK/persian-text-to-speech
+        voice = TTSModelInfo(
+            voice_id="piper_community/" + "SadeghK/amir",
+            lang="fa-IR",
+            model_url="https://huggingface.co/SadeghK/persian-text-to-speech/resolve/main/farsi/amir/epoch%3D5261-step%3D2455712.onnx",
+            config_url="https://huggingface.co/SadeghK/persian-text-to-speech/resolve/main/farsi/amir/epoch%3D5261-step%3D2455712.onnx.json",
+            engine=Engine.PIPER,
+        )
+        self.add_voice(voice)
+        voice = TTSModelInfo(
+            voice_id="piper_community/" + "SadeghK/ganji",
+            lang="fa-IR",
+            model_url="https://huggingface.co/SadeghK/persian-text-to-speech/resolve/main/farsi/ganji/epoch%3D5719-step%3D2609600-ganji.onnx",
+            config_url="https://huggingface.co/SadeghK/persian-text-to-speech/resolve/main/farsi/ganji/epoch%3D5719-step%3D2609600-ganji.onnx.json",
+            engine=Engine.PIPER,
+        )
+        self.add_voice(voice)
+        voice = TTSModelInfo(
+            voice_id="piper_community/" + "SadeghK/ganji-adabi",
+            lang="fa-IR",
+            model_url="https://huggingface.co/SadeghK/persian-text-to-speech/resolve/main/farsi/ganji-adabi/epoch%3D6363-step%3D2694608-ganji-adabi.onnx",
+            config_url="https://huggingface.co/SadeghK/persian-text-to-speech/resolve/main/farsi/ganji-adabi/epoch%3D6363-step%3D2694608-ganji-adabi.onnx.json",
             engine=Engine.PIPER,
         )
         self.add_voice(voice)
@@ -940,17 +976,18 @@ class TTSModelManager:
         )
         self.add_voice(voice)
 
+        # TODO - 404 - different models uploaded ?
         # https://huggingface.co/domoskanonos/piper-tts-models
-        for voice, qual in [("domoskanonos", "high"), ("sebastian100", "medium"), ("sebastian121", "medium")]:
-            url = f"https://huggingface.co/domoskanonos/piper-tts-models/resolve/main/de-{voice}-{qual}.onnx"
-            voice = TTSModelInfo(
-                voice_id="piper_community/" +f"domoskanonos/de-DE_{voice}",
-                lang="de-DE",
-                model_url=url,
-                config_url=url + ".json",
-                engine=Engine.PIPER
-            )
-            self.add_voice(voice)
+        #for voice, qual in [("domoskanonos", "high"), ("sebastian100", "medium"), ("sebastian121", "medium")]:
+        #    url = f"https://huggingface.co/domoskanonos/piper-tts-models/resolve/main/de-{voice}-{qual}.onnx"
+        #    voice = TTSModelInfo(
+        #        voice_id="piper_community/" +f"domoskanonos/de-DE_{voice}",
+        #        lang="de-DE",
+        #        model_url=url,
+        #        config_url=url + ".json",
+        #        engine=Engine.PIPER
+        #    )
+        #    self.add_voice(voice)
 
         # TODO - unknown phonemizer type?
         # https://huggingface.co/tiennguyenbnbk/male_vivoice_piper_viphone
@@ -1356,12 +1393,12 @@ if __name__ == "__main__":
         clear()
 
     sync_ovos()
+    sync_piper()
+    sync_piper_community()
     sync_mms()
     sync_nos()
     sync_coqui()
-    sync_piper()
     sync_mimic3()
     sync_neurlang()
     sync_transformers()
     sync_phonikud()
-    sync_piper_community()

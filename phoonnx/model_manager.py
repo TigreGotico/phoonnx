@@ -7,7 +7,7 @@ import requests
 from json_database import JsonStorageXDG, JsonStorage
 
 from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet
-from phoonnx.util import match_lang, normalize_lang
+from phoonnx.util import match_lang, normalize_lang, LOG
 from phoonnx.voice import TTSVoice
 
 
@@ -246,6 +246,7 @@ class TTSModelManager:
             self.cache = JsonStorage(cache_path)
         else:
             self.cache = JsonStorageXDG("voices", subfolder="phoonnx")
+        self.cache.store() # ensure file exists
 
     @property
     def all_voices(self) -> List[TTSModelInfo]:
@@ -261,8 +262,13 @@ class TTSModelManager:
 
     def load(self):
         self.cache.reload()
-        self.voices = {voice_id: TTSModelInfo(**voice_dict)
-                       for voice_id, voice_dict in self.cache.items()}
+        self.voices = {}
+        for voice_id, voice_dict in self.cache.items():
+            try:
+                self.voices[voice_id] =  TTSModelInfo(**voice_dict)
+            except Exception as e:
+                LOG.error(f"Failed to load '{voice_id}': ({e})")
+                continue
 
     def save(self):
         """
@@ -328,8 +334,14 @@ class TTSModelManager:
         self.cache.update(JsonStorage(str(base_path / "mimic3.json")))
         self.cache.update(JsonStorage(str(base_path / "transformers_community.json")))
         self.cache.update(JsonStorage(str(base_path / "piper_community.json")))
-        self.voices = {voice_id: TTSModelInfo(**voice_dict)
-                       for voice_id, voice_dict in self.cache.items()}
+        self.voices = {}
+        for voice_id, voice_dict in self.cache.items():
+            try:
+                self.voices[voice_id] =  TTSModelInfo(**voice_dict)
+            except Exception as e:
+                LOG.error(f"Failed to load '{voice_id}': ({e})")
+                continue
+
         if store:
             self.cache.store()
 
