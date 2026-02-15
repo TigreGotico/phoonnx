@@ -1,7 +1,7 @@
 ## Supported Voices
 
-**Total Voices:** 1472
-**Total Languages:** 1206
+**Total Voices:** 1479
+**Total Languages:** 1209
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
 
@@ -47,21 +47,26 @@
 | `facebook/mms-tts-amf-Hamer-Banna` | `amf` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ami-Amis` | `ami` | `transformers` | `graphemes` |
 | `facebook/mms-tts-amk-Ambai` | `amk` | `transformers` | `graphemes` |
+| `OpenVoiceOS/phoonnx_an_dii_unicode` | `an` | `phoonnx` | `unicode` |
+| `OpenVoiceOS/phoonnx_an_miro_unicode` | `an` | `phoonnx` | `unicode` |
 | `facebook/mms-tts-ann-Obolo` | `ann` | `transformers` | `graphemes` |
 | `facebook/mms-tts-any-Anyin` | `any` | `transformers` | `graphemes` |
 | `facebook/mms-tts-aoz-Uab Meto` | `aoz` | `transformers` | `graphemes` |
 | `facebook/mms-tts-apb-Sa’a` | `apb` | `transformers` | `graphemes` |
 | `facebook/mms-tts-apr-Arop-Lokep` | `apr` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ara-Arabic` | `ar` | `transformers` | `graphemes` |
+| `OpenVoiceOS/phoonnx_ar_dii_espeak` | `ar` | `phoonnx` | `espeak` |
+| `OpenVoiceOS/phoonnx_ar_miro_espeak_V2` | `ar` | `phoonnx` | `espeak` |
 | `piper_neurlang/ar_zayd0-arabic-diacritized` | `ar` | `piper` | `goruut` |
+| `piper_community/vadimbelsky/arabic-emirati-female-piper` | `ar-AE` | `piper` | `espeak` |
 | `piper/ar_JO-kareem-low` | `ar-JO` | `piper` | `espeak` |
 | `piper/ar_JO-kareem-medium` | `ar-JO` | `piper` | `espeak` |
-| `OpenVoiceOS/phoonnx_ar-SA_dii_espeak` | `ar-SA` | `phoonnx` | `espeak` |
-| `OpenVoiceOS/phoonnx_ar-SA_miro_espeak_V2` | `ar-SA` | `phoonnx` | `espeak` |
 | `facebook/mms-tts-arl-Arabela` | `arl` | `transformers` | `graphemes` |
 | `facebook/mms-tts-asm-Assamese` | `as` | `transformers` | `graphemes` |
 | `facebook/mms-tts-asa-Asu` | `asa` | `transformers` | `graphemes` |
 | `facebook/mms-tts-asg-Cishingini` | `asg` | `transformers` | `graphemes` |
+| `OpenVoiceOS/phoonnx_ast_dii_unicode` | `ast` | `phoonnx` | `unicode` |
+| `OpenVoiceOS/phoonnx_ast_miro_unicode` | `ast` | `phoonnx` | `unicode` |
 | `facebook/mms-tts-ata-Pele-Ata` | `ata` | `transformers` | `graphemes` |
 | `facebook/mms-tts-atb-Zaiwa` | `atb` | `transformers` | `graphemes` |
 | `facebook/mms-tts-atg-Ivbie North-Okpela-Arhe` | `atg` | `transformers` | `graphemes` |
@@ -171,6 +176,7 @@
 | `facebook/mms-tts-bzi-Bisu` | `bzi` | `transformers` | `graphemes` |
 | `facebook/mms-tts-bzj-Belize English Creole` | `bzj` | `transformers` | `graphemes` |
 | `facebook/mms-tts-cat-Catalan` | `ca` | `transformers` | `graphemes` |
+| `OpenVoiceOS/phoonnx_ca_miro_espeak` | `ca` | `phoonnx` | `espeak` |
 | `piper/ca_ES-upc_ona-medium` | `ca-ES` | `piper` | `espeak` |
 | `piper/ca_ES-upc_ona-x_low` | `ca-ES` | `piper` | `espeak` |
 | `piper/ca_ES-upc_pau-x_low` | `ca-ES` | `piper` | `espeak` |
@@ -284,9 +290,6 @@
 | `piper/de_DE-thorsten-low` | `de-DE` | `piper` | `espeak` |
 | `piper/de_DE-thorsten-medium` | `de-DE` | `piper` | `espeak` |
 | `piper/de_DE-thorsten_emotional-medium` | `de-DE` | `piper` | `espeak` |
-| `piper_community/domoskanonos/de-DE_domoskanonos` | `de-DE` | `piper` | `espeak` |
-| `piper_community/domoskanonos/de-DE_sebastian100` | `de-DE` | `piper` | `espeak` |
-| `piper_community/domoskanonos/de-DE_sebastian121` | `de-DE` | `piper` | `espeak` |
 | `piper_community/nullnullvier/de-DE_kantodel` | `de-DE` | `piper` | `espeak` |
 | `piper_community/systemofapwne/de-DE_glados-turret_high` | `de-DE` | `piper` | `espeak` |
 | `piper_community/systemofapwne/de-DE_glados-turret_low` | `de-DE` | `piper` | `espeak` |
@@ -463,6 +466,10 @@
 | `piper/fa_IR-reza_ibrahim-medium` | `fa-IR` | `piper` | `espeak` |
 | `piper_community/gyroing/fa-IR_gyro` | `fa-IR` | `piper` | `espeak` |
 | `piper_community/mah92/fa-IR_Reza-And-Ibrahim` | `fa-IR` | `piper` | `espeak` |
+| `piper_community/MahtaFetrat/Mana-Persian-Piper` | `fa-IR` | `piper` | `espeak` |
+| `piper_community/SadeghK/amir` | `fa-IR` | `piper` | `espeak` |
+| `piper_community/SadeghK/ganji` | `fa-IR` | `piper` | `espeak` |
+| `piper_community/SadeghK/ganji-adabi` | `fa-IR` | `piper` | `espeak` |
 | `facebook/mms-tts-fal-Fali, South` | `fal` | `transformers` | `graphemes` |
 | `facebook/mms-tts-far-Fataleka` | `far` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ful-Fulah` | `ff` | `transformers` | `graphemes` |
@@ -1031,6 +1038,8 @@
 | `facebook/mms-tts-nyy-Nyakyusa-Ngonde` | `nyy` | `transformers` | `graphemes` |
 | `facebook/mms-tts-nzi-Nzema` | `nzi` | `transformers` | `graphemes` |
 | `facebook/mms-tts-obo-Manobo, Obo` | `obo` | `transformers` | `graphemes` |
+| `OpenVoiceOS/phoonnx_oc_dii_unicode` | `oc` | `phoonnx` | `unicode` |
+| `OpenVoiceOS/phoonnx_oc_miro_unicode` | `oc` | `phoonnx` | `unicode` |
 | `facebook/mms-tts-ojb-script_latin-Ojibwa, Northwestern` | `ojb-latin-script` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ojb-script_syllabics-Ojibwa, Northwestern` | `ojb-script_syllabics` | `transformers` | `graphemes` |
 | `facebook/mms-tts-oku-Oku` | `oku` | `transformers` | `graphemes` |
@@ -1322,8 +1331,6 @@
 | `facebook/mms-tts-tpt-Tepehua, Tlachichilco` | `tpt` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tur-Turkish` | `tr` | `transformers` | `graphemes` |
 | `piper/tr_TR-dfki-medium` | `tr-TR` | `piper` | `espeak` |
-| `piper/tr_TR-fahrettin-medium` | `tr-TR` | `piper` | `espeak` |
-| `piper/tr_TR-fettah-medium` | `tr-TR` | `piper` | `espeak` |
 | `facebook/mms-tts-trc-Triqui, Copala` | `trc` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tri-Trió` | `tri` | `transformers` | `graphemes` |
 | `facebook/mms-tts-trn-Trinitario` | `trn` | `transformers` | `graphemes` |
