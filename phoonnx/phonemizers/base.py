@@ -116,11 +116,11 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
     def chunk_text(text: str, delimiters: Optional[List[str]] = None) -> TextChunks:
         """
         Split input text into sentence-aware chunks using sentence tokenization and optional intra-sentence delimiters.
-        
+
         Parameters:
             text (str): Input text to split. If empty, returns a single empty chunk.
             delimiters (Optional[List[str]]): List of substring delimiters to split sentences by (defaults to [":", ";", "...", "|"]).
-        
+
         Returns:
             TextChunks: A list of tuples (substring, terminator, end_of_sentence) where:
                 - `substring` is the chunk text with surrounding whitespace removed,
@@ -205,15 +205,15 @@ class UnicodeCodepointPhonemizer(BasePhonemizer):
         # Phonemes = codepoints
         """
         Normalize the input text to Unicode NFD so phonemes correspond to individual Unicode codepoints.
-        
+
         Parameters:
             text (str): The input string to normalize.
             lang (str): Language code (ignored by this implementation).
-        
+
         Returns:
             str: The input text normalized to Unicode NFD, with combining marks separated into distinct codepoints.
         """
-        return unicodedata.normalize("NFD", text)
+        return unicodedata.normalize(self.form, text)
 
 
 if __name__ == "__main__":
