@@ -241,6 +241,14 @@ class TTSModelInfo:
 
 class TTSModelManager:
     def __init__(self, cache_path: Optional[str] = None):
+        """
+        Initialize the TTSModelManager and prepare persistent cache storage.
+        
+        Creates an empty in-memory registry for voices and sets up JSON-backed cache storage using the provided path or the XDG cache location; ensures the cache file exists.
+        
+        Parameters:
+            cache_path (Optional[str]): Filesystem path for the cache file. If omitted, uses the user's XDG cache directory under "phoonnx/voices".
+        """
         self.voices: Dict[str, TTSModelInfo] = {}
         if cache_path:
             self.cache = JsonStorage(cache_path)
@@ -250,6 +258,12 @@ class TTSModelManager:
 
     @property
     def all_voices(self) -> List[TTSModelInfo]:
+        """
+        List all registered TTSModelInfo instances.
+        
+        Returns:
+            List[TTSModelInfo]: A list containing the current TTSModelInfo objects stored in the manager.
+        """
         return list(self.voices.values())
 
     @property
@@ -261,6 +275,13 @@ class TTSModelManager:
         self.voices = {}
 
     def load(self):
+        """
+        Reload the on-disk voice cache and rebuild the in-memory voice registry.
+        
+        Clears the current in-memory voices, calls the cache reload, and attempts to instantiate
+        TTSModelInfo for each cached entry. Entries that fail to construct are skipped and an
+        error is logged; successful entries are stored in self.voices keyed by voice_id.
+        """
         self.cache.reload()
         self.voices = {}
         for voice_id, voice_dict in self.cache.items():
@@ -272,11 +293,11 @@ class TTSModelManager:
 
     def save(self):
         """
-        Persist current in-memory voice metadata to the configured cache storage.
+        Persist in-memory voice metadata to the configured cache storage.
         
-        Clears the cache, writes each managed voice's public metadata (voice_id, model_url,
-        phoneme_type, lang, tokens_url, phoneme_map_url, alphabet, config_url) into the cache,
-        and then stores the cache to disk.
+        Writes each managed voice's public metadata to the cache (voice_id, model_url, phoneme_type, lang,
+        tokens_url, tokenizer_config_url, vocab_url, phoneme_map_url, alphabet, engine, config_url)
+        and then persists the cache to disk.
         """
         self.cache.clear()
         for voice_id, voice_info in self.voices.items():
@@ -324,6 +345,14 @@ class TTSModelManager:
         return [v[0] for v in voices if v[1] < 10]
 
     def merge_default_voices(self, store=False):
+        """
+        Merge a set of predefined voice indexes into the manager's cache and rebuild the in-memory voice registry.
+        
+        Loads multiple JSON voice index files bundled with the package into the manager's cache, constructs TTSModelInfo objects for each entry, and logs (but skips) any entries that fail to load. If store is True, the updated cache is persisted to disk.
+        
+        Parameters:
+            store (bool): If True, persist the updated cache to disk after merging.
+        """
         base_path = Path(os.path.dirname(__file__)) / "voice_index"
         self.cache.update(JsonStorage(str(base_path / "OVOS.json")))
         self.cache.update(JsonStorage(str(base_path / "MMS.json")))
@@ -460,11 +489,13 @@ if __name__ == "__main__":
 
     def generate_voices_markdown(manager: TTSModelManager, output_file: str = "../VOICES.md"):
         """
-        Generates a Markdown table of all supported voices and saves it to a file.
-
-        Args:
-            manager (TTSModelManager): The manager with loaded voices.
-            output_file (str): The name of the file to save the markdown table to.
+        Generate a Markdown table listing all registered voices and save it to a file.
+        
+        Creates a sorted table of all voices (by language code then voice ID) including voice ID, language code, engine, and phoneme type, writes the table to output_file, and prints a success message. If writing the file fails due to an I/O error, prints the error and emits the generated Markdown to stdout.
+        
+        Parameters:
+            manager (TTSModelManager): Manager containing the loaded voices to document.
+            output_file (str): Path to the file where the Markdown table will be written.
         """
 
         # Sort voices by language code (lang) then by voice ID

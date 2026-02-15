@@ -1388,6 +1388,11 @@ if __name__ == "__main__":
 
 
     def sync_mms():
+        """
+        Populate the manager with MMS multilingual TTS voices, persist the current registry to "MMS.json", then reset the in-memory registry.
+        
+        This adds MMS voices to the TTSModelManager, writes a curated cache file named "MMS.json" containing the stored voice metadata, and clears the manager's in-memory voice registry.
+        """
         manager.get_mms_voice_list()
         manager.save("MMS.json")
         clear()
