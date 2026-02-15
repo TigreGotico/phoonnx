@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.3a1](https://github.com/TigreGotico/phoonnx/tree/1.3.3a1) (2026-02-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.2a5...1.3.3a1)
+
+**Merged pull requests:**
+
+- fix: dont chunk on commas, update voice index [\#104](https://github.com/TigreGotico/phoonnx/pull/104) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.3.2a5](https://github.com/TigreGotico/phoonnx/tree/1.3.2a5) (2026-01-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.2a4...1.3.2a5)
