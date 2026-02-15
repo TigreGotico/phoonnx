@@ -21,20 +21,15 @@ class TTSModelInfo:
     tokenizer_config_url: Optional[str] = None  # transformers provides tokenizer_config.json with metadata
     tokens_url: Optional[str] = None  # mimic3/sherpa provide phoneme_map in this format
     phoneme_map_url: Optional[str] = None  # json lookup table for phoneme replacement
-    config: Optional[VoiceConfig] = None
     phoneme_type: Optional[PhonemeType] = None
     alphabet: Optional[Alphabet] = None
     engine: Optional[Engine] = None
     vocab_override: Optional[Dict[str, int]] = field(default_factory=dict)
 
-    def __post_init__(self):
-        """
-        Initialize the TTSModelInfo instance by ensuring local cache files exist and synchronizing its configuration, alphabet, and phoneme type.
-        
-        If no VoiceConfig was provided, ensure the voice cache directory exists, download and load the model config (model.json), apply a known phoneme-type compatibility fix, and—when a tokens URL is present—download the tokens file and construct the VoiceConfig using it. Always set the loaded config's language code from this instance's `lang`. After loading (or when a config was provided), ensure `alphabet` and `phoneme_type` on the dataclass and on the loaded config are consistent by propagating values from whichever side is present.
-        """
-        os.makedirs(self.voice_path, exist_ok=True)
-        if not self.config:
+    @property
+    def config(self) -> VoiceConfig:
+        # lazy loaded
+        if not self._config:
             if self.config_url:
                 config = self.download_config()
                 # HACK: seen in some published piper voices
@@ -45,40 +40,51 @@ class TTSModelInfo:
                 config = {"phoneme_type": "graphemes", "alphabet": "unicode"}
 
             if self.vocab_override:
-                self.config = VoiceConfig.from_dict(config, vocab=self.vocab_override)
+                self._config = VoiceConfig.from_dict(config, vocab=self.vocab_override)
             elif self.vocab_url:
                 vocab = self.download_vocab()
                 if self.tokenizer_config_url:
                     tokenizer_config = self.download_tokenizer_config()
                 else:
                     tokenizer_config = {}
-                self.config = VoiceConfig.from_dict(config, vocab=vocab, tokenizer_config=tokenizer_config)
+                self._config = VoiceConfig.from_dict(config, vocab=vocab, tokenizer_config=tokenizer_config)
             if self.tokens_url:
                 self.download_tokens_txt()
-                self.config = VoiceConfig.from_dict(config, tokens_txt=str(self.voice_path / "tokens.txt"))
+                self._config = VoiceConfig.from_dict(config, tokens_txt=str(self.voice_path / "tokens.txt"))
 
             if self.phoneme_type:
                 config["phoneme_type"] = self.phoneme_type
 
-            self.config = self.config or VoiceConfig.from_dict(config)
-            self.config.lang_code = self.lang  # sometimes the config is wrong
+            self._config = self._config or VoiceConfig.from_dict(config)
+            if self.lang: # sometimes the config is wrong
+                self._config.lang_code = normalize_lang(self.lang)
+            else:
+                self.lang = normalize_lang(self._config.lang_code)
 
-        self.config.lang_code = self.lang = normalize_lang(self.config.lang_code)
+            if not self.alphabet:
+                self.alphabet = self._config.alphabet
+            else:
+                self._config.alphabet = self.alphabet
 
-        if not self.alphabet:
-            self.alphabet = self.config.alphabet
-        else:
-            self.config.alphabet = self.alphabet
+            if not self.phoneme_type:
+                self.phoneme_type = self._config.phoneme_type
+            else:
+                self._config.phoneme_type = self.phoneme_type
 
-        if not self.phoneme_type:
-            self.phoneme_type = self.config.phoneme_type
-        else:
-            self.config.phoneme_type = self.phoneme_type
+            if not self.engine:
+                self.engine = self._config.engine
+            else:
+                self._config.engine = self.engine
+        return self._config
 
-        if not self.engine:
-            self.engine = self.config.engine
-        else:
-            self.config.engine = self.engine
+    def __post_init__(self):
+        """
+        Initialize the TTSModelInfo instance by ensuring local cache files exist and synchronizing its configuration, alphabet, and phoneme type.
+        
+        If no VoiceConfig was provided, ensure the voice cache directory exists, download and load the model config (model.json), apply a known phoneme-type compatibility fix, and—when a tokens URL is present—download the tokens file and construct the VoiceConfig using it. Always set the loaded config's language code from this instance's `lang`. After loading (or when a config was provided), ensure `alphabet` and `phoneme_type` on the dataclass and on the loaded config are consistent by propagating values from whichever side is present.
+        """
+        self._config: Optional[VoiceConfig] = None
+        os.makedirs(self.voice_path, exist_ok=True)
 
         # cast strings to enum for consistency
         if not isinstance(self.engine, Engine) and isinstance(self.engine, str):
