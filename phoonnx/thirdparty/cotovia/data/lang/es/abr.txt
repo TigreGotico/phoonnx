@@ -1,0 +1,406 @@
+#
+# $Id: abr.txt,v 1.2 2008/03/06 16:33:24 giglesia Exp $
+# $Name:  $
+#
+a.c.,antes de cristo
+a.j.c.,antes de jesucristo
+a.m.,antes del mediodía
+a.r.,alteza real
+a.t.,antiguo testamento
+a/c.,a cargo
+aa.,autores
+aa.ee.,asuntos exteriores
+aa.vv.,asociación de vecinos
+abr.,abril
+abrev.,abreviatura
+adj.,adjectivo
+adm.,administración
+admón.,administración
+adv.,adverbio
+afma.,afectísima
+afmo.,afectísimo
+ag.,agosto
+#al.,alemán
+alt.,altura
+ant.,antiguo
+antepretet.,antepretérito
+anón.,anónimo
+apdo.,apartado
+aprox.,aproximadamente
+aptdo.,apartado
+apóc.,apócope
+ar.,árabe
+arc.,arcaísmo
+art.,artículo
+atta.,atenta
+atte.,atentamente
+atto.,atento
+auton.,autonomía
+aux.,auxiliar
+av.,avenida,avenidas
+avda.,avenida,avenidas
+ayto.,ayuntamiento
+bco.,banco
+bda.,barriada
+bl.,bloque
+bmo.p.,beatísimo padre
+c.f.,club de fútbol
+c.p.,código postal
+c/,calle
+c/.,calle
+c/c.,cuenta corrente
+ca.,aproximadamente
+cal.,caloría,calorías
+cam.,camino
+#cap.,capital
+cap.,capitulo,capitulos
+cast.,castellano
+cat.,catalán
+cf.,compárese
+cfr.,compárese
+ch/,cheque
+cit.,citado
+cl.,clase
+clás.,clásico
+cm.,centímetro,centímetros
+col.,colegio
+com.,comisión
+comp.,compañía
+concell.,concellería
+conj.,conjunción
+consell.,consellería
+cont.,continuación
+coord.,coordinador
+cor.,coronel
+corp.,corporación
+cp.,compárese
+cta.,cuenta
+cte.,comandante
+ctra.,carretera
+célt.,céltico
+cénts.,céntimos
+cía.,compañía
+cód.,código
+d.c.,después de cristo
+d.e.p.,descanse en paz
+d.g.,a dios gracias
+d.j.c.,después de jesucristo
+d.l.,depósito legal
+d.m.,dios mediante
+d.p.,distrito postal
+d.ª,doña
+db.,decibelio,decibelios
+dcha.,derecha
+dep.,deporte
+depto.,departamento
+der.,derivado
+desus.,desusado
+det.,determinado
+determ.,determinado
+dib.,dibujo
+dic.,diciembre
+dir.,director
+dir.ª,directora
+direc.,dirección
+div.,división
+dn.,don
+doc.,documento
+docum.,documentación
+dpto.,departamento
+dr.,doctor
+dra.,doctora
+dupdo.,duplicado
+dupl.,duplicado
+dª,doña
+dª.,doña
+e.c.,era cristiana
+e.g.e.,en gloria esté
+e.m.,estado mayor
+e.p.d.,en paz descanse
+e.p.m.,en propia mano
+e.t.s.i,escuela técnica superior de ingenieros de
+e.t.s.i.t,escuela técnica superior de ingenieros de telecomunicación
+e/,envío
+ed.,edición
+edit.,editoria.
+educ.,educación
+ef.,efectos
+efect.,efectivo
+ej.,ejemplo
+emcia.,eminencia
+emmo.,eminentísimo
+emn.ª,eminencia
+#en.,enero
+entpl.,entreplanta
+esc.,escalera
+escr.,escritura
+esp.,español
+etc.,etcétera
+exc.ª,excelencia
+excma.,excelentísima
+excmo.,excelentísimo
+exp.,expediente
+ext.,extensión
+f.c.,fútbol club
+fact.,factura
+fasc.,fascículo
+fdez.,fernández
+fdo.,firmado
+feb.,febrero
+fem.,femenino
+ff.aa.,fuerzas armadas
+ff.cc.,ferrocarril
+fig.,figura
+fol.,folio
+fr.,francés
+fábr.,fábrica
+g.p.,giro postal
+g/,giro
+gal.,galego
+gcía.,garcía
+germ.,germánico
+ghz.,gigaherzio,gigaherzios
+gr.,gramo,gramos
+#gr.,griego
+grs.,gramos
+gót.,gótico
+hab.,habitante,habitantes
+hered.,heredero
+hol.,holandés
+hz.,herzio,herzios
+i.e.,es decir
+ib.,ibídem
+id.,ídem
+il.,ilustre
+ilma.,ilustrísima
+ilmo.,ilustrísimo
+iltma.,ilustrísima
+iltmo.,ilustrísimo
+imp.,importe
+impr.,imprenta
+indef.,indefinido
+intr.,introducción
+introd.,introducción
+it.,italiano
+izda.,izquierda
+izqda.,izquierda
+k.o.,fuera de combate
+kg.,quilogramo,quilogramos
+khz.,kiloherzio,kiloherzios
+km.,kilómetro,kilómetros
+km/h.,kilómetro por hora,kilómetros por hora
+kw.,kilowatio,kilowatios
+l.c.,en el lugar citado
+l.cit.,en el lugar citado
+l.cl.,latín clásico
+lic.,licenciado
+licda.,licenciada
+licdo.,licenciado
+lin.,línea
+lit.,literal
+loc.,locución
+loc.adv.,locución adverbial
+loc.cit.,en el lugar citado
+long.,longitud
+ltda.,limitada
+ltdo.,limitado
+m.i.sr.,muy ilustre señor
+m.n.,moneda nacional
+magfa.,magnífica
+magfo.,magnífico
+#mar.,marzo
+masc.,masculino
+mg.,miligramo,miligramos
+mhz.,megaherzio,megaherzios
+min.,minuto
+ml.,mililitro,mililitros
+mm.,milímetro,milímetros
+#mm.,madre superiora
+mod.,moderno
+mons.,monseñor
+mr.,míster
+ms.,manuscrito
+mss.,manuscrito
+mun.,municipal
+mª,maría
+máx.,máximo
+méd.,médico
+mín.,mínimo
+mús.,música
+n.b.,nótese bien
+n.del.e.,nota del editor
+n.del.t.,nota del traductor
+n.p.,nombre propio
+n.s.,nuestro señor
+n.t.,nuevo testamento
+n.ª,nuestra
+n.ªs.ª,nuestra señora
+neol.,neologismo
+nov.,noviembre
+num.,número,números
+nº,número,números
+nº.,número,números
+núm.,número,números
+o.cit.,obra citada
+o.m.,orden ministerial
+o.p.,obligación de pagamiento
+o/,orden
+oct.,octubre
+oo.mm.,órdenes ministeriales
+op.,opus
+op.cit.,en la obra citada
+p.a.,por autorización
+p.d.,posdata
+p.e.,por ejemplo
+p.ex.,por ejemplo
+p.m.,post meridiem
+p.m.a.,peso máximo autorizado
+p.o.,por orden
+p.s.,postdata
+p.s.s.,prestación social sustitutoria
+p.v.p.,precio de venta al público
+par.,párrafo
+parr.,párrafo
+part.,particular
+pat.,patente
+pdo.,pasado
+perg.,pergamino
+pers.,persona
+pl.,plural
+pob.,población
+port.,portugués
+pp.,padres superiores
+ppal.,principal
+pral.,principal
+pref.,prefacio
+prep.,preposición
+pres.,presente
+presb.,presbítero
+priv.,privado
+prnl.,pronominal
+prof.,profesor
+prof.ª,profesora
+pron.,pronombre
+prov.,provincia
+pról.,prólogo
+pta.,peseta
+ptas.,pesetas
+pts.,pesetas
+publ.,publicación
+pza.,plaza
+pág.,página,páginas
+págs.,páginas
+q.d.g.,que dios guarde
+q.e.g.e.,que en gloria esté
+q.e.p.d.,que en paz descanse
+q.s.g.h.,que santa gloria haya
+r.c.,ruégase contestación
+r.d.,real decreto
+r.i.p.,en paz descanse
+r.m.,reverenda madre
+r.o.,real orden
+r.p.m.,revolución por minuto,revoluciones por minuto
+rda.,reverenda
+rdo.,reverendo
+ref.,referencia
+reg.,registro
+rel.,religión
+rev.,reverendo
+revma.,reverendísima
+rguez.,rodríguez
+rma.,reverendísima
+rmo.,reverendísimo
+rr.dd.,reales decretos
+rr.mm.,reverendas madres
+rr.oo.,reales órdenes
+rte.,remitente
+rvda.,reverenda
+rvdo.,reverendo
+s.a.,sociedad anónima
+s.a.r.,su alteza real
+s.d.,sin data
+s.e.,su excelencia
+s.e.o.o.,salvo error u omisión
+s.l.,sociedad limitada
+s.m.,su majestad
+s.n.,servicio nacional
+s.p.,servicio público
+s.r.m.,su real majestad
+s.s.,su santidad
+s.ª,señora
+s/n,sin número
+s/n.,sin número
+sarg.,sargento
+sdad.,sociedad
+secret.,secretario
+seg.,segundo,segundos
+sept.,septiembre
+serv.,servicio
+sig.,siguinte
+sigs.,siguintes
+sing.,singular
+smo.,santísimo
+soc.,sociedad
+sr.,señor
+sr.ª,señora
+sra.,señora
+sras.,señoras
+sres.,señores
+srta.,señorita
+ss.aa.,sus altezas
+ss.ee.,sus excelencias
+ss.mm.,sus majestades
+sta.,santa
+sto.,santo
+subst.,substantivo
+sup.,superior
+supl.,suplemento
+símb.,símbolo
+t.a.e.,tasa anual equivalente
+t.v.g,televisión de galicia
+tel.,teléfono
+teléf.,teléfono
+test.,testimonio
+tfno.,teléfono
+tlf,teléfono
+tlf.,teléfono
+ton.,tonelada,toneladas
+trad.,traducción
+transf.,transferencia
+trav.,travesía
+tte.,teniente
+tv.,televisión
+tít.,título
+ud.,usted
+uds.,ustedes
+urb.,urbanización
+v.a.,véase además
+v.a.r.,vuestra alteza real
+v.b.,vuestra beatitud
+v.e.,vuestra excelencia
+v.epr.,visto e prace
+v.g.,verbigracia
+v.gr.,verbigracia
+v.i.,vuestra ilustrísima
+v.m.,vuestra majestad
+v.o.,versión original
+v.s.,vuestra señoría
+v.s.i.,vuestra señoría ilustrísima
+v.t.,véase también
+var.,variable
+vencto.,vencimiento
+vers.,versículo
+voc.,vocábulo
+vol.,volumen
+vols.,volúmenes
+vta.,vuelta
+vto.,vuelto
+vv.aa.,vuestras altezas
+vv.ee.,vuestras excelencias
+vv.mm.,vuestras majestades
+vºbº.,visto bueno
+w.c.,retrete
+át.,ático
+íd.,ídem
+índ.,índice
+ít.,ítem

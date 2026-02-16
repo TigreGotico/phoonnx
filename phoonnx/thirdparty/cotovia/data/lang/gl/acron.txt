@@ -1,0 +1,167 @@
+#
+# $Id: acron.txt,v 1.3 2008/05/09 11:02:47 fmendez Exp $
+# $Name:  $
+#
+#2D,dous de
+#3D,tres de
+ABC,a be ce
+ACB,a ce be
+ADN,a de ene
+AM,a eme
+ARN,a erre ene
+ATS,a te ese
+#BBC,be be ce
+BBVA,be be uve a
+BCE,be ce e
+BNG,be ene ga
+#BP,be pe
+CC.AA,comunidades autónomas
+CC.OO.,comisións obreiras
+CCAA,comunidades autónomas
+CCOO,comisións obreiras
+CD,cedé
+CD-ROM,cederrón
+CDG,centro dramático galego
+CDROM,cederrón
+CDU,ce de u
+CEG,confederación de empresarios galegos
+CEOE,ce e o e
+CF,club de fútbol
+CGAC,centro galego de arte contemporánea
+CGAI,cegai
+#CGT,ce gue te
+CIG,ci ga
+#CNT,ce ene te
+CPU,ce pe u
+#consello superior de investigación científica
+CSIC,cesic
+CSIF,cesif
+#CV,ce uve
+#CXT,ce xe te
+D.N.I.,de ene i
+D.O.,denominación de orixe
+D.X.,dirección xeral
+DDO,de de o
+DEP,descanse en paz
+DNI,de ene i
+DOG,doga
+DVD,deuvedé
+DXP,dirección xeral da policía
+#DXT,de xe te
+EEUU, estados unidos
+EGB,e gue be
+EGPGC,exército guerrilleiro do pobo galego ceibe
+EH,e ache
+ERC,esquerra republicana
+ETT,e te te
+EXB,e xe be
+EdeG,e de gue
+#F.M.,efe eme
+FBI,efe be i
+FEG,fe gue
+#FM,efe eme
+FMI,fondo monetario internacional
+#FP,efe pe
+#HB,ache be
+I+D,i máis de
+IBM,i be eme
+IGSV,i gue ese uve
+IGVS,i gue uve ese
+ILG,instituto da lingua galega
+IML,instituto de medicina legal
+INM,instituto nacional de meteoroloxía
+IPC,i pe ce
+IRPF,i erre pe efe
+ISBN,i ese be ene
+ISSN,i ese ese ene
+KFOR,kafor
+#KGB,ka gue be
+KO,ka o
+L.A.Cr,lei de axuizamento criminal
+#lei de réxime xurídico das administracións públicas e do procedemento administrativo común
+L.R.X.P.A.C.,eleerrexepac
+LACr,lei de axuizamento criminal
+LBRL,lei de bases de réxime local
+LH,lei hipotecaria
+LOPX,lei orgánica do poder xudicial
+LP,elepé
+LPA,lei de procedemento administrativo
+LRU,ele erre u
+#lei de réxime xurídico das administracións públicas e do procedemento administrativo común
+LRXPAC,ele erre xe pac
+MLNB,movemento de liberación nacional vasco
+NBA,ene be a
+NVI,ene uve i
+OCM,o ce eme
+OLP, o ele pe 
+OMC,organización mundial do comercio
+OMS,o eme ese
+ONG,o ene gue
+ONGs,o ene gues
+OSB,o ese be
+P.I.B.,pib
+PC,pecé
+PCE,pe ce e
+#PCG,pe ce ga
+#PCLN,pe ce ele ene
+PGIDT,pe gue i de te
+PNB,producto nacional bruto
+#PNG,pe ene gue
+PNV,pe ene uve
+PP,partido popular
+PPdG,pe pe de ga
+PPdeG,pe pe de ga
+PSA,pe ese a
+#PSC,pe ese ce
+PSE, pe ese e
+PSEEE, partido socialista de euskadi euskadiko ezquerra
+PSOE,pesoe
+PSdeG,pe ese de ga
+PSdeGPSOE,pe ese de ga pesoe
+#PVP,pe uve pe
+PXOU,pexou
+RDL,real decreto lei
+RDLEX,real decreto lexislativo
+RIP,rip
+RSU,residuos sólidos urbanos
+RTVE,erre te uve e
+RTVG,erre te uve ga
+#S.M.I.,ese eme i
+S.O.S.,ese o ese
+SGAE,esgae
+#SLG,ese ele gue
+SMI,ese eme i
+SOS,ese o ese
+SVA,ese uve a
+SXAE,sociedade xeral de autores de españa
+T.V.G.,te uve ga
+TAV,tren de alta velocidade
+TC,tribunal constitucional
+#TNT,te ene te
+#TRD,te erre de
+TSX,tribunal superior de xustiza
+TSXG,tribunal superior de xustiza de galicia
+#TV,te uve
+TVE,televisión española
+TVG,teuvegá
+U.E.,u e
+UCD,u ce de
+UDC,u de ce
+UGT,u ge te
+UHF,u ache efe
+UHT,u ache te
+UPG,u pe ga
+URSS,urss
+USA,estados unidos
+USB,u ese be
+USC,u ese ce
+UU.AA.,unións agrarias
+UUAA,unións agrarias
+UXT,u xe te
+#VHF,uve ache efe
+#VHS,uve ache ese
+VIH,uve i ache
+WC,uve ce
+XX.AA.,xoves agricultores
+http,ache te te pe
+www,uvedobre uvedobre uvedobre

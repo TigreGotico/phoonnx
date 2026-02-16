@@ -114,11 +114,24 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
 
     @staticmethod
     def chunk_text(text: str, delimiters: Optional[List[str]] = None) -> TextChunks:
+        """
+        Split input text into sentence-aware chunks using sentence tokenization and optional intra-sentence delimiters.
+
+        Parameters:
+            text (str): Input text to split. If empty, returns a single empty chunk.
+            delimiters (Optional[List[str]]): List of substring delimiters to split sentences by (defaults to [":", ";", "...", "|"]).
+
+        Returns:
+            TextChunks: A list of tuples (substring, terminator, end_of_sentence) where:
+                - `substring` is the chunk text with surrounding whitespace removed,
+                - `terminator` is the delimiter that followed the substring or the sentence-final punctuation if none matched,
+                - `end_of_sentence` is `True` for the final chunk of a tokenized sentence, `False` otherwise.
+        """
         if not text:
             return [('', '', True)]
 
         results: TextChunks = []
-        delimiters = delimiters or [", ", ":", ";", "...", "|"]
+        delimiters = delimiters or [":", ";", "...", "|"]
 
         # Create a regex pattern that matches any of the delimiters
         delimiter_pattern = re.escape(delimiters[0])
@@ -146,16 +159,6 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
             results.extend(chunks)
 
         return results
-
-
-### all the 3 below are essentially the same thing
-# no phonemization really happens
-
-class RawPhonemes(BasePhonemizer):
-    """no phonemization, text is phonemes already"""
-
-    def phonemize_string(self, text: str, lang: str) -> str:
-        return text
 
 
 class GraphemePhonemizer(BasePhonemizer):
@@ -200,24 +203,30 @@ class UnicodeCodepointPhonemizer(BasePhonemizer):
 
     def phonemize_string(self, text: str, lang: str) -> str:
         # Phonemes = codepoints
+        """
+        Normalize the input text to Unicode NFD so phonemes correspond to individual Unicode codepoints.
+
+        Parameters:
+            text (str): The input string to normalize.
+            lang (str): Language code (ignored by this implementation).
+
+        Returns:
+            str: The input text normalized to Unicode NFD, with combining marks separated into distinct codepoints.
+        """
         return unicodedata.normalize(self.form, text)
 
 
 if __name__ == "__main__":
-    raw = RawPhonemes()
     grap = GraphemePhonemizer()
     uni = UnicodeCodepointPhonemizer()
 
     text = "olá, quem são vocês?"
     lang = "pt"
-    print(raw.phonemize(text, lang))
     print(grap.phonemize(text, lang))
     print(uni.phonemize(text, lang))
 
-    print(raw.phonemize_string(text, lang))
     print(grap.phonemize_string(text, lang))
     print(uni.phonemize_string(text, lang))
 
-    print(raw.phonemize_to_list(text, lang))
     print(grap.phonemize_to_list(text, lang))
     print(uni.phonemize_to_list(text, lang))

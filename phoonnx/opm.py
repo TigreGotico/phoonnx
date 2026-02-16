@@ -25,17 +25,17 @@ class PhoonnxTTSPlugin(TTS):
 
     def __init__(self, config=None):
         """
-        Initialize the PhoonnxTTSPlugin, set up the model manager, and load an initial voice.
+        Initialize the PhoonnxTTSPlugin and prepare its model manager and initial voice cache.
         
-        Creates a TTSModelManager, loads available models, calls refresh_voices(), and caches either the configured non-default voice or the language-specific default voice in self.voices.
+        Creates a TTSModelManager, loads models, merges default voices into the manager, and caches either the configured non-default voice or the default voice for the plugin language.
         
         Parameters:
-            config (dict | None): Configuration passed to the base TTS initializer.
+        	config (dict | None): Optional configuration passed to the base TTS initializer.
         """
         super().__init__(config=config)
         self.model_manager = TTSModelManager()
         self.model_manager.load()
-        self.refresh_voices()
+        self.model_manager.merge_default_voices()
 
         self.voices: Dict[str, TTSVoice] = {}
         if self.voice and self.voice != "default":
@@ -53,7 +53,7 @@ class PhoonnxTTSPlugin(TTS):
         """
         if not self.model_manager.voices or force:
             try:
-                self.model_manager.refresh_voices()
+                self.model_manager.merge_default_voices()
             except Exception as exc:
                 LOG.warning(f"Voice refresh failed: {exc}")
 

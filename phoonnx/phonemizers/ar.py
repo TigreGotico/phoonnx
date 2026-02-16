@@ -1,6 +1,6 @@
 from phoonnx.config import Alphabet
 from phoonnx.phonemizers.base import BasePhonemizer
-from phoonnx.thirdparty.bw2ipa import translate as bw2ipa
+from phoonnx.thirdparty.bw2ipa import mantoq_to_ipa
 from phoonnx.thirdparty.mantoq import g2p as mantoq
 
 
@@ -44,7 +44,7 @@ class MantoqPhonemizer(BasePhonemizer):
         if self.alphabet == Alphabet.IPA:
             # If the alphabet is IPA, we use the bw2ipa function to translate
             # the Buckwalter-like phonemes into IPA.
-            return bw2ipa(phonemes)
+            return mantoq_to_ipa(phonemes)
 
         # Otherwise, we return the phonemes in the default Mantoq alphabet.
         return phonemes
@@ -96,3 +96,33 @@ if __name__ == "__main__":
     # 5. Test for glide (e.g., 'law' - if)
     text = "لو"
     compare(text)
+
+    print("--- CATEGORY 1: SUN AND MOON CONTRAST ---")
+    # Tests assimilation of 'L' in 'Al'
+    text1 = "السيارة الجديدة"
+    compare(text1)
+
+    print("--- CATEGORY 2: DIPHTHONGS VS LONG VOWELS ---")
+    # Tests 'ay' (Bayt/Layl) vs long 'u' (Sukoon)
+    text2 = "بيت في سكون الليل"
+    compare(text2)
+
+    print("--- CATEGORY 3: HAMZAT AL-WASL (CONNECTIVITY) ---")
+    # Tests if the 'i' in 'Ism' is dropped after 'Ma'
+    text3 = "ما اسمك؟"
+    compare(text3)
+
+    print("--- CATEGORY 4: SILENT LETTERS AND TANWEEN ---")
+    # Tests the silent 'w' in 'Amr' and 'in' sound at word ends
+    text4 = "ذهب عمرو إلى مدرسة بعيدة"
+    compare(text4)
+
+    print("--- CATEGORY 5: INTERNAL SHADDA ---")
+    # Tests doubling of consonants in the middle of words
+    text5 = "علّم المدرس الطالب"
+    compare(text5)
+
+    print("--- CATEGORY 6: FINAL WEAK VOWELS (ALIF MAQSURA) ---")
+    # Tests if 'Mousa' (ending in Ya) is read as 'a'
+    text6 = "ذهب موسى إلى المستشفى"
+    compare(text6)

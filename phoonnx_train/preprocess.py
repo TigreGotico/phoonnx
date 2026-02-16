@@ -12,16 +12,15 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple, Any, Set, Union, Callable
 
 import click
-from phoonnx.util import normalize
+from tqdm import tqdm
+
 from phoonnx.config import PhonemeType, get_phonemizer, Alphabet
 from phoonnx.phonemizers import Phonemizer
-from phoonnx.phoneme_ids import (
-    phonemes_to_ids, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN,
-    DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN
-)
-from phoonnx_train.norm_audio import cache_norm_audio, make_silence_detector
-from tqdm import tqdm
+from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, \
+    DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN
+from phoonnx.util import normalize
 from phoonnx.version import VERSION_STR
+from phoonnx_train.norm_audio import cache_norm_audio, make_silence_detector
 
 _LOGGER = logging.getLogger("preprocess")
 
@@ -411,8 +410,37 @@ def cli(
     jsonl_audio_spec_path: Optional[str],
 ) -> None:
     """
-    Preprocess a TTS dataset (e.g., LJSpeech format) for training a VITS-style model.
-    This script handles text normalization, phonemization, and optional audio caching.
+    Preprocess a TTS dataset into a JSONL and config suitable for training a VITS-style model.
+    
+    Builds a phoneme map, phonemizes texts, optionally normalizes audio, and writes a phoonnx-compatible
+    config.json and dataset.jsonl in the output directory.
+    
+    Parameters:
+        input_dir (Path): Root directory of the input dataset (e.g., LJSpeech-style).
+        output_dir (Path): Directory where output config and dataset files will be written.
+        language (str): Language code used by the phonemizer.
+        prev_config (Path): Path to a previous dataset config to load an existing phoneme map (for finetuning).
+        drop_extra_phonemes (bool): If True, discard phonemes that differ from prev_config to allow finetuning.
+        sample_rate (int): Target audio sample rate for normalization.
+        cache_dir (Optional[Path]): Directory to store cached normalized audio and spectrograms (defaults to output_dir/cache/<sample_rate>).
+        max_workers (Optional[int]): Number of worker processes to use for phonemization and audio processing (defaults to CPU count).
+        single_speaker (bool): Treat the entire dataset as a single speaker (overrides per-utterance speaker labels).
+        speaker_id (Optional[int]): Fixed speaker ID to assign to all utterances (cannot be used with --single-speaker).
+        phoneme_type (str): Phoneme type identifier used to initialize the phonemizer.
+        alphabet (str): Alphabet identifier (e.g., IPA) used by the phonemizer.
+        phonemizer_model (str): Model name or identifier for the phonemizer.
+        text_casing (str): Text casing transform to apply before phonemization (e.g., "lower", "upper", "casefold").
+        dataset_name (Optional[str]): Optional dataset name to store in the generated config (defaults to output directory name).
+        audio_quality (Optional[str]): Optional audio quality label stored in the generated config.
+        skip_audio (bool): If True, skip audio processing and only phonemize text.
+        debug (bool): Enable debug logging.
+        add_diacritics (bool): Instruct the inference settings in the config to add diacritics.
+        jsonl_audio_path (Optional[str]): Optional base path override for audio paths written into dataset.jsonl.
+        jsonl_audio_spec_path (Optional[str]): Optional base path override for cached audio/spec paths in dataset.jsonl.
+    
+    Raises:
+        click.Abort: If mutually exclusive CLI options are provided (e.g., both --single-speaker and --speaker-id).
+        ValueError: If finetuning with a previous config and the new dataset contains phonemes not present in that config and drop_extra_phonemes is False.
     """
     # Create a config object from click arguments for easier passing
     config = PreprocessorConfig(
@@ -605,6 +633,9 @@ def cli(
     # --- Apply final phoneme IDs and write dataset.jsonl ---
     _LOGGER.info("Writing dataset.jsonl...")
     valid_utterances_count: int = 0
+
+    tokenizer = TTSTokenizer.from_phoonnx_config(config_data)
+
     with open(config.output_dir / "dataset.jsonl", "w", encoding="utf-8") as dataset_file:
         for utt in processed_utterances:
             if is_multispeaker and utt.speaker is not None:
@@ -615,7 +646,7 @@ def cli(
 
             # Apply the final phoneme ID map to each utterance
             if utt.phonemes:
-                utt.phoneme_ids = phonemes_to_ids(utt.phonemes, id_map=final_phoneme_id_map)
+                utt.phoneme_ids = tokenizer.tokenize(utt.phonemes)
 
             if not utt.phoneme_ids:
                 _LOGGER.warning("Skipping utterance with invalid phoneme_ids before writing: %s", utt.audio_path)

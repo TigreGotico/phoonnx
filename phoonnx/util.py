@@ -9,13 +9,23 @@ from ovos_date_parser import nice_time, nice_date
 from ovos_number_parser import pronounce_number, pronounce_fraction
 from ovos_number_parser.util import is_numeric
 from unicode_rbnf import RbnfEngine, FormatPurpose
-
+from langcodes import standardize_tag
 try:
     from ovos_utils.log import LOG
 except ImportError:
     import logging
 
     LOG = logging.getLogger("phoonnx")
+
+
+def normalize_lang(lang: str) -> str:
+    if lang == "tgl" or lang == "tl":
+        # HACK: langcodes erroneously (debatable) changes this one to "fil"
+        return "tl"
+    try:
+        return standardize_tag(lang)
+    except:
+        return lang
 
 
 def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Tuple[str, int]:
@@ -685,8 +695,17 @@ def is_fraction(word: str) -> bool:
 
 def normalize(text: str, lang: str) -> str:
     """
-    Normalizes a text string by expanding contractions, titles, and pronouncing
-    numbers, units, and fractions.
+    Normalize a text string for speech by expanding contractions and titles and converting dates, times, numbers, units, and fractions into spoken forms.
+    
+    Parameters:
+        text (str): Input text to normalize.
+        lang (str): Locale language tag (e.g., "en", "en-US") that determines language-specific rules.
+    
+    Returns:
+        str: The normalized text with expanded contractions and titles and with dates, times, numbers, units, and fractions converted to their spoken equivalents.
+    
+    Notes:
+        Date and time normalization is attempted for the locale and is silently skipped if unsupported. Numeric formatting may use a locale RBNF engine when available; otherwise a fallback is used.
     """
     full_lang = lang
     lang_code = full_lang.split("-")[0]
@@ -694,7 +713,10 @@ def normalize(text: str, lang: str) -> str:
 
     # Step 1: Handle dates and times with ovos-date-parser
     date_format = "MDY" if full_lang.lower() == "en-us" else "DMY"
-    dialog = _normalize_dates_and_times(dialog, full_lang, date_format)
+    try:
+        dialog = _normalize_dates_and_times(dialog, full_lang, date_format)
+    except:  # throws exception on unsupported langs
+        pass
 
     # Step 2: Normalize words with hyphens and digits
     dialog = _normalize_word_hyphen_digit(dialog)

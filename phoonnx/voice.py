@@ -11,9 +11,9 @@ import onnxruntime
 from langcodes import closest_match
 
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, get_phonemizer
-from phoonnx.phoneme_ids import phonemes_to_ids, BlankBetween
 from phoonnx.phonemizers import Phonemizer
 from phoonnx.phonemizers.base import PhonemizedChunks
+from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
 
@@ -99,14 +99,19 @@ class AudioChunk:
 @dataclass
 class TTSVoice:
     session: onnxruntime.InferenceSession
-
     config: VoiceConfig
-
     phonetic_spellings: Optional[PhoneticSpellings] = None
-
     phonemizer: Optional[Phonemizer] = None
 
     def __post_init__(self):
+        """
+        Initialize optional phonetic resources after dataclass construction.
+        
+        Attempts to load phonetic spellings for the voice's language and, if a phonemizer was not provided, selects and assigns one based on the voice configuration.
+        
+        Notes:
+        - If no phonetic spellings file is found for the configured language, the absence is ignored.
+        """
         try:
             self.phonetic_spellings = PhoneticSpellings.from_lang(self.config.lang_code)
         except FileNotFoundError:
@@ -116,31 +121,62 @@ class TTSVoice:
                                              self.config.alphabet,
                                              self.config.phonemizer_model)
 
+    @property
+    def tokenizer(self) -> TTSTokenizer:
+        """
+        Return the tokenizer configured for this voice.
+        
+        Returns:
+            TTSTokenizer: The TTSTokenizer instance from the voice configuration.
+        """
+        return self.config.tokenizer
+
     @staticmethod
     def load(
             model_path: Union[str, Path],
             config_path: Optional[Union[str, Path]] = None,
+            vocab_path: Optional[Union[str, Path]] = None,
+            tokenizer_config_path: Optional[Union[str, Path]] = None,
             phonemes_txt: Optional[str] = None,
             phoneme_map: Optional[str] = None,
             lang_code: Optional[str] = None,
             phoneme_type_str: Optional[str] = None,
+            alphabet_str: Optional[str] = None,
             use_cuda: bool = False
     ) -> "TTSVoice":
         """
-        Load an ONNX model and config.
-
-        :param model_path: Path to ONNX voice model.
-        :param config_path: Path to JSON voice config (defaults to model_path + ".json").
-        :param use_cuda: True if CUDA (GPU) should be used instead of CPU.
-        :return: Voice object.
+        Load a TTS voice ONNX model and its configuration into a TTSVoice instance.
+        
+        Parameters:
+            model_path (str | Path): Path to the ONNX voice model file.
+            config_path (str | Path, optional): Path to the JSON voice configuration. If omitted, defaults to model_path + ".json".
+            phonemes_txt (str, optional): Optional phonemes definition or file content to override the config's phoneme list.
+            phoneme_map (str, optional): Optional phoneme mapping specification or file path used to map phonemes (may be None).
+            lang_code (str, optional): Language code to override or set in the loaded voice configuration.
+            phoneme_type_str (str, optional): Phoneme type identifier to override the configuration (for example, "arpabet" or "ipa").
+            alphabet_str (str, optional): Alphabet override to pass into the VoiceConfig during load.
+            use_cuda (bool): If true, prefer CUDA execution provider for ONNX Runtime; otherwise use the CPU provider.
+        
+        Returns:
+            TTSVoice: A TTSVoice instance prepared with the loaded ONNX session and merged configuration.
         """
         if config_path is None:
             config_path = f"{model_path}.json"
-            LOG.debug("Guessing voice config path: %s", config_path)
 
-        with open(config_path, "r", encoding="utf-8") as config_file:
-            config_dict = json.load(config_file)
+        if os.path.isfile(config_path):
+            with open(config_path, "r", encoding="utf-8") as config_file:
+                config_dict = json.load(config_file)
+        else:
+            config_dict = {"phoneme_type": "unicode", "alphabet": "unicode"}
 
+        vocab_dict = {}
+        tokenizer_dict = {}
+        if vocab_path and os.path.isfile(vocab_path):
+            with open(vocab_path, "r", encoding="utf-8") as vocab_file:
+                vocab_dict = json.load(vocab_file)
+            if tokenizer_config_path and os.path.isfile(tokenizer_config_path):
+                with open(tokenizer_config_path, "r", encoding="utf-8") as tokenizer_file:
+                    tokenizer_dict = json.load(tokenizer_file)
         providers: list[Union[str, tuple[str, dict[str, Any]]]]
         if use_cuda:
             providers = [
@@ -155,9 +191,12 @@ class TTSVoice:
 
         return TTSVoice(
             config=VoiceConfig.from_dict(config_dict,
-                                         phonemes_txt=phonemes_txt,
+                                         vocab=vocab_dict,
+                                         tokenizer_config=tokenizer_dict,
+                                         alphabet=alphabet_str,
+                                         tokens_txt=phonemes_txt,
                                          lang_code=lang_code,
-                                         phoneme_type_str=phoneme_type_str),
+                                         phoneme_type=phoneme_type_str),
             session=onnxruntime.InferenceSession(
                 str(model_path),
                 sess_options=onnxruntime.SessionOptions(),
@@ -206,23 +245,16 @@ class TTSVoice:
 
     def phonemes_to_ids(self, phonemes: list[str]) -> list[int]:
         """
-        Phonemes to ids.
-
-        :param phonemes: List of phonemes (or characters for grapheme models).
-        :return: List of phoneme ids.
+        Convert a sequence of phoneme tokens (or characters for grapheme models) into token IDs.
+        
+        Parameters:
+            phonemes (list[str]): Sequence of phoneme strings or individual characters to be tokenized.
+        
+        Returns:
+            list[int]: Token IDs corresponding to each input phoneme or character.
         """
-        if self.config.phoneme_id_map is None:
-            raise ValueError("self.config.phoneme_id_map is None")
-        return phonemes_to_ids(phonemes, self.config.phoneme_id_map,
-                               blank_token=self.config.blank_token,
-                               bos_token=self.config.bos_token,
-                               eos_token=self.config.eos_token,
-                               word_sep_token=self.config.word_sep_token,
-                               include_whitespace=self.config.include_whitespace,
-                               blank_at_start=self.config.blank_at_start,
-                               blank_at_end=self.config.blank_at_end,
-                               blank_between=BlankBetween.TOKENS_AND_WORDS,
-                               )
+        token_ids =  self.tokenizer.tokenize(phonemes)
+        return token_ids
 
     def synthesize(
             self,
@@ -230,10 +262,16 @@ class TTSVoice:
             syn_config: Optional[SynthesisConfig] = None,
     ) -> Iterable[AudioChunk]:
         """
-        Synthesize one audio chunk per sentence from from text.
-
-        :param text: Text to synthesize.
-        :param syn_config: Synthesis configuration.
+        Synthesize speech from input text, yielding one AudioChunk per sentence.
+        
+        Generates sentence-level audio by phonemizing the input text and synthesizing each sentence into a float32 PCM audio array in the range [-1.0, 1.0]. If enabled in the synthesis configuration, user-provided phonetic spellings and diacritic augmentation are applied before phonemization. Output audio may be normalized and volume-scaled according to the configuration; samples are clipped to [-1.0, 1.0].
+        
+        Parameters:
+            text (str): The input text to synthesize.
+            syn_config (Optional[SynthesisConfig]): Optional synthesis options (e.g., enable_phonetic_spellings, add_diacritics, normalize_audio, volume). If omitted, a default SynthesisConfig is used.
+        
+        Returns:
+            Iterable[AudioChunk]: An iterable that yields one AudioChunk per synthesized sentence. Each AudioChunk contains a float32 audio array, sample rate taken from the voice config, 2-byte sample width, and 1 channel.
         """
         if syn_config is None:
             syn_config = SynthesisConfig()
@@ -328,8 +366,7 @@ class TTSVoice:
         :param syn_config: Synthesis configuration.
         :return: Audio float numpy array from voice model (unnormalized, in range [-1, 1]).
         """
-        if syn_config is None:
-            syn_config = SynthesisConfig()
+        syn_config = syn_config or SynthesisConfig()
 
         langid = syn_config.lang_id or 0
         speaker_id = syn_config.speaker_id or 0
@@ -340,36 +377,44 @@ class TTSVoice:
         expected_args = [model_input.name for model_input in self.session.get_inputs()]
         # print("Expected ONNX Inputs:", expected_args)
 
+        # Convert phoneme_ids list[int] to ONNX inputs
         phoneme_ids_array = np.expand_dims(np.array(phoneme_ids, dtype=np.int64), 0)
         phoneme_ids_lengths = np.array([phoneme_ids_array.shape[1]], dtype=np.int64)
+        attention_mask = np.ones_like(phoneme_ids_array, dtype=np.int64)
+
+        # Prepare all possible input formats for different ONNX exports
         args = {
             "input": phoneme_ids_array,
-            "input_lengths": phoneme_ids_lengths
+            "input_lengths": phoneme_ids_lengths,
+            "x": phoneme_ids_array,          # MMS style
+            "x_length": phoneme_ids_lengths, # MMS style
+            "input_ids": phoneme_ids_array,  # HF style
+            "attention_mask": attention_mask # HF style
         }
 
+        # Add synthesis parameters
         if length_scale is None:
             length_scale = self.config.length_scale
         if noise_scale is None:
             noise_scale = self.config.noise_scale
         if noise_w_scale is None:
             noise_w_scale = self.config.noise_w_scale
-        if "scales" in expected_args:
-            args["scales"] = np.array(
-                [noise_scale, length_scale, noise_w_scale],
-                dtype=np.float32,
-            )
 
-        args["langid"] = np.array([langid], dtype=np.int64)
-        args["sid"] = np.array([speaker_id], dtype=np.int64)
+        args.update({
+            "scales": np.array([noise_scale, length_scale, noise_w_scale], dtype=np.float32),
+            "noise_scale": np.array([noise_scale], dtype=np.float32),
+            "noise_scale_w": np.array([noise_w_scale], dtype=np.float32),
+            "length_scale": np.array([length_scale], dtype=np.float32),
+            "langid": np.array([langid], dtype=np.int64),
+            "sid": np.array([speaker_id], dtype=np.int64),
+        })
 
-        # different models can be used and args may differ
+        # Keep only ONNX model-expected inputs
         args = {k: v for k, v in args.items() if k in expected_args}
-        audio = self.session.run(
-            None,
-            args,
-        )[0].squeeze()
 
+        audio = self.session.run(None, args)[0].squeeze()
         return audio
+
 
 
 if __name__ == "__main__":

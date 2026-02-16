@@ -1,0 +1,669 @@
+#
+#
+# $Id: locucions.txt,v 1.5 2008/12/11 07:51:12 campillo Exp $
+# $Name:  $
+#a carta cabal,3,011,LOC_ADXE,LOC_PREP_MODO
+#a ese,2,01,LOC_INTERX
+#a extinguir,2,01,LOC_ADXE,LOC_PREP_MODO
+#a flor de piel,4,0101,LOC_ADXE
+#a fortiori,2,01,LOC_ADVE,LOC_LAT
+#a la plancha,3,001,LOC_ADXE
+#a la ponleví,3,001,LOC_ADXE
+#a medida,2,01,LOC_ADXE
+#a medio hacer,3,011,LOC_ADXE
+#a muerte,2,01,LOC_ADXE
+#a nativitate,2,01,LOC_LAT
+#a posteriori,2,01,LOC_LAT
+#a priori,2,01,LOC_LAT
+#a prueba,2,01,LOC_ADXE
+#a surco,2,01,LOC_ADXE
+#ab aeterno,2,01,LOC_ADVE,LOC_LAT
+#ab initio,2,01,LOC_ADVE,LOC_LAT
+#ab intestato,2,01,LOC_ADVE,LOC_LAT
+#ab irato,2,01,LOC_ADVE,LOC_LAT
+#ab ovo,2,01,LOC_ADVE,LOC_LAT
+#abierto de pechos,3,101,LOC_ADXE
+#ad calendas graecas,3,011,LOC_ADVE,LOC_LAT
+#ad hoc,2,01,LOC_ADVE,LOC_ADXE
+#ad honórem,2,01,LOC_ADVE,LOC_ADXE
+#al natural,2,01,LOC_ADXE
+#al por mayor,3,001,LOC_ADXE
+#al por menor,3,001,LOC_ADXE
+#al óleo,2,01,LOC_ADXE
+#alma materes,2,01,LOC_LAT
+#alma máter,2,01,LOC_LAT
+#ande usted,2,01,LOC_INTERX
+#ante díem,2,01,LOC_LAT
+#así así,2,11,LOC_ADXE
+#atrasado de medios,3,101,LOC_ADXE
+#bajo de ley,3,101,LOC_ADXE
+#bañado de suela,3,101,LOC_ADXE
+#bien apersonado,2,11,LOC_ADXE
+#bien hablado,2,11,LOC_ADXE
+#blando de carona,3,101,LOC_ADXE
+#bran de inglaterra,3,101,LOC
+#calado hasta los huesos,4,1001,LOC_ADXE
+#cantidad de,2,10,LOC_ADXE
+#cerrado de mollera,3,101,LOC_ADXE
+#cochinito de San Antón,4,1001,LOC
+#con toda la barba,4,0101,LOC_ADXE
+#cortado a pico,3,101,LOC_ADXE
+#crecido de enojo,3,101,LOC_ADXE
+#cuerpo a cuerpo,3,101,LOC_ADXE
+#cuerpo de Cristo,3,101,LOC_INTERX
+#cuerpo de Dios,3,101,LOC_INTERX
+#cuerpo de mí,3,101,LOC_INTERX
+#cuerpo de tal,3,100,LOC_INTERX
+#curricula vitae,2,11,LOC_LAT
+#curriculum vitae,2,11,LOC_LAT
+#cástor y pólux,3,101,LOC
+#de a folio,3,001,LOC_ADXE
+#de abrigo,2,01,LOC_ADXE
+#de acabar,2,01,LOC_ADXE
+#de acarreo,2,01,LOC_ADXE
+#de acero,2,01,LOC_ADXE
+#de adorno,2,01,LOC_ADXE
+#de agache,2,01,LOC_ADXE
+#de agua,2,01,LOC_ADXE
+#de ahí,2,01,LOC_ADXE
+#de alinde,2,01,LOC_ADXE
+#de alquiler,2,01,LOC_ADXE
+#de alterne,2,01,LOC_ADXE
+#de alto copete,3,011,LOC_ADXE
+#de alto coturno,3,011,LOC_ADXE
+#de aluvión,2,01,LOC_ADXE
+#de anticipación,2,01,LOC_ADXE
+#de antología,2,01,LOC_ADXE
+#de armas tomar,3,011,LOC_ADXE
+#de avancarga,2,01,LOC_ADXE
+#de avería,2,01,LOC_ADXE
+#de bandera,2,01,LOC_ADXE
+#de bolsillo,2,01,LOC_ADXE
+#de bombo y platillos,4,0101,LOC_ADXE
+#de buen tono,3,011,LOC_ADXE
+#de buena boca,3,011,LOC_ADXE
+#de buena cepa,3,011,LOC_ADXE
+#de buena ropa,3,011,LOC_ADXE
+#de caballo,2,01,LOC_ADXE
+#de calidad,2,01,LOC_ADXE
+#de campanillas,2,01,LOC_ADXE
+#de campeonato,2,01,LOC_ADXE
+#de capona,2,01,LOC_ADXE
+#de cascabel gordo,3,011,LOC_ADXE
+#de categoría,2,01,LOC_ADXE
+#de chicha y nabo,4,0101,LOC_ADXE
+#de chipé,2,01,LOC_ADXE
+#de cierta edad,3,011,LOC_ADXE
+#de cinco en fondo,4,0101,LOC_ADXE
+#de cine,2,01,LOC_ADXE
+#de clave,2,01,LOC_ADXE
+#de color,2,01,LOC_ADXE
+#de confección,2,01,LOC_ADXE
+#de confianza,2,01,LOC_ADXE
+#de corredera,2,01,LOC_ADXE
+#de cuartas,2,01,LOC_ADXE
+#de cuatro suelas,3,011,LOC_ADXE
+#de cuenta,2,01,LOC_ADXE
+#de cuidado,2,01,LOC_ADXE
+#de cámara,2,01,LOC_ADXE
+#de derecha,2,01,LOC_ADXE
+#de derechas,2,01,LOC_ADXE
+#de diario,2,01,LOC_ADXE
+#de entendimiento,2,01,LOC_ADXE
+#de entidad,2,01,LOC_ADXE
+#de entrada,2,01,LOC_ADXE
+#de entre casa,3,011,LOC_ADXE
+#de escalera abajo,3,011,LOC_ADXE
+#de esquina,2,01,LOC_ADXE
+#de estraperlo,2,01,LOC_ADXE
+#de estreno,2,01,LOC_ADXE
+#de excepción,2,01,LOC_ADXE
+#de expectación,2,01,LOC_ADXE
+#de facto,2,01,LOC_LAT
+#de fantasía,2,01,LOC_ADXE
+#de favor,2,01,LOC_ADXE
+#de forma,2,01,LOC_ADXE
+#de gabinete,2,01,LOC_ADXE
+#de gala,2,01,LOC_ADXE
+#de guardarropía,2,01,LOC_ADXE
+#de guillotina,2,01,LOC_ADXE
+#de guías,2,01,LOC_ADXE
+#de género,2,01,LOC_ADXE
+#de hecho,2,01,LOC_ADXE
+#de hierro,2,01,LOC_ADXE
+#de historia,2,01,LOC_ADXE
+#de izquierda,2,01,LOC_ADXE
+#de izquierdas,2,01,LOC_ADXE
+#de jure,2,01,LOC_LAT
+#de la media almendra,4,0011,LOC_ADXE
+#de la tierra,3,001,LOC_ADXE
+#de lance,2,01,LOC_ADXE
+#de locura,2,01,LOC_ADXE
+#de mal tono,3,011,LOC_ADXE
+#de mal vivir,3,011,LOC_ADXE
+#de mampuesto,2,01,LOC_ADXE
+#de mano,2,01,LOC_ADXE
+#de marca,2,01,LOC_ADXE
+#de marras,2,01,LOC_ADXE
+#de martillo,2,01,LOC_ADXE
+#de mayor cuantía,3,011,LOC_ADXE
+#de media seda,3,011,LOC_ADXE
+#de medio pelo,3,011,LOC_ADXE
+#de menor cuantía,3,011,LOC_ADXE
+#de misa y olla,4,0101,LOC_ADXE
+#de molde,2,01,LOC_ADXE
+#de morondanga,2,01,LOC_ADXE
+#de muchas campanillas,3,011,LOC_ADXE
+#de munición,2,01,LOC_ADXE
+#de mérito,2,01,LOC_ADXE
+#de nada,2,01,LOC_ADXE
+#de non,2,01,LOC_ADXE
+#de número,2,01,LOC_ADXE
+#de oro,2,01,LOC_ADXE
+#de pared,2,01,LOC_ADXE
+#de pega,2,01,LOC_ADXE
+#de pelo en pecho,4,0101,LOC_ADXE
+#de peso,2,01,LOC_ADXE
+#de piedra,2,01,LOC_ADXE
+#de poca ropa,3,011,LOC_ADXE
+#de poco,2,01,LOC_ADXE
+#de precisión,2,01,LOC_ADXE
+#de profundis,2,01,LOC_LAT
+#de provecho,2,01,LOC_ADXE
+#de pulso,2,01,LOC_ADXE
+#de punto,2,01,LOC_ADXE
+#de pura cepa,3,011,LOC_ADXE
+#de quitapón,2,01,LOC_ADXE
+#de raza,2,01,LOC_ADXE
+#de recambio,2,01,LOC_ADXE
+#de redondo,2,01,LOC_ADXE
+#de reemplazo,2,01,LOC_ADXE
+#de relleno,2,01,LOC_ADXE
+#de repetición,2,01,LOC_ADXE
+#de repuesto,2,01,LOC_ADXE
+#de reserva,2,01,LOC_ADXE
+#de responsabilidad,2,01,LOC_ADXE
+#de retrocarga,2,01,LOC_ADXE
+#de rompe y rasga,4,0101,LOC_ADXE
+#de sangre caliente,3,011,LOC_ADXE
+#de sangre fría,3,011,LOC_ADXE
+#de seguridad,2,01,LOC_ADXE
+#de siete en fondo,4,0101,LOC_ADXE
+#de siete suelas,3,011,LOC_ADXE
+#de similor,2,01,LOC_ADXE
+#de sobre cuartas,3,011,LOC_ADXE
+#de sobre mesa,3,011,LOC_ADXE
+#de sobremesa,2,01,LOC_ADXE
+#de somonte,2,01,LOC_ADXE
+#de sumonte,2,01,LOC_ADXE
+#de surtido,2,01,LOC_ADXE
+#de temporada,2,01,LOC_ADXE
+#de teta,2,01,LOC_ADXE
+#de toda seda,3,011,LOC_ADXE
+#de tomo y lomo,4,0101,LOC_ADXE
+#de tres al cuarto,4,0101,LOC_ADXE
+#de tres en fondo,4,0101,LOC_ADXE
+#de tres suelas,3,011,LOC_ADXE
+#de trompetilla,2,01,LOC_ADXE
+#de turno,2,01,LOC_ADXE
+#de varas,2,01,LOC_ADXE
+#de verbo ad vérbum,4,0101,LOC_LAT
+#de viejo,2,01,LOC_ADXE
+#de vía estrecha,3,011,LOC_ADXE
+#de época,2,01,LOC_ADXE
+#del ala,2,01,LOC_ADXE
+#del corazón,2,01,LOC_ADXE
+#del demonio,2,01,LOC_ADXE
+#del tiempo,2,01,LOC_ADXE
+#delírium trémens,2,11,LOC_LAT
+#dies irae,2,11,LOC_LAT
+#dies iraes,2,11,LOC_LAT
+#duro de oído,3,101,LOC_ADXE
+#el más allá,3,011,LOC_SUST
+#el no va más,4,0011,LOC_SUST
+#empapado hasta los huesos,4,1001,LOC_ADXE
+#en alberca,2,01,LOC_ADXE
+#en batería,2,01,LOC_ADXE
+#en blanco,2,01,LOC_ADXE
+#en bosquejo,2,01,LOC_ADXE
+#en bruto,2,01,LOC_ADXE
+#en cadena,2,01,LOC_ADXE
+#en conserva,2,01,LOC_ADXE
+#en cuestión,2,01,LOC_ADXE
+#en dieciseisavo,2,01,LOC_ADXE
+#en diferido,2,01,LOC_ADXE
+#en directo,2,01,LOC_ADXE
+#en dozavo,2,01,LOC_ADXE
+#en dulce,2,01,LOC_ADXE
+#en ejercicio,2,01,LOC_ADXE
+#en familia,2,01,LOC_ADXE
+#en funciones,2,01,LOC_ADXE
+#en función,2,01,LOC_ADXE
+#en greña,2,01,LOC_ADXE
+#en miniatura,2,01,LOC_ADXE
+#en octavo mayor,3,011,LOC_ADXE
+#en octavo menor,3,011,LOC_ADXE
+#en octavo,2,01,LOC_ADXE
+#en pleno,2,01,LOC_ADXE
+#en suspensión,2,01,LOC_ADXE
+#en venta,2,01,LOC_ADXE
+#entrado en días,3,101,LOC_ADXE
+#escuyer de cocina,3,101,LOC_LAT
+#ex abrupto,2,01,LOC_ADVE,LOC_LAT
+#ex libris,2,01,LOC_LAT
+#ex testamento,2,01,LOC_ADVE,LOC_LAT
+#falto de juicio,3,101,LOC_ADXE
+#flaco de memoria,3,101,LOC_ADXE
+#fuera de lugar,3,101,LOC_ADXE
+#fuera de serie,3,101,LOC_ADXE
+#gloria Patri,2,11,LOC_LAT
+#guindillo de Indias,3,101,LOC
+#hecho una sopa,3,101,LOC_ADXE
+#hábeas corpus,2,11,LOC_LAT
+#in extenso,2,01,LOC_ADVE,LOC_LAT
+#largo de talle,3,101,LOC_ADXE
+#leído y escribido,3,101,LOC_ADXE
+#liso como la palma de la mano,7,1001001,LOC_ADXE
+#liso y llano,3,101,LOC_ADXE
+#llano como la palma de la mano,7,1001001,LOC_ADXE
+#luz verde,2,11,LOC_SUST
+#lígnum crucis,2,11,LOC_LAT
+#mal apersonado,2,01,LOC_ADXE
+#mano a mano,3,101,LOC_SUST
+#manos arriba,2,11,LOC_INTERX
+#metesillas y sacamuertos,3,101,LOC
+#metido en carnes,3,101,LOC_ADXE
+#morel de sal,3,101,LOC
+#motu proprio,2,11,LOC_LAT
+#muy muy,2,11,LOC
+#más tonto que un hilo de uvas,7,0100101,LOC_ADXE
+#no así como quiera,4,0101,LOC_ADXE
+#no como quiera,3,001,LOC_ADXE
+#noli me tángere,3,101,LOC_LAT
+#non plus ultra,3,011,LOC_LAT
+#olivastro de Rodas,3,101,LOC
+#pange lingua,2,11,LOC
+#pechardino de manga,3,101,LOC
+#per cápita,2,01,LOC_ADVE,LOC_LAT
+#pica y huye,3,101,LOC
+#poquita cosa,2,11,LOC_ADXE
+#por alto,2,01,LOC_ADXE
+#por la chita,3,001,LOC_INTERX
+#por mayor,2,01,LOC_ADXE
+#por menor,2,01,LOC_ADXE
+#por otra parte,3,011,LOC_ADVE_MODO
+#post scríptum,2,11,LOC_LAT
+#prae mánibus,2,11,LOC_ADVE,LOC_LAT
+#prima facie,2,11,LOC_LAT
+#pájaro de cuenta,3,101,LOC_ADXE
+#quid pro quo,3,101,LOC_LAT
+#rabassa morta,2,11,LOC_LAT
+#recodín recodán,2,11,LOC
+#recotín recotán,2,11,LOC
+#ser visita de,3,110,LOC_ADXE
+#sin igual,2,01,LOC_ADXE
+#sin par,2,01,LOC_ADXE
+#sin respiración,2,01,LOC_ADXE
+#statu quo,2,11,LOC_LAT
+#tacita de plata,3,101,LOC_ADXE
+#toma y daca,3,101,LOC_SUST
+#tántum ergo,2,11,LOC_LAT
+#tótum revolútum,2,11,LOC_LAT
+#ut retro,2,01,LOC_ADVE,LOC_LAT
+#ut supra,2,01,LOC_ADVE,LOC_LAT
+#vaya por dios,3,101,LOC_INTERX
+#visto bueno,2,11,LOC
+#viva la virgen,3,101,LOC_ADXE
+#vía crucis,2,11,LOC_LAT
+#vítulo marino,2,11,LOC
+#álter ego,2,11,LOC_LAT
+#énula campana,2,11,LOC_LAT
+a ascuso,2,01,LOC_ADVE
+a asentadillas,2,01,LOC_ADVE
+a bruces,2,01,LOC_ADVE
+a cabo,2,01,LOC_ADVE_MODO
+a cal y canto,4,0101,LOC_ADVE_MODO
+a cambio,2,01,LOC_ADVE_MODO
+a cambio de,3,010,LOC_PREP
+a cargo de,3,010,LOC_PREP
+a causa de,3,010,LOC_PREP_CAUS
+a consecuencia de,3,010,LOC_PREP_CAUS
+a contrahílo,2,01,LOC_ADVE
+a contralecho,2,01,LOC_ADVE
+a contramano,2,01,LOC_ADVE
+a contrapelo,2,01,LOC_ADVE
+a costa de,3,010,LOC_PREP
+a coxcox,2,01,LOC_ADVE
+a cucho,2,01,LOC_ADVE
+a cuenta de,3,010,LOC_PREP
+a desmano,2,01,LOC_ADVE
+a despecho de,3,010,LOC_PREP
+a destiempo,2,01,LOC_ADVE
+a diferencia de,3,010,LOC_PREP
+a escarramanchones,2,01,LOC_ADVE
+a escondidas,2,01,LOC_ADVE_MODO
+a escondidillas,2,01,LOC_ADVE
+a escuras,2,01,LOC_ADVE
+a escusadas,2,01,LOC_ADVE
+a escuso ,2,01,LOC_ADVE
+a espetaperro,2,01,LOC_ADVE
+a excepción de,3,010,LOC_PREP_MODO
+a expensas de,3,010,LOC_PREP_MODO
+a fación de,3,010,LOC_PREP
+a favor,2,01,LOC_ADVE_MODO
+a favor de,3,010,LOC_PREP_MODO
+a fin de,3,010,LOC_CONX_SUBOR_FINAL
+a fin de que,4,0100,LOC_CONX_SUBOR_FINAL
+a flote,2,01,LOC_ADVE_MODO
+a fondo,2,01,LOC_ADVE_MODO
+a fuer de,3,010,LOC_PREP
+a fuerza de,3,010,LOC_PREP
+a gatas,2,01,LOC_ADVE
+a granel,2,01,LOC_ADVE
+a horcajadas,2,01,LOC_ADVE
+a horcajadillas,2,01,LOC_ADVE
+a hurtadillas,2,01,LOC_ADVE
+a hurtas,2,01,LOC_ADVE
+a instancia de,3,010,LOC_PREP
+a instancias de,3,010,LOC_PREP
+a juicio de,3,010,LOC_PREP_MODO
+a la altura de,4,0010,LOC_PREP
+a la chita callando,4,0011,LOC_ADVE
+a la derrería,3,001,LOC_ADVE
+a la federica,3,001,LOC_ADVE
+a la funerala,3,001,LOC_ADVE
+a la manera de,4,0010,LOC_PREP
+#a la medida,3,001,LOC_ADXE
+a la par que,4,0010,LOC_PREP_LUG,LOC_PREP_MODO
+a la pendura,3,001,LOC_ADVE
+a la remanguillé,3,001,LOC_ADVE
+a la ronza ,3,001,LOC_ADVE
+a la trocada,3,001,LOC_ADVE
+a la trocadilla,3,001,LOC_ADVE
+a la vez,3,001,LOC_ADVE_TEMP
+a la virulé,3,001,LOC_ADVE
+a la vista,3,001,LOC_ADVE_MODO
+a lo largo de,4,0010,LOC_PREP
+a lo sucusumucu,3,001,LOC_ADVE
+a machamartillo,2,01,LOC_ADVE
+a mansalva,2,01,LOC_ADVE
+a matacaballo,2,01,LOC_ADVE
+a medida que,3,010,LOC_CONX_SUBOR_TEMP
+a memeches,2,01,LOC_ADVE
+a merced,2,01,LOC_PREP
+a modo de,3,010,LOC_PREP
+a mojadedo,2,01,LOC_ADVE
+a muerdisorbe,2,01,LOC_ADVE
+a nado,2,01,LOC_ADVE
+a parrancas,2,01,LOC_ADVE
+a partir de,3,010,LOC_PREP_LUG
+a pasatoro,2,01,LOC_ADVE
+a pesar,2,01,LOC_CONX_SUBOR_CONCES
+a pesar de,3,010,LOC_CONX_SUBOR_CONCES
+a pipiricojo,2,01,LOC_ADVE
+a porrillo,2,01,LOC_ADVE
+a pospelo,2,01,LOC_ADVE
+a punto de,3,010, LOC_PREP
+a postremas,2,01,LOC_ADVE
+a quemarropa,2,01,LOC_ADVE
+a rajatabla,2,01,LOC_ADVE
+a razón de,3,010,LOC_PREP
+a raíz de,3,010,LOC_PREP_MODO
+a reculones,2,01,LOC_ADVE
+a regañadientes,2,01,LOC_ADVE
+a reserva de,3,010,LOC_PREP
+a retaguardia de,3,010,LOC_PREP
+a rodeabrazo,2,01,LOC_ADVE
+a sabiendas,2,01,LOC_ADVE
+a salvamano,2,01,LOC_ADVE
+a sentadillas,2,01,LOC_ADVE
+a sobrehora,2,01,LOC_ADVE
+a sovoz,2,01,LOC_ADVE
+a su vez,3,001,LOC_ADVE_MODO
+a tal punto que,4,0010,LOC_CONX_SUBOR_CONSE
+a tenazón,2,01,LOC_ADVE
+a tocateja,2,01,LOC_ADVE
+a tornapeón,2,01,LOC_ADVE
+a través de,3,010,LOC_ADVE_LUG,LOC_PREP_MODO
+a tresbolillo,2,01,LOC_ADVE
+a troche y moche,4,0101,LOC_ADVE
+a trochemoche,2,01,LOC_ADVE
+a tutiplén,2,01,LOC_ADVE
+a ufo,2,01,LOC_ADVE
+a ultranza,2,01,LOC_ADVE
+a veces,2,01,LOC_ADVE_TEMP
+a vuelapié,2,01,LOC_ADVE
+a vuelapluma,2,01,LOC_ADVE
+a yuras,2,01,LOC_ADVE
+abajo de,2,01,LOC_PREP
+acerca de,2,10,LOC_PREP
+ad efesios,2,01,LOC_ADVE
+ad líbitum,2,01,LOC_ADVE,LOC_LAT
+ad pédem lítterae,3,011,LOC_ADVE,LOC_LAT
+ad referéndum,2,01,LOC_ADVE,LOC_LAT
+ad valórem,2,01,LOC_ADVE,LOC_LAT
+ahora bien,2,01,LOC_CONX_COOR_ADVERS
+ahora mismo,2,01,LOC_ADVE_TEMP
+al buen tuntún,3,001,LOC_ADVE
+al cabo de,3,010,LOC_PREP
+al calor de,3,010,LOC_PREP
+al chas chas,3,001,LOC_ADVE
+al desús,2,01,LOC_ADVE
+al filo de,3,010,LOC_PREP
+al frente de,3,010,LOC_PREP
+al igual que,3,010,LOC_CONX_SUBOR_MODA
+al lado de,3,010,LOC_PREP
+al menos,2,01,LOC_ADVE_CANTI
+al mismo tiempo,3,011,LOC_ADVE_TEMP
+al objeto de,3,010,LOC_CONX_SUBOR_FINAL
+al objeto de que,4,0100,LOC_CONX_SUBOR_FINAL
+al modo de,3,010,LOC_PREP
+al objeto de que,4,0100,LOC_CONX_SUBOR_FINAL
+al tiempo que,3,010,LOC_PREP_TEMP
+al trapo,2,01,LOC_ADVE_MODO
+al tresbolillo,2,01,LOC_ADVE
+al tuntún,2,01,LOC_ADVE
+al volateo,2,01,LOC_ADVE
+alrededor de,2,10,LOC_PREP_LUG,LOC_PREP_MODO
+amén de,2,10,LOC_PREP
+antes de,2,10,LOC_ADVE_TEMP
+aparte de,2,10,LOC_PREP
+así como,2,11,LOC_ADVE_MODO,LOC_CONX_SUBOR_MODA
+#así como,2,11,LOC_ADVE_MODO
+así es que,3,100,LOC_CONX_SUBOR_CONSE
+así pues,2,10,LOC_CONX_SUBOR_CONSE
+aun así,2,11,LOC_CONX_SUBOR_CONCES
+aun cuando,2,11,LOC_CONX_COOR_ADVERS
+cara a,2,10,LOC_PREP
+cerca de,2,10,LOC_PREP
+comparativamente a,2,10,LOC_PREP
+con arreglo a,3,010,LOC_PREP
+con cargo a,3,010,LOC_PREP
+con el fin de,4,0010,LOC_CONX_SUBOR_FINAL
+con honores de,3,010,LOC_PREP
+con idea de,3,010,LOC_PREP
+con motivo de,3,010,LOC_PREP_MODO
+con objeto de,3,010,LOC_CONX_SUBOR_FINAL
+con objeto de que,4,0100,LOC_CONX_SUBOR_FINAL
+con prontitud,2,01,LOC_ADVE_MODO
+con relación a,3,010,LOC_PREP_MODO
+con respecto a,3,010,LOC_PREP_MODO
+con tal de,3,010,LOC_CONX_SUBOR_CONDI
+con tal de que,4,0100,LOC_CONX_SUBOR_CONDI
+con tal que,3,010,LOC_CONX_SUBOR_CONDI
+con vistas a,3,010,LOC_PREP
+dado que,2,10,LOC_CONX_SUBOR_CAUS
+de abulandro,2,01,LOC_ADVE
+de acuerdo,2,01,LOC_ADVE_MODO
+de acuerdo con,3,010,LOC_PREP_MODO
+de agulandro,2,01,LOC_ADVE
+de antemano,2,01,LOC_ADVE
+de bruces,2,01,LOC_ADVE
+de bruzas,2,01,LOC_ADVE
+de bruzos,2,01,LOC_ADVE
+de buces,2,01,LOC_ADVE
+de buzos,2,01,LOC_ADVE
+de cara a,3,010,LOC_PREP_MODO
+de cara al,3,010,LOC_PREP_MODO
+de consuna,2,01,LOC_ADVE
+de consuno,2,01,LOC_ADVE
+de coro,2,01,LOC_ADVE
+de empuesta,2,01,LOC_ADVE
+de entreguerras,2,01,LOC_PREP
+de falondres,2,01,LOC_ADVE
+de forma que,3,010,LOC_CONX_SUBOR_MODA
+de frente,2,01,LOC_ADVE
+de frente a,3,010,LOC_PREP_MODO
+de inmediato,2,01,LOC_ADVE_TEMP
+de mancomún,2,01,LOC_ADVE
+de manera que,3,010,LOC_CONX_SUBOR_MODA
+de manos de,3,010,LOC_PREP_MODO
+de mantuvión,2,01,LOC_ADVE
+de mentirijillas,2,01,LOC_ADVE
+de momento,2,01,LOC_ADVE_TEMP
+de nuevo,2,01,LOC_ADVE_MODO
+de ocultis,2,01,LOC_ADVE
+de oque,2,01,LOC_ADVE
+de refilón,2,01,LOC_ADVE
+de rendón,2,01,LOC_ADVE
+de repapo,2,01,LOC_ADVE
+de repente,2,01,LOC_ADVE_TEMP
+de romanía,2,01,LOC_ADVE
+de rondón,2,01,LOC_ADVE
+de taparuja,2,01,LOC_ADVE
+de tenazón,2,01,LOC_ADVE
+debajo de,2,10,LOC_PREP
+debido a,2,10,LOC_PREP
+delante de,2,10,LOC_PREP
+dentro de,2,10,LOC_PREP
+desde que,2,10,LOC_CONX_SUBOR_TEMP
+después de,2,10,LOC_PREP
+después que,2,10,LOC_PREP
+en aras de,3,010,LOC_PREP
+en ascuso,2,01,LOC_ADVE
+en base de,3,010,LOC_PREP
+en bomborombillos,2,01,LOC_ADVE
+en breve,2,01,LOC_ADVE_MODO
+en calidad de,3,010,LOC_PREP_MODO
+en cambio de,3,010,LOC_PREP
+en caso de,3,010,LOC_PREP
+en compañía de,3,010,LOC_PREP_MODO
+en contra,2,01,LOC_ADVE_MODO
+en cuanto,2,01,LOC_PREP
+en cuanto a,3,010,LOC_PREP_MODO
+en cuclillas,2,01,LOC_ADVE
+en cuncurumbillos,2,01,LOC_ADVE
+en defecto de,3,010,LOC_PREP
+en descargo de,3,010,LOC_PREP
+en deslayo,2,01,LOC_ADVE
+en dirección a,3,010,LOC_PREP
+en escarpión,2,01,LOC_ADVE
+en escuso,2,01,LOC_ADVE
+en fraguante,2,01,LOC_ADVE
+en función de,3,010,LOC_PREP
+en general,2,01,LOC_ADVE_MODO
+en gracia a,3,010,LOC_PREP
+en gros,2,01,LOC_ADVE
+en horre,2,01,LOC_ADVE
+en igual de,3,010,LOC_PREP
+en lo tocante a,4,0010,LOC_PREP
+en lugar de,3,010,LOC_PREP
+en materia de,3,010,LOC_PREP
+en modo alguno,3,010,LOC_ADVE_NEGA
+en obsequio a,3,010,LOC_PREP
+en obsequio de,3,010,LOC_PREP
+en parte,2,01,LOC_ADVE_MODO
+en pelota,2,01,LOC_ADVE
+en pinganitos,2,01,LOC_ADVE
+en pleno,2,01,LOC_ADVE_MODO
+en rama,2,01,LOC_ADVE
+en relación a,3,010,LOC_PREP_MODO
+en relación con,3,010,LOC_PREP_CAUS
+en sembra,2,01,LOC_ADVE
+en solitario,2,01,LOC_ADVE_MODO
+en tanganillas,2,01,LOC_ADVE
+en torno a,3,010,LOC_PREP
+en vez de,3,010,LOC_PREP
+en vilo,2,01,LOC_ADVE
+en vista de,3,010,LOC_PREP_MODO
+en volandas,2,01,LOC_ADVE
+en volandillas,2,01,LOC_ADVE
+encima de,2,10,LOC_PREP
+es cusaña,2,01,LOC_ADVE
+eso que,2,01,LOC_CONX_COOR_ADVERS
+ex cátedra,2,01,LOC_ADVE
+ex cáthedra,2,01,LOC_ADVE
+ex profeso,2,01,LOC_ADVE
+frente a,2,10,LOC_PREP_LUG,LOC_PREP_MODO
+frontero de,2,10,LOC_PREP
+fuera de,2,10,LOC_PREP
+fueras ende,2,11,LOC_PREP
+guájete por guájete,3,101,LOC_ADVE
+hasta tal punto que,4,0010,LOC_CONX_SUBOR_CONSE
+in albis,2,01,LOC_ADVE
+in fraganti,2,01,LOC_ADVE
+in promptu,2,01,LOC_ADVE
+in situ,2,01,LOC_ADVE_LUG
+in sólidum,2,01,LOC_ADVE
+junto a,2,10,LOC_PREP
+junto con,2,10,LOC_PREP
+lejos de,2,10,LOC_PREP
+merced a,2,10,LOC_PREP
+mientras más,2,11,LOC_CONX_SUBOR_CORREL
+mientras que,2,10,LOC_CONX_COOR_ADVERS
+mientras tanto,2,10,LOC_CONX_SUBOR_TEMP
+ni por soñación,3,001,LOC_ADVE
+no obstante,2,01,LOC_CONX_COOR_ADVERS
+para con,2,01,LOC_PREP
+para in sécula,3,001,LOC_ADVE
+para mediados de,3,010,LOC_PREP_TEMP
+para que,2,01,LOC_CONX_SUBOR_FINAL
+para sécula,2,01,LOC_ADVE
+pese a,2,10,LOC_CONX_SUBOR_CONCES
+poco a poco,3,101,LOC_ADVE_MODO
+por adelantado,2,01,LOC_ADVE
+por amor de,3,010,LOC_PREP
+por completo,2,01,LOC_ADVE_MODO
+por concuerda,2,01,LOC_ADVE
+por conducto de,3,010,LOC_PREP
+por consiguiente,2,01,LOC_CONX_SUBOR_CONSE
+por cuanto,2,01,LOC_CONX_SUBOR_CONSE
+por el que,3,000,LOC_CONX_SUBOR_CONSE
+por fas o por nefas,5,01001,LOC_ADVE
+por intermedio de,3,010,LOC_PREP
+por la que,3,000,LOC_CONX_SUBOR_CONSE
+por lo mismo,3,001,LOC_CONX_SUBOR_CAUS
+por lo que respecta a,5,00010,LOC_PREP
+por lo tanto,3,001,LOC_CONX_SUBOR_CONSE
+por medio de,3,010,LOC_PREP_MODO
+por momentos,2,01,LOC_ADVE_MODO
+por parte de,3,010,LOC_PREP_CAUS
+por que,2,01,LOC_CONX_SUBOR_CAUS,LOC_CONX_SUBOR_FINAL
+por sistema,2,01,LOC_ADVE_MODO
+por su parte,3,011,LOC_ADVE_MODO
+por tanto,2,01,LOC_ADVE,LOC_CONX_SUBOR_CONSE
+por unanimidad,2,01,LOC_ADVE_MODO
+por último,2,01,LOC_ADVE_TEMP
+pues que,2,01,LOC_CONX_SUBOR_CAUS,LOC_CONX_SUBOR_CONDI
+puesto que,2,10,LOC_CONX_COOR_ADVERS
+respecto a,2,10,LOC_PREP_MODO
+respecto de,2,10,LOC_PREP_MODO
+si bien,2,01,LOC_CONX_COOR_ADVERS
+si ya,2,01,LOC_CONX_SUBOR_CONDI
+siempre que,2,10,LOC_CONX_SUBOR_CONDI
+sin embargo,2,01,LOC_CONX_COOR_ADVERS
+sin que,2,10,LOC_CONX_SUBOR_MODA
+sino que,2,10,LOC_CONX_COOR_ADVERS
+so capa de,3,010,LOC_PREP
+sobre todo,2,11,LOC_ADVE_MODO
+supuesto que,2,10,LOC_CONX_SUBOR_CAUS,LOC_CONX_SUBOR_CONSE
+sécula seculórum,2,11,LOC_ADVE
+sécula sin fin,3,101,LOC_ADVE
+tal como,2,01,LOC_CONX_SUBOR_COMPAR
+tan sólo,2,01,LOC_ADVE_CANTI
+tanto como,2,01,LOC_CONX_SUBOR_COMPAR
+tarín barín,2,11,LOC_ADVE
+taz a taz,3,101,LOC_ADVE
+una vez,2,01,LOC_ADVE_TEMP
+una vez que,3,010,LOC_CONX_SUBOR_TEMP
+ya que,2,10,LOC_CONX_SUBOR_CAUS,LOC_CONX_SUBOR_CONDI,LOC_CONX_SUBOR_CONSE

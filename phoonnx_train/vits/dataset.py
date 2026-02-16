@@ -44,7 +44,7 @@ class Batch:
     speaker_ids: Optional[LongTensor] = None
 
 
-class PiperDataset(Dataset):
+class PhoonnxDataset(Dataset):
     """
     Dataset format:
 
@@ -61,13 +61,23 @@ class PiperDataset(Dataset):
         dataset_paths: List[Union[str, Path]],
         max_phoneme_ids: Optional[int] = None,
     ):
+        """
+        Initialize the dataset by loading utterance metadata from one or more dataset files.
+        
+        Parameters:
+            dataset_paths (List[Union[str, Path]]): Paths to dataset files (each file contains one JSON utterance per line).
+            max_phoneme_ids (Optional[int]): If provided, skip utterances whose phoneme ID count exceeds this value.
+        
+        Raises:
+            ValueError: If no utterances are loaded from the provided dataset paths.
+        """
         self.utterances: List[Utterance] = []
 
         for dataset_path in dataset_paths:
             dataset_path = Path(dataset_path)
             _LOGGER.debug("Loading dataset: %s", dataset_path)
             self.utterances.extend(
-                PiperDataset.load_dataset(dataset_path, max_phoneme_ids=max_phoneme_ids)
+                PhoonnxDataset.load_dataset(dataset_path, max_phoneme_ids=max_phoneme_ids)
             )
         if not self.utterances:
             raise ValueError("No utterances loaded")
@@ -92,6 +102,19 @@ class PiperDataset(Dataset):
         dataset_path: Path,
         max_phoneme_ids: Optional[int] = None,
     ) -> Iterable[Utterance]:
+        """
+        Yield Utterance objects parsed from a line-oriented dataset file.
+        
+        Reads the file at `dataset_path` one line at a time, parses each non-empty line into an Utterance (expects JSON per line), and yields utterances whose phoneme count is less than or equal to `max_phoneme_ids` when that limit is provided. Malformed lines or other parse errors are logged and skipped; utterances that exceed the phoneme limit are counted and cause a final warning if any were skipped.
+        
+        Parameters:
+            dataset_path (Path): Path to a dataset file containing one JSON-encoded utterance per line.
+            max_phoneme_ids (Optional[int]): If set, only yield utterances with
+                len(phoneme_ids) <= max_phoneme_ids.
+        
+        Returns:
+            Iterable[Utterance]: An iterator over parsed Utterance objects from the file.
+        """
         num_skipped = 0
 
         with open(dataset_path, "r", encoding="utf-8") as dataset_file:
@@ -101,7 +124,7 @@ class PiperDataset(Dataset):
                     continue
 
                 try:
-                    utt = PiperDataset.load_utterance(line)
+                    utt = PhoonnxDataset.load_utterance(line)
                     if (max_phoneme_ids is None) or (
                         len(utt.phoneme_ids) <= max_phoneme_ids
                     ):

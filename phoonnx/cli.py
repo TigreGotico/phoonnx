@@ -128,19 +128,12 @@ def download_voice(voice_id):
         click.echo("Hint: Run 'phoonnx_cli.py update-cache' first to fetch the list.", err=True)
         return
 
+    # NOTE: metadata already downloaded when creating VoiceInfo object
+    #  we only need to download the .onnx file
     voice_info = manager.voices[voice_id]
 
     try:
         click.echo(f"Attempting to download files for: {voice_id} ({voice_info.lang})")
-
-        # Download config (model.json)
-        click.echo("-> Downloading config...")
-        voice_info.download_config()
-
-        # Download tokens/phoneme map
-        if voice_info.tokens_url:
-            click.echo("-> Downloading tokens/phoneme map...")
-            voice_info.download_phoneme_map()
 
         # Download model (model.onnx)
         click.echo("-> Downloading ONNX model (this may take a while)...")
