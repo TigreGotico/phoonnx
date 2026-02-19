@@ -254,7 +254,7 @@ class VoiceConfig:
                   phoneme_type: Optional[Union[str, PhonemeType]] = None,
                   alphabet: Optional[Union[str, Alphabet]] = None,
                   engine: Optional[Union[str, Engine]] = None,
-                   engine_params: Optional[Dict[str, Any]] = None) -> "VoiceConfig":
+                  engine_params: Optional[Dict[str, Any]] = None) -> "VoiceConfig":
         """
         Create a VoiceConfig from a model configuration dictionary and optional external phoneme data.
         
