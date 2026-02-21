@@ -13,7 +13,7 @@ In your OpenVoiceOS `mycroft.conf` or skills config, set:
     "module": "phoonnx",
     "phoonnx": {
       "lang": "en-US",
-      "voice": "en_US-lessac-medium"
+      "voice": "OpenVoiceOS/pipertts_en-US_miro"
     }
   }
 }
@@ -47,8 +47,8 @@ plugin.refresh_voices(force=True)
 from phoonnx.opm import PhoonnxTTSPlugin
 
 plugin = PhoonnxTTSPlugin(config={
-    "lang": "pt-PT",
-    "voice": "pt_PT-tugão-medium",
+    "lang": "gl-ES",
+    "voice": "OpenVoiceOS/phoonnx_gl-ES_miro_unicode",
 })
 ```
 

@@ -5,7 +5,7 @@ phoonnx ships with a command-line interface for managing voices.
 ## Usage
 
 ```bash
-phoonnx_cli.py <command> [options]
+phoonnx-voices <command> [options]
 ```
 
 ---
@@ -17,7 +17,7 @@ phoonnx_cli.py <command> [options]
 Fetches the latest voice lists from all upstream sources (Piper, Mimic3, OpenVoiceOS, Proxectonos, Phonikud) and saves them to the local cache.
 
 ```bash
-phoonnx_cli.py update-cache
+phoonnx-voices update-cache
 ```
 
 **Options:**
@@ -30,10 +30,10 @@ phoonnx_cli.py update-cache
 
 ```bash
 # Full refresh (default)
-phoonnx_cli.py update-cache
+phoonnx-voices update-cache
 
 # Incremental update — keep existing entries
-phoonnx_cli.py update-cache --no-clear
+phoonnx-voices update-cache --no-clear
 ```
 
 ---
@@ -43,7 +43,7 @@ phoonnx_cli.py update-cache --no-clear
 Lists all language codes available in the local voice cache.
 
 ```bash
-phoonnx_cli.py list-langs
+phoonnx-voices list-langs
 ```
 
 Run `update-cache` first if no languages appear.
@@ -55,7 +55,7 @@ Run `update-cache` first if no languages appear.
 Lists all available voice models, optionally filtered by language.
 
 ```bash
-phoonnx_cli.py list-voices [--lang LANG] [--verbose]
+phoonnx-voices list-voices [--lang LANG] [--verbose]
 ```
 
 **Options:**
@@ -69,13 +69,13 @@ phoonnx_cli.py list-voices [--lang LANG] [--verbose]
 
 ```bash
 # All voices
-phoonnx_cli.py list-voices
+phoonnx-voices list-voices
 
 # Portuguese voices only
-phoonnx_cli.py list-voices --lang pt-PT
+phoonnx-voices list-voices --lang pt-PT
 
 # With detailed info
-phoonnx_cli.py list-voices --verbose
+phoonnx-voices list-voices --verbose
 ```
 
 ---
@@ -85,7 +85,7 @@ phoonnx_cli.py list-voices --verbose
 Downloads the ONNX model (and config/tokens files) for a specific voice ID.
 
 ```bash
-phoonnx_cli.py download VOICE_ID
+phoonnx-voices download VOICE_ID
 ```
 
 The `VOICE_ID` must exist in the local cache. Run `update-cache` first if needed.
@@ -93,7 +93,7 @@ The `VOICE_ID` must exist in the local cache. Run `update-cache` first if needed
 **Example:**
 
 ```bash
-phoonnx_cli.py download en_US-lessac-medium
+phoonnx-voices download en_US-lessac-medium
 ```
 
 Files are saved to the XDG cache directory: `~/.cache/phoonnx/voices/<voice_id>/`
@@ -104,14 +104,14 @@ Files are saved to the XDG cache directory: `~/.cache/phoonnx/voices/<voice_id>/
 
 ```bash
 # 1. Fetch the voice catalog
-phoonnx_cli.py update-cache
+phoonnx-voices update-cache
 
 # 2. Browse available languages
-phoonnx_cli.py list-langs
+phoonnx-voices list-langs
 
 # 3. Find a voice for Portuguese
-phoonnx_cli.py list-voices --lang pt-PT
+phoonnx-voices list-voices --lang pt-PT
 
 # 4. Download a specific voice
-phoonnx_cli.py download pt_PT-tugão-medium
+phoonnx-voices download OpenVoiceOS/phoonnx_eu-ES_dii_espeak
 ```

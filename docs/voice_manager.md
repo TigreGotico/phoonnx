@@ -39,13 +39,13 @@ print(manager.supported_langs)
 ### Getting a Specific Voice
 
 ```python
-voice_info = manager.voices["en_US-lessac-medium"]
+voice_info = manager.voices["OpenVoiceOS/phoonnx_eu-ES_dii_espeak"]
 ```
 
 ### Loading a Voice for Inference
 
 ```python
-voice_info = manager.voices["en_US-lessac-medium"]
+voice_info = manager.voices["OpenVoiceOS/phoonnx_ar_miro_espeak_V2"]
 tts_voice = voice_info.load()   # downloads model if not cached, returns TTSVoice
 ```
 
