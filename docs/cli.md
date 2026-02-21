@@ -93,7 +93,7 @@ The `VOICE_ID` must exist in the local cache. Run `update-cache` first if needed
 **Example:**
 
 ```bash
-phoonnx-voices download en_US-lessac-medium
+phoonnx-voices download OpenVoiceOS/pipertts_es-ES_dii
 ```
 
 Files are saved to the XDG cache directory: `~/.cache/phoonnx/voices/<voice_id>/`

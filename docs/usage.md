@@ -47,7 +47,8 @@ with wave.open("output.wav", "wb") as wav_file:
 `synthesize()` is a generator that yields one `AudioChunk` per sentence. This enables low-latency streaming:
 
 ```python
-from phoonnx.voice import TTSVoice, SynthesisConfig
+from phoonnx.voice import TTSVoice
+from phoonnx.config import SynthesisConfig
 
 voice = TTSVoice.load("model.onnx", "model.json")
 syn_config = SynthesisConfig(length_scale=1.2)  # slightly slower speech
