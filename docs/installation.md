@@ -11,7 +11,7 @@
 pip install phoonnx
 ```
 
-This installs the core inference runtime with the default espeak-ng phonemizer backend.
+This installs the core inference runtime. Individual phonemizer backends may need to be manually installed
 
 ## Optional Extras
 
@@ -27,7 +27,7 @@ Includes PyTorch Lightning, Cython (for monotonic alignment), and all training u
 
 ### Language-Specific Phonemizers
 
-Many phonemizer backends have optional dependencies:
+You can install all phonemizer options for individual languages at once
 
 ```bash
 # English (g2p-en)
@@ -44,12 +44,6 @@ pip install phoonnx[ko]
 
 # Arabic (mantoq)
 pip install phoonnx[ar]
-```
-
-### OVOS Plugin
-
-```bash
-pip install phoonnx[ovos]
 ```
 
 ## System Dependencies

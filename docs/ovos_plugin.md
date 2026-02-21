@@ -1,18 +1,11 @@
 # OVOS Plugin
 
-phoonnx ships with a TTS plugin for the [OpenVoiceOS](https://openvoiceos.com/) / Mycroft ecosystem via `PhoonnxTTSPlugin`.
+phoonnx ships with a TTS plugin for the [OpenVoiceOS](https://openvoiceos.com/) ecosystem via `PhoonnxTTSPlugin`.
 
-## Installation
-
-```bash
-pip install phoonnx[ovos]
-```
-
-This installs `ovos-plugin-manager` and `ovos-utils` as additional dependencies.
 
 ## Configuration
 
-In your OVOS/Mycroft `mycroft.conf` or skills config, set:
+In your OpenVoiceOS `mycroft.conf` or skills config, set:
 
 ```json
 {
@@ -26,7 +19,7 @@ In your OVOS/Mycroft `mycroft.conf` or skills config, set:
 }
 ```
 
-If `voice` is omitted or set to `"default"`, the plugin selects the default voice for the configured language.
+If `voice` is omitted or set to `"default"`, the plugin selects a default voice for the configured language.
 
 ## How It Works
 
@@ -59,9 +52,7 @@ plugin = PhoonnxTTSPlugin(config={
 })
 ```
 
-### Methods inherited from OVOS TTS
-
-The plugin integrates with the standard OVOS TTS interface. Key methods:
+## Key methods:
 
 | Method | Description |
 |--------|-------------|
