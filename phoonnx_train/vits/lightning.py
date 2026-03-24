@@ -4,7 +4,6 @@ from typing import List, Optional, Tuple, Union
 
 import pytorch_lightning as pl
 import torch
-from torch import autocast
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset, random_split
 
@@ -77,6 +76,7 @@ class VitsModel(pl.LightningModule):
     ):
         super().__init__()
         self.save_hyperparameters()
+        self.automatic_optimization = False
 
         if (self.hparams.num_speakers > 1) and (self.hparams.gin_channels <= 0):
             # Default gin_channels for multi-speaker model
@@ -198,14 +198,25 @@ class VitsModel(pl.LightningModule):
             batch_size=self.hparams.batch_size,
         )
 
-    def training_step(self, batch: Batch, batch_idx: int, optimizer_idx: int):
-        if optimizer_idx == 0:
-            return self.training_step_g(batch)
+    def training_step(self, batch: Batch, batch_idx: int):
+        opt_g, opt_d = self.optimizers()
 
-        if optimizer_idx == 1:
-            return self.training_step_d(batch)
+        opt_g.zero_grad()
+        loss_gen_all = self._step_g(batch)
+        self.manual_backward(loss_gen_all)
+        opt_g.step()
 
-    def training_step_g(self, batch: Batch):
+        opt_d.zero_grad()
+        loss_disc_all = self._step_d(batch)
+        self.manual_backward(loss_disc_all)
+        opt_d.step()
+
+    def on_train_epoch_end(self):
+        sch_g, sch_d = self.lr_schedulers()
+        sch_g.step()
+        sch_d.step()
+
+    def _step_g(self, batch: Batch):
         x, x_lengths, y, _, spec, spec_lengths, speaker_ids = (
             batch.phoneme_ids,
             batch.phoneme_lengths,
@@ -260,7 +271,7 @@ class VitsModel(pl.LightningModule):
 
         _y_d_hat_r, y_d_hat_g, fmap_r, fmap_g = self.model_d(y, y_hat)
 
-        with autocast(self.device.type, enabled=False):
+        with torch.amp.autocast(self.device.type, enabled=False):
             # Generator loss
             loss_dur = torch.sum(l_length.float())
             loss_mel = F.l1_loss(y_mel, y_hat_mel) * self.hparams.c_mel
@@ -274,13 +285,13 @@ class VitsModel(pl.LightningModule):
 
             return loss_gen_all
 
-    def training_step_d(self, batch: Batch):
-        # From training_step_g
+    def _step_d(self, batch: Batch):
+        # From _step_g
         y = self._y
         y_hat = self._y_hat
         y_d_hat_r, y_d_hat_g, _, _ = self.model_d(y, y_hat.detach())
 
-        with autocast(self.device.type, enabled=False):
+        with torch.amp.autocast(self.device.type, enabled=False):
             # Discriminator
             loss_disc, _losses_disc_r, _losses_disc_g = discriminator_loss(
                 y_d_hat_r, y_d_hat_g
@@ -292,7 +303,7 @@ class VitsModel(pl.LightningModule):
             return loss_disc_all
 
     def validation_step(self, batch: Batch, batch_idx: int):
-        val_loss = self.training_step_g(batch) + self.training_step_d(batch)
+        val_loss = self._step_g(batch) + self._step_d(batch)
         self.log("val_loss", val_loss)
 
         # Generate audio examples
