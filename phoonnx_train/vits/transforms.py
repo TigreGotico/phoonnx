@@ -7,6 +7,7 @@ DEFAULT_MIN_BIN_HEIGHT = 1e-3
 DEFAULT_MIN_DERIVATIVE = 1e-3
 
 
+@torch.compiler.disable
 def piecewise_rational_quadratic_transform(
     inputs,
     unnormalized_widths,
@@ -47,6 +48,7 @@ def searchsorted(bin_locations, inputs, eps=1e-6):
     return torch.sum(inputs[..., None] >= bin_locations, dim=-1) - 1
 
 
+@torch.compiler.disable
 def unconstrained_rational_quadratic_spline(
     inputs,
     unnormalized_widths,
@@ -98,6 +100,7 @@ def unconstrained_rational_quadratic_spline(
     return outputs, logabsdet
 
 
+@torch.compiler.disable
 def rational_quadratic_spline(
     inputs,
     unnormalized_widths,

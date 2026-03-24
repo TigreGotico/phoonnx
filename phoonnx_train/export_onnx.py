@@ -3,12 +3,19 @@ import click
 import logging
 import json
 import os
+import pathlib
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
 
 import torch
 from phoonnx_train.vits.lightning import VitsModel
 from phoonnx.version import VERSION_STR
+
+
+# Allow unpickling those classes
+torch.serialization.add_safe_globals([pathlib.PosixPath])
+torch.serialization.safe_globals([pathlib.PosixPath])
+
 
 # Basic logging configuration
 logging.basicConfig(level=logging.DEBUG)

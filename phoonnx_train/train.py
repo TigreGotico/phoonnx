@@ -1,5 +1,6 @@
 import json
 import logging
+import pathlib
 from pathlib import Path
 import os
 import torch
@@ -8,6 +9,15 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from phoonnx_train.vits.lightning import VitsModel
+
+
+# Set the precision for matrix multiplications
+torch.set_float32_matmul_precision('high')
+
+# Allow unpickling those classes
+torch.serialization.add_safe_globals([pathlib.PosixPath])
+torch.serialization.safe_globals([pathlib.PosixPath])
+
 
 _LOGGER = logging.getLogger(__package__)
 
@@ -38,7 +48,7 @@ def load_state_dict(model, saved_state_dict):
 @click.option('--devices', default=1, help='Number of devices or list of device IDs to train on (default: 1)')
 @click.option('--accelerator', default='auto', help='Hardware accelerator to use (cpu, gpu, tpu, mps, etc.)  (default: "auto")')
 @click.option('--default-root-dir', type=click.Path(file_okay=False), default=None, help='Default root directory for logs and checkpoints (default: None)')
-@click.option('--precision', default=32, help='Precision used in training (e.g. 16, 32, bf16) (default: 32)')
+@click.option('--precision', type=str, default="32", help='Precision used in training (e.g. 16, 32, bf16) (default: "32")')
 # Model-specific arguments
 @click.option('--learning-rate', type=float, default=2e-4, help='Learning rate for optimizer (default: 2e-4)')
 @click.option('--batch-size', type=int, default=16, help='Training batch size (default: 16)')
@@ -46,7 +56,7 @@ def load_state_dict(model, saved_state_dict):
 @click.option('--validation-split', type=float, default=0.05, help='Proportion of data used for validation (default: 0.05)')
 @click.option('--discard-encoder', type=bool, default=False, help='Discard the encoder weights from base checkpoint (default: False)')
 @click.option('--compile', 'use_compile', is_flag=True, default=False, help='Compile the model with torch.compile for faster training (default: False)')
-@click.option('--compile-mode', default='default', type=click.Choice(['default', 'reduce-overhead', 'max-autotune']), help='torch.compile mode (default: default)')
+@click.option('--compile-mode', default='default', type=click.Choice(['default', 'reduce-overhead', 'max-autotune', 'reduce-overhead-no-cudagraphs', 'max-autotune-no-cudagraphs']), help='torch.compile mode (default: default)')
 def main(
     dataset_dir,
     checkpoint_epochs,

@@ -118,6 +118,14 @@ class VitsModel(pl.LightningModule):
         self._y = None
         self._y_hat = None
 
+    def on_load_checkpoint(self, checkpoint: dict) -> None:
+        # Checkpoints saved with torch.compile have "_orig_mod." in every key.
+        # Strip it so the state dict loads cleanly whether compile is on or off.
+        state_dict = checkpoint.get("state_dict", {})
+        checkpoint["state_dict"] = {
+            k.replace("._orig_mod.", "."): v for k, v in state_dict.items()
+        }
+
     def _load_datasets(
         self,
         validation_split: float,
