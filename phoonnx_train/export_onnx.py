@@ -240,7 +240,7 @@ def cli(
         _LOGGER.error(f"Error loading model checkpoint {checkpoint}: {e}")
         return
 
-    model_g: torch.nn.Module = model.model_g
+    model_g: torch.nn.Module = model.model_g.cpu()
     num_symbols: int = model_g.n_vocab
     num_speakers: int = model_g.n_speakers
 
