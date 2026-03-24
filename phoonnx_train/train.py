@@ -108,8 +108,19 @@ def main(
         logging.getLogger("pytorch_lightning").setLevel(logging.ERROR)
 
     if use_compile:
+        # In notebook mode, suppress to CRITICAL: autotuning trial failures
+        # (E0324 ... Runtime error during autotuning: Ignoring this choice) are
+        # expected fallbacks, not real errors, but are logged at ERROR level by
+        # torch._logging's TorchLoggingHandler — setLevel() alone doesn't reach
+        # that handler, so we also call torch._logging.set_logs() which is the
+        # canonical PyTorch API for controlling it.
+        _compile_log_level = logging.CRITICAL if notebook else logging.ERROR
+        import torch._logging as _tl
+        _set_logs = getattr(_tl, "set_logs", None)
+        if _set_logs is not None:
+            _set_logs(dynamo=_compile_log_level, aot=_compile_log_level, inductor=_compile_log_level)
         for name in _TORCH_COMPILE_LOGGERS:
-            logging.getLogger(name).setLevel(logging.ERROR)
+            logging.getLogger(name).setLevel(_compile_log_level)
 
     dataset_dir = Path(dataset_dir)
     if default_root_dir is None:
