@@ -45,6 +45,8 @@ def load_state_dict(model, saved_state_dict):
 @click.option('--num-workers', type=click.IntRange(min=1), default=os.cpu_count() or 1, help='Number of data loader workers (default: CPU count)')
 @click.option('--validation-split', type=float, default=0.05, help='Proportion of data used for validation (default: 0.05)')
 @click.option('--discard-encoder', type=bool, default=False, help='Discard the encoder weights from base checkpoint (default: False)')
+@click.option('--compile', 'use_compile', is_flag=True, default=False, help='Compile the model with torch.compile for faster training (default: False)')
+@click.option('--compile-mode', default='default', type=click.Choice(['default', 'reduce-overhead', 'max-autotune']), help='torch.compile mode (default: default)')
 def main(
     dataset_dir,
     checkpoint_epochs,
@@ -61,7 +63,9 @@ def main(
     batch_size,
     num_workers,
     validation_split,
-    discard_encoder
+    discard_encoder,
+    use_compile,
+    compile_mode,
 ):
     logging.basicConfig(level=logging.DEBUG)
 
@@ -192,6 +196,11 @@ def main(
         load_state_dict(model.model_g, g_dict)
         load_state_dict(model.model_d, model_single.model_d.state_dict())
         _LOGGER.info('Successfully converted single-speaker checkpoint to multi-speaker')
+
+    if use_compile:
+        _LOGGER.info('Compiling model with torch.compile (mode=%s)', compile_mode)
+        model.model_g = torch.compile(model.model_g, mode=compile_mode)
+        model.model_d = torch.compile(model.model_d, mode=compile_mode)
 
     _LOGGER.info('training started!!')
     trainer.fit(model)
