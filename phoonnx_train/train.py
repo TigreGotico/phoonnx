@@ -79,7 +79,7 @@ def load_state_dict(model, saved_state_dict):
 @click.option('--validation-split', type=float, default=0.05, help='Proportion of data used for validation (default: 0.05)')
 @click.option('--discard-encoder', type=bool, default=False, help='Discard the encoder weights from base checkpoint (default: False)')
 @click.option('--compile', 'use_compile', is_flag=True, default=False, help='Compile the model with torch.compile for faster training (default: False)')
-@click.option('--compile-mode', default='default', type=click.Choice(['default', 'reduce-overhead', 'max-autotune', 'reduce-overhead-no-cudagraphs', 'max-autotune-no-cudagraphs']), help='torch.compile mode (default: default)')
+@click.option('--compile-mode', default='default', type=click.Choice(['default', 'reduce-overhead', 'max-autotune', 'max-autotune-no-cudagraphs']), help='torch.compile mode (default: default)')
 @click.option('--notebook', is_flag=True, default=False, help='Notebook-friendly output: suppress all logs below ERROR, show compilation/training progress bars only (default: False)')
 def main(
     dataset_dir,
