@@ -5,8 +5,9 @@ from pathlib import Path
 import os
 import torch
 import click
-from pytorch_lightning import Trainer
+from pytorch_lightning import Callback, Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
+from tqdm.auto import tqdm
 
 from phoonnx_train.vits.lightning import VitsModel
 
@@ -20,6 +21,28 @@ torch.serialization.safe_globals([pathlib.PosixPath])
 
 
 _LOGGER = logging.getLogger(__package__)
+
+_TORCH_COMPILE_LOGGERS = [
+    "torch._dynamo",
+    "torch._inductor",
+    "torch._functorch",
+    "torch._logging",
+]
+
+
+class _CompileStatusCallback(Callback):
+    """Displays an elapsed-time indicator while the first training step compiles."""
+
+    def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
+        if batch_idx == 0 and trainer.current_epoch == 0:
+            self._bar = tqdm(desc="Compiling", bar_format="{desc}: {elapsed}", leave=True)
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        bar = getattr(self, "_bar", None)
+        if bar is not None:
+            bar.set_description("Compiled")
+            bar.close()
+            self._bar = None
 
 
 def load_state_dict(model, saved_state_dict):
@@ -57,6 +80,7 @@ def load_state_dict(model, saved_state_dict):
 @click.option('--discard-encoder', type=bool, default=False, help='Discard the encoder weights from base checkpoint (default: False)')
 @click.option('--compile', 'use_compile', is_flag=True, default=False, help='Compile the model with torch.compile for faster training (default: False)')
 @click.option('--compile-mode', default='default', type=click.Choice(['default', 'reduce-overhead', 'max-autotune', 'reduce-overhead-no-cudagraphs', 'max-autotune-no-cudagraphs']), help='torch.compile mode (default: default)')
+@click.option('--notebook', is_flag=True, default=False, help='Notebook-friendly output: suppress all logs below ERROR, show compilation/training progress bars only (default: False)')
 def main(
     dataset_dir,
     checkpoint_epochs,
@@ -76,8 +100,16 @@ def main(
     discard_encoder,
     use_compile,
     compile_mode,
+    notebook,
 ):
-    logging.basicConfig(level=logging.DEBUG)
+    log_level = logging.ERROR if notebook else logging.DEBUG
+    logging.basicConfig(level=log_level, force=True)
+    if notebook:
+        logging.getLogger("pytorch_lightning").setLevel(logging.ERROR)
+
+    if use_compile:
+        for name in _TORCH_COMPILE_LOGGERS:
+            logging.getLogger(name).setLevel(logging.ERROR)
 
     dataset_dir = Path(dataset_dir)
     if default_root_dir is None:
@@ -99,6 +131,8 @@ def main(
     if checkpoint_epochs is not None:
         callbacks.append(ModelCheckpoint(every_n_epochs=checkpoint_epochs))
         _LOGGER.info('Checkpoints will be saved every %s epoch(s)', checkpoint_epochs)
+    if notebook and use_compile:
+        callbacks.append(_CompileStatusCallback())
 
     trainer = Trainer(
         max_epochs=max_epochs,
