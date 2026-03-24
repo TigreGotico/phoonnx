@@ -5,3 +5,4 @@ pytorch-lightning>=2.5
 torch==2.8.0
 click
 huggingface_hub>1.2.0
+onnx
