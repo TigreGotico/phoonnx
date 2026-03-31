@@ -1494,6 +1494,19 @@
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__nl_NL-ronnie-medium/config.json"
     },
+        "piper/nl_NL-alex-medium": {
+        "voice_id": "piper/nl_NL-alex-medium",
+        "model_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/nl/nl_NL/alex/medium/nl_NL-alex-medium.onnx",
+        "phoneme_type": "espeak",
+        "lang": "nl-NL",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/nl/nl_NL/alex/medium/nl_NL-alex-medium.onnx.json"
+    },
     "piper/no_NO-talesyntese-medium": {
         "voice_id": "piper/no_NO-talesyntese-medium",
         "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__no_NO-talesyntese-medium/model.onnx",
