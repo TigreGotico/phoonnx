@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phoonnx"
+dynamic = ["version"]
+description = "Multilingual TTS and phonemization using ONNX models"
+license = {text = "Apache-2.0"}
+authors = [{name = "JarbasAI", email = "jarbasai@mailfence.com"}]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "onnxruntime",
+    "quebra-frases",
+    "langcodes",
+    "ovos-number-parser>=0.4.0",
+    "ovos-date-parser>=0.6.4a1",
+]
+
+[project.urls]
+Homepage = "https://github.com/TigreGotico/phoonnx"
+
+[project.scripts]
+"phoonnx-voices" = "phoonnx.cli:cli"
+
+[project.entry-points."mycroft.plugin.tts"]
+"ovos-tts-plugin-phoonnx" = "phoonnx.opm:PhoonnxTTSPlugin"
+
+[project.optional-dependencies]
+train = [
+    "cython>=0.29.0,<1",
+    "librosa>=0.9.2,<1",
+    "numpy>=1.19.0,<2",
+    "pytorch-lightning<2.0",
+    "torch>=1.11.0,<2",
+]
+ar = ["epitran"]
+ca = ["epitran"]
+cs = ["epitran"]
+de = ["epitran"]
+en = ["epitran", "gruut[en]>=2.3.0,<3.0", "misaki[en]"]
+es = ["epitran"]
+fa = ["epitran"]
+fr = ["epitran"]
+he = ["epitran"]
+it = ["epitran"]
+ja = ["epitran", "gruut[ja]>=2.3.0,<3.0", "misaki[ja]"]
+ko = ["epitran"]
+pt = ["epitran"]
+ru = ["epitran"]
+sv = ["epitran"]
+sw = ["epitran"]
+vi = ["epitran", "gruut[vi]>=2.3.0,<3.0", "misaki[vi]"]
+zh = ["epitran", "gruut[zh]>=2.3.0,<3.0", "misaki[zh]"]
+
+[tool.setuptools.dynamic]
+version = {attr = "phoonnx.version.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+"phoonnx" = ["**/*"]
