@@ -1,18 +1,15 @@
-# NOTE: python-support.yml@dev is deprecated. This file calls build-tests.yml@dev instead.
-# You can rename this file to build-tests.yml if you don't already have one.
-name: Build Tests
+name: Python Versions
 
 on:
-  pull_request:
-    branches: [dev, master, main]
+  push:
+    branches:
+      - dev
   workflow_dispatch:
 
 jobs:
-  build_tests:
+  unit_tests:
     uses: OpenVoiceOS/gh-automations/.github/workflows/build-tests.yml@dev
-    secrets: inherit
     with:
-      package_name: 'phoonnx'
-      version_file: 'phoonnx/version.py'
       python_versions: '["3.10", "3.11", "3.12", "3.13", "3.14"]'
-      test_path: 'test/'
+      install_extras: 'test'
+      test_path: 'tests/'
