@@ -13,5 +13,5 @@ jobs:
       python_version: '3.11'
       coverage_source: 'phoonnx'
       test_path: 'tests/'
-      test_extras: 'test'
+      install_extras: '-e .[test]'
       min_coverage: 0
