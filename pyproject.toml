@@ -7,6 +7,11 @@ name = "phoonnx"
 dynamic = ["version"]
 description = "Multilingual TTS and phonemization using ONNX models"
 license = {text = "Apache-2.0"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
 authors = [{name = "JarbasAI", email = "jarbasai@mailfence.com"}]
 readme = "README.md"
 requires-python = ">=3.9"
