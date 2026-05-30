@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased](https://github.com/TigreGotico/phoonnx/tree/HEAD)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.4a1...HEAD)
+
+**Merged pull requests:**
+
+- fix: OVOS plugin config keys + KeyError, plugin tests, CI test\_path [\#124](https://github.com/TigreGotico/phoonnx/pull/124) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.3...1.3.4a1)
