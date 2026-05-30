@@ -1,0 +1,214 @@
+"""Tests for the OpenVoiceOS TTS plugin integration (``phoonnx.opm``).
+
+These exercise the plugin's wiring - voice selection, default fallback,
+refresh-on-miss, and synthesis-parameter mapping - without any network
+access or real ONNX models. The model manager, voices and ``wave`` are
+mocked so the tests stay fast and hermetic.
+"""
+import unittest
+from unittest.mock import MagicMock, patch
+
+import phoonnx.opm as opm
+from phoonnx.voice import SynthesisConfig
+
+
+class _FakeVoiceConfig:
+    """Stand-in for ``VoiceConfig`` carrying the synthesis defaults."""
+
+    def __init__(self):
+        self.noise_scale = 0.667
+        self.length_scale = 1.0
+        self.noise_w_scale = 0.8
+        self.add_diacritics = False
+
+
+class _FakeVoiceInfo:
+    """Stand-in for ``TTSModelInfo``; ``load()`` yields a mock ``TTSVoice``."""
+
+    def __init__(self, voice_id, lang="en-US"):
+        self.voice_id = voice_id
+        self.lang = lang
+        self.config = _FakeVoiceConfig()
+        self.tts_voice = MagicMock(name=f"TTSVoice[{voice_id}]")
+
+    def load(self):
+        return self.tts_voice
+
+
+class _FakeManager:
+    """Stand-in for ``TTSModelManager``.
+
+    ``lazy`` voices are only merged into ``voices`` when
+    ``merge_default_voices`` is called - this models a voice that is unknown
+    until a refresh fetches it.
+    """
+
+    def __init__(self):
+        self.voices = {}
+        self.lazy = {}
+        self.load_calls = 0
+        self.merge_calls = 0
+
+    def load(self):
+        self.load_calls += 1
+
+    def merge_default_voices(self, store=False):
+        self.merge_calls += 1
+        self.voices.update(self.lazy)
+
+    def get_lang_voices(self, lang):
+        # tests don't depend on lang matching; return everything registered
+        return list(self.voices.values())
+
+
+def _make_plugin(config=None, voices=(), lazy=()):
+    """Build a plugin with a pre-populated fake manager (no I/O)."""
+    config = dict(config or {})
+    config.setdefault("lang", "en-US")
+    manager = _FakeManager()
+    for v in voices:
+        manager.voices[v.voice_id] = v
+    for v in lazy:
+        manager.lazy[v.voice_id] = v
+    with patch.object(opm, "TTSModelManager", return_value=manager):
+        plugin = opm.PhoonnxTTSPlugin(config=config)
+    # the OVOS base merges the global mycroft.conf into self.config; pin it to
+    # the test's exact config so get_tts param-mapping is deterministic
+    plugin.config = config
+    return plugin, manager
+
+
+class TestPluginEntryPoint(unittest.TestCase):
+    def test_entry_point_resolves_to_plugin(self):
+        """The declared mycroft.plugin.tts entry point loads the plugin class."""
+        from importlib.metadata import entry_points
+
+        eps = [e for e in entry_points(group="mycroft.plugin.tts")
+               if e.name == "ovos-tts-plugin-phoonnx"]
+        self.assertTrue(eps, "ovos-tts-plugin-phoonnx entry point not registered")
+        self.assertIs(eps[0].load(), opm.PhoonnxTTSPlugin)
+
+    def test_is_a_tts_subclass(self):
+        from ovos_plugin_manager.templates.tts import TTS
+        self.assertTrue(issubclass(opm.PhoonnxTTSPlugin, TTS))
+
+
+class TestInit(unittest.TestCase):
+    def test_init_loads_default_voice_when_unconfigured(self):
+        v = _FakeVoiceInfo("OpenVoiceOS/en_default")
+        plugin, mgr = _make_plugin(voices=[v])
+        self.assertEqual(mgr.load_calls, 1)
+        self.assertIn(v.voice_id, plugin.voices)
+        self.assertIs(plugin.voices[v.voice_id], v.tts_voice)
+
+    def test_init_loads_configured_voice(self):
+        a = _FakeVoiceInfo("OpenVoiceOS/a")
+        b = _FakeVoiceInfo("OpenVoiceOS/b")
+        plugin, _ = _make_plugin(config={"voice": "OpenVoiceOS/b"}, voices=[a, b])
+        self.assertIn("OpenVoiceOS/b", plugin.voices)
+        self.assertNotIn("OpenVoiceOS/a", plugin.voices)
+
+
+class TestVoiceResolution(unittest.TestCase):
+    def test_get_default_voice_refreshes_when_missing(self):
+        lazy = _FakeVoiceInfo("OpenVoiceOS/lazy")
+        # no eager voices: init refresh (lazy merged) gives a default
+        plugin, mgr = _make_plugin(lazy=[lazy])
+        # merge happened during init; default voice resolved from lazy
+        self.assertIn("OpenVoiceOS/lazy", plugin.voices)
+
+    def test_get_default_voice_raises_when_none(self):
+        with self.assertRaises(ValueError):
+            _make_plugin()  # no voices anywhere
+
+    def test_get_model_unknown_voice_raises(self):
+        v = _FakeVoiceInfo("OpenVoiceOS/known")
+        plugin, _ = _make_plugin(voices=[v])
+        with self.assertRaises(Exception):
+            plugin.get_model("OpenVoiceOS/nope")
+
+    def test_get_model_caches(self):
+        v = _FakeVoiceInfo("OpenVoiceOS/known")
+        plugin, _ = _make_plugin(voices=[v])
+        first = plugin.get_model(v.voice_id)
+        second = plugin.get_model(v.voice_id)
+        self.assertIs(first, second)
+
+
+class TestGetTts(unittest.TestCase):
+    def _synth_config_from_call(self, tts_voice):
+        """Return the SynthesisConfig passed to synthesize_wav."""
+        self.assertTrue(tts_voice.synthesize_wav.called)
+        args, kwargs = tts_voice.synthesize_wav.call_args
+        for cand in (*args, *kwargs.values()):
+            if isinstance(cand, SynthesisConfig):
+                return cand
+        self.fail("no SynthesisConfig passed to synthesize_wav")
+
+    def test_get_tts_returns_wavfile_and_none(self):
+        v = _FakeVoiceInfo("OpenVoiceOS/v")
+        plugin, _ = _make_plugin(voices=[v])
+        with patch.object(opm, "wave"):
+            out = plugin.get_tts("hello world", "/tmp/out.wav")
+        self.assertEqual(out, ("/tmp/out.wav", None))
+
+    def test_get_tts_uses_voice_config_defaults(self):
+        v = _FakeVoiceInfo("OpenVoiceOS/v")
+        plugin, _ = _make_plugin(voices=[v])
+        with patch.object(opm, "wave"):
+            plugin.get_tts("hi", "/tmp/out.wav")
+        cfg = self._synth_config_from_call(v.tts_voice)
+        self.assertAlmostEqual(cfg.noise_scale, 0.667)
+        self.assertAlmostEqual(cfg.length_scale, 1.0)
+        self.assertAlmostEqual(cfg.noise_w_scale, 0.8)
+
+    def test_documented_underscore_config_keys_are_honoured(self):
+        """Regression: documented keys (noise_scale, length_scale, noise_w,
+        enable_phonetic_spellings) used to be ignored due to key drift."""
+        v = _FakeVoiceInfo("OpenVoiceOS/v")
+        plugin, _ = _make_plugin(config={
+            "noise_scale": 0.1,
+            "length_scale": 2.0,
+            "noise_w": 0.3,
+            "enable_phonetic_spellings": False,
+        }, voices=[v])
+        with patch.object(opm, "wave"):
+            plugin.get_tts("hi", "/tmp/out.wav")
+        cfg = self._synth_config_from_call(v.tts_voice)
+        self.assertAlmostEqual(cfg.noise_scale, 0.1)
+        self.assertAlmostEqual(cfg.length_scale, 2.0)
+        self.assertAlmostEqual(cfg.noise_w_scale, 0.3)
+        self.assertFalse(cfg.enable_phonetic_spellings)
+
+    def test_legacy_hyphen_config_keys_still_work(self):
+        """Backwards compat: old hyphenated keys remain accepted as fallbacks."""
+        v = _FakeVoiceInfo("OpenVoiceOS/v")
+        plugin, _ = _make_plugin(config={
+            "noise-scale": 0.2,
+            "length-scale": 3.0,
+            "noise-w": 0.4,
+        }, voices=[v])
+        with patch.object(opm, "wave"):
+            plugin.get_tts("hi", "/tmp/out.wav")
+        cfg = self._synth_config_from_call(v.tts_voice)
+        self.assertAlmostEqual(cfg.noise_scale, 0.2)
+        self.assertAlmostEqual(cfg.length_scale, 3.0)
+        self.assertAlmostEqual(cfg.noise_w_scale, 0.4)
+
+    def test_explicit_voice_not_preloaded_no_keyerror(self):
+        """Regression: a configured/explicit voice that needs a refresh used to
+        KeyError because the model info was read before get_model refreshed."""
+        default = _FakeVoiceInfo("OpenVoiceOS/default")
+        lazy = _FakeVoiceInfo("OpenVoiceOS/lazy")
+        plugin, mgr = _make_plugin(voices=[default])
+        # 'lazy' is only discoverable via a refresh, not yet registered
+        mgr.lazy = {lazy.voice_id: lazy}
+        self.assertNotIn(lazy.voice_id, mgr.voices)
+        with patch.object(opm, "wave"):
+            out = plugin.get_tts("hi", "/tmp/out.wav", voice=lazy.voice_id)
+        self.assertEqual(out, ("/tmp/out.wav", None))
+        self.assertTrue(lazy.tts_voice.synthesize_wav.called)
+
+
+if __name__ == "__main__":
+    unittest.main()

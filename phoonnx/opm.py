@@ -44,6 +44,28 @@ class PhoonnxTTSPlugin(TTS):
             default = self.get_default_voice(self.lang)
             self.voices[default.voice_id] = self.get_model(default.voice_id)
 
+    def _cfg_opt(self, default, *keys):
+        """
+        Read a synthesis option from the plugin config, accepting any of the
+        given key aliases.
+
+        Historically some option keys drifted from what the docs advertise
+        (e.g. ``noise-scale`` vs ``noise_scale``). The documented underscore
+        names are listed first; legacy hyphenated names are kept as fallbacks
+        so existing configs keep working.
+
+        Parameters:
+            default: Value returned when none of the keys are present.
+            *keys (str): Config keys to try, in priority order.
+
+        Returns:
+            The first present config value, otherwise ``default``.
+        """
+        for key in keys:
+            if key in self.config:
+                return self.config[key]
+        return default
+
     def refresh_voices(self, force=False):
         """
         Refresh available voices from the model manager when none are loaded or when forcing an update.
@@ -117,18 +139,32 @@ class PhoonnxTTSPlugin(TTS):
             tuple: (`wav_file`, `phonemes`) where `wav_file` is the path to the written WAV file and `phonemes` is `None` when no phoneme output is produced.
         """
         if voice and voice != "default":
-            voice_info = self.model_manager.voices[voice]
+            # load first so the model manager is refreshed if the voice
+            # isn't cached yet, then read its info (avoids a KeyError when a
+            # configured voice hasn't been fetched before)
             model = self.get_model(voice)
+            voice_info = self.model_manager.voices[voice]
         else:
             voice_info = self.get_default_voice(lang or self.lang)
             model = self.get_model(voice_info.voice_id)
 
         synth_params = SynthesisConfig(
-            enable_phonetic_spellings=self.config.get("enable_phonetic_spelling", True),
-            add_diacritics=self.config.get("add_diacritics", voice_info.config.add_diacritics), # arabic and hebrew only
-            noise_scale=self.config.get("noise-scale", voice_info.config.noise_scale),  # generator noise
-            length_scale=self.config.get("length-scale", voice_info.config.length_scale),  # Phoneme length
-            noise_w_scale=self.config.get("noise-w", voice_info.config.noise_w_scale)  # Phoneme width noise
+            enable_phonetic_spellings=self._cfg_opt(
+                voice_info.config.enable_phonetic_spellings
+                if hasattr(voice_info.config, "enable_phonetic_spellings") else True,
+                "enable_phonetic_spellings", "enable_phonetic_spelling"),
+            add_diacritics=self._cfg_opt(
+                voice_info.config.add_diacritics,  # arabic and hebrew only
+                "add_diacritics"),
+            noise_scale=self._cfg_opt(
+                voice_info.config.noise_scale,  # generator noise
+                "noise_scale", "noise-scale"),
+            length_scale=self._cfg_opt(
+                voice_info.config.length_scale,  # phoneme length
+                "length_scale", "length-scale"),
+            noise_w_scale=self._cfg_opt(
+                voice_info.config.noise_w_scale,  # phoneme width noise
+                "noise_w_scale", "noise_w", "noise-w"),
         )
         with wave.open(wav_file, "wb") as wav_out:
             model.synthesize_wav(sentence, wav_out, synth_params)
