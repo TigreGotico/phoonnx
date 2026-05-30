@@ -36,7 +36,9 @@ Homepage = "https://github.com/TigreGotico/phoonnx"
 [project.optional-dependencies]
 test = [
     "pytest",
-    "ovos-plugin-manager",
+    # ovos-plugin-manager publishes prereleases only; the lower-bound alpha
+    # pin makes pip accept them without a global --pre
+    "ovos-plugin-manager>=0.0.1a1",
 ]
 train = [
     "cython>=0.29.0,<1",
