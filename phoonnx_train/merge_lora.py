@@ -116,7 +116,7 @@ def main(
                  lora_config.rank, lora_config.alpha, lora_config.target_modules)
 
     _LOGGER.info("Loading base model from %s", base_checkpoint)
-    model = VitsModel.load_from_checkpoint(str(base_checkpoint), dataset=None)
+    model = VitsModel.load_from_checkpoint(str(base_checkpoint), dataset=None, weights_only=False)
 
     _LOGGER.info("Applying LoRA with config: %s", lora_config)
     apply_lora(model.model_g, lora_config)

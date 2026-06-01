@@ -140,7 +140,7 @@ def main(
 
     if resume_from_checkpoint:
         # TODO (?) - add a flag to use params from config vs from checkpoint in case of mismatch
-        ckpt = VitsModel.load_from_checkpoint(resume_from_checkpoint, dataset=None)
+        ckpt = VitsModel.load_from_checkpoint(resume_from_checkpoint, dataset=None, weights_only=False)
         _LOGGER.debug(f"Checkpoint params: num_symbols={ckpt.model_g.n_vocab} num_speakers={ckpt.model_g.n_speakers} sample_rate={ckpt.hparams.sample_rate}")
         if ckpt.model_g.n_vocab != num_symbols:
             _LOGGER.warning(f"Checkpoint num_symbols={ckpt.model_g.n_vocab} does not match config num_symbols={num_symbols}")
@@ -196,7 +196,7 @@ def main(
         assert num_speakers > 1, "--resume-from-single-speaker-checkpoint is only for multi-speaker models."
         _LOGGER.info('Resuming from single-speaker checkpoint: %s', resume_from_single_speaker_checkpoint)
 
-        model_single = VitsModel.load_from_checkpoint(resume_from_single_speaker_checkpoint, dataset=None)
+        model_single = VitsModel.load_from_checkpoint(resume_from_single_speaker_checkpoint, dataset=None, weights_only=False)
         g_dict = model_single.model_g.state_dict()
 
         for key in list(g_dict.keys()):
