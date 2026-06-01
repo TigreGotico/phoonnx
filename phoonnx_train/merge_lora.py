@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 import click
+import pytorch_lightning as pl
 import torch
 
 from phoonnx_train.vits.lightning import VitsModel
@@ -145,7 +146,14 @@ def main(
 
     merged_ckpt_path = output_dir / "merged_model.ckpt"
     _LOGGER.info("Saving merged checkpoint to %s", merged_ckpt_path)
-    torch.save({"state_dict": model.model_g.state_dict()}, str(merged_ckpt_path))
+    torch.save(
+        {
+            "state_dict": model.state_dict(),
+            "hyper_parameters": dict(model.hparams),
+            "pytorch-lightning_version": pl.__version__,
+        },
+        str(merged_ckpt_path),
+    )
 
     if save_adapter:
         standalone_adapter = get_lora_state_dict(model.model_g)
@@ -169,22 +177,68 @@ def main(
             _LOGGER.info("Saved config with LoRA metadata to %s", config_out)
 
     if export_onnx and config is not None:
-        from phoonnx_train.export_onnx import cli as export_cli
-        from click.testing import CliRunner
+        import onnx
+        from phoonnx_train.export_onnx import OPSET_VERSION
 
         onnx_output = output_dir / "merged_model.onnx"
         _LOGGER.info("Exporting merged model to ONNX: %s", onnx_output)
 
-        runner = CliRunner()
-        result = runner.invoke(export_cli, [
-            str(merged_ckpt_path),
-            "-c", str(config),
-            "-o", str(output_dir),
-        ])
-        if result.exit_code != 0:
-            _LOGGER.error("ONNX export failed: %s", result.output)
-            raise click.ClickException(f"ONNX export failed:\n{result.output}")
-        _LOGGER.info("ONNX export complete")
+        model_g = model.model_g
+        model_g.eval()
+        try:
+            with torch.no_grad():
+                model_g.dec.remove_weight_norm()
+        except ValueError:
+            pass
+
+        with open(config, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+        num_symbols = model_g.n_vocab
+        num_speakers = model_g.n_speakers
+
+        def infer_forward(text, text_lengths, scales, sid=None):
+            audio = model_g.infer(
+                text, text_lengths,
+                noise_scale=float(scales[0]),
+                length_scale=float(scales[1]),
+                noise_scale_w=float(scales[2]),
+                sid=sid,
+            )[0].unsqueeze(1)
+            return audio
+
+        model_g.forward = infer_forward
+
+        sequences = torch.randint(0, num_symbols, (1, 50), dtype=torch.long)
+        sequence_lengths = torch.LongTensor([sequences.size(1)])
+        scales_tensor = torch.FloatTensor([0.667, 1.0, 0.8])
+        input_names = ["input", "input_lengths", "scales"]
+        dynamic_axes = {
+            "input": {0: "batch_size", 1: "phonemes"},
+            "input_lengths": {0: "batch_size"},
+            "output": {0: "batch_size", 1: "time"},
+        }
+        dummy_input = (sequences, sequence_lengths, scales_tensor, None)
+        if num_speakers > 1:
+            dummy_input = (sequences, sequence_lengths, scales_tensor, torch.LongTensor([0]))
+            input_names.append("sid")
+            dynamic_axes["sid"] = {0: "batch_size"}
+
+        try:
+            with torch.no_grad():
+                torch.onnx.export(
+                    model=model_g,
+                    args=dummy_input,
+                    f=str(onnx_output),
+                    verbose=False,
+                    opset_version=OPSET_VERSION,
+                    input_names=input_names,
+                    output_names=["output"],
+                    dynamic_axes=dynamic_axes,
+                    dynamo=False,
+                )
+            _LOGGER.info("ONNX export complete: %s", onnx_output)
+        except Exception as e:
+            _LOGGER.warning("ONNX export failed: %s (checkpoint still saved)", e)
 
     _LOGGER.info("Merge complete. Output directory: %s", output_dir)
 

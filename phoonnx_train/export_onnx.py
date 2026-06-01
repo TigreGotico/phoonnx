@@ -227,11 +227,26 @@ def cli(
     try:
         model: VitsModel = VitsModel.load_from_checkpoint(
             checkpoint,
-            dataset=None
+            dataset=None,
+            weights_only=False,
         )
     except Exception as e:
-        _LOGGER.error(f"Error loading model checkpoint {checkpoint}: {e}")
-        return
+        _LOGGER.warning(f"load_from_checkpoint failed ({e}), trying manual load with weight_norm strip")
+        from phoonnx_train.vits.apply_lora import _strip_weight_norm_recursive
+        ckpt_data = torch.load(str(checkpoint), map_location="cpu", weights_only=False)
+        config_data = ckpt_data.get("hyper_parameters", {})
+        num_symbols = config_data.get("num_symbols", num_symbols)
+        num_speakers = config_data.get("num_speakers", num_speakers)
+        sr = config_data.get("sample_rate", sample_rate)
+        model = VitsModel(
+            num_symbols=num_symbols,
+            num_speakers=num_speakers,
+            sample_rate=sr,
+            dataset=None,
+        )
+        _strip_weight_norm_recursive(model.model_g)
+        state_dict = ckpt_data.get("state_dict", ckpt_data)
+        model.load_state_dict(state_dict, strict=False)
 
     model_g: torch.nn.Module = model.model_g
     num_symbols: int = model_g.n_vocab

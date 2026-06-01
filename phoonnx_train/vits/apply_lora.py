@@ -137,14 +137,15 @@ def load_lora_adapter(model: SynthesizerTrn, state_dict: Dict[str, torch.Tensor]
 
     loaded = 0
     for key, tensor in state_dict.items():
-        if key.endswith(".lora_A"):
-            module_name = key[:- len(".lora_A")]
+        key_clean = key.removeprefix("model_g.")
+        if key_clean.endswith(".lora_A"):
+            module_name = key_clean[: -len(".lora_A")]
             module = _get_submodule(model, module_name)
             if module is not None and hasattr(module, "lora_A"):
                 module.lora_A.data = tensor.to(module.lora_A.device)
                 loaded += 1
-        elif key.endswith(".lora_B"):
-            module_name = key[:- len(".lora_B")]
+        elif key_clean.endswith(".lora_B"):
+            module_name = key_clean[: -len(".lora_B")]
             module = _get_submodule(model, module_name)
             if module is not None and hasattr(module, "lora_B"):
                 module.lora_B.data = tensor.to(module.lora_B.device)

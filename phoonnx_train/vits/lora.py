@@ -166,7 +166,7 @@ class LoRAConvTranspose1d(nn.Module):
         padding = original_conv.padding[0]
 
         self.lora_A = nn.Parameter(torch.empty(rank, in_channels, 1))
-        self.lora_B = nn.Parameter(torch.zeros(out_channels, rank, kernel_size))
+        self.lora_B = nn.Parameter(torch.zeros(rank, out_channels, kernel_size))
         self.dropout = nn.Dropout(p=dropout) if dropout > 0.0 else nn.Identity()
         nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
 
@@ -193,15 +193,16 @@ class LoRAConvTranspose1d(nn.Module):
 
     def merge(self) -> nn.ConvTranspose1d:
         merged_weight = self.original.weight.data.clone()
-        b = self.lora_B  # (out_channels, rank, kernel_size)
+        b = self.lora_B  # (rank, out_channels, kernel_size)
         a = self.lora_A  # (rank, in_channels, 1)
         k = self.original.kernel_size[0]
-# ConvTranspose1d weight shape: (in_channels, out_channels, kernel_size)
+        # ConvTranspose1d weight shape: (in_channels, out_channels, kernel_size)
         # delta needs to be (in_channels, out_channels, kernel_size)
-        # b is (out_channels, rank, K), a is (rank, in_channels, 1) -> expanded to (rank, in_channels, K)
-        # We want: delta[i,o,k] = sum_r a[r,i,k] * b[o,r,k]
+        # a is (rank, in_channels, 1) -> expanded to (rank, in_channels, K)
+        # b is (rank, out_channels, K)
+        # delta[i,o,k] = sum_r a[r,i,k] * b[r,o,k]
         a_expanded = a.expand(-1, -1, k)  # (rank, in_channels, K)
-        delta = torch.einsum('rik,ork->iok', a_expanded, b)  # (in_channels, out_channels, K)
+        delta = torch.einsum('rik,rok->iok', a_expanded, b)  # (in_channels, out_channels, K)
         merged_weight += self.scaling * delta
 
         merged_conv = nn.ConvTranspose1d(
