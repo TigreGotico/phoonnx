@@ -8,6 +8,12 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from phoonnx_train.vits.lightning import VitsModel
+from phoonnx_train.vits.lora_config import LoRAConfig, SCOPE_PRESETS
+from phoonnx_train.vits.apply_lora import (
+    apply_lora,
+    get_lora_state_dict,
+    count_parameters,
+)
 
 _LOGGER = logging.getLogger(__package__)
 
@@ -45,6 +51,11 @@ def load_state_dict(model, saved_state_dict):
 @click.option('--num-workers', type=click.IntRange(min=1), default=os.cpu_count() or 1, help='Number of data loader workers (default: CPU count)')
 @click.option('--validation-split', type=float, default=0.05, help='Proportion of data used for validation (default: 0.05)')
 @click.option('--discard-encoder', type=bool, default=False, help='Discard the encoder weights from base checkpoint (default: False)')
+@click.option('--lora-scope', type=click.Choice(list(SCOPE_PRESETS.keys())), default=None, help='LoRA scope preset: generator-only (rank=4, dec), full-acoustic (rank=8, dec+enc_q+flow+dp), aggressive (rank=16, all)')
+@click.option('--lora-rank', type=int, default=None, help='Override LoRA rank (overrides scope preset)')
+@click.option('--lora-alpha', type=float, default=None, help='Override LoRA alpha (overrides scope preset)')
+@click.option('--lora-target-modules', type=str, default=None, help='Comma-separated target modules override (e.g., "dec,enc_q,flow,dp")')
+@click.option('--lora-dropout', type=float, default=0.0, help='LoRA dropout (default: 0.0)')
 def main(
     dataset_dir,
     checkpoint_epochs,
@@ -61,7 +72,12 @@ def main(
     batch_size,
     num_workers,
     validation_split,
-    discard_encoder
+    discard_encoder,
+    lora_scope,
+    lora_rank,
+    lora_alpha,
+    lora_target_modules,
+    lora_dropout,
 ):
     logging.basicConfig(level=logging.DEBUG)
 
@@ -191,8 +207,79 @@ def main(
         load_state_dict(model.model_d, model_single.model_d.state_dict())
         _LOGGER.info('Successfully converted single-speaker checkpoint to multi-speaker')
 
+    lora_config = None
+    if lora_scope is not None:
+        lora_config = LoRAConfig.from_preset(lora_scope)
+        if lora_rank is not None:
+            lora_config = LoRAConfig(
+                rank=lora_rank,
+                alpha=lora_alpha if lora_alpha is not None else lora_config.alpha,
+                dropout=lora_dropout,
+                target_modules=lora_config.target_modules,
+            )
+        if lora_alpha is not None:
+            lora_config = LoRAConfig(
+                rank=lora_config.rank,
+                alpha=lora_alpha,
+                dropout=lora_config.dropout,
+                target_modules=lora_config.target_modules,
+            )
+        if lora_target_modules is not None:
+            modules = tuple(m.strip() for m in lora_target_modules.split(","))
+            lora_config = LoRAConfig(
+                rank=lora_config.rank,
+                alpha=lora_config.alpha,
+                dropout=lora_config.dropout,
+                target_modules=modules,
+            )
+        if lora_config.dropout != lora_dropout:
+            lora_config = LoRAConfig(
+                rank=lora_config.rank,
+                alpha=lora_config.alpha,
+                dropout=lora_dropout,
+                target_modules=lora_config.target_modules,
+            )
+
+        _LOGGER.info("Applying LoRA: scope=%s, rank=%d, alpha=%.1f, targets=%s",
+                     lora_scope, lora_config.rank, lora_config.alpha, lora_config.target_modules)
+        apply_lora(model.model_g, lora_config)
+        trainable, total, pct = count_parameters(model.model_g)
+        _LOGGER.info("After LoRA: %d trainable / %d total params (%.2f%%)", trainable, total, pct)
+
+        if learning_rate == 2e-4:
+            learning_rate = 1e-4
+            _LOGGER.info("LoRA training: auto-adjusting learning rate to 1e-4 (from default 2e-4)")
+
+        dict_args['learning_rate'] = learning_rate
+        model.hparams.learning_rate = learning_rate
+
+        for opt_idx, optimizer in enumerate(model.configure_optimizers()[0] if isinstance(model.configure_optimizers(), tuple) else []):
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = learning_rate
+
     _LOGGER.info('training started!!')
     trainer.fit(model)
+
+    if lora_config is not None:
+        adapter_dir = Path(default_root_dir) / "lora_adapter"
+        adapter_dir.mkdir(parents=True, exist_ok=True)
+        adapter_path = adapter_dir / "lora_adapter.pt"
+        lora_state = get_lora_state_dict(model.model_g)
+        torch.save(lora_state, str(adapter_path))
+        _LOGGER.info("Saved LoRA adapter to %s (%d weight tensors)",
+                     adapter_path, len(lora_state))
+
+        meta_path = adapter_dir / "lora_config.json"
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "rank": lora_config.rank,
+                "alpha": lora_config.alpha,
+                "dropout": lora_config.dropout,
+                "target_modules": list(lora_config.target_modules),
+                "scope": lora_scope,
+                "base_checkpoint": str(resume_from_checkpoint) if resume_from_checkpoint else None,
+            }, f, indent=2)
+        _LOGGER.info("Saved LoRA config metadata to %s", meta_path)
 
 
 if __name__ == '__main__':

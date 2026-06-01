@@ -25,6 +25,7 @@ from phoonnx.engines.base import (
     AdapterSynthesisResult,
     BaseOnnxAdapter,
 )
+from phoonnx.lora_runtime import get_lora_config_from_path, load_lora_weights, merge_lora_onnx
 from phoonnx.phonemizers import Phonemizer
 from phoonnx.phonemizers.base import PhonemizedChunks
 from phoonnx.tokenizer import TTSTokenizer
@@ -139,6 +140,7 @@ class TTSVoice:
     phonetic_spellings: Optional[PhoneticSpellings] = None
     phonemizer: Optional[Phonemizer] = None
     adapter: Optional[BaseOnnxAdapter] = None
+    _lora_applied: bool = False
 
     def __post_init__(self):
         """
@@ -179,6 +181,56 @@ class TTSVoice:
         # Let the adapter set up engine-specific runtime state (e.g. Matcha
         # building its vocoder from config.engine_params).
         self.adapter.configure(self.config)
+
+    @staticmethod
+    def load_with_lora(
+            base_model_path: Union[str, Path],
+            lora_path: Union[str, Path],
+            config_path: Optional[Union[str, Path]] = None,
+            use_cuda: bool = False,
+    ) -> "TTSVoice":
+        base_model_path = Path(base_model_path)
+        lora_path = Path(lora_path)
+
+        lora_config_data = get_lora_config_from_path(lora_path)
+        lora_weights = load_lora_weights(lora_path)
+
+        if lora_config_data is None:
+            lora_config_data = {"rank": 8, "alpha": 16.0}
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".onnx", delete=False) as tmp:
+            merged_path = Path(tmp.name)
+
+        try:
+            merge_lora_onnx(base_model_path, lora_weights, lora_config_data, merged_path)
+            voice = TTSVoice.load(merged_path, config_path=config_path, use_cuda=use_cuda)
+            voice._lora_applied = True
+            return voice
+        finally:
+            merged_path.unlink(missing_ok=True)
+
+    def load_lora_adapter(self, lora_path: Union[str, Path]) -> None:
+        merged_path = Path(str(self._get_model_path())) if hasattr(self, '_model_path') else None
+
+        lora_config_data = get_lora_config_from_path(lora_path)
+        lora_weights = load_lora_weights(lora_path)
+
+        if lora_config_data is None:
+            lora_config_data = {"rank": 8, "alpha": 16.0}
+
+        raise NotImplementedError(
+            "Runtime LoRA adapter hot-swap is not yet supported. "
+            "Use TTSVoice.load_with_lora() for a merged model, or "
+            "use phoonnx_train.merge_lora to produce a pre-merged ONNX file."
+        )
+
+    def _get_model_path(self) -> Optional[Path]:
+        for opt in self.session.get_session_options():
+            pass
+        if hasattr(self, '_model_path'):
+            return self._model_path
+        return None
 
     @property
     def tokenizer(self) -> TTSTokenizer:

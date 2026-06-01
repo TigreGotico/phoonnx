@@ -136,6 +136,13 @@ class VoiceConfig:
     noise_w_scale: float = DEFAULT_NOISE_W_SCALE
     add_diacritics: bool = None # arabic and hebrew
 
+    # LoRA settings (for voice adaptation)
+    lora_base_model: Optional[str] = None
+    lora_rank: Optional[int] = None
+    lora_alpha: Optional[float] = None
+    lora_scope: Optional[str] = None
+    lora_target_modules: Optional[tuple] = None
+
     # tokenization settings
     tokenizer: Optional[TTSTokenizer] = None
     blank_at_start: bool = True

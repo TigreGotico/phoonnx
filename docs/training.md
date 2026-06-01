@@ -90,6 +90,77 @@ For fine-tuning on a new speaker, preprocess your new dataset with `--prev-confi
 
 ---
 
+## 4. LoRA Fine-Tuning (Voice Adaptation)
+
+LoRA (Low-Rank Adaptation) enables fast voice adaptation with less data (5–15 min of audio) by only training lightweight adapter layers while keeping the base model frozen. Pronunciation is preserved from the base model since the TextEncoder is frozen.
+
+### Presets
+
+| Preset | Rank | Target modules | Adapter size | Use case |
+|---|---|---|---|---|
+| `generator-only` | 4 | `dec` | ~300KB | Fastest, minimal data |
+| `full-acoustic` | 8 | `dec`, `enc_q`, `flow`, `dp` | ~1MB | Best quality (default) |
+| `aggressive` | 16 | all components incl. `enc_p` | ~2.5MB | Maximum expressiveness |
+
+### Training
+
+```bash
+# Preprocess (same as regular fine-tuning)
+python phoonnx_train/preprocess.py \
+  --language eu-ES --input-dir /data/new_speaker \
+  --prev-config /data/base/config.json \
+  --single-speaker --output-dir /data/preprocessed
+
+# LoRA train — uses base checkpoint, only adapter weights are trainable
+python phoonnx_train/train.py \
+  --dataset-dir /data/preprocessed \
+  --resume-from-checkpoint /data/base/base.ckpt \
+  --lora-scope full-acoustic \
+  --max-epochs 200 --batch-size 16
+```
+
+Custom rank/alpha/targets override the preset:
+
+```bash
+python phoonnx_train/train.py \
+  --dataset-dir /data/preprocessed \
+  --resume-from-checkpoint /data/base/base.ckpt \
+  --lora-scope full-acoustic \
+  --lora-rank 12 \
+  --lora-alpha 24.0 \
+  --lora-target-modules "dec,enc_q" \
+  --max-epochs 200
+```
+
+After training, the LoRA adapter is saved to `<output_dir>/lora_adapter/lora_adapter.pt` along with `lora_config.json`.
+
+### Merging & Export
+
+Merge the LoRA adapter into the base model and export to ONNX:
+
+```bash
+python phoonnx_train/merge_lora.py \
+  /data/base/base.ckpt \
+  --lora-adapter /data/lora_adapter/lora_adapter.pt \
+  --config /data/base/config.json \
+  --lora-scope full-acoustic \
+  --output-dir /data/output_merged/
+```
+
+This produces:
+- `merged_model.ckpt` — merged PyTorch checkpoint
+- `lora_adapter.pt` — standalone adapter (for server-side hot-swap, future)
+- `config.json` — config with LoRA metadata
+- `merged_model.onnx` — ONNX model ready for phoonnx inference
+
+### Deployment Modes
+
+**Edge (merged ONNX):** A single ONNX file per voice, loaded normally with `TTSVoice.load()`. No runtime changes needed.
+
+**Server (hot-swap, future):** Load the base ONNX + per-voice LoRA adapters. Swap voices without reloading the base model. Use `TTSVoice.load_with_lora(base_path, lora_path)`.
+
+---
+
 ## 3. Exporting to ONNX
 
 After training, convert the `.ckpt` checkpoint to ONNX for inference:
