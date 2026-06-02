@@ -87,8 +87,42 @@ python preprocess.py  \
 
 ## 2. Training a Model
 
-Train a [VITS](https://arxiv.org/abs/2106.06103)-style model using PyTorch Lightning.
+Train a model using PyTorch Lightning.  The training pipeline is **engine-agnostic**: you select an architecture with `--engine` and the CLI delegates model creation, checkpoint loading, and ONNX export to the engine implementation.
 
+```
+Usage: train.py [OPTIONS]
+
+Options:
+  --dataset-dir DIRECTORY         Path to pre-processed dataset directory
+                                  [required]
+  --engine TEXT                   TTS architecture to train (default: vits)
+  --checkpoint-epochs INTEGER     Save checkpoint every N epochs (default: 1)
+  --quality TEXT                  Quality/size of model (default: medium)
+  --resume-from-checkpoint TEXT   Load an existing checkpoint and resume
+                                  training
+  --resume-from-single-speaker-checkpoint TEXT
+                                  For multi-speaker models only. Converts a
+                                  single-speaker checkpoint to multi-speaker
+                                  and resumes training
+  --seed INTEGER                  Random seed (default: 1234)
+  --max-epochs INTEGER            Stop training once this number of epochs is
+                                  reached (default: 1000)
+  --devices TEXT                  Number of devices or list of device IDs to
+                                  train on (default: "1")
+  --accelerator TEXT              Hardware accelerator to use (cpu, gpu, tpu,
+                                  mps, etc.)  (default: "auto")
+  --default-root-dir DIRECTORY    Default root directory for logs and
+                                  checkpoints (default: None)
+  --precision TEXT                Precision used in training (e.g. 16, 32,
+                                  bf16, 16-mixed)  (default: "32")
+  --learning-rate FLOAT           Learning rate for optimizer (default: 2e-4)
+  --batch-size INTEGER            Training batch size (default: 16)
+  --num-workers INTEGER           Number of data loader workers (default: 1)
+  --validation-split FLOAT        Proportion of data used for validation
+                                  (default: 0.05)
+  --discard-encoder               Discard the encoder weights from base
+                                  checkpoint (not yet supported by all engines)
+  --help                          Show this message and exit.
 ```
 Usage: train.py [OPTIONS]
 
@@ -128,6 +162,7 @@ Options:
 ```bash
 python train.py \
   --dataset-dir /tmp/tts_train \
+  --engine vits \
   --quality medium \
   --max_epochs 1000 \
   --batch-size 8 \
@@ -140,17 +175,18 @@ python train.py \
 
 ## 3. Exporting to ONNX
 
-After training, export the model checkpoint (`.ckpt`) to the ONNX format for efficient, cross-platform inference.
+After training, export the model checkpoint (`.ckpt`) to the ONNX format for efficient, cross-platform inference.  Export is engine-aware, so passing `--engine optispeech` (or any registered engine) will use that engine’s export procedure and metadata format.
 
 ```
 Usage: export_onnx.py [OPTIONS] CHECKPOINT
 
-  Export a VITS model checkpoint to ONNX format.
+  Export a model checkpoint to ONNX format.
 
 Options:
   -c, --config PATH      Path to the model configuration JSON file.
   -o, --output-dir PATH  Output directory for the ONNX model. (Default:
                          current directory)
+  --engine TEXT          TTS architecture used for training (default: vits)
   -t, --generate-tokens  Generate tokens.txt alongside the ONNX model. Some
                          inference engines need this (eg. sherpa)
   -p, --piper            Generate a piper compatible .json file alongside the
@@ -166,6 +202,7 @@ Options:
 python export_onnx.py \
   checkpoints/epoch=500-step=100000.ckpt \
   --config /path/to/output/config.json \
+  --engine vits \
   --output-dir ./exported \
   --generate-tokens \
   --piper
