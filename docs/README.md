@@ -49,6 +49,7 @@ with wave.open("output.wav", "wb") as wav_file:
 - [Phonemizers](phonemizers.md)
 - [Configuration Reference](configuration.md)
 - [Training](training.md)
+- [Disentangled VITS](disentangled-vits.md) — timbre, articulation, and prosody control
 - [CLI Reference](cli.md)
 - [OVOS Plugin](ovos_plugin.md)
 - [Docker / TTS Server](docker.md)
