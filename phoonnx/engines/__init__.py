@@ -115,8 +115,10 @@ def list_engines() -> List[str]:
 
 def _register_builtins() -> None:
     from phoonnx.engines.vits import VitsAdapter
+    from phoonnx.engines.matcha import MatchaAdapter
 
     register_engine("vits", VitsAdapter, detect_priority=50)
+    register_engine("matcha", MatchaAdapter, detect_priority=40)
 
 
 _register_builtins()
