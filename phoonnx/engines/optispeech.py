@@ -48,6 +48,9 @@ LOG = logging.getLogger(__name__)
 class OptiSpeechAdapter(BaseOnnxAdapter):
     """Adapter for OptiSpeech ONNX models."""
 
+    def __init__(self):
+        self._onnx_meta: Optional[Dict[str, Any]] = None
+
     # ------------------------------------------------------------------
     # Required
     # ------------------------------------------------------------------
@@ -154,6 +157,24 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
             "e_factor": inference_args.get("e_factor", 1.0),
         }
 
+    def configure_tokenizer(self, tokenizer):
+        """
+        OptiSpeech models embed ``text_processor`` config in ONNX metadata
+        that controls whether blanks / BOS/EOS should be inserted.  Respect
+        those flags so the model receives the exact token sequence it was
+        trained on.
+        """
+        if self._onnx_meta is None:
+            return tokenizer
+        tp = self._onnx_meta.get("text_processor", {})
+        if tp.get("add_blank") is False:
+            tokenizer.add_blank_char = False
+            tokenizer.blank_at_start = False
+            tokenizer.blank_at_end = False
+        if tp.get("add_bos_eos") is False:
+            tokenizer.use_eos_bos = False
+        return tokenizer
+
     def parse_onnx_meta(
         self, session: onnxruntime.InferenceSession,
     ) -> Dict[str, Any]:
@@ -167,7 +188,8 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
         try:
             meta = session.get_modelmeta().custom_metadata_map
             if "inference" in meta:
-                return json.loads(meta["inference"])
+                self._onnx_meta = json.loads(meta["inference"])
+                return self._onnx_meta
         except Exception:
             LOG.debug("Failed to parse OptiSpeech ONNX metadata", exc_info=True)
         return {}

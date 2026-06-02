@@ -134,6 +134,27 @@ class BaseOnnxAdapter(ABC):
         """
         return {}
 
+    def configure_tokenizer(self, tokenizer: Any) -> Any:
+        """
+        Optional hook for engines to mutate the tokenizer after
+        ``VoiceConfig`` has built it.
+
+        For example, OptiSpeech models embed ``add_blank`` / ``add_bos_eos``
+        flags in their ONNX metadata; this hook lets the adapter disable
+        blank interspersing when the model expects raw phoneme sequences.
+
+        Parameters
+        ----------
+        tokenizer : TTSTokenizer
+            The tokenizer built by ``VoiceConfig.from_dict()``.
+
+        Returns
+        -------
+        TTSTokenizer
+            The same tokenizer (possibly mutated).
+        """
+        return tokenizer
+
     def param_labels(self) -> Dict[str, str]:
         """Human-readable labels for each scale param (for UIs)."""
         return {k: k for k in self.default_params()}

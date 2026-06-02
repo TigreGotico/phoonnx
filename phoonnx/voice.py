@@ -154,6 +154,11 @@ class TTSVoice:
                 # Fall back to auto-detection
                 self.adapter = detect_engine(session=self.session)
 
+        # Give the adapter a chance to reconfigure the tokenizer
+        # (e.g. OptiSpeech models may disable blank interspersing)
+        if self.adapter is not None and hasattr(self.adapter, "configure_tokenizer"):
+            self.config.tokenizer = self.adapter.configure_tokenizer(self.config.tokenizer)
+
     @property
     def tokenizer(self) -> TTSTokenizer:
         """
@@ -230,6 +235,10 @@ class TTSVoice:
 
         # Auto-detect engine adapter from config + session
         adapter = detect_engine(config=config_dict, session=session)
+
+        # Let the adapter read ONNX metadata before we build the tokenizer
+        if adapter is not None and hasattr(adapter, "parse_onnx_meta"):
+            adapter.parse_onnx_meta(session)
 
         voice_config = VoiceConfig.from_dict(
             config_dict,
