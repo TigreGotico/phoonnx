@@ -28,7 +28,7 @@ The disentangled architecture splits `g` into three factors:
 | **Articulation** | Pronunciation envelope — how phonemes are realized | Accent, dialect, coarticulation |
 | **Prosody** | Rhythm and pacing — when phonemes happen | Emotion, emphasis, speed |
 
-Each factor is produced by a dedicated lightweight `ReferenceEncoder` (CNN+BiGRU, ~50K parameters) that compresses a reference mel spectrogram into a fixed-size embedding. At inference time you can provide reference audio clips to set any combination of the three factors independently.
+Each factor is produced by a dedicated lightweight `ReferenceEncoder` (Conv-SwiGLU + BiLSTM, ~30K parameters) that compresses a reference mel spectrogram into a fixed-size embedding. At inference time you can provide reference audio clips to set any combination of the three factors independently.
 
 ---
 
@@ -60,24 +60,43 @@ g_prosody  = ProsodyEncoder(reference_mel or emotion_label)
 
 ### ReferenceEncoder
 
-Each encoder is a stack of strided Conv1d layers followed by a bidirectional GRU:
+Each encoder is a stack of strided Conv-SwiGLU blocks followed by a bidirectional LSTM:
 
 ```
 mel [B, n_mels, T]
-  -> Conv1d-ReLU-LayerNorm (stride=2, x3 layers)
-  -> BiGRU (1 layer)
-  -> Linear projection -> [B, out_dim, 1]
+  -> Conv1d -> SwiGLU -> LayerNorm (stride=2, x2 layers)
+  -> BiLSTM (1 layer)
+  -> SwiGLU bottleneck projection -> [B, out_dim, 1]
 ```
+
+**Design rationale:** We replaced the original Conv-ReLU-GRU stack with a minimal-parameter architecture:
+
+- **SwiGLU activation** (Swish-gated linear unit) replaces ReLU. It provides better gradient flow than ReLU while naturally gating irrelevant features, which is critical when the same mel spectrogram must be read by three different encoders (timbre, articulation, prosody) that need to ignore different information.
+- **BiLSTM** replaces BiGRU. LSTM has better gradient flow and more stable training at the small parameter budget we target. Since the Conv blocks already extracted strong local features, a single-layer BiLSTM is sufficient.
+- **SwiGLU bottleneck projection** replaces a plain Linear. The bottleneck (2*hidden → hidden → out) cuts parameters compared with a direct projection while adding a learned non-linear compression step.
+- **2 conv layers instead of 3**: Each SwiGLU block is more expressive than the original ReLU block, so we can downsample from T → T/4 in 2 layers instead of T → T/8 in 3 layers. This preserves more temporal context for the LSTM and reduces parameters.
+
+**Parameter count comparison** (with default `hidden_channels=256`):
+
+| Component | Old (Conv-ReLU-BiGRU) | New (Conv-SwiGLU-BiLSTM) | Δ |
+|---|---|---|---|
+| Conv stack | ~590K (3 layers) | ~393K (2 layers) | -33% |
+| Recurrent | ~197K (BiGRU) | ~263K (BiLSTM) | +33% |
+| Projection | ~197K (Linear) | ~131K (SwiGLU bottleneck) | -33% |
+| **Total per encoder** | **~984K** | **~787K** | **-20%** |
+| **3 encoders** | **~2.95M** | **~2.36M** | **-20%** |
+
+At 22050 Hz, a 2-second reference clip (~173 frames) is reduced to ~43 frames after 2 stride-2 layers — plenty of context for the BiLSTM.
 
 Default hyperparameters:
 
 | Parameter | Default | Description |
 |---|---|---|
-| `ref_enc_hidden_channels` | 256 | Conv feature map width |
-| `ref_enc_n_layers` | 3 | Number of conv layers |
+| `ref_enc_hidden_channels` | 256 | Conv / LSTM feature width |
+| `ref_enc_n_layers` | 2 | Number of Conv-SwiGLU blocks |
 | `ref_enc_kernel_size` | 3 | Conv kernel size |
 | `ref_enc_stride` | 2 | Conv stride (halves time each layer) |
-| `ref_enc_n_gru_layers` | 1 | BiGRU layers |
+| `ref_enc_n_lstm_layers` | 1 | BiLSTM layers |
 
 ---
 
@@ -103,7 +122,7 @@ python phoonnx_train/train.py \
 |---|---|---|
 | `--disentangled` | `False` | Enable three-encoder mode |
 | `--ref-enc-hidden-channels` | 256 | Reference encoder hidden channels |
-| `--ref-enc-n-layers` | 3 | Number of conv layers per reference encoder |
+| `--ref-enc-n-layers` | 2 | Number of Conv-SwiGLU blocks per reference encoder |
 | `--ref-enc-stride` | 2 | Conv stride |
 | `--timbre-dim` | `gin_channels` | Timbre embedding dimension |
 | `--artic-dim` | `gin_channels` | Articulation embedding dimension |
@@ -296,7 +315,7 @@ Ensure you exported with `--disentangled-mode end-to-end`. Without this flag, th
 
 ### Reference audio too short
 
-The `ReferenceEncoder` applies three stride-2 conv layers, reducing time by 8x. A reference clip should be at least a few hundred frames (~2-3 seconds at 22050 Hz with hop_size=256) to avoid empty output. If the clip is too short, the GRU will receive an empty sequence and the embedding will be near-zero, causing the model to fall back to its learned default.
+The `ReferenceEncoder` applies two stride-2 Conv-SwiGLU blocks, reducing time by 4×. A reference clip should be at least ~1 second at 22050 Hz (≈86 frames with hop_size=256) to avoid empty output. If the clip is too short, the LSTM will receive an empty sequence and the embedding will be near-zero, causing the model to fall back to its learned default. Because we only halve twice (not three times as in the original Conv-ReLU stack), shorter clips are safe.
 
 ### Emotion label not found
 

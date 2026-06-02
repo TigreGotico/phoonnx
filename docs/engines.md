@@ -151,10 +151,10 @@ register_engine("my_engine", MyTrainingEngine)
 
 ### Existing Engines
 
-| Engine | File | Quality Presets |
-|---|---|---|
-| VITS | `phoonnx_train/engines/vits.py` | `x-low`, `medium`, `high` |
-| Disentangled VITS | `phoonnx_train/engines/disentangled_vits.py` | `x-low`, `medium`, `high` |
+| Engine | File | Quality Presets | Notes |
+|---|---|---|---|
+| VITS | `phoonnx_train/engines/vits.py` | `x-low`, `medium`, `high` | Default; single speaker embedding |
+| Disentangled VITS | `phoonnx_train/engines/disentangled_vits.py` | `x-low`, `medium`, `high` | Splits `g` into timbre/articulation/prosody via minimal-parameter Conv-SwiGLU + BiLSTM reference encoders |
 
 ---
 
