@@ -73,6 +73,7 @@ Lower `detect_priority` values are probed first during auto-detection.
 | Adapter | File | Detection |
 |---|---|---|
 | VITS / Piper / Mimic3 / Coqui / VITS2 / YourTTS-VITS | `phoonnx/engines/vits.py` | `model_type == "vits"`, `"scales"` input, piper/mimic3 signatures |
+| Disentangled VITS | `phoonnx/engines/disentangled_vits.py` | `model_type == "disentangled-vits"`, `"timbre_ref_mel"` input |
 | [Matcha](matcha.md) | `phoonnx/engines/matcha.py` | `engine == "matcha"` (flow-matching mel + separate vocoder) |
 | [GlowTTS](glowtts.md) | `phoonnx/engines/glowtts.py` | `engine == "glowtts"` |
 | [OptiSpeech](optispeech.md) | `phoonnx/engines/optispeech.py` | `engine == "optispeech"` (wav + durations outputs) |
@@ -153,6 +154,7 @@ register_engine("my_engine", MyTrainingEngine)
 | Engine | File | Quality Presets |
 |---|---|---|
 | VITS | `phoonnx_train/engines/vits.py` | `x-low`, `medium`, `high` |
+| Disentangled VITS | `phoonnx_train/engines/disentangled_vits.py` | `x-low`, `medium`, `high` |
 
 ---
 

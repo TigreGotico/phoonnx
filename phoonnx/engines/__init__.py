@@ -123,10 +123,12 @@ def _register_builtins() -> None:
     from phoonnx.engines.styletts2 import StyleTTS2Adapter
     from phoonnx.engines.yourtts import YourTTSAdapter
     from phoonnx.engines.zipvoice import ZipVoiceAdapter
+    from phoonnx.engines.disentangled_vits import DisentangledVitsAdapter
 
     # OptiSpeech shares VITS-like x/x_lengths/scales inputs with Matcha, but has
     # a distinctive metadata + wav/durations output signature — check it first.
     register_engine("optispeech", OptiSpeechAdapter, detect_priority=35)
+    register_engine("disentangled-vits", DisentangledVitsAdapter, detect_priority=41)
     register_engine("vits", VitsAdapter, detect_priority=50)
     register_engine("matcha", MatchaAdapter, detect_priority=40)
     register_engine("glowtts", GlowTTSAdapter, detect_priority=42)

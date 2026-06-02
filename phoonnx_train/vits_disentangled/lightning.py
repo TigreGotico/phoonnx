@@ -8,16 +8,20 @@ from torch import autocast
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset, random_split
 
-from .commons import slice_segments
-from .dataset import Batch, PhoonnxDataset, UtteranceCollate
-from .losses import discriminator_loss, feature_loss, generator_loss, kl_loss
-from .mel_processing import mel_spectrogram_torch, spec_to_mel_torch
-from .models import MultiPeriodDiscriminator, SynthesizerTrn
+from vits.commons import slice_segments
+from vits.losses import discriminator_loss, feature_loss, generator_loss, kl_loss
+from vits.mel_processing import mel_spectrogram_torch, spec_to_mel_torch
 
-_LOGGER = logging.getLogger("vits.lightning")
+from .dataset import DisentangledBatch, DisentangledUtteranceCollate, PhoonnxDataset
+from .losses import mutual_information_loss, kl_regularization_loss
+from .models import DisentangledSynthesizerTrn, MultiPeriodDiscriminator
+
+_LOGGER = logging.getLogger("vits_disentangled.lightning")
 
 
-class VitsModel(pl.LightningModule):
+class DisentangledVitsModel(pl.LightningModule):
+    """PyTorch Lightning module for Disentangled VITS training."""
+
     def __init__(
         self,
         num_symbols: int,
@@ -56,6 +60,19 @@ class VitsModel(pl.LightningModule):
         gin_channels: int = 0,
         use_sdp: bool = True,
         segment_size: int = 8192,
+        # disentangled
+        ref_enc_hidden_channels: int = 256,
+        ref_enc_n_layers: int = 3,
+        ref_enc_kernel_size: int = 3,
+        ref_enc_stride: int = 2,
+        ref_enc_n_gru_layers: int = 1,
+        timbre_dim: int = 0,
+        artic_dim: int = 0,
+        prosody_dim: int = 0,
+        n_emotion_labels: int = 0,
+        lambda_mi: float = 0.1,
+        lambda_cycle: float = 1.0,
+        lambda_kl_dis: float = 0.01,
         # training
         dataset: Optional[List[Union[str, Path]]] = None,
         learning_rate: float = 2e-4,
@@ -79,11 +96,9 @@ class VitsModel(pl.LightningModule):
         self.save_hyperparameters()
 
         if (self.hparams.num_speakers > 1) and (self.hparams.gin_channels <= 0):
-            # Default gin_channels for multi-speaker model
             self.hparams.gin_channels = 512
 
-        # Set up models
-        self.model_g = SynthesizerTrn(
+        self.model_g = DisentangledSynthesizerTrn(
             n_vocab=self.hparams.num_symbols,
             spec_channels=self.hparams.filter_length // 2 + 1,
             segment_size=self.hparams.segment_size // self.hparams.hop_length,
@@ -103,18 +118,25 @@ class VitsModel(pl.LightningModule):
             n_speakers=self.hparams.num_speakers,
             gin_channels=self.hparams.gin_channels,
             use_sdp=self.hparams.use_sdp,
+            ref_enc_hidden_channels=self.hparams.ref_enc_hidden_channels,
+            ref_enc_n_layers=self.hparams.ref_enc_n_layers,
+            ref_enc_kernel_size=self.hparams.ref_enc_kernel_size,
+            ref_enc_stride=self.hparams.ref_enc_stride,
+            ref_enc_n_gru_layers=self.hparams.ref_enc_n_gru_layers,
+            timbre_dim=self.hparams.timbre_dim,
+            artic_dim=self.hparams.artic_dim,
+            prosody_dim=self.hparams.prosody_dim,
+            n_emotion_labels=self.hparams.n_emotion_labels,
         )
         self.model_d = MultiPeriodDiscriminator(
             use_spectral_norm=self.hparams.use_spectral_norm
         )
 
-        # Dataset splits
         self._train_dataset: Optional[Dataset] = None
         self._val_dataset: Optional[Dataset] = None
         self._test_dataset: Optional[Dataset] = None
         self._load_datasets(validation_split, num_test_examples, max_phoneme_ids)
 
-        # State kept between training optimizers
         self._y = None
         self._y_hat = None
 
@@ -124,18 +146,6 @@ class VitsModel(pl.LightningModule):
         num_test_examples: int,
         max_phoneme_ids: Optional[int] = None,
     ):
-        """
-        Load dataset from configuration, construct a PhoonnxDataset, and split it into training, testing, and validation subsets stored on the instance.
-        
-        Parameters:
-            validation_split (float): Fraction of the full dataset to reserve for validation (between 0 and 1).
-            num_test_examples (int): Exact number of examples to reserve for the test set.
-            max_phoneme_ids (Optional[int]): If provided, limit the dataset to examples with phoneme IDs up to this value.
-        
-        Behavior:
-            If the instance hyperparameters do not specify a dataset, the method logs a debug message and returns without modifying dataset attributes.
-            Otherwise, it creates a PhoonnxDataset from the configured dataset path, computes sizes for train/test/validation using `validation_split` and `num_test_examples`, and assigns the resulting subsets to `self._train_dataset`, `self._test_dataset`, and `self._val_dataset`.
-        """
         if self.hparams.dataset is None:
             _LOGGER.debug("No dataset to load")
             return
@@ -150,7 +160,9 @@ class VitsModel(pl.LightningModule):
             full_dataset, [train_set_size, num_test_examples, valid_set_size]
         )
 
-    def forward(self, text, text_lengths, scales, sid=None):
+    def forward(self, text, text_lengths, scales, sid=None,
+                timbre_ref_mel=None, artic_ref_mel=None,
+                prosody_ref_mel=None, emotion_id=None):
         noise_scale = scales[0]
         length_scale = scales[1]
         noise_scale_w = scales[2]
@@ -161,14 +173,17 @@ class VitsModel(pl.LightningModule):
             length_scale=length_scale,
             noise_scale_w=noise_scale_w,
             sid=sid,
+            timbre_ref_mel=timbre_ref_mel,
+            artic_ref_mel=artic_ref_mel,
+            prosody_ref_mel=prosody_ref_mel,
+            emotion_id=emotion_id,
         )
-
         return audio
 
     def train_dataloader(self):
         return DataLoader(
             self._train_dataset,
-            collate_fn=UtteranceCollate(
+            collate_fn=DisentangledUtteranceCollate(
                 is_multispeaker=self.hparams.num_speakers > 1,
                 segment_size=self.hparams.segment_size,
             ),
@@ -179,7 +194,7 @@ class VitsModel(pl.LightningModule):
     def val_dataloader(self):
         return DataLoader(
             self._val_dataset,
-            collate_fn=UtteranceCollate(
+            collate_fn=DisentangledUtteranceCollate(
                 is_multispeaker=self.hparams.num_speakers > 1,
                 segment_size=self.hparams.segment_size,
             ),
@@ -190,7 +205,7 @@ class VitsModel(pl.LightningModule):
     def test_dataloader(self):
         return DataLoader(
             self._test_dataset,
-            collate_fn=UtteranceCollate(
+            collate_fn=DisentangledUtteranceCollate(
                 is_multispeaker=self.hparams.num_speakers > 1,
                 segment_size=self.hparams.segment_size,
             ),
@@ -198,14 +213,13 @@ class VitsModel(pl.LightningModule):
             batch_size=self.hparams.batch_size,
         )
 
-    def training_step(self, batch: Batch, batch_idx: int, optimizer_idx: int):
+    def training_step(self, batch: DisentangledBatch, batch_idx: int, optimizer_idx: int):
         if optimizer_idx == 0:
             return self.training_step_g(batch)
-
         if optimizer_idx == 1:
             return self.training_step_d(batch)
 
-    def training_step_g(self, batch: Batch):
+    def training_step_g(self, batch: DisentangledBatch):
         x, x_lengths, y, _, spec, spec_lengths, speaker_ids = (
             batch.phoneme_ids,
             batch.phoneme_lengths,
@@ -215,6 +229,11 @@ class VitsModel(pl.LightningModule):
             batch.spectrogram_lengths,
             batch.speaker_ids if batch.speaker_ids is not None else None,
         )
+
+        timbre_ref = batch.timbre_ref_mels
+        artic_ref = batch.artic_ref_mels
+        prosody_ref = batch.prosody_ref_mels
+
         (
             y_hat,
             l_length,
@@ -223,7 +242,10 @@ class VitsModel(pl.LightningModule):
             _x_mask,
             z_mask,
             (_z, z_p, m_p, logs_p, _m_q, logs_q),
-        ) = self.model_g(x, x_lengths, spec, spec_lengths, speaker_ids)
+        ) = self.model_g(x, x_lengths, spec, spec_lengths, speaker_ids,
+                         timbre_ref_mel=timbre_ref,
+                         artic_ref_mel=artic_ref,
+                         prosody_ref_mel=prosody_ref)
         self._y_hat = y_hat
 
         mel = spec_to_mel_torch(
@@ -253,15 +275,13 @@ class VitsModel(pl.LightningModule):
             y,
             ids_slice * self.hparams.hop_length,
             self.hparams.segment_size,
-        )  # slice
+        )
 
-        # Save for training_step_d
         self._y = y
 
         _y_d_hat_r, y_d_hat_g, fmap_r, fmap_g = self.model_d(y, y_hat)
 
         with autocast(self.device.type, enabled=False):
-            # Generator loss
             loss_dur = torch.sum(l_length.float())
             loss_mel = F.l1_loss(y_mel, y_hat_mel) * self.hparams.c_mel
             loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask) * self.hparams.c_kl
@@ -270,32 +290,51 @@ class VitsModel(pl.LightningModule):
             loss_gen, _losses_gen = generator_loss(y_d_hat_g)
             loss_gen_all = loss_gen + loss_fm + loss_mel + loss_dur + loss_kl
 
-            self.log("loss_gen_all", loss_gen_all)
+            # Disentanglement auxiliary losses
+            if speaker_ids is not None:
+                with torch.no_grad():
+                    g_timbre, g_artic, g_prosody, _ = self.model_g._get_g_disentangled(
+                        speaker_ids, timbre_ref, artic_ref, prosody_ref, None
+                    )
+                mi_losses = mutual_information_loss(
+                    g_timbre, g_artic, g_prosody, speaker_ids,
+                    lambda_timbre=self.hparams.lambda_mi,
+                    lambda_artic=self.hparams.lambda_mi,
+                    lambda_prosody=self.hparams.lambda_mi,
+                )
+                for k, v in mi_losses.items():
+                    loss_gen_all = loss_gen_all + v
+                    self.log(k, v)
 
+                kl_losses = kl_regularization_loss(
+                    g_timbre, g_artic, g_prosody,
+                    lambda_kl=self.hparams.lambda_kl_dis,
+                )
+                for k, v in kl_losses.items():
+                    loss_gen_all = loss_gen_all + v
+                    self.log(k, v)
+
+            self.log("loss_gen_all", loss_gen_all)
             return loss_gen_all
 
-    def training_step_d(self, batch: Batch):
-        # From training_step_g
+    def training_step_d(self, batch: DisentangledBatch):
         y = self._y
         y_hat = self._y_hat
         y_d_hat_r, y_d_hat_g, _, _ = self.model_d(y, y_hat.detach())
 
         with autocast(self.device.type, enabled=False):
-            # Discriminator
             loss_disc, _losses_disc_r, _losses_disc_g = discriminator_loss(
                 y_d_hat_r, y_d_hat_g
             )
             loss_disc_all = loss_disc
 
             self.log("loss_disc_all", loss_disc_all)
-
             return loss_disc_all
 
-    def validation_step(self, batch: Batch, batch_idx: int):
+    def validation_step(self, batch: DisentangledBatch, batch_idx: int):
         val_loss = self.training_step_g(batch) + self.training_step_d(batch)
         self.log("val_loss", val_loss)
 
-        # Generate audio examples
         for utt_idx, test_utt in enumerate(self._test_dataset):
             text = test_utt.phoneme_ids.unsqueeze(0).to(self.device)
             text_lengths = torch.LongTensor([len(test_utt.phoneme_ids)]).to(self.device)
@@ -306,14 +345,8 @@ class VitsModel(pl.LightningModule):
                 else None
             )
             test_audio = self(text, text_lengths, scales, sid=sid).detach()
-
-            # Scale to make louder in [-1, 1]
             test_audio = test_audio * (1.0 / max(0.01, abs(test_audio.max())))
-
             tag = test_utt.text or str(utt_idx)
-           # self.logger.experiment.add_audio(
-           #     tag, test_audio, sample_rate=self.hparams.sample_rate
-           # )
 
         return val_loss
 
@@ -340,12 +373,11 @@ class VitsModel(pl.LightningModule):
                 optimizers[1], gamma=self.hparams.lr_decay
             ),
         ]
-
         return optimizers, schedulers
 
     @staticmethod
     def add_model_specific_args(parent_parser):
-        parser = parent_parser.add_argument_group("VitsModel")
+        parser = parent_parser.add_argument_group("DisentangledVitsModel")
         parser.add_argument("--batch-size", type=int, required=True)
         parser.add_argument("--validation-split", type=float, default=0.1)
         parser.add_argument("--num-test-examples", type=int, default=5)
@@ -354,11 +386,9 @@ class VitsModel(pl.LightningModule):
             type=int,
             help="Exclude utterances with phoneme id lists longer than this",
         )
-        #
         parser.add_argument("--hidden-channels", type=int, default=192)
         parser.add_argument("--inter-channels", type=int, default=192)
         parser.add_argument("--filter-channels", type=int, default=768)
         parser.add_argument("--n-layers", type=int, default=6)
         parser.add_argument("--n-heads", type=int, default=2)
-        #
         return parent_parser

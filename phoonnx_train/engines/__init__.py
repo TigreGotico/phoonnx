@@ -89,8 +89,10 @@ def list_engines() -> List[str]:
 
 def _register_builtins() -> None:
     from phoonnx_train.engines.vits import VitsTrainingEngine
+    from phoonnx_train.engines.disentangled_vits import DisentangledVitsTrainingEngine
 
     register_engine("vits", VitsTrainingEngine)
+    register_engine("disentangled-vits", DisentangledVitsTrainingEngine)
 
 
 _register_builtins()
