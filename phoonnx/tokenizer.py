@@ -224,7 +224,13 @@ class Vocabulary:
         Returns:
             Vocabulary: Vocabulary populated with the parsed char-to-index map and configured special tokens.
         """
-        char2idx: Dict[str, int] = cfg.get("phoneme_id_map", {})
+        raw_map: Dict[str, Any] = cfg.get("phoneme_id_map", {})
+        char2idx: Dict[str, int] = {}
+        for char, val in raw_map.items():
+            if isinstance(val, (list, tuple)):
+                char2idx[char] = val[0] if val else 0
+            else:
+                char2idx[char] = int(val)
         pad: Optional[str] = cfg.get("pad") or DEFAULT_PAD_TOKEN
         eos: Optional[str] = cfg.get("eos") or DEFAULT_EOS_TOKEN
         bos: Optional[str] = cfg.get("bos") or DEFAULT_BOS_TOKEN

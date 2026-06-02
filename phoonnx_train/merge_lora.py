@@ -117,13 +117,14 @@ def main(
                  lora_config.rank, lora_config.alpha, lora_config.target_modules)
 
     _LOGGER.info("Loading base model from %s", base_checkpoint)
-    model = VitsModel.load_from_checkpoint(str(base_checkpoint), dataset=None, weights_only=False)
+    model = VitsModel.load_from_checkpoint(str(base_checkpoint), dataset=None, map_location="cpu", weights_only=False)
+    model.cpu()
 
     _LOGGER.info("Applying LoRA with config: %s", lora_config)
     apply_lora(model.model_g, lora_config)
 
     _LOGGER.info("Loading LoRA adapter from %s", lora_adapter)
-    adapter_state = torch.load(str(lora_adapter), map_location="cpu", weights_only=True)
+    adapter_state = torch.load(str(lora_adapter), map_location="cpu", weights_only=False)
 
     if "state_dict" in adapter_state:
         lora_weights = {
@@ -141,6 +142,12 @@ def main(
 
     load_lora_adapter(model.model_g, lora_weights)
 
+    if save_adapter:
+        standalone_adapter = get_lora_state_dict(model.model_g)
+        adapter_path = output_dir / "lora_adapter.pt"
+        _LOGGER.info("Saving standalone LoRA adapter to %s", adapter_path)
+        torch.save(standalone_adapter, str(adapter_path))
+
     _LOGGER.info("Merging LoRA weights into base model")
     merge_lora(model.model_g)
 
@@ -155,26 +162,20 @@ def main(
         str(merged_ckpt_path),
     )
 
-    if save_adapter:
-        standalone_adapter = get_lora_state_dict(model.model_g)
-        adapter_path = output_dir / "lora_adapter.pt"
-        _LOGGER.info("Saving standalone LoRA adapter to %s", adapter_path)
-        torch.save(standalone_adapter, str(adapter_path))
-
-        if config is not None:
-            with open(config, "r", encoding="utf-8") as f:
-                config_data = json.load(f)
-            lora_meta = {
-                "lora_rank": lora_config.rank,
-                "lora_alpha": lora_config.alpha,
-                "lora_target_modules": list(lora_config.target_modules),
-                "lora_scope": lora_scope,
-            }
-            config_data["lora"] = lora_meta
-            config_out = output_dir / "config.json"
-            with open(config_out, "w", encoding="utf-8") as f:
-                json.dump(config_data, f, indent=2, ensure_ascii=False)
-            _LOGGER.info("Saved config with LoRA metadata to %s", config_out)
+    if config is not None:
+        with open(config, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+        lora_meta = {
+            "lora_rank": lora_config.rank,
+            "lora_alpha": lora_config.alpha,
+            "lora_target_modules": list(lora_config.target_modules),
+            "lora_scope": lora_scope,
+        }
+        config_data["lora"] = lora_meta
+        config_out = output_dir / "config.json"
+        with open(config_out, "w", encoding="utf-8") as f:
+            json.dump(config_data, f, indent=2, ensure_ascii=False)
+        _LOGGER.info("Saved config with LoRA metadata to %s", config_out)
 
     if export_onnx and config is not None:
         import onnx

@@ -36,7 +36,6 @@ WORK_DIR = Path(os.environ.get("LORA_WORK_DIR", "/mnt/homelab/Workspace/lora-arg
 DATASET_NAME = "Kukedlc/arg-spanish-tts"
 BASE_VOICE_ID = "OpenVoiceOS/phoonnx_es-ES_dii_espeak"
 SPEAKER_ID = "5223"
-import pytorch_lightning as pl
 
 SAMPLE_RATE = 22050
 LORA_SCOPE = "full-acoustic"
@@ -137,32 +136,46 @@ def download_base_model(output_dir: Path):
 
 
 def extract_base_checkpoint(config_path: Path, output_dir: Path):
-    import torch
-    from phoonnx_train.vits.lightning import VitsModel
-
-    print(f"[4/8] Creating base checkpoint...")
+    print(f"[4/8] Downloading original base checkpoint from HuggingFace...")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
-
-    model = VitsModel(
-        num_symbols=config.get("num_symbols", 256),
-        num_speakers=config.get("num_speakers", 1),
-        sample_rate=config.get("audio", {}).get("sample_rate", SAMPLE_RATE),
-        dataset=None,
-    )
-
     ckpt_path = output_dir / "base.ckpt"
-    torch.save(
-        {
-            "state_dict": model.state_dict(),
-            "hyper_parameters": dict(model.hparams),
-            "pytorch-lightning_version": pl.__version__,
-        },
-        str(ckpt_path),
-    )
-    print(f"  Checkpoint: {ckpt_path}")
+    if ckpt_path.exists():
+        print(f"  Already have {ckpt_path}")
+        return ckpt_path
+
+    try:
+        from huggingface_hub import hf_hub_download
+        downloaded = hf_hub_download(
+            repo_id=BASE_VOICE_ID,
+            filename="epoch=651-step=88672.ckpt",
+        )
+        import shutil
+        shutil.copy2(downloaded, str(ckpt_path))
+        print(f"  Downloaded checkpoint to {ckpt_path}")
+    except Exception as e:
+        print(f"  HF download failed ({e}), creating random base checkpoint instead (will sound worse)")
+        import pytorch_lightning as pl
+        import torch
+        from phoonnx_train.vits.lightning import VitsModel
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        model = VitsModel(
+            num_symbols=config.get("num_symbols", 256),
+            num_speakers=config.get("num_speakers", 1),
+            sample_rate=config.get("audio", {}).get("sample_rate", SAMPLE_RATE),
+            dataset=None,
+        )
+        torch.save(
+            {
+                "state_dict": model.state_dict(),
+                "hyper_parameters": dict(model.hparams),
+                "pytorch-lightning_version": pl.__version__,
+            },
+            str(ckpt_path),
+        )
+        print(f"  Random checkpoint: {ckpt_path}")
+
     return ckpt_path
 
 
@@ -268,7 +281,7 @@ def main():
     preprocessed_dir = work_dir / "preprocessed"
     base_model_dir = work_dir / "base_model"
     train_dir = work_dir / "lora_training"
-    lora_output_dir = work_dir / "lora_merged"
+    lora_output_dir = work_dir / "merged"
     demo_dir = work_dir / "demo_output"
 
     config_path = None
@@ -294,7 +307,9 @@ def main():
 
     if "merge" in steps:
         lora_adapter = find_lora_adapter(train_dir)
-        merge_and_export(base_ckpt, lora_adapter, config_path, lora_output_dir, args.lora_scope)
+        preprocessed_config = preprocessed_dir / "config.json"
+        merge_and_export(base_ckpt, lora_adapter, preprocessed_config if preprocessed_config.exists() else config_path,
+                         lora_output_dir, args.lora_scope)
 
     if "demo" in steps:
         model_onnx = lora_output_dir / "merged_model.onnx"
