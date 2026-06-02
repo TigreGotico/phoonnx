@@ -547,6 +547,19 @@ class SynthesisConfig:
     # Engine-specific per-call params (d_factor, p_factor, e_factor, …)
     extra_params: Dict[str, Any] = field(default_factory=dict)
 
+    # Disentangled synthesis options
+    timbre_ref_path: Optional[str] = None
+    """Path to reference audio for voice cloning / timbre control."""
+
+    artic_ref_path: Optional[str] = None
+    """Path to reference audio for accent / articulation transfer."""
+
+    prosody_ref_path: Optional[str] = None
+    """Path to reference audio for prosody / emotion / rhythm control."""
+
+    emotion: Optional[str] = None
+    """Categorical emotion label (requires emotion-aware model)."""
+
 
 def get_phonemizer(phoneme_type: PhonemeType,
                    alphabet: Alphabet = Alphabet.IPA,

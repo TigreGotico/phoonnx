@@ -42,6 +42,9 @@ class Batch:
     audios: FloatTensor
     audio_lengths: LongTensor
     speaker_ids: Optional[LongTensor] = None
+    timbre_ref_mels: Optional[FloatTensor] = None
+    artic_ref_mels: Optional[FloatTensor] = None
+    prosody_ref_mels: Optional[FloatTensor] = None
 
 
 class PhoonnxDataset(Dataset):
@@ -63,11 +66,11 @@ class PhoonnxDataset(Dataset):
     ):
         """
         Initialize the dataset by loading utterance metadata from one or more dataset files.
-        
+
         Parameters:
             dataset_paths (List[Union[str, Path]]): Paths to dataset files (each file contains one JSON utterance per line).
             max_phoneme_ids (Optional[int]): If provided, skip utterances whose phoneme ID count exceeds this value.
-        
+
         Raises:
             ValueError: If no utterances are loaded from the provided dataset paths.
         """
@@ -104,14 +107,14 @@ class PhoonnxDataset(Dataset):
     ) -> Iterable[Utterance]:
         """
         Yield Utterance objects parsed from a line-oriented dataset file.
-        
+
         Reads the file at `dataset_path` one line at a time, parses each non-empty line into an Utterance (expects JSON per line), and yields utterances whose phoneme count is less than or equal to `max_phoneme_ids` when that limit is provided. Malformed lines or other parse errors are logged and skipped; utterances that exceed the phoneme limit are counted and cause a final warning if any were skipped.
-        
+
         Parameters:
             dataset_path (Path): Path to a dataset file containing one JSON-encoded utterance per line.
             max_phoneme_ids (Optional[int]): If set, only yield utterances with
                 len(phoneme_ids) <= max_phoneme_ids.
-        
+
         Returns:
             Iterable[Utterance]: An iterator over parsed Utterance objects from the file.
         """
@@ -157,9 +160,11 @@ class PhoonnxDataset(Dataset):
 
 
 class UtteranceCollate:
-    def __init__(self, is_multispeaker: bool, segment_size: int):
+    def __init__(self, is_multispeaker: bool, segment_size: int,
+                 disentangled: bool = False):
         self.is_multispeaker = is_multispeaker
         self.segment_size = segment_size
+        self.disentangled = disentangled
 
     def __call__(self, utterances: Sequence[UtteranceTensors]) -> Batch:
         num_utterances = len(utterances)
@@ -230,7 +235,7 @@ class UtteranceCollate:
                 assert speaker_ids is not None
                 speaker_ids[utt_idx] = utt.speaker_id
 
-        return Batch(
+        batch = Batch(
             phoneme_ids=phonemes_padded,
             phoneme_lengths=phoneme_lengths,
             spectrograms=spec_padded,
@@ -239,3 +244,14 @@ class UtteranceCollate:
             audio_lengths=audio_lengths,
             speaker_ids=speaker_ids,
         )
+
+        if self.disentangled:
+            # For disentangled training, use the target utterance's own mel
+            # as all three reference mels by default. In a full implementation,
+            # these would be sampled from a reference pool (same speaker for
+            # timbre, same language for artic, same emotion for prosody).
+            batch.timbre_ref_mels = spec_padded
+            batch.artic_ref_mels = spec_padded
+            batch.prosody_ref_mels = spec_padded
+
+        return batch

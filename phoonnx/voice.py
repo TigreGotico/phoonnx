@@ -500,6 +500,29 @@ class TTSVoice:
             params["prompt_tokens"] = self._prompt_token_ids(
                 syn_config.speaker_reference_text, syn_config.speaker_reference_lang)
 
+        # Disentangled model support: if the ONNX model expects reference-mel
+        # or emotion inputs, prepare them from the synthesis config.
+        if syn_config.timbre_ref_path is not None:
+            params["timbre_ref_mel"] = self._load_mel(syn_config.timbre_ref_path)
+        if syn_config.artic_ref_path is not None:
+            params["artic_ref_mel"] = self._load_mel(syn_config.artic_ref_path)
+        if syn_config.prosody_ref_path is not None:
+            params["prosody_ref_mel"] = self._load_mel(syn_config.prosody_ref_path)
+        if syn_config.emotion is not None:
+            # Map emotion string to id using the model's emotion label map
+            emotion_map = getattr(self.config, "emotion_id_map", {})
+            eid = emotion_map.get(syn_config.emotion, 0)
+            params["emotion_id"] = np.array([eid], dtype=np.int64)
+
+        # Pre-encoded embedding inputs (for edge deployment where reference
+        # encoders are run offline and only the embedding vectors are passed).
+        if hasattr(self.config, "timbre_dim"):
+            params["g_timbre"] = np.zeros((1, self.config.timbre_dim or 192, 1), dtype=np.float32)
+        if hasattr(self.config, "artic_dim"):
+            params["g_artic"] = np.zeros((1, self.config.artic_dim or 192, 1), dtype=np.float32)
+        if hasattr(self.config, "prosody_dim"):
+            params["g_prosody"] = np.zeros((1, self.config.prosody_dim or 192, 1), dtype=np.float32)
+
         request = AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,
             phoneme_lengths=phoneme_ids_lengths,
@@ -513,6 +536,28 @@ class TTSVoice:
         result = self.adapter.synthesize(request, self.session)
 
         return result.audio
+
+    def _load_mel(self, audio_path: str) -> np.ndarray:
+        """Load an audio file and compute its mel spectrogram for reference encoding.
+
+        Returns a numpy array of shape [1, n_mels, T].
+        """
+        import librosa
+        import torch
+        from .mel_processing import mel_spectrogram_torch
+        y, sr = librosa.load(audio_path, sr=self.config.sample_rate, mono=True)
+        wav = torch.from_numpy(y).unsqueeze(0)  # [1, T]
+        mel = mel_spectrogram_torch(
+            wav,
+            n_fft=1024,
+            num_mels=80,
+            sampling_rate=self.config.sample_rate,
+            hop_size=256,
+            win_size=1024,
+            fmin=0.0,
+            fmax=None,
+        )
+        return mel.numpy()
 
 if __name__ == "__main__":
     from phoonnx.phonemizers.gl import CotoviaPhonemizer

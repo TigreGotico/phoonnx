@@ -219,6 +219,7 @@ class ResidualCouplingBlock(nn.Module):
         n_layers: int,
         n_flows: int = 4,
         gin_channels: int = 0,
+        num_g_factors: int = 1,
     ):
         super().__init__()
         self.channels = channels
@@ -228,6 +229,7 @@ class ResidualCouplingBlock(nn.Module):
         self.n_layers = n_layers
         self.n_flows = n_flows
         self.gin_channels = gin_channels
+        self.num_g_factors = num_g_factors
 
         self.flows = nn.ModuleList()
         for i in range(n_flows):
@@ -239,18 +241,19 @@ class ResidualCouplingBlock(nn.Module):
                     dilation_rate,
                     n_layers,
                     gin_channels=gin_channels,
+                    num_g_factors=num_g_factors,
                     mean_only=True,
                 )
             )
             self.flows.append(modules.Flip())
 
-    def forward(self, x, x_mask, g=None, reverse=False):
+    def forward(self, x, x_mask, g=None, g_factors=None, reverse=False):
         if not reverse:
             for flow in self.flows:
-                x, _ = flow(x, x_mask, g=g, reverse=reverse)
+                x, _ = flow(x, x_mask, g=g, g_factors=g_factors, reverse=reverse)
         else:
             for flow in reversed(self.flows):
-                x = flow(x, x_mask, g=g, reverse=reverse)
+                x = flow(x, x_mask, g=g, g_factors=g_factors, reverse=reverse)
         return x
 
 
@@ -519,9 +522,252 @@ class MultiPeriodDiscriminator(torch.nn.Module):
         return y_d_rs, y_d_gs, fmap_rs, fmap_gs
 
 
+class ReferenceEncoder(nn.Module):
+    """Compresses a mel-spectrogram reference into a fixed-size latent vector.
+
+    Architecture: Conv-ReLU-BN stack followed by a bidirectional GRU, then a linear
+    projection to the target dimension. Designed to be ONNX-friendly (no complex ops).
+
+    Args:
+        in_channels: Number of mel channels (e.g., 80).
+        hidden_channels: Width of intermediate conv feature maps.
+        out_channels: Dimension of the output reference embedding.
+        n_conv_layers: Number of Conv-ReLU-LayerNorm blocks (default 3).
+        kernel_size: Conv kernel size (default 3).
+        stride: Conv stride (default 2), halves the time dimension each layer.
+        n_gru_layers: Number of GRU layers (default 1).
+    """
+
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        out_channels: int,
+        n_conv_layers: int = 3,
+        kernel_size: int = 3,
+        stride: int = 2,
+        n_gru_layers: int = 1,
+    ):
+        super().__init__()
+        self.in_channels = in_channels
+        self.hidden_channels = hidden_channels
+        self.out_channels = out_channels
+        self.n_conv_layers = n_conv_layers
+
+        # Build Conv stack: each layer halves time via stride=2
+        self.convs = nn.ModuleList()
+        self.norms = nn.ModuleList()
+        for i in range(n_conv_layers):
+            in_ch = in_channels if i == 0 else hidden_channels
+            padding = kernel_size // 2
+            conv = nn.Conv1d(
+                in_ch, hidden_channels, kernel_size, stride=stride, padding=padding
+            )
+            self.convs.append(conv)
+            self.norms.append(modules.LayerNorm(hidden_channels))
+
+        self.drop = nn.Dropout(0.1)
+        self.gru = nn.GRU(
+            hidden_channels,
+            hidden_channels,
+            n_gru_layers,
+            batch_first=True,
+            bidirectional=True,
+        )
+        # Bidirectional -> 2 * hidden_channels
+        self.proj = nn.Linear(hidden_channels * 2, out_channels)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x: [B, C, T] where C = mel_channels
+        for conv, norm in zip(self.convs, self.norms):
+            x = conv(x)
+            x = torch.relu(x)
+            x = norm(x)
+            x = self.drop(x)
+
+        # Transpose for GRU: [B, T', C']
+        x = x.transpose(1, 2)  # [B, T', hidden_channels]
+        _, h_n = self.gru(x)  # h_n: [num_layers*2, B, hidden_channels]
+        # Take the last forward and last backward states
+        # h_n[-2] = last forward, h_n[-1] = last backward
+        h_forward = h_n[-2]  # [B, hidden_channels]
+        h_backward = h_n[-1]  # [B, hidden_channels]
+        h = torch.cat([h_forward, h_backward], dim=-1)  # [B, hidden_channels*2]
+        return self.proj(h).unsqueeze(-1)  # [B, out_channels, 1]
+
+
+class TimbreEncoder(nn.Module):
+    """Encodes voice identity (timbre) from a speaker ID or a reference mel.
+
+    In speaker-ID mode (single/multi-speaker datasets), wraps a simple
+    nn.Embedding. In reference mode, uses a ReferenceEncoder on a mel
+    spectrogram clip so the same model can do zero-shot voice cloning at
+    inference time.
+
+    The output `g_timbre` conditions the Generator (dec) and the
+    PosteriorEncoder (enc_q) — these are the parts of VITS that directly
+    determine the acoustic quality / identity of the voice.
+    """
+
+    def __init__(
+        self,
+        n_speakers: int,
+        gin_channels: int,
+        ref_in_channels: int = 80,
+        ref_hidden_channels: int = 256,
+        ref_n_layers: int = 3,
+        ref_kernel_size: int = 3,
+        ref_stride: int = 2,
+        ref_n_gru_layers: int = 1,
+        ref_enc_enabled: bool = False,
+    ):
+        super().__init__()
+        self.n_speakers = n_speakers
+        self.gin_channels = gin_channels
+        self.ref_enc_enabled = ref_enc_enabled
+
+        if n_speakers > 1:
+            self.speaker_emb = nn.Embedding(n_speakers, gin_channels)
+        else:
+            self.speaker_emb = None
+
+        if ref_enc_enabled:
+            self.ref_enc = ReferenceEncoder(
+                in_channels=ref_in_channels,
+                hidden_channels=ref_hidden_channels,
+                out_channels=gin_channels,
+                n_conv_layers=ref_n_layers,
+                kernel_size=ref_kernel_size,
+                stride=ref_stride,
+                n_gru_layers=ref_n_gru_layers,
+            )
+        else:
+            self.ref_enc = None
+
+    def forward(
+        self,
+        sid: typing.Optional[torch.Tensor] = None,
+        ref_mel: typing.Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        if ref_mel is not None and self.ref_enc_enabled:
+            return self.ref_enc(ref_mel)
+        if sid is not None and self.speaker_emb is not None:
+            return self.speaker_emb(sid).unsqueeze(-1)
+        return None
+
+
+class ProsodyEncoder(nn.Module):
+    """Encodes prosodic / rhythmic / emotional information from a reference mel.
+
+    The output `g_prosody` conditions the DurationPredictor (dp), i.e. it
+    controls how long each phoneme lasts and therefore the overall rhythm
+    and pacing of the utterance. It can optionally also inject into the
+    normalizing flow to shape intonation contour.
+
+    Accepts a reference mel spectrogram clip. For categorical emotion
+    control, also accepts an emotion label (as a speaker-like ID embedding
+    that projects into the same prosody space).
+    """
+
+    def __init__(
+        self,
+        out_channels: int,
+        ref_in_channels: int = 80,
+        ref_hidden_channels: int = 256,
+        ref_n_layers: int = 3,
+        ref_kernel_size: int = 3,
+        ref_stride: int = 2,
+        ref_n_gru_layers: int = 1,
+        n_emotion_labels: int = 0,
+    ):
+        super().__init__()
+        self.out_channels = out_channels
+        self.ref_enc = ReferenceEncoder(
+            in_channels=ref_in_channels,
+            hidden_channels=ref_hidden_channels,
+            out_channels=out_channels,
+            n_conv_layers=ref_n_layers,
+            kernel_size=ref_kernel_size,
+            stride=ref_stride,
+            n_gru_layers=ref_n_gru_layers,
+        )
+        if n_emotion_labels > 0:
+            self.emotion_emb = nn.Embedding(n_emotion_labels, out_channels)
+        else:
+            self.emotion_emb = None
+
+    def forward(
+        self,
+        ref_mel: typing.Optional[torch.Tensor] = None,
+        emotion_id: typing.Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        if ref_mel is not None:
+            return self.ref_enc(ref_mel)
+        if emotion_id is not None and self.emotion_emb is not None:
+            return self.emotion_emb(emotion_id).unsqueeze(-1)
+        return None
+
+
+class ArticulationEncoder(nn.Module):
+    """Encodes articulatory / pronunciation envelope information from a reference mel.
+
+    The output `g_artic` conditions the normalizing flow (ResidualCouplingBlock)
+    and, optionally, modulates the TextEncoder output. It captures how a
+    given speaker realizes phonemes (e.g. accent patterns, coarticulation,
+    vowel space shifts). Swapping this factor between speakers performs
+    accent transfer while preserving the original voice timbre.
+    """
+
+    def __init__(
+        self,
+        out_channels: int,
+        ref_in_channels: int = 80,
+        ref_hidden_channels: int = 256,
+        ref_n_layers: int = 3,
+        ref_kernel_size: int = 3,
+        ref_stride: int = 2,
+        ref_n_gru_layers: int = 1,
+    ):
+        super().__init__()
+        self.out_channels = out_channels
+        self.ref_enc = ReferenceEncoder(
+            in_channels=ref_in_channels,
+            hidden_channels=ref_hidden_channels,
+            out_channels=out_channels,
+            n_conv_layers=ref_n_layers,
+            kernel_size=ref_kernel_size,
+            stride=ref_stride,
+            n_gru_layers=ref_n_gru_layers,
+        )
+
+    def forward(self, ref_mel: typing.Optional[torch.Tensor] = None) -> torch.Tensor:
+        if ref_mel is not None:
+            return self.ref_enc(ref_mel)
+        return None
+
+
 class SynthesizerTrn(nn.Module):
     """
-    Synthesizer for Training
+    Synthesizer for Training.
+
+    Supports two operating modes:
+      - **Legacy mode** (disentangled=False): single monolithic speaker
+        embedding `g = emb_g(sid)` — identical to the original VITS
+        behaviour and fully backward compatible with old checkpoints.
+      - **Disentangled mode** (disentangled=True): three separate
+        encoders (timbre, articulation, prosody) whose outputs are
+        routed to different sub-modules, enabling independent control
+        of voice identity, accent/pronunciation, and rhythm/emotion.
+
+    In disentangled mode the conditioning signals are:
+      * g_timbre   -> dec, enc_q
+      * g_artic    -> flow
+      * g_prosody  -> dp
+
+    The flow additionally receives a concatenated "g_factors" tuple
+    of (g_timbre, g_artic, g_prosody) projected through a per-flow
+    linear layer so it can learn to modulate the latent with all
+    three factors together.
     """
 
     def __init__(
@@ -545,6 +791,16 @@ class SynthesizerTrn(nn.Module):
         n_speakers: int = 1,
         gin_channels: int = 0,
         use_sdp: bool = True,
+        disentangled: bool = False,
+        ref_enc_hidden_channels: int = 256,
+        ref_enc_n_layers: int = 3,
+        ref_enc_kernel_size: int = 3,
+        ref_enc_stride: int = 2,
+        ref_enc_n_gru_layers: int = 1,
+        timbre_dim: int = 0,
+        artic_dim: int = 0,
+        prosody_dim: int = 0,
+        n_emotion_labels: int = 0,
     ):
 
         super().__init__()
@@ -568,6 +824,7 @@ class SynthesizerTrn(nn.Module):
         self.gin_channels = gin_channels
 
         self.use_sdp = use_sdp
+        self.disentangled = disentangled
 
         self.enc_p = TextEncoder(
             n_vocab,
@@ -611,19 +868,120 @@ class SynthesizerTrn(nn.Module):
                 hidden_channels, 256, 3, 0.5, gin_channels=gin_channels
             )
 
-        if n_speakers > 1:
-            self.emb_g = nn.Embedding(n_speakers, gin_channels)
+        if disentangled:
+            self.timbre_enc = TimbreEncoder(
+                n_speakers=n_speakers,
+                gin_channels=gin_channels,
+                ref_hidden_channels=ref_enc_hidden_channels,
+                ref_n_layers=ref_enc_n_layers,
+                ref_kernel_size=ref_enc_kernel_size,
+                ref_stride=ref_enc_stride,
+                ref_n_gru_layers=ref_enc_n_gru_layers,
+                ref_enc_enabled=True,
+            )
+            self.artic_enc = ArticulationEncoder(
+                out_channels=artic_dim if artic_dim > 0 else gin_channels,
+                ref_hidden_channels=ref_enc_hidden_channels,
+                ref_n_layers=ref_enc_n_layers,
+                ref_kernel_size=ref_enc_kernel_size,
+                ref_stride=ref_enc_stride,
+                ref_n_gru_layers=ref_enc_n_gru_layers,
+            )
+            self.prosody_enc = ProsodyEncoder(
+                out_channels=prosody_dim if prosody_dim > 0 else gin_channels,
+                ref_hidden_channels=ref_enc_hidden_channels,
+                ref_n_layers=ref_enc_n_layers,
+                ref_kernel_size=ref_enc_kernel_size,
+                ref_stride=ref_enc_stride,
+                ref_n_gru_layers=ref_enc_n_gru_layers,
+                n_emotion_labels=n_emotion_labels,
+            )
+            self._timbre_dim = timbre_dim if timbre_dim > 0 else gin_channels
+            self._artic_dim = artic_dim if artic_dim > 0 else gin_channels
+            self._prosody_dim = prosody_dim if prosody_dim > 0 else gin_channels
 
-    def forward(self, x, x_lengths, y, y_lengths, sid=None):
+            # Optional projection for articulation onto the text encoder output.
+            # In practice we apply it via a simple linear layer in the flow path
+            # rather than modifying enc_p directly, keeping enc_p frozen-friendly
+            # for LoRA fine-tuning scenarios.
+            self.artic_proj = nn.Conv1d(
+                self._artic_dim, hidden_channels, 1
+            ) if self._artic_dim != hidden_channels else None
+
+            # Concatenation projection for the flow conditioning:
+            # the flow sees all three factors together.
+            self.flow_cond_proj = nn.Conv1d(
+                self._timbre_dim + self._artic_dim + self._prosody_dim,
+                gin_channels,
+                1,
+            )
+        else:
+            if n_speakers > 1:
+                self.emb_g = nn.Embedding(n_speakers, gin_channels)
+            self.timbre_enc = None
+            self.artic_enc = None
+            self.prosody_enc = None
+
+    def _get_g_legacy(self, sid):
+        """Return the legacy monolithic speaker embedding."""
+        if self.n_speakers > 1:
+            return self.emb_g(sid).unsqueeze(-1)
+        return None
+
+    def _get_g_disentangled(self, sid, timbre_ref_mel, artic_ref_mel,
+                            prosody_ref_mel, emotion_id):
+        """Return (g_timbre, g_artic, g_prosody, g_flow) in disentangled mode."""
+        g_timbre = self.timbre_enc(sid=sid, ref_mel=timbre_ref_mel)
+        g_artic = self.artic_enc(ref_mel=artic_ref_mel)
+        g_prosody = self.prosody_enc(ref_mel=prosody_ref_mel, emotion_id=emotion_id)
+
+        # Ensure every factor has a tensor, falling back to zeros when missing.
+        device = next(self.parameters()).device
+        if g_timbre is None:
+            g_timbre = torch.zeros(
+                sid.size(0) if sid is not None else 1,
+                self._timbre_dim, 1, device=device, dtype=next(self.parameters()).dtype
+            )
+        if g_artic is None:
+            g_artic = torch.zeros(
+                g_timbre.size(0), self._artic_dim, 1, device=device, dtype=g_timbre.dtype
+            )
+        if g_prosody is None:
+            g_prosody = torch.zeros(
+                g_timbre.size(0), self._prosody_dim, 1, device=device, dtype=g_timbre.dtype
+            )
+
+        # Flow conditioning = concat of all three factors projected back to gin_channels.
+        g_flow_input = torch.cat([g_timbre, g_artic, g_prosody], dim=1)
+        g_flow = self.flow_cond_proj(g_flow_input)
+
+        return g_timbre, g_artic, g_prosody, g_flow
+
+    def forward(self, x, x_lengths, y, y_lengths, sid=None,
+                timbre_ref_mel=None, artic_ref_mel=None,
+                prosody_ref_mel=None, emotion_id=None):
 
         x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
-        if self.n_speakers > 1:
-            g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
-        else:
-            g = None
 
-        z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
-        z_p = self.flow(z, y_mask, g=g)
+        if self.disentangled:
+            g_timbre, g_artic, g_prosody, g_flow = self._get_g_disentangled(
+                sid, timbre_ref_mel, artic_ref_mel, prosody_ref_mel, emotion_id
+            )
+            # Articulation can modulate the text encoder prior (accent → phoneme realization)
+            if self.artic_proj is not None:
+                m_p = m_p + self.artic_proj(g_artic) * x_mask
+            g = g_timbre  # legacy compatibility for dec / enc_q
+        else:
+            g = self._get_g_legacy(sid)
+            g_timbre = g
+            g_prosody = g
+            g_flow = g
+
+        z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g_timbre)
+        if self.disentangled:
+            z_p = self.flow(z, y_mask, g=g_flow)
+        else:
+            z_p = self.flow(z, y_mask, g=g)
 
         with torch.no_grad():
             # negative cross-entropy
@@ -651,11 +1009,11 @@ class SynthesizerTrn(nn.Module):
 
         w = attn.sum(2)
         if self.use_sdp:
-            l_length = self.dp(x, x_mask, w, g=g)
+            l_length = self.dp(x, x_mask, w, g=g_prosody)
             l_length = l_length / torch.sum(x_mask)
         else:
             logw_ = torch.log(w + 1e-6) * x_mask
-            logw = self.dp(x, x_mask, g=g)
+            logw = self.dp(x, x_mask, g=g_prosody)
             l_length = torch.sum((logw - logw_) ** 2, [1, 2]) / torch.sum(
                 x_mask
             )  # for averaging
@@ -667,7 +1025,7 @@ class SynthesizerTrn(nn.Module):
         z_slice, ids_slice = commons.rand_slice_segments(
             z, y_lengths, self.segment_size
         )
-        o = self.dec(z_slice, g=g)
+        o = self.dec(z_slice, g=g_timbre)
         return (
             o,
             l_length,
@@ -683,22 +1041,35 @@ class SynthesizerTrn(nn.Module):
         x,
         x_lengths,
         sid=None,
+        timbre_ref_mel=None,
+        artic_ref_mel=None,
+        prosody_ref_mel=None,
+        emotion_id=None,
         noise_scale=0.667,
         length_scale=1,
         noise_scale_w=0.8,
         max_len=None,
     ):
         x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
-        if self.n_speakers > 1:
-            assert sid is not None, "Missing speaker id"
-            g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
+
+        if self.disentangled:
+            g_timbre, g_artic, g_prosody, g_flow = self._get_g_disentangled(
+                sid, timbre_ref_mel, artic_ref_mel, prosody_ref_mel, emotion_id
+            )
+            if self.artic_proj is not None:
+                m_p = m_p + self.artic_proj(g_artic) * x_mask
         else:
-            g = None
+            if self.n_speakers > 1:
+                assert sid is not None, "Missing speaker id"
+            g = self._get_g_legacy(sid)
+            g_timbre = g
+            g_prosody = g
+            g_flow = g
 
         if self.use_sdp:
-            logw = self.dp(x, x_mask, g=g, reverse=True, noise_scale=noise_scale_w)
+            logw = self.dp(x, x_mask, g=g_prosody, reverse=True, noise_scale=noise_scale_w)
         else:
-            logw = self.dp(x, x_mask, g=g)
+            logw = self.dp(x, x_mask, g=g_prosody)
         w = torch.exp(logw) * x_mask * length_scale
         w_ceil = torch.ceil(w)
         y_lengths = torch.clamp_min(torch.sum(w_ceil, [1, 2]), 1).long()
@@ -716,17 +1087,34 @@ class SynthesizerTrn(nn.Module):
         )  # [b, t', t], [b, t, d] -> [b, d, t']
 
         z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
-        z = self.flow(z_p, y_mask, g=g, reverse=True)
-        o = self.dec((z * y_mask)[:, :, :max_len], g=g)
+        z = self.flow(z_p, y_mask, g=g_flow, reverse=True)
+        o = self.dec((z * y_mask)[:, :, :max_len], g=g_timbre)
 
         return o, attn, y_mask, (z, z_p, m_p, logs_p)
 
-    def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):
-        assert self.n_speakers > 1, "n_speakers have to be larger than 1."
-        g_src = self.emb_g(sid_src).unsqueeze(-1)
-        g_tgt = self.emb_g(sid_tgt).unsqueeze(-1)
-        z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g_src)
-        z_p = self.flow(z, y_mask, g=g_src)
-        z_hat = self.flow(z_p, y_mask, g=g_tgt, reverse=True)
-        o_hat = self.dec(z_hat * y_mask, g=g_tgt)
+    def voice_conversion(self, y, y_lengths, sid_src, sid_tgt,
+                         timbre_ref_mel_src=None, timbre_ref_mel_tgt=None,
+                         artic_ref_mel=None, prosody_ref_mel=None,
+                         emotion_id=None):
+        if self.disentangled:
+            # In disentangled mode, voice conversion means swapping timbre
+            # while keeping articulation and prosody optionally controllable.
+            g_timbre_src, _, _, g_flow_src = self._get_g_disentangled(
+                sid_src, timbre_ref_mel_src, artic_ref_mel, prosody_ref_mel, emotion_id
+            )
+            g_timbre_tgt, _, _, g_flow_tgt = self._get_g_disentangled(
+                sid_tgt, timbre_ref_mel_tgt, artic_ref_mel, prosody_ref_mel, emotion_id
+            )
+            z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g_timbre_src)
+            z_p = self.flow(z, y_mask, g=g_flow_src)
+            z_hat = self.flow(z_p, y_mask, g=g_flow_tgt, reverse=True)
+            o_hat = self.dec(z_hat * y_mask, g=g_timbre_tgt)
+        else:
+            assert self.n_speakers > 1, "n_speakers have to be larger than 1."
+            g_src = self.emb_g(sid_src).unsqueeze(-1)
+            g_tgt = self.emb_g(sid_tgt).unsqueeze(-1)
+            z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g_src)
+            z_p = self.flow(z, y_mask, g=g_src)
+            z_hat = self.flow(z_p, y_mask, g=g_tgt, reverse=True)
+            o_hat = self.dec(z_hat * y_mask, g=g_tgt)
         return o_hat, y_mask, (z, z_p, z_hat)
