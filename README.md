@@ -24,6 +24,7 @@ It supports over 1000 languages and voices from various frameworks (phoonnx, pip
 - **Multiple Phonemizers:** Integrates with various phonemizers like eSpeak, Gruut, and Epitran to convert text to phonemes.
 - **Advanced Text Normalization:** Includes robust utilities for expanding contractions and pronouncing numbers and dates.
 - **Dataset Preprocessing:** Provides a command-line tool to prepare LJSpeech-style datasets for training.
+- **Pluggable Engine Architecture:** VITS, OptiSpeech, and future architectures share a single adapter framework for both inference and training.
 - **Model Export:** A script is included to convert trained models into the ONNX format, ready for deployment.
 
 -----
@@ -138,6 +139,12 @@ phoonnx-voices download OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone
 ```
 
 -----
+
+### Engine Architecture
+
+`phoonnx` uses a pluggable engine framework so new TTS architectures can be added without touching the core voice or CLI code.  Both **inference** (ONNX adapters) and **training** (PyTorch Lightning modules) are registry-based.
+
+See [docs/engines.md](./docs/engines.md) for the full developer guide on adding new engines.
 
 ### Training
 

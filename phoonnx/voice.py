@@ -1,3 +1,11 @@
+"""
+TTSVoice — architecture-agnostic TTS voice.
+
+This module is the main user-facing synthesis interface.  It delegates
+all ONNX-specific I/O to an engine adapter (``phoonnx.engines``),
+which means the same TTSVoice class works for VITS or
+any future architecture without code changes here.
+"""
 import json
 import os.path
 import re
@@ -11,6 +19,12 @@ import onnxruntime
 from langcodes import closest_match
 
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, get_phonemizer
+from phoonnx.engines import detect_engine, get_adapter
+from phoonnx.engines.base import (
+    AdapterSynthesisRequest,
+    AdapterSynthesisResult,
+    BaseOnnxAdapter,
+)
 from phoonnx.phonemizers import Phonemizer
 from phoonnx.phonemizers.base import PhonemizedChunks
 from phoonnx.tokenizer import TTSTokenizer
@@ -102,6 +116,7 @@ class TTSVoice:
     config: VoiceConfig
     phonetic_spellings: Optional[PhoneticSpellings] = None
     phonemizer: Optional[Phonemizer] = None
+    adapter: Optional[BaseOnnxAdapter] = None
 
     def __post_init__(self):
         """
@@ -116,10 +131,28 @@ class TTSVoice:
             self.phonetic_spellings = PhoneticSpellings.from_lang(self.config.lang_code)
         except FileNotFoundError:
             pass
+
+        # Phonemizer
         if self.phonemizer is None:
-            self.phonemizer = get_phonemizer(self.config.phoneme_type,
-                                             self.config.alphabet,
-                                             self.config.phonemizer_model)
+            self.phonemizer = get_phonemizer(
+                self.config.phoneme_type,
+                self.config.alphabet,
+                self.config.phonemizer_model,
+            )
+
+        # Engine adapter — auto-detect if not explicitly provided
+        if self.adapter is None:
+            engine_name = self.config.engine.value if self.config.engine else None
+            try:
+                # Try by engine name first
+                if engine_name and engine_name not in ("piper", "mimic3", "coqui"):
+                    self.adapter = get_adapter(engine_name)
+                else:
+                    # For piper/mimic3/coqui all use the vits adapter
+                    self.adapter = get_adapter("vits")
+            except KeyError:
+                # Fall back to auto-detection
+                self.adapter = detect_engine(session=self.session)
 
     @property
     def tokenizer(self) -> TTSTokenizer:
@@ -189,19 +222,29 @@ class TTSVoice:
         else:
             providers = ["CPUExecutionProvider"]
 
+        session = onnxruntime.InferenceSession(
+            str(model_path),
+            sess_options=onnxruntime.SessionOptions(),
+            providers=providers,
+        )
+
+        # Auto-detect engine adapter from config + session
+        adapter = detect_engine(config=config_dict, session=session)
+
+        voice_config = VoiceConfig.from_dict(
+            config_dict,
+            vocab=vocab_dict,
+            tokenizer_config=tokenizer_dict,
+            alphabet=alphabet_str,
+            tokens_txt=phonemes_txt,
+            lang_code=lang_code,
+            phoneme_type=phoneme_type_str,
+        )
+
         return TTSVoice(
-            config=VoiceConfig.from_dict(config_dict,
-                                         vocab=vocab_dict,
-                                         tokenizer_config=tokenizer_dict,
-                                         alphabet=alphabet_str,
-                                         tokens_txt=phonemes_txt,
-                                         lang_code=lang_code,
-                                         phoneme_type=phoneme_type_str),
-            session=onnxruntime.InferenceSession(
-                str(model_path),
-                sess_options=onnxruntime.SessionOptions(),
-                providers=providers,
-            )
+            config=voice_config,
+            session=session,
+            adapter=adapter,
         )
 
     def phonemize(self, text: str) -> PhonemizedChunks:
@@ -232,10 +275,7 @@ class TTSVoice:
 
                 continue
 
-            # Phonemization
-            phonemes = self.phonemizer.phonemize(
-                text_part, self.config.lang_code
-            )
+            phonemes.extend(self.phonemizer.phonemize(text_part, self.config.lang_code))
 
         if phonemes and (not phonemes[-1]):
             # Remove empty phonemes
@@ -356,66 +396,67 @@ class TTSVoice:
 
             wav_file.writeframes(audio_chunk.audio_int16_bytes)
 
+
     def phoneme_ids_to_audio(
             self, phoneme_ids: list[int], syn_config: Optional[SynthesisConfig] = None
     ) -> np.ndarray:
         """
         Synthesize raw audio from phoneme ids.
 
+        Delegates all ONNX I/O to ``self.adapter`` so the same code
+        path works for VITS or any future engine.
+
         :param phoneme_ids: List of phoneme ids.
         :param syn_config: Synthesis configuration.
-        :return: Audio float numpy array from voice model (unnormalized, in range [-1, 1]).
+        :return: Audio float numpy array (unnormalized, in range [-1, 1]).
         """
         syn_config = syn_config or SynthesisConfig()
 
-        langid = syn_config.lang_id or 0
-        speaker_id = syn_config.speaker_id or 0
-        length_scale = syn_config.length_scale
-        noise_scale = syn_config.noise_scale
-        noise_w_scale = syn_config.noise_w_scale
+        # Build the architecture-agnostic request
+        phoneme_ids_array = np.expand_dims(
+            np.array(phoneme_ids, dtype=np.int64), 0
+        )
+        phoneme_ids_lengths = np.array(
+            [phoneme_ids_array.shape[1]], dtype=np.int64
+        )
 
-        expected_args = [model_input.name for model_input in self.session.get_inputs()]
-        # print("Expected ONNX Inputs:", expected_args)
-
-        # Convert phoneme_ids list[int] to ONNX inputs
-        phoneme_ids_array = np.expand_dims(np.array(phoneme_ids, dtype=np.int64), 0)
-        phoneme_ids_lengths = np.array([phoneme_ids_array.shape[1]], dtype=np.int64)
-        attention_mask = np.ones_like(phoneme_ids_array, dtype=np.int64)
-
-        # Prepare all possible input formats for different ONNX exports
-        args = {
-            "input": phoneme_ids_array,
-            "input_lengths": phoneme_ids_lengths,
-            "x": phoneme_ids_array,          # MMS style
-            "x_length": phoneme_ids_lengths, # MMS style
-            "input_ids": phoneme_ids_array,  # HF style
-            "attention_mask": attention_mask # HF style
-        }
-
-        # Add synthesis parameters
-        if length_scale is None:
-            length_scale = self.config.length_scale
-        if noise_scale is None:
-            noise_scale = self.config.noise_scale
-        if noise_w_scale is None:
-            noise_w_scale = self.config.noise_w_scale
-
-        args.update({
-            "scales": np.array([noise_scale, length_scale, noise_w_scale], dtype=np.float32),
-            "noise_scale": np.array([noise_scale], dtype=np.float32),
-            "noise_scale_w": np.array([noise_w_scale], dtype=np.float32),
-            "length_scale": np.array([length_scale], dtype=np.float32),
-            "langid": np.array([langid], dtype=np.int64),
-            "sid": np.array([speaker_id], dtype=np.int64),
+        # Merge defaults from adapter → VoiceConfig → SynthesisConfig
+        params = dict(self.adapter.default_params())
+        # Override with voice-config level defaults
+        params.update({
+            k: v for k, v in {
+                "noise_scale": self.config.noise_scale,
+                "length_scale": self.config.length_scale,
+                "noise_w_scale": self.config.noise_w_scale,
+            }.items() if v is not None
         })
+        # Override with any engine-specific extras from voice config
+        if hasattr(self.config, 'engine_params'):
+            params.update(self.config.engine_params)
+        # Override with per-call SynthesisConfig
+        if syn_config.noise_scale is not None:
+            params["noise_scale"] = syn_config.noise_scale
+        if syn_config.length_scale is not None:
+            params["length_scale"] = syn_config.length_scale
+        if syn_config.noise_w_scale is not None:
+            params["noise_w_scale"] = syn_config.noise_w_scale
+        # Engine-specific extras from SynthesisConfig
+        params.update(syn_config.extra_params)
 
-        # Keep only ONNX model-expected inputs
-        args = {k: v for k, v in args.items() if k in expected_args}
+        request = AdapterSynthesisRequest(
+            phoneme_ids=phoneme_ids_array,
+            phoneme_lengths=phoneme_ids_lengths,
+            speaker_id=syn_config.speaker_id or 0,
+            language_id=syn_config.lang_id or 0,
+            params=params,
+        )
 
-        audio = self.session.run(None, args)[0].squeeze()
-        return audio
+        # Delegate to the adapter
+        feed_dict = self.adapter.build_feed_dict(request, self.session)
+        raw_outputs = self.session.run(None, feed_dict)
+        result = self.adapter.parse_outputs(raw_outputs, request)
 
-
+        return result.audio
 
 if __name__ == "__main__":
     from phoonnx.phonemizers.gl import CotoviaPhonemizer
