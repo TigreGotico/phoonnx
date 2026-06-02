@@ -100,6 +100,10 @@ def _register_builtins() -> None:
     from phoonnx_train.engines.zipvoice import ZipVoiceTrainingEngine
     from phoonnx_train.engines.mixer import MixerTTSTrainingEngine
     from phoonnx_train.engines.glowtts import GlowTTSTrainingEngine
+    from phoonnx_train.engines.styletts2 import StyleTTS2TrainingEngine
+    from phoonnx_train.engines.styletts2_aligner import AlignerTrainingEngine
+    from phoonnx_train.engines.styletts2_plbert import PLBertTrainingEngine
+    from phoonnx_train.engines.styletts2_pitch import PitchTrainingEngine
 
     register_engine("vits", VitsTrainingEngine)
     register_engine("glowtts", GlowTTSTrainingEngine)
@@ -109,6 +113,10 @@ def _register_builtins() -> None:
     register_engine("zipvoice", ZipVoiceTrainingEngine)
     register_engine("mixer", MixerTTSTrainingEngine)
     register_engine("mixertts", MixerTTSTrainingEngine)
+    register_engine("styletts2", StyleTTS2TrainingEngine)
+    register_engine("styletts2-aligner", AlignerTrainingEngine)
+    register_engine("styletts2-plbert", PLBertTrainingEngine)
+    register_engine("styletts2-pitch", PitchTrainingEngine)
 
 
 _register_builtins()
