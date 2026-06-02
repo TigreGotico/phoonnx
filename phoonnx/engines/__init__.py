@@ -115,8 +115,10 @@ def list_engines() -> List[str]:
 
 def _register_builtins() -> None:
     from phoonnx.engines.vits import VitsAdapter
+    from phoonnx.engines.optispeech import OptiSpeechAdapter
 
     register_engine("vits", VitsAdapter, detect_priority=50)
+    register_engine("optispeech", OptiSpeechAdapter, detect_priority=45)
 
 
 _register_builtins()
