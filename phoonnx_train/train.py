@@ -1,3 +1,18 @@
+"""
+Engine-aware training CLI.
+
+Usage::
+
+    python -m phoonnx_train.train \\
+        --dataset-dir ./data/preprocessed \\
+        --engine vits \\
+        --quality medium \\
+        --max-epochs 1000
+
+Adding ``--engine optispeech`` (once registered) will transparently
+switch to the OptiSpeech LightningModule, loss functions, and hyper-
+parameters — no other flags need to change.
+"""
 import json
 import logging
 from pathlib import Path

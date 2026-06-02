@@ -9,7 +9,7 @@ Usage::
 
     from phoonnx_train.engines import get_engine, list_engines
 
-    engine = get_engine("vits")
+    engine = get_engine("vits") # or get_engine("optispeech")
     model = engine.create_model(config, dataset_paths)
 """
 import logging
@@ -89,8 +89,10 @@ def list_engines() -> List[str]:
 
 def _register_builtins() -> None:
     from phoonnx_train.engines.vits import VitsTrainingEngine
+    from phoonnx_train.engines.optispeech import OptiSpeechTrainingEngine
 
     register_engine("vits", VitsTrainingEngine)
+    register_engine("optispeech", OptiSpeechTrainingEngine)
 
 
 _register_builtins()
