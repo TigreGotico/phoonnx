@@ -3173,16 +3173,16 @@
     },
     "facebook/mms-tts-eng-English": {
         "voice_id": "facebook/mms-tts-eng-English",
-        "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/eng/model.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-eng/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "en",
         "tokens_url": null,
-        "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-eng/resolve/main/tokenizer_config.json",
-        "vocab_url": "https://huggingface.co/facebook/mms-tts-eng/resolve/main/vocab.json",
+        "tokenizer_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-eng/tokenizer_config.json",
+        "vocab_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-eng/vocab.json",
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "transformers",
-        "config_url": null
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-eng/config.json"
     },
     "facebook/mms-tts-enx-Enxet": {
         "voice_id": "facebook/mms-tts-enx-Enxet",
@@ -3368,16 +3368,16 @@
     },
     "facebook/mms-tts-fra-French": {
         "voice_id": "facebook/mms-tts-fra-French",
-        "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/fra/model.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-fra/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "fr",
         "tokens_url": null,
-        "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-fra/resolve/main/tokenizer_config.json",
-        "vocab_url": "https://huggingface.co/facebook/mms-tts-fra/resolve/main/vocab.json",
+        "tokenizer_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-fra/tokenizer_config.json",
+        "vocab_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-fra/vocab.json",
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "transformers",
-        "config_url": null
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-fra/config.json"
     },
     "facebook/mms-tts-ful-Fulah": {
         "voice_id": "facebook/mms-tts-ful-Fulah",
@@ -3602,16 +3602,16 @@
     },
     "facebook/mms-tts-deu-German, Standard": {
         "voice_id": "facebook/mms-tts-deu-German, Standard",
-        "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/deu/model.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-deu/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "de",
         "tokens_url": null,
-        "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-deu/resolve/main/tokenizer_config.json",
-        "vocab_url": "https://huggingface.co/facebook/mms-tts-deu/resolve/main/vocab.json",
+        "tokenizer_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-deu/tokenizer_config.json",
+        "vocab_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-deu/vocab.json",
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "transformers",
-        "config_url": null
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-deu/config.json"
     },
     "facebook/mms-tts-gri-Ghari": {
         "voice_id": "facebook/mms-tts-gri-Ghari",
@@ -11935,16 +11935,16 @@
     },
     "facebook/mms-tts-spa-Spanish": {
         "voice_id": "facebook/mms-tts-spa-Spanish",
-        "model_url": "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/spa/model.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-spa/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "es",
         "tokens_url": null,
-        "tokenizer_config_url": "https://huggingface.co/facebook/mms-tts-spa/resolve/main/tokenizer_config.json",
-        "vocab_url": "https://huggingface.co/facebook/mms-tts-spa/resolve/main/vocab.json",
+        "tokenizer_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-spa/tokenizer_config.json",
+        "vocab_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-spa/vocab.json",
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "transformers",
-        "config_url": null
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mms-spa/config.json"
     },
     "facebook/mms-tts-srn-Sranan Tongo": {
         "voice_id": "facebook/mms-tts-srn-Sranan Tongo",
