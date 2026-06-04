@@ -123,26 +123,32 @@ class MatchaAdapter(BaseOnnxAdapter):
 
         Matcha ships in two forms:
 
-        - **two-stage** — the model outputs a mel spectrogram ``[B, n_mels, T]``
-          (rank 3); the configured vocoder reconstructs the waveform.
-        - **end-to-end** — a fused model (e.g. ``*_wavenext_e2e.onnx``) outputs
-          the waveform directly ``[B, T]`` / ``[T]`` (rank ≤ 2); no vocoder is
-          needed.
+        - **two-stage** — the model outputs a mel spectrogram ``[B, n_mels, T]``;
+          the configured vocoder reconstructs the waveform.
+        - **end-to-end** — a fused model (e.g. ``*_wavenext_e2e.onnx``,
+          ``*_simply.onnx``) outputs the waveform directly; no vocoder is needed.
 
-        The output rank decides which path to take, so the same adapter drives
-        both without extra configuration.
+        Output *names and order* vary across exports — BSC's mel models emit
+        ``[mel, mel_lengths]`` while their fused models emit
+        ``[mel_lengths, waveform]`` (and some put the audio in a rank-3 tensor).
+        So the main signal is found by size (the lengths vector is tiny) and the
+        mel is identified by its ``n_mels`` axis rather than by output position.
         """
-        out0 = np.asarray(outputs[0])
+        arrays = [np.asarray(o) for o in outputs if o is not None]
+        # The mel/waveform is the largest tensor; mel_lengths is a tiny vector.
+        signal = max(arrays, key=lambda a: a.size)
 
-        if out0.ndim < 3:
-            # End-to-end fused model: the output already is the waveform.
-            return AdapterSynthesisResult(audio=out0.squeeze().astype(np.float32))
+        is_mel = signal.ndim == 3 and 16 <= signal.shape[1] <= 256
+        if not is_mel:
+            # End-to-end fused model: the signal already is the waveform.
+            return AdapterSynthesisResult(audio=signal.reshape(-1).astype(np.float32))
 
-        mel = out0
-        # Trim to the valid mel length if the mel model reports it.
-        if len(outputs) > 1 and outputs[1] is not None:
+        mel = signal
+        # Trim to the valid mel length if a lengths vector is present.
+        lengths = [a for a in arrays if a is not signal and a.ndim == 1 and a.size]
+        if lengths:
             try:
-                valid = int(np.asarray(outputs[1]).reshape(-1)[0])
+                valid = int(lengths[0].reshape(-1)[0])
                 if 0 < valid <= mel.shape[-1]:
                     mel = mel[..., :valid]
             except (ValueError, IndexError):
@@ -151,7 +157,7 @@ class MatchaAdapter(BaseOnnxAdapter):
         vocoder = self._require_vocoder()
         denoise = bool(request.params.get("denoise", True)) and vocoder.supports_denoise
         audio = vocoder.mel_to_audio(mel.astype(np.float32), denoise=denoise)
-        return AdapterSynthesisResult(audio=np.asarray(audio).squeeze())
+        return AdapterSynthesisResult(audio=np.asarray(audio).reshape(-1))
 
     def default_params(self) -> Dict[str, float]:
         return {

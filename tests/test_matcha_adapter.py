@@ -92,6 +92,34 @@ def test_end_to_end_needs_no_vocoder():
     assert result.audio.shape[0] == 100
 
 
+def test_end_to_end_lengths_first_ordering():
+    # BSC fused models emit [mel_lengths, waveform] — audio is NOT outputs[0].
+    adapter = MatchaAdapter()
+    mel_lengths = np.array([200], dtype=np.int64)
+    waveform = np.sin(np.linspace(0, 6.28, 200)).astype(np.float32)[None, :]
+    result = adapter.parse_outputs([mel_lengths, waveform], _request())
+    assert result.audio.shape[0] == 200
+
+
+def test_end_to_end_rank3_audio():
+    # HiFi-GAN fused export puts audio in a rank-3 tensor (e.g. [1, 1, N]).
+    adapter = MatchaAdapter()
+    mel_lengths = np.array([200], dtype=np.int64)
+    audio = np.ones((1, 1, 200), dtype=np.float32)
+    result = adapter.parse_outputs([mel_lengths, audio], _request())
+    assert result.audio.ndim == 1
+    assert result.audio.shape[0] == 200
+
+
+def test_two_stage_mel_identified_by_n_mels_axis():
+    # Even if mel comes after mel_lengths, it's found by its n_mels axis.
+    adapter = MatchaAdapter(vocoder=FakeVocoder())
+    mel = np.zeros((1, 80, 9), dtype=np.float32)
+    mel_lengths = np.array([9], dtype=np.int64)
+    adapter.parse_outputs([mel_lengths, mel], _request())
+    assert adapter.vocoder.calls[0][0] == (1, 80, 9)
+
+
 def test_two_stage_without_vocoder_raises():
     adapter = MatchaAdapter()
     mel = np.zeros((1, 80, 4), dtype=np.float32)
