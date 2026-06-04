@@ -121,12 +121,25 @@ the acoustic model to its tested vocoder and records the license:
 | ``verified`` | ``true`` once synthesis has been confirmed end-to-end through phoonnx |
 | ``speakers`` | ``speaker_id`` → name/accent map |
 
-> **Status:** BSC entries are currently ``verified: false``. The upstream models
-> ship a ``config.yaml`` symbol table rather than a phoonnx vocab. Symbol
-> handling (phonemes for the espeak voices, characters for the grapheme voice)
-> lives entirely in the **tokenizer**, so that vocab must be aligned to the
-> model's symbol table and a synthesis confirmed before an entry is marked
-> ``verified``.
+The BSC entries point at **phoonnx mirrors under `OpenVoiceOS/`** — the upstream
+BSC models repackaged with a phoonnx `config.json` that carries the symbol table
+as the tokenizer vocab (the espeak voices use the 178-symbol Matcha table; the
+grapheme voice uses its 199-symbol char table). Symbol handling lives entirely
+in the **tokenizer**, so `TTSVoice.load` reproduces the model's exact token IDs
+with no per-model code. All entries are ``verified: true`` (synthesis confirmed
+end-to-end through the index → download → `TTSVoice.load` path).
+
+| voice_id | input | vocoder | license |
+|----------|-------|---------|---------|
+| `OpenVoiceOS/matxa-cat-multispeaker-wavenext` | espeak ca | fused Wavenext (e2e) | gpl-3.0 |
+| `OpenVoiceOS/matxa-cat-multispeaker-hifigan` | espeak ca | fused HiFi-GAN (e2e) | gpl-3.0 |
+| `OpenVoiceOS/matxa-cat-multiaccent-wavenext` | espeak ca | fused Wavenext (e2e) | gpl-3.0 |
+| `OpenVoiceOS/matxa-cat-central-graphemes-v2` | graphemes | fused Wavenext (e2e) | apache-2.0 |
+| `OpenVoiceOS/matxa-cat-multispeaker-wavenext-2stage` | espeak ca | Wavenext (separate) | gpl-3.0 + apache-2.0 |
+| `OpenVoiceOS/matxa-cat-multispeaker-vocos-2stage` | espeak ca | alVoCat Vocos (separate) | gpl-3.0 + **cc-by-nc-4.0** |
+
+Prefer Wavenext or a fused end-to-end voice for commercial use; the alVoCat-Vocos
+two-stage voice is non-commercial.
 
 ## Training
 

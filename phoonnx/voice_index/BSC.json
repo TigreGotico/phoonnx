@@ -1,8 +1,10 @@
 {
-    "bsc/matxa-ca-multispeaker-wavenext": {
-        "voice_id": "bsc/matxa-ca-multispeaker-wavenext",
-        "model_url": "https://huggingface.co/projecte-aina/matxa-tts-cat-multispeaker/resolve/main/matcha_wavenext_simply.onnx",
-        "config_url": null,
+    "OpenVoiceOS/matxa-cat-multispeaker-wavenext": {
+        "voice_id": "OpenVoiceOS/matxa-cat-multispeaker-wavenext",
+        "model_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-wavenext/resolve/main/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-wavenext/resolve/main/config.json",
+        "vocab_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-wavenext/resolve/main/vocab.json",
+        "tokenizer_config_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-wavenext/resolve/main/tokenizer_config.json",
         "lang": "ca",
         "engine": "matcha",
         "phoneme_type": "espeak",
@@ -11,14 +13,16 @@
         "vocoder_config_url": null,
         "vocoder_type": null,
         "license": "gpl-3.0",
-        "verified": false,
+        "verified": true,
         "speakers": null,
-        "description": "Catalan multispeaker Matcha-TTS, end-to-end with a fused Wavenext vocoder (single ONNX, no separate vocoder). 47 speakers (Festcat + OpenSLR69), 22.05kHz. Vocab/tokenizer alignment with phoonnx pending validation."
+        "description": "Catalan multispeaker Matcha-TTS, end-to-end with a fused Wavenext vocoder (single ONNX). 47 speakers, 22.05kHz. phoonnx mirror of projecte-aina/matxa-tts-cat-multispeaker."
     },
-    "bsc/matxa-ca-multispeaker-hifigan": {
-        "voice_id": "bsc/matxa-ca-multispeaker-hifigan",
-        "model_url": "https://huggingface.co/projecte-aina/matxa-tts-cat-multispeaker/resolve/main/matcha_hifigan_simply.onnx",
-        "config_url": null,
+    "OpenVoiceOS/matxa-cat-multispeaker-hifigan": {
+        "voice_id": "OpenVoiceOS/matxa-cat-multispeaker-hifigan",
+        "model_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-hifigan/resolve/main/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-hifigan/resolve/main/config.json",
+        "vocab_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-hifigan/resolve/main/vocab.json",
+        "tokenizer_config_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-hifigan/resolve/main/tokenizer_config.json",
         "lang": "ca",
         "engine": "matcha",
         "phoneme_type": "espeak",
@@ -27,30 +31,16 @@
         "vocoder_config_url": null,
         "vocoder_type": null,
         "license": "gpl-3.0",
-        "verified": false,
+        "verified": true,
         "speakers": null,
-        "description": "Catalan multispeaker Matcha-TTS, end-to-end with a fused HiFi-GAN vocoder (single ONNX). 47 speakers, 22.05kHz. Vocab/tokenizer alignment with phoonnx pending validation."
+        "description": "Catalan multispeaker Matcha-TTS, end-to-end with a fused HiFi-GAN vocoder (single ONNX). 47 speakers, 22.05kHz. phoonnx mirror of projecte-aina/matxa-tts-cat-multispeaker."
     },
-    "bsc/matxa-ca-multispeaker-vocos": {
-        "voice_id": "bsc/matxa-ca-multispeaker-vocos",
-        "model_url": "https://huggingface.co/projecte-aina/matxa-tts-cat-multispeaker/resolve/main/matcha_multispeaker_cat_opset_15_10_steps_2399.onnx",
-        "config_url": null,
-        "lang": "ca",
-        "engine": "matcha",
-        "phoneme_type": "espeak",
-        "alphabet": "ipa",
-        "vocoder_url": "https://huggingface.co/projecte-aina/alvocat-vocos-22khz/resolve/main/mel_spec_22khz_cat.onnx",
-        "vocoder_config_url": null,
-        "vocoder_type": "vocos",
-        "license": "gpl-3.0; vocoder alVoCat-Vocos is CC-BY-NC-4.0 (non-commercial)",
-        "verified": false,
-        "speakers": null,
-        "description": "Catalan multispeaker Matcha-TTS, two-stage: acoustic mel model + the separate alVoCat (Vocos) ISTFT vocoder. Non-commercial vocoder license. 47 speakers, 22.05kHz. Vocab/tokenizer alignment with phoonnx pending validation."
-    },
-    "bsc/matxa-ca-multiaccent-wavenext": {
-        "voice_id": "bsc/matxa-ca-multiaccent-wavenext",
-        "model_url": "https://huggingface.co/projecte-aina/matxa-tts-cat-multiaccent/resolve/main/matxa_multiaccent_wavenext_e2e.onnx",
-        "config_url": null,
+    "OpenVoiceOS/matxa-cat-multiaccent-wavenext": {
+        "voice_id": "OpenVoiceOS/matxa-cat-multiaccent-wavenext",
+        "model_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multiaccent-wavenext/resolve/main/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multiaccent-wavenext/resolve/main/config.json",
+        "vocab_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multiaccent-wavenext/resolve/main/vocab.json",
+        "tokenizer_config_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multiaccent-wavenext/resolve/main/tokenizer_config.json",
         "lang": "ca",
         "engine": "matcha",
         "phoneme_type": "espeak",
@@ -59,19 +49,21 @@
         "vocoder_config_url": null,
         "vocoder_type": null,
         "license": "gpl-3.0",
-        "verified": false,
+        "verified": true,
         "speakers": {
             "0": "quim (Balear)", "1": "olga (Balear)",
             "2": "grau (Central)", "3": "elia (Central)",
             "4": "pere (Nord-Occidental)", "5": "emma (Nord-Occidental)",
             "6": "lluc (Valencian)", "7": "gina (Valencian)"
         },
-        "description": "Catalan multiaccent Matcha-TTS, end-to-end with a fused Wavenext vocoder. 8 speakers across 4 dialects (Balear/Central/Nord-Occidental/Valencian); dialect-specific cleaners apply. 22.05kHz. Vocab/tokenizer alignment with phoonnx pending validation."
+        "description": "Catalan multiaccent Matcha-TTS, end-to-end with a fused Wavenext vocoder. 8 speakers across 4 dialects (Balear/Central/Nord-Occidental/Valencian). 22.05kHz. phoonnx mirror of projecte-aina/matxa-tts-cat-multiaccent."
     },
-    "bsc/matxa-ca-central-graphemes-v2": {
-        "voice_id": "bsc/matxa-ca-central-graphemes-v2",
-        "model_url": "https://huggingface.co/BSC-LT/matxa-tts-v2-ca-central-graphemes/resolve/main/matxa_v2_graphemes_10_steps_wavenext.onnx",
-        "config_url": null,
+    "OpenVoiceOS/matxa-cat-central-graphemes-v2": {
+        "voice_id": "OpenVoiceOS/matxa-cat-central-graphemes-v2",
+        "model_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-central-graphemes-v2/resolve/main/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-central-graphemes-v2/resolve/main/config.json",
+        "vocab_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-central-graphemes-v2/resolve/main/vocab.json",
+        "tokenizer_config_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-central-graphemes-v2/resolve/main/tokenizer_config.json",
         "lang": "ca",
         "engine": "matcha",
         "phoneme_type": "graphemes",
@@ -80,8 +72,44 @@
         "vocoder_config_url": null,
         "vocoder_type": null,
         "license": "apache-2.0",
-        "verified": false,
+        "verified": true,
         "speakers": null,
-        "description": "Catalan Central v2 Matcha-TTS working from graphemes (no phonemes: pass-through graphemes/unicode phonemizer, char->id handled by the tokenizer), end-to-end with a fused Wavenext vocoder. Improved ScoreQ/WER/CER over v1; stratified-sampling + cosine timestep schedule + spectrogram denoiser. 22.05kHz. Tokenizer (char) vocab alignment with phoonnx pending validation."
+        "description": "Catalan Central v2 Matcha-TTS from graphemes (no phonemizer; chars via the tokenizer), end-to-end with a fused Wavenext vocoder. Improved ScoreQ/WER/CER over v1. 22.05kHz. phoonnx mirror of BSC-LT/matxa-tts-v2-ca-central-graphemes."
+    },
+    "OpenVoiceOS/matxa-cat-multispeaker-wavenext-2stage": {
+        "voice_id": "OpenVoiceOS/matxa-cat-multispeaker-wavenext-2stage",
+        "model_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-acoustic/resolve/main/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-acoustic/resolve/main/config.json",
+        "vocab_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-acoustic/resolve/main/vocab.json",
+        "tokenizer_config_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-acoustic/resolve/main/tokenizer_config.json",
+        "lang": "ca",
+        "engine": "matcha",
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "vocoder_url": "https://huggingface.co/OpenVoiceOS/matxa-vocoder-wavenext-22khz/resolve/main/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/matxa-vocoder-wavenext-22khz/resolve/main/vocoder.json",
+        "vocoder_type": "wavenext",
+        "license": "gpl-3.0 (model) + apache-2.0 (vocoder)",
+        "verified": true,
+        "speakers": null,
+        "description": "Catalan multispeaker Matcha-TTS, two-stage: acoustic mel model + separate Wavenext vocoder (commercial-safe). 47 speakers, 22.05kHz. phoonnx mirror of projecte-aina/matxa-tts-cat-multispeaker + BSC-LT/wavenext-mel."
+    },
+    "OpenVoiceOS/matxa-cat-multispeaker-vocos-2stage": {
+        "voice_id": "OpenVoiceOS/matxa-cat-multispeaker-vocos-2stage",
+        "model_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-acoustic/resolve/main/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-acoustic/resolve/main/config.json",
+        "vocab_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-acoustic/resolve/main/vocab.json",
+        "tokenizer_config_url": "https://huggingface.co/OpenVoiceOS/matxa-cat-multispeaker-acoustic/resolve/main/tokenizer_config.json",
+        "lang": "ca",
+        "engine": "matcha",
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "vocoder_url": "https://huggingface.co/OpenVoiceOS/matxa-vocoder-alvocat-vocos-22khz/resolve/main/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/matxa-vocoder-alvocat-vocos-22khz/resolve/main/vocoder.json",
+        "vocoder_type": "vocos",
+        "license": "gpl-3.0 (model) + cc-by-nc-4.0 (alVoCat vocoder, NON-COMMERCIAL)",
+        "verified": true,
+        "speakers": null,
+        "description": "Catalan multispeaker Matcha-TTS, two-stage: acoustic mel model + separate alVoCat (Vocos) ISTFT vocoder. NON-COMMERCIAL vocoder license. 47 speakers, 22.05kHz. phoonnx mirror of projecte-aina/matxa-tts-cat-multispeaker + projecte-aina/alvocat-vocos-22khz."
     }
 }
