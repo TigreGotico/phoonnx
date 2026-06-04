@@ -154,6 +154,10 @@ class TTSVoice:
                 # Fall back to auto-detection
                 self.adapter = detect_engine(session=self.session)
 
+        # Let the adapter set up engine-specific runtime state (e.g. Matcha
+        # building its vocoder from config.engine_params).
+        self.adapter.configure(self.config)
+
     @property
     def tokenizer(self) -> TTSTokenizer:
         """
@@ -175,6 +179,7 @@ class TTSVoice:
             lang_code: Optional[str] = None,
             phoneme_type_str: Optional[str] = None,
             alphabet_str: Optional[str] = None,
+            engine_params: Optional[Dict[str, Any]] = None,
             use_cuda: bool = False
     ) -> "TTSVoice":
         """
@@ -231,6 +236,11 @@ class TTSVoice:
         # Auto-detect engine adapter from config + session
         adapter = detect_engine(config=config_dict, session=session)
 
+        # Engine-specific params (e.g. Matcha's vocoder_path) come either from
+        # the caller (the voice manager injects locally-downloaded paths) or
+        # from the model's own config JSON.
+        engine_params = engine_params or config_dict.get("engine_params") or {}
+
         voice_config = VoiceConfig.from_dict(
             config_dict,
             vocab=vocab_dict,
@@ -239,6 +249,7 @@ class TTSVoice:
             tokens_txt=phonemes_txt,
             lang_code=lang_code,
             phoneme_type=phoneme_type_str,
+            engine_params=engine_params,
         )
 
         return TTSVoice(

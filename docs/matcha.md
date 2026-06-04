@@ -4,12 +4,16 @@ Matcha-TTS is a non-autoregressive TTS architecture based on **conditional flow 
 
 ## Inference
 
-Matcha-TTS inference uses a **two-stage ONNX pipeline**:
+Matcha-TTS produces a **mel spectrogram**, not a waveform. A separate
+**vocoder** turns the mel into audio. Matcha is published in two forms, and
+the ``MatchaAdapter`` handles both transparently (it branches on the mel
+model's output rank):
 
-1. **Mel model** — flow-matching acoustic model (phoneme IDs → mel spectrogram)
-2. **Vocoder** — Vocos-style vocoder (mel → waveform)
-
-Both models are separate ONNX files. The ``MatchaAdapter`` holds the vocoder session internally and chains inference end-to-end.
+- **Two-stage** — the acoustic model outputs a mel spectrogram
+  ``[B, n_mels, T]`` and a separate vocoder ONNX reconstructs the waveform.
+- **End-to-end** — a fused model (e.g. ``*_wavenext_e2e.onnx``,
+  ``matcha_*_simply.onnx``) outputs the waveform directly. No vocoder is
+  configured; the adapter returns the model output as-is.
 
 ### ONNX Inputs (mel model)
 
@@ -24,45 +28,77 @@ Both models are separate ONNX files. The ``MatchaAdapter`` holds the vocoder ses
 
 | Name | Type | Shape | Description |
 |------|------|-------|-------------|
-| ``mel`` | float32 | ``[B, n_mels, T_mel]`` | Generated mel spectrogram |
-| ``mel_lengths`` | int64 | ``[B]`` | Mel lengths |
+| ``mel`` | float32 | ``[B, n_mels, T_mel]`` | Generated mel spectrogram (two-stage) |
+| ``mel_lengths`` | int64 | ``[B]`` | Mel lengths (padding is trimmed before the vocoder) |
 
-The vocoder is run internally by the adapter, producing a float32 waveform via inverse STFT with overlap-add and optional spectral denoising.
+End-to-end models instead emit a single waveform tensor ``[B, T]`` and need no vocoder.
+
+## Vocoders
+
+Vocoders are a **pluggable registry** (``phoonnx.engines.vocoders``), parallel
+to the engine registry. The acoustic model and vocoder are versioned and
+swapped independently, so one Matcha voice can be paired with whichever
+vocoder is licensed/tested for it.
+
+| `vocoder_type` | Family | ONNX output | Reconstruction |
+|----------------|--------|-------------|----------------|
+| ``vocos`` | Vocos / alVoCat | STFT mag + real + imag (3 tensors) | inverse STFT overlap-add (+ optional denoise) |
+| ``wavenext`` | Wavenext | raw waveform (1 tensor) | none — Vocos with the ISTFT head replaced by a trained linear layer |
+| ``hifigan`` | HiFi-GAN | raw waveform (1 tensor) | none |
+
+If ``vocoder_type`` is omitted it is auto-detected from the vocoder ONNX
+(3 outputs → Vocos, 1 output → raw waveform).
+
+Tested vocoders for the Catalan Matxa models (all 22.05 kHz, 80-bin mel):
+
+| Vocoder | Repo / file | License |
+|---------|-------------|---------|
+| Wavenext | ``BSC-LT/wavenext-mel`` → ``mel_spec_22khz_wavenext.onnx`` | Apache-2.0 (commercial-safe) |
+| alVoCat (Vocos) | ``projecte-aina/alvocat-vocos-22khz`` → ``mel_spec_22khz_cat.onnx`` | **CC-BY-NC-4.0 (non-commercial)** |
+
+Prefer Wavenext (or a fused end-to-end model) for commercial use; alVoCat-Vocos
+is non-commercial.
 
 ### Loading a Matcha-TTS voice
+
+End-to-end (single ONNX, no vocoder):
 
 ```python
 from phoonnx import TTSVoice
 
-voice = TTSVoice.load(
-    model_path="matcha_multispeaker_cat_all_opset_15_10_steps.onnx",
-    config_path="matcha_config.json",
-)
+voice = TTSVoice.load(model_path="matxa_v2_graphemes_10_steps_wavenext.onnx")
 ```
 
-The JSON config must include:
+Two-stage (acoustic mel model + separate vocoder), via the JSON config:
 
 ```json
 {
     "engine": "matcha",
     "engine_params": {
         "vocoder_path": "mel_spec_22khz_cat.onnx",
-        "vocoder_config": {
-            "feature_extractor": {
-                "init_args": {
-                    "n_fft": 1024,
-                    "hop_length": 256,
-                    "sample_rate": 22050
-                }
-            }
-        }
+        "vocoder_type": "vocos",
+        "vocoder_config": { "n_fft": 1024, "hop_length": 256 }
     }
 }
 ```
 
+The voice manager wires this automatically: index entries carry ``vocoder_url``
+and ``vocoder_type``, the separate vocoder is downloaded alongside the model,
+and ``engine_params.vocoder_path`` is set to the local file. See
+[Voice index](#voice-index) below.
+
 ### Text processing
 
-Matcha-TTS uses phoonnx's standard phonemizer and tokenizer. The tokenizer must be configured with ``blank_id = 0`` so that interspersed blanks are already present in the phoneme sequence fed to ONNX. The adapter does **not** re-intersperse — it passes the tokenized sequence directly to the mel model.
+Matcha-TTS uses phoonnx's standard phonemizer and tokenizer. The tokenizer must
+be configured with ``blank_id = 0`` so that interspersed blanks are already
+present in the phoneme sequence fed to ONNX. The adapter does **not**
+re-intersperse — it passes the tokenized sequence directly to the mel model.
+
+Grapheme/character models (e.g. ``matxa-tts-v2-ca-central-graphemes``) have no
+phonemes: from phoonnx's point of view they run the pass-through
+graphemes/unicode phonemizer (``GraphemePhonemizer`` / ``UnicodeCodepointPhonemizer``)
+and the **tokenizer** maps characters → IDs. Set ``phoneme_type: graphemes``
+(or ``unicode``) / ``alphabet: unicode``.
 
 ### Parameters
 
@@ -70,7 +106,27 @@ Matcha-TTS uses phoonnx's standard phonemizer and tokenizer. The tokenizer must 
 |-------|---------|-------------|
 | ``temperature`` | 0.667 | Sampling temperature for the flow-matching decoder |
 | ``length_scale`` | 1.0 | Speech rate multiplier (higher = slower) |
-| ``denoise`` | true | Spectral subtraction denoising via vocoder bias |
+| ``denoise`` | true | Spectral-subtraction denoising — Vocos only; ignored by raw-waveform/end-to-end vocoders |
+
+## Voice index
+
+Catalan Matxa voices ship in ``phoonnx/voice_index/BSC.json``. Each entry links
+the acoustic model to its tested vocoder and records the license:
+
+| Field | Meaning |
+|-------|---------|
+| ``vocoder_url`` | Separate vocoder ONNX (omit for end-to-end models) |
+| ``vocoder_type`` | ``vocos`` / ``wavenext`` / ``hifigan`` (auto-detected if null) |
+| ``license`` | Model (and vocoder) license, e.g. ``gpl-3.0`` or the CC-BY-NC vocoder note |
+| ``verified`` | ``true`` once synthesis has been confirmed end-to-end through phoonnx |
+| ``speakers`` | ``speaker_id`` → name/accent map |
+
+> **Status:** BSC entries are currently ``verified: false``. The upstream models
+> ship a ``config.yaml`` symbol table rather than a phoonnx vocab. Symbol
+> handling (phonemes for the espeak voices, characters for the grapheme voice)
+> lives entirely in the **tokenizer**, so that vocab must be aligned to the
+> model's symbol table and a synthesis confirmed before an entry is marked
+> ``verified``.
 
 ## Training
 
