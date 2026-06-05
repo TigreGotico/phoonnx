@@ -1,0 +1,50 @@
+{
+    "nipponjo/mixer-tts-ljspeech-80": {
+        "voice_id": "nipponjo/mixer-tts-ljspeech-80",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-mixertts/resolve/main/ljspeech-80/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-mixertts/resolve/main/ljspeech-80/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "mixertts",
+        "lang": "en",
+        "vocoder_url": null,
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-mixertts/resolve/main/ljspeech-80/vocoder.json",
+        "vocoder_type": "griffinlim"
+    },
+    "nipponjo/mixer-tts-ljspeech-128": {
+        "voice_id": "nipponjo/mixer-tts-ljspeech-128",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-mixertts/resolve/main/ljspeech-128/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-mixertts/resolve/main/ljspeech-128/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "mixertts",
+        "lang": "en",
+        "vocoder_url": null,
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-mixertts/resolve/main/ljspeech-128/vocoder.json",
+        "vocoder_type": "griffinlim"
+    },
+    "nipponjo/mixer-tts-ljspeech-384": {
+        "voice_id": "nipponjo/mixer-tts-ljspeech-384",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-mixertts/resolve/main/ljspeech-384/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-mixertts/resolve/main/ljspeech-384/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "mixertts",
+        "lang": "en",
+        "vocoder_url": null,
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-mixertts/resolve/main/ljspeech-384/vocoder.json",
+        "vocoder_type": "griffinlim"
+    }
+}
