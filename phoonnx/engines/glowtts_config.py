@@ -39,6 +39,31 @@ def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str,
     use_eos_bos = bool(config.get("enable_eos_bos_chars", False))
     pad, eos, bos = ch.get("pad", "_"), ch.get("eos", "~"), ch.get("bos", "^")
     blank = ch.get("blank") or "<BLNK>"
+
+    # VITS uses its own VitsCharacters, whose _create_vocab OVERRIDES the base sort:
+    # [pad] + punctuations + (graphemes + ipa_characters, unsorted) + [blank], with
+    # the blank interspersed at synthesis. Build that exact table.
+    if "Vits" in str(ch.get("characters_class") or ""):
+        combined = list(ch.get("characters", "")) + list(ch.get("phonemes", ""))
+        full = [pad] + list(ch.get("punctuations", "")) + combined + [blank]
+        # VitsCharacters is is_unique=False: NO dedup, char_to_id keeps the LAST
+        # occurrence, and num_chars counts the full list (incl. the trailing blank).
+        # Deduping shifts the blank id by one -> interspersed garbage.
+        char2idx = {c: i for i, c in enumerate(full)}
+        n_spk = config.get("num_speakers") or config.get("model_args", {}).get("num_speakers") or 1
+        tok = TTSTokenizer(
+            Vocabulary(char2idx=char2idx, pad=pad, blank=blank),
+            add_blank_char=True, add_blank_word=False, use_eos_bos=False,
+            blank_at_start=True, blank_at_end=True)
+        return VoiceConfig(
+            tokenizer=tok, num_symbols=len(full), num_speakers=max(int(n_spk), 1),
+            num_langs=1, sample_rate=audio.get("sample_rate", 22050), lang_code=lang_code,
+            phoneme_type=_phon if use_phonemes else PhonemeType.GRAPHEMES,
+            alphabet=Alphabet.IPA if use_phonemes else Alphabet.UNICODE,
+            phonemizer_model=None, engine=engine, add_diacritics=False,
+            blank_between=BlankBetween.TOKENS_AND_WORDS, blank_at_start=True, blank_at_end=True,
+            pad_token=pad, blank_token=blank, bos_token=None, eos_token=None, word_sep_token=" ")
+
     symbol_set = list(ch.get("phonemes", "") if use_phonemes else ch.get("characters", ""))
     # coqui's Graphemes/IPAPhonemes both default is_sorted=True: the symbol set is
     # sorted alphabetically *before* ids are assigned (config may override). Getting

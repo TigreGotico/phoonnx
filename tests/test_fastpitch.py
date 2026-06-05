@@ -93,3 +93,17 @@ def test_coqui_phonemizer_honors_config_field():
     base = {"use_phonemes": True, "characters": {"phonemes": "abc", "pad": "_", "eos": "~", "bos": "^"}}
     assert voice_config_from_coqui({**base, "phonemizer": "gruut"}, lang_code="en").phoneme_type == PhonemeType.GRUUT
     assert voice_config_from_coqui({**base, "phonemizer": "espeak"}, lang_code="en").phoneme_type == PhonemeType.ESPEAK
+
+
+def test_coqui_vits_characters_vocab():
+    # VITS uses VitsCharacters: [pad] + punct + graphemes + ipa + [blank], NOT
+    # sorted, is_unique=False (blank id = full-list length, not deduped length).
+    from phoonnx.engines.glowtts_config import voice_config_from_coqui
+    from phoonnx.config import Engine
+    cfg = {"use_phonemes": True, "phonemizer": "espeak",
+           "characters": {"characters_class": "TTS.tts.models.vits.VitsCharacters",
+                          "characters": "ab", "phonemes": "ɑɐ", "punctuations": "!", "pad": "_"}}
+    c2i = voice_config_from_coqui(cfg, lang_code="en", engine=Engine.COQUI).tokenizer.vocabulary.char2idx
+    # _ ! a b ɑ ɐ <BLNK>  -> blank at 6 (full length 7), unsorted
+    assert list(c2i) == ["_", "!", "a", "b", "ɑ", "ɐ", "<BLNK>"]
+    assert c2i["<BLNK>"] == 6
