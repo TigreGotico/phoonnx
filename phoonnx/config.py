@@ -21,6 +21,7 @@ class Engine(str, Enum):
     COQUI = "coqui"
     TRANSFORMERS = "transformers"
     MATCHA = "matcha"  # flow-matching mel model + separate vocoder
+    OPTISPEECH = "optispeech"  # FastSpeech2-style acoustic + GAN vocoder
 
 
 class Alphabet(str, Enum):
