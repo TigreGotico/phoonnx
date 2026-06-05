@@ -4,8 +4,13 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.4a1...HEAD)
 
+**Closed issues:**
+
+- Design: pluggable multi-engine architecture [\#132](https://github.com/TigreGotico/phoonnx/issues/132)
+
 **Merged pull requests:**
 
+- feat\(engines\): OptiSpeech inference adapter [\#142](https://github.com/TigreGotico/phoonnx/pull/142) ([JarbasAl](https://github.com/JarbasAl))
 - refactor\(voices\): migrate community voice index to the OpenVoiceOS mirror collection [\#141](https://github.com/TigreGotico/phoonnx/pull/141) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(config\): native phoonnx config round-trip [\#139](https://github.com/TigreGotico/phoonnx/pull/139) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): Matcha-TTS inference + pluggable vocoder registry [\#138](https://github.com/TigreGotico/phoonnx/pull/138) ([JarbasAl](https://github.com/JarbasAl))
