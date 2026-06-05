@@ -1,0 +1,94 @@
+"""
+GlowTTS (Larynx) ↔ phoonnx config bridge.
+
+Larynx GlowTTS voices ship a training ``config.json`` (audio + model params)
+and a ``phonemes.txt`` symbol table (``id phoneme`` per line, gruut IPA). This
+module turns those into a phoonnx :class:`VoiceConfig` whose tokenizer
+reproduces Larynx's tokenization (gruut phonemes, blank-interspersed).
+
+The vocoder (Larynx HiFi-GAN) is supplied separately via
+``engine_params['vocoder_path']`` / the voice-index ``vocoder_url``.
+"""
+from typing import Any, Dict, Optional
+
+from phoonnx.config import Alphabet, Engine, PhonemeType, VoiceConfig
+from phoonnx.tokenizer import BlankBetween, TTSTokenizer, Vocabulary
+
+_GLOW_PAD = "_"
+
+
+def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str) -> VoiceConfig:
+    """
+    Build a :class:`VoiceConfig` from a Coqui-TTS GlowTTS ``config.json``.
+
+    Coqui's character vocab is ``[pad, eos, bos] + (characters | punctuations)``
+    (deduplicated, characters first). Graphemes when ``use_phonemes`` is false,
+    otherwise espeak IPA.
+    """
+    ch = config.get("characters", {})
+    audio = config.get("audio", {})
+    use_phonemes = bool(config.get("use_phonemes", False))
+    pad, eos, bos = ch.get("pad", "_"), ch.get("eos", "~"), ch.get("bos", "^")
+    symbol_set = ch.get("phonemes", "") if use_phonemes else ch.get("characters", "")
+    rest = list(dict.fromkeys(list(symbol_set) + list(ch.get("punctuations", ""))))
+    char2idx = {s: i for i, s in enumerate([pad, eos, bos] + rest)}
+    add_blank = bool(config.get("add_blank", False))
+    use_eos_bos = bool(config.get("enable_eos_bos_chars", False))
+    tok = TTSTokenizer(
+        Vocabulary(char2idx=char2idx, pad=pad, bos=bos, eos=eos),
+        add_blank_char=add_blank, add_blank_word=False, use_eos_bos=use_eos_bos,
+        blank_at_start=add_blank, blank_at_end=add_blank)
+    return VoiceConfig(
+        tokenizer=tok, num_symbols=len(char2idx), num_speakers=1, num_langs=1,
+        sample_rate=audio.get("sample_rate", 22050), lang_code=lang_code,
+        phoneme_type=PhonemeType.ESPEAK if use_phonemes else PhonemeType.GRAPHEMES,
+        alphabet=Alphabet.IPA if use_phonemes else Alphabet.UNICODE,
+        phonemizer_model=None, engine=Engine.GLOWTTS, add_diacritics=False,
+        blank_between=BlankBetween.TOKENS_AND_WORDS,
+        blank_at_start=add_blank, blank_at_end=add_blank,
+        pad_token=pad, blank_token=pad,
+        bos_token=bos if use_eos_bos else None, eos_token=eos if use_eos_bos else None,
+        word_sep_token=" ")
+
+
+def voice_config_from_larynx(
+    config: Dict[str, Any],
+    phonemes_txt: str,
+    *,
+    lang_code: str,
+    phoneme_type: PhonemeType = PhonemeType.GRUUT,
+) -> VoiceConfig:
+    """Build a :class:`VoiceConfig` from a Larynx GlowTTS config + phonemes.txt."""
+    audio = config.get("audio", {})
+    model = config.get("model", {})
+
+    # phonemes.txt is "<id> <phoneme>" per line
+    tok = TTSTokenizer.from_tokens_txt(phonemes_txt, id_first=True)
+    # GlowTTS interleaves the blank (PAD, id 0) between symbols, no BOS/EOS.
+    tok.add_blank_char = True
+    tok.add_blank_word = False
+    tok.use_eos_bos = False
+    tok.blank_at_start = True
+    tok.blank_at_end = True
+
+    return VoiceConfig(
+        tokenizer=tok,
+        num_symbols=model.get("num_symbols", len(tok.vocabulary.char2idx)),
+        num_speakers=max(model.get("n_speakers", 1), 1),
+        num_langs=1,
+        sample_rate=audio.get("sample_rate", 22050),
+        lang_code=lang_code,
+        phoneme_type=phoneme_type,
+        alphabet=Alphabet.IPA,
+        phonemizer_model=None,
+        engine=Engine.GLOWTTS,
+        add_diacritics=False,
+        blank_between=BlankBetween.TOKENS_AND_WORDS,
+        blank_at_start=True,
+        blank_at_end=True,
+        pad_token=_GLOW_PAD,
+        blank_token=_GLOW_PAD,
+        bos_token=None,
+        eos_token=None,
+        word_sep_token=" ",
+    )

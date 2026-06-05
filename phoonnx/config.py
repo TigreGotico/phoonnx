@@ -22,6 +22,7 @@ class Engine(str, Enum):
     TRANSFORMERS = "transformers"
     MATCHA = "matcha"  # flow-matching mel model + separate vocoder
     OPTISPEECH = "optispeech"  # FastSpeech2-style acoustic + GAN vocoder
+    GLOWTTS = "glowtts"  # flow-based mel model + separate vocoder (Larynx)
 
 
 class Alphabet(str, Enum):
