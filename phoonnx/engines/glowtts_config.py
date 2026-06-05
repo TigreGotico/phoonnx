@@ -17,7 +17,8 @@ from phoonnx.tokenizer import BlankBetween, TTSTokenizer, Vocabulary
 _GLOW_PAD = "_"
 
 
-def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str) -> VoiceConfig:
+def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str,
+                            engine: Engine = Engine.GLOWTTS) -> VoiceConfig:
     """
     Build a :class:`VoiceConfig` from a Coqui-TTS GlowTTS ``config.json``.
 
@@ -49,7 +50,7 @@ def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str) -> VoiceC
         sample_rate=audio.get("sample_rate", 22050), lang_code=lang_code,
         phoneme_type=PhonemeType.ESPEAK if use_phonemes else PhonemeType.GRAPHEMES,
         alphabet=Alphabet.IPA if use_phonemes else Alphabet.UNICODE,
-        phonemizer_model=None, engine=Engine.GLOWTTS, add_diacritics=False,
+        phonemizer_model=None, engine=engine, add_diacritics=False,
         blank_between=BlankBetween.TOKENS_AND_WORDS,
         blank_at_start=add_blank, blank_at_end=add_blank,
         pad_token=pad, blank_token=blank if add_blank else pad,

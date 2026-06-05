@@ -14,5 +14,21 @@
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/tts-arabic-hifigan/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/tts-arabic-hifigan/vocoder.json",
         "vocoder_type": "hifigan"
+    },
+    "coqui/en-ljspeech-fast_pitch": {
+        "voice_id": "coqui/en-ljspeech-fast_pitch",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-fastpitch/resolve/main/coqui-ljspeech-fastpitch/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-fastpitch/resolve/main/coqui-ljspeech-fastpitch/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "fastpitch",
+        "lang": "en-us",
+        "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
+        "vocoder_type": "vocos"
     }
 }

@@ -58,3 +58,14 @@ def test_config_bridge_fastpitch_engine():
     native = vc.to_native_dict()
     assert native["engine"] == "fastpitch"
     assert VoiceConfig.from_dict(dict(native)).engine == Engine.FASTPITCH
+
+
+def test_coqui_bridge_targets_fastpitch_engine():
+    # the shared coqui bridge (also used by GlowTTS) can build a FastPitch config
+    from phoonnx.engines.glowtts_config import voice_config_from_coqui
+    cfg = {"use_phonemes": True, "phoneme_language": "en-us", "add_blank": False,
+           "characters": {"characters": "abc", "punctuations": "!?.", "pad": "_",
+                          "eos": "&", "bos": "*", "blank": "<BLNK>"}}
+    vc = voice_config_from_coqui(cfg, lang_code="en-us", engine=Engine.FASTPITCH)
+    assert vc.engine == Engine.FASTPITCH
+    assert VoiceConfig.from_dict(dict(vc.to_native_dict())).engine == Engine.FASTPITCH

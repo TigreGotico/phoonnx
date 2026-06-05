@@ -23,6 +23,22 @@ voice = m.voices["nipponjo/tts-arabic-fastpitch"].load()
 for chunk in voice.synthesize("السَّلامُ عَلَيكُم.", ): ...
 ```
 
+
+## Converting coqui FastPitch to ONNX
+
+coqui's `ForwardTTS` (`fast_pitch`) does **not** export to a dynamic-length ONNX
+out of the box: its `FFTransformer` wraps `torch.nn.MultiheadAttention`, which
+**bakes the example sequence length** under the legacy tracer (`dynamo=False`),
+while `dynamo=True` chokes on the data-dependent duration→length expansion.
+
+The fix (validated): in a vendored copy, replace the stock `nn.MultiheadAttention`
+with a tracer-safe drop-in — same `in_proj_weight`/`in_proj_bias`/`out_proj`
+parameter names (so pretrained weights load unchanged), but reshaping with `-1`
+and live `tensor.shape` reads (`x.reshape(x.shape[0], -1, head_dim)`) the way
+nipponjo's hand-written FastPitch attention does. With that single swap a plain
+`torch.onnx.export(..., dynamo=False, opset=14)` yields a fully dynamic-length
+graph. The en/ljspeech model is mirrored as `coqui/en-ljspeech-fast_pitch`.
+
 ## References
 - [FastPitch paper](https://arxiv.org/abs/2006.06873) · [tts_arabic](https://github.com/nipponjo/tts_arabic)
 - [docs/mixertts.md](./mixertts.md) · [docs/vocoders.md](./vocoders.md)
