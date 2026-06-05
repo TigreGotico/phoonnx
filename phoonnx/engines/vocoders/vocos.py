@@ -15,10 +15,13 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 import onnxruntime
-from scipy.fft import irfft
-from scipy.signal.windows import hann
 
 from phoonnx.engines.vocoders.base import BaseVocoder
+
+
+def _periodic_hann(n: int) -> np.ndarray:
+    """Periodic Hann window (equivalent to scipy hann(n, sym=False))."""
+    return 0.5 - 0.5 * np.cos(2.0 * np.pi * np.arange(n) / n)
 
 
 class VocosVocoder(BaseVocoder):
@@ -76,12 +79,12 @@ class VocosVocoder(BaseVocoder):
         hop_length = params["hop_length"]
         win_length = n_fft
 
-        window = hann(win_length, sym=False)
+        window = _periodic_hann(win_length)
 
         B, _, T = spectrogram.shape
 
         # Inverse FFT per frame, windowed: [B, win_length, T]
-        ifft = irfft(spectrogram, n=n_fft, axis=1) * window[None, :, None]
+        ifft = np.fft.irfft(spectrogram, n=n_fft, axis=1) * window[None, :, None]
 
         output_size = (T - 1) * hop_length + win_length
         y = np.zeros((B, output_size), dtype=np.float64)
