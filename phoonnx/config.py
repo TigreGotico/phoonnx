@@ -23,6 +23,7 @@ class Engine(str, Enum):
     MATCHA = "matcha"  # flow-matching mel model + separate vocoder
     OPTISPEECH = "optispeech"  # FastSpeech2-style acoustic + GAN vocoder
     GLOWTTS = "glowtts"  # flow-based mel model + separate vocoder (Larynx)
+    MIXERTTS = "mixertts"  # MLP-Mixer/FastPitch-style mel model + separate vocoder
 
 
 class Alphabet(str, Enum):

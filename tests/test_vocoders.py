@@ -104,7 +104,8 @@ def test_vocos_mel_to_audio_shape_and_finite():
     mel = np.zeros((1, 80, T), dtype=np.float32)
     audio = voc.mel_to_audio(mel, denoise=False)
     assert audio.ndim == 1
-    assert audio.shape[0] == (T - 1) * HOP + N_FFT
+    # center=True padding (n_fft//2 each side) is trimmed on the inverse
+    assert audio.shape[0] == (T - 1) * HOP + N_FFT - 2 * (N_FFT // 2)
     assert np.all(np.isfinite(audio))
     assert voc.supports_denoise is True
 

@@ -97,6 +97,12 @@ class VocosVocoder(BaseVocoder):
             window_envelope[:, start:start + win_length] += window_sq[None, :]
 
         y /= np.maximum(window_envelope, 1e-11)
+        # Vocos STFT uses center=True (signal padded by n_fft//2 each side); trim
+        # that padding back on the inverse. Otherwise the edge frames, where the
+        # window envelope is near-zero, blow up into large boundary artifacts.
+        pad = n_fft // 2
+        if y.shape[1] > 2 * pad:
+            y = y[:, pad:-pad]
         return y.astype(np.float32)
 
     @staticmethod

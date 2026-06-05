@@ -456,6 +456,7 @@ class TTSModelManager:
         self.cache.update(JsonStorage(str(base_path / "piper_community.json")))
         self.cache.update(JsonStorage(str(base_path / "optispeech.json")))
         self.cache.update(JsonStorage(str(base_path / "glowtts.json")))
+        self.cache.update(JsonStorage(str(base_path / "mixertts.json")))
         self.cache.update(JsonStorage(str(base_path / "coqui_community.json")))
         self.cache.update(JsonStorage(str(base_path / "BSC.json")))
         self.voices = {}
