@@ -22,7 +22,7 @@ class VitsExport(torch.nn.Module):
         hc = g(a, "hidden_channels", 192)
         self.use_sdp = g(a, "use_sdp", True)
         self.use_spk = g(a, "use_speaker_embedding", False) and num_speakers > 1
-        self.use_lang = g(a, "use_language_embedding", False) and num_languages > 1
+        self.use_lang = bool(g(a, "use_language_embedding", False))
         self.cond_dp_spk = g(a, "condition_dp_on_speaker", True)
         spk_dim = g(a, "speaker_embedding_channels", 256) if self.use_spk else 0
         lang_dim = g(a, "embedded_language_dim", 4) if self.use_lang else 0
@@ -56,7 +56,12 @@ class VitsExport(torch.nn.Module):
     def forward(self, x, x_lengths, scales, sid=None, langid=None):
         noise_scale, length_scale, noise_scale_dp = scales[0], scales[1], scales[2]
         g_ = self.emb_g(sid).unsqueeze(-1) if (self.use_spk and sid is not None) else None
-        lang_emb = self.emb_l(langid).unsqueeze(-1) if (self.use_lang and langid is not None) else None
+        if self.use_lang:
+            if langid is None:
+                langid = torch.zeros(x.shape[0], dtype=torch.long, device=x.device)
+            lang_emb = self.emb_l(langid).unsqueeze(-1)
+        else:
+            lang_emb = None
         x, m_p, logs_p, x_mask = self.text_encoder(x, x_lengths, lang_emb=lang_emb)
         if self.use_sdp:
             logw = self.duration_predictor(x, x_mask, g=g_ if self.cond_dp_spk else None,
@@ -90,6 +95,15 @@ if __name__ == "__main__":
     sd = sd.get("model", sd)
     emb = next((k for k in sd if k.endswith("text_encoder.emb.weight")), None)
     num_chars = sd[emb].shape[0]
+    a = dict(a)
+    # Trust the checkpoint over the config (coqui configs can disagree): the text
+    # embedding width IS hidden_channels, and a present emb_l means the model was
+    # trained with a language embedding (even single-language css10/CommonVoice).
+    a["hidden_channels"] = sd[emb].shape[1]
+    lk = next((k for k in sd if k.endswith("emb_l.weight")), None)
+    if lk is not None:
+        a["use_language_embedding"] = True
+        a["embedded_language_dim"] = sd[lk].shape[1]
     num_spk = sd["emb_g.weight"].shape[0] if "emb_g.weight" in sd else 1
     num_lang = sd["emb_l.weight"].shape[0] if "emb_l.weight" in sd else 1
     model = VitsExport(a, num_chars, num_spk, num_lang).eval()
