@@ -52,6 +52,17 @@ voice = m.voices["nipponjo/mixer-tts-ljspeech-384"].load()
 for chunk in voice.synthesize("Hello from Mixer-TTS."): ...
 ```
 
+## Arabic models
+
+The [tts_arabic](https://github.com/nipponjo/tts_arabic) Mixer-TTS models
+(``nipponjo/tts-arabic-mixer80`` / ``mixer128``) are **multi-speaker** Arabic
+voices using a 44-symbol **buckwalter** phoneme table. They tokenize with
+phoonnx's ``mantoq`` Arabic phonemizer (``phoneme_type: mantoq``,
+``alphabet: buckwalter``, ``_+_`` word separator) — which produces the same
+phonemes as tts_arabic's ``phonetise_buckwalter`` (a golden test guards this).
+Input may be vocalized Arabic or buckwalter transliteration; pick a speaker with
+``SynthesisConfig(speaker_id=...)``.
+
 ## Vocoder
 
 The 80-channel mel is the HiFi-GAN-compatible mel, so the indexed voices use the
