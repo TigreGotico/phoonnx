@@ -617,12 +617,14 @@ class TTSTokenizer:
             blanks at start and end enabled, BOS/EOS wrapping enabled, and word-blank mapping disabled).
         """
         voc: Vocabulary = Vocabulary.from_phoonnx_config(cfg)
-        # Default settings for phoonnx
-        add_blank: bool = True
-        blank_at_end: bool = True
-        blank_at_start: bool = True
-        use_eos_bos: bool = True
-        add_blank_word: bool = False
+        # Native phoonnx configs carry the tokenizer flags explicitly so any
+        # model round-trips faithfully; the historical phoonnx defaults apply
+        # only when a flag is absent.
+        add_blank: bool = cfg.get("add_blank_char", True)
+        blank_at_end: bool = cfg.get("blank_at_end", True)
+        blank_at_start: bool = cfg.get("blank_at_start", True)
+        use_eos_bos: bool = cfg.get("use_eos_bos", True)
+        add_blank_word: bool = cfg.get("add_blank_word", False)
         return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
                             blank_at_end=blank_at_end, blank_at_start=blank_at_start,
                             use_eos_bos=use_eos_bos)

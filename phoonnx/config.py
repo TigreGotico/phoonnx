@@ -254,17 +254,19 @@ class VoiceConfig:
         diacritics = False
 
         if VoiceConfig.is_phoonnx(config):
-            engine =  engine or Engine.PHOONNX
+            engine = engine or config.get("engine") or Engine.PHOONNX
 
             lang_code = lang_code or config.get("lang_code")
             phoneme_type = phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK)
             alphabet = alphabet or Alphabet(config.get("alphabet", "ipa"))
             diacritics = config.get("inference", {}).get("add_diacritics", True)
 
-            config["pad"] =  DEFAULT_PAD_TOKEN
-            config["blank"] = DEFAULT_BLANK_TOKEN
-            config["bos"] = DEFAULT_BOS_TOKEN
-            config["eos"] = DEFAULT_EOS_TOKEN
+            # Preserve the model's own special tokens when present (a native
+            # config may use any pad/blank/bos/eos); fall back to phoonnx defaults.
+            config["pad"] = config.get("pad") or DEFAULT_PAD_TOKEN
+            config["blank"] = config.get("blank") or DEFAULT_BLANK_TOKEN
+            config["bos"] = config.get("bos") or DEFAULT_BOS_TOKEN
+            config["eos"] = config.get("eos") or DEFAULT_EOS_TOKEN
 
             tokenizer = TTSTokenizer.from_phoonnx_config(config)
 
@@ -404,6 +406,54 @@ class VoiceConfig:
             word_sep_token=config.get("word_sep_token") or config.get("blank_word", " "),
             engine_params=engine_params or {}
         )
+
+    def to_native_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this config to a **native phoonnx** ``config.json`` dict.
+
+        The result loads back through the ``is_phoonnx`` path in
+        :meth:`from_dict` (it carries ``phoonnx_version``), folding the
+        tokenizer vocabulary into ``phoneme_id_map`` and recording the
+        tokenizer flags + special tokens explicitly, so any model round-trips
+        without relying on the foreign-config detection heuristics.
+        """
+        try:
+            from phoonnx.version import VERSION as _v
+            version = ".".join(str(p) for p in _v) if isinstance(_v, (tuple, list)) else str(_v)
+        except Exception:
+            version = "1.0"
+
+        tok = self.tokenizer
+        voc = tok.vocabulary
+        return {
+            "phoonnx_version": version,
+            "engine": self.engine.value if self.engine else "phoonnx",
+            "phoneme_type": self.phoneme_type.value if self.phoneme_type else "graphemes",
+            "alphabet": self.alphabet.value if self.alphabet else "unicode",
+            "lang_code": self.lang_code,
+            "audio": {"sample_rate": self.sample_rate},
+            "num_symbols": self.num_symbols,
+            "num_speakers": self.num_speakers,
+            "num_langs": self.num_langs,
+            "speaker_id_map": dict(self.speaker_id_map or {}),
+            "lang_id_map": dict(self.lang_id_map or {}),
+            "phonemizer_model": self.phonemizer_model,
+            "add_diacritics": self.add_diacritics,
+            "inference": {
+                "noise_scale": self.noise_scale,
+                "length_scale": self.length_scale,
+                "noise_w": self.noise_w_scale,
+            },
+            "phoneme_id_map": dict(voc.char2idx),
+            "pad": voc.pad, "blank": voc.blank, "bos": voc.bos, "eos": voc.eos,
+            "add_blank_char": tok.add_blank_char,
+            "add_blank_word": tok.add_blank_word,
+            "use_eos_bos": tok.use_eos_bos,
+            "blank_at_start": tok.blank_at_start,
+            "blank_at_end": tok.blank_at_end,
+            "word_sep_token": self.word_sep_token,
+            "blank_between": self.blank_between.value if self.blank_between else "tokens_and_words",
+        }
 
 
 @dataclass
