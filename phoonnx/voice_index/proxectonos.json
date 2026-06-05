@@ -1,7 +1,7 @@
 {
     "proxectonos/brais": {
         "voice_id": "proxectonos/brais",
-        "model_url": "https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-graphemes-onnx/resolve/main/model.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__brais/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "gl-ES",
         "tokens_url": null,
@@ -10,11 +10,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-graphemes-onnx/resolve/main/config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__brais/config.json"
     },
     "proxectonos/celtia": {
         "voice_id": "proxectonos/celtia",
-        "model_url": "https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/model.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__celtia/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "gl-ES",
         "tokens_url": null,
@@ -23,11 +23,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__celtia/config.json"
     },
     "proxectonos/brais-cotovia": {
         "voice_id": "proxectonos/brais-cotovia",
-        "model_url": "https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-phonemes-onnx/resolve/main/model.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__brais-cotovia/model.onnx",
         "phoneme_type": "cotovia",
         "lang": "gl-ES",
         "tokens_url": null,
@@ -36,11 +36,11 @@
         "phoneme_map_url": null,
         "alphabet": "cotovia",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-phonemes-onnx/resolve/main/config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__brais-cotovia/config.json"
     },
     "proxectonos/celtia-cotovia": {
         "voice_id": "proxectonos/celtia-cotovia",
-        "model_url": "https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-phonemes-onnx/resolve/main/model.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__celtia-cotovia/model.onnx",
         "phoneme_type": "cotovia",
         "lang": "gl-ES",
         "tokens_url": null,
@@ -49,11 +49,11 @@
         "phoneme_map_url": null,
         "alphabet": "cotovia",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-phonemes-onnx/resolve/main/config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__celtia-cotovia/config.json"
     },
     "proxectonos/sabela-cotovia": {
         "voice_id": "proxectonos/sabela-cotovia",
-        "model_url": "https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/model.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__sabela-cotovia/model.onnx",
         "phoneme_type": "cotovia",
         "lang": "gl-ES",
         "tokens_url": null,
@@ -62,11 +62,11 @@
         "phoneme_map_url": null,
         "alphabet": "cotovia",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__sabela-cotovia/config.json"
     },
     "proxectonos/icia-cotovia": {
         "voice_id": "proxectonos/icia-cotovia",
-        "model_url": "https://huggingface.co/OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx/resolve/main/model.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__icia-cotovia/model.onnx",
         "phoneme_type": "cotovia",
         "lang": "gl-ES",
         "tokens_url": null,
@@ -75,11 +75,11 @@
         "phoneme_map_url": null,
         "alphabet": "cotovia",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx/resolve/main/config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__icia-cotovia/config.json"
     },
     "proxectonos/paulo-cotovia": {
         "voice_id": "proxectonos/paulo-cotovia",
-        "model_url": "https://huggingface.co/OpenVoiceOS/proxectonos-paulo-vits-phonemes-onnx/resolve/main/model.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__paulo-cotovia/model.onnx",
         "phoneme_type": "cotovia",
         "lang": "gl-ES",
         "tokens_url": null,
@@ -88,11 +88,11 @@
         "phoneme_map_url": null,
         "alphabet": "cotovia",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/OpenVoiceOS/proxectonos-paulo-vits-phonemes-onnx/resolve/main/config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__paulo-cotovia/config.json"
     },
     "proxectonos/iago-cotovia": {
         "voice_id": "proxectonos/iago-cotovia",
-        "model_url": "https://huggingface.co/OpenVoiceOS/proxectonos-iago-vits-phonemes-onnx/resolve/main/model.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__iago-cotovia/model.onnx",
         "phoneme_type": "cotovia",
         "lang": "gl-ES",
         "tokens_url": null,
@@ -101,6 +101,6 @@
         "phoneme_map_url": null,
         "alphabet": "cotovia",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/OpenVoiceOS/proxectonos-iago-vits-phonemes-onnx/resolve/main/config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/proxectonos__iago-cotovia/config.json"
     }
 }

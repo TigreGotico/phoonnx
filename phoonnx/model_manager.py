@@ -388,6 +388,7 @@ class TTSModelManager:
         self.cache.update(JsonStorage(str(base_path / "mimic3.json")))
         self.cache.update(JsonStorage(str(base_path / "transformers_community.json")))
         self.cache.update(JsonStorage(str(base_path / "piper_community.json")))
+        self.cache.update(JsonStorage(str(base_path / "coqui_community.json")))
         self.voices = {}
         for voice_id, voice_dict in self.cache.items():
             try:
