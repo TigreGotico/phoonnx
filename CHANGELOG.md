@@ -10,6 +10,7 @@
 
 **Merged pull requests:**
 
+- test\(tokenization\): cross-framework golden tests + coqui vocab-order fix [\#144](https://github.com/TigreGotico/phoonnx/pull/144) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): GlowTTS / Larynx inference adapter [\#143](https://github.com/TigreGotico/phoonnx/pull/143) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): OptiSpeech inference adapter [\#142](https://github.com/TigreGotico/phoonnx/pull/142) ([JarbasAl](https://github.com/JarbasAl))
 - refactor\(voices\): migrate community voice index to the OpenVoiceOS mirror collection [\#141](https://github.com/TigreGotico/phoonnx/pull/141) ([JarbasAl](https://github.com/JarbasAl))
