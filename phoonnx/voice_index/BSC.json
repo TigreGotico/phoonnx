@@ -11,11 +11,7 @@
         "alphabet": "ipa",
         "vocoder_url": null,
         "vocoder_config_url": null,
-        "vocoder_type": null,
-        "license": "gpl-3.0",
-        "verified": true,
-        "speakers": null,
-        "description": "Catalan multispeaker Matcha-TTS, end-to-end fused Wavenext. 47 speakers, 22.05kHz."
+        "vocoder_type": null
     },
     "OpenVoiceOS/matxa-cat-multispeaker-hifigan": {
         "voice_id": "OpenVoiceOS/matxa-cat-multispeaker-hifigan",
@@ -29,11 +25,7 @@
         "alphabet": "ipa",
         "vocoder_url": null,
         "vocoder_config_url": null,
-        "vocoder_type": null,
-        "license": "gpl-3.0",
-        "verified": true,
-        "speakers": null,
-        "description": "Catalan multispeaker Matcha-TTS, end-to-end fused HiFi-GAN. 47 speakers."
+        "vocoder_type": null
     },
     "OpenVoiceOS/matxa-cat-multiaccent-wavenext": {
         "voice_id": "OpenVoiceOS/matxa-cat-multiaccent-wavenext",
@@ -47,20 +39,7 @@
         "alphabet": "ipa",
         "vocoder_url": null,
         "vocoder_config_url": null,
-        "vocoder_type": null,
-        "license": "gpl-3.0",
-        "verified": true,
-        "speakers": {
-            "0": "quim (Balear)",
-            "1": "olga (Balear)",
-            "2": "grau (Central)",
-            "3": "elia (Central)",
-            "4": "pere (Nord-Occidental)",
-            "5": "emma (Nord-Occidental)",
-            "6": "lluc (Valencian)",
-            "7": "gina (Valencian)"
-        },
-        "description": "Catalan multiaccent Matcha-TTS, end-to-end fused Wavenext. 8 dialect speakers."
+        "vocoder_type": null
     },
     "OpenVoiceOS/matxa-cat-central-graphemes-v2": {
         "voice_id": "OpenVoiceOS/matxa-cat-central-graphemes-v2",
@@ -74,11 +53,7 @@
         "alphabet": "unicode",
         "vocoder_url": null,
         "vocoder_config_url": null,
-        "vocoder_type": null,
-        "license": "apache-2.0",
-        "verified": true,
-        "speakers": null,
-        "description": "Catalan Central v2 Matcha-TTS from graphemes, end-to-end fused Wavenext."
+        "vocoder_type": null
     },
     "OpenVoiceOS/matxa-cat-multispeaker-wavenext-2stage": {
         "voice_id": "OpenVoiceOS/matxa-cat-multispeaker-wavenext-2stage",
@@ -92,11 +67,7 @@
         "alphabet": "ipa",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/wavenext-22khz/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/wavenext-22khz/vocoder.json",
-        "vocoder_type": "wavenext",
-        "license": "gpl-3.0 (model) + apache-2.0 (vocoder)",
-        "verified": true,
-        "speakers": null,
-        "description": "Catalan multispeaker Matcha-TTS, two-stage acoustic + separate Wavenext vocoder."
+        "vocoder_type": "wavenext"
     },
     "OpenVoiceOS/matxa-cat-multispeaker-vocos-2stage": {
         "voice_id": "OpenVoiceOS/matxa-cat-multispeaker-vocos-2stage",
@@ -110,10 +81,6 @@
         "alphabet": "ipa",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/alvocat-vocos-22khz/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/alvocat-vocos-22khz/vocoder.json",
-        "vocoder_type": "vocos",
-        "license": "gpl-3.0 (model) + cc-by-nc-4.0 (alVoCat vocoder, NON-COMMERCIAL)",
-        "verified": true,
-        "speakers": null,
-        "description": "Catalan multispeaker Matcha-TTS, two-stage acoustic + separate alVoCat Vocos vocoder."
+        "vocoder_type": "vocos"
     }
 }

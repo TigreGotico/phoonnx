@@ -33,12 +33,6 @@ class TTSModelInfo:
     vocoder_config_url: Optional[str] = None
     vocoder_type: Optional[str] = None  # "vocos" | "wavenext" | "hifigan"
 
-    # Catalog metadata (informational; surfaced to users/UIs).
-    license: Optional[str] = None
-    verified: bool = False  # synthesis tested end-to-end through phoonnx
-    speakers: Optional[Dict[str, Any]] = None  # speaker_id -> name/accent
-    description: Optional[str] = None
-
     @property
     def config(self) -> VoiceConfig:
         # lazy loaded
@@ -420,11 +414,7 @@ class TTSModelManager:
                                            "config_url": voice_info.config_url,
                                            "vocoder_url": voice_info.vocoder_url,
                                            "vocoder_config_url": voice_info.vocoder_config_url,
-                                           "vocoder_type": voice_info.vocoder_type,
-                                           "license": voice_info.license,
-                                           "verified": voice_info.verified,
-                                           "speakers": voice_info.speakers,
-                                           "description": voice_info.description}
+                                           "vocoder_type": voice_info.vocoder_type}
 
     def get_lang_voices(self, lang: str) -> List[TTSModelInfo]:
         voices = sorted(
