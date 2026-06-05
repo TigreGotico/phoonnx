@@ -21,21 +21,27 @@ def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str) -> VoiceC
     """
     Build a :class:`VoiceConfig` from a Coqui-TTS GlowTTS ``config.json``.
 
-    Coqui's character vocab is ``[pad, eos, bos] + (characters | punctuations)``
-    (deduplicated, characters first). Graphemes when ``use_phonemes`` is false,
-    otherwise espeak IPA.
+    Coqui's ``BaseCharacters._create_vocab`` order is
+    ``[pad, eos, bos, blank] + characters + punctuations`` (blank at id 3 when
+    ``add_blank``). Graphemes when ``use_phonemes`` is false, otherwise espeak IPA.
     """
     ch = config.get("characters", {})
     audio = config.get("audio", {})
     use_phonemes = bool(config.get("use_phonemes", False))
-    pad, eos, bos = ch.get("pad", "_"), ch.get("eos", "~"), ch.get("bos", "^")
-    symbol_set = ch.get("phonemes", "") if use_phonemes else ch.get("characters", "")
-    rest = list(dict.fromkeys(list(symbol_set) + list(ch.get("punctuations", ""))))
-    char2idx = {s: i for i, s in enumerate([pad, eos, bos] + rest)}
     add_blank = bool(config.get("add_blank", False))
     use_eos_bos = bool(config.get("enable_eos_bos_chars", False))
+    pad, eos, bos = ch.get("pad", "_"), ch.get("eos", "~"), ch.get("bos", "^")
+    blank = ch.get("blank") or "<BLNK>"
+    symbol_set = ch.get("phonemes", "") if use_phonemes else ch.get("characters", "")
+    # coqui order: [pad, eos, bos, blank] + characters + punctuations.
+    # dedup preserving order (some configs already include punctuation in characters).
+    specials = [pad, eos, bos] + ([blank] if add_blank else [])
+    char2idx = {}
+    for s in specials + list(symbol_set) + list(ch.get("punctuations", "")):
+        if s not in char2idx:
+            char2idx[s] = len(char2idx)
     tok = TTSTokenizer(
-        Vocabulary(char2idx=char2idx, pad=pad, bos=bos, eos=eos),
+        Vocabulary(char2idx=char2idx, pad=pad, bos=bos, eos=eos, blank=blank if add_blank else None),
         add_blank_char=add_blank, add_blank_word=False, use_eos_bos=use_eos_bos,
         blank_at_start=add_blank, blank_at_end=add_blank)
     return VoiceConfig(
@@ -46,7 +52,7 @@ def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str) -> VoiceC
         phonemizer_model=None, engine=Engine.GLOWTTS, add_diacritics=False,
         blank_between=BlankBetween.TOKENS_AND_WORDS,
         blank_at_start=add_blank, blank_at_end=add_blank,
-        pad_token=pad, blank_token=pad,
+        pad_token=pad, blank_token=blank if add_blank else pad,
         bos_token=bos if use_eos_bos else None, eos_token=eos if use_eos_bos else None,
         word_sep_token=" ")
 
