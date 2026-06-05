@@ -899,7 +899,7 @@
         "voice_id": "coqui-en-ljspeech-glow-tts",
         "engine": "glowtts",
         "lang": "en",
-        "phoneme_type": "espeak",
+        "phoneme_type": "gruut",
         "alphabet": "ipa",
         "vocab_url": null,
         "tokenizer_config_url": null,
