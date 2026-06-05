@@ -73,32 +73,66 @@ def test_tokenization_piper():
 #     multi-char clusters into the model's individual IPA symbols, so compare the
 #     phoneme *content* (joined), which must be identical. ---
 
-def _gruut_str(text, lang):
+def _gruut_stream(text, lang):
+    """gruut phonemes concatenated (clusters like ˈoʊ kept whole)."""
     import gruut
     out = []
     for sent in gruut.sentences(text, lang=lang):
         for word in sent:
             if word.phonemes:
-                out.extend(word.phonemes)
+                out.append("".join(word.phonemes))
     return "".join(out)
 
 
-def test_tokenization_larynx_gruut():
+def _greedy_vocab_phonemes(stream, vocab):
+    """Map a phoneme stream to vocab symbols, greedy longest-match — so
+    multi-phoneme tokens (aɪ, aʊ, d͡ʒ, t͡ʃ, …) resolve to a single id rather than
+    being split into characters."""
+    compounds = sorted((k for k in vocab if len(k) > 1 and not k.startswith("<")),
+                       key=len, reverse=True)
+    out, i = [], 0
+    while i < len(stream):
+        hit = next((c for c in compounds if stream.startswith(c, i)), None)
+        if hit:
+            out.append(hit); i += len(hit)
+        elif stream[i] in vocab:
+            out.append(stream[i]); i += 1
+        else:
+            i += 1
+    return out
+
+
+def _phoonnx_phonemes_decoded(voice, text):
+    """phoonnx phoneme ids with blanks/word-seps stripped, decoded to symbols."""
+    tok = voice.config.tokenizer
+    inv = {i: s for s, i in tok.vocabulary.char2idx.items()}
+    skip = {tok.blank_id, getattr(tok, "blank_word_id", None)}
+    ids = []
+    for chunk in voice.phonemize(text):
+        ids.extend(voice.phonemes_to_ids(chunk))
+    return [inv[i] for i in ids if i not in skip and inv.get(i, " ").strip()]
+
+
+def _assert_gruut_ids_match(voice, text, lang):
+    # gruut is the original phonemizer; the model's vocab (with its multi-phoneme
+    # clusters) is the original id map. phoonnx must agree on both.
+    ref = _greedy_vocab_phonemes(_gruut_stream(text, lang), voice.config.tokenizer.vocabulary.char2idx)
+    assert _phoonnx_phonemes_decoded(voice, text) == ref
+
+
+def test_tokenization_larynx_gruut_ids():
     pytest.importorskip("gruut")
     m = _manager()
     vid = _pick(m, lambda k: k.startswith("larynx/en-us"), "no en-US Larynx voice in index")
-    voice = m.voices[vid].load()
-    text = "hello world"
-    assert _phoonnx_phoneme_str(voice, text) == _gruut_str(text, "en-us")
+    # diphthong + affricate clusters exercise multi-phoneme tokens
+    _assert_gruut_ids_match(m.voices[vid].load(), "hello my joyful child now", "en-us")
 
 
-def test_tokenization_mimic3_gruut():
+def test_tokenization_mimic3_gruut_ids():
     pytest.importorskip("gruut")
     m = _manager()
     vid = _pick(m, lambda k: k.startswith("mimic3/en_"), "no en mimic3 voice in index")
-    voice = m.voices[vid].load()
-    text = "hello world"
-    assert _phoonnx_phoneme_str(voice, text) == _gruut_str(text, "en-us")
+    _assert_gruut_ids_match(m.voices[vid].load(), "hello my joyful child now", "en-us")
 
 
 # --- coqui: coqui-tts won't install in a transformers>=5 env, so we assert the
