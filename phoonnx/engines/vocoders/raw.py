@@ -29,7 +29,12 @@ class RawWaveformVocoder(BaseVocoder):
     def mel_to_audio(self, mel: np.ndarray, denoise: bool = False) -> np.ndarray:
         # denoise is a Vocos/ISTFT concept; raw vocoders bake it in (or omit).
         mel = self._preprocess_mel(mel)
-        outputs = self.session.run(None, {self.input_name: mel})
+        feed = {self.input_name: mel}
+        # Some exports (e.g. tts_arabic's baked Vocos) take an extra scalar
+        # 'denoise' input alongside the mel — feed it (default 0).
+        for inp in self.session.get_inputs()[1:]:
+            feed[inp.name] = np.array([1.0 if denoise else 0.0], dtype=np.float32)
+        outputs = self.session.run(None, feed)
         return np.asarray(outputs[0], dtype=np.float32).squeeze()
 
     @classmethod

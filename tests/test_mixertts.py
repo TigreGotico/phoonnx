@@ -97,3 +97,49 @@ def test_config_bridge_native_roundtrip():
     native = vc.to_native_dict()
     assert native["engine"] == "mixertts"
     assert VoiceConfig.from_dict(dict(native)).engine == Engine.MIXERTTS
+
+
+# --- Arabic (tts_arabic) variant: mantoq / buckwalter, multi-speaker ---
+
+def test_config_bridge_arabic():
+    from phoonnx.config import PhonemeType, Alphabet
+    syms = ["_pad_", "_eos_", "_sil_", "_dbl_", "_+_", ".", "<", "b", "t"]
+    vc = voice_config_from_mixer(syms, lang_code="ar", phoneme_type=PhonemeType.MANTOQ,
+                                 alphabet=Alphabet.BUCKWALTER, num_speakers=4, word_sep_token="_+_")
+    assert vc.engine == Engine.MIXERTTS
+    assert vc.phoneme_type == PhonemeType.MANTOQ and vc.alphabet == Alphabet.BUCKWALTER
+    assert vc.num_speakers == 4 and vc.word_sep_token == "_+_"
+    assert list(vc.tokenizer.vocabulary.char2idx) == syms  # 44-symbol buckwalter table order
+
+
+def test_raw_vocoder_feeds_extra_scalar_inputs():
+    # tts_arabic's baked Vocos takes an extra 'denoise' input alongside the mel
+    from phoonnx.engines.vocoders.raw import RawWaveformVocoder
+
+    class _In:
+        def __init__(self, name): self.name = name
+
+    class _Sess:
+        def __init__(self): self.feeds = []
+        def get_inputs(self): return [_In("mel_spec"), _In("denoise")]
+        def run(self, _, feed):
+            self.feeds.append(feed); return [np.zeros((1, 64), np.float32)]
+
+    voc = RawWaveformVocoder(session=_Sess())
+    voc.mel_to_audio(np.zeros((1, 80, 4), np.float32), denoise=False)
+    feed = voc.session.feeds[0]
+    assert "mel_spec" in feed and "denoise" in feed and float(feed["denoise"][0]) == 0.0
+
+
+def test_tokenization_arabic_mantoq_matches_tts_arabic():
+    # golden: phoonnx mantoq + the 44-symbol buckwalter vocab must equal
+    # tts_arabic's own phonetise_buckwalter ids. Guarded on the lib.
+    tts_arabic = pytest.importorskip("tts_arabic")
+    from tts_arabic.text import symbols as ar_symbols, phonetise_buckwalter
+    from phoonnx.phonemizers.ar import MantoqPhonemizer
+    sid = {s: i for i, s in enumerate(ar_symbols.symbols)}
+    text = "السَّلامُ عَلَيكُم"
+    orig = [sid[p] for p in phonetise_buckwalter.process_utterance(text) if p in sid]
+    mantoq = MantoqPhonemizer()
+    ours = [sid[p] for chunk in [mantoq.phonemize(text, "ar")] for w in chunk for p in w if p in sid]
+    assert ours == orig
