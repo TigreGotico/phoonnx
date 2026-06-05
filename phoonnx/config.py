@@ -132,6 +132,9 @@ class VoiceConfig:
     word_sep_token: Optional[str] = DEFAULT_BLANK_WORD_TOKEN
     blank_between: BlankBetween = BlankBetween.TOKENS_AND_WORDS
 
+    # Adapter-specific parameters parsed from config JSON
+    engine_params: Dict[str, Any] = field(default_factory=dict)
+
     def __post_init__(self):
         """
         Finalize dataclass defaults after initialization.
@@ -222,8 +225,9 @@ class VoiceConfig:
                   tokens_txt: Optional[str] = None,  # sherpa/mimic3
                   lang_code: Optional[str] = None,
                   phoneme_type: Optional[Union[str, PhonemeType]] = None,
+                  alphabet: Optional[Union[str, Alphabet]] = None,
                   engine: Optional[Union[str, Engine]] = None,
-                  alphabet: Optional[Union[str, Alphabet]] = None) -> "VoiceConfig":
+                   engine_params: Optional[Dict[str, Any]] = None) -> "VoiceConfig":
         """
         Create a VoiceConfig from a model configuration dictionary and optional external phoneme data.
         
@@ -396,7 +400,8 @@ class VoiceConfig:
             blank_token=config.get("blank"),
             bos_token=config.get("bos"),
             eos_token=config.get("eos"),
-            word_sep_token=config.get("word_sep_token") or config.get("blank_word", " ")
+            word_sep_token=config.get("word_sep_token") or config.get("blank_word", " "),
+            engine_params=engine_params or {}
         )
 
 
@@ -429,6 +434,9 @@ class SynthesisConfig:
 
     """for arabic and hebrew models"""
     add_diacritics: bool = True
+
+    # Engine-specific per-call params (d_factor, p_factor, e_factor, …)
+    extra_params: Dict[str, Any] = field(default_factory=dict)
 
 
 def get_phonemizer(phoneme_type: PhonemeType,
