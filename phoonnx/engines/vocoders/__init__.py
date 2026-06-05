@@ -96,6 +96,7 @@ def build_vocoder(
 
 def _register_builtins() -> None:
     from phoonnx.engines.vocoders.vocos import VocosVocoder
+    from phoonnx.engines.vocoders.griffinlim import GriffinLimVocoder
     from phoonnx.engines.vocoders.raw import (
         RawWaveformVocoder,
         WavenextVocoder,
@@ -103,8 +104,10 @@ def _register_builtins() -> None:
     )
 
     # Explicit-type aliases (selected when vocoder_type is set).
+    register_vocoder("griffinlim", GriffinLimVocoder, detect_priority=99)
     register_vocoder("wavenext", WavenextVocoder, detect_priority=30)
     register_vocoder("hifigan", HiFiGANVocoder, detect_priority=31)
+    register_vocoder("melgan", HiFiGANVocoder, detect_priority=32)  # melgan/multiband: 1-output mel->audio
     # Generic detection: Vocos (3 outputs) before raw (1 output).
     register_vocoder("vocos", VocosVocoder, detect_priority=40)
     register_vocoder("raw", RawWaveformVocoder, detect_priority=50)

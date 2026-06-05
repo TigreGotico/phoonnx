@@ -12,9 +12,43 @@ The vocoder (Larynx HiFi-GAN) is supplied separately via
 from typing import Any, Dict, Optional
 
 from phoonnx.config import Alphabet, Engine, PhonemeType, VoiceConfig
-from phoonnx.tokenizer import BlankBetween, TTSTokenizer
+from phoonnx.tokenizer import BlankBetween, TTSTokenizer, Vocabulary
 
 _GLOW_PAD = "_"
+
+
+def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str) -> VoiceConfig:
+    """
+    Build a :class:`VoiceConfig` from a Coqui-TTS GlowTTS ``config.json``.
+
+    Coqui's character vocab is ``[pad, eos, bos] + (characters | punctuations)``
+    (deduplicated, characters first). Graphemes when ``use_phonemes`` is false,
+    otherwise espeak IPA.
+    """
+    ch = config.get("characters", {})
+    audio = config.get("audio", {})
+    use_phonemes = bool(config.get("use_phonemes", False))
+    pad, eos, bos = ch.get("pad", "_"), ch.get("eos", "~"), ch.get("bos", "^")
+    symbol_set = ch.get("phonemes", "") if use_phonemes else ch.get("characters", "")
+    rest = list(dict.fromkeys(list(symbol_set) + list(ch.get("punctuations", ""))))
+    char2idx = {s: i for i, s in enumerate([pad, eos, bos] + rest)}
+    add_blank = bool(config.get("add_blank", False))
+    use_eos_bos = bool(config.get("enable_eos_bos_chars", False))
+    tok = TTSTokenizer(
+        Vocabulary(char2idx=char2idx, pad=pad, bos=bos, eos=eos),
+        add_blank_char=add_blank, add_blank_word=False, use_eos_bos=use_eos_bos,
+        blank_at_start=add_blank, blank_at_end=add_blank)
+    return VoiceConfig(
+        tokenizer=tok, num_symbols=len(char2idx), num_speakers=1, num_langs=1,
+        sample_rate=audio.get("sample_rate", 22050), lang_code=lang_code,
+        phoneme_type=PhonemeType.ESPEAK if use_phonemes else PhonemeType.GRAPHEMES,
+        alphabet=Alphabet.IPA if use_phonemes else Alphabet.UNICODE,
+        phonemizer_model=None, engine=Engine.GLOWTTS, add_diacritics=False,
+        blank_between=BlankBetween.TOKENS_AND_WORDS,
+        blank_at_start=add_blank, blank_at_end=add_blank,
+        pad_token=pad, blank_token=pad,
+        bos_token=bos if use_eos_bos else None, eos_token=eos if use_eos_bos else None,
+        word_sep_token=" ")
 
 
 def voice_config_from_larynx(

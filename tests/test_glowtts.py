@@ -5,9 +5,11 @@ import pytest
 from phoonnx.engines import get_adapter, detect_engine
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.glowtts import GlowTTSAdapter
-from phoonnx.engines.glowtts_config import voice_config_from_larynx
+from phoonnx.engines.glowtts_config import voice_config_from_larynx, voice_config_from_coqui
+from phoonnx.engines.vocoders import build_vocoder, list_vocoders
 from phoonnx.engines.vocoders.base import BaseVocoder
-from phoonnx.config import Engine, VoiceConfig, PhonemeType
+from phoonnx.engines.vocoders.griffinlim import GriffinLimVocoder
+from phoonnx.config import Engine, VoiceConfig, PhonemeType, Alphabet
 
 
 class _Named:
@@ -101,3 +103,58 @@ def test_config_bridge_native_roundtrip():
     native = vc.to_native_dict()
     assert native["engine"] == "glowtts"
     assert VoiceConfig.from_dict(dict(native)).engine == Engine.GLOWTTS
+
+
+# --- coqui config bridge ---
+
+_COQUI_CFG = {
+    "use_phonemes": False, "add_blank": False, "enable_eos_bos_chars": False,
+    "audio": {"sample_rate": 22050},
+    "characters": {"pad": "_", "eos": "~", "bos": "^",
+                   "characters": "abcçö", "punctuations": "!? ", "phonemes": ""},
+}
+
+
+def test_coqui_bridge_vocab_order():
+    vc = voice_config_from_coqui(_COQUI_CFG, lang_code="tr")
+    # [pad,eos,bos] + dedup(characters + punctuations)
+    assert list(vc.tokenizer.vocabulary.char2idx)[:3] == ["_", "~", "^"]
+    assert vc.tokenizer.vocabulary.char2idx["a"] == 3
+    assert len(vc.tokenizer.vocabulary.char2idx) == 3 + 5 + 3   # specials + chars + punct
+    assert vc.engine == Engine.GLOWTTS and vc.phoneme_type == PhonemeType.GRAPHEMES
+
+
+def test_coqui_bridge_dedups_punctuation_in_characters():
+    cfg = dict(_COQUI_CFG)
+    cfg["characters"] = {**_COQUI_CFG["characters"], "characters": "abc!?", "punctuations": "!?"}
+    vc = voice_config_from_coqui(cfg, lang_code="it")
+    assert len(vc.tokenizer.vocabulary.char2idx) == 3 + 5  # punct already in characters, not double-counted
+
+
+def test_coqui_bridge_phonemes_espeak():
+    cfg = {**_COQUI_CFG, "use_phonemes": True}
+    cfg["characters"] = {**_COQUI_CFG["characters"], "phonemes": "abɛ"}
+    vc = voice_config_from_coqui(cfg, lang_code="en-us")
+    assert vc.phoneme_type == PhonemeType.ESPEAK and vc.alphabet == Alphabet.IPA
+
+
+# --- Griffin-Lim vocoder ---
+
+def test_griffinlim_registered():
+    assert "griffinlim" in list_vocoders()
+    assert isinstance(build_vocoder(vocoder_type="griffinlim", config={"sample_rate": 22050}), GriffinLimVocoder)
+
+
+def test_griffinlim_mel_to_audio():
+    voc = GriffinLimVocoder(config={"sample_rate": 22050, "n_fft": 1024, "hop_length": 256,
+                                    "num_mels": 80, "griffin_lim_iters": 4})
+    audio = voc.mel_to_audio(np.zeros((1, 80, 20), np.float32))
+    assert audio.ndim == 1 and audio.shape[0] > 0 and np.isfinite(audio).all()
+
+
+def test_griffinlim_denormalize_symmetric():
+    voc = GriffinLimVocoder(config={"max_norm": 4.0, "min_level_db": -100.0,
+                                    "symmetric_norm": True, "signal_norm": True})
+    # max_norm maps back to ~0 dB, -max_norm to min_level_db
+    assert abs(float(voc._denormalize(np.array([4.0]))[0]) - 0.0) < 1e-6
+    assert abs(float(voc._denormalize(np.array([-4.0]))[0]) - (-100.0)) < 1e-6

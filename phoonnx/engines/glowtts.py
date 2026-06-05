@@ -48,7 +48,10 @@ class GlowTTSAdapter(BaseOnnxAdapter):
 
     def configure_from_params(self, engine_params: Dict[str, Any]) -> None:
         self._engine_params = engine_params or {}
-        if self.vocoder is None and self._engine_params.get("vocoder_path"):
+        # build the vocoder from a model file (hifigan/vocos/…) OR, for a
+        # parametric vocoder like Griffin-Lim, from vocoder_type + config alone.
+        if self.vocoder is None and (self._engine_params.get("vocoder_path")
+                                     or self._engine_params.get("vocoder_type")):
             self.vocoder = build_vocoder(
                 model_path=self._engine_params.get("vocoder_path"),
                 vocoder_type=self._engine_params.get("vocoder_type"),

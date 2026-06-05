@@ -279,6 +279,17 @@ class TTSModelInfo:
             if vocoder_cfg_path.is_file():
                 with open(vocoder_cfg_path, "r", encoding="utf-8") as f:
                     params["vocoder_config"] = json.load(f)
+        elif self.vocoder_type:
+            # Parametric vocoder (e.g. Griffin-Lim) — no model file, just config.
+            params["vocoder_type"] = self.vocoder_type
+            if self.vocoder_config_url:
+                cfg_path = self.voice_path / "vocoder.json"
+                if not cfg_path.is_file():
+                    r = requests.get(self.vocoder_config_url, timeout=30)
+                    r.raise_for_status()
+                    cfg_path.write_bytes(r.content)
+                with open(cfg_path, "r", encoding="utf-8") as f:
+                    params["vocoder_config"] = json.load(f)
         return params
 
     def load(self) -> TTSVoice:

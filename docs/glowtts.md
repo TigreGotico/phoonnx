@@ -65,6 +65,29 @@ for chunk in voice.synthesize("Hello from GlowTTS."):
     ...
 ```
 
+## Vocoders
+
+GlowTTS is two-stage, so each indexed voice links a vocoder:
+
+- **Neural** (``vocoder_type: hifigan`` / ``melgan``) — an ONNX vocoder under
+  ``OpenVoiceOS/phoonnx-vocoders``, downloaded alongside the model. Best quality;
+  used where a **mel-matched** vocoder exists (Larynx HiFi-GAN; coqui models'
+  paired ``default_vocoder``).
+- **Griffin-Lim** (``vocoder_type: griffinlim``) — a parametric fallback (no model
+  file) for voices with no mel-matched neural vocoder. Robotic but universal; its
+  config carries the mel params (``ref_level_db``/``spec_gain``/``max_norm``…) so
+  coqui-domain mels invert correctly.
+
+## Coqui voices
+
+Coqui-TTS GlowTTS models (``coqui/…`` ids) are converted to phoonnx ONNX without
+the coqui-tts package: a standalone exporter vendors only the pure-torch
+``Encoder``/``Decoder`` and replicates ``GlowTTS.inference`` (pre-inverting the
+flow 1×1 convs). Their paired ``default_vocoder`` (HiFi-GAN / multiband-MelGAN)
+is converted the same way; models with no paired vocoder use Griffin-Lim.
+``phoonnx.engines.glowtts_config.voice_config_from_coqui`` builds the native
+config (graphemes, or espeak when ``use_phonemes``).
+
 ## Text processing
 
 GlowTTS/Larynx phonemizes with **gruut** (``phoneme_type: gruut``,
