@@ -1,0 +1,34 @@
+{
+    "larynx/en-us-cmu_aew-glow_tts": {
+        "voice_id": "larynx/en-us-cmu_aew-glow_tts",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-glowtts/resolve/main/en-us-cmu_aew/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-glowtts/resolve/main/en-us-cmu_aew/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "gruut",
+        "alphabet": "ipa",
+        "engine": "glowtts",
+        "lang": "en-us",
+        "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
+        "vocoder_type": "hifigan"
+    },
+    "larynx/en-us-ljspeech-glow_tts": {
+        "voice_id": "larynx/en-us-ljspeech-glow_tts",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-glowtts/resolve/main/en-us-ljspeech/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-glowtts/resolve/main/en-us-ljspeech/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "gruut",
+        "alphabet": "ipa",
+        "engine": "glowtts",
+        "lang": "en-us",
+        "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
+        "vocoder_type": "hifigan"
+    }
+}
