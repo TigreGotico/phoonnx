@@ -35,6 +35,9 @@ End-to-end models instead emit a single waveform tensor ``[B, T]`` and need no v
 
 ## Vocoders
 
+> See [vocoders.md](./vocoders.md) for the shared vocoder registry, the
+> config-driven mel preprocessing flags, and how to use/replace/add vocoders.
+
 Vocoders are a **pluggable registry** (``phoonnx.engines.vocoders``), parallel
 to the engine registry. The acoustic model and vocoder are versioned and
 swapped independently, so one Matcha voice can be paired with whichever

@@ -67,7 +67,9 @@ for chunk in voice.synthesize("Hello from GlowTTS."):
 
 ## Vocoders
 
-GlowTTS is two-stage, so each indexed voice links a vocoder:
+GlowTTS is two-stage, so each indexed voice links a vocoder. See
+[vocoders.md](./vocoders.md) for the full vocoder system (types, config flags,
+how to use/replace/add vocoders). In brief:
 
 - **Neural** (``vocoder_type: hifigan`` / ``melgan``) — an ONNX vocoder under
   ``OpenVoiceOS/phoonnx-vocoders``, downloaded alongside the model. Best quality;
