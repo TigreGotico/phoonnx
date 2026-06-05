@@ -69,3 +69,27 @@ def test_coqui_bridge_targets_fastpitch_engine():
     vc = voice_config_from_coqui(cfg, lang_code="en-us", engine=Engine.FASTPITCH)
     assert vc.engine == Engine.FASTPITCH
     assert VoiceConfig.from_dict(dict(vc.to_native_dict())).engine == Engine.FASTPITCH
+
+
+def test_coqui_vocab_is_sorted_like_coqui():
+    # coqui's Graphemes/IPAPhonemes default is_sorted=True: the symbol set is
+    # sorted alphabetically before ids are assigned. Regression guard for the
+    # bug where the bridge kept config order -> right voice, wrong words.
+    from phoonnx.engines.glowtts_config import voice_config_from_coqui
+    cfg = {"use_phonemes": True, "phoneme_language": "en-us", "phonemizer": "gruut",
+           "add_blank": False, "characters": {"phonemes": "zyxbac", "punctuations": "!?",
+                                               "pad": "_", "eos": "~", "bos": "^"}}
+    c2i = voice_config_from_coqui(cfg, lang_code="en-us").tokenizer.vocabulary.char2idx
+    syms = list(c2i)
+    # specials first, then SORTED phonemes (a,b,c,x,y,z), then punctuation (config order)
+    assert syms[:3] == ["_", "~", "^"]
+    assert syms[3:9] == ["a", "b", "c", "x", "y", "z"]  # sorted, not config order zyxbac
+    assert syms[9:] == ["!", "?"]
+
+
+def test_coqui_phonemizer_honors_config_field():
+    from phoonnx.engines.glowtts_config import voice_config_from_coqui
+    from phoonnx.config import PhonemeType
+    base = {"use_phonemes": True, "characters": {"phonemes": "abc", "pad": "_", "eos": "~", "bos": "^"}}
+    assert voice_config_from_coqui({**base, "phonemizer": "gruut"}, lang_code="en").phoneme_type == PhonemeType.GRUUT
+    assert voice_config_from_coqui({**base, "phonemizer": "espeak"}, lang_code="en").phoneme_type == PhonemeType.ESPEAK

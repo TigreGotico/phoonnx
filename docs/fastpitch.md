@@ -26,18 +26,26 @@ for chunk in voice.synthesize("السَّلامُ عَلَيكُم.", ): ...
 
 ## Converting coqui FastPitch to ONNX
 
-coqui's `ForwardTTS` (`fast_pitch`) does **not** export to a dynamic-length ONNX
-out of the box: its `FFTransformer` wraps `torch.nn.MultiheadAttention`, which
-**bakes the example sequence length** under the legacy tracer (`dynamo=False`),
-while `dynamo=True` chokes on the data-dependent duration→length expansion.
+coqui's `ForwardTTS` needs three fixes to export a faithful, **truly
+dynamic-length** ONNX (done in a vendored copy; pretrained weights load
+unchanged):
 
-The fix (validated): in a vendored copy, replace the stock `nn.MultiheadAttention`
-with a tracer-safe drop-in — same `in_proj_weight`/`in_proj_bias`/`out_proj`
-parameter names (so pretrained weights load unchanged), but reshaping with `-1`
-and live `tensor.shape` reads (`x.reshape(x.shape[0], -1, head_dim)`) the way
-nipponjo's hand-written FastPitch attention does. With that single swap a plain
-`torch.onnx.export(..., dynamo=False, opset=14)` yields a fully dynamic-length
-graph. The en/ljspeech model is mirrored as `coqui/en-ljspeech-fast_pitch`.
+1. **Attention** — its `FFTransformer` wraps `torch.nn.MultiheadAttention`, which
+   bakes the sequence length under the legacy tracer. Replace it with a tracer-safe
+   drop-in (same `in_proj_weight`/`in_proj_bias`/`out_proj` names, `-1` + live-shape
+   reshapes). Numerically identical (~2e-7).
+2. **Dynamic mask** — `inference()` does `x_lengths = torch.tensor(x.shape[1:2])`,
+   which freezes the input length as a constant, masking out every token past the
+   export example. Replace with a live-shape all-ones mask
+   (`torch.ones(B, 1, x.shape[1])`) — inference is a single un-padded sequence. This
+   is what makes the mel length unbounded (L=600 → 3637 frames, linear).
+3. **Tokenization** — build the vocab coqui's way: `phonemizer` field (gruut vs
+   espeak emit different IPA) and `is_sorted=True` (sort the symbol set before id
+   assignment). Both handled by `voice_config_from_coqui`.
+
+Then `torch.onnx.export(..., dynamo=False, opset=14)` gives a dynamic graph.
+en/ljspeech is mirrored as `coqui/en-ljspeech-fast_pitch` (gruut, matched
+`coqui-ljspeech-hifigan-v2`). Exporter: `ml/tts/_exporters/coqui_fastpitch`.
 
 ## References
 - [FastPitch paper](https://arxiv.org/abs/2006.06873) · [tts_arabic](https://github.com/nipponjo/tts_arabic)
