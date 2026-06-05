@@ -18,7 +18,7 @@ text ──[acoustic model]──▶ mel ──[vocoder]──▶ waveform
 | `hifigan` | `HiFiGANVocoder` | waveform (1) | GAN vocoder |
 | `melgan` | `HiFiGANVocoder` (alias) | waveform (1) | (multiband-)MelGAN — same 1-output mel→audio contract |
 | `raw` | `RawWaveformVocoder` | waveform (1) | generic single-output mel→audio |
-| `griffinlim` | `GriffinLimVocoder` | — (no model) | parametric, no ONNX; universal fallback |
+| `griffinlim` | `GriffinLimVocoder` | — (no model) | parametric, no ONNX; universal fallback (needs `librosa` — `pip install phoonnx[train]`) |
 
 All live in `phoonnx/engines/vocoders/`.
 

@@ -146,6 +146,7 @@ def test_griffinlim_registered():
 
 
 def test_griffinlim_mel_to_audio():
+    pytest.importorskip("librosa")  # GL synthesis needs librosa (phoonnx[train] extra)
     voc = GriffinLimVocoder(config={"sample_rate": 22050, "n_fft": 1024, "hop_length": 256,
                                     "num_mels": 80, "griffin_lim_iters": 4})
     audio = voc.mel_to_audio(np.zeros((1, 80, 20), np.float32))

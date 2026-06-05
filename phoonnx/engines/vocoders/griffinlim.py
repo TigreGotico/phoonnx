@@ -48,10 +48,21 @@ class GriffinLimVocoder(BaseVocoder):
         self._mel_basis = None
         self._inv_mel_basis = None
 
+    @staticmethod
+    def _librosa():
+        try:
+            import librosa
+            return librosa
+        except ImportError as e:
+            raise ImportError(
+                "The Griffin-Lim vocoder requires 'librosa'. Install it with "
+                "`pip install librosa` (or `pip install phoonnx[train]`)."
+            ) from e
+
     @property
     def mel_basis(self) -> np.ndarray:
         if self._mel_basis is None:
-            import librosa
+            librosa = self._librosa()
             fmax = self.mel_fmax if self.mel_fmax is not None else self.sample_rate / 2
             self._mel_basis = librosa.filters.mel(
                 sr=self.sample_rate, n_fft=self.n_fft, n_mels=self.num_mels,
@@ -72,7 +83,7 @@ class GriffinLimVocoder(BaseVocoder):
         return (S * (-self.min_level_db) / self.max_norm) + self.min_level_db
 
     def mel_to_audio(self, mel: np.ndarray, denoise: bool = False) -> np.ndarray:
-        import librosa
+        librosa = self._librosa()
         m = np.asarray(mel, dtype=np.float32)
         if m.ndim == 3:
             m = m[0]            # [n_mels, T]
