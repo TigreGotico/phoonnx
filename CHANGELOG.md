@@ -6,6 +6,7 @@
 
 **Merged pull requests:**
 
+- feat\(config\): native phoonnx config round-trip [\#139](https://github.com/TigreGotico/phoonnx/pull/139) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): pluggable multi-engine inference framework [\#131](https://github.com/TigreGotico/phoonnx/pull/131) ([JarbasAl](https://github.com/JarbasAl))
 - fix: OVOS plugin config keys + KeyError, plugin tests, CI test\_path [\#124](https://github.com/TigreGotico/phoonnx/pull/124) ([JarbasAl](https://github.com/JarbasAl))
 
