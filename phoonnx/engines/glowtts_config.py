@@ -44,8 +44,8 @@ def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str,
     # [pad] + punctuations + (graphemes + ipa_characters, unsorted) + [blank], with
     # the blank interspersed at synthesis. Build that exact table.
     if "Vits" in str(ch.get("characters_class") or ""):
-        combined = list(ch.get("characters", "")) + list(ch.get("phonemes", ""))
-        full = [pad] + list(ch.get("punctuations", "")) + combined + [blank]
+        combined = list(ch.get("characters") or "") + list(ch.get("phonemes") or "")
+        full = [pad] + list(ch.get("punctuations") or "") + combined + [blank]
         # VitsCharacters is is_unique=False: NO dedup, char_to_id keeps the LAST
         # occurrence, and num_chars counts the full list (incl. the trailing blank).
         # Deduping shifts the blank id by one -> interspersed garbage.

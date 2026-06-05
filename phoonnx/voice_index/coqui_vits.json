@@ -1,0 +1,54 @@
+{
+    "coqui/en-ljspeech-vits": {
+        "voice_id": "coqui/en-ljspeech-vits",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/en-ljspeech-vits/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/en-ljspeech-vits/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "coqui",
+        "lang": "en-us"
+    },
+    "coqui/en-vctk-vits": {
+        "voice_id": "coqui/en-vctk-vits",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/en-vctk-vits/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/en-vctk-vits/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "coqui",
+        "lang": "en-us"
+    },
+    "coqui/it-mai_female-vits": {
+        "voice_id": "coqui/it-mai_female-vits",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/it-mai_female-vits/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/it-mai_female-vits/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "coqui",
+        "lang": "it"
+    },
+    "coqui/it-mai_male-vits": {
+        "voice_id": "coqui/it-mai_male-vits",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/it-mai_male-vits/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/it-mai_male-vits/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "coqui",
+        "lang": "it"
+    }
+}
