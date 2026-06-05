@@ -58,6 +58,31 @@ class BaseVocoder(ABC):
         self._session = session
 
     # ------------------------------------------------------------------
+    # Mel preprocessing (config-driven, opt-in via flags)
+    # ------------------------------------------------------------------
+
+    def _preprocess_mel(self, mel: np.ndarray) -> np.ndarray:
+        """
+        Apply optional, config-flagged mel transforms before the vocoder runs.
+
+        A converted ONNX vocoder declares in its config exactly what its training
+        pipeline expected, so the same runtime handles vocoders with different
+        input conventions:
+
+        - ``stats_norm`` (bool) → standard-scale the mel with ``mel_mean`` /
+          ``mel_std`` (per-channel), as Coqui's stats-normalized vocoders
+          (e.g. multiband-MelGAN) expect.
+        """
+        mel = np.asarray(mel, dtype=np.float32)
+        c = self.config
+        if c.get("stats_norm") and c.get("mel_mean") is not None and c.get("mel_std") is not None:
+            mean = np.asarray(c["mel_mean"], dtype=np.float32)
+            std = np.asarray(c["mel_std"], dtype=np.float32)
+            shape = (1, -1, 1) if mel.ndim == 3 else (-1, 1)
+            mel = (mel - mean.reshape(shape)) / std.reshape(shape)
+        return mel
+
+    # ------------------------------------------------------------------
     # Session
     # ------------------------------------------------------------------
 

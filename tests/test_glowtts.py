@@ -152,6 +152,22 @@ def test_griffinlim_mel_to_audio():
     assert audio.ndim == 1 and audio.shape[0] > 0 and np.isfinite(audio).all()
 
 
+def test_vocoder_stats_norm_preprocess():
+    # config-flagged mel stats normalization (Coqui multiband-melgan style)
+    voc = GriffinLimVocoder(config={"stats_norm": True, "mel_mean": [1.0, 2.0], "mel_std": [2.0, 4.0]})
+    mel = np.array([[[3.0, 5.0], [6.0, 10.0]]], np.float32)  # [1, 2, T]
+    out = voc._preprocess_mel(mel)
+    # (mel - mean) / std  per channel
+    assert np.allclose(out[0, 0], [(3 - 1) / 2, (5 - 1) / 2])
+    assert np.allclose(out[0, 1], [(6 - 2) / 4, (10 - 2) / 4])
+
+
+def test_vocoder_stats_norm_disabled_by_flag():
+    voc = GriffinLimVocoder(config={"mel_mean": [1.0], "mel_std": [2.0]})  # no stats_norm flag
+    mel = np.array([[[3.0, 5.0]]], np.float32)
+    assert np.allclose(voc._preprocess_mel(mel), mel)  # untouched
+
+
 def test_griffinlim_denormalize_symmetric():
     voc = GriffinLimVocoder(config={"max_norm": 4.0, "min_level_db": -100.0,
                                     "symmetric_norm": True, "signal_norm": True})
