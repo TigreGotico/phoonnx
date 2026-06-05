@@ -1,0 +1,11 @@
+The vendored model code in coqui_fastpitch_export/ and coqui_glowtts_export/
+(forward_tts.py, hifigan_generator.py, helpers.py, coqui_characters.py,
+feed_forward/, generic/, glow_tts/) is derived from idiap/coqui-ai-TTS,
+licensed under the Mozilla Public License 2.0 (MPL-2.0):
+  https://github.com/idiap/coqui-ai-TTS  (LICENSE.txt: MPL-2.0)
+
+These files are modified for standalone ONNX inference/export (see README.md).
+They remain under MPL-2.0; only those individual files are MPL-covered.
+
+The tracer-safe attention (tsmha.py) reimplements the approach used in
+nipponjo's FastPitch/Mixer-TTS transformer.

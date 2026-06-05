@@ -1,0 +1,34 @@
+{
+    "nipponjo/tts-arabic-fastpitch": {
+        "voice_id": "nipponjo/tts-arabic-fastpitch",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-fastpitch/resolve/main/nipponjo-arabic-fastpitch/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-fastpitch/resolve/main/nipponjo-arabic-fastpitch/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "mantoq",
+        "alphabet": "buckwalter",
+        "engine": "fastpitch",
+        "lang": "ar",
+        "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/tts-arabic-hifigan/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/tts-arabic-hifigan/vocoder.json",
+        "vocoder_type": "hifigan"
+    },
+    "coqui/en-ljspeech-fast_pitch": {
+        "voice_id": "coqui/en-ljspeech-fast_pitch",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-fastpitch/resolve/main/coqui-ljspeech-fastpitch/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-fastpitch/resolve/main/coqui-ljspeech-fastpitch/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "gruut",
+        "alphabet": "ipa",
+        "engine": "fastpitch",
+        "lang": "en-us",
+        "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/coqui-ljspeech-hifigan-v2/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/coqui-ljspeech-hifigan-v2/vocoder.json",
+        "vocoder_type": "hifigan"
+    }
+}

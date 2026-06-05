@@ -17,7 +17,8 @@ from phoonnx.tokenizer import BlankBetween, TTSTokenizer, Vocabulary
 _GLOW_PAD = "_"
 
 
-def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str) -> VoiceConfig:
+def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str,
+                            engine: Engine = Engine.GLOWTTS) -> VoiceConfig:
     """
     Build a :class:`VoiceConfig` from a Coqui-TTS GlowTTS ``config.json``.
 
@@ -28,16 +29,28 @@ def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str) -> VoiceC
     ch = config.get("characters", {})
     audio = config.get("audio", {})
     use_phonemes = bool(config.get("use_phonemes", False))
+    # coqui records which G2P produced the training phonemes; gruut and espeak
+    # emit different IPA (e.g. "words" -> gruut "wˈɚdz" vs espeak "wˈɜːdz"), so we
+    # must phonemize with the SAME backend or the model gets wrong ids.
+    _PHONEMIZER = {"gruut": PhonemeType.GRUUT, "espeak": PhonemeType.ESPEAK,
+                   "espeak-ng": PhonemeType.ESPEAK, "espeakng": PhonemeType.ESPEAK}
+    _phon = _PHONEMIZER.get(str(config.get("phonemizer") or "").lower(), PhonemeType.ESPEAK)
     add_blank = bool(config.get("add_blank", False))
     use_eos_bos = bool(config.get("enable_eos_bos_chars", False))
     pad, eos, bos = ch.get("pad", "_"), ch.get("eos", "~"), ch.get("bos", "^")
     blank = ch.get("blank") or "<BLNK>"
-    symbol_set = ch.get("phonemes", "") if use_phonemes else ch.get("characters", "")
-    # coqui order: [pad, eos, bos, blank] + characters + punctuations.
-    # dedup preserving order (some configs already include punctuation in characters).
+    symbol_set = list(ch.get("phonemes", "") if use_phonemes else ch.get("characters", ""))
+    # coqui's Graphemes/IPAPhonemes both default is_sorted=True: the symbol set is
+    # sorted alphabetically *before* ids are assigned (config may override). Getting
+    # this wrong shifts every id -> the right voice saying non-words.
+    if ch.get("is_unique", False):
+        symbol_set = list(dict.fromkeys(symbol_set))
+    if ch.get("is_sorted", True):
+        symbol_set = sorted(symbol_set)
+    # coqui order: [pad, eos, bos, blank] + sorted(symbols) + punctuations (config order).
     specials = [pad, eos, bos] + ([blank] if add_blank else [])
     char2idx = {}
-    for s in specials + list(symbol_set) + list(ch.get("punctuations", "")):
+    for s in specials + symbol_set + list(ch.get("punctuations", "")):
         if s not in char2idx:
             char2idx[s] = len(char2idx)
     tok = TTSTokenizer(
@@ -47,9 +60,9 @@ def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str) -> VoiceC
     return VoiceConfig(
         tokenizer=tok, num_symbols=len(char2idx), num_speakers=1, num_langs=1,
         sample_rate=audio.get("sample_rate", 22050), lang_code=lang_code,
-        phoneme_type=PhonemeType.ESPEAK if use_phonemes else PhonemeType.GRAPHEMES,
+        phoneme_type=_phon if use_phonemes else PhonemeType.GRAPHEMES,
         alphabet=Alphabet.IPA if use_phonemes else Alphabet.UNICODE,
-        phonemizer_model=None, engine=Engine.GLOWTTS, add_diacritics=False,
+        phonemizer_model=None, engine=engine, add_diacritics=False,
         blank_between=BlankBetween.TOKENS_AND_WORDS,
         blank_at_start=add_blank, blank_at_end=add_blank,
         pad_token=pad, blank_token=blank if add_blank else pad,

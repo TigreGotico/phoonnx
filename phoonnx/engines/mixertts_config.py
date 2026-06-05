@@ -27,13 +27,15 @@ def voice_config_from_mixer(
     alphabet: Alphabet = Alphabet.IPA,
     num_speakers: int = 1,
     word_sep_token: str = " ",
+    engine: Engine = Engine.MIXERTTS,
 ) -> VoiceConfig:
     """
-    Build a :class:`VoiceConfig` from Mixer-TTS's ordered symbol list.
+    Build a :class:`VoiceConfig` from a Mixer-TTS / FastPitch ordered symbol list.
 
-    Defaults match the LJSpeech models (espeak IPA). The Arabic models
-    (tts_arabic) pass ``phoneme_type=mantoq``, ``alphabet=buckwalter`` and the
-    ``_+_`` word separator, with their own 44-symbol buckwalter table.
+    Defaults match the LJSpeech Mixer models (espeak IPA). The tts_arabic models
+    pass ``phoneme_type=mantoq``, ``alphabet=buckwalter``, the ``_+_`` separator
+    and their 44-symbol table; ``engine`` selects Mixer-TTS vs FastPitch (same
+    FastSpeech2 contract).
     """
     char2idx = {s: i for i, s in enumerate(symbols)}
     pad = symbols[0] if symbols else _MIXER_PAD
@@ -45,7 +47,7 @@ def voice_config_from_mixer(
         tokenizer=tok, num_symbols=len(char2idx), num_speakers=max(num_speakers, 1), num_langs=1,
         sample_rate=sample_rate, lang_code=lang_code,
         phoneme_type=phoneme_type, alphabet=alphabet,
-        phonemizer_model=None, engine=Engine.MIXERTTS, add_diacritics=False,
+        phonemizer_model=None, engine=engine, add_diacritics=False,
         blank_between=BlankBetween.TOKENS_AND_WORDS,
         blank_at_start=False, blank_at_end=False,
         pad_token=pad, blank_token=pad, bos_token=None, eos_token=None,
