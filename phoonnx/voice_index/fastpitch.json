@@ -1,0 +1,18 @@
+{
+    "nipponjo/tts-arabic-fastpitch": {
+        "voice_id": "nipponjo/tts-arabic-fastpitch",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-fastpitch/resolve/main/nipponjo-arabic-fastpitch/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-fastpitch/resolve/main/nipponjo-arabic-fastpitch/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "mantoq",
+        "alphabet": "buckwalter",
+        "engine": "fastpitch",
+        "lang": "ar",
+        "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/tts-arabic-hifigan/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/tts-arabic-hifigan/vocoder.json",
+        "vocoder_type": "hifigan"
+    }
+}
