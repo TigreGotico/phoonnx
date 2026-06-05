@@ -138,6 +138,17 @@ class BaseOnnxAdapter(ABC):
         """Human-readable labels for each scale param (for UIs)."""
         return {k: k for k in self.default_params()}
 
+    def configure(self, voice_config: Any) -> None:
+        """
+        Set up engine-specific runtime state from the resolved VoiceConfig.
+
+        Called once when a ``TTSVoice`` is constructed, after the adapter has
+        been selected.  Engines that need extra ONNX models (e.g. Matcha-TTS
+        loading its vocoder from ``voice_config.engine_params``) build them
+        here.  Default: no-op.
+        """
+        return None
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------

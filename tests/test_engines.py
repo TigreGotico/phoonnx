@@ -51,12 +51,20 @@ def test_get_adapter_unknown_raises():
 
 
 def test_register_and_detect_priority():
-    class Dummy(VitsAdapter):
-        @staticmethod
-        def detect(config=None, session=None): return True
-    register_engine("dummy_high", Dummy, detect_priority=1)
-    # lower priority number is checked first
-    assert isinstance(detect_engine(config={"x": 1}), Dummy)
+    import phoonnx.engines as eng
+    # snapshot the global registry so this test doesn't leak into others
+    snap = (dict(eng._REGISTRY), dict(eng._PRIORITIES), list(eng._DETECT_ORDER))
+    try:
+        class Dummy(VitsAdapter):
+            @staticmethod
+            def detect(config=None, session=None): return True
+        register_engine("dummy_high", Dummy, detect_priority=1)
+        # lower priority number is checked first
+        assert isinstance(detect_engine(config={"x": 1}), Dummy)
+    finally:
+        eng._REGISTRY.clear(); eng._REGISTRY.update(snap[0])
+        eng._PRIORITIES.clear(); eng._PRIORITIES.update(snap[1])
+        eng._DETECT_ORDER[:] = snap[2]
 
 
 def test_detect_falls_back_to_vits():
