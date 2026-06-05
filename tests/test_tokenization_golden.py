@@ -181,11 +181,20 @@ def test_tokenization_optispeech():
 
 def test_tokenization_matcha():
     pytest.importorskip("matcha")
-    from matcha.text import text_to_sequence  # noqa: F401
+    import matcha.text as mt
+    from matcha.text import symbols, cleaned_text_to_sequence
+    # the Catalan Matxa voices use custom cleaners bundled with the model (not in
+    # base matcha-tts), so we verify the *tokenizer* — symbol table + phoneme->id
+    # mapping — which is language-agnostic and is what phoonnx reproduces.
+    sid = getattr(mt, "_symbol_to_id", None) or {s: i for i, s in enumerate(symbols)}
     m = _manager()
     vid = _pick(m, lambda k: "matxa" in k.lower() or (
         m.voices[k].engine and str(m.voices[k].engine).endswith("matcha")), "no matcha voice in index")
     voice = m.voices[vid].load()
-    cleaners = ["catalan_cleaners"] if "cat" in vid.lower() else ["english_cleaners2"]
-    orig = text_to_sequence("hello", cleaners)
-    assert _phoonnx_ids(voice, "hello") == orig
+    pvocab = voice.config.tokenizer.vocabulary.char2idx
+    # identical symbol -> id table
+    assert len(pvocab) == len(sid)
+    assert all(pvocab[s] == sid[s] for s in sid if s in pvocab) and set(sid) == set(pvocab)
+    # identical phoneme -> id mapping for a cleaned IPA phoneme string
+    phonemes = "həlˈoʊ wˈɚld"
+    assert voice.config.tokenizer.encode(phonemes) == cleaned_text_to_sequence(phonemes)
