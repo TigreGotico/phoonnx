@@ -20,6 +20,7 @@ class Engine(str, Enum):
     MIMIC3 = "mimic3"
     COQUI = "coqui"
     TRANSFORMERS = "transformers"
+    MATCHA = "matcha"  # flow-matching mel model + separate vocoder
 
 
 class Alphabet(str, Enum):

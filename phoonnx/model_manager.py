@@ -26,6 +26,19 @@ class TTSModelInfo:
     engine: Optional[Engine] = None
     vocab_override: Optional[Dict[str, int]] = field(default_factory=dict)
 
+    # Two-stage engines (Matcha-TTS) pair the acoustic model with a *separate*
+    # vocoder published as its own artifact.  These fields link the tested
+    # vocoder for this voice; the manager downloads it alongside the model.
+    vocoder_url: Optional[str] = None
+    vocoder_config_url: Optional[str] = None
+    vocoder_type: Optional[str] = None  # "vocos" | "wavenext" | "hifigan"
+
+    # Catalog metadata (informational; surfaced to users/UIs).
+    license: Optional[str] = None
+    verified: bool = False  # synthesis tested end-to-end through phoonnx
+    speakers: Optional[Dict[str, Any]] = None  # speaker_id -> name/accent
+    description: Optional[str] = None
+
     @property
     def config(self) -> VoiceConfig:
         # lazy loaded
@@ -230,6 +243,50 @@ class TTSModelInfo:
                         if chunk:
                             f.write(chunk)
 
+    def download_vocoder(self) -> Optional[Path]:
+        """
+        Download the separate vocoder ONNX (and optional config) for two-stage
+        engines such as Matcha-TTS into the voice cache directory.
+
+        Returns the local vocoder path, or ``None`` if this voice has no
+        ``vocoder_url``.
+        """
+        if not self.vocoder_url:
+            return None
+        vocoder_path = self.voice_path / "vocoder.onnx"
+        if not vocoder_path.is_file():
+            with requests.get(self.vocoder_url, timeout=120, stream=True) as r:
+                r.raise_for_status()
+                with open(vocoder_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+        if self.vocoder_config_url:
+            vocoder_cfg_path = self.voice_path / "vocoder.json"
+            if not vocoder_cfg_path.is_file():
+                r = requests.get(self.vocoder_config_url, timeout=30)
+                r.raise_for_status()
+                with open(vocoder_cfg_path, "w", encoding="utf-8") as f:
+                    json.dump(r.json(), f, ensure_ascii=False, indent=4)
+        return vocoder_path
+
+    def engine_params(self) -> Dict[str, Any]:
+        """
+        Build the engine_params dict for synthesis, resolving the vocoder to
+        its locally-downloaded path.  Empty for single-stage engines.
+        """
+        params: Dict[str, Any] = {}
+        vocoder_path = self.download_vocoder()
+        if vocoder_path:
+            params["vocoder_path"] = str(vocoder_path)
+            if self.vocoder_type:
+                params["vocoder_type"] = self.vocoder_type
+            vocoder_cfg_path = self.voice_path / "vocoder.json"
+            if vocoder_cfg_path.is_file():
+                with open(vocoder_cfg_path, "r", encoding="utf-8") as f:
+                    params["vocoder_config"] = json.load(f)
+        return params
+
     def load(self) -> TTSVoice:
         """
         Load and return a TTSVoice for this model, ensuring the ONNX model is downloaded and the voice configuration is applied.
@@ -253,6 +310,7 @@ class TTSModelInfo:
                               lang_code=self.config.lang_code,
                               phoneme_type_str=self.config.phoneme_type,
                               alphabet_str=self.config.alphabet,
+                              engine_params=self.engine_params() or None,
                               phonemes_txt=str(tokens_path) if self.tokens_url else None)
         # override phoneme_type, if config.json is wrong
         if self.phoneme_type != voice.config.phoneme_type or self.alphabet != voice.config.alphabet:
@@ -359,7 +417,14 @@ class TTSModelManager:
                                            "alphabet": voice_info.alphabet,
                                            "engine": voice_info.engine,
                                            "lang": voice_info.lang,
-                                           "config_url": voice_info.config_url}
+                                           "config_url": voice_info.config_url,
+                                           "vocoder_url": voice_info.vocoder_url,
+                                           "vocoder_config_url": voice_info.vocoder_config_url,
+                                           "vocoder_type": voice_info.vocoder_type,
+                                           "license": voice_info.license,
+                                           "verified": voice_info.verified,
+                                           "speakers": voice_info.speakers,
+                                           "description": voice_info.description}
 
     def get_lang_voices(self, lang: str) -> List[TTSModelInfo]:
         voices = sorted(
@@ -389,6 +454,7 @@ class TTSModelManager:
         self.cache.update(JsonStorage(str(base_path / "transformers_community.json")))
         self.cache.update(JsonStorage(str(base_path / "piper_community.json")))
         self.cache.update(JsonStorage(str(base_path / "coqui_community.json")))
+        self.cache.update(JsonStorage(str(base_path / "BSC.json")))
         self.voices = {}
         for voice_id, voice_dict in self.cache.items():
             try:
