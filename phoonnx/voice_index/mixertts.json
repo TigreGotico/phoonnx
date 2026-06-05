@@ -11,9 +11,9 @@
         "alphabet": "ipa",
         "engine": "mixertts",
         "lang": "en",
-        "vocoder_url": null,
-        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-mixertts/resolve/main/ljspeech-80/vocoder.json",
-        "vocoder_type": "griffinlim"
+        "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
+        "vocoder_type": "vocos"
     },
     "nipponjo/mixer-tts-ljspeech-128": {
         "voice_id": "nipponjo/mixer-tts-ljspeech-128",
@@ -27,9 +27,9 @@
         "alphabet": "ipa",
         "engine": "mixertts",
         "lang": "en",
-        "vocoder_url": null,
-        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-mixertts/resolve/main/ljspeech-128/vocoder.json",
-        "vocoder_type": "griffinlim"
+        "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
+        "vocoder_type": "vocos"
     },
     "nipponjo/mixer-tts-ljspeech-384": {
         "voice_id": "nipponjo/mixer-tts-ljspeech-384",
@@ -43,8 +43,8 @@
         "alphabet": "ipa",
         "engine": "mixertts",
         "lang": "en",
-        "vocoder_url": null,
-        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-mixertts/resolve/main/ljspeech-384/vocoder.json",
-        "vocoder_type": "griffinlim"
+        "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
+        "vocoder_type": "vocos"
     }
 }

@@ -54,11 +54,15 @@ for chunk in voice.synthesize("Hello from Mixer-TTS."): ...
 
 ## Vocoder
 
-The 80-channel mel is the HiFi-GAN natural-log mel. The indexed voices use the
-parametric **Griffin-Lim** vocoder (no model file; its config carries the mel
-params with ``spec_gain = ln(10)`` to invert the natural log). A matched neural
-vocoder (HiFi-GAN / Vocos at the LJSpeech 22 kHz mel) can be linked per-voice via
-``vocoder_url`` for higher fidelity — see [vocoders.md](./vocoders.md).
+The 80-channel mel is the HiFi-GAN-compatible mel, so the indexed voices use the
+**universal Vocos** vocoder (``BSC-LT/vocos-mel-22khz``, mirrored as
+``OpenVoiceOS/phoonnx-vocoders/vocos-mel-22khz-univ``) — the same one the
+reference repo pairs Mixer-TTS with. Griffin-Lim works too (``spec_gain = ln(10)``
+inverts the natural-log mel) as a no-model-file fallback. See
+[vocoders.md](./vocoders.md).
+
+> Do not confuse it with ``alvocat-vocos-22khz`` — that is Vocos *finetuned on
+> Catalan* (for the Matxa voices) and is a different mel domain.
 
 ## References
 
