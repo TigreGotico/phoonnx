@@ -51,6 +51,19 @@
         "engine": "coqui",
         "lang": "da"
     },
+    "coqui/de-thorsten-vits": {
+        "voice_id": "coqui/de-thorsten-vits",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/de-thorsten-vits/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/de-thorsten-vits/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "gruut",
+        "alphabet": "ipa",
+        "engine": "coqui",
+        "lang": "de"
+    },
     "coqui/el-cv-vits": {
         "voice_id": "coqui/el-cv-vits",
         "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/el-cv-vits/model.onnx",
@@ -401,6 +414,19 @@
         "alphabet": "unicode",
         "engine": "coqui",
         "lang": "tw"
+    },
+    "coqui/uk-mai-vits": {
+        "voice_id": "coqui/uk-mai-vits",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/uk-mai-vits/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/uk-mai-vits/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "coqui",
+        "lang": "uk"
     },
     "coqui/yor-openbible-vits": {
         "voice_id": "coqui/yor-openbible-vits",

@@ -47,6 +47,7 @@ train = [
 ]
 ar = ["epitran"]
 ca = ["epitran"]
+de = ["gruut-lang-de"]  # coqui de/thorsten VITS
 cs = ["epitran"]
 de = ["epitran"]
 en = ["epitran", "gruut[en]>=2.3.0,<3.0", "misaki[en]"]

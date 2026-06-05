@@ -60,7 +60,13 @@ def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str,
             pad_token=pad, blank_token=blank, bos_token=None, eos_token=None, word_sep_token=" ")
 
     # Graphemes / IPAPhonemes: [pad, eos, bos, blank?] + sorted(symbols) + punctuations.
-    symbol_set = list((ch.get("phonemes") if use_phonemes else ch.get("characters")) or "")
+    # IPAPhonemes stores its IPA set in the `characters` field; some configs use
+    # the separate `phonemes` field. For phoneme models prefer `phonemes`, else
+    # fall back to `characters`.
+    if use_phonemes:
+        symbol_set = list(ch.get("phonemes") or ch.get("characters") or "")
+    else:
+        symbol_set = list(ch.get("characters") or "")
     if ch.get("is_unique", False):
         symbol_set = list(dict.fromkeys(symbol_set))
     if ch.get("is_sorted", True):
