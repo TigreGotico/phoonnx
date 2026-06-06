@@ -26,7 +26,7 @@ _PHONEMIZER = {"gruut": PhonemeType.GRUUT, "espeak": PhonemeType.ESPEAK,
 
 
 def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str,
-                            engine: Engine = Engine.GLOWTTS) -> VoiceConfig:
+                            engine: Engine = Engine.GLOWTTS, num_speakers: int = 0) -> VoiceConfig:
     """Build a :class:`VoiceConfig` from a Coqui-TTS ``config.json``."""
     ch = config.get("characters", {})
     audio = config.get("audio", {})
@@ -45,7 +45,9 @@ def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str,
         combined = list(ch.get("characters") or "") + list(ch.get("phonemes") or "")
         full = [pad] + list(ch.get("punctuations") or "") + combined + [blank]
         char2idx = {c: i for i, c in enumerate(full)}
-        n_spk = config.get("num_speakers") or config.get("model_args", {}).get("num_speakers") or 1
+        # coqui stores multi-speaker counts in a separate speaker file; the caller
+        # can pass the real count (e.g. emb_g rows) since the config may omit it.
+        n_spk = num_speakers or config.get("num_speakers") or config.get("model_args", {}).get("num_speakers") or 1
         tok = TTSTokenizer(
             Vocabulary(char2idx=char2idx, pad=pad, blank=blank),
             add_blank_char=True, add_blank_word=False, use_eos_bos=False,
@@ -81,7 +83,7 @@ def voice_config_from_coqui(config: Dict[str, Any], *, lang_code: str,
         add_blank_char=add_blank, add_blank_word=False, use_eos_bos=use_eos_bos,
         blank_at_start=add_blank, blank_at_end=add_blank)
     return VoiceConfig(
-        tokenizer=tok, num_symbols=len(char2idx), num_speakers=1, num_langs=1,
+        tokenizer=tok, num_symbols=len(char2idx), num_speakers=max(num_speakers, 1), num_langs=1,
         sample_rate=audio.get("sample_rate", 22050), lang_code=lang_code,
         phoneme_type=_phon if use_phonemes else PhonemeType.GRAPHEMES,
         alphabet=Alphabet.IPA if use_phonemes else Alphabet.UNICODE,
