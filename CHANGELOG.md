@@ -10,7 +10,8 @@
 
 **Merged pull requests:**
 
-- feat\(voices\): coqui VITS engine + 34 voices across 31 languages [\#149](https://github.com/TigreGotico/phoonnx/pull/149) ([JarbasAl](https://github.com/JarbasAl))
+- feat\(voices\): add ca-custom \(257-spk\) + fa-custom coqui VITS [\#150](https://github.com/TigreGotico/phoonnx/pull/150) ([JarbasAl](https://github.com/JarbasAl))
+- feat\(voices\): coqui VITS engine + 36 voices across 33 languages [\#149](https://github.com/TigreGotico/phoonnx/pull/149) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): FastPitch engine + Arabic & coqui voices [\#148](https://github.com/TigreGotico/phoonnx/pull/148) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): Arabic Mixer-TTS voices \(tts\_arabic\) + matched vocoders [\#147](https://github.com/TigreGotico/phoonnx/pull/147) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): Mixer-TTS inference adapter + LJSpeech voices [\#145](https://github.com/TigreGotico/phoonnx/pull/145) ([JarbasAl](https://github.com/JarbasAl))
