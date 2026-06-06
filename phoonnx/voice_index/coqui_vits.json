@@ -440,5 +440,31 @@
         "alphabet": "unicode",
         "engine": "coqui",
         "lang": "yo"
+    },
+    "coqui/ca-custom-vits": {
+        "voice_id": "coqui/ca-custom-vits",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/ca-custom-vits/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/ca-custom-vits/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "coqui",
+        "lang": "ca"
+    },
+    "coqui/fa-custom-vits-female": {
+        "voice_id": "coqui/fa-custom-vits-female",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/fa-custom-vits-female/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-coqui-vits/resolve/main/fa-custom-vits-female/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "coqui",
+        "lang": "fa"
     }
 }
