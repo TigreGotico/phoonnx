@@ -44,3 +44,18 @@ def test_configure_loads_from_engine_params():
     a = YourTTSAdapter()
     a.configure(_Cfg())
     assert a.d_vector.shape == (1, 512) and a.langid == 2
+
+
+def test_clone_from_reference_uses_encoder():
+    class _Enc:
+        def encode(self, audio, sr): return np.full(512, 0.3, np.float32)
+    a = YourTTSAdapter(d_vector=np.zeros(512, np.float32), speaker_encoder=_Enc())
+    feed = a.build_feed_dict(_req(reference_audio=(np.zeros(16000, np.float32), 16000)), SESS)
+    assert np.allclose(feed["d_vector"][0], 0.3)   # cloned vector, not the bundled zeros
+
+
+def test_speaker_encoder_registry():
+    from phoonnx.engines.speaker_encoders import list_speaker_encoders, get_speaker_encoder
+    from phoonnx.engines.speaker_encoders.coqui_resnet import CoquiResNetSpeakerEncoder
+    assert "coqui_resnet" in list_speaker_encoders()
+    assert get_speaker_encoder("coqui_resnet") is CoquiResNetSpeakerEncoder

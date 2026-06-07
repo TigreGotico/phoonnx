@@ -25,20 +25,37 @@ from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult
 class YourTTSAdapter(BaseOnnxAdapter):
     """Adapter for YourTTS (multilingual VITS + d-vector conditioning)."""
 
-    def __init__(self, d_vector: Optional[np.ndarray] = None, langid: int = 0):
+    def __init__(self, d_vector: Optional[np.ndarray] = None, langid: int = 0,
+                 speaker_encoder: Optional[Any] = None):
         self.d_vector = None if d_vector is None else np.asarray(d_vector, np.float32).reshape(1, -1)
         self.langid = int(langid)
+        self.speaker_encoder = speaker_encoder
 
     def default_params(self) -> Dict[str, float]:
         return {"noise_scale": 0.667, "length_scale": 1.0, "noise_w_scale": 0.8}
 
     def configure(self, voice_config: Any) -> None:
-        """Load the bundled speaker d-vector + language id from ``engine_params``."""
+        """Load the bundled d-vector, language id, and (for cloning) the speaker
+        encoder from ``engine_params``."""
         ep = getattr(voice_config, "engine_params", None) or {}
         if self.d_vector is None and ep.get("d_vector") is not None:
             self.d_vector = np.asarray(ep["d_vector"], np.float32).reshape(1, -1)
         if "langid" in ep:
             self.langid = int(ep["langid"])
+        if self.speaker_encoder is None and ep.get("speaker_encoder_path"):
+            from phoonnx.engines.speaker_encoders import build_speaker_encoder
+            self.speaker_encoder = build_speaker_encoder(
+                ep["speaker_encoder_path"], ep.get("speaker_encoder_type"))
+
+    def _resolve_dvector(self, params: Dict[str, Any]) -> Optional[np.ndarray]:
+        # priority: explicit d-vector > clone from reference audio > bundled fixed voice
+        if params.get("d_vector") is not None:
+            return np.asarray(params["d_vector"], np.float32).reshape(1, -1)
+        ref = params.get("reference_audio")
+        if ref is not None and self.speaker_encoder is not None:
+            audio, sr = ref
+            return self.speaker_encoder.encode(audio, sr).reshape(1, -1)
+        return self.d_vector
 
     def build_feed_dict(
         self,
@@ -53,9 +70,7 @@ class YourTTSAdapter(BaseOnnxAdapter):
              p.get("noise_w_scale", d["noise_w_scale"])],
             dtype=np.float32,
         )
-        # d-vector: per-request (cloning) wins over the bundled fixed-voice vector
-        dv = p.get("d_vector")
-        dv = np.asarray(dv, np.float32).reshape(1, -1) if dv is not None else self.d_vector
+        dv = self._resolve_dvector(p)
         langid = int(p.get("langid", self.langid))
         args: Dict[str, np.ndarray] = {
             "input": request.phoneme_ids,
