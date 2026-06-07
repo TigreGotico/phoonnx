@@ -1,0 +1,15 @@
+{
+    "ddatt/en-styletts2": {
+        "voice_id": "ddatt/en-styletts2",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/ddatt-en-styletts2/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/ddatt-en-styletts2/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "styletts2",
+        "lang": "en-us"
+    }
+}

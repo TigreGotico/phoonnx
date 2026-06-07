@@ -25,6 +25,7 @@ class Engine(str, Enum):
     GLOWTTS = "glowtts"  # flow-based mel model + separate vocoder (Larynx)
     MIXERTTS = "mixertts"  # MLP-Mixer/FastPitch-style mel model + separate vocoder
     FASTPITCH = "fastpitch"  # FastSpeech2-style mel model + separate vocoder
+    STYLETTS2 = "styletts2"  # StyleTTS2 / Kokoro end-to-end (tokens + style -> wav)
 
 
 class Alphabet(str, Enum):

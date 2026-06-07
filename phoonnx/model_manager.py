@@ -459,6 +459,8 @@ class TTSModelManager:
         self.cache.update(JsonStorage(str(base_path / "mixertts.json")))
         self.cache.update(JsonStorage(str(base_path / "fastpitch.json")))
         self.cache.update(JsonStorage(str(base_path / "coqui_community.json")))
+        self.cache.update(JsonStorage(str(base_path / "vits2.json")))
+        self.cache.update(JsonStorage(str(base_path / "styletts2.json")))
         self.cache.update(JsonStorage(str(base_path / "coqui_vits.json")))
         self.cache.update(JsonStorage(str(base_path / "BSC.json")))
         self.voices = {}

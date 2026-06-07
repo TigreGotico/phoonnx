@@ -1,0 +1,77 @@
+"""
+StyleTTS2-family inference adapter.
+
+Covers StyleTTS2 (https://arxiv.org/abs/2306.07691) and its distilled derivative
+Kokoro. Both consolidate to the same single-graph ONNX contract:
+
+    tokens (int64) [+ attention_mask] [+ style (1, 256)] + speed -> waveform
+
+- **StyleTTS2** (e.g. the stitched DDATT pipeline) bakes the reference style into
+  the graph, so it only needs ``input_ids`` + ``attention_mask`` + ``speed``.
+- **Kokoro** takes an explicit per-voice ``style`` vector, packed per token-length
+  ([N, 256]); the adapter holds the pack and selects ``style_pack[len(tokens)]``.
+
+The model is end-to-end (no separate vocoder). Tokenisation is the StyleTTS2 vocab
+(``$``-padded at both ends); the phonemizer is espeak (StyleTTS2) or misaki (Kokoro).
+"""
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+import onnxruntime
+
+from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
+
+_PAD_ID = 0  # "$" in the StyleTTS2 vocab
+
+
+class StyleTTS2Adapter(BaseOnnxAdapter):
+    """Adapter for StyleTTS2 / Kokoro single-graph ONNX models."""
+
+    def __init__(self, style_pack: Optional[np.ndarray] = None):
+        # [N, 256] per-voice style indexed by token length (Kokoro); None when the
+        # reference style is baked into the graph (StyleTTS2).
+        self.style_pack = None if style_pack is None else np.asarray(style_pack, dtype=np.float32)
+
+    def default_params(self) -> Dict[str, float]:
+        return {"speed": 1.0}
+
+    def build_feed_dict(
+        self,
+        request: AdapterSynthesisRequest,
+        session: onnxruntime.InferenceSession,
+    ) -> Dict[str, np.ndarray]:
+        ids = np.asarray(request.phoneme_ids, dtype=np.int64)
+        # StyleTTS2 pads the token sequence with the pad id ($) at both ends.
+        ids = np.pad(ids, ((0, 0), (1, 1)), constant_values=_PAD_ID)
+        speed = np.float32(request.params.get("speed", self.default_params()["speed"]))
+        args: Dict[str, np.ndarray] = {
+            "input_ids": ids, "tokens": ids,                       # name aliases
+            "attention_mask": np.ones_like(ids, dtype=np.int32),
+            "speed": np.array([speed], dtype=np.float32),
+        }
+        if self.style_pack is not None:
+            n = ids.shape[1]
+            style = self.style_pack[min(n, self.style_pack.shape[0] - 1)].reshape(1, -1).astype(np.float32)
+            args["style"] = style          # Kokoro
+            args["style_vec"] = style       # alexbeatnik StyleTTS2
+            args["s_prev"] = style          # Iam314rock StyleTTS2
+        return self._filter_inputs(args, session)
+
+    def parse_outputs(
+        self,
+        outputs: List[np.ndarray],
+        request: AdapterSynthesisRequest,
+    ) -> AdapterSynthesisResult:
+        # the only meaningful output is the waveform (1-D)
+        wav = max(outputs, key=lambda o: np.asarray(o).size)
+        return AdapterSynthesisResult(audio=np.asarray(wav, dtype=np.float32).reshape(-1))
+
+    @staticmethod
+    def detect(
+        config: Optional[Dict[str, Any]] = None,
+        session: Optional[onnxruntime.InferenceSession] = None,
+    ) -> bool:
+        return bool(config and config.get("engine") in ("styletts2", "kokoro"))
+
+    def param_labels(self) -> Dict[str, str]:
+        return {"speed": "Speed"}
