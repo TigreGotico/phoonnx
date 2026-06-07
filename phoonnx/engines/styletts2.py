@@ -35,6 +35,18 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
     def default_params(self) -> Dict[str, float]:
         return {"speed": 1.0}
 
+    def configure(self, voice_config: Any) -> None:
+        """Load the per-voice style pack from ``voice_config.engine_params``.
+
+        Kokoro ships one ``style`` artifact per voice — a flat float32 blob that
+        reshapes to ``[N, 256]`` (N style rows indexed by token length). A fixed
+        single style reshapes to ``[1, 256]`` and is reused for every length.
+        """
+        ep = getattr(voice_config, "engine_params", None) or {}
+        style_path = ep.get("style_path")
+        if self.style_pack is None and style_path:
+            self.style_pack = np.fromfile(style_path, dtype=np.float32).reshape(-1, 256)
+
     def build_feed_dict(
         self,
         request: AdapterSynthesisRequest,

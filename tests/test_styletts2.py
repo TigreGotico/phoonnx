@@ -53,3 +53,17 @@ def test_kokoro_style_pack_length_indexed():
 def test_parse_outputs_picks_waveform():
     r = StyleTTS2Adapter().parse_outputs([np.zeros((1, 512, 8), np.float32), np.ones(20000, np.float32)], _req())
     assert r.audio.ndim == 1 and r.audio.size == 20000
+
+
+def test_configure_loads_style_pack_from_engine_params(tmp_path):
+    """Kokoro: the manager downloads a style blob; configure() reshapes it to [N,256]."""
+    import numpy as np
+    blob = tmp_path / "style.bin"
+    np.arange(510 * 256, dtype=np.float32).tofile(blob)
+
+    class _Cfg:
+        engine_params = {"style_path": str(blob)}
+
+    a = StyleTTS2Adapter()
+    a.configure(_Cfg())
+    assert a.style_pack.shape == (510, 256)
