@@ -35,7 +35,9 @@ def build_speaker_encoder(model_path: str, encoder_type: Optional[str] = None,
 
 def _register_builtins() -> None:
     from phoonnx.engines.speaker_encoders.coqui_resnet import CoquiResNetSpeakerEncoder
+    from phoonnx.engines.speaker_encoders.styletts2_style import StyleTTS2StyleEncoder
     register_speaker_encoder("coqui_resnet", CoquiResNetSpeakerEncoder)
+    register_speaker_encoder("styletts2_style", StyleTTS2StyleEncoder)
 
 
 _register_builtins()
