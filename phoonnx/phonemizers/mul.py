@@ -687,13 +687,18 @@ class MisakiPhonemizer(BasePhonemizer):
     """
     MISAKI_LANGS = ['en-US', 'en-GB', 'ko', 'ja', 'vi', 'zh']
 
-    def __init__(self, zh_version: str = "1.0"):
-        super().__init__(Alphabet.IPA)
-        # Kokoro's zh G2P changed representation between releases: "1.0" emits IPA
-        # (with tone marks ↓↗↘), "1.1" emits bopomofo (ㄅㄆㄇ) + tone numbers. The
-        # version must match the model's training vocab.
-        self.zh_version = zh_version or "1.0"
+    def __init__(self, alphabet: Alphabet = Alphabet.IPA):
+        # misaki emits IPA for every language except zh, where the alphabet selects
+        # the representation (IPA vs bopomofo) — see zh_version below. IPA is the
+        # sensible default for all of them.
+        super().__init__(alphabet)
         self.g2p_en = self.g2p_zh = self.g2p_ko = self.g2p_vi = self.g2p_ja = None
+
+    @property
+    def zh_version(self) -> str:
+        # misaki's zh G2P emits IPA + tone marks ("1.0") or bopomofo + tone numbers
+        # ("1.1"); the requested alphabet picks which, no separate class/param needed.
+        return "1.1" if self.alphabet == Alphabet.BOPOMOFO else "1.0"
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
@@ -751,6 +756,42 @@ class MisakiPhonemizer(BasePhonemizer):
         pho = self._get_phonemizer(lang)
         phonemes, tokens = pho(text)
         return phonemes
+
+
+# Per-language misaki phonemizers. misaki is NOT a thin wrapper: en ships ~6MB of
+# curated us/gb lexicons + spacy disambiguation, ja a cutlet romanizer + lexicon,
+# zh adds tone sandhi + an IPA/bopomofo frontend on top of pypinyin. Each language
+# has different heavy deps and params, so they are split into dedicated classes
+# (sharing the dispatch base). The base class above remains a back-compat
+# dispatcher for the legacy ``misaki`` phoneme type.
+class MisakiEnPhonemizer(MisakiPhonemizer):
+    """misaki English (curated us/gb lexicons + spacy; espeak only as OOV fallback)."""
+    MISAKI_LANGS = ['en-US', 'en-GB']
+
+
+class MisakiJaPhonemizer(MisakiPhonemizer):
+    """misaki Japanese (cutlet romanizer + ja_words lexicon; needs fugashi/unidic)."""
+    MISAKI_LANGS = ['ja']
+
+
+class MisakiZhPhonemizer(MisakiPhonemizer):
+    """misaki Chinese (pypinyin + tone sandhi + frontend).
+
+    The output representation follows the requested ``alphabet``: ``Alphabet.IPA``
+    (default) emits IPA + tone marks (ni↓xau↓), ``Alphabet.BOPOMOFO`` emits bopomofo
+    + tone numbers (ㄋㄧ2ㄏㄠ3). It must match the target model's training vocab.
+    """
+    MISAKI_LANGS = ['zh']
+
+
+class MisakiKoPhonemizer(MisakiPhonemizer):
+    """misaki Korean (KOG2P)."""
+    MISAKI_LANGS = ['ko']
+
+
+class MisakiViPhonemizer(MisakiPhonemizer):
+    """misaki Vietnamese (VIG2P + acronym/teencode dicts)."""
+    MISAKI_LANGS = ['vi']
 
 
 class TransphonePhonemizer(BasePhonemizer):
