@@ -26,7 +26,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "fastpitch",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/coqui-ljspeech-hifigan-v2/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/coqui-ljspeech-hifigan-v2/vocoder.json",
         "vocoder_type": "hifigan"
@@ -42,7 +42,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "fastpitch",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
         "vocoder_type": "vocos"
@@ -58,7 +58,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "fastpitch",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
         "vocoder_type": "vocos"

@@ -10,7 +10,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "de-de",
+        "lang": "de-DE",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -26,7 +26,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "de-de",
+        "lang": "de-DE",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -42,7 +42,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "de-de",
+        "lang": "de-DE",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -58,7 +58,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "de-de",
+        "lang": "de-DE",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -74,7 +74,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "de-de",
+        "lang": "de-DE",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -90,7 +90,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "de-de",
+        "lang": "de-DE",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -106,7 +106,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "de-de",
+        "lang": "de-DE",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -122,7 +122,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -138,7 +138,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -154,7 +154,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -170,7 +170,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -186,7 +186,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -202,7 +202,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -218,7 +218,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -234,7 +234,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -250,7 +250,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -266,7 +266,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -282,7 +282,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -298,7 +298,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -314,7 +314,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -330,7 +330,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -346,7 +346,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -362,7 +362,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -378,7 +378,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -394,7 +394,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -410,7 +410,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -426,7 +426,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -442,7 +442,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -458,7 +458,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -474,7 +474,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -490,7 +490,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -506,7 +506,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -522,7 +522,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -538,7 +538,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -554,7 +554,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "en-us",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -570,7 +570,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "es-es",
+        "lang": "es-ES",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -586,7 +586,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "es-es",
+        "lang": "es-ES",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -602,7 +602,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "fr-fr",
+        "lang": "fr-FR",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -618,7 +618,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "fr-fr",
+        "lang": "fr-FR",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -634,7 +634,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "fr-fr",
+        "lang": "fr-FR",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -650,7 +650,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "it-it",
+        "lang": "it-IT",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -666,7 +666,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "it-it",
+        "lang": "it-IT",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -746,7 +746,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "ru-ru",
+        "lang": "ru-RU",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -762,7 +762,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "ru-ru",
+        "lang": "ru-RU",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -778,7 +778,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "ru-ru",
+        "lang": "ru-RU",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -794,7 +794,7 @@
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "engine": "glowtts",
-        "lang": "sv-se",
+        "lang": "sv-SE",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/larynx-hifigan-vctk-small/vocoder.json",
         "vocoder_type": "hifigan"
@@ -818,7 +818,7 @@
     "coqui-tr-common-voice-glow-tts": {
         "voice_id": "coqui-tr-common-voice-glow-tts",
         "engine": "glowtts",
-        "lang": "tr",
+        "lang": "tr-TR",
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "vocab_url": null,
@@ -882,7 +882,7 @@
     "coqui-be-common-voice-glow-tts": {
         "voice_id": "coqui-be-common-voice-glow-tts",
         "engine": "glowtts",
-        "lang": "be",
+        "lang": "be-BY",
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "vocab_url": null,
@@ -914,7 +914,7 @@
     "coqui-uk-mai-glow-tts": {
         "voice_id": "coqui-uk-mai-glow-tts",
         "engine": "glowtts",
-        "lang": "uk",
+        "lang": "uk-UA",
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "vocab_url": null,

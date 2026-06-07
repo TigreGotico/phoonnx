@@ -10,7 +10,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "transformers",
-        "lang": "cy"
+        "lang": "cy-GB"
     },
     "hf_community/kakao-enterprise/vits-ljs-eng": {
         "voice_id": "hf_community/kakao-enterprise/vits-ljs-eng",
@@ -62,7 +62,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "transformers",
-        "lang": "is"
+        "lang": "is-IS"
     },
     "hf_community/joefox/tts_vits_ru_hf": {
         "voice_id": "hf_community/joefox/tts_vits_ru_hf",

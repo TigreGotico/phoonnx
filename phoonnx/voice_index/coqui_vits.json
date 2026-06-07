@@ -10,7 +10,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "bg"
+        "lang": "bg-BG"
     },
     "coqui/bn-custom-vits-male": {
         "voice_id": "coqui/bn-custom-vits-male",
@@ -36,7 +36,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "cs"
+        "lang": "cs-CZ"
     },
     "coqui/da-cv-vits": {
         "voice_id": "coqui/da-cv-vits",
@@ -49,7 +49,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "da"
+        "lang": "da-DK"
     },
     "coqui/de-thorsten-vits": {
         "voice_id": "coqui/de-thorsten-vits",
@@ -75,7 +75,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "coqui",
-        "lang": "el"
+        "lang": "el-GR"
     },
     "coqui/en-ljspeech-vits": {
         "voice_id": "coqui/en-ljspeech-vits",
@@ -88,7 +88,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "coqui",
-        "lang": "en-us"
+        "lang": "en-US"
     },
     "coqui/en-vctk-vits": {
         "voice_id": "coqui/en-vctk-vits",
@@ -101,7 +101,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "coqui",
-        "lang": "en-us"
+        "lang": "en-US"
     },
     "coqui/es-css10-vits": {
         "voice_id": "coqui/es-css10-vits",
@@ -127,7 +127,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "et"
+        "lang": "et-EE"
     },
     "coqui/ewe-openbible-vits": {
         "voice_id": "coqui/ewe-openbible-vits",
@@ -153,7 +153,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "fi"
+        "lang": "fi-FI"
     },
     "coqui/fr-css10-vits": {
         "voice_id": "coqui/fr-css10-vits",
@@ -179,7 +179,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "ga"
+        "lang": "ga-IE"
     },
     "coqui/hau-openbible-vits": {
         "voice_id": "coqui/hau-openbible-vits",
@@ -205,7 +205,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "hr"
+        "lang": "hr-HR"
     },
     "coqui/hu-css10-vits": {
         "voice_id": "coqui/hu-css10-vits",
@@ -218,7 +218,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "hu"
+        "lang": "hu-HU"
     },
     "coqui/it-mai_female-vits": {
         "voice_id": "coqui/it-mai_female-vits",
@@ -270,7 +270,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "lt"
+        "lang": "lt-LT"
     },
     "coqui/lv-cv-vits": {
         "voice_id": "coqui/lv-cv-vits",
@@ -283,7 +283,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "lv"
+        "lang": "lv-LV"
     },
     "coqui/mt-cv-vits": {
         "voice_id": "coqui/mt-cv-vits",
@@ -296,7 +296,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "mt"
+        "lang": "mt-MT"
     },
     "coqui/nl-css10-vits": {
         "voice_id": "coqui/nl-css10-vits",
@@ -322,7 +322,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "pl"
+        "lang": "pl-PL"
     },
     "coqui/pt-cv-vits": {
         "voice_id": "coqui/pt-cv-vits",
@@ -348,7 +348,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "ro"
+        "lang": "ro-RO"
     },
     "coqui/sk-cv-vits": {
         "voice_id": "coqui/sk-cv-vits",
@@ -361,7 +361,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "sk"
+        "lang": "sk-SK"
     },
     "coqui/sl-cv-vits": {
         "voice_id": "coqui/sl-cv-vits",
@@ -374,7 +374,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "sl"
+        "lang": "sl-SI"
     },
     "coqui/sv-cv-vits": {
         "voice_id": "coqui/sv-cv-vits",
@@ -400,7 +400,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "tw"
+        "lang": "tw-GH"
     },
     "coqui/tw_asante-openbible-vits": {
         "voice_id": "coqui/tw_asante-openbible-vits",
@@ -413,7 +413,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "tw"
+        "lang": "tw-GH"
     },
     "coqui/uk-mai-vits": {
         "voice_id": "coqui/uk-mai-vits",
@@ -426,7 +426,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "coqui",
-        "lang": "uk"
+        "lang": "uk-UA"
     },
     "coqui/yor-openbible-vits": {
         "voice_id": "coqui/yor-openbible-vits",
