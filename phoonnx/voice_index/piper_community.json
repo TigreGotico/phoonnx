@@ -131,7 +131,7 @@
     },
     "piper_community/raphaelmerx/tdt-TL_joao": {
         "voice_id": "piper_community/raphaelmerx/tdt-TL_joao",
-        "model_url": "https://huggingface.co/raphaelmerx/piper-voices/resolve/main/tdt/tdt_TL/joao/medium/tdt_TL-joao-medium.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper_community__raphaelmerx__tdt-TL_joao/model.onnx",
         "phoneme_type": "espeak",
         "lang": "tdt-TL",
         "tokens_url": null,
@@ -140,7 +140,7 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/raphaelmerx/piper-voices/resolve/main/tdt/tdt_TL/joao/medium/tdt_TL-joao-medium.onnx.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper_community__raphaelmerx__tdt-TL_joao/config.json"
     },
     "piper_community/wezzmeister/sv-SE_lisa": {
         "voice_id": "piper_community/wezzmeister/sv-SE_lisa",
