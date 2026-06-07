@@ -46,5 +46,21 @@
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
         "vocoder_type": "vocos"
+    },
+    "coqui/en-vctk-fast_pitch": {
+        "voice_id": "coqui/en-vctk-fast_pitch",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-fastpitch/resolve/main/coqui-vctk-fastpitch/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-fastpitch/resolve/main/coqui-vctk-fastpitch/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "gruut",
+        "alphabet": "ipa",
+        "engine": "fastpitch",
+        "lang": "en-us",
+        "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
+        "vocoder_type": "vocos"
     }
 }
