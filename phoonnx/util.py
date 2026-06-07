@@ -1,3 +1,4 @@
+import unicodedata
 import datetime
 import re
 import string
@@ -9,7 +10,7 @@ from ovos_date_parser import nice_time, nice_date
 from ovos_number_parser import pronounce_number, pronounce_fraction
 from ovos_number_parser.util import is_numeric
 from unicode_rbnf import RbnfEngine, FormatPurpose
-from langcodes import standardize_tag
+from langcodes import standardize_tag, Language
 try:
     from ovos_utils.log import LOG
 except ImportError:
@@ -18,14 +19,64 @@ except ImportError:
     LOG = logging.getLogger("phoonnx")
 
 
+# MMS labels scripts with non-BCP-47 words ("crk-script_syllabics",
+# "cmo-khmer-script"); map them to their ISO-15924 subtag.
+_MMS_SCRIPTS = {"latin": "Latn", "cyrillic": "Cyrl", "arabic": "Arab",
+                "syllabics": "Cans", "tifinagh": "Tfng", "devanagari": "Deva",
+                "ethiopic": "Ethi", "khmer": "Khmr", "telugu": "Telu"}
+
+
+def _private_use(names: List[str]) -> List[str]:
+    """ASCII-fold dialect names into valid BCP-47 private-use subtags (1-8 alnum)."""
+    tags = []
+    for name in names:
+        ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+        ascii_name = re.sub(r"[^a-z0-9]", "", ascii_name.lower())
+        tags += [ascii_name[i:i + 8] for i in range(0, len(ascii_name), 8)]
+    return [t for t in tags if t]
+
+
+# Languages official/major in more than one country: the region is a real choice the
+# voice must declare, so we never guess one for these (a "pt" voice is as likely BR
+# as PT). For everything else a bare code has a single unambiguous CLDR region.
+_MULTI_REGION = frozenset({
+    "en", "es", "pt", "fr", "ar", "de", "nl", "it", "ru", "zh", "sw", "ms",
+    "hi", "bn", "ta", "ur", "pa", "ne", "fa", "ku", "ps", "az",
+    "ha", "ff", "yo", "om", "ln", "ti", "aa", "ee", "ny", "so", "wo", "kr",
+    "qu", "ay", "gn", "ca", "eu", "sq", "sv", "sr", "bs", "la", "os",
+})
+
+
 def normalize_lang(lang: str) -> str:
     if lang == "tgl" or lang == "tl":
         # HACK: langcodes erroneously (debatable) changes this one to "fil"
         return "tl"
+    # MMS tags scripts ("crk-script_syllabics") and dialects ("cak-central-dialect")
+    # with unregistered words. Map scripts to ISO-15924 subtags; keep dialects as a
+    # BCP-47 private-use subtag (cak-central-dialect -> cak-x-central) so the
+    # distinction survives instead of being erased.
+    parts = re.split(r"[-_]", lang.lower())
+    if len(parts) > 1:
+        script = next((_MMS_SCRIPTS[p] for p in parts[1:] if p in _MMS_SCRIPTS), None)
+        if script:
+            lang = f"{parts[0]}-{script}"
+        elif "dialect" in parts[1:]:
+            tags = _private_use([p for p in parts[1:] if p != "dialect"])
+            lang = f"{parts[0]}-x-" + "-".join(tags) if tags else parts[0]
     try:
-        return standardize_tag(lang)
-    except:
+        lang = standardize_tag(lang)
+    except Exception:
         return lang
+    # Add the CLDR region for bare 639-1 codes that map to a single country (cy ->
+    # cy-GB). Skip multi-region languages, whose region must come from the model.
+    if re.fullmatch(r"[a-z]{2}", lang) and lang not in _MULTI_REGION:
+        try:
+            territory = Language.get(lang).maximize().territory
+            if territory and len(territory) == 2:  # ISO-3166 alpha-2, not "419"
+                lang = f"{lang}-{territory}"
+        except Exception:
+            pass
+    return lang
 
 
 def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Tuple[str, int]:

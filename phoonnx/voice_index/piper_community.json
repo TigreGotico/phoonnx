@@ -1206,7 +1206,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "piper",
-        "lang": "fi"
+        "lang": "fi-FI"
     },
     "hf_community/Da-Bob/piper-mikev3": {
         "voice_id": "hf_community/Da-Bob/piper-mikev3",
@@ -1362,7 +1362,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "piper",
-        "lang": "cs"
+        "lang": "cs-CZ"
     },
     "hf_community/Wiseyak/piper_tts": {
         "voice_id": "hf_community/Wiseyak/piper_tts",
@@ -1388,7 +1388,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "piper",
-        "lang": "pl"
+        "lang": "pl-PL"
     },
     "hf_community/WitoldG/polish_piper_models/pl_PL-justyna_wg_glos-medium": {
         "voice_id": "hf_community/WitoldG/polish_piper_models/pl_PL-justyna_wg_glos-medium",
@@ -1401,7 +1401,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "piper",
-        "lang": "pl"
+        "lang": "pl-PL"
     },
     "hf_community/WitoldG/polish_piper_models/pl_PL-meski_wg_glos-medium": {
         "voice_id": "hf_community/WitoldG/polish_piper_models/pl_PL-meski_wg_glos-medium",
@@ -1414,7 +1414,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "piper",
-        "lang": "pl"
+        "lang": "pl-PL"
     },
     "hf_community/WitoldG/polish_piper_models/pl_PL-zenski_wg_glos-medium": {
         "voice_id": "hf_community/WitoldG/polish_piper_models/pl_PL-zenski_wg_glos-medium",
@@ -1427,7 +1427,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "piper",
-        "lang": "pl"
+        "lang": "pl-PL"
     },
     "hf_community/agentvibes/piper-custom-voices/16Speakers": {
         "voice_id": "hf_community/agentvibes/piper-custom-voices/16Speakers",
@@ -1531,7 +1531,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "piper",
-        "lang": "hy"
+        "lang": "hy-AM"
     },
     "hf_community/drewThomasson/piper_tts_finetune_death_from_puss_and_boots": {
         "voice_id": "hf_community/drewThomasson/piper_tts_finetune_death_from_puss_and_boots",
@@ -1661,7 +1661,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "piper",
-        "lang": "lb"
+        "lang": "lb-LU"
     },
     "hf_community/mbarnig/lb_rhasspy_piper_tts/lb_LU-femaleLOD-medium": {
         "voice_id": "hf_community/mbarnig/lb_rhasspy_piper_tts/lb_LU-femaleLOD-medium",
@@ -1674,7 +1674,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "piper",
-        "lang": "lb"
+        "lang": "lb-LU"
     },
     "hf_community/mbarnig/lb_rhasspy_piper_tts/lb_LU-marylux-medium": {
         "voice_id": "hf_community/mbarnig/lb_rhasspy_piper_tts/lb_LU-marylux-medium",
@@ -1765,7 +1765,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "piper",
-        "lang": "sl"
+        "lang": "sl-SI"
     },
     "hf_community/raphaelmerx/piper-voices": {
         "voice_id": "hf_community/raphaelmerx/piper-voices",
