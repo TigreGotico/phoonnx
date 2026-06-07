@@ -59,3 +59,28 @@ def test_speaker_encoder_registry():
     from phoonnx.engines.speaker_encoders.coqui_resnet import CoquiResNetSpeakerEncoder
     assert "coqui_resnet" in list_speaker_encoders()
     assert get_speaker_encoder("coqui_resnet") is CoquiResNetSpeakerEncoder
+
+
+def test_speaker_reference_loads_and_flows(tmp_path):
+    """SynthesisConfig.speaker_reference -> a wav is loaded to (audio, sr)."""
+    import wave, numpy as np
+    from phoonnx.voice import _load_reference_audio
+    p = tmp_path / "ref.wav"
+    with wave.open(str(p), "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(22050)
+        w.writeframes((np.zeros(2205, np.float32) * 32767).astype("<i2").tobytes())
+    audio, sr = _load_reference_audio(str(p))
+    assert sr == 22050 and audio.dtype == np.float32 and audio.ndim == 1
+    # tuple passthrough
+    a2, s2 = _load_reference_audio((np.zeros(100, np.float32), 16000))
+    assert s2 == 16000 and a2.shape == (100,)
+
+
+def test_reference_audio_outranks_bundled_dvector():
+    class _Enc:
+        def encode(self, audio, sr): return np.full(512, 0.9, np.float32)
+    a = YourTTSAdapter(d_vector=np.zeros(512, np.float32), speaker_encoder=_Enc())
+    # both a bundled/explicit d_vector AND a reference present -> reference wins (clone)
+    feed = a.build_feed_dict(_req(d_vector=np.full(512, 0.1, np.float32),
+                                  reference_audio=(np.zeros(16000, np.float32), 16000)), SESS)
+    assert np.allclose(feed["d_vector"][0], 0.9)

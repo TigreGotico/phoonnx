@@ -481,6 +481,11 @@ class SynthesisConfig:
     lang_id: Optional[int] = None
     """Index of lang to use (multi-lang voices only)."""
 
+    speaker_reference: Optional[Any] = None
+    """Reference audio for zero-shot voice cloning (cloning engines: YourTTS,
+    StyleTTS2). Either a path to a wav file, or an ``(audio, sample_rate)`` tuple.
+    The voice's speaker encoder turns it into the conditioning d-vector/style."""
+
     length_scale: Optional[float] = None
     """Phoneme length scale (< 1 is faster, > 1 is slower)."""
 

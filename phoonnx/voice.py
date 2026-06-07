@@ -34,6 +34,28 @@ from phoonnx.util import LOG
 _PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
 
 
+def _load_reference_audio(ref: Any) -> tuple:
+    """Normalise a cloning reference to ``(mono float32 audio, sample_rate)``.
+
+    Accepts an ``(audio, sample_rate)`` tuple or a path to an audio file.
+    """
+    if isinstance(ref, tuple) and len(ref) == 2:
+        audio, sr = ref
+        return np.asarray(audio, dtype=np.float32).reshape(-1), int(sr)
+    try:
+        import soundfile as sf
+        audio, sr = sf.read(str(ref), dtype="float32")
+    except ImportError:
+        with wave.open(str(ref), "rb") as w:
+            sr, ch = w.getframerate(), w.getnchannels()
+            audio = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype(np.float32) / 32768.0
+            if ch > 1:
+                audio = audio.reshape(-1, ch).mean(axis=1)
+    if getattr(audio, "ndim", 1) > 1:
+        audio = audio.mean(axis=1)
+    return np.asarray(audio, dtype=np.float32).reshape(-1), int(sr)
+
+
 @dataclass
 class PhoneticSpellings:
     replacements: Dict[str, str] = field(default_factory=dict)
@@ -453,6 +475,10 @@ class TTSVoice:
             params["noise_w_scale"] = syn_config.noise_w_scale
         # Engine-specific extras from SynthesisConfig
         params.update(syn_config.extra_params)
+        # Voice cloning: a reference clip is turned into the conditioning vector by
+        # the cloning adapter (it owns the speaker encoder). We just normalise it.
+        if syn_config.speaker_reference is not None:
+            params["reference_audio"] = _load_reference_audio(syn_config.speaker_reference)
 
         request = AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,
