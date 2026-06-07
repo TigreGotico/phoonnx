@@ -687,8 +687,12 @@ class MisakiPhonemizer(BasePhonemizer):
     """
     MISAKI_LANGS = ['en-US', 'en-GB', 'ko', 'ja', 'vi', 'zh']
 
-    def __init__(self):
+    def __init__(self, zh_version: str = "1.0"):
         super().__init__(Alphabet.IPA)
+        # Kokoro's zh G2P changed representation between releases: "1.0" emits IPA
+        # (with tone marks ↓↗↘), "1.1" emits bopomofo (ㄅㄆㄇ) + tone numbers. The
+        # version must match the model's training vocab.
+        self.zh_version = zh_version or "1.0"
         self.g2p_en = self.g2p_zh = self.g2p_ko = self.g2p_vi = self.g2p_ja = None
 
     @classmethod
@@ -716,7 +720,7 @@ class MisakiPhonemizer(BasePhonemizer):
         if lang == "zh":
             if self.g2p_zh is None:
                 from misaki.zh import ZHG2P
-                self.g2p_zh = ZHG2P()
+                self.g2p_zh = ZHG2P(version=self.zh_version)
             return self.g2p_zh
         elif lang == "ko":
             if self.g2p_ko is None:

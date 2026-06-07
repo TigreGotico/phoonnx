@@ -535,7 +535,7 @@ def get_phonemizer(phoneme_type: PhonemeType,
     elif phoneme_type == PhonemeType.EPITRAN:
         phonemizer = EpitranPhonemizer()
     elif phoneme_type == PhonemeType.MISAKI:
-        phonemizer = MisakiPhonemizer()
+        phonemizer = MisakiPhonemizer(model or "1.0")
     elif phoneme_type == PhonemeType.TRANSPHONE:
         phonemizer = TransphonePhonemizer()
     elif phoneme_type == PhonemeType.MIRANDESE:
