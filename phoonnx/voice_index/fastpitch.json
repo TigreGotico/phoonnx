@@ -30,5 +30,37 @@
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/coqui-ljspeech-hifigan-v2/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/coqui-ljspeech-hifigan-v2/vocoder.json",
         "vocoder_type": "hifigan"
+    },
+    "coqui/en-ljspeech-speedy-speech": {
+        "voice_id": "coqui/en-ljspeech-speedy-speech",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-fastpitch/resolve/main/coqui-ljspeech-speedyspeech/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-fastpitch/resolve/main/coqui-ljspeech-speedyspeech/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "gruut",
+        "alphabet": "ipa",
+        "engine": "fastpitch",
+        "lang": "en-us",
+        "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
+        "vocoder_type": "vocos"
+    },
+    "coqui/en-vctk-fast_pitch": {
+        "voice_id": "coqui/en-vctk-fast_pitch",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-fastpitch/resolve/main/coqui-vctk-fastpitch/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-fastpitch/resolve/main/coqui-vctk-fastpitch/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "gruut",
+        "alphabet": "ipa",
+        "engine": "fastpitch",
+        "lang": "en-us",
+        "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
+        "vocoder_type": "vocos"
     }
 }
