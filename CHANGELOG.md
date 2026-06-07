@@ -10,6 +10,7 @@
 
 **Merged pull requests:**
 
+- chore\(index\): migrate the last 3 voices to the OVOS mirror [\#155](https://github.com/TigreGotico/phoonnx/pull/155) ([JarbasAl](https://github.com/JarbasAl))
 - chore\(index\): BCP-47 lang codes + regenerate VOICES.md [\#154](https://github.com/TigreGotico/phoonnx/pull/154) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): VITS2 + StyleTTS2 family \(pure StyleTTS2 + Kokoro, multilingual\) [\#153](https://github.com/TigreGotico/phoonnx/pull/153) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(voices\): coqui SpeedySpeech + en/vctk FastPitch \(108-spk\) [\#151](https://github.com/TigreGotico/phoonnx/pull/151) ([JarbasAl](https://github.com/JarbasAl))
