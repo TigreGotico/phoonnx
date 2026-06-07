@@ -120,6 +120,7 @@ def _register_builtins() -> None:
     from phoonnx.engines.glowtts import GlowTTSAdapter
     from phoonnx.engines.mixertts import MixerTTSAdapter
     from phoonnx.engines.fastpitch import FastPitchAdapter
+    from phoonnx.engines.styletts2 import StyleTTS2Adapter
 
     # OptiSpeech shares VITS-like x/x_lengths/scales inputs with Matcha, but has
     # a distinctive metadata + wav/durations output signature — check it first.
@@ -129,6 +130,7 @@ def _register_builtins() -> None:
     register_engine("glowtts", GlowTTSAdapter, detect_priority=42)
     register_engine("mixertts", MixerTTSAdapter, detect_priority=36)
     register_engine("fastpitch", FastPitchAdapter, detect_priority=34)
+    register_engine("styletts2", StyleTTS2Adapter, detect_priority=33)
 
 
 _register_builtins()

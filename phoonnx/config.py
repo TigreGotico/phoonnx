@@ -25,6 +25,7 @@ class Engine(str, Enum):
     GLOWTTS = "glowtts"  # flow-based mel model + separate vocoder (Larynx)
     MIXERTTS = "mixertts"  # MLP-Mixer/FastPitch-style mel model + separate vocoder
     FASTPITCH = "fastpitch"  # FastSpeech2-style mel model + separate vocoder
+    STYLETTS2 = "styletts2"  # StyleTTS2 / Kokoro end-to-end (tokens + style -> wav)
 
 
 class Alphabet(str, Enum):
@@ -41,6 +42,7 @@ class Alphabet(str, Enum):
     KUNREI = "kunrei" # ja romanization
     NIHON = "nihon" # ja romanization
     PINYIN = "pinyin" # zh
+    BOPOMOFO = "bopomofo" # zh (zhuyin) — misaki v1.1 representation
     ERAAB = "eraab" # fa
     COTOVIA = "cotovia" # gl
     HANZI = "hanzi" # zh
@@ -52,7 +54,12 @@ class PhonemeType(str, Enum):
     UNICODE = "unicode"  # unicode codepoints
     GRAPHEMES = "graphemes" # text characters
 
-    MISAKI = "misaki"
+    MISAKI = "misaki"  # back-compat dispatcher across misaki languages
+    MISAKI_EN = "misaki_en"
+    MISAKI_JA = "misaki_ja"
+    MISAKI_ZH = "misaki_zh"  # representation follows alphabet: ipa (v1.0) | bopomofo (v1.1)
+    MISAKI_KO = "misaki_ko"
+    MISAKI_VI = "misaki_vi"
     ESPEAK = "espeak"
     GRUUT = "gruut"
     GORUUT = "goruut"
@@ -516,6 +523,8 @@ def get_phonemizer(phoneme_type: PhonemeType,
                        G2pCPhonemizer, G2pMPhonemizer, G2PKPhonemizer, G2PEnPhonemizer,
                        TransphonePhonemizer, MirandesePhonemizer, GoruutPhonemizer, TugaphonePhonemizer,
                        GruutPhonemizer, GraphemePhonemizer, MantoqPhonemizer, MisakiPhonemizer,
+                       MisakiEnPhonemizer, MisakiJaPhonemizer, MisakiZhPhonemizer,
+                       MisakiKoPhonemizer, MisakiViPhonemizer,
                        KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
                        CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer, XpinyinPhonemizer,
                        UnicodeCodepointPhonemizer, JiebaPhonemizer)
@@ -534,7 +543,17 @@ def get_phonemizer(phoneme_type: PhonemeType,
     elif phoneme_type == PhonemeType.EPITRAN:
         phonemizer = EpitranPhonemizer()
     elif phoneme_type == PhonemeType.MISAKI:
-        phonemizer = MisakiPhonemizer()
+        phonemizer = MisakiPhonemizer(alphabet)
+    elif phoneme_type == PhonemeType.MISAKI_EN:
+        phonemizer = MisakiEnPhonemizer(alphabet)
+    elif phoneme_type == PhonemeType.MISAKI_JA:
+        phonemizer = MisakiJaPhonemizer(alphabet)
+    elif phoneme_type == PhonemeType.MISAKI_ZH:
+        phonemizer = MisakiZhPhonemizer(alphabet)
+    elif phoneme_type == PhonemeType.MISAKI_KO:
+        phonemizer = MisakiKoPhonemizer(alphabet)
+    elif phoneme_type == PhonemeType.MISAKI_VI:
+        phonemizer = MisakiViPhonemizer(alphabet)
     elif phoneme_type == PhonemeType.TRANSPHONE:
         phonemizer = TransphonePhonemizer()
     elif phoneme_type == PhonemeType.MIRANDESE:

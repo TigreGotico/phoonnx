@@ -33,6 +33,11 @@ class TTSModelInfo:
     vocoder_config_url: Optional[str] = None
     vocoder_type: Optional[str] = None  # "vocos" | "wavenext" | "hifigan"
 
+    # StyleTTS2/Kokoro carry a per-voice *style* embedding (Kokoro: a [510, 256]
+    # pack indexed by token length). The manager downloads it alongside the model
+    # and the StyleTTS2 adapter loads it from engine_params["style_path"].
+    style_url: Optional[str] = None
+
     @property
     def config(self) -> VoiceConfig:
         # lazy loaded
@@ -264,12 +269,28 @@ class TTSModelInfo:
                     json.dump(r.json(), f, ensure_ascii=False, indent=4)
         return vocoder_path
 
+    def download_style(self) -> Optional[Path]:
+        """Download the per-voice StyleTTS2/Kokoro style embedding, if any."""
+        if not self.style_url:
+            return None
+        style_path = self.voice_path / "style.bin"
+        if not style_path.is_file():
+            with requests.get(self.style_url, timeout=120, stream=True) as r:
+                r.raise_for_status()
+                with open(style_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+        return style_path
+
     def engine_params(self) -> Dict[str, Any]:
         """
         Build the engine_params dict for synthesis, resolving the vocoder to
         its locally-downloaded path.  Empty for single-stage engines.
         """
         params: Dict[str, Any] = {}
+        style_path = self.download_style()
+        if style_path:
+            params["style_path"] = str(style_path)
         vocoder_path = self.download_vocoder()
         if vocoder_path:
             params["vocoder_path"] = str(vocoder_path)
@@ -459,6 +480,8 @@ class TTSModelManager:
         self.cache.update(JsonStorage(str(base_path / "mixertts.json")))
         self.cache.update(JsonStorage(str(base_path / "fastpitch.json")))
         self.cache.update(JsonStorage(str(base_path / "coqui_community.json")))
+        self.cache.update(JsonStorage(str(base_path / "vits2.json")))
+        self.cache.update(JsonStorage(str(base_path / "styletts2.json")))
         self.cache.update(JsonStorage(str(base_path / "coqui_vits.json")))
         self.cache.update(JsonStorage(str(base_path / "BSC.json")))
         self.voices = {}

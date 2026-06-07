@@ -13,7 +13,9 @@ from phoonnx.phonemizers.ko import KoG2PPhonemizer, G2PKPhonemizer
 from phoonnx.phonemizers.zh import (G2pCPhonemizer, G2pMPhonemizer, PypinyinPhonemizer,
                                     XpinyinPhonemizer, JiebaPhonemizer)
 from phoonnx.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, MisakiPhonemizer, GoruutPhonemizer,
-                                     GruutPhonemizer, ByT5Phonemizer, CharsiuPhonemizer, TransphonePhonemizer)
+                                     GruutPhonemizer, ByT5Phonemizer, CharsiuPhonemizer, TransphonePhonemizer,
+                                     MisakiEnPhonemizer, MisakiJaPhonemizer, MisakiZhPhonemizer,
+                                     MisakiKoPhonemizer, MisakiViPhonemizer)
 from phoonnx.phonemizers.mwl import MirandesePhonemizer
 
 Phonemizer = Union[
