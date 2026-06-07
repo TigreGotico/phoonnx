@@ -184,6 +184,8 @@ class VoiceConfig:
     noise_scale: float = DEFAULT_NOISE_SCALE
     noise_w_scale: float = DEFAULT_NOISE_W_SCALE
     add_diacritics: bool = None # arabic and hebrew
+    # diacritizer model name (for languages that need one — e.g. Arabic uses text2tashkeel models like "rawi-ensemble")
+    diacritizer_model: str = "rawi-ensemble"
 
     # tokenization settings
     tokenizer: Optional[TTSTokenizer] = None
@@ -334,6 +336,7 @@ class VoiceConfig:
         phoneme_type = phoneme_type or config.get("phoneme_type")
         alphabet = alphabet or config.get("alphabet")
         diacritics = False
+        ar_diacritizer_model = "rawi-ensemble"
 
         if (engine == Engine.CHATTERBOX or
                 (isinstance(engine, str) and engine == "chatterbox") or
@@ -359,6 +362,7 @@ class VoiceConfig:
             phoneme_type = phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK)
             alphabet = alphabet or Alphabet(config.get("alphabet", "ipa"))
             diacritics = config.get("inference", {}).get("add_diacritics", True)
+            ar_diacritizer_model = config.get("inference", {}).get("diacritizer_model", "rawi-ensemble")
 
             # Preserve the model's own special tokens when present (a native
             # config may use any pad/blank/bos/eos); fall back to phoonnx defaults.
@@ -501,6 +505,7 @@ class VoiceConfig:
             length_scale=inference.get("length_scale", DEFAULT_LENGTH_SCALE),
             noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
             add_diacritics=diacritics,
+            diacritizer_model=ar_diacritizer_model,
             lang_code=lang_code,
             alphabet=Alphabet(alphabet) if isinstance(alphabet, str) else alphabet,
             engine=Engine(engine) if isinstance(engine, str) else engine,
@@ -553,6 +558,7 @@ class VoiceConfig:
             "lang_id_map": dict(self.lang_id_map or {}),
             "phonemizer_model": self.phonemizer_model,
             "add_diacritics": self.add_diacritics,
+            "diacritizer_model": self.diacritizer_model,
             "inference": {
                 "noise_scale": self.noise_scale,
                 "length_scale": self.length_scale,
@@ -653,6 +659,11 @@ class SynthesisConfig:
     config's own ``add_diacritics`` so a model that ships undiacritized (e.g.
     grapheme F5-TTS voices) is not force-diacritized by the caller."""
     add_diacritics: Optional[bool] = None
+
+    # diacritizer model name (for languages that need one — e.g. Arabic uses text2tashkeel
+    # models like "rawi-ensemble"). ``None`` (the default) defers to the voice config's
+    # own ``diacritizer_model`` choice; an explicit value here overrides it.
+    diacritizer_model: Optional[str] = None
 
     # Engine-specific per-call params (d_factor, p_factor, e_factor, …)
     extra_params: Dict[str, Any] = field(default_factory=dict)

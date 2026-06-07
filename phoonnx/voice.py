@@ -395,13 +395,20 @@ class TTSVoice:
         # user pronunciation overrides + (Arabic/Hebrew) diacritics.
         if self.phonetic_spellings and syn_config.enable_phonetic_spellings:
             text = self.phonetic_spellings.apply(text)
+
         # A per-call value wins; when unset (None) defer to the voice config so a
         # model that ships undiacritized is not force-diacritized by the caller.
         do_diacritics = syn_config.add_diacritics
         if do_diacritics is None:
             do_diacritics = self.config.add_diacritics
         if do_diacritics:
-            text = self.phonemizer.add_diacritics(text, self.config.lang_code)
+            # same for the diacritizer model itself: an explicit per-call model wins,
+            # otherwise fall back to the voice config's own choice.
+            diacritizer_model = syn_config.diacritizer_model or self.config.diacritizer_model
+            text = self.phonemizer.add_diacritics(
+                text, self.config.lang_code,
+                model=diacritizer_model)
+            LOG.debug("text+diacritics=%s", text)
 
         # Alphabet dispatch (unified model + language-aware phonemizers):
         #   src == tgt          -> grapheme/text-token models use the adapter;
