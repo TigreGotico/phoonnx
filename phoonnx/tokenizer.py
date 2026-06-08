@@ -792,6 +792,21 @@ class ChatterboxMTLTokenizer(BPETokenizer):
         return fn(text) if fn else text
 
 
+def load_chatterbox_tokenizer(tokenizer_json: str) -> BPETokenizer:
+    """Build the right Chatterbox tokenizer from a ``tokenizer.json``.
+
+    The multilingual checkpoint's vocab carries a ``[SPACE]`` token (its language front
+    end); base/turbo don't. So a ``[SPACE]`` token selects ``ChatterboxMTLTokenizer``,
+    otherwise a plain ``BPETokenizer``. The raw tokenizer is loaded once and shared.
+    """
+    from tokenizers import Tokenizer
+    raw = Tokenizer.from_file(str(tokenizer_json))
+    cls = ChatterboxMTLTokenizer if raw.token_to_id("[SPACE]") is not None else BPETokenizer
+    tok = cls.__new__(cls)
+    tok._tok = raw
+    return tok
+
+
 if __name__ == "__main__":
     import json
 

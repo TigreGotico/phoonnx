@@ -258,7 +258,8 @@ class VoiceConfig:
                   phoneme_type: Optional[Union[str, PhonemeType]] = None,
                   alphabet: Optional[Union[str, Alphabet]] = None,
                   engine: Optional[Union[str, Engine]] = None,
-                   engine_params: Optional[Dict[str, Any]] = None) -> "VoiceConfig":
+                   engine_params: Optional[Dict[str, Any]] = None,
+                   bpe_tokenizer_json: Optional[str] = None) -> "VoiceConfig":
         """
         Create a VoiceConfig from a model configuration dictionary and optional external phoneme data.
         
@@ -283,7 +284,22 @@ class VoiceConfig:
         alphabet = alphabet or config.get("alphabet")
         diacritics = False
 
-        if VoiceConfig.is_phoonnx(config):
+        if (engine == Engine.CHATTERBOX or
+                (isinstance(engine, str) and engine == "chatterbox") or
+                config.get("engine") == "chatterbox"):
+            # Chatterbox tokenizes raw text with its own BPE; the multilingual variant
+            # uses ChatterboxMTLTokenizer (detected by the [SPACE] token).
+            engine = Engine.CHATTERBOX
+            if not bpe_tokenizer_json:
+                raise ValueError("Chatterbox voices require a tokenizer.json (bpe_tokenizer_json)")
+            from phoonnx.tokenizer import load_chatterbox_tokenizer
+            tokenizer = load_chatterbox_tokenizer(bpe_tokenizer_json)
+            phoneme_type = phoneme_type or PhonemeType.UNICODE
+            alphabet = alphabet or Alphabet.UNICODE
+            config.setdefault("audio", {}).setdefault("sample_rate", 24000)
+            config.setdefault("num_symbols", tokenizer._tok.get_vocab_size())
+
+        elif VoiceConfig.is_phoonnx(config):
             engine = engine or config.get("engine") or Engine.PHOONNX
 
             lang_code = lang_code or config.get("lang_code")

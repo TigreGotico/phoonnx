@@ -88,7 +88,16 @@ class TTSModelInfo:
             phoneme_type = self.phoneme_type if self.phoneme_type else None
             engine = self.engine if self.engine else None
 
-            if self.vocab_override:
+            if self.engine == Engine.CHATTERBOX or config.get("engine") == "chatterbox":
+                # Chatterbox carries its own subword BPE (tokenizer.json); no vocab/tokens.
+                tok_json = self.download_bpe_tokenizer()
+                self._config = VoiceConfig.from_dict(config,
+                                                     alphabet=alphabet,
+                                                     phoneme_type=phoneme_type,
+                                                     engine=engine,
+                                                     lang_code=lang_code,
+                                                     bpe_tokenizer_json=str(tok_json) if tok_json else None)
+            elif self.vocab_override:
                 self._config = VoiceConfig.from_dict(config,
                                                      vocab=self.vocab_override,
                                                      alphabet=alphabet,
@@ -344,6 +353,17 @@ class TTSModelInfo:
                                 f.write(chunk)
             paths[key] = aux_path
         return paths
+    def download_bpe_tokenizer(self) -> Optional[Path]:
+        """Download the HF ``tokenizer.json`` (Chatterbox subword BPE) from
+        ``tokenizer_config_url``, if any."""
+        if not self.tokenizer_config_url:
+            return None
+        path = self.voice_path / "tokenizer.json"
+        if not path.is_file():
+            r = requests.get(self.tokenizer_config_url, timeout=60)
+            r.raise_for_status()
+            path.write_bytes(r.content)
+        return path
 
     def engine_params(self) -> Dict[str, Any]:
         """
