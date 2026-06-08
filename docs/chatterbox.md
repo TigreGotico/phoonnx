@@ -72,6 +72,13 @@ model's tokenizer. The repetition penalty runs over all emitted tokens and decod
 temperature/top-p sampling (greedy at `temperature=0`); a trailing silence token is
 appended before the decoder.
 
+**Multilingual language selection:** the multilingual model's tokenizer prefixes a
+`[<lang>]` token (from the voice's `lang_code`), lowercases + NFKD-normalises, and
+replaces spaces with `[SPACE]`. Latin/Greek/Cyrillic languages (en, pt, es, fr, de, it,
+nl, el, tr, sv, …) work directly. Five languages need extra per-language text
+preprocessing not yet ported — **zh** (Cangjie), **ja** (hiragana), **ko**, **he**
+(diacritics), **ru** (stress) — and will mispronounce until that's added.
+
 ## A note on performance
 
 It's autoregressive, so synthesis cost scales with output length (one Llama step per
