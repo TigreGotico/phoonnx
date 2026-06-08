@@ -51,3 +51,5 @@ with wave.open("output.wav", "wb") as wav_file:
 - [Training](training.md)
 - [CLI Reference](cli.md)
 - [OVOS Plugin](ovos_plugin.md)
+- [Engine Architecture](engines.md) · [Vocoders](vocoders.md)
+- Engine guides: [Matcha](matcha.md) · [GlowTTS](glowtts.md) · [OptiSpeech](optispeech.md) · [MixerTTS](mixertts.md) · [FastPitch](fastpitch.md) · [ZipVoice](zipvoice.md)

@@ -73,14 +73,14 @@ Lower `detect_priority` values are probed first during auto-detection.
 | Adapter | File | Detection |
 |---|---|---|
 | VITS / Piper / Mimic3 / Coqui / VITS2 / YourTTS-VITS | `phoonnx/engines/vits.py` | `model_type == "vits"`, `"scales"` input, piper/mimic3 signatures |
-| Matcha | `phoonnx/engines/matcha.py` | `engine == "matcha"` (flow-matching mel + separate vocoder) |
-| GlowTTS | `phoonnx/engines/glowtts.py` | `engine == "glowtts"` |
-| OptiSpeech | `phoonnx/engines/optispeech.py` | `engine == "optispeech"` (wav + durations outputs) |
-| MixerTTS | `phoonnx/engines/mixertts.py` | `engine == "mixertts"` |
-| FastPitch / SpeedySpeech | `phoonnx/engines/fastpitch.py` | `engine == "fastpitch"` |
+| [Matcha](matcha.md) | `phoonnx/engines/matcha.py` | `engine == "matcha"` (flow-matching mel + separate vocoder) |
+| [GlowTTS](glowtts.md) | `phoonnx/engines/glowtts.py` | `engine == "glowtts"` |
+| [OptiSpeech](optispeech.md) | `phoonnx/engines/optispeech.py` | `engine == "optispeech"` (wav + durations outputs) |
+| [MixerTTS](mixertts.md) | `phoonnx/engines/mixertts.py` | `engine == "mixertts"` |
+| [FastPitch](fastpitch.md) / SpeedySpeech | `phoonnx/engines/fastpitch.py` | `engine == "fastpitch"` |
 | StyleTTS2 / Kokoro | `phoonnx/engines/styletts2.py` | `engine in ("styletts2", "kokoro")` — supports d-vector [cloning](cloning.md) |
 | YourTTS | `phoonnx/engines/yourtts.py` | `engine == "yourtts"` — d-vector [cloning](cloning.md) |
-| ZipVoice | `phoonnx/engines/zipvoice.py` | `engine == "zipvoice"` — first **iterative** engine (flow-matching ODE loop), in-context [cloning](cloning.md) |
+| [ZipVoice](zipvoice.md) | `phoonnx/engines/zipvoice.py` | `engine == "zipvoice"` — first **iterative** engine (flow-matching ODE loop), in-context [cloning](cloning.md) |
 
 ---
 

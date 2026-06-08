@@ -65,9 +65,9 @@ A cloning voice names its encoder in `engine_params` (`speaker_encoder_url` /
 
 ## In-context engine (ZipVoice)
 
-ZipVoice is a flow-matching model that **infills** the target after the reference, so it
-needs both the reference audio **and its transcription** — the text aligns the audio to
-phonemes:
+[ZipVoice](zipvoice.md) is a flow-matching model that **infills** the target after the
+reference, so it needs both the reference audio **and its transcription** — the text
+aligns the audio to phonemes:
 
 ```python
 audio = voice.synthesize(
