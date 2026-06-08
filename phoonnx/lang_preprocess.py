@@ -2,10 +2,12 @@
 
 Some scripts are ambiguous about pronunciation, so the model is trained on a transformed
 form of the text that must be reproduced at inference. Korean (Hangul → Jamo) is pure
-Python and always available; Japanese, Hebrew, Russian and Chinese each need an optional
-dependency and degrade to the raw text (with a warning) when it is missing.
+Python and always available; Japanese (pykakasi) and Chinese (spacy-pkuseg) need an
+optional dependency; Russian stress comes from ``stressonnx`` (pure onnxruntime). Each
+degrades to the raw text (with a warning) when its backend is missing. Hebrew/Arabic
+vocalization is the universal ``add_diacritics`` flag, not here.
 
-Vendored from Resemble AI's Chatterbox multilingual tokenizer. Currently consumed by
+Ported from Resemble AI's Chatterbox multilingual tokenizer. Currently consumed by
 ``phoonnx.tokenizer.ChatterboxMTLTokenizer``; kept standalone so other engines can reuse
 the transforms (a later pass will fold text preprocessing into a shared config).
 """
@@ -65,15 +67,16 @@ def japanese_to_hiragana(text: str) -> str:
 
 
 def russian_add_stress(text: str) -> str:
-    """Add stress marks (so the model knows vowel reduction). Needs ``russian_text_stresser``."""
+    """Add stress marks (so the model knows vowel reduction) via ``stressonnx`` — a
+    pure-onnxruntime stressor (no torch at runtime)."""
     global _russian_stresser
     try:
         if _russian_stresser is None:
-            from russian_text_stresser.text_stresser import RussianTextStresser
-            _russian_stresser = RussianTextStresser()
-        return _russian_stresser.stress_text(text)
+            from stressonnx import stress
+            _russian_stresser = stress
+        return _russian_stresser(text, "ru")
     except ImportError:
-        LOG.warning("russian_text_stresser not installed — Russian stress skipped")
+        LOG.warning("stressonnx not installed — Russian stress skipped")
         return text
     except Exception as e:
         LOG.warning("Russian stress labeling failed: %s", e)

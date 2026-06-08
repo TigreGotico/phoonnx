@@ -296,6 +296,8 @@ class VoiceConfig:
             tokenizer = load_chatterbox_tokenizer(bpe_tokenizer_json)
             phoneme_type = phoneme_type or PhonemeType.UNICODE
             alphabet = alphabet or Alphabet.UNICODE
+            # Arabic/Hebrew need vocalization (niqqud/tashkeel) for correct pronunciation.
+            diacritics = (lang_code or "").lower().startswith(("ar", "he"))
             config.setdefault("audio", {}).setdefault("sample_rate", 24000)
             config.setdefault("num_symbols", tokenizer._tok.get_vocab_size())
 

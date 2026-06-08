@@ -84,11 +84,11 @@ with `[SPACE]`. Latin/Greek/Cyrillic languages (en, pt, es, fr, de, it, nl, el, 
 | **ko** | Hangul → Jamo | none (pure Python, always on) |
 | **ja** | kanji → hiragana | `pykakasi` |
 | **zh** | Cangjie codes | `spacy-pkuseg` (+ HF `Cangjie5_TC.json`) |
-| **ru** | add stress marks | `russian_text_stresser` (heavy: spaCy + Wiktionary DB; not on PyPI — install manually) |
+| **ru** | add stress marks | `stressonnx` (pure-onnxruntime stressor, no torch) |
 
 Install the ja/zh deps with `pip install phoonnx[chatterbox-multilingual]`. Hebrew/Arabic
 use the universal `add_diacritics` SynthesisConfig flag (set it on those voices), not a
-tokenizer transform. `ru` needs `russian_text_stresser` installed manually. Any missing dependency degrades to the raw text
+tokenizer transform. `ru` stress comes from `stressonnx` (pure-onnxruntime). Any missing dependency degrades to the raw text
 with a warning (so the rest of the pipeline still runs).
 
 ## A note on performance
