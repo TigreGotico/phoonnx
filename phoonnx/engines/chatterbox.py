@@ -149,7 +149,6 @@ class ChatterboxAdapter(BaseOnnxAdapter):
 
         generated = np.array([[START_SPEECH_TOKEN]], np.int64)
         past = attention_mask = next_token = None
-        cache_len = 0
         for step in range(self.MAX_NEW_TOKENS):
             feed_in = embed_feed(input_ids, embed_pos) if step == 0 \
                 else embed_feed(next_token, np.full((1, 1), step, np.int64))
@@ -160,9 +159,13 @@ class ChatterboxAdapter(BaseOnnxAdapter):
                 past = {n: np.zeros([batch, self.num_kv_heads, 0, self.head_dim], np.float32)
                         for n in self.past_names}
                 attention_mask = np.ones((batch, seq_len), np.int64)
-                lm_pos = np.arange(seq_len)[None, :].astype(np.int64); cache_len = seq_len
+                lm_pos = np.arange(seq_len)[None, :].astype(np.int64)
             else:
-                lm_pos = np.array([[cache_len]], np.int64); cache_len += 1
+                # GPT-2 (turbo) absolute PE: speech positions reset to 0 (per the
+                # reference T3 inference). NOTE: this alone does not yet make turbo
+                # intelligible — its full ONNX inference scheme is not publicly
+                # documented; treated as experimental.
+                lm_pos = np.array([[step - 1]], np.int64)
             feed = dict(inputs_embeds=inputs_embeds, attention_mask=attention_mask, **past)
             if self.lm_needs_pos:                       # GPT-2-style LM (turbo)
                 feed["position_ids"] = lm_pos
