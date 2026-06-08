@@ -69,3 +69,11 @@ def test_bpe_tokenizer_joins_units():
     # a list of char units (from the UNICODE-style path) is joined back to text first
     assert bpe.tokenize(["a", "b", "c"]) == [97, 98, 99]
     assert bpe.tokenize("abc") == [97, 98, 99]
+
+
+def test_sample_top_p_picks_dominant():
+    from phoonnx.engines.chatterbox import _sample_top_p
+    rng = np.random.default_rng(0)
+    logits = np.array([[12.0, 0.0, -5.0, 0.1]])      # token 0 dominates the nucleus
+    tok = _sample_top_p(logits, 0.8, 0.9, rng)
+    assert tok.shape == (1, 1) and tok[0, 0] == 0
