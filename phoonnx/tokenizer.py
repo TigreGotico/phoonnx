@@ -728,6 +728,36 @@ class TTSTokenizer:
                             use_eos_bos=use_eos_bos)
 
 
+class BPETokenizer:
+    """Subword (BPE) tokenizer — raw text -> subword ids via a HuggingFace ``tokenizer.json``.
+
+    The complement to the vocab-lookup :class:`TTSTokenizer`: where that maps phoneme/
+    char strings to ids one-to-one, this BPE-encodes raw text into subword ids — for
+    text-token models like Chatterbox. It satisfies the same call the voice uses
+    (``tokenize(units) -> ids``), so it slots in as the voice's tokenizer. Pair it with
+    the ``UNICODE`` phonemizer, which passes text through as characters; joining those
+    characters reconstructs the text for BPE encoding. No blank/BOS/EOS insertion — the
+    BPE model owns spacing and special tokens.
+    """
+
+    def __init__(self, tokenizer_json: str):
+        from tokenizers import Tokenizer
+        self._tok = Tokenizer.from_file(str(tokenizer_json))
+
+    # vocab-lookup token roles do not apply to subword tokenization
+    pad_id = None
+    blank_id = None
+    blank_word_id = None
+
+    def tokenize(self, text: Union[str, List[str]]) -> List[int]:
+        if isinstance(text, (list, tuple)):
+            text = "".join(text)
+        return list(self._tok.encode(text).ids)
+
+    def encode(self, text: Union[str, List[str]]) -> List[int]:
+        return self.tokenize(text)
+
+
 if __name__ == "__main__":
     import json
 

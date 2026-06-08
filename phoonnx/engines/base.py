@@ -109,6 +109,10 @@ class BaseOnnxAdapter(ABC):
     # Optional
     # ------------------------------------------------------------------
 
+    #: If True, the engine tokenizes raw text with its own (subword) tokenizer and
+    #: TTSVoice skips phonemization/normalization entirely (e.g. Chatterbox's BPE).
+    tokenizes_raw_text: bool = False
+
     def synthesize(
         self,
         request: AdapterSynthesisRequest,

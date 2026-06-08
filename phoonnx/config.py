@@ -28,6 +28,7 @@ class Engine(str, Enum):
     STYLETTS2 = "styletts2"  # StyleTTS2 / Kokoro end-to-end (tokens + style -> wav)
     YOURTTS = "yourtts"  # multilingual VITS conditioned on a speaker d-vector (cloning)
     ZIPVOICE = "zipvoice"  # flow-matching, in-context cloning (iterative ODE loop)
+    CHATTERBOX = "chatterbox"  # autoregressive codec-LM, d-vector cloning + exaggeration
 
 
 class Alphabet(str, Enum):
@@ -498,6 +499,10 @@ class SynthesisConfig:
     used to phonemize the reference in *its* language — which may differ from the
     target text's. Defaults to the voice's ``lang_code``. Enables cross-lingual
     cloning (a Portuguese reference speaking English). In-context engines only."""
+
+    exaggeration: Optional[float] = None
+    """Expressiveness / emotional intensity (0.0–1.0, default 0.5) for engines that
+    support it (Chatterbox). Higher = more exaggerated prosody. Ignored otherwise."""
 
     length_scale: Optional[float] = None
     """Phoneme length scale (< 1 is faster, > 1 is slower)."""

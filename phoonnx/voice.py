@@ -363,12 +363,18 @@ class TTSVoice:
             text = self.phonemizer.add_diacritics(text, self.config.lang_code)
             LOG.debug("text+diacritics=%s", text)
 
-        # All phonemization goes through the unified self.phonemize method
-        sentence_phonemes = self.phonemize(text)
-        LOG.debug("phonemes=%s", sentence_phonemes)
-        all_phoneme_ids_for_synthesis = [
-            self.phonemes_to_ids(phonemes) for phonemes in sentence_phonemes if phonemes
-        ]
+        # Text-token engines (Chatterbox) consume raw text through their own subword
+        # tokenizer and do their own normalization — bypass phonemization entirely
+        # (phoneme front ends strip punctuation / expand numbers, which would corrupt
+        # the input). Every other engine goes through the unified self.phonemize.
+        if getattr(self.adapter, "tokenizes_raw_text", False):
+            all_phoneme_ids_for_synthesis = [self.tokenizer.tokenize(text)]
+        else:
+            sentence_phonemes = self.phonemize(text)
+            LOG.debug("phonemes=%s", sentence_phonemes)
+            all_phoneme_ids_for_synthesis = [
+                self.phonemes_to_ids(phonemes) for phonemes in sentence_phonemes if phonemes
+            ]
 
         for phoneme_ids in all_phoneme_ids_for_synthesis:
             if not phoneme_ids:
@@ -499,6 +505,8 @@ class TTSVoice:
         if syn_config.speaker_reference_text:
             params["prompt_tokens"] = self._prompt_token_ids(
                 syn_config.speaker_reference_text, syn_config.speaker_reference_lang)
+        if syn_config.exaggeration is not None:
+            params["exaggeration"] = syn_config.exaggeration
 
         request = AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,

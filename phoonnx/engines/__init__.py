@@ -123,6 +123,7 @@ def _register_builtins() -> None:
     from phoonnx.engines.styletts2 import StyleTTS2Adapter
     from phoonnx.engines.yourtts import YourTTSAdapter
     from phoonnx.engines.zipvoice import ZipVoiceAdapter
+    from phoonnx.engines.chatterbox import ChatterboxAdapter
 
     # OptiSpeech shares VITS-like x/x_lengths/scales inputs with Matcha, but has
     # a distinctive metadata + wav/durations output signature — check it first.
@@ -135,6 +136,7 @@ def _register_builtins() -> None:
     register_engine("styletts2", StyleTTS2Adapter, detect_priority=33)
     register_engine("yourtts", YourTTSAdapter, detect_priority=32)
     register_engine("zipvoice", ZipVoiceAdapter, detect_priority=31)
+    register_engine("chatterbox", ChatterboxAdapter, detect_priority=30)
 
 
 _register_builtins()
