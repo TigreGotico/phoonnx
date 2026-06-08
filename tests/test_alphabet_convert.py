@@ -1,54 +1,116 @@
-"""Tests for phoonnx.alphabet_convert — convert_to_alphabet and ALPHABET_CONVERTERS."""
+"""Tests for phoonnx.alphabet_convert — convert, convert_to_alphabet, ALPHABET_CONVERTERS."""
 import unicodedata
 
-from phoonnx.alphabet_convert import ALPHABET_CONVERTERS, convert_to_alphabet
+import pytest
+
+from phoonnx.alphabet_convert import ALPHABET_CONVERTERS, convert, convert_to_alphabet
 from phoonnx.config import Alphabet
 
 GA = unicodedata.normalize("NFC", "가")  # precomposed Hangul syllable
 
 
 # ---------------------------------------------------------------------------
-# convert_to_alphabet unit tests
+# Generic convert() — registered pair
 # ---------------------------------------------------------------------------
 
-def test_hangul_decomposes_to_jamo():
+def test_convert_hangul_decomposes_to_jamo():
+    result = convert(GA, Alphabet.UNICODE, Alphabet.HANGUL)
+    assert result == unicodedata.normalize("NFD", GA)
+    assert all("ᄀ" <= c <= "ᇿ" for c in result)
+
+
+def test_convert_hira_registered():
+    # Just confirm it runs without error on ASCII (hiragana converter is a passthrough for non-CJK)
+    result = convert("hello", Alphabet.UNICODE, Alphabet.HIRA)
+    assert isinstance(result, str)
+
+
+def test_convert_cangjie_registered():
+    result = convert("hello", Alphabet.UNICODE, Alphabet.CANGJIE)
+    assert isinstance(result, str)
+
+
+# ---------------------------------------------------------------------------
+# Generic convert() — identity and unregistered pairs
+# ---------------------------------------------------------------------------
+
+def test_convert_src_eq_dst_is_identity():
+    text = "hello world"
+    assert convert(text, Alphabet.UNICODE, Alphabet.UNICODE) == text
+
+
+def test_convert_ipa_to_ipa_is_identity():
+    text = "hɛloʊ"
+    assert convert(text, Alphabet.IPA, Alphabet.IPA) == text
+
+
+def test_convert_unregistered_pair_is_identity(caplog):
+    import logging
+    text = "some text"
+    with caplog.at_level(logging.DEBUG, logger="phoonnx.alphabet_convert"):
+        result = convert(text, Alphabet.ARPA, Alphabet.HANGUL)
+    assert result == text
+
+
+def test_convert_unregistered_pair_logs_debug(caplog):
+    import logging
+    with caplog.at_level(logging.DEBUG, logger="phoonnx.alphabet_convert"):
+        convert("x", Alphabet.IPA, Alphabet.CANGJIE)
+    assert any("no converter registered" in r.message for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# Registry shape
+# ---------------------------------------------------------------------------
+
+def test_registry_keyed_by_pairs():
+    for key in ALPHABET_CONVERTERS:
+        assert isinstance(key, tuple) and len(key) == 2
+        src, dst = key
+        assert isinstance(src, Alphabet)
+        assert isinstance(dst, Alphabet)
+
+
+def test_unicode_hangul_in_registry():
+    assert (Alphabet.UNICODE, Alphabet.HANGUL) in ALPHABET_CONVERTERS
+
+
+def test_unicode_hira_in_registry():
+    assert (Alphabet.UNICODE, Alphabet.HIRA) in ALPHABET_CONVERTERS
+
+
+def test_unicode_cangjie_in_registry():
+    assert (Alphabet.UNICODE, Alphabet.CANGJIE) in ALPHABET_CONVERTERS
+
+
+# ---------------------------------------------------------------------------
+# Back-compat convert_to_alphabet shim
+# ---------------------------------------------------------------------------
+
+def test_shim_hangul_decomposes_to_jamo():
     result = convert_to_alphabet(GA, Alphabet.HANGUL)
     assert result == unicodedata.normalize("NFD", GA)
     assert all("ᄀ" <= c <= "ᇿ" for c in result)
 
 
-def test_unicode_passthrough():
+def test_shim_unicode_passthrough():
     text = "hello world"
     assert convert_to_alphabet(text, Alphabet.UNICODE) == text
 
 
-def test_ipa_passthrough():
+def test_shim_ipa_passthrough():
     text = "hɛloʊ"
     assert convert_to_alphabet(text, Alphabet.IPA) == text
 
 
-def test_arpa_passthrough():
+def test_shim_arpa_passthrough():
     text = "HH AH0 L OW1"
     assert convert_to_alphabet(text, Alphabet.ARPA) == text
 
 
-def test_cangjie_is_mapped():
-    # CANGJIE converter is registered; calling it should not crash for ASCII
-    # (ASCII passes through the Lo-category guard unchanged)
+def test_shim_cangjie_is_mapped():
     result = convert_to_alphabet("hello", Alphabet.CANGJIE)
     assert isinstance(result, str)
-
-
-def test_cangjie_in_converters_dict():
-    assert Alphabet.CANGJIE in ALPHABET_CONVERTERS
-
-
-def test_hangul_in_converters_dict():
-    assert Alphabet.HANGUL in ALPHABET_CONVERTERS
-
-
-def test_hira_in_converters_dict():
-    assert Alphabet.HIRA in ALPHABET_CONVERTERS
 
 
 # ---------------------------------------------------------------------------
@@ -57,13 +119,12 @@ def test_hira_in_converters_dict():
 # ---------------------------------------------------------------------------
 
 def test_voice_synthesize_applies_alphabet_conversion(monkeypatch):
-    """The synthesize() preprocessing block converts text when alphabet=HANGUL."""
+    """synthesize() preprocessing converts text when alphabet=HANGUL."""
     from unittest.mock import MagicMock
     from phoonnx.config import VoiceConfig, SynthesisConfig, PhonemeType, Alphabet, Engine
     from phoonnx.tokenizer import TTSTokenizer, Vocabulary
     from phoonnx.voice import TTSVoice
 
-    # Minimal vocabulary and tokenizer
     vocab = Vocabulary(char2idx={c: i for i, c in enumerate("abcdefghijklmnopqrstuvwxyz ")})
     tokenizer = TTSTokenizer(vocab, add_blank_char=False, add_blank_word=False,
                               use_eos_bos=False, blank_at_end=False, blank_at_start=False)
@@ -83,7 +144,6 @@ def test_voice_synthesize_applies_alphabet_conversion(monkeypatch):
 
     captured = {}
 
-    # Stub out the heavy parts
     mock_adapter = MagicMock()
     mock_adapter.encode_text.side_effect = lambda text, voice, sc: captured.update({"text": text}) or [[1, 2, 3]]
     mock_adapter.synthesize.return_value = MagicMock(audio=__import__("numpy").zeros(100, dtype="float32"))
@@ -101,5 +161,4 @@ def test_voice_synthesize_applies_alphabet_conversion(monkeypatch):
     syn_config = SynthesisConfig(add_diacritics=False, add_stress=False)
     list(voice.synthesize(GA, syn_config=syn_config))
 
-    # The text passed to encode_text should be jamo, not the original syllable
     assert captured["text"] == unicodedata.normalize("NFD", GA)

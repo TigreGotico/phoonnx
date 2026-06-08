@@ -1,21 +1,30 @@
-"""Alphabet-keyed grapheme→script conversion step.
+"""Generic pairwise alphabet-conversion util.
 
-Provides a reusable mapping from :class:`~phoonnx.config.Alphabet` values to
-text-transform callables, plus :func:`convert_to_alphabet` which any engine can
-invoke before tokenization to normalise input text into the script representation
-the model was trained on.
+Provides :func:`convert` — a ``(src_alphabet, dst_alphabet)`` keyed dispatch — plus
+the original :func:`convert_to_alphabet` shim for back-compat.
 
-The underlying transforms live in :mod:`phoonnx.lang_preprocess`; this module
-only re-exports them via an :data:`ALPHABET_CONVERTERS` dict so callers are
-decoupled from the language-specific details.
+The underlying transforms live in :mod:`phoonnx.lang_preprocess`; this module only
+re-exports them via :data:`ALPHABET_CONVERTERS` so callers are decoupled from the
+language-specific details.
+
+Engine seam
+-----------
+Engines and adapters that need a script-conversion step should call
+:func:`convert` directly with the ``(src, dst)`` pair they require.
+``TTSVoice.synthesize`` provides a *default* hook that calls
+``convert(text, Alphabet.UNICODE, self.config.alphabet)`` as a best-effort
+pass-through when the engine has not opted into a custom pairing.  Engines that
+need a different source alphabet (e.g. a romanisation step from ARPA) should
+perform their own :func:`convert` call in ``encode_text`` and rely on the fact
+that the default hook is a no-op when ``src == dst`` or no converter is
+registered.
 
 .. note::
    ``ChatterboxMTLTokenizer`` has its own ``_script_transform`` dispatch keyed on
-   ISO language codes.  That dispatch is intentionally left in place for now to
-   avoid double-converting multilingual Chatterbox text.
-
-   # TODO: migrate ChatterboxMTLTokenizer to convert_to_alphabet
+   ISO language codes.  That dispatch is intentionally left in place to avoid
+   double-converting multilingual Chatterbox text.
 """
+import logging
 from typing import Callable
 
 from phoonnx.config import Alphabet
@@ -25,28 +34,73 @@ from phoonnx.lang_preprocess import (
     chinese_to_cangjie,
 )
 
-# Alphabets that require a script-conversion step before tokenization.
-# Keys are Alphabet enum values; values are pure-text callables (str → str).
-# Alphabets absent from this mapping (IPA, UNICODE, ARPA, …) are pass-through.
-ALPHABET_CONVERTERS: dict[Alphabet, Callable[[str], str]] = {
-    Alphabet.HANGUL: hangul_to_jamo,
-    Alphabet.HIRA: japanese_to_hiragana,
-    Alphabet.CANGJIE: chinese_to_cangjie,
+LOG = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Registry: keyed by (src_alphabet, dst_alphabet) pairs.
+# Values are pure text callables (str → str).
+# ---------------------------------------------------------------------------
+
+ALPHABET_CONVERTERS: dict[tuple[Alphabet, Alphabet], Callable[[str], str]] = {
+    (Alphabet.UNICODE, Alphabet.HANGUL): hangul_to_jamo,
+    (Alphabet.UNICODE, Alphabet.HIRA): japanese_to_hiragana,
+    (Alphabet.UNICODE, Alphabet.CANGJIE): chinese_to_cangjie,
 }
 
 
-def convert_to_alphabet(text: str, alphabet: Alphabet) -> str:
-    """Convert *text* to the script representation required by *alphabet*.
+def convert(text: str, src: Alphabet, dst: Alphabet) -> str:
+    """Convert *text* from *src* alphabet representation to *dst*.
 
-    Returns *text* unchanged when no converter is registered for *alphabet*
-    (e.g. :attr:`~phoonnx.config.Alphabet.UNICODE`, :attr:`~phoonnx.config.Alphabet.IPA`).
+    Returns *text* unchanged when:
+
+    * ``src == dst`` (identity — no conversion needed), or
+    * no converter is registered for the ``(src, dst)`` pair (graceful
+      identity with a debug-level log).
 
     Parameters
     ----------
     text:
-        Raw grapheme input text.
+        Input text in the *src* alphabet's representation.
+    src:
+        Source :class:`~phoonnx.config.Alphabet`.
+    dst:
+        Target :class:`~phoonnx.config.Alphabet`.
+
+    Returns
+    -------
+    str
+        Converted text, or *text* unmodified when conversion is not needed or
+        not available.
+    """
+    if src == dst:
+        return text
+    converter = ALPHABET_CONVERTERS.get((src, dst))
+    if converter is None:
+        LOG.debug(
+            "alphabet_convert: no converter registered for (%s, %s); returning text unchanged",
+            src,
+            dst,
+        )
+        return text
+    return converter(text)
+
+
+# ---------------------------------------------------------------------------
+# Back-compat shim — callers passing only a dst alphabet continue to work.
+# ---------------------------------------------------------------------------
+
+def convert_to_alphabet(text: str, alphabet: Alphabet) -> str:
+    """Convert *text* to the script representation required by *alphabet*.
+
+    Back-compat wrapper around :func:`convert` that assumes
+    :attr:`~phoonnx.config.Alphabet.UNICODE` as the source.
+
+    Parameters
+    ----------
+    text:
+        Raw grapheme / Unicode input text.
     alphabet:
-        The target alphabet/script declared by the voice's
+        Target alphabet declared by the voice's
         :class:`~phoonnx.config.VoiceConfig`.
 
     Returns
@@ -54,7 +108,4 @@ def convert_to_alphabet(text: str, alphabet: Alphabet) -> str:
     str
         Script-converted text, or *text* if no conversion is needed.
     """
-    converter = ALPHABET_CONVERTERS.get(alphabet)
-    if converter is None:
-        return text
-    return converter(text)
+    return convert(text, Alphabet.UNICODE, alphabet)
