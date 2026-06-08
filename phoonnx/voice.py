@@ -355,26 +355,17 @@ class TTSVoice:
 
         LOG.debug("text=%s", text)
 
-        # user defined word-level replacements to force correct pronunciation
+        # Text preprocessing — engine-agnostic, operates on the text before encoding:
+        # user pronunciation overrides + (Arabic/Hebrew) diacritics.
         if self.phonetic_spellings and syn_config.enable_phonetic_spellings:
             text = self.phonetic_spellings.apply(text)
-
         if syn_config.add_diacritics:
             text = self.phonemizer.add_diacritics(text, self.config.lang_code)
-            LOG.debug("text+diacritics=%s", text)
 
-        # Text-token engines (Chatterbox) consume raw text through their own subword
-        # tokenizer and do their own normalization — bypass phonemization entirely
-        # (phoneme front ends strip punctuation / expand numbers, which would corrupt
-        # the input). Every other engine goes through the unified self.phonemize.
-        if getattr(self.adapter, "tokenizes_raw_text", False):
-            all_phoneme_ids_for_synthesis = [self.tokenizer.tokenize(text)]
-        else:
-            sentence_phonemes = self.phonemize(text)
-            LOG.debug("phonemes=%s", sentence_phonemes)
-            all_phoneme_ids_for_synthesis = [
-                self.phonemes_to_ids(phonemes) for phonemes in sentence_phonemes if phonemes
-            ]
+        # Engine-specific "text -> model-input token ids": phoneme engines phonemize +
+        # vocab-tokenize, text-token engines (Chatterbox) BPE the raw text. The adapter
+        # owns that transform (BaseOnnxAdapter.encode_text).
+        all_phoneme_ids_for_synthesis = self.adapter.encode_text(text, self, syn_config)
 
         for phoneme_ids in all_phoneme_ids_for_synthesis:
             if not phoneme_ids:

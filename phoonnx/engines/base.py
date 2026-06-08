@@ -109,9 +109,16 @@ class BaseOnnxAdapter(ABC):
     # Optional
     # ------------------------------------------------------------------
 
-    #: If True, the engine tokenizes raw text with its own (subword) tokenizer and
-    #: TTSVoice skips phonemization/normalization entirely (e.g. Chatterbox's BPE).
-    tokenizes_raw_text: bool = False
+    def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
+        """Turn (already-preprocessed) text into the model's input token-id sequences,
+        one per sentence.
+
+        Every engine receives text and produces the ids its model consumes. The default
+        is the phoneme pipeline — phonemize, then vocab-tokenize. Text-token engines
+        (e.g. Chatterbox, whose subword BPE does its own normalization) override this to
+        BPE the raw text directly. ``voice`` exposes the phonemizer / tokenizer.
+        """
+        return [voice.phonemes_to_ids(p) for p in voice.phonemize(text) if p]
 
     def synthesize(
         self,
