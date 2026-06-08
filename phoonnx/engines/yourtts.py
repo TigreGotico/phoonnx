@@ -48,13 +48,15 @@ class YourTTSAdapter(BaseOnnxAdapter):
                 ep["speaker_encoder_path"], ep.get("speaker_encoder_type"))
 
     def _resolve_dvector(self, params: Dict[str, Any]) -> Optional[np.ndarray]:
-        # priority: explicit d-vector > clone from reference audio > bundled fixed voice
-        if params.get("d_vector") is not None:
-            return np.asarray(params["d_vector"], np.float32).reshape(1, -1)
+        # priority: clone from a reference clip > a d-vector passed in params
+        # (explicit per-call OR the engine_params-bundled fixed voice) > bundled vector.
+        # The reference wins so a cloning request overrides the voice's default speaker.
         ref = params.get("reference_audio")
         if ref is not None and self.speaker_encoder is not None:
             audio, sr = ref
             return self.speaker_encoder.encode(audio, sr).reshape(1, -1)
+        if params.get("d_vector") is not None:
+            return np.asarray(params["d_vector"], np.float32).reshape(1, -1)
         return self.d_vector
 
     def build_feed_dict(
