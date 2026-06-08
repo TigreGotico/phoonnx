@@ -154,6 +154,11 @@ class VoiceConfig:
     # Adapter-specific parameters parsed from config JSON
     engine_params: Dict[str, Any] = field(default_factory=dict)
 
+    # Optional BCP47/lang-code -> internal language-token map. Lets a voice override how
+    # its lang_code becomes the model's language token (e.g. dialect models that repurpose
+    # the base tokens with a literal token string). Empty -> derive the token from lang_code.
+    lang_tokens: Dict[str, str] = field(default_factory=dict)
+
     def __post_init__(self):
         """
         Finalize dataclass defaults after initialization.
@@ -259,7 +264,8 @@ class VoiceConfig:
                   alphabet: Optional[Union[str, Alphabet]] = None,
                   engine: Optional[Union[str, Engine]] = None,
                    engine_params: Optional[Dict[str, Any]] = None,
-                   bpe_tokenizer_json: Optional[str] = None) -> "VoiceConfig":
+                   bpe_tokenizer_json: Optional[str] = None,
+                   lang_tokens: Optional[Dict[str, str]] = None) -> "VoiceConfig":
         """
         Create a VoiceConfig from a model configuration dictionary and optional external phoneme data.
         
@@ -467,6 +473,7 @@ class VoiceConfig:
             # config's own engine_params (e.g. a baked YourTTS d-vector) merged with
             # any locally-resolved paths the manager passes in (the latter win).
             engine_params={**(config.get("engine_params") or {}), **(engine_params or {})},
+            lang_tokens=lang_tokens or config.get("lang_tokens") or {},
         )
 
     def to_native_dict(self) -> Dict[str, Any]:

@@ -91,9 +91,11 @@ class ChatterboxAdapter(BaseOnnxAdapter):
         applies a ``[<lang>]`` front end keyed off the voice's ``lang_code``; base/turbo
         use a plain ``BPETokenizer`` and ignore the language.
         """
-        lang = getattr(getattr(voice, "config", None), "lang_code", None)
+        cfg = getattr(voice, "config", None)
+        lang = getattr(cfg, "lang_code", None)
+        lang_tokens = getattr(cfg, "lang_tokens", None)   # BCP47 -> token (dialect models)
         try:
-            return [voice.tokenizer.tokenize(text, language=lang)]
+            return [voice.tokenizer.tokenize(text, language=lang, lang_tokens=lang_tokens)]
         except TypeError:        # tokenizer without a language-aware signature
             return [voice.tokenizer.tokenize(text)]
 

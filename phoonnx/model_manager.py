@@ -58,6 +58,11 @@ class TTSModelInfo:
     embed_tokens_url: Optional[str] = None
     conditional_decoder_url: Optional[str] = None
 
+    # Optional BCP47 -> language-token map: how this voice's lang_code becomes the model's
+    # language token. Dialect models (e.g. lahgtna) repurpose the base tokens, so a literal
+    # token like "eg" is mapped here rather than derived from the (normalized) lang code.
+    lang_tokens: Optional[Dict[str, str]] = None
+
     @property
     def config(self) -> VoiceConfig:
         # lazy loaded
@@ -96,7 +101,8 @@ class TTSModelInfo:
                                                      phoneme_type=phoneme_type,
                                                      engine=engine,
                                                      lang_code=lang_code,
-                                                     bpe_tokenizer_json=str(tok_json) if tok_json else None)
+                                                     bpe_tokenizer_json=str(tok_json) if tok_json else None,
+                                                     lang_tokens=self.lang_tokens)
             elif self.vocab_override:
                 self._config = VoiceConfig.from_dict(config,
                                                      vocab=self.vocab_override,

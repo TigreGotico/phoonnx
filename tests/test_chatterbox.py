@@ -98,3 +98,25 @@ def test_mtl_tokenizer_language_frontend():
     # unknown language token -> plain BPE, untouched
     tok.tokenize("Hello World", language="xx")
     assert seen["text"] == "Hello World"
+
+
+def test_mtl_tokenizer_lang_tokens_override():
+    from phoonnx.tokenizer import ChatterboxMTLTokenizer
+    tok = ChatterboxMTLTokenizer.__new__(ChatterboxMTLTokenizer)
+    seen = {}
+
+    class _Enc:
+        def __init__(self, ids): self.ids = ids
+
+    class _Tok:                                   # [ar] + [SPACE] exist; [eg] does NOT
+        def token_to_id(self, t): return 1 if t in ("[ar]", "[SPACE]") else None
+        def encode(self, text): seen["text"] = text; return _Enc([1])
+
+    tok._tok = _Tok()
+    # dialect "hack": lang_tokens maps ar-EG -> literal "eg" and prepends [eg] even though
+    # it isn't a single vocab token (it BPE-splits) — sidesteps lang-code normalization too
+    tok.tokenize("xy", language="ar-EG", lang_tokens={"ar-EG": "eg"})
+    assert seen["text"].startswith("[eg]")
+    # without a map, ar-EG derives the base [ar] token (present in the vocab)
+    tok.tokenize("xy", language="ar-EG")
+    assert seen["text"].startswith("[ar]")

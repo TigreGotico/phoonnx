@@ -749,9 +749,10 @@ class BPETokenizer:
     blank_id = None
     blank_word_id = None
 
-    def tokenize(self, text: Union[str, List[str]], language: Optional[str] = None) -> List[int]:
-        # base BPE has no notion of language; the parameter exists so the voice can call
-        # tokenize(text, language=...) uniformly (the multilingual subclass uses it).
+    def tokenize(self, text: Union[str, List[str]], language: Optional[str] = None,
+                 lang_tokens: Optional[Dict[str, str]] = None) -> List[int]:
+        # base BPE has no notion of language; the params exist so the voice can call
+        # tokenize(text, language=..., lang_tokens=...) uniformly (the MTL subclass uses them).
         if isinstance(text, (list, tuple)):
             text = "".join(text)
         return list(self._tok.encode(text).ids)
@@ -770,15 +771,26 @@ class ChatterboxMTLTokenizer(BPETokenizer):
     to plain BPE so it stays safe for English-only checkpoints.
     """
 
-    def tokenize(self, text: Union[str, List[str]], language: Optional[str] = None) -> List[int]:
+    def tokenize(self, text: Union[str, List[str]], language: Optional[str] = None,
+                 lang_tokens: Optional[Dict[str, str]] = None) -> List[int]:
         if isinstance(text, (list, tuple)):
             text = "".join(text)
         lang = (language or "").replace("_", "-").split("-")[0].lower()
-        if not lang or self._tok.token_to_id(f"[{lang}]") is None:
+        # An explicit ``lang_tokens`` map (BCP47/code -> token string) wins and is prepended
+        # **literally**, even when the token isn't a single vocab id (it BPE-splits) — this
+        # is how dialect "hacks" work, e.g. lahgtna repurposes the base model with a literal
+        # ``[eg]`` for Egyptian, and it sidesteps lang-code normalization (eg -> eg-US).
+        # Otherwise derive ``[<lang>]`` and require it in the vocab (the standard variants).
+        token = None
+        if lang_tokens:
+            token = lang_tokens.get(language) or lang_tokens.get(lang)
+        if token is None and lang and self._tok.token_to_id(f"[{lang}]") is not None:
+            token = lang
+        if not token:
             return list(self._tok.encode(text).ids)
         import unicodedata
-        norm = self._script_transform(unicodedata.normalize("NFKD", text.lower()), lang)
-        encoded = f"[{lang}]{norm}".replace(" ", "[SPACE]")
+        norm = self._script_transform(unicodedata.normalize("NFKD", text.lower()), token)
+        encoded = f"[{token}]{norm}".replace(" ", "[SPACE]")
         return list(self._tok.encode(encoded).ids)
 
     @staticmethod
