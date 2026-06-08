@@ -70,6 +70,10 @@ zh = ["epitran", "gruut[zh]>=2.3.0,<3.0", "misaki[zh]", "spacy>=3.7"]
 
 # runtime deps for zero-shot voice cloning (reference loading + resampling)
 cloning = ["soundfile", "scipy"]
+# Chatterbox multilingual per-language script transforms. ja/zh below; ko is pure-Python
+# (built in). he/ru degrade gracefully unless `dicta_onnx` / `russian_text_stresser` are
+# also installed (not on clean PyPI, so left out of the extra).
+chatterbox-multilingual = ["pykakasi==2.3.0", "spacy-pkuseg"]
 # everything optional — every language phonemizer + cloning. Used by the Docker image.
 all = [
     "epitran",
@@ -79,6 +83,7 @@ all = [
     "ahotts-g2p>=0.1.0",
     "spacy>=3.7",
     "pycotovia>=0.1.0",
+    "pykakasi==2.3.0", "spacy-pkuseg",
     "soundfile", "scipy",
 ]
 

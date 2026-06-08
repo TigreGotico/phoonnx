@@ -73,13 +73,23 @@ model's tokenizer. The repetition penalty runs over all emitted tokens and decod
 temperature/top-p sampling (greedy at `temperature=0`); a trailing silence token is
 appended before the decoder.
 
-**Multilingual language selection:** `ChatterboxMTLTokenizer` (the multilingual
-tokenizer) prefixes a `[<lang>]` token from the voice's `lang_code`, lowercases +
-NFKD-normalises, and replaces spaces with `[SPACE]`. Latin/Greek/Cyrillic languages (en,
-pt, es, fr, de, it, nl, el, tr, sv, …) work directly. Five languages need an extra
-per-language script transform, exposed as the overridable `_script_transform` hook but
-not yet ported — **zh** (Cangjie), **ja** (hiragana), **ko**, **he** (diacritics),
-**ru** (stress) — and will mispronounce (with a warning) until that's added.
+**Multilingual language selection:** `ChatterboxMTLTokenizer` prefixes a `[<lang>]`
+token from the voice's `lang_code`, lowercases + NFKD-normalises, and replaces spaces
+with `[SPACE]`. Latin/Greek/Cyrillic languages (en, pt, es, fr, de, it, nl, el, tr, sv,
+…) work directly. Five scripts also need a per-language transform (in
+`phoonnx.lang_preprocess`, dispatched via `SCRIPT_TRANSFORMS`):
+
+| lang | transform | dependency |
+|---|---|---|
+| **ko** | Hangul → Jamo | none (pure Python, always on) |
+| **ja** | kanji → hiragana | `pykakasi` |
+| **zh** | Cangjie codes | `spacy-pkuseg` (+ HF `Cangjie5_TC.json`) |
+| **ru** | add stress marks | `russian_text_stresser` (heavy: spaCy + Wiktionary DB; not on PyPI — install manually) |
+
+Install the ja/zh deps with `pip install phoonnx[chatterbox-multilingual]`. Hebrew/Arabic
+use the universal `add_diacritics` SynthesisConfig flag (set it on those voices), not a
+tokenizer transform. `ru` needs `russian_text_stresser` installed manually. Any missing dependency degrades to the raw text
+with a warning (so the rest of the pipeline still runs).
 
 ## A note on performance
 

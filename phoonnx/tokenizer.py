@@ -770,10 +770,6 @@ class ChatterboxMTLTokenizer(BPETokenizer):
     to plain BPE so it stays safe for English-only checkpoints.
     """
 
-    # languages whose script the reference transforms (Cangjie / hiragana / Hangul /
-    # niqqud / stress) before encoding; not ported yet, so they will mispronounce.
-    _NEEDS_SCRIPT_TRANSFORM = {"zh", "ja", "ko", "he", "ru"}
-
     def tokenize(self, text: Union[str, List[str]], language: Optional[str] = None) -> List[int]:
         if isinstance(text, (list, tuple)):
             text = "".join(text)
@@ -785,13 +781,15 @@ class ChatterboxMTLTokenizer(BPETokenizer):
         encoded = f"[{lang}]{norm}".replace(" ", "[SPACE]")
         return list(self._tok.encode(encoded).ids)
 
-    def _script_transform(self, text: str, lang: str) -> str:
-        """Hook for per-language script transforms. Not ported for zh/ja/ko/he/ru —
-        those degrade to the raw text (and warn) until the transforms are added."""
-        if lang in self._NEEDS_SCRIPT_TRANSFORM:
-            LOG.warning("ChatterboxMTLTokenizer: per-language preprocessing for %r is not "
-                        "implemented; pronunciation will be approximate.", lang)
-        return text
+    @staticmethod
+    def _script_transform(text: str, lang: str) -> str:
+        """Apply the per-language script transform (Hangul→Jamo, kanji→hiragana, Cangjie,
+        niqqud, Russian stress). Korean is pure Python; the others need optional deps and
+        fall back to raw text (with a warning) when missing. Languages without an entry
+        need no transform."""
+        from phoonnx.lang_preprocess import SCRIPT_TRANSFORMS
+        fn = SCRIPT_TRANSFORMS.get(lang)
+        return fn(text) if fn else text
 
 
 if __name__ == "__main__":
