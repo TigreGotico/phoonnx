@@ -56,7 +56,6 @@ class ChatterboxAdapter(BaseOnnxAdapter):
 
     REPETITION_PENALTY = 1.2
     MAX_NEW_TOKENS = 1000
-    tokenizes_raw_text = True   # consume raw text via the model's BPE, not phonemes
 
     def __init__(self):
         self.embed_tokens = None
@@ -68,6 +67,11 @@ class ChatterboxAdapter(BaseOnnxAdapter):
 
     def default_params(self) -> Dict[str, float]:
         return {"exaggeration": 0.5}
+
+    def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
+        """BPE the raw text directly — Chatterbox's subword tokenizer owns normalization,
+        so no phoneme front end (which would strip punctuation / expand numbers)."""
+        return [voice.tokenizer.tokenize(text)]
 
     def configure(self, voice_config: Any) -> None:
         """Load the auxiliary graphs from ``engine_params`` and read the LM's KV-cache

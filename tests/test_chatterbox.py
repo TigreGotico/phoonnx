@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from phoonnx.engines.base import AdapterSynthesisRequest, BaseOnnxAdapter
+from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.chatterbox import ChatterboxAdapter, _apply_repetition_penalty
 
 
@@ -22,10 +22,16 @@ def test_chatterbox_detect():
     assert not ChatterboxAdapter.detect(None)
 
 
-def test_chatterbox_tokenizes_raw_text():
-    # the flag that makes TTSVoice skip phonemization for this engine
-    assert ChatterboxAdapter.tokenizes_raw_text is True
-    assert BaseOnnxAdapter.tokenizes_raw_text is False
+def test_chatterbox_encode_text_is_bpe():
+    # the engine owns text->ids: chatterbox BPEs the raw text (punctuation kept), one chunk
+    class _Bpe:
+        def tokenize(self, t): return [ord(c) for c in t]
+
+    class _Voice:
+        tokenizer = _Bpe()
+
+    out = ChatterboxAdapter().encode_text("hi!", _Voice(), None)
+    assert out == [[ord("h"), ord("i"), ord("!")]]
 
 
 def test_chatterbox_requires_aux_graphs():
