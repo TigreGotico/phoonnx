@@ -51,6 +51,12 @@ class TTSModelInfo:
     # that graph; the manager downloads each one alongside the model and
     # injects the local path under the same key.
     aux_model_urls: Optional[Dict[str, str]] = field(default_factory=dict)
+    # Chatterbox (autoregressive codec-LM) splits inference across four graphs: the
+    # language_model is `model_url`; these three aux graphs load from engine_params
+    # (speech_encoder_path / embed_tokens_path / conditional_decoder_path).
+    speech_encoder_url: Optional[str] = None
+    embed_tokens_url: Optional[str] = None
+    conditional_decoder_url: Optional[str] = None
 
     @property
     def config(self) -> VoiceConfig:
@@ -238,25 +244,36 @@ class TTSModelInfo:
         with open(tokens_path, "r", encoding="utf-8") as f:
             return f.read()
 
-    def download_model(self):
+    def _fetch_onnx(self, url: str, dest: Path) -> Path:
+        """Download an ONNX graph (and its external-data sidecar, if present) into the
+        voice cache.
+
+        A graph with external weights references them by the original
+        ``<name>.onnx_data`` filename, so that sidecar is saved under exactly that name
+        next to the graph for the reference to resolve. Chatterbox's four graphs all use
+        external data; single-file graphs simply have no sidecar (404 -> skipped).
         """
-        Download the ONNX model file for this voice into the voice cache directory if it does not already exist.
-        
-        Saves the remote file as voice_path / "model.onnx" in binary mode.
-        
-        Raises:
-            requests.HTTPError: if the HTTP response indicates an error status.
-            requests.RequestException: on network-related errors during download.
-            OSError: on filesystem errors while writing the file.
-        """
-        model_path = self.voice_path / "model.onnx"
-        if not model_path.is_file():
-            with requests.get(self.model_url, timeout=120, stream=True) as r:
+        if not dest.is_file():
+            with requests.get(url, timeout=120, stream=True) as r:
                 r.raise_for_status()
-                with open(model_path, "wb") as f:
+                with open(dest, "wb") as f:
                     for chunk in r.iter_content(chunk_size=8192):
                         if chunk:
                             f.write(chunk)
+        data_dest = dest.parent / (url.split("/")[-1] + "_data")   # e.g. model_q4.onnx_data
+        if not data_dest.is_file():
+            with requests.get(url + "_data", timeout=600, stream=True) as r:
+                if r.status_code != 404:
+                    r.raise_for_status()
+                    with open(data_dest, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+        return dest
+
+    def download_model(self):
+        """Download the primary ONNX graph (+ external-data sidecar, if any)."""
+        self._fetch_onnx(self.model_url, self.voice_path / "model.onnx")
 
     def download_vocoder(self) -> Optional[Path]:
         """
@@ -364,6 +381,15 @@ class TTSModelInfo:
                     cfg_path.write_bytes(r.content)
                 with open(cfg_path, "r", encoding="utf-8") as f:
                     params["vocoder_config"] = json.load(f)
+
+        # Chatterbox's three auxiliary graphs (the language_model is the primary model).
+        for url, key, fname in (
+            (self.speech_encoder_url, "speech_encoder_path", "speech_encoder.onnx"),
+            (self.embed_tokens_url, "embed_tokens_path", "embed_tokens.onnx"),
+            (self.conditional_decoder_url, "conditional_decoder_path", "conditional_decoder.onnx"),
+        ):
+            if url:
+                params[key] = str(self._fetch_onnx(url, self.voice_path / fname))
         return params
 
     def load(self) -> TTSVoice:
