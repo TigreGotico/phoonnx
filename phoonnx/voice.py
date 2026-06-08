@@ -363,23 +363,30 @@ class TTSVoice:
             text = self.phonemizer.add_diacritics(text, self.config.lang_code)
             LOG.debug("text+diacritics=%s", text)
 
-        # All phonemization goes through the unified self.phonemize method.
-        # Language-aware phonemizers (e.g. Shami) also provide per-phoneme language IDs.
-        if hasattr(self.phonemizer, "phonemize_with_language_ids"):
-            sentence_phonemes, sentence_language_ids = self.phonemizer.phonemize_with_language_ids(
-                text, self.config.lang_code
-            )
+        # Text-token engines (Chatterbox) consume raw text through their own subword
+        # tokenizer and do their own normalization — bypass phonemization entirely
+        # (phoneme front ends strip punctuation / expand numbers, which would corrupt
+        # the input). Every other engine goes through the unified self.phonemize.
+        if getattr(self.adapter, "tokenizes_raw_text", False):
+            all_ids_for_synthesis = [(self.tokenizer.tokenize(text), None)]
         else:
-            sentence_phonemes = self.phonemize(text)
-            sentence_language_ids = [None] * len(sentence_phonemes)
-        LOG.debug("phonemes=%s", sentence_phonemes)
-        # filter empty sentences on both streams together so phoneme ids and
-        # language ids can never fall out of alignment
-        all_ids_for_synthesis = [
-            (self.phonemes_to_ids(phonemes), language_ids)
-            for phonemes, language_ids in zip(sentence_phonemes, sentence_language_ids)
-            if phonemes
-        ]
+            # All phonemization goes through the unified self.phonemize method.
+            # Language-aware phonemizers (e.g. Shami) also provide per-phoneme language IDs.
+            if hasattr(self.phonemizer, "phonemize_with_language_ids"):
+                sentence_phonemes, sentence_language_ids = self.phonemizer.phonemize_with_language_ids(
+                    text, self.config.lang_code
+                )
+            else:
+                sentence_phonemes = self.phonemize(text)
+                sentence_language_ids = [None] * len(sentence_phonemes)
+            LOG.debug("phonemes=%s", sentence_phonemes)
+            # filter empty sentences on both streams together so phoneme ids and
+            # language ids can never fall out of alignment
+            all_ids_for_synthesis = [
+                (self.phonemes_to_ids(phonemes), language_ids)
+                for phonemes, language_ids in zip(sentence_phonemes, sentence_language_ids)
+                if phonemes
+            ]
 
         for phoneme_ids, language_ids in all_ids_for_synthesis:
             if not phoneme_ids:
@@ -517,6 +524,8 @@ class TTSVoice:
         if syn_config.speaker_reference_text:
             params["prompt_tokens"] = self._prompt_token_ids(
                 syn_config.speaker_reference_text, syn_config.speaker_reference_lang)
+        if syn_config.exaggeration is not None:
+            params["exaggeration"] = syn_config.exaggeration
 
         request = AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,
