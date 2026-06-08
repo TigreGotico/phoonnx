@@ -51,6 +51,19 @@ def _apply_repetition_penalty(prev_ids: np.ndarray, scores: np.ndarray, penalty:
     return out
 
 
+def _sample_top_p(logits: np.ndarray, temperature: float, top_p: float, rng) -> np.ndarray:
+    """Temperature + nucleus (top-p) sampling. Greedy decoding makes a codec-LM loop
+    and never emit the speech-EOS — sampling is what keeps generation healthy."""
+    x = logits[0].astype(np.float64) / max(temperature, 1e-5)
+    x -= x.max()
+    probs = np.exp(x); probs /= probs.sum()
+    order = np.argsort(probs)[::-1]
+    cutoff = int(np.searchsorted(np.cumsum(probs[order]), top_p)) + 1
+    keep = order[:max(1, cutoff)]
+    p = probs[keep]; p /= p.sum()
+    return np.array([[int(rng.choice(keep, p=p))]], np.int64)
+
+
 class ChatterboxAdapter(BaseOnnxAdapter):
     """Adapter for Chatterbox (autoregressive codec-LM, d-vector cloning, exaggeration)."""
 
@@ -68,7 +81,7 @@ class ChatterboxAdapter(BaseOnnxAdapter):
         self.lm_needs_pos = False        # GPT-2-style LMs take position_ids (turbo)
 
     def default_params(self) -> Dict[str, float]:
-        return {"exaggeration": 0.5}
+        return {"exaggeration": 0.5, "temperature": 0.8, "top_p": 0.8}
 
     def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
         """BPE the raw text directly — Chatterbox's subword tokenizer owns normalization,
@@ -118,6 +131,9 @@ class ChatterboxAdapter(BaseOnnxAdapter):
 
         input_ids = np.asarray(request.phoneme_ids, np.int64).reshape(1, -1)
         exaggeration = np.array([float(request.params.get("exaggeration", 0.5))], np.float32)
+        temperature = float(request.params.get("temperature", 0.8))
+        top_p = float(request.params.get("top_p", 0.8))
+        rng = np.random.default_rng()
         embed_pos = np.where(input_ids >= START_SPEECH_TOKEN, 0,
                              np.arange(input_ids.shape[1])[None, :] - 1).astype(np.int64)
 
@@ -152,7 +168,7 @@ class ChatterboxAdapter(BaseOnnxAdapter):
                 feed["position_ids"] = lm_pos
             logits, *present = session.run(None, feed)
             logits = _apply_repetition_penalty(generated[:, -1:], logits[:, -1, :], self.REPETITION_PENALTY)
-            next_token = np.argmax(logits, axis=-1, keepdims=True).astype(np.int64)
+            next_token = _sample_top_p(logits, temperature, top_p, rng)
             generated = np.concatenate((generated, next_token), axis=-1)
             if (next_token.flatten() == STOP_SPEECH_TOKEN).all():
                 break
