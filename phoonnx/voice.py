@@ -498,6 +498,10 @@ class TTSVoice:
                 syn_config.speaker_reference_text, syn_config.speaker_reference_lang)
         if syn_config.exaggeration is not None:
             params["exaggeration"] = syn_config.exaggeration
+        if syn_config.temperature is not None:
+            params["temperature"] = syn_config.temperature
+        if syn_config.top_p is not None:
+            params["top_p"] = syn_config.top_p
 
         request = AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,

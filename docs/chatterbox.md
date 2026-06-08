@@ -16,7 +16,7 @@ Its standout features: **zero-shot cloning from a reference clip with no transcr
 | Model | [Resemble AI Chatterbox](https://github.com/resemble-ai/chatterbox) |
 | ONNX | [`onnx-community/chatterbox-ONNX`](https://huggingface.co/onnx-community/chatterbox-ONNX) (4 graphs, external-data weights) |
 | Converter | [VladOS95-cyber/onnx_conversion_scripts](https://github.com/VladOS95-cyber/onnx_conversion_scripts) — the LM is built with [onnxruntime-genai's `builder.py`](https://github.com/microsoft/onnxruntime-genai) |
-| Variants | base ✓, **multilingual** ✓ (same Llama contract); **turbo** ⚠️ I/O-compatible but its GPT-2/meanflow generation differs — not yet supported |
+| Variants | base ✓, **multilingual** ✓ (Llama); **turbo** ✓ (GPT-2 + meanflow) — all supported by the I/O-driven adapter |
 
 ## Architecture
 
@@ -53,6 +53,8 @@ implementation of the same tokenizer role). Because phoneme front ends normalize
 voice.synthesize("Any sentence in the cloned voice.", SynthesisConfig(
     speaker_reference="reference.wav",   # no transcription needed (d-vector)
     exaggeration=0.6,                    # 0.0–1.0, default 0.5; higher = more expressive
+    temperature=0.8,                     # sampling temperature (0 = greedy)
+    top_p=0.95,                          # nucleus sampling cutoff
 ))
 ```
 
@@ -60,13 +62,15 @@ See [Voice Cloning](cloning.md). Unlike [ZipVoice](zipvoice.md) (in-context, nee
 reference's transcription), Chatterbox is **d-vector** — the `speech_encoder` summarizes
 the voice from audio alone, in any language.
 
-## Turbo (not yet supported)
+## Variants + tokenizers
 
-The `ResembleAI/chatterbox-turbo-ONNX` graphs load through the same I/O-driven adapter,
-but turbo's backbone (GPT-2 + a 1-step meanflow decoder) conditions generation
-differently from the Llama base/multilingual models, so it currently produces
-unintelligible output. It needs a turbo-specific generation reference (the public
-`chatterbox_onnx` inference is base-only). Base + multilingual are validated.
+All three variants run on one adapter, which reads each graph's I/O signature: base +
+multilingual use a Llama LM (positions in embed_tokens), turbo uses GPT-2 (positions fed
+to the LM). **Each variant ships its own `tokenizer.json`** — base/multilingual a custom
+BPE, **turbo a GPT-2 BPE** — so a voice must point its `BPETokenizer` at the matching
+model's tokenizer. The repetition penalty runs over all emitted tokens and decoding is
+temperature/top-p sampling (greedy at `temperature=0`); a trailing silence token is
+appended before the decoder.
 
 ## A note on performance
 
