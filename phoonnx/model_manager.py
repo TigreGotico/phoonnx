@@ -38,6 +38,12 @@ class TTSModelInfo:
     # and the StyleTTS2 adapter loads it from engine_params["style_path"].
     style_url: Optional[str] = None
 
+    # Cloning models (YourTTS) carry a separate speaker-encoder ONNX (reference audio
+    # -> d-vector); the manager downloads it and the adapter loads it from
+    # engine_params["speaker_encoder_path"].
+    speaker_encoder_url: Optional[str] = None
+    speaker_encoder_type: Optional[str] = None
+
     @property
     def config(self) -> VoiceConfig:
         # lazy loaded
@@ -282,6 +288,19 @@ class TTSModelInfo:
                         f.write(chunk)
         return style_path
 
+    def download_speaker_encoder(self) -> Optional[Path]:
+        """Download the speaker-encoder ONNX (cloning models), if any."""
+        if not self.speaker_encoder_url:
+            return None
+        enc_path = self.voice_path / "speaker_encoder.onnx"
+        if not enc_path.is_file():
+            with requests.get(self.speaker_encoder_url, timeout=120, stream=True) as r:
+                r.raise_for_status()
+                with open(enc_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+        return enc_path
+
     def engine_params(self) -> Dict[str, Any]:
         """
         Build the engine_params dict for synthesis, resolving the vocoder to
@@ -291,6 +310,11 @@ class TTSModelInfo:
         style_path = self.download_style()
         if style_path:
             params["style_path"] = str(style_path)
+        enc_path = self.download_speaker_encoder()
+        if enc_path:
+            params["speaker_encoder_path"] = str(enc_path)
+            if self.speaker_encoder_type:
+                params["speaker_encoder_type"] = self.speaker_encoder_type
         vocoder_path = self.download_vocoder()
         if vocoder_path:
             params["vocoder_path"] = str(vocoder_path)

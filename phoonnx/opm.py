@@ -165,6 +165,11 @@ class PhoonnxTTSPlugin(TTS):
             noise_w_scale=self._cfg_opt(
                 voice_info.config.noise_w_scale,  # phoneme width noise
                 "noise_w_scale", "noise_w", "noise-w"),
+            # zero-shot voice cloning (cloning engines: YourTTS, StyleTTS2) — a path
+            # to a reference wav; the voice's speaker encoder turns it into the
+            # conditioning d-vector/style. e.g. {"ref_wav": "/home/user/me.wav"}
+            speaker_reference=self._cfg_opt(
+                None, "speaker_reference", "ref_wav", "clone_voice"),
         )
         with wave.open(wav_file, "wb") as wav_out:
             model.synthesize_wav(sentence, wav_out, synth_params)

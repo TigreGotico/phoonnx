@@ -26,6 +26,7 @@ class Engine(str, Enum):
     MIXERTTS = "mixertts"  # MLP-Mixer/FastPitch-style mel model + separate vocoder
     FASTPITCH = "fastpitch"  # FastSpeech2-style mel model + separate vocoder
     STYLETTS2 = "styletts2"  # StyleTTS2 / Kokoro end-to-end (tokens + style -> wav)
+    YOURTTS = "yourtts"  # multilingual VITS conditioned on a speaker d-vector (cloning)
 
 
 class Alphabet(str, Enum):
@@ -415,7 +416,9 @@ class VoiceConfig:
             bos_token=config.get("bos"),
             eos_token=config.get("eos"),
             word_sep_token=config.get("word_sep_token") or config.get("blank_word", " "),
-            engine_params=engine_params or {}
+            # config's own engine_params (e.g. a baked YourTTS d-vector) merged with
+            # any locally-resolved paths the manager passes in (the latter win).
+            engine_params={**(config.get("engine_params") or {}), **(engine_params or {})},
         )
 
     def to_native_dict(self) -> Dict[str, Any]:
@@ -464,6 +467,7 @@ class VoiceConfig:
             "blank_at_end": tok.blank_at_end,
             "word_sep_token": self.word_sep_token,
             "blank_between": self.blank_between.value if self.blank_between else "tokens_and_words",
+            "engine_params": dict(self.engine_params or {}),
         }
 
 
@@ -476,6 +480,11 @@ class SynthesisConfig:
 
     lang_id: Optional[int] = None
     """Index of lang to use (multi-lang voices only)."""
+
+    speaker_reference: Optional[Any] = None
+    """Reference audio for zero-shot voice cloning (cloning engines: YourTTS,
+    StyleTTS2). Either a path to a wav file, or an ``(audio, sample_rate)`` tuple.
+    The voice's speaker encoder turns it into the conditioning d-vector/style."""
 
     length_scale: Optional[float] = None
     """Phoneme length scale (< 1 is faster, > 1 is slower)."""

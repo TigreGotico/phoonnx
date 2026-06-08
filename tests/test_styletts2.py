@@ -67,3 +67,22 @@ def test_configure_loads_style_pack_from_engine_params(tmp_path):
     a = StyleTTS2Adapter()
     a.configure(_Cfg())
     assert a.style_pack.shape == (510, 256)
+
+
+def test_styletts2_cloning_splits_ref_and_s():
+    """A cloning StyleTTS2 model takes ref[128]+s[128]; the adapter splits the
+    256-d style from the speaker encoder."""
+    import numpy as np
+    class _Enc:
+        def encode(self, audio, sr): return np.arange(256, dtype=np.float32)
+    sess = _Sess(["input_ids", "attention_mask", "ref", "s", "speed"])
+    a = StyleTTS2Adapter(speaker_encoder=_Enc())
+    feed = a.build_feed_dict(_req(5, reference_audio=(np.zeros(24000, np.float32), 24000)), sess)
+    assert feed["ref"].shape == (1, 128) and feed["s"].shape == (1, 128)
+    assert np.allclose(feed["ref"][0], np.arange(128))
+    assert np.allclose(feed["s"][0], np.arange(128, 256))
+
+
+def test_styletts2_style_encoder_registered():
+    from phoonnx.engines.speaker_encoders import list_speaker_encoders
+    assert "styletts2_style" in list_speaker_encoders()
