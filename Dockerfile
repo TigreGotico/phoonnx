@@ -18,8 +18,11 @@ WORKDIR /app
 COPY . /app
 
 # phoonnx + all optional deps + the OVOS TTS server.
-# setuptools<81 keeps ovos-plugin-manager's pkg_resources usage working.
+# - CPU-only torch first (misaki/spacy pull it transitively) so the multi-GB CUDA
+#   wheels never land in this CPU-inference image.
+# - setuptools<81 keeps ovos-plugin-manager's pkg_resources usage working.
 RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
     && pip install --no-cache-dir "setuptools<81" ".[all]" ovos-tts-server \
     && (python -m spacy download en_core_web_sm || true) \
     && (python -m unidic download || true)
