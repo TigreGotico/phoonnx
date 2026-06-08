@@ -109,6 +109,24 @@ class BaseOnnxAdapter(ABC):
     # Optional
     # ------------------------------------------------------------------
 
+    def synthesize(
+        self,
+        request: AdapterSynthesisRequest,
+        session: onnxruntime.InferenceSession,
+    ) -> AdapterSynthesisResult:
+        """Run full inference for one request.
+
+        Default is the single static-graph path: ``build_feed_dict`` →
+        ``session.run`` → ``parse_outputs``. Multi-ONNX / iterative engines
+        (e.g. flow-matching, where ``session`` is one of several graphs and the
+        output is produced by a sampling loop) override this to run their own
+        pipeline. ``session`` is the voice's primary model; any auxiliary graphs
+        are loaded in :meth:`configure` from ``engine_params``.
+        """
+        feed = self.build_feed_dict(request, session)
+        outputs = session.run(None, feed)
+        return self.parse_outputs(outputs, request)
+
     @staticmethod
     def detect(
         config: Optional[Dict[str, Any]] = None,
