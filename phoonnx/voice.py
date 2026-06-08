@@ -488,10 +488,9 @@ class TTSVoice:
             params=params,
         )
 
-        # Delegate to the adapter
-        feed_dict = self.adapter.build_feed_dict(request, self.session)
-        raw_outputs = self.session.run(None, feed_dict)
-        result = self.adapter.parse_outputs(raw_outputs, request)
+        # Delegate to the adapter (single-graph engines use the default
+        # build_feed_dict → run → parse_outputs; iterative engines override).
+        result = self.adapter.synthesize(request, self.session)
 
         return result.audio
 

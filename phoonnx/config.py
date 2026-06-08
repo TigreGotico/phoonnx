@@ -27,6 +27,7 @@ class Engine(str, Enum):
     FASTPITCH = "fastpitch"  # FastSpeech2-style mel model + separate vocoder
     STYLETTS2 = "styletts2"  # StyleTTS2 / Kokoro end-to-end (tokens + style -> wav)
     YOURTTS = "yourtts"  # multilingual VITS conditioned on a speaker d-vector (cloning)
+    ZIPVOICE = "zipvoice"  # flow-matching, in-context cloning (iterative ODE loop)
 
 
 class Alphabet(str, Enum):
