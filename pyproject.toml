@@ -64,6 +64,18 @@ sw = ["epitran"]
 vi = ["epitran", "gruut[vi]>=2.3.0,<3.0", "misaki[vi]", "spacy>=3.7"]
 zh = ["epitran", "gruut[zh]>=2.3.0,<3.0", "misaki[zh]", "spacy>=3.7"]
 
+# runtime deps for zero-shot voice cloning (reference loading + resampling)
+cloning = ["soundfile", "scipy"]
+# everything optional — every language phonemizer + cloning. Used by the Docker image.
+all = [
+    "epitran",
+    "gruut[de]>=2.3.0,<3.0", "gruut[en]>=2.3.0,<3.0", "gruut[ja]>=2.3.0,<3.0",
+    "gruut[vi]>=2.3.0,<3.0", "gruut[zh]>=2.3.0,<3.0",
+    "misaki[en]", "misaki[ja]", "misaki[vi]", "misaki[zh]",
+    "spacy>=3.7",
+    "soundfile", "scipy",
+]
+
 [tool.setuptools.dynamic]
 version = {attr = "phoonnx.version.__version__"}
 

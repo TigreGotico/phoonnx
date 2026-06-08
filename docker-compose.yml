@@ -1,0 +1,25 @@
+services:
+  phoonnx-tts:
+    image: ghcr.io/tigregotico/phoonnx:latest
+    # …or build from this checkout instead of pulling the published image:
+    # build: .
+    container_name: phoonnx-tts
+    restart: unless-stopped
+    ports:
+      - "9666:9666"
+    volumes:
+      # voice index + downloaded models + synth cache persist here (a named volume so
+      # the image's pre-filled index is seeded on first run)
+      - phoonnx-cache:/home/ovos/.cache
+      # optional: mount a mycroft.conf to pick the voice / configure cloning, e.g.
+      #   {"tts": {"ovos-tts-plugin-phoonnx": {"voice": "...", "ref_wav": "/ref/me.wav"}}}
+      # - ./mycroft.conf:/home/ovos/.config/mycroft/mycroft.conf:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9666/status')"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  phoonnx-cache:

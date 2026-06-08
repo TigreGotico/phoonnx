@@ -49,3 +49,4 @@ with wave.open("output.wav", "wb") as wav_file:
 - [Training](training.md)
 - [CLI Reference](cli.md)
 - [OVOS Plugin](ovos_plugin.md)
+- [Docker / TTS Server](docker.md)
