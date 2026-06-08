@@ -18,7 +18,8 @@ import numpy as np
 import onnxruntime
 from langcodes import closest_match
 
-from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, get_phonemizer
+from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, get_phonemizer
+from phoonnx.alphabet_convert import convert as alphabet_convert
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.engines.base import (
     AdapterSynthesisRequest,
@@ -390,24 +391,82 @@ class TTSVoice:
         if do_diacritics:
             text = self.phonemizer.add_diacritics(text, self.config.lang_code)
 
-        # Language-aware phonemizers (e.g. Shami) provide per-phoneme language IDs;
-        # the two streams are built together here so they can never fall out of alignment.
-        if hasattr(self.phonemizer, "phonemize_with_language_ids"):
-            sentence_phonemes, sentence_language_ids = self.phonemizer.phonemize_with_language_ids(
-                text, self.config.lang_code
+        # Alphabet dispatch (unified model + language-aware phonemizers):
+        #   src == tgt          -> grapheme/text-token models use the adapter;
+        #                          already-phonemic input in the model's own
+        #                          alphabet passes straight through (no re-phonemize).
+        #   src == GRAPHEMES    -> phonemize with the model's phonemizer, keeping the
+        #                          per-phoneme language IDs that language-aware
+        #                          phonemizers (e.g. Shami) provide.
+        #   otherwise           -> already-phonemic input in a different alphabet is
+        #                          transcoded to the model's alphabet through the
+        #                          conversion graph (scriptconv notation edges).
+        src_alphabet = (syn_config.alphabet
+                        if syn_config.alphabet is not None
+                        else Alphabet.GRAPHEMES)
+        tgt_alphabet = self.config.alphabet
+
+        if src_alphabet == tgt_alphabet:
+            if src_alphabet == Alphabet.GRAPHEMES:
+                # Grapheme / text-token models: the adapter owns text -> token ids.
+                all_ids_for_synthesis = [
+                    (ids, None) for ids in self.adapter.encode_text(text, self, syn_config)
+                ]
+            else:
+                # Already-phonemic input in the model's own alphabet: pass through.
+                from phoonnx.phonemizers.base import BasePhonemizer
+                chunks = BasePhonemizer.chunk_text(text)
+                sentence_phonemes = [[c for c in chunk] for chunk, _, _ in chunks if chunk]
+                LOG.debug("phonemes=%s", sentence_phonemes)
+                all_ids_for_synthesis = [
+                    (self.phonemes_to_ids(phonemes), None)
+                    for phonemes in sentence_phonemes if phonemes
+                ]
+        elif src_alphabet == Alphabet.GRAPHEMES:
+            # Normal phoneme model. Language-aware phonemizers (e.g. Shami) provide
+            # per-phoneme language IDs; the two streams are built together here so
+            # they can never fall out of alignment.
+            if hasattr(self.phonemizer, "phonemize_with_language_ids"):
+                sentence_phonemes, sentence_language_ids = self.phonemizer.phonemize_with_language_ids(
+                    text, self.config.lang_code
+                )
+                LOG.debug("phonemes=%s", sentence_phonemes)
+                all_ids_for_synthesis = [
+                    (self.phonemes_to_ids(phonemes), language_ids)
+                    for phonemes, language_ids in zip(sentence_phonemes, sentence_language_ids)
+                    if phonemes
+                ]
+            else:
+                sentence_phonemes = self.phonemize(text)
+                LOG.debug("phonemes=%s", sentence_phonemes)
+                all_ids_for_synthesis = [
+                    (self.phonemes_to_ids(phonemes), None)
+                    for phonemes in sentence_phonemes if phonemes
+                ]
+        else:
+            # Already-phonemic input in a different alphabet: transcode to the model's
+            # alphabet through the conversion graph.
+            converted = alphabet_convert(
+                text,
+                lang=self.config.lang_code,
+                src=src_alphabet,
+                tgt=tgt_alphabet,
+                phoneme_type=self.config.phoneme_type,
             )
+            if isinstance(converted, list):
+                # PhonemizedChunks returned by a phonemization edge
+                sentence_phonemes = converted
+                if _PHONEME_BLOCK_PATTERN.search(text):
+                    sentence_phonemes = self.phonemize(text)
+            else:
+                # Script-converted string — split into single-char token lists.
+                from phoonnx.phonemizers.base import BasePhonemizer
+                chunks = BasePhonemizer.chunk_text(converted)
+                sentence_phonemes = [[c for c in chunk] for chunk, _, _ in chunks if chunk]
             LOG.debug("phonemes=%s", sentence_phonemes)
             all_ids_for_synthesis = [
-                (self.phonemes_to_ids(phonemes), language_ids)
-                for phonemes, language_ids in zip(sentence_phonemes, sentence_language_ids)
-                if phonemes
-            ]
-        else:
-            # Engine-specific "text -> model-input token ids": phoneme engines phonemize +
-            # vocab-tokenize, text-token engines (Chatterbox) BPE the raw text. The adapter
-            # owns that transform (BaseOnnxAdapter.encode_text).
-            all_ids_for_synthesis = [
-                (ids, None) for ids in self.adapter.encode_text(text, self, syn_config)
+                (self.phonemes_to_ids(phonemes), None)
+                for phonemes in sentence_phonemes if phonemes
             ]
 
         for phoneme_ids, language_ids in all_ids_for_synthesis:

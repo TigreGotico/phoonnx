@@ -143,6 +143,7 @@ sv = ["epitran"]
 sw = ["epitran"]
 vi = ["epitran", "gruut[vi]>=2.3.0,<3.0", "misaki[vi]", "spacy>=3.7"]
 zh = ["epitran", "gruut[zh]>=2.3.0,<3.0", "misaki[zh]", "spacy>=3.7"]
+cjk = ["pykakasi==2.3.0", "spacy-pkuseg"]
 
 # multilingual data-driven IPA backend (hundreds of language specs)
 o2i = ["orthography2ipa"]
