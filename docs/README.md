@@ -7,7 +7,7 @@
 - **ONNX inference** — run TTS models with `onnxruntime` (CPU or CUDA)
 - **Multilingual phonemization** — 30+ phonemizer backends for dozens of languages
 - **Multi-engine support** — load voices from Piper, Mimic3, Coqui, Transformers, and native phoonnx format
-- **Zero-shot voice cloning** — clone a voice from a short reference clip (YourTTS, StyleTTS2, ZipVoice)
+- **Zero-shot voice cloning** — clone a voice from a short reference clip (YourTTS, StyleTTS2, ZipVoice, Chatterbox)
 - **Voice manager** — download and cache models from HuggingFace and other sources
 - **Training pipeline** — preprocess datasets and train new VITS voices (`phoonnx_train`)
 - **OVOS plugin** — drop-in TTS plugin for the OpenVoiceOS / Mycroft ecosystem
@@ -53,4 +53,4 @@ with wave.open("output.wav", "wb") as wav_file:
 - [OVOS Plugin](ovos_plugin.md)
 - [Docker / TTS Server](docker.md)
 - [Engine Architecture](engines.md) · [Vocoders](vocoders.md)
-- Engine guides: [Matcha](matcha.md) · [GlowTTS](glowtts.md) · [OptiSpeech](optispeech.md) · [MixerTTS](mixertts.md) · [FastPitch](fastpitch.md) · [ZipVoice](zipvoice.md) · [Shami](shami.md)
+- Engine guides: [Matcha](matcha.md) · [GlowTTS](glowtts.md) · [OptiSpeech](optispeech.md) · [MixerTTS](mixertts.md) · [FastPitch](fastpitch.md) · [ZipVoice](zipvoice.md) · [Shami](shami.md) · [Chatterbox](chatterbox.md)
