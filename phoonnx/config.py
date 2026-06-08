@@ -27,6 +27,7 @@ class Engine(str, Enum):
     FASTPITCH = "fastpitch"  # FastSpeech2-style mel model + separate vocoder
     STYLETTS2 = "styletts2"  # StyleTTS2 / Kokoro end-to-end (tokens + style -> wav)
     YOURTTS = "yourtts"  # multilingual VITS conditioned on a speaker d-vector (cloning)
+    ZIPVOICE = "zipvoice"  # flow-matching, in-context cloning (iterative ODE loop)
 
 
 class Alphabet(str, Enum):
@@ -482,9 +483,21 @@ class SynthesisConfig:
     """Index of lang to use (multi-lang voices only)."""
 
     speaker_reference: Optional[Any] = None
-    """Reference audio for zero-shot voice cloning (cloning engines: YourTTS,
-    StyleTTS2). Either a path to a wav file, or an ``(audio, sample_rate)`` tuple.
-    The voice's speaker encoder turns it into the conditioning d-vector/style."""
+    """Reference audio for zero-shot voice cloning (cloning engines). A path to a wav
+    file, or an ``(audio, sample_rate)`` tuple. The cloning adapter turns it into the
+    conditioning signal (a d-vector, or — for in-context engines like ZipVoice — the
+    prompt mel)."""
+
+    speaker_reference_text: Optional[str] = None
+    """Transcription of ``speaker_reference``, required by **in-context** cloning
+    engines (ZipVoice): the voice tokenizes it into the prompt tokens that prefix
+    generation. Ignored by d-vector engines (YourTTS, StyleTTS2)."""
+
+    speaker_reference_lang: Optional[str] = None
+    """Language of ``speaker_reference_text`` (e.g. ``pt`` for a Portuguese clip),
+    used to phonemize the reference in *its* language — which may differ from the
+    target text's. Defaults to the voice's ``lang_code``. Enables cross-lingual
+    cloning (a Portuguese reference speaking English). In-context engines only."""
 
     length_scale: Optional[float] = None
     """Phoneme length scale (< 1 is faster, > 1 is slower)."""

@@ -280,13 +280,17 @@ class TTSVoice:
             adapter=adapter,
         )
 
-    def phonemize(self, text: str) -> PhonemizedChunks:
+    def phonemize(self, text: str, lang: Optional[str] = None) -> PhonemizedChunks:
         """
         Text to phonemes grouped by sentence.
 
         :param text: Text to phonemize.
+        :param lang: Language code to phonemize in; defaults to the voice's own
+            ``lang_code``. Used to phonemize a cloning reference transcription in
+            *its* language (which may differ from the target's).
         :return: List of phonemes for each sentence.
         """
+        lang = lang or self.config.lang_code
         phonemes: list[list[str]] = []
 
         text_parts = _PHONEME_BLOCK_PATTERN.split(text)
@@ -308,7 +312,7 @@ class TTSVoice:
 
                 continue
 
-            phonemes.extend(self.phonemizer.phonemize(text_part, self.config.lang_code))
+            phonemes.extend(self.phonemizer.phonemize(text_part, lang))
 
         if phonemes and (not phonemes[-1]):
             # Remove empty phonemes
@@ -430,6 +434,19 @@ class TTSVoice:
             wav_file.writeframes(audio_chunk.audio_int16_bytes)
 
 
+    def _prompt_token_ids(self, text: str, lang: Optional[str] = None) -> list[int]:
+        """Tokenize a cloning reference transcription into prompt token ids, reusing
+        the voice's own phonemizer + tokenizer (for in-context engines like ZipVoice).
+
+        ``lang`` phonemizes the transcription in the reference's own language (which
+        may differ from the target's); defaults to the voice's ``lang_code``.
+        """
+        ids: list[int] = []
+        for phonemes in self.phonemize(text, lang):
+            if phonemes:
+                ids.extend(self.phonemes_to_ids(phonemes))
+        return ids
+
     def phoneme_ids_to_audio(
             self, phoneme_ids: list[int], syn_config: Optional[SynthesisConfig] = None
     ) -> np.ndarray:
@@ -475,10 +492,13 @@ class TTSVoice:
             params["noise_w_scale"] = syn_config.noise_w_scale
         # Engine-specific extras from SynthesisConfig
         params.update(syn_config.extra_params)
-        # Voice cloning: a reference clip is turned into the conditioning vector by
-        # the cloning adapter (it owns the speaker encoder). We just normalise it.
+        # Voice cloning: hand the cloning adapter the reference clip and — for
+        # in-context engines (ZipVoice) — the prompt tokens of its transcription.
         if syn_config.speaker_reference is not None:
             params["reference_audio"] = _load_reference_audio(syn_config.speaker_reference)
+        if syn_config.speaker_reference_text:
+            params["prompt_tokens"] = self._prompt_token_ids(
+                syn_config.speaker_reference_text, syn_config.speaker_reference_lang)
 
         request = AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,
@@ -488,10 +508,9 @@ class TTSVoice:
             params=params,
         )
 
-        # Delegate to the adapter
-        feed_dict = self.adapter.build_feed_dict(request, self.session)
-        raw_outputs = self.session.run(None, feed_dict)
-        result = self.adapter.parse_outputs(raw_outputs, request)
+        # Delegate to the adapter (single-graph engines use the default
+        # build_feed_dict → run → parse_outputs; iterative engines override).
+        result = self.adapter.synthesize(request, self.session)
 
         return result.audio
 

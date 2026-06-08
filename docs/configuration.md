@@ -79,6 +79,9 @@ syn_config = SynthesisConfig(
 | `volume` | `float` | `1.0` | Volume multiplier |
 | `enable_phonetic_spellings` | `bool` | `True` | Apply word-level pronunciation overrides |
 | `add_diacritics` | `bool` | `True` | Add vowel diacritics before phonemization |
+| `speaker_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Reference clip for zero-shot [voice cloning](cloning.md) |
+| `speaker_reference_text` | `str` \| `None` | `None` | Reference transcription, required by in-context cloning engines (ZipVoice) |
+| `speaker_reference_lang` | `str` \| `None` | `None` | Language of the transcription, for cross-lingual cloning (defaults to the voice's `lang_code`) |
 
 ## model.json Format
 
