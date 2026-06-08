@@ -493,6 +493,12 @@ class SynthesisConfig:
     engines (ZipVoice): the voice tokenizes it into the prompt tokens that prefix
     generation. Ignored by d-vector engines (YourTTS, StyleTTS2)."""
 
+    speaker_reference_lang: Optional[str] = None
+    """Language of ``speaker_reference_text`` (e.g. ``pt`` for a Portuguese clip),
+    used to phonemize the reference in *its* language — which may differ from the
+    target text's. Defaults to the voice's ``lang_code``. Enables cross-lingual
+    cloning (a Portuguese reference speaking English). In-context engines only."""
+
     length_scale: Optional[float] = None
     """Phoneme length scale (< 1 is faster, > 1 is slower)."""
 
