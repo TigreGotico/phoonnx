@@ -60,7 +60,8 @@ synthesis_config = SynthesisConfig(
     length_scale=1.0,
     noise_w_scale=0.8,
     enable_phonetic_spellings=True, # apply pronunciation fixes, see "locale" folder in this repo
-    add_diacritics=False  # for arabic and hebrew
+    add_diacritics=False,  # adds pronunciation marks: Arabic tashkeel, Hebrew niqqud, Russian/Ukrainian/Belarusian word stress
+    diacritics_model=None  # optional model variant for backends that support it (e.g. "silero" or "ruaccent" for ru/uk/be via stressonnx)
 )
 
 # Synthesize audio from text
@@ -207,6 +208,7 @@ Individual languages greatly benefit from domain-specific knowledge, for conveni
 - [uvigo/cotovia](https://github.com/TigreGotico/cotovia-mirror) for galician phonemization (pre-compiled binaries bundled)
 - [mush42/mantoq](https://github.com/mush42/mantoq) for arabic phonemization
 - [mush42/libtashkeel](https://github.com/mush42/libtashkeel) for arabic diacritics
+- [stressonnx](https://github.com/TigreGotico/stressonnx) for Russian/Ukrainian/Belarusian word-stress accentuation (optional dependency; `add_diacritics` falls back gracefully when not installed)
 - [scarletcho/KoG2P](https://github.com/scarletcho/KoG2P) for korean phonemization
 - [stannam/hangul_to_ipa](https://github.com/stannam/hangul_to_ipa) a converter from Hangul to IPA
 - [chorusai/arpa2ipa](https://github.com/chorusai/arpa2ipa) a converter from Arpabet to IPA

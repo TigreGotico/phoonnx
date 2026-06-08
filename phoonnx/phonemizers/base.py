@@ -1,4 +1,5 @@
 import abc
+import logging
 import re
 import string
 import unicodedata
@@ -10,6 +11,49 @@ from phoonnx.config import Alphabet
 from phoonnx.util import normalize, match_lang
 from phoonnx.thirdparty.phonikud import PhonikudDiacritizer
 from phoonnx.thirdparty.tashkeel import TashkeelDiacritizer
+
+LOG = logging.getLogger(__name__)
+
+
+def _add_slavic_stress(text: str, lang: str, model: Optional[str] = None) -> str:
+    """Apply word-stress accentuation to Russian/Ukrainian/Belarusian text.
+
+    Delegates to ``stressonnx.stress`` when the package is available.  If the
+    package is not installed, or the language is not supported by the installed
+    version, a warning is logged and the original text is returned unchanged —
+    matching the optional-backend pattern used by the Arabic tashkeel backend.
+
+    Parameters
+    ----------
+    text:
+        Input text (Cyrillic).
+    lang:
+        BCP-47 language tag (``ru``, ``uk``, ``be``, or a longer tag starting
+        with one of those prefixes).
+    model:
+        Optional model variant forwarded to ``stressonnx.stress`` when the
+        function accepts a ``model`` keyword argument (e.g. ``"silero"`` or
+        ``"ruaccent"`` for Russian).  Ignored if the backend does not support it.
+    """
+    try:
+        from stressonnx import stress  # type: ignore[import]
+        import inspect
+        sig = inspect.signature(stress)
+        kwargs = {}
+        if model is not None and "model" in sig.parameters:
+            kwargs["model"] = model
+        return stress(text, lang, **kwargs)
+    except ImportError:
+        LOG.warning(
+            "stressonnx is not installed; add_diacritics has no effect for lang=%s. "
+            "Install stressonnx to enable word-stress accentuation.",
+            lang,
+        )
+    except Exception as exc:
+        LOG.warning(
+            "stressonnx failed for lang=%s (%s); returning text unchanged.", lang, exc
+        )
+    return text
 
 # list of (substring, terminator, end_of_sentence) tuples.
 TextChunks = List[Tuple[str, str, bool]]
@@ -48,11 +92,13 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
     def phonemize_to_list(self, text: str, lang: str) -> List[str]:
         return list(self.phonemize_string(text, lang))
 
-    def add_diacritics(self, text: str, lang: str) -> str:
+    def add_diacritics(self, text: str, lang: str, model: Optional[str] = None) -> str:
         if lang.startswith("he"):
             return self.phonikud.diacritize(text)
         elif lang.startswith("ar"):
             return self.tashkeel.diacritize(text, self.taskeen_threshold)
+        elif lang.startswith(("ru", "uk", "be")):
+            return _add_slavic_stress(text, lang, model)
         return text
 
     def phonemize(self, text: str, lang: str) -> PhonemizedChunks:

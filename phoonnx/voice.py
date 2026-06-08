@@ -360,7 +360,8 @@ class TTSVoice:
             text = self.phonetic_spellings.apply(text)
 
         if syn_config.add_diacritics:
-            text = self.phonemizer.add_diacritics(text, self.config.lang_code)
+            text = self.phonemizer.add_diacritics(text, self.config.lang_code,
+                                                  model=syn_config.diacritics_model)
             LOG.debug("text+diacritics=%s", text)
 
         # All phonemization goes through the unified self.phonemize method

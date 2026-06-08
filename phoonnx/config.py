@@ -166,7 +166,10 @@ class VoiceConfig:
 
         if self.add_diacritics is None:
             self.add_diacritics = False
-            if self.lang_code and self.lang_code.startswith("ar"):
+            if self.lang_code and (
+                self.lang_code.startswith("ar")
+                or self.lang_code.startswith(("ru", "uk", "be"))
+            ):
                 self.add_diacritics = True
 
         self.lang_code = normalize_lang(self.lang_code or "und")
@@ -302,7 +305,7 @@ class VoiceConfig:
 
             lang_code = lang_code or (config.get("language", {}).get("code") or
                          config.get("espeak", {}).get("voice"))
-            diacritics = lang_code.startswith("ar")
+            diacritics = lang_code.startswith(("ar", "ru", "uk", "be"))
             phoneme_type = phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK)
             if phoneme_type == "text":
                 phoneme_type = PhonemeType.UNICODE
@@ -541,8 +544,14 @@ class SynthesisConfig:
 
     enable_phonetic_spellings: bool = True
 
-    """for arabic and hebrew models"""
+    """for arabic, hebrew, and Slavic (ru/uk/be) models"""
     add_diacritics: bool = True
+
+    diacritics_model: Optional[str] = None
+    """Optional model variant for diacritization backends that support multiple
+    models.  Currently used by the Russian/Ukrainian/Belarusian stress backend
+    (``stressonnx``) — e.g. ``"silero"`` or ``"ruaccent"``.  Ignored by the
+    Arabic and Hebrew backends.  ``None`` lets ``stressonnx`` use its default."""
 
     # Engine-specific per-call params (d_factor, p_factor, e_factor, …)
     extra_params: Dict[str, Any] = field(default_factory=dict)
