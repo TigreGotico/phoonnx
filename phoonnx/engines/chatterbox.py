@@ -26,6 +26,7 @@ from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult
 S3GEN_SR = 24000
 START_SPEECH_TOKEN = 6561
 STOP_SPEECH_TOKEN = 6562
+SILENCE_TOKEN = 4299
 
 
 def _resample(audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
@@ -52,8 +53,7 @@ def _apply_repetition_penalty(prev_ids: np.ndarray, scores: np.ndarray, penalty:
 
 
 def _sample_top_p(logits: np.ndarray, temperature: float, top_p: float, rng) -> np.ndarray:
-    """Temperature + nucleus (top-p) sampling. Greedy decoding makes a codec-LM loop
-    and never emit the speech-EOS — sampling is what keeps generation healthy."""
+    """Temperature + nucleus (top-p) sampling over a [1, vocab] logits row."""
     x = logits[0].astype(np.float64) / max(temperature, 1e-5)
     x -= x.max()
     probs = np.exp(x); probs /= probs.sum()
@@ -81,7 +81,7 @@ class ChatterboxAdapter(BaseOnnxAdapter):
         self.lm_needs_pos = False        # GPT-2-style LMs take position_ids (turbo)
 
     def default_params(self) -> Dict[str, float]:
-        return {"exaggeration": 0.5, "temperature": 0.8, "top_p": 0.8}
+        return {"exaggeration": 0.5, "temperature": 0.8, "top_p": 0.95}
 
     def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
         """BPE the raw text directly — Chatterbox's subword tokenizer owns normalization,
@@ -132,7 +132,7 @@ class ChatterboxAdapter(BaseOnnxAdapter):
         input_ids = np.asarray(request.phoneme_ids, np.int64).reshape(1, -1)
         exaggeration = np.array([float(request.params.get("exaggeration", 0.5))], np.float32)
         temperature = float(request.params.get("temperature", 0.8))
-        top_p = float(request.params.get("top_p", 0.8))
+        top_p = float(request.params.get("top_p", 0.95))
         rng = np.random.default_rng()
         embed_pos = np.where(input_ids >= START_SPEECH_TOKEN, 0,
                              np.arange(input_ids.shape[1])[None, :] - 1).astype(np.int64)
@@ -148,7 +148,7 @@ class ChatterboxAdapter(BaseOnnxAdapter):
             return feed
 
         generated = np.array([[START_SPEECH_TOKEN]], np.int64)
-        past = attention_mask = next_token = None
+        past = attention_mask = next_token = lm_pos = None
         for step in range(self.MAX_NEW_TOKENS):
             feed_in = embed_feed(input_ids, embed_pos) if step == 0 \
                 else embed_feed(next_token, np.full((1, 1), step, np.int64))
@@ -159,27 +159,30 @@ class ChatterboxAdapter(BaseOnnxAdapter):
                 past = {n: np.zeros([batch, self.num_kv_heads, 0, self.head_dim], np.float32)
                         for n in self.past_names}
                 attention_mask = np.ones((batch, seq_len), np.int64)
-                lm_pos = np.arange(seq_len)[None, :].astype(np.int64)
-            else:
-                # GPT-2 (turbo) absolute PE: speech positions reset to 0 (per the
-                # reference T3 inference). NOTE: this alone does not yet make turbo
-                # intelligible — its full ONNX inference scheme is not publicly
-                # documented; treated as experimental.
-                lm_pos = np.array([[step - 1]], np.int64)
+                lm_pos = np.arange(seq_len)[None, :].astype(np.int64).repeat(batch, axis=0)
             feed = dict(inputs_embeds=inputs_embeds, attention_mask=attention_mask, **past)
-            if self.lm_needs_pos:                       # GPT-2-style LM (turbo)
+            if self.lm_needs_pos:                       # GPT-2-style LM (turbo) takes positions
                 feed["position_ids"] = lm_pos
             logits, *present = session.run(None, feed)
-            logits = _apply_repetition_penalty(generated[:, -1:], logits[:, -1, :], self.REPETITION_PENALTY)
-            next_token = _sample_top_p(logits, temperature, top_p, rng)
+            # repetition penalty over ALL emitted tokens (penalising only the last lets
+            # the codec-LM babble), then sample (temperature/top_p) or greedy (temp<=0).
+            logits = _apply_repetition_penalty(generated, logits[:, -1, :], self.REPETITION_PENALTY)
+            if temperature > 0:
+                next_token = _sample_top_p(logits, temperature, top_p, rng)
+            else:
+                next_token = np.argmax(logits, axis=-1, keepdims=True).astype(np.int64)
             generated = np.concatenate((generated, next_token), axis=-1)
             if (next_token.flatten() == STOP_SPEECH_TOKEN).all():
                 break
             attention_mask = np.concatenate([attention_mask, np.ones((attention_mask.shape[0], 1), np.int64)], axis=1)
+            lm_pos = lm_pos[:, -1:] + 1                  # positions stay cumulative
             for j, name in enumerate(self.past_names):
                 past[name] = present[j]
 
-        speech_tokens = np.concatenate([prompt_token, generated[:, 1:-1]], axis=1)
+        # strip start/stop, prepend the reference prompt token, append a little silence
+        speech_tokens = generated[:, 1:-1]
+        silence = np.full((speech_tokens.shape[0], 3), SILENCE_TOKEN, np.int64)
+        speech_tokens = np.concatenate([prompt_token, speech_tokens, silence], axis=1)
         wav = self.cond_decoder.run(None, {"speech_tokens": speech_tokens,
                                            "speaker_embeddings": x_vector,
                                            "speaker_features": prompt_feat})[0]

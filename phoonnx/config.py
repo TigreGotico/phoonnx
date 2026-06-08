@@ -532,6 +532,13 @@ class SynthesisConfig:
     """Expressiveness / emotional intensity (0.0–1.0, default 0.5) for engines that
     support it (Chatterbox). Higher = more exaggerated prosody. Ignored otherwise."""
 
+    temperature: Optional[float] = None
+    """Sampling temperature for autoregressive engines (Chatterbox, default 0.8).
+    Higher = more varied/expressive; ``0`` = deterministic greedy decoding."""
+
+    top_p: Optional[float] = None
+    """Nucleus (top-p) sampling cutoff for autoregressive engines (default 0.95)."""
+
     length_scale: Optional[float] = None
     """Phoneme length scale (< 1 is faster, > 1 is slower)."""
 
