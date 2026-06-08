@@ -6,10 +6,21 @@
 
 **Closed issues:**
 
+- OptiSpeech inference engine [\#167](https://github.com/TigreGotico/phoonnx/issues/167)
+- Matcha-TTS inference engine [\#165](https://github.com/TigreGotico/phoonnx/issues/165)
+- VITS training engine [\#164](https://github.com/TigreGotico/phoonnx/issues/164)
+- StyleTTS2 inference engine [\#163](https://github.com/TigreGotico/phoonnx/issues/163)
+- FastPitch inference engine [\#162](https://github.com/TigreGotico/phoonnx/issues/162)
+- MixerTTS inference engine [\#161](https://github.com/TigreGotico/phoonnx/issues/161)
+- GlowTTS inference engine [\#160](https://github.com/TigreGotico/phoonnx/issues/160)
+- VITS inference engine [\#159](https://github.com/TigreGotico/phoonnx/issues/159)
+- OptiSpeech support [\#134](https://github.com/TigreGotico/phoonnx/issues/134)
+- Matcha-TTS support [\#133](https://github.com/TigreGotico/phoonnx/issues/133)
 - Design: pluggable multi-engine architecture [\#132](https://github.com/TigreGotico/phoonnx/issues/132)
 
 **Merged pull requests:**
 
+- feat\(engines\): YourTTS engine + zero-shot voice cloning \(speaker encoder + registry\) [\#156](https://github.com/TigreGotico/phoonnx/pull/156) ([JarbasAl](https://github.com/JarbasAl))
 - chore\(index\): migrate the last 3 voices to the OVOS mirror [\#155](https://github.com/TigreGotico/phoonnx/pull/155) ([JarbasAl](https://github.com/JarbasAl))
 - chore\(index\): BCP-47 lang codes + regenerate VOICES.md [\#154](https://github.com/TigreGotico/phoonnx/pull/154) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): VITS2 + StyleTTS2 family \(pure StyleTTS2 + Kokoro, multilingual\) [\#153](https://github.com/TigreGotico/phoonnx/pull/153) ([JarbasAl](https://github.com/JarbasAl))
