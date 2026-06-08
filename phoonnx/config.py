@@ -48,6 +48,7 @@ class Alphabet(str, Enum):
     ERAAB = "eraab" # fa
     COTOVIA = "cotovia" # gl
     HANZI = "hanzi" # zh
+    CANGJIE = "cangjie"  # zh (Cangjie code tokens, e.g. [cj_...])
     BUCKWALTER = "buckwalter" # ar
 
 
@@ -116,6 +117,11 @@ class VoiceConfig:
     """espeak, byt5, text, cotovia, or graphemes."""
 
     alphabet: Optional[Alphabet]
+    """Model-expected alphabet — the script/phoneme representation the ONNX model
+    was trained to consume.  This value is read from the model's ``config.json``
+    and must not be set by the caller at synthesis time.  Script-conversion engines
+    (e.g. HANGUL→Jamo, UNICODE→Cangjie) normalise caller text *into* this
+    representation before ``adapter.encode_text``."""
 
     phonemizer_model: Optional[str]
     """for phonemizers that allow changing base model """
@@ -518,6 +524,23 @@ class SynthesisConfig:
 
     """for arabic and hebrew models"""
     add_diacritics: bool = True
+
+    alphabet: Optional[Alphabet] = None
+    """User-input alphabet — the script/representation that the *caller* provides
+    to :meth:`~phoonnx.voice.TTSVoice.synthesize`.
+
+    ``None`` (default) means "assume the model's own alphabet" — the text is
+    passed through unchanged.  Set this when the caller's text is in a different
+    representation than what the model expects; for example, pass
+    ``Alphabet.UNICODE`` when giving raw Korean Hangul to a Jamo-trained voice.
+
+    The conversion bridge is :func:`phoonnx.alphabet_convert.convert`::
+
+        convert(text, src=syn_config.alphabet or voice.config.alphabet,
+                      dst=voice.config.alphabet)
+
+    This is a no-op for phoneme alphabets (IPA/ARPA) and identical src==dst
+    pairs; it only fires for the registered script-conversion pairs."""
 
     # Engine-specific per-call params (d_factor, p_factor, e_factor, …)
     extra_params: Dict[str, Any] = field(default_factory=dict)

@@ -66,6 +66,9 @@ zh = ["epitran", "gruut[zh]>=2.3.0,<3.0", "misaki[zh]", "spacy>=3.7"]
 
 # runtime deps for zero-shot voice cloning (reference loading + resampling)
 cloning = ["soundfile", "scipy"]
+# Optional deps for CJK script-conversion in alphabet_convert (ja: pykakasi; zh: spacy-pkuseg).
+# ko (Hangul→Jamo) is pure Python and requires no extra.
+cjk = ["pykakasi==2.3.0", "spacy-pkuseg"]
 # everything optional — every language phonemizer + cloning. Used by the Docker image.
 all = [
     "epitran",
@@ -74,6 +77,7 @@ all = [
     "misaki[en]", "misaki[ja]", "misaki[vi]", "misaki[zh]",
     "spacy>=3.7",
     "soundfile", "scipy",
+    "pykakasi==2.3.0", "spacy-pkuseg",
 ]
 
 [tool.setuptools.dynamic]

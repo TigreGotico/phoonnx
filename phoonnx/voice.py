@@ -18,6 +18,7 @@ import numpy as np
 import onnxruntime
 from langcodes import closest_match
 
+from phoonnx.alphabet_convert import convert
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, get_phonemizer
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.engines.base import (
@@ -362,6 +363,15 @@ class TTSVoice:
         if syn_config.add_diacritics:
             text = self.phonemizer.add_diacritics(text, self.config.lang_code)
             LOG.debug("text+diacritics=%s", text)
+
+        # Script-conversion: bridge the caller's alphabet to the model's alphabet.
+        # syn_config.alphabet is the user-input alphabet; None means "assume model's".
+        # self.config.alphabet is the model-expected alphabet.
+        # No-op when src == dst or when the pair has no registered converter.
+        if self.config.alphabet is not None:
+            src_alphabet = syn_config.alphabet or self.config.alphabet
+            text = convert(text, src=src_alphabet, dst=self.config.alphabet)
+            LOG.debug("text+alphabet_convert=%s", text)
 
         # All phonemization goes through the unified self.phonemize method
         sentence_phonemes = self.phonemize(text)
