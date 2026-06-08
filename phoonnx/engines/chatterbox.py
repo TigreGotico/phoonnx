@@ -84,22 +84,18 @@ class ChatterboxAdapter(BaseOnnxAdapter):
         return {"exaggeration": 0.5, "temperature": 0.8, "top_p": 0.95}
 
     def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
-        """Tokenize raw text with the model's own BPE.
+        """Tokenize raw text with the voice's own BPE.
 
-        Multilingual Chatterbox tokenizers expect a specific front end: lowercase +
-        NFKD-normalise, a ``[<lang>]`` prefix token (from the voice's lang_code), and
-        spaces replaced by a ``[SPACE]`` token. English-only base/turbo tokenizers have
-        neither and take the text as-is. (Per-language preprocessing for zh/ja/ko/he/ru
-        in the reference is not applied here.)
+        Chatterbox tokenizes raw text (not phonemes), so the tokenizer owns
+        normalization. The multilingual variant uses ``ChatterboxMTLTokenizer``, which
+        applies a ``[<lang>]`` front end keyed off the voice's ``lang_code``; base/turbo
+        use a plain ``BPETokenizer`` and ignore the language.
         """
-        raw = getattr(voice.tokenizer, "_tok", None)
-        if raw is not None and raw.token_to_id("[SPACE]") is not None:
-            lang = (voice.config.lang_code or "").replace("_", "-").split("-")[0].lower()
-            if lang and raw.token_to_id(f"[{lang}]") is not None:
-                import unicodedata
-                t = f"[{lang}]" + unicodedata.normalize("NFKD", text.lower())
-                return [list(raw.encode(t.replace(" ", "[SPACE]")).ids)]
-        return [voice.tokenizer.tokenize(text)]
+        lang = getattr(getattr(voice, "config", None), "lang_code", None)
+        try:
+            return [voice.tokenizer.tokenize(text, language=lang)]
+        except TypeError:        # tokenizer without a language-aware signature
+            return [voice.tokenizer.tokenize(text)]
 
     def configure(self, voice_config: Any) -> None:
         """Load the auxiliary graphs from ``engine_params`` and read the LM's KV-cache

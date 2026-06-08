@@ -77,3 +77,24 @@ def test_sample_top_p_picks_dominant():
     logits = np.array([[12.0, 0.0, -5.0, 0.1]])      # token 0 dominates the nucleus
     tok = _sample_top_p(logits, 0.8, 0.9, rng)
     assert tok.shape == (1, 1) and tok[0, 0] == 0
+
+
+def test_mtl_tokenizer_language_frontend():
+    from phoonnx.tokenizer import ChatterboxMTLTokenizer
+    tok = ChatterboxMTLTokenizer.__new__(ChatterboxMTLTokenizer)
+    seen = {}
+
+    class _Enc:
+        def __init__(self, ids): self.ids = ids
+
+    class _Tok:
+        def token_to_id(self, t): return 1 if t in ("[pt]", "[SPACE]") else None
+        def encode(self, text): seen["text"] = text; return _Enc([1, 2, 3])
+
+    tok._tok = _Tok()
+    # known language -> [lang] prefix, lowercase, spaces become [SPACE]
+    tok.tokenize("Hello World", language="pt-BR")
+    assert seen["text"] == "[pt]hello[SPACE]world"
+    # unknown language token -> plain BPE, untouched
+    tok.tokenize("Hello World", language="xx")
+    assert seen["text"] == "Hello World"

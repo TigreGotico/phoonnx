@@ -41,11 +41,12 @@ signature, so no model config is hardcoded. The `language_model` is the voice's 
 
 ## Text tokenization
 
-Chatterbox tokenizes **raw text with its own subword BPE**, not phonemes — so it uses
-`phoonnx.tokenizer.BPETokenizer` (the vocab-lookup `TTSTokenizer` is the *other*
-implementation of the same tokenizer role). Because phoneme front ends normalize
-(strip punctuation, expand numbers), the adapter sets `tokenizes_raw_text = True` and
-`TTSVoice` feeds it the raw text untouched; Chatterbox's BPE does its own normalization.
+Chatterbox tokenizes **raw text with its own subword BPE**, not phonemes. The adapter
+overrides `BaseOnnxAdapter.encode_text` to BPE the text directly (phoneme front ends
+would strip punctuation / expand numbers); the tokenizer owns normalization. Base +
+turbo use `phoonnx.tokenizer.BPETokenizer`; the multilingual variant uses its
+`ChatterboxMTLTokenizer` subclass, which adds the language-aware front end (below). Both
+are the subword complement to the vocab-lookup `TTSTokenizer`.
 
 ## Cloning + exaggeration
 
@@ -72,12 +73,13 @@ model's tokenizer. The repetition penalty runs over all emitted tokens and decod
 temperature/top-p sampling (greedy at `temperature=0`); a trailing silence token is
 appended before the decoder.
 
-**Multilingual language selection:** the multilingual model's tokenizer prefixes a
-`[<lang>]` token (from the voice's `lang_code`), lowercases + NFKD-normalises, and
-replaces spaces with `[SPACE]`. Latin/Greek/Cyrillic languages (en, pt, es, fr, de, it,
-nl, el, tr, sv, …) work directly. Five languages need extra per-language text
-preprocessing not yet ported — **zh** (Cangjie), **ja** (hiragana), **ko**, **he**
-(diacritics), **ru** (stress) — and will mispronounce until that's added.
+**Multilingual language selection:** `ChatterboxMTLTokenizer` (the multilingual
+tokenizer) prefixes a `[<lang>]` token from the voice's `lang_code`, lowercases +
+NFKD-normalises, and replaces spaces with `[SPACE]`. Latin/Greek/Cyrillic languages (en,
+pt, es, fr, de, it, nl, el, tr, sv, …) work directly. Five languages need an extra
+per-language script transform, exposed as the overridable `_script_transform` hook but
+not yet ported — **zh** (Cangjie), **ja** (hiragana), **ko**, **he** (diacritics),
+**ru** (stress) — and will mispronounce (with a warning) until that's added.
 
 ## A note on performance
 

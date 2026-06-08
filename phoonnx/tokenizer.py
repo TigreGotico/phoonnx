@@ -749,13 +749,49 @@ class BPETokenizer:
     blank_id = None
     blank_word_id = None
 
-    def tokenize(self, text: Union[str, List[str]]) -> List[int]:
+    def tokenize(self, text: Union[str, List[str]], language: Optional[str] = None) -> List[int]:
+        # base BPE has no notion of language; the parameter exists so the voice can call
+        # tokenize(text, language=...) uniformly (the multilingual subclass uses it).
         if isinstance(text, (list, tuple)):
             text = "".join(text)
         return list(self._tok.encode(text).ids)
 
     def encode(self, text: Union[str, List[str]]) -> List[int]:
         return self.tokenize(text)
+
+
+class ChatterboxMTLTokenizer(BPETokenizer):
+    """Multilingual Chatterbox tokenizer — the language-aware front end on top of the BPE.
+
+    The multilingual model is trained on a specific text encoding: lowercase +
+    NFKD-normalise, an optional per-language script transform, a ``[<lang>]`` prefix
+    token, and spaces encoded as a ``[SPACE]`` token. ``language`` is an ISO code (e.g.
+    ``"pt"``); without it — or for a vocab lacking the ``[<lang>]`` token — this degrades
+    to plain BPE so it stays safe for English-only checkpoints.
+    """
+
+    # languages whose script the reference transforms (Cangjie / hiragana / Hangul /
+    # niqqud / stress) before encoding; not ported yet, so they will mispronounce.
+    _NEEDS_SCRIPT_TRANSFORM = {"zh", "ja", "ko", "he", "ru"}
+
+    def tokenize(self, text: Union[str, List[str]], language: Optional[str] = None) -> List[int]:
+        if isinstance(text, (list, tuple)):
+            text = "".join(text)
+        lang = (language or "").replace("_", "-").split("-")[0].lower()
+        if not lang or self._tok.token_to_id(f"[{lang}]") is None:
+            return list(self._tok.encode(text).ids)
+        import unicodedata
+        norm = self._script_transform(unicodedata.normalize("NFKD", text.lower()), lang)
+        encoded = f"[{lang}]{norm}".replace(" ", "[SPACE]")
+        return list(self._tok.encode(encoded).ids)
+
+    def _script_transform(self, text: str, lang: str) -> str:
+        """Hook for per-language script transforms. Not ported for zh/ja/ko/he/ru —
+        those degrade to the raw text (and warn) until the transforms are added."""
+        if lang in self._NEEDS_SCRIPT_TRANSFORM:
+            LOG.warning("ChatterboxMTLTokenizer: per-language preprocessing for %r is not "
+                        "implemented; pronunciation will be approximate.", lang)
+        return text
 
 
 if __name__ == "__main__":
