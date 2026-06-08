@@ -7,6 +7,7 @@
 **Closed issues:**
 
 - YourTTS inference engine \(zero-shot voice cloning\) [\#172](https://github.com/TigreGotico/phoonnx/issues/172)
+- ZipVoice inference engine [\#170](https://github.com/TigreGotico/phoonnx/issues/170)
 - OptiSpeech inference engine [\#167](https://github.com/TigreGotico/phoonnx/issues/167)
 - Matcha-TTS inference engine [\#165](https://github.com/TigreGotico/phoonnx/issues/165)
 - VITS training engine [\#164](https://github.com/TigreGotico/phoonnx/issues/164)
@@ -18,9 +19,11 @@
 - OptiSpeech support [\#134](https://github.com/TigreGotico/phoonnx/issues/134)
 - Matcha-TTS support [\#133](https://github.com/TigreGotico/phoonnx/issues/133)
 - Design: pluggable multi-engine architecture [\#132](https://github.com/TigreGotico/phoonnx/issues/132)
+- Starting as an ovos-tts-server [\#98](https://github.com/TigreGotico/phoonnx/issues/98)
 
 **Merged pull requests:**
 
+- feat\(docker\): batteries-included OVOS TTS server image + publish workflow \(closes \#98\) [\#178](https://github.com/TigreGotico/phoonnx/pull/178) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(zipvoice\): native flow-matching engine — phoonnx's first iterative adapter [\#158](https://github.com/TigreGotico/phoonnx/pull/158) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): YourTTS engine + zero-shot voice cloning \(speaker encoder + registry\) [\#156](https://github.com/TigreGotico/phoonnx/pull/156) ([JarbasAl](https://github.com/JarbasAl))
 - chore\(index\): migrate the last 3 voices to the OVOS mirror [\#155](https://github.com/TigreGotico/phoonnx/pull/155) ([JarbasAl](https://github.com/JarbasAl))
