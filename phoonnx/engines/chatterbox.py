@@ -64,6 +64,8 @@ class ChatterboxAdapter(BaseOnnxAdapter):
         self.past_names: List[str] = []
         self.num_kv_heads = 0
         self.head_dim = 0
+        self.embed_inputs: set = set()   # which inputs embed_tokens accepts
+        self.lm_needs_pos = False        # GPT-2-style LMs take position_ids (turbo)
 
     def default_params(self) -> Dict[str, float]:
         return {"exaggeration": 0.5}
@@ -80,13 +82,17 @@ class ChatterboxAdapter(BaseOnnxAdapter):
         sess = lambda p: onnxruntime.InferenceSession(str(p), providers=["CPUExecutionProvider"])
         if self.embed_tokens is None and ep.get("embed_tokens_path"):
             self.embed_tokens = sess(ep["embed_tokens_path"])
+        if self.embed_tokens is not None:
+            self.embed_inputs = {i.name for i in self.embed_tokens.get_inputs()}
         if self.speech_encoder is None and ep.get("speech_encoder_path"):
             self.speech_encoder = sess(ep["speech_encoder_path"])
         if self.cond_decoder is None and ep.get("conditional_decoder_path"):
             self.cond_decoder = sess(ep["conditional_decoder_path"])
 
     def _read_kv_shape(self, session: onnxruntime.InferenceSession) -> None:
-        self.past_names = [i.name for i in session.get_inputs() if i.name.startswith("past_key_values")]
+        names = [i.name for i in session.get_inputs()]
+        self.past_names = [n for n in names if n.startswith("past_key_values")]
+        self.lm_needs_pos = "position_ids" in names
         for i in session.get_inputs():
             if i.name.startswith("past_key_values"):
                 shape = i.shape   # [B, num_kv_heads, seq, head_dim]
@@ -112,29 +118,44 @@ class ChatterboxAdapter(BaseOnnxAdapter):
 
         input_ids = np.asarray(request.phoneme_ids, np.int64).reshape(1, -1)
         exaggeration = np.array([float(request.params.get("exaggeration", 0.5))], np.float32)
-        position_ids = np.where(input_ids >= START_SPEECH_TOKEN, 0,
-                                np.arange(input_ids.shape[1])[None, :] - 1).astype(np.int64)
-        embed_in = {"input_ids": input_ids, "position_ids": position_ids, "exaggeration": exaggeration}
+        embed_pos = np.where(input_ids >= START_SPEECH_TOKEN, 0,
+                             np.arange(input_ids.shape[1])[None, :] - 1).astype(np.int64)
+
+        def embed_feed(ids, pos):
+            # feed only what this model's embed_tokens accepts (base/multilingual take
+            # position_ids + exaggeration; turbo takes input_ids alone)
+            feed = {"input_ids": ids}
+            if "position_ids" in self.embed_inputs:
+                feed["position_ids"] = pos
+            if "exaggeration" in self.embed_inputs:
+                feed["exaggeration"] = exaggeration
+            return feed
 
         generated = np.array([[START_SPEECH_TOKEN]], np.int64)
-        past = attention_mask = None
+        past = attention_mask = next_token = None
+        cache_len = 0
         for step in range(self.MAX_NEW_TOKENS):
-            inputs_embeds = self.embed_tokens.run(None, embed_in)[0]
+            feed_in = embed_feed(input_ids, embed_pos) if step == 0 \
+                else embed_feed(next_token, np.full((1, 1), step, np.int64))
+            inputs_embeds = self.embed_tokens.run(None, feed_in)[0]
             if step == 0:
                 inputs_embeds = np.concatenate((cond_emb, inputs_embeds), axis=1)
                 batch, seq_len, _ = inputs_embeds.shape
                 past = {n: np.zeros([batch, self.num_kv_heads, 0, self.head_dim], np.float32)
                         for n in self.past_names}
                 attention_mask = np.ones((batch, seq_len), np.int64)
-            logits, *present = session.run(None, dict(inputs_embeds=inputs_embeds,
-                                                      attention_mask=attention_mask, **past))
+                lm_pos = np.arange(seq_len)[None, :].astype(np.int64); cache_len = seq_len
+            else:
+                lm_pos = np.array([[cache_len]], np.int64); cache_len += 1
+            feed = dict(inputs_embeds=inputs_embeds, attention_mask=attention_mask, **past)
+            if self.lm_needs_pos:                       # GPT-2-style LM (turbo)
+                feed["position_ids"] = lm_pos
+            logits, *present = session.run(None, feed)
             logits = _apply_repetition_penalty(generated[:, -1:], logits[:, -1, :], self.REPETITION_PENALTY)
             next_token = np.argmax(logits, axis=-1, keepdims=True).astype(np.int64)
             generated = np.concatenate((generated, next_token), axis=-1)
             if (next_token.flatten() == STOP_SPEECH_TOKEN).all():
                 break
-            embed_in["input_ids"] = next_token
-            embed_in["position_ids"] = np.full((1, 1), step + 1, np.int64)
             attention_mask = np.concatenate([attention_mask, np.ones((attention_mask.shape[0], 1), np.int64)], axis=1)
             for j, name in enumerate(self.past_names):
                 past[name] = present[j]
