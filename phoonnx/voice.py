@@ -18,6 +18,7 @@ import numpy as np
 import onnxruntime
 from langcodes import closest_match
 
+from phoonnx.alphabet_convert import convert_to_alphabet
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, get_phonemizer
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.engines.base import (
@@ -361,6 +362,23 @@ class TTSVoice:
             text = self.phonetic_spellings.apply(text)
         if syn_config.add_diacritics:
             text = self.phonemizer.add_diacritics(text, self.config.lang_code)
+            LOG.debug("text+diacritics=%s", text)
+
+        # Russian stress annotation (add_stress: None = auto-enable for ru voices).
+        _add_stress = syn_config.add_stress
+        if _add_stress is None:
+            _add_stress = bool(self.config.lang_code and self.config.lang_code.startswith("ru"))
+        if _add_stress:
+            from phoonnx.lang_preprocess import russian_add_stress
+            # TODO: replace with a pure-ONNX stress annotator when available
+            text = russian_add_stress(text)
+            LOG.debug("text+stress=%s", text)
+
+        # Script-conversion alphabets (HANGUL→jamo, HIRA→hiragana, CANGJIE→Cangjie tokens).
+        # No-op for phoneme/unicode alphabets.
+        if self.config.alphabet is not None:
+            text = convert_to_alphabet(text, self.config.alphabet)
+            LOG.debug("text+alphabet=%s", text)
 
         # Engine-specific "text -> model-input token ids": phoneme engines phonemize +
         # vocab-tokenize, text-token engines (Chatterbox) BPE the raw text. The adapter

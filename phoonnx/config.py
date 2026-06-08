@@ -49,6 +49,7 @@ class Alphabet(str, Enum):
     ERAAB = "eraab" # fa
     COTOVIA = "cotovia" # gl
     HANZI = "hanzi" # zh
+    CANGJIE = "cangjie" # zh (Cangjie code tokens, e.g. [cj_...])
     BUCKWALTER = "buckwalter" # ar
 
 
@@ -530,6 +531,11 @@ class SynthesisConfig:
 
     """for arabic and hebrew models"""
     add_diacritics: bool = True
+
+    add_stress: Optional[bool] = None
+    """Annotate Russian vowels with stress marks before phonemization.
+    When ``None`` (default) the voice's own ``VoiceConfig`` decides (auto-enabled for
+    ``lang_code`` starting with ``ru``). Set ``True``/``False`` to override per-call."""
 
     # Engine-specific per-call params (d_factor, p_factor, e_factor, …)
     extra_params: Dict[str, Any] = field(default_factory=dict)
