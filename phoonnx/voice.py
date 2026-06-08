@@ -430,6 +430,15 @@ class TTSVoice:
             wav_file.writeframes(audio_chunk.audio_int16_bytes)
 
 
+    def _prompt_token_ids(self, text: str) -> list[int]:
+        """Tokenize a cloning reference transcription into prompt token ids, reusing
+        the voice's own phonemizer + tokenizer (for in-context engines like ZipVoice)."""
+        ids: list[int] = []
+        for phonemes in self.phonemize(text):
+            if phonemes:
+                ids.extend(self.phonemes_to_ids(phonemes))
+        return ids
+
     def phoneme_ids_to_audio(
             self, phoneme_ids: list[int], syn_config: Optional[SynthesisConfig] = None
     ) -> np.ndarray:
@@ -475,10 +484,12 @@ class TTSVoice:
             params["noise_w_scale"] = syn_config.noise_w_scale
         # Engine-specific extras from SynthesisConfig
         params.update(syn_config.extra_params)
-        # Voice cloning: a reference clip is turned into the conditioning vector by
-        # the cloning adapter (it owns the speaker encoder). We just normalise it.
+        # Voice cloning: hand the cloning adapter the reference clip and — for
+        # in-context engines (ZipVoice) — the prompt tokens of its transcription.
         if syn_config.speaker_reference is not None:
             params["reference_audio"] = _load_reference_audio(syn_config.speaker_reference)
+        if syn_config.speaker_reference_text:
+            params["prompt_tokens"] = self._prompt_token_ids(syn_config.speaker_reference_text)
 
         request = AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,

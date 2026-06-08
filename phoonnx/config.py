@@ -483,9 +483,15 @@ class SynthesisConfig:
     """Index of lang to use (multi-lang voices only)."""
 
     speaker_reference: Optional[Any] = None
-    """Reference audio for zero-shot voice cloning (cloning engines: YourTTS,
-    StyleTTS2). Either a path to a wav file, or an ``(audio, sample_rate)`` tuple.
-    The voice's speaker encoder turns it into the conditioning d-vector/style."""
+    """Reference audio for zero-shot voice cloning (cloning engines). A path to a wav
+    file, or an ``(audio, sample_rate)`` tuple. The cloning adapter turns it into the
+    conditioning signal (a d-vector, or — for in-context engines like ZipVoice — the
+    prompt mel)."""
+
+    speaker_reference_text: Optional[str] = None
+    """Transcription of ``speaker_reference``, required by **in-context** cloning
+    engines (ZipVoice): the voice tokenizes it into the prompt tokens that prefix
+    generation. Ignored by d-vector engines (YourTTS, StyleTTS2)."""
 
     length_scale: Optional[float] = None
     """Phoneme length scale (< 1 is faster, > 1 is slower)."""
