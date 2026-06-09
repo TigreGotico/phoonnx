@@ -96,15 +96,64 @@ class GlowTTSAdapter(BaseOnnxAdapter):
         request: AdapterSynthesisRequest,
     ) -> AdapterSynthesisResult:
         arrays = [np.asarray(o) for o in outputs if o is not None]
-        # the mel is the rank-3 tensor with an n_mels axis (Larynx emits an extra
-        # intermediate output, so pick by shape rather than position)
-        mel = next((a for a in arrays if a.ndim == 3 and 16 <= a.shape[1] <= 256), None)
-        if mel is None:
-            mel = max(arrays, key=lambda a: a.size)
+        # Larynx glow_tts emits two rank-3 ``[B, n_mels, T]`` tensors. The mel the
+        # vocoder consumes is **output index 0** — a signal-normalized mel in the
+        # symmetric ``[-max_norm, max_norm]`` domain (values cluster near
+        # ``[0.5, 0.6]``); output 1 is an intermediate that is NOT the vocoder mel.
+        # This mirrors rhasspy larynx, which always takes ``model.run(...)[0]``.
+        mels = [a for a in arrays if a.ndim == 3 and 16 <= a.shape[1] <= 256]
+        mel = (mels[0] if mels else max(arrays, key=lambda a: a.size)).astype(np.float32)
+        # Larynx glow_tts emits a *signal-normalized* mel (values ~[0, 1]); Coqui
+        # glow_tts emits a *log-domain* mel (negative values) the vocoder consumes
+        # directly, like Matcha. Invert only Larynx's normalization; pass a
+        # log-domain mel through unchanged.
+        if float(mel.min()) >= -0.5:
+            mel = self._larynx_mel_to_vocoder(mel)
         vocoder = self._require_vocoder()
         denoise = bool(request.params.get("denoise", False)) and vocoder.supports_denoise
         audio = vocoder.mel_to_audio(mel.astype(np.float32), denoise=denoise)
         return AdapterSynthesisResult(audio=np.asarray(audio).reshape(-1))
+
+    def _larynx_mel_to_vocoder(self, mel: np.ndarray) -> np.ndarray:
+        """
+        Reproduce rhasspy larynx's mel post-processing between glow_tts and
+        HiFi-GAN. The glow_tts output is a Coqui signal-normalized mel; larynx
+        inverts that and applies the vocoder's dynamic-range compression before
+        synthesis (``denormalize`` → ``db_to_amp`` → ``dynamic_range_compression``).
+
+        Defaults are larynx's published glow_tts audio settings (identical across
+        the rhasspy German/Dutch/… glow voices, e.g. de-de_eva_k-glow_tts:
+        ``signal_norm`` symmetric, ``ref_level_db=20``, ``min_level_db=-100``,
+        ``max_norm=1.0``, ``spec_gain=1.0``). They reproduce the genuine larynx
+        render bit-for-bit. A voice may override any value via
+        ``engine_params['audio']`` (the Coqui ``config['audio']`` block).
+        """
+        audio = self._engine_params.get("audio") or {}
+        signal_norm = audio.get("signal_norm", True)
+        symmetric = audio.get("symmetric_norm", True)
+        clip_norm = audio.get("clip_norm", True)
+        max_norm = float(audio.get("max_norm", 1.0))
+        min_level_db = float(audio.get("min_level_db", -100.0))
+        ref_level_db = float(audio.get("ref_level_db", 20.0))
+        spec_gain = float(audio.get("spec_gain", 1.0))
+        convert_db_to_amp = audio.get("convert_db_to_amp", True)
+        do_drc = audio.get("do_dynamic_range_compression", True)
+
+        if signal_norm:
+            if symmetric:
+                if clip_norm:
+                    mel = np.clip(mel, -max_norm, max_norm)
+                mel = ((mel + max_norm) * -min_level_db / (2 * max_norm)) + min_level_db
+            else:
+                if clip_norm:
+                    mel = np.clip(mel, 0, max_norm)
+                mel = (mel * -min_level_db / max_norm) + min_level_db
+            mel = mel + ref_level_db
+        if convert_db_to_amp:
+            mel = np.power(10.0, mel / spec_gain)
+        if do_drc:
+            mel = np.log(np.clip(mel, 1e-5, None))
+        return mel.astype(np.float32)
 
     def default_params(self) -> Dict[str, float]:
         return {"noise_scale": 0.667, "length_scale": 1.0}
