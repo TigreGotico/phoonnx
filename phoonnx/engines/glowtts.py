@@ -102,8 +102,13 @@ class GlowTTSAdapter(BaseOnnxAdapter):
         # ``[0.5, 0.6]``); output 1 is an intermediate that is NOT the vocoder mel.
         # This mirrors rhasspy larynx, which always takes ``model.run(...)[0]``.
         mels = [a for a in arrays if a.ndim == 3 and 16 <= a.shape[1] <= 256]
-        mel = mels[0] if mels else max(arrays, key=lambda a: a.size)
-        mel = self._larynx_mel_to_vocoder(mel.astype(np.float32))
+        mel = (mels[0] if mels else max(arrays, key=lambda a: a.size)).astype(np.float32)
+        # Larynx glow_tts emits a *signal-normalized* mel (values ~[0, 1]); Coqui
+        # glow_tts emits a *log-domain* mel (negative values) the vocoder consumes
+        # directly, like Matcha. Invert only Larynx's normalization; pass a
+        # log-domain mel through unchanged.
+        if float(mel.min()) >= -0.5:
+            mel = self._larynx_mel_to_vocoder(mel)
         vocoder = self._require_vocoder()
         denoise = bool(request.params.get("denoise", False)) and vocoder.supports_denoise
         audio = vocoder.mel_to_audio(mel.astype(np.float32), denoise=denoise)
