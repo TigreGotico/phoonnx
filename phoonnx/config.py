@@ -92,6 +92,7 @@ class PhonemeType(str, Enum):
     PYPINYIN = "pypinyin" # chinese
     XPINYIN = "xpinyin" # chinese
     JIEBA = "jieba" # chinese  (not a real phonemizer!)
+    ORTHOGRAPHY2IPA = "orthography2ipa"  # 387+ langs, data-driven rule-based IPA
 
 
 @dataclass
@@ -575,6 +576,7 @@ def get_phonemizer(phoneme_type: PhonemeType,
                        KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
                        AhoTTSPhonemizer, CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer,
                        XpinyinPhonemizer, UnicodeCodepointPhonemizer, JiebaPhonemizer)
+    from phoonnx.phonemizers.o2ipa import Orthography2IPAPhonemizer
     if phoneme_type == PhonemeType.ESPEAK:
         phonemizer = EspeakPhonemizer()
     elif phoneme_type == PhonemeType.BYT5:
@@ -651,6 +653,8 @@ def get_phonemizer(phoneme_type: PhonemeType,
         phonemizer = UnicodeCodepointPhonemizer()
     elif phoneme_type == PhonemeType.GRAPHEMES:
         phonemizer = GraphemePhonemizer()
+    elif phoneme_type == PhonemeType.ORTHOGRAPHY2IPA:
+        phonemizer = Orthography2IPAPhonemizer()
     else:
         raise ValueError("invalid phonemizer")
     return phonemizer

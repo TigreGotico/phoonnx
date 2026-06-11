@@ -18,6 +18,7 @@ from phoonnx.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, Misaki
                                      MisakiEnPhonemizer, MisakiJaPhonemizer, MisakiZhPhonemizer,
                                      MisakiKoPhonemizer, MisakiViPhonemizer)
 from phoonnx.phonemizers.mwl import MirandesePhonemizer
+from phoonnx.phonemizers.o2ipa import Orthography2IPAPhonemizer
 
 Phonemizer = Union[
     MisakiPhonemizer,
@@ -50,5 +51,6 @@ Phonemizer = Union[
     GraphemePhonemizer,
     OpenPhonemizer,
     G2PEnPhonemizer,
-    DeepPhonemizer
+    DeepPhonemizer,
+    Orthography2IPAPhonemizer
 ]
