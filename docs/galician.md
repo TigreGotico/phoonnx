@@ -11,10 +11,9 @@ port of the [Cotovia](http://webs.uvigo.es/gtm_voz) G2P engine.
 | `Alphabet.IPA` | IPA string via `pycotovia.cotovia_to_ipa` | Most phonemizer pipelines |
 | `Alphabet.COTOVIA` | Raw Cotovia notation (e.g. `este e uN sistema`) | Voices trained on Cotovia alphabet output |
 
-Voices that were trained on Cotovia-alphabet output (e.g. ProxectoNos, Sabela,
-Celtia) continue to receive identical strings because pycotovia is verified
-binary-parity-tested against the original Cotovia C binary
-(see `pycotovia/docs/parity.md`).
+Voices trained on Cotovia-alphabet output (e.g. ProxectoNos, Sabela, Celtia)
+receive strings identical to the original Cotovia C binary's: pycotovia is
+binary-parity-tested against it (see `pycotovia/docs/parity.md`).
 
 ## Installation
 
