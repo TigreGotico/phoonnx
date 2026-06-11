@@ -47,6 +47,7 @@ train = [
 ]
 ar = ["epitran"]
 ca = ["epitran"]
+gl = ["pycotovia"]
 cs = ["epitran"]
 de = ["epitran", "gruut[de]>=2.3.0,<3.0"]
 en = ["epitran", "gruut[en]>=2.3.0,<3.0", "misaki[en]", "spacy>=3.7"]
