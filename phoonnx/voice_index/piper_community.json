@@ -1974,5 +1974,31 @@
         "alphabet": "ipa",
         "engine": "piper",
         "lang": "sv-SE"
+    },
+    "piper_community/itzune/eu-maider-medium": {
+        "voice_id": "piper_community/itzune/eu-maider-medium",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper_community__itzune__eu_maider/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "eu",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper_community__itzune__eu_maider/config.json"
+    },
+    "piper_community/itzune/eu-antton-medium": {
+        "voice_id": "piper_community/itzune/eu-antton-medium",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper_community__itzune__eu_antton/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "eu",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper_community__itzune__eu_antton/config.json"
     }
 }
