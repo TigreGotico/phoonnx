@@ -37,6 +37,7 @@ Homepage = "https://github.com/TigreGotico/phoonnx"
 test = [
     "pytest",
     "ovos-plugin-manager",
+    "pyahotts>=0.1.0a1",
 ]
 train = [
     "cython>=0.29.0,<1",
@@ -51,6 +52,7 @@ cs = ["epitran"]
 de = ["epitran", "gruut[de]>=2.3.0,<3.0"]
 en = ["epitran", "gruut[en]>=2.3.0,<3.0", "misaki[en]", "spacy>=3.7"]
 es = ["epitran"]
+eu = ["pyahotts>=0.1.0a1"]
 fa = ["epitran"]
 fr = ["epitran"]
 he = ["epitran"]
@@ -72,6 +74,7 @@ all = [
     "gruut[de]>=2.3.0,<3.0", "gruut[en]>=2.3.0,<3.0", "gruut[ja]>=2.3.0,<3.0",
     "gruut[vi]>=2.3.0,<3.0", "gruut[zh]>=2.3.0,<3.0",
     "misaki[en]", "misaki[ja]", "misaki[vi]", "misaki[zh]",
+    "pyahotts>=0.1.0a1",
     "spacy>=3.7",
     "soundfile", "scipy",
 ]

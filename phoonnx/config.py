@@ -81,6 +81,7 @@ class PhonemeType(str, Enum):
     CUTLET = "cutlet" # ja
     PYKAKASI = "pykakasi" # ja
     COTOVIA = "cotovia"  # galician  (no ipa!)
+    AHOTTS = "ahotts"  # basque
     PHONIKUD = "phonikud"  # hebrew
     MANTOQ = "mantoq"  # arabic
     VIPHONEME = "viphoneme" # vietnamese
@@ -548,8 +549,8 @@ def get_phonemizer(phoneme_type: PhonemeType,
                        MisakiEnPhonemizer, MisakiJaPhonemizer, MisakiZhPhonemizer,
                        MisakiKoPhonemizer, MisakiViPhonemizer,
                        KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
-                       CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer, XpinyinPhonemizer,
-                       UnicodeCodepointPhonemizer, JiebaPhonemizer)
+                       AhoTTSPhonemizer, CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer,
+                       XpinyinPhonemizer, UnicodeCodepointPhonemizer, JiebaPhonemizer)
     if phoneme_type == PhonemeType.ESPEAK:
         phonemizer = EspeakPhonemizer()
     elif phoneme_type == PhonemeType.BYT5:
@@ -616,6 +617,8 @@ def get_phonemizer(phoneme_type: PhonemeType,
         phonemizer = G2pMPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.COTOVIA:
         phonemizer = CotoviaPhonemizer(alphabet=alphabet)
+    elif phoneme_type == PhonemeType.AHOTTS:
+        phonemizer = AhoTTSPhonemizer()
     elif phoneme_type == PhonemeType.UNICODE:
         phonemizer = UnicodeCodepointPhonemizer()
     elif phoneme_type == PhonemeType.GRAPHEMES:
