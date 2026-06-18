@@ -1,203 +1,57 @@
-import os
-import platform
-import re
-import subprocess
-from typing import Optional
+from typing import Any, Optional
 
 from phoonnx.phonemizers.base import BasePhonemizer
 from phoonnx.config import Alphabet
 
-class CotoviaError(Exception):
-    """Custom exception for cotovia related errors."""
-    pass
-
-
-COTOVIA2IPA = {
-    "pau": " ",
-    "a": "a",
-    "E": "ɛ",
-    "e": "e",
-    "i": "i",
-    "j": "j",
-    "O": "ɔ",
-    "o": "o",
-    "u": "u",
-    "w": "w",
-    "p": "p",
-    "b": "b",
-    "B": "β",
-    "t": "t",
-    "d": "d",
-    "D": "ð",
-    "k": "k",
-    "g": "g",
-    "G": "ɣ",
-    "f": "f",
-    "T": "θ",
-    "s": "s",
-    "S": "ʃ",
-    "tS": "tʃ",
-    "m": "m",
-    "n": "n",
-    "J": "ɲ",
-    "N": "ŋ",
-    "l": "l",
-    "Z": "ʎ",
-    "jj": "ʎ",
-    "L": "ʎ",
-    "r": "ɾ",
-    "rr": "r",
-    "X": "x"
-}
-
-
-def cotovia2ipa(text: str) -> str:
-    """
-    Converts a string of Cotovía phonemes to IPA.
-    """
-    # Sort the dictionary keys by length in descending order to handle multi-character phonemes first
-    sorted_cotovia_keys = sorted(COTOVIA2IPA.keys(), key=len, reverse=True)
-    ipa_str = text
-    for cotovia_char in sorted_cotovia_keys:
-        ipa_str = ipa_str.replace(cotovia_char, COTOVIA2IPA[cotovia_char])
-    return ipa_str
-
 
 class CotoviaPhonemizer(BasePhonemizer):
     """
-    A phonemizer class that uses the Cotovia TTS binary to convert text into phonemes.
-    It processes the input sentence through a command-line phonemization tool, applying multiple
-    regular expression transformations to clean and normalize the phonetic representation.
+    Galician phonemizer backed by pycotovia — a pure-Python port of the Cotovia
+    G2P engine that has verified parity with the original C binary.
+
+    Output alphabets:
+    - ``Alphabet.COTOVIA`` — raw Cotovia phoneme notation (e.g. ``"Este e uN ..."``)
+    - ``Alphabet.IPA`` — IPA string produced by pycotovia's ``cotovia_to_ipa``
+
+    Voices trained on Cotovia-alphabet output continue to receive the same
+    notation strings as before because pycotovia is binary-parity-tested
+    (see pycotovia/docs/parity.md).
+
+    ``pycotovia`` is an optional dependency (the ``gl`` extra); it is imported
+    lazily so that ``import phoonnx.phonemizers`` works without it installed.
     """
 
-    def __init__(self, cotovia_bin_path: Optional[str] = None, alphabet: Alphabet = Alphabet.IPA):
-        """
-        Initializes the CotoviaPhonemizer.
-
-        Args:
-            cotovia_bin_path (str, optional): Path to the Cotovia TTS binary.
-                                              If None, it will try to find it in common locations.
-        """
-        self.cotovia_bin = cotovia_bin_path or self.find_cotovia()
-        if not os.path.exists(self.cotovia_bin):
-            raise FileNotFoundError(f"Cotovia binary not found at {self.cotovia_bin}. "
-                                    "Please ensure it's installed or provide the correct path.")
+    def __init__(self, alphabet: Alphabet = Alphabet.IPA):
+        self._engine: Optional[Any] = None
         super().__init__(alphabet)
+
+    @property
+    def engine(self) -> Any:
+        if self._engine is None:
+            try:
+                from pycotovia import Phonemizer as _PycotoviaPhonemizer
+            except ImportError as e:
+                raise ImportError(
+                    "pycotovia is required for the Galician (Cotovia) phonemizer. "
+                    "Install it with 'pip install pycotovia' or 'pip install phoonnx[gl]'."
+                ) from e
+            self._engine = _PycotoviaPhonemizer()
+        return self._engine
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
-        """
-        Validates and returns the closest supported language code.
-
-        Args:
-            target_lang (str): The language code to validate.
-
-        Returns:
-            str: The validated language code.
-
-        Raises:
-            ValueError: If the language code is unsupported.
-        """
-        # this check is here only to throw an exception if invalid language is provided
         return cls.match_lang(target_lang, ["gl-ES"])
 
-    @staticmethod
-    def find_cotovia() -> str:
-        """
-        Locate the Cotovia executable on the system.
-        
-        Searches common locations in this order: the PATH (via `which cotovia`), a bundled binary at
-        thirdparty/cotovia/bin/cotovia_<arch> relative to the package, and `/usr/bin/cotovia`.
-        If none are found, returns the string `"cotovia"` so callers can rely on the system PATH or
-        allow subprocess to raise a FileNotFoundError when invoked.
-        
-        Returns:
-            str: Filesystem path to the Cotovia binary, or the literal `"cotovia"` if not found.
-        """
-        path = subprocess.run(["which", "cotovia"], capture_output=True, text=True).stdout.strip()
-        if path and os.path.isfile(path):
-            return path
-
-        # Fallback to bundled binaries
-        local_path = f"{os.path.dirname(os.path.dirname(__file__))}/thirdparty/cotovia/bin/cotovia_{platform.machine()}"
-        if os.path.isfile(local_path):
-            return local_path
-
-        # Last resort common system path
-        if os.path.isfile("/usr/bin/cotovia"):
-            return "/usr/bin/cotovia"
-
-        return "cotovia"  # Return "cotovia" to let subprocess raise FileNotFoundError if not found in PATH
-
     def phonemize_string(self, text: str, lang: str) -> str:
-        """
-        Converts a given sentence into phonemes using the Cotovia TTS binary.
-
-        Processes the input sentence through a command-line phonemization tool, applying multiple regular expression transformations to clean and normalize the phonetic representation.
-
-        Parameters:
-            text (str): The input text to be phonemized
-            lang (str): The language code (ignored by Cotovia, but required by BasePhonemizer)
-
-        Returns:
-            str: A cleaned and normalized phonetic representation of the input sentence
-
-        Notes:
-            - Uses subprocess to execute the Cotovia TTS binary
-            - Applies multiple regex substitutions to improve punctuation and spacing
-            - Converts text from ISO-8859-1 to UTF-8 encoding
-        """
-        lang = self.get_lang(lang)
-        cmd = f'echo "{text}" | {self.cotovia_bin} -t -n -S | iconv -f iso88591 -t utf8'
-        str_ext = subprocess.check_output(cmd, shell=True).decode("utf-8")
-
-        ## fix punctuation in cotovia output - from official inference script
-
-        # substitute ' ·\n' by ...
-        str_ext = re.sub(r" ·", r"...", str_ext)
-
-        # remove spaces before , . ! ? ; : ) ] of the extended string
-        str_ext = re.sub(r"\s+([.,!?;:)\]])", r"\1", str_ext)
-
-        # remove spaces after ( [ ¡ ¿ of the extended string
-        str_ext = re.sub(r"([\(\[¡¿])\s+", r"\1", str_ext)
-
-        # remove unwanted spaces between quotations marks
-        str_ext = re.sub(r'"\s*([^"]*?)\s*"', r'"\1"', str_ext)
-
-        # substitute '- text -' to '-text-'
-        str_ext = re.sub(r"-\s*([^-]*?)\s*-", r"-\1-", str_ext)
-
-        # remove initial question marks
-        str_ext = re.sub(r"[¿¡]", r"", str_ext)
-
-        # eliminate extra spaces
-        str_ext = re.sub(r"\s+", r" ", str_ext)
-
-        str_ext = re.sub(r"(\d+)\s*-\s*(\d+)", r"\1 \2", str_ext)
-
-        ### - , ' and () by commas
-        # substitute '- text -' to ', text,'
-        str_ext = re.sub(r"(\w+)\s+-([^-]*?)-\s+([^-]*?)", r"\1, \\2, ", str_ext)
-
-        # substitute ' - ' by ', '
-        str_ext = re.sub(r"(\w+[!\?]?)\s+-\s*", r"\1, ", str_ext)
-
-        # substitute ' ( text )' to ', text,'
-        str_ext = re.sub(r"(\w+)\s*\(\s*([^\(\)]*?)\s*\)", r"\1, \\2,", str_ext)
-
+        self.get_lang(lang)
+        cotovia_output = self.engine.phonemize(text)
         if self.alphabet == Alphabet.IPA:
-            return cotovia2ipa(str_ext)
-        return str_ext
-
-
-
-if __name__ == "__main__":
-
-    cotovia = CotoviaPhonemizer()
-
-    lang = "gl"
-    text_gl = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
-    print(f"\n--- Getting phonemes for '{text_gl}' (Cotovia) ---")
-    phonemes_cotovia = cotovia.phonemize_string(text_gl, lang)
-    print(f"  Cotovia Phonemes: {phonemes_cotovia}")
+            try:
+                from pycotovia import cotovia_to_ipa as _cotovia_to_ipa
+            except ImportError as e:
+                raise ImportError(
+                    "pycotovia is required for the Galician (Cotovia) phonemizer. "
+                    "Install it with 'pip install pycotovia' or 'pip install phoonnx[gl]'."
+                ) from e
+            return _cotovia_to_ipa(cotovia_output)
+        return cotovia_output

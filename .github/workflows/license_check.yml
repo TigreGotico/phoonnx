@@ -9,3 +9,12 @@ jobs:
   license_check:
     uses: OpenVoiceOS/gh-automations/.github/workflows/license-check.yml@dev
     secrets: inherit
+    with:
+      # pycotovia is GPL-3.0 but is an OPTIONAL dependency (the `gl` extra), never
+      # installed with phoonnx core, so it does not affect phoonnx's Apache-2.0
+      # licensing. Allowlisted here so the check stays green if any GPL-carrying
+      # extra (e.g. `all`) is ever installed via install_extras.
+      # NOTE: pilosus matches the resolved requirement, so an anchored
+      # `^pycotovia$` never matches `pycotovia==0.1.0` / `pycotovia:0.1.0`.
+      # Allow either separator (the colon gotcha).
+      exclude_packages: '^pycotovia([=<>!~ @;:]|$)'
