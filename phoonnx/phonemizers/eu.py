@@ -16,21 +16,29 @@ DEFAULT_ENGINE = "modern"
 
 class AhoTTSPhonemizer(BasePhonemizer):
     """
-    Basque (eu) phonemizer backed by ``ahotts-g2p``, a pure-Python port of the
+    AhoTTS phonemizer backed by ``ahotts-g2p``, a pure-Python port of the
     AhoTTS engine (no C build, no runtime dependencies).
+
+    Covers the two AhoTTS-frontend languages: Basque (``eu``) and Spanish
+    (``es``).  The target language is taken from the per-call ``lang`` argument
+    (so the same phonemizer instance serves both); ``ahotts_g2p.phonemize``
+    dispatches on it.
 
     The engine variant is chosen per-voice with ``phonemizer_model`` in the
     voice config (passed to the constructor as ``engine``):
 
-      * ``classic``  -- the original AhoTTS engine; the HiTZ VITS voices.
+      * ``classic``  -- the original AhoTTS engine; the HiTZ VITS voices (eu+es).
       * ``modern``   -- the StyleTTS-era build; HiTZ/StyleTTS2-eu.  The default.
-      * ``northern`` -- the Northern (Iparralde / Iparrahotsa) dialect: pronounced
-        /h/, French vowels (ü -> /y/), uvular /ʁ/, a remapped sibilant system.
+      * ``northern`` -- the Northern (Iparralde / Iparrahotsa) Basque dialect:
+        pronounced /h/, French vowels (ü -> /y/), uvular /ʁ/, a remapped
+        sibilant system.  Basque only.
 
     ``ahotts_g2p.phonemize`` already returns the collapsed single-char training
     string, so no further token folding is needed.  It is imported lazily so
     importing ``phoonnx`` does not hard-require it.
     """
+
+    SUPPORTED_LANGS = ["eu-ES", "es-ES"]
 
     def __init__(self, engine: Optional[str] = None,
                  alphabet: Alphabet = Alphabet.IPA):
@@ -70,31 +78,44 @@ class AhoTTSPhonemizer(BasePhonemizer):
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
         """
-        Validate and return the closest supported language code.
+        Validate and return the closest supported language code (eu or es).
 
         Raises:
             ValueError: If the language code is unsupported.
         """
-        return cls.match_lang(target_lang, ["eu-ES"])
+        return cls.match_lang(target_lang, cls.SUPPORTED_LANGS)
 
     def phonemize_string(self, text: str, lang: str) -> str:
         """
-        Convert Basque text into the AhoTTS single-char IPA training string.
+        Convert Basque or Spanish text into the AhoTTS single-char IPA training
+        string.
 
         Args:
             text (str): The input text to phonemize.
-            lang (str): The language code (validated; AhoTTS only supports eu).
+            lang (str): The language code (``eu`` or ``es``).  The ``northern``
+                dialect engine is Basque-only; combining it with ``es`` raises.
 
         Returns:
             str: Space-separated single-char phoneme tokens.
         """
-        self.get_lang(lang)
-        return self.phonemize_fn(text, lang="eu", **ENGINES[self.engine])
+        g2p_lang = self.get_lang(lang).split("-")[0]
+        kwargs = dict(ENGINES[self.engine])
+        if g2p_lang != "eu" and "dialect" in kwargs:
+            raise ValueError(
+                f"the {self.engine!r} AhoTTS engine (dialect) is Basque-only; "
+                f"it cannot phonemize lang={lang!r}"
+            )
+        return self.phonemize_fn(text, lang=g2p_lang, **kwargs)
 
 
 if __name__ == "__main__":
     for eng in ("classic", "modern", "northern"):
         eu = AhoTTSPhonemizer(eng)
-        print(f"\n--- AhoTTS '{eng}' ---")
+        print(f"\n--- AhoTTS '{eng}' (eu) ---")
         for sentence in ["Kaixo, mundua.", "Euskara hizkuntza zaharra eta ederra da."]:
             print(f"  {sentence!r}: {eu.phonemize_string(sentence, 'eu')}")
+    for eng in ("classic", "modern"):
+        es = AhoTTSPhonemizer(eng)
+        print(f"\n--- AhoTTS '{eng}' (es) ---")
+        for sentence in ["Hola mundo.", "El sol brilla sobre la montaña."]:
+            print(f"  {sentence!r}: {es.phonemize_string(sentence, 'es')}")

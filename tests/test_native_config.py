@@ -57,3 +57,51 @@ def test_native_carries_tokenizer_flags():
     for k in ("add_blank_char", "add_blank_word", "use_eos_bos",
               "blank_at_start", "blank_at_end", "pad", "blank", "phoneme_id_map"):
         assert k in native, k
+
+
+def test_canonical_coqui_config_with_espeak_map_is_not_piper():
+    # A canonical coqui-VITS config that declares engine="coqui" and ships a
+    # flat (int-valued) espeak phoneme_id_map must load via the canonical path,
+    # NOT be mistaken for piper (whose phoneme_id_map values are lists).  This
+    # is the HiTZ ca VITS shape.
+    cfg = {
+        "engine": "coqui", "phoneme_type": "espeak", "alphabet": "ipa",
+        "lang_code": "ca-ES", "num_symbols": 60, "num_speakers": 1,
+        "audio": {"sample_rate": 22050},
+        "phoneme_id_map": {"_": 0, " ": 10, "l": 33, "s": 40, "ˈɔ": 125, "ʎ": 46},
+        "pad": "_", "blank": "_",
+    }
+    assert VoiceConfig.is_piper(cfg) is False
+    vc = VoiceConfig.from_dict(cfg)
+    from phoonnx.config import Engine, PhonemeType
+    assert vc.engine == Engine.COQUI
+    assert vc.phoneme_type == PhonemeType.ESPEAK
+    # ids come straight from the declared map
+    for k, v in cfg["phoneme_id_map"].items():
+        assert vc.tokenizer.vocabulary.char2idx[k] == v
+
+
+def test_piper_map_still_detected_as_piper():
+    # guard: a real piper config (list-valued map, no explicit engine) is still piper
+    cfg = {
+        "phoneme_type": "espeak",
+        "phoneme_id_map": {"_": [0], "a": [3], "b": [4], " ": [7]},
+        "espeak": {"voice": "ca"},
+    }
+    assert VoiceConfig.is_piper(cfg) is True
+
+
+def test_canonical_coqui_config_compound_stress_tokens():
+    # the espeak stressed-vowel compound keys (ˈV) fold via the tokenizer's
+    # compound logic, matching the AhoTTS ca fused stressed-vowel tokens.
+    cfg = {
+        "engine": "coqui", "phoneme_type": "espeak", "alphabet": "ipa",
+        "lang_code": "ca-ES", "num_symbols": 60,
+        "audio": {"sample_rate": 22050},
+        "phoneme_id_map": {"_": 0, " ": 10, "s": 40, "l": 33, "ˈɔ": 125},
+        "pad": "_", "blank": "_",
+    }
+    vc = VoiceConfig.from_dict(cfg)
+    # "sˈɔl" -> s, ˈɔ (one compound token), l
+    ids = vc.tokenizer.encode("sˈɔl")
+    assert ids == [40, 125, 33]
