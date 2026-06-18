@@ -618,7 +618,9 @@ def get_phonemizer(phoneme_type: PhonemeType,
     elif phoneme_type == PhonemeType.COTOVIA:
         phonemizer = CotoviaPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.AHOTTS:
-        phonemizer = AhoTTSPhonemizer()
+        # `model` is the voice's phonemizer_model: the AhoTTS engine variant
+        # ("classic" | "modern" | "northern"); defaults to "modern".
+        phonemizer = AhoTTSPhonemizer(model)
     elif phoneme_type == PhonemeType.UNICODE:
         phonemizer = UnicodeCodepointPhonemizer()
     elif phoneme_type == PhonemeType.GRAPHEMES:

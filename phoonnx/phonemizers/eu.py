@@ -1,77 +1,76 @@
-from typing import List, Optional
+from typing import Optional
 
 from phoonnx.phonemizers.base import BasePhonemizer
 from phoonnx.config import Alphabet
 
 
-# Collapse multi-char IPA tokens emitted by AhoTTS into the single-char
-# symbols used by the StyleTTS2-eu / VITS-eu phoneme_id_map. Stressed vowels
-# carry a leading "'" in the AhoTTS output and become uppercase ASCII letters;
-# the affricates / aspirated stops collapse to single ASCII placeholders.
-MULTICHAR = {
-    "tʃ": "C",
-    "ts": "V",
-    "tʂ": "P",
-    "'i": "I",
-    "'e": "E",
-    "'a": "A",
-    "'o": "O",
-    "'u": "U",
-    "pʰ": "H",
-    "kʰ": "K",
-    "tʰ": "T",
+# AhoTTS engine variant, selected per-voice via ``phonemizer_model`` in the
+# voice config.  Each maps to an ``ahotts_g2p.phonemize`` call.
+ENGINES = {
+    "classic": {"version": "classic"},    # original AhoTTS engine (HiTZ VITS voices)
+    "modern": {"version": "modern"},      # StyleTTS-era build (HiTZ/StyleTTS2-eu)
+    "northern": {"dialect": "northern"},  # Northern (Iparralde / Iparrahotsa) dialect
 }
+DEFAULT_ENGINE = "modern"
 
 
 class AhoTTSPhonemizer(BasePhonemizer):
     """
-    A phonemizer for Basque (eu) backed by the ``pyahotts`` package, which wraps
-    the AhoTTS engine.
+    Basque (eu) phonemizer backed by ``ahotts-g2p``, a pure-Python port of the
+    AhoTTS engine (no C build, no runtime dependencies).
 
-    This is the **V1** AhoTTS engine, a close approximation (~96%) of the
-    StyleTTS2-eu V3 phonemizer. It powers the ``hitz-eu-styletts2`` and
-    ``hitz-eu_*`` mirror voices, whose configs set ``phoneme_type: ahotts``.
+    The engine variant is chosen per-voice with ``phonemizer_model`` in the
+    voice config (passed to the constructor as ``engine``):
 
-    ``pyahotts`` is imported lazily so that importing ``phoonnx`` does not
-    hard-require it; a clear error is raised on first use if it is missing.
+      * ``classic``  -- the original AhoTTS engine; the HiTZ VITS voices.
+      * ``modern``   -- the StyleTTS-era build; HiTZ/StyleTTS2-eu.  The default.
+      * ``northern`` -- the Northern (Iparralde / Iparrahotsa) dialect: pronounced
+        /h/, French vowels (ü -> /y/), uvular /ʁ/, a remapped sibilant system.
+
+    ``ahotts_g2p.phonemize`` already returns the collapsed single-char training
+    string, so no further token folding is needed.  It is imported lazily so
+    importing ``phoonnx`` does not hard-require it.
     """
 
-    def __init__(self, alphabet: Alphabet = Alphabet.IPA):
+    def __init__(self, engine: Optional[str] = None,
+                 alphabet: Alphabet = Alphabet.IPA):
         """
-        Initialize the AhoTTS phonemizer.
-
         Args:
-            alphabet (Alphabet): Accepted for signature parity with the other
-                phonemizers; AhoTTS always produces IPA-derived tokens.
+            engine (Optional[str]): AhoTTS variant -- ``"classic"``, ``"modern"``
+                or ``"northern"`` (from the voice's ``phonemizer_model``).
+                Defaults to ``"modern"``.
+            alphabet (Alphabet): Accepted for signature parity; AhoTTS always
+                produces IPA-derived single-char tokens.
         """
-        self._ahotts = None
+        engine = (engine or DEFAULT_ENGINE).lower()
+        if engine not in ENGINES:
+            raise ValueError(
+                f"unknown AhoTTS engine {engine!r} "
+                f"(supported: {', '.join(ENGINES)})"
+            )
+        self.engine = engine
+        self._phonemize = None
         super().__init__(alphabet)
 
     @property
-    def ahotts(self):
-        """Lazily create and cache the underlying ``pyahotts.AhoTTS`` engine."""
-        if self._ahotts is None:
+    def phonemize_fn(self):
+        """Lazily import and cache ``ahotts_g2p.phonemize``."""
+        if self._phonemize is None:
             try:
-                from pyahotts import AhoTTS
+                from ahotts_g2p import phonemize
             except ImportError as e:
                 raise ImportError(
-                    "pyahotts is required for the AhoTTS Basque phonemizer. "
-                    "Install it with 'pip install pyahotts>=0.1.0a1' "
+                    "ahotts-g2p is required for the AhoTTS Basque phonemizer. "
+                    "Install it with 'pip install ahotts-g2p' "
                     "(or 'pip install phoonnx[eu]')."
                 ) from e
-            self._ahotts = AhoTTS()
-        return self._ahotts
+            self._phonemize = phonemize
+        return self._phonemize
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
         """
         Validate and return the closest supported language code.
-
-        Args:
-            target_lang (str): The language code to validate.
-
-        Returns:
-            str: The validated language code.
 
         Raises:
             ValueError: If the language code is unsupported.
@@ -80,30 +79,22 @@ class AhoTTSPhonemizer(BasePhonemizer):
 
     def phonemize_string(self, text: str, lang: str) -> str:
         """
-        Convert Basque text into a StyleTTS2-eu tokenizable phoneme string.
+        Convert Basque text into the AhoTTS single-char IPA training string.
 
-        Calls ``pyahotts.AhoTTS.get_phonemes`` to obtain per-word lists of IPA
-        phone tokens, collapses multi-char IPA tokens to their single-char
-        StyleTTS2 symbols (see :data:`MULTICHAR`), joins each word's phones with
-        no separator, and joins words with a single space.
-
-        Parameters:
+        Args:
             text (str): The input text to phonemize.
             lang (str): The language code (validated; AhoTTS only supports eu).
 
         Returns:
-            str: The collapsed phoneme string (one char per StyleTTS2 symbol).
+            str: Space-separated single-char phoneme tokens.
         """
         self.get_lang(lang)
-        words: List[List[str]] = self.ahotts.get_phonemes(text, lang="eu", ipa=True)
-        return " ".join(
-            "".join(MULTICHAR.get(phone, phone) for phone in word)
-            for word in words
-        )
+        return self.phonemize_fn(text, lang="eu", **ENGINES[self.engine])
 
 
 if __name__ == "__main__":
-    eu = AhoTTSPhonemizer()
-    for sentence in ["Kaixo, mundua.", "Euskara hizkuntza zaharra eta ederra da."]:
-        print(f"\n--- Getting phonemes for '{sentence}' (AhoTTS) ---")
-        print(f"  AhoTTS Phonemes: {eu.phonemize_string(sentence, 'eu')}")
+    for eng in ("classic", "modern", "northern"):
+        eu = AhoTTSPhonemizer(eng)
+        print(f"\n--- AhoTTS '{eng}' ---")
+        for sentence in ["Kaixo, mundua.", "Euskara hizkuntza zaharra eta ederra da."]:
+            print(f"  {sentence!r}: {eu.phonemize_string(sentence, 'eu')}")

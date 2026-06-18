@@ -1,9 +1,14 @@
-"""Tests for the AhoTTS (pyahotts) Basque phonemizer.
+"""Tests for the AhoTTS (ahotts-g2p) Basque phonemizer.
 
-pyahotts is a real dependency (declared in the ``eu`` and ``test`` extras),
+ahotts-g2p is a real dependency (declared in the ``eu`` and ``test`` extras),
 so it is imported unconditionally — no importorskip. The phonemizer output is
 asserted to be fully tokenizable by the StyleTTS2-eu 178-symbol phoneme map.
+The engine variant is chosen by ``phonemizer_model`` (passed to the factory as
+``model``): ``classic`` (VITS voices), ``modern`` (StyleTTS2-eu, default) or
+``northern`` (Iparralde dialect).
 """
+import pytest
+
 from phoonnx.config import PhonemeType, get_phonemizer
 
 
@@ -55,3 +60,35 @@ def test_ahotts_phonemize_chunks_are_tokenizable():
         for sentence_phones in chunks:
             for ch in sentence_phones:
                 assert ch in SYMBOLS, f"untokenizable phoneme {ch!r} in {sentence!r}"
+
+
+# --- engine selection (phonemizer_model) ----------------------------------
+
+def test_default_engine_is_modern():
+    # no phonemizer_model -> the StyleTTS2-eu "modern" engine
+    assert get_phonemizer(PhonemeType.AHOTTS).engine == "modern"
+
+
+@pytest.mark.parametrize("engine", ["classic", "modern", "northern"])
+def test_each_engine_is_tokenizable(engine):
+    phonemizer = get_phonemizer(PhonemeType.AHOTTS, model=engine)
+    assert phonemizer.engine == engine
+    for sentence in SENTENCES:
+        out = phonemizer.phonemize_string(sentence, "eu")
+        assert out.strip()
+        unknown = sorted({ch for ch in out if ch not in SYMBOLS})
+        assert not unknown, f"{engine}: untokenizable {unknown} in {sentence!r}"
+
+
+def test_engines_differ():
+    s = "Euskara hizkuntza zaharra da."
+    classic = get_phonemizer(PhonemeType.AHOTTS, model="classic").phonemize_string(s, "eu")
+    modern = get_phonemizer(PhonemeType.AHOTTS, model="modern").phonemize_string(s, "eu")
+    northern = get_phonemizer(PhonemeType.AHOTTS, model="northern").phonemize_string(s, "eu")
+    assert classic != modern        # modern adds punctuation tokens + dict stress
+    assert northern != classic      # Northern pronounces /h/, uvular ʁ, remapped sibilants
+
+
+def test_unknown_engine_raises():
+    with pytest.raises(ValueError):
+        get_phonemizer(PhonemeType.AHOTTS, model="v2")
