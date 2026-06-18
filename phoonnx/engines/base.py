@@ -176,6 +176,22 @@ class BaseOnnxAdapter(ABC):
         return {inp.name for inp in session.get_inputs()}
 
     @staticmethod
+    def _input_rank(
+        session: onnxruntime.InferenceSession, name: str,
+    ) -> Optional[int]:
+        """Return the declared rank (len of shape) of input ``name``, or ``None``
+        if the model has no such input. Used to match a fed tensor's rank to what
+        the model expects (e.g. ``scales`` declared as ``[3]`` vs ``[batch, 3]``).
+        """
+        for inp in session.get_inputs():
+            if inp.name == name:
+                shape = getattr(inp, "shape", None)
+                if shape is None:
+                    return None
+                return len(shape)
+        return None
+
+    @staticmethod
     def _filter_inputs(
         args: Dict[str, np.ndarray],
         session: onnxruntime.InferenceSession,
