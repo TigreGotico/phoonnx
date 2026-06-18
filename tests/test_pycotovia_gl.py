@@ -8,7 +8,8 @@ catch regressions if either phoonnx's wiring or pycotovia itself changes.
 """
 import pytest
 
-pytest.importorskip("pycotovia")
+# pycotovia is a hard test dependency (declared in the `test` extra), so the
+# Galician tests must always run — never skip on a missing dep.
 
 SAMPLE_GL = "Este é un sistema de conversión de texto a voz en lingua galega."
 

@@ -1,6 +1,4 @@
-from typing import Optional
-
-from pycotovia import Phonemizer as _PycotoviaPhonemizer, cotovia_to_ipa as _cotovia_to_ipa
+from typing import Any, Optional
 
 from phoonnx.phonemizers.base import BasePhonemizer
 from phoonnx.config import Alphabet
@@ -18,15 +16,25 @@ class CotoviaPhonemizer(BasePhonemizer):
     Voices trained on Cotovia-alphabet output continue to receive the same
     notation strings as before because pycotovia is binary-parity-tested
     (see pycotovia/docs/parity.md).
+
+    ``pycotovia`` is an optional dependency (the ``gl`` extra); it is imported
+    lazily so that ``import phoonnx.phonemizers`` works without it installed.
     """
 
     def __init__(self, alphabet: Alphabet = Alphabet.IPA):
-        self._engine: Optional[_PycotoviaPhonemizer] = None
+        self._engine: Optional[Any] = None
         super().__init__(alphabet)
 
     @property
-    def engine(self) -> _PycotoviaPhonemizer:
+    def engine(self) -> Any:
         if self._engine is None:
+            try:
+                from pycotovia import Phonemizer as _PycotoviaPhonemizer
+            except ImportError as e:
+                raise ImportError(
+                    "pycotovia is required for the Galician (Cotovia) phonemizer. "
+                    "Install it with 'pip install pycotovia' or 'pip install phoonnx[gl]'."
+                ) from e
             self._engine = _PycotoviaPhonemizer()
         return self._engine
 
@@ -38,5 +46,12 @@ class CotoviaPhonemizer(BasePhonemizer):
         self.get_lang(lang)
         cotovia_output = self.engine.phonemize(text)
         if self.alphabet == Alphabet.IPA:
+            try:
+                from pycotovia import cotovia_to_ipa as _cotovia_to_ipa
+            except ImportError as e:
+                raise ImportError(
+                    "pycotovia is required for the Galician (Cotovia) phonemizer. "
+                    "Install it with 'pip install pycotovia' or 'pip install phoonnx[gl]'."
+                ) from e
             return _cotovia_to_ipa(cotovia_output)
         return cotovia_output
