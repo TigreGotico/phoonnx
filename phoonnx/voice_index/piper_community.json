@@ -2012,7 +2012,7 @@
         "vocab_url": null,
         "phoneme_map_url": null,
         "alphabet": "ipa",
-        "engine": "piper",
+        "engine": "coqui",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hitz-eu_antton/config.json"
     },
     "hitz/eu_maider-vits": {
@@ -2026,7 +2026,7 @@
         "vocab_url": null,
         "phoneme_map_url": null,
         "alphabet": "ipa",
-        "engine": "piper",
+        "engine": "coqui",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hitz-eu_maider/config.json"
     },
     "hitz/gl_brais-vits": {
