@@ -50,6 +50,15 @@ class VitsAdapter(BaseOnnxAdapter):
         phoneme_ids_lengths = request.phoneme_lengths     # already (1,)
         attention_mask = np.ones_like(phoneme_ids_array, dtype=np.int64)
 
+        # ``scales`` packs [noise, length, noise_w].  Most piper/phoonnx exports
+        # declare it as a 1-D ``float32[3]``; some (e.g. the HiTZ Basque VITS
+        # exports) declare it batched as ``float32[batch, 3]``.  Match whatever
+        # rank the model declares so onnxruntime does not reject the feed.
+        scales = np.array([noise_scale, length_scale, noise_w_scale], dtype=np.float32)
+        scales_rank = self._input_rank(session, "scales")
+        if scales_rank is not None and scales_rank >= 2:
+            scales = scales.reshape(1, -1)
+
         # Provide every known alias — we filter to actual model inputs below
         args: Dict[str, np.ndarray] = {
             # piper / phoonnx style
@@ -62,9 +71,7 @@ class VitsAdapter(BaseOnnxAdapter):
             "input_ids": phoneme_ids_array,
             "attention_mask": attention_mask,
             # scales
-            "scales": np.array(
-                [noise_scale, length_scale, noise_w_scale], dtype=np.float32
-            ),
+            "scales": scales,
             "noise_scale": np.array([noise_scale], dtype=np.float32),
             "noise_scale_w": np.array([noise_w_scale], dtype=np.float32),
             "length_scale": np.array([length_scale], dtype=np.float32),

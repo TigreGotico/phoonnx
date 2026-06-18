@@ -2000,5 +2000,33 @@
         "alphabet": "ipa",
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper_community__itzune__eu_antton/config.json"
+    },
+    "hitz/eu_antton-vits": {
+        "voice_id": "hitz/eu_antton-vits",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hitz-eu_antton/model.onnx",
+        "phoneme_type": "ahotts",
+        "phonemizer_model": "classic",
+        "lang": "eu-ES",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hitz-eu_antton/config.json"
+    },
+    "hitz/eu_maider-vits": {
+        "voice_id": "hitz/eu_maider-vits",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hitz-eu_maider/model.onnx",
+        "phoneme_type": "ahotts",
+        "phonemizer_model": "classic",
+        "lang": "eu-ES",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hitz-eu_maider/config.json"
     }
 }

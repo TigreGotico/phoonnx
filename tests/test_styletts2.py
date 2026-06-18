@@ -33,10 +33,12 @@ def test_styletts2_feed_pads_and_filters():
     sess = _Sess(["input_ids", "attention_mask", "speed"])
     feed = StyleTTS2Adapter().build_feed_dict(_req(5, speed=1.2), sess)
     assert set(feed) == {"input_ids", "attention_mask", "speed"}
-    assert feed["input_ids"].shape == (1, 7)        # $-padded both ends
-    assert feed["input_ids"][0, 0] == 0 and feed["input_ids"][0, -1] == 0
+    # plain StyleTTS2 (no multi-row style pack) pads the START only; a trailing
+    # pad makes the model decode a noise burst at the end.
+    assert feed["input_ids"].shape == (1, 6)        # $-padded at start only
+    assert feed["input_ids"][0, 0] == 0 and feed["input_ids"][0, -1] != 0
     assert feed["speed"][0] == pytest.approx(1.2)
-    assert feed["attention_mask"].shape == (1, 7)
+    assert feed["attention_mask"].shape == (1, 6)
 
 
 def test_kokoro_style_pack_length_indexed():

@@ -2377,5 +2377,35 @@
         "engine": "styletts2",
         "lang": "en-US",
         "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-ONNX/resolve/main/voices/bm_lewis.bin"
+    },
+    "hitz/eu-antton": {
+        "voice_id": "hitz/eu-antton",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/hitz-eu-styletts2/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/hitz-eu-styletts2/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "ahotts",
+        "phonemizer_model": "modern",
+        "alphabet": "ipa",
+        "engine": "styletts2",
+        "lang": "eu-ES",
+        "style_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/hitz-eu-styletts2/antton.bin"
+    },
+    "hitz/eu-maider": {
+        "voice_id": "hitz/eu-maider",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/hitz-eu-styletts2/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/hitz-eu-styletts2/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "ahotts",
+        "phonemizer_model": "modern",
+        "alphabet": "ipa",
+        "engine": "styletts2",
+        "lang": "eu-ES",
+        "style_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/hitz-eu-styletts2/maider.bin"
     }
 }
