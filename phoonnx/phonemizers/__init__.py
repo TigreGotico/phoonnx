@@ -3,6 +3,7 @@ from typing import Union
 from phoonnx.phonemizers.base import BasePhonemizer, UnicodeCodepointPhonemizer, GraphemePhonemizer, TextChunks, RawPhonemizedChunks
 from phoonnx.phonemizers.en import DeepPhonemizer, OpenPhonemizer, G2PEnPhonemizer
 from phoonnx.phonemizers.gl import CotoviaPhonemizer
+from phoonnx.phonemizers.eu import AhoTTSPhonemizer
 from phoonnx.phonemizers.vi import VIPhonemePhonemizer
 from phoonnx.phonemizers.he import PhonikudPhonemizer
 from phoonnx.phonemizers.ar import MantoqPhonemizer
@@ -44,6 +45,7 @@ Phonemizer = Union[
     JiebaPhonemizer,
     PhonikudPhonemizer,
     CotoviaPhonemizer,
+    AhoTTSPhonemizer,
     MantoqPhonemizer,
     GraphemePhonemizer,
     OpenPhonemizer,
