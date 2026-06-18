@@ -21,8 +21,22 @@ class CotoviaPhonemizer(BasePhonemizer):
     lazily so that ``import phoonnx.phonemizers`` works without it installed.
     """
 
-    def __init__(self, alphabet: Alphabet = Alphabet.IPA):
+    def __init__(self, alphabet: Alphabet = Alphabet.IPA,
+                 model: Optional[str] = None):
+        """
+        Args:
+            alphabet (Alphabet): ``COTOVIA`` (raw notation) or ``IPA``.
+            model (Optional[str]): phonemizer variant, from the voice's
+                ``phonemizer_model``.  ``"stress"`` emits the cotovia notation
+                with the stressed vowel marked by a trailing ``^`` (e.g.
+                ``"o^la"``) and multi-char phonemes preserved -- matching the
+                AhoTTS Cotovia front-end the HiTZ gl VITS voices were trained on,
+                whose tokenizer gives stressed vowels their own ids.  The default
+                (``None``) is the original stressless transcription used by the
+                proxectonos gl voices.
+        """
         self._engine: Optional[Any] = None
+        self.model = (model or "").lower() or None
         super().__init__(alphabet)
 
     @property
@@ -44,6 +58,12 @@ class CotoviaPhonemizer(BasePhonemizer):
 
     def phonemize_string(self, text: str, lang: str) -> str:
         self.get_lang(lang)
+        if self.model == "stress":
+            # tra=2 -> stressed vowel followed by '^'.  The trailing space the
+            # engine appends per word is kept (word separator); the tokenizer
+            # folds 'V^' and multi-char phonemes (tS, rr, ...) back into single
+            # tokens via the voice's phoneme_id_map compound keys.
+            return self.engine.phonemize(text, tra=2)
         cotovia_output = self.engine.phonemize(text)
         if self.alphabet == Alphabet.IPA:
             try:
