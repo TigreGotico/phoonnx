@@ -27,6 +27,7 @@
 
 **Merged pull requests:**
 
+- feat\(eu\): HiTZ StyleTTS2-eu + VITS voices in voice\_index [\#195](https://github.com/TigreGotico/phoonnx/pull/195) ([JarbasAl](https://github.com/JarbasAl))
 - feat: AhoTTS \(pyahotts\) Basque phonemizer [\#193](https://github.com/TigreGotico/phoonnx/pull/193) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(pycotovia-gl\): replace cotovia binary shell-out with pycotovia [\#191](https://github.com/TigreGotico/phoonnx/pull/191) ([JarbasAl](https://github.com/JarbasAl))
 - fix\(glowtts\): take larynx mel output 0 + denormalize \(Larynx noise\) [\#189](https://github.com/TigreGotico/phoonnx/pull/189) ([JarbasAl](https://github.com/JarbasAl))
