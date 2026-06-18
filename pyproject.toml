@@ -38,6 +38,7 @@ test = [
     "pytest",
     "ovos-plugin-manager",
     "pycotovia>=0.1.0",
+    "ahotts-g2p>=0.1.0",
 ]
 train = [
     "cython>=0.29.0,<1",
@@ -53,6 +54,7 @@ cs = ["epitran"]
 de = ["epitran", "gruut[de]>=2.3.0,<3.0"]
 en = ["epitran", "gruut[en]>=2.3.0,<3.0", "misaki[en]", "spacy>=3.7"]
 es = ["epitran"]
+eu = ["ahotts-g2p>=0.1.0"]
 fa = ["epitran"]
 fr = ["epitran"]
 he = ["epitran"]
@@ -74,6 +76,7 @@ all = [
     "gruut[de]>=2.3.0,<3.0", "gruut[en]>=2.3.0,<3.0", "gruut[ja]>=2.3.0,<3.0",
     "gruut[vi]>=2.3.0,<3.0", "gruut[zh]>=2.3.0,<3.0",
     "misaki[en]", "misaki[ja]", "misaki[vi]", "misaki[zh]",
+    "ahotts-g2p>=0.1.0",
     "spacy>=3.7",
     "pycotovia>=0.1.0",
     "soundfile", "scipy",
