@@ -61,8 +61,13 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
         session: onnxruntime.InferenceSession,
     ) -> Dict[str, np.ndarray]:
         ids = np.asarray(request.phoneme_ids, dtype=np.int64)
-        # StyleTTS2 pads the token sequence with the pad id ($) at both ends.
-        ids = np.pad(ids, ((0, 0), (1, 1)), constant_values=_PAD_ID)
+        # Padding with the pad id ($): Kokoro pads BOTH ends (its tokenizer emits
+        # [0, *tokens, 0]); the plain StyleTTS2 lineage (single reference style or
+        # a baked-in style) pads the START only -- a trailing pad makes those
+        # models decode a noise burst at the end. Kokoro is the only case here
+        # with a multi-row [N, 256] style pack.
+        _trailing = 1 if (self.style_pack is not None and self.style_pack.shape[0] > 1) else 0
+        ids = np.pad(ids, ((0, 0), (1, _trailing)), constant_values=_PAD_ID)
         speed = np.float32(request.params.get("speed", self.default_params()["speed"]))
         args: Dict[str, np.ndarray] = {
             "input_ids": ids, "tokens": ids,                       # name aliases
