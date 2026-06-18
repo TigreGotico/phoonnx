@@ -200,13 +200,25 @@ class VoiceConfig:
     def is_piper(config: dict[str, Any]) -> bool:
         if "piper_version" in config:
             return True
+        # an explicitly declared non-piper engine wins over shape-sniffing: a
+        # canonical config (e.g. engine="coqui" with an espeak phoneme_id_map)
+        # must not be mistaken for piper just because it phonemizes with espeak.
+        engine = config.get("engine")
+        if engine and engine not in ("piper", Engine.PIPER, Engine.PIPER.value):
+            return False
         # piper models indicate a phonemizer strategy in their config
         if ("phoneme_type" not in config or
                 not isinstance(config["phoneme_type"], str)):
             return False
 
         # piper models include a "phoneme_id_map" section mapping phonemes to int
-        if "phoneme_id_map" not in config or not isinstance(config["phoneme_id_map"], dict):
+        pid = config.get("phoneme_id_map")
+        if not isinstance(pid, dict) or not pid:
+            return False
+
+        # piper's phoneme_id_map values are *lists* ([id, ...]); a flat
+        # phoneme -> int map is the canonical phoonnx/coqui shape, not piper.
+        if not all(isinstance(v, (list, tuple)) for v in pid.values()):
             return False
 
         # validate phonemizer type as expected by piper
@@ -388,8 +400,20 @@ class VoiceConfig:
                         blank_at_start=True
                     )
 
+        # Canonical config: the model ships its own phoneme_id_map (and declares
+        # engine / phoneme_type / alphabet). Use those values directly --
+        # config-shape engine detection is deprecated, so honour what the config
+        # declares instead of guessing or rejecting it.
         else:
-            raise ValueError("unknown config")
+            engine = engine or config.get("engine") or Engine.PHOONNX
+            phoneme_type = phoneme_type or config.get("phoneme_type", PhonemeType.GRAPHEMES)
+            alphabet = alphabet or Alphabet(config.get("alphabet", "ipa"))
+            diacritics = config.get("inference", {}).get("add_diacritics", False)
+            config["pad"] = config.get("pad") or DEFAULT_PAD_TOKEN
+            config["blank"] = config.get("blank") or DEFAULT_BLANK_TOKEN
+            config["bos"] = config.get("bos") or DEFAULT_BOS_TOKEN
+            config["eos"] = config.get("eos") or DEFAULT_EOS_TOKEN
+            tokenizer = TTSTokenizer.from_phoonnx_config(config)
         phoneme_type = PhonemeType(phoneme_type) if isinstance(phoneme_type, str) else phoneme_type
         LOG.debug(f"phonemizer: {phoneme_type}")
         inference = config.get("inference", {})
@@ -616,7 +640,9 @@ def get_phonemizer(phoneme_type: PhonemeType,
     elif phoneme_type == PhonemeType.G2PM:
         phonemizer = G2pMPhonemizer(alphabet=alphabet)
     elif phoneme_type == PhonemeType.COTOVIA:
-        phonemizer = CotoviaPhonemizer(alphabet=alphabet)
+        # `model` is the voice's phonemizer_model: "stress" selects the
+        # stress-marked cotovia notation (HiTZ gl VITS); default is stressless.
+        phonemizer = CotoviaPhonemizer(alphabet=alphabet, model=model)
     elif phoneme_type == PhonemeType.AHOTTS:
         # `model` is the voice's phonemizer_model: the AhoTTS engine variant
         # ("classic" | "modern" | "northern"); defaults to "modern".

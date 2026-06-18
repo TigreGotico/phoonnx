@@ -128,3 +128,40 @@ def test_ipa_and_cotovia_same_words():
     assert len(cot_out) > 0
     # they must differ (cotovia uses ASCII-ish symbols)
     assert ipa_out != cot_out
+
+
+def test_cotovia_stress_model_marks_stressed_vowel():
+    # the "stress" phonemizer_model emits the stressed vowel with a trailing '^'
+    # (HiTZ gl VITS front-end); the default stays stressless.
+    from phoonnx.phonemizers.gl import CotoviaPhonemizer
+    from phoonnx.config import Alphabet
+    stress = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA, model="stress")
+    plain = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA)
+    s = stress.phonemize_string("ola mundo", "gl")
+    assert "^" in s, f"no stress mark in {s!r}"
+    assert "^" not in plain.phonemize_string("ola mundo", "gl")
+
+
+def test_cotovia_stress_model_via_factory():
+    from phoonnx.config import get_phonemizer, PhonemeType, Alphabet
+    p = get_phonemizer(PhonemeType.COTOVIA, alphabet=Alphabet.COTOVIA, model="stress")
+    assert "^" in p.phonemize_string("galego", "gl")
+
+
+def test_cotovia_stress_folds_into_id_map_tokens():
+    # stress-folded 'V^' and multi-char cotovia phonemes (rr, tS) tokenize as
+    # single tokens against the HiTZ gl phoneme_id_map.
+    from phoonnx.config import VoiceConfig, get_phonemizer, PhonemeType, Alphabet
+    cfg = {
+        "engine": "coqui", "phoneme_type": "cotovia", "alphabet": "cotovia",
+        "lang_code": "gl-ES", "num_symbols": 137, "audio": {"sample_rate": 22050},
+        "phonemizer_model": "stress",
+        "phoneme_id_map": {"_": 0, " ": 10, "o": 36, "o^": 125, "l": 33,
+                           "a": 22, "k": 32, "a^": 85, "rr": 65},
+        "pad": "_", "blank": "_",
+    }
+    vc = VoiceConfig.from_dict(cfg)
+    p = get_phonemizer(PhonemeType.COTOVIA, alphabet=Alphabet.COTOVIA, model="stress")
+    s = p.phonemize_string("carro", "gl")  # ka^rro -> k, a^, rr, o
+    ids = [i for i in vc.tokenizer.encode(s) if i != 10]  # drop word-sep
+    assert ids == [32, 85, 65, 36], f"got {ids} for {s!r}"

@@ -92,3 +92,58 @@ def test_engines_differ():
 def test_unknown_engine_raises():
     with pytest.raises(ValueError):
         get_phonemizer(PhonemeType.AHOTTS, model="v2")
+
+
+# --- Spanish (es) -----------------------------------------------------------
+# The AhoTTS phonemizer also serves Spanish (HiTZ es VITS voices), selected by
+# the per-call ``lang`` argument.  The "classic" engine matches the AhoTTS es
+# front-end the HiTZ es models were trained on; its output must tokenize against
+# the recovered es phoneme_id_map (keys below = OpenVoiceOS/phoonnx-vits hitz-es).
+ES_SYMBOLS = set("ACEIOUabdefijklmnoprstuwxðɡɣɲɾʎʝβθ")
+
+ES_SENTENCES = [
+    "Hola mundo.",
+    "El sol brilla sobre la montaña.",
+    "El niño come pan con queso.",
+    "Ayer llovió mucho en el pueblo.",
+    "La guitarra suena muy bien.",
+]
+
+
+def test_ahotts_es_classic_output_is_tokenizable():
+    phonemizer = get_phonemizer(PhonemeType.AHOTTS, model="classic")
+    for sentence in ES_SENTENCES:
+        out = phonemizer.phonemize_string(sentence, "es")
+        assert out.strip(), f"empty es phonemization for {sentence!r}"
+        unknown = sorted({ch for ch in out if ch != " " and ch not in ES_SYMBOLS})
+        assert not unknown, (
+            f"es phonemes not in hitz-es map for {sentence!r}: {unknown}"
+        )
+
+
+def test_ahotts_es_emits_stress_tokens():
+    # AhoTTS es marks the stressed vowel with its own uppercase token (A E I O U)
+    out = get_phonemizer(PhonemeType.AHOTTS, model="classic").phonemize_string(
+        "El sol brilla.", "es")
+    assert any(v in out for v in "AEIOU"), f"no stressed-vowel token in {out!r}"
+
+
+def test_ahotts_es_lang_accepted_by_factory_default_engine():
+    # the default (modern) engine must also phonemize Spanish
+    out = get_phonemizer(PhonemeType.AHOTTS).phonemize_string("Hola mundo.", "es")
+    assert out.strip()
+
+
+def test_ahotts_northern_rejects_spanish():
+    # the Northern dialect engine is Basque-only
+    with pytest.raises(ValueError):
+        get_phonemizer(PhonemeType.AHOTTS, model="northern").phonemize_string(
+            "Hola mundo.", "es")
+
+
+def test_ahotts_eu_unaffected_by_es_support():
+    # eu phonemization is unchanged by adding es
+    out = get_phonemizer(PhonemeType.AHOTTS, model="classic").phonemize_string(
+        "Kaixo, mundua.", "eu")
+    assert out.strip()
+    assert all(ch in SYMBOLS for ch in out)
