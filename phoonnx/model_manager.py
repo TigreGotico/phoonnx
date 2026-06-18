@@ -22,6 +22,7 @@ class TTSModelInfo:
     tokens_url: Optional[str] = None  # mimic3/sherpa provide phoneme_map in this format
     phoneme_map_url: Optional[str] = None  # json lookup table for phoneme replacement
     phoneme_type: Optional[PhonemeType] = None
+    phonemizer_model: Optional[str] = None  # per-phonemizer variant (e.g. AhoTTS classic/modern/northern)
     alphabet: Optional[Alphabet] = None
     engine: Optional[Engine] = None
     vocab_override: Optional[Dict[str, int]] = field(default_factory=dict)
@@ -66,6 +67,8 @@ class TTSModelInfo:
                 config = {"phoneme_type": "graphemes", "alphabet": "unicode"}
             if self.phoneme_type:
                 config["phoneme_type"] = self.phoneme_type
+            if self.phonemizer_model:
+                config["phonemizer_model"] = self.phonemizer_model
 
             lang_code = normalize_lang(self.lang) if self.lang else None
             alphabet = self.alphabet if self.alphabet else None
