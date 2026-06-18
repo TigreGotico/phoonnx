@@ -388,8 +388,20 @@ class VoiceConfig:
                         blank_at_start=True
                     )
 
+        # Canonical config: the model ships its own phoneme_id_map (and declares
+        # engine / phoneme_type / alphabet). Use those values directly --
+        # config-shape engine detection is deprecated, so honour what the config
+        # declares instead of guessing or rejecting it.
         else:
-            raise ValueError("unknown config")
+            engine = engine or config.get("engine") or Engine.PHOONNX
+            phoneme_type = phoneme_type or config.get("phoneme_type", PhonemeType.GRAPHEMES)
+            alphabet = alphabet or Alphabet(config.get("alphabet", "ipa"))
+            diacritics = config.get("inference", {}).get("add_diacritics", False)
+            config["pad"] = config.get("pad") or DEFAULT_PAD_TOKEN
+            config["blank"] = config.get("blank") or DEFAULT_BLANK_TOKEN
+            config["bos"] = config.get("bos") or DEFAULT_BOS_TOKEN
+            config["eos"] = config.get("eos") or DEFAULT_EOS_TOKEN
+            tokenizer = TTSTokenizer.from_phoonnx_config(config)
         phoneme_type = PhonemeType(phoneme_type) if isinstance(phoneme_type, str) else phoneme_type
         LOG.debug(f"phonemizer: {phoneme_type}")
         inference = config.get("inference", {})
