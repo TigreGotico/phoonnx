@@ -1,6 +1,6 @@
 ## Supported Voices
 
-**Total Voices:** 1862
+**Total Voices:** 1868
 **Total Languages:** 1205
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
@@ -614,7 +614,13 @@
 | `piper_community/itzune/eu-antton-medium` | `eu` | `piper` | `espeak` |
 | `piper_community/itzune/eu-maider-medium` | `eu` | `piper` | `espeak` |
 | `hitz/eu-antton` | `eu-ES` | `styletts2` | `ahotts` |
+| `hitz/eu-antton-happy` | `eu-ES` | `styletts2` | `ahotts` |
+| `hitz/eu-antton-neutral` | `eu-ES` | `styletts2` | `ahotts` |
+| `hitz/eu-antton-sad` | `eu-ES` | `styletts2` | `ahotts` |
 | `hitz/eu-maider` | `eu-ES` | `styletts2` | `ahotts` |
+| `hitz/eu-maider-happy` | `eu-ES` | `styletts2` | `ahotts` |
+| `hitz/eu-maider-neutral` | `eu-ES` | `styletts2` | `ahotts` |
+| `hitz/eu-maider-sad` | `eu-ES` | `styletts2` | `ahotts` |
 | `hitz/eu_antton-vits` | `eu-ES` | `coqui` | `ahotts` |
 | `hitz/eu_maider-vits` | `eu-ES` | `coqui` | `ahotts` |
 | `OpenVoiceOS/phoonnx_eu-ES_dii_espeak` | `eu-ES` | `phoonnx` | `espeak` |
