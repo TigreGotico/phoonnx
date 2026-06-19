@@ -1,6 +1,6 @@
 ## Supported Voices
 
-**Total Voices:** 1839
+**Total Voices:** 1862
 **Total Languages:** 1205
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
@@ -196,6 +196,8 @@
 | `OpenVoiceOS/matxa-cat-multispeaker-wavenext-2stage` | `ca` | `matcha` | `espeak` |
 | `OpenVoiceOS/phoonnx_ca_miro_espeak` | `ca` | `phoonnx` | `espeak` |
 | `hf_community/projecte-aina/tts-ca-coqui-vits-multispeaker` | `ca-ES` | `coqui` | `graphemes` |
+| `hitz/ca_ona-vits` | `ca-ES` | `coqui` | `espeak` |
+| `hitz/ca_pau-vits` | `ca-ES` | `coqui` | `espeak` |
 | `piper/ca_ES-upc_ona-medium` | `ca-ES` | `piper` | `espeak` |
 | `piper/ca_ES-upc_ona-x_low` | `ca-ES` | `piper` | `espeak` |
 | `piper/ca_ES-upc_pau-x_low` | `ca-ES` | `piper` | `espeak` |
@@ -588,6 +590,8 @@
 | `piper_community/larcanio/es-AR_daniela` | `es-AR` | `piper` | `espeak` |
 | `hf_community/ylacombe/mms-spa-finetuned-chilean-monospeaker` | `es-CL` | `transformers` | `graphemes` |
 | `hf_community/ylacombe/mms-spa-finetuned-colombian-monospeaker` | `es-CO` | `transformers` | `graphemes` |
+| `hitz/es_alejandro-vits` | `es-ES` | `coqui` | `ahotts` |
+| `hitz/es_laura-vits` | `es-ES` | `coqui` | `ahotts` |
 | `larynx/es-es-carlfm-glow_tts` | `es-ES` | `glowtts` | `gruut` |
 | `larynx/es-es-karen_savage-glow_tts` | `es-ES` | `glowtts` | `gruut` |
 | `mimic3/es_ES/carlfm_low` | `es-ES` | `mimic3` | `gruut` |
@@ -607,6 +611,12 @@
 | `facebook/mms-tts-ess-Yupik, Saint Lawrence Island` | `ess` | `transformers` | `graphemes` |
 | `coqui/et-cv-vits` | `et-EE` | `coqui` | `graphemes` |
 | `facebook/mms-tts-eus-Basque` | `eu` | `transformers` | `graphemes` |
+| `piper_community/itzune/eu-antton-medium` | `eu` | `piper` | `espeak` |
+| `piper_community/itzune/eu-maider-medium` | `eu` | `piper` | `espeak` |
+| `hitz/eu-antton` | `eu-ES` | `styletts2` | `ahotts` |
+| `hitz/eu-maider` | `eu-ES` | `styletts2` | `ahotts` |
+| `hitz/eu_antton-vits` | `eu-ES` | `coqui` | `ahotts` |
+| `hitz/eu_maider-vits` | `eu-ES` | `coqui` | `ahotts` |
 | `OpenVoiceOS/phoonnx_eu-ES_dii_espeak` | `eu-ES` | `phoonnx` | `espeak` |
 | `OpenVoiceOS/phoonnx_eu-ES_miro_espeak` | `eu-ES` | `phoonnx` | `espeak` |
 | `facebook/mms-tts-evn-Evenki` | `evn` | `transformers` | `graphemes` |
@@ -681,13 +691,26 @@
 | `facebook/mms-tts-gil-Kiribati` | `gil` | `transformers` | `graphemes` |
 | `facebook/mms-tts-gjn-Gonja` | `gjn` | `transformers` | `graphemes` |
 | `facebook/mms-tts-gkn-Gokana` | `gkn` | `transformers` | `graphemes` |
+| `hitz/gl_brais-vits` | `gl-ES` | `coqui` | `cotovia` |
+| `hitz/gl_celtia-vits` | `gl-ES` | `coqui` | `cotovia` |
+| `hitz/gl_iago-vits` | `gl-ES` | `coqui` | `cotovia` |
+| `hitz/gl_icia-vits` | `gl-ES` | `coqui` | `cotovia` |
+| `hitz/gl_paulo-vits` | `gl-ES` | `coqui` | `cotovia` |
+| `hitz/gl_sabela-vits` | `gl-ES` | `coqui` | `cotovia` |
 | `OpenVoiceOS/phoonnx_gl-ES_miro_unicode` | `gl-ES` | `phoonnx` | `unicode` |
 | `proxectonos/brais` | `gl-ES` | `coqui` | `graphemes` |
 | `proxectonos/brais-cotovia` | `gl-ES` | `coqui` | `cotovia` |
+| `proxectonos/brais-matcha-graphemes` | `gl-ES` | `matcha` | `graphemes` |
 | `proxectonos/celtia` | `gl-ES` | `coqui` | `graphemes` |
 | `proxectonos/celtia-cotovia` | `gl-ES` | `coqui` | `cotovia` |
+| `proxectonos/celtia-matcha-graphemes` | `gl-ES` | `matcha` | `graphemes` |
 | `proxectonos/iago-cotovia` | `gl-ES` | `coqui` | `cotovia` |
 | `proxectonos/icia-cotovia` | `gl-ES` | `coqui` | `cotovia` |
+| `proxectonos/icia-extended-cotovia` | `gl-ES` | `coqui` | `cotovia` |
+| `proxectonos/icia-extended-matcha-phonemes` | `gl-ES` | `matcha` | `cotovia` |
+| `proxectonos/icia-extended-matcha-phonemes-ljspeech` | `gl-ES` | `matcha` | `cotovia` |
+| `proxectonos/icia-matcha-phonemes` | `gl-ES` | `matcha` | `cotovia` |
+| `proxectonos/icia-matcha-phonemes-ljspeech` | `gl-ES` | `matcha` | `cotovia` |
 | `proxectonos/paulo-cotovia` | `gl-ES` | `coqui` | `cotovia` |
 | `proxectonos/sabela-cotovia` | `gl-ES` | `coqui` | `cotovia` |
 | `facebook/mms-tts-gld-Nanai` | `gld` | `transformers` | `graphemes` |
