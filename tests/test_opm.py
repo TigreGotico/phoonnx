@@ -15,20 +15,21 @@ from phoonnx.voice import SynthesisConfig
 class _FakeVoiceConfig:
     """Stand-in for ``VoiceConfig`` carrying the synthesis defaults."""
 
-    def __init__(self):
+    def __init__(self, speaker_id_map=None):
         self.noise_scale = 0.667
         self.length_scale = 1.0
         self.noise_w_scale = 0.8
         self.add_diacritics = False
+        self.speaker_id_map = speaker_id_map or {}
 
 
 class _FakeVoiceInfo:
     """Stand-in for ``TTSModelInfo``; ``load()`` yields a mock ``TTSVoice``."""
 
-    def __init__(self, voice_id, lang="en-US"):
+    def __init__(self, voice_id, lang="en-US", speaker_id_map=None):
         self.voice_id = voice_id
         self.lang = lang
-        self.config = _FakeVoiceConfig()
+        self.config = _FakeVoiceConfig(speaker_id_map=speaker_id_map)
         self.tts_voice = MagicMock(name=f"TTSVoice[{voice_id}]")
 
     def load(self):
@@ -208,6 +209,51 @@ class TestGetTts(unittest.TestCase):
             out = plugin.get_tts("hi", "/tmp/out.wav", voice=lazy.voice_id)
         self.assertEqual(out, ("/tmp/out.wav", None))
         self.assertTrue(lazy.tts_voice.synthesize_wav.called)
+
+
+class TestSpeakerSelection(unittest.TestCase):
+    """``speaker_id`` / ``speaker`` config -> SynthesisConfig.speaker_id."""
+
+    # the Catalan multiaccent matxa model: accent/name -> id
+    CAT_MAP = {"quim": 0, "olga": 1, "grau": 2, "elia": 3,
+               "pere": 4, "emma": 5, "lluc": 6, "gina": 7}
+
+    def _speaker_id_for(self, config, speaker_id_map=None):
+        v = _FakeVoiceInfo("OpenVoiceOS/v", speaker_id_map=speaker_id_map)
+        plugin, _ = _make_plugin(config=config, voices=[v])
+        with patch.object(opm, "wave"):
+            plugin.get_tts("hi", "/tmp/out.wav")
+        args, kwargs = v.tts_voice.synthesize_wav.call_args
+        for cand in (*args, *kwargs.values()):
+            if isinstance(cand, SynthesisConfig):
+                return cand.speaker_id
+        self.fail("no SynthesisConfig passed to synthesize_wav")
+
+    def test_no_speaker_config_is_none(self):
+        self.assertIsNone(self._speaker_id_for({}))
+
+    def test_integer_speaker_id_passthrough(self):
+        self.assertEqual(self._speaker_id_for({"speaker_id": 3}), 3)
+
+    def test_digit_string_speaker_id(self):
+        self.assertEqual(self._speaker_id_for({"speaker_id": "5"}), 5)
+
+    def test_speaker_name_resolved_via_map(self):
+        self.assertEqual(
+            self._speaker_id_for({"speaker": "elia"}, self.CAT_MAP), 3)
+
+    def test_accent_qualified_speaker_name(self):
+        self.assertEqual(
+            self._speaker_id_for({"speaker": "central/elia"}, self.CAT_MAP), 3)
+
+    def test_unknown_speaker_name_is_none(self):
+        self.assertIsNone(
+            self._speaker_id_for({"speaker": "nope"}, self.CAT_MAP))
+
+    def test_speaker_id_takes_priority_over_name(self):
+        self.assertEqual(
+            self._speaker_id_for({"speaker_id": 6, "speaker": "elia"},
+                                 self.CAT_MAP), 6)
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@
 # limitations under the License.
 #
 import wave
-from typing import Dict
+from typing import Dict, Optional
 from ovos_utils.log import LOG
 from ovos_plugin_manager.templates.tts import TTS
 
@@ -65,6 +65,39 @@ class PhoonnxTTSPlugin(TTS):
             if key in self.config:
                 return self.config[key]
         return default
+
+    def _resolve_speaker(self, voice_info) -> Optional[int]:
+        """
+        Resolve the speaker index for multi-speaker voices from the plugin config.
+
+        Accepts either ``speaker_id`` (an integer index, or its digit string) or
+        ``speaker`` (a name resolved against the voice's ``speaker_id_map``). The
+        name may be given bare (``"elia"``) or accent-qualified
+        (``"central/elia"``); the trailing segment is tried when the full string
+        is not a map key.
+
+        Returns:
+            int | None: The speaker index, or None for single-speaker voices /
+            when nothing is configured (the engine then defaults to speaker 0).
+        """
+        spk = self._cfg_opt(None, "speaker_id", "speaker")
+        if spk is None or isinstance(spk, bool):  # bools are ints in python
+            return None
+        if isinstance(spk, int):
+            return spk
+        if isinstance(spk, str):
+            if spk.lstrip("-").isdigit():
+                return int(spk)
+            smap = getattr(voice_info.config, "speaker_id_map", None) or {}
+            if spk in smap:
+                return smap[spk]
+            bare = spk.split("/")[-1]
+            if bare in smap:
+                return smap[bare]
+            LOG.warning(f"Unknown speaker '{spk}' for voice "
+                        f"{voice_info.voice_id}; known speakers: "
+                        f"{sorted(smap.keys())}")
+        return None
 
     def refresh_voices(self, force=False):
         """
@@ -149,6 +182,11 @@ class PhoonnxTTSPlugin(TTS):
             model = self.get_model(voice_info.voice_id)
 
         synth_params = SynthesisConfig(
+            # speaker selection for multi-speaker voices (e.g. the Catalan
+            # multiaccent matxa model). ``speaker_id`` (int) or ``speaker``
+            # (name via the voice's speaker_id_map); ignored by single-speaker
+            # voices, which only have speaker 0.
+            speaker_id=self._resolve_speaker(voice_info),
             enable_phonetic_spellings=self._cfg_opt(
                 voice_info.config.enable_phonetic_spellings
                 if hasattr(voice_info.config, "enable_phonetic_spellings") else True,
