@@ -21,6 +21,31 @@ In your OpenVoiceOS `mycroft.conf` or skills config, set:
 
 If `voice` is omitted or set to `"default"`, the plugin selects a default voice for the configured language.
 
+### Multi-speaker voices
+
+Some models bundle several speakers in one voice (e.g. the Catalan multiaccent
+matxa model `OpenVoiceOS/matxa-cat-multiaccent-wavenext`, which carries the four
+dialects × two genders). Pick a speaker with `speaker_id` (an integer index) or
+`speaker` (a name resolved against the model's `speaker_id_map`, given bare or
+accent-qualified). `speaker_id` wins if both are set; single-speaker voices
+ignore both.
+
+```json
+{
+  "tts": {
+    "module": "ovos-tts-plugin-phoonnx",
+    "ovos-tts-plugin-phoonnx": {
+      "voice": "OpenVoiceOS/matxa-cat-multiaccent-wavenext",
+      "speaker_id": 3
+    }
+  }
+}
+```
+
+For the Catalan multiaccent model the indices are: `quim` 0 / `olga` 1 (balear),
+`grau` 2 / `elia` 3 (central), `pere` 4 / `emma` 5 (nord-occidental),
+`lluc` 6 / `gina` 7 (valencià).
+
 ## How It Works
 
 `PhoonnxTTSPlugin` extends the `ovos-plugin-manager` `TTS` base class. On initialization, it:
