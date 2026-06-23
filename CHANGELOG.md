@@ -27,6 +27,7 @@
 
 **Merged pull requests:**
 
+- feat\(opm\): speaker selection for multi-speaker voices [\#200](https://github.com/TigreGotico/phoonnx/pull/200) ([JarbasAl](https://github.com/JarbasAl))
 - feat: HiTZ multilingual voices \(es/gl/ca VITS + eu StyleTTS2 emotional\) [\#198](https://github.com/TigreGotico/phoonnx/pull/198) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(gl\): proxectonos Galician Matcha + extended VITS voices [\#197](https://github.com/TigreGotico/phoonnx/pull/197) ([JarbasAl](https://github.com/JarbasAl))
 - feat: HiTZ multilingual \(gl/ca/es\) VITS voices [\#196](https://github.com/TigreGotico/phoonnx/pull/196) ([JarbasAl](https://github.com/JarbasAl))
