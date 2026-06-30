@@ -41,7 +41,7 @@ test = [
     "ahotts-g2p>=0.1.0",
 ]
 train = [
-    "cython>=0.29.0,<1",
+    "cython>=3.2.8,<4",
     "librosa>=0.9.2,<1",
     "numpy>=1.19.0,<2",
     "pytorch-lightning<2.0",
