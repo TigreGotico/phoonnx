@@ -1,6 +1,6 @@
 ## Supported Voices
 
-**Total Voices:** 1868
+**Total Voices:** 1870
 **Total Languages:** 1205
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
@@ -186,6 +186,7 @@
 | `facebook/mms-tts-bzh-Buang, Mapos` | `bzh` | `transformers` | `graphemes` |
 | `facebook/mms-tts-bzi-Bisu` | `bzi` | `transformers` | `graphemes` |
 | `facebook/mms-tts-bzj-Belize English Creole` | `bzj` | `transformers` | `graphemes` |
+| `bsc/ca-styletts2` | `ca` | `styletts2` | `espeak` |
 | `coqui/ca-custom-vits` | `ca` | `coqui` | `espeak` |
 | `facebook/mms-tts-cat-Catalan` | `ca` | `transformers` | `graphemes` |
 | `OpenVoiceOS/matxa-cat-central-graphemes-v2` | `ca` | `matcha` | `graphemes` |
@@ -577,6 +578,7 @@
 | `piper_community/swqg-messiah/en-US_chitti` | `en-US` | `piper` | `espeak` |
 | `facebook/mms-tts-enb-Markweeta` | `enb` | `transformers` | `graphemes` |
 | `facebook/mms-tts-enx-Enxet` | `enx` | `transformers` | `graphemes` |
+| `bsc/es-styletts2` | `es` | `styletts2` | `espeak` |
 | `coqui/es-css10-vits` | `es` | `coqui` | `graphemes` |
 | `facebook/mms-tts-spa-Spanish` | `es` | `transformers` | `graphemes` |
 | `kokoro/ef_dora` | `es` | `styletts2` | `espeak` |
