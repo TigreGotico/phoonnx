@@ -3,7 +3,7 @@
 # Bakes in every optional dependency (all language phonemizers + voice cloning),
 # the espeak-ng binary, and a pre-filled voice index so the server starts cleanly
 # on an empty cache (see issue #98).
-FROM python:3.13-slim
+FROM python:3.11-slim
 
 # System deps: espeak-ng (phonemization), libsndfile1 (soundfile, for cloning
 # reference audio), git/build tooling for any source wheels.
