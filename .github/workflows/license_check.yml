@@ -17,4 +17,8 @@ jobs:
       # NOTE: pilosus matches the resolved requirement, so an anchored
       # `^pycotovia$` never matches `pycotovia==0.1.0` / `pycotovia:0.1.0`.
       # Allow either separator (the colon gotcha).
-      exclude_packages: '^pycotovia([=<>!~ @;:]|$)'
+      # phoonnx itself is excluded: the checker resolves it against the last
+      # setup.py-era PyPI upload (1.3.3), which carries no license metadata and
+      # is scored "Error". The check is about third-party dependencies; the
+      # repo's own license is Apache-2.0 in pyproject.toml.
+      exclude_packages: '^(pycotovia|phoonnx)([=<>!~ @;:]|$)'
