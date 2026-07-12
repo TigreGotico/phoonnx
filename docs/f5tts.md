@@ -15,7 +15,12 @@ an Euler ODE sampling loop rather than a single-pass graph.
 | ONNX export | <https://github.com/DakeQQ/F5-TTS-ONNX> |
 | Habibi-TTS | <https://github.com/SWivid/Habibi-TTS> — Arabic dialectal fine-tune |
 | Languages | Multilingual (trained on Emilia: ZH, EN, + more) |
-| ONNX weights | [`SWivid/F5-TTS`](https://huggingface.co/SWivid/F5-TTS) (PyTorch), ONNX via DakeQQ's export script |
+| PyTorch weights | [`SWivid/F5-TTS`](https://huggingface.co/SWivid/F5-TTS) (CC-BY-NC-4.0), [`SWivid/Habibi-TTS`](https://huggingface.co/SWivid/Habibi-TTS) (CC-BY-NC-SA-4.0) |
+| **Ready-made ONNX voices** | [`OpenVoiceOS/phoonnx-f5tts`](https://huggingface.co/OpenVoiceOS/phoonnx-f5tts) — `f5tts-v1-base` (multilingual) + `habibi-tts-unified` (Arabic) |
+
+> **License**: the F5-TTS checkpoints are **CC-BY-NC-4.0** and the Habibi-TTS
+> checkpoints are **CC-BY-NC-SA-4.0** — both **non-commercial use only**. The
+> ONNX conversions in `OpenVoiceOS/phoonnx-f5tts` inherit those licenses.
 
 ## Architecture
 
@@ -90,7 +95,7 @@ pre-computed sway-sampled time schedule:
 # time_steps = linspace(0,1,NFE) + sway_coef * (cos(pi/2 * t) - 1 + t)
 # delta_t = diff(time_steps)
 time_step = 0
-for _ in range(nfe):
+for _ in range(nfe - 1):
     noise, time_step = transformer.run(
         noise, rope_cos_q, rope_sin_q, rope_cos_k, rope_sin_k,
         cat_mel_text, cat_mel_text_drop, time_step
@@ -148,19 +153,72 @@ of the baked-in `decode` graph (preferred for flexibility):
 }
 ```
 
-## Cloning
+## Usage
 
-F5-TTS is an in-context engine, so it needs the reference **and its
-transcription**:
+### Library
+
+Download a converted voice from
+[`OpenVoiceOS/phoonnx-f5tts`](https://huggingface.co/OpenVoiceOS/phoonnx-f5tts)
+and load it like any other phoonnx voice. F5-TTS is an in-context engine, so
+every synthesis call needs the reference clip **and its transcription**:
 
 ```python
-voice.synthesize("A line the reference never spoke.", SynthesisConfig(
-    speaker_reference="reference.wav",
-    speaker_reference_text="transcription of the reference clip",
-))
+from huggingface_hub import snapshot_download
+from phoonnx.voice import TTSVoice, SynthesisConfig
+
+voice_dir = snapshot_download("OpenVoiceOS/phoonnx-f5tts",
+                              allow_patterns=["f5tts-v1-base/*"])
+voice_dir = f"{voice_dir}/f5tts-v1-base"
+
+voice = TTSVoice.load(
+    f"{voice_dir}/model.onnx",              # the transformer graph
+    config_path=f"{voice_dir}/config.json",
+    engine_params={
+        "preprocess_path": f"{voice_dir}/F5_Preprocess.onnx",
+        "decode_path": f"{voice_dir}/F5_Decode.onnx",
+    },
+)
+
+import wave
+with wave.open("out.wav", "wb") as f:
+    voice.synthesize_wav("A line the reference never spoke.", f,
+        SynthesisConfig(
+            speaker_reference="reference.wav",
+            speaker_reference_text="transcription of the reference clip",
+        ))
 ```
 
 See [Voice Cloning](cloning.md) for the full API.
+
+### OVOS plugin
+
+In `mycroft.conf`, via
+[`ovos-tts-plugin-phoonnx`](ovos_plugin.md) — pass the reference clip +
+transcription through the plugin config:
+
+```json
+{
+  "tts": {
+    "module": "ovos-tts-plugin-phoonnx",
+    "ovos-tts-plugin-phoonnx": {
+      "voice": "f5tts/v1-base",
+      "speaker_reference": "~/reference.wav",
+      "speaker_reference_text": "transcription of the reference clip"
+    }
+  }
+}
+```
+
+Two catalog voices ship in `phoonnx/voice_index/f5tts.json`:
+
+| voice id | model | lang |
+|---|---|---|
+| `f5tts/v1-base` | F5-TTS v1 base | multilingual |
+| `habibi/ar-unified` | Habibi-TTS Unified | Arabic |
+
+The model manager downloads the three ONNX graphs on first use (the
+`aux_model_urls` mechanism resolves `preprocess_path` / `decode_path` to the
+locally-cached files automatically).
 
 ## Variants
 

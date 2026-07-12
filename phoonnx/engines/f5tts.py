@@ -118,17 +118,23 @@ class F5TTSAdapter(BaseOnnxAdapter):
             )
         p = request.params
         ref_audio = p.get("reference_audio")
-        ref_text_tokens = p.get("ref_text_tokens")
+        # TTSVoice delivers the reference transcription token IDs as
+        # "prompt_tokens" (the shared in-context cloning key, same as ZipVoice);
+        # "ref_text_tokens" is accepted as an adapter-level alias.
+        ref_text_tokens = p.get("prompt_tokens", p.get("ref_text_tokens"))
         if ref_audio is None or ref_text_tokens is None:
             raise RuntimeError(
                 "F5-TTS needs a reference clip + transcription "
-                "(params 'reference_audio' and 'ref_text_tokens')"
+                "(params 'reference_audio' and 'prompt_tokens')"
             )
 
         speed = float(p.get("speed", self._speed))
         nfe = int(p.get("nfe", self._nfe))
-        cfg_strength = np.float32(p.get("cfg_strength", self._cfg_strength))
-        sway_coef = np.float32(p.get("sway_coefficient", self._sway_coefficient))
+        # cfg_strength / sway_coefficient are baked into the DakeQQ transformer
+        # export (the CFG double-pass and the sway-sampled time schedule are
+        # inside the graph) — they are kept as config params for documentation
+        # and for future exports that expose them as inputs, but the current
+        # graphs take no such tensors at runtime.
 
         # ref_audio: (audio_array, sample_rate) tuple
         ref_audio_arr = np.asarray(ref_audio[0], np.float32).reshape(1, 1, -1)
@@ -154,8 +160,17 @@ class F5TTSAdapter(BaseOnnxAdapter):
         )
 
         # --- Preprocess ---
+        # DakeQQ's default export takes the reference audio as int16 PCM (the
+        # graph rescales internally); some exports use float32 directly. Feed
+        # whichever dtype the graph actually declares.
+        audio_input_type = self.preprocess.get_inputs()[0].type
+        if "int16" in audio_input_type:
+            audio_feed = np.clip(ref_audio_arr * 32767.0, -32768, 32767).astype(np.int16)
+        else:
+            audio_feed = ref_audio_arr.astype(np.float32)
+
         pre_out = self.preprocess.run(None, {
-            "audio": ref_audio_arr.astype(np.float32),
+            "audio": audio_feed,
             "text_ids": text_ids,
             "max_duration": max_duration,
         })
@@ -171,18 +186,21 @@ class F5TTSAdapter(BaseOnnxAdapter):
         ref_signal_len = pre_out[7]
 
         # --- Flow-matching ODE loop (Euler method) ---
+        # The transformer graph bakes one Euler step per call and advances its own
+        # internal time_step counter; matching the DakeQQ reference inference script,
+        # the loop runs (nfe - 1) times (the first denoising step happens inside the
+        # graph itself on the initial time_step=0 call already folded into "nfe" steps
+        # total, so nfe-1 further calls complete the schedule).
+        # torch.onnx.export can rename an input that shares a name with an output
+        # (e.g. "time_step" -> "time_step.1") — feed by declared input order rather
+        # than by hardcoded name so the adapter survives that renaming across
+        # export runs / PyTorch versions.
+        transformer_inputs = [inp.name for inp in session.get_inputs()]
         time_step = np.array([0], dtype=np.int32)
-        for _ in range(nfe):
-            noise, time_step = session.run(None, {
-                "noise": noise,
-                "rope_cos_q": rope_cos_q,
-                "rope_sin_q": rope_sin_q,
-                "rope_cos_k": rope_cos_k,
-                "rope_sin_k": rope_sin_k,
-                "cat_mel_text": cat_mel_text,
-                "cat_mel_text_drop": cat_mel_text_drop,
-                "time_step": time_step,
-            })
+        for _ in range(max(nfe - 1, 0)):
+            values = [noise, rope_cos_q, rope_sin_q, rope_cos_k, rope_sin_k,
+                      cat_mel_text, cat_mel_text_drop, time_step]
+            noise, time_step = session.run(None, dict(zip(transformer_inputs, values)))
 
         # --- Decode ---
         if self.vocoder is not None:
