@@ -10,6 +10,7 @@
 
 **Closed issues:**
 
+- Kabyle MMS model produces unintelligible audio : missing VITS blank tokens in tokenizer [\#203](https://github.com/TigreGotico/phoonnx/issues/203)
 - YourTTS inference engine \(zero-shot voice cloning\) [\#172](https://github.com/TigreGotico/phoonnx/issues/172)
 - ZipVoice inference engine [\#170](https://github.com/TigreGotico/phoonnx/issues/170)
 - OptiSpeech inference engine [\#167](https://github.com/TigreGotico/phoonnx/issues/167)
@@ -27,6 +28,7 @@
 
 **Merged pull requests:**
 
+- fix: unbreak CI — drop py3.10 leg, exclude self from license check [\#204](https://github.com/TigreGotico/phoonnx/pull/204) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(es,ca\): BSC-LT StyleTTS2 multispeaker zero-shot cloning voices [\#201](https://github.com/TigreGotico/phoonnx/pull/201) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(opm\): speaker selection for multi-speaker voices [\#200](https://github.com/TigreGotico/phoonnx/pull/200) ([JarbasAl](https://github.com/JarbasAl))
 - feat: HiTZ multilingual voices \(es/gl/ca VITS + eu StyleTTS2 emotional\) [\#198](https://github.com/TigreGotico/phoonnx/pull/198) ([JarbasAl](https://github.com/JarbasAl))
