@@ -30,8 +30,8 @@ def cli():
 @click.option("--no-clear", is_flag=True, help="Do not clear the existing cache before updating. Only adds new voices.")
 def update_cache(no_clear):
     """
-    Clears the local voice cache, fetches the latest voice lists from upstream
-    sources (Piper, Mimic3, OpenVoiceOS), and saves them to the cache.
+    Clears the local voice cache, loads the bundled voice indexes (Piper,
+    Mimic3, OpenVoiceOS, etc.), and saves them to the cache.
     """
     manager = TTSModelManager()
 
@@ -42,29 +42,14 @@ def update_cache(no_clear):
         click.echo("Loading existing voice cache...")
         manager.load()
 
-    click.echo("Fetching voice lists from upstream sources (this requires an internet connection)...")
+    click.echo("Loading bundled voice indexes...")
 
-    # Run the fetch methods to populate the cache
     try:
-        manager.get_ovos_voice_list()
-        click.echo("-> Fetched OpenVoiceOS voices.")
-        manager.get_proxectonos_voice_list()
-        click.echo("-> Fetched Proxectonos voices.")
-        manager.get_phonikud_voice_list()
-        click.echo("-> Fetched Phonikud voices.")
-        manager.get_piper_voice_list()
-        click.echo("-> Fetched Piper voices.")
-        manager.get_mimic3_voice_list()
-        click.echo("-> Fetched Mimic3 voices.")
-    except requests.exceptions.RequestException as e:
-        click.echo(f"\nError: Could not fetch voice lists due to a network or connection error.", err=True)
-        click.echo(f"Details: {e}", err=True)
-        return
+        manager.merge_default_voices(store=True)
     except Exception as e:
-        click.echo(f"An unexpected error occurred while fetching voice lists: {e}", err=True)
+        click.echo(f"An unexpected error occurred while loading voice lists: {e}", err=True)
         return
 
-    manager.save()
     click.echo(f"\nCache updated successfully!")
     click.echo(f"Total voices available: {len(manager.all_voices)}")
     click.echo(f"Total languages supported: {len(manager.supported_langs)}")
@@ -119,60 +104,56 @@ def list_voices(lang, verbose):
 @cli.command(name="list-available")
 def list_available():
     """
-    Lists all voice IDs available from upstream sources (Piper, Mimic3, etc.),
-    even if they are not yet in the local cache. (Requires network connection)
+    Lists all voice IDs bundled with phoonnx, grouped by source (Piper,
+    Mimic3, OVOS, etc.), without downloading any config or model files.
+    Use 'download <VOICE_ID>' to fetch a specific voice on demand.
     """
     manager = TTSModelManager()
-    
-    click.echo("Fetching all available voice IDs from upstream sources (Piper, Mimic3, OVOS, etc.)...")
-    
-    try:
-        available_voices = manager.get_all_available_voice_ids()
-    except requests.exceptions.RequestException as e:
-        click.echo(f"\nError: Could not fetch available voice lists due to a network or connection error.", err=True)
-        click.echo(f"Details: {e}", err=True)
-        return
-    except Exception as e:
-        click.echo(f"An unexpected error occurred while fetching available voice lists: {e}", err=True)
-        return
+
+    available_voices = manager.get_available_voice_ids_by_source()
 
     total_voices = sum(len(ids) for ids in available_voices.values())
-    click.echo(f"\nTotal available voices found (from all sources): {total_voices}\n")
-    
+    click.echo(f"\nTotal available voices found (bundled indexes): {total_voices}\n")
+
     for source, voice_ids in available_voices.items():
         click.echo(f"--- {source.upper()} Voices ({len(voice_ids)}) ---")
         for voice_id in voice_ids:
             click.echo(f"  {voice_id}")
         click.echo("-" * 40)
-    click.echo("Hint: Use 'update-cache' to download the configuration for these voices, or use 'download <VOICE_ID>' to download a specific voice directly.")
+    click.echo("Hint: Use 'update-cache' to populate the local cache, or use 'download <VOICE_ID>' to download a specific voice directly.")
 
 @cli.command(name="download")
 @click.argument("voice_id", type=str)
 def download_voice(voice_id):
     """
     Downloads the model, config, and token files for a specific VOICE_ID.
-    The VOICE_ID must exist in the local cache (run update-cache first).
+    Looks the voice up in the local cache first (run update-cache to
+    populate it); if it isn't cached yet, falls back to the bundled
+    voice indexes so a single voice can be downloaded on demand, without
+    having to load the whole catalog first.
     """
     manager = TTSModelManager()
     manager.load()
 
-    if voice_id not in manager.voices:
-        click.echo(f"Error: Voice ID '{voice_id}' not found in cache.", err=True)
-        click.echo("Hint: Run 'phoonnx_cli.py update-cache' first to fetch the list.", err=True)
-        return
-
-    # NOTE: metadata already downloaded when creating VoiceInfo object
-    #  we only need to download the .onnx file
-    voice_info = manager.voices[voice_id]
+    voice_info = manager.voices.get(voice_id)
 
     try:
-        click.echo(f"Attempting to download files for: {voice_id} ({voice_info.lang})")
+        if voice_info:
+            click.echo(f"Attempting to download files for: {voice_id} ({voice_info.lang})")
 
-        # Download model (model.onnx)
-        click.echo("-> Downloading ONNX model (this may take a while)...")
-        voice_info.download_model()
+            # NOTE: metadata already downloaded when creating VoiceInfo object
+            #  we only need to download the .onnx file
+            click.echo("-> Downloading ONNX model (this may take a while)...")
+            voice_info.download_model()
 
-        click.echo(f"\nDownload complete. Files saved to: {voice_info.voice_path}")
+            click.echo(f"\nDownload complete. Files saved to: {voice_info.voice_path}")
+        else:
+            click.echo(f"Voice ID '{voice_id}' not found in local cache, looking it up in bundled indexes...")
+            if not manager.download_voice_by_id(voice_id):
+                click.echo(f"Error: Voice ID '{voice_id}' not found.", err=True)
+                click.echo("Hint: Run 'phoonnx_cli.py list-available' to see available voice IDs.", err=True)
+                return
+            click.echo(f"\nDownload complete.")
 
     except requests.exceptions.RequestException as e:
         click.echo(f"\nDownload failed due to network error: {e}", err=True)
