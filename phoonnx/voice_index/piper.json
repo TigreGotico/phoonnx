@@ -1494,7 +1494,7 @@
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__nl_NL-ronnie-medium/config.json"
     },
-        "piper/nl_NL-alex-medium": {
+    "piper/nl_NL-alex-medium": {
         "voice_id": "piper/nl_NL-alex-medium",
         "model_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/nl/nl_NL/alex/medium/nl_NL-alex-medium.onnx",
         "phoneme_type": "espeak",
