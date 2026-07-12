@@ -56,6 +56,13 @@ class VitsModel(pl.LightningModule):
         gin_channels: int = 0,
         use_sdp: bool = True,
         segment_size: int = 8192,
+        # YourTTS: external speaker-embedding (d-vector) conditioning instead
+        # of a learned per-speaker embedding table, plus an optional additive
+        # language embedding for multilingual training. Both default off, so
+        # plain/multi-speaker VITS is unaffected.
+        external_speaker_embedding: bool = False,
+        speaker_embedding_dim: int = 512,
+        n_langs: int = 0,
         # training
         dataset: Optional[List[Union[str, Path]]] = None,
         learning_rate: float = 2e-4,
@@ -82,8 +89,10 @@ class VitsModel(pl.LightningModule):
         # under pytorch-lightning >= 2.0
         self.automatic_optimization = False
 
-        if (self.hparams.num_speakers > 1) and (self.hparams.gin_channels <= 0):
-            # Default gin_channels for multi-speaker model
+        if (self.hparams.num_speakers > 1 or self.hparams.external_speaker_embedding) and (
+            self.hparams.gin_channels <= 0
+        ):
+            # Default gin_channels for multi-speaker / d-vector conditioned model
             self.hparams.gin_channels = 512
 
         # Set up models
@@ -107,6 +116,9 @@ class VitsModel(pl.LightningModule):
             n_speakers=self.hparams.num_speakers,
             gin_channels=self.hparams.gin_channels,
             use_sdp=self.hparams.use_sdp,
+            external_speaker_embedding=self.hparams.external_speaker_embedding,
+            speaker_embedding_dim=self.hparams.speaker_embedding_dim,
+            n_langs=self.hparams.n_langs,
         )
         self.model_d = MultiPeriodDiscriminator(
             use_spectral_norm=self.hparams.use_spectral_norm
@@ -154,7 +166,7 @@ class VitsModel(pl.LightningModule):
             full_dataset, [train_set_size, num_test_examples, valid_set_size]
         )
 
-    def forward(self, text, text_lengths, scales, sid=None):
+    def forward(self, text, text_lengths, scales, sid=None, speaker_embedding=None, lid=None):
         noise_scale = scales[0]
         length_scale = scales[1]
         noise_scale_w = scales[2]
@@ -165,17 +177,24 @@ class VitsModel(pl.LightningModule):
             length_scale=length_scale,
             noise_scale_w=noise_scale_w,
             sid=sid,
+            speaker_embedding=speaker_embedding,
+            lid=lid,
         )
 
         return audio
 
+    def _make_collate(self) -> UtteranceCollate:
+        return UtteranceCollate(
+            is_multispeaker=(self.hparams.num_speakers > 1) and not self.hparams.external_speaker_embedding,
+            segment_size=self.hparams.segment_size,
+            has_d_vector=self.hparams.external_speaker_embedding,
+            has_language_id=self.hparams.n_langs > 1,
+        )
+
     def train_dataloader(self):
         return DataLoader(
             self._train_dataset,
-            collate_fn=UtteranceCollate(
-                is_multispeaker=self.hparams.num_speakers > 1,
-                segment_size=self.hparams.segment_size,
-            ),
+            collate_fn=self._make_collate(),
             num_workers=self.hparams.num_workers,
             batch_size=self.hparams.batch_size,
         )
@@ -183,10 +202,7 @@ class VitsModel(pl.LightningModule):
     def val_dataloader(self):
         return DataLoader(
             self._val_dataset,
-            collate_fn=UtteranceCollate(
-                is_multispeaker=self.hparams.num_speakers > 1,
-                segment_size=self.hparams.segment_size,
-            ),
+            collate_fn=self._make_collate(),
             num_workers=self.hparams.num_workers,
             batch_size=self.hparams.batch_size,
         )
@@ -194,10 +210,7 @@ class VitsModel(pl.LightningModule):
     def test_dataloader(self):
         return DataLoader(
             self._test_dataset,
-            collate_fn=UtteranceCollate(
-                is_multispeaker=self.hparams.num_speakers > 1,
-                segment_size=self.hparams.segment_size,
-            ),
+            collate_fn=self._make_collate(),
             num_workers=self.hparams.num_workers,
             batch_size=self.hparams.batch_size,
         )
@@ -245,7 +258,10 @@ class VitsModel(pl.LightningModule):
             _x_mask,
             z_mask,
             (_z, z_p, m_p, logs_p, _m_q, logs_q),
-        ) = self.model_g(x, x_lengths, spec, spec_lengths, speaker_ids)
+        ) = self.model_g(
+            x, x_lengths, spec, spec_lengths, sid=speaker_ids,
+            speaker_embedding=batch.d_vectors, lid=batch.language_ids,
+        )
         self._y_hat = y_hat
 
         mel = spec_to_mel_torch(
@@ -327,7 +343,20 @@ class VitsModel(pl.LightningModule):
                 if test_utt.speaker_id is not None
                 else None
             )
-            test_audio = self(text, text_lengths, scales, sid=sid).detach()
+            speaker_embedding = (
+                test_utt.d_vector.unsqueeze(0).to(self.device)
+                if test_utt.d_vector is not None
+                else None
+            )
+            lid = (
+                test_utt.language_id.to(self.device)
+                if test_utt.language_id is not None
+                else None
+            )
+            test_audio = self(
+                text, text_lengths, scales, sid=sid,
+                speaker_embedding=speaker_embedding, lid=lid,
+            ).detach()
 
             # Scale to make louder in [-1, 1]
             test_audio = test_audio * (1.0 / max(0.01, abs(test_audio.max())))

@@ -124,6 +124,103 @@ The OpenVoiceOS plugin reads cloning settings from `mycroft.conf`:
 `ref_text` / `ref_lang` are only needed for in-context engines; d-vector voices use
 `ref_wav` alone.
 
+## Fine-tuning your own cloning voice (YourTTS)
+
+The `yourtts` training engine (`phoonnx_train/engines/yourtts.py`) fine-tunes a
+zero-shot cloning voice on your own multi-speaker data. It reuses the VITS training
+pipeline end to end (`phoonnx_train/vits/`) — the only difference from plain VITS is
+*what conditions the decoder*: instead of a learned per-speaker-id embedding table,
+each utterance is conditioned on an external 512-d **d-vector** computed with the same
+Coqui ResNet speaker encoder used at inference (`phoonnx.engines.speaker_encoders
+.coqui_resnet`), so train and inference embeddings match exactly. An optional additive
+language embedding (`--n-langs`) supports multilingual training.
+
+### 1. Preprocess
+
+Preprocessing is the same LJSpeech-style pipeline as [training.md](training.md#1-preprocessing),
+with speaker names read from `metadata.csv`'s second column (do **not** pass
+`--single-speaker`). A separate, per-utterance d-vector is required — compute it with
+`YourttsTrainingEngine.extra_preprocess`, pointing at a Coqui ResNet ONNX speaker
+encoder (the same file you plan to bundle with the resulting voice):
+
+```python
+from pathlib import Path
+from phoonnx_train.engines import get_engine
+
+engine = get_engine("yourtts")
+for utt in utterances:
+    extra = engine.extra_preprocess(
+        utterance_audio_path=utt.audio_path,
+        cache_dir=cache_dir,
+        sample_rate=22050,
+        speaker_encoder_path="speaker_encoder.onnx",
+        language_id=0,               # bump per corpus for multilingual training
+    )
+    utt.extra = extra                 # -> {"d_vector_path": ..., "language_id": ...}
+```
+
+d-vectors are cached as `<cache_dir>/dvec/<hash>.pt`, next to the mel/audio cache, so
+re-running preprocessing is a no-op cache hit. The resulting `dataset.jsonl` lines each
+carry `d_vector_path` (and `language_id` for multilingual runs) alongside the usual
+`phoneme_ids` / `audio_norm_path` / `audio_spec_path` fields — the shared
+`phoonnx_train.vits.dataset.PhoonnxDataset` loads them transparently (they are optional
+fields; a plain-VITS `dataset.jsonl` without them is unaffected).
+
+### 2. Train
+
+```bash
+python phoonnx_train/train.py \
+  --dataset-dir /data/preprocessed \
+  --engine yourtts \
+  --quality medium \
+  --accelerator gpu --devices 1 \
+  --batch-size 16 --max-epochs 1000
+```
+
+`quality_presets` mirror the plain VITS tiers (`x-low` / `medium` / `high` —
+`hidden_channels` / `inter_channels` / `filter_channels` / `n_heads` / `n_layers`); pick
+the tier by the same size/quality trade-off as any other phoonnx_train run. Internally,
+`YourttsTrainingEngine.create_model` builds the same `phoonnx_train.vits.lightning
+.VitsModel` used by the `vits` engine, with `external_speaker_embedding=True` and
+`num_speakers=1` (speaker identity comes from the d-vector, not an id table), and
+`n_langs` set from your preprocessing run if you're training multilingually.
+
+### 3. Export
+
+```bash
+python phoonnx_train/export_onnx.py \
+  /path/to/checkpoint.ckpt \
+  --config /path/to/config.json \
+  --engine yourtts \
+  --output-dir /path/to/output/
+```
+
+The export mirrors the plain VITS ONNX graph (`input`, `input_lengths`, `scales`) but
+adds `d_vector` and `langid` inputs, matching what `phoonnx.engines.yourtts
+.YourTTSAdapter` feeds at inference. The voice config written alongside the `.onnx`
+file sets `"engine": "yourtts"` and packages a **default speaker** in `engine_params
+["d_vector"]` — the mean embedding across the training set — so the voice synthesizes
+with no reference clip; a reference clip or an explicit `d_vector` at synthesis time
+still overrides it, exactly like any other bundled cloning voice (see "Two cloning
+paradigms" above).
+
+### Downstream OVOS plugin config
+
+No plugin-side changes are needed beyond the usual cloning setup — a fine-tuned
+YourTTS voice is used exactly like the stock one:
+
+```json
+{
+  "module": "ovos-tts-plugin-phoonnx",
+  "ovos-tts-plugin-phoonnx": {
+    "model": "/path/to/output/checkpoint.ckpt.onnx",
+    "ref_wav": "/home/user/me.wav"
+  }
+}
+```
+
+Omit `ref_wav` to always use the voice's packaged default speaker.
+
 ## Adding a cloning model
 
 Conversion/export scripts live under `scripts/conversion/`:
