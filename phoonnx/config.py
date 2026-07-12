@@ -29,6 +29,7 @@ class Engine(str, Enum):
     YOURTTS = "yourtts"  # multilingual VITS conditioned on a speaker d-vector (cloning)
     ZIPVOICE = "zipvoice"  # flow-matching, in-context cloning (iterative ODE loop)
     SHAMI = "shami"  # Levantine Arabic / English code-switching (HamsVITS)
+    F5TTS = "f5tts"  # F5-TTS / Habibi-TTS: DiT flow-matching, Euler ODE (iterative)
 
 
 class Alphabet(str, Enum):
