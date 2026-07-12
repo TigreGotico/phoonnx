@@ -69,6 +69,12 @@ train-eval = [
     "soundfile",
     "speakeronnx",
 ]
+# extra deps for the FastPitch / SpeedySpeech training engine
+# (phoonnx_train/engines/fastpitch.py) on top of [train]: pyworld for F0
+# (pitch) extraction in extra_preprocess. librosa is already in [train].
+train-fastpitch = [
+    "pyworld>=0.3.2",
+]
 ar = ["epitran", "arbtok"]
 ca = ["epitran"]
 gl = ["pycotovia>=0.1.0"]
