@@ -47,6 +47,9 @@ test = [
     "mwl_phonemizer",
 ]
 espeak = ["espyak>=0.0.2a1"]
+matcha = [
+    "scipy",
+]
 train = [
     "librosa>=0.9.2,<1",
     "numpy>=1.19.0,<2",
