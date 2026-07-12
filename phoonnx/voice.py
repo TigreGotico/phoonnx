@@ -25,7 +25,6 @@ from phoonnx.engines.base import (
     AdapterSynthesisResult,
     BaseOnnxAdapter,
 )
-from phoonnx.lora_runtime import get_lora_config_from_path, load_lora_weights, merge_lora_onnx
 from phoonnx.phonemizers import Phonemizer
 from phoonnx.phonemizers.base import PhonemizedChunks
 from phoonnx.tokenizer import TTSTokenizer
@@ -189,6 +188,9 @@ class TTSVoice:
             config_path: Optional[Union[str, Path]] = None,
             use_cuda: bool = False,
     ) -> "TTSVoice":
+        # Deferred import: LoRA graph surgery needs the optional ``onnx`` package
+        from phoonnx.lora_runtime import get_lora_config_from_path, load_lora_weights, merge_lora_onnx
+
         base_model_path = Path(base_model_path)
         lora_path = Path(lora_path)
 
@@ -211,6 +213,9 @@ class TTSVoice:
             merged_path.unlink(missing_ok=True)
 
     def load_lora_adapter(self, lora_path: Union[str, Path]) -> None:
+        # Deferred import: LoRA graph surgery needs the optional ``onnx`` package
+        from phoonnx.lora_runtime import get_lora_config_from_path, load_lora_weights
+
         merged_path = Path(str(self._get_model_path())) if hasattr(self, '_model_path') else None
 
         lora_config_data = get_lora_config_from_path(lora_path)

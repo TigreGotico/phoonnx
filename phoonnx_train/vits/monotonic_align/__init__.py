@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 
-from .monotonic_align.core import maximum_path_c
 
 
 def maximum_path(neg_cent, mask):
@@ -9,6 +8,10 @@ def maximum_path(neg_cent, mask):
     neg_cent: [b, t_t, t_s]
     mask: [b, t_t, t_s]
     """
+    # Deferred import: the compiled extension is only needed during training,
+    # not for model construction (e.g. LoRA adaptation or ONNX export).
+    from .monotonic_align.core import maximum_path_c
+
     device = neg_cent.device
     dtype = neg_cent.dtype
     neg_cent = neg_cent.data.cpu().numpy().astype(np.float32)

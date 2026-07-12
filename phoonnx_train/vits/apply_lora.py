@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -7,7 +7,8 @@ from torch.nn.utils import weight_norm, remove_weight_norm
 
 from .lora import LoRAConv1d, LoRAConvTranspose1d, LoRALinear
 from .lora_config import LoRAConfig
-from .models import SynthesizerTrn
+if TYPE_CHECKING:  # models pulls in the compiled monotonic_align extension
+    from .models import SynthesizerTrn
 
 _LOGGER = logging.getLogger("phoonnx_train.lora")
 
@@ -32,7 +33,7 @@ def _strip_weight_norm_recursive(model: nn.Module) -> None:
                 pass
 
 
-def apply_lora(model: SynthesizerTrn, config: LoRAConfig) -> List[str]:
+def apply_lora(model: "SynthesizerTrn", config: LoRAConfig) -> List[str]:
     _strip_weight_norm_recursive(model)
     replaced = []
     for module_name in config.target_modules:
@@ -104,7 +105,7 @@ def _apply_lora_to_module(
     return replaced
 
 
-def merge_lora(model: SynthesizerTrn) -> None:
+def merge_lora(model: "SynthesizerTrn") -> None:
     _merge_lora_recursive(model)
 
 
@@ -120,7 +121,7 @@ def _merge_lora_recursive(module: nn.Module) -> None:
             _merge_lora_recursive(child)
 
 
-def get_lora_state_dict(model: SynthesizerTrn) -> Dict[str, torch.Tensor]:
+def get_lora_state_dict(model: "SynthesizerTrn") -> Dict[str, torch.Tensor]:
     state = {}
     for name, module in model.named_modules():
         if isinstance(module, (LoRALinear, LoRAConv1d, LoRAConvTranspose1d)):
@@ -129,7 +130,7 @@ def get_lora_state_dict(model: SynthesizerTrn) -> Dict[str, torch.Tensor]:
     return state
 
 
-def load_lora_adapter(model: SynthesizerTrn, state_dict: Dict[str, torch.Tensor]) -> None:
+def load_lora_adapter(model: "SynthesizerTrn", state_dict: Dict[str, torch.Tensor]) -> None:
     lora_names = set()
     for name, module in model.named_modules():
         if isinstance(module, (LoRALinear, LoRAConv1d, LoRAConvTranspose1d)):
@@ -164,7 +165,7 @@ def _get_submodule(module: nn.Module, target: str) -> Optional[nn.Module]:
     return mod
 
 
-def count_parameters(model: SynthesizerTrn) -> Tuple[int, int, float]:
+def count_parameters(model: "SynthesizerTrn") -> Tuple[int, int, float]:
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total = sum(p.numel() for p in model.parameters())
     pct = 100.0 * trainable / total if total > 0 else 0
