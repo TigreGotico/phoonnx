@@ -22,6 +22,41 @@ class TestIdentity(unittest.TestCase):
         result = convert(text, "en", Alphabet.GRAPHEMES, Alphabet.GRAPHEMES)
         self.assertEqual(result, text)
 
+    def test_identity_path_never_invokes_phonemizer_backend(self):
+        """src == tgt must short-circuit before any phonemizer backend work.
+
+        We patch get_phonemizer (imported lazily inside the phonemization
+        edge closures) to raise if it is ever called. The identity call
+        must NOT raise, proving no backend construction/factory call
+        happens on the identity path.
+        """
+        text = "hello world"
+        with patch("phoonnx.config.get_phonemizer",
+                   side_effect=AssertionError("phonemizer backend must not be invoked on identity path")):
+            result = convert(text, "en", Alphabet.IPA, Alphabet.IPA, phoneme_type=PhonemeType.ESPEAK)
+        self.assertEqual(result, text)
+
+    def test_non_identity_path_still_invokes_conversion(self):
+        """A differing src/tgt must still go through the real conversion
+        machinery and can produce a different, converted result."""
+        sentinel = ["c", "o", "n", "v", "e", "r", "t", "e", "d"]
+
+        def fake_edge(text, lang, _pt=None):
+            return sentinel
+
+        key = (Alphabet.SAMPA, Alphabet.RFE)
+        old = ALPHABET_CONVERTERS.get(key)
+        try:
+            register_converter(Alphabet.SAMPA, Alphabet.RFE, fake_edge)
+            result = convert("original text", "en", Alphabet.SAMPA, Alphabet.RFE)
+            self.assertEqual(result, sentinel)
+            self.assertNotEqual(result, "original text")
+        finally:
+            if old is None:
+                ALPHABET_CONVERTERS.pop(key, None)
+            else:
+                ALPHABET_CONVERTERS[key] = old
+
 
 class TestDirectEdge(unittest.TestCase):
     def test_registered_direct_edge_is_called(self):
