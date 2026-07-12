@@ -184,18 +184,23 @@ def phonemize_worker(
         config: PreprocessorConfig,
         task_queue: JoinableQueue,
         result_queue: Queue,
-        phonemizer: Phonemizer,
 ) -> None:
     """
     Worker process for phonemization and audio processing.
+
+    The Phonemizer is constructed inside the worker process (rather than
+    being passed in from the parent) because it is not guaranteed to be
+    picklable/safe to share across processes under the "spawn" start method.
 
     Args:
         config: The configuration object containing runtime parameters.
         task_queue: Queue for receiving batches of Utterance objects.
         result_queue: Queue for sending processed results (Utterance, set of phonemes).
-        phonemizer: The initialized Phonemizer instance.
     """
     try:
+        phonemizer: Phonemizer = get_phonemizer(config.phoneme_type,
+                                                 config.alphabet,
+                                                 config.phonemizer_model)
         casing: Callable[[str], str] = get_text_casing(config.text_casing)
         silence_detector = make_silence_detector()
 
@@ -503,10 +508,10 @@ def cli(
     # --- Single Pass: Process audio/phonemes and collect results ---
     _LOGGER.info("Starting single pass processing with %d workers...", config.max_workers)
 
-    # Initialize the phonemizer only once in the main process
-    phonemizer: Phonemizer = get_phonemizer(config.phoneme_type,
-                                            config.alphabet,
-                                            config.phonemizer_model)
+    # NOTE: the Phonemizer is intentionally NOT constructed here in the main
+    # process and shared with workers - it is constructed independently
+    # inside each worker process (see phonemize_worker) since it is not safe
+    # to pass across a process boundary under the "spawn" start method.
 
     batch_size: int = max(1, int(num_utterances / (config.max_workers * 2)))
 
@@ -518,7 +523,7 @@ def cli(
     processes: List[Process] = [
         Process(
             target=phonemize_worker,
-            args=(config, task_queue, result_queue, phonemizer)
+            args=(config, task_queue, result_queue)
         )
         for _ in range(config.max_workers)
     ]
@@ -570,7 +575,7 @@ def cli(
     else:
         prev_num_symbols = MAX_PHONEMES
         final_phoneme_id_map: Dict[str, int] = DEFAULT_SPECIAL_PHONEME_ID_MAP.copy()
-        if phonemizer.alphabet == Alphabet.IPA:
+        if config.alphabet == Alphabet.IPA:
             all_phonemes.update(DEFAULT_IPA_PHONEME_ID_MAP.keys())
 
     # Filter out tokens that are already in the map
@@ -617,7 +622,7 @@ def cli(
                       "length_scale": 1,
                       "noise_w": 0.8,
                       "add_diacritics": config.add_diacritics},
-        "alphabet": phonemizer.alphabet.value,
+        "alphabet": config.alphabet.value,
         "phoneme_type": config.phoneme_type.value,
         "phonemizer_model": config.phonemizer_model,
         "phoneme_id_map": final_phoneme_id_map,

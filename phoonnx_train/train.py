@@ -81,17 +81,19 @@ def main(
     with open(config_path, 'r', encoding='utf-8') as config_file:
         config = json.load(config_file)
 
+    callbacks = []
+    if checkpoint_epochs is not None:
+        callbacks.append(ModelCheckpoint(every_n_epochs=checkpoint_epochs, save_top_k=-1))
+        _LOGGER.info('Checkpoints will be saved every %s epoch(s)', checkpoint_epochs)
+
     trainer = Trainer(
         max_epochs=max_epochs,
         devices=devices,
         accelerator=accelerator,
         default_root_dir=default_root_dir,
-        precision=precision
+        precision=precision,
+        callbacks=callbacks,
     )
-
-    if checkpoint_epochs is not None:
-        trainer.callbacks = [ModelCheckpoint(every_n_epochs=checkpoint_epochs)]
-        _LOGGER.info('Checkpoints will be saved every %s epoch(s)', checkpoint_epochs)
 
     dict_args = dict(
         seed=seed,

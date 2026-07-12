@@ -78,6 +78,12 @@ class VitsModel(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
+        # pytorch-lightning >=2.0 removed automatic multi-optimizer dispatch
+        # (the `optimizer_idx` argument to `training_step`); this model trains
+        # a generator and a discriminator with separate optimizers, so it
+        # must opt into manual optimization instead.
+        self.automatic_optimization = False
+
         if (self.hparams.num_speakers > 1) and (self.hparams.gin_channels <= 0):
             # Default gin_channels for multi-speaker model
             self.hparams.gin_channels = 512
@@ -198,12 +204,29 @@ class VitsModel(pl.LightningModule):
             batch_size=self.hparams.batch_size,
         )
 
-    def training_step(self, batch: Batch, batch_idx: int, optimizer_idx: int):
-        if optimizer_idx == 0:
-            return self.training_step_g(batch)
+    def training_step(self, batch: Batch, batch_idx: int):
+        opt_g, opt_d = self.optimizers()
 
-        if optimizer_idx == 1:
-            return self.training_step_d(batch)
+        loss_gen_all = self.training_step_g(batch)
+        opt_g.zero_grad()
+        self.manual_backward(loss_gen_all)
+        if self.hparams.grad_clip is not None:
+            self.clip_gradients(opt_g, gradient_clip_val=self.hparams.grad_clip)
+        opt_g.step()
+
+        loss_disc_all = self.training_step_d(batch)
+        opt_d.zero_grad()
+        self.manual_backward(loss_disc_all)
+        if self.hparams.grad_clip is not None:
+            self.clip_gradients(opt_d, gradient_clip_val=self.hparams.grad_clip)
+        opt_d.step()
+
+        return loss_gen_all + loss_disc_all
+
+    def on_train_epoch_end(self):
+        sch_g, sch_d = self.lr_schedulers()
+        sch_g.step()
+        sch_d.step()
 
     def training_step_g(self, batch: Batch):
         x, x_lengths, y, _, spec, spec_lengths, speaker_ids = (
