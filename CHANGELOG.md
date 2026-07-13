@@ -28,6 +28,7 @@
 
 **Merged pull requests:**
 
+- feat\(chatterbox\): restore lahgtna Arabic-dialect voices with fixed ONNX export [\#214](https://github.com/TigreGotico/phoonnx/pull/214) ([JarbasAl](https://github.com/JarbasAl))
 - feat: SILMA TTS v1 \(Arabic+English\) voice via the f5tts engine [\#213](https://github.com/TigreGotico/phoonnx/pull/213) ([JarbasAl](https://github.com/JarbasAl))
 - fix\(voice\_index\): dialect-accurate Arabic lang codes + regenerate VOICES.md [\#212](https://github.com/TigreGotico/phoonnx/pull/212) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(shami\): add Shami/HamsVITS engine for Levantine Arabic / English TTS [\#211](https://github.com/TigreGotico/phoonnx/pull/211) ([JarbasAl](https://github.com/JarbasAl))
