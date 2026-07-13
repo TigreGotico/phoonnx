@@ -1,0 +1,155 @@
+{
+    "f5tts/v1-base": {
+        "voice_id": "f5tts/v1-base",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/f5tts-v1-base/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/f5tts-v1-base/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "mul",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/f5tts-v1-base/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/f5tts-v1-base/F5_Decode.onnx"
+        }
+    },
+    "habibi/ar-unified": {
+        "voice_id": "habibi/ar-unified",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-unified/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-unified/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "ar",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-unified/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-unified/F5_Decode.onnx"
+        }
+    },
+    "habibi/ar-alg": {
+        "voice_id": "habibi/ar-alg",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-alg/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-alg/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "ar",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-alg/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-alg/F5_Decode.onnx"
+        }
+    },
+    "habibi/ar-egy": {
+        "voice_id": "habibi/ar-egy",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-egy/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-egy/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "ar",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-egy/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-egy/F5_Decode.onnx"
+        }
+    },
+    "habibi/ar-irq": {
+        "voice_id": "habibi/ar-irq",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-irq/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-irq/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "ar",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-irq/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-irq/F5_Decode.onnx"
+        }
+    },
+    "habibi/ar-mar": {
+        "voice_id": "habibi/ar-mar",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-mar/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-mar/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "ar",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-mar/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-mar/F5_Decode.onnx"
+        }
+    },
+    "habibi/ar-msa": {
+        "voice_id": "habibi/ar-msa",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-msa/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-msa/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "ar",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-msa/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-msa/F5_Decode.onnx"
+        }
+    },
+    "habibi/ar-sau": {
+        "voice_id": "habibi/ar-sau",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-sau/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-sau/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "ar",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-sau/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-sau/F5_Decode.onnx"
+        }
+    },
+    "habibi/ar-uae": {
+        "voice_id": "habibi/ar-uae",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-uae/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-uae/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "ar",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-uae/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-uae/F5_Decode.onnx"
+        }
+    }
+}

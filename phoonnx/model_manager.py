@@ -45,6 +45,13 @@ class TTSModelInfo:
     speaker_encoder_url: Optional[str] = None
     speaker_encoder_type: Optional[str] = None
 
+    # Multi-graph iterative engines (F5-TTS) split inference across several
+    # ONNX files beyond the primary model.onnx. Each entry maps an
+    # engine_params key (e.g. "preprocess_path", "decode_path") to the URL of
+    # that graph; the manager downloads each one alongside the model and
+    # injects the local path under the same key.
+    aux_model_urls: Optional[Dict[str, str]] = field(default_factory=dict)
+
     @property
     def config(self) -> VoiceConfig:
         # lazy loaded
@@ -304,12 +311,31 @@ class TTSModelInfo:
                         f.write(chunk)
         return enc_path
 
+    def download_aux_models(self) -> Dict[str, Path]:
+        """Download the auxiliary ONNX graphs of multi-graph engines (F5-TTS),
+        if any. Returns {engine_params_key: local_path}."""
+        paths: Dict[str, Path] = {}
+        for key, url in (self.aux_model_urls or {}).items():
+            fname = url.rsplit("/", 1)[-1] or f"{key}.onnx"
+            aux_path = self.voice_path / fname
+            if not aux_path.is_file():
+                with requests.get(url, timeout=120, stream=True) as r:
+                    r.raise_for_status()
+                    with open(aux_path, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+            paths[key] = aux_path
+        return paths
+
     def engine_params(self) -> Dict[str, Any]:
         """
         Build the engine_params dict for synthesis, resolving the vocoder to
         its locally-downloaded path.  Empty for single-stage engines.
         """
         params: Dict[str, Any] = {}
+        for key, aux_path in self.download_aux_models().items():
+            params[key] = str(aux_path)
         style_path = self.download_style()
         if style_path:
             params["style_path"] = str(style_path)
@@ -509,6 +535,7 @@ class TTSModelManager:
         self.cache.update(JsonStorage(str(base_path / "coqui_community.json")))
         self.cache.update(JsonStorage(str(base_path / "vits2.json")))
         self.cache.update(JsonStorage(str(base_path / "styletts2.json")))
+        self.cache.update(JsonStorage(str(base_path / "f5tts.json")))
         self.cache.update(JsonStorage(str(base_path / "coqui_vits.json")))
         self.cache.update(JsonStorage(str(base_path / "BSC.json")))
         self.cache.update(JsonStorage(str(base_path / "shami.json")))
