@@ -1,6 +1,6 @@
 ## Supported Voices
 
-**Total Voices:** 1912
+**Total Voices:** 1914
 **Total Languages:** 1214
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
@@ -66,6 +66,7 @@
 | `OpenVoiceOS/phoonnx_ar_dii_espeak` | `ar` | `phoonnx` | `espeak` |
 | `OpenVoiceOS/phoonnx_ar_miro_espeak_V2` | `ar` | `phoonnx` | `espeak` |
 | `piper_neurlang/ar_zayd0-arabic-diacritized` | `ar` | `piper` | `goruut` |
+| `silma/v1` | `ar` | `f5tts` | `graphemes` |
 | `habibi/ar-uae` | `ar-AE` | `f5tts` | `graphemes` |
 | `hf_community/vadimbelsky/arabic-emirati-female-piper` | `ar-AE` | `piper` | `espeak` |
 | `piper_community/vadimbelsky/arabic-emirati-female-piper` | `ar-AE` | `piper` | `espeak` |
@@ -410,6 +411,7 @@
 | `piper_community/agentvibe/en_16Speakers` | `en` | `piper` | `espeak` |
 | `piper_community/brycebeattie/en_ManyVoice` | `en` | `piper` | `espeak` |
 | `piper_community/jstlntchh/en_Scaramouche` | `en` | `piper` | `espeak` |
+| `silma/v1-en` | `en` | `f5tts` | `graphemes` |
 | `mimic3/en_UK/apope_low` | `en-GB` | `mimic3` | `gruut` |
 | `OpenVoiceOS/pipertts_en-GB_dii` | `en-GB` | `piper` | `espeak` |
 | `OpenVoiceOS/pipertts_en-GB_miro` | `en-GB` | `piper` | `espeak` |
