@@ -511,6 +511,7 @@ class TTSModelManager:
         self.cache.update(JsonStorage(str(base_path / "styletts2.json")))
         self.cache.update(JsonStorage(str(base_path / "coqui_vits.json")))
         self.cache.update(JsonStorage(str(base_path / "BSC.json")))
+        self.cache.update(JsonStorage(str(base_path / "shami.json")))
         self.voices = {}
         for voice_id, voice_dict in self.cache.items():
             try:
