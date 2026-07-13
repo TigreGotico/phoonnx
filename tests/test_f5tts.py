@@ -248,6 +248,7 @@ def test_f5tts_voice_index_catalog():
         entries = json.load(f)
     assert "f5tts/v1-base" in entries
     assert "habibi/ar-unified" in entries
+    assert "silma/v1" in entries
     for voice_id, entry in entries.items():
         info = TTSModelInfo(**entry)
         assert info.engine == "f5tts"
@@ -290,3 +291,46 @@ def test_f5tts_resample():
     assert F5TTSAdapter._resample(a, 24000, 24000) is a  # no-op
     out = F5TTSAdapter._resample(a, 22050, 24000)
     assert abs(len(out) - 1000 * 24000 / 22050) <= 2
+
+
+def test_silma_voice_index_entries():
+    """SILMA TTS v1 ships as two catalog listings (Arabic primary + English)
+    pointing at the same silma-tts-v1 ONNX export."""
+    import json
+    import os
+    from phoonnx.model_manager import TTSModelInfo
+
+    index = os.path.join(os.path.dirname(__file__), "..", "phoonnx",
+                         "voice_index", "f5tts.json")
+    with open(index, "r", encoding="utf-8") as f:
+        entries = json.load(f)
+
+    ar = TTSModelInfo(**entries["silma/v1"])
+    en = TTSModelInfo(**entries["silma/v1-en"])
+    assert ar.lang == "ar"
+    assert en.lang == "en"
+    for info in (ar, en):
+        assert info.engine == "f5tts"
+        assert info.phoneme_type == "graphemes"
+        assert "/silma-tts-v1/" in info.model_url
+        assert info.model_url.endswith("model.onnx")
+        assert info.aux_model_urls["preprocess_path"].endswith("F5_Preprocess.onnx")
+        assert info.aux_model_urls["decode_path"].endswith("F5_Decode.onnx")
+    # both listings resolve to the exact same artifacts
+    assert ar.model_url == en.model_url
+    assert ar.aux_model_urls == en.aux_model_urls
+
+
+def test_silma_listed_for_arabic_and_english():
+    """The model manager surfaces the silma voices for ar/en lookups."""
+    from phoonnx.model_manager import TTSModelManager
+
+    manager = TTSModelManager()
+    manager.cache.clear()
+    manager.merge_default_voices()
+    assert "silma/v1" in manager.voices
+    assert "silma/v1-en" in manager.voices
+    ar_ids = [v.voice_id for v in manager.get_lang_voices("ar")]
+    en_ids = [v.voice_id for v in manager.get_lang_voices("en-US")]
+    assert "silma/v1" in ar_ids
+    assert "silma/v1-en" in en_ids
