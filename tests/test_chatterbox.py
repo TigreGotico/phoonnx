@@ -120,3 +120,31 @@ def test_mtl_tokenizer_lang_tokens_override():
     # without a map, ar-EG derives the base [ar] token (present in the vocab)
     tok.tokenize("xy", language="ar-EG")
     assert seen["text"].startswith("[ar]")
+
+
+def test_lahgtna_voice_index_entries():
+    # the 10 Arabic-dialect lahgtna voices must build valid TTSModelInfo objects:
+    # unified model (one URL set), dialect-accurate lang codes, and NO lang_tokens —
+    # the MTL tokenizer derives the [ar] token from the lang code by itself
+    import json
+    from pathlib import Path
+    import phoonnx
+    from phoonnx.model_manager import TTSModelInfo
+
+    index = json.loads((Path(phoonnx.__file__).parent / "voice_index" /
+                        "chatterbox.json").read_text())
+    dialects = {"eg": "ar-EG", "sa": "ar-SA", "mo": "ar-MA", "iq": "ar-IQ",
+                "lb": "ar-LB", "sd": "ar-SD", "ly": "ar-LY", "sy": "ar-SY",
+                "tn": "ar-TN", "ps": "ar-PS"}
+    for dia, lang in dialects.items():
+        vid = f"chatterbox/lahgtna/{dia}"
+        assert vid in index, vid
+        entry = index[vid]
+        assert "lang_tokens" not in entry
+        info = TTSModelInfo(**entry)
+        assert info.engine == "chatterbox"
+        assert info.lang == lang
+        for field in ("model_url", "speech_encoder_url", "embed_tokens_url",
+                      "conditional_decoder_url", "tokenizer_config_url"):
+            assert entry[field].startswith(
+                "https://huggingface.co/OpenVoiceOS/phoonnx-chatterbox-lahgtna/")
