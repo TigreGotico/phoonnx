@@ -32,7 +32,8 @@ vocoder, are loaded in :meth:`configure` from ``engine_params``.
         "sway_coefficient": -1.0,
         "target_rms":      0.15,
         "sample_rate":     24000,
-        "speed":           1.0
+        "speed":           1.0,
+        "dialect":         "UNK"    // Habibi Unified only: dialect control tag
     }
 
 The adapter also works for **Habibi-TTS** and any other model built on the
@@ -50,6 +51,20 @@ from phoonnx.engines.base import (
 )
 
 
+# Habibi-TTS dialect control tokens (Unified model only). Upstream wraps the
+# generation text as f"{dialect_char}〈{text}〉" (habibi_tts/model/utils.py);
+# the specialized per-dialect models take plain untagged text. Only the 8
+# dialects with training data (UNK/MSA/SAU/UAE/ALG/IRQ/EGY/MAR) are meaningful;
+# the remaining codes exist in the vocab but were not trained.
+HABIBI_DIALECT_MAP = {
+    "UNK": "⓪", "MSA": "①", "SAU": "②", "UAE": "③", "ALG": "④",
+    "IRQ": "⑤", "EGY": "⑥", "MAR": "⑦", "OMN": "⑧", "TUN": "⑨",
+    "LEV": "⑩", "SDN": "⑪", "LBY": "⑫",
+}
+_TAG_OPEN = "〈"
+_TAG_CLOSE = "〉"
+
+
 class F5TTSAdapter(BaseOnnxAdapter):
     """Adapter for F5-TTS / Habibi-TTS (flow-matching DiT, Euler ODE)."""
 
@@ -64,6 +79,8 @@ class F5TTSAdapter(BaseOnnxAdapter):
         self._sway_coefficient: float = -1.0
         self._target_rms: float = 0.15
         self._speed: float = 1.0
+        self._dialect: Optional[str] = None
+        self._char2idx: Dict[str, int] = {}
 
     def default_params(self) -> Dict[str, float]:
         return {
@@ -105,6 +122,14 @@ class F5TTSAdapter(BaseOnnxAdapter):
             self._target_rms = float(ep["target_rms"])
         if "speed" in ep:
             self._speed = float(ep["speed"])
+        if "dialect" in ep:
+            self._dialect = str(ep["dialect"]).upper() or None
+
+        # char->id map for the Habibi dialect control tokens (Unified model).
+        # The tag must go through the same mapping as regular text.
+        tokenizer = getattr(voice_config, "tokenizer", None)
+        vocabulary = getattr(tokenizer, "vocabulary", None)
+        self._char2idx = dict(getattr(vocabulary, "char2idx", None) or {})
 
     def synthesize(
         self,
@@ -147,6 +172,7 @@ class F5TTSAdapter(BaseOnnxAdapter):
         # Combine ref_text + gen_text token IDs
         ref_text_ids = np.asarray(ref_text_tokens, np.int32).reshape(1, -1)
         gen_text_ids = request.phoneme_ids.astype(np.int32).reshape(1, -1)
+        gen_text_ids = self._wrap_dialect(gen_text_ids, p.get("dialect", self._dialect))
         text_ids = np.concatenate([ref_text_ids, gen_text_ids], axis=1)
 
         # max_duration: estimated from ref audio length and text length ratio
@@ -257,6 +283,37 @@ class F5TTSAdapter(BaseOnnxAdapter):
             "target_rms": "Target RMS",
             "speed": "Speed",
         }
+
+    def _wrap_dialect(self, gen_text_ids: np.ndarray,
+                      dialect: Optional[str]) -> np.ndarray:
+        """Wrap the generation-text token IDs with the Habibi dialect control
+        tokens: ``{dialect_char}〈 ... 〉`` (Unified model only).
+
+        No-op when *dialect* is unset. Raises ``ValueError`` for an unknown
+        dialect name. If the voice's vocab lacks the control tokens (the
+        specialized per-dialect models, plain F5-TTS), the tag is skipped with
+        a warning — those models were trained on untagged text.
+        """
+        if not dialect:
+            return gen_text_ids
+        name = str(dialect).upper()
+        if name not in HABIBI_DIALECT_MAP:
+            raise ValueError(
+                f"Unknown Habibi dialect {dialect!r}. "
+                f"Valid values: {sorted(HABIBI_DIALECT_MAP)}"
+            )
+        chars = (HABIBI_DIALECT_MAP[name], _TAG_OPEN, _TAG_CLOSE)
+        if any(c not in self._char2idx for c in chars):
+            import logging
+            logging.getLogger(__name__).warning(
+                "Voice vocab lacks the Habibi dialect control tokens "
+                "(%s) — 'dialect' only applies to the Unified model; "
+                "synthesizing untagged text.", "".join(chars))
+            return gen_text_ids
+        prefix = np.array([[self._char2idx[chars[0]], self._char2idx[chars[1]]]],
+                          dtype=gen_text_ids.dtype)
+        suffix = np.array([[self._char2idx[chars[2]]]], dtype=gen_text_ids.dtype)
+        return np.concatenate([prefix, gen_text_ids, suffix], axis=1)
 
     @staticmethod
     def _resample(audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:

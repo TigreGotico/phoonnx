@@ -173,6 +173,69 @@ def test_f5tts_param_labels_and_defaults():
         assert key in defaults
 
 
+def test_f5tts_dialect_wrapping():
+    """Habibi Unified dialect control: gen ids wrapped as {dialect}〈 text 〉,
+    through the same char->id mapping (upstream habibi_tts text_list_formatter)."""
+    from phoonnx.engines.f5tts import HABIBI_DIALECT_MAP
+
+    class _RecordingPreprocess(_FakePreprocess):
+        def __init__(self):
+            self.text_ids = None
+
+        def run(self, output_names, feed):
+            self.text_ids = feed["text_ids"].copy()
+            return super().run(output_names, feed)
+
+    ad = _configured_adapter(nfe=2)
+    pre = _RecordingPreprocess()
+    ad.preprocess = pre
+    # mimic the unified vocab: dialect chars + brackets present
+    ad._char2idx = {"⑥": 2713, "〈": 2728, "〉": 2729}
+
+    ad.synthesize(
+        _req(reference_audio=(np.zeros(24000, np.float32), 24000),
+             prompt_tokens=[7, 8], dialect="EGY"),
+        _FakeTransformer(),
+    )
+    ids = pre.text_ids[0].tolist()
+    # ref tokens first, then ⑥ 〈 gen 〉
+    assert ids == [7, 8, 2713, 2728, 4, 5, 6, 2729]
+    assert HABIBI_DIALECT_MAP["EGY"] == "⑥"
+
+
+def test_f5tts_dialect_unknown_raises():
+    ad = _configured_adapter(nfe=2)
+    ad._char2idx = {"⓪": 1, "〈": 2, "〉": 3}
+    with pytest.raises(ValueError):
+        ad.synthesize(
+            _req(reference_audio=(np.zeros(24000, np.float32), 24000),
+                 prompt_tokens=[1], dialect="XXX"),
+            _FakeTransformer(),
+        )
+
+
+def test_f5tts_dialect_skipped_without_vocab_tokens():
+    """Specialized/plain vocabs lack the control tokens -> tag skipped, not crash."""
+    class _RecordingPreprocess(_FakePreprocess):
+        def __init__(self):
+            self.text_ids = None
+
+        def run(self, output_names, feed):
+            self.text_ids = feed["text_ids"].copy()
+            return super().run(output_names, feed)
+
+    ad = _configured_adapter(nfe=2)
+    pre = _RecordingPreprocess()
+    ad.preprocess = pre
+    ad._char2idx = {"a": 1}  # no dialect tokens
+    ad.synthesize(
+        _req(reference_audio=(np.zeros(24000, np.float32), 24000),
+             prompt_tokens=[7], dialect="EGY"),
+        _FakeTransformer(),
+    )
+    assert pre.text_ids[0].tolist() == [7, 4, 5, 6]  # untagged
+
+
 def test_f5tts_voice_index_catalog():
     """The bundled catalog entries must construct valid TTSModelInfo objects
     with aux_model_urls pointing at the preprocess/decode graphs."""

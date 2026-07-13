@@ -18,9 +18,12 @@ an Euler ODE sampling loop rather than a single-pass graph.
 | PyTorch weights | [`SWivid/F5-TTS`](https://huggingface.co/SWivid/F5-TTS) (CC-BY-NC-4.0), [`SWivid/Habibi-TTS`](https://huggingface.co/SWivid/Habibi-TTS) (CC-BY-NC-SA-4.0) |
 | **Ready-made ONNX voices** | [`OpenVoiceOS/phoonnx-f5tts`](https://huggingface.co/OpenVoiceOS/phoonnx-f5tts) — `f5tts-v1-base` (multilingual) + `habibi-tts-unified` (Arabic) |
 
-> **License**: the F5-TTS checkpoints are **CC-BY-NC-4.0** and the Habibi-TTS
-> checkpoints are **CC-BY-NC-SA-4.0** — both **non-commercial use only**. The
-> ONNX conversions in `OpenVoiceOS/phoonnx-f5tts` inherit those licenses.
+> **License**: the F5-TTS checkpoints are **CC-BY-NC-4.0** (non-commercial).
+> Habibi-TTS licensing is per model (see the
+> [model card](https://huggingface.co/SWivid/Habibi-TTS)): **Unified, SAU and
+> UAE are CC-BY-NC-SA-4.0** (restricted by the SADA and Mixat datasets), while
+> **ALG, EGY, IRQ, MAR and MSA are Apache-2.0**. The ONNX conversions in
+> `OpenVoiceOS/phoonnx-f5tts` inherit those licenses.
 
 ## Architecture
 
@@ -113,6 +116,23 @@ architecture and ONNX layout, with different weights. It provides:
 
 - **Unified** model (recommended) — handles all dialects
 - **Specialized** models — per-dialect: MSA, SAU, UAE, ALG, IRQ, EGY, MAR, etc.
+
+#### Dialect control (Unified model only)
+
+The Unified model was trained with **dialect control tokens**: upstream wraps
+the generation text as `{dialect_char}〈text〉` where each dialect maps to an
+enclosed-number character (`habibi_tts/model/utils.py`):
+
+`UNK ⓪ · MSA ① · SAU ② · UAE ③ · ALG ④ · IRQ ⑤ · EGY ⑥ · MAR ⑦`
+(plus `OMN ⑧ · TUN ⑨ · LEV ⑩ · SDN ⑪ · LBY ⑫`, present in the vocab but
+without training data — only the first 8 are meaningful).
+
+The adapter applies the tag at token level (through the voice's own
+`phoneme_id_map`) when a ``dialect`` engine param is set — in the voice
+config (`"engine_params": {"dialect": "UNK"}`, the default for the published
+unified voice) or per call via `SynthesisConfig.extra_params={"dialect": "EGY"}`.
+Specialized models take plain untagged text; their vocabs lack the control
+tokens and the adapter skips the tag (with a warning) if ``dialect`` is set.
 
 The Habibi-TTS vocabulary (`vocab.txt`) is Arabic-optimized. The phoonnx tokenizer
 must be configured with the matching `phoneme_id_map` from Habibi's config.
