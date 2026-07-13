@@ -1,7 +1,7 @@
 ## Supported Voices
 
-**Total Voices:** 1871
-**Total Languages:** 1206
+**Total Voices:** 1880
+**Total Languages:** 1207
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
 
@@ -55,6 +55,14 @@
 | `facebook/mms-tts-apb-Sa’a` | `apb` | `transformers` | `graphemes` |
 | `facebook/mms-tts-apr-Arop-Lokep` | `apr` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ara-Arabic` | `ar` | `transformers` | `graphemes` |
+| `habibi/ar-alg` | `ar` | `f5tts` | `graphemes` |
+| `habibi/ar-egy` | `ar` | `f5tts` | `graphemes` |
+| `habibi/ar-irq` | `ar` | `f5tts` | `graphemes` |
+| `habibi/ar-mar` | `ar` | `f5tts` | `graphemes` |
+| `habibi/ar-msa` | `ar` | `f5tts` | `graphemes` |
+| `habibi/ar-sau` | `ar` | `f5tts` | `graphemes` |
+| `habibi/ar-uae` | `ar` | `f5tts` | `graphemes` |
+| `habibi/ar-unified` | `ar` | `f5tts` | `graphemes` |
 | `hf_community/vadimbelsky/arabic-emirati-female-piper` | `ar` | `piper` | `espeak` |
 | `hf_community/wasmdashai/vits-ar` | `ar` | `transformers` | `graphemes` |
 | `hf_community/wasmdashai/vits-ar-sa-A` | `ar` | `transformers` | `graphemes` |
@@ -1171,6 +1179,7 @@
 | `facebook/mms-tts-mtj-Moskona` | `mtj` | `transformers` | `graphemes` |
 | `facebook/mms-tts-mto-Mixe, Totontepec` | `mto` | `transformers` | `graphemes` |
 | `facebook/mms-tts-muh-Mündü` | `muh` | `transformers` | `graphemes` |
+| `f5tts/v1-base` | `mul` | `f5tts` | `graphemes` |
 | `facebook/mms-tts-mup-Malvi` | `mup` | `transformers` | `graphemes` |
 | `facebook/mms-tts-mur-Murle` | `mur` | `transformers` | `graphemes` |
 | `facebook/mms-tts-muv-Muthuvan` | `muv` | `transformers` | `graphemes` |
