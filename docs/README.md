@@ -53,4 +53,4 @@ with wave.open("output.wav", "wb") as wav_file:
 - [OVOS Plugin](ovos_plugin.md)
 - [Docker / TTS Server](docker.md)
 - [Engine Architecture](engines.md) · [Vocoders](vocoders.md)
-- Engine guides: [Matcha](matcha.md) · [GlowTTS](glowtts.md) · [OptiSpeech](optispeech.md) · [MixerTTS](mixertts.md) · [FastPitch](fastpitch.md) · [ZipVoice](zipvoice.md)
+- Engine guides: [Matcha](matcha.md) · [GlowTTS](glowtts.md) · [OptiSpeech](optispeech.md) · [MixerTTS](mixertts.md) · [FastPitch](fastpitch.md) · [ZipVoice](zipvoice.md) · [Shami](shami.md)

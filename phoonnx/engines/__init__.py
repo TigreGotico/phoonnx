@@ -115,6 +115,7 @@ def list_engines() -> List[str]:
 
 def _register_builtins() -> None:
     from phoonnx.engines.vits import VitsAdapter
+    from phoonnx.engines.shami import ShamiAdapter
     from phoonnx.engines.matcha import MatchaAdapter
     from phoonnx.engines.optispeech import OptiSpeechAdapter
     from phoonnx.engines.glowtts import GlowTTSAdapter
@@ -127,6 +128,7 @@ def _register_builtins() -> None:
     # OptiSpeech shares VITS-like x/x_lengths/scales inputs with Matcha, but has
     # a distinctive metadata + wav/durations output signature — check it first.
     register_engine("optispeech", OptiSpeechAdapter, detect_priority=35)
+    register_engine("shami", ShamiAdapter, detect_priority=45)
     register_engine("vits", VitsAdapter, detect_priority=50)
     register_engine("matcha", MatchaAdapter, detect_priority=40)
     register_engine("glowtts", GlowTTSAdapter, detect_priority=42)

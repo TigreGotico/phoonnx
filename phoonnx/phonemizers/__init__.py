@@ -7,6 +7,7 @@ from phoonnx.phonemizers.eu import AhoTTSPhonemizer
 from phoonnx.phonemizers.vi import VIPhonemePhonemizer
 from phoonnx.phonemizers.he import PhonikudPhonemizer
 from phoonnx.phonemizers.ar import MantoqPhonemizer
+from phoonnx.phonemizers.shami import ShamiPhonemizer
 from phoonnx.phonemizers.fa import PersianPhonemizer
 from phoonnx.phonemizers.pt import TugaphonePhonemizer
 from phoonnx.phonemizers.ja import PyKakasiPhonemizer, CutletPhonemizer, OpenJTaklPhonemizer
@@ -47,6 +48,7 @@ Phonemizer = Union[
     CotoviaPhonemizer,
     AhoTTSPhonemizer,
     MantoqPhonemizer,
+    ShamiPhonemizer,
     GraphemePhonemizer,
     OpenPhonemizer,
     G2PEnPhonemizer,

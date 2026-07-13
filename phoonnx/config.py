@@ -28,6 +28,7 @@ class Engine(str, Enum):
     STYLETTS2 = "styletts2"  # StyleTTS2 / Kokoro end-to-end (tokens + style -> wav)
     YOURTTS = "yourtts"  # multilingual VITS conditioned on a speaker d-vector (cloning)
     ZIPVOICE = "zipvoice"  # flow-matching, in-context cloning (iterative ODE loop)
+    SHAMI = "shami"  # Levantine Arabic / English code-switching (HamsVITS)
 
 
 class Alphabet(str, Enum):
@@ -92,6 +93,7 @@ class PhonemeType(str, Enum):
     PYPINYIN = "pypinyin" # chinese
     XPINYIN = "xpinyin" # chinese
     JIEBA = "jieba" # chinese  (not a real phonemizer!)
+    SHAMI = "shami"  # Levantine Arabic / English code-switching (ShamiVITS)
 
 
 @dataclass
@@ -574,7 +576,7 @@ def get_phonemizer(phoneme_type: PhonemeType,
                        MisakiKoPhonemizer, MisakiViPhonemizer,
                        KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
                        AhoTTSPhonemizer, CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer,
-                       XpinyinPhonemizer, UnicodeCodepointPhonemizer, JiebaPhonemizer)
+                       XpinyinPhonemizer, UnicodeCodepointPhonemizer, JiebaPhonemizer, ShamiPhonemizer)
     if phoneme_type == PhonemeType.ESPEAK:
         phonemizer = EspeakPhonemizer()
     elif phoneme_type == PhonemeType.BYT5:
@@ -651,6 +653,8 @@ def get_phonemizer(phoneme_type: PhonemeType,
         phonemizer = UnicodeCodepointPhonemizer()
     elif phoneme_type == PhonemeType.GRAPHEMES:
         phonemizer = GraphemePhonemizer()
+    elif phoneme_type == PhonemeType.SHAMI:
+        phonemizer = ShamiPhonemizer(alphabet=alphabet)
     else:
         raise ValueError("invalid phonemizer")
     return phonemizer

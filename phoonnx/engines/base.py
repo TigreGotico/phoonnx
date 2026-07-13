@@ -31,6 +31,10 @@ class AdapterSynthesisRequest:
     speaker_id: Optional[int] = None
     language_id: Optional[int] = None
 
+    # Per-phoneme language IDs for models that consume a parallel language stream
+    # (e.g. ShamiVITS).  Shape (1, T), dtype int64, when provided.
+    language_ids: Optional[np.ndarray] = None
+
     # Engine-specific key→value (noise_scale, d_factor, …).
     # Populated from SynthesisConfig + VoiceConfig defaults.
     params: Dict[str, Any] = field(default_factory=dict)

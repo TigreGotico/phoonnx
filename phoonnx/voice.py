@@ -363,18 +363,27 @@ class TTSVoice:
             text = self.phonemizer.add_diacritics(text, self.config.lang_code)
             LOG.debug("text+diacritics=%s", text)
 
-        # All phonemization goes through the unified self.phonemize method
-        sentence_phonemes = self.phonemize(text)
+        # All phonemization goes through the unified self.phonemize method.
+        # Language-aware phonemizers (e.g. Shami) also provide per-phoneme language IDs.
+        if hasattr(self.phonemizer, "phonemize_with_language_ids"):
+            sentence_phonemes, sentence_language_ids = self.phonemizer.phonemize_with_language_ids(
+                text, self.config.lang_code
+            )
+        else:
+            sentence_phonemes = self.phonemize(text)
+            sentence_language_ids = [None] * len(sentence_phonemes)
         LOG.debug("phonemes=%s", sentence_phonemes)
         all_phoneme_ids_for_synthesis = [
             self.phonemes_to_ids(phonemes) for phonemes in sentence_phonemes if phonemes
         ]
 
-        for phoneme_ids in all_phoneme_ids_for_synthesis:
+        for phoneme_ids, language_ids in zip(
+            all_phoneme_ids_for_synthesis, sentence_language_ids
+        ):
             if not phoneme_ids:
                 continue
 
-            audio = self.phoneme_ids_to_audio(phoneme_ids, syn_config)
+            audio = self.phoneme_ids_to_audio(phoneme_ids, syn_config, language_ids=language_ids)
 
             if syn_config.normalize_audio:
                 max_val = np.max(np.abs(audio))
@@ -448,7 +457,8 @@ class TTSVoice:
         return ids
 
     def phoneme_ids_to_audio(
-            self, phoneme_ids: list[int], syn_config: Optional[SynthesisConfig] = None
+            self, phoneme_ids: list[int], syn_config: Optional[SynthesisConfig] = None,
+            language_ids: Optional[list[int]] = None
     ) -> np.ndarray:
         """
         Synthesize raw audio from phoneme ids.
@@ -458,6 +468,7 @@ class TTSVoice:
 
         :param phoneme_ids: List of phoneme ids.
         :param syn_config: Synthesis configuration.
+        :param language_ids: Optional per-phoneme language IDs (for language-aware engines).
         :return: Audio float numpy array (unnormalized, in range [-1, 1]).
         """
         syn_config = syn_config or SynthesisConfig()
@@ -469,6 +480,11 @@ class TTSVoice:
         phoneme_ids_lengths = np.array(
             [phoneme_ids_array.shape[1]], dtype=np.int64
         )
+        language_ids_array = None
+        if language_ids is not None:
+            language_ids_array = np.expand_dims(
+                np.array(language_ids, dtype=np.int64), 0
+            )
 
         # Merge defaults from adapter → VoiceConfig → SynthesisConfig
         params = dict(self.adapter.default_params())
@@ -505,6 +521,7 @@ class TTSVoice:
             phoneme_lengths=phoneme_ids_lengths,
             speaker_id=syn_config.speaker_id or 0,
             language_id=syn_config.lang_id or 0,
+            language_ids=language_ids_array,
             params=params,
         )
 
