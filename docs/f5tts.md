@@ -14,15 +14,17 @@ an Euler ODE sampling loop rather than a single-pass graph.
 | Paper | *F5-TTS: A Fairytaler that Fakes Fluent and Faithful Speech with Flow Matching* — [arXiv:2410.06885](https://arxiv.org/abs/2410.06885) |
 | ONNX export | <https://github.com/DakeQQ/F5-TTS-ONNX> |
 | Habibi-TTS | <https://github.com/SWivid/Habibi-TTS> — Arabic dialectal fine-tune |
+| SILMA TTS | <https://github.com/SILMA-AI/silma-tts> — bilingual Arabic (MSA/Fusha) + English, 150M DiT pretrained from scratch |
 | Languages | Multilingual (trained on Emilia: ZH, EN, + more) |
-| PyTorch weights | [`SWivid/F5-TTS`](https://huggingface.co/SWivid/F5-TTS) (CC-BY-NC-4.0), [`SWivid/Habibi-TTS`](https://huggingface.co/SWivid/Habibi-TTS) (CC-BY-NC-SA-4.0) |
-| **Ready-made ONNX voices** | [`OpenVoiceOS/phoonnx-f5tts`](https://huggingface.co/OpenVoiceOS/phoonnx-f5tts) — `f5tts-v1-base` (multilingual) + `habibi-tts-unified` (Arabic) |
+| PyTorch weights | [`SWivid/F5-TTS`](https://huggingface.co/SWivid/F5-TTS) (CC-BY-NC-4.0), [`SWivid/Habibi-TTS`](https://huggingface.co/SWivid/Habibi-TTS) (CC-BY-NC-SA-4.0), [`silma-ai/silma-tts`](https://huggingface.co/silma-ai/silma-tts) (Apache-2.0) |
+| **Ready-made ONNX voices** | [`OpenVoiceOS/phoonnx-f5tts`](https://huggingface.co/OpenVoiceOS/phoonnx-f5tts) — `f5tts-v1-base` (multilingual) + `habibi-tts-unified` (Arabic) + `silma-tts-v1` (Arabic + English) |
 
 > **License**: the F5-TTS checkpoints are **CC-BY-NC-4.0** (non-commercial).
 > Habibi-TTS licensing is per model (see the
 > [model card](https://huggingface.co/SWivid/Habibi-TTS)): **Unified, SAU and
 > UAE are CC-BY-NC-SA-4.0** (restricted by the SADA and Mixat datasets), while
-> **ALG, EGY, IRQ, MAR and MSA are Apache-2.0**. The ONNX conversions in
+> **ALG, EGY, IRQ, MAR and MSA are Apache-2.0**. **SILMA TTS v1 weights are
+> Apache-2.0** (commercial use allowed). The ONNX conversions in
 > `OpenVoiceOS/phoonnx-f5tts` inherit those licenses.
 
 ## Architecture
@@ -242,6 +244,8 @@ The catalog voices ship in `phoonnx/voice_index/f5tts.json`:
 | `habibi/ar-alg` | Habibi-TTS Specialized ALG | Arabic (Algerian) |
 | `habibi/ar-irq` | Habibi-TTS Specialized IRQ | Arabic (Iraqi) |
 | `habibi/ar-mar` | Habibi-TTS Specialized MAR | Arabic (Moroccan) |
+| `silma/v1` | SILMA TTS v1 (Apache-2.0, commercial OK) | Arabic (MSA/Fusha, full tashkeel support) |
+| `silma/v1-en` | SILMA TTS v1 (same model, English listing) | English |
 
 The model manager downloads the three ONNX graphs on first use (the
 `aux_model_urls` mechanism resolves `preprocess_path` / `decode_path` to the
@@ -254,6 +258,7 @@ locally-cached files automatically).
 | **F5-TTS** | base model (DiT + ConvNeXt V2) |
 | **F5-TTS v1** | improved training and inference (2025/03) |
 | **Habibi-TTS** | Arabic dialectal fine-tune (Unified + Specialized) |
+| **SILMA TTS v1** | bilingual Arabic/English 150M DiT (dim 768, depth 18) pretrained from scratch |
 | **E2-TTS** | Flat-UNet variant (same flow-matching approach) |
 
 Any model using the F5-TTS ONNX export layout (preprocess + transformer + decode)

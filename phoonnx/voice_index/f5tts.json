@@ -151,5 +151,39 @@
             "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-uae/F5_Preprocess.onnx",
             "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-uae/F5_Decode.onnx"
         }
+    },
+    "silma/v1": {
+        "voice_id": "silma/v1",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/silma-tts-v1/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/silma-tts-v1/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "ar",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/silma-tts-v1/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/silma-tts-v1/F5_Decode.onnx"
+        }
+    },
+    "silma/v1-en": {
+        "voice_id": "silma/v1-en",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/silma-tts-v1/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/silma-tts-v1/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "en",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/silma-tts-v1/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/silma-tts-v1/F5_Decode.onnx"
+        }
     }
 }
