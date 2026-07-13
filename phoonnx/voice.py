@@ -373,13 +373,15 @@ class TTSVoice:
             sentence_phonemes = self.phonemize(text)
             sentence_language_ids = [None] * len(sentence_phonemes)
         LOG.debug("phonemes=%s", sentence_phonemes)
-        all_phoneme_ids_for_synthesis = [
-            self.phonemes_to_ids(phonemes) for phonemes in sentence_phonemes if phonemes
+        # filter empty sentences on both streams together so phoneme ids and
+        # language ids can never fall out of alignment
+        all_ids_for_synthesis = [
+            (self.phonemes_to_ids(phonemes), language_ids)
+            for phonemes, language_ids in zip(sentence_phonemes, sentence_language_ids)
+            if phonemes
         ]
 
-        for phoneme_ids, language_ids in zip(
-            all_phoneme_ids_for_synthesis, sentence_language_ids
-        ):
+        for phoneme_ids, language_ids in all_ids_for_synthesis:
             if not phoneme_ids:
                 continue
 
