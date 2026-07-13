@@ -355,31 +355,32 @@ class TTSVoice:
 
         LOG.debug("text=%s", text)
 
-        # user defined word-level replacements to force correct pronunciation
+        # Text preprocessing — engine-agnostic, operates on the text before encoding:
+        # user pronunciation overrides + (Arabic/Hebrew) diacritics.
         if self.phonetic_spellings and syn_config.enable_phonetic_spellings:
             text = self.phonetic_spellings.apply(text)
-
         if syn_config.add_diacritics:
             text = self.phonemizer.add_diacritics(text, self.config.lang_code)
-            LOG.debug("text+diacritics=%s", text)
 
-        # All phonemization goes through the unified self.phonemize method.
-        # Language-aware phonemizers (e.g. Shami) also provide per-phoneme language IDs.
+        # Language-aware phonemizers (e.g. Shami) provide per-phoneme language IDs;
+        # the two streams are built together here so they can never fall out of alignment.
         if hasattr(self.phonemizer, "phonemize_with_language_ids"):
             sentence_phonemes, sentence_language_ids = self.phonemizer.phonemize_with_language_ids(
                 text, self.config.lang_code
             )
+            LOG.debug("phonemes=%s", sentence_phonemes)
+            all_ids_for_synthesis = [
+                (self.phonemes_to_ids(phonemes), language_ids)
+                for phonemes, language_ids in zip(sentence_phonemes, sentence_language_ids)
+                if phonemes
+            ]
         else:
-            sentence_phonemes = self.phonemize(text)
-            sentence_language_ids = [None] * len(sentence_phonemes)
-        LOG.debug("phonemes=%s", sentence_phonemes)
-        # filter empty sentences on both streams together so phoneme ids and
-        # language ids can never fall out of alignment
-        all_ids_for_synthesis = [
-            (self.phonemes_to_ids(phonemes), language_ids)
-            for phonemes, language_ids in zip(sentence_phonemes, sentence_language_ids)
-            if phonemes
-        ]
+            # Engine-specific "text -> model-input token ids": phoneme engines phonemize +
+            # vocab-tokenize, text-token engines (Chatterbox) BPE the raw text. The adapter
+            # owns that transform (BaseOnnxAdapter.encode_text).
+            all_ids_for_synthesis = [
+                (ids, None) for ids in self.adapter.encode_text(text, self, syn_config)
+            ]
 
         for phoneme_ids, language_ids in all_ids_for_synthesis:
             if not phoneme_ids:
@@ -517,6 +518,12 @@ class TTSVoice:
         if syn_config.speaker_reference_text:
             params["prompt_tokens"] = self._prompt_token_ids(
                 syn_config.speaker_reference_text, syn_config.speaker_reference_lang)
+        if syn_config.exaggeration is not None:
+            params["exaggeration"] = syn_config.exaggeration
+        if syn_config.temperature is not None:
+            params["temperature"] = syn_config.temperature
+        if syn_config.top_p is not None:
+            params["top_p"] = syn_config.top_p
 
         request = AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,

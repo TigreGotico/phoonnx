@@ -20,7 +20,7 @@ turned into:
 
 | Paradigm | How it works | Needs the reference's text? | Language-agnostic? | Engines |
 |---|---|---|---|---|
-| **d-vector** | a **speaker encoder** maps the reference waveform to a fixed embedding that conditions synthesis | No | Yes | YourTTS, StyleTTS2 |
+| **d-vector** | a **speaker encoder** maps the reference waveform to a fixed embedding that conditions synthesis | No | Yes | YourTTS, StyleTTS2, [Chatterbox](chatterbox.md) |
 | **in-context** | the reference **audio + its transcription** are part of the model input; the model continues that voice | **Yes** | Per-phoneme (espeak/pinyin) | ZipVoice |
 
 A cloning voice can still bundle a **default speaker**, so it works with *or* without a
@@ -62,6 +62,15 @@ The encoders live in the **speaker-encoder registry**
 A cloning voice names its encoder in `engine_params` (`speaker_encoder_url` /
 `speaker_encoder_type`); the model manager downloads it to
 `engine_params["speaker_encoder_path"]` and the adapter loads it in `configure()`.
+
+## Autoregressive engine (Chatterbox)
+
+[Chatterbox](chatterbox.md) is a d-vector engine too (reference clip, no transcription), but
+adds an **`exaggeration`** control (0.0–1.0) for expressiveness:
+
+```python
+voice.synthesize("...", SynthesisConfig(speaker_reference="ref.wav", exaggeration=0.6))
+```
 
 ## In-context engine (ZipVoice)
 

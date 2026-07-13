@@ -30,6 +30,7 @@ class Engine(str, Enum):
     ZIPVOICE = "zipvoice"  # flow-matching, in-context cloning (iterative ODE loop)
     SHAMI = "shami"  # Levantine Arabic / English code-switching (HamsVITS)
     F5TTS = "f5tts"  # F5-TTS / Habibi-TTS: DiT flow-matching, Euler ODE (iterative)
+    CHATTERBOX = "chatterbox"  # autoregressive codec-LM, d-vector cloning + exaggeration
 
 
 class Alphabet(str, Enum):
@@ -153,6 +154,11 @@ class VoiceConfig:
     # Adapter-specific parameters parsed from config JSON
     engine_params: Dict[str, Any] = field(default_factory=dict)
 
+    # Optional BCP47/lang-code -> internal language-token map. Lets a voice override how
+    # its lang_code becomes the model's language token (e.g. dialect models that repurpose
+    # the base tokens with a literal token string). Empty -> derive the token from lang_code.
+    lang_tokens: Dict[str, str] = field(default_factory=dict)
+
     def __post_init__(self):
         """
         Finalize dataclass defaults after initialization.
@@ -257,7 +263,9 @@ class VoiceConfig:
                   phoneme_type: Optional[Union[str, PhonemeType]] = None,
                   alphabet: Optional[Union[str, Alphabet]] = None,
                   engine: Optional[Union[str, Engine]] = None,
-                   engine_params: Optional[Dict[str, Any]] = None) -> "VoiceConfig":
+                   engine_params: Optional[Dict[str, Any]] = None,
+                   bpe_tokenizer_json: Optional[str] = None,
+                   lang_tokens: Optional[Dict[str, str]] = None) -> "VoiceConfig":
         """
         Create a VoiceConfig from a model configuration dictionary and optional external phoneme data.
         
@@ -282,7 +290,24 @@ class VoiceConfig:
         alphabet = alphabet or config.get("alphabet")
         diacritics = False
 
-        if VoiceConfig.is_phoonnx(config):
+        if (engine == Engine.CHATTERBOX or
+                (isinstance(engine, str) and engine == "chatterbox") or
+                config.get("engine") == "chatterbox"):
+            # Chatterbox tokenizes raw text with its own BPE; the multilingual variant
+            # uses ChatterboxMTLTokenizer (detected by the [SPACE] token).
+            engine = Engine.CHATTERBOX
+            if not bpe_tokenizer_json:
+                raise ValueError("Chatterbox voices require a tokenizer.json (bpe_tokenizer_json)")
+            from phoonnx.tokenizer import load_chatterbox_tokenizer
+            tokenizer = load_chatterbox_tokenizer(bpe_tokenizer_json)
+            phoneme_type = phoneme_type or PhonemeType.UNICODE
+            alphabet = alphabet or Alphabet.UNICODE
+            # Arabic/Hebrew need vocalization (niqqud/tashkeel) for correct pronunciation.
+            diacritics = (lang_code or "").lower().startswith(("ar", "he"))
+            config.setdefault("audio", {}).setdefault("sample_rate", 24000)
+            config.setdefault("num_symbols", tokenizer._tok.get_vocab_size())
+
+        elif VoiceConfig.is_phoonnx(config):
             engine = engine or config.get("engine") or Engine.PHOONNX
 
             lang_code = lang_code or config.get("lang_code")
@@ -448,6 +473,7 @@ class VoiceConfig:
             # config's own engine_params (e.g. a baked YourTTS d-vector) merged with
             # any locally-resolved paths the manager passes in (the latter win).
             engine_params={**(config.get("engine_params") or {}), **(engine_params or {})},
+            lang_tokens=lang_tokens or config.get("lang_tokens") or {},
         )
 
     def to_native_dict(self) -> Dict[str, Any]:
@@ -526,6 +552,17 @@ class SynthesisConfig:
     used to phonemize the reference in *its* language — which may differ from the
     target text's. Defaults to the voice's ``lang_code``. Enables cross-lingual
     cloning (a Portuguese reference speaking English). In-context engines only."""
+
+    exaggeration: Optional[float] = None
+    """Expressiveness / emotional intensity (0.0–1.0, default 0.5) for engines that
+    support it (Chatterbox). Higher = more exaggerated prosody. Ignored otherwise."""
+
+    temperature: Optional[float] = None
+    """Sampling temperature for autoregressive engines (Chatterbox, default 0.8).
+    Higher = more varied/expressive; ``0`` = deterministic greedy decoding."""
+
+    top_p: Optional[float] = None
+    """Nucleus (top-p) sampling cutoff for autoregressive engines (default 0.95)."""
 
     length_scale: Optional[float] = None
     """Phoneme length scale (< 1 is faster, > 1 is slower)."""

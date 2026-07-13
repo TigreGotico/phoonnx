@@ -728,6 +728,97 @@ class TTSTokenizer:
                             use_eos_bos=use_eos_bos)
 
 
+class BPETokenizer:
+    """Subword (BPE) tokenizer — raw text -> subword ids via a HuggingFace ``tokenizer.json``.
+
+    The complement to the vocab-lookup :class:`TTSTokenizer`: where that maps phoneme/
+    char strings to ids one-to-one, this BPE-encodes raw text into subword ids — for
+    text-token models like Chatterbox. It satisfies the same call the voice uses
+    (``tokenize(units) -> ids``), so it slots in as the voice's tokenizer. Pair it with
+    the ``UNICODE`` phonemizer, which passes text through as characters; joining those
+    characters reconstructs the text for BPE encoding. No blank/BOS/EOS insertion — the
+    BPE model owns spacing and special tokens.
+    """
+
+    def __init__(self, tokenizer_json: str):
+        from tokenizers import Tokenizer
+        self._tok = Tokenizer.from_file(str(tokenizer_json))
+
+    # vocab-lookup token roles do not apply to subword tokenization
+    pad_id = None
+    blank_id = None
+    blank_word_id = None
+
+    def tokenize(self, text: Union[str, List[str]], language: Optional[str] = None,
+                 lang_tokens: Optional[Dict[str, str]] = None) -> List[int]:
+        # base BPE has no notion of language; the params exist so the voice can call
+        # tokenize(text, language=..., lang_tokens=...) uniformly (the MTL subclass uses them).
+        if isinstance(text, (list, tuple)):
+            text = "".join(text)
+        return list(self._tok.encode(text).ids)
+
+    def encode(self, text: Union[str, List[str]]) -> List[int]:
+        return self.tokenize(text)
+
+
+class ChatterboxMTLTokenizer(BPETokenizer):
+    """Multilingual Chatterbox tokenizer — the language-aware front end on top of the BPE.
+
+    The multilingual model is trained on a specific text encoding: lowercase +
+    NFKD-normalise, an optional per-language script transform, a ``[<lang>]`` prefix
+    token, and spaces encoded as a ``[SPACE]`` token. ``language`` is an ISO code (e.g.
+    ``"pt"``); without it — or for a vocab lacking the ``[<lang>]`` token — this degrades
+    to plain BPE so it stays safe for English-only checkpoints.
+    """
+
+    def tokenize(self, text: Union[str, List[str]], language: Optional[str] = None,
+                 lang_tokens: Optional[Dict[str, str]] = None) -> List[int]:
+        if isinstance(text, (list, tuple)):
+            text = "".join(text)
+        lang = (language or "").replace("_", "-").split("-")[0].lower()
+        # An explicit ``lang_tokens`` map (BCP47/code -> token string) wins and is prepended
+        # **literally**, even when the token isn't a single vocab id (it BPE-splits) — this
+        # is how dialect "hacks" work, e.g. lahgtna repurposes the base model with a literal
+        # ``[eg]`` for Egyptian, and it sidesteps lang-code normalization (eg -> eg-US).
+        # Otherwise derive ``[<lang>]`` and require it in the vocab (the standard variants).
+        token = None
+        if lang_tokens:
+            token = lang_tokens.get(language) or lang_tokens.get(lang)
+        if token is None and lang and self._tok.token_to_id(f"[{lang}]") is not None:
+            token = lang
+        if not token:
+            return list(self._tok.encode(text).ids)
+        import unicodedata
+        norm = self._script_transform(unicodedata.normalize("NFKD", text.lower()), token)
+        encoded = f"[{token}]{norm}".replace(" ", "[SPACE]")
+        return list(self._tok.encode(encoded).ids)
+
+    @staticmethod
+    def _script_transform(text: str, lang: str) -> str:
+        """Apply the per-language script transform (Hangul→Jamo, kanji→hiragana, Cangjie,
+        niqqud, Russian stress). Korean is pure Python; the others need optional deps and
+        fall back to raw text (with a warning) when missing. Languages without an entry
+        need no transform."""
+        from phoonnx.lang_preprocess import SCRIPT_TRANSFORMS
+        fn = SCRIPT_TRANSFORMS.get(lang)
+        return fn(text) if fn else text
+
+
+def load_chatterbox_tokenizer(tokenizer_json: str) -> BPETokenizer:
+    """Build the right Chatterbox tokenizer from a ``tokenizer.json``.
+
+    The multilingual checkpoint's vocab carries a ``[SPACE]`` token (its language front
+    end); base/turbo don't. So a ``[SPACE]`` token selects ``ChatterboxMTLTokenizer``,
+    otherwise a plain ``BPETokenizer``. The raw tokenizer is loaded once and shared.
+    """
+    from tokenizers import Tokenizer
+    raw = Tokenizer.from_file(str(tokenizer_json))
+    cls = ChatterboxMTLTokenizer if raw.token_to_id("[SPACE]") is not None else BPETokenizer
+    tok = cls.__new__(cls)
+    tok._tok = raw
+    return tok
+
+
 if __name__ == "__main__":
     import json
 

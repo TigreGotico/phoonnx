@@ -1,3 +1,4 @@
+import onnxruntime
 import json
 import os
 from dataclasses import dataclass, field
@@ -51,6 +52,17 @@ class TTSModelInfo:
     # that graph; the manager downloads each one alongside the model and
     # injects the local path under the same key.
     aux_model_urls: Optional[Dict[str, str]] = field(default_factory=dict)
+    # Chatterbox (autoregressive codec-LM) splits inference across four graphs: the
+    # language_model is `model_url`; these three aux graphs load from engine_params
+    # (speech_encoder_path / embed_tokens_path / conditional_decoder_path).
+    speech_encoder_url: Optional[str] = None
+    embed_tokens_url: Optional[str] = None
+    conditional_decoder_url: Optional[str] = None
+
+    # Optional BCP47 -> language-token map: how this voice's lang_code becomes the model's
+    # language token. Dialect models (e.g. lahgtna) repurpose the base tokens, so a literal
+    # token like "eg" is mapped here rather than derived from the (normalized) lang code.
+    lang_tokens: Optional[Dict[str, str]] = None
 
     @property
     def config(self) -> VoiceConfig:
@@ -82,7 +94,17 @@ class TTSModelInfo:
             phoneme_type = self.phoneme_type if self.phoneme_type else None
             engine = self.engine if self.engine else None
 
-            if self.vocab_override:
+            if self.engine == Engine.CHATTERBOX or config.get("engine") == "chatterbox":
+                # Chatterbox carries its own subword BPE (tokenizer.json); no vocab/tokens.
+                tok_json = self.download_bpe_tokenizer()
+                self._config = VoiceConfig.from_dict(config,
+                                                     alphabet=alphabet,
+                                                     phoneme_type=phoneme_type,
+                                                     engine=engine,
+                                                     lang_code=lang_code,
+                                                     bpe_tokenizer_json=str(tok_json) if tok_json else None,
+                                                     lang_tokens=self.lang_tokens)
+            elif self.vocab_override:
                 self._config = VoiceConfig.from_dict(config,
                                                      vocab=self.vocab_override,
                                                      alphabet=alphabet,
@@ -238,25 +260,36 @@ class TTSModelInfo:
         with open(tokens_path, "r", encoding="utf-8") as f:
             return f.read()
 
-    def download_model(self):
+    def _fetch_onnx(self, url: str, dest: Path) -> Path:
+        """Download an ONNX graph (and its external-data sidecar, if present) into the
+        voice cache.
+
+        A graph with external weights references them by the original
+        ``<name>.onnx_data`` filename, so that sidecar is saved under exactly that name
+        next to the graph for the reference to resolve. Chatterbox's four graphs all use
+        external data; single-file graphs simply have no sidecar (404 -> skipped).
         """
-        Download the ONNX model file for this voice into the voice cache directory if it does not already exist.
-        
-        Saves the remote file as voice_path / "model.onnx" in binary mode.
-        
-        Raises:
-            requests.HTTPError: if the HTTP response indicates an error status.
-            requests.RequestException: on network-related errors during download.
-            OSError: on filesystem errors while writing the file.
-        """
-        model_path = self.voice_path / "model.onnx"
-        if not model_path.is_file():
-            with requests.get(self.model_url, timeout=120, stream=True) as r:
+        if not dest.is_file():
+            with requests.get(url, timeout=120, stream=True) as r:
                 r.raise_for_status()
-                with open(model_path, "wb") as f:
+                with open(dest, "wb") as f:
                     for chunk in r.iter_content(chunk_size=8192):
                         if chunk:
                             f.write(chunk)
+        data_dest = dest.parent / (url.split("/")[-1] + "_data")   # e.g. model_q4.onnx_data
+        if not data_dest.is_file():
+            with requests.get(url + "_data", timeout=600, stream=True) as r:
+                if r.status_code != 404:
+                    r.raise_for_status()
+                    with open(data_dest, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+        return dest
+
+    def download_model(self):
+        """Download the primary ONNX graph (+ external-data sidecar, if any)."""
+        self._fetch_onnx(self.model_url, self.voice_path / "model.onnx")
 
     def download_vocoder(self) -> Optional[Path]:
         """
@@ -327,6 +360,17 @@ class TTSModelInfo:
                                 f.write(chunk)
             paths[key] = aux_path
         return paths
+    def download_bpe_tokenizer(self) -> Optional[Path]:
+        """Download the HF ``tokenizer.json`` (Chatterbox subword BPE) from
+        ``tokenizer_config_url``, if any."""
+        if not self.tokenizer_config_url:
+            return None
+        path = self.voice_path / "tokenizer.json"
+        if not path.is_file():
+            r = requests.get(self.tokenizer_config_url, timeout=60)
+            r.raise_for_status()
+            path.write_bytes(r.content)
+        return path
 
     def engine_params(self) -> Dict[str, Any]:
         """
@@ -364,6 +408,15 @@ class TTSModelInfo:
                     cfg_path.write_bytes(r.content)
                 with open(cfg_path, "r", encoding="utf-8") as f:
                     params["vocoder_config"] = json.load(f)
+
+        # Chatterbox's three auxiliary graphs (the language_model is the primary model).
+        for url, key, fname in (
+            (self.speech_encoder_url, "speech_encoder_path", "speech_encoder.onnx"),
+            (self.embed_tokens_url, "embed_tokens_path", "embed_tokens.onnx"),
+            (self.conditional_decoder_url, "conditional_decoder_path", "conditional_decoder.onnx"),
+        ):
+            if url:
+                params[key] = str(self._fetch_onnx(url, self.voice_path / fname))
         return params
 
     def load(self) -> TTSVoice:
@@ -381,6 +434,19 @@ class TTSModelInfo:
         tokenizer_config_path = self.voice_path / "tokenizer_config.json"
         tokens_path = self.voice_path / "tokens.txt"
         self.download_model()
+
+        # Voices without a published config.json (Chatterbox) can't be engine-detected
+        # from files on disk — build the voice from the index-derived VoiceConfig, which
+        # already carries the engine, BPE tokenizer and lang_tokens.
+        if self.engine and not self.config_url:
+            config = self.config
+            config.engine_params = {**(config.engine_params or {}), **self.engine_params()}
+            session = onnxruntime.InferenceSession(
+                str(model_path),
+                sess_options=onnxruntime.SessionOptions(),
+                providers=["CPUExecutionProvider"],
+            )
+            return TTSVoice(session=session, config=config)
 
         voice = TTSVoice.load(model_path=model_path,
                               config_path=config_path,
@@ -539,6 +605,7 @@ class TTSModelManager:
         self.cache.update(JsonStorage(str(base_path / "coqui_vits.json")))
         self.cache.update(JsonStorage(str(base_path / "BSC.json")))
         self.cache.update(JsonStorage(str(base_path / "shami.json")))
+        self.cache.update(JsonStorage(str(base_path / "chatterbox.json")))
         self.voices = {}
         for voice_id, voice_dict in self.cache.items():
             try:
