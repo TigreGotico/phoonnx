@@ -1,3 +1,4 @@
+import onnxruntime
 import json
 import os
 from dataclasses import dataclass, field
@@ -433,6 +434,19 @@ class TTSModelInfo:
         tokenizer_config_path = self.voice_path / "tokenizer_config.json"
         tokens_path = self.voice_path / "tokens.txt"
         self.download_model()
+
+        # Voices without a published config.json (Chatterbox) can't be engine-detected
+        # from files on disk — build the voice from the index-derived VoiceConfig, which
+        # already carries the engine, BPE tokenizer and lang_tokens.
+        if self.engine and not self.config_url:
+            config = self.config
+            config.engine_params = {**(config.engine_params or {}), **self.engine_params()}
+            session = onnxruntime.InferenceSession(
+                str(model_path),
+                sess_options=onnxruntime.SessionOptions(),
+                providers=["CPUExecutionProvider"],
+            )
+            return TTSVoice(session=session, config=config)
 
         voice = TTSVoice.load(model_path=model_path,
                               config_path=config_path,
