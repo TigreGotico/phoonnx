@@ -127,7 +127,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "transformers",
-        "lang": "ar"
+        "lang": "ar-SA"
     },
     "hf_community/wasmdashai/vits-ar-sa-huba-v2": {
         "voice_id": "hf_community/wasmdashai/vits-ar-sa-huba-v2",
@@ -140,7 +140,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "transformers",
-        "lang": "ar"
+        "lang": "ar-SA"
     },
     "hf_community/wasmdashai/vits-ar-ye-sa": {
         "voice_id": "hf_community/wasmdashai/vits-ar-ye-sa",
