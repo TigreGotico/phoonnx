@@ -209,12 +209,19 @@ transcription through the plugin config:
 }
 ```
 
-Two catalog voices ship in `phoonnx/voice_index/f5tts.json`:
+The catalog voices ship in `phoonnx/voice_index/f5tts.json`:
 
 | voice id | model | lang |
 |---|---|---|
 | `f5tts/v1-base` | F5-TTS v1 base | multilingual |
-| `habibi/ar-unified` | Habibi-TTS Unified | Arabic |
+| `habibi/ar-unified` | Habibi-TTS Unified (all dialects, recommended) | Arabic |
+| `habibi/ar-msa` | Habibi-TTS Specialized MSA | Arabic (Modern Standard) |
+| `habibi/ar-egy` | Habibi-TTS Specialized EGY | Arabic (Egyptian) |
+| `habibi/ar-sau` | Habibi-TTS Specialized SAU | Arabic (Saudi) |
+| `habibi/ar-uae` | Habibi-TTS Specialized UAE | Arabic (Emirati) |
+| `habibi/ar-alg` | Habibi-TTS Specialized ALG | Arabic (Algerian) |
+| `habibi/ar-irq` | Habibi-TTS Specialized IRQ | Arabic (Iraqi) |
+| `habibi/ar-mar` | Habibi-TTS Specialized MAR | Arabic (Moroccan) |
 
 The model manager downloads the three ONNX graphs on first use (the
 `aux_model_urls` mechanism resolves `preprocess_path` / `decode_path` to the
