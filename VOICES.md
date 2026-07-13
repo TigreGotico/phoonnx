@@ -1,7 +1,7 @@
 ## Supported Voices
 
-**Total Voices:** 1914
-**Total Languages:** 1214
+**Total Voices:** 1924
+**Total Languages:** 1219
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
 
@@ -71,15 +71,25 @@
 | `hf_community/vadimbelsky/arabic-emirati-female-piper` | `ar-AE` | `piper` | `espeak` |
 | `piper_community/vadimbelsky/arabic-emirati-female-piper` | `ar-AE` | `piper` | `espeak` |
 | `habibi/ar-alg` | `ar-DZ` | `f5tts` | `graphemes` |
+| `chatterbox/lahgtna/eg` | `ar-EG` | `chatterbox` | `unicode` |
 | `habibi/ar-egy` | `ar-EG` | `f5tts` | `graphemes` |
+| `chatterbox/lahgtna/iq` | `ar-IQ` | `chatterbox` | `unicode` |
 | `habibi/ar-irq` | `ar-IQ` | `f5tts` | `graphemes` |
 | `piper/ar_JO-kareem-low` | `ar-JO` | `piper` | `espeak` |
 | `piper/ar_JO-kareem-medium` | `ar-JO` | `piper` | `espeak` |
+| `chatterbox/lahgtna/lb` | `ar-LB` | `chatterbox` | `unicode` |
 | `Tushe/shami-tts` | `ar-LB` | `shami` | `shami` |
+| `chatterbox/lahgtna/ly` | `ar-LY` | `chatterbox` | `unicode` |
+| `chatterbox/lahgtna/mo` | `ar-MA` | `chatterbox` | `unicode` |
 | `habibi/ar-mar` | `ar-MA` | `f5tts` | `graphemes` |
+| `chatterbox/lahgtna/ps` | `ar-PS` | `chatterbox` | `unicode` |
+| `chatterbox/lahgtna/sa` | `ar-SA` | `chatterbox` | `unicode` |
 | `habibi/ar-sau` | `ar-SA` | `f5tts` | `graphemes` |
 | `hf_community/wasmdashai/vits-ar-sa-A` | `ar-SA` | `transformers` | `graphemes` |
 | `hf_community/wasmdashai/vits-ar-sa-huba-v2` | `ar-SA` | `transformers` | `graphemes` |
+| `chatterbox/lahgtna/sd` | `ar-SD` | `chatterbox` | `unicode` |
+| `chatterbox/lahgtna/sy` | `ar-SY` | `chatterbox` | `unicode` |
+| `chatterbox/lahgtna/tn` | `ar-TN` | `chatterbox` | `unicode` |
 | `facebook/mms-tts-arl-Arabela` | `arl` | `transformers` | `graphemes` |
 | `facebook/mms-tts-asm-Assamese` | `as-IN` | `transformers` | `graphemes` |
 | `facebook/mms-tts-asa-Asu` | `asa` | `transformers` | `graphemes` |
