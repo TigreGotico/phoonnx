@@ -44,7 +44,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "f5tts",
-        "lang": "ar",
+        "lang": "ar-DZ",
         "aux_model_urls": {
             "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-alg/F5_Preprocess.onnx",
             "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-alg/F5_Decode.onnx"
@@ -61,7 +61,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "f5tts",
-        "lang": "ar",
+        "lang": "ar-EG",
         "aux_model_urls": {
             "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-egy/F5_Preprocess.onnx",
             "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-egy/F5_Decode.onnx"
@@ -78,7 +78,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "f5tts",
-        "lang": "ar",
+        "lang": "ar-IQ",
         "aux_model_urls": {
             "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-irq/F5_Preprocess.onnx",
             "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-irq/F5_Decode.onnx"
@@ -95,7 +95,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "f5tts",
-        "lang": "ar",
+        "lang": "ar-MA",
         "aux_model_urls": {
             "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-mar/F5_Preprocess.onnx",
             "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-mar/F5_Decode.onnx"
@@ -129,7 +129,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "f5tts",
-        "lang": "ar",
+        "lang": "ar-SA",
         "aux_model_urls": {
             "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-sau/F5_Preprocess.onnx",
             "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-sau/F5_Decode.onnx"
@@ -146,7 +146,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "f5tts",
-        "lang": "ar",
+        "lang": "ar-AE",
         "aux_model_urls": {
             "preprocess_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-uae/F5_Preprocess.onnx",
             "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/resolve/main/habibi-tts-uae/F5_Decode.onnx"

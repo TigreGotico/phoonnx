@@ -1960,7 +1960,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "piper",
-        "lang": "ar"
+        "lang": "ar-AE"
     },
     "hf_community/wezzmeister/piper-voices": {
         "voice_id": "hf_community/wezzmeister/piper-voices",
