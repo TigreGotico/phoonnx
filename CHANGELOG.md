@@ -28,6 +28,7 @@
 
 **Merged pull requests:**
 
+- fix: tolerate offline sidecar probe when loading a cached voice [\#216](https://github.com/TigreGotico/phoonnx/pull/216) ([JarbasAl](https://github.com/JarbasAl))
 - feat: configurable ONNX Runtime execution providers \(AMD/ROCm, DirectML, CoreML, ...\) [\#215](https://github.com/TigreGotico/phoonnx/pull/215) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(chatterbox\): restore lahgtna Arabic-dialect voices with fixed ONNX export [\#214](https://github.com/TigreGotico/phoonnx/pull/214) ([JarbasAl](https://github.com/JarbasAl))
 - feat: SILMA TTS v1 \(Arabic+English\) voice via the f5tts engine [\#213](https://github.com/TigreGotico/phoonnx/pull/213) ([JarbasAl](https://github.com/JarbasAl))
