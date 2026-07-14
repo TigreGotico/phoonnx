@@ -21,6 +21,34 @@ In your OpenVoiceOS `mycroft.conf` or skills config, set:
 
 If `voice` is omitted or set to `"default"`, the plugin selects a default voice for the configured language.
 
+### Selecting a voice with `ovos-tts-server`
+
+The voice is read from the plugin config (`tts.<plugin_name>.voice`), **not** from
+a command-line language flag. Running `ovos-tts-server --lang ar` does *not* select
+an Arabic voice: `--lang` only sets the request language, so the plugin still loads
+its default (English) voice and then tries to synthesize with it. To use a different
+language you must set that language's `voice` in `mycroft.conf`.
+
+For example, to serve an Arabic voice:
+
+```json
+{
+  "tts": {
+    "module": "phoonnx",
+    "phoonnx": {
+      "lang": "ar",
+      "voice": "piper/ar_JO-kareem-medium"
+    }
+  }
+}
+```
+
+Then start the server (the voice comes from the config, not the flag):
+
+```bash
+ovos-tts-server --engine phoonnx
+```
+
 ### Multi-speaker voices
 
 Some models bundle several speakers in one voice (e.g. the Catalan multiaccent
