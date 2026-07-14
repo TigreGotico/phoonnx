@@ -46,6 +46,28 @@ For the Catalan multiaccent model the indices are: `quim` 0 / `olga` 1 (balear),
 `grau` 2 / `elia` 3 (central), `pere` 4 / `emma` 5 (nord-occidental),
 `lluc` 6 / `gina` 7 (valencià).
 
+### Execution providers
+
+`onnx_providers` takes an ordered list of ONNX Runtime execution providers; the
+first one available on the machine runs the models, with `CPUExecutionProvider`
+always kept as a final fallback. Unset, providers come from the
+`PHOONNX_ONNX_PROVIDERS` environment variable or are auto-detected.
+
+```json
+{
+  "tts": {
+    "module": "ovos-tts-plugin-phoonnx",
+    "ovos-tts-plugin-phoonnx": {
+      "onnx_providers": ["ROCMExecutionProvider", "CPUExecutionProvider"]
+    }
+  }
+}
+```
+
+Running on a GPU needs the matching ONNX Runtime build (`onnxruntime-rocm`,
+`onnxruntime-gpu`, `onnxruntime-directml`, ...) — see
+[configuration.md](configuration.md#execution-providers).
+
 ## How It Works
 
 `PhoonnxTTSPlugin` extends the `ovos-plugin-manager` `TTS` base class. On initialization, it:

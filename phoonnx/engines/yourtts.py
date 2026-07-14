@@ -45,7 +45,7 @@ class YourTTSAdapter(BaseOnnxAdapter):
         if self.speaker_encoder is None and ep.get("speaker_encoder_path"):
             from phoonnx.engines.speaker_encoders import build_speaker_encoder
             self.speaker_encoder = build_speaker_encoder(
-                ep["speaker_encoder_path"], ep.get("speaker_encoder_type"))
+                ep["speaker_encoder_path"], ep.get("speaker_encoder_type"), ep)
 
     def _resolve_dvector(self, params: Dict[str, Any]) -> Optional[np.ndarray]:
         # priority: clone from a reference clip > a d-vector passed in params

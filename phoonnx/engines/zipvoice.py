@@ -27,6 +27,7 @@ import numpy as np
 import onnxruntime
 
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
+from phoonnx.providers import make_session
 
 
 def _resample(audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
@@ -63,7 +64,7 @@ class ZipVoiceAdapter(BaseOnnxAdapter):
         """Load the auxiliary graphs (mel front end, text encoder) and the Vocos
         vocoder from ``engine_params``; the fm_decoder is the voice's own session."""
         ep = getattr(voice_config, "engine_params", None) or {}
-        sess = lambda p: onnxruntime.InferenceSession(str(p), providers=["CPUExecutionProvider"])
+        sess = lambda p: make_session(p, providers=ep.get("providers"))
         if self.text_encoder is None and ep.get("text_encoder_path"):
             self.text_encoder = sess(ep["text_encoder_path"])
         if self.mel is None and ep.get("mel_path"):

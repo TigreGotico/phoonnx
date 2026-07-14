@@ -12,7 +12,7 @@ import re
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional, Union, Dict
+from typing import Any, Iterable, Optional, Sequence, Union, Dict
 
 import numpy as np
 import onnxruntime
@@ -26,6 +26,7 @@ from phoonnx.engines.base import (
     BaseOnnxAdapter,
 )
 from phoonnx.phonemizers import Phonemizer
+from phoonnx.providers import ProviderSpec, make_session, resolve_providers
 from phoonnx.phonemizers.base import PhonemizedChunks
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
@@ -202,6 +203,7 @@ class TTSVoice:
             phoneme_type_str: Optional[str] = None,
             alphabet_str: Optional[str] = None,
             engine_params: Optional[Dict[str, Any]] = None,
+            providers: Optional[Sequence[ProviderSpec]] = None,
             use_cuda: bool = False
     ) -> "TTSVoice":
         """
@@ -215,7 +217,13 @@ class TTSVoice:
             lang_code (str, optional): Language code to override or set in the loaded voice configuration.
             phoneme_type_str (str, optional): Phoneme type identifier to override the configuration (for example, "arpabet" or "ipa").
             alphabet_str (str, optional): Alphabet override to pass into the VoiceConfig during load.
-            use_cuda (bool): If true, prefer CUDA execution provider for ONNX Runtime; otherwise use the CPU provider.
+            providers (Sequence, optional): Ordered ONNX Runtime execution providers, e.g.
+                ``["ROCMExecutionProvider", "CPUExecutionProvider"]``. When omitted, the
+                ``PHOONNX_ONNX_PROVIDERS`` environment variable is used, falling back to
+                auto-detecting the best provider the installed runtime offers. The resolved
+                list also drives the auxiliary graphs an engine loads (vocoders, speaker
+                encoders, ...).
+            use_cuda (bool): Deprecated alias for ``providers=["CUDAExecutionProvider"]``.
         
         Returns:
             TTSVoice: A TTSVoice instance prepared with the loaded ONNX session and merged configuration.
@@ -237,23 +245,9 @@ class TTSVoice:
             if tokenizer_config_path and os.path.isfile(tokenizer_config_path):
                 with open(tokenizer_config_path, "r", encoding="utf-8") as tokenizer_file:
                     tokenizer_dict = json.load(tokenizer_file)
-        providers: list[Union[str, tuple[str, dict[str, Any]]]]
-        if use_cuda:
-            providers = [
-                (
-                    "CUDAExecutionProvider",
-                    {"cudnn_conv_algo_search": "HEURISTIC"},
-                )
-            ]
-            LOG.debug("Using CUDA")
-        else:
-            providers = ["CPUExecutionProvider"]
+        resolved_providers = resolve_providers(providers, use_cuda=use_cuda)
 
-        session = onnxruntime.InferenceSession(
-            str(model_path),
-            sess_options=onnxruntime.SessionOptions(),
-            providers=providers,
-        )
+        session = make_session(model_path, providers=resolved_providers)
 
         # Auto-detect engine adapter from config + session
         adapter = detect_engine(config=config_dict, session=session)
@@ -262,6 +256,10 @@ class TTSVoice:
         # the caller (the voice manager injects locally-downloaded paths) or
         # from the model's own config JSON.
         engine_params = engine_params or config_dict.get("engine_params") or {}
+        # Engines load auxiliary graphs of their own (vocoders, speaker encoders,
+        # text encoders); they run on the same providers as the voice itself.
+        engine_params = dict(engine_params)
+        engine_params.setdefault("providers", resolved_providers)
 
         voice_config = VoiceConfig.from_dict(
             config_dict,

@@ -7,10 +7,10 @@ Ported with the help of ChatGPT 2025-05-01.
 
 import json
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Sequence, Union
 
 import numpy as np
-from onnxruntime import InferenceSession
+from phoonnx.providers import ProviderSpec, make_session
 
 TASHKEEL_DIR = Path(__file__).parent
 CHAR_LIMIT = 12000
@@ -30,10 +30,11 @@ class TashkeelError(Exception):
 class TashkeelDiacritizer:
     """Add diacritics for Arabic text with libtashkeel."""
 
-    def __init__(self, model_dir: Union[str, Path] = TASHKEEL_DIR) -> None:
+    def __init__(self, model_dir: Union[str, Path] = TASHKEEL_DIR,
+                 providers: Optional[Sequence[ProviderSpec]] = None) -> None:
         """Initialize diacritizer."""
         model_dir = Path(model_dir)
-        self.session = InferenceSession(model_dir / "model.onnx")
+        self.session = make_session(model_dir / "model.onnx", providers=providers)
 
         # Load JSON maps
         with open(
