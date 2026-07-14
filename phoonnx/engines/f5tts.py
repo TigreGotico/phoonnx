@@ -49,6 +49,7 @@ from phoonnx.engines.base import (
     AdapterSynthesisResult,
     BaseOnnxAdapter,
 )
+from phoonnx.providers import make_session
 
 
 # Habibi-TTS dialect control tokens (Unified model only). Upstream wraps the
@@ -94,9 +95,7 @@ class F5TTSAdapter(BaseOnnxAdapter):
     def configure(self, voice_config: Any) -> None:
         """Load auxiliary ONNX graphs and optional vocoder from engine_params."""
         ep = getattr(voice_config, "engine_params", None) or {}
-        sess = lambda p: onnxruntime.InferenceSession(
-            str(p), providers=["CPUExecutionProvider"]
-        )
+        sess = lambda p: make_session(p, providers=ep.get("providers"))
 
         if self.preprocess is None and ep.get("preprocess_path"):
             self.preprocess = sess(ep["preprocess_path"])

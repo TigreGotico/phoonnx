@@ -126,3 +126,62 @@ Engine.MIMIC3        # "mimic3"
 Engine.COQUI         # "coqui"
 Engine.TRANSFORMERS  # "transformers"
 ```
+
+## Execution Providers
+
+Every ONNX session phoonnx creates — the voice model and the auxiliary graphs an
+engine loads (vocoders, speaker encoders, text encoders, diacritizers) — runs on a
+resolved, ordered list of ONNX Runtime execution providers.
+
+Pass the list explicitly:
+
+```python
+from phoonnx.voice import TTSVoice
+
+voice = TTSVoice.load(
+    "model.onnx", "config.json",
+    providers=["ROCMExecutionProvider", "CPUExecutionProvider"],
+)
+```
+
+Or set it once for the process:
+
+```bash
+export PHOONNX_ONNX_PROVIDERS="ROCMExecutionProvider,CPUExecutionProvider"
+export PHOONNX_ONNX_PROVIDERS="auto"   # the default: pick the best available
+```
+
+With neither, the best provider the installed runtime offers is auto-detected, in
+this preference order:
+
+`CUDAExecutionProvider` (NVIDIA) → `ROCMExecutionProvider` (AMD) →
+`MIGraphXExecutionProvider` (AMD) → `DmlExecutionProvider` (DirectML) →
+`CoreMLExecutionProvider` (Apple) → `OpenVINOExecutionProvider` (Intel) →
+`CPUExecutionProvider`
+
+A requested provider that the installed runtime does not offer is skipped with a
+warning, and `CPUExecutionProvider` is always appended, so synthesis keeps working
+on any machine.
+
+`use_cuda=True` is a deprecated alias for `providers=["CUDAExecutionProvider"]`.
+
+### Runtime packages
+
+Which providers exist depends on the installed ONNX Runtime build, not on phoonnx.
+The default `onnxruntime` wheel is CPU-only (plus a few platform providers); GPU
+providers need a matching build, and only one of them can be installed at a time:
+
+| Hardware | Package | Provider |
+|---|---|---|
+| NVIDIA | `onnxruntime-gpu` | `CUDAExecutionProvider`, `TensorrtExecutionProvider` |
+| AMD (ROCm) | `onnxruntime-rocm` | `ROCMExecutionProvider`, `MIGraphXExecutionProvider` |
+| Windows (any DX12 GPU) | `onnxruntime-directml` | `DmlExecutionProvider` |
+| Intel | `onnxruntime-openvino` | `OpenVINOExecutionProvider` |
+| Apple | `onnxruntime` | `CoreMLExecutionProvider` |
+
+Check what a machine actually offers:
+
+```python
+import onnxruntime
+print(onnxruntime.get_available_providers())
+```

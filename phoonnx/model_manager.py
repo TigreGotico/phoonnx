@@ -3,12 +3,13 @@ import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Sequence
 import requests
 from json_database import JsonStorageXDG, JsonStorage
 
 from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet
 from phoonnx.util import match_lang, normalize_lang, LOG
+from phoonnx.providers import ProviderSpec
 from phoonnx.voice import TTSVoice
 
 
@@ -419,9 +420,14 @@ class TTSModelInfo:
                 params[key] = str(self._fetch_onnx(url, self.voice_path / fname))
         return params
 
-    def load(self) -> TTSVoice:
+    def load(self, providers: Optional[Sequence[ProviderSpec]] = None) -> TTSVoice:
         """
         Load and return a TTSVoice for this model, ensuring the ONNX model is downloaded and the voice configuration is applied.
+
+        Parameters:
+            providers (Sequence, optional): Ordered ONNX Runtime execution providers,
+                e.g. ``["ROCMExecutionProvider", "CPUExecutionProvider"]``. When omitted the
+                providers are resolved from the environment / auto-detection.
         
         Loads a TTSVoice from the cached model and config files (and tokens file if available). If this TTSModelInfo specifies a different phoneme type or alphabet than the loaded voice, updates the loaded voice's phoneme_type and alphabet and rebuilds its phonemizer accordingly.
         
@@ -456,6 +462,7 @@ class TTSModelInfo:
                               phoneme_type_str=self.config.phoneme_type,
                               alphabet_str=self.config.alphabet,
                               engine_params=self.engine_params() or None,
+                              providers=providers,
                               phonemes_txt=str(tokens_path) if self.tokens_url else None)
         # override phoneme_type, if config.json is wrong
         if self.phoneme_type != voice.config.phoneme_type or self.alphabet != voice.config.alphabet:

@@ -15,19 +15,18 @@ A ``BaseVocoder`` hides those differences behind ``mel_to_audio`` so the
 acoustic-model adapter never has to know which vocoder it is driving.
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 import onnxruntime
 
+from phoonnx.providers import ProviderSpec, make_session
 
-def load_onnx_session(model_path: str) -> onnxruntime.InferenceSession:
-    """Load an ONNX vocoder on the CPU execution provider."""
-    return onnxruntime.InferenceSession(
-        str(model_path),
-        sess_options=onnxruntime.SessionOptions(),
-        providers=["CPUExecutionProvider"],
-    )
+
+def load_onnx_session(model_path: str,
+                      providers: Optional[Sequence[ProviderSpec]] = None) -> onnxruntime.InferenceSession:
+    """Load an ONNX vocoder on the given (or auto-detected) execution providers."""
+    return make_session(model_path, providers=providers)
 
 
 class BaseVocoder(ABC):
@@ -95,7 +94,8 @@ class BaseVocoder(ABC):
                     f"{type(self).__name__} requires a vocoder 'model_path' "
                     f"(set engine_params.vocoder_path)"
                 )
-            self._session = load_onnx_session(self.model_path)
+            self._session = load_onnx_session(self.model_path,
+                                              providers=self.config.get("providers"))
         return self._session
 
     @property

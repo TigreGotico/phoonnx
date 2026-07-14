@@ -11,7 +11,7 @@
 # limitations under the License.
 #
 import wave
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from ovos_utils.log import LOG
 from ovos_plugin_manager.templates.tts import TTS
 
@@ -65,6 +65,20 @@ class PhoonnxTTSPlugin(TTS):
             if key in self.config:
                 return self.config[key]
         return default
+
+    def _providers(self) -> Optional[List[str]]:
+        """
+        Read the ONNX Runtime execution providers from the plugin config.
+
+        ``onnx_providers`` (or ``providers``) takes an ordered list, e.g.
+        ``["ROCMExecutionProvider", "CPUExecutionProvider"]``; a bare string is
+        accepted for a single provider. Unset, providers come from
+        ``PHOONNX_ONNX_PROVIDERS`` or auto-detection.
+        """
+        providers = self._cfg_opt(None, "onnx_providers", "providers")
+        if isinstance(providers, str):
+            return [providers]
+        return list(providers) if providers else None
 
     def _resolve_speaker(self, voice_info) -> Optional[int]:
         """
@@ -155,7 +169,7 @@ class PhoonnxTTSPlugin(TTS):
             if voice_id not in self.model_manager.voices:
                 raise Exception(f"Unknown voice: {voice_id}")
         LOG.debug(f"Using voice: {voice_id}")
-        self.voices[voice_id] = self.model_manager.voices[voice_id].load()
+        self.voices[voice_id] = self.model_manager.voices[voice_id].load(providers=self._providers())
         return self.voices[voice_id]
 
     def get_tts(self, sentence, wav_file, lang=None, voice=None):

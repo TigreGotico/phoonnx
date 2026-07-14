@@ -31,8 +31,10 @@ class _FakeVoiceInfo:
         self.lang = lang
         self.config = _FakeVoiceConfig(speaker_id_map=speaker_id_map)
         self.tts_voice = MagicMock(name=f"TTSVoice[{voice_id}]")
+        self.load_providers = "unset"
 
-    def load(self):
+    def load(self, providers=None):
+        self.load_providers = providers
         return self.tts_voice
 
 
@@ -127,6 +129,28 @@ class TestVoiceResolution(unittest.TestCase):
         plugin, _ = _make_plugin(voices=[v])
         with self.assertRaises(Exception):
             plugin.get_model("OpenVoiceOS/nope")
+
+    def test_configured_providers_reach_the_voice_loader(self):
+        v = _FakeVoiceInfo("OpenVoiceOS/known")
+        plugin, _ = _make_plugin(
+            config={"onnx_providers": ["ROCMExecutionProvider", "CPUExecutionProvider"]},
+            voices=[v])
+        plugin.get_model(v.voice_id)
+        self.assertEqual(v.load_providers,
+                         ["ROCMExecutionProvider", "CPUExecutionProvider"])
+
+    def test_single_provider_string_is_wrapped_in_a_list(self):
+        v = _FakeVoiceInfo("OpenVoiceOS/known")
+        plugin, _ = _make_plugin(config={"providers": "ROCMExecutionProvider"},
+                                 voices=[v])
+        plugin.get_model(v.voice_id)
+        self.assertEqual(v.load_providers, ["ROCMExecutionProvider"])
+
+    def test_unconfigured_providers_are_left_to_autodetection(self):
+        v = _FakeVoiceInfo("OpenVoiceOS/known")
+        plugin, _ = _make_plugin(voices=[v])
+        plugin.get_model(v.voice_id)
+        self.assertIsNone(v.load_providers)
 
     def test_get_model_caches(self):
         v = _FakeVoiceInfo("OpenVoiceOS/known")

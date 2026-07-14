@@ -3,7 +3,7 @@
 import json
 import os
 import subprocess
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Sequence
 
 import numpy as np
 import onnxruntime
@@ -11,6 +11,7 @@ import requests
 
 from phoonnx.config import Alphabet
 from phoonnx.phonemizers.base import BasePhonemizer
+from phoonnx.providers import ProviderSpec, make_session
 
 
 class EspeakError(Exception):
@@ -37,6 +38,7 @@ class ByT5Phonemizer(BasePhonemizer):
                    'it', 'ja', 'ko', 'nl', 'no', 'pl', 'pt', 'pt-br', 'qu', 'ro', 'sr', 'sv', 'tr', 'zh', 'zh-yue']
 
     def __init__(self, model: Optional[str] = None, tokenizer_config: Optional[str] = None,
+                 providers: Optional[Sequence[ProviderSpec]] = None,
                  use_cuda=bool(os.environ.get("CUDA", False))):
         """
         Initializes the ByT5Phonemizer with the ONNX model and tokenizer configuration.
@@ -45,6 +47,8 @@ class ByT5Phonemizer(BasePhonemizer):
         Args:
             model (str, optional): Path to the ONNX model file. If None, it will be downloaded.
             tokenizer_config (str, optional): Path to the tokenizer configuration JSON file. If None, it will be downloaded.
+            providers (Sequence, optional): Ordered ONNX Runtime execution providers.
+            use_cuda (bool): Deprecated alias for ``providers=["CUDAExecutionProvider"]``.
         """
         super().__init__(Alphabet.IPA)
         model = model or "OpenVoiceOS/g2p-mbyt5-12l-ipa-childes-espeak-onnx"
@@ -93,17 +97,7 @@ class ByT5Phonemizer(BasePhonemizer):
             except requests.exceptions.RequestException as e:
                 raise IOError(f"Failed to download tokenizer config: {e}")
 
-        if use_cuda:
-            providers = [
-                (
-                    "CUDAExecutionProvider",
-                    {"cudnn_conv_algo_search": "HEURISTIC"},
-                )
-            ]
-            #LOG.debug("Using CUDA")
-        else:
-            providers = ["CPUExecutionProvider"]
-        self.session = onnxruntime.InferenceSession(self.onnx_model_path, providers=providers)
+        self.session = make_session(self.onnx_model_path, providers=providers, use_cuda=use_cuda)
         with open(self.tokenizer_config, "r") as f:
             self.tokens: Dict[str, int] = json.load(f).get("added_tokens_decoder", {})
 
@@ -254,6 +248,7 @@ class CharsiuPhonemizer(ByT5Phonemizer):
                   'gle', 'enm', 'syc', 'glg', 'sme', 'egy']
 
     def __init__(self, model: Optional[str] = None, tokenizer_config: Optional[str] = None,
+                 providers: Optional[Sequence[ProviderSpec]] = None,
                  use_cuda=bool(os.environ.get("CUDA", False))):
         """
         Initializes the ByT5Phonemizer with the ONNX model and tokenizer configuration.
@@ -262,9 +257,11 @@ class CharsiuPhonemizer(ByT5Phonemizer):
         Args:
             model (str, optional): Path to the ONNX model file. If None, it will be downloaded.
             tokenizer_config (str, optional): Path to the tokenizer configuration JSON file. If None, it will be downloaded.
+            providers (Sequence, optional): Ordered ONNX Runtime execution providers.
+            use_cuda (bool): Deprecated alias for ``providers=["CUDAExecutionProvider"]``.
         """
         model = model or "Jarbas/charsiu_g2p_multilingual_byT5_tiny_16_layers_100_onnx"
-        super().__init__(model, tokenizer_config, use_cuda)
+        super().__init__(model, tokenizer_config, providers, use_cuda)
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
