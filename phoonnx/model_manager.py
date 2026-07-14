@@ -268,7 +268,11 @@ class TTSModelInfo:
         A graph with external weights references them by the original
         ``<name>.onnx_data`` filename, so that sidecar is saved under exactly that name
         next to the graph for the reference to resolve. Chatterbox's four graphs all use
-        external data; single-file graphs simply have no sidecar (404 -> skipped).
+        external data; single-file graphs (piper/vits exports) simply have no sidecar.
+
+        A missing sidecar may surface as an HTTP 404 (online) or as a connection
+        error (offline); both mean "no sidecar here", so a fully-cached voice loads
+        without the probe crashing when there is no network.
         """
         if not dest.is_file():
             with requests.get(url, timeout=120, stream=True) as r:
@@ -279,18 +283,24 @@ class TTSModelInfo:
                             f.write(chunk)
         data_dest = dest.parent / (url.split("/")[-1] + "_data")   # e.g. model_q4.onnx_data
         if not data_dest.is_file():
-            with requests.get(url + "_data", timeout=600, stream=True) as r:
-                if r.status_code != 404:
-                    r.raise_for_status()
-                    with open(data_dest, "wb") as f:
-                        for chunk in r.iter_content(chunk_size=8192):
-                            if chunk:
-                                f.write(chunk)
+            try:
+                with requests.get(url + "_data", timeout=600, stream=True) as r:
+                    if r.status_code != 404:
+                        r.raise_for_status()
+                        with open(data_dest, "wb") as f:
+                            for chunk in r.iter_content(chunk_size=8192):
+                                if chunk:
+                                    f.write(chunk)
+            except requests.exceptions.RequestException as e:
+                # Offline/DNS/timeout: treat like a 404 (sidecar simply absent) so a
+                # fully-cached voice still loads; a genuinely needed sidecar surfaces
+                # later when the graph is loaded.
+                LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
         return dest
 
-    def download_model(self):
+    def download_model(self) -> Path:
         """Download the primary ONNX graph (+ external-data sidecar, if any)."""
-        self._fetch_onnx(self.model_url, self.voice_path / "model.onnx")
+        return self._fetch_onnx(self.model_url, self.voice_path / "model.onnx")
 
     def download_vocoder(self) -> Optional[Path]:
         """
