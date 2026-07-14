@@ -23,13 +23,15 @@ If `voice` is omitted or set to `"default"`, the plugin selects a default voice 
 
 ### Selecting a voice with `ovos-tts-server`
 
-The voice is read from the plugin config (`tts.<plugin_name>.voice`), **not** from
-a command-line language flag. Running `ovos-tts-server --lang ar` does *not* select
-an Arabic voice: `--lang` only sets the request language, so the plugin still loads
-its default (English) voice and then tries to synthesize with it. To use a different
-language you must set that language's `voice` in `mycroft.conf`.
+With **ovos-tts-server >= 1.13.4**, `ovos-tts-server --lang ar` selects the
+plugin's **default** Arabic voice — the language flag is passed through to the
+plugin, which resolves the default voice for that language. Older ovos-tts-server
+versions ignore `--lang`, so the plugin loads its own default (English) voice
+regardless of the flag; upgrade to at least 1.13.4 for `--lang` to take effect.
 
-For example, to serve an Arabic voice:
+To pick a **specific** voice rather than the language default, set
+`tts.<plugin_name>.voice` in the OVOS config. For example, to serve one
+particular Arabic voice:
 
 ```json
 {
@@ -43,11 +45,11 @@ For example, to serve an Arabic voice:
 }
 ```
 
-Then start the server (the voice comes from the config, not the flag):
+Precedence, from lowest to highest:
 
-```bash
-ovos-tts-server --engine phoonnx
-```
+- a configured `lang` selects that language's default voice when no `--lang` is passed;
+- an explicit `--lang` on the command line selects that language's default voice;
+- a configured `voice` overrides both and selects that exact voice.
 
 ### Multi-speaker voices
 
