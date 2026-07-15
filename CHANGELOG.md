@@ -28,6 +28,7 @@
 
 **Merged pull requests:**
 
+- fix: inline \[\[phoneme\]\] blocks crash on empty leading text [\#219](https://github.com/TigreGotico/phoonnx/pull/219) ([JarbasAl](https://github.com/JarbasAl))
 - fix: tolerate offline sidecar probe when loading a cached voice [\#216](https://github.com/TigreGotico/phoonnx/pull/216) ([JarbasAl](https://github.com/JarbasAl))
 - feat: configurable ONNX Runtime execution providers \(AMD/ROCm, DirectML, CoreML, ...\) [\#215](https://github.com/TigreGotico/phoonnx/pull/215) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(chatterbox\): restore lahgtna Arabic-dialect voices with fixed ONNX export [\#214](https://github.com/TigreGotico/phoonnx/pull/214) ([JarbasAl](https://github.com/JarbasAl))
