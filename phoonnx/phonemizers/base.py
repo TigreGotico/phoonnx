@@ -57,7 +57,11 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
 
     def phonemize(self, text: str, lang: str) -> PhonemizedChunks:
         if not text:
-            return [('', '', True)]
+            # PhonemizedChunks is list[list[str]]; empty text yields no
+            # sentences. (Returning the raw (str, str, bool) tuple form here
+            # corrupted the type and broke callers that mutate each sentence,
+            # e.g. inline ``[[phoneme]]`` blocks in TTSVoice.phonemize.)
+            return []
         results: RawPhonemizedChunks = []
         text = normalize(text, lang)
         for chunk, punct, eos in self.chunk_text(text):
