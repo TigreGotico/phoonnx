@@ -299,6 +299,11 @@ class TTSVoice:
                 if not phonemes:
                     # Start new sentence
                     phonemes.append([])
+                # the preceding text chunk may have come back as an immutable
+                # sequence; ensure the current sentence is a mutable list before
+                # appending the inline phonemes to it
+                if not isinstance(phonemes[-1], list):
+                    phonemes[-1] = list(phonemes[-1])
 
                 if (i > 0) and (text_parts[i - 1].endswith(" ")):
                     phonemes[-1].append(" ")
@@ -310,7 +315,9 @@ class TTSVoice:
 
                 continue
 
-            phonemes.extend(self.phonemizer.phonemize(text_part, lang))
+            if not text_part:
+                continue
+            phonemes.extend(list(chunk) for chunk in self.phonemizer.phonemize(text_part, lang))
 
         if phonemes and (not phonemes[-1]):
             # Remove empty phonemes
