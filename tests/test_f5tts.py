@@ -334,3 +334,37 @@ def test_silma_listed_for_arabic_and_english():
     en_ids = [v.voice_id for v in manager.get_lang_voices("en-US")]
     assert "silma/v1" in ar_ids
     assert "silma/v1-en" in en_ids
+
+
+def test_namaa_saudi_voice_index_entry():
+    """NAMAA Saudi TTS V2 ships as a Saudi-Arabic F5-TTS catalog listing."""
+    import json
+    import os
+    from phoonnx.model_manager import TTSModelInfo
+
+    index = os.path.join(os.path.dirname(__file__), "..", "phoonnx",
+                         "voice_index", "f5tts.json")
+    with open(index, "r", encoding="utf-8") as f:
+        entries = json.load(f)
+
+    assert "namaa/ar-sa-v2" in entries
+    info = TTSModelInfo(**entries["namaa/ar-sa-v2"])
+    assert info.engine == "f5tts"
+    assert info.lang == "ar-SA"
+    assert info.phoneme_type == "graphemes"
+    assert "/namaa-saudi-tts-v2/" in info.model_url
+    assert info.model_url.endswith("model.onnx")
+    assert info.aux_model_urls["preprocess_path"].endswith("F5_Preprocess.onnx")
+    assert info.aux_model_urls["decode_path"].endswith("F5_Decode.onnx")
+
+
+def test_namaa_saudi_listed_for_arabic():
+    """The model manager surfaces the NAMAA Saudi voice for ar lookups."""
+    from phoonnx.model_manager import TTSModelManager
+
+    manager = TTSModelManager()
+    manager.cache.clear()
+    manager.merge_default_voices()
+    assert "namaa/ar-sa-v2" in manager.voices
+    ar_ids = [v.voice_id for v in manager.get_lang_voices("ar")]
+    assert "namaa/ar-sa-v2" in ar_ids

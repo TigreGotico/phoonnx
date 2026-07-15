@@ -17,15 +17,17 @@ an Euler ODE sampling loop rather than a single-pass graph.
 | SILMA TTS | <https://github.com/SILMA-AI/silma-tts> — bilingual Arabic (MSA/Fusha) + English, 150M DiT pretrained from scratch |
 | Languages | Multilingual (trained on Emilia: ZH, EN, + more) |
 | PyTorch weights | [`SWivid/F5-TTS`](https://huggingface.co/SWivid/F5-TTS) (CC-BY-NC-4.0), [`SWivid/Habibi-TTS`](https://huggingface.co/SWivid/Habibi-TTS) (CC-BY-NC-SA-4.0), [`silma-ai/silma-tts`](https://huggingface.co/silma-ai/silma-tts) (Apache-2.0) |
-| **Ready-made ONNX voices** | [`OpenVoiceOS/phoonnx-f5tts`](https://huggingface.co/OpenVoiceOS/phoonnx-f5tts) — `f5tts-v1-base` (multilingual) + `habibi-tts-unified` (Arabic) + `silma-tts-v1` (Arabic + English) |
+| NAMAA Saudi TTS | [`NAMAA-Space/NAMAA-Saudi-TTS-V2`](https://huggingface.co/NAMAA-Space/NAMAA-Saudi-TTS-V2) — Habibi-TTS fine-tune for Saudi Arabic (335M DiT) |
+| **Ready-made ONNX voices** | [`OpenVoiceOS/phoonnx-f5tts`](https://huggingface.co/OpenVoiceOS/phoonnx-f5tts) — `f5tts-v1-base` (multilingual) + `habibi-tts-unified` (Arabic) + `silma-tts-v1` (Arabic + English) + `namaa-saudi-tts-v2` (Saudi Arabic) |
 
 > **License**: the F5-TTS checkpoints are **CC-BY-NC-4.0** (non-commercial).
 > Habibi-TTS licensing is per model (see the
 > [model card](https://huggingface.co/SWivid/Habibi-TTS)): **Unified, SAU and
 > UAE are CC-BY-NC-SA-4.0** (restricted by the SADA and Mixat datasets), while
 > **ALG, EGY, IRQ, MAR and MSA are Apache-2.0**. **SILMA TTS v1 weights are
-> Apache-2.0** (commercial use allowed). The ONNX conversions in
-> `OpenVoiceOS/phoonnx-f5tts` inherit those licenses.
+> Apache-2.0** (commercial use allowed). **NAMAA-Saudi-TTS-V2 is
+> CC-BY-NC-SA-4.0** (non-commercial — inherited from its Habibi-TTS base). The
+> ONNX conversions in `OpenVoiceOS/phoonnx-f5tts` inherit those licenses.
 
 ## Architecture
 
@@ -244,6 +246,7 @@ The catalog voices ship in `phoonnx/voice_index/f5tts.json`:
 | `habibi/ar-alg` | Habibi-TTS Specialized ALG | Arabic (Algerian) |
 | `habibi/ar-irq` | Habibi-TTS Specialized IRQ | Arabic (Iraqi) |
 | `habibi/ar-mar` | Habibi-TTS Specialized MAR | Arabic (Moroccan) |
+| `namaa/ar-sa-v2` | NAMAA Saudi TTS V2 (Habibi fine-tune, non-commercial) | Arabic (Saudi) |
 | `silma/v1` | SILMA TTS v1 (Apache-2.0, commercial OK) | Arabic (MSA/Fusha, full tashkeel support) |
 | `silma/v1-en` | SILMA TTS v1 (same model, English listing) | English |
 
@@ -258,6 +261,7 @@ locally-cached files automatically).
 | **F5-TTS** | base model (DiT + ConvNeXt V2) |
 | **F5-TTS v1** | improved training and inference (2025/03) |
 | **Habibi-TTS** | Arabic dialectal fine-tune (Unified + Specialized) |
+| **NAMAA-Saudi-TTS-V2** | Habibi-TTS fine-tune specialized for Saudi Arabic (335M DiT, 24 kHz, char-level 2704 vocab) |
 | **SILMA TTS v1** | bilingual Arabic/English 150M DiT (dim 768, depth 18) pretrained from scratch |
 | **E2-TTS** | Flat-UNet variant (same flow-matching approach) |
 
