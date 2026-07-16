@@ -83,13 +83,23 @@ def _make_plugin(config=None, voices=(), lazy=()):
 
 class TestPluginEntryPoint(unittest.TestCase):
     def test_entry_point_resolves_to_plugin(self):
-        """The declared mycroft.plugin.tts entry point loads the plugin class."""
+        """The declared opm.tts entry point loads the plugin class."""
         from importlib.metadata import entry_points
 
-        eps = [e for e in entry_points(group="mycroft.plugin.tts")
+        eps = [e for e in entry_points(group="opm.tts")
                if e.name == "ovos-tts-plugin-phoonnx"]
         self.assertTrue(eps, "ovos-tts-plugin-phoonnx entry point not registered")
         self.assertIs(eps[0].load(), opm.PhoonnxTTSPlugin)
+
+    def test_no_legacy_entry_point_group(self):
+        """The plugin is not declared under the deprecated mycroft.plugin.tts
+        group, which ovos-plugin-manager only scans for backward compatibility
+        and flags with a warning on every discovery pass."""
+        from importlib.metadata import entry_points
+
+        legacy = [e.name for e in entry_points(group="mycroft.plugin.tts")
+                  if e.name == "ovos-tts-plugin-phoonnx"]
+        self.assertEqual(legacy, [])
 
     def test_is_a_tts_subclass(self):
         from ovos_plugin_manager.templates.tts import TTS
