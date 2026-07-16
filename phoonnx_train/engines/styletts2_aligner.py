@@ -30,6 +30,27 @@ from phoonnx_train.engines.base import BaseTrainingEngine, TrainingEngineConfig
 LOG = logging.getLogger(__name__)
 
 
+def _fused_kwargs() -> Dict[str, Any]:
+    """``fused=True`` for AdamW needs CUDA and torch>=2."""
+    if torch.cuda.is_available() and int(torch.__version__.split(".")[0]) >= 2:
+        return {"fused": True}
+    return {}
+
+
+def load_aux_state_dict(checkpoint_path) -> Dict[str, Any]:
+    """Load an aux-model checkpoint in any of its layouts: a Lightning
+    ``state_dict`` (keys ``model.*``), the aux-engine ``{"model": ...}`` /
+    ``{"net": ...}`` layouts, or a bare state_dict — returned with the
+    Lightning ``model.`` prefix stripped so it loads into the inner module."""
+    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+    for key in ("state_dict", "model", "net"):
+        if isinstance(ckpt.get(key), dict):
+            ckpt = ckpt[key]
+            break
+    return {(k[len("model."):] if k.startswith("model.") else k): v
+            for k, v in ckpt.items()}
+
+
 @dataclass
 class AlignerConfig:
     sample_rate: int = 24000
@@ -134,7 +155,7 @@ class AlignerModule(pl.LightningModule):
         # + per-step OneCycleLR(pct_start=0, final_div_factor=5)
         opt = torch.optim.AdamW(self.model.parameters(), lr=self.config.lr,
                                 weight_decay=5e-4, betas=(0.9, 0.98),
-                                eps=1e-9, fused=torch.cuda.is_available())
+                                eps=1e-9, **_fused_kwargs())
         sched = torch.optim.lr_scheduler.OneCycleLR(
             opt, max_lr=self.config.lr,
             total_steps=max(int(self.trainer.estimated_stepping_batches), 2),
@@ -152,7 +173,8 @@ class AlignerModule(pl.LightningModule):
         from phoonnx_train.styletts2.aligner_dataset import (AuxMelDataset,
                                                              build_aux_dataloader)
         ds = AuxMelDataset(data_list, root_path=self.config.root_path,
-                           sr=self.config.sample_rate)
+                           sr=self.config.sample_rate,
+                           n_mels=self.config.n_mels)
         return build_aux_dataloader(ds, self.config.batch_size,
                                     self.config.num_workers,
                                     validation=validation)
@@ -223,6 +245,12 @@ def _read_lists(dataset_paths: List[Path]):
 
 class AlignerTrainingEngine(BaseTrainingEngine):
     """Trains the AuxiliaryASR text aligner consumed by ``--engine styletts2``."""
+
+    def load_checkpoint(self, model: pl.LightningModule, checkpoint_path: Path,
+                        **kwargs: Any) -> pl.LightningModule:
+        state = load_aux_state_dict(checkpoint_path)
+        model.model.load_state_dict(state, strict=False)
+        return model
 
     def create_model(self, config: TrainingEngineConfig,
                      dataset_paths: List[Path], **kwargs: Any) -> pl.LightningModule:

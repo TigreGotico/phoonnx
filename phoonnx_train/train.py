@@ -11,6 +11,19 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from phoonnx_train.engines import get_engine, list_engines
 from phoonnx_train.engines.base import TrainingEngineConfig
 
+
+def _build_extra(quality_kwargs: dict, engine_params: dict, **cli_values) -> dict:
+    """Merge the engine extra bag. Precedence: explicit CLI flag >
+    config.json engine_params > CLI default > quality preset."""
+    extra = {**quality_kwargs, **engine_params}
+    ctx = click.get_current_context(silent=True)
+    for name, value in cli_values.items():
+        source = ctx.get_parameter_source(name) if ctx else None
+        explicit = source is not None and source.name == "COMMANDLINE"
+        if explicit or name not in extra:
+            extra[name] = value
+    return extra
+
 _LOGGER = logging.getLogger(__package__)
 
 
@@ -119,15 +132,15 @@ def main(
         num_symbols=num_symbols,
         num_speakers=num_speakers,
         sample_rate=sample_rate,
-        extra={
-            **quality_kwargs,
+        extra=_build_extra(
+            quality_kwargs,
             # engine-specific knobs (asr_path, plbert_dir, stage, backbone,
             # download_aux, ...) ride in an "engine_params" dict in config.json
-            **dataset_config.get("engine_params", {}),
-            "batch_size": batch_size,
-            "validation_split": validation_split,
-            "num_workers": num_workers,
-        },
+            dataset_config.get("engine_params", {}),
+            batch_size=batch_size,
+            validation_split=validation_split,
+            num_workers=num_workers,
+        ),
     )
     model = training_engine.create_model(
         config=engine_config,

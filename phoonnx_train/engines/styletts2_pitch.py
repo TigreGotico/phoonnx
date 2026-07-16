@@ -26,7 +26,9 @@ import torch
 import torch.nn.functional as F
 
 from phoonnx_train.engines.base import BaseTrainingEngine, TrainingEngineConfig
-from phoonnx_train.engines.styletts2_aligner import _read_lists
+from phoonnx_train.engines.styletts2_aligner import (_fused_kwargs,
+                                                      _read_lists,
+                                                      load_aux_state_dict)
 
 LOG = logging.getLogger(__name__)
 
@@ -176,7 +178,7 @@ class PitchModule(pl.LightningModule):
         # + per-step OneCycleLR(pct_start=0, final_div_factor=5)
         opt = torch.optim.AdamW(self.model.parameters(), lr=self.config.lr,
                                 weight_decay=5e-4, betas=(0.9, 0.98),
-                                eps=1e-9, fused=torch.cuda.is_available())
+                                eps=1e-9, **_fused_kwargs())
         sched = torch.optim.lr_scheduler.OneCycleLR(
             opt, max_lr=self.config.lr,
             total_steps=max(int(self.trainer.estimated_stepping_batches), 2),
@@ -222,6 +224,12 @@ class PitchModule(pl.LightningModule):
 
 class PitchTrainingEngine(BaseTrainingEngine):
     """Trains the JDC pitch extractor consumed by ``--engine styletts2``."""
+
+    def load_checkpoint(self, model: pl.LightningModule, checkpoint_path: Path,
+                        **kwargs: Any) -> pl.LightningModule:
+        state = load_aux_state_dict(checkpoint_path)
+        model.model.load_state_dict(state, strict=False)
+        return model
 
     def create_model(self, config: TrainingEngineConfig,
                      dataset_paths: List[Path], **kwargs: Any) -> pl.LightningModule:

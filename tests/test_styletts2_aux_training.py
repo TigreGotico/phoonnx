@@ -160,8 +160,8 @@ def test_aligner_dataset_and_collate(dataset_dir):
     texts, text_lengths, mels, mel_lengths = AlignerCollater()([ds[0], ds[1]])
     assert mels.size(0) == 2 and texts.size(0) == 2
     assert (mel_lengths >= text_lengths).all()
-    # mel features were cached
-    assert list((dataset_dir / "wavs").glob("*.mel.npy"))
+    # mel features were cached, keyed by sample rate and mel count
+    assert list((dataset_dir / "wavs").glob("*.mel-24000-80.npy"))
 
 
 # ----------------------------------------------------------------------
@@ -369,6 +369,87 @@ def test_engine_does_not_download_when_paths_given(monkeypatch):
     cfg = StyleTTS2Config(download_aux=True, asr_path="x", asr_config="y")
     _resolve_aux_paths(cfg)
     assert called and cfg.asr_path == "x" and cfg.f0_path == "c"
+
+
+# ----------------------------------------------------------------------
+# engine load_checkpoint (--resume-from-checkpoint path)
+# ----------------------------------------------------------------------
+
+def test_aligner_engine_load_checkpoint(tmp_path):
+    module = AlignerModule(AlignerConfig(**TINY_ALIGNER))
+    ckpt = module.save_asr_checkpoint(tmp_path)
+    fresh = AlignerModule(AlignerConfig(**TINY_ALIGNER))
+    AlignerTrainingEngine().load_checkpoint(fresh, ckpt)
+    for k, v in fresh.model.state_dict().items():
+        assert torch.equal(v, module.model.state_dict()[k]), k
+
+
+def test_pitch_engine_load_checkpoint(tmp_path):
+    module = PitchModule(PitchConfig())
+    ckpt = module.save_f0_checkpoint(tmp_path / "f0.t7")
+    fresh = PitchModule(PitchConfig())
+    PitchTrainingEngine().load_checkpoint(fresh, ckpt)
+    for k, v in fresh.model.state_dict().items():
+        assert torch.equal(v, module.model.state_dict()[k]), k
+
+
+def test_plbert_engine_load_checkpoint(plbert_data_dir, tmp_path):
+    cfg = PLBertConfig(**TINY_PLBERT)
+    module = PLBertModule(cfg, data_dir=plbert_data_dir)
+    ckpt = module.save_plbert_dir(tmp_path / "plbert", step=3)
+    fresh = PLBertModule(cfg, data_dir=plbert_data_dir)
+    PLBertTrainingEngine().load_checkpoint(fresh, ckpt)
+    ref = module.model.state_dict()
+    matched = sum(torch.equal(v, ref[k])
+                  for k, v in fresh.model.state_dict().items() if k in ref)
+    assert matched >= 0.9 * len(ref)
+
+
+# ----------------------------------------------------------------------
+# Trainer.fit smoke tests (real Lightning loop, 1 batch)
+# ----------------------------------------------------------------------
+
+def _fit(model):
+    import pytorch_lightning as pl
+    trainer = pl.Trainer(fast_dev_run=True, accelerator="cpu", devices=1,
+                         logger=False, enable_checkpointing=False,
+                         enable_progress_bar=False)
+    trainer.fit(model)
+    return trainer
+
+
+def test_aligner_trainer_fit(dataset_dir):
+    cfg = TrainingEngineConfig(num_symbols=178, sample_rate=24000,
+                               extra={**TINY_ALIGNER, "batch_size": 2,
+                                      "num_workers": 0})
+    _fit(AlignerTrainingEngine().create_model(cfg, [dataset_dir]))
+
+
+def test_plbert_trainer_fit(plbert_data_dir):
+    cfg = TrainingEngineConfig(extra={**TINY_PLBERT, "batch_size": 2,
+                                      "num_workers": 0})
+    _fit(PLBertTrainingEngine().create_model(cfg, [plbert_data_dir]))
+
+
+def test_pitch_trainer_fit(dataset_dir):
+    cfg = TrainingEngineConfig(sample_rate=24000,
+                               extra={"batch_size": 2, "num_workers": 0,
+                                      "seq_len": 48})
+    _fit(PitchTrainingEngine().create_model(cfg, [dataset_dir]))
+
+
+# ----------------------------------------------------------------------
+# bucket sampler
+# ----------------------------------------------------------------------
+
+def test_bucket_sampler_drops_ragged_train_batch():
+    from phoonnx_train.styletts2.aligner_dataset import LengthBucketSampler
+    lengths = list(range(10))
+    train = LengthBucketSampler(lengths, 4, shuffle=True, drop_last=True)
+    assert all(len(b) == 4 for b in train)
+    assert len(train) == 2
+    val = LengthBucketSampler(lengths, 4, shuffle=False, drop_last=False)
+    assert sum(len(b) for b in val) == 10
 
 
 # ----------------------------------------------------------------------

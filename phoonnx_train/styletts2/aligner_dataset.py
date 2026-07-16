@@ -56,15 +56,17 @@ class AuxMelDataset(torch.utils.data.Dataset):
                  data_list: List[str],
                  root_path: str = "",
                  sr: int = 24000,
+                 n_mels: int = MEL_PARAMS["n_mels"],
                  with_f0: bool = False,
                  cache_features: bool = True):
         self.data = parse_list_lines(data_list, root_path)
         self.sr = sr
+        self.n_mels = n_mels
         self.with_f0 = with_f0
         self.cache_features = cache_features
         self.text_cleaner = TextCleaner()
         self.to_melspec = torchaudio.transforms.MelSpectrogram(
-            n_mels=MEL_PARAMS["n_mels"], **SPECT_PARAMS)
+            n_mels=n_mels, **SPECT_PARAMS)
         # blank/silence token framing the utterance, as in AuxiliaryASR
         self.blank_index = self.text_cleaner.word_index_dictionary[" "]
 
@@ -82,7 +84,9 @@ class AuxMelDataset(torch.utils.data.Dataset):
         return wave
 
     def _mel(self, wav_path: str) -> torch.Tensor:
-        cache = Path(wav_path).with_suffix(".mel.npy")
+        # cache key encodes the feature params so a stale cache from a
+        # different sample rate / mel count is never silently reused
+        cache = Path(wav_path).with_suffix(f".mel-{self.sr}-{self.n_mels}.npy")
         if self.cache_features and cache.is_file():
             return torch.from_numpy(np.load(cache))
         mel = self.to_melspec(self._load_wave(wav_path))
@@ -94,7 +98,7 @@ class AuxMelDataset(torch.utils.data.Dataset):
         return mel
 
     def _f0(self, wav_path: str, n_frames: int) -> torch.Tensor:
-        cache = Path(wav_path).with_suffix(".f0.npy")
+        cache = Path(wav_path).with_suffix(f".f0-{self.sr}.npy")
         if self.cache_features and cache.is_file():
             f0 = np.load(cache)
         else:
@@ -102,6 +106,8 @@ class AuxMelDataset(torch.utils.data.Dataset):
             x = self._load_wave(wav_path).numpy().astype(np.float64)
             frame_period = SPECT_PARAMS["hop_length"] / self.sr * 1000
             f0, t = pyworld.harvest(x, self.sr, frame_period=frame_period)
+            if np.count_nonzero(f0) < 5:  # harvest failed — retry with dio
+                f0, t = pyworld.dio(x, self.sr, frame_period=frame_period)
             f0 = pyworld.stonemask(x, f0, t, self.sr)
             if self.cache_features:
                 try:
@@ -173,14 +179,22 @@ class LengthBucketSampler(Sampler):
     """Batches indices of similar mel length (less padding => faster steps),
     shuffling bucket contents and batch order every epoch."""
 
-    def __init__(self, lengths: List[int], batch_size: int, shuffle: bool = True):
+    def __init__(self, lengths: List[int], batch_size: int, shuffle: bool = True,
+                 drop_last: bool = False):
         self.batch_size = batch_size
         self.shuffle = shuffle
+        self.drop_last = drop_last and len(lengths) > batch_size
         self.order = np.argsort(lengths).tolist()
 
-    def __iter__(self):
+    def _batches(self):
         batches = [self.order[i:i + self.batch_size]
                    for i in range(0, len(self.order), self.batch_size)]
+        if self.drop_last and len(batches[-1]) < self.batch_size:
+            batches = batches[:-1]
+        return batches
+
+    def __iter__(self):
+        batches = self._batches()
         if self.shuffle:
             for b in batches:
                 random.shuffle(b)
@@ -188,7 +202,7 @@ class LengthBucketSampler(Sampler):
         return iter(batches)
 
     def __len__(self):
-        return (len(self.order) + self.batch_size - 1) // self.batch_size
+        return len(self._batches())
 
 
 def build_aux_dataloader(dataset: AuxMelDataset,
@@ -205,7 +219,8 @@ def build_aux_dataloader(dataset: AuxMelDataset,
     if bucket_by_length and len(dataset) > batch_size:
         lengths = [dataset.mel_frames(i) for i in range(len(dataset))]
         kwargs["batch_sampler"] = LengthBucketSampler(
-            lengths, batch_size, shuffle=not validation)
+            lengths, batch_size, shuffle=not validation,
+            drop_last=not validation)
     else:
         kwargs.update(batch_size=batch_size, shuffle=not validation,
                       drop_last=not validation)

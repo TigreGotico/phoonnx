@@ -34,6 +34,7 @@ import yaml
 from torch import nn
 
 from phoonnx_train.engines.base import BaseTrainingEngine, TrainingEngineConfig
+from phoonnx_train.engines.styletts2_aligner import _fused_kwargs
 from phoonnx_train.styletts2.meldataset import TextCleaner
 
 LOG = logging.getLogger(__name__)
@@ -156,16 +157,24 @@ class PLBertDataset(torch.utils.data.Dataset):
             phoneme += self.sep_phoneme
 
         if len(phoneme) > cfg.max_seq_length:
-            start = random.randint(0, len(phoneme) - cfg.max_seq_length)
+            start = random.randrange(0, len(phoneme) - cfg.max_seq_length)
             phoneme = phoneme[start:start + cfg.max_seq_length]
             labels = labels[start:start + cfg.max_seq_length]
             words = words[start:start + cfg.max_seq_length]
             masked_index = [m - start for m in masked_index
                             if start <= m < start + cfg.max_seq_length]
 
-        return (torch.LongTensor(self.cleaner(phoneme)),
+        phoneme_ids = self.cleaner(phoneme)
+        label_ids = self.cleaner(labels)
+        # any symbol dropped by the cleaner would desynchronize the three
+        # streams (and masked_index) — fail fast like upstream
+        assert len(phoneme_ids) == len(words), \
+            f"phoneme/word streams desynchronized ({len(phoneme_ids)} vs {len(words)})"
+        assert len(phoneme_ids) == len(label_ids), \
+            f"phoneme/label streams desynchronized ({len(phoneme_ids)} vs {len(label_ids)})"
+        return (torch.LongTensor(phoneme_ids),
                 torch.LongTensor(words),
-                torch.LongTensor(self.cleaner(labels)),
+                torch.LongTensor(label_ids),
                 torch.LongTensor(masked_index))
 
 
@@ -305,7 +314,7 @@ class PLBertModule(pl.LightningModule):
         # upstream PL-BERT: plain AdamW(lr=1e-4), constant LR.
         # onecycle_scheduler adds a per-step OneCycle (10% warmup) on top.
         opt = torch.optim.AdamW(self.model.parameters(), lr=self.config.lr,
-                                fused=torch.cuda.is_available())
+                                **_fused_kwargs())
         if not self.config.onecycle_scheduler:
             return opt
         sched = torch.optim.lr_scheduler.OneCycleLR(
@@ -357,6 +366,19 @@ class PLBertModule(pl.LightningModule):
 
 class PLBertTrainingEngine(BaseTrainingEngine):
     """Trains the prosodic text encoder consumed by ``--engine styletts2``."""
+
+    def load_checkpoint(self, model: pl.LightningModule, checkpoint_path: Path,
+                        **kwargs: Any) -> pl.LightningModule:
+        ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+        state = ckpt.get("state_dict", ckpt.get("net", ckpt))
+        stripped = {}
+        for k, v in state.items():
+            for prefix in ("model.", "module."):
+                if k.startswith(prefix):
+                    k = k[len(prefix):]
+            stripped[k] = v
+        model.model.load_state_dict(stripped, strict=False)
+        return model
 
     def create_model(self, config: TrainingEngineConfig,
                      dataset_paths: List[Path], **kwargs: Any) -> pl.LightningModule:
