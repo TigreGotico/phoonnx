@@ -39,7 +39,9 @@ test = [
     "ovos-plugin-manager",
     "pycotovia>=0.1.0",
     "ahotts-g2p>=0.1.0",
+    "espyak>=0.0.2a1",
 ]
+espeak = ["espyak>=0.0.2a1"]
 train = [
     "cython>=0.29.0,<1",
     "librosa>=0.9.2,<1",
