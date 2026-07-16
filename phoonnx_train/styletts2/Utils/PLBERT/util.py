@@ -12,12 +12,52 @@ class CustomAlbert(AlbertModel):
         return outputs.last_hidden_state
 
 
+def make_modernbert_config(**params):
+    """ModernBertConfig for a phoneme vocabulary.
+
+    transformers 5.x's rope standardization writes back a ``rope_parameters``
+    dict that its own strict validation rejects (legacy top-level
+    rope_type/rope_theta keys), so validation is bypassed during
+    construction. Default token ids point outside a 178-symbol vocab, so
+    they are remapped ("$" pad = 0, per the StyleTTS2 symbol table).
+    """
+    from transformers import ModernBertConfig
+    params.setdefault("pad_token_id", 0)
+    for key in ("bos_token_id", "eos_token_id", "cls_token_id", "sep_token_id"):
+        params.setdefault(key, None)
+    orig_setattr = ModernBertConfig.__setattr__
+    ModernBertConfig.__setattr__ = object.__setattr__
+    try:
+        return ModernBertConfig(**params)
+    finally:
+        ModernBertConfig.__setattr__ = orig_setattr
+
+
+def _build_bert(plbert_config):
+    """Build the encoder for a plbert_dir; the optional ``backbone`` key
+    (written by the styletts2-plbert training engine) selects the
+    architecture — absent means upstream ALBERT."""
+    backbone = plbert_config.get('backbone', 'albert')
+    params = dict(plbert_config['model_params'])
+    if backbone == 'albert':
+        return CustomAlbert(AlbertConfig(**params))
+    if backbone == 'modernbert':
+        from transformers import ModernBertModel
+
+        class CustomModernBert(ModernBertModel):
+            def forward(self, *args, **kwargs):
+                return super().forward(*args, **kwargs).last_hidden_state
+
+        params.pop('dropout', None)
+        return CustomModernBert(make_modernbert_config(**params))
+    raise ValueError(f"Unknown PL-BERT backbone: {backbone!r}")
+
+
 def load_plbert(log_dir):
     config_path = os.path.join(log_dir, "config.yml")
     plbert_config = yaml.safe_load(open(config_path))
-    
-    albert_base_configuration = AlbertConfig(**plbert_config['model_params'])
-    bert = CustomAlbert(albert_base_configuration)
+
+    bert = _build_bert(plbert_config)
 
     files = os.listdir(log_dir)
     ckpts = []
@@ -36,7 +76,8 @@ def load_plbert(log_dir):
         if name.startswith('encoder.'):
             name = name[8:] # remove `encoder.`
             new_state_dict[name] = v
-    del new_state_dict["embeddings.position_ids"]
+    # older transformers exposed position_ids as a buffer; drop if present
+    new_state_dict.pop("embeddings.position_ids", None)
     bert.load_state_dict(new_state_dict, strict=False)
-    
+
     return bert
