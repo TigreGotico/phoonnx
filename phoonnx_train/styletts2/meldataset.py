@@ -41,7 +41,8 @@ class TextCleaner:
             try:
                 indexes.append(self.word_index_dictionary[char])
             except KeyError:
-                print(text)
+                logger.warning("symbol %r not in the StyleTTS2 table, dropped (in %r)",
+                               char, text)
         return indexes
 
 np.random.seed(1)
