@@ -224,24 +224,17 @@ def cli(
 
     # -------------------------------------------------------------------------
     # Model Loading and Preparation
-    # torch>=2.6 defaults torch.load(weights_only=True), which rejects the
-    # pickled Lightning checkpoint. Loading a checkpoint is inherently trusted
-    # (you are exporting your own model), so force weights_only=False.
-    _orig_torch_load = torch.load
-    def _trusting_load(*a, **k):
-        k["weights_only"] = False  # override Lightning's explicit weights_only=True
-        return _orig_torch_load(*a, **k)
-    torch.load = _trusting_load
+    from phoonnx_train.torch_compat import trusting_torch_load
+
     try:
-        model: VitsModel = VitsModel.load_from_checkpoint(
-            checkpoint,
-            dataset=None
-        )
+        with trusting_torch_load():
+            model: VitsModel = VitsModel.load_from_checkpoint(
+                checkpoint,
+                dataset=None
+            )
     except Exception as e:
         _LOGGER.error(f"Error loading model checkpoint {checkpoint}: {e}")
         return
-    finally:
-        torch.load = _orig_torch_load
 
     model_g: torch.nn.Module = model.model_g.cpu()  # export on CPU (dummy inputs are CPU)
     num_symbols: int = model_g.n_vocab
@@ -325,6 +318,8 @@ def cli(
     model_output: Path = output_dir / f"{checkpoint.name}.onnx"
     _LOGGER.info(f"Starting ONNX export to {model_output} (opset={OPSET_VERSION})...")
 
+    from phoonnx_train.torch_compat import onnx_export_kwargs
+
     try:
         torch.onnx.export(
             model=model_g,
@@ -335,7 +330,8 @@ def cli(
             input_names=input_names,
             output_names=["output"],
             dynamic_axes=dynamic_axes_map,
-            dynamo=False,  # VITS has data-dependent control flow; use the legacy tracer
+            # VITS has data-dependent control flow; use the legacy tracer
+            **onnx_export_kwargs(),
         )
         _LOGGER.info(f"Successfully exported model to {model_output}")
     except Exception as e:
