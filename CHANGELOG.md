@@ -28,6 +28,7 @@
 
 **Merged pull requests:**
 
+- fix: honor voice config's add\_diacritics \(fixes F5-TTS Arabic output\) [\#220](https://github.com/TigreGotico/phoonnx/pull/220) ([JarbasAl](https://github.com/JarbasAl))
 - fix: inline \[\[phoneme\]\] blocks crash on empty leading text [\#219](https://github.com/TigreGotico/phoonnx/pull/219) ([JarbasAl](https://github.com/JarbasAl))
 - fix: tolerate offline sidecar probe when loading a cached voice [\#216](https://github.com/TigreGotico/phoonnx/pull/216) ([JarbasAl](https://github.com/JarbasAl))
 - feat: configurable ONNX Runtime execution providers \(AMD/ROCm, DirectML, CoreML, ...\) [\#215](https://github.com/TigreGotico/phoonnx/pull/215) ([JarbasAl](https://github.com/JarbasAl))
