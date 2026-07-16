@@ -128,8 +128,10 @@ class AuxMelDataset(torch.utils.data.Dataset):
         text.append(self.blank_index)
         text = torch.LongTensor(text)
 
-        # upstream AuxiliaryASR: stretch too-short mels so CTC stays valid
-        if (text.size(0) + 1) >= (mel.size(1) // 3):
+        # upstream AuxiliaryASR: stretch too-short mels so CTC stays valid.
+        # Never stretch when F0 is requested — the F0 track is frame-aligned
+        # to the *original* mel and stretching would desynchronize them.
+        if not self.with_f0 and (text.size(0) + 1) >= (mel.size(1) // 3):
             mel = F.interpolate(mel.unsqueeze(0), size=(text.size(0) + 1) * 3,
                                 align_corners=False, mode="linear").squeeze(0)
         mel = (torch.log(1e-5 + mel) - MEL_MEAN) / MEL_STD

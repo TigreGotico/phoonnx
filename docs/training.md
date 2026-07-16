@@ -207,9 +207,8 @@ Mixer-TTS/GlowTTS/Matcha).
 `phoonnx_train` includes a **full two-stage** engine for the
 [StyleTTS2](https://arxiv.org/abs/2306.07691) architecture, porting the complete
 [yl4579/StyleTTS2](https://github.com/yl4579/StyleTTS2) recipe (MIT) onto the shared
-training framework. It trains new models **from scratch in new languages** — the BSC
-Spanish/Catalan multispeaker models are this exact recipe with a language-specific
-PL-BERT — and also fine-tunes existing checkpoints onto new speakers.
+training framework. It trains new models **from scratch in new languages** and
+fine-tunes existing checkpoints onto new speakers.
 
 The upstream model/loss/data code is vendored in `phoonnx_train/styletts2/` (imports
 made package-relative; the compiled `monotonic_align` extension replaced by a pure
@@ -231,7 +230,7 @@ Select with `stage` (engine extra / `StyleTTS2Config`):
 |---|---|---|
 | `asr_path` + `asr_config` | text aligner (ASRCNN) | bundled with the upstream repo (`Utils/ASR/`); trained further during TMA |
 | `f0_path` | JDC pitch extractor | upstream `Utils/JDC/bst.t7` |
-| `plbert_dir` | PL-BERT (config.yml + step_*.t7) | upstream `Utils/PLBERT/` for English; [BSC-LT PL-BERTs](https://huggingface.co/BSC-LT) for es/ca; train your own for a new language |
+| `plbert_dir` | PL-BERT (config.yml + step_*.t7) | upstream `Utils/PLBERT/` for English; pretrained Spanish/Catalan: [PL-BERT-wp-es](https://huggingface.co/BSC-LT/PL-BERT-wp-es), [PL-BERT-wp-ca](https://huggingface.co/BSC-LT); Galician: [PL-ModernBERT-gl](https://huggingface.co/proxectonos/PL-ModernBERT-gl); train your own with `--engine styletts2-plbert` |
 | `slm.model` (model_params) | WavLM for SLM losses | HF hub, default `microsoft/wavlm-base-plus`; disable all SLM losses with `use_slm: false` |
 
 Set `download_aux: true` to fetch the yl4579 English aligner/pitch/PL-BERT
@@ -287,18 +286,17 @@ StyleTTS2 exports are self-contained (`model.onnx` + `style_encoder.onnx` +
 
 ## Training every StyleTTS2 step for a new language
 
-Following the [BSC-LT/styletts2-spanish-multispeaker](https://huggingface.co/BSC-LT/styletts2-spanish-multispeaker)
-methodology, a from-scratch model in a new language trains a language-specific
+A from-scratch model in a new language needs a language-specific
 **text aligner** ([yl4579/AuxiliaryASR](https://github.com/yl4579/AuxiliaryASR)) and
-**prosodic text encoder** ([yl4579/PL-BERT](https://github.com/yl4579/PL-BERT)) before
-the TTS itself. `phoonnx_train` ships an engine for each, sharing the registry,
+**prosodic text encoder** ([yl4579/PL-BERT](https://github.com/yl4579/PL-BERT))
+trained before the TTS itself. `phoonnx_train` ships an engine for each, sharing the registry,
 the Lightning trainer and the StyleTTS2 symbol table (`--engine` on
 `python -m phoonnx_train.train`):
 
 | Engine | Trains | Output consumed via |
 |---|---|---|
 | `styletts2-aligner` | ASRCNN text aligner (CTC + s2s CE, upstream AuxiliaryASR recipe) | `asr_path` + `asr_config` |
-| `styletts2-plbert` | PL-BERT, `backbone: albert` (upstream, checkpoint-compatible) or `backbone: modernbert` ([BSC](https://huggingface.co/BSC-LT/PL-ModernBERT-wp-es)/[proxectonos](https://huggingface.co/proxectonos/PL-ModernBERT-gl) recipe); dual masked-phoneme + phoneme-to-grapheme heads, optional `prosodic_masking` (inverse-frequency: punctuation 40%, `!`/`?` 80%) | `plbert_dir` |
+| `styletts2-plbert` | PL-BERT, `backbone: albert` (upstream, checkpoint-compatible) or `backbone: modernbert`; dual masked-phoneme + phoneme-to-grapheme heads, optional `prosodic_masking` (inverse-frequency: punctuation 40%, `!`/`?` 80%) | `plbert_dir` |
 | `styletts2-pitch` | JDC pitch extractor (SmoothL1 F0 + BCE voicing, pyworld ground truth, upstream PitchExtractor recipe) | `f0_path` |
 
 All three fine-tune too: warm-start from the English checkpoints via
@@ -324,7 +322,7 @@ python -m phoonnx_train.train --dataset-dir dataset --engine styletts2-aligner
 # 2. prosodic text encoder
 python -m phoonnx_train.train --dataset-dir plbert_data --engine styletts2-plbert
 
-# 3. pitch extractor (optional — the English JDC transfers well; BSC reused it)
+# 3. pitch extractor (optional — F0 estimation transfers across languages)
 python -m phoonnx_train.train --dataset-dir dataset --engine styletts2-pitch
 
 # 4. StyleTTS2 stage first, then second, pointing at the outputs

@@ -95,6 +95,25 @@ def _aligner_batch(bsz=2, n_frames=64, n_text=8):
     return texts, text_lengths, mels, mel_lengths
 
 
+def test_aligner_ctc_blank_is_space():
+    from phoonnx_train.styletts2.meldataset import TextCleaner
+    module = AlignerModule(AlignerConfig(**TINY_ALIGNER))
+    assert module.ctc.blank == TextCleaner().word_index_dictionary[" "]
+
+
+def test_pitch_dataset_never_stretches_mel(dataset_dir):
+    # the aligner CTC-validity stretch must not run when F0 is requested —
+    # F0 is frame-aligned to the original mel
+    from phoonnx_train.styletts2.aligner_dataset import AuxMelDataset
+    long_text = "mɐɲˈɐ" * 50  # forces the stretch in aligner mode
+    lines = [f"utt0.wav|{long_text}|0"]
+    root = str(dataset_dir / "wavs")
+    aligner_mel, _ = AuxMelDataset(lines, root_path=root)[0]
+    pitch_mel, _, f0 = AuxMelDataset(lines, root_path=root, with_f0=True)[0]
+    assert aligner_mel.size(1) > pitch_mel.size(1)  # aligner stretched
+    assert f0.size(0) == pitch_mel.size(1)  # F0 aligned to unstretched mel
+
+
 def test_aligner_training_step_runs():
     module = AlignerModule(AlignerConfig(**TINY_ALIGNER))
     loss = module.training_step(_aligner_batch(), 0)

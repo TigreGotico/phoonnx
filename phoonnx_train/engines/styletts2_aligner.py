@@ -2,9 +2,8 @@
 
 Lightning port of `yl4579/AuxiliaryASR <https://github.com/yl4579/AuxiliaryASR>`_
 — the mel→phoneme ASR whose attention provides the TMA alignment target in
-StyleTTS2 stage-1. Train one per language (the BSC Spanish/Catalan models used
-a language-specific aligner), or warm-start from the English one via
-``pretrained_path`` for a fine-tune.
+StyleTTS2 stage-1. Train one per language, or warm-start from the English one
+via ``pretrained_path`` for a fine-tune.
 
 Loss = CTC(ctc_logits) + CrossEntropy(s2s decoder), exactly upstream
 ``trainer.py``. Dataset: ``train_list.txt``/``val_list.txt``
@@ -90,7 +89,11 @@ class AlignerModule(pl.LightningModule):
                      config.pretrained_path, missing)
         if config.compile_model and hasattr(torch, "compile"):
             self.model = torch.compile(self.model)
-        self.ctc = torch.nn.CTCLoss(blank=0, zero_infinity=True)
+        # the CTC blank is the space symbol — the same "silence" token the
+        # dataset frames every utterance with (upstream train.py)
+        from phoonnx_train.styletts2.meldataset import TextCleaner
+        blank_index = TextCleaner().word_index_dictionary[" "]
+        self.ctc = torch.nn.CTCLoss(blank=blank_index, zero_infinity=True)
         self.save_hyperparameters({"config": config.__dict__})
 
     # ------------------------------------------------------------------
@@ -127,10 +130,17 @@ class AlignerModule(pl.LightningModule):
                        "val/s2s": loss_s2s, "val/acc": acc}, prog_bar=True)
 
     def configure_optimizers(self):
-        fused = torch.cuda.is_available()
+        # upstream optimizers.py: AdamW(wd=5e-4, betas=(0.9, 0.98), eps=1e-9)
+        # + per-step OneCycleLR(pct_start=0, final_div_factor=5)
         opt = torch.optim.AdamW(self.model.parameters(), lr=self.config.lr,
-                                weight_decay=1e-4, fused=fused)
-        return opt
+                                weight_decay=5e-4, betas=(0.9, 0.98),
+                                eps=1e-9, fused=torch.cuda.is_available())
+        sched = torch.optim.lr_scheduler.OneCycleLR(
+            opt, max_lr=self.config.lr,
+            total_steps=max(int(self.trainer.estimated_stepping_batches), 2),
+            pct_start=0.0, final_div_factor=5)
+        return {"optimizer": opt,
+                "lr_scheduler": {"scheduler": sched, "interval": "step"}}
 
     def configure_gradient_clipping(self, optimizer, gradient_clip_val=None,
                                     gradient_clip_algorithm=None):

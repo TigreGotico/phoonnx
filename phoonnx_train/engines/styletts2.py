@@ -14,11 +14,10 @@ using the vendored upstream code in ``phoonnx_train/styletts2``:
 - **stage ``finetune``** — the second-stage recipe with diffusion and joint
   training enabled from epoch 0, starting from an existing checkpoint.
 
-This trains new models from scratch in new languages (the BSC Spanish /
-Catalan models are exactly this recipe with a language-specific PL-BERT):
-point ``plbert_dir`` at the PL-BERT for your language (or a multilingual
-one), supply the aligner/pitch-extractor checkpoints, and run stage
-``first`` then ``second``.
+This trains new models from scratch in new languages: point ``plbert_dir``
+at the PL-BERT for your language (or a multilingual one), supply the
+aligner/pitch-extractor checkpoints, and run stage ``first`` then
+``second``.
 
 Auxiliary models (all configurable; set ``download_aux: true`` to fetch the
 yl4579 English ones automatically, or train your own with the

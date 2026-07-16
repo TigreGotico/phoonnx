@@ -2,8 +2,8 @@
 
 Lightning port of `yl4579/PitchExtractor <https://github.com/yl4579/PitchExtractor>`_
 — the JDCNet F0 estimator StyleTTS2 stage-1 uses for ground-truth pitch.
-The English checkpoint transfers well across languages (BSC reused it for
-Spanish/Catalan), so training one is optional; ``pretrained_path``
+F0 estimation is largely language-independent, so the English checkpoint
+usually transfers and training one is optional; ``pretrained_path``
 warm-starts a fine-tune.
 
 Losses per upstream: ``lambda_f0 * SmoothL1(f0)`` + ``BCEWithLogits`` on the
@@ -82,7 +82,8 @@ class PitchSegmentDataset(torch.utils.data.Dataset):
         elif n < self.seq_len:
             mel = F.pad(mel, (0, self.seq_len - n))
             f0 = F.pad(f0, (0, self.seq_len - n))
-        is_silence = (f0 == 0).float()
+        # frames where the F0 tracker failed (NaN) count as unvoiced
+        is_silence = ((f0 == 0) | torch.isnan(f0)).float()
         f0 = torch.nan_to_num(f0, nan=0.0)
         return mel, f0, is_silence
 
@@ -171,9 +172,17 @@ class PitchModule(pl.LightningModule):
                        "val/sil": loss_sil}, prog_bar=True)
 
     def configure_optimizers(self):
-        fused = torch.cuda.is_available()
-        return torch.optim.AdamW(self.model.parameters(), lr=self.config.lr,
-                                 fused=fused)
+        # upstream optimizers.py: AdamW(wd=5e-4, betas=(0.9, 0.98), eps=1e-9)
+        # + per-step OneCycleLR(pct_start=0, final_div_factor=5)
+        opt = torch.optim.AdamW(self.model.parameters(), lr=self.config.lr,
+                                weight_decay=5e-4, betas=(0.9, 0.98),
+                                eps=1e-9, fused=torch.cuda.is_available())
+        sched = torch.optim.lr_scheduler.OneCycleLR(
+            opt, max_lr=self.config.lr,
+            total_steps=max(int(self.trainer.estimated_stepping_batches), 2),
+            pct_start=0.0, final_div_factor=5)
+        return {"optimizer": opt,
+                "lr_scheduler": {"scheduler": sched, "interval": "step"}}
 
     def _dataloader(self, data_list, validation: bool):
         ds = PitchSegmentDataset(data_list, root_path=self.config.root_path,

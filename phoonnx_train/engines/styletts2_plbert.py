@@ -6,8 +6,8 @@ encoder. Two backbones:
 
 - ``albert`` (default) — upstream ``CustomAlbert``; checkpoints are
   byte-compatible with yl4579 ``load_plbert``.
-- ``modernbert`` — the newer recipe used by BSC-LT/PL-ModernBERT-wp-es and
-  proxectonos/PL-ModernBERT-gl (needs ``transformers>=4.48``).
+- ``modernbert`` — same objectives on the ModernBERT architecture
+  (needs ``transformers>=4.48``).
 
 Dual heads per upstream: masked-phoneme MLM + phoneme-to-grapheme (word)
 prediction. Optional ``prosodic_masking`` applies the proxectonos
@@ -63,6 +63,7 @@ class PLBertConfig:
     prosodic_mark_mask_prob: float = 0.8
 
     lr: float = 1e-4
+    onecycle_scheduler: bool = False  # upstream trains at constant LR
     batch_size: int = 32
     num_workers: int = 2
     max_seq_length: int = 512
@@ -301,12 +302,15 @@ class PLBertModule(pl.LightningModule):
         self.log("val_loss", loss_vocab + loss_token, prog_bar=True)
 
     def configure_optimizers(self):
-        fused = torch.cuda.is_available()
+        # upstream PL-BERT: plain AdamW(lr=1e-4), constant LR.
+        # onecycle_scheduler adds a per-step OneCycle (10% warmup) on top.
         opt = torch.optim.AdamW(self.model.parameters(), lr=self.config.lr,
-                                fused=fused)
+                                fused=torch.cuda.is_available())
+        if not self.config.onecycle_scheduler:
+            return opt
         sched = torch.optim.lr_scheduler.OneCycleLR(
             opt, max_lr=self.config.lr,
-            total_steps=max(self.trainer.estimated_stepping_batches, 2),
+            total_steps=max(int(self.trainer.estimated_stepping_batches), 2),
             pct_start=0.1)
         return {"optimizer": opt,
                 "lr_scheduler": {"scheduler": sched, "interval": "step"}}
