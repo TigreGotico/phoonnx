@@ -364,7 +364,12 @@ class TTSVoice:
         # user pronunciation overrides + (Arabic/Hebrew) diacritics.
         if self.phonetic_spellings and syn_config.enable_phonetic_spellings:
             text = self.phonetic_spellings.apply(text)
-        if syn_config.add_diacritics:
+        # A per-call value wins; when unset (None) defer to the voice config so a
+        # model that ships undiacritized is not force-diacritized by the caller.
+        do_diacritics = syn_config.add_diacritics
+        if do_diacritics is None:
+            do_diacritics = self.config.add_diacritics
+        if do_diacritics:
             text = self.phonemizer.add_diacritics(text, self.config.lang_code)
 
         # Language-aware phonemizers (e.g. Shami) provide per-phoneme language IDs;

@@ -581,8 +581,10 @@ class SynthesisConfig:
 
     enable_phonetic_spellings: bool = True
 
-    """for arabic and hebrew models"""
-    add_diacritics: bool = True
+    """for arabic and hebrew models. ``None`` (the default) defers to the voice
+    config's own ``add_diacritics`` so a model that ships undiacritized (e.g.
+    grapheme F5-TTS voices) is not force-diacritized by the caller."""
+    add_diacritics: Optional[bool] = None
 
     # Engine-specific per-call params (d_factor, p_factor, e_factor, …)
     extra_params: Dict[str, Any] = field(default_factory=dict)
