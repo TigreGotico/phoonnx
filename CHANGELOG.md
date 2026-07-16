@@ -28,6 +28,7 @@
 
 **Merged pull requests:**
 
+- fix: register TTS plugin under opm.tts entry-point group [\#223](https://github.com/TigreGotico/phoonnx/pull/223) ([JarbasAl](https://github.com/JarbasAl))
 - feat: espyak fallback for espeak phonemization [\#222](https://github.com/TigreGotico/phoonnx/pull/222) ([JarbasAl](https://github.com/JarbasAl))
 - feat: add NAMAA-Saudi-TTS-V2 F5 voice \(namaa/ar-sa-v2\) [\#221](https://github.com/TigreGotico/phoonnx/pull/221) ([JarbasAl](https://github.com/JarbasAl))
 - fix: honor voice config's add\_diacritics \(fixes F5-TTS Arabic output\) [\#220](https://github.com/TigreGotico/phoonnx/pull/220) ([JarbasAl](https://github.com/JarbasAl))
