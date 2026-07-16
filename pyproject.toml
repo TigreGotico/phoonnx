@@ -80,7 +80,8 @@ train-styletts2 = [
     "munch",
     "einops",
     "einops-exts",
-    "transformers>=4.30",
+    "transformers>=4.48",  # ModernBERT backbone for styletts2-plbert
+    "pyworld>=0.3.0",  # ground-truth F0 for styletts2-pitch
     "torchaudio",
     "soundfile",
     "pandas",
