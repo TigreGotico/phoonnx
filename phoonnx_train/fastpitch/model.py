@@ -182,11 +182,15 @@ class ForwardTTS(nn.Module):
     ) -> Dict[str, torch.Tensor]:
         x_mask = sequence_mask(x_lengths, x.shape[1]).unsqueeze(1).to(self.emb.weight.dtype)
         g = self._speaker_embedding(speaker)
+        x_emb = self.emb(x).transpose(1, 2) * x_mask  # [B, C, T_en]
         en = self._encode(x, x_mask, g)
 
-        # unsupervised alignment -> durations
+        # unsupervised alignment -> durations. The aligner is keyed on the
+        # raw embedding table, decoupled from the encoder stack: aligner
+        # gradients must not fight the decoder/spec objective inside the
+        # shared encoder representation.
         y_mask_seq = sequence_mask(y_lengths, y.shape[2])
-        attn_soft, attn_logp = self.aligner(y, en, x_mask)
+        attn_soft, attn_logp = self.aligner(y, x_emb, x_mask)
         # hard alignment via MAS on log-probs [B, T_en, T_de]
         attn_mask_full = x_mask.transpose(1, 2) * y_mask_seq.unsqueeze(1).to(x_mask.dtype)
         alignment_hard = maximum_path(

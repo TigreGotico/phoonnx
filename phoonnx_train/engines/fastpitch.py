@@ -130,6 +130,48 @@ class ForwardTTSDataset(Dataset):
         self.sample_rate = sample_rate
         self.mel_fmin = mel_fmin
         self.mel_fmax = mel_fmax
+        # corpus F0 statistics over voiced frames — the pitch target is
+        # z-scored so its scale matches the other loss terms and the
+        # pitch_mul/pitch_add inference controls operate on a normalized
+        # quantity (raw Hz would dwarf every other loss)
+        self.pitch_mean, self.pitch_std = self._pitch_stats(dataset_paths)
+
+    def _f0_candidate(self, utt: "Utterance") -> Path:
+        return Path(str(utt.audio_spec_path)).with_suffix("").with_suffix(".f0.npy")
+
+    def _pitch_stats(self, dataset_paths: List[Path]):
+        import json
+
+        import numpy as np
+
+        stats_path = None
+        for p in dataset_paths:
+            p = Path(p)
+            if p.is_dir():
+                stats_path = p / "pitch_stats.json"
+                break
+        if stats_path and stats_path.is_file():
+            stats = json.loads(stats_path.read_text())
+            return float(stats["mean"]), float(stats["std"])
+
+        voiced = []
+        for utt in self._inner.utterances:
+            cand = self._f0_candidate(utt)
+            if cand.exists():
+                f0 = np.load(cand)
+                voiced.append(f0[f0 > 0])
+        if not voiced:
+            return 0.0, 1.0  # no pitch caches — identity normalization
+        allv = np.concatenate(voiced)
+        mean = float(allv.mean()) if allv.size else 0.0
+        std = float(allv.std()) if allv.size else 1.0
+        std = std or 1.0
+        if stats_path:
+            try:
+                stats_path.write_text(json.dumps({"mean": mean, "std": std}))
+            except OSError:
+                pass
+        return mean, std
 
     def __len__(self) -> int:
         return len(self._inner)
@@ -143,15 +185,17 @@ class ForwardTTSDataset(Dataset):
         ).squeeze(0)  # [mel_channels, T]
 
         pitch = None
-        pitch_path = getattr(utt, "audio_norm_path", None)
         # optional sidecar cache written by extra_preprocess: "<stem>.f0.npy"
         # next to audio_norm_path's parent cache dir.
-        f0_candidate = Path(str(utt.audio_spec_path)).with_suffix("").with_suffix(".f0.npy")
+        f0_candidate = self._f0_candidate(utt)
         if f0_candidate.exists():
             import numpy as np
 
-            f0 = np.load(f0_candidate)
-            pitch = torch.from_numpy(f0.astype("float32")).unsqueeze(0)  # [1, T_f0]
+            f0 = np.load(f0_candidate).astype("float32")
+            # z-score voiced frames with the corpus stats; unvoiced stays 0
+            voiced = f0 > 0
+            f0[voiced] = (f0[voiced] - self.pitch_mean) / self.pitch_std
+            pitch = torch.from_numpy(f0).unsqueeze(0)  # [1, T_f0]
 
         return UtteranceTensors(
             phoneme_ids=LongTensor(utt.phoneme_ids),
@@ -226,6 +270,7 @@ class ForwardTTSModule(pl.LightningModule):
         num_test_examples: int = 5,
         max_phoneme_ids: Optional[int] = None,
         binary_loss_start_epoch: int = 0,
+        binary_loss_warmup_epochs: int = 10,
         **kwargs: Any,
     ):
         super().__init__()
@@ -333,9 +378,12 @@ class ForwardTTSModule(pl.LightningModule):
         return losses
 
     def training_step(self, batch: Batch, batch_idx: int):
-        binary_loss_weight = min(
-            1.0, max(0.0, (self.current_epoch - self.hparams.binary_loss_start_epoch) / 10.0)
-        ) if self.hparams.binary_loss_start_epoch else 1.0
+        # ramp the binary alignment loss in over binary_loss_warmup_epochs
+        # starting at binary_loss_start_epoch — full-strength binarization
+        # against a still-random soft alignment destabilizes the aligner
+        warmup = max(1, self.hparams.binary_loss_warmup_epochs)
+        binary_loss_weight = min(1.0, max(
+            0.0, (self.current_epoch - self.hparams.binary_loss_start_epoch + 1) / warmup))
         losses = self._step(batch, binary_loss_weight=binary_loss_weight)
         self.log_dict({f"train_{k}": v for k, v in losses.items()}, prog_bar=False)
         return losses["loss"]
@@ -418,32 +466,42 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
         multispeaker = num_speakers > 1
 
         class _InferWrapper(torch.nn.Module):
+            """pace / pitch_mul / pitch_add are graph inputs so the
+            FastPitchAdapter's speed and pitch controls actually reach the
+            model (traced as constants they would be silent no-ops)."""
+
             def __init__(self, m: ForwardTTS, multispeaker: bool):
                 super().__init__()
                 self.m = m
                 self.multispeaker = multispeaker
 
             def forward(self, token_ids: torch.Tensor,
+                       pace: torch.Tensor,
+                       pitch_mul: torch.Tensor,
+                       pitch_add: torch.Tensor,
                        speaker: Optional[torch.Tensor] = None) -> torch.Tensor:
                 sid = speaker if self.multispeaker else None
-                return self.m.inference(token_ids, speaker=sid)
+                return self.m.inference(token_ids, speaker=sid, pace=pace,
+                                        pitch_mul=pitch_mul, pitch_add=pitch_add)
 
         wrapper = _InferWrapper(model, multispeaker)
         wrapper.eval()
 
         dummy_ids = torch.randint(low=1, high=max(2, num_symbols - 1), size=(1, 30), dtype=torch.long)
+        dummy_controls = (torch.ones(1), torch.ones(1), torch.zeros(1))
+        control_names = ["pace", "pitch_mul", "pitch_add"]
         if multispeaker:
             dummy_speaker = torch.zeros(1, dtype=torch.long)
-            dummy_args: Tuple[Any, ...] = (dummy_ids, dummy_speaker)
-            input_names = ["token_ids", "speaker"]
+            dummy_args: Tuple[Any, ...] = (dummy_ids, *dummy_controls, dummy_speaker)
+            input_names = ["token_ids", *control_names, "speaker"]
             dynamic_axes = {
                 "token_ids": {0: "batch_size", 1: "phonemes"},
                 "speaker": {0: "batch_size"},
                 "mel_spec": {0: "batch_size", 2: "frame"},
             }
         else:
-            dummy_args = (dummy_ids,)
-            input_names = ["token_ids"]
+            dummy_args = (dummy_ids, *dummy_controls)
+            input_names = ["token_ids", *control_names]
             dynamic_axes = {
                 "token_ids": {0: "batch_size", 1: "phonemes"},
                 "mel_spec": {0: "batch_size", 2: "frame"},

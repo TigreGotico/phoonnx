@@ -107,20 +107,29 @@ class ForwardTTSLoss(nn.Module):
         return_dict["loss_spec"] = spec_loss
 
         in_mask = sequence_mask(input_lens, dur_output.shape[1])
+
+        def _masked_mse(output, target, mask):
+            # mean over VALID positions only — a plain F.mse_loss mean would
+            # divide by padded elements too, scaling the gradient by the
+            # batch's padding ratio
+            mask = mask.to(output.dtype)
+            diff2 = ((output - target) ** 2) * mask
+            return diff2.sum() / mask.sum().clamp_min(1.0)
+
         log_dur_tgt = torch.log(dur_target.float() + 1)
-        dur_loss = F.mse_loss(dur_output * in_mask, log_dur_tgt * in_mask)
+        dur_loss = _masked_mse(dur_output, log_dur_tgt, in_mask)
         loss = loss + self.dur_loss_alpha * dur_loss
         return_dict["loss_dur"] = dur_loss
 
         if pitch_output is not None and pitch_target is not None:
-            pitch_loss = F.mse_loss(pitch_output * in_mask.unsqueeze(1),
-                                    pitch_target * in_mask.unsqueeze(1))
+            pitch_loss = _masked_mse(pitch_output, pitch_target,
+                                     in_mask.unsqueeze(1))
             loss = loss + self.pitch_loss_alpha * pitch_loss
             return_dict["loss_pitch"] = pitch_loss
 
         if energy_output is not None and energy_target is not None:
-            energy_loss = F.mse_loss(energy_output * in_mask.unsqueeze(1),
-                                     energy_target * in_mask.unsqueeze(1))
+            energy_loss = _masked_mse(energy_output, energy_target,
+                                      in_mask.unsqueeze(1))
             loss = loss + self.energy_loss_alpha * energy_loss
             return_dict["loss_energy"] = energy_loss
 
