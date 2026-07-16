@@ -302,8 +302,31 @@ class EspeakPhonemizer(BasePhonemizer):
                     'fr-ch', 'ka', 'en-gb-x-gbclan', 'ko', 'is', 'ca-nw', 'gn', 'kok', 'la', 'lb', 'am', 'kk', 'ku',
                     'kaa', 'jbo', 'eo', 'uz', 'nci', 'vi-vn-x-south', 'el', 'pl', 'grc', ]
 
-    def __init__(self):
+    _binary_available: Optional[bool] = None
+
+    def __init__(self, prefer_espyak: bool = False):
+        """
+        Args:
+            prefer_espyak: Use the pure-Python espyak G2P even when the
+                espeak-ng binary is installed. When False, espyak is only
+                used as a fallback if the binary is missing.
+        """
         super().__init__(Alphabet.IPA)
+        self.prefer_espyak = prefer_espyak
+        self._espyak_g2p: dict = {}
+
+    def _espyak_phonemize(self, text: str, lang: str) -> str:
+        from espyak import G2P
+        if lang not in self._espyak_g2p:
+            self._espyak_g2p[lang] = G2P(lang)
+        return self._espyak_g2p[lang].phonemize(text)
+
+    @classmethod
+    def _has_binary(cls) -> bool:
+        if cls._binary_available is None:
+            import shutil
+            cls._binary_available = shutil.which("espeak-ng") is not None
+        return cls._binary_available
 
     @classmethod
     def get_lang(cls, target_lang: str) -> str:
@@ -383,6 +406,16 @@ class EspeakPhonemizer(BasePhonemizer):
 
     def phonemize_string(self, text: str, lang: str) -> str:
         lang = self.get_lang(lang)
+        if self.prefer_espyak or not self._has_binary():
+            try:
+                return self._espyak_phonemize(text, lang)
+            except ImportError:
+                if not self._has_binary():
+                    raise EspeakError(
+                        "espeak-ng binary not found and espyak is not installed. "
+                        "Install espeak-ng or `pip install espyak` for the "
+                        "pure-Python fallback."
+                    )
         return self._run_espeak_command(
             ['-q', '-x', '--ipa', '-v', lang],
             input_text=text
