@@ -177,6 +177,12 @@ class YourttsTrainingEngine(BaseTrainingEngine):
         dummy_input = (sequences, sequence_lengths, scales, d_vector, langid)
 
         output_path = output_dir / f"{checkpoint_path.name}.onnx"
+        export_kwargs = {}
+        import inspect
+        if "dynamo" in inspect.signature(torch.onnx.export).parameters:
+            # VITS has data-dependent control flow the dynamo exporter
+            # cannot trace — force the TorchScript exporter
+            export_kwargs["dynamo"] = False
         torch.onnx.export(
             model=model_g,
             args=dummy_input,
@@ -186,6 +192,7 @@ class YourttsTrainingEngine(BaseTrainingEngine):
             input_names=input_names,
             output_names=output_names,
             dynamic_axes=dynamic_axes,
+            **export_kwargs,
         )
 
         default_d_vector = kwargs.get("default_d_vector")
@@ -335,6 +342,16 @@ class YourttsTrainingEngine(BaseTrainingEngine):
 # Helpers
 # ------------------------------------------------------------------
 
+def _renormalize(vec):
+    """Every individual d-vector is L2-normalized; their mean is not
+    (norm < 1, shrinking with speaker diversity) and would be
+    out-of-distribution for the model — renormalize after averaging."""
+    import numpy as np
+
+    norm = float(np.linalg.norm(vec))
+    return vec / norm if norm > 0 else vec
+
+
 def _mean_dataset_d_vector(dataset_paths: List[Any]) -> Optional[List[float]]:
     """
     Average every cached d-vector referenced by one or more dataset.jsonl
@@ -366,7 +383,7 @@ def _mean_dataset_d_vector(dataset_paths: List[Any]) -> Optional[List[float]]:
                     continue
     if not vectors:
         return None
-    mean_vec = np.mean(np.stack(vectors, axis=0), axis=0)
+    mean_vec = _renormalize(np.mean(np.stack(vectors, axis=0), axis=0))
     return mean_vec.astype(np.float32).tolist()
 
 

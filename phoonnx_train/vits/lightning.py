@@ -39,6 +39,12 @@ class VitsModel(pl.LightningModule):
         win_length: int = 1024,
         mel_channels: int = 80,
         sample_rate: int = 22050,
+        # speaker-consistency loss (YourTTS): cosine similarity between the
+        # H/ASP speaker-encoder embeddings of the real and generated
+        # segments, weighted by c_scl. Enabled by pointing
+        # speaker_encoder_checkpoint at the released model_se.pth.tar.
+        speaker_encoder_checkpoint: Optional[str] = None,
+        c_scl: float = 9.0,
         sample_bytes: int = 2,
         channels: int = 1,
         mel_fmin: float = 0.0,
@@ -308,9 +314,43 @@ class VitsModel(pl.LightningModule):
             loss_gen, _losses_gen = generator_loss(y_d_hat_g)
             loss_gen_all = loss_gen + loss_fm + loss_mel + loss_dur + loss_kl
 
+            loss_scl = self._speaker_consistency_loss(y, y_hat)
+            if loss_scl is not None:
+                loss_gen_all = loss_gen_all + self.hparams.c_scl * loss_scl
+                self.log("loss_scl", loss_scl)
+
             self.log("loss_gen_all", loss_gen_all)
 
             return loss_gen_all
+
+    def _speaker_consistency_loss(self, y: torch.Tensor,
+                                  y_hat: torch.Tensor) -> Optional[torch.Tensor]:
+        """Cosine-similarity speaker-consistency loss between the frozen
+        H/ASP embeddings of the real and generated audio segments."""
+        if not self.hparams.speaker_encoder_checkpoint:
+            return None
+        if getattr(self, "_speaker_encoder", None) is None:
+            from phoonnx_train.vits.speaker_encoder import \
+                load_hasp_speaker_encoder
+            self._speaker_encoder = load_hasp_speaker_encoder(
+                self.hparams.speaker_encoder_checkpoint).to(self.device)
+        import torchaudio
+
+        enc_sr = self._speaker_encoder.audio_config["sample_rate"]
+        wav_real = y.squeeze(1)
+        wav_fake = y_hat.squeeze(1)
+        if self.hparams.sample_rate != enc_sr:
+            wav_real = torchaudio.functional.resample(
+                wav_real, self.hparams.sample_rate, enc_sr)
+            wav_fake = torchaudio.functional.resample(
+                wav_fake, self.hparams.sample_rate, enc_sr)
+        # the encoder is frozen; gradients flow only through the generated
+        # waveform (real-segment embedding is the target)
+        with torch.no_grad():
+            emb_real = self._speaker_encoder(wav_real)
+        emb_fake = self._speaker_encoder(wav_fake)
+        return -torch.nn.functional.cosine_similarity(emb_real,
+                                                      emb_fake).mean()
 
     def training_step_d(self, batch: Batch):
         # From training_step_g

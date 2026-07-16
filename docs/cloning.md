@@ -139,24 +139,17 @@ language embedding (`--n-langs`) supports multilingual training.
 
 Preprocessing is the same LJSpeech-style pipeline as [training.md](training.md#1-preprocessing),
 with speaker names read from `metadata.csv`'s second column (do **not** pass
-`--single-speaker`). A separate, per-utterance d-vector is required — compute it with
-`YourttsTrainingEngine.extra_preprocess`, pointing at a Coqui ResNet ONNX speaker
-encoder (the same file you plan to bundle with the resulting voice):
+`--single-speaker`). A per-utterance d-vector is required — `preprocess.py`
+computes it when told which engine it is preparing data for, pointing at a
+Coqui ResNet ONNX speaker encoder (the same file you plan to bundle with
+the resulting voice):
 
-```python
-from pathlib import Path
-from phoonnx_train.engines import get_engine
-
-engine = get_engine("yourtts")
-for utt in utterances:
-    extra = engine.extra_preprocess(
-        utterance_audio_path=utt.audio_path,
-        cache_dir=cache_dir,
-        sample_rate=22050,
-        speaker_encoder_path="speaker_encoder.onnx",
-        language_id=0,               # bump per corpus for multilingual training
-    )
-    utt.extra = extra                 # -> {"d_vector_path": ..., "language_id": ...}
+```bash
+python -m phoonnx_train.preprocess \
+  --language en-US --input-dir data --output-dir preprocessed \
+  --engine yourtts \
+  --speaker-encoder-path speaker_encoder.onnx \
+  --language-id 0     # bump per corpus for multilingual training
 ```
 
 d-vectors are cached as `<cache_dir>/dvec/<hash>.pt`, next to the mel/audio cache, so
@@ -165,6 +158,16 @@ carry `d_vector_path` (and `language_id` for multilingual runs) alongside the us
 `phoneme_ids` / `audio_norm_path` / `audio_spec_path` fields — the shared
 `phoonnx_train.vits.dataset.PhoonnxDataset` loads them transparently (they are optional
 fields; a plain-VITS `dataset.jsonl` without them is unaffected).
+
+### Speaker-consistency loss
+
+Point `speaker_encoder_checkpoint` (engine extra / `VitsModel` hparam) at the
+released H/ASP torch checkpoint (`model_se.pth.tar` — the file the ONNX
+encoder was converted from) to enable the YourTTS speaker-consistency loss:
+the frozen encoder embeds the real and generated audio segments and
+`c_scl` (default 9.0) times the negative cosine similarity is added to the
+generator loss. Without a checkpoint the loss is off and training reduces
+to d-vector-conditioned VITS.
 
 ### 2. Train
 

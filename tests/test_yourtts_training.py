@@ -320,7 +320,10 @@ def test_mean_dataset_d_vector(tmp_path):
 
     mean = _mean_dataset_d_vector([dataset_path])
     assert mean is not None
-    assert np.allclose(mean, np.mean(np.stack(vecs), axis=0), atol=1e-5)
+    raw = np.mean(np.stack(vecs), axis=0)
+    expected = raw / np.linalg.norm(raw)  # renormalized after averaging
+    assert np.allclose(mean, expected, atol=1e-5)
+    assert abs(np.linalg.norm(mean) - 1.0) < 1e-5
 
 
 def test_mean_dataset_d_vector_empty_returns_none(tmp_path):
@@ -426,3 +429,108 @@ def test_export_onnx_yourtts_loads_and_matches_adapter(tmp_path):
     result = adapter.parse_outputs(outputs, request)
     assert np.isfinite(result.audio).all()
     assert result.audio.size > 0
+
+
+# ----------------------------------------------------------------------
+# preprocess wiring: engine extras reach dataset.jsonl
+# ----------------------------------------------------------------------
+
+def test_utterance_carries_engine_extras(tmp_path):
+    import json
+
+    from phoonnx_train.preprocess import Utterance
+
+    utt = Utterance(text="hi", audio_path=tmp_path / "a.wav")
+    utt.d_vector_path = tmp_path / "dvec.pt"
+    utt.language_id = 2
+    data = utt.asdict()
+    assert data["d_vector_path"] == str(tmp_path / "dvec.pt")
+    assert data["language_id"] == 2
+    # round-trips through the dataset loader
+    from phoonnx_train.vits.dataset import Utterance as LoaderUtterance
+    line = json.dumps({"phoneme_ids": [1, 2], "audio_norm_path": "x.pt",
+                       "audio_spec_path": "y.pt", "text": "hi",
+                       "d_vector_path": str(tmp_path / "dvec.pt"),
+                       "language_id": 2})
+    parsed = json.loads(line)
+    loaded = LoaderUtterance(
+        phoneme_ids=parsed["phoneme_ids"],
+        audio_norm_path=parsed["audio_norm_path"],
+        audio_spec_path=parsed["audio_spec_path"],
+        d_vector_path=parsed.get("d_vector_path"),
+        language_id=parsed.get("language_id"),
+        text=parsed.get("text"),
+    )
+    assert loaded.d_vector_path and loaded.language_id == 2
+
+
+def test_preprocess_cli_exposes_engine_options():
+    import click.testing
+
+    from phoonnx_train.preprocess import cli
+
+    result = click.testing.CliRunner().invoke(cli, ["--help"])
+    assert "--engine" in result.output
+    assert "--speaker-encoder-path" in result.output
+    assert "--language-id" in result.output
+
+
+# ----------------------------------------------------------------------
+# mean d-vector renormalization
+# ----------------------------------------------------------------------
+
+def test_mean_d_vector_renormalized():
+    import numpy as np
+
+    from phoonnx_train.engines.yourtts import _renormalize
+
+    a = np.array([1.0, 0.0], dtype=np.float32)
+    b = np.array([0.0, 1.0], dtype=np.float32)
+    mean = np.mean(np.stack([a, b]), axis=0)  # norm ~0.707
+    renorm = _renormalize(mean)
+    assert abs(np.linalg.norm(renorm) - 1.0) < 1e-6
+    assert np.allclose(_renormalize(np.zeros(2)), np.zeros(2))  # no div-by-0
+
+
+# ----------------------------------------------------------------------
+# speaker-consistency loss
+# ----------------------------------------------------------------------
+
+def test_speaker_encoder_forward_differentiable():
+    import torch
+
+    from phoonnx_train.vits.speaker_encoder import ResNetSpeakerEncoder
+
+    enc = ResNetSpeakerEncoder()
+    wav = torch.randn(2, 16000, requires_grad=True)
+    emb = enc(wav)
+    assert emb.shape == (2, 512)
+    assert torch.allclose(emb.norm(dim=1), torch.ones(2), atol=1e-4)
+    emb.sum().backward()
+    assert wav.grad is not None and torch.isfinite(wav.grad).all()
+
+
+def test_speaker_consistency_loss_in_generator(tmp_path):
+    import torch
+
+    from phoonnx_train.vits.lightning import VitsModel
+    from phoonnx_train.vits.speaker_encoder import ResNetSpeakerEncoder
+
+    model = VitsModel(num_symbols=32, num_speakers=1, dataset=None,
+                      speaker_encoder_checkpoint="unused-lazy.pt", c_scl=9.0)
+    # inject a random-init encoder (checkpoint loading is exercised
+    # separately; the loss path must not require a download)
+    model._speaker_encoder = ResNetSpeakerEncoder().eval()
+    for p in model._speaker_encoder.parameters():
+        p.requires_grad_(False)
+
+    y = torch.randn(2, 1, 8192)
+    y_hat = torch.randn(2, 1, 8192, requires_grad=True)
+    loss = model._speaker_consistency_loss(y, y_hat)
+    assert loss is not None and torch.isfinite(loss)
+    assert -1.0 <= float(loss) <= 1.0  # negative cosine similarity
+    loss.backward()
+    assert y_hat.grad is not None  # gradients reach the generated audio
+
+    model_off = VitsModel(num_symbols=32, num_speakers=1, dataset=None)
+    assert model_off._speaker_consistency_loss(y, y_hat.detach()) is None
