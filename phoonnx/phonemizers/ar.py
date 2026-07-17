@@ -76,11 +76,14 @@ class ArbtokPhonemizer(BasePhonemizer):
                  alphabet: Alphabet = Alphabet.IPA):
         if alphabet != Alphabet.IPA:
             raise ValueError("arbtok only outputs IPA")
-        # register: None -> defer to arbtok's own default (pausal). "iʿrab"/"irab"
-        # forces the full case-ending register (apt only for ar/arb).
+        # register: None -> defer to arbtok's own default (pausal). The iʿrab
+        # aliases force arbtok's full case-ending register, which the plugin
+        # spells "full" (apt only for ar/arb); pass any other value through so a
+        # caller can still say "pausal"/"full" directly.
         self.register = None
         if register:
-            self.register = "irab" if register.lower() in ("irab", "i'rab", "iʿrab") else register
+            self.register = ("full" if register.lower() in ("irab", "i'rab", "iʿrab", "full")
+                             else register)
         self._cache = {}
         super().__init__(alphabet)
 

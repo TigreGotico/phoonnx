@@ -26,6 +26,17 @@ def test_phonemize_bare_arabic_returns_ipa():
     assert "a" in out or "i" in out or "u" in out
 
 
+def test_irab_register_forces_full_case_endings():
+    """A phoonnx 'i'rab' register must map to arbtok's 'full' register (not the
+    literal string 'irab', which the plugin rejects), and must actually restore
+    the case endings the pausal default drops."""
+    for alias in ("i'rab", "iʿrab", "irab", "full"):
+        assert ArbtokPhonemizer(register=alias).register == "full"
+    full = ArbtokPhonemizer(register="i'rab").phonemize_string("ذهب الطالب", "ar")
+    pausal = ArbtokPhonemizer().phonemize_string("ذهب الطالب", "ar")
+    assert full.strip() and full != pausal  # the endings make it differ
+
+
 def test_dialect_differs_from_msa():
     p = ArbtokPhonemizer()
     msa = p.phonemize_string("كتاب جميل", "ar")
