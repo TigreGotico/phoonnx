@@ -6,9 +6,11 @@ from datetime import date
 from typing import Union, List, Tuple
 
 from langcodes import tag_distance
+# Number pronunciation uses unicode_rbnf (see _number_to_words / _is_numeric below).
+# ovos_number_parser was dropped: it silently failed on English fractions and on
+# es/fr integers >= 100. Date/time pronunciation still uses ovos_date_parser, which
+# produces richer spoken dates ("monday, july thirteenth") than a pure number engine.
 from ovos_date_parser import nice_time, nice_date
-from ovos_number_parser import pronounce_number, pronounce_fraction
-from ovos_number_parser.util import is_numeric
 from unicode_rbnf import RbnfEngine, FormatPurpose
 from langcodes import standardize_tag, Language
 try:
@@ -467,6 +469,73 @@ UNITS = {
 }
 
 
+# Cache one RbnfEngine per language: construction parses rule files and is costly
+# to repeat per word. Keyed by the short language code (e.g. "en", "es").
+_RBNF_ENGINES: dict = {}
+
+
+def _get_rbnf_engine(full_lang: str):
+    """Return a cached RbnfEngine for the language, or None if unavailable."""
+    lang_code = full_lang.split("-")[0]
+    if lang_code not in _RBNF_ENGINES:
+        try:
+            _RBNF_ENGINES[lang_code] = RbnfEngine.for_language(lang_code)
+        except (ValueError, KeyError) as e:
+            LOG.debug(f"RBNF engine not available for '{lang_code}': {e}")
+            _RBNF_ENGINES[lang_code] = None
+    return _RBNF_ENGINES[lang_code]
+
+
+def _is_numeric(text: str) -> bool:
+    """True if the string parses as an int or float (replaces ovos is_numeric)."""
+    try:
+        float(text)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def _number_to_words(num, full_lang: str, rbnf_engine=None) -> str:
+    """Pronounce a number using unicode_rbnf (replaces ovos pronounce_number).
+
+    Integers use the CARDINAL rule set. Non-integers are read digit-by-digit
+    after the decimal point ("three point one four"), matching how the previous
+    engine handled decimals and how espeak expects them.
+    """
+    engine = rbnf_engine or _get_rbnf_engine(full_lang)
+    if engine is None:
+        return str(num)
+    # Integer (or integral float): single cardinal formatting.
+    if isinstance(num, int) or (isinstance(num, float) and num.is_integer()):
+        return engine.format_number(int(num), FormatPurpose.CARDINAL).text
+    # Decimal: whole part as cardinal, fractional part digit-by-digit.
+    neg = num < 0
+    whole, _, frac = f"{abs(num)}".partition(".")
+    whole_words = engine.format_number(int(whole), FormatPurpose.CARDINAL).text
+    point_word = _decimal_point_word(full_lang)
+    digits = [engine.format_number(int(d), FormatPurpose.CARDINAL).text for d in frac]
+    words = f"{whole_words} {point_word} " + " ".join(digits)
+    return ("minus " + words) if neg else words
+
+
+def _decimal_point_word(full_lang: str) -> str:
+    """The spoken decimal separator word for the language."""
+    lang_code = full_lang.split("-")[0]
+    return {"en": "point", "de": "Komma", "nl": "komma", "es": "coma",
+            "pt": "vírgula", "fr": "virgule", "it": "virgola"}.get(lang_code, "point")
+
+
+def _fraction_to_words(fraction: str, full_lang: str) -> str:
+    """Pronounce a fraction like '3/4'. rbnf has no fraction API, so we read it
+    as "<numerator> over <denominator>" — unambiguous and espeak-friendly. The
+    previous engine failed outright on English fractions, so this is an upgrade."""
+    try:
+        num, den = fraction.split("/")
+        return f"{_number_to_words(int(num), full_lang)} over {_number_to_words(int(den), full_lang)}"
+    except (ValueError, ZeroDivisionError):
+        return fraction
+
+
 def _get_number_separators(full_lang: str) -> tuple[str, str]:
     """
     Determines decimal and thousands separators based on language.
@@ -493,9 +562,9 @@ def _normalize_number_word(word: str, full_lang: str, rbnf_engine) -> str:
     # Handle fractions like '3/3'
     if is_fraction(cleaned_word):
         try:
-            return pronounce_fraction(cleaned_word, full_lang) + word[len(cleaned_word):]
+            return _fraction_to_words(cleaned_word, full_lang) + word[len(cleaned_word):]
         except Exception as e:
-            LOG.error(f"ovos-number-parser failed to pronounce fraction: {word} - ({e})")
+            LOG.error(f"failed to pronounce fraction: {word} - ({e})")
             return word
 
     # Handle numbers with locale-specific separators
@@ -513,20 +582,20 @@ def _normalize_number_word(word: str, full_lang: str, rbnf_engine) -> str:
     if has_thousands_and_decimal:
         temp_cleaned_word = temp_cleaned_word.replace(thousands_separator, "")
         temp_cleaned_word = temp_cleaned_word.replace(decimal_separator, ".")
-    elif decimal_separator in temp_cleaned_word and is_numeric(temp_cleaned_word.replace(decimal_separator, ".", 1)):
+    elif decimal_separator in temp_cleaned_word and _is_numeric(temp_cleaned_word.replace(decimal_separator, ".", 1)):
         # Handle cases like '1,2' -> '1.2'
         temp_cleaned_word = temp_cleaned_word.replace(decimal_separator, ".")
-    elif thousands_separator in temp_cleaned_word and is_numeric(temp_cleaned_word.replace(thousands_separator, "", 1)):
+    elif thousands_separator in temp_cleaned_word and _is_numeric(temp_cleaned_word.replace(thousands_separator, "", 1)):
         # Handle cases like '1.234' -> '1234'
         temp_cleaned_word = temp_cleaned_word.replace(thousands_separator, "")
 
     # Check if the word is a valid number after processing
-    if is_numeric(temp_cleaned_word):
+    if _is_numeric(temp_cleaned_word):
         try:
             num = float(temp_cleaned_word) if "." in temp_cleaned_word else int(temp_cleaned_word)
-            return pronounce_number(num, lang=full_lang) + word[len(cleaned_word):]
+            return _number_to_words(num, full_lang, rbnf_engine) + word[len(cleaned_word):]
         except Exception as e:
-            LOG.error(f"ovos-number-parser failed to pronounce number: {word} - ({e})")
+            LOG.error(f"failed to pronounce number: {word} - ({e})")
             return word
 
     elif rbnf_engine and cleaned_word.isdigit():
@@ -684,7 +753,7 @@ def _normalize_units(text: str, full_lang: str) -> str:
                 unit_symbol = match.group(2)
                 unit_word = symbolic_units[unit_symbol]
                 try:
-                    return f"{pronounce_number(float(number) if '.' in number else int(number), full_lang)} {unit_word}"
+                    return f"{_number_to_words(float(number) if '.' in number else int(number), full_lang)} {unit_word}"
                 except Exception as e:
                     LOG.error(f"Failed to pronounce number with unit: {number}{unit_symbol} - ({e})")
                     return match.group(0)
@@ -708,7 +777,7 @@ def _normalize_units(text: str, full_lang: str) -> str:
                     number = number.replace(decimal_separator, ".")
                 unit_symbol = match.group(2)
                 unit_word = alphanumeric_units[unit_symbol]
-                return f"{pronounce_number(float(number) if '.' in number else int(number), full_lang)} {unit_word}"
+                return f"{_number_to_words(float(number) if '.' in number else int(number), full_lang)} {unit_word}"
 
             text = alphanumeric_pattern.sub(replace_alphanumeric, text)
     return text
