@@ -427,7 +427,7 @@ class TestUtilFunctions(unittest.TestCase):
 
     def test_error_handling_fraction_pronunciation(self):
         """Test error handling in fraction pronunciation."""
-        with patch('ovos_number_parser.pronounce_fraction', side_effect=Exception("Test error")), \
+        with patch('phoonnx.util.pronounce_fraction', side_effect=Exception("Test error")), \
                 patch('phoonnx.util.is_fraction', return_value=True):
             result = _normalize_number_word("1/2", "en", None)
             self.assertEqual(result, "1/2")  # Should return original on error
