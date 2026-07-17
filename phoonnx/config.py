@@ -96,6 +96,10 @@ class PhonemeType(str, Enum):
     XPINYIN = "xpinyin" # chinese
     JIEBA = "jieba" # chinese  (not a real phonemizer!)
     SHAMI = "shami"  # Levantine Arabic / English code-switching (ShamiVITS)
+    ARBTOK = "arbtok"  # arabic (dialect-aware, undiacritized text; o2i lattice)
+    EUSKAPHONE = "euskaphone"  # basque (dialect-aware; o2i lattice)
+    BARRANQUENHO = "barranquenho"  # barranquenho (pt/es contact variety; o2i lattice)
+    ORTHOGRAPHY2IPA = "orthography2ipa"  # multilingual data-driven IPA (o2i lattice)
 
 
 @dataclass
@@ -616,7 +620,9 @@ def get_phonemizer(phoneme_type: PhonemeType,
                        MisakiKoPhonemizer, MisakiViPhonemizer,
                        KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
                        AhoTTSPhonemizer, CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer,
-                       XpinyinPhonemizer, UnicodeCodepointPhonemizer, JiebaPhonemizer, ShamiPhonemizer)
+                       XpinyinPhonemizer, UnicodeCodepointPhonemizer, JiebaPhonemizer, ShamiPhonemizer,
+                       ArbtokPhonemizer, EuskaphonePhonemizer, BarranquenhoPhonemizer,
+                       Orthography2IPAPhonemizer)
     if phoneme_type == PhonemeType.ESPEAK:
         phonemizer = EspeakPhonemizer()
     elif phoneme_type == PhonemeType.BYT5:
@@ -695,6 +701,16 @@ def get_phonemizer(phoneme_type: PhonemeType,
         phonemizer = GraphemePhonemizer()
     elif phoneme_type == PhonemeType.SHAMI:
         phonemizer = ShamiPhonemizer(alphabet=alphabet)
+    elif phoneme_type == PhonemeType.ARBTOK:
+        # `model` is the voice's phonemizer_model: "iʿrab" forces the full
+        # case-ending register; default defers to arbtok (pausal / spoken).
+        phonemizer = ArbtokPhonemizer(register=model)
+    elif phoneme_type == PhonemeType.EUSKAPHONE:
+        phonemizer = EuskaphonePhonemizer()
+    elif phoneme_type == PhonemeType.BARRANQUENHO:
+        phonemizer = BarranquenhoPhonemizer()
+    elif phoneme_type == PhonemeType.ORTHOGRAPHY2IPA:
+        phonemizer = Orthography2IPAPhonemizer()
     else:
         raise ValueError("invalid phonemizer")
     return phonemizer
