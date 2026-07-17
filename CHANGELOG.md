@@ -28,6 +28,7 @@
 
 **Merged pull requests:**
 
+- fix: fraction error-handling test patched the wrong reference [\#226](https://github.com/TigreGotico/phoonnx/pull/226) ([JarbasAl](https://github.com/JarbasAl))
 - fix: register TTS plugin under opm.tts entry-point group [\#223](https://github.com/TigreGotico/phoonnx/pull/223) ([JarbasAl](https://github.com/JarbasAl))
 - feat: espyak fallback for espeak phonemization [\#222](https://github.com/TigreGotico/phoonnx/pull/222) ([JarbasAl](https://github.com/JarbasAl))
 - feat: add NAMAA-Saudi-TTS-V2 F5 voice \(namaa/ar-sa-v2\) [\#221](https://github.com/TigreGotico/phoonnx/pull/221) ([JarbasAl](https://github.com/JarbasAl))
