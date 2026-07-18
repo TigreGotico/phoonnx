@@ -29,7 +29,7 @@ def _validate_engine(ctx, param, value):
         raise click.BadParameter(
             f"Unknown engine {value!r}. Choose from: {', '.join(available)}"
         )
-    return value
+    return value.lower()
 
 
 @click.command(help="Export a model checkpoint to ONNX format.")

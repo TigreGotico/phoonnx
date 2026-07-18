@@ -130,3 +130,70 @@ contrasts with the d-vector engines (YourTTS, StyleTTS2).
 | **ZipVoice** | base flow-matching model (`num_step` ~16) |
 | **ZipVoice-Distill** | distilled for few-step sampling (`num_step` 4–8), minimal quality loss |
 | **ZipVoice-Dialog** | two-party spoken-dialogue generation ([arXiv:2507.09318](https://arxiv.org/abs/2507.09318)) |
+
+## Training
+
+`phoonnx_train --engine zipvoice` trains ZipVoice end-to-end. The upstream
+model and recipe are vendored in `phoonnx_train/zipvoice/` (Apache-2.0):
+the TTSZipformer text encoder + flow-matching decoder (`model.py`,
+`zipformer.py`, `scaling.py`, `solver.py`), the ScaledAdam optimizer and
+Eden schedule (`optim.py`, `lr_scheduler.py`), and the Vocos log-mel
+feature extractor (`feature.py`, 24 kHz / 100 bins / hop 256) — imports
+made package-relative, the `lhotse` manifest pipeline replaced by phoonnx's
+own `dataset.jsonl`.
+
+### Recipe
+
+```bash
+# 1. shared preprocessing (any sample rate; audio is resampled to 24 kHz
+#    for feature extraction)
+python -m phoonnx_train.preprocess --language en-US --input-dir data \
+    --output-dir training --sample-rate 24000
+
+# 2. train (quality: base = upstream ZipVoice size, low = CI/smoke tier)
+python -m phoonnx_train.train --dataset-dir training --engine zipvoice
+
+# 3. export the two-graph ONNX contract the adapter consumes
+python -m phoonnx_train.export_onnx --engine zipvoice ...
+```
+
+Per training batch (matching upstream `train_zipvoice.py`): sample
+`t ~ U(0,1)` and Gaussian noise, mask a random 70–100% span of each
+utterance as the generation target (the remainder is the speech prompt the
+model in-fills from), drop the text condition for `condition_drop_ratio`
+(default 0.2) of items for classifier-free guidance, and regress the
+straight-line vector field with the loss restricted to target ∩ non-padded
+frames. Optimizer: ScaledAdam (`base_lr` 0.02, `clipping_scale` 2.0) with
+the Eden schedule (`lr_batches` 7500, `lr_epochs` 10) and the Zipformer
+batch-count schedules driven from the global step.
+
+Fine-tuning from the released 123M checkpoint: convert the upstream
+checkpoint keys with `load_checkpoint` (`--resume-from-checkpoint` accepts
+upstream `{"model": ...}` layouts) and train on your data.
+
+### Standalone utilities
+
+- **`phoonnx_train/zipvoice/cfm.py`** — architecture-agnostic CFM objective
+  (`sample_flow_path`, `cfm_loss` with prompt-region masking via
+  `target_region_mask`, `drop_condition` for CFG) — the training-time
+  counterpart of the adapter's `fm_decoder` ODE loop, reusable against any
+  backbone.
+- **`phoonnx_train/zipvoice/dataset.py`** — in-context (infilling) pair
+  construction (`build_in_context_pairs`, split/cross strategies).
+
+### Export
+
+`export_onnx` emits `text_encoder.onnx` (tokens + prompt_tokens +
+prompt_features_len + speed → text_condition) and `fm_decoder.onnx`
+(t, x, text_condition, speech_condition, guidance_scale → v, with
+classifier-free guidance folded into the graph) — the exact contract
+`ZipVoiceAdapter` (`phoonnx/engines/zipvoice.py`) consumes, matching
+upstream `onnx_export.py` (opset 13, scaled-module conversion applied
+before tracing).
+
+### Downstream config
+
+Nothing changes for inference/downstream consumers: a ZipVoice voice — whether the
+stock HF checkpoint or a fine-tune produced via the path above — is configured exactly
+as described in [The adapter](#the-adapter) and [Cloning](cloning.md); training status
+has no bearing on the runtime `engine_params` shape.

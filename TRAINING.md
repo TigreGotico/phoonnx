@@ -171,6 +171,40 @@ python train.py \
 ```
 
 
+### ZipVoice engine
+
+`--engine zipvoice` trains the [ZipVoice](https://github.com/k2-fsa/ZipVoice)
+flow-matching TTS (Zipformer text encoder + flow-matching decoder,
+arXiv:2506.13053), vendored in `phoonnx_train/zipvoice/`. It consumes the
+same preprocessed dataset as every other engine; audio is resampled to
+24 kHz internally and turned into the 100-bin Vocos log-mel features the
+model is defined over (cached next to the audio cache).
+
+- `--quality base` (default fallback) uses the upstream model size;
+  `--quality low` is a tiny smoke-test tier.
+- Training uses the upstream recipe: ScaledAdam + the Eden schedule,
+  70–100% target-span infilling masks and text-condition dropout for
+  classifier-free guidance.
+- `--resume-from-checkpoint` accepts both Lightning checkpoints and the
+  upstream `{"model": ...}` layout, so the released ZipVoice checkpoint can
+  be used as a fine-tuning starting point.
+
+```bash
+python -m phoonnx_train.train \
+  --dataset-dir /tmp/tts_train \
+  --engine zipvoice \
+  --quality base
+
+python -m phoonnx_train.export_onnx last.ckpt \
+  --config /tmp/tts_train/config.json \
+  --engine zipvoice \
+  --output-dir ./exported   # text_encoder.onnx + fm_decoder.onnx
+```
+
+Export produces the two-graph contract the phoonnx `ZipVoiceAdapter`
+consumes: `text_encoder.onnx` and the guidance-folded `fm_decoder.onnx`
+(see `docs/zipvoice.md`).
+
 ---
 
 ## 3. Exporting to ONNX
