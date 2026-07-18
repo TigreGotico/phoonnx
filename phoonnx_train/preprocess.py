@@ -18,6 +18,7 @@ from tqdm import tqdm
 from phoonnx.config import PhonemeType, get_phonemizer, Alphabet
 from phoonnx.phonemizers import Phonemizer
 from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, \
+    phoneme_map_seed, untrained_map_symbols, \
     DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN
 from phoonnx.util import normalize
 from phoonnx.version import VERSION_STR
@@ -285,6 +286,17 @@ def phonemize_worker(
     help="If training data has more symbols than base model, discard new symbols. (for fine-tuning only)",
 )
 @click.option(
+    "--corpus-only-map",
+    "corpus_only_map",
+    is_flag=True,
+    default=False,
+    help="Build the phoneme map only from symbols present in the corpus, instead of "
+         "seeding it with the full default IPA table. Symbols outside the map fail at "
+         "tokenization instead of mapping to embeddings the model never trained. "
+         "Models preprocessed this way can only be fine-tuned from configs with a "
+         "compatible (subset) map.",
+)
+@click.option(
     "-r",
     "--sample-rate",
     "sample_rate",
@@ -393,6 +405,7 @@ def cli(
     language: str,
     prev_config: Path,
     drop_extra_phonemes: bool,
+    corpus_only_map: bool,
     sample_rate: int,
     cache_dir: Optional[Path],
     max_workers: Optional[int],
@@ -555,6 +568,7 @@ def cli(
 
     # --- Build the final phoneme map from the collected phonemes ---
     _LOGGER.info("Building a phoneme map from collected dataset phonemes...")
+    corpus_phonemes: Set[str] = set(all_phonemes)
 
     if prev_config:
         with open(prev_config) as f:
@@ -571,8 +585,9 @@ def cli(
     else:
         prev_num_symbols = MAX_PHONEMES
         final_phoneme_id_map: Dict[str, int] = DEFAULT_SPECIAL_PHONEME_ID_MAP.copy()
-        if phonemizer.alphabet == Alphabet.IPA:
-            all_phonemes.update(DEFAULT_IPA_PHONEME_ID_MAP.keys())
+        all_phonemes = phoneme_map_seed(all_phonemes,
+                                        ipa=phonemizer.alphabet == Alphabet.IPA,
+                                        include_defaults=not corpus_only_map)
 
     # Filter out tokens that are already in the map
     existing_keys: Set[str] = set(final_phoneme_id_map.keys())
@@ -598,6 +613,13 @@ def cli(
             final_phoneme_id_map[pho] = current_id
             current_id += 1
             _LOGGER.debug(f"New phoneme: {pho}")
+
+    unused = untrained_map_symbols(final_phoneme_id_map, corpus_phonemes)
+    if unused:
+        _LOGGER.warning(
+            "%d phoneme map symbols never occur in the corpus and their embeddings will "
+            "not be trained; feeding them at inference produces undefined audio: %s",
+            len(unused), " ".join(unused))
 
     if new_phonemes:
         _LOGGER.info("Final phoneme map contains %d phonemes.", len(final_phoneme_id_map))
