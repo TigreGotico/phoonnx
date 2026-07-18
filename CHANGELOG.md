@@ -72,6 +72,7 @@
 - feat\(voices\): coqui VITS engine + 36 voices across 33 languages [\#149](https://github.com/TigreGotico/phoonnx/pull/149) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): FastPitch engine + Arabic & coqui voices [\#148](https://github.com/TigreGotico/phoonnx/pull/148) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): Arabic Mixer-TTS voices \(tts\_arabic\) + matched vocoders [\#147](https://github.com/TigreGotico/phoonnx/pull/147) ([JarbasAl](https://github.com/JarbasAl))
+- feat\(train\): Mixer-TTS training \(Lightning\) [\#146](https://github.com/TigreGotico/phoonnx/pull/146) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): Mixer-TTS inference adapter + LJSpeech voices [\#145](https://github.com/TigreGotico/phoonnx/pull/145) ([JarbasAl](https://github.com/JarbasAl))
 - test\(tokenization\): cross-framework golden tests + coqui vocab-order fix [\#144](https://github.com/TigreGotico/phoonnx/pull/144) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): GlowTTS / Larynx inference adapter [\#143](https://github.com/TigreGotico/phoonnx/pull/143) ([JarbasAl](https://github.com/JarbasAl))
