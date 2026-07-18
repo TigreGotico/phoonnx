@@ -7,6 +7,7 @@ both Lightning 1.9 and 2.x) so the two optimizers step in the standard
 D-then-G order every batch.
 """
 import logging
+import math
 from typing import List, Optional, Tuple
 
 import pytorch_lightning as pl
@@ -39,6 +40,8 @@ class VocosTrainingModule(pl.LightningModule):
         learning_rate: float = 5e-4,
         betas: Tuple[float, float] = (0.8, 0.9),
         mel_loss_coeff: float = 45.0,
+        mrd_loss_coeff: float = 0.1,
+        num_warmup_steps: int = 1000,
         batch_size: int = 16,
         num_workers: int = 4,
         crop_samples: int = 22016,
@@ -56,6 +59,8 @@ class VocosTrainingModule(pl.LightningModule):
         self.learning_rate = learning_rate
         self.betas = betas
         self.mel_loss_coeff = mel_loss_coeff
+        self.mrd_loss_coeff = mrd_loss_coeff
+        self.num_warmup_steps = num_warmup_steps
 
         self.generator = VocosGenerator(
             n_mels=self.mel.n_mels,
@@ -101,7 +106,12 @@ class VocosTrainingModule(pl.LightningModule):
         fake_p, _ = self.mpd(audio_hat.detach())
         real_r, _ = self.mrd(audio)
         fake_r, _ = self.mrd(audio_hat.detach())
-        loss_d = discriminator_loss(real_p, fake_p) + discriminator_loss(real_r, fake_r)
+        # each discriminator family is averaged over its sub-discriminators, and
+        # the multi-resolution branch is down-weighted so no family dominates
+        loss_d = (
+            discriminator_loss(real_p, fake_p) / len(real_p)
+            + self.mrd_loss_coeff * discriminator_loss(real_r, fake_r) / len(real_r)
+        )
 
         opt_d.zero_grad()
         self.manual_backward(loss_d)
@@ -114,15 +124,24 @@ class VocosTrainingModule(pl.LightningModule):
         fake_r, fmap_fake_r = self.mrd(audio_hat)
 
         loss_mel = torch.nn.functional.l1_loss(self._mel(audio_hat), self._mel(audio))
-        loss_adv = generator_adversarial_loss(fake_p) + generator_adversarial_loss(fake_r)
-        loss_fm = feature_matching_loss(fmap_real_p, fmap_fake_p) + feature_matching_loss(
-            fmap_real_r, fmap_fake_r
+        loss_adv = (
+            generator_adversarial_loss(fake_p) / len(fake_p)
+            + self.mrd_loss_coeff * generator_adversarial_loss(fake_r) / len(fake_r)
+        )
+        loss_fm = (
+            feature_matching_loss(fmap_real_p, fmap_fake_p) / len(fmap_real_p)
+            + self.mrd_loss_coeff
+            * feature_matching_loss(fmap_real_r, fmap_fake_r) / len(fmap_real_r)
         )
         loss_g = loss_adv + loss_fm + self.mel_loss_coeff * loss_mel
 
         opt_g.zero_grad()
         self.manual_backward(loss_g)
         opt_g.step()
+
+        sch_g, sch_d = self.lr_schedulers()
+        sch_g.step()
+        sch_d.step()
 
         self.log_dict(
             {
@@ -145,7 +164,23 @@ class VocosTrainingModule(pl.LightningModule):
             lr=self.learning_rate,
             betas=self.betas,
         )
-        return [opt_g, opt_d]
+
+        # per-step cosine decay with linear warmup on both optimizers
+        total_steps = max(int(self.trainer.estimated_stepping_batches), 1)
+        warmup = min(self.num_warmup_steps, total_steps)
+
+        def lr_lambda(step: int) -> float:
+            if step < warmup:
+                return step / max(1, warmup)
+            progress = (step - warmup) / max(1, total_steps - warmup)
+            return 0.5 * (1.0 + math.cos(math.pi * min(progress, 1.0)))
+
+        sch_g = torch.optim.lr_scheduler.LambdaLR(opt_g, lr_lambda)
+        sch_d = torch.optim.lr_scheduler.LambdaLR(opt_d, lr_lambda)
+        return [opt_g, opt_d], [
+            {"scheduler": sch_g, "interval": "step"},
+            {"scheduler": sch_d, "interval": "step"},
+        ]
 
     def train_dataloader(self):
         dataset = AudioCropDataset(
@@ -218,6 +253,13 @@ class VocosTrainingModule(pl.LightningModule):
             matched += len(incoming)
             own.update(incoming)
             module.load_state_dict(own)
+            if own and not incoming:
+                # e.g. DAC-style reference MRD weights against the vendored
+                # magnitude-spectrogram MRD — that module trains from scratch
+                _LOGGER.warning(
+                    "Warm start matched 0/%d tensors for %s — module keeps "
+                    "its fresh initialization", len(own), prefix.rstrip("."),
+                )
 
         _LOGGER.info(
             "Warm start from %s: matched %d/%d tensors (%.1f%%)",
