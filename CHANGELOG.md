@@ -28,6 +28,7 @@
 
 **Merged pull requests:**
 
+- feat: checkpoint evaluation loop with UTMOS and speaker similarity [\#228](https://github.com/TigreGotico/phoonnx/pull/228) ([JarbasAl](https://github.com/JarbasAl))
 - fix: replace monotonic\_align C extension with pure numpy implementation [\#227](https://github.com/TigreGotico/phoonnx/pull/227) ([JarbasAl](https://github.com/JarbasAl))
 - fix: fraction error-handling test patched the wrong reference [\#226](https://github.com/TigreGotico/phoonnx/pull/226) ([JarbasAl](https://github.com/JarbasAl))
 - feat: orthography2ipa lattice phonemizer backends \(o2i, arbtok, euskaphone, barranquenho\) + mwl fix [\#225](https://github.com/TigreGotico/phoonnx/pull/225) ([JarbasAl](https://github.com/JarbasAl))
