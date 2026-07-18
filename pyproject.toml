@@ -67,6 +67,9 @@ train = [
     "librosa>=0.9.2,<1",
     "numpy>=1.19.0,<2; python_version<'3.13'",
     "numpy>=2.1; python_version>='3.13'",
+    # librosa's numba dependency: prerelease resolution can pick a stale
+    # beta that still references numpy<2 APIs (np.row_stack) at import
+    "numba>=0.66; python_version>='3.13'",
     "pytorch-lightning>=2.0,<3",
     "torch>=2.1,<3",
 ]
