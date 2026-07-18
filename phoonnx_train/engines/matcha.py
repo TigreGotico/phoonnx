@@ -1,17 +1,12 @@
 """
-Matcha-TTS training engine adapter.
+Matcha-TTS training engine.
 
-Wraps the upstream ``matcha-tts`` package behind the
-``BaseTrainingEngine`` interface.
-
-Training a Matcha-TTS model from scratch still requires the upstream
-config format (see ``configs/`` in the Matcha-TTS repo).  This adapter
-provides the bridge: it accepts phoonnx's ``TrainingEngineConfig`` and
-assembles the nested dicts the upstream ``MatchaTTS`` expects.
+Uses the vendored ``phoonnx_train.matcha`` package (upstream Matcha-TTS
+model code, MIT) so training runs on the same pytorch_lightning stack,
+dataset format and CLI as every other phoonnx engine.
 """
-import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
@@ -23,7 +18,7 @@ from phoonnx_train.engines.base import BaseTrainingEngine, TrainingEngineConfig
 
 _LOG = logging.getLogger(__name__)
 
-# ONNX opset used for export
+# ONNX opset used for export (matches upstream matcha/onnx/export.py)
 OPSET_VERSION = 15
 
 # Quality tier → Matcha hyper-param overrides
@@ -108,9 +103,17 @@ class MatchaEngineConfig:
     cfm_solver: str = "euler"
     cfm_sigma_min: float = 1e-4
 
-    # Data
-    mel_mean: float = -5.536622
-    mel_std: float = 2.116101
+    # Data (dataset statistics are computed and cached at first run
+    # unless given explicitly)
+    mel_mean: Optional[float] = None
+    mel_std: Optional[float] = None
+
+    # Training loop
+    batch_size: int = 16
+    num_workers: int = 1
+    validation_split: float = 0.05
+    learning_rate: float = 1e-4
+    max_phoneme_ids: Optional[int] = None
 
     def __post_init__(self):
         if self.decoder_channels is None:
@@ -121,16 +124,80 @@ class MatchaEngineConfig:
         """Build from shared TrainingEngineConfig + extra overrides."""
         extra = dict(cfg.extra)
         preset_name = extra.pop("quality", "medium")
-        preset = _QUALITY_PRESETS.get(preset_name, _QUALITY_PRESETS["medium"])
+        params = dict(_QUALITY_PRESETS.get(preset_name, _QUALITY_PRESETS["medium"]))
+        params.update(extra)
 
-        # Override preset with any explicit extra params
-        preset.update(extra)
+        known = {f.name for f in fields(cls)}
+        ignored = set(params) - known
+        if ignored:
+            _LOG.debug("ignoring non-matcha config keys: %s", sorted(ignored))
 
         return cls(
             n_vocab=cfg.num_symbols,
             n_spks=cfg.num_speakers,
-            **preset,
+            **{k: v for k, v in params.items() if k in known},
         )
+
+
+def _build_model_kwargs(mcfg: MatchaEngineConfig) -> Dict[str, Any]:
+    """Assemble the nested config objects MatchaTTS expects."""
+    encoder_cfg = _dict_to_namespace(
+        {
+            "encoder_type": mcfg.encoder_type,
+            "encoder_params": {
+                "n_feats": mcfg.n_feats,
+                "n_channels": mcfg.encoder_channels,
+                "filter_channels": mcfg.encoder_filter_channels,
+                "filter_channels_dp": mcfg.encoder_filter_channels_dp,
+                "n_heads": mcfg.encoder_n_heads,
+                "n_layers": mcfg.encoder_n_layers,
+                "kernel_size": mcfg.encoder_kernel_size,
+                "p_dropout": mcfg.encoder_p_dropout,
+                "spk_emb_dim": mcfg.spk_emb_dim,
+                "n_spks": mcfg.n_spks,
+                "prenet": mcfg.encoder_prenet,
+            },
+            "duration_predictor_params": {
+                "filter_channels_dp": mcfg.encoder_filter_channels_dp,
+                "kernel_size": mcfg.encoder_kernel_size,
+                "p_dropout": mcfg.encoder_p_dropout,
+            },
+        }
+    )
+
+    decoder_cfg = {
+        "channels": tuple(mcfg.decoder_channels),
+        "dropout": mcfg.decoder_dropout,
+        "attention_head_dim": mcfg.decoder_attention_head_dim,
+        "n_blocks": mcfg.decoder_n_blocks,
+        "num_mid_blocks": mcfg.decoder_num_mid_blocks,
+        "num_heads": mcfg.decoder_num_heads,
+        "act_fn": mcfg.decoder_act_fn,
+        "down_block_type": mcfg.decoder_down_block_type,
+        "mid_block_type": mcfg.decoder_mid_block_type,
+        "up_block_type": mcfg.decoder_up_block_type,
+    }
+
+    cfm_cfg = _dict_to_namespace(
+        {
+            "name": mcfg.cfm_name,
+            "solver": mcfg.cfm_solver,
+            "sigma_min": mcfg.cfm_sigma_min,
+        }
+    )
+
+    return {
+        "n_vocab": mcfg.n_vocab,
+        "n_spks": mcfg.n_spks,
+        "spk_emb_dim": mcfg.spk_emb_dim,
+        "n_feats": mcfg.n_feats,
+        "encoder": encoder_cfg,
+        "decoder": decoder_cfg,
+        "cfm": cfm_cfg,
+        "out_size": mcfg.out_size,
+        "prior_loss": mcfg.prior_loss,
+        "use_precomputed_durations": mcfg.use_precomputed_durations,
+    }
 
 
 class MatchaTrainingEngine(BaseTrainingEngine):
@@ -146,71 +213,43 @@ class MatchaTrainingEngine(BaseTrainingEngine):
         **kwargs: Any,
     ) -> pl.LightningModule:
         """Build a MatchaTTS LightningModule from *config*."""
-        from matcha.models.matcha_tts import MatchaTTS
+        from phoonnx_train.matcha import MatchaTTS
 
         mcfg = MatchaEngineConfig.from_training_config(config)
 
-        encoder_cfg = _dict_to_namespace(
-            {
-                "encoder_type": mcfg.encoder_type,
-                "encoder_params": {
-                    "n_feats": mcfg.n_feats,
-                    "n_channels": mcfg.encoder_channels,
-                    "filter_channels": mcfg.encoder_filter_channels,
-                    "filter_channels_dp": mcfg.encoder_filter_channels_dp,
-                    "n_heads": mcfg.encoder_n_heads,
-                    "n_layers": mcfg.encoder_n_layers,
-                    "kernel_size": mcfg.encoder_kernel_size,
-                    "p_dropout": mcfg.encoder_p_dropout,
-                    "spk_emb_dim": mcfg.spk_emb_dim,
-                    "n_spks": mcfg.n_spks,
-                    "prenet": mcfg.encoder_prenet,
-                },
-                "duration_predictor_params": {
-                    "filter_channels_dp": mcfg.encoder_filter_channels_dp,
-                    "kernel_size": mcfg.encoder_kernel_size,
-                    "p_dropout": mcfg.encoder_p_dropout,
-                },
-            }
+        if mcfg.mel_mean is None or mcfg.mel_std is None:
+            if dataset_paths:
+                from phoonnx_train.matcha.dataset import (
+                    MatchaDataset,
+                    load_or_compute_statistics,
+                )
+
+                stats_dataset = MatchaDataset(
+                    dataset_paths,
+                    n_feats=mcfg.n_feats,
+                    sample_rate=config.sample_rate,
+                )
+                mcfg.mel_mean, mcfg.mel_std = load_or_compute_statistics(
+                    dataset_paths, stats_dataset
+                )
+            else:
+                mcfg.mel_mean, mcfg.mel_std = 0.0, 1.0
+                _LOG.warning(
+                    "no dataset paths and no mel statistics given — "
+                    "using mel_mean=0.0 mel_std=1.0"
+                )
+
+        return MatchaTTS(
+            **_build_model_kwargs(mcfg),
+            data_statistics={"mel_mean": mcfg.mel_mean, "mel_std": mcfg.mel_std},
+            dataset=[str(p) for p in dataset_paths],
+            sample_rate=config.sample_rate,
+            batch_size=mcfg.batch_size,
+            num_workers=mcfg.num_workers,
+            validation_split=mcfg.validation_split,
+            learning_rate=mcfg.learning_rate,
+            max_phoneme_ids=mcfg.max_phoneme_ids,
         )
-
-        decoder_cfg = {
-            "channels": tuple(mcfg.decoder_channels),
-            "dropout": mcfg.decoder_dropout,
-            "attention_head_dim": mcfg.decoder_attention_head_dim,
-            "n_blocks": mcfg.decoder_n_blocks,
-            "num_mid_blocks": mcfg.decoder_num_mid_blocks,
-            "num_heads": mcfg.decoder_num_heads,
-            "act_fn": mcfg.decoder_act_fn,
-            "down_block_type": mcfg.decoder_down_block_type,
-            "mid_block_type": mcfg.decoder_mid_block_type,
-            "up_block_type": mcfg.decoder_up_block_type,
-        }
-
-        cfm_cfg = _dict_to_namespace(
-            {
-                "name": mcfg.cfm_name,
-                "solver": mcfg.cfm_solver,
-                "sigma_min": mcfg.cfm_sigma_min,
-            }
-        )
-
-        data_statistics = {"mel_mean": mcfg.mel_mean, "mel_std": mcfg.mel_std}
-
-        model = MatchaTTS(
-            n_vocab=mcfg.n_vocab,
-            n_spks=mcfg.n_spks,
-            spk_emb_dim=mcfg.spk_emb_dim,
-            n_feats=mcfg.n_feats,
-            encoder=encoder_cfg,
-            decoder=decoder_cfg,
-            cfm=cfm_cfg,
-            data_statistics=data_statistics,
-            out_size=mcfg.out_size,
-            prior_loss=mcfg.prior_loss,
-            use_precomputed_durations=mcfg.use_precomputed_durations,
-        )
-        return model
 
     def export_onnx(
         self,
@@ -219,13 +258,20 @@ class MatchaTrainingEngine(BaseTrainingEngine):
         output_dir: Path,
         **kwargs: Any,
     ) -> Path:
-        """Export a Matcha checkpoint to ONNX (mel model only)."""
-        from matcha.cli import load_matcha
+        """Export a Matcha checkpoint to ONNX (mel model only).
+
+        Follows upstream ``matcha/onnx/export.py``: inputs
+        ``x``/``x_lengths``/``scales`` (temperature, length_scale) and an
+        optional ``spks``; outputs ``mel``/``mel_lengths``.
+        """
+        from phoonnx_train.matcha import MatchaTTS
 
         n_timesteps = kwargs.get("n_timesteps", 5)
 
         _LOG.info("Loading Matcha checkpoint from %s", checkpoint_path)
-        matcha = load_matcha(checkpoint_path.stem, checkpoint_path, "cpu")
+        # hyperparameters include SimpleNamespace config objects
+        with torch.serialization.safe_globals([SimpleNamespace]):
+            matcha = MatchaTTS.load_from_checkpoint(checkpoint_path, map_location="cpu")
         matcha.eval()
 
         is_multi_speaker = matcha.n_spks > 1
@@ -267,15 +313,19 @@ class MatchaTrainingEngine(BaseTrainingEngine):
         output_path = output_dir / "model.onnx"
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        matcha.to_onnx(
-            str(output_path),
+        from phoonnx_train.torch_compat import onnx_export_kwargs
+
+        torch.onnx.export(
+            matcha,
             tuple(model_inputs),
+            str(output_path),
             input_names=input_names,
             output_names=["mel", "mel_lengths"],
             dynamic_axes=dynamic_axes,
             opset_version=OPSET_VERSION,
             export_params=True,
             do_constant_folding=True,
+            **onnx_export_kwargs(),
         )
         _LOG.info("ONNX model exported to %s", output_path)
         return output_path
@@ -293,8 +343,17 @@ class MatchaTrainingEngine(BaseTrainingEngine):
         checkpoint_path: Path,
         **kwargs: Any,
     ) -> pl.LightningModule:
-        """Load Matcha checkpoint with standard state dict."""
-        ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+        """Load Matcha weights, tolerating vocab/speaker-count mismatches."""
+        with torch.serialization.safe_globals([SimpleNamespace]):
+            ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
         state_dict = ckpt.get("state_dict", ckpt)
-        model.load_state_dict(state_dict, strict=False)
+        model_state = model.state_dict()
+        filtered = {
+            k: v for k, v in state_dict.items()
+            if k in model_state and v.shape == model_state[k].shape
+        }
+        dropped = set(state_dict) - set(filtered)
+        if dropped:
+            _LOG.warning("dropped %d mismatched checkpoint keys", len(dropped))
+        model.load_state_dict(filtered, strict=False)
         return model

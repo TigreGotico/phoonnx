@@ -146,7 +146,7 @@ two-stage voice is non-commercial.
 
 ## Training
 
-Matcha-TTS inference requires ``scipy`` (install with ``pip install phoonnx[matcha]``). Training additionally requires the ``train`` extra and the upstream ``matcha-tts`` package (``pip install phoonnx[train] matcha-tts``).
+Matcha-TTS inference requires ``scipy`` (install with ``pip install phoonnx[matcha]``). Training uses the vendored ``phoonnx_train.matcha`` package and only needs the ``train`` extra (``pip install phoonnx[train]``). The model trains on the standard phoonnx preprocessed dataset (``dataset.jsonl``); mel statistics are computed once and cached as ``matcha_stats.json`` next to the dataset.
 
 ### Quick start
 
