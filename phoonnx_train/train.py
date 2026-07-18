@@ -20,7 +20,7 @@ def _validate_engine(ctx, param, value):
         raise click.BadParameter(
             f"Unknown engine {value!r}. Choose from: {', '.join(available)}"
         )
-    return value
+    return value.lower()
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
@@ -90,11 +90,12 @@ def main(
     training_engine = get_engine(engine)
     presets = training_engine.quality_presets()
     if quality not in presets:
+        fallback = "medium" if "medium" in presets else next(iter(presets))
         _LOGGER.warning(
-            "Quality %r not found in engine presets %s — falling back to 'medium'",
-            quality, list(presets),
+            "Quality %r not found in engine presets %s — falling back to %r",
+            quality, list(presets), fallback,
         )
-        quality = "medium"
+        quality = fallback
     quality_kwargs = presets.get(quality, {})
 
     _LOGGER.info(
