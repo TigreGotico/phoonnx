@@ -24,7 +24,7 @@ from phoonnx_train.matcha.utils import (
     generate_path,
     sequence_mask,
 )
-from phoonnx_train.vits.monotonic_align import maximum_path
+from phoonnx_train.matcha.mas import maximum_path
 
 
 class MatchaTTS(pl.LightningModule):  # 🍵

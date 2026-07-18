@@ -131,3 +131,46 @@ def test_load_checkpoint_tolerates_shape_mismatch(tiny_dataset, tmp_path):
     # different vocab size -> embedding shape mismatch must be dropped, not crash
     m2 = eng.create_model(TrainingEngineConfig(num_symbols=120, extra=dict(base)), dataset_paths=[])
     eng.load_checkpoint(m2, ckpt_path)
+
+
+def test_mas_matches_bruteforce_and_backends_agree():
+    import itertools
+
+    import numpy as np
+
+    from phoonnx_train.matcha.mas import maximum_path, maximum_path_numpy
+
+    def brute(v):
+        ts, tt = v.shape
+        best, bp = -1e18, None
+        for bounds in itertools.combinations(range(1, tt), ts - 1):
+            bounds = (0,) + bounds + (tt,)
+            s = sum(v[i, bounds[i]:bounds[i + 1]].sum() for i in range(ts))
+            if s > best:
+                best, bp = s, bounds
+        path = np.zeros((ts, tt), np.float32)
+        for i in range(ts):
+            path[i, bp[i]:bp[i + 1]] = 1
+        return path
+
+    rng = np.random.default_rng(0)
+    for _ in range(5):
+        v = rng.standard_normal((4, 9)).astype(np.float32)
+        expected = brute(v)
+        got_np = maximum_path_numpy(v[None], np.ones((1, 4, 9), bool))[0]
+        got = maximum_path(torch.tensor(v)[None], torch.ones(1, 4, 9))[0].numpy()
+        assert np.allclose(got_np, expected)
+        assert np.allclose(got, expected)  # active backend (cython shim or numpy)
+
+    # ragged batches: both backends agree
+    torch.manual_seed(1)
+    for _ in range(10):
+        ts, tt = int(rng.integers(2, 12)), int(rng.integers(12, 40))
+        val = torch.randn(2, ts, tt)
+        mask = torch.ones(2, ts, tt)
+        for i in range(2):
+            mask[i, int(rng.integers(1, ts + 1)):, :] = 0
+            mask[i, :, int(rng.integers(ts, tt + 1)):] = 0
+        a = maximum_path(val.clone(), mask.clone()).numpy()
+        c = maximum_path_numpy(val.numpy().astype(np.float32), mask.numpy().astype(bool))
+        assert np.allclose(a, c)
