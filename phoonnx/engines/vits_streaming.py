@@ -198,8 +198,53 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
             self._hop_length = max(1, round(sample_count / z_frames))
         return self._hop_length or 256
 
-    def _decode(self, z: np.ndarray, y_mask: np.ndarray) -> np.ndarray:
-        out = self.decoder.run(["output"], {"z": z, "y_mask": y_mask})[0]
+    @staticmethod
+    def _run_encoder(session: onnxruntime.InferenceSession,
+                     feed: Dict[str, np.ndarray]) -> tuple:
+        """Run the encoder and return ``(z, y_mask)``.
+
+        Two encoder interfaces exist: the pre-split "+RT" voices name their
+        outputs ``z`` / ``y_mask``; an auto-split encoder (cut at the already-
+        masked ``z * y_mask``) has a single, arbitrarily-named latent output and
+        no separate mask. Outputs are therefore matched by name first, then by
+        shape (``[B, 192, T]`` latent vs. ``[B, 1, T]`` mask). ``y_mask`` is
+        ``None`` when the encoder does not expose one."""
+        names = [o.name for o in session.get_outputs()]
+        outs = session.run(None, feed)
+        by_name = dict(zip(names, outs))
+        if "z" in by_name:
+            return by_name["z"], by_name.get("y_mask")
+        z = None
+        y_mask = None
+        for arr in outs:
+            a = np.asarray(arr)
+            if a.ndim == 3 and a.shape[1] == 1 and y_mask is None:
+                y_mask = a
+            elif a.ndim == 3 and a.shape[1] > 1 and z is None:
+                z = a
+        return (z if z is not None else np.asarray(outs[0])), y_mask
+
+    def _decode(self, z: np.ndarray, y_mask: Optional[np.ndarray],
+                speaker_id: Optional[int]) -> np.ndarray:
+        """Feed one latent chunk to the decoder, matching whatever inputs it
+        declares (single-tensor auto-split, ``z``+``y_mask`` +RT, or a
+        multi-speaker decoder that also wants ``sid``)."""
+        feed: Dict[str, np.ndarray] = {}
+        for inp in self.decoder.get_inputs():
+            shape = inp.shape or []
+            second = shape[1] if len(shape) > 1 else None
+            name = inp.name
+            if name in ("sid", "spk", "spks", "g", "speaker", "speaker_id"):
+                if speaker_id is not None:
+                    feed[name] = np.array([speaker_id], dtype=np.int64)
+            elif name == "y_mask" or (len(shape) == 3 and second == 1):
+                feed[name] = (y_mask if y_mask is not None
+                              else np.ones((z.shape[0], 1, z.shape[2]), dtype=np.float32))
+            else:
+                # any other input is the latent: covers a single arbitrarily-named
+                # auto-split tensor, "z", and inputs whose shape is unknown.
+                feed[name] = z
+        out = self.decoder.run(None, feed)[0]
         return np.asarray(out).squeeze()
 
     def synthesize(self, request: AdapterSynthesisRequest,
@@ -211,7 +256,8 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
 
         # 1) Encoder runs once, producing the full latent sequence.
         feed = self.build_feed_dict(request, session)
-        z, y_mask = session.run(["z", "y_mask"], feed)
+        z, y_mask = self._run_encoder(session, feed)
+        sid = request.speaker_id
         T = z.shape[2]
 
         M = self._streaming["context_margin"]
@@ -221,7 +267,7 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
 
         # 2) Short sentence: one-shot decode (streaming overhead can't pay off).
         if T <= fallback:
-            audio = self._decode(z, y_mask)
+            audio = self._decode(z, y_mask, sid)
             self._resolve_hop(T, len(audio))
             return AdapterSynthesisResult(audio=audio.astype(np.float32))
 
@@ -236,7 +282,8 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
             end = min(start + size, T)
             a = max(0, start - M)
             b = min(T, end + M)
-            chunk_audio = self._decode(z[:, :, a:b], y_mask[:, :, a:b])
+            ym_slice = y_mask[:, :, a:b] if y_mask is not None else None
+            chunk_audio = self._decode(z[:, :, a:b], ym_slice, sid)
             if is_first and not self._hop_length:
                 # first full-context decode lets us pin hop precisely
                 hop = self._resolve_hop(b - a, len(chunk_audio))

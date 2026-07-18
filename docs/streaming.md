@@ -18,7 +18,15 @@ config declares `"streaming": true` **and** ships a separate decoder graph.
 > in the pipeline to cut. Loading a combined model will simply fall through to
 > the ordinary [`VitsAdapter`](./engines.md), which is correct but not streaming.
 
-There are two ways to get a split model:
+There are three ways to get a split model:
+
+0. **Let phoonnx split a normal model at load time (recommended).** You do *not*
+   need a specially-exported voice. If a voice config just sets
+   `"streaming": true` on an ordinary single-graph Piper/VITS model, phoonnx
+   splits it into an encoder/decoder pair on first load and caches the two
+   graphs next to the model (`<model>.encoder.onnx` / `<model>.decoder.onnx`).
+   See [Auto-split](#auto-split-no-re-export-needed). This is lossless by
+   construction and sidesteps the re-export hazards below.
 
 1. **Use a pre-split "+RT" voice.** The Sonata project publishes fast/streaming
    variants of many Piper voices in the
@@ -32,6 +40,38 @@ There are two ways to get a split model:
    the same route the `+RT` voices are produced by. **Verify the result** — see
    [Verifying an exported split model](#verifying-an-exported-split-model), it is
    easy to produce a subtly broken split (see the `ryan+RT` case study below).
+
+## Auto-split (no re-export needed)
+
+A monolithic VITS graph has exactly one natural cut point: the input to the
+HiFiGAN waveform decoder, which is the already-masked latent `(z * y_mask)` of
+shape `[B, 192, T]`. Everything before it (text encoder, duration predictor,
+flow, length regulation) is the *encoder*; the HiFiGAN generator is the
+*decoder*. phoonnx finds that tensor (the data input of the decoder's 192-channel
+`conv_pre`, ignoring the flow's own 192-channel convs) and extracts the two
+subgraphs with `onnx.utils.extract_model`.
+
+Because the split is **the same ops as the original graph, just cut in two**, it
+is lossless by construction — verified bit-for-bit against a one-shot decode on
+real voices (`maxabs ~2e-8`). Crucially, it **cannot** introduce the duration
+drift that breaks some re-exported `+RT` voices (see the `ryan+RT` case study):
+no weights are re-exported, so nothing can shift.
+
+To use it, ship (or hand-write) a config that turns streaming on for an ordinary
+voice — no `decoder_path` required:
+
+```json
+{ "streaming": true, "engine": "vits", "phoneme_type": "espeak" }
+```
+
+The auto-split encoder emits a single latent output (no separate `y_mask`), and
+its decoder takes that one tensor (plus `sid` on multi-speaker models); the
+adapter matches these by name/shape, so pre-split `+RT` voices and auto-split
+voices both work through the same code path.
+
+`onnx` (the full package, not just `onnxruntime`) is required for splitting and
+is a dependency of phoonnx. If splitting fails — e.g. the model is not a VITS —
+phoonnx logs a warning and loads the voice as a normal, non-streaming model.
 
 ## How it works: discard-and-stitch
 
