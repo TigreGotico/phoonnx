@@ -11,8 +11,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
-import pytorch_lightning as pl
-import torch
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # heavy imports — only needed for type annotations
+    import pytorch_lightning as pl
 
 from phoonnx_train.engines.base import BaseTrainingEngine, TrainingEngineConfig
 
@@ -211,7 +213,7 @@ class MatchaTrainingEngine(BaseTrainingEngine):
         config: TrainingEngineConfig,
         dataset_paths: List[Path],
         **kwargs: Any,
-    ) -> pl.LightningModule:
+    ) -> "pl.LightningModule":
         """Build a MatchaTTS LightningModule from *config*."""
         from phoonnx_train.matcha import MatchaTTS
 
@@ -264,6 +266,8 @@ class MatchaTrainingEngine(BaseTrainingEngine):
         ``x``/``x_lengths``/``scales`` (temperature, length_scale) and an
         optional ``spks``; outputs ``mel``/``mel_lengths``.
         """
+        import torch
+
         from phoonnx_train.matcha import MatchaTTS
 
         n_timesteps = kwargs.get("n_timesteps", 5)
@@ -339,11 +343,13 @@ class MatchaTrainingEngine(BaseTrainingEngine):
 
     def load_checkpoint(
         self,
-        model: pl.LightningModule,
+        model: "pl.LightningModule",
         checkpoint_path: Path,
         **kwargs: Any,
-    ) -> pl.LightningModule:
+    ) -> "pl.LightningModule":
         """Load Matcha weights, tolerating vocab/speaker-count mismatches."""
+        import torch
+
         with torch.serialization.safe_globals([SimpleNamespace]):
             ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
         state_dict = ckpt.get("state_dict", ckpt)

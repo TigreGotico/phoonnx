@@ -15,9 +15,10 @@ architecture.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
 
-import pytorch_lightning as pl
+if TYPE_CHECKING:  # heavy import — only needed for type annotations
+    import pytorch_lightning as pl
 
 
 @dataclass
@@ -63,7 +64,7 @@ class BaseTrainingEngine(ABC):
         config: TrainingEngineConfig,
         dataset_paths: List[Path],
         **kwargs: Any,
-    ) -> pl.LightningModule:
+    ) -> "pl.LightningModule":
         """
         Build and return the LightningModule for this architecture.
         """
@@ -128,10 +129,10 @@ class BaseTrainingEngine(ABC):
 
     def load_checkpoint(
         self,
-        model: pl.LightningModule,
+        model: "pl.LightningModule",
         checkpoint_path: Path,
         **kwargs: Any,
-    ) -> pl.LightningModule:
+    ) -> "pl.LightningModule":
         """
         Load weights from an existing checkpoint into *model*.
 

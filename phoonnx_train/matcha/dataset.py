@@ -7,12 +7,13 @@ spectrogram Matcha-TTS trains on from the cached normalized audio.
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import torch
 from torch.utils.data import Dataset
 
 from phoonnx_train.matcha.audio import mel_spectrogram
+from phoonnx_train.matcha.jsonl import load_dataset_lines
 from phoonnx_train.matcha.utils import fix_len_compatibility, normalize
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,34 +49,10 @@ class MatchaDataset(Dataset):
             if jsonl_path.is_dir():
                 jsonl_path = jsonl_path / "dataset.jsonl"
             self.utterances.extend(
-                self._load_jsonl(jsonl_path, max_phoneme_ids=max_phoneme_ids)
+                load_dataset_lines(jsonl_path, max_phoneme_ids=max_phoneme_ids)
             )
         if not self.utterances:
             raise ValueError(f"no utterances loaded from {list(dataset_paths)}")
-
-    @staticmethod
-    def _load_jsonl(
-        jsonl_path: Path, max_phoneme_ids: Optional[int] = None
-    ) -> Iterable[Dict]:
-        skipped = 0
-        with open(jsonl_path, "r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    utt = json.loads(line)
-                    if not utt.get("phoneme_ids") or "audio_norm_path" not in utt:
-                        raise ValueError("missing phoneme_ids/audio_norm_path")
-                except Exception:
-                    _LOGGER.exception("skipping malformed dataset line: %s", line[:120])
-                    continue
-                if max_phoneme_ids is not None and len(utt["phoneme_ids"]) > max_phoneme_ids:
-                    skipped += 1
-                    continue
-                yield utt
-        if skipped:
-            _LOGGER.warning("skipped %d utterances (too many phonemes)", skipped)
 
     def mel(self, audio: torch.Tensor) -> torch.Tensor:
         """Log-mel spectrogram [n_feats, T] of a mono waveform [T] in [-1, 1]."""

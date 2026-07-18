@@ -9,8 +9,11 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import pytorch_lightning as pl
-import torch
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # heavy imports — only needed for type annotations
+    import pytorch_lightning as pl
+    import torch
 
 from phoonnx_train.engines.base import BaseTrainingEngine, TrainingEngineConfig
 
@@ -56,7 +59,7 @@ class VitsTrainingEngine(BaseTrainingEngine):
         config: TrainingEngineConfig,
         dataset_paths: List[Path],
         **kwargs: Any,
-    ) -> pl.LightningModule:
+    ) -> "pl.LightningModule":
         """Build a VitsModel LightningModule from *config*."""
         from phoonnx_train.vits.lightning import VitsModel
 
@@ -77,6 +80,8 @@ class VitsTrainingEngine(BaseTrainingEngine):
         **kwargs: Any,
     ) -> Path:
         """Export a VITS checkpoint to ONNX with optional side-car files."""
+        import torch
+
         from phoonnx_train.vits.lightning import VitsModel
 
         # Load config
@@ -103,11 +108,11 @@ class VitsTrainingEngine(BaseTrainingEngine):
 
         # Forward wrapper
         def infer_forward(
-            text: torch.Tensor,
-            text_lengths: torch.Tensor,
-            scales: torch.Tensor,
-            sid: Optional[torch.Tensor] = None,
-        ) -> torch.Tensor:
+            text: "torch.Tensor",
+            text_lengths: "torch.Tensor",
+            scales: "torch.Tensor",
+            sid: "Optional[torch.Tensor]" = None,
+        ) -> "torch.Tensor":
             noise_scale = scales[0]
             length_scale = scales[1]
             noise_scale_w = scales[2]
@@ -206,11 +211,11 @@ class VitsTrainingEngine(BaseTrainingEngine):
 
     def load_checkpoint(
         self,
-        model: pl.LightningModule,
+        model: "pl.LightningModule",
         checkpoint_path: Path,
         discard_encoder: bool = False,
         resume_from_single_speaker_checkpoint: bool = False,
-    ) -> pl.LightningModule:
+    ) -> "pl.LightningModule":
         """VITS-specific checkpoint loading with encoder size mismatch handling."""
         from phoonnx_train.vits.lightning import VitsModel
 
@@ -277,7 +282,7 @@ class VitsTrainingEngine(BaseTrainingEngine):
         return model
 
     @staticmethod
-    def _tolerant_load(model: torch.nn.Module, state_dict: Dict[str, Any]) -> None:
+    def _tolerant_load(model: "torch.nn.Module", state_dict: Dict[str, Any]) -> None:
         """Load state dict, keeping current values for missing keys."""
         model_state = model.state_dict()
         new_state = {}

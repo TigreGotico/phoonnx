@@ -88,8 +88,11 @@ def list_engines() -> List[str]:
 # ------------------------------------------------------------------
 
 def _register_builtins() -> None:
-    from phoonnx_train.engines.vits import VitsTrainingEngine
+    # Imported lazily on module load; the engine modules themselves defer
+    # their heavy torch imports until a model is actually built, so the
+    # registry stays importable in torch-free environments.
     from phoonnx_train.engines.matcha import MatchaTrainingEngine
+    from phoonnx_train.engines.vits import VitsTrainingEngine
 
     register_engine("vits", VitsTrainingEngine)
     register_engine("matcha", MatchaTrainingEngine)
