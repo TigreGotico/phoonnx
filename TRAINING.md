@@ -294,6 +294,68 @@ Two metrics are reported:
 
 -----
 
+## 3.6 Training a Vocos Vocoder
+
+Two-stage acoustic models (Matcha-TTS and other mel-emitting engines)
+produce a mel spectrogram and rely on a separate vocoder to render the
+waveform. `phoonnx_train/train_vocos.py` trains a
+[Vocos](https://arxiv.org/abs/2306.00814)-style vocoder in-house, so a
+voice can ship with a vocoder trained (or finetuned) on the same speaker's
+audio instead of a generic pretrained one — usually worth doing when the
+target voice or language sounds "buzzy" or dull through a stock vocoder.
+
+**Data needs:** audio only — no transcripts. Any directory tree of
+`.wav`/`.flac`/`.ogg`/`.mp3` files works, including the `cache/` folder of
+a phoonnx preprocess output directory. A few hours of clean speech is
+enough for finetuning; training from scratch wants much more (or a
+`--warm-start`).
+
+> **Warning — mel settings are locked.** The vocoder is trained on the
+> exact mel configuration phoonnx acoustic models use (`n_fft=1024`,
+> `hop=256`, `win=1024`, `80` mels, `fmax=8000`, log-mel as in
+> `phoonnx_train/vits/mel_processing.py`). These are hard-coded on
+> purpose; a vocoder trained with different settings will produce garbage
+> for every phoonnx mel model.
+
+```bash
+python -m phoonnx_train.train_vocos \
+  --audio-dir /path/to/voice1/wavs \
+  --audio-dir /path/to/voice2/wavs \
+  --sample-rate 22050 \
+  --batch-size 16 \
+  --crop-seconds 1.0 \
+  --warm-start charactr/vocos-mel-24khz \
+  --max-epochs 100 \
+  --default-root-dir /tmp/vocos_train
+```
+
+`--warm-start` accepts a local `.ckpt`/`.bin` file or a HuggingFace repo
+id holding reference-Vocos-layout weights (e.g. `charactr/vocos-mel-24khz`,
+`projecte-aina/alvocat-vocos-22khz`); parameters are copied where names
+and shapes match and the matched fraction is logged. Use
+`--resume-from-checkpoint` to continue an interrupted run (restores
+optimizers and epoch).
+
+**Export + runtime wiring:**
+
+```bash
+python -m phoonnx_train.export_vocos \
+  /tmp/vocos_train/lightning_logs/version_0/checkpoints/epoch=99-step=12345.ckpt \
+  vocoder.onnx
+```
+
+This writes `vocoder.onnx` (plus `vocoder.onnx.json` with the STFT
+parameters) in the layout the phoonnx vocoder registry auto-detects as
+`vocos`, and prints a torch-vs-onnxruntime parity check. Point any
+mel-emitting voice at it:
+
+```python
+tts = TTSModel(model_path, config_path,
+               engine_params={"vocoder_path": "vocoder.onnx"})
+```
+
+-----
+
 ## 4. Workflow Summary
 
 1. **Prepare dataset** in LJSpeech-style format.
