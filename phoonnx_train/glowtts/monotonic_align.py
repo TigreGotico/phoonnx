@@ -18,12 +18,10 @@ Two implementations are provided:
   compiled. Same results, just slower — fine for tests and small runs.
 """
 import numpy as np
-import torch
 
-try:
-    from phoonnx_train.vits.monotonic_align import maximum_path as _maximum_path_cython
-except ImportError:  # Cython extension not built
-    _maximum_path_cython = None
+# torch (and the torch-importing Cython kernel wrapper) are deferred to
+# maximum_path() so the pure-numpy DP stays importable in torch-free
+# environments (e.g. for tests).
 
 
 def _maximum_path_numpy(neg_cent: np.ndarray, t_ys: np.ndarray, t_xs: np.ndarray) -> np.ndarray:
@@ -61,7 +59,7 @@ def _maximum_path_numpy(neg_cent: np.ndarray, t_ys: np.ndarray, t_xs: np.ndarray
     return paths
 
 
-def maximum_path(neg_cent: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+def maximum_path(neg_cent: "torch.Tensor", mask: "torch.Tensor") -> "torch.Tensor":
     """
     Find the maximum-likelihood monotonic alignment path.
 
@@ -75,6 +73,15 @@ def maximum_path(neg_cent: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
     -------
     [b, t_mel, t_text] hard 0/1 alignment path.
     """
+    import torch
+
+    try:
+        from phoonnx_train.vits.monotonic_align import (
+            maximum_path as _maximum_path_cython,
+        )
+    except ImportError:  # Cython extension not built
+        _maximum_path_cython = None
+
     if _maximum_path_cython is not None:
         return _maximum_path_cython(neg_cent, mask)
 
