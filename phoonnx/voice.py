@@ -247,6 +247,24 @@ class TTSVoice:
                     tokenizer_dict = json.load(tokenizer_file)
         resolved_providers = resolve_providers(providers, use_cuda=use_cuda)
 
+        # Auto-split: a voice may request streaming on a monolithic single-graph
+        # VITS model. When it declares "streaming": true but ships no decoder
+        # graph, split the model into an encoder/decoder pair on the fly (cached
+        # next to the model) so it can stream without a re-export. If the model
+        # is not a splittable VITS, fall back to loading it as a normal voice.
+        _cfg_ep = config_dict.get("engine_params") or {}
+        _has_decoder = _cfg_ep.get("decoder_path") or (engine_params or {}).get("decoder_path")
+        if config_dict.get("streaming") and not _has_decoder:
+            try:
+                from phoonnx.engines.vits_split import ensure_split_vits
+                enc_path, dec_path = ensure_split_vits(str(model_path))
+                model_path = enc_path
+                config_dict["engine_params"] = {**_cfg_ep, "decoder_path": dec_path}
+            except Exception as e:
+                LOG.warning(f"Streaming requested but auto-split of "
+                            f"'{model_path}' failed ({e}); loading as a normal "
+                            f"single-graph voice.")
+
         session = make_session(model_path, providers=resolved_providers)
 
         # Auto-detect engine adapter from config + session
