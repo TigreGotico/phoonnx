@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple, Any, Set, Union, Callable
 
 import click
+import torch
 from tqdm import tqdm
 
 from phoonnx.config import PhonemeType, get_phonemizer, Alphabet
@@ -651,6 +652,18 @@ def cli(
             if not utt.phoneme_ids:
                 _LOGGER.warning("Skipping utterance with invalid phoneme_ids before writing: %s", utt.audio_path)
                 continue
+
+            # Monotonic alignment needs at least one spectrogram frame per
+            # phoneme id; a shorter spectrogram means the audio does not
+            # contain the full text (e.g. a truncated clip)
+            if utt.audio_spec_path is not None:
+                spec_frames = torch.load(utt.audio_spec_path, map_location="cpu").size(-1)
+                if spec_frames < len(utt.phoneme_ids):
+                    _LOGGER.warning(
+                        "Skipping utterance with more phonemes (%d) than spectrogram frames (%d), "
+                        "audio is too short for its text: %s",
+                        len(utt.phoneme_ids), spec_frames, utt.audio_path)
+                    continue
 
             # apply path overrides if needed
             # this allows pre-processing the dataset in one system and then train in other
