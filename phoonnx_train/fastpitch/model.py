@@ -6,7 +6,7 @@ Mozilla Public License 2.0). Pure torch, self-contained.
 
 Text/phoneme ids → 80-channel mel spectrogram. Non-autoregressive: an
 encoder produces per-token states, per-token durations (and optionally
-pitch/energy) are predicted, states are expanded to frame rate and a
+pitch) are predicted, states are expanded to frame rate and a
 decoder renders the mel. Durations are learned unsupervised with an
 :class:`~phoonnx_train.fastpitch.aligner.AlignmentNetwork` + monotonic
 alignment search.
@@ -46,7 +46,6 @@ class ForwardTTSArgs:
 
     # variant switches
     use_pitch: bool = True
-    use_energy: bool = False
     use_aligner: bool = True
     encoder_type: str = "fftransformer"  # or "residual_conv_bn" (speedyspeech)
     decoder_type: str = "fftransformer"
@@ -121,15 +120,6 @@ class ForwardTTS(nn.Module):
                 kernel_size=args.pitch_embedding_kernel_size,
                 padding=args.pitch_embedding_kernel_size // 2,
             )
-        if args.use_energy:
-            self.energy_predictor = DurationPredictor(
-                args.hidden_channels, args.predictor_hidden_channels, dropout=args.dropout
-            )
-            self.energy_emb = nn.Conv1d(
-                1, args.hidden_channels,
-                kernel_size=args.pitch_embedding_kernel_size,
-                padding=args.pitch_embedding_kernel_size // 2,
-            )
         if args.use_aligner:
             self.aligner = AlignmentNetwork(
                 in_query_channels=args.out_channels,
@@ -177,7 +167,6 @@ class ForwardTTS(nn.Module):
         y: torch.Tensor,             # [B, C_mel, T_de] target mel
         y_lengths: torch.Tensor,     # [B]
         pitch: Optional[torch.Tensor] = None,   # [B, 1, T_de] frame-level f0
-        energy: Optional[torch.Tensor] = None,  # [B, 1, T_de]
         speaker: Optional[torch.Tensor] = None,  # [B]
     ) -> Dict[str, torch.Tensor]:
         x_mask = sequence_mask(x_lengths, x.shape[1]).unsqueeze(1).to(self.emb.weight.dtype)
@@ -206,12 +195,6 @@ class ForwardTTS(nn.Module):
             avg_pitch = average_over_durations(pitch, durations)  # [B, 1, T_en]
             en = en + self.pitch_emb(avg_pitch) * x_mask
 
-        o_energy = avg_energy = None
-        if self.args.use_energy and energy is not None:
-            o_energy = self.energy_predictor(en.detach(), x_mask)
-            avg_energy = average_over_durations(energy, durations)
-            en = en + self.energy_emb(avg_energy) * x_mask
-
         o_en_ex, y_mask = self._expand(en, durations, x_mask, y_lengths)
         o_de = self.decoder(o_en_ex, y_mask)
         o_mel = self.mel_proj(o_de) * y_mask  # [B, C_mel, T_de]
@@ -222,8 +205,6 @@ class ForwardTTS(nn.Module):
             "durations": durations,
             "pitch_avg": avg_pitch,
             "pitch_avg_pred": o_pitch,
-            "energy_avg": avg_energy,
-            "energy_avg_pred": o_energy,
             "alignment_soft": attn_soft.squeeze(1).transpose(1, 2),  # [B, T_en, T_de]
             "alignment_logprob": attn_logp,
             "alignment_hard": alignment_hard,
@@ -264,8 +245,6 @@ class ForwardTTS(nn.Module):
             o_pitch = self.pitch_predictor(en, x_mask)
             o_pitch = o_pitch * pitch_mul + pitch_add
             en = en + self.pitch_emb(o_pitch) * x_mask
-        if self.args.use_energy:
-            en = en + self.energy_emb(self.energy_predictor(en, x_mask)) * x_mask
 
         # Length regulation via repeat_interleave (ONNX-friendly, B=1).
         # Every token gets at least one output frame: this keeps the graph

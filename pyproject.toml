@@ -45,11 +45,13 @@ test = [
     "euskaphone",
     "g2p_barranquenho",
     "mwl_phonemizer",
-    # onnx uses ml_dtypes.float4_e2m1fn (added in ml_dtypes 0.5); without a
-    # floor the resolver can pair onnx with ml_dtypes 0.4.x, which breaks
-    # `import onnx` at collection time
-    "onnx",
-    "ml_dtypes>=0.5",
+    # onnx uses ml_dtypes.float4_e2m1fn (added in ml_dtypes 0.5) but the
+    # resolver can pair it with ml_dtypes 0.4.x, which breaks `import onnx`
+    # at collection time; ml_dtypes>=0.5 needs numpy>=2.1 on Python 3.13+,
+    # so the split mirrors the [train] numpy markers
+    "onnx<1.18; python_version<'3.13'",
+    "onnx>=1.18; python_version>='3.13'",
+    "ml_dtypes>=0.5; python_version>='3.13'",
 ]
 # Load-time auto-split of a monolithic VITS model into a streaming
 # encoder/decoder pair. Only needed to CREATE a split; a pre-split ("+RT")
@@ -63,7 +65,8 @@ train = [
     "diffusers>=0.25.0",
     "einops",
     "librosa>=0.9.2,<1",
-    "numpy>=1.19.0,<2",
+    "numpy>=1.19.0,<2; python_version<'3.13'",
+    "numpy>=2.1; python_version>='3.13'",
     "pytorch-lightning>=2.0,<3",
     "torch>=2.1,<3",
 ]

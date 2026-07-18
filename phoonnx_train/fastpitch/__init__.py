@@ -8,7 +8,7 @@ it has no dependency on the ``TTS``/``coqui-tts`` package.
 
 FastPitch and SpeedySpeech are both ``ForwardTTS`` configurations — the same
 non-autoregressive text→mel model with per-token duration (and optionally
-pitch/energy) predictors; SpeedySpeech simply drops the pitch predictor and
+pitch) predictors; SpeedySpeech simply drops the pitch predictor and
 uses residual-conv encoder/decoder blocks instead of FFT transformer blocks.
 """
 from phoonnx_train.fastpitch.model import ForwardTTS, ForwardTTSArgs

@@ -234,6 +234,9 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
                 "n_speakers": num_speakers,
                 "n_vocab": num_symbols,
                 "sample_rate": model_config.get("audio", {}).get("sample_rate", module.hparams.sample_rate),
+                "mel_fmin": module.hparams.mel_fmin,
+                "mel_fmax": module.hparams.mel_fmax,
+                "mel_channels": module.hparams.mel_channels,
                 "alphabet": model_config.get("alphabet", ""),
                 "phoneme_type": model_config.get("phoneme_type", ""),
                 "phonemizer_model": model_config.get("phonemizer_model", ""),
@@ -262,19 +265,25 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
         utterance_audio_path: Path,
         cache_dir: Path,
         sample_rate: int,
+        hop_length: int = 256,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Extract F0 (pitch) via pyworld; cached alongside the mel cache.
 
-        Same contract as the OptiSpeech training engine's
-        ``extra_preprocess`` (pyworld DIO + StoneMask). SpeedySpeech does
-        not use pitch, but the field is harmless to compute/cache and lets
-        the same preprocessed dataset be reused for either variant.
+        pyworld DIO + StoneMask, run at a frame period matched to the mel
+        hop (``1000 * hop_length / sample_rate`` ms) so the f0 track is
+        frame-aligned with the mel target, and computed on the same
+        trimmed/normalized audio the mels come from (the ``<sha>.pt``
+        cache written by ``cache_norm_audio``). The sidecar is named
+        ``<sha>.f0.npy`` next to the ``<sha>.spec.pt`` cache so the
+        training dataset finds it. SpeedySpeech does not use pitch, but
+        the cache is harmless and lets the same preprocessed dataset be
+        reused for either variant.
         """
         import numpy as np
 
         try:
-            import librosa
+            import librosa  # noqa: F401 — fallback loader below
             import pyworld as pw
         except ImportError:
             _LOG.warning(
@@ -284,14 +293,51 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
             )
             return {}
 
-        wav, sr = librosa.load(str(utterance_audio_path), sr=sample_rate, mono=True)
+        from hashlib import sha256
+
+        # same cache id scheme as phoonnx_train.norm_audio.cache_norm_audio
+        audio_cache_id = sha256(str(Path(utterance_audio_path).absolute()).encode()).hexdigest()
+        norm_path = cache_dir / f"{audio_cache_id}.pt"
+        spec_path = cache_dir / f"{audio_cache_id}.spec.pt"
+
+        if norm_path.exists():
+            # the exact trimmed/normalized signal the spectrogram was
+            # computed from — anything else drifts against the mel frames
+            import torch
+
+            wav = torch.load(norm_path).squeeze(0).numpy()
+        else:
+            _LOG.warning(
+                "normalized-audio cache %s not found — extracting F0 from the "
+                "raw audio (frame alignment with the mel target not guaranteed)",
+                norm_path,
+            )
+            wav, _sr = librosa.load(str(utterance_audio_path), sr=sample_rate, mono=True)
+
         wav_double = wav.astype(np.float64)
-        f0, timeaxis = pw.dio(wav_double, sr)
-        f0 = pw.stonemask(wav_double, f0, timeaxis, sr).astype(np.float32)
+        frame_period = 1000.0 * hop_length / sample_rate  # ms, = mel hop
+        f0, timeaxis = pw.dio(wav_double, sample_rate, frame_period=frame_period)
+        f0 = pw.stonemask(wav_double, f0, timeaxis, sample_rate).astype(np.float32)
+
+        if spec_path.exists():
+            import torch
+
+            t_mel = torch.load(spec_path).shape[-1]
+            diff = len(f0) - t_mel
+            if abs(diff) > 2:
+                _LOG.warning(
+                    "f0/mel frame mismatch for %s (f0=%d mel=%d) — skipping "
+                    "F0 cache for this utterance",
+                    utterance_audio_path, len(f0), t_mel,
+                )
+                return {}
+            if diff > 0:
+                f0 = f0[:t_mel]
+            elif diff < 0:
+                f0 = np.pad(f0, (0, -diff))
 
         cache_dir.mkdir(parents=True, exist_ok=True)
-        stem = utterance_audio_path.stem
-        f0_path = cache_dir / f"{stem}.f0.npy"
+        f0_path = cache_dir / f"{audio_cache_id}.f0.npy"
         np.save(f0_path, f0)
 
         return {"f0_path": str(f0_path)}

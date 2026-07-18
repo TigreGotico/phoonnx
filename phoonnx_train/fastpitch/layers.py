@@ -132,7 +132,7 @@ class ResidualConv1dBNBlock(nn.Module):
 
 class DurationPredictor(nn.Module):
     """
-    Per-token scalar predictor (log-duration, pitch or energy).
+    Per-token scalar predictor (log-duration or pitch).
 
     Conv-ReLU-LayerNorm stack, port of coqui's FastPitch duration/pitch
     predictor head.

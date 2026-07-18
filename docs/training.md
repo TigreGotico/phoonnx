@@ -165,7 +165,9 @@ train time — no separate preprocessing pass is required to switch between `vit
 FastPitch's pitch predictor needs a frame-level F0 target. The engine implements
 `extra_preprocess` (same contract as the OptiSpeech training engine) to extract F0 via
 `pyworld` (DIO + StoneMask) and cache it as `<utterance>.f0.npy` next to the
-spectrogram cache. Install with `phoonnx[train,train-fastpitch]`. If `pyworld`/`librosa`
+spectrogram cache. F0 is computed on the same trimmed/normalized audio the mels come
+from, at a frame period matched to the mel hop, so the pitch track is frame-aligned
+with the mel target. Install with `phoonnx[train,train-fastpitch]`. If `pyworld`/`librosa`
 aren't installed, training still runs — the pitch predictor trains without a target
 loss term (a warning is logged) — but real pitch conditioning requires the extra.
 SpeedySpeech does not use pitch at all.

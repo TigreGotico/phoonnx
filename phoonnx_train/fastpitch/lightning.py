@@ -169,7 +169,9 @@ class ForwardTTSModule(pl.LightningModule):
         filter_length: int = 1024,
         mel_channels: int = 80,
         mel_fmin: float = 0.0,
-        mel_fmax: Optional[float] = None,
+        # pinned to the shared phoonnx mel convention: defaulting to Nyquist
+        # would silently mismatch every shared vocoder
+        mel_fmax: Optional[float] = 8000.0,
         variant: str = "fastpitch",
         hidden_channels: int = 384,
         hidden_channels_ffn: int = 1024,
@@ -177,7 +179,6 @@ class ForwardTTSModule(pl.LightningModule):
         decoder_num_layers: int = 6,
         num_heads: int = 1,
         use_pitch: Optional[bool] = None,
-        use_energy: bool = False,
         dataset: Optional[List[Path]] = None,
         learning_rate: float = 1e-4,
         betas: Tuple[float, float] = (0.9, 0.998),
@@ -188,7 +189,9 @@ class ForwardTTSModule(pl.LightningModule):
         validation_split: float = 0.1,
         num_test_examples: int = 5,
         max_phoneme_ids: Optional[int] = None,
-        binary_loss_start_epoch: int = 0,
+        # binarization is delayed: ramping the binary alignment loss in from
+        # epoch 0 risks locking in a still-random soft alignment
+        binary_loss_start_epoch: int = 10,
         binary_loss_warmup_epochs: int = 10,
         **kwargs: Any,
     ):
@@ -209,7 +212,6 @@ class ForwardTTSModule(pl.LightningModule):
             encoder_num_layers=encoder_num_layers,
             decoder_num_layers=decoder_num_layers,
             num_heads=num_heads,
-            use_energy=use_energy,
             num_speakers=num_speakers,
             **variant_overrides,
         )

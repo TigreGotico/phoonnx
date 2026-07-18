@@ -54,14 +54,13 @@ class BinaryAlignmentLoss(nn.Module):
 
 
 class ForwardTTSLoss(nn.Module):
-    """Combined spectral + duration + pitch/energy + aligner loss."""
+    """Combined spectral + duration + pitch + aligner loss."""
 
     def __init__(
         self,
         spec_loss_alpha: float = 1.0,
         dur_loss_alpha: float = 0.1,
         pitch_loss_alpha: float = 0.1,
-        energy_loss_alpha: float = 0.1,
         aligner_loss_alpha: float = 1.0,
         binary_align_loss_alpha: float = 0.1,
     ):
@@ -69,7 +68,6 @@ class ForwardTTSLoss(nn.Module):
         self.spec_loss_alpha = spec_loss_alpha
         self.dur_loss_alpha = dur_loss_alpha
         self.pitch_loss_alpha = pitch_loss_alpha
-        self.energy_loss_alpha = energy_loss_alpha
         self.aligner_loss_alpha = aligner_loss_alpha
         self.binary_align_loss_alpha = binary_align_loss_alpha
         self.aligner_loss = ForwardSumLoss()
@@ -89,8 +87,6 @@ class ForwardTTSLoss(nn.Module):
         input_lens: torch.Tensor,              # [B]
         pitch_output: Optional[torch.Tensor] = None,   # [B, 1, T_en]
         pitch_target: Optional[torch.Tensor] = None,
-        energy_output: Optional[torch.Tensor] = None,
-        energy_target: Optional[torch.Tensor] = None,
         aligner_logprob: Optional[torch.Tensor] = None,
         alignment_hard: Optional[torch.Tensor] = None,
         alignment_soft: Optional[torch.Tensor] = None,
@@ -126,12 +122,6 @@ class ForwardTTSLoss(nn.Module):
                                      in_mask.unsqueeze(1))
             loss = loss + self.pitch_loss_alpha * pitch_loss
             return_dict["loss_pitch"] = pitch_loss
-
-        if energy_output is not None and energy_target is not None:
-            energy_loss = _masked_mse(energy_output, energy_target,
-                                      in_mask.unsqueeze(1))
-            loss = loss + self.energy_loss_alpha * energy_loss
-            return_dict["loss_energy"] = energy_loss
 
         if aligner_logprob is not None:
             aligner_loss = self.aligner_loss(aligner_logprob, input_lens, decoder_output_lens)
