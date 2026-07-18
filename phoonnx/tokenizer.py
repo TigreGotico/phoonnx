@@ -194,6 +194,27 @@ DEFAULT_BLANK_WORD_TOKEN = " "  # padding between words
 
 STRESS: Set[str] = {"ˈ", "ˌ"}
 
+SPECIAL_TOKENS: Set[str] = {DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN,
+                            DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN}
+
+
+def phoneme_map_seed(corpus_phonemes: Set[str], ipa: bool,
+                     include_defaults: bool = True) -> Set[str]:
+    """Symbols a new phoneme map is built from: the corpus symbols, plus the full
+    default IPA table unless include_defaults is False."""
+    syms = set(corpus_phonemes)
+    if ipa and include_defaults:
+        syms.update(DEFAULT_IPA_PHONEME_ID_MAP)
+    return syms
+
+
+def untrained_map_symbols(phoneme_id_map: Mapping[str, Any],
+                          corpus_phonemes: Set[str]) -> List[str]:
+    """Map symbols that never occur in the corpus. Their embeddings receive no
+    gradient during training, so feeding them at inference produces undefined audio."""
+    return sorted(k for k in phoneme_id_map
+                  if k not in corpus_phonemes and k not in SPECIAL_TOKENS)
+
 PUNCTUATION_MAP: Mapping[str, str] = {";": ",", ":": ",", "?": ".", "!": "."}
 """Default punctuation simplification into short (,) and long (.) pauses"""
 
