@@ -189,8 +189,9 @@ encoder family and pitch predictor.
 
 ### Export
 
-`export_onnx` emits the `token_ids` [B,T] (+ optional `speaker` [B] for
-multi-speaker models) → `mel_spec` [B, 80, T_mel] contract, matching
+`export_onnx` emits the `token_ids` [B,T] + `pace`/`pitch_mul`/`pitch_add` [1]
+control inputs (+ optional `speaker` [B] for multi-speaker models) →
+`mel_spec` [B, 80, T_mel] contract, matching
 `scripts/conversion/coqui_fastpitch_export/export_fp.py` (used to convert
 pretrained Coqui checkpoints) and consumed by `phoonnx.engines.fastpitch.FastPitchAdapter`
 (which reuses `MixerTTSAdapter`'s mel→vocoder inference path — FastPitch is a
