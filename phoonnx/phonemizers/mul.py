@@ -1,6 +1,7 @@
 """multilingual phonemizers"""
 
 import json
+import logging
 import os
 import subprocess
 from typing import List, Dict, Optional, Sequence
@@ -12,6 +13,8 @@ import requests
 from phoonnx.config import Alphabet
 from phoonnx.phonemizers.base import BasePhonemizer
 from phoonnx.providers import ProviderSpec, make_session
+
+LOG = logging.getLogger(__name__)
 
 
 class EspeakError(Exception):
@@ -303,23 +306,95 @@ class EspeakPhonemizer(BasePhonemizer):
                     'kaa', 'jbo', 'eo', 'uz', 'nci', 'vi-vn-x-south', 'el', 'pl', 'grc', ]
 
     _binary_available: Optional[bool] = None
+    _library_available: Optional[bool] = None
 
-    def __init__(self, prefer_espyak: bool = False):
+    def __init__(self, prefer_espyak: bool = False, use_library: bool = True):
         """
         Args:
             prefer_espyak: Use the pure-Python espyak G2P even when the
                 espeak-ng binary is installed. When False, espyak is only
                 used as a fallback if the binary is missing.
+            use_library: Call espeak-ng through its shared library instead of
+                spawning a subprocess, when the optional `phonemizer` package
+                is installed. Same engine, same phonemes, without the ~80ms
+                process startup per call. Falls back to the subprocess when
+                unavailable.
         """
         super().__init__(Alphabet.IPA)
         self.prefer_espyak = prefer_espyak
+        self.use_library = use_library
         self._espyak_g2p: dict = {}
+        self._library_backends: dict = {}
+        self._library_failed: set = set()
 
     def _espyak_phonemize(self, text: str, lang: str) -> str:
         from espyak import G2P
         if lang not in self._espyak_g2p:
             self._espyak_g2p[lang] = G2P(lang)
         return self._espyak_g2p[lang].phonemize(text)
+
+    @classmethod
+    def _locate_library(cls) -> Optional[str]:
+        """Best effort lookup of the espeak-ng shared library.
+
+        phonemizer finds it by itself where the loader can (Linux, macOS, and
+        Windows installs that are on PATH). On Windows the default installer
+        puts it in Program Files, which is not searched, so the usual
+        locations are probed as well. PHONEMIZER_ESPEAK_LIBRARY overrides
+        everything, as it does in phonemizer itself.
+        """
+        env = os.environ.get("PHONEMIZER_ESPEAK_LIBRARY")
+        if env and os.path.isfile(env):
+            return env
+
+        import sys
+        if sys.platform == "win32":
+            candidates = [
+                os.path.join(os.environ.get("ProgramFiles", r"C:\Program Files"),
+                             "eSpeak NG", "libespeak-ng.dll"),
+                os.path.join(os.environ.get("ProgramFiles(x86)",
+                                            r"C:\Program Files (x86)"),
+                             "eSpeak NG", "libespeak-ng.dll"),
+            ]
+            for path in candidates:
+                if os.path.isfile(path):
+                    return path
+        return None
+
+    @classmethod
+    def _has_library(cls) -> bool:
+        """True if the optional `phonemizer` package and the espeak-ng shared
+        library are both available."""
+        if cls._library_available is None:
+            cls._library_available = False
+            try:
+                from phonemizer.backend import EspeakBackend
+                from phonemizer.backend.espeak.wrapper import EspeakWrapper
+
+                if not EspeakBackend.is_available():
+                    located = cls._locate_library()
+                    if located:
+                        EspeakWrapper.set_library(located)
+                cls._library_available = EspeakBackend.is_available()
+            except Exception as e:
+                LOG.debug("espeak-ng shared library unavailable: %s", e)
+        return cls._library_available
+
+    def _library_phonemize(self, text: str, lang: str) -> str:
+        """Phonemize through the espeak-ng shared library.
+
+        The backend instance is kept per language: building one initializes
+        the espeak library, which costs ~200ms, while reusing it brings a
+        call down to well under a millisecond.
+        """
+        from phonemizer.backend import EspeakBackend
+        from phonemizer.separator import Separator
+
+        if lang not in self._library_backends:
+            self._library_backends[lang] = EspeakBackend(
+                lang, preserve_punctuation=False, with_stress=True)
+        return self._library_backends[lang].phonemize(
+            [text], separator=Separator(phone="", word=" "), strip=True)[0]
 
     @classmethod
     def _has_binary(cls) -> bool:
@@ -406,16 +481,37 @@ class EspeakPhonemizer(BasePhonemizer):
 
     def phonemize_string(self, text: str, lang: str) -> str:
         lang = self.get_lang(lang)
-        if self.prefer_espyak or not self._has_binary():
+        if self.prefer_espyak or not (self._has_binary() or self._has_library()):
             try:
                 return self._espyak_phonemize(text, lang)
             except ImportError:
-                if not self._has_binary():
+                if not (self._has_binary() or self._has_library()):
                     raise EspeakError(
                         "espeak-ng binary not found and espyak is not installed. "
                         "Install espeak-ng or `pip install espyak` for the "
                         "pure-Python fallback."
                     )
+
+        # Preferred route: the espeak-ng shared library. Same engine as the
+        # subprocess below, without paying process startup on every call.
+        # Languages that the library cannot load (a voice may be missing, or
+        # shadowed by an mbrola definition without mbrola installed) are
+        # remembered so the failure is paid once rather than on every call.
+        if (self.use_library and self._has_library()
+                and lang not in self._library_failed):
+            try:
+                return self._library_phonemize(text, lang)
+            except Exception as e:
+                self._library_failed.add(lang)
+                if not self._has_binary():
+                    raise EspeakError(
+                        f"espeak-ng shared library failed for language "
+                        f"'{lang}' ({e}) and the espeak-ng binary is not "
+                        f"available as a fallback."
+                    )
+                LOG.info("espeak-ng library cannot handle language '%s' (%s), "
+                         "using the subprocess for it", lang, e)
+
         return self._run_espeak_command(
             ['-q', '-x', '--ipa', '-v', lang],
             input_text=text
