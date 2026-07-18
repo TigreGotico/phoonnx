@@ -69,9 +69,11 @@ its decoder takes that one tensor (plus `sid` on multi-speaker models); the
 adapter matches these by name/shape, so pre-split `+RT` voices and auto-split
 voices both work through the same code path.
 
-`onnx` (the full package, not just `onnxruntime`) is required for splitting and
-is a dependency of phoonnx. If splitting fails — e.g. the model is not a VITS —
-phoonnx logs a warning and loads the voice as a normal, non-streaming model.
+Splitting needs the full `onnx` package (not just `onnxruntime`), which is an
+optional extra: `pip install phoonnx[streaming]`. It is only needed to *create*
+a split — a pre-split `+RT` voice streams without it. If `onnx` is missing, or
+the model is not a splittable VITS, phoonnx logs a warning and loads the voice
+as a normal, non-streaming model.
 
 ## How it works: discard-and-stitch
 
@@ -170,6 +172,27 @@ before any audio plays:
 | short (~1.3 s audio) | 1399 ms | 1382 ms | 1.0x (falls back) |
 | mid (~3.9 s) | 3342 ms | 1552 ms | 2.2x |
 | long (~11.7 s) | 4801 ms | 1965 ms | 2.4x |
+
+**Latency vs. throughput — an honest reading.** Streaming does *not* make total
+synthesis faster; it trades a little extra compute for a much lower, and *bounded*,
+time-to-first-audio. Measured on an auto-split `celtia-cotovia` (16 kHz), same
+onnxruntime threading for both paths:
+
+| Audio | monolithic TTFA | RTF (mono) | streaming TTFA | RTF (stream) | TTFA speedup |
+|-------|-----------------|-----------|----------------|--------------|--------------|
+| 1.4 s | 348 ms | 0.24 | 254 ms | — | 1.4x (falls back) |
+| 3.9 s | 763 ms | 0.20 | 188 ms | 0.25 | 4.1x |
+| 7.1 s | 1320 ms | 0.19 | 253 ms | 0.25 | 5.2x |
+| 12.6 s | 2063 ms | 0.16 | 277 ms | 0.24 | 7.5x |
+
+Two things to read off this: (1) monolithic TTFA grows linearly with sentence
+length, while streaming TTFA stays flat (~200–280 ms) — that flatness is the
+point. (2) Streaming's *total* RTF is ~25–30% higher (the discarded margins are
+real work), so for **batch/offline file generation streaming is a net loss** and
+should be left off. It is a win only for interactive, real-time speech, where
+first-audio latency is what a user feels — and the win grows on slower hardware,
+where monolithic RTF approaches or exceeds 1.0 and a long sentence otherwise
+stalls for seconds before any sound.
 
 **Thread count.** onnxruntime defaults to using *all* logical cores, which
 measured **slower** on the heavy decoder — thread-coordination overhead and

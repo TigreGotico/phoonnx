@@ -1,6 +1,5 @@
 numpy
 onnxruntime
-onnx
 quebra-frases
 langcodes
 ovos-number-parser>=0.4.0

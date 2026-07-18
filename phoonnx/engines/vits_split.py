@@ -95,7 +95,13 @@ def ensure_split_vits(model_path: str, force: bool = False) -> Tuple[str, str]:
     if not force and encoder_path.is_file() and decoder_path.is_file():
         return str(encoder_path), str(decoder_path)
 
-    import onnx  # local import: onnx (the full package) is only needed to split
+    try:
+        import onnx  # the full onnx package (not just onnxruntime) does surgery
+    except ImportError as e:
+        raise ImportError(
+            "auto-splitting a VITS model needs the 'onnx' package; install it "
+            "with `pip install phoonnx[streaming]` (or use a pre-split '+RT' "
+            "voice, which streams without it)") from e
 
     model = onnx.load(model_path)
     output_name = model.graph.output[0].name
