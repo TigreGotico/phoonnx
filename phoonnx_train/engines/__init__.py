@@ -99,8 +99,10 @@ def _register_builtins() -> None:
     )
     from phoonnx_train.engines.zipvoice import ZipVoiceTrainingEngine
     from phoonnx_train.engines.mixer import MixerTTSTrainingEngine
+    from phoonnx_train.engines.glowtts import GlowTTSTrainingEngine
 
     register_engine("vits", VitsTrainingEngine)
+    register_engine("glowtts", GlowTTSTrainingEngine)
     register_engine("matcha", MatchaTrainingEngine)
     register_engine("fastpitch", ForwardTTSTrainingEngine)
     register_engine("speedyspeech", SpeedySpeechTrainingEngine)

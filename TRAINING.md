@@ -205,6 +205,34 @@ Export produces the two-graph contract the phoonnx `ZipVoiceAdapter`
 consumes: `text_encoder.onnx` and the guidance-folded `fm_decoder.onnx`
 (see `docs/zipvoice.md`).
 
+### GlowTTS engine
+
+`--engine glowtts` trains [GlowTTS](https://arxiv.org/abs/2005.11129)
+(Kim et al. 2020), a flow-based text → mel acoustic model with Monotonic
+Alignment Search, vendored in `phoonnx_train/glowtts/`. It consumes the
+same preprocessed dataset as every other engine (mel features only — no
+waveform / vocoder training).
+
+- `--quality x-low|medium|high` scales encoder/flow widths; `medium` is
+  the paper configuration.
+- Training follows the reference glow-tts recipe: MLE (flow NLL) +
+  log-duration MSE losses, Adam with Noam warmup (4000 steps).
+- Export produces the **mel model only**; synthesis pairs it with a
+  separate vocoder ONNX (HiFi-GAN / Vocos / Griffin-Lim — see
+  `docs/glowtts.md`). Mel basis is pinned to fmin 0 / fmax 8000 Hz and
+  recorded in the ONNX metadata.
+
+```bash
+python -m phoonnx_train.train \
+  --dataset-dir /tmp/tts_train \
+  --engine glowtts
+
+python -m phoonnx_train.export_onnx last.ckpt \
+  --config /tmp/tts_train/config.json \
+  --engine glowtts \
+  --output-dir ./exported
+```
+
 ---
 
 ## 3. Exporting to ONNX
