@@ -91,6 +91,13 @@ train-eval = [
 train-fastpitch = [
     "pyworld>=0.3.2",
 ]
+# extra deps for the Mixer-TTS training engine (phoonnx_train/engines/mixer.py)
+# on top of [train]: pyworld for the shared F0 (pitch) sidecar cache. einops
+# (Mixer blocks / aligner) and numba (monotonic alignment search) are already
+# pulled in via [train] (numba transitively through librosa on <3.13).
+train-mixer = [
+    "pyworld>=0.3.2",
+]
 ar = ["epitran", "arbtok"]
 ca = ["epitran"]
 gl = ["pycotovia>=0.1.0"]

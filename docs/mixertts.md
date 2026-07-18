@@ -75,6 +75,33 @@ inverts the natural-log mel) as a no-model-file fallback. See
 > Do not confuse it with ``alvocat-vocos-22khz`` — that is Vocos *finetuned on
 > Catalan* (for the Matxa voices) and is a different mel domain.
 
+## Training
+
+Mixer-TTS training is a registered **training engine** (``--engine mixer``,
+alias ``mixertts``): the vendored NeMo model port lives in
+``phoonnx_train/mixertts/models`` (Apache-2.0 headers, with the
+speaker/emotion/energy conditioning and optional LSGAN mel-patch refinement
+from nipponjo/tts-arabic-pytorch), wrapped by the Lightning module in
+``phoonnx_train/mixertts/lightning.py`` — mel / duration / pitch / energy MSE
++ ForwardSum (CTC) aligner loss + delayed, ramped binarization loss, exactly
+the NeMo recipe (AdamW + Noam warmup). ``extra["train_gan"] = True`` enables
+the (non-NeMo) LSGAN ``PatchDiscriminator`` refinement.
+
+It shares the standard phoonnx pipeline and the FastPitch engine's F0
+sidecars (pyworld DIO+StoneMask at the mel hop, on the same
+trimmed/normalized cached audio the mels come from):
+
+```bash
+python -m phoonnx_train.train --dataset-dir /path/to/prep \
+    --engine mixer --quality medium     # x-low=80 / medium=128 / high=384 dims
+python -m phoonnx_train.export_onnx ckpt.ckpt -c config.json --engine mixer
+```
+
+Needs the ``train`` + ``train-mixer`` extras
+(``pip install phoonnx[train,train-mixer]``): ``pyworld`` for F0 on top of
+torch / lightning / einops / numba. Export produces the inference contract
+above (mel_fmin 0 / mel_fmax 8000 recorded in the ONNX metadata).
+
 ## References
 
 - [Mixer-TTS paper](https://arxiv.org/abs/2110.03584) · [nipponjo/mixer-tts-pytorch](https://github.com/nipponjo/mixer-tts-pytorch)
