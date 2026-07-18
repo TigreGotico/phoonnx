@@ -21,9 +21,6 @@ imports made package-relative and the lhotse plumbing removed:
   ``pad_labels``, ``get_tokens_index``, ...)
 - :mod:`.lightning` — the pytorch_lightning training loop used by
   ``phoonnx_train/engines/zipvoice.py``
-- :mod:`.cfm` / :mod:`.dataset` — standalone, architecture-agnostic CFM
-  objective and in-context pair construction, reusable against any
-  backbone
 
 This package deliberately imports nothing at the top level: the engine
 registry must stay importable in torch-free environments, and every module

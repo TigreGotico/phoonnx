@@ -30,8 +30,19 @@ LOG = logging.getLogger(__name__)
 # Dataset
 # ----------------------------------------------------------------------
 
+# upstream train_zipvoice.py scales features by 0.1 both at training time
+# and in the runtime adapter (phoonnx.engines.zipvoice.ZipVoiceAdapter
+# FEAT_SCALE) — the model is defined over scaled features
+FEAT_SCALE = 0.1
+
+
 class ZipVoiceDataset(torch.utils.data.Dataset):
-    """Shared-``dataset.jsonl`` utterances → (token ids, Vocos fbank)."""
+    """Shared-``dataset.jsonl`` utterances → (token ids, Vocos fbank).
+
+    Features are returned pre-scaled by :data:`FEAT_SCALE`, matching the
+    upstream recipe and the runtime adapter; the on-disk cache stores the
+    raw (unscaled) fbank.
+    """
 
     def __init__(self, dataset_paths: List[Path], sample_rate: int = 24000,
                  source_sample_rate: Optional[int] = None,
@@ -60,7 +71,7 @@ class ZipVoiceDataset(torch.utils.data.Dataset):
         cache = Path(str(utt["audio_norm_path"])).with_suffix(
             f".zipvoice-fbank-{self.sample_rate}.npy")
         if self.cache_features and cache.is_file():
-            return torch.from_numpy(np.load(cache))
+            return torch.from_numpy(np.load(cache)) * FEAT_SCALE
         audio = torch.load(utt["audio_norm_path"])  # normalized audio tensor
         if audio.dim() > 1:
             audio = audio.reshape(-1)
@@ -74,7 +85,7 @@ class ZipVoiceDataset(torch.utils.data.Dataset):
                 np.save(cache, feats.numpy())
             except OSError:
                 pass
-        return feats
+        return feats * FEAT_SCALE
 
     def __getitem__(self, idx: int):
         utt = self.utterances[idx]

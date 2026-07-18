@@ -171,15 +171,6 @@ Fine-tuning from the released 123M checkpoint: convert the upstream
 checkpoint keys with `load_checkpoint` (`--resume-from-checkpoint` accepts
 upstream `{"model": ...}` layouts) and train on your data.
 
-### Standalone utilities
-
-- **`phoonnx_train/zipvoice/cfm.py`** — architecture-agnostic CFM objective
-  (`sample_flow_path`, `cfm_loss` with prompt-region masking via
-  `target_region_mask`, `drop_condition` for CFG) — the training-time
-  counterpart of the adapter's `fm_decoder` ODE loop, reusable against any
-  backbone.
-- **`phoonnx_train/zipvoice/dataset.py`** — in-context (infilling) pair
-  construction (`build_in_context_pairs`, split/cross strategies).
 
 ### Export
 

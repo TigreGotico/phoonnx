@@ -113,7 +113,11 @@ class ZipVoiceAdapter(BaseOnnxAdapter):
         speech_condition[:, :t_ref] = prompt_mel
         num_step = int(p.get("num_step", self.num_step))
         guidance = np.array(p.get("guidance_scale", self.guidance_scale), np.float32)
+        # upstream default t_shift=0.5: warp the time grid so more ODE steps
+        # land early in the trajectory (t = s*t / (1 + (s-1)*t))
+        t_shift = float(p.get("t_shift", 0.5))
         steps = np.linspace(0, 1, num_step + 1).astype(np.float32)
+        steps = (t_shift * steps / (1 + (t_shift - 1) * steps)).astype(np.float32)
         for i in range(num_step):
             v = session.run(None, {
                 "t": np.array(steps[i], np.float32), "x": x,
@@ -123,7 +127,10 @@ class ZipVoiceAdapter(BaseOnnxAdapter):
 
         target_mel = (x[:, t_ref:] / self.FEAT_SCALE).transpose(0, 2, 1).astype(np.float32)   # [1,100,T]
         audio = np.asarray(self.vocoder.mel_to_audio(target_mel), np.float32).reshape(-1)
-        audio = audio * prompt_rms / self.TARGET_RMS
+        # undo the prompt RMS normalization only when the prompt was quieter
+        # than target_rms (as upstream): rescaling up from a loud prompt clips
+        if prompt_rms < self.TARGET_RMS:
+            audio = audio * prompt_rms / self.TARGET_RMS
         return AdapterSynthesisResult(audio=audio)
 
     # build_feed_dict / parse_outputs are required by the ABC but unused — synthesize()
