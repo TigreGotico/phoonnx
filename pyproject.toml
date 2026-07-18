@@ -45,7 +45,11 @@ test = [
     "euskaphone",
     "g2p_barranquenho",
     "mwl_phonemizer",
+    # onnx uses ml_dtypes.float4_e2m1fn (added in ml_dtypes 0.5); without a
+    # floor the resolver can pair onnx with ml_dtypes 0.4.x, which breaks
+    # `import onnx` at collection time
     "onnx",
+    "ml_dtypes>=0.5",
 ]
 # Load-time auto-split of a monolithic VITS model into a streaming
 # encoder/decoder pair. Only needed to CREATE a split; a pre-split ("+RT")
