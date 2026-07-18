@@ -27,8 +27,10 @@ Loss/optimizer fidelity vs upstream NeMo:
 - alignment: unsupervised AlignmentEncoder + monotonic alignment search
   (``binarize_attention_parallel``) with the beta-binomial prior, as in
   the one-TTS-alignment recipe (https://arxiv.org/abs/2108.10447).
-- optimizer: AdamW(lr, betas=(0.9, 0.98), weight_decay=1e-6) with a
-  Noam warmup schedule (NeMo uses NoamAnnealing, warmup 1000 steps).
+- optimizer: AdamW(lr, betas=(0.9, 0.98), weight_decay=1e-6) — the betas
+  follow nipponjo's non-GAN recipe — under a Noam warmup schedule matching
+  NeMo's NoamAnnealing (warmup 1000 steps, d_model=1: peak effective LR is
+  ``lr / sqrt(warmup)``).
 - optional (off by default, non-NeMo) LSGAN PatchDiscriminator on random
   mel chunks + feature-matching loss, following nipponjo; this switches
   the module to manual optimization with a second AdamW.
@@ -318,6 +320,12 @@ class MixerTTSModule(pl.LightningModule):
         return self.model.infer(x, pace=pace, speaker=speaker, emotion=emotion)
 
     def on_train_epoch_start(self):
+        if self.train_gan:
+            # GAN refinement phase: the aligner is assumed converged — bin
+            # loss at full scale from the start, no ramp restart (nipponjo)
+            self.model.add_bin_loss = True
+            self.model.bin_loss_scale = 1.0
+            return
         # the vendored model defines this schedule but is a plain nn.Module,
         # so Lightning never calls its hook — drive it from here (mirrors
         # NeMo MixerTTSModel.on_train_epoch_start)
@@ -385,6 +393,8 @@ class MixerTTSModule(pl.LightningModule):
             return losses["loss"]
 
         # manual optimization: LSGAN critic on random mel chunks (nipponjo)
+        # — during the GAN refinement phase the aligner is assumed converged,
+        # so the binarization loss runs at full scale from step 0 (nipponjo)
         opt_g, opt_d = self.optimizers()
         losses, pred_spect = self._step(batch)
         gen_loss = losses["loss"]
@@ -406,13 +416,14 @@ class MixerTTSModule(pl.LightningModule):
         opt_d.step()
         # generator adversarial + feature matching
         d_gen2, fmaps_gen = self.critic(gen)
-        loss_g_adv = 0.5 * (d_gen2 - 1).square().mean()
+        # adversarial weight 4.0 and generator grad-clip 20, per nipponjo
+        loss_g_adv = 4.0 * 0.5 * (d_gen2 - 1).square().mean()
         loss_fm = calc_feature_match_loss(fmaps_gen, [f.detach() for f in fmaps_org])
         gen_loss = gen_loss + loss_g_adv + loss_fm
 
         opt_g.zero_grad()
         self.manual_backward(gen_loss)
-        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1000.0)
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 20.0)
         opt_g.step()
         self.log_dict({"train_loss": gen_loss, "train_loss_d": loss_d,
                        "train_mel_loss": losses["mel_loss"]},
@@ -427,23 +438,29 @@ class MixerTTSModule(pl.LightningModule):
 
     def configure_optimizers(self):
         if self.train_gan:
-            # GAN loop: zero-momentum betas, no scheduler (nipponjo recipe)
+            # GAN loop: zero-momentum betas, lr 1e-4 for both generator and
+            # critic, no scheduler (nipponjo recipe)
             opt_g = torch.optim.AdamW(
-                self.model.parameters(), lr=self.hparams.learning_rate,
+                self.model.parameters(), lr=self.hparams.gan_learning_rate,
                 betas=(0.0, 0.99), weight_decay=self.hparams.weight_decay)
             opt_d = torch.optim.AdamW(
                 self.critic.parameters(), lr=self.hparams.gan_learning_rate,
                 betas=(0.0, 0.99), weight_decay=self.hparams.weight_decay)
             return [opt_g, opt_d]
-        # NeMo: AdamW(lr=1e-3, betas=(0.9, 0.98), wd=1e-6) + NoamAnnealing
+        # AdamW(lr=1e-3, wd=1e-6) + Noam warmup as in NeMo's NoamAnnealing
+        # (betas (0.9, 0.98) follow nipponjo's non-GAN recipe)
         optimizer = torch.optim.AdamW(
             self.model.parameters(), lr=self.hparams.learning_rate,
             betas=(0.9, 0.98), weight_decay=self.hparams.weight_decay)
         warmup = max(1, self.hparams.warmup_steps)
 
         def noam(step: int) -> float:
+            # NeMo NoamAnnealing with d_model=1: factor = min(step^-0.5,
+            # step * warmup^-1.5), NOT renormalized to peak at lr — the
+            # effective peak LR (at step == warmup) is lr / sqrt(warmup),
+            # i.e. ~3.16e-5 for the 1e-3 / 1000-step defaults
             step = max(1, step)
-            return min(step ** -0.5, step * warmup ** -1.5) * warmup ** 0.5
+            return min(step ** -0.5, step * warmup ** -1.5)
 
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, noam)
         return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
