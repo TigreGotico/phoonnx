@@ -1,0 +1,34 @@
+"""torch version compatibility helpers for phoonnx_train."""
+import inspect
+from contextlib import contextmanager
+from typing import Any, Dict
+
+import torch
+
+
+@contextmanager
+def trusting_torch_load():
+    """torch>=2.6 defaults torch.load(weights_only=True), which rejects
+    pickled Lightning checkpoints. Loading your own checkpoint is trusted —
+    force weights_only=False for the duration of the context."""
+    orig = torch.load
+
+    def _load(*a: Any, **k: Any):
+        k["weights_only"] = False
+        return orig(*a, **k)
+
+    torch.load = _load
+    try:
+        yield
+    finally:
+        torch.load = orig
+
+
+def onnx_export_kwargs() -> Dict[str, Any]:
+    """torch>=2.5 defaults torch.onnx.export to the dynamo exporter, which
+    cannot trace VITS's data-dependent control flow (and needs the optional
+    onnxscript package); force the TorchScript exporter when the kwarg
+    exists. Older torch has no such kwarg."""
+    if "dynamo" in inspect.signature(torch.onnx.export).parameters:
+        return {"dynamo": False}
+    return {}

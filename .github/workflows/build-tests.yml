@@ -11,5 +11,5 @@ jobs:
     secrets: inherit
     with:
       python_versions: '["3.11", "3.12", "3.13", "3.14"]'
-      install_extras: 'test'
+      install_extras: 'test,train'
       test_path: 'tests'
