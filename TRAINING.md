@@ -173,6 +173,56 @@ python export_onnx.py \
 
 -----
 
+## 3.5 Evaluating Checkpoints During Training
+
+`phoonnx_train/eval_loop.py` watches the training directory for new
+lightning checkpoints (`epoch=*.ckpt`) and scores each one on a fixed set of
+held-out sentences, synthesized on CPU so training keeps the GPU. Results are
+appended to `metrics.csv` (one summary row per epoch) plus per-utterance
+scores under `perutt/`, and the wavs of the best epoch so far are kept under
+`samples/`. The loop is idempotent: already-scored epochs are skipped on
+restart, so it can run alongside training or after the fact.
+
+Install the extra dependencies first:
+
+```bash
+pip install phoonnx[train-eval]
+```
+
+**Example Usage**
+
+```bash
+python eval_loop.py \
+  --train-dir /tmp/tts_train \
+  --config /tmp/tts_train/config.json \
+  --sentences heldout.txt \
+  --output-dir ./eval \
+  --speaker-ref-dir /path/to/dataset/wavs
+```
+
+Useful flags: `--once` (single pass instead of polling), `--poll N` (seconds
+between scans, default 60), `--dry-run` (verify config + sentence encoding
+without synthesis), and `--noise-scale` / `--length-scale` / `--noise-w` to
+override the inference scales from `config.json`.
+
+Two metrics are reported:
+
+- **UTMOS** (`utmos_mean` etc.): an automatic Mean-Opinion-Score predictor
+  (SpeechMOS `utmos22_strong`, 1–5 scale) estimating perceived
+  naturalness/quality of each clip. **Caveat:** UTMOS is trained on
+  English/Japanese MOS data; on other languages treat it as a *relative
+  ranker* between checkpoints of the same voice, not an absolute quality
+  score.
+- **Speaker similarity** (`spk_sim_mean` etc.): cosine similarity between
+  each synthesized clip's speaker embedding and a centroid built from
+  reference recordings of the target speaker (`--speaker-ref-dir`, using the
+  `--num-ref-wavs` largest files, default 60). Values closer to 1.0 mean the
+  model sounds more like the target voice. This metric is optional: without
+  `speakeronnx` or a reference directory, only UTMOS is scored and the
+  speaker-similarity columns are left empty.
+
+-----
+
 ## 4. Workflow Summary
 
 1. **Prepare dataset** in LJSpeech-style format.

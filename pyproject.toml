@@ -53,6 +53,12 @@ train = [
     "pytorch-lightning<2.0",
     "torch>=1.11.0,<2",
 ]
+train-eval = [
+    "speechmos",
+    "torchaudio",
+    "soundfile",
+    "speakeronnx",
+]
 ar = ["epitran", "arbtok"]
 ca = ["epitran"]
 gl = ["pycotovia>=0.1.0"]
