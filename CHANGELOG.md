@@ -28,6 +28,7 @@
 
 **Merged pull requests:**
 
+- feat\(train\): Vocos vocoder training, export and warm start [\#232](https://github.com/TigreGotico/phoonnx/pull/232) ([JarbasAl](https://github.com/JarbasAl))
 - Streaming VITS engine \(split encoder/decoder\) + offline voice listing [\#231](https://github.com/TigreGotico/phoonnx/pull/231) ([JarbasAl](https://github.com/JarbasAl))
 - fix: corpus-only phoneme map option and untrained-symbol warning [\#229](https://github.com/TigreGotico/phoonnx/pull/229) ([JarbasAl](https://github.com/JarbasAl))
 - feat: checkpoint evaluation loop with UTMOS and speaker similarity [\#228](https://github.com/TigreGotico/phoonnx/pull/228) ([JarbasAl](https://github.com/JarbasAl))
