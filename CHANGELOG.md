@@ -77,6 +77,7 @@
 - feat\(config\): native phoonnx config round-trip [\#139](https://github.com/TigreGotico/phoonnx/pull/139) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): Matcha-TTS inference + pluggable vocoder registry [\#138](https://github.com/TigreGotico/phoonnx/pull/138) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): pluggable multi-engine inference framework [\#131](https://github.com/TigreGotico/phoonnx/pull/131) ([JarbasAl](https://github.com/JarbasAl))
+- feat\(engines\): Matcha-TTS training adapter [\#128](https://github.com/TigreGotico/phoonnx/pull/128) ([JarbasAl](https://github.com/JarbasAl))
 - fix: OVOS plugin config keys + KeyError, plugin tests, CI test\_path [\#124](https://github.com/TigreGotico/phoonnx/pull/124) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
