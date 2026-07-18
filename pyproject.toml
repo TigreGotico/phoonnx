@@ -46,7 +46,10 @@ test = [
     "g2p_barranquenho",
     "mwl_phonemizer",
 ]
-espeak = ["espyak>=0.0.2a1"]
+# espeak-ng phonemization extras. `phonemizer` enables the shared library
+# route (same espeak-ng, without a subprocess per call); espyak is the
+# pure-Python fallback for systems without espeak-ng at all.
+espeak = ["espyak>=0.0.2a1", "phonemizer"]
 train = [
     "librosa>=0.9.2,<1",
     "numpy>=1.19.0,<2",
@@ -102,6 +105,7 @@ all = [
     "pykakasi==2.3.0", "spacy-pkuseg",
     "soundfile", "scipy",
     "orthography2ipa", "arbtok", "euskaphone", "g2p_barranquenho", "mwl_phonemizer",
+    "phonemizer",
 ]
 
 [tool.setuptools.dynamic]

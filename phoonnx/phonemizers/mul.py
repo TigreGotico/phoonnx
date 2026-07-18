@@ -334,6 +334,17 @@ class EspeakPhonemizer(BasePhonemizer):
         return self._espyak_g2p[lang].phonemize(text)
 
     @classmethod
+    def reset_availability_cache(cls) -> None:
+        """Forget what was detected about espeak-ng's availability.
+
+        Both the binary and the shared library are probed once and the answer
+        is cached on the class. Call this if the environment changed, or from
+        tests that patch the detection.
+        """
+        cls._binary_available = None
+        cls._library_available = None
+
+    @classmethod
     def _locate_library(cls) -> Optional[str]:
         """Best effort lookup of the espeak-ng shared library.
 
