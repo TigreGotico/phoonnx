@@ -93,9 +93,15 @@ def _register_builtins() -> None:
     # registry stays importable in torch-free environments.
     from phoonnx_train.engines.matcha import MatchaTrainingEngine
     from phoonnx_train.engines.vits import VitsTrainingEngine
+    from phoonnx_train.engines.fastpitch import (
+        ForwardTTSTrainingEngine,
+        SpeedySpeechTrainingEngine,
+    )
 
     register_engine("vits", VitsTrainingEngine)
     register_engine("matcha", MatchaTrainingEngine)
+    register_engine("fastpitch", ForwardTTSTrainingEngine)
+    register_engine("speedyspeech", SpeedySpeechTrainingEngine)
 
 
 _register_builtins()
