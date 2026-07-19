@@ -204,6 +204,12 @@ def _build_model_kwargs(mcfg: MatchaEngineConfig) -> Dict[str, Any]:
 
 class MatchaTrainingEngine(BaseTrainingEngine):
 
+    def trainer_kwargs(self) -> Dict[str, Any]:
+        # Upstream Matcha-TTS trains with gradient clipping at 5.0
+        # (configs/trainer/default.yaml).  Safe here: MatchaTTS uses
+        # automatic optimization.
+        return {"gradient_clip_val": 5.0}
+
     # ------------------------------------------------------------------
     # Required
     # ------------------------------------------------------------------

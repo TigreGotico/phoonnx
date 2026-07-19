@@ -78,6 +78,10 @@ class VitsModel(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
+        # GAN training with two optimizers requires manual optimization
+        # under pytorch-lightning >= 2.0
+        self.automatic_optimization = False
+
         if (self.hparams.num_speakers > 1) and (self.hparams.gin_channels <= 0):
             # Default gin_channels for multi-speaker model
             self.hparams.gin_channels = 512
@@ -198,12 +202,30 @@ class VitsModel(pl.LightningModule):
             batch_size=self.hparams.batch_size,
         )
 
-    def training_step(self, batch: Batch, batch_idx: int, optimizer_idx: int):
-        if optimizer_idx == 0:
-            return self.training_step_g(batch)
+    def training_step(self, batch: Batch, batch_idx: int):
+        # Manual optimization (pytorch-lightning >= 2.0): run the generator
+        # and discriminator steps in the same order the old
+        # ``optimizer_idx`` branches did.
+        opt_g, opt_d = self.optimizers()
 
-        if optimizer_idx == 1:
-            return self.training_step_d(batch)
+        # Generator
+        loss_g = self.training_step_g(batch)
+        opt_g.zero_grad()
+        self.manual_backward(loss_g)
+        opt_g.step()
+
+        # Discriminator (uses y / y_hat saved by training_step_g)
+        loss_d = self.training_step_d(batch)
+        opt_d.zero_grad()
+        self.manual_backward(loss_d)
+        opt_d.step()
+
+    def on_train_epoch_end(self):
+        # With manual optimization Lightning no longer steps the
+        # schedulers; step both ExponentialLR schedulers once per epoch,
+        # matching the old automatic-optimization behaviour.
+        for scheduler in self.lr_schedulers():
+            scheduler.step()
 
     def training_step_g(self, batch: Batch):
         x, x_lengths, y, _, spec, spec_lengths, speaker_ids = (

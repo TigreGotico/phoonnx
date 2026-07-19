@@ -63,11 +63,18 @@ class VitsTrainingEngine(BaseTrainingEngine):
         """Build a VitsModel LightningModule from *config*."""
         from phoonnx_train.vits.lightning import VitsModel
 
+        # The VITS dataset loader expects jsonl *files*; the CLI passes the
+        # pre-processed dataset *directory* — map dirs to their dataset.jsonl.
+        dataset_files = [
+            Path(p) / "dataset.jsonl" if Path(p).is_dir() else Path(p)
+            for p in dataset_paths
+        ]
+
         return VitsModel(
             num_symbols=config.num_symbols,
             num_speakers=config.num_speakers,
             sample_rate=config.sample_rate,
-            dataset=[str(p) for p in dataset_paths],
+            dataset=[str(p) for p in dataset_files],
             **config.extra,
             **kwargs,
         )
@@ -147,6 +154,12 @@ class VitsTrainingEngine(BaseTrainingEngine):
             dummy_input = (*dummy_input, sid)
 
         output_path = output_dir / f"{checkpoint_path.name}.onnx"
+        export_kwargs = {}
+        if torch.__version__ >= "2.5":
+            # torch >= 2.9 defaults to the dynamo exporter, which cannot
+            # trace the VITS rational-quadratic-spline flows — keep the
+            # legacy TorchScript exporter (piper lineage).
+            export_kwargs["dynamo"] = False
         torch.onnx.export(
             model=model_g,
             args=dummy_input,
@@ -156,6 +169,7 @@ class VitsTrainingEngine(BaseTrainingEngine):
             input_names=input_names,
             output_names=output_names,
             dynamic_axes=dynamic_axes,
+            **export_kwargs,
         )
 
         # Metadata

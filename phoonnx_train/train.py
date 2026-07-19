@@ -159,6 +159,7 @@ def main(
         default_root_dir=default_root_dir,
         precision=precision,
         callbacks=[checkpoint_callback],
+        **training_engine.trainer_kwargs(),
     )
     _LOGGER.info("Training started!")
     trainer.fit(model)

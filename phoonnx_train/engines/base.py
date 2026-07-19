@@ -120,6 +120,17 @@ class BaseTrainingEngine(ABC):
         """
         return {}
 
+    def trainer_kwargs(self) -> Dict[str, Any]:
+        """
+        Extra keyword arguments for the ``pytorch_lightning.Trainer``
+        used with this engine (e.g. ``gradient_clip_val``).
+
+        Default is empty.  Engines whose LightningModule uses manual
+        optimization must NOT return ``gradient_clip_val`` here —
+        Lightning rejects a global clip with manual optimization.
+        """
+        return {}
+
     def extra_cli_options(self) -> List[Any]:
         """
         Return additional ``click.option`` decorators that should be
