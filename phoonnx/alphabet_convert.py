@@ -288,3 +288,40 @@ register_converter(Alphabet.HANGUL, Alphabet.HIRA, _graphemes_to_jamo)  # decomp
 register_converter(Alphabet.GRAPHEMES, Alphabet.HIRA, _graphemes_to_hiragana)
 register_converter(Alphabet.GRAPHEMES, Alphabet.KANA, _graphemes_to_kana)
 register_converter(Alphabet.GRAPHEMES, Alphabet.CANGJIE, _graphemes_to_cangjie)
+
+
+# ---------------------------------------------------------------------------
+# Phoneme-notation edges  —  delegated to scriptconv
+# ---------------------------------------------------------------------------
+# These are pure symbol transcodes between phonemic notations (no language,
+# no phonemization). scriptconv is the single source of truth; each notation
+# converts to and from IPA, so the BFS above can chain them (e.g.
+# X-SAMPA → IPA → ARPA). Alphabet .value strings match scriptconv's Notation
+# values exactly. Grapheme input never reaches these edges — it is phonemized
+# by the model's own phonemizer (see TTSVoice.synthesize).
+
+def _make_scriptconv_edge(src_value: str, tgt_value: str) -> EdgeFn:
+    def _edge(text, lang: str = "", _pt: Optional[PhonemeType] = None) -> str:
+        from scriptconv.notation import convert as _sc_convert
+        return _sc_convert(text, src_value, tgt_value)
+    return _edge
+
+
+for _alpha in (Alphabet.ARPA, Alphabet.XSAMPA, Alphabet.RFE, Alphabet.COTOVIA):
+    register_converter(Alphabet.IPA, _alpha, _make_scriptconv_edge("ipa", _alpha.value))
+    register_converter(_alpha, Alphabet.IPA, _make_scriptconv_edge(_alpha.value, "ipa"))
+
+
+# Kana transliteration (orthographic, no phonemization) via scriptconv.
+def _hira_to_kana_edge(text, lang: str = "", _pt=None) -> str:
+    from scriptconv.translit import hira_to_kana
+    return hira_to_kana(text)
+
+
+def _kana_to_hira_edge(text, lang: str = "", _pt=None) -> str:
+    from scriptconv.translit import kana_to_hira
+    return kana_to_hira(text)
+
+
+register_converter(Alphabet.HIRA, Alphabet.KANA, _hira_to_kana_edge)
+register_converter(Alphabet.KANA, Alphabet.HIRA, _kana_to_hira_edge)

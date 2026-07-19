@@ -116,9 +116,10 @@ class TestChainSupport(unittest.TestCase):
 class TestNoPathIdentity(unittest.TestCase):
     def test_no_path_returns_input_unchanged(self):
         """When no conversion path exists, input is returned unchanged."""
-        # ARPA → COTOVIA has no path registered
+        # SAMPA has no registered edges (scriptconv provides X-SAMPA, not SAMPA),
+        # so there is no path to ARPA.
         text = "some text"
-        result = convert(text, "en", Alphabet.ARPA, Alphabet.COTOVIA)
+        result = convert(text, "en", Alphabet.SAMPA, Alphabet.ARPA)
         self.assertEqual(result, text)
 
 
@@ -210,7 +211,7 @@ class TestSynthesizeReshape(unittest.TestCase):
         voice.config = cfg
         voice.phonetic_spellings = None
 
-        mock_phonemizer = MagicMock()
+        mock_phonemizer = MagicMock(spec=["phonemize", "add_diacritics"])
         mock_phonemizer.phonemize.return_value = [["a", "b"]]
         mock_phonemizer.add_diacritics.side_effect = lambda t, l: t
         voice.phonemizer = mock_phonemizer
@@ -225,20 +226,21 @@ class TestSynthesizeReshape(unittest.TestCase):
 
         return voice
 
-    def test_ipa_voice_uses_convert(self):
-        """Standard IPA/espeak voice: convert() is invoked (not voice.phonemizer directly)."""
+    def test_ipa_voice_grapheme_input_phonemizes(self):
+        """IPA voice with grapheme input uses the phonemize path (not the graph).
+
+        Grapheme -> phoneme is phonemization, so it runs through the model's own
+        phonemizer; the alphabet-conversion graph is reserved for already-phonemic
+        input in a different alphabet.
+        """
         from phoonnx.config import SynthesisConfig
-        voice = self._make_voice()
+        voice = self._make_voice()  # tgt=IPA, grapheme input
         syn_cfg = SynthesisConfig(normalize_audio=False)
 
-        mock_phonemizer = MagicMock()
-        mock_phonemizer.phonemize.return_value = [["a", "b"]]
+        list(voice.synthesize("hello", syn_cfg))
 
-        with patch("phoonnx.config.get_phonemizer", return_value=mock_phonemizer):
-            chunks = list(voice.synthesize("hello", syn_cfg))
-
-        # phonemizer.phonemize called through convert edge
-        mock_phonemizer.phonemize.assert_called()
+        # The model's own phonemizer phonemized the graphemes.
+        voice.phonemizer.phonemize.assert_called()
 
     def test_grapheme_voice_no_phonemize(self):
         """Grapheme/UNICODE voice: convert returns the text string path."""
@@ -256,6 +258,32 @@ class TestSynthesizeReshape(unittest.TestCase):
         except Exception as e:
             # Tokenisation may fail since vocab is tiny — that's OK.
             pass
+
+
+
+
+
+class TestScriptconvNotationEdges(unittest.TestCase):
+    """Phoneme-notation edges delegated to scriptconv (IPA-pivot + chaining)."""
+
+    def test_ipa_to_arpa(self):
+        self.assertEqual(convert("ʃə", "en", Alphabet.IPA, Alphabet.ARPA), "SH AX")
+
+    def test_xsampa_to_ipa(self):
+        self.assertEqual(convert("S@", "en", Alphabet.XSAMPA, Alphabet.IPA), "ʃə")
+
+    def test_xsampa_to_arpa_chains_through_ipa(self):
+        # BFS finds X-SAMPA -> IPA -> ARPA, both scriptconv edges.
+        self.assertEqual(convert("S@", "en", Alphabet.XSAMPA, Alphabet.ARPA), "SH AX")
+
+    def test_ipa_to_rfe(self):
+        self.assertEqual(convert("ʃ", "es", Alphabet.IPA, Alphabet.RFE), "š")
+
+    def test_ipa_to_cotovia(self):
+        self.assertEqual(convert("tʃ", "gl", Alphabet.IPA, Alphabet.COTOVIA), "tS")
+
+    def test_hira_to_kana(self):
+        self.assertEqual(convert("ひらがな", "ja", Alphabet.HIRA, Alphabet.KANA), "ヒラガナ")
 
 
 if __name__ == "__main__":
