@@ -24,7 +24,6 @@
 - OptiSpeech support [\#134](https://github.com/TigreGotico/phoonnx/issues/134)
 - Matcha-TTS support [\#133](https://github.com/TigreGotico/phoonnx/issues/133)
 - Design: pluggable multi-engine architecture [\#132](https://github.com/TigreGotico/phoonnx/issues/132)
-- Starting as an ovos-tts-server [\#98](https://github.com/TigreGotico/phoonnx/issues/98)
 
 **Merged pull requests:**
 
@@ -52,6 +51,7 @@
 - feat: StyleTTS2 training — every step trainable \(TTS + aligner + PL-BERT + pitch\) [\#208](https://github.com/TigreGotico/phoonnx/pull/208) ([JarbasAl](https://github.com/JarbasAl))
 - feat: F5-TTS / Habibi-TTS engine adapter [\#207](https://github.com/TigreGotico/phoonnx/pull/207) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(train\): ZipVoice training engine \(Zipformer + flow matching\) [\#206](https://github.com/TigreGotico/phoonnx/pull/206) ([JarbasAl](https://github.com/JarbasAl))
+- feat\(train\): YourTTS training engine — zero-shot cloning fine-tuning [\#205](https://github.com/TigreGotico/phoonnx/pull/205) ([JarbasAl](https://github.com/JarbasAl))
 - fix: unbreak CI — drop py3.10 leg, exclude self from license check [\#204](https://github.com/TigreGotico/phoonnx/pull/204) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(es,ca\): BSC-LT StyleTTS2 multispeaker zero-shot cloning voices [\#201](https://github.com/TigreGotico/phoonnx/pull/201) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(opm\): speaker selection for multi-speaker voices [\#200](https://github.com/TigreGotico/phoonnx/pull/200) ([JarbasAl](https://github.com/JarbasAl))
