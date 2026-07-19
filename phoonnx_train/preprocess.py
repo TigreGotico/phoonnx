@@ -47,6 +47,11 @@ class Utterance:
     phoneme_ids: Optional[List[int]] = None
     audio_norm_path: Optional[Path] = None
     audio_spec_path: Optional[Path] = None
+    # engine-specific extras (e.g. yourtts d_vector_path, language_id;
+    # fastpitch f0_path) merged from TrainingEngine.extra_preprocess
+    d_vector_path: Optional[Path] = None
+    language_id: Optional[int] = None
+    f0_path: Optional[Path] = None
 
     def asdict(self) -> Dict[str, Any]:
         """Custom asdict to handle Path objects for JSON serialization."""
@@ -399,6 +404,26 @@ def phonemize_worker(
     default=None,
     help="override audio_norm_path/audio_spec_path base directory (everything before '/cache') in generated dataset.jsonl"
 )
+@click.option(
+    "--engine",
+    default=None,
+    help="run this training engine's extra feature extraction per utterance "
+         "(e.g. 'yourtts' d-vectors, 'fastpitch' F0) and record the produced "
+         "fields in dataset.jsonl",
+)
+@click.option(
+    "--speaker-encoder-path",
+    default=None,
+    help="[--engine yourtts] path to the Coqui ResNet ONNX speaker encoder "
+         "used to compute d-vectors",
+)
+@click.option(
+    "--language-id",
+    default=None,
+    type=int,
+    help="[--engine yourtts] language id recorded on every utterance "
+         "(multilingual training)",
+)
 def cli(
     input_dir: Path,
     output_dir: Path,
@@ -422,6 +447,9 @@ def cli(
     add_diacritics: bool,
     jsonl_audio_path: Optional[str],
     jsonl_audio_spec_path: Optional[str],
+    engine: Optional[str],
+    speaker_encoder_path: Optional[str],
+    language_id: Optional[int],
 ) -> None:
     """
     Preprocess a TTS dataset into a JSONL and config suitable for training a VITS-style model.
@@ -660,6 +688,17 @@ def cli(
     tokenizer = TTSTokenizer.from_phoonnx_config(config_data)
 
     with open(config.output_dir / "dataset.jsonl", "w", encoding="utf-8") as dataset_file:
+        training_engine = None
+        engine_kwargs = {}
+        if engine:
+            from phoonnx_train.engines import get_engine
+
+            training_engine = get_engine(engine)
+            if speaker_encoder_path:
+                engine_kwargs["speaker_encoder_path"] = speaker_encoder_path
+            if language_id is not None:
+                engine_kwargs["language_id"] = language_id
+
         for utt in processed_utterances:
             if is_multispeaker and utt.speaker is not None:
                 if utt.speaker not in speaker_ids:
@@ -697,6 +736,13 @@ def cli(
                 utt.audio_norm_path = Path(f"{jsonl_audio_spec_path}/cache/{fname}")
                 base_path, fname = str(utt.audio_spec_path).split("/cache/")
                 utt.audio_spec_path = Path(f"{jsonl_audio_spec_path}/cache/{fname}")
+
+            if training_engine is not None and utt.audio_path:
+                extra = training_engine.extra_preprocess(
+                    Path(utt.audio_path), config.cache_dir,
+                    sample_rate, **engine_kwargs)
+                for key, value in extra.items():
+                    setattr(utt, key, value)
 
             json.dump(
                 utt.asdict(),
