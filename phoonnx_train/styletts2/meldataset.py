@@ -94,10 +94,16 @@ class FilePathDataset(torch.utils.data.Dataset):
         self.max_mel_length = 192
         
         self.min_length = min_length
-        with open(OOD_data, 'r', encoding='utf-8') as f:
-            tl = f.readlines()
-        idx = 1 if '.wav' in tl[0].split('|')[0] else 0
-        self.ptexts = [t.split('|')[idx] for t in tl]
+        # phoonnx: OOD_data is optional — the OOD texts only feed the SLM
+        # adversarial phase; without a file, fall back to in-domain texts so
+        # stage ``first`` (and OOD-free runs) work out of the box.
+        if OOD_data and osp.isfile(OOD_data):
+            with open(OOD_data, 'r', encoding='utf-8') as f:
+                tl = f.readlines()
+            idx = 1 if '.wav' in tl[0].split('|')[0] else 0
+            self.ptexts = [t.split('|')[idx] for t in tl]
+        else:
+            self.ptexts = [d[1] for d in self.data_list]
         
         self.root_path = root_path
 
@@ -122,17 +128,22 @@ class FilePathDataset(torch.utils.data.Dataset):
         
         # get OOD text
         
+        # phoonnx: bounded sampling — upstream loops forever if every OOD
+        # text is shorter than min_length (and randint(0, 0) raises when
+        # there is a single text); sample with replacement, keep the longest.
         ps = ""
-        
-        while len(ps) < self.min_length:
-            rand_idx = np.random.randint(0, len(self.ptexts) - 1)
-            ps = self.ptexts[rand_idx]
-            
-            text = self.text_cleaner(ps)
-            text.insert(0, 0)
-            text.append(0)
+        for _ in range(100):
+            cand = self.ptexts[np.random.randint(0, len(self.ptexts))]
+            if len(cand) > len(ps):
+                ps = cand
+            if len(ps) >= self.min_length:
+                break
 
-            ref_text = torch.LongTensor(text)
+        text = self.text_cleaner(ps)
+        text.insert(0, 0)
+        text.append(0)
+
+        ref_text = torch.LongTensor(text)
         
         return speaker_id, acoustic_feature, text_tensor, ref_text, ref_mel_tensor, ref_label, path, wave
 

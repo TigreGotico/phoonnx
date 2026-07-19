@@ -34,6 +34,12 @@ yl4579 English ones automatically, or train your own with the
 When an auxiliary checkpoint is not provided the module is randomly
 initialized with a warning — correct for unit tests and for users training
 every component from scratch, wrong for quick fine-tunes.
+
+Paper: Li et al., "StyleTTS 2: Towards Human-Level Text-to-Speech through
+Style Diffusion and Adversarial Training with Large Speech Language Models"
+(NeurIPS 2023, https://arxiv.org/abs/2306.07691). Reference implementation:
+https://github.com/yl4579/StyleTTS2 (MIT), vendored in
+``phoonnx_train/styletts2``.
 """
 import copy as _copy
 import logging
@@ -140,7 +146,9 @@ _QUALITY_PRESETS: Dict[str, Dict[str, Any]] = {
             "type": "istftnet",
             "resblock_kernel_sizes": [3, 7, 11],
             "upsample_rates": [10, 6],
-            "upsample_initial_channel": 256,
+            # must stay 512: the Decoder trunk hardcodes a 512-channel output
+            # into the generator's first upsampler
+            "upsample_initial_channel": 512,
             "resblock_dilation_sizes": [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
             "upsample_kernel_sizes": [20, 12],
             "gen_istft_n_fft": 20,
