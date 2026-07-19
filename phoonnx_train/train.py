@@ -63,6 +63,9 @@ def _validate_engine(ctx, param, value):
 @click.option('--batch-size', type=int, default=16)
 @click.option('--validation-split', type=float, default=0.1)
 @click.option('--num-workers', type=int, default=4)
+@click.option('--log-audio-samples/--no-log-audio-samples', default=False,
+              help='Log synthesized validation audio samples to the logger '
+                   'each epoch (requires a TensorBoard logger)')
 @click.option('--discard-encoder', is_flag=True, default=False)
 def main(
     dataset_dir: str,
@@ -80,6 +83,7 @@ def main(
     batch_size: int,
     validation_split: float,
     num_workers: int,
+    log_audio_samples: bool,
     discard_encoder: bool,
 ):
     logging.basicConfig(level=logging.DEBUG)
@@ -140,6 +144,7 @@ def main(
             batch_size=batch_size,
             validation_split=validation_split,
             num_workers=num_workers,
+            log_audio_samples=log_audio_samples,
         ),
     )
     model = training_engine.create_model(
