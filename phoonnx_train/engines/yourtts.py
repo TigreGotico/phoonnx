@@ -310,6 +310,7 @@ class YourttsTrainingEngine(BaseTrainingEngine):
 
         if not dvec_path.exists():
             import soundfile as sf
+            import torch
 
             audio, sr = sf.read(str(utterance_audio_path), dtype="float32", always_2d=False)
             audio = np.asarray(audio, dtype=np.float32).reshape(-1)
@@ -387,6 +388,8 @@ def _mean_dataset_d_vector(dataset_paths: List[Any]) -> Optional[List[float]]:
     found (e.g. exporting without passing ``dataset_paths``, or from a
     checkpoint whose dataset cache is unavailable).
     """
+    import torch
+
     vectors: List[np.ndarray] = []
     for dataset_path in dataset_paths:
         p = Path(dataset_path)
