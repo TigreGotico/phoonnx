@@ -52,7 +52,17 @@ GRAPHEMES ──espeak──► IPA
 GRAPHEMES ──────────► HANGUL
 GRAPHEMES ──pykakasi─► HIRA
 HANGUL ──────────────► HIRA   (Jamo decomposition)
+IPA ◄──scriptconv──► ARPA / X-SAMPA / RFE / COTOVIA   (phoneme-notation edges)
+HIRA ◄──scriptconv──► KANA
 ```
+
+### Phoneme-notation edges (scriptconv)
+
+The `IPA ↔ ARPA / X-SAMPA / RFE / Cotovía` and `Hiragana ↔ Katakana` edges are
+pure symbol transcodes — no language, no phonemization — and are delegated to
+[scriptconv](https://github.com/TigreGotico/scriptconv), the single source of
+truth for those tables. Because every notation converts to and from IPA, the BFS
+chains them automatically, e.g. `X-SAMPA → IPA → ARPA`.
 
 Example multi-hop: `HANGUL → HIRA` uses `HANGUL → HIRA` directly, but if only
 `GRAPHEMES → HANGUL` and `HANGUL → HIRA` were registered the BFS would compose
@@ -89,3 +99,23 @@ pip install phoonnx[cjk]
 ```
 
 These are also included in `phoonnx[all]`.
+
+## Synthesis dispatch
+
+`TTSVoice.synthesize` chooses how to reach the model's alphabet
+(`VoiceConfig.alphabet`) from the caller's input (`SynthesisConfig.alphabet`,
+default graphemes):
+
+- **`src == tgt`** — grapheme/text-token models tokenise via the adapter;
+  already-phonemic input in the model's own alphabet passes straight through
+  (no re-phonemization).
+- **grapheme input** — phonemized by the model's own phonemizer. Language-aware
+  phonemizers (e.g. Shami) provide per-phoneme language IDs, which are carried
+  through here; grapheme→phoneme is phonemization, so it does **not** go through
+  the conversion graph.
+- **already-phonemic input in a different alphabet** — transcoded to the model's
+  alphabet through the conversion graph (the scriptconv notation edges).
+
+The rule of thumb is the same one that separates the two layers: anything that
+needs the language is phonemization and stays in phoonnx; the `lang`-free
+phoneme↔phoneme hops are scriptconv edges.
