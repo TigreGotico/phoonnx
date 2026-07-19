@@ -11,6 +11,19 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from phoonnx_train.engines import get_engine, list_engines
 from phoonnx_train.engines.base import TrainingEngineConfig
 
+
+def _build_extra(quality_kwargs: dict, engine_params: dict, **cli_values) -> dict:
+    """Merge the engine extra bag. Precedence: explicit CLI flag >
+    config.json engine_params > CLI default > quality preset."""
+    extra = {**quality_kwargs, **engine_params}
+    ctx = click.get_current_context(silent=True)
+    for name, value in cli_values.items():
+        source = ctx.get_parameter_source(name) if ctx else None
+        explicit = source is not None and source.name == "COMMANDLINE"
+        if explicit or name not in extra:
+            extra[name] = value
+    return extra
+
 _LOGGER = logging.getLogger(__package__)
 
 
@@ -77,12 +90,21 @@ def main(
     # ------------------------------------------------------------------
     dataset_path = Path(dataset_dir)
     config_path = dataset_path / "config.json"
-    with open(config_path, "r", encoding="utf-8") as f:
-        dataset_config = json.load(f)
+    if config_path.is_file():
+        with open(config_path, "r", encoding="utf-8") as f:
+            dataset_config = json.load(f)
+    else:
+        # the styletts2* engines use the upstream list layout
+        # (train_list.txt/val_list.txt + wavs/), which has no config.json
+        dataset_config = {}
+        _LOGGER.warning("No %s — using engine defaults", config_path)
 
-    num_symbols = dataset_config.get("num_symbols", 256)
+    styletts2_engine = engine.startswith("styletts2")
+    num_symbols = dataset_config.get("num_symbols",
+                                     178 if styletts2_engine else 256)
     num_speakers = dataset_config.get("num_speakers", 1)
-    sample_rate = dataset_config.get("audio", {}).get("sample_rate", 22050)
+    sample_rate = dataset_config.get("audio", {}).get(
+        "sample_rate", 24000 if styletts2_engine else 22050)
 
     # ------------------------------------------------------------------
     # Resolve engine + quality preset
@@ -110,12 +132,15 @@ def main(
         num_symbols=num_symbols,
         num_speakers=num_speakers,
         sample_rate=sample_rate,
-        extra={
-            **quality_kwargs,
-            "batch_size": batch_size,
-            "validation_split": validation_split,
-            "num_workers": num_workers,
-        },
+        extra=_build_extra(
+            quality_kwargs,
+            # engine-specific knobs (asr_path, plbert_dir, stage, backbone,
+            # download_aux, ...) ride in an "engine_params" dict in config.json
+            dataset_config.get("engine_params", {}),
+            batch_size=batch_size,
+            validation_split=validation_split,
+            num_workers=num_workers,
+        ),
     )
     model = training_engine.create_model(
         config=engine_config,

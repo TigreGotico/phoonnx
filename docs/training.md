@@ -200,6 +200,71 @@ pretrained Coqui checkpoints) and consumed by `phoonnx.engines.fastpitch.FastPit
 **two-stage** model, so a separate vocoder is required at inference time, same as
 Mixer-TTS/GlowTTS/Matcha).
 
+---
+
+## StyleTTS2 training (`--engine styletts2`)
+
+`phoonnx_train` includes a **full two-stage** engine for the
+[StyleTTS2](https://arxiv.org/abs/2306.07691) architecture, porting the complete
+[yl4579/StyleTTS2](https://github.com/yl4579/StyleTTS2) recipe (MIT) onto the shared
+training framework. It trains new models **from scratch in new languages** and
+fine-tunes existing checkpoints onto new speakers.
+
+The upstream model/loss/data code is vendored in `phoonnx_train/styletts2/` (imports
+made package-relative; the compiled `monotonic_align` extension replaced by a pure
+numpy port). Install its extra deps with `phoonnx[train,train-styletts2]`.
+
+### Stages
+
+Select with `stage` (engine extra / `StyleTTS2Config`):
+
+| Stage | What trains | Recipe |
+|---|---|---|
+| `first` | text aligner (TMA), text encoder, style encoder, decoder | mel reconstruction with ground-truth F0/energy; s2s CE + monotonicity losses and MPD/MRSD adversarial + WavLM feature-matching after `tma_epoch` |
+| `second` | PL-BERT + duration/prosody predictors, style diffusion (after `diff_epoch`), joint decoder + SLM adversarial (after `joint_epoch`) | starts from the stage-1 checkpoint (`first_stage_path`) |
+| `finetune` | the `second` recipe with diffusion + joint training enabled from epoch 0 | adapt an existing checkpoint to a new speaker/dataset |
+
+### Auxiliary models (all configurable)
+
+| Key | Model | Where to get it |
+|---|---|---|
+| `asr_path` + `asr_config` | text aligner (ASRCNN) | bundled with the upstream repo (`Utils/ASR/`); trained further during TMA |
+| `f0_path` | JDC pitch extractor | upstream `Utils/JDC/bst.t7` |
+| `plbert_dir` | PL-BERT (config.yml + step_*.t7) | upstream `Utils/PLBERT/` for English; pretrained Spanish/Catalan: [PL-BERT-wp-es](https://huggingface.co/BSC-LT/PL-BERT-wp-es), [PL-BERT-wp-ca](https://huggingface.co/BSC-LT); Galician: [PL-ModernBERT-gl](https://huggingface.co/proxectonos/PL-ModernBERT-gl); train your own with `--engine styletts2-plbert` |
+| `slm.model` (model_params) | WavLM for SLM losses | HF hub, default `microsoft/wavlm-base-plus`; disable all SLM losses with `use_slm: false` |
+
+Set `download_aux: true` to fetch the yl4579 English aligner/pitch/PL-BERT
+automatically (cached under `~/.cache/phoonnx/styletts2_aux_en`) for any path
+left unset — or train your own with the engines below. Missing auxiliaries are
+otherwise randomly initialized with a warning (from-scratch/CI mode).
+
+Engine-specific keys like these ride in an `"engine_params"` dict inside the
+dataset dir's `config.json` (optional for the styletts2* engines):
+
+```json
+{"engine_params": {"stage": "second", "first_stage_path": "…", "plbert_dir": "…", "download_aux": true}}
+```
+
+### Data layout
+
+Upstream list format inside the dataset dir: `train_list.txt` / `val_list.txt` with
+`filename.wav|phonemes|speaker_id` lines and audio under `wavs/` (24 kHz).
+
+### Quality presets
+
+`--quality` selects the model size / decoder family: `low` (halved widths,
+iSTFTNet), `medium` (upstream LJSpeech recipe, iSTFTNet), `high` (upstream LibriTTS
+recipe, HiFi-GAN decoder, multispeaker-ready).
+
+### Export
+
+`export_onnx` (via `phoonnx_train/styletts2/export.py`) accepts an upstream-layout
+`.pth` (`net` dict) or a Lightning `.ckpt` saved by the engine, and emits the
+two-graph zero-shot contract the `StyleTTS2Adapter` consumes — `model.onnx`
+(tokens + style + speed → waveform, diffusion sampler bypassed) and
+`style_encoder.onnx` (reference waveform → acoustic + prosodic style) — plus
+`config.json`. Same contract as `scripts/conversion/styletts2/export_bsc.py`.
+
 ### Downstream OVOS TTS plugin config
 
 ```json
@@ -208,17 +273,76 @@ Mixer-TTS/GlowTTS/Matcha).
     "module": "ovos-tts-plugin-phoonnx",
     "ovos-tts-plugin-phoonnx": {
       "voice": "/path/to/exported/model.onnx",
-      "config": "/path/to/exported/config.json",
-      "engine_params": {
-        "vocoder_path": "/path/to/vocoder.onnx",
-        "vocoder_type": "hifigan"
-      }
+      "config": "/path/to/exported/config.json"
     }
   }
 }
 ```
 
-The native `config.json`'s `"engine"` field must be `"fastpitch"` (or `"fast_pitch"`)
-so `phoonnx`'s engine auto-detection routes to `FastPitchAdapter` instead of
-`MixerTTSAdapter` (the two share an identical ONNX I/O contract and are only told
-apart by this field).
+StyleTTS2 exports are self-contained (`model.onnx` + `style_encoder.onnx` +
+`config.json`); no external vocoder is required at inference time.
+
+---
+
+## Training every StyleTTS2 step for a new language
+
+A from-scratch model in a new language needs a language-specific
+**text aligner** ([yl4579/AuxiliaryASR](https://github.com/yl4579/AuxiliaryASR)) and
+**prosodic text encoder** ([yl4579/PL-BERT](https://github.com/yl4579/PL-BERT))
+trained before the TTS itself. `phoonnx_train` ships an engine for each, sharing the registry,
+the Lightning trainer and the StyleTTS2 symbol table (`--engine` on
+`python -m phoonnx_train.train`):
+
+| Engine | Trains | Output consumed via |
+|---|---|---|
+| `styletts2-aligner` | ASRCNN text aligner (CTC + s2s CE, upstream AuxiliaryASR recipe) | `asr_path` + `asr_config` |
+| `styletts2-plbert` | PL-BERT, `backbone: albert` (upstream, checkpoint-compatible) or `backbone: modernbert`; dual masked-phoneme + phoneme-to-grapheme heads, optional `prosodic_masking` (inverse-frequency: punctuation 40%, `!`/`?` 80%) | `plbert_dir` |
+| `styletts2-pitch` | JDC pitch extractor (SmoothL1 F0 + BCE voicing, pyworld ground truth, upstream PitchExtractor recipe) | `f0_path` |
+
+All three fine-tune too: warm-start from the English checkpoints via
+`pretrained_path` (aligner/pitch) or `pretrained_dir` (PL-BERT). The trainers use
+automatic optimization, so the full Lightning toolbox applies (bf16 mixed
+precision, DDP, gradient accumulation); features are cached (`.mel.npy`/`.f0.npy`
+next to the audio, pre-tokenized PL-BERT corpora) and audio batches are
+length-bucketed to cut padding waste. `compile_model: true` enables
+`torch.compile` on the aux models.
+
+### Recipe
+
+```bash
+# 0. phonemize your data with phoonnx's own phonemizers
+python -m phoonnx_train.styletts2.phonemize_corpus list \
+    raw_list.txt dataset/train_list.txt --lang pt --phonemizer espeak
+python -m phoonnx_train.styletts2.phonemize_corpus plbert \
+    corpus.txt plbert_data --lang pt          # plain text, one sentence per line
+
+# 1. text aligner (per language; warm-start from English via pretrained_path)
+python -m phoonnx_train.train --dataset-dir dataset --engine styletts2-aligner
+
+# 2. prosodic text encoder
+python -m phoonnx_train.train --dataset-dir plbert_data --engine styletts2-plbert
+
+# 3. pitch extractor (optional — F0 estimation transfers across languages)
+python -m phoonnx_train.train --dataset-dir dataset --engine styletts2-pitch
+
+# 4. StyleTTS2 stage first, then second, pointing at the outputs
+#    (asr_path/asr_config, plbert_dir, f0_path via engine_params in config.json)
+python -m phoonnx_train.train --dataset-dir dataset --engine styletts2
+
+# 5. export the two-graph ONNX contract
+python -m phoonnx_train.export_onnx --engine styletts2 ...
+```
+
+Library usage:
+
+```python
+from phoonnx_train.engines import get_engine
+from phoonnx_train.engines.base import TrainingEngineConfig
+
+engine = get_engine("styletts2-aligner")
+model = engine.create_model(TrainingEngineConfig(num_symbols=178, sample_rate=24000,
+                                                 extra={"batch_size": 32}),
+                            dataset_paths=[Path("dataset")])
+# trainer.fit(model); then:
+model.save_asr_checkpoint("aligner_out")   # -> asr_path/asr_config for --engine styletts2
+```
