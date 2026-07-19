@@ -86,6 +86,7 @@ class VitsModel(pl.LightningModule):
         num_test_examples: int = 5,
         validation_split: float = 0.1,
         max_phoneme_ids: Optional[int] = None,
+        log_audio_samples: bool = False,
         **kwargs,
     ):
         super().__init__()
@@ -373,38 +374,49 @@ class VitsModel(pl.LightningModule):
         val_loss = self.training_step_g(batch) + self.training_step_d(batch)
         self.log("val_loss", val_loss)
 
-        # Generate audio examples
-        for utt_idx, test_utt in enumerate(self._test_dataset):
-            text = test_utt.phoneme_ids.unsqueeze(0).to(self.device)
-            text_lengths = torch.LongTensor([len(test_utt.phoneme_ids)]).to(self.device)
-            scales = [0.667, 1.0, 0.8]
-            sid = (
-                test_utt.speaker_id.to(self.device)
-                if test_utt.speaker_id is not None
-                else None
-            )
-            speaker_embedding = (
-                test_utt.d_vector.unsqueeze(0).to(self.device)
-                if test_utt.d_vector is not None
-                else None
-            )
-            lid = (
-                test_utt.language_id.to(self.device)
-                if test_utt.language_id is not None
-                else None
-            )
-            test_audio = self(
-                text, text_lengths, scales, sid=sid,
-                speaker_embedding=speaker_embedding, lid=lid,
-            ).detach()
+        # Synthesize the held-out test utterances and log them as audio, once
+        # per epoch (batch_idx == 0). Opt-in via ``log_audio_samples`` and
+        # skipped unless the active logger's experiment supports ``add_audio``:
+        # TensorBoardLogger does, CSVLogger (a common choice) does not, and
+        # calling it there would raise. When disabled this whole loop — full
+        # generator inference whose result would otherwise be discarded — is
+        # skipped.
+        if (
+            self.hparams.log_audio_samples
+            and batch_idx == 0
+            and hasattr(self.logger.experiment, "add_audio")
+        ):
+            for utt_idx, test_utt in enumerate(self._test_dataset):
+                text = test_utt.phoneme_ids.unsqueeze(0).to(self.device)
+                text_lengths = torch.LongTensor([len(test_utt.phoneme_ids)]).to(self.device)
+                scales = [0.667, 1.0, 0.8]
+                sid = (
+                    test_utt.speaker_id.to(self.device)
+                    if test_utt.speaker_id is not None
+                    else None
+                )
+                speaker_embedding = (
+                    test_utt.d_vector.unsqueeze(0).to(self.device)
+                    if test_utt.d_vector is not None
+                    else None
+                )
+                lid = (
+                    test_utt.language_id.to(self.device)
+                    if test_utt.language_id is not None
+                    else None
+                )
+                test_audio = self(
+                    text, text_lengths, scales, sid=sid,
+                    speaker_embedding=speaker_embedding, lid=lid,
+                ).detach()
 
-            # Scale to make louder in [-1, 1]
-            test_audio = test_audio * (1.0 / max(0.01, abs(test_audio.max())))
+                # Scale to make louder in [-1, 1]
+                test_audio = test_audio * (1.0 / max(0.01, abs(test_audio.max())))
 
-            tag = test_utt.text or str(utt_idx)
-           # self.logger.experiment.add_audio(
-           #     tag, test_audio, sample_rate=self.hparams.sample_rate
-           # )
+                tag = test_utt.text or str(utt_idx)
+                self.logger.experiment.add_audio(
+                    tag, test_audio, sample_rate=self.hparams.sample_rate
+                )
 
         return val_loss
 
@@ -440,6 +452,12 @@ class VitsModel(pl.LightningModule):
         parser.add_argument("--batch-size", type=int, required=True)
         parser.add_argument("--validation-split", type=float, default=0.1)
         parser.add_argument("--num-test-examples", type=int, default=5)
+        parser.add_argument(
+            "--log-audio-samples",
+            action="store_true",
+            help="Log synthesized validation audio samples to the logger each "
+                 "epoch (requires a TensorBoard logger)",
+        )
         parser.add_argument(
             "--max-phoneme-ids",
             type=int,
