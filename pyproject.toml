@@ -22,6 +22,7 @@ dependencies = [
     "langcodes",
     "ovos-number-parser>=0.4.0",
     "ovos-date-parser>=0.6.4a1",
+    "scriptconv>=0.0.2",
 ]
 
 [project.urls]

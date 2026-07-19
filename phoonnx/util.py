@@ -11,19 +11,13 @@ from ovos_number_parser import pronounce_number, pronounce_fraction
 from ovos_number_parser.util import is_numeric
 from unicode_rbnf import RbnfEngine, FormatPurpose
 from langcodes import standardize_tag, Language
+from scriptconv.scripts import normalize_script_tag
 try:
     from ovos_utils.log import LOG
 except ImportError:
     import logging
 
     LOG = logging.getLogger("phoonnx")
-
-
-# MMS labels scripts with non-BCP-47 words ("crk-script_syllabics",
-# "cmo-khmer-script"); map them to their ISO-15924 subtag.
-_MMS_SCRIPTS = {"latin": "Latn", "cyrillic": "Cyrl", "arabic": "Arab",
-                "syllabics": "Cans", "tifinagh": "Tfng", "devanagari": "Deva",
-                "ethiopic": "Ethi", "khmer": "Khmr", "telugu": "Telu"}
 
 
 def _private_use(names: List[str]) -> List[str]:
@@ -57,7 +51,7 @@ def normalize_lang(lang: str) -> str:
     # distinction survives instead of being erased.
     parts = re.split(r"[-_]", lang.lower())
     if len(parts) > 1:
-        script = next((_MMS_SCRIPTS[p] for p in parts[1:] if p in _MMS_SCRIPTS), None)
+        script = next((normalize_script_tag(p) for p in parts[1:] if normalize_script_tag(p)), None)
         if script:
             lang = f"{parts[0]}-{script}"
         elif "dialect" in parts[1:]:
