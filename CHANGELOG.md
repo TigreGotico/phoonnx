@@ -28,6 +28,7 @@
 
 **Merged pull requests:**
 
+- fix\(train\): port VITS trainer to Lightning 2 + matcha gradient clip [\#233](https://github.com/TigreGotico/phoonnx/pull/233) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(train\): Vocos vocoder training, export and warm start [\#232](https://github.com/TigreGotico/phoonnx/pull/232) ([JarbasAl](https://github.com/JarbasAl))
 - Streaming VITS engine \(split encoder/decoder\) + offline voice listing [\#231](https://github.com/TigreGotico/phoonnx/pull/231) ([JarbasAl](https://github.com/JarbasAl))
 - fix: corpus-only phoneme map option and untrained-symbol warning [\#229](https://github.com/TigreGotico/phoonnx/pull/229) ([JarbasAl](https://github.com/JarbasAl))
