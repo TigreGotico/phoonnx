@@ -31,6 +31,26 @@ LOG = logging.getLogger(__name__)
 MEL_MEAN, MEL_STD = -4, 4
 
 
+def _import_pyworld():
+    """Import ``pyworld``, shimming ``pkg_resources`` if setuptools no longer
+    ships it (removed in setuptools >= 81). pyworld's package ``__init__`` only
+    touches ``pkg_resources`` to read its own version string, so a minimal
+    stand-in keeps it importable on Python 3.12+ / modern-setuptools venvs
+    without pinning setuptools back."""
+    import sys
+    if "pkg_resources" not in sys.modules:
+        try:
+            import pkg_resources  # noqa: F401
+        except ImportError:
+            import types
+            shim = types.ModuleType("pkg_resources")
+            shim.get_distribution = lambda name: types.SimpleNamespace(
+                version="0.0.0")
+            sys.modules["pkg_resources"] = shim
+    import pyworld
+    return pyworld
+
+
 def parse_list_lines(lines: List[str], root_path: str) -> List[Tuple[str, str, int]]:
     """``filename|text|speaker`` lines -> (wav_path, phonemes, speaker_id)."""
     out = []
@@ -102,7 +122,7 @@ class AuxMelDataset(torch.utils.data.Dataset):
         if self.cache_features and cache.is_file():
             f0 = np.load(cache)
         else:
-            import pyworld
+            pyworld = _import_pyworld()
             x = self._load_wave(wav_path).numpy().astype(np.float64)
             frame_period = SPECT_PARAMS["hop_length"] / self.sr * 1000
             f0, t = pyworld.harvest(x, self.sr, frame_period=frame_period)
