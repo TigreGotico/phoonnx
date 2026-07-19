@@ -35,8 +35,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-import pytorch_lightning as pl
-import torch
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # heavy imports — only needed for type annotations
+    import pytorch_lightning as pl
+    import torch
 
 from phoonnx_train.engines.base import BaseTrainingEngine, TrainingEngineConfig
 from phoonnx_train.engines.vits import _write_tokens_txt
@@ -87,20 +91,41 @@ class YourttsTrainingEngine(BaseTrainingEngine):
         config: TrainingEngineConfig,
         dataset_paths: List[Path],
         **kwargs: Any,
-    ) -> pl.LightningModule:
+    ) -> "pl.LightningModule":
         """Build a d-vector-conditioned VitsModel LightningModule."""
         from phoonnx_train.vits.lightning import VitsModel
 
         extra = dict(config.extra)
-        n_langs = int(extra.pop("n_langs", 0))
-        speaker_embedding_dim = int(extra.pop("speaker_embedding_dim", SPEAKER_EMBEDDING_DIM))
+
+        # The d-vector dimension and language count are properties of the
+        # pre-processed dataset, not the quality preset; the shared train CLI
+        # only threads num_symbols/num_speakers/sample_rate, so read them from
+        # the dataset's config.json when the caller did not pass them in extra.
+        dataset_cfg: Dict[str, Any] = {}
+        for p in dataset_paths:
+            cfg_path = Path(p) / "config.json" if Path(p).is_dir() else Path(p).parent / "config.json"
+            if cfg_path.is_file():
+                with open(cfg_path, "r", encoding="utf-8") as f:
+                    dataset_cfg = json.load(f)
+                break
+
+        n_langs = int(extra.pop("n_langs", dataset_cfg.get("n_langs", 0)))
+        speaker_embedding_dim = int(
+            extra.pop(
+                "speaker_embedding_dim",
+                dataset_cfg.get("speaker_embedding_dim", SPEAKER_EMBEDDING_DIM),
+            )
+        )
 
         return VitsModel(
             num_symbols=config.num_symbols,
             # YourTTS conditions on a d-vector, not a per-speaker id table.
             num_speakers=1,
             sample_rate=config.sample_rate,
-            dataset=[str(p) for p in dataset_paths],
+            dataset=[
+                str(Path(p) / "dataset.jsonl" if Path(p).is_dir() else Path(p))
+                for p in dataset_paths
+            ],
             external_speaker_embedding=True,
             speaker_embedding_dim=speaker_embedding_dim,
             n_langs=n_langs,
@@ -116,6 +141,8 @@ class YourttsTrainingEngine(BaseTrainingEngine):
         **kwargs: Any,
     ) -> Path:
         """Export a YourTTS checkpoint to ONNX with d-vector + langid inputs."""
+        import torch
+
         from phoonnx_train.vits.lightning import VitsModel
 
         with open(config_path, "r", encoding="utf-8") as f:
