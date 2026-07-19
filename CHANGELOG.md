@@ -49,6 +49,7 @@
 - feat\(shami\): add Shami/HamsVITS engine for Levantine Arabic / English TTS [\#211](https://github.com/TigreGotico/phoonnx/pull/211) ([JarbasAl](https://github.com/JarbasAl))
 - feat: FastPitch/SpeedySpeech training engine [\#210](https://github.com/TigreGotico/phoonnx/pull/210) ([JarbasAl](https://github.com/JarbasAl))
 - feat: GlowTTS training engine [\#209](https://github.com/TigreGotico/phoonnx/pull/209) ([JarbasAl](https://github.com/JarbasAl))
+- feat: StyleTTS2 training — every step trainable \(TTS + aligner + PL-BERT + pitch\) [\#208](https://github.com/TigreGotico/phoonnx/pull/208) ([JarbasAl](https://github.com/JarbasAl))
 - feat: F5-TTS / Habibi-TTS engine adapter [\#207](https://github.com/TigreGotico/phoonnx/pull/207) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(train\): ZipVoice training engine \(Zipformer + flow matching\) [\#206](https://github.com/TigreGotico/phoonnx/pull/206) ([JarbasAl](https://github.com/JarbasAl))
 - fix: unbreak CI — drop py3.10 leg, exclude self from license check [\#204](https://github.com/TigreGotico/phoonnx/pull/204) ([JarbasAl](https://github.com/JarbasAl))
