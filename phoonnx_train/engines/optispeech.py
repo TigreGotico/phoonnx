@@ -687,6 +687,85 @@ class OptiSpeechTrainingEngine(BaseTrainingEngine):
         return model
 
     # ------------------------------------------------------------------
+    # Standalone evaluation synthesis
+    # ------------------------------------------------------------------
+
+    def eval_synthesize(
+        self,
+        checkpoint_path: Path,
+        config: Optional[Dict[str, Any]],
+        *,
+        vocoder_path: Optional[str] = None,
+        device: str = "cpu",
+    ):
+        """Return ``callable(ids, scales, sid) -> np.ndarray`` for an OptiSpeech checkpoint.
+
+        OptiSpeech is self-vocoding — the generator emits the waveform
+        directly (WaveNeXt head) — so ``vocoder_path`` never applies here
+        and is ignored with a debug log if given.
+
+        ``scales`` is ``[d_factor, p_factor, e_factor]`` (duration / pitch /
+        energy), matching ``OptiSpeechGenerator.synthesise`` and the
+        checkpoint's own ``inference_args`` defaults when omitted.
+        """
+        import numpy as np
+        import torch
+
+        if vocoder_path:
+            _LOG.debug(
+                "OptiSpeech is self-vocoding; ignoring vocoder_path=%s", vocoder_path
+            )
+
+        model = self.load_lightning_module(Path(checkpoint_path))
+        model = model.to(device)
+        model.eval()
+
+        gen = model.generator
+        is_multi_speaker = model.num_speakers > 1
+        is_multi_language = getattr(model.text_processor, "is_multi_language", False)
+
+        d0 = model.inference_args.d_factor
+        p0 = model.inference_args.p_factor
+        e0 = model.inference_args.e_factor
+
+        def _synth(ids: List[int], scales: List[float], sid: Optional[int]) -> "np.ndarray":
+            # scales=None/[] means the checkpoint's own inference defaults;
+            # when set it is [d_factor, p_factor, e_factor] (OptiSpeech
+            # semantics, NOT VITS's noise/length/noise_w).
+            scales = scales or []
+            x = torch.LongTensor(ids).unsqueeze(0).to(device)
+            x_lengths = torch.LongTensor([len(ids)]).to(device)
+
+            d_factor = float(scales[0]) if len(scales) > 0 else d0
+            p_factor = float(scales[1]) if len(scales) > 1 else p0
+            e_factor = float(scales[2]) if len(scales) > 2 else e0
+
+            sids = None
+            if is_multi_speaker:
+                sids = torch.LongTensor([sid if sid is not None else 0]).to(device)
+            lids = torch.LongTensor([0]).to(device) if is_multi_language else None
+
+            with torch.no_grad():
+                out = gen.synthesise(
+                    x=x,
+                    x_lengths=x_lengths,
+                    sids=sids,
+                    lids=lids,
+                    d_factor=d_factor,
+                    p_factor=p_factor,
+                    e_factor=e_factor,
+                )
+            wav = out["wav"].detach().cpu().numpy().astype(np.float32).reshape(-1)
+            if not np.isfinite(wav).all():
+                raise RuntimeError(
+                    "OptiSpeech eval_synthesize produced non-finite samples "
+                    "(NaN/Inf) — checkpoint is likely broken"
+                )
+            return wav
+
+        return _synth
+
+    # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
 

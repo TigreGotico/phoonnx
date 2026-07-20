@@ -379,3 +379,151 @@ class MatchaTrainingEngine(BaseTrainingEngine):
             _LOG.warning("dropped %d mismatched checkpoint keys", len(dropped))
         model.load_state_dict(filtered, strict=False)
         return model
+
+    # ------------------------------------------------------------------
+    # Standalone evaluation synthesis
+    # ------------------------------------------------------------------
+
+    def eval_synthesize(
+        self,
+        checkpoint_path: Path,
+        config: Optional[Dict[str, Any]],
+        *,
+        vocoder_path: Optional[str] = None,
+        device: str = "cpu",
+    ):
+        """Return ``callable(ids, scales, sid) -> np.ndarray`` for a Matcha checkpoint.
+
+        Matcha only emits a mel spectrogram, so a vocoder stage is required
+        to reach a waveform. When ``vocoder_path`` is given, that ONNX
+        vocoder converts mel -> audio (matching production quality). With no
+        vocoder, a Griffin-Lim fallback is used with the exact mel
+        parameters MatchaTTS trains on (``phoonnx_train.matcha.dataset``
+        module constants + ``n_feats``/``sample_rate`` read back from the
+        checkpoint hyper-parameters) — comparable across checkpoints of this
+        run, but not an absolute quality signal.
+
+        ``scales`` is ``[temperature, length_scale]`` (matching
+        ``MatchaTTS.synthesise``); a third CFM step-count element may be
+        supplied via ``config["n_timesteps"]`` (default 10).
+        """
+        import numpy as np
+        import torch
+
+        from phoonnx_train.matcha import MatchaTTS
+        from phoonnx_train.torch_compat import trusting_torch_load
+
+        with trusting_torch_load():
+            matcha = MatchaTTS.load_from_checkpoint(
+                str(checkpoint_path), map_location=device
+            )
+        matcha = matcha.to(device)
+        matcha.eval()
+
+        n_timesteps = int((config or {}).get("n_timesteps", 10))
+        is_multi_speaker = matcha.n_spks > 1
+
+        vocoder = None
+        if vocoder_path:
+            from phoonnx.engines.vocoders import build_vocoder
+
+            vocoder = build_vocoder(
+                model_path=str(vocoder_path),
+                config=(config or {}).get("vocoder", {}),
+            )
+        else:
+            _warn_griffinlim_once()
+
+        n_feats = int(matcha.n_feats)
+        sample_rate = int(matcha.hparams.sample_rate)
+
+        def _synth(ids: List[int], scales: List[float], sid: Optional[int]) -> "np.ndarray":
+            # scales=None/[] means engine defaults; when set it is
+            # [temperature, length_scale] (matcha semantics, NOT VITS's).
+            scales = scales or []
+            x = torch.LongTensor(ids).unsqueeze(0).to(device)
+            x_lengths = torch.LongTensor([len(ids)]).to(device)
+            temperature = float(scales[0]) if len(scales) > 0 else 0.667
+            length_scale = float(scales[1]) if len(scales) > 1 else 1.0
+
+            spks = None
+            if is_multi_speaker:
+                spks = torch.LongTensor([sid if sid is not None else 0]).to(device)
+
+            with torch.no_grad():
+                out = matcha.synthesise(
+                    x, x_lengths, n_timesteps, temperature, spks, length_scale
+                )
+            mel = out["mel"].detach().cpu().numpy().astype(np.float32)  # [1, n_feats, T]
+
+            if vocoder is not None:
+                wav = vocoder.mel_to_audio(mel)
+            else:
+                wav = _griffinlim_from_matcha_mel(
+                    mel, n_feats=n_feats, sample_rate=sample_rate
+                )
+
+            wav = np.asarray(wav, dtype=np.float32).reshape(-1)
+            if not np.isfinite(wav).all():
+                raise RuntimeError(
+                    "Matcha eval_synthesize produced non-finite samples "
+                    "(NaN/Inf) — checkpoint or vocoder is likely broken"
+                )
+            return wav
+
+        return _synth
+
+
+_GRIFFINLIM_WARNED = False
+
+
+def _warn_griffinlim_once() -> None:
+    global _GRIFFINLIM_WARNED
+    if not _GRIFFINLIM_WARNED:
+        _LOG.warning(
+            "Matcha eval_synthesize: no vocoder_path given — falling back to "
+            "Griffin-Lim. Griffin-Lim scores are only meaningful relative to "
+            "each other (e.g. comparing checkpoints of the same run); they "
+            "are NOT comparable to absolute/neural-vocoder quality scores."
+        )
+        _GRIFFINLIM_WARNED = True
+
+
+def _griffinlim_from_matcha_mel(mel, *, n_feats: int, sample_rate: int):
+    """Invert a MatchaTTS natural-log mel (as returned by ``synthesise``) with
+    Griffin-Lim, using the exact STFT params Matcha trains on."""
+    import librosa
+    import numpy as np
+    import torch
+
+    from phoonnx_train.matcha.dataset import F_MAX, F_MIN, HOP_LENGTH, N_FFT, WIN_LENGTH
+
+    m = np.asarray(mel, dtype=np.float64)
+    if m.ndim == 3:
+        m = m[0]  # [n_feats, T]
+
+    # MatchaTTS.synthesise() already denormalizes (mel_mean/mel_std) but the
+    # mel itself is a *natural*-log magnitude (spectral_normalize_torch ==
+    # ln, see phoonnx_train.matcha.audio.dynamic_range_compression).
+    mel_linear = np.exp(m)
+
+    mel_basis = librosa.filters.mel(
+        sr=sample_rate, n_fft=N_FFT, n_mels=n_feats, fmin=F_MIN, fmax=F_MAX
+    )
+    inv_mel_basis = np.linalg.pinv(mel_basis)
+    linear_mag = np.maximum(1e-10, np.dot(inv_mel_basis, mel_linear))
+
+    # librosa.griffinlim seeds its random initial phase from the *global*
+    # numpy RNG, which torch.manual_seed does not touch — pin it to the
+    # active torch seed explicitly so eval_synthesize is reproducible under
+    # a fixed torch seed, as the rest of the callable already is.
+    rng = np.random.RandomState(torch.initial_seed() % (2**32))
+    audio = librosa.griffinlim(
+        linear_mag.astype(np.float32),
+        n_iter=60,
+        hop_length=HOP_LENGTH,
+        win_length=WIN_LENGTH,
+        n_fft=N_FFT,
+        random_state=rng,
+    )
+    return audio.astype(np.float32)
