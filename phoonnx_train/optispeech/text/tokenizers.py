@@ -80,18 +80,16 @@ class IPATokenizer(BaseTokenizer):
         return phoneme_ids, normalized_text
 
     def phonemize_text(self, text: str, language: str) -> str:
-        try:
-            from piper_phonemize import phonemize_espeak
-        except ImportError:
-            raise ImportError(
-                "piper-phonemize package is needed for the IPA tokenizer.\n"
-                "pip install piper-phonemize\n"
-                "or build it yourself from the following repository:\n"
-                "https://github.com/rhasspy/piper-phonemize"
-            )
+        # Route through phoonnx's own espeak layer: the espeak-ng subprocess
+        # wrapper with a pure-Python espyak fallback (no GPL-linked
+        # piper_phonemize / espeak-ng wrapper). EspeakPhonemizer.phonemize
+        # returns the same nested ``list[list[str]]`` (one phoneme list per
+        # sentence) that piper's phonemize_espeak returned, so the tokenizer's
+        # downstream symbol handling and id mapping are unchanged.
+        from phoonnx.phonemizers.mul import EspeakPhonemizer
 
         # Preprocess
         text = self.preprocess_text(text, language)
         # Phonemize
-        phonemes = phonemize_espeak(text, language)
+        phonemes = EspeakPhonemizer().phonemize(text, language)
         return phonemes, text

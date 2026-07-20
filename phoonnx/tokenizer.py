@@ -894,21 +894,15 @@ if __name__ == "__main__":
 
     def _test_piper_compat(phone_str: str, cfg_path: str):
         print("\n## Testing piper compat")
-        from piper_phonemize import phoneme_ids_espeak
-        phones = list(phone_str)  # ['h', 'ə', 'l', 'ˈ', 'o', 'ʊ', ' ', 'w', 'ˈ', 'ɜ', 'ː', 'l', 'd']
+        # phoonnx reproduces piper's espeak phoneme->id scheme natively:
+        # TTSTokenizer.from_piper_config(cfg).tokenize(phones) yields the same
+        # interleaved [BOS, PAD, id, PAD, ..., EOS] sequence that piper's own
+        # phoneme_ids_espeak produces (see test_tokenization_golden). No GPL
+        # piper_phonemize wrapper is needed. Regression-pinned in the tests.
         with open(cfg_path, "r") as f:
             cfg = json.load(f)
-            voc = Vocabulary.from_piper_config(cfg)
-
-        add_blank = blank_at_end = blank_at_start = use_eos_bos = True
-        add_blank_word = False
-        tok = TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
-                           blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                           use_eos_bos=use_eos_bos)
-        print(
-            f"# blank_at_start={blank_at_start}, blank_at_end={blank_at_end}, add_blank={add_blank}, add_blank_word={add_blank_word}, use_eos_bos={use_eos_bos}")
+        tok = TTSTokenizer.from_piper_config(cfg)
         print(tok.tokenize(phone_str))
-        print(phoneme_ids_espeak(phones))
 
 
     def _test_coqui_compat(phone_str: str, cfg_path: str):
