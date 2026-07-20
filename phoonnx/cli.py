@@ -151,7 +151,7 @@ def download_voice(voice_id):
             click.echo(f"Voice ID '{voice_id}' not found in local cache, looking it up in bundled indexes...")
             if not manager.download_voice_by_id(voice_id):
                 click.echo(f"Error: Voice ID '{voice_id}' not found.", err=True)
-                click.echo("Hint: Run 'phoonnx_cli.py list-available' to see available voice IDs.", err=True)
+                click.echo("Hint: Run 'phoonnx-voices list-available' to see available voice IDs.", err=True)
                 return
             click.echo(f"\nDownload complete.")
 
