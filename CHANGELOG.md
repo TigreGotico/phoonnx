@@ -27,6 +27,7 @@
 
 **Merged pull requests:**
 
+- Add generic on-demand quality-metric filtering to preprocess [\#236](https://github.com/TigreGotico/phoonnx/pull/236) ([JarbasAl](https://github.com/JarbasAl))
 - feat: opt-in validation audio-sample logging [\#234](https://github.com/TigreGotico/phoonnx/pull/234) ([JarbasAl](https://github.com/JarbasAl))
 - fix\(train\): port VITS trainer to Lightning 2 + matcha gradient clip [\#233](https://github.com/TigreGotico/phoonnx/pull/233) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(train\): Vocos vocoder training, export and warm start [\#232](https://github.com/TigreGotico/phoonnx/pull/232) ([JarbasAl](https://github.com/JarbasAl))
