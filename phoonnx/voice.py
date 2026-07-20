@@ -7,6 +7,7 @@ which means the same TTSVoice class works for VITS or
 any future architecture without code changes here.
 """
 import json
+import logging
 import os.path
 import re
 import wave
@@ -90,6 +91,12 @@ class PhoneticSpellings:
         with open(spellings_file) as f:
             lines = f.read().split("\n")
             for l in lines:
+                l = l.strip()
+                if not l or l.startswith("#"):
+                    continue
+                if ":" not in l:
+                    logging.warning(f"Skipping malformed phonetic spelling line: {l!r}")
+                    continue
                 word, spelling = l.split(":", 1)
                 replacements[word.strip()] = spelling.strip()
         return PhoneticSpellings(replacements)
