@@ -52,6 +52,8 @@ class Alphabet(str, Enum):
     COTOVIA = "cotovia" # gl
     HANZI = "hanzi" # zh
     BUCKWALTER = "buckwalter" # ar
+    CANGJIE = "cangjie" # zh (Cangjie input method)
+    GRAPHEMES = "graphemes"  # plain text / grapheme input (user-side)
 
 
 
@@ -122,9 +124,48 @@ class VoiceConfig:
     """Name of espeak-ng voice or alphabet."""
 
     phoneme_type: PhonemeType
-    """espeak, byt5, text, cotovia, or graphemes."""
+    """Dual-role field: conversion backend **and** tokenisation recipe.
+
+    ``phoneme_type`` serves two tightly-coupled purposes that are
+    intentionally unified, not accidentally merged:
+
+    1. **Conversion backend** – which graphemes→phoneme implementation to
+       call (e.g. ``espeak``, ``gruut``, ``misaki_en``).  This is the
+       *how* of the ``(GRAPHEMES, <phoneme_alphabet>)`` conversion edge in
+       :mod:`phoonnx.alphabet_convert`.
+
+    2. **Tokenisation recipe** – the token vocabulary and splitting rules
+       for the model's input layer are built to match the output of the
+       chosen backend.  Swapping the backend without a matching vocabulary
+       would produce incorrect token IDs.
+
+    Relationship to other alphabet fields:
+
+    +----------------------------+------------------------------+-------------------------------+
+    | concept                    | answers                      | example                       |
+    +============================+==============================+===============================+
+    | ``VoiceConfig.alphabet``   | WHAT the model eats          | ``Alphabet.IPA``              |
+    +----------------------------+------------------------------+-------------------------------+
+    | ``phoneme_type``           | HOW to get there (convert    | ``PhonemeType.ESPEAK``        |
+    |                            | backend + tokenisation)      |                               |
+    +----------------------------+------------------------------+-------------------------------+
+    | ``SynthesisConfig.alphabet`` | WHAT the user's text is    | ``Alphabet.GRAPHEMES`` / None |
+    +----------------------------+------------------------------+-------------------------------+
+    """
 
     alphabet: Optional[Alphabet]
+    """Alphabet (token space) that the model was trained on.
+
+    This is the *target* of every text-to-phoneme conversion step and
+    must match the model's vocabulary exactly.  Typical values:
+
+    * ``Alphabet.IPA`` — espeak / gruut / misaki phoneme models.
+    * ``Alphabet.UNICODE`` — grapheme/character-level models (piper ``text``
+      type, Coqui VITS grapheme models).
+    * ``Alphabet.ARPA`` — ARPABET-trained models (rare).
+    * ``Alphabet.HANGUL`` — Korean Hangul-input models.
+    * ``Alphabet.HIRA`` / ``Alphabet.KANA`` — Japanese script models.
+    """
 
     phonemizer_model: Optional[str]
     """for phonemizers that allow changing base model """
@@ -533,6 +574,29 @@ class VoiceConfig:
 @dataclass
 class SynthesisConfig:
     """Configuration for synthesis."""
+
+    alphabet: Optional['Alphabet'] = None
+    """Alphabet of the *caller's* input text.
+
+    ``None`` means the text is plain graphemes (the default for virtually
+    every use-case).  Set this when passing pre-converted text, for example
+    IPA strings or Hangul, so that :func:`phoonnx.alphabet_convert.convert`
+    can skip the phonemization step and apply the correct script-conversion
+    instead.
+
+    Relationship to other alphabet fields:
+
+    +----------------------------+------------------------------+-------------------------------+
+    | concept                    | answers                      | example                       |
+    +============================+==============================+===============================+
+    | ``VoiceConfig.alphabet``   | WHAT the model eats          | ``Alphabet.IPA``              |
+    +----------------------------+------------------------------+-------------------------------+
+    | ``VoiceConfig.phoneme_type`` | HOW to get there (convert  | ``PhonemeType.ESPEAK``        |
+    |                            | backend + tokenisation)      |                               |
+    +----------------------------+------------------------------+-------------------------------+
+    | ``SynthesisConfig.alphabet`` | WHAT the user's text is    | ``Alphabet.GRAPHEMES`` / None |
+    +----------------------------+------------------------------+-------------------------------+
+    """
 
     speaker_id: Optional[int] = None
     """Index of speaker to use (multi-speaker voices only)."""
