@@ -27,6 +27,7 @@
 
 **Merged pull requests:**
 
+- feat: standalone eval synthesis for matcha and optispeech engines [\#250](https://github.com/TigreGotico/phoonnx/pull/250) ([JarbasAl](https://github.com/JarbasAl))
 - fix: matcha training pre-flight hardening [\#249](https://github.com/TigreGotico/phoonnx/pull/249) ([JarbasAl](https://github.com/JarbasAl))
 - fix: vocoder training pre-flight hardening [\#248](https://github.com/TigreGotico/phoonnx/pull/248) ([JarbasAl](https://github.com/JarbasAl))
 - feat: OptiSpeech training engine [\#247](https://github.com/TigreGotico/phoonnx/pull/247) ([JarbasAl](https://github.com/JarbasAl))
