@@ -28,6 +28,7 @@
 **Merged pull requests:**
 
 - fix: matcha training pre-flight hardening [\#249](https://github.com/TigreGotico/phoonnx/pull/249) ([JarbasAl](https://github.com/JarbasAl))
+- fix: vocoder training pre-flight hardening [\#248](https://github.com/TigreGotico/phoonnx/pull/248) ([JarbasAl](https://github.com/JarbasAl))
 - test: cover training CLI, preprocessing pipeline, VITS lightning module [\#246](https://github.com/TigreGotico/phoonnx/pull/246) ([JarbasAl](https://github.com/JarbasAl))
 - test: cover config format detection and tokenizer vocabulary construction [\#245](https://github.com/TigreGotico/phoonnx/pull/245) ([JarbasAl](https://github.com/JarbasAl))
 - test: cover CLI commands and model download subsystem [\#244](https://github.com/TigreGotico/phoonnx/pull/244) ([JarbasAl](https://github.com/JarbasAl))
@@ -101,7 +102,6 @@
 - feat\(engines\): Matcha-TTS inference + pluggable vocoder registry [\#138](https://github.com/TigreGotico/phoonnx/pull/138) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): pluggable multi-engine inference framework [\#131](https://github.com/TigreGotico/phoonnx/pull/131) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): Matcha-TTS training adapter [\#128](https://github.com/TigreGotico/phoonnx/pull/128) ([JarbasAl](https://github.com/JarbasAl))
-- feat: phoneme alignment support [\#125](https://github.com/TigreGotico/phoonnx/pull/125) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
