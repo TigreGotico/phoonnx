@@ -15,3 +15,4 @@ jobs:
       test_path: 'tests/'
       install_extras: '-e .[test,train,train-styletts2,train-eval,train-data,train-optispeech]'
       min_coverage: 43
+      system_deps: 'espeak-ng'
