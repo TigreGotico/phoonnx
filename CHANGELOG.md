@@ -27,6 +27,7 @@
 
 **Merged pull requests:**
 
+- Cache ORT-optimized graphs, add voice warmup, warn on silent provider fallback [\#241](https://github.com/TigreGotico/phoonnx/pull/241) ([JarbasAl](https://github.com/JarbasAl))
 - feat: add per-stage TTS latency benchmark script [\#240](https://github.com/TigreGotico/phoonnx/pull/240) ([JarbasAl](https://github.com/JarbasAl))
 - docs: full documentation overhaul — layered learning paths and verified references [\#239](https://github.com/TigreGotico/phoonnx/pull/239) ([JarbasAl](https://github.com/JarbasAl))
 - feat: multi-format dataset loading for preprocess \(ljspeech/jsonl/parquet/HF\) [\#238](https://github.com/TigreGotico/phoonnx/pull/238) ([JarbasAl](https://github.com/JarbasAl))
