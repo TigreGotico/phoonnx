@@ -278,15 +278,24 @@ def main(
         **training_engine.trainer_kwargs(),
     )
     if use_compile:
-        if hasattr(model, "model_g") and hasattr(model, "model_d"):
-            _LOGGER.info("Compiling model_g/model_d with torch.compile (mode=%s)", compile_mode)
-            model.model_g = torch.compile(model.model_g, mode=compile_mode)
-            model.model_d = torch.compile(model.model_d, mode=compile_mode)
-        elif hasattr(model, "model") and isinstance(getattr(model, "model"), torch.nn.Module):
-            _LOGGER.info("Compiling model with torch.compile (mode=%s)", compile_mode)
-            model.model = torch.compile(model.model, mode=compile_mode)
-        else:
-            _LOGGER.warning("compile not supported for engine %r yet — running uncompiled", engine)
+        # torch.compile can raise at call time on unsupported python/torch
+        # combinations (e.g. dynamo has no CPython 3.12 backend on torch<2.3).
+        # A compile failure must never abort a training run that would have
+        # been perfectly fine uncompiled: warn and continue.
+        try:
+            if hasattr(model, "model_g") and hasattr(model, "model_d"):
+                _LOGGER.info("Compiling model_g/model_d with torch.compile (mode=%s)", compile_mode)
+                model.model_g = torch.compile(model.model_g, mode=compile_mode)
+                model.model_d = torch.compile(model.model_d, mode=compile_mode)
+            elif hasattr(model, "model") and isinstance(getattr(model, "model"), torch.nn.Module):
+                _LOGGER.info("Compiling model with torch.compile (mode=%s)", compile_mode)
+                model.model = torch.compile(model.model, mode=compile_mode)
+            else:
+                _LOGGER.warning("compile not supported for engine %r yet — running uncompiled", engine)
+        except Exception as err:
+            _LOGGER.warning(
+                "torch.compile unavailable: %s — continuing uncompiled", err
+            )
 
     _LOGGER.info("Training started!")
     # torch>=2.6 defaults torch.load(weights_only=True), which rejects our own
