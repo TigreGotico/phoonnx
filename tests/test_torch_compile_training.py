@@ -153,6 +153,17 @@ class TestCompileInvocation(unittest.TestCase):
 
 
 class TestCheckpointOrigModStripping(unittest.TestCase):
+    @staticmethod
+    def _uncompiled_model():
+        # A bare (uncompiled) VitsModel: on_load_checkpoint reconciles keys
+        # against the CURRENT model, so an uncompiled model strips "_orig_mod."
+        # exactly as before.
+        m = VitsModel.__new__(VitsModel)
+        torch.nn.Module.__init__(m)
+        m.model_g = torch.nn.Linear(2, 2)
+        m.model_d = torch.nn.Linear(2, 2)
+        return m
+
     def test_orig_mod_prefix_is_stripped(self):
         checkpoint = {
             "state_dict": {
@@ -161,7 +172,7 @@ class TestCheckpointOrigModStripping(unittest.TestCase):
                 "unrelated_key": torch.tensor([3.0]),
             }
         }
-        VitsModel.on_load_checkpoint(None, checkpoint)
+        self._uncompiled_model().on_load_checkpoint(checkpoint)
         keys = set(checkpoint["state_dict"].keys())
         self.assertEqual(
             keys,
@@ -176,12 +187,12 @@ class TestCheckpointOrigModStripping(unittest.TestCase):
             }
         }
         before = dict(checkpoint["state_dict"])
-        VitsModel.on_load_checkpoint(None, checkpoint)
+        self._uncompiled_model().on_load_checkpoint(checkpoint)
         self.assertEqual(set(checkpoint["state_dict"].keys()), set(before.keys()))
 
     def test_missing_state_dict_does_not_raise(self):
         checkpoint = {}
-        VitsModel.on_load_checkpoint(None, checkpoint)
+        self._uncompiled_model().on_load_checkpoint(checkpoint)
         self.assertEqual(checkpoint, {})
 
 

@@ -141,16 +141,53 @@ class VitsModel(pl.LightningModule):
         self._y = None
         self._y_hat = None
 
-    def on_load_checkpoint(self, checkpoint: dict) -> None:
-        # Checkpoints saved with torch.compile prefix every wrapped
-        # submodule's keys with "_orig_mod.". Strip it so a checkpoint
-        # loads cleanly regardless of whether compile is on or off, either
-        # direction.
+    # Submodules to reconcile against torch.compile's "._orig_mod." wrapping.
+    _COMPILE_WRAPPED_SUBMODULES = ("model_g", "model_d")
+
+    def _adapt_key_to_model(self, key: str) -> str:
+        """Rewrite a *clean* (uncompiled) state-dict key so it matches what the
+        CURRENT model expects. When ``self.model_g`` / ``self.model_d`` are
+        torch.compile ``OptimizedModule`` wrappers (exposing ``_orig_mod``),
+        their real parameters live under ``<name>._orig_mod.*``, so a bare
+        ``<name>.*`` key must gain that prefix; otherwise it is left as-is."""
+        for name in self._COMPILE_WRAPPED_SUBMODULES:
+            prefix = name + "."
+            submodule = getattr(self, name, None)
+            if (
+                key.startswith(prefix)
+                and submodule is not None
+                and hasattr(submodule, "_orig_mod")
+            ):
+                return prefix + "_orig_mod." + key[len(prefix):]
+        return key
+
+    def on_save_checkpoint(self, checkpoint: dict) -> None:
+        # Always persist CLEAN (uncompiled) keys: strip torch.compile's
+        # "._orig_mod." wrapping so a checkpoint written during a --compile run
+        # loads into an uncompiled consumer unchanged (old-consumer compat).
         state_dict = checkpoint.get("state_dict")
         if state_dict:
             checkpoint["state_dict"] = {
                 k.replace("._orig_mod.", "."): v for k, v in state_dict.items()
             }
+
+    def on_load_checkpoint(self, checkpoint: dict) -> None:
+        # Reconcile a checkpoint's keys with the CURRENT model in either
+        # direction. First normalize to clean keys (strip any "._orig_mod."),
+        # then re-insert the prefix only for submodules that are actually
+        # compiled right now. This covers the full save×load matrix:
+        # compiled/uncompiled checkpoints loading into compiled/uncompiled
+        # models — including the reverse case (clean checkpoint -> compiled
+        # model), whose strict restore would otherwise crash on resume.
+        state_dict = checkpoint.get("state_dict")
+        if not state_dict:
+            return
+        clean = {
+            k.replace("._orig_mod.", "."): v for k, v in state_dict.items()
+        }
+        checkpoint["state_dict"] = {
+            self._adapt_key_to_model(k): v for k, v in clean.items()
+        }
 
     def _load_datasets(
         self,
