@@ -9,7 +9,7 @@ models can be driven directly from text.  The front-end emits:
 which the :class:`ShamiAdapter` feeds to the exported ONNX model.
 """
 
-from typing import List, Tuple
+from typing import Iterator, List, Tuple
 
 from quebra_frases import sentence_tokenize
 
@@ -54,17 +54,28 @@ class ShamiPhonemizer(BasePhonemizer):
         The returned language IDs are integers from :class:`phoonnx.thirdparty.shami.Lang`:
         ``PAD=0``, ``AR=1``, ``EN=2``, ``NEUTRAL=3``.
         """
-        if not text:
-            return [], []
-
         all_phonemes: PhonemizedChunks = []
         all_lang_ids: List[List[int]] = []
+        for phonemes, lang_ids in self.phonemize_with_language_ids_lazy(text, lang):
+            all_phonemes.append(phonemes)
+            all_lang_ids.append(lang_ids)
+        return all_phonemes, all_lang_ids
 
+    def phonemize_with_language_ids_lazy(
+        self, text: str, lang: str
+    ) -> Iterator[Tuple[List[str], List[int]]]:
+        """Lazy, per-sentence variant of :meth:`phonemize_with_language_ids`.
+
+        Yields ``(phonemes, language_ids)`` one sentence at a time, running the
+        text front-end only as each sentence is pulled. The phoneme stream and
+        the parallel language-ID stream are produced together per sentence, so
+        they can never fall out of alignment. ``list`` of the pairs reproduces
+        the two lists returned by :meth:`phonemize_with_language_ids` exactly.
+        """
+        if not text:
+            return
         for sentence in sentence_tokenize(text):
             if not sentence.strip():
                 continue
             utterance = self.frontend.process(sentence)
-            all_phonemes.append(utterance.symbols)
-            all_lang_ids.append(utterance.language_ids)
-
-        return all_phonemes, all_lang_ids
+            yield utterance.symbols, utterance.language_ids
