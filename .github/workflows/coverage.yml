@@ -13,5 +13,5 @@ jobs:
       python_version: '3.11'
       coverage_source: 'phoonnx'
       test_path: 'tests/'
-      install_extras: '-e .[test,train,train-styletts2,train-eval]'
+      install_extras: '-e .[test,train,train-styletts2,train-eval,train-data]'
       min_coverage: 0
