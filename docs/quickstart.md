@@ -68,6 +68,12 @@ with wave.open("hello.wav", "wb") as wav_file:
     voice.synthesize_wav("Hello world!", wav_file)
 ```
 
+> **Note:** `TTSVoice.load(model_path)` defaults `config_path` to `<model_path>.json`
+> (e.g. `model.onnx.json`), not `model.json`. The voice manager's cache layout ships
+> `model.onnx` + `model.json` side by side, so if you load straight from a cache
+> directory (instead of via `manager.voices[voice_id].load()`, which resolves this
+> for you) pass `config_path` explicitly: `TTSVoice.load(cache_dir / "model.onnx", cache_dir / "model.json")`.
+
 ## 4. Tune the output
 
 `SynthesisConfig` controls speed, expressiveness and more per call:
