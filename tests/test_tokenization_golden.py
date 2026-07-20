@@ -54,19 +54,19 @@ def test_tokenization_transformers_mms():
     assert _phoonnx_ids(voice, text) == orig
 
 
-# --- piper: pinned espeak-id regression (piper_phonemize has no cp312/manylinux
-# wheel on PyPI, so it cannot be installed here or in CI; this pins phoonnx's
-# own known-good ids for a fixed voice/text instead of a live cross-check) ---
+# --- piper: piper_phonemize espeak ids are the original ---
 
 def test_tokenization_piper():
+    pp = pytest.importorskip("piper_phonemize")
     m = _manager()
     vid = _pick(m, lambda k: "piper" in k.lower() and ("en-us" in k.lower() or "en_us" in k.lower()),
                "no en-US piper voice in index")
     text = "hello world"
+    phonemes = pp.phonemize_espeak(text, "en-us")
+    flat = [p for sentence in phonemes for p in sentence]
+    orig = list(pp.phoneme_ids_espeak(flat))
     voice = m.voices[vid].load()
-    expected = [1, 0, 20, 0, 59, 0, 24, 0, 120, 0, 27, 0, 100, 0, 3, 0,
-                35, 0, 120, 0, 62, 0, 122, 0, 24, 0, 17, 0, 2]
-    assert _phoonnx_ids(voice, text) == expected
+    assert _phoonnx_ids(voice, text) == orig
 
 
 # --- gruut: Larynx (GlowTTS) and Mimic3 share gruut. phoonnx splits gruut's
@@ -176,20 +176,25 @@ def test_tokenization_optispeech():
     assert _phoonnx_ids(voice, text) == orig
 
 
-# --- Matcha: matcha.text.text_to_sequence is the original (guarded; matcha-tts
-#     ships a broken top-level import in some envs, so this skips until usable) ---
+# --- Matcha: matcha.text.text_to_sequence is the original (guarded; matcha-tts's
+#     text.cleaners module instantiates a phonemizer espeak backend at import time,
+#     which raises RuntimeError -- not ImportError -- when the espeak-ng shared
+#     library isn't discoverable, so importorskip alone won't catch it) ---
 
 def test_tokenization_matcha():
     pytest.importorskip("matcha")
-    # matcha.text instantiates a global espeak-ng backend at import time, which
-    # raises RuntimeError (not ImportError) when the system espeak library is
-    # absent — importorskip on the top-level ``matcha`` package does not catch
-    # it. Skip cleanly so a CI box without espeak reports skip, not error.
+    try:
+        import espeakng_loader
+        from phonemizer.backend.espeak.wrapper import EspeakWrapper
+        EspeakWrapper.set_library(espeakng_loader.get_library_path())
+        EspeakWrapper.set_data_path(espeakng_loader.get_data_path())
+    except ImportError:
+        pass  # fall back to the system espeak-ng install, if any
     try:
         import matcha.text as mt
         from matcha.text import symbols, cleaned_text_to_sequence
-    except (RuntimeError, OSError) as exc:
-        pytest.skip(f"matcha.text needs a system espeak backend: {exc}")
+    except RuntimeError as e:
+        pytest.skip(f"espeak-ng not usable: {e}")
     # the Catalan Matxa voices use custom cleaners bundled with the model (not in
     # base matcha-tts), so we verify the *tokenizer* — symbol table + phoneme->id
     # mapping — which is language-agnostic and is what phoonnx reproduces.
