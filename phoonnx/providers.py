@@ -24,7 +24,9 @@ GPU providers come from the ONNX Runtime build, not from phoonnx: the default
 needs ``onnxruntime-rocm``, ``DirectML`` needs ``onnxruntime-directml``, and
 CUDA needs ``onnxruntime-gpu``.
 """
+import hashlib
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import onnxruntime
@@ -38,6 +40,13 @@ CPU_PROVIDER = "CPUExecutionProvider"
 
 #: Environment variable holding a comma-separated provider list, or ``auto``.
 PROVIDERS_ENV_VAR = "PHOONNX_ONNX_PROVIDERS"
+
+#: Environment variable holding a directory to cache ORT-optimized graphs in.
+#: When set (or a ``cache_dir`` is passed to :func:`make_session`), the
+#: optimized model is written once and every subsequent process load reuses
+#: it instead of re-running graph optimization from the raw model. Unset by
+#: default — behaviour is unchanged unless a caller opts in.
+CACHE_DIR_ENV_VAR = "PHOONNX_ORT_CACHE_DIR"
 
 #: Auto-detection preference order, best first. Only providers the installed
 #: runtime reports as available are kept.
@@ -139,15 +148,114 @@ def resolve_providers(
     return resolved
 
 
+def _cache_key_path(
+        model_path: Any,
+        resolved_providers: Sequence[ProviderSpec],
+        cache_dir: Union[str, Path],
+) -> Path:
+    """Deterministic cache-file path for a (model, provider list) pair.
+
+    The key is cheap to compute (path + size + mtime, no file hashing) but
+    changes whenever the model file, the onnxruntime build, or the provider
+    list changes, so a stale cache is never served silently.
+    """
+    stat = os.stat(model_path)
+    provider_key = ",".join(repr(p) for p in resolved_providers)
+    raw = (
+        f"{os.path.abspath(str(model_path))}|{stat.st_size}|{stat.st_mtime_ns}|"
+        f"{onnxruntime.__version__}|{provider_key}"
+    )
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    return Path(cache_dir) / f"{digest}.ort_optimized.onnx"
+
+
+def _warn_on_provider_fallback(
+        requested: Sequence[ProviderSpec],
+        session: onnxruntime.InferenceSession,
+) -> None:
+    """Warn when the first requested provider silently fell back to another.
+
+    onnxruntime does not raise when a provider fails to initialize (e.g. a
+    CUDA build advertising ``CUDAExecutionProvider`` while missing a shared
+    library like ``libcublasLt``); it just falls back to the next provider
+    in the list with no log line. This surfaces that so a "GPU" run that is
+    actually running on CPU is not mistaken for one that is not.
+    """
+    if not requested:
+        return
+    try:
+        actual = list(session.get_providers())
+    except Exception:  # pragma: no cover - defensive, ORT always answers
+        return
+    requested_first = _name(requested[0])
+    if requested_first not in actual:
+        LOG.warning(
+            f"requested onnxruntime provider '{requested_first}' is not "
+            f"active for this session; falling back to "
+            f"'{actual[0] if actual else 'unknown'}' (active providers: {actual})"
+        )
+
+
 def make_session(
         model_path: Any,
         providers: Optional[Sequence[ProviderSpec]] = None,
         sess_options: Optional[onnxruntime.SessionOptions] = None,
         use_cuda: bool = False,
+        cache_dir: Optional[Union[str, Path]] = None,
 ) -> onnxruntime.InferenceSession:
-    """Create an ``InferenceSession`` on the resolved execution providers."""
-    return onnxruntime.InferenceSession(
-        str(model_path),
-        sess_options=sess_options or onnxruntime.SessionOptions(),
-        providers=resolve_providers(providers, use_cuda=use_cuda),
+    """
+    Create an ``InferenceSession`` on the resolved execution providers.
+
+    Parameters:
+        cache_dir: Directory to cache the ORT-optimized graph in. When given
+            (or ``PHOONNX_ORT_CACHE_DIR`` is set), the optimized model is
+            written to a deterministic file the first time and every later
+            session for the same model/provider list is created directly
+            from that pre-optimized file with graph optimization disabled,
+            skipping the optimization pass. A stale or corrupt cache file
+            is deleted and the session falls back to a normal load. Default
+            (no env var, no argument): unchanged behaviour.
+    """
+    resolved = resolve_providers(providers, use_cuda=use_cuda)
+    cache_dir = cache_dir if cache_dir is not None else os.environ.get(CACHE_DIR_ENV_VAR)
+
+    if not cache_dir:
+        session = onnxruntime.InferenceSession(
+            str(model_path),
+            sess_options=sess_options or onnxruntime.SessionOptions(),
+            providers=resolved,
+        )
+        _warn_on_provider_fallback(resolved, session)
+        return session
+
+    os.makedirs(cache_dir, exist_ok=True)
+    cache_path = _cache_key_path(model_path, resolved, cache_dir)
+
+    if cache_path.is_file():
+        try:
+            cached_options = onnxruntime.SessionOptions()
+            cached_options.graph_optimization_level = (
+                onnxruntime.GraphOptimizationLevel.ORT_DISABLE_ALL
+            )
+            session = onnxruntime.InferenceSession(
+                str(cache_path), sess_options=cached_options, providers=resolved,
+            )
+            _warn_on_provider_fallback(resolved, session)
+            return session
+        except Exception as err:
+            LOG.warning(
+                f"cached optimized model '{cache_path}' failed to load "
+                f"({err}); removing it and rebuilding from '{model_path}'"
+            )
+            try:
+                cache_path.unlink()
+            except OSError:
+                pass
+
+    build_options = sess_options or onnxruntime.SessionOptions()
+    build_options.optimized_model_filepath = str(cache_path)
+    session = onnxruntime.InferenceSession(
+        str(model_path), sess_options=build_options, providers=resolved,
     )
+    _warn_on_provider_fallback(resolved, session)
+    return session
