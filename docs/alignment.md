@@ -170,6 +170,53 @@ add_phoneme_alignment_output(
 
 ---
 
+## Runtime alignment for models exported without the flag
+
+You don't have to re-export a model to get alignments from it.
+``TTSVoice.synthesize(include_alignments=True)`` (and
+``phoneme_ids_to_audio(include_alignments=True)``) retrofit the duration
+output automatically the first time they are asked for one and the loaded
+session doesn't already have it:
+
+1. Locate the duration tensor in the model's graph (the same ``Ceil``-node
+   autodetection ``--add-phoneme-alignment`` uses, via
+   `phoonnx.onnx_surgery.add_phoneme_alignment_output`).
+2. Write a patched copy next to the original model, `<model>.alignment.onnx`
+   (or under `PHOONNX_ORT_CACHE_DIR` if that env var is set — the model's own
+   directory may be read-only, e.g. a shared voice cache).
+3. Rebuild an ONNX Runtime session from the patched copy, on the same
+   execution providers as the original, and retry inference on it.
+
+This runs **at most once per `TTSVoice` instance** — the outcome (including a
+negative one: no locatable duration tensor, `onnx` not installed, or the
+derived file couldn't be written) is cached on the voice, so later
+`include_alignments=True` calls either reuse the already-open patched session
+or go straight back to `None` without retrying. Across process restarts, the
+`<model>.alignment.onnx` file itself is the cache: if it already exists and is
+newer than the model, it's reused as-is, no surgery repeated.
+
+`include_alignments=False` never touches any of this — it is the exact same
+zero-cost no-op it always was.
+
+```python
+from phoonnx.voice import TTSVoice
+
+# model.onnx was exported without --add-phoneme-alignment
+voice = TTSVoice.load("model.onnx")
+
+for chunk in voice.synthesize("Hello world.", include_alignments=True):
+    # first call: locates the duration tensor, writes model.alignment.onnx
+    # next to model.onnx, and synthesizes from the patched session.
+    print(chunk.phoneme_alignments)
+```
+
+If the model genuinely has no discrete duration predictor (e.g. ZipVoice) or
+the `onnx` package isn't installed, this degrades exactly like any other
+unsupported model: `phoneme_id_samples` / `phoneme_alignments` stay `None`,
+and a single debug/info-level log line explains why.
+
+---
+
 ## Use cases
 
 ### Visemes / lip-sync

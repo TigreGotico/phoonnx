@@ -15,6 +15,7 @@ import shutil
 import tempfile
 import unittest
 from dataclasses import fields, is_dataclass
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -603,6 +604,23 @@ class TestAlignmentIntegration(unittest.TestCase):
         _patch_alignment(src_onnx, ALIGNED_MODEL)
         cls.voice = TTSVoice.load(ALIGNED_MODEL, config_path)
         cls.voice_no_align = TTSVoice.load(src_onnx, config_path)
+        cls._src_onnx = src_onnx
+
+    @classmethod
+    def tearDownClass(cls):
+        # ``voice_no_align``'s model does have a locatable duration tensor
+        # (see test_model_without_alignment_output_triggers_runtime_surgery
+        # below), so an ``include_alignments=True`` call against it writes an
+        # on-demand ``<model>.alignment.onnx`` sibling next to the
+        # downloaded/cached model file. Clean it up rather than leaving a
+        # derived artifact behind in the voice cache.
+        src_onnx = getattr(cls, "_src_onnx", None)
+        if src_onnx:
+            p = Path(src_onnx)
+            stem = p.name[:-len(".onnx")] if p.name.endswith(".onnx") else p.stem
+            derived = p.with_name(f"{stem}.alignment.onnx")
+            if derived.is_file():
+                derived.unlink()
 
     def test_synthesize_produces_audio(self):
         chunks = list(self.voice.synthesize("kaixo"))
@@ -644,11 +662,17 @@ class TestAlignmentIntegration(unittest.TestCase):
             self.assertGreater(a.num_samples, 0,
                                f"phoneme {a.phoneme!r} has zero duration")
 
-    def test_model_without_alignment_output_gives_none(self):
-        """Unpatched model (single output) gives phoneme_alignments=None."""
+    def test_model_without_alignment_output_triggers_runtime_surgery(self):
+        """An unpatched model (single output) that does carry a locatable
+        duration tensor gets one retrofitted on demand — see
+        ``phoonnx.onnx_surgery`` / ``TTSVoice._ensure_alignment_session`` —
+        instead of degrading to ``None``. This is the on-demand-alignment
+        feature working exactly as intended for a real VITS export."""
         chunk = list(self.voice_no_align.synthesize("kaixo", include_alignments=True))[0]
-        self.assertIsNone(chunk.phoneme_id_samples)
-        self.assertIsNone(chunk.phoneme_alignments)
+        self.assertIsNotNone(chunk.phoneme_id_samples)
+        self.assertIsNotNone(chunk.phoneme_alignments)
+        total = sum(a.num_samples for a in chunk.phoneme_alignments)
+        self.assertEqual(total, len(chunk.audio_float_array))
 
     def test_multiple_sentences(self):
         """Multi-sentence input: each chunk is independently aligned."""

@@ -109,8 +109,13 @@ for chunk in voice.synthesize("Hello world.", include_alignments=True):
 
 `include_alignments=False` (the default) is a strict no-op on the audio, and
 models without a duration output degrade gracefully — `phoneme_alignments`
-comes back `None`. See [Phoneme alignment](alignment.md) for the full guide,
-the engine support matrix, and how to export a VITS model with alignment.
+comes back `None`. If a model was exported without a duration output but has
+one to find, the first `include_alignments=True` call retrofits it on demand
+via load-time graph surgery (see [Phoneme alignment](alignment.md)'s
+"Runtime alignment for models exported without the flag"), so re-exporting
+is optional, not required. See [Phoneme alignment](alignment.md) for the full
+guide, the engine support matrix, and how to export a VITS model with
+alignment.
 
 ## SynthesisConfig
 
