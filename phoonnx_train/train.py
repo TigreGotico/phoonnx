@@ -11,6 +11,11 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from phoonnx_train.engines import get_engine, list_engines
 from phoonnx_train.engines.base import TrainingEngineConfig
 
+# Matrix multiplications benefit from TF32/reduced precision on Ampere+ GPUs;
+# "high" trades a small amount of accuracy for a meaningful speedup and is
+# safe for training (not inference-critical precision).
+torch.set_float32_matmul_precision('high')
+
 
 def _build_extra(quality_kwargs: dict, engine_params: dict, **cli_values) -> dict:
     """Merge the engine extra bag. Precedence: explicit CLI flag >
@@ -80,6 +85,11 @@ def _validate_engine(ctx, param, value):
               help='Similarity gate floor for best-checkpoint selection')
 @click.option('--eval-seed', type=int, default=1234,
               help='Base seed for per-utterance evaluation synthesis (default: 1234)')
+@click.option('--compile', 'use_compile', is_flag=True, default=False,
+              help='Compile the model with torch.compile for faster training (default: False)')
+@click.option('--compile-mode', default='default',
+              type=click.Choice(['default', 'reduce-overhead', 'max-autotune', 'max-autotune-no-cudagraphs']),
+              help='torch.compile mode (default: default)')
 def main(
     dataset_dir: str,
     engine: str,
@@ -104,6 +114,8 @@ def main(
     eval_speaker_ref_dir: Optional[str],
     min_spk_sim: Optional[float],
     eval_seed: int,
+    use_compile: bool,
+    compile_mode: str,
 ):
     logging.basicConfig(level=logging.DEBUG)
     torch.manual_seed(seed)
@@ -265,6 +277,17 @@ def main(
         callbacks=callbacks,
         **training_engine.trainer_kwargs(),
     )
+    if use_compile:
+        if hasattr(model, "model_g") and hasattr(model, "model_d"):
+            _LOGGER.info("Compiling model_g/model_d with torch.compile (mode=%s)", compile_mode)
+            model.model_g = torch.compile(model.model_g, mode=compile_mode)
+            model.model_d = torch.compile(model.model_d, mode=compile_mode)
+        elif hasattr(model, "model") and isinstance(getattr(model, "model"), torch.nn.Module):
+            _LOGGER.info("Compiling model with torch.compile (mode=%s)", compile_mode)
+            model.model = torch.compile(model.model, mode=compile_mode)
+        else:
+            _LOGGER.warning("compile not supported for engine %r yet — running uncompiled", engine)
+
     _LOGGER.info("Training started!")
     # torch>=2.6 defaults torch.load(weights_only=True), which rejects our own
     # pickled Lightning checkpoints on ckpt_path resume.
