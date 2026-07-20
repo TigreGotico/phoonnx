@@ -83,6 +83,9 @@ def _validate_engine(ctx, param, value):
               help='Reference-speaker wav dir enabling the speaker-similarity gate')
 @click.option('--min-spk-sim', type=float, default=None,
               help='Similarity gate floor for best-checkpoint selection')
+@click.option('--eval-speaker-id', type=int, default=None,
+              help='Speaker id used for in-training evaluation synthesis on '
+                   'multi-speaker models (default: None = engine default voice)')
 @click.option('--eval-seed', type=int, default=1234,
               help='Base seed for per-utterance evaluation synthesis (default: 1234)')
 @click.option('--compile', 'use_compile', is_flag=True, default=False,
@@ -113,6 +116,7 @@ def main(
     early_stop_patience: int,
     eval_speaker_ref_dir: Optional[str],
     min_spk_sim: Optional[float],
+    eval_speaker_id: Optional[int],
     eval_seed: int,
     use_compile: bool,
     compile_mode: str,
@@ -272,7 +276,7 @@ def main(
         scorer = CheckpointScorer(
             training_engine, dataset_config, sentences,
             speaker_ref_dir=Path(eval_speaker_ref_dir) if eval_speaker_ref_dir else None,
-            speaker_id=None,
+            speaker_id=eval_speaker_id,
             seed=eval_seed,
         )
         selection = SelectionPolicy(metric="utmos_mean", min_spk_sim=min_spk_sim)

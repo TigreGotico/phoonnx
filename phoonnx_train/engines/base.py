@@ -156,7 +156,14 @@ class BaseTrainingEngine(ABC):
         """
         import torch
 
-        ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+        from phoonnx_train.torch_compat import trusting_torch_load
+
+        # Our Lightning checkpoints embed pickled hyper-parameters (dataclasses,
+        # partial factories) that torch>=2.6's default weights_only=True
+        # rejects. Loading our own checkpoint is trusted — use the same helper
+        # every other load path uses for consistency.
+        with trusting_torch_load():
+            ckpt = torch.load(checkpoint_path, map_location="cpu")
         state_dict = ckpt.get("state_dict", ckpt)
         model_state = model.state_dict()
         filtered = {
