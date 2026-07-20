@@ -174,7 +174,9 @@ def phonemize_worker(
 @click.option("--resume", "resume", is_flag=True,
               help="Skip rows already present (by row_id/audio path) in an "
                    "existing output dataset.jsonl and append only new rows. "
-                   "Writes are atomic (temp file + rename).")
+                   "Writes are atomic (temp file + rename). Incompatible with "
+                   "--corpus-only-map, which cannot be reconstructed from "
+                   "already-written rows.")
 @click.option("--metrics-out", "metrics_out", type=click.Path(dir_okay=False, path_type=Path),
               default=None,
               help="Write every computed --filter metric value per row_id to "
@@ -525,6 +527,15 @@ def cli(
     if config.single_speaker and (config.speaker_id is not None):
         _LOGGER.fatal("--single-speaker and --speaker-id cannot both be provided")
         raise click.Abort()
+
+    if resume and corpus_only_map:
+        raise click.UsageError(
+            "--resume cannot be combined with --corpus-only-map: resuming "
+            "reprocesses only new rows, so it cannot reconstruct a corpus-only "
+            "phoneme map from the already-written rows (symbols occurring only "
+            "in those rows would be lost). Rerun without --resume, or without "
+            "--corpus-only-map."
+        )
 
     # Create directories
     config.output_dir.mkdir(parents=True, exist_ok=True)

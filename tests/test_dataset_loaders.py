@@ -393,6 +393,31 @@ class TestPreprocessIntegration(unittest.TestCase):
             lines2 = [json.loads(x) for x in (out / "dataset.jsonl").read_text().splitlines() if x]
             self.assertEqual(len(lines2), 3)
 
+    def test_resume_with_corpus_only_map_is_rejected(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            a = tmp / "a.jsonl"
+            self._jsonl(a, [{"text": "hi", "audio": "a.wav", "phon": "h i"}])
+            out = tmp / "out"
+            base = ["-i", str(a), "-o", str(out), "-l", "en",
+                    "--skip-audio", "--phonemes-column", "phon"]
+
+            # both flags together -> loud usage error (exit 2), nothing written
+            both = self._invoke(base + ["--resume", "--corpus-only-map"])
+            self.assertEqual(both.exit_code, 2)
+            self.assertIn("--corpus-only-map", both.output)
+            self.assertFalse((out / "dataset.jsonl").exists())
+
+            # --resume alone still works
+            self.assertEqual(self._invoke(base + ["--resume"]).exit_code, 0)
+
+            # --corpus-only-map alone still works (phonemizing builds the map)
+            with TemporaryDirectory() as tmp2:
+                out2 = Path(tmp2) / "out"
+                ok = self._invoke(["-i", str(a), "-o", str(out2), "-l", "en",
+                                   "--skip-audio", "--corpus-only-map"])
+                self.assertEqual(ok.exit_code, 0, ok.output)
+
     def test_mismatched_precomputed_phonemes_fail_loudly(self):
         with TemporaryDirectory() as tmp:
             tmp = Path(tmp)
