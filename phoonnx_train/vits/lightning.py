@@ -169,6 +169,19 @@ class VitsModel(pl.LightningModule):
         valid_set_size = int(len(full_dataset) * validation_split)
         train_set_size = len(full_dataset) - valid_set_size - num_test_examples
 
+        # torch.utils.data.random_split only checks that the split sizes SUM
+        # to the dataset length -- it happily accepts a negative train size
+        # (e.g. num_test_examples exceeding the dataset) and silently hands
+        # every example to a different split instead of raising, which would
+        # start training on an empty train_dataloader with no warning.
+        if train_set_size < 0:
+            raise ValueError(
+                f"num_test_examples ({num_test_examples}) + validation split "
+                f"({valid_set_size} of {len(full_dataset)}) exceed the "
+                f"dataset size ({len(full_dataset)}); reduce --num-test-examples "
+                "or --validation-split, or grow the dataset."
+            )
+
         self._train_dataset, self._test_dataset, self._val_dataset = random_split(
             full_dataset, [train_set_size, num_test_examples, valid_set_size]
         )
