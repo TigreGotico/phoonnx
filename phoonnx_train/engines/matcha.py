@@ -407,16 +407,13 @@ class MatchaTrainingEngine(BaseTrainingEngine):
         ``MatchaTTS.synthesise``); a third CFM step-count element may be
         supplied via ``config["n_timesteps"]`` (default 10).
         """
-        import contextlib
-
         import numpy as np
         import torch
 
         from phoonnx_train.matcha import MatchaTTS
+        from phoonnx_train.torch_compat import trusting_torch_load
 
-        safe_globals = getattr(torch.serialization, "safe_globals", None)
-        ctx = safe_globals([SimpleNamespace]) if safe_globals else contextlib.nullcontext()
-        with ctx:
+        with trusting_torch_load():
             matcha = MatchaTTS.load_from_checkpoint(
                 str(checkpoint_path), map_location=device
             )
