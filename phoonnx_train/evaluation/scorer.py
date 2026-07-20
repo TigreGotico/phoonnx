@@ -221,9 +221,17 @@ class CheckpointScorer:
         self.vocoder_path = vocoder_path
         self.device = device
 
-        self.ph, self.tokenizer, self.lang, self.sample_rate, self.scales = build_encoder(
+        self.ph, self.tokenizer, self.lang, self.sample_rate, built_scales = build_encoder(
             config, *scales_override
         )
+        # Scale semantics are engine-specific (VITS: noise/length/noise_w,
+        # matcha: temperature/length, optispeech: d/p/e factors). Only pass an
+        # explicit triple when the user overrode a value on the CLI; None lets
+        # each engine fall back to its own checkpoint/config defaults.
+        if any(v is not None for v in scales_override):
+            self.scales = built_scales
+        else:
+            self.scales = None
 
         num_speakers = int(config.get("num_speakers", 1))
         if num_speakers > 1 and speaker_id is None:

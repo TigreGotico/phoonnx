@@ -238,30 +238,29 @@ class VitsTrainingEngine(BaseTrainingEngine):
         import numpy as np
         import torch
 
+        from phoonnx_train.torch_compat import trusting_torch_load
         from phoonnx_train.vits.lightning import VitsModel
 
-        # torch >=2.6 defaults torch.load(weights_only=True); lightning
-        # checkpoints embed pathlib.PosixPath and full pickled objects, which
-        # that rejects. These are our own trusted checkpoints.
-        orig_load = torch.load
-
-        def _trusted_load(*a, **k):
-            k.setdefault("weights_only", False)
-            return orig_load(*a, **k)
-
-        torch.load = _trusted_load
-        try:
+        with trusting_torch_load():
             model = VitsModel.load_from_checkpoint(
                 str(checkpoint_path), dataset=None, map_location=device
             )
-        finally:
-            torch.load = orig_load
         model = model.to(device)
         model.eval()
         with torch.no_grad():
             model.model_g.dec.remove_weight_norm()
 
+        inf = (config or {}).get("inference", {})
+        default_scales = [
+            float(inf.get("noise_scale", 0.667)),
+            float(inf.get("length_scale", 1.0)),
+            float(inf.get("noise_w", 0.8)),
+        ]
+
         def synth(ids: List[int], scales: List[float], sid: Optional[int] = None):
+            # scales=None/[] means the voice config's inference defaults;
+            # when set it is [noise_scale, length_scale, noise_w].
+            scales = scales or default_scales
             text = torch.LongTensor(ids).unsqueeze(0).to(device)
             text_lengths = torch.LongTensor([len(ids)]).to(device)
             scales_t = torch.FloatTensor(scales).to(device)
