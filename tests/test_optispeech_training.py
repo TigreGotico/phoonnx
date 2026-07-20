@@ -23,6 +23,7 @@ from phoonnx_train.engines.optispeech import (
     OptiSpeechTrainingEngine,
     _QUALITY_PRESETS,
 )
+from phoonnx_train.torch_compat import trusting_torch_load
 
 HOP = 256
 NFEATS = 40
@@ -226,7 +227,10 @@ class CheckpointTests(unittest.TestCase):
             ckpt = Path(td) / "last.ckpt"
             trainer.save_checkpoint(str(ckpt))
             resumed = _tiny_trainer(max_steps=4)
-            resumed.fit(model, dl, ckpt_path=str(ckpt))
+            # torch>=2.6 defaults weights_only=True; Lightning's own ckpt_path
+            # load must trust our checkpoint's pickled config objects.
+            with trusting_torch_load():
+                resumed.fit(model, dl, ckpt_path=str(ckpt))
             # Optimizer + scheduler state restored; training continued past the
             # saved step rather than restarting.
             self.assertEqual(resumed.global_step, 4)

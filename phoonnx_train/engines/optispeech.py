@@ -23,7 +23,6 @@ Checkpointing:
     supports warm-starting from a *partial* checkpoint: it maps matching keys by
     name+shape and logs exactly which keys were loaded and which were skipped.
 """
-import contextlib
 import functools
 import json
 import logging
@@ -630,11 +629,13 @@ class OptiSpeechTrainingEngine(BaseTrainingEngine):
         engine, so the whole module (optimizer/scheduler config included) is
         rebuilt on load.
         """
-        import torch
-
         from phoonnx_train.optispeech.model.optispeech import OptiSpeech
+        from phoonnx_train.torch_compat import trusting_torch_load
 
-        with self._allow_checkpoint_globals():
+        # Our checkpoints embed the engine's dataclasses and partial factories;
+        # torch>=2.6 defaults torch.load(weights_only=True) and rejects them.
+        # Loading our own checkpoint is trusted.
+        with trusting_torch_load():
             return OptiSpeech.load_from_checkpoint(
                 str(checkpoint_path), map_location="cpu"
             )
@@ -654,10 +655,10 @@ class OptiSpeechTrainingEngine(BaseTrainingEngine):
         """
         import torch
 
-        with self._allow_checkpoint_globals():
-            ckpt = torch.load(
-                str(checkpoint_path), map_location="cpu", weights_only=False
-            )
+        from phoonnx_train.torch_compat import trusting_torch_load
+
+        with trusting_torch_load():
+            ckpt = torch.load(str(checkpoint_path), map_location="cpu")
         state_dict = ckpt.get("state_dict", ckpt)
         model_state = model.state_dict()
 
@@ -688,33 +689,6 @@ class OptiSpeechTrainingEngine(BaseTrainingEngine):
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
-
-    @staticmethod
-    def _checkpoint_safe_globals() -> List[Any]:
-        return [
-            functools.partial,
-            GeneratorLossCoeffs,
-            DiscriminatorLossCoeffs,
-            OptiSpeechTrainArgs,
-            OptiSpeechInferenceArgs,
-            OptiSpeechDataArgs,
-            OptiSpeechEngineConfig,
-            get_cosine_schedule_with_warmup,
-        ]
-
-    @classmethod
-    def _allow_checkpoint_globals(cls):
-        """Allow-list our config/partial objects for ``weights_only`` unpickling.
-
-        On torch<2.4 ``safe_globals`` does not exist and ``weights_only``
-        defaults to ``False``, so a no-op context is sufficient.
-        """
-        import torch
-
-        safe_globals = getattr(torch.serialization, "safe_globals", None)
-        if safe_globals is None:
-            return contextlib.nullcontext()
-        return safe_globals(cls._checkpoint_safe_globals())
 
     @staticmethod
     def _embed_metadata(onnx_path: Path, model: "pl.LightningModule") -> None:
