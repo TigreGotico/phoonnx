@@ -24,6 +24,8 @@ from phoonnx.config import VoiceConfig, DEFAULT_HOP_LENGTH, PhonemeType, Alphabe
 from phoonnx.engines.vits import VitsAdapter
 from phoonnx.voice import AudioChunk, PhonemeAlignment, TTSVoice
 
+from tests.conftest import retry_download
+
 
 # ---------------------------------------------------------------------------
 # Test fixtures / helpers
@@ -547,8 +549,8 @@ def _ensure_model():
     v = m.voices.get(VOICE_ID)
     if v is None:
         raise unittest.SkipTest(f"Voice {VOICE_ID} not in registry")
-    v.download_config()
-    v.download_model()
+    retry_download(v.download_config)
+    retry_download(v.download_model)
     import glob
     voice_path = v.voice_path
     onnx_files = glob.glob(os.path.join(voice_path, "*.onnx"))
