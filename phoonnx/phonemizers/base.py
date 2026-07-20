@@ -2,7 +2,7 @@ import abc
 import re
 import string
 import unicodedata
-from typing import List, Tuple, Optional, Literal
+from typing import Iterator, List, Tuple, Optional, Literal
 
 from langcodes import tag_distance
 from quebra_frases import sentence_tokenize
@@ -71,18 +71,36 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
         return text
 
     def phonemize(self, text: str, lang: str) -> PhonemizedChunks:
+        # PhonemizedChunks is list[list[str]]; empty text yields no
+        # sentences. (Returning the raw (str, str, bool) tuple form here
+        # corrupted the type and broke callers that mutate each sentence,
+        # e.g. inline ``[[phoneme]]`` blocks in TTSVoice.phonemize.)
+        return list(self.phonemize_lazy(text, lang))
+
+    def phonemize_lazy(self, text: str, lang: str) -> Iterator[List[str]]:
+        """Lazy, per-sentence variant of :meth:`phonemize`.
+
+        Yields one phoneme list per sentence-level chunk, invoking the
+        (potentially expensive) ``phonemize_string`` only as each sentence is
+        pulled from the generator. This lets a caller start synthesizing
+        sentence 1 before sentence 2 has been phonemized, cutting
+        time-to-first-audio.
+
+        Normalization and chunking still run over the *whole* text up front (both
+        are cheap and order-sensitive), so ``list(self.phonemize_lazy(text)) ==
+        self.phonemize(text)`` holds for any input.
+        """
         if not text:
-            # PhonemizedChunks is list[list[str]]; empty text yields no
-            # sentences. (Returning the raw (str, str, bool) tuple form here
-            # corrupted the type and broke callers that mutate each sentence,
-            # e.g. inline ``[[phoneme]]`` blocks in TTSVoice.phonemize.)
-            return []
-        results: RawPhonemizedChunks = []
+            return
         text = normalize(text, lang)
         for chunk, punct, eos in self.chunk_text(text):
             phoneme_str = self.phonemize_string(self.remove_punctuation(chunk), lang)
-            results += [(phoneme_str, punct, True)]
-        return self._process_phones(results)
+            # Filter out (lang) switch (flags) that surround words from languages
+            # other than the current voice — mirrors _process_phones().
+            phoneme_str = re.sub(r"\([^)]+\)", "", phoneme_str)
+            # phonemize() marks every chunk as end-of-sentence, so each chunk is
+            # its own sentence.
+            yield list(phoneme_str)
 
     @staticmethod
     def _process_phones(raw_phones: RawPhonemizedChunks) -> PhonemizedChunks:

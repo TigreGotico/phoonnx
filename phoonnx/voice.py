@@ -17,6 +17,7 @@ from typing import Any, Iterable, Optional, Sequence, Union, Dict
 import numpy as np
 import onnxruntime
 from langcodes import closest_match
+from quebra_frases import sentence_tokenize
 
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, get_phonemizer
 from phoonnx.alphabet_convert import convert as alphabet_convert
@@ -404,6 +405,132 @@ class TTSVoice:
         token_ids =  self.tokenizer.tokenize(phonemes)
         return token_ids
 
+    def _diacritize(self, text: str, diacritizer_model: Optional[str]) -> str:
+        """Apply (Arabic/Hebrew) diacritics for the voice's language."""
+        return self.phonemizer.add_diacritics(
+            text, self.config.lang_code, model=diacritizer_model
+        )
+
+    def _text_parts(
+            self, text: str, do_diacritics: bool, diacritizer_model: Optional[str]
+    ) -> Iterable[str]:
+        """Yield the text unit(s) to phonemize.
+
+        Without diacritics the whole text is yielded once so the phonemizer's own
+        normalization + chunking runs over it exactly as before (guaranteeing the
+        lazy stream produces the same phonemes as a single whole-text call). With
+        diacritics enabled the text is split into sentences and each is
+        diacritized independently — Arabic/Hebrew diacritizer models are
+        sentence-level, and doing it per sentence keeps the first sentence off the
+        critical path of the rest.
+        """
+        if not do_diacritics:
+            yield text
+            return
+        for sentence in sentence_tokenize(text):
+            if not sentence.strip():
+                continue
+            yield self._diacritize(sentence, diacritizer_model)
+
+    def _iter_synthesis_ids(
+            self,
+            text: str,
+            syn_config: SynthesisConfig,
+            do_diacritics: bool,
+            diacritizer_model: Optional[str],
+            src_alphabet: Alphabet,
+            tgt_alphabet: Alphabet,
+    ) -> Iterable[tuple]:
+        """Lazily yield ``(phoneme_ids, language_ids)`` per sentence.
+
+        Preserves the exact dispatch semantics of :meth:`synthesize` while
+        deferring per-sentence phonemize/diacritize/tokenize work until each item
+        is pulled from the generator.
+        """
+        lang = self.config.lang_code
+
+        if src_alphabet == tgt_alphabet:
+            if src_alphabet == Alphabet.GRAPHEMES:
+                # Grapheme / text-token models: the adapter owns text -> token ids
+                # (some do their own whole-text normalization, e.g. subword BPE),
+                # so encode the whole text once; audio is still produced per
+                # sentence downstream.
+                if do_diacritics:
+                    text = self._diacritize(text, diacritizer_model)
+                for ids in self.adapter.encode_text(text, self, syn_config):
+                    yield ids, None
+            else:
+                # Already-phonemic input in the model's own alphabet: pass through.
+                if do_diacritics:
+                    text = self._diacritize(text, diacritizer_model)
+                for phonemes in _phonemic_chunks(text, tgt_alphabet):
+                    if phonemes:
+                        yield self.phonemes_to_ids(phonemes), None
+            return
+
+        if src_alphabet == Alphabet.GRAPHEMES:
+            # Normal phoneme model — the hot path. Language-aware phonemizers (e.g.
+            # Shami) provide per-phoneme language IDs; the two streams are produced
+            # together per sentence so they can never fall out of alignment.
+            lazy_lang_ids = getattr(
+                self.phonemizer, "phonemize_with_language_ids_lazy", None)
+            if lazy_lang_ids is not None:
+                for part in self._text_parts(text, do_diacritics, diacritizer_model):
+                    for phonemes, language_ids in lazy_lang_ids(part, lang):
+                        if phonemes:
+                            yield self.phonemes_to_ids(phonemes), language_ids
+            elif hasattr(self.phonemizer, "phonemize_with_language_ids"):
+                # Language-aware phonemizer without a lazy variant: eager fallback.
+                if do_diacritics:
+                    text = self._diacritize(text, diacritizer_model)
+                sentence_phonemes, sentence_language_ids = (
+                    self.phonemizer.phonemize_with_language_ids(text, lang))
+                for phonemes, language_ids in zip(sentence_phonemes, sentence_language_ids):
+                    if phonemes:
+                        yield self.phonemes_to_ids(phonemes), language_ids
+            elif _PHONEME_BLOCK_PATTERN.search(text):
+                # Inline [[phoneme]] blocks merge into adjacent sentences; keep the
+                # (eager) whole-text handling that owns that merge logic.
+                if do_diacritics:
+                    text = self._diacritize(text, diacritizer_model)
+                for phonemes in self.phonemize(text):
+                    if phonemes:
+                        yield self.phonemes_to_ids(phonemes), None
+            else:
+                # Lazy per-sentence phonemization; a phonemizer without a lazy
+                # variant falls back to its eager whole-text phonemize().
+                phonemize_lazy = getattr(self.phonemizer, "phonemize_lazy", None)
+                for part in self._text_parts(text, do_diacritics, diacritizer_model):
+                    sentences = (phonemize_lazy(part, lang) if phonemize_lazy is not None
+                                 else self.phonemizer.phonemize(part, lang))
+                    for phonemes in sentences:
+                        if phonemes:
+                            yield self.phonemes_to_ids(phonemes), None
+            return
+
+        # Already-phonemic input in a different alphabet: transcode to the model's
+        # alphabet through the conversion graph.
+        if do_diacritics:
+            text = self._diacritize(text, diacritizer_model)
+        converted = alphabet_convert(
+            text,
+            lang=lang,
+            src=src_alphabet,
+            tgt=tgt_alphabet,
+            phoneme_type=self.config.phoneme_type,
+        )
+        if isinstance(converted, list):
+            # PhonemizedChunks returned by a phonemization edge
+            sentence_phonemes = converted
+            if _PHONEME_BLOCK_PATTERN.search(text):
+                sentence_phonemes = self.phonemize(text)
+        else:
+            # Script-converted string — split into single-char token lists.
+            sentence_phonemes = _phonemic_chunks(converted, tgt_alphabet)
+        for phonemes in sentence_phonemes:
+            if phonemes:
+                yield self.phonemes_to_ids(phonemes), None
+
     def synthesize(
             self,
             text: str,
@@ -427,7 +554,8 @@ class TTSVoice:
         LOG.debug("text=%s", text)
 
         # Text preprocessing — engine-agnostic, operates on the text before encoding:
-        # user pronunciation overrides + (Arabic/Hebrew) diacritics.
+        # user pronunciation overrides (whole-text) + (Arabic/Hebrew) diacritics,
+        # which are applied per sentence inside the lazy stream below.
         if self.phonetic_spellings and syn_config.enable_phonetic_spellings:
             text = self.phonetic_spellings.apply(text)
 
@@ -436,14 +564,9 @@ class TTSVoice:
         do_diacritics = syn_config.add_diacritics
         if do_diacritics is None:
             do_diacritics = self.config.add_diacritics
-        if do_diacritics:
-            # same for the diacritizer model itself: an explicit per-call model wins,
-            # otherwise fall back to the voice config's own choice.
-            diacritizer_model = syn_config.diacritizer_model or self.config.diacritizer_model
-            text = self.phonemizer.add_diacritics(
-                text, self.config.lang_code,
-                model=diacritizer_model)
-            LOG.debug("text+diacritics=%s", text)
+        # An explicit per-call diacritizer model wins, otherwise fall back to the
+        # voice config's own choice.
+        diacritizer_model = syn_config.diacritizer_model or self.config.diacritizer_model
 
         # Alphabet dispatch (unified model + language-aware phonemizers):
         #   src == tgt          -> grapheme/text-token models use the adapter;
@@ -460,66 +583,15 @@ class TTSVoice:
                         else Alphabet.GRAPHEMES)
         tgt_alphabet = self.config.alphabet
 
-        if src_alphabet == tgt_alphabet:
-            if src_alphabet == Alphabet.GRAPHEMES:
-                # Grapheme / text-token models: the adapter owns text -> token ids.
-                all_ids_for_synthesis = [
-                    (ids, None) for ids in self.adapter.encode_text(text, self, syn_config)
-                ]
-            else:
-                # Already-phonemic input in the model's own alphabet: pass through.
-                sentence_phonemes = _phonemic_chunks(text, tgt_alphabet)
-                LOG.debug("phonemes=%s", sentence_phonemes)
-                all_ids_for_synthesis = [
-                    (self.phonemes_to_ids(phonemes), None)
-                    for phonemes in sentence_phonemes if phonemes
-                ]
-        elif src_alphabet == Alphabet.GRAPHEMES:
-            # Normal phoneme model. Language-aware phonemizers (e.g. Shami) provide
-            # per-phoneme language IDs; the two streams are built together here so
-            # they can never fall out of alignment.
-            if hasattr(self.phonemizer, "phonemize_with_language_ids"):
-                sentence_phonemes, sentence_language_ids = self.phonemizer.phonemize_with_language_ids(
-                    text, self.config.lang_code
-                )
-                LOG.debug("phonemes=%s", sentence_phonemes)
-                all_ids_for_synthesis = [
-                    (self.phonemes_to_ids(phonemes), language_ids)
-                    for phonemes, language_ids in zip(sentence_phonemes, sentence_language_ids)
-                    if phonemes
-                ]
-            else:
-                sentence_phonemes = self.phonemize(text)
-                LOG.debug("phonemes=%s", sentence_phonemes)
-                all_ids_for_synthesis = [
-                    (self.phonemes_to_ids(phonemes), None)
-                    for phonemes in sentence_phonemes if phonemes
-                ]
-        else:
-            # Already-phonemic input in a different alphabet: transcode to the model's
-            # alphabet through the conversion graph.
-            converted = alphabet_convert(
-                text,
-                lang=self.config.lang_code,
-                src=src_alphabet,
-                tgt=tgt_alphabet,
-                phoneme_type=self.config.phoneme_type,
-            )
-            if isinstance(converted, list):
-                # PhonemizedChunks returned by a phonemization edge
-                sentence_phonemes = converted
-                if _PHONEME_BLOCK_PATTERN.search(text):
-                    sentence_phonemes = self.phonemize(text)
-            else:
-                # Script-converted string — split into single-char token lists.
-                sentence_phonemes = _phonemic_chunks(converted, tgt_alphabet)
-            LOG.debug("phonemes=%s", sentence_phonemes)
-            all_ids_for_synthesis = [
-                (self.phonemes_to_ids(phonemes), None)
-                for phonemes in sentence_phonemes if phonemes
-            ]
+        # Per-sentence phonemize -> tokenize is done lazily so the first sentence
+        # reaches session.run before later sentences are phonemized/diacritized,
+        # cutting time-to-first-audio on multi-sentence input.
+        id_stream = self._iter_synthesis_ids(
+            text, syn_config, do_diacritics, diacritizer_model,
+            src_alphabet, tgt_alphabet,
+        )
 
-        for phoneme_ids, language_ids in all_ids_for_synthesis:
+        for phoneme_ids, language_ids in id_stream:
             if not phoneme_ids:
                 continue
 
