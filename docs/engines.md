@@ -1,5 +1,8 @@
 # Engine Architecture
 
+This page is for developers adding or integrating TTS back-ends in phoonnx. It describes
+the inference adapter and training engine registries and the contract each must satisfy.
+
 `phoonnx` supports multiple TTS back-ends through a small, engine-agnostic adapter framework.  Both **inference** (`phoonnx/engines/`) and **training** (`phoonnx_train/engines/`) are pluggable, so adding a new architecture (VITS, OptiSpeech, Matcha-TTS, …) only requires implementing a handful of methods.
 
 ---
@@ -73,16 +76,18 @@ Lower `detect_priority` values are probed first during auto-detection.
 | Adapter | File | Detection |
 |---|---|---|
 | VITS / Piper / Mimic3 / Coqui / VITS2 / YourTTS-VITS | `phoonnx/engines/vits.py` | `model_type == "vits"`, `"scales"` input, piper/mimic3 signatures |
-| [Matcha](matcha.md) | `phoonnx/engines/matcha.py` | `engine == "matcha"` (flow-matching mel + separate vocoder) |
-| [GlowTTS](glowtts.md) | `phoonnx/engines/glowtts.py` | `engine == "glowtts"` |
-| [OptiSpeech](optispeech.md) | `phoonnx/engines/optispeech.py` | `engine == "optispeech"` (wav + durations outputs) |
-| [MixerTTS](mixertts.md) | `phoonnx/engines/mixertts.py` | `engine == "mixertts"` |
-| [FastPitch](fastpitch.md) / SpeedySpeech | `phoonnx/engines/fastpitch.py` | `engine == "fastpitch"` |
+| [Streaming VITS](streaming.md) | `phoonnx/engines/vits_streaming.py` | `streaming: true` **and** a decoder graph (split encoder/decoder) |
+| [Matcha](training/engines/matcha.md) | `phoonnx/engines/matcha.py` | `engine == "matcha"` (flow-matching mel + separate vocoder) |
+| [GlowTTS](training/engines/glowtts.md) | `phoonnx/engines/glowtts.py` | `engine == "glowtts"` |
+| [OptiSpeech](training/engines/optispeech.md) | `phoonnx/engines/optispeech.py` | `engine == "optispeech"` (wav + durations outputs) |
+| [MixerTTS](training/engines/mixertts.md) | `phoonnx/engines/mixertts.py` | `engine == "mixertts"` |
+| [FastPitch](training/engines/fastpitch.md) / SpeedySpeech | `phoonnx/engines/fastpitch.py` | `engine == "fastpitch"` |
 | StyleTTS2 / Kokoro | `phoonnx/engines/styletts2.py` | `engine in ("styletts2", "kokoro")` — supports d-vector [cloning](cloning.md) |
 | YourTTS | `phoonnx/engines/yourtts.py` | `engine == "yourtts"` — d-vector [cloning](cloning.md) |
-| [ZipVoice](zipvoice.md) | `phoonnx/engines/zipvoice.py` | `engine == "zipvoice"` — first **iterative** engine (flow-matching ODE loop), in-context [cloning](cloning.md) |
+| [ZipVoice](training/engines/zipvoice.md) | `phoonnx/engines/zipvoice.py` | `engine == "zipvoice"` — first **iterative** engine (flow-matching ODE loop), in-context [cloning](cloning.md) |
+| [F5-TTS](training/engines/f5tts.md) | `phoonnx/engines/f5tts.py` | `engine == "f5tts"` — multi-graph engine (auxiliary ONNX graphs via `aux_model_urls`) |
 | Shami / HamsVITS | `phoonnx/engines/shami.py` | `engine in ("shami", "hams")` — VITS variant with per-phoneme `language_ids` for Levantine Arabic / English code-switching |
-| [Chatterbox](chatterbox.md) | `phoonnx/engines/chatterbox.py` | `engine == "chatterbox"` — first **autoregressive** engine (codec-LM), d-vector [cloning](cloning.md) + exaggeration |
+| [Chatterbox](training/engines/chatterbox.md) | `phoonnx/engines/chatterbox.py` | `engine == "chatterbox"` — first **autoregressive** engine (codec-LM), d-vector [cloning](cloning.md) + exaggeration |
 
 ---
 

@@ -1,5 +1,8 @@
 # Docker / OVOS TTS Server
 
+This page is for operators running phoonnx as a containerized TTS server. It covers the
+published image, its configuration, and how to build it locally.
+
 phoonnx ships a **batteries-included** image that runs it as an
 [`ovos-tts-server`](https://github.com/OpenVoiceOS/ovos-tts-server) — with **every
 optional dependency** (all language phonemizers + voice cloning), the **espeak-ng**

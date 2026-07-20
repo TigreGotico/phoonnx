@@ -1,5 +1,9 @@
 # Voice Cloning
 
+This page is for developers cloning voices with phoonnx, both from Python and through
+the OVOS plugin. It covers the reference-audio API, the two cloning paradigms, and how
+to fine-tune a cloning voice.
+
 phoonnx supports **zero-shot voice cloning** — synthesizing speech in a target
 speaker's voice from a short reference clip, without any per-speaker training.
 
@@ -20,7 +24,7 @@ turned into:
 
 | Paradigm | How it works | Needs the reference's text? | Language-agnostic? | Engines |
 |---|---|---|---|---|
-| **d-vector** | a **speaker encoder** maps the reference waveform to a fixed embedding that conditions synthesis | No | Yes | YourTTS, StyleTTS2, [Chatterbox](chatterbox.md) |
+| **d-vector** | a **speaker encoder** maps the reference waveform to a fixed embedding that conditions synthesis | No | Yes | YourTTS, StyleTTS2, [Chatterbox](training/engines/chatterbox.md) |
 | **in-context** | the reference **audio + its transcription** are part of the model input; the model continues that voice | **Yes** | Per-phoneme (espeak/pinyin) | ZipVoice |
 
 A cloning voice can still bundle a **default speaker**, so it works with *or* without a
@@ -39,6 +43,18 @@ All cloning is driven by three `SynthesisConfig` fields:
 
 d-vector engines ignore the two `_text`/`_lang` fields; in-context engines require
 `speaker_reference_text`.
+
+### Reference audio formats
+
+A WAV reference always works — it is read with the standard-library `wave` module. Any
+**other** format (FLAC, OGG, MP3, …) is read with `soundfile`, which is only installed
+with the `phoonnx[cloning]` extra (it pulls in `soundfile` + `scipy`). Without that
+extra, a non-WAV reference falls through to `wave.open`, which cannot parse it and
+raises. Install the extra for non-WAV references:
+
+```bash
+pip install phoonnx[cloning]
+```
 
 ## d-vector engines (YourTTS, StyleTTS2)
 
@@ -65,7 +81,7 @@ A cloning voice names its encoder in `engine_params` (`speaker_encoder_url` /
 
 ## Autoregressive engine (Chatterbox)
 
-[Chatterbox](chatterbox.md) is a d-vector engine too (reference clip, no transcription), but
+[Chatterbox](training/engines/chatterbox.md) is a d-vector engine too (reference clip, no transcription), but
 adds an **`exaggeration`** control (0.0–1.0) for expressiveness:
 
 ```python
@@ -74,7 +90,7 @@ voice.synthesize("...", SynthesisConfig(speaker_reference="ref.wav", exaggeratio
 
 ## In-context engine (ZipVoice)
 
-[ZipVoice](zipvoice.md) is a flow-matching model that **infills** the target after the
+[ZipVoice](training/engines/zipvoice.md) is a flow-matching model that **infills** the target after the
 reference, so it needs both the reference audio **and its transcription** — the text
 aligns the audio to phonemes:
 
@@ -121,8 +137,10 @@ The OpenVoiceOS plugin reads cloning settings from `mycroft.conf`:
 }
 ```
 
-`ref_text` / `ref_lang` are only needed for in-context engines; d-vector voices use
-`ref_wav` alone.
+The config keys map onto the `SynthesisConfig` fields: `ref_wav` (alias `clone_voice`,
+or the explicit `speaker_reference`) sets the reference clip, `ref_text` sets
+`speaker_reference_text`, and `ref_lang` sets `speaker_reference_lang`. `ref_text` /
+`ref_lang` are only needed for in-context engines; d-vector voices use `ref_wav` alone.
 
 ## Fine-tuning your own cloning voice (YourTTS)
 
@@ -137,7 +155,7 @@ language embedding (`--n-langs`) supports multilingual training.
 
 ### 1. Preprocess
 
-Preprocessing is the same LJSpeech-style pipeline as [training.md](training.md#1-preprocessing),
+Preprocessing is the same LJSpeech-style pipeline as [preprocessing](training/preprocess.md),
 with speaker names read from `metadata.csv`'s second column (do **not** pass
 `--single-speaker`). A per-utterance d-vector is required — `preprocess.py`
 computes it when told which engine it is preparing data for, pointing at a

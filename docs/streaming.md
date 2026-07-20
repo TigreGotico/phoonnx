@@ -1,5 +1,9 @@
 # Streaming VITS Engine
 
+This page is for developers using or producing streaming (split encoder/decoder) VITS
+voices in phoonnx. It explains when streaming applies, how the split works, and how to
+tune and verify it.
+
 Standard Piper/VITS voices synthesize a whole sentence in one ONNX call, so the
 first audio sample is only available once the entire sentence is decoded. The
 **streaming** engine lowers *time-to-first-audio* (TTFA) by decoding the
@@ -159,52 +163,34 @@ voices (see [Tuning notes](#tuning-notes)).
 
 ## Tuning notes
 
-These defaults come from measurements on `en_US-lessac+RT-high` (a heavy
-high-tier decoder — the worst case for latency). Your mileage varies with model
-size and CPU, but the *shape* of the results is general.
+The defaults are tuned for heavy high-tier decoders, the worst case for latency.
+Your mileage varies with model size and CPU, but the *shape* of the results is general.
 
 **Time-to-first-audio wins scale with sentence length.** Streaming pays off more
 the longer the sentence, because a one-shot decode has to finish the whole thing
-before any audio plays:
+before any audio plays. On short sentences the engine falls back to a one-shot decode
+(see `fallback_frames`), so there is no win; the gap widens as the sentence grows.
 
-| Sentence | one-shot TTFA | streaming TTFA | speedup |
-|----------|---------------|----------------|---------|
-| short (~1.3 s audio) | 1399 ms | 1382 ms | 1.0x (falls back) |
-| mid (~3.9 s) | 3342 ms | 1552 ms | 2.2x |
-| long (~11.7 s) | 4801 ms | 1965 ms | 2.4x |
+**Latency vs. throughput.** Streaming does *not* make total synthesis faster; it
+trades a little extra compute for a much lower, and *bounded*, time-to-first-audio.
+As the sentence grows, a monolithic decode's time-to-first-audio grows with it, while
+streaming's stays roughly flat — that flatness is the point. Streaming's *total*
+real-time factor is somewhat higher than a monolithic decode (the discarded margins are
+real work), so for **batch/offline file generation streaming is a net loss** and should
+be left off. It is a win only for interactive, real-time speech, where first-audio
+latency is what a user feels — and the win grows on slower hardware, where monolithic
+synthesis approaches or exceeds real time and a long sentence otherwise stalls for
+seconds before any sound.
 
-**Latency vs. throughput — an honest reading.** Streaming does *not* make total
-synthesis faster; it trades a little extra compute for a much lower, and *bounded*,
-time-to-first-audio. Measured on an auto-split `celtia-cotovia` (16 kHz), same
-onnxruntime threading for both paths:
-
-| Audio | monolithic TTFA | RTF (mono) | streaming TTFA | RTF (stream) | TTFA speedup |
-|-------|-----------------|-----------|----------------|--------------|--------------|
-| 1.4 s | 348 ms | 0.24 | 254 ms | — | 1.4x (falls back) |
-| 3.9 s | 763 ms | 0.20 | 188 ms | 0.25 | 4.1x |
-| 7.1 s | 1320 ms | 0.19 | 253 ms | 0.25 | 5.2x |
-| 12.6 s | 2063 ms | 0.16 | 277 ms | 0.24 | 7.5x |
-
-Two things to read off this: (1) monolithic TTFA grows linearly with sentence
-length, while streaming TTFA stays flat (~200–280 ms) — that flatness is the
-point. (2) Streaming's *total* RTF is ~25–30% higher (the discarded margins are
-real work), so for **batch/offline file generation streaming is a net loss** and
-should be left off. It is a win only for interactive, real-time speech, where
-first-audio latency is what a user feels — and the win grows on slower hardware,
-where monolithic RTF approaches or exceeds 1.0 and a long sentence otherwise
-stalls for seconds before any sound.
-
-**Thread count.** onnxruntime defaults to using *all* logical cores, which
-measured **slower** on the heavy decoder — thread-coordination overhead and
-contention. On an 8-core machine, 4 threads was optimal; 8 was worse than 4 on
-both encoder and decoder. The default is therefore `cores / 2`. Override with
+**Thread count.** onnxruntime defaults to using *all* logical cores, which can be
+**slower** on the heavy decoder because of thread-coordination overhead and contention.
+The default is therefore `cores / 2`. Override with
 `engine_params.intra_op_num_threads` if profiling says otherwise.
 
-**Context margin.** `M = 32` was bit-identical (float noise, maxabs ~3e-6) on
-every voice tested. `M = 24` was also bit-identical on lessac/libritts and ~6%
-faster, but on some models (e.g. the Claudio NL/EN voice) 24 left a tiny audible
-residual, so **32 is the conservative default**. `M = 16` visibly corrupts the
-audio (maxabs ~3e-3). If you lower `M`, verify with the maxabs check below.
+**Context margin.** `M = 32` is bit-identical to a one-shot decode (float noise only)
+on every voice tested. `M = 24` usually works and is a little faster, but on some models
+it can leave a tiny audible residual, so **32 is the conservative default**. `M = 16`
+visibly corrupts the audio. If you lower `M`, verify with the maxabs check below.
 
 **Pipelining does not help.** Running the encoder for sentence N+1 while
 decoding sentence N was tested and *hurt* TTFA (the encoder thread steals cores
@@ -220,10 +206,10 @@ of "cool and CALM"). Investigation showed:
 - The phonemization is **correct** — espeak places the stress marks right.
 - The streaming split is **not** at fault — discard-and-stitch is bit-identical
   to a one-shot decode of the same model.
-- The `+RT` model's **duration predictor** produces durations ~12% shorter than
-  the original `ryan-high` model, *deterministically* (same difference with
+- The `+RT` model's **duration predictor** produces measurably shorter durations
+  than the original `ryan-high` model, *deterministically* (the same difference with
   `noise_w = 0`). By contrast, `lessac+RT` and `libritts_r+RT` matched their
-  originals to **0.0%**.
+  originals exactly.
 
 The root cause: `ryan` was trained with **piper 0.2.0** (PyTorch 1.11), then
 converted through the newer **piper 1.0.0** (PyTorch 2.2) export used for the

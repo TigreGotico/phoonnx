@@ -1,16 +1,19 @@
 # Voice Manager
 
-The `TTSModelManager` handles discovery, caching, downloading, and loading of TTS voice models from multiple upstream sources.
+This page is for developers using `phoonnx` from Python to discover, download, and load TTS voices. It documents the `TTSModelManager` and `TTSModelInfo` API in `phoonnx/model_manager.py`.
 
-## Supported Upstream Sources
+`TTSModelManager` handles discovery, caching, downloading, and loading of TTS voice models. Its catalog is assembled from bundled voice-index files that ship inside the package, so no network access is needed just to enumerate what is available.
 
-| Source | Description |
-|--------|-------------|
-| **OpenVoiceOS (OVOS)** | Community voices hosted on HuggingFace |
-| **Proxectonos** | Galician voices |
-| **Phonikud** | Hebrew voices |
-| **Piper** | Voices from the rhasspy/piper project |
-| **Mimic3** | Voices from the Mycroft Mimic3 project |
+## Where voices come from
+
+The catalog is not fetched from a handful of live endpoints. `merge_default_voices()` loads a set of bundled `voice_index/*.json` files packaged with `phoonnx`, one per source. The sources are:
+
+`OVOS`, `MMS`, `proxectonos`, `piper`, `phonikud`, `neurlang`, `mimic3`,
+`transformers_community`, `piper_community`, `optispeech`, `glowtts`, `mixertts`,
+`fastpitch`, `coqui_community`, `vits2`, `styletts2`, `f5tts`, `coqui_vits`, `BSC`,
+`shami`, `chatterbox`.
+
+Each JSON entry becomes a `TTSModelInfo`. Model/config/vocoder files are only fetched from their URLs when a voice is actually downloaded or loaded.
 
 ## Basic Usage
 
@@ -18,22 +21,38 @@ The `TTSModelManager` handles discovery, caching, downloading, and loading of TT
 from phoonnx.model_manager import TTSModelManager
 
 manager = TTSModelManager()
-manager.load()              # load local cache
-manager.merge_default_voices()  # also load bundled default voices
+manager.load()                  # load the on-disk cache into memory
+manager.merge_default_voices()  # merge the bundled voice indexes in
 ```
+
+`TTSModelManager(cache_path=...)` overrides the cache file location; by default the
+cache is a `JsonStorageXDG` under `phoonnx/voices` in the XDG cache directory.
 
 ### Listing Available Voices
 
 ```python
-# All voices
+# All voices currently in memory
 for voice in manager.all_voices:
     print(voice.voice_id, voice.lang)
 
-# Voices for a specific language
+# Voices for a specific language (fuzzy language match)
 pt_voices = manager.get_lang_voices("pt-PT")
 
-# All supported language codes
+# All language codes present in the loaded catalog
 print(manager.supported_langs)
+```
+
+### Listing without downloading
+
+`get_available_voice_ids_by_source()` reads the bundled index JSON files directly
+(plain `json.load`, no `TTSModelInfo` construction, no network) and returns a
+`{source: [voice_id, ...]}` mapping — a quick "what's available" listing before
+committing to a download:
+
+```python
+by_source = manager.get_available_voice_ids_by_source()
+for source, ids in by_source.items():
+    print(source, len(ids))
 ```
 
 ### Getting a Specific Voice
@@ -42,49 +61,63 @@ print(manager.supported_langs)
 voice_info = manager.voices["OpenVoiceOS/phoonnx_eu-ES_dii_espeak"]
 ```
 
+### Downloading a single voice
+
+`download_voice_by_id(voice_id)` fetches one voice's model on demand. It looks the ID
+up in the in-memory registry first, then falls back to the bundled indexes, so a voice
+can be fetched without loading the whole catalog. Returns `True` if the voice was found:
+
+```python
+manager.download_voice_by_id("OpenVoiceOS/pipertts_es-ES_dii")
+```
+
 ### Loading a Voice for Inference
 
 ```python
 voice_info = manager.voices["OpenVoiceOS/phoonnx_ar_miro_espeak_V2"]
-tts_voice = voice_info.load()   # downloads model if not cached, returns TTSVoice
+tts_voice = voice_info.load()   # downloads the model if not cached, returns TTSVoice
+
+# optional: pin ONNX Runtime execution providers
+tts_voice = voice_info.load(providers=["ROCMExecutionProvider", "CPUExecutionProvider"])
 ```
 
 ## Updating the Cache
 
-Fetch the latest voice lists from all upstream sources:
+Merging the bundled indexes and persisting the result to the on-disk cache is done with
+`merge_default_voices(store=True)` — this is exactly what the `phoonnx-voices
+update-cache` command calls:
 
 ```python
-manager.clear()                  # clear old cache
-manager.get_piper_voice_list()
-manager.get_mimic3_voice_list()
-manager.get_ovos_voice_list()
-manager.get_proxectonos_voice_list()
-manager.get_phonikud_voice_list()
-manager.save()
+manager = TTSModelManager()
+manager.clear()                         # optional: wipe the old cache first
+manager.merge_default_voices(store=True) # merge bundled indexes and persist
 ```
+
+`clear()` empties both the on-disk cache and the in-memory registry. `load()` reloads
+the on-disk cache; `save()` writes the current in-memory voices back out.
 
 ## Cache Location
 
-By default, model files are cached in the XDG cache directory:
+Downloaded files for a voice are cached per voice under the XDG cache directory:
 
 ```
 ~/.cache/phoonnx/voices/<voice_id>/
     model.onnx
-    model.json
-    tokens.txt        (if applicable)
-    vocab.json        (if applicable)
+    model.json             (if the voice has a config_url)
+    tokens.txt             (Mimic3/Sherpa style, if applicable)
+    vocab.json             (Transformers style, if applicable)
     tokenizer_config.json  (if applicable)
+    vocoder.onnx           (two-stage engines, if applicable)
 ```
 
-You can specify a custom cache path:
-
-```python
-manager = TTSModelManager(cache_path="/my/custom/cache/voices.json")
-```
+`TTSModelInfo.voice_path` returns this directory
+(`~/.cache/phoonnx/voices/<voice_id>`). The voice catalog cache itself is a separate
+`JsonStorageXDG` under `phoonnx/voices`.
 
 ## TTSModelInfo
 
-Each registered voice is represented by a `TTSModelInfo` dataclass:
+Each voice in the catalog is a `TTSModelInfo` dataclass. It carries the URLs and
+metadata for one voice and lazily resolves its `VoiceConfig` on first access.
 
 ```python
 from phoonnx.model_manager import TTSModelInfo
@@ -96,27 +129,43 @@ info = TTSModelInfo(
     config_url="https://example.com/model.json",
     phoneme_type="espeak",       # optional override
     alphabet="ipa",              # optional override
-    engine="piper",              # optional: phoonnx, piper, mimic3, coqui, transformers
+    engine="piper",              # optional override
 )
 
-# Access config (lazy-loaded from URL)
+# Access the (lazily loaded) VoiceConfig
 print(info.config.sample_rate)
 
-# Load the voice
-voice = info.load()
+# Fetch just the primary ONNX graph, or load a full TTSVoice
+info.download_model()
+voice = info.load(providers=None)
 ```
 
 ### Fields
 
+`TTSModelInfo` has around two dozen fields; the important ones are below. Many are only
+relevant to specific engine families (see [engines.md](engines.md), [cloning.md](cloning.md),
+[vocoders.md](vocoders.md)).
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `voice_id` | `str` | Unique identifier |
-| `lang` | `str` | BCP-47 language tag (e.g. `en-US`) |
-| `model_url` | `str` | URL to the `.onnx` file |
-| `config_url` | `str` \| `None` | URL to the JSON config |
-| `tokens_url` | `str` \| `None` | URL to `tokens.txt` (Mimic3/Sherpa style) |
+| `lang` | `str` | BCP-47 language tag (e.g. `en-US`); may be absent/wrong in the source config |
+| `model_url` | `str` | URL to the primary `.onnx` file |
+| `config_url` | `str` \| `None` | URL to the JSON config (some voices ship only `tokens.txt`) |
 | `vocab_url` | `str` \| `None` | URL to `vocab.json` (Transformers style) |
+| `tokens_url` | `str` \| `None` | URL to `tokens.txt` (Mimic3/Sherpa style) |
+| `tokenizer_config_url` | `str` \| `None` | Transformers tokenizer config; also the Chatterbox BPE `tokenizer.json` |
 | `phoneme_type` | `PhonemeType` \| `None` | Override for phonemizer type |
 | `alphabet` | `Alphabet` \| `None` | Override for phoneme alphabet |
 | `engine` | `Engine` \| `None` | TTS engine the voice was trained with |
+| `vocoder_url` | `str` \| `None` | Separate vocoder ONNX (two-stage engines) |
+| `vocoder_config_url` | `str` \| `None` | Vocoder `vocoder.json` parameters |
+| `vocoder_type` | `str` \| `None` | Vocoder implementation (`vocos`, `wavenext`, `hifigan`, `melgan`, `raw`, `griffinlim`) |
+| `style_url` | `str` \| `None` | Per-voice StyleTTS2/Kokoro style embedding |
+| `speaker_encoder_url` / `speaker_encoder_type` | `str` \| `None` | Cloning speaker-encoder ONNX (reference audio → d-vector) |
+| `aux_model_urls` | `dict` \| `None` | Extra ONNX graphs for multi-graph engines (F5-TTS), keyed by engine-param name |
+| `display_name` | `str` \| `None` | Friendly name for UIs/CLIs; may contain `{engine}`/`{phoneme_type}` placeholders |
 | `vocab_override` | `dict` \| `None` | Custom token-to-ID mapping |
+
+Key methods and properties: `config` (lazy `VoiceConfig`), `voice_path`,
+`download_model()`, `download_vocoder()`, and `load(providers=None)`.
