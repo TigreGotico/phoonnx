@@ -138,6 +138,33 @@ class BaseTrainingEngine(ABC):
         """
         return []
 
+    def eval_synthesize(
+        self,
+        checkpoint_path: Path,
+        config: Dict[str, Any],
+        *,
+        vocoder_path: Optional[Path] = None,
+        device: str = "cpu",
+    ) -> Any:
+        """Return a synthesis callable for held-out checkpoint evaluation.
+
+        The returned object is
+        ``callable(ids: List[int], scales: List[float], sid: Optional[int]) -> np.ndarray``
+        producing a 1-D ``float32`` waveform at ``config["audio"]["sample_rate"]``.
+
+        ``ids`` are token ids (already interspersed with pad + BOS/EOS by the
+        tokenizer), ``scales`` are ``[noise_scale, length_scale, noise_w]`` and
+        ``sid`` selects a speaker for multi-speaker models (``None`` otherwise).
+
+        Engines that cannot synthesize a waveform standalone (e.g. those that
+        need a separately trained vocoder that is not wired here) must raise
+        ``NotImplementedError`` with a clear message. The default raises.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support standalone checkpoint "
+            "synthesis for evaluation (eval_synthesize is not implemented)."
+        )
+
     def load_checkpoint(
         self,
         model: "pl.LightningModule",

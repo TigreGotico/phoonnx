@@ -220,6 +220,63 @@ class VitsTrainingEngine(BaseTrainingEngine):
         return _QUALITY_PRESETS
 
     # ------------------------------------------------------------------
+    # Held-out evaluation synthesis
+    # ------------------------------------------------------------------
+
+    def eval_synthesize(
+        self,
+        checkpoint_path: Path,
+        config: Dict[str, Any],
+        *,
+        vocoder_path: Optional[Path] = None,
+        device: str = "cpu",
+    ) -> Any:
+        """Load a VITS checkpoint and return a CPU synthesis callable.
+
+        VITS is an end-to-end model, so ``vocoder_path`` is ignored.
+        """
+        import numpy as np
+        import torch
+
+        from phoonnx_train.vits.lightning import VitsModel
+
+        # torch >=2.6 defaults torch.load(weights_only=True); lightning
+        # checkpoints embed pathlib.PosixPath and full pickled objects, which
+        # that rejects. These are our own trusted checkpoints.
+        orig_load = torch.load
+
+        def _trusted_load(*a, **k):
+            k.setdefault("weights_only", False)
+            return orig_load(*a, **k)
+
+        torch.load = _trusted_load
+        try:
+            model = VitsModel.load_from_checkpoint(
+                str(checkpoint_path), dataset=None, map_location=device
+            )
+        finally:
+            torch.load = orig_load
+        model = model.to(device)
+        model.eval()
+        with torch.no_grad():
+            model.model_g.dec.remove_weight_norm()
+
+        def synth(ids: List[int], scales: List[float], sid: Optional[int] = None):
+            text = torch.LongTensor(ids).unsqueeze(0).to(device)
+            text_lengths = torch.LongTensor([len(ids)]).to(device)
+            scales_t = torch.FloatTensor(scales).to(device)
+            sid_t = (
+                torch.LongTensor([sid]).to(device) if sid is not None else None
+            )
+            with torch.no_grad():
+                audio = model(text, text_lengths, scales_t, sid=sid_t)
+            return (
+                audio.detach().cpu().float().squeeze().numpy().astype(np.float32)
+            )
+
+        return synth
+
+    # ------------------------------------------------------------------
     # Optional
     # ------------------------------------------------------------------
 
