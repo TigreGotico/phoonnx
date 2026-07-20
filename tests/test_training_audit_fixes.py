@@ -253,10 +253,9 @@ class TestOptiSpeechEvalTokenization(unittest.TestCase):
     }
 
     def test_engine_hook_differs_from_phoonnx_pipeline(self):
-        try:
-            import piper_phonemize  # noqa: F401
-        except ImportError:
-            self.skipTest("piper-phonemize required for the OptiSpeech IPA tokenizer")
+        # The OptiSpeech IPA tokenizer phonemizes through phoonnx's espeak layer
+        # (espeak-ng subprocess wrapper with an espyak fallback) — no
+        # piper_phonemize needed, so no skip guard.
         from phoonnx_train.engines.optispeech import OptiSpeechTrainingEngine
 
         engine = OptiSpeechTrainingEngine()

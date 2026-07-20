@@ -71,7 +71,8 @@ def voice_config_from_optispeech_meta(
     if not lang_code and languages:
         lang_code = languages[0]
 
-    # OptiSpeech's IPATokenizer phonemizes with espeak/piper_phonemize.
+    # OptiSpeech's IPATokenizer phonemizes with espeak (phoonnx routes this
+    # through the espeak-ng subprocess wrapper / espyak, never a GPL wrapper).
     if phoneme_type is None:
         tokenizer_name = text_processor.get("tokenizer", "ipa")
         phoneme_type = PhonemeType.GRAPHEMES if tokenizer_name == "arabic-buck" else PhonemeType.ESPEAK

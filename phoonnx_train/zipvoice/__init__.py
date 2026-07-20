@@ -3,11 +3,12 @@
 ZipVoice (Zhu et al., "ZipVoice: Fast and high-quality zero-shot
 text-to-speech with flow matching", arXiv:2506.13053) is a flow-matching
 TTS with a Zipformer text-audio backbone and in-context (infilling)
-zero-shot cloning. The upstream training code is a
-``lhotse``/``piper_phonemize`` based recipe distributed only via git clone
-(the ``zipvoice`` PyPI package is an unrelated empty placeholder), so the
-model implementation is vendored here as self-contained modules with
-imports made package-relative and the lhotse plumbing removed:
+zero-shot cloning. Upstream's training recipe is distributed only via git
+clone (the ``zipvoice`` PyPI package is an unrelated empty placeholder) and
+pulled in ``lhotse`` and a GPL-linked espeak wrapper for its data pipeline;
+the model implementation is vendored here as self-contained modules with
+imports made package-relative and that upstream plumbing dropped (phoonnx
+phonemizes through its own espeak-ng subprocess wrapper / espyak instead):
 
 - :mod:`.model` — the ZipVoice model (TTSZipformer text encoder +
   flow-matching decoder)

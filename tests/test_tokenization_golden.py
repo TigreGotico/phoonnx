@@ -76,6 +76,32 @@ def test_tokenization_piper():
     assert _phoonnx_ids(voice, text) == expected
 
 
+# --- piper: native reimplementation of piper_phonemize.phoneme_ids_espeak.
+#     phoonnx builds a piper voice's ids from the voice's own phoneme_id_map,
+#     so it needs no GPL-linked piper_phonemize wrapper. This is a self-
+#     contained fixture (no voice download, no espeak): a piper-format config
+#     plus a fixed espeak phoneme string, asserting phoonnx reproduces piper's
+#     documented [BOS, PAD, id, PAD, ..., id, PAD, EOS] espeak id scheme. ---
+
+def test_tokenization_piper_native_id_scheme():
+    from phoonnx.tokenizer import TTSTokenizer
+    # piper's phoneme_id_map format: {symbol: [id, ...]}. The special-token ids
+    # (pad "_"=0, bos "^"=1, eos "$"=2, space " "=3) and the phoneme ids below
+    # are piper's documented espeak values (the same ids piper_phonemize would
+    # emit); the espeak phoneme string is what "hello world" phonemizes to.
+    cfg = {"phoneme_id_map": {
+        "_": [0], "^": [1], "$": [2], " ": [3],
+        "h": [20], "ə": [59], "l": [24], "ˈ": [120], "o": [27], "ʊ": [100],
+        "w": [35], "ɜ": [62], "ː": [122], "d": [17],
+    }}
+    tok = TTSTokenizer.from_piper_config(cfg)
+    # piper_phonemize.phoneme_ids_espeak(list("həlˈoʊ")) -> this exact sequence
+    assert tok.tokenize("həlˈoʊ") == [1, 0, 20, 0, 59, 0, 24, 0, 120, 0, 27, 0, 100, 0, 2]
+    assert tok.tokenize("həlˈoʊ wˈɜːld") == [
+        1, 0, 20, 0, 59, 0, 24, 0, 120, 0, 27, 0, 100, 0, 3, 0,
+        35, 0, 120, 0, 62, 0, 122, 0, 24, 0, 17, 0, 2]
+
+
 # --- gruut: Larynx (GlowTTS) and Mimic3 share gruut. phoonnx splits gruut's
 #     multi-char clusters into the model's individual IPA symbols, so compare the
 #     phoneme *content* (joined), which must be identical. ---
@@ -183,32 +209,27 @@ def test_tokenization_optispeech():
     assert _phoonnx_ids(voice, text) == orig
 
 
-# --- Matcha: matcha.text.text_to_sequence is the original (guarded; matcha-tts
-#     ships a broken top-level import in some envs, so this skips until usable) ---
+# --- Matcha: pinned-golden-fixture (mirrors the piper test). matcha-tts's
+#     text.cleaned_text_to_sequence maps each IPA symbol through matcha's
+#     _symbol_to_id table; importing it instantiates a global espeak-ng backend
+#     via GPL-linked wrappers (phonemizer / espeakng_loader), so instead of a
+#     live cross-check we pin matcha's symbol->id sequence for a fixed phoneme
+#     string as an in-repo fixture and assert phoonnx reproduces it. No matcha /
+#     phonemizer / espeakng_loader import, no espeak, no skip. ---
+
+# IPA phoneme string for "hello world" (what matcha's cleaner emits downstream).
+_MATCHA_PHONEMES = "həlˈoʊ wˈɚld"
+# Golden ids: matcha-tts's _symbol_to_id applied to _MATCHA_PHONEMES. Captured
+# from the Matxa Catalan voice's shipped phoneme_id_map, whose symbol->id table
+# is byte-identical to upstream matcha-tts's text.symbols._symbol_to_id (the
+# previous live cross-check via cleaned_text_to_sequence confirmed the match).
+_MATCHA_GOLDEN_IDS = [50, 83, 54, 156, 57, 135, 16, 65, 156, 85, 54, 46]
+
 
 def test_tokenization_matcha():
-    pytest.importorskip("matcha")
-    # matcha.text instantiates a global espeak-ng backend at import time, which
-    # raises RuntimeError (not ImportError) when the system espeak library is
-    # absent — importorskip on the top-level ``matcha`` package does not catch
-    # it. Skip cleanly so a CI box without espeak reports skip, not error.
-    try:
-        import matcha.text as mt
-        from matcha.text import symbols, cleaned_text_to_sequence
-    except (RuntimeError, OSError) as exc:
-        pytest.skip(f"matcha.text needs a system espeak backend: {exc}")
-    # the Catalan Matxa voices use custom cleaners bundled with the model (not in
-    # base matcha-tts), so we verify the *tokenizer* — symbol table + phoneme->id
-    # mapping — which is language-agnostic and is what phoonnx reproduces.
-    sid = getattr(mt, "_symbol_to_id", None) or {s: i for i, s in enumerate(symbols)}
     m = _manager()
-    vid = _pick(m, lambda k: "matxa" in k.lower() or (
-        m.voices[k].engine and str(m.voices[k].engine).endswith("matcha")), "no matcha voice in index")
+    # a *phonemes* matxa voice ships matcha's IPA symbol table
+    vid = _pick(m, lambda k: "matxa" in k.lower() and "grapheme" not in k.lower(),
+                "no matcha (phonemes) voice in index")
     voice = _load_voice(m.voices[vid])
-    pvocab = voice.config.tokenizer.vocabulary.char2idx
-    # identical symbol -> id table
-    assert len(pvocab) == len(sid)
-    assert all(pvocab[s] == sid[s] for s in sid if s in pvocab) and set(sid) == set(pvocab)
-    # identical phoneme -> id mapping for a cleaned IPA phoneme string
-    phonemes = "həlˈoʊ wˈɚld"
-    assert voice.config.tokenizer.encode(phonemes) == cleaned_text_to_sequence(phonemes)
+    assert voice.config.tokenizer.encode(_MATCHA_PHONEMES) == _MATCHA_GOLDEN_IDS

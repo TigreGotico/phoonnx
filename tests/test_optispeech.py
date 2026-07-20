@@ -118,3 +118,36 @@ def test_config_bridge_native_roundtrip():
     assert native["engine"] == "optispeech"
     vc2 = VoiceConfig.from_dict(dict(native))
     assert vc2.engine == Engine.OPTISPEECH
+
+
+# --- IPATokenizer phonemization routes through phoonnx's espeak layer (the
+#     espeak-ng subprocess wrapper with an espyak fallback), never the
+#     GPL-linked piper_phonemize. Verifies the reroute and that the tokenizer's
+#     id-assembly contract (symbol->id, blank interspersing, bos/eos) is
+#     unchanged. ---
+
+def test_ipa_tokenizer_routes_through_phoonnx_espeak():
+    from phoonnx_train.optispeech.text.tokenizers import IPATokenizer
+    from phoonnx_train.optispeech.text import symbols
+    from phoonnx_train.optispeech.text.normalization import (
+        collapse_whitespace, intersperse)
+    from phoonnx.phonemizers.mul import EspeakPhonemizer
+
+    text = "hello world"
+    tok = IPATokenizer(add_blank=False, add_bos_eos=False, normalize_text=True)
+
+    # (1) reroute: phonemize_text yields exactly phoonnx's EspeakPhonemizer output
+    phonemes, norm = tok.phonemize_text(text, "en-us")
+    assert phonemes == EspeakPhonemizer().phonemize(norm, "en-us")
+    assert phonemes and isinstance(phonemes[0], list)  # nested list[list[str]]
+
+    # (2) plain id contract: flat symbol->id mapping of those phonemes
+    flat = list(collapse_whitespace("".join(p for sent in phonemes for p in sent)))
+    expected = symbols.phonemes_to_ids(flat)
+    ids, _ = tok(text, "en-us", split_sentences=False)
+    assert ids == expected and ids
+
+    # (3) blank + bos/eos contract preserved
+    tok2 = IPATokenizer(add_blank=True, add_bos_eos=True, normalize_text=True)
+    ids2, _ = tok2(text, "en-us", split_sentences=False)
+    assert ids2 == [symbols.BOS_ID, *intersperse(expected, 0), symbols.EOS_ID]
