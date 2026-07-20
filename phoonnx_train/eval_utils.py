@@ -94,9 +94,16 @@ def read_sentences(path: Path) -> List[str]:
             Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def size_stable(path: Path, wait: float = 5.0, tries: int = 6,
+def size_stable(path: Path, wait: float = 0.5, tries: int = 6,
                 sleep=time.sleep) -> bool:
-    """Wait until file size stops changing (guards against partial writes)."""
+    """Return True once the file size stops changing between two consecutive
+    stats (guards against partial writes).
+
+    A fully-written file settles on the very first re-check: stat, wait one
+    short interval, stat again, and if the size is unchanged (and non-zero) it
+    is stable — no multi-second stall on files that are already complete. Only
+    a file still growing incurs additional ``wait`` intervals, up to ``tries``.
+    """
     path = Path(path)
     last = -1
     for _ in range(max(1, tries)):
@@ -108,7 +115,12 @@ def size_stable(path: Path, wait: float = 5.0, tries: int = 6,
             return True
         last = s
         sleep(wait)
-    return False
+    # Final stat after the last sleep: a file that finished writing during the
+    # last interval is still reported stable rather than spuriously rejected.
+    try:
+        return path.stat().st_size == last and last > 0
+    except FileNotFoundError:
+        return False
 
 
 def largest_wavs(ref_dir: Path, n: int) -> Sequence[Path]:
