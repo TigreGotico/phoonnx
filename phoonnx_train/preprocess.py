@@ -23,6 +23,9 @@ from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_
 from phoonnx.util import normalize
 from phoonnx.version import VERSION_STR
 from phoonnx_train.norm_audio import cache_norm_audio, make_silence_detector
+from phoonnx_train.quality_filter import (FilterSpec, apply_quality_filters,
+                                          known_scorers, log_filter_summary,
+                                          parse_filter_spec)
 
 _LOGGER = logging.getLogger("preprocess")
 
@@ -424,6 +427,23 @@ def phonemize_worker(
     help="[--engine yourtts] language id recorded on every utterance "
          "(multilingual training)",
 )
+@click.option(
+    "--filter",
+    "quality_filters",
+    multiple=True,
+    metavar="COLUMN:MIN:MAX",
+    help="Drop utterances outside [MIN, MAX] on an on-demand-computed quality "
+         "metric. Repeatable; a sample must pass every --filter to be kept. "
+         "MIN or MAX may be empty for unbounded on that side. Metrics are "
+         "computed fresh per sample (not read from precomputed dataset "
+         "columns): 'wpm' (words per minute, arithmetic), 'is_music_like' "
+         "(0/1 spectral heuristic, not a trained classifier), 'utmos' "
+         "(SpeechMOS UTMOS naturalness), 'dnsmos_sig'/'dnsmos_bak'/'dnsmos_ovrl' "
+         "(DNSMOS P.835, requires the 'speechmos' package). Referencing an "
+         "unknown column warns and skips that filter instead of failing. "
+         "Examples: --filter utmos:3.0: --filter wpm:80:400 "
+         "--filter is_music_like:0:0",
+)
 def cli(
     input_dir: Path,
     output_dir: Path,
@@ -450,6 +470,7 @@ def cli(
     engine: Optional[str],
     speaker_encoder_path: Optional[str],
     language_id: Optional[int],
+    quality_filters: Tuple[str, ...],
 ) -> None:
     """
     Preprocess a TTS dataset into a JSONL and config suitable for training a VITS-style model.
@@ -479,7 +500,9 @@ def cli(
         add_diacritics (bool): Instruct the inference settings in the config to add diacritics.
         jsonl_audio_path (Optional[str]): Optional base path override for audio paths written into dataset.jsonl.
         jsonl_audio_spec_path (Optional[str]): Optional base path override for cached audio/spec paths in dataset.jsonl.
-    
+        quality_filters (Tuple[str, ...]): Repeatable 'column:min:max' quality-metric filters (e.g. 'utmos:3.0:'),
+            applied at manifest-load time before phonemization/audio caching. See phoonnx_train.quality_filter.
+
     Raises:
         click.Abort: If mutually exclusive CLI options are provided (e.g., both --single-speaker and --speaker-id).
         ValueError: If finetuning with a previous config and the new dataset contains phonemes not present in that config and drop_extra_phonemes is False.
@@ -526,6 +549,20 @@ def cli(
     if not utterances:
         _LOGGER.error("No valid utterances found in dataset.")
         return
+
+    if quality_filters:
+        specs: List[FilterSpec] = [parse_filter_spec(f) for f in quality_filters]
+        total_before = len(utterances)
+        utterances, dropped_counts = apply_quality_filters(
+            utterances,
+            specs,
+            audio_path_fn=lambda u: u.audio_path,
+            text_fn=lambda u: u.text,
+        )
+        log_filter_summary(total_before, dropped_counts, len(utterances))
+        if not utterances:
+            _LOGGER.error("No utterances left after quality filtering.")
+            return
 
     num_utterances: int = len(utterances)
     _LOGGER.info("Found %d utterances.", num_utterances)
