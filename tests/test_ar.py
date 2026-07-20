@@ -1,6 +1,6 @@
 """Test suite for phoonnx Arabic phonemizer (MantoqPhonemizer)."""
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import sys
 import os
 
@@ -648,6 +648,177 @@ class TestMantoqPhonemizerIntegration(unittest.TestCase):
 
                 # Results should be different (BUCKWALTER vs IPA)
                 self.assertNotEqual(result_mantoq, result_ipa)
+
+
+class TestArbtokPhonemizer(unittest.TestCase):
+    """Adversarial coverage for ArbtokPhonemizer, the arbtok-backed Arabic
+    engine (lines 55-127 of phoonnx/phonemizers/ar.py). arbtok is imported
+    lazily, so it's mocked via sys.modules patching rather than requiring
+    the real package to be installed.
+    """
+
+    def setUp(self):
+        from phoonnx.phonemizers.ar import ArbtokPhonemizer
+        self.ArbtokPhonemizer = ArbtokPhonemizer
+
+    def test_rejects_non_ipa_alphabet(self):
+        with self.assertRaises(ValueError):
+            self.ArbtokPhonemizer(alphabet=Alphabet.BUCKWALTER)
+
+    def test_register_none_defers_to_engine_default(self):
+        inst = self.ArbtokPhonemizer()
+        self.assertIsNone(inst.register)
+
+    def test_register_irab_aliases_map_to_full(self):
+        for alias in ("irab", "i'rab", "iʿrab", "full", "IRAB", "Full"):
+            with self.subTest(alias=alias):
+                inst = self.ArbtokPhonemizer(register=alias)
+                self.assertEqual(inst.register, "full")
+
+    def test_register_pausal_passes_through_unchanged(self):
+        inst = self.ArbtokPhonemizer(register="pausal")
+        self.assertEqual(inst.register, "pausal")
+
+    def test_get_lang_raises_importerror_when_arbtok_missing(self):
+        import sys
+        old = sys.modules.pop("arbtok", None)
+        try:
+            with patch.dict(sys.modules, {"arbtok": None}):
+                with self.assertRaises(ImportError):
+                    self.ArbtokPhonemizer.get_lang("ar")
+        finally:
+            if old is not None:
+                sys.modules["arbtok"] = old
+
+    def test_get_lang_delegates_to_arbtok_spec_for_lang(self):
+        fake_arbtok = MagicMock()
+        fake_arbtok.spec_for_lang.return_value = "ar-EG"
+        with patch.dict(sys.modules, {"arbtok": fake_arbtok}):
+            result = self.ArbtokPhonemizer.get_lang("ar-EG")
+        self.assertEqual(result, "ar-EG")
+        fake_arbtok.spec_for_lang.assert_called_once_with("ar-EG")
+
+    def test_engine_raises_importerror_when_arbtok_plugin_missing(self):
+        inst = self.ArbtokPhonemizer()
+        import sys
+        old = sys.modules.pop("arbtok.plugin", None)
+        try:
+            with patch.dict(sys.modules, {"arbtok.plugin": None, "arbtok": None}):
+                with self.assertRaises(ImportError):
+                    inst._engine("ar")
+        finally:
+            if old is not None:
+                sys.modules["arbtok.plugin"] = old
+
+    def test_engine_is_cached_per_lang_and_register(self):
+        """The engine must be constructed once per (lang, register) pair and
+        reused on subsequent calls — never re-instantiated, never bypassed."""
+        fake_plugin_module = MagicMock()
+        fake_plugin_cls = MagicMock()
+        fake_plugin_module.ArbtokG2PPlugin = fake_plugin_cls
+        fake_instance = MagicMock()
+        fake_plugin_cls.return_value = fake_instance
+
+        inst = self.ArbtokPhonemizer()
+        with patch.dict(sys.modules, {"arbtok.plugin": fake_plugin_module}):
+            engine1 = inst._engine("ar-EG")
+            engine2 = inst._engine("ar-EG")
+
+        self.assertIs(engine1, engine2)
+        fake_plugin_cls.assert_called_once_with(lang="ar-EG", diacritize=True)
+
+    def test_engine_passes_register_kwarg_when_set(self):
+        fake_plugin_module = MagicMock()
+        fake_plugin_cls = MagicMock()
+        fake_plugin_module.ArbtokG2PPlugin = fake_plugin_cls
+
+        inst = self.ArbtokPhonemizer(register="full")
+        with patch.dict(sys.modules, {"arbtok.plugin": fake_plugin_module}):
+            inst._engine("ar")
+
+        fake_plugin_cls.assert_called_once_with(lang="ar", diacritize=True, register="full")
+
+    def test_phonemize_string_always_transcribes_via_arbtok_never_bypasses_it(self):
+        """ArbtokPhonemizer must always route through arbtok's engine.transcribe
+        for IPA output — it must never fall back to mantoq/espeak/o2i directly
+        for Arabic IPA (arbtok is the mandated engine)."""
+        inst = self.ArbtokPhonemizer()
+        fake_engine = MagicMock()
+        fake_engine.transcribe.return_value = "mar__aban"
+        with patch.object(inst, "_engine", return_value=fake_engine) as mock_engine, \
+             patch.object(self.ArbtokPhonemizer, "get_lang", return_value="ar"):
+            result = inst.phonemize_string("مرحبا", "ar")
+
+        mock_engine.assert_called_once_with("ar")
+        fake_engine.transcribe.assert_called_once_with("مرحبا")
+        self.assertEqual(result, "mar__aban")
+
+    def test_phonemize_string_bare_undiacritized_input(self):
+        inst = self.ArbtokPhonemizer()
+        fake_engine = MagicMock()
+        fake_engine.transcribe.return_value = "marħaban"
+        with patch.object(inst, "_engine", return_value=fake_engine), \
+             patch.object(self.ArbtokPhonemizer, "get_lang", return_value="ar"):
+            result = inst.phonemize_string("مرحبا بالعالم")
+        self.assertEqual(result, "marħaban")
+
+    def test_phonemize_string_fully_diacritized_input(self):
+        """Fully-vocalized (tashkeel-marked) input must still go through the
+        same transcribe() call — arbtok's diacritize=True restores what's
+        missing but must not choke on text that already has it."""
+        inst = self.ArbtokPhonemizer()
+        fake_engine = MagicMock()
+        fake_engine.transcribe.return_value = "marħaban"
+        diacritized = "مَرْحَبًا"
+        with patch.object(inst, "_engine", return_value=fake_engine) as mock_engine, \
+             patch.object(self.ArbtokPhonemizer, "get_lang", return_value="ar"):
+            result = inst.phonemize_string(diacritized)
+        fake_engine.transcribe.assert_called_once_with(diacritized)
+        self.assertEqual(result, "marħaban")
+
+    def test_phonemize_string_empty_input(self):
+        inst = self.ArbtokPhonemizer()
+        fake_engine = MagicMock()
+        fake_engine.transcribe.return_value = ""
+        with patch.object(inst, "_engine", return_value=fake_engine), \
+             patch.object(self.ArbtokPhonemizer, "get_lang", return_value="ar"):
+            result = inst.phonemize_string("")
+        self.assertEqual(result, "")
+
+    def test_phonemize_string_mixed_arabic_and_latin_input(self):
+        """Mixed-script input (Arabic + embedded Latin, e.g. a brand name)
+        must be passed through to arbtok untouched — no crash, no silent
+        truncation at the script boundary."""
+        inst = self.ArbtokPhonemizer()
+        fake_engine = MagicMock()
+        mixed = "مرحبا Wi-Fi يا صديقي"
+        fake_engine.transcribe.return_value = "marħaban wifi ja sˤadiːqiː"
+        with patch.object(inst, "_engine", return_value=fake_engine) as mock_engine, \
+             patch.object(self.ArbtokPhonemizer, "get_lang", return_value="ar"):
+            result = inst.phonemize_string(mixed)
+        fake_engine.transcribe.assert_called_once_with(mixed)
+        self.assertEqual(result, "marħaban wifi ja sˤadiːqiː")
+
+    def test_phonemize_string_engine_raises_propagates(self):
+        """If arbtok's engine raises (e.g. it returns/raises on malformed
+        input), the error must propagate — phonemize_string must not
+        silently swallow it and fall back to another phonemizer."""
+        inst = self.ArbtokPhonemizer()
+        fake_engine = MagicMock()
+        fake_engine.transcribe.side_effect = RuntimeError("arbtok choked")
+        with patch.object(inst, "_engine", return_value=fake_engine), \
+             patch.object(self.ArbtokPhonemizer, "get_lang", return_value="ar"):
+            with self.assertRaises(RuntimeError):
+                inst.phonemize_string("مرحبا")
+
+    def test_phonemize_string_unresolvable_lang_raises_not_bypasses(self):
+        """An unresolvable lang code must raise (via get_lang), not silently
+        fall back to a default variety or a non-arbtok phonemizer."""
+        inst = self.ArbtokPhonemizer()
+        with patch.object(self.ArbtokPhonemizer, "get_lang",
+                           side_effect=ValueError("no arbtok spec for lang")):
+            with self.assertRaises(ValueError):
+                inst.phonemize_string("مرحبا", "xx-nonexistent")
 
 
 if __name__ == '__main__':
