@@ -76,6 +76,25 @@ def test_speaker_reference_loads_and_flows(tmp_path):
     assert s2 == 16000 and a2.shape == (100,)
 
 
+# --- phoneme alignment (durations) ---------------------------------------
+
+def test_parse_outputs_no_durations_single_output():
+    a = YourTTSAdapter()
+    audio = np.zeros((1, 1, 400), np.float32)
+    res = a.parse_outputs([audio], _req(), output_names=["output"])
+    assert "phoneme_id_samples" not in res.extras
+
+
+def test_parse_outputs_picks_up_named_durations():
+    a = YourTTSAdapter()
+    audio = np.zeros((1, 1, 400), np.float32)
+    durs = np.array([[1, 2, 3, 4, 5]], dtype=np.float32)
+    res = a.parse_outputs(
+        [audio, durs], _req(), output_names=["output", "w_ceil"]
+    )
+    np.testing.assert_array_equal(res.extras["phoneme_id_samples"], [1, 2, 3, 4, 5])
+
+
 def test_reference_audio_outranks_bundled_dvector():
     class _Enc:
         def encode(self, audio, sr): return np.full(512, 0.9, np.float32)

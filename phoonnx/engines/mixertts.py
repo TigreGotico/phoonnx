@@ -35,6 +35,14 @@ from phoonnx.engines.vocoders.base import BaseVocoder
 class MixerTTSAdapter(BaseOnnxAdapter):
     """Adapter for Mixer-TTS ONNX models (mel + separate vocoder)."""
 
+    # Standard Mixer-TTS/FastPitch ONNX exports emit only ``mel_spec`` — no
+    # duration output. These candidates cover the raw duration-predictor
+    # tensor some FastPitch training code calls "durations" (in mel frames),
+    # so a future re-export exposing it lights up alignment automatically;
+    # with today's typical exports this resolves to None (see
+    # docs/alignment.md).
+    DURATION_OUTPUT_NAMES = ["durations", "dur", "log_durations"]
+
     def __init__(self, vocoder: Optional[BaseVocoder] = None):
         self.vocoder = vocoder
         self._engine_params: Dict[str, Any] = {}
@@ -90,6 +98,7 @@ class MixerTTSAdapter(BaseOnnxAdapter):
         self,
         outputs: List[np.ndarray],
         request: AdapterSynthesisRequest,
+        output_names: Optional[List[str]] = None,
     ) -> AdapterSynthesisResult:
         arrays = [np.asarray(o) for o in outputs if o is not None]
         mel = next((a for a in arrays if a.ndim == 3 and 16 <= a.shape[1] <= 256), None)
@@ -98,7 +107,17 @@ class MixerTTSAdapter(BaseOnnxAdapter):
         vocoder = self._require_vocoder()
         denoise = bool(request.params.get("denoise", False)) and vocoder.supports_denoise
         audio = vocoder.mel_to_audio(mel.astype(np.float32), denoise=denoise)
-        return AdapterSynthesisResult(audio=np.asarray(audio).reshape(-1))
+
+        extras: Dict[str, Any] = {}
+        # Mel-frame durations, when the export exposes them. Converted to
+        # audio samples uniformly by TTSVoice.phoneme_ids_to_audio via
+        # VoiceConfig.hop_length (mel frame rate == vocoder hop_length for
+        # the standard HiFi-GAN/Vocos vocoders this adapter pairs with).
+        durations = self._find_duration_output(outputs, output_names)
+        if durations is not None:
+            extras["phoneme_id_samples"] = durations.squeeze()
+
+        return AdapterSynthesisResult(audio=np.asarray(audio).reshape(-1), extras=extras)
 
     def default_params(self) -> Dict[str, float]:
         return {"pace": 1.0, "pitch_mul": 1.0, "pitch_add": 0.0, "emotion": 0}

@@ -94,6 +94,24 @@ phoneme_ids = [1, 5, 23, 7, 2]  # example IDs
 audio: np.ndarray = voice.phoneme_ids_to_audio(phoneme_ids)
 ```
 
+### Phoneme Alignment
+
+Every `AudioChunk` carries the `phonemes` and `phoneme_ids` that produced it.
+Pass `include_alignments=True` to also get per-phoneme timing — how many audio
+samples each phoneme spans — when the model exposes a duration output:
+
+```python
+for chunk in voice.synthesize("Hello world.", include_alignments=True):
+    for align in chunk.phoneme_alignments or []:
+        ms = align.num_samples / chunk.sample_rate * 1000
+        print(f"{align.phoneme!r:6s} {ms:6.1f} ms")
+```
+
+`include_alignments=False` (the default) is a strict no-op on the audio, and
+models without a duration output degrade gracefully — `phoneme_alignments`
+comes back `None`. See [Phoneme alignment](alignment.md) for the full guide,
+the engine support matrix, and how to export a VITS model with alignment.
+
 ## SynthesisConfig
 
 `SynthesisConfig` controls synthesis parameters at runtime:

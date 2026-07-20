@@ -81,6 +81,27 @@ def test_without_vocoder_raises():
         GlowTTSAdapter().parse_outputs([np.zeros((1, 80, 4), np.float32)], _req())
 
 
+# --- phoneme alignment (durations) ---------------------------------------
+
+def test_parse_outputs_no_durations_by_default():
+    """Standard Larynx/Coqui exports don't expose durations as an output."""
+    adapter = GlowTTSAdapter(vocoder=FakeVocoder())
+    mel = np.zeros((1, 80, 7), np.float32)
+    other = np.zeros((1, 7, 322), np.float32)
+    res = adapter.parse_outputs([other, mel], _req(), output_names=["3453", "output"])
+    assert "phoneme_id_samples" not in res.extras
+
+
+def test_parse_outputs_picks_up_named_durations():
+    adapter = GlowTTSAdapter(vocoder=FakeVocoder())
+    mel = np.zeros((1, 80, 7), np.float32)
+    durs = np.array([[1, 2, 3, 4, 5]], dtype=np.float32)
+    res = adapter.parse_outputs(
+        [mel, durs], _req(n=5), output_names=["output", "w_ceil"]
+    )
+    np.testing.assert_array_equal(res.extras["phoneme_id_samples"], [1, 2, 3, 4, 5])
+
+
 def test_default_params():
     assert GlowTTSAdapter().default_params() == {"noise_scale": 0.667, "length_scale": 1.0}
 

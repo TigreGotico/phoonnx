@@ -112,7 +112,7 @@ def _make_lazy_voice(events, alphabet=Alphabet.IPA):
 
     voice.phonemes_to_ids = lambda phonemes: [1] * len(phonemes)
 
-    def _synth(phoneme_ids, syn_config=None, language_ids=None):
+    def _synth(phoneme_ids, syn_config=None, language_ids=None, include_alignments=False):
         events.append(("run", tuple(phoneme_ids)))
         return np.zeros(4, dtype=np.float32)
 

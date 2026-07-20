@@ -27,6 +27,7 @@ from phoonnx.config import VoiceConfig
 | `noise_scale` | `float` | `0.667` | Default generator noise scale |
 | `length_scale` | `float` | `1.0` | Default phoneme length scale |
 | `noise_w_scale` | `float` | `0.8` | Default phoneme width noise scale |
+| `hop_length` | `int` | `256` | Model frames → audio samples factor for [phoneme alignment](alignment.md) |
 | `add_diacritics` | `bool` | `False` | Auto-add diacritics (Arabic/Hebrew) |
 | `diacritizer_model` | `str` | `rawi-ensemble` | Diacritizer model name (Arabic `text2tashkeel`); round-tripped through the config's `inference` block |
 | `phonemizer_model` | `str` \| `None` | `None` | Model path/id or variant selector for phonemizers that take one (ByT5, AhoTTS, Cotovia, arbtok) |

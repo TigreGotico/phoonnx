@@ -50,6 +50,11 @@ def test_build_feed_dict_inherited():
     assert feed["pace"][0] == pytest.approx(0.9)
 
 
+def test_inherits_duration_output_names():
+    """FastPitch reuses Mixer-TTS's parsing, including alignment detection."""
+    assert FastPitchAdapter.DURATION_OUTPUT_NAMES == MixerTTSAdapter.DURATION_OUTPUT_NAMES
+
+
 def test_config_bridge_fastpitch_engine():
     vc = voice_config_from_mixer(["_pad_", "_+_", "<", "b"], lang_code="ar",
                                  phoneme_type=PhonemeType.MANTOQ, alphabet=Alphabet.BUCKWALTER,

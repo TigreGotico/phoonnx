@@ -57,6 +57,26 @@ def test_parse_outputs_picks_waveform():
     assert r.audio.ndim == 1 and r.audio.size == 20000
 
 
+# --- phoneme alignment (durations) ---------------------------------------
+
+def test_parse_outputs_no_durations_by_default():
+    """Standard StyleTTS2/Kokoro exports emit only the waveform."""
+    r = StyleTTS2Adapter().parse_outputs(
+        [np.zeros((1, 512, 8), np.float32), np.ones(20000, np.float32)],
+        _req(), output_names=["decoder_hidden", "audio"],
+    )
+    assert "phoneme_id_samples" not in r.extras
+
+
+def test_parse_outputs_picks_up_named_durations():
+    durs = np.array([[1, 2, 3, 4, 5]], dtype=np.float32)
+    r = StyleTTS2Adapter().parse_outputs(
+        [np.ones(20000, np.float32), durs],
+        _req(), output_names=["audio", "pred_dur"],
+    )
+    np.testing.assert_array_equal(r.extras["phoneme_id_samples"], [1, 2, 3, 4, 5])
+
+
 def test_configure_loads_style_pack_from_engine_params(tmp_path):
     """Kokoro: the manager downloads a style blob; configure() reshapes it to [N,256]."""
     import numpy as np

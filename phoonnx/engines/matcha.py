@@ -44,6 +44,11 @@ from phoonnx.engines.vocoders.base import BaseVocoder
 class MatchaAdapter(BaseOnnxAdapter):
     """Adapter for Matcha-TTS ONNX models (flow-matching mel model + vocoder)."""
 
+    # Matcha-TTS's duration predictor (borrowed from Glow-TTS) is not exposed
+    # as a graph output in standard exports today; listed so a future
+    # re-export lights up alignment automatically (see docs/alignment.md).
+    DURATION_OUTPUT_NAMES = ["durations", "dur", "w_ceil", "logw"]
+
     def __init__(self, vocoder: Optional[BaseVocoder] = None):
         self.vocoder = vocoder
         # Raw engine params, retained so the vocoder can be built lazily if the
@@ -117,6 +122,7 @@ class MatchaAdapter(BaseOnnxAdapter):
         self,
         outputs: List[np.ndarray],
         request: AdapterSynthesisRequest,
+        output_names: Optional[List[str]] = None,
     ) -> AdapterSynthesisResult:
         """
         Produce the waveform from the mel model's outputs.
@@ -157,7 +163,13 @@ class MatchaAdapter(BaseOnnxAdapter):
         vocoder = self._require_vocoder()
         denoise = bool(request.params.get("denoise", True)) and vocoder.supports_denoise
         audio = vocoder.mel_to_audio(mel.astype(np.float32), denoise=denoise)
-        return AdapterSynthesisResult(audio=np.asarray(audio).reshape(-1))
+
+        extras: Dict[str, Any] = {}
+        durations = self._find_duration_output(outputs, output_names)
+        if durations is not None:
+            extras["phoneme_id_samples"] = durations.squeeze()
+
+        return AdapterSynthesisResult(audio=np.asarray(audio).reshape(-1), extras=extras)
 
     def default_params(self) -> Dict[str, float]:
         return {

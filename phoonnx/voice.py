@@ -12,7 +12,7 @@ import re
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional, Sequence, Union, Dict
+from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union, Dict
 
 import numpy as np
 import onnxruntime
@@ -104,6 +104,14 @@ class PhoneticSpellings:
 
 
 @dataclass
+class PhonemeAlignment:
+    """A single phoneme paired with the number of audio samples it spans."""
+
+    phoneme: str
+    num_samples: int
+
+
+@dataclass
 class AudioChunk:
     """Chunk of raw audio."""
 
@@ -118,6 +126,20 @@ class AudioChunk:
 
     audio_float_array: np.ndarray
     """Audio data as float numpy array in [-1, 1]."""
+
+    phonemes: List[str] = field(default_factory=list)
+    """Phonemes that produced this audio chunk (empty for text-token models)."""
+
+    phoneme_ids: List[int] = field(default_factory=list)
+    """Phoneme/token ids that produced this audio chunk."""
+
+    phoneme_id_samples: Optional[np.ndarray] = None
+    """Number of audio samples for each phoneme id — only populated when
+    ``synthesize(include_alignments=True)`` and the model exposes durations."""
+
+    phoneme_alignments: Optional[List[PhonemeAlignment]] = None
+    """Per-phoneme (phoneme, num_samples) alignments — only populated when
+    ``synthesize(include_alignments=True)`` and the model exposes durations."""
 
     _audio_int16_array: Optional[np.ndarray] = None
     _audio_int16_bytes: Optional[bytes] = None
@@ -441,7 +463,11 @@ class TTSVoice:
             src_alphabet: Alphabet,
             tgt_alphabet: Alphabet,
     ) -> Iterable[tuple]:
-        """Lazily yield ``(phoneme_ids, language_ids)`` per sentence.
+        """Lazily yield ``(phonemes, phoneme_ids, language_ids)`` per sentence.
+
+        ``phonemes`` is the per-sentence symbol list (``None`` for text-token
+        models whose adapter owns text→ids); it is carried through only so the
+        yielded :class:`AudioChunk` can expose the phonemes that produced it.
 
         Preserves the exact dispatch semantics of :meth:`synthesize` while
         deferring per-sentence phonemize/diacritize/tokenize work until each item
@@ -458,14 +484,14 @@ class TTSVoice:
                 if do_diacritics:
                     text = self._diacritize(text, diacritizer_model)
                 for ids in self.adapter.encode_text(text, self, syn_config):
-                    yield ids, None
+                    yield None, ids, None
             else:
                 # Already-phonemic input in the model's own alphabet: pass through.
                 if do_diacritics:
                     text = self._diacritize(text, diacritizer_model)
                 for phonemes in _phonemic_chunks(text, tgt_alphabet):
                     if phonemes:
-                        yield self.phonemes_to_ids(phonemes), None
+                        yield phonemes, self.phonemes_to_ids(phonemes), None
             return
 
         if src_alphabet == Alphabet.GRAPHEMES:
@@ -478,7 +504,7 @@ class TTSVoice:
                 for part in self._text_parts(text, do_diacritics, diacritizer_model):
                     for phonemes, language_ids in lazy_lang_ids(part, lang):
                         if phonemes:
-                            yield self.phonemes_to_ids(phonemes), language_ids
+                            yield phonemes, self.phonemes_to_ids(phonemes), language_ids
             elif hasattr(self.phonemizer, "phonemize_with_language_ids"):
                 # Language-aware phonemizer without a lazy variant: eager fallback.
                 if do_diacritics:
@@ -487,7 +513,7 @@ class TTSVoice:
                     self.phonemizer.phonemize_with_language_ids(text, lang))
                 for phonemes, language_ids in zip(sentence_phonemes, sentence_language_ids):
                     if phonemes:
-                        yield self.phonemes_to_ids(phonemes), language_ids
+                        yield phonemes, self.phonemes_to_ids(phonemes), language_ids
             elif _PHONEME_BLOCK_PATTERN.search(text):
                 # Inline [[phoneme]] blocks merge into adjacent sentences; keep the
                 # (eager) whole-text handling that owns that merge logic.
@@ -495,7 +521,7 @@ class TTSVoice:
                     text = self._diacritize(text, diacritizer_model)
                 for phonemes in self.phonemize(text):
                     if phonemes:
-                        yield self.phonemes_to_ids(phonemes), None
+                        yield phonemes, self.phonemes_to_ids(phonemes), None
             else:
                 # Lazy per-sentence phonemization; a phonemizer without a lazy
                 # variant falls back to its eager whole-text phonemize().
@@ -505,7 +531,7 @@ class TTSVoice:
                                  else self.phonemizer.phonemize(part, lang))
                     for phonemes in sentences:
                         if phonemes:
-                            yield self.phonemes_to_ids(phonemes), None
+                            yield phonemes, self.phonemes_to_ids(phonemes), None
             return
 
         # Already-phonemic input in a different alphabet: transcode to the model's
@@ -529,22 +555,31 @@ class TTSVoice:
             sentence_phonemes = _phonemic_chunks(converted, tgt_alphabet)
         for phonemes in sentence_phonemes:
             if phonemes:
-                yield self.phonemes_to_ids(phonemes), None
+                yield phonemes, self.phonemes_to_ids(phonemes), None
 
     def synthesize(
             self,
             text: str,
             syn_config: Optional[SynthesisConfig] = None,
+            include_alignments: bool = False,
     ) -> Iterable[AudioChunk]:
         """
         Synthesize speech from input text, yielding one AudioChunk per sentence.
-        
+
         Generates sentence-level audio by phonemizing the input text and synthesizing each sentence into a float32 PCM audio array in the range [-1.0, 1.0]. If enabled in the synthesis configuration, user-provided phonetic spellings and diacritic augmentation are applied before phonemization. Output audio may be normalized and volume-scaled according to the configuration; samples are clipped to [-1.0, 1.0].
-        
+
         Parameters:
             text (str): The input text to synthesize.
             syn_config (Optional[SynthesisConfig]): Optional synthesis options (e.g., enable_phonetic_spellings, add_diacritics, normalize_audio, volume). If omitted, a default SynthesisConfig is used.
-        
+            include_alignments (bool): When True, and the model exposes a
+                per-phoneme duration output, each yielded AudioChunk also carries
+                ``phoneme_id_samples`` and reconstructed ``phoneme_alignments``.
+                When False (the default) this is a strict no-op — the exact same
+                inference runs and the same audio is produced, only the extra
+                per-sentence alignment reconstruction is skipped and both fields
+                stay ``None``. Models that don't expose durations degrade
+                gracefully: the audio is unchanged and both fields stay ``None``.
+
         Returns:
             Iterable[AudioChunk]: An iterable that yields one AudioChunk per synthesized sentence. Each AudioChunk contains a float32 audio array, sample rate taken from the voice config, 2-byte sample width, and 1 channel.
         """
@@ -591,11 +626,31 @@ class TTSVoice:
             src_alphabet, tgt_alphabet,
         )
 
-        for phoneme_ids, language_ids in id_stream:
+        # Special-token ids for alignment reconstruction — read once, only when
+        # alignments are requested (keeps the default path free of this work).
+        _idx2char: dict = {}
+        _blank_id = _bos_id = _eos_id = None
+        if include_alignments:
+            _tok = self.config.tokenizer
+            _vocab = _tok.vocabulary
+            _idx2char = _vocab.idx2char
+            _blank_id = _tok.blank_id
+            _bos_id = _vocab.bos_id
+            _eos_id = _vocab.eos_id
+
+        for phonemes, phoneme_ids, language_ids in id_stream:
             if not phoneme_ids:
                 continue
 
-            audio = self.phoneme_ids_to_audio(phoneme_ids, syn_config, language_ids=language_ids)
+            phoneme_id_samples: Optional[np.ndarray] = None
+            audio_result = self.phoneme_ids_to_audio(
+                phoneme_ids, syn_config, language_ids=language_ids,
+                include_alignments=include_alignments,
+            )
+            if isinstance(audio_result, tuple):
+                audio, phoneme_id_samples = audio_result
+            else:
+                audio = audio_result
 
             if syn_config.normalize_audio:
                 max_val = np.max(np.abs(audio))
@@ -610,12 +665,61 @@ class TTSVoice:
 
             audio = np.clip(audio, -1.0, 1.0).astype(np.float32)
 
+            phoneme_alignments = self._reconstruct_alignments(
+                phoneme_ids, phoneme_id_samples,
+                _idx2char, _blank_id, _bos_id, _eos_id,
+            ) if phoneme_id_samples is not None else None
+
             yield AudioChunk(
                 sample_rate=self.config.sample_rate,
                 sample_width=2,
                 sample_channels=1,
                 audio_float_array=audio,
+                phonemes=list(phonemes) if phonemes else [],
+                phoneme_ids=list(phoneme_ids),
+                phoneme_id_samples=phoneme_id_samples,
+                phoneme_alignments=phoneme_alignments,
             )
+
+    @staticmethod
+    def _reconstruct_alignments(
+            phoneme_ids: List[int],
+            phoneme_id_samples: np.ndarray,
+            idx2char: dict,
+            blank_id: Optional[int],
+            bos_id: Optional[int],
+            eos_id: Optional[int],
+    ) -> Optional[List[PhonemeAlignment]]:
+        """Fold per-id sample counts onto the real phonemes.
+
+        Walk ``phoneme_ids`` and their per-id sample counts together. Blank/bos
+        durations are absorbed forward into the next real phoneme; eos duration
+        is absorbed backward into the last real phoneme. This works regardless
+        of the tokenizer's blank_at_start/end settings. Returns ``None`` when
+        the sample counts don't line up one-to-one with the ids (e.g. a padded
+        model input), so callers degrade to "alignments unavailable" rather
+        than emitting a wrong alignment.
+        """
+        if len(phoneme_id_samples) != len(phoneme_ids):
+            return None
+        alignments: List[PhonemeAlignment] = []
+        pending: int = 0
+        for pid, n_samples in zip(phoneme_ids, phoneme_id_samples.tolist()):
+            if pid == bos_id or pid == blank_id:
+                pending += n_samples
+            elif pid == eos_id:
+                if alignments:
+                    prev = alignments[-1]
+                    alignments[-1] = PhonemeAlignment(prev.phoneme, prev.num_samples + n_samples)
+            else:
+                token = idx2char.get(pid, "?")
+                alignments.append(PhonemeAlignment(token, pending + n_samples))
+                pending = 0
+        # Absorb any leftover pending (e.g. trailing blank with no phoneme after).
+        if pending and alignments:
+            prev = alignments[-1]
+            alignments[-1] = PhonemeAlignment(prev.phoneme, prev.num_samples + pending)
+        return alignments or None
 
     def synthesize_wav(
             self,
@@ -670,8 +774,9 @@ class TTSVoice:
 
     def phoneme_ids_to_audio(
             self, phoneme_ids: list[int], syn_config: Optional[SynthesisConfig] = None,
-            language_ids: Optional[list[int]] = None
-    ) -> np.ndarray:
+            language_ids: Optional[list[int]] = None,
+            include_alignments: bool = False,
+    ) -> Union[np.ndarray, Tuple[np.ndarray, Optional[np.ndarray]]]:
         """
         Synthesize raw audio from phoneme ids.
 
@@ -681,7 +786,15 @@ class TTSVoice:
         :param phoneme_ids: List of phoneme ids.
         :param syn_config: Synthesis configuration.
         :param language_ids: Optional per-phoneme language IDs (for language-aware engines).
+        :param include_alignments: When True, also return per-phoneme sample counts.
         :return: Audio float numpy array (unnormalized, in range [-1, 1]).
+
+        When ``include_alignments`` is True the return value is instead a
+        ``(audio, phoneme_id_samples)`` tuple, where ``phoneme_id_samples`` is
+        the per-id audio-sample count (durations scaled from model frames via
+        ``VoiceConfig.hop_length``), or ``None`` when this model doesn't expose
+        a duration output. The audio itself is byte-for-byte identical to the
+        no-alignment call — the same inference runs either way.
         """
         syn_config = syn_config or SynthesisConfig()
 
@@ -747,7 +860,20 @@ class TTSVoice:
         # build_feed_dict → run → parse_outputs; iterative engines override).
         result = self.adapter.synthesize(request, self.session)
 
-        return result.audio
+        if not include_alignments:
+            return result.audio
+
+        phoneme_id_samples = result.extras.get("phoneme_id_samples")
+        if phoneme_id_samples is None:
+            # Alignment is not available from this voice model.
+            return result.audio, None
+
+        # Model durations are in native frames — convert to audio samples.
+        phoneme_id_samples = (
+            np.asarray(phoneme_id_samples) * self.config.hop_length
+        ).astype(np.int64)
+
+        return result.audio, phoneme_id_samples
 
 if __name__ == "__main__":
     from phoonnx.phonemizers.gl import CotoviaPhonemizer

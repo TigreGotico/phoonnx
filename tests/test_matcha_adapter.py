@@ -127,6 +127,41 @@ def test_two_stage_without_vocoder_raises():
         adapter.parse_outputs([mel], _request())
 
 
+# --- phoneme alignment (durations) ---------------------------------------
+
+def test_two_stage_no_durations_by_default():
+    """Standard Matcha exports emit [mel, mel_lengths] — no durations."""
+    adapter = MatchaAdapter(vocoder=FakeVocoder())
+    mel = np.zeros((1, 80, 7), dtype=np.float32)
+    mel_lengths = np.array([5], dtype=np.int64)
+    result = adapter.parse_outputs(
+        [mel, mel_lengths], _request(), output_names=["mel", "mel_lengths"]
+    )
+    assert "phoneme_id_samples" not in result.extras
+
+
+def test_two_stage_picks_up_named_durations():
+    adapter = MatchaAdapter(vocoder=FakeVocoder())
+    mel = np.zeros((1, 80, 7), dtype=np.float32)
+    mel_lengths = np.array([7], dtype=np.int64)
+    durs = np.array([[1, 2, 3, 4, 5, 6]], dtype=np.float32)
+    result = adapter.parse_outputs(
+        [mel, mel_lengths, durs], _request(n=6),
+        output_names=["mel", "mel_lengths", "durations"],
+    )
+    np.testing.assert_array_equal(
+        result.extras["phoneme_id_samples"], [1, 2, 3, 4, 5, 6]
+    )
+
+
+def test_end_to_end_has_no_durations_extra():
+    """The fused end-to-end path returns early without inspecting durations."""
+    adapter = MatchaAdapter()
+    waveform = np.sin(np.linspace(0, 6.28, 100)).astype(np.float32)[None, :]
+    result = adapter.parse_outputs([waveform], _request(), output_names=["waveform"])
+    assert result.extras == {}
+
+
 def test_configure_from_voice_config_engine_params(monkeypatch):
     built = {}
 

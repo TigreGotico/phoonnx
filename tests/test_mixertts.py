@@ -78,6 +78,40 @@ def test_without_vocoder_raises():
         MixerTTSAdapter().parse_outputs([np.zeros((1, 80, 4), np.float32)], _req())
 
 
+# --- phoneme alignment (durations) ---------------------------------------
+
+def test_parse_outputs_no_durations_by_default():
+    """Standard Mixer-TTS exports emit only mel_spec — no alignment extras."""
+    adapter = MixerTTSAdapter(vocoder=FakeVocoder())
+    mel = np.zeros((1, 80, 9), np.float32)
+    res = adapter.parse_outputs([mel], _req(), output_names=["mel_spec"])
+    assert "phoneme_id_samples" not in res.extras
+
+
+def test_parse_outputs_picks_up_named_durations():
+    """A future re-export exposing a 'durations' output lights up alignment
+    automatically via DURATION_OUTPUT_NAMES, without any adapter changes."""
+    adapter = MixerTTSAdapter(vocoder=FakeVocoder())
+    mel = np.zeros((1, 80, 9), np.float32)
+    durs = np.array([[2, 3, 4, 5]], dtype=np.float32)
+    res = adapter.parse_outputs(
+        [mel, durs], _req(n=4), output_names=["mel_spec", "durations"]
+    )
+    np.testing.assert_array_equal(res.extras["phoneme_id_samples"], [2, 3, 4, 5])
+
+
+def test_parse_outputs_ignores_unnamed_duration_lookalike():
+    """Without output_names, an extra tensor is NOT guessed to be durations —
+    detection is strictly name-driven for two-stage engines (unlike VITS's
+    positional fallback, since a second output here is far more likely to be
+    an intermediate mel-model tensor than a duration vector)."""
+    adapter = MixerTTSAdapter(vocoder=FakeVocoder())
+    mel = np.zeros((1, 80, 9), np.float32)
+    extra = np.array([[2, 3, 4, 5]], dtype=np.float32)
+    res = adapter.parse_outputs([mel, extra], _req(n=4), output_names=None)
+    assert "phoneme_id_samples" not in res.extras
+
+
 def test_default_params():
     assert MixerTTSAdapter().default_params() == {"pace": 1.0, "pitch_mul": 1.0, "pitch_add": 0.0, "emotion": 0}
 

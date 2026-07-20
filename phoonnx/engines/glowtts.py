@@ -35,6 +35,13 @@ from phoonnx.engines.vocoders.base import BaseVocoder
 class GlowTTSAdapter(BaseOnnxAdapter):
     """Adapter for GlowTTS / Larynx ONNX models (flow-matching mel + vocoder)."""
 
+    # GlowTTS derives durations from the flow's log-determinant (``logw`` /
+    # ``w_ceil`` in the reference Coqui implementation). Standard Larynx/Coqui
+    # exports don't expose it as a graph output today, so this resolves to
+    # None on those checkpoints; listed so a re-export exposing it under one
+    # of these names lights up automatically (see docs/alignment.md).
+    DURATION_OUTPUT_NAMES = ["durations", "dur", "w_ceil", "logw"]
+
     def __init__(self, vocoder: Optional[BaseVocoder] = None):
         self.vocoder = vocoder
         self._engine_params: Dict[str, Any] = {}
@@ -94,6 +101,7 @@ class GlowTTSAdapter(BaseOnnxAdapter):
         self,
         outputs: List[np.ndarray],
         request: AdapterSynthesisRequest,
+        output_names: Optional[List[str]] = None,
     ) -> AdapterSynthesisResult:
         arrays = [np.asarray(o) for o in outputs if o is not None]
         # Larynx glow_tts emits two rank-3 ``[B, n_mels, T]`` tensors. The mel the
@@ -112,7 +120,13 @@ class GlowTTSAdapter(BaseOnnxAdapter):
         vocoder = self._require_vocoder()
         denoise = bool(request.params.get("denoise", False)) and vocoder.supports_denoise
         audio = vocoder.mel_to_audio(mel.astype(np.float32), denoise=denoise)
-        return AdapterSynthesisResult(audio=np.asarray(audio).reshape(-1))
+
+        extras: Dict[str, Any] = {}
+        durations = self._find_duration_output(outputs, output_names)
+        if durations is not None:
+            extras["phoneme_id_samples"] = durations.squeeze()
+
+        return AdapterSynthesisResult(audio=np.asarray(audio).reshape(-1), extras=extras)
 
     def _larynx_mel_to_vocoder(self, mel: np.ndarray) -> np.ndarray:
         """

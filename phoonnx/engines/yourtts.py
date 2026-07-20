@@ -25,6 +25,10 @@ from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult
 class YourTTSAdapter(BaseOnnxAdapter):
     """Adapter for YourTTS (multilingual VITS + d-vector conditioning)."""
 
+    # Same VITS-family duration-predictor contract as VitsAdapter — a second
+    # output tensor with per-phoneme frame counts, when the export has one.
+    DURATION_OUTPUT_NAMES = ["phoneme_id_samples", "durations", "w_ceil", "dur"]
+
     def __init__(self, d_vector: Optional[np.ndarray] = None, langid: int = 0,
                  speaker_encoder: Optional[Any] = None):
         self.d_vector = None if d_vector is None else np.asarray(d_vector, np.float32).reshape(1, -1)
@@ -88,9 +92,14 @@ class YourTTSAdapter(BaseOnnxAdapter):
         self,
         outputs: List[np.ndarray],
         request: AdapterSynthesisRequest,
+        output_names: Optional[List[str]] = None,
     ) -> AdapterSynthesisResult:
         wav = max(outputs, key=lambda o: np.asarray(o).size)
-        return AdapterSynthesisResult(audio=np.asarray(wav, dtype=np.float32).reshape(-1))
+        extras: Dict[str, Any] = {}
+        durations = self._find_duration_output(outputs, output_names)
+        if durations is not None:
+            extras["phoneme_id_samples"] = np.asarray(durations).squeeze()
+        return AdapterSynthesisResult(audio=np.asarray(wav, dtype=np.float32).reshape(-1), extras=extras)
 
     @staticmethod
     def detect(
