@@ -153,8 +153,9 @@ train-mixer = [
 train-optispeech = [
     "pyworld>=0.3.2",
     # pyworld imports pkg_resources at runtime; python>=3.12 environments no
-    # longer ship setuptools implicitly
-    "setuptools",
+    # longer ship setuptools implicitly, and setuptools>=81 removed
+    # pkg_resources entirely
+    "setuptools<81",
     "pyloudnorm",
     "scipy",
     "torchaudio",
