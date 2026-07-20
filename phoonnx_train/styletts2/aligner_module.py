@@ -37,7 +37,10 @@ class AlignerModule(pl.LightningModule):
                             n_layers=config.n_layers,
                             token_embedding_dim=config.token_embedding_dim)
         if config.pretrained_path:
-            params = torch.load(config.pretrained_path, map_location="cpu")
+            from phoonnx_train.torch_compat import trusting_torch_load
+
+            with trusting_torch_load():
+                params = torch.load(config.pretrained_path, map_location="cpu")
             params = params.get("model", params)
             model_state = self.model.state_dict()
             filtered = {k: v for k, v in params.items()
