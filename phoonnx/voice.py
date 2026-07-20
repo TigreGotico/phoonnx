@@ -494,8 +494,8 @@ class TTSVoice:
                     yield None, ids, None
             else:
                 # Already-phonemic input in the model's own alphabet: pass through.
-                if do_diacritics:
-                    text = self._diacritize(text, diacritizer_model)
+                # Diacritization is orthographic (grapheme-level) only; never
+                # apply it to already-phonemic input.
                 for phonemes in _phonemic_chunks(text, tgt_alphabet):
                     if phonemes:
                         yield phonemes, self.phonemes_to_ids(phonemes), None
@@ -545,9 +545,8 @@ class TTSVoice:
             return
 
         # Already-phonemic input in a different alphabet: transcode to the model's
-        # alphabet through the conversion graph.
-        if do_diacritics:
-            text = self._diacritize(text, diacritizer_model)
+        # alphabet through the conversion graph. Diacritization is orthographic
+        # (grapheme-level) only; never apply it to already-phonemic input.
         converted = alphabet_convert(
             text,
             lang=lang,
