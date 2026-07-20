@@ -48,6 +48,11 @@ auto-detection. `use_cuda=True` is a **deprecated** alias for
 `providers=["CUDAExecutionProvider"]`; prefer `providers`. See the
 [Configuration reference](configuration.md#execution-providers).
 
+Set `PHOONNX_ORT_CACHE_DIR` to a writable directory to cache the ONNX Runtime-optimized graph
+across process restarts, and pass `warmup=True` to `TTSVoice.load` to pay the first-inference
+kernel-selection cost during load instead of on the first `synthesize` call — both cut cold-start
+latency.
+
 ## Synthesizing Speech
 
 ### To a WAV File
