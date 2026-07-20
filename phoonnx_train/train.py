@@ -67,6 +67,19 @@ def _validate_engine(ctx, param, value):
               help='Log synthesized validation audio samples to the logger '
                    'each epoch (requires a TensorBoard logger)')
 @click.option('--discard-encoder', is_flag=True, default=False)
+# In-training evaluation / early stopping (all opt-in; default = off)
+@click.option('--eval-sentences', type=click.Path(exists=True, dir_okay=False), default=None,
+              help='Held-out sentences file (one per line); enables in-training scoring')
+@click.option('--eval-every', type=int, default=0,
+              help='Score the newest checkpoint every N epochs (0 = off, default)')
+@click.option('--early-stop-patience', type=int, default=0,
+              help='Stop after this many scored epochs without improvement (0 = off)')
+@click.option('--eval-speaker-ref-dir', type=click.Path(exists=True, file_okay=False), default=None,
+              help='Reference-speaker wav dir enabling the speaker-similarity gate')
+@click.option('--min-spk-sim', type=float, default=None,
+              help='Similarity gate floor for best-checkpoint selection')
+@click.option('--eval-seed', type=int, default=1234,
+              help='Base seed for per-utterance evaluation synthesis (default: 1234)')
 def main(
     dataset_dir: str,
     engine: str,
@@ -85,6 +98,12 @@ def main(
     num_workers: int,
     log_audio_samples: bool,
     discard_encoder: bool,
+    eval_sentences: Optional[str],
+    eval_every: int,
+    early_stop_patience: int,
+    eval_speaker_ref_dir: Optional[str],
+    min_spk_sim: Optional[float],
+    eval_seed: int,
 ):
     logging.basicConfig(level=logging.DEBUG)
     torch.manual_seed(seed)
@@ -195,13 +214,55 @@ def main(
         every_n_epochs=checkpoint_epochs,
         save_top_k=-1,
     )
+    callbacks = [checkpoint_callback]
+
+    # ------------------------------------------------------------------
+    # Evaluation / early stopping
+    # ------------------------------------------------------------------
+    # StopFileCallback is ALWAYS added: it watches the run directory for a
+    # stop.flag written by an external sidecar scoreboard (the sidecar->trainer
+    # bridge). With no flag present it is a no-op, so behaviour is byte-identical
+    # to before unless a flag actually appears.
+    from phoonnx_train.evaluation.callbacks import (EvalScoreboardCallback,
+                                                    StopFileCallback)
+
+    run_dir = Path(default_root_dir) if default_root_dir else Path.cwd()
+    run_dir.mkdir(parents=True, exist_ok=True)
+    callbacks.append(StopFileCallback(run_dir / "stop.flag"))
+
+    # In-training scoreboard is opt-in: only wired up when both an eval
+    # sentences file and a positive --eval-every are given.
+    if eval_sentences and eval_every > 0:
+        from phoonnx_train.evaluation import (CheckpointScorer, MetricsTracker,
+                                              SelectionPolicy)
+        from phoonnx_train.eval_utils import read_sentences
+
+        sentences = read_sentences(eval_sentences)
+        eval_dir = run_dir / "eval"
+        scorer = CheckpointScorer(
+            training_engine, dataset_config, sentences,
+            speaker_ref_dir=Path(eval_speaker_ref_dir) if eval_speaker_ref_dir else None,
+            speaker_id=None,
+            seed=eval_seed,
+        )
+        selection = SelectionPolicy(metric="utmos_mean", min_spk_sim=min_spk_sim)
+        tracker = MetricsTracker(eval_dir)
+        callbacks.append(EvalScoreboardCallback(
+            scorer, tracker, selection, eval_dir,
+            every_n_epochs=eval_every,
+            patience=early_stop_patience or None,
+        ))
+        _LOGGER.info("In-training evaluation enabled: every %d epoch(s), "
+                     "patience=%s, scoreboard=%s", eval_every,
+                     early_stop_patience or None, eval_dir)
+
     trainer = Trainer(
         max_epochs=max_epochs,
         devices=devices,
         accelerator=accelerator,
         default_root_dir=default_root_dir,
         precision=precision,
-        callbacks=[checkpoint_callback],
+        callbacks=callbacks,
         **training_engine.trainer_kwargs(),
     )
     _LOGGER.info("Training started!")

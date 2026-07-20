@@ -220,6 +220,62 @@ class VitsTrainingEngine(BaseTrainingEngine):
         return _QUALITY_PRESETS
 
     # ------------------------------------------------------------------
+    # Held-out evaluation synthesis
+    # ------------------------------------------------------------------
+
+    def eval_synthesize(
+        self,
+        checkpoint_path: Path,
+        config: Dict[str, Any],
+        *,
+        vocoder_path: Optional[Path] = None,
+        device: str = "cpu",
+    ) -> Any:
+        """Load a VITS checkpoint and return a CPU synthesis callable.
+
+        VITS is an end-to-end model, so ``vocoder_path`` is ignored.
+        """
+        import numpy as np
+        import torch
+
+        from phoonnx_train.torch_compat import trusting_torch_load
+        from phoonnx_train.vits.lightning import VitsModel
+
+        with trusting_torch_load():
+            model = VitsModel.load_from_checkpoint(
+                str(checkpoint_path), dataset=None, map_location=device
+            )
+        model = model.to(device)
+        model.eval()
+        with torch.no_grad():
+            model.model_g.dec.remove_weight_norm()
+
+        inf = (config or {}).get("inference", {})
+        default_scales = [
+            float(inf.get("noise_scale", 0.667)),
+            float(inf.get("length_scale", 1.0)),
+            float(inf.get("noise_w", 0.8)),
+        ]
+
+        def synth(ids: List[int], scales: List[float], sid: Optional[int] = None):
+            # scales=None/[] means the voice config's inference defaults;
+            # when set it is [noise_scale, length_scale, noise_w].
+            scales = scales or default_scales
+            text = torch.LongTensor(ids).unsqueeze(0).to(device)
+            text_lengths = torch.LongTensor([len(ids)]).to(device)
+            scales_t = torch.FloatTensor(scales).to(device)
+            sid_t = (
+                torch.LongTensor([sid]).to(device) if sid is not None else None
+            )
+            with torch.no_grad():
+                audio = model(text, text_lengths, scales_t, sid=sid_t)
+            return (
+                audio.detach().cpu().float().squeeze().numpy().astype(np.float32)
+            )
+
+        return synth
+
+    # ------------------------------------------------------------------
     # Optional
     # ------------------------------------------------------------------
 

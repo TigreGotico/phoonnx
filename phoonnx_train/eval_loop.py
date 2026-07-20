@@ -1,229 +1,72 @@
-"""Held-out evaluation loop for VITS training checkpoints.
+"""Sidecar checkpoint-evaluation scoreboard (thin CLI over the evaluation pkg).
 
-Watches a training directory for new lightning checkpoints (epoch=*.ckpt),
-synthesizes a fixed set of held-out sentences on CPU, scores each clip with
-UTMOS (SpeechMOS utmos22_strong) and, when available, speaker similarity
-(cosine against a reference-speaker centroid), then appends a summary row to
-metrics.csv plus per-utterance scores to perutt/epoch<N>.csv. Wavs of the
-best-scoring epoch so far are kept under samples/epoch<N>/.
+Watches a training directory for new lightning checkpoints (``epoch=*.ckpt``),
+synthesizes a fixed set of held-out sentences on CPU, scores each clip (UTMOS at
+least, and speaker similarity against a reference-speaker centroid when a
+``--speaker-ref-dir`` is given), appends a summary row to metrics.csv plus
+per-utterance scores under samples/, and maintains best.ckpt/best.json for the
+similarity-gated best epoch so far.
 
-Idempotent: already-scored epochs are read back from metrics.csv on start and
-skipped. Ordering is by epoch number parsed from the filename, never
-wall-clock.
+Idempotent: already-scored (and permanently failed) epochs are skipped. Ordering
+is by epoch number parsed from the filename, never wall-clock. With
+``--early-stop-patience`` set, once that many scored epochs pass with no
+improvement a ``stop.flag`` is written into the training directory — the training
+process's ``StopFileCallback`` picks it up and stops (sidecar -> trainer bridge).
+
+The heavy lifting lives in ``phoonnx_train.evaluation``; this module is the
+watch loop, CLI surface and idempotent-restart glue.
 """
-import csv
 import json
 import logging
-import shutil
 import time
 from pathlib import Path
 
 import click
-import numpy as np
-import soundfile as sf
-import torch
-import torchaudio
 
-from phoonnx.config import PhonemeType, Alphabet, get_phonemizer
-from phoonnx.tokenizer import TTSTokenizer
-from phoonnx.util import normalize
-from phoonnx_train.eval_utils import (append_metrics, best_mean_so_far,
-                                      done_epochs, find_checkpoints,
-                                      largest_wavs, parse_step,
-                                      read_sentences, size_stable)
-from phoonnx_train.vits.lightning import VitsModel
+from phoonnx_train.engines import get_engine, list_engines
+from phoonnx_train.eval_utils import (find_checkpoints, read_sentences,
+                                      size_stable)
+from phoonnx_train.evaluation import CheckpointScorer, MetricsTracker, SelectionPolicy
+from phoonnx_train.evaluation.scorer import (build_encoder, text_to_ids,
+                                             write_epoch_perutt)
 
 _LOGGER = logging.getLogger(__package__)
 
-# torch >=2.6 defaults torch.load(weights_only=True); lightning checkpoints
-# embed pathlib.PosixPath (and full pickled objects), which that rejects.
-# These are our own trusted checkpoints, so restore weights_only=False.
-_ORIG_TORCH_LOAD = torch.load
+
+def resolve_engine(name: str, config: dict) -> str:
+    """Resolve ``--engine`` (default 'auto'): the config's ``engine`` key when
+    present, else 'vits'."""
+    if name and name != "auto":
+        return name
+    engine = config.get("engine")
+    if engine and engine in list_engines():
+        return engine
+    return "vits"
 
 
-def _torch_load(*a, **k):
-    k.setdefault("weights_only", False)
-    return _ORIG_TORCH_LOAD(*a, **k)
-
-
-torch.load = _torch_load
-
-
-def build_encoder(config, noise_scale, length_scale, noise_w):
-    """Return (phonemizer, tokenizer, lang, sample_rate, scales) matching
-    preprocess/train exactly."""
-    phoneme_type = PhonemeType(config["phoneme_type"])
-    alphabet = Alphabet(config.get("alphabet") or "ipa")
-    ph = get_phonemizer(phoneme_type, alphabet, config.get("phonemizer_model"))
-    tokenizer = TTSTokenizer.from_phoonnx_config(config)
-    lang = config.get("lang_code", "")
-    sample_rate = int(config.get("audio", {}).get("sample_rate", 22050))
-    inf = config.get("inference", {})
-    scales = [noise_scale if noise_scale is not None else float(inf.get("noise_scale", 0.667)),
-              length_scale if length_scale is not None else float(inf.get("length_scale", 1.0)),
-              noise_w if noise_w is not None else float(inf.get("noise_w", 0.8))]
-    return ph, tokenizer, lang, sample_rate, scales
-
-
-def text_to_ids(text, ph, tokenizer, lang):
-    """Replicate preprocess.py: normalize -> phonemize_to_list (drop '\\n')
-    -> tokenizer.tokenize (intersperse pad + BOS/EOS)."""
-    utt = normalize(text, lang)
-    phonemes = [p for p in ph.phonemize_to_list(utt, lang) if p != "\n"]
-    return phonemes, tokenizer.tokenize(phonemes)
-
-
-def load_model(ckpt_path):
-    model = VitsModel.load_from_checkpoint(str(ckpt_path), dataset=None,
-                                           map_location="cpu")
-    model = model.to("cpu")
-    model.eval()
-    with torch.no_grad():
-        model.model_g.dec.remove_weight_norm()
-    return model
-
-
-def synth(model, ids, scales):
-    """Run VitsModel.forward on CPU; return 1-D float32 waveform."""
-    text = torch.LongTensor(ids).unsqueeze(0)
-    text_lengths = torch.LongTensor([len(ids)])
-    scales_t = torch.FloatTensor(scales)
-    with torch.no_grad():
-        audio = model(text, text_lengths, scales_t, sid=None)
-    return audio.detach().cpu().float().squeeze().numpy().astype(np.float32)
-
-
-def load_speaker_reference(ref_dir, num_ref_wavs):
-    """Mean (unit-norm) speaker embedding over the largest reference wavs.
-
-    Returns (embedder, centroid) or (None, None) when speaker similarity
-    cannot be computed (speakeronnx missing or no wavs found).
-    """
-    try:
-        from speakeronnx import SpeakerEmbedder
-    except ImportError:
-        _LOGGER.warning("speakeronnx not installed; scoring UTMOS only")
-        return None, None
-    wavs = largest_wavs(ref_dir, num_ref_wavs)
-    if not wavs:
-        _LOGGER.warning("no reference wavs under %s; scoring UTMOS only", ref_dir)
-        return None, None
-    emb = SpeakerEmbedder()
-    vecs = []
-    for w in wavs:
-        try:
-            v = np.asarray(emb.embed(str(w)), dtype=np.float32)
-            vecs.append(v / (np.linalg.norm(v) + 1e-9))
-        except Exception:
-            _LOGGER.exception("failed to embed reference %s", w)
-    if not vecs:
-        _LOGGER.warning("no reference wavs could be embedded; scoring UTMOS only")
-        return None, None
-    ref = np.mean(vecs, axis=0)
-    ref /= np.linalg.norm(ref) + 1e-9
-    _LOGGER.info("speaker reference centroid from %d clips", len(vecs))
-    return emb, ref
-
-
-def speaker_similarity(emb, ref, wav_path):
-    v = np.asarray(emb.embed(str(wav_path)), dtype=np.float32)
-    v /= np.linalg.norm(v) + 1e-9
-    return float(np.dot(v, ref))
-
-
-def load_utmos():
-    _LOGGER.info("loading UTMOS (SpeechMOS utmos22_strong)...")
-    predictor = torch.hub.load("tarepan/SpeechMOS", "utmos22_strong",
-                               trust_repo=True)
-    predictor.eval()
-    return predictor
-
-
-def utmos_score(predictor, wav, sr):
-    """wav: 1-D np.float32 at sr. Resample to 16k mono and score."""
-    t = torch.from_numpy(np.ascontiguousarray(wav)).float()
-    if sr != 16000:
-        t = torchaudio.functional.resample(t, sr, 16000)
-    with torch.no_grad():
-        score = predictor(t.unsqueeze(0), 16000)
-    return float(score.squeeze().item())
-
-
-def evaluate_checkpoint(ckpt_path, epoch, sentences, ph, tokenizer, lang,
-                        sample_rate, scales, predictor, emb, ref, output_dir):
+def evaluate_one(scorer, selection, tracker, ckpt_path, epoch, train_dir):
+    """Score a single checkpoint into the scoreboard. Returns True when scored,
+    False when deferred (unstable) or failed."""
     _LOGGER.info("evaluating epoch %d: %s", epoch, ckpt_path)
     if not size_stable(ckpt_path):
         _LOGGER.warning("checkpoint %s not stable yet, deferring", ckpt_path)
         return False
+    work_dir = tracker.output_dir / "_work" / f"epoch{epoch}"
     try:
-        model = load_model(ckpt_path)
+        row = scorer.score(ckpt_path, epoch, work_dir=work_dir)
     except Exception:
-        _LOGGER.exception("failed to load %s", ckpt_path)
+        _LOGGER.exception("failed to score epoch %d", epoch)
+        tracker.record_failure(epoch)
         return False
 
-    metrics_csv = output_dir / "metrics.csv"
-    tmp = output_dir / "_work" / f"epoch{epoch}"
-    tmp.mkdir(parents=True, exist_ok=True)
-    perutt = []
-    for i, text in enumerate(sentences):
-        try:
-            _, ids = text_to_ids(text, ph, tokenizer, lang)
-            wav = synth(model, ids, scales)
-            wpath = tmp / f"utt{i:02d}.wav"
-            sf.write(wpath, wav, sample_rate)
-            score = utmos_score(predictor, wav, sample_rate)
-            sim = speaker_similarity(emb, ref, wpath) if emb is not None else None
-            _LOGGER.info("  utt%02d dur=%.2fs utmos=%.3f spk_sim=%s  %s",
-                         i, len(wav) / sample_rate, score,
-                         f"{sim:.3f}" if sim is not None else "-", text[:30])
-            perutt.append((text, score, sim))
-        except Exception:
-            _LOGGER.exception("  failed utt %d: %s", i, text)
-
-    del model
-    if not perutt:
-        _LOGGER.error("no utterances scored for epoch %d", epoch)
-        return False
-
-    scores = np.array([s for _, s, _ in perutt], dtype=np.float64)
-    sims = np.array([m for _, _, m in perutt if m is not None], dtype=np.float64)
-
-    perutt_dir = output_dir / "perutt"
-    perutt_dir.mkdir(parents=True, exist_ok=True)
-    with open(perutt_dir / f"epoch{epoch}.csv", "w", newline="",
-              encoding="utf-8") as f:
-        w = csv.writer(f)
-        w.writerow(["sentence", "utmos", "spk_sim"])
-        for text, s, m in perutt:
-            w.writerow([text, f"{s:.4f}", f"{m:.4f}" if m is not None else ""])
-
-    row = {
-        "epoch": epoch,
-        "step": parse_step(ckpt_path.name),
-        "checkpoint": str(ckpt_path),
-        "utmos_mean": f"{scores.mean():.4f}",
-        "utmos_std": f"{scores.std():.4f}",
-        "utmos_min": f"{scores.min():.4f}",
-        "utmos_max": f"{scores.max():.4f}",
-        "spk_sim_mean": f"{sims.mean():.4f}" if sims.size else "",
-        "spk_sim_std": f"{sims.std():.4f}" if sims.size else "",
-        "spk_sim_min": f"{sims.min():.4f}" if sims.size else "",
-        "n_sentences": len(scores),
-    }
-
-    prev_best = best_mean_so_far(metrics_csv)
-    append_metrics(metrics_csv, row)
-    _LOGGER.info("epoch %d: utmos=%.4f±%.4f n=%d", epoch, scores.mean(),
-                 scores.std(), len(scores))
-
-    if prev_best is None or scores.mean() > prev_best:
-        dest = output_dir / "samples" / f"epoch{epoch}"
-        if dest.exists():
-            shutil.rmtree(dest)
-        shutil.copytree(tmp, dest)
-        _LOGGER.info("new best epoch %d (mean=%.4f); wavs kept at %s",
-                     epoch, scores.mean(), dest)
-    shutil.rmtree(tmp, ignore_errors=True)
+    best = selection.read_best(tracker.output_dir)
+    tracker.append(row.to_csv_row())
+    # Keep a per-epoch per-utterance file for EVERY epoch (overfit diagnosis:
+    # per-sentence trends across epochs, not just the best epoch's samples).
+    write_epoch_perutt(tracker.output_dir, row, scorer.metrics)
+    _LOGGER.info("epoch %d: %s", epoch, row.aggregates)
+    if selection.is_improvement(row, best):
+        selection.commit_best(row, tracker.output_dir, work_dir=work_dir)
     return True
 
 
@@ -241,12 +84,17 @@ def evaluate_checkpoint(ckpt_path, epoch, sentences, ph, tokenizer, lang,
 @click.option('--length-scale', type=float, default=None, help='Override inference length_scale from config')
 @click.option('--noise-w', type=float, default=None, help='Override inference noise_w from config')
 @click.option('--seed', type=int, default=1234, help='Random seed (default: 1234)')
+@click.option('--early-stop-patience', type=int, default=0, help='Write stop.flag into --train-dir after this many scored epochs with no improvement (0=off)')
+@click.option('--min-spk-sim', type=float, default=None, help='Similarity gate: best checkpoint must have mean speaker similarity >= this (when speaker scoring is active)')
+@click.option('--speaker-id', type=int, default=None, help='Speaker id (sid) to synthesize for multi-speaker models')
+@click.option('--engine', 'engine_name', type=str, default='auto', help="Training engine (default: auto from config.json, falling back to vits)")
+@click.option('--vocoder', 'vocoder_path', type=click.Path(exists=True, dir_okay=False), default=None, help='Optional vocoder passed to the engine synth (engine-dependent)')
 def main(train_dir, config_path, sentences_path, output_dir, speaker_ref_dir,
          num_ref_wavs, poll, once, dry_run, noise_scale, length_scale,
-         noise_w, seed):
+         noise_w, seed, early_stop_patience, min_spk_sim, speaker_id,
+         engine_name, vocoder_path):
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
-    torch.manual_seed(seed)
 
     train_dir = Path(train_dir)
     output_dir = Path(output_dir)
@@ -259,12 +107,12 @@ def main(train_dir, config_path, sentences_path, output_dir, speaker_ref_dir,
 
     with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
-    ph, tokenizer, lang, sample_rate, scales = build_encoder(
-        config, noise_scale, length_scale, noise_w)
-    _LOGGER.info("lang=%s sample_rate=%d scales=%s vocab=%d", lang,
-                 sample_rate, scales, len(config.get("phoneme_id_map", {})))
 
     if dry_run:
+        ph, tokenizer, lang, sample_rate, scales = build_encoder(
+            config, noise_scale, length_scale, noise_w)
+        _LOGGER.info("lang=%s sample_rate=%d scales=%s vocab=%d", lang,
+                     sample_rate, scales, len(config.get("phoneme_id_map", {})))
         for i, text in enumerate(sentences):
             phonemes, ids = text_to_ids(text, ph, tokenizer, lang)
             _LOGGER.info("utt%02d ids=%d phon=%d | %s", i, len(ids),
@@ -272,25 +120,43 @@ def main(train_dir, config_path, sentences_path, output_dir, speaker_ref_dir,
         _LOGGER.info("dry-run OK: config loaded, all sentences encoded")
         return
 
-    predictor = load_utmos()
-    emb, ref = load_speaker_reference(speaker_ref_dir, num_ref_wavs) \
-        if speaker_ref_dir else (None, None)
+    engine = get_engine(resolve_engine(engine_name, config))
     if speaker_ref_dir is None:
         _LOGGER.warning("--speaker-ref-dir not given; scoring UTMOS only")
 
-    metrics_csv = output_dir / "metrics.csv"
+    scorer = CheckpointScorer(
+        engine, config, sentences,
+        speaker_ref_dir=Path(speaker_ref_dir) if speaker_ref_dir else None,
+        num_ref_wavs=num_ref_wavs,
+        speaker_id=speaker_id,
+        seed=seed,
+        vocoder_path=Path(vocoder_path) if vocoder_path else None,
+        scales_override=(noise_scale, length_scale, noise_w),
+    )
+    selection = SelectionPolicy(metric="utmos_mean", min_spk_sim=min_spk_sim)
+    tracker = MetricsTracker(output_dir)
+
     while True:
         try:
-            done = done_epochs(metrics_csv)
+            skip = tracker.skip_epochs()
             ckpts = find_checkpoints(train_dir)
-            todo = sorted(e for e in ckpts if e not in done)
+            todo = sorted(e for e in ckpts if e not in skip)
             if not todo:
-                _LOGGER.info("no new checkpoints (done=%d, found=%d)",
-                             len(done), len(ckpts))
+                _LOGGER.info("no new checkpoints (skip=%d, found=%d)",
+                             len(skip), len(ckpts))
             for epoch in todo:
-                evaluate_checkpoint(ckpts[epoch], epoch, sentences, ph,
-                                    tokenizer, lang, sample_rate, scales,
-                                    predictor, emb, ref, output_dir)
+                evaluate_one(scorer, selection, tracker, ckpts[epoch], epoch,
+                             train_dir)
+
+            best = selection.read_best(output_dir)
+            best_epoch = best.epoch if best is not None else None
+            if early_stop_patience and tracker.maybe_stop(best_epoch, early_stop_patience):
+                # write stop.flag into the training dir so the trainer sees it
+                flag = train_dir / "stop.flag"
+                flag.write_text(
+                    f"early stopping: no improvement for >= {early_stop_patience} "
+                    f"epochs (best epoch {best_epoch})\n", encoding="utf-8")
+                _LOGGER.warning("wrote %s", flag)
         except Exception:
             _LOGGER.exception("scan iteration failed; continuing")
         if once:
