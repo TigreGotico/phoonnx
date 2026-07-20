@@ -91,6 +91,42 @@ def test_piper_map_still_detected_as_piper():
     assert VoiceConfig.is_piper(cfg) is True
 
 
+def test_native_roundtrip_preserves_hop_length():
+    vocab = {"_": 0, "a": 1, "b": 2, "c": 3}
+    vc = VoiceConfig.from_dict({}, vocab=vocab,
+                               tokenizer_config={"add_blank": True, "language": "en", "pad_token": "_"},
+                               phoneme_type="graphemes", alphabet="unicode", lang_code="en")
+    vc.hop_length = 512
+    native = vc.to_native_dict()
+    assert native["hop_length"] == 512
+    vc2 = VoiceConfig.from_dict(dict(native))
+    assert vc2.hop_length == 512
+
+
+def test_native_roundtrip_preserves_lang_tokens():
+    vocab = {"_": 0, "a": 1, "b": 2, "c": 3}
+    vc = VoiceConfig.from_dict({}, vocab=vocab,
+                               tokenizer_config={"add_blank": True, "language": "en", "pad_token": "_"},
+                               phoneme_type="graphemes", alphabet="unicode", lang_code="en")
+    vc.lang_tokens = {"en": "[EN]", "fr": "[FR]"}
+    native = vc.to_native_dict()
+    assert native["lang_tokens"] == {"en": "[EN]", "fr": "[FR]"}
+    vc2 = VoiceConfig.from_dict(dict(native))
+    assert vc2.lang_tokens == {"en": "[EN]", "fr": "[FR]"}
+
+
+def test_native_roundtrip_preserves_lang_id_map():
+    vocab = {"_": 0, "a": 1, "b": 2, "c": 3}
+    vc = VoiceConfig.from_dict({}, vocab=vocab,
+                               tokenizer_config={"add_blank": True, "language": "en", "pad_token": "_"},
+                               phoneme_type="graphemes", alphabet="unicode", lang_code="en")
+    vc.lang_id_map = {"en": 0, "fr": 1}
+    native = vc.to_native_dict()
+    assert native["lang_id_map"] == {"en": 0, "fr": 1}
+    vc2 = VoiceConfig.from_dict(dict(native))
+    assert vc2.lang_id_map == {"en": 0, "fr": 1}
+
+
 def test_canonical_coqui_config_compound_stress_tokens():
     # the espeak stressed-vowel compound keys (ˈV) fold via the tokenizer's
     # compound logic, matching the AhoTTS ca fused stressed-vowel tokens.

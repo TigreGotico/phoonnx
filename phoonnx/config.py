@@ -533,6 +533,7 @@ class VoiceConfig:
             # any locally-resolved paths the manager passes in (the latter win).
             engine_params={**(config.get("engine_params") or {}), **(engine_params or {})},
             lang_tokens=lang_tokens or config.get("lang_tokens") or {},
+            lang_id_map=config.get("lang_id_map", {}),
         )
 
     def to_native_dict(self) -> Dict[str, Any]:
@@ -560,11 +561,13 @@ class VoiceConfig:
             "alphabet": self.alphabet.value if self.alphabet else "unicode",
             "lang_code": self.lang_code,
             "audio": {"sample_rate": self.sample_rate},
+            "hop_length": self.hop_length,
             "num_symbols": self.num_symbols,
             "num_speakers": self.num_speakers,
             "num_langs": self.num_langs,
             "speaker_id_map": dict(self.speaker_id_map or {}),
             "lang_id_map": dict(self.lang_id_map or {}),
+            "lang_tokens": dict(self.lang_tokens or {}),
             "phonemizer_model": self.phonemizer_model,
             "inference": {
                 "noise_scale": self.noise_scale,

@@ -36,11 +36,16 @@ class GlowTTSAdapter(BaseOnnxAdapter):
     """Adapter for GlowTTS / Larynx ONNX models (flow-matching mel + vocoder)."""
 
     # GlowTTS derives durations from the flow's log-determinant (``logw`` /
-    # ``w_ceil`` in the reference Coqui implementation). Standard Larynx/Coqui
-    # exports don't expose it as a graph output today, so this resolves to
-    # None on those checkpoints; listed so a re-export exposing it under one
-    # of these names lights up automatically (see docs/alignment.md).
-    DURATION_OUTPUT_NAMES = ["durations", "dur", "w_ceil", "logw"]
+    # ``w_ceil`` in the reference Coqui implementation). ``w_ceil`` is already
+    # the integer duration (ceil'd) and safe to consume directly. ``logw`` is
+    # log-domain and would need ``exp()`` + rounding before use as a duration;
+    # ``_find_duration_output`` has no such transform, so "logw" is
+    # deliberately NOT listed here — matching it would silently feed raw
+    # log-domain values through as if they were sample counts. Standard
+    # Larynx/Coqui exports don't expose either as a graph output today, so
+    # this resolves to None on those checkpoints; listed so a re-export
+    # exposing ``w_ceil`` lights up automatically (see docs/alignment.md).
+    DURATION_OUTPUT_NAMES = ["durations", "dur", "w_ceil"]
 
     def __init__(self, vocoder: Optional[BaseVocoder] = None):
         self.vocoder = vocoder

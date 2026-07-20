@@ -102,6 +102,20 @@ def test_parse_outputs_picks_up_named_durations():
     np.testing.assert_array_equal(res.extras["phoneme_id_samples"], [1, 2, 3, 4, 5])
 
 
+def test_parse_outputs_does_not_match_logw_as_duration():
+    """"logw" is log-domain and never transformed by _find_duration_output;
+    it must not be in DURATION_OUTPUT_NAMES or raw log values would be used
+    directly as sample-count durations."""
+    assert "logw" not in GlowTTSAdapter.DURATION_OUTPUT_NAMES
+    adapter = GlowTTSAdapter(vocoder=FakeVocoder())
+    mel = np.zeros((1, 80, 7), np.float32)
+    logw = np.array([[-0.1, -0.2, -0.3, -0.4, -0.5]], dtype=np.float32)
+    res = adapter.parse_outputs(
+        [mel, logw], _req(n=5), output_names=["output", "logw"]
+    )
+    assert "phoneme_id_samples" not in res.extras
+
+
 def test_default_params():
     assert GlowTTSAdapter().default_params() == {"noise_scale": 0.667, "length_scale": 1.0}
 
