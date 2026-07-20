@@ -507,7 +507,18 @@ class TTSVoice:
             # together per sentence so they can never fall out of alignment.
             lazy_lang_ids = getattr(
                 self.phonemizer, "phonemize_with_language_ids_lazy", None)
-            if lazy_lang_ids is not None:
+            if _PHONEME_BLOCK_PATTERN.search(text):
+                # Inline [[phoneme]] blocks are literal overrides that must bypass
+                # the phonemizer entirely — checked before any language-aware
+                # dispatch so they are never sent to it verbatim. Inline [[phoneme]]
+                # blocks merge into adjacent sentences; keep the (eager) whole-text
+                # handling that owns that merge logic.
+                if do_diacritics:
+                    text = self._diacritize(text, diacritizer_model)
+                for phonemes in self.phonemize(text):
+                    if phonemes:
+                        yield phonemes, self.phonemes_to_ids(phonemes), None
+            elif lazy_lang_ids is not None:
                 for part in self._text_parts(text, do_diacritics, diacritizer_model):
                     for phonemes, language_ids in lazy_lang_ids(part, lang):
                         if phonemes:
@@ -521,14 +532,6 @@ class TTSVoice:
                 for phonemes, language_ids in zip(sentence_phonemes, sentence_language_ids):
                     if phonemes:
                         yield phonemes, self.phonemes_to_ids(phonemes), language_ids
-            elif _PHONEME_BLOCK_PATTERN.search(text):
-                # Inline [[phoneme]] blocks merge into adjacent sentences; keep the
-                # (eager) whole-text handling that owns that merge logic.
-                if do_diacritics:
-                    text = self._diacritize(text, diacritizer_model)
-                for phonemes in self.phonemize(text):
-                    if phonemes:
-                        yield phonemes, self.phonemes_to_ids(phonemes), None
             else:
                 # Lazy per-sentence phonemization; a phonemizer without a lazy
                 # variant falls back to its eager whole-text phonemize().
