@@ -113,6 +113,14 @@ train-eval = [
     "onnx-asr",
     "pandas",
 ]
+# multi-format dataset loading for preprocessing (jsonl/parquet/HF repos with
+# embedded audio bytes) and the metrics sidecar
+train-data = [
+    "pandas",
+    "pyarrow",
+    "datasets",
+    "soundfile",
+]
 # extra deps for the FastPitch / SpeedySpeech training engine
 # (phoonnx_train/engines/fastpitch.py) on top of [train]: pyworld for F0
 # (pitch) extraction in extra_preprocess. librosa is already in [train].

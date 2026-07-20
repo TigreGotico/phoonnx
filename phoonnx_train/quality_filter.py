@@ -100,6 +100,9 @@ def apply_quality_filters(
     audio_path_fn: Callable[[object], Union[str, Path]],
     text_fn: Callable[[object], str],
     audio_loader: Optional[Callable[[Union[str, Path]], Tuple[object, int, float]]] = None,
+    id_fn: Optional[Callable[[object], str]] = None,
+    value_source: Optional[Callable[[object, str], Optional[float]]] = None,
+    metrics_sink: Optional[Callable[[str, str, float], None]] = None,
 ) -> Tuple[List[object], Dict[str, int]]:
     """Filter samples by on-demand-computed quality scorers.
 
@@ -113,6 +116,14 @@ def apply_quality_filters(
             called lazily, and at most once per sample, when a filter that
             actually needs audio is evaluated. Defaults to a librosa-backed
             16kHz mono loader.
+        id_fn: samples[i] -> stable row id, used only to key values passed to
+            ``metrics_sink``. Defaults to ``str(audio_path_fn(sample))``.
+        value_source: (sample, column) -> a precomputed metric value to use
+            instead of running the scorer, or ``None`` to compute on demand.
+            A source that satisfies every needed metric avoids decoding audio.
+        metrics_sink: called ``(row_id, column, value)`` for every metric value
+            evaluated for a sample (computed or sourced), before the pass/fail
+            decision. Used to persist a metrics sidecar.
 
     Returns:
         (kept_samples, dropped_counts) where dropped_counts maps each
@@ -146,19 +157,25 @@ def apply_quality_filters(
         audio_loaded = False
         text = text_fn(sample)
         sample_dropped = False
+        row_id = id_fn(sample) if id_fn else str(audio_path_fn(sample))
 
         try:
             for spec in ordered:
-                scorer = _SCORER_REGISTRY[spec.column]
-                if spec.column != "wpm" and not audio_loaded:
-                    audio, sr, duration = loader(audio_path_fn(sample))
-                    audio_loaded = True
-                elif spec.column == "wpm" and not audio_loaded:
-                    # wpm only needs duration; fetch it without decoding audio
-                    # unless a later filter already forced a full decode.
-                    duration = _duration_only(audio_path_fn(sample))
+                value = value_source(sample, spec.column) if value_source else None
+                if value is None:
+                    scorer = _SCORER_REGISTRY[spec.column]
+                    if spec.column != "wpm" and not audio_loaded:
+                        audio, sr, duration = loader(audio_path_fn(sample))
+                        audio_loaded = True
+                    elif spec.column == "wpm" and not audio_loaded:
+                        # wpm only needs duration; fetch it without decoding
+                        # audio unless a later filter forced a full decode.
+                        duration = _duration_only(audio_path_fn(sample))
+                    value = scorer(audio, sr, text, duration)
 
-                value = scorer(audio, sr, text, duration)
+                if metrics_sink is not None:
+                    metrics_sink(row_id, spec.column, float(value))
+
                 if not spec.passes(value):
                     dropped[spec.column] += 1
                     sample_dropped = True
