@@ -27,6 +27,7 @@
 
 **Merged pull requests:**
 
+- feat: add per-stage TTS latency benchmark script [\#240](https://github.com/TigreGotico/phoonnx/pull/240) ([JarbasAl](https://github.com/JarbasAl))
 - docs: full documentation overhaul — layered learning paths and verified references [\#239](https://github.com/TigreGotico/phoonnx/pull/239) ([JarbasAl](https://github.com/JarbasAl))
 - feat: multi-format dataset loading for preprocess \(ljspeech/jsonl/parquet/HF\) [\#238](https://github.com/TigreGotico/phoonnx/pull/238) ([JarbasAl](https://github.com/JarbasAl))
 - fix: missing base dependencies and wrong CLI script name in error messages [\#237](https://github.com/TigreGotico/phoonnx/pull/237) ([JarbasAl](https://github.com/JarbasAl))
