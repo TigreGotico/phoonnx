@@ -533,6 +533,7 @@ class VoiceConfig:
             # any locally-resolved paths the manager passes in (the latter win).
             engine_params={**(config.get("engine_params") or {}), **(engine_params or {})},
             lang_tokens=lang_tokens or config.get("lang_tokens") or {},
+            lang_id_map=config.get("lang_id_map", {}),
         )
 
     def to_native_dict(self) -> Dict[str, Any]:
