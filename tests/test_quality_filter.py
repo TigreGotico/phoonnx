@@ -284,6 +284,95 @@ class TestIsMusicLikeScore(unittest.TestCase):
         self.assertEqual(is_music_like_score(np.array([]), 16000, "", 0.0), 0.0)
 
 
+class TestUtmosScore(unittest.TestCase):
+    def test_returns_utmos_from_speechonnxmetrics(self):
+        import numpy as np
+        from unittest.mock import patch
+        from phoonnx_train.quality_filter import utmos_score
+
+        with patch("speechonnxmetrics.score", return_value={"utmos": 4.31}) as m:
+            score = utmos_score(np.zeros(16000, dtype="float32"), 16000, "", 1.0)
+        self.assertAlmostEqual(score, 4.31)
+        args, kwargs = m.call_args
+        self.assertEqual(list(args[1]), ["utmos"])
+        self.assertEqual(kwargs.get("sr"), 16000)
+
+    def test_passes_sr_hint_through(self):
+        import numpy as np
+        from unittest.mock import patch
+        from phoonnx_train.quality_filter import utmos_score
+
+        with patch("speechonnxmetrics.score", return_value={"utmos": 3.0}) as m:
+            utmos_score(np.zeros(48000, dtype="float32"), 48000, "", 1.0)
+        self.assertEqual(m.call_args.kwargs.get("sr"), 48000)
+
+    def test_per_item_error_is_raised_not_silently_zero(self):
+        # score() records a per-item failure under '_errors' rather than
+        # raising; the scorer must surface it so the sample is dropped, not
+        # silently scored as some default.
+        import numpy as np
+        from unittest.mock import patch
+        from phoonnx_train.quality_filter import utmos_score
+
+        with patch("speechonnxmetrics.score",
+                   return_value={"utmos": None, "_errors": {"utmos": "audio too short"}}):
+            with self.assertRaises(RuntimeError):
+                utmos_score(np.zeros(4, dtype="float32"), 16000, "", 1.0)
+
+
+class TestDnsmosScores(unittest.TestCase):
+    def test_three_heads_share_one_forward_pass(self):
+        import numpy as np
+        from unittest.mock import patch
+        from phoonnx_train import quality_filter as qf
+
+        # bust the module-level cache so this test's audio triggers a score
+        qf._dnsmos_cache_audio = None
+        qf._dnsmos_cache_value = None
+        audio = np.zeros(16000, dtype="float32")
+        flat = {"dnsmos.sig": 3.5, "dnsmos.bak": 4.1, "dnsmos.ovrl": 3.2}
+        with patch("speechonnxmetrics.score", return_value=flat) as m:
+            sig = qf.dnsmos_sig_score(audio, 16000, "", 1.0)
+            bak = qf.dnsmos_bak_score(audio, 16000, "", 1.0)
+            ovrl = qf.dnsmos_ovrl_score(audio, 16000, "", 1.0)
+        self.assertAlmostEqual(sig, 3.5)
+        self.assertAlmostEqual(bak, 4.1)
+        self.assertAlmostEqual(ovrl, 3.2)
+        # cached on the audio object: only one underlying score() call
+        self.assertEqual(m.call_count, 1)
+        self.assertEqual(list(m.call_args.args[1]), ["dnsmos"])
+
+    def test_error_is_raised(self):
+        import numpy as np
+        from unittest.mock import patch
+        from phoonnx_train import quality_filter as qf
+
+        qf._dnsmos_cache_audio = None
+        qf._dnsmos_cache_value = None
+        with patch("speechonnxmetrics.score",
+                   return_value={"dnsmos.sig": None, "_errors": {"dnsmos": "boom"}}):
+            with self.assertRaises(RuntimeError):
+                qf.dnsmos_sig_score(np.zeros(4, dtype="float32"), 16000, "", 1.0)
+
+
+class TestSpeechmosDictResult(unittest.TestCase):
+    def test_plain_dict_result_is_supported(self):
+        # newer speechmos returns a dict even with return_df=True
+        from phoonnx_train.quality_filter import _speechmos_df_value
+        result = {"plcmos": 3.71, "model": "plcmos_v2"}
+        self.assertAlmostEqual(_speechmos_df_value(result, ["plcmos"]), 3.71)
+
+    def test_plain_dict_falls_back_to_last_numeric(self):
+        from phoonnx_train.quality_filter import _speechmos_df_value
+        result = {"filename": "clip.wav", "some_mos": 2.5, "model": "x"}
+        self.assertAlmostEqual(_speechmos_df_value(result, ["plcmos"]), 2.5)
+
+    def test_plain_dict_no_numeric_raises(self):
+        from phoonnx_train.quality_filter import _speechmos_df_value
+        with self.assertRaises(ValueError):
+            _speechmos_df_value({"filename": "clip.wav", "model": "x"}, ["plcmos"])
+
+
 class TestPlcmosScore(unittest.TestCase):
     def test_reads_plcmos_column_from_df(self):
         import numpy as np

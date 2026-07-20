@@ -6,7 +6,8 @@ sentences on CPU with **per-utterance deterministic seeding** (``manual_seed``
 is re-applied immediately before each synthesis so a checkpoint scored twice
 produces identical wavs, independent of any RNG drift between epochs), scores
 each clip with a small registry of metric functions that reuse
-``phoonnx_train.quality_filter`` where they fit (UTMOS at least), optionally adds
+``phoonnx_train.quality_filter`` where they fit (UTMOS via speechonnxmetrics),
+optionally adds
 speaker similarity against a reference-speaker centroid, and returns a structured
 :class:`EvalRow`.
 """
@@ -43,7 +44,7 @@ def known_metrics() -> List[str]:
 
 
 def _utmos_metric(wav: np.ndarray, sr: int, text: str) -> float:
-    # Reuse quality_filter's UTMOS scorer (SpeechMOS utmos22_strong).
+    # Reuse quality_filter's UTMOS scorer (via speechonnxmetrics, ONNX).
     duration = float(len(wav)) / float(sr) if sr else 0.0
     return quality_filter.utmos_score(wav, sr, text, duration)
 
