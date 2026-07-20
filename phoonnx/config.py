@@ -793,7 +793,7 @@ def get_phonemizer(phoneme_type: PhonemeType,
 
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     config_files = [
         "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia_vits.json",
         "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits.json",
