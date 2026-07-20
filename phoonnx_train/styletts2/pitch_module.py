@@ -100,7 +100,10 @@ class PitchModule(pl.LightningModule):
         self.val_list = val_list or []
         self.model = JDCNet(num_class=1, seq_len=config.seq_len)
         if config.pretrained_path:
-            params = torch.load(config.pretrained_path, map_location="cpu")
+            from phoonnx_train.torch_compat import trusting_torch_load
+
+            with trusting_torch_load():
+                params = torch.load(config.pretrained_path, map_location="cpu")
             params = params.get("net", params.get("model", params))
             model_state = self.model.state_dict()
             filtered = {k: v for k, v in params.items()

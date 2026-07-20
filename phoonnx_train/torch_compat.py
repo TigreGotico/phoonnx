@@ -38,8 +38,11 @@ def compiler_disable(fn):
 def onnx_export_kwargs() -> Dict[str, Any]:
     """torch>=2.5 defaults torch.onnx.export to the dynamo exporter, which
     cannot trace VITS's data-dependent control flow (and needs the optional
-    onnxscript package); force the TorchScript exporter when the kwarg
-    exists. Older torch has no such kwarg."""
+    onnxscript package); force the TorchScript exporter (dynamo=False)
+    whenever the running torch accepts the kwarg. torch 2.1-2.4's
+    onnx.export does not accept `dynamo` at all, so it must be omitted
+    there entirely — probing the signature asks torch itself instead of
+    hardcoding a version boundary."""
     if "dynamo" in inspect.signature(torch.onnx.export).parameters:
         return {"dynamo": False}
     return {}

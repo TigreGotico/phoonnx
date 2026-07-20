@@ -616,13 +616,10 @@ class TestMantoqPhonemizerIntegration(unittest.TestCase):
 
             self.assertIn("bw2ipa translation failed", str(context.exception))
 
-    @unittest.skipIf(True, "Real integration test - enable when testing with actual libraries")
     def test_real_arabic_phonemization_samples(self):
-        """Real integration test with actual Arabic text samples.
-        
-        This test should be enabled when testing with actual mantoq and bw2ipa libraries.
-        Currently skipped to avoid dependency on external libraries in unit tests.
-        """
+        """Real integration test with actual Arabic text samples, using the
+        vendored mantoq/bw2ipa implementation (phoonnx/thirdparty/mantoq) —
+        no external dependency, so this runs unconditionally."""
         # Test cases from the main block of the original file
         test_cases = [
             "مرحبا بالعالم",

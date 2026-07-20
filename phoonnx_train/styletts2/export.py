@@ -235,12 +235,14 @@ def export_styletts2_onnx(
     style = torch.randn(1, 2 * mp.style_dim)
     speed = torch.tensor([1.0])
 
+    from phoonnx_train.torch_compat import onnx_export_kwargs
+
     model_path = output_dir / "model.onnx"
     torch.onnx.export(synth, (tokens, style, speed), str(model_path),
                       input_names=["tokens", "style", "speed"],
                       output_names=["waveform"],
                       dynamic_axes={"tokens": {1: "n"}, "waveform": {0: "s"}},
-                      opset_version=OPSET_VERSION, dynamo=False)
+                      opset_version=OPSET_VERSION, **onnx_export_kwargs())
 
     class Enc(torch.nn.Module):
         def __init__(self):
@@ -257,7 +259,7 @@ def export_styletts2_onnx(
     torch.onnx.export(Enc().eval(), torch.randn(1, sample_rate * 2), str(enc_path),
                       input_names=["waveform"], output_names=["ref_p", "ref_s"],
                       dynamic_axes={"waveform": {1: "s"}},
-                      opset_version=OPSET_VERSION, dynamo=False)
+                      opset_version=OPSET_VERSION, **onnx_export_kwargs())
 
     _fix_negative_transpose_perms(model_path)
     _fix_negative_transpose_perms(enc_path)

@@ -154,12 +154,8 @@ class VitsTrainingEngine(BaseTrainingEngine):
             dummy_input = (*dummy_input, sid)
 
         output_path = output_dir / f"{checkpoint_path.name}.onnx"
-        export_kwargs = {}
-        if torch.__version__ >= "2.5":
-            # torch >= 2.9 defaults to the dynamo exporter, which cannot
-            # trace the VITS rational-quadratic-spline flows — keep the
-            # legacy TorchScript exporter (piper lineage).
-            export_kwargs["dynamo"] = False
+        from phoonnx_train.torch_compat import onnx_export_kwargs
+        export_kwargs = onnx_export_kwargs()
         torch.onnx.export(
             model=model_g,
             args=dummy_input,

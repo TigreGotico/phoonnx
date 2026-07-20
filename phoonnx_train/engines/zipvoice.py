@@ -150,10 +150,8 @@ class ZipVoiceTrainingEngine(BaseTrainingEngine):
         # export-friendly equivalents, as upstream onnx_export.py
         convert_scaled_to_non_scaled(model, inplace=True, is_onnx=True)
 
-        import inspect
-        export_kwargs: Dict[str, Any] = {}
-        if "dynamo" in inspect.signature(torch.onnx.export).parameters:
-            export_kwargs["dynamo"] = False
+        from phoonnx_train.torch_compat import onnx_export_kwargs
+        export_kwargs: Dict[str, Any] = onnx_export_kwargs()
 
         # text encoder graph
         text_model = OnnxTextModel(model).eval()

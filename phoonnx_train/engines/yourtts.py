@@ -204,12 +204,8 @@ class YourttsTrainingEngine(BaseTrainingEngine):
         dummy_input = (sequences, sequence_lengths, scales, d_vector, langid)
 
         output_path = output_dir / f"{checkpoint_path.name}.onnx"
-        export_kwargs = {}
-        import inspect
-        if "dynamo" in inspect.signature(torch.onnx.export).parameters:
-            # VITS has data-dependent control flow the dynamo exporter
-            # cannot trace — force the TorchScript exporter
-            export_kwargs["dynamo"] = False
+        from phoonnx_train.torch_compat import onnx_export_kwargs
+        export_kwargs = onnx_export_kwargs()
         torch.onnx.export(
             model=model_g,
             args=dummy_input,

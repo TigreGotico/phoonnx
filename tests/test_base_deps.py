@@ -30,29 +30,52 @@ DIST_TO_IMPORT = {
 STDLIB_MODULES = {
     "os", "sys", "re", "json", "wave", "string", "logging", "typing",
     "dataclasses", "pathlib", "enum", "collections", "datetime",
-    "unicodedata", "__future__",
+    "unicodedata", "__future__", "abc", "subprocess", "hashlib", "base64",
+    "csv", "math", "optparse", "functools", "shutil", "io", "itertools",
+    "tempfile", "warnings", "copy", "random", "argparse", "time",
+    "importlib", "shlex", "glob", "struct", "textwrap", "uuid",
 }
+
+
+def _dist_names_to_import_names(dep_specs):
+    names = set()
+    for dep in dep_specs:
+        # strip version specifiers / environment markers
+        dist_name = dep.split(";")[0]
+        for sep in (">=", "<=", "==", "!=", "~=", ">", "<"):
+            dist_name = dist_name.split(sep)[0]
+        dist_name = dist_name.strip()
+        # drop pip "extras" markers, e.g. "gruut[de]" -> "gruut"
+        dist_name = dist_name.split("[")[0]
+        names.add(DIST_TO_IMPORT.get(dist_name, dist_name.replace("-", "_")))
+    return names
 
 
 def _base_dependency_import_names():
     with open(PYPROJECT, "rb") as f:
         data = tomllib.load(f)
     deps = data["project"]["dependencies"]
+    return _dist_names_to_import_names(deps)
+
+
+def _all_extras_import_names():
+    """Every optional-dependencies extra, pooled together. This is
+    deliberately permissive (it does not map a given module to the one
+    extra it needs) — the goal is to catch genuinely undeclared third-party
+    imports, not to build a full extras-resolution engine."""
+    with open(PYPROJECT, "rb") as f:
+        data = tomllib.load(f)
+    extras = data["project"].get("optional-dependencies", {})
     names = set()
-    for dep in deps:
-        # strip version specifiers / environment markers
-        dist_name = dep.split(";")[0]
-        for sep in (">=", "<=", "==", "!=", "~=", ">", "<"):
-            dist_name = dist_name.split(sep)[0]
-        dist_name = dist_name.strip()
-        names.add(DIST_TO_IMPORT.get(dist_name, dist_name.replace("-", "_")))
+    for deps in extras.values():
+        names |= _dist_names_to_import_names(deps)
     return names
 
 
 def _unconditional_top_level_imports(py_file: Path):
     """Return the set of top-level module names imported unconditionally
     (i.e. at module scope, not inside try/except or function/class bodies)."""
-    tree = ast.parse(py_file.read_text(), filename=str(py_file))
+    tree = ast.parse(py_file.read_text(encoding="utf-8-sig"), filename=str(py_file))
     names = set()
     for node in tree.body:  # only module-level statements, not nested
         if isinstance(node, ast.Import):
@@ -84,6 +107,25 @@ class TestBaseDependencies(unittest.TestCase):
                 f"{py_file} unconditionally imports {missing}, which "
                 f"is not declared in pyproject.toml base dependencies",
             )
+
+    def test_all_phoonnx_modules_only_import_declared_dependencies(self):
+        """Every top-level import anywhere under phoonnx/ must resolve to
+        stdlib, a base dependency, or something declared in at least one
+        optional-dependencies extra — nothing silently undeclared."""
+        base_deps = _base_dependency_import_names()
+        extras_deps = _all_extras_import_names()
+        allowed = base_deps | extras_deps | STDLIB_MODULES | {"phoonnx"}
+        failures = []
+        for py_file in PHOONNX_DIR.rglob("*.py"):
+            imported = _unconditional_top_level_imports(py_file)
+            missing = imported - allowed
+            if missing:
+                failures.append(f"{py_file.relative_to(REPO_ROOT)}: {sorted(missing)}")
+        self.assertFalse(
+            failures,
+            "modules unconditionally import third-party packages missing "
+            "from pyproject.toml (base deps or any extra):\n" + "\n".join(failures),
+        )
 
     def test_no_phoonnx_cli_py_self_references(self):
         for py_file in PHOONNX_DIR.glob("*.py"):

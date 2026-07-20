@@ -222,7 +222,10 @@ class VocosTrainingModule(pl.LightningModule):
             from huggingface_hub import hf_hub_download
 
             value = hf_hub_download(repo_id=value, filename="pytorch_model.bin")
-        state = torch.load(value, map_location="cpu")
+        from phoonnx_train.torch_compat import trusting_torch_load
+
+        with trusting_torch_load():
+            state = torch.load(value, map_location="cpu")
         if isinstance(state, dict) and "state_dict" in state:
             state = state["state_dict"]
 

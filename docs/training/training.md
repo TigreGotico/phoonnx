@@ -33,6 +33,8 @@ python -m phoonnx_train.train --dataset-dir DIR [options]
 | `--resume-from-single-speaker-checkpoint PATH` | none | Convert a single-speaker checkpoint to multi-speaker and resume |
 | `--discard-encoder` | off | Discard encoder weights from the base checkpoint (not supported by all engines) |
 | `--log-audio-samples / --no-log-audio-samples` | off | Log synthesized validation audio each epoch (needs a TensorBoard logger) |
+| `--compile` | off | Compile the model with `torch.compile` for faster training |
+| `--compile-mode {default,reduce-overhead,max-autotune,max-autotune-no-cudagraphs}` | `default` | `torch.compile` mode; only relevant with `--compile` |
 
 > There is **no `--learning-rate` flag.** The optimizer and schedule are owned by the engine
 > and its quality preset.
@@ -58,6 +60,7 @@ tensorboard --logdir <default-root-dir>/lightning_logs
 | `speedyspeech` | ForwardTTS / SpeedySpeech | Same engine as `fastpitch`, no pitch |
 | `mixer` / `mixertts` | Mixer-TTS | Two-stage; [guide](engines/mixertts.md) |
 | `zipvoice` | ZipVoice (flow-matching, in-context cloning) | [guide](engines/zipvoice.md) |
+| `optispeech` | OptiSpeech (lightweight end-to-end, S4D attention) | Install `phoonnx[train,train-optispeech]` |
 | `yourtts` | YourTTS (VITS + d-vector cloning) | See [Cloning](../cloning.md) |
 | `styletts2` | StyleTTS2 / Kokoro | See [StyleTTS2](#styletts2-engine---engine-styletts2) below |
 | `styletts2-aligner` | StyleTTS2 text aligner (ASRCNN) | Auxiliary model |
