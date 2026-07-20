@@ -27,6 +27,9 @@ dependencies = [
     "click",
     "requests",
     "json_database",
+    "ovos-plugin-manager>=2.1.0",
+    "ovos-utils",
+    "regex",
 ]
 
 [project.urls]
@@ -87,6 +90,8 @@ train = [
     "numba>=0.66; python_version>='3.13'",
     "pytorch-lightning>=2.0,<3",
     "torch>=2.1,<3",
+    "tqdm",
+    "scipy",
 ]
 # extra deps for the StyleTTS2 training engine
 # (phoonnx_train/styletts2/ + phoonnx_train/engines/styletts2*.py) on top of
@@ -150,6 +155,7 @@ train-optispeech = [
     "scipy",
     "torchaudio",
     "onnx",
+    "opt_einsum",
 ]
 ar = ["epitran", "arbtok", "text2tashkeel"]
 ca = ["epitran"]
