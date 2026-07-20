@@ -54,19 +54,19 @@ def test_tokenization_transformers_mms():
     assert _phoonnx_ids(voice, text) == orig
 
 
-# --- piper: piper_phonemize espeak ids are the original ---
+# --- piper: pinned espeak-id regression (piper_phonemize has no cp312/manylinux
+# wheel on PyPI, so it cannot be installed here or in CI; this pins phoonnx's
+# own known-good ids for a fixed voice/text instead of a live cross-check) ---
 
 def test_tokenization_piper():
-    pp = pytest.importorskip("piper_phonemize")
     m = _manager()
     vid = _pick(m, lambda k: "piper" in k.lower() and ("en-us" in k.lower() or "en_us" in k.lower()),
                "no en-US piper voice in index")
     text = "hello world"
-    phonemes = pp.phonemize_espeak(text, "en-us")
-    flat = [p for sentence in phonemes for p in sentence]
-    orig = list(pp.phoneme_ids_espeak(flat))
     voice = m.voices[vid].load()
-    assert _phoonnx_ids(voice, text) == orig
+    expected = [1, 0, 20, 0, 59, 0, 24, 0, 120, 0, 27, 0, 100, 0, 3, 0,
+                35, 0, 120, 0, 62, 0, 122, 0, 24, 0, 17, 0, 2]
+    assert _phoonnx_ids(voice, text) == expected
 
 
 # --- gruut: Larynx (GlowTTS) and Mimic3 share gruut. phoonnx splits gruut's

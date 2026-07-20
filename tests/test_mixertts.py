@@ -165,15 +165,19 @@ def test_raw_vocoder_feeds_extra_scalar_inputs():
     assert "mel_spec" in feed and "denoise" in feed and float(feed["denoise"][0]) == 0.0
 
 
-def test_tokenization_arabic_mantoq_matches_tts_arabic():
-    # golden: phoonnx mantoq + the 44-symbol buckwalter vocab must equal
-    # tts_arabic's own phonetise_buckwalter ids. Guarded on the lib.
-    tts_arabic = pytest.importorskip("tts_arabic")
-    from tts_arabic.text import symbols as ar_symbols, phonetise_buckwalter
+def test_tokenization_arabic_mantoq_pinned_buckwalter_ids():
+    # tts_arabic is not published on PyPI (git-only, no installable wheel),
+    # so this pins the vendored mantoq g2p's own buckwalter token sequence
+    # as a regression golden instead of cross-validating against it live.
+    # Any change to phoonnx/thirdparty/mantoq's output for this sentence
+    # must be a deliberate, reviewed change to this fixture.
     from phoonnx.phonemizers.ar import MantoqPhonemizer
-    sid = {s: i for i, s in enumerate(ar_symbols.symbols)}
     text = "السَّلامُ عَلَيكُم"
-    orig = [sid[p] for p in phonetise_buckwalter.process_utterance(text) if p in sid]
     mantoq = MantoqPhonemizer()
-    ours = [sid[p] for chunk in [mantoq.phonemize(text, "ar")] for w in chunk for p in w if p in sid]
-    assert ours == orig
+    phonemes = [p for chunk in [mantoq.phonemize(text, "ar")] for w in chunk for p in w]
+    sid = {s: i for i, s in enumerate(sorted(set(phonemes)))}
+    ours = [sid[p] for p in phonemes]
+    expected_symbols = ['a', 'a', 's', '_', 'd', 'b', 'l', '_', 'a', 'l', 'a',
+                         'a', 'm', 'u', ' ', 'E', 'a', 'l', 'a', 'y', 'k', 'u', 'm']
+    expected = [sid[p] for p in expected_symbols]
+    assert ours == expected
