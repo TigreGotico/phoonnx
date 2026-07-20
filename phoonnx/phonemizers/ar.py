@@ -126,7 +126,7 @@ class ArbtokPhonemizer(BasePhonemizer):
         return self._engine(self.get_lang(lang)).transcribe(text)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     from phoonnx.phonemizers.mul import EspeakPhonemizer
 
     espeak = EspeakPhonemizer()
