@@ -65,6 +65,7 @@
 - feat\(pycotovia-gl\): replace cotovia binary shell-out with pycotovia [\#191](https://github.com/TigreGotico/phoonnx/pull/191) ([JarbasAl](https://github.com/JarbasAl))
 - refactor: delegate ARPA↔IPA, Buckwalter↔Arabic, MMS script-tag to scriptconv [\#190](https://github.com/TigreGotico/phoonnx/pull/190) ([JarbasAl](https://github.com/JarbasAl))
 - fix\(glowtts\): take larynx mel output 0 + denormalize \(Larynx noise\) [\#189](https://github.com/TigreGotico/phoonnx/pull/189) ([JarbasAl](https://github.com/JarbasAl))
+- feat\(alphabet\): unified alphabet model — phonemization as conversion [\#188](https://github.com/TigreGotico/phoonnx/pull/188) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(chatterbox\): autoregressive codec-LM engine — d-vector cloning + exaggeration [\#181](https://github.com/TigreGotico/phoonnx/pull/181) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(docker\): batteries-included OVOS TTS server image + publish workflow \(closes \#98\) [\#178](https://github.com/TigreGotico/phoonnx/pull/178) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(zipvoice\): native flow-matching engine — phoonnx's first iterative adapter [\#158](https://github.com/TigreGotico/phoonnx/pull/158) ([JarbasAl](https://github.com/JarbasAl))
