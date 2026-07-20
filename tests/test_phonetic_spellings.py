@@ -16,14 +16,17 @@ def test_from_path_skips_blank_lines_comments_and_trailing_newline(tmp_path):
     assert ps.replacements == {"foo": "fuh", "bar": "bahr"}
 
 
-def test_from_path_skips_malformed_line_and_warns(tmp_path, caplog):
+def test_from_path_skips_malformed_line_and_warns(tmp_path):
+    from unittest.mock import patch
+
     spellings_file = tmp_path / "phonetic_spellings.txt"
     spellings_file.write_text(
         "foo:fuh\n"
         "this line has no colon\n"
         "bar:bahr\n"
     )
-    with caplog.at_level(logging.WARNING):
+    with patch("phoonnx.voice.LOG") as mock_log:
         ps = PhoneticSpellings.from_path(str(spellings_file))
     assert ps.replacements == {"foo": "fuh", "bar": "bahr"}
-    assert any("malformed" in r.message.lower() for r in caplog.records)
+    assert mock_log.warning.called
+    assert "malformed" in str(mock_log.warning.call_args).lower()
