@@ -13,7 +13,14 @@ from typing import List, Optional, Tuple
 import pytorch_lightning as pl
 import torch
 
-from phoonnx_train.vits.mel_processing import mel_spectrogram_torch
+# The vocoder MUST train on the exact mel the acoustic model emits. The
+# maintainer pairs Vocos with Matcha, whose front-end
+# (phoonnx_train.matcha.audio) differs from the VITS one only in the
+# pre-sqrt STFT-magnitude epsilon (1e-9 vs 1e-6) — a difference that shifts
+# the log-mel silence floor by ~1.5 nats. Training on the VITS front-end
+# would teach the vocoder a mel space Matcha never produces, so the shared
+# Matcha featurizer is the single source of truth here.
+from phoonnx_train.matcha.audio import mel_spectrogram as mel_spectrogram_torch
 from phoonnx_train.vocos.data import MelConfig, parse_warm_start
 from phoonnx_train.vocos.dataset import AudioCropDataset
 from phoonnx_train.vocos.models import (
