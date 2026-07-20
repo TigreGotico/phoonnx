@@ -1,13 +1,41 @@
 # Datasets
 
-This page is for anyone preparing training data. After reading it you will know the exact
-`metadata.csv` format phoonnx accepts, how audio files are located and normalized, how
-speakers are assigned, and how to filter out bad clips before training. It backs the
-[training quickstart](quickstart.md).
+This page is for anyone preparing training data. After reading it you will know every input
+format phoonnx accepts, the exact LJSpeech `metadata.csv` layout, how audio files are located
+and normalized, how speakers are assigned, and how to filter out bad clips before training. It
+backs the [training quickstart](quickstart.md).
 
-## Directory layout
+## Input formats
 
-phoonnx reads the LJSpeech convention:
+`preprocess.py` reads four on-disk shapes, selected with `--dataset-format` (default `auto`,
+which detects per source):
+
+| Format | Auto-detected from | Source is |
+|---|---|---|
+| `ljspeech` | a directory containing `metadata.csv` | an LJSpeech directory (`metadata.csv` + `wav(s)/`) |
+| `jsonl` | a `.jsonl` file | one JSON object per line |
+| `parquet` | a `.parquet` file, a shard glob, or a directory of shards | Parquet table(s) |
+| `hf` | an `org/name` string that is not an existing path | a Hugging Face dataset repo id (loaded via `datasets`) |
+
+LJSpeech remains the simplest path and is what the [quickstart](quickstart.md) uses. The
+tabular formats (`jsonl`/`parquet`/`hf`) resolve columns by name; see
+[Column mapping](#column-mapping-tabular-formats).
+
+### Merging multiple sources
+
+`-i/--input-dir` is repeatable (and accepts comma-separated values), so several datasets can be
+merged in one run. Per-source speaker IDs are **namespaced** to avoid collisions between
+datasets that happen to share speaker labels:
+
+```bash
+python -m phoonnx_train.preprocess \
+  -i dataset_a -i dataset_b,my-org/hf-dataset \
+  --output-dir train_out --language en-US
+```
+
+## LJSpeech directory layout
+
+The default format uses the LJSpeech convention:
 
 ```
 my_dataset/
@@ -75,6 +103,36 @@ Behavior:
   with the most clips becomes id 0), and the mapping is written to `speaker_id_map` in
   `config.json`.
 
+## Column mapping (tabular formats)
+
+For `jsonl`/`parquet`/`hf` sources, columns are resolved by name with fallbacks. Override any
+of them explicitly:
+
+| Flag | Holds | Default fallback order |
+|---|---|---|
+| `--text-column` | Transcript text | `text`, `sentence`, `transcription`, `transcript` |
+| `--audio-column` | Audio path or embedded bytes | `audio` |
+| `--speaker-column` | Speaker label | `speaker`, `speaker_id` |
+| `--phonemes-column` | Precomputed phonemes (opt-in) | unset |
+| `--lang-column` | Per-row language code | unset |
+
+Any unmapped columns are carried through into `dataset.jsonl` extras.
+
+### Embedded audio bytes
+
+Hugging Face audio columns (and phoonnx's own Parquet shards) frequently store the audio as
+embedded **bytes** rather than a filesystem path — the `path` field is often `None`, and column
+casting does not inline the bytes. The loaders read the bytes explicitly and materialize them
+on demand, so no separate audio folder is required for `hf`/`parquet` sources.
+
+### Precomputed phonemes
+
+Pass `--phonemes-column COL` to use phonemes already present in the data instead of
+phonemizing. Rows with a non-empty value in that column skip phonemization and are used
+**verbatim**; their whitespace-separated symbols are validated against the final phoneme map
+and a mismatch **fails loudly** rather than silently mistokenizing. Rows with an empty value
+fall back to normal phonemization.
+
 ## Quality filtering
 
 Bad clips (music, clipping, wrong transcript, off-speaker) degrade a voice. `preprocess.py`
@@ -112,3 +170,21 @@ python -m phoonnx_train.preprocess ... \
 
 Add `--filter wer:0:0.3` when transcript accuracy is in doubt (it re-transcribes every clip, so
 it is the slowest). The full flag list is in the [preprocess reference](preprocess.md).
+
+### Reusing metric values
+
+Computing filters (especially `wer`) is expensive. You can cache and reuse the results:
+
+- `--metrics-out sidecar.parquet` writes every computed metric value per row to a Parquet
+  sidecar during filtering.
+- `--metrics-in sidecar.parquet` reads a previously written sidecar back.
+- `--filter-from-columns` makes each `--filter` prefer a per-row value from a dataset column of
+  the same name (or from `--metrics-in`) before computing it on demand.
+
+## Resuming an interrupted run
+
+`--resume` skips rows already written to an existing `dataset.jsonl` (matched by row id or audio
+path) and appends only new rows; writes are atomic (temp file + rename), so an interrupted run
+never leaves a half-written manifest. `--resume` is **incompatible with `--corpus-only-map`**
+(the corpus-only phoneme map cannot be reconstructed from already-written rows) and the two
+together are rejected with an error.

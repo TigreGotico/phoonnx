@@ -37,9 +37,12 @@ my_dataset/
 ```
 
 The audio folder may be named `wav/` or `wavs/`. Aim for at least ~30 minutes of clean,
-single-speaker speech to get an intelligible voice; more is better. The full spec (multi-speaker
-columns, filename resolution, audio requirements, quality filtering) is in
-[Datasets](datasets.md).
+single-speaker speech to get an intelligible voice; more is better.
+
+LJSpeech is the simplest format and the golden path followed here. Preprocess also reads JSONL,
+Parquet, and Hugging Face datasets, and can merge several sources at once — see
+[Datasets](datasets.md#input-formats). The full spec (multi-speaker columns, filename
+resolution, audio requirements, quality filtering) is in [Datasets](datasets.md).
 
 ## 2. Preprocess
 

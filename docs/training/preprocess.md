@@ -19,9 +19,29 @@ python -m phoonnx_train.preprocess --input-dir SRC --output-dir DST --language L
 
 | Option | Description |
 |---|---|
-| `-i, --input-dir DIR` | Dataset root containing `metadata.csv` and `wav/`/`wavs/` |
+| `-i, --input-dir SOURCE` | Dataset source; **repeatable** (or comma-separated) to merge datasets with per-source speaker namespacing. A source may be an LJSpeech directory, a `.jsonl` file, a `.parquet` file / shard glob / directory of shards, or a Hugging Face `org/name` repo id |
 | `-o, --output-dir DIR` | Where to write `config.json`, `dataset.jsonl`, and the cache |
 | `-l, --language TEXT` | Phonemizer language code (e.g. `en`, `en-US`, `pt-PT`) |
+
+## Input format and columns
+
+| Option | Default | Description |
+|---|---|---|
+| `--dataset-format` | `auto` | `auto`, `ljspeech`, `jsonl`, `parquet`, or `hf`. `auto` detects per source (see [Datasets → Input formats](datasets.md#input-formats)) |
+| `--text-column NAME` | `text`, `sentence`, `transcription`, `transcript` | Transcript column (jsonl/parquet/hf) |
+| `--audio-column NAME` | `audio` | Audio path or embedded-bytes column (jsonl/parquet/hf) |
+| `--speaker-column NAME` | `speaker`, `speaker_id` | Speaker-label column (jsonl/parquet/hf) |
+| `--phonemes-column NAME` | unset | Opt-in precomputed phonemes, used verbatim and validated against the phoneme map (mismatch fails loudly) |
+| `--lang-column NAME` | unset | Per-row language code, carried into `dataset.jsonl` extras |
+
+Hugging Face and Parquet audio columns often hold embedded bytes rather than a path; the loaders
+read the bytes explicitly and materialize audio on demand.
+
+## Resuming
+
+| Option | Description |
+|---|---|
+| `--resume` | Skip rows already present in an existing output `dataset.jsonl` (by row id / audio path) and append only new rows; writes are atomic. **Incompatible with `--corpus-only-map`** (rejected with an error) |
 
 ## Phonemization
 
@@ -85,6 +105,9 @@ thresholds are in [Datasets → Quality filtering](datasets.md#quality-filtering
 | `--vad-model NAME` | `silero` | `vadonnx` model for the `vad_ratio` metric |
 | `--speaker-model NAME` | `wespeaker-resnet34` | `speakeronnx` model for `speaker_consistency` |
 | `--asr-model NAME` | `whisper-base` | `onnx_asr`-loadable model for `wer` |
+| `--metrics-out FILE` | none | Write every computed filter metric per row to a Parquet sidecar |
+| `--metrics-in FILE` | none | Read a previously written metrics sidecar (preferred over recomputation with `--filter-from-columns`) |
+| `--filter-from-columns` | off | Make `--filter` prefer a per-row value from a dataset column of the same name (or `--metrics-in`) before computing it |
 
 ## Cross-machine paths
 
