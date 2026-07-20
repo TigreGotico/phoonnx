@@ -83,6 +83,9 @@ def _validate_engine(ctx, param, value):
               help='Reference-speaker wav dir enabling the speaker-similarity gate')
 @click.option('--min-spk-sim', type=float, default=None,
               help='Similarity gate floor for best-checkpoint selection')
+@click.option('--eval-speaker-id', type=int, default=None,
+              help='Speaker id used for in-training evaluation synthesis on '
+                   'multi-speaker models (default: None = engine default voice)')
 @click.option('--eval-seed', type=int, default=1234,
               help='Base seed for per-utterance evaluation synthesis (default: 1234)')
 @click.option('--compile', 'use_compile', is_flag=True, default=False,
@@ -113,6 +116,7 @@ def main(
     early_stop_patience: int,
     eval_speaker_ref_dir: Optional[str],
     min_spk_sim: Optional[float],
+    eval_speaker_id: Optional[int],
     eval_seed: int,
     use_compile: bool,
     compile_mode: str,
@@ -245,16 +249,34 @@ def main(
     # In-training scoreboard is opt-in: only wired up when both an eval
     # sentences file and a positive --eval-every are given.
     if eval_sentences and eval_every > 0:
+        from phoonnx_train.engines.base import BaseTrainingEngine
         from phoonnx_train.evaluation import (CheckpointScorer, MetricsTracker,
                                               SelectionPolicy)
         from phoonnx_train.eval_utils import read_sentences
+
+        # In-training scoring loads each checkpoint through
+        # engine.eval_synthesize; engines that never implemented it would fail
+        # silently at the first scoring firing (deep inside a swallowed
+        # callback exception) after wasting a full training run. Fail loudly at
+        # startup instead, naming the engines that DO support it.
+        if type(training_engine).eval_synthesize is BaseTrainingEngine.eval_synthesize:
+            supported = sorted(
+                name for name in list_engines()
+                if type(get_engine(name)).eval_synthesize
+                is not BaseTrainingEngine.eval_synthesize
+            )
+            raise click.UsageError(
+                f"engine {engine!r} does not support in-training evaluation "
+                f"(--eval-sentences / --eval-every); it has no eval_synthesize "
+                f"implementation. Engines that do: {', '.join(supported) or 'none'}."
+            )
 
         sentences = read_sentences(eval_sentences)
         eval_dir = run_dir / "eval"
         scorer = CheckpointScorer(
             training_engine, dataset_config, sentences,
             speaker_ref_dir=Path(eval_speaker_ref_dir) if eval_speaker_ref_dir else None,
-            speaker_id=None,
+            speaker_id=eval_speaker_id,
             seed=eval_seed,
         )
         selection = SelectionPolicy(metric="utmos_mean", min_spk_sim=min_spk_sim)
@@ -278,15 +300,24 @@ def main(
         **training_engine.trainer_kwargs(),
     )
     if use_compile:
-        if hasattr(model, "model_g") and hasattr(model, "model_d"):
-            _LOGGER.info("Compiling model_g/model_d with torch.compile (mode=%s)", compile_mode)
-            model.model_g = torch.compile(model.model_g, mode=compile_mode)
-            model.model_d = torch.compile(model.model_d, mode=compile_mode)
-        elif hasattr(model, "model") and isinstance(getattr(model, "model"), torch.nn.Module):
-            _LOGGER.info("Compiling model with torch.compile (mode=%s)", compile_mode)
-            model.model = torch.compile(model.model, mode=compile_mode)
-        else:
-            _LOGGER.warning("compile not supported for engine %r yet — running uncompiled", engine)
+        # torch.compile can raise at call time on unsupported python/torch
+        # combinations (e.g. dynamo has no CPython 3.12 backend on torch<2.3).
+        # A compile failure must never abort a training run that would have
+        # been perfectly fine uncompiled: warn and continue.
+        try:
+            if hasattr(model, "model_g") and hasattr(model, "model_d"):
+                _LOGGER.info("Compiling model_g/model_d with torch.compile (mode=%s)", compile_mode)
+                model.model_g = torch.compile(model.model_g, mode=compile_mode)
+                model.model_d = torch.compile(model.model_d, mode=compile_mode)
+            elif hasattr(model, "model") and isinstance(getattr(model, "model"), torch.nn.Module):
+                _LOGGER.info("Compiling model with torch.compile (mode=%s)", compile_mode)
+                model.model = torch.compile(model.model, mode=compile_mode)
+            else:
+                _LOGGER.warning("compile not supported for engine %r yet — running uncompiled", engine)
+        except Exception as err:
+            _LOGGER.warning(
+                "torch.compile unavailable: %s — continuing uncompiled", err
+            )
 
     _LOGGER.info("Training started!")
     # torch>=2.6 defaults torch.load(weights_only=True), which rejects our own

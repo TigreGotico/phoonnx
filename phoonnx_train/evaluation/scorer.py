@@ -242,7 +242,30 @@ class CheckpointScorer:
             )
         self.speaker_id = speaker_id
 
+        # Prefer the engine's own training-tokenization hook when it provides
+        # one. Engines whose datamodule tokenizes differently from the generic
+        # phoonnx phonemizer/tokenizer pipeline (e.g. OptiSpeech) override
+        # ``eval_text_to_ids`` so scoring feeds the model the exact ids it was
+        # trained on; otherwise the model would score garbage.
+        from phoonnx_train.engines.base import BaseTrainingEngine
+        base_hook = BaseTrainingEngine.eval_text_to_ids
+        engine_hook = getattr(type(engine), "eval_text_to_ids", base_hook)
+        self._uses_engine_tokenizer = engine_hook is not base_hook
+        if self._uses_engine_tokenizer:
+            _LOGGER.info(
+                "scorer using %s.eval_text_to_ids for evaluation tokenization",
+                type(engine).__name__,
+            )
+
         self.emb, self.ref = load_speaker_reference(speaker_ref_dir, num_ref_wavs)
+
+    def _text_to_ids(self, text: str) -> List[int]:
+        """Model-input ids for ``text``: the engine's training tokenization when
+        it provides one, else the generic phoonnx phonemizer/tokenizer pipeline."""
+        if getattr(self, "_uses_engine_tokenizer", False):
+            return self.engine.eval_text_to_ids(text, self.config)
+        _, ids = text_to_ids(text, self.ph, self.tokenizer, self.lang)
+        return ids
 
     @property
     def speaker_scoring_active(self) -> bool:
@@ -270,7 +293,7 @@ class CheckpointScorer:
         perutt = []
         for i, text in enumerate(self.sentences):
             try:
-                _, ids = text_to_ids(text, self.ph, self.tokenizer, self.lang)
+                ids = self._text_to_ids(text)
                 # Per-utterance deterministic reseed: fixes cross-epoch RNG
                 # drift so the same checkpoint always yields the same wav.
                 self._reseed(self.seed + i)

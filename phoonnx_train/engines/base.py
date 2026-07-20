@@ -156,7 +156,14 @@ class BaseTrainingEngine(ABC):
         """
         import torch
 
-        ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+        from phoonnx_train.torch_compat import trusting_torch_load
+
+        # Our Lightning checkpoints embed pickled hyper-parameters (dataclasses,
+        # partial factories) that torch>=2.6's default weights_only=True
+        # rejects. Loading our own checkpoint is trusted — use the same helper
+        # every other load path uses for consistency.
+        with trusting_torch_load():
+            ckpt = torch.load(checkpoint_path, map_location="cpu")
         state_dict = ckpt.get("state_dict", ckpt)
         model_state = model.state_dict()
         filtered = {
@@ -165,6 +172,23 @@ class BaseTrainingEngine(ABC):
         }
         model.load_state_dict(filtered, strict=False)
         return model
+
+    def eval_text_to_ids(
+        self,
+        text: str,
+        config: Optional[Dict[str, Any]],
+    ) -> Optional[List[int]]:
+        """Tokenize ``text`` to the exact model-input id sequence this engine's
+        training datamodule feeds the model, for held-out evaluation.
+
+        Returns ``None`` by default, which tells :class:`CheckpointScorer` to
+        fall back to its own phoonnx phonemizer/tokenizer pipeline. Engines
+        whose training tokenization differs from that pipeline (e.g. OptiSpeech,
+        which builds its own ``TextProcessor``) MUST override this so the
+        in-training scorer feeds the model the same ids it was trained on —
+        otherwise it scores garbage and selects the wrong best checkpoint.
+        """
+        return None
 
     def eval_synthesize(
         self,
