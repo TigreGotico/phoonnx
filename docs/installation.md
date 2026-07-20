@@ -39,6 +39,7 @@ Install extras with `pip install "phoonnx[<name>]"`. Combine them with commas, e
 | `streaming` | Auto-splitting a monolithic VITS voice into a [streaming](streaming.md) encoder/decoder pair | `onnx` (graph surgery) |
 | `matcha` | Matcha two-stage synthesis helpers | `scipy` |
 | `chatterbox-multilingual` | Chatterbox per-language script transforms (ja/zh) | `pykakasi`, `spacy-pkuseg` |
+| `cjk` | Same CJK script-transform deps as `chatterbox-multilingual`, under a shorter name | `pykakasi`, `spacy-pkuseg` |
 | `o2i` | The multilingual data-driven IPA backend | `orthography2ipa` |
 | `all` | Every language phonemizer + cloning (used by the Docker image) | see below |
 
@@ -86,6 +87,8 @@ several add higher-quality engines.
 | `train-mixer` | Mixer-TTS F0 sidecar (`pyworld`) |
 | `train-styletts2` | The StyleTTS2 training engine |
 | `train-resample` | Resampling for engines defined at a fixed sample rate (e.g. ZipVoice 24 kHz) |
+| `train-data` | Multi-format dataset loading for preprocessing (jsonl/parquet/HF repos with embedded audio bytes) |
+| `train-optispeech` | The OptiSpeech training engine |
 
 See the [Training quickstart](training/quickstart.md) for how these fit together.
 

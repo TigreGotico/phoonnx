@@ -104,6 +104,9 @@ python -m phoonnx_train.train \
   --default-root-dir train_out/runs
 ```
 
+Add `--compile` for a `torch.compile` speedup (optional; tune the graph-capture mode with
+`--compile-mode`). See the [training reference](training.md#train.py-options).
+
 **Expected output** — checkpoints appear under the run directory as training progresses:
 
 ```

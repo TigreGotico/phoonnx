@@ -20,6 +20,7 @@ output file — the output location is set with `-o/--output-dir`.
 | `--engine NAME` | `vits` | Architecture used for training (must match how it was trained) |
 | `-t, --generate-tokens` | off | Also write `tokens.txt` (needed by some engines, e.g. sherpa) |
 | `-p, --piper` | off | Also write a Piper-compatible `.json` |
+| `-a, --add-phoneme-alignment` | off | Expose the phoneme duration tensor as an extra ONNX output (VITS only); see [Phoneme alignment](../alignment.md#exporting-a-model-with-alignment-support) |
 
 The export is engine-aware: passing `--engine` uses that engine's export procedure and
 metadata format. The output filenames depend on the engine — VITS writes `model.onnx`, while
