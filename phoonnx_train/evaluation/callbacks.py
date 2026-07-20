@@ -83,7 +83,7 @@ class EvalScoreboardCallback(Callback):
             epoch = int(trainer.current_epoch)
             if (epoch + 1) % self.every_n_epochs != 0:
                 return
-            self._score_newest(trainer)
+            self._score_pending(trainer)
         except Exception:
             # Scoring must never crash training.
             _LOGGER.exception("EvalScoreboardCallback failed; continuing training")
@@ -100,40 +100,50 @@ class EvalScoreboardCallback(Callback):
                 return Path(val)
         return None
 
-    def _score_newest(self, trainer) -> None:
+    def _score_pending(self, trainer) -> None:
         ckpt_dir = self._resolve_checkpoint_dir(trainer)
         if ckpt_dir is None or not Path(ckpt_dir).exists():
             _LOGGER.warning("no checkpoint dir resolved yet; skipping scoreboard")
             return
         ckpts = find_checkpoints(ckpt_dir)
         skip = self.tracker.skip_epochs()
+        # Score EVERY unscored checkpoint on disk, oldest first — not only the
+        # newest. With --checkpoint-epochs > 1 the gate ``(epoch+1) %
+        # every_n`` and the epochs actually written to disk diverge, so
+        # scoring just the newest would silently drop every checkpoint that
+        # never coincided with a gated firing.
         todo = sorted(e for e in ckpts if e not in skip)
         if not todo:
             return
-        epoch = todo[-1]
-        ckpt = ckpts[epoch]
-        if not size_stable(ckpt):
-            _LOGGER.warning("checkpoint %s not stable yet; deferring", ckpt)
-            return
 
-        work_dir = self.output_dir / "_work" / f"epoch{epoch}"
-        try:
-            row = self.scorer.score(ckpt, epoch, work_dir=work_dir)
-        except Exception:
-            _LOGGER.exception("scoring epoch %d failed", epoch)
-            self.tracker.record_failure(epoch)
-            return
+        for epoch in todo:
+            ckpt = ckpts[epoch]
+            if not size_stable(ckpt):
+                # Only the still-being-written newest checkpoint is expected to
+                # be unstable; defer it (and thus any later ones) to next firing.
+                _LOGGER.warning("checkpoint %s not stable yet; deferring", ckpt)
+                break
 
-        best = self.selection.read_best(self.output_dir)
-        self.tracker.append(row.to_csv_row())
-        # Per-epoch per-utterance file for every scored epoch (overfit
-        # diagnosis across epochs, not only the best epoch's samples).
-        write_epoch_perutt(self.output_dir, row, self.scorer.metrics)
-        if self.selection.is_improvement(row, best):
-            self.selection.commit_best(row, self.output_dir, work_dir=work_dir)
-            best = row
+            work_dir = self.output_dir / "_work" / f"epoch{epoch}"
+            try:
+                row = self.scorer.score(ckpt, epoch, work_dir=work_dir)
+            except Exception:
+                _LOGGER.exception("scoring epoch %d failed", epoch)
+                self.tracker.record_failure(epoch)
+                continue
 
-        best_epoch = best.epoch if best is not None else None
-        if self.tracker.maybe_stop(best_epoch, self.patience):
-            _LOGGER.warning("patience exhausted; stopping training at epoch %d", epoch)
-            trainer.should_stop = True
+            best = self.selection.read_best(self.output_dir)
+            self.tracker.append(row.to_csv_row())
+            # Per-epoch per-utterance file for every scored epoch (overfit
+            # diagnosis across epochs, not only the best epoch's samples).
+            write_epoch_perutt(self.output_dir, row, self.scorer.metrics)
+            if self.selection.is_improvement(row, best):
+                self.selection.commit_best(row, self.output_dir, work_dir=work_dir)
+                best = row
+
+            best_epoch = best.epoch if best is not None else None
+            if self.tracker.maybe_stop(best_epoch, self.patience):
+                _LOGGER.warning(
+                    "patience exhausted; stopping training at epoch %d", epoch)
+                trainer.should_stop = True
+                return
