@@ -438,6 +438,9 @@ class MatchaTrainingEngine(BaseTrainingEngine):
         sample_rate = int(matcha.hparams.sample_rate)
 
         def _synth(ids: List[int], scales: List[float], sid: Optional[int]) -> "np.ndarray":
+            # scales=None/[] means engine defaults; when set it is
+            # [temperature, length_scale] (matcha semantics, NOT VITS's).
+            scales = scales or []
             x = torch.LongTensor(ids).unsqueeze(0).to(device)
             x_lengths = torch.LongTensor([len(ids)]).to(device)
             temperature = float(scales[0]) if len(scales) > 0 else 0.667

@@ -729,6 +729,10 @@ class OptiSpeechTrainingEngine(BaseTrainingEngine):
         e0 = model.inference_args.e_factor
 
         def _synth(ids: List[int], scales: List[float], sid: Optional[int]) -> "np.ndarray":
+            # scales=None/[] means the checkpoint's own inference defaults;
+            # when set it is [d_factor, p_factor, e_factor] (OptiSpeech
+            # semantics, NOT VITS's noise/length/noise_w).
+            scales = scales or []
             x = torch.LongTensor(ids).unsqueeze(0).to(device)
             x_lengths = torch.LongTensor([len(ids)]).to(device)
 
