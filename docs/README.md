@@ -1,57 +1,64 @@
-# phoonnx
+# phoonnx documentation
 
-**phoonnx** is a multilingual, ONNX-based Text-to-Speech (TTS) inference library. It provides a unified interface to load and run VITS-style TTS models trained with a variety of phonemizers, supporting voices from multiple upstream ecosystems including Piper, Mimic3, Coqui, and OpenVoiceOS.
+**phoonnx** is a multilingual, ONNX-based Text-to-Speech and phonemization library. This
+index is the front door: pick the path that matches what you want to do, or jump to the full
+table of contents below.
 
-## Key Features
+## Three paths
 
-- **ONNX inference** — run TTS models with `onnxruntime` (CPU or CUDA)
-- **Multilingual phonemization** — 30+ phonemizer backends for dozens of languages
-- **Multi-engine support** — load voices from Piper, Mimic3, Coqui, Transformers, and native phoonnx format
-- **Zero-shot voice cloning** — clone a voice from a short reference clip (YourTTS, StyleTTS2, ZipVoice, Chatterbox)
-- **Voice manager** — download and cache models from HuggingFace and other sources
-- **Training pipeline** — preprocess datasets and train new VITS voices (`phoonnx_train`)
-- **OVOS plugin** — drop-in TTS plugin for the OpenVoiceOS / Mycroft ecosystem
+### Use a voice (about 5 minutes)
+For anyone who wants speech out of an existing voice.
 
-## Quick Start
+1. [Installation](installation.md) — pip, the extras matrix, GPU runtimes
+2. [Quickstart](quickstart.md) — download a voice and synthesize a WAV, CLI and Python
+3. [Usage](usage.md) — the `TTSVoice` / `SynthesisConfig` Python API
+4. [Voice manager](voice_manager.md) — finding, downloading and caching voices
+5. [CLI reference](cli.md) — every `phoonnx-voices` subcommand
 
-```bash
-pip install phoonnx
-```
+### Train a voice (the golden path)
+For anyone with a dataset who wants a new voice.
 
-```python
-from phoonnx.voice import TTSVoice, SynthesisConfig
-import wave
+1. [Training quickstart](training/quickstart.md) — dataset → preprocess → train → export → speak
+2. [Datasets](training/datasets.md) — `metadata.csv` spec, audio requirements, quality filtering
+3. [Preprocess reference](training/preprocess.md) — every `preprocess.py` flag
+4. [Training reference](training/training.md) — every `train.py` flag, engines, resume/fine-tune
+5. [Export](training/export.md) — checkpoint → ONNX, validating the exported voice
 
-voice = TTSVoice.load("model.onnx", "model.json")
+### Understand the internals (contributors and advanced users)
+For anyone extending phoonnx or debugging a voice.
 
-with wave.open("output.wav", "wb") as wav_file:
-    voice.synthesize_wav("Hello world!", wav_file)
-```
+1. [Architecture](architecture.md) — text → normalize → phonemize → tokenize → ONNX → audio
+2. [Phonemizers](phonemizers.md) — the backend catalog and how selection works
+3. [Engines](engines.md) — the ONNX adapter registry
+4. [Vocoders](vocoders.md) — the vocoder registry for two-stage engines
+5. [Configuration reference](configuration.md) — `VoiceConfig`, `SynthesisConfig`, `model.json`
 
-## Project Structure
+## Task guides
 
-| Module | Description |
-|--------|-------------|
-| `phoonnx/voice.py` | Core `TTSVoice` inference class |
-| `phoonnx/config.py` | `VoiceConfig`, `SynthesisConfig`, enums |
-| `phoonnx/tokenizer.py` | `TTSTokenizer` and `Vocabulary` |
-| `phoonnx/model_manager.py` | `TTSModelManager` and `TTSModelInfo` |
-| `phoonnx/cli.py` | Command-line interface |
-| `phoonnx/phonemizers/` | Phonemizer backends |
-| `phoonnx_train/` | Dataset preprocessing and training |
+- [Voice cloning](cloning.md) — zero-shot cloning from a reference clip
+- [Streaming](streaming.md) — low-latency streaming for VITS voices
+- [OVOS plugin](ovos_plugin.md) — the `ovos-tts-plugin-phoonnx` TTS plugin
+- [Docker / TTS server](docker.md)
 
-## Documentation
+## Per-engine guides
 
-- [Installation](installation.md)
-- [Usage Guide](usage.md)
-- [Voice Cloning](cloning.md)
-- [Voice Manager](voice_manager.md)
-- [Phonemizers](phonemizers.md)
-- [Configuration Reference](configuration.md)
-- [Training](training.md)
-- [CLI Reference](cli.md)
-- [OVOS Plugin](ovos_plugin.md)
-- [Docker / TTS Server](docker.md)
-- [Engine Architecture](engines.md) · [Vocoders](vocoders.md)
-- [Streaming (low-latency VITS)](streaming.md)
-- Engine guides: [Matcha](matcha.md) · [GlowTTS](glowtts.md) · [OptiSpeech](optispeech.md) · [MixerTTS](mixertts.md) · [FastPitch](fastpitch.md) · [ZipVoice](zipvoice.md) · [Shami](shami.md) · [Chatterbox](chatterbox.md)
+Each synthesis engine has a page covering what it is, when to pick it, the extra it needs,
+how to obtain or train it, and a synthesis example:
+
+[Matcha](training/engines/matcha.md) ·
+[GlowTTS](training/engines/glowtts.md) ·
+[MixerTTS](training/engines/mixertts.md) ·
+[OptiSpeech](training/engines/optispeech.md) ·
+[FastPitch](training/engines/fastpitch.md) ·
+[ZipVoice](training/engines/zipvoice.md) ·
+[Chatterbox](training/engines/chatterbox.md) ·
+[F5-TTS](training/engines/f5tts.md) ·
+[Shami](training/engines/shami.md)
+
+## Language notes
+
+- [Galician (Cotovia)](galician.md)
+
+## Reference data
+
+- [VOICES.md](../VOICES.md) — the full generated catalog of bundled voices
