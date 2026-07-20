@@ -27,6 +27,7 @@
 
 **Merged pull requests:**
 
+- fix: missing base dependencies and wrong CLI script name in error messages [\#237](https://github.com/TigreGotico/phoonnx/pull/237) ([JarbasAl](https://github.com/JarbasAl))
 - Add generic on-demand quality-metric filtering to preprocess [\#236](https://github.com/TigreGotico/phoonnx/pull/236) ([JarbasAl](https://github.com/JarbasAl))
 - feat: opt-in validation audio-sample logging [\#234](https://github.com/TigreGotico/phoonnx/pull/234) ([JarbasAl](https://github.com/JarbasAl))
 - fix\(train\): port VITS trainer to Lightning 2 + matcha gradient clip [\#233](https://github.com/TigreGotico/phoonnx/pull/233) ([JarbasAl](https://github.com/JarbasAl))
