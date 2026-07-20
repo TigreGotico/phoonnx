@@ -137,6 +137,19 @@ train-fastpitch = [
 train-mixer = [
     "pyworld>=0.3.2",
 ]
+# extra deps for the OptiSpeech training engine
+# (phoonnx_train/optispeech/ + phoonnx_train/engines/optispeech.py) on top of
+# [train]: pyworld for the DIO/Harvest F0 pitch extractor, scipy for pitch
+# interpolation, torchaudio for the vocoder-discriminator resampling / STFT
+# losses, and onnx to embed the inference metadata into the exported model.
+# The perceptual validation metrics (UTMOS / PESQ / periodicity) stay optional
+# and are off by default, so they add no deps here.
+train-optispeech = [
+    "pyworld>=0.3.2",
+    "scipy",
+    "torchaudio",
+    "onnx",
+]
 ar = ["epitran", "arbtok", "text2tashkeel"]
 ca = ["epitran"]
 gl = ["pycotovia>=0.1.0"]

@@ -128,6 +128,73 @@ voice.synthesize("Hello.", SynthesisConfig(extra_params={"d_factor": 1.0,
                                                           "e_factor": 1.0}))
 ```
 
+## Training
+
+OptiSpeech trains on the standard phoonnx preprocessed dataset. The vendored
+model code lives under `phoonnx_train/optispeech/` and is constructed entirely
+in plain Python — a quality preset fully determines the model, no external
+config file is involved. Install the engine extra:
+
+```bash
+pip install phoonnx[train,train-optispeech]
+```
+
+```bash
+python -m phoonnx_train.train \
+    --engine optispeech \
+    --dataset-dir ./dataset \
+    --default-root-dir ./checkpoints \
+    --quality medium
+```
+
+Quality presets change the constructed model (hidden width, encoder/decoder
+depth and the WaveNeXt vocoder size):
+
+| Preset | Acoustic `dim` | Encoder / decoder layers | Vocoder `dim` / layers |
+|--------|----------------|--------------------------|------------------------|
+| `x-low` | 128 | 2 / 2 | 256 / 4 |
+| `medium` | 256 | 4 / 4 | 384 / 8 |
+| `high` | 384 | 6 / 6 | 512 / 8 |
+
+Use `--quality <preset>` or set `quality` in the `extra` config; any preset
+field can be overridden individually through `extra` (e.g. `{"dim": 320}`).
+
+Architecture: a ConvNeXt text encoder with scaled sinusoidal positional
+embeddings, FastSpeech2-style duration / pitch / energy variance predictors, a
+learned monotonic alignment (ForwardSum + Viterbi) with Gaussian upsampling, a
+ConvNeXt decoder, and a **WaveNeXt** neural vocoder trained adversarially against
+multi-period and multi-resolution discriminators. Losses combine alignment,
+duration, pitch and energy terms with the GAN mel / multi-resolution-STFT /
+feature-matching terms.
+
+Training uses manual optimization (two optimizers — generator and
+discriminator — each with a cosine-with-warmup schedule). Checkpoints carry the
+optimizer state, scheduler state and epoch, so a run is fully resumable:
+
+```bash
+python -m phoonnx_train.train --engine optispeech --dataset-dir ./dataset \
+    --default-root-dir ./checkpoints \
+    --resume-from-checkpoint ./checkpoints/last.ckpt
+```
+
+To fine-tune from an existing checkpoint whose vocabulary, speaker count or
+vocoder size differs, the engine warm-starts by mapping matching tensors by
+name and shape and logs exactly which keys were loaded and which were skipped.
+
+Export a trained checkpoint to the single-file ONNX described above:
+
+```bash
+python -m phoonnx_train.export_onnx \
+    --engine optispeech \
+    --checkpoint ./checkpoints/last.ckpt \
+    --output-dir ./onnx
+```
+
+The exported `model.onnx` is self-contained: the waveform comes straight out
+(no separate vocoder ONNX) and the full runtime config — sample rate, inference
+defaults, symbol table and text-processor flags — is embedded under the
+`inference` metadata key, which the adapter reads back automatically.
+
 ## Gotchas / aliases
 
 - **Text processing depends on the tokenizer name.** The tokenizer flags come
