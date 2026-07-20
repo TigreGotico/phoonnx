@@ -566,6 +566,7 @@ class VoiceConfig:
             "num_langs": self.num_langs,
             "speaker_id_map": dict(self.speaker_id_map or {}),
             "lang_id_map": dict(self.lang_id_map or {}),
+            "lang_tokens": dict(self.lang_tokens or {}),
             "phonemizer_model": self.phonemizer_model,
             "inference": {
                 "noise_scale": self.noise_scale,
