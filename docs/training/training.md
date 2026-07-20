@@ -247,9 +247,10 @@ python -m phoonnx_train.export_onnx --engine styletts2 ...
 
 `phoonnx_train/eval_loop.py` watches the training directory for new Lightning checkpoints
 (`epoch=*.ckpt`) and scores each on a fixed set of held-out sentences, synthesized on CPU so
-training keeps the GPU. Results are appended to `metrics.csv` (one row per epoch) plus
-per-utterance scores under `perutt/`, and the best epoch's wavs are kept under `samples/`. The
-loop is idempotent — already-scored epochs are skipped on restart. Needs `phoonnx[train-eval]`.
+training keeps the GPU. Results are appended to `metrics.csv` (one row per epoch), and the best
+epoch's wavs plus per-utterance scores (`perutt.csv`) are kept under `samples/epoch<N>/`. The
+loop is idempotent — already-scored (and permanently failed) epochs are skipped on restart.
+Needs `phoonnx[train-eval]`.
 
 ```bash
 python -m phoonnx_train.eval_loop \
@@ -266,6 +267,66 @@ relative ranker between checkpoints of the same voice, especially on non-English
 **speaker similarity** (`spk_sim_*`, cosine similarity to a centroid of the target speaker's
 reference recordings; needs `speakeronnx` + `--speaker-ref-dir`, otherwise only UTMOS is
 scored).
+
+## Evaluation and early stopping
+
+The evaluation logic lives in the reusable `phoonnx_train.evaluation` package
+(`CheckpointScorer`, `SelectionPolicy`, `MetricsTracker`, Lightning callbacks). The same code
+runs in two modes.
+
+### Sidecar mode (out-of-process scoreboard)
+
+`phoonnx_train/eval_loop.py` is a thin CLI over the package — the flags above are unchanged.
+Each checkpoint is loaded through the training-engine registry (`--engine`, default `auto`:
+the `engine` key in `config.json` if present, else `vits`), synthesized on CPU with
+**per-utterance deterministic seeding** (`torch.manual_seed(seed + i)` immediately before
+utterance `i`, so the same checkpoint scored twice yields identical wavs and scores), and
+scored. New flags:
+
+- `--early-stop-patience N` — after `N` scored epochs pass with no new best, write a
+  `stop.flag` into `--train-dir`.
+- `--min-spk-sim FLOAT` — the similarity gate floor (see below).
+- `--speaker-id INT` — speaker id for multi-speaker models (a warning is logged when
+  `num_speakers > 1` and no id is given; synthesis falls back to the engine default voice).
+- `--engine NAME` — engine override (default `auto`).
+- `--vocoder PATH` — passed through to the engine's synthesis (engine-dependent; ignored by
+  the end-to-end VITS engine).
+
+### In-training mode (early stopping callback)
+
+`train.py` gains opt-in flags: `--eval-sentences FILE`, `--eval-every N` (default `0` = off),
+`--early-stop-patience N`, `--eval-speaker-ref-dir DIR`, `--min-spk-sim FLOAT`, `--eval-seed`.
+When enabled, `EvalScoreboardCallback` runs the same `CheckpointScorer` in-process every `N`
+epochs (after `ModelCheckpoint` saves), writes the same scoreboard under `<run-dir>/eval/`, and
+sets `trainer.should_stop` once patience is exhausted. **Scoring failures never crash training**
+— they are logged and swallowed.
+
+`StopFileCallback` is **always** added to the trainer (even with evaluation off): it watches
+`<run-dir>/stop.flag` and stops training when it appears. This is the sidecar → trainer bridge —
+a sidecar `eval_loop` with `--early-stop-patience` can stop a training run it does not share a
+process with. With no flag present it is a no-op.
+
+### The similarity gate
+
+`SelectionPolicy(metric="utmos_mean", min_spk_sim=...)` selects the best checkpoint by UTMOS
+**gated on speaker similarity**: UTMOS alone can prefer a checkpoint whose voice has drifted
+away from the target speaker (higher naturalness, wrong identity). When speaker scoring is
+active and `--min-spk-sim` is set, a candidate must clear that floor to be eligible at all;
+among eligible candidates the higher UTMOS wins. With no speaker score available (no reference
+dir / `speakeronnx` missing) selection falls back to UTMOS-only and logs a warning.
+
+### Artifacts and the stop.flag contract
+
+- `metrics.csv` — one row per scored epoch (superset of the legacy header; old scoreboards are
+  read and appended to compatibly).
+- `best.json` — epoch, step, checkpoint path, and all scores of the current best.
+- `best.ckpt` — a **copy** (not a symlink) of the best checkpoint, so it survives checkpoint
+  pruning.
+- `samples/epoch<N>/` — the best epoch's synthesized wavs plus `perutt.csv`.
+- `failed.json` — a checkpoint that fails to load/score 3 times is recorded failed and skipped
+  forever (ERROR logged); no infinite retry.
+- `stop.flag` — a single reason line. Its presence means "stop training"; the trainer's
+  `StopFileCallback` reads the reason, logs it and stops at the next epoch boundary.
 
 ## Training a Vocos vocoder
 
