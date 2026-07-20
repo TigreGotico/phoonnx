@@ -73,7 +73,10 @@ matcha = [
     "scipy",
 ]
 train = [
-    "diffusers>=0.25.0",
+    # diffusers>=0.36 references torch.xpu at import time, which only exists on
+    # torch>=2.4; capping keeps the vendored matcha decoder importable across
+    # the whole supported torch>=2.1 range.
+    "diffusers>=0.25.0,<0.36",
     "einops",
     "huggingface_hub",
     "librosa>=0.9.2,<1",
