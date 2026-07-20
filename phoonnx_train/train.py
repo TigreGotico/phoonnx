@@ -245,9 +245,27 @@ def main(
     # In-training scoreboard is opt-in: only wired up when both an eval
     # sentences file and a positive --eval-every are given.
     if eval_sentences and eval_every > 0:
+        from phoonnx_train.engines.base import BaseTrainingEngine
         from phoonnx_train.evaluation import (CheckpointScorer, MetricsTracker,
                                               SelectionPolicy)
         from phoonnx_train.eval_utils import read_sentences
+
+        # In-training scoring loads each checkpoint through
+        # engine.eval_synthesize; engines that never implemented it would fail
+        # silently at the first scoring firing (deep inside a swallowed
+        # callback exception) after wasting a full training run. Fail loudly at
+        # startup instead, naming the engines that DO support it.
+        if type(training_engine).eval_synthesize is BaseTrainingEngine.eval_synthesize:
+            supported = sorted(
+                name for name in list_engines()
+                if type(get_engine(name)).eval_synthesize
+                is not BaseTrainingEngine.eval_synthesize
+            )
+            raise click.UsageError(
+                f"engine {engine!r} does not support in-training evaluation "
+                f"(--eval-sentences / --eval-every); it has no eval_synthesize "
+                f"implementation. Engines that do: {', '.join(supported) or 'none'}."
+            )
 
         sentences = read_sentences(eval_sentences)
         eval_dir = run_dir / "eval"
