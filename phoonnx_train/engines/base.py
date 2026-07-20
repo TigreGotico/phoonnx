@@ -165,3 +165,30 @@ class BaseTrainingEngine(ABC):
         }
         model.load_state_dict(filtered, strict=False)
         return model
+
+    def eval_synthesize(
+        self,
+        checkpoint_path: Path,
+        config: Optional[Dict[str, Any]],
+        *,
+        vocoder_path: Optional[str] = None,
+        device: str = "cpu",
+    ):
+        """
+        Build a standalone, checkpoint-only synthesis callable for held-out
+        evaluation (``phoonnx_train.eval_loop`` and friends).
+
+        Returns ``callable(ids: List[int], scales: List[float], sid:
+        Optional[int]) -> np.ndarray`` producing a 1-D float32 waveform.
+
+        ``vocoder_path`` is an optional ONNX vocoder for engines that emit a
+        mel spectrogram rather than a waveform directly; engines that
+        self-vocode (e.g. end-to-end GAN vocoders) ignore it.
+
+        Default implementation raises ``NotImplementedError`` — engines
+        must opt in explicitly since standalone synthesis needs bespoke
+        checkpoint loading + inference wiring per architecture.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support standalone eval_synthesize()"
+        )
