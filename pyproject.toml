@@ -146,6 +146,7 @@ train-mixer = [
 # and are off by default, so they add no deps here.
 train-optispeech = [
     "pyworld>=0.3.2",
+    "pyloudnorm",
     "scipy",
     "torchaudio",
     "onnx",
