@@ -1,9 +1,9 @@
 """torch version compatibility helpers for phoonnx_train."""
+import inspect
 from contextlib import contextmanager
 from typing import Any, Dict
 
 import torch
-from packaging.version import parse as _parse_version
 
 
 @contextmanager
@@ -38,9 +38,11 @@ def compiler_disable(fn):
 def onnx_export_kwargs() -> Dict[str, Any]:
     """torch>=2.5 defaults torch.onnx.export to the dynamo exporter, which
     cannot trace VITS's data-dependent control flow (and needs the optional
-    onnxscript package); force the TorchScript exporter (dynamo=False) on
-    those versions. torch 2.1-2.4's onnx.export does not accept a `dynamo`
-    kwarg at all, so it must be omitted there entirely."""
-    if _parse_version(torch.__version__.split("+")[0]) >= _parse_version("2.5"):
+    onnxscript package); force the TorchScript exporter (dynamo=False)
+    whenever the running torch accepts the kwarg. torch 2.1-2.4's
+    onnx.export does not accept `dynamo` at all, so it must be omitted
+    there entirely — probing the signature asks torch itself instead of
+    hardcoding a version boundary."""
+    if "dynamo" in inspect.signature(torch.onnx.export).parameters:
         return {"dynamo": False}
     return {}
