@@ -27,6 +27,7 @@
 
 **Merged pull requests:**
 
+- feat: reusable checkpoint evaluation with similarity-gated selection and early stopping [\#251](https://github.com/TigreGotico/phoonnx/pull/251) ([JarbasAl](https://github.com/JarbasAl))
 - feat: standalone eval synthesis for matcha and optispeech engines [\#250](https://github.com/TigreGotico/phoonnx/pull/250) ([JarbasAl](https://github.com/JarbasAl))
 - fix: matcha training pre-flight hardening [\#249](https://github.com/TigreGotico/phoonnx/pull/249) ([JarbasAl](https://github.com/JarbasAl))
 - fix: vocoder training pre-flight hardening [\#248](https://github.com/TigreGotico/phoonnx/pull/248) ([JarbasAl](https://github.com/JarbasAl))
