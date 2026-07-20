@@ -28,6 +28,7 @@ from phoonnx.config import VoiceConfig
 | `length_scale` | `float` | `1.0` | Default phoneme length scale |
 | `noise_w_scale` | `float` | `0.8` | Default phoneme width noise scale |
 | `add_diacritics` | `bool` | `False` | Auto-add diacritics (Arabic/Hebrew) |
+| `diacritizer_model` | `str` | `rawi-ensemble` | Diacritizer model name (Arabic `text2tashkeel`); round-tripped through the config's `inference` block |
 | `phonemizer_model` | `str` \| `None` | `None` | Model path/id or variant selector for phonemizers that take one (ByT5, AhoTTS, Cotovia, arbtok) |
 | `speaker_id_map` | `dict` | `{}` | Maps speaker names to integer IDs |
 | `lang_id_map` | `dict` | `{}` | Maps language codes to integer IDs (multi-lang voices) |
@@ -97,7 +98,8 @@ syn_config = SynthesisConfig(
 | `normalize_audio` | `bool` | `True` | Scale audio to full amplitude range |
 | `volume` | `float` | `1.0` | Volume multiplier |
 | `enable_phonetic_spellings` | `bool` | `True` | Apply word-level pronunciation overrides |
-| `add_diacritics` | `bool` | `True` | Add vowel diacritics before phonemization |
+| `add_diacritics` | `bool` \| `None` | `None` | Add vowel diacritics before phonemization; `None` defers to the voice config |
+| `diacritizer_model` | `str` \| `None` | `None` | Override the diacritizer model for this call; `None` inherits the voice config's `diacritizer_model` |
 | `speaker_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Reference clip for zero-shot [voice cloning](cloning.md) |
 | `speaker_reference_text` | `str` \| `None` | `None` | Reference transcription, required by in-context cloning engines (ZipVoice) |
 | `speaker_reference_lang` | `str` \| `None` | `None` | Language of the transcription, for cross-lingual cloning (defaults to the voice's `lang_code`) |
@@ -122,7 +124,9 @@ phoonnx supports multiple JSON config schemas. The native phoonnx format looks l
   "inference": {
     "noise_scale": 0.667,
     "length_scale": 1.0,
-    "noise_w": 0.8
+    "noise_w": 0.8,
+    "add_diacritics": false,
+    "diacritizer_model": "rawi-ensemble"
   },
   "blank": "_",
   "pad": "<pad>",

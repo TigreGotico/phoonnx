@@ -126,6 +126,13 @@ syn_config = SynthesisConfig(add_diacritics=True)
 
 Or set it in the voice config JSON: `"add_diacritics": true`. For Arabic, it is enabled automatically when `lang_code` starts with `"ar"`.
 
+Arabic diacritization uses [`text2tashkeel`](https://pypi.org/project/text2tashkeel/), installed
+by the [`ar` extra](installation.md#language-extras). The diacritizer model defaults to
+`rawi-ensemble` (which also restores hamza and the dagger alef); override it with the
+`diacritizer_model` field on the voice config or per call on `SynthesisConfig`. Requesting
+Arabic diacritics without `text2tashkeel` installed raises a clear `ImportError`. Hebrew uses
+Phonikud.
+
 ### Galician (Cotovia)
 
 The `cotovia` phonemizer requires the `cotovia` binary to be installed. phoonnx searches for it in `PATH`, a bundled binary, and `/usr/bin/cotovia`. The alphabet can be either native Cotovia or IPA.
@@ -148,7 +155,7 @@ All phonemizers inherit from `BasePhonemizer` which provides:
 phoonnx wraps and, where licensing allows, bundles domain-specific G2P work, including:
 
 - [cotovia](https://github.com/TigreGotico/cotovia-mirror) — Galician phonemization (bundled binaries)
-- [mantoq](https://github.com/mush42/mantoq) and [libtashkeel](https://github.com/mush42/libtashkeel) — Arabic phonemization and diacritics
+- [mantoq](https://github.com/mush42/mantoq) — Arabic phonemization; [text2tashkeel](https://pypi.org/project/text2tashkeel/) — Arabic diacritization
 - [hams-levantine-tts](https://github.com/Al-aminI/hams-levantine-tts) — the Shami (Levantine Arabic / English) front-end
 - [KoG2P](https://github.com/scarletcho/KoG2P) and [hangul_to_ipa](https://github.com/stannam/hangul_to_ipa) — Korean phonemization and Hangul→IPA
 - [arpa2ipa](https://github.com/chorusai/arpa2ipa) — ARPAbet→IPA conversion

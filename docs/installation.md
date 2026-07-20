@@ -49,7 +49,7 @@ several add higher-quality engines.
 
 | Extra | Language | Notable backends |
 |---|---|---|
-| `ar` | Arabic | `epitran`, `arbtok` |
+| `ar` | Arabic | `epitran`, `arbtok`, `text2tashkeel` |
 | `ca` | Catalan | `epitran` |
 | `cs` | Czech | `epitran` |
 | `de` | German | `epitran`, `gruut[de]` |
@@ -71,8 +71,10 @@ several add higher-quality engines.
 | `vi` | Vietnamese | `epitran`, `gruut[vi]`, `misaki[vi]`, `spacy` |
 | `zh` | Chinese | `epitran`, `gruut[zh]`, `misaki[zh]`, `spacy` |
 
-> **Arabic note.** The `ar` extra installs `epitran` and `arbtok`, **not** `mantoq`. The
-> `mantoq` phonemizer has no extra of its own — install it separately if a voice requires it.
+> **Arabic note.** The `ar` extra installs `epitran`, `arbtok` and `text2tashkeel`, **not**
+> `mantoq`. The `mantoq` phonemizer has no extra of its own — install it separately if a voice
+> requires it. Arabic diacritization is provided by `text2tashkeel`; without the `ar` extra it
+> raises a clear `ImportError` when a voice needs diacritics.
 
 ### Training extras
 

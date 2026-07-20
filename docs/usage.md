@@ -110,10 +110,12 @@ syn_config = SynthesisConfig(
 ```
 
 `add_diacritics` defaults to `None`, meaning "use the voice's own setting"; set it to `True`
-or `False` only to force diacritization on or off for this call. Cloning and autoregressive
-engines add more fields — `speaker_reference`, `speaker_reference_text`,
-`speaker_reference_lang`, `exaggeration`, `temperature`, `top_p`, `extra_params` — documented
-in [Cloning](cloning.md) and the [Configuration reference](configuration.md#synthesisconfig).
+or `False` only to force diacritization on or off for this call. `diacritizer_model` (default
+`None`) likewise inherits the voice config's choice — set it to override the Arabic
+`text2tashkeel` model for this call. Cloning and autoregressive engines add more fields —
+`speaker_reference`, `speaker_reference_text`, `speaker_reference_lang`, `exaggeration`,
+`temperature`, `top_p`, `extra_params` — documented in [Cloning](cloning.md) and the
+[Configuration reference](configuration.md#synthesisconfig).
 
 ## Inline Phoneme Input
 

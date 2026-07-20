@@ -26,9 +26,9 @@ Arabic and English segments in their own phonology.
 
 ## Extras needed
 
-Inference needs no engine-specific extra. The text front end optionally uses
-`libtashkeel` for Arabic diacritization and an espeak-based English G2P; these
-come with the vendored `phoonnx/thirdparty.shami` package.
+Inference needs no engine-specific extra. The text front end optionally diacritizes Arabic
+through a pluggable backend and uses an espeak-based English G2P; both come with the vendored
+`phoonnx.thirdparty.shami` package.
 
 ## What makes it different from VITS
 
@@ -55,7 +55,7 @@ The output is a single float32 `waveform` of shape `[1, samples]` at 24 kHz.
 `ShamiPhonemizer` (`phoonnx/phonemizers/shami.py`) wraps the vendored
 `phoonnx/thirdparty.shami` package (ported from `hams_tts.text`). It performs:
 
-1. Arabic text normalization and optional diacritization (via `libtashkeel`).
+1. Arabic text normalization and optional diacritization (pluggable `diacritizer_backend`: `auto` tries `camel` then `catt`; `passthrough` skips it).
 2. English G2P using the same espeak-based approach as the upstream model.
 3. Code-switch detection, tagging Arabic and English segments with `AR` / `EN`
    language IDs.
