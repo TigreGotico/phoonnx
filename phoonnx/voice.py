@@ -36,6 +36,11 @@ from phoonnx.util import LOG
 
 _PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
 
+# Sentinel distinguishing "on-demand alignment surgery not attempted yet" from
+# a cached negative result (``None`` — tried once, model doesn't expose a
+# locatable duration tensor). See ``TTSVoice._ensure_alignment_session``.
+_UNSET = object()
+
 
 def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunks:
     """Split an already-phonemic string into per-sentence symbol lists.
@@ -182,6 +187,19 @@ class TTSVoice:
     phonetic_spellings: Optional[PhoneticSpellings] = None
     phonemizer: Optional[Phonemizer] = None
     adapter: Optional[BaseOnnxAdapter] = None
+    # Path to the ONNX model file backing ``session``, kept so a later
+    # ``include_alignments=True`` call can locate-and-patch a model that was
+    # exported without the alignment output (see ``_ensure_alignment_session``).
+    # ``None`` for voices constructed directly from a session (e.g. tests),
+    # which simply skip the on-demand-surgery path.
+    model_path: Optional[str] = None
+    # Cache for the on-demand alignment-surgery outcome: unset (sentinel
+    # object, distinguishable from a real ``None`` "surgery ran and failed"
+    # result) until the first ``include_alignments=True`` call actually needs
+    # it, so a voice that never asks for alignments never even imports
+    # ``onnx``. Set to an ``onnxruntime.InferenceSession`` on success, or
+    # ``None`` on a cached negative result (tried once, no dice).
+    _alignment_session: Any = field(default=_UNSET, repr=False, compare=False)
 
     def __post_init__(self):
         """
@@ -368,6 +386,7 @@ class TTSVoice:
             config=voice_config,
             session=session,
             adapter=adapter,
+            model_path=str(model_path),
         )
         if warmup:
             voice.warmup()
@@ -689,6 +708,120 @@ class TTSVoice:
                 phoneme_alignments=phoneme_alignments,
             )
 
+    def _alignment_model_path(self) -> Optional[Path]:
+        """Sibling path the on-demand alignment-surgery output is cached at.
+
+        Next to the original model by default (``<model>.alignment.onnx``).
+        When ``PHOONNX_ORT_CACHE_DIR`` is set, that directory is used instead
+        — the same env var :func:`phoonnx.providers.make_session` already
+        uses for its optimized-graph cache, and the sensible choice here too:
+        it signals "phoonnx may write derived ONNX artifacts here" and covers
+        model directories that are read-only (e.g. a shared/system voice
+        cache) without introducing a second env var.
+        """
+        if not self.model_path:
+            return None
+        src = Path(self.model_path)
+        stem = src.name[:-len(".onnx")] if src.name.endswith(".onnx") else src.stem
+        cache_dir = os.environ.get("PHOONNX_ORT_CACHE_DIR")
+        directory = Path(cache_dir) if cache_dir else src.parent
+        return directory / f"{stem}.alignment.onnx"
+
+    def _ensure_alignment_session(self) -> Optional[onnxruntime.InferenceSession]:
+        """At-most-once, best-effort attempt to retrofit a duration output
+        onto this voice's model for a model that doesn't already have one.
+
+        Returns an alternate session with the duration tensor exposed as an
+        extra output (reused across calls once found), or ``None`` when this
+        model has no locatable duration tensor, ``onnx`` isn't installed, or
+        the derived file couldn't be written — every failure mode degrades to
+        "no alignment available" rather than raising, and the outcome
+        (including the negative one) is cached on the instance so surgery is
+        attempted at most once per voice.
+        """
+        if self._alignment_session is not _UNSET:
+            return self._alignment_session
+
+        result = self._attempt_alignment_surgery()
+        self._alignment_session = result
+        return result
+
+    def _attempt_alignment_surgery(self) -> Optional[onnxruntime.InferenceSession]:
+        if not self.model_path:
+            LOG.debug(
+                "no alignment output: this voice's model_path is unknown, "
+                "cannot retrofit one"
+            )
+            return None
+
+        try:
+            providers = self.session.get_providers()
+        except Exception:
+            providers = None
+
+        dest = self._alignment_model_path()
+        try:
+            src_mtime = os.path.getmtime(self.model_path)
+        except OSError:
+            src_mtime = None
+
+        if dest is not None and dest.is_file() and src_mtime is not None:
+            try:
+                if dest.stat().st_mtime >= src_mtime:
+                    return make_session(str(dest), providers=providers)
+            except OSError:
+                pass
+
+        try:
+            import onnx
+        except ImportError:
+            LOG.info(
+                "model has no alignment output and the 'onnx' package isn't "
+                "installed to retrofit one at runtime; install "
+                "'phoonnx[streaming]' (which pulls in 'onnx'), or re-export "
+                "the model with `--add-phoneme-alignment`, to use "
+                "include_alignments=True"
+            )
+            return None
+
+        from phoonnx.onnx_surgery import add_phoneme_alignment_output
+
+        try:
+            model = onnx.load(str(self.model_path))
+        except Exception as e:
+            LOG.info(f"no alignment output: failed to load '{self.model_path}' for surgery ({e})")
+            return None
+
+        tensor_name = add_phoneme_alignment_output(model)
+        if tensor_name is None:
+            LOG.info(
+                f"no alignment output on '{os.path.basename(str(self.model_path))}': "
+                "no unique duration (Ceil-op) tensor found in the graph; "
+                "include_alignments=True will keep returning None for this voice"
+            )
+            return None
+
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            onnx.save(model, str(dest))
+        except OSError as e:
+            LOG.info(
+                f"located duration tensor '{tensor_name}' but could not write "
+                f"the patched model to '{dest}' ({e}); "
+                "include_alignments=True will keep returning None for this voice"
+            )
+            return None
+
+        try:
+            return make_session(str(dest), providers=providers)
+        except Exception as e:
+            LOG.info(
+                f"wrote an alignment-patched model to '{dest}' but failed to "
+                f"load it ({e}); include_alignments=True will keep returning "
+                "None for this voice"
+            )
+            return None
+
     @staticmethod
     def _reconstruct_alignments(
             phoneme_ids: List[int],
@@ -864,14 +997,38 @@ class TTSVoice:
             params=params,
         )
 
+        # Once a prior call already retrofitted a working alignment session
+        # (see ``_ensure_alignment_session``), route straight to it instead
+        # of running inference on the original session first every time.
+        session_to_use = self.session
+        if (
+            include_alignments
+            and self._alignment_session is not _UNSET
+            and self._alignment_session is not None
+        ):
+            session_to_use = self._alignment_session
+
         # Delegate to the adapter (single-graph engines use the default
         # build_feed_dict → run → parse_outputs; iterative engines override).
-        result = self.adapter.synthesize(request, self.session)
+        result = self.adapter.synthesize(request, session_to_use)
 
         if not include_alignments:
             return result.audio
 
         phoneme_id_samples = result.extras.get("phoneme_id_samples")
+        if phoneme_id_samples is None and session_to_use is self.session:
+            # This model's session exposes no duration output. Try (at most
+            # once per voice) retrofitting one via load-time graph surgery —
+            # see ``_ensure_alignment_session`` — and re-run this same
+            # request on the patched session if that worked. Every failure
+            # mode there degrades to ``None`` here exactly like a model that
+            # genuinely has no duration predictor; the outcome (including a
+            # negative one) is cached so this only ever runs once per voice.
+            alignment_session = self._ensure_alignment_session()
+            if alignment_session is not None:
+                result = self.adapter.synthesize(request, alignment_session)
+                phoneme_id_samples = result.extras.get("phoneme_id_samples")
+
         if phoneme_id_samples is None:
             # Alignment is not available from this voice model.
             return result.audio, None

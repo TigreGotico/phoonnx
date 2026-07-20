@@ -40,6 +40,13 @@ def add_phoneme_alignment_output(
     This may break third-party frameworks (e.g. piper) that expect a single
     output tensor, so keep a separate copy for standard TTS use.
 
+    The actual graph surgery (locating the tensor + promoting it to an
+    output) is pure-``onnx`` and lives in ``phoonnx.onnx_surgery`` so it can
+    also be used at runtime, without a ``torch`` import, by
+    ``phoonnx.voice.TTSVoice`` for models that were exported without this
+    flag (see ``docs/alignment.md``, "runtime alignment for models exported
+    without the flag").
+
     Args:
         model_path: Path to the input ONNX model file.
         output_path: Where to save the modified model (defaults to overwriting).
@@ -47,6 +54,9 @@ def add_phoneme_alignment_output(
             unique ``Ceil`` node output.
     """
     import onnx
+
+    from phoonnx.onnx_surgery import add_phoneme_alignment_output as _surgery
+    from phoonnx.onnx_surgery import find_duration_tensor
 
     output_path = output_path or model_path
 
@@ -56,34 +66,31 @@ def add_phoneme_alignment_output(
         _LOGGER.fatal(f"Failed to load ONNX model from {model_path}: {e}")
         return
 
-    if tensor_name != "autodetect":
-        ceil_tensor_name = tensor_name
-    else:
-        ceil_tensor_names: Set[str] = set()
-        for node in model.graph.node:
-            if node.op_type != "Ceil":
-                continue
-            ceil_tensor_names.update(node.output)
-
+    tensor = find_duration_tensor(model, tensor_name=tensor_name)
+    if tensor is None:
+        if tensor_name != "autodetect":
+            _LOGGER.fatal(f"Tensor '{tensor_name}' not found in {model_path}. Use --tensor-name manually.")
+            return
+        ceil_tensor_names: Set[str] = {
+            o for node in model.graph.node if node.op_type == "Ceil" for o in node.output
+        }
         if not ceil_tensor_names:
             _LOGGER.fatal(f"No ceil tensors detected in {model_path}. Use --tensor-name manually.")
-            return
-        if len(ceil_tensor_names) > 1:
+        else:
             names_str = ', '.join(sorted(ceil_tensor_names))
             _LOGGER.fatal(
                 f"Multiple ceil tensors detected in {model_path}. Use --tensor-name manually: {names_str}"
             )
-            return
-        ceil_tensor_name = next(iter(ceil_tensor_names))
-        _LOGGER.info(f"Detected tensor name: {ceil_tensor_name}")
-
-    if any(output.name == ceil_tensor_name for output in model.graph.output):
-        _LOGGER.fatal(f"Tensor '{ceil_tensor_name}' is already marked as output. Aborting.")
         return
 
-    ceil_value_info = onnx.helper.ValueInfoProto()
-    ceil_value_info.name = ceil_tensor_name
-    model.graph.output.append(ceil_value_info)
+    if tensor_name == "autodetect":
+        _LOGGER.info(f"Detected tensor name: {tensor}")
+
+    if any(output.name == tensor for output in model.graph.output):
+        _LOGGER.fatal(f"Tensor '{tensor}' is already marked as output. Aborting.")
+        return
+
+    _surgery(model, tensor_name=tensor)
 
     try:
         onnx.save(model, output_path)
@@ -91,7 +98,7 @@ def add_phoneme_alignment_output(
         _LOGGER.fatal(f"Failed to save modified ONNX model to {output_path}: {e}")
         return
 
-    _LOGGER.info(f"Successfully wrote modified model with new output '{ceil_tensor_name}' to {output_path}")
+    _LOGGER.info(f"Successfully wrote modified model with new output '{tensor}' to {output_path}")
 
 
 def _validate_engine(ctx, param, value):
