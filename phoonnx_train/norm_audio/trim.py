@@ -21,6 +21,11 @@ def trim_silence(
     last_chunk: Optional[int] = None
     seconds_per_chunk: float = samples_per_chunk / sample_rate
 
+    # Clear any recurrent state left over from a previous utterance so this
+    # trim depends only on this clip — reused detectors would otherwise make
+    # the survivor set order-dependent (and thus run-dependent).
+    detector.reset()
+
     chunk = audio_array[:samples_per_chunk]
     audio_array = audio_array[samples_per_chunk:]
     chunk_idx: int = 0

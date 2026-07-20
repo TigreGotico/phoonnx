@@ -2,14 +2,12 @@ import numpy as np
 import torch
 from torch.nn import functional as F
 
-from phoonnx_train.torch_compat import compiler_disable
 
 DEFAULT_MIN_BIN_WIDTH = 1e-3
 DEFAULT_MIN_BIN_HEIGHT = 1e-3
 DEFAULT_MIN_DERIVATIVE = 1e-3
 
 
-@compiler_disable
 def piecewise_rational_quadratic_transform(
     inputs,
     unnormalized_widths,
@@ -50,7 +48,6 @@ def searchsorted(bin_locations, inputs, eps=1e-6):
     return torch.sum(inputs[..., None] >= bin_locations, dim=-1) - 1
 
 
-@compiler_disable
 def unconstrained_rational_quadratic_spline(
     inputs,
     unnormalized_widths,
@@ -102,7 +99,6 @@ def unconstrained_rational_quadratic_spline(
     return outputs, logabsdet
 
 
-@compiler_disable
 def rational_quadratic_spline(
     inputs,
     unnormalized_widths,

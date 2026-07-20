@@ -193,6 +193,80 @@ class TrainingStepTests(unittest.TestCase):
         self.assertGreater(total_delta, 0.0)
 
 
+class DataloaderWiringTests(unittest.TestCase):
+    """create_model(...dataset_paths) must produce a module whose
+    train_dataloader() yields a batch the OptiSpeech training step consumes —
+    the CLI path (``trainer.fit(model)`` with no dataloader) depends on it.
+    """
+
+    @staticmethod
+    def _write_dataset(root: Path, n: int = 3):
+        import json
+        import wave
+
+        wav_dir = root / "wav"
+        wav_dir.mkdir(parents=True, exist_ok=True)
+        rows = []
+        texts = ["hello world", "a small test", "training works now"]
+        for i in range(n):
+            wav_path = wav_dir / f"clip_{i}.wav"
+            samples = (0.4 * np.sin(
+                2 * np.pi * (110 + 20 * i) * np.arange(22050) / 22050
+            ) * 32767).astype("<i2")
+            with wave.open(str(wav_path), "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(22050)
+                w.writeframes(samples.tobytes())
+            rows.append({
+                "phoneme_ids": [1, 2, 3, 4],  # ignored by optispeech (re-tokenized)
+                "audio_path": str(wav_path),
+                "audio_norm_path": str(wav_path),
+                "audio_spec_path": str(wav_path),
+                "text": texts[i % len(texts)],
+                "speaker_id": None,
+                "language_id": None,
+            })
+        with open(root / "dataset.jsonl", "w", encoding="utf-8") as fh:
+            for r in rows:
+                fh.write(json.dumps(r) + "\n")
+        return root
+
+    def test_create_model_train_dataloader_yields_usable_batch(self):
+        with tempfile.TemporaryDirectory() as td:
+            ds_dir = self._write_dataset(Path(td))
+            model = get_engine("optispeech").create_model(
+                _tiny_config(), [ds_dir]
+            )
+            # The CLI never passes a dataloader; the module must own one.
+            loader = model.train_dataloader()
+            batch = next(iter(loader))
+            for key in ("x", "x_lengths", "mel", "mel_lengths",
+                        "pitches", "energies", "wav"):
+                self.assertIn(key, batch)
+            self.assertEqual(batch["x"].shape[0], batch["mel"].shape[0])
+            self.assertEqual(batch["mel"].shape[1], NFEATS)
+
+            # And the training step actually runs on it (updates weights).
+            before = {
+                k: v.detach().clone()
+                for k, v in model.generator.named_parameters()
+            }
+            # GAN manual optimization alternates generator/discriminator steps,
+            # so run enough steps to guarantee a generator update.
+            _tiny_trainer(max_steps=6).fit(model)
+            delta = sum(
+                (v.detach() - before[k]).abs().sum().item()
+                for k, v in model.generator.named_parameters()
+            )
+            self.assertGreater(delta, 0.0)
+
+    def test_create_model_without_dataset_has_no_attached_rows(self):
+        # Export/eval build the plain module; no dataset wiring is attached.
+        model = get_engine("optispeech").create_model(_tiny_config(), [])
+        self.assertFalse(hasattr(model, "_train_rows"))
+
+
 class CheckpointTests(unittest.TestCase):
     def test_checkpoint_carries_optimizer_scheduler_epoch(self):
         eng = get_engine("optispeech")

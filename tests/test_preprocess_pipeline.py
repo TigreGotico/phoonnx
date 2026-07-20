@@ -382,6 +382,10 @@ class _FakeSilenceDetector:
     trimming, a trivial "always speech" stand-in keeps them fast, safe to
     fork after, and no less meaningful."""
 
+    def reset(self):
+        # Mirrors the real detector's per-utterance state reset (a no-op here).
+        pass
+
     def __call__(self, audio_array, sample_rate=16000):
         return 1.0
 

@@ -25,14 +25,44 @@ def trusting_torch_load():
 
 
 def compiler_disable(fn):
-    """torch<2.4 has no torch.compiler.disable. Use this decorator instead
-    so functions that torch.compile cannot trace (e.g. data-dependent
-    control flow in the VITS spline transforms) are excluded from graph
-    capture on new torch, and are a no-op on old torch."""
+    """torch<2.4 has no torch.compiler.disable. Wrap a function so it is
+    excluded from graph capture on new torch, and a no-op on old torch.
+
+    Applied ONLY when torch.compile is actually enabled for a run — see
+    ``disable_compile_on_transforms``. It must never be applied at import
+    time: the wrapper carries dynamo eval-frame hooks that torch.jit.trace
+    (used by ONNX export) rejects with "Detected that you are using FX to
+    torch.jit.trace a dynamo-optimized function". Export paths must always
+    see the raw functions."""
     disable = getattr(getattr(torch, "compiler", None), "disable", None)
     if disable is not None:
         return disable(fn)
     return fn
+
+
+def disable_compile_on_transforms() -> None:
+    """Wrap the VITS spline transforms with ``compiler_disable`` in place, so
+    that a torch.compile'd graph excludes their data-dependent control flow.
+
+    Call this ONLY when a training run has torch.compile enabled and it
+    succeeded — never at import time, or ONNX export's torch.jit.trace of the
+    flow module would hit the wrapped functions and raise."""
+    from phoonnx_train.vits import modules, transforms
+
+    for name in (
+        "piecewise_rational_quadratic_transform",
+        "unconstrained_rational_quadratic_spline",
+        "rational_quadratic_spline",
+    ):
+        setattr(transforms, name, compiler_disable(getattr(transforms, name)))
+
+    # modules.py binds ``piecewise_rational_quadratic_transform`` by value at
+    # import (``from .transforms import ...``); re-bind its copy too so the
+    # call site actually used by the flow forward is disabled under compile.
+    if hasattr(modules, "piecewise_rational_quadratic_transform"):
+        modules.piecewise_rational_quadratic_transform = compiler_disable(
+            modules.piecewise_rational_quadratic_transform
+        )
 
 
 def onnx_export_kwargs() -> Dict[str, Any]:

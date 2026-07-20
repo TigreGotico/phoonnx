@@ -73,7 +73,12 @@ class FakeTrainer:
 
 def _invoke_main(tmp_dir, extra_args, engine_instance):
     FakeTrainer.instances = []
-    with mock.patch.object(train_module, "get_engine", return_value=engine_instance), \
+    # Patch the transform-disable helper at its source so the real train path
+    # does not mutate the module-global spline functions (which would leak a
+    # dynamo wrapper into later export tests). Its wiring is covered directly
+    # by TestCompilerDisableShim.
+    with mock.patch("phoonnx_train.torch_compat.disable_compile_on_transforms"), \
+         mock.patch.object(train_module, "get_engine", return_value=engine_instance), \
          mock.patch.object(train_module, "Trainer", FakeTrainer):
         runner = CliRunner()
         result = runner.invoke(
@@ -226,16 +231,46 @@ class TestCompilerDisableShim(unittest.TestCase):
         self.assertTrue(torch.allclose(outputs, outputs2))
         self.assertTrue(torch.allclose(logabsdet, logabsdet2))
 
-    def test_spline_functions_are_wrapped_by_compiler_disable(self):
-        for fn in (
-            transforms.piecewise_rational_quadratic_transform,
-            transforms.unconstrained_rational_quadratic_spline,
-            transforms.rational_quadratic_spline,
+    def test_spline_functions_are_raw_at_import(self):
+        # Regression for the VITS/yourtts export crash: the spline functions
+        # must NOT be wrapped by torch.compiler.disable at import time. The
+        # dynamo eval-frame wrapper carries a ``_torchdynamo_*`` marker and is
+        # rejected by torch.jit.trace during ONNX export ("Detected that you
+        # are using FX to torch.jit.trace a dynamo-optimized function").
+        import importlib
+        mod = importlib.reload(transforms)
+        for name in (
+            "piecewise_rational_quadratic_transform",
+            "unconstrained_rational_quadratic_spline",
+            "rational_quadratic_spline",
         ):
-            # torch.compiler.disable wraps with a distinct callable; simply
-            # asserting the function is still callable and importable
-            # confirms the decorator did not break definition/import.
+            fn = getattr(mod, name)
             self.assertTrue(callable(fn))
+            attrs = [a for a in dir(fn) if "torchdynamo" in a.lower() or "_dynamo" in a.lower()]
+            self.assertEqual(attrs, [], f"{name} is dynamo-wrapped at import: {attrs}")
+
+    def test_disable_compile_on_transforms_applies_wrapper(self):
+        # When a run actually enables torch.compile, the helper wraps the
+        # module-level transforms in place so dynamo excludes them.
+        import importlib
+        from phoonnx_train import torch_compat
+        from phoonnx_train.vits import modules
+        importlib.reload(transforms)
+        importlib.reload(modules)
+
+        sentinel = mock.Mock(name="disabled")
+        with mock.patch.object(torch_compat.torch.compiler, "disable", return_value=sentinel) as mdis:
+            torch_compat.disable_compile_on_transforms()
+
+        self.assertGreaterEqual(mdis.call_count, 3)
+        self.assertIs(transforms.piecewise_rational_quadratic_transform, sentinel)
+        self.assertIs(transforms.unconstrained_rational_quadratic_spline, sentinel)
+        self.assertIs(transforms.rational_quadratic_spline, sentinel)
+        self.assertIs(modules.piecewise_rational_quadratic_transform, sentinel)
+
+        # Restore pristine modules for other tests.
+        importlib.reload(transforms)
+        importlib.reload(modules)
 
 
 class TestDatasetWeightsOnlyLoad(unittest.TestCase):
