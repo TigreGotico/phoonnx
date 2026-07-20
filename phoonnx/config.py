@@ -486,6 +486,7 @@ class VoiceConfig:
             phoneme_type = phoneme_type or config.get("phoneme_type", PhonemeType.GRAPHEMES)
             alphabet = alphabet or Alphabet(config.get("alphabet", "ipa"))
             diacritics = config.get("inference", {}).get("add_diacritics", False)
+            ar_diacritizer_model = config.get("inference", {}).get("diacritizer_model", ar_diacritizer_model)
             config["pad"] = config.get("pad") or DEFAULT_PAD_TOKEN
             config["blank"] = config.get("blank") or DEFAULT_BLANK_TOKEN
             config["bos"] = config.get("bos") or DEFAULT_BOS_TOKEN
@@ -557,12 +558,12 @@ class VoiceConfig:
             "speaker_id_map": dict(self.speaker_id_map or {}),
             "lang_id_map": dict(self.lang_id_map or {}),
             "phonemizer_model": self.phonemizer_model,
-            "add_diacritics": self.add_diacritics,
-            "diacritizer_model": self.diacritizer_model,
             "inference": {
                 "noise_scale": self.noise_scale,
                 "length_scale": self.length_scale,
                 "noise_w": self.noise_w_scale,
+                "add_diacritics": self.add_diacritics,
+                "diacritizer_model": self.diacritizer_model,
             },
             "phoneme_id_map": dict(voc.char2idx),
             "pad": voc.pad, "blank": voc.blank, "bos": voc.bos, "eos": voc.eos,
