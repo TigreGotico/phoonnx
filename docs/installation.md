@@ -115,6 +115,9 @@ or set `PHOONNX_ONNX_PROVIDERS` once for the process. `CPUExecutionProvider` is 
 appended so synthesis keeps working. Full details in the
 [Configuration reference](configuration.md#execution-providers).
 
+Set `PHOONNX_ORT_CACHE_DIR` to cache the optimized ONNX Runtime graph across process
+restarts and reduce cold-start session-creation time.
+
 ## System dependency: espeak-ng
 
 The eSpeak phonemizer can drive the system `espeak-ng` binary directly. Install it from your

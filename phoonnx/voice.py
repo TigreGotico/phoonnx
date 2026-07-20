@@ -194,6 +194,34 @@ class TTSVoice:
         # building its vocoder from config.engine_params).
         self.adapter.configure(self.config)
 
+    def warmup(self) -> None:
+        """
+        Run one throwaway inference to pay ONNX Runtime's first-call kernel
+        selection / graph optimization cost outside the first real request.
+
+        Builds the smallest valid synthesis request (a single phoneme id)
+        and routes it through the adapter's own ``synthesize`` (which calls
+        ``build_feed_dict`` → ``session.run`` → ``parse_outputs``), so it
+        exercises the exact same code path as a real call rather than
+        hand-rolled input names. Adapters that cannot make sense of a
+        minimal input (or that need extra state ``configure`` didn't set
+        up) fail this quietly: warmup is an optimization, not a
+        requirement, so any error is logged at debug level and swallowed.
+        """
+        try:
+            request = AdapterSynthesisRequest(
+                phoneme_ids=np.array([[1]], dtype=np.int64),
+                phoneme_lengths=np.array([1], dtype=np.int64),
+                speaker_id=0,
+                language_id=0,
+                params=dict(self.adapter.default_params()),
+            )
+            self.adapter.synthesize(request, self.session)
+        except Exception as err:
+            LOG.debug(
+                f"warmup skipped for adapter '{type(self.adapter).__name__}': {err}"
+            )
+
     @property
     def tokenizer(self) -> TTSTokenizer:
         """
@@ -217,7 +245,8 @@ class TTSVoice:
             alphabet_str: Optional[str] = None,
             engine_params: Optional[Dict[str, Any]] = None,
             providers: Optional[Sequence[ProviderSpec]] = None,
-            use_cuda: bool = False
+            use_cuda: bool = False,
+            warmup: bool = False,
     ) -> "TTSVoice":
         """
         Load a TTS voice ONNX model and its configuration into a TTSVoice instance.
@@ -237,7 +266,10 @@ class TTSVoice:
                 list also drives the auxiliary graphs an engine loads (vocoders, speaker
                 encoders, ...).
             use_cuda (bool): Deprecated alias for ``providers=["CUDAExecutionProvider"]``.
-        
+            warmup (bool): Run a throwaway inference (see :meth:`TTSVoice.warmup`)
+                before returning, so the first real ``synthesize`` call does not
+                pay ONNX Runtime's first-call kernel-selection cost.
+
         Returns:
             TTSVoice: A TTSVoice instance prepared with the loaded ONNX session and merged configuration.
         """
@@ -303,11 +335,14 @@ class TTSVoice:
             engine_params=engine_params,
         )
 
-        return TTSVoice(
+        voice = TTSVoice(
             config=voice_config,
             session=session,
             adapter=adapter,
         )
+        if warmup:
+            voice.warmup()
+        return voice
 
     def phonemize(self, text: str, lang: Optional[str] = None) -> PhonemizedChunks:
         """
