@@ -24,6 +24,7 @@
 
 **Merged pull requests:**
 
+- fix: retry transient download failures in network-bound tests [\#259](https://github.com/TigreGotico/phoonnx/pull/259) ([JarbasAl](https://github.com/JarbasAl))
 - feat: on-demand runtime alignment output via load-time graph surgery [\#258](https://github.com/TigreGotico/phoonnx/pull/258) ([JarbasAl](https://github.com/JarbasAl))
 - fix: cross-cutting audit — exporter/torch-version consistency, packaging gaps, CI truth, docs drift [\#257](https://github.com/TigreGotico/phoonnx/pull/257) ([JarbasAl](https://github.com/JarbasAl))
 - fix: training-stack audit findings — compile/resume matrix, eval integrity, featurizer caches [\#256](https://github.com/TigreGotico/phoonnx/pull/256) ([JarbasAl](https://github.com/JarbasAl))
@@ -104,7 +105,6 @@
 - feat\(engines\): GlowTTS / Larynx inference adapter [\#143](https://github.com/TigreGotico/phoonnx/pull/143) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): OptiSpeech inference adapter [\#142](https://github.com/TigreGotico/phoonnx/pull/142) ([JarbasAl](https://github.com/JarbasAl))
 - refactor\(voices\): migrate community voice index to the OpenVoiceOS mirror collection [\#141](https://github.com/TigreGotico/phoonnx/pull/141) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(config\): native phoonnx config round-trip [\#139](https://github.com/TigreGotico/phoonnx/pull/139) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
