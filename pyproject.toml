@@ -53,7 +53,7 @@ test = [
     "ovos-plugin-manager>=2.1.0",
     "pycotovia>=0.1.0",
     "ahotts-g2p>=0.1.0",
-    "espyak>=0.0.2a1",
+    "espyak>=0.0.3a1",
     "orthography2ipa",
     "arbtok",
     "euskaphone",
@@ -71,7 +71,7 @@ test = [
 # encoder/decoder pair. Only needed to CREATE a split; a pre-split ("+RT")
 # voice streams without it. Requires the full `onnx` package for graph surgery.
 streaming = ["onnx"]
-espeak = ["espyak>=0.0.2a1"]
+espeak = ["espyak>=0.0.3a1"]
 matcha = [
     "scipy",
 ]
