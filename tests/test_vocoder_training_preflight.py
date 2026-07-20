@@ -257,7 +257,7 @@ def test_export_onnx_matches_torch_and_adapter_consumes_io(tmp_path):
     pytest.importorskip("onnxruntime")
     from phoonnx_train.vocos.lightning import VocosTrainingModule
     from phoonnx_train.vocos.data import MelConfig
-    from phoonnx_train.export_vocos import _CoefficientWrapper
+    from phoonnx_train.export_vocos import _CoefficientWrapper, legacy_onnx_export
     from phoonnx.engines.vocoders import build_vocoder
 
     m = MelConfig()
@@ -268,7 +268,9 @@ def test_export_onnx_matches_torch_and_adapter_consumes_io(tmp_path):
     frames = 40
     dummy = torch.randn(1, m.n_mels, frames) * 2.0 - 6.0
     out = tmp_path / "voc.onnx"
-    torch.onnx.export(
+    # identical export path to production (export_vocos.main): the legacy
+    # TorchScript exporter, so no onnxscript/dynamo dependency is pulled in
+    legacy_onnx_export(
         _CoefficientWrapper(gen), dummy, str(out), opset_version=17,
         input_names=["mels"], output_names=["mag", "x", "y"],
         dynamic_axes={k: {0: "batch", 2: "time"} for k in ("mels", "mag", "x", "y")},

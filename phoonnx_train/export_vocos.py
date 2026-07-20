@@ -14,6 +14,7 @@ Example::
         lightning_logs/version_0/checkpoints/epoch=99-step=1000.ckpt \\
         vocoder.onnx
 """
+import inspect
 import json
 import logging
 from pathlib import Path
@@ -27,6 +28,20 @@ from phoonnx_train.vocos.lightning import VocosTrainingModule
 _LOGGER = logging.getLogger(__package__)
 
 OPSET_VERSION = 17
+
+
+def legacy_onnx_export(*args, **kwargs) -> None:
+    """``torch.onnx.export`` pinned to the legacy TorchScript exporter.
+
+    torch >= 2.6 flips ``torch.onnx.export`` to the TorchDynamo exporter by
+    default, which imports the optional ``onnxscript`` package. This project
+    does not depend on ``onnxscript`` (and CI does not install it), so force
+    the legacy path whenever the running torch exposes the ``dynamo`` kwarg;
+    older torch (< 2.5) has no such kwarg and is already legacy-only.
+    """
+    if "dynamo" in inspect.signature(torch.onnx.export).parameters:
+        kwargs.setdefault("dynamo", False)
+    torch.onnx.export(*args, **kwargs)
 
 
 class _CoefficientWrapper(torch.nn.Module):
@@ -62,7 +77,7 @@ def main(checkpoint: str, output: str, seconds: float):
 
     output_path = Path(output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    torch.onnx.export(
+    legacy_onnx_export(
         wrapper,
         dummy,
         str(output_path),
