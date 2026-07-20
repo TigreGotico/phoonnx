@@ -560,6 +560,7 @@ class VoiceConfig:
             "alphabet": self.alphabet.value if self.alphabet else "unicode",
             "lang_code": self.lang_code,
             "audio": {"sample_rate": self.sample_rate},
+            "hop_length": self.hop_length,
             "num_symbols": self.num_symbols,
             "num_speakers": self.num_speakers,
             "num_langs": self.num_langs,

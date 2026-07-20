@@ -91,6 +91,18 @@ def test_piper_map_still_detected_as_piper():
     assert VoiceConfig.is_piper(cfg) is True
 
 
+def test_native_roundtrip_preserves_hop_length():
+    vocab = {"_": 0, "a": 1, "b": 2, "c": 3}
+    vc = VoiceConfig.from_dict({}, vocab=vocab,
+                               tokenizer_config={"add_blank": True, "language": "en", "pad_token": "_"},
+                               phoneme_type="graphemes", alphabet="unicode", lang_code="en")
+    vc.hop_length = 512
+    native = vc.to_native_dict()
+    assert native["hop_length"] == 512
+    vc2 = VoiceConfig.from_dict(dict(native))
+    assert vc2.hop_length == 512
+
+
 def test_canonical_coqui_config_compound_stress_tokens():
     # the espeak stressed-vowel compound keys (ˈV) fold via the tokenizer's
     # compound logic, matching the AhoTTS ca fused stressed-vowel tokens.
