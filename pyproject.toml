@@ -105,6 +105,9 @@ train-eval = [
     "torchaudio",
     "soundfile",
     "speakeronnx",
+    "vadonnx",
+    "onnx-asr",
+    "pandas",
 ]
 # extra deps for the FastPitch / SpeedySpeech training engine
 # (phoonnx_train/engines/fastpitch.py) on top of [train]: pyworld for F0

@@ -23,6 +23,11 @@ from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_
 from phoonnx.util import normalize
 from phoonnx.version import VERSION_STR
 from phoonnx_train.norm_audio import cache_norm_audio, make_silence_detector
+from phoonnx_train.quality_filter import (FilterSpec, apply_quality_filters,
+                                          configure_asr_model,
+                                          configure_speaker_model,
+                                          configure_vad_model, known_scorers,
+                                          log_filter_summary, parse_filter_spec)
 
 _LOGGER = logging.getLogger("preprocess")
 
@@ -424,6 +429,60 @@ def phonemize_worker(
     help="[--engine yourtts] language id recorded on every utterance "
          "(multilingual training)",
 )
+@click.option(
+    "--filter",
+    "quality_filters",
+    multiple=True,
+    metavar="COLUMN:MIN:MAX",
+    help="Drop utterances outside [MIN, MAX] on an on-demand-computed quality "
+         "metric. Repeatable; a sample must pass every --filter to be kept. "
+         "MIN or MAX may be empty for unbounded on that side. Metrics are "
+         "computed fresh per sample (not read from precomputed dataset "
+         "columns): 'wpm' (words per minute, arithmetic), 'snr' (energy-based "
+         "signal-to-noise dB estimate, arithmetic), 'clipping' (fraction of "
+         "near-full-scale samples, arithmetic), 'is_music_like' (0/1 "
+         "onset-rhythmicity heuristic, not a trained classifier -- roughly "
+         "25-30% error rate at any threshold, a coarse pre-filter only), "
+         "'vad_ratio' (speech-activity fraction via vadonnx, see "
+         "--vad-model), 'speaker_consistency' (min pairwise cosine "
+         "similarity between windows via speakeronnx, see --speaker-model), "
+         "'utmos' (SpeechMOS UTMOS naturalness), 'dnsmos_sig'/'dnsmos_bak'/"
+         "'dnsmos_ovrl' (DNSMOS P.835), 'plcmos' (packet-loss-concealment "
+         "quality, catches VoIP/dropped-packet artifacts), 'aecmos' "
+         "(echo-cancellation quality, catches speakerphone/echo artifacts; "
+         "plcmos/aecmos are most relevant to call-based corpora and require "
+         "the 'speechmos' package), 'wer' (word error rate of an onnx_asr "
+         "transcription against the sample's own text, see --asr-model; the "
+         "most expensive filter, always evaluated last). Referencing an "
+         "unknown column warns and skips that filter instead of failing. "
+         "Examples: --filter utmos:3.0: --filter wpm:80:400 "
+         "--filter is_music_like:0:0 --filter snr:15: --filter clipping:0:0.01 "
+         "--filter vad_ratio:0.5: --filter speaker_consistency:0.6: "
+         "--filter plcmos:3.0: --filter aecmos:3.0: --filter wer:0:0.3",
+)
+@click.option(
+    "--vad-model",
+    "vad_model",
+    default="silero",
+    show_default=True,
+    help="vadonnx model name used by the 'vad_ratio' quality filter.",
+)
+@click.option(
+    "--speaker-model",
+    "speaker_model",
+    default="wespeaker-resnet34",
+    show_default=True,
+    help="speakeronnx model name used by the 'speaker_consistency' quality filter.",
+)
+@click.option(
+    "--asr-model",
+    "asr_model",
+    default="whisper-base",
+    show_default=True,
+    help="Model identifier or path loadable via onnx_asr.load_model(), used "
+         "by the 'wer' quality filter. Must be onnx-asr-compatible; an "
+         "unloadable value fails loudly instead of silently skipping 'wer'.",
+)
 def cli(
     input_dir: Path,
     output_dir: Path,
@@ -450,6 +509,10 @@ def cli(
     engine: Optional[str],
     speaker_encoder_path: Optional[str],
     language_id: Optional[int],
+    quality_filters: Tuple[str, ...],
+    vad_model: str,
+    speaker_model: str,
+    asr_model: str,
 ) -> None:
     """
     Preprocess a TTS dataset into a JSONL and config suitable for training a VITS-style model.
@@ -479,7 +542,12 @@ def cli(
         add_diacritics (bool): Instruct the inference settings in the config to add diacritics.
         jsonl_audio_path (Optional[str]): Optional base path override for audio paths written into dataset.jsonl.
         jsonl_audio_spec_path (Optional[str]): Optional base path override for cached audio/spec paths in dataset.jsonl.
-    
+        quality_filters (Tuple[str, ...]): Repeatable 'column:min:max' quality-metric filters (e.g. 'utmos:3.0:'),
+            applied at manifest-load time before phonemization/audio caching. See phoonnx_train.quality_filter.
+        vad_model (str): vadonnx model name used by the 'vad_ratio' quality filter.
+        speaker_model (str): speakeronnx model name used by the 'speaker_consistency' quality filter.
+        asr_model (str): Model identifier/path loadable via onnx_asr.load_model(), used by the 'wer' quality filter.
+
     Raises:
         click.Abort: If mutually exclusive CLI options are provided (e.g., both --single-speaker and --speaker-id).
         ValueError: If finetuning with a previous config and the new dataset contains phonemes not present in that config and drop_extra_phonemes is False.
@@ -526,6 +594,23 @@ def cli(
     if not utterances:
         _LOGGER.error("No valid utterances found in dataset.")
         return
+
+    if quality_filters:
+        configure_vad_model(vad_model)
+        configure_speaker_model(speaker_model)
+        configure_asr_model(asr_model)
+        specs: List[FilterSpec] = [parse_filter_spec(f) for f in quality_filters]
+        total_before = len(utterances)
+        utterances, dropped_counts = apply_quality_filters(
+            utterances,
+            specs,
+            audio_path_fn=lambda u: u.audio_path,
+            text_fn=lambda u: u.text,
+        )
+        log_filter_summary(total_before, dropped_counts, len(utterances))
+        if not utterances:
+            _LOGGER.error("No utterances left after quality filtering.")
+            return
 
     num_utterances: int = len(utterances)
     _LOGGER.info("Found %d utterances.", num_utterances)
