@@ -24,6 +24,7 @@
 
 **Merged pull requests:**
 
+- fix: remove all piper-phonemize and espeak-wrapper dependencies [\#262](https://github.com/TigreGotico/phoonnx/pull/262) ([JarbasAl](https://github.com/JarbasAl))
 - Score UTMOS and DNSMOS via speechonnxmetrics [\#261](https://github.com/TigreGotico/phoonnx/pull/261) ([JarbasAl](https://github.com/JarbasAl))
 - fix: retry transient download failures in network-bound tests [\#259](https://github.com/TigreGotico/phoonnx/pull/259) ([JarbasAl](https://github.com/JarbasAl))
 - feat: on-demand runtime alignment output via load-time graph surgery [\#258](https://github.com/TigreGotico/phoonnx/pull/258) ([JarbasAl](https://github.com/JarbasAl))
@@ -103,7 +104,6 @@
 - feat\(train\): Mixer-TTS training \(Lightning\) [\#146](https://github.com/TigreGotico/phoonnx/pull/146) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): Mixer-TTS inference adapter + LJSpeech voices [\#145](https://github.com/TigreGotico/phoonnx/pull/145) ([JarbasAl](https://github.com/JarbasAl))
 - test\(tokenization\): cross-framework golden tests + coqui vocab-order fix [\#144](https://github.com/TigreGotico/phoonnx/pull/144) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(engines\): GlowTTS / Larynx inference adapter [\#143](https://github.com/TigreGotico/phoonnx/pull/143) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
