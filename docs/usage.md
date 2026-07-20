@@ -1,5 +1,9 @@
 # Usage Guide
 
+This guide is for Python developers driving phoonnx directly. After reading it you can load a
+voice, synthesize to a WAV or a stream, tune synthesis, and reach the low-level phonemize /
+tokenize / vocode calls.
+
 ## Loading a Voice
 
 The main entry point is `TTSVoice.load()`. You need an ONNX model file and its accompanying JSON config:
@@ -24,9 +28,25 @@ voice = TTSVoice.load(
     lang_code="en-US",
     phoneme_type_str="espeak",   # override phonemizer
     alphabet_str="ipa",
-    use_cuda=False,
 )
 ```
+
+### Choosing execution providers
+
+Pass an ordered list of ONNX Runtime execution providers to run on a GPU. The list also drives
+the auxiliary graphs an engine loads (vocoders, speaker encoders):
+
+```python
+voice = TTSVoice.load(
+    "model.onnx", "model.json",
+    providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
+)
+```
+
+When omitted, providers come from the `PHOONNX_ONNX_PROVIDERS` environment variable, then from
+auto-detection. `use_cuda=True` is a **deprecated** alias for
+`providers=["CUDAExecutionProvider"]`; prefer `providers`. See the
+[Configuration reference](configuration.md#execution-providers).
 
 ## Synthesizing Speech
 
@@ -85,9 +105,15 @@ syn_config = SynthesisConfig(
     normalize_audio=True,   # normalize output to full amplitude range
     volume=1.0,             # volume multiplier
     enable_phonetic_spellings=True,  # apply user-defined word replacements
-    add_diacritics=True,    # add diacritics (Arabic/Hebrew models)
+    add_diacritics=None,    # None defers to the voice config (Arabic/Hebrew)
 )
 ```
+
+`add_diacritics` defaults to `None`, meaning "use the voice's own setting"; set it to `True`
+or `False` only to force diacritization on or off for this call. Cloning and autoregressive
+engines add more fields — `speaker_reference`, `speaker_reference_text`,
+`speaker_reference_lang`, `exaggeration`, `temperature`, `top_p`, `extra_params` — documented
+in [Cloning](cloning.md) and the [Configuration reference](configuration.md#synthesisconfig).
 
 ## Inline Phoneme Input
 
@@ -126,7 +152,27 @@ Each `AudioChunk` has the following attributes:
 | Attribute | Description |
 |-----------|-------------|
 | `audio_float_array` | `np.ndarray` (float32), values in `[-1.0, 1.0]` |
+| `audio_int16_array` | `np.ndarray` (int16), the float array clipped and scaled |
 | `audio_int16_bytes` | Raw PCM bytes (int16, little-endian) |
 | `sample_rate` | Sample rate in Hz (e.g. 22050) |
 | `sample_width` | Bytes per sample (always 2) |
 | `sample_channels` | Number of channels (always 1, mono) |
+
+## Low-level API
+
+`synthesize()` is built from three composable steps you can call yourself:
+
+```python
+# text -> phonemes grouped by sentence (a list of lists of phoneme strings)
+chunks = voice.phonemize("Hello world", lang="en-US")
+
+# phonemes -> integer token IDs
+ids = voice.phonemes_to_ids(chunks[0])
+
+# token IDs -> raw float32 audio (unnormalized)
+audio = voice.phoneme_ids_to_audio(ids)
+```
+
+`phonemize()` accepts an optional `lang` to phonemize in a language other than the voice's own
+(used for cross-lingual cloning references). `phoneme_ids_to_audio()` accepts a
+`SynthesisConfig` and optional per-phoneme `language_ids`.
