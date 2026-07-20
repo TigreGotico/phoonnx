@@ -12,12 +12,19 @@ right timbre but the wrong words.
 import tempfile
 import pytest
 
+from tests.conftest import retry_download
+
 
 def _manager():
     from phoonnx.model_manager import TTSModelManager
     m = TTSModelManager(cache_path=tempfile.mktemp(suffix=".json"))
     m.merge_default_voices()
     return m
+
+
+def _load_voice(model_info):
+    """Load a voice, retrying on transient network errors from model download."""
+    return retry_download(model_info.load)
 
 
 def _phoonnx_ids(voice, text):
@@ -43,14 +50,14 @@ def _pick(m, pred, why):
 def test_tokenization_transformers_mms():
     transformers = pytest.importorskip("transformers")
     text = "hello world"
-    tok = transformers.VitsTokenizer.from_pretrained("facebook/mms-tts-eng")
+    tok = retry_download(transformers.VitsTokenizer.from_pretrained, "facebook/mms-tts-eng")
     orig = tok(text)["input_ids"]
     if hasattr(orig, "tolist"):
         orig = orig.tolist()
     if orig and isinstance(orig[0], list):
         orig = orig[0]
     m = _manager()
-    voice = m.voices["facebook/mms-tts-eng-English"].load()
+    voice = _load_voice(m.voices["facebook/mms-tts-eng-English"])
     assert _phoonnx_ids(voice, text) == orig
 
 
@@ -63,7 +70,7 @@ def test_tokenization_piper():
     vid = _pick(m, lambda k: "piper" in k.lower() and ("en-us" in k.lower() or "en_us" in k.lower()),
                "no en-US piper voice in index")
     text = "hello world"
-    voice = m.voices[vid].load()
+    voice = _load_voice(m.voices[vid])
     expected = [1, 0, 20, 0, 59, 0, 24, 0, 120, 0, 27, 0, 100, 0, 3, 0,
                 35, 0, 120, 0, 62, 0, 122, 0, 24, 0, 17, 0, 2]
     assert _phoonnx_ids(voice, text) == expected
@@ -125,14 +132,14 @@ def test_tokenization_larynx_gruut_ids():
     m = _manager()
     vid = _pick(m, lambda k: k.startswith("larynx/en-us"), "no en-US Larynx voice in index")
     # diphthong + affricate clusters exercise multi-phoneme tokens
-    _assert_gruut_ids_match(m.voices[vid].load(), "hello my joyful child now", "en-us")
+    _assert_gruut_ids_match(_load_voice(m.voices[vid]), "hello my joyful child now", "en-us")
 
 
 def test_tokenization_mimic3_gruut_ids():
     pytest.importorskip("gruut")
     m = _manager()
     vid = _pick(m, lambda k: k.startswith("mimic3/en_"), "no en mimic3 voice in index")
-    _assert_gruut_ids_match(m.voices[vid].load(), "hello my joyful child now", "en-us")
+    _assert_gruut_ids_match(_load_voice(m.voices[vid]), "hello my joyful child now", "en-us")
 
 
 # --- coqui: coqui-tts won't install in a transformers>=5 env, so we assert the
@@ -172,7 +179,7 @@ def test_tokenization_optispeech():
     vid = "hf_community/mush42/optispeech-lightspeech-en-us-emily"
     if vid not in m.voices:
         pytest.skip("optispeech voice not in index")
-    voice = m.voices[vid].load()
+    voice = _load_voice(m.voices[vid])
     assert _phoonnx_ids(voice, text) == orig
 
 
@@ -197,7 +204,7 @@ def test_tokenization_matcha():
     m = _manager()
     vid = _pick(m, lambda k: "matxa" in k.lower() or (
         m.voices[k].engine and str(m.voices[k].engine).endswith("matcha")), "no matcha voice in index")
-    voice = m.voices[vid].load()
+    voice = _load_voice(m.voices[vid])
     pvocab = voice.config.tokenizer.vocabulary.char2idx
     # identical symbol -> id table
     assert len(pvocab) == len(sid)

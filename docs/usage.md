@@ -17,6 +17,12 @@ voice = TTSVoice.load(
 )
 ```
 
+> **Note:** the default (`<model_path>.json`, e.g. `model.onnx.json`) does **not**
+> match the voice manager's cache layout, which ships `model.onnx` + `model.json`
+> side by side. Loading straight out of a cache directory needs `config_path`
+> passed explicitly as above; `manager.voices[voice_id].load()` already does this
+> for you.
+
 ### Loading with Overrides
 
 You can override the phonemizer and language at load time:
