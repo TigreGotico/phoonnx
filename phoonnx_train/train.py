@@ -156,13 +156,26 @@ def main(
     # ------------------------------------------------------------------
     # Resume from checkpoint (engine-specific logic)
     # ------------------------------------------------------------------
-    if resume_from_checkpoint:
+    # A plain --resume-from-checkpoint (same architecture, not discarding the
+    # encoder) is a *true resume*: optimizer state, LR scheduler, epoch and
+    # global_step must all continue from the checkpoint, otherwise Adam's
+    # moment estimates are lost, the epoch counter restarts and max_epochs is
+    # miscounted. Lightning only restores those when the checkpoint is handed to
+    # Trainer.fit(ckpt_path=...); a manual state_dict load copies weights only.
+    # The --discard-encoder and single-speaker paths intentionally change the
+    # architecture, so they stay weight-only warm starts (fit_ckpt_path=None).
+    fit_ckpt_path: Optional[str] = None
+    if resume_from_checkpoint and not discard_encoder:
+        fit_ckpt_path = resume_from_checkpoint
+        _LOGGER.info("Resuming full training state from checkpoint: %s",
+                     resume_from_checkpoint)
+    elif resume_from_checkpoint:
         training_engine.load_checkpoint(
             model,
             Path(resume_from_checkpoint),
             discard_encoder=discard_encoder,
         )
-        _LOGGER.info("Loaded checkpoint: %s", resume_from_checkpoint)
+        _LOGGER.info("Warm-started weights from checkpoint: %s", resume_from_checkpoint)
 
     if resume_from_single_speaker_checkpoint:
         training_engine.load_checkpoint(
@@ -192,7 +205,7 @@ def main(
         **training_engine.trainer_kwargs(),
     )
     _LOGGER.info("Training started!")
-    trainer.fit(model)
+    trainer.fit(model, ckpt_path=fit_ckpt_path)
 
 
 if __name__ == '__main__':

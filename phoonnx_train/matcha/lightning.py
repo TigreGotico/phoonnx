@@ -253,7 +253,10 @@ class MatchaTTS(pl.LightningModule):  # 🍵
             y = y_cut
             y_mask = y_cut_mask
 
-        mu_y = torch.matmul(attn.squeeze(1).transpose(1, 2), mu_x.transpose(1, 2))
+        # attn is [b, t_text, t_mel]; a bare ``.squeeze(1)`` collapses the text
+        # axis for single-phoneme utterances (t_text == 1) and crashes the
+        # matmul. Transpose the last two axes directly instead.
+        mu_y = torch.matmul(attn.transpose(1, 2), mu_x.transpose(1, 2))
         mu_y = mu_y.transpose(1, 2)
 
         diff_loss, _ = self.decoder.compute_loss(x1=y, mask=y_mask, mu=mu_y, spks=spks, cond=cond)

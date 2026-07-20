@@ -181,8 +181,15 @@ def test_tokenization_optispeech():
 
 def test_tokenization_matcha():
     pytest.importorskip("matcha")
-    import matcha.text as mt
-    from matcha.text import symbols, cleaned_text_to_sequence
+    # matcha.text instantiates a global espeak-ng backend at import time, which
+    # raises RuntimeError (not ImportError) when the system espeak library is
+    # absent — importorskip on the top-level ``matcha`` package does not catch
+    # it. Skip cleanly so a CI box without espeak reports skip, not error.
+    try:
+        import matcha.text as mt
+        from matcha.text import symbols, cleaned_text_to_sequence
+    except (RuntimeError, OSError) as exc:
+        pytest.skip(f"matcha.text needs a system espeak backend: {exc}")
     # the Catalan Matxa voices use custom cleaners bundled with the model (not in
     # base matcha-tts), so we verify the *tokenizer* — symbol table + phoneme->id
     # mapping — which is language-agnostic and is what phoonnx reproduces.

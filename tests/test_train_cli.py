@@ -154,21 +154,37 @@ class TestMainCliEngineSelection(unittest.TestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("does-not-exist", result.output)
 
-    def test_resume_from_checkpoint_with_nonexistent_path_reaches_engine(self):
-        # --resume-from-checkpoint has no click.Path(exists=True) constraint
-        # (checkpoints can be produced by an engine-specific loader), so a
-        # bad path must fail inside load_checkpoint, not silently no-op.
-        def _raise(model, checkpoint_path, **kwargs):
-            raise FileNotFoundError(str(checkpoint_path))
-
-        self.fake_engine.load_checkpoint = _raise
+    def test_plain_resume_hands_checkpoint_to_fit_for_full_state_restore(self):
+        # A plain --resume-from-checkpoint is a true resume: the path must be
+        # handed to Trainer.fit(ckpt_path=...) so Lightning restores optimizer
+        # state, epoch and global_step. A weight-only manual load would reset
+        # them, so load_checkpoint must NOT be called on this path.
         with self.runner.isolated_filesystem() as td:
             Path("ds").mkdir()
-            result, _, _ = self._run(
+            result, trainer_instance, _ = self._run(
                 Path(td), ["--resume-from-checkpoint", "no/such/file.ckpt"],
             )
-        self.assertNotEqual(result.exit_code, 0)
-        self.assertIsInstance(result.exception, FileNotFoundError)
+        self.assertEqual(result.exit_code, 0, result.output)
+        _, fit_kwargs = trainer_instance.fit.call_args
+        self.assertEqual(fit_kwargs.get("ckpt_path"), "no/such/file.ckpt")
+
+    def test_discard_encoder_resume_is_weight_only_not_ckpt_path(self):
+        # --discard-encoder changes the architecture: it stays a weight-only
+        # warm start via load_checkpoint, never Trainer.fit(ckpt_path=...).
+        loaded = []
+        self.fake_engine.load_checkpoint = (
+            lambda model, checkpoint_path, **kw: loaded.append(str(checkpoint_path)) or model
+        )
+        with self.runner.isolated_filesystem() as td:
+            Path("ds").mkdir()
+            result, trainer_instance, _ = self._run(
+                Path(td),
+                ["--resume-from-checkpoint", "no/such/file.ckpt", "--discard-encoder"],
+            )
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(loaded, ["no/such/file.ckpt"])
+        _, fit_kwargs = trainer_instance.fit.call_args
+        self.assertIsNone(fit_kwargs.get("ckpt_path"))
 
     def test_invalid_quality_falls_back_with_warning_not_crash(self):
         with self.assertLogs("phoonnx_train", level="WARNING") as logs:
