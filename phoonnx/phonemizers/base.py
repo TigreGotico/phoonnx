@@ -9,7 +9,6 @@ from quebra_frases import sentence_tokenize
 from phoonnx.config import Alphabet
 from phoonnx.util import normalize, match_lang
 from phoonnx.thirdparty.phonikud import PhonikudDiacritizer
-from phoonnx.thirdparty.tashkeel import TashkeelDiacritizer
 
 # list of (substring, terminator, end_of_sentence) tuples.
 TextChunks = List[Tuple[str, str, bool]]
@@ -21,13 +20,16 @@ PhonemizedChunks = list[list[str]]
 
 class BasePhonemizer(metaclass=abc.ABCMeta):
     def __init__(self, alphabet: Alphabet = Alphabet.UNICODE,
-                 taskeen_threshold: Optional[float] = 0.8):
+                 diacritizer_model: str = "rawi-ensemble"):
         super().__init__()
         self.alphabet = alphabet
 
-        self.taskeen_threshold = taskeen_threshold  # arabic only
-        self._tashkeel: Optional[TashkeelDiacritizer] = None
+        # diacritizer model name, for languages that need one. Arabic uses
+        # text2tashkeel; the default "rawi-ensemble" restores hamza and the dagger
+        # alef in addition to the standard marks.
+        self.diacritizer_model = diacritizer_model
         self._phonikud: Optional[PhonikudDiacritizer] = None # hebrew only
+        self._tashkeel: dict = {}  # model name -> text2tashkeel Diacritizer
 
     @property
     def phonikud(self) -> PhonikudDiacritizer:
@@ -35,11 +37,23 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
             self._phonikud = PhonikudDiacritizer()
         return self._phonikud
 
-    @property
-    def tashkeel(self) -> TashkeelDiacritizer:
-        if self._tashkeel is None:
-            self._tashkeel = TashkeelDiacritizer()
-        return self._tashkeel
+    def tashkeel(self, model: Optional[str] = None):
+        """Lazily build (and cache) the text2tashkeel Diacritizer used for Arabic.
+
+        text2tashkeel is a dependency of the ``[ar]`` extra; it restores hamza and the
+        dagger alef in addition to the standard marks. Install with
+        ``pip install phoonnx[ar]`` (or ``pip install text2tashkeel``)."""
+        model = model or self.diacritizer_model
+        if model not in self._tashkeel:
+            try:
+                from text2tashkeel import Diacritizer
+            except ImportError as e:
+                raise ImportError(
+                    "Arabic diacritization requires the text2tashkeel package: "
+                    "pip install phoonnx[ar]  (or pip install text2tashkeel)"
+                ) from e
+            self._tashkeel[model] = Diacritizer(model)
+        return self._tashkeel[model]
 
     @abc.abstractmethod
     def phonemize_string(self, text: str, lang: str) -> str:
@@ -48,11 +62,12 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
     def phonemize_to_list(self, text: str, lang: str) -> List[str]:
         return list(self.phonemize_string(text, lang))
 
-    def add_diacritics(self, text: str, lang: str) -> str:
+    def add_diacritics(self, text: str, lang: str,
+                       model: Optional[str] = None) -> str:
         if lang.startswith("he"):
             return self.phonikud.diacritize(text)
         elif lang.startswith("ar"):
-            return self.tashkeel.diacritize(text, self.taskeen_threshold)
+            return self.tashkeel(model).diacritize(text)
         return text
 
     def phonemize(self, text: str, lang: str) -> PhonemizedChunks:
