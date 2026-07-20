@@ -179,6 +179,10 @@ class TestApplyQualityFilters(unittest.TestCase):
         self.assertEqual([s.name for s in kept], ["speech"])
         self.assertEqual(dropped, {"is_music_like": 1})
 
+        # restore the real scorer for any subsequent tests in this run
+        from phoonnx_train.quality_filter import is_music_like_score
+        register_scorer("is_music_like", is_music_like_score)
+
     def test_wpm_needs_no_audio_load(self):
         # wpm is arithmetic-only: it must never touch the audio loader,
         # only the (cheap, header-only) duration lookup.

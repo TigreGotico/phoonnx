@@ -290,7 +290,7 @@ def utmos_score(audio: object, sr: int, text: str, duration: float) -> float:
     return float(score.squeeze().item())
 
 
-_dnsmos_cache_key = None
+_dnsmos_cache_audio = None
 _dnsmos_cache_value: Optional[Dict[str, float]] = None
 
 
@@ -327,13 +327,12 @@ def _resample_16k(audio: object, sr: int) -> object:
 
 
 def _dnsmos_all(audio: object, sr: int) -> Dict[str, float]:
-    global _dnsmos_cache_key, _dnsmos_cache_value
-    key = id(audio)
-    if _dnsmos_cache_key != key or _dnsmos_cache_value is None:
+    global _dnsmos_cache_audio, _dnsmos_cache_value
+    if _dnsmos_cache_audio is not audio or _dnsmos_cache_value is None:
         run = _load_speechmos_run("dnsmos")
-        audio = _resample_16k(audio, sr)
-        _dnsmos_cache_value = run(audio, sr=16000)
-        _dnsmos_cache_key = key
+        resampled = _resample_16k(audio, sr)
+        _dnsmos_cache_value = run(resampled, sr=16000)
+        _dnsmos_cache_audio = audio
     return _dnsmos_cache_value
 
 
@@ -487,6 +486,13 @@ def _get_speaker_embedder():
     return _speaker_embedder
 
 
+def _cosine_similarity(a, b) -> float:
+    import numpy as np
+    a = np.asarray(a, dtype=np.float64).ravel()
+    b = np.asarray(b, dtype=np.float64).ravel()
+    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-12))
+
+
 def speaker_consistency_score(audio: object, sr: int, text: str, duration: float,
                               num_windows: int = 3, min_window_seconds: float = 0.5) -> float:
     """Minimum pairwise cosine similarity between speaker embeddings of
@@ -498,7 +504,6 @@ def speaker_consistency_score(audio: object, sr: int, text: str, duration: float
     --speaker-model (default: speakeronnx's own default,
     'wespeaker-resnet34')."""
     import numpy as np
-    from speakeronnx import cosine
 
     if audio is None or duration <= 0:
         return 1.0
@@ -513,7 +518,7 @@ def speaker_consistency_score(audio: object, sr: int, text: str, duration: float
         window = np.asarray(audio[start:end])
         embeddings.append(embedder.embed(window))
     similarities = [
-        cosine(embeddings[i], embeddings[j])
+        _cosine_similarity(embeddings[i], embeddings[j])
         for i in range(len(embeddings))
         for j in range(i + 1, len(embeddings))
     ]
