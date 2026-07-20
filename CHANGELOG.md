@@ -27,6 +27,8 @@
 
 **Merged pull requests:**
 
+- test: cover alphabet conversion edges and en/mul/ar phonemizer dispatch [\#243](https://github.com/TigreGotico/phoonnx/pull/243) ([JarbasAl](https://github.com/JarbasAl))
+- feat: synthesize sentences lazily to cut time-to-first-audio [\#242](https://github.com/TigreGotico/phoonnx/pull/242) ([JarbasAl](https://github.com/JarbasAl))
 - Cache ORT-optimized graphs, add voice warmup, warn on silent provider fallback [\#241](https://github.com/TigreGotico/phoonnx/pull/241) ([JarbasAl](https://github.com/JarbasAl))
 - feat: add per-stage TTS latency benchmark script [\#240](https://github.com/TigreGotico/phoonnx/pull/240) ([JarbasAl](https://github.com/JarbasAl))
 - docs: full documentation overhaul — layered learning paths and verified references [\#239](https://github.com/TigreGotico/phoonnx/pull/239) ([JarbasAl](https://github.com/JarbasAl))
