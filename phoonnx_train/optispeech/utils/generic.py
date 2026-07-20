@@ -1,19 +1,12 @@
 import io
-import warnings
-from importlib.util import find_spec
 from math import ceil
-from typing import Any, Callable, Dict, Tuple
 
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
 from phoonnx_train.optispeech.utils import pylogger
 
 log = pylogger.get_pylogger(__name__)
-
-matplotlib.use("Agg")
 
 
 def intersperse(lst, item):
@@ -23,79 +16,28 @@ def intersperse(lst, item):
     return result
 
 
-def save_figure_to_numpy(fig):
-    data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep="")
-    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-    return data
-
-
-def plot_attention(attn):
-    fig = plt.figure(figsize=(12, 6))
-    plt.imshow(attn.T, interpolation="nearest", aspect="auto")
-    fig.canvas.draw()
-    data = save_figure_to_numpy(fig)
-    plt.close(fig)
-    return data
-
-
 def plot_tensor(tensor):
+    """Render a 2D tensor to an RGB numpy image for TensorBoard logging.
+
+    matplotlib is imported lazily so the training package stays importable in
+    environments without a plotting stack (e.g. CI); it is only needed when
+    validation actually logs spectrogram images.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
     plt.style.use("default")
     fig, ax = plt.subplots(figsize=(12, 3))
     im = ax.imshow(tensor, aspect="auto", origin="lower", interpolation="none")
     plt.colorbar(im, ax=ax)
     plt.tight_layout()
     fig.canvas.draw()
-    data = save_figure_to_numpy(fig)
-    plt.close()
-    return data
-
-
-def save_plot(tensor, savepath):
-    plt.style.use("default")
-    fig, ax = plt.subplots(figsize=(12, 3))
-    im = ax.imshow(tensor, aspect="auto", origin="lower", interpolation="none")
-    plt.colorbar(im, ax=ax)
-    plt.tight_layout()
-    fig.canvas.draw()
-    plt.savefig(savepath)
-    plt.close()
-
-
-def to_numpy(tensor):
-    if isinstance(tensor, np.ndarray):
-        return tensor
-    elif isinstance(tensor, torch.Tensor):
-        return tensor.detach().cpu().numpy()
-    elif isinstance(tensor, list):
-        return np.array(tensor)
-    else:
-        raise TypeError("Unsupported type for conversion to numpy array")
-
-
-def save_figure_to_numpy(fig: plt.Figure) -> np.ndarray:
-    """
-    Save a matplotlib figure to a numpy array.
-
-    Args:
-        fig (Figure): Matplotlib figure object.
-
-    Returns:
-        ndarray: Numpy array representing the figure.
-    """
     data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep="")
     data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    plt.close()
     return data
-
-
-def plot_spectrogram_to_numpy(spectrogram, filename):
-    fig, ax = plt.subplots(figsize=(12, 3))
-    im = ax.imshow(spectrogram, aspect="auto", origin="lower", interpolation="none")
-    plt.colorbar(im, ax=ax)
-    plt.xlabel("Frames")
-    plt.ylabel("Channels")
-    plt.title("Synthesised Mel-Spectrogram")
-    fig.canvas.draw()
-    plt.savefig(filename)
 
 
 def get_phoneme_durations(durations, phones):

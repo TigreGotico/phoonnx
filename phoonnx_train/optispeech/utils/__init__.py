@@ -1,8 +1,6 @@
 from phoonnx_train.optispeech.utils.generic import (
     get_phoneme_durations,
     intersperse,
-    plot_attention,
-    plot_spectrogram_to_numpy,
     plot_tensor,
 )
 from phoonnx_train.optispeech.utils.model import (
