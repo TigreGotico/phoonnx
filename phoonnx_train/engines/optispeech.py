@@ -687,6 +687,41 @@ class OptiSpeechTrainingEngine(BaseTrainingEngine):
         return model
 
     # ------------------------------------------------------------------
+    # Evaluation tokenization
+    # ------------------------------------------------------------------
+
+    def eval_text_to_ids(
+        self,
+        text: str,
+        config: Optional[Dict[str, Any]],
+    ) -> Optional[List[int]]:
+        """Tokenize ``text`` with the SAME OptiSpeech ``TextProcessor`` the
+        training datamodule uses, so in-training scoring feeds the model the
+        ids it was actually trained on rather than the generic phoonnx
+        phonemizer/tokenizer output (which uses a different phoneme set and
+        blank/BOS/EOS convention).
+        """
+        cfg = config or {}
+        tcfg = TrainingEngineConfig(
+            num_symbols=int(cfg.get("num_symbols", 178)),
+            num_speakers=int(cfg.get("num_speakers", 1)),
+            sample_rate=int(cfg.get("audio", {}).get("sample_rate", 22050)),
+            extra=dict(cfg.get("engine_params", {})),
+        )
+        ocfg = OptiSpeechEngineConfig.from_training_config(tcfg)
+        tp = _build_text_processor(ocfg)
+
+        lang = cfg.get("lang_code") or cfg.get("lang") or tp.default_language
+        lang = str(lang).strip().lower()
+        if lang not in tp.languages:
+            # config's lang_code may be coarser (e.g. "en") than the trained
+            # language list ("en-us"); fall back to the model's default rather
+            # than raising, matching how synthesis picks a voice.
+            lang = tp.default_language
+        ids, _ = tp(text, lang, split_sentences=False)
+        return list(ids)
+
+    # ------------------------------------------------------------------
     # Standalone evaluation synthesis
     # ------------------------------------------------------------------
 
