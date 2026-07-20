@@ -27,6 +27,7 @@
 
 **Merged pull requests:**
 
+- test: cover training CLI, preprocessing pipeline, VITS lightning module [\#246](https://github.com/TigreGotico/phoonnx/pull/246) ([JarbasAl](https://github.com/JarbasAl))
 - test: cover config format detection and tokenizer vocabulary construction [\#245](https://github.com/TigreGotico/phoonnx/pull/245) ([JarbasAl](https://github.com/JarbasAl))
 - test: cover CLI commands and model download subsystem [\#244](https://github.com/TigreGotico/phoonnx/pull/244) ([JarbasAl](https://github.com/JarbasAl))
 - test: cover alphabet conversion edges and en/mul/ar phonemizer dispatch [\#243](https://github.com/TigreGotico/phoonnx/pull/243) ([JarbasAl](https://github.com/JarbasAl))
