@@ -10,6 +10,7 @@ from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
 DEFAULT_NOISE_SCALE = 0.667
 DEFAULT_LENGTH_SCALE = 1.0
 DEFAULT_NOISE_W_SCALE = 0.8
+DEFAULT_HOP_LENGTH = 256
 
 
 class Engine(str, Enum):
@@ -186,6 +187,12 @@ class VoiceConfig:
     add_diacritics: bool = None # arabic and hebrew
     # diacritizer model name (for languages that need one — e.g. Arabic uses text2tashkeel models like "rawi-ensemble")
     diacritizer_model: str = "rawi-ensemble"
+
+    # samples per model frame — used to convert per-phoneme durations (in model
+    # frames) to audio samples for the phoneme-alignment feature (see
+    # docs/usage.md). Matches the vocoder/decoder hop length; 256 for the
+    # standard 22.05 kHz VITS/HiFi-GAN exports.
+    hop_length: int = DEFAULT_HOP_LENGTH
 
     # tokenization settings
     tokenizer: Optional[TTSTokenizer] = None
@@ -507,6 +514,7 @@ class VoiceConfig:
             noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
             add_diacritics=diacritics,
             diacritizer_model=ar_diacritizer_model,
+            hop_length=config.get("hop_length", DEFAULT_HOP_LENGTH),
             lang_code=lang_code,
             alphabet=Alphabet(alphabet) if isinstance(alphabet, str) else alphabet,
             engine=Engine(engine) if isinstance(engine, str) else engine,

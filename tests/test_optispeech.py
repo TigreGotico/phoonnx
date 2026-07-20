@@ -85,6 +85,17 @@ def test_parse_outputs_wav_and_extras():
         [np.zeros((1, 1, 512), np.float32), np.array([512]), np.array([[3, 4]])], _req())
     assert res.audio.shape == (512,)
     assert "durations" in res.extras and "wav_lengths" in res.extras
+    # also exposed under the uniform key TTSVoice.phoneme_ids_to_audio reads
+    assert "phoneme_id_samples" in res.extras
+    np.testing.assert_array_equal(res.extras["phoneme_id_samples"], [3, 4])
+
+
+def test_parse_outputs_durations_by_name():
+    res = OptiSpeechAdapter().parse_outputs(
+        [np.zeros((1, 1, 512), np.float32), np.array([512]), np.array([[3, 4]])],
+        _req(), output_names=["wav", "wav_lengths", "durations"],
+    )
+    np.testing.assert_array_equal(res.extras["phoneme_id_samples"], [3, 4])
 
 
 def test_default_params():

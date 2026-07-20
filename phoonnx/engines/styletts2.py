@@ -27,6 +27,16 @@ _PAD_ID = 0  # "$" in the StyleTTS2 vocab
 class StyleTTS2Adapter(BaseOnnxAdapter):
     """Adapter for StyleTTS2 / Kokoro single-graph ONNX models."""
 
+    # StyleTTS2/Kokoro's internal duration predictor (``pred_dur``) is not
+    # exposed as a graph output in standard single-waveform exports today;
+    # listed so a future re-export lights up alignment automatically (see
+    # docs/usage.md). Note the token sequence fed to the graph is padded
+    # (see build_feed_dict), so a duration tensor here would be one-or-two
+    # tokens longer than ``request.phoneme_ids`` — TTSVoice's length check
+    # already degrades to "alignments unavailable" rather than crashing on
+    # that mismatch.
+    DURATION_OUTPUT_NAMES = ["durations", "dur", "pred_dur"]
+
     def __init__(self, style_pack: Optional[np.ndarray] = None,
                  speaker_encoder: Optional[Any] = None):
         # [N, 256] per-voice style indexed by token length (Kokoro); None when the
@@ -96,10 +106,15 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
         self,
         outputs: List[np.ndarray],
         request: AdapterSynthesisRequest,
+        output_names: Optional[List[str]] = None,
     ) -> AdapterSynthesisResult:
         # the only meaningful output is the waveform (1-D)
         wav = max(outputs, key=lambda o: np.asarray(o).size)
-        return AdapterSynthesisResult(audio=np.asarray(wav, dtype=np.float32).reshape(-1))
+        extras: Dict[str, Any] = {}
+        durations = self._find_duration_output(outputs, output_names)
+        if durations is not None:
+            extras["phoneme_id_samples"] = np.asarray(durations).squeeze()
+        return AdapterSynthesisResult(audio=np.asarray(wav, dtype=np.float32).reshape(-1), extras=extras)
 
     @staticmethod
     def detect(

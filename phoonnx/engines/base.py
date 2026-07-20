@@ -69,7 +69,19 @@ class BaseOnnxAdapter(ABC):
     - ``parse_config``     — pull engine-specific fields from JSON config
     - ``parse_onnx_meta``  — pull engine-specific fields from ONNX metadata
     - ``param_labels``     — human-readable names for UI sliders
+    - ``DURATION_OUTPUT_NAMES`` — candidate ONNX output names that carry a
+                             per-phoneme duration/frame-count tensor, used by
+                             :meth:`_find_duration_output` for the alignment
+                             feature (see ``docs/usage.md``).
     """
+
+    # Candidate ONNX output names that expose per-phoneme durations for this
+    # engine family (matched case-insensitively against
+    # ``session.get_outputs()`` names by :meth:`_find_duration_output`).
+    # Empty by default: engines opt in per-family. Listing a name here does
+    # NOT guarantee a given checkpoint's export has it — real exports vary;
+    # this only makes detection automatic once a model *does* expose one.
+    DURATION_OUTPUT_NAMES: List[str] = []
 
     # ------------------------------------------------------------------
     # Required
@@ -91,10 +103,18 @@ class BaseOnnxAdapter(ABC):
         self,
         outputs: List[np.ndarray],
         request: AdapterSynthesisRequest,
+        output_names: Optional[List[str]] = None,
     ) -> AdapterSynthesisResult:
         """
         Extract the audio waveform (and optional extras) from the raw
         list of ONNX output tensors.
+
+        ``output_names`` — the names reported by ``session.get_outputs()``,
+        positionally aligned with ``outputs`` when available (``None`` if the
+        session doesn't expose them, e.g. in unit tests with a bare mock).
+        Engines that support alignment use this (via
+        :meth:`_find_duration_output`) to locate a durations tensor by name
+        rather than by hardcoded position.
         """
 
     @abstractmethod
@@ -140,7 +160,15 @@ class BaseOnnxAdapter(ABC):
         """
         feed = self.build_feed_dict(request, session)
         outputs = session.run(None, feed)
-        return self.parse_outputs(outputs, request)
+        try:
+            return self.parse_outputs(
+                outputs, request, output_names=self._safe_output_names(session)
+            )
+        except TypeError:
+            # Third-party / test subclasses that predate the ``output_names``
+            # parameter and don't accept **kwargs — fall back to the
+            # original two-argument call so they keep working unmodified.
+            return self.parse_outputs(outputs, request)
 
     @staticmethod
     def detect(
@@ -213,3 +241,42 @@ class BaseOnnxAdapter(ABC):
     ) -> Dict[str, np.ndarray]:
         expected = {inp.name for inp in session.get_inputs()}
         return {k: v for k, v in args.items() if k in expected}
+
+    @staticmethod
+    def _safe_output_names(
+        session: onnxruntime.InferenceSession,
+    ) -> Optional[List[str]]:
+        """Best-effort ``session.get_outputs()`` names, positionally aligned
+        with ``session.run(None, ...)``'s return list.
+
+        Never raises: a mocked/minimal session (as used in unit tests) simply
+        yields ``None``, and callers must treat that as "duration detection by
+        name is unavailable" rather than crashing normal synthesis.
+        """
+        try:
+            return [getattr(o, "name", None) for o in session.get_outputs()]
+        except Exception:
+            return None
+
+    def _find_duration_output(
+        self,
+        outputs: List[np.ndarray],
+        output_names: Optional[List[str]],
+    ) -> Optional[np.ndarray]:
+        """Locate a per-phoneme duration/frame-count tensor among ``outputs``
+        by matching ``output_names`` against ``self.DURATION_OUTPUT_NAMES``.
+
+        Returns the raw tensor (still in the model's native unit — mel
+        frames for two-stage engines, audio-decoder frames for single-stage
+        ones; converted to samples uniformly in ``TTSVoice.phoneme_ids_to_audio``
+        via ``VoiceConfig.hop_length``), or ``None`` if this particular
+        export doesn't expose one. Never raises — callers degrade to "no
+        alignment available" when this returns ``None``.
+        """
+        if not output_names or not self.DURATION_OUTPUT_NAMES:
+            return None
+        candidates = {c.lower() for c in self.DURATION_OUTPUT_NAMES}
+        for name, arr in zip(output_names, outputs):
+            if name and name.lower() in candidates and arr is not None:
+                return np.asarray(arr)
+        return None

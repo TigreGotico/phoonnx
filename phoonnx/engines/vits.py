@@ -30,6 +30,11 @@ from phoonnx.engines.base import (
 class VitsAdapter(BaseOnnxAdapter):
     """Adapter for VITS-family ONNX models (piper, mimic3, coqui, phoonnx)."""
 
+    # phoonnx's own exports name the alignment output "phoneme_id_samples";
+    # other candidate names are speculative, for future/foreign exports that
+    # expose a raw duration-predictor tensor under a common name.
+    DURATION_OUTPUT_NAMES = ["phoneme_id_samples", "durations", "w_ceil", "dur"]
+
     # ------------------------------------------------------------------
     # Required
     # ------------------------------------------------------------------
@@ -89,11 +94,29 @@ class VitsAdapter(BaseOnnxAdapter):
         self,
         outputs: List[np.ndarray],
         request: AdapterSynthesisRequest,
+        output_names: Optional[List[str]] = None,
     ) -> AdapterSynthesisResult:
-        """Extract audio waveform from VITS ONNX outputs."""
+        """Extract audio waveform from VITS ONNX outputs.
+
+        Some phoonnx exports emit a second output tensor with per-phoneme
+        sample counts (used for alignment). When present, it is exposed via
+        ``AdapterSynthesisResult.extras["phoneme_id_samples"]``.
+
+        Detection prefers matching by name (``DURATION_OUTPUT_NAMES``) when
+        ``output_names`` is available; falls back to the historical
+        positional convention (second output tensor) for sessions that don't
+        expose output names (e.g. minimal test mocks), preserving prior
+        behavior.
+        """
         # VITS returns a single output tensor — squeeze to 1-D
         audio = outputs[0].squeeze()
-        return AdapterSynthesisResult(audio=audio)
+        extras: Dict[str, Any] = {}
+        durations = self._find_duration_output(outputs, output_names)
+        if durations is None and len(outputs) > 1 and outputs[1] is not None:
+            durations = outputs[1]
+        if durations is not None:
+            extras["phoneme_id_samples"] = np.asarray(durations).squeeze()
+        return AdapterSynthesisResult(audio=audio, extras=extras)
 
     def default_params(self) -> Dict[str, float]:
         return {
