@@ -92,6 +92,7 @@ def _register_builtins() -> None:
     # their heavy torch imports until a model is actually built, so the
     # registry stays importable in torch-free environments.
     from phoonnx_train.engines.matcha import MatchaTrainingEngine
+    from phoonnx_train.engines.optispeech import OptiSpeechTrainingEngine
     from phoonnx_train.engines.vits import VitsTrainingEngine
     from phoonnx_train.engines.fastpitch import (
         ForwardTTSTrainingEngine,
@@ -109,6 +110,7 @@ def _register_builtins() -> None:
     register_engine("vits", VitsTrainingEngine)
     register_engine("glowtts", GlowTTSTrainingEngine)
     register_engine("matcha", MatchaTrainingEngine)
+    register_engine("optispeech", OptiSpeechTrainingEngine)
     register_engine("fastpitch", ForwardTTSTrainingEngine)
     register_engine("speedyspeech", SpeedySpeechTrainingEngine)
     register_engine("zipvoice", ZipVoiceTrainingEngine)

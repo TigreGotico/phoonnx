@@ -205,7 +205,11 @@ def main(
         **training_engine.trainer_kwargs(),
     )
     _LOGGER.info("Training started!")
-    trainer.fit(model, ckpt_path=fit_ckpt_path)
+    # torch>=2.6 defaults torch.load(weights_only=True), which rejects our own
+    # pickled Lightning checkpoints on ckpt_path resume.
+    from phoonnx_train.torch_compat import trusting_torch_load
+    with trusting_torch_load():
+        trainer.fit(model, ckpt_path=fit_ckpt_path)
 
 
 if __name__ == '__main__':
