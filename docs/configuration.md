@@ -1,5 +1,9 @@
 # Configuration Reference
 
+This page is the exhaustive reference for advanced users: every `VoiceConfig` and
+`SynthesisConfig` field, the `model.json` schema, engine detection, and execution providers.
+For a task-oriented walkthrough see [Usage](usage.md) instead.
+
 ## VoiceConfig
 
 `VoiceConfig` holds all model-level configuration parsed from the voice's `model.json`.
@@ -24,9 +28,21 @@ from phoonnx.config import VoiceConfig
 | `length_scale` | `float` | `1.0` | Default phoneme length scale |
 | `noise_w_scale` | `float` | `0.8` | Default phoneme width noise scale |
 | `add_diacritics` | `bool` | `False` | Auto-add diacritics (Arabic/Hebrew) |
-| `phonemizer_model` | `str` \| `None` | `None` | Model path/id for neural phonemizers (e.g. ByT5) |
+| `diacritizer_model` | `str` | `rawi-ensemble` | Diacritizer model name (Arabic `text2tashkeel`); round-tripped through the config's `inference` block |
+| `phonemizer_model` | `str` \| `None` | `None` | Model path/id or variant selector for phonemizers that take one (ByT5, AhoTTS, Cotovia, arbtok) |
 | `speaker_id_map` | `dict` | `{}` | Maps speaker names to integer IDs |
+| `lang_id_map` | `dict` | `{}` | Maps language codes to integer IDs (multi-lang voices) |
+| `lang_tokens` | `dict` | `{}` | Optional BCP-47 → model language-token override (dialect models) |
+| `engine_params` | `dict` | `{}` | Adapter-specific parameters (vocoder/speaker-encoder/style paths, etc.) |
 | `tokenizer` | `TTSTokenizer` | — | Tokenizer instance |
+| `blank_at_start` | `bool` | `True` | Insert a blank token before the sequence |
+| `blank_at_end` | `bool` | `True` | Insert a blank token after the sequence |
+| `pad_token` | `str` \| `None` | `<pad>` default | Padding token |
+| `blank_token` | `str` \| `None` | pad default | Blank token inserted between tokens |
+| `bos_token` | `str` \| `None` | `<bos>` default | Beginning-of-sequence token |
+| `eos_token` | `str` \| `None` | `<eos>` default | End-of-sequence token |
+| `word_sep_token` | `str` \| `None` | word-blank default | Token inserted between words |
+| `blank_between` | `BlankBetween` | `TOKENS_AND_WORDS` | Where blank tokens are inserted |
 
 ### Loading from a Config File
 
@@ -40,11 +56,15 @@ config = VoiceConfig.from_dict(my_config_dict)
 
 `VoiceConfig.from_dict()` automatically detects the training engine from the config structure:
 
-- **Piper** — presence of `piper_version` or `phoneme_id_map` + `phoneme_type: "espeak"|"text"`
-- **Mimic3** — presence of `phonemizer` + `phonemes` dict
-- **Coqui VITS** — presence of `characters` dict
-- **Transformers** — HuggingFace-style tokenizer config
-- **phoonnx** — default fallback
+- **Chatterbox** — an explicit `engine: "chatterbox"` (needs a BPE `tokenizer.json`)
+- **phoonnx** — presence of `phoonnx_version`
+- **Piper** — presence of `piper_version`, or a list-valued `phoneme_id_map` + `phoneme_type: "espeak"|"text"` (an explicitly declared non-piper engine wins over shape-sniffing)
+- **Mimic3** — presence of `phonemizer` + `phonemes` dict (requires an external `phonemes.txt`)
+- **Coqui VITS** — presence of a `characters` dict with a recognized `characters_class`
+- **Transformers** — driven by an external `vocab` argument passed to `from_dict()` (the voice manager supplies it from `vocab.json`), not by the ONNX shape
+- **Canonical / fallback** — a config that ships its own `phoneme_id_map` and declares its `engine`/`phoneme_type`/`alphabet` is honored as-is
+
+A `config.json` that explicitly declares its `engine` is trusted over shape-sniffing.
 
 ## SynthesisConfig
 
@@ -78,10 +98,15 @@ syn_config = SynthesisConfig(
 | `normalize_audio` | `bool` | `True` | Scale audio to full amplitude range |
 | `volume` | `float` | `1.0` | Volume multiplier |
 | `enable_phonetic_spellings` | `bool` | `True` | Apply word-level pronunciation overrides |
-| `add_diacritics` | `bool` | `True` | Add vowel diacritics before phonemization |
+| `add_diacritics` | `bool` \| `None` | `None` | Add vowel diacritics before phonemization; `None` defers to the voice config |
+| `diacritizer_model` | `str` \| `None` | `None` | Override the diacritizer model for this call; `None` inherits the voice config's `diacritizer_model` |
 | `speaker_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Reference clip for zero-shot [voice cloning](cloning.md) |
 | `speaker_reference_text` | `str` \| `None` | `None` | Reference transcription, required by in-context cloning engines (ZipVoice) |
 | `speaker_reference_lang` | `str` \| `None` | `None` | Language of the transcription, for cross-lingual cloning (defaults to the voice's `lang_code`) |
+| `exaggeration` | `float` \| `None` | `None` | Expressiveness/intensity for engines that support it (Chatterbox, ~0.5) |
+| `temperature` | `float` \| `None` | `None` | Sampling temperature for autoregressive engines (Chatterbox, ~0.8; `0` = greedy) |
+| `top_p` | `float` \| `None` | `None` | Nucleus sampling cutoff for autoregressive engines (Chatterbox, ~0.95) |
+| `extra_params` | `dict` | `{}` | Engine-specific per-call parameters (e.g. `d_factor`, `p_factor`, `e_factor`) |
 
 ## model.json Format
 
@@ -99,7 +124,9 @@ phoonnx supports multiple JSON config schemas. The native phoonnx format looks l
   "inference": {
     "noise_scale": 0.667,
     "length_scale": 1.0,
-    "noise_w": 0.8
+    "noise_w": 0.8,
+    "add_diacritics": false,
+    "diacritizer_model": "rawi-ensemble"
   },
   "blank": "_",
   "pad": "<pad>",
@@ -117,15 +144,28 @@ Piper, Mimic3, and Coqui config formats are also parsed automatically.
 
 ## Engine Enum
 
-```python
-from phoonnx.config import Engine
+`Engine` (in `phoonnx.config`) records which framework a voice was built with. It has 16
+members. `piper`, `mimic3` and `coqui` all run through the single VITS adapter; the rest map
+to a dedicated adapter. The adapter registry itself is described in [Engines](engines.md).
 
-Engine.PHOONNX       # "phoonnx"
-Engine.PIPER         # "piper"
-Engine.MIMIC3        # "mimic3"
-Engine.COQUI         # "coqui"
-Engine.TRANSFORMERS  # "transformers"
-```
+| `Engine` value | Kind | Per-engine guide |
+|---|---|---|
+| `phoonnx` | Native VITS | [Engines](engines.md) |
+| `piper` | VITS (shared adapter) | [Engines](engines.md) |
+| `mimic3` | VITS (shared adapter) | [Engines](engines.md) |
+| `coqui` | VITS (shared adapter) | [Engines](engines.md) |
+| `transformers` | HuggingFace VITS/MMS | [Engines](engines.md) |
+| `matcha` | Two-stage flow-matching mel | [Matcha](training/engines/matcha.md) |
+| `optispeech` | FastSpeech2-style + GAN vocoder | [OptiSpeech](training/engines/optispeech.md) |
+| `glowtts` | Flow-based mel + vocoder | [GlowTTS](training/engines/glowtts.md) |
+| `mixertts` | MLP-Mixer mel + vocoder | [MixerTTS](training/engines/mixertts.md) |
+| `fastpitch` | FastSpeech2-style mel + vocoder | [FastPitch](training/engines/fastpitch.md) |
+| `styletts2` | StyleTTS2 / Kokoro end-to-end | [Training](training/training.md) |
+| `yourtts` | Multilingual VITS + d-vector cloning | [Cloning](cloning.md) |
+| `zipvoice` | Flow-matching in-context cloning | [ZipVoice](training/engines/zipvoice.md) |
+| `shami` | Levantine Arabic / English (HamsVITS) | [Shami](training/engines/shami.md) |
+| `f5tts` | DiT flow-matching (F5-TTS / Habibi) | [F5-TTS](training/engines/f5tts.md) |
+| `chatterbox` | Autoregressive codec-LM cloning | [Chatterbox](training/engines/chatterbox.md) |
 
 ## Execution Providers
 

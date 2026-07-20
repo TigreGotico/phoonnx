@@ -1,5 +1,9 @@
 # Vocoders
 
+This page is for developers pairing two-stage (mel-producing) acoustic models with a
+vocoder in phoonnx, and for anyone adding a new vocoder. It documents the vocoder
+registry in `phoonnx/engines/vocoders/`.
+
 Two-stage acoustic models — **GlowTTS**, **Matcha-TTS**, **OptiSpeech** (when it
 emits a mel) — produce a **mel spectrogram** and rely on a separate **vocoder** to
 turn that mel into a waveform. `phoonnx` keeps vocoders behind a small registry so
@@ -42,8 +46,8 @@ manager resolves it at load time and hands it to the adapter via `engine_params`
 - **`vocoder_url`** — the vocoder ONNX (downloaded alongside the model). Omit for
   a parametric vocoder (Griffin-Lim).
 - **`vocoder_type`** — selects the implementation explicitly. If absent, the
-  vocoder is **auto-detected** from the ONNX output layout (3 outputs → Vocos,
-  1 → raw).
+  vocoder is **auto-detected** from the ONNX output layout: 3+ outputs → Vocos,
+  a single output → a raw-waveform vocoder.
 - **`vocoder_config_url`** — a small `vocoder.json` of vocoder parameters
   (sample rate, mel settings, preprocessing flags — see below).
 
@@ -139,5 +143,5 @@ A vocoder only works with an acoustic model whose **mel features match** it
 (sample rate, FFT/hop, n_mels, fmin/fmax, and normalization). Where no matched
 neural vocoder exists, the voice uses Griffin-Lim.
 
-See also [engines.md](./engines.md), [glowtts.md](./glowtts.md),
-[matcha.md](./matcha.md).
+See also [engines.md](./engines.md), [glowtts.md](training/engines/glowtts.md),
+[matcha.md](training/engines/matcha.md).

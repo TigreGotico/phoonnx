@@ -1,6 +1,8 @@
 # CLI Reference
 
-phoonnx ships with a command-line interface for managing voices.
+This page is for anyone managing phoonnx voices from the shell. It documents the
+`phoonnx-voices` command (the `phoonnx.cli:cli` entry point declared in
+`pyproject.toml`).
 
 ## Usage
 
@@ -14,7 +16,9 @@ phoonnx-voices <command> [options]
 
 ### `update-cache`
 
-Fetches the latest voice lists from all upstream sources (Piper, Mimic3, OpenVoiceOS, Proxectonos, Phonikud) and saves them to the local cache.
+Merges the bundled voice indexes (Piper, Mimic3, OpenVoiceOS, and the rest — see
+[voice_manager.md](voice_manager.md#where-voices-come-from)) into the local cache and
+saves it. This reads packaged JSON index files, not live network endpoints.
 
 ```bash
 phoonnx-voices update-cache
@@ -80,6 +84,20 @@ phoonnx-voices list-voices --verbose
 
 ---
 
+### `list-available`
+
+Lists every voice ID bundled with phoonnx, grouped by source (Piper, Mimic3, OVOS, …),
+by reading the packaged index files directly. It downloads nothing — no config or model
+files are fetched — so it works before `update-cache` has ever been run.
+
+```bash
+phoonnx-voices list-available
+```
+
+Use `download <VOICE_ID>` to fetch a specific voice from this list on demand.
+
+---
+
 ### `download`
 
 Downloads the ONNX model (and config/tokens files) for a specific voice ID.
@@ -88,7 +106,9 @@ Downloads the ONNX model (and config/tokens files) for a specific voice ID.
 phoonnx-voices download VOICE_ID
 ```
 
-The `VOICE_ID` must exist in the local cache. Run `update-cache` first if needed.
+The voice is looked up in the local cache first; if it is not cached, the download
+falls back to the bundled indexes, so a single voice can be fetched without running
+`update-cache` first.
 
 **Example:**
 

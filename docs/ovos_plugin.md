@@ -1,7 +1,9 @@
 # OVOS Plugin
 
-phoonnx ships with a TTS plugin for the [OpenVoiceOS](https://openvoiceos.com/) ecosystem via `PhoonnxTTSPlugin`.
-
+This page is for OpenVoiceOS users and integrators configuring phoonnx as their TTS
+engine. phoonnx ships a TTS plugin for the [OpenVoiceOS](https://openvoiceos.com/)
+ecosystem via `PhoonnxTTSPlugin`, registered under the `opm.tts` entry point
+`ovos-tts-plugin-phoonnx`.
 
 ## Configuration
 
@@ -10,14 +12,17 @@ In your OpenVoiceOS `mycroft.conf` or skills config, set:
 ```json
 {
   "tts": {
-    "module": "phoonnx",
-    "phoonnx": {
+    "module": "ovos-tts-plugin-phoonnx",
+    "ovos-tts-plugin-phoonnx": {
       "lang": "en-US",
       "voice": "OpenVoiceOS/pipertts_en-US_miro"
     }
   }
 }
 ```
+
+The module name and the config sub-key are both the entry-point name,
+`ovos-tts-plugin-phoonnx`.
 
 If `voice` is omitted or set to `"default"`, the plugin selects a default voice for the configured language.
 
@@ -64,9 +69,30 @@ always kept as a final fallback. Unset, providers come from the
 }
 ```
 
-Running on a GPU needs the matching ONNX Runtime build (`onnxruntime-rocm`,
-`onnxruntime-gpu`, `onnxruntime-directml`, ...) — see
+`onnx_providers` may also be given as a bare string for a single provider; `providers`
+is accepted as an alias. Running on a GPU needs the matching ONNX Runtime build
+(`onnxruntime-rocm`, `onnxruntime-gpu`, `onnxruntime-directml`, ...) — see
 [configuration.md](configuration.md#execution-providers).
+
+### Synthesis and cloning config keys
+
+The plugin reads synthesis options from its config, accepting the documented
+underscore name plus legacy aliases (resolved by `_cfg_opt` in `phoonnx/opm.py`):
+
+| Option | Accepted keys | Meaning |
+|--------|---------------|---------|
+| Phonetic spellings | `enable_phonetic_spellings`, `enable_phonetic_spelling` | Toggle phonetic-spelling substitutions |
+| Diacritics | `add_diacritics` | Add diacritics (Arabic/Hebrew) |
+| Generator noise | `noise_scale`, `noise-scale` | VITS noise scale |
+| Phoneme length | `length_scale`, `length-scale` | VITS length scale |
+| Phoneme width noise | `noise_w_scale`, `noise_w`, `noise-w` | VITS noise-W scale |
+| Speaker | `speaker_id`, `speaker` | Multi-speaker selection (see above) |
+| Reference clip | `speaker_reference`, `ref_wav`, `clone_voice` | Cloning reference audio |
+| Reference text | `speaker_reference_text`, `ref_text` | In-context reference transcription |
+| Reference lang | `speaker_reference_lang`, `ref_lang` | In-context reference language |
+| Providers | `onnx_providers`, `providers` | ONNX Runtime execution providers |
+
+See [cloning.md](cloning.md) for the cloning keys in detail.
 
 ## How It Works
 
@@ -103,15 +129,16 @@ plugin = PhoonnxTTSPlugin(config={
 
 | Method | Description |
 |--------|-------------|
-| `get_tts(utterance, wav_file)` | Synthesize utterance and write to WAV file path |
+| `get_tts(sentence, wav_file, lang=None, voice=None)` | Synthesize `sentence` and write to the WAV file path; `lang`/`voice` override the configured defaults per call |
 | `get_default_voice(lang)` | Returns the default `TTSModelInfo` for a language |
 | `refresh_voices(force=False)` | Refresh the voice catalog from the model manager |
 
 ## Supported Voices
 
-All voices available through `TTSModelManager` are accessible to the plugin. Run the CLI to see available options:
+All voices available through `TTSModelManager` are accessible to the plugin. Use the
+[`phoonnx-voices`](cli.md) command to see available options:
 
 ```bash
-phoonnx_cli.py update-cache
-phoonnx_cli.py list-voices --lang en-US
+phoonnx-voices update-cache
+phoonnx-voices list-voices --lang en-US
 ```
