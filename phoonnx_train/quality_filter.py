@@ -15,7 +15,6 @@ model-based) and short-circuit per sample: once a sample fails one filter it
 is dropped without paying for any remaining (possibly expensive) scorers.
 """
 import logging
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Union
@@ -277,62 +276,33 @@ def is_music_like_score(audio: object, sr: int, text: str, duration: float) -> f
     return 1.0 if rhythmicity_score(audio, sr) > IS_MUSIC_LIKE_RHYTHMICITY_THRESHOLD else 0.0
 
 
-_utmos_predictor = None
+def _som_score(audio: object, sr: int, metric: str) -> Dict[str, float]:
+    """Score `audio` (sr Hz) with a single speechonnxmetrics MOS metric,
+    returning its flat result dict (e.g. {'utmos': 4.4} or
+    {'dnsmos.sig': ..., 'dnsmos.bak': ..., 'dnsmos.ovrl': ...}).
 
-
-def _load_utmos():
-    global _utmos_predictor
-    if _utmos_predictor is None:
-        import torch
-        _LOGGER.info("loading UTMOS (SpeechMOS utmos22_strong)...")
-        _utmos_predictor = torch.hub.load(
-            "tarepan/SpeechMOS", "utmos22_strong", trust_repo=True
-        )
-        _utmos_predictor.eval()
-    return _utmos_predictor
+    speechonnxmetrics resamples to each model's native rate internally and
+    downloads its ONNX weights lazily on first use from public HF repos.
+    Per-item failures are surfaced (score() records them under '_errors')
+    and re-raised here so a failing sample is dropped, matching the old
+    behaviour where a scorer exception dropped the sample.
+    """
+    import speechonnxmetrics as som
+    result = som.score(audio, [metric], sr=sr)
+    errors = result.get("_errors")
+    if errors:
+        raise RuntimeError(f"speechonnxmetrics {metric} failed: {errors}")
+    return result
 
 
 def utmos_score(audio: object, sr: int, text: str, duration: float) -> float:
-    """UTMOS1 naturalness MOS via SpeechMOS utmos22_strong. Resamples to
-    16kHz mono, expects roughly peak-normalized audio."""
-    import torch
-    import torchaudio
-
-    predictor = _load_utmos()
-    t = torch.from_numpy(audio).float() if hasattr(audio, "dtype") else torch.tensor(audio).float()
-    if sr != 16000:
-        t = torchaudio.functional.resample(t, sr, 16000)
-    with torch.no_grad():
-        score = predictor(t.unsqueeze(0), 16000)
-    return float(score.squeeze().item())
+    """UTMOS naturalness MOS via speechonnxmetrics (UTMOS22 strong, ONNX).
+    Audio is scored as-is; the library resamples to 16kHz mono internally."""
+    return float(_som_score(audio, sr, "utmos")["utmos"])
 
 
 _dnsmos_cache_audio = None
 _dnsmos_cache_value: Optional[Dict[str, float]] = None
-
-
-_speechmos_run_cache: Dict[str, Callable] = {}
-
-
-def _load_speechmos_run(submodule: str) -> Callable:
-    """Imports the real (pip) speechmos.<submodule>.run and purges
-    `speechmos` from sys.modules afterward.
-
-    torch.hub.load(...) for UTMOS caches a github repo that bundles its own
-    package also named `speechmos` (UTMOS-only). Importing that cached repo
-    after the real pip package has already been imported (or vice versa)
-    lets one shadow the other in sys.modules. Grabbing a bound reference to
-    the real `run` function first and then purging `speechmos*` from
-    sys.modules keeps both usable regardless of import order.
-    """
-    if submodule not in _speechmos_run_cache:
-        import importlib
-        real_module = importlib.import_module(f"speechmos.{submodule}")
-        _speechmos_run_cache[submodule] = real_module.run
-        for mod_name in list(sys.modules):
-            if mod_name == "speechmos" or mod_name.startswith("speechmos."):
-                del sys.modules[mod_name]
-    return _speechmos_run_cache[submodule]
 
 
 def _resample_16k(audio: object, sr: int) -> object:
@@ -344,32 +314,51 @@ def _resample_16k(audio: object, sr: int) -> object:
 
 
 def _dnsmos_all(audio: object, sr: int) -> Dict[str, float]:
+    """All three DNSMOS P.835 heads for a clip, via speechonnxmetrics.
+    Cached on the audio object so the three dnsmos_* scorers share one
+    forward pass per sample."""
     global _dnsmos_cache_audio, _dnsmos_cache_value
     if _dnsmos_cache_audio is not audio or _dnsmos_cache_value is None:
-        run = _load_speechmos_run("dnsmos")
-        resampled = _resample_16k(audio, sr)
-        _dnsmos_cache_value = run(resampled, sr=16000)
+        result = _som_score(audio, sr, "dnsmos")
+        _dnsmos_cache_value = {
+            "sig_mos": float(result["dnsmos.sig"]),
+            "bak_mos": float(result["dnsmos.bak"]),
+            "ovrl_mos": float(result["dnsmos.ovrl"]),
+        }
         _dnsmos_cache_audio = audio
     return _dnsmos_cache_value
 
 
+def _load_speechmos_run(submodule: str) -> Callable:
+    """Bound `run` of the pip `speechmos.<submodule>` (plcmos/aecmos).
+
+    UTMOS no longer comes from torch.hub, so the cached SpeechMOS repo that
+    bundled a shadowing `speechmos` package is never imported and the real
+    pip package can be imported plainly."""
+    import importlib
+    return importlib.import_module(f"speechmos.{submodule}").run
+
+
 def _speechmos_df_value(df, preferred_columns: List[str]) -> float:
-    """Pulls a scalar metric out of a single-row speechmos `return_df=True`
-    result, preferring an exact expected column name but falling back to the
-    last numeric column so a harmless column-naming difference across
-    speechmos versions doesn't hard-crash preprocessing."""
-    row = df.iloc[0]
+    """Pulls a scalar metric out of a speechmos result, preferring an exact
+    expected column name but falling back to the last numeric column so a
+    harmless naming difference across speechmos versions doesn't hard-crash
+    preprocessing. Accepts either a single-row DataFrame (older speechmos
+    `return_df=True`) or a plain dict (newer speechmos returns a dict even
+    with `return_df=True`)."""
+    row = dict(df) if isinstance(df, dict) else df.iloc[0].to_dict()
     for col in preferred_columns:
         if col in row:
             return float(row[col])
-    numeric = [v for v in row if isinstance(v, (int, float))]
+    numeric = [v for v in row.values()
+               if isinstance(v, (int, float)) and not isinstance(v, bool)]
     if not numeric:
-        raise ValueError(f"speechmos result has no numeric columns: {list(row.index)}")
+        raise ValueError(f"speechmos result has no numeric columns: {list(row)}")
     return float(numeric[-1])
 
 
 def dnsmos_sig_score(audio: object, sr: int, text: str, duration: float) -> float:
-    """DNSMOS P.835 signal quality MOS, via the `speechmos` pip package."""
+    """DNSMOS P.835 signal quality MOS, via speechonnxmetrics (ONNX)."""
     return float(_dnsmos_all(audio, sr)["sig_mos"])
 
 
