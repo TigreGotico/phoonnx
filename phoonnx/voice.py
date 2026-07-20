@@ -28,12 +28,24 @@ from phoonnx.engines.base import (
 )
 from phoonnx.phonemizers import Phonemizer
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
-from phoonnx.phonemizers.base import PhonemizedChunks
+from phoonnx.phonemizers.base import BasePhonemizer, PhonemizedChunks
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
 
 _PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
+
+
+def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunks:
+    """Split an already-phonemic string into per-sentence symbol lists.
+
+    Space-separated notations (ARPA) tokenize on whitespace; char-based
+    alphabets tokenize per character.
+    """
+    chunks = BasePhonemizer.chunk_text(text)
+    if alphabet == Alphabet.ARPA:
+        return [chunk.split() for chunk, _, _ in chunks if chunk.strip()]
+    return [[c for c in chunk] for chunk, _, _ in chunks if chunk]
 
 
 def _load_reference_audio(ref: Any) -> tuple:
@@ -414,9 +426,7 @@ class TTSVoice:
                 ]
             else:
                 # Already-phonemic input in the model's own alphabet: pass through.
-                from phoonnx.phonemizers.base import BasePhonemizer
-                chunks = BasePhonemizer.chunk_text(text)
-                sentence_phonemes = [[c for c in chunk] for chunk, _, _ in chunks if chunk]
+                sentence_phonemes = _phonemic_chunks(text, tgt_alphabet)
                 LOG.debug("phonemes=%s", sentence_phonemes)
                 all_ids_for_synthesis = [
                     (self.phonemes_to_ids(phonemes), None)
@@ -460,9 +470,7 @@ class TTSVoice:
                     sentence_phonemes = self.phonemize(text)
             else:
                 # Script-converted string — split into single-char token lists.
-                from phoonnx.phonemizers.base import BasePhonemizer
-                chunks = BasePhonemizer.chunk_text(converted)
-                sentence_phonemes = [[c for c in chunk] for chunk, _, _ in chunks if chunk]
+                sentence_phonemes = _phonemic_chunks(converted, tgt_alphabet)
             LOG.debug("phonemes=%s", sentence_phonemes)
             all_ids_for_synthesis = [
                 (self.phonemes_to_ids(phonemes), None)

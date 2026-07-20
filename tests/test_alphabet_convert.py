@@ -175,14 +175,14 @@ class TestSynthesizeReshape(unittest.TestCase):
     """Verify TTSVoice.synthesize uses convert and produces identical output."""
 
     def _make_voice(self, phoneme_type=PhonemeType.ESPEAK,
-                    alphabet=Alphabet.IPA):
+                    alphabet=Alphabet.IPA, vocab_chars=None):
         """Build a minimal TTSVoice with mocked ONNX session."""
         from phoonnx.config import VoiceConfig, BlankBetween
         from phoonnx.tokenizer import TTSTokenizer, Vocabulary
         from phoonnx.voice import TTSVoice
         import numpy as np
 
-        vocab = Vocabulary(char2idx={"a": 1, "b": 2, "_": 0}, blank="_")
+        vocab = Vocabulary(char2idx=vocab_chars or {"a": 1, "b": 2, "_": 0}, blank="_")
         tokenizer = TTSTokenizer(vocab,
                                  add_blank_char=True,
                                  add_blank_word=False,
@@ -284,6 +284,57 @@ class TestScriptconvNotationEdges(unittest.TestCase):
 
     def test_hira_to_kana(self):
         self.assertEqual(convert("ひらがな", "ja", Alphabet.HIRA, Alphabet.KANA), "ヒラガナ")
+
+
+class TestPhonemicChunksHelper(unittest.TestCase):
+    """Unit tests for phoonnx.voice._phonemic_chunks."""
+
+    def test_arpa_splits_on_whitespace(self):
+        from phoonnx.voice import _phonemic_chunks
+        self.assertEqual(_phonemic_chunks("SH AX", Alphabet.ARPA), [["SH", "AX"]])
+
+    def test_ipa_splits_per_char(self):
+        from phoonnx.voice import _phonemic_chunks
+        self.assertEqual(_phonemic_chunks("ʃə", Alphabet.IPA), [["ʃ", "ə"]])
+
+
+class TestSynthesizeArpaTranscode(unittest.TestCase):
+    """Adversarial: X-SAMPA input transcoded to an ARPA-vocab model must not
+    char-split the resulting space-separated ARPA symbols."""
+
+    def test_xsampa_to_arpa_tokenizes_on_whitespace_not_chars(self):
+        from phoonnx.alphabet_convert import convert
+        from phoonnx.voice import _phonemic_chunks
+
+        # Ground the expectation: the transcode itself yields space-separated
+        # multi-char ARPA symbols, not single IPA/X-SAMPA characters.
+        converted = convert("S@", "en", Alphabet.XSAMPA, Alphabet.ARPA)
+        self.assertEqual(converted, "SH AX")
+        self.assertEqual(_phonemic_chunks(converted, Alphabet.ARPA), [["SH", "AX"]])
+
+        from phoonnx.config import SynthesisConfig
+        voice = TestSynthesizeReshape()._make_voice(
+            phoneme_type=PhonemeType.ESPEAK,
+            alphabet=Alphabet.ARPA,
+            vocab_chars={"SH": 1, "AX": 2, "_": 0},
+        )
+        syn_cfg = SynthesisConfig(normalize_audio=False, alphabet=Alphabet.XSAMPA)
+
+        seen_phonemes = []
+        orig_phonemes_to_ids = voice.phonemes_to_ids
+
+        def spy(phonemes):
+            seen_phonemes.append(list(phonemes))
+            return orig_phonemes_to_ids(phonemes)
+
+        voice.phonemes_to_ids = spy
+
+        list(voice.synthesize("S@", syn_cfg))
+
+        # The tokenizer must have been fed whole ARPA symbols ("SH", "AX"),
+        # never single characters ("S", "H", " ", "A", "X").
+        self.assertTrue(seen_phonemes, "phonemes_to_ids was never called")
+        self.assertEqual(seen_phonemes[0], ["SH", "AX"])
 
 
 if __name__ == "__main__":
