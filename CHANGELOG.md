@@ -27,6 +27,8 @@
 
 **Merged pull requests:**
 
+- test: cover config format detection and tokenizer vocabulary construction [\#245](https://github.com/TigreGotico/phoonnx/pull/245) ([JarbasAl](https://github.com/JarbasAl))
+- test: cover CLI commands and model download subsystem [\#244](https://github.com/TigreGotico/phoonnx/pull/244) ([JarbasAl](https://github.com/JarbasAl))
 - test: cover alphabet conversion edges and en/mul/ar phonemizer dispatch [\#243](https://github.com/TigreGotico/phoonnx/pull/243) ([JarbasAl](https://github.com/JarbasAl))
 - feat: synthesize sentences lazily to cut time-to-first-audio [\#242](https://github.com/TigreGotico/phoonnx/pull/242) ([JarbasAl](https://github.com/JarbasAl))
 - Cache ORT-optimized graphs, add voice warmup, warn on silent provider fallback [\#241](https://github.com/TigreGotico/phoonnx/pull/241) ([JarbasAl](https://github.com/JarbasAl))
@@ -102,10 +104,6 @@
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.3...1.3.4a1)
-
-**Merged pull requests:**
-
-- Add docs: installation, configuration, usage guides, training notebook [\#113](https://github.com/TigreGotico/phoonnx/pull/113) ([JarbasAl](https://github.com/JarbasAl))
 
 
 
