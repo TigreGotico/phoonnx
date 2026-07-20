@@ -278,9 +278,15 @@ class MatchaTrainingEngine(BaseTrainingEngine):
 
         n_timesteps = kwargs.get("n_timesteps", 5)
 
+        from phoonnx_train.torch_compat import trusting_torch_load
+
         _LOG.info("Loading Matcha checkpoint from %s", checkpoint_path)
-        # hyperparameters include SimpleNamespace config objects
-        with torch.serialization.safe_globals([SimpleNamespace]):
+        # hyper_parameters include SimpleNamespace config objects, so the
+        # checkpoint cannot be unpickled under weights_only=True. Loading a
+        # local training checkpoint is trusted; force weights_only=False in a
+        # version-portable way that does not rely on torch>=2.4 allowlisting
+        # APIs (this project supports torch>=2.1).
+        with trusting_torch_load():
             matcha = MatchaTTS.load_from_checkpoint(checkpoint_path, map_location="cpu")
         matcha.eval()
 
@@ -356,8 +362,12 @@ class MatchaTrainingEngine(BaseTrainingEngine):
         """Load Matcha weights, tolerating vocab/speaker-count mismatches."""
         import torch
 
-        with torch.serialization.safe_globals([SimpleNamespace]):
-            ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+        from phoonnx_train.torch_compat import trusting_torch_load
+
+        # weights_only=True rejects the SimpleNamespace config objects stored in
+        # the checkpoint hyper_parameters; a local checkpoint is trusted.
+        with trusting_torch_load():
+            ckpt = torch.load(checkpoint_path, map_location="cpu")
         state_dict = ckpt.get("state_dict", ckpt)
         model_state = model.state_dict()
         filtered = {
