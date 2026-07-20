@@ -1,0 +1,5 @@
+pyopenjtalk
+pykakasi
+cutlet
+unidic-lite
+misaki[ja]
