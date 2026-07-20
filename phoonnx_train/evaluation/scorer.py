@@ -325,15 +325,34 @@ class CheckpointScorer:
         return agg
 
     def _write_perutt(self, work_dir: Path, perutt) -> None:
-        import csv
+        _write_perutt_csv(work_dir / "perutt.csv", perutt, self.metrics)
 
-        header = ["sentence"] + self.metrics + ["spk_sim"]
-        with open(work_dir / "perutt.csv", "w", newline="", encoding="utf-8") as f:
-            w = csv.writer(f)
-            w.writerow(header)
-            for text, mvals, sim in perutt:
-                w.writerow(
-                    [text]
-                    + [f"{mvals[m]:.4f}" for m in self.metrics]
-                    + [f"{sim:.4f}" if sim is not None else ""]
-                )
+
+def _write_perutt_csv(path: Path, perutt, metrics) -> None:
+    import csv
+
+    header = ["sentence"] + list(metrics) + ["spk_sim"]
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(header)
+        for text, mvals, sim in perutt:
+            w.writerow(
+                [text]
+                + [f"{mvals[m]:.4f}" for m in metrics]
+                + [f"{sim:.4f}" if sim is not None else ""]
+            )
+
+
+def write_epoch_perutt(output_dir: Path, row: "EvalRow", metrics=("utmos",)) -> Path:
+    """Write the legacy per-epoch per-utterance file ``perutt/epoch<N>.csv``.
+
+    Kept for EVERY evaluated epoch (not just the best) so per-utterance trends
+    across epochs are available for overfit diagnosis (e.g. one sentence
+    degrading while the mean holds). Columns: ``sentence``, each metric,
+    ``spk_sim``.
+    """
+    perutt_dir = Path(output_dir) / "perutt"
+    perutt_dir.mkdir(parents=True, exist_ok=True)
+    path = perutt_dir / f"epoch{row.epoch}.csv"
+    _write_perutt_csv(path, row.perutt, list(metrics))
+    return path

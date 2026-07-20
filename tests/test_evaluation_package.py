@@ -29,8 +29,12 @@ def _row(epoch, utmos, spk_sim=None, step=10):
     if spk_sim is not None:
         agg.update({"spk_sim_mean": spk_sim, "spk_sim_std": 0.0,
                     "spk_sim_min": spk_sim, "spk_sim_max": spk_sim})
+    perutt = [
+        ("hello", {"utmos": utmos}, spk_sim),
+        ("world", {"utmos": utmos}, spk_sim),
+    ]
     return EvalRow(epoch=epoch, step=step, checkpoint=f"epoch={epoch}.ckpt",
-                   n_sentences=5, aggregates=agg)
+                   n_sentences=len(perutt), aggregates=agg, perutt=perutt)
 
 
 # ---------------------------------------------------------------------------
@@ -184,6 +188,29 @@ class TestTracker(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # Callbacks
 # ---------------------------------------------------------------------------
+class TestWriteEpochPerutt(unittest.TestCase):
+    def test_legacy_columns_and_path(self):
+        from phoonnx_train.evaluation.scorer import write_epoch_perutt
+
+        with TemporaryDirectory() as d:
+            out = Path(d)
+            row = _row(4, utmos=3.2, spk_sim=0.81)
+            path = write_epoch_perutt(out, row, ("utmos",))
+            self.assertEqual(path, out / "perutt" / "epoch4.csv")
+            rows = list(csv.reader(path.read_text().splitlines()))
+            self.assertEqual(rows[0], ["sentence", "utmos", "spk_sim"])
+            self.assertEqual(rows[1], ["hello", "3.2000", "0.8100"])
+
+    def test_no_speaker_score_leaves_spk_sim_empty(self):
+        from phoonnx_train.evaluation.scorer import write_epoch_perutt
+
+        with TemporaryDirectory() as d:
+            out = Path(d)
+            path = write_epoch_perutt(out, _row(1, utmos=3.0), ("utmos",))
+            rows = list(csv.reader(path.read_text().splitlines()))
+            self.assertEqual(rows[1], ["hello", "3.0000", ""])
+
+
 class TestStopFileCallback(unittest.TestCase):
     def test_stops_when_flag_present(self):
         from phoonnx_train.evaluation.callbacks import StopFileCallback
@@ -206,6 +233,7 @@ class TestEvalScoreboardCallback(unittest.TestCase):
 
         tracker = MetricsTracker(out)
         selection = SelectionPolicy(metric="utmos_mean")
+        scorer.metrics = ["utmos"]
         ckpt_dir = out / "ckpts"
         ckpt_dir.mkdir(parents=True, exist_ok=True)
         (ckpt_dir / "epoch=0-step=1.ckpt").write_bytes(b"w")
@@ -246,6 +274,11 @@ class TestEvalScoreboardCallback(unittest.TestCase):
                 cb.on_train_epoch_end(self._trainer(), MagicMock())
             self.assertEqual(tracker.done_epochs(), {0})
             self.assertTrue((out / "best.json").exists())
+            # per-epoch per-utterance file kept for the scored epoch
+            perutt = out / "perutt" / "epoch0.csv"
+            self.assertTrue(perutt.exists())
+            self.assertEqual(perutt.read_text().splitlines()[0],
+                             "sentence,utmos,spk_sim")
 
 
 # ---------------------------------------------------------------------------
@@ -370,6 +403,12 @@ class TestEvalLoopCLI(unittest.TestCase):
             tr = MetricsTracker(out)
             self.assertEqual(tr.done_epochs(), {0})
             self.assertTrue((out / "best.json").exists())
+            # legacy per-epoch per-utterance file with legacy columns
+            perutt = out / "perutt" / "epoch0.csv"
+            self.assertTrue(perutt.exists())
+            lines = perutt.read_text().splitlines()
+            self.assertEqual(lines[0], "sentence,utmos,spk_sim")
+            self.assertTrue(lines[1].startswith("hello world,3.7000,"))
 
     def test_once_emits_stop_flag_on_patience(self):
         import click.testing

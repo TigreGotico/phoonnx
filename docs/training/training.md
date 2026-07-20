@@ -247,10 +247,11 @@ python -m phoonnx_train.export_onnx --engine styletts2 ...
 
 `phoonnx_train/eval_loop.py` watches the training directory for new Lightning checkpoints
 (`epoch=*.ckpt`) and scores each on a fixed set of held-out sentences, synthesized on CPU so
-training keeps the GPU. Results are appended to `metrics.csv` (one row per epoch), and the best
-epoch's wavs plus per-utterance scores (`perutt.csv`) are kept under `samples/epoch<N>/`. The
-loop is idempotent — already-scored (and permanently failed) epochs are skipped on restart.
-Needs `phoonnx[train-eval]`.
+training keeps the GPU. Results are appended to `metrics.csv` (one row per epoch), per-utterance
+scores are written for **every** epoch under `perutt/epoch<N>.csv` (columns `sentence`, `utmos`,
+`spk_sim` — so a single sentence degrading while the mean holds is visible across epochs), and
+the best epoch's wavs are kept under `samples/epoch<N>/`. The loop is idempotent — already-scored
+(and permanently failed) epochs are skipped on restart. Needs `phoonnx[train-eval]`.
 
 ```bash
 python -m phoonnx_train.eval_loop \
@@ -322,6 +323,8 @@ dir / `speakeronnx` missing) selection falls back to UTMOS-only and logs a warni
 - `best.json` — epoch, step, checkpoint path, and all scores of the current best.
 - `best.ckpt` — a **copy** (not a symlink) of the best checkpoint, so it survives checkpoint
   pruning.
+- `perutt/epoch<N>.csv` — per-utterance scores for every evaluated epoch (`sentence`, `utmos`,
+  `spk_sim`), for tracking per-sentence trends / overfit across epochs.
 - `samples/epoch<N>/` — the best epoch's synthesized wavs plus `perutt.csv`.
 - `failed.json` — a checkpoint that fails to load/score 3 times is recorded failed and skipped
   forever (ERROR logged); no infinite retry.

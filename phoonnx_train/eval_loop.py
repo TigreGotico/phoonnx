@@ -27,7 +27,8 @@ from phoonnx_train.engines import get_engine, list_engines
 from phoonnx_train.eval_utils import (find_checkpoints, read_sentences,
                                       size_stable)
 from phoonnx_train.evaluation import CheckpointScorer, MetricsTracker, SelectionPolicy
-from phoonnx_train.evaluation.scorer import build_encoder, text_to_ids
+from phoonnx_train.evaluation.scorer import (build_encoder, text_to_ids,
+                                             write_epoch_perutt)
 
 _LOGGER = logging.getLogger(__package__)
 
@@ -60,6 +61,9 @@ def evaluate_one(scorer, selection, tracker, ckpt_path, epoch, train_dir):
 
     best = selection.read_best(tracker.output_dir)
     tracker.append(row.to_csv_row())
+    # Keep a per-epoch per-utterance file for EVERY epoch (overfit diagnosis:
+    # per-sentence trends across epochs, not just the best epoch's samples).
+    write_epoch_perutt(tracker.output_dir, row, scorer.metrics)
     _LOGGER.info("epoch %d: %s", epoch, row.aggregates)
     if selection.is_improvement(row, best):
         selection.commit_best(row, tracker.output_dir, work_dir=work_dir)

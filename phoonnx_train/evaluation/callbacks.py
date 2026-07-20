@@ -20,6 +20,7 @@ except Exception:  # pragma: no cover - exercised indirectly
     Callback = object
 
 from phoonnx_train.eval_utils import find_checkpoints, size_stable
+from phoonnx_train.evaluation.scorer import write_epoch_perutt
 from phoonnx_train.evaluation.selection import SelectionPolicy
 from phoonnx_train.evaluation.tracker import MetricsTracker
 
@@ -125,6 +126,9 @@ class EvalScoreboardCallback(Callback):
 
         best = self.selection.read_best(self.output_dir)
         self.tracker.append(row.to_csv_row())
+        # Per-epoch per-utterance file for every scored epoch (overfit
+        # diagnosis across epochs, not only the best epoch's samples).
+        write_epoch_perutt(self.output_dir, row, self.scorer.metrics)
         if self.selection.is_improvement(row, best):
             self.selection.commit_best(row, self.output_dir, work_dir=work_dir)
             best = row
