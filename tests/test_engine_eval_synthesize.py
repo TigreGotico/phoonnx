@@ -105,6 +105,8 @@ def _export_tiny_raw_vocoder(tmp_path, n_feats: int, hop_length: int) -> Path:
     module.eval()
     dummy = torch.randn(1, n_feats, 10)
     onnx_path = tmp_path / "tiny_vocoder.onnx"
+    from phoonnx_train.torch_compat import onnx_export_kwargs
+
     torch.onnx.export(
         module,
         (dummy,),
@@ -113,6 +115,7 @@ def _export_tiny_raw_vocoder(tmp_path, n_feats: int, hop_length: int) -> Path:
         output_names=["wav"],
         dynamic_axes={"mels": {0: "batch", 2: "time"}, "wav": {0: "batch", 1: "time"}},
         opset_version=15,
+        **onnx_export_kwargs(),
     )
     return onnx_path
 
