@@ -3,6 +3,7 @@ import phoonnx.cli and phoonnx.model_manager, and error messages must not
 reference the old phoonnx_cli.py script name.
 """
 import ast
+import sys
 import tomllib
 import unittest
 from pathlib import Path
@@ -27,14 +28,7 @@ DIST_TO_IMPORT = {
     "requests": "requests",
 }
 
-STDLIB_MODULES = {
-    "os", "sys", "re", "json", "wave", "string", "logging", "typing",
-    "dataclasses", "pathlib", "enum", "collections", "datetime",
-    "unicodedata", "__future__", "abc", "subprocess", "hashlib", "base64",
-    "csv", "math", "optparse", "functools", "shutil", "io", "itertools",
-    "tempfile", "warnings", "copy", "random", "argparse", "time",
-    "importlib", "shlex", "glob", "struct", "textwrap", "uuid",
-}
+STDLIB_MODULES = set(sys.stdlib_module_names) | {"__future__"}
 
 
 def _dist_names_to_import_names(dep_specs):

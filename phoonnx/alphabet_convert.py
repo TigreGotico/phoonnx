@@ -292,7 +292,6 @@ def _graphemes_to_cangjie(text: str, lang: str, _pt=None) -> str:
 
 
 register_converter(Alphabet.GRAPHEMES, Alphabet.HANGUL, _graphemes_to_hangul)
-register_converter(Alphabet.HANGUL, Alphabet.HANGUL, lambda t, l, _=None: t)  # identity
 register_converter(Alphabet.GRAPHEMES, Alphabet.HIRA, _graphemes_to_hiragana)
 register_converter(Alphabet.GRAPHEMES, Alphabet.KANA, _graphemes_to_kana)
 register_converter(Alphabet.GRAPHEMES, Alphabet.CANGJIE, _graphemes_to_cangjie)
