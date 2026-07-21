@@ -7,7 +7,6 @@ scriptconv notation edges, pykakasi hira happy/missing paths).
 import unittest
 from unittest.mock import MagicMock, patch
 import sys
-import unicodedata
 
 from phoonnx.config import Alphabet, PhonemeType
 from phoonnx.alphabet_convert import (
@@ -38,11 +37,11 @@ class TestFindPathNoPath(unittest.TestCase):
         self.assertIsNone(result)
 
 
-class TestCallEdgeFallback(unittest.TestCase):
-    def test_typeerror_falls_back_to_two_arg_call(self):
-        """An edge function that only accepts (text, lang) must still be
-        callable: _call_edge first tries the 3-arg form, catches the
-        TypeError from the arity mismatch, and retries with 2 args."""
+class TestCallEdgeArity(unittest.TestCase):
+    def test_two_arg_edge_is_called_with_two_args(self):
+        """An edge function that only accepts (text, lang) must be called
+        with exactly those two arguments — arity is resolved from the
+        function's own signature, not discovered by a trial call."""
         calls = []
 
         def two_arg_edge(text, lang):
@@ -61,8 +60,8 @@ class TestCallEdgeFallback(unittest.TestCase):
         self.assertEqual(result, "hi:en:PhonemeType.ESPEAK")
 
     def test_via_convert_end_to_end_with_two_arg_edge(self):
-        """Same fallback, exercised through the public convert() entry point
-        rather than calling _call_edge directly."""
+        """Same arity resolution, exercised through the public convert()
+        entry point rather than calling _call_edge directly."""
         key = (Alphabet.SAMPA, Alphabet.RFE)
         old = ALPHABET_CONVERTERS.get(key)
         try:
@@ -76,6 +75,46 @@ class TestCallEdgeFallback(unittest.TestCase):
                 ALPHABET_CONVERTERS.pop(key, None)
             else:
                 ALPHABET_CONVERTERS[key] = old
+
+    def test_via_convert_end_to_end_with_three_arg_edge(self):
+        key = (Alphabet.SAMPA, Alphabet.RFE)
+        old = ALPHABET_CONVERTERS.get(key)
+        try:
+            register_converter(Alphabet.SAMPA, Alphabet.RFE,
+                                lambda text, lang, pt=None: f"{text}:{pt}")
+            result = convert("x", "en", Alphabet.SAMPA, Alphabet.RFE,
+                              phoneme_type=PhonemeType.ESPEAK)
+            self.assertEqual(result, "x:PhonemeType.ESPEAK")
+        finally:
+            if old is None:
+                ALPHABET_CONVERTERS.pop(key, None)
+            else:
+                ALPHABET_CONVERTERS[key] = old
+
+    def test_typeerror_raised_inside_edge_propagates_and_runs_once(self):
+        """A genuine TypeError raised inside a 3-arg edge's own body must
+        not be swallowed and silently retried with 2 args — it must
+        propagate, and the edge must have executed exactly once."""
+        calls = []
+
+        def three_arg_edge(text, lang, phoneme_type):
+            calls.append((text, lang, phoneme_type))
+            raise TypeError("bad internal cast")
+
+        with self.assertRaises(TypeError):
+            _call_edge(three_arg_edge, "hi", "en", PhonemeType.ESPEAK)
+        self.assertEqual(len(calls), 1)
+
+    def test_typeerror_raised_inside_two_arg_edge_propagates_and_runs_once(self):
+        calls = []
+
+        def two_arg_edge(text, lang):
+            calls.append((text, lang))
+            raise TypeError("bad internal cast")
+
+        with self.assertRaises(TypeError):
+            _call_edge(two_arg_edge, "hi", "en", PhonemeType.ESPEAK)
+        self.assertEqual(len(calls), 1)
 
 
 class TestRegisterConverterOverwrite(unittest.TestCase):
@@ -165,17 +204,24 @@ class TestKanaPassthrough(unittest.TestCase):
         self.assertEqual(result, "トウキョウ")
 
 
-class TestJamoDecomposeExceptionFallback(unittest.TestCase):
-    def test_normalize_failure_falls_back_to_passthrough(self):
-        text = "가"  # 가
-        with patch.object(unicodedata, "normalize", side_effect=RuntimeError("boom")):
-            result = convert(text, "ko", Alphabet.HANGUL, Alphabet.HIRA)
-        self.assertEqual(result, text)
+class TestNoHangulToHiraEdge(unittest.TestCase):
+    """HANGUL→HIRA was previously wired to a Korean jamo-decomposition
+    function (a copy/paste error: it emitted NFD jamo, not hiragana, and
+    there is no JAMO alphabet). That edge must not exist, directly or via
+    a composed path."""
 
-    def test_normalize_success_decomposes_hangul_syllable(self):
-        # 가 (U+AC00) decomposes to jamo ㄱ + ㅏ (NFD form).
-        result = convert("가", "ko", Alphabet.HANGUL, Alphabet.HIRA)
-        self.assertEqual(result, unicodedata.normalize("NFD", "가"))
+    def test_no_direct_edge_registered(self):
+        self.assertNotIn((Alphabet.HANGUL, Alphabet.HIRA), ALPHABET_CONVERTERS)
+
+    def test_no_path_from_hangul_to_hira(self):
+        self.assertIsNone(_find_path(Alphabet.HANGUL, Alphabet.HIRA))
+
+    def test_convert_returns_input_unchanged(self):
+        """With no path, convert() falls back to its documented no-op
+        behavior rather than emitting incorrect jamo output."""
+        text = "가"
+        result = convert(text, "ko", Alphabet.HANGUL, Alphabet.HIRA)
+        self.assertEqual(result, text)
 
 
 class TestHangulIdentityEdge(unittest.TestCase):
