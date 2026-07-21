@@ -22,7 +22,7 @@ dependencies = [
     "langcodes",
     "ovos-number-parser>=0.4.0",
     "ovos-date-parser>=0.6.4a1",
-    "scriptconv>=0.0.3a5",
+    "scriptconv>=0.0.3a6",
     "unicode_rbnf",
     "click",
     "requests",
@@ -185,7 +185,7 @@ sv = ["epitran"]
 sw = ["epitran"]
 vi = ["epitran", "gruut[vi]>=2.3.0,<3.0", "misaki[vi]", "spacy>=3.7"]
 zh = ["epitran", "gruut[zh]>=2.3.0,<3.0", "misaki[zh]", "spacy>=3.7"]
-cjk = ["scriptconv[ja]>=0.0.3a5", "pykakasi==2.3.0", "spacy-pkuseg"]
+cjk = ["scriptconv[ja]>=0.0.3a6", "pykakasi==2.3.0", "spacy-pkuseg"]
 
 # multilingual data-driven IPA backend (hundreds of language specs)
 o2i = ["orthography2ipa"]

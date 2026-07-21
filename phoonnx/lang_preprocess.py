@@ -2,7 +2,7 @@
 
 Some scripts are ambiguous about pronunciation, so the model is trained on a transformed
 form of the text that must be reproduced at inference. Korean (Hangul → Jamo) is pure
-Python and always available; Japanese (pykakasi) and Chinese (spacy-pkuseg) need an
+Python and always available; Japanese (scriptconv[ja]) and Chinese (spacy-pkuseg) need an
 optional dependency; Russian stress comes from ``stressonnx`` (pure onnxruntime). Each
 degrades to the raw text (with a warning) when its backend is missing. Hebrew/Arabic
 vocalization is the universal ``add_diacritics`` flag, not here.
@@ -16,7 +16,6 @@ from unicodedata import category, normalize
 from phoonnx.util import LOG
 
 # lazy singletons for the optional backends (created on first use)
-_kakasi = None
 _russian_stresser = None
 _cangjie = None
 
@@ -36,34 +35,31 @@ def hangul_to_jamo(text: str) -> str:
 
 
 def japanese_to_hiragana(text: str) -> str:
-    """Convert kanji to hiragana (katakana kept) and NFKD-normalise. Needs ``pykakasi``."""
-    global _kakasi
-    if _kakasi is None:
-        try:
-            import pykakasi
-            _kakasi = pykakasi.kakasi()
-        except ImportError:
-            LOG.warning("pykakasi not installed — Japanese text left unprocessed")
-            return text
-        except Exception as e:
-            LOG.warning("Could not initialize pykakasi: %s", e)
-            return text
+    """Convert kanji to hiragana (katakana kept) and NFKD-normalise.
+
+    Readings come from scriptconv's token API; this function only applies
+    phoonnx policy on top: a space is inserted before kanji readings starting
+    は/へ so the phonemizer sees them word-initially (pronounced ha/he) instead
+    of mistaking them for the topic/direction particles (wa/e).
+    """
     try:
-        converted = _kakasi.convert(text)
+        from scriptconv.readings import tokens
+        converted = list(tokens(text))
+    except ImportError:
+        LOG.warning("scriptconv[ja] not installed — Japanese text left unprocessed")
+        return text
     except Exception as e:
         LOG.warning("Japanese conversion failed: %s", e)
         return text
     out = []
-    for r in converted:
-        inp, hira = r["orig"], r["hira"]
-        if any(is_kanji(c) for c in inp):
+    for tok in converted:
+        if any(is_kanji(c) for c in tok.orig):
+            hira = tok.hira
             if hira and hira[0] in ("は", "へ"):   # は / へ
                 hira = " " + hira
             out.append(hira)
-        elif inp and all(is_katakana(c) for c in inp):
-            out.append(inp)
         else:
-            out.append(inp)
+            out.append(tok.orig)
     return normalize("NFKD", "".join(out))
 
 
