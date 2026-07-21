@@ -5,7 +5,7 @@ Reuses the shared VITS preprocessing pipeline: ``audio_norm_path`` /
 ``phoonnx_train.preprocess``; the mel target is derived from the linear
 spectrogram at load time via ``phoonnx_train.vits.mel_processing`` (no
 separate mel cache needed). Pitch (F0) is read from the optional
-``<utterance>.f0.npy`` sidecar caches written by
+``<utterance>.f0-<method>.npy`` sidecar caches written by
 ``ForwardTTSTrainingEngine.extra_preprocess``.
 """
 import logging
@@ -105,7 +105,7 @@ class ForwardTTSDataset(Dataset):
         ).squeeze(0)  # [mel_channels, T]
 
         pitch = None
-        # optional sidecar cache written by extra_preprocess: "<stem>.f0.npy"
+        # optional sidecar cache written by extra_preprocess: "<stem>.f0-<method>.npy"
         f0_candidate = f0_cache_path(utt.audio_spec_path)
         if f0_candidate.exists():
             import numpy as np

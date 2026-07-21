@@ -11,14 +11,19 @@ import logging
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 
+from phoonnx_train.vendor.f0 import EXTRACTOR_TAG
+
 _LOG = logging.getLogger(__name__)
 
 STATS_FILENAME = "pitch_stats.json"
 
 
 def f0_cache_path(audio_spec_path: Path) -> Path:
-    """``<utterance>.spec.pt`` -> sidecar ``<utterance>.f0.npy`` cache."""
-    return Path(str(audio_spec_path)).with_suffix("").with_suffix(".f0.npy")
+    """``<utterance>.spec.pt`` -> sidecar ``<utterance>.f0-<method>.npy``
+    cache. The extraction-method tag is folded into the filename so a
+    cache written by a previous F0 extractor is a clean miss instead of
+    being silently reused."""
+    return Path(str(audio_spec_path)).with_suffix("").with_suffix(f".f0-{EXTRACTOR_TAG}.npy")
 
 
 def load_or_compute_pitch_stats(
@@ -29,7 +34,7 @@ def load_or_compute_pitch_stats(
 
     Stats are cached as ``pitch_stats.json`` in the first dataset
     directory; a missing or malformed cache is recomputed from the
-    ``.f0.npy`` sidecar files. With no pitch caches at all, identity
+    ``f0_cache_path`` sidecar files. With no pitch caches at all, identity
     normalization ``(0.0, 1.0)`` is returned.
     """
     import numpy as np

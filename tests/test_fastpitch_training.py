@@ -142,8 +142,36 @@ def _write_f0(path: Path, voiced_value=200.0, n=50, voiced=slice(10, 40)):
 
 
 def test_f0_cache_path_strips_double_suffix(tmp_path):
+    from phoonnx_train.vendor.f0 import EXTRACTOR_TAG
+
     spec_path = tmp_path / "utt0.spec.pt"
-    assert pitch_stats.f0_cache_path(spec_path) == tmp_path / "utt0.f0.npy"
+    assert (pitch_stats.f0_cache_path(spec_path)
+            == tmp_path / f"utt0.f0-{EXTRACTOR_TAG}.npy")
+
+
+def test_f0_cache_path_keys_by_extraction_method(tmp_path):
+    """A cache written under the pre-pyin (pyworld-era) naming scheme is a
+    clean miss under the current key — it must not be silently reused with
+    the new extractor — while a cache written under the current key round-
+    trips (write, then read hits the same path)."""
+    from phoonnx_train.vendor.f0 import EXTRACTOR_TAG
+
+    spec_path = tmp_path / "utt0.spec.pt"
+    legacy_path = tmp_path / "utt0.f0.npy"  # pre-tag (pyworld-era) filename
+    current_path = pitch_stats.f0_cache_path(spec_path)
+
+    assert current_path != legacy_path
+    assert current_path.name == f"utt0.f0-{EXTRACTOR_TAG}.npy"
+
+    # a stale pyworld-era cache sitting next to the spec is never picked up
+    _write_f0(legacy_path)
+    assert not current_path.exists()
+
+    # writing under the current key makes it discoverable by the same
+    # derivation used at read time
+    _write_f0(current_path)
+    assert pitch_stats.f0_cache_path(spec_path) == current_path
+    assert current_path.exists()
 
 
 def test_pitch_stats_computed_and_cached(tmp_path):

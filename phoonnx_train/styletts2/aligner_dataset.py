@@ -25,7 +25,7 @@ import torchaudio
 from torch.utils.data import Sampler
 
 from phoonnx_train.styletts2.meldataset import MEL_PARAMS, SPECT_PARAMS, TextCleaner
-from phoonnx_train.vendor.f0 import extract_f0
+from phoonnx_train.vendor.f0 import EXTRACTOR_TAG, extract_f0
 
 LOG = logging.getLogger(__name__)
 
@@ -99,7 +99,10 @@ class AuxMelDataset(torch.utils.data.Dataset):
         return mel
 
     def _f0(self, wav_path: str, n_frames: int) -> torch.Tensor:
-        cache = Path(wav_path).with_suffix(f".f0-{self.sr}.npy")
+        # extraction-method tag is folded into the filename so a cache
+        # written by a previous F0 extractor is a clean miss, not silently
+        # reused
+        cache = Path(wav_path).with_suffix(f".f0-{self.sr}-{EXTRACTOR_TAG}.npy")
         if self.cache_features and cache.is_file():
             f0 = np.load(cache)
         else:

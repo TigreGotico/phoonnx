@@ -20,7 +20,7 @@ registry stays importable in torch-free environments.
 Pitch (F0) preprocessing is shared with the FastPitch engine (``librosa.pyin``
 at a hop matched to ``hop / sample_rate`` seconds on the same
 trimmed/normalized cached audio the mels come from, length-reconciled
-to the mel frame count) — the ``<utterance>.f0.npy`` sidecars and
+to the mel frame count) — the ``<utterance>.f0-<method>.npy`` sidecars and
 ``pitch_stats.json`` are engine-compatible.
 
 ONNX export follows the contract consumed by

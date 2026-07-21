@@ -274,7 +274,9 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
         sample_rate`` ms) so the f0 track is frame-aligned with the mel
         target, and computed on the same trimmed/normalized audio the mels
         come from (the ``<sha>.pt`` cache written by ``cache_norm_audio``).
-        The sidecar is named ``<sha>.f0.npy`` next to the ``<sha>.spec.pt``
+        The sidecar is named ``<sha>.f0-<method>.npy`` (see
+        ``phoonnx_train.fastpitch.pitch_stats.f0_cache_path``) next to the
+        ``<sha>.spec.pt``
         cache so the training dataset finds it. SpeedySpeech does not use
         pitch, but the cache is harmless and lets the same preprocessed
         dataset be reused for either variant.
@@ -333,8 +335,10 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
             elif diff < 0:
                 f0 = np.pad(f0, (0, -diff))
 
+        from phoonnx_train.fastpitch.pitch_stats import f0_cache_path
+
         cache_dir.mkdir(parents=True, exist_ok=True)
-        f0_path = cache_dir / f"{audio_cache_id}.f0.npy"
+        f0_path = f0_cache_path(spec_path)
         np.save(f0_path, f0)
 
         return {"f0_path": str(f0_path)}

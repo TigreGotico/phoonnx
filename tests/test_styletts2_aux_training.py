@@ -114,6 +114,42 @@ def test_pitch_dataset_never_stretches_mel(dataset_dir):
     assert f0.size(0) == pitch_mel.size(1)  # F0 aligned to unstretched mel
 
 
+def test_f0_cache_keyed_by_extraction_method(dataset_dir):
+    """A pre-tag (pyworld-era) F0 cache sitting next to the wav is a clean
+    miss — fresh extraction runs and writes under the current key — while a
+    cache already written under the current key round-trips without
+    recomputation."""
+    import numpy as np
+    from phoonnx_train.styletts2.aligner_dataset import AuxMelDataset
+    from phoonnx_train.vendor.f0 import EXTRACTOR_TAG
+
+    lines = ["utt0.wav|mɐɲˈɐ|0"]
+    root = str(dataset_dir / "wavs")
+    wav_path = dataset_dir / "wavs" / "utt0.wav"
+    sr = 24000
+    current_cache = wav_path.with_suffix(f".f0-{sr}-{EXTRACTOR_TAG}.npy")
+    legacy_cache = wav_path.with_suffix(f".f0-{sr}.npy")  # pre-tag filename
+
+    assert current_cache != legacy_cache
+
+    # a stale pyworld-era cache is ignored; a real extraction still runs and
+    # writes under the current (tagged) key
+    legacy_sentinel = np.full(5, 999.0, dtype=np.float64)
+    np.save(legacy_cache, legacy_sentinel)
+    ds = AuxMelDataset(lines, root_path=root, sr=sr, with_f0=True)
+    _mel, _text, f0 = ds[0]
+    assert not np.array_equal(f0.numpy()[:5], legacy_sentinel)
+    assert current_cache.is_file()
+
+    # a cache under the current key round-trips: writing then reading hits
+    # the same path without needing a fresh extraction
+    cached_value = np.load(current_cache)
+    ds2 = AuxMelDataset(lines, root_path=root, sr=sr, with_f0=True)
+    _mel2, _text2, f0_2 = ds2[0]
+    n = min(len(cached_value), f0_2.numel())
+    assert np.allclose(f0_2.numpy()[:n], cached_value[:n])
+
+
 def test_aligner_training_step_runs():
     module = AlignerModule(AlignerConfig(**TINY_ALIGNER))
     loss = module.training_step(_aligner_batch(), 0)
