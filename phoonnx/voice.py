@@ -228,10 +228,13 @@ class TTSVoice:
             engine_name = self.config.engine.value if self.config.engine else None
             try:
                 # Try by engine name first
-                if engine_name and engine_name not in ("piper", "mimic3", "coqui"):
+                if engine_name and engine_name not in (
+                    "piper", "mimic3", "coqui", "phoonnx", "transformers",
+                ):
                     self.adapter = get_adapter(engine_name)
                 else:
-                    # For piper/mimic3/coqui all use the vits adapter
+                    # piper/mimic3/coqui/phoonnx/transformers are all VITS-style
+                    # architectures (tokens in, waveform out) and share the vits adapter.
                     self.adapter = get_adapter("vits")
             except KeyError:
                 # Fall back to auto-detection
