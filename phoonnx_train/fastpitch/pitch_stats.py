@@ -15,7 +15,9 @@ from phoonnx_train.vendor.f0 import EXTRACTOR_TAG
 
 _LOG = logging.getLogger(__name__)
 
-STATS_FILENAME = "pitch_stats.json"
+# Keyed by extraction method for the same reason as f0_cache_path: corpus
+# mean/std computed from one extractor's tracks must not normalize another's.
+STATS_FILENAME = f"pitch_stats-{EXTRACTOR_TAG}.json"
 
 
 def f0_cache_path(audio_spec_path: Path) -> Path:
@@ -32,7 +34,7 @@ def load_or_compute_pitch_stats(
 ) -> Tuple[float, float]:
     """Return corpus (mean, std) over voiced F0 frames.
 
-    Stats are cached as ``pitch_stats.json`` in the first dataset
+    Stats are cached as ``pitch_stats-<method>.json`` (see ``STATS_FILENAME``) in the first dataset
     directory; a missing or malformed cache is recomputed from the
     ``f0_cache_path`` sidecar files. With no pitch caches at all, identity
     normalization ``(0.0, 1.0)`` is returned.

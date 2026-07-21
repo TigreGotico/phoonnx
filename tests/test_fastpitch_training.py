@@ -178,7 +178,7 @@ def test_pitch_stats_computed_and_cached(tmp_path):
     f0_path = _write_f0(tmp_path / "utt0.f0.npy")
     mean, std = pitch_stats.load_or_compute_pitch_stats([tmp_path], [f0_path])
     assert 190 < mean < 210 and 0 < std < 30
-    cached = json.loads((tmp_path / "pitch_stats.json").read_text())
+    cached = json.loads((tmp_path / pitch_stats.STATS_FILENAME).read_text())
     assert cached["mean"] == mean and cached["std"] == std
     # cached value is reused even if the f0 files disappear
     f0_path.unlink()
@@ -208,7 +208,7 @@ def test_pitch_stats_all_unvoiced_is_identity(tmp_path):
     json.dumps({"mean": 100.0, "std": 0.0}),     # zero std divisor
 ])
 def test_pitch_stats_malformed_cache_recomputed(tmp_path, payload):
-    (tmp_path / "pitch_stats.json").write_text(payload)
+    (tmp_path / pitch_stats.STATS_FILENAME).write_text(payload)
     f0_path = _write_f0(tmp_path / "utt0.f0.npy")
     mean, std = pitch_stats.load_or_compute_pitch_stats([tmp_path], [f0_path])
     assert 190 < mean < 210 and std > 0
@@ -219,4 +219,4 @@ def test_pitch_stats_no_dataset_dir_still_computes(tmp_path):
     mean, std = pitch_stats.load_or_compute_pitch_stats(
         [tmp_path / "dataset.jsonl"], [f0_path])  # file, not dir — no cache
     assert 190 < mean < 210
-    assert not (tmp_path / "pitch_stats.json").exists()
+    assert not (tmp_path / pitch_stats.STATS_FILENAME).exists()
