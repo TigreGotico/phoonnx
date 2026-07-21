@@ -45,15 +45,23 @@ def hangul_to_jamo(text: str) -> str:
 def japanese_to_hiragana(text: str) -> str:
     """Convert kanji to hiragana (katakana kept) and NFKD-normalise. Needs ``pykakasi``."""
     global _kakasi
-    try:
-        if _kakasi is None:
+    if _kakasi is None:
+        try:
             import pykakasi
             _kakasi = pykakasi.kakasi()
-    except ImportError:
-        LOG.warning("pykakasi not installed — Japanese text left unprocessed")
+        except ImportError:
+            LOG.warning("pykakasi not installed — Japanese text left unprocessed")
+            return text
+        except Exception as e:
+            LOG.warning("Could not initialize pykakasi: %s", e)
+            return text
+    try:
+        converted = _kakasi.convert(text)
+    except Exception as e:
+        LOG.warning("Japanese conversion failed: %s", e)
         return text
     out = []
-    for r in _kakasi.convert(text):
+    for r in converted:
         inp, hira = r["orig"], r["hira"]
         if any(is_kanji(c) for c in inp):
             if hira and hira[0] in ("は", "へ"):   # は / へ
@@ -138,8 +146,16 @@ def chinese_to_cangjie(text: str) -> str:
     """Convert Chinese text to Cangjie tokens, reusing a single converter instance."""
     global _cangjie
     if _cangjie is None:
-        _cangjie = ChineseCangjieConverter()
-    return _cangjie(text)
+        try:
+            _cangjie = ChineseCangjieConverter()
+        except Exception as e:
+            LOG.warning("Could not initialize Cangjie converter: %s", e)
+            return text
+    try:
+        return _cangjie(text)
+    except Exception as e:
+        LOG.warning("Cangjie conversion failed: %s", e)
+        return text
 
 
 # language code -> transform; languages absent here need no script transform.

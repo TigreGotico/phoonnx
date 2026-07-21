@@ -142,12 +142,24 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
     @staticmethod
     def remove_punctuation(text):
         """
-        Removes all punctuation characters from a string.
-        Punctuation characters are defined by string.punctuation.
+        Removes punctuation characters from a string, based on unicode punctuation
+        categories (P*) rather than ASCII-only ``string.punctuation``. This also strips
+        non-ASCII punctuation such as Arabic ``،``/``؟`` and curly quotes.
+
+        Apostrophes and hyphens sandwiched between letters (e.g. "don't", "well-known")
+        are preserved so contractions and compounds aren't broken apart.
         """
-        # Create a regex pattern that matches any character in string.punctuation
-        punctuation_pattern = r"[" + re.escape(string.punctuation) + r"]"
-        return re.sub(punctuation_pattern, '', text).strip()
+        out = []
+        chars = list(text)
+        for i, c in enumerate(chars):
+            if c in ("'", "’", "-") and 0 < i < len(chars) - 1 \
+                    and chars[i - 1].isalpha() and chars[i + 1].isalpha():
+                out.append(c)
+                continue
+            if unicodedata.category(c).startswith("P"):
+                continue
+            out.append(c)
+        return "".join(out).strip()
 
     @staticmethod
     def chunk_text(text: str, delimiters: Optional[List[str]] = None) -> TextChunks:
