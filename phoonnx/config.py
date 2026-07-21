@@ -386,7 +386,7 @@ class VoiceConfig:
 
             lang_code = lang_code or (config.get("language", {}).get("code") or
                          config.get("espeak", {}).get("voice"))
-            diacritics = lang_code.startswith("ar")
+            diacritics = (lang_code or "").startswith("ar")
             phoneme_type = phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK)
             if phoneme_type == "text":
                 phoneme_type = PhonemeType.UNICODE
@@ -446,12 +446,12 @@ class VoiceConfig:
         elif vocab:
             add_blank = True
             if tokenizer_config:
-                add_blank = tokenizer_config["add_blank"]
-                lang_code = tokenizer_config["language"]
-                config["blank"] = tokenizer_config["pad_token"]
+                add_blank = tokenizer_config.get("add_blank", add_blank)
+                lang_code = tokenizer_config.get("language", lang_code)
+                config["blank"] = tokenizer_config.get("pad_token", config.get("blank", DEFAULT_BLANK_TOKEN))
 
             tokenizer = TTSTokenizer(
-                Vocabulary(char2idx=vocab, blank=config["blank"]),
+                Vocabulary(char2idx=vocab, blank=config.get("blank", DEFAULT_BLANK_TOKEN)),
                 add_blank_char=add_blank,
                 add_blank_word=False,
                 use_eos_bos=False,
