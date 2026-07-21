@@ -11,8 +11,7 @@ import types
 from pathlib import Path
 
 import pytest
-
-torch = pytest.importorskip("torch")
+import torch
 
 # diffusers>=0.36 references torch.xpu at import, which does not exist on
 # torch<2.4; the vendored matcha decoder imports diffusers, so skip the model

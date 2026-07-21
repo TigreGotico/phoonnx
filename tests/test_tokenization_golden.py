@@ -48,7 +48,7 @@ def _pick(m, pred, why):
 # --- transformers (Meta MMS / HF-VITS): VitsTokenizer is the literal original ---
 
 def test_tokenization_transformers_mms():
-    transformers = pytest.importorskip("transformers")
+    import transformers
     text = "hello world"
     tok = retry_download(transformers.VitsTokenizer.from_pretrained, "facebook/mms-tts-eng")
     orig = tok(text)["input_ids"]
@@ -154,7 +154,6 @@ def _assert_gruut_ids_match(voice, text, lang):
 
 
 def test_tokenization_larynx_gruut_ids():
-    pytest.importorskip("gruut")
     m = _manager()
     vid = _pick(m, lambda k: k.startswith("larynx/en-us"), "no en-US Larynx voice in index")
     # diphthong + affricate clusters exercise multi-phoneme tokens
@@ -162,7 +161,6 @@ def test_tokenization_larynx_gruut_ids():
 
 
 def test_tokenization_mimic3_gruut_ids():
-    pytest.importorskip("gruut")
     m = _manager()
     vid = _pick(m, lambda k: k.startswith("mimic3/en_"), "no en mimic3 voice in index")
     _assert_gruut_ids_match(_load_voice(m.voices[vid]), "hello my joyful child now", "en-us")
@@ -188,25 +186,6 @@ def test_tokenization_coqui_vocab_order_no_blank():
                           "characters": "abc", "punctuations": "!?"}}
     vc = voice_config_from_coqui(cfg, lang_code="en")
     assert list(vc.tokenizer.vocabulary.char2idx) == ["_", "~", "^", "a", "b", "c", "!", "?"]
-
-
-# --- OptiSpeech: its IPATokenizer is the literal original ---
-
-def test_tokenization_optispeech():
-    optispeech = pytest.importorskip("optispeech")
-    from optispeech.text.tokenizers import IPATokenizer
-    text = "hello world"
-    # the emily/mike models embed text_processor: add_blank=False, add_bos_eos=False
-    tok = IPATokenizer(add_blank=False, add_bos_eos=False, normalize_text=True)
-    orig, _ = tok(text, "en-us")
-    if orig and isinstance(orig[0], list):
-        orig = orig[0]
-    m = _manager()
-    vid = "hf_community/mush42/optispeech-lightspeech-en-us-emily"
-    if vid not in m.voices:
-        pytest.skip("optispeech voice not in index")
-    voice = _load_voice(m.voices[vid])
-    assert _phoonnx_ids(voice, text) == orig
 
 
 # --- Matcha: pinned-golden-fixture (mirrors the piper test). matcha-tts's

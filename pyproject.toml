@@ -59,6 +59,8 @@ test = [
     "euskaphone",
     "g2p_barranquenho",
     "mwl_phonemizer",
+    # cross-check reference for the Larynx/Mimic3 tokenization golden tests
+    "gruut[en]>=2.3.0,<3.0",
     # onnx uses ml_dtypes.float4_e2m1fn (added in ml_dtypes 0.5) but the
     # resolver can pair it with ml_dtypes 0.4.x, which breaks `import onnx`
     # at collection time; ml_dtypes>=0.5 needs numpy>=2.1 on Python 3.13+,

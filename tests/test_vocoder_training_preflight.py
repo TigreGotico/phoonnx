@@ -15,8 +15,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
-torch = pytest.importorskip("torch")
+import torch
 
 _ROOT = Path(__file__).parent.parent
 
@@ -253,8 +252,8 @@ def test_crop_is_exact_length_and_in_range(tmp_path):
 # ----------------------------------------------------------------------
 
 def test_export_onnx_matches_torch_and_adapter_consumes_io(tmp_path):
-    onnx = pytest.importorskip("onnx")  # noqa: F841
-    pytest.importorskip("onnxruntime")
+    import onnx  # noqa: F401
+    import onnxruntime  # noqa: F401
     from phoonnx_train.vocos.lightning import VocosTrainingModule
     from phoonnx_train.vocos.data import MelConfig
     from phoonnx_train.export_vocos import _CoefficientWrapper, legacy_onnx_export
