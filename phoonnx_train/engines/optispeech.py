@@ -496,10 +496,10 @@ class _JsonlTextWavDataset:
         is_multi_language: bool,
         default_language: str,
     ):
-        import torch
-
-        self._torch = torch
-        feature_extractor.initialize_components()
+        # No module objects on the instance: DataLoader workers pickle the
+        # dataset under spawn/forkserver start methods (the py>=3.14 default).
+        # Feature-extractor components initialize lazily per process.
+        self._fe_initialized = False
         self.text_processor = text_processor
         self.feature_extractor = feature_extractor
         self.is_multi_speaker = is_multi_speaker
@@ -525,10 +525,20 @@ class _JsonlTextWavDataset:
     def __len__(self) -> int:
         return len(self.rows)
 
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        # Initialized extractor components may hold unpicklable runtime state;
+        # each worker re-initializes on first __getitem__.
+        state["_fe_initialized"] = False
+        return state
+
     def __getitem__(self, index: int) -> Dict[str, Any]:
         import numpy as np
+        import torch
 
-        torch = self._torch
+        if not self._fe_initialized:
+            self.feature_extractor.initialize_components()
+            self._fe_initialized = True
         row = self.rows[index]
         lang = self.default_language if self.is_multi_language else None
         phoneme_ids, text = self.text_processor(
