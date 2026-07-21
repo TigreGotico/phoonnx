@@ -18,6 +18,7 @@ so that the core package remains lightweight.
 """
 from __future__ import annotations
 
+import inspect
 import logging
 from collections import deque
 from typing import Callable, Dict, List, Optional, Tuple
@@ -130,12 +131,33 @@ def convert(text: str,
     return result
 
 
-def _call_edge(fn: EdgeFn, text, lang: str, phoneme_type: Optional[PhonemeType]):
-    """Invoke an edge function, injecting phoneme_type where accepted."""
+def _edge_arity(fn: EdgeFn) -> int:
+    """Resolve how many positional arguments *fn* accepts.
+
+    Resolved once per call from the function's signature (not by probing
+    with a trial call-and-catch), so a genuine ``TypeError`` raised inside
+    the edge body always propagates instead of being swallowed and
+    retried.
+    """
     try:
+        sig = inspect.signature(fn)
+    except (TypeError, ValueError):
+        # Builtins / C callables without an introspectable signature:
+        # assume the full (text, lang, phoneme_type) contract.
+        return 3
+    params = list(sig.parameters.values())
+    if any(p.kind == p.VAR_POSITIONAL for p in params):
+        return 3
+    positional = [p for p in params
+                  if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
+    return len(positional)
+
+
+def _call_edge(fn: EdgeFn, text, lang: str, phoneme_type: Optional[PhonemeType]):
+    """Invoke an edge function with the arity it actually accepts."""
+    if _edge_arity(fn) >= 3:
         return fn(text, lang, phoneme_type)
-    except TypeError:
-        return fn(text, lang)
+    return fn(text, lang)
 
 
 # ---------------------------------------------------------------------------
@@ -222,19 +244,6 @@ def _graphemes_to_hangul(text: str, lang: str, _pt=None) -> str:
     return text
 
 
-def _graphemes_to_jamo(text: str, lang: str, _pt=None) -> str:
-    """Korean: decompose Hangul syllables into Jamo."""
-    try:
-        import unicodedata
-        result = []
-        for ch in text:
-            decomposed = unicodedata.normalize("NFD", ch)
-            result.append(decomposed)
-        return "".join(result)
-    except Exception:
-        return text
-
-
 def _graphemes_to_hiragana(text: str, lang: str, _pt=None) -> str:
     """Japanese: convert kanji/katakana → hiragana via pykakasi."""
     try:
@@ -284,7 +293,6 @@ def _graphemes_to_cangjie(text: str, lang: str, _pt=None) -> str:
 
 register_converter(Alphabet.GRAPHEMES, Alphabet.HANGUL, _graphemes_to_hangul)
 register_converter(Alphabet.HANGUL, Alphabet.HANGUL, lambda t, l, _=None: t)  # identity
-register_converter(Alphabet.HANGUL, Alphabet.HIRA, _graphemes_to_jamo)  # decompose
 register_converter(Alphabet.GRAPHEMES, Alphabet.HIRA, _graphemes_to_hiragana)
 register_converter(Alphabet.GRAPHEMES, Alphabet.KANA, _graphemes_to_kana)
 register_converter(Alphabet.GRAPHEMES, Alphabet.CANGJIE, _graphemes_to_cangjie)
