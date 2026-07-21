@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.59.9a2](https://github.com/TigreGotico/phoonnx/tree/1.59.9a2) (2026-07-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.59.9a1...1.59.9a2)
+
+**Merged pull requests:**
+
+- test: make provider-fallback warning test independent of local CUDA state [\#282](https://github.com/TigreGotico/phoonnx/pull/282) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.59.9a1](https://github.com/TigreGotico/phoonnx/tree/1.59.9a1) (2026-07-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.59.8a1...1.59.9a1)
@@ -114,7 +122,6 @@
 - feat\(engines\): FastPitch engine + Arabic & coqui voices [\#148](https://github.com/TigreGotico/phoonnx/pull/148) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): Arabic Mixer-TTS voices \(tts\_arabic\) + matched vocoders [\#147](https://github.com/TigreGotico/phoonnx/pull/147) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(train\): Mixer-TTS training \(Lightning\) [\#146](https://github.com/TigreGotico/phoonnx/pull/146) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(engines\): Mixer-TTS inference adapter + LJSpeech voices [\#145](https://github.com/TigreGotico/phoonnx/pull/145) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
