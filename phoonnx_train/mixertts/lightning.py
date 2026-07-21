@@ -14,7 +14,7 @@ from the linear spectrogram at load time via
 ``phoonnx_train.vits.mel_processing`` (fmin/fmax pinned to the shared
 0/8000 Hz convention), and the frame-aligned F0 target is read from the
 ``<utterance>.f0.npy`` sidecars written by the engine's
-``extra_preprocess`` (pyworld DIO+StoneMask at the mel hop, on the same
+``extra_preprocess`` (``librosa.pyin`` at the mel hop, on the same
 trimmed/normalized cached audio the mels come from).
 
 Loss/optimizer fidelity vs upstream NeMo:

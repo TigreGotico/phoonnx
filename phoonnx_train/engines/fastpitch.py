@@ -268,26 +268,25 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
         hop_length: int = 256,
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        """Extract F0 (pitch) via pyworld; cached alongside the mel cache.
+        """Extract F0 (pitch) via ``librosa.pyin``; cached alongside the mel cache.
 
-        pyworld DIO + StoneMask, run at a frame period matched to the mel
-        hop (``1000 * hop_length / sample_rate`` ms) so the f0 track is
-        frame-aligned with the mel target, and computed on the same
-        trimmed/normalized audio the mels come from (the ``<sha>.pt``
-        cache written by ``cache_norm_audio``). The sidecar is named
-        ``<sha>.f0.npy`` next to the ``<sha>.spec.pt`` cache so the
-        training dataset finds it. SpeedySpeech does not use pitch, but
-        the cache is harmless and lets the same preprocessed dataset be
-        reused for either variant.
+        Run at a frame period matched to the mel hop (``1000 * hop_length /
+        sample_rate`` ms) so the f0 track is frame-aligned with the mel
+        target, and computed on the same trimmed/normalized audio the mels
+        come from (the ``<sha>.pt`` cache written by ``cache_norm_audio``).
+        The sidecar is named ``<sha>.f0.npy`` next to the ``<sha>.spec.pt``
+        cache so the training dataset finds it. SpeedySpeech does not use
+        pitch, but the cache is harmless and lets the same preprocessed
+        dataset be reused for either variant.
         """
         import numpy as np
 
         try:
-            import librosa  # noqa: F401 — fallback loader below
-            import pyworld as pw
+            import librosa
+            from phoonnx_train.vendor.f0 import extract_f0
         except ImportError:
             _LOG.warning(
-                "pyworld/librosa not installed — skipping F0 extraction "
+                "librosa not installed — skipping F0 extraction "
                 "(FastPitch pitch predictor will train without a target; "
                 "install phoonnx[train,train-fastpitch] for real pitch)."
             )
@@ -315,9 +314,7 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
             wav, _sr = librosa.load(str(utterance_audio_path), sr=sample_rate, mono=True)
 
         wav_double = wav.astype(np.float64)
-        frame_period = 1000.0 * hop_length / sample_rate  # ms, = mel hop
-        f0, timeaxis = pw.dio(wav_double, sample_rate, frame_period=frame_period)
-        f0 = pw.stonemask(wav_double, f0, timeaxis, sample_rate).astype(np.float32)
+        f0 = extract_f0(wav_double, sample_rate, hop_length).astype(np.float32)
 
         if spec_path.exists():
             import torch

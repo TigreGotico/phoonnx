@@ -7,8 +7,8 @@ usually transfers and training one is optional; ``pretrained_path``
 warm-starts a fine-tune.
 
 Losses per upstream: ``lambda_f0 * SmoothL1(f0)`` + ``BCEWithLogits`` on the
-voicing/silence labels, with pyworld harvest (dio fallback) ground-truth F0
-cached next to the audio. Dataset: same ``train_list.txt``/``wavs/`` layout
+voicing/silence labels, with ``librosa.pyin`` ground-truth F0 cached next to
+the audio. Dataset: same ``train_list.txt``/``wavs/`` layout
 as the other StyleTTS2 engines (the text field is unused).
 
 Output (``save_f0_checkpoint``): a ``.t7`` with ``{"net": state_dict}`` —

@@ -116,13 +116,13 @@ def test_kwargs_config_wins_over_extra_symbol_count():
 
 # --------------------------------------------------------- extra_preprocess
 def test_extra_preprocess_missing_deps_returns_empty(monkeypatch, tmp_path):
-    """When pyworld/librosa aren't importable, extra_preprocess degrades to {}."""
+    """When librosa isn't importable, extra_preprocess degrades to {}."""
     engine = ForwardTTSTrainingEngine()
     import builtins
     real_import = builtins.__import__
 
     def fake_import(name, *a, **k):
-        if name in ("pyworld", "librosa"):
+        if name in ("librosa", "phoonnx_train.vendor.f0"):
             raise ImportError(name)
         return real_import(name, *a, **k)
 

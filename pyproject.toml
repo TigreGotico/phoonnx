@@ -105,7 +105,6 @@ train-styletts2 = [
     "transformers>=4.48",  # PL-BERT backbones (albert / modernbert)
     "torchaudio",
     "soundfile",
-    "pyworld>=0.3.2",  # ground-truth F0 for styletts2-pitch
     "pandas",
     "PyYAML",
 ]
@@ -133,31 +132,23 @@ train-data = [
     "soundfile",
 ]
 # extra deps for the FastPitch / SpeedySpeech training engine
-# (phoonnx_train/engines/fastpitch.py) on top of [train]: pyworld for F0
-# (pitch) extraction in extra_preprocess. librosa is already in [train].
-train-fastpitch = [
-    "pyworld>=0.3.2",
-]
+# (phoonnx_train/engines/fastpitch.py) on top of [train]: F0 (pitch)
+# extraction in extra_preprocess uses librosa.pyin, already in [train].
+train-fastpitch = []
 # extra deps for the Mixer-TTS training engine (phoonnx_train/engines/mixer.py)
-# on top of [train]: pyworld for the shared F0 (pitch) sidecar cache. einops
-# (Mixer blocks / aligner) and numba (monotonic alignment search) are already
-# pulled in via [train] (numba transitively through librosa on <3.13).
-train-mixer = [
-    "pyworld>=0.3.2",
-]
+# on top of [train]: the shared F0 (pitch) sidecar cache uses librosa.pyin,
+# already in [train]. einops (Mixer blocks / aligner) and numba (monotonic
+# alignment search) are also already pulled in via [train] (numba
+# transitively through librosa on <3.13).
+train-mixer = []
 # extra deps for the OptiSpeech training engine
 # (phoonnx_train/optispeech/ + phoonnx_train/engines/optispeech.py) on top of
-# [train]: pyworld for the DIO/Harvest F0 pitch extractor, scipy for pitch
-# interpolation, torchaudio for the vocoder-discriminator resampling / STFT
-# losses, and onnx to embed the inference metadata into the exported model.
-# The perceptual validation metrics (UTMOS / PESQ / periodicity) stay optional
-# and are off by default, so they add no deps here.
+# [train]: scipy for pitch interpolation (the pitch extractor itself uses
+# librosa.pyin, already in [train]), torchaudio for the vocoder-discriminator
+# resampling / STFT losses, and onnx to embed the inference metadata into the
+# exported model. The perceptual validation metrics (UTMOS / PESQ /
+# periodicity) stay optional and are off by default, so they add no deps here.
 train-optispeech = [
-    "pyworld>=0.3.2",
-    # pyworld imports pkg_resources at runtime; python>=3.12 environments no
-    # longer ship setuptools implicitly, and setuptools>=81 removed
-    # pkg_resources entirely
-    "setuptools<81",
     "pyloudnorm",
     "scipy",
     "torchaudio",

@@ -17,9 +17,9 @@ dataset / collate live in ``phoonnx_train.mixertts.lightning``; heavy
 torch imports are deferred until a model is actually built so the engine
 registry stays importable in torch-free environments.
 
-Pitch (F0) preprocessing is shared with the FastPitch engine (pyworld
-DIO+StoneMask at ``frame_period = 1000 * hop / sample_rate`` ms on the
-same trimmed/normalized cached audio the mels come from, length-reconciled
+Pitch (F0) preprocessing is shared with the FastPitch engine (``librosa.pyin``
+at a hop matched to ``hop / sample_rate`` seconds on the same
+trimmed/normalized cached audio the mels come from, length-reconciled
 to the mel frame count) — the ``<utterance>.f0.npy`` sidecars and
 ``pitch_stats.json`` are engine-compatible.
 
@@ -84,7 +84,7 @@ class MixerTTSTrainingEngine(ForwardTTSTrainingEngine):
     """Training engine adapter for Mixer-TTS.
 
     Subclasses the FastPitch engine only to reuse its shared plumbing —
-    the pyworld F0 ``extra_preprocess`` sidecar cache and the tolerant
+    the pyin-based F0 ``extra_preprocess`` sidecar cache and the tolerant
     ``load_checkpoint`` — the model/ONNX contract is Mixer-TTS's own.
     """
 

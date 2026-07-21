@@ -21,7 +21,7 @@ LOG = logging.getLogger(__name__)
 
 
 class PitchSegmentDataset(torch.utils.data.Dataset):
-    """Fixed-length (seq_len) mel segments + pyworld F0 + silence labels,
+    """Fixed-length (seq_len) mel segments + pyin F0 + silence labels,
     per upstream MelDataset (features cached via AuxMelDataset)."""
 
     def __init__(self, data_list: List[str], root_path: str, sr: int,
