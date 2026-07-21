@@ -15,13 +15,13 @@ import pytest
 
 def test_arpa_to_ipa_lookup_importable():
     """arpa_to_ipa_lookup must remain importable from its historic location."""
-    from phoonnx.thirdparty.arpa2ipa import arpa_to_ipa_lookup
+    from scriptconv.notation import _ARPA_TO_IPA as arpa_to_ipa_lookup
     assert isinstance(arpa_to_ipa_lookup, dict)
     assert len(arpa_to_ipa_lookup) > 50
 
 
 def test_arpa_to_ipa_lookup_basic_phonemes():
-    from phoonnx.thirdparty.arpa2ipa import arpa_to_ipa_lookup
+    from scriptconv.notation import _ARPA_TO_IPA as arpa_to_ipa_lookup
     assert arpa_to_ipa_lookup["B"] == "b"
     assert arpa_to_ipa_lookup["IY1"] == "i"
     assert arpa_to_ipa_lookup["AH0"] == "ə"
@@ -29,7 +29,7 @@ def test_arpa_to_ipa_lookup_basic_phonemes():
 
 def test_arpa_to_ipa_function():
     """arpa_to_ipa should produce a non-empty IPA string for a sample word."""
-    from phoonnx.thirdparty.arpa2ipa import arpa_to_ipa
+    from scriptconv.notation import arpa_to_ipa
     result = arpa_to_ipa("B IY1 T")
     assert isinstance(result, str)
     assert len(result) > 0
@@ -39,7 +39,7 @@ def test_arpa_to_ipa_function():
 
 def test_arpa_to_ipa_stress_digits_stripped():
     """Stress-digit variants (AH0, AH1) should both map to IPA without KeyError."""
-    from phoonnx.thirdparty.arpa2ipa import arpa_to_ipa_lookup
+    from scriptconv.notation import _ARPA_TO_IPA as arpa_to_ipa_lookup
     assert "AH0" in arpa_to_ipa_lookup
     assert "AH1" in arpa_to_ipa_lookup
     assert arpa_to_ipa_lookup["AH0"] == "ə"
@@ -117,3 +117,31 @@ def test_normalize_lang_mms_arabic_script():
     from phoonnx.util import normalize_lang
     result = normalize_lang("arb-script_arabic")
     assert "Arab" in result, f"Expected 'Arab' in {result!r}"
+
+
+def test_phoneme_type_is_scriptconv_phonemizer_enum():
+    """Enum identity across the boundary: values stored in voice configs must
+    resolve to the same class in phoonnx and scriptconv."""
+    from phoonnx.config import Alphabet, PhonemeType
+    from scriptconv.phonemizers.enums import Alphabet as ScAlphabet
+    from scriptconv.phonemizers.enums import Phonemizer
+    assert PhonemeType is Phonemizer
+    assert Alphabet is ScAlphabet
+
+
+def test_get_phonemizer_injects_normalizer():
+    from phoonnx.config import PhonemeType, get_phonemizer
+    from phoonnx.util import normalize
+    p = get_phonemizer(PhonemeType.GRAPHEMES)
+    assert p.normalizer is normalize
+    # normalization behavior preserved: digits expand as before the migration
+    out = "".join(p.phonemize("2 cats", "en")[0])
+    assert "2" not in out
+
+
+def test_licensed_backends_construct_from_phoonnx_classes():
+    from phoonnx.config import PhonemeType, get_phonemizer
+    from phoonnx.phonemizers.ar import MantoqPhonemizer
+    m = get_phonemizer(PhonemeType.MANTOQ)
+    assert isinstance(m, MantoqPhonemizer)
+    assert type(m).__module__.startswith("phoonnx.")

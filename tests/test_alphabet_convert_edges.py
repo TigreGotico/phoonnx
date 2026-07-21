@@ -57,7 +57,7 @@ class TestCallEdgeArity(unittest.TestCase):
             return f"{text}:{lang}:{phoneme_type}"
 
         result = _call_edge(three_arg_edge, "hi", "en", PhonemeType.ESPEAK)
-        self.assertEqual(result, "hi:en:PhonemeType.ESPEAK")
+        self.assertEqual(result, "hi:en:Phonemizer.ESPEAK")
 
     def test_via_convert_end_to_end_with_two_arg_edge(self):
         """Same arity resolution, exercised through the public convert()
@@ -84,7 +84,7 @@ class TestCallEdgeArity(unittest.TestCase):
                                 lambda text, lang, pt=None: f"{text}:{pt}")
             result = convert("x", "en", Alphabet.SAMPA, Alphabet.RFE,
                               phoneme_type=PhonemeType.ESPEAK)
-            self.assertEqual(result, "x:PhonemeType.ESPEAK")
+            self.assertEqual(result, "x:Phonemizer.ESPEAK")
         finally:
             if old is None:
                 ALPHABET_CONVERTERS.pop(key, None)

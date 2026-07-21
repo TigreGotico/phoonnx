@@ -218,7 +218,7 @@ class TestG2PEnPhonemizer(unittest.TestCase):
         inst.alphabet = Alphabet.IPA
         inst.g2p = MagicMock(return_value=["HH", "AH0"])
 
-        with patch("phoonnx.phonemizers.en.arpa_to_ipa_lookup", {"HH": "h", "AH0": "ə"}):
+        with patch("scriptconv.phonemizers.en.arpa_to_ipa_lookup", {"HH": "h", "AH0": "ə"}):
             result = inst.phonemize_string("hi", "en")
         self.assertEqual(result, "hə")
 
@@ -230,7 +230,7 @@ class TestG2PEnPhonemizer(unittest.TestCase):
         inst.alphabet = Alphabet.IPA
         inst.g2p = MagicMock(return_value=["ZZZ_UNKNOWN"])
 
-        with patch("phoonnx.phonemizers.en.arpa_to_ipa_lookup", {}):
+        with patch("scriptconv.phonemizers.en.arpa_to_ipa_lookup", {}):
             result = inst.phonemize_string("weirdword", "en")
         self.assertEqual(result, "ZZZ_UNKNOWN")
 
@@ -240,7 +240,7 @@ class TestG2PEnPhonemizer(unittest.TestCase):
         inst.alphabet = Alphabet.IPA
         inst.g2p = MagicMock(return_value=[])
 
-        with patch("phoonnx.phonemizers.en.arpa_to_ipa_lookup", {}):
+        with patch("scriptconv.phonemizers.en.arpa_to_ipa_lookup", {}):
             result = inst.phonemize_string("", "en")
         self.assertEqual(result, "")
 
