@@ -24,6 +24,7 @@
 
 **Merged pull requests:**
 
+- test: fail on missing deps instead of skipping [\#272](https://github.com/TigreGotico/phoonnx/pull/272) ([JarbasAl](https://github.com/JarbasAl))
 - fix: digit-anchored am/pm normalization and multi-date expansion [\#265](https://github.com/TigreGotico/phoonnx/pull/265) ([JarbasAl](https://github.com/JarbasAl))
 - fix: VITS export dynamo-wrapper regression and OptiSpeech training dataloader wiring [\#263](https://github.com/TigreGotico/phoonnx/pull/263) ([JarbasAl](https://github.com/JarbasAl))
 - fix: remove all piper-phonemize and espeak-wrapper dependencies [\#262](https://github.com/TigreGotico/phoonnx/pull/262) ([JarbasAl](https://github.com/JarbasAl))
@@ -103,7 +104,6 @@
 - feat\(voices\): coqui VITS engine + 36 voices across 33 languages [\#149](https://github.com/TigreGotico/phoonnx/pull/149) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): FastPitch engine + Arabic & coqui voices [\#148](https://github.com/TigreGotico/phoonnx/pull/148) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): Arabic Mixer-TTS voices \(tts\_arabic\) + matched vocoders [\#147](https://github.com/TigreGotico/phoonnx/pull/147) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(train\): Mixer-TTS training \(Lightning\) [\#146](https://github.com/TigreGotico/phoonnx/pull/146) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
