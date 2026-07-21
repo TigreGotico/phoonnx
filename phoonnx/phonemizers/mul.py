@@ -459,6 +459,8 @@ class GruutPhonemizer(BasePhonemizer):
             sent_phonemes = [w.phonemes for w in sentence if w.phonemes]
             if sentence and not sent_phonemes:
                 raise RuntimeError(f"did you install gruut[{lang}] ?")
+            if not sent_phonemes:
+                continue
             if sentence.text.endswith("?"):
                 sent_phonemes[-1] = ["?"]
             elif sentence.text.endswith("!"):

@@ -725,6 +725,7 @@ def _normalize_word(word: str, full_lang: str, rbnf_engine) -> str:
     Helper function to normalize a single word.
     """
     lang_code = full_lang.split("-")[0]
+    word = word.replace("’", "'")
 
     if word in CONTRACTIONS.get(lang_code, {}):
         return CONTRACTIONS[lang_code][word]
