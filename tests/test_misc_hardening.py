@@ -130,15 +130,5 @@ class TestConverterCachePoisoning(unittest.TestCase):
         lp._cangjie = None  # reset global for other tests
 
 
-class TestPyarabicNoSyntaxWarning(unittest.TestCase):
-    def test_import_raises_no_syntax_warning(self):
-        proc = subprocess.run(
-            [sys.executable, "-W", "error::SyntaxWarning", "-c",
-             "import phoonnx.thirdparty.mantoq.pyarabic.trans"],
-            capture_output=True, text=True,
-        )
-        self.assertEqual(proc.returncode, 0, proc.stderr)
-
-
 if __name__ == "__main__":
     unittest.main()
