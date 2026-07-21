@@ -26,12 +26,14 @@ def trim_silence(
     # the survivor set order-dependent (and thus run-dependent).
     detector.reset()
 
-    chunk = audio_array[:samples_per_chunk]
-    audio_array = audio_array[samples_per_chunk:]
-    chunk_idx: int = 0
+    num_chunks = (len(audio_array) + samples_per_chunk - 1) // samples_per_chunk
 
-    # Determine main block of speech
-    while len(audio_array) > 0:
+    # Determine main block of speech. Every chunk, including the final
+    # (possibly short) tail chunk, is scored so a speech onset near the end
+    # of the clip is never missed.
+    for chunk_idx in range(num_chunks):
+        start = chunk_idx * samples_per_chunk
+        chunk = audio_array[start:start + samples_per_chunk]
         prob = detector(chunk, sample_rate=sample_rate)
         is_speech = prob >= threshold
 
@@ -39,17 +41,12 @@ def trim_silence(
             if first_chunk is None:
                 # First speech
                 first_chunk = chunk_idx
-            else:
-                # Last speech so far
-                last_chunk = chunk_idx
-
-        chunk = audio_array[:samples_per_chunk]
-        audio_array = audio_array[samples_per_chunk:]
-        chunk_idx += 1
+            # Last speech so far (a lone speech chunk keeps first == last)
+            last_chunk = chunk_idx
 
     if (first_chunk is not None) and (last_chunk is not None):
         first_chunk = max(0, first_chunk - keep_chunks_before)
-        last_chunk = min(chunk_idx, last_chunk + keep_chunks_after)
+        last_chunk = min(num_chunks - 1, last_chunk + keep_chunks_after)
 
         # Compute offset/duration
         offset_sec = first_chunk * seconds_per_chunk
