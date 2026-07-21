@@ -1,31 +1,18 @@
 # Changelog
 
-## [Unreleased](https://github.com/TigreGotico/phoonnx/tree/HEAD)
+## [1.59.6a2](https://github.com/TigreGotico/phoonnx/tree/1.59.6a2) (2026-07-21)
 
-[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.4a1...HEAD)
-
-**Implemented enhancements:**
-
-- Itzune Basque voices \(antton + maider\) [\#174](https://github.com/TigreGotico/phoonnx/issues/174)
-
-**Closed issues:**
-
-- Kabyle MMS model produces unintelligible audio : missing VITS blank tokens in tokenizer [\#203](https://github.com/TigreGotico/phoonnx/issues/203)
-- YourTTS inference engine \(zero-shot voice cloning\) [\#172](https://github.com/TigreGotico/phoonnx/issues/172)
-- ZipVoice inference engine [\#170](https://github.com/TigreGotico/phoonnx/issues/170)
-- OptiSpeech inference engine [\#167](https://github.com/TigreGotico/phoonnx/issues/167)
-- Matcha-TTS inference engine [\#165](https://github.com/TigreGotico/phoonnx/issues/165)
-- VITS training engine [\#164](https://github.com/TigreGotico/phoonnx/issues/164)
-- StyleTTS2 inference engine [\#163](https://github.com/TigreGotico/phoonnx/issues/163)
-- FastPitch inference engine [\#162](https://github.com/TigreGotico/phoonnx/issues/162)
-- MixerTTS inference engine [\#161](https://github.com/TigreGotico/phoonnx/issues/161)
-- GlowTTS inference engine [\#160](https://github.com/TigreGotico/phoonnx/issues/160)
-- VITS inference engine [\#159](https://github.com/TigreGotico/phoonnx/issues/159)
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.3.4a1...1.59.6a2)
 
 **Merged pull requests:**
 
+- fix: track and warn on OOV phonemes instead of dropping them silently [\#274](https://github.com/TigreGotico/phoonnx/pull/274) ([JarbasAl](https://github.com/JarbasAl))
+- fix: config detection crashes on missing lang\_code and tokenizer\_config, register missing engine adapters [\#273](https://github.com/TigreGotico/phoonnx/pull/273) ([JarbasAl](https://github.com/JarbasAl))
 - test: fail on missing deps instead of skipping [\#272](https://github.com/TigreGotico/phoonnx/pull/272) ([JarbasAl](https://github.com/JarbasAl))
+- ci: migrate release workflows to pyproject-based shared automation [\#270](https://github.com/TigreGotico/phoonnx/pull/270) ([JarbasAl](https://github.com/JarbasAl))
+- fix: score tail chunk and single-chunk speech in silence trimming [\#268](https://github.com/TigreGotico/phoonnx/pull/268) ([JarbasAl](https://github.com/JarbasAl))
 - fix: round-trip all TTSModelInfo fields in voice cache serialization [\#267](https://github.com/TigreGotico/phoonnx/pull/267) ([JarbasAl](https://github.com/JarbasAl))
+- fix: shuffle VITS training batches and make train/val split reproducible [\#266](https://github.com/TigreGotico/phoonnx/pull/266) ([JarbasAl](https://github.com/JarbasAl))
 - fix: digit-anchored am/pm normalization and multi-date expansion [\#265](https://github.com/TigreGotico/phoonnx/pull/265) ([JarbasAl](https://github.com/JarbasAl))
 - fix: VITS export dynamo-wrapper regression and OptiSpeech training dataloader wiring [\#263](https://github.com/TigreGotico/phoonnx/pull/263) ([JarbasAl](https://github.com/JarbasAl))
 - fix: remove all piper-phonemize and espeak-wrapper dependencies [\#262](https://github.com/TigreGotico/phoonnx/pull/262) ([JarbasAl](https://github.com/JarbasAl))
@@ -104,6 +91,12 @@
 - feat\(voices\): add ca-custom \(257-spk\) + fa-custom coqui VITS [\#150](https://github.com/TigreGotico/phoonnx/pull/150) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(voices\): coqui VITS engine + 36 voices across 33 languages [\#149](https://github.com/TigreGotico/phoonnx/pull/149) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): FastPitch engine + Arabic & coqui voices [\#148](https://github.com/TigreGotico/phoonnx/pull/148) ([JarbasAl](https://github.com/JarbasAl))
+- feat\(engines\): Arabic Mixer-TTS voices \(tts\_arabic\) + matched vocoders [\#147](https://github.com/TigreGotico/phoonnx/pull/147) ([JarbasAl](https://github.com/JarbasAl))
+- feat\(train\): Mixer-TTS training \(Lightning\) [\#146](https://github.com/TigreGotico/phoonnx/pull/146) ([JarbasAl](https://github.com/JarbasAl))
+- feat\(engines\): Mixer-TTS inference adapter + LJSpeech voices [\#145](https://github.com/TigreGotico/phoonnx/pull/145) ([JarbasAl](https://github.com/JarbasAl))
+- test\(tokenization\): cross-framework golden tests + coqui vocab-order fix [\#144](https://github.com/TigreGotico/phoonnx/pull/144) ([JarbasAl](https://github.com/JarbasAl))
+- feat\(engines\): GlowTTS / Larynx inference adapter [\#143](https://github.com/TigreGotico/phoonnx/pull/143) ([JarbasAl](https://github.com/JarbasAl))
+- feat\(engines\): OptiSpeech inference adapter [\#142](https://github.com/TigreGotico/phoonnx/pull/142) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
