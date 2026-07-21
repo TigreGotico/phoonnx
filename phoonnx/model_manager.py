@@ -1,7 +1,8 @@
 import onnxruntime
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import Optional, Dict, List, Any, Sequence
 import requests
@@ -68,6 +69,17 @@ class TTSModelInfo:
     # user-friendly name for UIs/CLIs; may contain "{engine}"/"{phoneme_type}"
     # placeholders that get resolved once those fields are known
     display_name: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize every field to a JSON-safe dict, matching the format used by the
+        bundled voice-index JSON files (enum fields become their plain string value).
+        """
+        d = asdict(self)
+        for k, v in d.items():
+            if isinstance(v, Enum):
+                d[k] = v.value
+        return d
 
     @property
     def config(self) -> VoiceConfig:
@@ -492,7 +504,7 @@ class TTSModelInfo:
                               phonemes_txt=str(tokens_path) if self.tokens_url else None)
         # override phoneme_type, if config.json is wrong
         if self.phoneme_type != voice.config.phoneme_type or self.alphabet != voice.config.alphabet:
-            voice.phoneme_type = self.phoneme_type
+            voice.config.phoneme_type = self.phoneme_type
             voice.config.alphabet = self.alphabet
             voice.phonemizer = get_phonemizer(self.phoneme_type,
                                               alphabet=self.alphabet,
@@ -555,52 +567,27 @@ class TTSModelManager:
     def save(self):
         """
         Persist in-memory voice metadata to the configured cache storage.
-        
-        Writes each managed voice's public metadata to the cache (voice_id, model_url, phoneme_type, lang,
-        tokens_url, tokenizer_config_url, vocab_url, phoneme_map_url, alphabet, engine, config_url)
-        and then persists the cache to disk.
+
+        Writes each managed voice's full metadata (every TTSModelInfo field) to the
+        cache and then persists the cache to disk.
         """
         self.cache.clear()
         for voice_id, voice_info in self.voices.items():
-            self.cache[voice_id] = {"voice_id": voice_info.voice_id,
-                                    "model_url": voice_info.model_url,
-                                    "phoneme_type": voice_info.phoneme_type,
-                                    "lang": voice_info.lang,
-                                    "tokens_url": voice_info.tokens_url,
-                                    "tokenizer_config_url": voice_info.tokenizer_config_url,
-                                    "vocab_url": voice_info.vocab_url,
-                                    "phoneme_map_url": voice_info.phoneme_map_url,
-                                    "alphabet": voice_info.alphabet,
-                                    "engine": voice_info.engine,
-                                    "config_url": voice_info.config_url,
-                                    "display_name": voice_info.display_name}
+            self.cache[voice_id] = voice_info.to_dict()
         self.cache.store()
 
     def add_voice(self, voice_info: TTSModelInfo):
         """
-        Add or update a TTS voice in the manager's in-memory registry and persist its public metadata to the cache.
-        
-        This stores the given TTSModelInfo under its voice_id in memory and writes a curated subset of its fields (voice_id, model_url, tokens_url, phoneme_type, phoneme_map_url, alphabet, lang, config_url) into the persistent cache, overwriting any existing entry for the same voice_id.
-        
+        Add or update a TTS voice in the manager's in-memory registry and persist its full metadata to the cache.
+
+        This stores the given TTSModelInfo under its voice_id in memory and writes every
+        field into the persistent cache, overwriting any existing entry for the same voice_id.
+
         Parameters:
             voice_info (TTSModelInfo): The voice metadata to add or update.
         """
         self.voices[voice_info.voice_id] = voice_info
-        self.cache[voice_info.voice_id] = {"voice_id": voice_info.voice_id,
-                                           "model_url": voice_info.model_url,
-                                           "tokens_url": voice_info.tokens_url,
-                                           "tokenizer_config_url": voice_info.tokenizer_config_url,
-                                           "vocab_url": voice_info.vocab_url,
-                                           "phoneme_type": voice_info.phoneme_type,
-                                           "phoneme_map_url": voice_info.phoneme_map_url,
-                                           "alphabet": voice_info.alphabet,
-                                           "engine": voice_info.engine,
-                                           "lang": voice_info.lang,
-                                           "config_url": voice_info.config_url,
-                                           "vocoder_url": voice_info.vocoder_url,
-                                           "vocoder_config_url": voice_info.vocoder_config_url,
-                                           "vocoder_type": voice_info.vocoder_type,
-                                           "display_name": voice_info.display_name}
+        self.cache[voice_info.voice_id] = voice_info.to_dict()
 
     def get_lang_voices(self, lang: str) -> List[TTSModelInfo]:
         voices = sorted(
