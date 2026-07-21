@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.59.9a1](https://github.com/TigreGotico/phoonnx/tree/1.59.9a1) (2026-07-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.59.8a1...1.59.9a1)
+
+**Merged pull requests:**
+
+- fix: drop vendored GPL pyarabic, verbalize Arabic numbers via ovos-number-parser [\#280](https://github.com/TigreGotico/phoonnx/pull/280) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.59.8a1](https://github.com/TigreGotico/phoonnx/tree/1.59.8a1) (2026-07-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.59.7a1...1.59.8a1)
@@ -107,7 +115,6 @@
 - feat\(engines\): Arabic Mixer-TTS voices \(tts\_arabic\) + matched vocoders [\#147](https://github.com/TigreGotico/phoonnx/pull/147) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(train\): Mixer-TTS training \(Lightning\) [\#146](https://github.com/TigreGotico/phoonnx/pull/146) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): Mixer-TTS inference adapter + LJSpeech voices [\#145](https://github.com/TigreGotico/phoonnx/pull/145) ([JarbasAl](https://github.com/JarbasAl))
-- test\(tokenization\): cross-framework golden tests + coqui vocab-order fix [\#144](https://github.com/TigreGotico/phoonnx/pull/144) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
