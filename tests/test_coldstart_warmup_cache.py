@@ -164,10 +164,17 @@ class TestProviderFallbackWarning(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             model_path = Path(tmp) / "model.onnx"
             _build_tiny_onnx_model(model_path)
+            # Force the CPU fallback regardless of whether this machine can
+            # actually initialize the CUDA provider: build every session
+            # CPU-only no matter which providers were requested.
+            real_session = providers.onnxruntime.InferenceSession
+            cpu_only = lambda path, *a, **kw: real_session(path, providers=[CPU_PROVIDER])
             with patch.object(providers, "resolve_providers",
                                return_value=["CUDAExecutionProvider", CPU_PROVIDER]):
-                with patch.object(providers.LOG, "warning") as warn:
-                    make_session(model_path, providers=["CUDAExecutionProvider"])
+                with patch.object(providers.onnxruntime, "InferenceSession",
+                                   side_effect=cpu_only):
+                    with patch.object(providers.LOG, "warning") as warn:
+                        make_session(model_path, providers=["CUDAExecutionProvider"])
             self.assertTrue(warn.called)
             warned = " ".join(str(c) for c in warn.call_args_list)
             self.assertIn("CUDAExecutionProvider", warned)
