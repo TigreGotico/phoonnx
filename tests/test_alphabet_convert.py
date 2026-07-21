@@ -124,31 +124,18 @@ class TestNoPathIdentity(unittest.TestCase):
 
 
 class TestScriptConversion(unittest.TestCase):
-    def test_graphemes_to_hira_with_pykakasi(self):
-        """GRAPHEMES→HIRA edge calls pykakasi when available."""
-        mock_kks = MagicMock()
-        mock_kks.convert.return_value = [{"hira": "と"}, {"hira": "き"}]
+    def test_graphemes_to_hira_real_conversion(self):
+        """GRAPHEMES→HIRA edge resolves kanji readings via scriptconv."""
+        result = convert("東京", "ja", Alphabet.GRAPHEMES, Alphabet.HIRA)
+        self.assertEqual(result, "とうきょう")
 
-        mock_kakasi_module = MagicMock()
-        mock_kakasi_module.kakasi.return_value = mock_kks
-
-        with patch.dict("sys.modules", {"pykakasi": mock_kakasi_module}):
+    def test_graphemes_to_hira_no_dictionary(self):
+        """GRAPHEMES→HIRA falls back gracefully when scriptconv[ja] is missing."""
+        import scriptconv.readings as _readings
+        with patch.object(_readings, "_kakasi", None), \
+                patch.dict("sys.modules", {"pykakasi": None}):
             result = convert("東京", "ja", Alphabet.GRAPHEMES, Alphabet.HIRA)
-
-        self.assertEqual(result, "とき")
-
-    def test_graphemes_to_hira_no_pykakasi(self):
-        """GRAPHEMES→HIRA falls back gracefully when pykakasi missing."""
-        import sys
-        old = sys.modules.pop("pykakasi", None)
-        try:
-            with patch.dict("sys.modules", {"pykakasi": None}):
-                result = convert("東京", "ja", Alphabet.GRAPHEMES, Alphabet.HIRA)
-            # Should return input unchanged
-            self.assertEqual(result, "東京")
-        finally:
-            if old is not None:
-                sys.modules["pykakasi"] = old
+        self.assertEqual(result, "東京")
 
 
 class TestPhonemizationEdge(unittest.TestCase):

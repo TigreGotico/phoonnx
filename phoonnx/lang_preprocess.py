@@ -30,16 +30,9 @@ def is_katakana(c: str) -> bool:
 
 
 def hangul_to_jamo(text: str) -> str:
-    """Decompose Korean syllables into initial/medial/final Jamo. Pure Python."""
-    def decompose(ch: str) -> str:
-        if not ("가" <= ch <= "힯"):
-            return ch
-        base = ord(ch) - 0xAC00
-        initial = chr(0x1100 + base // (21 * 28))
-        medial = chr(0x1161 + (base % (21 * 28)) // 28)
-        final = chr(0x11A7 + base % 28) if base % 28 else ""
-        return initial + medial + final
-    return "".join(decompose(c) for c in text).strip()
+    """Decompose Korean syllables into conjoining Jamo (scriptconv)."""
+    from scriptconv import decompose_hangul
+    return decompose_hangul(text, form="conjoining").strip()
 
 
 def japanese_to_hiragana(text: str) -> str:

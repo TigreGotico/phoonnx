@@ -146,62 +146,37 @@ class TestConvertNoOpSameAlphabet(unittest.TestCase):
         self.assertEqual(result, "")
 
 
-class TestCangjiePassthrough(unittest.TestCase):
-    def test_pkuseg_import_error_falls_back_to_passthrough(self):
-        import sys as _sys
-        old = _sys.modules.pop("pkuseg", None)
-        try:
-            with patch.dict("sys.modules", {"pkuseg": None}):
-                result = convert("你好世界", "zh", Alphabet.GRAPHEMES, Alphabet.CANGJIE)
-            self.assertEqual(result, "你好世界")
-        finally:
-            if old is not None:
-                _sys.modules["pkuseg"] = old
+class TestCangjieEdge(unittest.TestCase):
+    def test_hanzi_become_real_cangjie_codes(self):
+        result = convert("你好", "zh", Alphabet.GRAPHEMES, Alphabet.CANGJIE)
+        self.assertEqual(result, "onf vnd")
 
-    def test_pkuseg_generic_exception_falls_back_to_passthrough(self):
-        mock_pkuseg_module = MagicMock()
-        mock_pkuseg_module.pkuseg.side_effect = RuntimeError("model not downloaded")
-        with patch.dict("sys.modules", {"pkuseg": mock_pkuseg_module}):
+    def test_unmapped_runs_pass_through(self):
+        result = convert("你好 ABC 123", "zh", Alphabet.GRAPHEMES, Alphabet.CANGJIE)
+        self.assertEqual(result, "onf vnd  ABC 123")
+
+    def test_conversion_error_falls_back_to_passthrough(self):
+        with patch("scriptconv.cangjie.to_cangjie", side_effect=RuntimeError("boom")):
             result = convert("你好", "zh", Alphabet.GRAPHEMES, Alphabet.CANGJIE)
         self.assertEqual(result, "你好")
 
-    def test_pkuseg_success_path_segments_words(self):
-        mock_seg = MagicMock()
-        mock_seg.cut.return_value = ["你好", "世界"]
-        mock_pkuseg_module = MagicMock()
-        mock_pkuseg_module.pkuseg.return_value = mock_seg
-        with patch.dict("sys.modules", {"pkuseg": mock_pkuseg_module}):
-            result = convert("你好世界", "zh", Alphabet.GRAPHEMES, Alphabet.CANGJIE)
-        self.assertEqual(result, "你好 世界")
 
+class TestKanaEdge(unittest.TestCase):
+    def test_kanji_to_katakana(self):
+        result = convert("東京", "ja", Alphabet.GRAPHEMES, Alphabet.KANA)
+        self.assertEqual(result, "トウキョウ")
 
-class TestKanaPassthrough(unittest.TestCase):
-    def test_pykakasi_import_error_falls_back_to_passthrough_for_kana(self):
-        import sys as _sys
-        old = _sys.modules.pop("pykakasi", None)
-        try:
-            with patch.dict("sys.modules", {"pykakasi": None}):
-                result = convert("東京", "ja", Alphabet.GRAPHEMES, Alphabet.KANA)
-            self.assertEqual(result, "東京")
-        finally:
-            if old is not None:
-                _sys.modules["pykakasi"] = old
-
-    def test_pykakasi_generic_exception_falls_back_to_passthrough(self):
-        mock_kakasi_module = MagicMock()
-        mock_kakasi_module.kakasi.side_effect = RuntimeError("dict load failed")
-        with patch.dict("sys.modules", {"pykakasi": mock_kakasi_module}):
+    def test_scriptconv_ja_missing_falls_back_to_passthrough(self):
+        import scriptconv.readings as _r
+        with patch.object(_r, "_kakasi", None), \
+                patch.dict("sys.modules", {"pykakasi": None}):
             result = convert("東京", "ja", Alphabet.GRAPHEMES, Alphabet.KANA)
         self.assertEqual(result, "東京")
 
-    def test_pykakasi_success_path_for_kana(self):
-        mock_kks = MagicMock()
-        mock_kks.convert.return_value = [{"kana": "トウ"}, {"kana": "キョウ"}]
-        mock_kakasi_module = MagicMock()
-        mock_kakasi_module.kakasi.return_value = mock_kks
-        with patch.dict("sys.modules", {"pykakasi": mock_kakasi_module}):
+    def test_conversion_error_falls_back_to_passthrough(self):
+        with patch("scriptconv.readings.to_katakana", side_effect=RuntimeError("dict load failed")):
             result = convert("東京", "ja", Alphabet.GRAPHEMES, Alphabet.KANA)
-        self.assertEqual(result, "トウキョウ")
+        self.assertEqual(result, "東京")
 
 
 class TestNoHangulToHiraEdge(unittest.TestCase):
@@ -235,14 +210,9 @@ class TestHangulIdentityEdge(unittest.TestCase):
 
 
 class TestMixedScriptScriptConversion(unittest.TestCase):
-    def test_mixed_script_input_through_pykakasi_mock(self):
+    def test_mixed_script_input_hiragana_edge(self):
         """Latin+Kanji mixed input must not crash the hiragana edge."""
-        mock_kks = MagicMock()
-        mock_kks.convert.return_value = [{"hira": "abc"}, {"hira": "とうきょう"}]
-        mock_kakasi_module = MagicMock()
-        mock_kakasi_module.kakasi.return_value = mock_kks
-        with patch.dict("sys.modules", {"pykakasi": mock_kakasi_module}):
-            result = convert("abc東京", "ja", Alphabet.GRAPHEMES, Alphabet.HIRA)
+        result = convert("abc東京", "ja", Alphabet.GRAPHEMES, Alphabet.HIRA)
         self.assertEqual(result, "abcとうきょう")
 
 

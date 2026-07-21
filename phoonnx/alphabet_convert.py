@@ -245,47 +245,36 @@ def _graphemes_to_hangul(text: str, lang: str, _pt=None) -> str:
 
 
 def _graphemes_to_hiragana(text: str, lang: str, _pt=None) -> str:
-    """Japanese: convert kanji/katakana → hiragana via pykakasi."""
+    """Japanese: kanji/katakana → hiragana via scriptconv's reading dictionary."""
     try:
-        import pykakasi
-        kks = pykakasi.kakasi()
-        result = kks.convert(text)
-        return "".join(item["hira"] for item in result)
+        from scriptconv.readings import to_hiragana
+        return to_hiragana(text)
     except ImportError:
-        LOG.debug("pykakasi not available; returning text unchanged")
+        LOG.debug("scriptconv[ja] not available; returning text unchanged")
         return text
     except Exception as e:
-        LOG.debug("pykakasi conversion failed: %s", e)
+        LOG.debug("hiragana conversion failed: %s", e)
         return text
 
 
 def _graphemes_to_kana(text: str, lang: str, _pt=None) -> str:
-    """Japanese: convert to katakana via pykakasi."""
+    """Japanese: convert to katakana via scriptconv's reading dictionary."""
     try:
-        import pykakasi
-        kks = pykakasi.kakasi()
-        result = kks.convert(text)
-        return "".join(item["kana"] for item in result)
+        from scriptconv.readings import to_katakana
+        return to_katakana(text)
     except ImportError:
-        LOG.debug("pykakasi not available; returning text unchanged")
+        LOG.debug("scriptconv[ja] not available; returning text unchanged")
         return text
     except Exception as e:
-        LOG.debug("pykakasi conversion failed: %s", e)
+        LOG.debug("katakana conversion failed: %s", e)
         return text
 
 
 def _graphemes_to_cangjie(text: str, lang: str, _pt=None) -> str:
-    """Chinese: convert to Cangjie codes via spacy-pkuseg (best-effort)."""
+    """Chinese: hanzi → Cangjie5 codes via scriptconv's vendored table."""
     try:
-        import pkuseg
-        seg = pkuseg.pkuseg()
-        words = seg.cut(text)
-        # Cangjie encoding is not directly provided by pkuseg; return segmented.
-        # A full Cangjie lookup table would be needed for complete conversion.
-        return " ".join(words)
-    except ImportError:
-        LOG.debug("spacy-pkuseg not available; returning text unchanged")
-        return text
+        from scriptconv.cangjie import to_cangjie
+        return to_cangjie(text)
     except Exception as e:
         LOG.debug("Cangjie conversion failed: %s", e)
         return text
