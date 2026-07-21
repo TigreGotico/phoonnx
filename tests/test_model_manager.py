@@ -625,6 +625,130 @@ class TestDownloadVoiceById(ManagerTestCase):
         self.assertFalse(result)
 
 
+class TestFullSerializationRoundTrip(ManagerTestCase):
+    """Adversarial: every optional TTSModelInfo field must survive save/reload
+    and add_voice/reload, including enums, nested dicts, and the aux-graph
+    URLs used by StyleTTS2/Kokoro, YourTTS, F5-TTS and Chatterbox."""
+
+    def _fully_populated_info(self):
+        return TTSModelInfo(
+            voice_id="full/voice",
+            lang="en-US",
+            model_url="https://example.com/model.onnx",
+            config_url="https://example.com/config.json",
+            vocab_url="https://example.com/vocab.json",
+            tokenizer_config_url="https://example.com/tokenizer_config.json",
+            tokens_url="https://example.com/tokens.txt",
+            phoneme_map_url="https://example.com/phoneme_map.json",
+            phoneme_type="espeak",
+            phonemizer_model="modern",
+            alphabet="ipa",
+            engine="piper",
+            vocab_override={"a": 0, "b": 1},
+            vocoder_url="https://example.com/vocoder.onnx",
+            vocoder_config_url="https://example.com/vocoder.json",
+            vocoder_type="hifigan",
+            style_url="https://example.com/style.bin",
+            speaker_encoder_url="https://example.com/enc.onnx",
+            speaker_encoder_type="dvector",
+            aux_model_urls={"preprocess_path": "https://example.com/pre.onnx",
+                             "decode_path": "https://example.com/dec.onnx"},
+            speech_encoder_url="https://example.com/speech_encoder.onnx",
+            embed_tokens_url="https://example.com/embed_tokens.onnx",
+            conditional_decoder_url="https://example.com/conditional_decoder.onnx",
+            lang_tokens={"en-US": "en", "en-GB": "eg"},
+            display_name="full voice",
+        )
+
+    def _assert_full_equality(self, original, reloaded):
+        for f in original.__dataclass_fields__:
+            self.assertEqual(getattr(original, f), getattr(reloaded, f), msg=f"field {f} mismatch")
+
+    def test_save_round_trip_preserves_every_field(self):
+        manager = TTSModelManager(cache_path=self.cache_path)
+        voice = self._fully_populated_info()
+        manager.voices = {voice.voice_id: voice}
+        manager.save()
+
+        reloaded_manager = TTSModelManager(cache_path=self.cache_path)
+        reloaded_manager.load()
+        reloaded = reloaded_manager.voices["full/voice"]
+        self._assert_full_equality(voice, reloaded)
+
+    def test_add_voice_round_trip_preserves_every_field(self):
+        manager = TTSModelManager(cache_path=self.cache_path)
+        voice = self._fully_populated_info()
+        manager.add_voice(voice)
+        manager.cache.store()
+
+        reloaded_manager = TTSModelManager(cache_path=self.cache_path)
+        reloaded_manager.load()
+        reloaded = reloaded_manager.voices["full/voice"]
+        self._assert_full_equality(voice, reloaded)
+
+    def test_bundled_index_style_dict_still_deserializes(self):
+        # Matches the plain-dict-with-None-values format used by voice_index/*.json
+        bundled_dict = {
+            "voice_id": "chatterbox/base/en",
+            "model_url": "https://example.com/language_model.onnx",
+            "speech_encoder_url": "https://example.com/speech_encoder.onnx",
+            "embed_tokens_url": "https://example.com/embed_tokens.onnx",
+            "conditional_decoder_url": "https://example.com/conditional_decoder.onnx",
+            "tokenizer_config_url": "https://example.com/tokenizer.json",
+            "config_url": None,
+            "vocab_url": None,
+            "tokens_url": None,
+            "phoneme_map_url": None,
+            "phoneme_type": "unicode",
+            "alphabet": "unicode",
+            "engine": "chatterbox",
+            "lang": "en-US",
+        }
+        info = TTSModelInfo(**bundled_dict)
+        self.assertEqual(info.speech_encoder_url, bundled_dict["speech_encoder_url"])
+        self.assertEqual(info.embed_tokens_url, bundled_dict["embed_tokens_url"])
+        self.assertEqual(info.conditional_decoder_url, bundled_dict["conditional_decoder_url"])
+        self.assertEqual(info.engine, Engine.CHATTERBOX)
+        self.assertEqual(info.phoneme_type, PhonemeType.UNICODE)
+
+    def test_to_dict_enum_fields_are_plain_strings(self):
+        voice = self._fully_populated_info()
+        d = voice.to_dict()
+        self.assertEqual(d["engine"], "piper")
+        self.assertEqual(d["alphabet"], "ipa")
+        self.assertEqual(d["phoneme_type"], "espeak")
+        # must be JSON serializable without a custom encoder
+        json.dumps(d)
+
+
+class TestLoadPhonemeTypeOverrideAppliesToConfig(VoicePathTestCase):
+    @patch("phoonnx.model_manager.TTSVoice")
+    @patch("phoonnx.model_manager.requests.get")
+    def test_override_sets_config_phoneme_type_not_voice_attribute(self, mock_get, mock_ttsvoice_cls):
+        info = self.make_info(config_url="https://example.com/config.json", phoneme_type="graphemes", alphabet="unicode")
+        resp = _mock_response(200, content=b"data")
+        cm = MagicMock()
+        cm.__enter__.return_value = resp
+        mock_get.return_value = cm
+        info.voice_path.joinpath("model.json").write_text(
+            json.dumps({"phoneme_type": "espeak", "alphabet": "ipa"}), encoding="utf-8"
+        )
+        fake_voice = MagicMock()
+        fake_voice.config.phoneme_type = PhonemeType.ESPEAK
+        fake_voice.config.alphabet = Alphabet.IPA
+        mock_ttsvoice_cls.load.return_value = fake_voice
+
+        with patch("phoonnx.model_manager.get_phonemizer") as mock_get_phonemizer:
+            result = info.load()
+
+        # the override must land on voice.config.phoneme_type, not a dead
+        # voice.phoneme_type attribute
+        self.assertEqual(fake_voice.config.phoneme_type, info.phoneme_type)
+        self.assertEqual(fake_voice.config.alphabet, info.alphabet)
+        mock_get_phonemizer.assert_called_once()
+        self.assertEqual(result, fake_voice)
+
+
 class TestUnwritableCachePath(unittest.TestCase):
     def test_unwritable_cache_dir_raises_clear_error(self):
         tmpdir = tempfile.mkdtemp()
