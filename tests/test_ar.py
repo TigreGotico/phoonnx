@@ -139,7 +139,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
                 self.assertEqual(class_result, instance_result)
 
     # Basic Phonemization Tests with BUCKWALTER alphabet
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_mantoq_basic(self, mock_mantoq):
         """Test basic phonemize_string functionality with BUCKWALTER alphabet."""
         mock_mantoq.return_value = ("مرحبا", ['m', 'a', 'r', 'h', 'a', 'b', 'a'])
@@ -150,7 +150,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
         self.assertEqual(result, "marhaba")
         self.assertIsInstance(result, str)
 
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_mantoq_single_character(self, mock_mantoq):
         """Test phonemization of single Arabic character."""
         mock_mantoq.return_value = ("ب", ['b'])
@@ -160,7 +160,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
         mock_mantoq.assert_called_once_with("ب")
         self.assertEqual(result, "b")
 
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_mantoq_with_word_separators(self, mock_mantoq):
         """Test phonemize_string with word separator tokens (_+_)."""
         mock_mantoq.return_value = ("مرحبا بالعالم", ['m', 'a', 'r', '_+_', 'h', 'a', 'b', 'a'])
@@ -172,7 +172,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
         self.assertIn(' ', result)
         self.assertEqual(result.count(' '), 1)
 
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_mantoq_multiple_separators(self, mock_mantoq):
         """Test phonemize_string with multiple word separators."""
         mock_mantoq.return_value = ("text", ['a', '_+_', 'b', '_+_', 'c', '_+_', 'd'])
@@ -182,7 +182,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
         self.assertEqual(result, "a b c d")
         self.assertEqual(result.count(' '), 3)
 
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_mantoq_consecutive_separators(self, mock_mantoq):
         """Test handling of consecutive word separators."""
         mock_mantoq.return_value = ("text", ['word', '_+_', '_+_', 'another'])
@@ -192,7 +192,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
         # Should result in double space
         self.assertEqual(result, "word  another")
 
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_mantoq_no_separators(self, mock_mantoq):
         """Test phonemize_string with no word separators."""
         mock_mantoq.return_value = ("كتاب", ['k', 'i', 't', 'a', 'b'])
@@ -203,8 +203,8 @@ class TestMantoqPhonemizer(unittest.TestCase):
         self.assertNotIn(' ', result)
 
     # Phonemization Tests with IPA alphabet
-    @patch('phoonnx.phonemizers.ar.mantoq_to_ipa')
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq_to_ipa')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_ipa_basic(self, mock_mantoq, mock_bw2ipa):
         """Test phonemize_string with IPA alphabet."""
         mock_mantoq.return_value = ("مرحبا", ['m', 'a', 'r', 'h', 'a', 'b', 'a'])
@@ -216,8 +216,8 @@ class TestMantoqPhonemizer(unittest.TestCase):
         mock_bw2ipa.assert_called_once_with("marhaba")
         self.assertEqual(result, "marħaba")
 
-    @patch('phoonnx.phonemizers.ar.mantoq_to_ipa')
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq_to_ipa')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_ipa_with_separators(self, mock_mantoq, mock_bw2ipa):
         """Test IPA phonemization preserving word separators."""
         mock_mantoq.return_value = ("مرحبا بالعالم", ['m', 'a', 'r', '_+_', 'h', 'a', 'b', 'a'])
@@ -229,8 +229,8 @@ class TestMantoqPhonemizer(unittest.TestCase):
         mock_bw2ipa.assert_called_once_with("mar haba")
         self.assertEqual(result, "mar ħaba")
 
-    @patch('phoonnx.phonemizers.ar.mantoq_to_ipa')
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq_to_ipa')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_ipa_complex_phonemes(self, mock_mantoq, mock_bw2ipa):
         """Test IPA phonemization with complex Arabic phonemes."""
         mock_mantoq.return_value = ("الشمس", ['?', 'a', 'l', 'S', 'a', 'm', 's'])
@@ -242,7 +242,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
         self.assertEqual(result, "ʔaʃːams")
 
     # Edge Cases and Error Handling
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_empty_text(self, mock_mantoq):
         """Test phonemize_string with empty text."""
         mock_mantoq.return_value = ("", [])
@@ -252,7 +252,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
         mock_mantoq.assert_called_once_with("")
         self.assertEqual(result, "")
 
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_whitespace_only(self, mock_mantoq):
         """Test phonemize_string with whitespace-only text."""
         mock_mantoq.return_value = ("   ", [' ', ' ', ' '])
@@ -261,7 +261,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
 
         self.assertEqual(result, "   ")
 
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_newlines_and_tabs(self, mock_mantoq):
         """Test phonemize_string with newlines and tabs."""
         mock_mantoq.return_value = ("text\nwith\ttabs",
@@ -274,7 +274,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
 
     def test_phonemize_string_default_language_parameter(self):
         """Test phonemize_string with default language parameter (should be 'ar')."""
-        with patch('phoonnx.phonemizers.ar.mantoq') as mock_mantoq:
+        with patch('scriptconv.phonemizers.ar.mantoq') as mock_mantoq:
             mock_mantoq.return_value = ("text", ['t', 'e', 's', 't'])
 
             result = self.phonemizer_mantoq.phonemize_string("مرحبا")
@@ -292,7 +292,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
                     self.phonemizer_mantoq.phonemize_string("test", lang)
 
     # Exception Handling and Error Propagation
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_mantoq_exception(self, mock_mantoq):
         """Test phonemize_string when mantoq raises an exception."""
         mock_mantoq.side_effect = Exception("Mantoq processing error")
@@ -302,7 +302,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
 
         self.assertIn("Mantoq processing error", str(context.exception))
 
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_mantoq_import_error(self, mock_mantoq):
         """Test phonemize_string when mantoq has import issues."""
         mock_mantoq.side_effect = ImportError("mantoq library not found")
@@ -310,8 +310,8 @@ class TestMantoqPhonemizer(unittest.TestCase):
         with self.assertRaises(ImportError):
             self.phonemizer_mantoq.phonemize_string("مرحبا", "ar")
 
-    @patch('phoonnx.phonemizers.ar.mantoq_to_ipa')
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq_to_ipa')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_bw2ipa_exception(self, mock_mantoq, mock_bw2ipa):
         """Test phonemize_string when bw2ipa raises an exception."""
         mock_mantoq.return_value = ("text", ['t', 'e', 's', 't'])
@@ -322,8 +322,8 @@ class TestMantoqPhonemizer(unittest.TestCase):
 
         self.assertIn("bw2ipa translation error", str(context.exception))
 
-    @patch('phoonnx.phonemizers.ar.mantoq_to_ipa')
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq_to_ipa')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_bw2ipa_import_error(self, mock_mantoq, mock_bw2ipa):
         """Test phonemize_string when bw2ipa has import issues."""
         mock_mantoq.return_value = ("text", ['t', 'e', 's', 't'])
@@ -333,8 +333,8 @@ class TestMantoqPhonemizer(unittest.TestCase):
             self.phonemizer_ipa.phonemize_string("مرحبا", "ar")
 
     # Data Format Validation Tests
-    @patch('phoonnx.phonemizers.ar.mantoq_to_ipa')
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq_to_ipa')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_bw2ipa_return_types(self, mock_mantoq, mock_bw2ipa):
         """Test phonemize_string when bw2ipa returns various types."""
         mock_mantoq.return_value = ("text", ['t', 'e', 's', 't'])
@@ -365,8 +365,8 @@ class TestMantoqPhonemizer(unittest.TestCase):
             ("لو", "If - tests glides")
         ]
 
-        with patch('phoonnx.phonemizers.ar.mantoq') as mock_mantoq, \
-                patch('phoonnx.phonemizers.ar.mantoq_to_ipa') as mock_bw2ipa:
+        with patch('scriptconv.phonemizers.ar.mantoq') as mock_mantoq, \
+                patch('scriptconv.phonemizers.ar.mantoq_to_ipa') as mock_bw2ipa:
             for arabic_text, description in arabic_test_cases:
                 with self.subTest(text=arabic_text, desc=description):
                     # Mock realistic phoneme output
@@ -398,7 +398,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
             ("بحر", "Sea")
         ]
 
-        with patch('phoonnx.phonemizers.ar.mantoq') as mock_mantoq:
+        with patch('scriptconv.phonemizers.ar.mantoq') as mock_mantoq:
             for arabic_text, description in additional_samples:
                 with self.subTest(text=arabic_text, desc=description):
                     mock_phonemes = list(arabic_text)
@@ -424,7 +424,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
             ("مرحبا - Welcome", "Arabic with dash and English")
         ]
 
-        with patch('phoonnx.phonemizers.ar.mantoq') as mock_mantoq:
+        with patch('scriptconv.phonemizers.ar.mantoq') as mock_mantoq:
             for text, description in mixed_cases:
                 with self.subTest(text=repr(text), desc=description):
                     mock_mantoq.return_value = ("normalized", ['t', 'e', 's', 't'])
@@ -434,7 +434,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
                     mock_mantoq.assert_called_with(text)
 
     # Performance and Stress Tests
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_very_long_text(self, mock_mantoq):
         """Test phonemize_string with very long Arabic text."""
         long_text = "مرحبا بالعالم الجميل " * 100  # ~2000 characters
@@ -446,7 +446,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
         self.assertIsInstance(result, str)
         self.assertEqual(len(result), 1500)  # 3 chars * 500 repetitions
 
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_empty_phonemes_list(self, mock_mantoq):
         """Test phonemize_string when mantoq returns empty phonemes list."""
         mock_mantoq.return_value = ("text", [])
@@ -454,7 +454,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
         result = self.phonemizer_mantoq.phonemize_string("مرحبا", "ar")
         self.assertEqual(result, "")
 
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_single_separator(self, mock_mantoq):
         """Test phonemize_string with only separator tokens."""
         mock_mantoq.return_value = ("text", ['_+_'])
@@ -482,7 +482,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
                     self.phonemizer_mantoq.phonemize_string(invalid_text, "ar")
 
     # Word Boundary and Separator Preservation Tests
-    @patch('phoonnx.phonemizers.ar.mantoq')
+    @patch('scriptconv.phonemizers.ar.mantoq')
     def test_phonemize_string_word_boundary_edge_cases(self, mock_mantoq):
         """Test edge cases in word boundary handling."""
         test_cases = [
@@ -507,8 +507,8 @@ class TestMantoqPhonemizer(unittest.TestCase):
     # Alphabet-specific Behavior Tests
     def test_alphabet_specific_processing_paths(self):
         """Test that different alphabet settings trigger different processing paths."""
-        with patch('phoonnx.phonemizers.ar.mantoq') as mock_mantoq, \
-                patch('phoonnx.phonemizers.ar.mantoq_to_ipa') as mock_bw2ipa:
+        with patch('scriptconv.phonemizers.ar.mantoq') as mock_mantoq, \
+                patch('scriptconv.phonemizers.ar.mantoq_to_ipa') as mock_bw2ipa:
             mock_mantoq.return_value = ("text", ['t', 'e', 's', 't'])
 
             # Test BUCKWALTER path (should not call bw2ipa)
@@ -530,7 +530,7 @@ class TestMantoqPhonemizer(unittest.TestCase):
         """Test that alphabet attribute remains consistent throughout object lifecycle."""
         # Test BUCKWALTER phonemizer
         self.assertEqual(self.phonemizer_mantoq.alphabet, Alphabet.BUCKWALTER)
-        with patch('phoonnx.phonemizers.ar.mantoq') as mock_mantoq:
+        with patch('scriptconv.phonemizers.ar.mantoq') as mock_mantoq:
             mock_mantoq.return_value = ("text", [])
             self.phonemizer_mantoq.phonemize_string("test", "ar")
             # Alphabet should remain unchanged after phonemization
@@ -538,8 +538,8 @@ class TestMantoqPhonemizer(unittest.TestCase):
 
         # Test IPA phonemizer
         self.assertEqual(self.phonemizer_ipa.alphabet, Alphabet.IPA)
-        with patch('phoonnx.phonemizers.ar.mantoq') as mock_mantoq, \
-                patch('phoonnx.phonemizers.ar.mantoq_to_ipa') as mock_bw2ipa:
+        with patch('scriptconv.phonemizers.ar.mantoq') as mock_mantoq, \
+                patch('scriptconv.phonemizers.ar.mantoq_to_ipa') as mock_bw2ipa:
             mock_mantoq.return_value = ("text", [])
             mock_bw2ipa.return_value = ""
             self.phonemizer_ipa.phonemize_string("test", "ar")
@@ -561,7 +561,7 @@ class TestMantoqPhonemizerIntegration(unittest.TestCase):
 
     def test_full_pipeline_mantoq_alphabet(self):
         """Test complete phonemization pipeline for BUCKWALTER alphabet."""
-        with patch('phoonnx.phonemizers.ar.mantoq') as mock_mantoq:
+        with patch('scriptconv.phonemizers.ar.mantoq') as mock_mantoq:
             # Simulate realistic mantoq output
             mock_mantoq.return_value = (
                 "مرحبا بالعالم",
@@ -577,8 +577,8 @@ class TestMantoqPhonemizerIntegration(unittest.TestCase):
 
     def test_full_pipeline_ipa_alphabet(self):
         """Test complete phonemization pipeline for IPA alphabet."""
-        with patch('phoonnx.phonemizers.ar.mantoq') as mock_mantoq, \
-                patch('phoonnx.phonemizers.ar.mantoq_to_ipa') as mock_bw2ipa:
+        with patch('scriptconv.phonemizers.ar.mantoq') as mock_mantoq, \
+                patch('scriptconv.phonemizers.ar.mantoq_to_ipa') as mock_bw2ipa:
             # Simulate realistic mantoq output
             mock_mantoq.return_value = (
                 "مرحبا بالعالم",
@@ -597,7 +597,7 @@ class TestMantoqPhonemizerIntegration(unittest.TestCase):
     def test_error_propagation_through_pipeline(self):
         """Test that errors are properly propagated through the processing pipeline."""
         # Test mantoq error propagation
-        with patch('phoonnx.phonemizers.ar.mantoq') as mock_mantoq:
+        with patch('scriptconv.phonemizers.ar.mantoq') as mock_mantoq:
             mock_mantoq.side_effect = RuntimeError("Mantoq processing failed")
 
             with self.assertRaises(RuntimeError) as context:
@@ -606,8 +606,8 @@ class TestMantoqPhonemizerIntegration(unittest.TestCase):
             self.assertIn("Mantoq processing failed", str(context.exception))
 
         # Test bw2ipa error propagation  
-        with patch('phoonnx.phonemizers.ar.mantoq') as mock_mantoq, \
-                patch('phoonnx.phonemizers.ar.mantoq_to_ipa') as mock_bw2ipa:
+        with patch('scriptconv.phonemizers.ar.mantoq') as mock_mantoq, \
+                patch('scriptconv.phonemizers.ar.mantoq_to_ipa') as mock_bw2ipa:
             mock_mantoq.return_value = ("text", ['t', 'e', 's', 't'])
             mock_bw2ipa.side_effect = RuntimeError("bw2ipa translation failed")
 
@@ -618,7 +618,7 @@ class TestMantoqPhonemizerIntegration(unittest.TestCase):
 
     def test_real_arabic_phonemization_samples(self):
         """Real integration test with actual Arabic text samples, using the
-        vendored mantoq/bw2ipa implementation (phoonnx/thirdparty/mantoq) —
+        vendored mantoq/bw2ipa implementation (scriptconv's vendored mantoq) —
         no external dependency, so this runs unconditionally."""
         # Test cases from the main block of the original file
         test_cases = [

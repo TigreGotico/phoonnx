@@ -60,7 +60,7 @@ def test_en_phonemizer_uses_arpa_lookup():
 
 def test_arabic_to_buckwalter_roundtrip():
     """arabic_to_buckwalter → buckwalter_to_arabic should recover the original."""
-    from phoonnx.thirdparty.mantoq.buck.phonetise_buckwalter import (
+    from scriptconv.phonemizers._vendored.mantoq.buck.phonetise_buckwalter import (
         arabic_to_buckwalter,
         buckwalter_to_arabic,
     )
@@ -72,7 +72,7 @@ def test_arabic_to_buckwalter_roundtrip():
 
 
 def test_arabic_to_buckwalter_known_values():
-    from phoonnx.thirdparty.mantoq.buck.phonetise_buckwalter import arabic_to_buckwalter
+    from scriptconv.phonemizers._vendored.mantoq.buck.phonetise_buckwalter import arabic_to_buckwalter
     assert arabic_to_buckwalter("مرحبا") == "mrHbA"
     assert arabic_to_buckwalter("الشمس") == "Al$ms"
 
@@ -139,9 +139,9 @@ def test_get_phonemizer_injects_normalizer():
     assert "2" not in out
 
 
-def test_licensed_backends_construct_from_phoonnx_classes():
+def test_licensed_backends_construct_from_scriptconv_quarantine():
     from phoonnx.config import PhonemeType, get_phonemizer
     from phoonnx.phonemizers.ar import MantoqPhonemizer
     m = get_phonemizer(PhonemeType.MANTOQ)
     assert isinstance(m, MantoqPhonemizer)
-    assert type(m).__module__.startswith("phoonnx.")
+    assert type(m).__module__.startswith("scriptconv.")
