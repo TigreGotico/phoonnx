@@ -22,7 +22,7 @@ dependencies = [
     "langcodes",
     "ovos-number-parser>=0.4.0",
     "ovos-date-parser>=0.6.4a1",
-    "scriptconv[phonemizers]>=0.0.3a17",
+    "scriptconv[phonemizers]>=0.0.3a21",
     "unicode_rbnf",
     "click",
     "requests",

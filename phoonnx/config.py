@@ -624,9 +624,9 @@ def get_phonemizer(phoneme_type: PhonemeType,
 
     Delegates to scriptconv's registry, injecting phoonnx's text normalizer
     (number/date expansion) and the phonikud model resolver so behavior
-    matches the historical in-tree phonemizers exactly.  The two backends
-    whose upstream licenses cannot ship in scriptconv (mantoq: CC BY-NC +
-    GPL pyarabic; KoG2P: GPL-3.0) construct from phoonnx's own classes.
+    matches the historical in-tree phonemizers exactly.  All backends,
+    including the license-quarantined mantoq/KoG2P (vendored in scriptconv
+    under their own licenses), come from scriptconv.
 
     Raises:
         ValueError: If the provided `phoneme_type` is not supported.
@@ -634,18 +634,11 @@ def get_phonemizer(phoneme_type: PhonemeType,
     from phoonnx.util import normalize as _normalize
     phoneme_type = PhonemeType(phoneme_type)
 
-    if phoneme_type == PhonemeType.MANTOQ:
-        from phoonnx.phonemizers.ar import MantoqPhonemizer
-        phonemizer = MantoqPhonemizer()
-    elif phoneme_type == PhonemeType.KOG2PK:
-        from phoonnx.phonemizers.ko import KoG2PPhonemizer
-        phonemizer = KoG2PPhonemizer(alphabet=alphabet)
-    else:
-        from scriptconv.phonemizers import get_phonemizer as _sc_get
-        try:
-            phonemizer = _sc_get(phoneme_type, alphabet=alphabet, model=model)
-        except KeyError:
-            raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
+    from scriptconv.phonemizers import get_phonemizer as _sc_get
+    try:
+        phonemizer = _sc_get(phoneme_type, alphabet=alphabet, model=model)
+    except KeyError:
+        raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
 
     phonemizer.normalizer = _normalize
     from phoonnx.thirdparty.phonikud import resolve_model_path
