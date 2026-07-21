@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 from phoonnx.tokenizer import (
     BlankBetween,
@@ -437,6 +438,63 @@ class TestBPETokenizerDelegates(unittest.TestCase):
         self.assertIsNone(tok.pad_id)
         self.assertIsNone(tok.blank_id)
         self.assertIsNone(tok.blank_word_id)
+
+
+class TestOutOfVocabularyTracking(unittest.TestCase):
+    """OOV phonemes must be dropped from the output but recorded and warned
+    about, instead of vanishing silently."""
+
+    def test_oov_char_is_recorded_and_warns(self):
+        voc = Vocabulary(char2idx={"a": 0}, blank=None)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+        with mock.patch("phoonnx.tokenizer.LOG.warning") as warn:
+            result = tok.encode("azb")
+        self.assertEqual(result, [0])
+        self.assertEqual(tok.not_found_characters, {"z", "b"})
+        warned_messages = [call.args[0] for call in warn.call_args_list]
+        self.assertTrue(any("'z'" in msg for msg in warned_messages))
+        self.assertTrue(any("'b'" in msg for msg in warned_messages))
+
+    def test_same_oov_char_warns_only_once(self):
+        voc = Vocabulary(char2idx={"a": 0}, blank=None)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+        with mock.patch("phoonnx.tokenizer.LOG.warning") as warn:
+            tok.encode("azzzaz")
+        self.assertEqual(tok.not_found_characters, {"z"})
+        warned_messages = [call.args[0] for call in warn.call_args_list]
+        self.assertEqual(sum("'z'" in msg for msg in warned_messages), 1)
+
+    def test_empty_string_encodes_to_empty_list(self):
+        voc = Vocabulary(char2idx={"a": 0}, blank=None)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+        self.assertEqual(tok.encode(""), [])
+        self.assertEqual(tok.not_found_characters, set())
+
+
+class TestVocabularyFormPreserved(unittest.TestCase):
+    """The vocabulary is correct by construction (it comes from the model's own
+    config), so its keys are used exactly as declared -- no unicode
+    normalization of keys or input."""
+
+    def test_combining_char_keys_kept_verbatim(self):
+        # NFD-keyed map: 'a' + COMBINING TILDE as a single two-codepoint key
+        key = "a\u0303"
+        voc = Vocabulary(char2idx={key: 0, "b": 1}, blank=None)
+        self.assertIn(key, voc.char2idx)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+        self.assertEqual(tok.encode([key, "b"]), [0, 1])
+        self.assertEqual(tok.not_found_characters, set())
+
+    def test_compound_phonemes_match(self):
+        voc = Vocabulary(char2idx={"a": 0, "i": 1, "ai": 2}, blank=None)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+        self.assertEqual(tok.encode("ai"), [2])
+        self.assertEqual(tok.not_found_characters, set())
 
 
 if __name__ == "__main__":
