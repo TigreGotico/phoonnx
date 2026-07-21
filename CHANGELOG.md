@@ -24,6 +24,7 @@
 
 **Merged pull requests:**
 
+- fix: VITS export dynamo-wrapper regression and OptiSpeech training dataloader wiring [\#263](https://github.com/TigreGotico/phoonnx/pull/263) ([JarbasAl](https://github.com/JarbasAl))
 - fix: remove all piper-phonemize and espeak-wrapper dependencies [\#262](https://github.com/TigreGotico/phoonnx/pull/262) ([JarbasAl](https://github.com/JarbasAl))
 - Score UTMOS and DNSMOS via speechonnxmetrics [\#261](https://github.com/TigreGotico/phoonnx/pull/261) ([JarbasAl](https://github.com/JarbasAl))
 - fix: retry transient download failures in network-bound tests [\#259](https://github.com/TigreGotico/phoonnx/pull/259) ([JarbasAl](https://github.com/JarbasAl))
@@ -103,7 +104,6 @@
 - feat\(engines\): Arabic Mixer-TTS voices \(tts\_arabic\) + matched vocoders [\#147](https://github.com/TigreGotico/phoonnx/pull/147) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(train\): Mixer-TTS training \(Lightning\) [\#146](https://github.com/TigreGotico/phoonnx/pull/146) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): Mixer-TTS inference adapter + LJSpeech voices [\#145](https://github.com/TigreGotico/phoonnx/pull/145) ([JarbasAl](https://github.com/JarbasAl))
-- test\(tokenization\): cross-framework golden tests + coqui vocab-order fix [\#144](https://github.com/TigreGotico/phoonnx/pull/144) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
