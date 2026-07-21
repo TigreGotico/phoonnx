@@ -145,3 +145,53 @@ def test_licensed_backends_construct_from_scriptconv_quarantine():
     m = get_phonemizer(PhonemeType.MANTOQ)
     assert isinstance(m, MantoqPhonemizer)
     assert type(m).__module__.startswith("scriptconv.")
+
+
+# ---------------------------------------------------------------------------
+# Per-language phonemizer modules re-export the shared contract types
+# ---------------------------------------------------------------------------
+
+_PHONEMIZER_SHIM_MODULES = [
+    "ar", "en", "eu", "fa", "gl", "he", "ja", "ko",
+    "mwl", "o2ipa", "pt", "vi", "zh", "shami",
+]
+
+
+@pytest.mark.parametrize("module_name", _PHONEMIZER_SHIM_MODULES)
+def test_shim_reexports_alphabet_and_base_phonemizer(module_name):
+    """Every per-language phonemizer module carries the shared contract types
+    (Alphabet, BasePhonemizer) alongside its language-specific classes."""
+    import importlib
+    mod = importlib.import_module(f"phoonnx.phonemizers.{module_name}")
+    from scriptconv.phonemizers.enums import Alphabet
+    from scriptconv.phonemizers.base import BasePhonemizer
+    assert mod.Alphabet is Alphabet
+    assert mod.BasePhonemizer is BasePhonemizer
+
+
+def test_base_module_reexports_shared_helpers():
+    from phoonnx.phonemizers import base
+    from langcodes import tag_distance
+    from quebra_frases import sentence_tokenize
+    from phoonnx.util import match_lang, normalize
+    from phoonnx.thirdparty.phonikud import PhonikudDiacritizer
+    assert base.tag_distance is tag_distance
+    assert base.sentence_tokenize is sentence_tokenize
+    assert base.match_lang is match_lang
+    assert base.normalize is normalize
+    assert base.PhonikudDiacritizer is PhonikudDiacritizer
+
+
+def test_en_module_reexports_arpa_to_ipa_lookup():
+    from phoonnx.phonemizers import en
+    from scriptconv.phonemizers.en import arpa_to_ipa_lookup
+    assert en.arpa_to_ipa_lookup is arpa_to_ipa_lookup
+
+
+def test_shami_module_reexports_frontend_helpers():
+    from phoonnx.phonemizers import shami
+    from scriptconv.phonemizers.shami import TextFrontend, sentence_tokenize
+    from scriptconv.phonemizers.base import PhonemizedChunks
+    assert shami.TextFrontend is TextFrontend
+    assert shami.PhonemizedChunks is PhonemizedChunks
+    assert shami.sentence_tokenize is sentence_tokenize

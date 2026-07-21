@@ -7,3 +7,5 @@ injects phoonnx's text normalizer so behavior is unchanged.
 from scriptconv.phonemizers.zh import (G2pCPhonemizer, G2pMPhonemizer,
     PypinyinPhonemizer, XpinyinPhonemizer, JiebaPhonemizer,
     BaseChinesePinyinPhonemizer)  # noqa: F401
+from scriptconv.phonemizers.enums import Alphabet  # noqa: F401
+from scriptconv.phonemizers.base import BasePhonemizer  # noqa: F401
