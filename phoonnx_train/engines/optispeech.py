@@ -475,14 +475,195 @@ def _build_model_kwargs(
     }
 
 
-def build_optispeech(ocfg: "OptiSpeechEngineConfig") -> "pl.LightningModule":
-    """Construct an :class:`OptiSpeech` LightningModule from an explicit config."""
+class _JsonlTextWavDataset:
+    """Adapt phoonnx ``dataset.jsonl`` rows to the per-utterance datapoint dict
+    that :class:`TextWavBatchCollate` (OptiSpeech's collate) consumes.
+
+    OptiSpeech tokenizes with its OWN ``TextProcessor`` (see
+    :meth:`OptiSpeechTrainingEngine.eval_text_to_ids`), NOT the generic phoonnx
+    phoneme ids cached in the manifest — those use a different phoneme set and
+    blank/BOS/EOS convention. So ``x`` is re-derived from each row's ``text``,
+    and mel / pitch / energy are computed on the fly by the vendored feature
+    extractor from the raw ``audio_path`` (matching ``do_preprocess_utterance``).
+    """
+
+    def __init__(
+        self,
+        rows: List[Dict[str, Any]],
+        text_processor,
+        feature_extractor,
+        is_multi_speaker: bool,
+        is_multi_language: bool,
+        default_language: str,
+    ):
+        # No module objects on the instance: DataLoader workers pickle the
+        # dataset under spawn/forkserver start methods (the py>=3.14 default).
+        # Feature-extractor components initialize lazily per process.
+        self._fe_initialized = False
+        self.text_processor = text_processor
+        self.feature_extractor = feature_extractor
+        self.is_multi_speaker = is_multi_speaker
+        self.is_multi_language = is_multi_language
+        self.default_language = default_language
+        # A usable row needs a transcript (OptiSpeech re-tokenizes text) and a
+        # raw audio path (features are extracted on the fly).
+        self.rows = [
+            r for r in rows if r.get("text") and r.get("audio_path")
+        ]
+        dropped = len(rows) - len(self.rows)
+        if dropped:
+            _LOG.warning(
+                "optispeech dataset: skipped %d/%d rows missing text or audio_path",
+                dropped, len(rows),
+            )
+        if not self.rows:
+            raise ValueError(
+                "optispeech training needs dataset.jsonl rows carrying both "
+                "'text' and 'audio_path'; none were found"
+            )
+
+    def __len__(self) -> int:
+        return len(self.rows)
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        # Initialized extractor components may hold unpicklable runtime state;
+        # each worker re-initializes on first __getitem__.
+        state["_fe_initialized"] = False
+        return state
+
+    def __getitem__(self, index: int) -> Dict[str, Any]:
+        import numpy as np
+        import torch
+
+        if not self._fe_initialized:
+            self.feature_extractor.initialize_components()
+            self._fe_initialized = True
+        row = self.rows[index]
+        lang = self.default_language if self.is_multi_language else None
+        phoneme_ids, text = self.text_processor(
+            row["text"], lang, split_sentences=False
+        )
+        wav, mel, energy, pitch = self.feature_extractor(row["audio_path"])
+        sid = None
+        if self.is_multi_speaker and row.get("speaker_id") is not None:
+            sid = int(row["speaker_id"])
+        lid = None
+        if self.is_multi_language and row.get("language_id") is not None:
+            lid = int(row["language_id"])
+        return dict(
+            x=torch.LongTensor(phoneme_ids),
+            wav=torch.from_numpy(np.asarray(wav, dtype=np.float32)),
+            mel=torch.from_numpy(np.asarray(mel, dtype=np.float32)),
+            energy=torch.from_numpy(np.asarray(energy, dtype=np.float32)),
+            pitch=torch.from_numpy(np.asarray(pitch, dtype=np.float32)),
+            sid=sid,
+            lid=lid,
+            text=text,
+            filepath=row["audio_path"],
+        )
+
+
+def _optispeech_class():
+    """Return an :class:`OptiSpeech` subclass wired for CLI training.
+
+    The vendored ``OptiSpeech`` has no ``train_dataloader`` (upstream fed it a
+    separate Hydra datamodule), so ``python -m phoonnx_train.train`` raises
+    ``MisconfigurationException: train_dataloader must be implemented``. This
+    subclass adds a dataloader over the phoonnx ``dataset.jsonl`` manifest.
+    Kept as a subclass of the vendored module so checkpoints reload through the
+    base ``OptiSpeech.load_from_checkpoint`` unchanged (export / eval build the
+    plain base class)."""
     from phoonnx_train.optispeech.model.optispeech import OptiSpeech
 
+    class _CliTrainableOptiSpeech(OptiSpeech):
+        def attach_dataset(
+            self,
+            dataset_paths: List[Path],
+            batch_size: int,
+            num_workers: int,
+        ) -> None:
+            from phoonnx_train.matcha.jsonl import load_dataset_lines
+
+            rows: List[Dict[str, Any]] = []
+            for dp in dataset_paths:
+                jsonl_path = Path(dp)
+                if jsonl_path.is_dir():
+                    jsonl_path = jsonl_path / "dataset.jsonl"
+                rows.extend(load_dataset_lines(jsonl_path))
+            if not rows:
+                raise ValueError(
+                    f"no utterances loaded from {list(dataset_paths)}"
+                )
+            self._train_rows = rows
+            self._batch_size = int(batch_size)
+            self._num_workers = int(num_workers)
+
+        def train_dataloader(self):
+            from torch.utils.data import DataLoader
+
+            from phoonnx_train.optispeech.dataset.text_wav_datamodule import (
+                TextWavBatchCollate,
+            )
+
+            tp = self.text_processor
+            fe = self.data_args.feature_extractor
+            dataset = _JsonlTextWavDataset(
+                rows=self._train_rows,
+                text_processor=tp,
+                feature_extractor=fe,
+                is_multi_speaker=self.num_speakers > 1,
+                is_multi_language=getattr(tp, "is_multi_language", False),
+                default_language=getattr(tp, "default_language", "en-us"),
+            )
+            # data_statistics is None (the generator never denormalizes), so the
+            # model is trained in raw mel/pitch/energy space — do_normalize=False
+            # keeps the collate consistent with that.
+            return DataLoader(
+                dataset,
+                batch_size=self._batch_size,
+                shuffle=True,
+                num_workers=self._num_workers,
+                collate_fn=TextWavBatchCollate(
+                    fe.n_feats, None, do_normalize=False
+                ),
+            )
+
+    return _CliTrainableOptiSpeech
+
+
+def build_optispeech(
+    ocfg: "OptiSpeechEngineConfig",
+    dataset_paths: Optional[List[Path]] = None,
+) -> "pl.LightningModule":
+    """Construct an :class:`OptiSpeech` LightningModule from an explicit config.
+
+    When *dataset_paths* are given the returned module also implements
+    ``train_dataloader`` over the phoonnx ``dataset.jsonl`` manifest so it can
+    be driven by ``python -m phoonnx_train.train`` (which calls
+    ``trainer.fit(model)`` without a dataloader)."""
     feature_extractor = _build_feature_extractor(ocfg)
     text_processor = _build_text_processor(ocfg)
+
+    # OptiSpeech re-tokenizes text with its OWN fixed symbol table (the vendored
+    # IPA tokenizer), NOT the phoonnx phoneme map that produced dataset.jsonl's
+    # phoneme_ids. The text-embedding vocab must therefore match that table's
+    # size, or the tokenizer emits ids the embedding cannot index. The shared
+    # config's num_symbols (sized to the phoonnx map) is irrelevant here.
+    input_symbols = getattr(text_processor.tokenizer, "input_symbols", None)
+    if input_symbols:
+        ocfg.num_symbols = len(input_symbols)
+
     kwargs = _build_model_kwargs(ocfg, feature_extractor, text_processor)
-    model = OptiSpeech(**kwargs)
+
+    cls = _optispeech_class()
+    model = cls(**kwargs)
+    if dataset_paths:
+        model.attach_dataset(
+            dataset_paths=dataset_paths,
+            batch_size=ocfg.batch_size,
+            num_workers=ocfg.num_workers,
+        )
     # Keep the flat config around for export/metadata.
     model._engine_config = ocfg
     return model
@@ -507,7 +688,7 @@ class OptiSpeechTrainingEngine(BaseTrainingEngine):
         **kwargs: Any,
     ) -> "pl.LightningModule":
         ocfg = OptiSpeechEngineConfig.from_training_config(config)
-        return build_optispeech(ocfg)
+        return build_optispeech(ocfg, dataset_paths=dataset_paths)
 
     def extra_preprocess(
         self,

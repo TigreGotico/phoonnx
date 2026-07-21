@@ -69,7 +69,11 @@ class FeatureExtractor:
             f_max=self.f_max,
             batch_size=self.batch_size,
         )
-        self._silence_detector = make_silence_detector()
+        # The Silero VAD is only needed for silence trimming; building it
+        # unconditionally forces every dataset (trim_silence=False) to ship a
+        # silero_vad.onnx it never uses.
+        if self.trim_silence:
+            self._silence_detector = make_silence_detector()
     
     def __call__(self, audio_path):
         if self.pitch_extractor is None:

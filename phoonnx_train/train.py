@@ -305,10 +305,15 @@ def main(
         # A compile failure must never abort a training run that would have
         # been perfectly fine uncompiled: warn and continue.
         try:
+            from phoonnx_train.torch_compat import disable_compile_on_transforms
             if hasattr(model, "model_g") and hasattr(model, "model_d"):
                 _LOGGER.info("Compiling model_g/model_d with torch.compile (mode=%s)", compile_mode)
                 model.model_g = torch.compile(model.model_g, mode=compile_mode)
                 model.model_d = torch.compile(model.model_d, mode=compile_mode)
+                # Exclude the VITS spline transforms from graph capture — their
+                # data-dependent control flow cannot be traced by dynamo. Only
+                # once compile succeeded; export paths never see the wrapper.
+                disable_compile_on_transforms()
             elif hasattr(model, "model") and isinstance(getattr(model, "model"), torch.nn.Module):
                 _LOGGER.info("Compiling model with torch.compile (mode=%s)", compile_mode)
                 model.model = torch.compile(model.model, mode=compile_mode)

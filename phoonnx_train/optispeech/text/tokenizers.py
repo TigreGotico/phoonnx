@@ -79,17 +79,25 @@ class IPATokenizer(BaseTokenizer):
                 phoneme_ids.append(phids)
         return phoneme_ids, normalized_text
 
-    def phonemize_text(self, text: str, language: str) -> str:
-        # Route through phoonnx's own espeak layer: the espeak-ng subprocess
-        # wrapper with a pure-Python espyak fallback (no GPL-linked
-        # piper_phonemize / espeak-ng wrapper). EspeakPhonemizer.phonemize
-        # returns the same nested ``list[list[str]]`` (one phoneme list per
-        # sentence) that piper's phonemize_espeak returned, so the tokenizer's
-        # downstream symbol handling and id mapping are unchanged.
-        from phoonnx.phonemizers.mul import EspeakPhonemizer
+    _espeak = None
 
+    @classmethod
+    def _get_espeak(cls):
+        # phoonnx ships its own espeak-ng wrapper (with a pure-Python espyak
+        # fallback), so the IPA tokenizer reuses it instead of piper-phonemize
+        # — which has no wheels for current CPython and is not used anywhere
+        # else in phoonnx.
+        if cls._espeak is None:
+            from phoonnx.phonemizers.mul import EspeakPhonemizer
+
+            cls._espeak = EspeakPhonemizer()
+        return cls._espeak
+
+    def phonemize_text(self, text: str, language: str):
         # Preprocess
         text = self.preprocess_text(text, language)
-        # Phonemize
-        phonemes = EspeakPhonemizer().phonemize(text, language)
+        # Phonemize with phoonnx's espeak wrapper. ``phonemize`` returns one
+        # list of phoneme tokens per sentence — the same nested shape the
+        # tokenizer's downstream flattening/joining expects.
+        phonemes = self._get_espeak().phonemize(text, language)
         return phonemes, text
