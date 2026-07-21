@@ -564,11 +564,15 @@ def _normalize_dates_and_times(text: str, full_lang: str, date_format: str = "DM
     This prepares the strings for pronunciation.
     """
     lang_code = full_lang.split("-")[0]
-    # Pre-process with regex to handle English am/pm times
+    # Pre-process with regex to handle English am/pm times.
+    # Anchored to a preceding digit so ordinary words containing "am"/"pm"
+    # (e.g. "I am happy", "spam") are never touched.
     if lang_code == "en":
-        text = re.sub(r"(?i)(\d+)(am|pm)", r"\1 \2", text)
-        # Handle the pronunciation for TTS
-        text = text.replace("am", "A M").replace("pm", "P M")
+        text = re.sub(
+            r"(?i)\b(\d+)\s*([ap])\.?m\.?\b",
+            lambda m: f"{m.group(1)} {m.group(2).upper()} M",
+            text,
+        )
 
     # Normalize times like "15h01" to words
     time_pattern = re.compile(r"(\d{1,2})h(\d{2})", re.IGNORECASE)
@@ -582,9 +586,10 @@ def _normalize_dates_and_times(text: str, full_lang: str, date_format: str = "DM
     # Find dates like "DD/MM/YYYY" or "YYYY/MM/DD"
     date_pattern = re.compile(r"(\d{1,4})[/-](\d{1,2})[/-](\d{1,4})")
 
-    match = date_pattern.search(text)
-
-    if match:
+    # Expand every date found in the text, not just the first one.
+    result_parts = []
+    pos = 0
+    for match in date_pattern.finditer(text):
         # Get the three parts of the date string
         part1_str, part2_str, part3_str = match.groups()
         p1, p2, p3 = int(part1_str), int(part2_str), int(part3_str)
@@ -625,10 +630,17 @@ def _normalize_dates_and_times(text: str, full_lang: str, date_format: str = "DM
 
         try:
             date_obj = date(year, month, day)
-            pronounced_date_str = pronounce_date(date_obj, full_lang)
-            text = text.replace(match.group(0), pronounced_date_str)
+            replacement = pronounce_date(date_obj, full_lang)
         except (ValueError, IndexError) as e:
             LOG.warning(f"Could not parse date from '{match.group(0)}': {e}")
+            replacement = match.group(0)
+
+        result_parts.append(text[pos:match.start()])
+        result_parts.append(replacement)
+        pos = match.end()
+
+    result_parts.append(text[pos:])
+    text = "".join(result_parts)
 
     return text
 
