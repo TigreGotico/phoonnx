@@ -465,6 +465,7 @@ class TTSTokenizer:
     use_eos_bos: bool
     blank_at_end: bool
     blank_at_start: bool
+    not_found_characters: Set[str] = field(default_factory=set)
 
     @property
     def pad_id(self) -> Optional[int]:
@@ -533,6 +534,12 @@ class TTSTokenizer:
                         idx = self.vocabulary.char2idx[compound]
                         compound_idxs += [i for i in range(i, i+n)]
                         break
+
+                if idx is None and char not in self.not_found_characters:
+                    self.not_found_characters.add(char)
+                    LOG.warning(f"Out-of-vocabulary phoneme {char!r} "
+                                f"(codepoints: {[hex(ord(c)) for c in char]}) "
+                                f"not found in vocabulary, dropping it")
 
             token_ids.append(idx)
 
