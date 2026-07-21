@@ -156,6 +156,86 @@ class TestLoadDatasetsEdges(unittest.TestCase):
         self.assertEqual(len(model._test_dataset), 3)
         self.assertEqual(len(model._train_dataset), 12)
 
+    def test_split_is_independent_of_prior_rng_consumption(self):
+        # The split must use its own generator (seeded from hparams.seed),
+        # not the global RNG -- otherwise the same seed produces a different
+        # split depending on how much random state model construction (or
+        # anything else) already burned through beforehand.
+        with TemporaryDirectory() as tmp:
+            jsonl = Path(tmp) / "dataset.jsonl"
+            _write_dataset_jsonl(jsonl, 20)
+
+            torch.manual_seed(0)  # untouched global RNG
+            model_a = _build_model(
+                dataset=[str(jsonl)], validation_split=0.25, num_test_examples=3, seed=42,
+            )
+
+            torch.manual_seed(0)
+            torch.randn(1000)  # burn a large amount of global RNG state
+            model_b = _build_model(
+                dataset=[str(jsonl)], validation_split=0.25, num_test_examples=3, seed=42,
+            )
+
+        self.assertEqual(list(model_a._train_dataset.indices), list(model_b._train_dataset.indices))
+        self.assertEqual(list(model_a._val_dataset.indices), list(model_b._val_dataset.indices))
+        self.assertEqual(list(model_a._test_dataset.indices), list(model_b._test_dataset.indices))
+
+    def test_empty_validation_split_warns(self):
+        # int(len * validation_split) can floor to 0 on small datasets --
+        # training would then run with no validation signal at all, so this
+        # must be surfaced loudly rather than silently accepted.
+        with self.assertLogs("vits.lightning", level="WARNING") as log_ctx:
+            with TemporaryDirectory() as tmp:
+                jsonl = Path(tmp) / "dataset.jsonl"
+                _write_dataset_jsonl(jsonl, 10)
+                _build_model(
+                    dataset=[str(jsonl)], validation_split=0.01, num_test_examples=2,
+                )
+        self.assertTrue(any("validation" in msg.lower() for msg in log_ctx.output))
+
+    def test_nonzero_validation_split_does_not_warn(self):
+        with TemporaryDirectory() as tmp:
+            jsonl = Path(tmp) / "dataset.jsonl"
+            _write_dataset_jsonl(jsonl, 20)
+            with self.assertRaises(AssertionError):
+                # assertLogs raises AssertionError itself if nothing was logged
+                with self.assertLogs("vits.lightning", level="WARNING"):
+                    _build_model(
+                        dataset=[str(jsonl)], validation_split=0.25, num_test_examples=3,
+                    )
+
+
+class TestDataLoaders(unittest.TestCase):
+    def test_train_dataloader_shuffles(self):
+        with TemporaryDirectory() as tmp:
+            jsonl = Path(tmp) / "dataset.jsonl"
+            _write_dataset_jsonl(jsonl, 20)
+            model = _build_model(
+                dataset=[str(jsonl)], validation_split=0.25, num_test_examples=3,
+            )
+        loader = model.train_dataloader()
+        self.assertIsInstance(loader.sampler, torch.utils.data.RandomSampler)
+
+    def test_val_dataloader_does_not_shuffle(self):
+        with TemporaryDirectory() as tmp:
+            jsonl = Path(tmp) / "dataset.jsonl"
+            _write_dataset_jsonl(jsonl, 20)
+            model = _build_model(
+                dataset=[str(jsonl)], validation_split=0.25, num_test_examples=3,
+            )
+        loader = model.val_dataloader()
+        self.assertIsInstance(loader.sampler, torch.utils.data.SequentialSampler)
+
+    def test_test_dataloader_does_not_shuffle(self):
+        with TemporaryDirectory() as tmp:
+            jsonl = Path(tmp) / "dataset.jsonl"
+            _write_dataset_jsonl(jsonl, 20)
+            model = _build_model(
+                dataset=[str(jsonl)], validation_split=0.25, num_test_examples=3,
+            )
+        loader = model.test_dataloader()
+        self.assertIsInstance(loader.sampler, torch.utils.data.SequentialSampler)
+
 
 class TestCheckpointSaveRestoreGlue(unittest.TestCase):
     def test_hyperparameters_round_trip_through_checkpoint(self):

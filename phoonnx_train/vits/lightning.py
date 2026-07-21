@@ -230,8 +230,22 @@ class VitsModel(pl.LightningModule):
                 "or --validation-split, or grow the dataset."
             )
 
+        if valid_set_size == 0 and validation_split > 0:
+            _LOGGER.warning(
+                "validation_split=%s on a dataset of %d examples rounds down to "
+                "0 validation examples; val_loss / early-stopping will have no "
+                "signal. Grow the dataset or raise --validation-split.",
+                validation_split, len(full_dataset),
+            )
+
+        # Use an explicit generator (seeded from hparams.seed) rather than the
+        # global RNG, so the split is reproducible regardless of how much
+        # random state prior setup (e.g. model init) already consumed.
+        split_generator = torch.Generator().manual_seed(self.hparams.seed)
         self._train_dataset, self._test_dataset, self._val_dataset = random_split(
-            full_dataset, [train_set_size, num_test_examples, valid_set_size]
+            full_dataset,
+            [train_set_size, num_test_examples, valid_set_size],
+            generator=split_generator,
         )
 
     def forward(self, text, text_lengths, scales, sid=None, speaker_embedding=None, lid=None):
@@ -265,6 +279,7 @@ class VitsModel(pl.LightningModule):
             collate_fn=self._make_collate(),
             num_workers=self.hparams.num_workers,
             batch_size=self.hparams.batch_size,
+            shuffle=True,
         )
 
     def val_dataloader(self):
