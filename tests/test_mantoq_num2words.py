@@ -2,7 +2,7 @@
 import pathlib
 import unittest
 
-from phoonnx.thirdparty.mantoq.num2words import normalize_digits, num2words
+from scriptconv.phonemizers._vendored.mantoq.num2words import normalize_digits, num2words
 
 
 class TestNormalizeDigits(unittest.TestCase):

@@ -4,7 +4,7 @@
 This script wraps hams-tts's own ONNX exporter (the checkpoint is a HamsVITS
 state_dict, so we reuse the upstream model code for the export only) and writes
 a phoonnx ``config.json`` that pairs the exported model with the vendored Shami
-front-end in ``phoonnx.thirdparty.shami``.
+front-end in ``scriptconv.phonemizers._thirdparty.shami``.
 
 Usage:
     python scripts/conversion/shami_tts/export.py \
@@ -25,7 +25,7 @@ from typing import Any, Dict
 
 def build_config() -> Dict[str, Any]:
     """Build a native phoonnx config.json for the ShamiVITS model."""
-    from phoonnx.thirdparty.shami import SYMBOL_TO_ID
+    from scriptconv.phonemizers._thirdparty.shami import SYMBOL_TO_ID
 
     return {
         "phoonnx_version": "1.0",

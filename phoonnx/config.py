@@ -34,76 +34,11 @@ class Engine(str, Enum):
     CHATTERBOX = "chatterbox"  # autoregressive codec-LM, d-vector cloning + exaggeration
 
 
-class Alphabet(str, Enum):
-    UNICODE = "unicode"
-    IPA = "ipa"
-    ARPA = "arpa" # en
-    SAMPA = "sampa"
-    XSAMPA = "x-sampa"
-    RFE = "rfe" # https://en.wikipedia.org/wiki/RFE_Phonetic_Alphabet
-    HANGUL = "hangul" # ko
-    KANA = "kana" # ja
-    HIRA = "hira" # ja
-    HEPBURN = "hepburn" # ja romanization
-    KUNREI = "kunrei" # ja romanization
-    NIHON = "nihon" # ja romanization
-    PINYIN = "pinyin" # zh
-    BOPOMOFO = "bopomofo" # zh (zhuyin) — misaki v1.1 representation
-    ERAAB = "eraab" # fa
-    COTOVIA = "cotovia" # gl
-    HANZI = "hanzi" # zh
-    BUCKWALTER = "buckwalter" # ar
-    CANGJIE = "cangjie" # zh (Cangjie input method)
-    GRAPHEMES = "graphemes"  # plain text / grapheme input (user-side)
-
-
-
-class PhonemeType(str, Enum):
-    UNICODE = "unicode"  # unicode codepoints
-    GRAPHEMES = "graphemes" # text characters
-
-    MISAKI = "misaki"  # back-compat dispatcher across misaki languages
-    MISAKI_EN = "misaki_en"
-    MISAKI_JA = "misaki_ja"
-    MISAKI_ZH = "misaki_zh"  # representation follows alphabet: ipa (v1.0) | bopomofo (v1.1)
-    MISAKI_KO = "misaki_ko"
-    MISAKI_VI = "misaki_vi"
-    ESPEAK = "espeak"
-    GRUUT = "gruut"
-    GORUUT = "goruut"
-    EPITRAN = "epitran"
-    BYT5 = "byt5"
-    CHARSIU = "charsiu"  # technically same as byt5, but needs special handling for whitespace
-    TRANSPHONE = "transphone"
-    MIRANDESE = "mwl_phonemizer"
-
-    DEEPPHONEMIZER = "deepphonemizer" # en
-    OPENPHONEMIZER = "openphonemizer" # en
-    G2PEN = "g2pen" # en
-
-    TUGAPHONE = "tugaphone"  # pt
-    G2PFA = "g2pfa"
-    OPENJTALK = "openjtalk" # ja
-    CUTLET = "cutlet" # ja
-    PYKAKASI = "pykakasi" # ja
-    COTOVIA = "cotovia"  # galician  (no ipa!)
-    AHOTTS = "ahotts"  # basque
-    PHONIKUD = "phonikud"  # hebrew
-    MANTOQ = "mantoq"  # arabic
-    VIPHONEME = "viphoneme" # vietnamese
-    G2PK = "g2pk" # korean
-    KOG2PK = "kog2p" # korean
-    G2PC = "g2pc" # chinese
-    G2PM = "g2pm" # chinese
-    PYPINYIN = "pypinyin" # chinese
-    XPINYIN = "xpinyin" # chinese
-    JIEBA = "jieba" # chinese  (not a real phonemizer!)
-    SHAMI = "shami"  # Levantine Arabic / English code-switching (ShamiVITS)
-    ARBTOK = "arbtok"  # arabic (dialect-aware, undiacritized text; o2i lattice)
-    EUSKAPHONE = "euskaphone"  # basque (dialect-aware; o2i lattice)
-    BARRANQUENHO = "barranquenho"  # barranquenho (pt/es contact variety; o2i lattice)
-    ORTHOGRAPHY2IPA = "orthography2ipa"  # multilingual data-driven IPA (o2i lattice)
-
+# Alphabet and PhonemeType are wire-format enums shared with scriptconv;
+# PhonemeType is scriptconv's Phonemizer under its historical name.  Aliasing
+# (not redefinition) keeps enum identity: values stored in voice configs and
+# pickles resolve to the same class everywhere.
+from scriptconv.phonemizers.enums import Alphabet, Phonemizer as PhonemeType
 
 @dataclass
 class VoiceConfig:
@@ -686,121 +621,30 @@ def get_phonemizer(phoneme_type: PhonemeType,
                    model: Optional[str] = None) -> 'Phonemizer':
     """
     Create a phonemizer instance for the specified phonemeization strategy.
-     
-    Parameters:
-        phoneme_type (PhonemeType): The phonemizer type to instantiate.
-        alphabet (Alphabet): Alphabet or orthography to pass to phonemizers that require it (defaults to IPA).
-        model (Optional[str]): Optional model identifier or path used by phonemizers that load external models.
-     
-    Returns:
-        Phonemizer: An instance configured for the requested phonemeization strategy.
-     
+
+    Delegates to scriptconv's registry, injecting phoonnx's text normalizer
+    (number/date expansion) and the phonikud model resolver so behavior
+    matches the historical in-tree phonemizers exactly.  All backends,
+    including the license-quarantined mantoq/KoG2P (vendored in scriptconv
+    under their own licenses), come from scriptconv.
+
     Raises:
         ValueError: If the provided `phoneme_type` is not supported.
     """
-    from phoonnx.phonemizers import (EpitranPhonemizer, EspeakPhonemizer, OpenPhonemizer, OpenJTaklPhonemizer,
-                       ByT5Phonemizer, CharsiuPhonemizer, DeepPhonemizer, PersianPhonemizer,
-                       G2pCPhonemizer, G2pMPhonemizer, G2PKPhonemizer, G2PEnPhonemizer,
-                       TransphonePhonemizer, MirandesePhonemizer, GoruutPhonemizer, TugaphonePhonemizer,
-                       GruutPhonemizer, GraphemePhonemizer, MantoqPhonemizer, MisakiPhonemizer,
-                       MisakiEnPhonemizer, MisakiJaPhonemizer, MisakiZhPhonemizer,
-                       MisakiKoPhonemizer, MisakiViPhonemizer,
-                       KoG2PPhonemizer, PypinyinPhonemizer, PyKakasiPhonemizer, CotoviaPhonemizer,
-                       AhoTTSPhonemizer, CutletPhonemizer, PhonikudPhonemizer, VIPhonemePhonemizer,
-                       XpinyinPhonemizer, UnicodeCodepointPhonemizer, JiebaPhonemizer, ShamiPhonemizer,
-                       ArbtokPhonemizer, EuskaphonePhonemizer, BarranquenhoPhonemizer,
-                       Orthography2IPAPhonemizer)
-    if phoneme_type == PhonemeType.ESPEAK:
-        phonemizer = EspeakPhonemizer()
-    elif phoneme_type == PhonemeType.BYT5:
-        phonemizer = ByT5Phonemizer(model)
-    elif phoneme_type == PhonemeType.TUGAPHONE:
-        phonemizer = TugaphonePhonemizer()
-    elif phoneme_type == PhonemeType.CHARSIU:
-        phonemizer = CharsiuPhonemizer(model)
-    elif phoneme_type == PhonemeType.GRUUT:
-        phonemizer = GruutPhonemizer()
-    elif phoneme_type == PhonemeType.GORUUT:
-        phonemizer = GoruutPhonemizer()
-    elif phoneme_type == PhonemeType.EPITRAN:
-        phonemizer = EpitranPhonemizer()
-    elif phoneme_type == PhonemeType.MISAKI:
-        phonemizer = MisakiPhonemizer(alphabet)
-    elif phoneme_type == PhonemeType.MISAKI_EN:
-        phonemizer = MisakiEnPhonemizer(alphabet)
-    elif phoneme_type == PhonemeType.MISAKI_JA:
-        phonemizer = MisakiJaPhonemizer(alphabet)
-    elif phoneme_type == PhonemeType.MISAKI_ZH:
-        phonemizer = MisakiZhPhonemizer(alphabet)
-    elif phoneme_type == PhonemeType.MISAKI_KO:
-        phonemizer = MisakiKoPhonemizer(alphabet)
-    elif phoneme_type == PhonemeType.MISAKI_VI:
-        phonemizer = MisakiViPhonemizer(alphabet)
-    elif phoneme_type == PhonemeType.TRANSPHONE:
-        phonemizer = TransphonePhonemizer()
-    elif phoneme_type == PhonemeType.MIRANDESE:
-        phonemizer = MirandesePhonemizer()
-    elif phoneme_type == PhonemeType.DEEPPHONEMIZER:
-        phonemizer = DeepPhonemizer(model)
-    elif phoneme_type == PhonemeType.OPENPHONEMIZER:
-        phonemizer = OpenPhonemizer()
-    elif phoneme_type == PhonemeType.G2PEN:
-        phonemizer = G2PEnPhonemizer(alphabet=alphabet)
-    elif phoneme_type == PhonemeType.OPENJTALK:
-        phonemizer = OpenJTaklPhonemizer(alphabet=alphabet)
-    elif phoneme_type == PhonemeType.PYKAKASI:
-        phonemizer = PyKakasiPhonemizer(alphabet=alphabet)
-    elif phoneme_type == PhonemeType.CUTLET:
-        phonemizer = CutletPhonemizer(alphabet=alphabet)
-    elif phoneme_type == PhonemeType.G2PFA:
-        phonemizer = PersianPhonemizer(alphabet=alphabet)
-    elif phoneme_type == PhonemeType.PHONIKUD:
-        phonemizer = PhonikudPhonemizer()
-    elif phoneme_type == PhonemeType.MANTOQ:
-        phonemizer = MantoqPhonemizer()
-    elif phoneme_type == PhonemeType.VIPHONEME:
-        phonemizer = VIPhonemePhonemizer()
-    elif phoneme_type == PhonemeType.KOG2PK:
-        phonemizer = KoG2PPhonemizer(alphabet=alphabet)
-    elif phoneme_type == PhonemeType.G2PK:
-        phonemizer = G2PKPhonemizer(alphabet=alphabet)
-    elif phoneme_type == PhonemeType.PYPINYIN:
-        phonemizer = PypinyinPhonemizer(alphabet=alphabet)
-    elif phoneme_type == PhonemeType.XPINYIN:
-        phonemizer = XpinyinPhonemizer(alphabet=alphabet)
-    elif phoneme_type == PhonemeType.JIEBA:
-        phonemizer = JiebaPhonemizer()
-    elif phoneme_type == PhonemeType.G2PC:
-        phonemizer = G2pCPhonemizer(alphabet=alphabet)
-    elif phoneme_type == PhonemeType.G2PM:
-        phonemizer = G2pMPhonemizer(alphabet=alphabet)
-    elif phoneme_type == PhonemeType.COTOVIA:
-        # `model` is the voice's phonemizer_model: "stress" selects the
-        # stress-marked cotovia notation (HiTZ gl VITS); default is stressless.
-        phonemizer = CotoviaPhonemizer(alphabet=alphabet, model=model)
-    elif phoneme_type == PhonemeType.AHOTTS:
-        # `model` is the voice's phonemizer_model: the AhoTTS engine variant
-        # ("classic" | "modern" | "northern"); defaults to "modern".
-        phonemizer = AhoTTSPhonemizer(model)
-    elif phoneme_type == PhonemeType.UNICODE:
-        phonemizer = UnicodeCodepointPhonemizer()
-    elif phoneme_type == PhonemeType.GRAPHEMES:
-        phonemizer = GraphemePhonemizer()
-    elif phoneme_type == PhonemeType.SHAMI:
-        phonemizer = ShamiPhonemizer(alphabet=alphabet)
-    elif phoneme_type == PhonemeType.ARBTOK:
-        # `model` is the voice's phonemizer_model: "iʿrab" forces the full
-        # case-ending register; default defers to arbtok (pausal / spoken).
-        phonemizer = ArbtokPhonemizer(register=model)
-    elif phoneme_type == PhonemeType.EUSKAPHONE:
-        phonemizer = EuskaphonePhonemizer()
-    elif phoneme_type == PhonemeType.BARRANQUENHO:
-        phonemizer = BarranquenhoPhonemizer()
-    elif phoneme_type == PhonemeType.ORTHOGRAPHY2IPA:
-        phonemizer = Orthography2IPAPhonemizer()
-    else:
-        raise ValueError("invalid phonemizer")
+    from phoonnx.util import normalize as _normalize
+    phoneme_type = PhonemeType(phoneme_type)
+
+    from scriptconv.phonemizers import get_phonemizer as _sc_get
+    try:
+        phonemizer = _sc_get(phoneme_type, alphabet=alphabet, model=model)
+    except KeyError:
+        raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
+
+    phonemizer.normalizer = _normalize
+    from phoonnx.thirdparty.phonikud import resolve_model_path
+    phonemizer.phonikud_model = resolve_model_path
     return phonemizer
+
 
 
 

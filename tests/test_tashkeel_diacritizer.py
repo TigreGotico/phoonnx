@@ -75,7 +75,7 @@ class TestMissingText2Tashkeel(unittest.TestCase):
             p = GraphemePhonemizer()
             with self.assertRaises(ImportError) as ctx:
                 p.add_diacritics("مرحبا", "ar")
-            self.assertIn("phoonnx[ar]", str(ctx.exception))
+            self.assertIn("scriptconv[tashkeel]", str(ctx.exception))
             self.assertIn("text2tashkeel", str(ctx.exception))
         finally:
             sys.modules.pop("text2tashkeel", None)
