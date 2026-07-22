@@ -6,8 +6,9 @@ import pytest
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.supertonic import (
     SuperTonicAdapter, AVAILABLE_LANGS, preprocess_text, chunk_text,
-    load_unicode_indexer, text_to_ids, length_to_mask, sample_noisy_latent,
+    load_unicode_indexer, length_to_mask, sample_noisy_latent,
 )
+from phoonnx.tokenizer import TTSTokenizer, Vocabulary
 
 
 def _req(**params):
@@ -23,6 +24,12 @@ def _tiny_indexer():
     for i, ch in enumerate(" .!?<>/abcdefghijklmnopqrstuvwxyz"):
         table[ord(ch)] = i + 1
     return table
+
+
+def _tiny_tokenizer():
+    return TTSTokenizer(Vocabulary.from_supertonic_indexer(_tiny_indexer()),
+                        add_blank_char=False, add_blank_word=False,
+                        use_eos_bos=False, blank_at_end=False, blank_at_start=False)
 
 
 class _FakeSession:
@@ -130,7 +137,7 @@ def test_chunk_text_empty_input():
 
 
 # ---------------------------------------------------------------------------
-# unicode indexer
+# unicode indexer -> standard Vocabulary/TTSTokenizer
 # ---------------------------------------------------------------------------
 
 def test_load_unicode_indexer_list_form(tmp_path):
@@ -151,17 +158,63 @@ def test_load_unicode_indexer_dict_form(tmp_path):
     assert loaded[65] == 9                          # "A"
 
 
-def test_text_to_ids_maps_known_chars():
-    indexer = _tiny_indexer()
-    ids = text_to_ids("<en>hi.</en>", indexer)
+def test_vocabulary_from_supertonic_indexer_drops_unmapped():
+    table = [-1] * 65536
+    table[ord("a")] = 5
+    table[ord("b")] = 0
+    voc = Vocabulary.from_supertonic_indexer(table)
+    assert voc.char2idx == {"a": 5, "b": 0}   # -1 entries excluded, 0 is a valid id
+    assert "c" not in voc.char2idx
+
+
+def test_vocabulary_from_supertonic_indexer_keys_not_normalized():
+    # a combining-accent sequence must survive as-is: the table indexes exactly the
+    # shipped codepoints, never NFKD/NFC-folded (NFKD applies to *input text*, not to
+    # the vocabulary's own keys)
+    combining_e = "é"   # 'e' + COMBINING ACUTE ACCENT, two codepoints
+    table = [-1] * 65536
+    table[ord("e")] = 1
+    table[0x0301] = 2
+    voc = Vocabulary.from_supertonic_indexer(table)
+    assert voc.char2idx == {"e": 1, "́": 2}
+    assert combining_e not in voc.char2idx   # it's two chars, not one
+
+
+def test_tokenizer_maps_known_chars():
+    tok = _tiny_tokenizer()
+    ids = tok.tokenize("<en>hi.</en>")
     assert len(ids) == len("<en>hi.</en>")
     assert all(i > 0 for i in ids)
 
 
-def test_text_to_ids_missing_char_raises():
-    indexer = _tiny_indexer()
-    with pytest.raises(ValueError):
-        text_to_ids("<en>hi\U0001F600</en>", indexer)   # emoji never in the table
+def test_tokenizer_drops_missing_char_with_warning(caplog):
+    # standard TTSTokenizer/Vocabulary behavior: an out-of-vocabulary character is
+    # dropped (with a warning), not a hard error — SuperTonic gets this for free by
+    # reusing the standard tokenizer instead of a bespoke raise-on-miss lookup.
+    tok = _tiny_tokenizer()
+    ids = tok.tokenize("hi\U0001F600")   # emoji never in the tiny table
+    assert ids == tok.tokenize("hi")
+    assert "\U0001F600" in tok.not_found_characters
+
+
+def test_real_indexer_slice_matches_tokenizer():
+    """Regression fixture: a genuine slice of Supertone/supertonic-3's published
+    unicode_indexer.json (onnx/unicode_indexer.json, verified against the real
+    HuggingFace file) for the characters in '<en>hi there.</en>'. Confirms
+    Vocabulary.from_supertonic_indexer + TTSTokenizer reproduce the exact ids the
+    real table gives by direct codepoint lookup — i.e. the standard-tokenizer path
+    is behaviorally identical to indexing the raw table."""
+    real_ids = {" ": 2, ".": 15, "/": 16, "<": 29, ">": 31,
+                "e": 64, "h": 67, "i": 68, "n": 73, "r": 77, "t": 79}
+    table = [-1] * 65536
+    for ch, tid in real_ids.items():
+        table[ord(ch)] = tid
+    tok = TTSTokenizer(Vocabulary.from_supertonic_indexer(table),
+                       add_blank_char=False, add_blank_word=False,
+                       use_eos_bos=False, blank_at_end=False, blank_at_start=False)
+    sample = "<en>hi there.</en>"
+    expected = [real_ids[c] for c in sample]
+    assert tok.tokenize(sample) == expected
 
 
 # ---------------------------------------------------------------------------
@@ -210,7 +263,7 @@ class _Voice:
     def __init__(self, lang_code): self.config = _Cfg(lang_code)
 
 
-def test_encode_text_requires_indexer():
+def test_encode_text_requires_tokenizer():
     ad = SuperTonicAdapter()
     with pytest.raises(RuntimeError):
         ad.encode_text("hi", _Voice("en-US"), None)
@@ -218,7 +271,7 @@ def test_encode_text_requires_indexer():
 
 def test_encode_text_produces_ids_per_chunk():
     ad = SuperTonicAdapter()
-    ad.indexer = _tiny_indexer()
+    ad.tokenizer = _tiny_tokenizer()
     out = ad.encode_text("hello there.", _Voice("en-US"), None)
     assert isinstance(out, list) and len(out) == 1
     assert all(isinstance(i, int) for i in out[0])
@@ -226,16 +279,16 @@ def test_encode_text_produces_ids_per_chunk():
 
 def test_encode_text_empty_text_yields_no_chunks():
     ad = SuperTonicAdapter()
-    ad.indexer = _tiny_indexer()
+    ad.tokenizer = _tiny_tokenizer()
     assert ad.encode_text("", _Voice("en-US"), None) == []
     assert ad.encode_text("   ", _Voice("en-US"), None) == []
 
 
 def test_encode_text_emoji_only_input():
     ad = SuperTonicAdapter()
-    ad.indexer = _tiny_indexer()
+    ad.tokenizer = _tiny_tokenizer()
     # an emoji-only message strips to nothing meaningful but must not crash;
-    # the wrapper tags + terminal period still map through the indexer.
+    # the wrapper tags + terminal period still map through the tokenizer.
     out = ad.encode_text("\U0001F600\U0001F601", _Voice("en-US"), None)
     assert isinstance(out, list)
     assert len(out) <= 1
@@ -243,28 +296,33 @@ def test_encode_text_emoji_only_input():
 
 def test_encode_text_unknown_lang_raises():
     ad = SuperTonicAdapter()
-    ad.indexer = _tiny_indexer()
+    ad.tokenizer = _tiny_tokenizer()
     with pytest.raises(ValueError):
         ad.encode_text("hi", _Voice("xx-XX"), None)
 
 
-def test_encode_text_missing_indexer_char_raises():
+def test_encode_text_missing_indexer_char_is_dropped_not_raised():
+    # out-of-vocabulary characters are silently dropped (standard tokenizer
+    # behavior), not a hard error — matches every other tokenizer-backed engine.
     ad = SuperTonicAdapter()
-    ad.indexer = _tiny_indexer()
-    with pytest.raises(ValueError):
-        ad.encode_text("hi 中文", _Voice("en-US"), None)   # CJK not in the tiny table
+    ad.tokenizer = _tiny_tokenizer()
+    out = ad.encode_text("hi 中文", _Voice("en-US"), None)   # CJK not in the tiny table
+    assert len(out) == 1
+    # "<en>hi 中文.</en>" with the two CJK chars dropped == "<en>hi .</en>"
+    expected = _tiny_tokenizer().tokenize("<en>hi .</en>")
+    assert out[0] == expected
 
 
 def test_encode_text_no_terminal_punctuation_gets_period():
     ad = SuperTonicAdapter()
-    ad.indexer = _tiny_indexer()
+    ad.tokenizer = _tiny_tokenizer()
     out = ad.encode_text("hello there", _Voice("en-US"), None)
     assert len(out) == 1   # still one chunk; preprocess_text appended '.'
 
 
 def test_encode_text_very_long_text_chunks():
     ad = SuperTonicAdapter()
-    ad.indexer = _tiny_indexer()
+    ad.tokenizer = _tiny_tokenizer()
     long_text = ("hi there. " * 60).strip()
     out = ad.encode_text(long_text, _Voice("en-US"), None)
     assert len(out) > 1
@@ -272,7 +330,7 @@ def test_encode_text_very_long_text_chunks():
 
 def test_encode_text_ko_uses_shorter_chunk_len():
     ad = SuperTonicAdapter()
-    ad.indexer = _tiny_indexer()
+    ad.tokenizer = _tiny_tokenizer()
     text = ("hi there. " * 20).strip()   # ~200 chars: > 120 (ko) but < 300 (en)
     ko_chunks = ad.encode_text(text, _Voice("ko-KR"), None)
     en_chunks = ad.encode_text(text, _Voice("en-US"), None)
@@ -286,7 +344,7 @@ def test_encode_text_ko_uses_shorter_chunk_len():
 
 def _configured_adapter():
     ad = SuperTonicAdapter(total_step=2)
-    ad.indexer = _tiny_indexer()
+    ad.tokenizer = _tiny_tokenizer()
     ad.duration_predictor = _FakeSession(outputs=lambda feed: [np.array([1.0], np.float32)])
     ad.text_encoder = _FakeSession(
         outputs=lambda feed: [np.zeros((1, 256, feed["text_ids"].shape[1]), np.float32)])
@@ -349,6 +407,21 @@ def test_build_feed_dict_and_parse_outputs_not_implemented():
 # ---------------------------------------------------------------------------
 # configure() — engine_params wiring
 # ---------------------------------------------------------------------------
+
+def test_configure_builds_tokenizer_from_indexer(tmp_path):
+    table = [-1] * 65536
+    table[ord("a")] = 3
+    p = tmp_path / "unicode_indexer.json"
+    p.write_text(json.dumps(table))
+
+    class _VoiceConfig:
+        engine_params = {"unicode_indexer_path": str(p)}
+
+    ad = SuperTonicAdapter()
+    ad.configure(_VoiceConfig())
+    assert isinstance(ad.tokenizer, TTSTokenizer)
+    assert ad.tokenizer.tokenize("a") == [3]
+
 
 def test_configure_loads_tts_config(tmp_path):
     cfg = {"ae": {"sample_rate": 44100, "base_chunk_size": 512},

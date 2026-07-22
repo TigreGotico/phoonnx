@@ -15,17 +15,34 @@ Four ONNX graphs per model dir::
 
 plus ``tts.json`` (model config: sample rate, latent dims, chunk-compression factor) and
 ``unicode_indexer.json`` (a 65536-entry list mapping BMP codepoint -> token id, ``-1`` for
-unmapped codepoints). Voices are per-speaker *style* JSONs (``style_ttl``/``style_dp``
-arrays with a ``dims``/``data`` layout).
+unmapped codepoints — turned into a standard :class:`phoonnx.tokenizer.Vocabulary` via
+``Vocabulary.from_supertonic_indexer``). Voices are per-speaker *style* JSONs
+(``style_ttl``/``style_dp`` arrays with a ``dims``/``data`` layout).
 
-SuperTonic owns text -> id conversion itself (no phonemizer): text is NFKD-normalized,
-stripped of emoji/stray symbols, terminal-punctuated, and wrapped in ``<lang>...</lang>``
-before being mapped through the unicode indexer, then split into chunks the model was
-trained on (120 chars for ko/ja, 300 otherwise). This mirrors
-:class:`phoonnx.engines.chatterbox.ChatterboxAdapter` / :class:`phoonnx.engines.zipvoice.ZipVoiceAdapter`:
-``encode_text`` does the preprocessing + tokenization, ``synthesize`` overrides the
-default single-graph path to drive the duration -> text-encoder -> Euler ODE -> vocoder
-pipeline across the four graphs.
+This is a **grapheme/text-token engine** in the same family as
+:class:`phoonnx.engines.chatterbox.ChatterboxAdapter`: it owns text -> id conversion via
+``encode_text`` (``BaseOnnxAdapter``'s ``Alphabet.GRAPHEMES`` bypass), rather than going
+through the shared phonemizer dispatch (``Alphabet.UNICODE`` +
+``UnicodeCodepointPhonemizer``). That dispatch does sentence-level chunking generically
+(``BasePhonemizer.chunk_text``/``phonemize_lazy``), which would be a good fit on its own,
+but SuperTonic's ``<lang>...</lang>`` wrap and its 120/300-char length cap must apply
+*per model call* (each ONNX call gets its own wrap + is capped to the length the model
+was trained on) — the generic sentence dispatch has no hook to enforce a length cap or to
+splice per-call markup around already-tokenized sentences, so this stays adapter-owned.
+What it *does* reuse rather than reinvent:
+
+* character -> id mapping goes through the standard ``phoonnx.tokenizer.Vocabulary`` /
+  ``TTSTokenizer`` (via ``Vocabulary.from_supertonic_indexer``), not a bespoke list
+  lookup — same out-of-vocabulary handling (drop + warn) as every other engine;
+* the NFKD step reuses ``scriptconv``'s ``UnicodeCodepointPhonemizer`` (the same class
+  that backs ``Alphabet.UNICODE`` voices) instead of a local ``unicodedata.normalize``
+  call;
+* sentence boundaries reuse ``quebra_frases.sentence_tokenize`` (the same sentence
+  splitter ``BasePhonemizer.chunk_text`` and ``TTSVoice`` itself use), packed up to
+  SuperTonic's per-call length cap — pure text cleanup (emoji stripping, dash/quote
+  normalization, terminal punctuation) has no existing equivalent in
+  ``phoonnx.lang_preprocess`` (that module holds *script* transforms — Hangul/Kanji/
+  Cangjie — not generic text cleanup) and stays local, adapted from upstream.
 
 The text preprocessing / chunking / noisy-latent sampling below is adapted (MIT,
 Copyright Supertone Inc.) from Supertone's official ``py/helper.py`` inference reference
@@ -34,17 +51,21 @@ in the ``Supertone/supertonic-3`` model card.
 import json
 import re
 from typing import Any, Dict, List, Optional
-from unicodedata import normalize
 
 import numpy as np
 import onnxruntime
+from quebra_frases import sentence_tokenize
 
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
+from phoonnx.phonemizers.base import UnicodeCodepointPhonemizer
 from phoonnx.providers import make_session
+from phoonnx.tokenizer import TTSTokenizer, Vocabulary
 
 AVAILABLE_LANGS = ["en", "ko", "ja", "ar", "bg", "cs", "da", "de", "el", "es", "et",
                     "fi", "fr", "hi", "hr", "hu", "id", "it", "lt", "lv", "nl", "pl",
                     "pt", "ro", "ru", "sk", "sl", "sv", "tr", "uk", "vi", "na"]
+
+_NFKD = UnicodeCodepointPhonemizer(form="NFKD")
 
 _EMOJI_PATTERN = re.compile(
     "[\U0001f600-\U0001f64f"  # emoticons
@@ -75,12 +96,14 @@ _TERMINAL_PUNCT = re.compile(r"[.!?;:,'\"')\]}…。』】〉》›»]$")
 
 
 def preprocess_text(text: str, lang: str) -> str:
-    """NFKD-normalize, strip emoji/stray symbols, fix punctuation spacing, terminate the
-    sentence, and wrap the result in ``<lang>...</lang>``. Raises ``ValueError`` for a
-    language SuperTonic was not trained on."""
+    """NFKD-normalize (via the shared ``UnicodeCodepointPhonemizer``), strip emoji/stray
+    symbols, fix punctuation spacing, terminate the sentence, and wrap the result in
+    ``<lang>...</lang>``. Raises ``ValueError`` for a language SuperTonic was not trained
+    on — a genuinely SuperTonic-specific constraint, not something the shared lang-match
+    helpers (which pick the *closest* supported language) are meant to enforce here."""
     if lang not in AVAILABLE_LANGS:
         raise ValueError(f"Invalid language for supertonic: {lang}")
-    text = normalize("NFKD", text)
+    text = _NFKD.phonemize_string(text, lang)
     text = _EMOJI_PATTERN.sub("", text)
     for k, v in _REPLACEMENTS.items():
         text = text.replace(k, v)
@@ -106,19 +129,16 @@ def preprocess_text(text: str, lang: str) -> str:
     return f"<{lang}>{text}</{lang}>"
 
 
-_ABBREV_LOOKBEHIND = (
-    r"(?<!Mr\.)(?<!Mrs\.)(?<!Ms\.)(?<!Dr\.)(?<!Prof\.)(?<!Sr\.)(?<!Jr\.)(?<!Ph\.D\.)"
-    r"(?<!etc\.)(?<!e\.g\.)(?<!i\.e\.)(?<!vs\.)(?<!Inc\.)(?<!Ltd\.)(?<!Co\.)(?<!Corp\.)"
-    r"(?<!St\.)(?<!Ave\.)(?<!Blvd\.)(?<!\b[A-Z]\.)(?<=[.!?])\s+"
-)
-
-
 def chunk_text(text: str, max_len: int = 300) -> List[str]:
-    """Split text into <= ``max_len``-char chunks on paragraph/sentence boundaries."""
+    """Split text into <= ``max_len``-char chunks, packing whole sentences (from the
+    shared ``quebra_frases.sentence_tokenize`` splitter — the same one
+    ``BasePhonemizer.chunk_text``/``TTSVoice`` use elsewhere) up to the per-model-call
+    length SuperTonic was trained on. The generic phonemizer dispatch only splits on
+    sentence boundaries and has no length cap, so that part stays adapter-owned."""
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n+", text.strip()) if p.strip()]
     chunks: List[str] = []
     for paragraph in paragraphs:
-        sentences = re.split(_ABBREV_LOOKBEHIND, paragraph)
+        sentences = sentence_tokenize(paragraph)
         current = ""
         for sentence in sentences:
             if len(current) + len(sentence) + 1 <= max_len:
@@ -133,11 +153,12 @@ def chunk_text(text: str, max_len: int = 300) -> List[str]:
 
 
 def load_unicode_indexer(path: str) -> List[int]:
-    """Load the unicode codepoint -> token id table.
+    """Load the raw unicode codepoint -> token id table from ``unicode_indexer.json``.
 
     The published format is a flat JSON array of length 65536 (one entry per BMP
     codepoint, ``-1`` for unmapped codepoints); a dict keyed by codepoint (int or numeric
     string) or by the literal character is also accepted for forward/backward tolerance.
+    Feed the result to ``Vocabulary.from_supertonic_indexer`` to build a tokenizer.
     """
     with open(path, "r", encoding="utf-8") as f:
         raw = json.load(f)
@@ -149,21 +170,6 @@ def load_unicode_indexer(path: str) -> List[int]:
         if 0 <= cp < len(table):
             table[cp] = v
     return table
-
-
-def text_to_ids(text: str, indexer: List[int]) -> List[int]:
-    """Map each character of (already-preprocessed) ``text`` through the unicode
-    indexer. Raises ``ValueError`` if a character has no entry (``-1``) — e.g. a
-    codepoint the model was never trained on."""
-    ids = []
-    for ch in text:
-        cp = ord(ch)
-        tid = indexer[cp] if cp < len(indexer) else -1
-        if tid is None or tid < 0:
-            raise ValueError(f"Character {ch!r} (U+{cp:04X}) is missing from the "
-                              f"supertonic unicode indexer")
-        ids.append(tid)
-    return ids
 
 
 def length_to_mask(length: int) -> np.ndarray:
@@ -194,7 +200,7 @@ class SuperTonicAdapter(BaseOnnxAdapter):
         self.duration_predictor: Optional[onnxruntime.InferenceSession] = None
         self.text_encoder: Optional[onnxruntime.InferenceSession] = None
         self.vocoder: Optional[onnxruntime.InferenceSession] = None
-        self.indexer: Optional[List[int]] = None
+        self.tokenizer: Optional[TTSTokenizer] = None
         self.style_ttl: Optional[np.ndarray] = None
         self.style_dp: Optional[np.ndarray] = None
         self.sample_rate = 44100
@@ -210,9 +216,9 @@ class SuperTonicAdapter(BaseOnnxAdapter):
                 "silence_duration": self.silence_duration}
 
     def configure(self, voice_config: Any) -> None:
-        """Load the three auxiliary graphs, the tts.json config, the unicode indexer and
-        the voice's style from ``engine_params``; the vector_estimator is the voice's
-        own primary session."""
+        """Load the three auxiliary graphs, the tts.json config, the unicode indexer
+        (converted into a standard ``Vocabulary``/``TTSTokenizer``) and the voice's style
+        from ``engine_params``; the vector_estimator is the voice's own primary session."""
         ep = getattr(voice_config, "engine_params", None) or {}
         sess = lambda p: make_session(p, providers=ep.get("providers"))
         if self.duration_predictor is None and ep.get("duration_predictor_path"):
@@ -221,8 +227,13 @@ class SuperTonicAdapter(BaseOnnxAdapter):
             self.text_encoder = sess(ep["text_encoder_path"])
         if self.vocoder is None and ep.get("vocoder_path"):
             self.vocoder = sess(ep["vocoder_path"])
-        if self.indexer is None and ep.get("unicode_indexer_path"):
-            self.indexer = load_unicode_indexer(ep["unicode_indexer_path"])
+        if self.tokenizer is None and ep.get("unicode_indexer_path"):
+            indexer = load_unicode_indexer(ep["unicode_indexer_path"])
+            self.tokenizer = TTSTokenizer(
+                Vocabulary.from_supertonic_indexer(indexer),
+                add_blank_char=False, add_blank_word=False,
+                use_eos_bos=False, blank_at_end=False, blank_at_start=False,
+            )
         if ep.get("tts_config_path"):
             with open(ep["tts_config_path"], "r", encoding="utf-8") as f:
                 cfgs = json.load(f)
@@ -248,9 +259,11 @@ class SuperTonicAdapter(BaseOnnxAdapter):
             self.silence_duration = float(ep["silence_duration"])
 
     def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
-        """Preprocess + chunk raw text, then map each chunk through the unicode
-        indexer. Chunk length follows upstream (120 chars for ko/ja, 300 otherwise)."""
-        if self.indexer is None:
+        """Preprocess + chunk raw text, then map each chunk through the standard
+        tokenizer built from SuperTonic's own unicode indexer. Chunk length follows
+        upstream (120 chars for ko/ja, 300 otherwise); out-of-vocabulary characters are
+        dropped with a warning, the same as every other tokenizer-backed engine."""
+        if self.tokenizer is None:
             raise RuntimeError("SuperTonic voice missing unicode_indexer_path in engine_params")
         cfg = getattr(voice, "config", None)
         lang = (getattr(cfg, "lang_code", None) or "en").split("-")[0].lower()
@@ -258,7 +271,7 @@ class SuperTonicAdapter(BaseOnnxAdapter):
             raise ValueError(f"Invalid language for supertonic: {lang}")
         max_len = 120 if lang in ("ko", "ja") else 300
         chunks = chunk_text(text, max_len=max_len)
-        return [text_to_ids(preprocess_text(chunk, lang), self.indexer) for chunk in chunks if chunk]
+        return [self.tokenizer.tokenize(preprocess_text(chunk, lang)) for chunk in chunks if chunk]
 
     def synthesize(self, request: AdapterSynthesisRequest,
                    session: onnxruntime.InferenceSession) -> AdapterSynthesisResult:
