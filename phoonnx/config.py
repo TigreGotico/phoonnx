@@ -32,6 +32,7 @@ class Engine(str, Enum):
     SHAMI = "shami"  # Levantine Arabic / English code-switching (HamsVITS)
     F5TTS = "f5tts"  # F5-TTS / Habibi-TTS: DiT flow-matching, Euler ODE (iterative)
     CHATTERBOX = "chatterbox"  # autoregressive codec-LM, d-vector cloning + exaggeration
+    SUPERTONIC = "supertonic"  # Supertone SuperTonic: 4-graph flow-matching, raw-text (no phonemizer)
 
 
 # Alphabet and PhonemeType are wire-format enums shared with scriptconv;
@@ -296,6 +297,27 @@ class VoiceConfig:
             diacritics = (lang_code or "").lower().startswith(("ar", "he"))
             config.setdefault("audio", {}).setdefault("sample_rate", 24000)
             config.setdefault("num_symbols", tokenizer._tok.get_vocab_size())
+
+        elif (engine == Engine.SUPERTONIC or
+                (isinstance(engine, str) and engine == "supertonic") or
+                config.get("engine") == "supertonic"):
+            # SuperTonic consumes raw text directly: the adapter owns text -> id
+            # conversion via its own unicode-codepoint indexer (loaded from
+            # engine_params), so no phonemizer/tokenizer vocabulary is needed here.
+            # Alphabet.GRAPHEMES routes TTSVoice.synthesize() through
+            # adapter.encode_text() instead of the phonemizer pipeline.
+            engine = Engine.SUPERTONIC
+            phoneme_type = phoneme_type or PhonemeType.UNICODE
+            alphabet = alphabet or Alphabet.GRAPHEMES
+            config.setdefault("audio", {}).setdefault("sample_rate", 44100)
+            tokenizer = TTSTokenizer(
+                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
+                add_blank_char=False,
+                add_blank_word=False,
+                use_eos_bos=False,
+                blank_at_end=False,
+                blank_at_start=False,
+            )
 
         elif VoiceConfig.is_phoonnx(config):
             engine = engine or config.get("engine") or Engine.PHOONNX

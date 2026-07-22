@@ -1,7 +1,7 @@
 ## Supported Voices
 
-**Total Voices:** 1924
-**Total Languages:** 1219
+**Total Voices:** 2235
+**Total Languages:** 1239
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
 
@@ -67,6 +67,16 @@
 | `OpenVoiceOS/phoonnx_ar_miro_espeak_V2` | `ar` | `phoonnx` | `espeak` |
 | `piper_neurlang/ar_zayd0-arabic-diacritized` | `ar` | `piper` | `goruut` |
 | `silma/v1` | `ar` | `f5tts` | `graphemes` |
+| `supertonic/F1/ar` | `ar` | `supertonic` | `unicode` |
+| `supertonic/F2/ar` | `ar` | `supertonic` | `unicode` |
+| `supertonic/F3/ar` | `ar` | `supertonic` | `unicode` |
+| `supertonic/F4/ar` | `ar` | `supertonic` | `unicode` |
+| `supertonic/F5/ar` | `ar` | `supertonic` | `unicode` |
+| `supertonic/M1/ar` | `ar` | `supertonic` | `unicode` |
+| `supertonic/M2/ar` | `ar` | `supertonic` | `unicode` |
+| `supertonic/M3/ar` | `ar` | `supertonic` | `unicode` |
+| `supertonic/M4/ar` | `ar` | `supertonic` | `unicode` |
+| `supertonic/M5/ar` | `ar` | `supertonic` | `unicode` |
 | `habibi/ar-uae` | `ar-AE` | `f5tts` | `graphemes` |
 | `hf_community/vadimbelsky/arabic-emirati-female-piper` | `ar-AE` | `piper` | `espeak` |
 | `piper_community/vadimbelsky/arabic-emirati-female-piper` | `ar-AE` | `piper` | `espeak` |
@@ -87,6 +97,7 @@
 | `habibi/ar-sau` | `ar-SA` | `f5tts` | `graphemes` |
 | `hf_community/wasmdashai/vits-ar-sa-A` | `ar-SA` | `transformers` | `graphemes` |
 | `hf_community/wasmdashai/vits-ar-sa-huba-v2` | `ar-SA` | `transformers` | `graphemes` |
+| `namaa/ar-sa-v2` | `ar-SA` | `f5tts` | `graphemes` |
 | `chatterbox/lahgtna/sd` | `ar-SD` | `chatterbox` | `unicode` |
 | `chatterbox/lahgtna/sy` | `ar-SY` | `chatterbox` | `unicode` |
 | `chatterbox/lahgtna/tn` | `ar-TN` | `chatterbox` | `unicode` |
@@ -140,6 +151,16 @@
 | `facebook/mms-tts-bfo-Birifor, Malba` | `bfo` | `transformers` | `graphemes` |
 | `facebook/mms-tts-bfy-Bagheli` | `bfy` | `transformers` | `graphemes` |
 | `facebook/mms-tts-bfz-Pahari, Mahasu` | `bfz` | `transformers` | `graphemes` |
+| `supertonic/F1/bg` | `bg` | `supertonic` | `unicode` |
+| `supertonic/F2/bg` | `bg` | `supertonic` | `unicode` |
+| `supertonic/F3/bg` | `bg` | `supertonic` | `unicode` |
+| `supertonic/F4/bg` | `bg` | `supertonic` | `unicode` |
+| `supertonic/F5/bg` | `bg` | `supertonic` | `unicode` |
+| `supertonic/M1/bg` | `bg` | `supertonic` | `unicode` |
+| `supertonic/M2/bg` | `bg` | `supertonic` | `unicode` |
+| `supertonic/M3/bg` | `bg` | `supertonic` | `unicode` |
+| `supertonic/M4/bg` | `bg` | `supertonic` | `unicode` |
+| `supertonic/M5/bg` | `bg` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/bg` | `bg-BG` | `chatterbox` | `unicode` |
 | `coqui/bg-cv-vits` | `bg-BG` | `coqui` | `graphemes` |
 | `facebook/mms-tts-bul-Bulgarian` | `bg-BG` | `transformers` | `graphemes` |
@@ -289,6 +310,16 @@
 | `facebook/mms-tts-crq-Chorote, Iyo’wujwa` | `crq` | `transformers` | `graphemes` |
 | `facebook/mms-tts-crs-Seychelles French Creole` | `crs` | `transformers` | `graphemes` |
 | `facebook/mms-tts-crt-Chorote, Iyojwa’ja` | `crt` | `transformers` | `graphemes` |
+| `supertonic/F1/cs` | `cs` | `supertonic` | `unicode` |
+| `supertonic/F2/cs` | `cs` | `supertonic` | `unicode` |
+| `supertonic/F3/cs` | `cs` | `supertonic` | `unicode` |
+| `supertonic/F4/cs` | `cs` | `supertonic` | `unicode` |
+| `supertonic/F5/cs` | `cs` | `supertonic` | `unicode` |
+| `supertonic/M1/cs` | `cs` | `supertonic` | `unicode` |
+| `supertonic/M2/cs` | `cs` | `supertonic` | `unicode` |
+| `supertonic/M3/cs` | `cs` | `supertonic` | `unicode` |
+| `supertonic/M4/cs` | `cs` | `supertonic` | `unicode` |
+| `supertonic/M5/cs` | `cs` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/cs` | `cs-CZ` | `chatterbox` | `unicode` |
 | `coqui/cs-cv-vits` | `cs-CZ` | `coqui` | `graphemes` |
 | `hf_community/Thomcles/Piper-TTS-Czech/model` | `cs-CZ` | `piper` | `espeak` |
@@ -315,6 +346,16 @@
 | `piper/cy_GB-bu_tts-medium` | `cy-GB` | `piper` | `espeak` |
 | `piper/cy_GB-gwryw_gogleddol-medium` | `cy-GB` | `piper` | `espeak` |
 | `facebook/mms-tts-cya-Chatino, Nopala` | `cya` | `transformers` | `graphemes` |
+| `supertonic/F1/da` | `da` | `supertonic` | `unicode` |
+| `supertonic/F2/da` | `da` | `supertonic` | `unicode` |
+| `supertonic/F3/da` | `da` | `supertonic` | `unicode` |
+| `supertonic/F4/da` | `da` | `supertonic` | `unicode` |
+| `supertonic/F5/da` | `da` | `supertonic` | `unicode` |
+| `supertonic/M1/da` | `da` | `supertonic` | `unicode` |
+| `supertonic/M2/da` | `da` | `supertonic` | `unicode` |
+| `supertonic/M3/da` | `da` | `supertonic` | `unicode` |
+| `supertonic/M4/da` | `da` | `supertonic` | `unicode` |
+| `supertonic/M5/da` | `da` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/da` | `da-DK` | `chatterbox` | `unicode` |
 | `coqui/da-cv-vits` | `da-DK` | `coqui` | `graphemes` |
 | `OpenVoiceOS/phoonnx_da-DK_miro_espeak` | `da-DK` | `phoonnx` | `espeak` |
@@ -334,6 +375,16 @@
 | `hf_community/systemofapwne/piper-de-glados/de_DE-glados-turret-high` | `de` | `piper` | `espeak` |
 | `hf_community/systemofapwne/piper-de-glados/de_DE-glados-turret-low` | `de` | `piper` | `espeak` |
 | `hf_community/systemofapwne/piper-de-glados/de_DE-glados-turret-medium` | `de` | `piper` | `espeak` |
+| `supertonic/F1/de` | `de` | `supertonic` | `unicode` |
+| `supertonic/F2/de` | `de` | `supertonic` | `unicode` |
+| `supertonic/F3/de` | `de` | `supertonic` | `unicode` |
+| `supertonic/F4/de` | `de` | `supertonic` | `unicode` |
+| `supertonic/F5/de` | `de` | `supertonic` | `unicode` |
+| `supertonic/M1/de` | `de` | `supertonic` | `unicode` |
+| `supertonic/M2/de` | `de` | `supertonic` | `unicode` |
+| `supertonic/M3/de` | `de` | `supertonic` | `unicode` |
+| `supertonic/M4/de` | `de` | `supertonic` | `unicode` |
+| `supertonic/M5/de` | `de` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/de` | `de-DE` | `chatterbox` | `unicode` |
 | `larynx/de-de-eva_k-glow_tts` | `de-DE` | `glowtts` | `gruut` |
 | `larynx/de-de-hokuspokus-glow_tts` | `de-DE` | `glowtts` | `gruut` |
@@ -398,6 +449,16 @@
 | `facebook/mms-tts-ewe-Éwé` | `ee` | `transformers` | `graphemes` |
 | `facebook/mms-tts-eip-Lik` | `eip` | `transformers` | `graphemes` |
 | `facebook/mms-tts-eka-Ekajuk` | `eka` | `transformers` | `graphemes` |
+| `supertonic/F1/el` | `el` | `supertonic` | `unicode` |
+| `supertonic/F2/el` | `el` | `supertonic` | `unicode` |
+| `supertonic/F3/el` | `el` | `supertonic` | `unicode` |
+| `supertonic/F4/el` | `el` | `supertonic` | `unicode` |
+| `supertonic/F5/el` | `el` | `supertonic` | `unicode` |
+| `supertonic/M1/el` | `el` | `supertonic` | `unicode` |
+| `supertonic/M2/el` | `el` | `supertonic` | `unicode` |
+| `supertonic/M3/el` | `el` | `supertonic` | `unicode` |
+| `supertonic/M4/el` | `el` | `supertonic` | `unicode` |
+| `supertonic/M5/el` | `el` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/el` | `el-GR` | `chatterbox` | `unicode` |
 | `coqui/el-cv-vits` | `el-GR` | `coqui` | `espeak` |
 | `facebook/mms-tts-ell-Greek` | `el-GR` | `transformers` | `graphemes` |
@@ -422,6 +483,16 @@
 | `piper_community/brycebeattie/en_ManyVoice` | `en` | `piper` | `espeak` |
 | `piper_community/jstlntchh/en_Scaramouche` | `en` | `piper` | `espeak` |
 | `silma/v1-en` | `en` | `f5tts` | `graphemes` |
+| `supertonic/F1/en` | `en` | `supertonic` | `unicode` |
+| `supertonic/F2/en` | `en` | `supertonic` | `unicode` |
+| `supertonic/F3/en` | `en` | `supertonic` | `unicode` |
+| `supertonic/F4/en` | `en` | `supertonic` | `unicode` |
+| `supertonic/F5/en` | `en` | `supertonic` | `unicode` |
+| `supertonic/M1/en` | `en` | `supertonic` | `unicode` |
+| `supertonic/M2/en` | `en` | `supertonic` | `unicode` |
+| `supertonic/M3/en` | `en` | `supertonic` | `unicode` |
+| `supertonic/M4/en` | `en` | `supertonic` | `unicode` |
+| `supertonic/M5/en` | `en` | `supertonic` | `unicode` |
 | `mimic3/en_UK/apope_low` | `en-GB` | `mimic3` | `gruut` |
 | `OpenVoiceOS/pipertts_en-GB_dii` | `en-GB` | `piper` | `espeak` |
 | `OpenVoiceOS/pipertts_en-GB_miro` | `en-GB` | `piper` | `espeak` |
@@ -614,6 +685,16 @@
 | `kokoro/ef_dora` | `es` | `styletts2` | `espeak` |
 | `kokoro/em_alex` | `es` | `styletts2` | `espeak` |
 | `kokoro/em_santa` | `es` | `styletts2` | `espeak` |
+| `supertonic/F1/es` | `es` | `supertonic` | `unicode` |
+| `supertonic/F2/es` | `es` | `supertonic` | `unicode` |
+| `supertonic/F3/es` | `es` | `supertonic` | `unicode` |
+| `supertonic/F4/es` | `es` | `supertonic` | `unicode` |
+| `supertonic/F5/es` | `es` | `supertonic` | `unicode` |
+| `supertonic/M1/es` | `es` | `supertonic` | `unicode` |
+| `supertonic/M2/es` | `es` | `supertonic` | `unicode` |
+| `supertonic/M3/es` | `es` | `supertonic` | `unicode` |
+| `supertonic/M4/es` | `es` | `supertonic` | `unicode` |
+| `supertonic/M5/es` | `es` | `supertonic` | `unicode` |
 | `hf_community/HirCoir/piper-sorah-neuronal` | `es-419` | `transformers` | `graphemes` |
 | `hf_community/HirCoir/Piper-TTS-Laura` | `es-419` | `piper` | `espeak` |
 | `hf_community/larcanio/piper-voices` | `es-AR` | `piper` | `espeak` |
@@ -642,6 +723,16 @@
 | `piper_community/HirCoir/es-MX_Laura` | `es-MX` | `piper` | `espeak` |
 | `facebook/mms-tts-ese-Ese Ejja` | `ese` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ess-Yupik, Saint Lawrence Island` | `ess` | `transformers` | `graphemes` |
+| `supertonic/F1/et` | `et` | `supertonic` | `unicode` |
+| `supertonic/F2/et` | `et` | `supertonic` | `unicode` |
+| `supertonic/F3/et` | `et` | `supertonic` | `unicode` |
+| `supertonic/F4/et` | `et` | `supertonic` | `unicode` |
+| `supertonic/F5/et` | `et` | `supertonic` | `unicode` |
+| `supertonic/M1/et` | `et` | `supertonic` | `unicode` |
+| `supertonic/M2/et` | `et` | `supertonic` | `unicode` |
+| `supertonic/M3/et` | `et` | `supertonic` | `unicode` |
+| `supertonic/M4/et` | `et` | `supertonic` | `unicode` |
+| `supertonic/M5/et` | `et` | `supertonic` | `unicode` |
 | `coqui/et-cv-vits` | `et-EE` | `coqui` | `graphemes` |
 | `facebook/mms-tts-eus-Basque` | `eu` | `transformers` | `graphemes` |
 | `piper_community/itzune/eu-antton-medium` | `eu` | `piper` | `espeak` |
@@ -684,6 +775,16 @@
 | `facebook/mms-tts-fal-Fali, South` | `fal` | `transformers` | `graphemes` |
 | `facebook/mms-tts-far-Fataleka` | `far` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ful-Fulah` | `ff` | `transformers` | `graphemes` |
+| `supertonic/F1/fi` | `fi` | `supertonic` | `unicode` |
+| `supertonic/F2/fi` | `fi` | `supertonic` | `unicode` |
+| `supertonic/F3/fi` | `fi` | `supertonic` | `unicode` |
+| `supertonic/F4/fi` | `fi` | `supertonic` | `unicode` |
+| `supertonic/F5/fi` | `fi` | `supertonic` | `unicode` |
+| `supertonic/M1/fi` | `fi` | `supertonic` | `unicode` |
+| `supertonic/M2/fi` | `fi` | `supertonic` | `unicode` |
+| `supertonic/M3/fi` | `fi` | `supertonic` | `unicode` |
+| `supertonic/M4/fi` | `fi` | `supertonic` | `unicode` |
+| `supertonic/M5/fi` | `fi` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/fi` | `fi-FI` | `chatterbox` | `unicode` |
 | `coqui/fi-css10-vits` | `fi-FI` | `coqui` | `graphemes` |
 | `facebook/mms-tts-fin-Finnish` | `fi-FI` | `transformers` | `graphemes` |
@@ -700,6 +801,16 @@
 | `coqui/fr-css10-vits` | `fr` | `coqui` | `graphemes` |
 | `facebook/mms-tts-fra-French` | `fr` | `transformers` | `graphemes` |
 | `kokoro/ff_siwis` | `fr` | `styletts2` | `espeak` |
+| `supertonic/F1/fr` | `fr` | `supertonic` | `unicode` |
+| `supertonic/F2/fr` | `fr` | `supertonic` | `unicode` |
+| `supertonic/F3/fr` | `fr` | `supertonic` | `unicode` |
+| `supertonic/F4/fr` | `fr` | `supertonic` | `unicode` |
+| `supertonic/F5/fr` | `fr` | `supertonic` | `unicode` |
+| `supertonic/M1/fr` | `fr` | `supertonic` | `unicode` |
+| `supertonic/M2/fr` | `fr` | `supertonic` | `unicode` |
+| `supertonic/M3/fr` | `fr` | `supertonic` | `unicode` |
+| `supertonic/M4/fr` | `fr` | `supertonic` | `unicode` |
+| `supertonic/M5/fr` | `fr` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/fr` | `fr-FR` | `chatterbox` | `unicode` |
 | `larynx/fr-fr-gilles_le_blanc-glow_tts` | `fr-FR` | `glowtts` | `gruut` |
 | `larynx/fr-fr-siwis-glow_tts` | `fr-FR` | `glowtts` | `gruut` |
@@ -808,6 +919,16 @@
 | `kokoro/hf_beta` | `hi` | `styletts2` | `espeak` |
 | `kokoro/hm_omega` | `hi` | `styletts2` | `espeak` |
 | `kokoro/hm_psi` | `hi` | `styletts2` | `espeak` |
+| `supertonic/F1/hi` | `hi` | `supertonic` | `unicode` |
+| `supertonic/F2/hi` | `hi` | `supertonic` | `unicode` |
+| `supertonic/F3/hi` | `hi` | `supertonic` | `unicode` |
+| `supertonic/F4/hi` | `hi` | `supertonic` | `unicode` |
+| `supertonic/F5/hi` | `hi` | `supertonic` | `unicode` |
+| `supertonic/M1/hi` | `hi` | `supertonic` | `unicode` |
+| `supertonic/M2/hi` | `hi` | `supertonic` | `unicode` |
+| `supertonic/M3/hi` | `hi` | `supertonic` | `unicode` |
+| `supertonic/M4/hi` | `hi` | `supertonic` | `unicode` |
+| `supertonic/M5/hi` | `hi` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/hi` | `hi-IN` | `chatterbox` | `unicode` |
 | `piper/hi_IN-pratham-medium` | `hi-IN` | `piper` | `espeak` |
 | `piper/hi_IN-priyamvada-medium` | `hi-IN` | `piper` | `espeak` |
@@ -824,9 +945,29 @@
 | `facebook/mms-tts-hns-Hindustani, Sarnami` | `hns` | `transformers` | `graphemes` |
 | `facebook/mms-tts-hoc-Ho` | `hoc` | `transformers` | `graphemes` |
 | `facebook/mms-tts-hoy-Holiya` | `hoy` | `transformers` | `graphemes` |
+| `supertonic/F1/hr` | `hr` | `supertonic` | `unicode` |
+| `supertonic/F2/hr` | `hr` | `supertonic` | `unicode` |
+| `supertonic/F3/hr` | `hr` | `supertonic` | `unicode` |
+| `supertonic/F4/hr` | `hr` | `supertonic` | `unicode` |
+| `supertonic/F5/hr` | `hr` | `supertonic` | `unicode` |
+| `supertonic/M1/hr` | `hr` | `supertonic` | `unicode` |
+| `supertonic/M2/hr` | `hr` | `supertonic` | `unicode` |
+| `supertonic/M3/hr` | `hr` | `supertonic` | `unicode` |
+| `supertonic/M4/hr` | `hr` | `supertonic` | `unicode` |
+| `supertonic/M5/hr` | `hr` | `supertonic` | `unicode` |
 | `coqui/hr-cv-vits` | `hr-HR` | `coqui` | `graphemes` |
 | `facebook/mms-tts-hat-Haitian Creole` | `ht-HT` | `transformers` | `graphemes` |
 | `facebook/mms-tts-hto-Witoto, Minika` | `hto` | `transformers` | `graphemes` |
+| `supertonic/F1/hu` | `hu` | `supertonic` | `unicode` |
+| `supertonic/F2/hu` | `hu` | `supertonic` | `unicode` |
+| `supertonic/F3/hu` | `hu` | `supertonic` | `unicode` |
+| `supertonic/F4/hu` | `hu` | `supertonic` | `unicode` |
+| `supertonic/F5/hu` | `hu` | `supertonic` | `unicode` |
+| `supertonic/M1/hu` | `hu` | `supertonic` | `unicode` |
+| `supertonic/M2/hu` | `hu` | `supertonic` | `unicode` |
+| `supertonic/M3/hu` | `hu` | `supertonic` | `unicode` |
+| `supertonic/M4/hu` | `hu` | `supertonic` | `unicode` |
+| `supertonic/M5/hu` | `hu` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/hu` | `hu-HU` | `chatterbox` | `unicode` |
 | `coqui/hu-css10-vits` | `hu-HU` | `coqui` | `graphemes` |
 | `facebook/mms-tts-hun-Hungarian` | `hu-HU` | `transformers` | `graphemes` |
@@ -847,6 +988,16 @@
 | `facebook/mms-tts-hyw-Armenian, Western` | `hyw` | `transformers` | `graphemes` |
 | `facebook/mms-tts-iba-Iban` | `iba` | `transformers` | `graphemes` |
 | `facebook/mms-tts-icr-Islander English Creole` | `icr` | `transformers` | `graphemes` |
+| `supertonic/F1/id` | `id` | `supertonic` | `unicode` |
+| `supertonic/F2/id` | `id` | `supertonic` | `unicode` |
+| `supertonic/F3/id` | `id` | `supertonic` | `unicode` |
+| `supertonic/F4/id` | `id` | `supertonic` | `unicode` |
+| `supertonic/F5/id` | `id` | `supertonic` | `unicode` |
+| `supertonic/M1/id` | `id` | `supertonic` | `unicode` |
+| `supertonic/M2/id` | `id` | `supertonic` | `unicode` |
+| `supertonic/M3/id` | `id` | `supertonic` | `unicode` |
+| `supertonic/M4/id` | `id` | `supertonic` | `unicode` |
+| `supertonic/M5/id` | `id` | `supertonic` | `unicode` |
 | `facebook/mms-tts-ind-Indonesian` | `id-ID` | `transformers` | `graphemes` |
 | `hf_community/giganticlab/piper-id_ID-news_tts-medium` | `id-ID` | `piper` | `espeak` |
 | `piper/id_ID-news_tts-medium` | `id-ID` | `piper` | `espeak` |
@@ -884,6 +1035,16 @@
 | `hf_community/kirys79/piper_italiano/leonardo-epoch=2024-step=996300` | `it` | `piper` | `espeak` |
 | `kokoro/if_sara` | `it` | `styletts2` | `espeak` |
 | `kokoro/im_nicola` | `it` | `styletts2` | `espeak` |
+| `supertonic/F1/it` | `it` | `supertonic` | `unicode` |
+| `supertonic/F2/it` | `it` | `supertonic` | `unicode` |
+| `supertonic/F3/it` | `it` | `supertonic` | `unicode` |
+| `supertonic/F4/it` | `it` | `supertonic` | `unicode` |
+| `supertonic/F5/it` | `it` | `supertonic` | `unicode` |
+| `supertonic/M1/it` | `it` | `supertonic` | `unicode` |
+| `supertonic/M2/it` | `it` | `supertonic` | `unicode` |
+| `supertonic/M3/it` | `it` | `supertonic` | `unicode` |
+| `supertonic/M4/it` | `it` | `supertonic` | `unicode` |
+| `supertonic/M5/it` | `it` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/it` | `it-IT` | `chatterbox` | `unicode` |
 | `hf_community/kirys79/piper_italiano/it_IT-aurora-medium` | `it-IT` | `piper` | `espeak` |
 | `hf_community/paolapersico1/Piper-TTS-Italian` | `it-IT` | `piper` | `espeak` |
@@ -907,6 +1068,16 @@
 | `facebook/mms-tts-ixl-dialect_santamarianebaj-Ixil` | `ixl-x-santamar-ianebaj` | `transformers` | `graphemes` |
 | `facebook/mms-tts-izr-Izere` | `izr` | `transformers` | `graphemes` |
 | `facebook/mms-tts-izz-Izii` | `izz` | `transformers` | `graphemes` |
+| `supertonic/F1/ja` | `ja` | `supertonic` | `unicode` |
+| `supertonic/F2/ja` | `ja` | `supertonic` | `unicode` |
+| `supertonic/F3/ja` | `ja` | `supertonic` | `unicode` |
+| `supertonic/F4/ja` | `ja` | `supertonic` | `unicode` |
+| `supertonic/F5/ja` | `ja` | `supertonic` | `unicode` |
+| `supertonic/M1/ja` | `ja` | `supertonic` | `unicode` |
+| `supertonic/M2/ja` | `ja` | `supertonic` | `unicode` |
+| `supertonic/M3/ja` | `ja` | `supertonic` | `unicode` |
+| `supertonic/M4/ja` | `ja` | `supertonic` | `unicode` |
+| `supertonic/M5/ja` | `ja` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/ja` | `ja-JP` | `chatterbox` | `unicode` |
 | `kokoro/jf_alpha` | `ja-JP` | `styletts2` | `misaki_ja` |
 | `kokoro/jf_gongitsune` | `ja-JP` | `styletts2` | `misaki_ja` |
@@ -995,6 +1166,16 @@
 | `facebook/mms-tts-knj-Akateko` | `knj` | `transformers` | `graphemes` |
 | `facebook/mms-tts-knk-Kuranko` | `knk` | `transformers` | `graphemes` |
 | `facebook/mms-tts-kno-Kono` | `kno` | `transformers` | `graphemes` |
+| `supertonic/F1/ko` | `ko` | `supertonic` | `unicode` |
+| `supertonic/F2/ko` | `ko` | `supertonic` | `unicode` |
+| `supertonic/F3/ko` | `ko` | `supertonic` | `unicode` |
+| `supertonic/F4/ko` | `ko` | `supertonic` | `unicode` |
+| `supertonic/F5/ko` | `ko` | `supertonic` | `unicode` |
+| `supertonic/M1/ko` | `ko` | `supertonic` | `unicode` |
+| `supertonic/M2/ko` | `ko` | `supertonic` | `unicode` |
+| `supertonic/M3/ko` | `ko` | `supertonic` | `unicode` |
+| `supertonic/M4/ko` | `ko` | `supertonic` | `unicode` |
+| `supertonic/M5/ko` | `ko` | `supertonic` | `unicode` |
 | `mimic3/ko_KO/kss_low` | `ko-KO` | `mimic3` | `espeak` |
 | `piper_neurlang/ko-KO_kss-korean` | `ko-KO` | `piper` | `goruut` |
 | `chatterbox/multilingual/ko` | `ko-KR` | `chatterbox` | `unicode` |
@@ -1092,8 +1273,28 @@
 | `facebook/mms-tts-loq-Lobala` | `loq` | `transformers` | `graphemes` |
 | `facebook/mms-tts-lsi-Lacid` | `lsi` | `transformers` | `graphemes` |
 | `facebook/mms-tts-lsm-Saamya-Gwe` | `lsm` | `transformers` | `graphemes` |
+| `supertonic/F1/lt` | `lt` | `supertonic` | `unicode` |
+| `supertonic/F2/lt` | `lt` | `supertonic` | `unicode` |
+| `supertonic/F3/lt` | `lt` | `supertonic` | `unicode` |
+| `supertonic/F4/lt` | `lt` | `supertonic` | `unicode` |
+| `supertonic/F5/lt` | `lt` | `supertonic` | `unicode` |
+| `supertonic/M1/lt` | `lt` | `supertonic` | `unicode` |
+| `supertonic/M2/lt` | `lt` | `supertonic` | `unicode` |
+| `supertonic/M3/lt` | `lt` | `supertonic` | `unicode` |
+| `supertonic/M4/lt` | `lt` | `supertonic` | `unicode` |
+| `supertonic/M5/lt` | `lt` | `supertonic` | `unicode` |
 | `coqui/lt-cv-vits` | `lt-LT` | `coqui` | `graphemes` |
 | `facebook/mms-tts-luc-Aringa` | `luc` | `transformers` | `graphemes` |
+| `supertonic/F1/lv` | `lv` | `supertonic` | `unicode` |
+| `supertonic/F2/lv` | `lv` | `supertonic` | `unicode` |
+| `supertonic/F3/lv` | `lv` | `supertonic` | `unicode` |
+| `supertonic/F4/lv` | `lv` | `supertonic` | `unicode` |
+| `supertonic/F5/lv` | `lv` | `supertonic` | `unicode` |
+| `supertonic/M1/lv` | `lv` | `supertonic` | `unicode` |
+| `supertonic/M2/lv` | `lv` | `supertonic` | `unicode` |
+| `supertonic/M3/lv` | `lv` | `supertonic` | `unicode` |
+| `supertonic/M4/lv` | `lv` | `supertonic` | `unicode` |
+| `supertonic/M5/lv` | `lv` | `supertonic` | `unicode` |
 | `coqui/lv-cv-vits` | `lv-LV` | `coqui` | `graphemes` |
 | `facebook/mms-tts-lav-Latvian` | `lv-LV` | `transformers` | `graphemes` |
 | `hf_community/RaivisDejus/Piper-lv_LV-Aivars-medium` | `lv-LV` | `piper` | `espeak` |
@@ -1287,6 +1488,16 @@
 | `mimic3/nl/nathalie_low` | `nl` | `mimic3` | `gruut` |
 | `mimic3/nl/pmk_low` | `nl` | `mimic3` | `gruut` |
 | `mimic3/nl/rdh_low` | `nl` | `mimic3` | `gruut` |
+| `supertonic/F1/nl` | `nl` | `supertonic` | `unicode` |
+| `supertonic/F2/nl` | `nl` | `supertonic` | `unicode` |
+| `supertonic/F3/nl` | `nl` | `supertonic` | `unicode` |
+| `supertonic/F4/nl` | `nl` | `supertonic` | `unicode` |
+| `supertonic/F5/nl` | `nl` | `supertonic` | `unicode` |
+| `supertonic/M1/nl` | `nl` | `supertonic` | `unicode` |
+| `supertonic/M2/nl` | `nl` | `supertonic` | `unicode` |
+| `supertonic/M3/nl` | `nl` | `supertonic` | `unicode` |
+| `supertonic/M4/nl` | `nl` | `supertonic` | `unicode` |
+| `supertonic/M5/nl` | `nl` | `supertonic` | `unicode` |
 | `piper/nl_BE-nathalie-medium` | `nl-BE` | `piper` | `espeak` |
 | `piper/nl_BE-nathalie-x_low` | `nl-BE` | `piper` | `espeak` |
 | `piper/nl_BE-rdh-medium` | `nl-BE` | `piper` | `espeak` |
@@ -1367,6 +1578,16 @@
 | `facebook/mms-tts-pis-Pijin` | `pis` | `transformers` | `graphemes` |
 | `facebook/mms-tts-pjt-Pitjantjatjara` | `pjt` | `transformers` | `graphemes` |
 | `facebook/mms-tts-pkb-Kipfokomo` | `pkb` | `transformers` | `graphemes` |
+| `supertonic/F1/pl` | `pl` | `supertonic` | `unicode` |
+| `supertonic/F2/pl` | `pl` | `supertonic` | `unicode` |
+| `supertonic/F3/pl` | `pl` | `supertonic` | `unicode` |
+| `supertonic/F4/pl` | `pl` | `supertonic` | `unicode` |
+| `supertonic/F5/pl` | `pl` | `supertonic` | `unicode` |
+| `supertonic/M1/pl` | `pl` | `supertonic` | `unicode` |
+| `supertonic/M2/pl` | `pl` | `supertonic` | `unicode` |
+| `supertonic/M3/pl` | `pl` | `supertonic` | `unicode` |
+| `supertonic/M4/pl` | `pl` | `supertonic` | `unicode` |
+| `supertonic/M5/pl` | `pl` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/pl` | `pl-PL` | `chatterbox` | `unicode` |
 | `coqui/pl-mai_female-vits` | `pl-PL` | `coqui` | `graphemes` |
 | `facebook/mms-tts-pol-Polish` | `pl-PL` | `transformers` | `graphemes` |
@@ -1403,6 +1624,16 @@
 | `kokoro/pf_dora` | `pt` | `styletts2` | `espeak` |
 | `kokoro/pm_alex` | `pt` | `styletts2` | `espeak` |
 | `kokoro/pm_santa` | `pt` | `styletts2` | `espeak` |
+| `supertonic/F1/pt` | `pt` | `supertonic` | `unicode` |
+| `supertonic/F2/pt` | `pt` | `supertonic` | `unicode` |
+| `supertonic/F3/pt` | `pt` | `supertonic` | `unicode` |
+| `supertonic/F4/pt` | `pt` | `supertonic` | `unicode` |
+| `supertonic/F5/pt` | `pt` | `supertonic` | `unicode` |
+| `supertonic/M1/pt` | `pt` | `supertonic` | `unicode` |
+| `supertonic/M2/pt` | `pt` | `supertonic` | `unicode` |
+| `supertonic/M3/pt` | `pt` | `supertonic` | `unicode` |
+| `supertonic/M4/pt` | `pt` | `supertonic` | `unicode` |
+| `supertonic/M5/pt` | `pt` | `supertonic` | `unicode` |
 | `facebook/mms-tts-por-Portuguese` | `pt-BR` | `transformers` | `graphemes` |
 | `hf_community/srxz/sage-voice-pt-br` | `pt-BR` | `piper` | `espeak` |
 | `OpenVoiceOS/pipertts_pt-BR_dii` | `pt-BR` | `piper` | `espeak` |
@@ -1472,6 +1703,16 @@
 | `facebook/mms-tts-run-Rundi` | `rn-BI` | `transformers` | `graphemes` |
 | `facebook/mms-tts-rng-Ronga` | `rng` | `transformers` | `graphemes` |
 | `facebook/mms-tts-rnl-Ranglong` | `rnl` | `transformers` | `graphemes` |
+| `supertonic/F1/ro` | `ro` | `supertonic` | `unicode` |
+| `supertonic/F2/ro` | `ro` | `supertonic` | `unicode` |
+| `supertonic/F3/ro` | `ro` | `supertonic` | `unicode` |
+| `supertonic/F4/ro` | `ro` | `supertonic` | `unicode` |
+| `supertonic/F5/ro` | `ro` | `supertonic` | `unicode` |
+| `supertonic/M1/ro` | `ro` | `supertonic` | `unicode` |
+| `supertonic/M2/ro` | `ro` | `supertonic` | `unicode` |
+| `supertonic/M3/ro` | `ro` | `supertonic` | `unicode` |
+| `supertonic/M4/ro` | `ro` | `supertonic` | `unicode` |
+| `supertonic/M5/ro` | `ro` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/ro` | `ro-RO` | `chatterbox` | `unicode` |
 | `coqui/ro-cv-vits` | `ro-RO` | `coqui` | `graphemes` |
 | `facebook/mms-tts-ron-Romanian` | `ro-RO` | `transformers` | `graphemes` |
@@ -1483,6 +1724,16 @@
 | `frappuccino/vits2-ru-natasha` | `ru` | `coqui` | `graphemes` |
 | `hf_community/joefox/tts_vits_ru_hf` | `ru` | `transformers` | `graphemes` |
 | `hf_community/superkeka/piper-tts-luka` | `ru` | `piper` | `espeak` |
+| `supertonic/F1/ru` | `ru` | `supertonic` | `unicode` |
+| `supertonic/F2/ru` | `ru` | `supertonic` | `unicode` |
+| `supertonic/F3/ru` | `ru` | `supertonic` | `unicode` |
+| `supertonic/F4/ru` | `ru` | `supertonic` | `unicode` |
+| `supertonic/F5/ru` | `ru` | `supertonic` | `unicode` |
+| `supertonic/M1/ru` | `ru` | `supertonic` | `unicode` |
+| `supertonic/M2/ru` | `ru` | `supertonic` | `unicode` |
+| `supertonic/M3/ru` | `ru` | `supertonic` | `unicode` |
+| `supertonic/M4/ru` | `ru` | `supertonic` | `unicode` |
+| `supertonic/M5/ru` | `ru` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/ru` | `ru-RU` | `chatterbox` | `unicode` |
 | `hf_community/utrobinmv/tts_ru_free_hf_vits_low_multispeaker` | `ru-RU` | `transformers` | `graphemes` |
 | `larynx/ru-ru-hajdurova-glow_tts` | `ru-RU` | `glowtts` | `gruut` |
@@ -1529,9 +1780,29 @@
 | `facebook/mms-tts-sil-Sisaala, Tumulung` | `sil` | `transformers` | `graphemes` |
 | `facebook/mms-tts-sja-Epena` | `sja` | `transformers` | `graphemes` |
 | `facebook/mms-tts-sjm-Mapun` | `sjm` | `transformers` | `graphemes` |
+| `supertonic/F1/sk` | `sk` | `supertonic` | `unicode` |
+| `supertonic/F2/sk` | `sk` | `supertonic` | `unicode` |
+| `supertonic/F3/sk` | `sk` | `supertonic` | `unicode` |
+| `supertonic/F4/sk` | `sk` | `supertonic` | `unicode` |
+| `supertonic/F5/sk` | `sk` | `supertonic` | `unicode` |
+| `supertonic/M1/sk` | `sk` | `supertonic` | `unicode` |
+| `supertonic/M2/sk` | `sk` | `supertonic` | `unicode` |
+| `supertonic/M3/sk` | `sk` | `supertonic` | `unicode` |
+| `supertonic/M4/sk` | `sk` | `supertonic` | `unicode` |
+| `supertonic/M5/sk` | `sk` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/sk` | `sk-SK` | `chatterbox` | `unicode` |
 | `coqui/sk-cv-vits` | `sk-SK` | `coqui` | `graphemes` |
 | `piper/sk_SK-lili-medium` | `sk-SK` | `piper` | `espeak` |
+| `supertonic/F1/sl` | `sl` | `supertonic` | `unicode` |
+| `supertonic/F2/sl` | `sl` | `supertonic` | `unicode` |
+| `supertonic/F3/sl` | `sl` | `supertonic` | `unicode` |
+| `supertonic/F4/sl` | `sl` | `supertonic` | `unicode` |
+| `supertonic/F5/sl` | `sl` | `supertonic` | `unicode` |
+| `supertonic/M1/sl` | `sl` | `supertonic` | `unicode` |
+| `supertonic/M2/sl` | `sl` | `supertonic` | `unicode` |
+| `supertonic/M3/sl` | `sl` | `supertonic` | `unicode` |
+| `supertonic/M4/sl` | `sl` | `supertonic` | `unicode` |
+| `supertonic/M5/sl` | `sl` | `supertonic` | `unicode` |
 | `coqui/sl-cv-vits` | `sl-SI` | `coqui` | `graphemes` |
 | `hf_community/ppisljar/piper_si_artur/model` | `sl-SI` | `piper` | `espeak` |
 | `piper/sl_SI-artur-medium` | `sl-SI` | `piper` | `espeak` |
@@ -1567,6 +1838,16 @@
 | `facebook/mms-tts-suz-Sunwar` | `suz` | `transformers` | `graphemes` |
 | `coqui/sv-cv-vits` | `sv` | `coqui` | `graphemes` |
 | `facebook/mms-tts-swe-Swedish` | `sv` | `transformers` | `graphemes` |
+| `supertonic/F1/sv` | `sv` | `supertonic` | `unicode` |
+| `supertonic/F2/sv` | `sv` | `supertonic` | `unicode` |
+| `supertonic/F3/sv` | `sv` | `supertonic` | `unicode` |
+| `supertonic/F4/sv` | `sv` | `supertonic` | `unicode` |
+| `supertonic/F5/sv` | `sv` | `supertonic` | `unicode` |
+| `supertonic/M1/sv` | `sv` | `supertonic` | `unicode` |
+| `supertonic/M2/sv` | `sv` | `supertonic` | `unicode` |
+| `supertonic/M3/sv` | `sv` | `supertonic` | `unicode` |
+| `supertonic/M4/sv` | `sv` | `supertonic` | `unicode` |
+| `supertonic/M5/sv` | `sv` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/sv` | `sv-SE` | `chatterbox` | `unicode` |
 | `hf_community/wezzmeister/piper-voices` | `sv-SE` | `piper` | `espeak` |
 | `larynx/sv-se-talesyntese-glow_tts` | `sv-SE` | `glowtts` | `gruut` |
@@ -1655,6 +1936,16 @@
 | `facebook/mms-tts-tpm-Tampulma` | `tpm` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tpp-Tepehua, Pisaflores` | `tpp` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tpt-Tepehua, Tlachichilco` | `tpt` | `transformers` | `graphemes` |
+| `supertonic/F1/tr` | `tr` | `supertonic` | `unicode` |
+| `supertonic/F2/tr` | `tr` | `supertonic` | `unicode` |
+| `supertonic/F3/tr` | `tr` | `supertonic` | `unicode` |
+| `supertonic/F4/tr` | `tr` | `supertonic` | `unicode` |
+| `supertonic/F5/tr` | `tr` | `supertonic` | `unicode` |
+| `supertonic/M1/tr` | `tr` | `supertonic` | `unicode` |
+| `supertonic/M2/tr` | `tr` | `supertonic` | `unicode` |
+| `supertonic/M3/tr` | `tr` | `supertonic` | `unicode` |
+| `supertonic/M4/tr` | `tr` | `supertonic` | `unicode` |
+| `supertonic/M5/tr` | `tr` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/tr` | `tr-TR` | `chatterbox` | `unicode` |
 | `coqui-tr-common-voice-glow-tts` | `tr-TR` | `glowtts` | `graphemes` |
 | `facebook/mms-tts-tur-Turkish` | `tr-TR` | `transformers` | `graphemes` |
@@ -1694,6 +1985,16 @@
 | `facebook/mms-tts-udu-Uduk` | `udu` | `transformers` | `graphemes` |
 | `facebook/mms-tts-uig-script_arabic-Uyghur` | `ug-Arab` | `transformers` | `graphemes` |
 | `facebook/mms-tts-uig-script_cyrillic-Uyghur` | `ug-Cyrl` | `transformers` | `graphemes` |
+| `supertonic/F1/uk` | `uk` | `supertonic` | `unicode` |
+| `supertonic/F2/uk` | `uk` | `supertonic` | `unicode` |
+| `supertonic/F3/uk` | `uk` | `supertonic` | `unicode` |
+| `supertonic/F4/uk` | `uk` | `supertonic` | `unicode` |
+| `supertonic/F5/uk` | `uk` | `supertonic` | `unicode` |
+| `supertonic/M1/uk` | `uk` | `supertonic` | `unicode` |
+| `supertonic/M2/uk` | `uk` | `supertonic` | `unicode` |
+| `supertonic/M3/uk` | `uk` | `supertonic` | `unicode` |
+| `supertonic/M4/uk` | `uk` | `supertonic` | `unicode` |
+| `supertonic/M5/uk` | `uk` | `supertonic` | `unicode` |
 | `mimic3/uk_UK/m-ailabs_low` | `uk-GB` | `mimic3` | `graphemes` |
 | `coqui-uk-mai-glow-tts` | `uk-UA` | `glowtts` | `graphemes` |
 | `coqui/uk-mai-vits` | `uk-UA` | `coqui` | `graphemes` |
@@ -1714,6 +2015,16 @@
 | `facebook/mms-tts-usp-Uspanteko` | `usp` | `transformers` | `graphemes` |
 | `facebook/mms-tts-uzb-script_cyrillic-Uzbek` | `uz-Cyrl` | `transformers` | `graphemes` |
 | `facebook/mms-tts-vag-Vagla` | `vag` | `transformers` | `graphemes` |
+| `supertonic/F1/vi` | `vi` | `supertonic` | `unicode` |
+| `supertonic/F2/vi` | `vi` | `supertonic` | `unicode` |
+| `supertonic/F3/vi` | `vi` | `supertonic` | `unicode` |
+| `supertonic/F4/vi` | `vi` | `supertonic` | `unicode` |
+| `supertonic/F5/vi` | `vi` | `supertonic` | `unicode` |
+| `supertonic/M1/vi` | `vi` | `supertonic` | `unicode` |
+| `supertonic/M2/vi` | `vi` | `supertonic` | `unicode` |
+| `supertonic/M3/vi` | `vi` | `supertonic` | `unicode` |
+| `supertonic/M4/vi` | `vi` | `supertonic` | `unicode` |
+| `supertonic/M5/vi` | `vi` | `supertonic` | `unicode` |
 | `chatterbox/multilingual/vi` | `vi-VN` | `chatterbox` | `unicode` |
 | `facebook/mms-tts-vie-Vietnamese` | `vi-VN` | `transformers` | `graphemes` |
 | `hf_community/phcatan9921/piper_tts` | `vi-VN` | `piper` | `espeak` |
