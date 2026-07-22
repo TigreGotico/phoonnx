@@ -136,6 +136,15 @@ class TestFromDictChatterbox(unittest.TestCase):
         self.assertTrue(vc_he.add_diacritics)
         self.assertFalse(vc_en.add_diacritics)
 
+    def test_chatterbox_does_not_auto_enable_diacritics_for_stress_or_pt_langs(self):
+        # East-Slavic/Turkic/Caucasian word-stress (stressonnx) and European-Portuguese
+        # (bifonia) diacritics backends are opt-in only, gated on the runtime
+        # `SynthesisConfig.add_diacritics` flag; unlike Arabic/Hebrew they must NOT be
+        # auto-enabled from lang_code alone.
+        for lang_code in ("ru", "uk", "be", "pt", "pt-PT"):
+            vc = VoiceConfig.from_dict({"engine": "chatterbox"}, bpe_tokenizer_json=self.bpe_path, lang_code=lang_code)
+            self.assertFalse(vc.add_diacritics, f"add_diacritics should default to False for lang_code={lang_code!r}")
+
     def test_chatterbox_defaults_sample_rate_to_24000(self):
         vc = VoiceConfig.from_dict({"engine": "chatterbox"}, bpe_tokenizer_json=self.bpe_path)
         self.assertEqual(vc.sample_rate, 24000)

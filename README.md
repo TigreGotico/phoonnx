@@ -52,6 +52,7 @@ golden path in [docs/training/quickstart.md](docs/training/quickstart.md).
 |---|---|
 | Run ONNX voices on CPU or GPU (CUDA/ROCm/DirectML/CoreML/OpenVINO) | [Usage](docs/usage.md) · [Configuration](docs/configuration.md) |
 | ~40 phonemizer backends across many languages | [Phonemizers](docs/phonemizers.md) |
+| Opt-in pronunciation-disambiguating diacritics (Arabic tashkeel, Hebrew niqqud, 26-language East-Slavic/Turkic/Caucasian word stress, European-Portuguese homograph sense) via `scriptconv` | [Phonemizers → Diacritics](docs/phonemizers.md#diacritics) |
 | Load Piper / Mimic3 / Coqui / Transformers / MMS voices | [Architecture](docs/architecture.md) |
 | 17 synthesis engines behind one adapter registry | [Engines](docs/engines.md) |
 | Zero-shot voice cloning (YourTTS, StyleTTS2, ZipVoice, F5-TTS, Chatterbox) | [Cloning](docs/cloning.md) |

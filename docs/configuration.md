@@ -28,7 +28,7 @@ from phoonnx.config import VoiceConfig
 | `length_scale` | `float` | `1.0` | Default phoneme length scale |
 | `noise_w_scale` | `float` | `0.8` | Default phoneme width noise scale |
 | `hop_length` | `int` | `256` | Model frames → audio samples factor for [phoneme alignment](alignment.md) |
-| `add_diacritics` | `bool` | `False` | Auto-add diacritics (Arabic/Hebrew) |
+| `add_diacritics` | `bool` | `False` | Auto-add pronunciation-disambiguating diacritics before phonemization (Arabic tashkeel, Hebrew niqqud, East-Slavic/Turkic/Caucasian word stress, European-Portuguese homograph diacritics — see [phonemizers.md](phonemizers.md#diacritics)) |
 | `diacritizer_model` | `str` | `rawi-ensemble` | Diacritizer model name (Arabic `text2tashkeel`); round-tripped through the config's `inference` block |
 | `phonemizer_model` | `str` \| `None` | `None` | Model path/id or variant selector for phonemizers that take one (ByT5, AhoTTS, Cotovia, arbtok) |
 | `speaker_id_map` | `dict` | `{}` | Maps speaker names to integer IDs |
@@ -99,7 +99,7 @@ syn_config = SynthesisConfig(
 | `normalize_audio` | `bool` | `True` | Scale audio to full amplitude range |
 | `volume` | `float` | `1.0` | Volume multiplier |
 | `enable_phonetic_spellings` | `bool` | `True` | Apply word-level pronunciation overrides |
-| `add_diacritics` | `bool` \| `None` | `None` | Add vowel diacritics before phonemization; `None` defers to the voice config |
+| `add_diacritics` | `bool` \| `None` | `None` | Add pronunciation-disambiguating diacritics before phonemization (see [phonemizers.md](phonemizers.md#diacritics)); `None` defers to the voice config |
 | `diacritizer_model` | `str` \| `None` | `None` | Override the diacritizer model for this call; `None` inherits the voice config's `diacritizer_model` |
 | `speaker_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Reference clip for zero-shot [voice cloning](cloning.md) |
 | `speaker_reference_text` | `str` \| `None` | `None` | Reference transcription, required by in-context cloning engines (ZipVoice) |

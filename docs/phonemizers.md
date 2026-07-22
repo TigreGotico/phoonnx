@@ -115,23 +115,46 @@ lang)` for a flat phoneme list and `phonemize_string(text, lang)` for a single c
 
 ## Special Language Notes
 
-### Arabic / Hebrew
+### Diacritics
 
-Models trained with Arabic or Hebrew may need diacritics added before phonemization. Enable this via `SynthesisConfig`:
+Some languages are ambiguous to pronounce from plain text alone — the same spelling can map to
+different sounds depending on missing vowel marks, missing stress marks, or word sense. phoonnx
+can add these pronunciation-disambiguating diacritics *before* phonemization, via
+[`scriptconv`](https://pypi.org/project/scriptconv/)'s `add_diacritics(text, lang, model=...)`,
+which `BasePhonemizer.add_diacritics` delegates to. This is **opt-in and off by default** —
+nothing changes unless you ask for it. Enable it via `SynthesisConfig`:
 
 ```python
 from phoonnx.config import SynthesisConfig
 syn_config = SynthesisConfig(add_diacritics=True)
 ```
 
-Or set it in the voice config JSON: `"add_diacritics": true`. For Arabic, it is enabled automatically when `lang_code` starts with `"ar"`.
+Or set it in the voice config JSON: `"add_diacritics": true`. There is no automatic per-language
+enabling beyond the existing Arabic default described below — for every other language you must
+opt in explicitly, either in the voice config or per call on `SynthesisConfig` (`None` on
+`SynthesisConfig` defers to the voice config's setting).
 
-Arabic diacritization uses [`text2tashkeel`](https://pypi.org/project/text2tashkeel/), installed
-by the [`ar` extra](installation.md#language-extras). The diacritizer model defaults to
-`rawi-ensemble` (which also restores hamza and the dagger alef); override it with the
-`diacritizer_model` field on the voice config or per call on `SynthesisConfig`. Requesting
-Arabic diacritics without `text2tashkeel` installed raises a clear `ImportError`. Hebrew uses
-Phonikud.
+`scriptconv` currently backs four kinds of diacritics, all reached through the same
+`add_diacritics=True` flag:
+
+- **Arabic** — tashkeel (vowel marks, hamza, dagger alef) via [`text2tashkeel`](https://pypi.org/project/text2tashkeel/),
+  installed by the [`ar` extra](installation.md#language-extras). The diacritizer model defaults
+  to `rawi-ensemble`; override it with the `diacritizer_model` field on the voice config or per
+  call on `SynthesisConfig`. Requesting Arabic diacritics without `text2tashkeel` installed
+  raises a clear `ImportError`. For Arabic, `add_diacritics` is enabled automatically when
+  `lang_code` starts with `"ar"` — this is the one existing auto-enable and it is unchanged.
+- **Hebrew** — niqqud (vowel points) via Phonikud.
+- **East-Slavic / Turkic / Caucasian word stress** — via [`stressonnx`](https://pypi.org/project/stressonnx/),
+  covering 26 BCP-47 tags: `ru uk be bg mk sl lv hy ka kk ky tt ba cv sah kjh tg udm mdf myv kbd
+  xal az-Cyrl az-Latn uz-Cyrl uz-Latn`. Install with `pip install scriptconv[stress]`. Stays
+  strictly opt-in — no language in this list auto-enables `add_diacritics`.
+- **European Portuguese** (`pt` / `pt-PT`, never `pt-BR`) — heterophonic-homograph sense
+  diacritics via [`bifonia`](https://pypi.org/project/bifonia/), disambiguating words that are
+  spelled the same but pronounced differently depending on meaning. Install with
+  `pip install scriptconv[pt]`. Also strictly opt-in.
+
+Regardless of language, `add_diacritics=True` with no matching backend for that language is a
+no-op — the text passes through unchanged.
 
 ### Galician (Cotovia)
 
@@ -147,7 +170,7 @@ All phonemizers inherit from `BasePhonemizer` which provides:
 
 - `phonemize(text, lang)` — returns `PhonemizedChunks` (list of sentences, each a list of phoneme strings)
 - `phonemize_string(text, lang)` — returns raw phoneme string for a single chunk
-- `add_diacritics(text, lang)` — adds vowel diacritics (Arabic/Hebrew)
+- `add_diacritics(text, lang, model=None)` — adds pronunciation-disambiguating diacritics (Arabic tashkeel, Hebrew niqqud, East-Slavic/Turkic/Caucasian word stress via `stressonnx`, European-Portuguese homograph sense diacritics via `bifonia`) — see [Diacritics](#diacritics)
 - `chunk_text(text)` — splits text into sentence chunks with punctuation
 
 ## Attribution
