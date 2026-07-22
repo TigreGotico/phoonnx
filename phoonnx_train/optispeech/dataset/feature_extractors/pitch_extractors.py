@@ -1,4 +1,5 @@
 import dataclasses
+import typing
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -10,7 +11,7 @@ import torchaudio
 from scipy.interpolate import interp1d
 
 from phoonnx_train.optispeech.utils import pylogger, trim_or_pad_to_target_length
-from phoonnx_train.vendor.f0 import extract_f0
+from phoonnx_train.vendor.f0 import extract_f0, extract_f0_world
 
 log = pylogger.get_pylogger(__name__)
 
@@ -88,8 +89,9 @@ class BasePitchExtractor(ABC):
 
 
 @dataclass
-class DIOPitchExtractor(BasePitchExtractor):
-    """Frame-level F0 extraction via ``librosa.pyin`` (probabilistic YIN)."""
+class PyinPitchExtractor(BasePitchExtractor):
+    """Frame-level F0 extraction via ``librosa.pyin`` (probabilistic YIN).
+    No extra native dependency; the default pitch extractor."""
 
     def __call__(self, wav, mel_length):
         wav = wav.astype(np.double)
@@ -101,9 +103,31 @@ class DIOPitchExtractor(BasePitchExtractor):
         return pitch
 
 
+@dataclass
+class DIOPitchExtractor(BasePitchExtractor):
+    """Frame-level F0 extraction via WORLD ``dio`` + ``stonemask``
+    (``pyworld``, opt-in through the ``train-pyworld`` extra) — ~50x faster
+    than :class:`PyinPitchExtractor` at preprocessing time."""
+
+    _METHOD: typing.ClassVar[str] = "dio"
+
+    def __call__(self, wav, mel_length):
+        wav = wav.astype(np.double)
+        pitch = extract_f0_world(wav, self.sample_rate, self.hop_length,
+                                  f_min=self.f_min, f_max=self.f_max,
+                                  method=self._METHOD)
+        pitch = trim_or_pad_to_target_length(pitch, mel_length)
+        if self.interpolate:
+            pitch = self.perform_interpolation(pitch)
+        return pitch
+
+
 class HarvestPitchExtractor(DIOPitchExtractor):
-    """Same ``librosa.pyin``-backed F0 extraction as :class:`DIOPitchExtractor`;
-    kept as a distinct class for config/registry backward compatibility."""
+    """Same WORLD-backed extraction as :class:`DIOPitchExtractor`, using
+    ``pyworld.harvest`` instead of ``pyworld.dio`` (slower, generally more
+    robust)."""
+
+    _METHOD: typing.ClassVar[str] = "harvest"
 
 
 @dataclass
@@ -239,9 +263,11 @@ class CrepePitchExtractor(BasePitchExtractor):
 
 @dataclass
 class EnsemblePitchExtractor(BasePitchExtractor):
-    # cls -> voiced-reliability score
+    # cls -> voiced-reliability score. Uses PyinPitchExtractor (not the
+    # WORLD-backed DIOPitchExtractor) so the ensemble has no hard pyworld
+    # dependency.
     extractor_classes = {
-        DIOPitchExtractor: 0.75,
+        PyinPitchExtractor: 0.75,
         PENNPitchExtractor: 0.08,
         JDCPitchExtractor: 0.15,
         CrepePitchExtractor: 0.02,

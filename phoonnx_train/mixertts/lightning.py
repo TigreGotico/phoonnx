@@ -106,7 +106,8 @@ class MixerTTSDataset(Dataset):
     def __init__(self, dataset_paths: List[Path], mel_channels: int,
                  filter_length: int, sample_rate: int,
                  mel_fmin: float, mel_fmax: Optional[float],
-                 max_phoneme_ids: Optional[int] = None):
+                 max_phoneme_ids: Optional[int] = None,
+                 f0_method: str = "pyin"):
         jsonl_paths = [
             (Path(p) / "dataset.jsonl") if Path(p).is_dir() else Path(p)
             for p in dataset_paths
@@ -117,10 +118,12 @@ class MixerTTSDataset(Dataset):
         self.sample_rate = sample_rate
         self.mel_fmin = mel_fmin
         self.mel_fmax = mel_fmax
+        self.f0_method = f0_method
         self.prior = BetaBinomialPrior()
         self.pitch_mean, self.pitch_std = load_or_compute_pitch_stats(
             dataset_paths,
-            [f0_cache_path(utt.audio_spec_path) for utt in self._inner.utterances],
+            [f0_cache_path(utt.audio_spec_path, method=f0_method) for utt in self._inner.utterances],
+            method=f0_method,
         )
 
     def __len__(self) -> int:
@@ -136,7 +139,7 @@ class MixerTTSDataset(Dataset):
         t_mel = mel.size(1)
 
         pitch = torch.zeros(t_mel)
-        f0_candidate = f0_cache_path(utt.audio_spec_path)
+        f0_candidate = f0_cache_path(utt.audio_spec_path, method=self.f0_method)
         if f0_candidate.exists():
             f0 = np.load(f0_candidate).astype("float32")
             # length-reconcile to T_mel (extra_preprocess already keeps the
@@ -237,6 +240,11 @@ class MixerTTSModule(pl.LightningModule):
         # inference know the pitch-normalization domain
         pitch_mean: float = 0.0,
         pitch_std: float = 1.0,
+        # F0 extraction method used at preprocessing time — "pyin" (default)
+        # or "dio"/"harvest" (WORLD via pyworld, train-pyworld extra). Must
+        # match whatever ``--f0-method`` extra_preprocess ran with, since it
+        # selects which ``<utterance>.f0-<method>.npy`` sidecar to read.
+        f0_method: str = "pyin",
         **kwargs: Any,
     ):
         super().__init__()
@@ -283,6 +291,7 @@ class MixerTTSModule(pl.LightningModule):
             mel_fmin=self.hparams.mel_fmin,
             mel_fmax=self.hparams.mel_fmax,
             max_phoneme_ids=max_phoneme_ids,
+            f0_method=self.hparams.f0_method,
         )
         # persist the corpus pitch stats (checkpointed via hparams) so
         # inference-time pitch controls know the normalization domain

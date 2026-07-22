@@ -25,7 +25,7 @@ import torchaudio
 from torch.utils.data import Sampler
 
 from phoonnx_train.styletts2.meldataset import MEL_PARAMS, SPECT_PARAMS, TextCleaner
-from phoonnx_train.vendor.f0 import EXTRACTOR_TAG, extract_f0
+from phoonnx_train.vendor.f0 import extract_f0, extract_f0_world, get_extractor_tag
 
 LOG = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ def parse_list_lines(lines: List[str], root_path: str) -> List[Tuple[str, str, i
 
 class AuxMelDataset(torch.utils.data.Dataset):
     """Mel + phoneme-id dataset for the aligner; optionally F0 for the pitch
-    extractor (``with_f0=True`` computes ``librosa.pyin`` F0, cached)."""
+    extractor (``with_f0=True`` computes F0 via ``f0_method``, cached)."""
 
     def __init__(self,
                  data_list: List[str],
@@ -59,12 +59,14 @@ class AuxMelDataset(torch.utils.data.Dataset):
                  sr: int = 24000,
                  n_mels: int = MEL_PARAMS["n_mels"],
                  with_f0: bool = False,
-                 cache_features: bool = True):
+                 cache_features: bool = True,
+                 f0_method: str = "pyin"):
         self.data = parse_list_lines(data_list, root_path)
         self.sr = sr
         self.n_mels = n_mels
         self.with_f0 = with_f0
         self.cache_features = cache_features
+        self.f0_method = f0_method
         self.text_cleaner = TextCleaner()
         self.to_melspec = torchaudio.transforms.MelSpectrogram(
             n_mels=n_mels, **SPECT_PARAMS)
@@ -102,12 +104,16 @@ class AuxMelDataset(torch.utils.data.Dataset):
         # extraction-method tag is folded into the filename so a cache
         # written by a previous F0 extractor is a clean miss, not silently
         # reused
-        cache = Path(wav_path).with_suffix(f".f0-{self.sr}-{EXTRACTOR_TAG}.npy")
+        tag = get_extractor_tag(self.f0_method)
+        cache = Path(wav_path).with_suffix(f".f0-{self.sr}-{tag}.npy")
         if self.cache_features and cache.is_file():
             f0 = np.load(cache)
         else:
             x = self._load_wave(wav_path).numpy().astype(np.float64)
-            f0 = extract_f0(x, self.sr, SPECT_PARAMS["hop_length"])
+            if self.f0_method == "pyin":
+                f0 = extract_f0(x, self.sr, SPECT_PARAMS["hop_length"])
+            else:
+                f0 = extract_f0_world(x, self.sr, SPECT_PARAMS["hop_length"], method=self.f0_method)
             if self.cache_features:
                 try:
                     np.save(cache, f0)

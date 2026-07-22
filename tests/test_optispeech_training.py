@@ -21,6 +21,7 @@ from phoonnx_train.engines.base import TrainingEngineConfig
 from phoonnx_train.engines.optispeech import (
     OptiSpeechEngineConfig,
     OptiSpeechTrainingEngine,
+    _build_feature_extractor,
     _QUALITY_PRESETS,
 )
 from phoonnx_train.torch_compat import trusting_torch_load
@@ -154,6 +155,29 @@ class ConfigTests(unittest.TestCase):
             TrainingEngineConfig(num_symbols=40, extra={"quality": "x-low", "dim": 999})
         )
         self.assertEqual(before, _QUALITY_PRESETS)
+
+    def test_f0_method_selects_pitch_extractor_class(self):
+        from phoonnx_train.optispeech.dataset.feature_extractors.pitch_extractors import (
+            DIOPitchExtractor,
+            HarvestPitchExtractor,
+            PyinPitchExtractor,
+        )
+
+        cases = {"pyin": PyinPitchExtractor, "dio": DIOPitchExtractor,
+                 "harvest": HarvestPitchExtractor}
+        for method, expected_cls in cases.items():
+            cfg = OptiSpeechEngineConfig.from_training_config(
+                TrainingEngineConfig(num_symbols=40, extra={"f0_method": method, **_min()})
+            )
+            self.assertEqual(cfg.f0_method, method)
+            extractor = _build_feature_extractor(cfg)
+            self.assertIs(extractor.pitch_extractor_initializer.func, expected_cls)
+
+    def test_f0_method_defaults_to_pyin(self):
+        cfg = OptiSpeechEngineConfig.from_training_config(
+            TrainingEngineConfig(num_symbols=40, extra=_min())
+        )
+        self.assertEqual(cfg.f0_method, "pyin")
 
 
 class ConstructionTests(unittest.TestCase):

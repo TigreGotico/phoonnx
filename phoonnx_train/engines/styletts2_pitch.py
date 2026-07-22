@@ -48,6 +48,11 @@ class PitchConfig:
     save_dir: Optional[str] = None
     pretrained_path: Optional[str] = None  # warm-start (e.g. English bst.t7)
 
+    # F0 extraction method: "pyin" (default, librosa) or "dio"/"harvest"
+    # (WORLD via pyworld, train-pyworld extra) — selects which
+    # ``<wav>.f0-<sr>-<method>.npy`` sidecar cache is read/written.
+    f0_method: str = "pyin"
+
     @classmethod
     def from_training_config(cls, cfg: TrainingEngineConfig) -> "PitchConfig":
         extra = dict(cfg.extra)

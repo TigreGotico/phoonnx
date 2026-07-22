@@ -132,6 +132,44 @@ def test_extra_preprocess_missing_deps_returns_empty(monkeypatch, tmp_path):
     assert not (tmp_path / "cache").exists()  # nothing written
 
 
+def _write_sine_wav(path: Path, freq_hz: float = 220.0, seconds: float = 0.5,
+                    sr: int = 22050) -> None:
+    import wave as wave_mod
+
+    t = np.linspace(0, seconds, int(sr * seconds), endpoint=False)
+    samples = (0.3 * np.sin(2 * np.pi * freq_hz * t) * 32767).astype(np.int16)
+    with wave_mod.open(str(path), "wb") as fh:
+        fh.setnchannels(1)
+        fh.setsampwidth(2)
+        fh.setframerate(sr)
+        fh.writeframes(samples.tobytes())
+
+
+def test_extra_preprocess_f0_method_selects_cache_filename(tmp_path):
+    """pyin (default) and dio (WORLD, opt-in) must write to distinct cache
+    filenames for the same utterance — no silent cross-method reuse."""
+    engine = ForwardTTSTrainingEngine()
+    wav_path = tmp_path / "a.wav"
+    _write_sine_wav(wav_path)
+    cache_dir = tmp_path / "cache"
+
+    pyin_result = engine.extra_preprocess(wav_path, cache_dir, 22050, f0_method="pyin")
+    dio_result = engine.extra_preprocess(wav_path, cache_dir, 22050, f0_method="dio")
+
+    assert pyin_result and dio_result
+    pyin_path = Path(pyin_result["f0_path"])
+    dio_path = Path(dio_result["f0_path"])
+    assert pyin_path != dio_path
+    assert pyin_path.name.endswith("f0-pyin.npy")
+    assert dio_path.name.endswith("f0-dio.npy")
+    assert pyin_path.is_file() and dio_path.is_file()
+
+    pyin_f0 = np.load(pyin_path)
+    dio_f0 = np.load(dio_path)
+    assert np.any(pyin_f0 > 0)
+    assert np.any(dio_f0 > 0)
+
+
 # ------------------------------------------------------------- pitch stats
 def _write_f0(path: Path, voiced_value=200.0, n=50, voiced=slice(10, 40)):
     f0 = np.zeros(n, dtype=np.float32)
@@ -172,6 +210,46 @@ def test_f0_cache_path_keys_by_extraction_method(tmp_path):
     _write_f0(current_path)
     assert pitch_stats.f0_cache_path(spec_path) == current_path
     assert current_path.exists()
+
+
+def test_f0_cache_path_separates_pyin_and_world_methods(tmp_path):
+    """dio/harvest are opt-in WORLD backends and must get their own cache
+    filenames — never silently share a pyin-era (or each other's) cache."""
+    spec_path = tmp_path / "utt0.spec.pt"
+    pyin_path = pitch_stats.f0_cache_path(spec_path, method="pyin")
+    dio_path = pitch_stats.f0_cache_path(spec_path, method="dio")
+    harvest_path = pitch_stats.f0_cache_path(spec_path, method="harvest")
+
+    assert len({pyin_path, dio_path, harvest_path}) == 3
+    assert pyin_path.name == "utt0.f0-pyin.npy"
+    assert dio_path.name == "utt0.f0-dio.npy"
+    assert harvest_path.name == "utt0.f0-harvest.npy"
+
+
+def test_stats_filename_separates_methods(tmp_path):
+    assert pitch_stats.stats_filename("pyin") == "pitch_stats-pyin.json"
+    assert pitch_stats.stats_filename("dio") == "pitch_stats-dio.json"
+    assert pitch_stats.stats_filename("harvest") == "pitch_stats-harvest.json"
+    assert len({
+        pitch_stats.stats_filename("pyin"),
+        pitch_stats.stats_filename("dio"),
+        pitch_stats.stats_filename("harvest"),
+    }) == 3
+
+
+def test_load_or_compute_pitch_stats_keyed_by_method(tmp_path):
+    """Stats computed under one method's cache file must not be read back
+    (or overwritten) under a different method's stats filename."""
+    pyin_f0 = _write_f0(tmp_path / "utt0.f0-pyin.npy", voiced_value=200.0)
+    dio_f0 = _write_f0(tmp_path / "utt0.f0-dio.npy", voiced_value=300.0)
+
+    pyin_mean, _ = pitch_stats.load_or_compute_pitch_stats([tmp_path], [pyin_f0], method="pyin")
+    dio_mean, _ = pitch_stats.load_or_compute_pitch_stats([tmp_path], [dio_f0], method="dio")
+
+    assert 190 < pyin_mean < 210
+    assert 290 < dio_mean < 310
+    assert (tmp_path / "pitch_stats-pyin.json").is_file()
+    assert (tmp_path / "pitch_stats-dio.json").is_file()
 
 
 def test_pitch_stats_computed_and_cached(tmp_path):

@@ -25,10 +25,10 @@ class PitchSegmentDataset(torch.utils.data.Dataset):
     per upstream MelDataset (features cached via AuxMelDataset)."""
 
     def __init__(self, data_list: List[str], root_path: str, sr: int,
-                 seq_len: int):
+                 seq_len: int, f0_method: str = "pyin"):
         from phoonnx_train.styletts2.aligner_dataset import AuxMelDataset
         self.inner = AuxMelDataset(data_list, root_path=root_path, sr=sr,
-                                   with_f0=True)
+                                   with_f0=True, f0_method=f0_method)
         self.seq_len = seq_len
 
     def __len__(self) -> int:
@@ -152,7 +152,8 @@ class PitchModule(pl.LightningModule):
     def _dataloader(self, data_list, validation: bool):
         ds = PitchSegmentDataset(data_list, root_path=self.config.root_path,
                                  sr=self.config.sample_rate,
-                                 seq_len=self.config.seq_len)
+                                 seq_len=self.config.seq_len,
+                                 f0_method=self.config.f0_method)
         kwargs: Dict[str, Any] = dict(
             batch_size=self.config.batch_size, shuffle=not validation,
             drop_last=not validation, num_workers=self.config.num_workers,

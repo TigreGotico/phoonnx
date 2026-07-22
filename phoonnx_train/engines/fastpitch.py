@@ -266,9 +266,15 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
         cache_dir: Path,
         sample_rate: int,
         hop_length: int = 256,
+        f0_method: str = "pyin",
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        """Extract F0 (pitch) via ``librosa.pyin``; cached alongside the mel cache.
+        """Extract F0 (pitch); cached alongside the mel cache.
+
+        ``f0_method`` selects the extractor: ``"pyin"`` (default,
+        ``librosa.pyin``, no extra native dependency) or ``"dio"``/
+        ``"harvest"`` (WORLD via ``pyworld``, opt-in through the
+        ``train-pyworld`` extra — ~50x faster at preprocessing time).
 
         Run at a frame period matched to the mel hop (``1000 * hop_length /
         sample_rate`` ms) so the f0 track is frame-aligned with the mel
@@ -285,7 +291,7 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
 
         try:
             import librosa
-            from phoonnx_train.vendor.f0 import extract_f0
+            from phoonnx_train.vendor.f0 import extract_f0, extract_f0_world, get_extractor_tag
         except ImportError:
             _LOG.warning(
                 "librosa not installed — skipping F0 extraction "
@@ -293,6 +299,18 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
                 "install phoonnx[train,train-fastpitch] for real pitch)."
             )
             return {}
+
+        get_extractor_tag(f0_method)  # fail fast on an unknown method
+
+        if f0_method != "pyin":
+            try:
+                import pyworld  # noqa: F401 — presence check, extract_f0_world imports it
+            except ImportError:
+                _LOG.warning(
+                    "pyworld not installed — skipping F0 extraction "
+                    "(f0_method=%r needs the 'train-pyworld' extra).", f0_method,
+                )
+                return {}
 
         from hashlib import sha256
 
@@ -316,7 +334,10 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
             wav, _sr = librosa.load(str(utterance_audio_path), sr=sample_rate, mono=True)
 
         wav_double = wav.astype(np.float64)
-        f0 = extract_f0(wav_double, sample_rate, hop_length).astype(np.float32)
+        if f0_method == "pyin":
+            f0 = extract_f0(wav_double, sample_rate, hop_length).astype(np.float32)
+        else:
+            f0 = extract_f0_world(wav_double, sample_rate, hop_length, method=f0_method).astype(np.float32)
 
         if spec_path.exists():
             import torch
@@ -338,7 +359,7 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
         from phoonnx_train.fastpitch.pitch_stats import f0_cache_path
 
         cache_dir.mkdir(parents=True, exist_ok=True)
-        f0_path = f0_cache_path(spec_path)
+        f0_path = f0_cache_path(spec_path, method=f0_method)
         np.save(f0_path, f0)
 
         return {"f0_path": str(f0_path)}

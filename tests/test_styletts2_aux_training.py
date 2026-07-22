@@ -150,6 +150,29 @@ def test_f0_cache_keyed_by_extraction_method(dataset_dir):
     assert np.allclose(f0_2.numpy()[:n], cached_value[:n])
 
 
+def test_f0_method_dio_uses_distinct_cache_from_pyin(dataset_dir):
+    """f0_method='dio' (WORLD, opt-in via train-pyworld) must cache under
+    its own filename, separate from the default pyin cache — real pyworld
+    extraction, not mocked."""
+    from phoonnx_train.styletts2.aligner_dataset import AuxMelDataset
+
+    lines = ["utt0.wav|mɐɲˈɐ|0"]
+    root = str(dataset_dir / "wavs")
+    wav_path = dataset_dir / "wavs" / "utt0.wav"
+    sr = 24000
+    pyin_cache = wav_path.with_suffix(f".f0-{sr}-pyin.npy")
+    dio_cache = wav_path.with_suffix(f".f0-{sr}-dio.npy")
+
+    ds_pyin = AuxMelDataset(lines, root_path=root, sr=sr, with_f0=True, f0_method="pyin")
+    ds_pyin[0]
+    ds_dio = AuxMelDataset(lines, root_path=root, sr=sr, with_f0=True, f0_method="dio")
+    ds_dio[0]
+
+    assert pyin_cache.is_file()
+    assert dio_cache.is_file()
+    assert pyin_cache != dio_cache
+
+
 def test_aligner_training_step_runs():
     module = AlignerModule(AlignerConfig(**TINY_ALIGNER))
     loss = module.training_step(_aligner_batch(), 0)

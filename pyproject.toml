@@ -155,6 +155,14 @@ train-optispeech = [
     "onnx",
     "opt_einsum",
 ]
+# opt-in WORLD F0 backend (f0_method="dio"/"harvest") for FastPitch,
+# Mixer-TTS, StyleTTS2-pitch and OptiSpeech: ~50x faster than the default
+# librosa.pyin backend at dataset-preprocessing time. setuptools<81 is
+# needed because pyworld imports pkg_resources at runtime.
+train-pyworld = [
+    "pyworld>=0.3.2",
+    "setuptools<81",
+]
 ar = ["epitran", "arbtok", "text2tashkeel"]
 ca = ["epitran"]
 gl = ["pycotovia>=0.1.0"]

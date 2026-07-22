@@ -11,33 +11,44 @@ import logging
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 
-from phoonnx_train.vendor.f0 import EXTRACTOR_TAG
+from phoonnx_train.vendor.f0 import get_extractor_tag
 
 _LOG = logging.getLogger(__name__)
 
 # Keyed by extraction method for the same reason as f0_cache_path: corpus
 # mean/std computed from one extractor's tracks must not normalize another's.
-STATS_FILENAME = f"pitch_stats-{EXTRACTOR_TAG}.json"
+# Kept as a plain constant (the default/pyin case) for call sites that don't
+# need to be method-aware; method-aware callers should use ``stats_filename``.
+STATS_FILENAME = f"pitch_stats-{get_extractor_tag()}.json"
 
 
-def f0_cache_path(audio_spec_path: Path) -> Path:
+def stats_filename(method: str = "pyin") -> str:
+    """``pitch_stats-<method>.json`` — the corpus pitch-stats cache name for
+    a given F0 extraction method."""
+    return f"pitch_stats-{get_extractor_tag(method)}.json"
+
+
+def f0_cache_path(audio_spec_path: Path, method: str = "pyin") -> Path:
     """``<utterance>.spec.pt`` -> sidecar ``<utterance>.f0-<method>.npy``
     cache. The extraction-method tag is folded into the filename so a
     cache written by a previous F0 extractor is a clean miss instead of
     being silently reused."""
-    return Path(str(audio_spec_path)).with_suffix("").with_suffix(f".f0-{EXTRACTOR_TAG}.npy")
+    tag = get_extractor_tag(method)
+    return Path(str(audio_spec_path)).with_suffix("").with_suffix(f".f0-{tag}.npy")
 
 
 def load_or_compute_pitch_stats(
     dataset_paths: Iterable[Path],
     f0_paths: List[Path],
+    method: str = "pyin",
 ) -> Tuple[float, float]:
     """Return corpus (mean, std) over voiced F0 frames.
 
-    Stats are cached as ``pitch_stats-<method>.json`` (see ``STATS_FILENAME``) in the first dataset
-    directory; a missing or malformed cache is recomputed from the
-    ``f0_cache_path`` sidecar files. With no pitch caches at all, identity
-    normalization ``(0.0, 1.0)`` is returned.
+    Stats are cached as ``pitch_stats-<method>.json`` (see
+    ``stats_filename``) in the first dataset directory; a missing or
+    malformed cache is recomputed from the ``f0_cache_path`` sidecar files.
+    With no pitch caches at all, identity normalization ``(0.0, 1.0)`` is
+    returned.
     """
     import numpy as np
 
@@ -45,7 +56,7 @@ def load_or_compute_pitch_stats(
     for p in dataset_paths:
         p = Path(p)
         if p.is_dir():
-            stats_path = p / STATS_FILENAME
+            stats_path = p / stats_filename(method)
             break
     if stats_path and stats_path.is_file():
         try:
