@@ -294,6 +294,32 @@ class Vocabulary:
         return voc
 
     @staticmethod
+    def from_supertonic_indexer(indexer: List[int]) -> 'Vocabulary':
+        """
+        Build a Vocabulary from SuperTonic's ``unicode_indexer.json``.
+
+        The published format is a flat list of length 65536: one entry per BMP
+        (Basic Multilingual Plane) codepoint, holding that codepoint's token id, or
+        ``-1`` for a codepoint the model was never trained on. This turns that table
+        into the standard ``char2idx`` shape (``chr(codepoint) -> id``), dropping the
+        unmapped (``-1``/``None``) entries, so it can drive a normal ``TTSTokenizer``
+        instead of a bespoke lookup. Keys are exactly the shipped characters — this
+        never applies Unicode normalization to them.
+
+        Parameters:
+            indexer: The parsed ``unicode_indexer.json`` list.
+
+        Returns:
+            Vocabulary: has no pad/eos/bos/blank tokens (SuperTonic uses none).
+        """
+        char2idx: Dict[str, int] = {
+            chr(codepoint): token_id
+            for codepoint, token_id in enumerate(indexer)
+            if token_id is not None and token_id >= 0
+        }
+        return Vocabulary(char2idx=char2idx)
+
+    @staticmethod
     def from_tokens_txt(tokens_txt: str, id_first: bool = False) -> 'Vocabulary':
         """
         Creates a Vocabulary instance by parsing a tokens.txt style string (ID token per line).

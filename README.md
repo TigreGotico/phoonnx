@@ -53,7 +53,7 @@ golden path in [docs/training/quickstart.md](docs/training/quickstart.md).
 | Run ONNX voices on CPU or GPU (CUDA/ROCm/DirectML/CoreML/OpenVINO) | [Usage](docs/usage.md) · [Configuration](docs/configuration.md) |
 | ~40 phonemizer backends across many languages | [Phonemizers](docs/phonemizers.md) |
 | Load Piper / Mimic3 / Coqui / Transformers / MMS voices | [Architecture](docs/architecture.md) |
-| 16 synthesis engines behind one adapter registry | [Engines](docs/engines.md) |
+| 17 synthesis engines behind one adapter registry | [Engines](docs/engines.md) |
 | Zero-shot voice cloning (YourTTS, StyleTTS2, ZipVoice, F5-TTS, Chatterbox) | [Cloning](docs/cloning.md) |
 | Low-latency streaming for VITS voices | [Streaming](docs/streaming.md) |
 | Download and cache voices from HuggingFace and other sources | [Voice manager](docs/voice_manager.md) |
@@ -99,3 +99,8 @@ It builds on the work of others, including [jaywalnut310/vits](https://github.co
 (the VITS backbone), and interoperates with the Piper, Mimic3, Coqui, MMS and Transformers
 voice formats. Language-specific components are credited on the [Phonemizers](docs/phonemizers.md)
 page.
+
+The SuperTonic inference code (`phoonnx/engines/supertonic.py`) is adapted from Supertone
+Inc.'s MIT-licensed reference implementation. **SuperTonic model weights
+(`Supertone/supertonic-3`) are licensed OpenRAIL-M, not Apache-2.0** — review the model's
+license before commercial use.

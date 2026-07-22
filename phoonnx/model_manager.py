@@ -153,7 +153,8 @@ class TTSModelInfo:
                 self._config = VoiceConfig.from_dict(config,
                                                      alphabet=alphabet,
                                                      phoneme_type=phoneme_type,
-                                                     engine=engine)
+                                                     engine=engine,
+                                                     lang_code=lang_code)
 
             # populate any missing properties
             self.lang = self.lang or normalize_lang(self._config.lang_code)
@@ -628,6 +629,7 @@ class TTSModelManager:
         self.cache.update(JsonStorage(str(base_path / "BSC.json")))
         self.cache.update(JsonStorage(str(base_path / "shami.json")))
         self.cache.update(JsonStorage(str(base_path / "chatterbox.json")))
+        self.cache.update(JsonStorage(str(base_path / "supertonic.json")))
         self.voices = {}
         for voice_id, voice_dict in self.cache.items():
             try:
@@ -672,6 +674,7 @@ class TTSModelManager:
             "styletts2": "styletts2.json",
             "coqui_vits": "coqui_vits.json",
             "bsc": "BSC.json",
+            "supertonic": "supertonic.json",
         }
         result: Dict[str, List[str]] = {}
         for source, filename in sources.items():
