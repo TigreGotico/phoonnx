@@ -39,8 +39,14 @@ class ShamiAdapter(BaseOnnxAdapter):
             "phoneme_lengths": request.phoneme_lengths,
         }
 
-        if request.language_ids is not None:
-            args["language_ids"] = request.language_ids
+        # The graph *requires* language_ids (it is how detect() recognises the
+        # model), so never omit it: without a per-phoneme language stream, fall
+        # back to a single-language one so synthesis degrades to monolingual
+        # rather than failing onnxruntime's required-input check.
+        args["language_ids"] = (
+            request.language_ids if request.language_ids is not None
+            else np.zeros_like(np.asarray(request.phoneme_ids), dtype=np.int64)
+        )
 
         # Single-speaker graphs may prune the speaker_id input entirely.
         if request.speaker_id is not None and request.speaker_id > 0:

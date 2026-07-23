@@ -38,16 +38,18 @@ class _Input:
 
 
 class _FakePhonemizer:
-    """A phonemizer with just ``phonemize`` — deliberately *without* the
-    ``phonemize_lazy`` / ``phonemize_with_language_ids*`` methods, so
-    :meth:`TTSVoice._iter_synthesis_ids` takes the plain per-sentence hot path
-    (a MagicMock would spuriously satisfy those ``getattr``/``hasattr`` checks).
+    """A minimal phonemizer honouring the parts of the BasePhonemizer contract the
+    conversion route uses: ``phonemize`` plus the per-sentence ``phonemize_lazy``
+    generator (a MagicMock would return non-iterable sentinels instead).
     """
     def __init__(self, result):
         self._result = result
 
     def phonemize(self, text, lang=None):
         return self._result
+
+    def phonemize_lazy(self, text, lang=None):
+        yield from self._result
 
     def add_diacritics(self, text, lang, model=None):
         return text

@@ -68,8 +68,7 @@ class VoiceConfig:
 
     1. **Conversion backend** – which graphemes→phoneme implementation to
        call (e.g. ``espeak``, ``gruut``, ``misaki_en``).  This is the
-       *how* of the ``(GRAPHEMES, <phoneme_alphabet>)`` conversion edge in
-       :mod:`phoonnx.alphabet_convert`.
+       *how* of the graphemes→phoneme conversion (scriptconv routes it).
 
     2. **Tokenisation recipe** – the token vocabulary and splitting rules
        for the model's input layer are built to match the output of the
@@ -121,11 +120,11 @@ class VoiceConfig:
     noise_scale: float = DEFAULT_NOISE_SCALE
     noise_w_scale: float = DEFAULT_NOISE_W_SCALE
     add_diacritics: bool = None # arabic and hebrew
-    # diacritizer model name (for languages that need one — e.g. Arabic uses text2tashkeel models like "rawi-ensemble")
-    diacritizer_model: str = "rawi-ensemble"
-    # optional override for the Hebrew phonikud diacritizer model (path or zero-arg
-    # callable). ``None`` (the default) lets scriptconv auto-provision + cache it.
-    phonikud_model: Optional[str] = None
+    # diacritizer model for languages that need one; scriptconv routes it to the
+    # right backend: Arabic text2tashkeel model name (e.g. "rawi-ensemble"),
+    # Hebrew phonikud ONNX path (None -> scriptconv auto-provisions + caches), or
+    # stressonnx model. None lets each backend pick its own default.
+    diacritizer_model: Optional[str] = None
 
     # samples per model frame — used to convert per-phoneme durations (in model
     # frames) to audio samples for the phoneme-alignment feature (see
@@ -282,7 +281,7 @@ class VoiceConfig:
         phoneme_type = phoneme_type or config.get("phoneme_type")
         alphabet = alphabet or config.get("alphabet")
         diacritics = False
-        ar_diacritizer_model = "rawi-ensemble"
+        ar_diacritizer_model = None
 
         if (engine == Engine.CHATTERBOX or
                 (isinstance(engine, str) and engine == "chatterbox") or
@@ -329,7 +328,7 @@ class VoiceConfig:
             phoneme_type = phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK)
             alphabet = alphabet or Alphabet(config.get("alphabet", "ipa"))
             diacritics = config.get("inference", {}).get("add_diacritics", True)
-            ar_diacritizer_model = config.get("inference", {}).get("diacritizer_model", "rawi-ensemble")
+            ar_diacritizer_model = config.get("inference", {}).get("diacritizer_model", None)
 
             # Preserve the model's own special tokens when present (a native
             # config may use any pad/blank/bos/eos); fall back to phoonnx defaults.
@@ -558,8 +557,8 @@ class SynthesisConfig:
 
     ``None`` means the text is plain graphemes (the default for virtually
     every use-case).  Set this when passing pre-converted text, for example
-    IPA strings or Hangul, so that :func:`phoonnx.alphabet_convert.convert`
-    can skip the phonemization step and apply the correct script-conversion
+    IPA strings or Hangul, so that scriptconv's conversion graph can skip the
+    phonemization step and apply the correct script-conversion
     instead.
 
     Relationship to other alphabet fields:
@@ -667,6 +666,56 @@ def get_phonemizer(phoneme_type: PhonemeType,
 
     phonemizer.normalizer = _normalize
     return phonemizer
+
+
+def get_conversion(phonemizer, voice_config: "VoiceConfig",
+                   syn_config: "SynthesisConfig", tgt_alphabet: Alphabet):
+    """Build a voice's ``text -> tgt_alphabet`` conversion for one synthesis call.
+
+    Returns ``(graph, prepare_text)``:
+
+    * ``graph`` — a scriptconv ``ConversionGraph`` whose phoneme edge is the
+      voice's own (lazy) phonemizer. When the voice vocalizes, scriptconv's
+      ``text -> text-diacritized`` edge is added and the direct edge omitted, so
+      routing is forced through the vocalizer by *topology* rather than a runtime
+      flag. Language and model are closed over, so callers route with
+      ``graph.convert(text, "text", tgt_alphabet.value)`` and carry no conversion
+      context of their own.
+    * ``prepare_text`` — the same vocalization as a plain ``str -> str``
+      transform, for paths that feed raw text to something other than the phoneme
+      route (text-token models, inline ``[[phoneme]]`` overrides). Identity when
+      the voice does not vocalize.
+
+    Undervocalized scripts (Arabic, Hebrew) need their vowel marks restored
+    before G2P or the pronunciation is ambiguous; that restoration is scriptconv's
+    and lives entirely behind these two values.
+    """
+    from scriptconv.graph import ConversionGraph, Edge
+    from scriptconv.diacritics import DIACRITIZED, diacritize
+
+    # explicit per-call setting wins, else the voice's own
+    enabled = syn_config.add_diacritics
+    if enabled is None:
+        enabled = voice_config.add_diacritics
+    model = syn_config.diacritizer_model or voice_config.diacritizer_model
+    lang, alpha = voice_config.lang_code, tgt_alphabet.value
+
+    # phonemize_lazy is a BasePhonemizer method, so every phonemizer has it: a
+    # per-sentence generator, keeping sentence N+1 off the critical path of N.
+    def phonemize(text, **_):
+        return phonemizer.phonemize_lazy(text, lang)
+
+    graph = ConversionGraph()
+    if not enabled:
+        graph.register(Edge("text", alpha, phonemize))
+        return graph, (lambda text: text)
+
+    def _vocalize(text, **_):
+        return diacritize(text, lang, diacritizer_model=model)
+
+    graph.register(Edge("text", DIACRITIZED, _vocalize))
+    graph.register(Edge(DIACRITIZED, alpha, phonemize))
+    return graph, _vocalize
 
 
 

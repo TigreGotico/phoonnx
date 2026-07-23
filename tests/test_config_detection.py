@@ -286,10 +286,12 @@ class TestDiacritizerModelRoundTrip(unittest.TestCase):
         vc2 = VoiceConfig.from_dict(native)
         self.assertEqual(vc2.diacritizer_model, "custom-diacritizer")
 
-    def test_default_diacritizer_model_used_when_absent(self):
+    def test_diacritizer_model_defaults_to_none_when_absent(self):
+        # None -> scriptconv applies each backend's own default (Arabic
+        # text2tashkeel rawi-ensemble, Hebrew auto-provisioned phonikud).
         cfg = {"phoonnx_version": "1.0", "phoneme_id_map": {"_": 0, "^": 1, "$": 2, "a": 3}}
         vc = VoiceConfig.from_dict(cfg)
-        self.assertEqual(vc.diacritizer_model, "rawi-ensemble")
+        self.assertIsNone(vc.diacritizer_model)
 
     def test_non_phoonnx_config_also_carries_diacritizer_model_through_inference(self):
         cfg = {"inference": {"diacritizer_model": "other-model"}}
