@@ -235,3 +235,80 @@ def test_shami_module_reexports_frontend_helpers():
     assert shami.TextFrontend is TextFrontend
     assert shami.PhonemizedChunks is PhonemizedChunks
     assert shami.sentence_tokenize is sentence_tokenize
+
+
+def _phonemic_voice(model_alphabet):
+    """Minimal voice for the already-phonemic dispatch (no phonemizer needed)."""
+    import types
+    from phoonnx.voice import TTSVoice
+    from phoonnx.config import Alphabet
+    voice = TTSVoice.__new__(TTSVoice)
+    voice.phonemizer = None
+    voice.config = types.SimpleNamespace(lang_code="en", alphabet=model_alphabet,
+                                         add_diacritics=False, diacritizer_model=None)
+    voice.phonemes_to_ids = lambda p: list(range(len(p)))
+    return voice
+
+
+def test_phonemic_input_transcodes_to_model_alphabet_via_scriptconv():
+    """Already-phonemic input in a foreign notation is transcoded to the model's
+    alphabet through scriptconv's graph, and an ARPA-vocab model receives WHOLE
+    symbols (whitespace-tokenised), not characters. Replaces the coverage lost
+    with the deleted phoonnx-side conversion module."""
+    from phoonnx.config import Alphabet, SynthesisConfig
+    voice = _phonemic_voice(Alphabet.ARPA)
+    out = list(voice._iter_synthesis_ids(
+        "S@", SynthesisConfig(alphabet=Alphabet.XSAMPA), Alphabet.XSAMPA, Alphabet.ARPA))
+    assert [p for p, _, _ in out] == [["SH", "AX"]]
+
+
+def test_phonemic_input_same_alphabet_passes_through_unchanged():
+    """src == tgt is a no-op route: the text reaches _phonemic_chunks untouched."""
+    from phoonnx.config import Alphabet, SynthesisConfig
+    voice = _phonemic_voice(Alphabet.ARPA)
+    out = list(voice._iter_synthesis_ids(
+        "SH AX", SynthesisConfig(alphabet=Alphabet.ARPA), Alphabet.ARPA, Alphabet.ARPA))
+    assert [p for p, _, _ in out] == [["SH", "AX"]]
+
+
+def test_unroutable_phonemic_pair_passes_text_through():
+    """When scriptconv has no path between the two notations the input is passed
+    through unchanged rather than raising (best-effort, matching the old BFS)."""
+    from phoonnx.config import Alphabet, SynthesisConfig
+    voice = _phonemic_voice(Alphabet.ARPA)
+    out = list(voice._iter_synthesis_ids(
+        "abc", SynthesisConfig(alphabet=Alphabet.HANGUL), Alphabet.HANGUL, Alphabet.ARPA))
+    assert [p for p, _, _ in out] == [["abc"]]
+
+
+def test_hebrew_diacritizer_model_carries_the_phonikud_path():
+    """The single diacritizer_model knob is overloaded per language: for Hebrew it
+    is the phonikud ONNX path. Assert a voice's value reaches scriptconv's
+    diacritizer for he (spy — no model download)."""
+    import types
+    from unittest.mock import patch, MagicMock
+    import numpy as np
+    import scriptconv.diacritics as scd
+    from phoonnx.voice import TTSVoice
+    from phoonnx.config import Alphabet, SynthesisConfig
+
+    voice = TTSVoice.__new__(TTSVoice)
+    voice.phonetic_spellings = None
+    voice.phonemizer = MagicMock()
+    voice.phonemizer.phonemize_lazy = None
+    voice.phonemizer.phonemize = MagicMock(return_value=[list("ʃalom")])
+    voice.config = types.SimpleNamespace(alphabet=Alphabet.IPA, lang_code="he",
+                                         add_diacritics=True,
+                                         diacritizer_model="/models/phonikud.onnx",
+                                         sample_rate=22050)
+    voice.adapter = MagicMock()
+    voice.phonemes_to_ids = lambda p: [1] * len(p)
+    voice.phoneme_ids_to_audio = lambda ids, syn_config=None, language_ids=None, include_alignments=False: np.zeros(4, dtype=np.float32)
+
+    seen = {}
+    with patch.object(scd, "diacritize",
+                      side_effect=lambda t, l="und", **k: seen.update(lang=l, **k) or t):
+        list(voice.synthesize("שלום", SynthesisConfig(alphabet=Alphabet.GRAPHEMES,
+                                                      normalize_audio=False)))
+    assert seen.get("lang") == "he"
+    assert seen.get("diacritizer_model") == "/models/phonikud.onnx"

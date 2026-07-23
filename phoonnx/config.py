@@ -668,6 +668,55 @@ def get_phonemizer(phoneme_type: PhonemeType,
     return phonemizer
 
 
+def get_conversion(phonemizer, voice_config: "VoiceConfig",
+                   syn_config: "SynthesisConfig", tgt_alphabet: Alphabet):
+    """Build a voice's ``text -> tgt_alphabet`` conversion for one synthesis call.
+
+    Returns ``(graph, prepare_text)``:
+
+    * ``graph`` — a scriptconv ``ConversionGraph`` whose phoneme edge is the
+      voice's own (lazy) phonemizer. When the voice vocalizes, scriptconv's
+      ``text -> text-diacritized`` edge is added and the direct edge omitted, so
+      routing is forced through the vocalizer by *topology* rather than a runtime
+      flag. Language and model are closed over, so callers route with
+      ``graph.convert(text, "text", tgt_alphabet.value)`` and carry no conversion
+      context of their own.
+    * ``prepare_text`` — the same vocalization as a plain ``str -> str``
+      transform, for paths that feed raw text to something other than the phoneme
+      route (text-token models, inline ``[[phoneme]]`` overrides). Identity when
+      the voice does not vocalize.
+
+    Undervocalized scripts (Arabic, Hebrew) need their vowel marks restored
+    before G2P or the pronunciation is ambiguous; that restoration is scriptconv's
+    and lives entirely behind these two values.
+    """
+    from scriptconv.graph import ConversionGraph, Edge
+    from scriptconv.diacritics import DIACRITIZED, diacritize
+
+    # explicit per-call setting wins, else the voice's own
+    enabled = syn_config.add_diacritics
+    if enabled is None:
+        enabled = voice_config.add_diacritics
+    model = syn_config.diacritizer_model or voice_config.diacritizer_model
+    lang, alpha = voice_config.lang_code, tgt_alphabet.value
+
+    lazy = getattr(phonemizer, "phonemize_lazy", None)
+    phonemize = ((lambda text, **_: lazy(text, lang)) if lazy is not None
+                 else (lambda text, **_: phonemizer.phonemize(text, lang)))
+
+    graph = ConversionGraph()
+    if not enabled:
+        graph.register(Edge("text", alpha, phonemize))
+        return graph, (lambda text: text)
+
+    def _vocalize(text, **_):
+        return diacritize(text, lang, diacritizer_model=model)
+
+    graph.register(Edge("text", DIACRITIZED, _vocalize))
+    graph.register(Edge(DIACRITIZED, alpha, phonemize))
+    return graph, _vocalize
+
+
 
 
 if __name__ == "__main__":  # pragma: no cover

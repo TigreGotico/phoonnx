@@ -19,7 +19,7 @@ import onnxruntime
 from langcodes import closest_match
 from quebra_frases import sentence_tokenize
 
-from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, get_phonemizer
+from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, get_phonemizer, get_conversion
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.engines.base import (
@@ -30,7 +30,6 @@ from phoonnx.engines.base import (
 from scriptconv.phonemizers.base import BasePhonemizer
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
 from scriptconv.phonemizers.base import PhonemizedChunks
-from scriptconv import diacritics
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
@@ -463,41 +462,8 @@ class TTSVoice:
             if sentence.strip():
                 yield sentence
 
-    def _phoneme_route(self, do_diacritics: bool, tgt_alphabet: Alphabet):
-        """The ``text -> model-alphabet`` conversion as a scriptconv graph.
-
-        Both edges are scriptconv's — phoonnx runs no conversion of its own. The
-        phoneme edge is the voice's own (lazy) phonemizer; diacritization is
-        scriptconv's ``text -> text-diacritized`` edge, present as **topology**
-        (the engine stance): a diacritizing voice omits the direct
-        ``text -> <alphabet>`` edge, so ``convert`` is forced through the
-        diacritizer with no flag.
-        """
-        from scriptconv.graph import ConversionGraph, Edge
-        lang, alpha = self.config.lang_code, tgt_alphabet.value
-        lazy = getattr(self.phonemizer, "phonemize_lazy", None)
-        phon = ((lambda t, **_: lazy(t, lang)) if lazy is not None
-                else (lambda t, **_: self.phonemizer.phonemize(t, lang)))
-        g = ConversionGraph()
-        if do_diacritics:
-            diacritics.register(g)
-            g.register(Edge("text-diacritized", alpha, phon))
-        else:
-            g.register(Edge("text", alpha, phon))
-        return g
-
-    def _diacritized(self, text: str, diacritizer_model: Optional[str]) -> str:
-        """Diacritize through scriptconv's graph edge — phoonnx holds no
-        diacritization logic. For paths that don't run the phoneme route
-        (text-token models, inline overrides, the language-id path)."""
-        from scriptconv.graph import ConversionGraph
-        g = ConversionGraph()
-        diacritics.register(g)
-        return g.convert(text, "text", "text-diacritized",
-                         lang=self.config.lang_code, diacritizer_model=diacritizer_model)
-
     def _iter_synthesis_ids(
-            self, text, syn_config, do_diacritics, diacritizer_model,
+            self, text, syn_config,
             src_alphabet: Alphabet, tgt_alphabet: Alphabet,
     ) -> Iterable[tuple]:
         """Lazily yield ``(phonemes, phoneme_ids, language_ids)`` per sentence
@@ -506,21 +472,21 @@ class TTSVoice:
         per-phoneme language-id path is being restored in a follow-up). All
         conversion is scriptconv's graph; phoonnx only picks the route and
         streams sentences."""
-        lang = self.config.lang_code
+        route, prepare_text = get_conversion(
+            self.phonemizer, self.config, syn_config, tgt_alphabet)
 
         # Text-token models (subword BPE): the adapter owns text -> ids.
         if src_alphabet == tgt_alphabet == Alphabet.GRAPHEMES:
-            if do_diacritics:
-                text = self._diacritized(text, diacritizer_model)
-            for ids in self.adapter.encode_text(text, self, syn_config):
+            for ids in self.adapter.encode_text(prepare_text(text), self, syn_config):
                 yield None, ids, None
             return
 
         # Already-phonemic input: transcode to the model alphabet via scriptconv's
-        # graph (a no-op when src == tgt), then chunk. Never diacritized.
+        # graph (a no-op when src == tgt), then chunk.
         if src_alphabet != Alphabet.GRAPHEMES:
             try:
-                text = DEFAULT_GRAPH.convert(text, src_alphabet.value, tgt_alphabet.value, lang=lang)
+                text = DEFAULT_GRAPH.convert(text, src_alphabet.value, tgt_alphabet.value,
+                                             lang=self.config.lang_code)
             except ValueError:
                 LOG.debug("no conversion path %s -> %s; passing through", src_alphabet, tgt_alphabet)
             for phonemes in _phonemic_chunks(text, tgt_alphabet):
@@ -531,19 +497,14 @@ class TTSVoice:
         # Inline [[phoneme]] overrides bypass the phonemizer and merge across the
         # whole text, so they stay whole-text (not per sentence).
         if _PHONEME_BLOCK_PATTERN.search(text):
-            if do_diacritics:
-                text = self._diacritized(text, diacritizer_model)
-            for phonemes in self.phonemize(text):
+            for phonemes in self.phonemize(prepare_text(text)):
                 if phonemes:
                     yield phonemes, self.phonemes_to_ids(phonemes), None
             return
 
-        # Grapheme -> phoneme, one sentence at a time, through the scriptconv
-        # graph route (diacritization is a topological edge).
-        route = self._phoneme_route(do_diacritics, tgt_alphabet)
+        # Grapheme -> phoneme, one sentence at a time, through the route.
         for sentence in self._text_parts(text):
-            for phonemes in route.convert(sentence, "text", tgt_alphabet.value,
-                                          lang=lang, diacritizer_model=diacritizer_model):
+            for phonemes in route.convert(sentence, "text", tgt_alphabet.value):
                 if phonemes:
                     yield phonemes, self.phonemes_to_ids(phonemes), None
 
@@ -578,20 +539,10 @@ class TTSVoice:
 
         LOG.debug("text=%s", text)
 
-        # Text preprocessing — engine-agnostic, operates on the text before encoding:
-        # user pronunciation overrides (whole-text) + (Arabic/Hebrew) diacritics,
-        # which are applied per sentence inside the lazy stream below.
+        # Text preprocessing — engine-agnostic, applied to the whole text before
+        # any conversion: user pronunciation overrides.
         if self.phonetic_spellings and syn_config.enable_phonetic_spellings:
             text = self.phonetic_spellings.apply(text)
-
-        # A per-call value wins; when unset (None) defer to the voice config so a
-        # model that ships undiacritized is not force-diacritized by the caller.
-        do_diacritics = syn_config.add_diacritics
-        if do_diacritics is None:
-            do_diacritics = self.config.add_diacritics
-        # An explicit per-call diacritizer model wins, otherwise fall back to the
-        # voice config's own choice.
-        diacritizer_model = syn_config.diacritizer_model or self.config.diacritizer_model
 
         # Alphabet dispatch (unified model + language-aware phonemizers):
         #   src == tgt          -> grapheme/text-token models use the adapter;
@@ -609,11 +560,10 @@ class TTSVoice:
         tgt_alphabet = self.config.alphabet
 
         # Per-sentence phonemize -> tokenize is done lazily so the first sentence
-        # reaches session.run before later sentences are phonemized/diacritized,
+        # reaches session.run before later sentences are converted,
         # cutting time-to-first-audio on multi-sentence input.
         id_stream = self._iter_synthesis_ids(
-            text, syn_config, do_diacritics, diacritizer_model,
-            src_alphabet, tgt_alphabet,
+            text, syn_config, src_alphabet, tgt_alphabet,
         )
 
         # Special-token ids for alignment reconstruction — read once, only when

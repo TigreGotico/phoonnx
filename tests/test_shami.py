@@ -1,4 +1,5 @@
 """Test suite for the Shami (Levantine Arabic) phonemizer and adapter."""
+import types
 import unittest
 from unittest.mock import patch
 
@@ -120,3 +121,35 @@ class TestShamiAdapter(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2, buffer=True)
+
+
+class TestShamiRequiredLanguageIds(unittest.TestCase):
+    """The ShamiVITS graph declares language_ids as a REQUIRED input (it is how
+    the adapter detects the model), so build_feed_dict must never omit it — a
+    missing key makes onnxruntime raise "Required inputs (language_ids) are
+    missing". Without a per-phoneme language stream the adapter falls back to a
+    single-language one, degrading to monolingual instead of failing."""
+
+    class _Session:
+        def get_inputs(self):
+            return [types.SimpleNamespace(name=n)
+                    for n in ("phoneme_ids", "phoneme_lengths", "language_ids")]
+
+    def _request(self, language_ids):
+        return AdapterSynthesisRequest(
+            phoneme_ids=np.array([[1, 2, 3]], dtype=np.int64),
+            phoneme_lengths=np.array([3], dtype=np.int64),
+            language_ids=language_ids,
+        )
+
+    def test_language_ids_defaulted_when_absent(self):
+        feed = ShamiAdapter().build_feed_dict(self._request(None), self._Session())
+        self.assertIn("language_ids", feed, "required input omitted -> onnxruntime would fail")
+        np.testing.assert_array_equal(feed["language_ids"], np.array([[0, 0, 0]]))
+        self.assertEqual(feed["language_ids"].dtype, np.int64)
+        self.assertEqual(feed["language_ids"].shape, feed["phoneme_ids"].shape)
+
+    def test_supplied_language_ids_pass_through(self):
+        supplied = np.array([[1, 1, 0]], dtype=np.int64)
+        feed = ShamiAdapter().build_feed_dict(self._request(supplied), self._Session())
+        np.testing.assert_array_equal(feed["language_ids"], supplied)
