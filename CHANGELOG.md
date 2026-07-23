@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.61.7a1](https://github.com/TigreGotico/phoonnx/tree/1.61.7a1) (2026-07-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.6a1...1.61.7a1)
+
+**Merged pull requests:**
+
+- fix: select the Kokoro style row with the unpadded token count [\#308](https://github.com/TigreGotico/phoonnx/pull/308) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.61.6a1](https://github.com/TigreGotico/phoonnx/tree/1.61.6a1) (2026-07-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.5a1...1.61.6a1)
