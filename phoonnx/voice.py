@@ -462,49 +462,51 @@ class TTSVoice:
             if sentence.strip():
                 yield sentence
 
-    def _iter_synthesis_ids(
-            self, text, syn_config,
-            src_alphabet: Alphabet, tgt_alphabet: Alphabet,
-    ) -> Iterable[tuple]:
-        """Lazily yield ``(phonemes, phoneme_ids)`` per sentence (``phonemes`` is
-        ``None`` for text-token models whose adapter owns text→ids). All
-        conversion is scriptconv's graph; phoonnx only picks the route and
-        streams sentences."""
-        route, prepare_text = get_conversion(
-            self.phonemizer, self.config, syn_config, tgt_alphabet)
-
-        # Text-token models (subword BPE): the adapter owns text -> ids.
-        if src_alphabet == tgt_alphabet == Alphabet.GRAPHEMES:
-            for ids in self.adapter.encode_text(prepare_text(text), self, syn_config):
-                yield None, ids
-            return
-
-        # Already-phonemic input: transcode to the model alphabet via scriptconv's
-        # graph (a no-op when src == tgt), then chunk.
+    def _iter_phonemes(
+            self, text: str, src_alphabet: Alphabet, tgt_alphabet: Alphabet,
+            route, prepare_text,
+    ) -> Iterable[List[str]]:
+        """Yield per-sentence phoneme lists for *text*, by whichever conversion
+        its alphabet calls for. One job: getting phonemes."""
+        # Already-phonemic input: transcode to the model's alphabet through
+        # scriptconv's graph (a no-op when src == tgt), then split.
         if src_alphabet != Alphabet.GRAPHEMES:
             try:
                 text = DEFAULT_GRAPH.convert(text, src_alphabet.value, tgt_alphabet.value,
                                              lang=self.config.lang_code)
             except ValueError:
                 LOG.debug("no conversion path %s -> %s; passing through", src_alphabet, tgt_alphabet)
-            for phonemes in _phonemic_chunks(text, tgt_alphabet):
-                if phonemes:
-                    yield phonemes, self.phonemes_to_ids(phonemes)
+            yield from _phonemic_chunks(text, tgt_alphabet)
             return
 
         # Inline [[phoneme]] overrides bypass the phonemizer and merge across the
-        # whole text, so they stay whole-text (not per sentence).
+        # whole text, so they stay whole-text rather than per sentence.
         if _PHONEME_BLOCK_PATTERN.search(text):
-            for phonemes in self.phonemize(prepare_text(text)):
-                if phonemes:
-                    yield phonemes, self.phonemes_to_ids(phonemes)
+            yield from self.phonemize(prepare_text(text))
             return
 
-        # Grapheme -> phoneme, one sentence at a time, through the route.
+        # Graphemes: the voice's conversion route, one sentence at a time.
         for sentence in self._text_parts(text):
-            for phonemes in route.convert(sentence, "text", tgt_alphabet.value):
-                if phonemes:
-                    yield phonemes, self.phonemes_to_ids(phonemes)
+            yield from route.convert(sentence, "text", tgt_alphabet.value)
+
+    def _iter_synthesis_ids(
+            self, text, syn_config,
+            src_alphabet: Alphabet, tgt_alphabet: Alphabet,
+    ) -> Iterable[tuple]:
+        """Lazily yield ``(phonemes, phoneme_ids)`` per sentence — ``phonemes`` is
+        ``None`` for text-token models, whose adapter owns text→ids outright."""
+        route, prepare_text = get_conversion(
+            self.phonemizer, self.config, syn_config, tgt_alphabet)
+
+        if src_alphabet == tgt_alphabet == Alphabet.GRAPHEMES:
+            for ids in self.adapter.encode_text(prepare_text(text), self, syn_config):
+                yield None, ids
+            return
+
+        for phonemes in self._iter_phonemes(text, src_alphabet, tgt_alphabet,
+                                            route, prepare_text):
+            if phonemes:
+                yield phonemes, self.phonemes_to_ids(phonemes)
 
     def synthesize(
             self,
