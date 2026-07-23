@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.61.1a1](https://github.com/TigreGotico/phoonnx/tree/1.61.1a1) (2026-07-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.0a3...1.61.1a1)
+
+**Merged pull requests:**
+
+- fix: honour an explicit engine over the detection heuristics [\#295](https://github.com/TigreGotico/phoonnx/pull/295) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.61.0a3](https://github.com/TigreGotico/phoonnx/tree/1.61.0a3) (2026-07-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.0a2...1.61.0a3)
@@ -145,7 +153,6 @@
 - feat: add itzune Basque voices \(antton + maider\) [\#157](https://github.com/TigreGotico/phoonnx/pull/157) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): YourTTS engine + zero-shot voice cloning \(speaker encoder + registry\) [\#156](https://github.com/TigreGotico/phoonnx/pull/156) ([JarbasAl](https://github.com/JarbasAl))
 - chore\(index\): migrate the last 3 voices to the OVOS mirror [\#155](https://github.com/TigreGotico/phoonnx/pull/155) ([JarbasAl](https://github.com/JarbasAl))
-- chore\(index\): BCP-47 lang codes + regenerate VOICES.md [\#154](https://github.com/TigreGotico/phoonnx/pull/154) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
