@@ -100,6 +100,15 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
             if style.shape[1] >= 256:       # cloning StyleTTS2: split into ref_p + ref_s
                 args["ref"] = style[:, :128]
                 args["s"] = style[:, 128:256]
+        elif any(i.name in ("style", "style_vec", "s_prev") for i in session.get_inputs()):
+            # The graph conditions on a style vector; without one onnxruntime only
+            # reports a missing required input, which says nothing about what the
+            # voice is actually missing.
+            raise ValueError(
+                "this StyleTTS2/Kokoro voice needs a conditioning style: pass a "
+                "speaker_reference to synthesize(), or give the voice a "
+                "engine_params['style_path']"
+            )
         return self._filter_inputs(args, session)
 
     def parse_outputs(
