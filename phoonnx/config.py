@@ -68,8 +68,7 @@ class VoiceConfig:
 
     1. **Conversion backend** – which graphemes→phoneme implementation to
        call (e.g. ``espeak``, ``gruut``, ``misaki_en``).  This is the
-       *how* of the ``(GRAPHEMES, <phoneme_alphabet>)`` conversion edge in
-       :mod:`phoonnx.alphabet_convert`.
+       *how* of the graphemes→phoneme conversion (scriptconv routes it).
 
     2. **Tokenisation recipe** – the token vocabulary and splitting rules
        for the model's input layer are built to match the output of the
@@ -558,8 +557,8 @@ class SynthesisConfig:
 
     ``None`` means the text is plain graphemes (the default for virtually
     every use-case).  Set this when passing pre-converted text, for example
-    IPA strings or Hangul, so that :func:`phoonnx.alphabet_convert.convert`
-    can skip the phonemization step and apply the correct script-conversion
+    IPA strings or Hangul, so that scriptconv's conversion graph can skip the
+    phonemization step and apply the correct script-conversion
     instead.
 
     Relationship to other alphabet fields:

@@ -17,22 +17,33 @@ Every voice has two alphabet fields:
 `Alphabet.GRAPHEMES` — ordinary transcription text.  Set it only when passing
 pre-converted content (e.g. an IPA string or Hangul text).
 
-## `convert(text, lang, src, tgt)`
+## Conversion is scriptconv's job
+
+phoonnx does not implement alphabet/phoneme conversion — that is
+[`scriptconv`](https://github.com/TigreGotico/scriptconv)'s conversion graph.
+`scriptconv.graph.DEFAULT_GRAPH` carries the notation (IPA↔ARPA↔X-SAMPA↔…) and
+script (Hangul, kana, cangjie) edges; `scriptconv.phonemizers.register` adds the
+`text → ipa` phonemization edge (per-language default, `override=` to force a
+specific engine); `scriptconv.diacritics.register` adds diacritization.
 
 ```python
-from phoonnx.alphabet_convert import convert
-from phoonnx.config import Alphabet, PhonemeType
+from scriptconv.graph import DEFAULT_GRAPH
+from scriptconv import phonemizers
+from scriptconv.phonemizers.enums import Phonemizer
 
-# graphemes → IPA  (phonemization via espeak)
-chunks = convert("hello world", "en", Alphabet.GRAPHEMES, Alphabet.IPA,
-                 phoneme_type=PhonemeType.ESPEAK)
+g = DEFAULT_GRAPH.extend(phonemizers.register)
 
-# graphemes → Hiragana  (script conversion via pykakasi)
-hira = convert("東京", "ja", Alphabet.GRAPHEMES, Alphabet.HIRA)
+# graphemes → IPA (phonemization via espeak)
+ipa = g.convert("hello world", "text", "ipa",
+                lang="en", override=Phonemizer.ESPEAK)
 
-# identity (src == tgt, no-op)
-same = convert("already ipa", "en", Alphabet.IPA, Alphabet.IPA)
+# already-phonemic transcode (IPA → ARPABET) — no phonemizer needed
+arpa = DEFAULT_GRAPH.convert("h ə l oʊ", "ipa", "arpa")
 ```
+
+`TTSVoice` builds this route internally: grapheme input goes through the
+voice's phonemizer, already-phonemic input is transcoded via
+`DEFAULT_GRAPH.convert`.
 
 ### Return type
 

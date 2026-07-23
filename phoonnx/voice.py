@@ -20,7 +20,7 @@ from langcodes import closest_match
 from quebra_frases import sentence_tokenize
 
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, get_phonemizer
-from phoonnx.alphabet_convert import convert as alphabet_convert
+from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.engines.base import (
     AdapterSynthesisRequest,
@@ -560,25 +560,18 @@ class TTSVoice:
                             yield phonemes, self.phonemes_to_ids(phonemes), None
             return
 
-        # Already-phonemic input in a different alphabet: transcode to the model's
-        # alphabet through the conversion graph. Diacritization is orthographic
-        # (grapheme-level) only; never apply it to already-phonemic input.
-        converted = alphabet_convert(
-            text,
-            lang=lang,
-            src=src_alphabet,
-            tgt=tgt_alphabet,
-            phoneme_type=self.config.phoneme_type,
-        )
-        if isinstance(converted, list):
-            # PhonemizedChunks returned by a phonemization edge
-            sentence_phonemes = converted
-            if _PHONEME_BLOCK_PATTERN.search(text):
-                sentence_phonemes = self.phonemize(text)
-        else:
-            # Script-converted string — split into single-char token lists.
-            sentence_phonemes = _phonemic_chunks(converted, tgt_alphabet)
-        for phonemes in sentence_phonemes:
+        # Already-phonemic input in a different alphabet: transcode to the
+        # model's alphabet through scriptconv's conversion graph (notation +
+        # script edges — scriptconv owns all conversion). Diacritization is
+        # orthographic only; never applied to already-phonemic input.
+        try:
+            converted = DEFAULT_GRAPH.convert(
+                text, src_alphabet.value, tgt_alphabet.value, lang=lang)
+        except ValueError:
+            LOG.debug("no conversion path %s -> %s; passing input through",
+                      src_alphabet, tgt_alphabet)
+            converted = text
+        for phonemes in _phonemic_chunks(converted, tgt_alphabet):
             if phonemes:
                 yield phonemes, self.phonemes_to_ids(phonemes), None
 
