@@ -192,6 +192,10 @@ o2i = ["orthography2ipa"]
 
 # runtime deps for zero-shot voice cloning (reference loading + resampling)
 cloning = ["soundfile", "scipy"]
+# optional post-synthesis audio super-resolution: upscale any voice to 48 kHz.
+# pure-ONNX, no torch at runtime. off by default (see the super_resolution field
+# block); models fetch from HuggingFace on first use.
+audiosr = ["audiosronnx"]
 # Chatterbox multilingual per-language script transforms. ja/zh below; ko is pure-Python
 # (built in). he/ru degrade gracefully unless `dicta_onnx` / `russian_text_stresser` are
 # also installed (not on clean PyPI, so left out of the extra).

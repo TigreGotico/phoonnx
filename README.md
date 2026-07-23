@@ -56,6 +56,7 @@ golden path in [docs/training/quickstart.md](docs/training/quickstart.md).
 | 17 synthesis engines behind one adapter registry | [Engines](docs/engines.md) |
 | Zero-shot voice cloning (YourTTS, StyleTTS2, ZipVoice, F5-TTS, Chatterbox) | [Cloning](docs/cloning.md) |
 | Low-latency streaming for VITS voices | [Streaming](docs/streaming.md) |
+| Optional 48 kHz audio super-resolution over synthesized audio | [OVOS plugin](docs/ovos_plugin.md#audio-super-resolution) |
 | Download and cache voices from HuggingFace and other sources | [Voice manager](docs/voice_manager.md) |
 | Train and fine-tune new voices | [Training](docs/training/quickstart.md) |
 | Drop-in OpenVoiceOS TTS plugin | [OVOS plugin](docs/ovos_plugin.md) |

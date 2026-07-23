@@ -74,6 +74,62 @@ is accepted as an alias. Running on a GPU needs the matching ONNX Runtime build
 (`onnxruntime-rocm`, `onnxruntime-gpu`, `onnxruntime-directml`, ...) — see
 [configuration.md](configuration.md#execution-providers).
 
+### Audio super-resolution
+
+The optional `super_resolution` switch upscales synthesized audio to 48 kHz after
+synthesis, using [`audiosronnx`](https://github.com/TigreGotico/audiosronnx)
+(pure-ONNX, no torch at runtime). It is **off by default** — when disabled the
+audio and its sample rate are exactly what the voice produced, and `audiosronnx`
+is never imported.
+
+```json
+{
+  "tts": {
+    "module": "ovos-tts-plugin-phoonnx",
+    "ovos-tts-plugin-phoonnx": {
+      "super_resolution": true,
+      "super_resolution_model": "novasr"
+    }
+  }
+}
+```
+
+`super_resolution_model` names the `audiosronnx` engine; omitting it selects
+`novasr`, which extends the high band in a way that tracks
+the speech harmonics and sounds natural on TTS output. Other engines are
+available (`lavasr`, `hifiganbwe`, `apbwe`) — see the
+[audiosronnx](https://github.com/TigreGotico/audiosronnx) engine table — but
+`lavasr` tends to add audible high-frequency noise on already-wideband (>=22 kHz)
+TTS voices, so it is better suited to genuinely low-rate inputs. Super-resolution
+gives the biggest quality win on low-sample-rate voices, where there is a real
+missing band to reconstruct.
+
+Install the extra (pulls `audiosronnx`, which fetches its models from HuggingFace
+on first use):
+
+```bash
+pip install phoonnx[audiosr]
+```
+
+Enabling `super_resolution` without that extra installed raises an `ImportError`
+naming it, at the first synthesis.
+
+The upscaling lives in the core `TTSVoice`, so it also applies to direct library
+use — and, being a `SynthesisConfig` field, it can be switched on per call:
+
+```python
+from phoonnx.config import SynthesisConfig
+from phoonnx.voice import TTSVoice
+
+voice = TTSVoice.load("model.onnx", "model.json")
+cfg = SynthesisConfig(super_resolution=True, super_resolution_model="novasr")
+for chunk in voice.synthesize("hello", cfg):
+    ...  # chunk.sample_rate is 48000
+```
+
+`synthesize_wav` takes its format from the first chunk, so the written WAV header
+carries the upscaled rate too.
+
 ### Synthesis and cloning config keys
 
 The plugin reads synthesis options from its config, accepting the documented
@@ -91,6 +147,8 @@ underscore name plus legacy aliases (resolved by `_cfg_opt` in `phoonnx/opm.py`)
 | Reference text | `speaker_reference_text`, `ref_text` | In-context reference transcription |
 | Reference lang | `speaker_reference_lang`, `ref_lang` | In-context reference language |
 | Providers | `onnx_providers`, `providers` | ONNX Runtime execution providers |
+| Super-resolution | `super_resolution` | Enable 48 kHz upscaling (bool, off by default) |
+| Super-resolution model | `super_resolution_model` | `audiosronnx` engine name (default `novasr`) |
 
 See [cloning.md](cloning.md) for the cloning keys in detail.
 

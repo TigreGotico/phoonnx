@@ -291,6 +291,47 @@ class TestSpeakerSelection(unittest.TestCase):
                                  self.CAT_MAP), 6)
 
 
+class TestSuperResolutionConfigThreading(unittest.TestCase):
+    """The plugin maps the ``super_resolution`` / ``super_resolution_model`` keys
+    from a mycroft.conf TTS block onto the SynthesisConfig it hands to the core
+    voice; the upscaling itself lives in TTSVoice.synthesize (covered in
+    test_super_resolution.py)."""
+
+    def _synth_config(self, tts_voice):
+        args, kwargs = tts_voice.synthesize_wav.call_args
+        for cand in (*args, *kwargs.values()):
+            if isinstance(cand, SynthesisConfig):
+                return cand
+        self.fail("no SynthesisConfig passed to synthesize_wav")
+
+    def _synthesize(self, config=None):
+        v = _FakeVoiceInfo("OpenVoiceOS/v")
+        plugin, _ = _make_plugin(config=config, voices=[v])
+        with patch.object(opm, "wave"):
+            out = plugin.get_tts("hi", "/tmp/out.wav")
+        self.assertEqual(out, ("/tmp/out.wav", None))
+        return self._synth_config(v.tts_voice)
+
+    def test_no_config_is_disabled(self):
+        cfg = self._synthesize()
+        self.assertIs(cfg.super_resolution, False)
+        self.assertIsNone(cfg.super_resolution_model)
+
+    def test_mycroft_conf_block_reaches_synthesis_config(self):
+        """Exactly the keys a user would write under
+        ``tts/ovos-tts-plugin-phoonnx`` in mycroft.conf."""
+        cfg = self._synthesize({"voice": "OpenVoiceOS/v",
+                                "super_resolution": True,
+                                "super_resolution_model": "novasr"})
+        self.assertIs(cfg.super_resolution, True)
+        self.assertEqual(cfg.super_resolution_model, "novasr")
+
+    def test_enabled_without_model_defers_to_engine_default(self):
+        cfg = self._synthesize({"super_resolution": True})
+        self.assertIs(cfg.super_resolution, True)
+        self.assertIsNone(cfg.super_resolution_model)
+
+
 if __name__ == "__main__":
     unittest.main()
 

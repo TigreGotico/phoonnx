@@ -187,6 +187,9 @@ class TTSVoice:
     phonetic_spellings: Optional[PhoneticSpellings] = None
     phonemizer: Optional[BasePhonemizer] = None
     adapter: Optional[BaseOnnxAdapter] = None
+
+    _sr_engine: Any = field(default=None, init=False, repr=False)
+    _sr_loaded: bool = field(default=False, init=False, repr=False)
     # Path to the ONNX model file backing ``session``, kept so a later
     # ``include_alignments=True`` call can locate-and-patch a model that was
     # exported without the alignment output (see ``_ensure_alignment_session``).
@@ -508,6 +511,62 @@ class TTSVoice:
             if phonemes:
                 yield phonemes, self.phonemes_to_ids(phonemes)
 
+    def _load_super_resolution(self, syn_config: SynthesisConfig):
+        """
+        Lazily load the audio super-resolution engine when enabled in ``syn_config``.
+
+        Reads ``syn_config.super_resolution`` (a bool) and
+        ``syn_config.super_resolution_model`` (the ``audiosronnx`` engine name).
+        Disabled — the default — is a strict no-op: ``audiosronnx`` is never imported
+        and synthesis is untouched. When explicitly enabled, ``audiosronnx`` is
+        imported lazily and the chosen engine is loaded once and cached on the
+        instance; a missing install raises a clear ImportError naming the extra rather
+        than silently downgrading a feature the caller asked for.
+
+        Returns:
+            The loaded SR engine, or None when disabled.
+        """
+        if not syn_config.super_resolution:
+            return None
+        if self._sr_loaded:
+            return self._sr_engine
+
+        engine = syn_config.super_resolution_model or "novasr"
+        try:
+            from audiosronnx import load_sr
+        except ImportError as e:
+            raise ImportError(
+                "super_resolution is enabled but 'audiosronnx' is not installed; "
+                "install it with `pip install phoonnx[audiosr]` (or set "
+                "super_resolution=False)") from e
+
+        self._sr_engine = load_sr(engine=engine)
+        self._sr_loaded = True
+        LOG.info(f"Audio super-resolution enabled (engine={engine}); "
+                 "output will be upscaled to 48 kHz")
+        return self._sr_engine
+
+    @staticmethod
+    def _maybe_upscale(audio: np.ndarray, sr_engine, in_sr: int):
+        """
+        Upscale ``audio`` via the super-resolution engine, if one is loaded.
+
+        Returns ``(audio, sample_rate)`` — untouched when ``sr_engine`` is None, and
+        the upscaled audio together with the rate the engine reports otherwise, so the
+        caller always emits a sample rate that matches the samples it got. Falls back
+        to the native audio/rate (with a warning) if the engine raises mid-stream: a
+        runtime SR failure must never break synthesis that is already underway.
+        """
+        if sr_engine is None:
+            return audio, in_sr
+        try:
+            up, out_sr = sr_engine.upscale(audio, in_sr)
+            return up.astype(np.float32), out_sr
+        except Exception as exc:
+            LOG.warning(f"Super-resolution failed ({exc}); yielding native "
+                        f"{in_sr} Hz audio instead")
+            return audio, in_sr
+
     def synthesize(
             self,
             text: str,
@@ -538,6 +597,10 @@ class TTSVoice:
             syn_config = SynthesisConfig()
 
         LOG.debug("text=%s", text)
+
+        # optional post-synthesis super-resolution; disabled (the default) means the
+        # loop below is bit-for-bit the native path and audiosronnx is not imported
+        sr_engine = self._load_super_resolution(syn_config)
 
         # Text preprocessing — engine-agnostic, applied to the whole text before
         # any conversion: user pronunciation overrides.
@@ -616,8 +679,13 @@ class TTSVoice:
                 _idx2char, _blank_id, _bos_id, _eos_id,
             ) if phoneme_id_samples is not None else None
 
+            # SR changes the rate of the samples, so the chunk must report the
+            # rate that came back with them, not the voice's native one
+            audio, chunk_sr = self._maybe_upscale(
+                audio, sr_engine, self.config.sample_rate)
+
             yield AudioChunk(
-                sample_rate=self.config.sample_rate,
+                sample_rate=chunk_sr,
                 sample_width=2,
                 sample_channels=1,
                 audio_float_array=audio,

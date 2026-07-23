@@ -249,6 +249,12 @@ class PhoonnxTTSPlugin(TTS):
                 None, "speaker_reference_text", "ref_text"),
             speaker_reference_lang=self._cfg_opt(
                 None, "speaker_reference_lang", "ref_lang"),
+            # optional post-synthesis audio super-resolution (audiosronnx), off unless
+            # switched on in mycroft.conf. The core TTSVoice loads the engine lazily and
+            # upscales each chunk; synthesize_wav takes the sample rate from the first
+            # chunk, so the WAV header follows.
+            super_resolution=bool(self._cfg_opt(False, "super_resolution")),
+            super_resolution_model=self._cfg_opt(None, "super_resolution_model"),
         )
         with wave.open(wav_file, "wb") as wav_out:
             model.synthesize_wav(sentence, wav_out, synth_params)
