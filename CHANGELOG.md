@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.61.0a3](https://github.com/TigreGotico/phoonnx/tree/1.61.0a3) (2026-07-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.0a2...1.61.0a3)
+
+**Merged pull requests:**
+
+- refactor: drop redundant phonikud\_model field and \_diacritize wrapper [\#293](https://github.com/TigreGotico/phoonnx/pull/293) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.61.0a2](https://github.com/TigreGotico/phoonnx/tree/1.61.0a2) (2026-07-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.0a1...1.61.0a2)
@@ -138,8 +146,6 @@
 - feat\(engines\): YourTTS engine + zero-shot voice cloning \(speaker encoder + registry\) [\#156](https://github.com/TigreGotico/phoonnx/pull/156) ([JarbasAl](https://github.com/JarbasAl))
 - chore\(index\): migrate the last 3 voices to the OVOS mirror [\#155](https://github.com/TigreGotico/phoonnx/pull/155) ([JarbasAl](https://github.com/JarbasAl))
 - chore\(index\): BCP-47 lang codes + regenerate VOICES.md [\#154](https://github.com/TigreGotico/phoonnx/pull/154) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(engines\): VITS2 + StyleTTS2 family \(pure StyleTTS2 + Kokoro, multilingual\) [\#153](https://github.com/TigreGotico/phoonnx/pull/153) ([JarbasAl](https://github.com/JarbasAl))
-- feat: Arabic diacritization via text2tashkeel \(rawi\); drop vendored libtashkeel [\#152](https://github.com/TigreGotico/phoonnx/pull/152) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
