@@ -48,8 +48,7 @@ class TestDiacritizeGraphemeOnly(unittest.TestCase):
         calls = []
         voice = _make_voice(Alphabet.IPA)
         syn_config = SynthesisConfig(alphabet=Alphabet.GRAPHEMES, normalize_audio=False)
-        voice.phonemizer.phonemize_lazy = None
-        voice.phonemizer.phonemize = MagicMock(return_value=[list("test")])
+        voice.phonemizer.phonemize_lazy = MagicMock(return_value=iter([list("test")]))
 
         with patch.object(scd, "diacritize",
                           side_effect=lambda t, l="und", **k: calls.append(t) or t):

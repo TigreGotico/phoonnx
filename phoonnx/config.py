@@ -700,9 +700,10 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     model = syn_config.diacritizer_model or voice_config.diacritizer_model
     lang, alpha = voice_config.lang_code, tgt_alphabet.value
 
-    lazy = getattr(phonemizer, "phonemize_lazy", None)
-    phonemize = ((lambda text, **_: lazy(text, lang)) if lazy is not None
-                 else (lambda text, **_: phonemizer.phonemize(text, lang)))
+    # phonemize_lazy is a BasePhonemizer method, so every phonemizer has it: a
+    # per-sentence generator, keeping sentence N+1 off the critical path of N.
+    def phonemize(text, **_):
+        return phonemizer.phonemize_lazy(text, lang)
 
     graph = ConversionGraph()
     if not enabled:

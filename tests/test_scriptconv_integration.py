@@ -202,8 +202,7 @@ def test_voice_diacritization_delegates_to_scriptconv():
     voice = TTSVoice.__new__(TTSVoice)
     voice.phonetic_spellings = None
     voice.phonemizer = MagicMock()
-    voice.phonemizer.phonemize_lazy = None
-    voice.phonemizer.phonemize = MagicMock(return_value=[list("n_ss")])
+    voice.phonemizer.phonemize_lazy = MagicMock(return_value=iter([list("n_ss")]))
     voice.config = types.SimpleNamespace(alphabet=Alphabet.IPA, lang_code="ar",
                                          add_diacritics=True, diacritizer_model="rawi-ensemble",
                                          sample_rate=22050)
@@ -259,7 +258,7 @@ def test_phonemic_input_transcodes_to_model_alphabet_via_scriptconv():
     voice = _phonemic_voice(Alphabet.ARPA)
     out = list(voice._iter_synthesis_ids(
         "S@", SynthesisConfig(alphabet=Alphabet.XSAMPA), Alphabet.XSAMPA, Alphabet.ARPA))
-    assert [p for p, _, _ in out] == [["SH", "AX"]]
+    assert [p for p, _ in out] == [["SH", "AX"]]
 
 
 def test_phonemic_input_same_alphabet_passes_through_unchanged():
@@ -268,7 +267,7 @@ def test_phonemic_input_same_alphabet_passes_through_unchanged():
     voice = _phonemic_voice(Alphabet.ARPA)
     out = list(voice._iter_synthesis_ids(
         "SH AX", SynthesisConfig(alphabet=Alphabet.ARPA), Alphabet.ARPA, Alphabet.ARPA))
-    assert [p for p, _, _ in out] == [["SH", "AX"]]
+    assert [p for p, _ in out] == [["SH", "AX"]]
 
 
 def test_unroutable_phonemic_pair_passes_text_through():
@@ -278,7 +277,7 @@ def test_unroutable_phonemic_pair_passes_text_through():
     voice = _phonemic_voice(Alphabet.ARPA)
     out = list(voice._iter_synthesis_ids(
         "abc", SynthesisConfig(alphabet=Alphabet.HANGUL), Alphabet.HANGUL, Alphabet.ARPA))
-    assert [p for p, _, _ in out] == [["abc"]]
+    assert [p for p, _ in out] == [["abc"]]
 
 
 def test_hebrew_diacritizer_model_carries_the_phonikud_path():
@@ -295,8 +294,7 @@ def test_hebrew_diacritizer_model_carries_the_phonikud_path():
     voice = TTSVoice.__new__(TTSVoice)
     voice.phonetic_spellings = None
     voice.phonemizer = MagicMock()
-    voice.phonemizer.phonemize_lazy = None
-    voice.phonemizer.phonemize = MagicMock(return_value=[list("ʃalom")])
+    voice.phonemizer.phonemize_lazy = MagicMock(return_value=iter([list("ʃalom")]))
     voice.config = types.SimpleNamespace(alphabet=Alphabet.IPA, lang_code="he",
                                          add_diacritics=True,
                                          diacritizer_model="/models/phonikud.onnx",

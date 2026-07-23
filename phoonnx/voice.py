@@ -466,10 +466,8 @@ class TTSVoice:
             self, text, syn_config,
             src_alphabet: Alphabet, tgt_alphabet: Alphabet,
     ) -> Iterable[tuple]:
-        """Lazily yield ``(phonemes, phoneme_ids, language_ids)`` per sentence
-        (``phonemes`` is ``None`` for text-token models whose adapter owns
-        text→ids; ``language_ids`` is currently always ``None`` — the Shami
-        per-phoneme language-id path is being restored in a follow-up). All
+        """Lazily yield ``(phonemes, phoneme_ids)`` per sentence (``phonemes`` is
+        ``None`` for text-token models whose adapter owns text→ids). All
         conversion is scriptconv's graph; phoonnx only picks the route and
         streams sentences."""
         route, prepare_text = get_conversion(
@@ -478,7 +476,7 @@ class TTSVoice:
         # Text-token models (subword BPE): the adapter owns text -> ids.
         if src_alphabet == tgt_alphabet == Alphabet.GRAPHEMES:
             for ids in self.adapter.encode_text(prepare_text(text), self, syn_config):
-                yield None, ids, None
+                yield None, ids
             return
 
         # Already-phonemic input: transcode to the model alphabet via scriptconv's
@@ -491,7 +489,7 @@ class TTSVoice:
                 LOG.debug("no conversion path %s -> %s; passing through", src_alphabet, tgt_alphabet)
             for phonemes in _phonemic_chunks(text, tgt_alphabet):
                 if phonemes:
-                    yield phonemes, self.phonemes_to_ids(phonemes), None
+                    yield phonemes, self.phonemes_to_ids(phonemes)
             return
 
         # Inline [[phoneme]] overrides bypass the phonemizer and merge across the
@@ -499,14 +497,14 @@ class TTSVoice:
         if _PHONEME_BLOCK_PATTERN.search(text):
             for phonemes in self.phonemize(prepare_text(text)):
                 if phonemes:
-                    yield phonemes, self.phonemes_to_ids(phonemes), None
+                    yield phonemes, self.phonemes_to_ids(phonemes)
             return
 
         # Grapheme -> phoneme, one sentence at a time, through the route.
         for sentence in self._text_parts(text):
             for phonemes in route.convert(sentence, "text", tgt_alphabet.value):
                 if phonemes:
-                    yield phonemes, self.phonemes_to_ids(phonemes), None
+                    yield phonemes, self.phonemes_to_ids(phonemes)
 
     def synthesize(
             self,
@@ -578,14 +576,13 @@ class TTSVoice:
             _bos_id = _vocab.bos_id
             _eos_id = _vocab.eos_id
 
-        for phonemes, phoneme_ids, language_ids in id_stream:
+        for phonemes, phoneme_ids in id_stream:
             if not phoneme_ids:
                 continue
 
             phoneme_id_samples: Optional[np.ndarray] = None
             audio_result = self.phoneme_ids_to_audio(
-                phoneme_ids, syn_config, language_ids=language_ids,
-                include_alignments=include_alignments,
+                phoneme_ids, syn_config, include_alignments=include_alignments,
             )
             if isinstance(audio_result, tuple):
                 audio, phoneme_id_samples = audio_result
@@ -828,7 +825,6 @@ class TTSVoice:
 
     def phoneme_ids_to_audio(
             self, phoneme_ids: list[int], syn_config: Optional[SynthesisConfig] = None,
-            language_ids: Optional[list[int]] = None,
             include_alignments: bool = False,
     ) -> Union[np.ndarray, Tuple[np.ndarray, Optional[np.ndarray]]]:
         """
@@ -839,7 +835,6 @@ class TTSVoice:
 
         :param phoneme_ids: List of phoneme ids.
         :param syn_config: Synthesis configuration.
-        :param language_ids: Optional per-phoneme language IDs (for language-aware engines).
         :param include_alignments: When True, also return per-phoneme sample counts.
         :return: Audio float numpy array (unnormalized, in range [-1, 1]).
 
@@ -859,12 +854,6 @@ class TTSVoice:
         phoneme_ids_lengths = np.array(
             [phoneme_ids_array.shape[1]], dtype=np.int64
         )
-        language_ids_array = None
-        if language_ids is not None:
-            language_ids_array = np.expand_dims(
-                np.array(language_ids, dtype=np.int64), 0
-            )
-
         # Merge defaults from adapter → VoiceConfig → SynthesisConfig
         params = dict(self.adapter.default_params())
         # Override with voice-config level defaults
@@ -906,7 +895,6 @@ class TTSVoice:
             phoneme_lengths=phoneme_ids_lengths,
             speaker_id=syn_config.speaker_id or 0,
             language_id=syn_config.lang_id or 0,
-            language_ids=language_ids_array,
             params=params,
         )
 
