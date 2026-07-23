@@ -171,34 +171,43 @@ def test_shim_reexports_alphabet_and_base_phonemizer(module_name):
 
 def test_diacritization_delegates_to_scriptconv():
     """phoonnx no longer owns any diacritizer: the diacritization path routes
-    straight to ``scriptconv.diacritics.diacritize``. Arabic must gain
-    diacritics; an unknown language must pass through unchanged."""
-    from scriptconv.diacritics import diacritize
-    arabic = "ذهب محمد الى المدرسة"
-    diacritized = diacritize(arabic, "ar")
-    assert diacritized != arabic
-    assert len(diacritized) > len(arabic)
-    passthrough = "hello world"
-    assert diacritize(passthrough, "und") == passthrough
+    straight to ``scriptconv.diacritics.diacritize``. Arabic routes to
+    scriptconv's tashkeel backend; an unknown language passes through
+    unchanged. The heavy text2tashkeel backend is faked so routing is asserted
+    without requiring the optional dependency in the test environment."""
+    from unittest.mock import patch, MagicMock
+    import scriptconv.diacritics as scd
+
+    fake_backend = MagicMock()
+    fake_backend.diacritize.return_value = "ARABIC+DIACRITICS"
+    with patch.object(scd, "_tashkeel", return_value=fake_backend) as mk:
+        assert scd.diacritize("ذهب محمد", "ar") == "ARABIC+DIACRITICS"
+        mk.assert_called_once()  # 'ar' routed to scriptconv's tashkeel backend
+    # unknown language needs no backend and must pass through unchanged
+    assert scd.diacritize("hello world", "und") == "hello world"
 
 
 def test_voice_diacritize_routes_through_scriptconv():
-    """TTSVoice._diacritize is a thin passthrough to scriptconv.diacritics —
-    it no longer calls any phonemizer/diacritizer owned by phoonnx. Driven
-    with a stub config (no model download) it must add Arabic diacritics and
-    leave unknown-language text untouched."""
+    """TTSVoice._diacritize is a thin passthrough to
+    ``scriptconv.diacritics.diacritize`` — it owns no diacritizer. Asserted
+    with a spy (no backend/model download): the voice's lang, diacritizer
+    model, and any phonikud_model override are forwarded verbatim."""
     from types import SimpleNamespace
+    from unittest.mock import patch
+    import scriptconv.diacritics as scd
     from phoonnx.voice import TTSVoice
 
     voice = object.__new__(TTSVoice)
-    voice.config = SimpleNamespace(lang_code="ar", phonikud_model=None,
+    voice.config = SimpleNamespace(lang_code="ar", phonikud_model="/tmp/he.onnx",
                                    diacritizer_model="rawi-ensemble")
-    arabic = "ذهب محمد الى المدرسة"
-    out = voice._diacritize(arabic, voice.config.diacritizer_model)
-    assert out != arabic and len(out) > len(arabic)
-
-    voice.config.lang_code = "und"
-    assert voice._diacritize("hello world", None) == "hello world"
+    with patch.object(scd, "diacritize", return_value="ROUTED") as spy:
+        out = voice._diacritize("نص", "rawi-ensemble")
+    assert out == "ROUTED"
+    spy.assert_called_once_with(
+        "نص", "ar",
+        diacritizer_model="rawi-ensemble",
+        phonikud_model="/tmp/he.onnx",
+    )
 
 
 def test_en_module_reexports_arpa_to_ipa_lookup():
