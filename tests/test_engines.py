@@ -1,3 +1,4 @@
+import unittest
 """Tests for the pluggable multi-engine inference framework.
 
 The framework refactored TTSVoice's synthesis path from inline ONNX I/O into
@@ -187,3 +188,38 @@ def test_full_synth_delegation():
     audio = adapter.parse_outputs(out, req).audio
     assert captured["input"].tolist() == [[1, 2, 3, 4]]
     assert audio.shape == (100,) and float(audio[0]) == pytest.approx(0.25)
+
+
+class TestExplicitEngineWins(unittest.TestCase):
+    """A voice that names its engine is authoritative. Heuristic probes exist for
+    voices that do NOT name one and must never override a config that does —
+    otherwise a lower-priority adapter claims voices belonging to another engine
+    (Matcha's vocoder_path probe runs before GlowTTS and VITS and matched any
+    voice bundling a vocoder)."""
+
+    def test_named_engine_beats_a_lower_priority_heuristic(self):
+        from phoonnx.engines import detect_engine
+        from phoonnx.engines.glowtts import GlowTTSAdapter
+        from phoonnx.engines.vits import VitsAdapter
+        cfg = {"engine": "glowtts", "engine_params": {"vocoder_path": "/x/vocoder.onnx"}}
+        self.assertIsInstance(detect_engine(cfg, None), GlowTTSAdapter)
+        cfg = {"engine": "vits", "engine_params": {"vocoder_path": "/x/vocoder.onnx"}}
+        self.assertIsInstance(detect_engine(cfg, None), VitsAdapter)
+
+    def test_named_engine_is_still_honoured_for_its_own_adapter(self):
+        from phoonnx.engines import detect_engine
+        from phoonnx.engines.matcha import MatchaAdapter
+        cfg = {"engine": "matcha", "engine_params": {"vocoder_path": "/x/vocoder.onnx"}}
+        self.assertIsInstance(detect_engine(cfg, None), MatchaAdapter)
+
+    def test_unnamed_engine_still_uses_heuristics(self):
+        from phoonnx.engines import detect_engine
+        from phoonnx.engines.matcha import MatchaAdapter
+        cfg = {"engine_params": {"vocoder_path": "/x/vocoder.onnx"}}
+        self.assertIsInstance(detect_engine(cfg, None), MatchaAdapter)
+
+    def test_engine_that_is_not_an_adapter_falls_through(self):
+        # "coqui"/"piper" name a training framework, not an adapter
+        from phoonnx.engines import detect_engine
+        from phoonnx.engines.vits import VitsAdapter
+        self.assertIsInstance(detect_engine({"engine": "coqui"}, None), VitsAdapter)
