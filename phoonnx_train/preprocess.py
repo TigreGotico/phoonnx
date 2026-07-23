@@ -13,7 +13,7 @@ import torch
 from tqdm import tqdm
 
 from phoonnx.config import PhonemeType, get_phonemizer, Alphabet
-from phoonnx.phonemizers import Phonemizer
+from scriptconv.phonemizers import Phonemizer
 from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, \
     phoneme_map_seed, untrained_map_symbols, \
     DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN
