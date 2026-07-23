@@ -456,19 +456,14 @@ class TTSVoice:
         token_ids =  self.tokenizer.tokenize(phonemes)
         return token_ids
 
-    def _text_parts(self, text: str, do_diacritics: bool) -> Iterable[str]:
-        """Yield the text unit(s) to convert.
+    def _text_parts(self, text: str) -> Iterable[str]:
+        """Split the text into sentences for conversion.
 
-        Without diacritics the whole text is yielded once so the phoneme edge's
-        own normalization + chunking runs over it exactly as before (the lazy
-        stream then matches a single whole-text call). With diacritics the text is
-        split into sentences so each is diacritized independently — Arabic/Hebrew
-        diacritizer models are sentence-level, and per-sentence work keeps the
-        first sentence off the critical path of the rest.
+        Always applied — this is a latency / time-to-first-audio concern, not a
+        diacritization one: converting one sentence at a time keeps sentence N+1
+        off the critical path of sentence N's audio. (It also suits sentence-level
+        diacritizer models, but that is incidental.)
         """
-        if not do_diacritics:
-            yield text
-            return
         for sentence in sentence_tokenize(text):
             if sentence.strip():
                 yield sentence
@@ -582,7 +577,7 @@ class TTSVoice:
                 # stream is a phoonnx-side hack pending its own refactor, so this
                 # path stays outside the phoneme graph for now — diacritization
                 # still goes through scriptconv's graph edge.
-                for part in self._text_parts(text, do_diacritics):
+                for part in self._text_parts(text):
                     if do_diacritics:
                         part = self._diacritize_via_graph(part, diacritizer_model)
                     for phonemes, language_ids in lazy_lang_ids(part, lang):
@@ -603,7 +598,7 @@ class TTSVoice:
                 # edge; phonemization is the voice's phonemizer edge. phoonnx runs
                 # no conversion itself — it only picks the route and streams parts.
                 route = self._phoneme_route(do_diacritics, tgt_alphabet)
-                for part in self._text_parts(text, do_diacritics):
+                for part in self._text_parts(text):
                     for phonemes in route.convert(part, "text", tgt_alphabet.value,
                                                   lang=lang,
                                                   diacritizer_model=diacritizer_model):
