@@ -71,6 +71,10 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
         session: onnxruntime.InferenceSession,
     ) -> Dict[str, np.ndarray]:
         ids = np.asarray(request.phoneme_ids, dtype=np.int64)
+        # Kokoro's style pack is indexed by the token count BEFORE padding
+        # (upstream kokoro-onnx does voices[voice][len(tokens)] and pads after),
+        # so capture it here rather than reading it back off the padded ids.
+        unpadded_len = ids.shape[1]
         # Padding with the pad id ($): Kokoro pads BOTH ends (its tokenizer emits
         # [0, *tokens, 0]); the plain StyleTTS2 lineage (single reference style or
         # a baked-in style) pads the START only -- a trailing pad makes those
@@ -92,8 +96,9 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
             audio, sr = ref
             style = self.speaker_encoder.encode(audio, sr).reshape(1, -1).astype(np.float32)
         elif self.style_pack is not None:
-            n = ids.shape[1]
-            style = self.style_pack[min(n, self.style_pack.shape[0] - 1)].reshape(1, -1).astype(np.float32)
+            style = self.style_pack[
+                min(unpadded_len, self.style_pack.shape[0] - 1)
+            ].reshape(1, -1).astype(np.float32)
         if style is not None:
             args["style"] = style          # Kokoro
             args["style_vec"] = style       # alexbeatnik StyleTTS2

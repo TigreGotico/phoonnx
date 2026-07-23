@@ -47,8 +47,9 @@ def test_kokoro_style_pack_length_indexed():
     sess = _Sess(["input_ids", "style", "speed"])
     feed = StyleTTS2Adapter(style_pack=pack).build_feed_dict(_req(5), sess)
     assert "style" in feed and feed["style"].shape == (1, 256)
-    # 5 tokens -> +2 pad = 7 -> style_pack[7]
-    assert np.allclose(feed["style"][0], pack[7])
+    # 5 tokens (unpadded) -> style_pack[5]; upstream kokoro-onnx indexes
+    # voices[voice][len(tokens)] BEFORE padding, so the padded length (7) is wrong
+    assert np.allclose(feed["style"][0], pack[5])
     assert "attention_mask" not in feed   # filtered (not a model input)
 
 
@@ -136,3 +137,15 @@ def test_missing_style_raises_a_clear_error():
                                   phoneme_lengths=np.array([2], dtype=np.int64), params={})
     with pytest.raises(ValueError, match="style"):
         StyleTTS2Adapter().build_feed_dict(req, sess)
+
+
+
+def test_kokoro_style_row_ignores_the_padding():
+    """The style row must come from the unpadded token count. Selecting it from
+    the padded ids shifted every utterance's row, worst on short ones where
+    adjacent rows differ most."""
+    pack = np.arange(510 * 256, dtype=np.float32).reshape(510, 256)
+    sess = _Sess(["input_ids", "style", "speed"])
+    for n in (1, 3, 5, 17):
+        feed = StyleTTS2Adapter(style_pack=pack).build_feed_dict(_req(n), sess)
+        assert np.allclose(feed["style"][0], pack[n]), f"{n} tokens picked the wrong row"
