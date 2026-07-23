@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.62.0a1](https://github.com/TigreGotico/phoonnx/tree/1.62.0a1) (2026-07-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.8a1...1.62.0a1)
+
+**Merged pull requests:**
+
+- feat: replace pyworld F0 extraction with in-repo pyin implementation [\#283](https://github.com/TigreGotico/phoonnx/pull/283) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.61.8a1](https://github.com/TigreGotico/phoonnx/tree/1.61.8a1) (2026-07-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.7a1...1.61.8a1)
