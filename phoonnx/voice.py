@@ -496,25 +496,16 @@ class TTSVoice:
         return g.convert(text, "text", "text-diacritized",
                          lang=self.config.lang_code, diacritizer_model=diacritizer_model)
 
-    def _language_id_stream(self, text: str, lang: str):
-        """Shami's per-phoneme language-id stream — a phoonnx-side hack pending
-        its own refactor. Normalises the lazy and eager phonemizer variants to a
-        stream of ``(phonemes, language_ids)``."""
-        lazy = getattr(self.phonemizer, "phonemize_with_language_ids_lazy", None)
-        if lazy is not None:
-            yield from lazy(text, lang)
-            return
-        phonemes, language_ids = self.phonemizer.phonemize_with_language_ids(text, lang)
-        yield from zip(phonemes, language_ids)
-
     def _iter_synthesis_ids(
             self, text, syn_config, do_diacritics, diacritizer_model,
             src_alphabet: Alphabet, tgt_alphabet: Alphabet,
     ) -> Iterable[tuple]:
         """Lazily yield ``(phonemes, phoneme_ids, language_ids)`` per sentence
         (``phonemes`` is ``None`` for text-token models whose adapter owns
-        text→ids). All conversion is scriptconv's graph; phoonnx only picks the
-        route and streams sentences."""
+        text→ids; ``language_ids`` is currently always ``None`` — the Shami
+        per-phoneme language-id path is being restored in a follow-up). All
+        conversion is scriptconv's graph; phoonnx only picks the route and
+        streams sentences."""
         lang = self.config.lang_code
 
         # Text-token models (subword BPE): the adapter owns text -> ids.
@@ -547,23 +538,14 @@ class TTSVoice:
                     yield phonemes, self.phonemes_to_ids(phonemes), None
             return
 
-        # Grapheme -> phoneme, one sentence at a time. Language-aware phonemizers
-        # (Shami) also emit a per-phoneme language-id stream, so they pre-diacritize
-        # and stay outside the phoneme route pending that hack's own refactor.
-        lang_aware = (hasattr(self.phonemizer, "phonemize_with_language_ids_lazy")
-                      or hasattr(self.phonemizer, "phonemize_with_language_ids"))
-        route = None if lang_aware else self._phoneme_route(do_diacritics, tgt_alphabet)
+        # Grapheme -> phoneme, one sentence at a time, through the scriptconv
+        # graph route (diacritization is a topological edge).
+        route = self._phoneme_route(do_diacritics, tgt_alphabet)
         for sentence in self._text_parts(text):
-            if lang_aware:
-                conv = self._diacritized(sentence, diacritizer_model) if do_diacritics else sentence
-                for phonemes, language_ids in self._language_id_stream(conv, lang):
-                    if phonemes:
-                        yield phonemes, self.phonemes_to_ids(phonemes), language_ids
-            else:
-                for phonemes in route.convert(sentence, "text", tgt_alphabet.value,
-                                              lang=lang, diacritizer_model=diacritizer_model):
-                    if phonemes:
-                        yield phonemes, self.phonemes_to_ids(phonemes), None
+            for phonemes in route.convert(sentence, "text", tgt_alphabet.value,
+                                          lang=lang, diacritizer_model=diacritizer_model):
+                if phonemes:
+                    yield phonemes, self.phonemes_to_ids(phonemes), None
 
     def synthesize(
             self,
