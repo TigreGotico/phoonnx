@@ -107,3 +107,33 @@ class TestVoiceAdapterResolutionForMissingEngines(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAlphabetAlwaysResolved(unittest.TestCase):
+    """The alphabet names the model's token space and is what the conversion
+    routes to, so it can never be left unset. Vocab-file (transformers) and
+    tokens-file (sherpa) voices carry no alphabet of their own; before this was
+    defaulted they produced alphabet=None and every synthesis raised
+    AttributeError: 'NoneType' object has no attribute 'value'."""
+
+    def test_vocab_voice_gets_a_character_alphabet(self):
+        vc = VoiceConfig.from_dict({"lang_code": "en"}, vocab={"a": 1, "b": 2, "_": 0})
+        self.assertEqual(vc.alphabet, Alphabet.UNICODE)
+
+    def test_direct_construction_without_alphabet_is_resolved(self):
+        vc = VoiceConfig(num_symbols=10, num_speakers=0, num_langs=1, sample_rate=22050,
+                         lang_code="en", phoneme_type=None, alphabet=None,
+                         phonemizer_model=None)
+        self.assertEqual(vc.alphabet, Alphabet.UNICODE)
+
+    def test_explicit_alphabet_is_not_overridden(self):
+        vc = VoiceConfig.from_dict({"lang_code": "en", "alphabet": "ipa",
+                                    "phoneme_type": "espeak", "phoneme_id_map": {"a": 1}})
+        self.assertEqual(vc.alphabet, Alphabet.IPA)
+
+    def test_conversion_builds_for_a_vocab_voice(self):
+        from phoonnx.config import get_conversion, SynthesisConfig
+        vc = VoiceConfig.from_dict({"lang_code": "en"}, vocab={"a": 1, "b": 2, "_": 0})
+        graph, prepare = get_conversion(None, vc, SynthesisConfig(), vc.alphabet)
+        self.assertIsNotNone(graph)
+        self.assertEqual(prepare("ab"), "ab")

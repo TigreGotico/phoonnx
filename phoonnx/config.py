@@ -162,6 +162,13 @@ class VoiceConfig:
             self.engine = Engine(self.engine)
         if not isinstance(self.alphabet, Alphabet) and isinstance(self.alphabet, str):
             self.alphabet = Alphabet(self.alphabet)
+        if self.alphabet is None:
+            # The alphabet names the model's token space and is what the
+            # conversion routes to, so it can never be absent. Vocab- and
+            # tokens-file voices (transformers, sherpa) carry no alphabet of
+            # their own; they are character models, like every other branch that
+            # falls back here.
+            self.alphabet = Alphabet.UNICODE
         if not isinstance(self.phoneme_type, PhonemeType) and isinstance(self.phoneme_type, str):
             self.phoneme_type = PhonemeType(self.phoneme_type)
 
