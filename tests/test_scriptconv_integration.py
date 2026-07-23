@@ -187,27 +187,43 @@ def test_diacritization_delegates_to_scriptconv():
     assert scd.diacritize("hello world", "und") == "hello world"
 
 
-def test_voice_diacritize_routes_through_scriptconv():
-    """TTSVoice._diacritize is a thin passthrough to
-    ``scriptconv.diacritics.diacritize`` — it owns no diacritizer. Asserted
-    with a spy (no backend/model download): the voice's lang, diacritizer
-    model, and any phonikud_model override are forwarded verbatim."""
-    from types import SimpleNamespace
-    from unittest.mock import patch
-    import scriptconv.diacritics as scd
+def test_voice_diacritization_delegates_to_scriptconv():
+    """phoonnx owns no diacritizer: voice.py calls
+    ``scriptconv.diacritics.diacritize`` directly (imported at module top), and
+    a grapheme voice with add_diacritics=True routes the raw text through it
+    before phonemization. Asserted with a spy — no backend/model needed."""
+    import types
+    from unittest.mock import patch, MagicMock
+    import numpy as np
+    import phoonnx.voice as voice_mod
     from phoonnx.voice import TTSVoice
+    from phoonnx.config import Alphabet, SynthesisConfig
 
-    voice = object.__new__(TTSVoice)
-    voice.config = SimpleNamespace(lang_code="ar", phonikud_model="/tmp/he.onnx",
-                                   diacritizer_model="rawi-ensemble")
-    with patch.object(scd, "diacritize", return_value="ROUTED") as spy:
-        out = voice._diacritize("نص", "rawi-ensemble")
-    assert out == "ROUTED"
-    spy.assert_called_once_with(
-        "نص", "ar",
-        diacritizer_model="rawi-ensemble",
-        phonikud_model="/tmp/he.onnx",
-    )
+    # phoonnx.voice.diacritize is scriptconv's function, not a phoonnx wrapper
+    import scriptconv.diacritics as scd
+    assert voice_mod.diacritize is scd.diacritize
+
+    voice = TTSVoice.__new__(TTSVoice)
+    voice.phonetic_spellings = None
+    voice.phonemizer = MagicMock()
+    voice.phonemizer.phonemize_lazy = None
+    voice.phonemizer.phonemize = MagicMock(return_value=[list("n_ss")])
+    voice.config = types.SimpleNamespace(alphabet=Alphabet.IPA, lang_code="ar",
+                                         add_diacritics=True, diacritizer_model="rawi-ensemble",
+                                         sample_rate=22050)
+    voice.adapter = MagicMock()
+    voice.phonemes_to_ids = lambda p: [1] * len(p)
+    voice.phoneme_ids_to_audio = lambda ids, syn_config=None, language_ids=None, include_alignments=False: np.zeros(4, dtype=np.float32)
+
+    seen = {}
+    def spy(text, lang="und", **k):
+        seen.update(text=text, lang=lang, kwargs=k)
+        return text
+    with patch.object(voice_mod, "diacritize", side_effect=spy):
+        list(voice.synthesize("نص", SynthesisConfig(alphabet=Alphabet.GRAPHEMES,
+                                                     normalize_audio=False)))
+    assert seen.get("text") == "نص" and seen.get("lang") == "ar"
+    assert seen["kwargs"].get("diacritizer_model") == "rawi-ensemble"
 
 
 def test_en_module_reexports_arpa_to_ipa_lookup():
