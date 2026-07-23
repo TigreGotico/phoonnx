@@ -572,11 +572,18 @@ class TTSVoice:
         _blank_id = _bos_id = _eos_id = None
         if include_alignments:
             _tok = self.config.tokenizer
-            _vocab = _tok.vocabulary
-            _idx2char = _vocab.idx2char
-            _blank_id = _tok.blank_id
-            _bos_id = _vocab.bos_id
-            _eos_id = _vocab.eos_id
+            _vocab = getattr(_tok, "vocabulary", None)
+            if _vocab is not None:
+                _idx2char = _vocab.idx2char
+                _blank_id = _tok.blank_id
+                _bos_id = _vocab.bos_id
+                _eos_id = _vocab.eos_id
+            else:
+                # Tokenizers such as BPETokenizer/ChatterboxMTLTokenizer expose
+                # no ``vocabulary`` attribute — alignment reconstruction is not
+                # possible for them. Degrade to "alignments unavailable"
+                # instead of raising, since alignment is an optional feature.
+                include_alignments = False
 
         for phonemes, phoneme_ids in id_stream:
             if not phoneme_ids:
@@ -753,7 +760,7 @@ class TTSVoice:
         model input), so callers degrade to "alignments unavailable" rather
         than emitting a wrong alignment.
         """
-        if len(phoneme_id_samples) != len(phoneme_ids):
+        if np.size(phoneme_id_samples) != len(phoneme_ids):
             return None
         alignments: List[PhonemeAlignment] = []
         pending: int = 0
@@ -937,8 +944,11 @@ class TTSVoice:
             return result.audio, None
 
         # Model durations are in native frames — convert to audio samples.
+        # ``np.atleast_1d`` guards against adapters that squeeze a
+        # single-token (1,1,1) duration tensor down to a 0-d array, which
+        # would otherwise blow up ``len()`` in ``_reconstruct_alignments``.
         phoneme_id_samples = (
-            np.asarray(phoneme_id_samples) * self.config.hop_length
+            np.atleast_1d(np.asarray(phoneme_id_samples)) * self.config.hop_length
         ).astype(np.int64)
 
         return result.audio, phoneme_id_samples
