@@ -3,7 +3,7 @@ espeak-ng binary is unavailable, and can be forced to prefer it."""
 import unittest
 from unittest.mock import patch
 
-from phoonnx.phonemizers.mul import EspeakPhonemizer, EspeakError
+from scriptconv.phonemizers.mul import EspeakPhonemizer, EspeakError
 
 
 class TestEspyakFallback(unittest.TestCase):

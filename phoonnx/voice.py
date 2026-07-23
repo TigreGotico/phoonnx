@@ -27,9 +27,9 @@ from phoonnx.engines.base import (
     AdapterSynthesisResult,
     BaseOnnxAdapter,
 )
-from phoonnx.phonemizers import Phonemizer
+from scriptconv.phonemizers.base import BasePhonemizer
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
-from phoonnx.phonemizers.base import BasePhonemizer, PhonemizedChunks
+from scriptconv.phonemizers.base import PhonemizedChunks
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
@@ -185,7 +185,7 @@ class TTSVoice:
     session: onnxruntime.InferenceSession
     config: VoiceConfig
     phonetic_spellings: Optional[PhoneticSpellings] = None
-    phonemizer: Optional[Phonemizer] = None
+    phonemizer: Optional[BasePhonemizer] = None
     adapter: Optional[BaseOnnxAdapter] = None
     # Path to the ONNX model file backing ``session``, kept so a later
     # ``include_alignments=True`` call can locate-and-patch a model that was
@@ -456,9 +456,19 @@ class TTSVoice:
         return token_ids
 
     def _diacritize(self, text: str, diacritizer_model: Optional[str]) -> str:
-        """Apply (Arabic/Hebrew) diacritics for the voice's language."""
-        return self.phonemizer.add_diacritics(
-            text, self.config.lang_code, model=diacritizer_model
+        """Apply (Arabic/Hebrew) diacritics for the voice's language.
+
+        Delegates to scriptconv, which owns the diacritizer backends and
+        auto-provisions the Hebrew phonikud model. ``phonikud_model`` is only
+        passed when the voice config carries an explicit override; otherwise
+        ``None`` lets scriptconv provision it.
+        """
+        from scriptconv.diacritics import diacritize
+        return diacritize(
+            text,
+            self.config.lang_code,
+            diacritizer_model=diacritizer_model,
+            phonikud_model=getattr(self.config, "phonikud_model", None),
         )
 
     def _text_parts(
@@ -1044,9 +1054,9 @@ class TTSVoice:
         return result.audio, phoneme_id_samples
 
 if __name__ == "__main__":
-    from phoonnx.phonemizers.gl import CotoviaPhonemizer
-    from phoonnx.phonemizers.he import PhonikudPhonemizer
-    from phoonnx.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, GruutPhonemizer, ByT5Phonemizer)
+    from scriptconv.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv.phonemizers.he import PhonikudPhonemizer
+    from scriptconv.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, GruutPhonemizer, ByT5Phonemizer)
 
     syn_config = SynthesisConfig(enable_phonetic_spellings=True)
 

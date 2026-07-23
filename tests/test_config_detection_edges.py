@@ -2,7 +2,7 @@ import unittest
 
 from phoonnx.config import Alphabet, Engine, PhonemeType, VoiceConfig
 from phoonnx.engines.vits import VitsAdapter
-from phoonnx.phonemizers import GraphemePhonemizer
+from scriptconv.phonemizers import GraphemePhonemizer
 from phoonnx.voice import TTSVoice
 
 

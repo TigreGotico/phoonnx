@@ -52,7 +52,7 @@ The output is a single float32 `waveform` of shape `[1, samples]` at 24 kHz.
 
 ## Text front-end and the language-ID dispatch
 
-`ShamiPhonemizer` (`phoonnx/phonemizers/shami.py`) wraps the vendored
+`ShamiPhonemizer` (`scriptconv.phonemizers.shami`) wraps the vendored
 `scriptconv.phonemizers._thirdparty.shami` package (ported from `hams_tts.text`). It performs:
 
 1. Arabic text normalization and optional diacritization (pluggable `diacritizer_backend`: `auto` tries `camel` then `catt`; `passthrough` skips it).

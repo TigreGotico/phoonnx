@@ -6,7 +6,7 @@ extras), so it is imported unconditionally -- no importorskip.
 import pytest
 
 from phoonnx.config import PhonemeType, Alphabet, get_phonemizer
-from phoonnx.phonemizers.pt import BarranquenhoPhonemizer
+from scriptconv.phonemizers.pt import BarranquenhoPhonemizer
 
 LANG = "ext-PT-x-barrancos"
 

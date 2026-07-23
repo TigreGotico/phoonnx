@@ -7,7 +7,7 @@ undiacritized (bare) Arabic: it restores the tashkeel before transcribing.
 import pytest
 
 from phoonnx.config import PhonemeType, Alphabet, get_phonemizer
-from phoonnx.phonemizers.ar import ArbtokPhonemizer
+from scriptconv.phonemizers.ar import ArbtokPhonemizer
 
 
 def test_factory_dispatch():

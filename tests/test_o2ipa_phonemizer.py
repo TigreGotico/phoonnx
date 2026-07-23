@@ -6,7 +6,7 @@ extras), so it is imported unconditionally -- no importorskip.
 import pytest
 
 from phoonnx.config import PhonemeType, Alphabet, get_phonemizer
-from phoonnx.phonemizers.o2ipa import Orthography2IPAPhonemizer
+from scriptconv.phonemizers.o2ipa import Orthography2IPAPhonemizer
 
 
 def test_factory_dispatch():

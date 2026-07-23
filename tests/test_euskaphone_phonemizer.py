@@ -8,7 +8,7 @@ orthography2ipa lattice and resolves the historical Basque dialects.
 import pytest
 
 from phoonnx.config import PhonemeType, Alphabet, get_phonemizer
-from phoonnx.phonemizers.eu import EuskaphonePhonemizer
+from scriptconv.phonemizers.eu import EuskaphonePhonemizer
 
 
 def test_factory_dispatch():

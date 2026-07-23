@@ -1,84 +1,13 @@
-"""Tests for the text2tashkeel-backed Arabic diacritizer wiring.
+"""Tests for the Arabic diacritizer-model config wiring.
 
-text2tashkeel is only pulled in by the ``[ar]`` extra, which CI does not
-install for these unit tests, so the actual ``Diacritizer`` is mocked out via
-``sys.modules`` rather than imported for real (see test_arbtok_phonemizer.py
-for the "real dependency" style tests that exercise arbtok instead).
+phoonnx owns no diacritizer implementation: diacritization is delegated to
+``scriptconv.diacritics.diacritize`` (see test_scriptconv_integration.py). What
+phoonnx keeps is the *config* — SynthesisConfig / VoiceConfig carry the
+``diacritizer_model`` selection and must round-trip it faithfully.
 """
-import sys
-import types
 import unittest
-from unittest.mock import MagicMock
 
 from phoonnx.config import SynthesisConfig, VoiceConfig
-from phoonnx.phonemizers.base import GraphemePhonemizer
-
-
-def _install_fake_text2tashkeel():
-    """Install a fake ``text2tashkeel`` module and return the mock Diacritizer class."""
-    fake_module = types.ModuleType("text2tashkeel")
-    diacritizer_cls = MagicMock()
-    diacritizer_cls.side_effect = lambda model: MagicMock(
-        diacritize=lambda text: f"{text}+{model}")
-    fake_module.Diacritizer = diacritizer_cls
-    sys.modules["text2tashkeel"] = fake_module
-    return diacritizer_cls
-
-
-def _remove_fake_text2tashkeel():
-    sys.modules.pop("text2tashkeel", None)
-
-
-class TestAddDiacriticsRouting(unittest.TestCase):
-    def setUp(self):
-        self.diacritizer_cls = _install_fake_text2tashkeel()
-
-    def tearDown(self):
-        _remove_fake_text2tashkeel()
-
-    def test_arabic_routes_to_tashkeel_with_requested_model(self):
-        p = GraphemePhonemizer()
-        out = p.add_diacritics("مرحبا", "ar", model="rawi-ensemble")
-        self.assertEqual(out, "مرحبا+rawi-ensemble")
-        self.diacritizer_cls.assert_called_once_with("rawi-ensemble")
-
-    def test_default_model_used_when_none_requested(self):
-        p = GraphemePhonemizer(diacritizer_model="some-default")
-        out = p.add_diacritics("مرحبا", "ar")
-        self.assertEqual(out, "مرحبا+some-default")
-        self.diacritizer_cls.assert_called_once_with("some-default")
-
-    def test_non_arabic_hebrew_lang_passes_through_unmodified(self):
-        p = GraphemePhonemizer()
-        out = p.add_diacritics("hello", "en")
-        self.assertEqual(out, "hello")
-        self.diacritizer_cls.assert_not_called()
-
-    def test_caches_diacritizer_per_model_name(self):
-        p = GraphemePhonemizer()
-        p.add_diacritics("a", "ar", model="model-a")
-        p.add_diacritics("b", "ar", model="model-a")
-        p.add_diacritics("c", "ar", model="model-b")
-        # one instantiation per distinct model name, reused across calls
-        self.assertEqual(self.diacritizer_cls.call_count, 2)
-        self.diacritizer_cls.assert_any_call("model-a")
-        self.diacritizer_cls.assert_any_call("model-b")
-        self.assertIn("model-a", p._tashkeel)
-        self.assertIn("model-b", p._tashkeel)
-
-
-class TestMissingText2Tashkeel(unittest.TestCase):
-    def test_missing_dependency_raises_loud_import_error(self):
-        # ensure it really looks missing, regardless of what is actually installed
-        sys.modules["text2tashkeel"] = None
-        try:
-            p = GraphemePhonemizer()
-            with self.assertRaises(ImportError) as ctx:
-                p.add_diacritics("مرحبا", "ar")
-            self.assertIn("scriptconv[tashkeel]", str(ctx.exception))
-            self.assertIn("text2tashkeel", str(ctx.exception))
-        finally:
-            sys.modules.pop("text2tashkeel", None)
 
 
 class TestSynthesisConfigDiacritizerModelDefaults(unittest.TestCase):

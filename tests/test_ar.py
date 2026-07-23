@@ -4,8 +4,8 @@ from unittest.mock import patch, MagicMock
 import sys
 import os
 
-from phoonnx.phonemizers.ar import MantoqPhonemizer
-from phoonnx.phonemizers.base import BasePhonemizer
+from scriptconv.phonemizers.ar import MantoqPhonemizer
+from scriptconv.phonemizers.base import BasePhonemizer
 from phoonnx.config import Alphabet
 
 
@@ -649,13 +649,13 @@ class TestMantoqPhonemizerIntegration(unittest.TestCase):
 
 class TestArbtokPhonemizer(unittest.TestCase):
     """Adversarial coverage for ArbtokPhonemizer, the arbtok-backed Arabic
-    engine (lines 55-127 of phoonnx/phonemizers/ar.py). arbtok is imported
+    engine (scriptconv.phonemizers.ar). arbtok is imported
     lazily, so it's mocked via sys.modules patching rather than requiring
     the real package to be installed.
     """
 
     def setUp(self):
-        from phoonnx.phonemizers.ar import ArbtokPhonemizer
+        from scriptconv.phonemizers.ar import ArbtokPhonemizer
         self.ArbtokPhonemizer = ArbtokPhonemizer
 
     def test_rejects_non_ipa_alphabet(self):

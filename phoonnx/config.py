@@ -123,6 +123,9 @@ class VoiceConfig:
     add_diacritics: bool = None # arabic and hebrew
     # diacritizer model name (for languages that need one — e.g. Arabic uses text2tashkeel models like "rawi-ensemble")
     diacritizer_model: str = "rawi-ensemble"
+    # optional override for the Hebrew phonikud diacritizer model (path or zero-arg
+    # callable). ``None`` (the default) lets scriptconv auto-provision + cache it.
+    phonikud_model: Optional[str] = None
 
     # samples per model frame — used to convert per-phoneme durations (in model
     # frames) to audio samples for the phoneme-alignment feature (see
@@ -645,10 +648,10 @@ def get_phonemizer(phoneme_type: PhonemeType,
     Create a phonemizer instance for the specified phonemeization strategy.
 
     Delegates to scriptconv's registry, injecting phoonnx's text normalizer
-    (number/date expansion) and the phonikud model resolver so behavior
-    matches the historical in-tree phonemizers exactly.  All backends,
-    including the license-quarantined mantoq/KoG2P (vendored in scriptconv
-    under their own licenses), come from scriptconv.
+    (number/date expansion) so behavior matches the historical in-tree
+    phonemizers exactly.  All backends, including the license-quarantined
+    mantoq/KoG2P (vendored in scriptconv under their own licenses), come from
+    scriptconv, which also auto-provisions the Hebrew phonikud model.
 
     Raises:
         ValueError: If the provided `phoneme_type` is not supported.
@@ -663,8 +666,6 @@ def get_phonemizer(phoneme_type: PhonemeType,
         raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
 
     phonemizer.normalizer = _normalize
-    from phoonnx.thirdparty.phonikud import resolve_model_path
-    phonemizer.phonikud_model = resolve_model_path
     return phonemizer
 
 

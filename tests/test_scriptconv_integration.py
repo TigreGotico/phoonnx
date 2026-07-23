@@ -51,7 +51,7 @@ def test_en_phonemizer_uses_arpa_lookup():
     G2PEnPhonemizer imports arpa_to_ipa_lookup directly — ensure the import
     still resolves after the scriptconv delegation.
     """
-    from phoonnx.phonemizers.en import G2PEnPhonemizer  # noqa: F401 — import-only check
+    from scriptconv.phonemizers.en import G2PEnPhonemizer  # noqa: F401 — import-only check
 
 
 # ---------------------------------------------------------------------------
@@ -79,7 +79,7 @@ def test_arabic_to_buckwalter_known_values():
 
 def test_mantoq_phonemizer_arabic_ipa_smoke():
     """MantoqPhonemizer with IPA alphabet should produce a non-empty string."""
-    from phoonnx.phonemizers.ar import MantoqPhonemizer
+    from scriptconv.phonemizers.ar import MantoqPhonemizer
     from phoonnx.config import Alphabet
     p = MantoqPhonemizer(alphabet=Alphabet.IPA)
     result = p.phonemize_string("مرحبا", lang="ar")
@@ -141,7 +141,7 @@ def test_get_phonemizer_injects_normalizer():
 
 def test_licensed_backends_construct_from_scriptconv_quarantine():
     from phoonnx.config import PhonemeType, get_phonemizer
-    from phoonnx.phonemizers.ar import MantoqPhonemizer
+    from scriptconv.phonemizers.ar import MantoqPhonemizer
     m = get_phonemizer(PhonemeType.MANTOQ)
     assert isinstance(m, MantoqPhonemizer)
     assert type(m).__module__.startswith("scriptconv.")
@@ -151,45 +151,64 @@ def test_licensed_backends_construct_from_scriptconv_quarantine():
 # Per-language phonemizer modules re-export the shared contract types
 # ---------------------------------------------------------------------------
 
-_PHONEMIZER_SHIM_MODULES = [
+_PHONEMIZER_MODULES = [
     "ar", "en", "eu", "fa", "gl", "he", "ja", "ko",
     "mwl", "o2ipa", "pt", "vi", "zh", "shami",
 ]
 
 
-@pytest.mark.parametrize("module_name", _PHONEMIZER_SHIM_MODULES)
+@pytest.mark.parametrize("module_name", _PHONEMIZER_MODULES)
 def test_shim_reexports_alphabet_and_base_phonemizer(module_name):
     """Every per-language phonemizer module carries the shared contract types
     (Alphabet, BasePhonemizer) alongside its language-specific classes."""
     import importlib
-    mod = importlib.import_module(f"phoonnx.phonemizers.{module_name}")
+    mod = importlib.import_module(f"scriptconv.phonemizers.{module_name}")
     from scriptconv.phonemizers.enums import Alphabet
     from scriptconv.phonemizers.base import BasePhonemizer
     assert mod.Alphabet is Alphabet
     assert mod.BasePhonemizer is BasePhonemizer
 
 
-def test_base_module_reexports_shared_helpers():
-    from phoonnx.phonemizers import base
-    from langcodes import tag_distance
-    from quebra_frases import sentence_tokenize
-    from phoonnx.util import match_lang, normalize
-    from phoonnx.thirdparty.phonikud import PhonikudDiacritizer
-    assert base.tag_distance is tag_distance
-    assert base.sentence_tokenize is sentence_tokenize
-    assert base.match_lang is match_lang
-    assert base.normalize is normalize
-    assert base.PhonikudDiacritizer is PhonikudDiacritizer
+def test_diacritization_delegates_to_scriptconv():
+    """phoonnx no longer owns any diacritizer: the diacritization path routes
+    straight to ``scriptconv.diacritics.diacritize``. Arabic must gain
+    diacritics; an unknown language must pass through unchanged."""
+    from scriptconv.diacritics import diacritize
+    arabic = "ذهب محمد الى المدرسة"
+    diacritized = diacritize(arabic, "ar")
+    assert diacritized != arabic
+    assert len(diacritized) > len(arabic)
+    passthrough = "hello world"
+    assert diacritize(passthrough, "und") == passthrough
+
+
+def test_voice_diacritize_routes_through_scriptconv():
+    """TTSVoice._diacritize is a thin passthrough to scriptconv.diacritics —
+    it no longer calls any phonemizer/diacritizer owned by phoonnx. Driven
+    with a stub config (no model download) it must add Arabic diacritics and
+    leave unknown-language text untouched."""
+    from types import SimpleNamespace
+    from phoonnx.voice import TTSVoice
+
+    voice = object.__new__(TTSVoice)
+    voice.config = SimpleNamespace(lang_code="ar", phonikud_model=None,
+                                   diacritizer_model="rawi-ensemble")
+    arabic = "ذهب محمد الى المدرسة"
+    out = voice._diacritize(arabic, voice.config.diacritizer_model)
+    assert out != arabic and len(out) > len(arabic)
+
+    voice.config.lang_code = "und"
+    assert voice._diacritize("hello world", None) == "hello world"
 
 
 def test_en_module_reexports_arpa_to_ipa_lookup():
-    from phoonnx.phonemizers import en
+    from scriptconv.phonemizers import en
     from scriptconv.phonemizers.en import arpa_to_ipa_lookup
     assert en.arpa_to_ipa_lookup is arpa_to_ipa_lookup
 
 
 def test_shami_module_reexports_frontend_helpers():
-    from phoonnx.phonemizers import shami
+    from scriptconv.phonemizers import shami
     from scriptconv.phonemizers.shami import TextFrontend, sentence_tokenize
     from scriptconv.phonemizers.base import PhonemizedChunks
     assert shami.TextFrontend is TextFrontend

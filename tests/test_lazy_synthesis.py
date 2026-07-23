@@ -17,7 +17,7 @@ from unittest.mock import MagicMock
 import numpy as np
 
 from phoonnx.config import Alphabet, SynthesisConfig
-from phoonnx.phonemizers.base import (
+from scriptconv.phonemizers.base import (
     BasePhonemizer,
     GraphemePhonemizer,
     UnicodeCodepointPhonemizer,
@@ -152,7 +152,7 @@ class TestLazyOrdering(unittest.TestCase):
 class TestLanguageIdAlignment(unittest.TestCase):
     def test_shami_lazy_matches_eager(self):
         try:
-            from phoonnx.phonemizers.shami import ShamiPhonemizer
+            from scriptconv.phonemizers.shami import ShamiPhonemizer
         except Exception as e:  # pragma: no cover - dependency-gated
             self.skipTest(f"Shami unavailable: {e}")
 

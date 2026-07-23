@@ -1,6 +1,6 @@
 """The per-language misaki phonemizers (split from the legacy dispatcher)."""
 from phoonnx.config import get_phonemizer, PhonemeType, Alphabet
-from phoonnx.phonemizers.mul import (MisakiPhonemizer, MisakiEnPhonemizer, MisakiJaPhonemizer,
+from scriptconv.phonemizers.mul import (MisakiPhonemizer, MisakiEnPhonemizer, MisakiJaPhonemizer,
                                      MisakiZhPhonemizer, MisakiKoPhonemizer, MisakiViPhonemizer)
 
 
