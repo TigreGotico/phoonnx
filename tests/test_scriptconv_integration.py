@@ -188,20 +188,16 @@ def test_diacritization_delegates_to_scriptconv():
 
 
 def test_voice_diacritization_delegates_to_scriptconv():
-    """phoonnx owns no diacritizer: voice.py calls
-    ``scriptconv.diacritics.diacritize`` directly (imported at module top), and
-    a grapheme voice with add_diacritics=True routes the raw text through it
-    before phonemization. Asserted with a spy — no backend/model needed."""
+    """phoonnx owns no diacritizer: a grapheme voice with add_diacritics=True
+    routes text through scriptconv's diacritizer graph edge before phonemization
+    (diacritization is a topological edge, not a phoonnx call). Asserted with a
+    spy on scriptconv.diacritics.diacritize — no backend/model needed."""
     import types
     from unittest.mock import patch, MagicMock
     import numpy as np
-    import phoonnx.voice as voice_mod
+    import scriptconv.diacritics as scd
     from phoonnx.voice import TTSVoice
     from phoonnx.config import Alphabet, SynthesisConfig
-
-    # phoonnx.voice.diacritize is scriptconv's function, not a phoonnx wrapper
-    import scriptconv.diacritics as scd
-    assert voice_mod.diacritize is scd.diacritize
 
     voice = TTSVoice.__new__(TTSVoice)
     voice.phonetic_spellings = None
@@ -219,7 +215,7 @@ def test_voice_diacritization_delegates_to_scriptconv():
     def spy(text, lang="und", **k):
         seen.update(text=text, lang=lang, kwargs=k)
         return text
-    with patch.object(voice_mod, "diacritize", side_effect=spy):
+    with patch.object(scd, "diacritize", side_effect=spy):
         list(voice.synthesize("نص", SynthesisConfig(alphabet=Alphabet.GRAPHEMES,
                                                      normalize_audio=False)))
     assert seen.get("text") == "نص" and seen.get("lang") == "ar"

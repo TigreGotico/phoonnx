@@ -30,7 +30,7 @@ from phoonnx.engines.base import (
 from scriptconv.phonemizers.base import BasePhonemizer
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
 from scriptconv.phonemizers.base import PhonemizedChunks
-from scriptconv.diacritics import diacritize
+from scriptconv import diacritics
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
@@ -456,26 +456,69 @@ class TTSVoice:
         token_ids =  self.tokenizer.tokenize(phonemes)
         return token_ids
 
-    def _text_parts(
-            self, text: str, do_diacritics: bool, diacritizer_model: Optional[str]
-    ) -> Iterable[str]:
-        """Yield the text unit(s) to phonemize.
+    def _text_parts(self, text: str, do_diacritics: bool) -> Iterable[str]:
+        """Yield the text unit(s) to convert.
 
-        Without diacritics the whole text is yielded once so the phonemizer's own
-        normalization + chunking runs over it exactly as before (guaranteeing the
-        lazy stream produces the same phonemes as a single whole-text call). With
-        diacritics enabled the text is split into sentences and each is
-        diacritized independently — Arabic/Hebrew diacritizer models are
-        sentence-level, and doing it per sentence keeps the first sentence off the
-        critical path of the rest.
+        Without diacritics the whole text is yielded once so the phoneme edge's
+        own normalization + chunking runs over it exactly as before (the lazy
+        stream then matches a single whole-text call). With diacritics the text is
+        split into sentences so each is diacritized independently — Arabic/Hebrew
+        diacritizer models are sentence-level, and per-sentence work keeps the
+        first sentence off the critical path of the rest.
         """
         if not do_diacritics:
             yield text
             return
         for sentence in sentence_tokenize(text):
-            if not sentence.strip():
-                continue
-            yield diacritize(sentence, self.config.lang_code, diacritizer_model=diacritizer_model)
+            if sentence.strip():
+                yield sentence
+
+    def _phoneme_route(self, do_diacritics: bool, tgt_alphabet: Alphabet):
+        """Build the ``text -> model-alphabet`` conversion as a scriptconv graph.
+
+        Phonemization and diacritization are graph *edges* — phoonnx runs no
+        conversion of its own. Diacritization is expressed as **topology** (the
+        scriptconv "engine stance"): a diacritizing voice carries
+        ``text -> text-diacritized -> <alphabet>`` and no direct
+        ``text -> <alphabet>`` edge, so ``convert`` is forced through the
+        diacritizer with no flag. The phoneme edge is the voice's own scriptconv
+        phonemizer (phoonnx's normalizer injected; chunking + PhonemizedChunks
+        preserved). The diacritizer model rides in the ``diacritizer_model``
+        routing-context key that ``convert`` forwards to the edge.
+        """
+        from scriptconv.graph import ConversionGraph, Edge
+        lang = self.config.lang_code
+        alpha = tgt_alphabet.value
+        # prefer the lazy per-sentence generator so sentence N+1 is not phonemized
+        # until pulled (time-to-first-audio); fall back to eager whole-text phonemize.
+        phonemize_lazy = getattr(self.phonemizer, "phonemize_lazy", None)
+
+        def _phonemize(text, **_):
+            if phonemize_lazy is not None:
+                return phonemize_lazy(text, lang)
+            return self.phonemizer.phonemize(text, lang)
+
+        graph = ConversionGraph()
+        if do_diacritics:
+            diacritics.register(graph)  # scriptconv's text -> text-diacritized edge
+            graph.register(Edge("text-diacritized", alpha, _phonemize))
+        else:
+            graph.register(Edge("text", alpha, _phonemize))
+        return graph
+
+    def _diacritize_via_graph(self, text: str, diacritizer_model: Optional[str]) -> str:
+        """Apply diacritization through scriptconv's graph edge — phoonnx holds
+        no diacritization logic. Used by the paths that feed raw text to an
+        adapter/override rather than a phoneme graph (text-token models, inline
+        ``[[phoneme]]`` overrides) and by the language-id path pending its
+        refactor.
+        """
+        from scriptconv.graph import ConversionGraph
+        graph = ConversionGraph()
+        diacritics.register(graph)
+        return graph.convert(text, "text", "text-diacritized",
+                             lang=self.config.lang_code,
+                             diacritizer_model=diacritizer_model)
 
     def _iter_synthesis_ids(
             self,
@@ -505,7 +548,7 @@ class TTSVoice:
                 # so encode the whole text once; audio is still produced per
                 # sentence downstream.
                 if do_diacritics:
-                    text = diacritize(text, self.config.lang_code, diacritizer_model=diacritizer_model)
+                    text = self._diacritize_via_graph(text, diacritizer_model)
                 for ids in self.adapter.encode_text(text, self, syn_config):
                     yield None, ids, None
             else:
@@ -530,32 +573,40 @@ class TTSVoice:
                 # blocks merge into adjacent sentences; keep the (eager) whole-text
                 # handling that owns that merge logic.
                 if do_diacritics:
-                    text = diacritize(text, self.config.lang_code, diacritizer_model=diacritizer_model)
+                    text = self._diacritize_via_graph(text, diacritizer_model)
                 for phonemes in self.phonemize(text):
                     if phonemes:
                         yield phonemes, self.phonemes_to_ids(phonemes), None
             elif lazy_lang_ids is not None:
-                for part in self._text_parts(text, do_diacritics, diacritizer_model):
+                # Language-aware phonemizer (Shami): the per-phoneme language-id
+                # stream is a phoonnx-side hack pending its own refactor, so this
+                # path stays outside the phoneme graph for now — diacritization
+                # still goes through scriptconv's graph edge.
+                for part in self._text_parts(text, do_diacritics):
+                    if do_diacritics:
+                        part = self._diacritize_via_graph(part, diacritizer_model)
                     for phonemes, language_ids in lazy_lang_ids(part, lang):
                         if phonemes:
                             yield phonemes, self.phonemes_to_ids(phonemes), language_ids
             elif hasattr(self.phonemizer, "phonemize_with_language_ids"):
                 # Language-aware phonemizer without a lazy variant: eager fallback.
                 if do_diacritics:
-                    text = diacritize(text, self.config.lang_code, diacritizer_model=diacritizer_model)
+                    text = self._diacritize_via_graph(text, diacritizer_model)
                 sentence_phonemes, sentence_language_ids = (
                     self.phonemizer.phonemize_with_language_ids(text, lang))
                 for phonemes, language_ids in zip(sentence_phonemes, sentence_language_ids):
                     if phonemes:
                         yield phonemes, self.phonemes_to_ids(phonemes), language_ids
             else:
-                # Lazy per-sentence phonemization; a phonemizer without a lazy
-                # variant falls back to its eager whole-text phonemize().
-                phonemize_lazy = getattr(self.phonemizer, "phonemize_lazy", None)
-                for part in self._text_parts(text, do_diacritics, diacritizer_model):
-                    sentences = (phonemize_lazy(part, lang) if phonemize_lazy is not None
-                                 else self.phonemizer.phonemize(part, lang))
-                    for phonemes in sentences:
+                # Hot path: text -> [text-diacritized ->] <model alphabet> as a
+                # single scriptconv graph route. Diacritization is a topological
+                # edge; phonemization is the voice's phonemizer edge. phoonnx runs
+                # no conversion itself — it only picks the route and streams parts.
+                route = self._phoneme_route(do_diacritics, tgt_alphabet)
+                for part in self._text_parts(text, do_diacritics):
+                    for phonemes in route.convert(part, "text", tgt_alphabet.value,
+                                                  lang=lang,
+                                                  diacritizer_model=diacritizer_model):
                         if phonemes:
                             yield phonemes, self.phonemes_to_ids(phonemes), None
             return

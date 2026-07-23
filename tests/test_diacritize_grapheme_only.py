@@ -1,7 +1,7 @@
 """Diacritization is orthographic (grapheme-level); it must never run over
 phonemic (e.g. IPA) input, regardless of add_diacritics. phoonnx delegates
-diacritization to scriptconv.diacritics.diacritize (imported into phoonnx.voice)
-— these tests patch that name with a recorder so no diacritizer backend is
+diacritization to scriptconv's graph edge (scriptconv.diacritics.diacritize) —
+these tests patch that function with a recorder so no diacritizer backend is
 needed.
 """
 import types
@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
-import phoonnx.voice as voice_mod
+import scriptconv.diacritics as scd
 from phoonnx.config import Alphabet, SynthesisConfig
 from phoonnx.voice import TTSVoice
 
@@ -38,7 +38,7 @@ class TestDiacritizeGraphemeOnly(unittest.TestCase):
         voice = _make_voice(Alphabet.IPA)
         syn_config = SynthesisConfig(alphabet=Alphabet.IPA, normalize_audio=False)
 
-        with patch.object(voice_mod, "diacritize",
+        with patch.object(scd, "diacritize",
                           side_effect=lambda t, l="und", **k: calls.append(t) or t):
             list(voice.synthesize("mafʕuːl", syn_config))
 
@@ -51,7 +51,7 @@ class TestDiacritizeGraphemeOnly(unittest.TestCase):
         voice.phonemizer.phonemize_lazy = None
         voice.phonemizer.phonemize = MagicMock(return_value=[list("test")])
 
-        with patch.object(voice_mod, "diacritize",
+        with patch.object(scd, "diacritize",
                           side_effect=lambda t, l="und", **k: calls.append(t) or t):
             list(voice.synthesize("mrhba", syn_config))
 
