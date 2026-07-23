@@ -1845,6 +1845,45 @@
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__uk_UA-ukrainian_tts-medium/config.json"
     },
+    "piper/uk_UA-tetiana-high": {
+        "voice_id": "piper/uk_UA-tetiana-high",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__uk_UA-tetiana-high/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "uk-UA",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__uk_UA-tetiana-high/config.json"
+    },
+    "piper/uk_UA-mykyta-high": {
+        "voice_id": "piper/uk_UA-mykyta-high",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__uk_UA-mykyta-high/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "uk-UA",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__uk_UA-mykyta-high/config.json"
+    },
+    "piper/uk_UA-oleksa-high": {
+        "voice_id": "piper/uk_UA-oleksa-high",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__uk_UA-oleksa-high/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "uk-UA",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__uk_UA-oleksa-high/config.json"
+    },
     "piper/vi_VN-25hours_single-low": {
         "voice_id": "piper/vi_VN-25hours_single-low",
         "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__vi_VN-25hours_single-low/model.onnx",
