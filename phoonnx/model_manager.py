@@ -15,7 +15,13 @@ from phoonnx.voice import TTSVoice
 
 
 def _tmp_path(dest: Path) -> Path:
-    """Sibling scratch path used while a download is in flight."""
+    """Sibling scratch path used while a download is in flight.
+
+    Every write goes through here, so this is also where the voice directory is
+    created — a voice's directory should exist because something was written
+    into it, not because its catalog entry was constructed.
+    """
+    dest.parent.mkdir(parents=True, exist_ok=True)
     return dest.with_suffix(dest.suffix + ".part")
 
 
@@ -272,7 +278,6 @@ class TTSModelInfo:
         Sets up the private config storage, ensures the voice cache directory exists, and converts string representations of engine, alphabet, and phoneme_type into their corresponding Enum values so the instance fields are normalized.
         """
         self._config: Optional[VoiceConfig] = None
-        os.makedirs(self.voice_path, exist_ok=True)
 
         # cast strings to enum for consistency
         if not isinstance(self.engine, Engine) and isinstance(self.engine, str):
