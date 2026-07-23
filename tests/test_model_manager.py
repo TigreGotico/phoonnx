@@ -45,7 +45,12 @@ class VoicePathTestCase(unittest.TestCase):
             model_url="https://example.com/model.onnx",
         )
         defaults.update(kwargs)
-        return TTSModelInfo(**defaults)
+        info = TTSModelInfo(**defaults)
+        # these tests seed cached artifacts into the voice directory; creating it
+        # is the fixture's job, since constructing a catalog entry deliberately
+        # does not touch the disk
+        info.voice_path.mkdir(parents=True, exist_ok=True)
+        return info
 
 
 class TestFetchOnnx(VoicePathTestCase):
@@ -938,3 +943,18 @@ class TestVoiceIndexSources(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCatalogDoesNotTouchDisk(unittest.TestCase):
+    """A voice's directory should exist because something was written into it,
+    not because its catalog entry was constructed — building the catalog used to
+    create one directory per voice (thousands) on every start."""
+
+    def test_building_the_catalog_creates_no_directories(self):
+        with tempfile.TemporaryDirectory() as home:
+            with patch.dict(os.environ, {"HOME": home}):
+                mm = TTSModelManager()
+                mm.merge_default_voices()
+                self.assertTrue(mm.voices, "expected a populated catalog")
+                created = [p for p in Path(home).rglob("*") if p.is_dir()]
+                self.assertEqual(created, [], f"catalog created {len(created)} dirs")

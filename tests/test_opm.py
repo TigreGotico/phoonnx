@@ -107,19 +107,20 @@ class TestPluginEntryPoint(unittest.TestCase):
 
 
 class TestInit(unittest.TestCase):
-    def test_init_loads_default_voice_when_unconfigured(self):
+    def test_init_resolves_default_voice_when_unconfigured(self):
         v = _FakeVoiceInfo("OpenVoiceOS/en_default")
         plugin, mgr = _make_plugin(voices=[v])
         self.assertEqual(mgr.load_calls, 1)
-        self.assertIn(v.voice_id, plugin.voices)
-        self.assertIs(plugin.voices[v.voice_id], v.tts_voice)
+        self.assertEqual(plugin.voice_info.voice_id, v.voice_id)
+        # resolved, not fetched: loading is deferred to the first synthesis
+        self.assertEqual(plugin.voices, {})
 
-    def test_init_loads_configured_voice(self):
+    def test_init_resolves_configured_voice(self):
         a = _FakeVoiceInfo("OpenVoiceOS/a")
         b = _FakeVoiceInfo("OpenVoiceOS/b")
         plugin, _ = _make_plugin(config={"voice": "OpenVoiceOS/b"}, voices=[a, b])
-        self.assertIn("OpenVoiceOS/b", plugin.voices)
-        self.assertNotIn("OpenVoiceOS/a", plugin.voices)
+        self.assertEqual(plugin.voice_info.voice_id, "OpenVoiceOS/b")
+        self.assertEqual(plugin.voices, {})
 
 
 class TestVoiceResolution(unittest.TestCase):
@@ -128,7 +129,7 @@ class TestVoiceResolution(unittest.TestCase):
         # no eager voices: init refresh (lazy merged) gives a default
         plugin, mgr = _make_plugin(lazy=[lazy])
         # merge happened during init; default voice resolved from lazy
-        self.assertIn("OpenVoiceOS/lazy", plugin.voices)
+        self.assertEqual(plugin.voice_info.voice_id, "OpenVoiceOS/lazy")
 
     def test_get_default_voice_raises_when_none(self):
         with self.assertRaises(ValueError):
@@ -292,3 +293,34 @@ class TestSpeakerSelection(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestVoiceResolvedWithoutLoading(unittest.TestCase):
+    """Boot resolves the configured voice but does not fetch it.
+
+    A voice that was named explicitly and does not exist is a configuration
+    error and must still raise — substituting a different voice would silently
+    speak in the wrong one. An unset voice (or "default") resolves to the
+    language's default. Loading is deferred so that fetching a model is never
+    what decides whether the TTS service can start.
+    """
+
+    def test_unknown_named_voice_raises(self):
+        with self.assertRaises(Exception) as ctx:
+            opm.PhoonnxTTSPlugin(config={"voice": "totally-unknown-voice"})
+        self.assertIn("totally-unknown-voice", str(ctx.exception))
+
+    def test_unknown_lang_raises(self):
+        with self.assertRaises(ValueError):
+            opm.PhoonnxTTSPlugin(config={"lang": "zzz"})
+
+    def test_default_voice_resolves_without_loading(self):
+        for voice in ("default", None):
+            with self.subTest(voice=voice):
+                cfg = {"lang": "en-US"}
+                if voice is not None:
+                    cfg["voice"] = voice
+                plugin = opm.PhoonnxTTSPlugin(config=cfg)
+                self.assertIsNotNone(plugin.voice_info)
+                self.assertEqual(plugin.voices, {},
+                                 "boot must not load (download) the model")

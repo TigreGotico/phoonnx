@@ -802,11 +802,21 @@ class TTSVoice:
         silence_int16_bytes = bytes(
             int(self.config.sample_rate * sentence_silence * 2)
         )
+        if set_wav_format:
+            # Set the format up front, from the voice: text that produces no
+            # audio at all (an empty or punctuation-only utterance) must still
+            # leave a valid, empty WAV behind. Waiting for the first chunk left
+            # the writer unconfigured, so closing it raised
+            # "wave.Error: # channels not specified" instead.
+            wav_file.setframerate(self.config.sample_rate)
+            wav_file.setsampwidth(2)
+            wav_file.setnchannels(1)
+
         first_chunk = True
         for audio_chunk in self.synthesize(text, syn_config=syn_config):
             if first_chunk:
                 if set_wav_format:
-                    # Set audio format on first chunk
+                    # the chunk is authoritative once we have one
                     wav_file.setframerate(audio_chunk.sample_rate)
                     wav_file.setsampwidth(audio_chunk.sample_width)
                     wav_file.setnchannels(audio_chunk.sample_channels)

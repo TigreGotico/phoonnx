@@ -38,11 +38,15 @@ class PhoonnxTTSPlugin(TTS):
         self.model_manager.merge_default_voices()
 
         self.voices: Dict[str, TTSVoice] = {}
+        # Resolve the configured voice now, but do not load it. A voice that was
+        # named explicitly and does not exist is a configuration error and still
+        # raises here; an unset voice (or "default") resolves to the language's
+        # default. Loading is deferred to the first synthesis so that fetching a
+        # model is never what decides whether the TTS service can start.
         if self.voice and self.voice != "default":
-            self.voices[self.voice] = self.get_model(self.voice)
+            self.voice_info = self.get_voice_info(self.voice)
         else:
-            default = self.get_default_voice(self.lang)
-            self.voices[default.voice_id] = self.get_model(default.voice_id)
+            self.voice_info = self.get_default_voice(self.lang)
 
     def _cfg_opt(self, default, *keys):
         """
@@ -163,14 +167,31 @@ class PhoonnxTTSPlugin(TTS):
         """
         if voice_id in self.voices:
             return self.voices[voice_id]
+        info = self.get_voice_info(voice_id)
+        LOG.debug(f"Using voice: {voice_id}")
+        self.voices[voice_id] = info.load(providers=self._providers())
+        return self.voices[voice_id]
+
+    def get_voice_info(self, voice_id: str) -> TTSModelInfo:
+        """
+        Look up a voice in the catalog without loading it, refreshing the
+        catalog once if the id is not already known.
+
+        Parameters:
+            voice_id (str): Identifier of the voice to look up.
+
+        Returns:
+            TTSModelInfo: Catalog entry for the voice.
+
+        Raises:
+            Exception: If `voice_id` is still unknown after a refresh.
+        """
         if voice_id not in self.model_manager.voices:
             LOG.info(f"{voice_id} not found - refreshing voice list")
             self.refresh_voices(force=True)
             if voice_id not in self.model_manager.voices:
                 raise Exception(f"Unknown voice: {voice_id}")
-        LOG.debug(f"Using voice: {voice_id}")
-        self.voices[voice_id] = self.model_manager.voices[voice_id].load(providers=self._providers())
-        return self.voices[voice_id]
+        return self.model_manager.voices[voice_id]
 
     def get_tts(self, sentence, wav_file, lang=None, voice=None):
         """
