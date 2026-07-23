@@ -354,6 +354,19 @@ def phonemize_worker(
          "(multilingual training)",
 )
 @click.option(
+    "--f0-method",
+    "f0_method",
+    default="pyin",
+    type=click.Choice(["pyin", "dio", "harvest"]),
+    show_default=True,
+    help="[--engine fastpitch/speedyspeech/mixer] ground-truth F0 (pitch) "
+         "extractor: 'pyin' (librosa, default, no extra native dependency) "
+         "or 'dio'/'harvest' (WORLD via pyworld, ~50x faster at "
+         "preprocessing time, requires the 'train-pyworld' extra). Must "
+         "match the f0_method the training engine config uses, since it "
+         "selects which F0 sidecar cache filename is read at train time.",
+)
+@click.option(
     "--filter",
     "quality_filters",
     multiple=True,
@@ -443,6 +456,7 @@ def cli(
     engine: Optional[str],
     speaker_encoder_path: Optional[str],
     language_id: Optional[int],
+    f0_method: str,
     quality_filters: Tuple[str, ...],
     vad_model: str,
     speaker_model: str,
@@ -826,6 +840,8 @@ def cli(
                 engine_kwargs["speaker_encoder_path"] = speaker_encoder_path
             if language_id is not None:
                 engine_kwargs["language_id"] = language_id
+            if f0_method:
+                engine_kwargs["f0_method"] = f0_method
 
         for utt in processed_utterances:
             if is_multispeaker and utt.speaker is not None:

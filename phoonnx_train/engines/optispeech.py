@@ -200,6 +200,11 @@ class OptiSpeechEngineConfig:
     f_min: int = 0
     f_max: int = 8000
 
+    # F0 extraction method: "pyin" (default, librosa, no extra native
+    # dependency) or "dio"/"harvest" (WORLD via pyworld, train-pyworld
+    # extra, ~50x faster at preprocessing time).
+    f0_method: str = "pyin"
+
     # Text processing
     tokenizer: str = "ipa"
     add_blank: bool = False
@@ -306,7 +311,18 @@ def _build_feature_extractor(ocfg: "OptiSpeechEngineConfig"):
     from phoonnx_train.optispeech.dataset.feature_extractors import CommonFeatureExtractor
     from phoonnx_train.optispeech.dataset.feature_extractors.pitch_extractors import (
         DIOPitchExtractor,
+        HarvestPitchExtractor,
+        PyinPitchExtractor,
     )
+
+    pitch_extractor_classes = {
+        "pyin": PyinPitchExtractor,
+        "dio": DIOPitchExtractor,
+        "harvest": HarvestPitchExtractor,
+    }
+    if ocfg.f0_method not in pitch_extractor_classes:
+        _LOG.warning("unknown f0_method %r — falling back to 'pyin'", ocfg.f0_method)
+    pitch_extractor_cls = pitch_extractor_classes.get(ocfg.f0_method, PyinPitchExtractor)
 
     return CommonFeatureExtractor(
         sample_rate=ocfg.sample_rate,
@@ -317,7 +333,7 @@ def _build_feature_extractor(ocfg: "OptiSpeechEngineConfig"):
         f_min=ocfg.f_min,
         f_max=ocfg.f_max,
         center=True,
-        pitch_extractor=functools.partial(DIOPitchExtractor, interpolate=True),
+        pitch_extractor=functools.partial(pitch_extractor_cls, interpolate=True),
     )
 
 

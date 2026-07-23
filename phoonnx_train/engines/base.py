@@ -113,7 +113,7 @@ class BaseTrainingEngine(ABC):
         phonemization + audio normalization.
 
         For example, OptiSpeech needs F0 (pitch) and energy extraction
-        via pyworld, while VITS does not.
+        via ``librosa.pyin``, while VITS does not.
 
         Returns a dict of extra fields to merge into the utterance
         record in dataset.jsonl.  Default returns empty.

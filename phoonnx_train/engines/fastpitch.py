@@ -266,32 +266,51 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
         cache_dir: Path,
         sample_rate: int,
         hop_length: int = 256,
+        f0_method: str = "pyin",
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        """Extract F0 (pitch) via pyworld; cached alongside the mel cache.
+        """Extract F0 (pitch); cached alongside the mel cache.
 
-        pyworld DIO + StoneMask, run at a frame period matched to the mel
-        hop (``1000 * hop_length / sample_rate`` ms) so the f0 track is
-        frame-aligned with the mel target, and computed on the same
-        trimmed/normalized audio the mels come from (the ``<sha>.pt``
-        cache written by ``cache_norm_audio``). The sidecar is named
-        ``<sha>.f0.npy`` next to the ``<sha>.spec.pt`` cache so the
-        training dataset finds it. SpeedySpeech does not use pitch, but
-        the cache is harmless and lets the same preprocessed dataset be
-        reused for either variant.
+        ``f0_method`` selects the extractor: ``"pyin"`` (default,
+        ``librosa.pyin``, no extra native dependency) or ``"dio"``/
+        ``"harvest"`` (WORLD via ``pyworld``, opt-in through the
+        ``train-pyworld`` extra — ~50x faster at preprocessing time).
+
+        Run at a frame period matched to the mel hop (``1000 * hop_length /
+        sample_rate`` ms) so the f0 track is frame-aligned with the mel
+        target, and computed on the same trimmed/normalized audio the mels
+        come from (the ``<sha>.pt`` cache written by ``cache_norm_audio``).
+        The sidecar is named ``<sha>.f0-<method>.npy`` (see
+        ``phoonnx_train.fastpitch.pitch_stats.f0_cache_path``) next to the
+        ``<sha>.spec.pt``
+        cache so the training dataset finds it. SpeedySpeech does not use
+        pitch, but the cache is harmless and lets the same preprocessed
+        dataset be reused for either variant.
         """
         import numpy as np
 
         try:
-            import librosa  # noqa: F401 — fallback loader below
-            import pyworld as pw
+            import librosa
+            from phoonnx_train.vendor.f0 import extract_f0, extract_f0_world, get_extractor_tag
         except ImportError:
             _LOG.warning(
-                "pyworld/librosa not installed — skipping F0 extraction "
+                "librosa not installed — skipping F0 extraction "
                 "(FastPitch pitch predictor will train without a target; "
                 "install phoonnx[train,train-fastpitch] for real pitch)."
             )
             return {}
+
+        get_extractor_tag(f0_method)  # fail fast on an unknown method
+
+        if f0_method != "pyin":
+            try:
+                import pyworld  # noqa: F401 — presence check, extract_f0_world imports it
+            except ImportError:
+                _LOG.warning(
+                    "pyworld not installed — skipping F0 extraction "
+                    "(f0_method=%r needs the 'train-pyworld' extra).", f0_method,
+                )
+                return {}
 
         from hashlib import sha256
 
@@ -315,9 +334,10 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
             wav, _sr = librosa.load(str(utterance_audio_path), sr=sample_rate, mono=True)
 
         wav_double = wav.astype(np.float64)
-        frame_period = 1000.0 * hop_length / sample_rate  # ms, = mel hop
-        f0, timeaxis = pw.dio(wav_double, sample_rate, frame_period=frame_period)
-        f0 = pw.stonemask(wav_double, f0, timeaxis, sample_rate).astype(np.float32)
+        if f0_method == "pyin":
+            f0 = extract_f0(wav_double, sample_rate, hop_length).astype(np.float32)
+        else:
+            f0 = extract_f0_world(wav_double, sample_rate, hop_length, method=f0_method).astype(np.float32)
 
         if spec_path.exists():
             import torch
@@ -336,8 +356,10 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
             elif diff < 0:
                 f0 = np.pad(f0, (0, -diff))
 
+        from phoonnx_train.fastpitch.pitch_stats import f0_cache_path
+
         cache_dir.mkdir(parents=True, exist_ok=True)
-        f0_path = cache_dir / f"{audio_cache_id}.f0.npy"
+        f0_path = f0_cache_path(spec_path, method=f0_method)
         np.save(f0_path, f0)
 
         return {"f0_path": str(f0_path)}

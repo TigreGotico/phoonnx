@@ -11,20 +11,13 @@ import torchaudio
 from scipy.interpolate import interp1d
 
 from phoonnx_train.optispeech.utils import pylogger, trim_or_pad_to_target_length
+from phoonnx_train.vendor.f0 import extract_f0, extract_f0_world
 
 log = pylogger.get_pylogger(__name__)
 
 # Optional pitch extraction backends — each extractor imports its own
 # library lazily so missing deps don't break the whole module.
-_torchcrepe = _penn = _pyworld = _jdc = None
-
-
-def _get_pyworld():
-    global _pyworld
-    if _pyworld is None:
-        import pyworld as _pyworld_mod
-        _pyworld = _pyworld_mod
-    return _pyworld
+_torchcrepe = _penn = _jdc = None
 
 
 def _get_torchcrepe():
@@ -96,18 +89,33 @@ class BasePitchExtractor(ABC):
 
 
 @dataclass
-class DIOPitchExtractor(BasePitchExtractor):
-    _METHOD: typing.ClassVar[str] = "dio"
-
-    def __post_init__(self):
-        self.extraction_func = getattr(_get_pyworld(), self._METHOD)
+class PyinPitchExtractor(BasePitchExtractor):
+    """Frame-level F0 extraction via ``librosa.pyin`` (probabilistic YIN).
+    No extra native dependency; the default pitch extractor."""
 
     def __call__(self, wav, mel_length):
         wav = wav.astype(np.double)
-        pitch, t = self.extraction_func(
-            wav, self.sample_rate, frame_period=self.hop_length / self.sample_rate * 1000
-        )
-        pitch = _get_pyworld().stonemask(wav, pitch, t, self.sample_rate)
+        pitch = extract_f0(wav, self.sample_rate, self.hop_length,
+                            f_min=self.f_min, f_max=self.f_max)
+        pitch = trim_or_pad_to_target_length(pitch, mel_length)
+        if self.interpolate:
+            pitch = self.perform_interpolation(pitch)
+        return pitch
+
+
+@dataclass
+class DIOPitchExtractor(BasePitchExtractor):
+    """Frame-level F0 extraction via WORLD ``dio`` + ``stonemask``
+    (``pyworld``, opt-in through the ``train-pyworld`` extra) — ~50x faster
+    than :class:`PyinPitchExtractor` at preprocessing time."""
+
+    _METHOD: typing.ClassVar[str] = "dio"
+
+    def __call__(self, wav, mel_length):
+        wav = wav.astype(np.double)
+        pitch = extract_f0_world(wav, self.sample_rate, self.hop_length,
+                                  f_min=self.f_min, f_max=self.f_max,
+                                  method=self._METHOD)
         pitch = trim_or_pad_to_target_length(pitch, mel_length)
         if self.interpolate:
             pitch = self.perform_interpolation(pitch)
@@ -115,7 +123,11 @@ class DIOPitchExtractor(BasePitchExtractor):
 
 
 class HarvestPitchExtractor(DIOPitchExtractor):
-    _METHOD: str = "harvest"
+    """Same WORLD-backed extraction as :class:`DIOPitchExtractor`, using
+    ``pyworld.harvest`` instead of ``pyworld.dio`` (slower, generally more
+    robust)."""
+
+    _METHOD: typing.ClassVar[str] = "harvest"
 
 
 @dataclass
@@ -251,9 +263,11 @@ class CrepePitchExtractor(BasePitchExtractor):
 
 @dataclass
 class EnsemblePitchExtractor(BasePitchExtractor):
-    # cls -> voiced-reliability score
+    # cls -> voiced-reliability score. Uses PyinPitchExtractor (not the
+    # WORLD-backed DIOPitchExtractor) so the ensemble has no hard pyworld
+    # dependency.
     extractor_classes = {
-        DIOPitchExtractor: 0.75,
+        PyinPitchExtractor: 0.75,
         PENNPitchExtractor: 0.08,
         JDCPitchExtractor: 0.15,
         CrepePitchExtractor: 0.02,

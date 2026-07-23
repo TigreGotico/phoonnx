@@ -5,7 +5,7 @@ Reuses the shared VITS preprocessing pipeline: ``audio_norm_path`` /
 ``phoonnx_train.preprocess``; the mel target is derived from the linear
 spectrogram at load time via ``phoonnx_train.vits.mel_processing`` (no
 separate mel cache needed). Pitch (F0) is read from the optional
-``<utterance>.f0.npy`` sidecar caches written by
+``<utterance>.f0-<method>.npy`` sidecar caches written by
 ``ForwardTTSTrainingEngine.extra_preprocess``.
 """
 import logging
@@ -76,7 +76,8 @@ class ForwardTTSDataset(Dataset):
     def __init__(self, dataset_paths: List[Path], mel_channels: int,
                  filter_length: int, sample_rate: int,
                  mel_fmin: float, mel_fmax: Optional[float],
-                 max_phoneme_ids: Optional[int] = None):
+                 max_phoneme_ids: Optional[int] = None,
+                 f0_method: str = "pyin"):
         # accept either a preprocessed dataset dir or the dataset.jsonl itself
         jsonl_paths = [
             (Path(p) / "dataset.jsonl") if Path(p).is_dir() else Path(p)
@@ -88,9 +89,11 @@ class ForwardTTSDataset(Dataset):
         self.sample_rate = sample_rate
         self.mel_fmin = mel_fmin
         self.mel_fmax = mel_fmax
+        self.f0_method = f0_method
         self.pitch_mean, self.pitch_std = load_or_compute_pitch_stats(
             dataset_paths,
-            [f0_cache_path(utt.audio_spec_path) for utt in self._inner.utterances],
+            [f0_cache_path(utt.audio_spec_path, method=f0_method) for utt in self._inner.utterances],
+            method=f0_method,
         )
 
     def __len__(self) -> int:
@@ -105,8 +108,8 @@ class ForwardTTSDataset(Dataset):
         ).squeeze(0)  # [mel_channels, T]
 
         pitch = None
-        # optional sidecar cache written by extra_preprocess: "<stem>.f0.npy"
-        f0_candidate = f0_cache_path(utt.audio_spec_path)
+        # optional sidecar cache written by extra_preprocess: "<stem>.f0-<method>.npy"
+        f0_candidate = f0_cache_path(utt.audio_spec_path, method=self.f0_method)
         if f0_candidate.exists():
             import numpy as np
 
@@ -193,6 +196,11 @@ class ForwardTTSModule(pl.LightningModule):
         # epoch 0 risks locking in a still-random soft alignment
         binary_loss_start_epoch: int = 10,
         binary_loss_warmup_epochs: int = 10,
+        # F0 extraction method used at preprocessing time — "pyin" (default)
+        # or "dio"/"harvest" (WORLD via pyworld, train-pyworld extra). Must
+        # match whatever ``--f0-method`` extra_preprocess ran with, since it
+        # selects which ``<utterance>.f0-<method>.npy`` sidecar to read.
+        f0_method: str = "pyin",
         **kwargs: Any,
     ):
         super().__init__()
@@ -238,6 +246,7 @@ class ForwardTTSModule(pl.LightningModule):
             mel_fmin=self.hparams.mel_fmin,
             mel_fmax=self.hparams.mel_fmax,
             max_phoneme_ids=max_phoneme_ids,
+            f0_method=self.hparams.f0_method,
         )
         valid_size = max(0, int(len(full_dataset) * validation_split))
         test_size = min(num_test_examples, max(0, len(full_dataset) - valid_size))

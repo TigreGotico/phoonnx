@@ -25,30 +25,11 @@ import torchaudio
 from torch.utils.data import Sampler
 
 from phoonnx_train.styletts2.meldataset import MEL_PARAMS, SPECT_PARAMS, TextCleaner
+from phoonnx_train.vendor.f0 import extract_f0, extract_f0_world, get_extractor_tag
 
 LOG = logging.getLogger(__name__)
 
 MEL_MEAN, MEL_STD = -4, 4
-
-
-def _import_pyworld():
-    """Import ``pyworld``, shimming ``pkg_resources`` if setuptools no longer
-    ships it (removed in setuptools >= 81). pyworld's package ``__init__`` only
-    touches ``pkg_resources`` to read its own version string, so a minimal
-    stand-in keeps it importable on Python 3.12+ / modern-setuptools venvs
-    without pinning setuptools back."""
-    import sys
-    if "pkg_resources" not in sys.modules:
-        try:
-            import pkg_resources  # noqa: F401
-        except ImportError:
-            import types
-            shim = types.ModuleType("pkg_resources")
-            shim.get_distribution = lambda name: types.SimpleNamespace(
-                version="0.0.0")
-            sys.modules["pkg_resources"] = shim
-    import pyworld
-    return pyworld
 
 
 def parse_list_lines(lines: List[str], root_path: str) -> List[Tuple[str, str, int]]:
@@ -70,7 +51,7 @@ def parse_list_lines(lines: List[str], root_path: str) -> List[Tuple[str, str, i
 
 class AuxMelDataset(torch.utils.data.Dataset):
     """Mel + phoneme-id dataset for the aligner; optionally F0 for the pitch
-    extractor (``with_f0=True`` computes pyworld harvest F0, cached)."""
+    extractor (``with_f0=True`` computes F0 via ``f0_method``, cached)."""
 
     def __init__(self,
                  data_list: List[str],
@@ -78,12 +59,14 @@ class AuxMelDataset(torch.utils.data.Dataset):
                  sr: int = 24000,
                  n_mels: int = MEL_PARAMS["n_mels"],
                  with_f0: bool = False,
-                 cache_features: bool = True):
+                 cache_features: bool = True,
+                 f0_method: str = "pyin"):
         self.data = parse_list_lines(data_list, root_path)
         self.sr = sr
         self.n_mels = n_mels
         self.with_f0 = with_f0
         self.cache_features = cache_features
+        self.f0_method = f0_method
         self.text_cleaner = TextCleaner()
         self.to_melspec = torchaudio.transforms.MelSpectrogram(
             n_mels=n_mels, **SPECT_PARAMS)
@@ -118,17 +101,19 @@ class AuxMelDataset(torch.utils.data.Dataset):
         return mel
 
     def _f0(self, wav_path: str, n_frames: int) -> torch.Tensor:
-        cache = Path(wav_path).with_suffix(f".f0-{self.sr}.npy")
+        # extraction-method tag is folded into the filename so a cache
+        # written by a previous F0 extractor is a clean miss, not silently
+        # reused
+        tag = get_extractor_tag(self.f0_method)
+        cache = Path(wav_path).with_suffix(f".f0-{self.sr}-{tag}.npy")
         if self.cache_features and cache.is_file():
             f0 = np.load(cache)
         else:
-            pyworld = _import_pyworld()
             x = self._load_wave(wav_path).numpy().astype(np.float64)
-            frame_period = SPECT_PARAMS["hop_length"] / self.sr * 1000
-            f0, t = pyworld.harvest(x, self.sr, frame_period=frame_period)
-            if np.count_nonzero(f0) < 5:  # harvest failed — retry with dio
-                f0, t = pyworld.dio(x, self.sr, frame_period=frame_period)
-            f0 = pyworld.stonemask(x, f0, t, self.sr)
+            if self.f0_method == "pyin":
+                f0 = extract_f0(x, self.sr, SPECT_PARAMS["hop_length"])
+            else:
+                f0 = extract_f0_world(x, self.sr, SPECT_PARAMS["hop_length"], method=self.f0_method)
             if self.cache_features:
                 try:
                     np.save(cache, f0)
