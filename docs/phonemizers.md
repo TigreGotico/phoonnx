@@ -147,8 +147,13 @@ All phonemizers inherit from `BasePhonemizer` which provides:
 
 - `phonemize(text, lang)` — returns `PhonemizedChunks` (list of sentences, each a list of phoneme strings)
 - `phonemize_string(text, lang)` — returns raw phoneme string for a single chunk
-- `add_diacritics(text, lang)` — adds vowel diacritics (Arabic/Hebrew)
 - `chunk_text(text)` — splits text into sentence chunks with punctuation
+
+Diacritization (Arabic tashkeel, Hebrew niqqud, and the other scripts scriptconv
+supports) is not a phonemizer method — it is a separate step exposed as
+`scriptconv.diacritics.diacritize(text, lang)`, which phoonnx calls before
+phonemizing when a voice enables `add_diacritics`. scriptconv owns the
+diacritizer backends and auto-provisions the Hebrew phonikud model.
 
 ## Attribution
 

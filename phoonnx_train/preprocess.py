@@ -13,7 +13,6 @@ import torch
 from tqdm import tqdm
 
 from phoonnx.config import PhonemeType, get_phonemizer, Alphabet
-from phoonnx.phonemizers import Phonemizer
 from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, \
     phoneme_map_seed, untrained_map_symbols, \
     DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN
@@ -63,7 +62,7 @@ def phonemize_worker(
         config: PreprocessorConfig,
         task_queue: JoinableQueue,
         result_queue: Queue,
-        phonemizer: Phonemizer,
+        phonemizer: PhonemeType,
 ) -> None:
     """
     Worker process for phonemization and audio processing.
@@ -639,7 +638,7 @@ def cli(
     _LOGGER.info("Starting single pass processing with %d workers...", config.max_workers)
 
     # Initialize the phonemizer only once in the main process
-    phonemizer: Phonemizer = get_phonemizer(config.phoneme_type,
+    phonemizer: PhonemeType = get_phonemizer(config.phoneme_type,
                                             config.alphabet,
                                             config.phonemizer_model)
 

@@ -8,7 +8,7 @@ dialect-aware: central Mirandese (``mwl``, the default), Sendinese
 import pytest
 
 from phoonnx.config import PhonemeType, Alphabet, get_phonemizer
-from phoonnx.phonemizers.mwl import MirandesePhonemizer, DIALECTS
+from scriptconv.phonemizers.mwl import MirandesePhonemizer, DIALECTS
 
 
 def test_factory_dispatch():

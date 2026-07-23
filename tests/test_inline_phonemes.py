@@ -7,7 +7,7 @@ returned the raw ``(str, str, bool)`` tuple form for empty text, so the leading
 empty part before a block landed a tuple in the sentence list that the block
 branch then tried to mutate.
 """
-from phoonnx.phonemizers.base import BasePhonemizer
+from scriptconv.phonemizers.base import BasePhonemizer
 from phoonnx.voice import TTSVoice
 
 

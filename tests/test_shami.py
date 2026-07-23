@@ -5,8 +5,8 @@ from unittest.mock import patch
 import numpy as np
 
 from phoonnx.config import Alphabet
-from phoonnx.phonemizers.base import BasePhonemizer
-from phoonnx.phonemizers.shami import ShamiPhonemizer
+from scriptconv.phonemizers.base import BasePhonemizer
+from scriptconv.phonemizers.shami import ShamiPhonemizer
 from phoonnx.engines.shami import ShamiAdapter
 from phoonnx.engines.base import AdapterSynthesisRequest
 

@@ -3,7 +3,7 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-from phoonnx.phonemizers.base import BasePhonemizer
+from scriptconv.phonemizers.base import BasePhonemizer
 from phoonnx.util import _normalize_word
 
 
@@ -70,7 +70,7 @@ class TestGruutEmptySentence(unittest.TestCase):
     """An empty gruut sentence result must not IndexError on sent_phonemes[-1]."""
 
     def test_empty_sentence_phonemes_skipped(self):
-        from phoonnx.phonemizers.mul import GruutPhonemizer
+        from scriptconv.phonemizers.mul import GruutPhonemizer
 
         fake_sentence = MagicMock()
         fake_sentence.__iter__ = lambda self: iter([])

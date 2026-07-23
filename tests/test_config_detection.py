@@ -264,13 +264,13 @@ class TestGetPhonemizerDispatch(unittest.TestCase):
 
     def test_espeak_phoneme_type_returns_espeak_phonemizer(self):
         from phoonnx.config import get_phonemizer
-        from phoonnx.phonemizers import EspeakPhonemizer
+        from scriptconv.phonemizers.mul import EspeakPhonemizer
         phonemizer = get_phonemizer(PhonemeType.ESPEAK)
         self.assertIsInstance(phonemizer, EspeakPhonemizer)
 
     def test_graphemes_phoneme_type_returns_grapheme_phonemizer(self):
         from phoonnx.config import get_phonemizer
-        from phoonnx.phonemizers import GraphemePhonemizer
+        from scriptconv.phonemizers import GraphemePhonemizer
         phonemizer = get_phonemizer(PhonemeType.GRAPHEMES)
         self.assertIsInstance(phonemizer, GraphemePhonemizer)
 

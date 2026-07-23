@@ -88,7 +88,7 @@ class IPATokenizer(BaseTokenizer):
         # — which has no wheels for current CPython and is not used anywhere
         # else in phoonnx.
         if cls._espeak is None:
-            from phoonnx.phonemizers.mul import EspeakPhonemizer
+            from scriptconv.phonemizers.mul import EspeakPhonemizer
 
             cls._espeak = EspeakPhonemizer()
         return cls._espeak

@@ -1,4 +1,4 @@
-"""Adversarial tests for phoonnx.phonemizers.en (DeepPhonemizer, OpenPhonemizer,
+"""Adversarial tests for scriptconv.phonemizers.en (DeepPhonemizer, OpenPhonemizer,
 G2PEnPhonemizer).
 
 Heavyweight backends (dp/torch, openphonemizer, nltk/g2p_en) are mocked via
@@ -33,7 +33,7 @@ def _fake_torch_and_dp_modules():
 
 class TestDeepPhonemizerConstruction(unittest.TestCase):
     def test_ipa_model_name_sets_ipa_alphabet(self):
-        from phoonnx.phonemizers.en import DeepPhonemizer
+        from scriptconv.phonemizers.en import DeepPhonemizer
 
         fake_torch, fake_dp, _, _ = _fake_torch_and_dp_modules()
         fake_phonemizer_mod = MagicMock()
@@ -53,7 +53,7 @@ class TestDeepPhonemizerConstruction(unittest.TestCase):
         fake_phonemizer_mod.Phonemizer.from_checkpoint.assert_called_once_with("latin_ipa_forward.pt")
 
     def test_non_ipa_model_name_sets_arpa_alphabet(self):
-        from phoonnx.phonemizers.en import DeepPhonemizer
+        from scriptconv.phonemizers.en import DeepPhonemizer
 
         fake_torch, fake_dp, _, _ = _fake_torch_and_dp_modules()
         fake_phonemizer_mod = MagicMock()
@@ -72,7 +72,7 @@ class TestDeepPhonemizerConstruction(unittest.TestCase):
     def test_unknown_local_model_path_raises_value_error(self):
         """A model name that isn't a real file AND isn't in MODELS must raise,
         never silently proceed to construct a Phonemizer from garbage."""
-        from phoonnx.phonemizers.en import DeepPhonemizer
+        from scriptconv.phonemizers.en import DeepPhonemizer
 
         fake_torch, fake_dp, _, _ = _fake_torch_and_dp_modules()
         fake_phonemizer_mod = MagicMock()
@@ -90,19 +90,19 @@ class TestDeepPhonemizerConstruction(unittest.TestCase):
 
 class TestDeepPhonemizerGetLang(unittest.TestCase):
     def test_valid_lang_de_and_en_us(self):
-        from phoonnx.phonemizers.en import DeepPhonemizer
+        from scriptconv.phonemizers.en import DeepPhonemizer
         self.assertEqual(DeepPhonemizer.get_lang("de"), "de")
         self.assertEqual(DeepPhonemizer.get_lang("en_us"), "en_us")
 
     def test_unsupported_lang_raises(self):
-        from phoonnx.phonemizers.en import DeepPhonemizer
+        from scriptconv.phonemizers.en import DeepPhonemizer
         with self.assertRaises(ValueError):
             DeepPhonemizer.get_lang("zz-totally-bogus")
 
 
 class TestDeepPhonemizerPhonemizeString(unittest.TestCase):
     def _make_instance(self):
-        from phoonnx.phonemizers.en import DeepPhonemizer
+        from scriptconv.phonemizers.en import DeepPhonemizer
         inst = DeepPhonemizer.__new__(DeepPhonemizer)
         inst.alphabet = Alphabet.IPA
         inst.phonemizer = MagicMock(return_value="h eh l ow")
@@ -128,7 +128,7 @@ class TestDeepPhonemizerPhonemizeString(unittest.TestCase):
 
 class TestOpenPhonemizer(unittest.TestCase):
     def test_get_lang_only_supports_en(self):
-        from phoonnx.phonemizers.en import OpenPhonemizer
+        from scriptconv.phonemizers.en import OpenPhonemizer
         self.assertEqual(OpenPhonemizer.get_lang("en"), "en")
         self.assertEqual(OpenPhonemizer.get_lang("en-US"), "en")
         with self.assertRaises(ValueError):
@@ -147,14 +147,14 @@ class TestOpenPhonemizer(unittest.TestCase):
             "dp.preprocessing": fake_dp.preprocessing,
             "dp.preprocessing.text": fake_dp.preprocessing.text,
         }):
-            from phoonnx.phonemizers.en import OpenPhonemizer
+            from scriptconv.phonemizers.en import OpenPhonemizer
             inst = OpenPhonemizer()
 
         self.assertEqual(inst.alphabet, Alphabet.IPA)
         mock_backend_cls.assert_called_once()
 
     def test_phonemize_string_delegates_and_ignores_lang_arg_in_call(self):
-        from phoonnx.phonemizers.en import OpenPhonemizer
+        from scriptconv.phonemizers.en import OpenPhonemizer
         inst = OpenPhonemizer.__new__(OpenPhonemizer)
         inst.alphabet = Alphabet.IPA
         inst.phonemizer = MagicMock(return_value="h ə l oʊ")
@@ -164,7 +164,7 @@ class TestOpenPhonemizer(unittest.TestCase):
         self.assertEqual(result, "h ə l oʊ")
 
     def test_phonemize_string_unsupported_lang_raises(self):
-        from phoonnx.phonemizers.en import OpenPhonemizer
+        from scriptconv.phonemizers.en import OpenPhonemizer
         inst = OpenPhonemizer.__new__(OpenPhonemizer)
         inst.alphabet = Alphabet.IPA
         inst.phonemizer = MagicMock()
@@ -174,7 +174,7 @@ class TestOpenPhonemizer(unittest.TestCase):
 
 class TestG2PEnPhonemizer(unittest.TestCase):
     def test_rejects_unsupported_alphabet(self):
-        from phoonnx.phonemizers.en import G2PEnPhonemizer
+        from scriptconv.phonemizers.en import G2PEnPhonemizer
         with self.assertRaises(AssertionError):
             with patch.dict(sys.modules, {
                 "nltk": MagicMock(),
@@ -189,7 +189,7 @@ class TestG2PEnPhonemizer(unittest.TestCase):
         fake_g2p_en_mod.G2p = fake_g2p_cls
 
         with patch.dict(sys.modules, {"nltk": fake_nltk, "g2p_en": fake_g2p_en_mod}):
-            from phoonnx.phonemizers.en import G2PEnPhonemizer
+            from scriptconv.phonemizers.en import G2PEnPhonemizer
             inst = G2PEnPhonemizer()
 
         fake_nltk.download.assert_any_call('averaged_perceptron_tagger_eng')
@@ -198,13 +198,13 @@ class TestG2PEnPhonemizer(unittest.TestCase):
         self.assertEqual(inst.alphabet, Alphabet.IPA)
 
     def test_get_lang_only_supports_en(self):
-        from phoonnx.phonemizers.en import G2PEnPhonemizer
+        from scriptconv.phonemizers.en import G2PEnPhonemizer
         self.assertEqual(G2PEnPhonemizer.get_lang("en-US"), "en")
         with self.assertRaises(ValueError):
             G2PEnPhonemizer.get_lang("ja")
 
     def test_phonemize_string_arpa_alphabet_returns_raw_arpa(self):
-        from phoonnx.phonemizers.en import G2PEnPhonemizer
+        from scriptconv.phonemizers.en import G2PEnPhonemizer
         inst = G2PEnPhonemizer.__new__(G2PEnPhonemizer)
         inst.alphabet = Alphabet.ARPA
         inst.g2p = MagicMock(return_value=["HH", "AH0", "L", "OW1"])
@@ -213,7 +213,7 @@ class TestG2PEnPhonemizer(unittest.TestCase):
         self.assertEqual(result, ["HH", "AH0", "L", "OW1"])
 
     def test_phonemize_string_ipa_alphabet_maps_arpa_to_ipa(self):
-        from phoonnx.phonemizers.en import G2PEnPhonemizer
+        from scriptconv.phonemizers.en import G2PEnPhonemizer
         inst = G2PEnPhonemizer.__new__(G2PEnPhonemizer)
         inst.alphabet = Alphabet.IPA
         inst.g2p = MagicMock(return_value=["HH", "AH0"])
@@ -225,7 +225,7 @@ class TestG2PEnPhonemizer(unittest.TestCase):
     def test_phonemize_string_oov_arpa_symbol_falls_back_to_symbol_itself(self):
         """An ARPA symbol absent from the lookup table must be passed through
         unchanged (via dict.get default), never raise a KeyError."""
-        from phoonnx.phonemizers.en import G2PEnPhonemizer
+        from scriptconv.phonemizers.en import G2PEnPhonemizer
         inst = G2PEnPhonemizer.__new__(G2PEnPhonemizer)
         inst.alphabet = Alphabet.IPA
         inst.g2p = MagicMock(return_value=["ZZZ_UNKNOWN"])
@@ -235,7 +235,7 @@ class TestG2PEnPhonemizer(unittest.TestCase):
         self.assertEqual(result, "ZZZ_UNKNOWN")
 
     def test_phonemize_string_empty_g2p_output(self):
-        from phoonnx.phonemizers.en import G2PEnPhonemizer
+        from scriptconv.phonemizers.en import G2PEnPhonemizer
         inst = G2PEnPhonemizer.__new__(G2PEnPhonemizer)
         inst.alphabet = Alphabet.IPA
         inst.g2p = MagicMock(return_value=[])
@@ -245,7 +245,7 @@ class TestG2PEnPhonemizer(unittest.TestCase):
         self.assertEqual(result, "")
 
     def test_phonemize_string_invalid_lang_raises(self):
-        from phoonnx.phonemizers.en import G2PEnPhonemizer
+        from scriptconv.phonemizers.en import G2PEnPhonemizer
         inst = G2PEnPhonemizer.__new__(G2PEnPhonemizer)
         inst.alphabet = Alphabet.IPA
         inst.g2p = MagicMock()

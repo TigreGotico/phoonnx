@@ -24,7 +24,7 @@ from collections import deque
 from typing import Callable, Dict, List, Optional, Tuple
 
 from phoonnx.config import Alphabet, PhonemeType
-from phoonnx.phonemizers.base import PhonemizedChunks
+from scriptconv.phonemizers.base import PhonemizedChunks
 
 LOG = logging.getLogger(__name__)
 

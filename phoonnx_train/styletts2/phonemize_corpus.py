@@ -36,7 +36,7 @@ _SYMBOL_SET = set(symbols)
 
 
 def get_phonemizer(name: str = "espeak"):
-    import phoonnx.phonemizers as P
+    import scriptconv.phonemizers as P
     aliases = {
         "espeak": "EspeakPhonemizer",
         "gruut": "GruutPhonemizer",

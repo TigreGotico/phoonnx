@@ -1,4 +1,4 @@
-"""Adversarial tests for phoonnx.phonemizers.mul — the multilingual phonemizer
+"""Adversarial tests for scriptconv.phonemizers.mul — the multilingual phonemizer
 dispatch/fallback layer (EspeakPhonemizer, GruutPhonemizer, GoruutPhonemizer,
 EpitranPhonemizer, MisakiPhonemizer family, CharsiuPhonemizer).
 
@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from phoonnx.config import Alphabet
-from phoonnx.phonemizers.mul import (
+from scriptconv.phonemizers.mul import (
     EspeakPhonemizer,
     EspeakError,
     GruutPhonemizer,

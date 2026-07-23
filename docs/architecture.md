@@ -56,7 +56,7 @@ own input.
 
 | Concern | Owner | Registry / hook |
 |---|---|---|
-| Text → phonemes | `phoonnx/phonemizers/` | `get_phonemizer(phoneme_type, alphabet, model)` in `config.py` |
+| Text → phonemes | `scriptconv.phonemizers` (delegated) | `get_phonemizer(phoneme_type, alphabet, model)` in `config.py` |
 | Phonemes → IDs | `phoonnx/tokenizer.py` | `TTSTokenizer` built from the voice config |
 | IDs → audio (ONNX I/O) | `phoonnx/engines/` | `register_engine(name, adapter_cls, detect_priority=...)` |
 | Mel → waveform (two-stage) | `phoonnx/engines/vocoders/` | vocoder registry, selected by `vocoder_type` |

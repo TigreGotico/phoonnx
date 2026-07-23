@@ -18,7 +18,7 @@ SAMPLE_GL = "Este é un sistema de conversión de texto a voz en lingua galega."
 # ---------------------------------------------------------------------------
 
 def test_cotovia_alphabet_returns_string():
-    from phoonnx.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv.phonemizers.gl import CotoviaPhonemizer
     from phoonnx.config import Alphabet
     p = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA)
     result = p.phonemize_string(SAMPLE_GL, "gl")
@@ -27,7 +27,7 @@ def test_cotovia_alphabet_returns_string():
 
 
 def test_cotovia_alphabet_no_ipa_in_output():
-    from phoonnx.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv.phonemizers.gl import CotoviaPhonemizer
     from phoonnx.config import Alphabet
     p = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA)
     result = p.phonemize_string("ola mundo", "gl")
@@ -37,7 +37,7 @@ def test_cotovia_alphabet_no_ipa_in_output():
 
 def test_cotovia_alphabet_stability():
     """Stability fixture: exact Cotovia-notation output must not regress."""
-    from phoonnx.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv.phonemizers.gl import CotoviaPhonemizer
     from phoonnx.config import Alphabet
     p = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA)
     result = p.phonemize_string("Este é un sistema", "gl")
@@ -51,7 +51,7 @@ def test_cotovia_alphabet_stability():
 # ---------------------------------------------------------------------------
 
 def test_ipa_alphabet_returns_string():
-    from phoonnx.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv.phonemizers.gl import CotoviaPhonemizer
     from phoonnx.config import Alphabet
     p = CotoviaPhonemizer(alphabet=Alphabet.IPA)
     result = p.phonemize_string(SAMPLE_GL, "gl")
@@ -60,7 +60,7 @@ def test_ipa_alphabet_returns_string():
 
 
 def test_ipa_alphabet_contains_ipa_chars():
-    from phoonnx.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv.phonemizers.gl import CotoviaPhonemizer
     from phoonnx.config import Alphabet
     p = CotoviaPhonemizer(alphabet=Alphabet.IPA)
     result = p.phonemize_string("lingua galega", "gl")
@@ -70,7 +70,7 @@ def test_ipa_alphabet_contains_ipa_chars():
 
 def test_ipa_stability_ola_mundo():
     """Stability fixture for a minimal known sentence."""
-    from phoonnx.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv.phonemizers.gl import CotoviaPhonemizer
     from phoonnx.config import Alphabet
     p = CotoviaPhonemizer(alphabet=Alphabet.IPA)
     result = p.phonemize_string("ola mundo", "gl")
@@ -82,19 +82,19 @@ def test_ipa_stability_ola_mundo():
 # ---------------------------------------------------------------------------
 
 def test_get_lang_accepts_gl():
-    from phoonnx.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv.phonemizers.gl import CotoviaPhonemizer
     lang = CotoviaPhonemizer.get_lang("gl")
     assert lang == "gl-ES"
 
 
 def test_get_lang_accepts_gl_es():
-    from phoonnx.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv.phonemizers.gl import CotoviaPhonemizer
     lang = CotoviaPhonemizer.get_lang("gl-ES")
     assert lang == "gl-ES"
 
 
 def test_get_lang_rejects_en():
-    from phoonnx.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv.phonemizers.gl import CotoviaPhonemizer
     with pytest.raises(ValueError):
         CotoviaPhonemizer.get_lang("en")
 
@@ -105,7 +105,7 @@ def test_get_lang_rejects_en():
 
 def test_factory_dispatch_cotovia():
     from phoonnx.config import PhonemeType, Alphabet, get_phonemizer
-    from phoonnx.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv.phonemizers.gl import CotoviaPhonemizer
     p = get_phonemizer(PhonemeType.COTOVIA, alphabet=Alphabet.IPA)
     assert isinstance(p, CotoviaPhonemizer)
     assert p.alphabet == Alphabet.IPA
@@ -117,7 +117,7 @@ def test_factory_dispatch_cotovia():
 
 def test_ipa_and_cotovia_same_words():
     """IPA and COTOVIA outputs for the same text should both be non-empty."""
-    from phoonnx.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv.phonemizers.gl import CotoviaPhonemizer
     from phoonnx.config import Alphabet
     p_ipa = CotoviaPhonemizer(alphabet=Alphabet.IPA)
     p_cot = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA)
@@ -133,7 +133,7 @@ def test_ipa_and_cotovia_same_words():
 def test_cotovia_stress_model_marks_stressed_vowel():
     # the "stress" phonemizer_model emits the stressed vowel with a trailing '^'
     # (HiTZ gl VITS front-end); the default stays stressless.
-    from phoonnx.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv.phonemizers.gl import CotoviaPhonemizer
     from phoonnx.config import Alphabet
     stress = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA, model="stress")
     plain = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA)

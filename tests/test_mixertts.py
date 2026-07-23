@@ -171,7 +171,7 @@ def test_tokenization_arabic_mantoq_pinned_buckwalter_ids():
     # as a regression golden instead of cross-validating against it live.
     # Any change to scriptconv's vendored mantoq's output for this sentence
     # must be a deliberate, reviewed change to this fixture.
-    from phoonnx.phonemizers.ar import MantoqPhonemizer
+    from scriptconv.phonemizers.ar import MantoqPhonemizer
     text = "السَّلامُ عَلَيكُم"
     mantoq = MantoqPhonemizer()
     phonemes = [p for chunk in [mantoq.phonemize(text, "ar")] for w in chunk for p in w]

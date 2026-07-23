@@ -57,7 +57,7 @@ import onnxruntime
 from quebra_frases import sentence_tokenize
 
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
-from phoonnx.phonemizers.base import UnicodeCodepointPhonemizer
+from scriptconv.phonemizers.base import UnicodeCodepointPhonemizer
 from phoonnx.providers import make_session
 from phoonnx.tokenizer import TTSTokenizer, Vocabulary
 
