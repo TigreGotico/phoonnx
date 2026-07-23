@@ -11,6 +11,6 @@ jobs:
     secrets: inherit
     with:
       python_versions: '["3.11", "3.12", "3.13", "3.14"]'
-      install_extras: 'test,train,train-styletts2,train-eval,train-data,train-optispeech'
+      install_extras: 'test,train,train-styletts2,train-eval,train-data,train-optispeech,train-pyworld'
       test_path: 'tests'
       system_deps: 'espeak-ng'

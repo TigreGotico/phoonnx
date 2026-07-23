@@ -102,6 +102,30 @@ def test_extract_f0_world_harvest_matches_frequency():
     assert abs(np.median(voiced) - 220.0) <= 10.0
 
 
+@pytest.mark.parametrize("freq", [110.0, 220.0, 440.0])
+def test_pyin_and_world_agree_on_known_frequency(freq):
+    """The default pyin backend and the WORLD (dio + stonemask) backend must
+    track the same pitch on a tone of known frequency — a silently wrong F0
+    target would corrupt every model trained with it."""
+    sample_rate = 22050
+    hop_length = 256
+    wav = _sine(freq, sample_rate=sample_rate, duration_s=1.0)
+
+    pyin = extract_f0(wav, sample_rate, hop_length)
+    world = extract_f0_world(wav, sample_rate, hop_length, method="dio")
+
+    pyin_median = np.median(pyin[pyin > 0])
+    world_median = np.median(world[world > 0])
+
+    # each backend is within 1% of the true frequency ...
+    assert abs(pyin_median - freq) / freq < 0.01
+    assert abs(world_median - freq) / freq < 0.01
+    # ... and within 1% of each other
+    assert abs(pyin_median - world_median) / freq < 0.01
+    # both produce one value per hop, so the F0 track lines up with the mel
+    assert abs(len(pyin) - len(world)) <= 1
+
+
 def test_extract_f0_world_silence_is_all_zero():
     sample_rate = 22050
     hop_length = 256
