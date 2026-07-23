@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.61.4a1](https://github.com/TigreGotico/phoonnx/tree/1.61.4a1) (2026-07-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.3a1...1.61.4a1)
+
+**Merged pull requests:**
+
+- fix: honour length\_scale on every engine [\#304](https://github.com/TigreGotico/phoonnx/pull/304) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.61.3a1](https://github.com/TigreGotico/phoonnx/tree/1.61.3a1) (2026-07-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.2a1...1.61.3a1)
+
 ## [1.61.2a1](https://github.com/TigreGotico/phoonnx/tree/1.61.2a1) (2026-07-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.1a1...1.61.2a1)
@@ -159,7 +171,6 @@
 - feat\(chatterbox\): autoregressive codec-LM engine — d-vector cloning + exaggeration [\#181](https://github.com/TigreGotico/phoonnx/pull/181) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(docker\): batteries-included OVOS TTS server image + publish workflow \(closes \#98\) [\#178](https://github.com/TigreGotico/phoonnx/pull/178) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(zipvoice\): native flow-matching engine — phoonnx's first iterative adapter [\#158](https://github.com/TigreGotico/phoonnx/pull/158) ([JarbasAl](https://github.com/JarbasAl))
-- feat: add itzune Basque voices \(antton + maider\) [\#157](https://github.com/TigreGotico/phoonnx/pull/157) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
