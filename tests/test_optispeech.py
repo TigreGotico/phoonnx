@@ -102,6 +102,19 @@ def test_default_params():
     assert OptiSpeechAdapter().default_params() == {"d_factor": 1.0, "p_factor": 1.0, "e_factor": 1.0}
 
 
+def test_length_scale_falls_back_to_d_factor():
+    # SynthesisConfig.length_scale is the canonical speed knob; honour it when
+    # the adapter's native "d_factor" key is not explicitly set.
+    feed = OptiSpeechAdapter().build_feed_dict(_req(length_scale=1.3), OPTISPEECH_SESSION)
+    assert feed["scales"] == pytest.approx([1.3, 1.0, 1.0])
+
+
+def test_d_factor_takes_precedence_over_length_scale():
+    feed = OptiSpeechAdapter().build_feed_dict(
+        _req(d_factor=0.7, length_scale=1.3), OPTISPEECH_SESSION)
+    assert feed["scales"] == pytest.approx([0.7, 1.0, 1.0])
+
+
 def test_config_bridge():
     vc = voice_config_from_optispeech_meta(META)
     assert vc.engine == Engine.OPTISPEECH

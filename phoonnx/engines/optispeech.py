@@ -65,7 +65,7 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
         session: onnxruntime.InferenceSession,
     ) -> Dict[str, np.ndarray]:
         params = request.params
-        d_factor = np.float32(params.get("d_factor", 1.0))
+        d_factor = np.float32(params.get("d_factor", params.get("length_scale", 1.0)))
         p_factor = np.float32(params.get("p_factor", 1.0))
         e_factor = np.float32(params.get("e_factor", 1.0))
 

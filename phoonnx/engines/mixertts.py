@@ -86,7 +86,7 @@ class MixerTTSAdapter(BaseOnnxAdapter):
         p = request.params
         args: Dict[str, np.ndarray] = {
             "token_ids": request.phoneme_ids.astype(np.int64),
-            "pace": np.array([float(p.get("pace", 1.0))], dtype=np.float32),
+            "pace": np.array([float(p.get("pace", p.get("length_scale", 1.0)))], dtype=np.float32),
             "speaker": np.array([int(request.speaker_id or 0)], dtype=np.int32),
             "emotion": np.array([int(p.get("emotion", 0))], dtype=np.int32),
             "pitch_mul": np.array([float(p.get("pitch_mul", 1.0))], dtype=np.float32),
