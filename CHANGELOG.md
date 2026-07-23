@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.61.0a2](https://github.com/TigreGotico/phoonnx/tree/1.61.0a2) (2026-07-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.0a1...1.61.0a2)
+
+**Merged pull requests:**
+
+- refactor: drop phonemizer/diacritizer layer, delegate fully to scriptconv [\#291](https://github.com/TigreGotico/phoonnx/pull/291) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.61.0a1](https://github.com/TigreGotico/phoonnx/tree/1.61.0a1) (2026-07-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.60.0a1...1.61.0a1)
@@ -132,9 +140,6 @@
 - chore\(index\): BCP-47 lang codes + regenerate VOICES.md [\#154](https://github.com/TigreGotico/phoonnx/pull/154) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(engines\): VITS2 + StyleTTS2 family \(pure StyleTTS2 + Kokoro, multilingual\) [\#153](https://github.com/TigreGotico/phoonnx/pull/153) ([JarbasAl](https://github.com/JarbasAl))
 - feat: Arabic diacritization via text2tashkeel \(rawi\); drop vendored libtashkeel [\#152](https://github.com/TigreGotico/phoonnx/pull/152) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(voices\): coqui SpeedySpeech + en/vctk FastPitch \(108-spk\) [\#151](https://github.com/TigreGotico/phoonnx/pull/151) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(voices\): add ca-custom \(257-spk\) + fa-custom coqui VITS [\#150](https://github.com/TigreGotico/phoonnx/pull/150) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(voices\): coqui VITS engine + 36 voices across 33 languages [\#149](https://github.com/TigreGotico/phoonnx/pull/149) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
