@@ -121,11 +121,11 @@ class VoiceConfig:
     noise_scale: float = DEFAULT_NOISE_SCALE
     noise_w_scale: float = DEFAULT_NOISE_W_SCALE
     add_diacritics: bool = None # arabic and hebrew
-    # diacritizer model name (for languages that need one — e.g. Arabic uses text2tashkeel models like "rawi-ensemble")
-    diacritizer_model: str = "rawi-ensemble"
-    # optional override for the Hebrew phonikud diacritizer model (path or zero-arg
-    # callable). ``None`` (the default) lets scriptconv auto-provision + cache it.
-    phonikud_model: Optional[str] = None
+    # diacritizer model for languages that need one; scriptconv routes it to the
+    # right backend: Arabic text2tashkeel model name (e.g. "rawi-ensemble"),
+    # Hebrew phonikud ONNX path (None -> scriptconv auto-provisions + caches), or
+    # stressonnx model. None lets each backend pick its own default.
+    diacritizer_model: Optional[str] = None
 
     # samples per model frame — used to convert per-phoneme durations (in model
     # frames) to audio samples for the phoneme-alignment feature (see
@@ -282,7 +282,7 @@ class VoiceConfig:
         phoneme_type = phoneme_type or config.get("phoneme_type")
         alphabet = alphabet or config.get("alphabet")
         diacritics = False
-        ar_diacritizer_model = "rawi-ensemble"
+        ar_diacritizer_model = None
 
         if (engine == Engine.CHATTERBOX or
                 (isinstance(engine, str) and engine == "chatterbox") or
@@ -329,7 +329,7 @@ class VoiceConfig:
             phoneme_type = phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK)
             alphabet = alphabet or Alphabet(config.get("alphabet", "ipa"))
             diacritics = config.get("inference", {}).get("add_diacritics", True)
-            ar_diacritizer_model = config.get("inference", {}).get("diacritizer_model", "rawi-ensemble")
+            ar_diacritizer_model = config.get("inference", {}).get("diacritizer_model", None)
 
             # Preserve the model's own special tokens when present (a native
             # config may use any pad/blank/bos/eos); fall back to phoonnx defaults.

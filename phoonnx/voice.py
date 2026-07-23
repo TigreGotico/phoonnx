@@ -30,6 +30,7 @@ from phoonnx.engines.base import (
 from scriptconv.phonemizers.base import BasePhonemizer
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
 from scriptconv.phonemizers.base import PhonemizedChunks
+from scriptconv.diacritics import diacritize
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
@@ -455,22 +456,6 @@ class TTSVoice:
         token_ids =  self.tokenizer.tokenize(phonemes)
         return token_ids
 
-    def _diacritize(self, text: str, diacritizer_model: Optional[str]) -> str:
-        """Apply (Arabic/Hebrew) diacritics for the voice's language.
-
-        Delegates to scriptconv, which owns the diacritizer backends and
-        auto-provisions the Hebrew phonikud model. ``phonikud_model`` is only
-        passed when the voice config carries an explicit override; otherwise
-        ``None`` lets scriptconv provision it.
-        """
-        from scriptconv.diacritics import diacritize
-        return diacritize(
-            text,
-            self.config.lang_code,
-            diacritizer_model=diacritizer_model,
-            phonikud_model=getattr(self.config, "phonikud_model", None),
-        )
-
     def _text_parts(
             self, text: str, do_diacritics: bool, diacritizer_model: Optional[str]
     ) -> Iterable[str]:
@@ -490,7 +475,7 @@ class TTSVoice:
         for sentence in sentence_tokenize(text):
             if not sentence.strip():
                 continue
-            yield self._diacritize(sentence, diacritizer_model)
+            yield diacritize(sentence, self.config.lang_code, diacritizer_model=diacritizer_model)
 
     def _iter_synthesis_ids(
             self,
@@ -520,7 +505,7 @@ class TTSVoice:
                 # so encode the whole text once; audio is still produced per
                 # sentence downstream.
                 if do_diacritics:
-                    text = self._diacritize(text, diacritizer_model)
+                    text = diacritize(text, self.config.lang_code, diacritizer_model=diacritizer_model)
                 for ids in self.adapter.encode_text(text, self, syn_config):
                     yield None, ids, None
             else:
@@ -545,7 +530,7 @@ class TTSVoice:
                 # blocks merge into adjacent sentences; keep the (eager) whole-text
                 # handling that owns that merge logic.
                 if do_diacritics:
-                    text = self._diacritize(text, diacritizer_model)
+                    text = diacritize(text, self.config.lang_code, diacritizer_model=diacritizer_model)
                 for phonemes in self.phonemize(text):
                     if phonemes:
                         yield phonemes, self.phonemes_to_ids(phonemes), None
@@ -557,7 +542,7 @@ class TTSVoice:
             elif hasattr(self.phonemizer, "phonemize_with_language_ids"):
                 # Language-aware phonemizer without a lazy variant: eager fallback.
                 if do_diacritics:
-                    text = self._diacritize(text, diacritizer_model)
+                    text = diacritize(text, self.config.lang_code, diacritizer_model=diacritizer_model)
                 sentence_phonemes, sentence_language_ids = (
                     self.phonemizer.phonemize_with_language_ids(text, lang))
                 for phonemes, language_ids in zip(sentence_phonemes, sentence_language_ids):
