@@ -100,7 +100,9 @@ Use `download <VOICE_ID>` to fetch a specific voice from this list on demand.
 
 ### `download`
 
-Downloads the ONNX model (and config/tokens files) for a specific voice ID.
+Downloads everything a voice needs to run offline: the ONNX model, the config,
+the tokenizer artifacts (`vocab.json`/`tokens.txt`/`tokenizer.json`) and any
+vocoder, style embedding, speaker encoder or auxiliary graph the voice uses.
 
 ```bash
 phoonnx-voices download VOICE_ID

@@ -260,12 +260,25 @@ class TestDownloadConfig(VoicePathTestCase):
         with self.assertRaises(requests.exceptions.HTTPError):
             info.download_config()
 
-    def test_corrupt_cached_file_raises_on_load(self):
+    @patch("phoonnx.model_manager.requests.get")
+    def test_corrupt_cached_file_self_heals(self, mock_get):
         info = self.make_info(config_url="https://example.com/config.json")
         config_path = info.voice_path / "model.json"
         config_path.write_text("{not valid json", encoding="utf-8")
-        with self.assertRaises(json.JSONDecodeError):
-            info.download_config()
+        mock_get.return_value = _mock_response(200, json_data={"fresh": True})
+        self.assertEqual(info.download_config(), {"fresh": True})
+        mock_get.assert_called_once()
+        # the healed cache is now valid and used on the next call
+        mock_get.reset_mock()
+        self.assertEqual(info.download_config(), {"fresh": True})
+        mock_get.assert_not_called()
+
+    @patch("phoonnx.model_manager.requests.get")
+    def test_empty_cached_file_self_heals(self, mock_get):
+        info = self.make_info(config_url="https://example.com/config.json")
+        (info.voice_path / "model.json").write_text("", encoding="utf-8")
+        mock_get.return_value = _mock_response(200, json_data={"fresh": True})
+        self.assertEqual(info.download_config(), {"fresh": True})
 
     @patch("phoonnx.model_manager.requests.get")
     def test_uses_cache_when_present(self, mock_get):
@@ -608,12 +621,12 @@ class TestDownloadVoiceById(ManagerTestCase):
         manager.voices = {"registry/voice": voice}
         result = manager.download_voice_by_id("registry/voice")
         self.assertTrue(result)
-        voice.download_model.assert_called_once()
+        voice.download_all.assert_called_once()
 
     def test_voice_found_only_in_on_disk_index(self):
         manager = TTSModelManager(cache_path=self.cache_path)
         manager.voices = {}
-        with patch.object(TTSModelInfo, "download_model") as mock_download:
+        with patch.object(TTSModelInfo, "download_all") as mock_download:
             result = manager.download_voice_by_id("piper/ar_JO-kareem-low")
         self.assertTrue(result)
         mock_download.assert_called_once()
@@ -757,6 +770,170 @@ class TestUnwritableCachePath(unittest.TestCase):
         bad_path = os.path.join(tmpdir, "sub", "cache.json")
         with self.assertRaises(PermissionError):
             TTSModelManager(cache_path=bad_path)
+
+
+class TestAtomicDownloads(VoicePathTestCase):
+    """An interrupted download must never leave a file later runs trust."""
+
+    @patch("phoonnx.model_manager.requests.get")
+    def test_interrupted_stream_leaves_no_usable_file(self, mock_get):
+        info = self.make_info()
+        dest = info.voice_path / "model.onnx"
+
+        broken = MagicMock()
+        broken.status_code = 200
+        broken.raise_for_status.return_value = None
+        broken.headers = {}
+
+        def _explode(chunk_size=None):
+            yield b"012345678"  # 9 bytes, then the connection drops
+            raise requests.exceptions.ConnectionError("connection reset")
+
+        broken.iter_content.side_effect = _explode
+        cm = MagicMock()
+        cm.__enter__.return_value = broken
+        mock_get.return_value = cm
+
+        with self.assertRaises(requests.exceptions.ConnectionError):
+            info._fetch_onnx(info.model_url, dest)
+        self.assertFalse(dest.exists())
+        self.assertFalse((info.voice_path / "model.onnx.part").exists())
+
+        # a later run must actually re-download, not trust the leftovers
+        good = _mock_response(200, content=b"complete-onnx-graph")
+        good.headers = {}
+        sidecar = _mock_response(404)
+
+        def side_effect(url, timeout=None, stream=None):
+            resp = good if url == info.model_url else sidecar
+            cm2 = MagicMock()
+            cm2.__enter__.return_value = resp
+            return cm2
+
+        mock_get.side_effect = side_effect
+        mock_get.return_value = None
+        info._fetch_onnx(info.model_url, dest)
+        self.assertEqual(dest.read_bytes(), b"complete-onnx-graph")
+
+    @patch("phoonnx.model_manager.requests.get")
+    def test_short_body_vs_content_length_is_rejected(self, mock_get):
+        info = self.make_info(style_url="https://example.com/style.bin")
+        resp = _mock_response(200, content=b"123456789")  # 9 bytes
+        resp.headers = {"Content-Length": "4096"}
+        cm = MagicMock()
+        cm.__enter__.return_value = resp
+        mock_get.return_value = cm
+        with self.assertRaises(IOError):
+            info.download_style()
+        self.assertFalse((info.voice_path / "style.bin").exists())
+        self.assertFalse((info.voice_path / "style.bin.part").exists())
+
+    @patch("phoonnx.model_manager.requests.get")
+    def test_zero_byte_cached_model_is_redownloaded(self, mock_get):
+        info = self.make_info()
+        dest = info.voice_path / "model.onnx"
+        dest.write_bytes(b"")
+        good = _mock_response(200, content=b"real-graph")
+        good.headers = {}
+        sidecar = _mock_response(404)
+
+        def side_effect(url, timeout=None, stream=None):
+            resp = good if url == info.model_url else sidecar
+            cm = MagicMock()
+            cm.__enter__.return_value = resp
+            return cm
+
+        mock_get.side_effect = side_effect
+        info._fetch_onnx(info.model_url, dest)
+        self.assertEqual(dest.read_bytes(), b"real-graph")
+
+
+class TestDownloadAll(VoicePathTestCase):
+    """A downloaded voice must be usable offline: side files included."""
+
+    def _recording_get(self, requested):
+        def side_effect(url, timeout=None, stream=None):
+            requested.append(url)
+            if url.endswith("_data"):
+                resp = _mock_response(404)
+            elif url.endswith(".json"):
+                resp = _mock_response(200, json_data={"phoneme_type": "graphemes",
+                                                      "alphabet": "unicode"})
+            elif url.endswith(".txt"):
+                resp = _mock_response(200, text="a\nb\n")
+            else:
+                resp = _mock_response(200, content=b"binarydata")
+            resp.headers = {}
+            if stream:
+                cm = MagicMock()
+                cm.__enter__.return_value = resp
+                return cm
+            return resp
+
+        return side_effect
+
+    @patch("phoonnx.model_manager.requests.get")
+    def test_download_all_fetches_every_side_file(self, mock_get):
+        info = self.make_info(
+            config_url="https://example.com/config.json",
+            tokens_url="https://example.com/tokens.txt",
+            vocoder_url="https://example.com/vocoder.onnx",
+            vocoder_config_url="https://example.com/vocoder_config.json",
+            vocoder_type="hifigan",
+            style_url="https://example.com/style.bin",
+            speaker_encoder_url="https://example.com/enc.onnx",
+            aux_model_urls={"decode_path": "https://example.com/decode.onnx"},
+        )
+        requested = []
+        mock_get.side_effect = self._recording_get(requested)
+
+        info.download_all()
+
+        for url in (info.model_url, info.config_url, info.tokens_url,
+                    info.vocoder_url, info.vocoder_config_url, info.style_url,
+                    info.speaker_encoder_url,
+                    info.aux_model_urls["decode_path"]):
+            self.assertIn(url, requested)
+        for fname in ("model.onnx", "model.json", "tokens.txt", "vocoder.onnx",
+                      "vocoder.json", "style.bin", "speaker_encoder.onnx",
+                      "decode.onnx"):
+            self.assertTrue((info.voice_path / fname).is_file(), fname)
+
+    @patch("phoonnx.model_manager.requests.get")
+    def test_download_voice_by_id_uses_download_all(self, mock_get):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        manager = TTSModelManager(cache_path=os.path.join(tmp.name, "cache.json"))
+        info = self.make_info(
+            voice_id="aux/voice",
+            config_url="https://example.com/config.json",
+            vocoder_url="https://example.com/vocoder.onnx",
+            style_url="https://example.com/style.bin",
+        )
+        manager.voices = {"aux/voice": info}
+        requested = []
+        mock_get.side_effect = self._recording_get(requested)
+
+        self.assertTrue(manager.download_voice_by_id("aux/voice"))
+        self.assertIn(info.config_url, requested)
+        self.assertIn(info.vocoder_url, requested)
+        self.assertIn(info.style_url, requested)
+
+
+class TestVoiceIndexSources(unittest.TestCase):
+    def test_every_bundled_index_is_listed(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        manager = TTSModelManager(cache_path=os.path.join(tmp.name, "cache.json"))
+        base_path = TTSModelManager.voice_index_path()
+        on_disk = {p.stem.lower() for p in base_path.glob("*.json")}
+        listed = set(manager.get_available_voice_ids_by_source().keys())
+        self.assertEqual(on_disk, listed)
+
+    def test_index_files_cover_the_whole_directory(self):
+        base_path = TTSModelManager.voice_index_path()
+        self.assertEqual(set(TTSModelManager.voice_index_files()),
+                         set(base_path.glob("*.json")))
 
 
 if __name__ == "__main__":

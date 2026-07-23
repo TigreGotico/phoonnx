@@ -141,10 +141,8 @@ def download_voice(voice_id):
         if voice_info:
             click.echo(f"Attempting to download files for: {voice_id} ({voice_info.lang})")
 
-            # NOTE: metadata already downloaded when creating VoiceInfo object
-            #  we only need to download the .onnx file
-            click.echo("-> Downloading ONNX model (this may take a while)...")
-            voice_info.download_model()
+            click.echo("-> Downloading ONNX model and side files (this may take a while)...")
+            voice_info.download_all()
 
             click.echo(f"\nDownload complete. Files saved to: {voice_info.voice_path}")
         else:
