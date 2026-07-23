@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.61.5a1](https://github.com/TigreGotico/phoonnx/tree/1.61.5a1) (2026-07-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.4a1...1.61.5a1)
+
+**Merged pull requests:**
+
+- fix: degrade instead of crashing when alignments are unavailable [\#303](https://github.com/TigreGotico/phoonnx/pull/303) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.61.4a1](https://github.com/TigreGotico/phoonnx/tree/1.61.4a1) (2026-07-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.3a1...1.61.4a1)
@@ -170,7 +178,6 @@
 - feat\(alphabet\): unified alphabet model — phonemization as conversion [\#188](https://github.com/TigreGotico/phoonnx/pull/188) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(chatterbox\): autoregressive codec-LM engine — d-vector cloning + exaggeration [\#181](https://github.com/TigreGotico/phoonnx/pull/181) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(docker\): batteries-included OVOS TTS server image + publish workflow \(closes \#98\) [\#178](https://github.com/TigreGotico/phoonnx/pull/178) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(zipvoice\): native flow-matching engine — phoonnx's first iterative adapter [\#158](https://github.com/TigreGotico/phoonnx/pull/158) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
