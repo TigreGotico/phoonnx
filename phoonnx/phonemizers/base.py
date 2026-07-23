@@ -9,7 +9,6 @@ from quebra_frases import sentence_tokenize
 from phoonnx.config import Alphabet
 from phoonnx.util import normalize, match_lang
 from phoonnx.thirdparty.phonikud import PhonikudDiacritizer
-from phoonnx.thirdparty.tashkeel import TashkeelDiacritizer
 
 # list of (substring, terminator, end_of_sentence) tuples.
 TextChunks = List[Tuple[str, str, bool]]
@@ -26,20 +25,7 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
         self.alphabet = alphabet
 
         self.taskeen_threshold = taskeen_threshold  # arabic only
-        self._tashkeel: Optional[TashkeelDiacritizer] = None
-        self._phonikud: Optional[PhonikudDiacritizer] = None # hebrew only
-
-    @property
-    def phonikud(self) -> PhonikudDiacritizer:
-        if self._phonikud is None:
-            self._phonikud = PhonikudDiacritizer()
-        return self._phonikud
-
-    @property
-    def tashkeel(self) -> TashkeelDiacritizer:
-        if self._tashkeel is None:
-            self._tashkeel = TashkeelDiacritizer()
-        return self._tashkeel
+        self._phonikud_model: Optional[str] = None  # hebrew model path
 
     @abc.abstractmethod
     def phonemize_string(self, text: str, lang: str) -> str:
@@ -49,11 +35,23 @@ class BasePhonemizer(metaclass=abc.ABCMeta):
         return list(self.phonemize_string(text, lang))
 
     def add_diacritics(self, text: str, lang: str) -> str:
+        """Restore pronunciation-disambiguating diacritics, delegated to scriptconv.
+
+        Diacritization is owned by ``scriptconv.diacritics.diacritize``, which
+        covers Hebrew (phonikud), Arabic (text2tashkeel), the stressonnx stress
+        languages, and European-Portuguese sense diacritics. Unknown languages
+        are returned unchanged.
+
+        phoonnx keeps responsibility for *fetching* the Hebrew phonikud model
+        (scriptconv never downloads), so the local model path is resolved here
+        and handed to scriptconv.
+        """
+        from scriptconv.diacritics import diacritize
         if lang.startswith("he"):
-            return self.phonikud.diacritize(text)
-        elif lang.startswith("ar"):
-            return self.tashkeel.diacritize(text, self.taskeen_threshold)
-        return text
+            if self._phonikud_model is None:
+                self._phonikud_model = PhonikudDiacritizer.download()
+            return diacritize(text, lang, phonikud_model=self._phonikud_model)
+        return diacritize(text, lang)
 
     def phonemize(self, text: str, lang: str) -> PhonemizedChunks:
         if not text:
