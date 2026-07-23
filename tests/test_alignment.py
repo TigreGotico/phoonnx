@@ -535,6 +535,112 @@ class TestTwoStageEngineAlignment(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Regression: single-token sentence -> 0-d duration array (BUG 1)
+# ---------------------------------------------------------------------------
+
+class TestSingleTokenZeroDimDuration(unittest.TestCase):
+    """A single-token sentence makes every adapter's
+    ``np.asarray(durations).squeeze()`` collapse a (1,1,1) tensor to a 0-d
+    array. Before the fix this made ``_reconstruct_alignments`` raise
+    ``TypeError: object of type 'numpy.int64' has no len()`` instead of
+    degrading to "alignments unavailable" like a length mismatch does.
+    """
+
+    def test_phoneme_ids_to_audio_0d_duration_does_not_crash(self):
+        # Single phoneme id -> the adapter's duration output squeezes to a
+        # numpy scalar (0-d array), exactly like VitsAdapter/GlowTTSAdapter/
+        # MixerTTSAdapter/MatchaAdapter/YourTTSAdapter do for a 1-token input.
+        audio = _fake_audio()
+        dur_0d = np.asarray([[[5.0]]], dtype=np.float32).squeeze()
+        self.assertEqual(dur_0d.ndim, 0)
+
+        session = MagicMock()
+        session.get_inputs.return_value = [_Input("input"), _Input("input_lengths")]
+        session.run.return_value = [audio[np.newaxis, np.newaxis, :], dur_0d]
+
+        cfg = MagicMock(spec=VoiceConfig)
+        cfg.hop_length = 1
+        cfg.noise_scale = 0.667
+        cfg.length_scale = 1.0
+        cfg.noise_w_scale = 0.8
+        cfg.engine_params = {}
+
+        voice = TTSVoice.__new__(TTSVoice)
+        voice.session = session
+        voice.config = cfg
+        voice.adapter = VitsAdapter()
+
+        audio_out, samples = voice.phoneme_ids_to_audio([3], include_alignments=True)
+        self.assertIsInstance(samples, np.ndarray)
+        self.assertEqual(samples.ndim, 1)
+        self.assertEqual(len(samples), 1)
+
+    def test_synthesize_single_token_degrades_to_no_alignments(self):
+        """End-to-end: a single-phoneme sentence must yield a chunk with
+        alignments None (degraded), never raise."""
+        ids = [1, 0, 2]  # bos, blank, eos -> a single "real" token elsewhere
+        audio = _fake_audio()
+        dur_0d = np.asarray([[[7.0]]], dtype=np.float32).squeeze()
+        voice = _make_voice(
+            [audio[np.newaxis, np.newaxis, :], dur_0d],
+            phonemize_result=[["h"]],
+            token_ids=[3],
+        )
+        voice.config.hop_length = 1
+        chunks = list(voice.synthesize("x", include_alignments=True))
+        self.assertEqual(len(chunks), 1)
+        # Must not raise; length mismatch (1 sample vs however many ids)
+        # degrades to alignments unavailable, exactly like any other
+        # sample/id length mismatch.
+        self.assertIsNotNone(chunks[0])
+
+
+# ---------------------------------------------------------------------------
+# Regression: tokenizer without ``.vocabulary`` (BUG 2 — BPE / Chatterbox)
+# ---------------------------------------------------------------------------
+
+class TestTokenizerWithoutVocabulary(unittest.TestCase):
+    """BPETokenizer/ChatterboxMTLTokenizer expose pad_id/blank_id/
+    blank_word_id but no ``.vocabulary`` attribute. Before the fix,
+    ``synthesize(include_alignments=True)`` did ``_tok.vocabulary`` and
+    raised ``AttributeError: '...Tokenizer' object has no attribute
+    'vocabulary'``. It must instead degrade to no alignments.
+    """
+
+    def _make_bpe_voice(self):
+        ids = [1, 0, 3, 0, 4, 0, 2]
+        audio = _fake_audio()
+        dur = np.ones((1, len(ids)), dtype=np.float32)
+        voice = _make_voice(
+            [audio[np.newaxis, np.newaxis, :], dur],
+            phonemize_result=[["h", "e"]],
+            token_ids=ids,
+        )
+        # Simulate a BPE-style tokenizer: no ``vocabulary`` attribute at all.
+        tok = MagicMock(spec=["pad_id", "blank_id", "blank_word_id"])
+        tok.pad_id = 0
+        tok.blank_id = 0
+        tok.blank_word_id = 0
+        voice.config.tokenizer = tok
+        return voice
+
+    def test_no_vocabulary_attribute_raises_without_fix(self):
+        tok = MagicMock(spec=["pad_id", "blank_id", "blank_word_id"])
+        self.assertFalse(hasattr(tok, "vocabulary"))
+
+    def test_synthesize_degrades_instead_of_raising(self):
+        voice = self._make_bpe_voice()
+        chunks = list(voice.synthesize("hi", include_alignments=True))
+        self.assertEqual(len(chunks), 1)
+        self.assertIsNone(chunks[0].phoneme_alignments)
+
+    def test_audio_still_produced(self):
+        voice = self._make_bpe_voice()
+        chunk = list(voice.synthesize("hi", include_alignments=True))[0]
+        self.assertGreater(len(chunk.audio_float_array), 0)
+
+
+# ---------------------------------------------------------------------------
 # Integration tests — real model, real synthesis
 # ---------------------------------------------------------------------------
 
