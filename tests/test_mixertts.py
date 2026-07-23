@@ -116,6 +116,18 @@ def test_default_params():
     assert MixerTTSAdapter().default_params() == {"pace": 1.0, "pitch_mul": 1.0, "pitch_add": 0.0, "emotion": 0}
 
 
+def test_length_scale_falls_back_to_pace():
+    # SynthesisConfig.length_scale is the canonical speed knob; honour it when
+    # the adapter's native "pace" key is not explicitly set.
+    feed = MixerTTSAdapter().build_feed_dict(_req(length_scale=1.3), MIXER_SESSION)
+    assert feed["pace"][0] == pytest.approx(1.3)
+
+
+def test_pace_takes_precedence_over_length_scale():
+    feed = MixerTTSAdapter().build_feed_dict(_req(pace=0.7, length_scale=1.3), MIXER_SESSION)
+    assert feed["pace"][0] == pytest.approx(0.7)
+
+
 def test_config_bridge():
     # mirror of models/symbols.py order: [pad] + punctuation + letters + ipa
     symbols = ["$", ";", ":", "a", "b", "ɑ", "ɛ", "ˈ"]

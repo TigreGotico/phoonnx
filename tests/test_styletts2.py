@@ -52,6 +52,20 @@ def test_kokoro_style_pack_length_indexed():
     assert "attention_mask" not in feed   # filtered (not a model input)
 
 
+def test_length_scale_falls_back_to_speed():
+    # SynthesisConfig.length_scale is the canonical speed knob; honour it when
+    # the adapter's native "speed" key is not explicitly set.
+    sess = _Sess(["input_ids", "attention_mask", "speed"])
+    feed = StyleTTS2Adapter().build_feed_dict(_req(5, length_scale=1.3), sess)
+    assert feed["speed"][0] == pytest.approx(1.3)
+
+
+def test_speed_takes_precedence_over_length_scale():
+    sess = _Sess(["input_ids", "attention_mask", "speed"])
+    feed = StyleTTS2Adapter().build_feed_dict(_req(5, speed=0.7, length_scale=1.3), sess)
+    assert feed["speed"][0] == pytest.approx(0.7)
+
+
 def test_parse_outputs_picks_waveform():
     r = StyleTTS2Adapter().parse_outputs([np.zeros((1, 512, 8), np.float32), np.ones(20000, np.float32)], _req())
     assert r.audio.ndim == 1 and r.audio.size == 20000

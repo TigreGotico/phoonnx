@@ -50,6 +50,14 @@ def test_build_feed_dict_inherited():
     assert feed["pace"][0] == pytest.approx(0.9)
 
 
+def test_length_scale_falls_back_to_pace():
+    # FastPitch inherits build_feed_dict from Mixer-TTS: length_scale must be
+    # honoured here too.
+    sess = _Sess(["token_ids", "pace", "speaker", "pitch_mul", "pitch_add"])
+    feed = FastPitchAdapter().build_feed_dict(_req(length_scale=1.3), sess)
+    assert feed["pace"][0] == pytest.approx(1.3)
+
+
 def test_inherits_duration_output_names():
     """FastPitch reuses Mixer-TTS's parsing, including alignment detection."""
     assert FastPitchAdapter.DURATION_OUTPUT_NAMES == MixerTTSAdapter.DURATION_OUTPUT_NAMES
