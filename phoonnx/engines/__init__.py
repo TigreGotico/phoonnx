@@ -84,6 +84,18 @@ def detect_engine(
     Falls back to the VITS adapter if nothing matches (since it is the
     most common engine in the phoonnx ecosystem).
     """
+    # A voice that names its engine is authoritative. The heuristic probes below
+    # exist to identify a voice that does *not* name one, and must never override
+    # a config that does: several adapters share incidental traits (a vocoder
+    # path, a language-id input), so a lower-priority adapter can otherwise claim
+    # a voice that explicitly asked for another engine.
+    named = (config or {}).get("engine")
+    named = getattr(named, "value", named)
+    if isinstance(named, str) and named.strip().lower() in _REGISTRY:
+        name = named.strip().lower()
+        LOG.debug("Using the engine named by the voice config: %s", name)
+        return _REGISTRY[name]()
+
     for name in _DETECT_ORDER:
         cls = _REGISTRY[name]
         try:
