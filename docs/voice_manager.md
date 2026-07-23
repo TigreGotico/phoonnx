@@ -135,8 +135,10 @@ info = TTSModelInfo(
 # Access the (lazily loaded) VoiceConfig
 print(info.config.sample_rate)
 
-# Fetch just the primary ONNX graph, or load a full TTSVoice
+# Fetch just the primary ONNX graph, everything needed to run offline,
+# or load a full TTSVoice
 info.download_model()
+info.download_all()
 voice = info.load(providers=None)
 ```
 
@@ -168,4 +170,5 @@ relevant to specific engine families (see [engines.md](engines.md), [cloning.md]
 | `vocab_override` | `dict` \| `None` | Custom token-to-ID mapping |
 
 Key methods and properties: `config` (lazy `VoiceConfig`), `voice_path`,
-`download_model()`, `download_vocoder()`, and `load(providers=None)`.
+`download_model()`, `download_all()` (model + config + tokenizer + vocoder/style/
+speaker-encoder/aux graphs), `download_vocoder()`, and `load(providers=None)`.

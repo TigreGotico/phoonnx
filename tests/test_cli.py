@@ -190,7 +190,7 @@ class TestDownloadVoice(unittest.TestCase):
         runner = CliRunner()
         result = runner.invoke(cli, ["download", "piper/foo"])
         self.assertEqual(result.exit_code, 0)
-        voice.download_model.assert_called_once()
+        voice.download_all.assert_called_once()
         self.assertIn("Download complete", result.output)
 
     @patch("phoonnx.cli.TTSModelManager")
@@ -219,7 +219,7 @@ class TestDownloadVoice(unittest.TestCase):
     def test_network_failure_reports_error_no_traceback(self, mock_manager_cls):
         manager = mock_manager_cls.return_value
         voice = make_voice(voice_id="piper/foo")
-        voice.download_model.side_effect = requests.exceptions.ConnectionError("network down")
+        voice.download_all.side_effect = requests.exceptions.ConnectionError("network down")
         manager.voices = {"piper/foo": voice}
         runner = CliRunner()
         result = runner.invoke(cli, ["download", "piper/foo"])
@@ -231,7 +231,7 @@ class TestDownloadVoice(unittest.TestCase):
     def test_unexpected_exception_reports_error_no_traceback(self, mock_manager_cls):
         manager = mock_manager_cls.return_value
         voice = make_voice(voice_id="piper/foo")
-        voice.download_model.side_effect = ValueError("bad data")
+        voice.download_all.side_effect = ValueError("bad data")
         manager.voices = {"piper/foo": voice}
         runner = CliRunner()
         result = runner.invoke(cli, ["download", "piper/foo"])

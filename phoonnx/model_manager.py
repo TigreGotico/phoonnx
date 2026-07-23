@@ -14,6 +14,107 @@ from phoonnx.providers import ProviderSpec
 from phoonnx.voice import TTSVoice
 
 
+def _tmp_path(dest: Path) -> Path:
+    """Sibling scratch path used while a download is in flight."""
+    return dest.with_suffix(dest.suffix + ".part")
+
+
+def _is_cached(path: Path) -> bool:
+    """A cached artifact counts only if it exists and is non-empty."""
+    try:
+        return path.is_file() and path.stat().st_size > 0
+    except OSError:
+        return False
+
+
+def _expected_size(response) -> Optional[int]:
+    """Content-Length of a response, or None when absent/unusable."""
+    try:
+        raw = response.headers.get("Content-Length")
+    except AttributeError:
+        return None
+    if not isinstance(raw, (str, int)) or isinstance(raw, bool):
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _stream_to_file(url: str, dest: Path, timeout: int = 120) -> Path:
+    """Stream ``url`` into ``dest`` atomically.
+
+    The body is written to a sibling ``.part`` file and only renamed onto
+    ``dest`` once it has been fully received (and matches ``Content-Length``,
+    when the server sends one). An interrupted download therefore leaves at
+    most a stale ``.part`` file, never a truncated artifact that later runs
+    would mistake for a complete one.
+    """
+    tmp = _tmp_path(dest)
+    written = 0
+    try:
+        with requests.get(url, timeout=timeout, stream=True) as r:
+            r.raise_for_status()
+            expected = _expected_size(r)
+            with open(tmp, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        written += len(chunk)
+        if expected is not None and written != expected:
+            raise IOError(f"incomplete download for '{url}': "
+                          f"got {written} bytes, expected {expected}")
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    os.replace(tmp, dest)
+    return dest
+
+
+def _write_bytes_atomic(dest: Path, data: bytes) -> Path:
+    """Write ``data`` to ``dest`` via a sibling ``.part`` file + rename."""
+    tmp = _tmp_path(dest)
+    try:
+        tmp.write_bytes(data)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    os.replace(tmp, dest)
+    return dest
+
+
+def _write_json_atomic(dest: Path, data: Any) -> Path:
+    """Serialize ``data`` to ``dest`` via a sibling ``.part`` file + rename."""
+    tmp = _tmp_path(dest)
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    os.replace(tmp, dest)
+    return dest
+
+
+def _load_cached_json(path: Path) -> Optional[Dict[str, Any]]:
+    """Load a cached JSON file, self-healing a corrupt one.
+
+    Returns ``None`` when the file is missing, empty or undecodable; in the
+    corrupt case the file is unlinked so the caller re-downloads it once
+    instead of failing forever on a bad cache entry.
+    """
+    if not _is_cached(path):
+        path.unlink(missing_ok=True)
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
+        LOG.warning(f"discarding corrupt cached json '{path}': {e}")
+        path.unlink(missing_ok=True)
+        return None
+
+
 @dataclass
 class TTSModelInfo:
     voice_id: str
@@ -207,15 +308,14 @@ class TTSModelInfo:
             dict: Parsed JSON configuration for the TTS model.
         """
         config_path = self.voice_path / "model.json"
-        if not config_path.is_file():
-            r = requests.get(self.config_url, timeout=30)
-            r.raise_for_status()
-            cfg = r.json()  # validate received json
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(cfg, f, ensure_ascii=False, indent=4)
-            return cfg
-        with open(config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        cached = _load_cached_json(config_path)
+        if cached is not None:
+            return cached
+        r = requests.get(self.config_url, timeout=30)
+        r.raise_for_status()
+        cfg = r.json()  # validate received json
+        _write_json_atomic(config_path, cfg)
+        return cfg
 
     def download_tokenizer_config(self) -> Dict[str, Any]:
         """
@@ -231,15 +331,14 @@ class TTSModelInfo:
             json.JSONDecodeError: If a retrieved or cached file contains invalid JSON.
         """
         config_path = self.voice_path / "tokenizer_config.json"
-        if not config_path.is_file():
-            r = requests.get(self.tokenizer_config_url, timeout=30)
-            r.raise_for_status()
-            cfg = r.json()  # validate received json
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(cfg, f, ensure_ascii=False, indent=4)
-            return cfg
-        with open(config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        cached = _load_cached_json(config_path)
+        if cached is not None:
+            return cached
+        r = requests.get(self.tokenizer_config_url, timeout=30)
+        r.raise_for_status()
+        cfg = r.json()  # validate received json
+        _write_json_atomic(config_path, cfg)
+        return cfg
 
     def download_vocab(self) -> Dict[str, Any]:
         """
@@ -257,15 +356,18 @@ class TTSModelInfo:
             OSError: On file read/write errors.
         """
         vocab_path = self.voice_path / "vocab.json"
-        if self.vocab_url and not vocab_path.is_file():
-            r = requests.get(self.vocab_url, timeout=30)
-            r.raise_for_status()
-            cfg = r.json()
-            with open(vocab_path, "w", encoding="utf-8") as f:
-                json.dump(cfg, f, ensure_ascii=False)
-            return cfg
-        with open(vocab_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        cached = _load_cached_json(vocab_path)
+        if cached is not None:
+            return cached
+        if not self.vocab_url:
+            # preserve the historical error for a missing, un-downloadable vocab
+            with open(vocab_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        r = requests.get(self.vocab_url, timeout=30)
+        r.raise_for_status()
+        cfg = r.json()
+        _write_json_atomic(vocab_path, cfg)
+        return cfg
 
     def download_tokens_txt(self) -> str:
         """
@@ -280,12 +382,12 @@ class TTSModelInfo:
             requests.exceptions.RequestException: If the HTTP request to `tokens_url` fails or the response status is not successful.
         """
         tokens_path = self.voice_path / "tokens.txt"
-        if self.tokens_url and not tokens_path.is_file():
+        if self.tokens_url and not _is_cached(tokens_path):
+            tokens_path.unlink(missing_ok=True)  # discard an empty/partial cache
             r = requests.get(self.tokens_url, timeout=30)
             r.raise_for_status()
             tokens = r.text
-            with open(tokens_path, "w", encoding="utf-8") as f:
-                f.write(tokens)
+            _write_bytes_atomic(tokens_path, tokens.encode("utf-8"))
             return tokens
         with open(tokens_path, "r", encoding="utf-8") as f:
             return f.read()
@@ -303,23 +405,24 @@ class TTSModelInfo:
         error (offline); both mean "no sidecar here", so a fully-cached voice loads
         without the probe crashing when there is no network.
         """
-        if not dest.is_file():
-            with requests.get(url, timeout=120, stream=True) as r:
-                r.raise_for_status()
-                with open(dest, "wb") as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        if chunk:
-                            f.write(chunk)
+        if not _is_cached(dest):
+            _stream_to_file(url, dest)
         data_dest = dest.parent / (url.split("/")[-1] + "_data")   # e.g. model_q4.onnx_data
-        if not data_dest.is_file():
+        if not _is_cached(data_dest):
             try:
                 with requests.get(url + "_data", timeout=600, stream=True) as r:
                     if r.status_code != 404:
                         r.raise_for_status()
-                        with open(data_dest, "wb") as f:
-                            for chunk in r.iter_content(chunk_size=8192):
-                                if chunk:
-                                    f.write(chunk)
+                        tmp = _tmp_path(data_dest)
+                        try:
+                            with open(tmp, "wb") as f:
+                                for chunk in r.iter_content(chunk_size=8192):
+                                    if chunk:
+                                        f.write(chunk)
+                        except BaseException:
+                            tmp.unlink(missing_ok=True)
+                            raise
+                        os.replace(tmp, data_dest)
             except requests.exceptions.RequestException as e:
                 # Offline/DNS/timeout: treat like a 404 (sidecar simply absent) so a
                 # fully-cached voice still loads; a genuinely needed sidecar surfaces
@@ -342,20 +445,14 @@ class TTSModelInfo:
         if not self.vocoder_url:
             return None
         vocoder_path = self.voice_path / "vocoder.onnx"
-        if not vocoder_path.is_file():
-            with requests.get(self.vocoder_url, timeout=120, stream=True) as r:
-                r.raise_for_status()
-                with open(vocoder_path, "wb") as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        if chunk:
-                            f.write(chunk)
+        if not _is_cached(vocoder_path):
+            _stream_to_file(self.vocoder_url, vocoder_path)
         if self.vocoder_config_url:
             vocoder_cfg_path = self.voice_path / "vocoder.json"
-            if not vocoder_cfg_path.is_file():
+            if _load_cached_json(vocoder_cfg_path) is None:
                 r = requests.get(self.vocoder_config_url, timeout=30)
                 r.raise_for_status()
-                with open(vocoder_cfg_path, "w", encoding="utf-8") as f:
-                    json.dump(r.json(), f, ensure_ascii=False, indent=4)
+                _write_json_atomic(vocoder_cfg_path, r.json())
         return vocoder_path
 
     def download_style(self) -> Optional[Path]:
@@ -363,12 +460,8 @@ class TTSModelInfo:
         if not self.style_url:
             return None
         style_path = self.voice_path / "style.bin"
-        if not style_path.is_file():
-            with requests.get(self.style_url, timeout=120, stream=True) as r:
-                r.raise_for_status()
-                with open(style_path, "wb") as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
+        if not _is_cached(style_path):
+            _stream_to_file(self.style_url, style_path)
         return style_path
 
     def download_speaker_encoder(self) -> Optional[Path]:
@@ -376,12 +469,8 @@ class TTSModelInfo:
         if not self.speaker_encoder_url:
             return None
         enc_path = self.voice_path / "speaker_encoder.onnx"
-        if not enc_path.is_file():
-            with requests.get(self.speaker_encoder_url, timeout=120, stream=True) as r:
-                r.raise_for_status()
-                with open(enc_path, "wb") as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
+        if not _is_cached(enc_path):
+            _stream_to_file(self.speaker_encoder_url, enc_path)
         return enc_path
 
     def download_aux_models(self) -> Dict[str, Path]:
@@ -391,25 +480,21 @@ class TTSModelInfo:
         for key, url in (self.aux_model_urls or {}).items():
             fname = url.rsplit("/", 1)[-1] or f"{key}.onnx"
             aux_path = self.voice_path / fname
-            if not aux_path.is_file():
-                with requests.get(url, timeout=120, stream=True) as r:
-                    r.raise_for_status()
-                    with open(aux_path, "wb") as f:
-                        for chunk in r.iter_content(chunk_size=8192):
-                            if chunk:
-                                f.write(chunk)
+            if not _is_cached(aux_path):
+                _stream_to_file(url, aux_path)
             paths[key] = aux_path
         return paths
+
     def download_bpe_tokenizer(self) -> Optional[Path]:
         """Download the HF ``tokenizer.json`` (Chatterbox subword BPE) from
         ``tokenizer_config_url``, if any."""
         if not self.tokenizer_config_url:
             return None
         path = self.voice_path / "tokenizer.json"
-        if not path.is_file():
+        if _load_cached_json(path) is None:
             r = requests.get(self.tokenizer_config_url, timeout=60)
             r.raise_for_status()
-            path.write_bytes(r.content)
+            _write_bytes_atomic(path, r.content)
         return path
 
     def engine_params(self) -> Dict[str, Any]:
@@ -442,12 +527,14 @@ class TTSModelInfo:
             params["vocoder_type"] = self.vocoder_type
             if self.vocoder_config_url:
                 cfg_path = self.voice_path / "vocoder.json"
-                if not cfg_path.is_file():
+                cached = _load_cached_json(cfg_path)
+                if cached is None:
                     r = requests.get(self.vocoder_config_url, timeout=30)
                     r.raise_for_status()
-                    cfg_path.write_bytes(r.content)
-                with open(cfg_path, "r", encoding="utf-8") as f:
-                    params["vocoder_config"] = json.load(f)
+                    _write_bytes_atomic(cfg_path, r.content)
+                    with open(cfg_path, "r", encoding="utf-8") as f:
+                        cached = json.load(f)
+                params["vocoder_config"] = cached
 
         # Chatterbox's three auxiliary graphs (the language_model is the primary model).
         for url, key, fname in (
@@ -458,6 +545,39 @@ class TTSModelInfo:
             if url:
                 params[key] = str(self._fetch_onnx(url, self.voice_path / fname))
         return params
+
+    def download_all(self) -> Path:
+        """Download everything this voice needs to load offline.
+
+        The primary graph, the config JSON, whichever tokenizer artifact the
+        voice uses (BPE tokenizer / vocab + tokenizer config / tokens.txt) and
+        every auxiliary artifact resolved by :meth:`engine_params` (vocoder,
+        style embedding, speaker encoder, extra ONNX graphs).
+
+        This is the single definition of "fully downloaded" shared by the CLI
+        and :meth:`TTSModelManager.download_voice_by_id`.
+
+        Returns:
+            Path: local path of the primary ONNX model.
+        """
+        model_path = self.download_model()
+
+        cfg: Dict[str, Any] = self.download_config() if self.config_url else {}
+
+        if self.engine == Engine.CHATTERBOX or cfg.get("engine") == "chatterbox":
+            self.download_bpe_tokenizer()
+        elif self.vocab_override:
+            pass  # vocab ships inside the index entry
+        elif self.vocab_url:
+            self.download_vocab()
+            if self.tokenizer_config_url:
+                self.download_tokenizer_config()
+        elif self.tokens_url:
+            self.download_tokens_txt()
+
+        # vocoder / style / speaker-encoder / aux graphs
+        self.engine_params()
+        return model_path
 
     def load(self, providers: Optional[Sequence[ProviderSpec]] = None) -> TTSVoice:
         """
@@ -514,6 +634,38 @@ class TTSModelInfo:
 
 
 class TTSModelManager:
+    # Explicit merge order for the bundled indexes: later files win when two
+    # sources publish the same voice_id. Any index file not listed here is
+    # still picked up (appended, alphabetically) so a newly added index can
+    # never silently go missing from either the catalog or the listing.
+    _VOICE_INDEX_ORDER = (
+        "OVOS.json", "MMS.json", "proxectonos.json", "piper.json",
+        "phonikud.json", "neurlang.json", "mimic3.json",
+        "transformers_community.json", "piper_community.json",
+        "optispeech.json", "glowtts.json", "mixertts.json", "fastpitch.json",
+        "coqui_community.json", "vits2.json", "styletts2.json", "f5tts.json",
+        "coqui_vits.json", "BSC.json", "shami.json", "chatterbox.json",
+        "supertonic.json",
+    )
+
+    @classmethod
+    def voice_index_path(cls) -> Path:
+        """Directory holding the bundled voice-index JSON files."""
+        return Path(os.path.dirname(__file__)) / "voice_index"
+
+    @classmethod
+    def voice_index_files(cls) -> List[Path]:
+        """Every bundled voice-index file, in merge order.
+
+        The single source of truth for both ``merge_default_voices`` and
+        ``get_available_voice_ids_by_source`` - they cannot drift apart.
+        """
+        base_path = cls.voice_index_path()
+        known = [base_path / f for f in cls._VOICE_INDEX_ORDER
+                 if (base_path / f).is_file()]
+        extra = sorted(p for p in base_path.glob("*.json") if p not in known)
+        return known + extra
+
     def __init__(self, cache_path: Optional[str] = None):
         """
         Initialize the TTSModelManager and prepare persistent cache storage.
@@ -607,29 +759,8 @@ class TTSModelManager:
         Parameters:
             store (bool): If True, persist the updated cache to disk after merging.
         """
-        base_path = Path(os.path.dirname(__file__)) / "voice_index"
-        self.cache.update(JsonStorage(str(base_path / "OVOS.json")))
-        self.cache.update(JsonStorage(str(base_path / "MMS.json")))
-        self.cache.update(JsonStorage(str(base_path / "proxectonos.json")))
-        self.cache.update(JsonStorage(str(base_path / "piper.json")))
-        self.cache.update(JsonStorage(str(base_path / "phonikud.json")))
-        self.cache.update(JsonStorage(str(base_path / "neurlang.json")))
-        self.cache.update(JsonStorage(str(base_path / "mimic3.json")))
-        self.cache.update(JsonStorage(str(base_path / "transformers_community.json")))
-        self.cache.update(JsonStorage(str(base_path / "piper_community.json")))
-        self.cache.update(JsonStorage(str(base_path / "optispeech.json")))
-        self.cache.update(JsonStorage(str(base_path / "glowtts.json")))
-        self.cache.update(JsonStorage(str(base_path / "mixertts.json")))
-        self.cache.update(JsonStorage(str(base_path / "fastpitch.json")))
-        self.cache.update(JsonStorage(str(base_path / "coqui_community.json")))
-        self.cache.update(JsonStorage(str(base_path / "vits2.json")))
-        self.cache.update(JsonStorage(str(base_path / "styletts2.json")))
-        self.cache.update(JsonStorage(str(base_path / "f5tts.json")))
-        self.cache.update(JsonStorage(str(base_path / "coqui_vits.json")))
-        self.cache.update(JsonStorage(str(base_path / "BSC.json")))
-        self.cache.update(JsonStorage(str(base_path / "shami.json")))
-        self.cache.update(JsonStorage(str(base_path / "chatterbox.json")))
-        self.cache.update(JsonStorage(str(base_path / "supertonic.json")))
+        for index_file in self.voice_index_files():
+            self.cache.update(JsonStorage(str(index_file)))
         self.voices = {}
         for voice_id, voice_dict in self.cache.items():
             try:
@@ -654,46 +785,25 @@ class TTSModelManager:
         Returns:
             Dict[str, List[str]]: mapping of source name to sorted voice IDs.
         """
-        base_path = Path(os.path.dirname(__file__)) / "voice_index"
-        sources = {
-            "ovos": "OVOS.json",
-            "mms": "MMS.json",
-            "proxectonos": "proxectonos.json",
-            "piper": "piper.json",
-            "piper_community": "piper_community.json",
-            "phonikud": "phonikud.json",
-            "neurlang": "neurlang.json",
-            "mimic3": "mimic3.json",
-            "transformers_community": "transformers_community.json",
-            "optispeech": "optispeech.json",
-            "glowtts": "glowtts.json",
-            "mixertts": "mixertts.json",
-            "fastpitch": "fastpitch.json",
-            "coqui_community": "coqui_community.json",
-            "vits2": "vits2.json",
-            "styletts2": "styletts2.json",
-            "coqui_vits": "coqui_vits.json",
-            "bsc": "BSC.json",
-            "supertonic": "supertonic.json",
-        }
         result: Dict[str, List[str]] = {}
-        for source, filename in sources.items():
-            path = base_path / filename
-            if not path.is_file():
-                continue
+        for path in self.voice_index_files():
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            result[source] = sorted(data.keys())
+            result[path.stem.lower()] = sorted(data.keys())
         return result
 
     def download_voice_by_id(self, voice_id: str) -> bool:
         """
-        Download a single voice's model (and side files) by its ID.
+        Download everything a voice needs to load offline, by its ID.
 
         Looks the voice up in the in-memory registry first (populated via
         ``load()``/``merge_default_voices()``); if not found there, falls
         back to the bundled voice indexes so a voice can be downloaded
         on-demand without first loading the full catalog into memory.
+
+        Fetches the full set of artifacts via ``TTSModelInfo.download_all``:
+        the ONNX graph, the config JSON, the tokenizer artifacts and any
+        vocoder / style / speaker-encoder / auxiliary graphs.
 
         Returns:
             bool: True if the voice was found and its download was attempted,
@@ -701,11 +811,8 @@ class TTSModelManager:
         """
         voice_info = self.voices.get(voice_id)
         if not voice_info:
-            base_path = Path(os.path.dirname(__file__)) / "voice_index"
-            for filename in os.listdir(base_path):
-                if not filename.endswith(".json"):
-                    continue
-                with open(base_path / filename, "r", encoding="utf-8") as f:
+            for path in self.voice_index_files():
+                with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 if voice_id in data:
                     voice_info = TTSModelInfo(**data[voice_id])
@@ -715,7 +822,7 @@ class TTSModelManager:
             LOG.error(f"Cannot find voice information for ID: {voice_id}")
             return False
 
-        voice_info.download_model()
+        voice_info.download_all()
         return True
 
 
