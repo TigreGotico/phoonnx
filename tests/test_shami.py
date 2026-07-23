@@ -153,3 +153,28 @@ class TestShamiRequiredLanguageIds(unittest.TestCase):
         supplied = np.array([[1, 1, 0]], dtype=np.int64)
         feed = ShamiAdapter().build_feed_dict(self._request(supplied), self._Session())
         np.testing.assert_array_equal(feed["language_ids"], supplied)
+
+
+class TestShamiSpeakerIdAlwaysFed(unittest.TestCase):
+    """Speaker 0 is a real speaker, not "unset". Omitting it made a multi-speaker
+    graph (which declares speaker_id) reject the default speaker outright."""
+
+    class _Session:
+        def __init__(self, *names): self._n = names
+        def get_inputs(self): return [types.SimpleNamespace(name=n) for n in self._n]
+
+    def _req(self, sid):
+        return AdapterSynthesisRequest(phoneme_ids=np.array([[1, 2, 3]], dtype=np.int64),
+                                       phoneme_lengths=np.array([3], dtype=np.int64),
+                                       language_ids=None, speaker_id=sid)
+
+    def test_default_speaker_zero_is_fed(self):
+        sess = self._Session("phoneme_ids", "phoneme_lengths", "language_ids", "speaker_id")
+        feed = ShamiAdapter().build_feed_dict(self._req(0), sess)
+        self.assertIn("speaker_id", feed)
+        np.testing.assert_array_equal(feed["speaker_id"], np.array([0]))
+
+    def test_single_speaker_graph_does_not_gain_the_input(self):
+        sess = self._Session("phoneme_ids", "phoneme_lengths", "language_ids")
+        feed = ShamiAdapter().build_feed_dict(self._req(0), sess)
+        self.assertNotIn("speaker_id", feed)

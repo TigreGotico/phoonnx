@@ -86,6 +86,15 @@ class YourTTSAdapter(BaseOnnxAdapter):
         }
         if dv is not None:
             args["d_vector"] = dv.astype(np.float32)
+        elif any(i.name == "d_vector" for i in session.get_inputs()):
+            # d_vector is YourTTS's only speaker conditioning; silently dropping it
+            # left onnxruntime to report a missing required input, which says
+            # nothing about what the voice is actually missing.
+            raise ValueError(
+                "this YourTTS voice needs a speaker d-vector: pass a "
+                "speaker_reference to synthesize(), or give the voice a "
+                "engine_params['d_vector'] or engine_params['speaker_encoder_path']"
+            )
         return self._filter_inputs(args, session)
 
     def parse_outputs(

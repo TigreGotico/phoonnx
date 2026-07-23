@@ -103,3 +103,18 @@ def test_reference_audio_outranks_bundled_dvector():
     feed = a.build_feed_dict(_req(d_vector=np.full(512, 0.1, np.float32),
                                   reference_audio=(np.zeros(16000, np.float32), 16000)), SESS)
     assert np.allclose(feed["d_vector"][0], 0.9)
+
+
+def test_missing_d_vector_raises_a_clear_error():
+    """d_vector is YourTTS's only speaker conditioning and is always a declared
+    input; omitting it left onnxruntime to report a missing required input,
+    which says nothing about what the voice actually lacks."""
+    import types, numpy as np, pytest
+    from phoonnx.engines.yourtts import YourTTSAdapter
+    from phoonnx.engines.base import AdapterSynthesisRequest
+    sess = type("S", (), {"get_inputs": lambda self: [
+        types.SimpleNamespace(name=n) for n in ("input", "input_lengths", "scales", "langid", "d_vector")]})()
+    req = AdapterSynthesisRequest(phoneme_ids=np.array([[1, 2]], dtype=np.int64),
+                                  phoneme_lengths=np.array([2], dtype=np.int64), params={})
+    with pytest.raises(ValueError, match="d-vector"):
+        YourTTSAdapter().build_feed_dict(req, sess)

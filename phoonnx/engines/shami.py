@@ -48,9 +48,11 @@ class ShamiAdapter(BaseOnnxAdapter):
             else np.zeros_like(np.asarray(request.phoneme_ids), dtype=np.int64)
         )
 
-        # Single-speaker graphs may prune the speaker_id input entirely.
-        if request.speaker_id is not None and request.speaker_id > 0:
-            args["speaker_id"] = np.array([request.speaker_id], dtype=np.int64)
+        # Speaker 0 is a real speaker, not "unset": omitting it made a
+        # multi-speaker graph (which declares speaker_id) reject the default
+        # speaker outright. Always feed it; _filter_inputs prunes it again on
+        # single-speaker graphs that do not declare the input.
+        args["speaker_id"] = np.array([int(request.speaker_id or 0)], dtype=np.int64)
 
         return self._filter_inputs(args, session)
 

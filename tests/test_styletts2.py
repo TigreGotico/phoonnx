@@ -108,3 +108,17 @@ def test_styletts2_cloning_splits_ref_and_s():
 def test_styletts2_style_encoder_registered():
     from phoonnx.engines.speaker_encoders import list_speaker_encoders
     assert "styletts2_style" in list_speaker_encoders()
+
+
+def test_missing_style_raises_a_clear_error():
+    """The graph conditions on a style vector; without one onnxruntime only
+    reported a missing required input."""
+    import types, numpy as np, pytest
+    from phoonnx.engines.styletts2 import StyleTTS2Adapter
+    from phoonnx.engines.base import AdapterSynthesisRequest
+    sess = type("S", (), {"get_inputs": lambda self: [
+        types.SimpleNamespace(name=n) for n in ("input_ids", "attention_mask", "speed", "style")]})()
+    req = AdapterSynthesisRequest(phoneme_ids=np.array([[1, 2]], dtype=np.int64),
+                                  phoneme_lengths=np.array([2], dtype=np.int64), params={})
+    with pytest.raises(ValueError, match="style"):
+        StyleTTS2Adapter().build_feed_dict(req, sess)
