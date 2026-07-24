@@ -643,6 +643,17 @@ class SynthesisConfig:
     # own ``diacritizer_model`` choice; an explicit value here overrides it.
     diacritizer_model: Optional[str] = None
 
+    # post-synthesis audio super-resolution via ``audiosronnx`` (pure-ONNX). Off by
+    # default; when ``True`` each synthesized chunk is upscaled to 48 kHz before being
+    # yielded and the chunk's ``sample_rate`` reports the upscaled rate. ``audiosronnx``
+    # is imported lazily and only when enabled; it ships in the ``[audiosr]`` extra.
+    super_resolution: bool = False
+
+    # super-resolution model name (an ``audiosronnx`` engine, e.g. ``"novasr"`` or
+    # ``"lavasr"``). ``None`` (the default) selects ``"novasr"``. Ignored unless
+    # ``super_resolution`` is True.
+    super_resolution_model: Optional[str] = None
+
     # Engine-specific per-call params (d_factor, p_factor, e_factor, …)
     extra_params: Dict[str, Any] = field(default_factory=dict)
 
