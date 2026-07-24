@@ -40,6 +40,39 @@ class TestPiperLangCodeMayBeAbsent(unittest.TestCase):
         vc = VoiceConfig.from_dict(cfg)
         self.assertTrue(vc.add_diacritics)
 
+    def test_lookalike_primary_subtags_are_not_arabic_or_hebrew(self):
+        """Exact primary-subtag matching, never ``startswith``.
+
+        Aragonese (arg), Mapudungun (arn), Berber (ber) and Herero (her) share
+        a prefix with ar/he but are unrelated; a false match routes the voice
+        through a diacritizer built for another language.
+        """
+        for lang in ("arg", "arn", "ber", "her", "arw", "hei"):
+            with self.subTest(lang=lang):
+                vc = VoiceConfig.from_dict(self._piper_cfg(espeak={"voice": lang}))
+                self.assertFalse(vc.add_diacritics)
+
+    def test_region_and_script_tags_still_match(self):
+        for lang in ("ar-EG", "ar_SA", "AR"):
+            with self.subTest(lang=lang):
+                vc = VoiceConfig.from_dict(self._piper_cfg(espeak={"voice": lang}))
+                self.assertTrue(vc.add_diacritics)
+
+
+class TestExactPrimarySubtagHelper(unittest.TestCase):
+    def test_is_lang_matches_exact_primary_subtag_only(self):
+        from phoonnx.config import _is_lang
+        self.assertTrue(_is_lang("ar", "ar"))
+        self.assertTrue(_is_lang("ar-EG", "ar"))
+        self.assertTrue(_is_lang("ar_SA", "ar"))
+        self.assertTrue(_is_lang("AR", "ar"))
+        self.assertTrue(_is_lang("he-IL", "ar", "he"))
+        for lookalike in ("arg", "arn", "arz", "ary", "her", "ber", "hei"):
+            with self.subTest(lang=lookalike):
+                self.assertFalse(_is_lang(lookalike, "ar", "he"))
+        self.assertFalse(_is_lang(None, "ar"))
+        self.assertFalse(_is_lang("", "ar"))
+
 
 class TestTransformersVocabBranchMissingTokenizerConfigKeys(unittest.TestCase):
     """config.py ~L446-454: the transformers/vocab branch must not KeyError

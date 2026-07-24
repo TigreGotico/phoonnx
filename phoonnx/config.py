@@ -39,7 +39,21 @@ class Engine(str, Enum):
 # PhonemeType is scriptconv's Phonemizer under its historical name.  Aliasing
 # (not redefinition) keeps enum identity: values stored in voice configs and
 # pickles resolve to the same class everywhere.
+from scriptconv.phonemizers.base import _primary_subtag
 from scriptconv.phonemizers.enums import Alphabet, Phonemizer as PhonemeType
+
+
+def _is_lang(lang_code: Optional[str], *langs: str) -> bool:
+    """True when *lang_code*'s primary subtag is one of *langs*.
+
+    Exact primary-subtag matching, never ``startswith``: Aragonese (``arg``),
+    Mapudungun (``arn``) and Herero (``her``) share a prefix with ``ar``/``he``
+    but are unrelated languages, and a false match silently routes the voice
+    through a diacritizer built for a different script. Mirrors scriptconv's
+    own ``_diacritizer_family`` routing, so the two cannot disagree about which
+    voices get vocalized.
+    """
+    return bool(lang_code) and _primary_subtag(lang_code) in langs
 
 @dataclass
 class VoiceConfig:
@@ -173,9 +187,7 @@ class VoiceConfig:
             self.phoneme_type = PhonemeType(self.phoneme_type)
 
         if self.add_diacritics is None:
-            self.add_diacritics = False
-            if self.lang_code and self.lang_code.startswith("ar"):
-                self.add_diacritics = True
+            self.add_diacritics = _is_lang(self.lang_code, "ar")
 
         self.lang_code = normalize_lang(self.lang_code or "und")
 
@@ -303,7 +315,7 @@ class VoiceConfig:
             phoneme_type = phoneme_type or PhonemeType.UNICODE
             alphabet = alphabet or Alphabet.UNICODE
             # Arabic/Hebrew need vocalization (niqqud/tashkeel) for correct pronunciation.
-            diacritics = (lang_code or "").lower().startswith(("ar", "he"))
+            diacritics = _is_lang(lang_code, "ar", "he")
             config.setdefault("audio", {}).setdefault("sample_rate", 24000)
             config.setdefault("num_symbols", tokenizer._tok.get_vocab_size())
 
@@ -352,7 +364,7 @@ class VoiceConfig:
 
             lang_code = lang_code or (config.get("language", {}).get("code") or
                          config.get("espeak", {}).get("voice"))
-            diacritics = (lang_code or "").startswith("ar")
+            diacritics = _is_lang(lang_code, "ar")
             phoneme_type = phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK)
             if phoneme_type == "text":
                 phoneme_type = PhonemeType.UNICODE
