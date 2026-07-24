@@ -193,3 +193,51 @@ def test_tokenization_arabic_mantoq_pinned_buckwalter_ids():
                          'a', 'm', 'u', ' ', 'E', 'a', 'l', 'a', 'y', 'k', 'u', 'm']
     expected = [sid[p] for p in expected_symbols]
     assert ours == expected
+
+
+class _ShortInputSession(DummySession):
+    """Mimics SpeedySpeech: dilated convs reject sequences below a minimum."""
+
+    def __init__(self, min_len):
+        super().__init__(["token_ids"])
+        self.min_len = min_len
+        self.seen_lengths = []
+
+    def run(self, output_names, feed):
+        from onnxruntime.capi.onnxruntime_pybind11_state import InvalidArgument
+        n = np.asarray(feed["token_ids"]).shape[-1]
+        self.seen_lengths.append(n)
+        if n < self.min_len:
+            raise InvalidArgument(
+                "[ONNXRuntimeError] : 2 : INVALID_ARGUMENT : Non-zero status code "
+                f"returned while running Conv node. Invalid input shape: {{{n}}}"
+            )
+        return [np.zeros((1, 80, n * 2), dtype=np.float32)]
+
+
+def test_short_input_is_padded_until_the_graph_accepts_it():
+    session = _ShortInputSession(min_len=13)
+    adapter = MixerTTSAdapter(vocoder=FakeVocoder())
+    result = adapter.synthesize(_req(4), session)
+    assert result.audio.size > 0
+    assert session.seen_lengths[0] == 4
+    assert session.seen_lengths[-1] == 13
+
+
+def test_long_enough_input_is_not_padded():
+    session = _ShortInputSession(min_len=13)
+    adapter = MixerTTSAdapter(vocoder=FakeVocoder())
+    adapter.synthesize(_req(20), session)
+    assert session.seen_lengths == [20]
+
+
+def test_unrelated_invalid_argument_is_not_swallowed():
+    from onnxruntime.capi.onnxruntime_pybind11_state import InvalidArgument
+
+    class _Boom(DummySession):
+        def run(self, output_names, feed):
+            raise InvalidArgument("INVALID_ARGUMENT : unexpected data type")
+
+    adapter = MixerTTSAdapter(vocoder=FakeVocoder())
+    with pytest.raises(InvalidArgument):
+        adapter.synthesize(_req(4), _Boom(["token_ids"]))
