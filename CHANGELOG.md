@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.63.0a2](https://github.com/TigreGotico/phoonnx/tree/1.63.0a2) (2026-07-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.63.0a1...1.63.0a2)
+
+**Merged pull requests:**
+
+- ci: bump docker workflow actions [\#313](https://github.com/TigreGotico/phoonnx/pull/313) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.63.0a1](https://github.com/TigreGotico/phoonnx/tree/1.63.0a1) (2026-07-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.62.0a1...1.63.0a1)
@@ -214,7 +222,6 @@
 - feat: AhoTTS \(pyahotts\) Basque phonemizer [\#193](https://github.com/TigreGotico/phoonnx/pull/193) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(pycotovia-gl\): replace cotovia binary shell-out with pycotovia [\#191](https://github.com/TigreGotico/phoonnx/pull/191) ([JarbasAl](https://github.com/JarbasAl))
 - refactor: delegate ARPA↔IPA, Buckwalter↔Arabic, MMS script-tag to scriptconv [\#190](https://github.com/TigreGotico/phoonnx/pull/190) ([JarbasAl](https://github.com/JarbasAl))
-- fix\(glowtts\): take larynx mel output 0 + denormalize \(Larynx noise\) [\#189](https://github.com/TigreGotico/phoonnx/pull/189) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
