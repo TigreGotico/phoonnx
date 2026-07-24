@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.64.1a1](https://github.com/TigreGotico/phoonnx/tree/1.64.1a1) (2026-07-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.64.0a1...1.64.1a1)
+
+**Merged pull requests:**
+
+- fix: pad short token sequences for SpeedySpeech-style exports [\#318](https://github.com/TigreGotico/phoonnx/pull/318) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.64.0a1](https://github.com/TigreGotico/phoonnx/tree/1.64.0a1) (2026-07-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.63.0a2...1.64.0a1)
@@ -228,7 +236,6 @@
 - feat: HiTZ multilingual \(gl/ca/es\) VITS voices [\#196](https://github.com/TigreGotico/phoonnx/pull/196) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(eu\): HiTZ StyleTTS2-eu + VITS voices in voice\_index [\#195](https://github.com/TigreGotico/phoonnx/pull/195) ([JarbasAl](https://github.com/JarbasAl))
 - feat: AhoTTS \(pyahotts\) Basque phonemizer [\#193](https://github.com/TigreGotico/phoonnx/pull/193) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(pycotovia-gl\): replace cotovia binary shell-out with pycotovia [\#191](https://github.com/TigreGotico/phoonnx/pull/191) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
