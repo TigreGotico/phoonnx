@@ -94,6 +94,50 @@ class MixerTTSAdapter(BaseOnnxAdapter):
         }
         return self._filter_inputs(args, session)
 
+    # Some exports in this family (notably SpeedySpeech, which shares the
+    # FastPitch ONNX contract) stack dilated residual convolutions with no
+    # padding, so the graph rejects any token sequence shorter than its
+    # receptive field with ``INVALID_ARGUMENT ... Invalid input shape``.
+    # Short utterances ("Yes.") are ordinary TTS input, so pad up to this
+    # bound and retry rather than propagating the crash.
+    MAX_PAD_TO = 32
+
+    def synthesize(
+        self,
+        request: AdapterSynthesisRequest,
+        session: onnxruntime.InferenceSession,
+    ) -> AdapterSynthesisResult:
+        feed = self.build_feed_dict(request, session)
+        try:
+            outputs = session.run(None, feed)
+        except onnxruntime.capi.onnxruntime_pybind11_state.InvalidArgument as err:
+            if "Invalid input shape" not in str(err):
+                raise
+            outputs = self._run_padded(session, feed, err)
+        try:
+            return self.parse_outputs(
+                outputs, request, output_names=self._safe_output_names(session)
+            )
+        except TypeError:
+            return self.parse_outputs(outputs, request)
+
+    def _run_padded(self, session, feed, err):
+        """Retry ``session.run`` with ``token_ids`` right-padded with the pad id."""
+        tokens = np.asarray(feed["token_ids"])
+        length = tokens.shape[-1]
+        pad_id = int(self._engine_params.get("pad_id", 0))
+        for target in range(length + 1, self.MAX_PAD_TO + 1):
+            padded = np.pad(
+                tokens, [(0, 0)] * (tokens.ndim - 1) + [(0, target - length)],
+                constant_values=pad_id,
+            )
+            try:
+                return session.run(None, {**feed, "token_ids": padded})
+            except onnxruntime.capi.onnxruntime_pybind11_state.InvalidArgument as retry_err:
+                if "Invalid input shape" not in str(retry_err):
+                    raise
+        raise err
+
     def parse_outputs(
         self,
         outputs: List[np.ndarray],
