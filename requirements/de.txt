@@ -1,2 +1,2 @@
-gruut[de]>=2.3.0,<3.0
+gruut[de]>=2.4.0,<3.0
 epitran
