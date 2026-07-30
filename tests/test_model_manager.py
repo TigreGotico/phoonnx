@@ -572,6 +572,67 @@ class TestDownloadAll(HubTestCase):
                               "tokenizer_config.json"}, pulled)
 
 
+class TestLoadProviders(HubTestCase):
+    @patch("phoonnx.model_manager.VoiceConfig")
+    @patch("phoonnx.model_manager.make_session")
+    @patch("phoonnx.model_manager.resolve_providers")
+    @patch("phoonnx.model_manager.TTSVoice")
+    @patch("phoonnx.model_manager.requests.get")
+    def test_load_engine_without_config_url_uses_requested_providers(
+            self, mock_get, mock_ttsvoice_cls, mock_resolve_providers,
+            mock_make_session, mock_voiceconfig_cls):
+        info = self.make_info(engine=Engine.SUPERTONIC,
+                              model_url="https://example.com/model.onnx")
+
+        def side_effect(url, timeout=None, stream=None):
+            if stream:
+                resp = _mock_response(200, content=b"data")
+                cm = MagicMock()
+                cm.__enter__.return_value = resp
+                return cm
+            return _mock_response(200, content=b'{"vocab": {}}')
+
+        mock_get.side_effect = side_effect
+        fake_config = MagicMock()
+        fake_config.engine_params = {}
+        mock_voiceconfig_cls.from_dict.return_value = fake_config
+        first_requested = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        first_resolved = [
+            ("CUDAExecutionProvider", {"cudnn_conv_algo_search": "HEURISTIC"}),
+            "CPUExecutionProvider",
+        ]
+        second_requested = ["CPUExecutionProvider"]
+        second_resolved = ["CPUExecutionProvider"]
+        mock_resolve_providers.side_effect = [first_resolved, second_resolved]
+        session = MagicMock()
+        mock_make_session.return_value = session
+        fake_voice = MagicMock()
+        mock_ttsvoice_cls.return_value = fake_voice
+        first_result = info.load(providers=first_requested)
+        self.assertEqual(fake_config.engine_params["providers"], first_resolved)
+
+        second_result = info.load(providers=second_requested)
+
+        self.assertEqual(
+            mock_resolve_providers.call_args_list,
+            [unittest.mock.call(first_requested),
+             unittest.mock.call(second_requested)],
+        )
+        self.assertEqual(
+            mock_make_session.call_args_list,
+            [
+                unittest.mock.call(info.voice_path / "model.onnx",
+                                   providers=first_resolved),
+                unittest.mock.call(info.voice_path / "model.onnx",
+                                   providers=second_resolved),
+            ],
+        )
+        self.assertEqual(fake_config.engine_params["providers"],
+                         second_resolved)
+        self.assertEqual(first_result, fake_voice)
+        self.assertEqual(second_result, fake_voice)
+
+
 class TestTTSModelInfoStringEnumCoercion(HubTestCase):
     def test_string_engine_alphabet_phoneme_type_coerced(self):
         info = self.make_info(engine="piper", alphabet="ipa", phoneme_type="espeak")

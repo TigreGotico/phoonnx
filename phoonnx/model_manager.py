@@ -1,5 +1,4 @@
 import hashlib
-import onnxruntime
 import json
 import os
 import re
@@ -16,7 +15,7 @@ from json_database import JsonStorageXDG, JsonStorage
 
 from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet
 from phoonnx.util import match_lang, normalize_lang, LOG
-from phoonnx.providers import ProviderSpec
+from phoonnx.providers import ProviderSpec, make_session, resolve_providers
 from phoonnx.voice import TTSVoice
 
 
@@ -668,17 +667,19 @@ class TTSModelInfo:
         tokenizer_config_path = self.hub_path(self.tokenizer_config_url)
         tokens_path = self.hub_path(self.tokens_url)
 
-        # Voices without a published config.json (Chatterbox) can't be engine-detected
-        # from files on disk — build the voice from the index-derived VoiceConfig, which
-        # already carries the engine, BPE tokenizer and lang_tokens.
+        # Voices without a published config.json can't be engine-detected from
+        # files on disk. Build them from the index-derived VoiceConfig, which
+        # already carries the engine and its tokenizer/runtime metadata.
         if self.engine and not self.config_url:
             config = self.config
-            config.engine_params = {**(config.engine_params or {}), **self.engine_params()}
-            session = onnxruntime.InferenceSession(
-                str(model_path),
-                sess_options=onnxruntime.SessionOptions(),
-                providers=["CPUExecutionProvider"],
-            )
+            resolved_providers = resolve_providers(providers)
+            engine_params = {
+                **(config.engine_params or {}),
+                **self.engine_params(),
+            }
+            engine_params["providers"] = resolved_providers
+            config.engine_params = engine_params
+            session = make_session(model_path, providers=resolved_providers)
             return TTSVoice(session=session, config=config)
 
         voice = TTSVoice.load(model_path=model_path,
@@ -768,7 +769,7 @@ class TTSModelManager:
 
     @property
     def supported_langs(self) -> List[str]:
-        return sorted(set(l.lang for l in self.all_voices))
+        return sorted(set(voice.lang for voice in self.all_voices))
 
     def clear(self):
         self.cache.clear()
