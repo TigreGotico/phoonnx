@@ -183,7 +183,7 @@ plugin = PhoonnxTTSPlugin(config={
 })
 ```
 
-## Key methods:
+## Key methods
 
 | Method | Description |
 |--------|-------------|
