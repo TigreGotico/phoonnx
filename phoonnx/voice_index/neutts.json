@@ -1,0 +1,200 @@
+{
+    "neutts/akiti/twi/abena": {
+        "voice_id": "neutts/akiti/twi/abena",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "neutts",
+        "lang": "tw",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
+            "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
+        },
+        "engine_options": {
+            "voice": "abena"
+        },
+        "display_name": "Akiti-TTS Twi (abena) - Akiti voice: abena"
+    },
+    "neutts/akiti/twi/akua": {
+        "voice_id": "neutts/akiti/twi/akua",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "neutts",
+        "lang": "tw",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
+            "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
+        },
+        "engine_options": {
+            "voice": "akua"
+        },
+        "display_name": "Akiti-TTS Twi (akua) - Akiti voice: akua"
+    },
+    "neutts/akiti/twi/akwasi": {
+        "voice_id": "neutts/akiti/twi/akwasi",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "neutts",
+        "lang": "tw",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
+            "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
+        },
+        "engine_options": {
+            "voice": "akwasi"
+        },
+        "display_name": "Akiti-TTS Twi (akwasi) - Akiti voice: akwasi"
+    },
+    "neutts/akiti/twi/kofi": {
+        "voice_id": "neutts/akiti/twi/kofi",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "neutts",
+        "lang": "tw",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
+            "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
+        },
+        "engine_options": {
+            "voice": "kofi"
+        },
+        "display_name": "Akiti-TTS Twi (kofi) - Akiti voice: kofi"
+    },
+    "neutts/akiti/twi/kwabena": {
+        "voice_id": "neutts/akiti/twi/kwabena",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "neutts",
+        "lang": "tw",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
+            "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
+        },
+        "engine_options": {
+            "voice": "kwabena"
+        },
+        "display_name": "Akiti-TTS Twi (kwabena) - Akiti voice: kwabena"
+    },
+    "neutts/akiti/twi/kwaku": {
+        "voice_id": "neutts/akiti/twi/kwaku",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "neutts",
+        "lang": "tw",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
+            "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
+        },
+        "engine_options": {
+            "voice": "kwaku"
+        },
+        "display_name": "Akiti-TTS Twi (kwaku) - Akiti voice: kwaku"
+    },
+    "neutts/akiti/twi/kwame": {
+        "voice_id": "neutts/akiti/twi/kwame",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "neutts",
+        "lang": "tw",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
+            "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
+        },
+        "engine_options": {
+            "voice": "kwame"
+        },
+        "display_name": "Akiti-TTS Twi (kwame) - Akiti voice: kwame"
+    },
+    "neutts/akiti/twi/yaa": {
+        "voice_id": "neutts/akiti/twi/yaa",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "neutts",
+        "lang": "tw",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
+            "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
+        },
+        "engine_options": {
+            "voice": "yaa"
+        },
+        "display_name": "Akiti-TTS Twi (yaa) - Akiti voice: yaa"
+    },
+    "neutts/akiti/twi/yaw": {
+        "voice_id": "neutts/akiti/twi/yaw",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "neutts",
+        "lang": "tw",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
+            "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
+        },
+        "engine_options": {
+            "voice": "yaw"
+        },
+        "display_name": "Akiti-TTS Twi (yaw) - Akiti voice: yaw"
+    }
+}
