@@ -159,6 +159,26 @@ def test_encode_text_uses_the_models_own_bpe():
     assert ad.encode_text("hi!", None, None) == [[ord("h"), ord("i"), ord("!")]]
 
 
+def test_encode_text_tokenizes_the_reference_transcription_with_the_same_bpe():
+    # the transcription is text for this model, so it must not come from the shared
+    # phonemizer path (whose prompt_tokens are phoneme ids for ZipVoice-style engines)
+    ad = _adapter()
+
+    class _Bpe:
+        def tokenize(self, text):
+            return [ord(c) for c in text]
+
+    class _Syn:
+        speaker_reference_text = "ab"
+
+    ad.tokenizer = _Bpe()
+    ad.encode_text("hi", None, _Syn())
+    assert ad._reference_text_ids == [ord("a"), ord("b")]
+    # a later call without a transcription clears it, so a stale reference never leaks
+    ad.encode_text("hi", None, None)
+    assert ad._reference_text_ids is None
+
+
 def test_encode_text_without_a_tokenizer_is_an_error():
     with pytest.raises(RuntimeError):
         SparkTTSAdapter().encode_text("hi", None, None)
