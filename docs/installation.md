@@ -41,6 +41,7 @@ Install extras with `pip install "phoonnx[<name>]"`. Combine them with commas, e
 | `chatterbox-multilingual` | Chatterbox per-language script transforms (ja/zh) | `pykakasi`, `spacy-pkuseg` |
 | `cjk` | Same CJK script-transform deps as `chatterbox-multilingual`, under a shorter name | `pykakasi`, `spacy-pkuseg` |
 | `o2i` | The multilingual data-driven IPA backend | `orthography2ipa` |
+| `audiosr` | Optional 48 kHz [audio super-resolution](ovos_plugin.md#audio-super-resolution) over synthesized audio | `audiosronnx` |
 | `all` | Every language phonemizer + cloning (used by the Docker image) | see below |
 
 ### Language extras
@@ -83,8 +84,9 @@ several add higher-quality engines.
 |---|---|
 | `train` | The core training pipeline (PyTorch Lightning, librosa, torch) |
 | `train-eval` | Checkpoint evaluation loop (UTMOS, speaker similarity, quality filters) |
-| `train-fastpitch` | FastPitch/SpeedySpeech F0 extraction (`pyworld`) |
-| `train-mixer` | Mixer-TTS F0 sidecar (`pyworld`) |
+| `train-pyworld` | The `pyworld` F0 extractor, used by FastPitch/SpeedySpeech and Mixer-TTS |
+| `train-fastpitch` | The FastPitch/SpeedySpeech training engine (no extra deps beyond `[train]`) |
+| `train-mixer` | The Mixer-TTS training engine (no extra deps beyond `[train]`) |
 | `train-styletts2` | The StyleTTS2 training engine |
 | `train-resample` | Resampling for engines defined at a fixed sample rate (e.g. ZipVoice 24 kHz) |
 | `train-data` | Multi-format dataset loading for preprocessing (jsonl/parquet/HF repos with embedded audio bytes) |
