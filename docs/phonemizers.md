@@ -48,6 +48,7 @@ matching [install extra](installation.md#language-extras).
 | `xpinyin` | XPinyin | Chinese |
 | `jieba` | Jieba (word segmentation, not a true phonemizer) | Chinese |
 | `mwl_phonemizer` | Mirandese phonemizer | Mirandese |
+| `vosk` | vosk-tts phoneme inventory (use with `Alphabet.VOSK`) | Russian |
 | `shami` | Levantine Arabic / English code-switching front-end (emits per-phoneme language IDs) | ar-LB / en |
 | `arbtok` | Dialect-aware Arabic on undiacritized text (o2i lattice; register via `phonemizer_model`) | Arabic |
 | `euskaphone` | Dialect-aware Basque (o2i lattice) | Basque |
@@ -78,6 +79,9 @@ The `Alphabet` enum controls the output representation of the phonemizer:
 | `eraab` | ERAAB (Persian) |
 | `cotovia` | Cotovia phoneme set (Galician) |
 | `buckwalter` | Buckwalter transliteration (Arabic) |
+| `graphemes` | Raw text characters |
+| `vosk` | vosk-tts phoneme inventory (Russian) |
+| `cangjie` | Cangjie input-method decomposition (Chinese) |
 
 ## Selecting a Phonemizer
 

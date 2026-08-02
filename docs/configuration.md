@@ -145,7 +145,7 @@ Piper, Mimic3, and Coqui config formats are also parsed automatically.
 
 ## Engine Enum
 
-`Engine` (in `phoonnx.config`) records which framework a voice was built with. It has 16
+`Engine` (in `phoonnx.config`) records which framework a voice was built with. It has 17
 members. `piper`, `mimic3` and `coqui` all run through the single VITS adapter; the rest map
 to a dedicated adapter. The adapter registry itself is described in [Engines](engines.md).
 
@@ -167,6 +167,7 @@ to a dedicated adapter. The adapter registry itself is described in [Engines](en
 | `shami` | Levantine Arabic / English (HamsVITS) | [Shami](training/engines/shami.md) |
 | `f5tts` | DiT flow-matching (F5-TTS / Habibi) | [F5-TTS](training/engines/f5tts.md) |
 | `chatterbox` | Autoregressive codec-LM cloning | [Chatterbox](training/engines/chatterbox.md) |
+| `supertonic` | Multi-graph flow-matching, raw-text (no phonemizer) | [Engines](engines.md) |
 
 ## Execution Providers
 

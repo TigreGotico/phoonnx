@@ -161,6 +161,17 @@ register_engine("my_engine", MyTrainingEngine)
 | Engine | File | Quality Presets |
 |---|---|---|
 | VITS | `phoonnx_train/engines/vits.py` | `x-low`, `medium`, `high` |
+| [GlowTTS](training/engines/glowtts.md) | `phoonnx_train/engines/glowtts.py` | see page |
+| [Matcha](training/engines/matcha.md) | `phoonnx_train/engines/matcha.py` | see page |
+| [OptiSpeech](training/engines/optispeech.md) | `phoonnx_train/engines/optispeech.py` | see page |
+| [FastPitch](training/engines/fastpitch.md) / `speedyspeech` | `phoonnx_train/engines/fastpitch.py` | see page |
+| [ZipVoice](training/engines/zipvoice.md) | `phoonnx_train/engines/zipvoice.py` | see page |
+| `mixer` / [MixerTTS](training/engines/mixertts.md) | `phoonnx_train/engines/mixer.py` | see page |
+| StyleTTS2 (`styletts2`, `styletts2-aligner`, `styletts2-plbert`, `styletts2-pitch`) | `phoonnx_train/engines/styletts2*.py` | see page |
+| YourTTS | `phoonnx_train/engines/yourtts.py` | see page |
+
+`Chatterbox`, `F5-TTS` and `SuperTonic` currently ship inference-only adapters
+(`phoonnx/engines/`) — there is no `phoonnx_train` training engine for them yet.
 
 ---
 
@@ -168,7 +179,7 @@ register_engine("my_engine", MyTrainingEngine)
 
 ### Training
 
-`train.py` now accepts `--engine` and delegates model creation / checkpoint loading to the selected engine:
+`train.py` accepts `--engine` and delegates model creation / checkpoint loading to the selected engine:
 
 ```bash
 python -m phoonnx_train.train \

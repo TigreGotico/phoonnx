@@ -53,7 +53,7 @@ golden path in [docs/training/quickstart.md](docs/training/quickstart.md).
 | Run ONNX voices on CPU or GPU (CUDA/ROCm/DirectML/CoreML/OpenVINO) | [Usage](docs/usage.md) · [Configuration](docs/configuration.md) |
 | ~40 phonemizer backends across many languages | [Phonemizers](docs/phonemizers.md) |
 | Load Piper / Mimic3 / Coqui / Transformers / MMS voices | [Architecture](docs/architecture.md) |
-| 17 synthesis engines behind one adapter registry | [Engines](docs/engines.md) |
+| 14 synthesis engines behind one adapter registry | [Engines](docs/engines.md) |
 | Zero-shot voice cloning (YourTTS, StyleTTS2, ZipVoice, F5-TTS, Chatterbox) | [Cloning](docs/cloning.md) |
 | Low-latency streaming for VITS voices | [Streaming](docs/streaming.md) |
 | Optional 48 kHz audio super-resolution over synthesized audio | [OVOS plugin](docs/ovos_plugin.md#audio-super-resolution) |
@@ -91,6 +91,14 @@ docker compose up
 ```
 
 See [docs/docker.md](docs/docker.md).
+
+## Related projects
+
+`phoonnx` is part of the [OpenVoiceOS](https://github.com/OpenVoiceOS) ecosystem:
+
+- [ovos-core](https://github.com/OpenVoiceOS/ovos-core) — the voice assistant that loads this plugin
+- [ovos-plugin-manager](https://github.com/OpenVoiceOS/ovos-plugin-manager) — the plugin framework `ovos-tts-plugin-phoonnx` registers against
+- [ovos-tts-server](https://github.com/OpenVoiceOS/ovos-tts-server) — a standalone HTTP server for any OVOS TTS plugin, including this one
 
 ## License and credits
 

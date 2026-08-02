@@ -11,10 +11,11 @@ speaker's voice from a short reference clip, without any per-speaker training.
 from phoonnx.voice import TTSVoice, SynthesisConfig
 
 voice = TTSVoice.load("model.onnx", "model.json")
-audio = voice.synthesize(
+for chunk in voice.synthesize(
     "This sentence is spoken in the cloned voice.",
     SynthesisConfig(speaker_reference="reference.wav"),
-)
+):
+    ...  # chunk.audio_float_array — see Usage for the full AudioChunk API
 ```
 
 ## Two cloning paradigms
@@ -61,10 +62,11 @@ pip install phoonnx[cloning]
 No transcription, any language — the speaker encoder summarizes timbre directly:
 
 ```python
-audio = voice.synthesize(
+for chunk in voice.synthesize(
     "Speak this in the cloned voice.",
     SynthesisConfig(speaker_reference="any_language_clip.wav"),
-)
+):
+    ...
 ```
 
 The encoders live in the **speaker-encoder registry**
@@ -95,13 +97,14 @@ reference, so it needs both the reference audio **and its transcription** — th
 aligns the audio to phonemes:
 
 ```python
-audio = voice.synthesize(
+for chunk in voice.synthesize(
     "A sentence the reference never spoke.",
     SynthesisConfig(
         speaker_reference="alice.wav",
         speaker_reference_text="hello, this is the reference clip",
     ),
-)
+):
+    ...
 ```
 
 ### Cross-lingual cloning

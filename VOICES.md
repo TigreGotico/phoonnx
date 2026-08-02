@@ -1,6 +1,6 @@
 ## Supported Voices
 
-**Total Voices:** 2235
+**Total Voices:** 2238
 **Total Languages:** 1239
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
@@ -2000,6 +2000,9 @@
 | `coqui/uk-mai-vits` | `uk-UA` | `coqui` | `graphemes` |
 | `facebook/mms-tts-ukr-Ukrainian` | `uk-UA` | `transformers` | `graphemes` |
 | `piper/uk_UA-lada-x_low` | `uk-UA` | `piper` | `espeak` |
+| `piper/uk_UA-mykyta-high` | `uk-UA` | `piper` | `espeak` |
+| `piper/uk_UA-oleksa-high` | `uk-UA` | `piper` | `espeak` |
+| `piper/uk_UA-tetiana-high` | `uk-UA` | `piper` | `espeak` |
 | `piper/uk_UA-ukrainian_tts-medium` | `uk-UA` | `piper` | `unicode` |
 | `facebook/mms-tts-unr-Mundari` | `unr` | `transformers` | `graphemes` |
 | `facebook/mms-tts-upv-Uripiv-Wala-Rano-Atchin` | `upv` | `transformers` | `graphemes` |

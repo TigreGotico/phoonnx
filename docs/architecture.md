@@ -73,7 +73,7 @@ At load time `TTSVoice` resolves an adapter in this order (`voice.py` + `engines
    ONNX session.
 3. If nothing matches, it falls back to the VITS adapter.
 
-The 16 declared engine formats and the adapter registry are documented in
+The 17 declared engine formats and the adapter registry are documented in
 [Engines](engines.md); voice-config detection of Piper/Mimic3/Coqui/Transformers shapes is
 documented in the [Configuration reference](configuration.md).
 
@@ -83,7 +83,8 @@ Single-stage engines (VITS and its Piper/Mimic3/Coqui variants) emit a waveform 
 Two-stage engines (Matcha, GlowTTS, MixerTTS, FastPitch) emit a mel spectrogram and pair
 with a separate **vocoder** ONNX graph. Cloning and multi-graph engines load further
 auxiliary graphs — speaker encoders (YourTTS), style encoders (StyleTTS2), text/flow decoders
-(ZipVoice, F5-TTS), or the four-graph codec-LM split (Chatterbox). The voice manager
+(ZipVoice, F5-TTS), the four-graph codec-LM split (Chatterbox), or SuperTonic's four
+flow-matching graphs. The voice manager
 downloads these alongside the primary model and injects their local paths into
 `engine_params`; every auxiliary session runs on the same execution providers as the voice.
 See [Vocoders](vocoders.md) and the per-engine pages under

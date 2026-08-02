@@ -90,7 +90,8 @@ vendored symbol vocabulary.
 from phoonnx.voice import TTSVoice
 
 voice = TTSVoice.load("model.onnx", "config.json")
-audio = voice.synthesize("مَرحَبا، this is a test.")
+for chunk in voice.synthesize("مَرحَبا، this is a test."):
+    ...
 ```
 
 `TTSVoice` routes the model to `ShamiAdapter` and forwards the per-phoneme

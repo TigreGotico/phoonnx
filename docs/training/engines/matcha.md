@@ -48,7 +48,7 @@ Catalan Matxa voices ship in `phoonnx/voice_index/BSC.json`, mirrored under
 End-to-end (single ONNX, no vocoder):
 
 ```python
-from phoonnx import TTSVoice
+from phoonnx.voice import TTSVoice
 
 voice = TTSVoice.load(model_path="matxa_v2_graphemes_10_steps_wavenext.onnx")
 ```
