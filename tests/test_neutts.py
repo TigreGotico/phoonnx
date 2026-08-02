@@ -466,7 +466,10 @@ def test_voice_index_entries_are_well_formed():
         assert entry["lang"] == "tw"
         assert entry["engine_options"]["voice"] == vid.rsplit("/", 1)[-1]
         assert set(entry["aux_model_urls"]) == {
-            "codec_decoder_path", "tokenizer_path", "voices_path"}
+            "lm_weights_path", "codec_decoder_path", "tokenizer_path", "voices_path"}
+        # the fp32 graph's external weights must keep the filename the graph references
+        assert entry["aux_model_urls"]["lm_weights_path"].endswith("/neutts_lm.onnx.data")
+        assert entry["model_url"].endswith("/neutts_lm.onnx")
 
 
 def test_engine_options_reach_engine_params(tmp_path):

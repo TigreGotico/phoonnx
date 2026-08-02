@@ -1,7 +1,7 @@
 {
     "neutts/akiti/twi/abena": {
         "voice_id": "neutts/akiti/twi/abena",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -12,6 +12,7 @@
         "engine": "neutts",
         "lang": "tw",
         "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx.data",
             "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
             "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
@@ -23,7 +24,7 @@
     },
     "neutts/akiti/twi/akua": {
         "voice_id": "neutts/akiti/twi/akua",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -34,6 +35,7 @@
         "engine": "neutts",
         "lang": "tw",
         "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx.data",
             "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
             "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
@@ -45,7 +47,7 @@
     },
     "neutts/akiti/twi/akwasi": {
         "voice_id": "neutts/akiti/twi/akwasi",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -56,6 +58,7 @@
         "engine": "neutts",
         "lang": "tw",
         "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx.data",
             "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
             "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
@@ -67,7 +70,7 @@
     },
     "neutts/akiti/twi/kofi": {
         "voice_id": "neutts/akiti/twi/kofi",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -78,6 +81,7 @@
         "engine": "neutts",
         "lang": "tw",
         "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx.data",
             "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
             "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
@@ -89,7 +93,7 @@
     },
     "neutts/akiti/twi/kwabena": {
         "voice_id": "neutts/akiti/twi/kwabena",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -100,6 +104,7 @@
         "engine": "neutts",
         "lang": "tw",
         "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx.data",
             "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
             "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
@@ -111,7 +116,7 @@
     },
     "neutts/akiti/twi/kwaku": {
         "voice_id": "neutts/akiti/twi/kwaku",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -122,6 +127,7 @@
         "engine": "neutts",
         "lang": "tw",
         "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx.data",
             "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
             "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
@@ -133,7 +139,7 @@
     },
     "neutts/akiti/twi/kwame": {
         "voice_id": "neutts/akiti/twi/kwame",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -144,6 +150,7 @@
         "engine": "neutts",
         "lang": "tw",
         "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx.data",
             "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
             "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
@@ -155,7 +162,7 @@
     },
     "neutts/akiti/twi/yaa": {
         "voice_id": "neutts/akiti/twi/yaa",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -166,6 +173,7 @@
         "engine": "neutts",
         "lang": "tw",
         "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx.data",
             "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
             "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
@@ -177,7 +185,7 @@
     },
     "neutts/akiti/twi/yaw": {
         "voice_id": "neutts/akiti/twi/yaw",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm_int8.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -188,6 +196,7 @@
         "engine": "neutts",
         "lang": "tw",
         "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neutts_lm.onnx.data",
             "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/neucodec_decoder.onnx",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/tokenizer.json",
             "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-neutts/resolve/main/akiti-twi-onnx/voices.json"
