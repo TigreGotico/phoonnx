@@ -27,6 +27,7 @@ turned into:
 |---|---|---|---|---|
 | **d-vector** | a **speaker encoder** maps the reference waveform to a fixed embedding that conditions synthesis | No | Yes | YourTTS, StyleTTS2, [Chatterbox](training/engines/chatterbox.md) |
 | **in-context** | the reference **audio + its transcription** are part of the model input; the model continues that voice | **Yes** | Per-phoneme (espeak/pinyin) | ZipVoice |
+| **in-context, pre-encoded** | the reference is **codec-encoded ahead of time** and shipped with the voice; the model continues those audio tokens | **Yes** (bundled) | Per-phoneme (espeak) | NeuTTS / Akiti-TTS |
 
 A cloning voice can still bundle a **default speaker**, so it works with *or* without a
 reference. When a reference is given it **overrides** the default
@@ -89,6 +90,32 @@ adds an **`exaggeration`** control (0.0–1.0) for expressiveness:
 ```python
 voice.synthesize("...", SynthesisConfig(speaker_reference="ref.wav", exaggeration=0.6))
 ```
+
+## Preset engine (NeuTTS / Akiti-TTS)
+
+[NeuTTS](engines.md) clones in-context, but the reference is **encoded once, offline**, and
+shipped with the voice rather than supplied per call. A preset is a reference
+transcription plus the NeuCodec tokens of its recording; the model is given both and
+continues the voice. Each bundled voice pins one preset, so no cloning arguments are
+needed:
+
+```python
+voice.synthesize("Meda wo ase paa.")
+```
+
+Switch presets per call through `extra_params`:
+
+```python
+SynthesisConfig(extra_params={"voice": "kofi", "temperature": 0.4, "seed": 0})
+```
+
+`speaker_reference` is **not** supported here: Neuphonic publishes NeuCodec's decoder as
+ONNX but not its encoder, so a fresh clip cannot be turned into reference tokens at
+runtime. Passing one raises rather than silently ignoring it.
+
+Sampling is tunable through `extra_params` — `temperature`, `top_p`, `top_k`,
+`repetition_penalty` and `max_new_tokens` (the autoregressive loop runs at 50 codec
+tokens per second of audio). `seed` makes a run reproducible.
 
 ## In-context engine (ZipVoice)
 

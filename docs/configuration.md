@@ -58,6 +58,7 @@ config = VoiceConfig.from_dict(my_config_dict)
 `VoiceConfig.from_dict()` automatically detects the training engine from the config structure:
 
 - **Chatterbox** — an explicit `engine: "chatterbox"` (needs a BPE `tokenizer.json`)
+- **NeuTTS** — an explicit `engine: "neutts"` (the adapter loads its own BPE `tokenizer.json` and `voices.json` from `engine_params`)
 - **phoonnx** — presence of `phoonnx_version`
 - **Piper** — presence of `piper_version`, or a list-valued `phoneme_id_map` + `phoneme_type: "espeak"|"text"` (an explicitly declared non-piper engine wins over shape-sniffing)
 - **Mimic3** — presence of `phonemizer` + `phonemes` dict (requires an external `phonemes.txt`)
@@ -168,6 +169,7 @@ to a dedicated adapter. The adapter registry itself is described in [Engines](en
 | `f5tts` | DiT flow-matching (F5-TTS / Habibi) | [F5-TTS](training/engines/f5tts.md) |
 | `chatterbox` | Autoregressive codec-LM cloning | [Chatterbox](training/engines/chatterbox.md) |
 | `supertonic` | Multi-graph flow-matching, raw-text (no phonemizer) | [Engines](engines.md) |
+| `neutts` | Autoregressive NeuCodec LM, preset cloning @24 kHz | [Cloning](cloning.md) |
 
 ## Execution Providers
 
