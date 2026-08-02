@@ -35,6 +35,7 @@ class Engine(str, Enum):
     SUPERTONIC = "supertonic"  # Supertone SuperTonic: 4-graph flow-matching, raw-text (no phonemizer)
     NEUTTS = "neutts"  # NeuTTS Air / VieNeu / Akiti: Qwen3 codec-LM + NeuCodec decoder
     POCKETTTS = "pockettts"  # Kyutai Pocket TTS: 5-graph flow-matching codec LM, raw-text (no phonemizer)
+    SPARKTTS = "sparktts"  # Spark-TTS: Qwen2 codec-LM + BiCodec, preset or zero-shot speakers
 
 
 # Alphabet and PhonemeType are wire-format enums shared with scriptconv;
@@ -362,6 +363,26 @@ class VoiceConfig:
             phoneme_type = phoneme_type or PhonemeType.UNICODE
             alphabet = alphabet or Alphabet.GRAPHEMES
             config.setdefault("audio", {}).setdefault("sample_rate", 24000)
+            tokenizer = TTSTokenizer(
+                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
+                add_blank_char=False,
+                add_blank_word=False,
+                use_eos_bos=False,
+                blank_at_end=False,
+                blank_at_start=False,
+            )
+
+        elif (engine == Engine.SPARKTTS or
+                (isinstance(engine, str) and engine == "sparktts") or
+                config.get("engine") == "sparktts"):
+            # Spark-TTS consumes raw text: the adapter owns text -> id conversion with the
+            # model's own subword BPE (loaded from engine_params, like SuperTonic's
+            # indexer), so no phonemizer vocabulary is needed here. Alphabet.GRAPHEMES
+            # routes TTSVoice.synthesize() through adapter.encode_text().
+            engine = Engine.SPARKTTS
+            phoneme_type = phoneme_type or PhonemeType.UNICODE
+            alphabet = alphabet or Alphabet.GRAPHEMES
+            config.setdefault("audio", {}).setdefault("sample_rate", 16000)
             tokenizer = TTSTokenizer(
                 Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
                 add_blank_char=False,
