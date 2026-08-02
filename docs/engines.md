@@ -91,6 +91,7 @@ Lower `detect_priority` values are probed first during auto-detection.
 | SuperTonic | `phoonnx/engines/supertonic.py` | `engine == "supertonic"` — multi-graph flow-matching engine (4 ONNX graphs via `aux_model_urls`), raw-text (no phonemizer), fixed per-speaker style instead of cloning |
 | NeuTTS (NeuTTS Air / VieNeu / Akiti) | `phoonnx/engines/neutts.py` | `engine == "neutts"` — autoregressive single-codebook codec-LM (Qwen3 backbone + NeuCodec decoder), raw text phonemized with espeak-ng, in-context [cloning](cloning.md) from pre-encoded voice presets, 24 kHz |
 | [Pocket TTS](pockettts.md) | `phoonnx/engines/pockettts.py` | `engine == "pockettts"` — 5-graph flow-matching codec LM with explicit stream state, raw-text (no phonemizer), state-based voices and reference [cloning](cloning.md) |
+| [Spark-TTS](training/engines/sparktts.md) | `phoonnx/engines/sparktts.py` | `engine == "sparktts"` — autoregressive codec-LM (Qwen2 + BiCodec), raw-text, en/zh; preset 32-token speakers or zero-shot [cloning](cloning.md) |
 
 ---
 
