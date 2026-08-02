@@ -139,7 +139,7 @@ is the **encoder**; the decoder is an auxiliary graph:
 ```
 
 ```python
-from phoonnx import TTSVoice
+from phoonnx.voice import TTSVoice
 voice = TTSVoice.load(model_path="encoder.onnx")  # config sits next to it
 ```
 
