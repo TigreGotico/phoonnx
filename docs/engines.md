@@ -90,6 +90,7 @@ Lower `detect_priority` values are probed first during auto-detection.
 | [Chatterbox](training/engines/chatterbox.md) | `phoonnx/engines/chatterbox.py` | `engine == "chatterbox"` — first **autoregressive** engine (codec-LM), d-vector [cloning](cloning.md) + exaggeration |
 | SuperTonic | `phoonnx/engines/supertonic.py` | `engine == "supertonic"` — multi-graph flow-matching engine (4 ONNX graphs via `aux_model_urls`), raw-text (no phonemizer), fixed per-speaker style instead of cloning |
 | NeuTTS (NeuTTS Air / VieNeu / Akiti) | `phoonnx/engines/neutts.py` | `engine == "neutts"` — autoregressive single-codebook codec-LM (Qwen3 backbone + NeuCodec decoder), raw text phonemized with espeak-ng, in-context [cloning](cloning.md) from pre-encoded voice presets, 24 kHz |
+| [Pocket TTS](pockettts.md) | `phoonnx/engines/pockettts.py` | `engine == "pockettts"` — 5-graph flow-matching codec LM with explicit stream state, raw-text (no phonemizer), state-based voices and reference [cloning](cloning.md) |
 
 ---
 
@@ -171,7 +172,7 @@ register_engine("my_engine", MyTrainingEngine)
 | StyleTTS2 (`styletts2`, `styletts2-aligner`, `styletts2-plbert`, `styletts2-pitch`) | `phoonnx_train/engines/styletts2*.py` | see page |
 | YourTTS | `phoonnx_train/engines/yourtts.py` | see page |
 
-`Chatterbox`, `F5-TTS` and `SuperTonic` currently ship inference-only adapters
+`Chatterbox`, `F5-TTS`, `SuperTonic` and `Pocket TTS` currently ship inference-only adapters
 (`phoonnx/engines/`) — there is no `phoonnx_train` training engine for them yet.
 
 ---
