@@ -40,6 +40,26 @@ Converts coqui `tts_models/*/glow-tts` (GlowTTS / flow). GlowTTS already takes
 `input_lengths` as an explicit ONNX input, so it is dynamic without the mask fix;
 the same `voice_config_from_coqui` tokenization rules (sort + phonemizer) apply.
 
+## `neutts/`
+
+Exports a NeuTTS Air / VieNeu-TTS / Akiti-TTS backbone (a `Qwen3ForCausalLM` that emits
+NeuCodec audio tokens) to ONNX. Nothing is vendored — the checkpoint loads through
+`transformers`, and only the cache plumbing is wrapped so `torch.export` can carry it.
+
+One graph serves prefill *and* decode, with the KV cache as explicit inputs and outputs.
+A separate prefill graph would double ~0.3 B parameters on disk for an identical
+contract. Only the last position's logits are returned: the full `[1, S, 66938]` tensor
+is hundreds of MB of prefill output that sampling never reads.
+
+```bash
+python export_neutts_onnx.py --repo afrispeech/Akiti-TTS --out-dir ./onnx \
+    --quantize --check-parity
+```
+
+`--check-parity` re-runs the prompt through torch and prints the max absolute logit
+difference for the prefill call and for each decode step. The matching NeuCodec decoder
+is published by Neuphonic as ONNX and is used as-is, not re-exported.
+
 ## Licensing
 
 The vendored model code under each exporter is derived from
