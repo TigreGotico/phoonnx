@@ -168,6 +168,12 @@ class TTSModelInfo:
     embed_tokens_url: Optional[str] = None
     conditional_decoder_url: Optional[str] = None
 
+    # Free-form engine settings that are plain values rather than downloadable files
+    # (``aux_model_urls`` covers the files). Merged into ``engine_params()`` as-is, so an
+    # index entry can pin a per-voice knob the adapter reads — e.g. NeuTTS voices, which
+    # all share one checkpoint and differ only by which ``voices.json`` preset they use.
+    engine_options: Optional[Dict[str, Any]] = field(default_factory=dict)
+
     # Optional BCP47 -> language-token map: how this voice's lang_code becomes the model's
     # language token. Dialect models (e.g. lahgtna) repurpose the base tokens, so a literal
     # token like "eg" is mapped here rather than derived from the (normalized) lang code.
@@ -507,7 +513,7 @@ class TTSModelInfo:
         Build the engine_params dict for synthesis, resolving the vocoder to
         its locally-downloaded path.  Empty for single-stage engines.
         """
-        params: Dict[str, Any] = {}
+        params: Dict[str, Any] = dict(self.engine_options or {})
         for key, aux_path in self.download_aux_models().items():
             params[key] = str(aux_path)
         style_path = self.download_style()
@@ -650,7 +656,7 @@ class TTSModelManager:
         "optispeech.json", "glowtts.json", "mixertts.json", "fastpitch.json",
         "coqui_community.json", "vits2.json", "styletts2.json", "f5tts.json",
         "coqui_vits.json", "BSC.json", "shami.json", "chatterbox.json",
-        "supertonic.json",
+        "supertonic.json", "neutts.json",
     )
 
     @classmethod
