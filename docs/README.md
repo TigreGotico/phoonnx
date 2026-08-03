@@ -53,6 +53,7 @@ how to obtain or train it, and a synthesis example:
 [FastPitch](training/engines/fastpitch.md) ·
 [ZipVoice](training/engines/zipvoice.md) ·
 [Chatterbox](training/engines/chatterbox.md) ·
+[Spark-TTS](training/engines/sparktts.md) ·
 [F5-TTS](training/engines/f5tts.md) ·
 [Shami](training/engines/shami.md) ·
 [Pocket TTS](pockettts.md)

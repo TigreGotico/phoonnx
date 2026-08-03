@@ -82,8 +82,9 @@ Spark-TTS's controllable mode (gender, moderate pitch, moderate speed) and then 
 from phoonnx.model_manager import TTSModelManager
 
 manager = TTSModelManager()
-voice = manager.load_voice("sparktts/female/en")
-for chunk in voice.synthesize("Spark T T S speaks English and Mandarin."):
+manager.merge_default_voices()
+voice = manager.voices["sparktts/female/en"].load()
+for chunk in voice.synthesize("Spark-TTS speaks English and Mandarin."):
     ...  # chunk.audio_float_array
 ```
 
