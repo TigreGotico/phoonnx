@@ -497,7 +497,10 @@ class PocketTTSAdapter(BaseOnnxAdapter):
 
     def decode_latents(self, latents: np.ndarray, chunk_size: int = 15) -> np.ndarray:
         """Turn latent frames into audio, feeding the decoder in small chunks and
-        carrying its state forward so the joins are seamless."""
+        carrying its state forward so the joins are seamless within this call's
+        latents. Each call to synthesize() starts flow_lm_main from the voice's
+        saved state again, so this continuity does not carry across sentence-level
+        text chunks — the flow-LM state resets there by design."""
         state = self.init_state(self.mimi_state_manifest)
         audio: List[np.ndarray] = []
         for index in range(0, latents.shape[1], chunk_size):

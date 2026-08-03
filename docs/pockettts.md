@@ -48,10 +48,16 @@ Synthesis of one chunk runs like this:
 4. A short Euler loop over `flow_lm_flow` turns a Gaussian sample into the next latent
    frame. One step is enough; more steps trade speed for smoothness.
 5. The loop stops a few frames after the end-of-speech logit crosses its threshold.
-6. `mimi_decoder` turns the latent frames into 24 kHz audio. It runs on small chunks and
-   carries its state forward, so the joins are seamless.
+6. `mimi_decoder` turns the latent frames into 24 kHz audio. It runs on small, fixed-size
+   sub-chunks of 15 frames and carries its state forward between them, so the join inside
+   one text chunk's audio is seamless.
 
 The model produces 12.5 latent frames per second. Each frame decodes to 1920 samples.
+
+Each synthesis call starts `flow_lm_main` from the voice's saved state, not from wherever
+the previous text chunk left off. So state only carries forward within a chunk's own
+15-frame sub-chunks, not across the sentence-level chunks described below. This is
+deliberate: the model was trained on single sentences and drifts on longer input.
 
 ### Stream state
 
