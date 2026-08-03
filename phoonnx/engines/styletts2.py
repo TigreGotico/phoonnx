@@ -46,8 +46,10 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
         self.speaker_encoder = speaker_encoder
         # id the token sequence is padded with. Defaults to the yl4579/Kokoro
         # vocab's "$" (id 0); configure() replaces it with the voice's own pad
-        # token, which is not id 0 for every StyleTTS2 lineage (the ProxectoNos
-        # Galician voices pad with the word separator, id 1).
+        # token, because a StyleTTS2 lineage that reorders the vocabulary puts
+        # its pad somewhere other than id 0. Getting this wrong is audible: the
+        # padding token is prepended to every utterance, so a pad that happens
+        # to be a trained speech symbol makes the voice speak an extra syllable.
         self._pad_id = _PAD_ID
 
     def default_params(self) -> Dict[str, float]:

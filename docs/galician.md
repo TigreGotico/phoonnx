@@ -118,21 +118,36 @@ Use the two Galician ONNX exports instead:
 
 | Repo | Model | Notes |
 |---|---|---|
-| [`OpenVoiceOS/Nos_ASR-wav2vec2-xls-r-300m-gl-onnx`](https://huggingface.co/OpenVoiceOS/Nos_ASR-wav2vec2-xls-r-300m-gl-onnx) | wav2vec2 XLS-R 300M CTC | strongest; 4.7 % WER on Celtia's own recordings |
-| [`OpenVoiceOS/proxectonos-gl-conformer-ctc-large-onnx`](https://huggingface.co/OpenVoiceOS/proxectonos-gl-conformer-ctc-large-onnx) | NeMo Conformer-CTC large | second opinion; much weaker (21-24 % on human speech) |
+| [`OpenVoiceOS/Nos_ASR-wav2vec2-xls-r-300m-gl-onnx`](https://huggingface.co/OpenVoiceOS/Nos_ASR-wav2vec2-xls-r-300m-gl-onnx) | wav2vec2 XLS-R 300M CTC | strongest; 5.9 % WER on Celtia's own recordings |
+| [`OpenVoiceOS/proxectonos-gl-conformer-ctc-large-onnx`](https://huggingface.co/OpenVoiceOS/proxectonos-gl-conformer-ctc-large-onnx) | NeMo Conformer-CTC large | second opinion; much weaker (22-23 % on human speech) |
 
 Both are Apache-2.0 exports of Proxecto Nós models and run on onnxruntime CPU.
 Always report the **human-speech floor** — the same ASR on the speaker's own
 recordings — next to the synthesized WER. The gap is the number that says
 something about the voice; the absolute WER says more about the ASR.
 
-Measured on ten Galician sentences per voice, with 15 clips from each speaker's
-published test split as the floor:
+Measured on 52 Galician sentences per voice — the two speakers' published test
+splits — with each speaker's own recordings of those sentences as the floor
+(16 clips for Brais, 20 for Celtia):
 
 | Voice | wav2vec2 synth | wav2vec2 floor | gap | conformer synth | conformer floor | gap |
 |---|---|---|---|---|---|---|
-| Celtia | 0.130 | 0.047 | +0.083 | 0.313 | 0.243 | +0.070 |
-| Brais | 0.183 | 0.063 | +0.120 | 0.496 | 0.216 | +0.280 |
+| Celtia | 0.170 | 0.059 | +0.111 | 0.284 | 0.233 | +0.051 |
+| Brais | 0.122 | 0.057 | +0.065 | 0.275 | 0.218 | +0.057 |
+
+Report a distribution, not only a mean. A single sentence says almost nothing:
+on the pangram `O raposo veloz salta por riba do can preguiceiro preto da vella
+ponte` both voices score 0.308, because the ASR merges `can preguiceiro` into
+one word for either of them.
+
+### Padding token
+
+The Galician checkpoints pad with `X` (id 0), the token upstream's
+`meldataset.py` inserts and appends on every training sample. Upstream's own
+`inference.py` instead prepends the word separator (id 1). Do not copy that:
+the word separator is a trained speech symbol, so a leading id 1 makes the
+voice speak an extra syllable at the start of every utterance. It costs Brais
+0.196 WER against 0.122, and Celtia 0.180 against 0.170.
 
 ### Known front-end gaps
 

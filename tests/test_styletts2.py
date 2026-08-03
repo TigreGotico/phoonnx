@@ -201,25 +201,32 @@ def test_galician_vocab_is_the_69_symbol_cotovia_phoneset():
     """
     vocab = build_phoneme_id_map(_GL_TOKEN_MAP)
     assert set(vocab.values()) == set(range(69))
-    # the ids upstream's inference.py depends on
-    assert vocab["X"] == 0          # unknown
-    assert vocab[" "] == 1          # word separator == the leading pad token
+    # the ids the upstream token handling depends on
+    assert vocab["X"] == 0          # unknown == the token training pads with
+    assert vocab[" "] == 1          # word separator (a trained speech symbol)
     # Cotovia surface forms fold onto the trained single-symbol ids
     assert vocab["rr"] == vocab["R"]
     assert vocab["tS"] == vocab["W"]
     assert vocab["a^"] == vocab["á"] and vocab["o^"] == vocab["ó"]
 
 
-def test_galician_config_pads_with_the_word_separator():
-    """Upstream inserts the WORD-SEPARATOR id, not id 0, at the front of every
-    sequence (``inference.py``: ``tokens.insert(0, textcleaner([" "])[0])``)."""
+def test_galician_config_pads_with_the_token_training_used():
+    """The Galician voices pad with "X" (id 0), the token upstream's
+    ``meldataset.py`` inserts and appends on every training sample
+    (``text.insert(0, 0)``/``text.append(0)``).
+
+    Upstream's own ``inference.py`` instead prepends the word separator
+    (id 1). That is a trained speech symbol, so it makes the voice speak an
+    extra syllable: on 52 Galician sentences it costs Brais 0.196 WER against
+    0.122 for id 0.
+    """
     from phoonnx.tokenizer import TTSTokenizer, Vocabulary
 
     vocab = build_phoneme_id_map(_GL_TOKEN_MAP)
-    tok = TTSTokenizer(vocabulary=Vocabulary(char2idx=vocab, pad=" "),
+    tok = TTSTokenizer(vocabulary=Vocabulary(char2idx=vocab, pad="X"),
                        add_blank_char=False, add_blank_word=False, use_eos_bos=False,
                        blank_at_start=False, blank_at_end=False)
-    assert tok.pad_id == 1
+    assert tok.pad_id == 0
 
     class _Cfg:
         tokenizer = tok
@@ -228,7 +235,27 @@ def test_galician_config_pads_with_the_word_separator():
     adapter = StyleTTS2Adapter()
     adapter.configure(_Cfg())
     feed = adapter.build_feed_dict(_req(5), _Sess(["input_ids", "speed"]))
-    assert feed["input_ids"][0, 0] == 1
+    assert feed["input_ids"][0, 0] == 0
+    # the word separator must NOT be what the sequence starts with
+    assert feed["input_ids"][0, 0] != vocab[" "]
+
+
+def test_configurable_pad_still_honours_a_non_zero_pad():
+    """The pad id is read off the voice's tokenizer, not hardcoded -- a
+    StyleTTS2 lineage that reorders its vocabulary must still pad correctly."""
+    from phoonnx.tokenizer import TTSTokenizer, Vocabulary
+
+    tok = TTSTokenizer(vocabulary=Vocabulary(char2idx={"a": 0, "b": 1, "$": 2}, pad="$"),
+                       add_blank_char=False, add_blank_word=False, use_eos_bos=False,
+                       blank_at_start=False, blank_at_end=False)
+
+    class _Cfg:
+        tokenizer = tok
+        engine_params = {}
+
+    adapter = StyleTTS2Adapter()
+    adapter.configure(_Cfg())
+    assert adapter.build_feed_dict(_req(5), _Sess(["input_ids", "speed"]))["input_ids"][0, 0] == 2
 
 
 def test_default_pad_id_is_unchanged_for_the_dollar_vocabularies():
