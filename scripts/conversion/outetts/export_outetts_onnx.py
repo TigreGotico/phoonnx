@@ -38,6 +38,10 @@ Usage::
     python export_outetts_onnx.py --repo OuteAI/OuteTTS-1.0-0.6B --out-dir ./onnx \\
         --check-parity
 
+``--check-parity`` prints the diagnostic (prefill/decode max abs diff, greedy agreement)
+and then exits non-zero if greedy agreement is below 100% or either max diff exceeds
+1e-4, so a broken re-export fails CI instead of scrolling past in a log.
+
 Upstream weights keep their own license: ``OuteTTS-1.0-0.6B`` is Apache-2.0, and
 ``Llama-OuteTTS-1.0-1B`` is CC-BY-NC-SA-4.0 (no commercial use).
 """
@@ -46,6 +50,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -290,15 +295,23 @@ def main() -> None:
     ap.add_argument("--opset", type=int, default=18)
     ap.add_argument("--filename", default="model.onnx")
     ap.add_argument("--check-parity", action="store_true",
-                    help="compare the exported graph against torch and print max abs diff")
+                    help="compare the exported graph against torch, print max abs diff, "
+                         "and exit non-zero if greedy_agreement < 100%% or a max diff "
+                         "exceeds the 1e-4 tolerance")
     args = ap.parse_args()
 
     path = export(args.repo, args.out_dir, args.opset, args.filename)
     print(f"wrote {path} ({os.path.getsize(path) / 1e6:.1f} MB + sidecar)")
     if args.check_parity:
-        for name, value in check_parity(args.repo, path).items():
+        tolerance = 1e-4
+        diffs = check_parity(args.repo, path)
+        for name, value in diffs.items():
             print(f"parity {name}: {value:.3e}" if name != "greedy_agreement"
                   else f"parity {name}: {value:.0%}")
+        if diffs["greedy_agreement"] < 1.0 or diffs["prefill"] > tolerance \
+                or diffs["decode"] > tolerance:
+            print(f"parity check FAILED (tolerance={tolerance:.0e})")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
