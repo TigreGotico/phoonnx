@@ -84,8 +84,11 @@ signature, so no layer count is written into phoonnx.
 
 Two details differ from the other codec-LM engines:
 
-* `logits` covers **every** position, not only the last one, so the decode step reads
-  `logits[0, -1]`.
+* `logits` shape differs by graph. OuteAI's own 0.6B ONNX exports return **every**
+  position, `[1, S, V]`. phoonnx's own re-export of the 1B (see
+  [Weights and licensing](#weights-and-licensing)) returns only the **last** position,
+  `[1, 1, V]`, to avoid materializing a full-sequence tensor the sampler never reads. The
+  engine reads only `logits[0, -1]` either way, so both graphs work unchanged.
 * The waveform is **loudness normalized** to -18 LUFS with a -1 dBFS peak ceiling, and
   every decoder chunk is faded in and out over 15 ms. Upstream does this inside its codec
   wrapper, so it is part of the model's output level, not a phoonnx preference. phoonnx
@@ -121,6 +124,20 @@ for chunk in voice.synthesize("Der alte Leuchtturm steht an der Küste.", syn):
 phoonnx **cannot build a profile from a reference clip**. That needs Whisper word
 alignment plus the DAC encoder and a prosody analysis pass; `speaker_reference` therefore
 raises. Build the profile with the upstream `outetts` package and ship the JSON.
+
+## Known quality caveats
+
+The bundled voices all share the same English speaker profile, so every non-English
+voice carries an audible English accent. This is strongest in Polish.
+
+Sampling can occasionally make the model repeat or loop part of the sentence. This has
+been observed in Ukrainian. Greedy decoding (`temperature=0`) does not loop, but it is
+not the default.
+
+ASR coverage used to check word error rate during integration was limited for several
+languages: Arabic, Belarusian, Bengali, Persian, Swahili and Tamil had no capable
+`onnx-asr` model to check against, and Georgian had none at all. Those voices are
+therefore less verified than the European ones.
 
 ## Decoding parameters
 
