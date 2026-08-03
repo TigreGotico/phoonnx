@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.70.0a2](https://github.com/TigreGotico/phoonnx/tree/1.70.0a2) (2026-08-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.70.0a1...1.70.0a2)
+
+**Merged pull requests:**
+
+- test: harden scriptconv integration surface and bump floors [\#348](https://github.com/TigreGotico/phoonnx/pull/348) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.70.0a1](https://github.com/TigreGotico/phoonnx/tree/1.70.0a1) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.69.0a1...1.70.0a1)
@@ -300,7 +308,6 @@
 - feat: F5-TTS / Habibi-TTS engine adapter [\#207](https://github.com/TigreGotico/phoonnx/pull/207) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(train\): ZipVoice training engine \(Zipformer + flow matching\) [\#206](https://github.com/TigreGotico/phoonnx/pull/206) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(train\): YourTTS training engine — zero-shot cloning fine-tuning [\#205](https://github.com/TigreGotico/phoonnx/pull/205) ([JarbasAl](https://github.com/JarbasAl))
-- fix: unbreak CI — drop py3.10 leg, exclude self from license check [\#204](https://github.com/TigreGotico/phoonnx/pull/204) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
