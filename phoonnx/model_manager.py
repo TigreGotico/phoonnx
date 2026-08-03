@@ -656,7 +656,7 @@ class TTSModelManager:
         "optispeech.json", "glowtts.json", "mixertts.json", "fastpitch.json",
         "coqui_community.json", "vits2.json", "styletts2.json", "f5tts.json",
         "coqui_vits.json", "BSC.json", "shami.json", "chatterbox.json",
-        "supertonic.json", "neutts.json",
+        "supertonic.json", "neutts.json", "pockettts.json",
     )
 
     @classmethod

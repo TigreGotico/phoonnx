@@ -54,7 +54,8 @@ how to obtain or train it, and a synthesis example:
 [ZipVoice](training/engines/zipvoice.md) ·
 [Chatterbox](training/engines/chatterbox.md) ·
 [F5-TTS](training/engines/f5tts.md) ·
-[Shami](training/engines/shami.md)
+[Shami](training/engines/shami.md) ·
+[Pocket TTS](pockettts.md)
 
 ## Language notes
 

@@ -34,6 +34,7 @@ class Engine(str, Enum):
     CHATTERBOX = "chatterbox"  # autoregressive codec-LM, d-vector cloning + exaggeration
     SUPERTONIC = "supertonic"  # Supertone SuperTonic: 4-graph flow-matching, raw-text (no phonemizer)
     NEUTTS = "neutts"  # NeuTTS Air / VieNeu / Akiti: Qwen3 codec-LM + NeuCodec decoder
+    POCKETTTS = "pockettts"  # Kyutai Pocket TTS: 5-graph flow-matching codec LM, raw-text (no phonemizer)
 
 
 # Alphabet and PhonemeType are wire-format enums shared with scriptconv;
@@ -341,6 +342,26 @@ class VoiceConfig:
             phoneme_type = phoneme_type or PhonemeType.UNICODE
             alphabet = alphabet or Alphabet.GRAPHEMES
             config.setdefault("audio", {}).setdefault("sample_rate", 44100)
+            tokenizer = TTSTokenizer(
+                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
+                add_blank_char=False,
+                add_blank_word=False,
+                use_eos_bos=False,
+                blank_at_end=False,
+                blank_at_start=False,
+            )
+
+        elif (engine == Engine.POCKETTTS or
+                (isinstance(engine, str) and engine == "pockettts") or
+                config.get("engine") == "pockettts"):
+            # Pocket TTS consumes raw text directly: the adapter tokenizes with the
+            # bundle's own SentencePiece model (loaded from engine_params), so no
+            # phonemizer or vocabulary is needed here. Alphabet.GRAPHEMES routes
+            # TTSVoice.synthesize() through adapter.encode_text().
+            engine = Engine.POCKETTTS
+            phoneme_type = phoneme_type or PhonemeType.UNICODE
+            alphabet = alphabet or Alphabet.GRAPHEMES
+            config.setdefault("audio", {}).setdefault("sample_rate", 24000)
             tokenizer = TTSTokenizer(
                 Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
                 add_blank_char=False,
