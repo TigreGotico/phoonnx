@@ -174,7 +174,7 @@ to a dedicated adapter. The adapter registry itself is described in [Engines](en
 | `pockettts` | Flow-matching codec LM with explicit stream state, raw-text (no phonemizer) | [Pocket TTS](pockettts.md) |
 | `sparktts` | Autoregressive codec-LM (Qwen2 + BiCodec), en/zh | [Spark-TTS](training/engines/sparktts.md) |
 | `qwen3tts` | Two-stage codec LM (talker + code predictor), 10 languages | [Qwen3-TTS](training/engines/qwen3tts.md) |
-| `outetts` | Autoregressive codec-LM (Qwen3 + DAC.speech), raw-text, 14 languages | [OuteTTS](training/engines/outetts.md) |
+| `outetts` | Autoregressive codec-LM (Qwen3 or Llama-3.2 + DAC.speech), raw-text, 23 languages | [OuteTTS](training/engines/outetts.md) |
 
 ## Execution Providers
 

@@ -26,7 +26,8 @@ Two checkpoints share the interface:
 | `OuteTTS-1.0-0.6B` | Qwen3-0.6B | 14 | Apache-2.0 |
 | `Llama-OuteTTS-1.0-1B` | Llama-3.2-1B | 23 | CC-BY-NC-SA-4.0 |
 
-phoonnx indexes the **0.6B only**. See [Weights and licensing](#weights-and-licensing).
+phoonnx indexes both: the 0.6B for the 14 languages it was trained on, and the 1B for the
+nine only it covers. See [Weights and licensing](#weights-and-licensing).
 
 ## When to pick it
 
@@ -41,8 +42,14 @@ non-autoregressive engines are two orders of magnitude faster.
 
 ## Languages
 
-English, Chinese, Dutch, French, Georgian, German, Hungarian, Italian, Japanese, Korean,
-Latvian, Polish, Russian, Spanish.
+**On the 0.6B (Apache-2.0), 14:** English, Chinese, Dutch, French, Georgian, German,
+Hungarian, Italian, Japanese, Korean, Latvian, Polish, Russian, Spanish.
+
+**On the 1B (CC-BY-NC-SA-4.0), 9 more:** Arabic, Belarusian, Bengali, Lithuanian,
+Persian, Portuguese, Swahili, Tamil, Ukrainian.
+
+A voice id says which model it uses — `outetts/0.6B/de`, `outetts/1B/sw` — so nothing you
+reach by default carries the 1B's non-commercial clause.
 
 The model can also produce speech in languages it was not trained on, with variable
 quality. The voice index lists only the trained set.
@@ -148,26 +155,25 @@ The graphs live at
 [`OpenVoiceOS/phoonnx-outetts`](https://huggingface.co/OpenVoiceOS/phoonnx-outetts),
 mirrored unchanged from OuteAI and IBM Research.
 
-**Only the float32 0.6B is indexed.** Two findings drove that:
+**Only float32 graphs are indexed.** Every quantized 0.6B export published upstream
+(`fp16`, `int8`, `uint8`, `q4`, `q4f16`, `bnb4`, `quantized`) changes greedy decoding
+against the torch weights, so none is a safe default.
 
-* Every quantized 0.6B export published upstream (`fp16`, `int8`, `uint8`, `q4`, `q4f16`,
-  `bnb4`, `quantized`) changes greedy decoding against the torch weights. The float32
-  export matches it exactly.
-* The float32 **1B** export also disagrees with its torch weights — by 12 logits at the
-  end of a 1843-token prompt, with a correlation of 0.48 at that position, and greedy
-  decoding diverges. The 0.6B export at the same prompt length differs by 3.8e-05. The 1B
-  is mirrored for reference but is not indexed.
-
-That costs the nine languages only the 1B covers: Arabic, Belarusian, Bengali,
-Lithuanian, Persian, Portuguese, Swahili, Tamil and Ukrainian. They come back as soon as
-a 1B export that verifies against its weights exists.
+**The 1B graph in the mirror is phoonnx's own export, not OuteAI's.** OuteAI's published
+float32 1B ONNX does not reproduce its torch weights: 12 logits of error at the end of a
+1843-token prompt, a logit correlation of **0.48** there, and greedy decoding diverges.
+The gap is already 0.08 at 32 tokens, so it is the export, not accumulation.
+`scripts/conversion/outetts/export_outetts_onnx.py` re-exports the same KV-cache contract
+from `OuteAI/Llama-OuteTTS-1.0-1B` and matches it to **1.8e-05** with **64/64** greedy
+agreement, so the nine 1B-only languages are usable. The script also reproduces the 0.6B
+to 1.6e-05, which is how it is verified against a graph that was already known good.
 
 Licenses differ per artifact:
 
 | Artifact | License |
 | :--- | :--- |
 | `OuteTTS-1.0-0.6B` | Apache-2.0 |
-| `Llama-OuteTTS-1.0-1B` | CC-BY-NC-SA-4.0 — **no commercial use** |
+| `Llama-OuteTTS-1.0-1B` | CC-BY-NC-SA-4.0 — **no commercial use** (only the nine `outetts/1B/*` voices) |
 | `DAC.speech.v1.0` (IBM Research) | CDLA-Permissive-2.0 |
 | speaker profiles (from the `outetts` package) | Apache-2.0 |
 
