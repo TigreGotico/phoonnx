@@ -22,7 +22,7 @@ dependencies = [
     "langcodes",
     "ovos-number-parser>=0.4.0",
     "ovos-date-parser>=0.6.4a1",
-    "scriptconv[phonemizers]>=0.0.4a18",
+    "scriptconv[phonemizers]>=0.0.4a19",
     "unicode_rbnf",
     "click",
     "requests",
@@ -51,7 +51,7 @@ test = [
     "torchaudio",
     "pytorch-lightning>=2.0,<3",
     "ovos-plugin-manager>=2.1.0",
-    "pycotovia>=0.1.0",
+    "pycotovia>=0.4.0a1",
     "ahotts-g2p>=0.1.0",
     "espyak>=0.0.3a1",
     "orthography2ipa",
@@ -171,7 +171,7 @@ train-pyworld = [
 ]
 ar = ["epitran", "arbtok", "text2tashkeel"]
 ca = ["epitran"]
-gl = ["pycotovia>=0.1.0"]
+gl = ["pycotovia>=0.4.0a1"]
 cs = ["epitran"]
 de = ["epitran", "gruut[de]>=2.3.0,<3.0"]
 en = ["epitran", "gruut[en]>=2.3.0,<3.0", "misaki[en]", "spacy>=3.7"]
@@ -213,7 +213,7 @@ all = [
     "misaki[en]", "misaki[ja]", "misaki[vi]", "misaki[zh]",
     "ahotts-g2p>=0.1.0",
     "spacy>=3.7",
-    "pycotovia>=0.1.0",
+    "pycotovia>=0.4.0a1",
     "pykakasi==2.3.0", "spacy-pkuseg",
     "soundfile", "scipy",
     "orthography2ipa", "arbtok", "euskaphone", "g2p_barranquenho", "mwl_phonemizer",
