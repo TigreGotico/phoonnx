@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.69.0a1](https://github.com/TigreGotico/phoonnx/tree/1.69.0a1) (2026-08-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.68.0a1...1.69.0a1)
+
+**Merged pull requests:**
+
+- feat: OuteTTS engine [\#342](https://github.com/TigreGotico/phoonnx/pull/342) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.68.0a1](https://github.com/TigreGotico/phoonnx/tree/1.68.0a1) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.67.0a1...1.68.0a1)
@@ -285,7 +293,6 @@
 - feat\(train\): ZipVoice training engine \(Zipformer + flow matching\) [\#206](https://github.com/TigreGotico/phoonnx/pull/206) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(train\): YourTTS training engine — zero-shot cloning fine-tuning [\#205](https://github.com/TigreGotico/phoonnx/pull/205) ([JarbasAl](https://github.com/JarbasAl))
 - fix: unbreak CI — drop py3.10 leg, exclude self from license check [\#204](https://github.com/TigreGotico/phoonnx/pull/204) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(es,ca\): BSC-LT StyleTTS2 multispeaker zero-shot cloning voices [\#201](https://github.com/TigreGotico/phoonnx/pull/201) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
