@@ -70,11 +70,19 @@ weak style vector is separable from recognition error on the language itself. No
 sets use different text: the reference clips are 19th-century prose from the training
 corpora, the synthesized sentences are modern everyday ones.
 
-`whisper-large-v3-turbo` is the recognizer for both languages. `canary-1b-v2`, phoonnx's
-usual choice, was rejected: its vocabulary carries a `<|ca|>` tag but the model was never
-trained on Catalan, so it silently translates Catalan into English and scores ~96 % WER on
-*real human* Festcat audio. Never read a WER from an ASR you have not floor-checked on
-real speech in that language.
+The recognizer is the **per-language conformer-CTC** export for that language:
+[`OpenVoiceOS/nvidia-ca-conformer-ctc-large-onnx`](https://huggingface.co/OpenVoiceOS/nvidia-ca-conformer-ctc-large-onnx)
+and
+[`OpenVoiceOS/nvidia-es-conformer-ctc-large-onnx`](https://huggingface.co/OpenVoiceOS/nvidia-es-conformer-ctc-large-onnx),
+both run through `onnx-asr`. Prefer a per-language CTC model as the gate: it has one
+language and no decoder prompt, so it cannot translate or switch language — it can only
+mis-hear.
+
+Multilingual sequence-to-sequence recognizers can fail in a way that looks like a bad
+voice. `canary-1b-v2` carries a `<|ca|>` tag in its vocabulary but was never trained on
+Catalan; it silently translates Catalan into English and scores ~96 % WER on *real human*
+Festcat audio. The floor column is what catches this. Floor-check every gate on real
+speech in the target language before you believe a WER.
 
 **Style round-trip** re-encodes each synthesized clip with `style_encoder.onnx` and
 compares it to the style it was asked to render. It answers a question WER cannot: whether
@@ -82,12 +90,48 @@ the voice is actually the requested speaker. Cosine similarity is to the target 
 nearest-style accuracy is how often the synthesized clip's own style is closest to the
 correct speaker out of all speakers in that language.
 
-<!--WER_TABLE-->
+### Catalan
+
+Gate: [`OpenVoiceOS/nvidia-ca-conformer-ctc-large-onnx`](https://huggingface.co/OpenVoiceOS/nvidia-ca-conformer-ctc-large-onnx)
+
+| Voice | WER | ASR floor on real clips | Style round-trip (cos) |
+|---|---|---|---|
+| `bsc/ca-bet` | 0.0% | 3.7% | 0.95 |
+| `bsc/ca-eli` | 0.0% | 3.8% | 0.89 |
+| `bsc/ca-eva` | 0.0% | 4.8% | 0.69 |
+| `bsc/ca-jan` | 1.7% | 11.1% | 0.73 |
+| `bsc/ca-mar` | 0.0% | 3.6% | 0.90 |
+| `bsc/ca-ona` | 0.0% | 0.0% | 0.86 |
+| `bsc/ca-pau` | 0.0% | 8.7% | 0.77 |
+| `bsc/ca-pep` | 0.0% | 4.5% | 0.72 |
+| `bsc/ca-pol` | 0.0% | 2.0% | 0.93 |
+| `bsc/ca-teo` | 1.7% | 0.0% | 0.80 |
+| `bsc/ca-uri` | 0.0% | 8.7% | 0.96 |
+| **all speakers** | **0.3%** | **4.7%** | **0.84** |
+
+Nearest-style accuracy: 42/55 clips (76 %).
+
+### Spanish
+
+Gate: [`OpenVoiceOS/nvidia-es-conformer-ctc-large-onnx`](https://huggingface.co/OpenVoiceOS/nvidia-es-conformer-ctc-large-onnx)
+
+| Voice | WER | ASR floor on real clips | Style round-trip (cos) |
+|---|---|---|---|
+| `bsc/es-cml3946` | 3.6% | 1.8% | 0.89 |
+| `bsc/es-cml8882` | 1.8% | 19.2% | 0.82 |
+| `bsc/es-cml9972` | 7.3% | 7.4% | 0.94 |
+| `bsc/es-cml10246` | 5.5% | 7.8% | 0.92 |
+| `bsc/es-cml11797` | 9.1% | 1.2% | 0.92 |
+| `bsc/es-cml12367` | 3.6% | 0.0% | 0.95 |
+| **all speakers** | **5.2%** | **5.5%** | **0.91** |
+
+Nearest-style accuracy: 27/30 clips (90 %).
 
 ## Limitations
 
-- The Spanish checkpoint saw only 7.9 hours of speech. It is noticeably weaker than the
-  Catalan one, which had 14.8 hours.
+- The Spanish checkpoint saw only 7.9 hours of speech against the Catalan one's 14.8, and
+  it shows: 5.2 % WER against 0.3 %. Spanish sits at its own ASR floor rather than below
+  it, so treat the Spanish speakers as usable but not clean.
 - The Catalan weights are **GPL-3.0** upstream. That governs the weights, not `phoonnx`
   (Apache-2.0), which only loads them. Account for it in your own deployment.
 - The model cache is keyed by voice ID, so each named speaker keeps its own copy of the
