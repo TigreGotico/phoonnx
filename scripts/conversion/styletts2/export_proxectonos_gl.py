@@ -381,9 +381,18 @@ def write_config(out, repo, voice):
         "add_diacritics": False,
         "inference": {"length_scale": 1.0, "noise_scale": 0.667, "noise_w": 0.8},
         "phoneme_id_map": vocab,
-        # upstream inserts the WORD-SEPARATOR id (" ", id 1) at the front of every
-        # sequence, not id 0 -- see inference.py LFinference.
-        "pad": " ",
+        # Pad with "X" (id 0) -- the token the checkpoints were TRAINED with.
+        # Upstream is inconsistent with itself here:
+        #   meldataset.py:113,135  text.insert(0, 0); text.append(0)   <- training
+        #   inference.py:76        tokens.insert(0, textcleaner([" "])[0])  <- id 1
+        # The word separator (id 1) is a trained speech symbol, so a leading id 1
+        # makes the model speak an extra syllable: on 52 Galician sentences,
+        # scored with OpenVoiceOS/Nos_ASR-wav2vec2-xls-r-300m-gl-onnx, id 1 costs
+        # Brais 0.196 WER against 0.122 for id 0 and Celtia 0.180 against 0.159.
+        # Training also appends the pad; a trailing pad measured no better
+        # (Brais 0.125, Celtia 0.176), so keep the start-only padding the adapter
+        # already applies to every plain StyleTTS2 voice.
+        "pad": "X",
         "blank": None,
         "bos": None,
         "eos": None,
@@ -472,9 +481,17 @@ def export(voice, out):
     _fix_negative_transpose_perms(f"{out}/style_encoder.onnx")
 
     # --- parity -------------------------------------------------------------
-    # The istftnet source module injects gaussian excitation noise, so torch and
-    # onnxruntime never draw the same samples: report correlation (dominated by
-    # the harmonic path) and, for a noise-free comparison, the mel distance.
+    # Read the correlation as a phase-agreement number, not a pass/fail gate.
+    # The istftnet source module draws a random initial phase per harmonic plus
+    # gaussian excitation noise, but that alone is worth about 0.998: rerunning
+    # either framework against itself on identical inputs gives corr 0.998
+    # (torch) and 0.998 (onnxruntime). Brais lands near 0.94 against torch
+    # because its phase agreement DECAYS along the utterance (0.97 in the first
+    # decile down to 0.86 in the last) while its magnitude spectrum still
+    # matches at 0.97 -- a phase-domain drift in the low-F0 sine source, not a
+    # spectral defect. It is inaudible to ASR: on 25 Galician sentences through
+    # identical token sequences, torch scores 0.101 WER and this ONNX graph
+    # 0.106. Celtia's higher F0 keeps it at 0.9996.
     import onnxruntime as ort
     sess = ort.InferenceSession(f"{out}/model.onnx", providers=["CPUExecutionProvider"])
 
