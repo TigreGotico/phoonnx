@@ -350,6 +350,26 @@ def main():
             hidden_state = hidden_state[..., : -self.right_pad]
         return hidden_state.contiguous()
 
+    def upstream_trim(hidden_state, right_pad):
+        """Upstream indexes with an explicit shape subtraction; ``[..., :-right_pad]``
+        is the dynamo/onnx-export-friendly equivalent used above."""
+        if right_pad > 0:
+            hidden_state = hidden_state[..., : hidden_state.shape[-1] - right_pad]
+        return hidden_state.contiguous()
+
+    class _StubConv:
+        def __init__(self, right_pad):
+            self.right_pad = right_pad
+            self.conv = lambda x: x
+
+    for right_pad, length in ((0, 4), (1, 4), (3, 9), (5, 40), (5, 137)):
+        conv_out = torch.randn(1, 4, length + right_pad)
+        mine = trim_from_the_right(_StubConv(right_pad), conv_out)
+        stock = upstream_trim(conv_out, right_pad)
+        assert torch.equal(mine, stock), \
+            f"transposed-conv trim differs from upstream at right_pad={right_pad}, length={length}"
+    print("transposed-conv trim matches upstream slicing: ok")
+
     TOK.Qwen3TTSTokenizerV2CausalTransConvNet.forward = trim_from_the_right
 
     class CodecDecoder(nn.Module):
@@ -396,8 +416,10 @@ def main():
             stock = decoder(codes).numpy()
             got = session.run(None, {"codes": codes.numpy()})[0]
             assert got.shape == stock.shape, "codec decoder length is not dynamic"
-            print(f"codec decoder T={length}: max abs diff "
-                  f"{np.abs(got - stock).max():.3e}")
+            max_diff = np.abs(got - stock).max()
+            print(f"codec decoder T={length}: max abs diff {max_diff:.3e}")
+            assert max_diff < 1e-5, \
+                f"codec decoder ONNX output diverges from stock at T={length}: {max_diff:.3e}"
 
     # ---- 6. tokenizer ----------------------------------------------------
     wrapper.processor.tokenizer.backend_tokenizer.save(f"{out}/tokenizer.json")
