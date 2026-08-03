@@ -22,7 +22,7 @@ dependencies = [
     "langcodes",
     "ovos-number-parser>=0.4.0",
     "ovos-date-parser>=0.6.4a1",
-    "scriptconv[phonemizers]>=0.0.4a18",
+    "scriptconv[phonemizers]>=0.0.4a19",
     "unicode_rbnf",
     "click",
     "requests",
@@ -51,7 +51,7 @@ test = [
     "torchaudio",
     "pytorch-lightning>=2.0,<3",
     "ovos-plugin-manager>=2.1.0",
-    "pycotovia>=0.1.0",
+    "pycotovia>=0.4.0a1",
     "ahotts-g2p>=0.1.0",
     "espyak>=0.0.3a1",
     "orthography2ipa",
@@ -59,6 +59,42 @@ test = [
     "euskaphone",
     "g2p_barranquenho",
     "mwl_phonemizer",
+    # kokoro-family styletts2 voices phonemize through misaki; both extras
+    # are pure-python (no heavy/compiled deps) so they belong in the base
+    # test extra, not gated behind an importorskip.
+    #
+    # DEPENDENCY CEILING: misaki's own PyPI metadata declares
+    # Requires-Python <3.13,>=3.8 (its "en" extra pulls in spacy, whose
+    # "en" chain pulls in blis, which has no Python 3.13/3.14 wheels and
+    # fails to build from source there — a Cython/NumPy-C-API break, not
+    # something phoonnx or scriptconv can work around). Verified against
+    # the actual PR #348 CI failure logs (misaki wheel resolution refuses
+    # 3.13/3.14 outright; separately, blis==0.7.11 fails to compile on
+    # 3.13 even when forced). Gate with an environment marker rather than
+    # skip a runtime check: the corresponding tests in
+    # tests/test_scriptconv_phonemizer_coverage.py are
+    # skipif(sys.version_info >= (3, 13)) with the same citation, so the
+    # extra is either installed-and-tested or provably uninstallable —
+    # never silently absent.
+    "misaki[en]; python_version<'3.13'",
+    "misaki[zh]; python_version<'3.13'",
+    # misaki[en]'s own metadata leaves its "spacy" dependency version
+    # UNCONSTRAINED. Combined with this repo's CI resolving with
+    # UV_PRERELEASE=allow (needed elsewhere for OVOS alpha floor-pins),
+    # that let uv pick spacy==4.0.0.dev3 in PR#348's 3.11/3.12 CI runs.
+    # 4.0.0.dev3 isn't in spaCy's own model-compatibility table, so
+    # misaki.en.G2P()'s `spacy.cli.download("en_core_web_sm")` call hits
+    # "No compatible packages found" and does `sys.exit(1)` — surfacing
+    # as a bare SystemExit deep inside the phonemize() call, not an
+    # ImportError. Pin the same upper bound used by this repo's other
+    # spacy-consuming extras (see the `en`/`ja`/`vi`/`zh` extras below)
+    # so the [test] extra can't independently drift onto a spaCy
+    # prerelease.
+    "spacy>=3.7,<4.0; python_version<'3.13'",
+    # misaki.zh imports pypinyin.contrib.tone_convert.to_finals, added
+    # after 0.44 — older resolved versions (pulled in transitively by
+    # espnet/f5-tts) fail at import time with an ImportError
+    "pypinyin>=0.50",
     # cross-check reference for the Larynx/Mimic3 tokenization golden tests
     "gruut[en]>=2.3.0,<3.0",
     # onnx uses ml_dtypes.float4_e2m1fn (added in ml_dtypes 0.5) but the
@@ -171,25 +207,25 @@ train-pyworld = [
 ]
 ar = ["epitran", "arbtok", "text2tashkeel"]
 ca = ["epitran"]
-gl = ["pycotovia>=0.1.0"]
+gl = ["pycotovia>=0.4.0a1"]
 cs = ["epitran"]
 de = ["epitran", "gruut[de]>=2.3.0,<3.0"]
-en = ["epitran", "gruut[en]>=2.3.0,<3.0", "misaki[en]", "spacy>=3.7"]
+en = ["epitran", "gruut[en]>=2.3.0,<3.0", "misaki[en]", "spacy>=3.7,<4.0"]
 es = ["epitran"]
 eu = ["ahotts-g2p>=0.1.0", "euskaphone"]
 fa = ["epitran"]
 fr = ["epitran"]
 he = ["epitran"]
 it = ["epitran"]
-ja = ["epitran", "gruut[ja]>=2.3.0,<3.0", "misaki[ja]", "spacy>=3.7"]
+ja = ["epitran", "gruut[ja]>=2.3.0,<3.0", "misaki[ja]", "spacy>=3.7,<4.0"]
 ko = ["epitran"]
 mwl = ["mwl_phonemizer"]
 pt = ["epitran", "g2p_barranquenho"]
 ru = ["epitran"]
 sv = ["epitran"]
 sw = ["epitran"]
-vi = ["epitran", "gruut[vi]>=2.3.0,<3.0", "misaki[vi]", "spacy>=3.7"]
-zh = ["epitran", "gruut[zh]>=2.3.0,<3.0", "misaki[zh]", "spacy>=3.7"]
+vi = ["epitran", "gruut[vi]>=2.3.0,<3.0", "misaki[vi]", "spacy>=3.7,<4.0"]
+zh = ["epitran", "gruut[zh]>=2.3.0,<3.0", "misaki[zh]", "spacy>=3.7,<4.0"]
 cjk = ["pykakasi==2.3.0", "spacy-pkuseg"]
 
 # multilingual data-driven IPA backend (hundreds of language specs)
@@ -212,8 +248,8 @@ all = [
     "gruut[vi]>=2.3.0,<3.0", "gruut[zh]>=2.3.0,<3.0",
     "misaki[en]", "misaki[ja]", "misaki[vi]", "misaki[zh]",
     "ahotts-g2p>=0.1.0",
-    "spacy>=3.7",
-    "pycotovia>=0.1.0",
+    "spacy>=3.7,<4.0",
+    "pycotovia>=0.4.0a1",
     "pykakasi==2.3.0", "spacy-pkuseg",
     "soundfile", "scipy",
     "orthography2ipa", "arbtok", "euskaphone", "g2p_barranquenho", "mwl_phonemizer",
