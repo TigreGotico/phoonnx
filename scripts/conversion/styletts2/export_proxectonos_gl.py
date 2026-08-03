@@ -19,7 +19,9 @@ Differences from the BSC export -- all read off the checkpoints, not assumed:
     frame-shift on ``en``/``asr`` (upstream ``inference.py`` does not apply it),
     and (b) ``torch.stft``/``torch.istft`` inside ``Modules/istftnet.py`` have no
     ONNX op, so ``TorchSTFT`` is replaced by a conv1d-DFT forward transform and a
-    conv_transpose1d overlap-add inverse (exact, not an approximation).
+    conv_transpose1d overlap-add inverse (exact, not an approximation --
+    ``_assert_stft_equivalence`` proves both directions and the round-trip
+    against ``torch.stft``/``torch.istft`` at export time, n_fft=20).
   * vocabulary is the 69-symbol Galician Cotovia phoneset from
     ``phoneme_token_maps.json`` -- NOT the yl4579 178-symbol espeak-IPA set.
   * PL-BERT is the ALBERT-style PL-BERT (verified: the checkpoint's ``bert``
@@ -158,8 +160,67 @@ class _OnnxSTFT(torch.nn.Module):
         return self.inverse(mag, phase)
 
 
+def _assert_stft_equivalence():
+    """Prove ``_OnnxSTFT`` reproduces ``torch.stft``/``torch.istft`` exactly,
+    before ``_patch_istftnet`` swaps it in for every Decoder built afterwards.
+
+    n_fft is 20 (istftnet's own filter length), so the whole check is cheap
+    enough to run on every export: random and structured signals, several
+    lengths, forward vs ``torch.stft``, inverse vs ``torch.istft`` fed the
+    torch spectrum directly (not round-tripped, to isolate the inverse), and
+    a pure forward->inverse round-trip against the raw input.
+    """
+    n_fft, hop, win = 20, 5, 20
+    stft = _OnnxSTFT(n_fft, hop, win)
+    torch.manual_seed(0)
+    gens = {
+        "random": lambda n: torch.randn(2, n),
+        "sine": lambda n: torch.sin(torch.linspace(0, 40 * np.pi, n)).unsqueeze(0).repeat(2, 1) * 0.7,
+        "impulse": lambda n: torch.nn.functional.pad(torch.ones(2, 1), (0, n - 1)),
+        "silence": lambda n: torch.zeros(2, n),
+    }
+    for length in (37, 80, 401):
+        for name, gen in gens.items():
+            x = gen(length)
+
+            ref = torch.stft(x, n_fft=n_fft, hop_length=hop, win_length=win,
+                              window=stft.window, center=True, return_complex=True,
+                              pad_mode="reflect")
+            ref_mag, ref_phase = ref.abs(), ref.angle()
+            mag, phase = stft.transform(x)
+            k = min(mag.shape[-1], ref_mag.shape[-1])
+
+            mag_err = (mag[..., :k] - ref_mag[..., :k]).abs().max().item()
+            re_err = (mag[..., :k] * torch.cos(phase[..., :k]) -
+                      ref_mag[..., :k] * torch.cos(ref_phase[..., :k])).abs().max().item()
+            im_err = (mag[..., :k] * torch.sin(phase[..., :k]) -
+                      ref_mag[..., :k] * torch.sin(ref_phase[..., :k])).abs().max().item()
+            assert mag_err < 1e-4, \
+                f"STFT magnitude diverges from torch.stft ({name}, n={length}): {mag_err:.2e}"
+            assert max(re_err, im_err) < 1e-4, \
+                f"STFT complex value diverges from torch.stft ({name}, n={length}): re={re_err:.2e} im={im_err:.2e}"
+
+            y_ref = torch.istft(ref_mag * torch.exp(1j * ref_phase), n_fft=n_fft,
+                                 hop_length=hop, win_length=win, window=stft.window,
+                                 center=True, length=length)
+            y = stft.inverse(mag, phase).squeeze(1)
+            k2 = min(y.shape[-1], y_ref.shape[-1])
+            inv_err = (y[..., :k2] - y_ref[..., :k2]).abs().max().item()
+            assert inv_err < 1e-4, \
+                f"iSTFT diverges from torch.istft ({name}, n={length}): {inv_err:.2e}"
+
+            rt = stft(x).squeeze(1)
+            k3 = min(rt.shape[-1], x.shape[-1])
+            rt_err = (rt[..., :k3] - x[..., :k3]).abs().max().item()
+            assert rt_err < 1e-4, \
+                f"STFT round-trip diverges from input ({name}, n={length}): {rt_err:.2e}"
+    print("STFT_ASSERT ok: forward vs torch.stft, inverse vs torch.istft, and "
+          "round-trip all match within 1e-4 (n_fft=20)", flush=True)
+
+
 def _patch_istftnet():
     """Swap TorchSTFT for the ONNX-exportable one, before any Decoder is built."""
+    _assert_stft_equivalence()
     from Modules import istftnet as _istft
     _istft.TorchSTFT = _OnnxSTFT
 
