@@ -658,7 +658,7 @@ class TTSModelManager:
         "coqui_vits.json", "BSC.json", "shami.json", "chatterbox.json",
         "supertonic.json", "neutts.json", "pockettts.json", "sparktts.json",
         "qwen3tts.json",
-        "outetts.json",
+        "outetts.json", "arktts.json",
     )
 
     @classmethod

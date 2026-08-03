@@ -1,0 +1,554 @@
+{
+ "arktts/zortzi-maider/eu": {
+  "voice_id": "arktts/zortzi-maider/eu",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-zortzi-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "eu-ES",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-zortzi-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-zortzi-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-zortzi-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-zortzi-tts/resolve/main/voices/maider.json"
+  },
+  "display_name": "Zortzi-TTS Maider (female, Basque)",
+  "engine_options": {
+   "voice": "maider"
+  }
+ },
+ "arktts/zortzi-antton/eu": {
+  "voice_id": "arktts/zortzi-antton/eu",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-zortzi-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "eu-ES",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-zortzi-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-zortzi-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-zortzi-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-zortzi-tts/resolve/main/voices/antton.json"
+  },
+  "display_name": "Zortzi-TTS Antton (male, Basque)",
+  "engine_options": {
+   "voice": "antton"
+  }
+ },
+ "arktts/audio8-maider/yue": {
+  "voice_id": "arktts/audio8-maider/yue",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "yue-HK",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/maider.json"
+  },
+  "display_name": "Audio8-TTS Maider (female, Cantonese)",
+  "engine_options": {
+   "voice": "maider"
+  }
+ },
+ "arktts/audio8-maider/zh": {
+  "voice_id": "arktts/audio8-maider/zh",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "zh-CN",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/maider.json"
+  },
+  "display_name": "Audio8-TTS Maider (female, Chinese)",
+  "engine_options": {
+   "voice": "maider"
+  }
+ },
+ "arktts/audio8-maider/nl": {
+  "voice_id": "arktts/audio8-maider/nl",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "nl-NL",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/maider.json"
+  },
+  "display_name": "Audio8-TTS Maider (female, Dutch)",
+  "engine_options": {
+   "voice": "maider"
+  }
+ },
+ "arktts/audio8-maider/en": {
+  "voice_id": "arktts/audio8-maider/en",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "en-US",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/maider.json"
+  },
+  "display_name": "Audio8-TTS Maider (female, English)",
+  "engine_options": {
+   "voice": "maider"
+  }
+ },
+ "arktts/audio8-maider/fr": {
+  "voice_id": "arktts/audio8-maider/fr",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "fr-FR",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/maider.json"
+  },
+  "display_name": "Audio8-TTS Maider (female, French)",
+  "engine_options": {
+   "voice": "maider"
+  }
+ },
+ "arktts/audio8-maider/de": {
+  "voice_id": "arktts/audio8-maider/de",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "de-DE",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/maider.json"
+  },
+  "display_name": "Audio8-TTS Maider (female, German)",
+  "engine_options": {
+   "voice": "maider"
+  }
+ },
+ "arktts/audio8-maider/it": {
+  "voice_id": "arktts/audio8-maider/it",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "it-IT",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/maider.json"
+  },
+  "display_name": "Audio8-TTS Maider (female, Italian)",
+  "engine_options": {
+   "voice": "maider"
+  }
+ },
+ "arktts/audio8-maider/ja": {
+  "voice_id": "arktts/audio8-maider/ja",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "ja-JP",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/maider.json"
+  },
+  "display_name": "Audio8-TTS Maider (female, Japanese)",
+  "engine_options": {
+   "voice": "maider"
+  }
+ },
+ "arktts/audio8-maider/ko": {
+  "voice_id": "arktts/audio8-maider/ko",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "ko-KR",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/maider.json"
+  },
+  "display_name": "Audio8-TTS Maider (female, Korean)",
+  "engine_options": {
+   "voice": "maider"
+  }
+ },
+ "arktts/audio8-maider/pl": {
+  "voice_id": "arktts/audio8-maider/pl",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "pl-PL",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/maider.json"
+  },
+  "display_name": "Audio8-TTS Maider (female, Polish)",
+  "engine_options": {
+   "voice": "maider"
+  }
+ },
+ "arktts/audio8-maider/es": {
+  "voice_id": "arktts/audio8-maider/es",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "es-ES",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/maider.json"
+  },
+  "display_name": "Audio8-TTS Maider (female, Spanish)",
+  "engine_options": {
+   "voice": "maider"
+  }
+ },
+ "arktts/audio8-antton/yue": {
+  "voice_id": "arktts/audio8-antton/yue",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "yue-HK",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/antton.json"
+  },
+  "display_name": "Audio8-TTS Antton (male, Cantonese)",
+  "engine_options": {
+   "voice": "antton"
+  }
+ },
+ "arktts/audio8-antton/zh": {
+  "voice_id": "arktts/audio8-antton/zh",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "zh-CN",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/antton.json"
+  },
+  "display_name": "Audio8-TTS Antton (male, Chinese)",
+  "engine_options": {
+   "voice": "antton"
+  }
+ },
+ "arktts/audio8-antton/nl": {
+  "voice_id": "arktts/audio8-antton/nl",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "nl-NL",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/antton.json"
+  },
+  "display_name": "Audio8-TTS Antton (male, Dutch)",
+  "engine_options": {
+   "voice": "antton"
+  }
+ },
+ "arktts/audio8-antton/en": {
+  "voice_id": "arktts/audio8-antton/en",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "en-US",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/antton.json"
+  },
+  "display_name": "Audio8-TTS Antton (male, English)",
+  "engine_options": {
+   "voice": "antton"
+  }
+ },
+ "arktts/audio8-antton/fr": {
+  "voice_id": "arktts/audio8-antton/fr",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "fr-FR",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/antton.json"
+  },
+  "display_name": "Audio8-TTS Antton (male, French)",
+  "engine_options": {
+   "voice": "antton"
+  }
+ },
+ "arktts/audio8-antton/de": {
+  "voice_id": "arktts/audio8-antton/de",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "de-DE",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/antton.json"
+  },
+  "display_name": "Audio8-TTS Antton (male, German)",
+  "engine_options": {
+   "voice": "antton"
+  }
+ },
+ "arktts/audio8-antton/it": {
+  "voice_id": "arktts/audio8-antton/it",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "it-IT",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/antton.json"
+  },
+  "display_name": "Audio8-TTS Antton (male, Italian)",
+  "engine_options": {
+   "voice": "antton"
+  }
+ },
+ "arktts/audio8-antton/ja": {
+  "voice_id": "arktts/audio8-antton/ja",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "ja-JP",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/antton.json"
+  },
+  "display_name": "Audio8-TTS Antton (male, Japanese)",
+  "engine_options": {
+   "voice": "antton"
+  }
+ },
+ "arktts/audio8-antton/ko": {
+  "voice_id": "arktts/audio8-antton/ko",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "ko-KR",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/antton.json"
+  },
+  "display_name": "Audio8-TTS Antton (male, Korean)",
+  "engine_options": {
+   "voice": "antton"
+  }
+ },
+ "arktts/audio8-antton/pl": {
+  "voice_id": "arktts/audio8-antton/pl",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "pl-PL",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/antton.json"
+  },
+  "display_name": "Audio8-TTS Antton (male, Polish)",
+  "engine_options": {
+   "voice": "antton"
+  }
+ },
+ "arktts/audio8-antton/es": {
+  "voice_id": "arktts/audio8-antton/es",
+  "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
+  "config_url": null,
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "es-ES",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/fast_ar_fp16.onnx",
+   "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/codec_decoder_fp16.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/voices/antton.json"
+  },
+  "display_name": "Audio8-TTS Antton (male, Spanish)",
+  "engine_options": {
+   "voice": "antton"
+  }
+ }
+}
