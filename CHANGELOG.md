@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.64.2a1](https://github.com/TigreGotico/phoonnx/tree/1.64.2a1) (2026-08-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.64.1a2...1.64.2a1)
+
+**Merged pull requests:**
+
+- fix: follow scriptconv mantoq→halabi notation rename [\#334](https://github.com/TigreGotico/phoonnx/pull/334) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.64.1a2](https://github.com/TigreGotico/phoonnx/tree/1.64.1a2) (2026-08-02)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.64.1a1...1.64.1a2)
