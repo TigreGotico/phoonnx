@@ -173,6 +173,7 @@ to a dedicated adapter. The adapter registry itself is described in [Engines](en
 | `neutts` | Autoregressive NeuCodec LM, preset cloning @24 kHz | [Cloning](cloning.md) |
 | `pockettts` | Flow-matching codec LM with explicit stream state, raw-text (no phonemizer) | [Pocket TTS](pockettts.md) |
 | `sparktts` | Autoregressive codec-LM (Qwen2 + BiCodec), en/zh | [Spark-TTS](training/engines/sparktts.md) |
+| `qwen3tts` | Two-stage codec LM (talker + code predictor), 10 languages | [Qwen3-TTS](training/engines/qwen3tts.md) |
 
 ## Execution Providers
 
