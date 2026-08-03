@@ -77,6 +77,12 @@ espeak = ["espyak>=0.0.3a1"]
 matcha = [
     "scipy",
 ]
+# runtime deps for the Pocket TTS engine (phoonnx/engines/pockettts.py):
+# sentencepiece for the tokenizer, safetensors for loading published voice states.
+pockettts = [
+    "sentencepiece",
+    "safetensors",
+]
 train = [
     # diffusers>=0.36 references torch.xpu at import time, which only exists on
     # torch>=2.4; capping keeps the vendored matcha decoder importable across
