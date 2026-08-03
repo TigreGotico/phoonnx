@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.71.0a1](https://github.com/TigreGotico/phoonnx/tree/1.71.0a1) (2026-08-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.70.0a2...1.71.0a1)
+
+**Merged pull requests:**
+
+- feat: Galician StyleTTS2 voices \(ProxectoNos Celtia + Brais\) [\#345](https://github.com/TigreGotico/phoonnx/pull/345) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.70.0a2](https://github.com/TigreGotico/phoonnx/tree/1.70.0a2) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.70.0a1...1.70.0a2)
@@ -305,9 +313,6 @@
 - feat: FastPitch/SpeedySpeech training engine [\#210](https://github.com/TigreGotico/phoonnx/pull/210) ([JarbasAl](https://github.com/JarbasAl))
 - feat: GlowTTS training engine [\#209](https://github.com/TigreGotico/phoonnx/pull/209) ([JarbasAl](https://github.com/JarbasAl))
 - feat: StyleTTS2 training — every step trainable \(TTS + aligner + PL-BERT + pitch\) [\#208](https://github.com/TigreGotico/phoonnx/pull/208) ([JarbasAl](https://github.com/JarbasAl))
-- feat: F5-TTS / Habibi-TTS engine adapter [\#207](https://github.com/TigreGotico/phoonnx/pull/207) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(train\): ZipVoice training engine \(Zipformer + flow matching\) [\#206](https://github.com/TigreGotico/phoonnx/pull/206) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(train\): YourTTS training engine — zero-shot cloning fine-tuning [\#205](https://github.com/TigreGotico/phoonnx/pull/205) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
