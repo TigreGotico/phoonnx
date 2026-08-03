@@ -172,6 +172,7 @@ to a dedicated adapter. The adapter registry itself is described in [Engines](en
 | `supertonic` | Multi-graph flow-matching, raw-text (no phonemizer) | [Engines](engines.md) |
 | `neutts` | Autoregressive NeuCodec LM, preset cloning @24 kHz | [Cloning](cloning.md) |
 | `pockettts` | Flow-matching codec LM with explicit stream state, raw-text (no phonemizer) | [Pocket TTS](pockettts.md) |
+| `sparktts` | Autoregressive codec-LM (Qwen2 + BiCodec), en/zh | [Spark-TTS](training/engines/sparktts.md) |
 
 ## Execution Providers
 

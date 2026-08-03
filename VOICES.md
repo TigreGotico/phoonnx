@@ -1,6 +1,6 @@
 ## Supported Voices
 
-**Total Voices:** 2403
+**Total Voices:** 2407
 **Total Languages:** 1240
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
@@ -729,6 +729,8 @@
 | `piper_community/simoniz0r/en-US_eminem` | `en-US` | `piper` | `espeak` |
 | `piper_community/simoniz0r/en-US_patrick` | `en-US` | `piper` | `espeak` |
 | `piper_community/swqg-messiah/en-US_chitti` | `en-US` | `piper` | `espeak` |
+| `sparktts/female/en` | `en-US` | `sparktts` | `unicode` |
+| `sparktts/male/en` | `en-US` | `sparktts` | `unicode` |
 | `facebook/mms-tts-enb-Markweeta` | `enb` | `transformers` | `graphemes` |
 | `facebook/mms-tts-enx-Enxet` | `enx` | `transformers` | `graphemes` |
 | `bsc/es-styletts2` | `es` | `styletts2` | `espeak` |
@@ -2391,6 +2393,8 @@
 | `hf_community/BricksDisplay/vits-cmn` | `zh-CN` | `transformers` | `graphemes` |
 | `piper/zh_CN-huayan-medium` | `zh-CN` | `piper` | `espeak` |
 | `piper/zh_CN-huayan-x_low` | `zh-CN` | `piper` | `espeak` |
+| `sparktts/female/zh` | `zh-CN` | `sparktts` | `unicode` |
+| `sparktts/male/zh` | `zh-CN` | `sparktts` | `unicode` |
 | `piper_community/colafly/zh-TW_yt-chinese_female` | `zh-TW` | `piper` | `espeak` |
 | `facebook/mms-tts-zim-Mesme` | `zim` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ziw-Zigula` | `ziw` | `transformers` | `graphemes` |
