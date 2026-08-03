@@ -972,9 +972,11 @@
 | `proxectonos/brais` | `gl-ES` | `coqui` | `graphemes` |
 | `proxectonos/brais-cotovia` | `gl-ES` | `coqui` | `cotovia` |
 | `proxectonos/brais-matcha-graphemes` | `gl-ES` | `matcha` | `graphemes` |
+| `proxectonos/brais-styletts2` | `gl-ES` | `styletts2` | `cotovia` |
 | `proxectonos/celtia` | `gl-ES` | `coqui` | `graphemes` |
 | `proxectonos/celtia-cotovia` | `gl-ES` | `coqui` | `cotovia` |
 | `proxectonos/celtia-matcha-graphemes` | `gl-ES` | `matcha` | `graphemes` |
+| `proxectonos/celtia-styletts2` | `gl-ES` | `styletts2` | `cotovia` |
 | `proxectonos/iago-cotovia` | `gl-ES` | `coqui` | `cotovia` |
 | `proxectonos/icia-cotovia` | `gl-ES` | `coqui` | `cotovia` |
 | `proxectonos/icia-extended-cotovia` | `gl-ES` | `coqui` | `cotovia` |
