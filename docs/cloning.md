@@ -82,6 +82,12 @@ A cloning voice names its encoder in `engine_params` (`speaker_encoder_url` /
 `speaker_encoder_type`); the model manager downloads it to
 `engine_params["speaker_encoder_path"]` and the adapter loads it in `configure()`.
 
+The `bsc/es-styletts2` and `bsc/ca-styletts2` voices have no speaker of their
+own, so a reference clip is required. The Galician
+`proxectonos/celtia-styletts2` and `proxectonos/brais-styletts2` voices are
+single-speaker: they ship a default style and use the reference clip only when
+you pass one (see [Galician](galician.md)).
+
 ## Autoregressive engine (Chatterbox)
 
 [Chatterbox](training/engines/chatterbox.md) is a d-vector engine too (reference clip, no transcription), but

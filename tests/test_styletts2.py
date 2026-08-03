@@ -99,6 +99,7 @@ def test_configure_loads_style_pack_from_engine_params(tmp_path):
     np.arange(510 * 256, dtype=np.float32).tofile(blob)
 
     class _Cfg:
+        tokenizer = None
         engine_params = {"style_path": str(blob)}
 
     a = StyleTTS2Adapter()
@@ -149,3 +150,152 @@ def test_kokoro_style_row_ignores_the_padding():
     for n in (1, 3, 5, 17):
         feed = StyleTTS2Adapter(style_pack=pack).build_feed_dict(_req(n), sess)
         assert np.allclose(feed["style"][0], pack[n]), f"{n} tokens picked the wrong row"
+
+
+# --- ProxectoNos Galician StyleTTS2 (Celtia / Brais) -------------------------
+
+import json  # noqa: E402
+import sys  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent
+                       / "scripts" / "conversion" / "styletts2"))
+from gl_vocab import build_phoneme_id_map  # noqa: E402
+
+# the upstream training table, vendored so the vocabulary check runs offline
+_GL_TOKEN_MAP = json.loads(
+    (Path(__file__).parent / "proxectonos_gl_phoneme_token_maps.json").read_text())
+_VOICE_INDEX = Path(__file__).resolve().parent.parent / "phoonnx" / "voice_index" / "styletts2.json"
+
+
+def _gl_index_entry(voice):
+    return json.loads(_VOICE_INDEX.read_text())[f"proxectonos/{voice}-styletts2"]
+
+
+@pytest.mark.parametrize("voice", ["celtia", "brais"])
+def test_galician_index_entry_is_a_cloning_cotovia_voice(voice):
+    e = _gl_index_entry(voice)
+    assert e["engine"] == "styletts2"
+    assert e["lang"] == "gl-ES"
+    # these checkpoints were trained on Cotovia notation, not espeak IPA
+    assert e["phoneme_type"] == "cotovia" and e["alphabet"] == "cotovia"
+    # single-speaker: a default style ships, and a reference clip can override it
+    assert e["style_url"].endswith(f"proxectonos-gl-{voice}/style.bin")
+    assert e["speaker_encoder_url"].endswith(f"proxectonos-gl-{voice}/style_encoder.onnx")
+    assert e["speaker_encoder_type"] == "styletts2_style"
+    for url in (e["model_url"], e["config_url"], e["style_url"], e["speaker_encoder_url"]):
+        assert f"/proxectonos-gl-{voice}/" in url
+
+
+def test_galician_voices_are_the_only_cotovia_styletts2_entries():
+    idx = json.loads(_VOICE_INDEX.read_text())
+    cotovia = {k for k, v in idx.items() if v.get("alphabet") == "cotovia"}
+    assert cotovia == {"proxectonos/celtia-styletts2", "proxectonos/brais-styletts2"}
+
+
+def test_galician_vocab_is_the_69_symbol_cotovia_phoneset():
+    """The checkpoints declare ``n_token: 69`` -- not the yl4579 178-symbol set.
+
+    Rebuilt here the way the exporter does, so a wrong vocabulary in the shipped
+    config.json cannot pass silently.
+    """
+    vocab = build_phoneme_id_map(_GL_TOKEN_MAP)
+    assert set(vocab.values()) == set(range(69))
+    # the ids the upstream token handling depends on
+    assert vocab["X"] == 0          # unknown == the token training pads with
+    assert vocab[" "] == 1          # word separator (a trained speech symbol)
+    # Cotovia surface forms fold onto the trained single-symbol ids
+    assert vocab["rr"] == vocab["R"]
+    assert vocab["tS"] == vocab["W"]
+    assert vocab["a^"] == vocab["á"] and vocab["o^"] == vocab["ó"]
+
+
+def test_galician_config_pads_with_the_token_training_used():
+    """The Galician voices pad with "X" (id 0), the token upstream's
+    ``meldataset.py`` inserts and appends on every training sample
+    (``text.insert(0, 0)``/``text.append(0)``).
+
+    Upstream's own ``inference.py`` instead prepends the word separator
+    (id 1). That is a trained speech symbol, so it makes the voice speak an
+    extra syllable: on 52 Galician sentences it costs Brais 0.196 WER against
+    0.122 for id 0.
+    """
+    from phoonnx.tokenizer import TTSTokenizer, Vocabulary
+
+    vocab = build_phoneme_id_map(_GL_TOKEN_MAP)
+    tok = TTSTokenizer(vocabulary=Vocabulary(char2idx=vocab, pad="X"),
+                       add_blank_char=False, add_blank_word=False, use_eos_bos=False,
+                       blank_at_start=False, blank_at_end=False)
+    assert tok.pad_id == 0
+
+    class _Cfg:
+        tokenizer = tok
+        engine_params = {}
+
+    adapter = StyleTTS2Adapter()
+    adapter.configure(_Cfg())
+    feed = adapter.build_feed_dict(_req(5), _Sess(["input_ids", "speed"]))
+    assert feed["input_ids"][0, 0] == 0
+    # the word separator must NOT be what the sequence starts with
+    assert feed["input_ids"][0, 0] != vocab[" "]
+
+
+def test_configurable_pad_still_honours_a_non_zero_pad():
+    """The pad id is read off the voice's tokenizer, not hardcoded -- a
+    StyleTTS2 lineage that reorders its vocabulary must still pad correctly."""
+    from phoonnx.tokenizer import TTSTokenizer, Vocabulary
+
+    tok = TTSTokenizer(vocabulary=Vocabulary(char2idx={"a": 0, "b": 1, "$": 2}, pad="$"),
+                       add_blank_char=False, add_blank_word=False, use_eos_bos=False,
+                       blank_at_start=False, blank_at_end=False)
+
+    class _Cfg:
+        tokenizer = tok
+        engine_params = {}
+
+    adapter = StyleTTS2Adapter()
+    adapter.configure(_Cfg())
+    assert adapter.build_feed_dict(_req(5), _Sess(["input_ids", "speed"]))["input_ids"][0, 0] == 2
+
+
+def test_default_pad_id_is_unchanged_for_the_dollar_vocabularies():
+    """ddatt / bsc / kokoro all pad with "$" == id 0; the configurable pad must
+    not move them."""
+    from phoonnx.tokenizer import TTSTokenizer, Vocabulary
+
+    tok = TTSTokenizer(vocabulary=Vocabulary(char2idx={"$": 0, "a": 1, "b": 2}, pad="$"),
+                       add_blank_char=False, add_blank_word=False, use_eos_bos=False,
+                       blank_at_start=False, blank_at_end=False)
+
+    class _Cfg:
+        tokenizer = tok
+        engine_params = {}
+
+    adapter = StyleTTS2Adapter()
+    adapter.configure(_Cfg())
+    assert adapter.build_feed_dict(_req(5), _Sess(["input_ids", "speed"]))["input_ids"][0, 0] == 0
+
+
+def test_cotovia_phonemizer_covers_the_galician_vocabulary():
+    """Every symbol a stress-marked Cotovia transcription emits must be in the
+    voice's vocabulary -- otherwise the tokenizer silently drops phonemes."""
+    pytest.importorskip("pycotovia")
+    from scriptconv.phonemizers.gl import CotoviaPhonemizer
+    from phoonnx.config import Alphabet
+
+    vocab = build_phoneme_id_map(_GL_TOKEN_MAP)
+    compounds = sorted((k for k in vocab if len(k) > 1), key=len, reverse=True)
+    text = ("Este é un sistema de conversión de texto a voz en lingua galega. "
+            "O carro do labrego cruzaba a corredoira e chovía moito.")
+    ps = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA, model="stress").phonemize_string(text, "gl")
+    i, unknown = 0, []
+    while i < len(ps):
+        for c in compounds:
+            if ps.startswith(c, i):
+                i += len(c)
+                break
+        else:
+            if ps[i] not in vocab:
+                unknown.append(ps[i])
+            i += 1
+    assert not unknown, f"phonemes outside the voice vocabulary: {sorted(set(unknown))}"

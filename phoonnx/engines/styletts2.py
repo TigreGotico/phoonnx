@@ -44,6 +44,13 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
         self.style_pack = None if style_pack is None else np.asarray(style_pack, dtype=np.float32)
         # for zero-shot cloning models: reference wav -> 256-d style (ref_p ++ ref_s)
         self.speaker_encoder = speaker_encoder
+        # id the token sequence is padded with. Defaults to the yl4579/Kokoro
+        # vocab's "$" (id 0); configure() replaces it with the voice's own pad
+        # token, because a StyleTTS2 lineage that reorders the vocabulary puts
+        # its pad somewhere other than id 0. Getting this wrong is audible: the
+        # padding token is prepended to every utterance, so a pad that happens
+        # to be a trained speech symbol makes the voice speak an extra syllable.
+        self._pad_id = _PAD_ID
 
     def default_params(self) -> Dict[str, float]:
         return {"speed": 1.0}
@@ -56,6 +63,9 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
         reshapes to ``[N, 256]`` (N style rows indexed by token length). A cloning
         StyleTTS2 voice instead carries a ``speaker_encoder_path``.
         """
+        tokenizer = voice_config.tokenizer
+        if tokenizer is not None and tokenizer.pad_id is not None:
+            self._pad_id = int(tokenizer.pad_id)
         ep = getattr(voice_config, "engine_params", None) or {}
         style_path = ep.get("style_path")
         if self.style_pack is None and style_path:
@@ -81,7 +91,7 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
         # models decode a noise burst at the end. Kokoro is the only case here
         # with a multi-row [N, 256] style pack.
         _trailing = 1 if (self.style_pack is not None and self.style_pack.shape[0] > 1) else 0
-        ids = np.pad(ids, ((0, 0), (1, _trailing)), constant_values=_PAD_ID)
+        ids = np.pad(ids, ((0, 0), (1, _trailing)), constant_values=self._pad_id)
         speed = np.float32(request.params.get(
             "speed", request.params.get("length_scale", self.default_params()["speed"])))
         args: Dict[str, np.ndarray] = {
