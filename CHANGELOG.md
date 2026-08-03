@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.65.0a1](https://github.com/TigreGotico/phoonnx/tree/1.65.0a1) (2026-08-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.64.2a1...1.65.0a1)
+
+**Merged pull requests:**
+
+- feat: NeuTTS/Akiti-TTS engine \(autoregressive NeuCodec LM\) [\#332](https://github.com/TigreGotico/phoonnx/pull/332) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.64.2a1](https://github.com/TigreGotico/phoonnx/tree/1.64.2a1) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.64.1a2...1.64.2a1)
@@ -250,7 +258,6 @@
 - feat: HiTZ multilingual voices \(es/gl/ca VITS + eu StyleTTS2 emotional\) [\#198](https://github.com/TigreGotico/phoonnx/pull/198) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(gl\): proxectonos Galician Matcha + extended VITS voices [\#197](https://github.com/TigreGotico/phoonnx/pull/197) ([JarbasAl](https://github.com/JarbasAl))
 - feat: HiTZ multilingual \(gl/ca/es\) VITS voices [\#196](https://github.com/TigreGotico/phoonnx/pull/196) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(eu\): HiTZ StyleTTS2-eu + VITS voices in voice\_index [\#195](https://github.com/TigreGotico/phoonnx/pull/195) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
