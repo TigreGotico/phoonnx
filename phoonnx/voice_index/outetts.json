@@ -1,0 +1,439 @@
+{
+    "outetts/0.6B/en": {
+        "voice_id": "outetts/0.6B/en",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "en-US",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 0.6B — English"
+    },
+    "outetts/0.6B/zh": {
+        "voice_id": "outetts/0.6B/zh",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "zh-CN",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 0.6B — Chinese"
+    },
+    "outetts/0.6B/nl": {
+        "voice_id": "outetts/0.6B/nl",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "nl-NL",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 0.6B — Dutch"
+    },
+    "outetts/0.6B/fr": {
+        "voice_id": "outetts/0.6B/fr",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "fr-FR",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 0.6B — French"
+    },
+    "outetts/0.6B/ka": {
+        "voice_id": "outetts/0.6B/ka",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "ka-GE",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 0.6B — Georgian"
+    },
+    "outetts/0.6B/de": {
+        "voice_id": "outetts/0.6B/de",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "de-DE",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 0.6B — German"
+    },
+    "outetts/0.6B/hu": {
+        "voice_id": "outetts/0.6B/hu",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "hu-HU",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 0.6B — Hungarian"
+    },
+    "outetts/0.6B/it": {
+        "voice_id": "outetts/0.6B/it",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "it-IT",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 0.6B — Italian"
+    },
+    "outetts/0.6B/ja": {
+        "voice_id": "outetts/0.6B/ja",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "ja-JP",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 0.6B — Japanese"
+    },
+    "outetts/0.6B/ko": {
+        "voice_id": "outetts/0.6B/ko",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "ko-KR",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 0.6B — Korean"
+    },
+    "outetts/0.6B/lv": {
+        "voice_id": "outetts/0.6B/lv",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "lv-LV",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 0.6B — Latvian"
+    },
+    "outetts/0.6B/pl": {
+        "voice_id": "outetts/0.6B/pl",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "pl-PL",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 0.6B — Polish"
+    },
+    "outetts/0.6B/ru": {
+        "voice_id": "outetts/0.6B/ru",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "ru-RU",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 0.6B — Russian"
+    },
+    "outetts/0.6B/es": {
+        "voice_id": "outetts/0.6B/es",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "es-ES",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/0.6B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 0.6B — Spanish"
+    },
+    "outetts/1B/ar": {
+        "voice_id": "outetts/1B/ar",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "ar-SA",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 1B — Arabic"
+    },
+    "outetts/1B/be": {
+        "voice_id": "outetts/1B/be",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "be-BY",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 1B — Belarusian"
+    },
+    "outetts/1B/bn": {
+        "voice_id": "outetts/1B/bn",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "bn-BD",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 1B — Bengali"
+    },
+    "outetts/1B/fa": {
+        "voice_id": "outetts/1B/fa",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "fa-IR",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 1B — Persian"
+    },
+    "outetts/1B/lt": {
+        "voice_id": "outetts/1B/lt",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "lt-LT",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 1B — Lithuanian"
+    },
+    "outetts/1B/pt": {
+        "voice_id": "outetts/1B/pt",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "pt-PT",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 1B — Portuguese"
+    },
+    "outetts/1B/sw": {
+        "voice_id": "outetts/1B/sw",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "sw-KE",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 1B — Swahili"
+    },
+    "outetts/1B/ta": {
+        "voice_id": "outetts/1B/ta",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "ta-IN",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 1B — Tamil"
+    },
+    "outetts/1B/uk": {
+        "voice_id": "outetts/1B/uk",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "outetts",
+        "lang": "uk-UA",
+        "aux_model_urls": {
+            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/dac/decoder_model.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/1B/tokenizer.json",
+            "speakers_path": "https://huggingface.co/OpenVoiceOS/phoonnx-outetts/resolve/main/speakers/en-female-1-neutral.json"
+        },
+        "display_name": "OuteTTS 1.0 1B — Ukrainian"
+    }
+}

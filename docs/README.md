@@ -57,7 +57,8 @@ how to obtain or train it, and a synthesis example:
 [Qwen3-TTS](training/engines/qwen3tts.md) ·
 [F5-TTS](training/engines/f5tts.md) ·
 [Shami](training/engines/shami.md) ·
-[Pocket TTS](pockettts.md)
+[Pocket TTS](pockettts.md) ·
+[OuteTTS](training/engines/outetts.md)
 
 ## Language notes
 

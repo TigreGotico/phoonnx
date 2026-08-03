@@ -1,7 +1,7 @@
 ## Supported Voices
 
-**Total Voices:** 2422
-**Total Languages:** 1240
+**Total Voices:** 2445
+**Total Languages:** 1242
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
 
@@ -98,6 +98,7 @@
 | `hf_community/wasmdashai/vits-ar-sa-A` | `ar-SA` | `transformers` | `graphemes` |
 | `hf_community/wasmdashai/vits-ar-sa-huba-v2` | `ar-SA` | `transformers` | `graphemes` |
 | `namaa/ar-sa-v2` | `ar-SA` | `f5tts` | `graphemes` |
+| `outetts/1B/ar` | `ar-SA` | `outetts` | `unicode` |
 | `chatterbox/lahgtna/sd` | `ar-SD` | `chatterbox` | `unicode` |
 | `chatterbox/lahgtna/sy` | `ar-SY` | `chatterbox` | `unicode` |
 | `chatterbox/lahgtna/tn` | `ar-TN` | `chatterbox` | `unicode` |
@@ -143,6 +144,7 @@
 | `facebook/mms-tts-bdu-Oroko` | `bdu` | `transformers` | `graphemes` |
 | `facebook/mms-tts-bdv-Bodo Parja` | `bdv` | `transformers` | `graphemes` |
 | `coqui-be-common-voice-glow-tts` | `be-BY` | `glowtts` | `graphemes` |
+| `outetts/1B/be` | `be-BY` | `outetts` | `unicode` |
 | `facebook/mms-tts-beh-Biali` | `beh` | `transformers` | `graphemes` |
 | `facebook/mms-tts-bem-Bemba` | `bem` | `transformers` | `graphemes` |
 | `facebook/mms-tts-bep-Behoa` | `bep` | `transformers` | `graphemes` |
@@ -195,6 +197,7 @@
 | `coqui/bn-custom-vits-male` | `bn` | `coqui` | `graphemes` |
 | `facebook/mms-tts-ben-Bengali` | `bn` | `transformers` | `graphemes` |
 | `mimic3/bn/multi_low` | `bn` | `mimic3` | `espeak` |
+| `outetts/1B/bn` | `bn-BD` | `outetts` | `unicode` |
 | `facebook/mms-tts-bng-Benga` | `bng` | `transformers` | `graphemes` |
 | `facebook/mms-tts-bno-Bantoanon` | `bno` | `transformers` | `graphemes` |
 | `facebook/mms-tts-bnp-Bola` | `bnp` | `transformers` | `graphemes` |
@@ -424,6 +427,7 @@
 | `mimic3/de_DE/thorsten_low` | `de-DE` | `mimic3` | `gruut` |
 | `OpenVoiceOS/pipertts_de-DE_dii` | `de-DE` | `piper` | `espeak` |
 | `OpenVoiceOS/pipertts_de-DE_miro` | `de-DE` | `piper` | `espeak` |
+| `outetts/0.6B/de` | `de-DE` | `outetts` | `unicode` |
 | `piper/de_DE-eva_k-x_low` | `de-DE` | `piper` | `espeak` |
 | `piper/de_DE-karlsson-low` | `de-DE` | `piper` | `espeak` |
 | `piper/de_DE-kerstin-low` | `de-DE` | `piper` | `espeak` |
@@ -668,6 +672,7 @@
 | `mimic3/en_US/m-ailabs_low` | `en-US` | `mimic3` | `gruut` |
 | `mimic3/en_US/vctk_low` | `en-US` | `mimic3` | `gruut` |
 | `OpenVoiceOS/pipertts_en-US_miro` | `en-US` | `piper` | `espeak` |
+| `outetts/0.6B/en` | `en-US` | `outetts` | `unicode` |
 | `piper/en_US-amy-low` | `en-US` | `piper` | `espeak` |
 | `piper/en_US-amy-medium` | `en-US` | `piper` | `espeak` |
 | `piper/en_US-arctic-medium` | `en-US` | `piper` | `espeak` |
@@ -730,8 +735,8 @@
 | `piper_community/simoniz0r/en-US_eminem` | `en-US` | `piper` | `espeak` |
 | `piper_community/simoniz0r/en-US_patrick` | `en-US` | `piper` | `espeak` |
 | `piper_community/swqg-messiah/en-US_chitti` | `en-US` | `piper` | `espeak` |
-| `qwen3tts/ryan/en` | `en-US` | `qwen3tts` | `unicode` |
 | `qwen3tts/aiden/en` | `en-US` | `qwen3tts` | `unicode` |
+| `qwen3tts/ryan/en` | `en-US` | `qwen3tts` | `unicode` |
 | `sparktts/female/en` | `en-US` | `sparktts` | `unicode` |
 | `sparktts/male/en` | `en-US` | `sparktts` | `unicode` |
 | `facebook/mms-tts-enb-Markweeta` | `enb` | `transformers` | `graphemes` |
@@ -795,6 +800,7 @@
 | `mimic3/es_ES/m-ailabs_low` | `es-ES` | `mimic3` | `espeak` |
 | `OpenVoiceOS/phoonnx_es-ES_dii_espeak` | `es-ES` | `phoonnx` | `espeak` |
 | `OpenVoiceOS/pipertts_es-ES_miro` | `es-ES` | `piper` | `espeak` |
+| `outetts/0.6B/es` | `es-ES` | `outetts` | `unicode` |
 | `piper/es_ES-carlfm-x_low` | `es-ES` | `piper` | `espeak` |
 | `piper/es_ES-davefx-medium` | `es-ES` | `piper` | `espeak` |
 | `piper/es_ES-mls_10246-low` | `es-ES` | `piper` | `espeak` |
@@ -845,6 +851,7 @@
 | `hf_community/SadeghK/persian-text-to-speech/epoch=5719-step=2609600-ganji` | `fa` | `piper` | `espeak` |
 | `hf_community/SadeghK/persian-text-to-speech/epoch=6363-step=2694608-ganji-adabi` | `fa` | `piper` | `espeak` |
 | `mimic3/fa/haaniye_low` | `fa` | `mimic3` | `espeak` |
+| `outetts/1B/fa` | `fa-IR` | `outetts` | `unicode` |
 | `piper/fa_IR-amir-medium` | `fa-IR` | `piper` | `espeak` |
 | `piper/fa_IR-ganji-medium` | `fa-IR` | `piper` | `espeak` |
 | `piper/fa_IR-ganji_adabi-medium` | `fa-IR` | `piper` | `espeak` |
@@ -929,6 +936,7 @@
 | `mimic3/fr_FR/siwis_low` | `fr-FR` | `mimic3` | `gruut` |
 | `mimic3/fr_FR/tom_low` | `fr-FR` | `mimic3` | `gruut` |
 | `OpenVoiceOS/pipertts_fr-FR_miro` | `fr-FR` | `piper` | `espeak` |
+| `outetts/0.6B/fr` | `fr-FR` | `outetts` | `unicode` |
 | `piper/fr_FR-gilles-low` | `fr-FR` | `piper` | `espeak` |
 | `piper/fr_FR-mls-medium` | `fr-FR` | `piper` | `espeak` |
 | `piper/fr_FR-mls_1840-low` | `fr-FR` | `piper` | `espeak` |
@@ -1083,6 +1091,7 @@
 | `coqui/hu-css10-vits` | `hu-HU` | `coqui` | `graphemes` |
 | `facebook/mms-tts-hun-Hungarian` | `hu-HU` | `transformers` | `graphemes` |
 | `mimic3/hu_HU/diana-majlinger_low` | `hu-HU` | `mimic3` | `espeak` |
+| `outetts/0.6B/hu` | `hu-HU` | `outetts` | `unicode` |
 | `piper/hu_HU-anna-medium` | `hu-HU` | `piper` | `espeak` |
 | `piper/hu_HU-berta-medium` | `hu-HU` | `piper` | `espeak` |
 | `piper/hu_HU-imre-medium` | `hu-HU` | `piper` | `espeak` |
@@ -1191,6 +1200,7 @@
 | `mimic3/it_IT/riccardo-fasol_low` | `it-IT` | `mimic3` | `gruut` |
 | `OpenVoiceOS/pipertts_it-IT_dii` | `it-IT` | `piper` | `espeak` |
 | `OpenVoiceOS/pipertts_it-IT_miro` | `it-IT` | `piper` | `espeak` |
+| `outetts/0.6B/it` | `it-IT` | `outetts` | `unicode` |
 | `piper/it_IT-paola-medium` | `it-IT` | `piper` | `espeak` |
 | `piper/it_IT-riccardo-x_low` | `it-IT` | `piper` | `espeak` |
 | `piper_community/Einrich99/it-IT_ugo` | `it-IT` | `piper` | `espeak` |
@@ -1222,6 +1232,7 @@
 | `kokoro/jf_nezumi` | `ja-JP` | `styletts2` | `misaki_ja` |
 | `kokoro/jf_tebukuro` | `ja-JP` | `styletts2` | `misaki_ja` |
 | `kokoro/jm_kumo` | `ja-JP` | `styletts2` | `misaki_ja` |
+| `outetts/0.6B/ja` | `ja-JP` | `outetts` | `unicode` |
 | `qwen3tts/ono_anna/ja` | `ja-JP` | `qwen3tts` | `unicode` |
 | `facebook/mms-tts-jac-Jakalteko` | `jac` | `transformers` | `graphemes` |
 | `facebook/mms-tts-jam-Jamaican English Creole` | `jam` | `transformers` | `graphemes` |
@@ -1236,6 +1247,7 @@
 | `facebook/mms-tts-jav-Javanese` | `jv-ID` | `transformers` | `graphemes` |
 | `mimic3/jv_ID/google-gmu_low` | `jv-ID` | `mimic3` | `epitran` |
 | `facebook/mms-tts-jvn-Javanese, Suriname` | `jvn` | `transformers` | `graphemes` |
+| `outetts/0.6B/ka` | `ka-GE` | `outetts` | `unicode` |
 | `piper/ka_GE-natia-medium` | `ka-GE` | `piper` | `espeak` |
 | `facebook/mms-tts-kaa-Karakalpak` | `kaa` | `transformers` | `graphemes` |
 | `facebook/mms-tts-kab-Amazigh` | `kab` | `transformers` | `graphemes` |
@@ -1319,6 +1331,7 @@
 | `piper_neurlang/ko-KO_kss-korean` | `ko-KO` | `piper` | `goruut` |
 | `chatterbox/multilingual/ko` | `ko-KR` | `chatterbox` | `unicode` |
 | `facebook/mms-tts-kor-Korean` | `ko-KR` | `transformers` | `graphemes` |
+| `outetts/0.6B/ko` | `ko-KR` | `outetts` | `unicode` |
 | `qwen3tts/sohee/ko` | `ko-KR` | `qwen3tts` | `unicode` |
 | `facebook/mms-tts-kog-Kogi` | `kog` | `transformers` | `graphemes` |
 | `facebook/mms-tts-kpq-Korupun-Sela` | `kpq` | `transformers` | `graphemes` |
@@ -1424,6 +1437,7 @@
 | `supertonic/M4/lt` | `lt` | `supertonic` | `unicode` |
 | `supertonic/M5/lt` | `lt` | `supertonic` | `unicode` |
 | `coqui/lt-cv-vits` | `lt-LT` | `coqui` | `graphemes` |
+| `outetts/1B/lt` | `lt-LT` | `outetts` | `unicode` |
 | `facebook/mms-tts-luc-Aringa` | `luc` | `transformers` | `graphemes` |
 | `supertonic/F1/lv` | `lv` | `supertonic` | `unicode` |
 | `supertonic/F2/lv` | `lv` | `supertonic` | `unicode` |
@@ -1438,6 +1452,7 @@
 | `coqui/lv-cv-vits` | `lv-LV` | `coqui` | `graphemes` |
 | `facebook/mms-tts-lav-Latvian` | `lv-LV` | `transformers` | `graphemes` |
 | `hf_community/RaivisDejus/Piper-lv_LV-Aivars-medium` | `lv-LV` | `piper` | `espeak` |
+| `outetts/0.6B/lv` | `lv-LV` | `outetts` | `unicode` |
 | `piper/lv_LV-aivars-medium` | `lv-LV` | `piper` | `espeak` |
 | `piper_community/RaivisDejus/lv-LV_Aivars` | `lv-LV` | `piper` | `espeak` |
 | `facebook/mms-tts-lwo-Luwo` | `lwo` | `transformers` | `graphemes` |
@@ -1645,6 +1660,7 @@
 | `chatterbox/multilingual/nl` | `nl-NL` | `chatterbox` | `unicode` |
 | `OpenVoiceOS/pipertts_nl-NL_dii` | `nl-NL` | `piper` | `espeak` |
 | `OpenVoiceOS/pipertts_nl-NL_miro` | `nl-NL` | `piper` | `espeak` |
+| `outetts/0.6B/nl` | `nl-NL` | `outetts` | `unicode` |
 | `piper/nl_NL-mls-medium` | `nl-NL` | `piper` | `espeak` |
 | `piper/nl_NL-mls_5809-low` | `nl-NL` | `piper` | `espeak` |
 | `piper/nl_NL-mls_7432-low` | `nl-NL` | `piper` | `espeak` |
@@ -1736,6 +1752,7 @@
 | `hf_community/WitoldG/polish_piper_models/pl_PL-meski_wg_glos-medium` | `pl-PL` | `piper` | `espeak` |
 | `hf_community/WitoldG/polish_piper_models/pl_PL-zenski_wg_glos-medium` | `pl-PL` | `piper` | `espeak` |
 | `mimic3/pl_PL/m-ailabs_low` | `pl-PL` | `mimic3` | `espeak` |
+| `outetts/0.6B/pl` | `pl-PL` | `outetts` | `unicode` |
 | `piper/pl_PL-darkman-medium` | `pl-PL` | `piper` | `espeak` |
 | `piper/pl_PL-gosia-medium` | `pl-PL` | `piper` | `espeak` |
 | `piper/pl_PL-mc_speech-medium` | `pl-PL` | `piper` | `espeak` |
@@ -1816,6 +1833,7 @@
 | `OpenVoiceOS/phoonnx_pt-PT_miro_unicode` | `pt-PT` | `phoonnx` | `unicode` |
 | `OpenVoiceOS/pipertts_pt-PT_dii` | `pt-PT` | `piper` | `espeak` |
 | `OpenVoiceOS/pipertts_pt-PT_miro` | `pt-PT` | `piper` | `espeak` |
+| `outetts/1B/pt` | `pt-PT` | `outetts` | `unicode` |
 | `piper/pt_PT-tugão-medium` | `pt-PT` | `piper` | `espeak` |
 | `facebook/mms-tts-ptu-Bambam` | `ptu` | `transformers` | `graphemes` |
 | `facebook/mms-tts-pui-Puinave` | `pui` | `transformers` | `graphemes` |
@@ -1907,6 +1925,7 @@
 | `larynx/ru-ru-minaev-glow_tts` | `ru-RU` | `glowtts` | `gruut` |
 | `larynx/ru-ru-nikolaev-glow_tts` | `ru-RU` | `glowtts` | `gruut` |
 | `mimic3/ru_RU/multi_low` | `ru-RU` | `mimic3` | `gruut` |
+| `outetts/0.6B/ru` | `ru-RU` | `outetts` | `unicode` |
 | `piper/ru_RU-denis-medium` | `ru-RU` | `piper` | `espeak` |
 | `piper/ru_RU-dmitri-medium` | `ru-RU` | `piper` | `espeak` |
 | `piper/ru_RU-irina-medium` | `ru-RU` | `piper` | `espeak` |
@@ -2027,6 +2046,7 @@
 | `larynx/sw-biblia_takatifu-glow_tts` | `sw` | `glowtts` | `gruut` |
 | `mimic3/sw/lanfrica_low` | `sw` | `mimic3` | `gruut` |
 | `piper/sw_CD-lanfrica-medium` | `sw-CD` | `piper` | `espeak` |
+| `outetts/1B/sw` | `sw-KE` | `outetts` | `unicode` |
 | `facebook/mms-tts-swh-Swahili` | `swh` | `transformers` | `graphemes` |
 | `facebook/mms-tts-sxb-Suba` | `sxb` | `transformers` | `graphemes` |
 | `facebook/mms-tts-sxn-Sangir` | `sxn` | `transformers` | `graphemes` |
@@ -2036,6 +2056,7 @@
 | `facebook/mms-tts-tam-Tamil` | `ta` | `transformers` | `graphemes` |
 | `hf_community/ylacombe/mms-tam-finetuned-monospeaker` | `ta` | `transformers` | `graphemes` |
 | `chatterbox/multilingual/ta` | `ta-IN` | `chatterbox` | `unicode` |
+| `outetts/1B/ta` | `ta-IN` | `outetts` | `unicode` |
 | `facebook/mms-tts-tac-Tarahumara, Western` | `tac` | `transformers` | `graphemes` |
 | `facebook/mms-tts-taj-Tamang, Eastern` | `taj` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tao-Yami` | `tao` | `transformers` | `graphemes` |
@@ -2176,6 +2197,7 @@
 | `coqui-uk-mai-glow-tts` | `uk-UA` | `glowtts` | `graphemes` |
 | `coqui/uk-mai-vits` | `uk-UA` | `coqui` | `graphemes` |
 | `facebook/mms-tts-ukr-Ukrainian` | `uk-UA` | `transformers` | `graphemes` |
+| `outetts/1B/uk` | `uk-UA` | `outetts` | `unicode` |
 | `piper/uk_UA-lada-x_low` | `uk-UA` | `piper` | `espeak` |
 | `piper/uk_UA-mykyta-high` | `uk-UA` | `piper` | `espeak` |
 | `piper/uk_UA-oleksa-high` | `uk-UA` | `piper` | `espeak` |
@@ -2401,13 +2423,14 @@
 | `kokoro/zm_yunyang` | `zh` | `styletts2` | `misaki_zh` |
 | `chatterbox/multilingual/zh` | `zh-CN` | `chatterbox` | `unicode` |
 | `hf_community/BricksDisplay/vits-cmn` | `zh-CN` | `transformers` | `graphemes` |
+| `outetts/0.6B/zh` | `zh-CN` | `outetts` | `unicode` |
 | `piper/zh_CN-huayan-medium` | `zh-CN` | `piper` | `espeak` |
 | `piper/zh_CN-huayan-x_low` | `zh-CN` | `piper` | `espeak` |
-| `qwen3tts/vivian/zh` | `zh-CN` | `qwen3tts` | `unicode` |
-| `qwen3tts/serena/zh` | `zh-CN` | `qwen3tts` | `unicode` |
-| `qwen3tts/uncle_fu/zh` | `zh-CN` | `qwen3tts` | `unicode` |
 | `qwen3tts/dylan/zh` | `zh-CN` | `qwen3tts` | `unicode` |
 | `qwen3tts/eric/zh` | `zh-CN` | `qwen3tts` | `unicode` |
+| `qwen3tts/serena/zh` | `zh-CN` | `qwen3tts` | `unicode` |
+| `qwen3tts/uncle_fu/zh` | `zh-CN` | `qwen3tts` | `unicode` |
+| `qwen3tts/vivian/zh` | `zh-CN` | `qwen3tts` | `unicode` |
 | `sparktts/female/zh` | `zh-CN` | `sparktts` | `unicode` |
 | `sparktts/male/zh` | `zh-CN` | `sparktts` | `unicode` |
 | `piper_community/colafly/zh-TW_yt-chinese_female` | `zh-TW` | `piper` | `espeak` |
