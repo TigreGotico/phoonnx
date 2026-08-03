@@ -43,6 +43,10 @@ The sampler order follows HuggingFace ``generate``, the stack upstream uses: a
 repetition penalty over the tokens emitted so far, then the minimum-new-tokens floor
 that blocks an immediate end of speech, then the suppressed control-token range, and
 only then temperature, top-k and top-p. Reordering these changes which tokens survive.
+The minimum-new-tokens floor is just the ``MIN_NEW_TOKENS`` step check below, not
+HuggingFace's ``MinNewTokensLengthLogitsProcessor`` class; the two are behaviorally
+identical here because every call starts from an empty cache (``step`` is always
+tokens-generated-so-far, never an offset into a pre-filled prompt).
 """
 import re
 from typing import Any, Dict, List, Optional, Tuple
