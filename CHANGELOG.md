@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.64.1a2](https://github.com/TigreGotico/phoonnx/tree/1.64.1a2) (2026-08-02)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.64.1a1...1.64.1a2)
+
+**Merged pull requests:**
+
+- docs: QA pass — verify docs against source, run all examples [\#330](https://github.com/TigreGotico/phoonnx/pull/330) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.64.1a1](https://github.com/TigreGotico/phoonnx/tree/1.64.1a1) (2026-07-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.64.0a1...1.64.1a1)
@@ -235,7 +243,6 @@
 - feat\(gl\): proxectonos Galician Matcha + extended VITS voices [\#197](https://github.com/TigreGotico/phoonnx/pull/197) ([JarbasAl](https://github.com/JarbasAl))
 - feat: HiTZ multilingual \(gl/ca/es\) VITS voices [\#196](https://github.com/TigreGotico/phoonnx/pull/196) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(eu\): HiTZ StyleTTS2-eu + VITS voices in voice\_index [\#195](https://github.com/TigreGotico/phoonnx/pull/195) ([JarbasAl](https://github.com/JarbasAl))
-- feat: AhoTTS \(pyahotts\) Basque phonemizer [\#193](https://github.com/TigreGotico/phoonnx/pull/193) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
