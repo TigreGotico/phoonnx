@@ -1,6 +1,6 @@
 ## Supported Voices
 
-**Total Voices:** 2469
+**Total Voices:** 2488
 **Total Languages:** 1243
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
@@ -232,7 +232,18 @@
 | `facebook/mms-tts-bzh-Buang, Mapos` | `bzh` | `transformers` | `graphemes` |
 | `facebook/mms-tts-bzi-Bisu` | `bzi` | `transformers` | `graphemes` |
 | `facebook/mms-tts-bzj-Belize English Creole` | `bzj` | `transformers` | `graphemes` |
+| `bsc/ca-bet` | `ca` | `styletts2` | `espeak` |
+| `bsc/ca-eli` | `ca` | `styletts2` | `espeak` |
+| `bsc/ca-eva` | `ca` | `styletts2` | `espeak` |
+| `bsc/ca-jan` | `ca` | `styletts2` | `espeak` |
+| `bsc/ca-mar` | `ca` | `styletts2` | `espeak` |
+| `bsc/ca-ona` | `ca` | `styletts2` | `espeak` |
+| `bsc/ca-pau` | `ca` | `styletts2` | `espeak` |
+| `bsc/ca-pep` | `ca` | `styletts2` | `espeak` |
+| `bsc/ca-pol` | `ca` | `styletts2` | `espeak` |
 | `bsc/ca-styletts2` | `ca` | `styletts2` | `espeak` |
+| `bsc/ca-teo` | `ca` | `styletts2` | `espeak` |
+| `bsc/ca-uri` | `ca` | `styletts2` | `espeak` |
 | `coqui/ca-custom-vits` | `ca` | `coqui` | `espeak` |
 | `facebook/mms-tts-cat-Catalan` | `ca` | `transformers` | `graphemes` |
 | `OpenVoiceOS/matxa-cat-central-graphemes-v2` | `ca` | `matcha` | `graphemes` |
@@ -745,6 +756,12 @@
 | `sparktts/male/en` | `en-US` | `sparktts` | `unicode` |
 | `facebook/mms-tts-enb-Markweeta` | `enb` | `transformers` | `graphemes` |
 | `facebook/mms-tts-enx-Enxet` | `enx` | `transformers` | `graphemes` |
+| `bsc/es-cml10246` | `es` | `styletts2` | `espeak` |
+| `bsc/es-cml11797` | `es` | `styletts2` | `espeak` |
+| `bsc/es-cml12367` | `es` | `styletts2` | `espeak` |
+| `bsc/es-cml3946` | `es` | `styletts2` | `espeak` |
+| `bsc/es-cml8882` | `es` | `styletts2` | `espeak` |
+| `bsc/es-cml9972` | `es` | `styletts2` | `espeak` |
 | `bsc/es-styletts2` | `es` | `styletts2` | `espeak` |
 | `coqui/es-css10-vits` | `es` | `coqui` | `graphemes` |
 | `facebook/mms-tts-spa-Spanish` | `es` | `transformers` | `graphemes` |

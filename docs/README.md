@@ -64,6 +64,7 @@ how to obtain or train it, and a synthesis example:
 ## Language notes
 
 - [Galician (Cotovia)](galician.md)
+- [BSC multispeaker Spanish / Catalan](bsc_multispeaker.md)
 
 ## Reference data
 

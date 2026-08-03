@@ -83,7 +83,10 @@ A cloning voice names its encoder in `engine_params` (`speaker_encoder_url` /
 `engine_params["speaker_encoder_path"]` and the adapter loads it in `configure()`.
 
 The `bsc/es-styletts2` and `bsc/ca-styletts2` voices have no speaker of their
-own, so a reference clip is required. The Galician
+own, so a reference clip is required. Their **named speakers** —
+`bsc/ca-<name>` and `bsc/es-cml<id>`, see [BSC multispeaker](bsc_multispeaker.md) —
+are the same two checkpoints with a style blob attached, so they speak without a
+reference clip but still clone when you pass one. The Galician
 `proxectonos/celtia-styletts2` and `proxectonos/brais-styletts2` voices are
 single-speaker: they ship a default style and use the reference clip only when
 you pass one (see [Galician](galician.md)).
