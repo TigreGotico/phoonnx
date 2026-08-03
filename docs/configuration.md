@@ -175,6 +175,7 @@ to a dedicated adapter. The adapter registry itself is described in [Engines](en
 | `sparktts` | Autoregressive codec-LM (Qwen2 + BiCodec), en/zh | [Spark-TTS](training/engines/sparktts.md) |
 | `qwen3tts` | Two-stage codec LM (talker + code predictor), 10 languages | [Qwen3-TTS](training/engines/qwen3tts.md) |
 | `outetts` | Autoregressive codec-LM (Qwen3 or Llama-3.2 + DAC.speech), raw-text, 23 languages | [OuteTTS](training/engines/outetts.md) |
+| `arktts` | Two-stage codec LM (slow AR + fast AR), Basque or 11 languages, 44.1 kHz | [ArkTTS](training/engines/arktts.md) |
 
 ## Execution Providers
 
