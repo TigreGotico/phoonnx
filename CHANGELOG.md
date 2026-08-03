@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.70.0a1](https://github.com/TigreGotico/phoonnx/tree/1.70.0a1) (2026-08-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.69.0a1...1.70.0a1)
+
+**Merged pull requests:**
+
+- feat: ArkTTS engine \(Zortzi Basque + Audio8 multilingual\) [\#346](https://github.com/TigreGotico/phoonnx/pull/346) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.69.0a1](https://github.com/TigreGotico/phoonnx/tree/1.69.0a1) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.68.0a1...1.69.0a1)
