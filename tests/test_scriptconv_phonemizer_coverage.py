@@ -27,21 +27,51 @@ Two kinds of tests:
            spec; if scriptconv changes its output on purpose, update the
            anchor and the PR that does it should say so.
 
-All phonemizers tested here (misaki[en], misaki[zh], ahotts-g2p) are
-installed unconditionally through the ``[test]`` extra — none are skipped.
-misaki[zh]'s deps (jieba, pypinyin, cn2an) and ahotts-g2p are pure-Python
-with no compiled extensions or model-weight downloads, so there is no
-"heavy dependency" reason to gate them behind an importorskip; per house
-rule, tests must actually run, not skip on missing deps that CI can just
-install. espeak-ng itself is a system binary (installed via
+ahotts-g2p and (on Python <3.13) misaki[en]/misaki[zh] are installed
+unconditionally through the ``[test]`` extra — nothing here is gated on an
+``importorskip`` guessing whether an optional dep happens to be present.
+ahotts-g2p and misaki[zh]'s own deps (jieba, pypinyin, cn2an) are
+pure-Python with no compiled extensions or model-weight downloads, so
+there was never a "heavy dependency" reason to make them optional.
+
+misaki itself is a genuine exception, not a policy violation: its PyPI
+metadata declares ``Requires-Python <3.13,>=3.8`` — pip/uv refuse to
+install ANY misaki extra on 3.13/3.14, full stop (confirmed against
+PR#348's CI logs: the 3.13/3.14 jobs died at install time trying to
+build ``blis`` — misaki[en]'s spacy chain — with a Cython/NumPy-C-API
+error that has no fix on our side). ``tests/pyproject.toml`` marks
+``misaki[en]``/``misaki[zh]`` with a ``python_version<'3.13'`` marker
+so the extra is either installed-and-tested or (below 3.13) provably
+absent from the environment — the misaki-backed tests below assert that
+exact ceiling with ``skipif(sys.version_info >= (3, 13))`` rather than
+an ``importorskip`` that would also silently swallow a genuine
+regression on the supported versions.
+
+espeak-ng itself is a system binary (installed via
 ``system_deps: espeak-ng`` in the CI workflow, not a Python extra) whose
 *exact* output varies by version — see the espeak-anchor note below for
 how that's handled without skipping anything.
 """
 import json
+import sys
 from pathlib import Path
 
 import pytest
+
+# misaki's own PyPI metadata caps Requires-Python at <3.13 (verified via
+# PyPI JSON API and PR#348's CI logs — misaki[en]'s spacy->blis chain has
+# no 3.13/3.14 wheels and fails to build from source). pyproject.toml's
+# [test] extra mirrors this with a `python_version<'3.13'` marker on both
+# misaki[en] and misaki[zh]. This is a real upstream dependency ceiling,
+# not a "skip on missing dep": on <3.13 the package MUST be present and
+# these tests run for real; on >=3.13 it cannot be installed at all, so
+# skipping here is the only truthful outcome.
+_MISAKI_UNSUPPORTED_PY = sys.version_info >= (3, 13)
+_misaki_ceiling = pytest.mark.skipif(
+    _MISAKI_UNSUPPORTED_PY,
+    reason="misaki requires-python is <3.13 (spacy/blis chain has no "
+           "3.13+ wheels); not a skip-on-missing-dep, see module docstring",
+)
 
 FIXTURES = json.loads(
     (Path(__file__).parent / "fixtures_scriptconv_vocabs.json").read_text()
@@ -238,6 +268,7 @@ def _misaki_en_symbols(text):
     return [sym for chunk in chunks for sym in chunk]
 
 
+@_misaki_ceiling
 @pytest.mark.parametrize("text", _SENTENCES_EN_MISAKI)
 def test_misaki_en_kokoro_voice_coverage(text):
     symbols = _misaki_en_symbols(text)
@@ -245,6 +276,7 @@ def test_misaki_en_kokoro_voice_coverage(text):
     _assert_tokenizable(symbols, FIXTURES["kokoro_af"]["vocab"], "kokoro/af")
 
 
+@_misaki_ceiling
 def test_misaki_en_regression_anchor():
     assert _misaki_en_symbols("hello friend") == list("həlˈO fɹˈɛnd")
 
@@ -256,15 +288,17 @@ def _misaki_zh_symbols(text):
     return [sym for chunk in chunks for sym in chunk]
 
 
+@_misaki_ceiling
 def test_misaki_zh_kokoro_voice_coverage():
     """misaki[zh] (jieba, pypinyin, cn2an — all pure-python, no compiled
-    or weight downloads) is installed via the [test] extra, so this runs
-    for real in CI rather than being skipped."""
+    or weight downloads) is installed via the [test] extra on Python
+    <3.13, so this runs for real there rather than being skipped."""
     symbols = _misaki_zh_symbols("你好朋友")
     assert symbols
     _assert_tokenizable(symbols, FIXTURES["kokoro_zf_xiaobei"]["vocab"], "kokoro/zf_xiaobei")
 
 
+@_misaki_ceiling
 def test_misaki_zh_regression_anchor():
     """misaki is pip-pinned (pure-Python engine, no external binary), so
     unlike the espeak anchors above this can stay an exact anchor."""
