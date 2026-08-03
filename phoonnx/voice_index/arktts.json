@@ -2,7 +2,7 @@
  "arktts/zortzi-maider/eu": {
   "voice_id": "arktts/zortzi-maider/eu",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-zortzi-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-zortzi-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -25,7 +25,7 @@
  "arktts/zortzi-antton/eu": {
   "voice_id": "arktts/zortzi-antton/eu",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-zortzi-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-zortzi-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -48,7 +48,7 @@
  "arktts/audio8-maider/yue": {
   "voice_id": "arktts/audio8-maider/yue",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -71,7 +71,7 @@
  "arktts/audio8-maider/zh": {
   "voice_id": "arktts/audio8-maider/zh",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -94,7 +94,7 @@
  "arktts/audio8-maider/nl": {
   "voice_id": "arktts/audio8-maider/nl",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -117,7 +117,7 @@
  "arktts/audio8-maider/en": {
   "voice_id": "arktts/audio8-maider/en",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -140,7 +140,7 @@
  "arktts/audio8-maider/fr": {
   "voice_id": "arktts/audio8-maider/fr",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -163,7 +163,7 @@
  "arktts/audio8-maider/de": {
   "voice_id": "arktts/audio8-maider/de",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -186,7 +186,7 @@
  "arktts/audio8-maider/it": {
   "voice_id": "arktts/audio8-maider/it",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -209,7 +209,7 @@
  "arktts/audio8-maider/ja": {
   "voice_id": "arktts/audio8-maider/ja",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -232,7 +232,7 @@
  "arktts/audio8-maider/ko": {
   "voice_id": "arktts/audio8-maider/ko",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -255,7 +255,7 @@
  "arktts/audio8-maider/pl": {
   "voice_id": "arktts/audio8-maider/pl",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -278,7 +278,7 @@
  "arktts/audio8-maider/es": {
   "voice_id": "arktts/audio8-maider/es",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -301,7 +301,7 @@
  "arktts/audio8-antton/yue": {
   "voice_id": "arktts/audio8-antton/yue",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -324,7 +324,7 @@
  "arktts/audio8-antton/zh": {
   "voice_id": "arktts/audio8-antton/zh",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -347,7 +347,7 @@
  "arktts/audio8-antton/nl": {
   "voice_id": "arktts/audio8-antton/nl",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -370,7 +370,7 @@
  "arktts/audio8-antton/en": {
   "voice_id": "arktts/audio8-antton/en",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -393,7 +393,7 @@
  "arktts/audio8-antton/fr": {
   "voice_id": "arktts/audio8-antton/fr",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -416,7 +416,7 @@
  "arktts/audio8-antton/de": {
   "voice_id": "arktts/audio8-antton/de",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -439,7 +439,7 @@
  "arktts/audio8-antton/it": {
   "voice_id": "arktts/audio8-antton/it",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -462,7 +462,7 @@
  "arktts/audio8-antton/ja": {
   "voice_id": "arktts/audio8-antton/ja",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -485,7 +485,7 @@
  "arktts/audio8-antton/ko": {
   "voice_id": "arktts/audio8-antton/ko",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -508,7 +508,7 @@
  "arktts/audio8-antton/pl": {
   "voice_id": "arktts/audio8-antton/pl",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,
@@ -531,7 +531,7 @@
  "arktts/audio8-antton/es": {
   "voice_id": "arktts/audio8-antton/es",
   "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/slow_ar_fp16.onnx",
-  "config_url": null,
+  "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-audio8-tts/resolve/main/config.json",
   "vocab_url": null,
   "tokens_url": null,
   "tokenizer_config_url": null,

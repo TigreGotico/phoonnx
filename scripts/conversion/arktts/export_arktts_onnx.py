@@ -316,14 +316,24 @@ def to_fp16(source: Path, target: Path) -> None:
     # ONNX Runtime reject nodes whose real output is now half precision, so they are dropped
     # and the runtime re-infers them at load.
     del converted.graph.value_info[:]
-    onnx.save(
-        converted,
-        str(target),
-        save_as_external_data=True,
-        all_tensors_to_one_file=True,
-        location=target.name + ".data",
-    )
+    # A sidecar weights file is only carried along by whoever knows to look for it, and the
+    # phoonnx voice downloader fetches the URLs an index entry lists and nothing else. Half
+    # precision usually brings these graphs back under the 2 GB protobuf ceiling, so they
+    # are written as one self-contained file — the layout the official export uses — and
+    # fall back to a sidecar only when they genuinely do not fit.
+    try:
+        onnx.save(converted, str(target))
+    except (ValueError, google_protobuf_error()):
+        onnx.save(converted, str(target), save_as_external_data=True,
+                  all_tensors_to_one_file=True, location=target.name + ".data")
     inferred.unlink(missing_ok=True)
+
+
+def google_protobuf_error():
+    """The error protobuf raises when a message crosses its 2 GB serialisation limit."""
+    from google.protobuf.message import EncodeError
+
+    return EncodeError
 
 
 def write_manifest(model, out_dir: Path, precisions: list[str]) -> None:
