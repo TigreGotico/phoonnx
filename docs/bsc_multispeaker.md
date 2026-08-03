@@ -64,10 +64,23 @@ reach the adapter the same way: `style_url` in the voice index, downloaded to
 
 ## Measured quality
 
-Intelligibility is word error rate of `nvidia/canary-1b-v2` on five synthesized sentences
-per speaker, transcribed in the voice's own language. The **human floor** is the same ASR
-run over that speaker's real reference clips, so it separates a weak style vector from ASR
-error on the language itself. RTF is single-thread CPU (`onnxruntime`, no GPU).
+Intelligibility is word error rate over five synthesized sentences per speaker. The
+**ASR floor** column is the same recognizer over that speaker's real reference clips, so a
+weak style vector is separable from recognition error on the language itself. Note the two
+sets use different text: the reference clips are 19th-century prose from the training
+corpora, the synthesized sentences are modern everyday ones.
+
+`whisper-large-v3-turbo` is the recognizer for both languages. `canary-1b-v2`, phoonnx's
+usual choice, was rejected: its vocabulary carries a `<|ca|>` tag but the model was never
+trained on Catalan, so it silently translates Catalan into English and scores ~96 % WER on
+*real human* Festcat audio. Never read a WER from an ASR you have not floor-checked on
+real speech in that language.
+
+**Style round-trip** re-encodes each synthesized clip with `style_encoder.onnx` and
+compares it to the style it was asked to render. It answers a question WER cannot: whether
+the voice is actually the requested speaker. Cosine similarity is to the target style;
+nearest-style accuracy is how often the synthesized clip's own style is closest to the
+correct speaker out of all speakers in that language.
 
 <!--WER_TABLE-->
 
