@@ -107,6 +107,33 @@ The tokenizer folds the multi-character Cotovía forms onto the single ids the
 model was trained with: `rr` → `R`, `tS` → `W`, and a stressed vowel `V^` → the
 accented vowel (`o^` → `ó`).
 
+### Intelligibility gate
+
+Galician ASR is the instrument for judging these voices, and the choice of model
+dominates the result. `onnx-asr`'s multilingual models do not help: both
+`nemo-canary-1b-v2` and `parakeet-tdt-v3` cover 25 European languages, Galician
+not among them, and only `whisper-base` in that library handles `gl` at all.
+
+Use the two Galician ONNX exports instead:
+
+| Repo | Model | Notes |
+|---|---|---|
+| [`OpenVoiceOS/Nos_ASR-wav2vec2-xls-r-300m-gl-onnx`](https://huggingface.co/OpenVoiceOS/Nos_ASR-wav2vec2-xls-r-300m-gl-onnx) | wav2vec2 XLS-R 300M CTC | strongest; 4.7 % WER on Celtia's own recordings |
+| [`OpenVoiceOS/proxectonos-gl-conformer-ctc-large-onnx`](https://huggingface.co/OpenVoiceOS/proxectonos-gl-conformer-ctc-large-onnx) | NeMo Conformer-CTC large | second opinion; much weaker (21-24 % on human speech) |
+
+Both are Apache-2.0 exports of Proxecto Nós models and run on onnxruntime CPU.
+Always report the **human-speech floor** — the same ASR on the speaker's own
+recordings — next to the synthesized WER. The gap is the number that says
+something about the voice; the absolute WER says more about the ASR.
+
+Measured on ten Galician sentences per voice, with 15 clips from each speaker's
+published test split as the floor:
+
+| Voice | wav2vec2 synth | wav2vec2 floor | gap | conformer synth | conformer floor | gap |
+|---|---|---|---|---|---|---|
+| Celtia | 0.130 | 0.047 | +0.083 | 0.313 | 0.243 | +0.070 |
+| Brais | 0.183 | 0.063 | +0.120 | 0.496 | 0.216 | +0.280 |
+
 ### Known front-end gaps
 
 `pycotovia` does not yet reproduce the Cotovía binary's transcription in two
