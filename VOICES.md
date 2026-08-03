@@ -1,7 +1,7 @@
 ## Supported Voices
 
-**Total Voices:** 2238
-**Total Languages:** 1239
+**Total Voices:** 2247
+**Total Languages:** 1240
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
 
@@ -1964,6 +1964,15 @@
 | `facebook/mms-tts-tuf-Tunebo, Central` | `tuf` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tuo-Tucano` | `tuo` | `transformers` | `graphemes` |
 | `facebook/mms-tts-tvw-Sedoa` | `tvw` | `transformers` | `graphemes` |
+| `neutts/akiti/twi/abena` | `tw` | `neutts` | `unicode` |
+| `neutts/akiti/twi/akua` | `tw` | `neutts` | `unicode` |
+| `neutts/akiti/twi/akwasi` | `tw` | `neutts` | `unicode` |
+| `neutts/akiti/twi/kofi` | `tw` | `neutts` | `unicode` |
+| `neutts/akiti/twi/kwabena` | `tw` | `neutts` | `unicode` |
+| `neutts/akiti/twi/kwaku` | `tw` | `neutts` | `unicode` |
+| `neutts/akiti/twi/kwame` | `tw` | `neutts` | `unicode` |
+| `neutts/akiti/twi/yaa` | `tw` | `neutts` | `unicode` |
+| `neutts/akiti/twi/yaw` | `tw` | `neutts` | `unicode` |
 | `coqui/tw_akuapem-openbible-vits` | `tw-GH` | `coqui` | `graphemes` |
 | `coqui/tw_asante-openbible-vits` | `tw-GH` | `coqui` | `graphemes` |
 | `facebook/mms-tts-twb-Tawbuid` | `twb` | `transformers` | `graphemes` |

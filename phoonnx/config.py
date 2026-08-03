@@ -33,6 +33,7 @@ class Engine(str, Enum):
     F5TTS = "f5tts"  # F5-TTS / Habibi-TTS: DiT flow-matching, Euler ODE (iterative)
     CHATTERBOX = "chatterbox"  # autoregressive codec-LM, d-vector cloning + exaggeration
     SUPERTONIC = "supertonic"  # Supertone SuperTonic: 4-graph flow-matching, raw-text (no phonemizer)
+    NEUTTS = "neutts"  # NeuTTS Air / VieNeu / Akiti: Qwen3 codec-LM + NeuCodec decoder
 
 
 # Alphabet and PhonemeType are wire-format enums shared with scriptconv;
@@ -306,6 +307,27 @@ class VoiceConfig:
             diacritics = (lang_code or "").lower().startswith(("ar", "he"))
             config.setdefault("audio", {}).setdefault("sample_rate", 24000)
             config.setdefault("num_symbols", tokenizer._tok.get_vocab_size())
+
+        elif (engine == Engine.NEUTTS or
+                (isinstance(engine, str) and engine == "neutts") or
+                config.get("engine") == "neutts"):
+            # NeuTTS consumes raw text: the adapter owns the whole text -> id path
+            # (espeak-ng phonemization, prompt assembly, then the checkpoint's own BPE,
+            # all loaded from engine_params), so no phonemizer/tokenizer vocabulary is
+            # built here. Alphabet.GRAPHEMES routes TTSVoice.synthesize() through
+            # adapter.encode_text(). NeuCodec output is 24 kHz mono.
+            engine = Engine.NEUTTS
+            phoneme_type = phoneme_type or PhonemeType.UNICODE
+            alphabet = alphabet or Alphabet.GRAPHEMES
+            config.setdefault("audio", {}).setdefault("sample_rate", 24000)
+            tokenizer = TTSTokenizer(
+                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
+                add_blank_char=False,
+                add_blank_word=False,
+                use_eos_bos=False,
+                blank_at_end=False,
+                blank_at_start=False,
+            )
 
         elif (engine == Engine.SUPERTONIC or
                 (isinstance(engine, str) and engine == "supertonic") or
