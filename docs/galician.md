@@ -63,3 +63,73 @@ p_stress = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA, model="stress")
 from phoonnx.config import PhonemeType, Alphabet, get_phonemizer
 p = get_phonemizer(PhonemeType.COTOVIA, alphabet=Alphabet.IPA, model="stress")
 ```
+
+## Galician StyleTTS2 voices (ProxectoNos Celtia and Brais)
+
+Two Galician StyleTTS2 voices ship in the voice index:
+
+| Voice id | Speaker | Engine | Sample rate |
+|---|---|---|---|
+| `proxectonos/celtia-styletts2` | Celtia (female) | `styletts2` | 24 kHz |
+| `proxectonos/brais-styletts2` | Brais (male) | `styletts2` | 24 kHz |
+
+They come from the Apache-2.0 checkpoints of
+[Proxecto Nós](https://nos.gal/gl/proxecto-nos) (`proxectonos/Nos_StyleTTS2-Celtia-GL`
+and `proxectonos/Nos_StyleTTS2-Brais-GL`), converted to ONNX by
+`scripts/conversion/styletts2/export_proxectonos_gl.py` and mirrored to
+[`OpenVoiceOS/phoonnx-styletts2`](https://huggingface.co/OpenVoiceOS/phoonnx-styletts2).
+
+Each voice renders with its own speaker style out of the box. It also accepts a
+reference clip, because the export ships a `styletts2_style` speaker encoder —
+see [voice cloning](cloning.md).
+
+```python
+from phoonnx.config import SynthesisConfig
+from phoonnx.model_manager import TTSModelManager
+
+manager = TTSModelManager()
+manager.load()
+voice = manager.voices["proxectonos/celtia-styletts2"].load()
+for chunk in voice.synthesize("Bo día, como estás?", SynthesisConfig()):
+    ...
+```
+
+### Front end
+
+These models were trained on **Cotovía notation with stress marks**, not on IPA.
+The voices therefore set `phoneme_type: cotovia`, `alphabet: cotovia` and
+`phonemizer_model: stress`. Their vocabulary is the 69-symbol Galician phoneset
+of the upstream `phoneme_token_maps.json`, not the 178-symbol espeak set of the
+other StyleTTS2 voices. `scripts/conversion/styletts2/gl_vocab.py` builds that
+vocabulary, and `tests/test_styletts2.py` checks it against the vendored table.
+
+The tokenizer folds the multi-character Cotovía forms onto the single ids the
+model was trained with: `rr` → `R`, `tS` → `W`, and a stressed vowel `V^` → the
+accented vowel (`o^` → `ó`).
+
+### Known front-end gaps
+
+`pycotovia` does not yet reproduce the Cotovía binary's transcription in two
+places. Measured against the gold `phonetic_transcription` column of the
+`proxectonos/Nos_Celtia-GL` test split (30 sentences):
+
+| Comparison | Word error |
+|---|---|
+| Phone string, ignoring stress and vowel timbre | 1.9 % |
+| Adding open/closed vowel timbre (`É`, `Ó`) | 14.2 % |
+| Adding stress placement | 47.6 % |
+
+The base transcription is correct. The remaining errors are that `pycotovia`
+never emits the open vowels `É` and `Ó`, and that it marks stress on unstressed
+function words that the binary leaves unmarked. Punctuation is also dropped,
+although the models accept it. Fixing these belongs in `pycotovia`; until then
+the voices are intelligible but their prosody is flatter than upstream's.
+
+### Training a Galician StyleTTS2 voice
+
+[`proxectonos/PL-ModernBERT-gl`](https://huggingface.co/proxectonos/PL-ModernBERT-gl)
+is the Galician phoneme-level BERT to use with the `styletts2-plbert` training
+engine, which supports ModernBERT backbones. It shares the same 69-symbol
+Cotovía vocabulary. Note that the two shipped voices do **not** embed it — their
+checkpoints carry an ALBERT-style PL-BERT — so it is a resource for new training
+runs, not a drop-in replacement.
