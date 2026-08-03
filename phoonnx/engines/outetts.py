@@ -9,12 +9,12 @@ duration model, no vocoder and no phonemizer — the LM consumes raw text.
 Two checkpoints share one interface (upstream's "interface v3")::
 
     OuteTTS-1.0-0.6B        Qwen3-0.6B backbone, Apache-2.0, 14 languages
-    Llama-OuteTTS-1.0-1B    Llama-3.2-1B backbone, CC-BY-NC-SA-4.0, 23+ languages
+    Llama-OuteTTS-1.0-1B    Llama-3.2-1B backbone, CC-BY-NC-SA-4.0, 23 languages
 
-phoonnx defaults to the 0.6B: it is the permissively licensed one and the one that
-runs comfortably on CPU. The 1B is indexed as well because it is the only member of
-the family that covers the low-resource languages (Bengali, Persian, Swahili, Tamil,
-Lithuanian, Ukrainian, ...) — see ``VOICES.md`` for the license note.
+The 14 languages the 0.6B was trained on resolve to the 0.6B: it is the permissively
+licensed one and the one that runs comfortably on CPU. The nine languages only the 1B
+covers (Arabic, Belarusian, Bengali, Lithuanian, Persian, Portuguese, Swahili, Tamil,
+Ukrainian) resolve to the 1B — see ``VOICES.md`` for the license note.
 
 Two ONNX graphs::
 
@@ -29,12 +29,15 @@ length, exactly as :class:`phoonnx.engines.neutts.NeuTTSAdapter` does::
              position_ids              int64 [1, S]        absolute positions P .. P+S-1
              past_key_values.<i>.key   fp32  [1, H, P, D]  for i in 0 .. L-1
              past_key_values.<i>.value fp32  [1, H, P, D]
-    outputs  logits                    fp32  [1, S, V]     **all** positions
+    outputs  logits                    fp32  [1, S, V]     all positions
              present.<i>.key / present.<i>.value  fp32 [1, H, P + S, D]
 
 Unlike NeuTTS's export, ``logits`` carries the whole sequence, so the decode step reads
-``logits[0, -1]``. The KV geometry (L, H, D) is read off the graph's own input
-signature, so the 0.6B and the 1B need no code change.
+``logits[0, -1]``. That indexing is also what makes a leaner export work: phoonnx's own
+1B graph (``scripts/conversion/outetts/export_outetts_onnx.py``) returns ``[1, 1, V]``,
+the final row alone, rather than a ~1 GB prefill tensor the sampler never looks at. The
+KV geometry (L, H, D) is read off the graph's own input signature, so the 0.6B and the
+1B need no code change.
 
 Prompt format
 ~~~~~~~~~~~~~

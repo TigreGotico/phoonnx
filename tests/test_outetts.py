@@ -596,6 +596,34 @@ def test_only_the_last_logit_row_drives_the_next_token():
                       np.random.default_rng(0)) == [C1_BASE + 1]
 
 
+def test_a_last_row_only_export_drives_the_same_loop():
+    """phoonnx's own 1B export returns ``logits[1, 1, V]``, not every position.
+
+    ``scripts/conversion/outetts/export_outetts_onnx.py`` drops the prefill rows the
+    sampler never reads. ``logits[0, -1]`` is the last row either way, so one adapter
+    drives both that graph and OuteAI's full-sequence exports.
+    """
+    a = _adapter()
+
+    def fn(feed, i):
+        seq = feed["input_ids"].shape[1]
+        past = feed["past_key_values.0.key"].shape[2]
+        logits = np.full((1, 1, VOCAB), -10.0, np.float32)
+        logits[0, 0, C1_BASE + 1 if i == 0 else AUDIO_END_ID] = 10.0
+        out = {"logits": logits}
+        for j in range(LAYERS):
+            for k in ("key", "value"):
+                out[f"present.{j}.{k}"] = np.zeros((1, KV_HEADS, past + seq, HEAD_DIM),
+                                                   np.float32)
+        return out
+
+    session = _FakeSession(_lm_names(), fn, _lm_inputs())
+    assert a.generate(session, [1, 2, 3], a.default_params(),
+                      np.random.default_rng(0)) == [C1_BASE + 1]
+    # the prefill still fed the whole prompt, only the returned logits are narrower
+    assert session.feeds[0]["input_ids"].shape == (1, 3)
+
+
 def test_repetition_penalty_window_spans_the_prompt():
     """Upstream's patched processor penalises prompt tokens too, within the window."""
     a = _adapter()
