@@ -59,6 +59,15 @@ test = [
     "euskaphone",
     "g2p_barranquenho",
     "mwl_phonemizer",
+    # kokoro-family styletts2 voices phonemize through misaki; both extras
+    # are pure-python (no heavy/compiled deps) so they belong in the base
+    # test extra, not gated behind an importorskip
+    "misaki[en]",
+    "misaki[zh]",
+    # misaki.zh imports pypinyin.contrib.tone_convert.to_finals, added
+    # after 0.44 — older resolved versions (pulled in transitively by
+    # espnet/f5-tts) fail at import time with an ImportError
+    "pypinyin>=0.50",
     # cross-check reference for the Larynx/Mimic3 tokenization golden tests
     "gruut[en]>=2.3.0,<3.0",
     # onnx uses ml_dtypes.float4_e2m1fn (added in ml_dtypes 0.5) but the
