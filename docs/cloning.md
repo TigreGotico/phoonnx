@@ -27,7 +27,7 @@ turned into:
 |---|---|---|---|---|
 | **d-vector** | a **speaker encoder** maps the reference waveform to a fixed embedding that conditions synthesis | No | Yes | YourTTS, StyleTTS2, [Chatterbox](training/engines/chatterbox.md), [Spark-TTS](training/engines/sparktts.md) |
 | **in-context** | the reference **audio + its transcription** are part of the model input; the model continues that voice | **Yes** | Per-phoneme (espeak/pinyin) | ZipVoice, [Spark-TTS](training/engines/sparktts.md) |
-| **in-context, pre-encoded** | the reference is **codec-encoded ahead of time** and shipped with the voice; the model continues those audio tokens | **Yes** (bundled) | Per-phoneme (espeak) | NeuTTS / Akiti-TTS |
+| **in-context, pre-encoded** | the reference is **codec-encoded ahead of time** and shipped with the voice; the model continues those audio tokens | **Yes** (bundled) | Per-phoneme (espeak) | NeuTTS / Akiti-TTS, [OuteTTS](training/engines/outetts.md) |
 
 A cloning voice can still bundle a **default speaker**, so it works with *or* without a
 reference. When a reference is given it **overrides** the default

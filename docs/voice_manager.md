@@ -11,7 +11,8 @@ The catalog is not fetched from a handful of live endpoints. `merge_default_voic
 `OVOS`, `MMS`, `proxectonos`, `piper`, `phonikud`, `neurlang`, `mimic3`,
 `transformers_community`, `piper_community`, `optispeech`, `glowtts`, `mixertts`,
 `fastpitch`, `coqui_community`, `vits2`, `styletts2`, `f5tts`, `coqui_vits`, `BSC`,
-`shami`, `chatterbox`, `supertonic`, `neutts`, `pockettts`, `sparktts`, `qwen3tts`.
+`shami`, `chatterbox`, `supertonic`, `neutts`, `pockettts`, `sparktts`, `qwen3tts`,
+`outetts`.
 
 Each JSON entry becomes a `TTSModelInfo`. Model/config/vocoder files are only fetched from their URLs when a voice is actually downloaded or loaded.
 
