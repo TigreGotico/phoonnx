@@ -103,11 +103,15 @@ Defaults come from the checkpoint's own `generation_config.json`:
 | `subtalker_top_k` | 50 | code-predictor top-k |
 | `subtalker_top_p` | 1.0 | code-predictor nucleus |
 
-Two more parameters are accepted per call: `do_sample` (set it to `False` for a
-deterministic result that matches the upstream PyTorch model token for token) and `seed`.
+Two more parameters are accepted per call: `do_sample` and `seed`. `do_sample=False`
+gives a deterministic result that matches the upstream PyTorch model token for token,
+which is what the parity checker uses. Do not use it for synthesis: greedy decoding makes
+this model loop and talk forever on some inputs, which is why upstream samples by
+default.
 
-Sampling is stochastic, and a rare draw makes the model keep talking past the text. If
-you need a bounded result, set `do_sample=False` or cap `max_new_tokens`.
+Sampling is stochastic, and a rare draw also makes the model keep talking past the text.
+Cap `max_new_tokens` when you need a bounded result: at 12.5 frames per second, 250
+frames is 20 seconds of audio.
 
 ## Licence
 
