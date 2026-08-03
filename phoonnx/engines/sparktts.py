@@ -215,6 +215,8 @@ class SparkTTSAdapter(BaseOnnxAdapter):
         self.special: Dict[str, int] = {}
         self._params: Dict[str, Any] = {}
         self._reference_text_ids: Optional[List[int]] = None
+        self._reference_cache_key: Optional[tuple] = None
+        self._reference_cache: Tuple[np.ndarray, Optional[np.ndarray]] = (None, None)
         self.past_names: List[str] = []
         self.num_kv_heads = 0
         self.head_dim = 0
@@ -261,6 +263,9 @@ class SparkTTSAdapter(BaseOnnxAdapter):
         if arr.size != N_GLOBAL_TOKENS:
             raise ValueError(f"Spark-TTS speaker tokens must be {N_GLOBAL_TOKENS} values, "
                              f"got {arr.size} from '{path}'")
+        if arr.min() < 0 or arr.max() >= GLOBAL_CODEBOOK:
+            raise ValueError(f"Spark-TTS speaker tokens must be in [0, {GLOBAL_CODEBOOK}) "
+                             f"in '{path}'")
         return arr
 
     def _read_kv_shape(self, session: onnxruntime.InferenceSession) -> None:
@@ -340,11 +345,20 @@ class SparkTTSAdapter(BaseOnnxAdapter):
 
     def _resolve_speaker(self, request: AdapterSynthesisRequest
                          ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
-        """Pick the speaker for this call: the reference clip if given, else the preset."""
+        """Pick the speaker for this call: the reference clip if given, else the preset.
+
+        Long text is synthesized one chunk per call, so the reference is encoded once and
+        reused for the rest of the chunks rather than re-run per sentence.
+        """
         ref = request.params.get("reference_audio")
         if ref is not None:
-            return self.tokenize_reference(np.asarray(ref[0]), int(ref[1]),
-                                           with_semantic=bool(self._reference_text_ids))
+            audio = np.asarray(ref[0], np.float32).reshape(-1)
+            key = (hash(audio.tobytes()), int(ref[1]), bool(self._reference_text_ids))
+            if self._reference_cache_key != key:
+                self._reference_cache = self.tokenize_reference(
+                    audio, int(ref[1]), with_semantic=bool(self._reference_text_ids))
+                self._reference_cache_key = key
+            return self._reference_cache
         if self.preset_global_tokens is None:
             raise RuntimeError("Spark-TTS voice has neither a speaker_tokens_path preset "
                                "nor a speaker_reference clip to clone from")

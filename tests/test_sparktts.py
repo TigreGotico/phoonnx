@@ -237,6 +237,30 @@ def test_speaker_tokens_asset_accepts_a_bare_list(tmp_path):
     assert SparkTTSAdapter._load_speaker_tokens(str(path)).size == N_GLOBAL_TOKENS
 
 
+def test_speaker_tokens_asset_rejects_out_of_range_codes(tmp_path):
+    path = tmp_path / "v.json"
+    path.write_text(json.dumps({"global_tokens": [9999] * N_GLOBAL_TOKENS}))
+    with pytest.raises(ValueError):
+        SparkTTSAdapter._load_speaker_tokens(str(path))
+
+
+def test_reference_encoding_is_reused_across_chunks():
+    ad = _adapter()
+    calls = []
+
+    class _Sess:
+        def run(self, _, feed):
+            calls.append(1)
+            return [np.zeros((1, 1, N_GLOBAL_TOKENS), np.int64)]
+
+    ad.speaker_tokenizer = _Sess()
+    audio = np.sin(np.linspace(0, 200, 16000)).astype(np.float32)
+    req = _req(reference_audio=(audio, 16000))
+    ad._resolve_speaker(req)
+    ad._resolve_speaker(req)
+    assert len(calls) == 1
+
+
 def test_synthesize_requires_the_vocoder():
     with pytest.raises(RuntimeError):
         SparkTTSAdapter().synthesize(_req(), None)
