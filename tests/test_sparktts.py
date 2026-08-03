@@ -8,6 +8,8 @@ from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.sparktts import (
     N_GLOBAL_TOKENS,
     REF_SEGMENT_SAMPLES,
+    SAMPLE_RATE,
+    SEMANTIC_CODEBOOK,
     SparkTTSAdapter,
     chunk_text,
     magnitude_spectrogram,
@@ -335,3 +337,288 @@ def test_voice_index_entries():
 def test_voice_index_is_merged_by_the_manager():
     from phoonnx.model_manager import TTSModelManager
     assert any(p.name == "sparktts.json" for p in TTSModelManager.voice_index_files())
+
+
+# ----------------------------------------------------------------------
+# _generate() — the KV-cached autoregressive loop
+# ----------------------------------------------------------------------
+
+class _IOSpec:
+    """Mimics onnxruntime.NodeArg — just the ``.name``/``.shape`` the adapter reads."""
+
+    def __init__(self, name, shape):
+        self.name = name
+        self.shape = shape
+
+
+NUM_KV_HEADS, HEAD_DIM, NUM_LAYERS = 2, 4, 3
+VOCAB = 12000
+
+
+class _FakeLMSession:
+    """Fake Qwen2 KV-cached LM session with the real InferenceSession contract.
+
+    Implements ``get_inputs()``/``get_outputs()``/``run()`` with real numpy shapes so it
+    drives the adapter's own prefill/decode loop, the same way the neutts/pockettts fakes
+    drive their engines. ``tokens_to_emit`` is the fixed script of ids the "model" emits,
+    one per decode step; the fake never looks at ``input_ids`` to choose a token, but it
+    does assert the feed shapes it is handed are consistent with the KV-cache contract.
+    """
+
+    def __init__(self, tokens_to_emit, vocab=VOCAB):
+        self.tokens_to_emit = list(tokens_to_emit)
+        self.vocab = vocab
+        self.step = 0
+        self.calls = []  # recorded feed dicts, in call order
+
+    def get_inputs(self):
+        ins = [_IOSpec("input_ids", ["batch", "seq"]),
+              _IOSpec("attention_mask", ["batch", "seq"]),
+              _IOSpec("position_ids", ["batch", "seq"])]
+        for i in range(NUM_LAYERS):
+            ins.append(_IOSpec(f"past_key_values.{i}.key",
+                               ["batch", NUM_KV_HEADS, "past", HEAD_DIM]))
+        return ins
+
+    def get_outputs(self):
+        outs = [_IOSpec("logits", ["batch", "seq", self.vocab])]
+        for i in range(NUM_LAYERS):
+            outs.append(_IOSpec(f"present.{i}.key",
+                                ["batch", NUM_KV_HEADS, "total", HEAD_DIM]))
+        return outs
+
+    def run(self, output_names, feed):
+        self.calls.append({k: (v.copy() if isinstance(v, np.ndarray) else v)
+                           for k, v in feed.items()})
+        input_ids = feed["input_ids"]
+        seq = input_ids.shape[1]
+        past_len = feed[f"past_key_values.0.key"].shape[2]
+
+        # attention_mask / position_ids must match the running sequence length exactly
+        assert feed["attention_mask"].shape == (1, past_len + seq)
+        assert (feed["attention_mask"] == 1).all()
+        if past_len == 0:
+            assert feed["position_ids"].tolist() == [list(range(seq))]
+        else:
+            assert feed["position_ids"].tolist() == [[past_len]]
+            assert seq == 1  # decode steps feed exactly one new token
+
+        token = self.tokens_to_emit[min(self.step, len(self.tokens_to_emit) - 1)]
+        self.step += 1
+
+        logits = np.full((1, seq, self.vocab), -1e9, np.float32)
+        logits[0, -1, token] = 10.0  # sharp peak: argmax/greedy always resolves to `token`
+
+        new_past_len = past_len + seq
+        present = np.zeros((1, NUM_KV_HEADS, new_past_len, HEAD_DIM), np.float32)
+        # stamp a per-step, per-layer signature so growth/threading can be asserted
+        present[..., :] = new_past_len
+
+        outputs = [logits]
+        for i in range(NUM_LAYERS):
+            outputs.append(present.copy())
+        return outputs
+
+
+def _fake_lm_adapter():
+    ad = _adapter()
+    ad.past_names = [f"past_key_values.{i}.key" for i in range(NUM_LAYERS)]
+    ad.num_kv_heads = NUM_KV_HEADS
+    ad.head_dim = HEAD_DIM
+    return ad
+
+
+def test_generate_prefill_feed_has_zero_length_past():
+    ad = _fake_lm_adapter()
+    eos = SPECIAL["<|im_end|>"]
+    session = _FakeLMSession([100, 101, eos])
+    prompt = np.array([[1, 2, 3, 4]], np.int64)
+    ad._generate(session, prompt, temperature=0.0, top_k=50, top_p=0.95,
+                rng=np.random.default_rng(0))
+
+    first_feed = session.calls[0]
+    assert first_feed["input_ids"].shape == (1, 4)          # whole prompt, one shot
+    for name in ad.past_names:
+        assert first_feed[name].shape == (1, NUM_KV_HEADS, 0, HEAD_DIM)  # empty KV cache
+
+
+def test_generate_maps_present_to_past_key_values_and_grows_shapes_each_step():
+    ad = _fake_lm_adapter()
+    eos = SPECIAL["<|im_end|>"]
+    session = _FakeLMSession([100, 101, 102, eos])
+    prompt = np.array([[1, 2, 3]], np.int64)
+    ad._generate(session, prompt, temperature=0.0, top_k=50, top_p=0.95,
+                rng=np.random.default_rng(0))
+
+    # call 0: prefill (seq=3, past=0); calls 1..3: decode steps (seq=1, past growing)
+    assert len(session.calls) == 4
+    for i in range(NUM_LAYERS):
+        name = f"past_key_values.{i}.key"
+        # step 1 decode feed must carry step-0's `present.N` renamed to `past_key_values.N`
+        # (the value the fake stamped == the running length after the prefill step, i.e. 3)
+        assert session.calls[1][name].shape == (1, NUM_KV_HEADS, 3, HEAD_DIM)
+        assert (session.calls[1][name] == 3).all()
+        # each further decode step grows the cache by exactly one position
+        assert session.calls[2][name].shape == (1, NUM_KV_HEADS, 4, HEAD_DIM)
+        assert session.calls[3][name].shape == (1, NUM_KV_HEADS, 5, HEAD_DIM)
+
+
+def test_generate_decode_feed_shapes_and_position_ids_advance():
+    ad = _fake_lm_adapter()
+    eos = SPECIAL["<|im_end|>"]
+    session = _FakeLMSession([100, 101, eos])
+    prompt = np.array([[1, 2, 3, 4, 5]], np.int64)  # prompt_len = 5
+    ad._generate(session, prompt, temperature=0.0, top_k=50, top_p=0.95,
+                rng=np.random.default_rng(0))
+
+    decode_feeds = session.calls[1:]
+    for step, feed in enumerate(decode_feeds):
+        assert feed["input_ids"].shape == (1, 1)                 # decode feeds one token
+        assert feed["position_ids"].tolist() == [[5 + step]]     # prompt_len + step
+        assert feed["attention_mask"].shape == (1, 5 + step + 1)
+
+
+def test_generate_stops_on_eos_and_does_not_emit_it():
+    ad = _fake_lm_adapter()
+    eos = SPECIAL["<|im_end|>"]
+    session = _FakeLMSession([111, 222, eos, 333])  # 333 must never be reached
+    prompt = np.array([[1, 2]], np.int64)
+    emitted = ad._generate(session, prompt, temperature=0.0, top_k=50, top_p=0.95,
+                           rng=np.random.default_rng(0))
+
+    assert emitted == [111, 222]
+    assert len(session.calls) == 3  # prefill + 2 decode steps, stops before a 3rd decode
+
+
+def test_generate_respects_max_new_tokens_when_eos_never_comes():
+    from phoonnx.engines import sparktts as sparktts_mod
+    ad = _fake_lm_adapter()
+    session = _FakeLMSession([777])  # repeats forever, never emits eos
+    prompt = np.array([[1]], np.int64)
+    old_cap = sparktts_mod.MAX_NEW_TOKENS
+    sparktts_mod.MAX_NEW_TOKENS = 5
+    try:
+        emitted = ad._generate(session, prompt, temperature=0.0, top_k=50, top_p=0.95,
+                               rng=np.random.default_rng(0))
+    finally:
+        sparktts_mod.MAX_NEW_TOKENS = old_cap
+    assert emitted == [777] * 5
+
+
+def test_generate_reads_kv_shape_lazily_from_the_session_when_unset():
+    ad = _adapter()  # no past_names / num_kv_heads / head_dim pre-seeded
+    eos = SPECIAL["<|im_end|>"]
+    session = _FakeLMSession([100, eos])
+    prompt = np.array([[1, 2]], np.int64)
+    ad._generate(session, prompt, temperature=0.0, top_k=50, top_p=0.95,
+                rng=np.random.default_rng(0))
+    assert ad.past_names == [f"past_key_values.{i}.key" for i in range(NUM_LAYERS)]
+    assert ad.num_kv_heads == NUM_KV_HEADS
+    assert ad.head_dim == HEAD_DIM
+
+
+def test_generate_temperature_zero_is_deterministic_argmax_through_the_fake_session():
+    # two independent rng streams must produce the identical script, because temperature<=0
+    # takes the argmax branch in sample_token() and never touches the rng
+    eos = SPECIAL["<|im_end|>"]
+    tokens = [50, 3999, 0, eos]  # exercise low/high/edge vocab ids too
+    emitted_a = _fake_lm_adapter()._generate(
+        _FakeLMSession(tokens), np.array([[1, 2]], np.int64),
+        temperature=0.0, top_k=50, top_p=0.95, rng=np.random.default_rng(1))
+    emitted_b = _fake_lm_adapter()._generate(
+        _FakeLMSession(tokens), np.array([[1, 2]], np.int64),
+        temperature=-1.0, top_k=1, top_p=0.01, rng=np.random.default_rng(999))
+    assert emitted_a == emitted_b == [50, 3999, 0]
+
+
+# ----------------------------------------------------------------------
+# synthesize() — semantic-token -> vocoder handoff
+# ----------------------------------------------------------------------
+
+class _FakeVocoderSession:
+    """Records the exact feed dict it receives and returns a deterministic waveform."""
+
+    def __init__(self, n_samples=1600):
+        self.n_samples = n_samples
+        self.calls = []
+
+    def run(self, output_names, feed):
+        self.calls.append(feed)
+        return [np.linspace(-0.5, 0.5, self.n_samples, dtype=np.float32)[None]]
+
+
+def _synth_ready_adapter(lm_tokens, vocoder=None):
+    ad = _fake_lm_adapter()
+    ad.vocoder = vocoder or _FakeVocoderSession()
+    ad.tokenizer = object()
+    ad.preset_global_tokens = np.arange(N_GLOBAL_TOKENS, dtype=np.int64)
+    return ad, _FakeLMSession(lm_tokens)
+
+
+def test_synthesize_offsets_semantic_tokens_before_the_vocoder_call():
+    base = SPECIAL["<|bicodec_semantic_0|>"]
+    eos = SPECIAL["<|im_end|>"]
+    # raw emitted ids are base-offset; the vocoder must see them de-offset back to [0, 8192)
+    raw = [base + 5, base + 0, base + 8191, eos]
+    ad, session = _synth_ready_adapter(raw)
+    result = ad.synthesize(_req(), session)
+
+    vocoder_calls = ad.vocoder.calls
+    assert len(vocoder_calls) == 1
+    feed = vocoder_calls[0]
+    assert set(feed) == {"semantic_tokens", "global_tokens"}
+    assert feed["semantic_tokens"].dtype == np.int64
+    assert feed["semantic_tokens"].tolist() == [[5, 0, 8191]]
+    assert feed["global_tokens"].dtype == np.int64
+    assert feed["global_tokens"].shape == (1, 1, N_GLOBAL_TOKENS)
+    assert feed["global_tokens"].reshape(-1).tolist() == list(range(N_GLOBAL_TOKENS))
+    assert result.extras == {"semantic_token_count": 3}
+
+
+def test_synthesize_waveform_round_trips_into_an_audio_chunk():
+    from phoonnx.voice import AudioChunk
+
+    base = SPECIAL["<|bicodec_semantic_0|>"]
+    eos = SPECIAL["<|im_end|>"]
+    n_samples = 800
+    vocoder = _FakeVocoderSession(n_samples=n_samples)
+    ad, session = _synth_ready_adapter([base + 1, base + 2, eos], vocoder=vocoder)
+    result = ad.synthesize(_req(), session)
+
+    assert result.audio.dtype == np.float32
+    assert result.audio.shape == (n_samples,)
+    assert result.audio.min() >= -1.0 and result.audio.max() <= 1.0
+
+    chunk = AudioChunk(sample_rate=SAMPLE_RATE, sample_width=2, sample_channels=1,
+                       audio_float_array=result.audio)
+    assert chunk.audio_int16_array.dtype == np.int16
+    assert chunk.audio_int16_array.shape == (n_samples,)
+    assert len(chunk.audio_int16_bytes) == n_samples * 2
+
+
+def test_synthesize_filters_out_non_semantic_token_ids_before_the_vocoder():
+    # a malformed/garbage LM output: ids outside the semantic codebook window (control
+    # tokens, global-token ids, or plain out-of-range garbage) must never reach the vocoder
+    base = SPECIAL["<|bicodec_semantic_0|>"]
+    eos = SPECIAL["<|im_end|>"]
+    garbage_below = base - 1                       # just under the semantic window
+    garbage_above = base + SEMANTIC_CODEBOOK        # just at/over the semantic window
+    control_token = SPECIAL["<|start_content|>"]    # a real control id, not semantic at all
+    raw = [garbage_below, base + 42, garbage_above, control_token, eos]
+    ad, session = _synth_ready_adapter(raw)
+    result = ad.synthesize(_req(), session)
+
+    feed = ad.vocoder.calls[0]
+    assert feed["semantic_tokens"].tolist() == [[42]]   # only the one valid token survives
+    assert result.extras == {"semantic_token_count": 1}
+
+
+def test_synthesize_returns_silence_when_nothing_survives_the_filter_and_skips_the_vocoder():
+    base = SPECIAL["<|bicodec_semantic_0|>"]
+    eos = SPECIAL["<|im_end|>"]
+    ad, session = _synth_ready_adapter([SPECIAL["<|start_content|>"], eos])  # no semantic ids at all
+    result = ad.synthesize(_req(), session)
+
+    assert result.audio.shape == (0,)
+    assert result.audio.dtype == np.float32
+    assert ad.vocoder.calls == []  # vocoder must never be called with an empty token list
