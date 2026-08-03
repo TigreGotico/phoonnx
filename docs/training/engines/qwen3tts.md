@@ -64,10 +64,13 @@ asks for.
 Voice ids follow `qwen3tts/<timbre>/<language>`:
 
 ```python
-from phoonnx.voice import TTSVoice
+from phoonnx.model_manager import TTSModelManager
 
-voice = TTSVoice.load("qwen3tts/ryan/en")
-audio = voice.synthesize("The quick brown fox jumps over the lazy dog.")
+manager = TTSModelManager()
+manager.merge_default_voices()
+voice = manager.voices["qwen3tts/ryan/en"].load()
+for chunk in voice.synthesize("The quick brown fox jumps over the lazy dog."):
+    ...  # chunk.audio_float_array
 ```
 
 ## Graphs
