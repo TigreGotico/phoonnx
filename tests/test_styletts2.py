@@ -272,3 +272,114 @@ def test_cotovia_phonemizer_covers_the_galician_vocabulary():
                 unknown.append(ps[i])
             i += 1
     assert not unknown, f"phonemes outside the voice vocabulary: {sorted(set(unknown))}"
+
+
+# --- BSC-LT multispeaker StyleTTS2 (Spanish / Catalan named speakers) --------
+
+_BSC_CA_SPEAKERS = ["bet", "eli", "eva", "jan", "mar", "ona",
+                    "pau", "pep", "pol", "teo", "uri"]
+_BSC_ES_SPEAKERS = ["3946", "8882", "9972", "10246", "11797", "12367"]
+
+
+def _index():
+    return json.loads(_VOICE_INDEX.read_text())
+
+
+@pytest.mark.parametrize("lang,speaker,voice", (
+    [("ca", s, f"bsc/ca-{s}") for s in _BSC_CA_SPEAKERS]
+    + [("es", s, f"bsc/es-cml{s}") for s in _BSC_ES_SPEAKERS]))
+def test_bsc_speaker_entry_reuses_the_shared_checkpoint(lang, speaker, voice):
+    """Every named BSC speaker is the SAME graph plus its own style blob.
+
+    A per-speaker model_url would mean 545 MB downloaded 17 times over.
+    """
+    e = _index()[voice]
+    d = f"bsc-{lang}-styletts2"
+    assert e["voice_id"] == voice
+    assert e["engine"] == "styletts2" and e["lang"] == lang
+    # BSC trained on espeak IPA, same front-end as the zero-shot parent voice
+    assert e["phoneme_type"] == "espeak" and e["alphabet"] == "ipa"
+    assert e["model_url"].endswith(f"{d}/model.onnx")
+    assert e["config_url"].endswith(f"{d}/config.json")
+    # the ONLY thing that differs between speakers
+    assert e["style_url"].endswith(f"{d}/{speaker}.bin")
+    # the reference-clip path stays available, so a caller can still clone
+    assert e["speaker_encoder_url"].endswith(f"{d}/style_encoder.onnx")
+    assert e["speaker_encoder_type"] == "styletts2_style"
+
+
+@pytest.mark.parametrize("lang,speakers", [("ca", _BSC_CA_SPEAKERS), ("es", _BSC_ES_SPEAKERS)])
+def test_bsc_speaker_styles_are_distinct_per_speaker(lang, speakers):
+    """No two speakers may share a style blob -- that would silently ship the
+    same voice under several names."""
+    idx = _index()
+    prefix = "bsc/ca-" if lang == "ca" else "bsc/es-cml"
+    urls = [idx[f"{prefix}{s}"]["style_url"] for s in speakers]
+    assert len(set(urls)) == len(urls)
+
+
+def test_bsc_parent_voices_stay_reference_only():
+    """``bsc/<lang>-styletts2`` is the zero-shot cloning entry: it must NOT gain a
+    default style, or callers lose the "reference clip required" error."""
+    for voice in ("bsc/es-styletts2", "bsc/ca-styletts2"):
+        e = _index()[voice]
+        assert "style_url" not in e or e["style_url"] is None
+        assert e["speaker_encoder_type"] == "styletts2_style"
+
+
+def test_bsc_speaker_ids_match_the_exporter():
+    """The voice index and the exporter must not drift apart."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent
+                           / "scripts" / "conversion" / "styletts2"))
+    from export_bsc_speakers import SPEAKERS
+
+    assert sorted(SPEAKERS["ca"]) == sorted(_BSC_CA_SPEAKERS)
+    assert sorted(SPEAKERS["es"]) == sorted(_BSC_ES_SPEAKERS)
+    idx = _index()
+    assert {k for k in idx if k.startswith("bsc/ca-") and k != "bsc/ca-styletts2"} == \
+        {f"bsc/ca-{s}" for s in SPEAKERS["ca"]}
+    assert {k for k in idx if k.startswith("bsc/es-") and k != "bsc/es-styletts2"} == \
+        {f"bsc/es-cml{s}" for s in SPEAKERS["es"]}
+
+
+def test_bsc_style_blob_reshapes_to_a_single_256_row(tmp_path):
+    """A preset StyleTTS2 style is one 256-d row (ref_p ++ ref_s), unlike Kokoro's
+    length-indexed pack -- so the adapter must not add a trailing pad for it."""
+    blob = tmp_path / "pau.bin"
+    np.arange(256, dtype=np.float32).tofile(blob)
+
+    class _Cfg:
+        tokenizer = None
+        engine_params = {"style_path": str(blob)}
+
+    a = StyleTTS2Adapter()
+    a.configure(_Cfg())
+    assert a.style_pack.shape == (1, 256)
+    sess = _Sess(["input_ids", "style", "speed"])
+    feed = a.build_feed_dict(_req(5), sess)
+    assert feed["style"].shape == (1, 256)
+    assert np.allclose(feed["style"][0], np.arange(256))
+    # single-row pack -> leading pad only
+    assert feed["input_ids"].shape == (1, 6) and feed["input_ids"][0, 0] == 0
+
+
+def test_bsc_reference_clip_overrides_the_preset_style(tmp_path):
+    """A named BSC voice still accepts a reference clip; cloning wins over the
+    shipped preset."""
+    blob = tmp_path / "ona.bin"
+    np.zeros(256, dtype=np.float32).tofile(blob)
+
+    class _Enc:
+        def encode(self, audio, sr):
+            return np.full(256, 0.5, dtype=np.float32)
+
+    class _Cfg:
+        tokenizer = None
+        engine_params = {"style_path": str(blob)}
+
+    a = StyleTTS2Adapter(speaker_encoder=_Enc())
+    a.configure(_Cfg())
+    sess = _Sess(["input_ids", "style", "speed"])
+    feed = a.build_feed_dict(
+        _req(5, reference_audio=(np.zeros(24000, np.float32), 24000)), sess)
+    assert np.allclose(feed["style"][0], 0.5)
