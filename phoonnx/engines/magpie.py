@@ -30,7 +30,6 @@ path, not a rounding difference. Both modes are supported and both match the mat
 NeMo setting exactly; see ``exact_decode`` in the engine params.
 """
 import json
-import os
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -39,7 +38,6 @@ from quebra_frases import sentence_tokenize
 
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
-from phoonnx.util import LOG
 
 # Byte-level tokenizers are byt5: <pad>, </s>, <unk>, then the 256 raw byte values.
 BYTE_TOKENIZER_PREFIX = 3
@@ -126,6 +124,13 @@ class MagpieTokenizer:
     def encode(self, text: str, lang: str, tokenizer_name: str) -> List[int]:
         """Turn text into global token ids, with the end-of-sentence id appended."""
         base = lang.split("-")[0].split("_")[0].lower()
+        if base not in BYTE_LANGUAGES and base not in CHAR_LANGUAGES:
+            raise NotImplementedError(
+                f"Magpie needs grapheme-to-phoneme conversion for {base!r} "
+                f"(sub-tokenizer {tokenizer_name!r}). phoonnx keeps phonemizers in "
+                f"scriptconv; only the character and byte tokenizers "
+                f"({sorted(BYTE_LANGUAGES | CHAR_LANGUAGES)}) are supported so far."
+            )
         offset = self.offsets.get(tokenizer_name)
         if offset is None:
             raise ValueError(f"Magpie tokenizer has no sub-tokenizer {tokenizer_name!r}")
@@ -135,13 +140,6 @@ class MagpieTokenizer:
         elif base in CHAR_LANGUAGES:
             symbols = self.symbol_map(tokenizer_name)
             ids = [symbols[c] for c in text if c in symbols]
-        else:
-            raise NotImplementedError(
-                f"Magpie needs grapheme-to-phoneme conversion for {base!r} "
-                f"(sub-tokenizer {tokenizer_name!r}). phoonnx keeps phonemizers in "
-                f"scriptconv; only the character and byte tokenizers "
-                f"({sorted(BYTE_LANGUAGES | CHAR_LANGUAGES)}) are supported so far."
-            )
         return ids + [self.eos_id]
 
 
