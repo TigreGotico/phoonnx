@@ -1,6 +1,6 @@
 ## Supported Voices
 
-**Total Voices:** 3194
+**Total Voices:** 3202
 **Total Languages:** 1812
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
@@ -696,6 +696,14 @@
 | `nipponjo/mixer-tts-ljspeech-384` | `en` | `mixertts` | `espeak` |
 | `nipponjo/mixer-tts-ljspeech-80` | `en` | `mixertts` | `espeak` |
 | `omnivoice/en` | `en` | `omnivoice` | `unicode` |
+| `orpheus/canopylabs/en/dan` | `en` | `orpheus` | `unicode` |
+| `orpheus/canopylabs/en/jess` | `en` | `orpheus` | `unicode` |
+| `orpheus/canopylabs/en/leah` | `en` | `orpheus` | `unicode` |
+| `orpheus/canopylabs/en/leo` | `en` | `orpheus` | `unicode` |
+| `orpheus/canopylabs/en/mia` | `en` | `orpheus` | `unicode` |
+| `orpheus/canopylabs/en/tara` | `en` | `orpheus` | `unicode` |
+| `orpheus/canopylabs/en/zac` | `en` | `orpheus` | `unicode` |
+| `orpheus/canopylabs/en/zoe` | `en` | `orpheus` | `unicode` |
 | `piper_community/agentvibe/en_16Speakers` | `en` | `piper` | `espeak` |
 | `piper_community/brycebeattie/en_ManyVoice` | `en` | `piper` | `espeak` |
 | `piper_community/jstlntchh/en_Scaramouche` | `en` | `piper` | `espeak` |
