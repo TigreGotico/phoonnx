@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.76.0a1](https://github.com/TigreGotico/phoonnx/tree/1.76.0a1) (2026-08-04)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.75.1a1...1.76.0a1)
+
+**Merged pull requests:**
+
+- feat: Llasa engine \(XCodec2 AR codec-LM\) [\#366](https://github.com/TigreGotico/phoonnx/pull/366) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.75.1a1](https://github.com/TigreGotico/phoonnx/tree/1.75.1a1) (2026-08-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.75.0a1...1.75.1a1)
@@ -354,7 +362,6 @@
 - fix: inline \[\[phoneme\]\] blocks crash on empty leading text [\#219](https://github.com/TigreGotico/phoonnx/pull/219) ([JarbasAl](https://github.com/JarbasAl))
 - fix: tolerate offline sidecar probe when loading a cached voice [\#216](https://github.com/TigreGotico/phoonnx/pull/216) ([JarbasAl](https://github.com/JarbasAl))
 - feat: configurable ONNX Runtime execution providers \(AMD/ROCm, DirectML, CoreML, ...\) [\#215](https://github.com/TigreGotico/phoonnx/pull/215) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(chatterbox\): restore lahgtna Arabic-dialect voices with fixed ONNX export [\#214](https://github.com/TigreGotico/phoonnx/pull/214) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
