@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.74.0a1](https://github.com/TigreGotico/phoonnx/tree/1.74.0a1) (2026-08-04)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.73.0a1...1.74.0a1)
+
+**Merged pull requests:**
+
+- feat: KittenTTS voices via the StyleTTS2 adapter [\#360](https://github.com/TigreGotico/phoonnx/pull/360) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.73.0a1](https://github.com/TigreGotico/phoonnx/tree/1.73.0a1) (2026-08-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.72.0a2...1.73.0a1)
@@ -333,7 +341,6 @@
 - feat\(chatterbox\): restore lahgtna Arabic-dialect voices with fixed ONNX export [\#214](https://github.com/TigreGotico/phoonnx/pull/214) ([JarbasAl](https://github.com/JarbasAl))
 - feat: SILMA TTS v1 \(Arabic+English\) voice via the f5tts engine [\#213](https://github.com/TigreGotico/phoonnx/pull/213) ([JarbasAl](https://github.com/JarbasAl))
 - fix\(voice\_index\): dialect-accurate Arabic lang codes + regenerate VOICES.md [\#212](https://github.com/TigreGotico/phoonnx/pull/212) ([JarbasAl](https://github.com/JarbasAl))
-- feat\(shami\): add Shami/HamsVITS engine for Levantine Arabic / English TTS [\#211](https://github.com/TigreGotico/phoonnx/pull/211) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
