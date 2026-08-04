@@ -485,13 +485,21 @@ class TTSModelInfo:
         return enc_path
 
     def download_aux_models(self) -> Dict[str, Path]:
-        """Download the auxiliary ONNX graphs of multi-graph engines (F5-TTS),
-        if any. Returns {engine_params_key: local_path}."""
+        """Download the auxiliary graphs and assets of multi-graph engines.
+
+        Returns {engine_params_key: local_path}. An ``.onnx`` entry goes through
+        :meth:`_fetch_onnx`, so a graph with external weights gets its
+        ``<name>.onnx_data`` sidecar too; without it the graph loads only until
+        onnxruntime looks for the weights. Non-ONNX assets (tokenizer JSON, speaker
+        embeddings) are plain downloads.
+        """
         paths: Dict[str, Path] = {}
         for key, url in (self.aux_model_urls or {}).items():
             fname = url.rsplit("/", 1)[-1] or f"{key}.onnx"
             aux_path = self.voice_path / fname
-            if not _is_cached(aux_path):
+            if fname.endswith(".onnx"):
+                self._fetch_onnx(url, aux_path)
+            elif not _is_cached(aux_path):
                 _stream_to_file(url, aux_path)
             paths[key] = aux_path
         return paths
