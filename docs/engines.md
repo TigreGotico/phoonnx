@@ -95,6 +95,7 @@ Lower `detect_priority` values are probed first during auto-detection.
 | [Qwen3-TTS](training/engines/qwen3tts.md) | `phoonnx/engines/qwen3tts.py` | `engine == "qwen3tts"` — two autoregressive stages (28-layer talker + 5-layer code predictor) writing 16 code groups per 12.5 Hz frame, raw-text, 10 languages, nine fixed timbres, 24 kHz |
 | [OuteTTS](training/engines/outetts.md) | `phoonnx/engines/outetts.py` | `engine == "outetts"` — autoregressive two-codebook codec-LM (Qwen3 backbone + DAC.speech decoder), raw text in 23 languages, in-context [cloning](cloning.md) from pre-encoded speaker profiles, 24 kHz |
 | [ArkTTS (Zortzi + Audio8)](training/engines/arktts.md) | `phoonnx/engines/arktts.py` | `engine == "arktts"` — two autoregressive stages (24-layer slow AR + 4-layer fast AR) writing 10 codebooks per 21.5 Hz frame, raw-text, Basque or 11 languages, reference-clip voices, 44.1 kHz |
+| [OmniVoice](training/engines/omnivoice.md) | `phoonnx/engines/omnivoice.py` | `engine == "omnivoice"` — first **masked-diffusion** engine: a Qwen3 backbone unmasks 8 Higgs-codec streams over 32 bidirectional full-sequence steps, raw-text, 600+ languages, in-context [cloning](cloning.md), 24 kHz |
 
 ---
 

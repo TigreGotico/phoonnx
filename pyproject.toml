@@ -119,6 +119,12 @@ pockettts = [
     "sentencepiece",
     "safetensors",
 ]
+# faster/more-faithful silence trimming for the OmniVoice engine's
+# remove_silence() (phoonnx/thirdparty/omnivoice/audio.py): when absent it
+# falls back to a pure-numpy RMS-window implementation with the same
+# contract (leading/trailing/internal silence trimmed to the configured
+# padding), so this extra is a quality/perf opt-in, not a hard requirement.
+omnivoice = ["pydub"]
 train = [
     # diffusers>=0.36 references torch.xpu at import time, which only exists on
     # torch>=2.4; capping keeps the vendored matcha decoder importable across
@@ -253,6 +259,7 @@ all = [
     "pykakasi==2.3.0", "spacy-pkuseg",
     "soundfile", "scipy",
     "orthography2ipa", "arbtok", "euskaphone", "g2p_barranquenho", "mwl_phonemizer",
+    "pydub",
 ]
 
 [tool.setuptools.dynamic]
