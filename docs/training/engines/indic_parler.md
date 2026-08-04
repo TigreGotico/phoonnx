@@ -86,8 +86,10 @@ trained to answer to.
 from phoonnx.model_manager import TTSModelManager
 
 manager = TTSModelManager()
-voice = manager.load_voice_by_id("indic_parler/rohit/hi")
-audio = voice.synthesize("नमस्ते, आप कैसे हैं?")
+manager.merge_default_voices()
+voice = manager.voices["indic_parler/rohit/hi"].load()
+for chunk in voice.synthesize("नमस्ते, आप कैसे हैं?"):
+    audio = chunk.audio_float_array          # float32 @ 44.1 kHz
 ```
 
 Any of the 69 speakers upstream lists can be reached by passing a `description` at call
