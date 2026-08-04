@@ -135,7 +135,20 @@ def _sample(scores: np.ndarray, temperature: float, top_p: float,
 
 
 class LlasaAdapter(BaseOnnxAdapter):
-    """Adapter for the Llasa family (LLaMA codec-LM + XCodec2 decoder)."""
+    """Adapter for the Llasa family (LLaMA codec-LM + XCodec2 decoder).
+
+    ``synthesize()`` retries the AR loop up to ``MAX_ATTEMPTS`` times if it comes
+    back with zero speech tokens (see ``generate()``/``_mask_logits``). That
+    pathology — the model ending a run before it ever emits a speech token — is
+    already foreclosed for a normal call: step 0 of ``generate()`` masks out
+    ``<|SPEECH_GENERATION_END|>``, so the first sampled token can only come from
+    the ``<|s_N|>`` speech-token block. The retry loop is belt-and-braces for
+    anything that reaches ``token_ids_to_codes`` with an empty id list despite
+    that mask (a zero ``max_new_tokens``, or a caller driving ``generate()``
+    directly), and it still raises ``RuntimeError`` if every attempt comes back
+    empty — see the regression test in ``tests/test_llasa.py`` that forces this
+    path by monkeypatching ``token_ids_to_codes``.
+    """
 
     #: hard ceiling on the AR loop; 50 tokens/s, so 1000 is ~20 s
     MAX_NEW_TOKENS = 1000
@@ -410,9 +423,12 @@ class LlasaAdapter(BaseOnnxAdapter):
             codes = self.token_ids_to_codes(self.generate(session, prompt_ids, p, rng))
             if codes:
                 break
-            # The LM occasionally samples <|SPEECH_GENERATION_END|> as its very first
-            # token and returns silence. It is a sampling accident, not a property of
-            # the text, so drawing again from the same generator fixes it.
+            # generate() masks out <|SPEECH_GENERATION_END|> at step 0 (see
+            # _mask_logits), so an empty-first-token accident is already foreclosed
+            # for any prompt that reaches this code — every token in a normal run is
+            # drawn from the speech-token block. This retry is belt-and-braces for
+            # paths that bypass that mask (e.g. ``max_new_tokens=0``, or a future
+            # caller that samples outside ``generate()``), not a routine event.
             LOG.warning("Llasa returned no speech tokens (attempt %d/%d) — resampling",
                         attempt + 1, self.MAX_ATTEMPTS)
         if not codes:

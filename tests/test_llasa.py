@@ -452,6 +452,48 @@ def test_seed_makes_synthesis_reproducible(adapter):
     assert np.array_equal(first, second)
 
 
+def test_synthesize_resamples_when_the_run_yields_no_speech_tokens(adapter, monkeypatch):
+    """token_ids_to_codes() coming back empty is foreclosed by the step-0 end-token
+    mask in generate() (see test_generate_cannot_end_on_the_first_step), but the
+    MAX_ATTEMPTS retry in synthesize() is belt-and-braces for anything that reaches
+    it anyway. Force it directly so the fallback path itself is under test rather
+    than relying on sampler luck.
+    """
+    calls = []
+
+    def flaky(token_ids):
+        calls.append(token_ids)
+        if len(calls) < adapter.MAX_ATTEMPTS:
+            return []
+        return [1, 2]
+
+    monkeypatch.setattr(adapter, "token_ids_to_codes", flaky)
+    session = _lm_session([SPEECH_BASE + 1, SPEECH_BASE + 2])
+    result = adapter.synthesize(_req(temperature=0.0, top_p=1.0), session)
+    assert len(calls) == adapter.MAX_ATTEMPTS
+    assert result.extras["codes"] == 2
+    assert result.audio.shape == (2 * 320,)
+
+
+def test_synthesize_raises_after_max_attempts_of_no_speech_tokens(adapter, monkeypatch):
+    """If every attempt comes back empty, synthesize() must not silently return
+    empty/silent audio — it raises, naming the fallback exhausted."""
+    monkeypatch.setattr(adapter, "token_ids_to_codes", lambda token_ids: [])
+    session = _lm_session([SPEECH_BASE + 1, SPEECH_BASE + 2])
+    with pytest.raises(RuntimeError, match="no speech tokens"):
+        adapter.synthesize(_req(temperature=0.0, top_p=1.0), session)
+
+
+def test_preset_missing_codes_key_degrades_to_no_reference(adapter):
+    """A malformed preset entry (e.g. hand-edited voices.json) missing the "codes"
+    key must not crash prompt assembly — it degrades to a text-only reference,
+    same as a preset with an explicitly empty code list."""
+    adapter.presets["broken"] = {"text": "hello there"}  # no "codes" key at all
+    ids_list = adapter.encode_text("hi", voice=None, syn_config=_SC(voice="broken"))
+    assert ids_list  # still produces at least one chunk of prompt ids
+    assert isinstance(ids_list[0], list)
+
+
 def test_build_feed_dict_and_parse_outputs_are_refused():
     ad = LlasaAdapter()
     with pytest.raises(NotImplementedError):
