@@ -283,7 +283,7 @@ of scope for this pass.
 
 - **ASR**: [`OpenVoiceOS/nemotron-3.5-asr-arabic-dialectal-v2-onnx`](https://huggingface.co/OpenVoiceOS/nemotron-3.5-asr-arabic-dialectal-v2-onnx)
   (int8, NeMo FastConformer-RNNT, dialectal-Arabic-tuned prompt), loaded through
-  `onnx-asr`'s `nemo-conformer-rnnt` model type on the `feat/nemotron` branch
+  `onnx-asr`'s `nemo-conformer-rnnt` model type on the [`TigreGotico/onnx-asr` fork's `feat/nemotron` branch](https://github.com/TigreGotico/onnx-asr/tree/feat/nemotron) (not yet upstreamed)
   (adds the raw-log-mel preprocessor this checkpoint needs). This is **not**
   Whisper — the OpenVoiceOS org also publishes `whisper-*-arabic-dialectal-v2-onnx`
   exports, but those were deliberately skipped in favor of the non-Whisper
