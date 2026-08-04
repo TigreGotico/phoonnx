@@ -41,6 +41,7 @@ class Engine(str, Enum):
     ARKTTS = "arktts"  # ArkTTS (Audio8 / Zortzi): DualAR codec-LM, 10 codebooks, 44.1 kHz codec
     OMNIVOICE = "omnivoice"  # OmniVoice (k2-fsa): masked-diffusion codec LM, 600+ languages
     INDIC_PARLER = "indic_parler"  # AI4Bharat Indic Parler-TTS: T5 encoder + AR DAC codec LM
+    LLASA = "llasa"  # Llasa (HKUST): LLaMA codec-LM + XCodec2 decoder, 50 Hz single codebook
 
 
 # Alphabet and PhonemeType are wire-format enums shared with scriptconv;
@@ -314,6 +315,27 @@ class VoiceConfig:
             diacritics = (lang_code or "").lower().startswith(("ar", "he"))
             config.setdefault("audio", {}).setdefault("sample_rate", 24000)
             config.setdefault("num_symbols", tokenizer._tok.get_vocab_size())
+
+        elif (engine == Engine.LLASA or
+                (isinstance(engine, str) and engine == "llasa") or
+                config.get("engine") == "llasa"):
+            # Llasa consumes raw text: the adapter owns the whole text -> id path
+            # (chat-template prompt assembly, then the checkpoint's own BPE, loaded
+            # from engine_params), so no phonemizer/tokenizer vocabulary is built
+            # here. Alphabet.GRAPHEMES routes TTSVoice.synthesize() through
+            # adapter.encode_text(). XCodec2 output is 16 kHz mono.
+            engine = Engine.LLASA
+            phoneme_type = phoneme_type or PhonemeType.UNICODE
+            alphabet = alphabet or Alphabet.GRAPHEMES
+            config.setdefault("audio", {}).setdefault("sample_rate", 16000)
+            tokenizer = TTSTokenizer(
+                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
+                add_blank_char=False,
+                add_blank_word=False,
+                use_eos_bos=False,
+                blank_at_end=False,
+                blank_at_start=False,
+            )
 
         elif (engine == Engine.NEUTTS or
                 (isinstance(engine, str) and engine == "neutts") or

@@ -27,7 +27,7 @@ turned into:
 |---|---|---|---|---|
 | **d-vector** | a **speaker encoder** maps the reference waveform to a fixed embedding that conditions synthesis | No | Yes | YourTTS, StyleTTS2, [Chatterbox](training/engines/chatterbox.md), [Spark-TTS](training/engines/sparktts.md) |
 | **in-context** | the reference **audio + its transcription** are part of the model input; the model continues that voice | **Yes** | Per-phoneme (espeak/pinyin) | ZipVoice, [Spark-TTS](training/engines/sparktts.md), [OmniVoice](training/engines/omnivoice.md) |
-| **in-context, pre-encoded** | the reference is **codec-encoded ahead of time** and shipped with the voice; the model continues those audio tokens | **Yes** (bundled) | Per-phoneme (espeak) | NeuTTS / Akiti-TTS, [OuteTTS](training/engines/outetts.md) |
+| **in-context, pre-encoded** | the reference is **codec-encoded ahead of time** and shipped with the voice; the model continues those audio tokens | **Yes** (bundled) | Per-phoneme (espeak) | NeuTTS / Akiti-TTS, [OuteTTS](training/engines/outetts.md), Llasa |
 
 A cloning voice can still bundle a **default speaker**, so it works with *or* without a
 reference. When a reference is given it **overrides** the default
@@ -125,6 +125,32 @@ runtime. Passing one raises rather than silently ignoring it.
 Sampling is tunable through `extra_params` — `temperature`, `top_p`, `top_k`,
 `repetition_penalty` and `max_new_tokens` (the autoregressive loop runs at 50 codec
 tokens per second of audio). `seed` makes a run reproducible.
+
+## Preset engine (Llasa)
+
+[Llasa](engines.md) is the other pre-encoded preset engine, and it reaches that design
+from the opposite direction: Llasa needs **no** reference at all. Prompted with text
+alone it invents a speaker, which means two calls never sound like the same person. A
+preset is what makes a voice repeatable — the transcript of an utterance the model
+generated, plus the XCodec2 tokens it emitted for it, replayed as the in-context prefix.
+
+Every bundled preset is therefore machine-generated and disclosed as such
+(`"synthetic": true` in `voices.json`); none is a recording of a person.
+
+```python
+voice.synthesize("Dealing with family secrets is never easy.")
+SynthesisConfig(extra_params={"voice": "zh_male_a", "temperature": 0.9, "seed": 0})
+```
+
+`speaker_reference` is **not** supported: tokenising a fresh clip needs XCodec2's encoder
+together with the w2v-BERT filterbank front end, which the bundle does not ship. Passing
+one raises rather than silently ignoring it.
+
+Sampling is tunable through `extra_params` — `temperature`, `top_p` and
+`max_new_tokens` (50 codec tokens per second of audio). `seed` makes a run reproducible.
+Llasa's sampler follows the **HuggingFace** warper order (temperature, then top-p),
+because that is the stack upstream drives the checkpoint through; NeuTTS uses llama.cpp's
+opposite order for the same reason.
 
 ## In-context engine (ZipVoice)
 

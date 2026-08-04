@@ -1,6 +1,6 @@
 ## Supported Voices
 
-**Total Voices:** 3190
+**Total Voices:** 3194
 **Total Languages:** 1812
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
@@ -878,6 +878,8 @@
 | `larynx/en-us-scottish_english_male-glow_tts` | `en-US` | `glowtts` | `gruut` |
 | `larynx/en-us-southern_english_female-glow_tts` | `en-US` | `glowtts` | `gruut` |
 | `larynx/en-us-southern_english_male-glow_tts` | `en-US` | `glowtts` | `gruut` |
+| `llasa/HKUST/en/en_female_a` | `en-US` | `llasa` | `unicode` |
+| `llasa/HKUST/en/en_male_a` | `en-US` | `llasa` | `unicode` |
 | `mimic3/en_US/cmu-arctic_low` | `en-US` | `mimic3` | `gruut` |
 | `mimic3/en_US/hifi-tts_low` | `en-US` | `mimic3` | `gruut` |
 | `mimic3/en_US/ljspeech_low` | `en-US` | `mimic3` | `gruut` |
@@ -3156,6 +3158,8 @@
 | `arktts/audio8-maider/zh` | `zh-CN` | `arktts` | `unicode` |
 | `chatterbox/multilingual/zh` | `zh-CN` | `chatterbox` | `unicode` |
 | `hf_community/BricksDisplay/vits-cmn` | `zh-CN` | `transformers` | `graphemes` |
+| `llasa/HKUST/zh/zh_female_a` | `zh-CN` | `llasa` | `unicode` |
+| `llasa/HKUST/zh/zh_male_a` | `zh-CN` | `llasa` | `unicode` |
 | `outetts/0.6B/zh` | `zh-CN` | `outetts` | `unicode` |
 | `piper/zh_CN-huayan-medium` | `zh-CN` | `piper` | `espeak` |
 | `piper/zh_CN-huayan-x_low` | `zh-CN` | `piper` | `espeak` |
