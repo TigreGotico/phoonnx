@@ -6,7 +6,10 @@ waveform @ 24kHz) already implemented for StyleTTS2/Kokoro, so no new adapter
 class or ``detect()`` extension is needed -- these tests pin that down and
 guard the vocab/index against regressions.
 """
+import ast
+import inspect
 import json
+import textwrap
 from pathlib import Path
 
 import numpy as np
@@ -21,14 +24,57 @@ VOICE_INDEX = json.loads(
     (Path(__file__).parent.parent / "phoonnx" / "voice_index" / "styletts2.json").read_text()
 )
 
-# Verbatim from kittentts==0.1.3 kittentts/__init__.py (KittenTTS.__init__'s
-# inline TextCleaner symbol list); duplicated here only for the test to
-# recompute the map independently of scripts/conversion/styletts2/export_kittentts.py.
-_KITTENTTS_SYMBOLS = (
-    '$;:,.!?¡¿—…"«»"" ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-    'ɑɐɒæɓʙβɔɕçɗɖðʤəɘɚɛɜɝɞɟʄɡɠɢʛɦɧħɥʜɨɪʝɭɬɫɮʟɱɯɰŋɳɲɴøɵɸθœɶʘɹɺɾɻʀʁɽʂʃʈʧʉʊʋⱱʌɣɤʍχʎʏʑʐʒʔʡʕʢ'
-    'ǀǁǂǃˈˌːˑʼʴʰʱʲʷˠˤ˞↓↑→↗↘\'̩\'ᵻ'
-)
+kittentts = pytest.importorskip("kittentts")
+
+
+def _upstream_kittentts_symbols() -> str:
+    """Statically pull the literal symbol string out of the REAL, installed
+    kittentts==0.1.3 package's ``KittenTTS.__init__`` via ``ast`` -- no
+    instantiation (which would call ``hf_hub_download`` over the network),
+    just source inspection. This is the independent corroboration: it does
+    not read back anything from export_kittentts.py or duplicate a
+    hand-copied literal, it recomputes the ground truth from upstream
+    itself so a bad transcription fails loudly here.
+    """
+    src = textwrap.dedent(inspect.getsource(kittentts.KittenTTS.__init__))
+    tree = ast.parse(src)
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "enumerate"
+        ):
+            arg = node.args[0]
+            if (
+                isinstance(arg, ast.Call)
+                and isinstance(arg.func, ast.Name)
+                and arg.func.id == "list"
+                and isinstance(arg.args[0], ast.Constant)
+            ):
+                return arg.args[0].value
+    raise AssertionError(
+        "could not find the TextCleaner symbol literal in kittentts.KittenTTS.__init__ "
+        "-- upstream source shape changed, re-verify the export script by hand"
+    )
+
+
+_KITTENTTS_SYMBOLS = _upstream_kittentts_symbols()
+
+
+def test_upstream_kittentts_symbols_match_embedded_literal():
+    """Genuine independent corroboration: diff the REAL upstream
+    kittentts==0.1.3 TextCleaner symbol literal (extracted via ast from the
+    installed package, not retyped) against export_kittentts.py's embedded
+    copy. Fails loudly if the "verbatim, copied not retyped" transcription
+    was ever wrong."""
+    import importlib.util
+    script_path = (Path(__file__).parent.parent / "scripts" / "conversion"
+                    / "styletts2" / "export_kittentts.py")
+    spec = importlib.util.spec_from_file_location("export_kittentts", script_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    assert _KITTENTTS_SYMBOLS == mod._KITTENTTS_SYMBOLS
 
 
 def _req(n=5, **p):
