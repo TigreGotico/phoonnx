@@ -59,6 +59,7 @@ config = VoiceConfig.from_dict(my_config_dict)
 
 - **Chatterbox** — an explicit `engine: "chatterbox"` (needs a BPE `tokenizer.json`)
 - **NeuTTS** — an explicit `engine: "neutts"` (the adapter loads its own BPE `tokenizer.json` and `voices.json` from `engine_params`)
+- **Llasa** — an explicit `engine: "llasa"` (the adapter loads its own BPE `tokenizer.json` and `voices.json` from `engine_params`)
 - **Pocket TTS** — an explicit `engine: "pockettts"` (multi-graph flow-matching codec LM with explicit stream state; raw-text, no phonemizer)
 - **phoonnx** — presence of `phoonnx_version`
 - **Piper** — presence of `piper_version`, or a list-valued `phoneme_id_map` + `phoneme_type: "espeak"|"text"` (an explicitly declared non-piper engine wins over shape-sniffing)
@@ -176,6 +177,7 @@ to a dedicated adapter. The adapter registry itself is described in [Engines](en
 | `qwen3tts` | Two-stage codec LM (talker + code predictor), 10 languages | [Qwen3-TTS](training/engines/qwen3tts.md) |
 | `outetts` | Autoregressive codec-LM (Qwen3 or Llama-3.2 + DAC.speech), raw-text, 23 languages | [OuteTTS](training/engines/outetts.md) |
 | `arktts` | Two-stage codec LM (slow AR + fast AR), Basque or 11 languages, 44.1 kHz | [ArkTTS](training/engines/arktts.md) |
+| `llasa` | Autoregressive XCodec2 LM (LLaMA-3.2), preset cloning, en/zh @16 kHz | [Cloning](cloning.md) |
 | `omnivoice` | Masked-diffusion codec LM (Qwen3 + Higgs Audio V2), raw-text, 600+ languages, 24 kHz | [OmniVoice](training/engines/omnivoice.md) |
 | `indic_parler` | Encoder-decoder codec LM (Flan-T5 + AR DAC decoder), description-controlled voices, 20 Indic languages + English, 44.1 kHz | [Indic Parler-TTS](training/engines/indic_parler.md) |
 
