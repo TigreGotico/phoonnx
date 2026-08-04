@@ -45,7 +45,9 @@ sequence the checkpoint is actually served is therefore::
 
 Dropping the leading BOS — the reading a straightforward HuggingFace port produces — is a
 different prompt from the one the model was served, so this adapter reproduces the served
-form. See ``scripts/conversion/orpheus/`` for the probe that established it.
+form. See ``scripts/conversion/orpheus/probe_prompt.py`` for the probe that established
+it (run it against ``tokenizer.json`` — no weights needed — and see
+``scripts/conversion/orpheus/evidence/probe_prompt_output.txt`` for a reproduced run).
 
 Audio tokens
 ~~~~~~~~~~~~
