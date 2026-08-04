@@ -7,6 +7,8 @@ unconditional branch carrying the text after all, a schedule that never finishes
 session with the real ``InferenceSession`` contract drives the loop so those are asserted
 directly, in the style of the sparktts / neutts fakes.
 """
+import sys
+
 import numpy as np
 import pytest
 
@@ -15,8 +17,8 @@ from phoonnx.engines.omnivoice import (AUDIO_MASK_ID, AUDIO_VOCAB_SIZE, FRAME_RA
                                        HOP_LENGTH, NUM_CODEBOOKS, SAMPLE_RATE,
                                        OmniVoiceAdapter, _filter_top_k, _log_softmax)
 from phoonnx.thirdparty.omnivoice import (RuleDurationEstimator, add_punctuation,
-                                          combine_text, fade_and_pad_audio, resample,
-                                          tokenize_with_nonverbal_tags)
+                                          combine_text, fade_and_pad_audio, remove_silence,
+                                          resample, tokenize_with_nonverbal_tags)
 
 
 class _IOSpec:
@@ -479,6 +481,75 @@ def test_fade_and_pad_adds_silence_and_zeroes_the_edges():
 def test_fade_and_pad_leaves_empty_audio_alone():
     empty = np.zeros((1, 0), np.float32)
     assert fade_and_pad_audio(empty).shape[-1] == 0
+
+
+def _silence_padded_tone(sr=16000, lead_ms=300, tone_ms=500, trail_ms=300, freq=220):
+    """(1, T) signal: near-silence, then a loud tone, then near-silence.
+
+    The pauses use a tiny amount of noise (not exact zeros) so the RMS-window
+    fallback, which measures energy rather than testing for literal zero,
+    still classifies them as silent.
+    """
+    rng = np.random.default_rng(0)
+    lead = rng.standard_normal(int(sr * lead_ms / 1000)).astype(np.float32) * 1e-5
+    trail = rng.standard_normal(int(sr * trail_ms / 1000)).astype(np.float32) * 1e-5
+    n = int(sr * tone_ms / 1000)
+    tone = np.sin(2 * np.pi * freq * np.arange(n) / sr).astype(np.float32)
+    audio = np.concatenate([lead, tone, trail])[None, :]
+    voice_start, voice_end = len(lead), len(lead) + len(tone)
+    return audio, sr, voice_start, voice_end
+
+
+def test_remove_silence_pydub_path_trims_the_padded_edges():
+    """Locks the upstream pydub branch: silent lead/trail shrink, the tone stays."""
+    audio, sr, voice_start, voice_end = _silence_padded_tone()
+    out = remove_silence(audio, sr, mid_sil=300, lead_sil=50, trail_sil=50,
+                         silence_threshold=-50.0)
+
+    assert out.shape[0] == 1
+    # most of the padding got cut, but the tone (200ms in) must survive
+    assert out.shape[-1] < audio.shape[-1]
+    assert out.shape[-1] > voice_end - voice_start
+    # the loud tone is still present somewhere in the trimmed output
+    assert np.abs(out).max() == pytest.approx(1.0, abs=0.05)
+    # a contiguous loud region close to the tone's own length remains
+    loud = np.abs(out[0]) > 0.1
+    assert loud.sum() >= (voice_end - voice_start) * 0.9
+
+
+def test_remove_silence_falls_back_to_numpy_when_pydub_is_unavailable(monkeypatch):
+    """Locks the numpy fallback: same contract as the pydub path when pydub is absent.
+
+    ``_remove_silence_pydub`` does ``from pydub import AudioSegment`` at call time, so
+    forcing ``sys.modules["pydub"] = None`` makes that import raise ImportError and
+    ``remove_silence`` falls through to the pure-numpy RMS-window implementation
+    (phoonnx/thirdparty/omnivoice/audio.py:215-245).
+    """
+    audio, sr, voice_start, voice_end = _silence_padded_tone()
+    kwargs = dict(mid_sil=300, lead_sil=50, trail_sil=50, silence_threshold=-50.0)
+
+    reference = remove_silence(audio, sr, **kwargs)
+
+    monkeypatch.setitem(sys.modules, "pydub", None)
+    monkeypatch.setitem(sys.modules, "pydub.silence", None)
+    fallback = remove_silence(audio, sr, **kwargs)
+
+    # the fallback actually ran its own code path, not a cached pydub result
+    assert fallback.shape[0] == 1
+    assert fallback.shape[-1] > 0
+    # both paths trim the vast majority of the padding
+    assert fallback.shape[-1] < audio.shape[-1]
+    assert reference.shape[-1] < audio.shape[-1]
+    # the documented contract: trim boundaries may shift a little between the
+    # two implementations, but not by more than the ms-resolution of the
+    # RMS-window scan (chunk_ms=10 -> tens of ms of samples at this rate)
+    tolerance = int(sr * 0.05)  # 50ms
+    assert abs(fallback.shape[-1] - reference.shape[-1]) <= tolerance
+    # the voiced tone itself must still be intact and full-amplitude in the
+    # fallback output, not silently dropped or attenuated
+    assert np.abs(fallback).max() == pytest.approx(1.0, abs=0.05)
+    loud = np.abs(fallback[0]) > 0.1
+    assert loud.sum() >= (voice_end - voice_start) * 0.9
 
 
 # ---------------------------------------------------------------------------
