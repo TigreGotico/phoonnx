@@ -14,11 +14,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 
 import numpy as np
 import torch
 
 from export_xcodec2 import DecoderWrapper, load_xcodec2, patch_istft
+
+# Measured on the shipped export: onnx-vs-torch max abs sample diff ~1.2e-4 against
+# a signal RMS of 0.258, ~66 dB below signal (see PR #366). 1e-2 (~28 dB) leaves
+# broad headroom over that noise floor while still catching an export that has
+# actually broken (a wrong ISTFT sign or a mis-wired fold shows up orders of
+# magnitude above this).
+MAX_ABS_DIFF_TOLERANCE = 1e-2
+MIN_CORRELATION = 0.999
 
 
 def stats(a: np.ndarray, b: np.ndarray) -> dict:
@@ -62,6 +71,19 @@ def main() -> None:
         "onnx_vs_torch_real": stats(real_audio, onnx_audio),
     }
     print(json.dumps(report, indent=2))
+
+    failed = False
+    for name, row in report.items():
+        if row["max_abs_diff"] > MAX_ABS_DIFF_TOLERANCE:
+            print(f"parity FAILED: {name} max_abs_diff={row['max_abs_diff']:.3e} "
+                  f"> tolerance {MAX_ABS_DIFF_TOLERANCE:.0e}")
+            failed = True
+        if row["corr"] < MIN_CORRELATION:
+            print(f"parity FAILED: {name} corr={row['corr']:.6f} "
+                  f"< tolerance {MIN_CORRELATION}")
+            failed = True
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

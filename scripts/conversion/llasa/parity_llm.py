@@ -16,9 +16,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 
 import numpy as np
 import torch
+
+# Measured on the shipped export: prefill/decode mean abs logit diff ~7e-6/~5e-6
+# and 48/48 greedy agreement on both prompts (see PR #366). 1e-3 leaves two orders
+# of magnitude of headroom over the observed noise floor while still catching a
+# real regression (the rejected int8 variants landed at 1.3-3.5).
+LOGIT_DIFF_TOLERANCE = 1e-3
 
 
 PROMPT_TEXTS = [
@@ -129,6 +136,21 @@ def main() -> None:
         print(json.dumps(report[-1], indent=2), flush=True)
 
     print(json.dumps(report, indent=2))
+
+    failed = False
+    for row in report:
+        agree_num, agree_den = (int(x) for x in row["greedy_agreement"].split("/"))
+        if agree_num < agree_den:
+            print(f"parity FAILED: {row['text']!r} greedy_agreement={row['greedy_agreement']}")
+            failed = True
+        for key in ("prefill_logit_max_abs_diff", "decode_logit_max_abs_diff"):
+            value = row[key]
+            if value is not None and value > LOGIT_DIFF_TOLERANCE:
+                print(f"parity FAILED: {row['text']!r} {key}={value:.3e} "
+                      f"> tolerance {LOGIT_DIFF_TOLERANCE:.0e}")
+                failed = True
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
