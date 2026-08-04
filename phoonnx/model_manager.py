@@ -659,8 +659,9 @@ class TTSModelManager:
         "supertonic.json", "neutts.json", "pockettts.json", "sparktts.json",
         "qwen3tts.json",
         # neutts..omnivoice: catch-up entries for engines merged since this list was
-        # last touched; only indic_parler.json is new to this change.
+        # last touched; indic_parler.json and llasa.json are new to this change.
         "outetts.json", "arktts.json", "omnivoice.json", "indic_parler.json",
+        "llasa.json",
     )
 
     @classmethod
