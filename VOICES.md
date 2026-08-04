@@ -1,6 +1,6 @@
 ## Supported Voices
 
-**Total Voices:** 3202
+**Total Voices:** 3227
 **Total Languages:** 1812
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
@@ -97,6 +97,11 @@
 | `habibi/ar-unified` | `ar` | `f5tts` | `graphemes` |
 | `hf_community/wasmdashai/vits-ar` | `ar` | `transformers` | `graphemes` |
 | `hf_community/wasmdashai/vits-ar-ye-sa` | `ar` | `transformers` | `graphemes` |
+| `magpie/Aria/ar` | `ar` | `magpie` | `unicode` |
+| `magpie/Jason/ar` | `ar` | `magpie` | `unicode` |
+| `magpie/John/ar` | `ar` | `magpie` | `unicode` |
+| `magpie/Leo/ar` | `ar` | `magpie` | `unicode` |
+| `magpie/Sofia/ar` | `ar` | `magpie` | `unicode` |
 | `nipponjo/tts-arabic-fastpitch` | `ar` | `fastpitch` | `mantoq` |
 | `nipponjo/tts-arabic-mixer128` | `ar` | `mixertts` | `mantoq` |
 | `nipponjo/tts-arabic-mixer80` | `ar` | `mixertts` | `mantoq` |
@@ -1146,6 +1151,11 @@
 | `coqui/fr-css10-vits` | `fr` | `coqui` | `graphemes` |
 | `facebook/mms-tts-fra-French` | `fr` | `transformers` | `graphemes` |
 | `kokoro/ff_siwis` | `fr` | `styletts2` | `espeak` |
+| `magpie/Aria/fr` | `fr` | `magpie` | `unicode` |
+| `magpie/Jason/fr` | `fr` | `magpie` | `unicode` |
+| `magpie/John/fr` | `fr` | `magpie` | `unicode` |
+| `magpie/Leo/fr` | `fr` | `magpie` | `unicode` |
+| `magpie/Sofia/fr` | `fr` | `magpie` | `unicode` |
 | `omnivoice/fr` | `fr` | `omnivoice` | `unicode` |
 | `pockettts/fr/alba` | `fr` | `pockettts` | `unicode` |
 | `pockettts/fr/anna` | `fr` | `pockettts` | `unicode` |
@@ -1496,6 +1506,11 @@
 | `hf_community/kirys79/piper_italiano/leonardo-epoch=2024-step=996300` | `it` | `piper` | `espeak` |
 | `kokoro/if_sara` | `it` | `styletts2` | `espeak` |
 | `kokoro/im_nicola` | `it` | `styletts2` | `espeak` |
+| `magpie/Aria/it` | `it` | `magpie` | `unicode` |
+| `magpie/Jason/it` | `it` | `magpie` | `unicode` |
+| `magpie/John/it` | `it` | `magpie` | `unicode` |
+| `magpie/Leo/it` | `it` | `magpie` | `unicode` |
+| `magpie/Sofia/it` | `it` | `magpie` | `unicode` |
 | `omnivoice/it` | `it` | `omnivoice` | `unicode` |
 | `pockettts/it/alba` | `it` | `pockettts` | `unicode` |
 | `pockettts/it/anna` | `it` | `pockettts` | `unicode` |
@@ -1707,6 +1722,11 @@
 | `facebook/mms-tts-knk-Kuranko` | `knk` | `transformers` | `graphemes` |
 | `omnivoice/knn` | `knn` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-kno-Kono` | `kno` | `transformers` | `graphemes` |
+| `magpie/Aria/ko` | `ko` | `magpie` | `unicode` |
+| `magpie/Jason/ko` | `ko` | `magpie` | `unicode` |
+| `magpie/John/ko` | `ko` | `magpie` | `unicode` |
+| `magpie/Leo/ko` | `ko` | `magpie` | `unicode` |
+| `magpie/Sofia/ko` | `ko` | `magpie` | `unicode` |
 | `omnivoice/ko` | `ko` | `omnivoice` | `unicode` |
 | `supertonic/F1/ko` | `ko` | `supertonic` | `unicode` |
 | `supertonic/F2/ko` | `ko` | `supertonic` | `unicode` |
@@ -2918,6 +2938,11 @@
 | `omnivoice/vai` | `vai` | `omnivoice` | `unicode` |
 | `omnivoice/var` | `var` | `omnivoice` | `unicode` |
 | `omnivoice/ver` | `ver` | `omnivoice` | `unicode` |
+| `magpie/Aria/vi` | `vi` | `magpie` | `unicode` |
+| `magpie/Jason/vi` | `vi` | `magpie` | `unicode` |
+| `magpie/John/vi` | `vi` | `magpie` | `unicode` |
+| `magpie/Leo/vi` | `vi` | `magpie` | `unicode` |
+| `magpie/Sofia/vi` | `vi` | `magpie` | `unicode` |
 | `omnivoice/vi` | `vi` | `omnivoice` | `unicode` |
 | `supertonic/F1/vi` | `vi` | `supertonic` | `unicode` |
 | `supertonic/F2/vi` | `vi` | `supertonic` | `unicode` |
