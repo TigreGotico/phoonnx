@@ -43,6 +43,7 @@ class Engine(str, Enum):
     INDIC_PARLER = "indic_parler"  # AI4Bharat Indic Parler-TTS: T5 encoder + AR DAC codec LM
     LLASA = "llasa"  # Llasa (HKUST): LLaMA codec-LM + XCodec2 decoder, 50 Hz single codebook
     ORPHEUS = "orpheus"  # Orpheus (Canopy Labs): Llama codec-LM + SNAC decoder, emotive tags
+    MAGPIE = "magpie"  # NVIDIA Magpie-TTS: encoder-decoder codec LM, 8 codebooks, 12 languages
 
 
 # Alphabet and PhonemeType are wire-format enums shared with scriptconv;
@@ -476,6 +477,26 @@ class VoiceConfig:
             phoneme_type = phoneme_type or PhonemeType.UNICODE
             alphabet = alphabet or Alphabet.GRAPHEMES
             config.setdefault("audio", {}).setdefault("sample_rate", 24000)
+            tokenizer = TTSTokenizer(
+                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
+                add_blank_char=False,
+                add_blank_word=False,
+                use_eos_bos=False,
+                blank_at_end=False,
+                blank_at_start=False,
+            )
+
+        elif (engine == Engine.MAGPIE or
+                (isinstance(engine, str) and engine == "magpie") or
+                config.get("engine") == "magpie"):
+            # Magpie consumes raw text: the adapter owns text -> id conversion with the
+            # checkpoint's own aggregated tokenizer (loaded from engine_params), so no
+            # phonemizer vocabulary is needed here. Alphabet.GRAPHEMES routes
+            # TTSVoice.synthesize() through adapter.encode_text().
+            engine = Engine.MAGPIE
+            phoneme_type = phoneme_type or PhonemeType.UNICODE
+            alphabet = alphabet or Alphabet.GRAPHEMES
+            config.setdefault("audio", {}).setdefault("sample_rate", 22050)
             tokenizer = TTSTokenizer(
                 Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
                 add_blank_char=False,

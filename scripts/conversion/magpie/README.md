@@ -32,6 +32,7 @@ python export_encoder.py     # text_encoder.onnx
 python export_decoder.py     # cross_kv.onnx, decoder_step.onnx
 python export_local.py       # audio_embed.onnx, local_step.onnx, lt_embed.onnx
 python export_codec.py       # codec_decoder.onnx
+python finalize.py         # rename external data to *.onnx_data
 python dump_assets.py        # context embeddings, tokenizer, config
 python parity.py "Some sentence." en        # exact mode parity
 python parity.py "Some sentence." en kv     # KV-cache mode parity

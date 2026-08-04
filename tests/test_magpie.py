@@ -750,3 +750,22 @@ def test_voice_index_covers_every_speaker_and_language():
     assert speakers == {"Aria", "Jason", "John", "Leo", "Sofia"}
     assert langs == BYTE_LANGUAGES | CHAR_LANGUAGES
     assert len(index) == len(speakers) * len(langs)
+
+
+# ----------------------------------------------------------------------
+# Config wiring
+# ----------------------------------------------------------------------
+
+def test_config_routes_magpie_through_the_adapters_own_tokenizer():
+    from phoonnx.config import Alphabet, Engine, VoiceConfig
+    cfg = VoiceConfig.from_dict({"engine": "magpie"}, engine=Engine.MAGPIE, lang_code="fr-FR")
+    assert cfg.engine == Engine.MAGPIE
+    # graphemes routes text -> ids through the adapter, never through a phonemizer
+    assert cfg.alphabet == Alphabet.GRAPHEMES
+    assert cfg.sample_rate == 22050
+
+
+def test_config_detects_magpie_from_a_bare_engine_string():
+    from phoonnx.config import Engine, VoiceConfig
+    cfg = VoiceConfig.from_dict({"engine": "magpie"}, lang_code="ar")
+    assert cfg.engine == Engine.MAGPIE
