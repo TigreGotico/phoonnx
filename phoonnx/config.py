@@ -42,6 +42,7 @@ class Engine(str, Enum):
     OMNIVOICE = "omnivoice"  # OmniVoice (k2-fsa): masked-diffusion codec LM, 600+ languages
     INDIC_PARLER = "indic_parler"  # AI4Bharat Indic Parler-TTS: T5 encoder + AR DAC codec LM
     LLASA = "llasa"  # Llasa (HKUST): LLaMA codec-LM + XCodec2 decoder, 50 Hz single codebook
+    ORPHEUS = "orpheus"  # Orpheus (Canopy Labs): Llama codec-LM + SNAC decoder, emotive tags
 
 
 # Alphabet and PhonemeType are wire-format enums shared with scriptconv;
@@ -346,6 +347,29 @@ class VoiceConfig:
             # built here. Alphabet.GRAPHEMES routes TTSVoice.synthesize() through
             # adapter.encode_text(). NeuCodec output is 24 kHz mono.
             engine = Engine.NEUTTS
+            phoneme_type = phoneme_type or PhonemeType.UNICODE
+            alphabet = alphabet or Alphabet.GRAPHEMES
+            config.setdefault("audio", {}).setdefault("sample_rate", 24000)
+            tokenizer = TTSTokenizer(
+                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
+                add_blank_char=False,
+                add_blank_word=False,
+                use_eos_bos=False,
+                blank_at_end=False,
+                blank_at_start=False,
+            )
+
+        elif (engine == Engine.ORPHEUS or
+                (isinstance(engine, str) and engine == "orpheus") or
+                config.get("engine") == "orpheus"):
+            # Orpheus consumes raw text: the adapter owns the whole text -> id path
+            # (voice-name prefix, the served control tokens, then the checkpoint's own
+            # BPE from engine_params), so no phonemizer/tokenizer vocabulary is built
+            # here. The emotive tags (<laugh>, <sigh>, ...) are ordinary text that the
+            # same BPE encodes, so they must not be phonemized away. Alphabet.GRAPHEMES
+            # routes TTSVoice.synthesize() through adapter.encode_text(). SNAC output is
+            # 24 kHz mono.
+            engine = Engine.ORPHEUS
             phoneme_type = phoneme_type or PhonemeType.UNICODE
             alphabet = alphabet or Alphabet.GRAPHEMES
             config.setdefault("audio", {}).setdefault("sample_rate", 24000)
