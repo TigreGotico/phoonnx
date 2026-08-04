@@ -53,6 +53,7 @@ BOS_TOKEN_ID = 1025
 EOS_TOKEN_ID = 1024
 PAD_TOKEN_ID = 1024
 AUDIO_VOCAB_SIZE = 1088
+DAC_CODEBOOK_SIZE = 1024   # valid DAC codes are 0..1023; 1024/1025 are PAD/BOS
 SAMPLE_RATE = 44100
 
 # Languages AI4Bharat lists as officially supported (ISO 639 codes).
@@ -105,7 +106,18 @@ def strip_delay_pattern(raw_ids: np.ndarray, pattern: np.ndarray,
     masked = apply_delay_pattern_mask(raw_ids, pattern)
     _, full = build_delay_pattern_mask(1, masked.shape[-1], num_codebooks)
     keep = (full != BOS_TOKEN_ID) & (full != PAD_TOKEN_ID)
-    return masked[keep].reshape(num_codebooks, -1)
+    codes = masked[keep].reshape(num_codebooks, -1)
+    # When the model stops on its own, each codebook's end-of-speech token sits one
+    # column *before* the pattern's PAD staircase, so the staircase does not mask it and
+    # a 1024 survives into the codes. DAC only accepts 0..1023. Cutting at the first
+    # column that carries an out-of-range value drops exactly that frame and reproduces
+    # upstream's own output byte-for-byte (verified against torch: 9x215 with a trailing
+    # 1024 becomes the same 9x214 torch feeds to its DAC). Generations that hit the frame
+    # ceiling instead of stopping have no such column and are left untouched.
+    out_of_range = np.nonzero((codes >= DAC_CODEBOOK_SIZE).any(axis=0))[0]
+    if len(out_of_range):
+        codes = codes[:, : int(out_of_range.min())]
+    return codes
 
 
 def sample_logits(logits: np.ndarray, temperature: float, top_k: int, rng) -> np.ndarray:

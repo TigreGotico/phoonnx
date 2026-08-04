@@ -14,8 +14,8 @@ import pytest
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.indic_parler import (
     AUDIO_VOCAB_SIZE, AVAILABLE_LANGS, BOS_TOKEN_ID, EOS_TOKEN_ID, NUM_CODEBOOKS,
-    PAD_TOKEN_ID, IndicParlerAdapter, apply_delay_pattern_mask, build_delay_pattern_mask,
-    sample_logits, strip_delay_pattern,
+    DAC_CODEBOOK_SIZE, PAD_TOKEN_ID, IndicParlerAdapter, apply_delay_pattern_mask,
+    build_delay_pattern_mask, sample_logits, strip_delay_pattern,
 )
 
 N_LAYERS = 2   # fake models are 2-layer; the real checkpoint is 24
@@ -252,6 +252,27 @@ def test_strip_delay_pattern_recovers_square_codes():
     assert not (codes == BOS_TOKEN_ID).any()
 
 
+def test_strip_cuts_the_frame_carrying_end_of_speech():
+    """A natural stop leaves each codebook's EOS one column before the PAD staircase, so
+    the staircase does not mask it. DAC only accepts 0..1023, so that frame must go."""
+    _, pattern = build_delay_pattern_mask(1, 40)
+    raw = np.full((NUM_CODEBOOKS, 40), 500, np.int64)
+    for k in range(NUM_CODEBOOKS):
+        raw[k, 30 + k] = EOS_TOKEN_ID
+    codes = strip_delay_pattern(raw, pattern)
+    assert codes.max() < DAC_CODEBOOK_SIZE
+    assert codes.shape[1] == 30 - 1          # one frame shorter than the untruncated strip
+
+
+def test_strip_leaves_a_ceiling_stop_untouched():
+    """No out-of-range column means the run hit the frame ceiling; nothing is cut."""
+    _, pattern = build_delay_pattern_mask(1, 40)
+    raw = np.full((NUM_CODEBOOKS, 40), 500, np.int64)
+    codes = strip_delay_pattern(raw, pattern)
+    assert codes.shape[1] == 40 - NUM_CODEBOOKS
+    assert codes.max() < DAC_CODEBOOK_SIZE
+
+
 def test_eos_delay_constraint_walks_one_codebook_at_a_time():
     ad = IndicParlerAdapter()
     logits = np.zeros((NUM_CODEBOOKS, AUDIO_VOCAB_SIZE), np.float32)
@@ -385,14 +406,25 @@ def test_encoder_attention_mask_is_forwarded_to_the_decode_graph():
 
 
 def test_generation_stops_on_eos_and_reaches_the_dac():
-    ad = _wired(eos_after=3)
+    ad = _wired(eos_after=14)
     res = ad.synthesize(_req(), _FakePrefill())
     # EOS may only move one codebook per step, so once the model first wants to stop
-    # (step 3) the staircase still needs one step per remaining codebook to unwind.
-    assert len(ad.decode_session.feeds) == 3 + NUM_CODEBOOKS - 1
+    # (step 14) the staircase still needs one step per remaining codebook to unwind.
+    assert len(ad.decode_session.feeds) == 14 + NUM_CODEBOOKS - 1
     assert ad.dac_decoder.last_codes.shape[1] == NUM_CODEBOOKS
+    assert ad.dac_decoder.last_codes.max() < DAC_CODEBOOK_SIZE
     assert res.extras["codes"].shape[0] == NUM_CODEBOOKS
+    assert res.extras["codes"].shape[1] > 0
     assert res.audio.ndim == 1
+
+
+def test_an_immediate_stop_yields_no_frames_and_no_dac_call():
+    """Nothing but end-of-speech means there is no complete frame to decode."""
+    ad = _wired(eos_after=1)
+    res = ad.synthesize(_req(), _FakePrefill())
+    assert res.extras["codes"].shape[1] == 0
+    assert ad.dac_decoder.last_codes is None
+    assert res.audio.shape == (0,)
 
 
 def test_max_new_tokens_bounds_the_loop():
