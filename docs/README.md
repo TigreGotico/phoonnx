@@ -59,7 +59,8 @@ how to obtain or train it, and a synthesis example:
 [F5-TTS](training/engines/f5tts.md) ·
 [Shami](training/engines/shami.md) ·
 [Pocket TTS](pockettts.md) ·
-[OuteTTS](training/engines/outetts.md)
+[OuteTTS](training/engines/outetts.md) ·
+[OmniVoice](training/engines/omnivoice.md)
 
 ## Language notes
 
