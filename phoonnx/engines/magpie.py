@@ -287,9 +287,14 @@ class MagpieAdapter(BaseOnnxAdapter):
                         forbid_eos: bool, force_eos: bool, rng: np.random.Generator) -> int:
         """Pick one token from one codebook's logits.
 
-        ``force_eos`` is how a finished sentence is closed off, and ``forbid_eos`` is how
-        an unfinished one is kept open; both come from the attention prior's reading of
-        how much text is left.
+        ``forbid_eos`` masks the end-of-speech token out while the attention prior's
+        reading of the alignment says text remains, so a stray end token cannot cut a
+        sentence off before it starts. ``force_eos`` is a hard override that always
+        returns end-of-speech regardless of the sampled logits; the decode loop never
+        sets it (real termination is sampled once ``forbid_eos`` lifts, detected by
+        ``detect_eos``, see ``generate_codes``), but it is kept as a primitive that
+        tests exercise directly and that a future explicit cutoff (e.g. a hard step
+        budget) can call into without new plumbing.
         """
         if force_eos:
             return self.audio_eos_id
@@ -536,7 +541,6 @@ class MagpieAdapter(BaseOnnxAdapter):
         last_attended = 1
         end_frame: Optional[int] = None
         keep_open = False
-        close_now = False
         finished_steps = 0
 
         for step in range(max_steps):
@@ -552,26 +556,26 @@ class MagpieAdapter(BaseOnnxAdapter):
             else:
                 step_logits = step_logits[0]
 
-            scores = self.mean_cross_attention(cross_attn)
             alignment = self.mean_cross_attention(cross_attn, alignment_layers)
             last_attended = self.most_attended_position(alignment[0], last_attended,
                                                         text_len, counter)
             prior = self.build_prior(text_len, last_attended, counter, batch, text_positions)
 
             # The text has run out once the alignment reaches its final positions. Until
-            # then end-of-speech is forbidden, so the model cannot stop mid-sentence.
+            # then end-of-speech is forbidden, so the model cannot stop mid-sentence. Once
+            # it is allowed, sampling decides when to actually emit it (see detect_eos
+            # below) — generation is never force-terminated mid-loop.
             if last_attended >= text_len - 2 or end_frame is not None:
                 finished_steps += 1
             keep_open = last_attended < text_len - 3 and end_frame is None
             if finished_steps > 5:
                 keep_open = False
-            close_now = False
 
             forbid_eos = step * self.frame_stacking < min_frames or keep_open
             frame = self.refine_frame(dec_out[:, -1, :], temperature, top_k, cfg_scale,
-                                      forbid_eos, close_now, rng)
+                                      forbid_eos, False, rng)
             greedy = self.sample_frame_from_logits(step_logits, 0.0, 1, forbid_eos,
-                                                   close_now, rng)
+                                                   False, rng)
 
             if end_frame is None:
                 found = self.detect_eos(frame, greedy)

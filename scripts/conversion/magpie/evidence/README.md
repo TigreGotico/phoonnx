@@ -1,8 +1,14 @@
-# Magpie-TTS WER-gate evidence
+# Magpie-TTS WER smoke gate
 
-Intelligibility evidence for the Magpie-TTS engine (PR #362), covering the five
-languages that shipped voices for at scan time: French, Italian, Vietnamese, Arabic,
-Korean.
+Intelligibility **smoke gate** for the Magpie-TTS engine (PR #362), covering the five
+languages that shipped voices at scan time: French, Italian, Vietnamese, Arabic, Korean.
+
+This is a regression tripwire, not a benchmark. Five sentences per language is enough to
+catch a broken pipeline (garbled audio, wrong language routing, a codec desync) — it is
+not enough to characterize the engine's real-world word error rate, and the numbers below
+should not be quoted as such. Anyone wanting a benchmark-grade WER should run the standard
+per-language eval sets (e.g. Common Voice, FLEURS) through the same `run_asr.py` scoring
+path with a much larger sample.
 
 ## Provenance
 
@@ -61,12 +67,43 @@ threshold fails the run instead of only showing up as a smaller number in a JSON
 
 ## Results (2026-08-02 run)
 
+Smoke-gate numbers, 5 clips per language — read as "did the pipeline break," not as a WER
+benchmark (see framing note above).
+
 | Lang | WER | CER | Clips |
 |---|---|---|---|
 | fr | 0.108 | 0.019 | 5 |
 | it | 0.061 | 0.005 | 5 |
 | vi | 0.089 | 0.039 | 5 |
 | ar | 0.103 | 0.031 | 5 |
-| ko | 0.000 | 0.000 | 5 (Whisper fallback, see caveat above) |
 
-All five languages pass the 30% WER gate with wide margin.
+| Lang | WER | CER | Clips | Methodology |
+|---|---|---|---|---|
+| ko | 0.000 | 0.000 | 5 | **Whisper fallback — not comparable to the rows above.** Scored with a general-purpose ASR (Whisper-large-v3-turbo), not the calibrated in-house OVOS ONNX ASR pipeline the other four languages use. Treat 0.000 as "intelligible to a general-purpose ASR," not as a WER measured on the same footing as fr/it/vi/ar. |
+
+All five languages pass the 30% smoke-gate threshold with wide margin; this confirms the
+pipeline produces intelligible speech, not that the engine has been benchmarked.
+
+## Codebook/frame ordering: validated against real NeMo output, not just self-consistent
+
+The WER smoke gate above only proves the *output* is intelligible speech. It says nothing
+about whether the ONNX pipeline's codebook and frame-stacking order matches what the
+original NeMo checkpoint actually produces — a self-consistent-but-wrong ordering could
+still decode to some audio and pass an ASR check by accident.
+
+That ordering claim is validated separately, by `parity.py`, against ground truth: it runs
+the *same* input through the real NeMo PyTorch checkpoint (`MagpieTTSModel.restore_from`)
+and through the ONNX pipeline, both with greedy decoding (temperature 0.01, top-k 1, fixed
+seed) so the two runs are deterministic and comparable token-for-token, and measures exact
+per-frame, per-codebook agreement between the two code streams. It gates at 99% agreement
+(`MAGPIE_PARITY_THRESHOLD`, default 0.99) and is run in **both** decoder modes NeMo
+supports (`use_kv_cache_for_inference` on and off — see `parity.py`'s `kv` argument),
+because the two modes are documented in `phoonnx/engines/magpie.py` to produce different
+sample paths (a KV cache re-applies each step's attention prior only to new positions,
+while the no-cache default re-applies it to the whole history), so agreement had to be
+checked against real NeMo in both, not assumed to transfer from one to the other.
+
+That 100% (well above the 99% gate) greedy-token agreement against the real NeMo torch
+model, in both decoder modes, is the ground truth behind the codebook/frame ordering used
+throughout this engine — it is not inferred from the ONNX outputs being self-consistent
+with each other.

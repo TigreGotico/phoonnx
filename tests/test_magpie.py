@@ -106,13 +106,17 @@ def test_magpie_registered():
     assert "magpie" in list_engines()
 
 
-def test_magpie_registered_below_every_other_engine():
-    # Magpie must be probed last: its detect() matches on input names, and it should
-    # never be given the chance to steal a voice another adapter claims by config.
+def test_magpie_has_a_unique_detect_priority():
+    # Magpie's detect() matches on graph input names, which it shares with no other
+    # architecture, so its exact place in the probe order is not safety-critical the
+    # way it is for e.g. optispeech-vs-matcha. What matters is that it does not share
+    # a priority slot with another engine (which would make probe order nondeterministic)
+    # and that a config naming another engine is never overridden (see detect_engine's
+    # "a voice that names its engine is authoritative" rule, tested elsewhere).
     from phoonnx.engines import _PRIORITIES
     assert _PRIORITIES["magpie"] == 19
     others = {n: p for n, p in _PRIORITIES.items() if n != "magpie"}
-    assert min(others.values()) > 19
+    assert list(others.values()).count(19) == 0
 
 
 def test_detect_by_engine_name():
@@ -169,10 +173,25 @@ def test_character_tokenizer_drops_symbols_outside_the_table(tmp_path):
     assert len(ids) == 3   # the Latin letter is not in the Arabic table
 
 
-def test_ipa_languages_are_refused_rather_than_approximated(tmp_path):
+@pytest.mark.parametrize(
+    "lang,tokenizer_name",
+    [
+        ("en", "english_phoneme"),
+        ("de", "german_phoneme"),
+        ("es", "spanish_phoneme"),
+        ("pt", "portuguese_phoneme"),
+        ("hi", "hindi_phoneme"),
+        ("zh", "mandarin_phoneme"),
+        ("ja", "japanese_phoneme"),
+    ],
+)
+def test_ipa_languages_are_refused_rather_than_approximated(tmp_path, lang, tokenizer_name):
+    """The 7 languages needing NeMo's IPA G2P (en, de, es, pt, hi) or an external
+    engine (zh via jieba, ja via pyopenjtalk) are refused with a clear message
+    naming scriptconv, rather than silently approximated with the wrong tokenizer."""
     tokenizer = MagpieTokenizer(str(_tokenizer_asset(tmp_path)))
     with pytest.raises(NotImplementedError, match="scriptconv"):
-        tokenizer.encode("hello", "en", "english_phoneme")
+        tokenizer.encode("hello", lang, tokenizer_name)
 
 
 def test_unknown_sub_tokenizer_is_an_error(tmp_path):

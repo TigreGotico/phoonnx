@@ -99,6 +99,7 @@ Lower `detect_priority` values are probed first during auto-detection.
 | [OmniVoice](training/engines/omnivoice.md) | `phoonnx/engines/omnivoice.py` | `engine == "omnivoice"` — first **masked-diffusion** engine: a Qwen3 backbone unmasks 8 Higgs-codec streams over 32 bidirectional full-sequence steps, raw-text, 600+ languages, in-context [cloning](cloning.md), 24 kHz |
 | [Indic Parler-TTS](training/engines/indic_parler.md) | `phoonnx/engines/indic_parler.py` | `engine == "indic_parler"` — first **encoder-decoder** engine: a frozen Flan-T5 encoder turns a natural-language voice description into cross-attention states for a 24-layer AR decoder over 9 delayed DAC codebooks, raw-text, 20 Indic languages + English, 44.1 kHz |
 | [Orpheus](orpheus.md) | `phoonnx/engines/orpheus.py` | `engine == "orpheus"` — autoregressive codec-LM (Llama-3.2-3B backbone + SNAC decoder), raw text with emotive tags, eight named English voices, 24 kHz. **GPU engine**: ~37x realtime on 12 CPU cores |
+| Magpie-TTS | `phoonnx/engines/magpie.py` | `engine == "magpie"` — encoder-decoder codec-LM (6-layer causal text encoder, 12-layer causal decoder + 2-layer local transformer refiner, NanoCodec decoder), 8 codebooks over 2 stacked frames per step, attention-prior alignment (no learned monotonic alignment), five fixed baked-context voices (no cloning), 5 of 12 languages shipped (fr/it/vi/ko byte tokenizers + ar character tokenizer; en/de/es/pt/hi/zh/ja need scriptconv IPA/G2P and are refused with `NotImplementedError`), 22.05 kHz |
 
 ---
 
