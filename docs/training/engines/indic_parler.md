@@ -96,5 +96,9 @@ time; the index covers the recommended subset.
 ## Cost
 
 The checkpoint is ~880M parameters and the decoder runs one step per 22 ms of audio, so
-this is the slowest engine phoonnx ships. Measured on a 24-core CPU (ser9), real-time
-factor is around 3.5–4.0. Use it where quality matters more than latency.
+this is the slowest engine phoonnx ships. Measured on a 24-core CPU across 12 languages,
+real-time factor is **4.1 to 4.7** (mean 4.5). Use it where quality matters more than
+latency.
+
+Per-language samples and the intelligibility report live in the mirror under
+[`samples/`](https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/tree/main/samples).
