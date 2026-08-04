@@ -39,6 +39,7 @@ class Engine(str, Enum):
     QWEN3TTS = "qwen3tts"  # Qwen3-TTS: talker + code predictor, 16 code groups, 12.5 Hz codec
     OUTETTS = "outetts"  # OuteTTS 1.0: Llama/Qwen codec-LM + DAC.speech decoder, 23 languages
     ARKTTS = "arktts"  # ArkTTS (Audio8 / Zortzi): DualAR codec-LM, 10 codebooks, 44.1 kHz codec
+    OMNIVOICE = "omnivoice"  # OmniVoice (k2-fsa): masked-diffusion codec LM, 600+ languages
 
 
 # Alphabet and PhonemeType are wire-format enums shared with scriptconv;
@@ -386,6 +387,26 @@ class VoiceConfig:
             phoneme_type = phoneme_type or PhonemeType.UNICODE
             alphabet = alphabet or Alphabet.GRAPHEMES
             config.setdefault("audio", {}).setdefault("sample_rate", 16000)
+            tokenizer = TTSTokenizer(
+                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
+                add_blank_char=False,
+                add_blank_word=False,
+                use_eos_bos=False,
+                blank_at_end=False,
+                blank_at_start=False,
+            )
+
+        elif (engine == Engine.OMNIVOICE or
+                (isinstance(engine, str) and engine == "omnivoice") or
+                config.get("engine") == "omnivoice"):
+            # OmniVoice consumes raw text: the adapter owns text -> id conversion with
+            # the model's own Qwen3 subword BPE (loaded from engine_params, like
+            # Spark-TTS), so no phonemizer vocabulary is needed here. Alphabet.GRAPHEMES
+            # routes TTSVoice.synthesize() through adapter.encode_text().
+            engine = Engine.OMNIVOICE
+            phoneme_type = phoneme_type or PhonemeType.UNICODE
+            alphabet = alphabet or Alphabet.GRAPHEMES
+            config.setdefault("audio", {}).setdefault("sample_rate", 24000)
             tokenizer = TTSTokenizer(
                 Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
                 add_blank_char=False,

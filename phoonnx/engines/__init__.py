@@ -146,6 +146,7 @@ def _register_builtins() -> None:
     from phoonnx.engines.qwen3tts import Qwen3TTSAdapter
     from phoonnx.engines.outetts import OuteTTSAdapter
     from phoonnx.engines.arktts import ArkTTSAdapter
+    from phoonnx.engines.omnivoice import OmniVoiceAdapter
 
     # OptiSpeech shares VITS-like x/x_lengths/scales inputs with Matcha, but has
     # a distinctive metadata + wav/durations output signature — check it first.
@@ -172,6 +173,7 @@ def _register_builtins() -> None:
     register_engine("qwen3tts", Qwen3TTSAdapter, detect_priority=24)
     register_engine("outetts", OuteTTSAdapter, detect_priority=23)
     register_engine("arktts", ArkTTSAdapter, detect_priority=22)
+    register_engine("omnivoice", OmniVoiceAdapter, detect_priority=21)
 
 
 _register_builtins()
