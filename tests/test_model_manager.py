@@ -223,6 +223,61 @@ class TestDownloadHelpers(VoicePathTestCase):
         for p in paths.values():
             self.assertTrue(p.is_file())
 
+    @patch("phoonnx.model_manager.requests.get")
+    def test_download_aux_models_fetches_onnx_data_sidecar(self, mock_get):
+        """Regression test: an auxiliary graph with external weights must have its
+        <name>.onnx_data sidecar fetched too, exactly like the primary graph does
+        via _fetch_onnx. Before the fix, download_aux_models called _stream_to_file
+        directly and never looked for a sidecar, so a multi-graph engine whose aux
+        graph carries external data would download a graph that onnxruntime could
+        not load."""
+        info = self.make_info(aux_model_urls={
+            "decode_path": "https://example.com/decode.onnx",
+        })
+        graph_resp = _mock_response(200, content=b"graph")
+        sidecar_resp = _mock_response(200, content=b"sidecar-weights")
+
+        def side_effect(url, timeout=None, stream=None):
+            cm = MagicMock()
+            if url.endswith("_data"):
+                cm.__enter__.return_value = sidecar_resp
+            else:
+                cm.__enter__.return_value = graph_resp
+            return cm
+
+        mock_get.side_effect = side_effect
+        paths = info.download_aux_models()
+
+        graph_path = paths["decode_path"]
+        sidecar_path = graph_path.parent / (graph_path.name + "_data")
+        self.assertTrue(graph_path.is_file())
+        self.assertTrue(
+            sidecar_path.is_file(),
+            "download_aux_models must fetch the .onnx_data sidecar of an "
+            "auxiliary graph, the same way download_model does via _fetch_onnx",
+        )
+        self.assertEqual(sidecar_path.read_bytes(), b"sidecar-weights")
+
+    @patch("phoonnx.model_manager.requests.get")
+    def test_download_aux_models_routes_onnx_entries_through_fetch_onnx(self, mock_get):
+        """An .onnx aux entry must go through _fetch_onnx (not a plain stream), so
+        it gets the same sidecar-probing behavior as the primary graph."""
+        info = self.make_info(aux_model_urls={
+            "decode_path": "https://example.com/decode.onnx",
+            "speakers_path": "https://example.com/speakers.json",
+        })
+        resp = _mock_response(200, content=b"data")
+        cm = MagicMock()
+        cm.__enter__.return_value = resp
+        mock_get.return_value = cm
+
+        with patch.object(info, "_fetch_onnx", wraps=info._fetch_onnx) as fetch:
+            paths = info.download_aux_models()
+            fetch.assert_called_once_with(
+                "https://example.com/decode.onnx", paths["decode_path"]
+            )
+        self.assertTrue(paths["speakers_path"].is_file())
+
     def test_download_bpe_tokenizer_none_without_url(self):
         info = self.make_info()
         self.assertIsNone(info.download_bpe_tokenizer())
