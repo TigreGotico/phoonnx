@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.72.0a1](https://github.com/TigreGotico/phoonnx/tree/1.72.0a1) (2026-08-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.71.0a1...1.72.0a1)
+
+**Merged pull requests:**
+
+- feat: BSC named speakers \(clean reland of \#349\) [\#353](https://github.com/TigreGotico/phoonnx/pull/353) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.71.0a1](https://github.com/TigreGotico/phoonnx/tree/1.71.0a1) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.70.0a2...1.71.0a1)
@@ -312,7 +320,6 @@
 - feat\(shami\): add Shami/HamsVITS engine for Levantine Arabic / English TTS [\#211](https://github.com/TigreGotico/phoonnx/pull/211) ([JarbasAl](https://github.com/JarbasAl))
 - feat: FastPitch/SpeedySpeech training engine [\#210](https://github.com/TigreGotico/phoonnx/pull/210) ([JarbasAl](https://github.com/JarbasAl))
 - feat: GlowTTS training engine [\#209](https://github.com/TigreGotico/phoonnx/pull/209) ([JarbasAl](https://github.com/JarbasAl))
-- feat: StyleTTS2 training — every step trainable \(TTS + aligner + PL-BERT + pitch\) [\#208](https://github.com/TigreGotico/phoonnx/pull/208) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
