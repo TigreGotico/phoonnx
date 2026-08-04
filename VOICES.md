@@ -1,7 +1,7 @@
 ## Supported Voices
 
-**Total Voices:** 3158
-**Total Languages:** 1810
+**Total Voices:** 3166
+**Total Languages:** 1812
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
 
@@ -145,6 +145,8 @@
 | `omnivoice/ars` | `ars` | `omnivoice` | `unicode` |
 | `omnivoice/ary` | `ary` | `omnivoice` | `unicode` |
 | `omnivoice/arz` | `arz` | `omnivoice` | `unicode` |
+| `indic_parler/amit/as` | `as` | `indic_parler` | `unicode` |
+| `indic_parler/sita/as` | `as` | `indic_parler` | `unicode` |
 | `omnivoice/as` | `as` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-asm-Assamese` | `as-IN` | `transformers` | `graphemes` |
 | `facebook/mms-tts-asa-Asu` | `asa` | `transformers` | `graphemes` |
@@ -281,6 +283,8 @@
 | `facebook/mms-tts-bmv-Bum` | `bmv` | `transformers` | `graphemes` |
 | `coqui/bn-custom-vits-male` | `bn` | `coqui` | `graphemes` |
 | `facebook/mms-tts-ben-Bengali` | `bn` | `transformers` | `graphemes` |
+| `indic_parler/aditi/bn` | `bn` | `indic_parler` | `unicode` |
+| `indic_parler/arjun/bn` | `bn` | `indic_parler` | `unicode` |
 | `mimic3/bn/multi_low` | `bn` | `mimic3` | `espeak` |
 | `omnivoice/bn` | `bn` | `omnivoice` | `unicode` |
 | `outetts/1B/bn` | `bn-BD` | `outetts` | `unicode` |
@@ -311,6 +315,8 @@
 | `omnivoice/brh` | `brh` | `omnivoice` | `unicode` |
 | `omnivoice/bri` | `bri` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-bru-Bru, Eastern` | `bru` | `transformers` | `graphemes` |
+| `indic_parler/bikram/brx` | `brx` | `indic_parler` | `unicode` |
+| `indic_parler/maya/brx` | `brx` | `indic_parler` | `unicode` |
 | `omnivoice/brx` | `brx` | `omnivoice` | `unicode` |
 | `omnivoice/bs` | `bs` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-bsc-Oniyan` | `bsc` | `transformers` | `graphemes` |
@@ -625,6 +631,7 @@
 | `facebook/mms-tts-dnj-dialect_gweetaawueast-Dan` | `dnj-x-gweetaaw-ueast` | `transformers` | `graphemes` |
 | `facebook/mms-tts-dnt-Dani, Mid Grand Valley` | `dnt` | `transformers` | `graphemes` |
 | `facebook/mms-tts-dnw-Dani, Western` | `dnw` | `transformers` | `graphemes` |
+| `indic_parler/karan/doi` | `doi` | `indic_parler` | `unicode` |
 | `facebook/mms-tts-dop-Lukpa` | `dop` | `transformers` | `graphemes` |
 | `facebook/mms-tts-dos-Dogosé` | `dos` | `transformers` | `graphemes` |
 | `omnivoice/dru` | `dru` | `omnivoice` | `unicode` |
@@ -683,6 +690,8 @@
 | `hf_community/nardocolin/nardocolin-pipertts` | `en` | `piper` | `espeak` |
 | `hf_community/wasmdashai/vits-en-v1` | `en` | `transformers` | `graphemes` |
 | `hf_community/wasmdashai/vits-eng-us-ljs` | `en` | `transformers` | `graphemes` |
+| `indic_parler/mary/en` | `en` | `indic_parler` | `unicode` |
+| `indic_parler/thoma/en` | `en` | `indic_parler` | `unicode` |
 | `nipponjo/mixer-tts-ljspeech-128` | `en` | `mixertts` | `espeak` |
 | `nipponjo/mixer-tts-ljspeech-384` | `en` | `mixertts` | `espeak` |
 | `nipponjo/mixer-tts-ljspeech-80` | `en` | `mixertts` | `espeak` |
@@ -774,30 +783,6 @@
 | `hf_community/russdill/kronk` | `en-US` | `piper` | `espeak` |
 | `hf_community/samarthshrivas/piper-finetune-Andrew-Huberman` | `en-US` | `piper` | `espeak` |
 | `hf_community/swqg-messiah/kusaal_chitti_piper` | `en-US` | `piper` | `espeak` |
-| `kittentts/mini-0.1-expr-voice-2-f` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/mini-0.1-expr-voice-2-m` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/mini-0.1-expr-voice-3-f` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/mini-0.1-expr-voice-3-m` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/mini-0.1-expr-voice-4-f` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/mini-0.1-expr-voice-4-m` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/mini-0.1-expr-voice-5-f` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/mini-0.1-expr-voice-5-m` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.1-expr-voice-2-f` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.1-expr-voice-2-m` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.1-expr-voice-3-f` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.1-expr-voice-3-m` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.1-expr-voice-4-f` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.1-expr-voice-4-m` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.1-expr-voice-5-f` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.1-expr-voice-5-m` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.2-expr-voice-2-f` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.2-expr-voice-2-m` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.2-expr-voice-3-f` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.2-expr-voice-3-m` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.2-expr-voice-4-f` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.2-expr-voice-4-m` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.2-expr-voice-5-f` | `en-US` | `styletts2` | `espeak` |
-| `kittentts/nano-0.2-expr-voice-5-m` | `en-US` | `styletts2` | `espeak` |
 | `kokoro-v019/af` | `en-US` | `styletts2` | `misaki_en` |
 | `kokoro-v019/af_bella` | `en-US` | `styletts2` | `misaki_en` |
 | `kokoro-v019/af_nicole` | `en-US` | `styletts2` | `misaki_en` |
@@ -1268,6 +1253,8 @@
 | `facebook/mms-tts-grt-Garo` | `grt` | `transformers` | `graphemes` |
 | `omnivoice/gsl` | `gsl` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-gso-Gbaya, Southwest` | `gso` | `transformers` | `graphemes` |
+| `indic_parler/neha/gu` | `gu` | `indic_parler` | `unicode` |
+| `indic_parler/yash/gu` | `gu` | `indic_parler` | `unicode` |
 | `omnivoice/gu` | `gu` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-guj-Gujarati` | `gu-IN` | `transformers` | `graphemes` |
 | `hf_community/ylacombe/mms-guj-finetuned-monospeaker` | `gu-IN` | `transformers` | `graphemes` |
@@ -1321,6 +1308,8 @@
 | `facebook/mms-tts-hin-Hindi` | `hi` | `transformers` | `graphemes` |
 | `hf_community/PravalX/piper-voices/hi_IN-pratham-medium` | `hi` | `piper` | `espeak` |
 | `hf_community/PravalX/piper-voices/hi_IN-priyamvada-medium` | `hi` | `piper` | `espeak` |
+| `indic_parler/divya/hi` | `hi` | `indic_parler` | `unicode` |
+| `indic_parler/rohit/hi` | `hi` | `indic_parler` | `unicode` |
 | `kokoro/hf_alpha` | `hi` | `styletts2` | `espeak` |
 | `kokoro/hf_beta` | `hi` | `styletts2` | `espeak` |
 | `kokoro/hm_omega` | `hi` | `styletts2` | `espeak` |
@@ -1351,6 +1340,8 @@
 | `facebook/mms-tts-hlb-Halbi` | `hlb` | `transformers` | `graphemes` |
 | `facebook/mms-tts-hlt-Chin, Matu` | `hlt` | `transformers` | `graphemes` |
 | `facebook/mms-tts-hne-Chhattisgarhi` | `hne` | `transformers` | `graphemes` |
+| `indic_parler/bhanu/hne` | `hne` | `indic_parler` | `unicode` |
+| `indic_parler/champa/hne` | `hne` | `indic_parler` | `unicode` |
 | `facebook/mms-tts-hnn-Hanunoo` | `hnn` | `transformers` | `graphemes` |
 | `omnivoice/hno` | `hno` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-hns-Hindustani, Sarnami` | `hns` | `transformers` | `graphemes` |
@@ -1670,6 +1661,8 @@
 | `facebook/mms-tts-kmr-script_latin-Kurdish, Northern` | `kmr-Latn` | `transformers` | `graphemes` |
 | `facebook/mms-tts-kmu-Kanite` | `kmu` | `transformers` | `graphemes` |
 | `omnivoice/kmy` | `kmy` | `omnivoice` | `unicode` |
+| `indic_parler/anu/kn` | `kn` | `indic_parler` | `unicode` |
+| `indic_parler/suresh/kn` | `kn` | `indic_parler` | `unicode` |
 | `omnivoice/kn` | `kn` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-kan-Kannada` | `kn-IN` | `transformers` | `graphemes` |
 | `omnivoice/kna` | `kna` | `omnivoice` | `unicode` |
@@ -1964,6 +1957,8 @@
 | `omnivoice/mki` | `mki` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-mkl-Mokole` | `mkl` | `transformers` | `graphemes` |
 | `facebook/mms-tts-mkn-Malay, Kupang` | `mkn` | `transformers` | `graphemes` |
+| `indic_parler/anjali/ml` | `ml` | `indic_parler` | `unicode` |
+| `indic_parler/harish/ml` | `ml` | `indic_parler` | `unicode` |
 | `omnivoice/ml` | `ml` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-mal-Malayalam` | `ml-IN` | `transformers` | `graphemes` |
 | `piper/ml_IN-arjun-medium` | `ml-IN` | `piper` | `espeak` |
@@ -1975,6 +1970,8 @@
 | `facebook/mms-tts-mnb-Muna` | `mnb` | `transformers` | `graphemes` |
 | `omnivoice/mne` | `mne` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-mnf-Mundani` | `mnf` | `transformers` | `graphemes` |
+| `indic_parler/laishram/mni` | `mni` | `indic_parler` | `unicode` |
+| `indic_parler/ranjit/mni` | `mni` | `indic_parler` | `unicode` |
 | `omnivoice/mni` | `mni` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-mnk-Mandinka` | `mnk` | `transformers` | `graphemes` |
 | `facebook/mms-tts-mnw-Mon` | `mnw` | `transformers` | `graphemes` |
@@ -1995,6 +1992,8 @@
 | `facebook/mms-tts-mqj-Mamasa` | `mqj` | `transformers` | `graphemes` |
 | `facebook/mms-tts-mqn-Moronene` | `mqn` | `transformers` | `graphemes` |
 | `omnivoice/mqy` | `mqy` | `omnivoice` | `unicode` |
+| `indic_parler/sanjay/mr` | `mr` | `indic_parler` | `unicode` |
+| `indic_parler/sunita/mr` | `mr` | `indic_parler` | `unicode` |
 | `omnivoice/mr` | `mr` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-mar-Marathi` | `mr-IN` | `transformers` | `graphemes` |
 | `hf_community/ylacombe/mms-mar-finetuned-monospeaker` | `mr-IN` | `transformers` | `graphemes` |
@@ -2078,6 +2077,7 @@
 | `facebook/mms-tts-ndy-Lutos` | `ndy` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ndz-Ndogo` | `ndz` | `transformers` | `graphemes` |
 | `hf_community/Wiseyak/piper_tts` | `ne` | `piper` | `espeak` |
+| `indic_parler/amrita/ne` | `ne` | `indic_parler` | `unicode` |
 | `mimic3/ne_NP/ne-google_low` | `ne-NP` | `mimic3` | `espeak` |
 | `piper/ne_NP-chitwan-medium` | `ne-NP` | `piper` | `espeak` |
 | `piper/ne_NP-google-medium` | `ne-NP` | `piper` | `espeak` |
@@ -2206,6 +2206,8 @@
 | `facebook/mms-tts-omw-Tairora, South` | `omw` | `transformers` | `graphemes` |
 | `facebook/mms-tts-onb-Lingao` | `onb` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ood-Tohono O’odham` | `ood` | `transformers` | `graphemes` |
+| `indic_parler/debjani/or` | `or` | `indic_parler` | `unicode` |
+| `indic_parler/manas/or` | `or` | `indic_parler` | `unicode` |
 | `omnivoice/orc` | `orc` | `omnivoice` | `unicode` |
 | `omnivoice/oru` | `oru` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-ory-Odia` | `ory` | `transformers` | `graphemes` |
@@ -2216,6 +2218,8 @@
 | `facebook/mms-tts-otq-Otomi, Querétaro` | `otq` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ozm-Koonzime` | `ozm` | `transformers` | `graphemes` |
 | `facebook/mms-tts-pan-Punjabi, Eastern` | `pa` | `transformers` | `graphemes` |
+| `indic_parler/divjot/pa` | `pa` | `indic_parler` | `unicode` |
+| `indic_parler/gurpreet/pa` | `pa` | `indic_parler` | `unicode` |
 | `omnivoice/pa` | `pa` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-pab-Parecís` | `pab` | `transformers` | `graphemes` |
 | `facebook/mms-tts-pad-Paumarí` | `pad` | `transformers` | `graphemes` |
@@ -2496,6 +2500,7 @@
 | `omnivoice/rup` | `rup` | `omnivoice` | `unicode` |
 | `omnivoice/rw` | `rw` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-kin-Kinyarwanda` | `rw-RW` | `transformers` | `graphemes` |
+| `indic_parler/aryan/sa` | `sa` | `indic_parler` | `unicode` |
 | `omnivoice/sa` | `sa` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-sab-Buglere` | `sab` | `transformers` | `graphemes` |
 | `facebook/mms-tts-sah-Yakut` | `sah` | `transformers` | `graphemes` |
@@ -2652,6 +2657,7 @@
 | `omnivoice/szy` | `szy` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-tam-Tamil` | `ta` | `transformers` | `graphemes` |
 | `hf_community/ylacombe/mms-tam-finetuned-monospeaker` | `ta` | `transformers` | `graphemes` |
+| `indic_parler/jaya/ta` | `ta` | `indic_parler` | `unicode` |
 | `omnivoice/ta` | `ta` | `omnivoice` | `unicode` |
 | `chatterbox/multilingual/ta` | `ta-IN` | `chatterbox` | `unicode` |
 | `outetts/1B/ta` | `ta-IN` | `outetts` | `unicode` |
@@ -2681,6 +2687,8 @@
 | `omnivoice/tdn` | `tdn` | `omnivoice` | `unicode` |
 | `piper_community/raphaelmerx/tdt-TL_joao` | `tdt-TL` | `piper` | `espeak` |
 | `omnivoice/tdx` | `tdx` | `omnivoice` | `unicode` |
+| `indic_parler/lalitha/te` | `te` | `indic_parler` | `unicode` |
+| `indic_parler/prakash/te` | `te` | `indic_parler` | `unicode` |
 | `omnivoice/te` | `te` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-tel-Telugu` | `te-IN` | `transformers` | `graphemes` |
 | `mimic3/te_IN/cmu-indic_low` | `te-IN` | `mimic3` | `epitran` |
