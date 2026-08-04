@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.72.0a2](https://github.com/TigreGotico/phoonnx/tree/1.72.0a2) (2026-08-04)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.72.0a1...1.72.0a2)
+
+**Merged pull requests:**
+
+- docs: retroactive Habibi voice quality audit \(WER/CER/RTF\) [\#356](https://github.com/TigreGotico/phoonnx/pull/356) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.72.0a1](https://github.com/TigreGotico/phoonnx/tree/1.72.0a1) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.71.0a1...1.72.0a1)
@@ -319,7 +327,6 @@
 - fix\(voice\_index\): dialect-accurate Arabic lang codes + regenerate VOICES.md [\#212](https://github.com/TigreGotico/phoonnx/pull/212) ([JarbasAl](https://github.com/JarbasAl))
 - feat\(shami\): add Shami/HamsVITS engine for Levantine Arabic / English TTS [\#211](https://github.com/TigreGotico/phoonnx/pull/211) ([JarbasAl](https://github.com/JarbasAl))
 - feat: FastPitch/SpeedySpeech training engine [\#210](https://github.com/TigreGotico/phoonnx/pull/210) ([JarbasAl](https://github.com/JarbasAl))
-- feat: GlowTTS training engine [\#209](https://github.com/TigreGotico/phoonnx/pull/209) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
