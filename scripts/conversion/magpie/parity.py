@@ -1,6 +1,9 @@
 import os, sys, torch, numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _paths import checkpoint_path, out_dir
+
+THRESHOLD = float(os.environ.get("MAGPIE_PARITY_THRESHOLD", "0.99"))
+"""Minimum acceptable greedy token agreement (all codebooks) before the gate fails."""
 from nemo.collections.tts.models.magpietts import MagpieTTSModel
 from nemo.collections.tts.parts.utils.tts_dataset_utils import chunk_text_for_inference
 P=checkpoint_path()
@@ -37,3 +40,8 @@ for c in range(8):
     print(' cb',c,round((tc[c,:L]==oc[c,:L]).float().mean().item()*100,2))
 import soundfile as sf
 __import__('os').makedirs(out_dir()+'/samples',exist_ok=True); sf.write(out_dir()+'/samples/onnx_%s.wav'%LANG, audio[0], 22050)
+
+if agree < THRESHOLD:
+    print(f'GATE FAIL: greedy agreement {agree*100:.3f}% < threshold {THRESHOLD*100:.1f}%', file=sys.stderr)
+    sys.exit(1)
+print(f'GATE PASS: greedy agreement {agree*100:.3f}% >= threshold {THRESHOLD*100:.1f}%')

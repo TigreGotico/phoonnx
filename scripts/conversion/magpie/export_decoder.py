@@ -1,6 +1,7 @@
 import os, sys
 import torch, numpy as np
 from _paths import checkpoint_path, out_dir
+THRESHOLD=1e-3
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dec_module import DecoderStep, CrossKV
 from nemo.collections.tts.models.magpietts import MagpieTTSModel
@@ -17,7 +18,8 @@ torch.onnx.export(ck,(cond,),O+'cross_kv.onnx',input_names=['cond'],output_names
 import onnxruntime as ort
 s=ort.InferenceSession(O+'cross_kv.onnx',providers=['CPUExecutionProvider'])
 ok,ov=s.run(None,{'cond':cond.numpy()})
-print('CROSSKV maxdiff',np.abs(ok-rk.numpy()).max(),np.abs(ov-rv.numpy()).max())
+ckd=max(np.abs(ok-rk.numpy()).max(),np.abs(ov-rv.numpy()).max())
+print('CROSSKV maxdiff',ckd)
 
 ds=DecoderStep(m).eval()
 T=5; Tp=3
@@ -37,7 +39,9 @@ torch.onnx.export(ds,args,O+'decoder_step.onnx',input_names=names,output_names=o
 s2=ort.InferenceSession(O+'decoder_step.onnx',providers=['CPUExecutionProvider'])
 feed=dict(zip(names,[a.numpy() for a in args]))
 o=s2.run(None,feed)
-for n,a,b in zip(outs,o,ref): print('DEC',n,'maxdiff',np.abs(a-b.numpy()).max())
+decd=0.0
+for n,a,b in zip(outs,o,ref):
+    dd=np.abs(a-b.numpy()).max(); decd=max(decd,dd); print('DEC',n,'maxdiff',dd)
 # dynamic shapes recheck: prefill-like T=218 Tp=0
 T2=218; Tt2=41
 cond2=torch.randn(B,Tt2,768)*0.1; cm2=torch.ones(B,Tt2)
@@ -45,4 +49,9 @@ with torch.no_grad(): k2,v2=ck(cond2)
 a2=(torch.randn(B,T2,768)*0.1, torch.arange(T2), torch.zeros(12,B,0,12,64), torch.zeros(12,B,0,12,64), k2,v2,cm2, torch.ones(2,1,Tt2))
 with torch.no_grad(): r2=ds(*a2)
 o2=s2.run(None,dict(zip(names,[a.numpy() for a in a2])))
-print('DEC dyn logits maxdiff',np.abs(o2[0]-r2[0].numpy()).max(), o2[0].shape)
+dyd=np.abs(o2[0]-r2[0].numpy()).max()
+print('DEC dyn logits maxdiff',dyd, o2[0].shape)
+
+if max(ckd,decd,dyd)>THRESHOLD:
+    print(f'GATE FAIL: decoder maxdiff {max(ckd,decd,dyd)} > {THRESHOLD}', file=sys.stderr); sys.exit(1)
+print('GATE PASS: decoder')

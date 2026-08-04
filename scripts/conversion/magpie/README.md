@@ -86,7 +86,17 @@ a KV cache gives different tokens — not a rounding difference, a different sam
 - **cached** — pass one frame plus the cache. Matches `use_kv_cache_for_inference: true`.
 
 `parity.py` checks each mode against the matching NeMo setting. Both reach 100% greedy
-token agreement over all 8 codebooks.
+token agreement over all 8 codebooks. It exits non-zero if agreement drops below 99%
+(`MAGPIE_PARITY_THRESHOLD`, default `0.99`) — a self-gate, not just a printed number.
+`export_encoder.py`, `export_decoder.py`, `export_local.py` and `export_codec.py` each
+gate the same way on their own max-abs-diff against the torch reference.
+
+## Intelligibility evidence
+
+`evidence/` holds a WER-gate run: synthesize known sentences with the real engine,
+transcribe with a CPU ASR model, score WER, and fail the run if any language crosses a
+threshold. See `evidence/README.md` for the ASR models used per language (including the
+Korean fallback caveat) and the committed ref/hyp pairs.
 
 ## Attribution
 

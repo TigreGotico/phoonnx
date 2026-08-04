@@ -1,6 +1,7 @@
-import torch, numpy as np
+import sys, torch, numpy as np
 import torch.nn.functional as F
 from _paths import checkpoint_path, out_dir
+THRESHOLD=1e-3
 from nemo.collections.tts.models.magpietts import MagpieTTSModel
 P=checkpoint_path()
 m=MagpieTTSModel.restore_from(P, map_location='cpu'); m.eval()
@@ -25,11 +26,12 @@ codes=torch.randint(0,2000,(2,NCB))
 with torch.no_grad():
     ref=ae(codes)
     r2,_=m.embed_audio_tokens(codes.reshape(2,m.frame_stacking_factor,m.num_audio_codebooks).permute(0,2,1), torch.full((2,),m.frame_stacking_factor))
-print('AUDIOEMBED vs nemo maxdiff',(ref-r2).abs().max().item())
+aed1=(ref-r2).abs().max().item(); print('AUDIOEMBED vs nemo maxdiff',aed1)
 torch.onnx.export(ae,(codes,),O+'audio_embed.onnx',input_names=['codes'],output_names=['emb'],
   dynamic_axes={'codes':{0:'B'},'emb':{0:'B'}},opset_version=18)
 s=ort.InferenceSession(O+'audio_embed.onnx',providers=['CPUExecutionProvider'])
-print('AUDIOEMBED onnx maxdiff',np.abs(s.run(None,{'codes':codes.numpy()})[0]-ref.numpy()).max())
+aed2=np.abs(s.run(None,{'codes':codes.numpy()})[0]-ref.numpy()).max()
+print('AUDIOEMBED onnx maxdiff',aed2)
 
 class LocalStep(torch.nn.Module):
     def __init__(s,m):
@@ -64,7 +66,8 @@ torch.onnx.export(ls,args,O+'local_step.onnx',
   dynamic_axes={'h':{0:'B'},'pos':{},'cache_k':{1:'B',2:'Tp'},'cache_v':{1:'B',2:'Tp'},'cb':{}},opset_version=18)
 s2=ort.InferenceSession(O+'local_step.onnx',providers=['CPUExecutionProvider'])
 o=s2.run(None,{'h':h.numpy(),'pos':np.arange(3,4),'cache_k':ck.numpy(),'cache_v':cv.numpy(),'cb':np.array(3)})
-print('LOCALSTEP onnx maxdiff',np.abs(o[0]-ref[0].numpy()).max())
+lsd=np.abs(o[0]-ref[0].numpy()).max()
+print('LOCALSTEP onnx maxdiff',lsd)
 
 class LTEmbed(torch.nn.Module):
     def __init__(s,m):
@@ -80,4 +83,10 @@ with torch.no_grad(): ref3=lte(tok,torch.tensor(3))
 torch.onnx.export(lte,(tok,torch.tensor(3)),O+'lt_embed.onnx',input_names=['tok','cb'],output_names=['emb'],
   dynamic_axes={'tok':{0:'B'},'emb':{0:'B'}},opset_version=18)
 s3=ort.InferenceSession(O+'lt_embed.onnx',providers=['CPUExecutionProvider'])
-print('LTEMBED onnx maxdiff',np.abs(s3.run(None,{'tok':tok.numpy(),'cb':np.array(3)})[0]-ref3.numpy()).max())
+lted=np.abs(s3.run(None,{'tok':tok.numpy(),'cb':np.array(3)})[0]-ref3.numpy()).max()
+print('LTEMBED onnx maxdiff',lted)
+
+worst=max(aed1,aed2,lsd,lted)
+if worst>THRESHOLD:
+    print(f'GATE FAIL: local maxdiff {worst} > {THRESHOLD}', file=sys.stderr); sys.exit(1)
+print('GATE PASS: local')

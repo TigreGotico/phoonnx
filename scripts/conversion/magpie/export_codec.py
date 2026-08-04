@@ -1,5 +1,6 @@
-import torch, numpy as np
+import sys, torch, numpy as np
 from _paths import checkpoint_path, out_dir
+THRESHOLD=1e-2  # audio samples; looser than the logit-space graphs above
 from nemo.collections.tts.models.magpietts import MagpieTTSModel
 P=checkpoint_path()
 m=MagpieTTSModel.restore_from(P, map_location='cpu'); m.eval()
@@ -24,8 +25,13 @@ print('exported')
 import onnxruntime as ort
 s=ort.InferenceSession(out, providers=['CPUExecutionProvider'])
 o=s.run(None,{'codes':toks.numpy()})[0]
-d=np.abs(o-ref.numpy()); print('MAXDIFF', d.max(), 'shape', o.shape)
+d=np.abs(o-ref.numpy()); d1=d.max(); print('MAXDIFF', d1, 'shape', o.shape)
 T2=57; t2=torch.randint(0,2000,(1,8,T2)).long()
 with torch.no_grad(): r2=w(t2)
 o2=s.run(None,{'codes':t2.numpy()})[0]
-print('MAXDIFF_dynT', np.abs(o2-r2.numpy()).max(), o2.shape)
+d2=np.abs(o2-r2.numpy()).max()
+print('MAXDIFF_dynT', d2, o2.shape)
+
+if max(d1,d2)>THRESHOLD:
+    print(f'GATE FAIL: codec maxdiff {max(d1,d2)} > {THRESHOLD}', file=sys.stderr); sys.exit(1)
+print('GATE PASS: codec')

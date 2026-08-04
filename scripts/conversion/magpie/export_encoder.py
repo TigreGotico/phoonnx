@@ -1,5 +1,6 @@
-import torch, numpy as np
+import sys, torch, numpy as np
 from _paths import checkpoint_path, out_dir
+THRESHOLD=1e-3
 from nemo.collections.tts.models.magpietts import MagpieTTSModel
 P=checkpoint_path()
 m=MagpieTTSModel.restore_from(P, map_location='cpu'); m.eval()
@@ -24,8 +25,11 @@ torch.onnx.export(w,(text,mask),out,input_names=['text','text_mask'],output_name
 import onnxruntime as ort
 s=ort.InferenceSession(out,providers=['CPUExecutionProvider'])
 o=s.run(None,{'text':text.numpy(),'text_mask':mask.numpy()})[0]
-print('MAXDIFF',np.abs(o-ref.numpy()).max())
+d1=np.abs(o-ref.numpy()).max(); print('MAXDIFF',d1)
 T2=41; t2=torch.randint(0,50,(1,T2)).long(); m2=torch.ones(1,T2)
 with torch.no_grad(): r2=w(t2,m2)
 o2=s.run(None,{'text':t2.numpy(),'text_mask':m2.numpy()})[0]
-print('MAXDIFF_dynT',np.abs(o2-r2.numpy()).max())
+d2=np.abs(o2-r2.numpy()).max(); print('MAXDIFF_dynT',d2)
+if max(d1,d2)>THRESHOLD:
+    print(f'GATE FAIL: encoder maxdiff {max(d1,d2)} > {THRESHOLD}', file=sys.stderr); sys.exit(1)
+print('GATE PASS: encoder')
