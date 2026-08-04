@@ -1,7 +1,8 @@
 # Indic Parler-TTS
 
 [Indic Parler-TTS](https://huggingface.co/ai4bharat/indic-parler-tts) (AI4Bharat) speaks
-20 Indic languages and English. Set `engine: indic_parler`.
+21 Indic languages and English — 22 languages total (`AVAILABLE_LANGS` in
+`phoonnx/engines/indic_parler.py`). Set `engine: indic_parler`.
 
 It is the Indic fine-tune of [Parler-TTS](https://github.com/huggingface/parler-tts)
 (Yoach Lacombe, Vaibhav Srivastav, Sanchit Gandhi). You do not pick a voice with a
@@ -95,12 +96,61 @@ for chunk in voice.synthesize("नमस्ते, आप कैसे हैं
 Any of the 69 speakers upstream lists can be reached by passing a `description` at call
 time; the index covers the recommended subset.
 
+## Intelligibility
+
+Reference sentences and reference audio come from **FLEURS** (test split, 3 sentences per
+language). ASR is the **OpenVoiceOS org's own IndicConformer ONNX** family (AI4Bharat's
+own ASR models), via `onnx-asr`; English uses `nvidia-parakeet-tdt_ctc-110m-onnx`. The
+**human floor** column is the same ASR run on the natural FLEURS recording of the same
+sentence, so the two columns are directly comparable. CER is the headline metric for
+Malayalam, Tamil, Telugu, Kannada and Odia, where whitespace does not delimit words the
+way WER assumes; both numbers are reported for every language regardless.
+
+| Language | Voice | TTS WER | TTS CER | Human floor WER | Human floor CER | Headline | RTF |
+|---|---|---|---|---|---|---|---|
+| Hindi (`hi`) | `rohit` | 0.160 | 0.039 | 0.040 | 0.019 | WER | 4.14 |
+| English (`en`) | `mary` | 0.291 | 0.155 | 0.255 | 0.108 | WER | 4.42 |
+| Bengali (`bn`) | `arjun` | 0.333 | 0.056 | 0.104 | 0.025 | WER | 4.26 |
+| Gujarati (`gu`) | `yash` | 0.250 | 0.123 | 0.225 | 0.090 | WER | 4.67 |
+| Kannada (`kn`) | `suresh` | 0.212 | 0.141 | 0.061 | 0.053 | CER | 4.55 |
+| Malayalam (`ml`) | `anjali` | 0.520 | 0.100 | 0.440 | 0.185 | CER | 4.48 |
+| Marathi (`mr`) | `sanjay` | 0.209 | 0.102 | 0.302 | 0.056 | WER | 4.60 |
+| Nepali (`ne`) | `amrita` | 0.235 | 0.069 | 0.265 | 0.051 | WER | 4.58 |
+| Odia (`or`) | `manas` | 0.174 | 0.032 | 0.109 | 0.025 | CER | 4.56 |
+| Punjabi (`pa`) | `divjot` | 0.176 | 0.044 | 0.176 | 0.040 | WER | 4.74 |
+| Tamil (`ta`) | `jaya` | 0.176 | 0.067 | 0.088 | 0.018 | CER | 4.67 |
+| Telugu (`te`) | `prakash` | 0.100 | 0.045 | 0.033 | 0.004 | CER | 4.48 |
+
+Every language above is intelligible. Marathi and Nepali beat the natural FLEURS
+recording on WER; Malayalam beats it on CER. English is the weakest column, and the
+human floor (0.255 WER) says that is the 110M parakeet ASR, not the voice.
+
+**Measured vs. unmeasured — explicit.** 12 of the 18 indexed languages (22 of the 32
+voices) are measured above. Six ship unmeasured:
+
+| Language | Voices | Why |
+|---|---|---|
+| Assamese (`as`) | 2 | `OpenVoiceOS/ai4bharat-indicconformer-as-onnx` is a README-only placeholder — no ONNX weights in the org yet |
+| Bodo (`brx`) | 2 | not in FLEURS |
+| Chhattisgarhi (`hne`) | 2 | not in FLEURS |
+| Dogri (`doi`) | 1 | not in FLEURS |
+| Manipuri (`mni`) | 2 | not in FLEURS |
+| Sanskrit (`sa`) | 1 | not in FLEURS |
+
+Parity vs. torch holds for all six by construction — it is the same four graphs the
+measured languages use — but there is no intelligibility number for them yet. Assamese
+becomes measurable as soon as the `as` IndicConformer export lands in the org.
+
+Urdu (`ur`), Sindhi (`sd`), Maithili (`mai`), Konkani (`kok`) and Santali (`sat`) are
+supported by the checkpoint but have no recommended speaker in AI4Bharat's table, so they
+are not indexed as voices; they are reachable by passing a custom `description`.
+
 ## Cost
 
 The checkpoint is ~880M parameters and the decoder runs one step per 22 ms of audio, so
-this is the slowest engine phoonnx ships. Measured on a 24-core CPU across 12 languages,
-real-time factor is **4.1 to 4.7** (mean 4.5). Use it where quality matters more than
-latency.
+this is the slowest engine phoonnx ships. Measured on a 24-core CPU across the 12 measured
+languages, real-time factor is **4.1 to 4.7** (mean 4.5). Use it where quality matters
+more than latency.
 
 Per-language samples and the intelligibility report live in the mirror under
 [`samples/`](https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/tree/main/samples).

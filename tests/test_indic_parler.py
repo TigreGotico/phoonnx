@@ -21,6 +21,66 @@ from phoonnx.engines.indic_parler import (
 N_LAYERS = 2   # fake models are 2-layer; the real checkpoint is 24
 
 
+# ---------------------------------------------------------------------------
+# real graph contract, pinned against the shipped decoder_decode.onnx
+# ---------------------------------------------------------------------------
+#
+# Captured 2026-08-04 from OpenVoiceOS/phoonnx-indic-parler/decoder_decode.onnx by
+# HTTP-Range-fetching the last 40 MiB of the (1.5 GB, no-external-data) file and
+# scanning the raw bytes for ValueInfoProto name strings -- ONNX serializes
+# GraphProto.initializer (field 5, the multi-GB weight blob) before
+# GraphProto.input/output (fields 11/12), so the input/output names sit in the
+# file's tail. This is the graph the engine actually loads, not the export
+# script's intent, so it is the load-bearing contract: get it wrong and the
+# adapter still produces audio, just not the audio the description asked for
+# (see module docstring / PR #363).
+REAL_DECODER_DECODE_NUM_LAYERS = 24
+
+REAL_DECODER_DECODE_INPUTS = frozenset(
+    {"codec_input_ids", "encoder_attention_mask"}
+    | {f"past_key_values.{i}.decoder.key" for i in range(REAL_DECODER_DECODE_NUM_LAYERS)}
+    | {f"past_key_values.{i}.decoder.value" for i in range(REAL_DECODER_DECODE_NUM_LAYERS)}
+    | {f"past_key_values.{i}.encoder.key" for i in range(REAL_DECODER_DECODE_NUM_LAYERS)}
+    | {f"past_key_values.{i}.encoder.value" for i in range(REAL_DECODER_DECODE_NUM_LAYERS)}
+)
+
+REAL_DECODER_DECODE_OUTPUTS = frozenset(
+    {"logits"}
+    | {f"present.{i}.decoder.key" for i in range(REAL_DECODER_DECODE_NUM_LAYERS)}
+    | {f"present.{i}.decoder.value" for i in range(REAL_DECODER_DECODE_NUM_LAYERS)}
+)
+
+
+def test_real_decoder_decode_graph_input_contract():
+    """Pins the architectural claim -- cross-attention KV is fed in, never recomputed,
+    and there is no ``encoder_hidden_states`` input on the decode graph -- against the
+    98 input names actually captured from the shipped ``decoder_decode.onnx``."""
+    assert len(REAL_DECODER_DECODE_INPUTS) == 2 + 4 * REAL_DECODER_DECODE_NUM_LAYERS == 98
+    assert "encoder_hidden_states" not in REAL_DECODER_DECODE_INPUTS
+    assert "prompt_input_ids" not in REAL_DECODER_DECODE_INPUTS
+    assert "codec_input_ids" in REAL_DECODER_DECODE_INPUTS
+    assert "encoder_attention_mask" in REAL_DECODER_DECODE_INPUTS
+    for i in range(REAL_DECODER_DECODE_NUM_LAYERS):
+        for role in ("decoder.key", "decoder.value", "encoder.key", "encoder.value"):
+            assert f"past_key_values.{i}.{role}" in REAL_DECODER_DECODE_INPUTS
+
+
+def test_fake_decode_session_matches_the_real_input_set():
+    """Fails if the fake-session fixtures used by the tests below drift from the real
+    graph's input names -- same shape as ``_FakeDecode.get_inputs()``, scaled to the
+    real 24 layers, so a change to either side is caught here first."""
+    class _Sess:
+        def get_inputs(self):
+            names = ["codec_input_ids", "encoder_attention_mask"]
+            for i in range(REAL_DECODER_DECODE_NUM_LAYERS):
+                names += [f"past_key_values.{i}.decoder.key", f"past_key_values.{i}.decoder.value",
+                          f"past_key_values.{i}.encoder.key", f"past_key_values.{i}.encoder.value"]
+            return [_Inp(n) for n in names]
+
+    observed = {i.name for i in _Sess().get_inputs()}
+    assert observed == REAL_DECODER_DECODE_INPUTS
+
+
 def _req(ids=(5, 6, 7), **params):
     arr = np.array([list(ids)], np.int64)
     return AdapterSynthesisRequest(phoneme_ids=arr,

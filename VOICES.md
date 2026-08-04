@@ -1,6 +1,6 @@
 ## Supported Voices
 
-**Total Voices:** 3166
+**Total Voices:** 3190
 **Total Languages:** 1812
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
@@ -783,6 +783,30 @@
 | `hf_community/russdill/kronk` | `en-US` | `piper` | `espeak` |
 | `hf_community/samarthshrivas/piper-finetune-Andrew-Huberman` | `en-US` | `piper` | `espeak` |
 | `hf_community/swqg-messiah/kusaal_chitti_piper` | `en-US` | `piper` | `espeak` |
+| `kittentts/mini-0.1-expr-voice-2-f` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/mini-0.1-expr-voice-2-m` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/mini-0.1-expr-voice-3-f` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/mini-0.1-expr-voice-3-m` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/mini-0.1-expr-voice-4-f` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/mini-0.1-expr-voice-4-m` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/mini-0.1-expr-voice-5-f` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/mini-0.1-expr-voice-5-m` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.1-expr-voice-2-f` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.1-expr-voice-2-m` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.1-expr-voice-3-f` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.1-expr-voice-3-m` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.1-expr-voice-4-f` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.1-expr-voice-4-m` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.1-expr-voice-5-f` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.1-expr-voice-5-m` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.2-expr-voice-2-f` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.2-expr-voice-2-m` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.2-expr-voice-3-f` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.2-expr-voice-3-m` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.2-expr-voice-4-f` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.2-expr-voice-4-m` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.2-expr-voice-5-f` | `en-US` | `styletts2` | `espeak` |
+| `kittentts/nano-0.2-expr-voice-5-m` | `en-US` | `styletts2` | `espeak` |
 | `kokoro-v019/af` | `en-US` | `styletts2` | `misaki_en` |
 | `kokoro-v019/af_bella` | `en-US` | `styletts2` | `misaki_en` |
 | `kokoro-v019/af_nicole` | `en-US` | `styletts2` | `misaki_en` |
