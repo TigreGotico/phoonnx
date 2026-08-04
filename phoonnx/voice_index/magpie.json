@@ -26,7 +26,8 @@
         "engine_options": {
             "speaker_id": 0,
             "speaker": "Aria",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "ar"
         },
         "display_name": "Magpie Aria"
     },
@@ -57,7 +58,8 @@
         "engine_options": {
             "speaker_id": 0,
             "speaker": "Aria",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "fr"
         },
         "display_name": "Magpie Aria"
     },
@@ -88,7 +90,8 @@
         "engine_options": {
             "speaker_id": 0,
             "speaker": "Aria",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "it"
         },
         "display_name": "Magpie Aria"
     },
@@ -119,7 +122,8 @@
         "engine_options": {
             "speaker_id": 0,
             "speaker": "Aria",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "ko"
         },
         "display_name": "Magpie Aria"
     },
@@ -150,7 +154,8 @@
         "engine_options": {
             "speaker_id": 0,
             "speaker": "Aria",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "vi"
         },
         "display_name": "Magpie Aria"
     },
@@ -181,7 +186,8 @@
         "engine_options": {
             "speaker_id": 1,
             "speaker": "Jason",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "ar"
         },
         "display_name": "Magpie Jason"
     },
@@ -212,7 +218,8 @@
         "engine_options": {
             "speaker_id": 1,
             "speaker": "Jason",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "fr"
         },
         "display_name": "Magpie Jason"
     },
@@ -243,7 +250,8 @@
         "engine_options": {
             "speaker_id": 1,
             "speaker": "Jason",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "it"
         },
         "display_name": "Magpie Jason"
     },
@@ -274,7 +282,8 @@
         "engine_options": {
             "speaker_id": 1,
             "speaker": "Jason",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "ko"
         },
         "display_name": "Magpie Jason"
     },
@@ -305,7 +314,8 @@
         "engine_options": {
             "speaker_id": 1,
             "speaker": "Jason",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "vi"
         },
         "display_name": "Magpie Jason"
     },
@@ -336,7 +346,8 @@
         "engine_options": {
             "speaker_id": 2,
             "speaker": "John",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "ar"
         },
         "display_name": "Magpie John"
     },
@@ -367,7 +378,8 @@
         "engine_options": {
             "speaker_id": 2,
             "speaker": "John",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "fr"
         },
         "display_name": "Magpie John"
     },
@@ -398,7 +410,8 @@
         "engine_options": {
             "speaker_id": 2,
             "speaker": "John",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "it"
         },
         "display_name": "Magpie John"
     },
@@ -429,7 +442,8 @@
         "engine_options": {
             "speaker_id": 2,
             "speaker": "John",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "ko"
         },
         "display_name": "Magpie John"
     },
@@ -460,7 +474,8 @@
         "engine_options": {
             "speaker_id": 2,
             "speaker": "John",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "vi"
         },
         "display_name": "Magpie John"
     },
@@ -491,7 +506,8 @@
         "engine_options": {
             "speaker_id": 3,
             "speaker": "Leo",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "ar"
         },
         "display_name": "Magpie Leo"
     },
@@ -522,7 +538,8 @@
         "engine_options": {
             "speaker_id": 3,
             "speaker": "Leo",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "fr"
         },
         "display_name": "Magpie Leo"
     },
@@ -553,7 +570,8 @@
         "engine_options": {
             "speaker_id": 3,
             "speaker": "Leo",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "it"
         },
         "display_name": "Magpie Leo"
     },
@@ -584,7 +602,8 @@
         "engine_options": {
             "speaker_id": 3,
             "speaker": "Leo",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "ko"
         },
         "display_name": "Magpie Leo"
     },
@@ -615,7 +634,8 @@
         "engine_options": {
             "speaker_id": 3,
             "speaker": "Leo",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "vi"
         },
         "display_name": "Magpie Leo"
     },
@@ -646,7 +666,8 @@
         "engine_options": {
             "speaker_id": 4,
             "speaker": "Sofia",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "ar"
         },
         "display_name": "Magpie Sofia"
     },
@@ -677,7 +698,8 @@
         "engine_options": {
             "speaker_id": 4,
             "speaker": "Sofia",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "fr"
         },
         "display_name": "Magpie Sofia"
     },
@@ -708,7 +730,8 @@
         "engine_options": {
             "speaker_id": 4,
             "speaker": "Sofia",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "it"
         },
         "display_name": "Magpie Sofia"
     },
@@ -739,7 +762,8 @@
         "engine_options": {
             "speaker_id": 4,
             "speaker": "Sofia",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "ko"
         },
         "display_name": "Magpie Sofia"
     },
@@ -770,7 +794,8 @@
         "engine_options": {
             "speaker_id": 4,
             "speaker": "Sofia",
-            "exact_decode": true
+            "exact_decode": true,
+            "lang": "vi"
         },
         "display_name": "Magpie Sofia"
     }

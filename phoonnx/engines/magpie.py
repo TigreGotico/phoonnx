@@ -202,7 +202,10 @@ class MagpieAdapter(BaseOnnxAdapter):
             with open(ep["speakers_path"], "r", encoding="utf-8") as f:
                 self.speakers = json.load(f)
 
-        self._lang = getattr(voice_config, "lang", None) or ep.get("lang") or "en"
+        self._lang = (ep.get("lang")
+                      or getattr(voice_config, "lang_code", None)
+                      or getattr(voice_config, "lang", None)
+                      or "en")
 
     # ------------------------------------------------------------------
     # Derived model constants
@@ -269,7 +272,10 @@ class MagpieAdapter(BaseOnnxAdapter):
         """Turn text into one token-id list per autoregressive pass."""
         if self.tokenizer is None:
             raise RuntimeError("Magpie voice missing tokenizer_path in engine_params")
-        lang = getattr(voice, "lang", None) or self._lang
+        lang = (self._params.get("lang")
+                or getattr(voice, "lang", None)
+                or getattr(getattr(voice, "config", None), "lang_code", None)
+                or self._lang)
         name = self.tokenizer_name_for(lang)
         return [self.tokenizer.encode(chunk, lang, name) for chunk in chunk_text(text)]
 
