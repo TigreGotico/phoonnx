@@ -43,13 +43,11 @@ TIERS = {
     "mini-0.1": {"model_file": "kitten_tts_mini_v0_1.onnx", "repo": "KittenML/kitten-tts-mini-0.1"},
 }
 
-# 5000-sample trailing trim: NOT part of upstream kittentts==0.1.3 inference
-# (kittentts/__init__.py's KittenTTS.generate() returns the raw graph output
-# with no post-trim). Left here as a documented non-finding rather than a
-# hardcoded no-op: if a future tier needs a trim, wire it through
-# engine_params (e.g. ``trim_trailing_samples``) rather than hardcoding it in
-# the adapter.
-TRAILING_TRIM_SAMPLES = 0
+# No trailing-sample trim: upstream kittentts==0.1.3's KittenTTS.generate()
+# returns the raw graph output with no post-trim, and StyleTTS2Adapter never
+# reads an engine_params trim key, so there is nothing to configure here.
+# Verified end-to-end against the mirrored configs (build synthesis + WER
+# table, see PR description) rather than an upstream source diff.
 
 
 def build_phoneme_id_map() -> dict:
@@ -75,7 +73,6 @@ def build_config(tier: str) -> dict:
         "inference": {"noise_scale": 0.667, "length_scale": 1.0, "noise_w": 0.8},
         "phoneme_id_map": phoneme_id_map,
         "kittentts_tier": tier,
-        "engine_params": {"trim_trailing_samples": TRAILING_TRIM_SAMPLES},
     }
 
 
