@@ -40,6 +40,7 @@ class Engine(str, Enum):
     OUTETTS = "outetts"  # OuteTTS 1.0: Llama/Qwen codec-LM + DAC.speech decoder, 23 languages
     ARKTTS = "arktts"  # ArkTTS (Audio8 / Zortzi): DualAR codec-LM, 10 codebooks, 44.1 kHz codec
     OMNIVOICE = "omnivoice"  # OmniVoice (k2-fsa): masked-diffusion codec LM, 600+ languages
+    INDIC_PARLER = "indic_parler"  # AI4Bharat Indic Parler-TTS: T5 encoder + AR DAC codec LM
 
 
 # Alphabet and PhonemeType are wire-format enums shared with scriptconv;
@@ -387,6 +388,28 @@ class VoiceConfig:
             phoneme_type = phoneme_type or PhonemeType.UNICODE
             alphabet = alphabet or Alphabet.GRAPHEMES
             config.setdefault("audio", {}).setdefault("sample_rate", 16000)
+            tokenizer = TTSTokenizer(
+                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
+                add_blank_char=False,
+                add_blank_word=False,
+                use_eos_bos=False,
+                blank_at_end=False,
+                blank_at_start=False,
+            )
+
+        elif (engine == Engine.INDIC_PARLER or
+                (isinstance(engine, str) and engine == "indic_parler") or
+                config.get("engine") == "indic_parler"):
+            # Indic Parler-TTS consumes raw text and a natural-language voice description.
+            # The adapter owns both: the prompt tokenizer (the checkpoint's own vocabulary)
+            # and the description tokenizer (the Flan-T5 one) are two *different*
+            # vocabularies loaded from engine_params, so no phonemizer vocabulary is built
+            # here. Alphabet.GRAPHEMES routes TTSVoice.synthesize() through
+            # adapter.encode_text(). DAC runs at 44.1 kHz.
+            engine = Engine.INDIC_PARLER
+            phoneme_type = phoneme_type or PhonemeType.UNICODE
+            alphabet = alphabet or Alphabet.GRAPHEMES
+            config.setdefault("audio", {}).setdefault("sample_rate", 44100)
             tokenizer = TTSTokenizer(
                 Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
                 add_blank_char=False,

@@ -147,6 +147,7 @@ def _register_builtins() -> None:
     from phoonnx.engines.outetts import OuteTTSAdapter
     from phoonnx.engines.arktts import ArkTTSAdapter
     from phoonnx.engines.omnivoice import OmniVoiceAdapter
+    from phoonnx.engines.indic_parler import IndicParlerAdapter
 
     # OptiSpeech shares VITS-like x/x_lengths/scales inputs with Matcha, but has
     # a distinctive metadata + wav/durations output signature — check it first.
@@ -167,6 +168,10 @@ def _register_builtins() -> None:
     register_engine("f5tts", F5TTSAdapter, detect_priority=30)
     register_engine("chatterbox", ChatterboxAdapter, detect_priority=29)
     register_engine("supertonic", SuperTonicAdapter, detect_priority=28)
+    # Indic Parler is the only encoder-decoder engine: its prefill graph is the
+    # only one that takes codec_input_ids + prompt_input_ids + encoder_hidden_states
+    # together, so it is probed early and can never steal another engine's model.
+    register_engine("indic_parler", IndicParlerAdapter, detect_priority=18)
     register_engine("neutts", NeuTTSAdapter, detect_priority=27)
     register_engine("pockettts", PocketTTSAdapter, detect_priority=26)
     register_engine("sparktts", SparkTTSAdapter, detect_priority=25)
