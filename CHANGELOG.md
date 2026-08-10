@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.78.0a1](https://github.com/TigreGotico/phoonnx/tree/1.78.0a1) (2026-08-04)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.77.0a1...1.78.0a1)
+
+**Merged pull requests:**
+
+- feat: Magpie-TTS engine \(NVIDIA multi-codebook AR\) [\#362](https://github.com/TigreGotico/phoonnx/pull/362) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.77.0a1](https://github.com/TigreGotico/phoonnx/tree/1.77.0a1) (2026-08-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.76.0a1...1.77.0a1)
@@ -368,7 +376,6 @@
 - feat: add NAMAA-Saudi-TTS-V2 F5 voice \(namaa/ar-sa-v2\) [\#221](https://github.com/TigreGotico/phoonnx/pull/221) ([JarbasAl](https://github.com/JarbasAl))
 - fix: honor voice config's add\_diacritics \(fixes F5-TTS Arabic output\) [\#220](https://github.com/TigreGotico/phoonnx/pull/220) ([JarbasAl](https://github.com/JarbasAl))
 - fix: inline \[\[phoneme\]\] blocks crash on empty leading text [\#219](https://github.com/TigreGotico/phoonnx/pull/219) ([JarbasAl](https://github.com/JarbasAl))
-- fix: tolerate offline sidecar probe when loading a cached voice [\#216](https://github.com/TigreGotico/phoonnx/pull/216) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
