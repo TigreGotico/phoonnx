@@ -140,7 +140,7 @@ train = [
     "diffusers>=0.25.0,<0.36",
     "einops",
     "huggingface_hub",
-    "librosa>=0.9.2,<1",
+    "librosa>=1,<2",
     "numpy>=1.19.0,<2; python_version<'3.13'",
     "numpy>=2.1; python_version>='3.13'",
     # librosa's numba dependency: prerelease resolution can pick a stale
