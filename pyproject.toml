@@ -217,7 +217,7 @@ train-optispeech = [
 # needed because pyworld imports pkg_resources at runtime.
 train-pyworld = [
     "pyworld>=0.3.2",
-    "setuptools<81",
+    "setuptools<85",
 ]
 ar = ["epitran", "arbtok", "text2tashkeel"]
 ca = ["epitran"]
