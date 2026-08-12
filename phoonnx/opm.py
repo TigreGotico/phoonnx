@@ -11,6 +11,8 @@
 # limitations under the License.
 #
 import wave
+from collections import OrderedDict
+from threading import RLock
 from typing import Dict, List, Optional
 from ovos_utils.log import LOG
 from ovos_plugin_manager.templates.tts import TTS
@@ -37,7 +39,32 @@ class PhoonnxTTSPlugin(TTS):
         self.model_manager.load()
         self.model_manager.merge_default_voices()
 
-        self.voices: Dict[str, TTSVoice] = {}
+        # Ordered by least-recently-used, so eviction has an obvious victim.
+        self.voices: "OrderedDict[str, TTSVoice]" = OrderedDict()
+        self._voice_lock = RLock()
+        # Voices that must never be evicted. A cold load costs seconds to
+        # minutes depending on the engine, while a resident voice answers in
+        # milliseconds, so the voices a deployment actually serves are worth
+        # keeping loaded.
+        pinned = self.config.get("pinned_voices") or []
+        # A single voice written as a bare string is the obvious way to get
+        # this wrong, and iterating it would pin one voice per character.
+        if isinstance(pinned, str):
+            pinned = [pinned]
+        # Order is kept so the first pin stays the first loaded; duplicates
+        # would otherwise inflate the ceiling that is raised to fit the pins.
+        self.pinned_voices: List[str] = list(dict.fromkeys(v for v in pinned if v))
+        # How many voices may be resident at once, pinned ones included.
+        # Unset keeps the previous behaviour: never evict anything.
+        self.max_loaded_voices = self._parse_max_loaded(
+            self.config.get("max_loaded_voices"))
+        if (self.max_loaded_voices is not None
+                and len(self.pinned_voices) > self.max_loaded_voices):
+            LOG.error(
+                f"{len(self.pinned_voices)} voices are pinned but "
+                f"max_loaded_voices is {self.max_loaded_voices}; raising the "
+                f"limit to fit them, because a pinned voice is a promise")
+            self.max_loaded_voices = len(self.pinned_voices)
         # Resolve the configured voice now, but do not load it. A voice that was
         # named explicitly and does not exist is a configuration error and still
         # raises here; an unset voice (or "default") resolves to the language's
@@ -47,6 +74,15 @@ class PhoonnxTTSPlugin(TTS):
             self.voice_info = self.get_voice_info(self.voice)
         else:
             self.voice_info = self.get_default_voice(self.lang)
+
+        for voice_id in self.pinned_voices:
+            try:
+                self.get_model(voice_id)
+                LOG.info(f"pinned voice loaded: {voice_id}")
+            except Exception as e:
+                # A pinned voice that cannot load must not stop the service
+                # from starting; it simply is not resident.
+                LOG.error(f"pinned voice '{voice_id}' failed to load: {e}")
 
     def _cfg_opt(self, default, *keys):
         """
@@ -165,12 +201,57 @@ class PhoonnxTTSPlugin(TTS):
         Raises:
             Exception: If `voice_id` is not found after refreshing available voices.
         """
-        if voice_id in self.voices:
-            return self.voices[voice_id]
-        info = self.get_voice_info(voice_id)
+        with self._voice_lock:
+            if voice_id in self.voices:
+                # Touch it so the least recently used voice is the one evicted.
+                self.voices.move_to_end(voice_id)
+                return self.voices[voice_id]
+            info = self.get_voice_info(voice_id)
+
         LOG.debug(f"Using voice: {voice_id}")
-        self.voices[voice_id] = info.load(providers=self._providers())
-        return self.voices[voice_id]
+        # Loaded outside the lock: a cold load takes seconds to minutes, and
+        # holding the lock would stall every other request for that whole time.
+        voice = info.load(providers=self._providers())
+
+        with self._voice_lock:
+            if voice_id not in self.voices:
+                self._evict_for(voice_id)
+                self.voices[voice_id] = voice
+            self.voices.move_to_end(voice_id)
+            return self.voices[voice_id]
+
+    @staticmethod
+    def _parse_max_loaded(value) -> Optional[int]:
+        """Normalize ``max_loaded_voices``; None means no limit."""
+        if value in (None, "", 0):
+            return None
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            LOG.error(f"ignoring invalid max_loaded_voices: {value!r}")
+            return None
+        if parsed < 1:
+            LOG.error(f"ignoring max_loaded_voices={parsed}, it must be at "
+                      f"least 1")
+            return None
+        return parsed
+
+    def _evict_for(self, incoming: str) -> None:
+        """Make room for ``incoming``, never dropping a pinned voice."""
+        if self.max_loaded_voices is None:
+            return
+        while len(self.voices) >= self.max_loaded_voices:
+            victim = next((v for v in self.voices if v not in self.pinned_voices),
+                          None)
+            if victim is None:
+                # Everything resident is pinned: serve the request anyway
+                # rather than evict a voice an operator asked us to keep.
+                LOG.warning(
+                    f"all {len(self.voices)} loaded voices are pinned; "
+                    f"loading '{incoming}' above max_loaded_voices")
+                return
+            self.voices.pop(victim, None)
+            LOG.debug(f"evicted least recently used voice: {victim}")
 
     def get_voice_info(self, voice_id: str) -> TTSModelInfo:
         """
