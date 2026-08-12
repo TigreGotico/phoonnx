@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.78.1a1](https://github.com/TigreGotico/phoonnx/tree/1.78.1a1) (2026-08-12)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.78.0a2...1.78.1a1)
+
+**Merged pull requests:**
+
+- fix: read tokenizer.json without the tokenizers wheel [\#378](https://github.com/TigreGotico/phoonnx/pull/378) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.78.0a2](https://github.com/TigreGotico/phoonnx/tree/1.78.0a2) (2026-08-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.78.0a1...1.78.0a2)
@@ -379,7 +387,6 @@
 - feat: espyak fallback for espeak phonemization [\#222](https://github.com/TigreGotico/phoonnx/pull/222) ([JarbasAl](https://github.com/JarbasAl))
 - feat: add NAMAA-Saudi-TTS-V2 F5 voice \(namaa/ar-sa-v2\) [\#221](https://github.com/TigreGotico/phoonnx/pull/221) ([JarbasAl](https://github.com/JarbasAl))
 - fix: honor voice config's add\_diacritics \(fixes F5-TTS Arabic output\) [\#220](https://github.com/TigreGotico/phoonnx/pull/220) ([JarbasAl](https://github.com/JarbasAl))
-- fix: inline \[\[phoneme\]\] blocks crash on empty leading text [\#219](https://github.com/TigreGotico/phoonnx/pull/219) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
