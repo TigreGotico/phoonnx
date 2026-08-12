@@ -12,6 +12,8 @@
 #
 import wave
 from collections import OrderedDict
+import threading
+from dataclasses import dataclass, field
 from threading import RLock
 from typing import Dict, List, Optional
 from ovos_utils.log import LOG
@@ -19,6 +21,18 @@ from ovos_plugin_manager.templates.tts import TTS
 
 from phoonnx.model_manager import TTSModelManager, TTSModelInfo
 from phoonnx.voice import TTSVoice, SynthesisConfig
+
+
+@dataclass
+class _Loading:
+    """A load in progress, and how it ended.
+
+    Callers that arrive while a voice is loading wait on ``done`` and then read
+    ``error``: either the load succeeded and the voice is in the cache, or it
+    failed and they get the same exception rather than repeating the attempt.
+    """
+    done: threading.Event = field(default_factory=threading.Event)
+    error: Optional[BaseException] = None
 
 
 class PhoonnxTTSPlugin(TTS):
@@ -42,6 +56,9 @@ class PhoonnxTTSPlugin(TTS):
         # Ordered by least-recently-used, so eviction has an obvious victim.
         self.voices: "OrderedDict[str, TTSVoice]" = OrderedDict()
         self._voice_lock = RLock()
+        # One gate per voice currently being loaded, so simultaneous callers
+        # wait for the load already running instead of starting their own.
+        self._loading: Dict[str, threading.Event] = {}
         # Voices that must never be evicted. A cold load costs seconds to
         # minutes depending on the engine, while a resident voice answers in
         # milliseconds, so the voices a deployment actually serves are worth
@@ -201,24 +218,63 @@ class PhoonnxTTSPlugin(TTS):
         Raises:
             Exception: If `voice_id` is not found after refreshing available voices.
         """
-        with self._voice_lock:
-            if voice_id in self.voices:
-                # Touch it so the least recently used voice is the one evicted.
+        while True:
+            with self._voice_lock:
+                if voice_id in self.voices:
+                    # Touch it so the least recently used voice is evicted.
+                    self.voices.move_to_end(voice_id)
+                    return self.voices[voice_id]
+                waiting = self._loading.get(voice_id)
+                if waiting is None:
+                    # This caller owns the load; everyone else waits on it.
+                    self._loading[voice_id] = _Loading()
+                    break
+            # Another caller is loading this voice. Waiting costs nothing and
+            # saves a duplicate multi-gigabyte load.
+            waiting.done.wait()
+            if waiting.error is not None:
+                # Share the failure rather than each waiter retrying it in
+                # turn: the retries are serial, so N callers behind a slow
+                # failure would each wait for the one before. A later request
+                # still gets a fresh attempt, because the gate is gone by then.
+                raise waiting.error
+
+        # Everything from here is inside the try, so no failure can leave the
+        # gate installed. An unknown voice id raises out of get_voice_info, and
+        # that is a request parameter, so this path is reachable from outside.
+        try:
+            with self._voice_lock:
+                info = self.get_voice_info(voice_id)
+
+            LOG.debug(f"Using voice: {voice_id}")
+            # Loaded outside the lock: a cold load takes seconds to minutes,
+            # and holding the lock would stall every other request meanwhile.
+            voice = info.load(providers=self._providers())
+
+        except BaseException as exc:
+            with self._voice_lock:
+                gate = self._loading.pop(voice_id, None)
+            if gate is not None:
+                gate.error = exc
+                gate.done.set()
+            raise
+
+        else:
+            # Cached and released under one hold of the lock. Releasing the
+            # gate first would open a window in which the voice is neither
+            # cached nor being loaded, and a waiter that woke inside it would
+            # elect itself and start a second full cold load — the duplicate
+            # this gate exists to prevent.
+            with self._voice_lock:
+                if voice_id not in self.voices:
+                    self._evict_for(voice_id)
+                    self.voices[voice_id] = voice
                 self.voices.move_to_end(voice_id)
-                return self.voices[voice_id]
-            info = self.get_voice_info(voice_id)
-
-        LOG.debug(f"Using voice: {voice_id}")
-        # Loaded outside the lock: a cold load takes seconds to minutes, and
-        # holding the lock would stall every other request for that whole time.
-        voice = info.load(providers=self._providers())
-
-        with self._voice_lock:
-            if voice_id not in self.voices:
-                self._evict_for(voice_id)
-                self.voices[voice_id] = voice
-            self.voices.move_to_end(voice_id)
-            return self.voices[voice_id]
+                cached = self.voices[voice_id]
+                gate = self._loading.pop(voice_id, None)
+            if gate is not None:
+                gate.done.set()
+            return cached
 
     @staticmethod
     def _parse_max_loaded(value) -> Optional[int]:
