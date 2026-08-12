@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.78.0a2](https://github.com/TigreGotico/phoonnx/tree/1.78.0a2) (2026-08-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.78.0a1...1.78.0a2)
+
+**Merged pull requests:**
+
+- chore: add Apache-2.0 LICENSE [\#374](https://github.com/TigreGotico/phoonnx/pull/374) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.78.0a1](https://github.com/TigreGotico/phoonnx/tree/1.78.0a1) (2026-08-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.77.0a1...1.78.0a1)
@@ -171,10 +179,6 @@
 ## [1.64.0a1](https://github.com/TigreGotico/phoonnx/tree/1.64.0a1) (2026-07-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.63.0a2...1.64.0a1)
-
-**Merged pull requests:**
-
-- feat: optional post-synthesis audio super-resolution \(audiosronnx\) [\#218](https://github.com/TigreGotico/phoonnx/pull/218) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.63.0a2](https://github.com/TigreGotico/phoonnx/tree/1.63.0a2) (2026-07-24)
 
