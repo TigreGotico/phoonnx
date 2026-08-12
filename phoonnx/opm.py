@@ -46,9 +46,14 @@ class PhoonnxTTSPlugin(TTS):
         # minutes depending on the engine, while a resident voice answers in
         # milliseconds, so the voices a deployment actually serves are worth
         # keeping loaded.
-        self.pinned_voices: List[str] = [
-            v for v in (self.config.get("pinned_voices") or []) if v
-        ]
+        pinned = self.config.get("pinned_voices") or []
+        # A single voice written as a bare string is the obvious way to get
+        # this wrong, and iterating it would pin one voice per character.
+        if isinstance(pinned, str):
+            pinned = [pinned]
+        # Order is kept so the first pin stays the first loaded; duplicates
+        # would otherwise inflate the ceiling that is raised to fit the pins.
+        self.pinned_voices: List[str] = list(dict.fromkeys(v for v in pinned if v))
         # How many voices may be resident at once, pinned ones included.
         # Unset keeps the previous behaviour: never evict anything.
         self.max_loaded_voices = self._parse_max_loaded(

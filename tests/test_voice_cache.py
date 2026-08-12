@@ -79,6 +79,17 @@ class TestPinning(unittest.TestCase):
         for v in ("a", "b", "c"):
             self.assertIn(v, plugin.voices)
 
+    def test_a_single_pin_written_as_a_string_is_one_voice(self):
+        # Iterating a bare string would pin one voice per character, and the
+        # "pins win" rule would then raise the ceiling to fit all of them —
+        # a typo would silently remove the bound entirely.
+        plugin = _plugin(self, pinned_voices="OpenVoiceOS/foo")
+        self.assertEqual(plugin.pinned_voices, ["OpenVoiceOS/foo"])
+
+    def test_duplicate_pins_are_collapsed(self):
+        plugin = _plugin(self, pinned_voices=["a", "a", "b"], max_loaded_voices=5)
+        self.assertEqual(plugin.pinned_voices, ["a", "b"])
+
     def test_a_pinned_voice_that_cannot_load_does_not_stop_startup(self):
         from phoonnx.opm import PhoonnxTTSPlugin
         with patch("phoonnx.opm.TTSModelManager"), \
