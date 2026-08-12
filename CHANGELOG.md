@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.79.1a1](https://github.com/TigreGotico/phoonnx/tree/1.79.1a1) (2026-08-12)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.79.0a1...1.79.1a1)
+
+**Merged pull requests:**
+
+- fix: decode ids back to text without the `tokenizers` package [\#385](https://github.com/TigreGotico/phoonnx/pull/385) ([JarbasAl](https://github.com/JarbasAl))
+- fix: load a cold voice once, however many callers ask at the same time [\#384](https://github.com/TigreGotico/phoonnx/pull/384) ([JarbasAl](https://github.com/JarbasAl))
+- fix: fetch voice files through the shared HuggingFace cache [\#379](https://github.com/TigreGotico/phoonnx/pull/379) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.79.0a1](https://github.com/TigreGotico/phoonnx/tree/1.79.0a1) (2026-08-12)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.78.1a2...1.79.0a1)
+
+**Merged pull requests:**
+
+- feat: bound the loaded-voice cache and let voices be pinned in memory [\#380](https://github.com/TigreGotico/phoonnx/pull/380) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.78.1a2](https://github.com/TigreGotico/phoonnx/tree/1.78.1a2) (2026-08-12)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.78.1a1...1.78.1a2)
@@ -391,9 +409,6 @@
 - fix: replace monotonic\_align C extension with pure numpy implementation [\#227](https://github.com/TigreGotico/phoonnx/pull/227) ([JarbasAl](https://github.com/JarbasAl))
 - fix: fraction error-handling test patched the wrong reference [\#226](https://github.com/TigreGotico/phoonnx/pull/226) ([JarbasAl](https://github.com/JarbasAl))
 - feat: orthography2ipa lattice phonemizer backends \(o2i, arbtok, euskaphone, barranquenho\) + mwl fix [\#225](https://github.com/TigreGotico/phoonnx/pull/225) ([JarbasAl](https://github.com/JarbasAl))
-- fix: register TTS plugin under opm.tts entry-point group [\#223](https://github.com/TigreGotico/phoonnx/pull/223) ([JarbasAl](https://github.com/JarbasAl))
-- feat: espyak fallback for espeak phonemization [\#222](https://github.com/TigreGotico/phoonnx/pull/222) ([JarbasAl](https://github.com/JarbasAl))
-- feat: add NAMAA-Saudi-TTS-V2 F5 voice \(namaa/ar-sa-v2\) [\#221](https://github.com/TigreGotico/phoonnx/pull/221) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
