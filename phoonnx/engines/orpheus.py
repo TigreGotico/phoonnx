@@ -209,8 +209,8 @@ class OrpheusAdapter(BaseOnnxAdapter):
         if self.snac is None and ep.get("snac_decoder_path"):
             self.snac = make_session(ep["snac_decoder_path"], providers=ep.get("providers"))
         if self.tokenizer is None and ep.get("tokenizer_path"):
-            from tokenizers import Tokenizer
-            self.tokenizer = Tokenizer.from_file(str(ep["tokenizer_path"]))
+            from phoonnx.tokenizer import load_hf_tokenizer
+            self.tokenizer = load_hf_tokenizer(ep["tokenizer_path"])
         if not self.voices:
             self.voices = list(ep.get("voices") or [])
             self.default_voice = ep.get("default_voice") or (self.voices[0] if self.voices else None)
