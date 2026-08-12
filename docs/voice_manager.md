@@ -99,21 +99,30 @@ the on-disk cache; `save()` writes the current in-memory voices back out.
 
 ## Cache Location
 
-Downloaded files for a voice are cached per voice under the XDG cache directory:
+Voice files are not kept in a phoonnx-owned directory. They are fetched with
+`huggingface_hub` and used exactly where it puts them: the shared HuggingFace hub
+cache (`~/.cache/huggingface/hub/` by default, or wherever `HF_HOME`/`HF_HUB_CACHE`
+points). A model named by many voices, or already pulled by another program on the
+machine, is stored once and reused rather than downloaded again — the model file,
+its config, tokenizer artifacts and any vocoder/style/speaker-encoder/auxiliary
+graphs all land in the same hub snapshot directory.
 
-```
-~/.cache/phoonnx/voices/<voice_id>/
-    model.onnx
-    model.json             (if the voice has a config_url)
-    tokens.txt             (Mimic3/Sherpa style, if applicable)
-    vocab.json             (Transformers style, if applicable)
-    tokenizer_config.json  (if applicable)
-    vocoder.onnx           (two-stage engines, if applicable)
-```
+A voice whose URL is not a HuggingFace file URL (a self-hosted or mirrored voice)
+cannot be served by the hub client, so it still gets a private copy under the hub
+cache instead; it just does not get the sharing/dedup benefit.
 
-`TTSModelInfo.voice_path` returns this directory
-(`~/.cache/phoonnx/voices/<voice_id>`). The voice catalog cache itself is a separate
-`JsonStorageXDG` under `phoonnx/voices`.
+`TTSModelInfo.voice_path` returns the directory the voice's primary graph lives in
+— the hub snapshot directory, or the private-copy directory for a non-hub URL.
+
+If you upgraded from an older phoonnx, voices already downloaded under the old
+`~/.cache/phoonnx/voices/<voice_id>/` layout are not reused; each voice is fetched
+once more into the hub cache. That old directory is safe to delete if you want the
+space back.
+
+The voice catalog cache is a separate thing from these model files: it is a
+`JsonStorageXDG` under `phoonnx/voices` in the XDG cache directory (see
+[`Basic Usage`](#basic-usage) above), and only holds the voice index, not any
+downloaded model.
 
 ## TTSModelInfo
 

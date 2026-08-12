@@ -25,13 +25,10 @@ phoonnx-voices download OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone
 ```
 
 `update-cache` prints how many voices and languages are now available. `download` fetches the
-model into the per-voice cache directory:
-
-```
-~/.cache/phoonnx/voices/OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone/
-├── model.onnx     # the ONNX voice
-└── model.json     # its configuration
-```
+model with `huggingface_hub`, straight into the shared HuggingFace cache
+(`~/.cache/huggingface/hub/` by default) — the model and its config land together in the
+voice's hub snapshot directory, alongside anything else on the machine that has already
+pulled the same files.
 
 The full command set is in the [CLI reference](cli.md); browsing and caching is covered in the
 [Voice manager](voice_manager.md) guide.
