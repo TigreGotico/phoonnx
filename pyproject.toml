@@ -271,6 +271,12 @@ audiosr = ["audiosronnx"]
 chatterbox-multilingual = ["pykakasi==2.3.0", "spacy-pkuseg"]
 # everything optional — every language phonemizer + cloning. Used by the Docker image.
 all = [
+    # scriptconv splits its phonemizers per language, so the base set
+    # alone leaves "all" without Portuguese, Arabic, English, Japanese
+    # and Chinese backends, and a voice that asks for one fails at
+    # synthesis with an ImportError.
+    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel]>=0.0.4a19",
+    "text2tashkeel",
     "epitran",
     "gruut[de]>=2.3.0,<3.0", "gruut[en]>=2.3.0,<3.0", "gruut[ja]>=2.3.0,<3.0",
     "gruut[vi]>=2.3.0,<3.0", "gruut[zh]>=2.3.0,<3.0",

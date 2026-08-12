@@ -40,6 +40,7 @@ For anyone extending phoonnx or debugging a voice.
 - [Phoneme alignment](alignment.md) — per-phoneme timing for visemes, karaoke, subtitles
 - [OVOS plugin](ovos_plugin.md) — the `ovos-tts-plugin-phoonnx` TTS plugin
 - [Docker / TTS server](docker.md)
+- [Deployment](deployment.md) — running a long-lived server: cache, prefetch, health checks
 
 ## Per-engine guides
 

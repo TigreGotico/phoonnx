@@ -75,6 +75,10 @@ The `phoonnx-cache` named volume keeps the voice index and downloaded models acr
 restarts. Models download on first use of a voice; the pre-filled index means the
 server itself starts without needing the network.
 
+For running this image as a public or long-lived service — persisting the cache
+correctly, prefetching voice weights before serving traffic, health checks, and
+sizing — see [deployment.md](deployment.md).
+
 ## Building locally
 
 ```bash

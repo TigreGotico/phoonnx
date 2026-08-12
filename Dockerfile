@@ -37,4 +37,6 @@ EXPOSE 9666
 
 # --cache persists synthesized audio across restarts. The selected voice (and any
 # cloning settings) are configured via mycroft.conf — see docs/docker.md.
-ENTRYPOINT ["ovos-tts-server", "--engine", "ovos-tts-plugin-phoonnx", "--cache"]
+# The entrypoint optionally prefetches voice weights (PHOONNX_PREFETCH_VOICES)
+# before exec'ing the server — see docs/deployment.md.
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

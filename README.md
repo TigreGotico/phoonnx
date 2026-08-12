@@ -90,7 +90,8 @@ Full options in [docs/ovos_plugin.md](docs/ovos_plugin.md).
 docker compose up
 ```
 
-See [docs/docker.md](docs/docker.md).
+See [docs/docker.md](docs/docker.md). For running it as a public or long-lived
+service, see [docs/deployment.md](docs/deployment.md).
 
 ## Related projects
 
