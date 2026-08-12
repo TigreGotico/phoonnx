@@ -782,6 +782,30 @@ class TTSTokenizer:
                             use_eos_bos=use_eos_bos)
 
 
+def load_hf_tokenizer(tokenizer_json: str):
+    """Read a HuggingFace ``tokenizer.json`` without a compiled dependency.
+
+    The pure-Python reader in :mod:`phoonnx._bpe` covers the vocabularies the
+    voices ship, so the batteries-included install needs no Rust wheel. A vocab
+    that declares something it does not implement raises
+    :class:`~phoonnx._bpe.UnsupportedTokenizer`; the ``tokenizers`` package then
+    takes over when it is installed, so an exotic vocab degrades instead of
+    failing.
+    """
+    from phoonnx._bpe import Tokenizer as PurePythonTokenizer, UnsupportedTokenizer
+    path = str(tokenizer_json)
+    try:
+        return PurePythonTokenizer.from_file(path)
+    except UnsupportedTokenizer as unsupported:
+        try:
+            from tokenizers import Tokenizer
+        except ImportError:
+            raise unsupported
+        LOG.debug("%s is beyond the built-in reader (%s); using `tokenizers`",
+                  path, unsupported)
+        return Tokenizer.from_file(path)
+
+
 class BPETokenizer:
     """Subword (BPE) tokenizer — raw text -> subword ids via a HuggingFace ``tokenizer.json``.
 
@@ -795,8 +819,7 @@ class BPETokenizer:
     """
 
     def __init__(self, tokenizer_json: str):
-        from tokenizers import Tokenizer
-        self._tok = Tokenizer.from_file(str(tokenizer_json))
+        self._tok = load_hf_tokenizer(tokenizer_json)
 
     # vocab-lookup token roles do not apply to subword tokenization
     pad_id = None
@@ -865,8 +888,7 @@ def load_chatterbox_tokenizer(tokenizer_json: str) -> BPETokenizer:
     end); base/turbo don't. So a ``[SPACE]`` token selects ``ChatterboxMTLTokenizer``,
     otherwise a plain ``BPETokenizer``. The raw tokenizer is loaded once and shared.
     """
-    from tokenizers import Tokenizer
-    raw = Tokenizer.from_file(str(tokenizer_json))
+    raw = load_hf_tokenizer(tokenizer_json)
     cls = ChatterboxMTLTokenizer if raw.token_to_id("[SPACE]") is not None else BPETokenizer
     tok = cls.__new__(cls)
     tok._tok = raw

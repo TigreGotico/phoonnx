@@ -187,11 +187,11 @@ class IndicParlerAdapter(BaseOnnxAdapter):
         if self.dac_decoder is None and ep.get("dac_decoder_path"):
             self.dac_decoder = make_session(ep["dac_decoder_path"], providers=providers)
         if self.prompt_tokenizer is None and ep.get("prompt_tokenizer_path"):
-            from tokenizers import Tokenizer
-            self.prompt_tokenizer = Tokenizer.from_file(str(ep["prompt_tokenizer_path"]))
+            from phoonnx.tokenizer import load_hf_tokenizer
+            self.prompt_tokenizer = load_hf_tokenizer(ep["prompt_tokenizer_path"])
         if self.description_tokenizer is None and ep.get("description_tokenizer_path"):
-            from tokenizers import Tokenizer
-            self.description_tokenizer = Tokenizer.from_file(str(ep["description_tokenizer_path"]))
+            from phoonnx.tokenizer import load_hf_tokenizer
+            self.description_tokenizer = load_hf_tokenizer(ep["description_tokenizer_path"])
         if ep.get("description"):
             self.description = str(ep["description"])
         for key, cast in (("temperature", float), ("top_k", int), ("max_new_tokens", int)):

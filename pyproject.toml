@@ -97,6 +97,13 @@ test = [
     "pypinyin>=0.50",
     # cross-check reference for the Larynx/Mimic3 tokenization golden tests
     "gruut[en]>=2.3.0,<3.0",
+    # reference implementation for tests/test_bpe_reader.py. phoonnx reads
+    # tokenizer.json with its own pure-Python reader (phoonnx/_bpe.py) so the
+    # install needs no compiled wheel; the test proves the reader returns the
+    # same ids as this package, byte for byte. Test-only on purpose — a wrong
+    # id makes wrong audio instead of an error, so the comparison must run in
+    # CI even though nothing ships it.
+    "tokenizers",
     # onnx uses ml_dtypes.float4_e2m1fn (added in ml_dtypes 0.5) but the
     # resolver can pair it with ml_dtypes 0.4.x, which breaks `import onnx`
     # at collection time; ml_dtypes>=0.5 needs numpy>=2.1 on Python 3.13+,
@@ -133,6 +140,13 @@ pockettts = [
 # contract (leading/trailing/internal silence trimmed to the configured
 # padding), so this extra is a quality/perf opt-in, not a hard requirement.
 omnivoice = ["pydub"]
+# Indic Parler is the one engine whose vocabularies the built-in tokenizer.json
+# reader (phoonnx/_bpe.py) cannot read. Its description tokenizer is a T5
+# Unigram vocabulary, and its prompt tokenizer — the text actually spoken — is
+# BPE with `byte_fallback` and `fuse_unk`, which the reader does not implement
+# and therefore declines. Every other tokenizer.json phoonnx loads is plain BPE
+# and needs no extra.
+indic-parler = ["tokenizers"]
 train = [
     # diffusers>=0.36 references torch.xpu at import time, which only exists on
     # torch>=2.4; capping keeps the vendored matcha decoder importable across
@@ -268,6 +282,9 @@ all = [
     "soundfile", "scipy",
     "orthography2ipa", "arbtok", "euskaphone", "g2p_barranquenho", "mwl_phonemizer",
     "pydub",
+    # Indic Parler needs the compiled reader; `all` is what the image installs,
+    # and it carried a working Indic Parler before.
+    "tokenizers",
 ]
 
 [tool.setuptools.dynamic]
