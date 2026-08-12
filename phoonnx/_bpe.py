@@ -1,7 +1,8 @@
 """A reader for HuggingFace ``tokenizer.json`` files, in pure Python.
 
-phoonnx needs three things from a tokenizer: load a ``tokenizer.json``, encode
-text to ids, and look a token up by name. That is a small enough surface to
+phoonnx needs four things from a tokenizer: load a ``tokenizer.json``, encode
+text to ids, decode ids back to text, and look a token up by name. That is a
+small enough surface to
 implement directly, which keeps a compiled dependency out of the install for
 the handful of voices that carry a BPE vocab.
 
@@ -42,6 +43,12 @@ def _byte_to_unicode() -> Dict[int, str]:
             mapped.append(256 + spare)
             spare += 1
     return {b: chr(c) for b, c in zip(printable, mapped)}
+
+
+@lru_cache(maxsize=1)
+def _unicode_to_byte() -> Dict[str, int]:
+    """The GPT-2 byte decoder table: the inverse of :func:`_byte_to_unicode`."""
+    return {char: byte for byte, char in _byte_to_unicode().items()}
 
 
 @lru_cache(maxsize=None)
@@ -419,6 +426,143 @@ def _check_bpe_options(model: dict) -> None:
             f"ids, and this reader would ignore them")
 
 
+def _wordpiece_cleanup(text: str) -> str:
+    """Undo the spacing WordPiece tokenization puts around punctuation."""
+    for old, new in ((" .", "."), (" ?", "?"), (" !", "!"), (" ,", ","),
+                     (" ' ", "'"), (" n't", "n't"), (" 'm", "'m"),
+                     (" do not", " don't"), (" 's", "'s"), (" 've", "'ve"),
+                     (" 're", "'re")):
+        text = text.replace(old, new)
+    return text
+
+
+def _byte_level_decode(tokens: List[str]) -> List[str]:
+    """Read the GPT-2 byte characters back into the bytes they stand for.
+
+    A token whose characters are not all in the table is passed through as its
+    own UTF-8 bytes, and the whole run is decoded once at the end — a character
+    can be split across two tokens, so decoding token by token would break it.
+    """
+    table = _unicode_to_byte()
+    raw = bytearray()
+    for token in tokens:
+        try:
+            raw.extend(table[char] for char in token)
+        except KeyError:
+            raw.extend(token.encode("utf-8"))
+    return [raw.decode("utf-8", "replace")]
+
+
+def _decode_chain(tokens: List[str], spec: Optional[dict]) -> List[str]:
+    """One step of the decoder, token list in and token list out.
+
+    This mirrors ``tokenizers``' ``decode_chain``: a decoder rewrites the list
+    of tokens, and the pieces are joined with nothing at the end.
+    """
+    if not spec:
+        return tokens
+    kind = spec.get("type")
+    if kind == "Sequence":
+        for step in spec.get("decoders") or []:
+            tokens = _decode_chain(tokens, step)
+        return tokens
+    if kind == "ByteLevel":
+        return _byte_level_decode(tokens)
+    if kind == "Metaspace":
+        replacement = spec.get("replacement", "▁")
+        scheme = spec.get("prepend_scheme", "always")
+        if scheme not in ("always", "first", "never"):
+            raise UnsupportedTokenizer(f"Metaspace prepend_scheme={scheme!r}")
+        out = []
+        for index, token in enumerate(tokens):
+            if index == 0 and scheme != "never":
+                token = "".join("" if c == replacement else c for c in token)
+            else:
+                token = token.replace(replacement, " ")
+            out.append(token)
+        return out
+    if kind == "WordPiece":
+        prefix = spec.get("prefix", "##")
+        cleanup = spec.get("cleanup", True)
+        out = []
+        for index, token in enumerate(tokens):
+            if index != 0:
+                if token.startswith(prefix):
+                    token = token.replace(prefix, "", 1)
+                else:
+                    token = " " + token
+            out.append(_wordpiece_cleanup(token) if cleanup else token)
+        return out
+    if kind == "Replace":
+        pattern = spec.get("pattern", {})
+        content = spec.get("content", "")
+        if "String" in pattern:
+            return [t.replace(pattern["String"], content) for t in tokens]
+        if "Regex" in pattern:
+            # Refused rather than approximated. The reference implementation
+            # compiles the pattern with the Rust regex crate and inserts the
+            # replacement literally, so Python's `re` differs twice over: it
+            # expands backreferences in the replacement, and it rejects (or
+            # worse, reinterprets) Rust-only syntax such as \p{L} and POSIX
+            # classes. Both produce plausible text that is quietly wrong,
+            # which nobody notices in synthesized speech. No shipped
+            # vocabulary uses a Regex Replace decoder.
+            raise UnsupportedTokenizer(
+                f"a Replace decoder with a regular-expression pattern "
+                f"({pattern['Regex']!r}) is not implemented by the built-in "
+                f"tokenizer.json reader; install the `tokenizers` package "
+                f"(`pip install tokenizers`) to decode with this vocabulary")
+        raise UnsupportedTokenizer(f"Replace pattern {pattern!r}")
+    if kind == "Strip":
+        content = spec.get("content", " ")
+        start = int(spec.get("start", 0) or 0)
+        stop = int(spec.get("stop", 0) or 0)
+        out = []
+        for token in tokens:
+            begin = 0
+            while begin < start and begin < len(token) and token[begin] == content:
+                begin += 1
+            end = 0
+            while (end < stop and end < len(token) - begin
+                   and token[len(token) - 1 - end] == content):
+                end += 1
+            out.append(token[begin:len(token) - end])
+        return out
+    if kind == "Fuse":
+        return ["".join(tokens)]
+    if kind == "ByteFallback":
+        out: List[str] = []
+        pending = bytearray()
+
+        def flush() -> None:
+            if not pending:
+                return
+            try:
+                out.append(pending.decode("utf-8"))
+            except UnicodeDecodeError:
+                out.extend("�" * len(pending))
+            pending.clear()
+
+        for token in tokens:
+            byte = None
+            if len(token) == 6 and token.startswith("<0x") and token.endswith(">"):
+                try:
+                    byte = int(token[3:5], 16)
+                except ValueError:
+                    byte = None
+            if byte is None:
+                flush()
+                out.append(token)
+            else:
+                pending.append(byte)
+        flush()
+        return out
+    raise UnsupportedTokenizer(
+        f"decoder {kind!r} is not implemented by the built-in tokenizer.json "
+        f"reader; install the `tokenizers` package (`pip install tokenizers`) "
+        f"to decode with this vocabulary")
+
+
 class Encoding:
     """The subset of the ``tokenizers`` Encoding that phoonnx reads."""
 
@@ -445,7 +589,17 @@ class Tokenizer:
         self._model_vocab: Dict[str, int] = dict(model.get("vocab") or {})
         self._vocab: Dict[str, int] = dict(self._model_vocab)
         self._added = {t["content"]: t["id"] for t in spec.get("added_tokens", [])}
+        self._special = {t["content"] for t in spec.get("added_tokens", [])
+                         if t.get("special")}
         self._vocab.update(self._added)
+        self._decoder = spec.get("decoder")
+        # Checked here rather than at the first decode. The caller falls back
+        # to the `tokenizers` package when this reader refuses a file, and
+        # that fallback only exists around loading — a decoder that raised
+        # lazily would load fine, encode fine, and then fail in the middle of
+        # synthesis on a machine where `tokenizers` could have decoded it.
+        _decode_chain([""], self._decoder)
+        self._by_id: Optional[Dict[int, str]] = None
         self._bpe = _BPE(self._vocab, model.get("merges") or [],
                          model.get("unk_token"),
                          model.get("continuing_subword_prefix") or "",
@@ -474,10 +628,35 @@ class Tokenizer:
         return self._vocab.get(token)
 
     def id_to_token(self, index: int) -> Optional[str]:
-        for token, value in self._vocab.items():
-            if value == index:
-                return token
-        return None
+        if self._by_id is None:
+            # First name wins, which is the order a scan of the vocab found.
+            by_id: Dict[int, str] = {}
+            for token, value in self._vocab.items():
+                by_id.setdefault(value, token)
+            self._by_id = by_id
+        return self._by_id.get(index)
+
+    def decode(self, ids: List[int], skip_special_tokens: bool = True) -> str:
+        """Turn ids back into text, the way ``tokenizers`` does it.
+
+        An id outside the vocabulary has no token to contribute, so it is
+        dropped rather than guessed at. The tokens then run through whatever
+        the file declares in its ``decoder`` section; a decoder this reader
+        does not implement raises :class:`UnsupportedTokenizer` instead of
+        returning text that would be subtly wrong.
+        """
+        tokens: List[str] = []
+        for index in ids:
+            token = self.id_to_token(int(index))
+            if token is None:
+                continue
+            if skip_special_tokens and token in self._special:
+                continue
+            tokens.append(token)
+        if not self._decoder:
+            # No decoder declared: the reference implementation joins on a space.
+            return " ".join(tokens)
+        return "".join(_decode_chain(tokens, self._decoder))
 
     def encode(self, text: str, add_special_tokens: bool = True) -> Encoding:
         ids: List[int] = []

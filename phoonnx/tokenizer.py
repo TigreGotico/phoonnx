@@ -837,6 +837,15 @@ class BPETokenizer:
     def encode(self, text: Union[str, List[str]]) -> List[int]:
         return self.tokenize(text)
 
+    def decode(self, ids: List[int], skip_special_tokens: bool = True) -> str:
+        """Subword ids back to text — the inverse of :meth:`tokenize`.
+
+        Text-token models hand back the ids of the text they read, and the
+        engine needs the string again to align it with the audio.
+        """
+        return self._tok.decode([int(i) for i in ids],
+                                skip_special_tokens=skip_special_tokens)
+
 
 class ChatterboxMTLTokenizer(BPETokenizer):
     """Multilingual Chatterbox tokenizer — the language-aware front end on top of the BPE.

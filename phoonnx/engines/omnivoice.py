@@ -202,7 +202,7 @@ class OmniVoiceAdapter(BaseOnnxAdapter):
 
     def _decode_ids(self, ids: np.ndarray) -> str:
         """Recover the chunk's text from the ids the voice layer handed back."""
-        return self.tokenizer._tok.decode([int(i) for i in np.asarray(ids).reshape(-1)])
+        return self.tokenizer.decode([int(i) for i in np.asarray(ids).reshape(-1)])
 
     # ------------------------------------------------------------------
     # Reference clip
