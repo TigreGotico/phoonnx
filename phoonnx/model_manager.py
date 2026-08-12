@@ -1,11 +1,17 @@
+import hashlib
 import onnxruntime
 import json
 import os
+import re
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Optional, Dict, List, Any, Sequence
 import requests
+from huggingface_hub import hf_hub_download
+from huggingface_hub.constants import HF_HUB_CACHE
+from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
+                                    OfflineModeIsEnabled)
 from json_database import JsonStorageXDG, JsonStorage
 
 from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet
@@ -33,12 +39,44 @@ def _is_cached(path: Path) -> bool:
         return False
 
 
+# The hub is asked for a file's metadata before its body. That call is one
+# small request, so it should give up long before the body timeout would: a
+# blackholed network otherwise stalls the caller for the full body budget
+# before the download it is blocking has even started.
+_ETAG_TIMEOUT = 10
+
+
+def _sidecar_url(url: str) -> str:
+    """The external-weights URL for ``url``, keeping any query intact.
+
+    The suffix belongs on the path, not on the end of the string: appending it
+    to ``model.onnx?download=true`` yields ``download=true_data``, a query the
+    hub ignores, so the request comes back as the graph itself. The sidecar
+    then looks like it was fetched when it never was, and the graph is handed
+    to onnxruntime with its weights missing.
+    """
+    head, sep, tail = url.partition("?")
+    return f"{head}_data{sep}{tail}"
+
+
 def _expected_size(response) -> Optional[int]:
-    """Content-Length of a response, or None when absent/unusable."""
+    """Content-Length of a response, or None when absent/unusable.
+
+    A compressed response is a deliberate ``None``: ``Content-Length`` then
+    counts the bytes on the wire, while the stream below yields the decoded
+    body, so comparing the two condemns a download that arrived intact.
+    """
     try:
-        raw = response.headers.get("Content-Length")
+        headers = response.headers
     except AttributeError:
         return None
+    try:
+        encoding = (headers.get("Content-Encoding") or "").strip().lower()
+    except AttributeError:
+        encoding = ""
+    if encoding and encoding != "identity":
+        return None
+    raw = headers.get("Content-Length")
     if not isinstance(raw, (str, int)) or isinstance(raw, bool):
         return None
     try:
@@ -47,14 +85,18 @@ def _expected_size(response) -> Optional[int]:
         return None
 
 
-def _stream_to_file(url: str, dest: Path, timeout: int = 120) -> Path:
-    """Stream ``url`` into ``dest`` atomically.
+
+def _direct_stream(url: str, dest: Path, timeout: int = 120) -> Path:
+    """Stream ``url`` into ``dest`` atomically, outside the shared cache.
 
     The body is written to a sibling ``.part`` file and only renamed onto
     ``dest`` once it has been fully received (and matches ``Content-Length``,
     when the server sends one). An interrupted download therefore leaves at
     most a stale ``.part`` file, never a truncated artifact that later runs
     would mistake for a complete one.
+
+    This is the path for a self-hosted or mirrored voice, which the hub client
+    cannot serve. It gets a private copy.
     """
     tmp = _tmp_path(dest)
     written = 0
@@ -77,51 +119,97 @@ def _stream_to_file(url: str, dest: Path, timeout: int = 120) -> Path:
     return dest
 
 
-def _write_bytes_atomic(dest: Path, data: bytes) -> Path:
-    """Write ``data`` to ``dest`` via a sibling ``.part`` file + rename."""
-    tmp = _tmp_path(dest)
-    try:
-        tmp.write_bytes(data)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
-    os.replace(tmp, dest)
-    return dest
+def _direct_dir(url: str) -> Path:
+    """Where a file the hub cannot serve is kept.
 
+    Self-hosted and mirrored voices still have to land somewhere, and that
+    somewhere has the same requirement as a hub snapshot: a graph and the
+    external-data sidecar it names must share one directory, or onnxruntime
+    refuses to follow the reference. The directory is keyed by the URL's own
+    directory, so files published together stay together.
 
-def _write_json_atomic(dest: Path, data: Any) -> Path:
-    """Serialize ``data`` to ``dest`` via a sibling ``.part`` file + rename."""
-    tmp = _tmp_path(dest)
-    try:
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
-    os.replace(tmp, dest)
-    return dest
-
-
-def _load_cached_json(path: Path) -> Optional[Dict[str, Any]]:
-    """Load a cached JSON file, self-healing a corrupt one.
-
-    Returns ``None`` when the file is missing, empty or undecodable; in the
-    corrupt case the file is unlinked so the caller re-downloads it once
-    instead of failing forever on a bad cache entry.
+    It lives inside the HuggingFace cache, not in a phoonnx-owned one. There is
+    exactly one place voice files are kept, and ``HF_HOME`` moves all of it.
     """
-    if not _is_cached(path):
-        path.unlink(missing_ok=True)
+    base = url.split("?")[0].rsplit("/", 1)[0]
+    digest = hashlib.sha256(base.encode("utf-8")).hexdigest()[:32]
+    return Path(HF_HUB_CACHE) / "phoonnx-direct" / digest
+
+
+def _resolve(url: str, timeout: int = 120) -> Path:
+    """Give the local path of ``url``, downloading it once.
+
+    Hub files are fetched with the hub client and used exactly where it puts
+    them: one copy per file and revision, in the cache the rest of the machine
+    already shares, so a model named by hundreds of voices is stored once and a
+    model another program has already pulled is not pulled again. Nothing is
+    copied or linked out of it — a graph that names an external-data sidecar
+    only loads from the directory that holds both, and that is the hub's.
+
+    A URL the hub cannot serve is streamed into :func:`_direct_dir` instead,
+    with a warning, because breaking self-hosted voices costs more than the
+    duplicate copy they keep.
+
+    Raises:
+        huggingface_hub.errors.EntryNotFoundError: no such file on the hub.
+        requests.exceptions.RequestException: the direct download failed.
+    """
+    cached = _hf_fetch(url, timeout)
+    if cached is not None:
+        return cached
+    _warn_offhub(url)
+    dest = _direct_dir(url) / (url.split("?")[0].rsplit("/", 1)[-1] or "artifact")
+    if _is_cached(dest):
+        return dest
+    return _direct_stream(url, dest, timeout)
+
+
+_HF_URL = re.compile(
+    r"https?://huggingface\.co/(?P<repo>[^/]+/[^/]+)/(?:resolve|raw)/(?P<rev>[^/]+)/(?P<path>.+)")
+
+# Raised by the hub client when the file, not the network, is the problem, and
+# when the client is offline with nothing cached. Both mean "no file here".
+_NO_SUCH_FILE = (EntryNotFoundError, OfflineModeIsEnabled, LocalEntryNotFoundError)
+
+
+def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
+    """Give the shared HuggingFace cache path for ``url``, downloading it once.
+
+    Both hub file forms are understood: ``/resolve/<rev>/`` (the form the voice
+    index uses) and ``/raw/<rev>/``, which serves the same bytes for the small
+    text artifacts.
+
+    Returns ``None`` for a URL the hub cannot serve — a self-hosted or mirrored
+    voice. Those are rare but legitimate, so the caller downloads them
+    directly; they just do not get the deduplication.
+    """
+    match = _HF_URL.match(url.split("?")[0])
+    if not match:
         return None
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
-        LOG.warning(f"discarding corrupt cached json '{path}': {e}")
-        path.unlink(missing_ok=True)
-        return None
+    return Path(hf_hub_download(repo_id=match["repo"],
+                                filename=match["path"],
+                                revision=match["rev"],
+                                etag_timeout=min(timeout, _ETAG_TIMEOUT)))
+
+
+def _warn_offhub(url: str) -> None:
+    LOG.warning(f"not a HuggingFace file URL, so this download is a private copy "
+                f"that no other voice or program can share: {url}")
+
+
+def _read_json(path: Path) -> Any:
+    """Parse the JSON at ``path``."""
+    with open(path, "r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _hub_json(url: str) -> Any:
+    """Give the parsed JSON at ``url``, from the shared cache."""
+    return _read_json(_resolve(url))
 
 
 @dataclass
+
 class TTSModelInfo:
     voice_id: str
     lang: str  # not always present in config.json and often wrong if present
@@ -260,7 +348,7 @@ class TTSModelInfo:
                                                      alphabet=alphabet,
                                                      phoneme_type=phoneme_type,
                                                      engine=engine,
-                                                     tokens_txt=str(self.voice_path / "tokens.txt"),
+                                                     tokens_txt=str(self.hub_path(self.tokens_url) or ""),
                                                      lang_code=lang_code)
             else:
                 self._config = VoiceConfig.from_dict(config,
@@ -305,216 +393,119 @@ class TTSModelInfo:
             except (AttributeError, KeyError):
                 LOG.warning(f"Could not format display_name for {self.voice_id}.")
 
+    def hub_path(self, url: Optional[str]) -> Optional[Path]:
+        """Give the local path of ``url``, downloading it if needed.
+
+        The path is the one the file already lives at — the hub's, or the
+        directory a self-hosted voice was streamed into. Nothing is copied out
+        of either, because a graph only loads from the directory that also
+        holds the sidecar it names.
+
+        ``None`` only when there is no URL to fetch.
+        """
+        if not url:
+            return None
+        return _resolve(url)
+
     @property
     def voice_path(self) -> Path:
-        return Path(os.path.expanduser("~")) / ".cache" / "phoonnx" / "voices" / self.voice_id
+        """The directory this voice's graph lives in.
+
+        The hub's snapshot directory, or the direct-download directory for a
+        voice the hub cannot serve. phoonnx owns neither: there is no
+        phoonnx-managed voice cache any more, so nothing here is a copy.
+        """
+        return self.download_model().parent
 
     def download_config(self) -> Dict[str, Any]:
-        """
-        Ensure the model configuration file exists locally and return its parsed contents.
-        
-        If the configuration file is not present in the voice cache directory, download it from the instance's configured URL and save it as model.json; otherwise load the existing file.
-        
-        Returns:
-            dict: Parsed JSON configuration for the TTS model.
-        """
-        config_path = self.voice_path / "model.json"
-        cached = _load_cached_json(config_path)
-        if cached is not None:
-            return cached
-        r = requests.get(self.config_url, timeout=30)
-        r.raise_for_status()
-        cfg = r.json()  # validate received json
-        _write_json_atomic(config_path, cfg)
-        return cfg
+        """Give the voice's model configuration, from the hub cache."""
+        path = self.hub_path(self.config_url)
+        return _read_json(path) if path else {}
 
     def download_tokenizer_config(self) -> Dict[str, Any]:
-        """
-        Download and cache the tokenizer configuration for this voice, returning it as a parsed dictionary.
-        
-        If a local cached file exists, it is loaded and returned; otherwise the configuration is fetched from the configured URL, saved to the voice cache, and returned.
-        
-        Returns:
-            dict: The tokenizer configuration parsed from JSON.
-        
-        Raises:
-            requests.HTTPError: If the HTTP request for the tokenizer configuration returns an error status.
-            json.JSONDecodeError: If a retrieved or cached file contains invalid JSON.
-        """
-        config_path = self.voice_path / "tokenizer_config.json"
-        cached = _load_cached_json(config_path)
-        if cached is not None:
-            return cached
-        r = requests.get(self.tokenizer_config_url, timeout=30)
-        r.raise_for_status()
-        cfg = r.json()  # validate received json
-        _write_json_atomic(config_path, cfg)
-        return cfg
+        """Give the tokenizer configuration, from the hub cache."""
+        path = self.hub_path(self.tokenizer_config_url)
+        return _read_json(path) if path else {}
 
     def download_vocab(self) -> Dict[str, Any]:
-        """
-        Load the voice vocabulary from the local cache or download it from the configured URL.
-        
-        If a cached vocab.json exists in the voice's cache directory, it is read and returned.
-        If no cached file exists and `vocab_url` is set, the vocabulary JSON is fetched from that URL,
-        saved to the cache as vocab.json (UTF-8), and the parsed dictionary is returned.
-        
-        Returns:
-            dict: The vocabulary mapping loaded from vocab.json.
-        
-        Raises:
-            requests.RequestException: On network errors or non-success HTTP responses.
-            OSError: On file read/write errors.
-        """
-        vocab_path = self.voice_path / "vocab.json"
-        cached = _load_cached_json(vocab_path)
-        if cached is not None:
-            return cached
-        if not self.vocab_url:
-            # preserve the historical error for a missing, un-downloadable vocab
-            with open(vocab_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        r = requests.get(self.vocab_url, timeout=30)
-        r.raise_for_status()
-        cfg = r.json()
-        _write_json_atomic(vocab_path, cfg)
-        return cfg
+        """Give the vocabulary, from the cache or from the index entry."""
+        if self.vocab_override:
+            return self.vocab_override
+        path = self.hub_path(self.vocab_url)
+        return _read_json(path) if path else {}
 
     def download_tokens_txt(self) -> str:
-        """
-        Ensure a local tokens.txt exists for this voice and return its contents.
-        
-        If `tokens_url` is set and the file does not exist in the voice cache directory, download the tokens file, save it to the cache using UTF-8 encoding, and return its text. If the file already exists, read and return its contents.
-        
-        Returns:
-            str: Contents of the tokens file.
-        
-        Raises:
-            requests.exceptions.RequestException: If the HTTP request to `tokens_url` fails or the response status is not successful.
-        """
-        tokens_path = self.voice_path / "tokens.txt"
-        if self.tokens_url and not _is_cached(tokens_path):
-            tokens_path.unlink(missing_ok=True)  # discard an empty/partial cache
-            r = requests.get(self.tokens_url, timeout=30)
-            r.raise_for_status()
-            tokens = r.text
-            _write_bytes_atomic(tokens_path, tokens.encode("utf-8"))
-            return tokens
-        with open(tokens_path, "r", encoding="utf-8") as f:
-            return f.read()
+        """Give the token list, from the hub cache."""
+        path = self.hub_path(self.tokens_url)
+        return path.read_text(encoding="utf-8") if path else ""
 
-    def _fetch_onnx(self, url: str, dest: Path) -> Path:
-        """Download an ONNX graph (and its external-data sidecar, if present) into the
-        voice cache.
+    def _fetch_onnx(self, url: str) -> Path:
+        """Give the local path of an ONNX graph, with its sidecar alongside.
 
-        A graph with external weights references them by the original
-        ``<name>.onnx_data`` filename, so that sidecar is saved under exactly that name
-        next to the graph for the reference to resolve. Chatterbox's four graphs all use
-        external data; single-file graphs (piper/vits exports) simply have no sidecar.
+        A graph with external weights names its sidecar by filename and
+        onnxruntime resolves that name against the directory the graph itself
+        resolves to, so the two must share a directory. Fetching the sidecar
+        from the same source puts it there, and the graph loads where it lies.
+        Single-file graphs (piper/vits exports) simply have no sidecar.
 
-        A missing sidecar may surface as an HTTP 404 (online) or as a connection
-        error (offline); both mean "no sidecar here", so a fully-cached voice loads
-        without the probe crashing when there is no network.
+        "No sidecar" and "the sidecar failed to arrive" are not the same
+        answer. The sidecar carries the weights, so a failure that is mistaken
+        for absence produces a graph that loads and then synthesizes silence.
+        Only a 404, and being offline with nothing cached, count as absence.
         """
-        if not _is_cached(dest):
-            _stream_to_file(url, dest)
-        data_dest = dest.parent / (url.split("/")[-1] + "_data")   # e.g. model_q4.onnx_data
-        if not _is_cached(data_dest):
-            try:
-                with requests.get(url + "_data", timeout=600, stream=True) as r:
-                    if r.status_code != 404:
-                        r.raise_for_status()
-                        tmp = _tmp_path(data_dest)
-                        try:
-                            with open(tmp, "wb") as f:
-                                for chunk in r.iter_content(chunk_size=8192):
-                                    if chunk:
-                                        f.write(chunk)
-                        except BaseException:
-                            tmp.unlink(missing_ok=True)
-                            raise
-                        os.replace(tmp, data_dest)
-            except requests.exceptions.RequestException as e:
-                # Offline/DNS/timeout: treat like a 404 (sidecar simply absent) so a
-                # fully-cached voice still loads; a genuinely needed sidecar surfaces
-                # later when the graph is loaded.
-                LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
-        return dest
+        path = _resolve(url)
+        try:
+            _resolve(_sidecar_url(url))
+        except _NO_SUCH_FILE as e:
+            # There is no sidecar at that URL, or we are offline and have never
+            # seen one; a single-file graph loads fine either way.
+            LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout) as e:
+            # Offline/DNS/timeout on the direct (non-hub) path.
+            LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
+        except requests.exceptions.HTTPError as e:
+            # Only a 404 means "no sidecar here". Anything else — a 500, a 403,
+            # a status we cannot read — is a real failure and must not be
+            # swallowed.
+            if getattr(getattr(e, "response", None), "status_code", None) != 404:
+                raise
+            LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
+        return path
 
     def download_model(self) -> Path:
-        """Download the primary ONNX graph (+ external-data sidecar, if any)."""
-        return self._fetch_onnx(self.model_url, self.voice_path / "model.onnx")
+        """Give the ONNX graph's path in the hub cache."""
+        return self._fetch_onnx(self.model_url)
 
     def download_vocoder(self) -> Optional[Path]:
-        """
-        Download the separate vocoder ONNX (and optional config) for two-stage
-        engines such as Matcha-TTS into the voice cache directory.
-
-        Returns the local vocoder path, or ``None`` if this voice has no
-        ``vocoder_url``.
-        """
+        """Give the vocoder graph's path, for two-stage engines."""
         if not self.vocoder_url:
             return None
-        vocoder_path = self.voice_path / "vocoder.onnx"
-        if not _is_cached(vocoder_path):
-            _stream_to_file(self.vocoder_url, vocoder_path)
-        if self.vocoder_config_url:
-            vocoder_cfg_path = self.voice_path / "vocoder.json"
-            if _load_cached_json(vocoder_cfg_path) is None:
-                r = requests.get(self.vocoder_config_url, timeout=30)
-                r.raise_for_status()
-                _write_json_atomic(vocoder_cfg_path, r.json())
-        return vocoder_path
+        return self._fetch_onnx(self.vocoder_url)
 
     def download_style(self) -> Optional[Path]:
-        """Download the per-voice StyleTTS2/Kokoro style embedding, if any."""
-        if not self.style_url:
-            return None
-        style_path = self.voice_path / "style.bin"
-        if not _is_cached(style_path):
-            _stream_to_file(self.style_url, style_path)
-        return style_path
+        """Give the style embedding's path, if this voice has one."""
+        return self.hub_path(self.style_url)
 
     def download_speaker_encoder(self) -> Optional[Path]:
-        """Download the speaker-encoder ONNX (cloning models), if any."""
+        """Give the speaker encoder's path, if this voice has one."""
         if not self.speaker_encoder_url:
             return None
-        enc_path = self.voice_path / "speaker_encoder.onnx"
-        if not _is_cached(enc_path):
-            _stream_to_file(self.speaker_encoder_url, enc_path)
-        return enc_path
+        return self._fetch_onnx(self.speaker_encoder_url)
 
     def download_aux_models(self) -> Dict[str, Path]:
-        """Download the auxiliary graphs and assets of multi-graph engines.
-
-        Returns {engine_params_key: local_path}. An ``.onnx`` entry goes through
-        :meth:`_fetch_onnx`, so a graph with external weights gets its
-        ``<name>.onnx_data`` sidecar too; without it the graph loads only until
-        onnxruntime looks for the weights. Non-ONNX assets (tokenizer JSON, speaker
-        embeddings) are plain downloads.
-        """
-        paths: Dict[str, Path] = {}
+        """Give the auxiliary graphs' paths, keyed as the engine expects."""
+        out: Dict[str, Path] = {}
         for key, url in (self.aux_model_urls or {}).items():
-            fname = url.rsplit("/", 1)[-1] or f"{key}.onnx"
-            aux_path = self.voice_path / fname
-            if fname.endswith(".onnx"):
-                self._fetch_onnx(url, aux_path)
-            elif not _is_cached(aux_path):
-                _stream_to_file(url, aux_path)
-            paths[key] = aux_path
-        return paths
+            if not url:
+                continue
+            out[key] = (self._fetch_onnx(url) if str(url).endswith(".onnx")
+                        else _resolve(url))
+        return out
 
     def download_bpe_tokenizer(self) -> Optional[Path]:
-        """Download the HF ``tokenizer.json`` (Chatterbox subword BPE) from
-        ``tokenizer_config_url``, if any."""
-        if not self.tokenizer_config_url:
-            return None
-        path = self.voice_path / "tokenizer.json"
-        if _load_cached_json(path) is None:
-            r = requests.get(self.tokenizer_config_url, timeout=60)
-            r.raise_for_status()
-            _write_bytes_atomic(path, r.content)
-        return path
+        """Give the BPE tokenizer's path in the hub cache."""
+        return self.hub_path(self.tokenizer_config_url)
 
     def engine_params(self) -> Dict[str, Any]:
         """
@@ -537,23 +528,13 @@ class TTSModelInfo:
             params["vocoder_path"] = str(vocoder_path)
             if self.vocoder_type:
                 params["vocoder_type"] = self.vocoder_type
-            vocoder_cfg_path = self.voice_path / "vocoder.json"
-            if vocoder_cfg_path.is_file():
-                with open(vocoder_cfg_path, "r", encoding="utf-8") as f:
-                    params["vocoder_config"] = json.load(f)
+            if self.vocoder_config_url:
+                params["vocoder_config"] = _hub_json(self.vocoder_config_url)
         elif self.vocoder_type:
             # Parametric vocoder (e.g. Griffin-Lim) — no model file, just config.
             params["vocoder_type"] = self.vocoder_type
             if self.vocoder_config_url:
-                cfg_path = self.voice_path / "vocoder.json"
-                cached = _load_cached_json(cfg_path)
-                if cached is None:
-                    r = requests.get(self.vocoder_config_url, timeout=30)
-                    r.raise_for_status()
-                    _write_bytes_atomic(cfg_path, r.content)
-                    with open(cfg_path, "r", encoding="utf-8") as f:
-                        cached = json.load(f)
-                params["vocoder_config"] = cached
+                params["vocoder_config"] = _hub_json(self.vocoder_config_url)
 
         # Chatterbox's three auxiliary graphs (the language_model is the primary model).
         for url, key, fname in (
@@ -562,7 +543,7 @@ class TTSModelInfo:
             (self.conditional_decoder_url, "conditional_decoder_path", "conditional_decoder.onnx"),
         ):
             if url:
-                params[key] = str(self._fetch_onnx(url, self.voice_path / fname))
+                params[key] = str(self._fetch_onnx(url))
         return params
 
     def download_all(self) -> Path:
@@ -612,12 +593,11 @@ class TTSModelInfo:
         Returns:
             TTSVoice: The configured TTSVoice instance ready for synthesis.
         """
-        model_path = self.voice_path / "model.onnx"
-        config_path = self.voice_path / "model.json"
-        vocab_path = self.voice_path / "vocab.json"
-        tokenizer_config_path = self.voice_path / "tokenizer_config.json"
-        tokens_path = self.voice_path / "tokens.txt"
-        self.download_model()
+        model_path = self.download_model()
+        config_path = self.hub_path(self.config_url)
+        vocab_path = self.hub_path(self.vocab_url)
+        tokenizer_config_path = self.hub_path(self.tokenizer_config_url)
+        tokens_path = self.hub_path(self.tokens_url)
 
         # Voices without a published config.json (Chatterbox) can't be engine-detected
         # from files on disk — build the voice from the index-derived VoiceConfig, which

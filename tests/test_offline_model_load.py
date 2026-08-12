@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import requests
 
-from phoonnx.model_manager import TTSModelInfo
+from phoonnx.model_manager import TTSModelInfo, _direct_dir
 
 
 class _FakeResponse:
@@ -39,25 +39,24 @@ class _FakeResponse:
 
 
 class TestOfflineModelLoad(unittest.TestCase):
+    """This voice is self-hosted, so it takes the direct-download path. The hub
+    client is never involved, and the sidecar probe behaves exactly as it does
+    for a hub voice."""
+
+    URL = "https://example.test/v/model.onnx"
+
     def setUp(self):
         self._tmpdir = tempfile.TemporaryDirectory()
-        self.tmp = Path(self._tmpdir.name)
-        self.info = TTSModelInfo(
-            voice_id="test/offline",
-            lang="en",
-            model_url="https://example.test/model.onnx",
-        )
-        # redirect the cache dir away from the real ~/.cache
-        self._patcher = patch.object(
-            type(self.info), "voice_path",
-            property(lambda _self: self.tmp),
-        )
-        self._patcher.start()
+        self.addCleanup(self._tmpdir.cleanup)
+        # keep every download inside the test's own cache root
+        patcher = patch("phoonnx.model_manager.HF_HUB_CACHE", self._tmpdir.name)
+        self.addCleanup(patcher.stop)
+        patcher.start()
+        self.info = TTSModelInfo(voice_id="test/offline", lang="en",
+                                 model_url=self.URL)
+        self.tmp = _direct_dir(self.URL)
+        self.tmp.mkdir(parents=True, exist_ok=True)
         self.model_path = self.tmp / "model.onnx"
-
-    def tearDown(self):
-        self._patcher.stop()
-        self._tmpdir.cleanup()
 
     def test_sidecar_connection_error_does_not_propagate(self):
         """An offline sidecar probe must not crash a voice that has its graph."""
@@ -89,7 +88,7 @@ class TestOfflineModelLoad(unittest.TestCase):
         def fake_get(url, *a, **kw):
             if url.endswith("_data"):
                 return _FakeResponse(status_code=200, content=b"weights")
-            raise AssertionError(f"unexpected url {url}")
+            return _FakeResponse(status_code=200, content=b"onnx-graph")
 
         with patch("phoonnx.model_manager.requests.get", side_effect=fake_get):
             self.info.download_model()

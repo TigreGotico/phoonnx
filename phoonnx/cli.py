@@ -1,6 +1,7 @@
 import click
 from phoonnx.model_manager import TTSModelManager, TTSModelInfo
 import requests
+from huggingface_hub.errors import HfHubHTTPError
 
 
 # --- Helper Function for CLI Output ---
@@ -153,7 +154,10 @@ def download_voice(voice_id):
                 return
             click.echo(f"\nDownload complete.")
 
-    except requests.exceptions.RequestException as e:
+    except (HfHubHTTPError, requests.exceptions.RequestException) as e:
+        # Voice files come from the HuggingFace hub, so a network failure now
+        # surfaces as a hub error; a self-hosted voice still raises the
+        # requests error from the direct download path.
         click.echo(f"\nDownload failed due to network error: {e}", err=True)
     except Exception as e:
         click.echo(f"\nAn unexpected error occurred during download: {e}", err=True)

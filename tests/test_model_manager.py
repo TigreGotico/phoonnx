@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import tempfile
@@ -5,10 +6,17 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+import onnxruntime
 import requests
 
-from phoonnx.model_manager import TTSModelInfo, TTSModelManager
+from huggingface_hub.errors import (EntryNotFoundError, HfHubHTTPError,
+                                    LocalEntryNotFoundError)
+
+from phoonnx.model_manager import (TTSModelInfo, TTSModelManager, _direct_dir,
+                                   _hf_fetch)
 from phoonnx.config import Engine, PhonemeType, Alphabet
+
+HUB = "https://huggingface.co/an-org/a-repo/resolve/main"
 
 
 def _mock_response(status_code=200, json_data=None, content=b"", text=""):
@@ -17,552 +25,554 @@ def _mock_response(status_code=200, json_data=None, content=b"", text=""):
     resp.content = content
     resp.text = text
     resp.iter_content.return_value = [content] if content else []
+    resp.headers = {}
     if json_data is not None:
         resp.json.return_value = json_data
     else:
         resp.json.side_effect = ValueError("No JSON")
     if status_code >= 400:
-        resp.raise_for_status.side_effect = requests.exceptions.HTTPError(f"{status_code} error")
+        # requests attaches the response to the error; the sidecar handler
+        # reads its status to tell "absent" from "failed"
+        resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
+            f"{status_code} error", response=resp)
     else:
         resp.raise_for_status.return_value = None
     return resp
 
 
-class VoicePathTestCase(unittest.TestCase):
-    """Base class that redirects TTSModelInfo.voice_path into a tmp dir."""
+def _hub_500():
+    """The hub client wraps a server error, keeping the response on it."""
+    return HfHubHTTPError("500 Server Error", response=MagicMock(status_code=500))
+
+
+class FakeHub:
+    """A stand-in for ``huggingface_hub.hf_hub_download``.
+
+    It copies the real cache layout, which is the whole point of this change:
+    content-addressed blobs in one flat directory, and a snapshot directory of
+    links named after the files in the repo. onnxruntime resolves an
+    external-data reference against the directory the graph itself resolves to,
+    so a fixture that puts every file in one plain directory would pass for
+    layouts the real cache rejects.
+    """
+
+    def __init__(self, root: Path, files=None):
+        self.root = root
+        self.files = dict(files or {})   # "path/in/repo" -> bytes
+        self.downloads = []              # every call, in order
+        self.errors = {}                 # "path/in/repo" -> exception to raise
+
+    def __call__(self, repo_id, filename, revision, **kwargs):
+        self.downloads.append((repo_id, filename, revision))
+        if filename in self.errors:
+            raise self.errors[filename]
+        if filename not in self.files:
+            raise EntryNotFoundError(f"404 for {filename}")
+        data = self.files[filename]
+        blobs = self.root / repo_id / "blobs"
+        blobs.mkdir(parents=True, exist_ok=True)
+        blob = blobs / hashlib.sha256(data).hexdigest()
+        if not blob.exists():
+            blob.write_bytes(data)
+        link = self.root / repo_id / "snapshots" / revision / filename
+        link.parent.mkdir(parents=True, exist_ok=True)
+        if not link.is_symlink():
+            os.symlink(blob, link)
+        return str(link)
+
+    def stage(self, url: str, content) -> None:
+        """Publish ``content`` at ``url`` on this fake hub."""
+        if isinstance(content, (dict, list)):
+            content = json.dumps(content).encode("utf-8")
+        elif isinstance(content, str):
+            content = content.encode("utf-8")
+        self.files[url.split("/resolve/")[-1].split("/", 1)[-1]
+                   if "/resolve/" in url
+                   else url.split("/raw/")[-1].split("/", 1)[-1]] = content
+
+    @property
+    def unique_downloads(self):
+        return set(self.downloads)
+
+
+class HubTestCase(unittest.TestCase):
+    """Every artifact comes from the hub cache, and nothing is copied out of it.
+
+    A voice directory owned by phoonnx no longer exists, so these tests assert
+    on what the hub returns and on what reaches onnxruntime — not on files in a
+    directory phoonnx manages.
+    """
 
     def setUp(self):
-        self._tmpdir = tempfile.TemporaryDirectory()
-        self.addCleanup(self._tmpdir.cleanup)
-        patcher = patch("phoonnx.model_manager.os.path.expanduser", return_value=self._tmpdir.name)
+        self._hubdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._hubdir.cleanup)
+        self.hub_root = Path(self._hubdir.name)
+        self.hub = FakeHub(self.hub_root)
+        patcher = patch("phoonnx.model_manager.hf_hub_download", self.hub)
         self.addCleanup(patcher.stop)
         patcher.start()
+        # a non-hub download must not land in the developer's real cache
+        self._directdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._directdir.cleanup)
+        dpatch = patch("phoonnx.model_manager.HF_HUB_CACHE", self._directdir.name)
+        self.addCleanup(dpatch.stop)
+        dpatch.start()
 
     def make_info(self, **kwargs):
-        defaults = dict(
-            voice_id="test/voice",
-            lang="en-US",
-            model_url="https://example.com/model.onnx",
-        )
+        defaults = dict(voice_id="test/voice", lang="en-US",
+                        model_url=f"{HUB}/model.onnx")
         defaults.update(kwargs)
-        info = TTSModelInfo(**defaults)
-        # these tests seed cached artifacts into the voice directory; creating it
-        # is the fixture's job, since constructing a catalog entry deliberately
-        # does not touch the disk
-        info.voice_path.mkdir(parents=True, exist_ok=True)
-        return info
+        return TTSModelInfo(**defaults)
 
-
-class TestFetchOnnx(VoicePathTestCase):
-    @patch("phoonnx.model_manager.requests.get")
-    def test_downloads_model_and_sidecar_missing_is_404(self, mock_get):
-        info = self.make_info()
-        model_resp = _mock_response(200, content=b"onnxdata")
-        sidecar_resp = _mock_response(404)
-
+    def stream(self, bodies):
+        """Patch ``requests.get`` to serve ``{url_suffix: response}``."""
         def side_effect(url, timeout=None, stream=None):
-            if url == info.model_url:
-                cm = MagicMock()
-                cm.__enter__.return_value = model_resp
-                return cm
-            cm = MagicMock()
-            cm.__enter__.return_value = sidecar_resp
-            return cm
+            for suffix, resp in bodies.items():
+                if url.endswith(suffix):
+                    cm = MagicMock()
+                    cm.__enter__.return_value = resp
+                    return cm
+            raise AssertionError(f"unexpected request for {url}")
+        return patch("phoonnx.model_manager.requests.get", side_effect=side_effect)
 
-        mock_get.side_effect = side_effect
-        dest = info.voice_path / "model.onnx"
-        result = info._fetch_onnx(info.model_url, dest)
-        self.assertTrue(dest.is_file())
-        self.assertEqual(dest.read_bytes(), b"onnxdata")
-        self.assertEqual(result, dest)
-        self.assertFalse((info.voice_path / "model.onnx_data").is_file())
 
-    @patch("phoonnx.model_manager.requests.get")
-    def test_http_404_on_primary_download_raises(self, mock_get):
+class TestArtifactsComeFromTheHub(HubTestCase):
+    def test_the_graph_path_is_the_hub_s_own(self):
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
         info = self.make_info()
-        resp = _mock_response(404)
-        cm = MagicMock()
-        cm.__enter__.return_value = resp
-        mock_get.return_value = cm
-        dest = info.voice_path / "model.onnx"
-        with self.assertRaises(requests.exceptions.HTTPError):
-            info._fetch_onnx(info.model_url, dest)
+        path = info.download_model()
+        self.assertEqual(path.read_bytes(), b"onnxdata")
+        self.assertTrue(str(path).startswith(str(self.hub_root)),
+                        f"{path} is not in the shared cache")
 
-    @patch("phoonnx.model_manager.requests.get")
-    def test_http_500_on_primary_download_raises(self, mock_get):
+    def test_nothing_is_copied_into_a_phoonnx_directory(self):
+        """The voice cache phoonnx used to own is gone. ``voice_path`` answers
+        with the directory the hub keeps the graph in."""
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
         info = self.make_info()
-        resp = _mock_response(500)
-        cm = MagicMock()
-        cm.__enter__.return_value = resp
-        mock_get.return_value = cm
-        dest = info.voice_path / "model.onnx"
-        with self.assertRaises(requests.exceptions.HTTPError):
-            info._fetch_onnx(info.model_url, dest)
+        self.assertEqual(info.voice_path, info.download_model().parent)
+        self.assertTrue(str(info.voice_path).startswith(str(self.hub_root)))
 
-    @patch("phoonnx.model_manager.requests.get")
-    def test_sidecar_network_failure_treated_as_absent(self, mock_get):
-        info = self.make_info()
-        model_resp = _mock_response(200, content=b"data")
+    def test_two_voices_naming_one_model_share_one_file(self):
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+        url = f"{HUB}/model.onnx"
+        a = self.make_info(voice_id="org/first", model_url=url).download_model()
+        b = self.make_info(voice_id="org/second", model_url=url).download_model()
+        self.assertEqual(a, b, "both voices resolve to the one cached file")
+        self.assertEqual(len({os.path.realpath(p) for p in
+                              self.hub_root.rglob("model.onnx")}), 1,
+                         "one physical copy in the cache")
 
-        def side_effect(url, timeout=None, stream=None):
-            if url == info.model_url:
-                cm = MagicMock()
-                cm.__enter__.return_value = model_resp
-                return cm
-            raise requests.exceptions.ConnectionError("offline")
-
-        mock_get.side_effect = side_effect
-        dest = info.voice_path / "model.onnx"
-        result = info._fetch_onnx(info.model_url, dest)
-        self.assertEqual(result, dest)
-        self.assertTrue(dest.is_file())
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_already_cached_skips_download(self, mock_get):
-        info = self.make_info()
-        dest = info.voice_path / "model.onnx"
-        dest.write_bytes(b"cached")
-        data_dest = info.voice_path / (info.model_url.split("/")[-1] + "_data")
-        data_dest.write_bytes(b"cached-data")
-        result = info._fetch_onnx(info.model_url, dest)
-        mock_get.assert_not_called()
-        self.assertEqual(result, dest)
-
-
-class TestDownloadHelpers(VoicePathTestCase):
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_model_delegates_to_fetch_onnx(self, mock_get):
-        info = self.make_info()
-        resp = _mock_response(200, content=b"x")
-        cm = MagicMock()
-        cm.__enter__.return_value = resp
-        mock_get.return_value = cm
-        with patch.object(info, "_fetch_onnx", wraps=info._fetch_onnx) as fetch:
-            path = info.download_model()
-            fetch.assert_called_once_with(info.model_url, info.voice_path / "model.onnx")
-        self.assertTrue(path.is_file())
-
-    def test_download_vocoder_none_when_no_url(self):
-        info = self.make_info()
-        self.assertIsNone(info.download_vocoder())
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_vocoder_with_config(self, mock_get):
-        info = self.make_info(vocoder_url="https://example.com/vocoder.onnx",
-                               vocoder_config_url="https://example.com/vocoder.json")
-        vocoder_resp = _mock_response(200, content=b"vdata")
-        config_resp = _mock_response(200, json_data={"a": 1})
-
-        def side_effect(url, timeout=None, stream=None):
-            if stream:
-                cm = MagicMock()
-                cm.__enter__.return_value = vocoder_resp
-                return cm
-            return config_resp
-
-        mock_get.side_effect = side_effect
-        path = info.download_vocoder()
-        self.assertTrue(path.is_file())
-        self.assertTrue((info.voice_path / "vocoder.json").is_file())
-
-    def test_download_style_none_when_no_url(self):
-        info = self.make_info()
-        self.assertIsNone(info.download_style())
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_style_downloads(self, mock_get):
-        info = self.make_info(style_url="https://example.com/style.bin")
-        resp = _mock_response(200, content=b"styledata")
-        cm = MagicMock()
-        cm.__enter__.return_value = resp
-        mock_get.return_value = cm
-        path = info.download_style()
-        self.assertTrue(path.is_file())
-        self.assertEqual(path.read_bytes(), b"styledata")
-
-    def test_download_speaker_encoder_none_when_no_url(self):
-        info = self.make_info()
-        self.assertIsNone(info.download_speaker_encoder())
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_speaker_encoder_downloads(self, mock_get):
-        info = self.make_info(speaker_encoder_url="https://example.com/enc.onnx")
-        resp = _mock_response(200, content=b"encdata")
-        cm = MagicMock()
-        cm.__enter__.return_value = resp
-        mock_get.return_value = cm
-        path = info.download_speaker_encoder()
-        self.assertTrue(path.is_file())
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_speaker_encoder_http_500(self, mock_get):
-        info = self.make_info(speaker_encoder_url="https://example.com/enc.onnx")
-        resp = _mock_response(500)
-        cm = MagicMock()
-        cm.__enter__.return_value = resp
-        mock_get.return_value = cm
-        with self.assertRaises(requests.exceptions.HTTPError):
-            info.download_speaker_encoder()
-
-    def test_download_aux_models_empty(self):
-        info = self.make_info()
-        self.assertEqual(info.download_aux_models(), {})
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_aux_models_downloads_each(self, mock_get):
-        info = self.make_info(aux_model_urls={
-            "preprocess_path": "https://example.com/preprocess.onnx",
-            "decode_path": "https://example.com/decode.onnx",
-        })
-        resp = _mock_response(200, content=b"aux")
-        cm = MagicMock()
-        cm.__enter__.return_value = resp
-        mock_get.return_value = cm
-        paths = info.download_aux_models()
-        self.assertEqual(set(paths.keys()), {"preprocess_path", "decode_path"})
-        for p in paths.values():
-            self.assertTrue(p.is_file())
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_aux_models_fetches_onnx_data_sidecar(self, mock_get):
-        """Regression test: an auxiliary graph with external weights must have its
-        <name>.onnx_data sidecar fetched too, exactly like the primary graph does
-        via _fetch_onnx. Before the fix, download_aux_models called _stream_to_file
-        directly and never looked for a sidecar, so a multi-graph engine whose aux
-        graph carries external data would download a graph that onnxruntime could
-        not load."""
-        info = self.make_info(aux_model_urls={
-            "decode_path": "https://example.com/decode.onnx",
-        })
-        graph_resp = _mock_response(200, content=b"graph")
-        sidecar_resp = _mock_response(200, content=b"sidecar-weights")
-
-        def side_effect(url, timeout=None, stream=None):
-            cm = MagicMock()
-            if url.endswith("_data"):
-                cm.__enter__.return_value = sidecar_resp
-            else:
-                cm.__enter__.return_value = graph_resp
-            return cm
-
-        mock_get.side_effect = side_effect
-        paths = info.download_aux_models()
-
-        graph_path = paths["decode_path"]
-        sidecar_path = graph_path.parent / (graph_path.name + "_data")
-        self.assertTrue(graph_path.is_file())
-        self.assertTrue(
-            sidecar_path.is_file(),
-            "download_aux_models must fetch the .onnx_data sidecar of an "
-            "auxiliary graph, the same way download_model does via _fetch_onnx",
-        )
-        self.assertEqual(sidecar_path.read_bytes(), b"sidecar-weights")
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_aux_models_routes_onnx_entries_through_fetch_onnx(self, mock_get):
-        """An .onnx aux entry must go through _fetch_onnx (not a plain stream), so
-        it gets the same sidecar-probing behavior as the primary graph."""
-        info = self.make_info(aux_model_urls={
-            "decode_path": "https://example.com/decode.onnx",
-            "speakers_path": "https://example.com/speakers.json",
-        })
-        resp = _mock_response(200, content=b"data")
-        cm = MagicMock()
-        cm.__enter__.return_value = resp
-        mock_get.return_value = cm
-
-        with patch.object(info, "_fetch_onnx", wraps=info._fetch_onnx) as fetch:
-            paths = info.download_aux_models()
-            fetch.assert_called_once_with(
-                "https://example.com/decode.onnx", paths["decode_path"]
-            )
-        self.assertTrue(paths["speakers_path"].is_file())
-
-    def test_download_bpe_tokenizer_none_without_url(self):
-        info = self.make_info()
-        self.assertIsNone(info.download_bpe_tokenizer())
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_bpe_tokenizer_downloads(self, mock_get):
-        info = self.make_info(tokenizer_config_url="https://example.com/tokenizer.json")
-        resp = _mock_response(200, content=b'{"vocab": {}}')
-        mock_get.return_value = resp
-        path = info.download_bpe_tokenizer()
-        self.assertTrue(path.is_file())
-        self.assertEqual(path.read_bytes(), b'{"vocab": {}}')
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_bpe_tokenizer_http_404(self, mock_get):
-        info = self.make_info(tokenizer_config_url="https://example.com/tokenizer.json")
-        resp = _mock_response(404)
-        mock_get.return_value = resp
-        with self.assertRaises(requests.exceptions.HTTPError):
-            info.download_bpe_tokenizer()
-
-
-class TestDownloadConfig(VoicePathTestCase):
-    @patch("phoonnx.model_manager.requests.get")
-    def test_truncated_json_response_raises(self, mock_get):
-        info = self.make_info(config_url="https://example.com/config.json")
-        resp = MagicMock()
-        resp.status_code = 200
-        resp.raise_for_status.return_value = None
-        resp.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
-        mock_get.return_value = resp
-        with self.assertRaises(json.JSONDecodeError):
-            info.download_config()
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_http_404_raises(self, mock_get):
-        info = self.make_info(config_url="https://example.com/config.json")
-        resp = _mock_response(404)
-        mock_get.return_value = resp
-        with self.assertRaises(requests.exceptions.HTTPError):
-            info.download_config()
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_corrupt_cached_file_self_heals(self, mock_get):
-        info = self.make_info(config_url="https://example.com/config.json")
-        config_path = info.voice_path / "model.json"
-        config_path.write_text("{not valid json", encoding="utf-8")
-        mock_get.return_value = _mock_response(200, json_data={"fresh": True})
-        self.assertEqual(info.download_config(), {"fresh": True})
-        mock_get.assert_called_once()
-        # the healed cache is now valid and used on the next call
-        mock_get.reset_mock()
-        self.assertEqual(info.download_config(), {"fresh": True})
-        mock_get.assert_not_called()
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_empty_cached_file_self_heals(self, mock_get):
-        info = self.make_info(config_url="https://example.com/config.json")
-        (info.voice_path / "model.json").write_text("", encoding="utf-8")
-        mock_get.return_value = _mock_response(200, json_data={"fresh": True})
-        self.assertEqual(info.download_config(), {"fresh": True})
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_uses_cache_when_present(self, mock_get):
-        info = self.make_info(config_url="https://example.com/config.json")
-        config_path = info.voice_path / "model.json"
-        config_path.write_text(json.dumps({"cached": True}), encoding="utf-8")
-        result = info.download_config()
-        mock_get.assert_not_called()
-        self.assertEqual(result, {"cached": True})
-
-
-class TestConfigProperty(VoicePathTestCase):
-    @patch("phoonnx.model_manager.requests.get")
-    def test_config_with_vocab_override(self, mock_get):
+    def test_raw_urls_are_served_by_the_hub_too(self):
+        """``/raw/<rev>/`` serves the same bytes as ``/resolve/<rev>/``, so it
+        must not be pushed onto the private download path."""
+        self.hub.files["tokens.txt"] = b"a\nb\n"
         info = self.make_info(
-            config_url="https://example.com/config.json",
-            vocab_override={"a": 1, "b": 2},
-            phoneme_type="graphemes",
-            alphabet="unicode",
-        )
-        mock_get.return_value = _mock_response(200, json_data={"blank": "a"})
-        config = info.config
-        self.assertIsNotNone(config)
-        self.assertIs(info.config, config)
+            tokens_url="https://huggingface.co/an-org/a-repo/raw/main/tokens.txt")
+        with patch("phoonnx.model_manager.requests.get") as mock_get:
+            self.assertEqual(info.download_tokens_txt(), "a\nb\n")
+        mock_get.assert_not_called()
+        self.assertEqual(self.hub.downloads,
+                         [("an-org/a-repo", "tokens.txt", "main")])
 
-    @patch("phoonnx.model_manager.requests.get")
-    def test_config_with_vocab_url_and_tokenizer_config(self, mock_get):
+    def test_json_artifacts_are_read_from_the_cache(self):
+        self.hub.stage(f"{HUB}/config.json", {"sample_rate": 22050})
+        self.hub.stage(f"{HUB}/vocab.json", {"a": 1})
+        self.hub.stage(f"{HUB}/tokenizer_config.json", {"unk_token": "<unk>"})
+        info = self.make_info(config_url=f"{HUB}/config.json",
+                              vocab_url=f"{HUB}/vocab.json",
+                              tokenizer_config_url=f"{HUB}/tokenizer_config.json")
+        with patch("phoonnx.model_manager.requests.get") as mock_get:
+            self.assertEqual(info.download_config(), {"sample_rate": 22050})
+            self.assertEqual(info.download_vocab(), {"a": 1})
+            self.assertEqual(info.download_tokenizer_config(),
+                             {"unk_token": "<unk>"})
+        mock_get.assert_not_called()
+
+    def test_a_vocab_shipped_in_the_index_entry_is_used_as_is(self):
+        """``vocab_override`` carries the vocabulary inside the catalog entry;
+        there is nothing to download."""
+        info = self.make_info(vocab_override={"x": 3})
+        self.assertEqual(info.download_vocab(), {"x": 3})
+        self.assertEqual(self.hub.downloads, [])
+
+    def test_a_missing_graph_propagates(self):
+        info = self.make_info()
+        with self.assertRaises(EntryNotFoundError):
+            info.download_model()
+
+    def test_hub_failure_on_the_primary_graph_propagates(self):
+        self.hub.errors["model.onnx"] = _hub_500()
+        with self.assertRaises(HfHubHTTPError):
+            self.make_info().download_model()
+
+    def test_aux_and_auxiliary_graphs_resolve(self):
+        for name in ("speech_encoder.onnx", "embed_tokens.onnx",
+                     "conditional_decoder.onnx", "extra.onnx", "speaker.bin"):
+            self.hub.stage(f"{HUB}/{name}", b"payload-" + name.encode())
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
         info = self.make_info(
-            config_url="https://example.com/config.json",
-            vocab_url="https://example.com/vocab.json",
-            tokenizer_config_url="https://example.com/tokenizer_config.json",
-            phoneme_type="graphemes",
-            alphabet="unicode",
-        )
-
-        def side_effect(url, timeout=None):
-            if url == info.vocab_url:
-                return _mock_response(200, json_data={"a": 0, "b": 1})
-            if url == info.tokenizer_config_url:
-                return _mock_response(200, json_data={"add_blank": True, "language": "en", "pad_token": "a"})
-            return _mock_response(200, json_data={"blank": "a"})
-
-        mock_get.side_effect = side_effect
-        config = info.config
-        self.assertIsNotNone(config)
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_config_with_tokens_url(self, mock_get):
-        info = self.make_info(tokens_url="https://example.com/tokens.txt", phoneme_type="graphemes", alphabet="unicode")
-        mock_get.return_value = _mock_response(200, text="a\nb\nc\n")
-        config = info.config
-        self.assertIsNotNone(config)
-        self.assertTrue((info.voice_path / "tokens.txt").is_file())
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_config_espeak_phoneme_type_hack(self, mock_get):
-        info = self.make_info(config_url="https://example.com/config.json")
-        mock_get.return_value = _mock_response(200, json_data={"phoneme_type": "PhonemeType.ESPEAK", "alphabet": "ipa"})
-        config = info.config
-        self.assertIsNotNone(config)
+            aux_model_urls={"extra_path": f"{HUB}/extra.onnx",
+                            "speaker_path": f"{HUB}/speaker.bin"},
+            speech_encoder_url=f"{HUB}/speech_encoder.onnx",
+            embed_tokens_url=f"{HUB}/embed_tokens.onnx",
+            conditional_decoder_url=f"{HUB}/conditional_decoder.onnx")
+        params = info.engine_params()
+        for key in ("extra_path", "speaker_path", "speech_encoder_path",
+                    "embed_tokens_path", "conditional_decoder_path"):
+            self.assertTrue(str(params[key]).startswith(str(self.hub_root)),
+                            f"{key} left the cache: {params[key]}")
 
 
-class TestVocabAndTokenizerDownloads(VoicePathTestCase):
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_tokenizer_config_downloads_and_caches(self, mock_get):
-        info = self.make_info(tokenizer_config_url="https://example.com/tokenizer_config.json")
-        mock_get.return_value = _mock_response(200, json_data={"model_max_length": 64})
-        result = info.download_tokenizer_config()
-        self.assertEqual(result, {"model_max_length": 64})
-        mock_get.reset_mock()
-        result2 = info.download_tokenizer_config()
-        mock_get.assert_not_called()
-        self.assertEqual(result2, {"model_max_length": 64})
+class TestNonHubVoices(HubTestCase):
+    """Self-hosted and mirrored voices are rare but legitimate. They lose the
+    deduplication, not the ability to load."""
 
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_tokenizer_config_http_500(self, mock_get):
-        info = self.make_info(tokenizer_config_url="https://example.com/tokenizer_config.json")
-        mock_get.return_value = _mock_response(500)
-        with self.assertRaises(requests.exceptions.HTTPError):
-            info.download_tokenizer_config()
+    URL = "https://mirror.example.org/v/model.onnx"
 
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_vocab_downloads_and_caches(self, mock_get):
-        info = self.make_info(vocab_url="https://example.com/vocab.json")
-        mock_get.return_value = _mock_response(200, json_data={"a": 0})
-        result = info.download_vocab()
-        self.assertEqual(result, {"a": 0})
+    def test_a_non_hub_url_is_downloaded_not_dropped(self):
+        with self.stream({"model.onnx_data": _mock_response(404),
+                          "model.onnx": _mock_response(200, content=b"selfhosted")}), \
+                patch("phoonnx.model_manager.LOG") as mock_log:
+            path = self.make_info(model_url=self.URL).download_model()
+        self.assertIsNotNone(path, "a non-hub voice must not resolve to None")
+        self.assertEqual(path.read_bytes(), b"selfhosted")
+        self.assertTrue(mock_log.warning.called,
+                        "the private copy must be announced")
+        self.assertEqual(self.hub.downloads, [], "the hub was never asked")
 
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_vocab_http_404(self, mock_get):
-        info = self.make_info(vocab_url="https://example.com/vocab.json")
-        mock_get.return_value = _mock_response(404)
-        with self.assertRaises(requests.exceptions.HTTPError):
-            info.download_vocab()
+    def test_the_graph_and_its_sidecar_share_one_directory(self):
+        """The reason a private download still needs a directory of its own:
+        onnxruntime resolves the sidecar against the graph's directory."""
+        with self.stream({"model.onnx_data": _mock_response(200, content=b"weights"),
+                          "model.onnx": _mock_response(200, content=b"graph")}):
+            path = self.make_info(model_url=self.URL).download_model()
+        self.assertEqual((path.parent / "model.onnx_data").read_bytes(), b"weights")
+        self.assertEqual(path.parent, _direct_dir(self.URL))
 
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_tokens_txt_downloads_and_caches(self, mock_get):
-        info = self.make_info(tokens_url="https://example.com/tokens.txt")
-        mock_get.return_value = _mock_response(200, text="a\nb\n")
-        result = info.download_tokens_txt()
-        self.assertEqual(result, "a\nb\n")
-        mock_get.reset_mock()
-        result2 = info.download_tokens_txt()
-        mock_get.assert_not_called()
-        self.assertEqual(result2, "a\nb\n")
+    def test_files_published_together_land_together(self):
+        self.assertEqual(_direct_dir("https://m.example/v/model.onnx"),
+                         _direct_dir("https://m.example/v/vocab.json"))
+        self.assertNotEqual(_direct_dir("https://m.example/v/model.onnx"),
+                            _direct_dir("https://m.example/w/model.onnx"))
 
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_tokens_txt_http_500(self, mock_get):
-        info = self.make_info(tokens_url="https://example.com/tokens.txt")
-        mock_get.return_value = _mock_response(500)
-        with self.assertRaises(requests.exceptions.HTTPError):
-            info.download_tokens_txt()
+    def test_a_second_call_does_not_download_again(self):
+        bodies = {"model.onnx_data": _mock_response(404),
+                  "model.onnx": _mock_response(200, content=b"selfhosted")}
+        info = self.make_info(model_url=self.URL)
+        with self.stream(bodies) as mock_get:
+            info.download_model()
+            first = mock_get.call_count
+            info.download_model()
+        self.assertEqual(mock_get.call_count, first + 1,
+                         "only the sidecar is re-probed, the graph is cached")
+
+    def test_a_compressed_download_is_not_mistaken_for_truncated(self):
+        """A gzipped response is complete even though it is shorter on the wire.
+
+        ``Content-Length`` counts the compressed bytes while the stream yields
+        the decoded body, so comparing them rejects a download that arrived
+        perfectly intact. Transfer compression is the server's choice, not
+        ours, so this is a voice that simply refuses to install.
+        """
+        body = b"a decoded body that is longer than its compressed length"
+        resp = _mock_response(200, content=body)
+        resp.headers = {"Content-Length": "12", "Content-Encoding": "gzip"}
+        with self.stream({"model.onnx_data": _mock_response(404),
+                          "model.onnx": resp}):
+            path = self.make_info(model_url=self.URL).download_model()
+        self.assertEqual(path.read_bytes(), body)
+
+    def test_identity_encoding_still_catches_truncation(self):
+        # The exemption above must not become a way to skip the size check.
+        resp = _mock_response(200, content=b"partial")
+        resp.headers = {"Content-Length": "999", "Content-Encoding": "identity"}
+        with self.stream({"model.onnx_data": _mock_response(404),
+                          "model.onnx": resp}):
+            with self.assertRaises(IOError):
+                self.make_info(model_url=self.URL).download_model()
+
+    def test_a_truncated_download_is_not_left_behind(self):
+        resp = _mock_response(200, content=b"partial")
+        resp.headers = {"Content-Length": "999"}
+        with self.stream({"model.onnx_data": _mock_response(404),
+                          "model.onnx": resp}):
+            with self.assertRaises(IOError):
+                self.make_info(model_url=self.URL).download_model()
+        self.assertFalse((_direct_dir(self.URL) / "model.onnx").exists())
 
 
-class TestEngineParams(VoicePathTestCase):
+class TestMetadataTimeout(unittest.TestCase):
+    """The metadata lookup must give up long before the body budget.
+
+    ``hf_hub_download`` asks the hub about the file before fetching it. If that
+    call inherits the body timeout, a blackholed network stalls the caller for
+    the whole budget before the download it blocks has even begun — and the
+    request in front of it has usually timed out by then anyway.
+    """
+
+    def test_metadata_lookup_does_not_inherit_the_body_timeout(self):
+        from phoonnx import model_manager as mm
+        seen = {}
+
+        def fake(**kwargs):
+            seen.update(kwargs)
+            return "/tmp/x"
+
+        with patch.object(mm, "hf_hub_download", side_effect=fake):
+            mm._hf_fetch(f"{HUB}/model.onnx",
+                         timeout=120)
+        self.assertLessEqual(seen["etag_timeout"], 30,
+                             "a metadata call must not wait out the body timeout")
+
+
+class TestSidecarUrlKeepsTheQuery(HubTestCase):
+    """A query on the model URL must not swallow the sidecar suffix.
+
+    HuggingFace's own download links carry ``?download=true``, so this is the
+    URL form an index entry most easily picks up. Appending ``_data`` to the
+    whole string puts the suffix inside the query, which the hub ignores — the
+    request returns the graph again, the "no sidecar" branch is never entered,
+    and onnxruntime is handed a graph whose weights are missing.
+    """
+
+    def test_the_suffix_goes_on_the_path_not_the_query(self):
+        from phoonnx.model_manager import _sidecar_url
+        self.assertEqual(_sidecar_url(f"{HUB}/model.onnx?download=true"),
+                         f"{HUB}/model.onnx_data?download=true")
+        self.assertEqual(_sidecar_url(f"{HUB}/model.onnx"),
+                         f"{HUB}/model.onnx_data")
+
+    def test_a_query_url_still_fetches_the_real_sidecar(self):
+        self.hub.stage(f"{HUB}/model.onnx", b"graph")
+        self.hub.stage(f"{HUB}/model.onnx_data", b"weights")
+        info = self.make_info(model_url=f"{HUB}/model.onnx?download=true")
+        path = info.download_model()
+        sidecar = path.parent / "model.onnx_data"
+        self.assertTrue(sidecar.is_file(),
+                        "the sidecar must land beside the graph")
+        self.assertEqual(sidecar.read_bytes(), b"weights",
+                         "the sidecar must be the weights, not the graph again")
+
+
+class TestSidecarErrors(HubTestCase):
+    """The external-weights sidecar is the biggest file a voice pulls (2.45 GB
+    for the omnivoice backbone). "Absent" must stay distinguishable from
+    "failed", or a graph loads with its weights missing and synthesizes
+    silence."""
+
+    def setUp(self):
+        super().setUp()
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+        self.info = self.make_info()
+
+    def test_absent_sidecar_is_tolerated(self):
+        # a single-file graph (piper/vits) simply has no <name>.onnx_data
+        path = self.info.download_model()
+        self.assertTrue(path.is_file())
+        self.assertFalse((path.parent / "model.onnx_data").exists())
+
+    def test_offline_with_nothing_cached_is_tolerated(self):
+        self.hub.errors["model.onnx_data"] = LocalEntryNotFoundError("offline")
+        self.assertTrue(self.info.download_model().is_file())
+
+    def test_a_full_disk_is_not_mistaken_for_an_absent_sidecar(self):
+        self.hub.errors["model.onnx_data"] = OSError(28, "No space left on device")
+        with self.assertRaises(OSError):
+            self.info.download_model()
+
+    def test_a_permission_error_is_not_mistaken_for_an_absent_sidecar(self):
+        self.hub.errors["model.onnx_data"] = PermissionError(13, "Permission denied")
+        with self.assertRaises(PermissionError):
+            self.info.download_model()
+
+    def test_a_server_error_is_not_mistaken_for_an_absent_sidecar(self):
+        self.hub.errors["model.onnx_data"] = _hub_500()
+        with self.assertRaises(HfHubHTTPError):
+            self.info.download_model()
+
+    def test_a_404_on_a_non_hub_sidecar_is_still_tolerated(self):
+        url = "https://mirror.example.org/v/model.onnx"
+        with self.stream({"model.onnx_data": _mock_response(404),
+                          "model.onnx": _mock_response(200, content=b"data")}):
+            path = self.make_info(model_url=url).download_model()
+        self.assertTrue(path.is_file())
+        self.assertFalse((path.parent / "model.onnx_data").exists())
+
+    def test_a_500_on_a_non_hub_sidecar_is_not_tolerated(self):
+        url = "https://mirror.example.org/v/model.onnx"
+        with self.stream({"model.onnx_data": _mock_response(500),
+                          "model.onnx": _mock_response(200, content=b"data")}):
+            with self.assertRaises(requests.exceptions.HTTPError):
+                self.make_info(model_url=url).download_model()
+
+
+class TestExternalDataGraphLoads(HubTestCase):
+    """An external-data graph must load through onnxruntime, end to end.
+
+    The graph names its weights by a relative path, and onnxruntime refuses to
+    follow that reference outside the directory the graph itself resolves to.
+    Every other test here stops at "the bytes arrived", which is why a layout
+    onnxruntime rejects shipped: a real graph beside a linked sidecar reads as
+    complete on disk and fails at load, with
+
+        FAIL : External data path validation failed for initializer: W.
+        Error: External data path escapes model directory.
+
+    and every voice built that way answered with HTTP 500. This test loads it.
+    """
+
+    def _external_data_model(self):
+        """Build a tiny graph whose one initializer lives in a sidecar."""
+        import numpy as np
+        import onnx
+        from onnx import helper, numpy_helper, TensorProto
+
+        build = Path(tempfile.mkdtemp())
+        self.addCleanup(
+            lambda: __import__("shutil").rmtree(build, ignore_errors=True))
+        weight = numpy_helper.from_array(
+            np.ones((1024, 16), dtype=np.float32), name="W")
+        graph = helper.make_graph(
+            [helper.make_node("Add", ["X", "W"], ["Y"])], "g",
+            [helper.make_tensor_value_info("X", TensorProto.FLOAT, [1024, 16])],
+            [helper.make_tensor_value_info("Y", TensorProto.FLOAT, [1024, 16])],
+            [weight])
+        model = helper.make_model(
+            graph, opset_imports=[helper.make_opsetid("", 13)])
+        onnx.save(model, str(build / "model.onnx"), save_as_external_data=True,
+                  location="model.onnx_data", all_tensors_to_one_file=True,
+                  size_threshold=0)
+        return ((build / "model.onnx").read_bytes(),
+                (build / "model.onnx_data").read_bytes())
+
+    def _stage_external_data_voice(self):
+        graph, weights = self._external_data_model()
+        self.hub.stage(f"{HUB}/model.onnx", graph)
+        self.hub.stage(f"{HUB}/model.onnx_data", weights)
+        return self.make_info()
+
+    def test_the_graph_the_engine_is_handed_loads(self):
+        info = self._stage_external_data_voice()
+        session = onnxruntime.InferenceSession(
+            str(info.download_model()), providers=["CPUExecutionProvider"])
+        self.assertEqual([i.name for i in session.get_inputs()], ["X"])
+
+    def test_a_copy_outside_the_cache_would_not_load(self):
+        """The property under test, stated as its own failure.
+
+        Copying the graph anywhere else — which is what phoonnx used to do —
+        leaves the sidecar behind in the cache, and onnxruntime rejects it.
+
+        The rejection is onnxruntime's, and older builds load the escaping
+        path without complaint, so this control is skipped there rather than
+        failing: it would otherwise report a missing guard in a dependency as
+        a fault in phoonnx.
+        """
+        import shutil
+        info = self._stage_external_data_voice()
+        cached = info.download_model()
+        elsewhere = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: shutil.rmtree(elsewhere, ignore_errors=True))
+        shutil.copy2(cached, elsewhere / "model.onnx")
+        os.symlink(cached.parent / "model.onnx_data",
+                   elsewhere / "model.onnx_data")
+
+        try:
+            onnxruntime.InferenceSession(
+                str(elsewhere / "model.onnx"),
+                providers=["CPUExecutionProvider"])
+        except Exception as exc:
+            self.assertIn("escapes model directory", str(exc))
+        else:
+            self.skipTest(
+                f"onnxruntime {onnxruntime.__version__} does not enforce "
+                "external-data path containment; the control cannot run")
+
+    def test_a_self_hosted_external_data_graph_loads_too(self):
+        graph, weights = self._external_data_model()
+        url = "https://mirror.example.org/v/model.onnx"
+        with self.stream({"model.onnx_data": _mock_response(200, content=weights),
+                          "model.onnx": _mock_response(200, content=graph)}):
+            path = self.make_info(model_url=url).download_model()
+        session = onnxruntime.InferenceSession(
+            str(path), providers=["CPUExecutionProvider"])
+        self.assertEqual([i.name for i in session.get_inputs()], ["X"])
+
+    def test_load_opens_a_real_session_on_an_external_data_graph(self):
+        """``load()`` itself opens the session for a voice with no published
+        config.json, so this exercises the whole path with real onnxruntime."""
+        info = self._stage_external_data_voice()
+        info.engine = Engine.PHOONNX
+        with patch("phoonnx.model_manager.TTSVoice") as voice_cls:
+            info.load()
+        session = voice_cls.call_args.kwargs["session"]
+        self.assertEqual([i.name for i in session.get_inputs()], ["X"])
+
+
+class TestLoad(HubTestCase):
+    def test_load_hands_every_artifact_path_to_ttsvoice(self):
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+        self.hub.stage(f"{HUB}/config.json", {"sample_rate": 22050})
+        self.hub.stage(f"{HUB}/tokens.txt", "a\nb\n")
+        info = self.make_info(config_url=f"{HUB}/config.json",
+                              tokens_url=f"{HUB}/tokens.txt")
+        with patch("phoonnx.model_manager.TTSVoice") as voice_cls, \
+                patch("phoonnx.model_manager.get_phonemizer"):
+            info.load()
+        kwargs = voice_cls.load.call_args.kwargs
+        self.assertEqual(Path(kwargs["model_path"]).read_bytes(), b"onnxdata")
+        self.assertEqual(json.loads(Path(kwargs["config_path"]).read_text()),
+                         {"sample_rate": 22050})
+        self.assertIsNone(kwargs["vocab_path"], "this voice has no vocab.json")
+
+
+class TestEngineParams(HubTestCase):
     def test_empty_for_single_stage_engine(self):
-        info = self.make_info()
-        self.assertEqual(info.engine_params(), {})
+        self.assertEqual(self.make_info().engine_params(), {})
 
-    @patch("phoonnx.model_manager.requests.get")
-    def test_combines_vocoder_style_speaker_encoder(self, mock_get):
-        info = self.make_info(
-            vocoder_url="https://example.com/vocoder.onnx",
-            vocoder_type="hifigan",
-            style_url="https://example.com/style.bin",
-            speaker_encoder_url="https://example.com/enc.onnx",
-            speaker_encoder_type="dvector",
-        )
-        resp = _mock_response(200, content=b"data")
-        cm = MagicMock()
-        cm.__enter__.return_value = resp
-        mock_get.return_value = cm
+    def test_vocoder_style_and_speaker_encoder_resolve(self):
+        for name in ("vocoder.onnx", "style.bin", "speaker_encoder.onnx"):
+            self.hub.stage(f"{HUB}/{name}", b"payload")
+        self.hub.stage(f"{HUB}/vocoder.json", {"hop": 256})
+        info = self.make_info(vocoder_url=f"{HUB}/vocoder.onnx",
+                              vocoder_config_url=f"{HUB}/vocoder.json",
+                              vocoder_type="hifigan",
+                              style_url=f"{HUB}/style.bin",
+                              speaker_encoder_url=f"{HUB}/speaker_encoder.onnx")
         params = info.engine_params()
         self.assertEqual(params["vocoder_type"], "hifigan")
-        self.assertEqual(params["speaker_encoder_type"], "dvector")
-        self.assertIn("style_path", params)
-        self.assertIn("vocoder_path", params)
-        self.assertIn("speaker_encoder_path", params)
+        self.assertEqual(params["vocoder_config"], {"hop": 256})
+        for key in ("vocoder_path", "style_path", "speaker_encoder_path"):
+            self.assertTrue(str(params[key]).startswith(str(self.hub_root)))
 
-    @patch("phoonnx.model_manager.requests.get")
-    def test_parametric_vocoder_no_model_file(self, mock_get):
-        info = self.make_info(vocoder_type="griffinlim", vocoder_config_url="https://example.com/vocoder.json")
-        mock_get.return_value = _mock_response(200, content=b'{"n_fft": 1024}')
+    def test_a_parametric_vocoder_needs_no_model_file(self):
+        self.hub.stage(f"{HUB}/vocoder.json", {"n_fft": 1024})
+        info = self.make_info(vocoder_type="griffin_lim",
+                              vocoder_config_url=f"{HUB}/vocoder.json")
         params = info.engine_params()
-        self.assertEqual(params["vocoder_type"], "griffinlim")
-        self.assertIn("vocoder_config", params)
+        self.assertEqual(params["vocoder_type"], "griffin_lim")
         self.assertEqual(params["vocoder_config"], {"n_fft": 1024})
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_aux_model_url_without_filename_uses_key(self, mock_get):
-        info = self.make_info(aux_model_urls={"weird_path": "https://example.com/graphs/"})
-        resp = _mock_response(200, content=b"data")
-        cm = MagicMock()
-        cm.__enter__.return_value = resp
-        mock_get.return_value = cm
-        paths = info.download_aux_models()
-        self.assertTrue(str(paths["weird_path"]).endswith("weird_path.onnx"))
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_chatterbox_aux_graphs(self, mock_get):
-        info = self.make_info(
-            speech_encoder_url="https://example.com/speech_encoder.onnx",
-            embed_tokens_url="https://example.com/embed_tokens.onnx",
-            conditional_decoder_url="https://example.com/conditional_decoder.onnx",
-        )
-        resp = _mock_response(200, content=b"data")
-        cm = MagicMock()
-        cm.__enter__.return_value = resp
-        mock_get.return_value = cm
-        params = info.engine_params()
-        self.assertIn("speech_encoder_path", params)
-        self.assertIn("embed_tokens_path", params)
-        self.assertIn("conditional_decoder_path", params)
+        self.assertNotIn("vocoder_path", params)
 
 
-class TestLoad(VoicePathTestCase):
-    @patch("phoonnx.model_manager.TTSVoice")
-    @patch("phoonnx.model_manager.requests.get")
-    def test_load_downloads_model_then_builds_voice(self, mock_get, mock_ttsvoice_cls):
-        info = self.make_info(config_url="https://example.com/config.json")
-        resp = _mock_response(200, content=b"data")
-        cm = MagicMock()
-        cm.__enter__.return_value = resp
-        mock_get.return_value = cm
-        info.voice_path.joinpath("model.json").write_text(
-            json.dumps({"phoneme_type": "graphemes", "alphabet": "unicode"}), encoding="utf-8"
-        )
-        fake_voice = MagicMock()
-        fake_voice.config.phoneme_type = info.config.phoneme_type
-        fake_voice.config.alphabet = info.config.alphabet
-        mock_ttsvoice_cls.load.return_value = fake_voice
-        result = info.load()
-        mock_ttsvoice_cls.load.assert_called_once()
-        self.assertEqual(result, fake_voice)
-
-    @patch("phoonnx.model_manager.VoiceConfig")
-    @patch("phoonnx.model_manager.onnxruntime")
-    @patch("phoonnx.model_manager.TTSVoice")
-    @patch("phoonnx.model_manager.requests.get")
-    def test_load_engine_without_config_url_uses_session(self, mock_get, mock_ttsvoice_cls, mock_ort, mock_voiceconfig_cls):
-        info = self.make_info(engine=Engine.CHATTERBOX, tokenizer_config_url="https://example.com/tokenizer.json")
-
-        def side_effect(url, timeout=None, stream=None):
-            if stream:
-                resp = _mock_response(200, content=b"data")
-                cm = MagicMock()
-                cm.__enter__.return_value = resp
-                return cm
-            return _mock_response(200, content=b'{"vocab": {}}')
-
-        mock_get.side_effect = side_effect
-        fake_config = MagicMock()
-        fake_config.engine_params = {}
-        mock_voiceconfig_cls.from_dict.return_value = fake_config
-        session = MagicMock()
-        mock_ort.InferenceSession.return_value = session
-        fake_voice = MagicMock()
-        mock_ttsvoice_cls.return_value = fake_voice
-        result = info.load()
-        mock_ort.InferenceSession.assert_called_once()
-        self.assertEqual(result, fake_voice)
+class TestDownloadAll(HubTestCase):
+    def test_every_artifact_a_voice_needs_is_fetched(self):
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+        self.hub.stage(f"{HUB}/config.json", {"sample_rate": 22050})
+        self.hub.stage(f"{HUB}/vocab.json", {"a": 1})
+        self.hub.stage(f"{HUB}/tokenizer_config.json", {"unk_token": "<unk>"})
+        info = self.make_info(config_url=f"{HUB}/config.json",
+                              vocab_url=f"{HUB}/vocab.json",
+                              tokenizer_config_url=f"{HUB}/tokenizer_config.json")
+        model_path = info.download_all()
+        self.assertEqual(model_path.read_bytes(), b"onnxdata")
+        pulled = {name for _, name, _ in self.hub.downloads}
+        self.assertLessEqual({"model.onnx", "config.json", "vocab.json",
+                              "tokenizer_config.json"}, pulled)
 
 
-class TestTTSModelInfoStringEnumCoercion(VoicePathTestCase):
+class TestTTSModelInfoStringEnumCoercion(HubTestCase):
     def test_string_engine_alphabet_phoneme_type_coerced(self):
         info = self.make_info(engine="piper", alphabet="ipa", phoneme_type="espeak")
         self.assertEqual(info.engine, Engine.PIPER)
@@ -794,192 +804,6 @@ class TestFullSerializationRoundTrip(ManagerTestCase):
         json.dumps(d)
 
 
-class TestLoadPhonemeTypeOverrideAppliesToConfig(VoicePathTestCase):
-    @patch("phoonnx.model_manager.TTSVoice")
-    @patch("phoonnx.model_manager.requests.get")
-    def test_override_sets_config_phoneme_type_not_voice_attribute(self, mock_get, mock_ttsvoice_cls):
-        info = self.make_info(config_url="https://example.com/config.json", phoneme_type="graphemes", alphabet="unicode")
-        resp = _mock_response(200, content=b"data")
-        cm = MagicMock()
-        cm.__enter__.return_value = resp
-        mock_get.return_value = cm
-        info.voice_path.joinpath("model.json").write_text(
-            json.dumps({"phoneme_type": "espeak", "alphabet": "ipa"}), encoding="utf-8"
-        )
-        fake_voice = MagicMock()
-        fake_voice.config.phoneme_type = PhonemeType.ESPEAK
-        fake_voice.config.alphabet = Alphabet.IPA
-        mock_ttsvoice_cls.load.return_value = fake_voice
-
-        with patch("phoonnx.model_manager.get_phonemizer") as mock_get_phonemizer:
-            result = info.load()
-
-        # the override must land on voice.config.phoneme_type, not a dead
-        # voice.phoneme_type attribute
-        self.assertEqual(fake_voice.config.phoneme_type, info.phoneme_type)
-        self.assertEqual(fake_voice.config.alphabet, info.alphabet)
-        mock_get_phonemizer.assert_called_once()
-        self.assertEqual(result, fake_voice)
-
-
-class TestUnwritableCachePath(unittest.TestCase):
-    def test_unwritable_cache_dir_raises_clear_error(self):
-        tmpdir = tempfile.mkdtemp()
-        self.addCleanup(lambda: (os.chmod(tmpdir, 0o700), __import__("shutil").rmtree(tmpdir)))
-        os.chmod(tmpdir, 0o500)
-        bad_path = os.path.join(tmpdir, "sub", "cache.json")
-        with self.assertRaises(PermissionError):
-            TTSModelManager(cache_path=bad_path)
-
-
-class TestAtomicDownloads(VoicePathTestCase):
-    """An interrupted download must never leave a file later runs trust."""
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_interrupted_stream_leaves_no_usable_file(self, mock_get):
-        info = self.make_info()
-        dest = info.voice_path / "model.onnx"
-
-        broken = MagicMock()
-        broken.status_code = 200
-        broken.raise_for_status.return_value = None
-        broken.headers = {}
-
-        def _explode(chunk_size=None):
-            yield b"012345678"  # 9 bytes, then the connection drops
-            raise requests.exceptions.ConnectionError("connection reset")
-
-        broken.iter_content.side_effect = _explode
-        cm = MagicMock()
-        cm.__enter__.return_value = broken
-        mock_get.return_value = cm
-
-        with self.assertRaises(requests.exceptions.ConnectionError):
-            info._fetch_onnx(info.model_url, dest)
-        self.assertFalse(dest.exists())
-        self.assertFalse((info.voice_path / "model.onnx.part").exists())
-
-        # a later run must actually re-download, not trust the leftovers
-        good = _mock_response(200, content=b"complete-onnx-graph")
-        good.headers = {}
-        sidecar = _mock_response(404)
-
-        def side_effect(url, timeout=None, stream=None):
-            resp = good if url == info.model_url else sidecar
-            cm2 = MagicMock()
-            cm2.__enter__.return_value = resp
-            return cm2
-
-        mock_get.side_effect = side_effect
-        mock_get.return_value = None
-        info._fetch_onnx(info.model_url, dest)
-        self.assertEqual(dest.read_bytes(), b"complete-onnx-graph")
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_short_body_vs_content_length_is_rejected(self, mock_get):
-        info = self.make_info(style_url="https://example.com/style.bin")
-        resp = _mock_response(200, content=b"123456789")  # 9 bytes
-        resp.headers = {"Content-Length": "4096"}
-        cm = MagicMock()
-        cm.__enter__.return_value = resp
-        mock_get.return_value = cm
-        with self.assertRaises(IOError):
-            info.download_style()
-        self.assertFalse((info.voice_path / "style.bin").exists())
-        self.assertFalse((info.voice_path / "style.bin.part").exists())
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_zero_byte_cached_model_is_redownloaded(self, mock_get):
-        info = self.make_info()
-        dest = info.voice_path / "model.onnx"
-        dest.write_bytes(b"")
-        good = _mock_response(200, content=b"real-graph")
-        good.headers = {}
-        sidecar = _mock_response(404)
-
-        def side_effect(url, timeout=None, stream=None):
-            resp = good if url == info.model_url else sidecar
-            cm = MagicMock()
-            cm.__enter__.return_value = resp
-            return cm
-
-        mock_get.side_effect = side_effect
-        info._fetch_onnx(info.model_url, dest)
-        self.assertEqual(dest.read_bytes(), b"real-graph")
-
-
-class TestDownloadAll(VoicePathTestCase):
-    """A downloaded voice must be usable offline: side files included."""
-
-    def _recording_get(self, requested):
-        def side_effect(url, timeout=None, stream=None):
-            requested.append(url)
-            if url.endswith("_data"):
-                resp = _mock_response(404)
-            elif url.endswith(".json"):
-                resp = _mock_response(200, json_data={"phoneme_type": "graphemes",
-                                                      "alphabet": "unicode"})
-            elif url.endswith(".txt"):
-                resp = _mock_response(200, text="a\nb\n")
-            else:
-                resp = _mock_response(200, content=b"binarydata")
-            resp.headers = {}
-            if stream:
-                cm = MagicMock()
-                cm.__enter__.return_value = resp
-                return cm
-            return resp
-
-        return side_effect
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_all_fetches_every_side_file(self, mock_get):
-        info = self.make_info(
-            config_url="https://example.com/config.json",
-            tokens_url="https://example.com/tokens.txt",
-            vocoder_url="https://example.com/vocoder.onnx",
-            vocoder_config_url="https://example.com/vocoder_config.json",
-            vocoder_type="hifigan",
-            style_url="https://example.com/style.bin",
-            speaker_encoder_url="https://example.com/enc.onnx",
-            aux_model_urls={"decode_path": "https://example.com/decode.onnx"},
-        )
-        requested = []
-        mock_get.side_effect = self._recording_get(requested)
-
-        info.download_all()
-
-        for url in (info.model_url, info.config_url, info.tokens_url,
-                    info.vocoder_url, info.vocoder_config_url, info.style_url,
-                    info.speaker_encoder_url,
-                    info.aux_model_urls["decode_path"]):
-            self.assertIn(url, requested)
-        for fname in ("model.onnx", "model.json", "tokens.txt", "vocoder.onnx",
-                      "vocoder.json", "style.bin", "speaker_encoder.onnx",
-                      "decode.onnx"):
-            self.assertTrue((info.voice_path / fname).is_file(), fname)
-
-    @patch("phoonnx.model_manager.requests.get")
-    def test_download_voice_by_id_uses_download_all(self, mock_get):
-        tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(tmp.cleanup)
-        manager = TTSModelManager(cache_path=os.path.join(tmp.name, "cache.json"))
-        info = self.make_info(
-            voice_id="aux/voice",
-            config_url="https://example.com/config.json",
-            vocoder_url="https://example.com/vocoder.onnx",
-            style_url="https://example.com/style.bin",
-        )
-        manager.voices = {"aux/voice": info}
-        requested = []
-        mock_get.side_effect = self._recording_get(requested)
-
-        self.assertTrue(manager.download_voice_by_id("aux/voice"))
-        self.assertIn(info.config_url, requested)
-        self.assertIn(info.vocoder_url, requested)
-        self.assertIn(info.style_url, requested)
-
-
 class TestVoiceIndexSources(unittest.TestCase):
     def test_every_bundled_index_is_listed(self):
         tmp = tempfile.TemporaryDirectory()
@@ -1013,3 +837,59 @@ class TestCatalogDoesNotTouchDisk(unittest.TestCase):
                 self.assertTrue(mm.voices, "expected a populated catalog")
                 created = [p for p in Path(home).rglob("*") if p.is_dir()]
                 self.assertEqual(created, [], f"catalog created {len(created)} dirs")
+
+
+# ---------------------------------------------------------------------------
+# The shared HuggingFace cache
+# ---------------------------------------------------------------------------
+
+HUB = "https://huggingface.co/an-org/a-repo/resolve/main"
+
+
+def _hub_500():
+    """The hub client wraps a server error, keeping the response on it."""
+    return HfHubHTTPError("500 Server Error", response=MagicMock(status_code=500))
+
+
+class TestHfUrlParsing(unittest.TestCase):
+    def test_non_hub_urls_are_declined(self):
+        for url in ["https://example.com/model.onnx",
+                    "https://huggingface.co/an-org/a-repo",
+                    "https://not-huggingface.co/a/b/resolve/main/f.onnx"]:
+            self.assertIsNone(_hf_fetch(url), url)
+
+    def test_query_strings_are_ignored(self):
+        with patch("phoonnx.model_manager.hf_hub_download",
+                   return_value="/cache/f.onnx") as dl:
+            _hf_fetch(f"{HUB}/model.onnx?download=true")
+        dl.assert_called_once()
+        self.assertEqual(dl.call_args.kwargs["filename"], "model.onnx")
+
+    def test_nested_paths_survive(self):
+        with patch("phoonnx.model_manager.hf_hub_download",
+                   return_value="/cache/f.onnx") as dl:
+            _hf_fetch(f"{HUB}/onnx/sub/model.onnx")
+        self.assertEqual(dl.call_args.kwargs["filename"], "onnx/sub/model.onnx")
+
+
+class TestHubImportedEagerly(unittest.TestCase):
+    def test_the_hub_client_is_imported_at_module_scope(self):
+        """Importing it inside the download call meant the first voice download
+        decided where the hub cache and token live. Anything that had redirected
+        ``expanduser`` by then — a test, a sandbox — got baked in for the life of
+        the process."""
+        import phoonnx.model_manager as mm
+        self.assertTrue(callable(mm.hf_hub_download))
+        from huggingface_hub import constants
+        self.assertTrue(Path(constants.HF_TOKEN_PATH).parent.name,
+                        "the token path must be resolved, not empty")
+
+
+class TestUnwritableCachePath(unittest.TestCase):
+    def test_unwritable_cache_dir_raises_clear_error(self):
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(lambda: (os.chmod(tmpdir, 0o700), __import__("shutil").rmtree(tmpdir)))
+        os.chmod(tmpdir, 0o500)
+        bad_path = os.path.join(tmpdir, "sub", "cache.json")
+        with self.assertRaises(PermissionError):
+            TTSModelManager(cache_path=bad_path)

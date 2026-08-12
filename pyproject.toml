@@ -26,6 +26,7 @@ dependencies = [
     "unicode_rbnf",
     "click",
     "requests",
+    "huggingface_hub",
     "json_database",
     "ovos-plugin-manager>=2.1.0",
     "ovos-utils",

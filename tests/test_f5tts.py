@@ -267,8 +267,11 @@ def test_aux_model_urls_resolved_in_engine_params(tmp_path, monkeypatch):
         engine="f5tts",
         aux_model_urls={"preprocess_path": "https://example.com/F5_Preprocess.onnx",
                         "decode_path": "https://example.com/F5_Decode.onnx"})
-    monkeypatch.setattr(type(info), "voice_path",
-                        property(lambda self: tmp_path))
+    # these graphs are self-hosted, so they take the direct-download path;
+    # keep it inside the test's own cache root
+    import phoonnx.model_manager as mm
+    monkeypatch.setattr(mm, "HF_HUB_CACHE", str(tmp_path))
+    expected = mm._direct_dir("https://example.com/F5_Preprocess.onnx")
 
     class _Resp:
         status_code = 200
@@ -277,13 +280,12 @@ def test_aux_model_urls_resolved_in_engine_params(tmp_path, monkeypatch):
         def __enter__(self): return self
         def __exit__(self, *a): return False
 
-    import phoonnx.model_manager as mm
     monkeypatch.setattr(mm.requests, "get", lambda *a, **k: _Resp())
 
     params = info.engine_params()
-    assert params["preprocess_path"] == str(tmp_path / "F5_Preprocess.onnx")
-    assert params["decode_path"] == str(tmp_path / "F5_Decode.onnx")
-    assert (tmp_path / "F5_Preprocess.onnx").read_bytes() == b"onnx-bytes"
+    assert params["preprocess_path"] == str(expected / "F5_Preprocess.onnx")
+    assert params["decode_path"] == str(expected / "F5_Decode.onnx")
+    assert (expected / "F5_Preprocess.onnx").read_bytes() == b"onnx-bytes"
 
 
 def test_f5tts_resample():

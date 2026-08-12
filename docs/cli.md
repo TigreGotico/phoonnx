@@ -118,7 +118,11 @@ falls back to the bundled indexes, so a single voice can be fetched without runn
 phoonnx-voices download OpenVoiceOS/pipertts_es-ES_dii
 ```
 
-Files are saved to the XDG cache directory: `~/.cache/phoonnx/voices/<voice_id>/`
+Files are fetched with `huggingface_hub` straight into the shared HuggingFace
+cache (`~/.cache/huggingface/hub/` by default, or wherever `HF_HOME`/`HF_HUB_CACHE`
+points), the same place any other program on the machine keeps hub files. A model
+named by more than one voice, or already pulled by another tool, is stored once
+and reused, not downloaded again.
 
 ---
 
