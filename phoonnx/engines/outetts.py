@@ -459,8 +459,8 @@ class OuteTTSAdapter(BaseOnnxAdapter):
         if self.codec is None and ep.get("codec_decoder_path"):
             self.codec = make_session(ep["codec_decoder_path"], providers=ep.get("providers"))
         if self.tokenizer is None and ep.get("tokenizer_path"):
-            from tokenizers import Tokenizer
-            self.tokenizer = Tokenizer.from_file(str(ep["tokenizer_path"]))
+            from phoonnx.tokenizer import load_hf_tokenizer
+            self.tokenizer = load_hf_tokenizer(ep["tokenizer_path"])
             self._build_token_maps()
         if not self.speakers and ep.get("speakers_path"):
             with open(ep["speakers_path"], encoding="utf-8") as f:
