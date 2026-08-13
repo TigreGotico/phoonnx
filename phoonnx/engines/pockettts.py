@@ -206,8 +206,8 @@ class PocketTTSAdapter(BaseOnnxAdapter):
             self.mimi_encoder = sess(ep["mimi_encoder_path"])
 
         if self.tokenizer is None and ep.get("tokenizer_path"):
-            import sentencepiece
-            self.tokenizer = sentencepiece.SentencePieceProcessor()
+            from phoonnx._sentencepiece import SentencePieceProcessor
+            self.tokenizer = SentencePieceProcessor()
             self.tokenizer.Load(ep["tokenizer_path"])
 
         if self.bos_before_voice is None and ep.get("bos_path"):
