@@ -296,3 +296,77 @@ class TestGateReleasedWithTheCacheInsert(unittest.TestCase):
                          "the voice must be cached before the gate is released")
         self.assertEqual(len(set(map(id, results))), 1,
                          "both callers must get the same instance")
+
+
+class TestTheGateSurvivesAFailureWhileCaching(unittest.TestCase):
+    """The gate must be released even if the failure happens after loading.
+
+    `try/except/else` does not catch exceptions raised in its own `else`
+    block, so a failure while storing the loaded voice skipped both places
+    that clear the gate. It stayed installed with nothing left to set it, and
+    every later caller for that voice waited on it forever. The voice id comes
+    from the request, so each such failure wedges one more voice until the
+    process restarts.
+    """
+
+    def _plugin_failing_after_load(self):
+        from phoonnx.opm import PhoonnxTTSPlugin
+
+        patchers = [
+            patch("phoonnx.opm.TTSModelManager"),
+            patch.object(PhoonnxTTSPlugin, "get_default_voice",
+                         return_value=MagicMock()),
+            patch.object(PhoonnxTTSPlugin, "get_voice_info",
+                         side_effect=lambda v: MagicMock(
+                             load=lambda **_kw: "a-loaded-voice")),
+            patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
+            # Fails only once the voice is loaded and is being cached.
+            patch.object(PhoonnxTTSPlugin, "_evict_for",
+                         side_effect=RuntimeError("failed while caching")),
+        ]
+        for pat in patchers:
+            pat.start()
+            self.addCleanup(pat.stop)
+        return PhoonnxTTSPlugin(config={})
+
+    def test_a_failure_while_caching_does_not_stay_installed(self):
+        plugin = self._plugin_failing_after_load()
+        with self.assertRaises(RuntimeError):
+            plugin.get_model("wedged")
+        self.assertEqual(plugin._loading, {},
+                         "the gate must not outlive the request that made it")
+
+    def test_the_next_caller_does_not_hang(self):
+        plugin = self._plugin_failing_after_load()
+        with self.assertRaises(RuntimeError):
+            plugin.get_model("wedged")
+
+        done = threading.Event()
+
+        def second():
+            try:
+                plugin.get_model("wedged")
+            except Exception:
+                pass
+            done.set()
+
+        threading.Thread(target=second, daemon=True).start()
+        self.assertTrue(done.wait(timeout=10),
+                        "a second caller for that voice must not hang forever")
+
+    def test_waiters_already_blocked_are_released(self):
+        plugin = self._plugin_failing_after_load()
+        errors = []
+
+        def ask():
+            try:
+                plugin.get_model("wedged")
+            except BaseException as exc:  # noqa: BLE001
+                errors.append(exc)
+
+        threads = [threading.Thread(target=ask, daemon=True) for _ in range(4)]
+        [t.start() for t in threads]
+        for t in threads:
+            t.join(timeout=10)
+            self.assertFalse(t.is_alive(), "no caller may hang")
+        self.assertEqual(len(errors), 4, "every caller must see the failure")

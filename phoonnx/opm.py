@@ -273,16 +273,33 @@ class PhoonnxTTSPlugin(TTS):
             # cached nor being loaded, and a waiter that woke inside it would
             # elect itself and start a second full cold load — the duplicate
             # this gate exists to prevent.
-            with self._voice_lock:
-                if voice_id not in self.voices:
-                    self._evict_for(voice_id)
-                    self.voices[voice_id] = voice
-                self.voices.move_to_end(voice_id)
-                cached = self.voices[voice_id]
-                gate = self._loading.pop(voice_id, None)
-            if gate is not None:
-                gate.done.set()
-            return cached
+            #
+            # The try covers the caching too. An exception raised here is not
+            # caught by the except above it — that is what `else` means — so
+            # anything that failed while storing the voice used to leave the
+            # gate installed with nothing to ever set it, and every later
+            # caller for that voice id waited on it forever. The voice id
+            # comes from the request, so that is one wedged voice per failure,
+            # until the process restarts.
+            try:
+                with self._voice_lock:
+                    if voice_id not in self.voices:
+                        self._evict_for(voice_id)
+                        self.voices[voice_id] = voice
+                    self.voices.move_to_end(voice_id)
+                    cached = self.voices[voice_id]
+                    gate = self._loading.pop(voice_id, None)
+                if gate is not None:
+                    gate.done.set()
+                return cached
+
+            except BaseException as exc:
+                with self._voice_lock:
+                    gate = self._loading.pop(voice_id, None)
+                if gate is not None:
+                    gate.error = exc
+                    gate.done.set()
+                raise
 
     @staticmethod
     def _parse_max_loaded(value) -> Optional[int]:
