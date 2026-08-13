@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.79.5a1](https://github.com/TigreGotico/phoonnx/tree/1.79.5a1) (2026-08-13)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.79.4a1...1.79.5a1)
+
+**Merged pull requests:**
+
+- fix: release the loading gate when caching the voice fails [\#393](https://github.com/TigreGotico/phoonnx/pull/393) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.79.4a1](https://github.com/TigreGotico/phoonnx/tree/1.79.4a1) (2026-08-13)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.79.3a1...1.79.4a1)
@@ -426,7 +434,6 @@
 - Streaming VITS engine \(split encoder/decoder\) + offline voice listing [\#231](https://github.com/TigreGotico/phoonnx/pull/231) ([JarbasAl](https://github.com/JarbasAl))
 - fix: corpus-only phoneme map option and untrained-symbol warning [\#229](https://github.com/TigreGotico/phoonnx/pull/229) ([JarbasAl](https://github.com/JarbasAl))
 - feat: checkpoint evaluation loop with UTMOS and speaker similarity [\#228](https://github.com/TigreGotico/phoonnx/pull/228) ([JarbasAl](https://github.com/JarbasAl))
-- fix: replace monotonic\_align C extension with pure numpy implementation [\#227](https://github.com/TigreGotico/phoonnx/pull/227) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
