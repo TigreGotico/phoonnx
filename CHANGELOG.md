@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.80.0a1](https://github.com/TigreGotico/phoonnx/tree/1.80.0a1) (2026-08-13)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.79.5a1...1.80.0a1)
+
+**Merged pull requests:**
+
+- feat: bound the loaded-voice cache by bytes, not by voice count [\#388](https://github.com/TigreGotico/phoonnx/pull/388) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.79.5a1](https://github.com/TigreGotico/phoonnx/tree/1.79.5a1) (2026-08-13)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.79.4a1...1.79.5a1)
@@ -433,7 +441,6 @@
 - feat\(train\): Vocos vocoder training, export and warm start [\#232](https://github.com/TigreGotico/phoonnx/pull/232) ([JarbasAl](https://github.com/JarbasAl))
 - Streaming VITS engine \(split encoder/decoder\) + offline voice listing [\#231](https://github.com/TigreGotico/phoonnx/pull/231) ([JarbasAl](https://github.com/JarbasAl))
 - fix: corpus-only phoneme map option and untrained-symbol warning [\#229](https://github.com/TigreGotico/phoonnx/pull/229) ([JarbasAl](https://github.com/JarbasAl))
-- feat: checkpoint evaluation loop with UTMOS and speaker similarity [\#228](https://github.com/TigreGotico/phoonnx/pull/228) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
