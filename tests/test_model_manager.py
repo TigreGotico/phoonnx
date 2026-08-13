@@ -893,3 +893,140 @@ class TestUnwritableCachePath(unittest.TestCase):
         bad_path = os.path.join(tmpdir, "sub", "cache.json")
         with self.assertRaises(PermissionError):
             TTSModelManager(cache_path=bad_path)
+
+
+class TestDiskSize(unittest.TestCase):
+    """Measuring a voice, against a real hub cache layout on disk.
+
+    The byte budget is only as good as this measurement: a ``disk_size`` that
+    silently returns 0 does not fail loudly, it disables the budget and lets
+    memory run unbounded. So these tests build the cache the hub actually
+    writes — blobs, refs, and a snapshot of symlinks into the blobs — and read
+    it back through the real ``huggingface_hub`` resolver rather than a stub.
+    """
+
+    REPO = "an-org/a-repo"
+    URL = "https://huggingface.co/an-org/a-repo/resolve/main/"
+
+    def setUp(self):
+        from huggingface_hub import constants
+        self._cache = tempfile.TemporaryDirectory(dir=os.environ.get("TMPDIR"))
+        self.addCleanup(self._cache.cleanup)
+        self.cache = Path(self._cache.name)
+        patcher = patch.object(constants, "HF_HUB_CACHE", str(self.cache))
+        self.addCleanup(patcher.stop)
+        patcher.start()
+        # a direct (non-hub) download must not touch the developer's cache
+        dpatch = patch("phoonnx.model_manager.HF_HUB_CACHE", str(self.cache))
+        self.addCleanup(dpatch.stop)
+        dpatch.start()
+
+        self.root = self.cache / "models--an-org--a-repo"
+        (self.root / "blobs").mkdir(parents=True)
+        (self.root / "refs").mkdir()
+        (self.root / "refs" / "main").write_text("cafebabe")
+        self.snapshot = self.root / "snapshots" / "cafebabe"
+        self.snapshot.mkdir(parents=True)
+
+    def add(self, name, size):
+        """Write ``name`` into the cache exactly as the hub would: a blob,
+        with the snapshot entry a symlink pointing at it."""
+        blob = self.root / "blobs" / f"{name}-sha"
+        blob.write_bytes(b"x" * size)
+        link = self.snapshot / name
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.symlink_to(blob)
+        return blob
+
+    def test_a_cached_file_resolves_to_the_blob_it_links_to(self):
+        from phoonnx.model_manager import _cached_path
+        blob = self.add("model.onnx", 1000)
+        path = _cached_path(f"{self.URL}model.onnx")
+        self.assertIsNotNone(path)
+        self.assertTrue(Path(path).is_symlink())
+        self.assertEqual(Path(path).resolve(), blob.resolve())
+        self.assertEqual(Path(path).stat().st_size, 1000,
+                         "stat must follow the link to the blob, not measure "
+                         "the link itself")
+
+    def test_the_weights_sidecar_is_counted_with_its_graph(self):
+        # An omnivoice graph is a few MB and its .onnx_data is gigabytes;
+        # missing the sidecar is the difference between a budget and a lie.
+        from phoonnx.model_manager import _file_bytes
+        self.add("model.onnx", 1000)
+        self.add("model.onnx_data", 5000)
+        self.assertEqual(_file_bytes(f"{self.URL}model.onnx"), 6000)
+
+    def test_a_graph_without_a_sidecar_is_just_the_graph(self):
+        from phoonnx.model_manager import _file_bytes
+        self.add("vocoder.onnx", 2000)
+        self.assertEqual(_file_bytes(f"{self.URL}vocoder.onnx"), 2000)
+
+    def test_the_download_query_form_measures_the_same_file(self):
+        from phoonnx.model_manager import _file_bytes
+        self.add("model.onnx", 1000)
+        self.add("model.onnx_data", 5000)
+        self.assertEqual(_file_bytes(f"{self.URL}model.onnx?download=true"),
+                         6000)
+
+    def test_a_file_that_was_never_downloaded_measures_zero(self):
+        from phoonnx.model_manager import _cached_path, _file_bytes
+        self.assertIsNone(_cached_path(f"{self.URL}absent.onnx"))
+        self.assertEqual(_file_bytes(f"{self.URL}absent.onnx"), 0)
+        self.assertEqual(_file_bytes(""), 0)
+
+    def test_never_goes_to_the_network(self):
+        # A size question that can start a download, or block on a hub that is
+        # slow to answer, is a size question that can hang synthesis.
+        from phoonnx.model_manager import _file_bytes
+        with patch("requests.get", side_effect=AssertionError("network!")), \
+                patch("requests.head", side_effect=AssertionError("network!")):
+            self.assertEqual(_file_bytes(f"{self.URL}absent.onnx"), 0)
+
+    def test_every_graph_a_voice_loads_is_summed(self):
+        self.add("model.onnx", 1000)
+        self.add("model.onnx_data", 5000)
+        self.add("vocoder.onnx", 2000)
+        self.add("speaker.onnx", 400)
+        self.add("aux.onnx", 100)
+        info = TTSModelInfo(voice_id="v", lang="en-US",
+                            model_url=f"{self.URL}model.onnx",
+                            vocoder_url=f"{self.URL}vocoder.onnx",
+                            speaker_encoder_url=f"{self.URL}speaker.onnx",
+                            aux_model_urls={"extra": f"{self.URL}aux.onnx"})
+        self.assertEqual(info.disk_size(), 8500)
+
+    def test_one_file_named_by_two_fields_is_counted_once(self):
+        self.add("model.onnx", 1000)
+        self.add("model.onnx_data", 5000)
+        info = TTSModelInfo(voice_id="v", lang="en-US",
+                            model_url=f"{self.URL}model.onnx",
+                            vocoder_url=f"{self.URL}model.onnx")
+        self.assertEqual(info.disk_size(), 6000)
+
+    def test_a_voice_that_was_never_fetched_measures_zero(self):
+        info = TTSModelInfo(voice_id="v", lang="en-US",
+                            model_url=f"{self.URL}cold.onnx")
+        self.assertEqual(info.disk_size(), 0)
+
+    def test_a_voice_hosted_outside_the_hub_is_measured_too(self):
+        from phoonnx.model_manager import _file_bytes
+        url = "https://models.example/voice/model.onnx"
+        dest = _direct_dir(url)
+        dest.mkdir(parents=True, exist_ok=True)
+        (dest / "model.onnx").write_bytes(b"x" * 777)
+        self.assertEqual(_file_bytes(url), 777)
+        self.assertEqual(
+            TTSModelInfo(voice_id="v", lang="en-US",
+                         model_url=url).disk_size(), 777)
+
+    def test_an_empty_off_hub_file_is_not_reported_as_downloaded(self):
+        # ``_is_cached`` treats a zero-byte file as absent: an interrupted
+        # download leaves one behind, and calling it cached would both skip the
+        # refetch and measure a multi-gigabyte voice as free.
+        from phoonnx.model_manager import _cached_path
+        url = "https://models.example/voice/model.onnx"
+        dest = _direct_dir(url)
+        dest.mkdir(parents=True, exist_ok=True)
+        (dest / "model.onnx").write_bytes(b"")
+        self.assertIsNone(_cached_path(url))

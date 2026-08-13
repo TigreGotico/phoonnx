@@ -197,6 +197,42 @@ def _warn_offhub(url: str) -> None:
                 f"that no other voice or program can share: {url}")
 
 
+def _cached_path(url: str) -> Optional[Path]:
+    """Local path of ``url`` if it is already downloaded, else None.
+
+    Never touches the network: this answers "how big is what we already
+    fetched", and a size question must not be able to start a download or
+    block on a hub that is slow to answer.
+    """
+    if not url:
+        return None
+    match = _HF_URL.match(url.split("?")[0])
+    if match:
+        try:
+            return Path(hf_hub_download(repo_id=match["repo"],
+                                        filename=match["path"],
+                                        revision=match["rev"],
+                                        local_files_only=True))
+        except Exception:
+            return None
+    dest = _direct_dir(url) / (url.split("?")[0].rsplit("/", 1)[-1] or "artifact")
+    return dest if _is_cached(dest) else None
+
+
+def _file_bytes(url: str) -> int:
+    """On-disk size of ``url``'s cached copy, plus its weights sidecar."""
+    total = 0
+    for candidate in (url, _sidecar_url(url)):
+        path = _cached_path(candidate)
+        if path is None:
+            continue
+        try:
+            total += path.stat().st_size
+        except OSError:
+            continue
+    return total
+
+
 def _read_json(path: Path) -> Any:
     """Parse the JSON at ``path``."""
     with open(path, "r", encoding="utf-8") as handle:
@@ -578,6 +614,39 @@ class TTSModelInfo:
         # vocoder / style / speaker-encoder / aux graphs
         self.engine_params()
         return model_path
+
+    def disk_size(self) -> int:
+        """Total on-disk size, in bytes, of this voice's downloaded artifacts.
+
+        Sums every graph the voice loads — the primary ONNX model, its
+        external-weights sidecar when it has one, the vocoder, the style
+        embedding, the speaker encoder and any auxiliary graphs — as they lie
+        in the shared cache.
+
+        This is a *proxy* for how much memory the loaded voice occupies, not a
+        measurement of it. It is the honest one available without an optional
+        dependency, and the weights dominate both numbers, so the ordering it
+        gives between a 60 MB piper voice and a 2.2 GB omnivoice voice is the
+        ordering that matters. What it does NOT account for:
+
+        - onnxruntime arena allocations, activation buffers and per-session
+          overhead, which grow with the graph and with sequence length;
+        - weights the runtime materializes larger than they are stored (a
+          quantized graph dequantized at load, for instance);
+        - memory shared between voices that name the same file;
+        - anything the voice allocates later, during synthesis;
+        - artifacts that are not yet downloaded, which count as zero.
+
+        Returns:
+            int: bytes, or 0 when nothing is cached locally.
+        """
+        urls = [self.model_url, self.vocoder_url, self.style_url,
+                self.speaker_encoder_url, self.speech_encoder_url,
+                self.embed_tokens_url, self.conditional_decoder_url]
+        urls += [u for u in (self.aux_model_urls or {}).values() if u]
+        # One file may be named by several fields (and several voices); count
+        # each distinct file once.
+        return sum(_file_bytes(u) for u in dict.fromkeys(u for u in urls if u))
 
     def load(self, providers: Optional[Sequence[ProviderSpec]] = None) -> TTSVoice:
         """
