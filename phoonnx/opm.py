@@ -10,6 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import hashlib
 import os
 import tempfile
 import wave
@@ -20,7 +21,7 @@ from dataclasses import dataclass, field
 from threading import RLock
 from typing import Dict, List, Optional
 from ovos_utils.log import LOG
-from ovos_plugin_manager.templates.tts import TTS
+from ovos_plugin_manager.templates.tts import TTS, TTSContext
 
 from phoonnx.model_manager import TTSModelManager, TTSModelInfo
 from phoonnx.voice import TTSVoice, SynthesisConfig
@@ -59,6 +60,10 @@ class PhoonnxTTSPlugin(TTS):
         # Ordered by least-recently-used, so eviction has an obvious victim.
         self.voices: "OrderedDict[str, TTSVoice]" = OrderedDict()
         self._voice_lock = RLock()
+        # Cloned cache identities, most recent last. Bounded because the
+        # reference that creates one comes from the request.
+        self._cloned_caches: "OrderedDict[str, bool]" = OrderedDict()
+        self._cloned_lock = RLock()
         # One gate per voice currently being loaded, so simultaneous callers
         # wait for the load already running instead of starting their own.
         self._loading: Dict[str, threading.Event] = {}
@@ -333,19 +338,88 @@ class PhoonnxTTSPlugin(TTS):
                 raise Exception(f"Unknown voice: {voice_id}")
         return self.model_manager.voices[voice_id]
 
-    def get_tts(self, sentence, wav_file, lang=None, voice=None):
+    def _get_ctxt(self, kwargs=None):
+        """Keep cloned audio out of the shared voice's cache entry.
+
+        The cache identifies a voice by ``plugin_id/voice/lang`` and then keys
+        audio by the sentence alone, so two requests that clone different
+        people saying the same sentence with the same base voice collide: the
+        second caller is served the first one's cloned audio. On a shared
+        server that is both the wrong voice and a leak of someone else's
+        cloned speech, and it is silent — the audio plays perfectly.
+
+        The reference is therefore folded into the cache identity. Only the
+        identity changes; ``synth_kwargs`` still carries the real voice id, so
+        the model that gets loaded is unaffected.
+        """
+        ctxt = super()._get_ctxt(kwargs)
+        kwargs = kwargs or {}
+        reference = tuple(
+            kwargs.get(key) for key in
+            ("speaker_reference", "ref_wav",
+             "speaker_reference_text", "ref_text",
+             "speaker_reference_lang", "ref_lang"))
+        if any(reference):
+            digest = hashlib.sha1(
+                repr(reference).encode("utf-8")).hexdigest()[:12]
+            ctxt.voice = f"{ctxt.voice}#{digest}"
+            self._remember_cloned_cache(ctxt.tts_id)
+        return ctxt
+
+    #: How many cloned identities keep a cache object in memory. Each distinct
+    #: reference makes one, and the reference comes from the request, so the
+    #: count is whatever a caller decides it is; the files on disk are already
+    #: bounded by the cache's own free-space curation, but this dictionary is
+    #: not bounded by anything.
+    MAX_CLONED_CACHES = 32
+
+    def _remember_cloned_cache(self, tts_id: str) -> None:
+        """Keep only the most recent cloned caches in memory."""
+        with self._cloned_lock:
+            self._cloned_caches.pop(tts_id, None)
+            self._cloned_caches[tts_id] = True
+            while len(self._cloned_caches) > self.MAX_CLONED_CACHES:
+                oldest, _ = self._cloned_caches.popitem(last=False)
+                # Only the in-memory handle is dropped. The audio stays on
+                # disk for the cache's own curation to reclaim; deleting a
+                # directory another request may be reading from would trade a
+                # bounded dictionary for a much worse bug.
+                TTSContext._caches.pop(oldest, None)
+
+    def get_tts(self, sentence, wav_file, lang=None, voice=None,
+                speaker_reference=None, speaker_reference_text=None,
+                speaker_reference_lang=None,
+                ref_wav=None, ref_text=None, ref_lang=None):
         """
         Synthesize the given text into speech and write the result to the specified WAV file.
-        
+
         Parameters:
             sentence (str): Text to synthesize.
             wav_file (str): Path where the WAV audio will be written.
             lang (str, optional): Language hint used to select a default voice when `voice` is not provided.
             voice (str, optional): Specific voice identifier to use; treat `None` or `"default"` as no explicit selection.
-        
+            speaker_reference (str, optional): Reference clip to clone, as a URL
+                or a path readable by the server. Cloning engines (chatterbox,
+                f5tts, zipvoice, styletts2, ...) cannot synthesize without one.
+            speaker_reference_text (str, optional): What the reference clip says.
+                In-context engines such as ZipVoice need it.
+            speaker_reference_lang (str, optional): Language of that transcription.
+            ref_wav, ref_text, ref_lang: short aliases for the three above,
+                matching the config key aliases.
+
+        Every caller-supplied value overrides the configured default, so one
+        server can clone a different voice per request. These are named
+        explicitly rather than collected with ``**kwargs`` because the plugin
+        manager forwards only parameters it can see in this signature.
+
         Returns:
             tuple: (`wav_file`, `phonemes`) where `wav_file` is the path to the written WAV file and `phonemes` is `None` when no phoneme output is produced.
         """
+        # The caller wins over the config; the aliases are equal citizens, so
+        # whichever of the pair was sent is the one that counts.
+        speaker_reference = speaker_reference or ref_wav
+        speaker_reference_text = speaker_reference_text or ref_text
+        speaker_reference_lang = speaker_reference_lang or ref_lang
         if voice and voice != "default":
             # load first so the model manager is refreshed if the voice
             # isn't cached yet, then read its info (avoids a KeyError when a
@@ -383,11 +457,11 @@ class PhoonnxTTSPlugin(TTS):
             # the reference's transcription + its language, e.g.:
             #   {"ref_wav": "/home/user/me.wav", "ref_text": "olá tudo bem",
             #    "ref_lang": "pt"}   ->   clone a Portuguese voice speaking English
-            speaker_reference=self._cfg_opt(
+            speaker_reference=speaker_reference or self._cfg_opt(
                 None, "speaker_reference", "ref_wav", "clone_voice"),
-            speaker_reference_text=self._cfg_opt(
+            speaker_reference_text=speaker_reference_text or self._cfg_opt(
                 None, "speaker_reference_text", "ref_text"),
-            speaker_reference_lang=self._cfg_opt(
+            speaker_reference_lang=speaker_reference_lang or self._cfg_opt(
                 None, "speaker_reference_lang", "ref_lang"),
             # optional post-synthesis audio super-resolution (audiosronnx), off unless
             # switched on in mycroft.conf. The core TTSVoice loads the engine lazily and
