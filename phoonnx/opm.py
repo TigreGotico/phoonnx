@@ -11,7 +11,9 @@
 # limitations under the License.
 #
 import hashlib
+import math
 import os
+import re
 import tempfile
 import wave
 from contextlib import suppress
@@ -67,6 +69,13 @@ class PhoonnxTTSPlugin(TTS):
         # One gate per voice currently being loaded, so simultaneous callers
         # wait for the load already running instead of starting their own.
         self._loading: Dict[str, threading.Event] = {}
+        # Bytes promised to loads that are running right now. A load allocates
+        # its memory before the cache ever sees it, so the budget has to be
+        # spent when the load starts, not when it finishes.
+        self._reserved_bytes = 0
+        # Signalled whenever a reservation is released, so a waiting loader
+        # can re-check whether it fits.
+        self._budget_free = threading.Condition(self._voice_lock)
         # Voices that must never be evicted. A cold load costs seconds to
         # minutes depending on the engine, while a resident voice answers in
         # milliseconds, so the voices a deployment actually serves are worth
@@ -90,6 +99,14 @@ class PhoonnxTTSPlugin(TTS):
                 f"max_loaded_voices is {self.max_loaded_voices}; raising the "
                 f"limit to fit them, because a pinned voice is a promise")
             self.max_loaded_voices = len(self.pinned_voices)
+        # How many bytes of voice may be resident at once. A count cannot bound
+        # memory on a mixed catalog: a piper voice is ~60 MB and an omnivoice
+        # voice is ~2.2 GB, so the count that is safe for the big one wastes
+        # the cache for the small ones. Unset keeps the previous behaviour.
+        self.max_loaded_bytes = self._parse_max_bytes(
+            self.config.get("max_loaded_bytes"))
+        # Measured size of each resident voice, keyed as ``self.voices`` is.
+        self._voice_bytes: Dict[str, int] = {}
         # Resolve the configured voice now, but do not load it. A voice that was
         # named explicitly and does not exist is a configuration error and still
         # raises here; an unset voice (or "default") resolves to the language's
@@ -108,6 +125,15 @@ class PhoonnxTTSPlugin(TTS):
                 # A pinned voice that cannot load must not stop the service
                 # from starting; it simply is not resident.
                 LOG.error(f"pinned voice '{voice_id}' failed to load: {e}")
+        if (self.max_loaded_bytes is not None
+                and self._resident_bytes() > self.max_loaded_bytes):
+            # Said once, at startup, the way a too-small max_loaded_voices is.
+            # The pins win either way, so this is the only warning an operator
+            # gets that the budget they set is not the memory they will use.
+            LOG.error(
+                f"the pinned voices need {self._resident_bytes()} bytes, more "
+                f"than max_loaded_bytes ({self.max_loaded_bytes}); the pins "
+                f"win, so memory use will exceed the budget")
 
     def _cfg_opt(self, default, *keys):
         """
@@ -250,17 +276,25 @@ class PhoonnxTTSPlugin(TTS):
         # Everything from here is inside the try, so no failure can leave the
         # gate installed. An unknown voice id raises out of get_voice_info, and
         # that is a request parameter, so this path is reachable from outside.
+        reserved = 0
         try:
             with self._voice_lock:
                 info = self.get_voice_info(voice_id)
 
             LOG.debug(f"Using voice: {voice_id}")
+            # Room is claimed BEFORE the load allocates anything. Evicting
+            # after the fact bounds the steady state and nothing else: four
+            # concurrent 2.2 GB loads each evicted the one before and the
+            # cache looked healthy, after the OOM killer had already taken
+            # the process.
+            reserved, measured = self._reserve(voice_id, info)
             # Loaded outside the lock: a cold load takes seconds to minutes,
             # and holding the lock would stall every other request meanwhile.
             voice = info.load(providers=self._providers())
 
         except BaseException as exc:
             with self._voice_lock:
+                self._release(reserved)
                 gate = self._loading.pop(voice_id, None)
             if gate is not None:
                 gate.error = exc
@@ -274,18 +308,29 @@ class PhoonnxTTSPlugin(TTS):
             # elect itself and start a second full cold load — the duplicate
             # this gate exists to prevent.
             #
-            # The try covers the caching too. An exception raised here is not
-            # caught by the except above it — that is what `else` means — so
-            # anything that failed while storing the voice used to leave the
-            # gate installed with nothing to ever set it, and every later
-            # caller for that voice id waited on it forever. The voice id
-            # comes from the request, so that is one wedged voice per failure,
-            # until the process restarts.
+            # The try covers the measuring and the caching too. An exception
+            # raised here is not caught by the except above it — that is what
+            # `else` means — so anything that failed while storing the voice
+            # used to leave the gate installed with nothing to ever set it,
+            # and every later caller for that voice id waited on it forever.
             try:
+                # Measured outside the lock: it only stats files, but it stats
+                # one per artifact and there is no reason to hold up every
+                # other request for it. A voice that could be measured before
+                # the load is not measured twice; one that could not (its
+                # files were not downloaded yet) now can be.
+                size = measured if measured else self._measure(voice_id, info)
+
                 with self._voice_lock:
+                    self._release(reserved)
+                    # Released exactly once: the failure path below runs the
+                    # same call, and releasing twice would shrink the budget
+                    # by a voice that was never holding it.
+                    reserved = 0
                     if voice_id not in self.voices:
-                        self._evict_for(voice_id)
+                        self._evict_for(voice_id, size)
                         self.voices[voice_id] = voice
+                        self._voice_bytes[voice_id] = size
                     self.voices.move_to_end(voice_id)
                     cached = self.voices[voice_id]
                     gate = self._loading.pop(voice_id, None)
@@ -295,6 +340,7 @@ class PhoonnxTTSPlugin(TTS):
 
             except BaseException as exc:
                 with self._voice_lock:
+                    self._release(reserved)
                     gate = self._loading.pop(voice_id, None)
                 if gate is not None:
                     gate.error = exc
@@ -317,22 +363,178 @@ class PhoonnxTTSPlugin(TTS):
             return None
         return parsed
 
-    def _evict_for(self, incoming: str) -> None:
-        """Make room for ``incoming``, never dropping a pinned voice."""
-        if self.max_loaded_voices is None:
+    @staticmethod
+    def _parse_max_bytes(value) -> Optional[int]:
+        """Normalize ``max_loaded_bytes``; None means no budget.
+
+        Accepts a plain number of bytes (``6000000000``) or a human-friendly
+        size (``"6GB"``, ``"512 MB"``, ``"1.5GiB"``). ``KB/MB/GB/TB`` are
+        powers of 1000, ``KiB/MiB/GiB/TiB`` powers of 1024, as those suffixes
+        are defined.
+
+        An unusable value is rejected and the budget stays unset. It must never
+        end up as zero: a zero budget evicts every voice on every request, and
+        an unbounded cache is a far better answer to a typo than a cache that
+        cold-loads a multi-gigabyte model for each call.
+        """
+        if value in (None, "", 0):
+            return None
+        units = {"": 1, "B": 1,
+                 "KB": 10 ** 3, "MB": 10 ** 6, "GB": 10 ** 9, "TB": 10 ** 12,
+                 "KIB": 2 ** 10, "MIB": 2 ** 20, "GIB": 2 ** 30, "TIB": 2 ** 40}
+        if isinstance(value, bool):  # bools are ints in python
+            LOG.error(f"ignoring invalid max_loaded_bytes: {value!r}")
+            return None
+        if isinstance(value, (int, float)):
+            number, unit = float(value), ""
+        else:
+            text = str(value).strip().replace(" ", "")
+            match = re.fullmatch(r"([0-9]*\.?[0-9]+)([a-zA-Z]*)", text)
+            if not match:
+                LOG.error(f"ignoring invalid max_loaded_bytes: {value!r}")
+                return None
+            number, unit = float(match.group(1)), match.group(2).upper()
+        if unit not in units:
+            LOG.error(f"ignoring max_loaded_bytes={value!r}: unknown unit "
+                      f"'{unit}', expected one of {sorted(units)}")
+            return None
+        if not math.isfinite(number):
+            # YAML writes infinity as ``.inf`` and json.loads accepts
+            # ``Infinity``/``NaN``; int() raises on all three, and this is
+            # called from __init__, so an uncaught raise here is a plugin that
+            # will not start.
+            LOG.error(f"ignoring max_loaded_bytes={value!r}: not a finite "
+                      f"size")
+            return None
+        parsed = int(number * units[unit])
+        if parsed < 1:
+            LOG.error(f"ignoring max_loaded_bytes={value!r}, it must be at "
+                      f"least 1 byte")
+            return None
+        return parsed
+
+    def _measure(self, voice_id: str, info: TTSModelInfo) -> int:
+        """Size of a loaded voice in bytes, as a proxy: its files on disk.
+
+        See :meth:`TTSModelInfo.disk_size` for what that proxy does and does
+        not account for. Nothing is measured unless a budget is set, so a
+        deployment that does not use one pays nothing for this.
+
+        A voice that cannot be measured counts as free rather than as
+        infinite: refusing to cache a voice because its size is unknown would
+        turn a measurement problem into a synthesis problem.
+        """
+        if self.max_loaded_bytes is None:
+            return 0
+        try:
+            return int(info.disk_size())
+        except Exception as exc:
+            LOG.error(f"could not measure the size of voice '{voice_id}', "
+                      f"counting it as free: {exc}")
+            return 0
+
+    def _reserve(self, voice_id: str, info: TTSModelInfo) -> "tuple[int, int]":
+        """Claim budget for a load that has not started yet.
+
+        Returns ``(reserved, measured)``: the bytes claimed, and the size the
+        voice could be measured at before loading (0 when it could not be).
+
+        Waits until the voice fits beside what is resident and what other
+        loads have already claimed, evicting to make room. Two rules keep this
+        from ever becoming a hang:
+
+        - a loader that finds no other load in flight always proceeds, so a
+          voice bigger than the whole budget still loads (evicting everything
+          evictable first, and warning) instead of waiting for room that can
+          never appear;
+        - every reservation is released on both the success and the failure
+          path, and each release wakes the waiters.
+
+        A voice whose files are not downloaded yet cannot be measured, and an
+        unknown size is treated as the whole budget: it loads alone. That
+        costs the cache once per voice, the first time it is ever fetched,
+        and it is the only honest way to keep an unknown allocation inside a
+        known bound.
+        """
+        if self.max_loaded_bytes is None:
+            return 0, 0
+        measured = self._measure(voice_id, info)
+        need = measured if measured > 0 else self.max_loaded_bytes
+        with self._budget_free:
+            while (self._reserved_bytes
+                   and self._resident_bytes() + self._reserved_bytes + need
+                   > self.max_loaded_bytes):
+                self._budget_free.wait()
+            # Make the room now, so the bytes are free when the load takes
+            # them rather than after it already has.
+            self._evict_for(voice_id, need)
+            self._reserved_bytes += need
+        return need, measured
+
+    def _release(self, reserved: int) -> None:
+        """Give back a reservation and wake whoever is waiting for room.
+
+        Called with ``self._voice_lock`` held.
+        """
+        if not reserved:
             return
-        while len(self.voices) >= self.max_loaded_voices:
-            victim = next((v for v in self.voices if v not in self.pinned_voices),
-                          None)
+        self._reserved_bytes = max(0, self._reserved_bytes - reserved)
+        self._budget_free.notify_all()
+
+    def _resident_bytes(self) -> int:
+        """Total measured size of the voices currently cached."""
+        return sum(self._voice_bytes.get(v, 0) for v in self.voices)
+
+    def _drop(self, victim: str) -> None:
+        self.voices.pop(victim, None)
+        self._voice_bytes.pop(victim, None)
+        LOG.debug(f"evicted least recently used voice: {victim}")
+
+    def _lru_victim(self) -> Optional[str]:
+        """The least recently used voice that may be evicted, if any."""
+        return next((v for v in self.voices if v not in self.pinned_voices),
+                    None)
+
+    def _evict_for(self, incoming: str, size: int = 0) -> None:
+        """Make room for ``incoming``, never dropping a pinned voice.
+
+        Both bounds apply when both are set: a voice is evicted when either the
+        count or the byte budget would be exceeded.
+        """
+        if self.max_loaded_voices is not None:
+            while len(self.voices) >= self.max_loaded_voices:
+                victim = self._lru_victim()
+                if victim is None:
+                    # Everything resident is pinned: serve the request anyway
+                    # rather than evict a voice an operator asked us to keep.
+                    LOG.warning(
+                        f"all {len(self.voices)} loaded voices are pinned; "
+                        f"loading '{incoming}' above max_loaded_voices")
+                    break
+                self._drop(victim)
+
+        if self.max_loaded_bytes is None:
+            return
+
+        if size > self.max_loaded_bytes:
+            # Serving it is still better than not serving it. Everything
+            # evictable goes first, so the overshoot is as small as it can be.
+            LOG.warning(
+                f"voice '{incoming}' needs {size} bytes on disk, more than the "
+                f"whole max_loaded_bytes budget of {self.max_loaded_bytes}; "
+                f"loading it anyway, so memory use will exceed the budget")
+
+        while (self.voices
+               and self._resident_bytes() + self._reserved_bytes + size
+               > self.max_loaded_bytes):
+            victim = self._lru_victim()
             if victim is None:
-                # Everything resident is pinned: serve the request anyway
-                # rather than evict a voice an operator asked us to keep.
                 LOG.warning(
-                    f"all {len(self.voices)} loaded voices are pinned; "
-                    f"loading '{incoming}' above max_loaded_voices")
-                return
-            self.voices.pop(victim, None)
-            LOG.debug(f"evicted least recently used voice: {victim}")
+                    f"all {len(self.voices)} loaded voices are pinned "
+                    f"({self._resident_bytes()} bytes); loading '{incoming}' "
+                    f"above max_loaded_bytes")
+                break
+            self._drop(victim)
 
     def get_voice_info(self, voice_id: str) -> TTSModelInfo:
         """
