@@ -105,6 +105,13 @@ test = [
     # id makes wrong audio instead of an error, so the comparison must run in
     # CI even though nothing ships it.
     "tokenizers",
+    # reference implementation for tests/test_sentencepiece_reader.py. phoonnx
+    # reads tokenizer.model with its own pure-Python reader
+    # (phoonnx/_sentencepiece.py) so the Pocket TTS install needs no compiled
+    # wheel; the test proves the reader returns the same ids as this package.
+    # Test-only on purpose — a wrong id makes wrong audio instead of an error,
+    # so the comparison must run in CI even though nothing ships it.
+    "sentencepiece",
     # onnx uses ml_dtypes.float4_e2m1fn (added in ml_dtypes 0.5) but the
     # resolver can pair it with ml_dtypes 0.4.x, which breaks `import onnx`
     # at collection time; ml_dtypes>=0.5 needs numpy>=2.1 on Python 3.13+,
@@ -130,9 +137,9 @@ matcha = [
     "scipy",
 ]
 # runtime deps for the Pocket TTS engine (phoonnx/engines/pockettts.py):
-# sentencepiece for the tokenizer, safetensors for loading published voice states.
+# safetensors for loading published voice states. The SentencePiece tokenizer
+# is read by phoonnx/_sentencepiece.py, so no compiled wheel is needed.
 pockettts = [
-    "sentencepiece",
     "safetensors",
 ]
 # faster/more-faithful silence trimming for the OmniVoice engine's
