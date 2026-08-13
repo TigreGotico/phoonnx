@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.79.3a1](https://github.com/TigreGotico/phoonnx/tree/1.79.3a1) (2026-08-13)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.79.2a1...1.79.3a1)
+
+**Merged pull requests:**
+
+- fix: stop a failed synthesis from poisoning the audio cache [\#390](https://github.com/TigreGotico/phoonnx/pull/390) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.79.2a1](https://github.com/TigreGotico/phoonnx/tree/1.79.2a1) (2026-08-12)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.79.1a1...1.79.2a1)
@@ -412,7 +420,6 @@
 - feat: checkpoint evaluation loop with UTMOS and speaker similarity [\#228](https://github.com/TigreGotico/phoonnx/pull/228) ([JarbasAl](https://github.com/JarbasAl))
 - fix: replace monotonic\_align C extension with pure numpy implementation [\#227](https://github.com/TigreGotico/phoonnx/pull/227) ([JarbasAl](https://github.com/JarbasAl))
 - fix: fraction error-handling test patched the wrong reference [\#226](https://github.com/TigreGotico/phoonnx/pull/226) ([JarbasAl](https://github.com/JarbasAl))
-- feat: orthography2ipa lattice phonemizer backends \(o2i, arbtok, euskaphone, barranquenho\) + mwl fix [\#225](https://github.com/TigreGotico/phoonnx/pull/225) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.3.4a1](https://github.com/TigreGotico/phoonnx/tree/1.3.4a1) (2026-02-21)
 
