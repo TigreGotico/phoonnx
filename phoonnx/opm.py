@@ -10,7 +10,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import os
+import tempfile
 import wave
+from contextlib import suppress
 from collections import OrderedDict
 import threading
 from dataclasses import dataclass, field
@@ -393,8 +396,47 @@ class PhoonnxTTSPlugin(TTS):
             super_resolution=bool(self._cfg_opt(False, "super_resolution")),
             super_resolution_model=self._cfg_opt(None, "super_resolution_model"),
         )
-        with wave.open(wav_file, "wb") as wav_out:
-            model.synthesize_wav(sentence, wav_out, synth_params)
+        # Written beside the target and moved into place only once the
+        # synthesis has finished. Opening the target directly creates it
+        # before the audio exists, so a failure part-way leaves a valid but
+        # empty WAV — 44 bytes of header — where the cache expects the
+        # finished file. The cache decides by existence, so every later
+        # request for that sentence is then served silence with a 200, and
+        # nothing ever retries it.
+        # Written to a private temporary file and moved into place only once
+        # the synthesis has finished. Opening the destination directly creates
+        # it before the audio exists, so a failure part-way left a valid but
+        # empty WAV — 44 bytes of header — exactly where the cache looks. The
+        # cache decides by existence, so every later request for that sentence
+        # was answered with that silence and an HTTP 200, and nothing retried.
+        #
+        # The name is unique per call rather than "<target>.part": two requests
+        # for the same sentence and voice would otherwise share one temporary
+        # file, and whichever lost the race found it already renamed away.
+        directory = os.path.dirname(wav_file) or "."
+        handle, tmp_file = tempfile.mkstemp(dir=directory, suffix=".part")
+        os.close(handle)
+        try:
+            wav_out = wave.open(tmp_file, "wb")
+            try:
+                model.synthesize_wav(sentence, wav_out, synth_params)
+                # Closed inside the try: the final flush is where a full disk
+                # surfaces, and swallowing that would publish a truncated file
+                # as a finished one — the very bug this avoids.
+                wav_out.close()
+            except BaseException:
+                # Now the failure is already on its way out. Closing a wave
+                # file that never got its parameters raises "# channels not
+                # specified", which would replace the engine's own exception
+                # and hide why the synthesis actually failed.
+                with suppress(Exception):
+                    wav_out.close()
+                raise
+            os.replace(tmp_file, wav_file)
+        except BaseException:
+            with suppress(OSError):
+                os.remove(tmp_file)
+            raise
 
         return wav_file, None
 
