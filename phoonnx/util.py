@@ -662,7 +662,28 @@ def _normalize_units(text: str, full_lang: str) -> str:
     This function handles symbolic and alphanumeric units separately
     to avoid issues with word boundaries.
     """
-    text = text.replace("º", "°")  # these characters look the same... but...
+    # "º" (U+00BA, masculine ordinal indicator, e.g. "1º andar") looks like
+    # "°" (U+00B0, degree sign) but is not the same character. Only treat it
+    # as a degree sign when it is actually used as a temperature unit
+    # (e.g. "20ºC" / "20ºc"), so ordinals are not corrupted into degrees.
+    # Case-insensitive to match the (IGNORECASE) unit regex below.
+    text = re.sub(r"º(?=\s?[CFK]\b)", "°", text, flags=re.IGNORECASE)
+
+    # Any remaining "º" is a genuine ordinal indicator attached to a digit
+    # (e.g. "1º andar", "20º"). normalize() must never leave raw digits in
+    # the output, so expand these as ordinal numbers, falling back to a
+    # plain cardinal (still dropping the "º") if ordinal pronunciation is
+    # unavailable for the language.
+    def _replace_ordinal_indicator(match: "re.Match") -> str:
+        number = int(match.group(1))
+        try:
+            return pronounce_number(number, full_lang, ordinals=True)
+        except Exception as e:
+            LOG.error(f"Failed to pronounce ordinal number: {number}º - ({e})")
+            return pronounce_number(number, full_lang)
+
+    text = re.sub(r"(\d+)º", _replace_ordinal_indicator, text)
+
     lang_code = full_lang.split("-")[0]
     if lang_code in UNITS:
         # Determine number separators for the language
@@ -688,7 +709,11 @@ def _normalize_units(text: str, full_lang: str) -> str:
                 elif decimal_separator != "." and decimal_separator in number:
                     number = number.replace(decimal_separator, ".")
                 unit_symbol = match.group(2)
-                unit_word = symbolic_units[unit_symbol]
+                # The regex is IGNORECASE (e.g. "°c" matches "°C"), so the
+                # matched text may not share the dict key's exact case.
+                unit_word = (symbolic_units.get(unit_symbol)
+                             or symbolic_units.get(unit_symbol.upper())
+                             or symbolic_units.get(unit_symbol.lower()))
                 try:
                     return f"{pronounce_number(float(number) if '.' in number else int(number), full_lang)} {unit_word}"
                 except Exception as e:
