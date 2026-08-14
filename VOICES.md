@@ -1,7 +1,7 @@
 ## Supported Voices
 
-**Total Voices:** 3227
-**Total Languages:** 1812
+**Total Voices:** 3229
+**Total Languages:** 1813
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
 
@@ -796,6 +796,8 @@
 | `hf_community/russdill/kronk` | `en-US` | `piper` | `espeak` |
 | `hf_community/samarthshrivas/piper-finetune-Andrew-Huberman` | `en-US` | `piper` | `espeak` |
 | `hf_community/swqg-messiah/kusaal_chitti_piper` | `en-US` | `piper` | `espeak` |
+| `inflect/micro-en` | `en-us` | `None` | `espeak` |
+| `inflect/nano-en` | `en-us` | `None` | `espeak` |
 | `kittentts/mini-0.1-expr-voice-2-f` | `en-US` | `styletts2` | `espeak` |
 | `kittentts/mini-0.1-expr-voice-2-m` | `en-US` | `styletts2` | `espeak` |
 | `kittentts/mini-0.1-expr-voice-3-f` | `en-US` | `styletts2` | `espeak` |
