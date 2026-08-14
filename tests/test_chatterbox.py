@@ -5,6 +5,52 @@ from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.chatterbox import ChatterboxAdapter, _apply_repetition_penalty
 
 
+def _build_tiny_onnx_model(path):
+    """Write a minimal but real single-node ONNX model to *path*."""
+    import onnx
+    from onnx import TensorProto, helper
+
+    x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 4])
+    y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 4])
+    node = helper.make_node("Identity", ["x"], ["y"])
+    graph = helper.make_graph([node], "tiny", [x], [y])
+    model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)])
+    model.ir_version = 8
+    onnx.checker.check_model(model)
+    onnx.save(model, str(path))
+
+
+def test_configure_shares_aux_sessions_across_voices(tmp_path):
+    # The aux graphs (speech_encoder, embed_tokens, conditional_decoder) are
+    # ~1.19GB per voice and identical across every voice that shares a
+    # checkpoint; configure() must route them through make_session so a
+    # second voice over the same files reuses the sessions the first one
+    # built, instead of loading its own private copy of each.
+    from types import SimpleNamespace
+
+    speech_encoder = tmp_path / "speech_encoder.onnx"
+    embed_tokens = tmp_path / "embed_tokens.onnx"
+    cond_decoder = tmp_path / "conditional_decoder.onnx"
+    for p in (speech_encoder, embed_tokens, cond_decoder):
+        _build_tiny_onnx_model(p)
+
+    def _voice_config():
+        return SimpleNamespace(engine_params={
+            "speech_encoder_path": str(speech_encoder),
+            "embed_tokens_path": str(embed_tokens),
+            "conditional_decoder_path": str(cond_decoder),
+        })
+
+    first = ChatterboxAdapter()
+    first.configure(_voice_config())
+    second = ChatterboxAdapter()
+    second.configure(_voice_config())
+
+    assert first.speech_encoder is second.speech_encoder
+    assert first.embed_tokens is second.embed_tokens
+    assert first.cond_decoder is second.cond_decoder
+
+
 def _req(**params):
     return AdapterSynthesisRequest(phoneme_ids=np.array([[1, 2, 3]], np.int64),
                                    phoneme_lengths=np.array([3], np.int64),

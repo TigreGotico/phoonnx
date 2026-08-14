@@ -142,15 +142,13 @@ class TestByteBudget(unittest.TestCase):
 
         plugin.get_model("omni")
         self.assertIn("omni", plugin.voices)
-        self.assertLessEqual(sum(plugin._voice_bytes[v] for v in plugin.voices),
-                             3 * GB)
+        self.assertLessEqual(plugin._resident_bytes(), 3 * GB)
 
         # Another small voice still fits alongside it; the budget is never
         # exceeded by voices that could have been evicted.
         plugin.get_model("small20")
         self.assertIn("omni", plugin.voices)
-        self.assertLessEqual(sum(plugin._voice_bytes[v] for v in plugin.voices),
-                             3 * GB)
+        self.assertLessEqual(plugin._resident_bytes(), 3 * GB)
 
     def test_two_big_voices_cannot_be_resident_together(self):
         plugin = _plugin(self, sizes={"omniA": 2200 * MB, "omniB": 2200 * MB},
@@ -210,8 +208,7 @@ class TestBothBoundsTogether(unittest.TestCase):
         plugin.get_model("big")
         self.assertIn("big", plugin.voices)
         self.assertLess(len(plugin.voices), 11)
-        self.assertLessEqual(sum(plugin._voice_bytes[v] for v in plugin.voices),
-                             GB)
+        self.assertLessEqual(plugin._resident_bytes(), GB)
 
 
 class TestPinningUnderBudgetPressure(unittest.TestCase):
@@ -294,7 +291,7 @@ class TestConcurrentEviction(unittest.TestCase):
         self.assertEqual(len(results), 8)
         self.assertEqual(plugin._loading, {},
                          "every loading gate must be released")
-        self.assertEqual(set(plugin._voice_bytes), set(plugin.voices),
+        self.assertEqual(set(plugin._voice_keys), set(plugin.voices),
                          "size bookkeeping must match the cache exactly")
         self.assertLessEqual(plugin._resident_bytes(), 100 * MB)
 
@@ -313,7 +310,7 @@ class TestConcurrentEviction(unittest.TestCase):
         [t.join(timeout=30) for t in threads]
         self.assertFalse([t for t in threads if t.is_alive()])
         self.assertEqual(plugin._loading, {})
-        self.assertEqual(set(plugin._voice_bytes), set(plugin.voices))
+        self.assertEqual(set(plugin._voice_keys), set(plugin.voices))
 
 
 class TestPeakMemoryUnderConcurrentColdLoads(unittest.TestCase):
@@ -378,7 +375,7 @@ class TestPeakMemoryUnderConcurrentColdLoads(unittest.TestCase):
                          "admission control must never deadlock")
         self.assertFalse(errors, f"loads failed: {errors}")
         self.assertEqual(plugin._loading, {})
-        self.assertEqual(set(plugin._voice_bytes), set(plugin.voices))
+        self.assertEqual(set(plugin._voice_keys), set(plugin.voices))
         return plugin, peak[0]
 
     def test_four_concurrent_omnivoice_loads_stay_within_the_budget(self):
@@ -424,6 +421,232 @@ class TestPeakMemoryUnderConcurrentColdLoads(unittest.TestCase):
         self.assertLessEqual(peak, 2 * GB + 900 * MB,
                              "pins raise the ceiling by their own size, "
                              "not by one voice per concurrent request")
+
+
+class _CyclicVoice:
+    """A loaded voice stand-in shaped like the real ``TTSVoice``.
+
+    ``TTSVoice`` holds a reference back to itself through
+    ``adapter.voice``, so releasing the caller's last reference does not
+    make the refcount drop to zero — CPython only reclaims it on a cyclic
+    ``gc.collect()``. A leaf stand-in without this cycle would pass even a
+    residency fix that never calls ``gc.collect()`` at all, because a plain
+    ``del`` already frees a leaf object.
+    """
+
+    def __init__(self, voice_id):
+        self.voice_id = voice_id
+        self.adapter = _Adapter(self)
+
+    def __eq__(self, other):
+        return self is other
+
+    __hash__ = None
+
+
+class _Adapter:
+    def __init__(self, voice):
+        self.voice = voice
+
+
+def _cyclic_plugin(testcase, keys, sizes, **config):
+    from phoonnx.opm import PhoonnxTTSPlugin
+
+    def info_for(voice_id):
+        return MagicMock(
+            load=lambda **_kw: _CyclicVoice(voice_id),
+            artifact_key=MagicMock(return_value=keys[voice_id]),
+            disk_size=MagicMock(return_value=sizes[keys[voice_id]]))
+
+    patchers = [
+        patch("phoonnx.opm.TTSModelManager"),
+        patch.object(PhoonnxTTSPlugin, "get_default_voice",
+                     return_value=MagicMock()),
+        patch.object(PhoonnxTTSPlugin, "get_voice_info", side_effect=info_for),
+        patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
+    ]
+    for pat in patchers:
+        pat.start()
+        testcase.addCleanup(pat.stop)
+    return PhoonnxTTSPlugin(config=dict(config))
+
+
+class TestCyclicVoiceResidency(unittest.TestCase):
+    """A voice held in a reference cycle must still be freed promptly.
+
+    Without an explicit ``gc.collect()`` on the load path, a request that
+    lets go of a cyclic voice never wakes the weakref callback that frees
+    its budget charge, and the next load for different weights sits out
+    the full ``load_wait_timeout`` before proceeding anyway.
+    """
+
+    def test_a_released_cyclic_voice_frees_its_charge_without_waiting(self):
+        import gc
+        from unittest.mock import patch as _patch
+        # Python's own generational collector runs periodically on
+        # allocation counts, which could free the cycle by coincidence and
+        # make this test pass whether or not the residency code calls
+        # gc.collect() itself. Disabling automatic collection makes the only
+        # possible collector run the one _reserve is required to make.
+        gc.disable()
+        self.addCleanup(gc.enable)
+
+        keys = {"a": "model-a", "b": "model-b"}
+        # A timeout of a few seconds, not the 300s default: if the fix
+        # regresses, this test must fail fast rather than eat minutes of CI
+        # time sitting out the real production timeout.
+        plugin = _cyclic_plugin(self, keys,
+                                {"model-a": 3 * GB, "model-b": 3 * GB},
+                                max_loaded_bytes="4GB",
+                                load_wait_timeout=3)
+        held = plugin.get_model("a")
+        plugin.voices.clear()          # evicted, but the cycle holds it
+        plugin._voice_keys.clear()
+        held = None                    # the caller's own reference is gone
+
+        started = time.monotonic()
+        with _patch("phoonnx.opm.gc", wraps=gc) as gc_mock:
+            plugin.get_model("b")
+        elapsed = time.monotonic() - started
+
+        self.assertIn("b", plugin.voices)
+        self.assertGreaterEqual(gc_mock.collect.call_count, 1,
+                                "the wait must call gc.collect() to break "
+                                "the cycle, not merely happen to succeed")
+        self.assertLess(elapsed, 1.0,
+                        "a released cyclic voice must be collected and its "
+                        "budget freed well before the load_wait_timeout")
+
+
+class TestGcCollectIsGatedOnActuallyWaiting(unittest.TestCase):
+    """gc.collect() walks the whole heap; it must not tax every load.
+
+    It exists to break the reference cycle a released ``TTSVoice`` sits in,
+    so the residency wait does not run the full timeout for memory that is
+    already free. That is only relevant once a load is actually about to
+    wait for room — a load with plenty of budget headroom, or one that hits
+    an already-resident key, has no cycle to break and must not pay for the
+    collection anyway.
+    """
+
+    def test_ample_headroom_does_not_collect(self):
+        from unittest.mock import patch as _patch
+        plugin = _plugin(self, sizes={"a": 10 * MB}, max_loaded_bytes="1GB")
+        with _patch("phoonnx.opm.gc") as gc_mock:
+            plugin.get_model("a")
+        gc_mock.collect.assert_not_called()
+
+    def test_a_cache_hit_for_an_already_resident_key_does_not_collect(self):
+        from unittest.mock import patch as _patch
+        keys = {"a": "model-a", "b": "model-a"}
+        plugin = _plugin_shared_keys(self, keys, sizes={"model-a": 10 * MB},
+                                     max_loaded_bytes="1GB")
+        plugin.get_model("a")
+        with _patch("phoonnx.opm.gc") as gc_mock:
+            plugin.get_model("b")
+        gc_mock.collect.assert_not_called()
+
+    def test_a_load_that_must_wait_for_room_does_collect(self):
+        from unittest.mock import patch as _patch
+        keys = {"a": "model-a", "b": "model-b"}
+        plugin = _plugin_shared_keys(self, keys,
+                                     sizes={"model-a": 3 * GB, "model-b": 3 * GB},
+                                     max_loaded_bytes="4GB", load_wait_timeout=0.2)
+        held = plugin.get_model("a")
+        plugin.voices.clear()
+        plugin._voice_keys.clear()
+        with _patch("phoonnx.opm.gc", wraps=__import__("gc")) as gc_mock:
+            plugin.get_model("b")
+        self.assertGreaterEqual(gc_mock.collect.call_count, 1)
+        self.assertIsNotNone(held)
+
+
+class _WeakrefableVoice:
+    """A loaded-voice stand-in that supports weak references, unlike a str."""
+
+    def __init__(self, voice_id):
+        self.voice_id = voice_id
+
+
+def _plugin_shared_keys(testcase, keys, sizes, **config):
+    """A plugin whose catalog maps voice ids to artifact keys, real load()."""
+    from phoonnx.opm import PhoonnxTTSPlugin
+
+    def info_for(voice_id):
+        return MagicMock(
+            load=lambda **_kw: _WeakrefableVoice(voice_id),
+            artifact_key=MagicMock(return_value=keys[voice_id]),
+            disk_size=MagicMock(return_value=sizes[keys[voice_id]]))
+
+    patchers = [
+        patch("phoonnx.opm.TTSModelManager"),
+        patch.object(PhoonnxTTSPlugin, "get_default_voice",
+                     return_value=MagicMock()),
+        patch.object(PhoonnxTTSPlugin, "get_voice_info", side_effect=info_for),
+        patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
+    ]
+    for pat in patchers:
+        pat.start()
+        testcase.addCleanup(pat.stop)
+    return PhoonnxTTSPlugin(config=dict(config))
+
+
+class TestPostLoadEviction(unittest.TestCase):
+    """The eviction that runs once a cold load's real size is known.
+
+    ``_track`` used to run before ``_evict_for`` in ``get_model``'s post-load
+    section, which registers the incoming voice's own key as resident before
+    the eviction call gets to look at it — so ``_evict_for``'s "already
+    resident, nothing to do" guard fired on every post-load call, evicting
+    nothing, regardless of whether the just-measured size actually fit.
+    """
+
+    def test_a_measured_size_that_overflows_the_budget_evicts_others(self):
+        # "extra" is admitted *during* "big"'s own (unlocked) load — a voice
+        # request another caller made while "big" was loading, exactly the
+        # kind of admission a long cold load has time for. Once "big"'s real
+        # size is known post-load, the two together no longer fit, and only
+        # the post-load eviction step (not the pre-load one, which already
+        # ran before "extra" existed) can make room.
+        plugin_holder = {}
+        sizes = {"extra": 2 * GB, "big": 3 * GB}
+
+        class _V:
+            def __init__(self, voice_id):
+                self.voice_id = voice_id
+
+        def info_for(voice_id):
+            def load(**_kw):
+                if voice_id == "big":
+                    plugin_holder["p"].get_model("extra")
+                return _V(voice_id)
+            return MagicMock(load=load,
+                             disk_size=MagicMock(return_value=sizes[voice_id]))
+
+        from phoonnx.opm import PhoonnxTTSPlugin
+        patchers = [
+            patch("phoonnx.opm.TTSModelManager"),
+            patch.object(PhoonnxTTSPlugin, "get_default_voice",
+                         return_value=MagicMock()),
+            patch.object(PhoonnxTTSPlugin, "get_voice_info", side_effect=info_for),
+            patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
+        ]
+        for pat in patchers:
+            pat.start()
+            self.addCleanup(pat.stop)
+
+        plugin = PhoonnxTTSPlugin(config={"max_loaded_bytes": "4GB",
+                                          "load_wait_timeout": 0.2})
+        plugin_holder["p"] = plugin
+        plugin.get_model("big")
+
+        self.assertIn("big", plugin.voices)
+        self.assertNotIn("extra", plugin.voices,
+                         "the post-load eviction must evict a voice that no "
+                         "longer fits once the real size is known")
+        import gc
+        gc.collect()
+        self.assertLessEqual(plugin._resident_bytes(), 4 * GB)
 
 
 if __name__ == "__main__":
