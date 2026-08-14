@@ -967,7 +967,11 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
         return graph, (lambda text: text)
 
     def _vocalize(text, **_):
-        return diacritize(text, lang, diacritizer_model=model)
+        try:
+            return diacritize(text, lang, diacritizer_model=model)
+        except Exception as e:
+            LOG.warning(f"diacritization failed for lang={lang}: {e} — synthesizing unstressed text")
+            return text
 
     graph.register(Edge("text", DIACRITIZED, _vocalize))
     graph.register(Edge(DIACRITIZED, alpha, phonemize))
