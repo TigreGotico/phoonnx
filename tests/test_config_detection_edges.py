@@ -74,6 +74,17 @@ class TestTransformersVocabBranchMissingTokenizerConfigKeys(unittest.TestCase):
                                     lang_code="en")
         self.assertIsNotNone(vc.tokenizer)
 
+    def test_null_language_in_tokenizer_config_falls_back_to_lang_code(self):
+        # transformers-converted VITS tokenizer configs (e.g. kakao-enterprise/vits-ljs)
+        # ship "language": null, which is a present key with value None -- dict.get()
+        # returns that None rather than falling back to the caller-supplied lang_code.
+        vocab = {"_": 0, "a": 1, "b": 2}
+        tok_cfg = {"add_blank": True, "language": None, "pad_token": "_"}
+        vc = VoiceConfig.from_dict({}, vocab=vocab, tokenizer_config=tok_cfg,
+                                    phoneme_type="graphemes", alphabet="unicode",
+                                    lang_code="en")
+        self.assertEqual(vc.lang_code, "en")
+
 
 class TestVoiceAdapterResolutionForMissingEngines(unittest.TestCase):
     """voice.py ~L227-238: Engine.PHOONNX and Engine.TRANSFORMERS have no

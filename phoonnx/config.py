@@ -651,7 +651,7 @@ class VoiceConfig:
             add_blank = True
             if tokenizer_config:
                 add_blank = tokenizer_config.get("add_blank", add_blank)
-                lang_code = tokenizer_config.get("language", lang_code)
+                lang_code = tokenizer_config.get("language") or lang_code
                 config["blank"] = tokenizer_config.get("pad_token", config.get("blank", DEFAULT_BLANK_TOKEN))
 
             tokenizer = TTSTokenizer(
