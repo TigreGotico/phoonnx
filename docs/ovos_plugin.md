@@ -5,6 +5,11 @@ engine. phoonnx ships a TTS plugin for the [OpenVoiceOS](https://openvoiceos.com
 ecosystem via `PhoonnxTTSPlugin`, registered under the `opm.tts` entry point
 `ovos-tts-plugin-phoonnx`.
 
+Looking for standalone grapheme-to-phoneme (G2P) instead of TTS? See
+[phonemizers.md](phonemizers.md#g2p-for-ovos) — that's
+[ovos-scriptconv-g2p-plugin](https://github.com/TigreGotico/ovos-scriptconv-g2p-plugin),
+a separate OPM plugin.
+
 ## Configuration
 
 In your OpenVoiceOS `mycroft.conf` or skills config, set:
