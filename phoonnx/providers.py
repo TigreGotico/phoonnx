@@ -26,6 +26,8 @@ CUDA needs ``onnxruntime-gpu``.
 """
 import hashlib
 import os
+import threading
+import weakref
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
@@ -47,6 +49,13 @@ PROVIDERS_ENV_VAR = "PHOONNX_ONNX_PROVIDERS"
 #: it instead of re-running graph optimization from the raw model. Unset by
 #: default — behaviour is unchanged unless a caller opts in.
 CACHE_DIR_ENV_VAR = "PHOONNX_ORT_CACHE_DIR"
+
+#: Environment variable that turns session sharing off. Set it to ``0``/
+#: ``false``/``no`` to make every :func:`make_session` call build its own
+#: session, as it used to. Sharing is the default because a catalog entry is
+#: not a model: 646 of the bundled omnivoice voices name the same 3 GB graph
+#: and differ only in the engine options applied at synthesis time.
+SHARE_SESSIONS_ENV_VAR = "PHOONNX_SHARE_ONNX_SESSIONS"
 
 #: Auto-detection preference order, best first. Only providers the installed
 #: runtime reports as available are kept.
@@ -196,6 +205,92 @@ def _warn_on_provider_fallback(
         )
 
 
+#: Live shared sessions, keyed by what makes two of them interchangeable.
+#: Values are weak, so a session disappears from here the moment nothing is
+#: using it any more; the store never keeps a graph alive by itself and needs
+#: no release call that a failing request could skip.
+_SHARED_SESSIONS: "weakref.WeakValueDictionary[tuple, onnxruntime.InferenceSession]" = \
+    weakref.WeakValueDictionary()
+#: Guards ``_SHARED_SESSIONS`` and the per-key build locks below.
+_SHARED_LOCK = threading.Lock()
+#: One lock per key, so two threads asking for the same model build it once
+#: while two threads asking for different models still load in parallel.
+#: Keyed by model, not by voice, so this stays as small as the catalog's set
+#: of distinct graphs.
+_BUILD_LOCKS: Dict[tuple, threading.Lock] = {}
+
+
+def _sharing_enabled() -> bool:
+    """Whether identical sessions may be shared (the default)."""
+    value = os.environ.get(SHARE_SESSIONS_ENV_VAR)
+    if value is None:
+        return True
+    return value.strip().lower() not in ("0", "false", "no", "off")
+
+
+def _external_data_path(*model_paths: str) -> Optional[str]:
+    """Path of a model's external-weights sidecar, if it names one on disk.
+
+    onnxruntime resolves the sidecar it finds inside the graph against the
+    graph's own directory, and phoonnx fetches models with that sidecar named
+    ``<model>_data`` (see ``model_manager._sidecar_url``) or, for graphs
+    exported with onnxruntime's own convention, ``<model>.data``. Either one,
+    if present, holds the weights the graph itself does not carry.
+
+    Takes several candidate locations for the graph, tried in order: the hub
+    cache lays a voice out as ``snapshots/<rev>/model.onnx``, a symlink whose
+    sidecar sits alongside *it*, resolving to ``blobs/<sha>`` with nothing
+    beside the blob at all. Probing only the resolved real path — as this
+    used to — never finds that sidecar, so external-data weights fetched
+    through the hub never entered the session key at all.
+    """
+    for model_path in model_paths:
+        for candidate in (f"{model_path}_data", f"{model_path}.data"):
+            if os.path.isfile(candidate):
+                return candidate
+    return None
+
+
+def session_key(model_path: Any,
+                resolved: Sequence[ProviderSpec],
+                cache_dir: Optional[Union[str, Path]]) -> tuple:
+    """Identity of a session: two calls with the same key are interchangeable.
+
+    The model file is identified by its resolved real path plus its size and
+    modification time, so a voice that reaches the same cached artifact
+    through a different symlink or a non-normalized path shares one session,
+    while a file that was replaced on disk gets a new one rather than a stale
+    session over weights that are no longer there. A graph with external
+    weights keeps the actual weights in a sidecar file the graph itself does
+    not change size or mtime when replaced, so that sidecar's (size, mtime)
+    is folded into the key too — otherwise a stable stub graph pointing at
+    swapped-out weights would keep serving the old session forever.
+    """
+    try:
+        resolved_path = os.path.realpath(str(model_path))
+    except OSError:  # pragma: no cover - realpath practically never raises
+        resolved_path = str(model_path)
+    try:
+        stat = os.stat(resolved_path)
+        version = (stat.st_size, stat.st_mtime_ns)
+    except OSError:
+        version = ()
+    sidecar = _external_data_path(str(model_path), resolved_path)
+    if sidecar is not None:
+        try:
+            sidecar_stat = os.stat(sidecar)
+            version = version + (sidecar_stat.st_size, sidecar_stat.st_mtime_ns)
+        except OSError:
+            pass
+    return (resolved_path, version, repr(list(resolved)), str(cache_dir or ""))
+
+
+def shared_sessions() -> Dict[tuple, onnxruntime.InferenceSession]:
+    """The sessions that are alive right now, for tests and diagnostics."""
+    with _SHARED_LOCK:
+        return dict(_SHARED_SESSIONS)
+
+
 def make_session(
         model_path: Any,
         providers: Optional[Sequence[ProviderSpec]] = None,
@@ -204,7 +299,18 @@ def make_session(
         cache_dir: Optional[Union[str, Path]] = None,
 ) -> onnxruntime.InferenceSession:
     """
-    Create an ``InferenceSession`` on the resolved execution providers.
+    Return an ``InferenceSession`` on the resolved execution providers,
+    reusing the one already loaded for this model when there is one.
+
+    An ONNX Runtime session is thread-safe to run and holds the weights, which
+    is nearly all of the memory a voice costs. Voices that name the same graph
+    therefore share one session rather than each loading their own copy; what
+    differs between them (the engine options, the language, the tokenizer)
+    lives in the voice, not in the session. Sharing only ever happens between
+    calls that would have produced identical sessions — same file, same
+    providers, same optimized-graph cache, and default session options. Pass
+    an explicit ``sess_options`` (or set ``PHOONNX_SHARE_ONNX_SESSIONS=0``) to
+    get a private session.
 
     Parameters:
         cache_dir: Directory to cache the ORT-optimized graph in. When given
@@ -219,6 +325,46 @@ def make_session(
     resolved = resolve_providers(providers, use_cuda=use_cuda)
     cache_dir = cache_dir if cache_dir is not None else os.environ.get(CACHE_DIR_ENV_VAR)
 
+    if sess_options is not None or not _sharing_enabled():
+        return _build_session(model_path, resolved, sess_options, cache_dir)
+
+    key = session_key(model_path, resolved, cache_dir)
+    with _SHARED_LOCK:
+        session = _SHARED_SESSIONS.get(key)
+        if session is not None:
+            LOG.debug(f"reusing the loaded onnx session for '{model_path}'")
+            return session
+        build_lock = _BUILD_LOCKS.setdefault(key, threading.Lock())
+
+    # Built outside the store lock: a cold load of a multi-gigabyte graph takes
+    # seconds to minutes, and every other model would wait behind it. The
+    # per-key lock still makes two callers for the same model load it once.
+    with build_lock:
+        with _SHARED_LOCK:
+            session = _SHARED_SESSIONS.get(key)
+        if session is not None:
+            return session
+        session = _build_session(model_path, resolved, sess_options, cache_dir)
+        with _SHARED_LOCK:
+            _SHARED_SESSIONS[key] = session
+            # The lock has done its job once the session it guarded is
+            # built and published; keeping it around forever would grow
+            # _BUILD_LOCKS by one entry per (path, size, mtime, providers,
+            # cache_dir) ever seen, including stale keys from models that
+            # were since replaced on disk. Drop it only if nothing raced in
+            # and replaced it with a lock of its own.
+            if _BUILD_LOCKS.get(key) is build_lock:
+                del _BUILD_LOCKS[key]
+        return session
+
+
+def _build_session(
+        model_path: Any,
+        resolved: Sequence[ProviderSpec],
+        sess_options: Optional[onnxruntime.SessionOptions],
+        cache_dir: Optional[Union[str, Path]],
+) -> onnxruntime.InferenceSession:
+    """Load a fresh session; see :func:`make_session` for the sharing."""
     if not cache_dir:
         session = onnxruntime.InferenceSession(
             str(model_path),

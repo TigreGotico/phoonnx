@@ -10,12 +10,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import gc
 import hashlib
 import math
 import os
 import re
 import tempfile
+import time
 import wave
+import weakref
 from contextlib import suppress
 from collections import OrderedDict
 import threading
@@ -105,8 +108,29 @@ class PhoonnxTTSPlugin(TTS):
         # the cache for the small ones. Unset keeps the previous behaviour.
         self.max_loaded_bytes = self._parse_max_bytes(
             self.config.get("max_loaded_bytes"))
-        # Measured size of each resident voice, keyed as ``self.voices`` is.
-        self._voice_bytes: Dict[str, int] = {}
+        # Memory is charged per *model*, not per voice. A voice id is a
+        # catalog entry; the weights are the artifacts it names, and the
+        # bundled indexes name the same artifacts from hundreds of entries
+        # (646 omnivoice voices over one 3 GB backbone). Charging each entry
+        # separately made the cache evict a model to make room for itself.
+        self._voice_keys: Dict[str, str] = {}
+        # Measured size per artifact key. Never pruned: a key whose voices
+        # were all evicted may still be resident in a request that is
+        # mid-synthesis, and its size is what says so.
+        self._key_bytes: Dict[str, int] = {}
+        # Weak references to every voice object handed out, per artifact key,
+        # as a list: hashing a weak reference hashes what it points at, and a
+        # loaded voice is an unhashable dataclass.
+        # A voice the cache evicted is still in memory while the request that
+        # asked for it is synthesizing — minutes, for these models — so the
+        # cache is not what says whether the weights are resident. These
+        # references are, and they cost nothing to keep.
+        self._refs: Dict[str, list] = {}
+        # How long a load waits for memory another request is still using
+        # before giving up on the budget and loading anyway. Waiting forever
+        # would turn a memory bound into a hang.
+        self.load_wait_timeout = float(
+            self.config.get("load_wait_timeout") or 300)
         # Resolve the configured voice now, but do not load it. A voice that was
         # named explicitly and does not exist is a configuration error and still
         # raises here; an unset voice (or "default") resolves to the language's
@@ -287,7 +311,7 @@ class PhoonnxTTSPlugin(TTS):
             # concurrent 2.2 GB loads each evicted the one before and the
             # cache looked healthy, after the OOM killer had already taken
             # the process.
-            reserved, measured = self._reserve(voice_id, info)
+            reserved, measured, key = self._reserve(voice_id, info)
             # Loaded outside the lock: a cold load takes seconds to minutes,
             # and holding the lock would stall every other request meanwhile.
             voice = info.load(providers=self._providers())
@@ -327,10 +351,23 @@ class PhoonnxTTSPlugin(TTS):
                     # same call, and releasing twice would shrink the budget
                     # by a voice that was never holding it.
                     reserved = 0
+                    self._key_bytes.setdefault(key, size)
                     if voice_id not in self.voices:
-                        self._evict_for(voice_id, size)
+                        # Evicted before this voice is tracked: _evict_for
+                        # skips a key that is already resident, and this
+                        # voice's own weights would otherwise satisfy that
+                        # check against itself, making the post-load
+                        # eviction — the only one that sees a size measured
+                        # after a cold download — a permanent no-op.
+                        self._evict_for(voice_id, key, size)
                         self.voices[voice_id] = voice
-                        self._voice_bytes[voice_id] = size
+                        self._voice_keys[voice_id] = key
+                    # Tracked once the eviction that might have needed this
+                    # voice's own key to still look unresident is done: from
+                    # here on the weights are in memory whether or not this
+                    # voice ends up cached, and the budget has to know that
+                    # for as long as the caller holds it.
+                    self._track(key, voice)
                     self.voices.move_to_end(voice_id)
                     cached = self.voices[voice_id]
                     gate = self._loading.pop(voice_id, None)
@@ -433,22 +470,90 @@ class PhoonnxTTSPlugin(TTS):
                       f"counting it as free: {exc}")
             return 0
 
-    def _reserve(self, voice_id: str, info: TTSModelInfo) -> "tuple[int, int]":
+    def _key_for(self, voice_id: str, info: TTSModelInfo) -> str:
+        """Artifact key of a voice: what it would share with another voice.
+
+        Falls back to the voice id when the catalog entry cannot name its
+        artifacts, which charges that voice on its own — the old behaviour,
+        and the safe direction to be wrong in.
+        """
+        try:
+            key = info.artifact_key()
+        except Exception as exc:
+            LOG.debug(f"voice '{voice_id}' has no artifact key ({exc}); "
+                      f"charging it on its own")
+            return voice_id
+        return key if isinstance(key, str) and key else voice_id
+
+    def _track(self, key: str, voice) -> None:
+        """Remember that ``voice`` holds the weights of ``key``, weakly.
+
+        Called with ``self._voice_lock`` held. The callback fires when the
+        last reference to the voice goes away — the request finished — and
+        wakes whoever is waiting for that memory.
+        """
+        try:
+            ref = weakref.ref(voice, lambda r, k=key: self._on_voice_released(k, r))
+        except TypeError:
+            # Not every object a caller can put here supports weak references
+            # (tests load stand-ins). Untracked voices are simply charged for
+            # as long as they are cached, exactly as before.
+            return
+        refs = self._refs.setdefault(key, [])
+        if not any(existing() is voice for existing in refs):
+            refs.append(ref)
+
+    def _on_voice_released(self, key: str, ref) -> None:
+        """A voice object was collected: its memory may now be free."""
+        with self._voice_lock:
+            refs = self._refs.get(key)
+            if refs is not None:
+                self._refs[key] = [r for r in refs if r is not ref and r() is not None]
+                if not self._refs[key]:
+                    self._refs.pop(key, None)
+            self._budget_free.notify_all()
+
+    def _live_count(self, key: str) -> int:
+        """How many voice objects still hold this key's weights."""
+        return sum(1 for ref in self._refs.get(key, ()) if ref() is not None)
+
+    def _resident_keys(self) -> "set[str]":
+        """Every artifact key whose weights are in memory right now.
+
+        Cached voices, plus voices the cache already evicted that a request
+        has not finished with. The second group is why the budget used to
+        undercount: eviction pops a dict entry, it does not free a model that
+        a caller is three minutes into synthesizing with.
+        """
+        keys = {self._voice_keys.get(v, v) for v in self.voices}
+        keys.update(k for k in list(self._refs) if self._live_count(k))
+        return keys
+
+    def _reserve(self, voice_id: str, info: TTSModelInfo) -> "tuple[int, int, str]":
         """Claim budget for a load that has not started yet.
 
-        Returns ``(reserved, measured)``: the bytes claimed, and the size the
-        voice could be measured at before loading (0 when it could not be).
+        Returns ``(reserved, measured, key)``: the bytes claimed, the size the
+        voice could be measured at before loading (0 when it could not be),
+        and its artifact key.
 
-        Waits until the voice fits beside what is resident and what other
-        loads have already claimed, evicting to make room. Two rules keep this
-        from ever becoming a hang:
+        A voice whose weights are already resident claims nothing and waits
+        for nothing: it is going to reuse the session that is already loaded,
+        so there is no second allocation to make room for.
 
-        - a loader that finds no other load in flight always proceeds, so a
-          voice bigger than the whole budget still loads (evicting everything
-          evictable first, and warning) instead of waiting for room that can
-          never appear;
+        Otherwise this waits until the voice fits beside what is resident and
+        what other loads have already claimed, evicting to make room. Three
+        rules keep it from ever becoming a hang:
+
+        - a loader waits only while memory could still come back — another
+          load in flight, or a resident voice no longer cached that a request
+          will eventually let go of — so a voice bigger than the whole budget
+          still loads (evicting everything evictable first, and warning)
+          instead of waiting for room that can never appear;
+        - the wait is bounded by ``load_wait_timeout`` regardless, after which
+          the load proceeds and says so;
         - every reservation is released on both the success and the failure
-          path, and each release wakes the waiters.
+          path, and each release wakes the waiters, as does the collection of
+          a voice object.
 
         A voice whose files are not downloaded yet cannot be measured, and an
         unknown size is treated as the whole budget: it loads alone. That
@@ -456,20 +561,67 @@ class PhoonnxTTSPlugin(TTS):
         and it is the only honest way to keep an unknown allocation inside a
         known bound.
         """
+        key = self._key_for(voice_id, info)
         if self.max_loaded_bytes is None:
-            return 0, 0
+            return 0, 0, key
         measured = self._measure(voice_id, info)
-        need = measured if measured > 0 else self.max_loaded_bytes
         with self._budget_free:
-            while (self._reserved_bytes
-                   and self._resident_bytes() + self._reserved_bytes + need
-                   > self.max_loaded_bytes):
-                self._budget_free.wait()
+            if key in self._resident_keys():
+                LOG.debug(f"voice '{voice_id}' reuses weights that are "
+                          f"already loaded; charging nothing for it")
+                self._key_bytes.setdefault(key, measured)
+                return 0, measured, key
+            need = measured if measured > 0 else self.max_loaded_bytes
+            deadline = time.monotonic() + self.load_wait_timeout
+            collected = False
+            while (self._over_budget(need)
+                   and (self._reserved_bytes or self._releasable_bytes())):
+                # A dropped voice is not actually gone the instant it is
+                # evicted: TTSVoice holds a reference cycle (its adapter
+                # points back at it), so CPython's refcounting alone never
+                # frees it and the weakref callback that wakes this wait
+                # never fires. gc.collect() breaks the cycle, but it walks
+                # the whole heap — hundreds of milliseconds on a large
+                # process — so it runs only once, right before the first
+                # wait, and only on the path that is actually about to
+                # wait; a load with headroom already never pays for it.
+                if not collected:
+                    collected = True
+                    gc.collect()
+                    if not self._over_budget(need):
+                        break
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    gc.collect()
+                    if not self._over_budget(need):
+                        break
+                    LOG.warning(
+                        f"waited {self.load_wait_timeout:.0f}s for room to "
+                        f"load '{voice_id}' and the memory in use did not "
+                        f"come back; loading it anyway, so memory use will "
+                        f"exceed the budget")
+                    break
+                self._budget_free.wait(remaining)
             # Make the room now, so the bytes are free when the load takes
             # them rather than after it already has.
-            self._evict_for(voice_id, need)
+            self._evict_for(voice_id, key, need)
             self._reserved_bytes += need
-        return need, measured
+        return need, measured, key
+
+    def _over_budget(self, need: int) -> bool:
+        """Whether admitting ``need`` more bytes would break the budget."""
+        return (self._resident_bytes() + self._reserved_bytes + need
+                > self.max_loaded_bytes)
+
+    def _releasable_bytes(self) -> int:
+        """Resident bytes that will come back on their own.
+
+        Weights that are no longer cached but are still held by a request in
+        flight. Nothing else can shrink without a caller finishing.
+        """
+        cached = {self._voice_keys.get(v, v) for v in self.voices}
+        return sum(self._key_bytes.get(k, 0)
+                   for k in self._resident_keys() if k not in cached)
 
     def _release(self, reserved: int) -> None:
         """Give back a reservation and wake whoever is waiting for room.
@@ -482,12 +634,12 @@ class PhoonnxTTSPlugin(TTS):
         self._budget_free.notify_all()
 
     def _resident_bytes(self) -> int:
-        """Total measured size of the voices currently cached."""
-        return sum(self._voice_bytes.get(v, 0) for v in self.voices)
+        """Total measured size of the weights in memory right now."""
+        return sum(self._key_bytes.get(k, 0) for k in self._resident_keys())
 
     def _drop(self, victim: str) -> None:
         self.voices.pop(victim, None)
-        self._voice_bytes.pop(victim, None)
+        self._voice_keys.pop(victim, None)
         LOG.debug(f"evicted least recently used voice: {victim}")
 
     def _lru_victim(self) -> Optional[str]:
@@ -495,7 +647,29 @@ class PhoonnxTTSPlugin(TTS):
         return next((v for v in self.voices if v not in self.pinned_voices),
                     None)
 
-    def _evict_for(self, incoming: str, size: int = 0) -> None:
+    def _byte_victim(self) -> Optional[str]:
+        """The least recently used voice whose eviction frees memory.
+
+        Evicting one of 646 voices that share a backbone frees nothing while
+        the others still reference it, and the eviction loop would otherwise
+        empty the whole cache discovering that one entry at a time.
+        """
+        for candidate in self.voices:
+            if candidate in self.pinned_voices:
+                continue
+            key = self._voice_keys.get(candidate, candidate)
+            others = [v for v in self.voices
+                      if v != candidate
+                      and self._voice_keys.get(v, v) == key]
+            if others:
+                continue
+            if self._live_count(key) > 1:
+                # Cached here and held by a request elsewhere.
+                continue
+            return candidate
+        return None
+
+    def _evict_for(self, incoming: str, key: str, size: int = 0) -> None:
         """Make room for ``incoming``, never dropping a pinned voice.
 
         Both bounds apply when both are set: a voice is evicted when either the
@@ -516,6 +690,10 @@ class PhoonnxTTSPlugin(TTS):
         if self.max_loaded_bytes is None:
             return
 
+        if key in self._resident_keys():
+            # Its weights are already in memory; admitting it costs nothing.
+            return
+
         if size > self.max_loaded_bytes:
             # Serving it is still better than not serving it. Everything
             # evictable goes first, so the overshoot is as small as it can be.
@@ -524,15 +702,13 @@ class PhoonnxTTSPlugin(TTS):
                 f"whole max_loaded_bytes budget of {self.max_loaded_bytes}; "
                 f"loading it anyway, so memory use will exceed the budget")
 
-        while (self.voices
-               and self._resident_bytes() + self._reserved_bytes + size
-               > self.max_loaded_bytes):
-            victim = self._lru_victim()
+        while self.voices and self._over_budget(size):
+            victim = self._byte_victim()
             if victim is None:
                 LOG.warning(
-                    f"all {len(self.voices)} loaded voices are pinned "
-                    f"({self._resident_bytes()} bytes); loading '{incoming}' "
-                    f"above max_loaded_bytes")
+                    f"nothing more can be evicted "
+                    f"({self._resident_bytes()} bytes resident); loading "
+                    f"'{incoming}' above max_loaded_bytes")
                 break
             self._drop(victim)
 

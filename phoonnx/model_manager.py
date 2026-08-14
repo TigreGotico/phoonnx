@@ -614,6 +614,31 @@ class TTSModelInfo:
         self.engine_params()
         return model_path
 
+    def artifact_urls(self) -> List[str]:
+        """Every graph this voice loads, each named once, in a stable order.
+
+        One file is often named by several fields, and — far more importantly —
+        by several voices: the bundled omnivoice index has 646 entries over a
+        single 3 GB backbone, and qwen3tts 15 over one 4.2 GB talker. Two
+        voices with the same list here load exactly the same weights.
+        """
+        urls = [self.model_url, self.vocoder_url, self.style_url,
+                self.speaker_encoder_url, self.speech_encoder_url,
+                self.embed_tokens_url, self.conditional_decoder_url]
+        urls += [u for u in (self.aux_model_urls or {}).values() if u]
+        return list(dict.fromkeys(u for u in urls if u))
+
+    def artifact_key(self) -> str:
+        """Identity of the *weights* this voice loads, not of the voice.
+
+        Voices that share a key share their memory, so a cache that charges
+        memory has to charge it per key rather than per voice id. What makes
+        two entries different voices — the language, the display name, the
+        engine options applied at synthesis time — is deliberately not in
+        here, because none of it costs a second copy of the graph.
+        """
+        return "|".join(self.artifact_urls())
+
     def disk_size(self) -> int:
         """Total on-disk size, in bytes, of this voice's downloaded artifacts.
 
@@ -639,13 +664,9 @@ class TTSModelInfo:
         Returns:
             int: bytes, or 0 when nothing is cached locally.
         """
-        urls = [self.model_url, self.vocoder_url, self.style_url,
-                self.speaker_encoder_url, self.speech_encoder_url,
-                self.embed_tokens_url, self.conditional_decoder_url]
-        urls += [u for u in (self.aux_model_urls or {}).values() if u]
         # One file may be named by several fields (and several voices); count
         # each distinct file once.
-        return sum(_file_bytes(u) for u in dict.fromkeys(u for u in urls if u))
+        return sum(_file_bytes(u) for u in self.artifact_urls())
 
     def load(self, providers: Optional[Sequence[ProviderSpec]] = None) -> TTSVoice:
         """
@@ -679,6 +700,8 @@ class TTSModelInfo:
             }
             engine_params["providers"] = resolved_providers
             config.engine_params = engine_params
+            # Through make_session, so this path shares one session between
+            # voices that name the same graph like every other path does.
             session = make_session(model_path, providers=resolved_providers)
             return TTSVoice(session=session, config=config)
 
