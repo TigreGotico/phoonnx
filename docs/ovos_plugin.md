@@ -162,7 +162,17 @@ See [cloning.md](cloning.md) for the cloning keys in detail.
 
 ### Voice Caching
 
-Loaded voices are cached in memory (`self.voices` dict) to avoid re-loading on every utterance. The first call for a new voice ID triggers a download if needed.
+Loaded voices are cached in memory (`self.voices` dict) to avoid re-loading on every utterance. The first call for a new voice ID triggers a download if needed. Each cached voice id owns its own ONNX Runtime session — a family of catalog entries that share one underlying model (for example the `omnivoice` or `qwen3tts` voice-config variants) still costs one load per entry, not one for the whole family.
+
+Two config keys bound how much stays resident:
+
+| Option | Meaning |
+|--------|---------|
+| `max_loaded_voices` | Maximum number of voices resident at once (pinned ones included). Unset never evicts anything. |
+| `max_loaded_bytes` | Memory budget for resident voice weights, as a plain byte count or a size string (`"3GB"`, `"512 MB"`, `"1.5GiB"` — `KB/MB/GB/TB` are powers of 1000, `KiB/MiB/GiB/TiB` powers of 1024). Unset never evicts anything. |
+| `pinned_voices` | Voice id or list of voice ids to load at startup and never evict, regardless of the other limits. |
+
+A voice bigger than the whole `max_loaded_bytes` budget still loads rather than being refused — it evicts everything evictable first and logs a warning that memory use will exceed the budget. See [deployment.md](deployment.md#memory-budgeting) for sizing this against the container's memory limit.
 
 ### Refreshing Voices
 
