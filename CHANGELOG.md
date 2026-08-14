@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.81.0a2](https://github.com/TigreGotico/phoonnx/tree/1.81.0a2) (2026-08-14)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.0a1...1.81.0a2)
+
+**Merged pull requests:**
+
+- docs: memory budgeting and OOM diagnosis for self-hosted servers [\#406](https://github.com/TigreGotico/phoonnx/pull/406) ([JarbasAl](https://github.com/JarbasAl))
+- fix: close every redirect hop and fix leading-silence bug in voice.py [\#403](https://github.com/TigreGotico/phoonnx/pull/403) ([JarbasAl](https://github.com/JarbasAl))
+- Propagate providers to catalog-only engines [\#328](https://github.com/TigreGotico/phoonnx/pull/328) ([goldyfruit](https://github.com/goldyfruit))
+
 ## [1.81.0a1](https://github.com/TigreGotico/phoonnx/tree/1.81.0a1) (2026-08-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.80.1a1...1.81.0a1)
@@ -359,17 +369,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.0a2...1.61.0a3)
 
-**Merged pull requests:**
-
-- refactor: drop redundant phonikud\_model field and \_diacritize wrapper [\#293](https://github.com/TigreGotico/phoonnx/pull/293) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.61.0a2](https://github.com/TigreGotico/phoonnx/tree/1.61.0a2) (2026-07-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.0a1...1.61.0a2)
-
-**Merged pull requests:**
-
-- refactor: drop phonemizer/diacritizer layer, delegate fully to scriptconv [\#291](https://github.com/TigreGotico/phoonnx/pull/291) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.61.0a1](https://github.com/TigreGotico/phoonnx/tree/1.61.0a1) (2026-07-22)
 
