@@ -182,6 +182,15 @@ class VoiceConfig:
             self.alphabet = Alphabet.UNICODE
         if not isinstance(self.phoneme_type, PhonemeType) and isinstance(self.phoneme_type, str):
             self.phoneme_type = PhonemeType(self.phoneme_type)
+        if self.phoneme_type is None:
+            # Vocab- and tokens-file voices (transformers, sherpa) carry no
+            # phoneme_type of their own; they are character models, like the
+            # alphabet fallback above. GRAPHEMES (not UNICODE): the grapheme
+            # phonemizer case-folds and NFC-composes, so lowercase precomposed
+            # vocabs (the MMS shape) keep matching instead of dropping OOV
+            # codepoints, and it matches what the shipped index declares for
+            # every voice of this shape.
+            self.phoneme_type = PhonemeType.GRAPHEMES
 
         if self.add_diacritics is None:
             self.add_diacritics = False
@@ -761,7 +770,7 @@ class VoiceConfig:
         return {
             "phoonnx_version": version,
             "engine": self.engine.value if self.engine else "phoonnx",
-            "phoneme_type": self.phoneme_type.value if self.phoneme_type else "graphemes",
+            "phoneme_type": self.phoneme_type.value,
             "alphabet": self.alphabet.value if self.alphabet else "unicode",
             "lang_code": self.lang_code,
             "audio": {"sample_rate": self.sample_rate},
