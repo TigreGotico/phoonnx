@@ -109,11 +109,14 @@ def _fetch_reference_audio(url: str, timeout: int = 10,
     byte at a time would otherwise hold a synthesis worker open forever.
     """
     import requests
+    from contextlib import ExitStack
 
     started = time.monotonic()
     _check_reference_url(url)
-    with requests.get(url, timeout=timeout, stream=True,
-                      allow_redirects=False) as r:
+    with ExitStack() as stack:
+        r = stack.enter_context(
+            requests.get(url, timeout=timeout, stream=True,
+                        allow_redirects=False))
         hops = 0
         while r.is_redirect or r.is_permanent_redirect:
             hops += 1
@@ -124,8 +127,11 @@ def _fetch_reference_audio(url: str, timeout: int = 10,
             # innocent-looking URL into a request to a private address.
             _check_reference_url(target)
             r.close()
-            r = requests.get(target, timeout=timeout, stream=True,
-                             allow_redirects=False)
+            # Entered on the stack too, so every hop — including this final
+            # one, whose body is streamed below — gets closed on the way out.
+            r = stack.enter_context(
+                requests.get(target, timeout=timeout, stream=True,
+                            allow_redirects=False))
         r.raise_for_status()
 
         suffix = os.path.splitext(urlparse(url).path)[1] or ".wav"
@@ -996,6 +1002,9 @@ class TTSVoice:
 
         first_chunk = True
         for audio_chunk in self.synthesize(text, syn_config=syn_config):
+            if not first_chunk:
+                wav_file.writeframes(silence_int16_bytes)
+
             if first_chunk:
                 if set_wav_format:
                     # the chunk is authoritative once we have one
@@ -1004,9 +1013,6 @@ class TTSVoice:
                     wav_file.setnchannels(audio_chunk.sample_channels)
 
                 first_chunk = False
-
-            if not first_chunk:
-                wav_file.writeframes(silence_int16_bytes)
 
             wav_file.writeframes(audio_chunk.audio_int16_bytes)
 
