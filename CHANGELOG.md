@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.81.1a1](https://github.com/TigreGotico/phoonnx/tree/1.81.1a1) (2026-08-14)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.0a2...1.81.1a1)
+
+**Merged pull requests:**
+
+- fix: load one session per model, not one per voice [\#398](https://github.com/TigreGotico/phoonnx/pull/398) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.81.0a2](https://github.com/TigreGotico/phoonnx/tree/1.81.0a2) (2026-08-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.0a1...1.81.0a2)
