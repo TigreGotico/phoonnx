@@ -766,11 +766,11 @@ class TTSModelManager:
         "coqui_vits.json", "BSC.json", "shami.json", "chatterbox.json",
         "supertonic.json", "neutts.json", "pockettts.json", "sparktts.json",
         "qwen3tts.json",
-        # neutts..omnivoice: catch-up entries for engines merged since this list was
-        # last touched; indic_parler.json, llasa.json and orpheus.json are new to
-        # this change.
+        # neutts..mosstts: catch-up entries for engines merged since this list was
+        # last touched; indic_parler.json, llasa.json, orpheus.json and
+        # mosstts.json are new to this change.
         "outetts.json", "arktts.json", "omnivoice.json", "indic_parler.json",
-        "llasa.json", "orpheus.json",
+        "llasa.json", "orpheus.json", "mosstts.json",
     )
 
     @classmethod
