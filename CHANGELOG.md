@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.81.0a1](https://github.com/TigreGotico/phoonnx/tree/1.81.0a1) (2026-08-14)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.80.1a1...1.81.0a1)
+
+**Merged pull requests:**
+
+- feat\(gl\): StyleTTS2 ONNX export recipe for the Proxecto Nós Galician voices [\#315](https://github.com/TigreGotico/phoonnx/pull/315) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.80.1a1](https://github.com/TigreGotico/phoonnx/tree/1.80.1a1) (2026-08-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.80.0a2...1.80.1a1)
