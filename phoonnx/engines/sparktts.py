@@ -214,7 +214,6 @@ class SparkTTSAdapter(BaseOnnxAdapter):
         self.preset_global_tokens: Optional[np.ndarray] = None
         self.special: Dict[str, int] = {}
         self._params: Dict[str, Any] = {}
-        self._reference_text_ids: Optional[List[int]] = None
         self._reference_cache_key: Optional[tuple] = None
         self._reference_cache: Tuple[np.ndarray, Optional[np.ndarray]] = (None, None)
         self.past_names: List[str] = []
@@ -287,18 +286,17 @@ class SparkTTSAdapter(BaseOnnxAdapter):
         Only the *content* is tokenized here. The control tokens and the speaker stream
         are added in :meth:`synthesize`, which is where the speaker is known.
 
-        A cloning reference's transcription is tokenized here too. It is text for this
-        model, so it goes through the same subword BPE as the content — not through the
-        shared phonemizer path, whose ``prompt_tokens`` are phoneme ids for the
-        phoneme-based in-context engines and mean nothing to Spark-TTS. The whole text is
-        encoded before the first chunk is synthesized, so one transcription is in place
-        for every chunk of the call.
+        A cloning reference's transcription is text for this model too, so it goes through
+        the same subword BPE as the content — not through the shared phonemizer path,
+        whose ``prompt_tokens`` are phoneme ids for the phoneme-based in-context engines
+        and mean nothing to Spark-TTS. It is tokenized in :meth:`synthesize`, from
+        ``request.params``, rather than here on ``self``: this adapter instance is shared
+        across concurrent requests (one ``TTSVoice``/adapter per voice_id under the
+        threaded server), and stashing it here would let one request's reference
+        transcription bleed into another's audio.
         """
         if self.tokenizer is None:
             raise RuntimeError("Spark-TTS voice missing bpe_tokenizer_path in engine_params")
-        reference_text = getattr(syn_config, "speaker_reference_text", None)
-        self._reference_text_ids = (self.tokenizer.tokenize(reference_text)
-                                    if reference_text else None)
         return [self.tokenizer.tokenize(chunk) for chunk in chunk_text(text) if chunk.strip()]
 
     # ------------------------------------------------------------------
@@ -343,20 +341,23 @@ class SparkTTSAdapter(BaseOnnxAdapter):
             self.semantic_tokenizer.run(None, {"feat": feat})[0], np.int64).reshape(-1)
         return global_tokens, semantic
 
-    def _resolve_speaker(self, request: AdapterSynthesisRequest
+    def _resolve_speaker(self, request: AdapterSynthesisRequest, prompt_text_ids: Optional[List[int]]
                          ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         """Pick the speaker for this call: the reference clip if given, else the preset.
 
         Long text is synthesized one chunk per call, so the reference is encoded once and
-        reused for the rest of the chunks rather than re-run per sentence.
+        reused for the rest of the chunks rather than re-run per sentence. The cache is
+        keyed on the clip and on whether a transcription came along with it, so two
+        requests cloning from different clips (or the same clip with/without a
+        transcription) never share a cache entry.
         """
         ref = request.params.get("reference_audio")
         if ref is not None:
             audio = np.asarray(ref[0], np.float32).reshape(-1)
-            key = (hash(audio.tobytes()), int(ref[1]), bool(self._reference_text_ids))
+            key = (hash(audio.tobytes()), int(ref[1]), bool(prompt_text_ids))
             if self._reference_cache_key != key:
                 self._reference_cache = self.tokenize_reference(
-                    audio, int(ref[1]), with_semantic=bool(self._reference_text_ids))
+                    audio, int(ref[1]), with_semantic=bool(prompt_text_ids))
                 self._reference_cache_key = key
             return self._reference_cache
         if self.preset_global_tokens is None:
@@ -426,8 +427,9 @@ class SparkTTSAdapter(BaseOnnxAdapter):
         if self.tokenizer is None:
             raise RuntimeError("Spark-TTS voice missing bpe_tokenizer_path in engine_params")
 
-        global_tokens, prompt_semantic = self._resolve_speaker(request)
-        prompt_text_ids = self._reference_text_ids
+        reference_text = request.params.get("speaker_reference_text")
+        prompt_text_ids = self.tokenizer.tokenize(reference_text) if reference_text else None
+        global_tokens, prompt_semantic = self._resolve_speaker(request, prompt_text_ids)
         prompt = self.build_prompt(
             np.asarray(request.phoneme_ids, np.int64).reshape(-1).tolist(),
             global_tokens, prompt_text_ids, prompt_semantic)

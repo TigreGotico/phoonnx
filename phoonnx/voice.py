@@ -1090,6 +1090,12 @@ class TTSVoice:
         if syn_config.speaker_reference_text:
             params["prompt_tokens"] = self._prompt_token_ids(
                 syn_config.speaker_reference_text, syn_config.speaker_reference_lang)
+            # Raw string, for text-token adapters (OmniVoice, Spark-TTS) that tokenize
+            # the reference transcription themselves rather than through the shared
+            # phonemizer. Carried on the per-call request rather than adapter state so
+            # concurrent calls sharing one adapter instance never see each other's
+            # reference transcription.
+            params["speaker_reference_text"] = syn_config.speaker_reference_text
         if syn_config.exaggeration is not None:
             params["exaggeration"] = syn_config.exaggeration
         if syn_config.temperature is not None:
