@@ -896,6 +896,65 @@ class SynthesisConfig:
     extra_params: Dict[str, Any] = field(default_factory=dict)
 
 
+class UnsupportedVoiceLanguage(ValueError):
+    """Raised at voice load when no phonemizer backend serves the voice's language.
+
+    Surfacing this eagerly (instead of letting scriptconv's ``ValueError:
+    unsupported language code`` bubble up mid-synthesis, after the user has
+    already picked the voice and sent text) turns an opaque runtime crash
+    into an actionable, typed failure at load time.
+    """
+
+    def __init__(self, voice: str, lang_code: str, phoneme_type: "PhonemeType"):
+        self.voice = voice
+        self.lang_code = lang_code
+        self.phoneme_type = phoneme_type
+        super().__init__(
+            f"voice {voice!r}: no phonemizer backend supports lang "
+            f"{lang_code!r} for phoneme_type {phoneme_type.value!r}"
+        )
+
+
+def check_lang_supported(voice: str, lang_code: Optional[str],
+                         phoneme_type: PhonemeType) -> None:
+    """Eagerly verify a voice's phonemizer chain serves its language.
+
+    Only checks backends that actually restrict languages -- scriptconv's
+    registry query resolves the backend *class* (a lazy import; no
+    construction of the wrapper instance itself) and calls its ``get_lang``
+    classmethod when present. This is cheaper than instantiating the
+    phonemizer, but not free: a few backends' ``get_lang`` (e.g.
+    orthography2ipa) construct a lightweight G2P engine to answer, and
+    others (euskaphone, arbtok) import their optional backing package to
+    check. A missing optional package therefore surfaces as ``ImportError``
+    here, not ``ValueError`` -- that is not an unsupported-language verdict,
+    so it is treated the same as "no get_lang": skip, don't reject. Backends
+    without ``get_lang`` (grapheme/unicode passthroughs) accept any language
+    and are silently skipped, as are unresolvable phoneme types
+    (``get_phonemizer`` raises its own error for those).
+
+    Raises:
+        UnsupportedVoiceLanguage: If the resolved backend cannot serve
+            ``lang_code``.
+    """
+    if not lang_code or phoneme_type is None:
+        return
+    from scriptconv.phonemizers.registry import get_phonemizer_class
+    try:
+        phonemizer_cls = get_phonemizer_class(phoneme_type)
+    except (KeyError, ImportError, ValueError):
+        return
+    get_lang = getattr(phonemizer_cls, "get_lang", None)
+    if get_lang is None:
+        return
+    try:
+        get_lang(lang_code)
+    except ImportError:
+        return
+    except ValueError as e:
+        raise UnsupportedVoiceLanguage(voice, lang_code, phoneme_type) from e
+
+
 def get_phonemizer(phoneme_type: PhonemeType,
                    alphabet: Alphabet = Alphabet.IPA,
                    model: Optional[str] = None) -> 'Phonemizer':

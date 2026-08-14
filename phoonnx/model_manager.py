@@ -13,7 +13,7 @@ from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
                                     OfflineModeIsEnabled)
 from json_database import JsonStorageXDG, JsonStorage
 
-from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet
+from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet, check_lang_supported
 from phoonnx.util import match_lang, normalize_lang, LOG
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
 from phoonnx.voice import TTSVoice
@@ -699,6 +699,12 @@ class TTSModelInfo:
         Returns:
             TTSVoice: The configured TTSVoice instance ready for synthesis.
         """
+        # self.config resolves the final phoneme_type/lang_code (index override
+        # applied) from the small config.json, if any -- cheap next to
+        # download_model()'s multi-MB model weights, so the language check
+        # runs before that download rather than after it.
+        check_lang_supported(self.voice_id, self.config.lang_code, self.config.phoneme_type)
+
         model_path = self.download_model()
         config_path = self.hub_path(self.config_url)
         vocab_path = self.hub_path(self.vocab_url)
@@ -736,6 +742,10 @@ class TTSModelInfo:
         if self.phoneme_type != voice.config.phoneme_type or self.alphabet != voice.config.alphabet:
             voice.config.phoneme_type = self.phoneme_type
             voice.config.alphabet = self.alphabet
+            # voice.config.lang_code is read from the downloaded config.json and
+            # can differ from the pre-download self.config.lang_code above, so
+            # this re-checks against the phoneme_type actually being installed.
+            check_lang_supported(self.voice_id, voice.config.lang_code, self.phoneme_type)
             voice.phonemizer = get_phonemizer(self.phoneme_type,
                                               alphabet=self.alphabet,
                                               model=voice.config.phonemizer_model)

@@ -25,7 +25,8 @@ import onnxruntime
 from langcodes import closest_match
 from quebra_frases import sentence_tokenize
 
-from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, get_phonemizer, get_conversion
+from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, get_phonemizer, get_conversion, \
+    check_lang_supported
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.engines.base import (
@@ -340,6 +341,18 @@ class TTSVoice:
 
         # Phonemizer
         if self.phonemizer is None:
+            # Fail fast (typed) if no scriptconv backend serves this voice's
+            # language, instead of the voice loading fine and crashing mid
+            # synthesis with an opaque ValueError once text is sent. Name the
+            # voice by its model filename (e.g. "tdt-TL_joao"), not the full
+            # HF snapshot path -- ``model_path`` is a cache path, not a
+            # human-facing identifier.
+            voice_name = Path(self.model_path).stem if self.model_path else "<voice>"
+            check_lang_supported(
+                voice_name,
+                self.config.lang_code,
+                self.config.phoneme_type,
+            )
             self.phonemizer = get_phonemizer(
                 self.config.phoneme_type,
                 self.config.alphabet,
