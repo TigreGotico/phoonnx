@@ -590,7 +590,9 @@ def test_decode_codes_without_a_decoder_says_what_is_missing():
         ad.decode_codes(np.zeros((NUM_CODEBOOKS, 3), np.int64))
 
 
-def test_encode_text_keeps_the_reference_transcription_as_text():
+def test_encode_text_does_not_stash_reference_state_on_the_adapter():
+    # the reference transcription travels on request.params, not on self -- this
+    # adapter instance is shared across concurrent requests
     ad = _adapter()
 
     class _Syn:
@@ -598,19 +600,38 @@ def test_encode_text_keeps_the_reference_transcription_as_text():
 
     ids = ad.encode_text("target", voice=None, syn_config=_Syn())
     assert ids == [[ord(c) for c in "target"]]
-    # punctuation is added, and it stays a string -- the prompt joins strings, not ids
-    assert ad._reference_text == "Reference clip."
+    assert not hasattr(ad, "_reference_text")
 
 
-def test_encode_text_without_a_reference_clears_stale_state():
-    ad = _adapter()
-    ad._reference_text = "left over"
+def test_synthesize_uses_the_reference_text_from_request_params_not_from_encode_text():
+    """Regression: encode_text used to stash the reference transcription on self, which
+    the shared adapter (one per voice_id under the threaded server) could serve to a
+    different, concurrently-running request's synthesize() call. It must come from
+    request.params instead."""
+    ad = _adapter(decoder=_FakeDecoder())
+    sess = _FakeBackbone()
+    ad.encode_reference = lambda audio, sr: (np.zeros((NUM_CODEBOOKS, 2), np.int64), 0.1)
 
-    class _Syn:
-        speaker_reference_text = None
+    class _SynA:
+        speaker_reference_text = "Request A reference"
 
-    ad.encode_text("target", voice=None, syn_config=_Syn())
-    assert ad._reference_text is None
+    class _SynB:
+        speaker_reference_text = "Request B reference"
+
+    # simulate interleaving: request A's encode_text runs, then request B's encode_text
+    # runs on the same shared adapter (as would happen under a threaded server), and
+    # only then does request A's synthesize() run.
+    ad.encode_text("a text", voice=None, syn_config=_SynA())
+    ad.encode_text("b text", voice=None, syn_config=_SynB())
+
+    ref_audio = (np.zeros(SAMPLE_RATE, np.float32), SAMPLE_RATE)
+    req_a = _req([ord(c) for c in "a text"], num_step=1,
+                speaker_reference_text="Request A reference", reference_audio=ref_audio)
+    ad.synthesize(req_a, sess)
+
+    prompt = ad._decode_ids(sess.calls[0]["input_ids"][0, 0])
+    assert "Request A reference" in prompt
+    assert "Request B reference" not in prompt
 
 
 def test_empty_text_yields_no_chunks():

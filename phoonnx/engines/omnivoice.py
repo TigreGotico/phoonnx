@@ -123,7 +123,6 @@ class OmniVoiceAdapter(BaseOnnxAdapter):
         self.decoder: Optional[onnxruntime.InferenceSession] = None
         self.tokenizer = None
         self._params: Dict[str, Any] = {}
-        self._reference_text: Optional[str] = None
         self._estimator = RuleDurationEstimator()
         self._ref_cache_key: Optional[tuple] = None
         self._ref_cache: Tuple[Optional[np.ndarray], Optional[float]] = (None, None)
@@ -192,12 +191,13 @@ class OmniVoiceAdapter(BaseOnnxAdapter):
         — its ``prompt_tokens`` are phoneme ids and mean nothing here. A cloning
         reference's transcription is kept as a *string*, because upstream joins it to the
         target text before tokenizing (:func:`combine_text`) rather than concatenating two
-        token sequences.
+        token sequences. It travels to :meth:`synthesize` on ``request.params`` rather than
+        on ``self`` — this adapter instance is shared across concurrent requests (one
+        ``TTSVoice``/adapter per voice_id under the threaded server), and stashing it here
+        would let one request's reference text bleed into another's audio.
         """
         if self.tokenizer is None:
             raise RuntimeError("OmniVoice voice missing bpe_tokenizer_path in engine_params")
-        reference_text = getattr(syn_config, "speaker_reference_text", None)
-        self._reference_text = add_punctuation(reference_text) if reference_text else None
         return [self._encode(text)] if text.strip() else []
 
     def _decode_ids(self, ids: np.ndarray) -> str:
@@ -444,12 +444,15 @@ class OmniVoiceAdapter(BaseOnnxAdapter):
         params = request.params
         text = self._decode_ids(request.phoneme_ids)
 
+        reference_text = params.get("speaker_reference_text")
+        reference_text = add_punctuation(reference_text) if reference_text else None
+
         ref_codes = ref_rms = None
         reference = params.get("reference_audio")
         if reference is not None:
             ref_codes, ref_rms = self.encode_reference(reference[0], int(reference[1]))
-        ref_text = self._reference_text if ref_codes is not None else None
-        if ref_codes is None and self._reference_text:
+        ref_text = reference_text if ref_codes is not None else None
+        if ref_codes is None and reference_text:
             LOG.warning("OmniVoice: a reference transcription was given without a "
                         "reference clip — ignoring it")
 
