@@ -126,7 +126,7 @@ def list_engines() -> List[str]:
 # ------------------------------------------------------------------
 
 def _register_builtins() -> None:
-    from phoonnx.engines.vits import VitsAdapter
+    from phoonnx.engines.vits import VitsAdapter, VitsPriorSplitAdapter
     from phoonnx.engines.vits_streaming import VitsStreamingAdapter
     from phoonnx.engines.shami import ShamiAdapter
     from phoonnx.engines.matcha import MatchaAdapter
@@ -160,6 +160,10 @@ def _register_builtins() -> None:
     # matches split models (streaming:true + decoder_path), so it never steals a
     # normal single-graph voice, but a normal VITS voice must not steal a split one.
     register_engine("vits_streaming", VitsStreamingAdapter, detect_priority=48)
+    # Prior-split VITS (e.g. Inflect-v2's official duration.onnx/decode.onnx):
+    # detected purely by the duration graph's output signature, so it must be
+    # probed before the plain single-graph vits adapter.
+    register_engine("vits_prior_split", VitsPriorSplitAdapter, detect_priority=49)
     register_engine("vits", VitsAdapter, detect_priority=50)
     register_engine("matcha", MatchaAdapter, detect_priority=40)
     register_engine("glowtts", GlowTTSAdapter, detect_priority=42)

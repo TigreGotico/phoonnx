@@ -77,6 +77,7 @@ Lower `detect_priority` values are probed first during auto-detection.
 |---|---|---|
 | VITS / Piper / Mimic3 / Coqui / VITS2 / YourTTS-VITS | `phoonnx/engines/vits.py` | `model_type == "vits"`, `"scales"` input, piper/mimic3 signatures |
 | [Streaming VITS](streaming.md) | `phoonnx/engines/vits_streaming.py` | `streaming: true` **and** a decoder graph (split encoder/decoder) |
+| Prior-split VITS (Inflect-v2 Micro/Nano) | `phoonnx/engines/vits.py` (`VitsPriorSplitAdapter`) | `engine_params.decode_path` **and** the duration graph's outputs ⊇ `{m_p_exp, logs_p_exp, y_mask}` — split at the flow **prior**, not the flow/HiFiGAN boundary Streaming VITS uses |
 | [Matcha](training/engines/matcha.md) | `phoonnx/engines/matcha.py` | `engine == "matcha"` (flow-matching mel + separate vocoder) |
 | [GlowTTS](training/engines/glowtts.md) | `phoonnx/engines/glowtts.py` | `engine == "glowtts"` |
 | [OptiSpeech](training/engines/optispeech.md) | `phoonnx/engines/optispeech.py` | `engine == "optispeech"` (wav + durations outputs) |
