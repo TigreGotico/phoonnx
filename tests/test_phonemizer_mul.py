@@ -36,13 +36,12 @@ class TestEspeakGetLang(unittest.TestCase):
         # "pt" is -- get_lang lowercases and strips the region.
         self.assertEqual(EspeakPhonemizer.get_lang("pt-BR"), "pt")
 
-    def test_zh_tw_has_no_close_match_raises_valueerror_not_keyerror(self):
-        # zh-TW has no exact/base entry ("zh" isn't in ESPEAK_LANGS either,
-        # only "cmn"), and langcodes' tag_distance finds nothing close enough
-        # -- this must raise the controlled ValueError from match_lang,
-        # never a raw KeyError from a dict/table lookup.
-        with self.assertRaises(ValueError):
-            EspeakPhonemizer.get_lang("zh-TW")
+    def test_zh_tw_resolves_via_chinese_alias_map(self):
+        # ESPEAK_LANGS has no bare "zh" entry, only "cmn"/"yue"; scriptconv's
+        # espeak wrapper maps BCP-47 Chinese tags onto those voices explicitly,
+        # so region-tagged Chinese resolves instead of raising.
+        self.assertIn(EspeakPhonemizer.get_lang("zh-TW"),
+                      EspeakPhonemizer.ESPEAK_LANGS)
 
     def test_completely_unknown_lang_raises_valueerror_not_keyerror(self):
         with self.assertRaises(ValueError):
