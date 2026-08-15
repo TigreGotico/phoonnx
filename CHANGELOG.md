@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.84.0a1](https://github.com/TigreGotico/phoonnx/tree/1.84.0a1) (2026-08-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.83.0a1...1.84.0a1)
+
+**Merged pull requests:**
+
+- feat: MOSS-TTS-Nano zero-shot cloning voices \(ONNX\) [\#321](https://github.com/TigreGotico/phoonnx/pull/321) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.83.0a1](https://github.com/TigreGotico/phoonnx/tree/1.83.0a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.82.3a1...1.83.0a1)
