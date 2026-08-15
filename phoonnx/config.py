@@ -44,6 +44,7 @@ class Engine(str, Enum):
     LLASA = "llasa"  # Llasa (HKUST): LLaMA codec-LM + XCodec2 decoder, 50 Hz single codebook
     ORPHEUS = "orpheus"  # Orpheus (Canopy Labs): Llama codec-LM + SNAC decoder, emotive tags
     MAGPIE = "magpie"  # NVIDIA Magpie-TTS: encoder-decoder codec LM, 8 codebooks, 12 languages
+    MOSSTTS = "mosstts"  # MOSS-TTS-Nano: autoregressive RVQ-16 codec-LM, zero-shot cloning @48kHz
 
 
 # Alphabet and PhonemeType are wire-format enums shared with scriptconv;
@@ -383,6 +384,27 @@ class VoiceConfig:
             phoneme_type = phoneme_type or PhonemeType.UNICODE
             alphabet = alphabet or Alphabet.GRAPHEMES
             config.setdefault("audio", {}).setdefault("sample_rate", 24000)
+            tokenizer = TTSTokenizer(
+                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
+                add_blank_char=False,
+                add_blank_word=False,
+                use_eos_bos=False,
+                blank_at_end=False,
+                blank_at_start=False,
+            )
+
+        elif (engine == Engine.MOSSTTS or
+                (isinstance(engine, str) and engine == "mosstts") or
+                config.get("engine") == "mosstts"):
+            # MOSS-TTS-Nano consumes raw text: the adapter owns text -> id conversion
+            # via its own SentencePiece model (loaded from engine_params), so no
+            # phonemizer/tokenizer vocabulary is built here. Alphabet.GRAPHEMES routes
+            # TTSVoice.synthesize() through adapter.encode_text(). Native output is
+            # 48 kHz (stereo, downmixed to mono by the adapter).
+            engine = Engine.MOSSTTS
+            phoneme_type = phoneme_type or PhonemeType.UNICODE
+            alphabet = alphabet or Alphabet.GRAPHEMES
+            config.setdefault("audio", {}).setdefault("sample_rate", 48000)
             tokenizer = TTSTokenizer(
                 Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
                 add_blank_char=False,

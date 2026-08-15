@@ -28,6 +28,7 @@ turned into:
 | **d-vector** | a **speaker encoder** maps the reference waveform to a fixed embedding that conditions synthesis | No | Yes | YourTTS, StyleTTS2, [Chatterbox](training/engines/chatterbox.md), [Spark-TTS](training/engines/sparktts.md) |
 | **in-context** | the reference **audio + its transcription** are part of the model input; the model continues that voice | **Yes** | Per-phoneme (espeak/pinyin) | ZipVoice, [Spark-TTS](training/engines/sparktts.md), [OmniVoice](training/engines/omnivoice.md) |
 | **in-context, pre-encoded** | the reference is **codec-encoded ahead of time** and shipped with the voice; the model continues those audio tokens | **Yes** (bundled) | Per-phoneme (espeak) | NeuTTS / Akiti-TTS, [OuteTTS](training/engines/outetts.md), Llasa |
+| **in-context, audio only** | the reference is **codec-encoded** into audio tokens and prepended to the model's own token stream — no encoder, no transcription | No | Yes | MOSS-TTS-Nano |
 
 A cloning voice can still bundle a **default speaker**, so it works with *or* without a
 reference. When a reference is given it **overrides** the default
@@ -151,6 +152,29 @@ Sampling is tunable through `extra_params` — `temperature`, `top_p` and
 Llasa's sampler follows the **HuggingFace** warper order (temperature, then top-p),
 because that is the stack upstream drives the checkpoint through; NeuTTS uses llama.cpp's
 opposite order for the same reason.
+
+## Codec-LM engine (MOSS-TTS-Nano)
+
+MOSS-TTS-Nano clones zero-shot from a reference clip alone — no transcription and no
+speaker encoder. The clip is encoded to RVQ-16 audio tokens by the model's own audio
+tokenizer and prepended to the prompt, so cloning works across languages out of the box:
+
+```python
+voice.synthesize("...", SynthesisConfig(speaker_reference="alice.wav"))
+```
+
+Sampling is tunable through `extra_params`. By default the engine uses the graph that
+has upstream's sampling constants compiled in (fastest); changing any of
+`audio_temperature` / `audio_top_p` / `audio_top_k` / `audio_repetition_penalty`
+transparently switches to host-side sampling, and `sample_mode="greedy"` is deterministic:
+
+```python
+SynthesisConfig(speaker_reference="alice.wav",
+                extra_params={"audio_temperature": 0.6, "max_new_frames": 250, "seed": 0})
+```
+
+`max_new_frames` caps the autoregressive loop at 12.5 frames per second of audio
+(the default 375 is 30 s per model call).
 
 ## In-context engine (ZipVoice)
 

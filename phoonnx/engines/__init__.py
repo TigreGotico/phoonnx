@@ -151,6 +151,7 @@ def _register_builtins() -> None:
     from phoonnx.engines.llasa import LlasaAdapter
     from phoonnx.engines.orpheus import OrpheusAdapter
     from phoonnx.engines.magpie import MagpieAdapter
+    from phoonnx.engines.mosstts import MossTTSNanoAdapter
 
     # OptiSpeech shares VITS-like x/x_lengths/scales inputs with Matcha, but has
     # a distinctive metadata + wav/durations output signature — check it first.
@@ -189,6 +190,10 @@ def _register_builtins() -> None:
     register_engine("llasa", LlasaAdapter, detect_priority=15)
     register_engine("orpheus", OrpheusAdapter, detect_priority=14)
     register_engine("magpie", MagpieAdapter, detect_priority=19)
+    # MOSS-TTS-Nano is authoritative-only: detect() requires an explicit
+    # engine="mosstts" in the voice config, so its priority among the
+    # heuristic-probed engines above is irrelevant.
+    register_engine("mosstts", MossTTSNanoAdapter, detect_priority=20)
 
 
 _register_builtins()

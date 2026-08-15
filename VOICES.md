@@ -1,6 +1,6 @@
 ## Supported Voices
 
-**Total Voices:** 3229
+**Total Voices:** 3248
 **Total Languages:** 1813
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
@@ -102,6 +102,7 @@
 | `magpie/John/ar` | `ar` | `magpie` | `unicode` |
 | `magpie/Leo/ar` | `ar` | `magpie` | `unicode` |
 | `magpie/Sofia/ar` | `ar` | `magpie` | `unicode` |
+| `mosstts/nano/ar` | `ar` | `mosstts` | `unicode` |
 | `nipponjo/tts-arabic-fastpitch` | `ar` | `fastpitch` | `mantoq` |
 | `nipponjo/tts-arabic-mixer128` | `ar` | `mixertts` | `mantoq` |
 | `nipponjo/tts-arabic-mixer80` | `ar` | `mixertts` | `mantoq` |
@@ -464,6 +465,7 @@
 | `facebook/mms-tts-crq-Chorote, Iyo’wujwa` | `crq` | `transformers` | `graphemes` |
 | `facebook/mms-tts-crs-Seychelles French Creole` | `crs` | `transformers` | `graphemes` |
 | `facebook/mms-tts-crt-Chorote, Iyojwa’ja` | `crt` | `transformers` | `graphemes` |
+| `mosstts/nano/cs` | `cs` | `mosstts` | `unicode` |
 | `omnivoice/cs` | `cs` | `omnivoice` | `unicode` |
 | `supertonic/F1/cs` | `cs` | `supertonic` | `unicode` |
 | `supertonic/F2/cs` | `cs` | `supertonic` | `unicode` |
@@ -507,6 +509,7 @@
 | `piper/cy_GB-bu_tts-medium` | `cy-GB` | `piper` | `espeak` |
 | `piper/cy_GB-gwryw_gogleddol-medium` | `cy-GB` | `piper` | `espeak` |
 | `facebook/mms-tts-cya-Chatino, Nopala` | `cya` | `transformers` | `graphemes` |
+| `mosstts/nano/da` | `da` | `mosstts` | `unicode` |
 | `omnivoice/da` | `da` | `omnivoice` | `unicode` |
 | `supertonic/F1/da` | `da` | `supertonic` | `unicode` |
 | `supertonic/F2/da` | `da` | `supertonic` | `unicode` |
@@ -542,6 +545,7 @@
 | `hf_community/systemofapwne/piper-de-glados/de_DE-glados-turret-high` | `de` | `piper` | `espeak` |
 | `hf_community/systemofapwne/piper-de-glados/de_DE-glados-turret-low` | `de` | `piper` | `espeak` |
 | `hf_community/systemofapwne/piper-de-glados/de_DE-glados-turret-medium` | `de` | `piper` | `espeak` |
+| `mosstts/nano/de` | `de` | `mosstts` | `unicode` |
 | `omnivoice/de` | `de` | `omnivoice` | `unicode` |
 | `pockettts/de/alba` | `de` | `pockettts` | `unicode` |
 | `pockettts/de/anna` | `de` | `pockettts` | `unicode` |
@@ -666,6 +670,7 @@
 | `facebook/mms-tts-eka-Ekajuk` | `eka` | `transformers` | `graphemes` |
 | `omnivoice/eko` | `eko` | `omnivoice` | `unicode` |
 | `omnivoice/ekr` | `ekr` | `omnivoice` | `unicode` |
+| `mosstts/nano/el` | `el` | `mosstts` | `unicode` |
 | `omnivoice/el` | `el` | `omnivoice` | `unicode` |
 | `supertonic/F1/el` | `el` | `supertonic` | `unicode` |
 | `supertonic/F2/el` | `el` | `supertonic` | `unicode` |
@@ -697,6 +702,7 @@
 | `hf_community/wasmdashai/vits-eng-us-ljs` | `en` | `transformers` | `graphemes` |
 | `indic_parler/mary/en` | `en` | `indic_parler` | `unicode` |
 | `indic_parler/thoma/en` | `en` | `indic_parler` | `unicode` |
+| `mosstts/nano/en` | `en` | `mosstts` | `unicode` |
 | `nipponjo/mixer-tts-ljspeech-128` | `en` | `mixertts` | `espeak` |
 | `nipponjo/mixer-tts-ljspeech-384` | `en` | `mixertts` | `espeak` |
 | `nipponjo/mixer-tts-ljspeech-80` | `en` | `mixertts` | `espeak` |
@@ -983,6 +989,7 @@
 | `kokoro/ef_dora` | `es` | `styletts2` | `espeak` |
 | `kokoro/em_alex` | `es` | `styletts2` | `espeak` |
 | `kokoro/em_santa` | `es` | `styletts2` | `espeak` |
+| `mosstts/nano/es` | `es` | `mosstts` | `unicode` |
 | `omnivoice/es` | `es` | `omnivoice` | `unicode` |
 | `pockettts/es/alba` | `es` | `pockettts` | `unicode` |
 | `pockettts/es/anna` | `es` | `pockettts` | `unicode` |
@@ -1101,6 +1108,7 @@
 | `hf_community/SadeghK/persian-text-to-speech/epoch=5719-step=2609600-ganji` | `fa` | `piper` | `espeak` |
 | `hf_community/SadeghK/persian-text-to-speech/epoch=6363-step=2694608-ganji-adabi` | `fa` | `piper` | `espeak` |
 | `mimic3/fa/haaniye_low` | `fa` | `mimic3` | `espeak` |
+| `mosstts/nano/fa` | `fa` | `mosstts` | `unicode` |
 | `omnivoice/fa` | `fa` | `omnivoice` | `unicode` |
 | `outetts/1B/fa` | `fa-IR` | `outetts` | `unicode` |
 | `piper/fa_IR-amir-medium` | `fa-IR` | `piper` | `espeak` |
@@ -1158,6 +1166,7 @@
 | `magpie/John/fr` | `fr` | `magpie` | `unicode` |
 | `magpie/Leo/fr` | `fr` | `magpie` | `unicode` |
 | `magpie/Sofia/fr` | `fr` | `magpie` | `unicode` |
+| `mosstts/nano/fr` | `fr` | `mosstts` | `unicode` |
 | `omnivoice/fr` | `fr` | `omnivoice` | `unicode` |
 | `pockettts/fr/alba` | `fr` | `pockettts` | `unicode` |
 | `pockettts/fr/anna` | `fr` | `pockettts` | `unicode` |
@@ -1410,6 +1419,7 @@
 | `omnivoice/ht` | `ht` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-hat-Haitian Creole` | `ht-HT` | `transformers` | `graphemes` |
 | `facebook/mms-tts-hto-Witoto, Minika` | `hto` | `transformers` | `graphemes` |
+| `mosstts/nano/hu` | `hu` | `mosstts` | `unicode` |
 | `omnivoice/hu` | `hu` | `omnivoice` | `unicode` |
 | `supertonic/F1/hu` | `hu` | `supertonic` | `unicode` |
 | `supertonic/F2/hu` | `hu` | `supertonic` | `unicode` |
@@ -1513,6 +1523,7 @@
 | `magpie/John/it` | `it` | `magpie` | `unicode` |
 | `magpie/Leo/it` | `it` | `magpie` | `unicode` |
 | `magpie/Sofia/it` | `it` | `magpie` | `unicode` |
+| `mosstts/nano/it` | `it` | `mosstts` | `unicode` |
 | `omnivoice/it` | `it` | `omnivoice` | `unicode` |
 | `pockettts/it/alba` | `it` | `pockettts` | `unicode` |
 | `pockettts/it/anna` | `it` | `pockettts` | `unicode` |
@@ -1580,6 +1591,7 @@
 | `facebook/mms-tts-ixl-dialect_santamarianebaj-Ixil` | `ixl-x-santamar-ianebaj` | `transformers` | `graphemes` |
 | `facebook/mms-tts-izr-Izere` | `izr` | `transformers` | `graphemes` |
 | `facebook/mms-tts-izz-Izii` | `izz` | `transformers` | `graphemes` |
+| `mosstts/nano/ja` | `ja` | `mosstts` | `unicode` |
 | `omnivoice/ja` | `ja` | `omnivoice` | `unicode` |
 | `supertonic/F1/ja` | `ja` | `supertonic` | `unicode` |
 | `supertonic/F2/ja` | `ja` | `supertonic` | `unicode` |
@@ -1729,6 +1741,7 @@
 | `magpie/John/ko` | `ko` | `magpie` | `unicode` |
 | `magpie/Leo/ko` | `ko` | `magpie` | `unicode` |
 | `magpie/Sofia/ko` | `ko` | `magpie` | `unicode` |
+| `mosstts/nano/ko` | `ko` | `mosstts` | `unicode` |
 | `omnivoice/ko` | `ko` | `omnivoice` | `unicode` |
 | `supertonic/F1/ko` | `ko` | `supertonic` | `unicode` |
 | `supertonic/F2/ko` | `ko` | `supertonic` | `unicode` |
@@ -2307,6 +2320,7 @@
 | `facebook/mms-tts-pjt-Pitjantjatjara` | `pjt` | `transformers` | `graphemes` |
 | `facebook/mms-tts-pkb-Kipfokomo` | `pkb` | `transformers` | `graphemes` |
 | `omnivoice/pko` | `pko` | `omnivoice` | `unicode` |
+| `mosstts/nano/pl` | `pl` | `mosstts` | `unicode` |
 | `omnivoice/pl` | `pl` | `omnivoice` | `unicode` |
 | `supertonic/F1/pl` | `pl` | `supertonic` | `unicode` |
 | `supertonic/F2/pl` | `pl` | `supertonic` | `unicode` |
@@ -2369,6 +2383,7 @@
 | `kokoro/pf_dora` | `pt` | `styletts2` | `espeak` |
 | `kokoro/pm_alex` | `pt` | `styletts2` | `espeak` |
 | `kokoro/pm_santa` | `pt` | `styletts2` | `espeak` |
+| `mosstts/nano/pt` | `pt` | `mosstts` | `unicode` |
 | `omnivoice/pt` | `pt` | `omnivoice` | `unicode` |
 | `pockettts/pt/alba` | `pt` | `pockettts` | `unicode` |
 | `pockettts/pt/anna` | `pt` | `pockettts` | `unicode` |
@@ -2526,6 +2541,7 @@
 | `frappuccino/vits2-ru-natasha` | `ru` | `coqui` | `graphemes` |
 | `hf_community/joefox/tts_vits_ru_hf` | `ru` | `transformers` | `graphemes` |
 | `hf_community/superkeka/piper-tts-luka` | `ru` | `piper` | `espeak` |
+| `mosstts/nano/ru` | `ru` | `mosstts` | `unicode` |
 | `omnivoice/ru` | `ru` | `omnivoice` | `unicode` |
 | `supertonic/F1/ru` | `ru` | `supertonic` | `unicode` |
 | `supertonic/F2/ru` | `ru` | `supertonic` | `unicode` |
@@ -2679,6 +2695,7 @@
 | `facebook/mms-tts-suz-Sunwar` | `suz` | `transformers` | `graphemes` |
 | `coqui/sv-cv-vits` | `sv` | `coqui` | `graphemes` |
 | `facebook/mms-tts-swe-Swedish` | `sv` | `transformers` | `graphemes` |
+| `mosstts/nano/sv` | `sv` | `mosstts` | `unicode` |
 | `omnivoice/sv` | `sv` | `omnivoice` | `unicode` |
 | `supertonic/F1/sv` | `sv` | `supertonic` | `unicode` |
 | `supertonic/F2/sv` | `sv` | `supertonic` | `unicode` |
@@ -2816,6 +2833,7 @@
 | `facebook/mms-tts-tpt-Tepehua, Tlachichilco` | `tpt` | `transformers` | `graphemes` |
 | `omnivoice/tpz` | `tpz` | `omnivoice` | `unicode` |
 | `omnivoice/tqp` | `tqp` | `omnivoice` | `unicode` |
+| `mosstts/nano/tr` | `tr` | `mosstts` | `unicode` |
 | `omnivoice/tr` | `tr` | `omnivoice` | `unicode` |
 | `supertonic/F1/tr` | `tr` | `supertonic` | `unicode` |
 | `supertonic/F2/tr` | `tr` | `supertonic` | `unicode` |
@@ -3188,6 +3206,7 @@
 | `kokoro/zm_yunxi` | `zh` | `styletts2` | `misaki_zh` |
 | `kokoro/zm_yunxia` | `zh` | `styletts2` | `misaki_zh` |
 | `kokoro/zm_yunyang` | `zh` | `styletts2` | `misaki_zh` |
+| `mosstts/nano/zh` | `zh` | `mosstts` | `unicode` |
 | `omnivoice/zh` | `zh` | `omnivoice` | `unicode` |
 | `arktts/audio8-antton/zh` | `zh-CN` | `arktts` | `unicode` |
 | `arktts/audio8-maider/zh` | `zh-CN` | `arktts` | `unicode` |
