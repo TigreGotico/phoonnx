@@ -657,6 +657,63 @@ class TestDataStructureIntegrity(unittest.TestCase):
                         self.assertIn(unit, UNITS[lang],
                                       f"Unit '{unit}' missing from {lang}")
 
+    def test_normalize_units_ordinal_indicator_not_degree(self):
+        """A masculine ordinal indicator ('º') must not be turned into a
+        degree sign and pronounced as 'degrees'; it must be expanded as an
+        ordinal number instead of being left as a raw digit."""
+        result = _normalize_units("Moro no 1º andar", "pt")
+        self.assertNotIn("grau", result.lower())
+        self.assertNotIn("1º", result)
+        self.assertFalse(any(c.isdigit() for c in result))
+        self.assertIn("primeiro", result.lower())
+
+        result = _normalize_units("3º trimestre", "es")
+        self.assertNotIn("grado", result.lower())
+        self.assertNotIn("3º", result)
+        self.assertFalse(any(c.isdigit() for c in result))
+
+    def test_normalize_units_bare_ordinal_no_raw_digits(self):
+        """A bare digit+º with no surrounding word must still be fully
+        expanded (no raw digits, no spurious degrees word)."""
+        for lang in ("pt", "es"):
+            with self.subTest(lang=lang):
+                result = _normalize_units("Estamos a 20º" if lang == "pt" else "Vamos al 20º", lang)
+                self.assertFalse(any(c.isdigit() for c in result), result)
+                self.assertNotIn("grau", result.lower())
+                self.assertNotIn("grado", result.lower())
+
+    @patch('phoonnx.util.pronounce_number')
+    def test_normalize_units_degree_letter_variants_still_work(self, mock_pronounce):
+        """A genuine degree-Celsius/Fahrenheit typo using 'º' instead of
+        '°' should still be normalized to degrees."""
+        mock_pronounce.return_value = "twenty"
+        result = _normalize_units("20ºC", "en")
+        self.assertIn("degrees celsius", result)
+
+        mock_pronounce.return_value = "twenty"
+        result = _normalize_units("20 ºC", "en")
+        self.assertIn("degrees celsius", result)
+
+    @patch('phoonnx.util.pronounce_number')
+    def test_normalize_units_lowercase_temperature_letter(self, mock_pronounce):
+        """The ºC/°C lookahead and the symbolic unit lookup must both be
+        case-insensitive, so a lowercase temperature letter (a common typo)
+        is still recognized instead of crashing or passing through raw."""
+        mock_pronounce.return_value = "twenty five"
+
+        result = _normalize_units("25°c", "en")
+        self.assertIn("degrees celsius", result)
+
+        result = _normalize_units("25ºc", "en")
+        self.assertIn("degrees celsius", result)
+
+    @patch('phoonnx.util.pronounce_number')
+    def test_normalize_units_plain_degree_sign_unchanged_behavior(self, mock_pronounce):
+        """Existing behavior for the real degree sign must be preserved."""
+        mock_pronounce.return_value = "twenty"
+        result = _normalize_units("20°", "en")
+        self.assertIn("degrees", result)
+
 
 if __name__ == '__main__':
     unittest.main()
