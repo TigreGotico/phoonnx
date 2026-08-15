@@ -708,6 +708,60 @@ class TestStyleTTS2IndexRequiresReference(unittest.TestCase):
             self.assertFalse(info.requires_reference, f"{voice_id} carries a style_url and should not require a reference clip")
 
 
+class TestPhonemizerLangOverride(HubTestCase):
+    """piper_community/raphaelmerx/tdt-TL_joao is a healthy voice trained with
+    Portuguese espeak (its own config.json says espeak voice "pt"), but the
+    catalogue lang "tdt-TL" is display/discovery metadata only -- no
+    phonemizer serves Tetun. ``phonemizer_lang`` lets the index say which
+    language the voice actually phonemizes as, without disturbing ``lang``
+    (which stays catalogue-facing, e.g. for get_lang_voices).
+    """
+
+    def test_field_round_trips_through_to_dict_and_kwargs(self):
+        info = self.make_info(lang="tdt-TL", phonemizer_lang="pt")
+        d = info.to_dict()
+        self.assertEqual(d["phonemizer_lang"], "pt")
+        rehydrated = TTSModelInfo(**d)
+        self.assertEqual(rehydrated.phonemizer_lang, "pt")
+        self.assertEqual(rehydrated.lang, "tdt-TL")
+
+    def test_default_is_none_and_survives_round_trip(self):
+        info = self.make_info(lang="en-US")
+        self.assertIsNone(info.phonemizer_lang)
+        d = info.to_dict()
+        self.assertIsNone(d["phonemizer_lang"])
+        self.assertIsNone(TTSModelInfo(**d).phonemizer_lang)
+
+    def test_phonemizer_lang_wins_over_catalogue_lang_for_config_resolution(self):
+        # No config_url: config resolution starts from the graphemes/unicode
+        # default dict, isolating exactly what feeds VoiceConfig.from_dict's
+        # lang_code override.
+        info = self.make_info(lang="tdt-TL", phonemizer_lang="pt",
+                              phoneme_type="espeak", alphabet="ipa",
+                              engine="piper")
+        self.assertEqual(info.config.lang_code, "pt")
+        # lang stays the catalogue-facing value; unaffected by the override.
+        self.assertEqual(info.lang, "tdt-TL")
+
+    def test_without_phonemizer_lang_index_lang_still_wins(self):
+        # Regression guard for the kakao-enterprise/vits-ljs shape: an entry
+        # with lang="en-US" and no phonemizer_lang must still resolve to the
+        # index lang, exactly as before this field existed.
+        info = self.make_info(lang="en-US", phoneme_type="espeak",
+                              alphabet="ipa", engine="piper")
+        self.assertEqual(info.config.lang_code, "en-US")
+
+    def test_real_tdt_tl_joao_entry_carries_phonemizer_lang(self):
+        import json as _json
+        from importlib import resources
+        with resources.files("phoonnx.voice_index").joinpath(
+                "piper_community.json").open("r", encoding="utf-8") as f:
+            index = _json.load(f)
+        entry = index["piper_community/raphaelmerx/tdt-TL_joao"]
+        self.assertEqual(entry["phonemizer_lang"], "pt")
+        self.assertEqual(entry["lang"], "tdt-TL")
+
+
 class ManagerTestCase(unittest.TestCase):
     def setUp(self):
         self._tmpdir = tempfile.TemporaryDirectory()
