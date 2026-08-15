@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.82.2a1](https://github.com/TigreGotico/phoonnx/tree/1.82.2a1) (2026-08-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.82.1a1...1.82.2a1)
+
+**Merged pull requests:**
+
+- fix: stop conflating ordinal indicator \(º\) with degree sign \(°\) [\#400](https://github.com/TigreGotico/phoonnx/pull/400) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.82.1a1](https://github.com/TigreGotico/phoonnx/tree/1.82.1a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.82.0a1...1.82.1a1)
@@ -366,33 +374,17 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.6a1...1.61.7a1)
 
-**Merged pull requests:**
-
-- fix: select the Kokoro style row with the unpadded token count [\#308](https://github.com/TigreGotico/phoonnx/pull/308) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.61.6a1](https://github.com/TigreGotico/phoonnx/tree/1.61.6a1) (2026-07-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.5a1...1.61.6a1)
-
-**Merged pull requests:**
-
-- fix: make downloads atomic and voices actually offline-ready [\#302](https://github.com/TigreGotico/phoonnx/pull/302) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.61.5a1](https://github.com/TigreGotico/phoonnx/tree/1.61.5a1) (2026-07-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.4a1...1.61.5a1)
 
-**Merged pull requests:**
-
-- fix: degrade instead of crashing when alignments are unavailable [\#303](https://github.com/TigreGotico/phoonnx/pull/303) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.61.4a1](https://github.com/TigreGotico/phoonnx/tree/1.61.4a1) (2026-07-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.3a1...1.61.4a1)
-
-**Merged pull requests:**
-
-- fix: honour length\_scale on every engine [\#304](https://github.com/TigreGotico/phoonnx/pull/304) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.61.3a1](https://github.com/TigreGotico/phoonnx/tree/1.61.3a1) (2026-07-23)
 
