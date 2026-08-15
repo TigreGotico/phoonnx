@@ -15,6 +15,8 @@ def print_voice_info(voice: TTSModelInfo):
     click.echo(f"  Phoneme Type: {voice.phoneme_type}")
     click.echo(f"  Model URL:   {voice.model_url}")
     click.echo(f"  Config URL:  {voice.config_url}")
+    if voice.requires_reference:
+        click.echo(f"  Requires reference: yes (needs speaker_reference / a style path)")
     click.echo("-" * 40)
 
 

@@ -306,6 +306,13 @@ class TTSModelInfo:
     # placeholders that get resolved once those fields are known
     display_name: Optional[str] = None
 
+    # True when this voice cannot synthesize from a bare (text, lang) request:
+    # it needs a caller-supplied reference (e.g. a cloning engine's
+    # ``reference_audio``, or a StyleTTS2/Kokoro graph with no baked-in style
+    # and no ``engine_params['style_path']``). A catalog sweep can use this to
+    # skip these voices instead of rediscovering the same failures every run.
+    requires_reference: bool = False
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize every field to a JSON-safe dict, matching the format used by the
