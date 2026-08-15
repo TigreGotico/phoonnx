@@ -134,6 +134,7 @@
         "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper_community__raphaelmerx__tdt-TL_joao/model.onnx",
         "phoneme_type": "espeak",
         "lang": "tdt-TL",
+        "phonemizer_lang": "pt",
         "tokens_url": null,
         "tokenizer_config_url": null,
         "vocab_url": null,

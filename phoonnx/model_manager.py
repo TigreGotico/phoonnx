@@ -313,6 +313,15 @@ class TTSModelInfo:
     # skip these voices instead of rediscovering the same failures every run.
     requires_reference: bool = False
 
+    # Override for the phonemizer's lang_code, when it differs from ``lang``.
+    # ``lang`` is catalogue-facing (listings, get_lang_voices) and is not always
+    # the language the model was actually trained to phonemize — some index
+    # entries carry a dialect/locale code (e.g. "tdt-TL") no phonemizer serves,
+    # while the model itself was trained with a different phonemizer voice
+    # (e.g. Portuguese espeak). When set, this field — not ``lang`` — becomes
+    # the lang_code override passed into VoiceConfig.from_dict.
+    phonemizer_lang: Optional[str] = None
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize every field to a JSON-safe dict, matching the format used by the
@@ -349,7 +358,8 @@ class TTSModelInfo:
             if self.phonemizer_model:
                 config["phonemizer_model"] = self.phonemizer_model
 
-            lang_code = normalize_lang(self.lang) if self.lang else None
+            override_lang = self.phonemizer_lang or self.lang
+            lang_code = normalize_lang(override_lang) if override_lang else None
             alphabet = self.alphabet if self.alphabet else None
             phoneme_type = self.phoneme_type if self.phoneme_type else None
             engine = self.engine if self.engine else None
