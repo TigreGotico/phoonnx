@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.82.1a1](https://github.com/TigreGotico/phoonnx/tree/1.82.1a1) (2026-08-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.82.0a1...1.82.1a1)
+
+**Merged pull requests:**
+
+- fix: let phonemizer\_lang override lang\_code independently of catalogue lang [\#421](https://github.com/TigreGotico/phoonnx/pull/421) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.82.0a1](https://github.com/TigreGotico/phoonnx/tree/1.82.0a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.4a2...1.82.0a1)
@@ -353,10 +361,6 @@
 ## [1.61.8a1](https://github.com/TigreGotico/phoonnx/tree/1.61.8a1) (2026-07-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.7a1...1.61.8a1)
-
-**Merged pull requests:**
-
-- fix: resolve the voice at boot without fetching it [\#301](https://github.com/TigreGotico/phoonnx/pull/301) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.61.7a1](https://github.com/TigreGotico/phoonnx/tree/1.61.7a1) (2026-07-23)
 
