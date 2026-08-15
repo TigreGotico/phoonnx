@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.82.3a1](https://github.com/TigreGotico/phoonnx/tree/1.82.3a1) (2026-08-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.82.2a1...1.82.3a1)
+
+**Merged pull requests:**
+
+- fix: raise typed error for unsupported voice language at load, not synthesis [\#411](https://github.com/TigreGotico/phoonnx/pull/411) ([JarbasAl](https://github.com/JarbasAl))
+- fix: pin alpha floors for engine deps missing from the Docker image [\#408](https://github.com/TigreGotico/phoonnx/pull/408) ([JarbasAl](https://github.com/JarbasAl))
+- fix: default phoneme\_type to UNICODE when unset in VoiceConfig [\#401](https://github.com/TigreGotico/phoonnx/pull/401) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.82.2a1](https://github.com/TigreGotico/phoonnx/tree/1.82.2a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.82.1a1...1.82.2a1)
@@ -350,17 +360,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.63.0a1...1.63.0a2)
 
-**Merged pull requests:**
-
-- ci: bump docker workflow actions [\#313](https://github.com/TigreGotico/phoonnx/pull/313) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.63.0a1](https://github.com/TigreGotico/phoonnx/tree/1.63.0a1) (2026-07-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.62.0a1...1.63.0a1)
-
-**Merged pull requests:**
-
-- feat: add uk\_UA piper voices tetiana/mykyta/oleksa \(high\) [\#312](https://github.com/TigreGotico/phoonnx/pull/312) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.62.0a1](https://github.com/TigreGotico/phoonnx/tree/1.62.0a1) (2026-07-23)
 
