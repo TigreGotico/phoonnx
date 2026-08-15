@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.81.3a1](https://github.com/TigreGotico/phoonnx/tree/1.81.3a1) (2026-08-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.2a1...1.81.3a1)
+
+**Merged pull requests:**
+
+- fix: stop cross-request voice-clone bleed on shared OmniVoice/Spark-TTS adapters [\#404](https://github.com/TigreGotico/phoonnx/pull/404) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.81.2a1](https://github.com/TigreGotico/phoonnx/tree/1.81.2a1) (2026-08-14)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.1a1...1.81.2a1)
+
 ## [1.81.1a1](https://github.com/TigreGotico/phoonnx/tree/1.81.1a1) (2026-08-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.0a2...1.81.1a1)
@@ -371,7 +383,6 @@
 **Merged pull requests:**
 
 - fix: always resolve a voice's alphabet [\#296](https://github.com/TigreGotico/phoonnx/pull/296) ([JarbasAl](https://github.com/JarbasAl))
-- fix: honour an explicit engine over the detection heuristics [\#295](https://github.com/TigreGotico/phoonnx/pull/295) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.61.0a3](https://github.com/TigreGotico/phoonnx/tree/1.61.0a3) (2026-07-23)
 
