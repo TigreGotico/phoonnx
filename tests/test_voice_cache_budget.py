@@ -158,19 +158,54 @@ class TestByteBudget(unittest.TestCase):
         self.assertIn("omniB", plugin.voices)
         self.assertNotIn("omniA", plugin.voices)
 
-    def test_a_voice_bigger_than_the_whole_budget_still_loads_and_warns(self):
+    def test_a_voice_bigger_than_the_whole_budget_is_refused_not_loaded(self):
+        # Loading it is not a degraded path, it is a guaranteed OOM kill; a
+        # 15.4 GB voice against a 5 GB budget in an 8 GiB cgroup produced
+        # exactly that, and the container restart looped straight back into
+        # the same load. The known size is refused before it is ever loaded.
+        from phoonnx.opm import VoiceExceedsMemoryBudget
         plugin = _plugin(self, sizes={"huge": 8 * GB}, max_loaded_bytes="1GB")
         plugin.get_model("small")
-        with patch("phoonnx.opm.LOG") as log:
-            model = plugin.get_model("huge")
-        self.assertEqual(model, "model:huge")
-        self.assertIn("huge", plugin.voices)
-        self.assertNotIn("small", plugin.voices,
-                         "everything evictable goes before overshooting")
-        warned = " ".join(str(c) for c in log.warning.call_args_list)
-        self.assertIn("huge", warned)
-        self.assertIn(str(8 * GB), warned)
-        self.assertIn(str(10 ** 9), warned)
+        with self.assertRaises(VoiceExceedsMemoryBudget) as ctx:
+            plugin.get_model("huge")
+        self.assertIn("huge", str(ctx.exception))
+        self.assertIn(str(8 * GB), str(ctx.exception))
+        self.assertIn(str(10 ** 9), str(ctx.exception))
+        self.assertNotIn("huge", plugin.voices)
+        self.assertIn("small", plugin.voices,
+                      "a refused load must not disturb what is already resident")
+        self.assertEqual(plugin._voice_keys.keys() & plugin.voices.keys(),
+                         plugin.voices.keys())
+
+    def test_a_refused_voice_leaves_no_accounting_behind(self):
+        from phoonnx.opm import VoiceExceedsMemoryBudget
+        plugin = _plugin(self, sizes={"huge": 8 * GB}, max_loaded_bytes="1GB")
+        with self.assertRaises(VoiceExceedsMemoryBudget):
+            plugin.get_model("huge")
+        self.assertNotIn("huge", plugin.voices)
+        self.assertNotIn("huge", plugin._voice_keys)
+        self.assertNotIn("huge", plugin._key_bytes)
+        self.assertEqual(plugin._reserved_bytes, 0)
+        # A voice that actually fits still loads normally afterwards.
+        model = plugin.get_model("small")
+        self.assertEqual(model, "model:small")
+        self.assertIn("small", plugin.voices)
+
+    def test_a_voice_that_fits_alone_but_faces_pressure_still_evicts_not_refuses(self):
+        # Regression guard: a voice that individually fits the budget, but not
+        # alongside what is already resident, still follows the existing
+        # evict-and-load path (or the bounded-wait-then-overflow path once
+        # nothing is evictable, exercised in TestCyclicVoiceResidency) rather
+        # than the outright refusal above, which is reserved for a voice that
+        # cannot ever fit on its own.
+        plugin = _plugin(self, sizes={"a": 700 * MB, "b": 700 * MB},
+                         max_loaded_bytes="1GB", load_wait_timeout=0.2)
+        plugin.get_model("a")
+        model = plugin.get_model("b")
+        self.assertEqual(model, "model:b")
+        self.assertIn("b", plugin.voices)
+        self.assertNotIn("a", plugin.voices,
+                         "b displaces a rather than being refused")
 
     def test_no_budget_means_no_measuring(self):
         # Deployments that set neither bound must be untouched, and must not
@@ -242,6 +277,14 @@ class TestPinningUnderBudgetPressure(unittest.TestCase):
         logged = " ".join(str(c) for c in log.error.call_args_list)
         self.assertIn("max_loaded_bytes", logged)
         self.assertIn(str(1800 * MB), logged)
+
+    def test_a_pin_bigger_than_the_whole_budget_is_refused_not_exempt(self):
+        # Pinning does not exempt a voice from the guaranteed-OOM refusal.
+        # get_model's own startup loop catches the failure so the service
+        # still starts; the voice simply never becomes resident.
+        plugin = _plugin(self, pinned_voices=["huge"],
+                         sizes={"huge": 8 * GB}, max_loaded_bytes="1GB")
+        self.assertNotIn("huge", plugin.voices)
 
     def test_an_all_pinned_cache_serves_a_new_voice_anyway(self):
         plugin = _plugin(self, pinned_voices=["p1"],
@@ -322,12 +365,14 @@ class TestPeakMemoryUnderConcurrentColdLoads(unittest.TestCase):
     the process had already been killed at the peak.
     """
 
-    def _run(self, voices, sizes, budget, threads=None):
+    def _run(self, voices, sizes, budget, threads=None, expect_errors=False):
         """Load ``voices`` concurrently and return the peak bytes observed.
 
         Peak is sampled as (bytes being loaded right now) + (bytes resident),
         counting a voice once: a voice that has become resident is dropped from
-        the in-flight side of the sum.
+        the in-flight side of the sum. ``expect_errors`` is for voices that
+        must all be refused (``VoiceExceedsMemoryBudget``): every result is
+        an error rather than a failure.
         """
         lock = threading.Lock()
         live = {}
@@ -373,7 +418,14 @@ class TestPeakMemoryUnderConcurrentColdLoads(unittest.TestCase):
         [t.join(timeout=60) for t in workers]
         self.assertFalse([t for t in workers if t.is_alive()],
                          "admission control must never deadlock")
-        self.assertFalse(errors, f"loads failed: {errors}")
+        if expect_errors:
+            from phoonnx.opm import VoiceExceedsMemoryBudget
+            self.assertEqual(len(errors), len(voices))
+            self.assertTrue(
+                all(isinstance(e, VoiceExceedsMemoryBudget) for e in errors),
+                f"unexpected errors: {errors}")
+        else:
+            self.assertFalse(errors, f"loads failed: {errors}")
         self.assertEqual(plugin._loading, {})
         self.assertEqual(set(plugin._voice_keys), set(plugin.voices))
         return plugin, peak[0]
@@ -402,20 +454,27 @@ class TestPeakMemoryUnderConcurrentColdLoads(unittest.TestCase):
         self.assertFalse([t for t in threads if t.is_alive()])
         self.assertEqual(len(plugin.voices), 3)
 
-    def test_a_voice_larger_than_the_budget_still_loads_under_concurrency(self):
-        # It cannot fit by definition, so it must be let through alone rather
-        # than wait forever for room that will never appear.
+    def test_a_voice_larger_than_the_budget_is_refused_under_concurrency(self):
+        # None of these can ever fit, by definition, so none may be let
+        # through: waiting forever for room that will never appear used to
+        # be avoided by loading anyway, which is a guaranteed OOM kill
+        # instead of a wait. Every concurrent request must be refused, and
+        # admission control must still terminate rather than deadlock.
         sizes = {f"huge{i}": 4 * GB for i in range(3)}
-        plugin, peak = self._run(list(sizes), sizes, "1GB")
-        self.assertEqual(len(plugin.voices), 1)
-        self.assertLessEqual(peak, 4 * GB,
-                             "one oversized voice may exceed the budget, "
-                             "three at once may not")
+        plugin, peak = self._run(list(sizes), sizes, "1GB",
+                                 expect_errors=True)
+        self.assertEqual(len(plugin.voices), 0)
+        self.assertEqual(peak, 0)
 
     def test_pinned_voices_raise_the_peak_ceiling_but_only_by_themselves(self):
+        # "keeper" fits alone under a 3 GB budget: pinning raises the ceiling
+        # by exactly its own size, not by one voice per concurrent request.
+        # (A pin bigger than the whole budget is refused just like any other
+        # voice — see TestPinningUnderBudgetPressure below — pinning does not
+        # exempt a voice from the guaranteed-OOM refusal.)
         sizes = {"keeper": 2 * GB, "a": 900 * MB, "b": 900 * MB,
                  "c": 900 * MB}
-        plugin, peak = self._run(["a", "b", "c"], sizes, "1GB",
+        plugin, peak = self._run(["a", "b", "c"], sizes, "3GB",
                                  threads={"pinned_voices": ["keeper"]})
         self.assertIn("keeper", plugin.voices)
         self.assertLessEqual(peak, 2 * GB + 900 * MB,
@@ -589,6 +648,98 @@ def _plugin_shared_keys(testcase, keys, sizes, **config):
         pat.start()
         testcase.addCleanup(pat.stop)
     return PhoonnxTTSPlugin(config=dict(config))
+
+
+class TestSharedArtifactRefusal(unittest.TestCase):
+    """Several catalog entries can name the same oversized artifact.
+
+    The orpheus/canopylabs/en family is eight voice ids sharing one 15.4 GB
+    model; against an 8 GiB deployment every one of the eight crash-looped in
+    turn. Each voice id gets its own refusal (dedup is keyed by voice id, not
+    by artifact key, same as every other load), and none of those repeated
+    refusals may leave the shared key looking resident, charged, or reserved
+    — a rejected load must be as if it never happened, every time.
+    """
+
+    KEYS = {f"orpheus/en/{name}": "orpheus-3b-en-onnx"
+            for name in ("tara", "leah", "jess", "leo", "dan", "mia",
+                         "zac", "zoe")}
+    SIZES = {"orpheus-3b-en-onnx": 15_400_000_000}  # ~15.4 GB, one shared model
+
+    def test_every_voice_over_one_shared_oversized_artifact_is_refused(self):
+        from phoonnx.opm import VoiceExceedsMemoryBudget
+        plugin = _plugin_shared_keys(self, self.KEYS, self.SIZES,
+                                     max_loaded_bytes="8GB")
+        for voice_id in self.KEYS:
+            with self.subTest(voice_id=voice_id):
+                with self.assertRaises(VoiceExceedsMemoryBudget):
+                    plugin.get_model(voice_id)
+        self.assertEqual(plugin.voices, {})
+        self.assertEqual(plugin._voice_keys, {})
+        self.assertEqual(plugin._key_bytes, {})
+        self.assertEqual(plugin._refs, {})
+        self.assertEqual(plugin._reserved_bytes, 0)
+        self.assertEqual(plugin._loading, {},
+                         "every loading gate must be released on refusal, "
+                         "not just the first one")
+
+    def test_repeated_refusals_of_the_same_artifact_do_not_admit_it(self):
+        # A caller that retries the same voice id after a refusal must be
+        # refused again, not admitted because an earlier attempt left the
+        # shared key half-tracked.
+        from phoonnx.opm import VoiceExceedsMemoryBudget
+        plugin = _plugin_shared_keys(self, self.KEYS, self.SIZES,
+                                     max_loaded_bytes="8GB")
+        for _ in range(3):
+            with self.assertRaises(VoiceExceedsMemoryBudget):
+                plugin.get_model("orpheus/en/dan")
+        self.assertNotIn("orpheus-3b-en-onnx",
+                         {plugin._voice_keys.get(v, v) for v in plugin.voices})
+        self.assertEqual(plugin._reserved_bytes, 0)
+
+        # A small, unrelated voice still loads normally afterwards; the
+        # repeated rejections did not poison the budget.
+        other_keys = dict(self.KEYS, small="small-model")
+        plugin2 = _plugin_shared_keys(self, other_keys,
+                                      dict(self.SIZES, **{"small-model": 10 * MB}),
+                                      max_loaded_bytes="8GB")
+        for voice_id in self.KEYS:
+            with self.assertRaises(VoiceExceedsMemoryBudget):
+                plugin2.get_model(voice_id)
+        model = plugin2.get_model("small")
+        self.assertEqual(model.voice_id, "small")
+        self.assertIn("small", plugin2.voices)
+
+    def test_concurrent_requests_across_the_family_all_refuse_cleanly(self):
+        # Eight concurrent requests, one per sibling voice id sharing the one
+        # oversized artifact: dedup is per voice id, so all eight run their
+        # own _reserve concurrently rather than waiting on each other, and
+        # none may deadlock or corrupt the shared key's accounting.
+        from phoonnx.opm import VoiceExceedsMemoryBudget
+        plugin = _plugin_shared_keys(self, self.KEYS, self.SIZES,
+                                     max_loaded_bytes="8GB")
+        errors = {}
+
+        def ask(voice_id):
+            try:
+                plugin.get_model(voice_id)
+            except BaseException as exc:  # pragma: no cover - reported below
+                errors[voice_id] = exc
+
+        threads = [threading.Thread(target=ask, args=(v,), daemon=True)
+                   for v in self.KEYS]
+        [t.start() for t in threads]
+        [t.join(timeout=20) for t in threads]
+        self.assertFalse([t for t in threads if t.is_alive()],
+                         "a shared oversized artifact must not deadlock "
+                         "concurrent siblings")
+        self.assertEqual(set(errors), set(self.KEYS))
+        self.assertTrue(
+            all(isinstance(e, VoiceExceedsMemoryBudget) for e in errors.values()),
+            f"unexpected errors: {errors}")
+        self.assertEqual(plugin.voices, {})
+        self.assertEqual(plugin._reserved_bytes, 0)
+        self.assertEqual(plugin._loading, {})
 
 
 class TestPostLoadEviction(unittest.TestCase):

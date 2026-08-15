@@ -32,6 +32,19 @@ from phoonnx.model_manager import TTSModelManager, TTSModelInfo
 from phoonnx.voice import TTSVoice, SynthesisConfig
 
 
+class VoiceExceedsMemoryBudget(RuntimeError):
+    """A voice's on-disk size alone is larger than ``max_loaded_bytes``.
+
+    Loading it is not a degraded path, it is a guaranteed OOM kill: a 15.4 GB
+    voice against a 5 GB budget in an 8 GiB cgroup killed the process, and the
+    container restarted straight back into the same load, over and over. The
+    size is known before the load is attempted whenever the voice was already
+    on disk from an earlier attempt (its own weights survive the restart even
+    though the process does not), which is exactly the case that used to
+    loop. Refusing here turns that loop into one failed request.
+    """
+
+
 @dataclass
 class _Loading:
     """A load in progress, and how it ended.
@@ -546,9 +559,14 @@ class PhoonnxTTSPlugin(TTS):
 
         - a loader waits only while memory could still come back — another
           load in flight, or a resident voice no longer cached that a request
-          will eventually let go of — so a voice bigger than the whole budget
-          still loads (evicting everything evictable first, and warning)
-          instead of waiting for room that can never appear;
+          will eventually let go of — so a voice that fits beside nothing
+          does not wait for room that can never appear;
+        - a voice whose known on-disk size alone is bigger than the whole
+          budget is refused with ``VoiceExceedsMemoryBudget`` instead:
+          loading it is not "the memory in use will exceed the budget", it is
+          a guaranteed OOM kill, and on a size that is already known (the
+          case that matters: files that survived a previous, killed attempt)
+          there is no reason to repeat it;
         - the wait is bounded by ``load_wait_timeout`` regardless, after which
           the load proceeds and says so;
         - every reservation is released on both the success and the failure
@@ -571,6 +589,16 @@ class PhoonnxTTSPlugin(TTS):
                           f"already loaded; charging nothing for it")
                 self._key_bytes.setdefault(key, measured)
                 return 0, measured, key
+            if measured > self.max_loaded_bytes:
+                # Known in advance, not merely estimated: refuse before
+                # touching eviction or the loader rather than guarantee an
+                # OOM kill. A voice whose size is not yet known (0, not yet
+                # downloaded) still falls through below, as before.
+                raise VoiceExceedsMemoryBudget(
+                    f"voice '{voice_id}' needs {measured} bytes on disk, "
+                    f"more than the whole max_loaded_bytes budget of "
+                    f"{self.max_loaded_bytes}; refusing to load it rather "
+                    f"than guarantee an out-of-memory kill")
             need = measured if measured > 0 else self.max_loaded_bytes
             deadline = time.monotonic() + self.load_wait_timeout
             collected = False
