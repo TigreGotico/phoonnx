@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.81.4a2](https://github.com/TigreGotico/phoonnx/tree/1.81.4a2) (2026-08-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.4a1...1.81.4a2)
+
+**Merged pull requests:**
+
+- test: zh-TW resolves through the espeak Chinese alias map [\#419](https://github.com/TigreGotico/phoonnx/pull/419) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.81.4a1](https://github.com/TigreGotico/phoonnx/tree/1.81.4a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.3a1...1.81.4a1)
@@ -379,10 +387,6 @@
 ## [1.61.2a1](https://github.com/TigreGotico/phoonnx/tree/1.61.2a1) (2026-07-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.1a1...1.61.2a1)
-
-**Merged pull requests:**
-
-- fix: never omit an ONNX input the graph requires [\#297](https://github.com/TigreGotico/phoonnx/pull/297) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.61.1a1](https://github.com/TigreGotico/phoonnx/tree/1.61.1a1) (2026-07-23)
 
