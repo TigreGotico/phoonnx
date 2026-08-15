@@ -385,6 +385,29 @@ class TestVocabularyAndTokenizerFromPhoonnxConfig(unittest.TestCase):
         self.assertTrue(tok.use_eos_bos)
         self.assertFalse(tok.add_blank_word)
 
+    def test_vocabulary_from_phoonnx_config_unwraps_list_valued_ids(self):
+        # eu-antton-medium / eu-maider-medium (piper_community/itzune) carry
+        # "phoonnx_version" but a Piper-style list-valued phoneme_id_map, e.g.
+        # "a": [14]; those ids must be unwrapped to plain ints like from_piper_config.
+        import numpy as np
+
+        cfg = {"phoneme_id_map": {"a": [14], "b": [5, 99]}}
+        voc = Vocabulary.from_phoonnx_config(cfg)
+        self.assertEqual(voc.char2idx, {"a": 14, "b": 5})
+        self.assertTrue(all(isinstance(v, int) for v in voc.char2idx.values()))
+
+        # unfixed: list values give a list-of-lists here, and np.expand_dims
+        # turns that into rank-3 input that ONNX Runtime rejects (expects rank 2).
+        ids = np.array([voc.char2idx["a"], voc.char2idx["b"]], dtype=np.int64)
+        batched = np.expand_dims(ids, 0)
+        self.assertEqual(batched.ndim, 2)
+
+    def test_vocabulary_from_phoonnx_config_int_valued_ids_unchanged(self):
+        cfg = {"phoneme_id_map": {"a": 0, "b": 1}}
+        voc = Vocabulary.from_phoonnx_config(cfg)
+        self.assertEqual(voc.char2idx, {"a": 0, "b": 1})
+        self.assertTrue(all(isinstance(v, int) for v in voc.char2idx.values()))
+
     def test_tokenizer_from_phoonnx_config_explicit_flags_respected(self):
         cfg = {"phoneme_id_map": {"a": 0}, "add_blank_char": False, "blank_at_end": False,
                "blank_at_start": False, "use_eos_bos": False, "add_blank_word": True}
