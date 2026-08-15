@@ -5,3 +5,4 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 bench_results_cpu.json
+.venv/
