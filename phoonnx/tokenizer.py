@@ -245,7 +245,12 @@ class Vocabulary:
         Returns:
             Vocabulary: Vocabulary populated with the parsed char-to-index map and configured special tokens.
         """
-        char2idx: Dict[str, int] = cfg.get("phoneme_id_map", {})
+        # Some hybrid configs (phoonnx_version present but Piper-style phoneme_id_map)
+        # carry list-valued ids, e.g. "a": [14]; unwrap those like from_piper_config does.
+        char2idx: Dict[str, int] = {
+            char: (idx[0] if isinstance(idx, (list, tuple)) else idx)
+            for char, idx in cfg.get("phoneme_id_map", {}).items()
+        }
         pad: Optional[str] = cfg.get("pad") or DEFAULT_PAD_TOKEN
         eos: Optional[str] = cfg.get("eos") or DEFAULT_EOS_TOKEN
         bos: Optional[str] = cfg.get("bos") or DEFAULT_BOS_TOKEN
