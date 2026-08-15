@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.81.4a1](https://github.com/TigreGotico/phoonnx/tree/1.81.4a1) (2026-08-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.3a1...1.81.4a1)
+
+**Merged pull requests:**
+
+- fix: transformers VITS tokenizer null language falls back to caller lang\_code [\#413](https://github.com/TigreGotico/phoonnx/pull/413) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.81.3a1](https://github.com/TigreGotico/phoonnx/tree/1.81.3a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.2a1...1.81.3a1)
@@ -379,10 +387,6 @@
 ## [1.61.1a1](https://github.com/TigreGotico/phoonnx/tree/1.61.1a1) (2026-07-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.61.0a3...1.61.1a1)
-
-**Merged pull requests:**
-
-- fix: always resolve a voice's alphabet [\#296](https://github.com/TigreGotico/phoonnx/pull/296) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.61.0a3](https://github.com/TigreGotico/phoonnx/tree/1.61.0a3) (2026-07-23)
 
