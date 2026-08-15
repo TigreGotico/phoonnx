@@ -648,6 +648,65 @@ class TestTTSModelInfoStringEnumCoercion(HubTestCase):
         info = self.make_info(engine="piper", phoneme_type="espeak", display_name="{engine}/{phoneme_type}")
         self.assertEqual(info.display_name, "piper/espeak")
 
+    def test_requires_reference_defaults_false(self):
+        info = self.make_info(engine="piper")
+        self.assertFalse(info.requires_reference)
+
+    def test_requires_reference_round_trips_through_to_dict(self):
+        info = self.make_info(engine="chatterbox", requires_reference=True)
+        self.assertTrue(info.requires_reference)
+        d = info.to_dict()
+        self.assertTrue(d["requires_reference"])
+        restored = TTSModelInfo(**d)
+        self.assertTrue(restored.requires_reference)
+
+
+class TestChatterboxIndexRequiresReference(unittest.TestCase):
+    """Chatterbox is a zero-shot cloning engine: every catalog entry needs a
+    caller-supplied reference clip and can never succeed from a bare
+    (text, lang) request. The index carries that as ``requires_reference``
+    so a catalog sweep can skip these instead of rediscovering the same
+    failure every run."""
+
+    def test_every_chatterbox_entry_is_flagged(self):
+        index_dir = Path(__file__).resolve().parents[1] / "phoonnx" / "voice_index"
+        with open(index_dir / "chatterbox.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertGreater(len(data), 0)
+        for voice_id, voice_dict in data.items():
+            info = TTSModelInfo(**voice_dict)
+            self.assertTrue(info.requires_reference, f"{voice_id} should require a reference clip")
+
+
+class TestStyleTTS2IndexRequiresReference(unittest.TestCase):
+    """bsc/es-styletts2 and bsc/ca-styletts2 are the zero-shot cloning variants
+    of the BSC StyleTTS2 voices: their ONNX graph declares a ``style`` input
+    but the index entry carries no ``style_url``, so synthesis needs a
+    caller-supplied ``speaker_reference``. Their siblings (``bsc/es-cml*``,
+    ``bsc/ca-bet`` etc.) share the same graph but add a fixed ``style_url``
+    for one speaker, so they synthesize from a bare (text, lang) request and
+    must NOT carry the flag."""
+
+    def _load(self):
+        index_dir = Path(__file__).resolve().parents[1] / "phoonnx" / "voice_index"
+        with open(index_dir / "styletts2.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def test_zero_shot_bsc_entries_are_flagged(self):
+        data = self._load()
+        for voice_id in ("bsc/es-styletts2", "bsc/ca-styletts2"):
+            info = TTSModelInfo(**data[voice_id])
+            self.assertTrue(info.requires_reference, f"{voice_id} should require a reference clip")
+
+    def test_fixed_style_siblings_are_not_flagged(self):
+        data = self._load()
+        siblings = [vid for vid in data if vid.startswith("bsc/es-cml") or (
+            vid.startswith("bsc/ca-") and vid != "bsc/ca-styletts2")]
+        self.assertGreater(len(siblings), 0)
+        for voice_id in siblings:
+            info = TTSModelInfo(**data[voice_id])
+            self.assertFalse(info.requires_reference, f"{voice_id} carries a style_url and should not require a reference clip")
+
 
 class ManagerTestCase(unittest.TestCase):
     def setUp(self):

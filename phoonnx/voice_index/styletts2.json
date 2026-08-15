@@ -25,7 +25,8 @@
     "engine": "styletts2",
     "lang": "es",
     "speaker_encoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/bsc-es-styletts2/style_encoder.onnx",
-    "speaker_encoder_type": "styletts2_style"
+    "speaker_encoder_type": "styletts2_style",
+    "requires_reference": true
   },
   "bsc/es-cml3946": {
     "voice_id": "bsc/es-cml3946",
@@ -136,7 +137,8 @@
     "engine": "styletts2",
     "lang": "ca",
     "speaker_encoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/bsc-ca-styletts2/style_encoder.onnx",
-    "speaker_encoder_type": "styletts2_style"
+    "speaker_encoder_type": "styletts2_style",
+    "requires_reference": true
   },
   "bsc/ca-bet": {
     "voice_id": "bsc/ca-bet",
