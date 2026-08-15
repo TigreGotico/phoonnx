@@ -22,7 +22,7 @@ dependencies = [
     "langcodes",
     "ovos-number-parser>=0.4.0",
     "ovos-date-parser>=0.6.4a1",
-    "scriptconv[phonemizers]>=0.0.4a19",
+    "scriptconv[phonemizers]>=0.0.4a23",
     "unicode_rbnf",
     "click",
     "requests",
@@ -282,12 +282,37 @@ all = [
     # scriptconv splits its phonemizers per language, so the base set
     # alone leaves "all" without Portuguese, Arabic, English, Japanese
     # and Chinese backends, and a voice that asks for one fails at
-    # synthesis with an ImportError.
-    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel]>=0.0.4a19",
+    # synthesis with an ImportError. The "goruut", "stress" and "pt" extras
+    # pull in pygoruut (phoneme_type == "pygoruut" in phoonnx/config.py),
+    # stressonnx (Russian stress marks, phoonnx/lang_preprocess.py) and
+    # bifonia (scriptconv's own Portuguese backend) respectively — without
+    # them a bare `scriptconv[phonemizers,...]` install silently drops those
+    # backends and the corresponding voices fail at synthesis time. "he"
+    # pulls in phonikud-onnx: phoonnx/config.py routes Hebrew phonemization
+    # ("phoneme_type": "phonikud" in the voice_index) through scriptconv,
+    # which auto-provisions the phonikud ONNX model, so scriptconv[he] is
+    # the correct spelling rather than depending on phonikud-onnx directly.
+    # >=0.0.4a23: the release that actually fixes the "he" extra (pulls in
+    # both phonikud and phonikud-onnx), the zh alias map, MissingLanguageError,
+    # and the stress-routing fix — a19 predates all four.
+    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he]>=0.0.4a23",
+    # scriptconv's own "stress" extra floors stressonnx at >=0.0.2, which
+    # resolves to the latest *stable* release. The BCP-47 language resolver
+    # phoonnx needs only shipped in the 0.0.3 alpha train, so it must be
+    # floor-pinned here explicitly or a bare-name resolution silently installs
+    # the older stable and the resolver is missing.
+    "stressonnx>=0.0.3a2",
     "text2tashkeel",
     "epitran",
-    "gruut[de]>=2.3.0,<3.0", "gruut[en]>=2.3.0,<3.0", "gruut[ja]>=2.3.0,<3.0",
-    "gruut[vi]>=2.3.0,<3.0", "gruut[zh]>=2.3.0,<3.0",
+    # Only the languages the voice_index actually routes through gruut
+    # (phoneme_type == "gruut") — de, en, fr, it, nl, ru, es, sv, sw across
+    # mimic3/glowtts/fastpitch/coqui_vits voices. ja/vi/zh are kept as-is
+    # (misaki/spacy handle those languages; gruut has no ja/vi/zh extra, so
+    # those entries are pre-existing no-ops, out of scope here).
+    "gruut[de]>=2.3.0,<3.0", "gruut[en]>=2.3.0,<3.0", "gruut[es]>=2.3.0,<3.0",
+    "gruut[fr]>=2.3.0,<3.0", "gruut[it]>=2.3.0,<3.0", "gruut[ja]>=2.3.0,<3.0",
+    "gruut[nl]>=2.3.0,<3.0", "gruut[ru]>=2.3.0,<3.0", "gruut[sv]>=2.3.0,<3.0",
+    "gruut[sw]>=2.3.0,<3.0", "gruut[vi]>=2.3.0,<3.0", "gruut[zh]>=2.3.0,<3.0",
     "misaki[en]", "misaki[ja]", "misaki[vi]", "misaki[zh]",
     "ahotts-g2p>=0.1.0",
     "spacy>=3.7,<4.0",
@@ -299,6 +324,20 @@ all = [
     # Indic Parler needs the compiled reader; `all` is what the image installs,
     # and it carried a working Indic Parler before.
     "tokenizers",
+    # test-only reference readers for phoonnx's own pure-Python tokenizer.json
+    # / tokenizer.model readers (phoonnx/_bpe.py, phoonnx/_sentencepiece.py):
+    # the Docker image ships engines (Indic Parler, Pocket TTS) that route
+    # through those readers, so the packages that define the on-disk formats
+    # need to be present at runtime too, not just in the [test] extra.
+    "sentencepiece",
+    # Pocket TTS voice state loading (phoonnx/engines/pockettts.py).
+    "safetensors",
+    # Griffin-Lim vocoder fallback (phoonnx/engines/vocoders/griffinlim.py).
+    "librosa>=0.9.2,<1",
+    # streaming VITS model splitting (phoonnx/onnx_surgery.py).
+    "onnx<1.18",
+    # optional post-synthesis audio super-resolution (phoonnx/voice.py).
+    "audiosronnx",
 ]
 
 [tool.setuptools.dynamic]
