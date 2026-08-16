@@ -68,6 +68,12 @@ def _sample_top_p(logits: np.ndarray, temperature: float, top_p: float, rng) -> 
 class ChatterboxAdapter(BaseOnnxAdapter):
     """Adapter for Chatterbox (autoregressive codec-LM, d-vector cloning, exaggeration)."""
 
+    MEMOIZED_WRITES = {
+        # KV-cache geometry, read off the model's own input shapes.
+        "_read_kv_shape": frozenset({"past_names", "num_kv_heads", "head_dim",
+                                     "lm_needs_pos"}),
+    }
+
     REPETITION_PENALTY = 1.2
     MAX_NEW_TOKENS = 1000
 

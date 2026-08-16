@@ -133,6 +133,15 @@ def find_boundary_indices(tokens: List[int], boundary_tokens: set) -> List[int]:
 class PocketTTSAdapter(BaseOnnxAdapter):
     """Adapter for Kyutai Pocket TTS (five ONNX graphs, explicit stream state)."""
 
+    MEMOIZED_WRITES = {
+        # Every one of these comes out of the model's own metadata blob.
+        "_apply_metadata": frozenset({
+            "sample_rate", "frame_rate", "latent_dim", "conditioning_dim",
+            "max_token_per_chunk", "model_recommended_frames_after_eos",
+            "insert_bos_before_voice", "pad_with_spaces_for_short_inputs",
+            "remove_semicolons", "mimi_state_manifest", "flow_state_manifest"}),
+    }
+
     def __init__(self, temperature: float = DEFAULT_TEMPERATURE,
                  lsd_steps: int = DEFAULT_LSD_STEPS,
                  eos_threshold: float = DEFAULT_EOS_THRESHOLD,

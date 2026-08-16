@@ -138,7 +138,7 @@ def download_voice(voice_id):
     manager = TTSModelManager()
     manager.load()
 
-    voice_info = manager.voices.get(voice_id)
+    voice_info = manager.get_voice(voice_id)
 
     try:
         if voice_info:
@@ -163,6 +163,36 @@ def download_voice(voice_id):
         click.echo(f"\nDownload failed due to network error: {e}", err=True)
     except Exception as e:
         click.echo(f"\nAn unexpected error occurred during download: {e}", err=True)
+
+
+@cli.command(name="add-alignment")
+@click.argument("model_path", type=click.Path(exists=True, dir_okay=False))
+@click.option("--output", "-o", type=click.Path(dir_okay=False),
+              help="Where to write the patched model. Defaults to "
+                   "'<model>.alignment.onnx' next to the original, which is "
+                   "where phoonnx looks for it at load time.")
+def add_alignment(model_path, output):
+    """
+    Expose a model's per-phoneme duration tensor as a graph output, writing
+    the patched copy alongside the original.
+
+    Voices synthesize with alignments (`include_alignments=True`) only if
+    their model exposes durations. Running this once, offline, means every
+    later load finds the patched model instead of paying for the surgery on
+    the first request.
+    """
+    from phoonnx.alignment import export_alignment_model
+
+    try:
+        dest = export_alignment_model(model_path, output)
+    except ImportError:
+        click.echo("Error: the 'onnx' package is required for graph surgery; "
+                   "install it with `pip install phoonnx[streaming]`.", err=True)
+        raise SystemExit(1)
+    except (ValueError, OSError) as e:
+        click.echo(f"Error: {e}", err=True)
+        raise SystemExit(1)
+    click.echo(f"Wrote alignment-capable model to: {dest}")
 
 
 if __name__ == "__main__":

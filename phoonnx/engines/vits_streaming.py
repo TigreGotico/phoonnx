@@ -79,6 +79,11 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
     ``session.run``.
     """
 
+    MEMOIZED_WRITES = {
+        # Samples per latent frame, measured once from the decoder itself.
+        "_resolve_hop": frozenset({"_hop_length"}),
+    }
+
     def __init__(self, decoder_session: Optional[onnxruntime.InferenceSession] = None):
         self.decoder = decoder_session
         self._engine_params: Dict[str, Any] = {}

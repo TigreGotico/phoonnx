@@ -59,6 +59,9 @@ class _FakeManager:
         self.merge_calls += 1
         self.voices.update(self.lazy)
 
+    def get_voice(self, voice_id):
+        return self.voices.get(voice_id)
+
     def get_lang_voices(self, lang):
         # tests don't depend on lang matching; return everything registered
         return list(self.voices.values())

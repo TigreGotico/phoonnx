@@ -205,12 +205,14 @@ class PhoonnxTTSPlugin(TTS):
         Raises:
             Exception: If `voice_id` is still unknown after a refresh.
         """
-        if voice_id not in self.model_manager.voices:
+        info = self.model_manager.get_voice(voice_id)
+        if info is None:
             LOG.info(f"{voice_id} not found - refreshing voice list")
             self.refresh_voices(force=True)
-            if voice_id not in self.model_manager.voices:
+            info = self.model_manager.get_voice(voice_id)
+            if info is None:
                 raise Exception(f"Unknown voice: {voice_id}")
-        return self.model_manager.voices[voice_id]
+        return info
 
     def _get_ctxt(self, kwargs=None):
         """Keep cloned audio out of the shared voice's cache entry.
@@ -304,7 +306,7 @@ class PhoonnxTTSPlugin(TTS):
         # meanwhile, but the weights this call is using stay charged to the
         # memory budget, so no concurrent load is admitted against them.
         with self.voice_cache.lease(voice_id) as model:
-            voice_info = voice_info or self.model_manager.voices[voice_id]
+            voice_info = voice_info or self.get_voice_info(voice_id)
 
             synth_params = SynthesisConfig(
                 # speaker selection for multi-speaker voices (e.g. the Catalan

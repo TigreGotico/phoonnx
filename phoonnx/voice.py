@@ -9,15 +9,9 @@ any future architecture without code changes here.
 import json
 import os.path
 import re
-import ipaddress
-import socket
-import time
-import tempfile
-from contextlib import suppress
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import urlparse
 from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union, Dict
 
 import numpy as np
@@ -25,6 +19,7 @@ import onnxruntime
 from langcodes import closest_match
 from quebra_frases import sentence_tokenize
 
+from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, get_phonemizer, get_conversion, \
     check_lang_supported
 from scriptconv.graph import DEFAULT_GRAPH
@@ -36,6 +31,7 @@ from phoonnx.engines.base import (
 )
 from scriptconv.phonemizers.base import BasePhonemizer
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
+from phoonnx.reference_audio import load_reference_audio
 from scriptconv.phonemizers.base import PhonemizedChunks
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
@@ -43,10 +39,8 @@ from phoonnx.util import LOG
 
 _PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
 
-# Sentinel distinguishing "on-demand alignment surgery not attempted yet" from
-# a cached negative result (``None`` — tried once, model doesn't expose a
-# locatable duration tensor). See ``TTSVoice._ensure_alignment_session``.
-_UNSET = object()
+# Alias kept for callers that imported the sentinel from here before it moved.
+_UNSET = UNSET
 
 
 def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunks:
@@ -59,142 +53,6 @@ def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunk
     if alphabet == Alphabet.ARPA:
         return [chunk.split() for chunk, _, _ in chunks if chunk.strip()]
     return [[c for c in chunk] for chunk, _, _ in chunks if chunk]
-
-
-def _is_public_address(host: str) -> bool:
-    """Whether ``host`` resolves only to addresses outside this network.
-
-    A reference URL is supplied by whoever is calling, so without this a
-    public TTS server will happily fetch from its own loopback, its Docker
-    neighbours, or a cloud metadata endpoint on the caller's behalf, and
-    report back whether it worked.
-    """
-    try:
-        infos = socket.getaddrinfo(host, None)
-    except socket.gaierror:
-        return False
-    if not infos:
-        return False
-    for info in infos:
-        address = ipaddress.ip_address(info[4][0])
-        if (address.is_private or address.is_loopback or address.is_reserved
-                or address.is_link_local or address.is_multicast
-                or address.is_unspecified):
-            return False
-    return True
-
-
-def _check_reference_url(url: str) -> None:
-    """Refuse a reference URL that points inside this network."""
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https"):
-        raise ValueError(f"reference clip URL must be http(s): {url}")
-    if not parsed.hostname:
-        raise ValueError(f"reference clip URL has no host: {url}")
-    if not _is_public_address(parsed.hostname):
-        raise ValueError(
-            f"refusing to fetch a reference clip from {parsed.hostname}: it "
-            f"resolves inside this network, and the URL came from the caller")
-
-
-def _fetch_reference_audio(url: str, timeout: int = 10,
-                           max_bytes: int = 32 * 1024 * 1024,
-                           deadline: float = 30.0) -> str:
-    """Download a cloning reference to a temporary file and return its path.
-
-    Bounded three ways, because every one of them is attacker-controlled:
-    the host must be outside this network (each redirect hop is checked, not
-    just the first), the body must be small enough to be a few seconds of
-    speech, and the whole transfer must finish within ``deadline``. The
-    timeout ``requests`` takes applies per read, so a sender trickling one
-    byte at a time would otherwise hold a synthesis worker open forever.
-    """
-    import requests
-    from contextlib import ExitStack
-
-    started = time.monotonic()
-    _check_reference_url(url)
-    with ExitStack() as stack:
-        r = stack.enter_context(
-            requests.get(url, timeout=timeout, stream=True,
-                        allow_redirects=False))
-        hops = 0
-        while r.is_redirect or r.is_permanent_redirect:
-            hops += 1
-            if hops > 5:
-                raise ValueError(f"too many redirects fetching {url}")
-            target = requests.compat.urljoin(r.url, r.headers["Location"])
-            # Checked per hop: a redirect is the easy way to turn an
-            # innocent-looking URL into a request to a private address.
-            _check_reference_url(target)
-            r.close()
-            # Entered on the stack too, so every hop — including this final
-            # one, whose body is streamed below — gets closed on the way out.
-            r = stack.enter_context(
-                requests.get(target, timeout=timeout, stream=True,
-                            allow_redirects=False))
-        r.raise_for_status()
-
-        suffix = os.path.splitext(urlparse(url).path)[1] or ".wav"
-        written = 0
-        tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
-        try:
-            for chunk in r.iter_content(chunk_size=8192):
-                if time.monotonic() - started > deadline:
-                    raise ValueError(
-                        f"reference clip at {url} took longer than "
-                        f"{deadline}s to arrive")
-                if not chunk:
-                    continue
-                written += len(chunk)
-                if written > max_bytes:
-                    raise ValueError(
-                        f"reference clip at {url} is larger than "
-                        f"{max_bytes} bytes; a reference is a few seconds of "
-                        f"speech, not a recording session")
-                tmp.write(chunk)
-        except BaseException:
-            tmp.close()
-            with suppress(OSError):
-                os.unlink(tmp.name)
-            raise
-        tmp.close()
-        return tmp.name
-
-
-def _load_reference_audio(ref: Any) -> tuple:
-    """Normalise a cloning reference to ``(mono float32 audio, sample_rate)``.
-
-    Accepts an ``(audio, sample_rate)`` tuple, a URL, or a path to an audio
-    file. A URL is fetched to a temporary file first: a caller talking to a TTS
-    server over HTTP has no way to put a file on that server's disk, so without
-    this the cloning engines cannot be reached remotely at all.
-    """
-    if isinstance(ref, tuple) and len(ref) == 2:
-        audio, sr = ref
-        return np.asarray(audio, dtype=np.float32).reshape(-1), int(sr)
-    if isinstance(ref, str) and ref.lower().startswith(("http://", "https://")):
-        # Read and then removed. The download exists only to be decoded here,
-        # and on a server whose temporary directory is a tmpfs every clip left
-        # behind is resident memory that nothing ever reclaims.
-        downloaded = _fetch_reference_audio(ref)
-        try:
-            return _load_reference_audio(downloaded)
-        finally:
-            with suppress(OSError):
-                os.unlink(downloaded)
-    try:
-        import soundfile as sf
-        audio, sr = sf.read(str(ref), dtype="float32")
-    except ImportError:
-        with wave.open(str(ref), "rb") as w:
-            sr, ch = w.getframerate(), w.getnchannels()
-            audio = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype(np.float32) / 32768.0
-            if ch > 1:
-                audio = audio.reshape(-1, ch).mean(axis=1)
-    if getattr(audio, "ndim", 1) > 1:
-        audio = audio.mean(axis=1)
-    return np.asarray(audio, dtype=np.float32).reshape(-1), int(sr)
 
 
 @dataclass
@@ -323,7 +181,7 @@ class TTSVoice:
     # it, so a voice that never asks for alignments never even imports
     # ``onnx``. Set to an ``onnxruntime.InferenceSession`` on success, or
     # ``None`` on a cached negative result (tried once, no dice).
-    _alignment_session: Any = field(default=_UNSET, repr=False, compare=False)
+    _alignment_session: Any = field(default=UNSET, repr=False, compare=False)
 
     def __post_init__(self):
         """
@@ -829,118 +687,37 @@ class TTSVoice:
             )
 
     def _alignment_model_path(self) -> Optional[Path]:
-        """Sibling path the on-demand alignment-surgery output is cached at.
-
-        Next to the original model by default (``<model>.alignment.onnx``).
-        When ``PHOONNX_ORT_CACHE_DIR`` is set, that directory is used instead
-        — the same env var :func:`phoonnx.providers.make_session` already
-        uses for its optimized-graph cache, and the sensible choice here too:
-        it signals "phoonnx may write derived ONNX artifacts here" and covers
-        model directories that are read-only (e.g. a shared/system voice
-        cache) without introducing a second env var.
-        """
+        """Where this voice's alignment-patched model is cached, if it has one."""
         if not self.model_path:
             return None
-        src = Path(self.model_path)
-        stem = src.name[:-len(".onnx")] if src.name.endswith(".onnx") else src.stem
-        cache_dir = os.environ.get("PHOONNX_ORT_CACHE_DIR")
-        directory = Path(cache_dir) if cache_dir else src.parent
-        return directory / f"{stem}.alignment.onnx"
+        return alignment_model_path(self.model_path)
 
     def _ensure_alignment_session(self) -> Optional[onnxruntime.InferenceSession]:
-        """At-most-once, best-effort attempt to retrofit a duration output
-        onto this voice's model for a model that doesn't already have one.
+        """At-most-once, best-effort attempt to retrofit a duration output onto
+        this voice's model.
 
         Returns an alternate session with the duration tensor exposed as an
-        extra output (reused across calls once found), or ``None`` when this
-        model has no locatable duration tensor, ``onnx`` isn't installed, or
-        the derived file couldn't be written — every failure mode degrades to
-        "no alignment available" rather than raising, and the outcome
-        (including the negative one) is cached on the instance so surgery is
-        attempted at most once per voice.
+        extra output, or ``None`` when this model cannot produce one. The
+        outcome — including the negative one — is cached on the instance, so
+        the surgery in :mod:`phoonnx.alignment` is attempted at most once per
+        voice.
         """
-        if self._alignment_session is not _UNSET:
+        if self._alignment_session is not UNSET:
             return self._alignment_session
 
-        result = self._attempt_alignment_surgery()
+        if not self.model_path:
+            LOG.debug("no alignment output: this voice's model_path is "
+                      "unknown, cannot retrofit one")
+            result = None
+        else:
+            try:
+                providers = self.session.get_providers()
+            except Exception:
+                providers = None
+            result = ensure_alignment_session(self.model_path, providers)
+
         self._alignment_session = result
         return result
-
-    def _attempt_alignment_surgery(self) -> Optional[onnxruntime.InferenceSession]:
-        if not self.model_path:
-            LOG.debug(
-                "no alignment output: this voice's model_path is unknown, "
-                "cannot retrofit one"
-            )
-            return None
-
-        try:
-            providers = self.session.get_providers()
-        except Exception:
-            providers = None
-
-        dest = self._alignment_model_path()
-        try:
-            src_mtime = os.path.getmtime(self.model_path)
-        except OSError:
-            src_mtime = None
-
-        if dest is not None and dest.is_file() and src_mtime is not None:
-            try:
-                if dest.stat().st_mtime >= src_mtime:
-                    return make_session(str(dest), providers=providers)
-            except OSError:
-                pass
-
-        try:
-            import onnx
-        except ImportError:
-            LOG.info(
-                "model has no alignment output and the 'onnx' package isn't "
-                "installed to retrofit one at runtime; install "
-                "'phoonnx[streaming]' (which pulls in 'onnx'), or re-export "
-                "the model with `--add-phoneme-alignment`, to use "
-                "include_alignments=True"
-            )
-            return None
-
-        from phoonnx.onnx_surgery import add_phoneme_alignment_output
-
-        try:
-            model = onnx.load(str(self.model_path))
-        except Exception as e:
-            LOG.info(f"no alignment output: failed to load '{self.model_path}' for surgery ({e})")
-            return None
-
-        tensor_name = add_phoneme_alignment_output(model)
-        if tensor_name is None:
-            LOG.info(
-                f"no alignment output on '{os.path.basename(str(self.model_path))}': "
-                "no unique duration (Ceil-op) tensor found in the graph; "
-                "include_alignments=True will keep returning None for this voice"
-            )
-            return None
-
-        try:
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            onnx.save(model, str(dest))
-        except OSError as e:
-            LOG.info(
-                f"located duration tensor '{tensor_name}' but could not write "
-                f"the patched model to '{dest}' ({e}); "
-                "include_alignments=True will keep returning None for this voice"
-            )
-            return None
-
-        try:
-            return make_session(str(dest), providers=providers)
-        except Exception as e:
-            LOG.info(
-                f"wrote an alignment-patched model to '{dest}' but failed to "
-                f"load it ({e}); include_alignments=True will keep returning "
-                "None for this voice"
-            )
-            return None
 
     @staticmethod
     def _reconstruct_alignments(
@@ -1099,7 +876,7 @@ class TTSVoice:
         # Voice cloning: hand the cloning adapter the reference clip and — for
         # in-context engines (ZipVoice) — the prompt tokens of its transcription.
         if syn_config.speaker_reference is not None:
-            params["reference_audio"] = _load_reference_audio(syn_config.speaker_reference)
+            params["reference_audio"] = load_reference_audio(syn_config.speaker_reference)
         if syn_config.speaker_reference_text:
             params["prompt_tokens"] = self._prompt_token_ids(
                 syn_config.speaker_reference_text, syn_config.speaker_reference_lang)
@@ -1130,7 +907,7 @@ class TTSVoice:
         session_to_use = self.session
         if (
             include_alignments
-            and self._alignment_session is not _UNSET
+            and self._alignment_session is not UNSET
             and self._alignment_session is not None
         ):
             session_to_use = self._alignment_session

@@ -146,6 +146,11 @@ class MagpieTokenizer:
 class MagpieAdapter(BaseOnnxAdapter):
     """Adapter for NVIDIA Magpie-TTS Multilingual (multi-codebook autoregressive)."""
 
+    MEMOIZED_WRITES = {
+        # The decoder step graph, when the voice layer's own session is it.
+        "_bind_decoder": frozenset({"decoder"}),
+    }
+
     def __init__(self):
         self.encoder: Optional[onnxruntime.InferenceSession] = None
         self.cross_kv: Optional[onnxruntime.InferenceSession] = None
@@ -603,6 +608,16 @@ class MagpieAdapter(BaseOnnxAdapter):
         length = end_frame if end_frame is not None else stacked.shape[-1]
         return stacked[:, :max(4, int(length))]
 
+    def _bind_decoder(self, session: onnxruntime.InferenceSession) -> None:
+        """Adopt the voice layer's session as the decoder step graph.
+
+        Only when ``configure`` was not given a ``decoder_step_path`` of its
+        own. The session belongs to the voice, not to the request — every
+        request on this adapter arrives with the same one.
+        """
+        if self.decoder is None:
+            self.decoder = session
+
     def synthesize(self, request: AdapterSynthesisRequest,
                    session: onnxruntime.InferenceSession) -> AdapterSynthesisResult:
         """Generate one chunk of audio.
@@ -610,8 +625,7 @@ class MagpieAdapter(BaseOnnxAdapter):
         ``session`` is the decoder step graph held by the voice layer; it is used when
         ``configure`` was not given a separate ``decoder_step_path``.
         """
-        if self.decoder is None:
-            self.decoder = session
+        self._bind_decoder(session)
         missing = [name for name in ("encoder", "cross_kv", "decoder", "local",
                                      "audio_embed", "lt_embed", "codec")
                    if getattr(self, name) is None]

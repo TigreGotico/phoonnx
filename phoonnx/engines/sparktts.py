@@ -205,6 +205,23 @@ def chunk_text(text: str, max_len: int = MAX_CHUNK_CHARS) -> List[str]:
 class SparkTTSAdapter(BaseOnnxAdapter):
     """Adapter for Spark-TTS (Qwen2 codec-LM + BiCodec, preset or cloned speakers)."""
 
+    MEMOIZED_WRITES = {
+        # KV-cache geometry, read off the model's own input shapes.
+        "_read_kv_shape": frozenset({"past_names", "num_kv_heads", "head_dim"}),
+        # The cloning graphs, several hundred megabytes each, opened on the
+        # first request that needs them and kept for the ones after.
+        # (the attribute is the caller's; the call sites name wav2vec2 and
+        # the speaker/semantic tokenizers)
+        "_cloning_session": frozenset({"*attribute"}),
+        "tokenize_reference": frozenset({"wav2vec2", "speaker_tokenizer",
+                                         "semantic_tokenizer"}),
+        # A one-entry cache keyed on the request's own clip: a request whose
+        # clip differs recomputes rather than reading the previous caller's
+        # tokens, and one that repeats it skips the encoders.
+        "_resolve_speaker": frozenset({"_reference_cache",
+                                       "_reference_cache_key"}),
+    }
+
     def __init__(self):
         self.vocoder: Optional[onnxruntime.InferenceSession] = None
         self.wav2vec2: Optional[onnxruntime.InferenceSession] = None

@@ -318,8 +318,14 @@ class VoiceCache:
         # outside.
         reserved = 0
         try:
-            with self._lock:
-                info = self._resolve(voice_id)
+            # Resolved outside the lock: resolving an id the catalog has not
+            # seen refreshes the catalog, and holding the cache lock across
+            # that stalls every other request — including the cache hits that
+            # only need the lock for a dict lookup. The catalog protects its
+            # own registry (TTSModelManager rebuilds it under its own lock and
+            # publishes it in one assignment), so two callers resolving
+            # different unknown ids at the same time is safe here.
+            info = self._resolve(voice_id)
 
             LOG.debug(f"Using voice: {voice_id}")
             # Room is claimed BEFORE the load allocates anything. Evicting
