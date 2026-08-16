@@ -113,14 +113,14 @@ class TestInit(unittest.TestCase):
         self.assertEqual(mgr.load_calls, 1)
         self.assertEqual(plugin.voice_info.voice_id, v.voice_id)
         # resolved, not fetched: loading is deferred to the first synthesis
-        self.assertEqual(plugin.voices, {})
+        self.assertEqual(plugin.voice_cache.voices, {})
 
     def test_init_resolves_configured_voice(self):
         a = _FakeVoiceInfo("OpenVoiceOS/a")
         b = _FakeVoiceInfo("OpenVoiceOS/b")
         plugin, _ = _make_plugin(config={"voice": "OpenVoiceOS/b"}, voices=[a, b])
         self.assertEqual(plugin.voice_info.voice_id, "OpenVoiceOS/b")
-        self.assertEqual(plugin.voices, {})
+        self.assertEqual(plugin.voice_cache.voices, {})
 
 
 class TestVoiceResolution(unittest.TestCase):
@@ -363,5 +363,5 @@ class TestVoiceResolvedWithoutLoading(unittest.TestCase):
                     cfg["voice"] = voice
                 plugin = opm.PhoonnxTTSPlugin(config=cfg)
                 self.assertIsNotNone(plugin.voice_info)
-                self.assertEqual(plugin.voices, {},
+                self.assertEqual(plugin.voice_cache.voices, {},
                                  "boot must not load (download) the model")

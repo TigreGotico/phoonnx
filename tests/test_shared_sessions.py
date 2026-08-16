@@ -291,9 +291,9 @@ class TestTheBudgetChargesTheModelOnce(unittest.TestCase):
                          max_loaded_bytes="3GB")
         for voice_id in keys:
             plugin.get_model(voice_id)
-        self.assertEqual(len(plugin.voices), 20,
+        self.assertEqual(len(plugin.voice_cache.voices), 20,
                          "voices over one model must not evict each other")
-        self.assertEqual(plugin._resident_bytes(), 3 * GB,
+        self.assertEqual(plugin.voice_cache.resident_bytes(), 3 * GB,
                          "one model in memory is one charge")
 
     def test_a_shared_model_is_not_reloaded_for_the_next_voice(self):
@@ -304,8 +304,8 @@ class TestTheBudgetChargesTheModelOnce(unittest.TestCase):
         plugin.get_model("omnivoice/en")
         plugin.get_model("omnivoice/es")
         plugin.get_model("omnivoice/en")
-        self.assertIn("omnivoice/en", plugin.voices)
-        self.assertIn("omnivoice/es", plugin.voices)
+        self.assertIn("omnivoice/en", plugin.voice_cache.voices)
+        self.assertIn("omnivoice/es", plugin.voice_cache.voices)
         del loads
 
     def test_a_second_model_still_evicts_the_first(self):
@@ -316,58 +316,91 @@ class TestTheBudgetChargesTheModelOnce(unittest.TestCase):
         first = plugin.get_model("omnivoice/en")
         del first
         plugin.get_model("qwen/vivian")
-        self.assertNotIn("omnivoice/en", plugin.voices)
-        self.assertEqual(plugin._resident_bytes(), 4 * GB)
+        self.assertNotIn("omnivoice/en", plugin.voice_cache.voices)
+        self.assertEqual(plugin.voice_cache.resident_bytes(), 4 * GB)
 
 
 class TestWhatIsActuallyResident(unittest.TestCase):
-    """Eviction pops a dict entry; it does not free a model in use."""
+    """Eviction pops a dict entry; it does not free a model in use.
+
+    A caller says it is using a voice by holding a lease. The lease is what
+    the budget counts, so weights stay charged for as long as a synthesis has
+    them, whether or not the cache still lists the voice.
+    """
 
     def test_an_evicted_voice_still_in_use_is_still_charged(self):
         keys = {"a": "model-a", "b": "model-b"}
         plugin = _plugin(self, keys, {"model-a": 3 * GB, "model-b": 3 * GB},
-                         max_loaded_bytes="4GB")
-        held = plugin.get_model("a")       # caller keeps it, as a synthesis does
-        plugin.get_model("b")
-        self.assertNotIn("a", plugin.voices, "it was evicted from the cache")
-        self.assertEqual(plugin._resident_bytes(), 6 * GB,
-                         "but its weights are still in memory, and the OOM "
-                         "killer reads memory, not the cache")
-        self.assertIsNotNone(held)
+                         max_loaded_bytes="4GB", load_wait_timeout=0.2)
+        with plugin.voice_cache.lease("a"):    # as a synthesis does
+            plugin.voice_cache.voices.clear()
+            plugin.voice_cache._voice_keys.clear()
+            plugin.get_model("b")
+            self.assertNotIn("a", plugin.voice_cache.voices,
+                             "it is gone from the cache")
+            self.assertEqual(plugin.voice_cache.resident_bytes(), 6 * GB,
+                             "but its weights are still in memory, and the "
+                             "OOM killer reads memory, not the cache")
 
-    def test_the_charge_goes_away_when_the_request_finishes(self):
-        import gc
+    def test_a_voice_in_use_is_not_evicted_to_make_room(self):
+        # Dropping it would free nothing — the lease keeps the weights
+        # charged — and the next request for that voice would then load a
+        # second copy of a model that never left memory.
         keys = {"a": "model-a", "b": "model-b"}
         plugin = _plugin(self, keys, {"model-a": 3 * GB, "model-b": 3 * GB},
-                         max_loaded_bytes="4GB")
-        held = plugin.get_model("a")
-        plugin.get_model("b")
-        del held
-        gc.collect()
-        self.assertEqual(plugin._resident_bytes(), 3 * GB)
+                         max_loaded_bytes="4GB", load_wait_timeout=0.2)
+        with plugin.voice_cache.lease("a") as held:
+            plugin.get_model("b")
+            self.assertIn("a", plugin.voice_cache.voices)
+            self.assertIs(plugin.get_model("a"), held,
+                          "the leased voice was served from the cache, not "
+                          "loaded again")
+
+    def test_a_cold_loaded_voice_is_charged_from_the_lease_that_loaded_it(self):
+        # The lease on a voice that was not cached yet is taken by the load
+        # itself, inside the same critical section that caches it. Without
+        # that, a voice would be charged only while the cache happens to
+        # still list it, which is exactly what a lease exists to outlive.
+        keys = {"a": "model-a"}
+        plugin = _plugin(self, keys, {"model-a": 3 * GB},
+                         max_loaded_bytes="4GB", load_wait_timeout=0.2)
+        with plugin.voice_cache.lease("a"):
+            plugin.voice_cache.voices.clear()
+            plugin.voice_cache._voice_keys.clear()
+            self.assertEqual(plugin.voice_cache._leases, {"model-a": 1})
+            self.assertEqual(plugin.voice_cache.resident_bytes(), 3 * GB)
+        self.assertEqual(plugin.voice_cache._leases, {})
+        self.assertEqual(plugin.voice_cache.resident_bytes(), 0)
+
+    def test_the_charge_goes_away_when_the_request_finishes(self):
+        keys = {"a": "model-a", "b": "model-b"}
+        plugin = _plugin(self, keys, {"model-a": 3 * GB, "model-b": 3 * GB},
+                         max_loaded_bytes="4GB", load_wait_timeout=0.2)
+        with plugin.voice_cache.lease("a"):
+            plugin.voice_cache.voices.clear()
+            plugin.voice_cache._voice_keys.clear()
+            self.assertEqual(plugin.voice_cache.resident_bytes(), 3 * GB)
+        self.assertEqual(plugin.voice_cache.resident_bytes(), 0)
 
     def test_a_load_waits_for_memory_that_is_coming_back(self):
         import threading
-        import time
         keys = {"a": "model-a", "b": "model-b"}
         plugin = _plugin(self, keys, {"model-a": 3 * GB, "model-b": 3 * GB},
                          max_loaded_bytes="4GB", load_wait_timeout=10)
-        held = plugin.get_model("a")
-        plugin.voices.clear()          # evicted, but the request holds it
-        plugin._voice_keys.clear()
-
         done = threading.Event()
 
         def ask():
             plugin.get_model("b")
             done.set()
 
-        thread = threading.Thread(target=ask, daemon=True)
-        thread.start()
-        self.assertFalse(done.wait(timeout=1),
-                         "the second model must not be admitted while the "
-                         "first is still resident")
-        del held                        # the synthesis finishes
+        with plugin.voice_cache.lease("a"):
+            plugin.voice_cache.voices.clear()   # evicted, but the lease holds it
+            plugin.voice_cache._voice_keys.clear()
+            thread = threading.Thread(target=ask, daemon=True)
+            thread.start()
+            self.assertFalse(done.wait(timeout=1),
+                             "the second model must not be admitted while the "
+                             "first is still resident")
         self.assertTrue(done.wait(timeout=10),
                         "and it must be admitted as soon as it can be")
         thread.join(timeout=5)
@@ -378,15 +411,14 @@ class TestWhatIsActuallyResident(unittest.TestCase):
         keys = {"a": "model-a", "b": "model-b"}
         plugin = _plugin(self, keys, {"model-a": 3 * GB, "model-b": 3 * GB},
                          max_loaded_bytes="4GB", load_wait_timeout=0.2)
-        held = plugin.get_model("a")
-        plugin.voices.clear()
-        plugin._voice_keys.clear()
-        with patch("phoonnx.opm.LOG") as log:
-            plugin.get_model("b")
-        self.assertIn("b", plugin.voices)
+        with plugin.voice_cache.lease("a"):
+            plugin.voice_cache.voices.clear()
+            plugin.voice_cache._voice_keys.clear()
+            with patch("phoonnx.voice_cache.LOG") as log:
+                plugin.get_model("b")
+        self.assertIn("b", plugin.voice_cache.voices)
         self.assertIn("exceed the budget",
                       " ".join(str(c) for c in log.warning.call_args_list))
-        self.assertIsNotNone(held)
 
 
 if __name__ == "__main__":
