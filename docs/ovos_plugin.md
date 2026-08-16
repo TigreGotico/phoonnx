@@ -162,7 +162,7 @@ See [cloning.md](cloning.md) for the cloning keys in detail.
 
 ### Voice Caching
 
-Loaded voices are cached in memory (`self.voices` dict) to avoid re-loading on every utterance. The first call for a new voice ID triggers a download if needed. Each cached voice id owns its own ONNX Runtime session — a family of catalog entries that share one underlying model (for example the `omnivoice` or `qwen3tts` voice-config variants) still costs one load per entry, not one for the whole family.
+Loaded voices are cached in memory (`plugin.voice_cache`) to avoid re-loading on every utterance. The first call for a new voice ID triggers a download if needed. Memory is charged per model rather than per voice: a family of catalog entries that name the same graph (for example the `omnivoice` or `qwen3tts` voice-config variants) shares one ONNX Runtime session and counts against the budget once, however many of its voices are loaded.
 
 Two config keys bound how much stays resident:
 
@@ -171,8 +171,9 @@ Two config keys bound how much stays resident:
 | `max_loaded_voices` | Maximum number of voices resident at once (pinned ones included). Unset never evicts anything. |
 | `max_loaded_bytes` | Memory budget for resident voice weights, as a plain byte count or a size string (`"3GB"`, `"512 MB"`, `"1.5GiB"` — `KB/MB/GB/TB` are powers of 1000, `KiB/MiB/GiB/TiB` powers of 1024). Unset never evicts anything. |
 | `pinned_voices` | Voice id or list of voice ids to load at startup and never evict, regardless of the other limits. |
+| `load_wait_timeout` | Seconds a cold load waits for memory in use to come back before loading anyway. Defaults to 300; a memory bound must never become a hang. |
 
-A voice bigger than the whole `max_loaded_bytes` budget still loads rather than being refused — it evicts everything evictable first and logs a warning that memory use will exceed the budget. See [deployment.md](deployment.md#memory-budgeting) for sizing this against the container's memory limit.
+A voice whose own weights are bigger than the whole `max_loaded_bytes` budget is refused with `VoiceExceedsMemoryBudget` rather than loaded, because loading it is a guaranteed OOM kill. A voice that fits on its own but not beside what is already in memory waits for room, and takes it anyway once `load_wait_timeout` seconds pass, logging a warning that memory use will exceed the budget: a voice a request is still synthesizing with is charged to the budget until that request finishes, so there are moments when nothing can be evicted. See [deployment.md](deployment.md#memory-budgeting) for sizing this against the container's memory limit.
 
 ### Refreshing Voices
 

@@ -12,8 +12,12 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 
-def _plugin(testcase, load_delay=0.2, **config):
-    """Build the plugin with a slow, counting loader."""
+def _plugin(testcase, load_delay=0.2, load_hook=None, **config):
+    """Build the plugin with a slow, counting loader.
+
+    ``load_hook`` runs inside the load, while it is in flight, so a test can
+    observe overlap directly instead of inferring it from a clock.
+    """
     from phoonnx.opm import PhoonnxTTSPlugin
 
     counts = {"loads": 0, "concurrent": 0, "peak": 0}
@@ -24,6 +28,8 @@ def _plugin(testcase, load_delay=0.2, **config):
             counts["loads"] += 1
             counts["concurrent"] += 1
             counts["peak"] = max(counts["peak"], counts["concurrent"])
+        if load_hook is not None:
+            load_hook()
         time.sleep(load_delay)
         with lock:
             counts["concurrent"] -= 1
@@ -100,20 +106,31 @@ class TestInFlightLoads(unittest.TestCase):
         self.assertEqual(len(errors), 4, "every caller should see the failure")
 
     def test_different_voices_still_load_in_parallel(self):
-        # The gate is per voice; it must not serialise unrelated loads.
-        plugin, counts = _plugin(self, load_delay=0.3)
-        threads = [threading.Thread(target=plugin.get_model, args=(f"v{i}",))
+        # The gate is per voice; it must not serialise unrelated loads. The
+        # evidence is the overlap itself rather than a wall clock: a clock
+        # cannot tell a serialised load from a busy machine, and every load
+        # here has to be in flight at the same instant or the barrier times
+        # out and the loads fail.
+        together = threading.Barrier(4, timeout=10)
+        plugin, counts = _plugin(self, load_delay=0, load_hook=together.wait)
+        errors = []
+
+        def ask(voice_id):
+            try:
+                plugin.get_model(voice_id)
+            except BaseException as exc:  # noqa: BLE001
+                errors.append(exc)
+
+        threads = [threading.Thread(target=ask, args=(f"v{i}",))
                    for i in range(4)]
-        started = time.time()
         [t.start() for t in threads]
-        [t.join() for t in threads]
-        elapsed = time.time() - started
+        [t.join(timeout=30) for t in threads]
+        self.assertFalse([t for t in threads if t.is_alive()])
+        self.assertFalse(errors, f"four different voices did not load "
+                                 f"concurrently: {errors}")
         self.assertEqual(counts["loads"], 4)
-        # 0.3s of load each: fully parallel is ~0.3s, two-at-a-time is ~0.6s,
-        # fully serial is ~1.2s. The threshold has to reject partial
-        # serialisation, not just total serialisation.
-        self.assertLess(elapsed, 0.55,
-                        "four different voices should load concurrently")
+        self.assertEqual(counts["peak"], 4,
+                         "four different voices should load concurrently")
 
 
 class TestGateIsAlwaysReleased(unittest.TestCase):
@@ -141,7 +158,7 @@ class TestGateIsAlwaysReleased(unittest.TestCase):
         with self.assertRaises(Exception):
             plugin.get_model("nope")
         # The gate must be gone, or every later caller waits on it forever.
-        self.assertEqual(plugin._loading, {})
+        self.assertEqual(plugin.voice_cache._loading, {})
 
         done = threading.Event()
 
@@ -172,7 +189,7 @@ class TestGateIsAlwaysReleased(unittest.TestCase):
             t.join(timeout=10)
             self.assertFalse(t.is_alive(), "no caller may hang")
         self.assertEqual(len(errors), 6)
-        self.assertEqual(plugin._loading, {})
+        self.assertEqual(plugin.voice_cache._loading, {})
 
 
 class TestFailedLoadIsNotRetriedPerCaller(unittest.TestCase):
@@ -237,7 +254,7 @@ class TestGateReleasedWithTheCacheInsert(unittest.TestCase):
     """
 
     def test_a_waiter_woken_at_the_release_point_does_not_reload(self):
-        from phoonnx import opm as opm_module
+        from phoonnx import voice_cache as voice_cache_module
         from phoonnx.opm import PhoonnxTTSPlugin
 
         class YieldingEvent(threading.Event):
@@ -249,7 +266,7 @@ class TestGateReleasedWithTheCacheInsert(unittest.TestCase):
                 # elect itself and start its own load.
                 time.sleep(0.3)
 
-        real_loading = opm_module._Loading
+        real_loading = voice_cache_module._Loading
 
         def yielding_loading():
             gate = real_loading()
@@ -271,7 +288,7 @@ class TestGateReleasedWithTheCacheInsert(unittest.TestCase):
             patch.object(PhoonnxTTSPlugin, "get_voice_info",
                          side_effect=lambda v: MagicMock(load=counting)),
             patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
-            patch.object(opm_module, "_Loading", yielding_loading),
+            patch.object(voice_cache_module, "_Loading", yielding_loading),
         ]
         for pat in patchers:
             pat.start()
@@ -311,6 +328,7 @@ class TestTheGateSurvivesAFailureWhileCaching(unittest.TestCase):
 
     def _plugin_failing_after_load(self):
         from phoonnx.opm import PhoonnxTTSPlugin
+        from phoonnx.voice_cache import VoiceCache
 
         patchers = [
             patch("phoonnx.opm.TTSModelManager"),
@@ -321,7 +339,7 @@ class TestTheGateSurvivesAFailureWhileCaching(unittest.TestCase):
                              load=lambda **_kw: "a-loaded-voice")),
             patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
             # Fails only once the voice is loaded and is being cached.
-            patch.object(PhoonnxTTSPlugin, "_evict_for",
+            patch.object(VoiceCache, "_evict_for",
                          side_effect=RuntimeError("failed while caching")),
         ]
         for pat in patchers:
@@ -333,7 +351,7 @@ class TestTheGateSurvivesAFailureWhileCaching(unittest.TestCase):
         plugin = self._plugin_failing_after_load()
         with self.assertRaises(RuntimeError):
             plugin.get_model("wedged")
-        self.assertEqual(plugin._loading, {},
+        self.assertEqual(plugin.voice_cache._loading, {},
                          "the gate must not outlive the request that made it")
 
     def test_the_next_caller_does_not_hang(self):
