@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.84.0a2](https://github.com/TigreGotico/phoonnx/tree/1.84.0a2) (2026-08-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.0a1...1.84.0a2)
+
+**Merged pull requests:**
+
+- refactor: per-format config loader registry [\#428](https://github.com/TigreGotico/phoonnx/pull/428) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.84.0a1](https://github.com/TigreGotico/phoonnx/tree/1.84.0a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.83.0a1...1.84.0a1)
