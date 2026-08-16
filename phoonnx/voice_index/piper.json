@@ -571,32 +571,6 @@
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__en_US-kathleen-low/config.json"
     },
-    "piper/en_US-kristin-medium": {
-        "voice_id": "piper/en_US-kristin-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__en_US-kristin-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "en-US",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__en_US-kristin-medium/config.json"
-    },
-    "piper/en_US-kusal-medium": {
-        "voice_id": "piper/en_US-kusal-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__en_US-kusal-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "en-US",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__en_US-kusal-medium/config.json"
-    },
     "piper/en_US-l2arctic-medium": {
         "voice_id": "piper/en_US-l2arctic-medium",
         "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__en_US-l2arctic-medium/model.onnx",
@@ -714,19 +688,6 @@
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__en_US-norman-medium/config.json"
     },
-    "piper/en_US-reza_ibrahim-medium": {
-        "voice_id": "piper/en_US-reza_ibrahim-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__en_US-reza_ibrahim-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "en-US",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__en_US-reza_ibrahim-medium/config.json"
-    },
     "piper/en_US-ryan-high": {
         "voice_id": "piper/en_US-ryan-high",
         "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__en_US-ryan-high/model.onnx",
@@ -778,19 +739,6 @@
         "alphabet": "ipa",
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__en_US-sam-medium/config.json"
-    },
-    "piper/es_AR-daniela-high": {
-        "voice_id": "piper/es_AR-daniela-high",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__es_AR-daniela-high/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "es-AR",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__es_AR-daniela-high/config.json"
     },
     "piper/es_ES-carlfm-x_low": {
         "voice_id": "piper/es_ES-carlfm-x_low",
@@ -883,45 +831,6 @@
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__es_MX-claude-high/config.json"
     },
-    "piper/fa_IR-amir-medium": {
-        "voice_id": "piper/fa_IR-amir-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__fa_IR-amir-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "fa-IR",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__fa_IR-amir-medium/config.json"
-    },
-    "piper/fa_IR-ganji-medium": {
-        "voice_id": "piper/fa_IR-ganji-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__fa_IR-ganji-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "fa-IR",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__fa_IR-ganji-medium/config.json"
-    },
-    "piper/fa_IR-ganji_adabi-medium": {
-        "voice_id": "piper/fa_IR-ganji_adabi-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__fa_IR-ganji_adabi-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "fa-IR",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__fa_IR-ganji_adabi-medium/config.json"
-    },
     "piper/fa_IR-gyro-medium": {
         "voice_id": "piper/fa_IR-gyro-medium",
         "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__fa_IR-gyro-medium/model.onnx",
@@ -934,19 +843,6 @@
         "alphabet": "ipa",
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__fa_IR-gyro-medium/config.json"
-    },
-    "piper/fa_IR-reza_ibrahim-medium": {
-        "voice_id": "piper/fa_IR-reza_ibrahim-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__fa_IR-reza_ibrahim-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "fa-IR",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__fa_IR-reza_ibrahim-medium/config.json"
     },
     "piper/fi_FI-harri-low": {
         "voice_id": "piper/fi_FI-harri-low",
@@ -1065,32 +961,6 @@
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__fr_FR-upmc-medium/config.json"
     },
-    "piper/hi_IN-pratham-medium": {
-        "voice_id": "piper/hi_IN-pratham-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__hi_IN-pratham-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "hi-IN",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__hi_IN-pratham-medium/config.json"
-    },
-    "piper/hi_IN-priyamvada-medium": {
-        "voice_id": "piper/hi_IN-priyamvada-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__hi_IN-priyamvada-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "hi-IN",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__hi_IN-priyamvada-medium/config.json"
-    },
     "piper/hi_IN-rohan-medium": {
         "voice_id": "piper/hi_IN-rohan-medium",
         "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__hi_IN-rohan-medium/model.onnx",
@@ -1143,19 +1013,6 @@
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__hu_HU-imre-medium/config.json"
     },
-    "piper/id_ID-news_tts-medium": {
-        "voice_id": "piper/id_ID-news_tts-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__id_ID-news_tts-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "id-ID",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__id_ID-news_tts-medium/config.json"
-    },
     "piper/is_IS-bui-medium": {
         "voice_id": "piper/is_IS-bui-medium",
         "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__is_IS-bui-medium/model.onnx",
@@ -1207,19 +1064,6 @@
         "alphabet": "ipa",
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__is_IS-ugla-medium/config.json"
-    },
-    "piper/it_IT-paola-medium": {
-        "voice_id": "piper/it_IT-paola-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__it_IT-paola-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "it-IT",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__it_IT-paola-medium/config.json"
     },
     "piper/it_IT-riccardo-x_low": {
         "voice_id": "piper/it_IT-riccardo-x_low",
@@ -1285,32 +1129,6 @@
         "alphabet": "ipa",
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__kk_KZ-raya-x_low/config.json"
-    },
-    "piper/lb_LU-marylux-medium": {
-        "voice_id": "piper/lb_LU-marylux-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__lb_LU-marylux-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "lb-LU",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__lb_LU-marylux-medium/config.json"
-    },
-    "piper/lv_LV-aivars-medium": {
-        "voice_id": "piper/lv_LV-aivars-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__lv_LV-aivars-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "lv-LV",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__lv_LV-aivars-medium/config.json"
     },
     "piper/ml_IN-arjun-medium": {
         "voice_id": "piper/ml_IN-arjun-medium",
@@ -1728,19 +1546,6 @@
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__sr_RS-serbski_institut-medium/config.json"
     },
-    "piper/sv_SE-lisa-medium": {
-        "voice_id": "piper/sv_SE-lisa-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__sv_SE-lisa-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "sv-SE",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__sv_SE-lisa-medium/config.json"
-    },
     "piper/sv_SE-nst-medium": {
         "voice_id": "piper/sv_SE-nst-medium",
         "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__sv_SE-nst-medium/model.onnx",
@@ -1896,19 +1701,6 @@
         "alphabet": "ipa",
         "engine": "piper",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__vi_VN-25hours_single-low/config.json"
-    },
-    "piper/vi_VN-vais1000-medium": {
-        "voice_id": "piper/vi_VN-vais1000-medium",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__vi_VN-vais1000-medium/model.onnx",
-        "phoneme_type": "espeak",
-        "lang": "vi-VN",
-        "tokens_url": null,
-        "tokenizer_config_url": null,
-        "vocab_url": null,
-        "phoneme_map_url": null,
-        "alphabet": "ipa",
-        "engine": "piper",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper__vi_VN-vais1000-medium/config.json"
     },
     "piper/vi_VN-vivos-x_low": {
         "voice_id": "piper/vi_VN-vivos-x_low",
