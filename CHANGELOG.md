@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.84.1a1](https://github.com/TigreGotico/phoonnx/tree/1.84.1a1) (2026-08-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.0a2...1.84.1a1)
+
+**Merged pull requests:**
+
+- fix: remove duplicate voice-index entries in piper/piper\_community [\#429](https://github.com/TigreGotico/phoonnx/pull/429) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.84.0a2](https://github.com/TigreGotico/phoonnx/tree/1.84.0a2) (2026-08-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.0a1...1.84.0a2)
@@ -367,10 +375,6 @@
 ## [1.64.1a1](https://github.com/TigreGotico/phoonnx/tree/1.64.1a1) (2026-07-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.64.0a1...1.64.1a1)
-
-**Merged pull requests:**
-
-- fix: pad short token sequences for SpeedySpeech-style exports [\#318](https://github.com/TigreGotico/phoonnx/pull/318) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.64.0a1](https://github.com/TigreGotico/phoonnx/tree/1.64.0a1) (2026-07-24)
 
