@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.84.1a3](https://github.com/TigreGotico/phoonnx/tree/1.84.1a3) (2026-08-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.1a2...1.84.1a3)
+
+**Merged pull requests:**
+
+- refactor: split text normalization out of util, collect errors, validate the voice index [\#437](https://github.com/TigreGotico/phoonnx/pull/437) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.84.1a2](https://github.com/TigreGotico/phoonnx/tree/1.84.1a2) (2026-08-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.1a1...1.84.1a2)
@@ -35,10 +43,6 @@
 ## [1.83.0a1](https://github.com/TigreGotico/phoonnx/tree/1.83.0a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.82.3a1...1.83.0a1)
-
-**Merged pull requests:**
-
-- feat: Inflect-v2 \(Micro + Nano\) support — official 2-graph export + single-graph re-export recipe [\#320](https://github.com/TigreGotico/phoonnx/pull/320) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.82.3a1](https://github.com/TigreGotico/phoonnx/tree/1.82.3a1) (2026-08-15)
 
