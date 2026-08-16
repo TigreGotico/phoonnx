@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.84.1a2](https://github.com/TigreGotico/phoonnx/tree/1.84.1a2) (2026-08-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.1a1...1.84.1a2)
+
+**Merged pull requests:**
+
+- refactor: lease-based residency for the voice cache [\#434](https://github.com/TigreGotico/phoonnx/pull/434) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.84.1a1](https://github.com/TigreGotico/phoonnx/tree/1.84.1a1) (2026-08-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.0a2...1.84.1a1)
