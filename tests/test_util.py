@@ -65,8 +65,8 @@ class TestUtilFunctions(unittest.TestCase):
         self.assertFalse(is_fraction("1/-2"))
         self.assertFalse(is_fraction("-1/2"))
 
-    @patch('phoonnx.util.pronounce_number')
-    @patch('phoonnx.util.is_numeric')
+    @patch('phoonnx.normalization.numbers.pronounce_number')
+    @patch('phoonnx.normalization.numbers.is_numeric')
     def test_normalize_number_word_simple_integer(self, mock_is_numeric, mock_pronounce):
         """Test _normalize_number_word with simple integers."""
         mock_is_numeric.return_value = True
@@ -76,8 +76,8 @@ class TestUtilFunctions(unittest.TestCase):
         mock_pronounce.assert_called_with(23, lang="en")
         self.assertEqual(result, "twenty three")
 
-    @patch('phoonnx.util.pronounce_number')
-    @patch('phoonnx.util.is_numeric')
+    @patch('phoonnx.normalization.numbers.pronounce_number')
+    @patch('phoonnx.normalization.numbers.is_numeric')
     def test_normalize_number_word_with_punctuation(self, mock_is_numeric, mock_pronounce):
         """Test _normalize_number_word preserves punctuation."""
         mock_is_numeric.return_value = True
@@ -87,54 +87,54 @@ class TestUtilFunctions(unittest.TestCase):
         mock_pronounce.assert_called_with(23, lang="en")
         self.assertEqual(result, "twenty three!")
 
-    @patch('phoonnx.util.pronounce_fraction')
+    @patch('phoonnx.normalization.numbers.pronounce_fraction')
     def test_normalize_number_word_fraction(self, mock_pronounce_fraction):
         """Test _normalize_number_word with fractions."""
         mock_pronounce_fraction.return_value = "one half"
 
-        with patch('phoonnx.util.is_fraction', return_value=True):
+        with patch('phoonnx.normalization.numbers.is_fraction', return_value=True):
             result = _normalize_number_word("1/2", "en", None)
             mock_pronounce_fraction.assert_called_with("1/2", "en")
             self.assertEqual(result, "one half")
 
-    @patch('phoonnx.util.pronounce_fraction')
+    @patch('phoonnx.normalization.numbers.pronounce_fraction')
     def test_normalize_number_word_fraction_with_punctuation(self, mock_pronounce_fraction):
         """Test _normalize_number_word with fractions and punctuation."""
         mock_pronounce_fraction.return_value = "three quarters"
 
-        with patch('phoonnx.util.is_fraction', return_value=True):
+        with patch('phoonnx.normalization.numbers.is_fraction', return_value=True):
             result = _normalize_number_word("3/4.", "en", None)
             mock_pronounce_fraction.assert_called_with("3/4", "en")
             self.assertEqual(result, "three quarters.")
 
-    @patch('phoonnx.util.is_numeric')
+    @patch('phoonnx.normalization.numbers.is_numeric')
     def test_normalize_number_word_european_decimal(self, mock_is_numeric):
         """Test _normalize_number_word with European decimal separator."""
         mock_is_numeric.side_effect = lambda x: x in ["1.2", "1,2"]
 
-        with patch('phoonnx.util.pronounce_number') as mock_pronounce:
+        with patch('phoonnx.normalization.numbers.pronounce_number') as mock_pronounce:
             mock_pronounce.return_value = "one point two"
             result = _normalize_number_word("1,2", "pt", None)
             mock_pronounce.assert_called_with(1.2, lang="pt")
             self.assertEqual(result, "one point two")
 
-    @patch('phoonnx.util.is_numeric')
+    @patch('phoonnx.normalization.numbers.is_numeric')
     def test_normalize_number_word_thousands_separator(self, mock_is_numeric):
         """Test _normalize_number_word with thousands separator."""
         mock_is_numeric.side_effect = lambda x: x in ["1234", "1,234"]
 
-        with patch('phoonnx.util.pronounce_number') as mock_pronounce:
+        with patch('phoonnx.normalization.numbers.pronounce_number') as mock_pronounce:
             mock_pronounce.return_value = "one thousand two hundred thirty four"
             result = _normalize_number_word("1,234", "en", None)
             mock_pronounce.assert_called_with(1234, lang="en")
             self.assertEqual(result, "one thousand two hundred thirty four")
 
-    @patch('phoonnx.util.is_numeric')
+    @patch('phoonnx.normalization.numbers.is_numeric')
     def test_normalize_number_word_complex_european_format(self, mock_is_numeric):
         """Test _normalize_number_word with complex European format (123.456,78)."""
         mock_is_numeric.side_effect = lambda x: x == "123456.78"
 
-        with patch('phoonnx.util.pronounce_number') as mock_pronounce:
+        with patch('phoonnx.normalization.numbers.pronounce_number') as mock_pronounce:
             mock_pronounce.return_value = "one hundred twenty three thousand four hundred fifty six point seven eight"
             _normalize_number_word("123.456,78", "pt", None)
             mock_pronounce.assert_called_with(123456.78, lang="pt")
@@ -144,18 +144,18 @@ class TestUtilFunctions(unittest.TestCase):
         mock_engine = MagicMock()
         mock_engine.format_number.return_value.text = "twenty three"
 
-        with patch('phoonnx.util.is_numeric', return_value=False):
+        with patch('phoonnx.normalization.numbers.is_numeric', return_value=False):
             result = _normalize_number_word("23", "en", mock_engine)
             mock_engine.format_number.assert_called_once()
             self.assertEqual(result, "twenty three")
 
     def test_normalize_number_word_no_change(self):
         """Test _normalize_number_word when no normalization is needed."""
-        with patch('phoonnx.util.is_numeric', return_value=False):
+        with patch('phoonnx.normalization.numbers.is_numeric', return_value=False):
             result = _normalize_number_word("hello", "en", None)
             self.assertEqual(result, "hello")
 
-    @patch('phoonnx.util.nice_date')
+    @patch('phoonnx.normalization.datetimes.nice_date')
     def test_pronounce_date(self, mock_nice_date):
         """Test pronounce_date function."""
         mock_nice_date.return_value = "January first, twenty twenty five"
@@ -165,7 +165,7 @@ class TestUtilFunctions(unittest.TestCase):
         mock_nice_date.assert_called_with(test_date, "en")
         self.assertEqual(result, "January first, twenty twenty five")
 
-    @patch('phoonnx.util.nice_time')
+    @patch('phoonnx.normalization.datetimes.nice_time')
     def test_pronounce_time_valid(self, mock_nice_time):
         """Test pronounce_time with valid military time."""
         mock_nice_time.return_value = "three fifteen PM"
@@ -201,7 +201,7 @@ class TestUtilFunctions(unittest.TestCase):
                 result = _normalize_word_hyphen_digit(input_text)
                 self.assertEqual(result, expected)
 
-    @patch('phoonnx.util.pronounce_number')
+    @patch('phoonnx.normalization.units.pronounce_number')
     def test_normalize_units_symbolic(self, mock_pronounce):
         """Test _normalize_units with symbolic units."""
         mock_pronounce.return_value = "twenty five"
@@ -210,7 +210,7 @@ class TestUtilFunctions(unittest.TestCase):
         self.assertIn("twenty five", result)
         self.assertIn("degrees celsius", result)
 
-    @patch('phoonnx.util.pronounce_number')
+    @patch('phoonnx.normalization.units.pronounce_number')
     def test_normalize_units_alphanumeric(self, mock_pronounce):
         """Test _normalize_units with alphanumeric units."""
         mock_pronounce.return_value = "five"
@@ -225,7 +225,7 @@ class TestUtilFunctions(unittest.TestCase):
         result = _normalize_units("25°C", "unsupported")
         self.assertEqual(result, "25°C")  # Should remain unchanged
 
-    @patch('phoonnx.util.pronounce_number')
+    @patch('phoonnx.normalization.units.pronounce_number')
     def test_normalize_units_european_format(self, mock_pronounce):
         """Test _normalize_units with European number format."""
         mock_pronounce.return_value = "vinte e cinco vírgula cinco"
@@ -257,7 +257,7 @@ class TestUtilFunctions(unittest.TestCase):
         result = _normalize_word("M.", "fr", None)
         self.assertEqual(result, "Monsieur")
 
-    @patch('phoonnx.util._normalize_number_word')
+    @patch('phoonnx.normalization.text._normalize_number_word')
     def test_normalize_word_delegates_numbers(self, mock_normalize_number):
         """Test _normalize_word delegates to _normalize_number_word."""
         mock_normalize_number.return_value = "twenty three"
@@ -271,7 +271,7 @@ class TestUtilFunctions(unittest.TestCase):
         result = _normalize_word("hello", "en", None)
         self.assertEqual(result, "hello")
 
-    @patch('phoonnx.util.nice_time')
+    @patch('phoonnx.normalization.datetimes.nice_time')
     def test_normalize_dates_and_times_military_time(self, mock_nice_time):
         """Test _normalize_dates_and_times with military time."""
         mock_nice_time.return_value = "three fifteen PM"
@@ -287,7 +287,7 @@ class TestUtilFunctions(unittest.TestCase):
         result = _normalize_dates_and_times("Call at 9am", "en")
         self.assertIn("A M", result)
 
-    @patch('phoonnx.util.pronounce_date')
+    @patch('phoonnx.normalization.datetimes.pronounce_date')
     def test_normalize_dates_and_times_date_parsing(self, mock_pronounce_date):
         """Test _normalize_dates_and_times with date parsing."""
         mock_pronounce_date.return_value = "March eighth, twenty twenty five"
@@ -304,14 +304,14 @@ class TestUtilFunctions(unittest.TestCase):
 
     def test_normalize_dates_and_times_ambiguous_date_dmy(self):
         """Test _normalize_dates_and_times with ambiguous date using DMY format."""
-        with patch('phoonnx.util.pronounce_date') as mock_pronounce_date:
+        with patch('phoonnx.normalization.datetimes.pronounce_date') as mock_pronounce_date:
             mock_pronounce_date.return_value = "May fifteenth, twenty twenty five"
             _normalize_dates_and_times("Due on 15/05/2025", "en", "DMY")
             mock_pronounce_date.assert_called_once()
 
     def test_normalize_dates_and_times_year_detection(self):
         """Test _normalize_dates_and_times year detection logic."""
-        with patch('phoonnx.util.pronounce_date') as mock_pronounce_date:
+        with patch('phoonnx.normalization.datetimes.pronounce_date') as mock_pronounce_date:
             mock_pronounce_date.return_value = "formatted date"
 
             # Test 4-digit year at beginning
@@ -321,7 +321,7 @@ class TestUtilFunctions(unittest.TestCase):
             _normalize_dates_and_times("15/03/2025", "en")
 
     @patch('unicode_rbnf.RbnfEngine')
-    @patch('phoonnx.util._normalize_word')
+    @patch('phoonnx.normalization.text._normalize_word')
     def test_normalize_main_function(self, mock_normalize_word, mock_rbnf_engine):
         """Test main normalize function integration."""
         mock_normalize_word.side_effect = lambda w, lang, engine: w.upper()
@@ -330,9 +330,9 @@ class TestUtilFunctions(unittest.TestCase):
         result = normalize("hello world", "en")
         self.assertEqual(result, "HELLO WORLD")
 
-    @patch('phoonnx.util._normalize_dates_and_times')
-    @patch('phoonnx.util._normalize_word_hyphen_digit')
-    @patch('phoonnx.util._normalize_units')
+    @patch('phoonnx.normalization.text._normalize_dates_and_times')
+    @patch('phoonnx.normalization.text._normalize_word_hyphen_digit')
+    @patch('phoonnx.normalization.text._normalize_units')
     def test_normalize_date_format_selection(self, mock_normalize_units,
                                              mock_normalize_word_hyphen_digit,
                                              mock_normalize_dates):
@@ -366,7 +366,7 @@ class TestUtilFunctions(unittest.TestCase):
 
     def test_normalize_single_word(self):
         """Test normalize with single word."""
-        with patch('phoonnx.util._normalize_word') as mock_normalize_word:
+        with patch('phoonnx.normalization.text._normalize_word') as mock_normalize_word:
             mock_normalize_word.return_value = "normalized"
             normalize("word", "en")
             mock_normalize_word.assert_called_with("word", "en", unittest.mock.ANY)
@@ -427,15 +427,15 @@ class TestUtilFunctions(unittest.TestCase):
 
     def test_error_handling_fraction_pronunciation(self):
         """Test error handling in fraction pronunciation."""
-        with patch('phoonnx.util.pronounce_fraction', side_effect=Exception("Test error")), \
-                patch('phoonnx.util.is_fraction', return_value=True):
+        with patch('phoonnx.normalization.numbers.pronounce_fraction', side_effect=Exception("Test error")), \
+                patch('phoonnx.normalization.numbers.is_fraction', return_value=True):
             result = _normalize_number_word("1/2", "en", None)
             self.assertEqual(result, "1/2")  # Should return original on error
 
     def test_error_handling_number_pronunciation(self):
         """Test error handling in number pronunciation."""
-        with patch('phoonnx.util.pronounce_number', side_effect=Exception("Test error")), \
-                patch('phoonnx.util.is_numeric', return_value=True):
+        with patch('phoonnx.normalization.numbers.pronounce_number', side_effect=Exception("Test error")), \
+                patch('phoonnx.normalization.numbers.is_numeric', return_value=True):
             result = _normalize_number_word("123", "en", None)
             self.assertEqual(result, "123")  # Should return original on error
 
@@ -444,7 +444,7 @@ class TestUtilFunctions(unittest.TestCase):
         mock_engine = MagicMock()
         mock_engine.format_number.side_effect = Exception("RBNF error")
 
-        with patch('phoonnx.util.is_numeric', return_value=False):
+        with patch('phoonnx.normalization.numbers.is_numeric', return_value=False):
             result = _normalize_number_word("123", "en", mock_engine)
             self.assertEqual(result, "123")  # Should return original on error
 
@@ -452,11 +452,11 @@ class TestUtilFunctions(unittest.TestCase):
         """Test complex integration scenario with multiple normalizations."""
         text = "Dr. Smith said I can't attend the 3pm meeting on 15/03/2025, it's 25°C outside"
 
-        with patch('phoonnx.util._normalize_dates_and_times') as mock_dates:
+        with patch('phoonnx.normalization.text._normalize_dates_and_times') as mock_dates:
             mock_dates.return_value = text
-            with patch('phoonnx.util._normalize_units') as mock_units:
+            with patch('phoonnx.normalization.text._normalize_units') as mock_units:
                 mock_units.return_value = text
-                with patch('phoonnx.util._normalize_word') as mock_word:
+                with patch('phoonnx.normalization.text._normalize_word') as mock_word:
                     mock_word.side_effect = lambda w, lang, engine: f"NORM_{w}"
 
                     result = normalize(text, "en")
@@ -509,7 +509,7 @@ class TestUtilFunctions(unittest.TestCase):
     def test_normalize_dates_complex_patterns(self):
         """Test _normalize_dates_and_times with complex date patterns."""
         # Test leap year
-        with patch('phoonnx.util.pronounce_date') as mock_pronounce:
+        with patch('phoonnx.normalization.datetimes.pronounce_date') as mock_pronounce:
             mock_pronounce.return_value = "February twenty ninth, twenty twenty four"
             result = _normalize_dates_and_times("Meeting on 29/02/2024", "en", "DMY")
             self.assertIn("February twenty ninth", result)
@@ -531,7 +531,7 @@ class TestUtilFunctions(unittest.TestCase):
         """Test _normalize_dates_and_times with multiple time formats."""
         text = "Meeting at 14h30 and call at 9am"
 
-        with patch('phoonnx.util.nice_time') as mock_nice_time:
+        with patch('phoonnx.normalization.datetimes.nice_time') as mock_nice_time:
             mock_nice_time.side_effect = ["two thirty PM", "nine A M"]
             result = _normalize_dates_and_times(text, "en")
             self.assertIn("two thirty PM", result)
@@ -548,8 +548,8 @@ class TestUtilFunctions(unittest.TestCase):
 
     def test_normalize_number_word_float_conversion(self):
         """Test _normalize_number_word float vs int conversion logic."""
-        with patch('phoonnx.util.pronounce_number') as mock_pronounce, \
-                patch('phoonnx.util.is_numeric', return_value=True):
+        with patch('phoonnx.normalization.numbers.pronounce_number') as mock_pronounce, \
+                patch('phoonnx.normalization.numbers.is_numeric', return_value=True):
             mock_pronounce.return_value = "five"
 
             # Integer case
@@ -682,7 +682,7 @@ class TestDataStructureIntegrity(unittest.TestCase):
                 self.assertNotIn("grau", result.lower())
                 self.assertNotIn("grado", result.lower())
 
-    @patch('phoonnx.util.pronounce_number')
+    @patch('phoonnx.normalization.units.pronounce_number')
     def test_normalize_units_degree_letter_variants_still_work(self, mock_pronounce):
         """A genuine degree-Celsius/Fahrenheit typo using 'º' instead of
         '°' should still be normalized to degrees."""
@@ -694,7 +694,7 @@ class TestDataStructureIntegrity(unittest.TestCase):
         result = _normalize_units("20 ºC", "en")
         self.assertIn("degrees celsius", result)
 
-    @patch('phoonnx.util.pronounce_number')
+    @patch('phoonnx.normalization.units.pronounce_number')
     def test_normalize_units_lowercase_temperature_letter(self, mock_pronounce):
         """The ºC/°C lookahead and the symbolic unit lookup must both be
         case-insensitive, so a lowercase temperature letter (a common typo)
@@ -707,7 +707,7 @@ class TestDataStructureIntegrity(unittest.TestCase):
         result = _normalize_units("25ºc", "en")
         self.assertIn("degrees celsius", result)
 
-    @patch('phoonnx.util.pronounce_number')
+    @patch('phoonnx.normalization.units.pronounce_number')
     def test_normalize_units_plain_degree_sign_unchanged_behavior(self, mock_pronounce):
         """Existing behavior for the real degree sign must be preserved."""
         mock_pronounce.return_value = "twenty"
