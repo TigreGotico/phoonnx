@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.88.0a1](https://github.com/TigreGotico/phoonnx/tree/1.88.0a1) (2026-08-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.87.0a1...1.88.0a1)
+
 ## [1.87.0a1](https://github.com/TigreGotico/phoonnx/tree/1.87.0a1) (2026-08-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.86.0a1...1.87.0a1)
