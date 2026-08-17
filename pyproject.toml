@@ -221,6 +221,18 @@ train-fastpitch = []
 # alignment search) are also already pulled in via [train] (numba
 # transitively through librosa on <3.13).
 train-mixer = []
+# extra deps for the MOSS-TTS-Nano training pipeline (phoonnx_train/mosstts/)
+# on top of [train]: sentencepiece for the text tokenizer, safetensors to read
+# the released checkpoint without transformers, soundfile to read audio in
+# prepare_data (the codec itself runs under onnxruntime, already a core dep),
+# and onnx for the external-data layout of the exported graphs. scipy
+# (resampling) is already in [train].
+train-mosstts = [
+    "sentencepiece",
+    "safetensors",
+    "soundfile",
+    "onnx",
+]
 # extra deps for the OptiSpeech training engine
 # (phoonnx_train/optispeech/ + phoonnx_train/engines/optispeech.py) on top of
 # [train]: scipy for pitch interpolation (the pitch extractor itself uses
