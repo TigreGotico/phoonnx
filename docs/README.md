@@ -36,6 +36,7 @@ For anyone extending phoonnx or debugging a voice.
 ## Task guides
 
 - [Voice cloning](cloning.md) — zero-shot cloning from a reference clip
+- [Voice conversion](voice_conversion.md) — convert any voice's output to a target speaker
 - [Streaming](streaming.md) — low-latency streaming for VITS voices
 - [Phoneme alignment](alignment.md) — per-phoneme timing for visemes, karaoke, subtitles
 - [OVOS plugin](ovos_plugin.md) — the `ovos-tts-plugin-phoonnx` TTS plugin

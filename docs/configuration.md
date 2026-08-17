@@ -111,6 +111,8 @@ syn_config = SynthesisConfig(
 | `exaggeration` | `float` \| `None` | `None` | Expressiveness/intensity for engines that support it (Chatterbox, ~0.5) |
 | `temperature` | `float` \| `None` | `None` | Sampling temperature for autoregressive engines (Chatterbox, ~0.8; `0` = greedy) |
 | `top_p` | `float` \| `None` | `None` | Nucleus sampling cutoff for autoregressive engines (Chatterbox, ~0.95) |
+| `vc_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Target-speaker clip for post-synthesis [voice conversion](voice_conversion.md); works with every engine |
+| `vc_engine` | `str` \| `None` | `None` | voiceclonnx engine for `vc_reference`; `None` selects `"openvoice"` |
 | `extra_params` | `dict` | `{}` | Engine-specific per-call parameters (e.g. `d_factor`, `p_factor`, `e_factor`) |
 
 ## model.json Format

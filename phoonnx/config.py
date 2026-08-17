@@ -475,6 +475,29 @@ class SynthesisConfig:
     # ``super_resolution`` is True.
     super_resolution_model: Optional[str] = None
 
+    # post-synthesis universal voice conversion via ``voiceclonnx`` (pure-ONNX).
+    # ``None`` (the default) is a strict no-op: ``voiceclonnx`` is never imported and
+    # the audio is bit-for-bit the engine's own output. When set, every synthesized
+    # chunk is converted to the target speaker *after* generation, so any voice —
+    # including single-speaker models with no cloning support of their own — can speak
+    # with an arbitrary target timbre.
+    #
+    # Value: a path or URL to a short (5–30 s) target-speaker clip, or an
+    # ``(audio, sample_rate)`` tuple — the same shapes ``speaker_reference`` accepts.
+    #
+    # ``vc_reference`` vs ``speaker_reference``: ``speaker_reference`` is engine-native
+    # cloning at generation time, so the model is conditioned on the reference and
+    # prosody follows it as well as timbre, but only cloning-capable engines support
+    # it. ``vc_reference`` is post-hoc conversion on the waveform: it works with every
+    # engine, but prosody stays the source voice's and only the timbre moves. Prefer
+    # ``speaker_reference`` when the voice supports it.
+    vc_reference: Optional[Any] = None
+
+    # voiceclonnx engine alias used for ``vc_reference`` (e.g. ``"openvoice"``,
+    # ``"knnvc"``, ``"focalcodec"``). ``None`` (the default) selects ``"openvoice"``.
+    # Ignored unless ``vc_reference`` is set.
+    vc_engine: Optional[str] = None
+
     # Engine-specific per-call params (d_factor, p_factor, e_factor, …)
     extra_params: Dict[str, Any] = field(default_factory=dict)
 

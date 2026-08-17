@@ -57,6 +57,9 @@ test = [
     "sentencepiece",
     "ahotts-g2p>=0.1.0",
     "espyak>=0.0.3a1",
+    # the voice-conversion post-stage's end-to-end test runs the real engine;
+    # pure-ONNX with no torch of its own, so it is cheap to have here.
+    "voiceclonnx>=0.0.3a3",
     "orthography2ipa",
     "arbtok",
     "euskaphone",
@@ -287,6 +290,10 @@ cloning = ["soundfile", "scipy"]
 # pure-ONNX, no torch at runtime. off by default (see the super_resolution field
 # block); models fetch from HuggingFace on first use.
 audiosr = ["audiosronnx"]
+# optional post-synthesis universal voice conversion: convert any voice's output to an
+# arbitrary target speaker. pure-ONNX, no torch at runtime. off by default (see the
+# vc_reference field block); models fetch from HuggingFace on first use.
+vc = ["voiceclonnx>=0.0.3a3"]
 # Chatterbox multilingual per-language script transforms. ja/zh below; ko is pure-Python
 # (built in). he/ru degrade gracefully unless `dicta_onnx` / `russian_text_stresser` are
 # also installed (not on clean PyPI, so left out of the extra).
@@ -352,6 +359,8 @@ all = [
     "onnx<1.18",
     # optional post-synthesis audio super-resolution (phoonnx/voice.py).
     "audiosronnx",
+    # optional post-synthesis voice conversion (phoonnx/voice.py).
+    "voiceclonnx>=0.0.3a3",
 ]
 
 [tool.setuptools.dynamic]

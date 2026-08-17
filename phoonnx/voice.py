@@ -6,10 +6,15 @@ all ONNX-specific I/O to an engine adapter (``phoonnx.engines``),
 which means the same TTSVoice class works for VITS or
 any future architecture without code changes here.
 """
+import hashlib
 import json
 import os.path
 import re
+import shutil
+import tempfile
 import wave
+import weakref
+from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union, Dict
@@ -53,6 +58,43 @@ def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunk
     if alphabet == Alphabet.ARPA:
         return [chunk.split() for chunk, _, _ in chunks if chunk.strip()]
     return [[c for c in chunk] for chunk, _, _ in chunks if chunk]
+
+
+def _write_wav(path: str, audio: np.ndarray, sample_rate: int) -> str:
+    """Write mono float32 ``audio`` to ``path`` as 16-bit PCM WAV.
+
+    voiceclonnx is a file-in/file-out API, so the in-memory chunks have to land on
+    disk for the conversion hop.
+    """
+    pcm = np.clip(np.asarray(audio, dtype=np.float32).reshape(-1), -1.0, 1.0)
+    with wave.open(path, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(int(sample_rate))
+        w.writeframes((pcm * 32767.0).astype("<i2").tobytes())
+    return path
+
+
+def _unlink(path: str) -> None:
+    with suppress(OSError):
+        os.unlink(path)
+
+
+class _VoiceConversion:
+    """A loaded voiceclonnx cloner together with the reference WAV it reads.
+
+    The two are one resource. voiceclonnx re-reads the reference file on every
+    ``clone_voice`` call, so the file has to outlive every request still holding
+    this object — and no longer. Tying its lifetime to the object rather than to
+    the voice's cache slot means a later call for a different speaker can replace
+    the cache without pulling the file out from under a synthesis already
+    streaming, and the file still goes away once nobody is converting to it.
+    """
+
+    def __init__(self, cloner, ref_path: str):
+        self.cloner = cloner
+        self.ref_path = ref_path
+        weakref.finalize(self, _unlink, ref_path)
 
 
 @dataclass
@@ -169,6 +211,13 @@ class TTSVoice:
 
     _sr_engine: Any = field(default=None, init=False, repr=False)
     _sr_loaded: bool = field(default=False, init=False, repr=False)
+    # Post-synthesis voice-conversion state (``SynthesisConfig.vc_reference``).
+    # ``_vc_key`` is the (engine, reference content) the cached ``_VoiceConversion``
+    # was built for, so a later call naming a different engine or target speaker —
+    # or the same path holding a different recording — rebuilds instead of silently
+    # reusing the wrong voice.
+    _vc: Optional[_VoiceConversion] = field(default=None, init=False, repr=False)
+    _vc_key: Any = field(default=None, init=False, repr=False)
     # Path to the ONNX model file backing ``session``, kept so a later
     # ``include_alignments=True`` call can locate-and-patch a model that was
     # exported without the alignment output (see ``_ensure_alignment_session``).
@@ -558,6 +607,115 @@ class TTSVoice:
                         f"{in_sr} Hz audio instead")
             return audio, in_sr
 
+    def _load_voice_conversion(
+            self, syn_config: SynthesisConfig) -> Optional[_VoiceConversion]:
+        """
+        Lazily build the ``voiceclonnx`` cloner for ``syn_config.vc_reference``.
+
+        Disabled — ``vc_reference is None``, the default — is a strict no-op:
+        ``voiceclonnx`` is never imported and synthesis is untouched. When enabled,
+        the cloner and its materialized reference WAV are cached as one
+        :class:`_VoiceConversion`, so repeated calls naming the same target speaker
+        do not reload the ONNX sessions. The object is handed to the caller, which
+        holds it for the whole of its synthesis; a later call for a different
+        speaker replaces the cache slot without disturbing it.
+
+        The reference is normalised by
+        :func:`phoonnx.reference_audio.load_reference_audio`, the same guarded
+        loader ``speaker_reference`` uses, so URLs are fetched under its address and
+        size limits and non-WAV clips are decoded rather than handed to voiceclonnx
+        raw. The cache is keyed on the resulting *samples*, not on the path or URL
+        that produced them, because a path is not a stable identity for a
+        recording: a reference rewritten in place under the same name is a
+        different speaker, and serving the previous one would be a wrong answer.
+        The cost of that is reading — and for a URL, fetching — the reference once
+        per synthesis call.
+
+        A missing install raises an ImportError naming the extra. A missing or
+        unreadable reference raises rather than degrading: skipping the conversion
+        would emit the *source* speaker, which is a wrong answer, not a
+        reduced-quality one.
+
+        Returns:
+            The :class:`_VoiceConversion` to convert with, or None when disabled.
+        """
+        ref = syn_config.vc_reference
+        if ref is None:
+            return None
+
+        engine = syn_config.vc_engine or "openvoice"
+        if isinstance(ref, (str, Path)) and not str(ref).lower().startswith(
+                ("http://", "https://")) and not os.path.isfile(str(ref)):
+            raise FileNotFoundError(
+                f"vc_reference points at no readable file: {str(ref)!r}")
+
+        audio, sr = load_reference_audio(ref)
+        key = (engine, hashlib.sha1(audio.tobytes()).hexdigest(), int(sr))
+        if self._vc is not None and self._vc_key == key:
+            return self._vc
+
+        try:
+            from voiceclonnx import VoiceCloner
+        except ImportError as e:
+            raise ImportError(
+                "vc_reference is set but 'voiceclonnx' is not installed; "
+                "install it with `pip install phoonnx[vc]` (or set "
+                "vc_reference=None)") from e
+
+        cloner = VoiceCloner(engine=engine)
+        fd, ref_path = tempfile.mkstemp(prefix="phoonnx_vc_ref_", suffix=".wav")
+        os.close(fd)
+        try:
+            _write_wav(ref_path, audio, sr)
+        except BaseException:
+            _unlink(ref_path)
+            raise
+
+        self._vc = _VoiceConversion(cloner, ref_path)
+        self._vc_key = key
+        LOG.info(f"Voice conversion enabled (engine={engine}); output will be "
+                 f"converted to the reference speaker at {cloner.sample_rate} Hz")
+        return self._vc
+
+    @staticmethod
+    def _maybe_convert(audio: np.ndarray, vc: Optional[_VoiceConversion],
+                       in_sr: int) -> Tuple[np.ndarray, int]:
+        """
+        Convert ``audio`` to the target speaker, if a conversion is loaded.
+
+        Returns ``(audio, sample_rate)`` — untouched when ``vc`` is None, and the
+        converted audio at the VC engine's own rate otherwise, so the caller always
+        emits a sample rate that matches the samples it got. Nothing is resampled on
+        the way in: voiceclonnx accepts any input rate and resamples internally, so
+        the chunk reaches it at the voice's native rate.
+
+        Conversion is applied per chunk, not per utterance: every voiceclonnx engine
+        is stateless across calls and conditions only on the reference, so a
+        per-sentence application is equivalent to a whole-utterance one while keeping
+        synthesis streaming. Sentences shorter than roughly 0.3 s carry too little
+        content for the content encoders and pass through unconverted rather than
+        turning into artefacts.
+
+        Unlike super-resolution, a runtime failure is not swallowed: returning the
+        source speaker after the caller asked for a different one is a wrong answer,
+        not a degraded one.
+        """
+        if vc is None:
+            return audio, in_sr
+        if audio.size < int(0.3 * in_sr):
+            LOG.debug("chunk too short for voice conversion; passing through")
+            return audio, in_sr
+
+        tmpdir = tempfile.mkdtemp(prefix="phoonnx_vc_")
+        try:
+            src = os.path.join(tmpdir, "src.wav")
+            dst = os.path.join(tmpdir, "out.wav")
+            _write_wav(src, audio, in_sr)
+            vc.cloner.clone_voice(src, vc.ref_path, dst)
+            return load_reference_audio(dst)
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
     def synthesize(
             self,
             text: str,
@@ -592,6 +750,12 @@ class TTSVoice:
         # optional post-synthesis super-resolution; disabled (the default) means the
         # loop below is bit-for-bit the native path and audiosronnx is not imported
         sr_engine = self._load_super_resolution(syn_config)
+
+        # optional post-synthesis voice conversion; disabled (the default) means the
+        # loop below is bit-for-bit the native path and voiceclonnx is not imported.
+        # VC runs before SR so the upscaler sees the final timbre and the 48 kHz rate
+        # is what actually reaches the caller.
+        vc = self._load_voice_conversion(syn_config)
 
         # Text preprocessing — engine-agnostic, applied to the whole text before
         # any conversion: user pronunciation overrides.
@@ -670,10 +834,11 @@ class TTSVoice:
                 _idx2char, _blank_id, _bos_id, _eos_id,
             ) if phoneme_id_samples is not None else None
 
-            # SR changes the rate of the samples, so the chunk must report the
-            # rate that came back with them, not the voice's native one
-            audio, chunk_sr = self._maybe_upscale(
-                audio, sr_engine, self.config.sample_rate)
+            # VC and SR each change the rate of the samples, so the chunk must
+            # report the rate that came back with them, not the voice's native one
+            audio, chunk_sr = self._maybe_convert(
+                audio, vc, self.config.sample_rate)
+            audio, chunk_sr = self._maybe_upscale(audio, sr_engine, chunk_sr)
 
             yield AudioChunk(
                 sample_rate=chunk_sr,
