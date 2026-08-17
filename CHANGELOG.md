@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.90.0a1](https://github.com/TigreGotico/phoonnx/tree/1.90.0a1) (2026-08-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.89.0a1...1.90.0a1)
+
+**Merged pull requests:**
+
+- feat: universal voice conversion post-stage \(voiceclonnx\) [\#370](https://github.com/TigreGotico/phoonnx/pull/370) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.89.0a1](https://github.com/TigreGotico/phoonnx/tree/1.89.0a1) (2026-08-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.88.0a1...1.89.0a1)
+
 ## [1.88.0a1](https://github.com/TigreGotico/phoonnx/tree/1.88.0a1) (2026-08-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.87.0a1...1.88.0a1)
