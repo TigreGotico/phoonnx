@@ -368,3 +368,120 @@ class TestVoiceResolvedWithoutLoading(unittest.TestCase):
                 self.assertIsNotNone(plugin.voice_info)
                 self.assertEqual(plugin.voice_cache.voices, {},
                                  "boot must not load (download) the model")
+
+
+class TestLangDefaultVoiceOverrides(unittest.TestCase):
+    """``lang2voice`` config and ``PHOONNX_DEFAULT_VOICE_<LANG>`` env vars pick
+    the per-language default voice, so one container serves every language."""
+
+    def test_lang2voice_selects_configured_voice(self):
+        chosen = _FakeVoiceInfo("proxectonos/celtia", lang="gl-ES")
+        other = _FakeVoiceInfo("some/other-voice", lang="gl-ES")
+        plugin, _ = _make_plugin(
+            config={"lang": "gl-ES", "lang2voice": {"gl": "proxectonos/celtia"}},
+            voices=(other, chosen))
+        self.assertEqual(plugin.get_default_voice("gl-ES").voice_id,
+                         "proxectonos/celtia")
+
+    def test_full_tag_beats_primary_subtag(self):
+        br = _FakeVoiceInfo("voice/br", lang="pt-BR")
+        pt = _FakeVoiceInfo("voice/pt", lang="pt-PT")
+        plugin, _ = _make_plugin(
+            config={"lang": "pt-PT",
+                    "lang2voice": {"pt-br": "voice/br", "pt": "voice/pt"}},
+            voices=(br, pt))
+        self.assertEqual(plugin.get_default_voice("pt-BR").voice_id, "voice/br")
+        self.assertEqual(plugin.get_default_voice("pt-PT").voice_id, "voice/pt")
+
+    def test_env_var_sets_default_voice(self):
+        chosen = _FakeVoiceInfo("env/voice", lang="ru-RU")
+        other = _FakeVoiceInfo("some/other", lang="ru-RU")
+        with patch.dict("os.environ", {"PHOONNX_DEFAULT_VOICE_RU": "env/voice"}):
+            plugin, _ = _make_plugin(config={"lang": "ru-RU"},
+                                     voices=(other, chosen))
+            self.assertEqual(plugin.get_default_voice("ru-RU").voice_id,
+                             "env/voice")
+
+    def test_env_var_full_bcp47_suffix(self):
+        br = _FakeVoiceInfo("env/br", lang="pt-BR")
+        other = _FakeVoiceInfo("some/other", lang="pt-BR")
+        with patch.dict("os.environ", {"PHOONNX_DEFAULT_VOICE_PT_BR": "env/br"}):
+            plugin, _ = _make_plugin(config={"lang": "pt-BR"},
+                                     voices=(other, br))
+            self.assertEqual(plugin.get_default_voice("pt-BR").voice_id, "env/br")
+
+    def test_config_beats_env(self):
+        cfg = _FakeVoiceInfo("cfg/voice", lang="gl-ES")
+        env = _FakeVoiceInfo("env/voice", lang="gl-ES")
+        with patch.dict("os.environ", {"PHOONNX_DEFAULT_VOICE_GL": "env/voice"}):
+            # env's voice is registered first (index-default voices[0]) and
+            # cfg's second, so a resolver that silently fell through to the
+            # index default instead of honouring lang2voice/env would return
+            # "env/voice" here too - it must not.
+            plugin, _ = _make_plugin(
+                config={"lang": "gl-ES", "lang2voice": {"gl": "cfg/voice"}},
+                voices=(env, cfg))
+            self.assertEqual(plugin.get_default_voice("gl-ES").voice_id,
+                             "cfg/voice")
+
+    def test_unset_lang_falls_back_to_voice_index(self):
+        first = _FakeVoiceInfo("index/first", lang="en-US")
+        plugin, _ = _make_plugin(config={"lang": "en-US"}, voices=(first,))
+        self.assertEqual(plugin.get_default_voice("en-US").voice_id,
+                         "index/first")
+
+    def test_env_ignores_unrelated_vars(self):
+        with patch.dict("os.environ", {"PHOONNX_DEFAULT_VOICE_EU": "eu/voice",
+                                       "UNRELATED_VAR": "nope"}):
+            langs = opm.PhoonnxTTSPlugin.env_lang_voices()
+        self.assertEqual(langs.get("eu"), "eu/voice")
+        self.assertNotIn("unrelated-var", langs)
+
+    def test_full_tag_config_key_matches_a_bare_request(self):
+        # an admin who wrote the config key as the full tag ("gl-ES") must
+        # still be matched by a caller that only ever sends the bare
+        # primary subtag ("gl") - normalize_lang folds both to one canonical
+        # form for a language whose primary subtag has a single default region
+        chosen = _FakeVoiceInfo("proxectonos/celtia", lang="gl-ES")
+        other = _FakeVoiceInfo("some/other", lang="gl-ES")
+        plugin, _ = _make_plugin(
+            config={"lang": "gl-ES", "lang2voice": {"gl-ES": "proxectonos/celtia"}},
+            voices=(other, chosen))
+        self.assertEqual(plugin.get_default_voice("gl").voice_id,
+                         "proxectonos/celtia")
+
+    def test_underscore_config_key_matches_a_dashed_request(self):
+        chosen = _FakeVoiceInfo("voice/br", lang="pt-BR")
+        other = _FakeVoiceInfo("some/other", lang="pt-BR")
+        plugin, _ = _make_plugin(
+            config={"lang": "pt-BR", "lang2voice": {"pt_BR": "voice/br"}},
+            voices=(other, chosen))
+        self.assertEqual(plugin.get_default_voice("pt-BR").voice_id, "voice/br")
+
+    def test_underscore_request_tag_still_matches(self):
+        # a caller using locale-style "pt_BR" (underscore) rather than BCP-47
+        # "pt-BR" must not silently disable the whole feature
+        chosen = _FakeVoiceInfo("voice/br", lang="pt-BR")
+        other = _FakeVoiceInfo("some/other", lang="pt-BR")
+        plugin, _ = _make_plugin(
+            config={"lang": "pt-BR", "lang2voice": {"pt-br": "voice/br"}},
+            voices=(other, chosen))
+        self.assertEqual(plugin.get_default_voice("pt_BR").voice_id, "voice/br")
+
+    def test_unknown_configured_voice_falls_back_instead_of_raising(self):
+        # a typo'd or since-removed lang2voice id is a deployment mistake, not
+        # a reason to refuse to serve the language - and must not abort
+        # plugin construction, which calls get_default_voice at boot
+        fallback = _FakeVoiceInfo("index/fallback", lang="gl-ES")
+        plugin, _ = _make_plugin(
+            config={"lang": "gl-ES", "lang2voice": {"gl": "does/not-exist"}},
+            voices=(fallback,))
+        self.assertEqual(plugin.get_default_voice("gl-ES").voice_id,
+                         "index/fallback")
+
+    def test_unknown_configured_voice_via_env_falls_back_too(self):
+        fallback = _FakeVoiceInfo("index/fallback", lang="ru-RU")
+        with patch.dict("os.environ", {"PHOONNX_DEFAULT_VOICE_RU": "does/not-exist"}):
+            plugin, _ = _make_plugin(config={"lang": "ru-RU"}, voices=(fallback,))
+            self.assertEqual(plugin.get_default_voice("ru-RU").voice_id,
+                             "index/fallback")
