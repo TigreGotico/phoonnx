@@ -60,6 +60,7 @@ tensorboard --logdir <default-root-dir>/lightning_logs
 | `speedyspeech` | ForwardTTS / SpeedySpeech | Same engine as `fastpitch`, no pitch |
 | `mixer` / `mixertts` | Mixer-TTS | Two-stage; [guide](engines/mixertts.md) |
 | `zipvoice` | ZipVoice (flow-matching, in-context cloning) | [guide](engines/zipvoice.md) |
+| `supertonic` | SuperTonic (three-stage: autoencoder + flow-matching + duration) | [guide](engines/supertonic.md) |
 | `optispeech` | OptiSpeech (lightweight end-to-end, S4D attention) | Install `phoonnx[train,train-optispeech]` |
 | `yourtts` | YourTTS (VITS + d-vector cloning) | See [Cloning](../cloning.md) |
 | `styletts2` | StyleTTS2 / Kokoro | See [StyleTTS2](#styletts2-engine---engine-styletts2) below |
