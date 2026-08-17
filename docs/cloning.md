@@ -18,6 +18,10 @@ for chunk in voice.synthesize(
     ...  # chunk.audio_float_array — see Usage for the full AudioChunk API
 ```
 
+Cloning happens **during** generation. If your voice is not a cloning engine, see
+[Voice conversion](voice_conversion.md) — it converts the waveform **after**
+generation and works with every engine.
+
 ## Two cloning paradigms
 
 Cloning engines fall into two families, which differ in what the reference clip is
