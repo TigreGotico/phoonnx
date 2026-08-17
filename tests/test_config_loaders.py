@@ -7,7 +7,7 @@ from phoonnx.config import Alphabet, Engine, PhonemeType, VoiceConfig
 from phoonnx.config_loaders import (LOADERS, CanonicalLoader, ChatterboxLoader, CoquiLoader,
                                     LoadedFields, LoadRequest, Mimic3Loader, PhoonnxLoader,
                                     PiperLoader, RawTextLoader, TokensTxtLoader,
-                                    TransformersLoader, resolve_overrides)
+                                    TransformersLoader, VoskLoader, resolve_overrides)
 from phoonnx.util import normalize_lang
 
 
@@ -33,6 +33,28 @@ class TestRegistryOrder(unittest.TestCase):
 
     def test_phoonnx_is_probed_before_piper(self):
         self.assertLess(_index(PhoonnxLoader), _index(PiperLoader))
+
+    def test_vosk_is_probed_before_piper(self):
+        self.assertLess(_index(VoskLoader), _index(PiperLoader))
+
+    def test_a_vosk_config_is_never_claimed_by_the_piper_loader(self):
+        # a real alphacep vosk-tts config.json is piper-shaped (espeak
+        # stanza, list-valued phoneme_id_map) but - unlike a real piper
+        # config - carries no phoneme_type; PiperLoader already rejects that,
+        # so it never reaches PiperLoader regardless of probing order
+        cfg = {"espeak": {"voice": "ru"},
+               "phoneme_id_map": {"a0": [10], "sch": [20], "_": [0]}}
+        self.assertFalse(PiperLoader.detect(LoadRequest(config=dict(cfg))))
+        self.assertEqual(VoiceConfig.from_dict(dict(cfg)).engine, Engine.VOSK)
+
+    def test_a_piper_config_with_the_vosk_inventory_is_not_stolen(self):
+        # the romanised-Russian inventory alone is not the signature: a real
+        # piper config (declares phoneme_type) that happens to also define
+        # "a0"/"sch" phonemes must still load as piper, not vosk
+        cfg = {"phoneme_type": "espeak", "espeak": {"voice": "ru"},
+               "phoneme_id_map": {"a0": [10], "sch": [20], "_": [0]}}
+        self.assertFalse(VoskLoader.detect(LoadRequest(config=dict(cfg))))
+        self.assertEqual(VoiceConfig.from_dict(dict(cfg)).engine, Engine.PIPER)
 
     def test_companion_file_loaders_are_probed_last(self):
         shape = max(_index(c) for c in (PhoonnxLoader, PiperLoader, Mimic3Loader, CoquiLoader))
@@ -183,6 +205,48 @@ class TestRawTextLoaderDefaults(unittest.TestCase):
     def test_a_config_sample_rate_is_never_overwritten(self):
         voice = VoiceConfig.from_dict({"engine": "llasa", "audio": {"sample_rate": 48000}})
         self.assertEqual(voice.sample_rate, 48000)
+
+
+def _vosk_cfg():
+    # a real vosk config: piper-shaped, but no phoneme_type of its own
+    return {"espeak": {"voice": "ru"},
+            "phoneme_id_map": {"a0": [10], "a1": [11], "bj": [12], "sch": [20], "_": [0]}}
+
+
+class TestVoskLoader(unittest.TestCase):
+    def test_detects_by_phoneme_inventory(self):
+        self.assertTrue(VoskLoader.detect(LoadRequest(config=_vosk_cfg())))
+
+    def test_rejects_configs_without_the_vosk_phoneme_set(self):
+        cfg = {"phoneme_id_map": {"a": [1], "_": [0]}}
+        self.assertFalse(VoskLoader.detect(LoadRequest(config=cfg)))
+
+    def test_rejects_configs_that_declare_a_phoneme_type(self):
+        # the inventory alone is not the signature - a real piper config that
+        # happens to also define "a0"/"sch" phonemes must not be stolen
+        cfg = dict(_vosk_cfg(), phoneme_type="espeak")
+        self.assertFalse(VoskLoader.detect(LoadRequest(config=cfg)))
+
+    def test_an_explicit_non_vosk_engine_beats_shape_sniffing(self):
+        cfg = dict(_vosk_cfg(), engine="piper")
+        self.assertFalse(VoskLoader.detect(LoadRequest(config=cfg)))
+
+    def test_load_defaults_lang_to_russian(self):
+        voice = VoiceConfig.from_dict(_vosk_cfg())
+        self.assertEqual(voice.engine, Engine.VOSK)
+        self.assertEqual(voice.phoneme_type, PhonemeType.VOSK)
+        self.assertEqual(voice.alphabet, Alphabet.VOSK)
+        self.assertEqual(voice.lang_code, normalize_lang("ru"))
+
+    def test_a_caller_lang_code_overrides_the_russian_default(self):
+        voice = VoiceConfig.from_dict(_vosk_cfg(), lang_code="ru-RU")
+        self.assertEqual(voice.lang_code, normalize_lang("ru-RU"))
+
+    def test_tokenizer_does_not_fold_compound_phonemes(self):
+        # the phonemizer already emits complete tokens; folding would merge
+        # unrelated neighbours into a spurious compound key
+        voice = VoiceConfig.from_dict(_vosk_cfg())
+        self.assertFalse(voice.tokenizer.fold_compounds)
 
 
 if __name__ == "__main__":

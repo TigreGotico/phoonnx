@@ -572,6 +572,42 @@ class TestDownloadAll(HubTestCase):
                               "tokenizer_config.json"}, pulled)
 
 
+class TestVoskDictionary(HubTestCase):
+    """The vosk pronunciation dictionary is an optional, large (tens of MB)
+    artifact: a failed fetch must degrade to rule-based g2p, not fail voice
+    construction."""
+
+    def test_dictionary_is_fetched_alongside_the_model(self):
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+        self.hub.stage(f"{HUB}/dictionary", b"word phonemes\n")
+        info = self.make_info(dictionary_url=f"{HUB}/dictionary")
+        info.download_all()
+        pulled = {name for _, name, _ in self.hub.downloads}
+        self.assertIn("dictionary", pulled)
+
+    def test_dictionary_becomes_the_phonemizer_model(self):
+        self.hub.stage(f"{HUB}/dictionary", b"word phonemes\n")
+        info = self.make_info(dictionary_url=f"{HUB}/dictionary")
+        self.assertTrue(info.config.phonemizer_model)
+        self.assertTrue(os.path.exists(info.config.phonemizer_model))
+
+    def test_a_failed_fetch_degrades_instead_of_raising(self):
+        self.hub.errors["dictionary"] = ConnectionError("offline")
+        info = self.make_info(dictionary_url=f"{HUB}/dictionary")
+        with patch("phoonnx.model_manager.LOG") as mock_log:
+            self.assertIsNone(info.download_dictionary())
+            self.assertTrue(mock_log.warning.called)
+        # the config still builds - no phonemizer_model, rule-based g2p only
+        self.assertFalse(info.config.phonemizer_model)
+
+    def test_download_all_does_not_raise_when_the_dictionary_is_unreachable(self):
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+        self.hub.errors["dictionary"] = ConnectionError("offline")
+        info = self.make_info(dictionary_url=f"{HUB}/dictionary")
+        model_path = info.download_all()
+        self.assertEqual(model_path.read_bytes(), b"onnxdata")
+
+
 class TestLoadProviders(HubTestCase):
     @patch("phoonnx.model_manager.VoiceConfig")
     @patch("phoonnx.model_manager.make_session")

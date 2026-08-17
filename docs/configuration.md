@@ -171,6 +171,7 @@ to a dedicated adapter. The adapter registry itself is described in [Engines](en
 | `shami` | Levantine Arabic / English (HamsVITS) | [Shami](training/engines/shami.md) |
 | `f5tts` | DiT flow-matching (F5-TTS / Habibi) | [F5-TTS](training/engines/f5tts.md) |
 | `chatterbox` | Autoregressive codec-LM cloning | [Chatterbox](training/engines/chatterbox.md) |
+| `vosk` | VITS (shared adapter), vosk-tts Russian front-end | [Engines](engines.md) |
 | `supertonic` | Flow-matching, fixed per-speaker style | [Engines](engines.md) |
 | `neutts` | Autoregressive NeuCodec LM, preset cloning @24 kHz | [Cloning](cloning.md) |
 | `pockettts` | Flow-matching codec LM with explicit stream state, raw-text (no phonemizer) | [Pocket TTS](pockettts.md) |
