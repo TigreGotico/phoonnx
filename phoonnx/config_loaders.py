@@ -17,6 +17,13 @@ mirrors the historical detection ladder:
 * ``phoonnx`` precedes ``piper`` because a native config that phonemizes with
   espeak carries a piper-shaped ``phoneme_id_map`` and would otherwise be
   claimed by the piper loader;
+* ``vosk`` precedes ``piper``, but for a different reason than ``phoonnx``
+  does: :class:`PiperLoader` already rejects a config with no ``phoneme_type``
+  (unless it carries ``piper_version``), and a genuine vosk config has
+  neither. Ordering only guards the engine-declared branch — a config naming
+  ``engine: vosk`` that also happens to carry ``piper_version`` — from being
+  claimed by :class:`PiperLoader`'s unconditional ``piper_version`` check
+  first;
 * ``vocab`` (transformers) and ``tokens_txt`` (sherpa) come last because they
   are decided by what the caller passed alongside the config, not by the config
   itself, and any real config shape should win over them.
@@ -250,6 +257,70 @@ class PhoonnxLoader(ConfigLoader):
             alphabet=alphabet,
             add_diacritics=inference.get("add_diacritics", True),
             diacritizer_model=inference.get("diacritizer_model", None),
+        )
+
+
+class VoskLoader(ConfigLoader):
+    """alphacep vosk-tts voices: piper-shaped VITS with a dictionary/rule
+    Russian g2p.
+
+    Indexed voices name ``engine: vosk``, resolved by the engine-declared
+    branch below; this loader also recognises a *local* vosk model directory
+    with no declared engine, whose ``config.json`` is piper-shaped
+    (list-valued ``phoneme_id_map``, an ``espeak`` stanza) but — unlike a real
+    piper config — carries no ``phoneme_type``. :class:`PiperLoader` already
+    rejects a config with no ``phoneme_type`` (its own ``piper_version`` fast
+    path aside), so the missing key is what keeps a genuine vosk config out of
+    :class:`PiperLoader`'s hands regardless of probing order; the
+    romanised-Russian phoneme inventory (``a0``/``a1``/``bj``/``sch`` …) is
+    the second signal that keeps a piper-shaped config with some *other*,
+    unrelated vocabulary from being mistaken for vosk.
+    """
+
+    @classmethod
+    def detect(cls, request: LoadRequest) -> bool:
+        config = request.config
+        # an explicitly declared engine is authoritative in both directions:
+        # a config naming vosk is trusted even without the tell-tale
+        # inventory, and one naming anything else is never claimed by it.
+        engine = config.get("engine")
+        if engine in ("vosk", Engine.VOSK, Engine.VOSK.value):
+            pid = config.get("phoneme_id_map")
+            return isinstance(pid, dict) and bool(pid)
+        if engine:
+            return False
+        pid = config.get("phoneme_id_map")
+        if not isinstance(pid, dict) or not pid:
+            return False
+        # a real vosk config carries no phoneme_type of its own - piper does.
+        # Without this, a piper (or piper-shaped) config that merely happens
+        # to also define "a0"/"sch" phonemes (a custom vocabulary, a fixture)
+        # would be stolen from PiperLoader by the inventory check alone.
+        if config.get("phoneme_type"):
+            return False
+        return "a0" in pid and "sch" in pid
+
+    @classmethod
+    def load(cls, request: LoadRequest) -> LoadedFields:
+        config = request.config
+
+        # fixed special tokens (ids 0/1/2 in every vosk phoneme_id_map)
+        config["pad"] = DEFAULT_PAD_TOKEN
+        config["blank"] = DEFAULT_BLANK_TOKEN
+        config["bos"] = DEFAULT_BOS_TOKEN
+        config["eos"] = DEFAULT_EOS_TOKEN
+
+        # the config's own phoneme_type/espeak stanza describes how the
+        # dictionary/rule g2p was *derived*, not how this loader tokenizes;
+        # the vocabulary is the fixed romanised-Russian phoneme set, so both
+        # are pinned rather than inherited from the config or the caller.
+        return LoadedFields(
+            tokenizer=TTSTokenizer.from_vosk_config(config),
+            engine=Engine.VOSK,
+            lang_code=request.lang_code or config.get("lang_code") or "ru",
+            phoneme_type=PhonemeType.VOSK,
+            alphabet=Alphabet.VOSK,
+            pinned=frozenset({"phoneme_type", "alphabet"}),
         )
 
 
@@ -544,6 +615,7 @@ LOADERS: List[Type[ConfigLoader]] = [
     _raw_text_loader(Engine.QWEN3TTS, 24000),
     _raw_text_loader(Engine.OUTETTS, 24000),
     PhoonnxLoader,
+    VoskLoader,
     PiperLoader,
     Mimic3Loader,
     CoquiLoader,

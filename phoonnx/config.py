@@ -45,6 +45,7 @@ class Engine(str, Enum):
     ORPHEUS = "orpheus"  # Orpheus (Canopy Labs): Llama codec-LM + SNAC decoder, emotive tags
     MAGPIE = "magpie"  # NVIDIA Magpie-TTS: encoder-decoder codec LM, 8 codebooks, 12 languages
     MOSSTTS = "mosstts"  # MOSS-TTS-Nano: autoregressive RVQ-16 codec-LM, zero-shot cloning @48kHz
+    VOSK = "vosk"  # alphacep vosk-tts: VITS + dictionary/rule Russian g2p
 
 
 # Alphabet and PhonemeType are wire-format enums shared with scriptconv;
@@ -213,6 +214,12 @@ class VoiceConfig:
         return PiperLoader.detect(LoadRequest(config=config))
 
     @staticmethod
+    def is_vosk(config: dict[str, Any]) -> bool:
+        """Whether *config* is an alphacep vosk-tts voice."""
+        from phoonnx.config_loaders import LoadRequest, VoskLoader
+        return VoskLoader.detect(LoadRequest(config=config))
+
+    @staticmethod
     def is_coqui_vits(config: dict[str, Any]) -> bool:
         """Whether *config* is a Coqui VITS grapheme voice."""
         from phoonnx.config_loaders import CoquiLoader, LoadRequest
@@ -362,6 +369,7 @@ class VoiceConfig:
             "use_eos_bos": tok.use_eos_bos,
             "blank_at_start": tok.blank_at_start,
             "blank_at_end": tok.blank_at_end,
+            "fold_compounds": tok.fold_compounds,
             "word_sep_token": self.word_sep_token,
             "blank_between": self.blank_between.value if self.blank_between else "tokens_and_words",
             "engine_params": dict(self.engine_params or {}),

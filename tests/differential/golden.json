@@ -17686,5 +17686,1459 @@
    },
    "word_sep_token": " "
   }
+ },
+ "vosk-explicit-engine|0": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "bos": "^",
+   "engine": "vosk",
+   "eos": "$",
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "p": [
+     1
+    ]
+   }
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "vosk",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "vosk",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "vosk",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "p": 1
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk-explicit-engine|1": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "bos": "^",
+   "engine": "vosk",
+   "eos": "$",
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "p": [
+     1
+    ]
+   }
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "vosk",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "vosk",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "xx-US",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "vosk",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "p": 1
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk-explicit-engine|2": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "bos": "^",
+   "engine": "vosk",
+   "eos": "$",
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "p": [
+     1
+    ]
+   }
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "vosk",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "vosk",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "vosk",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "p": 1
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk-explicit-engine|3": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "bos": "^",
+   "engine": "vosk",
+   "eos": "$",
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "p": [
+     1
+    ]
+   }
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "vosk",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "vosk",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "vosk",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "p": 1
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk-explicit-engine|4": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "bos": "^",
+   "engine": "vosk",
+   "eos": "$",
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "p": [
+     1
+    ]
+   }
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "vosk",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "coqui",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "vosk",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "p": 1
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk-explicit-engine|5": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "bos": "^",
+   "engine": "vosk",
+   "eos": "$",
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "p": [
+     1
+    ]
+   }
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "vosk",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "matcha",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "xx-US",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "vosk",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "p": 1
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk-explicit-engine|6": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "bos": "^",
+   "engine": "vosk",
+   "eos": "$",
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "p": [
+     1
+    ]
+   }
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "vosk",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "vosk",
+   "engine_params": {
+    "x": 1
+   },
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {
+    "pt": "<pt>"
+   },
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "vosk",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "p": 1
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk-lookalike-piper|0": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "blank_word": " ",
+   "bos": "^",
+   "eos": "$",
+   "espeak": {
+    "voice": "ru"
+   },
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "a0": [
+     1
+    ],
+    "sch": [
+     2
+    ]
+   },
+   "phoneme_type": "espeak"
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "ipa",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "piper",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "espeak",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a0": 1,
+     "sch": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk-lookalike-piper|1": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "blank_word": " ",
+   "bos": "^",
+   "eos": "$",
+   "espeak": {
+    "voice": "ru"
+   },
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "a0": [
+     1
+    ],
+    "sch": [
+     2
+    ]
+   },
+   "phoneme_type": "espeak"
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "ipa",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "piper",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "xx-US",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "espeak",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a0": 1,
+     "sch": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk-lookalike-piper|2": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "blank_word": " ",
+   "bos": "^",
+   "eos": "$",
+   "espeak": {
+    "voice": "ru"
+   },
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "a0": [
+     1
+    ],
+    "sch": [
+     2
+    ]
+   },
+   "phoneme_type": "espeak"
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "ipa",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "piper",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "gruut",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a0": 1,
+     "sch": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk-lookalike-piper|3": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "blank_word": " ",
+   "bos": "^",
+   "eos": "$",
+   "espeak": {
+    "voice": "ru"
+   },
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "a0": [
+     1
+    ],
+    "sch": [
+     2
+    ]
+   },
+   "phoneme_type": "espeak"
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "arpa",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "piper",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "espeak",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a0": 1,
+     "sch": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk-lookalike-piper|4": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "blank_word": " ",
+   "bos": "^",
+   "eos": "$",
+   "espeak": {
+    "voice": "ru"
+   },
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "a0": [
+     1
+    ],
+    "sch": [
+     2
+    ]
+   },
+   "phoneme_type": "espeak"
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "ipa",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "coqui",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "espeak",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a0": 1,
+     "sch": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk-lookalike-piper|5": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "blank_word": " ",
+   "bos": "^",
+   "eos": "$",
+   "espeak": {
+    "voice": "ru"
+   },
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "a0": [
+     1
+    ],
+    "sch": [
+     2
+    ]
+   },
+   "phoneme_type": "espeak"
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "ipa",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "matcha",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "xx-US",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "espeak",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a0": 1,
+     "sch": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk-lookalike-piper|6": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "blank_word": " ",
+   "bos": "^",
+   "eos": "$",
+   "espeak": {
+    "voice": "ru"
+   },
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "a0": [
+     1
+    ],
+    "sch": [
+     2
+    ]
+   },
+   "phoneme_type": "espeak"
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "ipa",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "piper",
+   "engine_params": {
+    "x": 1
+   },
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {
+    "pt": "<pt>"
+   },
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "espeak",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a0": 1,
+     "sch": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk|0": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "bos": "^",
+   "eos": "$",
+   "espeak": {
+    "voice": "ru"
+   },
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "a0": [
+     1
+    ],
+    "sch": [
+     2
+    ]
+   }
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "vosk",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "vosk",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "vosk",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a0": 1,
+     "sch": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk|1": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "bos": "^",
+   "eos": "$",
+   "espeak": {
+    "voice": "ru"
+   },
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "a0": [
+     1
+    ],
+    "sch": [
+     2
+    ]
+   }
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "vosk",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "vosk",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "xx-US",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "vosk",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a0": 1,
+     "sch": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk|2": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "bos": "^",
+   "eos": "$",
+   "espeak": {
+    "voice": "ru"
+   },
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "a0": [
+     1
+    ],
+    "sch": [
+     2
+    ]
+   }
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "vosk",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "vosk",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "vosk",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a0": 1,
+     "sch": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk|3": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "bos": "^",
+   "eos": "$",
+   "espeak": {
+    "voice": "ru"
+   },
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "a0": [
+     1
+    ],
+    "sch": [
+     2
+    ]
+   }
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "vosk",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "vosk",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "vosk",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a0": 1,
+     "sch": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk|4": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "bos": "^",
+   "eos": "$",
+   "espeak": {
+    "voice": "ru"
+   },
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "a0": [
+     1
+    ],
+    "sch": [
+     2
+    ]
+   }
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "vosk",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "coqui",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "vosk",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a0": 1,
+     "sch": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk|5": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "bos": "^",
+   "eos": "$",
+   "espeak": {
+    "voice": "ru"
+   },
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "a0": [
+     1
+    ],
+    "sch": [
+     2
+    ]
+   }
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "vosk",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "matcha",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "xx-US",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "vosk",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a0": 1,
+     "sch": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
+ },
+ "vosk|6": {
+  "config_after": {
+   "audio": {
+    "sample_rate": 22050
+   },
+   "blank": "_",
+   "bos": "^",
+   "eos": "$",
+   "espeak": {
+    "voice": "ru"
+   },
+   "pad": "_",
+   "phoneme_id_map": {
+    "_": [
+     0
+    ],
+    "a0": [
+     1
+    ],
+    "sch": [
+     2
+    ]
+   }
+  },
+  "voice_config": {
+   "add_diacritics": false,
+   "alphabet": "vosk",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": null,
+   "engine": "vosk",
+   "engine_params": {
+    "x": 1
+   },
+   "eos_token": "$",
+   "hop_length": 256,
+   "lang_code": "ru",
+   "lang_id_map": {},
+   "lang_tokens": {
+    "pt": "<pt>"
+   },
+   "length_scale": 1.0,
+   "noise_scale": 0.667,
+   "noise_w_scale": 0.8,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "vosk",
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a0": 1,
+     "sch": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
  }
 }

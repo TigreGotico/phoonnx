@@ -67,6 +67,22 @@ CANONICAL = {"engine": "matcha", "phoneme_type": "gruut", "alphabet": "ipa",
 CANONICAL_BARE = {"phoneme_id_map": {"a": 1, "_": 0}}
 CANONICAL_BAD_ALPHABET = {"engine": "matcha", "alphabet": "not-an-alphabet",
                           "phoneme_id_map": {"a": 1, "_": 0}}
+# alphacep vosk-tts: piper-shaped, but - unlike a real piper config - carries
+# no phoneme_type of its own; that absence (which PiperLoader's own detect()
+# already requires) plus the romanised-Russian phoneme inventory ("a0",
+# "sch") is what routes it to VoskLoader
+VOSK = {"espeak": {"voice": "ru"},
+        "phoneme_id_map": {"a0": [1], "sch": [2], "_": [0]},
+        "audio": {"sample_rate": 22050}}
+# a real piper config that happens to define the same phonemes: the inventory
+# alone is not the signature, a declared phoneme_type keeps it as piper
+VOSK_LOOKALIKE_PIPER = {"phoneme_type": "espeak", "espeak": {"voice": "ru"},
+                        "phoneme_id_map": {"a0": [1], "sch": [2], "_": [0]},
+                        "audio": {"sample_rate": 22050}}
+# an explicitly named vosk engine without the tell-tale inventory: the
+# declared name must still win over the shape-sniffer
+VOSK_EXPLICIT_ENGINE = {"engine": "vosk", "phoneme_id_map": {"p": [1], "_": [0]},
+                        "audio": {"sample_rate": 22050}}
 
 # (engine name, its codec's sample rate); the loaders differ in nothing else
 CODEC_ENGINES = [("llasa", 16000), ("neutts", 24000), ("orpheus", 24000),
@@ -104,6 +120,9 @@ def build(tmpdir: str) -> List[Tuple[str, Dict[str, Any], Dict[str, Any]]]:
         ("canonical", CANONICAL, {}),
         ("canonical-bare", CANONICAL_BARE, {}),
         ("canonical-bad-alphabet", CANONICAL_BAD_ALPHABET, {}),
+        ("vosk", VOSK, {}),
+        ("vosk-lookalike-piper", VOSK_LOOKALIKE_PIPER, {}),
+        ("vosk-explicit-engine", VOSK_EXPLICIT_ENGINE, {}),
         ("transformers", {"num_symbols": 5}, {"vocab": {"a": 1, "b": 2, "_": 0}}),
         ("transformers-tokcfg", {"num_symbols": 5},
          {"vocab": {"a": 1, "_": 0},

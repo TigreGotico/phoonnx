@@ -496,6 +496,11 @@ class TTSTokenizer:
     use_eos_bos: bool
     blank_at_end: bool
     blank_at_start: bool
+    fold_compounds: bool = True
+    """Greedily merge adjacent characters into multi-char vocabulary keys
+    (mimic3 diphthongs). Must be ``False`` when the input is already a list of
+    complete phoneme tokens (e.g. vosk), where merging would corrupt genuine
+    consonant clusters like ``s h`` -> ``sh``."""
     not_found_characters: Set[str] = field(default_factory=set)
 
     @property
@@ -543,7 +548,7 @@ class TTSTokenizer:
         # first pre-process phoneme_map to check for dipthongs having their own phoneme_id
         # common in mimic3 models
         compound_toks = sorted((k for k in self.vocabulary.char2idx
-                                if len(k) > 1), key=len, reverse=True)
+                                if len(k) > 1), key=len, reverse=True) if self.fold_compounds else []
 
         token_ids: List[Optional[int]] = []
 
@@ -684,9 +689,10 @@ class TTSTokenizer:
         blank_at_start: bool = cfg.get("blank_at_start", True)
         use_eos_bos: bool = cfg.get("use_eos_bos", True)
         add_blank_word: bool = cfg.get("add_blank_word", False)
+        fold_compounds: bool = cfg.get("fold_compounds", True)
         return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
                             blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                            use_eos_bos=use_eos_bos)
+                            use_eos_bos=use_eos_bos, fold_compounds=fold_compounds)
 
     @staticmethod
     def from_piper_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':
@@ -709,6 +715,22 @@ class TTSTokenizer:
         return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
                             blank_at_end=blank_at_end, blank_at_start=blank_at_start,
                             use_eos_bos=use_eos_bos)
+
+    @staticmethod
+    def from_vosk_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':
+        """
+        Create a TTSTokenizer for an alphacep vosk-tts voice.
+
+        Tokenization matches piper (blank id 0 interspersed between every token
+        with leading/trailing blanks, BOS/EOS wrapping) — which reproduces
+        vosk_tts's own ``^ 0 p 0 p … 0 $`` id stream exactly. Compound folding
+        is disabled because the phonemizer already emits complete phoneme
+        tokens, so merging neighbours (``s`` + ``h`` -> ``sh``) would be wrong.
+        """
+        voc: Vocabulary = Vocabulary.from_piper_config(cfg)
+        return TTSTokenizer(voc, add_blank_char=True, add_blank_word=False,
+                            blank_at_end=True, blank_at_start=True,
+                            use_eos_bos=True, fold_compounds=False)
 
     @staticmethod
     def from_mimic3_config(cfg: Dict[str, Any], tokens_txt: str) -> 'TTSTokenizer':

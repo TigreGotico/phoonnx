@@ -166,6 +166,13 @@ def _register_builtins() -> None:
     # probed before the plain single-graph vits adapter.
     register_engine("vits_prior_split", VitsPriorSplitAdapter, detect_priority=49)
     register_engine("vits", VitsAdapter, detect_priority=50)
+    # alphacep vosk-tts voices are plain VITS exports (input/input_lengths/
+    # scales[/sid]) - VitsAdapter.detect() matches them the same as any other
+    # VITS graph. The config loader always names the engine explicitly, so in
+    # practice this entry is reached through the named-engine lookup; the
+    # priority is still set *after* "vits" (not tied with it) so an anonymous
+    # VITS voice's auto-detect is never claimed under the "vosk" name instead.
+    register_engine("vosk", VitsAdapter, detect_priority=51)
     register_engine("matcha", MatchaAdapter, detect_priority=40)
     register_engine("glowtts", GlowTTSAdapter, detect_priority=42)
     register_engine("mixertts", MixerTTSAdapter, detect_priority=36)
