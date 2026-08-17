@@ -1,7 +1,7 @@
 {
     "hf_community/projecte-aina/tts-ca-coqui-vits-multispeaker": {
         "voice_id": "hf_community/projecte-aina/tts-ca-coqui-vits-multispeaker",
-        "model_url": "https://huggingface.co/projecte-aina/tts-ca-coqui-vits-multispeaker/resolve/main/model/vits_ca.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__projecte-aina__tts-ca-coqui-vits-multispeaker/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "ca-ES",
         "tokens_url": null,
@@ -10,11 +10,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/projecte-aina/tts-ca-coqui-vits-multispeaker/resolve/main/model/config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__projecte-aina__tts-ca-coqui-vits-multispeaker/config.json"
     },
     "hf_community/denZLS/luxembourgish-male-vits-tts": {
         "voice_id": "hf_community/denZLS/luxembourgish-male-vits-tts",
-        "model_url": "https://huggingface.co/Jarbas/luxembourgish-male-vits-tts-onnx/resolve/main/checkpoint_53442.pth.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__denZLS__luxembourgish-male-vits-tts/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "lb-LU",
         "tokens_url": null,
@@ -23,11 +23,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/Jarbas/luxembourgish-male-vits-tts-onnx/resolve/main/config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__denZLS__luxembourgish-male-vits-tts/config.json"
     },
     "hf_community/denZLS/luxembourgish-female-vits-tts": {
         "voice_id": "hf_community/denZLS/luxembourgish-female-vits-tts",
-        "model_url": "https://huggingface.co/Jarbas/luxembourgish-female-vits-tts-onnx/resolve/main/checkpoint_53442.pth.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__denZLS__luxembourgish-female-vits-tts/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "lb-LU",
         "tokens_url": null,
@@ -36,11 +36,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/Jarbas/luxembourgish-female-vits-tts-onnx/resolve/main/config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__denZLS__luxembourgish-female-vits-tts/config.json"
     },
     "hf_community/anzorq/kbd-vits-tts-female": {
         "voice_id": "hf_community/anzorq/kbd-vits-tts-female",
-        "model_url": "https://huggingface.co/anzorq/kbd-vits-tts-female/resolve/main/onnx/kbd_vits_female.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__anzorq__kbd-vits-tts-female/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "kbd",
         "tokens_url": null,
@@ -49,11 +49,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/anzorq/kbd-vits-tts-female/resolve/main/config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__anzorq__kbd-vits-tts-female/config.json"
     },
     "hf_community/anzorq/kbd-vits-tts-male": {
         "voice_id": "hf_community/anzorq/kbd-vits-tts-male",
-        "model_url": "https://huggingface.co/anzorq/kbd-vits-tts-male/resolve/main/onnx/kbd_vits_male.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__anzorq__kbd-vits-tts-male/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "kbd",
         "tokens_url": null,
@@ -62,6 +62,6 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/anzorq/kbd-vits-tts-male/resolve/main/config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__anzorq__kbd-vits-tts-male/config.json"
     }
 }

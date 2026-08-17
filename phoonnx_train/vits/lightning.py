@@ -39,6 +39,12 @@ class VitsModel(pl.LightningModule):
         win_length: int = 1024,
         mel_channels: int = 80,
         sample_rate: int = 22050,
+        # speaker-consistency loss (YourTTS): cosine similarity between the
+        # H/ASP speaker-encoder embeddings of the real and generated
+        # segments, weighted by c_scl. Enabled by pointing
+        # speaker_encoder_checkpoint at the released model_se.pth.tar.
+        speaker_encoder_checkpoint: Optional[str] = None,
+        c_scl: float = 9.0,
         sample_bytes: int = 2,
         channels: int = 1,
         mel_fmin: float = 0.0,
@@ -56,6 +62,13 @@ class VitsModel(pl.LightningModule):
         gin_channels: int = 0,
         use_sdp: bool = True,
         segment_size: int = 8192,
+        # YourTTS: external speaker-embedding (d-vector) conditioning instead
+        # of a learned per-speaker embedding table, plus an optional additive
+        # language embedding for multilingual training. Both default off, so
+        # plain/multi-speaker VITS is unaffected.
+        external_speaker_embedding: bool = False,
+        speaker_embedding_dim: int = 512,
+        n_langs: int = 0,
         # training
         dataset: Optional[List[Union[str, Path]]] = None,
         learning_rate: float = 2e-4,
@@ -73,13 +86,20 @@ class VitsModel(pl.LightningModule):
         num_test_examples: int = 5,
         validation_split: float = 0.1,
         max_phoneme_ids: Optional[int] = None,
+        log_audio_samples: bool = False,
         **kwargs,
     ):
         super().__init__()
         self.save_hyperparameters()
 
-        if (self.hparams.num_speakers > 1) and (self.hparams.gin_channels <= 0):
-            # Default gin_channels for multi-speaker model
+        # GAN training with two optimizers requires manual optimization
+        # under pytorch-lightning >= 2.0
+        self.automatic_optimization = False
+
+        if (self.hparams.num_speakers > 1 or self.hparams.external_speaker_embedding) and (
+            self.hparams.gin_channels <= 0
+        ):
+            # Default gin_channels for multi-speaker / d-vector conditioned model
             self.hparams.gin_channels = 512
 
         # Set up models
@@ -103,6 +123,9 @@ class VitsModel(pl.LightningModule):
             n_speakers=self.hparams.num_speakers,
             gin_channels=self.hparams.gin_channels,
             use_sdp=self.hparams.use_sdp,
+            external_speaker_embedding=self.hparams.external_speaker_embedding,
+            speaker_embedding_dim=self.hparams.speaker_embedding_dim,
+            n_langs=self.hparams.n_langs,
         )
         self.model_d = MultiPeriodDiscriminator(
             use_spectral_norm=self.hparams.use_spectral_norm
@@ -117,6 +140,54 @@ class VitsModel(pl.LightningModule):
         # State kept between training optimizers
         self._y = None
         self._y_hat = None
+
+    # Submodules to reconcile against torch.compile's "._orig_mod." wrapping.
+    _COMPILE_WRAPPED_SUBMODULES = ("model_g", "model_d")
+
+    def _adapt_key_to_model(self, key: str) -> str:
+        """Rewrite a *clean* (uncompiled) state-dict key so it matches what the
+        CURRENT model expects. When ``self.model_g`` / ``self.model_d`` are
+        torch.compile ``OptimizedModule`` wrappers (exposing ``_orig_mod``),
+        their real parameters live under ``<name>._orig_mod.*``, so a bare
+        ``<name>.*`` key must gain that prefix; otherwise it is left as-is."""
+        for name in self._COMPILE_WRAPPED_SUBMODULES:
+            prefix = name + "."
+            submodule = getattr(self, name, None)
+            if (
+                key.startswith(prefix)
+                and submodule is not None
+                and hasattr(submodule, "_orig_mod")
+            ):
+                return prefix + "_orig_mod." + key[len(prefix):]
+        return key
+
+    def on_save_checkpoint(self, checkpoint: dict) -> None:
+        # Always persist CLEAN (uncompiled) keys: strip torch.compile's
+        # "._orig_mod." wrapping so a checkpoint written during a --compile run
+        # loads into an uncompiled consumer unchanged (old-consumer compat).
+        state_dict = checkpoint.get("state_dict")
+        if state_dict:
+            checkpoint["state_dict"] = {
+                k.replace("._orig_mod.", "."): v for k, v in state_dict.items()
+            }
+
+    def on_load_checkpoint(self, checkpoint: dict) -> None:
+        # Reconcile a checkpoint's keys with the CURRENT model in either
+        # direction. First normalize to clean keys (strip any "._orig_mod."),
+        # then re-insert the prefix only for submodules that are actually
+        # compiled right now. This covers the full save×load matrix:
+        # compiled/uncompiled checkpoints loading into compiled/uncompiled
+        # models — including the reverse case (clean checkpoint -> compiled
+        # model), whose strict restore would otherwise crash on resume.
+        state_dict = checkpoint.get("state_dict")
+        if not state_dict:
+            return
+        clean = {
+            k.replace("._orig_mod.", "."): v for k, v in state_dict.items()
+        }
+        checkpoint["state_dict"] = {
+            self._adapt_key_to_model(k): v for k, v in clean.items()
+        }
 
     def _load_datasets(
         self,
@@ -146,11 +217,38 @@ class VitsModel(pl.LightningModule):
         valid_set_size = int(len(full_dataset) * validation_split)
         train_set_size = len(full_dataset) - valid_set_size - num_test_examples
 
+        # torch.utils.data.random_split only checks that the split sizes SUM
+        # to the dataset length -- it happily accepts a negative train size
+        # (e.g. num_test_examples exceeding the dataset) and silently hands
+        # every example to a different split instead of raising, which would
+        # start training on an empty train_dataloader with no warning.
+        if train_set_size < 0:
+            raise ValueError(
+                f"num_test_examples ({num_test_examples}) + validation split "
+                f"({valid_set_size} of {len(full_dataset)}) exceed the "
+                f"dataset size ({len(full_dataset)}); reduce --num-test-examples "
+                "or --validation-split, or grow the dataset."
+            )
+
+        if valid_set_size == 0 and validation_split > 0:
+            _LOGGER.warning(
+                "validation_split=%s on a dataset of %d examples rounds down to "
+                "0 validation examples; val_loss / early-stopping will have no "
+                "signal. Grow the dataset or raise --validation-split.",
+                validation_split, len(full_dataset),
+            )
+
+        # Use an explicit generator (seeded from hparams.seed) rather than the
+        # global RNG, so the split is reproducible regardless of how much
+        # random state prior setup (e.g. model init) already consumed.
+        split_generator = torch.Generator().manual_seed(self.hparams.seed)
         self._train_dataset, self._test_dataset, self._val_dataset = random_split(
-            full_dataset, [train_set_size, num_test_examples, valid_set_size]
+            full_dataset,
+            [train_set_size, num_test_examples, valid_set_size],
+            generator=split_generator,
         )
 
-    def forward(self, text, text_lengths, scales, sid=None):
+    def forward(self, text, text_lengths, scales, sid=None, speaker_embedding=None, lid=None):
         noise_scale = scales[0]
         length_scale = scales[1]
         noise_scale_w = scales[2]
@@ -161,28 +259,33 @@ class VitsModel(pl.LightningModule):
             length_scale=length_scale,
             noise_scale_w=noise_scale_w,
             sid=sid,
+            speaker_embedding=speaker_embedding,
+            lid=lid,
         )
 
         return audio
 
+    def _make_collate(self) -> UtteranceCollate:
+        return UtteranceCollate(
+            is_multispeaker=(self.hparams.num_speakers > 1) and not self.hparams.external_speaker_embedding,
+            segment_size=self.hparams.segment_size,
+            has_d_vector=self.hparams.external_speaker_embedding,
+            has_language_id=self.hparams.n_langs > 1,
+        )
+
     def train_dataloader(self):
         return DataLoader(
             self._train_dataset,
-            collate_fn=UtteranceCollate(
-                is_multispeaker=self.hparams.num_speakers > 1,
-                segment_size=self.hparams.segment_size,
-            ),
+            collate_fn=self._make_collate(),
             num_workers=self.hparams.num_workers,
             batch_size=self.hparams.batch_size,
+            shuffle=True,
         )
 
     def val_dataloader(self):
         return DataLoader(
             self._val_dataset,
-            collate_fn=UtteranceCollate(
-                is_multispeaker=self.hparams.num_speakers > 1,
-                segment_size=self.hparams.segment_size,
-            ),
+            collate_fn=self._make_collate(),
             num_workers=self.hparams.num_workers,
             batch_size=self.hparams.batch_size,
         )
@@ -190,20 +293,35 @@ class VitsModel(pl.LightningModule):
     def test_dataloader(self):
         return DataLoader(
             self._test_dataset,
-            collate_fn=UtteranceCollate(
-                is_multispeaker=self.hparams.num_speakers > 1,
-                segment_size=self.hparams.segment_size,
-            ),
+            collate_fn=self._make_collate(),
             num_workers=self.hparams.num_workers,
             batch_size=self.hparams.batch_size,
         )
 
-    def training_step(self, batch: Batch, batch_idx: int, optimizer_idx: int):
-        if optimizer_idx == 0:
-            return self.training_step_g(batch)
+    def training_step(self, batch: Batch, batch_idx: int):
+        # Manual optimization (pytorch-lightning >= 2.0): run the generator
+        # and discriminator steps in the same order the old
+        # ``optimizer_idx`` branches did.
+        opt_g, opt_d = self.optimizers()
 
-        if optimizer_idx == 1:
-            return self.training_step_d(batch)
+        # Generator
+        loss_g = self.training_step_g(batch)
+        opt_g.zero_grad()
+        self.manual_backward(loss_g)
+        opt_g.step()
+
+        # Discriminator (uses y / y_hat saved by training_step_g)
+        loss_d = self.training_step_d(batch)
+        opt_d.zero_grad()
+        self.manual_backward(loss_d)
+        opt_d.step()
+
+    def on_train_epoch_end(self):
+        # With manual optimization Lightning no longer steps the
+        # schedulers; step both ExponentialLR schedulers once per epoch,
+        # matching the old automatic-optimization behaviour.
+        for scheduler in self.lr_schedulers():
+            scheduler.step()
 
     def training_step_g(self, batch: Batch):
         x, x_lengths, y, _, spec, spec_lengths, speaker_ids = (
@@ -223,7 +341,10 @@ class VitsModel(pl.LightningModule):
             _x_mask,
             z_mask,
             (_z, z_p, m_p, logs_p, _m_q, logs_q),
-        ) = self.model_g(x, x_lengths, spec, spec_lengths, speaker_ids)
+        ) = self.model_g(
+            x, x_lengths, spec, spec_lengths, sid=speaker_ids,
+            speaker_embedding=batch.d_vectors, lid=batch.language_ids,
+        )
         self._y_hat = y_hat
 
         mel = spec_to_mel_torch(
@@ -270,9 +391,43 @@ class VitsModel(pl.LightningModule):
             loss_gen, _losses_gen = generator_loss(y_d_hat_g)
             loss_gen_all = loss_gen + loss_fm + loss_mel + loss_dur + loss_kl
 
+            loss_scl = self._speaker_consistency_loss(y, y_hat)
+            if loss_scl is not None:
+                loss_gen_all = loss_gen_all + self.hparams.c_scl * loss_scl
+                self.log("loss_scl", loss_scl)
+
             self.log("loss_gen_all", loss_gen_all)
 
             return loss_gen_all
+
+    def _speaker_consistency_loss(self, y: torch.Tensor,
+                                  y_hat: torch.Tensor) -> Optional[torch.Tensor]:
+        """Cosine-similarity speaker-consistency loss between the frozen
+        H/ASP embeddings of the real and generated audio segments."""
+        if not self.hparams.speaker_encoder_checkpoint:
+            return None
+        if getattr(self, "_speaker_encoder", None) is None:
+            from phoonnx_train.vits.speaker_encoder import \
+                load_hasp_speaker_encoder
+            self._speaker_encoder = load_hasp_speaker_encoder(
+                self.hparams.speaker_encoder_checkpoint).to(self.device)
+        import torchaudio
+
+        enc_sr = self._speaker_encoder.audio_config["sample_rate"]
+        wav_real = y.squeeze(1)
+        wav_fake = y_hat.squeeze(1)
+        if self.hparams.sample_rate != enc_sr:
+            wav_real = torchaudio.functional.resample(
+                wav_real, self.hparams.sample_rate, enc_sr)
+            wav_fake = torchaudio.functional.resample(
+                wav_fake, self.hparams.sample_rate, enc_sr)
+        # the encoder is frozen; gradients flow only through the generated
+        # waveform (real-segment embedding is the target)
+        with torch.no_grad():
+            emb_real = self._speaker_encoder(wav_real)
+        emb_fake = self._speaker_encoder(wav_fake)
+        return -torch.nn.functional.cosine_similarity(emb_real,
+                                                      emb_fake).mean()
 
     def training_step_d(self, batch: Batch):
         # From training_step_g
@@ -295,25 +450,49 @@ class VitsModel(pl.LightningModule):
         val_loss = self.training_step_g(batch) + self.training_step_d(batch)
         self.log("val_loss", val_loss)
 
-        # Generate audio examples
-        for utt_idx, test_utt in enumerate(self._test_dataset):
-            text = test_utt.phoneme_ids.unsqueeze(0).to(self.device)
-            text_lengths = torch.LongTensor([len(test_utt.phoneme_ids)]).to(self.device)
-            scales = [0.667, 1.0, 0.8]
-            sid = (
-                test_utt.speaker_id.to(self.device)
-                if test_utt.speaker_id is not None
-                else None
-            )
-            test_audio = self(text, text_lengths, scales, sid=sid).detach()
+        # Synthesize the held-out test utterances and log them as audio, once
+        # per epoch (batch_idx == 0). Opt-in via ``log_audio_samples`` and
+        # skipped unless the active logger's experiment supports ``add_audio``:
+        # TensorBoardLogger does, CSVLogger (a common choice) does not, and
+        # calling it there would raise. When disabled this whole loop — full
+        # generator inference whose result would otherwise be discarded — is
+        # skipped.
+        if (
+            self.hparams.log_audio_samples
+            and batch_idx == 0
+            and hasattr(self.logger.experiment, "add_audio")
+        ):
+            for utt_idx, test_utt in enumerate(self._test_dataset):
+                text = test_utt.phoneme_ids.unsqueeze(0).to(self.device)
+                text_lengths = torch.LongTensor([len(test_utt.phoneme_ids)]).to(self.device)
+                scales = [0.667, 1.0, 0.8]
+                sid = (
+                    test_utt.speaker_id.to(self.device)
+                    if test_utt.speaker_id is not None
+                    else None
+                )
+                speaker_embedding = (
+                    test_utt.d_vector.unsqueeze(0).to(self.device)
+                    if test_utt.d_vector is not None
+                    else None
+                )
+                lid = (
+                    test_utt.language_id.to(self.device)
+                    if test_utt.language_id is not None
+                    else None
+                )
+                test_audio = self(
+                    text, text_lengths, scales, sid=sid,
+                    speaker_embedding=speaker_embedding, lid=lid,
+                ).detach()
 
-            # Scale to make louder in [-1, 1]
-            test_audio = test_audio * (1.0 / max(0.01, abs(test_audio.max())))
+                # Scale to make louder in [-1, 1]
+                test_audio = test_audio * (1.0 / max(0.01, abs(test_audio.max())))
 
-            tag = test_utt.text or str(utt_idx)
-           # self.logger.experiment.add_audio(
-           #     tag, test_audio, sample_rate=self.hparams.sample_rate
-           # )
+                tag = test_utt.text or str(utt_idx)
+                self.logger.experiment.add_audio(
+                    tag, test_audio, sample_rate=self.hparams.sample_rate
+                )
 
         return val_loss
 
@@ -349,6 +528,12 @@ class VitsModel(pl.LightningModule):
         parser.add_argument("--batch-size", type=int, required=True)
         parser.add_argument("--validation-split", type=float, default=0.1)
         parser.add_argument("--num-test-examples", type=int, default=5)
+        parser.add_argument(
+            "--log-audio-samples",
+            action="store_true",
+            help="Log synthesized validation audio samples to the logger each "
+                 "epoch (requires a TensorBoard logger)",
+        )
         parser.add_argument(
             "--max-phoneme-ids",
             type=int,
