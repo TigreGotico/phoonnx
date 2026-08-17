@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import re
+import threading
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -801,6 +802,13 @@ class TTSModelManager:
             cache_path (Optional[str]): Filesystem path for the cache file. If omitted, uses the user's XDG cache directory under "phoonnx/voices".
         """
         self.voices: Dict[str, TTSModelInfo] = {}
+        # The registry is rebuilt wholesale by ``load``/``merge_default_voices``
+        # while other threads are looking voices up in it. Rebuilding in place
+        # made a known voice look unknown for as long as the repopulation took
+        # — thousands of entries — and callers treat "unknown" as a hard error.
+        # Every rebuild therefore happens in a local dict and is published by a
+        # single assignment, under this lock so two rebuilds cannot interleave.
+        self._registry_lock = threading.RLock()
         if cache_path:
             self.cache = JsonStorage(cache_path)
         else:
@@ -822,8 +830,18 @@ class TTSModelManager:
         return sorted(set(voice.lang for voice in self.all_voices))
 
     def clear(self):
-        self.cache.clear()
-        self.voices = {}
+        with self._registry_lock:
+            self.cache.clear()
+            self.voices = {}
+
+    def get_voice(self, voice_id: str) -> Optional[TTSModelInfo]:
+        """The catalog entry for ``voice_id``, or ``None`` if it is unknown.
+
+        The lookup readers should use: it sees the registry either as it was
+        before a concurrent rebuild or as it is after, never mid-rebuild.
+        """
+        with self._registry_lock:
+            return self.voices.get(voice_id)
 
     def load(self):
         """
@@ -833,14 +851,9 @@ class TTSModelManager:
         TTSModelInfo for each cached entry. Entries that fail to construct are skipped and an
         error is logged; successful entries are stored in self.voices keyed by voice_id.
         """
-        self.cache.reload()
-        self.voices = {}
-        for voice_id, voice_dict in self.cache.items():
-            try:
-                self.voices[voice_id] =  TTSModelInfo(**voice_dict)
-            except Exception as e:
-                LOG.error(f"Failed to load '{voice_id}': ({e})")
-                continue
+        with self._registry_lock:
+            self.cache.reload()
+            self.voices = self._registry_from_cache()
 
     def save(self):
         """
@@ -864,8 +877,9 @@ class TTSModelManager:
         Parameters:
             voice_info (TTSModelInfo): The voice metadata to add or update.
         """
-        self.voices[voice_info.voice_id] = voice_info
-        self.cache[voice_info.voice_id] = voice_info.to_dict()
+        with self._registry_lock:
+            self.voices[voice_info.voice_id] = voice_info
+            self.cache[voice_info.voice_id] = voice_info.to_dict()
 
     def get_lang_voices(self, lang: str) -> List[TTSModelInfo]:
         voices = sorted(
@@ -884,18 +898,27 @@ class TTSModelManager:
         Parameters:
             store (bool): If True, persist the updated cache to disk after merging.
         """
-        for index_file in self.voice_index_files():
-            self.cache.update(JsonStorage(str(index_file)))
-        self.voices = {}
+        indexes = [JsonStorage(str(f)) for f in self.voice_index_files()]
+        with self._registry_lock:
+            for index in indexes:
+                self.cache.update(index)
+            self.voices = self._registry_from_cache()
+            if store:
+                self.cache.store()
+
+    def _registry_from_cache(self) -> Dict[str, TTSModelInfo]:
+        """Build the registry from the cache, skipping entries that don't parse.
+
+        Returned rather than assigned, so the caller publishes it in one
+        assignment instead of leaving a half-filled registry visible.
+        """
+        voices: Dict[str, TTSModelInfo] = {}
         for voice_id, voice_dict in self.cache.items():
             try:
-                self.voices[voice_id] =  TTSModelInfo(**voice_dict)
+                voices[voice_id] = TTSModelInfo(**voice_dict)
             except Exception as e:
                 LOG.error(f"Failed to load '{voice_id}': ({e})")
-                continue
-
-        if store:
-            self.cache.store()
+        return voices
 
     def get_available_voice_ids_by_source(self) -> Dict[str, List[str]]:
         """

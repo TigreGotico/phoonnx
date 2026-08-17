@@ -109,6 +109,18 @@ def _filter_top_k(log_probs: np.ndarray, ratio: float = 0.1) -> np.ndarray:
 class OmniVoiceAdapter(BaseOnnxAdapter):
     """Adapter for OmniVoice (masked-diffusion codec LM, in-context cloning)."""
 
+    MEMOIZED_WRITES = {
+        # The cloning graphs, several hundred megabytes each, opened on the
+        # first request that needs them and kept for the ones after.
+        # (the attribute is the caller's; the call sites name the acoustic,
+        # semantic and quantizer encoders)
+        "_cloning_session": frozenset({"*attribute"}),
+        # A one-entry cache keyed on the request's own clip: a request whose
+        # clip differs recomputes rather than reading the previous caller's
+        # codes, and one that repeats it skips the encoders.
+        "encode_reference": frozenset({"_ref_cache", "_ref_cache_key"}),
+    }
+
     NUM_STEP = 32
     GUIDANCE_SCALE = 2.0
     T_SHIFT = 0.1

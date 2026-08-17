@@ -404,6 +404,14 @@ def normalize_loudness(audio: np.ndarray, target: float = -18.0,
 class OuteTTSAdapter(BaseOnnxAdapter):
     """Adapter for OuteTTS 1.0 (codec-LM + DAC.speech decoder)."""
 
+    MEMOIZED_WRITES = {
+        # KV-cache geometry, read off the model's own input shapes.
+        "_read_kv_shape": frozenset({"num_layers", "num_kv_heads", "head_dim"}),
+        # Special-token ids, looked up once in the voice's vocabulary.
+        "_build_token_maps": frozenset({"audio_end_id", "eos_id",
+                                        "word_start_id"}),
+    }
+
     #: hard ceiling on the AR loop; DAC runs at ~46.9 frames/s and each frame is two
     #: tokens, so 4096 tokens is ~44 s of speech.
     MAX_NEW_TOKENS = 4096

@@ -186,7 +186,7 @@ class TestDownloadVoice(unittest.TestCase):
     def test_downloads_cached_voice(self, mock_manager_cls):
         manager = mock_manager_cls.return_value
         voice = make_voice(voice_id="piper/foo")
-        manager.voices = {"piper/foo": voice}
+        manager.get_voice.side_effect = {"piper/foo": voice}.get
         runner = CliRunner()
         result = runner.invoke(cli, ["download", "piper/foo"])
         self.assertEqual(result.exit_code, 0)
@@ -196,7 +196,7 @@ class TestDownloadVoice(unittest.TestCase):
     @patch("phoonnx.cli.TTSModelManager")
     def test_unknown_voice_id_reports_error_nonzero_exit(self, mock_manager_cls):
         manager = mock_manager_cls.return_value
-        manager.voices = {}
+        manager.get_voice.return_value = None
         manager.download_voice_by_id.return_value = False
         runner = CliRunner()
         result = runner.invoke(cli, ["download", "no/such-voice"])
@@ -208,7 +208,7 @@ class TestDownloadVoice(unittest.TestCase):
     @patch("phoonnx.cli.TTSModelManager")
     def test_fallback_download_succeeds(self, mock_manager_cls):
         manager = mock_manager_cls.return_value
-        manager.voices = {}
+        manager.get_voice.return_value = None
         manager.download_voice_by_id.return_value = True
         runner = CliRunner()
         result = runner.invoke(cli, ["download", "piper/other"])
@@ -220,7 +220,7 @@ class TestDownloadVoice(unittest.TestCase):
         manager = mock_manager_cls.return_value
         voice = make_voice(voice_id="piper/foo")
         voice.download_all.side_effect = requests.exceptions.ConnectionError("network down")
-        manager.voices = {"piper/foo": voice}
+        manager.get_voice.side_effect = {"piper/foo": voice}.get
         runner = CliRunner()
         result = runner.invoke(cli, ["download", "piper/foo"])
         self.assertEqual(result.exit_code, 0)
@@ -232,12 +232,50 @@ class TestDownloadVoice(unittest.TestCase):
         manager = mock_manager_cls.return_value
         voice = make_voice(voice_id="piper/foo")
         voice.download_all.side_effect = ValueError("bad data")
-        manager.voices = {"piper/foo": voice}
+        manager.get_voice.side_effect = {"piper/foo": voice}.get
         runner = CliRunner()
         result = runner.invoke(cli, ["download", "piper/foo"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("An unexpected error occurred during download: bad data", result.output)
         self.assertNotIn("Traceback", result.output)
+
+
+class TestAddAlignment(unittest.TestCase):
+    """The offline build step for phoneme alignments."""
+
+    def test_writes_the_patched_model_beside_the_original(self):
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            with open("model.onnx", "wb") as f:
+                f.write(b"not really onnx")
+            with patch("phoonnx.alignment.export_alignment_model",
+                       return_value="model.alignment.onnx") as export:
+                result = runner.invoke(cli, ["add-alignment", "model.onnx"])
+            export.assert_called_once_with("model.onnx", None)
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("model.alignment.onnx", result.output)
+
+    def test_a_model_without_durations_fails_loudly(self):
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            with open("model.onnx", "wb") as f:
+                f.write(b"not really onnx")
+            with patch("phoonnx.alignment.export_alignment_model",
+                       side_effect=ValueError("no unique duration tensor")):
+                result = runner.invoke(cli, ["add-alignment", "model.onnx"])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("no unique duration tensor", result.output)
+
+    def test_a_missing_onnx_package_names_the_extra(self):
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            with open("model.onnx", "wb") as f:
+                f.write(b"not really onnx")
+            with patch("phoonnx.alignment.export_alignment_model",
+                       side_effect=ImportError("no module named onnx")):
+                result = runner.invoke(cli, ["add-alignment", "model.onnx"])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("phoonnx[streaming]", result.output)
 
 
 if __name__ == "__main__":

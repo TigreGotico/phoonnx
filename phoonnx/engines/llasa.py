@@ -150,6 +150,11 @@ class LlasaAdapter(BaseOnnxAdapter):
     path by monkeypatching ``token_ids_to_codes``.
     """
 
+    MEMOIZED_WRITES = {
+        # KV-cache geometry, read off the model's own input shapes.
+        "_read_kv_shape": frozenset({"num_layers", "num_kv_heads", "head_dim"}),
+    }
+
     #: hard ceiling on the AR loop; 50 tokens/s, so 1000 is ~20 s
     MAX_NEW_TOKENS = 1000
     #: characters of target text per model call — the LM degrades on long prompts

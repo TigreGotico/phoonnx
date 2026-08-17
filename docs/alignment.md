@@ -151,17 +151,25 @@ This modifies the exported `.onnx` graph to surface the `Ceil` node output (phon
 durations) as a named model output. The modification is done by
 `add_phoneme_alignment_output()` in `phoonnx_train/export_onnx.py`.
 
-You can also apply it post-hoc to an already-exported model:
+You can also apply it post-hoc to a model you already have, without the
+training package installed:
+
+```bash
+phoonnx-voices add-alignment model.onnx
+```
+
+That writes `model.alignment.onnx` next to the original — the same name the
+runtime path looks for — so every later load finds it and no request pays for
+the surgery. Pass `-o` to write somewhere else. It fails loudly, naming the
+reason, when the model has no unique duration tensor or `onnx` is not
+installed.
+
+The same thing from Python:
 
 ```python
-from phoonnx_train.export_onnx import add_phoneme_alignment_output
-from pathlib import Path
+from phoonnx.alignment import export_alignment_model
 
-add_phoneme_alignment_output(
-    model_path=Path("model.onnx"),
-    output_path=Path("model-aligned.onnx"),  # omit to overwrite in place
-    tensor_name="autodetect",                # or pass the tensor name explicitly
-)
+export_alignment_model("model.onnx", "model-aligned.onnx")
 ```
 
 > **Compatibility note.** Adding the alignment output may break third-party
@@ -186,6 +194,10 @@ session doesn't already have it:
    directory may be read-only, e.g. a shared voice cache).
 3. Rebuild an ONNX Runtime session from the patched copy, on the same
    execution providers as the original, and retry inference on it.
+
+The surgery for a given destination runs under a lock and the patched model
+is moved into place atomically, so concurrent requests on a shared voice
+either wait for the copy being written or reuse the one already there.
 
 This runs **at most once per `TTSVoice` instance** — the outcome (including a
 negative one: no locatable duration tensor, `onnx` not installed, or the

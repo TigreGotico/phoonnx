@@ -158,6 +158,12 @@ def _sample(scores: np.ndarray, temperature: float, top_p: float,
 class OrpheusAdapter(BaseOnnxAdapter):
     """Adapter for the Orpheus family (Llama codec-LM + SNAC 24 kHz decoder)."""
 
+    MEMOIZED_WRITES = {
+        # KV-cache geometry, read off the model's own input shapes.
+        "_read_kv_shape": frozenset({"past_names", "present_names",
+                                     "num_kv_heads", "head_dim"}),
+    }
+
     #: hard ceiling on the AR loop; upstream's ``max_tokens``. SNAC runs at ~82 tokens/s,
     #: so 1200 is ~14.6 s of audio.
     MAX_NEW_TOKENS = 1200
