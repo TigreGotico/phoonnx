@@ -17,11 +17,12 @@ import wave
 from contextlib import suppress
 from collections import OrderedDict
 from threading import RLock
-from typing import List, Optional
+from typing import Dict, List, Optional
 from ovos_utils.log import LOG
 from ovos_plugin_manager.templates.tts import TTS, TTSContext
 
 from phoonnx.model_manager import TTSModelManager, TTSModelInfo
+from phoonnx.util import normalize_lang
 from phoonnx.voice import TTSVoice, SynthesisConfig
 from phoonnx.voice_cache import VoiceCache, VoiceExceedsMemoryBudget
 
@@ -45,6 +46,22 @@ class PhoonnxTTSPlugin(TTS):
         self.model_manager = TTSModelManager()
         self.model_manager.load()
         self.model_manager.merge_default_voices()
+
+        # Optional per-language default voices: {"lang2voice": {"pt-br": "...",
+        # "gl": "proxectonos/celtia"}}. Keys are BCP-47 tags (full tag or
+        # primary subtag; full tags win, regardless of which table names them -
+        # a config's own primary-subtag entry still beats a more specific
+        # PHOONNX_DEFAULT_VOICE_<LANG> full-tag env var, because the config
+        # table is tried whole before the env table is looked at at all).
+        # The env vars let a container image whose config carries no
+        # lang2voice entry for a language be re-pointed per deployment without
+        # editing mycroft.conf; they never override a language the config
+        # already names. Keys are normalised the same way the caller's ``lang``
+        # is, so "gl-ES"/"gl", "pt-br"/"pt_BR" and similar spellings agree.
+        self.lang2voice: Dict[str, str] = {
+            normalize_lang(k).lower(): v
+            for k, v in (self.config.get("lang2voice") or {}).items()
+        }
 
         self.voice_cache = VoiceCache(
             resolve=lambda voice_id: self.get_voice_info(voice_id),
@@ -151,19 +168,77 @@ class PhoonnxTTSPlugin(TTS):
             except Exception as exc:
                 LOG.warning(f"Voice refresh failed: {exc}")
 
+    ENV_PREFIX = "PHOONNX_DEFAULT_VOICE_"
+
+    @staticmethod
+    def env_lang_voices() -> Dict[str, str]:
+        """
+        Read per-language default voices from ``PHOONNX_DEFAULT_VOICE_<LANG>``
+        environment variables.
+
+        The suffix is a lang tag with underscores in place of dashes, so
+        ``PHOONNX_DEFAULT_VOICE_PT`` sets ``pt`` and
+        ``PHOONNX_DEFAULT_VOICE_PT_BR`` sets ``pt-br``. The tag is normalised
+        the same way a caller's ``lang`` is, so it matches regardless of
+        region-tag casing.
+        """
+        voices = {}
+        for key, val in os.environ.items():
+            if key.startswith(PhoonnxTTSPlugin.ENV_PREFIX) and val:
+                tag = key[len(PhoonnxTTSPlugin.ENV_PREFIX):].replace("_", "-").lower()
+                if tag:
+                    voices[normalize_lang(tag).lower()] = val
+        return voices
+
+    def configured_voice_for_lang(self, lang: str) -> Optional[str]:
+        """
+        Resolve an explicitly configured voice id for ``lang``, if any.
+
+        Checks the ``lang2voice`` plugin config first, then
+        ``PHOONNX_DEFAULT_VOICE_<LANG>`` environment variables, trying the full
+        BCP-47 tag before the primary subtag in each - so a primary-subtag
+        entry in ``lang2voice`` still beats a full-tag entry in the env table,
+        because the whole config table is tried before the env table is
+        looked at at all. ``lang`` is normalised (case, ``_``/``-``, a bare
+        subtag's default region) before matching, the same way the tables'
+        own keys are, so equivalent spellings agree. Returns None when
+        nothing is configured, leaving the voice index to pick the language
+        default.
+        """
+        full = normalize_lang(lang or "").lower()
+        primary = full.split("-")[0]
+        for table in (self.lang2voice, self.env_lang_voices()):
+            for tag in (full, primary):
+                if tag in table:
+                    return table[tag]
+        return None
+
     def get_default_voice(self, lang: str) -> TTSModelInfo:
         """
         Selects the default TTS model for the given language.
-        
+
         Parameters:
         	lang (str): Language tag used to look up available voices (e.g., "en-US", "pt-PT").
-        
+
         Returns:
         	TTSModelInfo: The first/default voice model info for the specified language.
-        
+
         Raises:
         	ValueError: If no voices are available for the given language.
         """
+        voice_id = self.configured_voice_for_lang(lang)
+        if voice_id:
+            try:
+                LOG.debug(f"using configured default voice for {lang}: {voice_id}")
+                return self.get_voice_info(voice_id)
+            except Exception as exc:
+                # A typo'd or since-removed lang2voice/env voice id is a
+                # deployment mistake, not a reason to refuse to serve the
+                # language at all - fall through to the voice index's own
+                # default the same as an unconfigured language would.
+                LOG.warning(f"configured default voice '{voice_id}' for "
+                            f"{lang} is unknown ({exc}); falling back to "
+                            f"the voice index default")
         voices = self.model_manager.get_lang_voices(lang)
         if not voices:
             LOG.info(f"{lang} voices not found - refreshing voice list")

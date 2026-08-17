@@ -5,6 +5,52 @@ engine. phoonnx ships a TTS plugin for the [OpenVoiceOS](https://openvoiceos.com
 ecosystem via `PhoonnxTTSPlugin`, registered under the `opm.tts` entry point
 `ovos-tts-plugin-phoonnx`.
 
+## Per-language default voices
+
+`voice` pins one voice for every request. To serve **many languages from one
+server**, leave it unset and map languages to voices instead — the plugin then
+picks the voice for each request's language, downloading and caching it on
+first use:
+
+```json
+{
+  "tts": {
+    "module": "ovos-tts-plugin-phoonnx",
+    "ovos-tts-plugin-phoonnx": {
+      "lang2voice": {
+        "gl": "proxectonos/celtia",
+        "ca": "OpenVoiceOS/matxa-cat-multispeaker-wavenext",
+        "pt-br": "<a brazilian voice>",
+        "pt": "<a european portuguese voice>"
+      }
+    }
+  }
+}
+```
+
+Keys are BCP-47 tags: the full tag (`pt-br`) is tried before the primary
+subtag (`pt`), so regional variants can differ from the base language.
+
+The same mapping can come from the environment, which is usually easier for
+containers whose `mycroft.conf` carries no `lang2voice` entry for a given
+language — `PHOONNX_DEFAULT_VOICE_<LANG>`, with underscores standing in for
+dashes:
+
+```bash
+docker run -e PHOONNX_DEFAULT_VOICE_GL=proxectonos/celtia \
+           -e PHOONNX_DEFAULT_VOICE_PT_BR=<voice-id> \
+           -p 9666:9666 phoonnx
+```
+
+Resolution is table-major, not tag-major: every tag `lang2voice` might match
+(full tag, then primary subtag) is tried before the env table is looked at at
+all, so a `lang2voice` entry for the primary subtag (`pt`) still beats a more
+specific `PHOONNX_DEFAULT_VOICE_PT_BR` env var — the config wins outright for
+any language it names anything for, and the env vars only fill in languages
+the config leaves unconfigured. Below both, the voice index's own default for
+the language applies. Keys and tags are matched after normalisation, so
+`gl-ES`/`gl`, `pt-br`/`pt_BR` and similar spellings agree.
+
 ## Configuration
 
 In your OpenVoiceOS `mycroft.conf` or skills config, set:
