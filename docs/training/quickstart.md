@@ -181,3 +181,16 @@ That's the full loop. From here:
 - Fine-tune onto a new speaker or resume training: [Training reference](training.md).
 - Train a different architecture (Matcha, GlowTTS, StyleTTS2, …): [engine guides](engines/matcha.md).
 - Ship the voice in a voice assistant: [OVOS plugin](../ovos_plugin.md).
+
+## Training notebooks
+
+For a runnable, Colab/Kaggle-ready walkthrough of this same golden path, see
+[`train_vits.ipynb`](https://github.com/TigreGotico/ml-notebooks/blob/main/tts/train_vits.ipynb)
+in the `ml-notebooks` repository. It clones phoonnx and drives the same
+`preprocess` → `train` → `export_onnx` CLIs described above end to end, producing a trained
+and exported ONNX voice without any local environment setup.
+
+If a dataset does not exist yet, [`tts_dataset_gen.ipynb`](https://github.com/TigreGotico/ml-notebooks/blob/main/tts/tts_dataset_gen.ipynb)
+generates one in the LJSpeech layout expected by [preprocess](#2-preprocess) by synthesizing
+speech from text in a donor voice, giving a ready-made `metadata.csv` and `wavs/` folder to
+feed straight into step 1 above.
