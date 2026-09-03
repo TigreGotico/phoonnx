@@ -351,6 +351,44 @@ class TestCompoundPhonemeEncoding(unittest.TestCase):
         self.assertEqual(tok.encode("azb"), [0])
 
 
+class TestPrecomposedCharacterDecomposition(unittest.TestCase):
+    """Phonemizers emit precomposed nasal vowels (e.g. U+00E3 "ã") while
+    vocabularies like Kokoro/StyleTTS2 only know the base letter plus a
+    separate combining tilde (U+0303). Decompose before dropping."""
+
+    def test_precomposed_char_decomposes_to_base_plus_combining_mark(self):
+        # "ã" (U+00E3) NFD-decomposes to "a" (U+0061) + combining tilde (U+0303)
+        voc = Vocabulary(char2idx={"a": 0, "̃": 1}, blank=None)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+        self.assertEqual(tok.encode("ã"), [0, 1])
+        self.assertEqual(tok.not_found_characters, set())
+
+    def test_precomposed_char_in_vocab_is_not_decomposed(self):
+        voc = Vocabulary(char2idx={"a": 0, "̃": 1, "ã": 2}, blank=None)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+        self.assertEqual(tok.encode("ã"), [2])
+
+    def test_partial_decomposition_match_still_dropped(self):
+        # vocab only has the base letter, not the combining mark -> can't fully map
+        voc = Vocabulary(char2idx={"a": 0}, blank=None)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+        self.assertEqual(tok.encode("ã"), [])
+        self.assertEqual(tok.not_found_characters, {"ã"})
+
+    def test_compound_token_still_wins_over_decomposition(self):
+        # "ã" is not in char2idx directly, but if a compound token happened to
+        # equal the precomposed char's neighbour sequence, compounds must still
+        # be matched first; here we assert decomposition doesn't break normal
+        # compound folding for unrelated ASCII compounds.
+        voc = Vocabulary(char2idx={"a": 0, "i": 1, "ai": 2, "̃": 3}, blank=None)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+        self.assertEqual(tok.encode("ai"), [2])
+
+
 class TestBosEosSafetyPath(unittest.TestCase):
     def test_pad_with_bos_eos_without_bos_returns_input_unchanged(self):
         voc = Vocabulary(char2idx={"a": 0}, bos=None, eos="$")

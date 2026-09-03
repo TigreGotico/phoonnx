@@ -3169,5 +3169,61 @@
     "engine": "styletts2",
     "lang": "en-US",
     "style_url": "https://huggingface.co/OpenVoiceOS/phoonnx-kitten-tts/resolve/main/mini-0.1/expr-voice-5-f.bin"
+  },
+  "logus2k/tts_eu_pt": {
+    "voice_id": "logus2k/tts_eu_pt",
+    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/model.onnx",
+    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/config.json",
+    "vocab_url": null,
+    "tokenizer_config_url": null,
+    "tokens_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "tugaphone",
+    "alphabet": "ipa",
+    "engine": "styletts2",
+    "lang": "pt-PT-x-lisbon",
+    "style_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/voices/tuga.bin"
+  },
+  "logus2k/tts_eu_pt-pm_alex": {
+    "voice_id": "logus2k/tts_eu_pt-pm_alex",
+    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/model.onnx",
+    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/config.json",
+    "vocab_url": null,
+    "tokenizer_config_url": null,
+    "tokens_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "tugaphone",
+    "alphabet": "ipa",
+    "engine": "styletts2",
+    "lang": "pt-PT-x-lisbon",
+    "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/pm_alex.bin"
+  },
+  "logus2k/tts_eu_pt-pm_santa": {
+    "voice_id": "logus2k/tts_eu_pt-pm_santa",
+    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/model.onnx",
+    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/config.json",
+    "vocab_url": null,
+    "tokenizer_config_url": null,
+    "tokens_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "tugaphone",
+    "alphabet": "ipa",
+    "engine": "styletts2",
+    "lang": "pt-PT-x-lisbon",
+    "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/pm_santa.bin"
+  },
+  "logus2k/tts_eu_pt-am_adam": {
+    "voice_id": "logus2k/tts_eu_pt-am_adam",
+    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/model.onnx",
+    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/config.json",
+    "vocab_url": null,
+    "tokenizer_config_url": null,
+    "tokens_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "tugaphone",
+    "alphabet": "ipa",
+    "engine": "styletts2",
+    "lang": "pt-PT-x-lisbon",
+    "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_adam.bin"
   }
 }
