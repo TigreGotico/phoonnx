@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.91.1a1](https://github.com/TigreGotico/phoonnx/tree/1.91.1a1) (2026-09-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.0a1...1.91.1a1)
+
+**Merged pull requests:**
+
+- fix: pass PYPI\_TOKEN and MATRIX\_TOKEN explicitly to cross-org release workflow [\#453](https://github.com/TigreGotico/phoonnx/pull/453) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.91.0a1](https://github.com/TigreGotico/phoonnx/tree/1.91.0a1) (2026-09-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.90.1a1...1.91.0a1)
