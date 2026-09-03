@@ -18,6 +18,19 @@ class SileroVoiceActivityDetector:
         self.session.intra_op_num_threads = 1
         self.session.inter_op_num_threads = 1
 
+        self.reset()
+
+    def reset(self) -> None:
+        """Clear the recurrent hidden state.
+
+        Silero VAD is an RNN: every ``__call__`` feeds ``_h``/``_c`` back in.
+        That state must persist across the chunks of ONE utterance but must be
+        cleared BETWEEN utterances — otherwise a detector reused across a
+        dataset carries the previous clip's state into the next one. Because
+        utterance processing order varies across runs (multiprocessing pool
+        scheduling), the leaked state makes trim boundaries — and thus which
+        clips survive the too-short guard — nondeterministic. Callers reset
+        before each utterance (see ``trim_silence``)."""
         self._h = np.zeros((2, 1, 64)).astype("float32")
         self._c = np.zeros((2, 1, 64)).astype("float32")
 

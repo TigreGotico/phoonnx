@@ -1,0 +1,8 @@
+TODO.md
+ROADMAP.md
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+bench_results_cpu.json
+.venv/
