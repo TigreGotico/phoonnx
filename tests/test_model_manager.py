@@ -440,6 +440,8 @@ class TestExternalDataGraphLoads(HubTestCase):
             [weight])
         model = helper.make_model(
             graph, opset_imports=[helper.make_opsetid("", 13)])
+        # onnxruntime's supported IR version lags behind onnx releases; pin explicitly.
+        model.ir_version = 10
         onnx.save(model, str(build / "model.onnx"), save_as_external_data=True,
                   location="model.onnx_data", all_tensors_to_one_file=True,
                   size_threshold=0)
