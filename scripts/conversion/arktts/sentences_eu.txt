@@ -1,0 +1,6 @@
+# Basque test sentences for the Zortzi-TTS WER gate.
+Kaixo mundua, gaur eguraldi ona dago Bilbon.
+Bihar goizean mendira joango gara lagunekin.
+Liburu hori oso interesgarria iruditu zait.
+Eskerrik asko zure laguntzagatik, benetan.
+Non dago hurbilen dagoen tren geltokia?
