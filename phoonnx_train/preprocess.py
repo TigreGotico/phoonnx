@@ -1,26 +1,32 @@
 #!/usr/bin/env python3
-import csv
-import dataclasses
 import itertools
 import json
 import logging
 import os
 from collections import Counter
-from dataclasses import dataclass
 from multiprocessing import JoinableQueue, Process, Queue
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple, Any, Set, Union, Callable
 
 import click
+import torch
 from tqdm import tqdm
 
 from phoonnx.config import PhonemeType, get_phonemizer, Alphabet
-from phoonnx.phonemizers import Phonemizer
 from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, \
+    phoneme_map_seed, untrained_map_symbols, \
     DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN
 from phoonnx.util import normalize
 from phoonnx.version import VERSION_STR
+from phoonnx_train.dataset_loaders import (PreprocessorConfig, Utterance,
+                                           ensure_audio_path, get_text_casing,
+                                           known_loaders, load_source)
 from phoonnx_train.norm_audio import cache_norm_audio, make_silence_detector
+from phoonnx_train.quality_filter import (FilterSpec, apply_quality_filters,
+                                          configure_asr_model,
+                                          configure_speaker_model,
+                                          configure_vad_model, known_scorers,
+                                          log_filter_summary, parse_filter_spec)
 
 _LOGGER = logging.getLogger("preprocess")
 
@@ -33,27 +39,6 @@ DEFAULT_SPECIAL_PHONEME_ID_MAP: Dict[str, int] = {
 }
 MAX_PHONEMES = 256
 # -----------------------------------------------------------------------------
-
-@dataclass
-class Utterance:
-    """Represents a single utterance in the dataset."""
-    text: str
-    audio_path: Path
-    speaker: Optional[str] = None
-    speaker_id: Optional[int] = None
-    phonemes: Optional[List[str]] = None
-    phoneme_ids: Optional[List[int]] = None
-    audio_norm_path: Optional[Path] = None
-    audio_spec_path: Optional[Path] = None
-
-    def asdict(self) -> Dict[str, Any]:
-        """Custom asdict to handle Path objects for JSON serialization."""
-        data = dataclasses.asdict(self)
-        for key, value in data.items():
-            if isinstance(value, Path):
-                data[key] = str(value)
-        return data
-
 
 class PathEncoder(json.JSONEncoder):
     """JSON encoder for Path objects."""
@@ -73,118 +58,11 @@ class PathEncoder(json.JSONEncoder):
         return super().default(o)
 
 
-def get_text_casing(casing: str) -> Callable[[str], str]:
-    """
-    Returns a function to apply text casing based on a string name.
-
-    Args:
-        casing: The name of the casing function ('lower', 'upper', 'casefold', or 'ignore').
-
-    Returns:
-        A callable function (str) -> str.
-    """
-    if casing == "lower":
-        return str.lower
-    if casing == "upper":
-        return str.upper
-    if casing == "casefold":
-        return str.casefold
-    return lambda s: s
-
-
-@dataclass
-class PreprocessorConfig:
-    """Dataclass to hold all runtime configuration, mimicking argparse.Namespace."""
-    input_dir: Path
-    output_dir: Path
-    language: str
-    sample_rate: int
-    cache_dir: Path
-    max_workers: int
-    single_speaker: bool
-    speaker_id: Optional[int]
-    phoneme_type: PhonemeType
-    alphabet: Alphabet
-    phonemizer_model: str
-    text_casing: str
-    dataset_name: Optional[str]
-    audio_quality: Optional[str]
-    skip_audio: bool
-    debug: bool
-    add_diacritics: bool
-
-
-def ljspeech_dataset(config: PreprocessorConfig) -> Iterable[Utterance]:
-    """
-    Generator for LJSpeech-style dataset.
-    Loads metadata and resolves audio file paths.
-
-    Args:
-        config: The configuration object containing dataset parameters.
-
-    Yields:
-        Utterance: A fully populated Utterance object.
-    """
-    dataset_dir = config.input_dir
-    metadata_path = dataset_dir / "metadata.csv"
-    if not metadata_path.exists():
-        _LOGGER.error(f"Missing metadata file: {metadata_path}")
-        return
-
-    wav_dirs: List[Path] = [dataset_dir / "wav", dataset_dir / "wavs"]
-
-    with open(metadata_path, "r", encoding="utf-8") as csv_file:
-        reader = csv.reader(csv_file, delimiter="|")
-        for row in reader:
-            if len(row) < 2:
-                _LOGGER.warning(f"Skipping malformed row: {row}")
-                continue
-
-            filename: str = row[0]
-            text: str = row[-1]
-            speaker: Optional[str] = None
-
-            if not config.single_speaker and len(row) > 2:
-                speaker = row[1]
-            else:
-                speaker = None
-
-            wav_path: Optional[Path] = None
-            for wav_dir in wav_dirs:
-                potential_paths: List[Path] = [
-                    wav_dir / filename,
-                    wav_dir / f"{filename}.wav",
-                    wav_dir / f"{filename.lstrip('0')}.wav"
-                ]
-                for path in potential_paths:
-                    if path.exists():
-                        wav_path = path
-                        break
-                if wav_path:
-                    break
-
-            if not config.skip_audio and not wav_path:
-                _LOGGER.warning("Missing audio file for filename: %s", filename)
-                continue
-
-            if not config.skip_audio and wav_path and wav_path.stat().st_size == 0:
-                _LOGGER.warning("Empty audio file: %s", wav_path)
-                continue
-
-            # Ensure wav_path is Path or None, and is never accessed if skip_audio is true
-            yield Utterance(
-                text=text,
-                audio_path=wav_path or Path(""), # Use empty path if skipping audio, should not be used
-                speaker=speaker,
-                speaker_id=config.speaker_id,
-            )
-
-
 def phonemize_worker(
         config: PreprocessorConfig,
         task_queue: JoinableQueue,
         result_queue: Queue,
-        phonemizer: Phonemizer,
+        phonemizer: PhonemeType,
 ) -> None:
     """
     Worker process for phonemization and audio processing.
@@ -209,23 +87,30 @@ def phonemize_worker(
 
             for utt in utterance_batch:
                 try:
-                    # Normalize text (case, numbers, etc.)
-                    utterance: str = casing(normalize(utt.text, config.language))
+                    if utt.phonemes_precomputed:
+                        # Phonemes come verbatim from a dataset column: use them
+                        # as-is, never normalized or case-mangled.
+                        if not utt.phonemes:
+                            raise RuntimeError("empty precomputed phonemes")
+                    else:
+                        # Normalize text (case, numbers, etc.)
+                        utterance: str = casing(normalize(utt.text, config.language))
 
-                    # Add diacritics
-                    if config.add_diacritics:
-                        utterance = phonemizer.add_diacritics(utterance, config.language)
+                        # Add diacritics
+                        if config.add_diacritics:
+                            utterance = phonemizer.add_diacritics(utterance, config.language)
 
-                    # Phonemize the text
-                    utt.phonemes = [p for p in phonemizer.phonemize_to_list(utterance, config.language)
-                                    if p != "\n"] # HACK: not sure where this is coming from
-                    if not utt.phonemes:
-                        raise RuntimeError(f"Phonemes not found for '{utterance}'")
+                        # Phonemize the text
+                        utt.phonemes = [p for p in phonemizer.phonemize_to_list(utterance, config.language)
+                                        if p != "\n"] # HACK: not sure where this is coming from
+                        if not utt.phonemes:
+                            raise RuntimeError(f"Phonemes not found for '{utterance}'")
 
                     # Process audio if not skipping
                     if not config.skip_audio:
+                        audio_path = ensure_audio_path(utt, config.cache_dir)
                         utt.audio_norm_path, utt.audio_spec_path = cache_norm_audio(
-                            utt.audio_path,
+                            audio_path,
                             config.cache_dir,
                             silence_detector,
                             config.sample_rate,
@@ -248,11 +133,62 @@ def phonemize_worker(
 @click.option(
     "-i",
     "--input-dir",
-    "input_dir",
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    "input_sources",
+    multiple=True,
     required=True,
-    help="Directory with audio dataset (e.g., containing metadata.csv and wavs/)",
+    help="Dataset source. Repeatable (or comma-separated) to merge multiple "
+         "datasets; per-source speaker ids are namespaced to avoid collisions. "
+         "A source may be an LJSpeech-style directory (metadata.csv + wav(s)/), "
+         "a .jsonl file, a .parquet file / shard glob / directory of shards, or "
+         "a Hugging Face 'org/name' repo id (see --dataset-format).",
 )
+@click.option(
+    "--dataset-format",
+    "dataset_format",
+    type=click.Choice(["auto", "ljspeech", "jsonl", "parquet", "hf"]),
+    default="auto",
+    show_default=True,
+    help="Input format. 'auto' detects from each source: a directory with "
+         "metadata.csv -> ljspeech; a .jsonl file -> jsonl; a .parquet file, "
+         "shard glob, or directory of shards -> parquet; an 'org/name' string "
+         "that is not an existing path -> hf.",
+)
+@click.option("--text-column", "text_column", default=None,
+              help="Column holding transcript text (jsonl/parquet/hf). "
+                   "Default: first of text, sentence, transcription, transcript.")
+@click.option("--audio-column", "audio_column", default=None,
+              help="Column holding audio path or embedded bytes "
+                   "(jsonl/parquet/hf). Default: audio.")
+@click.option("--speaker-column", "speaker_column", default=None,
+              help="Column holding the speaker label (jsonl/parquet/hf). "
+                   "Default: first of speaker, speaker_id.")
+@click.option("--phonemes-column", "phonemes_column", default=None,
+              help="Opt-in: column holding precomputed, whitespace-separated "
+                   "phoneme symbols (jsonl/parquet/hf). Rows with a non-empty "
+                   "value skip phonemization and are used verbatim; their "
+                   "symbols are validated against the final phoneme map.")
+@click.option("--lang-column", "lang_column", default=None,
+              help="Column holding a per-row language code (jsonl/parquet/hf). "
+                   "Carried through into dataset.jsonl extras. Default: unset.")
+@click.option("--resume", "resume", is_flag=True,
+              help="Skip rows already present (by row_id/audio path) in an "
+                   "existing output dataset.jsonl and append only new rows. "
+                   "Writes are atomic (temp file + rename). Incompatible with "
+                   "--corpus-only-map, which cannot be reconstructed from "
+                   "already-written rows.")
+@click.option("--metrics-out", "metrics_out", type=click.Path(dir_okay=False, path_type=Path),
+              default=None,
+              help="Write every computed --filter metric value per row_id to "
+                   "this parquet sidecar during filtering.")
+@click.option("--metrics-in", "metrics_in", type=click.Path(exists=True, dir_okay=False, path_type=Path),
+              default=None,
+              help="Read a previously written metrics sidecar; with "
+                   "--filter-from-columns its values are preferred over "
+                   "recomputation.")
+@click.option("--filter-from-columns", "filter_from_columns", is_flag=True,
+              help="Make --filter prefer a per-row value from a dataset column "
+                   "of the same name (or from --metrics-in) before computing it "
+                   "on demand.")
 @click.option(
     "-o",
     "--output-dir",
@@ -282,6 +218,17 @@ def phonemize_worker(
     type=bool,
     default=True,
     help="If training data has more symbols than base model, discard new symbols. (for fine-tuning only)",
+)
+@click.option(
+    "--corpus-only-map",
+    "corpus_only_map",
+    is_flag=True,
+    default=False,
+    help="Build the phoneme map only from symbols present in the corpus, instead of "
+         "seeding it with the full default IPA table. Symbols outside the map fail at "
+         "tokenization instead of mapping to embeddings the model never trained. "
+         "Models preprocessed this way can only be fine-tuned from configs with a "
+         "compatible (subset) map.",
 )
 @click.option(
     "-r",
@@ -386,12 +333,110 @@ def phonemize_worker(
     default=None,
     help="override audio_norm_path/audio_spec_path base directory (everything before '/cache') in generated dataset.jsonl"
 )
+@click.option(
+    "--engine",
+    default=None,
+    help="run this training engine's extra feature extraction per utterance "
+         "(e.g. 'yourtts' d-vectors, 'fastpitch' F0) and record the produced "
+         "fields in dataset.jsonl",
+)
+@click.option(
+    "--speaker-encoder-path",
+    default=None,
+    help="[--engine yourtts] path to the Coqui ResNet ONNX speaker encoder "
+         "used to compute d-vectors",
+)
+@click.option(
+    "--language-id",
+    default=None,
+    type=int,
+    help="[--engine yourtts] language id recorded on every utterance "
+         "(multilingual training)",
+)
+@click.option(
+    "--f0-method",
+    "f0_method",
+    default="pyin",
+    type=click.Choice(["pyin", "dio", "harvest"]),
+    show_default=True,
+    help="[--engine fastpitch/speedyspeech/mixer] ground-truth F0 (pitch) "
+         "extractor: 'pyin' (librosa, default, no extra native dependency) "
+         "or 'dio'/'harvest' (WORLD via pyworld, ~50x faster at "
+         "preprocessing time, requires the 'train-pyworld' extra). Must "
+         "match the f0_method the training engine config uses, since it "
+         "selects which F0 sidecar cache filename is read at train time.",
+)
+@click.option(
+    "--filter",
+    "quality_filters",
+    multiple=True,
+    metavar="COLUMN:MIN:MAX",
+    help="Drop utterances outside [MIN, MAX] on an on-demand-computed quality "
+         "metric. Repeatable; a sample must pass every --filter to be kept. "
+         "MIN or MAX may be empty for unbounded on that side. Metrics are "
+         "computed fresh per sample (not read from precomputed dataset "
+         "columns): 'wpm' (words per minute, arithmetic), 'snr' (energy-based "
+         "signal-to-noise dB estimate, arithmetic), 'clipping' (fraction of "
+         "near-full-scale samples, arithmetic), 'is_music_like' (0/1 "
+         "onset-rhythmicity heuristic, not a trained classifier -- roughly "
+         "25-30% error rate at any threshold, a coarse pre-filter only), "
+         "'vad_ratio' (speech-activity fraction via vadonnx, see "
+         "--vad-model), 'speaker_consistency' (min pairwise cosine "
+         "similarity between windows via speakeronnx, see --speaker-model), "
+         "'utmos' (SpeechMOS UTMOS naturalness), 'dnsmos_sig'/'dnsmos_bak'/"
+         "'dnsmos_ovrl' (DNSMOS P.835), 'plcmos' (packet-loss-concealment "
+         "quality, catches VoIP/dropped-packet artifacts), 'aecmos' "
+         "(echo-cancellation quality, catches speakerphone/echo artifacts; "
+         "plcmos/aecmos are most relevant to call-based corpora and require "
+         "the 'speechmos' package), 'wer' (word error rate of an onnx_asr "
+         "transcription against the sample's own text, see --asr-model; the "
+         "most expensive filter, always evaluated last). Referencing an "
+         "unknown column warns and skips that filter instead of failing. "
+         "Examples: --filter utmos:3.0: --filter wpm:80:400 "
+         "--filter is_music_like:0:0 --filter snr:15: --filter clipping:0:0.01 "
+         "--filter vad_ratio:0.5: --filter speaker_consistency:0.6: "
+         "--filter plcmos:3.0: --filter aecmos:3.0: --filter wer:0:0.3",
+)
+@click.option(
+    "--vad-model",
+    "vad_model",
+    default="silero",
+    show_default=True,
+    help="vadonnx model name used by the 'vad_ratio' quality filter.",
+)
+@click.option(
+    "--speaker-model",
+    "speaker_model",
+    default="wespeaker-resnet34",
+    show_default=True,
+    help="speakeronnx model name used by the 'speaker_consistency' quality filter.",
+)
+@click.option(
+    "--asr-model",
+    "asr_model",
+    default="whisper-base",
+    show_default=True,
+    help="Model identifier or path loadable via onnx_asr.load_model(), used "
+         "by the 'wer' quality filter. Must be onnx-asr-compatible; an "
+         "unloadable value fails loudly instead of silently skipping 'wer'.",
+)
 def cli(
-    input_dir: Path,
+    input_sources: Tuple[str, ...],
+    dataset_format: str,
+    text_column: Optional[str],
+    audio_column: Optional[str],
+    speaker_column: Optional[str],
+    phonemes_column: Optional[str],
+    lang_column: Optional[str],
+    resume: bool,
+    metrics_out: Optional[Path],
+    metrics_in: Optional[Path],
+    filter_from_columns: bool,
     output_dir: Path,
     language: str,
     prev_config: Path,
     drop_extra_phonemes: bool,
+    corpus_only_map: bool,
     sample_rate: int,
     cache_dir: Optional[Path],
     max_workers: Optional[int],
@@ -408,6 +453,14 @@ def cli(
     add_diacritics: bool,
     jsonl_audio_path: Optional[str],
     jsonl_audio_spec_path: Optional[str],
+    engine: Optional[str],
+    speaker_encoder_path: Optional[str],
+    language_id: Optional[int],
+    f0_method: str,
+    quality_filters: Tuple[str, ...],
+    vad_model: str,
+    speaker_model: str,
+    asr_model: str,
 ) -> None:
     """
     Preprocess a TTS dataset into a JSONL and config suitable for training a VITS-style model.
@@ -437,14 +490,22 @@ def cli(
         add_diacritics (bool): Instruct the inference settings in the config to add diacritics.
         jsonl_audio_path (Optional[str]): Optional base path override for audio paths written into dataset.jsonl.
         jsonl_audio_spec_path (Optional[str]): Optional base path override for cached audio/spec paths in dataset.jsonl.
-    
+        quality_filters (Tuple[str, ...]): Repeatable 'column:min:max' quality-metric filters (e.g. 'utmos:3.0:'),
+            applied at manifest-load time before phonemization/audio caching. See phoonnx_train.quality_filter.
+        vad_model (str): vadonnx model name used by the 'vad_ratio' quality filter.
+        speaker_model (str): speakeronnx model name used by the 'speaker_consistency' quality filter.
+        asr_model (str): Model identifier/path loadable via onnx_asr.load_model(), used by the 'wer' quality filter.
+
     Raises:
         click.Abort: If mutually exclusive CLI options are provided (e.g., both --single-speaker and --speaker-id).
         ValueError: If finetuning with a previous config and the new dataset contains phonemes not present in that config and drop_extra_phonemes is False.
     """
+    # Split any comma-separated sources into a flat list.
+    sources: List[str] = [s.strip() for spec in input_sources for s in spec.split(",") if s.strip()]
+
     # Create a config object from click arguments for easier passing
     config = PreprocessorConfig(
-        input_dir=input_dir,
+        input_dir=Path(sources[0]) if sources else Path(""),
         output_dir=output_dir,
         language=language,
         sample_rate=sample_rate,
@@ -461,6 +522,12 @@ def cli(
         skip_audio=skip_audio,
         debug=debug,
         add_diacritics=add_diacritics,
+        dataset_format=dataset_format,
+        text_column=text_column,
+        audio_column=audio_column,
+        speaker_column=speaker_column,
+        phonemes_column=phonemes_column,
+        lang_column=lang_column,
     )
 
     # Setup logging
@@ -474,16 +541,97 @@ def cli(
         _LOGGER.fatal("--single-speaker and --speaker-id cannot both be provided")
         raise click.Abort()
 
+    if resume and corpus_only_map:
+        raise click.UsageError(
+            "--resume cannot be combined with --corpus-only-map: resuming "
+            "reprocesses only new rows, so it cannot reconstruct a corpus-only "
+            "phoneme map from the already-written rows (symbols occurring only "
+            "in those rows would be lost). Rerun without --resume, or without "
+            "--corpus-only-map."
+        )
+
     # Create directories
     config.output_dir.mkdir(parents=True, exist_ok=True)
     config.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load all utterances from the dataset
-    _LOGGER.info("Loading utterances from dataset...")
-    utterances: List[Utterance] = list(ljspeech_dataset(config))
+    # Load all utterances, merging multiple sources. When more than one source
+    # is given, speaker labels are namespaced by source ("<tag>:<speaker>") so
+    # identical speaker ids across datasets do not collide.
+    _LOGGER.info("Loading utterances from %d source(s)...", len(sources))
+    utterances: List[Utterance] = []
+    for src_index, source in enumerate(sources):
+        source_tag = Path(source).stem or Path(source).name or source
+        source_speakers: Set[str] = set()
+        for utt in load_source(source, config):
+            if len(sources) > 1 and utt.speaker is not None:
+                source_speakers.add(utt.speaker)
+                utt.speaker = f"{source_tag}:{utt.speaker}"
+            utterances.append(utt)
+        if len(sources) > 1 and source_speakers:
+            _LOGGER.info("Source %r speakers namespaced as %s", source,
+                         ", ".join(f"{source_tag}:{s}" for s in sorted(source_speakers)))
+
     if not utterances:
         _LOGGER.error("No valid utterances found in dataset.")
         return
+
+    # Resume: skip rows already written to an existing dataset.jsonl.
+    dataset_path = config.output_dir / "dataset.jsonl"
+    resume_rows: List[Dict[str, Any]] = []
+    if resume and dataset_path.exists():
+        resume_rows = _read_jsonl(dataset_path)
+        done_keys = {_row_key(r) for r in resume_rows}
+        kept = [u for u in utterances if _utt_key(u) not in done_keys]
+        _LOGGER.info("Resume: %d rows already done, %d new rows to process.",
+                     len(resume_rows), len(kept))
+        utterances = kept
+        if not utterances:
+            _LOGGER.info("Resume: nothing new to process.")
+            return
+
+    if quality_filters:
+        configure_vad_model(vad_model)
+        configure_speaker_model(speaker_model)
+        configure_asr_model(asr_model)
+        specs: List[FilterSpec] = [parse_filter_spec(f) for f in quality_filters]
+        total_before = len(utterances)
+
+        sidecar: Dict[str, Dict[str, float]] = {}
+        if metrics_in:
+            sidecar = _read_metrics_sidecar(metrics_in)
+
+        value_source = None
+        if filter_from_columns:
+            def value_source(utt: Utterance, column: str) -> Optional[float]:
+                if column in utt.extras and utt.extras[column] is not None:
+                    try:
+                        return float(utt.extras[column])
+                    except (TypeError, ValueError):
+                        return None
+                return sidecar.get(utt.row_id or "", {}).get(column)
+
+        recorded: Dict[str, Dict[str, float]] = {}
+        metrics_sink = None
+        if metrics_out:
+            def metrics_sink(row_id: str, column: str, value: float) -> None:
+                recorded.setdefault(row_id, {})[column] = value
+
+        utterances, dropped_counts = apply_quality_filters(
+            utterances,
+            specs,
+            audio_path_fn=lambda u: ensure_audio_path(u, config.cache_dir),
+            text_fn=lambda u: u.text,
+            id_fn=lambda u: u.row_id or str(u.audio_path),
+            value_source=value_source,
+            metrics_sink=metrics_sink,
+        )
+        log_filter_summary(total_before, dropped_counts, len(utterances))
+        if metrics_out and recorded:
+            _write_metrics_sidecar(metrics_out, recorded)
+            _LOGGER.info("Wrote metrics sidecar for %d rows to %s", len(recorded), metrics_out)
+        if not utterances:
+            _LOGGER.error("No utterances left after quality filtering.")
+            return
 
     num_utterances: int = len(utterances)
     _LOGGER.info("Found %d utterances.", num_utterances)
@@ -504,7 +652,7 @@ def cli(
     _LOGGER.info("Starting single pass processing with %d workers...", config.max_workers)
 
     # Initialize the phonemizer only once in the main process
-    phonemizer: Phonemizer = get_phonemizer(config.phoneme_type,
+    phonemizer: PhonemeType = get_phonemizer(config.phoneme_type,
                                             config.alphabet,
                                             config.phonemizer_model)
 
@@ -536,24 +684,39 @@ def cli(
     for _ in range(config.max_workers):
         task_queue.put(None)
 
-    # Collect results from the queue with a progress bar
+    # Collect results from the queue with a progress bar. Phonemes read from a
+    # dataset column (precomputed) never expand the phoneme map: they are kept
+    # aside and validated against the final map so a mismatched inventory fails
+    # loudly instead of silently growing the vocab.
     processed_utterances: List[Utterance] = []
     all_phonemes: Set[str] = set()
+    precomputed_symbols: Set[str] = set()
+    num_from_column: int = 0
+    num_phonemized: int = 0
     for _ in tqdm(range(task_count), desc="Processing utterances"):
         result: Tuple[Optional[Utterance], Set[str]] = result_queue.get()
         utt, unique_phonemes = result
         if utt is not None:
             processed_utterances.append(utt)
-            all_phonemes.update(unique_phonemes)
+            if utt.phonemes_precomputed:
+                precomputed_symbols.update(unique_phonemes)
+                num_from_column += 1
+            else:
+                all_phonemes.update(unique_phonemes)
+                num_phonemized += 1
 
     # Wait for workers to finish
     task_queue.join()
     for proc in processes:
         proc.join()
 
+    if phonemes_column:
+        _LOGGER.info("Phoneme source split: %d rows from column %r, %d phonemized.",
+                     num_from_column, phonemes_column, num_phonemized)
 
     # --- Build the final phoneme map from the collected phonemes ---
     _LOGGER.info("Building a phoneme map from collected dataset phonemes...")
+    corpus_phonemes: Set[str] = set(all_phonemes) | precomputed_symbols
 
     if prev_config:
         with open(prev_config) as f:
@@ -570,8 +733,9 @@ def cli(
     else:
         prev_num_symbols = MAX_PHONEMES
         final_phoneme_id_map: Dict[str, int] = DEFAULT_SPECIAL_PHONEME_ID_MAP.copy()
-        if phonemizer.alphabet == Alphabet.IPA:
-            all_phonemes.update(DEFAULT_IPA_PHONEME_ID_MAP.keys())
+        all_phonemes = phoneme_map_seed(all_phonemes,
+                                        ipa=phonemizer.alphabet == Alphabet.IPA,
+                                        include_defaults=not corpus_only_map)
 
     # Filter out tokens that are already in the map
     existing_keys: Set[str] = set(final_phoneme_id_map.keys())
@@ -598,8 +762,26 @@ def cli(
             current_id += 1
             _LOGGER.debug(f"New phoneme: {pho}")
 
+    unused = untrained_map_symbols(final_phoneme_id_map, corpus_phonemes)
+    if unused:
+        _LOGGER.warning(
+            "%d phoneme map symbols never occur in the corpus and their embeddings will "
+            "not be trained; feeding them at inference produces undefined audio: %s",
+            len(unused), " ".join(unused))
+
     if new_phonemes:
         _LOGGER.info("Final phoneme map contains %d phonemes.", len(final_phoneme_id_map))
+
+    # Precomputed (column) phonemes must already be representable in the final
+    # map; a mismatched inventory fails loudly instead of expanding the vocab.
+    if precomputed_symbols:
+        missing = sorted(precomputed_symbols - set(final_phoneme_id_map))
+        if missing:
+            raise ValueError(
+                f"precomputed phonemes from column {phonemes_column!r} contain "
+                f"{len(missing)} symbol(s) absent from the final phoneme map: "
+                f"{' '.join(missing)}"
+            )
 
     # --- Write the final config.json ---
     _LOGGER.info("Writing dataset config...")
@@ -627,16 +809,40 @@ def cli(
         "phoonnx_version": VERSION_STR,
     }
 
-    with open(config.output_dir / "config.json", "w", encoding="utf-8") as config_file:
+    config_tmp = config.output_dir / "config.json.tmp"
+    with open(config_tmp, "w", encoding="utf-8") as config_file:
         json.dump(config_data, config_file, ensure_ascii=False, indent=2)
+    config_tmp.rename(config.output_dir / "config.json")
 
     # --- Apply final phoneme IDs and write dataset.jsonl ---
+    # Writes go to a temp file and are atomically renamed into place so an
+    # interrupted run never leaves a half-written manifest. With --resume the
+    # already-processed rows are re-emitted first, then the new rows appended.
     _LOGGER.info("Writing dataset.jsonl...")
     valid_utterances_count: int = 0
 
     tokenizer = TTSTokenizer.from_phoonnx_config(config_data)
 
-    with open(config.output_dir / "dataset.jsonl", "w", encoding="utf-8") as dataset_file:
+    dataset_tmp = config.output_dir / "dataset.jsonl.tmp"
+    with open(dataset_tmp, "w", encoding="utf-8") as dataset_file:
+        for row in resume_rows:
+            json.dump(row, dataset_file, ensure_ascii=False, cls=PathEncoder)
+            print("", file=dataset_file)
+            valid_utterances_count += 1
+
+        training_engine = None
+        engine_kwargs = {}
+        if engine:
+            from phoonnx_train.engines import get_engine
+
+            training_engine = get_engine(engine)
+            if speaker_encoder_path:
+                engine_kwargs["speaker_encoder_path"] = speaker_encoder_path
+            if language_id is not None:
+                engine_kwargs["language_id"] = language_id
+            if f0_method:
+                engine_kwargs["f0_method"] = f0_method
+
         for utt in processed_utterances:
             if is_multispeaker and utt.speaker is not None:
                 if utt.speaker not in speaker_ids:
@@ -652,6 +858,18 @@ def cli(
                 _LOGGER.warning("Skipping utterance with invalid phoneme_ids before writing: %s", utt.audio_path)
                 continue
 
+            # Monotonic alignment needs at least one spectrogram frame per
+            # phoneme id; a shorter spectrogram means the audio does not
+            # contain the full text (e.g. a truncated clip)
+            if utt.audio_spec_path is not None:
+                spec_frames = torch.load(utt.audio_spec_path, map_location="cpu").size(-1)
+                if spec_frames < len(utt.phoneme_ids):
+                    _LOGGER.warning(
+                        "Skipping utterance with more phonemes (%d) than spectrogram frames (%d), "
+                        "audio is too short for its text: %s",
+                        len(utt.phoneme_ids), spec_frames, utt.audio_path)
+                    continue
+
             # apply path overrides if needed
             # this allows pre-processing the dataset in one system and then train in other
             if jsonl_audio_path:
@@ -663,6 +881,13 @@ def cli(
                 base_path, fname = str(utt.audio_spec_path).split("/cache/")
                 utt.audio_spec_path = Path(f"{jsonl_audio_spec_path}/cache/{fname}")
 
+            if training_engine is not None and utt.audio_path:
+                extra = training_engine.extra_preprocess(
+                    Path(utt.audio_path), config.cache_dir,
+                    sample_rate, **engine_kwargs)
+                for key, value in extra.items():
+                    setattr(utt, key, value)
+
             json.dump(
                 utt.asdict(),
                 dataset_file,
@@ -672,10 +897,57 @@ def cli(
             print("", file=dataset_file)
             valid_utterances_count += 1
 
+    dataset_tmp.rename(config.output_dir / "dataset.jsonl")
     _LOGGER.info("Preprocessing complete. Wrote %d valid utterances to dataset.jsonl.", valid_utterances_count)
 
 
 # -----------------------------------------------------------------------------
+
+def _row_key(row: Dict[str, Any]) -> str:
+    """Resume identity for an existing dataset.jsonl row: row_id or audio path."""
+    return str(row.get("row_id") or row.get("audio_path") or "")
+
+
+def _utt_key(utt: Utterance) -> str:
+    """Resume identity for a freshly loaded utterance: row_id or audio path."""
+    return str(utt.row_id or utt.audio_path or "")
+
+
+def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
+    """Read existing dataset.jsonl rows, tolerating a truncated final line."""
+    rows: List[Dict[str, Any]] = []
+    with open(path, "r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                _LOGGER.warning("Ignoring truncated/malformed row while resuming: %.60s", line)
+    return rows
+
+
+def _read_metrics_sidecar(path: Path) -> Dict[str, Dict[str, float]]:
+    """Load a metrics parquet sidecar into {row_id: {column: value}}."""
+    import pandas as pd
+    frame = pd.read_parquet(path)
+    out: Dict[str, Dict[str, float]] = {}
+    for record in frame.to_dict(orient="records"):
+        row_id = str(record.get("row_id", ""))
+        out[row_id] = {k: float(v) for k, v in record.items()
+                       if k != "row_id" and v is not None and not pd.isna(v)}
+    return out
+
+
+def _write_metrics_sidecar(path: Path, recorded: Dict[str, Dict[str, float]]) -> None:
+    """Write per-row computed metric values to a parquet sidecar (atomic)."""
+    import pandas as pd
+    rows = [{"row_id": row_id, **values} for row_id, values in recorded.items()]
+    tmp = Path(str(path) + ".tmp")
+    pd.DataFrame(rows).to_parquet(tmp)
+    tmp.rename(path)
+
 
 def batched(iterable: Iterable[Any], n: int) -> Iterable[List[Any]]:
     """
