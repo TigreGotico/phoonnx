@@ -12,7 +12,9 @@ jobs:
   publish_stable:
     if: github.actor != 'github-actions[bot]'
     uses: OpenVoiceOS/gh-automations/.github/workflows/publish-stable.yml@dev
-    secrets: inherit
+    secrets:
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      MATRIX_TOKEN: ${{ secrets.MATRIX_TOKEN }}
     with:
       branch: 'master'
       version_file: 'phoonnx/version.py'
