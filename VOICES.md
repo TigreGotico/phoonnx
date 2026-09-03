@@ -2358,6 +2358,10 @@
 | `OpenVoiceOS/pipertts_pt-PT_miro` | `pt-PT` | `piper` | `espeak` |
 | `outetts/1B/pt` | `pt-PT` | `outetts` | `unicode` |
 | `piper/pt_PT-tugão-medium` | `pt-PT` | `piper` | `espeak` |
+| `logus2k/tts_eu_pt` | `pt-PT-x-lisbon` | `styletts2` | `tugaphone` |
+| `logus2k/tts_eu_pt-pm_alex` | `pt-PT-x-lisbon` | `styletts2` | `tugaphone` |
+| `logus2k/tts_eu_pt-pm_santa` | `pt-PT-x-lisbon` | `styletts2` | `tugaphone` |
+| `logus2k/tts_eu_pt-am_adam` | `pt-PT-x-lisbon` | `styletts2` | `tugaphone` |
 | `facebook/mms-tts-ptu-Bambam` | `ptu` | `transformers` | `graphemes` |
 | `omnivoice/pua` | `pua` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-pui-Puinave` | `pui` | `transformers` | `graphemes` |

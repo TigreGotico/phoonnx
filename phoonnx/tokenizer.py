@@ -1,3 +1,4 @@
+import unicodedata
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Mapping, List, Dict, Optional, Any, Set, Union
@@ -571,13 +572,25 @@ class TTSTokenizer:
                         compound_idxs += [i for i in range(i, i+n)]
                         break
 
+                if idx is None and len(char) == 1:
+                    # Phonemizers emit precomposed characters (e.g. U+00F5 "õ") while
+                    # some vocabularies (e.g. Kokoro/StyleTTS2) only know the base
+                    # letter plus a separate combining mark. Fall back to the
+                    # canonical decomposition before giving up on the character.
+                    decomposed = unicodedata.normalize("NFD", char)
+                    if len(decomposed) > 1 and all(c in self.vocabulary.char2idx for c in decomposed):
+                        idx = [self.vocabulary.char2idx[c] for c in decomposed]
+
                 if idx is None and char not in self.not_found_characters:
                     self.not_found_characters.add(char)
                     LOG.warning(f"Out-of-vocabulary phoneme {char!r} "
                                 f"(codepoints: {[hex(ord(c)) for c in char]}) "
                                 f"not found in vocabulary, dropping it")
 
-            token_ids.append(idx)
+            if isinstance(idx, list):
+                token_ids.extend(idx)
+            else:
+                token_ids.append(idx)
 
         # NOTE: mimic3 adds an extra word_blank at end, so we match that behaviour here
         #  instead of ending [..., BLANK, EOS] it ends with [..., BLANK, BLANK_WORD, BLANK, EOS]
