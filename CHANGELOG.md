@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.90.1a1](https://github.com/TigreGotico/phoonnx/tree/1.90.1a1) (2026-09-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.90.0a1...1.90.1a1)
+
+**Merged pull requests:**
+
+- fix: pin IR version of test-built ONNX graphs to what onnxruntime accepts [\#450](https://github.com/TigreGotico/phoonnx/pull/450) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.90.0a1](https://github.com/TigreGotico/phoonnx/tree/1.90.0a1) (2026-08-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.89.0a1...1.90.0a1)
@@ -23,10 +31,6 @@
 ## [1.86.0a1](https://github.com/TigreGotico/phoonnx/tree/1.86.0a1) (2026-08-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.85.0a1...1.86.0a1)
-
-**Merged pull requests:**
-
-- feat: per-language default voices via lang2voice and env vars [\#329](https://github.com/TigreGotico/phoonnx/pull/329) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.85.0a1](https://github.com/TigreGotico/phoonnx/tree/1.85.0a1) (2026-08-17)
 
@@ -156,7 +160,6 @@
 
 - docs: memory budgeting and OOM diagnosis for self-hosted servers [\#406](https://github.com/TigreGotico/phoonnx/pull/406) ([JarbasAl](https://github.com/JarbasAl))
 - fix: close every redirect hop and fix leading-silence bug in voice.py [\#403](https://github.com/TigreGotico/phoonnx/pull/403) ([JarbasAl](https://github.com/JarbasAl))
-- Propagate providers to catalog-only engines [\#328](https://github.com/TigreGotico/phoonnx/pull/328) ([goldyfruit](https://github.com/goldyfruit))
 
 ## [1.81.0a1](https://github.com/TigreGotico/phoonnx/tree/1.81.0a1) (2026-08-14)
 
@@ -356,10 +359,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.68.0a1...1.69.0a1)
 
-**Merged pull requests:**
-
-- feat: OuteTTS engine [\#342](https://github.com/TigreGotico/phoonnx/pull/342) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.68.0a1](https://github.com/TigreGotico/phoonnx/tree/1.68.0a1) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.67.0a1...1.68.0a1)
@@ -372,49 +371,25 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.66.1a1...1.67.0a1)
 
-**Merged pull requests:**
-
-- feat: Spark-TTS engine \(BiCodec AR codec-LM\) [\#335](https://github.com/TigreGotico/phoonnx/pull/335) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.66.1a1](https://github.com/TigreGotico/phoonnx/tree/1.66.1a1) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.66.0a1...1.66.1a1)
-
-**Merged pull requests:**
-
-- fix: point supertonic voice index at the OpenVoiceOS mirror [\#338](https://github.com/TigreGotico/phoonnx/pull/338) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.66.0a1](https://github.com/TigreGotico/phoonnx/tree/1.66.0a1) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.65.0a1...1.66.0a1)
 
-**Merged pull requests:**
-
-- feat: Kyutai Pocket TTS engine [\#333](https://github.com/TigreGotico/phoonnx/pull/333) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.65.0a1](https://github.com/TigreGotico/phoonnx/tree/1.65.0a1) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.64.2a1...1.65.0a1)
-
-**Merged pull requests:**
-
-- feat: NeuTTS/Akiti-TTS engine \(autoregressive NeuCodec LM\) [\#332](https://github.com/TigreGotico/phoonnx/pull/332) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.64.2a1](https://github.com/TigreGotico/phoonnx/tree/1.64.2a1) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.64.1a2...1.64.2a1)
 
-**Merged pull requests:**
-
-- fix: follow scriptconv mantoq→halabi notation rename [\#334](https://github.com/TigreGotico/phoonnx/pull/334) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.64.1a2](https://github.com/TigreGotico/phoonnx/tree/1.64.1a2) (2026-08-02)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.64.1a1...1.64.1a2)
-
-**Merged pull requests:**
-
-- docs: QA pass — verify docs against source, run all examples [\#330](https://github.com/TigreGotico/phoonnx/pull/330) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.64.1a1](https://github.com/TigreGotico/phoonnx/tree/1.64.1a1) (2026-07-24)
 
