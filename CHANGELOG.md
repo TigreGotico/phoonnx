@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.91.0a1](https://github.com/TigreGotico/phoonnx/tree/1.91.0a1) (2026-09-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.90.1a1...1.91.0a1)
+
+**Merged pull requests:**
+
+- feat: add logus2k/tts\_eu\_pt European Portuguese Kokoro voice [\#449](https://github.com/TigreGotico/phoonnx/pull/449) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.90.1a1](https://github.com/TigreGotico/phoonnx/tree/1.90.1a1) (2026-09-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.90.0a1...1.90.1a1)
@@ -362,10 +370,6 @@
 ## [1.68.0a1](https://github.com/TigreGotico/phoonnx/tree/1.68.0a1) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.67.0a1...1.68.0a1)
-
-**Merged pull requests:**
-
-- feat: Qwen3-TTS engine [\#343](https://github.com/TigreGotico/phoonnx/pull/343) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.67.0a1](https://github.com/TigreGotico/phoonnx/tree/1.67.0a1) (2026-08-03)
 
