@@ -12,7 +12,7 @@ from huggingface_hub import hf_hub_download
 from huggingface_hub.constants import HF_HUB_CACHE
 from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
                                     OfflineModeIsEnabled)
-from json_database import JsonStorageXDG, JsonStorage
+from json_database import JsonStorageXDG, JsonStorage, load_commented_json
 
 from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet, check_lang_supported
 from phoonnx.util import match_lang, normalize_lang, LOG
@@ -29,6 +29,22 @@ def _tmp_path(dest: Path) -> Path:
     """
     dest.parent.mkdir(parents=True, exist_ok=True)
     return dest.with_suffix(dest.suffix + ".part")
+
+
+def _parses(path: str) -> bool:
+    """Whether the index on disk is readable, by reading it.
+
+    An empty registry has two causes that look identical in memory: a file that
+    is genuinely empty, and one the storage layer could not parse. Only the
+    second is worth telling an operator about, and a size comparison answers
+    neither — ``{}\n`` is three bytes and perfectly valid, an empty file is
+    zero and is not.
+    """
+    try:
+        load_commented_json(path)
+        return True
+    except Exception:
+        return False
 
 
 def _is_cached(path: Path) -> bool:
@@ -858,7 +874,7 @@ class TTSModelManager:
         # and so is the evidence of what broke it.
         if not os.path.isfile(self.cache.path):
             self.cache.store()
-        elif not self.cache and os.path.getsize(self.cache.path) > 2:
+        elif not self.cache and not _parses(self.cache.path):
             LOG.error(f"voice index at {self.cache.path} could not be read and "
                       f"is being ignored; the catalog will look empty until it "
                       f"is rebuilt with 'phoonnx-voices update-cache'")
