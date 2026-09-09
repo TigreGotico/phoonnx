@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import re
+import tempfile
 import threading
 from dataclasses import asdict, dataclass, field
 from enum import Enum
@@ -23,12 +24,19 @@ from phoonnx.voice import TTSVoice
 def _tmp_path(dest: Path) -> Path:
     """Sibling scratch path used while a download is in flight.
 
+    The name is unique per call rather than "<target>.part": two fetches of the
+    same artifact would otherwise share one temporary file, interleaving their
+    bytes, and whichever lost the race would find it already renamed away.
+
     Every write goes through here, so this is also where the voice directory is
     created — a voice's directory should exist because something was written
     into it, not because its catalog entry was constructed.
     """
     dest.parent.mkdir(parents=True, exist_ok=True)
-    return dest.with_suffix(dest.suffix + ".part")
+    handle, tmp = tempfile.mkstemp(dir=dest.parent, prefix=dest.name + ".",
+                                   suffix=".part")
+    os.close(handle)
+    return Path(tmp)
 
 
 def _is_cached(path: Path) -> bool:
