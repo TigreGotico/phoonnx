@@ -134,11 +134,16 @@ class VitsTrainingEngine(BaseTrainingEngine):
 
         model_g.forward = infer_forward
 
-        # Build dummy inputs
-        sequences = torch.randint(low=0, high=num_symbols, size=(1, 50), dtype=torch.long)
-        sequence_lengths = torch.LongTensor([sequences.size(1)])
-        scales = torch.FloatTensor([0.667, 1.0, 0.8])
-        sid = torch.LongTensor([0]) if num_speakers > 1 else None
+        # Build dummy inputs on the model's own device. A checkpoint trained on a
+        # GPU restores there, and inputs built on CPU regardless would meet its
+        # weights mid-trace and abort the export on exactly the machines that
+        # trained the model.
+        device = next(model_g.parameters()).device
+        sequences = torch.randint(low=0, high=num_symbols, size=(1, 50),
+                                  dtype=torch.long, device=device)
+        sequence_lengths = torch.LongTensor([sequences.size(1)]).to(device)
+        scales = torch.FloatTensor([0.667, 1.0, 0.8]).to(device)
+        sid = torch.LongTensor([0]).to(device) if num_speakers > 1 else None
 
         input_names = ["input", "input_lengths", "scales"]
         output_names = ["output"]
