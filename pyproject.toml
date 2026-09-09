@@ -45,6 +45,13 @@ Homepage = "https://github.com/TigreGotico/phoonnx"
 [project.optional-dependencies]
 test = [
     "pytest",
+    # tests/test_packaging_data.py builds a wheel to check that the
+    # training data files reach an installed distribution. It builds with
+    # --no-isolation, so the build backend must be present in this
+    # environment rather than fetched into an isolated one.
+    "build",
+    "setuptools>=68",
+    "wheel",
     # the training-engine tests train tiny models end-to-end, so the
     # coverage/test job needs torch; the CPU wheels come from the pinned
     # index below to avoid pulling the multi-GB CUDA build
@@ -371,6 +378,9 @@ where = ["."]
 
 [tool.setuptools.package-data]
 "phoonnx" = ["**/*"]
+# phoonnx_train.norm_audio opens this by path; without it an installed
+# phoonnx cannot preprocess audio at all.
+"phoonnx_train" = ["norm_audio/models/*.onnx"]
 
 [tool.uv]
 # CPU-only torch wheels for the test/coverage jobs (avoids the CUDA build)
