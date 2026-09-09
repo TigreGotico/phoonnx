@@ -852,7 +852,16 @@ class TTSModelManager:
             self.cache = JsonStorage(cache_path)
         else:
             self.cache = JsonStorageXDG("voices", subfolder="phoonnx")
-        self.cache.store() # ensure file exists
+        # Create the file, never write over one that is already there. A
+        # cache that cannot be parsed loads as an empty registry, and storing
+        # that registry back replaces the index with "{}": the catalog is lost
+        # and so is the evidence of what broke it.
+        if not os.path.isfile(self.cache.path):
+            self.cache.store()
+        elif not self.cache and os.path.getsize(self.cache.path) > 2:
+            LOG.error(f"voice index at {self.cache.path} could not be read and "
+                      f"is being ignored; the catalog will look empty until it "
+                      f"is rebuilt with 'phoonnx-voices update-cache'")
 
     @property
     def all_voices(self) -> List[TTSModelInfo]:
