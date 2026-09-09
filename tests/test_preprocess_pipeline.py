@@ -9,6 +9,7 @@ so no real phonemizer backend is needed, and real tiny WAV files on disk so
 the multiprocessing worker's audio path and the quality-filter scorers run
 for real, in seconds.
 """
+import importlib.metadata
 import io
 import json
 import queue
@@ -288,6 +289,206 @@ class TestFinetunePhonemeMap(unittest.TestCase):
             self.assertIn("absent from the final phoneme map", str(ctx.exception))
 
 
+class TestPhonemizerProvenance(unittest.TestCase):
+    """config.json must say whether these phonemes were produced here at all.
+
+    A phoneme string is decided by the phonemizer and the lect it was called
+    with, so a corpus recording neither cannot be compared against a fresh run.
+    Claiming a producer for phonemes read out of a dataset column is worse than
+    recording none: a reader concludes the column is reproducible from a version
+    that never touched it.
+    """
+
+    def test_phonemized_run_names_the_registry_and_its_version(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"}])
+            out = tmp / "out"
+            import click.testing
+            result = click.testing.CliRunner().invoke(preprocess.cli, [
+                "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                "--phoneme-type", "graphemes", "--alphabet", "unicode",
+                "--max-workers", "1",
+            ], catch_exceptions=False)
+            self.assertEqual(result.exit_code, 0, result.output)
+            config = json.loads((out / "config.json").read_text())
+            # The registry that resolved the phonemizer, not the g2p backend:
+            # phoonnx.config delegates the whole registry to scriptconv.
+            self.assertEqual(config["phonemizer_registry"], "scriptconv")
+            self.assertEqual(config["phonemizer_registry_version"],
+                             importlib.metadata.version("scriptconv"))
+            self.assertEqual(config["phonemes_phonemized"], 1)
+            self.assertEqual(config["phonemes_from_column"], 0)
+
+    def test_column_run_claims_no_producer(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav", "phon": "\u0294 \u0295"}])
+            out = tmp / "out"
+            result = _invoke([
+                "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                "--phonemes-column", "phon",
+            ], catch_exceptions=False)
+            self.assertEqual(result.exit_code, 0, result.output)
+            config = json.loads((out / "config.json").read_text())
+            self.assertEqual(config["phonemizer_registry"], "")
+            self.assertEqual(config["phonemizer_registry_version"], "")
+            self.assertEqual(config["phonemes_phonemized"], 0)
+            self.assertEqual(config["phonemes_from_column"], 1)
+
+    def test_resumed_run_describes_the_whole_manifest(self):
+        """A resume re-emits rows it never processed; the counts must cover them.
+
+        Otherwise the config describes a strict subset of the manifest beside it
+        and overwrites the correct one -- naming a producer over rows the tool
+        never touched, which is the failure this whole change exists to avoid.
+        """
+        import click.testing
+
+        def run(src, out, rows, extra):
+            _jsonl(src, rows)
+            return click.testing.CliRunner().invoke(preprocess.cli, [
+                "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                "--phoneme-type", "graphemes", "--alphabet", "ipa",
+                "--phonemes-column", "phon", "--max-workers", "1",
+            ] + extra, catch_exceptions=False)
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, out = tmp / "a.jsonl", tmp / "out"
+            column_rows = [
+                {"text": "hi", "audio": "a.wav", "phon": "\u0294 \u0295"},
+                {"text": "ho", "audio": "b.wav", "phon": "\u0294 \u0295"},
+            ]
+            self.assertEqual(run(src, out, column_rows, []).exit_code, 0)
+            first = json.loads((out / "config.json").read_text())
+            self.assertEqual(first["phonemes_from_column"], 2)
+            self.assertEqual(first["phonemes_phonemized"], 0)
+            self.assertEqual(first["phonemizer_registry"], "")
+
+            self.assertEqual(
+                run(src, out, column_rows + [{"text": "hue", "audio": "c.wav"}],
+                    ["--resume"]).exit_code, 0)
+            second = json.loads((out / "config.json").read_text())
+            manifest_rows = sum(1 for _ in (out / "dataset.jsonl").open())
+            self.assertEqual(manifest_rows, 3)
+            self.assertEqual(second["phonemes_from_column"], 2)
+            self.assertEqual(second["phonemes_phonemized"], 1)
+            self.assertEqual(
+                second["phonemes_from_column"] + second["phonemes_phonemized"],
+                manifest_rows)
+
+    def test_resume_onto_a_config_without_the_counts_records_nothing(self):
+        """The split cannot be recovered from the manifest, so nothing is claimed."""
+        import click.testing
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, out = tmp / "a.jsonl", tmp / "out"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"}])
+            argv = ["-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                    "--phoneme-type", "graphemes", "--alphabet", "ipa",
+                    "--max-workers", "1"]
+            self.assertEqual(
+                click.testing.CliRunner().invoke(
+                    preprocess.cli, argv, catch_exceptions=False).exit_code, 0)
+
+            # a config from before these keys existed
+            stale = json.loads((out / "config.json").read_text())
+            for key in ("phonemizer_registry", "phonemizer_registry_version",
+                        "phonemes_phonemized", "phonemes_from_column"):
+                stale.pop(key, None)
+            (out / "config.json").write_text(json.dumps(stale))
+
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"},
+                         {"text": "hue", "audio": "c.wav"}])
+            self.assertEqual(
+                click.testing.CliRunner().invoke(
+                    preprocess.cli, argv + ["--resume"],
+                    catch_exceptions=False).exit_code, 0)
+            resumed = json.loads((out / "config.json").read_text())
+            for key in ("phonemizer_registry", "phonemizer_registry_version",
+                        "phonemes_phonemized", "phonemes_from_column"):
+                self.assertNotIn(key, resumed)
+
+    def test_counts_describe_the_manifest_when_a_row_is_dropped(self):
+        """Three paths drop a collected utterance after it has been counted.
+
+        They all live between the result queue and the manifest, and every
+        other test here runs --skip-audio, where the audio-too-short guard is
+        never reached and the drop is invisible. A count taken off the queue
+        therefore names a producer over a row that is not in the file.
+        """
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            short_wav, ok_wav = tmp / "short.wav", tmp / "ok.wav"
+            short_wav.write_bytes(_wav_bytes(seconds=0.1))
+            ok_wav.write_bytes(_wav_bytes(seconds=1.0))
+            src, out = tmp / "a.jsonl", tmp / "out"
+            # far more phonemes than a 0.1 s clip has spectrogram frames, so
+            # this row is dropped at the monotonic-alignment guard
+            _jsonl(src, [
+                {"text": "x" * 400, "audio": str(short_wav),
+                 "phon": " ".join("\u0294" * 400)},
+                {"text": "hi", "audio": str(ok_wav), "phon": "\u0294 \u0295"},
+            ])
+            result = _invoke([
+                "-i", str(src), "-o", str(out), "-l", "en",
+                "--phonemes-column", "phon", "--max-workers", "1",
+            ], catch_exceptions=False)
+            self.assertEqual(result.exit_code, 0, result.output)
+
+            config = json.loads((out / "config.json").read_text())
+            manifest_rows = sum(1 for _ in (out / "dataset.jsonl").open())
+            self.assertEqual(manifest_rows, 1, "expected the short clip to be dropped")
+            self.assertEqual(
+                config["phonemes_from_column"] + config["phonemes_phonemized"],
+                manifest_rows,
+                "counts describe rows that are not in the manifest")
+
+    def test_resume_under_a_different_registry_version_records_nothing(self):
+        """Folding across versions would name this run's version over rows it
+        never produced, which is the failure the whole change exists to avoid.
+        """
+        import click.testing
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, out = tmp / "a.jsonl", tmp / "out"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"}])
+            argv = ["-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                    "--phoneme-type", "graphemes", "--alphabet", "ipa",
+                    "--max-workers", "1"]
+            self.assertEqual(
+                click.testing.CliRunner().invoke(
+                    preprocess.cli, argv, catch_exceptions=False).exit_code, 0)
+
+            first = json.loads((out / "config.json").read_text())
+            self.assertEqual(first["phonemes_phonemized"], 1)
+            # mark the existing rows as the work of an older release
+            first["phonemizer_registry_version"] = "0.0.1-ancient"
+            (out / "config.json").write_text(json.dumps(first))
+
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"},
+                         {"text": "hue", "audio": "c.wav"}])
+            self.assertEqual(
+                click.testing.CliRunner().invoke(
+                    preprocess.cli, argv + ["--resume"],
+                    catch_exceptions=False).exit_code, 0)
+
+            resumed = json.loads((out / "config.json").read_text())
+            for key in ("phonemizer_registry", "phonemizer_registry_version",
+                        "phonemes_phonemized", "phonemes_from_column"):
+                self.assertNotIn(key, resumed)
+
+    def test_a_phonemizer_outside_any_distribution_names_its_module(self):
+        stub = type("StubPhonemizer", (), {"__module__": "not_a_distribution"})()
+        self.assertEqual(preprocess.phonemizer_registry(stub),
+                         ("not_a_distribution", ""))
+
+
 class TestJsonlPathOverrides(unittest.TestCase):
     def test_jsonl_audio_path_override_rewrites_wav_path(self):
         with TemporaryDirectory() as tmp:
@@ -528,3 +729,60 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestConfigIsWrittenAfterTheManifest(unittest.TestCase):
+    """The order is the guarantee, so something has to hold it in place.
+
+    `config.json` carries counts of what `dataset.jsonl` contains. Written
+    first, it describes a file that does not exist yet, and a run that dies in
+    between leaves a config claiming rows nothing ever wrote -- which a resume
+    then folds forward as though they were real.
+    """
+
+    def test_a_failed_manifest_write_leaves_no_config_behind(self):
+        real_rename = Path.rename
+
+        def _fail_on_the_manifest(self, target):
+            if Path(target).name == "dataset.jsonl":
+                raise OSError("no space left on device")
+            return real_rename(self, target)
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav", "phon": "h i"}])
+            out = tmp / "out"
+
+            with patch.object(Path, "rename", _fail_on_the_manifest):
+                result = _invoke([
+                    "-i", str(src), "-o", str(out), "-l", "en",
+                    "--phonemes-column", "phon", "--skip-audio",
+                ])
+
+            self.assertNotEqual(result.exit_code, 0, "the write was supposed to fail")
+            self.assertFalse(
+                (out / "dataset.jsonl").exists(), "the manifest should not exist")
+            self.assertFalse(
+                (out / "config.json").exists(),
+                "config.json describes a manifest that was never written")
+
+    def test_a_completed_run_writes_both_and_they_agree(self):
+        # The other half: the order must not be held by never getting there.
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav", "phon": "h i"},
+                         {"text": "there", "audio": "b.wav", "phon": "e r"}])
+            out = tmp / "out"
+            result = _invoke([
+                "-i", str(src), "-o", str(out), "-l", "en",
+                "--phonemes-column", "phon", "--skip-audio",
+            ])
+            self.assertEqual(result.exit_code, 0, result.output)
+            rows = [x for x in (out / "dataset.jsonl").read_text().splitlines() if x]
+            config = json.loads((out / "config.json").read_text())
+            self.assertEqual(len(rows), 2)
+            self.assertEqual(
+                config["phonemes_phonemized"] + config["phonemes_from_column"],
+                len(rows))
