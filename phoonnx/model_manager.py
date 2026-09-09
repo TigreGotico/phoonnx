@@ -36,6 +36,12 @@ def _tmp_path(dest: Path) -> Path:
     handle, tmp = tempfile.mkstemp(dir=dest.parent, prefix=dest.name + ".",
                                    suffix=".part")
     os.close(handle)
+    # mkstemp creates 0600 and os.replace carries the mode onto the artifact.
+    # Models are read by whoever serves them, which is not always the account
+    # that downloaded them: a shared HF_HOME, or a prefetch run as another user.
+    umask = os.umask(0)
+    os.umask(umask)
+    os.chmod(tmp, 0o666 & ~umask)
     return Path(tmp)
 
 
@@ -99,9 +105,11 @@ def _direct_stream(url: str, dest: Path, timeout: int = 120) -> Path:
 
     The body is written to a sibling ``.part`` file and only renamed onto
     ``dest`` once it has been fully received (and matches ``Content-Length``,
-    when the server sends one). An interrupted download therefore leaves at
-    most a stale ``.part`` file, never a truncated artifact that later runs
-    would mistake for a complete one.
+    when the server sends one), so no run ever sees a truncated artifact. A
+    download that fails or is interrupted removes its own scratch file; one
+    killed outright — SIGKILL, OOM, power loss — leaves it behind, and nothing
+    reclaims it, because a sweep on entry cannot tell an abandoned file from
+    one another download is still writing.
 
     This is the path for a self-hosted or mirrored voice, which the hub client
     cannot serve. It gets a private copy.
