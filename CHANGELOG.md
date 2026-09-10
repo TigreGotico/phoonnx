@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.91.4a1](https://github.com/TigreGotico/phoonnx/tree/1.91.4a1) (2026-09-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.3a1...1.91.4a1)
+
+**Merged pull requests:**
+
+- fix: catalog the Frisian and Colombian voices we publish and recommend [\#469](https://github.com/TigreGotico/phoonnx/pull/469) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.91.3a1](https://github.com/TigreGotico/phoonnx/tree/1.91.3a1) (2026-09-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.2a1...1.91.3a1)
