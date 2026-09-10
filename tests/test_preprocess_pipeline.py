@@ -357,7 +357,7 @@ class TestSpectrogramTooShortSkip(unittest.TestCase):
             out = tmp / "out"
 
             def _fake_cache_norm_audio(audio_path, cache_dir, detector, sample_rate):
-                return norm_path, spec_path
+                return norm_path, spec_path, 1
 
             with patch.object(preprocess, "cache_norm_audio", _fake_cache_norm_audio):
                 with self.assertLogs("preprocess", level="WARNING") as logs:
@@ -528,3 +528,80 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestFrameCountComesFromTheWorker(unittest.TestCase):
+    """The too-short guard stays; the serial re-read of every cached
+    spectrogram to obtain its length is what goes."""
+
+    def _one_row(self, tmp, phonemes="h i h i h i h i h i h i"):
+        wav = tmp / "clip.wav"
+        wav.write_bytes(_wav_bytes(seconds=0.05))
+        spec_path = tmp / "clip.spec.pt"
+        torch.save(torch.zeros(80, 1), spec_path)
+        norm_path = tmp / "clip.norm.pt"
+        torch.save(torch.zeros(1, 800), norm_path)
+        src = tmp / "a.jsonl"
+        _jsonl(src, [{"text": "hi", "audio": str(wav), "phon": phonemes}])
+        return src, norm_path, spec_path
+
+    def test_the_carried_count_is_used_without_reading_the_spectrogram(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, norm_path, spec_path = self._one_row(tmp)
+
+            def _fake(audio_path, cache_dir, detector, sample_rate):
+                return norm_path, spec_path, 1
+
+            def _refuse(*args, **kwargs):
+                raise AssertionError("the spectrogram was read back off disk")
+
+            with patch.object(preprocess, "cache_norm_audio", _fake), \
+                    patch.object(preprocess.torch, "load", _refuse):
+                with self.assertLogs("preprocess", level="WARNING") as logs:
+                    result = _invoke([
+                        "-i", str(src), "-o", str(tmp / "out"), "-l", "en",
+                        "--phonemes-column", "phon",
+                    ])
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertTrue(any("too short for its text" in m for m in logs.output))
+
+    def test_a_row_without_a_count_still_falls_back_to_the_file(self):
+        # A run resumed from an earlier dataset.jsonl carries no count, and the
+        # guard must still fire rather than pass the utterance through.
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, norm_path, spec_path = self._one_row(tmp)
+
+            def _fake(audio_path, cache_dir, detector, sample_rate):
+                return norm_path, spec_path, None
+
+            with patch.object(preprocess, "cache_norm_audio", _fake):
+                with self.assertLogs("preprocess", level="WARNING") as logs:
+                    result = _invoke([
+                        "-i", str(src), "-o", str(tmp / "out"), "-l", "en",
+                        "--phonemes-column", "phon",
+                    ])
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertTrue(any("too short for its text" in m for m in logs.output))
+
+    def test_a_long_enough_utterance_is_still_written(self):
+        # The guard must not start rejecting what it used to accept.
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, norm_path, spec_path = self._one_row(tmp, phonemes="h i")
+            out = tmp / "out"
+
+            def _fake(audio_path, cache_dir, detector, sample_rate):
+                return norm_path, spec_path, 400
+
+            with patch.object(preprocess, "cache_norm_audio", _fake):
+                result = _invoke([
+                    "-i", str(src), "-o", str(out), "-l", "en",
+                    "--phonemes-column", "phon",
+                ])
+            self.assertEqual(result.exit_code, 0, result.output)
+            lines = [x for x in (out / "dataset.jsonl").read_text().splitlines() if x]
+            self.assertEqual(len(lines), 1)
+            # The count is a preprocessing-time detail and does not reach the manifest.
+            self.assertNotIn("spec_frames", json.loads(lines[0]))
