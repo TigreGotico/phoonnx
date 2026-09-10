@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.91.3a1](https://github.com/TigreGotico/phoonnx/tree/1.91.3a1) (2026-09-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.2a1...1.91.3a1)
+
+**Merged pull requests:**
+
+- fix: pad the final trim chunk the detector cannot score [\#462](https://github.com/TigreGotico/phoonnx/pull/462) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.91.2a1](https://github.com/TigreGotico/phoonnx/tree/1.91.2a1) (2026-09-09)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.1a1...1.91.2a1)
@@ -362,10 +370,6 @@
 ## [1.70.0a2](https://github.com/TigreGotico/phoonnx/tree/1.70.0a2) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.70.0a1...1.70.0a2)
-
-**Merged pull requests:**
-
-- test: harden scriptconv integration surface and bump floors [\#348](https://github.com/TigreGotico/phoonnx/pull/348) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.70.0a1](https://github.com/TigreGotico/phoonnx/tree/1.70.0a1) (2026-08-03)
 
