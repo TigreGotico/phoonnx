@@ -359,7 +359,14 @@ class TestSpectrogramTooShortSkip(unittest.TestCase):
             def _fake_cache_norm_audio(audio_path, cache_dir, detector, sample_rate):
                 return norm_path, spec_path, 1
 
-            with patch.object(preprocess, "cache_norm_audio", _fake_cache_norm_audio):
+            # Pinned to fork so the worker inherits the patch. Under the 3.14
+            # default the child re-imports, the real function runs, and this
+            # clip trips the guard on its own -- the assertion would hold while
+            # testing nothing the fake set up.
+            import multiprocessing
+            with patch.object(preprocess, "Process",
+                              multiprocessing.get_context("fork").Process), \
+                    patch.object(preprocess, "cache_norm_audio", _fake_cache_norm_audio):
                 with self.assertLogs("preprocess", level="WARNING") as logs:
                     result = _invoke([
                         "-i", str(src), "-o", str(out), "-l", "en", "--phonemes-column", "phon",
@@ -532,11 +539,19 @@ if __name__ == "__main__":
 
 class TestFrameCountComesFromTheWorker(unittest.TestCase):
     """The too-short guard stays; the serial re-read of every cached
-    spectrogram to obtain its length is what goes."""
+    spectrogram to obtain its length is what goes.
 
-    def _one_row(self, tmp, phonemes="h i h i h i h i h i h i"):
+    Two of these drive the real audio path rather than a fake, because the
+    workers are separate processes and only inherit a patch under the `fork`
+    start method. Python 3.14 defaults to `forkserver` on Linux, where a child
+    re-imports the module and sees the unpatched function; a test that patches
+    across that boundary passes or fails for reasons that have nothing to do
+    with the change.
+    """
+
+    def _one_row(self, tmp, phonemes="h i h i h i h i h i h i", seconds=0.05):
         wav = tmp / "clip.wav"
-        wav.write_bytes(_wav_bytes(seconds=0.05))
+        wav.write_bytes(_wav_bytes(seconds=seconds))
         spec_path = tmp / "clip.spec.pt"
         torch.save(torch.zeros(80, 1), spec_path)
         norm_path = tmp / "clip.norm.pt"
@@ -569,6 +584,13 @@ class TestFrameCountComesFromTheWorker(unittest.TestCase):
     def test_a_row_without_a_count_still_falls_back_to_the_file(self):
         # A run resumed from an earlier dataset.jsonl carries no count, and the
         # guard must still fire rather than pass the utterance through.
+        #
+        # This one does need the worker to see the fake, so it pins the fork
+        # start method for the duration. Under forkserver the child re-imports
+        # and the real function runs, which would leave the fallback branch
+        # untested while the assertion still passed.
+        import multiprocessing
+
         with TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             src, norm_path, spec_path = self._one_row(tmp)
@@ -576,7 +598,9 @@ class TestFrameCountComesFromTheWorker(unittest.TestCase):
             def _fake(audio_path, cache_dir, detector, sample_rate):
                 return norm_path, spec_path, None
 
-            with patch.object(preprocess, "cache_norm_audio", _fake):
+            with patch.object(preprocess, "Process",
+                              multiprocessing.get_context("fork").Process), \
+                    patch.object(preprocess, "cache_norm_audio", _fake):
                 with self.assertLogs("preprocess", level="WARNING") as logs:
                     result = _invoke([
                         "-i", str(src), "-o", str(tmp / "out"), "-l", "en",
@@ -586,20 +610,18 @@ class TestFrameCountComesFromTheWorker(unittest.TestCase):
             self.assertTrue(any("too short for its text" in m for m in logs.output))
 
     def test_a_long_enough_utterance_is_still_written(self):
-        # The guard must not start rejecting what it used to accept.
+        # The guard must not start rejecting what it used to accept. Real audio
+        # and no fake: a second of speech against two phonemes clears the guard
+        # whichever process computed the count.
         with TemporaryDirectory() as tmp:
             tmp = Path(tmp)
-            src, norm_path, spec_path = self._one_row(tmp, phonemes="h i")
+            src, _norm, _spec = self._one_row(tmp, phonemes="h i", seconds=1.0)
             out = tmp / "out"
 
-            def _fake(audio_path, cache_dir, detector, sample_rate):
-                return norm_path, spec_path, 400
-
-            with patch.object(preprocess, "cache_norm_audio", _fake):
-                result = _invoke([
-                    "-i", str(src), "-o", str(out), "-l", "en",
-                    "--phonemes-column", "phon",
-                ])
+            result = _invoke([
+                "-i", str(src), "-o", str(out), "-l", "en",
+                "--phonemes-column", "phon",
+            ])
             self.assertEqual(result.exit_code, 0, result.output)
             lines = [x for x in (out / "dataset.jsonl").read_text().splitlines() if x]
             self.assertEqual(len(lines), 1)
