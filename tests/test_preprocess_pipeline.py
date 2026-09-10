@@ -627,3 +627,63 @@ class TestFrameCountComesFromTheWorker(unittest.TestCase):
             self.assertEqual(len(lines), 1)
             # The count is a preprocessing-time detail and does not reach the manifest.
             self.assertNotIn("spec_frames", json.loads(lines[0]))
+
+
+class TestTheWorkerStartsUnderWhateverTheDefaultIs(unittest.TestCase):
+    """The pickling question, asked by the suite rather than by a reader.
+
+    `phonemize_worker` is started with the live phonemizer in `args`, so it is
+    inherited under `fork` and pickled under `forkserver` -- which is Python
+    3.14's default on Linux. Two other classes in this file pin `fork` so a
+    patch applied in the parent reaches the child; that pin is what makes those
+    tests mean anything, and it is also what would stop the suite noticing if
+    `proc.start()` began failing on the default. These do not pin anything.
+
+    See TigreGotico/phoonnx#467 for what to do about the transfer itself. This
+    only ensures the suite finds out.
+    """
+
+    def test_the_phonemizer_handed_to_a_worker_can_survive_the_transfer(self):
+        # The property that breaks: under a non-fork start method the object in
+        # `args` is pickled. Checked directly, so it costs nothing and does not
+        # depend on which start method this interpreter happens to default to.
+        import multiprocessing
+        import pickle
+
+        from phoonnx.config import Alphabet, PhonemeType
+        from phoonnx_train.preprocess import get_phonemizer
+
+        phonemizer = get_phonemizer(PhonemeType.GRAPHEMES, Alphabet.UNICODE, "")
+        restored = pickle.loads(pickle.dumps(phonemizer))
+        self.assertEqual(type(restored), type(phonemizer))
+        self.assertIn(multiprocessing.get_start_method(),
+                      multiprocessing.get_all_start_methods())
+
+    def test_a_real_run_completes_on_the_default_start_method(self):
+        # End to end with no patching of `Process` and no fake phonemizer, so
+        # the workers start however this interpreter starts them. On 3.13 that
+        # is fork and on 3.14 forkserver; either way a failure here is the
+        # transfer failing, which is the thing worth learning from a suite.
+        import multiprocessing
+        import click.testing
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"},
+                         {"text": "there", "audio": "b.wav"}])
+            out = tmp / "out"
+            result = click.testing.CliRunner().invoke(preprocess.cli, [
+                "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                "--phoneme-type", "graphemes", "--alphabet", "unicode",
+                "--max-workers", "2",
+            ], catch_exceptions=False)
+
+            self.assertEqual(
+                result.exit_code, 0,
+                f"start method {multiprocessing.get_start_method()!r}: {result.output}")
+            lines = [x for x in (out / "dataset.jsonl").read_text().splitlines() if x]
+            self.assertEqual(
+                len(lines), 2,
+                f"workers produced {len(lines)} rows under "
+                f"{multiprocessing.get_start_method()!r}")
