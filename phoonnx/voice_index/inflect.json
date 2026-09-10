@@ -1,0 +1,32 @@
+{
+    "inflect/micro-en": {
+        "voice_id": "inflect/micro-en",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__owensong__inflect-micro-v2-onnx/duration.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__owensong__inflect-micro-v2-onnx/duration.onnx.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "lang": "en-us",
+        "aux_model_urls": {
+            "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__owensong__inflect-micro-v2-onnx/decode.onnx"
+        }
+    },
+    "inflect/nano-en": {
+        "voice_id": "inflect/nano-en",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__owensong__inflect-nano-v2-onnx/duration.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__owensong__inflect-nano-v2-onnx/duration.onnx.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "lang": "en-us",
+        "aux_model_urls": {
+            "decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hf_community__owensong__inflect-nano-v2-onnx/decode.onnx"
+        }
+    }
+}

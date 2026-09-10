@@ -1,0 +1,9 @@
+literal all_input_ids          : [128259, 128000, 83, 5169, 25, 578, 4062, 14198] ...
+vLLM re-encode(add_special=T)  : [128000, 128259, 128000, 83, 5169, 25, 578, 4062] ...
+literal[0], served[0], served[1]: 128259 128000 128259
+literal starts with single BOS : True
+served starts with double BOS  : True
+MATCHES? False
+adapter build_prompt_ids matches served form: True
+
+double-BOS finding: CONFIRMED

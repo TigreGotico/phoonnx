@@ -18,6 +18,11 @@ class Utterance:
     audio_spec_path: Path
     speaker_id: Optional[int] = None
     text: Optional[str] = None
+    # YourTTS: precomputed speaker d-vector (see phoonnx_train/engines/yourtts.py
+    # extra_preprocess), cached as a .pt tensor next to the mel features.
+    d_vector_path: Optional[Path] = None
+    # YourTTS: numeric language id for the additive language embedding.
+    language_id: Optional[int] = None
 
 
 @dataclass
@@ -27,6 +32,8 @@ class UtteranceTensors:
     audio_norm: FloatTensor
     speaker_id: Optional[LongTensor] = None
     text: Optional[str] = None
+    d_vector: Optional[FloatTensor] = None
+    language_id: Optional[LongTensor] = None
 
     @property
     def spec_length(self) -> int:
@@ -42,6 +49,8 @@ class Batch:
     audios: FloatTensor
     audio_lengths: LongTensor
     speaker_ids: Optional[LongTensor] = None
+    d_vectors: Optional[FloatTensor] = None
+    language_ids: Optional[LongTensor] = None
 
 
 class PhoonnxDataset(Dataset):
@@ -89,12 +98,18 @@ class PhoonnxDataset(Dataset):
         utt = self.utterances[idx]
         return UtteranceTensors(
             phoneme_ids=LongTensor(utt.phoneme_ids),
-            audio_norm=torch.load(utt.audio_norm_path),
-            spectrogram=torch.load(utt.audio_spec_path),
+            audio_norm=torch.load(utt.audio_norm_path, weights_only=True),
+            spectrogram=torch.load(utt.audio_spec_path, weights_only=True),
             speaker_id=LongTensor([utt.speaker_id])
             if utt.speaker_id is not None
             else None,
             text=utt.text,
+            d_vector=torch.load(utt.d_vector_path).reshape(-1).float()
+            if utt.d_vector_path is not None
+            else None,
+            language_id=LongTensor([utt.language_id])
+            if utt.language_id is not None
+            else None,
         )
 
     @staticmethod
@@ -153,13 +168,25 @@ class PhoonnxDataset(Dataset):
             audio_spec_path=Path(utt_dict["audio_spec_path"]),
             speaker_id=utt_dict.get("speaker_id"),
             text=utt_dict.get("text"),
+            d_vector_path=Path(utt_dict["d_vector_path"])
+            if utt_dict.get("d_vector_path")
+            else None,
+            language_id=utt_dict.get("language_id"),
         )
 
 
 class UtteranceCollate:
-    def __init__(self, is_multispeaker: bool, segment_size: int):
+    def __init__(
+        self,
+        is_multispeaker: bool,
+        segment_size: int,
+        has_d_vector: bool = False,
+        has_language_id: bool = False,
+    ):
         self.is_multispeaker = is_multispeaker
         self.segment_size = segment_size
+        self.has_d_vector = has_d_vector
+        self.has_language_id = has_language_id
 
     def __call__(self, utterances: Sequence[UtteranceTensors]) -> Batch:
         num_utterances = len(utterances)
@@ -208,6 +235,17 @@ class UtteranceCollate:
         if self.is_multispeaker:
             speaker_ids = LongTensor(num_utterances)
 
+        d_vectors: Optional[FloatTensor] = None
+        d_vector_dim = 0
+        if self.has_d_vector:
+            assert utterances[0].d_vector is not None, "Missing d_vector"
+            d_vector_dim = utterances[0].d_vector.size(0)
+            d_vectors = FloatTensor(num_utterances, d_vector_dim)
+
+        language_ids: Optional[LongTensor] = None
+        if self.has_language_id:
+            language_ids = LongTensor(num_utterances)
+
         # Sort by decreasing spectrogram length
         sorted_utterances = sorted(
             utterances, key=lambda u: u.spectrogram.size(1), reverse=True
@@ -230,6 +268,14 @@ class UtteranceCollate:
                 assert speaker_ids is not None
                 speaker_ids[utt_idx] = utt.speaker_id
 
+            if self.has_d_vector:
+                assert utt.d_vector is not None, "Missing d_vector"
+                d_vectors[utt_idx] = utt.d_vector
+
+            if self.has_language_id:
+                assert utt.language_id is not None, "Missing language_id"
+                language_ids[utt_idx] = utt.language_id
+
         return Batch(
             phoneme_ids=phonemes_padded,
             phoneme_lengths=phoneme_lengths,
@@ -238,4 +284,6 @@ class UtteranceCollate:
             audios=audio_padded,
             audio_lengths=audio_lengths,
             speaker_ids=speaker_ids,
+            d_vectors=d_vectors,
+            language_ids=language_ids,
         )
