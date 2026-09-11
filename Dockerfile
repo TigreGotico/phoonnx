@@ -6,10 +6,12 @@
 FROM python:3.11-slim
 
 # System deps: espeak-ng (phonemization), libsndfile1 (soundfile, for cloning
-# reference audio), git/build tooling for any source wheels.
+# reference audio), ffmpeg (pydub encodes the non-WAV response formats of the
+# vendor-compat routers through it), git/build tooling for any source wheels.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         espeak-ng \
         libsndfile1 \
+        ffmpeg \
         git \
         build-essential \
     && rm -rf /var/lib/apt/lists/*
