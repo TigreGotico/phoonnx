@@ -184,6 +184,11 @@ train = [
     "torch>=2.1,<3",
     "tqdm",
     "scipy",
+    # phoonnx_train.export_onnx is the last step of training and imports onnx
+    # through torch.onnx; without it an environment installed to train cannot
+    # export what it trained.
+    "onnx<1.18; python_version<'3.13'",
+    "onnx>=1.18; python_version>='3.13'",
 ]
 # extra deps for the StyleTTS2 training engine
 # (phoonnx_train/styletts2/ + phoonnx_train/engines/styletts2*.py) on top of
