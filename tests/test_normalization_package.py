@@ -63,6 +63,29 @@ class TestPipelineStillNormalizes(unittest.TestCase):
         self.assertIn("Senhor", out)
         self.assertIn("quilogramas", out)
 
+    def test_digit_hyphen_digit_score_is_left_intact_pt(self):
+        # A score is a range, not a word glued to a digit: the phonemizer,
+        # not this pipeline, is responsible for reading "3-2" aloud.
+        out = normalization.normalize("O jogo é 3-2.", "pt-PT")
+        self.assertEqual(out, "O jogo é 3-2.")
+
+    def test_digit_hyphen_digit_score_is_left_intact_en(self):
+        out = normalization.normalize("The score is 3-2.", "en-US")
+        self.assertEqual(out, "The score is 3-2.")
+
+    def test_digit_hyphen_digit_page_range_is_left_intact(self):
+        out = normalization.normalize("páginas 1139-1185", "pt-PT")
+        self.assertEqual(out, "páginas 1139-1185")
+
+    def test_digit_en_dash_digit_range_is_left_intact(self):
+        out = normalization.normalize("páginas 1139–1185", "pt-PT")
+        self.assertEqual(out, "páginas 1139–1185")
+
+    def test_word_hyphen_digit_still_normalizes(self):
+        out = normalization.normalize("sub-23", "en-US")
+        self.assertNotIn("-", out)
+        self.assertIn("twenty", out.lower())
+
 
 if __name__ == "__main__":
     unittest.main()
