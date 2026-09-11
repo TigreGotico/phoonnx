@@ -357,9 +357,16 @@ class TestSpectrogramTooShortSkip(unittest.TestCase):
             out = tmp / "out"
 
             def _fake_cache_norm_audio(audio_path, cache_dir, detector, sample_rate):
-                return norm_path, spec_path
+                return norm_path, spec_path, 1
 
-            with patch.object(preprocess, "cache_norm_audio", _fake_cache_norm_audio):
+            # Pinned to fork so the worker inherits the patch. Under the 3.14
+            # default the child re-imports, the real function runs, and this
+            # clip trips the guard on its own -- the assertion would hold while
+            # testing nothing the fake set up.
+            import multiprocessing
+            with patch.object(preprocess, "Process",
+                              multiprocessing.get_context("fork").Process), \
+                    patch.object(preprocess, "cache_norm_audio", _fake_cache_norm_audio):
                 with self.assertLogs("preprocess", level="WARNING") as logs:
                     result = _invoke([
                         "-i", str(src), "-o", str(out), "-l", "en", "--phonemes-column", "phon",
@@ -528,3 +535,155 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestFrameCountComesFromTheWorker(unittest.TestCase):
+    """The too-short guard stays; the serial re-read of every cached
+    spectrogram to obtain its length is what goes.
+
+    Two of these drive the real audio path rather than a fake, because the
+    workers are separate processes and only inherit a patch under the `fork`
+    start method. Python 3.14 defaults to `forkserver` on Linux, where a child
+    re-imports the module and sees the unpatched function; a test that patches
+    across that boundary passes or fails for reasons that have nothing to do
+    with the change.
+    """
+
+    def _one_row(self, tmp, phonemes="h i h i h i h i h i h i", seconds=0.05):
+        wav = tmp / "clip.wav"
+        wav.write_bytes(_wav_bytes(seconds=seconds))
+        spec_path = tmp / "clip.spec.pt"
+        torch.save(torch.zeros(80, 1), spec_path)
+        norm_path = tmp / "clip.norm.pt"
+        torch.save(torch.zeros(1, 800), norm_path)
+        src = tmp / "a.jsonl"
+        _jsonl(src, [{"text": "hi", "audio": str(wav), "phon": phonemes}])
+        return src, norm_path, spec_path
+
+    def test_the_carried_count_is_used_without_reading_the_spectrogram(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, norm_path, spec_path = self._one_row(tmp)
+
+            def _fake(audio_path, cache_dir, detector, sample_rate):
+                return norm_path, spec_path, 1
+
+            def _refuse(*args, **kwargs):
+                raise AssertionError("the spectrogram was read back off disk")
+
+            with patch.object(preprocess, "cache_norm_audio", _fake), \
+                    patch.object(preprocess.torch, "load", _refuse):
+                with self.assertLogs("preprocess", level="WARNING") as logs:
+                    result = _invoke([
+                        "-i", str(src), "-o", str(tmp / "out"), "-l", "en",
+                        "--phonemes-column", "phon",
+                    ])
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertTrue(any("too short for its text" in m for m in logs.output))
+
+    def test_a_row_without_a_count_still_falls_back_to_the_file(self):
+        # A run resumed from an earlier dataset.jsonl carries no count, and the
+        # guard must still fire rather than pass the utterance through.
+        #
+        # This one does need the worker to see the fake, so it pins the fork
+        # start method for the duration. Under forkserver the child re-imports
+        # and the real function runs, which would leave the fallback branch
+        # untested while the assertion still passed.
+        import multiprocessing
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, norm_path, spec_path = self._one_row(tmp)
+
+            def _fake(audio_path, cache_dir, detector, sample_rate):
+                return norm_path, spec_path, None
+
+            with patch.object(preprocess, "Process",
+                              multiprocessing.get_context("fork").Process), \
+                    patch.object(preprocess, "cache_norm_audio", _fake):
+                with self.assertLogs("preprocess", level="WARNING") as logs:
+                    result = _invoke([
+                        "-i", str(src), "-o", str(tmp / "out"), "-l", "en",
+                        "--phonemes-column", "phon",
+                    ])
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertTrue(any("too short for its text" in m for m in logs.output))
+
+    def test_a_long_enough_utterance_is_still_written(self):
+        # The guard must not start rejecting what it used to accept. Real audio
+        # and no fake: a second of speech against two phonemes clears the guard
+        # whichever process computed the count.
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, _norm, _spec = self._one_row(tmp, phonemes="h i", seconds=1.0)
+            out = tmp / "out"
+
+            result = _invoke([
+                "-i", str(src), "-o", str(out), "-l", "en",
+                "--phonemes-column", "phon",
+            ])
+            self.assertEqual(result.exit_code, 0, result.output)
+            lines = [x for x in (out / "dataset.jsonl").read_text().splitlines() if x]
+            self.assertEqual(len(lines), 1)
+            # The count is a preprocessing-time detail and does not reach the manifest.
+            self.assertNotIn("spec_frames", json.loads(lines[0]))
+
+
+class TestTheWorkerStartsUnderWhateverTheDefaultIs(unittest.TestCase):
+    """The pickling question, asked by the suite rather than by a reader.
+
+    `phonemize_worker` is started with the live phonemizer in `args`, so it is
+    inherited under `fork` and pickled under `forkserver` -- which is Python
+    3.14's default on Linux. Two other classes in this file pin `fork` so a
+    patch applied in the parent reaches the child; that pin is what makes those
+    tests mean anything, and it is also what would stop the suite noticing if
+    `proc.start()` began failing on the default. These do not pin anything.
+
+    See TigreGotico/phoonnx#467 for what to do about the transfer itself. This
+    only ensures the suite finds out.
+    """
+
+    def test_the_phonemizer_handed_to_a_worker_can_survive_the_transfer(self):
+        # The property that breaks: under a non-fork start method the object in
+        # `args` is pickled. Checked directly, so it costs nothing and does not
+        # depend on which start method this interpreter happens to default to.
+        import multiprocessing
+        import pickle
+
+        from phoonnx.config import Alphabet, PhonemeType
+        from phoonnx_train.preprocess import get_phonemizer
+
+        phonemizer = get_phonemizer(PhonemeType.GRAPHEMES, Alphabet.UNICODE, "")
+        restored = pickle.loads(pickle.dumps(phonemizer))
+        self.assertEqual(type(restored), type(phonemizer))
+        self.assertIn(multiprocessing.get_start_method(),
+                      multiprocessing.get_all_start_methods())
+
+    def test_a_real_run_completes_on_the_default_start_method(self):
+        # End to end with no patching of `Process` and no fake phonemizer, so
+        # the workers start however this interpreter starts them. On 3.13 that
+        # is fork and on 3.14 forkserver; either way a failure here is the
+        # transfer failing, which is the thing worth learning from a suite.
+        import multiprocessing
+        import click.testing
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"},
+                         {"text": "there", "audio": "b.wav"}])
+            out = tmp / "out"
+            result = click.testing.CliRunner().invoke(preprocess.cli, [
+                "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                "--phoneme-type", "graphemes", "--alphabet", "unicode",
+                "--max-workers", "2",
+            ], catch_exceptions=False)
+
+            self.assertEqual(
+                result.exit_code, 0,
+                f"start method {multiprocessing.get_start_method()!r}: {result.output}")
+            lines = [x for x in (out / "dataset.jsonl").read_text().splitlines() if x]
+            self.assertEqual(
+                len(lines), 2,
+                f"workers produced {len(lines)} rows under "
+                f"{multiprocessing.get_start_method()!r}")
