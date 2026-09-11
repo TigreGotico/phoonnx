@@ -23,6 +23,7 @@ For anyone with a dataset who wants a new voice.
 3. [Preprocess reference](training/preprocess.md) — every `preprocess.py` flag
 4. [Training reference](training/training.md) — every `train.py` flag, engines, resume/fine-tune
 5. [Export](training/export.md) — checkpoint → ONNX, validating the exported voice
+6. [Training notebooks](training/quickstart.md#training-notebooks) — the golden path as a runnable Colab/Kaggle notebook
 
 ### Understand the internals (contributors and advanced users)
 For anyone extending phoonnx or debugging a voice.
