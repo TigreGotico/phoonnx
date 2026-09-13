@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.91.5a1](https://github.com/TigreGotico/phoonnx/tree/1.91.5a1) (2026-09-13)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.4a1...1.91.5a1)
+
+**Merged pull requests:**
+
+- fix: make pyproject extras the only source of per-language dependencies [\#470](https://github.com/TigreGotico/phoonnx/pull/470) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.91.4a1](https://github.com/TigreGotico/phoonnx/tree/1.91.4a1) (2026-09-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.3a1...1.91.4a1)
@@ -359,17 +367,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.72.0a1...1.72.0a2)
 
-**Merged pull requests:**
-
-- docs: retroactive Habibi voice quality audit \(WER/CER/RTF\) [\#356](https://github.com/TigreGotico/phoonnx/pull/356) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.72.0a1](https://github.com/TigreGotico/phoonnx/tree/1.72.0a1) (2026-08-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.71.0a1...1.72.0a1)
-
-**Merged pull requests:**
-
-- feat: BSC named speakers \(clean reland of \#349\) [\#353](https://github.com/TigreGotico/phoonnx/pull/353) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.71.0a1](https://github.com/TigreGotico/phoonnx/tree/1.71.0a1) (2026-08-03)
 
