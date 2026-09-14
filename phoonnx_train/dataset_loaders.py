@@ -67,19 +67,24 @@ class Utterance:
     # True when phonemes came from a dataset column and must not be
     # re-phonemized, normalized, or case-mangled
     phonemes_precomputed: bool = False
+    # Frames in the cached spectrogram, filled in by the worker that wrote it
+    spec_frames: Optional[int] = None
     # unmapped source columns, carried through into dataset.jsonl
     extras: Dict[str, Any] = field(default_factory=dict)
 
     def asdict(self) -> Dict[str, Any]:
         """Custom asdict to handle Path objects for JSON serialization.
 
-        The embedded audio bytes and the internal precomputed-phonemes flag are
-        dropped: bytes are not JSON serializable and only exist to feed audio
+        The embedded audio bytes, the internal precomputed-phonemes flag and the
+        spectrogram frame count are dropped: the count is a preprocessing-time
+        detail that the cached spectrogram already carries, and bytes are not
+        JSON serializable and only exist to feed audio
         processing, and the flag is a processing detail, not training data.
         """
         data = dataclasses.asdict(self)
         data.pop("audio_bytes", None)
         data.pop("phonemes_precomputed", None)
+        data.pop("spec_frames", None)
         for key, value in data.items():
             if isinstance(value, Path):
                 data[key] = str(value)
