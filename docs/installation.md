@@ -1,7 +1,7 @@
 # Installation
 
 This page is for anyone setting up phoonnx. It covers the base install, exactly what each
-optional extra unlocks, the GPU runtime packages, and the one system dependency you may need.
+optional extra unlocks, the GPU runtime packages, and the system dependencies you may need.
 
 ## Requirements
 
@@ -136,6 +136,21 @@ brew install espeak-ng            # macOS
 
 The `phoonnx[espeak]` extra provides a pure-Python port of the eSpeak phonemizer (byte-for-byte
 parity with the binary) and needs no system package.
+
+## System dependency: ffmpeg
+
+phoonnx synthesises WAV and needs nothing extra to do it. A server that offers other
+containers — mp3, ogg, flac — encodes them with `pydub`, which shells out to `ffmpeg`.
+Without `ffmpeg` those requests fall back to WAV rather than failing, so the symptom is a
+response in the wrong format rather than an error.
+
+```bash
+sudo apt-get install ffmpeg   # Debian/Ubuntu
+sudo pacman -S ffmpeg          # Arch Linux
+brew install ffmpeg            # macOS
+```
+
+The published Docker image carries it.
 
 ## Docker
 
