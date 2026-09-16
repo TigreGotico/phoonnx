@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.91.8a2](https://github.com/TigreGotico/phoonnx/tree/1.91.8a2) (2026-09-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.8a1...1.91.8a2)
+
+**Merged pull requests:**
+
+- docs: link the TTS training notebooks [\#448](https://github.com/TigreGotico/phoonnx/pull/448) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.91.8a1](https://github.com/TigreGotico/phoonnx/tree/1.91.8a1) (2026-09-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.7a1...1.91.8a1)
@@ -339,17 +347,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.76.0a1...1.77.0a1)
 
-**Merged pull requests:**
-
-- feat: Orpheus engine \(SNAC AR codec-LM\) [\#367](https://github.com/TigreGotico/phoonnx/pull/367) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.76.0a1](https://github.com/TigreGotico/phoonnx/tree/1.76.0a1) (2026-08-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.75.1a1...1.76.0a1)
-
-**Merged pull requests:**
-
-- feat: Llasa engine \(XCodec2 AR codec-LM\) [\#366](https://github.com/TigreGotico/phoonnx/pull/366) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.75.1a1](https://github.com/TigreGotico/phoonnx/tree/1.75.1a1) (2026-08-04)
 
