@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.91.7a1](https://github.com/TigreGotico/phoonnx/tree/1.91.7a1) (2026-09-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.6a1...1.91.7a1)
+
+**Merged pull requests:**
+
+- fix: install ffmpeg in the Docker image so non-WAV output formats work [\#457](https://github.com/TigreGotico/phoonnx/pull/457) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.91.6a1](https://github.com/TigreGotico/phoonnx/tree/1.91.6a1) (2026-09-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.5a1...1.91.6a1)
@@ -319,10 +327,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.77.0a1...1.78.0a1)
 
-**Merged pull requests:**
-
-- feat: Magpie-TTS engine \(NVIDIA multi-codebook AR\) [\#362](https://github.com/TigreGotico/phoonnx/pull/362) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.77.0a1](https://github.com/TigreGotico/phoonnx/tree/1.77.0a1) (2026-08-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.76.0a1...1.77.0a1)
@@ -350,10 +354,6 @@
 ## [1.75.0a1](https://github.com/TigreGotico/phoonnx/tree/1.75.0a1) (2026-08-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.74.0a1...1.75.0a1)
-
-**Merged pull requests:**
-
-- feat: Indic-Parler-TTS engine [\#363](https://github.com/TigreGotico/phoonnx/pull/363) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.74.0a1](https://github.com/TigreGotico/phoonnx/tree/1.74.0a1) (2026-08-04)
 
