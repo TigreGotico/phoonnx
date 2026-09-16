@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.91.8a1](https://github.com/TigreGotico/phoonnx/tree/1.91.8a1) (2026-09-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.7a1...1.91.8a1)
+
+**Merged pull requests:**
+
+- fix: keep the voice index when it cannot be read [\#458](https://github.com/TigreGotico/phoonnx/pull/458) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.91.7a1](https://github.com/TigreGotico/phoonnx/tree/1.91.7a1) (2026-09-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.6a1...1.91.7a1)
@@ -346,10 +354,6 @@
 ## [1.75.1a1](https://github.com/TigreGotico/phoonnx/tree/1.75.1a1) (2026-08-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.75.0a1...1.75.1a1)
-
-**Merged pull requests:**
-
-- fix: fetch onnx\_data sidecars for auxiliary graphs [\#364](https://github.com/TigreGotico/phoonnx/pull/364) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.75.0a1](https://github.com/TigreGotico/phoonnx/tree/1.75.0a1) (2026-08-04)
 
