@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.91.6a1](https://github.com/TigreGotico/phoonnx/tree/1.91.6a1) (2026-09-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.5a1...1.91.6a1)
+
+**Merged pull requests:**
+
+- fix: give each download its own temporary file [\#459](https://github.com/TigreGotico/phoonnx/pull/459) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.91.5a1](https://github.com/TigreGotico/phoonnx/tree/1.91.5a1) (2026-09-13)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.4a1...1.91.5a1)
@@ -351,17 +359,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.73.0a1...1.74.0a1)
 
-**Merged pull requests:**
-
-- feat: KittenTTS voices via the StyleTTS2 adapter [\#360](https://github.com/TigreGotico/phoonnx/pull/360) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.73.0a1](https://github.com/TigreGotico/phoonnx/tree/1.73.0a1) (2026-08-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.72.0a2...1.73.0a1)
-
-**Merged pull requests:**
-
-- feat: OmniVoice engine [\#358](https://github.com/TigreGotico/phoonnx/pull/358) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.72.0a2](https://github.com/TigreGotico/phoonnx/tree/1.72.0a2) (2026-08-04)
 
