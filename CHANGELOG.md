@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.91.9a1](https://github.com/TigreGotico/phoonnx/tree/1.91.9a1) (2026-09-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.8a2...1.91.9a1)
+
+**Merged pull requests:**
+
+- fix: carry the random state through a VITS checkpoint [\#464](https://github.com/TigreGotico/phoonnx/pull/464) ([JarbasAl](https://github.com/JarbasAl))
+- fix: keep digit ranges and scores intact in text normalization [\#455](https://github.com/TigreGotico/phoonnx/pull/455) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.91.8a2](https://github.com/TigreGotico/phoonnx/tree/1.91.8a2) (2026-09-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.8a1...1.91.8a2)
@@ -91,10 +100,6 @@
 ## [1.90.0a1](https://github.com/TigreGotico/phoonnx/tree/1.90.0a1) (2026-08-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.89.0a1...1.90.0a1)
-
-**Merged pull requests:**
-
-- feat: universal voice conversion post-stage \(voiceclonnx\) [\#370](https://github.com/TigreGotico/phoonnx/pull/370) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.89.0a1](https://github.com/TigreGotico/phoonnx/tree/1.89.0a1) (2026-08-17)
 
