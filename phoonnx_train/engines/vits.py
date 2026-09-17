@@ -383,6 +383,25 @@ def _write_tokens_txt(phoneme_id_map: Dict[str, Any], path: Path) -> None:
     path.write_text("\n".join(tokens) + "\n", encoding="utf-8")
 
 
+def _voice_language_stanza(model_config: Dict[str, Any]) -> Dict[str, Any]:
+    """Build the ``language`` stanza a piper-shaped export carries.
+
+    ``PiperLoader`` (``phoonnx/config_loaders.py``) reads the voice's
+    language from ``config["language"]["code"]``, but the training config
+    ``preprocess.py`` writes (and ``export_onnx`` loads as ``model_config``)
+    stores it under the flat key ``lang_code`` -- the two never agreed on a
+    key name, so every piper-shaped export carried an empty ``language: {}``
+    stanza and the language was lost between preprocessing and export.
+    Prefer an already-nested ``language`` dict, for configs that set one
+    directly.
+    """
+    language = model_config.get("language")
+    if language:
+        return language
+    lang_code = model_config.get("lang_code")
+    return {"code": lang_code} if lang_code else {}
+
+
 def _write_piper_json(model_config: Dict[str, Any], path: Path) -> None:
     """Emit a piper-compatible metadata JSON alongside the ONNX model."""
     piper_cfg = {
@@ -392,7 +411,7 @@ def _write_piper_json(model_config: Dict[str, Any], path: Path) -> None:
         "num_speakers": model_config.get("num_speakers"),
         "phoneme_id_map": model_config.get("phoneme_id_map", {}),
         "speaker_id_map": model_config.get("speaker_id_map", {}),
-        "language": model_config.get("language", {}),
+        "language": _voice_language_stanza(model_config),
         "espeak": model_config.get("espeak", {}),
         "phoneme_type": model_config.get("phoneme_type", ""),
         "phonemizer_model": model_config.get("phonemizer_model", ""),

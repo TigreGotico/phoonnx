@@ -545,6 +545,11 @@ def check_lang_supported(voice: str, lang_code: Optional[str],
     """
     if not lang_code or phoneme_type is None:
         return
+    if isinstance(lang_code, str) and lang_code.lower() == "und":
+        # "und" (BCP-47 "undetermined") means no language was declared, not
+        # that an unsupported one was -- VoiceConfig fills it in as the
+        # default when a config names no lang_code.
+        return
     from scriptconv.phonemizers.registry import get_phonemizer_class
     try:
         phonemizer_cls = get_phonemizer_class(phoneme_type)
