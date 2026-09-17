@@ -519,6 +519,52 @@ class TestVitsSidecarExporters(unittest.TestCase):
             data = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(data["language"], {"code": "eu"})
 
+    # The training config exactly as phoonnx_train/preprocess.py writes it.
+    _PREPROCESS_CONFIG = {
+        "dataset": "kab-test", "audio": {"sample_rate": 22050, "quality": "medium"},
+        "lang_code": "kab",
+        "inference": {"noise_scale": 0.667, "length_scale": 1, "noise_w": 0.8,
+                      "add_diacritics": False},
+        "alphabet": "ipa", "phoneme_type": "orthography2ipa", "phonemizer_model": "",
+        "phoneme_id_map": {"_": 0, "^": 1, "$": 2, " ": 3, "a": 4, "z": 5, "u": 6, "l": 7},
+        "num_symbols": 8, "num_speakers": 1, "speaker_id_map": {},
+        "phoonnx_version": "0.0.0",
+    }
+
+    def _load(self, data):
+        from phoonnx.config import VoiceConfig
+        return VoiceConfig.from_dict(json.loads(json.dumps(data)))
+
+    def test_vits_export_loads_with_the_training_language(self):
+        from phoonnx_train.engines.vits import _write_piper_json
+
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "voice.json"
+            _write_piper_json(dict(self._PREPROCESS_CONFIG), path)
+            data = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(self._load(data).lang_code, "kab")
+
+    def test_yourtts_export_loads_with_the_training_language(self):
+        from phoonnx_train.engines.yourtts import _yourtts_voice_json
+
+        data = _yourtts_voice_json(dict(self._PREPROCESS_CONFIG), None)
+        self.assertEqual(self._load(data).lang_code, "kab")
+
+    def test_export_with_no_language_fails_at_load(self):
+        from phoonnx.config import UnsupportedVoiceLanguage, check_lang_supported
+        from phoonnx_train.engines.vits import _write_piper_json
+
+        cfg = dict(self._PREPROCESS_CONFIG)
+        del cfg["lang_code"]
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "voice.json"
+            _write_piper_json(cfg, path)
+            data = json.loads(path.read_text(encoding="utf-8"))
+        voice = self._load(data)
+        self.assertEqual(voice.lang_code, "und")
+        with self.assertRaises(UnsupportedVoiceLanguage):
+            check_lang_supported("no-language-voice", voice.lang_code, voice.phoneme_type)
+
 
 if __name__ == "__main__":
     unittest.main()
