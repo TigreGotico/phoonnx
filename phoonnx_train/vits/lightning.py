@@ -162,6 +162,17 @@ class VitsModel(pl.LightningModule):
         return key
 
     def on_save_checkpoint(self, checkpoint: dict) -> None:
+        # Carry the random state, so a resumed run continues the shuffle
+        # sequence instead of restarting it. The train DataLoader takes
+        # shuffle=True with no generator, so its sampler draws a seed from the
+        # global RNG on every epoch; train.py seeds that RNG at process start.
+        # Without this, the first epoch after any resume replays epoch 0's batch
+        # order, and a run preempted each epoch trains on one ordering forever.
+        checkpoint["rng_state"] = {
+            "cpu": torch.get_rng_state(),
+            "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else [],
+        }
+
         # Always persist CLEAN (uncompiled) keys: strip torch.compile's
         # "._orig_mod." wrapping so a checkpoint written during a --compile run
         # loads into an uncompiled consumer unchanged (old-consumer compat).
@@ -172,6 +183,22 @@ class VitsModel(pl.LightningModule):
             }
 
     def on_load_checkpoint(self, checkpoint: dict) -> None:
+        # Restore the random state first, so the shuffle sequence continues from
+        # where the run left off. A checkpoint written before this was recorded
+        # carries no rng_state and resumes as it always did.
+        rng_state = checkpoint.get("rng_state")
+        if rng_state:
+            torch.set_rng_state(rng_state["cpu"].cpu())
+            cuda_state = rng_state.get("cuda") or []
+            if cuda_state and torch.cuda.is_available():
+                if len(cuda_state) == torch.cuda.device_count():
+                    torch.cuda.set_rng_state_all(cuda_state)
+                else:
+                    _LOGGER.warning(
+                        "checkpoint carries %d cuda rng state(s) for %d device(s); "
+                        "leaving device rng untouched",
+                        len(cuda_state), torch.cuda.device_count())
+
         # Reconcile a checkpoint's keys with the CURRENT model in either
         # direction. First normalize to clean keys (strip any "._orig_mod."),
         # then re-insert the prefix only for submodules that are actually

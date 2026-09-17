@@ -274,6 +274,54 @@ class TestCheckpointSaveRestoreGlue(unittest.TestCase):
         self.assertEqual(model.hparams.gin_channels, 512)
 
 
+class TestCheckpointCarriesRandomState(unittest.TestCase):
+    """A resumed run must continue the shuffle sequence, not replay epoch 0.
+
+    The train DataLoader takes shuffle=True with no generator, so its sampler
+    draws a seed from the global RNG on every epoch, and train.py seeds that RNG
+    at process start. Without the random state in the checkpoint, the first
+    epoch after any resume repeats epoch 0's batch order -- so a run preempted
+    at each epoch boundary trains on one ordering forever, while nothing in the
+    logs says so.
+    """
+
+    @staticmethod
+    def _orders(n_epochs):
+        """Batch orders a process sees, mirroring the trainer's dataloader."""
+        loader = torch.utils.data.DataLoader(
+            list(range(24)), batch_size=4, shuffle=True)
+        return [[int(i) for batch in loader for i in batch] for _ in range(n_epochs)]
+
+    def test_resumed_run_continues_the_shuffle_sequence(self):
+        model = _build_model()
+
+        torch.manual_seed(1234)
+        uninterrupted = self._orders(2)
+        self.assertNotEqual(uninterrupted[0], uninterrupted[1],
+                            "epochs must differ, or this test proves nothing")
+
+        # A process that runs epoch 0, checkpoints, and is then replaced by a
+        # fresh process that seeds identically and resumes.
+        torch.manual_seed(1234)
+        self._orders(1)
+        checkpoint = {"state_dict": {}}
+        model.on_save_checkpoint(checkpoint)
+
+        torch.manual_seed(1234)
+        model.on_load_checkpoint(checkpoint)
+        resumed = self._orders(1)[0]
+
+        self.assertEqual(resumed, uninterrupted[1])
+        self.assertNotEqual(resumed, uninterrupted[0])
+
+    def test_checkpoint_without_random_state_still_loads(self):
+        """Checkpoints written before this was recorded must resume as before."""
+        model = _build_model()
+        checkpoint = {"state_dict": {}}
+        model.on_load_checkpoint(checkpoint)
+        self.assertNotIn("rng_state", checkpoint)
+
+
 class TestAddModelSpecificArgs(unittest.TestCase):
     def test_registers_expected_arguments(self):
         import argparse
