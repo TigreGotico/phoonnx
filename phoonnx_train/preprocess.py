@@ -4,6 +4,7 @@ import json
 import logging
 import os
 from collections import Counter
+from importlib.metadata import PackageNotFoundError, packages_distributions, version
 from multiprocessing import JoinableQueue, Process, Queue
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple, Any, Set, Union, Callable
@@ -39,6 +40,27 @@ DEFAULT_SPECIAL_PHONEME_ID_MAP: Dict[str, int] = {
 }
 MAX_PHONEMES = 256
 # -----------------------------------------------------------------------------
+
+def phonemizer_registry(phonemizer: Any) -> Tuple[str, str]:
+    """Name the distribution the phonemizer class came from, and its version.
+
+    This is the registry that resolved the phonemizer, not the grapheme-to-
+    phoneme backend. For a phoneme type that shells out — espeak runs the system
+    ``espeak-ng`` binary — the backend and its version are not captured here and
+    nothing in the config identifies them.
+
+    Returns the distribution name and version, or the top-level module and an
+    empty version when the class comes from no installed distribution. Where
+    several distributions provide the same top-level module the lowest name
+    wins, so the field does not vary between machines with the same install.
+    """
+    module = type(phonemizer).__module__.split(".")[0]
+    dist = sorted(packages_distributions().get(module, [module]))[0]
+    try:
+        return dist, version(dist)
+    except PackageNotFoundError:
+        return dist, ""
+
 
 class PathEncoder(json.JSONEncoder):
     """JSON encoder for Path objects."""
@@ -788,6 +810,10 @@ def cli(
     audio_quality = config.audio_quality or config.output_dir.name
     dataset_name = config.dataset_name or config.output_dir.parent.name
 
+    # Phonemes taken from a dataset column were not produced here, so nothing
+    # about this environment reconstructs them. Naming a registry over them
+    # would be worse than naming nothing: a reader would believe the column is
+    # reproducible from a version that never touched it.
     config_data: Dict[str, Any] = {
         "dataset": dataset_name,
         "audio": {
@@ -809,17 +835,24 @@ def cli(
         "phoonnx_version": VERSION_STR,
     }
 
-    config_tmp = config.output_dir / "config.json.tmp"
-    with open(config_tmp, "w", encoding="utf-8") as config_file:
-        json.dump(config_data, config_file, ensure_ascii=False, indent=2)
-    config_tmp.rename(config.output_dir / "config.json")
+    # The previous config, read before it is overwritten: a resume needs both
+    # its counts and the registry version that produced them.
+    prior_config: Dict[str, Any] = {}
+    prior_config_path = config.output_dir / "config.json"
+    if resume_rows and prior_config_path.is_file():
+        prior_config = json.loads(prior_config_path.read_text(encoding="utf-8"))
 
     # --- Apply final phoneme IDs and write dataset.jsonl ---
     # Writes go to a temp file and are atomically renamed into place so an
     # interrupted run never leaves a half-written manifest. With --resume the
     # already-processed rows are re-emitted first, then the new rows appended.
+    # Counted here rather than off the result queue: three paths below drop a
+    # collected utterance before it reaches the manifest, so queue-side counts
+    # describe more rows than the file holds.
     _LOGGER.info("Writing dataset.jsonl...")
     valid_utterances_count: int = 0
+    written_phonemized: int = 0
+    written_from_column: int = 0
 
     tokenizer = TTSTokenizer.from_phoonnx_config(config_data)
 
@@ -896,8 +929,62 @@ def cli(
             )
             print("", file=dataset_file)
             valid_utterances_count += 1
+            if utt.phonemes_precomputed:
+                written_from_column += 1
+            else:
+                written_phonemized += 1
 
     dataset_tmp.rename(config.output_dir / "dataset.jsonl")
+
+    # --- Record which phonemizer produced the phonemes ---
+    #
+    # Written after the manifest so the counts describe the file that exists
+    # beside them, and so an interrupted run leaves no config claiming rows
+    # that were never written.
+    #
+    # A resumed run re-emits rows it never processed, so its own counts cover
+    # only part of the manifest. Fold the previous config's counts in and the
+    # pair keeps describing the whole file across any number of resumes. Two
+    # cases cannot be folded and then all four fields are omitted rather than
+    # left describing a subset: a previous config predating these keys, and one
+    # written by a different registry version, whose rows this run's version did
+    # not produce and must not be named over.
+    registry, registry_version = phonemizer_registry(phonemizer)
+    phonemized_total: Optional[int] = written_phonemized
+    from_column_total: Optional[int] = written_from_column
+    if resume_rows:
+        prior_phonemized = prior_config.get("phonemes_phonemized")
+        # A previous run that phonemized nothing named no registry, so there are
+        # no rows of its making to mis-attribute and its counts fold whatever
+        # version wrote them.
+        same_producer = (
+            prior_phonemized == 0
+            or (prior_config.get("phonemizer_registry") == registry
+                and prior_config.get("phonemizer_registry_version") == registry_version)
+        )
+        if (prior_phonemized is not None
+                and "phonemes_from_column" in prior_config
+                and same_producer):
+            phonemized_total += prior_phonemized
+            from_column_total += prior_config["phonemes_from_column"]
+        else:
+            phonemized_total = from_column_total = None
+
+    if phonemized_total is not None:
+        # Nothing was phonemized here, so no producer is claimed: the phonemes
+        # came out of a dataset column and this run cannot vouch for them.
+        if not phonemized_total:
+            registry, registry_version = "", ""
+        config_data["phonemizer_registry"] = registry
+        config_data["phonemizer_registry_version"] = registry_version
+        config_data["phonemes_phonemized"] = phonemized_total
+        config_data["phonemes_from_column"] = from_column_total
+
+    config_tmp = config.output_dir / "config.json.tmp"
+    with open(config_tmp, "w", encoding="utf-8") as config_file:
+        json.dump(config_data, config_file, ensure_ascii=False, indent=2)
+    config_tmp.rename(config.output_dir / "config.json")
+
     _LOGGER.info("Preprocessing complete. Wrote %d valid utterances to dataset.jsonl.", valid_utterances_count)
 
 
