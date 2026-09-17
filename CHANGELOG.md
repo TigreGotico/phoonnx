@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.91.11a1](https://github.com/TigreGotico/phoonnx/tree/1.91.11a1) (2026-09-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.10a1...1.91.11a1)
+
+**Merged pull requests:**
+
+- fix: record which phonemizer produced the phonemes [\#461](https://github.com/TigreGotico/phoonnx/pull/461) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.91.10a1](https://github.com/TigreGotico/phoonnx/tree/1.91.10a1) (2026-09-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.9a1...1.91.10a1)
+
 ## [1.91.9a1](https://github.com/TigreGotico/phoonnx/tree/1.91.9a1) (2026-09-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.8a2...1.91.9a1)
