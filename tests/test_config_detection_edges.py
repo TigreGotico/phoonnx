@@ -148,3 +148,30 @@ class TestAlphabetAlwaysResolved(unittest.TestCase):
         graph, prepare = get_conversion(None, vc, SynthesisConfig(), vc.alphabet)
         self.assertIsNotNone(graph)
         self.assertEqual(prepare("ab"), "ab")
+
+
+class TestEngineAliases(unittest.TestCase):
+    """StyleTTS2Adapter.detect accepts an engine named "kokoro", but the Engine
+    enum parses the config first, so such a config used to die on the enum and
+    that branch could not be reached from a file."""
+
+    def test_kokoro_resolves_to_the_styletts2_member(self):
+        self.assertIs(Engine("kokoro"), Engine.STYLETTS2)
+
+    def test_the_alias_adds_no_member(self):
+        self.assertNotIn("KOKORO", Engine.__members__)
+
+    def test_case_and_spacing_are_tolerated(self):
+        self.assertIs(Engine(" Kokoro "), Engine.STYLETTS2)
+
+    def test_a_name_that_is_not_an_engine_is_still_refused(self):
+        with self.assertRaises(ValueError):
+            Engine("not-an-engine")
+
+    def test_a_config_saying_kokoro_loads(self):
+        cfg = {"engine": "kokoro", "phoneme_type": "espeak", "alphabet": "ipa",
+               "lang_code": "en-us", "num_symbols": 2, "num_speakers": 1,
+               "audio": {"sample_rate": 24000},
+               "phoneme_id_map": {"a": [0], "b": [1]}}
+        vc = VoiceConfig.from_dict(cfg)
+        self.assertIs(vc.engine, Engine.STYLETTS2)

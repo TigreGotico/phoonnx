@@ -47,6 +47,28 @@ class Engine(str, Enum):
     MOSSTTS = "mosstts"  # MOSS-TTS-Nano: autoregressive RVQ-16 codec-LM, zero-shot cloning @48kHz
     VOSK = "vosk"  # alphacep vosk-tts: VITS + dictionary/rule Russian g2p
 
+    @classmethod
+    def _missing_(cls, value: object) -> Optional["Engine"]:
+        """Resolve a name a published config may use to the member that owns it.
+
+        The alias resolves to the *same* member, so every comparison against
+        ``Engine.STYLETTS2`` keeps working and a config is not routed to a
+        second, separate value.
+        """
+        if isinstance(value, str):
+            canonical = ENGINE_ALIASES.get(value.strip().lower())
+            if canonical is not None:
+                return cls(canonical)
+        return None
+
+
+#: Names a published config may use for an engine above. Kokoro is the
+#: StyleTTS2 graph under another name, and the sherpa-onnx and kokoro-onnx
+#: tooling writes "kokoro", so a config copied from there must not be refused.
+#: Kept beside the enum rather than inside it: a plain attribute in an Enum
+#: body becomes a member.
+ENGINE_ALIASES = {"kokoro": Engine.STYLETTS2.value}
+
 
 # Alphabet and PhonemeType are wire-format enums shared with scriptconv;
 # PhonemeType is scriptconv's Phonemizer under its historical name.  Aliasing
