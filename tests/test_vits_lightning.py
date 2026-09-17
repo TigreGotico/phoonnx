@@ -489,6 +489,36 @@ class TestVitsSidecarExporters(unittest.TestCase):
         self.assertNotIn("num_speakers", data)
         self.assertEqual(data["phoneme_type"], "espeak")
 
+    def test_write_piper_json_carries_the_training_language_forward(self):
+        # preprocess.py writes the language a voice was trained on under the
+        # flat "lang_code" key (phoonnx_train/preprocess.py); PiperLoader
+        # (phoonnx/config_loaders.py) reads it back from a nested
+        # "language": {"code": ...} stanza. Before this fix the two names
+        # never agreed, so a piper-shaped export always carried an empty
+        # "language": {} regardless of what --language the voice was
+        # preprocessed and trained with, and the voice failed to load with
+        # UnsupportedVoiceLanguage("und") for any phoneme_type that needs a
+        # language (e.g. orthography2ipa, as reported for a Kabyle voice).
+        from phoonnx_train.engines.vits import _write_piper_json
+
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "voice.json"
+            _write_piper_json({"num_symbols": 100, "lang_code": "kab",
+                               "phoneme_type": "orthography2ipa"}, path)
+            data = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(data["language"], {"code": "kab"})
+
+    def test_write_piper_json_prefers_an_already_nested_language_stanza(self):
+        from phoonnx_train.engines.vits import _write_piper_json
+
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "voice.json"
+            _write_piper_json({"num_symbols": 100, "lang_code": "kab",
+                               "language": {"code": "eu"},
+                               "phoneme_type": "orthography2ipa"}, path)
+            data = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(data["language"], {"code": "eu"})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -59,6 +59,24 @@ class TestCheckLangSupported(unittest.TestCase):
         # rejection just because an extra wasn't installed.
         check_lang_supported("some-eu-voice", "eu", PhonemeType.EUSKAPHONE)
 
+    def test_undetermined_lang_code_is_skipped_not_rejected(self):
+        # "und" (BCP-47 "undetermined") is the placeholder VoiceConfig fills
+        # in when a config names no language at all -- it means "no language
+        # was declared", not "an unsupported language was declared", so it
+        # must never reach a phonemizer's get_lang.
+        check_lang_supported("und-voice", "und", PhonemeType.ORTHOGRAPHY2IPA)
+
+    def test_undetermined_lang_code_is_skipped_case_insensitively(self):
+        check_lang_supported("und-voice-upper", "UND", PhonemeType.ORTHOGRAPHY2IPA)
+
+    def test_real_unsupported_lang_code_still_raises(self):
+        # "und" is special-cased; an actually unsupported real code must
+        # still be rejected with the typed error.
+        with self.assertRaises(UnsupportedVoiceLanguage) as ctx:
+            check_lang_supported("xx-xx-voice", "xx-XX", PhonemeType.ESPEAK)
+        err = ctx.exception
+        self.assertEqual(err.voice, "xx-xx-voice")
+
 
 class TestCheckLangSupportedOnTheVoiceIndex(unittest.TestCase):
     """The strongest guard this feature can have: sweep every bundled voice
