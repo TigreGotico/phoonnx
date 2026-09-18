@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.92.1a1](https://github.com/TigreGotico/phoonnx/tree/1.92.1a1) (2026-09-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.92.0a1...1.92.1a1)
+
+**Merged pull requests:**
+
+- fix: let a trained VITS model be exported on the machine that trained it [\#465](https://github.com/TigreGotico/phoonnx/pull/465) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.92.0a1](https://github.com/TigreGotico/phoonnx/tree/1.92.0a1) (2026-09-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.13a1...1.92.0a1)
@@ -350,10 +358,6 @@
 ## [1.79.0a1](https://github.com/TigreGotico/phoonnx/tree/1.79.0a1) (2026-08-12)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.78.1a2...1.79.0a1)
-
-**Merged pull requests:**
-
-- feat: bound the loaded-voice cache and let voices be pinned in memory [\#380](https://github.com/TigreGotico/phoonnx/pull/380) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.78.1a2](https://github.com/TigreGotico/phoonnx/tree/1.78.1a2) (2026-08-12)
 
