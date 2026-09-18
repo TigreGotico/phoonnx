@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.91.12a1](https://github.com/TigreGotico/phoonnx/tree/1.91.12a1) (2026-09-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.11a1...1.91.12a1)
+
+**Merged pull requests:**
+
+- fix: keep the sound when a capital letter is not in the vocabulary [\#482](https://github.com/TigreGotico/phoonnx/pull/482) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.91.11a1](https://github.com/TigreGotico/phoonnx/tree/1.91.11a1) (2026-09-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.10a1...1.91.11a1)
@@ -351,10 +359,6 @@
 ## [1.78.0a2](https://github.com/TigreGotico/phoonnx/tree/1.78.0a2) (2026-08-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.78.0a1...1.78.0a2)
-
-**Merged pull requests:**
-
-- chore: add Apache-2.0 LICENSE [\#374](https://github.com/TigreGotico/phoonnx/pull/374) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.78.0a1](https://github.com/TigreGotico/phoonnx/tree/1.78.0a1) (2026-08-04)
 
