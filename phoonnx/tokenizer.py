@@ -581,6 +581,16 @@ class TTSTokenizer:
                     if len(decomposed) > 1 and all(c in self.vocabulary.char2idx for c in decomposed):
                         idx = [self.vocabulary.char2idx[c] for c in decomposed]
 
+                if idx is None and len(char) == 1:
+                    # A vocabulary built from lowercased training text holds no
+                    # uppercase letter, so a capital at the start of a sentence
+                    # is dropped and the model never says that sound. Fall back
+                    # to the lowercase form, which can only help: the character
+                    # is already out of vocabulary at this point.
+                    lowered = char.lower()
+                    if lowered != char and lowered in self.vocabulary.char2idx:
+                        idx = self.vocabulary.char2idx[lowered]
+
                 if idx is None and char not in self.not_found_characters:
                     self.not_found_characters.add(char)
                     LOG.warning(f"Out-of-vocabulary phoneme {char!r} "
