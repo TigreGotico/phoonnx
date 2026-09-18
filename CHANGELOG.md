@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.92.0a1](https://github.com/TigreGotico/phoonnx/tree/1.92.0a1) (2026-09-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.13a1...1.92.0a1)
+
+**Merged pull requests:**
+
+- feat: add the three GhanaNLP community voices to the index [\#484](https://github.com/TigreGotico/phoonnx/pull/484) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.91.13a1](https://github.com/TigreGotico/phoonnx/tree/1.91.13a1) (2026-09-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.12a1...1.91.13a1)
@@ -338,7 +346,6 @@
 
 - fix: decode ids back to text without the `tokenizers` package [\#385](https://github.com/TigreGotico/phoonnx/pull/385) ([JarbasAl](https://github.com/JarbasAl))
 - fix: load a cold voice once, however many callers ask at the same time [\#384](https://github.com/TigreGotico/phoonnx/pull/384) ([JarbasAl](https://github.com/JarbasAl))
-- fix: fetch voice files through the shared HuggingFace cache [\#379](https://github.com/TigreGotico/phoonnx/pull/379) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.79.0a1](https://github.com/TigreGotico/phoonnx/tree/1.79.0a1) (2026-08-12)
 
@@ -355,10 +362,6 @@
 ## [1.78.1a1](https://github.com/TigreGotico/phoonnx/tree/1.78.1a1) (2026-08-12)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.78.0a2...1.78.1a1)
-
-**Merged pull requests:**
-
-- fix: read tokenizer.json without the tokenizers wheel [\#378](https://github.com/TigreGotico/phoonnx/pull/378) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.78.0a2](https://github.com/TigreGotico/phoonnx/tree/1.78.0a2) (2026-08-10)
 
