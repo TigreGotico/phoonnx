@@ -489,6 +489,82 @@ class TestVitsSidecarExporters(unittest.TestCase):
         self.assertNotIn("num_speakers", data)
         self.assertEqual(data["phoneme_type"], "espeak")
 
+    def test_write_piper_json_carries_the_training_language_forward(self):
+        # preprocess.py writes the language a voice was trained on under the
+        # flat "lang_code" key (phoonnx_train/preprocess.py); PiperLoader
+        # (phoonnx/config_loaders.py) reads it back from a nested
+        # "language": {"code": ...} stanza. Before this fix the two names
+        # never agreed, so a piper-shaped export always carried an empty
+        # "language": {} regardless of what --language the voice was
+        # preprocessed and trained with, and the voice failed to load with
+        # UnsupportedVoiceLanguage("und") for any phoneme_type that needs a
+        # language (e.g. orthography2ipa, as reported for a Kabyle voice).
+        from phoonnx_train.engines.vits import _write_piper_json
+
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "voice.json"
+            _write_piper_json({"num_symbols": 100, "lang_code": "kab",
+                               "phoneme_type": "orthography2ipa"}, path)
+            data = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(data["language"], {"code": "kab"})
+
+    def test_write_piper_json_prefers_an_already_nested_language_stanza(self):
+        from phoonnx_train.engines.vits import _write_piper_json
+
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "voice.json"
+            _write_piper_json({"num_symbols": 100, "lang_code": "kab",
+                               "language": {"code": "eu"},
+                               "phoneme_type": "orthography2ipa"}, path)
+            data = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(data["language"], {"code": "eu"})
+
+    # The training config exactly as phoonnx_train/preprocess.py writes it.
+    _PREPROCESS_CONFIG = {
+        "dataset": "kab-test", "audio": {"sample_rate": 22050, "quality": "medium"},
+        "lang_code": "kab",
+        "inference": {"noise_scale": 0.667, "length_scale": 1, "noise_w": 0.8,
+                      "add_diacritics": False},
+        "alphabet": "ipa", "phoneme_type": "orthography2ipa", "phonemizer_model": "",
+        "phoneme_id_map": {"_": 0, "^": 1, "$": 2, " ": 3, "a": 4, "z": 5, "u": 6, "l": 7},
+        "num_symbols": 8, "num_speakers": 1, "speaker_id_map": {},
+        "phoonnx_version": "0.0.0",
+    }
+
+    def _load(self, data):
+        from phoonnx.config import VoiceConfig
+        return VoiceConfig.from_dict(json.loads(json.dumps(data)))
+
+    def test_vits_export_loads_with_the_training_language(self):
+        from phoonnx_train.engines.vits import _write_piper_json
+
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "voice.json"
+            _write_piper_json(dict(self._PREPROCESS_CONFIG), path)
+            data = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(self._load(data).lang_code, "kab")
+
+    def test_yourtts_export_loads_with_the_training_language(self):
+        from phoonnx_train.engines.yourtts import _yourtts_voice_json
+
+        data = _yourtts_voice_json(dict(self._PREPROCESS_CONFIG), None)
+        self.assertEqual(self._load(data).lang_code, "kab")
+
+    def test_export_with_no_language_fails_at_load(self):
+        from phoonnx.config import UnsupportedVoiceLanguage, check_lang_supported
+        from phoonnx_train.engines.vits import _write_piper_json
+
+        cfg = dict(self._PREPROCESS_CONFIG)
+        del cfg["lang_code"]
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "voice.json"
+            _write_piper_json(cfg, path)
+            data = json.loads(path.read_text(encoding="utf-8"))
+        voice = self._load(data)
+        self.assertEqual(voice.lang_code, "und")
+        with self.assertRaises(UnsupportedVoiceLanguage):
+            check_lang_supported("no-language-voice", voice.lang_code, voice.phoneme_type)
+
 
 if __name__ == "__main__":
     unittest.main()
