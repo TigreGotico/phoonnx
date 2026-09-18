@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.91.13a1](https://github.com/TigreGotico/phoonnx/tree/1.91.13a1) (2026-09-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.12a1...1.91.13a1)
+
+**Merged pull requests:**
+
+- fix: accept a config that names the engine kokoro [\#483](https://github.com/TigreGotico/phoonnx/pull/483) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.91.12a1](https://github.com/TigreGotico/phoonnx/tree/1.91.12a1) (2026-09-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.11a1...1.91.12a1)
@@ -343,10 +351,6 @@
 ## [1.78.1a2](https://github.com/TigreGotico/phoonnx/tree/1.78.1a2) (2026-08-12)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.78.1a1...1.78.1a2)
-
-**Merged pull requests:**
-
-- Prefetch voice weights on TTS server startup [\#376](https://github.com/TigreGotico/phoonnx/pull/376) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.78.1a1](https://github.com/TigreGotico/phoonnx/tree/1.78.1a1) (2026-08-12)
 
