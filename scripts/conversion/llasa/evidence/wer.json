@@ -1,0 +1,146 @@
+{
+  "onnx_en": {
+    "metric": "WER",
+    "voice": "en_female_a",
+    "mean": 0.011363636363636364,
+    "rtf_mean": 7.112047993413217,
+    "rows": [
+      {
+        "ref": "The morning train was late again, so she walked the rest of the way.",
+        "hyp": "The morning train was late again so she walked the rest of the way.",
+        "err": 0.0,
+        "seconds": 5.28,
+        "wall": 36.1158983707428,
+        "rtf": 6.840132267186136
+      },
+      {
+        "ref": "He kept the letter in a drawer for almost twenty years.",
+        "hyp": "He kept the letter in a drawer for almost 20 years.",
+        "err": 0.09090909090909091,
+        "seconds": 3.98,
+        "wall": 27.175267219543457,
+        "rtf": 6.827956587824989
+      },
+      {
+        "ref": "Please close the window before the rain starts.",
+        "hyp": "Please close the window before the rain starts.",
+        "err": 0.0,
+        "seconds": 2.9,
+        "wall": 20.535842895507812,
+        "rtf": 7.081325136382005
+      },
+      {
+        "ref": "They agreed to meet at the corner of the old market square.",
+        "hyp": "They agreed to meet at the corner of the old market square.",
+        "err": 0.0,
+        "seconds": 3.96,
+        "wall": 28.780455827713013,
+        "rtf": 7.267791875685104
+      },
+      {
+        "ref": "The doctor said the results would arrive on Thursday.",
+        "hyp": "The doctor said the results would arrive on Thursday.",
+        "err": 0.0,
+        "seconds": 3.44,
+        "wall": 25.088524103164673,
+        "rtf": 7.293175611385079
+      },
+      {
+        "ref": "Nobody expected the river to rise that quickly.",
+        "hyp": "Nobody expected the river to rise that quickly.",
+        "err": 0.0,
+        "seconds": 3.5,
+        "wall": 25.07105302810669,
+        "rtf": 7.163158008030483
+      },
+      {
+        "ref": "She counted the coins twice and put them back in the jar.",
+        "hyp": "She counted the coins twice and put them back in the jar.",
+        "err": 0.0,
+        "seconds": 3.78,
+        "wall": 27.19450068473816,
+        "rtf": 7.194312350459831
+      },
+      {
+        "ref": "We should leave early if we want to avoid the traffic.",
+        "hyp": "We should leave early if we want to avoid the traffic.",
+        "err": 0.0,
+        "seconds": 3.32,
+        "wall": 23.99872660636902,
+        "rtf": 7.2285321103521145
+      }
+    ]
+  },
+  "onnx_zh": {
+    "metric": "CER",
+    "voice": "zh_male_a",
+    "mean": 0.06476648351648351,
+    "rtf_mean": 7.392581578698374,
+    "rows": [
+      {
+        "ref": "他昨天晚上很晚才回到家里。",
+        "hyp": "他昨天晚上很晚才回到家里",
+        "err": 0.0,
+        "seconds": 3.94,
+        "wall": 27.974599838256836,
+        "rtf": 7.100152243212395
+      },
+      {
+        "ref": "这本书我已经看了三遍了。",
+        "hyp": "这本书我已经看了三遍了",
+        "err": 0.0,
+        "seconds": 3.34,
+        "wall": 24.451050281524658,
+        "rtf": 7.320673736983431
+      },
+      {
+        "ref": "请你把窗户关上，外面开始下雨了。",
+        "hyp": "请你把窗户官上外面开始下雨了",
+        "err": 0.07142857142857142,
+        "seconds": 5.22,
+        "wall": 38.370301961898804,
+        "rtf": 7.350632559750729
+      },
+      {
+        "ref": "我们约好在老市场的路口见面。",
+        "hyp": "我们约好在老市场的路口见面",
+        "err": 0.0,
+        "seconds": 3.74,
+        "wall": 27.150466203689575,
+        "rtf": 7.259482942162988
+      },
+      {
+        "ref": "医生说结果星期四就会出来。",
+        "hyp": "医生说结果星期四就会出來",
+        "err": 0.08333333333333333,
+        "seconds": 4.68,
+        "wall": 34.20348119735718,
+        "rtf": 7.308436153281448
+      },
+      {
+        "ref": "没有人想到河水会涨得这么快。",
+        "hyp": "没有人想到何水会长得这么快",
+        "err": 0.15384615384615385,
+        "seconds": 4.06,
+        "wall": 30.576746702194214,
+        "rtf": 7.531218399555226
+      },
+      {
+        "ref": "她把硬币数了两遍又放回罐子里。",
+        "hyp": "他把硬币属了两遍又放回罐子里",
+        "err": 0.14285714285714285,
+        "seconds": 4.68,
+        "wall": 35.23576283454895,
+        "rtf": 7.5290091526814
+      },
+      {
+        "ref": "如果想避开堵车，我们应该早点出发。",
+        "hyp": "如果想避开赌车我们应该早点出发",
+        "err": 0.06666666666666667,
+        "seconds": 4.64,
+        "wall": 35.91846013069153,
+        "rtf": 7.741047441959382
+      }
+    ]
+  }
+}

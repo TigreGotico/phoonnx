@@ -1,0 +1,352 @@
+{
+  "0": {
+    "phoneme": "X",
+    "token": 0,
+    "grapheme" : " "
+  },
+  "1": {
+    "phoneme": " ",
+    "token": 1,
+    "grapheme" : " "
+  },
+  "2": {
+    "phoneme": "$",
+    "token": 2,
+    "grapheme" : " "
+  },
+  "3": {
+    "phoneme": "M",
+    "token": 3,
+    "grapheme" : " "
+  },
+  "4": {
+    "phoneme": ",",
+    "token": 4,
+    "grapheme" :","
+  },
+  "5": {
+    "phoneme": ".",
+    "token": 5,
+    "grapheme" :"."
+  },
+  "6": {
+    "phoneme": "a",
+    "token": 6,
+    "grapheme" :"a"
+  },
+  "7": {
+    "phoneme": "E",
+    "token": 7,
+    "grapheme" : "e"
+  },
+  "8": {
+    "phoneme": "e",
+    "token": 8,
+    "grapheme" : "e"
+  },
+  "9": {
+    "phoneme": "i",
+    "token": 9,
+    "grapheme" : "i"
+  },
+  "10": {
+    "phoneme": "j",
+    "token": 10,
+    "grapheme" : "i"
+  },
+  "11": {
+    "phoneme": "O",
+    "token": 11,
+    "grapheme" : "o"
+  },
+  "12": {
+    "phoneme": "o",
+    "token": 12,
+    "grapheme" : "o"
+  },
+  "13": {
+    "phoneme": "u",
+    "token": 13,
+    "grapheme" : "u"
+  },
+  "14": {
+    "phoneme": "w",
+    "token": 14,
+    "grapheme" : "u"
+  },
+  "15": {
+    "phoneme": "p",
+    "token": 15,
+    "grapheme" : "p"
+  },
+  "16": {
+    "phoneme": "b",
+    "token": 16,
+    "grapheme" : "b"
+  },
+  "17": {
+    "phoneme": "B",
+    "token": 17,
+    "grapheme" : "b"
+  },
+  "18": {
+    "phoneme": "t",
+    "token": 18,
+    "grapheme" : "t"
+  },
+  "19": {
+    "phoneme": "d",
+    "token": 19,
+    "grapheme" : "d"
+  },
+  "20": {
+    "phoneme": "D",
+    "token": 20,
+    "grapheme" : "d"
+  },
+  "21": {
+    "phoneme": "k",
+    "token": 21,
+    "grapheme" : "c"
+  },
+  "22": {
+    "phoneme": "g",
+    "token": 22,
+    "grapheme" : "g"
+  },
+  "23": {
+    "phoneme": "G",
+    "token": 23,
+    "grapheme" : "g"
+  },
+  "24": {
+    "phoneme": "f",
+    "token": 24,
+    "grapheme" : "f"
+  },
+  "25": {
+    "phoneme": "T",
+    "token": 25,
+    "grapheme" : "z"
+  },
+  "26": {
+    "phoneme": "s",
+    "token": 26,
+    "grapheme" : "s"
+  },
+  "27": {
+    "phoneme": "S",
+    "token": 27,
+    "grapheme" : "x"
+  },
+  "28": {
+    "phoneme": "m",
+    "token": 28,
+    "grapheme" : "m"
+  },
+  "29": {
+    "phoneme": "n",
+    "token": 29,
+    "grapheme" : "n"
+  },
+  "30": {
+    "phoneme": "J",
+    "token": 30,
+    "grapheme" : "ñ"
+  },
+  "31": {
+    "phoneme": "N",
+    "token": 31,
+    "grapheme" : "nh"
+  },
+  "32": {
+    "phoneme": "l",
+    "token": 32,
+    "grapheme" : "l"
+  },
+  "33": {
+    "phoneme": "Z",
+    "token": 33,
+    "grapheme" : "ll"
+  },
+  "34": {
+    "phoneme": "r",
+    "token": 34,
+    "grapheme" : "r"
+  },
+  "35": {
+    "phoneme": "R",
+    "token": 35,
+    "grapheme" : "rr"
+  },
+  "36": {
+    "phoneme": "x",
+    "token": 36,
+    "grapheme" : "j"
+  },
+  "37": {
+    "phoneme": "C",
+    "token": 37,
+    "grapheme" : "ch"
+  },
+  "38": {
+    "phoneme": "!",
+    "token": 38,
+    "grapheme" : "!"
+  },
+  "39": {
+    "phoneme": "\"",
+    "token": 39,
+    "grapheme" : "\""
+  },
+  "40": {
+    "phoneme": "(",
+    "token": 40,
+    "grapheme" : "("
+  },
+  "41": {
+    "phoneme": ")",
+    "token": 41,
+    "grapheme" : ")"
+  },
+  "42": {
+    "phoneme": "/",
+    "token": 42,
+    "grapheme" : "/"
+  },
+  "43": {
+    "phoneme": ":",
+    "token": 43,
+    "grapheme" : ":"
+  },
+  "44": {
+    "phoneme": ";",
+    "token": 44,
+    "grapheme" : ";"
+  },
+  "45": {
+    "phoneme": "?",
+    "token": 45,
+    "grapheme" : "?"
+  },
+  "46": {
+    "phoneme": "[",
+    "token": 46,
+    "grapheme" : "["
+  },
+  "47": {
+    "phoneme": "]",
+    "token": 47,
+    "grapheme" : "]"
+  },
+  "48": {
+    "phoneme": "{",
+    "token": 48,
+    "grapheme" : "{"
+  },
+  "49": {
+    "phoneme": "}",
+    "token": 49,
+    "grapheme" : "}"
+  },
+  "50": {
+    "phoneme": "¡",
+    "token": 50,
+    "grapheme" : "¡"
+  },
+  "51": {
+    "phoneme": "º",
+    "token": 51,
+    "grapheme" : "º"
+  },
+  "52": {
+    "phoneme": "ª",
+    "token": 52,
+    "grapheme" : "ª"
+  },
+  "53": {
+    "phoneme": "`",
+    "token": 53,
+    "grapheme" : "`"
+  },
+  "54": {
+    "phoneme": "¿",
+    "token": 54,
+    "grapheme" : "¿"
+  },
+  "55": {
+    "phoneme": "K",
+    "token": 55,
+    "grapheme" : "x"
+  },
+  "56": {
+    "phoneme": "W",
+    "token": 56,
+    "grapheme" : "x"
+  },
+  "57": {
+    "phoneme": "O",
+    "token": 57,
+    "grapheme" : "ao"
+  },
+  "58": {
+    "phoneme": "W",
+    "token": 58,
+    "grapheme" : "tS"
+  },
+  "59": {
+    "phoneme": "á",
+    "token": 59,
+    "grapheme" : "á"
+  },
+  "60": {
+    "phoneme": "É",
+    "token": 60,
+    "grapheme" : "é"
+  },
+  "61": {
+    "phoneme": "é",
+    "token": 61,
+    "grapheme" : "é"
+  },
+  "62": {
+    "phoneme": "í",
+    "token": 62,
+    "grapheme" : "í"
+  },
+  "63": {
+    "phoneme": "j́",
+    "token": 63,
+    "grapheme" : "í"
+  },
+  "64": {
+    "phoneme": "Ó",
+    "token": 64,
+    "grapheme" : "ó"
+  },
+  "65": {
+    "phoneme": "ó",
+    "token": 65,
+    "grapheme" : "ó"
+  },
+  "66": {
+    "phoneme": "ú",
+    "token": 66,
+    "grapheme" : "ú"
+  },
+  "67": {
+    "phoneme": "ẃ",
+    "token": 67,
+    "grapheme" : "ú"
+  },
+  "68": {
+    "phoneme": "s",
+    "token": 68,
+    "grapheme" : "ps"
+  },
+  "69": {
+    "phoneme": "n",
+    "token": 69,
+    "grapheme" : "pn"
+  }
+}
