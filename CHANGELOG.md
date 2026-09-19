@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.93.0a1](https://github.com/TigreGotico/phoonnx/tree/1.93.0a1) (2026-09-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.92.1a1...1.93.0a1)
+
+**Merged pull requests:**
+
+- feat: add the kasanoma Twi voice to the piper community index [\#485](https://github.com/TigreGotico/phoonnx/pull/485) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.92.1a1](https://github.com/TigreGotico/phoonnx/tree/1.92.1a1) (2026-09-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.92.0a1...1.92.1a1)
