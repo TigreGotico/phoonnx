@@ -38,7 +38,8 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
     DURATION_OUTPUT_NAMES = ["durations", "dur", "pred_dur"]
 
     def __init__(self, style_pack: Optional[np.ndarray] = None,
-                 speaker_encoder: Optional[Any] = None):
+                 speaker_encoder: Optional[Any] = None,
+                 pad_both_ends: Optional[bool] = None):
         # [N, 256] per-voice style indexed by token length (Kokoro); None when the
         # reference style is baked into the graph (StyleTTS2).
         self.style_pack = None if style_pack is None else np.asarray(style_pack, dtype=np.float32)
@@ -51,6 +52,11 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
         # padding token is prepended to every utterance, so a pad that happens
         # to be a trained speech symbol makes the voice speak an extra syllable.
         self._pad_id = _PAD_ID
+        # Whether the token sequence is padded at both ends or only at the
+        # start. None means "infer from the style pack", which is what this
+        # adapter has always done and stays the default for every voice that
+        # does not say. configure() reads engine_params["pad_both_ends"].
+        self._pad_both_ends = None if pad_both_ends is None else bool(pad_both_ends)
 
     def default_params(self) -> Dict[str, float]:
         return {"speed": 1.0}
@@ -70,6 +76,8 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
         style_path = ep.get("style_path")
         if self.style_pack is None and style_path:
             self.style_pack = np.fromfile(style_path, dtype=np.float32).reshape(-1, 256)
+        if self._pad_both_ends is None and ep.get("pad_both_ends") is not None:
+            self._pad_both_ends = bool(ep["pad_both_ends"])
         if self.speaker_encoder is None and ep.get("speaker_encoder_path"):
             from phoonnx.engines.speaker_encoders import build_speaker_encoder
             self.speaker_encoder = build_speaker_encoder(
@@ -88,9 +96,19 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
         # Padding with the pad id ($): Kokoro pads BOTH ends (its tokenizer emits
         # [0, *tokens, 0]); the plain StyleTTS2 lineage (single reference style or
         # a baked-in style) pads the START only -- a trailing pad makes those
-        # models decode a noise burst at the end. Kokoro is the only case here
-        # with a multi-row [N, 256] style pack.
-        _trailing = 1 if (self.style_pack is not None and self.style_pack.shape[0] > 1) else 0
+        # models decode a noise burst at the end.
+        #
+        # engine_params["pad_both_ends"] states it per voice. Without it the
+        # shape of the style pack is used as a proxy for the lineage, which is
+        # what this adapter has always done: a multi-row [N, 256] pack means
+        # Kokoro. That proxy is not always right. A Kokoro fine-tune can carry a
+        # single baked-in style and still need both ends, because what decides
+        # the padding is how the training targets were wrapped, not how the
+        # style is delivered. Such a voice must set the flag.
+        if self._pad_both_ends is not None:
+            _trailing = 1 if self._pad_both_ends else 0
+        else:
+            _trailing = 1 if (self.style_pack is not None and self.style_pack.shape[0] > 1) else 0
         ids = np.pad(ids, ((0, 0), (1, _trailing)), constant_values=self._pad_id)
         speed = np.float32(request.params.get(
             "speed", request.params.get("length_scale", self.default_params()["speed"])))
