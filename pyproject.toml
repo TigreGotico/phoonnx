@@ -225,7 +225,11 @@ train-eval = [
 train-data = [
     "pandas",
     "pyarrow",
-    "datasets",
+    # floor, not a pin: pyarrow removed PyExtensionType, and datasets below 3
+    # still subclasses it, so the pair fails at import. Unfloored, the resolver
+    # took datasets 1.1.1 against pyarrow 25.0.1 and every build_tests job on
+    # 3.12, 3.13 and 3.14 failed on AttributeError in datasets/features.py.
+    "datasets>=3",
     "soundfile",
 ]
 # extra deps for the FastPitch / SpeedySpeech training engine
