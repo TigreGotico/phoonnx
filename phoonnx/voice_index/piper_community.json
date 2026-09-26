@@ -1247,7 +1247,7 @@
     },
     "piper_community/ghananlpcommunity/kasanoma-twi": {
         "voice_id": "piper_community/ghananlpcommunity/kasanoma-twi",
-        "model_url": "https://huggingface.co/ghananlpcommunity/kasanoma-twi/resolve/main/model.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/kasanoma-twi/resolve/main/model.onnx",
         "phoneme_type": "espeak",
         "lang": "tw",
         "tokens_url": null,
@@ -1256,8 +1256,38 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/ghananlpcommunity/kasanoma-twi/resolve/main/model.onnx.json",
+        "config_url": "https://huggingface.co/OpenVoiceOS/kasanoma-twi/resolve/main/model.onnx.json",
         "phonemizer_lang": "lfn",
         "display_name": "Twi (kasanoma, {engine})"
+    },
+    "piper_community/michsethowusu/kasanoma-chichewa": {
+        "voice_id": "piper_community/michsethowusu/kasanoma-chichewa",
+        "model_url": "https://huggingface.co/OpenVoiceOS/kasanoma-chichewa/resolve/main/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "ny",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/OpenVoiceOS/kasanoma-chichewa/resolve/main/model.onnx.json",
+        "phonemizer_lang": "lfn",
+        "display_name": "Chichewa (kasanoma, {engine})"
+    },
+    "piper_community/michsethowusu/kasanoma-makhuwa": {
+        "voice_id": "piper_community/michsethowusu/kasanoma-makhuwa",
+        "model_url": "https://huggingface.co/OpenVoiceOS/kasanoma-makhuwa/resolve/main/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "vmw",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/OpenVoiceOS/kasanoma-makhuwa/resolve/main/model.onnx.json",
+        "phonemizer_lang": "lfn",
+        "display_name": "Makhuwa (kasanoma, {engine})"
     }
 }
