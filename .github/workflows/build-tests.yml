@@ -3,6 +3,11 @@ name: Build Tests
 on:
   pull_request:
     branches: [dev, master]
+  # dev must run this workflow too. Without a push trigger the dev baseline
+  # shares no check name with a pull request, so `bin/gate ci` can never class
+  # a red here as inherited from dev.
+  push:
+    branches: [dev, master]
   workflow_dispatch:
 
 jobs:

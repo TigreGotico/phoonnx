@@ -225,7 +225,11 @@ train-eval = [
 train-data = [
     "pandas",
     "pyarrow",
-    "datasets",
+    # datasets has an fsspec ceiling and every other dependency here wants the
+    # newest fsspec. With no floor the resolver satisfies both by going back to
+    # datasets 1.1.1, which uses pa.PyExtensionType, and pyarrow 25 removed it.
+    # The floor makes the resolver hold fsspec down instead of datasets.
+    "datasets>=4",
     "soundfile",
 ]
 # extra deps for the FastPitch / SpeedySpeech training engine
