@@ -31,10 +31,25 @@ class TestEspeakGetLang(unittest.TestCase):
     def test_exact_match_passthrough(self):
         self.assertEqual(EspeakPhonemizer.get_lang("pt-br"), "pt-br")
 
-    def test_unusual_but_valid_regional_code_falls_back_to_base_lang(self):
-        # pt-BR isn't itself in ESPEAK_LANGS with this casing, but its base
-        # "pt" is -- get_lang lowercases and strips the region.
-        self.assertEqual(EspeakPhonemizer.get_lang("pt-BR"), "pt")
+    def test_uppercase_region_keeps_the_regional_voice(self):
+        # ESPEAK_LANGS is all lowercase. get_lang lowercases the tag and
+        # matches it whole before the primary subtag, so an uppercase region
+        # keeps its own voice. pt-BR must not become pt: pt is European
+        # Portuguese, and a Brazilian voice phonemized as European says the
+        # wrong words. scriptconv 0.0.4a34 (TigreGotico/scriptconv#129) fixed
+        # this; before it, all four of these fell to the base language.
+        self.assertEqual(EspeakPhonemizer.get_lang("pt-BR"), "pt-br")
+        self.assertEqual(EspeakPhonemizer.get_lang("fr-BE"), "fr-be")
+        self.assertEqual(EspeakPhonemizer.get_lang("ES-419"), "es-419")
+        self.assertEqual(EspeakPhonemizer.get_lang("pt_BR"), "pt-br")
+
+    def test_region_with_no_espeak_voice_falls_back_to_base_lang(self):
+        # de-at and pt-pt are not in ESPEAK_LANGS, so the primary subtag is
+        # the right answer for them. This is the fallback the uppercase test
+        # above must not reach.
+        self.assertNotIn("de-at", EspeakPhonemizer.ESPEAK_LANGS)
+        self.assertEqual(EspeakPhonemizer.get_lang("de-AT"), "de")
+        self.assertEqual(EspeakPhonemizer.get_lang("pt-PT"), "pt")
 
     def test_zh_tw_resolves_via_chinese_alias_map(self):
         # ESPEAK_LANGS has no bare "zh" entry, only "cmn"/"yue"; scriptconv's

@@ -22,7 +22,7 @@ dependencies = [
     "langcodes",
     "ovos-number-parser>=0.4.0",
     "ovos-date-parser>=0.6.4a1",
-    "scriptconv[phonemizers]>=0.0.4a25",
+    "scriptconv[phonemizers]>=0.0.4a34",
     "unicode_rbnf",
     "click",
     "requests",
@@ -414,7 +414,11 @@ all = [
     # >=0.0.4a23: the release that actually fixes the "he" extra (pulls in
     # both phonikud and phonikud-onnx), the zh alias map, MissingLanguageError,
     # and the stress-routing fix — a19 predates all four.
-    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he]>=0.0.4a23",
+    # >=0.0.4a34: EspeakPhonemizer.get_lang matches a BCP-47 tag whatever its
+    # case, so pt-BR keeps the pt-br voice instead of falling to pt, European
+    # Portuguese. Below this floor tests/test_phonemizer_mul.py
+    # TestEspeakGetLang fails.
+    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he]>=0.0.4a34",
     # scriptconv's own "stress" extra floors stressonnx at >=0.0.2, which
     # resolves to the latest *stable* release. The BCP-47 language resolver
     # phoonnx needs only shipped in the 0.0.3 alpha train, so it must be
