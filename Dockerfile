@@ -20,12 +20,21 @@ WORKDIR /app
 COPY . /app
 
 # phoonnx + all optional deps + the OVOS TTS server.
+# - uv does the resolving, not pip. The "all" extra asks for 12 gruut language
+#   extras, 4 misaki extras, a scriptconv with 11 extras of its own, spacy and
+#   the TTS server in one step, and pip's resolver gives up on it with
+#   "error: resolution-too-deep" (issue: the docker job was red on dev from
+#   2026-09-19). uv resolves the same set to 1012 pinned packages.
+# - --prerelease=allow because the set names alphas on purpose: scriptconv
+#   0.0.4a23, stressonnx 0.0.3a2 and ovos-tts-server 1.14.1a2.
 # - CPU-only torch first (misaki/spacy pull it transitively) so the multi-GB CUDA
-#   wheels never land in this CPU-inference image.
+#   wheels never land in this CPU-inference image. uv keeps an installed package
+#   that already satisfies a later requirement, so the CPU build stays.
 # - setuptools<81 keeps ovos-plugin-manager's pkg_resources usage working.
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir "setuptools<81" ".[all]" "ovos-tts-server[mcp]>=1.14.1a2" \
+RUN pip install --no-cache-dir --upgrade pip uv \
+    && uv pip install --system --no-cache torch --index-url https://download.pytorch.org/whl/cpu \
+    && uv pip install --system --no-cache --prerelease=allow \
+        "setuptools<81" ".[all]" "ovos-tts-server[mcp]>=1.14.1a2" \
     && (python -m spacy download en_core_web_sm || true) \
     && (python -m unidic download || true)
 
