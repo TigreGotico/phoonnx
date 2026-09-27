@@ -5,6 +5,10 @@ on:
     branches: [dev, master]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write  # post_build_report comments the run summary
+
 jobs:
   build:
     uses: OpenVoiceOS/gh-automations/.github/workflows/build-tests.yml@dev

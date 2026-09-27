@@ -5,6 +5,10 @@ on:
     branches: [dev, master, main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write  # the lint report comment
+
 jobs:
   lint:
     uses: OpenVoiceOS/gh-automations/.github/workflows/lint.yml@dev

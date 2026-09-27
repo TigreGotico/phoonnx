@@ -5,6 +5,10 @@ on:
     branches: [dev]
   workflow_dispatch:
 
+permissions:
+  contents: read  # deploy_pages is not set here, so no branch write is needed
+  pull-requests: write  # the coverage comment
+
 jobs:
   coverage:
     uses: OpenVoiceOS/gh-automations/.github/workflows/coverage.yml@dev

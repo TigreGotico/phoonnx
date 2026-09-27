@@ -5,6 +5,10 @@ on:
     branches: [dev]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write  # the version-preview comment
+
 jobs:
   release_preview:
     uses: OpenVoiceOS/gh-automations/.github/workflows/release-preview.yml@dev

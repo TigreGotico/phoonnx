@@ -5,6 +5,10 @@ on:
     branches: [dev, master, main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write  # the repo-health comment
+
 jobs:
   repo_health:
     uses: OpenVoiceOS/gh-automations/.github/workflows/repo-health.yml@dev
