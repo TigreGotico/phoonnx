@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.93.1a2](https://github.com/TigreGotico/phoonnx/tree/1.93.1a2) (2026-10-01)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.1a1...1.93.1a2)
+
+**Merged pull requests:**
+
+- chore\(ci\): drop the broken Dependabot config [\#486](https://github.com/TigreGotico/phoonnx/pull/486) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.93.1a1](https://github.com/TigreGotico/phoonnx/tree/1.93.1a1) (2026-09-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.0a1...1.93.1a1)
+
+**Merged pull requests:**
+
+- fix: floor datasets and scriptconv, correct the pt-BR test, and run build\_tests on dev [\#497](https://github.com/TigreGotico/phoonnx/pull/497) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.93.0a1](https://github.com/TigreGotico/phoonnx/tree/1.93.0a1) (2026-09-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.92.1a1...1.93.0a1)
@@ -321,10 +337,6 @@
 ## [1.80.0a1](https://github.com/TigreGotico/phoonnx/tree/1.80.0a1) (2026-08-13)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.79.5a1...1.80.0a1)
-
-**Merged pull requests:**
-
-- feat: bound the loaded-voice cache by bytes, not by voice count [\#388](https://github.com/TigreGotico/phoonnx/pull/388) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.79.5a1](https://github.com/TigreGotico/phoonnx/tree/1.79.5a1) (2026-08-13)
 
