@@ -1,0 +1,18 @@
+name: Code Coverage
+
+on:
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    uses: OpenVoiceOS/gh-automations/.github/workflows/coverage.yml@dev
+    secrets: inherit
+    with:
+      python_version: '3.11'
+      coverage_source: 'phoonnx'
+      test_path: 'tests/'
+      install_extras: '-e .[test,train,train-styletts2,train-eval,train-data,train-optispeech,train-pyworld]'
+      min_coverage: 43
+      system_deps: 'espeak-ng'

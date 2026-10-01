@@ -1,0 +1,94 @@
+{
+  "llasa/HKUST/en/en_female_a": {
+    "voice_id": "llasa/HKUST/en/en_female_a",
+    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx",
+    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/config.json",
+    "vocab_url": null,
+    "tokens_url": null,
+    "tokenizer_config_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "unicode",
+    "alphabet": "graphemes",
+    "engine": "llasa",
+    "lang": "en-US",
+    "aux_model_urls": {
+      "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx_data",
+      "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/xcodec2_decoder.onnx",
+      "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/tokenizer.json",
+      "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/voices.json"
+    },
+    "engine_options": {
+      "voice": "en_female_a"
+    },
+    "display_name": "Llasa-1B English (en_female_a) - synthetic preset voice"
+  },
+  "llasa/HKUST/en/en_male_a": {
+    "voice_id": "llasa/HKUST/en/en_male_a",
+    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx",
+    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/config.json",
+    "vocab_url": null,
+    "tokens_url": null,
+    "tokenizer_config_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "unicode",
+    "alphabet": "graphemes",
+    "engine": "llasa",
+    "lang": "en-US",
+    "aux_model_urls": {
+      "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx_data",
+      "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/xcodec2_decoder.onnx",
+      "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/tokenizer.json",
+      "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/voices.json"
+    },
+    "engine_options": {
+      "voice": "en_male_a"
+    },
+    "display_name": "Llasa-1B English (en_male_a) - synthetic preset voice"
+  },
+  "llasa/HKUST/zh/zh_female_a": {
+    "voice_id": "llasa/HKUST/zh/zh_female_a",
+    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx",
+    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/config.json",
+    "vocab_url": null,
+    "tokens_url": null,
+    "tokenizer_config_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "unicode",
+    "alphabet": "graphemes",
+    "engine": "llasa",
+    "lang": "zh-CN",
+    "aux_model_urls": {
+      "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx_data",
+      "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/xcodec2_decoder.onnx",
+      "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/tokenizer.json",
+      "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/voices.json"
+    },
+    "engine_options": {
+      "voice": "zh_female_a"
+    },
+    "display_name": "Llasa-1B Mandarin (zh_female_a) - synthetic preset voice"
+  },
+  "llasa/HKUST/zh/zh_male_a": {
+    "voice_id": "llasa/HKUST/zh/zh_male_a",
+    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx",
+    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/config.json",
+    "vocab_url": null,
+    "tokens_url": null,
+    "tokenizer_config_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "unicode",
+    "alphabet": "graphemes",
+    "engine": "llasa",
+    "lang": "zh-CN",
+    "aux_model_urls": {
+      "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx_data",
+      "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/xcodec2_decoder.onnx",
+      "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/tokenizer.json",
+      "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/voices.json"
+    },
+    "engine_options": {
+      "voice": "zh_male_a"
+    },
+    "display_name": "Llasa-1B Mandarin (zh_male_a) - synthetic preset voice"
+  }
+}

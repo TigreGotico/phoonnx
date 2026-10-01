@@ -1,0 +1,41 @@
+{
+    "hf_community/mush42/optispeech-lightspeech-en-us-emily": {
+        "voice_id": "hf_community/mush42/optispeech-lightspeech-en-us-emily",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-optispeech/resolve/main/mush42__optispeech-lightspeech-en-us-emily/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-optispeech/resolve/main/mush42__optispeech-lightspeech-en-us-emily/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "optispeech",
+        "lang": "en-US"
+    },
+    "hf_community/mush42/optispeech-lightspeech-en-us-mike": {
+        "voice_id": "hf_community/mush42/optispeech-lightspeech-en-us-mike",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-optispeech/resolve/main/mush42__optispeech-lightspeech-en-us-mike/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-optispeech/resolve/main/mush42__optispeech-lightspeech-en-us-mike/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "optispeech",
+        "lang": "en-US"
+    },
+    "hf_community/mush42/optispeech-convnext-en-us-emily": {
+        "voice_id": "hf_community/mush42/optispeech-convnext-en-us-emily",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-optispeech/resolve/main/mush42__optispeech-convnext-en-us-emily/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-optispeech/resolve/main/mush42__optispeech-convnext-en-us-emily/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "optispeech",
+        "lang": "en-US"
+    }
+}

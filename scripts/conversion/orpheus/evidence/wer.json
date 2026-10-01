@@ -1,0 +1,93 @@
+[
+ {
+  "wav": "wav_00_tara.wav",
+  "voice": "tara",
+  "text": "The quick brown fox jumps over the lazy dog.",
+  "tokens": 259,
+  "audio_s": 3.16,
+  "lm_s": 116.7,
+  "rtf": 37.0,
+  "ms_per_token": 451,
+  "hyp": "The quick brown fox jumps over the lazy dog.",
+  "wer": 0.0,
+  "cer": 0.0
+ },
+ {
+  "wav": "wav_01_tara.wav",
+  "voice": "tara",
+  "text": "She sells seashells by the seashore every summer morning.",
+  "tokens": 315,
+  "audio_s": 3.84,
+  "lm_s": 176.9,
+  "rtf": 46.1,
+  "ms_per_token": 562,
+  "hyp": "She sells seashells by the seashore every summer morning.",
+  "wer": 0.0,
+  "cer": 0.0
+ },
+ {
+  "wav": "wav_02_leo.wav",
+  "voice": "leo",
+  "text": "The quick brown fox jumps over the lazy dog.",
+  "tokens": 252,
+  "audio_s": 3.07,
+  "lm_s": 121.3,
+  "rtf": 39.5,
+  "ms_per_token": 481,
+  "hyp": "The quick brown fox jumps over the lazy dog.",
+  "wer": 0.0,
+  "cer": 0.0
+ },
+ {
+  "wav": "wav_03_leo.wav",
+  "voice": "leo",
+  "text": "She sells seashells by the seashore every summer morning.",
+  "tokens": 280,
+  "audio_s": 3.41,
+  "lm_s": 121.6,
+  "rtf": 35.6,
+  "ms_per_token": 434,
+  "hyp": "She sells seashells by the seashore every summer morning.",
+  "wer": 0.0,
+  "cer": 0.0
+ },
+ {
+  "wav": "wav_04_zoe.wav",
+  "voice": "zoe",
+  "text": "The quick brown fox jumps over the lazy dog.",
+  "tokens": 385,
+  "audio_s": 4.69,
+  "lm_s": 172.6,
+  "rtf": 36.8,
+  "ms_per_token": 448,
+  "hyp": "The quick brown fox jumps over the lazy dog.",
+  "wer": 0.0,
+  "cer": 0.0
+ },
+ {
+  "wav": "wav_05_zoe.wav",
+  "voice": "zoe",
+  "text": "She sells seashells by the seashore every summer morning.",
+  "tokens": 343,
+  "audio_s": 4.18,
+  "lm_s": 163.5,
+  "rtf": 39.1,
+  "ms_per_token": 477,
+  "hyp": "She sells seashells by the seashore every summer morning.",
+  "wer": 0.0,
+  "cer": 0.0
+ },
+ {
+  "wav": "wav_06_tara.wav",
+  "voice": "tara",
+  "text": "That is really funny <laugh> I cannot believe it.",
+  "tokens": 427,
+  "audio_s": 5.21,
+  "lm_s": 193.1,
+  "rtf": 37.1,
+  "ms_per_token": 452,
+  "hyp": "That is really funny. I cannot believe it.",
+  "wer": 0.0,
+  "cer": 0.0
+ }
+]
