@@ -109,7 +109,7 @@ test = [
     # espnet/f5-tts) fail at import time with an ImportError
     "pypinyin>=0.50",
     # cross-check reference for the Larynx/Mimic3 tokenization golden tests
-    "gruut[en]>=2.3.0,<3.0",
+    "gruut>=2.3.0,<3.0",
     # reference implementation for tests/test_bpe_reader.py. phoonnx reads
     # tokenizer.json with its own pure-Python reader (phoonnx/_bpe.py) so the
     # install needs no compiled wheel; the test proves the reader returns the
@@ -285,22 +285,22 @@ ca = ["epitran", "gruut[ca]>=2.3.0,<3.0"]
 gl = ["pycotovia>=0.4.0a1", "epitran"]
 cs = ["epitran", "gruut[cs]>=2.3.0,<3.0"]
 de = ["epitran", "gruut[de]>=2.3.0,<3.0"]
-en = ["epitran", "gruut[en]>=2.3.0,<3.0", "misaki[en]", "spacy>=3.7,<4.0"]
+en = ["epitran", "gruut>=2.3.0,<3.0", "misaki[en]", "spacy>=3.7,<4.0"]
 es = ["epitran", "gruut[es]>=2.3.0,<3.0"]
 eu = ["ahotts-g2p>=0.1.0", "euskaphone", "epitran"]
 fa = ["epitran", "persian_phonemizer", "gruut[fa]>=2.3.0,<3.0"]
 fr = ["epitran", "gruut[fr]>=2.3.0,<3.0"]
 he = ["epitran", "phonikud_onnx", "phonikud"]
 it = ["epitran", "gruut[it]>=2.3.0,<3.0"]
-ja = ["epitran", "gruut[ja]>=2.3.0,<3.0", "misaki[ja]", "spacy>=3.7,<4.0", "pyopenjtalk", "pykakasi", "cutlet", "unidic-lite"]
+ja = ["epitran", "gruut>=2.3.0,<3.0", "misaki[ja]", "spacy>=3.7,<4.0", "pyopenjtalk", "pykakasi", "cutlet", "unidic-lite"]
 ko = ["epitran", "g2pk", "misaki[ko]"]
 mwl = ["mwl_phonemizer"]
 pt = ["epitran", "g2p_barranquenho", "tugaphone", "gruut[pt]>=2.3.0,<3.0"]
 ru = ["epitran", "gruut[ru]>=2.3.0,<3.0"]
 sv = ["epitran", "gruut[sv]>=2.3.0,<3.0"]
 sw = ["epitran", "gruut[sw]>=2.3.0,<3.0"]
-vi = ["epitran", "gruut[vi]>=2.3.0,<3.0", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
-zh = ["epitran", "gruut[zh]>=2.3.0,<3.0", "misaki[zh]", "spacy>=3.7,<4.0", "g2pM", "pypinyin", "xpinyin", "pinyin_to_ipa", "jieba", "cn2an"]
+vi = ["epitran", "gruut>=2.3.0,<3.0", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
+zh = ["epitran", "gruut>=2.3.0,<3.0", "misaki[zh]", "spacy>=3.7,<4.0", "g2pM", "pypinyin", "xpinyin", "pinyin_to_ipa", "jieba", "cn2an"]
 aa = ["epitran"]
 aii = ["epitran"]
 am = ["epitran"]
@@ -438,12 +438,12 @@ all = [
     # Only the languages the voice_index actually routes through gruut
     # (phoneme_type == "gruut") — de, en, fr, it, nl, ru, es, sv, sw across
     # mimic3/glowtts/fastpitch/coqui_vits voices. ja/vi/zh are kept as-is
-    # (misaki/spacy handle those languages; gruut has no ja/vi/zh extra, so
-    # those entries are pre-existing no-ops, out of scope here).
-    "gruut[de]>=2.3.0,<3.0", "gruut[en]>=2.3.0,<3.0", "gruut[es]>=2.3.0,<3.0",
-    "gruut[fr]>=2.3.0,<3.0", "gruut[it]>=2.3.0,<3.0", "gruut[ja]>=2.3.0,<3.0",
+    # (misaki/spacy handle those languages; gruut has no en/ja/vi/zh extra,
+    # so those entries pull the bare package, out of scope here).
+    "gruut[de]>=2.3.0,<3.0", "gruut>=2.3.0,<3.0", "gruut[es]>=2.3.0,<3.0",
+    "gruut[fr]>=2.3.0,<3.0", "gruut[it]>=2.3.0,<3.0", "gruut>=2.3.0,<3.0",
     "gruut[nl]>=2.3.0,<3.0", "gruut[ru]>=2.3.0,<3.0", "gruut[sv]>=2.3.0,<3.0",
-    "gruut[sw]>=2.3.0,<3.0", "gruut[vi]>=2.3.0,<3.0", "gruut[zh]>=2.3.0,<3.0",
+    "gruut[sw]>=2.3.0,<3.0", "gruut>=2.3.0,<3.0", "gruut>=2.3.0,<3.0",
     "misaki[en]", "misaki[ja]", "misaki[vi]", "misaki[zh]",
     "ahotts-g2p>=0.1.0",
     "spacy>=3.7,<4.0",
