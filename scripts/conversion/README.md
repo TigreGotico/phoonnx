@@ -101,3 +101,15 @@ Copyright (c) 2021 Jaehyeon Kim — reproduced in `inflect/LICENSE`); its symbol
 table (`text/symbols.py`) is further derived from
 [keithito/tacotron](https://github.com/keithito/tacotron) (**MIT**, reproduced in
 `inflect/text/LICENSE`). See `NOTICE` for the full attribution chain.
+
+## `ito/`
+
+Converts a Lokutor [ito](https://github.com/lokutor-ai/ito) voice checkpoint
+(the 4.4M-parameter distilled English front + vocoder, 24 kHz) to the
+phoonnx `ito` engine's single graph (`input` + `speed` → `wav` /
+`durations` / `mel` / `f0`), style and excitation noise baked in. The
+installed `ito` package (GPL-3.0) is an export-time dependency only — nothing
+is vendored; the ONNX-unfriendly pieces (length regulation, harmonic source,
+STFT/iSTFT) are re-expressed with standard ops. The voice weights are
+**CC BY-NC-SA 4.0 + Lokutor terms** on a gated HuggingFace repository and
+the exported artifacts inherit that license. See `ito/README.md`.

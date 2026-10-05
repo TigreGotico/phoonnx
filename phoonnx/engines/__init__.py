@@ -147,6 +147,7 @@ def _register_builtins() -> None:
     from phoonnx.engines.outetts import OuteTTSAdapter
     from phoonnx.engines.arktts import ArkTTSAdapter
     from phoonnx.engines.omnivoice import OmniVoiceAdapter
+    from phoonnx.engines.ito import ItoAdapter
     from phoonnx.engines.indic_parler import IndicParlerAdapter
     from phoonnx.engines.llasa import LlasaAdapter
     from phoonnx.engines.orpheus import OrpheusAdapter
@@ -194,6 +195,9 @@ def _register_builtins() -> None:
     register_engine("outetts", OuteTTSAdapter, detect_priority=23)
     register_engine("arktts", ArkTTSAdapter, detect_priority=22)
     register_engine("omnivoice", OmniVoiceAdapter, detect_priority=21)
+    # ito is config-declared only (engine: "ito"), so its priority among
+    # the heuristic-probed engines is a formality
+    register_engine("ito", ItoAdapter, detect_priority=13)
     register_engine("llasa", LlasaAdapter, detect_priority=15)
     register_engine("orpheus", OrpheusAdapter, detect_priority=14)
     register_engine("magpie", MagpieAdapter, detect_priority=19)

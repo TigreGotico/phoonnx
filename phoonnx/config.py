@@ -45,6 +45,7 @@ class Engine(str, Enum):
     ORPHEUS = "orpheus"  # Orpheus (Canopy Labs): Llama codec-LM + SNAC decoder, emotive tags
     MAGPIE = "magpie"  # NVIDIA Magpie-TTS: encoder-decoder codec LM, 8 codebooks, 12 languages
     MOSSTTS = "mosstts"  # MOSS-TTS-Nano: autoregressive RVQ-16 codec-LM, zero-shot cloning @48kHz
+    ITO = "ito"  # Lokutor ito: distilled streaming English acoustic + vocoder, single graph
     VOSK = "vosk"  # alphacep vosk-tts: VITS + dictionary/rule Russian g2p
 
     @classmethod

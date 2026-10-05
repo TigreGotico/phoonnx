@@ -103,6 +103,7 @@ Lower `detect_priority` values are probed first during auto-detection.
 | [Orpheus](orpheus.md) | `phoonnx/engines/orpheus.py` | `engine == "orpheus"` — autoregressive codec-LM (Llama-3.2-3B backbone + SNAC decoder), raw text with emotive tags, eight named English voices, 24 kHz. **GPU engine**: ~37x realtime on 12 CPU cores |
 | Magpie-TTS | `phoonnx/engines/magpie.py` | `engine == "magpie"` — encoder-decoder codec-LM (6-layer causal text encoder, 12-layer causal decoder + 2-layer local transformer refiner, NanoCodec decoder), 8 codebooks over 2 stacked frames per step, attention-prior alignment (no learned monotonic alignment), five fixed baked-context voices (no cloning), 5 of 12 languages shipped (fr/it/vi/ko byte tokenizers + ar character tokenizer; en/de/es/pt/hi/zh/ja need scriptconv IPA/G2P and are refused with `NotImplementedError`), 22.05 kHz |
 | MOSS-TTS-Nano | `phoonnx/engines/mosstts.py` | `engine == "mosstts"` — autoregressive RVQ-16 codec-LM (6 ONNX graphs via `aux_model_urls`), raw text via SentencePiece, in-context [cloning](cloning.md) from a reference clip alone, native 48 kHz |
+| Ito (Lokutor) | `phoonnx/engines/ito.py` | `engine == "ito"` — distilled 4.4M-parameter streaming English front + vocoder in a single graph (24 kHz, 100 mel bins at 80 fps), style and excitation noise baked into the graph; `length_scale` speaks faster; token budget 400 per sentence. Converted by `scripts/conversion/ito/` (weights CC BY-NC-SA, gated upstream) |
 
 ---
 
