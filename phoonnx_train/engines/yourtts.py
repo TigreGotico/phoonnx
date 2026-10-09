@@ -43,7 +43,7 @@ if TYPE_CHECKING:  # heavy imports — only needed for type annotations
     import torch
 
 from phoonnx_train.engines.base import BaseTrainingEngine, TrainingEngineConfig
-from phoonnx_train.engines.vits import _write_tokens_txt
+from phoonnx_train.engines.vits import _voice_language_stanza, _write_tokens_txt
 
 _LOG = logging.getLogger(__name__)
 
@@ -424,7 +424,7 @@ def _yourtts_voice_json(
         "inference": model_config.get("inference", {}),
         "num_symbols": model_config.get("num_symbols"),
         "phoneme_id_map": model_config.get("phoneme_id_map", {}),
-        "language": model_config.get("language", {}),
+        "language": _voice_language_stanza(model_config),
         "espeak": model_config.get("espeak", {}),
         "phoneme_type": model_config.get("phoneme_type", ""),
         "phonemizer_model": model_config.get("phonemizer_model", ""),
