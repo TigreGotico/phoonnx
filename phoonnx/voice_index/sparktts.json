@@ -1,0 +1,90 @@
+{
+    "sparktts/female/en": {
+        "voice_id": "sparktts/female/en",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "sparktts",
+        "lang": "en-US",
+        "aux_model_urls": {
+            "vocoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/bicodec_vocoder.onnx",
+            "wav2vec2_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/wav2vec2_model.onnx",
+            "speaker_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/speaker_encoder_tokenizer.onnx",
+            "semantic_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/bicodec_encoder_quantizer.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/tokenizer.json",
+            "speaker_tokens_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/voices/female_en.json"
+        },
+        "display_name": "Spark-TTS female (English)"
+    },
+    "sparktts/male/en": {
+        "voice_id": "sparktts/male/en",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "sparktts",
+        "lang": "en-US",
+        "aux_model_urls": {
+            "vocoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/bicodec_vocoder.onnx",
+            "wav2vec2_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/wav2vec2_model.onnx",
+            "speaker_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/speaker_encoder_tokenizer.onnx",
+            "semantic_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/bicodec_encoder_quantizer.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/tokenizer.json",
+            "speaker_tokens_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/voices/male_en.json"
+        },
+        "display_name": "Spark-TTS male (English)"
+    },
+    "sparktts/female/zh": {
+        "voice_id": "sparktts/female/zh",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "sparktts",
+        "lang": "zh-CN",
+        "aux_model_urls": {
+            "vocoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/bicodec_vocoder.onnx",
+            "wav2vec2_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/wav2vec2_model.onnx",
+            "speaker_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/speaker_encoder_tokenizer.onnx",
+            "semantic_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/bicodec_encoder_quantizer.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/tokenizer.json",
+            "speaker_tokens_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/voices/female_zh.json"
+        },
+        "display_name": "Spark-TTS female (Mandarin)"
+    },
+    "sparktts/male/zh": {
+        "voice_id": "sparktts/male/zh",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "sparktts",
+        "lang": "zh-CN",
+        "aux_model_urls": {
+            "vocoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/bicodec_vocoder.onnx",
+            "wav2vec2_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/wav2vec2_model.onnx",
+            "speaker_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/speaker_encoder_tokenizer.onnx",
+            "semantic_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/bicodec_encoder_quantizer.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/tokenizer.json",
+            "speaker_tokens_path": "https://huggingface.co/OpenVoiceOS/phoonnx-spark-tts/resolve/main/voices/male_zh.json"
+        },
+        "display_name": "Spark-TTS male (Mandarin)"
+    }
+}

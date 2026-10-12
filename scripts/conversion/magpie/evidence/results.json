@@ -1,0 +1,97 @@
+{
+  "fr": {
+    "wer": 0.10810810810810811,
+    "cer": 0.019230769230769232,
+    "refs": [
+      "bonjour comment allez-vous aujourd'hui",
+      "le chat noir dort sur le canape du salon",
+      "il pleut beaucoup ce matin a paris",
+      "je voudrais un cafe et un croissant s'il vous plait",
+      "nous partons en vacances la semaine prochaine"
+    ],
+    "hyps": [
+      "bonjour comment allez-vous aujourd'hui",
+      "le chat noir dort sur le canapé du salon",
+      "il pleut beaucoup ce matin à paris",
+      "je voudrais un caf et un croissant s'il vous plaît",
+      "nous partons en vacances la semaine prochaine"
+    ],
+    "asr": "OpenVoiceOS/nvidia-fr-conformer-transducer-large-onnx"
+  },
+  "it": {
+    "wer": 0.06060606060606061,
+    "cer": 0.005405405405405406,
+    "refs": [
+      "buongiorno come stai oggi",
+      "il gatto nero dorme sul divano del salotto",
+      "piove molto questa mattina a roma",
+      "vorrei un caffe e un cornetto per favore",
+      "partiamo per le vacanze la prossima settimana"
+    ],
+    "hyps": [
+      "buon giorno come stai oggi",
+      "il gatto nero dorme sul divano del salotto",
+      "piove molto questa mattina a roma",
+      "vorrei un caffe e un cornetto per favore",
+      "partiamo per le vacanze la prossima settimana"
+    ],
+    "asr": "OpenVoiceOS/nvidia-it-conformer-transducer-large-onnx"
+  },
+  "vi": {
+    "wer": 0.08888888888888889,
+    "cer": 0.03867403314917127,
+    "refs": [
+      "xin chào hôm nay bạn khỏe không",
+      "con mèo đen đang ngủ trên ghế sofa",
+      "sáng nay trời mưa rất to ở hà nội",
+      "tôi muốn một ly cà phê và một cái bánh sừng bò",
+      "chúng tôi sẽ đi nghỉ mát vào tuần tới"
+    ],
+    "hyps": [
+      "xin chào hôm nay bạn khỏi không",
+      "con mèo đen đang ngủ trên ghế sô phà",
+      "sáng nay trời mưa rất to ở hà nội",
+      "tôi muốn một ly cà phê vào một cái bánh sừng bò",
+      "chúng tôi sẽ đi nghỉ mát vào tuần tới"
+    ],
+    "asr": "OpenVoiceOS/nvidia-parakeet-ctc-0.6b-vietnamese-onnx"
+  },
+  "ar": {
+    "wer": 0.10344827586206896,
+    "cer": 0.031446540880503145,
+    "refs": [
+      "مرحبا، كيف حالك اليوم؟",
+      "القطة السوداء نائمة على الأريكة في الصالة",
+      "الجو ممطر جدا هذا الصباح في القاهرة",
+      "أريد فنجان قهوة وكرواسون من فضلك",
+      "سنذهب في إجازة الأسبوع المقبل"
+    ],
+    "hyps": [
+      "مرحبا كيف حالك اليوم",
+      "والة السوداء نائمة على الأريكة في الصالة",
+      "الجو ممطر جدا هذا الصباح في القاهرة",
+      "أريد فنجان قهوة وكرواسون من فضلك",
+      "سنذهب في إجازة الأسبوع المقبل"
+    ],
+    "asr": "OpenVoiceOS/stt_ar_fastconformer_hybrid_large_pc_v1.0_onnx"
+  },
+  "ko": {
+    "wer": 0.0,
+    "cer": 0.0,
+    "refs": [
+      "안녕하세요 오늘 기분이 어떠세요",
+      "검은 고양이가 거실 소파에서 자고 있어요",
+      "오늘 아침 서울에 비가 많이 와요",
+      "커피 한 잔과 크루아상 하나 주세요",
+      "우리는 다음 주에 휴가를 갑니다"
+    ],
+    "hyps": [
+      "안녕하세요 오늘 기분이 어떠세요",
+      "검은 고양이가 거실 소파에서 자고 있어요",
+      "오늘 아침 서울에 비가 많이 와요",
+      "커피 한 잔과 크루아상 하나 주세요",
+      "우리는 다음 주에 휴가를 갑니다"
+    ],
+    "asr": "onnx-community/whisper-large-v3-turbo"
+  }
+}

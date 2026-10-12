@@ -1,0 +1,15 @@
+{
+    "Tushe/shami-tts": {
+        "voice_id": "Tushe/shami-tts",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-shami/resolve/main/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-shami/resolve/main/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "shami",
+        "alphabet": "ipa",
+        "engine": "shami",
+        "lang": "ar-LB"
+    }
+}
