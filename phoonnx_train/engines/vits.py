@@ -197,21 +197,9 @@ class VitsTrainingEngine(BaseTrainingEngine):
         except ImportError:
             _LOG.warning("onnx package not installed — skipping metadata")
 
-        # ------------------------------------------------------------------
-        # Optional side-car files
-        # ------------------------------------------------------------------
-        generate_tokens = kwargs.get("generate_tokens", False)
-        piper = kwargs.get("piper", False)
-
-        if generate_tokens:
-            tokens_path = output_dir / "tokens.txt"
-            _write_tokens_txt(phoneme_id_map, tokens_path)
-            _LOG.info("Generated tokens.txt: %s", tokens_path)
-
-        if piper:
-            piper_path = output_dir / f"{checkpoint_path.stem}.json"
-            _write_piper_json(model_config, piper_path)
-            _LOG.info("Generated piper JSON: %s", piper_path)
+        write_sidecars(model_config, output_dir, checkpoint_path.stem,
+                       generate_tokens=kwargs.get("generate_tokens", False),
+                       piper=kwargs.get("piper", False))
 
         _LOG.info("Exported VITS ONNX model to %s", output_path)
         return output_path
@@ -388,17 +376,49 @@ def _write_tokens_txt(phoneme_id_map: Dict[str, Any], path: Path) -> None:
     path.write_text("\n".join(tokens) + "\n", encoding="utf-8")
 
 
+def write_sidecars(model_config: Dict[str, Any], output_dir: Path, stem: str,
+                   generate_tokens: bool = False, piper: bool = False) -> None:
+    """Write the configs that sit beside an exported ONNX model.
+
+    ``<stem>.json`` is always written: the training config in phoonnx's own
+    format, so the export folder loads on its own. ``--piper`` adds
+    ``<stem>.piper.json`` and ``--generate-tokens`` adds sherpa-onnx's
+    ``<stem>.tokens.txt``.
+    """
+    native_path = output_dir / f"{stem}.json"
+    with open(native_path, "w", encoding="utf-8") as f:
+        json.dump(model_config, f, indent=2, ensure_ascii=False)
+    _LOG.info("Wrote phoonnx config: %s", native_path)
+
+    if generate_tokens:
+        tokens_path = output_dir / f"{stem}.tokens.txt"
+        _write_tokens_txt(model_config.get("phoneme_id_map", {}), tokens_path)
+        _LOG.info("Generated tokens.txt: %s", tokens_path)
+
+    if piper:
+        piper_path = output_dir / f"{stem}.piper.json"
+        _write_piper_json(model_config, piper_path)
+        _LOG.info("Generated piper JSON: %s", piper_path)
+
+
 def _write_piper_json(model_config: Dict[str, Any], path: Path) -> None:
-    """Emit a piper-compatible metadata JSON alongside the ONNX model."""
+    """Emit a piper-compatible metadata JSON alongside the ONNX model.
+
+    phoonnx stores one id per phoneme and the language as ``lang_code``;
+    Piper wants a list of ids per phoneme and the language under
+    ``language.code`` and ``espeak.voice``.
+    """
+    lang_code = model_config.get("lang_code") or ""
     piper_cfg = {
         "audio": model_config.get("audio", {}),
         "inference": model_config.get("inference", {}),
         "num_symbols": model_config.get("num_symbols"),
         "num_speakers": model_config.get("num_speakers"),
-        "phoneme_id_map": model_config.get("phoneme_id_map", {}),
+        "phoneme_id_map": {p: i if isinstance(i, list) else [i]
+                           for p, i in model_config.get("phoneme_id_map", {}).items()},
         "speaker_id_map": model_config.get("speaker_id_map", {}),
-        "language": model_config.get("language", {}),
-        "espeak": model_config.get("espeak", {}),
+        "language": model_config.get("language") or {"code": lang_code},
+        "espeak": model_config.get("espeak") or {"voice": lang_code},
         "phoneme_type": model_config.get("phoneme_type", ""),
         "phonemizer_model": model_config.get("phonemizer_model", ""),
         "alphabet": model_config.get("alphabet", ""),
