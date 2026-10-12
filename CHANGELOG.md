@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.93.2a1](https://github.com/TigreGotico/phoonnx/tree/1.93.2a1) (2026-10-12)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.1a2...1.93.2a1)
+
+**Merged pull requests:**
+
+- fix: VITS export writes loadable phoonnx, Piper and sherpa side-cars [\#504](https://github.com/TigreGotico/phoonnx/pull/504) ([JarbasAl](https://github.com/JarbasAl))
+- Make EOS logit extraction robust to varying tensor shapes Description [\#503](https://github.com/TigreGotico/phoonnx/pull/503) ([timonvanhasselt](https://github.com/timonvanhasselt))
+
 ## [1.93.1a2](https://github.com/TigreGotico/phoonnx/tree/1.93.1a2) (2026-10-01)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.1a1...1.93.1a2)
@@ -350,17 +359,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.79.3a1...1.79.4a1)
 
-**Merged pull requests:**
-
-- fix: let a request choose the voice to clone [\#389](https://github.com/TigreGotico/phoonnx/pull/389) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.79.3a1](https://github.com/TigreGotico/phoonnx/tree/1.79.3a1) (2026-08-13)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.79.2a1...1.79.3a1)
-
-**Merged pull requests:**
-
-- fix: stop a failed synthesis from poisoning the audio cache [\#390](https://github.com/TigreGotico/phoonnx/pull/390) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.79.2a1](https://github.com/TigreGotico/phoonnx/tree/1.79.2a1) (2026-08-12)
 
