@@ -186,6 +186,15 @@ class VoiceConfig:
     # the base tokens with a literal token string). Empty -> derive the token from lang_code.
     lang_tokens: Dict[str, str] = field(default_factory=dict)
 
+    keep_punctuation: bool = False
+    """Whether the model was trained with clause punctuation (``, . ? ! : ;``).
+
+    Synthesis keeps punctuation only when this is true, so a model is fed the
+    symbols it learned and nothing else. Piper voices are trained with it.
+    phoonnx datasets record it in ``config.json`` from preprocessing; a phoonnx
+    config without the key was trained without it.
+    """
+
     def __post_init__(self):
         """
         Finalize dataclass defaults after initialization.
@@ -327,6 +336,7 @@ class VoiceConfig:
             alphabet=loaded.alphabet,
             engine=loaded.engine,
             phonemizer_model=config.get("phonemizer_model"),
+            keep_punctuation=bool(config.get("keep_punctuation", loaded.keep_punctuation)),
             phoneme_type=loaded.phoneme_type,
             speaker_id_map=config.get("speaker_id_map", {}),
             blank_between=BlankBetween(loaded.blank_between),
@@ -377,6 +387,7 @@ class VoiceConfig:
             "lang_id_map": dict(self.lang_id_map or {}),
             "lang_tokens": dict(self.lang_tokens or {}),
             "phonemizer_model": self.phonemizer_model,
+            "keep_punctuation": self.keep_punctuation,
             "inference": {
                 "noise_scale": self.noise_scale,
                 "length_scale": self.length_scale,
@@ -585,7 +596,8 @@ def check_lang_supported(voice: str, lang_code: Optional[str],
 
 def get_phonemizer(phoneme_type: PhonemeType,
                    alphabet: Alphabet = Alphabet.IPA,
-                   model: Optional[str] = None) -> 'Phonemizer':
+                   model: Optional[str] = None,
+                   keep_punctuation: bool = False) -> 'Phonemizer':
     """
     Create a phonemizer instance for the specified phonemeization strategy.
 
@@ -594,6 +606,9 @@ def get_phonemizer(phoneme_type: PhonemeType,
     phonemizers exactly.  All backends, including the license-quarantined
     mantoq/KoG2P (vendored in scriptconv under their own licenses), come from
     scriptconv, which also auto-provisions the Hebrew phonikud model.
+
+    ``keep_punctuation`` keeps clause punctuation in the phonemes; it must match
+    how the model was trained (see :attr:`VoiceConfig.keep_punctuation`).
 
     Raises:
         ValueError: If the provided `phoneme_type` is not supported.
@@ -608,6 +623,7 @@ def get_phonemizer(phoneme_type: PhonemeType,
         raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
 
     phonemizer.normalizer = _normalize
+    phonemizer.keep_punctuation = keep_punctuation
     return phonemizer
 
 
