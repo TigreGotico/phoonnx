@@ -264,6 +264,7 @@ class TTSVoice:
                 self.config.phoneme_type,
                 self.config.alphabet,
                 self.config.phonemizer_model,
+                keep_punctuation=self.config.keep_punctuation,
             )
 
         # Engine adapter — auto-detect if not explicitly provided

@@ -123,8 +123,7 @@ def phonemize_worker(
                             utterance = phonemizer.add_diacritics(utterance, config.language)
 
                         # Phonemize the text
-                        utt.phonemes = [p for p in phonemizer.phonemize_to_list(utterance, config.language)
-                                        if p != "\n"] # HACK: not sure where this is coming from
+                        utt.phonemes = phonemizer.phonemize_to_list(utterance, config.language)
                         if not utt.phonemes:
                             raise RuntimeError(f"Phonemes not found for '{utterance}'")
 
@@ -346,6 +345,15 @@ def phonemize_worker(
     help="Add diacritics to text (phonemizer specific, e.g., to denote stress).",
 )
 @click.option(
+    "--keep-punctuation/--no-keep-punctuation",
+    "keep_punctuation",
+    default=True,
+    show_default=True,
+    help="Keep clause punctuation (, . ? ! : ;) in the phonemes, as Piper does. "
+         "Recorded in config.json so synthesis feeds the model the same symbols. "
+         "--resume keeps whatever the existing config.json recorded.",
+)
+@click.option(
     "--jsonl-audio-path",
     default=None,
     help="override audio_path base directory (everything before '/wav') in generated dataset.jsonl"
@@ -473,6 +481,7 @@ def cli(
     skip_audio: bool,
     debug: bool,
     add_diacritics: bool,
+    keep_punctuation: bool,
     jsonl_audio_path: Optional[str],
     jsonl_audio_spec_path: Optional[str],
     engine: Optional[str],
@@ -510,6 +519,7 @@ def cli(
         skip_audio (bool): If True, skip audio processing and only phonemize text.
         debug (bool): Enable debug logging.
         add_diacritics (bool): Instruct the inference settings in the config to add diacritics.
+        keep_punctuation (bool): Keep clause punctuation in the phonemes and record it in the config.
         jsonl_audio_path (Optional[str]): Optional base path override for audio paths written into dataset.jsonl.
         jsonl_audio_spec_path (Optional[str]): Optional base path override for cached audio/spec paths in dataset.jsonl.
         quality_filters (Tuple[str, ...]): Repeatable 'column:min:max' quality-metric filters (e.g. 'utmos:3.0:'),
@@ -673,10 +683,22 @@ def cli(
     # --- Single Pass: Process audio/phonemes and collect results ---
     _LOGGER.info("Starting single pass processing with %d workers...", config.max_workers)
 
+    # A resumed manifest must not mix rows phonemized with and without
+    # punctuation; a config written before the key existed was without it.
+    existing_config_path = config.output_dir / "config.json"
+    if resume_rows and existing_config_path.is_file():
+        existing = json.loads(existing_config_path.read_text(encoding="utf-8"))
+        resumed_punctuation = bool(existing.get("keep_punctuation", False))
+        if resumed_punctuation != keep_punctuation:
+            _LOGGER.warning("Resume: keeping keep_punctuation=%s from the existing config.json",
+                            resumed_punctuation)
+        keep_punctuation = resumed_punctuation
+
     # Initialize the phonemizer only once in the main process
     phonemizer: PhonemeType = get_phonemizer(config.phoneme_type,
                                             config.alphabet,
-                                            config.phonemizer_model)
+                                            config.phonemizer_model,
+                                            keep_punctuation=keep_punctuation)
 
     batch_size: int = max(1, int(num_utterances / (config.max_workers * 2)))
 
@@ -828,6 +850,7 @@ def cli(
         "alphabet": phonemizer.alphabet.value,
         "phoneme_type": config.phoneme_type.value,
         "phonemizer_model": config.phonemizer_model,
+        "keep_punctuation": keep_punctuation,
         "phoneme_id_map": final_phoneme_id_map,
         "num_symbols": prev_num_symbols if prev_config else len(final_phoneme_id_map),
         "num_speakers": len(speaker_counts) if is_multispeaker else 1,

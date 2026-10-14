@@ -22,7 +22,7 @@ dependencies = [
     "langcodes",
     "ovos-number-parser>=0.4.0",
     "ovos-date-parser>=0.6.4a1",
-    "scriptconv[phonemizers]>=0.0.4a34",
+    "scriptconv[phonemizers]>=0.0.4a36",
     "unicode_rbnf",
     "click",
     "requests",
@@ -426,7 +426,10 @@ all = [
     # case, so pt-BR keeps the pt-br voice instead of falling to pt, European
     # Portuguese. Below this floor tests/test_phonemizer_mul.py
     # TestEspeakGetLang fails.
-    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he]>=0.0.4a34",
+    # >=0.0.4a36: phonemizers take keep_punctuation, which voices trained with
+    # punctuation need, and phonemize_to_list no longer returns espeak's
+    # clause-break newlines. Below this floor tests/test_punctuation.py fails.
+    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he]>=0.0.4a36",
     # scriptconv's own "stress" extra floors stressonnx at >=0.0.2, which
     # resolves to the latest *stable* release. The BCP-47 language resolver
     # phoonnx needs only shipped in the 0.0.3 alpha train, so it must be

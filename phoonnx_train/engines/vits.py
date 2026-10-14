@@ -422,6 +422,9 @@ def _write_piper_json(model_config: Dict[str, Any], path: Path) -> None:
         "phoneme_type": model_config.get("phoneme_type", ""),
         "phonemizer_model": model_config.get("phonemizer_model", ""),
         "alphabet": model_config.get("alphabet", ""),
+        # piper ignores the key; phoonnx reads a piper config as trained with
+        # punctuation unless told otherwise
+        "keep_punctuation": bool(model_config.get("keep_punctuation", False)),
     }
     piper_cfg = {k: v for k, v in piper_cfg.items() if v is not None}
     with open(path, "w", encoding="utf-8") as f:
