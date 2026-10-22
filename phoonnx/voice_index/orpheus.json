@@ -1,0 +1,226 @@
+{
+    "orpheus/canopylabs/en/tara": {
+        "voice_id": "orpheus/canopylabs/en/tara",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "orpheus",
+        "lang": "en",
+        "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+        },
+        "engine_options": {
+            "voice": "tara"
+        },
+        "display_name": "Orpheus 3B English (tara) - Canopy Labs voice: tara [GPU recommended: ~37x realtime on CPU]"
+    },
+    "orpheus/canopylabs/en/leah": {
+        "voice_id": "orpheus/canopylabs/en/leah",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "orpheus",
+        "lang": "en",
+        "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+        },
+        "engine_options": {
+            "voice": "leah"
+        },
+        "display_name": "Orpheus 3B English (leah) - Canopy Labs voice: leah [GPU recommended: ~37x realtime on CPU]"
+    },
+    "orpheus/canopylabs/en/jess": {
+        "voice_id": "orpheus/canopylabs/en/jess",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "orpheus",
+        "lang": "en",
+        "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+        },
+        "engine_options": {
+            "voice": "jess"
+        },
+        "display_name": "Orpheus 3B English (jess) - Canopy Labs voice: jess [GPU recommended: ~37x realtime on CPU]"
+    },
+    "orpheus/canopylabs/en/leo": {
+        "voice_id": "orpheus/canopylabs/en/leo",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "orpheus",
+        "lang": "en",
+        "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+        },
+        "engine_options": {
+            "voice": "leo"
+        },
+        "display_name": "Orpheus 3B English (leo) - Canopy Labs voice: leo [GPU recommended: ~37x realtime on CPU]"
+    },
+    "orpheus/canopylabs/en/dan": {
+        "voice_id": "orpheus/canopylabs/en/dan",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "orpheus",
+        "lang": "en",
+        "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+        },
+        "engine_options": {
+            "voice": "dan"
+        },
+        "display_name": "Orpheus 3B English (dan) - Canopy Labs voice: dan [GPU recommended: ~37x realtime on CPU]"
+    },
+    "orpheus/canopylabs/en/mia": {
+        "voice_id": "orpheus/canopylabs/en/mia",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "orpheus",
+        "lang": "en",
+        "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+        },
+        "engine_options": {
+            "voice": "mia"
+        },
+        "display_name": "Orpheus 3B English (mia) - Canopy Labs voice: mia [GPU recommended: ~37x realtime on CPU]"
+    },
+    "orpheus/canopylabs/en/zac": {
+        "voice_id": "orpheus/canopylabs/en/zac",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "orpheus",
+        "lang": "en",
+        "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+        },
+        "engine_options": {
+            "voice": "zac"
+        },
+        "display_name": "Orpheus 3B English (zac) - Canopy Labs voice: zac [GPU recommended: ~37x realtime on CPU]"
+    },
+    "orpheus/canopylabs/en/zoe": {
+        "voice_id": "orpheus/canopylabs/en/zoe",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "config_url": null,
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "orpheus",
+        "lang": "en",
+        "aux_model_urls": {
+            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+        },
+        "engine_options": {
+            "voice": "zoe"
+        },
+        "display_name": "Orpheus 3B English (zoe) - Canopy Labs voice: zoe [GPU recommended: ~37x realtime on CPU]"
+    }
+}

@@ -1,0 +1,44 @@
+{
+    "vosk/tamara": {
+        "voice_id": "vosk/tamara",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/vosk__tamara/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/vosk__tamara/config.json",
+        "dictionary_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/vosk__tamara/dictionary",
+        "phoneme_type": "vosk",
+        "lang": "ru-RU",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "vosk",
+        "engine": "vosk"
+    },
+    "vosk/irina": {
+        "voice_id": "vosk/irina",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/vosk__irina/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/vosk__irina/config.json",
+        "dictionary_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/vosk__irina/dictionary",
+        "phoneme_type": "vosk",
+        "lang": "ru-RU",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "vosk",
+        "engine": "vosk"
+    },
+    "vosk/natasha": {
+        "voice_id": "vosk/natasha",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/vosk__natasha/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/vosk__natasha/config.json",
+        "dictionary_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/vosk__natasha/dictionary",
+        "phoneme_type": "vosk",
+        "lang": "ru-RU",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "vosk",
+        "engine": "vosk"
+    }
+}

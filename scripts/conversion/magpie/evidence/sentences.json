@@ -1,0 +1,37 @@
+{
+  "fr": [
+    "Bonjour, comment allez-vous aujourd'hui ?",
+    "Le chat noir dort sur le canape du salon.",
+    "Il pleut beaucoup ce matin a Paris.",
+    "Je voudrais un cafe et un croissant, s'il vous plait.",
+    "Nous partons en vacances la semaine prochaine."
+  ],
+  "it": [
+    "Buongiorno, come stai oggi?",
+    "Il gatto nero dorme sul divano del salotto.",
+    "Piove molto questa mattina a Roma.",
+    "Vorrei un caffe e un cornetto, per favore.",
+    "Partiamo per le vacanze la prossima settimana."
+  ],
+  "vi": [
+    "Xin chào, hôm nay bạn khỏe không?",
+    "Con mèo đen đang ngủ trên ghế sofa.",
+    "Sáng nay trời mưa rất to ở Hà Nội.",
+    "Tôi muốn một ly cà phê và một cái bánh sừng bò.",
+    "Chúng tôi sẽ đi nghỉ mát vào tuần tới."
+  ],
+  "ar": [
+    "مرحبا، كيف حالك اليوم؟",
+    "القطة السوداء نائمة على الأريكة في الصالة.",
+    "الجو ممطر جدا هذا الصباح في القاهرة.",
+    "أريد فنجان قهوة وكرواسون من فضلك.",
+    "سنذهب في إجازة الأسبوع المقبل."
+  ],
+  "ko": [
+    "안녕하세요, 오늘 기분이 어떠세요?",
+    "검은 고양이가 거실 소파에서 자고 있어요.",
+    "오늘 아침 서울에 비가 많이 와요.",
+    "커피 한 잔과 크루아상 하나 주세요.",
+    "우리는 다음 주에 휴가를 갑니다."
+  ]
+}
