@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.93.3a1](https://github.com/TigreGotico/phoonnx/tree/1.93.3a1) (2026-10-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.2a1...1.93.3a1)
+
+**Merged pull requests:**
+
+- fix: load Piper checkpoints in VITS fine-tuning on torch 2.6 and later [\#508](https://github.com/TigreGotico/phoonnx/pull/508) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.93.2a1](https://github.com/TigreGotico/phoonnx/tree/1.93.2a1) (2026-10-12)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.1a2...1.93.2a1)
@@ -350,10 +358,6 @@
 ## [1.79.5a1](https://github.com/TigreGotico/phoonnx/tree/1.79.5a1) (2026-08-13)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.79.4a1...1.79.5a1)
-
-**Merged pull requests:**
-
-- fix: release the loading gate when caching the voice fails [\#393](https://github.com/TigreGotico/phoonnx/pull/393) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.79.4a1](https://github.com/TigreGotico/phoonnx/tree/1.79.4a1) (2026-08-13)
 
