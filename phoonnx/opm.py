@@ -122,9 +122,10 @@ class PhoonnxTTSPlugin(TTS):
             return [providers]
         return list(providers) if providers else None
 
-    def _resolve_speaker(self, voice_info) -> Optional[int]:
+    def _resolve_speaker(self, voice_info, requested=None) -> Optional[int]:
         """
-        Resolve the speaker index for multi-speaker voices from the plugin config.
+        Resolve the speaker index for multi-speaker voices from the request, or
+        else from the plugin config.
 
         Accepts either ``speaker_id`` (an integer index, or its digit string) or
         ``speaker`` (a name resolved against the voice's ``speaker_id_map``). The
@@ -136,7 +137,8 @@ class PhoonnxTTSPlugin(TTS):
             int | None: The speaker index, or None for single-speaker voices /
             when nothing is configured (the engine then defaults to speaker 0).
         """
-        spk = self._cfg_opt(None, "speaker_id", "speaker")
+        spk = requested if requested is not None else self._cfg_opt(
+            None, "speaker_id", "speaker")
         if spk is None or isinstance(spk, bool):  # bools are ints in python
             return None
         if isinstance(spk, int):
@@ -299,7 +301,9 @@ class PhoonnxTTSPlugin(TTS):
         server that is both the wrong voice and a leak of someone else's
         cloned speech, and it is silent — the audio plays perfectly.
 
-        The reference is therefore folded into the cache identity. Only the
+        The reference is therefore folded into the cache identity, and so are
+        a requested speaker and the speech-variation scales, which change the
+        audio of a sentence in the same way. Only the
         identity changes; ``synth_kwargs`` still carries the real voice id, so
         the model that gets loaded is unaffected.
         """
@@ -309,7 +313,9 @@ class PhoonnxTTSPlugin(TTS):
             kwargs.get(key) for key in
             ("speaker_reference", "ref_wav",
              "speaker_reference_text", "ref_text",
-             "speaker_reference_lang", "ref_lang"))
+             "speaker_reference_lang", "ref_lang",
+             "speaker_id", "speaker",
+             "length_scale", "noise_scale", "noise_w_scale"))
         if any(reference):
             digest = hashlib.sha1(
                 repr(reference).encode("utf-8")).hexdigest()[:12]
@@ -340,7 +346,9 @@ class PhoonnxTTSPlugin(TTS):
     def get_tts(self, sentence, wav_file, lang=None, voice=None,
                 speaker_reference=None, speaker_reference_text=None,
                 speaker_reference_lang=None,
-                ref_wav=None, ref_text=None, ref_lang=None):
+                ref_wav=None, ref_text=None, ref_lang=None,
+                speaker_id=None, speaker=None,
+                length_scale=None, noise_scale=None, noise_w_scale=None):
         """
         Synthesize the given text into speech and write the result to the specified WAV file.
 
@@ -357,6 +365,11 @@ class PhoonnxTTSPlugin(TTS):
             speaker_reference_lang (str, optional): Language of that transcription.
             ref_wav, ref_text, ref_lang: short aliases for the three above,
                 matching the config key aliases.
+            speaker_id (int or str, optional): Speaker index of a multi-speaker
+                voice; ``speaker`` names one through the voice's speaker map.
+            length_scale, noise_scale, noise_w_scale (float or str, optional):
+                Speaking rate and the two sampling noises of engines that
+                expose them. Query parameters arrive as strings.
 
         Every caller-supplied value overrides the configured default, so one
         server can clone a different voice per request. These are named
@@ -388,7 +401,8 @@ class PhoonnxTTSPlugin(TTS):
                 # multiaccent matxa model). ``speaker_id`` (int) or ``speaker``
                 # (name via the voice's speaker_id_map); ignored by single-speaker
                 # voices, which only have speaker 0.
-                speaker_id=self._resolve_speaker(voice_info),
+                speaker_id=self._resolve_speaker(
+                    voice_info, speaker_id if speaker_id is not None else speaker),
                 enable_phonetic_spellings=self._cfg_opt(
                     voice_info.config.enable_phonetic_spellings
                     if hasattr(voice_info.config, "enable_phonetic_spellings") else True,
@@ -396,13 +410,13 @@ class PhoonnxTTSPlugin(TTS):
                 add_diacritics=self._cfg_opt(
                     voice_info.config.add_diacritics,  # arabic and hebrew only
                     "add_diacritics"),
-                noise_scale=self._cfg_opt(
+                noise_scale=float(noise_scale) if noise_scale is not None else self._cfg_opt(
                     voice_info.config.noise_scale,  # generator noise
                     "noise_scale", "noise-scale"),
-                length_scale=self._cfg_opt(
+                length_scale=float(length_scale) if length_scale is not None else self._cfg_opt(
                     voice_info.config.length_scale,  # phoneme length
                     "length_scale", "length-scale"),
-                noise_w_scale=self._cfg_opt(
+                noise_w_scale=float(noise_w_scale) if noise_w_scale is not None else self._cfg_opt(
                     voice_info.config.noise_w_scale,  # phoneme width noise
                     "noise_w_scale", "noise_w", "noise-w"),
                 # zero-shot voice cloning. A path to a reference wav; cloning engines turn
