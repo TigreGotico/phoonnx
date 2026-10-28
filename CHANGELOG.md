@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.94.0a1](https://github.com/TigreGotico/phoonnx/tree/1.94.0a1) (2026-10-28)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.3a1...1.94.0a1)
+
+**Merged pull requests:**
+
+- feat: choose the speaker and the speech-variation scales per request [\#502](https://github.com/TigreGotico/phoonnx/pull/502) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.93.3a1](https://github.com/TigreGotico/phoonnx/tree/1.93.3a1) (2026-10-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.2a1...1.93.3a1)
