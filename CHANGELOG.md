@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.94.1a1](https://github.com/TigreGotico/phoonnx/tree/1.94.1a1) (2026-10-28)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.0a1...1.94.1a1)
+
+**Merged pull requests:**
+
+- fix: build the image with uv, which can resolve what pip refuses [\#500](https://github.com/TigreGotico/phoonnx/pull/500) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.94.0a1](https://github.com/TigreGotico/phoonnx/tree/1.94.0a1) (2026-10-28)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.3a1...1.94.0a1)
@@ -354,10 +362,6 @@
 ## [1.80.0a2](https://github.com/TigreGotico/phoonnx/tree/1.80.0a2) (2026-08-13)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.80.0a1...1.80.0a2)
-
-**Merged pull requests:**
-
-- refactor: read tokenizer.model without sentencepiece [\#396](https://github.com/TigreGotico/phoonnx/pull/396) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.80.0a1](https://github.com/TigreGotico/phoonnx/tree/1.80.0a1) (2026-08-13)
 
