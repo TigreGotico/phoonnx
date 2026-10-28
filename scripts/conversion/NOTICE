@@ -1,0 +1,22 @@
+The vendored model code in coqui_fastpitch_export/ and coqui_glowtts_export/
+(forward_tts.py, hifigan_generator.py, helpers.py, coqui_characters.py,
+feed_forward/, generic/, glow_tts/) is derived from idiap/coqui-ai-TTS,
+licensed under the Mozilla Public License 2.0 (MPL-2.0):
+  https://github.com/idiap/coqui-ai-TTS  (LICENSE.txt: MPL-2.0)
+
+These files are modified for standalone ONNX inference/export (see README.md).
+They remain under MPL-2.0; only those individual files are MPL-covered.
+
+The tracer-safe attention (tsmha.py) reimplements the approach used in
+nipponjo's FastPitch/Mixer-TTS transformer.
+
+The vendored model code in inflect/ (models.py, commons.py, modules.py,
+attentions.py, transforms.py, monotonic_align.py, inflect_alias_free.py,
+utils.py, text/symbols.py) is copied unmodified from the official runtime of
+owensong/Inflect-Micro-v2 and owensong/Inflect-Nano-v2
+(https://huggingface.co/owensong/Inflect-Micro-v2-ONNX, Apache-2.0). Per that
+project's own THIRD_PARTY_NOTICES.md, the model architecture and several
+runtime modules are themselves derived from jaywalnut310/vits (MIT,
+Copyright (c) 2021 Jaehyeon Kim); the text symbol table (text/symbols.py) is
+further derived from keithito/tacotron (MIT). Only export_inflect.py (the
+thin ``infer()`` -> single-graph ONNX wrapper) is new phoonnx code.

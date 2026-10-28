@@ -1,17 +1,22 @@
 import click
 from phoonnx.model_manager import TTSModelManager, TTSModelInfo
 import requests
+from huggingface_hub.errors import HfHubHTTPError
 
 
 # --- Helper Function for CLI Output ---
 def print_voice_info(voice: TTSModelInfo):
     """Prints detailed info about a single voice."""
     click.echo(f"  ID:          {voice.voice_id}")
+    if voice.display_name:
+        click.echo(f"  Name:        {voice.display_name}")
     click.echo(f"  Language:    {voice.lang}")
     click.echo(f"  Engine:      {voice.engine.value}")
     click.echo(f"  Phoneme Type: {voice.phoneme_type}")
     click.echo(f"  Model URL:   {voice.model_url}")
     click.echo(f"  Config URL:  {voice.config_url}")
+    if voice.requires_reference:
+        click.echo(f"  Requires reference: yes (needs speaker_reference / a style path)")
     click.echo("-" * 40)
 
 
@@ -28,8 +33,8 @@ def cli():
 @click.option("--no-clear", is_flag=True, help="Do not clear the existing cache before updating. Only adds new voices.")
 def update_cache(no_clear):
     """
-    Clears the local voice cache, fetches the latest voice lists from upstream
-    sources (Piper, Mimic3, OpenVoiceOS), and saves them to the cache.
+    Clears the local voice cache, loads the bundled voice indexes (Piper,
+    Mimic3, OpenVoiceOS, etc.), and saves them to the cache.
     """
     manager = TTSModelManager()
 
@@ -40,29 +45,14 @@ def update_cache(no_clear):
         click.echo("Loading existing voice cache...")
         manager.load()
 
-    click.echo("Fetching voice lists from upstream sources (this requires an internet connection)...")
+    click.echo("Loading bundled voice indexes...")
 
-    # Run the fetch methods to populate the cache
     try:
-        manager.get_ovos_voice_list()
-        click.echo("-> Fetched OpenVoiceOS voices.")
-        manager.get_proxectonos_voice_list()
-        click.echo("-> Fetched Proxectonos voices.")
-        manager.get_phonikud_voice_list()
-        click.echo("-> Fetched Phonikud voices.")
-        manager.get_piper_voice_list()
-        click.echo("-> Fetched Piper voices.")
-        manager.get_mimic3_voice_list()
-        click.echo("-> Fetched Mimic3 voices.")
-    except requests.exceptions.RequestException as e:
-        click.echo(f"\nError: Could not fetch voice lists due to a network or connection error.", err=True)
-        click.echo(f"Details: {e}", err=True)
-        return
+        manager.merge_default_voices(store=True)
     except Exception as e:
-        click.echo(f"An unexpected error occurred while fetching voice lists: {e}", err=True)
+        click.echo(f"An unexpected error occurred while loading voice lists: {e}", err=True)
         return
 
-    manager.save()
     click.echo(f"\nCache updated successfully!")
     click.echo(f"Total voices available: {len(manager.all_voices)}")
     click.echo(f"Total languages supported: {len(manager.supported_langs)}")
@@ -81,7 +71,6 @@ def list_langs():
     click.echo(f"\nSupported Languages ({len(manager.supported_langs)}):")
     for l in manager.supported_langs:
         click.echo(f" - {l}")
-
 
 @cli.command(name="list-voices")
 @click.option("--lang", default=None, help="Filter voices by language code (e.g., 'en-US' or 'pt-PT').")
@@ -110,41 +99,100 @@ def list_voices(lang, verbose):
         if verbose:
             print_voice_info(voice)
         else:
-            click.echo(f"* {voice.voice_id} ({voice.lang})")
+            if voice.display_name:
+                click.echo(f"* {voice.display_name} ({voice.lang})")
+            else:
+                click.echo(f"* {voice.voice_id} ({voice.lang})")
 
+@cli.command(name="list-available")
+def list_available():
+    """
+    Lists all voice IDs bundled with phoonnx, grouped by source (Piper,
+    Mimic3, OVOS, etc.), without downloading any config or model files.
+    Use 'download <VOICE_ID>' to fetch a specific voice on demand.
+    """
+    manager = TTSModelManager()
+
+    available_voices = manager.get_available_voice_ids_by_source()
+
+    total_voices = sum(len(ids) for ids in available_voices.values())
+    click.echo(f"\nTotal available voices found (bundled indexes): {total_voices}\n")
+
+    for source, voice_ids in available_voices.items():
+        click.echo(f"--- {source.upper()} Voices ({len(voice_ids)}) ---")
+        for voice_id in voice_ids:
+            click.echo(f"  {voice_id}")
+        click.echo("-" * 40)
+    click.echo("Hint: Use 'update-cache' to populate the local cache, or use 'download <VOICE_ID>' to download a specific voice directly.")
 
 @cli.command(name="download")
 @click.argument("voice_id", type=str)
 def download_voice(voice_id):
     """
     Downloads the model, config, and token files for a specific VOICE_ID.
-    The VOICE_ID must exist in the local cache (run update-cache first).
+    Looks the voice up in the local cache first (run update-cache to
+    populate it); if it isn't cached yet, falls back to the bundled
+    voice indexes so a single voice can be downloaded on demand, without
+    having to load the whole catalog first.
     """
     manager = TTSModelManager()
     manager.load()
 
-    if voice_id not in manager.voices:
-        click.echo(f"Error: Voice ID '{voice_id}' not found in cache.", err=True)
-        click.echo("Hint: Run 'phoonnx_cli.py update-cache' first to fetch the list.", err=True)
-        return
-
-    # NOTE: metadata already downloaded when creating VoiceInfo object
-    #  we only need to download the .onnx file
-    voice_info = manager.voices[voice_id]
+    voice_info = manager.get_voice(voice_id)
 
     try:
-        click.echo(f"Attempting to download files for: {voice_id} ({voice_info.lang})")
+        if voice_info:
+            click.echo(f"Attempting to download files for: {voice_id} ({voice_info.lang})")
 
-        # Download model (model.onnx)
-        click.echo("-> Downloading ONNX model (this may take a while)...")
-        voice_info.download_model()
+            click.echo("-> Downloading ONNX model and side files (this may take a while)...")
+            voice_info.download_all()
 
-        click.echo(f"\nDownload complete. Files saved to: {voice_info.voice_path}")
+            click.echo(f"\nDownload complete. Files saved to: {voice_info.voice_path}")
+        else:
+            click.echo(f"Voice ID '{voice_id}' not found in local cache, looking it up in bundled indexes...")
+            if not manager.download_voice_by_id(voice_id):
+                click.echo(f"Error: Voice ID '{voice_id}' not found.", err=True)
+                click.echo("Hint: Run 'phoonnx-voices list-available' to see available voice IDs.", err=True)
+                return
+            click.echo(f"\nDownload complete.")
 
-    except requests.exceptions.RequestException as e:
+    except (HfHubHTTPError, requests.exceptions.RequestException) as e:
+        # Voice files come from the HuggingFace hub, so a network failure now
+        # surfaces as a hub error; a self-hosted voice still raises the
+        # requests error from the direct download path.
         click.echo(f"\nDownload failed due to network error: {e}", err=True)
     except Exception as e:
         click.echo(f"\nAn unexpected error occurred during download: {e}", err=True)
+
+
+@cli.command(name="add-alignment")
+@click.argument("model_path", type=click.Path(exists=True, dir_okay=False))
+@click.option("--output", "-o", type=click.Path(dir_okay=False),
+              help="Where to write the patched model. Defaults to "
+                   "'<model>.alignment.onnx' next to the original, which is "
+                   "where phoonnx looks for it at load time.")
+def add_alignment(model_path, output):
+    """
+    Expose a model's per-phoneme duration tensor as a graph output, writing
+    the patched copy alongside the original.
+
+    Voices synthesize with alignments (`include_alignments=True`) only if
+    their model exposes durations. Running this once, offline, means every
+    later load finds the patched model instead of paying for the surgery on
+    the first request.
+    """
+    from phoonnx.alignment import export_alignment_model
+
+    try:
+        dest = export_alignment_model(model_path, output)
+    except ImportError:
+        click.echo("Error: the 'onnx' package is required for graph surgery; "
+                   "install it with `pip install phoonnx[streaming]`.", err=True)
+        raise SystemExit(1)
+    except (ValueError, OSError) as e:
+        click.echo(f"Error: {e}", err=True)
+        raise SystemExit(1)
+    click.echo(f"Wrote alignment-capable model to: {dest}")
 
 
 if __name__ == "__main__":
