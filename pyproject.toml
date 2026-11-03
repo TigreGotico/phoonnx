@@ -22,7 +22,7 @@ dependencies = [
     "langcodes",
     "ovos-number-parser>=0.4.0",
     "ovos-date-parser>=0.6.4a1",
-    "scriptconv[phonemizers]>=0.0.4a34",
+    "scriptconv[phonemizers]>=0.0.4a37",
     "unicode_rbnf",
     "click",
     "requests",
@@ -68,6 +68,7 @@ test = [
     # pure-ONNX with no torch of its own, so it is cheap to have here.
     "voiceclonnx>=0.0.3a3",
     "orthography2ipa",
+    "o2i-lexicons>=0.1.0a1",
     "arbtok",
     "euskaphone",
     "g2p_barranquenho",
@@ -388,7 +389,7 @@ zu = ["epitran"]
 cjk = ["pykakasi==2.3.0", "spacy-pkuseg"]
 
 # multilingual data-driven IPA backend (hundreds of language specs)
-o2i = ["orthography2ipa"]
+o2i = ["orthography2ipa>=7.112.0a1", "o2i-lexicons>=0.1.0a1", "scriptconv>=0.0.4a37"]
 
 # runtime deps for zero-shot voice cloning (reference loading + resampling)
 cloning = ["soundfile", "scipy"]
@@ -422,11 +423,13 @@ all = [
     # >=0.0.4a23: the release that actually fixes the "he" extra (pulls in
     # both phonikud and phonikud-onnx), the zh alias map, MissingLanguageError,
     # and the stress-routing fix — a19 predates all four.
+    # >=0.0.4a37: the orthography2ipa phonemizer enables the packaged
+    # o2i-lexicons.
     # >=0.0.4a34: EspeakPhonemizer.get_lang matches a BCP-47 tag whatever its
     # case, so pt-BR keeps the pt-br voice instead of falling to pt, European
     # Portuguese. Below this floor tests/test_phonemizer_mul.py
     # TestEspeakGetLang fails.
-    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he]>=0.0.4a34",
+    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he]>=0.0.4a37",
     # scriptconv's own "stress" extra floors stressonnx at >=0.0.2, which
     # resolves to the latest *stable* release. The BCP-47 language resolver
     # phoonnx needs only shipped in the 0.0.3 alpha train, so it must be
@@ -450,7 +453,7 @@ all = [
     "pycotovia>=0.4.0a1",
     "pykakasi==2.3.0", "spacy-pkuseg",
     "soundfile", "scipy",
-    "orthography2ipa", "arbtok", "euskaphone", "g2p_barranquenho", "mwl_phonemizer",
+    "orthography2ipa", "o2i-lexicons>=0.1.0a1", "arbtok", "euskaphone", "g2p_barranquenho", "mwl_phonemizer",
     "pydub",
     # Indic Parler needs the compiled reader; `all` is what the image installs,
     # and it carried a working Indic Parler before.
