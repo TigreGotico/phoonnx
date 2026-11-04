@@ -34,6 +34,25 @@ REGIONAL_VOICES = {
     "kokoro/pf_dora": "pt-BR",
     "kokoro/pm_alex": "pt-BR",
     "kokoro/pm_santa": "pt-BR",
+    # hexgrad/Kokoro-82M VOICES.md: "### British English ... lang_code='b'
+    # ... espeak-ng en-gb fallback" for the bf_ and bm_ voices
+    **{f"kokoro/{name}": "en-GB" for name in (
+        "bf_alice", "bf_emma", "bf_isabella", "bf_lily",
+        "bm_daniel", "bm_fable", "bm_george", "bm_lewis")},
+    # hexgrad/kLegacy v0.19 README: "'b' => British English => en-gb"
+    **{f"kokoro-v019/{name}": "en-GB" for name in (
+        "bf_emma", "bf_isabella", "bm_george", "bm_lewis")},
+    # hexgrad/Kokoro-82M-v1.1-zh card: "Vale, an older British female"
+    "kokoro-v11/bf_vale": "en-GB",
+    # kyutai-labs/pocket-tts README links each voice to a VCTK clip, and VCTK
+    # speaker-info.txt gives the accent: p315, p339, p333, p360 and p361 are
+    # American, p303 is Canadian
+    "pockettts/en/george": "en-US",
+    "pockettts/en/jane": "en-US",
+    "pockettts/en/mary": "en-US",
+    "pockettts/en/michael": "en-US",
+    "pockettts/en/eve": "en-US",
+    "pockettts/en/azelma": "en-CA",
 }
 
 # Piper voices trained with espeak voice "en", which is espeak-ng's British
@@ -44,20 +63,21 @@ MOTHERLAND_VOICES = {
 }
 
 
-def _bundled_langs():
-    langs = {}
+def _bundled_entries():
+    entries = {}
     for path in TTSModelManager.voice_index_files():
         with open(path, encoding="utf-8") as f:
-            for voice_id, entry in json.load(f).items():
-                langs[voice_id] = entry["lang"]
-    return langs
+            entries.update(json.load(f))
+    return entries
 
 
 class TestRegionalVoiceTags(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.langs = _bundled_langs()
+        cls.entries = _bundled_entries()
+        cls.langs = {voice_id: entry["lang"]
+                     for voice_id, entry in cls.entries.items()}
 
     def test_voices_trained_on_a_named_variety_carry_its_region(self):
         for voice_id, tag in REGIONAL_VOICES.items():
