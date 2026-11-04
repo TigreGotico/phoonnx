@@ -6,7 +6,11 @@ must name it, because the tag ranks the voice for a request and selects the
 phonemizer variety for espeak voices.
 """
 import json
+import os
+import re
 import unittest
+
+import langcodes
 
 from phoonnx.model_manager import TTSModelManager
 
@@ -88,6 +92,36 @@ class TestRegionalVoiceTags(unittest.TestCase):
         for voice_id, tag in MOTHERLAND_VOICES.items():
             with self.subTest(voice=voice_id):
                 self.assertEqual(self.langs[voice_id], tag)
+
+    def test_every_region_subtag_names_a_registered_region(self):
+        # langcodes rewrites some unregistered regions (UK to GB), so the
+        # region is read as written and checked against the IANA registry
+        registry = os.path.join(os.path.dirname(langcodes.__file__),
+                                "data", "language-subtag-registry.txt")
+        with open(registry, encoding="utf-8") as f:
+            records = f.read().split("%%")
+        regions = {re.search(r"^Subtag: (\S+)", r, re.M).group(1).upper()
+                   for r in records
+                   if "Type: region" in r and "Deprecated:" not in r}
+        self.assertIn("KR", regions)
+        unregistered = {}
+        for voice_id, tag in self.langs.items():
+            subtags = tag.replace("_", "-").split("-")
+            for subtag in subtags[1:3]:
+                if subtag.lower() == "x":
+                    break
+                if re.fullmatch(r"[A-Za-z]{2}|[0-9]{3}", subtag):
+                    if subtag.upper() not in regions:
+                        unregistered[voice_id] = tag
+                    break
+        self.assertEqual(unregistered, {})
+
+    def test_the_kss_voices_are_south_korean(self):
+        # KO is not an ISO 3166-1 region; Korea is KR
+        for voice_id in ("mimic3/ko_KO/kss_low",
+                         "piper_neurlang/ko-KO_kss-korean"):
+            with self.subTest(voice=voice_id):
+                self.assertEqual(self.langs[voice_id], "ko-KR")
 
 
 if __name__ == "__main__":
