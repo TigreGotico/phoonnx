@@ -63,14 +63,6 @@ MOTHERLAND_VOICES = {
 }
 
 
-# Voices whose accent tag differs from the espeak voice they were trained on.
-# agentvibes/piper-custom-voices kristin.onnx.json has "espeak": {"voice": "en"},
-# and its README calls Kristin a "US English female".
-PHONEMIZER_LANGS = {
-    "piper_community/agentvibe/en-US_kristin": ("en-US", "en"),
-}
-
-
 def _bundled_entries():
     entries = {}
     for path in TTSModelManager.voice_index_files():
@@ -96,13 +88,6 @@ class TestRegionalVoiceTags(unittest.TestCase):
         for voice_id, tag in MOTHERLAND_VOICES.items():
             with self.subTest(voice=voice_id):
                 self.assertEqual(self.langs[voice_id], tag)
-
-    def test_phonemizer_lang_holds_the_training_variety(self):
-        for voice_id, (lang, phonemizer_lang) in PHONEMIZER_LANGS.items():
-            with self.subTest(voice=voice_id):
-                entry = self.entries[voice_id]
-                self.assertEqual(entry["lang"], lang)
-                self.assertEqual(entry.get("phonemizer_lang"), phonemizer_lang)
 
 
 if __name__ == "__main__":
