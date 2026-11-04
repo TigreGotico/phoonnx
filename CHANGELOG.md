@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.94.5a2](https://github.com/TigreGotico/phoonnx/tree/1.94.5a2) (2026-11-04)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.5a1...1.94.5a2)
+
+**Merged pull requests:**
+
+- test: phonemize the misaki anchor as en-US [\#524](https://github.com/TigreGotico/phoonnx/pull/524) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.94.5a1](https://github.com/TigreGotico/phoonnx/tree/1.94.5a1) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.4a1...1.94.5a1)
@@ -348,10 +356,6 @@
 ## [1.81.4a1](https://github.com/TigreGotico/phoonnx/tree/1.81.4a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.3a1...1.81.4a1)
-
-**Merged pull requests:**
-
-- fix: transformers VITS tokenizer null language falls back to caller lang\_code [\#413](https://github.com/TigreGotico/phoonnx/pull/413) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.81.3a1](https://github.com/TigreGotico/phoonnx/tree/1.81.3a1) (2026-08-15)
 
