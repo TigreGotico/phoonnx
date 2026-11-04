@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.94.5a1](https://github.com/TigreGotico/phoonnx/tree/1.94.5a1) (2026-11-04)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.4a1...1.94.5a1)
+
+## [1.94.4a1](https://github.com/TigreGotico/phoonnx/tree/1.94.4a1) (2026-11-04)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.3a1...1.94.4a1)
+
+**Merged pull requests:**
+
+- fix: tag British Kokoro, accented PocketTTS and Kristin by training source [\#521](https://github.com/TigreGotico/phoonnx/pull/521) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: match language tags with linguatag [\#514](https://github.com/TigreGotico/phoonnx/pull/514) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.94.3a1](https://github.com/TigreGotico/phoonnx/tree/1.94.3a1) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.2a1...1.94.3a1)
@@ -301,10 +314,6 @@
 ## [1.82.3a1](https://github.com/TigreGotico/phoonnx/tree/1.82.3a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.82.2a1...1.82.3a1)
-
-**Merged pull requests:**
-
-- fix: raise typed error for unsupported voice language at load, not synthesis [\#411](https://github.com/TigreGotico/phoonnx/pull/411) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.82.2a1](https://github.com/TigreGotico/phoonnx/tree/1.82.2a1) (2026-08-15)
 
