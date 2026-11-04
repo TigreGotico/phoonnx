@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.94.5a3](https://github.com/TigreGotico/phoonnx/tree/1.94.5a3) (2026-11-04)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.5a2...1.94.5a3)
+
+**Merged pull requests:**
+
+- test: expect one misaki English G2P per variety [\#523](https://github.com/TigreGotico/phoonnx/pull/523) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.94.5a2](https://github.com/TigreGotico/phoonnx/tree/1.94.5a2) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.5a1...1.94.5a2)
