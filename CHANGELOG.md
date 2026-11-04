@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.94.5a4](https://github.com/TigreGotico/phoonnx/tree/1.94.5a4) (2026-11-04)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.5a3...1.94.5a4)
+
+**Merged pull requests:**
+
+- test: check the epitran cache on a map that needs no system binary [\#530](https://github.com/TigreGotico/phoonnx/pull/530) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.94.5a3](https://github.com/TigreGotico/phoonnx/tree/1.94.5a3) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.5a2...1.94.5a3)
@@ -350,8 +358,6 @@
 **Merged pull requests:**
 
 - fix: refuse to load a voice whose known size alone exceeds max\_loaded\_bytes [\#420](https://github.com/TigreGotico/phoonnx/pull/420) ([JarbasAl](https://github.com/JarbasAl))
-- feat: add requires\_reference catalog flag for reference-only voices [\#418](https://github.com/TigreGotico/phoonnx/pull/418) ([JarbasAl](https://github.com/JarbasAl))
-- fix: unwrap list-valued phoneme ids in Vocabulary.from\_phoonnx\_config [\#417](https://github.com/TigreGotico/phoonnx/pull/417) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.81.4a2](https://github.com/TigreGotico/phoonnx/tree/1.81.4a2) (2026-08-15)
 
