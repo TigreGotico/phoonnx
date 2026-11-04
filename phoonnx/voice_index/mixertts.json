@@ -10,7 +10,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "mixertts",
-        "lang": "en",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
         "vocoder_type": "vocos"
@@ -26,7 +26,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "mixertts",
-        "lang": "en",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
         "vocoder_type": "vocos"
@@ -42,7 +42,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "mixertts",
-        "lang": "en",
+        "lang": "en-US",
         "vocoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
         "vocoder_config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
         "vocoder_type": "vocos"
