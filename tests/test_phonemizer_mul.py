@@ -263,10 +263,10 @@ class TestEpitranGetLangAndDispatch(unittest.TestCase):
         inst.epitran = fake_epitran_module
         inst._epis = {}
 
-        result1 = inst.phonemize_string("hello", "eng-Latn")
-        result2 = inst.phonemize_string("world", "eng-Latn")
+        result1 = inst.phonemize_string("hola", "spa-Latn")
+        result2 = inst.phonemize_string("mundo", "spa-Latn")
 
-        fake_epitran_module.Epitran.assert_called_once_with("eng-Latn")
+        fake_epitran_module.Epitran.assert_called_once_with("spa-Latn")
         self.assertEqual(result1, "phonemes")
         self.assertEqual(result2, "phonemes")
 
@@ -279,7 +279,7 @@ class TestEpitranGetLangAndDispatch(unittest.TestCase):
         inst.epitran = fake_epitran_module
         inst._epis = {}
 
-        result = inst.phonemize_string("", "eng-Latn")
+        result = inst.phonemize_string("", "spa-Latn")
         self.assertEqual(result, "")
 
 
