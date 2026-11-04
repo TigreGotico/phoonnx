@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.94.1a2](https://github.com/TigreGotico/phoonnx/tree/1.94.1a2) (2026-11-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.1a1...1.94.1a2)
+
+**Merged pull requests:**
+
+- build: install o2i-lexicons with orthography2ipa and require scriptconv 0.0.4a37 [\#512](https://github.com/TigreGotico/phoonnx/pull/512) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.94.1a1](https://github.com/TigreGotico/phoonnx/tree/1.94.1a1) (2026-10-28)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.0a1...1.94.1a1)
@@ -274,15 +282,10 @@
 
 - fix: raise typed error for unsupported voice language at load, not synthesis [\#411](https://github.com/TigreGotico/phoonnx/pull/411) ([JarbasAl](https://github.com/JarbasAl))
 - fix: pin alpha floors for engine deps missing from the Docker image [\#408](https://github.com/TigreGotico/phoonnx/pull/408) ([JarbasAl](https://github.com/JarbasAl))
-- fix: default phoneme\_type to UNICODE when unset in VoiceConfig [\#401](https://github.com/TigreGotico/phoonnx/pull/401) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.82.2a1](https://github.com/TigreGotico/phoonnx/tree/1.82.2a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.82.1a1...1.82.2a1)
-
-**Merged pull requests:**
-
-- fix: stop conflating ordinal indicator \(º\) with degree sign \(°\) [\#400](https://github.com/TigreGotico/phoonnx/pull/400) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.82.1a1](https://github.com/TigreGotico/phoonnx/tree/1.82.1a1) (2026-08-15)
 
