@@ -8,6 +8,8 @@ phonemizer variety for espeak voices.
 import json
 import unittest
 
+import langcodes
+
 from phoonnx.model_manager import TTSModelManager
 
 # voice id -> tag, each taken from the voice's own training source
@@ -88,6 +90,21 @@ class TestRegionalVoiceTags(unittest.TestCase):
         for voice_id, tag in MOTHERLAND_VOICES.items():
             with self.subTest(voice=voice_id):
                 self.assertEqual(self.langs[voice_id], tag)
+
+    def test_every_region_subtag_names_a_registered_region(self):
+        regions = {voice_id: langcodes.Language.get(tag).territory
+                   for voice_id, tag in self.langs.items()}
+        unregistered = {voice_id: self.langs[voice_id]
+                        for voice_id, region in regions.items()
+                        if region and not langcodes.tag_is_valid(f"und-{region}")}
+        self.assertEqual(unregistered, {})
+
+    def test_the_kss_voices_are_south_korean(self):
+        # KO is not an ISO 3166-1 region; Korea is KR
+        for voice_id in ("mimic3/ko_KO/kss_low",
+                         "piper_neurlang/ko-KO_kss-korean"):
+            with self.subTest(voice=voice_id):
+                self.assertEqual(self.langs[voice_id], "ko-KR")
 
 
 if __name__ == "__main__":
