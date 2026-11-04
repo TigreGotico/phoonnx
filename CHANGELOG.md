@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.94.1a3](https://github.com/TigreGotico/phoonnx/tree/1.94.1a3) (2026-11-04)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.1a2...1.94.1a3)
+
+**Merged pull requests:**
+
+- test: compare the arbtok Najdi lect with the key orthography2ipa resolves it to [\#517](https://github.com/TigreGotico/phoonnx/pull/517) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.94.1a2](https://github.com/TigreGotico/phoonnx/tree/1.94.1a2) (2026-11-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.1a1...1.94.1a2)
@@ -344,7 +352,6 @@
 **Merged pull requests:**
 
 - docs: memory budgeting and OOM diagnosis for self-hosted servers [\#406](https://github.com/TigreGotico/phoonnx/pull/406) ([JarbasAl](https://github.com/JarbasAl))
-- fix: close every redirect hop and fix leading-silence bug in voice.py [\#403](https://github.com/TigreGotico/phoonnx/pull/403) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.81.0a1](https://github.com/TigreGotico/phoonnx/tree/1.81.0a1) (2026-08-14)
 
