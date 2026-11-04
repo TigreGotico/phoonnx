@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.94.2a1](https://github.com/TigreGotico/phoonnx/tree/1.94.2a1) (2026-11-04)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.1a3...1.94.2a1)
+
+**Merged pull requests:**
+
+- fix: let the train extra install NumPy 2 so pyarrow imports [\#516](https://github.com/TigreGotico/phoonnx/pull/516) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.94.1a3](https://github.com/TigreGotico/phoonnx/tree/1.94.1a3) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.1a2...1.94.1a3)
@@ -332,10 +340,6 @@
 ## [1.81.3a1](https://github.com/TigreGotico/phoonnx/tree/1.81.3a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.2a1...1.81.3a1)
-
-**Merged pull requests:**
-
-- fix: stop cross-request voice-clone bleed on shared OmniVoice/Spark-TTS adapters [\#404](https://github.com/TigreGotico/phoonnx/pull/404) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.81.2a1](https://github.com/TigreGotico/phoonnx/tree/1.81.2a1) (2026-08-14)
 
