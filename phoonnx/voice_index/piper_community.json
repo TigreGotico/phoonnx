@@ -525,6 +525,7 @@
         "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper_community__agentvibe__en-US_kristin/model.onnx",
         "phoneme_type": "espeak",
         "lang": "en-US",
+        "phonemizer_lang": "en",
         "tokens_url": null,
         "tokenizer_config_url": null,
         "vocab_url": null,
