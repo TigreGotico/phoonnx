@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.94.1a3](https://github.com/TigreGotico/phoonnx/tree/1.94.1a3) (2026-11-04)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.1a2...1.94.1a3)
+
+**Merged pull requests:**
+
+- test: compare the arbtok Najdi lect with the key orthography2ipa resolves it to [\#517](https://github.com/TigreGotico/phoonnx/pull/517) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.94.1a2](https://github.com/TigreGotico/phoonnx/tree/1.94.1a2) (2026-11-03)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.1a1...1.94.1a2)
+
+**Merged pull requests:**
+
+- build: install o2i-lexicons with orthography2ipa and require scriptconv 0.0.4a37 [\#512](https://github.com/TigreGotico/phoonnx/pull/512) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.94.1a1](https://github.com/TigreGotico/phoonnx/tree/1.94.1a1) (2026-10-28)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.0a1...1.94.1a1)
@@ -274,15 +290,10 @@
 
 - fix: raise typed error for unsupported voice language at load, not synthesis [\#411](https://github.com/TigreGotico/phoonnx/pull/411) ([JarbasAl](https://github.com/JarbasAl))
 - fix: pin alpha floors for engine deps missing from the Docker image [\#408](https://github.com/TigreGotico/phoonnx/pull/408) ([JarbasAl](https://github.com/JarbasAl))
-- fix: default phoneme\_type to UNICODE when unset in VoiceConfig [\#401](https://github.com/TigreGotico/phoonnx/pull/401) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.82.2a1](https://github.com/TigreGotico/phoonnx/tree/1.82.2a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.82.1a1...1.82.2a1)
-
-**Merged pull requests:**
-
-- fix: stop conflating ordinal indicator \(º\) with degree sign \(°\) [\#400](https://github.com/TigreGotico/phoonnx/pull/400) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.82.1a1](https://github.com/TigreGotico/phoonnx/tree/1.82.1a1) (2026-08-15)
 
@@ -334,10 +345,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.0a2...1.81.1a1)
 
-**Merged pull requests:**
-
-- fix: load one session per model, not one per voice [\#398](https://github.com/TigreGotico/phoonnx/pull/398) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.81.0a2](https://github.com/TigreGotico/phoonnx/tree/1.81.0a2) (2026-08-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.0a1...1.81.0a2)
@@ -345,7 +352,6 @@
 **Merged pull requests:**
 
 - docs: memory budgeting and OOM diagnosis for self-hosted servers [\#406](https://github.com/TigreGotico/phoonnx/pull/406) ([JarbasAl](https://github.com/JarbasAl))
-- fix: close every redirect hop and fix leading-silence bug in voice.py [\#403](https://github.com/TigreGotico/phoonnx/pull/403) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.81.0a1](https://github.com/TigreGotico/phoonnx/tree/1.81.0a1) (2026-08-14)
 
@@ -354,10 +360,6 @@
 ## [1.80.1a1](https://github.com/TigreGotico/phoonnx/tree/1.80.1a1) (2026-08-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.80.0a2...1.80.1a1)
-
-**Merged pull requests:**
-
-- fix: degrade to unstressed text when diacritization fails [\#399](https://github.com/TigreGotico/phoonnx/pull/399) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.80.0a2](https://github.com/TigreGotico/phoonnx/tree/1.80.0a2) (2026-08-13)
 

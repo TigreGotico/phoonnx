@@ -2529,7 +2529,7 @@
     "phoneme_type": "espeak",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "pt",
+    "lang": "pt-BR",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/pf_dora.bin"
   },
   "kokoro/pm_alex": {
@@ -2543,7 +2543,7 @@
     "phoneme_type": "espeak",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "pt",
+    "lang": "pt-BR",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/pm_alex.bin"
   },
   "kokoro/pm_santa": {
@@ -2557,7 +2557,7 @@
     "phoneme_type": "espeak",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "pt",
+    "lang": "pt-BR",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/pm_santa.bin"
   },
   "kokoro-v019/af": {
