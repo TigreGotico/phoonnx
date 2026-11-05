@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import bench_latency  # noqa: E402
 from phoonnx.config import SynthesisConfig  # noqa: E402
 from phoonnx.voice import AudioChunk  # noqa: E402
+from scriptconv.phonemizers.base import GraphemePhonemizer  # noqa: E402
 
 
 def _make_mock_voice(sample_rate=16000, add_diacritics=False):
@@ -102,7 +103,21 @@ class TestBenchStagesWithMockedVoice:
         voice = _make_mock_voice(add_diacritics=False)
         stages = bench_latency.bench_stages(voice, "hello", SynthesisConfig())
         assert stages["diacritics"] == 0.0
-        voice.phonemizer.add_diacritics.assert_not_called()
+
+    def test_bench_stages_diacritizes_through_scriptconv(self, monkeypatch):
+        calls = []
+
+        def fake(text, lang, diacritizer_model=None):
+            calls.append((text, lang, diacritizer_model))
+            return text + "!"
+
+        monkeypatch.setattr(bench_latency, "diacritize", fake)
+        voice = _make_mock_voice(add_diacritics=True)
+        voice.config.lang_code = "ar"
+        voice.phonemizer = GraphemePhonemizer()
+        bench_latency.bench_stages(voice, "hello", SynthesisConfig(diacritizer_model="m"))
+        assert calls == [("hello", "ar", "m")]
+        voice.phonemize.assert_called_once_with("hello!")
 
 
 class TestBenchTTFAWithMockedVoice:

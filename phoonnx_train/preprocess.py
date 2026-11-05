@@ -14,6 +14,7 @@ import torch
 from tqdm import tqdm
 
 from phoonnx.config import PhonemeType, get_phonemizer, Alphabet
+from scriptconv.diacritics import diacritize
 from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, \
     phoneme_map_seed, untrained_map_symbols, \
     DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN
@@ -120,7 +121,7 @@ def phonemize_worker(
 
                         # Add diacritics
                         if config.add_diacritics:
-                            utterance = phonemizer.add_diacritics(utterance, config.language)
+                            utterance = diacritize(utterance, config.language)
 
                         # Phonemize the text
                         utt.phonemes = [p for p in phonemizer.phonemize_to_list(utterance, config.language)
@@ -677,6 +678,11 @@ def cli(
     phonemizer: PhonemeType = get_phonemizer(config.phoneme_type,
                                             config.alphabet,
                                             config.phonemizer_model)
+
+    if config.add_diacritics and any(not utt.phonemes_precomputed for utt in utterances):
+        # In a worker this failure is per utterance, so a missing backend would
+        # drop every row and still exit 0.
+        diacritize("a", config.language)
 
     batch_size: int = max(1, int(num_utterances / (config.max_workers * 2)))
 
