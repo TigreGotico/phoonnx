@@ -1,0 +1,15 @@
+{
+    "frappuccino/vits2-ru-natasha": {
+        "voice_id": "frappuccino/vits2-ru-natasha",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits2/resolve/main/frappuccino-ru-natasha/model.onnx",
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits2/resolve/main/frappuccino-ru-natasha/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "coqui",
+        "lang": "ru"
+    }
+}

@@ -1,7 +1,7 @@
 {
     "phonikud/phonikud": {
         "voice_id": "phonikud/phonikud",
-        "model_url": "https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/phonikud__phonikud/model.onnx",
         "phoneme_type": "phonikud",
         "lang": "he-IL",
         "tokens_url": null,
@@ -10,11 +10,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/phonikud__phonikud/config.json"
     },
     "phonikud/shaul": {
         "voice_id": "phonikud/shaul",
-        "model_url": "https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/shaul.onnx",
+        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/phonikud__shaul/model.onnx",
         "phoneme_type": "phonikud",
         "lang": "he-IL",
         "tokens_url": null,
@@ -23,6 +23,6 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/thewh1teagle/phonikud-tts-checkpoints/resolve/main/model.config.json"
+        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/phonikud__shaul/config.json"
     }
 }
