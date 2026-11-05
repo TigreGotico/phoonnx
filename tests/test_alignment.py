@@ -51,9 +51,6 @@ class _FakePhonemizer:
     def phonemize_lazy(self, text, lang=None):
         yield from self._result
 
-    def add_diacritics(self, text, lang, model=None):
-        return text
-
 
 def _fake_audio(n=200):
     return np.linspace(-0.5, 0.5, n, dtype=np.float32)
@@ -404,9 +401,6 @@ class _OrderPhonemizer:
         for i, sentence in enumerate(self._sentences):
             self._log.append(i)
             yield sentence
-
-    def add_diacritics(self, text, lang, model=None):
-        return text
 
 
 class TestAlignmentNoOp(unittest.TestCase):
