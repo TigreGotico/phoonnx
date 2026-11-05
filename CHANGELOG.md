@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.94.6a1](https://github.com/TigreGotico/phoonnx/tree/1.94.6a1) (2026-11-04)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.5a4...1.94.6a1)
+
+**Merged pull requests:**
+
+- fix: tag the two KSS Korean voices ko-KR [\#529](https://github.com/TigreGotico/phoonnx/pull/529) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.94.5a4](https://github.com/TigreGotico/phoonnx/tree/1.94.5a4) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.5a3...1.94.5a4)
@@ -355,17 +363,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.4a2...1.82.0a1)
 
-**Merged pull requests:**
-
-- fix: refuse to load a voice whose known size alone exceeds max\_loaded\_bytes [\#420](https://github.com/TigreGotico/phoonnx/pull/420) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.81.4a2](https://github.com/TigreGotico/phoonnx/tree/1.81.4a2) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.81.4a1...1.81.4a2)
-
-**Merged pull requests:**
-
-- test: zh-TW resolves through the espeak Chinese alias map [\#419](https://github.com/TigreGotico/phoonnx/pull/419) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.81.4a1](https://github.com/TigreGotico/phoonnx/tree/1.81.4a1) (2026-08-15)
 
