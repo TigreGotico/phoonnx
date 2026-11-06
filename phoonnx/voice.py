@@ -17,7 +17,7 @@ import weakref
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union, Dict
+from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple, Union, Dict
 
 import numpy as np
 import onnxruntime
@@ -46,6 +46,29 @@ _PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
 
 # Alias kept for callers that imported the sentinel from here before it moved.
 _UNSET = UNSET
+
+# Spellings of the r-coloured vowels for a voice whose map lacks the first one,
+# best first. ɹ comes before r because English phonemizers write ɹ. The ɜr and ər
+# rows serve a scriptconv table that spells ER and AXR in two symbols.
+_RHOTIC_FALLBACKS = {
+    "ɝ": ("ɜɹ", "ɜr", "ɚ", "əɹ", "ər"),
+    "ɚ": ("əɹ", "ər"),
+    "ɜr": ("ɝ", "ɜɹ", "ɚ", "əɹ"),
+    "ər": ("ɚ", "əɹ"),
+}
+
+
+def _respell_rhotics(ipa: str, phoneme_map: Mapping[str, int]) -> str:
+    """Replace each r-coloured vowel spelling that ``phoneme_map`` cannot encode
+    with the first fallback it can. A spelling with no such fallback stays in
+    place, so the tokenizer warns about it."""
+    def held(spelling: str) -> bool:
+        return all(c in phoneme_map for c in spelling)
+
+    for spelling, fallbacks in _RHOTIC_FALLBACKS.items():
+        if not held(spelling):
+            ipa = ipa.replace(spelling, next(filter(held, fallbacks), spelling))
+    return ipa
 
 
 def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunks:
@@ -519,6 +542,9 @@ class TTSVoice:
                                              lang=self.config.lang_code)
             except ValueError:
                 LOG.debug("no conversion path %s -> %s; passing through", src_alphabet, tgt_alphabet)
+            if (src_alphabet == Alphabet.ARPA and tgt_alphabet == Alphabet.IPA
+                    and isinstance(self.tokenizer, TTSTokenizer)):
+                text = _respell_rhotics(text, self.tokenizer.vocabulary.char2idx)
             yield from _phonemic_chunks(text, tgt_alphabet)
             return
 
