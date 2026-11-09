@@ -97,18 +97,44 @@ class _VoiceConversion:
         weakref.finalize(self, _unlink, ref_path)
 
 
+# Directory of user phonetic spellings (``<lang>.txt``) applied over the packaged ones.
+USER_SPELLINGS_DIR_ENV = "PHOONNX_PHONETIC_SPELLINGS_DIR"
+
+
 @dataclass
 class PhoneticSpellings:
     replacements: Dict[str, str] = field(default_factory=dict)
 
     @staticmethod
-    def from_lang(lang: str, locale_path: str = f"{os.path.dirname(__file__)}/locale"):
-        langs = os.listdir(locale_path)
-        lang2 = closest_lang(lang, langs)
+    def from_lang(lang: str, locale_path: str = f"{os.path.dirname(__file__)}/locale",
+                  user_dir: Optional[str] = None):
+        """The spellings for *lang*: the packaged file, then the user's.
+
+        A user directory (``user_dir``, or ``$PHOONNX_PHONETIC_SPELLINGS_DIR``) may hold
+        ``<lang>.txt`` files in the same ``word: spelling`` format, named by primary language
+        (``fr.txt``) and/or full tag (``fr-CA.txt``). They are applied over the packaged file,
+        the full tag over the primary language, so a name, a brand or a place the voice gets
+        wrong can be respelled without touching the package."""
+        replacements: Dict[str, str] = {}
+        found = False
+        lang2 = closest_lang(lang, os.listdir(locale_path))
         if lang2 is not None:
-            spellings_file = f"{locale_path}/{lang2}/phonetic_spellings.txt"
-            return PhoneticSpellings.from_path(spellings_file)
-        raise FileNotFoundError(f"Spellings file for '{lang}' not found")
+            replacements.update(
+                PhoneticSpellings.from_path(f"{locale_path}/{lang2}/phonetic_spellings.txt").replacements)
+            found = True
+        user_dir = user_dir if user_dir is not None else os.environ.get(USER_SPELLINGS_DIR_ENV)
+        if user_dir:
+            tag = lang.replace("_", "-")
+            for name in dict.fromkeys((tag.split("-")[0], tag)):
+                for candidate in dict.fromkeys((name, name.lower())):
+                    path = os.path.join(user_dir, f"{candidate}.txt")
+                    if os.path.isfile(path):
+                        replacements.update(PhoneticSpellings.from_path(path).replacements)
+                        found = True
+                        break
+        if not found:
+            raise FileNotFoundError(f"Spellings file for '{lang}' not found")
+        return PhoneticSpellings(replacements)
 
     @staticmethod
     def from_path(spellings_file: str):

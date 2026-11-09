@@ -163,12 +163,27 @@ for chunk in voice.synthesize(text):
 
 ## Phonetic Spellings
 
-You can define custom word-level pronunciation overrides that are applied before phonemization:
+Word-level respellings are applied to the text before phonemization (`enable_phonetic_spellings`,
+on by default). They come from `phoonnx/locale/<lang>/phonetic_spellings.txt`, one `word: spelling`
+per line (`#` starts a comment), matched as whole words, ignoring case.
+
+Add your own without touching the package: put `<lang>.txt` files in a directory and point
+`PHOONNX_PHONETIC_SPELLINGS_DIR` at it.
+
+```
+$ cat ~/.config/phoonnx/spellings/fr.txt
+Thalovant: Talovant
+d'accord: dakor
+
+$ PHOONNX_PHONETIC_SPELLINGS_DIR=~/.config/phoonnx/spellings python my_app.py
+```
+
+A file is named by primary language (`fr.txt`) and/or full tag (`fr-CA.txt`); they are applied
+over the packaged file, the full tag over the primary language. The directory can also be passed
+to `PhoneticSpellings.from_lang(lang, user_dir=...)`.
 
 ```python
-# phonetic_spellings is loaded from a JSON file at voice load time
-# Format: {"word": "replacement_text_or_phonemes"}
-voice.phonetic_spellings  # dict-like object, or None if not configured
+voice.phonetic_spellings  # PhoneticSpellings (.replacements dict, .apply(text)), or None
 ```
 
 ## Multi-Speaker Voices

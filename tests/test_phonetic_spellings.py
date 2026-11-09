@@ -30,3 +30,46 @@ def test_from_path_skips_malformed_line_and_warns(tmp_path):
     assert ps.replacements == {"foo": "fuh", "bar": "bahr"}
     assert mock_log.warning.called
     assert "malformed" in str(mock_log.warning.call_args).lower()
+
+
+# -- user spellings directory ------------------------------------------------------------
+
+def test_user_spellings_are_applied_over_the_packaged_ones(tmp_path):
+    packaged = PhoneticSpellings.from_lang("en-US").replacements
+    assert packaged, "the packaged English file is not empty"
+    word = next(iter(packaged))
+    (tmp_path / "en.txt").write_text(f"{word}: my spelling\nThalovant: Talovant\n")
+    ps = PhoneticSpellings.from_lang("en-US", user_dir=str(tmp_path))
+    assert ps.replacements[word] == "my spelling"
+    assert ps.replacements["Thalovant"] == "Talovant"
+    assert set(packaged) <= set(ps.replacements), "the rest of the packaged file is kept"
+    assert ps.apply("Say Thalovant now") == "Say Talovant now"
+
+
+def test_the_full_tag_overrides_the_primary_language(tmp_path):
+    (tmp_path / "en.txt").write_text("tomato: generic\nfoo: only primary\n")
+    (tmp_path / "en-US.txt").write_text("tomato: american\n")
+    ps = PhoneticSpellings.from_lang("en-US", user_dir=str(tmp_path))
+    assert ps.replacements["tomato"] == "american"
+    assert ps.replacements["foo"] == "only primary"
+    assert PhoneticSpellings.from_lang("en-GB", user_dir=str(tmp_path)).replacements["tomato"] == "generic"
+
+
+def test_a_language_with_only_a_user_file_still_gets_spellings(tmp_path):
+    (tmp_path / "xx.txt").write_text("hello: bonjour\n")
+    ps = PhoneticSpellings.from_lang("xx-YY", user_dir=str(tmp_path))
+    assert ps.replacements == {"hello": "bonjour"}
+
+
+def test_the_environment_variable_points_at_the_directory(tmp_path, monkeypatch):
+    (tmp_path / "en.txt").write_text("zzword: zed word\n")
+    monkeypatch.setenv("PHOONNX_PHONETIC_SPELLINGS_DIR", str(tmp_path))
+    assert PhoneticSpellings.from_lang("en-US").replacements["zzword"] == "zed word"
+    monkeypatch.delenv("PHOONNX_PHONETIC_SPELLINGS_DIR")
+    assert "zzword" not in PhoneticSpellings.from_lang("en-US").replacements
+
+
+def test_a_language_with_nothing_anywhere_is_still_not_found(tmp_path):
+    import pytest
+    with pytest.raises(FileNotFoundError):
+        PhoneticSpellings.from_lang("xx-YY", user_dir=str(tmp_path))
