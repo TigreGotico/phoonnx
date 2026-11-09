@@ -135,6 +135,30 @@ class PhoneticSpellings:
         return text
 
 
+_LOUDNESS_WARNED = False
+
+
+def level_audio(audio: np.ndarray, syn_config: "SynthesisConfig", sample_rate: int) -> np.ndarray:
+    """Set a synthesized sentence's level: a loudness target if asked for, else the peak."""
+    global _LOUDNESS_WARNED
+    if syn_config.target_loudness is not None:
+        try:
+            from phoonnx.engines.outetts import normalize_loudness
+            return normalize_loudness(audio, float(syn_config.target_loudness), rate=sample_rate)
+        except ImportError:
+            if not _LOUDNESS_WARNED:
+                _LOUDNESS_WARNED = True
+                LOG.warning("target_loudness needs scipy, which is not installed: "
+                            "using peak normalization")
+    if syn_config.normalize_audio:
+        max_val = np.max(np.abs(audio))
+        if max_val < 1e-8:
+            # Prevent division by zero
+            return np.zeros_like(audio)
+        return audio / max_val
+    return audio
+
+
 @dataclass
 class PhonemeAlignment:
     """A single phoneme paired with the number of audio samples it spans."""
@@ -816,13 +840,7 @@ class TTSVoice:
             else:
                 audio = audio_result
 
-            if syn_config.normalize_audio:
-                max_val = np.max(np.abs(audio))
-                if max_val < 1e-8:
-                    # Prevent division by zero
-                    audio = np.zeros_like(audio)
-                else:
-                    audio = audio / max_val
+            audio = level_audio(audio, syn_config, self.config.sample_rate)
 
             if syn_config.volume != 1.0:
                 audio = audio * syn_config.volume
