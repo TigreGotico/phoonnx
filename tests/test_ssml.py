@@ -67,8 +67,10 @@ def test_say_as_sub_and_phoneme_become_words_the_voice_can_read():
 
 
 def test_what_a_voice_cannot_do_is_read_as_words_never_as_tags():
-    (piece,) = parse_ssml('<speak><amazon:effect name="whispered">Secret</amazon:effect> words</speak>')
+    (piece,) = parse_ssml('<speak><amazon:domain name="news">Secret</amazon:domain> words</speak>')
     assert piece.text == "Secret words"
+    (piece,) = parse_ssml('<speak>Hello <emotion name="happy">there</emotion> friend</speak>')
+    assert piece.text == "Hello there friend"
 
 
 def test_silent_text_is_not_said():

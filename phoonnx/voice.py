@@ -17,7 +17,7 @@ import weakref
 from contextlib import suppress
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union, Dict
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union, Dict
 
 import numpy as np
 import onnxruntime
@@ -37,6 +37,7 @@ from phoonnx.engines.base import (
 from scriptconv.phonemizers.base import BasePhonemizer
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
 from phoonnx.reference_audio import load_reference_audio
+from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
 from scriptconv.phonemizers.base import PhonemizedChunks
 from phoonnx.tokenizer import TTSTokenizer
@@ -979,20 +980,27 @@ class TTSVoice:
             syn_config: Optional[SynthesisConfig] = None,
             lang: Optional[str] = None,
             include_alignments: bool = False,
+            on_mark: Optional[Callable[[str, float], None]] = None,
     ) -> Iterable[AudioChunk]:
-        """Synthesize SSML, yielding silence and speech chunks in order.
+        """Synthesize SSML, yielding silence, speech and sound chunks in order.
 
-        The markup is read by :func:`phoonnx.ssml.parse_ssml`: ``<break>``, ``<p>`` and ``<s>`` become
-        silence, ``<prosody rate>`` and ``<emphasis>`` change the length scale (a rate of 1.25 is
-        ``length_scale / 1.25``), ``<prosody volume>`` scales the samples, ``<lang>`` picks the
-        language id of a multilingual voice when it has one (a monolingual voice says the words in
-        its own language), and ``<say-as>``, ``<sub>`` and ``<phoneme>`` are read as words and
-        phonemes. A text that is not SSML is synthesized as it is.
+        The markup is read by :func:`phoonnx.ssml.parse_ssml`. ``<break>``, ``<p>`` and ``<s>``
+        become silence; ``<prosody rate>`` and ``<emphasis>`` change the length scale (a rate of
+        1.25 is ``length_scale / 1.25``); ``<prosody volume>`` scales the samples; ``<prosody
+        pitch>`` and ``vocal-tract-length`` shift the finished audio (:mod:`phoonnx.audio_fx`);
+        ``<lang>`` picks the language id of a multilingual voice when it has one (a monolingual
+        voice says the words in its own language); ``<say-as>``, ``<sub>`` and ``<phoneme>`` are
+        read as words and phonemes; ``<amazon:effect>`` whispers, softens or compresses the audio;
+        ``<amazon:auto-breaths>`` and ``<amazon:breath>`` add breaths; an expletive is a bleep. A
+        text that is not SSML is synthesized as it is.
 
         :param ssml: A ``<speak>`` document, or plain text.
         :param syn_config: Base synthesis configuration; each piece adjusts a copy.
         :param lang: Language of the text when the markup does not say (default: the voice's).
         :param include_alignments: As in :meth:`synthesize`.
+        :param on_mark: Called as ``on_mark(name, seconds)`` for each ``<mark name>``, just before
+            the audio that follows it is yielded; `seconds` is the time since the start of the
+            audio, counted from the chunks yielded so far.
         """
         base = syn_config or SynthesisConfig()
         base_length = base.length_scale
@@ -1001,7 +1009,47 @@ class TTSVoice:
         if base_length is None:
             base_length = 1.0
         voice_lang = lang or self.config.lang_code
+        rate = self.config.sample_rate
+        elapsed = 0.0
+
+        def passed(chunk: AudioChunk) -> AudioChunk:
+            nonlocal elapsed, rate
+            rate = chunk.sample_rate
+            elapsed += len(chunk.audio_float_array) / chunk.sample_rate
+            return chunk
+
+        def silence(ms: int, at_rate: int) -> AudioChunk:
+            return AudioChunk(sample_rate=at_rate, sample_width=2, sample_channels=1,
+                              audio_float_array=np.zeros(int(at_rate * ms / 1000), dtype=np.float32))
+
+        def tone(kind: str, ms: int, volume: float, at_rate: int) -> AudioChunk:
+            samples = audio_fx.beep(at_rate, ms) if kind == "beep" else audio_fx.breath(at_rate, ms, volume)
+            return AudioChunk(sample_rate=at_rate, sample_width=2, sample_channels=1,
+                              audio_float_array=samples)
+
         for piece in parse_ssml(ssml, voice_lang):
+            pause_ms = piece.pause_ms
+            marks = list(piece.marks)
+
+            def before_audio(at_rate: int) -> Iterable[AudioChunk]:
+                """The pause, then the marks, ahead of a piece's first audio."""
+                nonlocal pause_ms, marks
+                if pause_ms:
+                    yield passed(silence(pause_ms, at_rate))
+                    pause_ms = 0
+                while marks:
+                    name = marks.pop(0)
+                    if on_mark is not None:
+                        on_mark(name, elapsed)
+
+            if piece.sound is not None:
+                kind, ms, volume = piece.sound
+                yield from before_audio(rate)
+                yield passed(tone(kind, ms, volume, rate))
+                continue
+            if not piece.text:  # marks with nothing after them
+                list(before_audio(rate))
+                continue
             settings: Dict[str, Any] = {}
             if piece.rate != 1.0:
                 settings["length_scale"] = base_length / piece.rate
@@ -1011,19 +1059,31 @@ class TTSVoice:
             if lang_id is not None:
                 settings["lang_id"] = lang_id
             piece_config = replace(base, **settings) if settings else base
-            pause_ms = piece.pause_ms
-            for chunk in self.synthesize(piece.text, syn_config=piece_config,
-                                         include_alignments=include_alignments):
-                if pause_ms:
-                    # Silence is made at the rate of the speech that follows it, which
-                    # post-processing (e.g. super-resolution) may have moved off the
-                    # model's native rate; the first chunk is what tells us.
-                    yield AudioChunk(
-                        sample_rate=chunk.sample_rate, sample_width=2, sample_channels=1,
-                        audio_float_array=np.zeros(
-                            int(chunk.sample_rate * pause_ms / 1000), dtype=np.float32))
-                    pause_ms = 0
-                yield chunk
+            for index, chunk in enumerate(self.synthesize(
+                    piece.text, syn_config=piece_config, include_alignments=include_alignments)):
+                # Silence is made at the rate of the speech that follows it, which post-processing
+                # (e.g. super-resolution) may have moved off the model's native rate.
+                yield from before_audio(chunk.sample_rate)
+                if piece.breaths and index and index % piece.breaths[2] == 0:
+                    yield passed(tone("breath", piece.breaths[1], piece.breaths[0], chunk.sample_rate))
+                yield passed(self._with_effects(chunk, piece))
+
+    @staticmethod
+    def _with_effects(chunk: AudioChunk, piece: Any) -> AudioChunk:
+        """`chunk` with the piece's pitch shift and effects applied (the chunk itself if none)."""
+        if not piece.pitch and not piece.effects:
+            return chunk
+        samples = np.asarray(chunk.audio_float_array, dtype=np.float32)
+        if piece.pitch:
+            samples = audio_fx.pitch_shift(samples, chunk.sample_rate, piece.pitch)
+        if "whisper" in piece.effects:
+            samples = audio_fx.whisper(samples, chunk.sample_rate)
+        if "soft" in piece.effects:
+            samples = audio_fx.soft(samples, chunk.sample_rate)
+        if "drc" in piece.effects:
+            samples = audio_fx.compress(samples, chunk.sample_rate)
+        return replace(chunk, audio_float_array=samples,
+                       _audio_int16_array=None, _audio_int16_bytes=None)
 
     def _lang_id_for(self, tag: Optional[str]) -> Optional[int]:
         """The language id of a multilingual voice for *tag*, or None (monolingual, or unknown)."""
@@ -1044,6 +1104,7 @@ class TTSVoice:
             syn_config: Optional[SynthesisConfig] = None,
             set_wav_format: bool = True,
             lang: Optional[str] = None,
+            on_mark: Optional[Callable[[str, float], None]] = None,
     ) -> None:
         """Synthesize SSML and write it as WAV audio (see :meth:`synthesize_ssml`)."""
         if set_wav_format:
@@ -1051,7 +1112,7 @@ class TTSVoice:
             wav_file.setsampwidth(2)
             wav_file.setnchannels(1)
         first = True
-        for chunk in self.synthesize_ssml(ssml, syn_config=syn_config, lang=lang):
+        for chunk in self.synthesize_ssml(ssml, syn_config=syn_config, lang=lang, on_mark=on_mark):
             if first and set_wav_format:
                 wav_file.setframerate(chunk.sample_rate)
                 wav_file.setsampwidth(chunk.sample_width)
