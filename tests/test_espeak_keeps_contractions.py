@@ -17,21 +17,25 @@ from phoonnx.normalization.text import normalize
 class TestNormalizeContractions(unittest.TestCase):
 
     def test_contractions_expand_by_default(self):
+        """The default normalizer still expands contractions."""
         self.assertEqual(normalize("I don't know what it's called", "en-US"),
                          "I do not know what it is called")
 
     def test_contractions_can_be_kept(self):
+        """With expand_contractions=False they are left as written."""
         self.assertEqual(
             normalize("I don't know what it's called", "en-US", expand_contractions=False),
             "I don't know what it's called")
 
     def test_numbers_and_units_still_change_when_contractions_are_kept(self):
+        """Keeping contractions does not stop numbers and units being spoken."""
         text = normalize("It's 12 o'clock, don't wait", "en-US", expand_contractions=False)
         self.assertIn("It's", text)
         self.assertIn("don't", text)
         self.assertNotIn("12", text)
 
     def test_typographic_apostrophes_are_kept_as_a_plain_apostrophe(self):
+        """A typographic apostrophe is read as a plain one."""
         self.assertEqual(normalize("Don’t stop", "en-US", expand_contractions=False),
                          "Don't stop")
 
@@ -39,16 +43,19 @@ class TestNormalizeContractions(unittest.TestCase):
 class TestEspeakPhonemizerKeepsContractions(unittest.TestCase):
 
     def test_the_espeak_normalizer_keeps_them(self):
+        """The espeak phonemizer's normalizer keeps contractions."""
         phonemizer = get_phonemizer(PhonemeType.ESPEAK)
         self.assertEqual(phonemizer.normalizer("I don't know", "en-US"), "I don't know")
         self.assertNotIn("12", phonemizer.normalizer("It's 12 o'clock", "en-US"))
 
     def test_another_phonemizer_still_expands_them(self):
+        """Any other phonemizer's normalizer still expands them."""
         phonemizer = get_phonemizer(PhonemeType.GRUUT)
         self.assertEqual(phonemizer.normalizer("I don't know", "en-US"), "I do not know")
 
     @unittest.skipUnless(shutil.which("espeak-ng"), "needs the espeak-ng binary")
     def test_espeak_says_dont_as_one_word(self):
+        """espeak-ng reads "don't" as one word, which expanding would split."""
         phonemes = "".join("".join(chunk) for chunk in
                            get_phonemizer(PhonemeType.ESPEAK).phonemize("I don't know", "en-US"))
         # "do not" would be duːnˌɑːt; "don't" is dˈoʊnt
