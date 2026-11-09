@@ -1001,12 +1001,7 @@ class TTSVoice:
         if base_length is None:
             base_length = 1.0
         voice_lang = lang or self.config.lang_code
-        rate = self.config.sample_rate
         for piece in parse_ssml(ssml, voice_lang):
-            if piece.pause_ms:
-                yield AudioChunk(
-                    sample_rate=rate, sample_width=2, sample_channels=1,
-                    audio_float_array=np.zeros(int(rate * piece.pause_ms / 1000), dtype=np.float32))
             settings: Dict[str, Any] = {}
             if piece.rate != 1.0:
                 settings["length_scale"] = base_length / piece.rate
@@ -1016,9 +1011,18 @@ class TTSVoice:
             if lang_id is not None:
                 settings["lang_id"] = lang_id
             piece_config = replace(base, **settings) if settings else base
+            pause_ms = piece.pause_ms
             for chunk in self.synthesize(piece.text, syn_config=piece_config,
                                          include_alignments=include_alignments):
-                rate = chunk.sample_rate
+                if pause_ms:
+                    # Silence is made at the rate of the speech that follows it, which
+                    # post-processing (e.g. super-resolution) may have moved off the
+                    # model's native rate; the first chunk is what tells us.
+                    yield AudioChunk(
+                        sample_rate=chunk.sample_rate, sample_width=2, sample_channels=1,
+                        audio_float_array=np.zeros(
+                            int(chunk.sample_rate * pause_ms / 1000), dtype=np.float32))
+                    pause_ms = 0
                 yield chunk
 
     def _lang_id_for(self, tag: Optional[str]) -> Optional[int]:

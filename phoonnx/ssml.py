@@ -42,8 +42,10 @@ _DIGITS = {"digits", "telephone"}
 # Tags only SSML has. <p>, <s>, <sub>, <audio> and <mark> are HTML's too, and
 # an answer about HTML ("a paragraph goes between <p> and </p>") is words:
 # those count as markup only inside a <speak>, which this finds.
-_TAG = re.compile(r"<\s*/?\s*(speak|break|prosody|emphasis|say-as|phoneme|lang|voice|w|"
-                  r"amazon:[a-z-]+)\b", re.IGNORECASE)
+# A complete tag: '<' straight onto the name (so "1 < w and w > 0" is not one), then
+# optional attributes and the closing '>'.
+_TAG = re.compile(r"</?(?:speak|break|prosody|emphasis|say-as|phoneme|lang|voice|w|"
+                  r"amazon:[a-z-]+)(?:\s[^<>]*)?/?>", re.IGNORECASE)
 # A number as float() reads it: "1.5", "2.", ".5". Not "1.2.3" or ".", which
 # a looser [\d.]+ admitted and float() then refused, losing the reply.
 _NUMBER = r"(?:\d+(?:\.\d*)?|\.\d+)"

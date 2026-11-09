@@ -183,3 +183,39 @@ def test_plain_text_given_to_the_ssml_path_is_still_spoken():
     voice = RecordingVoice()
     list(voice.synthesize_ssml("just words, no markup"))
     assert [t for t, _ in voice.calls] == ["just words, no markup"]
+
+
+def test_a_comparison_in_plain_text_is_not_markup():
+    from phoonnx.ssml import looks_like_ssml
+
+    assert not looks_like_ssml("The range is 1 < w and w > 0.")
+    assert not looks_like_ssml("if a <b and c> d")
+    assert looks_like_ssml('Wait <break time="1s"/> now')
+    assert looks_like_ssml("<speak>Hi</speak>")
+    assert looks_like_ssml("<emphasis level='strong'>no</emphasis>")
+
+
+def test_silence_before_speech_uses_the_speech_rate():
+    """A leading <break> is made at the rate of the chunks after it (e.g. super-resolution)."""
+    import numpy as np
+
+    from phoonnx.voice import AudioChunk, TTSVoice
+
+    voice = TTSVoice.__new__(TTSVoice)
+
+    class _Config:
+        sample_rate = 22050
+        length_scale = 1.0
+        lang_code = "en"
+        lang_id_map = None
+
+    voice.config = _Config()
+
+    def fake_synthesize(text, syn_config=None, include_alignments=False):
+        yield AudioChunk(sample_rate=48000, sample_width=2, sample_channels=1,
+                         audio_float_array=np.ones(480, dtype=np.float32) * 0.1)
+
+    voice.synthesize = fake_synthesize
+    chunks = list(voice.synthesize_ssml('<speak><break time="100ms"/>Hello</speak>'))
+    assert [c.sample_rate for c in chunks] == [48000, 48000]
+    assert len(chunks[0].audio_float_array) == 4800
