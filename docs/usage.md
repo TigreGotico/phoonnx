@@ -171,6 +171,34 @@ You can define custom word-level pronunciation overrides that are applied before
 voice.phonetic_spellings  # dict-like object, or None if not configured
 ```
 
+## SSML
+
+`TTSVoice.synthesize_ssml()` and `synthesize_ssml_wav()` read a subset of SSML and
+turn it into what a VITS voice can do: silence, pace, loudness and language.
+
+| Tag | Effect |
+| --- | --- |
+| `<break time="500ms"/>`, `strength=` | silence of that length |
+| `<p>`, `<s>` | a pause at the paragraph / sentence edge |
+| `<prosody rate= volume=>` | pace (the voice's length scale) and loudness (applied to the samples) |
+| `<emphasis level=>` | a little slower and louder (or softer for `reduced`) |
+| `<lang xml:lang=>`, `<voice>` | the piece is phonemized in that language |
+| `<say-as interpret-as="characters\|digits">` | spelled out |
+| `<sub alias=>`, `<phoneme alphabet="ipa" ph=>` | substituted text, or inline IPA |
+
+Pitch, whispering and emotions are not things a VITS voice can do, so those tags are
+read as their plain text. A document that does not parse is spoken as its text with
+the tags removed, and plain text containing a stray `<` is never mistaken for SSML
+(`phoonnx.ssml.looks_like_ssml`). The OVOS plugin (`phoonnx.opm`) routes SSML input
+here and advertises `ssml_tags`.
+
+```python
+with wave.open("out.wav", "wb") as wav:
+    voice.synthesize_ssml_wav(
+        '<speak>Six degrees. <break time="400ms"/> '
+        '<prosody rate="slow">Feels like four.</prosody></speak>', wav)
+```
+
 ## Multi-Speaker Voices
 
 For voices with multiple speakers, set `speaker_id` in `SynthesisConfig`:

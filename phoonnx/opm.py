@@ -22,6 +22,7 @@ from ovos_utils.log import LOG
 from ovos_plugin_manager.templates.tts import TTS, TTSContext
 
 from phoonnx.model_manager import TTSModelManager, TTSModelInfo
+from phoonnx.ssml import SUPPORTED_TAGS, looks_like_ssml
 from phoonnx.util import normalize_lang
 from phoonnx.voice import TTSVoice, SynthesisConfig
 from phoonnx.voice_cache import VoiceCache, VoiceExceedsMemoryBudget
@@ -43,6 +44,9 @@ class PhoonnxTTSPlugin(TTS):
         	config (dict | None): Optional configuration passed to the base TTS initializer.
         """
         super().__init__(config=config)
+        # The base class keeps SSML whole (and strips tags it does not list) only when
+        # "speak" is among the supported tags; synthesize_ssml reads them.
+        self.ssml_tags = list(SUPPORTED_TAGS)
         self.model_manager = TTSModelManager()
         self.model_manager.load()
         self.model_manager.merge_default_voices()
@@ -460,7 +464,10 @@ class PhoonnxTTSPlugin(TTS):
             try:
                 wav_out = wave.open(tmp_file, "wb")
                 try:
-                    model.synthesize_wav(sentence, wav_out, synth_params)
+                    if looks_like_ssml(sentence):
+                        model.synthesize_ssml_wav(sentence, wav_out, synth_params, lang=lang)
+                    else:
+                        model.synthesize_wav(sentence, wav_out, synth_params)
                     # Closed inside the try: the final flush is where a full disk
                     # surfaces, and swallowing that would publish a truncated file
                     # as a finished one — the very bug this avoids.
