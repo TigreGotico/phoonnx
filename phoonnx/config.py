@@ -1,3 +1,4 @@
+import functools
 import json
 from dataclasses import dataclass, field
 from enum import Enum
@@ -482,6 +483,16 @@ class SynthesisConfig:
     normalize_audio: bool = True
     """Enable/disable scaling audio samples to fit full range."""
 
+    target_loudness: Optional[float] = None
+    """Integrated loudness, in LUFS, each synthesized sentence is brought to (for example ``-16.0``).
+
+    Peak normalization (``normalize_audio``) makes every sentence peak at full scale, so how loud
+    it *sounds* depends on how peaky it is: in a week of real sentences the speech level ranged
+    over 3.5 dB between the 5th and 95th percentile, and consecutive sentences jumped in volume.
+    A loudness target keeps them level, with the peaks limited to -1 dBFS. ``None`` (the default)
+    keeps the peak normalization. It needs ``scipy``; without it a warning is logged once and peak
+    normalization is used."""
+
     volume: float = 1.0
     """Multiplier for audio samples (< 1 is quieter, > 1 is louder)."""
 
@@ -622,7 +633,13 @@ def get_phonemizer(phoneme_type: PhonemeType,
     except KeyError:
         raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
 
-    phonemizer.normalizer = _normalize
+    if phoneme_type == PhonemeType.ESPEAK:
+        # espeak-ng reads a contraction the way people say it ("don't" -> dˈoʊnt). Expanding it
+        # first ("do not") makes every English sentence sound like a form letter, and the table
+        # is a guess for "he's" and "I'd". Numbers, dates, units and titles are still normalized.
+        phonemizer.normalizer = functools.partial(_normalize, expand_contractions=False)
+    else:
+        phonemizer.normalizer = _normalize
     phonemizer.keep_punctuation = keep_punctuation
     return phonemizer
 

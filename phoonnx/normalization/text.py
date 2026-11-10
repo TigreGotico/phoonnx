@@ -33,14 +33,14 @@ def _normalize_word_hyphen_digit(text: str) -> str:
     text = pattern.sub(_replace, text)
     return text
 
-def _normalize_word(word: str, full_lang: str, rbnf_engine) -> str:
+def _normalize_word(word: str, full_lang: str, rbnf_engine, expand_contractions: bool = True) -> str:
     """
     Helper function to normalize a single word.
     """
     lang_code = full_lang.split("-")[0]
     word = word.replace("’", "'")
 
-    if word in CONTRACTIONS.get(lang_code, {}):
+    if expand_contractions and word in CONTRACTIONS.get(lang_code, {}):
         return CONTRACTIONS[lang_code][word]
 
     if word in TITLES.get(lang_code, {}):
@@ -53,13 +53,15 @@ def _normalize_word(word: str, full_lang: str, rbnf_engine) -> str:
 
     return word
 
-def normalize(text: str, lang: str) -> str:
+def normalize(text: str, lang: str, expand_contractions: bool = True) -> str:
     """
     Normalize a text string for speech by expanding contractions and titles and converting dates, times, numbers, units, and fractions into spoken forms.
     
     Parameters:
         text (str): Input text to normalize.
         lang (str): Locale language tag (e.g., "en", "en-US") that determines language-specific rules.
+        expand_contractions (bool): Expand contractions such as "don't" to "do not" (default). Pass False for a
+            phonemizer that reads them as people do (espeak-ng); numbers, dates, units and titles are still normalized.
     
     Returns:
         str: The normalized text with expanded contractions and titles and with dates, times, numbers, units, and fractions converted to their spoken equivalents.
@@ -92,7 +94,9 @@ def normalize(text: str, lang: str) -> str:
     except (ValueError, KeyError) as e:
         LOG.debug(f"RBNF engine not available for language '{lang_code}': {e}")
 
-    normalized_words = [_normalize_word(word, full_lang, rbnf_engine) for word in words]
+    # The default call is unchanged; the flag is passed only when it is switched off.
+    options = {} if expand_contractions else {"expand_contractions": False}
+    normalized_words = [_normalize_word(word, full_lang, rbnf_engine, **options) for word in words]
     dialog = " ".join(normalized_words)
 
     return dialog

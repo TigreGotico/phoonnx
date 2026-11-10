@@ -276,3 +276,10 @@ class TestModelManagerKeepsTheFlag:
         voice = self._load(True, phoneme_type=PhonemeType.ESPEAK, alphabet=Alphabet.IPA)
         assert voice.config.phoneme_type == PhonemeType.ESPEAK
         assert voice.phonemizer.keep_punctuation is True
+
+
+def test_a_yourtts_export_keeps_the_punctuation_flag_it_was_trained_with():
+    from phoonnx_train.engines.yourtts import _yourtts_voice_json
+
+    assert _yourtts_voice_json({"keep_punctuation": True}, None)["keep_punctuation"] is True
+    assert _yourtts_voice_json({}, None)["keep_punctuation"] is False

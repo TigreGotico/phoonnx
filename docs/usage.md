@@ -163,12 +163,55 @@ for chunk in voice.synthesize(text):
 
 ## Phonetic Spellings
 
-You can define custom word-level pronunciation overrides that are applied before phonemization:
+Word-level respellings are applied to the text before phonemization (`enable_phonetic_spellings`,
+on by default). They come from `phoonnx/locale/<lang>/phonetic_spellings.txt`, one `word: spelling`
+per line (`#` starts a comment), matched as whole words, ignoring case.
+
+Add your own without touching the package: put `<lang>.txt` files in a directory and point
+`PHOONNX_PHONETIC_SPELLINGS_DIR` at it.
+
+```
+$ cat ~/.config/phoonnx/spellings/fr.txt
+Thalovant: Talovant
+d'accord: dakor
+
+$ PHOONNX_PHONETIC_SPELLINGS_DIR=~/.config/phoonnx/spellings python my_app.py
+```
+
+A file is named by primary language (`fr.txt`) and/or full tag (`fr-CA.txt`); they are applied
+over the packaged file, the full tag over the primary language. The directory can also be passed
+to `PhoneticSpellings.from_lang(lang, user_dir=...)`.
 
 ```python
-# phonetic_spellings is loaded from a JSON file at voice load time
-# Format: {"word": "replacement_text_or_phonemes"}
-voice.phonetic_spellings  # dict-like object, or None if not configured
+voice.phonetic_spellings  # PhoneticSpellings (.replacements dict, .apply(text)), or None
+```
+
+## SSML
+
+`TTSVoice.synthesize_ssml()` and `synthesize_ssml_wav()` read a subset of SSML and
+turn it into what a VITS voice can do: silence, pace, loudness and language.
+
+| Tag | Effect |
+| --- | --- |
+| `<break time="500ms"/>`, `strength=` | silence of that length |
+| `<p>`, `<s>` | a pause at the paragraph / sentence edge |
+| `<prosody rate= volume=>` | pace (the voice's length scale) and loudness (applied to the samples) |
+| `<emphasis level=>` | a little slower and louder (or softer for `reduced`) |
+| `<lang xml:lang=>`, `<voice>` | the piece is phonemized in that language |
+| `<say-as interpret-as="characters\|digits">` | spelled out |
+| `<sub alias=>`, `<phoneme alphabet="ipa" ph=>` | substituted text, or inline IPA |
+
+Pitch, whispering and emotions are not things a VITS voice can do, so those tags are
+read as their plain text. A document that does not parse is spoken as its text with
+the tags removed, and plain text containing a stray `<` is never mistaken for SSML
+(`phoonnx.ssml.looks_like_ssml`). The OVOS plugin (`phoonnx.opm`) routes SSML input
+here and advertises `ssml_tags`.
+
+```python
+with wave.open("out.wav", "wb") as wav:
+    voice.synthesize_ssml_wav(
+        '<speak>Six degrees. <break time="400ms"/> '
+        '<prosody rate="slow">Feels like four.</prosody></speak>', wav)
 ```
 
 ## Multi-Speaker Voices
