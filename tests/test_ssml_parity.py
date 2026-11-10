@@ -252,3 +252,14 @@ def test_say_as_a_negative_decimal_keeps_its_sign(text, lang, expected):
 ])
 def test_say_as_a_decimal_outside_the_seven_languages_has_no_english_point(text, lang, expected):
     assert say_as_text(text, "cardinal", lang) == expected
+
+
+@pytest.mark.parametrize("text,lang,expected", [
+    ("221B Baker St.", "en", "two twenty one B Baker Street"),
+    ("Rua Augusta 221", "pt", "Rua Augusta duzentos e vinte e um"),
+    ("Hauptstraße 221", "de", "Hauptstraße zweihunderteinundzwanzig"),
+    ("1600 av. Foch", "fr", "mille six cents avenue Foch"),
+    ("Calle Mayor 1600", "es", "Calle Mayor mil seiscientos"),
+])
+def test_say_as_address_pairs_house_number_digits_only_in_english(text, lang, expected):
+    assert say_as_text(text, "address", lang) == expected

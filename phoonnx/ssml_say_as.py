@@ -375,12 +375,15 @@ def _address(text: str, lang: str) -> str:
 
 
 def _house_number(digits: str, lang: str) -> str:
-    """A street number the way it is said: 221 -> two twenty-one, 1600 -> sixteen hundred."""
+    """A street number the way it is said: in English 221 -> two twenty-one and 1600 -> sixteen
+    hundred; other languages say the whole number."""
+    if not lang.startswith("en"):
+        return _number(digits, lang)
     if len(digits) == 3:
         return f"{_number(digits[0], lang)} {_number(digits[1:], lang)}" if digits[1] != "0" else _number(digits, lang)
     if len(digits) == 4:
         if digits.endswith("00"):
-            return f"{_number(digits[:2], lang)} {'hundred' if lang.startswith('en') else '100'}"
+            return f"{_number(digits[:2], lang)} hundred"
         return f"{_number(digits[:2], lang)} {_number(digits[2:], lang)}"
     if len(digits) <= 2:
         return _number(digits, lang)
