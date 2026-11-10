@@ -182,7 +182,7 @@ loudness, pitch, language and sound effects. Input that is not SSML is synthesiz
 | `<p>`, `<s>` | a pause at the paragraph / sentence edge |
 | `<prosody rate= volume= pitch=>` | pace (the voice's length scale), loudness, and pitch (`+2st`, `-10%`, `high`; Hz is ignored) |
 | `<emphasis level=>` | a little slower and louder (or softer for `reduced`) |
-| `<lang xml:lang=>`, `<voice>` | the piece is phonemized in that language |
+| `<lang xml:lang=>`, `<voice>` | a multilingual voice uses that language's id for the piece; a monolingual voice says the words in its own language. `<say-as>` inside it also reads its value in that language |
 | `<say-as interpret-as=...>` | `cardinal`, `ordinal`, `digits`, `fraction`, `unit`, `date` (+`format="mdy"`), `time`, `currency`, `address`, `telephone`, `characters`/`spell-out`, `expletive` (a bleep), `interjection` |
 | `<sub alias=>` | substituted text |
 | `<phoneme alphabet="ipa\|x-sampa" ph=>` | inline phonemes (X-SAMPA is converted to IPA) |
