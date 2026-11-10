@@ -32,8 +32,17 @@ first use:
 }
 ```
 
-Keys are BCP-47 tags: the full tag (`pt-br`) is tried before the primary
-subtag (`pt`), so regional variants can differ from the base language.
+Keys are BCP-47 tags. A requested language is tried in three forms, in this
+order:
+
+1. Its standard form: a request for `pt-br` matches a `pt-BR` key.
+2. Its default region, which is the place where the language first appeared
+   and is still spoken: a bare `pt` matches a `pt-PT` key, and a bare `en`
+   matches an `en-GB` key.
+3. Its primary subtag: a request for `pt-BR` matches a `pt` key.
+
+A regional key therefore differs from the base language, and a bare key serves
+every region.
 
 The same mapping can come from the environment, which is usually easier for
 containers whose `mycroft.conf` carries no `lang2voice` entry for a given
@@ -47,8 +56,8 @@ docker run -e PHOONNX_DEFAULT_VOICE_GL=proxectonos/celtia \
 ```
 
 Resolution is table-major, not tag-major: every tag `lang2voice` might match
-(full tag, then primary subtag) is tried before the env table is looked at at
-all, so a `lang2voice` entry for the primary subtag (`pt`) still beats a more
+(standard form, then default region, then primary subtag) is tried before the
+env table is looked at at all, so a `lang2voice` entry for the primary subtag (`pt`) still beats a more
 specific `PHOONNX_DEFAULT_VOICE_PT_BR` env var — the config wins outright for
 any language it names anything for, and the env vars only fill in languages
 the config leaves unconfigured. Below both, the voice index's own default for

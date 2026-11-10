@@ -1030,6 +1030,42 @@ class TestFullSerializationRoundTrip(ManagerTestCase):
         json.dumps(d)
 
 
+class TestLanglessVoiceRoundTrip(ManagerTestCase):
+    """A voice added with no ``lang`` takes it from its config. The catalogue
+    lang gets the default region, but the phonemizer must keep the config
+    language after a save and a reload, or espeak reads ``en-GB`` with its
+    en-gb-x-rp voice instead of en-gb."""
+
+    def test_reloaded_voice_keeps_its_phonemizer_language(self):
+        from linguatag import standardize_lang, with_default_region
+        from scriptconv.phonemizers.mul import EspeakPhonemizer
+        for voice in ("en", "pt", "es"):
+            with self.subTest(espeak_voice=voice):
+                config = {"phoneme_type": "espeak", "espeak": {"voice": voice},
+                          "phoneme_id_map": {"_": [0], "a": [1]}}
+                voice_id = f"user/{voice}"
+                with patch.object(TTSModelInfo, "download_config",
+                                  lambda self, c=config: json.loads(json.dumps(c))):
+                    manager = TTSModelManager(cache_path=self.cache_path)
+                    info = TTSModelInfo(voice_id=voice_id, lang="",
+                                        model_url=f"{HUB}/model.onnx",
+                                        config_url=f"{HUB}/config.json")
+                    first = info.config.lang_code
+                    manager.add_voice(info)
+                    manager.save()
+
+                    reloaded_manager = TTSModelManager(cache_path=self.cache_path)
+                    reloaded_manager.load()
+                    reloaded = reloaded_manager.voices[voice_id]
+                    second = reloaded.config.lang_code
+
+                self.assertEqual(first, standardize_lang(voice))
+                self.assertEqual(second, standardize_lang(voice))
+                self.assertEqual(EspeakPhonemizer.get_lang(second),
+                                 EspeakPhonemizer.get_lang(voice))
+                self.assertEqual(reloaded.lang, with_default_region(voice))
+
+
 class TestVoiceIndexSources(unittest.TestCase):
     def test_every_bundled_index_is_listed(self):
         tmp = tempfile.TemporaryDirectory()
