@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.95.0a2](https://github.com/TigreGotico/phoonnx/tree/1.95.0a2) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.95.0a1...1.95.0a2)
+
+## [1.95.0a1](https://github.com/TigreGotico/phoonnx/tree/1.95.0a1) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.8a3...1.95.0a1)
+
+**Merged pull requests:**
+
+- feat: the three kasanoma voices read from the OpenVoiceOS mirrors [\#498](https://github.com/TigreGotico/phoonnx/pull/498) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.94.8a3](https://github.com/TigreGotico/phoonnx/tree/1.94.8a3) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.8a2...1.94.8a3)
@@ -333,25 +345,13 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.1a3...1.85.0a1)
 
-**Merged pull requests:**
-
-- feat: offline alignment export, plus the surgery/reference split out of voice.py [\#436](https://github.com/TigreGotico/phoonnx/pull/436) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.84.1a3](https://github.com/TigreGotico/phoonnx/tree/1.84.1a3) (2026-08-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.1a2...1.84.1a3)
 
-**Merged pull requests:**
-
-- refactor: split text normalization out of util, collect errors, validate the voice index [\#437](https://github.com/TigreGotico/phoonnx/pull/437) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.84.1a2](https://github.com/TigreGotico/phoonnx/tree/1.84.1a2) (2026-08-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.1a1...1.84.1a2)
-
-**Merged pull requests:**
-
-- refactor: lease-based residency for the voice cache [\#434](https://github.com/TigreGotico/phoonnx/pull/434) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.84.1a1](https://github.com/TigreGotico/phoonnx/tree/1.84.1a1) (2026-08-16)
 
