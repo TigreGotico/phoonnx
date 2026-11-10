@@ -586,6 +586,11 @@ class CanonicalLoader(ConfigLoader):
     def load(cls, request: LoadRequest) -> LoadedFields:
         config = request.config
         inference = config.get("inference", {})
+        # the catch-all loader sees every format, so "language" is not
+        # always a piper-style {"code": ...} stanza
+        language = config.get("language")
+        lang_code = request.lang_code or (
+            language.get("code") if isinstance(language, dict) else None)
         # before any config write: an unknown alphabet raises, and the caller's
         # dict must come back untouched when it does
         alphabet = request.alphabet or Alphabet(config.get("alphabet", "ipa"))
@@ -598,7 +603,7 @@ class CanonicalLoader(ConfigLoader):
         return LoadedFields(
             tokenizer=TTSTokenizer.from_phoonnx_config(config),
             engine=config.get("engine"),
-            lang_code=request.lang_code,
+            lang_code=lang_code,
             phoneme_type=request.phoneme_type or config.get("phoneme_type", PhonemeType.GRAPHEMES),
             alphabet=alphabet,
             add_diacritics=inference.get("add_diacritics", False),

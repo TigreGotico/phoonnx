@@ -418,13 +418,14 @@ def _yourtts_voice_json(
     default_d_vector: Optional[List[float]],
 ) -> Dict[str, Any]:
     """Build a phoonnx voice config for a YourTTS export."""
+    lang_code = model_config.get("lang_code") or ""
     cfg = {
         "engine": "yourtts",
         "audio": model_config.get("audio", {}),
         "inference": model_config.get("inference", {}),
         "num_symbols": model_config.get("num_symbols"),
         "phoneme_id_map": model_config.get("phoneme_id_map", {}),
-        "language": model_config.get("language", {}),
+        "language": model_config.get("language") or {"code": lang_code},
         "espeak": model_config.get("espeak", {}),
         "phoneme_type": model_config.get("phoneme_type", ""),
         "phonemizer_model": model_config.get("phonemizer_model", ""),
