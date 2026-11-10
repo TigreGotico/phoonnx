@@ -240,3 +240,15 @@ def test_a_huge_value_is_read_digit_by_digit_or_as_written_not_hung_on():
 ])
 def test_say_as_a_negative_decimal_keeps_its_sign(text, lang, expected):
     assert say_as_text(text, "cardinal", lang) == expected
+
+
+@pytest.mark.parametrize("text,lang,expected", [
+    ("3.5", "eu", "hiru koma bost"),
+    ("3.5", "ar", "ثلاثة فاصلة خمسة"),
+    ("3,5", "ca", "tres coma cinc"),
+    ("-12,25", "af", "min twaalf komma twee vyf"),
+    ("-0.5", "sw", "kasoro sifuri nukta tano"),
+    ("3.5", "xx", "3.5"),  # no number words for the language: read as written
+])
+def test_say_as_a_decimal_outside_the_seven_languages_has_no_english_point(text, lang, expected):
+    assert say_as_text(text, "cardinal", lang) == expected

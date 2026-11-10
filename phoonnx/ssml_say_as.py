@@ -109,17 +109,23 @@ def _number(value: str, lang: str, ordinal: bool = False) -> str:
     if ordinal:
         return _ordinal_words(int(number), lang)
     if isinstance(number, float):
-        # Say the two halves ourselves: the parser drops a zero whole part in German, reads the
-        # decimals as one number in Portuguese and leaves them as digits above 999 in French.
-        whole, _, fraction = text.partition(".")
-        point = _DECIMAL_WORD.get(lang.split("-")[0], "point")
-        digits = " ".join(pronounce_number(int(d), lang=lang) for d in fraction)
-        said = pronounce_number(abs(int(whole or 0)), lang=lang)
-        if whole.startswith("-"):
-            # int("-0") is 0, so the sign of "-0.5" is said separately, in the parser's own word.
+        whole, _, fraction = text.lstrip("+-").partition(".")
+        point = _DECIMAL_WORD.get(lang.split("-")[0])
+        if point is None:
+            # The parser's own decimal reading; a language it has no words for raises, and the
+            # value is then read as written.
+            said = pronounce_number(abs(number), lang=lang, places=len(fraction))
+        else:
+            # Say the two halves ourselves: the parser drops a zero whole part in German, reads
+            # the decimals as one number in Portuguese and leaves them as digits above 999 in French.
+            digits = " ".join(pronounce_number(int(d), lang=lang) for d in fraction)
+            said = f"{pronounce_number(int(whole or 0), lang=lang)} {point} {digits}"
+        if text.startswith("-"):
+            # The sign is said apart, in the parser's own word for minus: int("-0") has no sign,
+            # and the parser drops the fraction of a negative value in some languages.
             one = pronounce_number(1, lang=lang)
             said = f"{pronounce_number(-1, lang=lang).removesuffix(one).strip()} {said}"
-        return f"{said} {point} {digits}"
+        return said
     said = pronounce_number(number, lang=lang)
     return said
 
