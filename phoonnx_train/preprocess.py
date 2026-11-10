@@ -923,9 +923,8 @@ def cli(
             # Monotonic alignment needs at least one spectrogram frame per
             # phoneme id; a shorter spectrogram means the audio does not
             # contain the full text (e.g. a truncated clip)
-            # The worker that wrote the spectrogram measured it; a run resumed
-            # from an earlier dataset.jsonl carries no count and is read back
-            # here, which is the only path that still touches the disk.
+            # The worker that wrote or read the spectrogram measured it; an
+            # utterance without a count is read back from disk.
             if utt.audio_spec_path is not None:
                 spec_frames = utt.spec_frames
                 if spec_frames is None:
