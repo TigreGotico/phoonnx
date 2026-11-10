@@ -159,6 +159,16 @@ supports) is not a phonemizer method — it is a separate step exposed as
 phonemizing when a voice enables `add_diacritics`. scriptconv owns the
 diacritizer backends and auto-provisions the Hebrew phonikud model.
 
+## G2P for OVOS
+
+The phonemizers on this page come from [scriptconv](https://github.com/TigreGotico/scriptconv).
+phoonnx re-exports `PhonemeType` and `Alphabet` from it. For grapheme-to-phoneme
+conversion in OpenVoiceOS without the TTS pipeline, use
+[ovos-scriptconv-g2p-plugin](https://github.com/TigreGotico/ovos-scriptconv-g2p-plugin),
+an OPM `opm.g2p` plugin built on scriptconv. scriptconv's
+[docs/ovos.md](https://github.com/TigreGotico/scriptconv/blob/dev/docs/ovos.md)
+gives the install and configuration steps.
+
 ## Attribution
 
 phoonnx wraps and, where licensing allows, bundles domain-specific G2P work, including:

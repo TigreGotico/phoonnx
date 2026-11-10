@@ -1,5 +1,71 @@
 # Changelog
 
+## [1.96.0a1](https://github.com/TigreGotico/phoonnx/tree/1.96.0a1) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.95.1a1...1.96.0a1)
+
+**Merged pull requests:**
+
+- feat\(ssml\): say-as types, pitch, marks, X-SAMPA, whisper/soft/drc, breaths [\#547](https://github.com/TigreGotico/phoonnx/pull/547) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.95.1a1](https://github.com/TigreGotico/phoonnx/tree/1.95.1a1) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.95.0a2...1.95.1a1)
+
+**Merged pull requests:**
+
+- fix: user phonetic spellings override across case; a non-UTF-8 user file is skipped [\#546](https://github.com/TigreGotico/phoonnx/pull/546) ([JarbasAl](https://github.com/JarbasAl))
+- feat: SSML support \(break, prosody, emphasis, lang, say-as, sub, phoneme\) [\#538](https://github.com/TigreGotico/phoonnx/pull/538) ([goldyfruit](https://github.com/goldyfruit))
+- feat: a user directory of phonetic spellings overrides the packaged ones [\#537](https://github.com/TigreGotico/phoonnx/pull/537) ([goldyfruit](https://github.com/goldyfruit))
+- feat: SynthesisConfig.target\_loudness keeps synthesized sentences level [\#536](https://github.com/TigreGotico/phoonnx/pull/536) ([goldyfruit](https://github.com/goldyfruit))
+- fix: espeak voices keep English contractions as written [\#535](https://github.com/TigreGotico/phoonnx/pull/535) ([goldyfruit](https://github.com/goldyfruit))
+
+## [1.95.0a2](https://github.com/TigreGotico/phoonnx/tree/1.95.0a2) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.95.0a1...1.95.0a2)
+
+## [1.95.0a1](https://github.com/TigreGotico/phoonnx/tree/1.95.0a1) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.8a3...1.95.0a1)
+
+**Merged pull requests:**
+
+- feat: the three kasanoma voices read from the OpenVoiceOS mirrors [\#498](https://github.com/TigreGotico/phoonnx/pull/498) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.94.8a3](https://github.com/TigreGotico/phoonnx/tree/1.94.8a3) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.8a2...1.94.8a3)
+
+**Merged pull requests:**
+
+- Update dependency diffusers to \>=0.42.1,\<0.43 [\#447](https://github.com/TigreGotico/phoonnx/pull/447) ([renovate[bot]](https://github.com/apps/renovate))
+
+## [1.94.8a2](https://github.com/TigreGotico/phoonnx/tree/1.94.8a2) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.8a1...1.94.8a2)
+
+## [1.94.8a1](https://github.com/TigreGotico/phoonnx/tree/1.94.8a1) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.7a2...1.94.8a1)
+
+## [1.94.7a2](https://github.com/TigreGotico/phoonnx/tree/1.94.7a2) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.7a1...1.94.7a2)
+
+**Merged pull requests:**
+
+- ci: pin conventional-release-labels and scope the label job [\#496](https://github.com/TigreGotico/phoonnx/pull/496) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix\(deps\): raise the ovos-plugin-manager floor above the pkg\_resources import [\#494](https://github.com/TigreGotico/phoonnx/pull/494) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- Update dependency onnx to \<1.24 [\#491](https://github.com/TigreGotico/phoonnx/pull/491) ([renovate[bot]](https://github.com/apps/renovate))
+
+## [1.94.7a1](https://github.com/TigreGotico/phoonnx/tree/1.94.7a1) (2026-11-05)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.6a1...1.94.7a1)
+
+**Merged pull requests:**
+
+- fix: diacritize training text through scriptconv [\#533](https://github.com/TigreGotico/phoonnx/pull/533) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.94.6a1](https://github.com/TigreGotico/phoonnx/tree/1.94.6a1) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.5a4...1.94.6a1)
@@ -299,41 +365,21 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.1a3...1.85.0a1)
 
-**Merged pull requests:**
-
-- feat: offline alignment export, plus the surgery/reference split out of voice.py [\#436](https://github.com/TigreGotico/phoonnx/pull/436) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.84.1a3](https://github.com/TigreGotico/phoonnx/tree/1.84.1a3) (2026-08-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.1a2...1.84.1a3)
-
-**Merged pull requests:**
-
-- refactor: split text normalization out of util, collect errors, validate the voice index [\#437](https://github.com/TigreGotico/phoonnx/pull/437) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.84.1a2](https://github.com/TigreGotico/phoonnx/tree/1.84.1a2) (2026-08-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.1a1...1.84.1a2)
 
-**Merged pull requests:**
-
-- refactor: lease-based residency for the voice cache [\#434](https://github.com/TigreGotico/phoonnx/pull/434) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.84.1a1](https://github.com/TigreGotico/phoonnx/tree/1.84.1a1) (2026-08-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.0a2...1.84.1a1)
 
-**Merged pull requests:**
-
-- fix: remove duplicate voice-index entries in piper/piper\_community [\#429](https://github.com/TigreGotico/phoonnx/pull/429) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.84.0a2](https://github.com/TigreGotico/phoonnx/tree/1.84.0a2) (2026-08-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.0a1...1.84.0a2)
-
-**Merged pull requests:**
-
-- refactor: per-format config loader registry [\#428](https://github.com/TigreGotico/phoonnx/pull/428) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.84.0a1](https://github.com/TigreGotico/phoonnx/tree/1.84.0a1) (2026-08-15)
 
@@ -354,10 +400,6 @@
 ## [1.82.1a1](https://github.com/TigreGotico/phoonnx/tree/1.82.1a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.82.0a1...1.82.1a1)
-
-**Merged pull requests:**
-
-- fix: let phonemizer\_lang override lang\_code independently of catalogue lang [\#421](https://github.com/TigreGotico/phoonnx/pull/421) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.82.0a1](https://github.com/TigreGotico/phoonnx/tree/1.82.0a1) (2026-08-15)
 

@@ -163,12 +163,68 @@ for chunk in voice.synthesize(text):
 
 ## Phonetic Spellings
 
-You can define custom word-level pronunciation overrides that are applied before phonemization:
+Word-level respellings are applied to the text before phonemization (`enable_phonetic_spellings`,
+on by default). They come from `phoonnx/locale/<lang>/phonetic_spellings.txt`, one `word: spelling`
+per line (`#` starts a comment), matched as whole words, ignoring case.
+
+Add your own without touching the package: put `<lang>.txt` files in a directory and point
+`PHOONNX_PHONETIC_SPELLINGS_DIR` at it.
+
+```
+$ cat ~/.config/phoonnx/spellings/fr.txt
+Thalovant: Talovant
+d'accord: dakor
+
+$ PHOONNX_PHONETIC_SPELLINGS_DIR=~/.config/phoonnx/spellings python my_app.py
+```
+
+A file is named by primary language (`fr.txt`) and/or full tag (`fr-CA.txt`); they are applied
+over the packaged file, the full tag over the primary language. The directory can also be passed
+to `PhoneticSpellings.from_lang(lang, user_dir=...)`.
 
 ```python
-# phonetic_spellings is loaded from a JSON file at voice load time
-# Format: {"word": "replacement_text_or_phonemes"}
-voice.phonetic_spellings  # dict-like object, or None if not configured
+voice.phonetic_spellings  # PhoneticSpellings (.replacements dict, .apply(text)), or None
+```
+
+## SSML
+
+`TTSVoice.synthesize_ssml()` and `synthesize_ssml_wav()` read SSML and turn it into silence, pace,
+loudness, pitch, language and sound effects. Input that is not SSML is synthesized as it is.
+
+| Tag | Effect |
+| --- | --- |
+| `<break time="500ms"/>`, `strength=` | silence of that length |
+| `<p>`, `<s>` | a pause at the paragraph / sentence edge |
+| `<prosody rate= volume= pitch=>` | pace (the voice's length scale), loudness, and pitch (`+2st`, `-10%`, `high`; Hz is ignored) |
+| `<emphasis level=>` | a little slower and louder (or softer for `reduced`) |
+| `<lang xml:lang=>`, `<voice>` | a multilingual voice uses that language's id for the piece; a monolingual voice says the words in its own language. `<say-as>` inside it also reads its value in that language |
+| `<say-as interpret-as=...>` | `cardinal`, `ordinal`, `digits`, `fraction`, `unit`, `date` (+`format="mdy"`), `time`, `currency`, `address`, `telephone`, `characters`/`spell-out`, `expletive` (a bleep), `interjection` |
+| `<sub alias=>` | substituted text |
+| `<phoneme alphabet="ipa\|x-sampa" ph=>` | inline phonemes (X-SAMPA is converted to IPA) |
+| `<mark name=>` | `on_mark(name, seconds)` is called as the audio that follows is produced |
+| `<amazon:effect name="whispered\|drc">`, `phonation="soft"`, `vocal-tract-length="+10%"` | whisper, soft voice, dynamic range compression, a longer or shorter vocal tract |
+| `<amazon:auto-breaths>`, `<amazon:breath>` | breaths between sentences, or at a point |
+
+`say-as` reads numbers, dates, times and units with the same parsers as the text normalizer
+(`ovos-number-parser`, `ovos-date-parser`), in the language of the text, so `<lang>` changes how
+they are read. A value that cannot be read that way (`<say-as interpret-as="date">soon</say-as>`)
+is spoken as written.
+
+Pitch, whisper, soft, compression, breaths and bleeps are applied to the finished audio
+(`phoonnx.audio_fx`, numpy only), not by the model: pitch shifts move the formants with the pitch,
+so keep them within a few semitones; whisper is an approximation that keeps the words and drops the
+voicing. Emotions and speaking styles are not something a VITS voice can do and are read as plain
+text. A document that does not parse is spoken as its text with the tags removed, and plain text
+containing a stray `<` is never mistaken for SSML (`phoonnx.ssml.looks_like_ssml`). The OVOS plugin
+(`phoonnx.opm`) routes SSML input here and advertises `ssml_tags`.
+
+```python
+marks = []
+with wave.open("out.wav", "wb") as wav:
+    voice.synthesize_ssml_wav(
+        '<speak>Six degrees. <break time="400ms"/> <mark name="rain"/>'
+        '<prosody rate="slow" pitch="-2st">Feels like <say-as interpret-as="cardinal">4</say-as>.</prosody>'
+        '</speak>', wav, on_mark=lambda name, seconds: marks.append((name, seconds)))
 ```
 
 ## Multi-Speaker Voices

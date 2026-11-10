@@ -15,9 +15,9 @@ import tempfile
 import wave
 import weakref
 from contextlib import suppress
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union, Dict
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union, Dict
 
 import numpy as np
 import onnxruntime
@@ -37,6 +37,8 @@ from phoonnx.engines.base import (
 from scriptconv.phonemizers.base import BasePhonemizer
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
 from phoonnx.reference_audio import load_reference_audio
+from phoonnx import audio_fx
+from phoonnx.ssml import parse_ssml
 from scriptconv.phonemizers.base import PhonemizedChunks
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
@@ -97,23 +99,60 @@ class _VoiceConversion:
         weakref.finalize(self, _unlink, ref_path)
 
 
+# Directory of user phonetic spellings (``<lang>.txt``) applied over the packaged ones.
+USER_SPELLINGS_DIR_ENV = "PHOONNX_PHONETIC_SPELLINGS_DIR"
+
+
 @dataclass
 class PhoneticSpellings:
     replacements: Dict[str, str] = field(default_factory=dict)
 
     @staticmethod
-    def from_lang(lang: str, locale_path: str = f"{os.path.dirname(__file__)}/locale"):
-        langs = os.listdir(locale_path)
-        lang2 = closest_lang(lang, langs)
+    def from_lang(lang: str, locale_path: str = f"{os.path.dirname(__file__)}/locale",
+                  user_dir: Optional[str] = None):
+        """The spellings for *lang*: the packaged file, then the user's.
+
+        A user directory (``user_dir``, or ``$PHOONNX_PHONETIC_SPELLINGS_DIR``) may hold
+        ``<lang>.txt`` files in the same ``word: spelling`` format, named by primary language
+        (``fr.txt``) and/or full tag (``fr-CA.txt``). They are applied over the packaged file,
+        the full tag over the primary language, so a name, a brand or a place the voice gets
+        wrong can be respelled without touching the package."""
+        replacements: Dict[str, str] = {}
+        found = False
+        lang2 = closest_lang(lang, os.listdir(locale_path))
         if lang2 is not None:
-            spellings_file = f"{locale_path}/{lang2}/phonetic_spellings.txt"
-            return PhoneticSpellings.from_path(spellings_file)
-        raise FileNotFoundError(f"Spellings file for '{lang}' not found")
+            replacements.update(
+                PhoneticSpellings.from_path(f"{locale_path}/{lang2}/phonetic_spellings.txt").replacements)
+            found = True
+        user_dir = user_dir if user_dir is not None else os.environ.get(USER_SPELLINGS_DIR_ENV)
+        if user_dir:
+            tag = lang.replace("_", "-")
+            for name in dict.fromkeys((tag.split("-")[0], tag)):
+                for candidate in dict.fromkeys((name, name.lower())):
+                    path = os.path.join(user_dir, f"{candidate}.txt")
+                    if not os.path.isfile(path):
+                        continue
+                    try:
+                        user = PhoneticSpellings.from_path(path).replacements
+                    except UnicodeDecodeError as e:
+                        LOG.warning(f"Skipping phonetic spellings file that is not UTF-8: {path} ({e})")
+                        break
+                    # apply() matches ignoring case, so a user word replaces every packaged
+                    # word that differs from it only in case
+                    for word, spelling in user.items():
+                        for key in [k for k in replacements if k.lower() == word.lower()]:
+                            del replacements[key]
+                        replacements[word] = spelling
+                    found = True
+                    break
+        if not found:
+            raise FileNotFoundError(f"Spellings file for '{lang}' not found")
+        return PhoneticSpellings(replacements)
 
     @staticmethod
     def from_path(spellings_file: str):
         replacements = {}
-        with open(spellings_file) as f:
+        with open(spellings_file, encoding="utf-8-sig") as f:
             lines = f.read().split("\n")
             for l in lines:
                 l = l.strip()
@@ -133,6 +172,30 @@ class PhoneticSpellings:
             # Replace using regex with case insensitivity
             text = re.sub(pattern, v, text, flags=re.IGNORECASE)
         return text
+
+
+_LOUDNESS_WARNED = False
+
+
+def level_audio(audio: np.ndarray, syn_config: "SynthesisConfig", sample_rate: int) -> np.ndarray:
+    """Set a synthesized sentence's level: a loudness target if asked for, else the peak."""
+    global _LOUDNESS_WARNED
+    if syn_config.target_loudness is not None:
+        try:
+            from phoonnx.engines.outetts import normalize_loudness
+            return normalize_loudness(audio, float(syn_config.target_loudness), rate=sample_rate)
+        except ImportError:
+            if not _LOUDNESS_WARNED:
+                _LOUDNESS_WARNED = True
+                LOG.warning("target_loudness needs scipy, which is not installed: "
+                            "using peak normalization")
+    if syn_config.normalize_audio:
+        max_val = np.max(np.abs(audio))
+        if max_val < 1e-8:
+            # Prevent division by zero
+            return np.zeros_like(audio)
+        return audio / max_val
+    return audio
 
 
 @dataclass
@@ -264,6 +327,7 @@ class TTSVoice:
                 self.config.phoneme_type,
                 self.config.alphabet,
                 self.config.phonemizer_model,
+                keep_punctuation=self.config.keep_punctuation,
             )
 
         # Engine adapter — auto-detect if not explicitly provided
@@ -816,13 +880,7 @@ class TTSVoice:
             else:
                 audio = audio_result
 
-            if syn_config.normalize_audio:
-                max_val = np.max(np.abs(audio))
-                if max_val < 1e-8:
-                    # Prevent division by zero
-                    audio = np.zeros_like(audio)
-                else:
-                    audio = audio / max_val
+            audio = level_audio(audio, syn_config, self.config.sample_rate)
 
             if syn_config.volume != 1.0:
                 audio = audio * syn_config.volume
@@ -971,6 +1029,168 @@ class TTSVoice:
 
             wav_file.writeframes(audio_chunk.audio_int16_bytes)
 
+
+    def synthesize_ssml(
+            self,
+            ssml: str,
+            syn_config: Optional[SynthesisConfig] = None,
+            lang: Optional[str] = None,
+            include_alignments: bool = False,
+            on_mark: Optional[Callable[[str, float], None]] = None,
+    ) -> Iterable[AudioChunk]:
+        """Synthesize SSML, yielding silence, speech and sound chunks in order.
+
+        The markup is read by :func:`phoonnx.ssml.parse_ssml`. ``<break>``, ``<p>`` and ``<s>``
+        become silence; ``<prosody rate>`` and ``<emphasis>`` change the length scale (a rate of
+        1.25 is ``length_scale / 1.25``); ``<prosody volume>`` scales the samples; ``<prosody
+        pitch>`` and ``vocal-tract-length`` shift the finished audio (:mod:`phoonnx.audio_fx`);
+        ``<lang>`` picks the language id of a multilingual voice when it has one (a monolingual
+        voice says the words in its own language); ``<say-as>``, ``<sub>`` and ``<phoneme>`` are
+        read as words and phonemes; ``<amazon:effect>`` whispers, softens or compresses the audio;
+        ``<amazon:auto-breaths>`` and ``<amazon:breath>`` add breaths; an expletive is a bleep. A
+        text that is not SSML is synthesized as it is.
+
+        :param ssml: A ``<speak>`` document, or plain text.
+        :param syn_config: Base synthesis configuration; each piece adjusts a copy.
+        :param lang: Language of the text when the markup does not say (default: the voice's).
+        :param include_alignments: As in :meth:`synthesize`.
+        :param on_mark: Called as ``on_mark(name, seconds)`` for each ``<mark name>``, just before
+            the audio that follows it is yielded; `seconds` is the time since the start of the
+            audio, counted from the chunks yielded so far.
+        """
+        base = syn_config or SynthesisConfig()
+        base_length = base.length_scale
+        if base_length is None:
+            base_length = self.config.length_scale
+        if base_length is None:
+            base_length = 1.0
+        voice_lang = lang or self.config.lang_code
+        # Set by the first speech chunk: voice conversion and super-resolution can move it off
+        # the model's own rate, and every chunk of one stream must share it.
+        rate: Optional[int] = None
+        waiting: list = []  # sounds and marks ahead of the first speech, made once rate is known
+        elapsed = 0.0
+
+        def passed(chunk: AudioChunk) -> AudioChunk:
+            nonlocal elapsed, rate
+            rate = chunk.sample_rate
+            elapsed += len(chunk.audio_float_array) / chunk.sample_rate
+            return chunk
+
+        def silence(ms: int, at_rate: int) -> AudioChunk:
+            return AudioChunk(sample_rate=at_rate, sample_width=2, sample_channels=1,
+                              audio_float_array=np.zeros(int(at_rate * ms / 1000), dtype=np.float32))
+
+        def tone(kind: str, ms: int, volume: float, at_rate: int) -> AudioChunk:
+            samples = audio_fx.beep(at_rate, ms) if kind == "beep" else audio_fx.breath(at_rate, ms, volume)
+            return AudioChunk(sample_rate=at_rate, sample_width=2, sample_channels=1,
+                              audio_float_array=samples)
+
+        def sound(piece: Any, at_rate: int) -> Iterable[AudioChunk]:
+            """A piece with no words: its pause, its marks, then its sound if it has one."""
+            if piece.pause_ms:
+                yield passed(silence(piece.pause_ms, at_rate))
+            for name in piece.marks:
+                if on_mark is not None:
+                    on_mark(name, elapsed)
+            if piece.sound is not None:
+                kind, ms, volume = piece.sound
+                yield passed(tone(kind, ms, volume, at_rate))
+
+        for piece in parse_ssml(ssml, voice_lang):
+            if piece.sound is not None or not piece.text:
+                if rate is None:
+                    waiting.append(piece)
+                else:
+                    yield from sound(piece, rate)
+                continue
+            pause_ms = piece.pause_ms
+            marks = list(piece.marks)
+
+            def before_audio(at_rate: int) -> Iterable[AudioChunk]:
+                """The sounds still waiting, then the pause and the marks, ahead of a piece's audio."""
+                nonlocal pause_ms, marks
+                while waiting:
+                    yield from sound(waiting.pop(0), at_rate)
+                if pause_ms:
+                    yield passed(silence(pause_ms, at_rate))
+                    pause_ms = 0
+                while marks:
+                    name = marks.pop(0)
+                    if on_mark is not None:
+                        on_mark(name, elapsed)
+
+            settings: Dict[str, Any] = {}
+            if piece.rate != 1.0:
+                settings["length_scale"] = base_length / piece.rate
+            if piece.volume != 1.0:
+                settings["volume"] = base.volume * piece.volume
+            lang_id = self._lang_id_for(piece.lang)
+            if lang_id is not None:
+                settings["lang_id"] = lang_id
+            piece_config = replace(base, **settings) if settings else base
+            for index, chunk in enumerate(self.synthesize(
+                    piece.text, syn_config=piece_config, include_alignments=include_alignments)):
+                # Silence is made at the rate of the speech that follows it, which post-processing
+                # (e.g. super-resolution) may have moved off the model's native rate.
+                yield from before_audio(chunk.sample_rate)
+                if piece.breaths and index and index % piece.breaths[2] == 0:
+                    yield passed(tone("breath", piece.breaths[1], piece.breaths[0], chunk.sample_rate))
+                yield passed(self._with_effects(chunk, piece))
+        for piece in waiting:  # no words at all: the model's own rate
+            yield from sound(piece, self.config.sample_rate)
+
+    @staticmethod
+    def _with_effects(chunk: AudioChunk, piece: Any) -> AudioChunk:
+        """`chunk` with the piece's pitch shift and effects applied (the chunk itself if none)."""
+        if not piece.pitch and not piece.effects:
+            return chunk
+        samples = np.asarray(chunk.audio_float_array, dtype=np.float32)
+        if piece.pitch:
+            samples = audio_fx.pitch_shift(samples, chunk.sample_rate, piece.pitch)
+        if "whisper" in piece.effects:
+            samples = audio_fx.whisper(samples, chunk.sample_rate)
+        if "soft" in piece.effects:
+            samples = audio_fx.soft(samples, chunk.sample_rate)
+        if "drc" in piece.effects:
+            samples = audio_fx.compress(samples, chunk.sample_rate)
+        return replace(chunk, audio_float_array=samples,
+                       _audio_int16_array=None, _audio_int16_bytes=None)
+
+    def _lang_id_for(self, tag: Optional[str]) -> Optional[int]:
+        """The language id of a multilingual voice for *tag*, or None (monolingual, or unknown)."""
+        mapping = getattr(self.config, "lang_id_map", None) or {}
+        if not tag or not mapping:
+            return None
+        wanted = tag.replace("_", "-").lower()
+        for key in (wanted, wanted.split("-")[0]):
+            for name, ident in mapping.items():
+                if name.replace("_", "-").lower() == key:
+                    return int(ident)
+        return None
+
+    def synthesize_ssml_wav(
+            self,
+            ssml: str,
+            wav_file: wave.Wave_write,
+            syn_config: Optional[SynthesisConfig] = None,
+            set_wav_format: bool = True,
+            lang: Optional[str] = None,
+            on_mark: Optional[Callable[[str, float], None]] = None,
+    ) -> None:
+        """Synthesize SSML and write it as WAV audio (see :meth:`synthesize_ssml`)."""
+        if set_wav_format:
+            wav_file.setframerate(self.config.sample_rate)
+            wav_file.setsampwidth(2)
+            wav_file.setnchannels(1)
+        first = True
+        for chunk in self.synthesize_ssml(ssml, syn_config=syn_config, lang=lang, on_mark=on_mark):
+            if first and set_wav_format:
+                wav_file.setframerate(chunk.sample_rate)
+                wav_file.setsampwidth(chunk.sample_width)
+                wav_file.setnchannels(chunk.sample_channels)
+            first = False
+            wav_file.writeframes(chunk.audio_int16_bytes)
 
     def _prompt_token_ids(self, text: str, lang: Optional[str] = None) -> list[int]:
         """Tokenize a cloning reference transcription into prompt token ids, reusing

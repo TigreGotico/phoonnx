@@ -1,3 +1,4 @@
+import functools
 import json
 from dataclasses import dataclass, field
 from enum import Enum
@@ -186,6 +187,15 @@ class VoiceConfig:
     # the base tokens with a literal token string). Empty -> derive the token from lang_code.
     lang_tokens: Dict[str, str] = field(default_factory=dict)
 
+    keep_punctuation: bool = False
+    """Whether the model was trained with clause punctuation (``, . ? ! : ;``).
+
+    Synthesis keeps punctuation only when this is true, so a model is fed the
+    symbols it learned and nothing else. Piper voices are trained with it.
+    phoonnx datasets record it in ``config.json`` from preprocessing; a phoonnx
+    config without the key was trained without it.
+    """
+
     def __post_init__(self):
         """
         Finalize dataclass defaults after initialization.
@@ -327,6 +337,7 @@ class VoiceConfig:
             alphabet=loaded.alphabet,
             engine=loaded.engine,
             phonemizer_model=config.get("phonemizer_model"),
+            keep_punctuation=bool(config.get("keep_punctuation", loaded.keep_punctuation)),
             phoneme_type=loaded.phoneme_type,
             speaker_id_map=config.get("speaker_id_map", {}),
             blank_between=BlankBetween(loaded.blank_between),
@@ -377,6 +388,7 @@ class VoiceConfig:
             "lang_id_map": dict(self.lang_id_map or {}),
             "lang_tokens": dict(self.lang_tokens or {}),
             "phonemizer_model": self.phonemizer_model,
+            "keep_punctuation": self.keep_punctuation,
             "inference": {
                 "noise_scale": self.noise_scale,
                 "length_scale": self.length_scale,
@@ -470,6 +482,16 @@ class SynthesisConfig:
 
     normalize_audio: bool = True
     """Enable/disable scaling audio samples to fit full range."""
+
+    target_loudness: Optional[float] = None
+    """Integrated loudness, in LUFS, each synthesized sentence is brought to (for example ``-16.0``).
+
+    Peak normalization (``normalize_audio``) makes every sentence peak at full scale, so how loud
+    it *sounds* depends on how peaky it is: in a week of real sentences the speech level ranged
+    over 3.5 dB between the 5th and 95th percentile, and consecutive sentences jumped in volume.
+    A loudness target keeps them level, with the peaks limited to -1 dBFS. ``None`` (the default)
+    keeps the peak normalization. It needs ``scipy``; without it a warning is logged once and peak
+    normalization is used."""
 
     volume: float = 1.0
     """Multiplier for audio samples (< 1 is quieter, > 1 is louder)."""
@@ -585,7 +607,8 @@ def check_lang_supported(voice: str, lang_code: Optional[str],
 
 def get_phonemizer(phoneme_type: PhonemeType,
                    alphabet: Alphabet = Alphabet.IPA,
-                   model: Optional[str] = None) -> 'Phonemizer':
+                   model: Optional[str] = None,
+                   keep_punctuation: bool = False) -> 'Phonemizer':
     """
     Create a phonemizer instance for the specified phonemeization strategy.
 
@@ -594,6 +617,9 @@ def get_phonemizer(phoneme_type: PhonemeType,
     phonemizers exactly.  All backends, including the license-quarantined
     mantoq/KoG2P (vendored in scriptconv under their own licenses), come from
     scriptconv, which also auto-provisions the Hebrew phonikud model.
+
+    ``keep_punctuation`` keeps clause punctuation in the phonemes; it must match
+    how the model was trained (see :attr:`VoiceConfig.keep_punctuation`).
 
     Raises:
         ValueError: If the provided `phoneme_type` is not supported.
@@ -607,7 +633,14 @@ def get_phonemizer(phoneme_type: PhonemeType,
     except KeyError:
         raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
 
-    phonemizer.normalizer = _normalize
+    if phoneme_type == PhonemeType.ESPEAK:
+        # espeak-ng reads a contraction the way people say it ("don't" -> dˈoʊnt). Expanding it
+        # first ("do not") makes every English sentence sound like a form letter, and the table
+        # is a guess for "he's" and "I'd". Numbers, dates, units and titles are still normalized.
+        phonemizer.normalizer = functools.partial(_normalize, expand_contractions=False)
+    else:
+        phonemizer.normalizer = _normalize
+    phonemizer.keep_punctuation = keep_punctuation
     return phonemizer
 
 
