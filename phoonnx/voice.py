@@ -1053,7 +1053,10 @@ class TTSVoice:
         if base_length is None:
             base_length = 1.0
         voice_lang = lang or self.config.lang_code
-        rate = self.config.sample_rate
+        # Set by the first speech chunk: voice conversion and super-resolution can move it off
+        # the model's own rate, and every chunk of one stream must share it.
+        rate: Optional[int] = None
+        waiting: list = []  # sounds and marks ahead of the first speech, made once rate is known
         elapsed = 0.0
 
         def passed(chunk: AudioChunk) -> AudioChunk:
@@ -1071,13 +1074,32 @@ class TTSVoice:
             return AudioChunk(sample_rate=at_rate, sample_width=2, sample_channels=1,
                               audio_float_array=samples)
 
+        def sound(piece: Any, at_rate: int) -> Iterable[AudioChunk]:
+            """A piece with no words: its pause, its marks, then its sound if it has one."""
+            if piece.pause_ms:
+                yield passed(silence(piece.pause_ms, at_rate))
+            for name in piece.marks:
+                if on_mark is not None:
+                    on_mark(name, elapsed)
+            if piece.sound is not None:
+                kind, ms, volume = piece.sound
+                yield passed(tone(kind, ms, volume, at_rate))
+
         for piece in parse_ssml(ssml, voice_lang):
+            if piece.sound is not None or not piece.text:
+                if rate is None:
+                    waiting.append(piece)
+                else:
+                    yield from sound(piece, rate)
+                continue
             pause_ms = piece.pause_ms
             marks = list(piece.marks)
 
             def before_audio(at_rate: int) -> Iterable[AudioChunk]:
-                """The pause, then the marks, ahead of a piece's first audio."""
+                """The sounds still waiting, then the pause and the marks, ahead of a piece's audio."""
                 nonlocal pause_ms, marks
+                while waiting:
+                    yield from sound(waiting.pop(0), at_rate)
                 if pause_ms:
                     yield passed(silence(pause_ms, at_rate))
                     pause_ms = 0
@@ -1086,14 +1108,6 @@ class TTSVoice:
                     if on_mark is not None:
                         on_mark(name, elapsed)
 
-            if piece.sound is not None:
-                kind, ms, volume = piece.sound
-                yield from before_audio(rate)
-                yield passed(tone(kind, ms, volume, rate))
-                continue
-            if not piece.text:  # marks with nothing after them
-                list(before_audio(rate))
-                continue
             settings: Dict[str, Any] = {}
             if piece.rate != 1.0:
                 settings["length_scale"] = base_length / piece.rate
@@ -1111,6 +1125,8 @@ class TTSVoice:
                 if piece.breaths and index and index % piece.breaths[2] == 0:
                     yield passed(tone("breath", piece.breaths[1], piece.breaths[0], chunk.sample_rate))
                 yield passed(self._with_effects(chunk, piece))
+        for piece in waiting:  # no words at all: the model's own rate
+            yield from sound(piece, self.config.sample_rate)
 
     @staticmethod
     def _with_effects(chunk: AudioChunk, piece: Any) -> AudioChunk:

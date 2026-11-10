@@ -273,3 +273,41 @@ def test_say_as_address_pairs_house_number_digits_only_in_english(text, lang, ex
 ])
 def test_xsampa_symbols_follow_the_chart(xsampa, ipa):
     assert xsampa_to_ipa(xsampa) == ipa
+
+
+def test_a_sound_before_the_first_words_is_made_at_the_rate_of_the_speech():
+    """Voice conversion or super-resolution can move the speech off the model's own rate."""
+    import io
+    import wave
+
+    rate = 44100  # the model's own rate is SR (22050)
+    voice = TTSVoice.__new__(TTSVoice)
+    voice.config = _Config()
+
+    def synthesize(text, syn_config=None, include_alignments=False):
+        yield AudioChunk(sample_rate=rate, sample_width=2, sample_channels=1,
+                         audio_float_array=np.full(rate // 10, 0.1, dtype=np.float32))
+
+    voice.synthesize = synthesize
+    ssml = ('<speak><break time="100ms"/><amazon:breath duration="short"/><mark name="m"/>'
+            '<say-as interpret-as="expletive">x</say-as>hello</speak>')
+    marks = []
+    chunks = list(voice.synthesize_ssml(ssml, on_mark=lambda name, at: marks.append((name, at))))
+    # 100 ms pause, 250 ms breath, 350 ms bleep, then the words
+    assert [c.sample_rate for c in chunks] == [rate] * 4
+    assert [len(c.audio_float_array) for c in chunks] == [rate * ms // 1000 for ms in (100, 250, 350, 100)]
+    assert marks == [("m", pytest.approx(0.35))]
+
+    out = io.BytesIO()
+    with wave.open(out, "wb") as wav:
+        voice.synthesize_ssml_wav(ssml, wav)
+    out.seek(0)
+    with wave.open(out, "rb") as wav:
+        assert wav.getframerate() == rate
+        assert wav.getnframes() == sum(len(c.audio_float_array) for c in chunks)
+
+
+def test_sounds_with_no_words_after_them_are_made_at_the_model_rate():
+    voice, _ = _voice()
+    chunks = list(voice.synthesize_ssml('<speak><amazon:breath duration="short"/></speak>'))
+    assert [(c.sample_rate, len(c.audio_float_array)) for c in chunks] == [(SR, SR // 4)]
