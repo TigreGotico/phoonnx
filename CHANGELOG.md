@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.95.1a1](https://github.com/TigreGotico/phoonnx/tree/1.95.1a1) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.95.0a2...1.95.1a1)
+
+**Merged pull requests:**
+
+- fix: user phonetic spellings override across case; a non-UTF-8 user file is skipped [\#546](https://github.com/TigreGotico/phoonnx/pull/546) ([JarbasAl](https://github.com/JarbasAl))
+- feat: SSML support \(break, prosody, emphasis, lang, say-as, sub, phoneme\) [\#538](https://github.com/TigreGotico/phoonnx/pull/538) ([goldyfruit](https://github.com/goldyfruit))
+- feat: a user directory of phonetic spellings overrides the packaged ones [\#537](https://github.com/TigreGotico/phoonnx/pull/537) ([goldyfruit](https://github.com/goldyfruit))
+- feat: SynthesisConfig.target\_loudness keeps synthesized sentences level [\#536](https://github.com/TigreGotico/phoonnx/pull/536) ([goldyfruit](https://github.com/goldyfruit))
+- fix: espeak voices keep English contractions as written [\#535](https://github.com/TigreGotico/phoonnx/pull/535) ([goldyfruit](https://github.com/goldyfruit))
+
 ## [1.95.0a2](https://github.com/TigreGotico/phoonnx/tree/1.95.0a2) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.95.0a1...1.95.0a2)
