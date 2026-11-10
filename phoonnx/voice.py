@@ -21,7 +21,7 @@ from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union, Dict
 
 import numpy as np
 import onnxruntime
-from langcodes import closest_match
+from linguatag import closest_lang
 from quebra_frases import sentence_tokenize
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
@@ -104,8 +104,8 @@ class PhoneticSpellings:
     @staticmethod
     def from_lang(lang: str, locale_path: str = f"{os.path.dirname(__file__)}/locale"):
         langs = os.listdir(locale_path)
-        lang2, distance = closest_match(lang, langs)
-        if distance <= 10:
+        lang2 = closest_lang(lang, langs)
+        if lang2 is not None:
             spellings_file = f"{locale_path}/{lang2}/phonetic_spellings.txt"
             return PhoneticSpellings.from_path(spellings_file)
         raise FileNotFoundError(f"Spellings file for '{lang}' not found")
