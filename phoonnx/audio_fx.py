@@ -246,7 +246,9 @@ def breath(sample_rate: int, duration_ms: int = 350, volume: float = 1.0,
     release = _smoothstep((1.0 - t) / 0.40)
     plateau = 1.0 - 0.25 * t
     # A slow, uneven wobble (a few hertz), never the same twice.
-    wobble = np.convolve(rng.standard_normal(length), np.hanning(max(8, sample_rate // 12)), mode="same")
+    # The smoothing window never exceeds the signal: `mode="same"` returns the longer of the two.
+    window = min(max(8, sample_rate // 12), length)
+    wobble = np.convolve(rng.standard_normal(length), np.hanning(window), mode="same")
     wobble = 1.0 + 0.22 * wobble / (np.max(np.abs(wobble)) + _EPS)
     out = noise * attack * release * plateau * wobble
     out = out / (np.sqrt(np.mean(out ** 2)) + _EPS) * level

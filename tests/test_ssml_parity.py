@@ -201,6 +201,17 @@ def test_synthesis_reports_marks_in_time_and_adds_sounds():
     assert len(chunks[-1].audio_float_array) == int(SR * 0.35)  # the bleep
 
 
+@pytest.mark.parametrize("sample_rate", [8000, 16000, 22050, 24000, 44100, 48000])
+def test_a_breath_of_any_duration_has_exactly_that_many_samples(sample_rate):
+    """The slow wobble is smoothed with a window the signal may be shorter than (CodeRabbit on #553)."""
+    for duration_ms in (0, 1, 5, 20, 47, 60, 83, 100, 200, 350):
+        length = max(1, int(sample_rate * duration_ms / 1000))
+        out = audio_fx.breath(sample_rate, duration_ms, seed=3)
+        assert out.shape == (length,), (sample_rate, duration_ms)
+        assert out.dtype == np.float32 and np.all(np.isfinite(out))
+        assert float(np.max(np.abs(out))) <= 1.0
+
+
 def test_synthesis_applies_pitch_and_breaths_between_sentences():
     voice, _ = _voice()
     chunks = list(voice.synthesize_ssml(
