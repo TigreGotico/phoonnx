@@ -87,16 +87,16 @@ def test_a_quantity_reads_its_number_and_the_unit_agrees(value, lang, expected):
 
 
 @pytest.mark.parametrize("value,lang,expected", [
-    ("9 novembre 2026", "fr", "lundi neuf novembre deux-mille-vingt-six"),
-    ("1er mai 2026", "fr", "vendredi premier mai deux-mille-vingt-six"),
-    ("November 9, 2026", "en", "monday, november ninth, twenty twenty six"),
-    ("9 November 2026", "en", "monday, november ninth, twenty twenty six"),
+    ("9 novembre 2026", "fr", "le neuf novembre deux mille vingt-six"),
+    ("1er mai 2026", "fr", "le premier mai deux mille vingt-six"),
+    ("November 9, 2026", "en", "the ninth of november, twenty twenty six"),
+    ("9 November 2026", "en", "the ninth of november, twenty twenty six"),
     ("9. November 2026", "de", "neunte november zweitausendsechsundzwanzig"),
     ("9 de noviembre de 2026", "es", "nueve de noviembre de dos mil veintiséis"),
     ("9 de novembro de 2026", "pt", "nove de novembro de dois mil e vinte e seis"),
     ("9 novembre 2026", "it", "nove novembre duemilaventisei"),
     ("9 november 2026", "nl", "negen november tweeduizendzesentwintig"),
-    ("09/11/2026", "fr", "lundi neuf novembre deux-mille-vingt-six"),
+    ("09/11/2026", "fr", "le neuf novembre deux mille vingt-six"),
     ("2026-11-09", "es", "nueve de noviembre de dos mil veintiséis"),
 ])
 def test_a_date_with_its_month_written_out_is_read_as_a_date(value, lang, expected):
@@ -109,3 +109,42 @@ def test_a_date_with_its_month_written_out_is_read_as_a_date(value, lang, expect
 ])
 def test_an_ordinal_with_its_suffix_is_read(value, lang, expected):
     assert said("ordinal", value, lang) == expected
+
+
+# A date is read as a date: no weekday that was not written, whatever the language.
+@pytest.mark.parametrize("value,fmt,lang,expected", [
+    ("25/12/2026", "dmy", "en", "the twenty-fifth of december, twenty twenty six"),
+    ("25/12/2026", "dmy", "fr", "le vingt-cinq décembre deux mille vingt-six"),
+    ("10/11/2026", "dmy", "fr", "le dix novembre deux mille vingt-six"),
+    ("25/12/2026", "dmy", "de", "fünfundzwanzigste dezember zweitausendsechsundzwanzig"),
+    ("25/12/2026", "dmy", "es", "veinticinco de diciembre de dos mil veintiséis"),
+    ("25/12/2026", "dmy", "it", "venticinque dicembre duemilaventisei"),
+    ("25/12/2026", "dmy", "pt", "vinte e cinco de dezembro de dois mil e vinte e seis"),
+    ("25/12/2026", "dmy", "nl", "vijfentwintig december tweeduizendzesentwintig"),
+    ("1/12/2026", "dmy", "fr", "le premier décembre deux mille vingt-six"),
+    ("5/5/2005", "dmy", "en", "the fifth of may, two thousand five"),
+])
+def test_a_date_does_not_gain_a_weekday(value, fmt, lang, expected):
+    assert said("date", value, lang, f' format="{fmt}"') == expected
+
+
+@pytest.mark.parametrize("lang", ["en", "fr", "de", "es", "it", "pt", "nl"])
+def test_no_date_in_any_language_names_a_weekday_unless_one_is_written(lang):
+    from phoonnx.ssml_say_as import _weekday_names
+
+    weekdays = set(_weekday_names(lang).values())
+    for day in range(1, 29):
+        for value, fmt in ((f"{day:02d}/{day % 12 + 1:02d}/2026", "dmy"), (f"2026-{day % 12 + 1:02d}-{day:02d}", None)):
+            words = said("date", value, lang, f' format="{fmt}"' if fmt else "").replace(",", " ").split()
+            assert not weekdays & set(words), (lang, value, words)
+
+
+@pytest.mark.parametrize("value,lang,expected", [
+    ("lundi 9 novembre 2026", "fr", "lundi neuf novembre deux mille vingt-six"),
+    ("lun. 10/11/2026", "fr", "lundi dix novembre deux mille vingt-six"),
+    ("Monday 9 November 2026", "en", "monday the ninth of november, twenty twenty six"),
+    ("lunes 10/11/2026", "es", "lunes diez de noviembre de dos mil veintiséis"),
+    ("lunedì 10/11/2026", "it", "lunedì dieci novembre duemilaventisei"),
+])
+def test_a_weekday_that_is_written_is_said(value, lang, expected):
+    assert said("date", value, lang, ' format="dmy"') == expected

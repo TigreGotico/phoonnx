@@ -19,8 +19,8 @@ SR = 22050
     ("1/2", "fraction", "en", "one half"),
     ("2 3/4", "fraction", "en", "two and three quarters"),
     ("5km", "unit", "en", "five kilometers"),
-    ("2026-11-09", "date", "en", "monday, november ninth, twenty twenty six"),
-    ("09/11/2026", "date", "fr", "lundi neuf novembre deux-mille-vingt-six"),
+    ("2026-11-09", "date", "en", "the ninth of november, twenty twenty six"),
+    ("09/11/2026", "date", "fr", "le neuf novembre deux mille vingt-six"),
     ("11/09", "date", "en", "november ninth"),
     ("14h30", "time", "fr", "quatorze heures trente"),
     ("$12.50", "currency", "en", "twelve dollars and fifty cents"),
@@ -39,7 +39,7 @@ def test_say_as_a_decimal_above_999_is_still_words():
 
 
 def test_say_as_date_format_attribute_orders_the_fields():
-    assert say_as_text("11-09-2026", "date", "en", "dmy") == "friday, september eleventh, twenty twenty six"
+    assert say_as_text("11-09-2026", "date", "en", "dmy") == "the eleventh of september, twenty twenty six"
 
 
 @pytest.mark.parametrize("text,kind", [("hello", "cardinal"), ("13/45/9999", "date"), ("soon", "time"),

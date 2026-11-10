@@ -307,6 +307,9 @@ def _date(text: str, lang: str, fmt: Optional[str]) -> str:
     from ovos_date_parser import nice_date
 
     parts = [p for p in re.split(r"[-/.\s,]+", text.strip()) if p]
+    # A weekday is said only when the text has one ("lun. 10/11/2026"): the date alone is just a date.
+    weekday = next((day for day in (_weekday_of(p, lang) for p in parts) if day is not None), None)
+    parts = [p for p in parts if _weekday_of(p, lang) is None]
     numeric = all(p.isdigit() for p in parts)
     order = (fmt or "").lower()
     if not numeric:
@@ -336,36 +339,79 @@ def _date(text: str, lang: str, fmt: Optional[str]) -> str:
         year += 2000 if year < 70 else 1900
     if year and month and day:
         date = datetime.date(year, month, day)
+        said_weekday = _weekday_names(lang).get(weekday) if weekday is not None else None
         if lang.split("-")[0] in _COMPOSED_DATES:
-            return _composed_date(date, lang)
-        return nice_date(date, lang)
+            said = _composed_date(date, lang)
+        else:
+            said = nice_date(date, lang)
+            first = said.split(maxsplit=1)
+            if first and first[0].strip(",").lower() == _weekday_names(lang).get(date.weekday()):
+                said = first[1] if len(first) > 1 else ""   # the parser says a weekday nobody wrote
+        if said_weekday and lang.split("-")[0] == "fr":
+            said = said.removeprefix("le ")  # "lundi dix novembre", not "lundi le dix novembre"
+        return f"{said_weekday} {said}" if said_weekday else said
     spoken = []
     day_words = _number(str(day), lang, ordinal=lang.startswith("en")) if day is not None else None
     month_words = _month_name(month, lang) if month is not None else None
     month_first = lang.split("-")[0] == "en" and not lang.endswith(("GB", "AU", "NZ", "IE", "IN"))
     spoken.extend(w for w in ((month_words, day_words) if month_first else (day_words, month_words)) if w)
     if year is not None:
-        spoken.append(_number(str(year), lang))
+        spoken.append(_year_words(year, lang))
     return " ".join(spoken)
 
 
 # Languages whose date formatter reads the year badly ("zwei tausend sechs und zwanzig"): build the
 # date from the number and month words, which are right. {d} day, {m} month, {y} year.
-_COMPOSED_DATES = {"de": "{d} {m} {y}", "nl": "{d} {m} {y}", "es": "{d} de {m} de {y}",
+_COMPOSED_DATES = {"en": "the {d} of {m}, {y}", "fr": "le {d} {m} {y}", "de": "{d} {m} {y}", "nl": "{d} {m} {y}", "es": "{d} de {m} de {y}",
                    "pt": "{d} de {m} de {y}", "it": "{d} {m} {y}"}
 
 
 def _composed_date(date: datetime.date, lang: str) -> str:
     short = lang.split("-")[0]
     first = date.day == 1
-    if short == "de":
+    if short in ("de", "en"):
         day = _ordinal_words(date.day, lang)
-    elif short in ("it", "es", "pt") and first:
+    elif short in ("it", "es", "pt", "fr") and first:
         day = _ordinal_words(1, lang)
     else:
         day = _number(str(date.day), lang)
     return _COMPOSED_DATES[short].format(d=day, m=_month_name(date.month, lang),
-                                         y=_number(str(date.year), lang))
+                                         y=_year_words(date.year, lang))
+
+
+def _year_words(year: int, lang: str) -> str:
+    """A year as a person says it: "twenty twenty six" in English, the number elsewhere."""
+    if lang.split("-")[0] == "en" and (1100 <= year <= 1999 or 2010 <= year <= 2099):
+        high, low = divmod(year, 100)
+        return f"{_number(str(high), lang)} " + ("hundred" if not low else f"oh {_number(str(low), lang)}"
+                                                 if low < 10 else _number(str(low), lang))
+    if lang.split("-")[0] == "en" and 2000 <= year <= 2009:
+        return "two thousand" + (f" {_number(str(year - 2000), lang)}" if year > 2000 else "")
+    return _number(str(year), lang)
+
+
+@functools.lru_cache(maxsize=64)
+def _weekday_names(lang: str) -> dict:
+    """Weekday number (Monday 0) -> name, the first word of what the date parser says for that day."""
+    from ovos_date_parser import nice_date
+
+    names = {}
+    for offset in range(7):
+        date = datetime.date(2026, 11, 9 + offset)
+        words = nice_date(date, lang).lower().split()
+        names[offset] = words[0].strip(",") if words else ""
+    return names
+
+
+def _weekday_of(token: str, lang: str) -> Optional[int]:
+    """The weekday number a written token names ("lundi", "lun.", "Mon"), else None."""
+    word = token.lower().strip(".")
+    if len(word) < 3 or word.isdigit():
+        return None
+    for number, name in _weekday_names(lang).items():
+        if name and (word == name or name.startswith(word)):
+            return number
+    return None
 
 
 @functools.lru_cache(maxsize=64)
