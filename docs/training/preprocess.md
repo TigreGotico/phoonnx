@@ -51,7 +51,7 @@ read the bytes explicitly and materialize audio on demand.
 | `--alphabet` | `ipa` | Output alphabet; one of the [`Alphabet`](../phonemizers.md#alphabet-reference) values |
 | `--phonemizer-model TEXT` | `""` | Model path/name or variant selector for backends that take one (ByT5, AhoTTS, Cotovia, arbtok) |
 | `--text-casing` | `ignore` | Casing applied before phonemization: `ignore`, `lower`, `upper`, `casefold` |
-| `--add-diacritics` | off | Add diacritics before phonemization (Arabic/Hebrew, phonemizer-specific) |
+| `--add-diacritics` | off | Add diacritics through scriptconv before phonemization. The run stops if the extra for the language is missing |
 | `--keep-punctuation/--no-keep-punctuation` | on | Keep clause punctuation (`, . ? ! : ;`) in the phonemes, as Piper does, and record it as `keep_punctuation` in `config.json` so synthesis matches. `--resume` keeps the value the existing `config.json` recorded |
 
 ## Audio

@@ -276,6 +276,7 @@ class VitsTrainingEngine(BaseTrainingEngine):
         resume_from_single_speaker_checkpoint: bool = False,
     ) -> "pl.LightningModule":
         """VITS-specific checkpoint loading with encoder size mismatch handling."""
+        from phoonnx_train.torch_compat import trusting_torch_load
         from phoonnx_train.vits.lightning import VitsModel
 
         # ------------------------------------------------------------------
@@ -288,9 +289,10 @@ class VitsTrainingEngine(BaseTrainingEngine):
                     "multi-speaker models."
                 )
 
-            ckpt_single = VitsModel.load_from_checkpoint(
-                checkpoint_path, dataset=None
-            )
+            with trusting_torch_load():
+                ckpt_single = VitsModel.load_from_checkpoint(
+                    checkpoint_path, dataset=None
+                )
             g_dict = ckpt_single.model_g.state_dict()
 
             # Strip speaker-conditional layers so they stay randomly init'd
@@ -313,7 +315,8 @@ class VitsTrainingEngine(BaseTrainingEngine):
         # ------------------------------------------------------------------
         # Normal checkpoint loading
         # ------------------------------------------------------------------
-        ckpt = VitsModel.load_from_checkpoint(checkpoint_path, dataset=None)
+        with trusting_torch_load():
+            ckpt = VitsModel.load_from_checkpoint(checkpoint_path, dataset=None)
         saved_state_dict = ckpt.state_dict()
         model_state = model.state_dict()
 

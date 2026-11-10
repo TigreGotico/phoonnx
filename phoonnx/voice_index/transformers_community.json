@@ -88,7 +88,7 @@
         "phoneme_type": "espeak",
         "alphabet": "ipa",
         "engine": "transformers",
-        "lang": "en"
+        "lang": "en-US"
     },
     "hf_community/mahwizzzz/vits-ur": {
         "voice_id": "hf_community/mahwizzzz/vits-ur",
@@ -179,7 +179,7 @@
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "transformers",
-        "lang": "en"
+        "lang": "en-US"
     },
     "hf_community/HirCoir/piper-sorah-neuronal": {
         "voice_id": "hf_community/HirCoir/piper-sorah-neuronal",

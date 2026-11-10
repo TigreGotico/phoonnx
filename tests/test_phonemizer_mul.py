@@ -8,7 +8,7 @@ onnxruntime models) are mocked so these run without the optional extras.
 import subprocess
 import sys
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 from phoonnx.config import Alphabet
 from scriptconv.phonemizers.mul import (
@@ -263,10 +263,10 @@ class TestEpitranGetLangAndDispatch(unittest.TestCase):
         inst.epitran = fake_epitran_module
         inst._epis = {}
 
-        result1 = inst.phonemize_string("hello", "eng-Latn")
-        result2 = inst.phonemize_string("world", "eng-Latn")
+        result1 = inst.phonemize_string("hola", "spa-Latn")
+        result2 = inst.phonemize_string("mundo", "spa-Latn")
 
-        fake_epitran_module.Epitran.assert_called_once_with("eng-Latn")
+        fake_epitran_module.Epitran.assert_called_once_with("spa-Latn")
         self.assertEqual(result1, "phonemes")
         self.assertEqual(result2, "phonemes")
 
@@ -279,7 +279,7 @@ class TestEpitranGetLangAndDispatch(unittest.TestCase):
         inst.epitran = fake_epitran_module
         inst._epis = {}
 
-        result = inst.phonemize_string("", "eng-Latn")
+        result = inst.phonemize_string("", "spa-Latn")
         self.assertEqual(result, "")
 
 
@@ -292,6 +292,7 @@ class TestMisakiDispatchTable(unittest.TestCase):
         inst = MisakiPhonemizer.__new__(MisakiPhonemizer)
         inst.alphabet = alphabet
         inst.g2p_en = inst.g2p_zh = inst.g2p_ko = inst.g2p_vi = inst.g2p_ja = None
+        inst.g2p_en_gb = None
         return inst
 
     def test_zh_branch_uses_zh_version_from_alphabet(self):
@@ -339,39 +340,41 @@ class TestMisakiDispatchTable(unittest.TestCase):
             result = inst._get_phonemizer("ja")
         self.assertIs(result, fake_ja_g2p)
 
-    def test_en_us_branch_sets_british_false(self):
-        inst = self._make_instance()
-        fake_misaki_pkg = MagicMock()
+    def _fake_misaki_en(self):
+        """A fake misaki.en whose G2P returns one distinct backend per variety."""
+        backends = {False: MagicMock(name="us"), True: MagicMock(name="gb")}
         fake_en_mod = MagicMock()
-        fake_en_g2p = MagicMock()
-        fake_en_mod.G2P.return_value = fake_en_g2p
-        with patch.dict(sys.modules, {"misaki": fake_misaki_pkg, "misaki.en": fake_en_mod}), \
-             patch("misaki.en", fake_en_mod, create=True):
+        fake_en_mod.G2P.side_effect = lambda british=False: backends[british]
+        fake_misaki_pkg = MagicMock(en=fake_en_mod)
+        modules = patch.dict(sys.modules, {"misaki": fake_misaki_pkg, "misaki.en": fake_en_mod})
+        return fake_en_mod, backends, modules
+
+    def test_en_us_branch_builds_american_g2p(self):
+        inst = self._make_instance()
+        fake_en_mod, backends, modules = self._fake_misaki_en()
+        with modules:
             result = inst._get_phonemizer("en-US")
-        self.assertFalse(fake_en_g2p.british)
+        fake_en_mod.G2P.assert_called_once_with(british=False)
+        self.assertIs(result, backends[False])
 
-    def test_en_gb_branch_sets_british_true(self):
+    def test_en_gb_branch_builds_british_g2p(self):
         inst = self._make_instance()
-        fake_misaki_pkg = MagicMock()
-        fake_en_mod = MagicMock()
-        fake_en_g2p = MagicMock()
-        fake_en_mod.G2P.return_value = fake_en_g2p
-        with patch.dict(sys.modules, {"misaki": fake_misaki_pkg, "misaki.en": fake_en_mod}), \
-             patch("misaki.en", fake_en_mod, create=True):
+        fake_en_mod, backends, modules = self._fake_misaki_en()
+        with modules:
             result = inst._get_phonemizer("en-GB")
-        self.assertTrue(fake_en_g2p.british)
+        fake_en_mod.G2P.assert_called_once_with(british=True)
+        self.assertIs(result, backends[True])
 
-    def test_en_backend_is_cached_across_calls(self):
+    def test_en_backend_is_cached_per_variety(self):
         inst = self._make_instance()
-        fake_misaki_pkg = MagicMock()
-        fake_en_mod = MagicMock()
-        fake_en_g2p = MagicMock()
-        fake_en_mod.G2P.return_value = fake_en_g2p
-        with patch.dict(sys.modules, {"misaki": fake_misaki_pkg, "misaki.en": fake_en_mod}), \
-             patch("misaki.en", fake_en_mod, create=True):
-            inst._get_phonemizer("en-US")
-            inst._get_phonemizer("en-GB")
-        fake_en_mod.G2P.assert_called_once()
+        fake_en_mod, backends, modules = self._fake_misaki_en()
+        with modules:
+            us = inst._get_phonemizer("en-US")
+            gb = inst._get_phonemizer("en-GB")
+            self.assertIs(inst._get_phonemizer("en-US"), us)
+            self.assertIs(inst._get_phonemizer("en-GB"), gb)
+        self.assertIsNot(us, gb)
+        self.assertEqual(fake_en_mod.G2P.call_args_list, [call(british=False), call(british=True)])
 
     def test_unsupported_lang_raises_valueerror_not_keyerror(self):
         inst = self._make_instance()
