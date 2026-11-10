@@ -14,6 +14,7 @@ import shutil
 import tempfile
 import wave
 import weakref
+from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -1077,7 +1078,7 @@ class TTSVoice:
         # Set by the first speech chunk: voice conversion and super-resolution can move it off
         # the model's own rate, and every chunk of one stream must share it.
         rate: Optional[int] = None
-        waiting: list = []  # sounds and marks ahead of the first speech, made once rate is known
+        waiting: deque = deque()  # sounds and marks ahead of the first speech, made once rate is known
         written = 0  # samples yielded so far
         noises = 0  # whispers and breaths made so far: each gets its own seed
 
@@ -1142,7 +1143,7 @@ class TTSVoice:
             def before_audio(at_rate: int) -> Iterable[AudioChunk]:
                 """The sounds still waiting, then the pause and the marks, ahead of a piece's audio."""
                 while waiting:
-                    yield from sound(waiting.pop(0), at_rate)
+                    yield from sound(waiting.popleft(), at_rate)
                 pause_ms, marks, offsets = lead
                 lead[:] = [0, [], []]
                 yield from lead_in(pause_ms, marks, offsets, at_rate)

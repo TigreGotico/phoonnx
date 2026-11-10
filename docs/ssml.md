@@ -25,6 +25,7 @@ of `parse_ssml`: the text said, then the silence, pace, pitch, effects, marks an
 | speak xml:lang | supported | words kept; language de-DE |
 | speak with the SSML namespace declared | supported | says "words then x"; pause 1000 ms |
 | a prefix declared as the SSML namespace | supported | says "words then x"; pause 1000 ms |
+| an undeclared ssml prefix | supported | says "words then x"; pause 1000 ms |
 | lang xml:lang | supported | says "words then Haus"; language de-DE |
 | xml:lang on p, s and w | supported | says "hola then ciao"; language es-ES; pause 750 ms; language it-IT |
 | p | supported | says "words then words"; pause 750 ms |
@@ -39,7 +40,10 @@ of `parse_ssml`: the text said, then the silence, pace, pitch, effects, marks an
 | say-as interpret-as=unit | supported | says "five kilometers" (en), "cinq kilomètres" (fr) |
 | say-as interpret-as=date | supported | says "monday, november ninth, twenty twenty six" (en), "lundi neuf novembre deux-mille-vingt-six" (fr) |
 | say-as interpret-as=date format="dmy" | supported | says "sunday, february first, twenty twenty six" (en), "dimanche premier février deux-mille-vingt-six" (fr) |
-| say-as interpret-as=time | supported | says "half past two p.m." (en), "quatorze heures trente" (fr) |
+| say-as interpret-as=time | supported | says "half past two P M" (en), "quatorze heures trente" (fr) |
+| say-as interpret-as=time format="hms12" | supported | says "half past seven P M" (en), "sept heures et demie du soir" (fr) |
+| say-as interpret-as=time detail="1" | supported | says "nine P M" (en), "neuf heures du soir" (fr) |
+| say-as interpret-as=date detail="written" | supported | says "9 novembre 2026" (en), "lundi neuf novembre deux-mille-vingt-six" (fr) |
 | say-as interpret-as=currency | supported | says "twelve dollars and fifty cents" (en), "douze dollars et cinquante cents" (fr) |
 | say-as interpret-as=address | supported | says "twelve Rue de la Paix" (en), "douze Rue de la Paix" (fr) |
 | say-as interpret-as=telephone | supported | says "5 5 5 0 1 0 0" |
@@ -117,6 +121,10 @@ of `parse_ssml`: the text said, then the silence, pace, pitch, effects, marks an
 * An unknown element is its words. `desc`, `metadata`, `meta` and `lexicon` are about the document, not
   for the listener, and are not read.
 * `xml:lang` on any element sets the language of what is inside it (and of `say-as` in it).
+* `say-as` reads the quantities a text-generating skill writes in the notation of the language: `14 h 30`,
+  `7:30 pm` ("sept heures et demie"), `9 pm` ("nine P M": the letters, so a sentence ending there has one
+  full stop), `3,50 €`, `1 200`, `1.200,50 €`, `1,5 L`, `9 novembre 2026`, `1er`. A quantity is read
+  here, not by the unit normalizer, and the unit agrees with it (`1 kg` is "one kilogram").
 
 ## Time
 

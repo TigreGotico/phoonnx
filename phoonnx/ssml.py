@@ -352,7 +352,8 @@ def _build(source: str) -> ET.Element:
     builder = ET.TreeBuilder()
     parser = expat.ParserCreate()
     parser.buffer_text = True
-    prefixes: set[str] = set()
+    # "ssml:" is the prefix everyone uses for the SSML namespace, declared or not.
+    prefixes: set[str] = {"ssml"}
     names: list[str] = []
 
     def start(name: str, attrs: dict) -> None:
@@ -463,7 +464,8 @@ class _Reader:
             if not limit:  # none, or 0: nothing was asked
                 continue
             open_ = [i for i in spoken if getattr(self.pieces[i], key) is None]  # the inner one wins
-            taken = sum(getattr(self.pieces[i], key) or 0 for i in spoken if i not in open_)
+            is_open = set(open_)  # a list here made `not in` quadratic in the number of pieces
+            taken = sum(getattr(self.pieces[i], key) or 0 for i in spoken if i not in is_open)
             budget = limit - away - taken
             weight = sum(len(self.pieces[i].text) for i in open_)
             if not open_ or not weight:

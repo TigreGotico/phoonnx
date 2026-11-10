@@ -59,10 +59,24 @@ def test_a_doctype_with_entities_is_dropped_not_expanded():
     '<speak><amazon:effect name="whispered">a</amazon:effect></speak>',                         # undeclared
     '<speak><AMAZON:EFFECT name="whispered">a</AMAZON:EFFECT></speak>',                         # upper case
     '<SPEAK><Amazon:Effect name="whispered">a</Amazon:Effect></SPEAK>',
+    '<alexa:x><amazon:effect name="whispered">a</amazon:effect></alexa:x>',
 ])
 def test_a_namespace_prefix_works_declared_or_not(ssml):
     (piece,) = parse_ssml(ssml)
     assert piece.effects == ("whisper",)
+
+
+@pytest.mark.parametrize("ssml,check", [
+    ('<speak>a<ssml:break time="1s"/>b</speak>', lambda ps: [(p.text, p.pause_ms) for p in ps] == [("a", 0), ("b", 1000)]),
+    ('<speak><ssml:prosody rate="fast" pitch="+2st">a</ssml:prosody></speak>', lambda ps: (ps[0].rate, ps[0].pitch) == (1.25, 2.0)),
+    ('<speak><ssml:emphasis level="strong">a</ssml:emphasis></speak>', lambda ps: ps[0].rate == 0.9),
+    ('<speak><ssml:say-as interpret-as="cardinal">12</ssml:say-as></speak>', lambda ps: ps[0].text == "twelve"),
+    ('<speak><ssml:phoneme alphabet="ipa" ph="a">b</ssml:phoneme></speak>', lambda ps: ps[0].text == "[[ a ]]"),
+    ('<speak><ssml:sub alias="x">y</ssml:sub></speak>', lambda ps: ps[0].text == "x"),
+    ('<ssml:speak><ssml:p>a</ssml:p><ssml:p>b</ssml:p></ssml:speak>', lambda ps: [p.pause_ms for p in ps] == [0, 750]),
+])
+def test_the_ssml_prefix_works_without_being_declared(ssml, check):
+    assert check(parse_ssml(ssml, "en"))
 
 
 def test_a_prefixed_attribute_does_not_cost_the_document_its_markup():
@@ -137,13 +151,41 @@ def test_a_document_that_only_looks_like_html_is_still_words():
     ("a hundred thousand breaths", "<speak>" + "<amazon:breath/>" * 100_000 + "</speak>"),
     ("a hundred thousand entities", "<speak>" + "&amp;&nbsp;&#x41;&bogus;" * 100_000 + "</speak>"),
     ("mismatched tags", "<speak>" + "<b>x</i>" * 100_000 + "</speak>"),
+    ("a duration around a hundred thousand pieces",
+     '<speak><prosody duration="10s">' + 'a<break time="1s"/>' * 100_000 + "</prosody></speak>"),
+    ("a max-duration around a hundred thousand marks",
+     '<speak><prosody amazon:max-duration="10s">' + '<mark name="m"/>a ' * 100_000 + "</prosody></speak>"),
+    ("nested durations around many sentences",
+     "<speak>" + '<prosody duration="1m">' * 50 + "<s>a</s>" * 100_000 + "</prosody>" * 50 + "</speak>"),
+    ("a duration around a hundred thousand words",
+     '<speak><prosody duration="10s">' + "<w>a</w><break time='1ms'/>" * 100_000 + "</prosody></speak>"),
+    ("a hundred thousand sentences", "<speak>" + "<s>a</s>" * 100_000 + "</speak>"),
+    ("a hundred thousand words", "<speak>" + "<w>a</w> " * 100_000 + "</speak>"),
+    ("a hundred thousand marks after text", "<speak>x" + '<mark name="m"/>' * 100_000 + "</speak>"),
 ])
 def test_hostile_input_is_read_in_bounded_time(name, ssml):
     started = time.perf_counter()
     pieces = parse_ssml(ssml, "en")
-    assert time.perf_counter() - started < 5, name
+    assert time.perf_counter() - started < 20, name  # linear takes 0.1 to 2 s; a quadratic scan, minutes
     assert sum(p.pause_ms for p in pieces) <= 120_000
     assert sum(p.sound[1] for p in pieces if p.sound) + sum(p.pause_ms for p in pieces) <= 120_000
+
+
+@pytest.mark.parametrize("wrapper", ['<prosody duration="10s">{}</prosody>', '<prosody amazon:max-duration="10s">{}</prosody>',
+                                     '<s>{}</s>', '<emphasis>{}</emphasis>'])
+def test_reading_cost_grows_in_proportion_to_the_size_of_the_document(wrapper):
+    """Four times the pieces must cost about four times, not sixteen (a quadratic scan)."""
+    def cost(count: int) -> float:
+        ssml = "<speak>" + wrapper.format('a<break time="1s"/><mark name="m"/>' * count) + "</speak>"
+        best = float("inf")
+        for _ in range(3):
+            started = time.perf_counter()
+            parse_ssml(ssml)
+            best = min(best, time.perf_counter() - started)
+        return best
+
+    small, large = cost(10_000), cost(40_000)
+    assert large < 9 * max(small, 0.01), (small, large)
 
 
 def test_the_silence_of_one_document_has_a_budget_and_the_marks_survive_it():
