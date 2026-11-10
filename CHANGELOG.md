@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.94.7a1](https://github.com/TigreGotico/phoonnx/tree/1.94.7a1) (2026-11-05)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.6a1...1.94.7a1)
+
+**Merged pull requests:**
+
+- fix: diacritize training text through scriptconv [\#533](https://github.com/TigreGotico/phoonnx/pull/533) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.94.6a1](https://github.com/TigreGotico/phoonnx/tree/1.94.6a1) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.5a4...1.94.6a1)
@@ -354,10 +362,6 @@
 ## [1.82.1a1](https://github.com/TigreGotico/phoonnx/tree/1.82.1a1) (2026-08-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.82.0a1...1.82.1a1)
-
-**Merged pull requests:**
-
-- fix: let phonemizer\_lang override lang\_code independently of catalogue lang [\#421](https://github.com/TigreGotico/phoonnx/pull/421) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.82.0a1](https://github.com/TigreGotico/phoonnx/tree/1.82.0a1) (2026-08-15)
 
