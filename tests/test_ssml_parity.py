@@ -230,3 +230,13 @@ def test_a_huge_value_is_read_digit_by_digit_or_as_written_not_hung_on():
     assert say_as_text("1" * 5000, "unit", "en") == "1" * 5000
     assert say_as_text("9" * 40, "ordinal", "fr").startswith("neuf neuf")
     assert time.perf_counter() - started < 3
+
+
+@pytest.mark.parametrize("text,lang,expected", [
+    ("-0.5", "en", "minus zero point five"),
+    ("-0,5", "pt", "menos zero vírgula cinco"),
+    ("-0,25", "de", "minus null Komma zwei fünf"),
+    ("-3.5", "en", "minus three point five"),
+])
+def test_say_as_a_negative_decimal_keeps_its_sign(text, lang, expected):
+    assert say_as_text(text, "cardinal", lang) == expected

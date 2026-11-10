@@ -112,10 +112,14 @@ def _number(value: str, lang: str, ordinal: bool = False) -> str:
         # Say the two halves ourselves: the parser drops a zero whole part in German, reads the
         # decimals as one number in Portuguese and leaves them as digits above 999 in French.
         whole, _, fraction = text.partition(".")
-        sign = "" if not whole.startswith("-") else "-"
         point = _DECIMAL_WORD.get(lang.split("-")[0], "point")
         digits = " ".join(pronounce_number(int(d), lang=lang) for d in fraction)
-        return f"{pronounce_number(int(whole or 0) if not sign else int(whole), lang=lang)} {point} {digits}"
+        said = pronounce_number(abs(int(whole or 0)), lang=lang)
+        if whole.startswith("-"):
+            # int("-0") is 0, so the sign of "-0.5" is said separately, in the parser's own word.
+            one = pronounce_number(1, lang=lang)
+            said = f"{pronounce_number(-1, lang=lang).removesuffix(one).strip()} {said}"
+        return f"{said} {point} {digits}"
     said = pronounce_number(number, lang=lang)
     return said
 
