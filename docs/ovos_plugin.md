@@ -5,6 +5,10 @@ engine. phoonnx ships a TTS plugin for the [OpenVoiceOS](https://openvoiceos.com
 ecosystem via `PhoonnxTTSPlugin`, registered under the `opm.tts` entry point
 `ovos-tts-plugin-phoonnx`.
 
+For grapheme-to-phoneme (G2P) conversion without TTS, use
+[ovos-scriptconv-g2p-plugin](https://github.com/TigreGotico/ovos-scriptconv-g2p-plugin),
+a separate OPM plugin. See [G2P for OVOS](phonemizers.md#g2p-for-ovos).
+
 ## Per-language default voices
 
 `voice` pins one voice for every request. To serve **many languages from one
