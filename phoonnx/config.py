@@ -3,7 +3,7 @@ import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping, Optional, Union, Dict
-from phoonnx.util import LOG, normalize_lang
+from phoonnx.util import LOG, is_arabic, normalize_lang
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
@@ -200,7 +200,7 @@ class VoiceConfig:
         """
         Finalize dataclass defaults after initialization.
         
-        If `add_diacritics` is None, sets it to False; if `lang_code` is present and starts with "ar", sets `add_diacritics` to True. Ensures `lang_code` is set to "und" when not provided.
+        If `add_diacritics` is None, sets it to True when `lang_code` names Arabic or an individual Arabic language in Arabic script, and to False otherwise. Ensures `lang_code` is set to "und" when not provided.
         """
         # cast strings to enum for consistency
         if not isinstance(self.engine, Engine) and isinstance(self.engine, str):
@@ -228,7 +228,7 @@ class VoiceConfig:
 
         if self.add_diacritics is None:
             self.add_diacritics = False
-            if self.lang_code and self.lang_code.startswith("ar"):
+            if self.lang_code and is_arabic(self.lang_code):
                 self.add_diacritics = True
 
         self.lang_code = normalize_lang(self.lang_code or "und")
