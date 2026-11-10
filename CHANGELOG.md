@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.96.1a1](https://github.com/TigreGotico/phoonnx/tree/1.96.1a1) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.0a1...1.96.1a1)
+
+**Merged pull requests:**
+
+- fix: feed clause punctuation to models trained with it [\#507](https://github.com/TigreGotico/phoonnx/pull/507) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.96.0a1](https://github.com/TigreGotico/phoonnx/tree/1.96.0a1) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.95.1a1...1.96.0a1)
