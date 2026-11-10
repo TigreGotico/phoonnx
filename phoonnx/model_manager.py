@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import re
+import tempfile
 import threading
 from dataclasses import asdict, dataclass, field
 from enum import Enum
@@ -12,7 +13,7 @@ from huggingface_hub import hf_hub_download
 from huggingface_hub.constants import HF_HUB_CACHE
 from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
                                     OfflineModeIsEnabled)
-from json_database import JsonStorageXDG, JsonStorage
+from json_database import JsonStorageXDG, JsonStorage, load_commented_json
 
 from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet, check_lang_supported
 from phoonnx.util import match_lang, normalize_lang, LOG
@@ -23,12 +24,41 @@ from phoonnx.voice import TTSVoice
 def _tmp_path(dest: Path) -> Path:
     """Sibling scratch path used while a download is in flight.
 
+    The name is unique per call rather than "<target>.part": two fetches of the
+    same artifact would otherwise share one temporary file, interleaving their
+    bytes, and whichever lost the race would find it already renamed away.
+
     Every write goes through here, so this is also where the voice directory is
     created — a voice's directory should exist because something was written
     into it, not because its catalog entry was constructed.
     """
     dest.parent.mkdir(parents=True, exist_ok=True)
-    return dest.with_suffix(dest.suffix + ".part")
+    handle, tmp = tempfile.mkstemp(dir=dest.parent, prefix=dest.name + ".",
+                                   suffix=".part")
+    os.close(handle)
+    # mkstemp creates 0600 and os.replace carries the mode onto the artifact.
+    # Models are read by whoever serves them, which is not always the account
+    # that downloaded them: a shared HF_HOME, or a prefetch run as another user.
+    umask = os.umask(0)
+    os.umask(umask)
+    os.chmod(tmp, 0o666 & ~umask)
+    return Path(tmp)
+
+
+def _parses(path: str) -> bool:
+    """Whether the index on disk is readable, by reading it.
+
+    An empty registry has two causes that look identical in memory: a file that
+    is genuinely empty, and one the storage layer could not parse. Only the
+    second is worth telling an operator about, and a size comparison answers
+    neither — ``{}\n`` is three bytes and perfectly valid, an empty file is
+    zero and is not.
+    """
+    try:
+        load_commented_json(path)
+        return True
+    except Exception:
+        return False
 
 
 def _is_cached(path: Path) -> bool:
@@ -91,9 +121,11 @@ def _direct_stream(url: str, dest: Path, timeout: int = 120) -> Path:
 
     The body is written to a sibling ``.part`` file and only renamed onto
     ``dest`` once it has been fully received (and matches ``Content-Length``,
-    when the server sends one). An interrupted download therefore leaves at
-    most a stale ``.part`` file, never a truncated artifact that later runs
-    would mistake for a complete one.
+    when the server sends one), so no run ever sees a truncated artifact. A
+    download that fails or is interrupted removes its own scratch file; one
+    killed outright — SIGKILL, OOM, power loss — leaves it behind, and nothing
+    reclaims it, because a sweep on entry cannot tell an abandoned file from
+    one another download is still writing.
 
     This is the path for a self-hosted or mirrored voice, which the hub client
     cannot serve. It gets a private copy.
@@ -811,6 +843,7 @@ class TTSModelManager:
         # mosstts.json are new to this change.
         "outetts.json", "arktts.json", "omnivoice.json", "indic_parler.json",
         "llasa.json", "orpheus.json", "mosstts.json", "vosk.json",
+        "ghananlp.json",
     )
 
     @classmethod
@@ -852,7 +885,16 @@ class TTSModelManager:
             self.cache = JsonStorage(cache_path)
         else:
             self.cache = JsonStorageXDG("voices", subfolder="phoonnx")
-        self.cache.store() # ensure file exists
+        # Create the file, never write over one that is already there. A
+        # cache that cannot be parsed loads as an empty registry, and storing
+        # that registry back replaces the index with "{}": the catalog is lost
+        # and so is the evidence of what broke it.
+        if not os.path.isfile(self.cache.path):
+            self.cache.store()
+        elif not self.cache and not _parses(self.cache.path):
+            LOG.error(f"voice index at {self.cache.path} could not be read and "
+                      f"is being ignored; the catalog will look empty until it "
+                      f"is rebuilt with 'phoonnx-voices update-cache'")
 
     @property
     def all_voices(self) -> List[TTSModelInfo]:
@@ -1074,7 +1116,7 @@ if __name__ == "__main__":
     # 'kdh', 'kdi', 'kdj', 'kdl', 'kdn', 'kdt', 'kek', 'ken', 'keo', 'ker', 'key', 'kez', 'kfb', 'kff-script_telugu',
     # 'kfw', 'kfx', 'khg', 'khm', 'khq', 'kia', 'kij', 'kik', 'kin', 'kir', 'kjb', 'kje', 'kjg', 'kjh', 'kk-KZ', 'kki',
     # 'kkj', 'kle', 'klu', 'klv', 'klw', 'kma', 'kmd', 'kml', 'kmr-script_arabic', 'kmr-script_cyrillic',
-    # 'kmr-script_latin', 'kmu', 'knb', 'kne', 'knf', 'knj', 'knk', 'kno', 'ko-KO', 'kog', 'kor', 'kpq', 'kps', 'kpv',
+    # 'kmr-script_latin', 'kmu', 'knb', 'kne', 'knf', 'knj', 'knk', 'kno', 'ko-KR', 'kog', 'kor', 'kpq', 'kps', 'kpv',
     # 'kpy', 'kpz', 'kqe', 'kqp', 'kqr', 'kqy', 'krc', 'kri', 'krj', 'krl', 'krr', 'krs', 'kru', 'ksb', 'ksr', 'kss',
     # 'ktb', 'ktj', 'kub', 'kue', 'kum', 'kus', 'kvn', 'kvw', 'kwd', 'kwf', 'kwi', 'kxc', 'kxf', 'kxm', 'kxv', 'kyb',
     # 'kyc', 'kyf', 'kyg', 'kyo', 'kyq', 'kyu', 'kyz', 'kzf', 'lac', 'laj', 'lam', 'lao', 'las', 'lat', 'lav', 'law',

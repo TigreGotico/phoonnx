@@ -157,21 +157,23 @@ is set with `-o/--output-dir`, never as a second positional. **Expected output**
 
 ```
 exported/
-└── model.onnx
+├── epoch=999-step=250000.ckpt.onnx    # the model, named after the checkpoint
+├── epoch=999-step=250000.json         # phoonnx config, always written
+└── epoch=999-step=250000.tokens.txt   # sherpa-onnx tokens, from --generate-tokens
 ```
 
-Add `--piper` to also emit a Piper-compatible `.json` (only meaningful for
-`phoneme_type=espeak` / `alphabet=ipa` voices). Details in [Export](export.md).
+Add `--piper` to also write `epoch=999-step=250000.piper.json`, a Piper-format config
+(only meaningful for `phoneme_type=espeak` / `alphabet=ipa` voices).
 
 ## 5. Speak
 
-Load the exported voice with the config produced in step 2 and synthesize:
+Load the exported voice with the config written beside it and synthesize:
 
 ```python
 import wave
 from phoonnx.voice import TTSVoice
 
-voice = TTSVoice.load("exported/model.onnx", "train_out/config.json")
+voice = TTSVoice.load("exported/epoch=999-step=250000.ckpt.onnx", "exported/epoch=999-step=250000.json")
 with wave.open("my_voice.wav", "wb") as wav_file:
     voice.synthesize_wav("My own trained voice, speaking at last.", wav_file)
 ```
@@ -181,3 +183,16 @@ That's the full loop. From here:
 - Fine-tune onto a new speaker or resume training: [Training reference](training.md).
 - Train a different architecture (Matcha, GlowTTS, StyleTTS2, …): [engine guides](engines/matcha.md).
 - Ship the voice in a voice assistant: [OVOS plugin](../ovos_plugin.md).
+
+## Training notebooks
+
+For a runnable, Colab/Kaggle-ready walkthrough of this same golden path, see
+[`train_vits.ipynb`](https://github.com/TigreGotico/ml-notebooks/blob/main/tts/train_vits.ipynb)
+in the `ml-notebooks` repository. It clones phoonnx and drives the same
+`preprocess` → `train` → `export_onnx` CLIs described above end to end, producing a trained
+and exported ONNX voice without any local environment setup.
+
+If a dataset does not exist yet, [`tts_dataset_gen.ipynb`](https://github.com/TigreGotico/ml-notebooks/blob/main/tts/tts_dataset_gen.ipynb)
+generates one in the LJSpeech layout expected by [preprocess](#2-preprocess) by synthesizing
+speech from text in a donor voice, giving a ready-made `metadata.csv` and `wavs/` folder to
+feed straight into step 1 above.

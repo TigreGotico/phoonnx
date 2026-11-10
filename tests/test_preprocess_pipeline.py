@@ -9,6 +9,7 @@ so no real phonemizer backend is needed, and real tiny WAV files on disk so
 the multiprocessing worker's audio path and the quality-filter scorers run
 for real, in seconds.
 """
+import importlib.metadata
 import io
 import json
 import queue
@@ -24,6 +25,7 @@ import torch
 from phoonnx.config import Alphabet, PhonemeType
 from phoonnx_train import preprocess
 from phoonnx_train.dataset_loaders import PreprocessorConfig, Utterance
+from scriptconv.phonemizers.base import GraphemePhonemizer
 
 # This module both runs real torch ops in-process (via direct
 # phonemize_worker() calls) AND forks multiprocessing.Process workers
@@ -49,9 +51,6 @@ class _DummyPhonemizer:
 
     def phonemize_to_list(self, text, lang):
         return list(text.replace(" ", ""))
-
-    def add_diacritics(self, text, lang):
-        return text
 
 
 def _jsonl(path: Path, rows) -> None:
@@ -237,6 +236,41 @@ class TestFinetunePhonemeMap(unittest.TestCase):
         args = [*args, "--max-workers", "1"]
         return click.testing.CliRunner().invoke(preprocess.cli, args, catch_exceptions=False)
 
+    def _diacritics_args(self, tmp: Path, lang: str) -> list:
+        src = tmp / "a.jsonl"
+        _jsonl(src, [{"text": "hi", "audio": "a.wav"}])
+        return ["-i", str(src), "-o", str(tmp / "out"), "-l", lang, "--skip-audio",
+                "--phoneme-type", "graphemes", "--alphabet", "unicode", "--add-diacritics"]
+
+    def test_missing_diacritizer_stops_the_run(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            with patch.object(preprocess, "diacritize", side_effect=ImportError("install the extra")):
+                with self.assertRaisesRegex(ImportError, "install the extra"):
+                    self._invoke_real_phonemizer(self._diacritics_args(tmp, "ar"))
+            self.assertFalse((tmp / "out" / "config.json").exists())
+
+    def test_precomputed_phonemes_need_no_diacritizer(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav", "phonemes": "h i"}])
+            args = ["-i", str(src), "-o", str(tmp / "out"), "-l", "ar", "--skip-audio",
+                    "--add-diacritics", "--phonemes-column", "phonemes"]
+            with patch.object(preprocess, "diacritize", side_effect=ImportError("install the extra")):
+                result = _invoke(args)
+            self.assertEqual(result.exit_code, 0, result.output)
+            config = json.loads((tmp / "out" / "config.json").read_text())
+            self.assertEqual(config["phonemes_from_column"], 1)
+
+    def test_add_diacritics_keeps_rows_when_the_language_needs_no_backend(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            result = self._invoke_real_phonemizer(self._diacritics_args(tmp, "en"))
+            self.assertEqual(result.exit_code, 0, result.output)
+            config = json.loads((tmp / "out" / "config.json").read_text())
+            self.assertEqual(config["phonemes_phonemized"], 1)
+
     def test_drop_extra_phonemes_true_discards_and_succeeds(self):
         with TemporaryDirectory() as tmp:
             tmp = Path(tmp)
@@ -286,6 +320,206 @@ class TestFinetunePhonemeMap(unittest.TestCase):
                     "--drop-extra-phonemes", "true",
                 ], catch_exceptions=False)
             self.assertIn("absent from the final phoneme map", str(ctx.exception))
+
+
+class TestPhonemizerProvenance(unittest.TestCase):
+    """config.json must say whether these phonemes were produced here at all.
+
+    A phoneme string is decided by the phonemizer and the lect it was called
+    with, so a corpus recording neither cannot be compared against a fresh run.
+    Claiming a producer for phonemes read out of a dataset column is worse than
+    recording none: a reader concludes the column is reproducible from a version
+    that never touched it.
+    """
+
+    def test_phonemized_run_names_the_registry_and_its_version(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"}])
+            out = tmp / "out"
+            import click.testing
+            result = click.testing.CliRunner().invoke(preprocess.cli, [
+                "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                "--phoneme-type", "graphemes", "--alphabet", "unicode",
+                "--max-workers", "1",
+            ], catch_exceptions=False)
+            self.assertEqual(result.exit_code, 0, result.output)
+            config = json.loads((out / "config.json").read_text())
+            # The registry that resolved the phonemizer, not the g2p backend:
+            # phoonnx.config delegates the whole registry to scriptconv.
+            self.assertEqual(config["phonemizer_registry"], "scriptconv")
+            self.assertEqual(config["phonemizer_registry_version"],
+                             importlib.metadata.version("scriptconv"))
+            self.assertEqual(config["phonemes_phonemized"], 1)
+            self.assertEqual(config["phonemes_from_column"], 0)
+
+    def test_column_run_claims_no_producer(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav", "phon": "\u0294 \u0295"}])
+            out = tmp / "out"
+            result = _invoke([
+                "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                "--phonemes-column", "phon",
+            ], catch_exceptions=False)
+            self.assertEqual(result.exit_code, 0, result.output)
+            config = json.loads((out / "config.json").read_text())
+            self.assertEqual(config["phonemizer_registry"], "")
+            self.assertEqual(config["phonemizer_registry_version"], "")
+            self.assertEqual(config["phonemes_phonemized"], 0)
+            self.assertEqual(config["phonemes_from_column"], 1)
+
+    def test_resumed_run_describes_the_whole_manifest(self):
+        """A resume re-emits rows it never processed; the counts must cover them.
+
+        Otherwise the config describes a strict subset of the manifest beside it
+        and overwrites the correct one -- naming a producer over rows the tool
+        never touched, which is the failure this whole change exists to avoid.
+        """
+        import click.testing
+
+        def run(src, out, rows, extra):
+            _jsonl(src, rows)
+            return click.testing.CliRunner().invoke(preprocess.cli, [
+                "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                "--phoneme-type", "graphemes", "--alphabet", "ipa",
+                "--phonemes-column", "phon", "--max-workers", "1",
+            ] + extra, catch_exceptions=False)
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, out = tmp / "a.jsonl", tmp / "out"
+            column_rows = [
+                {"text": "hi", "audio": "a.wav", "phon": "\u0294 \u0295"},
+                {"text": "ho", "audio": "b.wav", "phon": "\u0294 \u0295"},
+            ]
+            self.assertEqual(run(src, out, column_rows, []).exit_code, 0)
+            first = json.loads((out / "config.json").read_text())
+            self.assertEqual(first["phonemes_from_column"], 2)
+            self.assertEqual(first["phonemes_phonemized"], 0)
+            self.assertEqual(first["phonemizer_registry"], "")
+
+            self.assertEqual(
+                run(src, out, column_rows + [{"text": "hue", "audio": "c.wav"}],
+                    ["--resume"]).exit_code, 0)
+            second = json.loads((out / "config.json").read_text())
+            manifest_rows = sum(1 for _ in (out / "dataset.jsonl").open())
+            self.assertEqual(manifest_rows, 3)
+            self.assertEqual(second["phonemes_from_column"], 2)
+            self.assertEqual(second["phonemes_phonemized"], 1)
+            self.assertEqual(
+                second["phonemes_from_column"] + second["phonemes_phonemized"],
+                manifest_rows)
+
+    def test_resume_onto_a_config_without_the_counts_records_nothing(self):
+        """The split cannot be recovered from the manifest, so nothing is claimed."""
+        import click.testing
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, out = tmp / "a.jsonl", tmp / "out"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"}])
+            argv = ["-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                    "--phoneme-type", "graphemes", "--alphabet", "ipa",
+                    "--max-workers", "1"]
+            self.assertEqual(
+                click.testing.CliRunner().invoke(
+                    preprocess.cli, argv, catch_exceptions=False).exit_code, 0)
+
+            # a config from before these keys existed
+            stale = json.loads((out / "config.json").read_text())
+            for key in ("phonemizer_registry", "phonemizer_registry_version",
+                        "phonemes_phonemized", "phonemes_from_column"):
+                stale.pop(key, None)
+            (out / "config.json").write_text(json.dumps(stale))
+
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"},
+                         {"text": "hue", "audio": "c.wav"}])
+            self.assertEqual(
+                click.testing.CliRunner().invoke(
+                    preprocess.cli, argv + ["--resume"],
+                    catch_exceptions=False).exit_code, 0)
+            resumed = json.loads((out / "config.json").read_text())
+            for key in ("phonemizer_registry", "phonemizer_registry_version",
+                        "phonemes_phonemized", "phonemes_from_column"):
+                self.assertNotIn(key, resumed)
+
+    def test_counts_describe_the_manifest_when_a_row_is_dropped(self):
+        """Three paths drop a collected utterance after it has been counted.
+
+        They all live between the result queue and the manifest, and every
+        other test here runs --skip-audio, where the audio-too-short guard is
+        never reached and the drop is invisible. A count taken off the queue
+        therefore names a producer over a row that is not in the file.
+        """
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            short_wav, ok_wav = tmp / "short.wav", tmp / "ok.wav"
+            short_wav.write_bytes(_wav_bytes(seconds=0.1))
+            ok_wav.write_bytes(_wav_bytes(seconds=1.0))
+            src, out = tmp / "a.jsonl", tmp / "out"
+            # far more phonemes than a 0.1 s clip has spectrogram frames, so
+            # this row is dropped at the monotonic-alignment guard
+            _jsonl(src, [
+                {"text": "x" * 400, "audio": str(short_wav),
+                 "phon": " ".join("\u0294" * 400)},
+                {"text": "hi", "audio": str(ok_wav), "phon": "\u0294 \u0295"},
+            ])
+            result = _invoke([
+                "-i", str(src), "-o", str(out), "-l", "en",
+                "--phonemes-column", "phon", "--max-workers", "1",
+            ], catch_exceptions=False)
+            self.assertEqual(result.exit_code, 0, result.output)
+
+            config = json.loads((out / "config.json").read_text())
+            manifest_rows = sum(1 for _ in (out / "dataset.jsonl").open())
+            self.assertEqual(manifest_rows, 1, "expected the short clip to be dropped")
+            self.assertEqual(
+                config["phonemes_from_column"] + config["phonemes_phonemized"],
+                manifest_rows,
+                "counts describe rows that are not in the manifest")
+
+    def test_resume_under_a_different_registry_version_records_nothing(self):
+        """Folding across versions would name this run's version over rows it
+        never produced, which is the failure the whole change exists to avoid.
+        """
+        import click.testing
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, out = tmp / "a.jsonl", tmp / "out"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"}])
+            argv = ["-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                    "--phoneme-type", "graphemes", "--alphabet", "ipa",
+                    "--max-workers", "1"]
+            self.assertEqual(
+                click.testing.CliRunner().invoke(
+                    preprocess.cli, argv, catch_exceptions=False).exit_code, 0)
+
+            first = json.loads((out / "config.json").read_text())
+            self.assertEqual(first["phonemes_phonemized"], 1)
+            # mark the existing rows as the work of an older release
+            first["phonemizer_registry_version"] = "0.0.1-ancient"
+            (out / "config.json").write_text(json.dumps(first))
+
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"},
+                         {"text": "hue", "audio": "c.wav"}])
+            self.assertEqual(
+                click.testing.CliRunner().invoke(
+                    preprocess.cli, argv + ["--resume"],
+                    catch_exceptions=False).exit_code, 0)
+
+            resumed = json.loads((out / "config.json").read_text())
+            for key in ("phonemizer_registry", "phonemizer_registry_version",
+                        "phonemes_phonemized", "phonemes_from_column"):
+                self.assertNotIn(key, resumed)
+
+    def test_a_phonemizer_outside_any_distribution_names_its_module(self):
+        stub = type("StubPhonemizer", (), {"__module__": "not_a_distribution"})()
+        self.assertEqual(preprocess.phonemizer_registry(stub),
+                         ("not_a_distribution", ""))
 
 
 class TestJsonlPathOverrides(unittest.TestCase):
@@ -424,9 +658,6 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
             def phonemize_to_list(self, text, lang):
                 return list(text.replace(" ", "")) or []
 
-            def add_diacritics(self, text, lang):
-                return "D" + text
-
         with patch.object(preprocess, "make_silence_detector",
                            return_value=_FakeSilenceDetector()):
             preprocess.phonemize_worker(config, task_q, result_q, _Phonemizer())
@@ -450,11 +681,27 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
     def test_add_diacritics_applied_before_phonemizing(self):
         with TemporaryDirectory() as tmp:
             tmp = Path(tmp)
-            config = self._config(tmp, skip_audio=True, add_diacritics=True)
+            config = self._config(tmp, skip_audio=True, add_diacritics=True, language="ar")
             utt = Utterance(text="hi", audio_path=tmp / "a.wav")
-            results = self._run_worker(config, [utt])
+            with patch.object(preprocess, "diacritize", side_effect=lambda text, lang: f"D{lang}{text}"):
+                results = self._run_worker(config, [utt])
         processed, _ = results[0]
-        self.assertEqual(processed.phonemes[0], "D")  # add_diacritics prefix survived
+        self.assertEqual(processed.phonemes, list("Darhi"))
+
+    def test_add_diacritics_runs_on_a_real_phonemizer(self):
+        """A real backend has no diacritics method: scriptconv owns that stage."""
+        task_q, result_q = queue.Queue(), queue.Queue()
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            config = self._config(tmp, skip_audio=True, add_diacritics=True, language="ar")
+            task_q.put([Utterance(text="hi", audio_path=tmp / "a.wav")])
+            task_q.put(None)
+            with patch.object(preprocess, "make_silence_detector", return_value=_FakeSilenceDetector()), \
+                    patch.object(preprocess, "diacritize", side_effect=lambda text, lang: text + "!"):
+                preprocess.phonemize_worker(config, task_q, result_q, GraphemePhonemizer())
+        processed, _ = result_q.get()
+        self.assertIsNotNone(processed)
+        self.assertEqual("".join(processed.phonemes), "hi!")
 
     def test_empty_precomputed_phonemes_raises_and_is_dropped(self):
         with TemporaryDirectory() as tmp:
@@ -687,3 +934,60 @@ class TestTheWorkerStartsUnderWhateverTheDefaultIs(unittest.TestCase):
                 len(lines), 2,
                 f"workers produced {len(lines)} rows under "
                 f"{multiprocessing.get_start_method()!r}")
+
+
+class TestConfigIsWrittenAfterTheManifest(unittest.TestCase):
+    """The order is the guarantee, so something has to hold it in place.
+
+    `config.json` carries counts of what `dataset.jsonl` contains. Written
+    first, it describes a file that does not exist yet, and a run that dies in
+    between leaves a config claiming rows nothing ever wrote -- which a resume
+    then folds forward as though they were real.
+    """
+
+    def test_a_failed_manifest_write_leaves_no_config_behind(self):
+        real_rename = Path.rename
+
+        def _fail_on_the_manifest(self, target):
+            if Path(target).name == "dataset.jsonl":
+                raise OSError("no space left on device")
+            return real_rename(self, target)
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav", "phon": "h i"}])
+            out = tmp / "out"
+
+            with patch.object(Path, "rename", _fail_on_the_manifest):
+                result = _invoke([
+                    "-i", str(src), "-o", str(out), "-l", "en",
+                    "--phonemes-column", "phon", "--skip-audio",
+                ])
+
+            self.assertNotEqual(result.exit_code, 0, "the write was supposed to fail")
+            self.assertFalse(
+                (out / "dataset.jsonl").exists(), "the manifest should not exist")
+            self.assertFalse(
+                (out / "config.json").exists(),
+                "config.json describes a manifest that was never written")
+
+    def test_a_completed_run_writes_both_and_they_agree(self):
+        # The other half: the order must not be held by never getting there.
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav", "phon": "h i"},
+                         {"text": "there", "audio": "b.wav", "phon": "e r"}])
+            out = tmp / "out"
+            result = _invoke([
+                "-i", str(src), "-o", str(out), "-l", "en",
+                "--phonemes-column", "phon", "--skip-audio",
+            ])
+            self.assertEqual(result.exit_code, 0, result.output)
+            rows = [x for x in (out / "dataset.jsonl").read_text().splitlines() if x]
+            config = json.loads((out / "config.json").read_text())
+            self.assertEqual(len(rows), 2)
+            self.assertEqual(
+                config["phonemes_phonemized"] + config["phonemes_from_column"],
+                len(rows))

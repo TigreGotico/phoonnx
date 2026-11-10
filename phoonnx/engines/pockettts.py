@@ -483,7 +483,7 @@ class PocketTTSAdapter(BaseOnnxAdapter):
             conditioning, eos_logit = outputs[0], outputs[1]
             self._update_state(state, outputs, self.flow_state_manifest, output_offset=2)
 
-            if eos_step is None and eos_logit[0][0] > eos_threshold:
+            if eos_step is None and float(np.squeeze(eos_logit)) > eos_threshold:
                 eos_step = step
             if eos_step is not None and step >= eos_step + frames_after_eos:
                 break

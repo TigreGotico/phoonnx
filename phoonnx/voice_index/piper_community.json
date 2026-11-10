@@ -1244,5 +1244,20 @@
         "engine": "coqui",
         "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/hitz-es_alejandro/config.json",
         "phonemizer_model": "classic"
+    },
+    "piper_community/ghananlpcommunity/kasanoma-twi": {
+        "voice_id": "piper_community/ghananlpcommunity/kasanoma-twi",
+        "model_url": "https://huggingface.co/ghananlpcommunity/kasanoma-twi/resolve/main/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "tw",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/ghananlpcommunity/kasanoma-twi/resolve/main/model.onnx.json",
+        "phonemizer_lang": "lfn",
+        "display_name": "Twi (kasanoma, {engine})"
     }
 }

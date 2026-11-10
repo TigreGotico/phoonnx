@@ -1,2 +1,0 @@
-phonikud_onnx
-phonikud

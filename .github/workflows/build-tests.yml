@@ -3,6 +3,14 @@ name: Build Tests
 on:
   pull_request:
     branches: [dev, master]
+  # dev must run this workflow too. `bin/gate ci` classes a red on a pull
+  # request as inherited from dev only when dev has a run under the same check
+  # names. workflow_dispatch already produces those names, so a baseline is
+  # possible without this trigger; it is manual, and there is none unless
+  # somebody remembers to press it. The push trigger makes the baseline
+  # automatic instead.
+  push:
+    branches: [dev, master]
   workflow_dispatch:
 
 jobs:

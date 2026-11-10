@@ -193,7 +193,9 @@ class TestUtilFunctions(unittest.TestCase):
             ("word-123", "word 123"),
             ("no-hyphen", "no-hyphen"),  # no digit after hyphen
             ("just-text", "just-text"),  # no digit
-            #  ("123-456", "123-456"),     # no word before hyphen TODO Fix this one, should be pronounced number by number
+            ("123-456", "123-456"),  # digit-hyphen-digit is a range/score, left intact
+            ("3-2", "3-2"),  # score, left intact
+            ("1139–1185", "1139–1185"),  # en-dash range, left intact
         ]
 
         for input_text, expected in test_cases:

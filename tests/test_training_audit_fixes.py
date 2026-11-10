@@ -139,10 +139,18 @@ class TestCompileResumeMatrix(unittest.TestCase):
         self.assertEqual(list(unexpected), [])
 
     def test_missing_state_dict_is_noop(self):
+        # The compile-key rewrite must not invent a state_dict where there is
+        # none, which is what this guards. Saving does add the random state:
+        # that is unconditional by design, since every checkpoint has to carry
+        # it for a resume to continue the shuffle sequence, and making it
+        # depend on a state_dict being present would condition the library on
+        # this fixture. The key set is asserted exactly so a third key still
+        # turns this red.
         ckpt = {}
         _bare_model().on_load_checkpoint(ckpt)
         _bare_model().on_save_checkpoint(ckpt)
-        self.assertEqual(ckpt, {})
+        self.assertNotIn("state_dict", ckpt)
+        self.assertEqual(set(ckpt), {"rng_state"})
 
 
 # ---------------------------------------------------------------------------

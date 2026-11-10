@@ -351,6 +351,42 @@ class TestCompoundPhonemeEncoding(unittest.TestCase):
         self.assertEqual(tok.encode("azb"), [0])
 
 
+class TestUppercaseFallback(unittest.TestCase):
+    """A vocabulary built from lowercased training text holds no uppercase
+    letter, so the first letter of every capitalised word was dropped and the
+    model never said that sound."""
+
+    def _tok(self, char2idx):
+        voc = Vocabulary(char2idx=char2idx, blank=None)
+        return TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+
+    def test_capital_falls_back_to_the_lowercase_form(self):
+        tok = self._tok({"a": 0, "k": 1, "w": 2})
+        self.assertEqual(tok.encode("Akwa"), [0, 1, 2, 0])
+        self.assertEqual(tok.not_found_characters, set())
+
+    def test_capital_in_vocab_is_not_lowercased(self):
+        tok = self._tok({"a": 0, "A": 1})
+        self.assertEqual(tok.encode("Aa"), [1, 0])
+
+    def test_capital_absent_both_ways_is_still_dropped(self):
+        tok = self._tok({"b": 0})
+        self.assertEqual(tok.encode("A"), [])
+        self.assertEqual(tok.not_found_characters, {"A"})
+
+    def test_lowercase_input_is_unchanged(self):
+        tok = self._tok({"a": 0, "b": 1})
+        self.assertEqual(tok.encode("ab"), [0, 1])
+        self.assertEqual(tok.not_found_characters, set())
+
+    def test_decomposition_still_wins_for_a_precomposed_capital(self):
+        # "Ã" has no lowercase entry either, but it decomposes to "A" + tilde;
+        # the decomposition branch runs first and must keep working.
+        tok = self._tok({"A": 0, "\u0303": 1})
+        self.assertEqual(tok.encode("\u00c3"), [0, 1])
+
+
 class TestPrecomposedCharacterDecomposition(unittest.TestCase):
     """Phonemizers emit precomposed nasal vowels (e.g. U+00E3 "ã") while
     vocabularies like Kokoro/StyleTTS2 only know the base letter plus a
