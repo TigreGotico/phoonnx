@@ -681,7 +681,8 @@ def test_voice_index_is_bundled():
 
 
 def test_voice_index_covers_the_six_languages():
-    langs = {entry["lang"] for entry in _index().values()}
+    # some English voices carry the accent of their VCTK speaker (en-US, en-CA)
+    langs = {entry["lang"].split("-")[0] for entry in _index().values()}
     assert langs == set(AVAILABLE_LANGS)
 
 

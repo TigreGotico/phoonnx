@@ -350,9 +350,6 @@ class TestPreprocessIntegration(unittest.TestCase):
         def phonemize_to_list(self, text, lang):
             return list(text.replace(" ", ""))
 
-        def add_diacritics(self, text, lang):
-            return text
-
     def _jsonl(self, path, rows):
         with open(path, "w") as f:
             for r in rows:
