@@ -58,7 +58,7 @@
         "phoneme_type": "unicode",
         "alphabet": "graphemes",
         "engine": "pockettts",
-        "lang": "en",
+        "lang": "en-CA",
         "aux_model_urls": {
             "bundle_path": "https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts/resolve/main/english_2026-04/bundle.json",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts/resolve/main/english_2026-04/tokenizer.model",
@@ -226,7 +226,7 @@
         "phoneme_type": "unicode",
         "alphabet": "graphemes",
         "engine": "pockettts",
-        "lang": "en",
+        "lang": "en-US",
         "aux_model_urls": {
             "bundle_path": "https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts/resolve/main/english_2026-04/bundle.json",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts/resolve/main/english_2026-04/tokenizer.model",
@@ -274,7 +274,7 @@
         "phoneme_type": "unicode",
         "alphabet": "graphemes",
         "engine": "pockettts",
-        "lang": "en",
+        "lang": "en-US",
         "aux_model_urls": {
             "bundle_path": "https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts/resolve/main/english_2026-04/bundle.json",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts/resolve/main/english_2026-04/tokenizer.model",
@@ -322,7 +322,7 @@
         "phoneme_type": "unicode",
         "alphabet": "graphemes",
         "engine": "pockettts",
-        "lang": "en",
+        "lang": "en-US",
         "aux_model_urls": {
             "bundle_path": "https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts/resolve/main/english_2026-04/bundle.json",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts/resolve/main/english_2026-04/tokenizer.model",
@@ -466,7 +466,7 @@
         "phoneme_type": "unicode",
         "alphabet": "graphemes",
         "engine": "pockettts",
-        "lang": "en",
+        "lang": "en-US",
         "aux_model_urls": {
             "bundle_path": "https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts/resolve/main/english_2026-04/bundle.json",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts/resolve/main/english_2026-04/tokenizer.model",
@@ -490,7 +490,7 @@
         "phoneme_type": "unicode",
         "alphabet": "graphemes",
         "engine": "pockettts",
-        "lang": "en",
+        "lang": "en-US",
         "aux_model_urls": {
             "bundle_path": "https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts/resolve/main/english_2026-04/bundle.json",
             "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts/resolve/main/english_2026-04/tokenizer.model",

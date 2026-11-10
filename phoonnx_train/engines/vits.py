@@ -197,21 +197,9 @@ class VitsTrainingEngine(BaseTrainingEngine):
         except ImportError:
             _LOG.warning("onnx package not installed — skipping metadata")
 
-        # ------------------------------------------------------------------
-        # Optional side-car files
-        # ------------------------------------------------------------------
-        generate_tokens = kwargs.get("generate_tokens", False)
-        piper = kwargs.get("piper", False)
-
-        if generate_tokens:
-            tokens_path = output_dir / "tokens.txt"
-            _write_tokens_txt(phoneme_id_map, tokens_path)
-            _LOG.info("Generated tokens.txt: %s", tokens_path)
-
-        if piper:
-            piper_path = output_dir / f"{checkpoint_path.stem}.json"
-            _write_piper_json(model_config, piper_path)
-            _LOG.info("Generated piper JSON: %s", piper_path)
+        write_sidecars(model_config, output_dir, checkpoint_path.stem,
+                       generate_tokens=kwargs.get("generate_tokens", False),
+                       piper=kwargs.get("piper", False))
 
         _LOG.info("Exported VITS ONNX model to %s", output_path)
         return output_path
@@ -288,6 +276,7 @@ class VitsTrainingEngine(BaseTrainingEngine):
         resume_from_single_speaker_checkpoint: bool = False,
     ) -> "pl.LightningModule":
         """VITS-specific checkpoint loading with encoder size mismatch handling."""
+        from phoonnx_train.torch_compat import trusting_torch_load
         from phoonnx_train.vits.lightning import VitsModel
 
         # ------------------------------------------------------------------
@@ -300,9 +289,10 @@ class VitsTrainingEngine(BaseTrainingEngine):
                     "multi-speaker models."
                 )
 
-            ckpt_single = VitsModel.load_from_checkpoint(
-                checkpoint_path, dataset=None
-            )
+            with trusting_torch_load():
+                ckpt_single = VitsModel.load_from_checkpoint(
+                    checkpoint_path, dataset=None
+                )
             g_dict = ckpt_single.model_g.state_dict()
 
             # Strip speaker-conditional layers so they stay randomly init'd
@@ -325,7 +315,8 @@ class VitsTrainingEngine(BaseTrainingEngine):
         # ------------------------------------------------------------------
         # Normal checkpoint loading
         # ------------------------------------------------------------------
-        ckpt = VitsModel.load_from_checkpoint(checkpoint_path, dataset=None)
+        with trusting_torch_load():
+            ckpt = VitsModel.load_from_checkpoint(checkpoint_path, dataset=None)
         saved_state_dict = ckpt.state_dict()
         model_state = model.state_dict()
 
@@ -388,36 +379,49 @@ def _write_tokens_txt(phoneme_id_map: Dict[str, Any], path: Path) -> None:
     path.write_text("\n".join(tokens) + "\n", encoding="utf-8")
 
 
-def _voice_language_stanza(model_config: Dict[str, Any]) -> Dict[str, Any]:
-    """Build the ``language`` stanza a piper-shaped export carries.
+def write_sidecars(model_config: Dict[str, Any], output_dir: Path, stem: str,
+                   generate_tokens: bool = False, piper: bool = False) -> None:
+    """Write the configs that sit beside an exported ONNX model.
 
-    ``PiperLoader`` (``phoonnx/config_loaders.py``) reads the voice's
-    language from ``config["language"]["code"]``, but the training config
-    ``preprocess.py`` writes (and ``export_onnx`` loads as ``model_config``)
-    stores it under the flat key ``lang_code`` -- the two never agreed on a
-    key name, so every piper-shaped export carried an empty ``language: {}``
-    stanza and the language was lost between preprocessing and export.
-    Prefer an already-nested ``language`` dict, for configs that set one
-    directly.
+    ``<stem>.json`` is always written: the training config in phoonnx's own
+    format, so the export folder loads on its own. ``--piper`` adds
+    ``<stem>.piper.json`` and ``--generate-tokens`` adds sherpa-onnx's
+    ``<stem>.tokens.txt``.
     """
-    language = model_config.get("language")
-    if language:
-        return language
-    lang_code = model_config.get("lang_code")
-    return {"code": lang_code} if lang_code else {}
+    native_path = output_dir / f"{stem}.json"
+    with open(native_path, "w", encoding="utf-8") as f:
+        json.dump(model_config, f, indent=2, ensure_ascii=False)
+    _LOG.info("Wrote phoonnx config: %s", native_path)
+
+    if generate_tokens:
+        tokens_path = output_dir / f"{stem}.tokens.txt"
+        _write_tokens_txt(model_config.get("phoneme_id_map", {}), tokens_path)
+        _LOG.info("Generated tokens.txt: %s", tokens_path)
+
+    if piper:
+        piper_path = output_dir / f"{stem}.piper.json"
+        _write_piper_json(model_config, piper_path)
+        _LOG.info("Generated piper JSON: %s", piper_path)
 
 
 def _write_piper_json(model_config: Dict[str, Any], path: Path) -> None:
-    """Emit a piper-compatible metadata JSON alongside the ONNX model."""
+    """Emit a piper-compatible metadata JSON alongside the ONNX model.
+
+    phoonnx stores one id per phoneme and the language as ``lang_code``;
+    Piper wants a list of ids per phoneme and the language under
+    ``language.code`` and ``espeak.voice``.
+    """
+    lang_code = model_config.get("lang_code") or ""
     piper_cfg = {
         "audio": model_config.get("audio", {}),
         "inference": model_config.get("inference", {}),
         "num_symbols": model_config.get("num_symbols"),
         "num_speakers": model_config.get("num_speakers"),
-        "phoneme_id_map": model_config.get("phoneme_id_map", {}),
+        "phoneme_id_map": {p: i if isinstance(i, list) else [i]
+                           for p, i in model_config.get("phoneme_id_map", {}).items()},
         "speaker_id_map": model_config.get("speaker_id_map", {}),
-        "language": _voice_language_stanza(model_config),
-        "espeak": model_config.get("espeak", {}),
+        "language": model_config.get("language") or {"code": lang_code},
+        "espeak": model_config.get("espeak") or {"voice": lang_code},
         "phoneme_type": model_config.get("phoneme_type", ""),
         "phonemizer_model": model_config.get("phonemizer_model", ""),
         "alphabet": model_config.get("alphabet", ""),

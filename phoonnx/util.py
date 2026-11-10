@@ -7,7 +7,8 @@ import re
 import unicodedata
 from typing import List, Tuple, Union
 
-from langcodes import Language, standardize_tag, tag_distance
+from langcodes import Language, standardize_tag
+from linguatag import lang_distance
 from scriptconv.scripts import normalize_script_tag
 
 from phoonnx.log import LOG
@@ -100,17 +101,7 @@ def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Tuple[st
     best_lang = "und"
     best_distance = 10000000
     for l in valid_langs:
-        try:
-            distance: int = tag_distance(l, target_lang)
-        except:
-            try:
-                l = f"{l.split('-')[0]}-{l.split('-')[1]}"
-                distance: int = tag_distance(l, target_lang)
-            except:
-                try:
-                    distance: int = tag_distance(l.split('-')[0], target_lang)
-                except:
-                    continue
+        distance = lang_distance(l, target_lang)
         if distance < best_distance:
             best_lang, best_distance = l, distance
 

@@ -25,6 +25,7 @@ import torch
 from phoonnx.config import Alphabet, PhonemeType
 from phoonnx_train import preprocess
 from phoonnx_train.dataset_loaders import PreprocessorConfig, Utterance
+from scriptconv.phonemizers.base import GraphemePhonemizer
 
 # This module both runs real torch ops in-process (via direct
 # phonemize_worker() calls) AND forks multiprocessing.Process workers
@@ -50,9 +51,6 @@ class _DummyPhonemizer:
 
     def phonemize_to_list(self, text, lang):
         return list(text.replace(" ", ""))
-
-    def add_diacritics(self, text, lang):
-        return text
 
 
 def _jsonl(path: Path, rows) -> None:
@@ -237,6 +235,41 @@ class TestFinetunePhonemeMap(unittest.TestCase):
         # no get_phonemizer patch here: graphemes/unicode needs no backend
         args = [*args, "--max-workers", "1"]
         return click.testing.CliRunner().invoke(preprocess.cli, args, catch_exceptions=False)
+
+    def _diacritics_args(self, tmp: Path, lang: str) -> list:
+        src = tmp / "a.jsonl"
+        _jsonl(src, [{"text": "hi", "audio": "a.wav"}])
+        return ["-i", str(src), "-o", str(tmp / "out"), "-l", lang, "--skip-audio",
+                "--phoneme-type", "graphemes", "--alphabet", "unicode", "--add-diacritics"]
+
+    def test_missing_diacritizer_stops_the_run(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            with patch.object(preprocess, "diacritize", side_effect=ImportError("install the extra")):
+                with self.assertRaisesRegex(ImportError, "install the extra"):
+                    self._invoke_real_phonemizer(self._diacritics_args(tmp, "ar"))
+            self.assertFalse((tmp / "out" / "config.json").exists())
+
+    def test_precomputed_phonemes_need_no_diacritizer(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav", "phonemes": "h i"}])
+            args = ["-i", str(src), "-o", str(tmp / "out"), "-l", "ar", "--skip-audio",
+                    "--add-diacritics", "--phonemes-column", "phonemes"]
+            with patch.object(preprocess, "diacritize", side_effect=ImportError("install the extra")):
+                result = _invoke(args)
+            self.assertEqual(result.exit_code, 0, result.output)
+            config = json.loads((tmp / "out" / "config.json").read_text())
+            self.assertEqual(config["phonemes_from_column"], 1)
+
+    def test_add_diacritics_keeps_rows_when_the_language_needs_no_backend(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            result = self._invoke_real_phonemizer(self._diacritics_args(tmp, "en"))
+            self.assertEqual(result.exit_code, 0, result.output)
+            config = json.loads((tmp / "out" / "config.json").read_text())
+            self.assertEqual(config["phonemes_phonemized"], 1)
 
     def test_drop_extra_phonemes_true_discards_and_succeeds(self):
         with TemporaryDirectory() as tmp:
@@ -618,9 +651,6 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
             def phonemize_to_list(self, text, lang):
                 return list(text.replace(" ", "")) or []
 
-            def add_diacritics(self, text, lang):
-                return "D" + text
-
         with patch.object(preprocess, "make_silence_detector",
                            return_value=_FakeSilenceDetector()):
             preprocess.phonemize_worker(config, task_q, result_q, _Phonemizer())
@@ -644,11 +674,27 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
     def test_add_diacritics_applied_before_phonemizing(self):
         with TemporaryDirectory() as tmp:
             tmp = Path(tmp)
-            config = self._config(tmp, skip_audio=True, add_diacritics=True)
+            config = self._config(tmp, skip_audio=True, add_diacritics=True, language="ar")
             utt = Utterance(text="hi", audio_path=tmp / "a.wav")
-            results = self._run_worker(config, [utt])
+            with patch.object(preprocess, "diacritize", side_effect=lambda text, lang: f"D{lang}{text}"):
+                results = self._run_worker(config, [utt])
         processed, _ = results[0]
-        self.assertEqual(processed.phonemes[0], "D")  # add_diacritics prefix survived
+        self.assertEqual(processed.phonemes, list("Darhi"))
+
+    def test_add_diacritics_runs_on_a_real_phonemizer(self):
+        """A real backend has no diacritics method: scriptconv owns that stage."""
+        task_q, result_q = queue.Queue(), queue.Queue()
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            config = self._config(tmp, skip_audio=True, add_diacritics=True, language="ar")
+            task_q.put([Utterance(text="hi", audio_path=tmp / "a.wav")])
+            task_q.put(None)
+            with patch.object(preprocess, "make_silence_detector", return_value=_FakeSilenceDetector()), \
+                    patch.object(preprocess, "diacritize", side_effect=lambda text, lang: text + "!"):
+                preprocess.phonemize_worker(config, task_q, result_q, GraphemePhonemizer())
+        processed, _ = result_q.get()
+        self.assertIsNotNone(processed)
+        self.assertEqual("".join(processed.phonemes), "hi!")
 
     def test_empty_precomputed_phonemes_raises_and_is_dropped(self):
         with TemporaryDirectory() as tmp:

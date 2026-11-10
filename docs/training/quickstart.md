@@ -157,21 +157,23 @@ is set with `-o/--output-dir`, never as a second positional. **Expected output**
 
 ```
 exported/
-└── model.onnx
+├── epoch=999-step=250000.ckpt.onnx    # the model, named after the checkpoint
+├── epoch=999-step=250000.json         # phoonnx config, always written
+└── epoch=999-step=250000.tokens.txt   # sherpa-onnx tokens, from --generate-tokens
 ```
 
-Add `--piper` to also emit a Piper-compatible `.json` (only meaningful for
-`phoneme_type=espeak` / `alphabet=ipa` voices). Details in [Export](export.md).
+Add `--piper` to also write `epoch=999-step=250000.piper.json`, a Piper-format config
+(only meaningful for `phoneme_type=espeak` / `alphabet=ipa` voices).
 
 ## 5. Speak
 
-Load the exported voice with the config produced in step 2 and synthesize:
+Load the exported voice with the config written beside it and synthesize:
 
 ```python
 import wave
 from phoonnx.voice import TTSVoice
 
-voice = TTSVoice.load("exported/model.onnx", "train_out/config.json")
+voice = TTSVoice.load("exported/epoch=999-step=250000.ckpt.onnx", "exported/epoch=999-step=250000.json")
 with wave.open("my_voice.wav", "wb") as wav_file:
     voice.synthesize_wav("My own trained voice, speaking at last.", wav_file)
 ```
