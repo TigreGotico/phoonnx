@@ -5,10 +5,55 @@ engine. phoonnx ships a TTS plugin for the [OpenVoiceOS](https://openvoiceos.com
 ecosystem via `PhoonnxTTSPlugin`, registered under the `opm.tts` entry point
 `ovos-tts-plugin-phoonnx`.
 
-Looking for standalone grapheme-to-phoneme (G2P) instead of TTS? See
-[phonemizers.md](phonemizers.md#g2p-for-ovos) — that's
+For grapheme-to-phoneme (G2P) conversion without TTS, use
 [ovos-scriptconv-g2p-plugin](https://github.com/TigreGotico/ovos-scriptconv-g2p-plugin),
-a separate OPM plugin.
+a separate OPM plugin. See [G2P for OVOS](phonemizers.md#g2p-for-ovos).
+
+## Per-language default voices
+
+`voice` pins one voice for every request. To serve **many languages from one
+server**, leave it unset and map languages to voices instead — the plugin then
+picks the voice for each request's language, downloading and caching it on
+first use:
+
+```json
+{
+  "tts": {
+    "module": "ovos-tts-plugin-phoonnx",
+    "ovos-tts-plugin-phoonnx": {
+      "lang2voice": {
+        "gl": "proxectonos/celtia",
+        "ca": "OpenVoiceOS/matxa-cat-multispeaker-wavenext",
+        "pt-br": "<a brazilian voice>",
+        "pt": "<a european portuguese voice>"
+      }
+    }
+  }
+}
+```
+
+Keys are BCP-47 tags: the full tag (`pt-br`) is tried before the primary
+subtag (`pt`), so regional variants can differ from the base language.
+
+The same mapping can come from the environment, which is usually easier for
+containers whose `mycroft.conf` carries no `lang2voice` entry for a given
+language — `PHOONNX_DEFAULT_VOICE_<LANG>`, with underscores standing in for
+dashes:
+
+```bash
+docker run -e PHOONNX_DEFAULT_VOICE_GL=proxectonos/celtia \
+           -e PHOONNX_DEFAULT_VOICE_PT_BR=<voice-id> \
+           -p 9666:9666 phoonnx
+```
+
+Resolution is table-major, not tag-major: every tag `lang2voice` might match
+(full tag, then primary subtag) is tried before the env table is looked at at
+all, so a `lang2voice` entry for the primary subtag (`pt`) still beats a more
+specific `PHOONNX_DEFAULT_VOICE_PT_BR` env var — the config wins outright for
+any language it names anything for, and the env vars only fill in languages
+the config leaves unconfigured. Below both, the voice index's own default for
+the language applies. Keys and tags are matched after normalisation, so
+`gl-ES`/`gl`, `pt-br`/`pt_BR` and similar spellings agree.
 
 ## Configuration
 
@@ -167,7 +212,18 @@ See [cloning.md](cloning.md) for the cloning keys in detail.
 
 ### Voice Caching
 
-Loaded voices are cached in memory (`self.voices` dict) to avoid re-loading on every utterance. The first call for a new voice ID triggers a download if needed.
+Loaded voices are cached in memory (`plugin.voice_cache`) to avoid re-loading on every utterance. The first call for a new voice ID triggers a download if needed. Memory is charged per model rather than per voice: a family of catalog entries that name the same graph (for example the `omnivoice` or `qwen3tts` voice-config variants) shares one ONNX Runtime session and counts against the budget once, however many of its voices are loaded.
+
+Two config keys bound how much stays resident:
+
+| Option | Meaning |
+|--------|---------|
+| `max_loaded_voices` | Maximum number of voices resident at once (pinned ones included). Unset never evicts anything. |
+| `max_loaded_bytes` | Memory budget for resident voice weights, as a plain byte count or a size string (`"3GB"`, `"512 MB"`, `"1.5GiB"` — `KB/MB/GB/TB` are powers of 1000, `KiB/MiB/GiB/TiB` powers of 1024). Unset never evicts anything. |
+| `pinned_voices` | Voice id or list of voice ids to load at startup and never evict, regardless of the other limits. |
+| `load_wait_timeout` | Seconds a cold load waits for memory in use to come back before loading anyway. Defaults to 300; a memory bound must never become a hang. |
+
+A voice whose own weights are bigger than the whole `max_loaded_bytes` budget is refused with `VoiceExceedsMemoryBudget` rather than loaded, because loading it is a guaranteed OOM kill. A voice that fits on its own but not beside what is already in memory waits for room, and takes it anyway once `load_wait_timeout` seconds pass, logging a warning that memory use will exceed the budget: a voice a request is still synthesizing with is charged to the budget until that request finishes, so there are moments when nothing can be evicted. See [deployment.md](deployment.md#memory-budgeting) for sizing this against the container's memory limit.
 
 ### Refreshing Voices
 

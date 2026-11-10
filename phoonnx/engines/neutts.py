@@ -181,6 +181,16 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
 class NeuTTSAdapter(BaseOnnxAdapter):
     """Adapter for the NeuTTS Air family (Qwen3 codec-LM + NeuCodec decoder)."""
 
+    MEMOIZED_WRITES = {
+        # KV-cache geometry, read off the model's own input shapes.
+        "_read_kv_shape": frozenset({"num_layers", "num_kv_heads", "head_dim"}),
+        # The espeak backend the checkpoint was trained with, opened once.
+        "_espeak": frozenset({"_phonemizer"}),
+        # Each preset's reference transcript phonemized once; presets are
+        # part of the voice, not of a request.
+        "reference_phones": frozenset({"_ref_phones"}),
+    }
+
     #: hard ceiling on the AR loop; NeuCodec runs at 50 tokens/s, so 600 is ~12 s
     MAX_NEW_TOKENS = 600
     #: characters of target text per model call (upstream's chunk budget)

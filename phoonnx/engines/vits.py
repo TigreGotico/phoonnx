@@ -25,6 +25,7 @@ from phoonnx.engines.base import (
     AdapterSynthesisResult,
     BaseOnnxAdapter,
 )
+from phoonnx.providers import make_session
 
 
 class VitsAdapter(BaseOnnxAdapter):
@@ -178,3 +179,139 @@ class VitsAdapter(BaseOnnxAdapter):
             "length_scale": "Speed",
             "noise_w_scale": "Noise W",
         }
+
+
+class VitsPriorSplitAdapter(VitsAdapter):
+    """VITS split at the **prior** boundary (before the flow), rather than at
+    the flow/HiFiGAN boundary that :class:`~phoonnx.engines.vits_streaming.VitsStreamingAdapter`
+    uses. This is the cut Inflect-v2's official ONNX release
+    (``owensong/Inflect-Micro-v2-ONNX`` / ``-Nano-v2-ONNX``) ships:
+
+      duration (primary session) : tokens, lengths, length_scale
+                                    -> m_p_exp, logs_p_exp, y_mask
+      decode   (aux graph)       : m_p_exp, logs_p_exp, y_mask, zp_noise, noise_scale
+                                    -> waveform
+
+    Unlike the streaming split, the latent noise for the flow prior
+    (``zp_noise``) is sampled **outside** the graph rather than internally via
+    ``torch.randn_like`` -- upstream's own reference script
+    (``onnx/inference_onnx.py``) does this so a JS/WASM caller can seed it.
+    ``synthesize`` reproduces that: it seeds ``numpy.random.default_rng`` with
+    the ``seed`` control param (default 0) and draws a same-shaped standard
+    normal array for ``zp_noise``. ``length_scale``/``noise_scale`` follow the
+    same VITS convention as the single-graph adapter (``length_scale`` > 1 is
+    slower, ``noise_scale`` is the flow's stochasticity); ``noise_w_scale`` is
+    accepted but unused, matching upstream's non-stochastic (``use_sdp=False``)
+    duration predictor.
+
+    The primary session is the *duration* graph; *decode* is loaded in
+    :meth:`configure` from ``engine_params["decode_path"]`` (the same
+    auxiliary-graph mechanism :mod:`~phoonnx.engines.zipvoice` uses).
+    """
+
+    #: (m_p_exp, logs_p_exp, y_mask) is the exact output signature Inflect's
+    #: duration.onnx exposes; other prior-split exports could differ, but no
+    #: alternative is known, so this is not currently configurable.
+    _DURATION_OUTPUTS = ("m_p_exp", "logs_p_exp", "y_mask")
+
+    def __init__(self) -> None:
+        self.decode: Optional[onnxruntime.InferenceSession] = None
+
+    def configure(self, voice_config: Any) -> None:
+        ep = getattr(voice_config, "engine_params", None) or {}
+        if self.decode is None and ep.get("decode_path"):
+            self.decode = make_session(ep["decode_path"], providers=ep.get("providers"))
+
+    def default_params(self) -> Dict[str, float]:
+        defaults = dict(super().default_params())
+        defaults["seed"] = 0.0
+        return defaults
+
+    def param_labels(self) -> Dict[str, str]:
+        labels = dict(super().param_labels())
+        labels["seed"] = "Seed"
+        return labels
+
+    def synthesize(
+        self,
+        request: AdapterSynthesisRequest,
+        session: onnxruntime.InferenceSession,
+    ) -> AdapterSynthesisResult:
+        if self.decode is None:
+            raise RuntimeError(
+                "VitsPriorSplitAdapter has no decode graph. Set "
+                "engine_params['decode_path'] to the decode .onnx."
+            )
+        params = request.params
+        defaults = self.default_params()
+        noise_scale = np.array(params.get("noise_scale", defaults["noise_scale"]), dtype=np.float32)
+        length_scale = np.array(params.get("length_scale", defaults["length_scale"]), dtype=np.float32)
+        seed = int(params.get("seed", defaults["seed"]))
+
+        tokens = np.asarray(request.phoneme_ids, dtype=np.int64).reshape(1, -1)
+        lengths = np.asarray(request.phoneme_lengths, dtype=np.int64).reshape(-1)
+
+        m_p_exp, logs_p_exp, y_mask = session.run(
+            list(self._DURATION_OUTPUTS),
+            {"tokens": tokens, "lengths": lengths, "length_scale": length_scale},
+        )
+
+        rng = np.random.default_rng(seed)
+        zp_noise = rng.standard_normal(m_p_exp.shape).astype(np.float32)
+
+        waveform = self.decode.run(
+            ["waveform"],
+            {
+                "m_p_exp": m_p_exp,
+                "logs_p_exp": logs_p_exp,
+                "y_mask": y_mask,
+                "zp_noise": zp_noise,
+                "noise_scale": noise_scale,
+            },
+        )[0]
+        audio = np.asarray(waveform, dtype=np.float32).reshape(-1)
+        return AdapterSynthesisResult(audio=audio)
+
+    # build_feed_dict / parse_outputs are required by the ABC but unused — synthesize()
+    # drives the two-graph (duration + decode) sequence directly. VitsAdapter's
+    # versions would build a single-graph VITS feed / parse a single-graph output,
+    # neither of which matches the duration graph's tokens/lengths/length_scale ->
+    # m_p_exp/logs_p_exp/y_mask contract, so they are overridden to fail loudly
+    # instead of silently misfeeding the duration graph if ever called.
+    def build_feed_dict(
+        self,
+        request: AdapterSynthesisRequest,
+        session: onnxruntime.InferenceSession,
+    ) -> Dict[str, np.ndarray]:
+        raise NotImplementedError("VitsPriorSplitAdapter is two-graph — use synthesize()")
+
+    def parse_outputs(
+        self,
+        outputs: List[np.ndarray],
+        request: AdapterSynthesisRequest,
+        output_names: Optional[List[str]] = None,
+    ) -> AdapterSynthesisResult:
+        raise NotImplementedError("VitsPriorSplitAdapter is two-graph — use synthesize()")
+
+    @staticmethod
+    def detect(
+        config: Optional[Dict[str, Any]] = None,
+        session: Optional[onnxruntime.InferenceSession] = None,
+    ) -> bool:
+        """A prior-split voice needs a decode graph *and* a duration graph whose
+        outputs match the known ``m_p_exp``/``logs_p_exp``/``y_mask`` signature —
+        the config flag alone isn't enough (a plain single-graph VITS voice
+        must never be mistaken for one that needs a second graph it doesn't
+        have)."""
+        if not config:
+            return False
+        engine_params = config.get("engine_params") or {}
+        if not engine_params.get("decode_path"):
+            return False
+        if session is None:
+            return False
+        try:
+            names = {o.name for o in session.get_outputs()}
+        except Exception:
+            return False
+        return set(VitsPriorSplitAdapter._DURATION_OUTPUTS).issubset(names)

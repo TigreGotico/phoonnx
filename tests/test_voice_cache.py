@@ -38,7 +38,7 @@ class TestCacheCeiling(unittest.TestCase):
         plugin = _plugin(self)
         for i in range(5):
             plugin.get_model(f"v{i}")
-        self.assertEqual(len(plugin.voices), 5)
+        self.assertEqual(len(plugin.voice_cache.voices), 5)
 
     def test_limit_evicts_least_recently_used(self):
         plugin = _plugin(self, max_loaded_voices=2)
@@ -46,49 +46,49 @@ class TestCacheCeiling(unittest.TestCase):
         plugin.get_model("b")
         plugin.get_model("a")      # touch: "b" is now the oldest
         plugin.get_model("c")
-        self.assertEqual(len(plugin.voices), 2)
-        self.assertIn("a", plugin.voices)
-        self.assertIn("c", plugin.voices)
-        self.assertNotIn("b", plugin.voices)
+        self.assertEqual(len(plugin.voice_cache.voices), 2)
+        self.assertIn("a", plugin.voice_cache.voices)
+        self.assertIn("c", plugin.voice_cache.voices)
+        self.assertNotIn("b", plugin.voice_cache.voices)
 
     def test_invalid_limit_is_ignored(self):
         for bad in ("nonsense", -1, 0):
             with self.subTest(value=bad):
                 plugin = _plugin(self, max_loaded_voices=bad)
-                self.assertIsNone(plugin.max_loaded_voices)
+                self.assertIsNone(plugin.voice_cache.max_loaded_voices)
 
 
 class TestPinning(unittest.TestCase):
 
     def test_pinned_voice_is_loaded_at_startup(self):
         plugin = _plugin(self, pinned_voices=["keeper"])
-        self.assertIn("keeper", plugin.voices)
+        self.assertIn("keeper", plugin.voice_cache.voices)
 
     def test_pinned_voice_survives_eviction_pressure(self):
         plugin = _plugin(self, pinned_voices=["keeper"], max_loaded_voices=2)
         for i in range(6):
             plugin.get_model(f"passing{i}")
-        self.assertIn("keeper", plugin.voices,
+        self.assertIn("keeper", plugin.voice_cache.voices,
                       "a pinned voice must never be evicted")
 
     def test_limit_is_raised_to_fit_the_pins(self):
         # A limit smaller than the pin set is a contradiction; the pins win,
         # because they were named explicitly.
         plugin = _plugin(self, pinned_voices=["a", "b", "c"], max_loaded_voices=1)
-        self.assertEqual(plugin.max_loaded_voices, 3)
+        self.assertEqual(plugin.voice_cache.max_loaded_voices, 3)
         for v in ("a", "b", "c"):
-            self.assertIn(v, plugin.voices)
+            self.assertIn(v, plugin.voice_cache.voices)
 
     def test_a_single_pin_written_as_a_string_is_one_voice(self):
         # Iterating a bare string would pin one voice per character, and the
         # "pins win" rule would then raise the ceiling to fit all of them —
         # a typo would silently remove the bound entirely.
         plugin = _plugin(self, pinned_voices="OpenVoiceOS/foo")
-        self.assertEqual(plugin.pinned_voices, ["OpenVoiceOS/foo"])
+        self.assertEqual(plugin.voice_cache.pinned_voices, ["OpenVoiceOS/foo"])
 
     def test_duplicate_pins_are_collapsed(self):
         plugin = _plugin(self, pinned_voices=["a", "a", "b"], max_loaded_voices=5)
-        self.assertEqual(plugin.pinned_voices, ["a", "b"])
+        self.assertEqual(plugin.voice_cache.pinned_voices, ["a", "b"])
 
     def test_a_pinned_voice_that_cannot_load_does_not_stop_startup(self):
         from phoonnx.opm import PhoonnxTTSPlugin
@@ -99,7 +99,7 @@ class TestPinning(unittest.TestCase):
                              side_effect=RuntimeError("no such voice")), \
                 patch.object(PhoonnxTTSPlugin, "_providers", return_value=None):
             plugin = PhoonnxTTSPlugin(config={"pinned_voices": ["missing"]})
-        self.assertEqual(len(plugin.voices), 0)
+        self.assertEqual(len(plugin.voice_cache.voices), 0)
 
 
 if __name__ == "__main__":

@@ -57,6 +57,11 @@ class TestOrtOptimizedGraphCache(unittest.TestCase):
         self.assertEqual(len(cached_files), 1)
 
     def test_second_load_reuses_the_cached_file_without_rewriting_it(self):
+        # About the on-disk optimized-graph cache, which pays off across
+        # processes, so the in-process session sharing is turned off here to
+        # make the second call actually build a session.
+        os.environ[providers.SHARE_SESSIONS_ENV_VAR] = "0"
+        self.addCleanup(os.environ.pop, providers.SHARE_SESSIONS_ENV_VAR, None)
         make_session(self.model_path, providers=[CPU_PROVIDER], cache_dir=self.cache_dir)
         cached_files = list(self.cache_dir.glob("*.ort_optimized.onnx"))
         self.assertEqual(len(cached_files), 1)

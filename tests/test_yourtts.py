@@ -64,15 +64,15 @@ def test_speaker_encoder_registry():
 def test_speaker_reference_loads_and_flows(tmp_path):
     """SynthesisConfig.speaker_reference -> a wav is loaded to (audio, sr)."""
     import wave, numpy as np
-    from phoonnx.voice import _load_reference_audio
+    from phoonnx.reference_audio import load_reference_audio
     p = tmp_path / "ref.wav"
     with wave.open(str(p), "wb") as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(22050)
         w.writeframes((np.zeros(2205, np.float32) * 32767).astype("<i2").tobytes())
-    audio, sr = _load_reference_audio(str(p))
+    audio, sr = load_reference_audio(str(p))
     assert sr == 22050 and audio.dtype == np.float32 and audio.ndim == 1
     # tuple passthrough
-    a2, s2 = _load_reference_audio((np.zeros(100, np.float32), 16000))
+    a2, s2 = load_reference_audio((np.zeros(100, np.float32), 16000))
     assert s2 == 16000 and a2.shape == (100,)
 
 

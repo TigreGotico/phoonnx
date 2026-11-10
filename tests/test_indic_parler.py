@@ -588,7 +588,9 @@ def test_available_langs_cover_the_indexed_voices():
     from phoonnx.model_manager import TTSModelManager
     m = TTSModelManager()
     m.merge_default_voices()
-    langs = {v.lang for v in m.voices.values()
+    # the card lists languages without regions; the English voices are
+    # tagged en-IN because the card names their accent as Indian English
+    langs = {v.lang.split("-")[0] for v in m.voices.values()
              if v.engine and v.engine.value == "indic_parler"}
     assert langs
     # every indexed voice's language is one the model card claims support for,

@@ -136,6 +136,11 @@ def sample_logits(logits: np.ndarray, temperature: float, top_k: int, rng) -> np
 class IndicParlerAdapter(BaseOnnxAdapter):
     """Adapter for Indic Parler-TTS (T5 encoder -> AR decoder over DAC codes -> DAC decoder)."""
 
+    MEMOIZED_WRITES = {
+        # The prefill graph's output names, read off the session.
+        "generate_codes": frozenset({"_prefill_outputs"}),
+    }
+
     #: hard ceiling from the upstream generation config (2610 total positions)
     MAX_LENGTH = 2610
 

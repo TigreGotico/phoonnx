@@ -126,6 +126,33 @@ and reused, not downloaded again.
 
 ---
 
+### `add-alignment`
+
+Exposes a voice model's per-phoneme duration tensor as a graph output, so
+`synthesize(include_alignments=True)` can report per-phoneme timings for it.
+
+```bash
+phoonnx-voices add-alignment MODEL_PATH
+```
+
+The patched copy is written to `<model>.alignment.onnx` next to the original,
+which is where phoonnx looks for it when a voice is asked for alignments.
+Running this once, offline, saves every later load from doing the same surgery
+on its first request. See [alignment.md](alignment.md) for what alignments are
+and which models can produce them.
+
+**Options:**
+
+| Flag | Description |
+|------|-------------|
+| `--output`, `-o` | Write the patched model somewhere other than the default sibling path. |
+
+It needs the `onnx` package (`pip install phoonnx[streaming]`) and a model
+whose graph has a locatable duration tensor; it says which of the two is
+missing and exits non-zero otherwise.
+
+---
+
 ## Examples: Full Workflow
 
 ```bash

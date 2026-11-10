@@ -4,16 +4,16 @@ This module only ever imports the lightweight ``onnx`` graph-manipulation
 package (never ``onnxruntime`` for inference, never ``torch``), so it is
 safe to import both from the training-side export CLI
 (``phoonnx_train/export_onnx.py``, which depends on this package) and from
-runtime code (``phoonnx.voice``, which must never depend on ``torch`` or
+runtime code (``phoonnx.alignment``, which must never depend on ``torch`` or
 ``phoonnx_train``).
 
 The core operation: promote the per-phoneme duration tensor (found via the
 ``Ceil`` node every VITS-family duration predictor ends with, rounding
 predicted log-durations to an integer frame count) to a named ONNX graph
 output. Standard exports don't do this — it is optional and either baked in
-at export time (``--add-phoneme-alignment``) or applied on demand at load
-time when a model without it is asked for alignments (see
-``TTSVoice._ensure_alignment_session`` in ``phoonnx/voice.py``).
+at export time (``--add-phoneme-alignment``), applied offline afterwards
+(``phoonnx-voices add-alignment``), or applied on demand at load time when a
+model without it is asked for alignments (see ``phoonnx.alignment``).
 """
 from typing import Optional, Set
 

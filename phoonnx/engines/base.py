@@ -73,7 +73,37 @@ class BaseOnnxAdapter(ABC):
                              per-phoneme duration/frame-count tensor, used by
                              :meth:`_find_duration_output` for the alignment
                              feature (see ``docs/usage.md``).
+
+    Adapters are stateless between requests
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    One adapter instance serves every request a voice receives, and a server
+    runs those concurrently. Anything belonging to a single request — the
+    reference clip, its transcription, sampling seeds, decoded prompts —
+    therefore rides on the :class:`AdapterSynthesisRequest` and comes back in
+    the :class:`AdapterSynthesisResult`; writing it to ``self`` hands one
+    caller's voice to the next caller.
+
+    What may live on the instance is setup: what ``SETUP_METHODS`` derive from
+    the voice's config, plus the individual values a request-path helper is
+    allowed to memoize, named one by one in ``MEMOIZED_WRITES``. A memoized
+    value must be safe to serve to the next request — a lazily opened
+    auxiliary session, a KV-cache shape read off the model, a cache keyed on
+    the input it was derived from. ``tests/test_adapter_statelessness.py``
+    holds every adapter to this.
     """
+
+    # Methods that may assign anything to ``self``: the ones that run once,
+    # from the voice's config, before any request is served.
+    SETUP_METHODS: frozenset = frozenset({
+        "__init__", "configure", "configure_from_params",
+        "parse_config", "parse_onnx_meta", "load_voice",
+    })
+
+    # ``{method: {attribute}}`` — the exact writes a request-path method may
+    # make, each one a claim that the value is either a property of the model
+    # or a cache keyed on what produced it. Scoped per attribute so exempting
+    # a method does not blanket-exempt everything else it touches.
+    MEMOIZED_WRITES: Dict[str, frozenset] = {}
 
     # Candidate ONNX output names that expose per-phoneme durations for this
     # engine family (matched case-insensitively against

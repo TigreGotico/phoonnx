@@ -898,7 +898,7 @@
     "coqui-en-ljspeech-glow-tts": {
         "voice_id": "coqui-en-ljspeech-glow-tts",
         "engine": "glowtts",
-        "lang": "en",
+        "lang": "en-US",
         "phoneme_type": "gruut",
         "alphabet": "ipa",
         "vocab_url": null,

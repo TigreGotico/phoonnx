@@ -133,6 +133,15 @@ def find_boundary_indices(tokens: List[int], boundary_tokens: set) -> List[int]:
 class PocketTTSAdapter(BaseOnnxAdapter):
     """Adapter for Kyutai Pocket TTS (five ONNX graphs, explicit stream state)."""
 
+    MEMOIZED_WRITES = {
+        # Every one of these comes out of the model's own metadata blob.
+        "_apply_metadata": frozenset({
+            "sample_rate", "frame_rate", "latent_dim", "conditioning_dim",
+            "max_token_per_chunk", "model_recommended_frames_after_eos",
+            "insert_bos_before_voice", "pad_with_spaces_for_short_inputs",
+            "remove_semicolons", "mimi_state_manifest", "flow_state_manifest"}),
+    }
+
     def __init__(self, temperature: float = DEFAULT_TEMPERATURE,
                  lsd_steps: int = DEFAULT_LSD_STEPS,
                  eos_threshold: float = DEFAULT_EOS_THRESHOLD,
@@ -474,7 +483,7 @@ class PocketTTSAdapter(BaseOnnxAdapter):
             conditioning, eos_logit = outputs[0], outputs[1]
             self._update_state(state, outputs, self.flow_state_manifest, output_offset=2)
 
-            if eos_step is None and eos_logit[0][0] > eos_threshold:
+            if eos_step is None and float(np.squeeze(eos_logit)) > eos_threshold:
                 eos_step = step
             if eos_step is not None and step >= eos_step + frames_after_eos:
                 break

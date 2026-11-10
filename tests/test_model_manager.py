@@ -440,6 +440,8 @@ class TestExternalDataGraphLoads(HubTestCase):
             [weight])
         model = helper.make_model(
             graph, opset_imports=[helper.make_opsetid("", 13)])
+        # onnxruntime's supported IR version lags behind onnx releases; pin explicitly.
+        model.ir_version = 10
         onnx.save(model, str(build / "model.onnx"), save_as_external_data=True,
                   location="model.onnx_data", all_tensors_to_one_file=True,
                   size_threshold=0)
@@ -572,6 +574,103 @@ class TestDownloadAll(HubTestCase):
                               "tokenizer_config.json"}, pulled)
 
 
+class TestVoskDictionary(HubTestCase):
+    """The vosk pronunciation dictionary is an optional, large (tens of MB)
+    artifact: a failed fetch must degrade to rule-based g2p, not fail voice
+    construction."""
+
+    def test_dictionary_is_fetched_alongside_the_model(self):
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+        self.hub.stage(f"{HUB}/dictionary", b"word phonemes\n")
+        info = self.make_info(dictionary_url=f"{HUB}/dictionary")
+        info.download_all()
+        pulled = {name for _, name, _ in self.hub.downloads}
+        self.assertIn("dictionary", pulled)
+
+    def test_dictionary_becomes_the_phonemizer_model(self):
+        self.hub.stage(f"{HUB}/dictionary", b"word phonemes\n")
+        info = self.make_info(dictionary_url=f"{HUB}/dictionary")
+        self.assertTrue(info.config.phonemizer_model)
+        self.assertTrue(os.path.exists(info.config.phonemizer_model))
+
+    def test_a_failed_fetch_degrades_instead_of_raising(self):
+        self.hub.errors["dictionary"] = ConnectionError("offline")
+        info = self.make_info(dictionary_url=f"{HUB}/dictionary")
+        with patch("phoonnx.model_manager.LOG") as mock_log:
+            self.assertIsNone(info.download_dictionary())
+            self.assertTrue(mock_log.warning.called)
+        # the config still builds - no phonemizer_model, rule-based g2p only
+        self.assertFalse(info.config.phonemizer_model)
+
+    def test_download_all_does_not_raise_when_the_dictionary_is_unreachable(self):
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+        self.hub.errors["dictionary"] = ConnectionError("offline")
+        info = self.make_info(dictionary_url=f"{HUB}/dictionary")
+        model_path = info.download_all()
+        self.assertEqual(model_path.read_bytes(), b"onnxdata")
+
+
+class TestLoadProviders(HubTestCase):
+    @patch("phoonnx.model_manager.VoiceConfig")
+    @patch("phoonnx.model_manager.make_session")
+    @patch("phoonnx.model_manager.resolve_providers")
+    @patch("phoonnx.model_manager.TTSVoice")
+    @patch("phoonnx.model_manager.requests.get")
+    def test_load_engine_without_config_url_uses_requested_providers(
+            self, mock_get, mock_ttsvoice_cls, mock_resolve_providers,
+            mock_make_session, mock_voiceconfig_cls):
+        info = self.make_info(engine=Engine.SUPERTONIC,
+                              model_url="https://example.com/model.onnx")
+
+        def side_effect(url, timeout=None, stream=None):
+            if stream:
+                resp = _mock_response(200, content=b"data")
+                cm = MagicMock()
+                cm.__enter__.return_value = resp
+                return cm
+            return _mock_response(200, content=b'{"vocab": {}}')
+
+        mock_get.side_effect = side_effect
+        fake_config = MagicMock()
+        fake_config.engine_params = {}
+        mock_voiceconfig_cls.from_dict.return_value = fake_config
+        first_requested = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        first_resolved = [
+            ("CUDAExecutionProvider", {"cudnn_conv_algo_search": "HEURISTIC"}),
+            "CPUExecutionProvider",
+        ]
+        second_requested = ["CPUExecutionProvider"]
+        second_resolved = ["CPUExecutionProvider"]
+        mock_resolve_providers.side_effect = [first_resolved, second_resolved]
+        session = MagicMock()
+        mock_make_session.return_value = session
+        fake_voice = MagicMock()
+        mock_ttsvoice_cls.return_value = fake_voice
+        first_result = info.load(providers=first_requested)
+        self.assertEqual(fake_config.engine_params["providers"], first_resolved)
+
+        second_result = info.load(providers=second_requested)
+
+        self.assertEqual(
+            mock_resolve_providers.call_args_list,
+            [unittest.mock.call(first_requested),
+             unittest.mock.call(second_requested)],
+        )
+        self.assertEqual(
+            mock_make_session.call_args_list,
+            [
+                unittest.mock.call(info.voice_path / "model.onnx",
+                                   providers=first_resolved),
+                unittest.mock.call(info.voice_path / "model.onnx",
+                                   providers=second_resolved),
+            ],
+        )
+        self.assertEqual(fake_config.engine_params["providers"],
+                         second_resolved)
+        self.assertEqual(first_result, fake_voice)
+        self.assertEqual(second_result, fake_voice)
+
+
 class TestTTSModelInfoStringEnumCoercion(HubTestCase):
     def test_string_engine_alphabet_phoneme_type_coerced(self):
         info = self.make_info(engine="piper", alphabet="ipa", phoneme_type="espeak")
@@ -586,6 +685,119 @@ class TestTTSModelInfoStringEnumCoercion(HubTestCase):
     def test_display_name_placeholder_resolution(self):
         info = self.make_info(engine="piper", phoneme_type="espeak", display_name="{engine}/{phoneme_type}")
         self.assertEqual(info.display_name, "piper/espeak")
+
+    def test_requires_reference_defaults_false(self):
+        info = self.make_info(engine="piper")
+        self.assertFalse(info.requires_reference)
+
+    def test_requires_reference_round_trips_through_to_dict(self):
+        info = self.make_info(engine="chatterbox", requires_reference=True)
+        self.assertTrue(info.requires_reference)
+        d = info.to_dict()
+        self.assertTrue(d["requires_reference"])
+        restored = TTSModelInfo(**d)
+        self.assertTrue(restored.requires_reference)
+
+
+class TestChatterboxIndexRequiresReference(unittest.TestCase):
+    """Chatterbox is a zero-shot cloning engine: every catalog entry needs a
+    caller-supplied reference clip and can never succeed from a bare
+    (text, lang) request. The index carries that as ``requires_reference``
+    so a catalog sweep can skip these instead of rediscovering the same
+    failure every run."""
+
+    def test_every_chatterbox_entry_is_flagged(self):
+        index_dir = Path(__file__).resolve().parents[1] / "phoonnx" / "voice_index"
+        with open(index_dir / "chatterbox.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertGreater(len(data), 0)
+        for voice_id, voice_dict in data.items():
+            info = TTSModelInfo(**voice_dict)
+            self.assertTrue(info.requires_reference, f"{voice_id} should require a reference clip")
+
+
+class TestStyleTTS2IndexRequiresReference(unittest.TestCase):
+    """bsc/es-styletts2 and bsc/ca-styletts2 are the zero-shot cloning variants
+    of the BSC StyleTTS2 voices: their ONNX graph declares a ``style`` input
+    but the index entry carries no ``style_url``, so synthesis needs a
+    caller-supplied ``speaker_reference``. Their siblings (``bsc/es-cml*``,
+    ``bsc/ca-bet`` etc.) share the same graph but add a fixed ``style_url``
+    for one speaker, so they synthesize from a bare (text, lang) request and
+    must NOT carry the flag."""
+
+    def _load(self):
+        index_dir = Path(__file__).resolve().parents[1] / "phoonnx" / "voice_index"
+        with open(index_dir / "styletts2.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def test_zero_shot_bsc_entries_are_flagged(self):
+        data = self._load()
+        for voice_id in ("bsc/es-styletts2", "bsc/ca-styletts2"):
+            info = TTSModelInfo(**data[voice_id])
+            self.assertTrue(info.requires_reference, f"{voice_id} should require a reference clip")
+
+    def test_fixed_style_siblings_are_not_flagged(self):
+        data = self._load()
+        siblings = [vid for vid in data if vid.startswith("bsc/es-cml") or (
+            vid.startswith("bsc/ca-") and vid != "bsc/ca-styletts2")]
+        self.assertGreater(len(siblings), 0)
+        for voice_id in siblings:
+            info = TTSModelInfo(**data[voice_id])
+            self.assertFalse(info.requires_reference, f"{voice_id} carries a style_url and should not require a reference clip")
+
+
+class TestPhonemizerLangOverride(HubTestCase):
+    """piper_community/raphaelmerx/tdt-TL_joao is a healthy voice trained with
+    Portuguese espeak (its own config.json says espeak voice "pt"), but the
+    catalogue lang "tdt-TL" is display/discovery metadata only -- no
+    phonemizer serves Tetun. ``phonemizer_lang`` lets the index say which
+    language the voice actually phonemizes as, without disturbing ``lang``
+    (which stays catalogue-facing, e.g. for get_lang_voices).
+    """
+
+    def test_field_round_trips_through_to_dict_and_kwargs(self):
+        info = self.make_info(lang="tdt-TL", phonemizer_lang="pt")
+        d = info.to_dict()
+        self.assertEqual(d["phonemizer_lang"], "pt")
+        rehydrated = TTSModelInfo(**d)
+        self.assertEqual(rehydrated.phonemizer_lang, "pt")
+        self.assertEqual(rehydrated.lang, "tdt-TL")
+
+    def test_default_is_none_and_survives_round_trip(self):
+        info = self.make_info(lang="en-US")
+        self.assertIsNone(info.phonemizer_lang)
+        d = info.to_dict()
+        self.assertIsNone(d["phonemizer_lang"])
+        self.assertIsNone(TTSModelInfo(**d).phonemizer_lang)
+
+    def test_phonemizer_lang_wins_over_catalogue_lang_for_config_resolution(self):
+        # No config_url: config resolution starts from the graphemes/unicode
+        # default dict, isolating exactly what feeds VoiceConfig.from_dict's
+        # lang_code override.
+        info = self.make_info(lang="tdt-TL", phonemizer_lang="pt",
+                              phoneme_type="espeak", alphabet="ipa",
+                              engine="piper")
+        self.assertEqual(info.config.lang_code, "pt")
+        # lang stays the catalogue-facing value; unaffected by the override.
+        self.assertEqual(info.lang, "tdt-TL")
+
+    def test_without_phonemizer_lang_index_lang_still_wins(self):
+        # Regression guard for the kakao-enterprise/vits-ljs shape: an entry
+        # with lang="en-US" and no phonemizer_lang must still resolve to the
+        # index lang, exactly as before this field existed.
+        info = self.make_info(lang="en-US", phoneme_type="espeak",
+                              alphabet="ipa", engine="piper")
+        self.assertEqual(info.config.lang_code, "en-US")
+
+    def test_real_tdt_tl_joao_entry_carries_phonemizer_lang(self):
+        import json as _json
+        from importlib import resources
+        with resources.files("phoonnx.voice_index").joinpath(
+                "piper_community.json").open("r", encoding="utf-8") as f:
+            index = _json.load(f)
+        entry = index["piper_community/raphaelmerx/tdt-TL_joao"]
+        self.assertEqual(entry["phonemizer_lang"], "pt")
+        self.assertEqual(entry["lang"], "tdt-TL")
 
 
 class ManagerTestCase(unittest.TestCase):

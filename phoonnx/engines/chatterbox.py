@@ -22,6 +22,7 @@ import numpy as np
 import onnxruntime
 
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
+from phoonnx.providers import make_session
 
 S3GEN_SR = 24000
 START_SPEECH_TOKEN = 6561
@@ -67,6 +68,12 @@ def _sample_top_p(logits: np.ndarray, temperature: float, top_p: float, rng) -> 
 class ChatterboxAdapter(BaseOnnxAdapter):
     """Adapter for Chatterbox (autoregressive codec-LM, d-vector cloning, exaggeration)."""
 
+    MEMOIZED_WRITES = {
+        # KV-cache geometry, read off the model's own input shapes.
+        "_read_kv_shape": frozenset({"past_names", "num_kv_heads", "head_dim",
+                                     "lm_needs_pos"}),
+    }
+
     REPETITION_PENALTY = 1.2
     MAX_NEW_TOKENS = 1000
 
@@ -103,7 +110,12 @@ class ChatterboxAdapter(BaseOnnxAdapter):
         """Load the auxiliary graphs from ``engine_params`` and read the LM's KV-cache
         shape from its own input signature (no hardcoded layer counts)."""
         ep = getattr(voice_config, "engine_params", None) or {}
-        sess = lambda p: onnxruntime.InferenceSession(str(p), providers=["CPUExecutionProvider"])
+        # Routed through make_session, same as the main LM graph: these three
+        # aux graphs are ~1.19GB per voice and identical across every voice
+        # sharing a checkpoint, so building them with a bare InferenceSession
+        # both loaded that weight again per voice and left it unaccounted for
+        # by the model manager's budget, which only sees make_session sessions.
+        sess = lambda p: make_session(str(p), providers=ep.get("providers") or ["CPUExecutionProvider"])
         if self.embed_tokens is None and ep.get("embed_tokens_path"):
             self.embed_tokens = sess(ep["embed_tokens_path"])
         if self.embed_tokens is not None:

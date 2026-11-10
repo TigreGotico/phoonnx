@@ -4,6 +4,10 @@ import numpy as np
 
 from .vad import SileroVoiceActivityDetector
 
+# Shortest input the Silero model scores. Below it the ONNX Pad node raises
+# rather than returning a probability.
+DETECTOR_MIN_SAMPLES = 129
+
 
 def trim_silence(
     audio_array: np.ndarray,
@@ -28,12 +32,19 @@ def trim_silence(
 
     num_chunks = (len(audio_array) + samples_per_chunk - 1) // samples_per_chunk
 
-    # Determine main block of speech. Every chunk, including the final
-    # (possibly short) tail chunk, is scored so a speech onset near the end
-    # of the clip is never missed.
+    # Determine main block of speech. Every chunk is scored, including the
+    # final (possibly short) tail chunk, which is zero-padded only up to the
+    # detector's own floor: below that it raises and the exception aborts the
+    # whole utterance rather than the chunk. Padding no further leaves every
+    # tail the detector already accepted scoring on exactly the samples it
+    # scored before, so this cannot move a boundary on a clip that worked.
+    # It also does not make a short tail audible -- a speech onset inside one
+    # can still fall under the threshold, and does.
     for chunk_idx in range(num_chunks):
         start = chunk_idx * samples_per_chunk
         chunk = audio_array[start:start + samples_per_chunk]
+        if len(chunk) < DETECTOR_MIN_SAMPLES:
+            chunk = np.pad(chunk, (0, DETECTOR_MIN_SAMPLES - len(chunk)))
         prob = detector(chunk, sample_rate=sample_rate)
         is_speech = prob >= threshold
 

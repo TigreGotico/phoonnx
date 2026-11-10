@@ -1,3 +1,4 @@
+import unicodedata
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Mapping, List, Dict, Optional, Any, Set, Union
@@ -245,7 +246,12 @@ class Vocabulary:
         Returns:
             Vocabulary: Vocabulary populated with the parsed char-to-index map and configured special tokens.
         """
-        char2idx: Dict[str, int] = cfg.get("phoneme_id_map", {})
+        # Some hybrid configs (phoonnx_version present but Piper-style phoneme_id_map)
+        # carry list-valued ids, e.g. "a": [14]; unwrap those like from_piper_config does.
+        char2idx: Dict[str, int] = {
+            char: (idx[0] if isinstance(idx, (list, tuple)) else idx)
+            for char, idx in cfg.get("phoneme_id_map", {}).items()
+        }
         pad: Optional[str] = cfg.get("pad") or DEFAULT_PAD_TOKEN
         eos: Optional[str] = cfg.get("eos") or DEFAULT_EOS_TOKEN
         bos: Optional[str] = cfg.get("bos") or DEFAULT_BOS_TOKEN
@@ -491,6 +497,11 @@ class TTSTokenizer:
     use_eos_bos: bool
     blank_at_end: bool
     blank_at_start: bool
+    fold_compounds: bool = True
+    """Greedily merge adjacent characters into multi-char vocabulary keys
+    (mimic3 diphthongs). Must be ``False`` when the input is already a list of
+    complete phoneme tokens (e.g. vosk), where merging would corrupt genuine
+    consonant clusters like ``s h`` -> ``sh``."""
     not_found_characters: Set[str] = field(default_factory=set)
 
     @property
@@ -538,7 +549,7 @@ class TTSTokenizer:
         # first pre-process phoneme_map to check for dipthongs having their own phoneme_id
         # common in mimic3 models
         compound_toks = sorted((k for k in self.vocabulary.char2idx
-                                if len(k) > 1), key=len, reverse=True)
+                                if len(k) > 1), key=len, reverse=True) if self.fold_compounds else []
 
         token_ids: List[Optional[int]] = []
 
@@ -561,13 +572,35 @@ class TTSTokenizer:
                         compound_idxs += [i for i in range(i, i+n)]
                         break
 
+                if idx is None and len(char) == 1:
+                    # Phonemizers emit precomposed characters (e.g. U+00F5 "õ") while
+                    # some vocabularies (e.g. Kokoro/StyleTTS2) only know the base
+                    # letter plus a separate combining mark. Fall back to the
+                    # canonical decomposition before giving up on the character.
+                    decomposed = unicodedata.normalize("NFD", char)
+                    if len(decomposed) > 1 and all(c in self.vocabulary.char2idx for c in decomposed):
+                        idx = [self.vocabulary.char2idx[c] for c in decomposed]
+
+                if idx is None and len(char) == 1:
+                    # A vocabulary built from lowercased training text holds no
+                    # uppercase letter, so a capital at the start of a sentence
+                    # is dropped and the model never says that sound. Fall back
+                    # to the lowercase form, which can only help: the character
+                    # is already out of vocabulary at this point.
+                    lowered = char.lower()
+                    if lowered != char and lowered in self.vocabulary.char2idx:
+                        idx = self.vocabulary.char2idx[lowered]
+
                 if idx is None and char not in self.not_found_characters:
                     self.not_found_characters.add(char)
                     LOG.warning(f"Out-of-vocabulary phoneme {char!r} "
                                 f"(codepoints: {[hex(ord(c)) for c in char]}) "
                                 f"not found in vocabulary, dropping it")
 
-            token_ids.append(idx)
+            if isinstance(idx, list):
+                token_ids.extend(idx)
+            else:
+                token_ids.append(idx)
 
         # NOTE: mimic3 adds an extra word_blank at end, so we match that behaviour here
         #  instead of ending [..., BLANK, EOS] it ends with [..., BLANK, BLANK_WORD, BLANK, EOS]
@@ -679,9 +712,10 @@ class TTSTokenizer:
         blank_at_start: bool = cfg.get("blank_at_start", True)
         use_eos_bos: bool = cfg.get("use_eos_bos", True)
         add_blank_word: bool = cfg.get("add_blank_word", False)
+        fold_compounds: bool = cfg.get("fold_compounds", True)
         return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
                             blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                            use_eos_bos=use_eos_bos)
+                            use_eos_bos=use_eos_bos, fold_compounds=fold_compounds)
 
     @staticmethod
     def from_piper_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':
@@ -704,6 +738,22 @@ class TTSTokenizer:
         return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
                             blank_at_end=blank_at_end, blank_at_start=blank_at_start,
                             use_eos_bos=use_eos_bos)
+
+    @staticmethod
+    def from_vosk_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':
+        """
+        Create a TTSTokenizer for an alphacep vosk-tts voice.
+
+        Tokenization matches piper (blank id 0 interspersed between every token
+        with leading/trailing blanks, BOS/EOS wrapping) — which reproduces
+        vosk_tts's own ``^ 0 p 0 p … 0 $`` id stream exactly. Compound folding
+        is disabled because the phonemizer already emits complete phoneme
+        tokens, so merging neighbours (``s`` + ``h`` -> ``sh``) would be wrong.
+        """
+        voc: Vocabulary = Vocabulary.from_piper_config(cfg)
+        return TTSTokenizer(voc, add_blank_char=True, add_blank_word=False,
+                            blank_at_end=True, blank_at_start=True,
+                            use_eos_bos=True, fold_compounds=False)
 
     @staticmethod
     def from_mimic3_config(cfg: Dict[str, Any], tokens_txt: str) -> 'TTSTokenizer':

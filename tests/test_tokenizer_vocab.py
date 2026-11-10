@@ -351,6 +351,80 @@ class TestCompoundPhonemeEncoding(unittest.TestCase):
         self.assertEqual(tok.encode("azb"), [0])
 
 
+class TestUppercaseFallback(unittest.TestCase):
+    """A vocabulary built from lowercased training text holds no uppercase
+    letter, so the first letter of every capitalised word was dropped and the
+    model never said that sound."""
+
+    def _tok(self, char2idx):
+        voc = Vocabulary(char2idx=char2idx, blank=None)
+        return TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+
+    def test_capital_falls_back_to_the_lowercase_form(self):
+        tok = self._tok({"a": 0, "k": 1, "w": 2})
+        self.assertEqual(tok.encode("Akwa"), [0, 1, 2, 0])
+        self.assertEqual(tok.not_found_characters, set())
+
+    def test_capital_in_vocab_is_not_lowercased(self):
+        tok = self._tok({"a": 0, "A": 1})
+        self.assertEqual(tok.encode("Aa"), [1, 0])
+
+    def test_capital_absent_both_ways_is_still_dropped(self):
+        tok = self._tok({"b": 0})
+        self.assertEqual(tok.encode("A"), [])
+        self.assertEqual(tok.not_found_characters, {"A"})
+
+    def test_lowercase_input_is_unchanged(self):
+        tok = self._tok({"a": 0, "b": 1})
+        self.assertEqual(tok.encode("ab"), [0, 1])
+        self.assertEqual(tok.not_found_characters, set())
+
+    def test_decomposition_still_wins_for_a_precomposed_capital(self):
+        # "Ã" has no lowercase entry either, but it decomposes to "A" + tilde;
+        # the decomposition branch runs first and must keep working.
+        tok = self._tok({"A": 0, "\u0303": 1})
+        self.assertEqual(tok.encode("\u00c3"), [0, 1])
+
+
+class TestPrecomposedCharacterDecomposition(unittest.TestCase):
+    """Phonemizers emit precomposed nasal vowels (e.g. U+00E3 "ã") while
+    vocabularies like Kokoro/StyleTTS2 only know the base letter plus a
+    separate combining tilde (U+0303). Decompose before dropping."""
+
+    def test_precomposed_char_decomposes_to_base_plus_combining_mark(self):
+        # "ã" (U+00E3) NFD-decomposes to "a" (U+0061) + combining tilde (U+0303)
+        voc = Vocabulary(char2idx={"a": 0, "̃": 1}, blank=None)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+        self.assertEqual(tok.encode("ã"), [0, 1])
+        self.assertEqual(tok.not_found_characters, set())
+
+    def test_precomposed_char_in_vocab_is_not_decomposed(self):
+        voc = Vocabulary(char2idx={"a": 0, "̃": 1, "ã": 2}, blank=None)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+        self.assertEqual(tok.encode("ã"), [2])
+
+    def test_partial_decomposition_match_still_dropped(self):
+        # vocab only has the base letter, not the combining mark -> can't fully map
+        voc = Vocabulary(char2idx={"a": 0}, blank=None)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+        self.assertEqual(tok.encode("ã"), [])
+        self.assertEqual(tok.not_found_characters, {"ã"})
+
+    def test_compound_token_still_wins_over_decomposition(self):
+        # "ã" is not in char2idx directly, but if a compound token happened to
+        # equal the precomposed char's neighbour sequence, compounds must still
+        # be matched first; here we assert decomposition doesn't break normal
+        # compound folding for unrelated ASCII compounds.
+        voc = Vocabulary(char2idx={"a": 0, "i": 1, "ai": 2, "̃": 3}, blank=None)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+        self.assertEqual(tok.encode("ai"), [2])
+
+
 class TestBosEosSafetyPath(unittest.TestCase):
     def test_pad_with_bos_eos_without_bos_returns_input_unchanged(self):
         voc = Vocabulary(char2idx={"a": 0}, bos=None, eos="$")
@@ -384,6 +458,29 @@ class TestVocabularyAndTokenizerFromPhoonnxConfig(unittest.TestCase):
         self.assertTrue(tok.blank_at_end)
         self.assertTrue(tok.use_eos_bos)
         self.assertFalse(tok.add_blank_word)
+
+    def test_vocabulary_from_phoonnx_config_unwraps_list_valued_ids(self):
+        # eu-antton-medium / eu-maider-medium (piper_community/itzune) carry
+        # "phoonnx_version" but a Piper-style list-valued phoneme_id_map, e.g.
+        # "a": [14]; those ids must be unwrapped to plain ints like from_piper_config.
+        import numpy as np
+
+        cfg = {"phoneme_id_map": {"a": [14], "b": [5, 99]}}
+        voc = Vocabulary.from_phoonnx_config(cfg)
+        self.assertEqual(voc.char2idx, {"a": 14, "b": 5})
+        self.assertTrue(all(isinstance(v, int) for v in voc.char2idx.values()))
+
+        # unfixed: list values give a list-of-lists here, and np.expand_dims
+        # turns that into rank-3 input that ONNX Runtime rejects (expects rank 2).
+        ids = np.array([voc.char2idx["a"], voc.char2idx["b"]], dtype=np.int64)
+        batched = np.expand_dims(ids, 0)
+        self.assertEqual(batched.ndim, 2)
+
+    def test_vocabulary_from_phoonnx_config_int_valued_ids_unchanged(self):
+        cfg = {"phoneme_id_map": {"a": 0, "b": 1}}
+        voc = Vocabulary.from_phoonnx_config(cfg)
+        self.assertEqual(voc.char2idx, {"a": 0, "b": 1})
+        self.assertTrue(all(isinstance(v, int) for v in voc.char2idx.values()))
 
     def test_tokenizer_from_phoonnx_config_explicit_flags_respected(self):
         cfg = {"phoneme_id_map": {"a": 0}, "add_blank_char": False, "blank_at_end": False,

@@ -161,14 +161,13 @@ diacritizer backends and auto-provisions the Hebrew phonikud model.
 
 ## G2P for OVOS
 
-This phonemizer layer was extracted into [scriptconv](https://github.com/TigreGotico/scriptconv);
-phoonnx now depends on it and keeps thin compatibility shims for the names
-above. OVOS users who want grapheme-to-phoneme conversion on its own, without
-the rest of phoonnx's TTS pipeline, should use
+The phonemizers on this page come from [scriptconv](https://github.com/TigreGotico/scriptconv).
+phoonnx re-exports `PhonemeType` and `Alphabet` from it. For grapheme-to-phoneme
+conversion in OpenVoiceOS without the TTS pipeline, use
 [ovos-scriptconv-g2p-plugin](https://github.com/TigreGotico/ovos-scriptconv-g2p-plugin),
-an OPM `opm.g2p` plugin built directly on scriptconv — see its
+an OPM `opm.g2p` plugin built on scriptconv. scriptconv's
 [docs/ovos.md](https://github.com/TigreGotico/scriptconv/blob/dev/docs/ovos.md)
-for install and configuration.
+gives the install and configuration steps.
 
 ## Attribution
 

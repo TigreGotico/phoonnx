@@ -60,6 +60,7 @@ tensorboard --logdir <default-root-dir>/lightning_logs
 | `speedyspeech` | ForwardTTS / SpeedySpeech | Same engine as `fastpitch`, no pitch |
 | `mixer` / `mixertts` | Mixer-TTS | Two-stage; [guide](engines/mixertts.md) |
 | `zipvoice` | ZipVoice (flow-matching, in-context cloning) | [guide](engines/zipvoice.md) |
+| `supertonic` | SuperTonic (three-stage: autoencoder + flow-matching + duration) | [guide](engines/supertonic.md) |
 | `optispeech` | OptiSpeech (lightweight end-to-end, S4D attention) | Install `phoonnx[train,train-optispeech]` |
 | `yourtts` | YourTTS (VITS + d-vector cloning) | See [Cloning](../cloning.md) |
 | `styletts2` | StyleTTS2 / Kokoro | See [StyleTTS2](#styletts2-engine---engine-styletts2) below |
@@ -118,6 +119,25 @@ python -m phoonnx_train.export_onnx last.ckpt \
 ```
 
 See the [ZipVoice guide](engines/zipvoice.md).
+
+## MOSS-TTS-Nano (standalone pipeline)
+
+MOSS-TTS-Nano is an autoregressive codec LM, so it does not consume the phoneme-based
+preprocessed dataset the `--engine` trainers share — it trains on pre-encoded RVQ tokens
+and raw text, from its own CLI in `phoonnx_train/mosstts/`:
+
+```bash
+python -m phoonnx_train.mosstts.prepare_data --codec-encode-onnx ... \
+  --input-manifest data/metadata.csv --output-jsonl data/train.codes.jsonl
+python -m phoonnx_train.mosstts.train --train-jsonl data/train.codes.jsonl \
+  --tokenizer-model tokenizer.model --warm-start-from models/MOSS-TTS-Nano \
+  --output-dir runs/moss-pt
+python -m phoonnx_train.mosstts.export_onnx --checkpoint runs/moss-pt/last.ckpt \
+  --output-dir exported/moss-pt --external-data
+```
+
+See the [MOSS-TTS-Nano guide](engines/mosstts.md) for the data format, warm-start, resume
+and export details.
 
 ## GlowTTS engine (`--engine glowtts`)
 

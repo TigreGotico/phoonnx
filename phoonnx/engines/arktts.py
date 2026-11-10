@@ -198,6 +198,11 @@ def sample_semantic(logits: np.ndarray, window: List[int], rng: np.random.Genera
 class ArkTTSAdapter(BaseOnnxAdapter):
     """Adapter for ArkTTS (slow AR + fast AR + 44.1 kHz codec decoder)."""
 
+    MEMOIZED_WRITES = {
+        # The reference system block never changes for a loaded voice.
+        "prefix_ids": frozenset({"_prefix_ids"}),
+    }
+
     def __init__(self):
         self.fast_ar: Optional[onnxruntime.InferenceSession] = None
         self.decoder: Optional[onnxruntime.InferenceSession] = None

@@ -57,15 +57,15 @@ def test_resample():
     assert abs(len(_resample(a, 22050, 24000)) - 1000 * 24000 / 22050) <= 2
 
 
-def test_load_reference_audio(tmp_path):
+def testload_reference_audio(tmp_path):
     """The cloning UX: speaker_reference (wav path or tuple) -> (audio, sr)."""
     import wave
-    from phoonnx.voice import _load_reference_audio
-    a, sr = _load_reference_audio((np.zeros(100, np.float32), 16000))   # tuple passthrough
+    from phoonnx.reference_audio import load_reference_audio
+    a, sr = load_reference_audio((np.zeros(100, np.float32), 16000))   # tuple passthrough
     assert sr == 16000 and a.shape == (100,) and a.dtype == np.float32
     p = tmp_path / "r.wav"
     with wave.open(str(p), "wb") as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(22050)
         w.writeframes(np.zeros(2205, np.int16).tobytes())
-    a, sr = _load_reference_audio(str(p))                              # wav path
+    a, sr = load_reference_audio(str(p))                              # wav path
     assert sr == 22050 and a.ndim == 1

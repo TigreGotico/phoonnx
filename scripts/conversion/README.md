@@ -60,9 +60,44 @@ python export_neutts_onnx.py --repo afrispeech/Akiti-TTS --out-dir ./onnx \
 difference for the prefill call and for each decode step. The matching NeuCodec decoder
 is published by Neuphonic as ONNX and is used as-is, not re-exported.
 
+## `inflect/`
+
+Converts Inflect-v2 (Micro ~9.36M / Nano ~3.97M params,
+[owenawsong/Inflect](https://github.com/owenawsong/Inflect), Apache-2.0) from its
+upstream PyTorch checkpoint into a single-graph phoonnx/piper-style ONNX voice.
+Inflect-v2 is architecturally a plain VITS (`jaywalnut310/vits`, MIT) with a
+non-stochastic duration predictor (`use_sdp=False`); it already ships an
+official ONNX export, but that export splits `SynthesizerTrn.infer` into two
+graphs (`duration.onnx` / `decode.onnx`) with the flow's latent noise sampled
+*outside* the graph — useful for a seedable browser/WASM runtime, but not the
+shape phoonnx's `VitsAdapter` expects. Rather than add a whole new engine for a
+plain VITS model, this exporter traces `infer()` itself (noise sampled
+*inside* the graph, same as every other piper/coqui VITS export phoonnx
+already loads) so the existing `VitsAdapter` handles it unchanged:
+
+```bash
+huggingface-cli download owensong/Inflect-Micro-v2 --local-dir /tmp/inflect-micro-v2
+python inflect/export_inflect.py --model-dir /tmp/inflect-micro-v2 \
+    --out inflect-micro-en.onnx --model-name Inflect-Micro-v2
+```
+
+produces `inflect-micro-en.onnx` + `inflect-micro-en.onnx.json` (a piper-shaped
+config: `phoneme_type: espeak`, `alphabet: ipa`, `lang_code: en-us`, and a
+`phoneme_id_map` built from the model's own 178-symbol table), loadable
+directly with `TTSVoice.load("inflect-micro-en.onnx")`. Swap in
+`owensong/Inflect-Nano-v2` for the smaller voice.
+
 ## Licensing
 
-The vendored model code under each exporter is derived from
-[idiap/coqui-ai-TTS](https://github.com/idiap/coqui-ai-TTS) (**MPL-2.0**) and from
-[nipponjo](https://github.com/nipponjo)'s FastPitch/Mixer attention. Those files
-retain their upstream license; see `NOTICE`.
+The vendored model code under `coqui_fastpitch_export/` and `coqui_glowtts_export/`
+is derived from [idiap/coqui-ai-TTS](https://github.com/idiap/coqui-ai-TTS)
+(**MPL-2.0**) and from [nipponjo](https://github.com/nipponjo)'s FastPitch/Mixer
+attention. Those files retain their upstream license; see `NOTICE`.
+
+The vendored model code under `inflect/` is copied unmodified from the official
+runtime of `owensong/Inflect-Micro-v2`/`-Nano-v2` (Apache-2.0), but is itself
+derived from [jaywalnut310/vits](https://github.com/jaywalnut310/vits) (**MIT**,
+Copyright (c) 2021 Jaehyeon Kim — reproduced in `inflect/LICENSE`); its symbol
+table (`text/symbols.py`) is further derived from
+[keithito/tacotron](https://github.com/keithito/tacotron) (**MIT**, reproduced in
+`inflect/text/LICENSE`). See `NOTICE` for the full attribution chain.

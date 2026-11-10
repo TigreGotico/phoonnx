@@ -23,6 +23,7 @@ For anyone with a dataset who wants a new voice.
 3. [Preprocess reference](training/preprocess.md) — every `preprocess.py` flag
 4. [Training reference](training/training.md) — every `train.py` flag, engines, resume/fine-tune
 5. [Export](training/export.md) — checkpoint → ONNX, validating the exported voice
+6. [Training notebooks](training/quickstart.md#training-notebooks) — the golden path as a runnable Colab/Kaggle notebook
 
 ### Understand the internals (contributors and advanced users)
 For anyone extending phoonnx or debugging a voice.
@@ -36,6 +37,7 @@ For anyone extending phoonnx or debugging a voice.
 ## Task guides
 
 - [Voice cloning](cloning.md) — zero-shot cloning from a reference clip
+- [Voice conversion](voice_conversion.md) — convert any voice's output to a target speaker
 - [Streaming](streaming.md) — low-latency streaming for VITS voices
 - [Phoneme alignment](alignment.md) — per-phoneme timing for visemes, karaoke, subtitles
 - [OVOS plugin](ovos_plugin.md) — the `ovos-tts-plugin-phoonnx` TTS plugin
@@ -58,6 +60,7 @@ how to obtain or train it, and a synthesis example:
 [Qwen3-TTS](training/engines/qwen3tts.md) ·
 [ArkTTS](training/engines/arktts.md) ·
 [F5-TTS](training/engines/f5tts.md) ·
+[MOSS-TTS-Nano](training/engines/mosstts.md) ·
 [Shami](training/engines/shami.md) ·
 [Pocket TTS](pockettts.md) ·
 [OuteTTS](training/engines/outetts.md) ·

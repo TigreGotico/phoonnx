@@ -25,7 +25,8 @@
     "engine": "styletts2",
     "lang": "es",
     "speaker_encoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/bsc-es-styletts2/style_encoder.onnx",
-    "speaker_encoder_type": "styletts2_style"
+    "speaker_encoder_type": "styletts2_style",
+    "requires_reference": true
   },
   "bsc/es-cml3946": {
     "voice_id": "bsc/es-cml3946",
@@ -136,7 +137,8 @@
     "engine": "styletts2",
     "lang": "ca",
     "speaker_encoder_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/bsc-ca-styletts2/style_encoder.onnx",
-    "speaker_encoder_type": "styletts2_style"
+    "speaker_encoder_type": "styletts2_style",
+    "requires_reference": true
   },
   "bsc/ca-bet": {
     "voice_id": "bsc/ca-bet",
@@ -651,7 +653,7 @@
     "phoneme_type": "misaki_en",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "en-US",
+    "lang": "en-GB",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/bf_alice.bin"
   },
   "kokoro/bf_emma": {
@@ -665,7 +667,7 @@
     "phoneme_type": "misaki_en",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "en-US",
+    "lang": "en-GB",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/bf_emma.bin"
   },
   "kokoro/bf_isabella": {
@@ -679,7 +681,7 @@
     "phoneme_type": "misaki_en",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "en-US",
+    "lang": "en-GB",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/bf_isabella.bin"
   },
   "kokoro/bf_lily": {
@@ -693,7 +695,7 @@
     "phoneme_type": "misaki_en",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "en-US",
+    "lang": "en-GB",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/bf_lily.bin"
   },
   "kokoro/bm_daniel": {
@@ -707,7 +709,7 @@
     "phoneme_type": "misaki_en",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "en-US",
+    "lang": "en-GB",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/bm_daniel.bin"
   },
   "kokoro/bm_fable": {
@@ -721,7 +723,7 @@
     "phoneme_type": "misaki_en",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "en-US",
+    "lang": "en-GB",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/bm_fable.bin"
   },
   "kokoro/bm_george": {
@@ -735,7 +737,7 @@
     "phoneme_type": "misaki_en",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "en-US",
+    "lang": "en-GB",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/bm_george.bin"
   },
   "kokoro/bm_lewis": {
@@ -749,7 +751,7 @@
     "phoneme_type": "misaki_en",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "en-US",
+    "lang": "en-GB",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/bm_lewis.bin"
   },
   "kokoro/jf_alpha": {
@@ -973,7 +975,7 @@
     "phoneme_type": "misaki_en",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "en-US",
+    "lang": "en-GB",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.1-zh-ONNX/resolve/main/voices/bf_vale.bin"
   },
   "kokoro-v11/zf_001": {
@@ -2527,7 +2529,7 @@
     "phoneme_type": "espeak",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "pt",
+    "lang": "pt-BR",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/pf_dora.bin"
   },
   "kokoro/pm_alex": {
@@ -2541,7 +2543,7 @@
     "phoneme_type": "espeak",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "pt",
+    "lang": "pt-BR",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/pm_alex.bin"
   },
   "kokoro/pm_santa": {
@@ -2555,7 +2557,7 @@
     "phoneme_type": "espeak",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "pt",
+    "lang": "pt-BR",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/pm_santa.bin"
   },
   "kokoro-v019/af": {
@@ -2667,7 +2669,7 @@
     "phoneme_type": "misaki_en",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "en-US",
+    "lang": "en-GB",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-ONNX/resolve/main/voices/bf_emma.bin"
   },
   "kokoro-v019/bf_isabella": {
@@ -2681,7 +2683,7 @@
     "phoneme_type": "misaki_en",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "en-US",
+    "lang": "en-GB",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-ONNX/resolve/main/voices/bf_isabella.bin"
   },
   "kokoro-v019/bm_george": {
@@ -2695,7 +2697,7 @@
     "phoneme_type": "misaki_en",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "en-US",
+    "lang": "en-GB",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-ONNX/resolve/main/voices/bm_george.bin"
   },
   "kokoro-v019/bm_lewis": {
@@ -2709,7 +2711,7 @@
     "phoneme_type": "misaki_en",
     "alphabet": "ipa",
     "engine": "styletts2",
-    "lang": "en-US",
+    "lang": "en-GB",
     "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-ONNX/resolve/main/voices/bm_lewis.bin"
   },
   "hitz/eu-antton": {
@@ -3167,5 +3169,61 @@
     "engine": "styletts2",
     "lang": "en-US",
     "style_url": "https://huggingface.co/OpenVoiceOS/phoonnx-kitten-tts/resolve/main/mini-0.1/expr-voice-5-f.bin"
+  },
+  "logus2k/tts_eu_pt": {
+    "voice_id": "logus2k/tts_eu_pt",
+    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/model.onnx",
+    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/config.json",
+    "vocab_url": null,
+    "tokenizer_config_url": null,
+    "tokens_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "tugaphone",
+    "alphabet": "ipa",
+    "engine": "styletts2",
+    "lang": "pt-PT-x-lisbon",
+    "style_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/voices/tuga.bin"
+  },
+  "logus2k/tts_eu_pt-pm_alex": {
+    "voice_id": "logus2k/tts_eu_pt-pm_alex",
+    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/model.onnx",
+    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/config.json",
+    "vocab_url": null,
+    "tokenizer_config_url": null,
+    "tokens_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "tugaphone",
+    "alphabet": "ipa",
+    "engine": "styletts2",
+    "lang": "pt-PT-x-lisbon",
+    "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/pm_alex.bin"
+  },
+  "logus2k/tts_eu_pt-pm_santa": {
+    "voice_id": "logus2k/tts_eu_pt-pm_santa",
+    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/model.onnx",
+    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/config.json",
+    "vocab_url": null,
+    "tokenizer_config_url": null,
+    "tokens_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "tugaphone",
+    "alphabet": "ipa",
+    "engine": "styletts2",
+    "lang": "pt-PT-x-lisbon",
+    "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/pm_santa.bin"
+  },
+  "logus2k/tts_eu_pt-am_adam": {
+    "voice_id": "logus2k/tts_eu_pt-am_adam",
+    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/model.onnx",
+    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-styletts2/resolve/main/tuga-kokoro-pt/config.json",
+    "vocab_url": null,
+    "tokenizer_config_url": null,
+    "tokens_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "tugaphone",
+    "alphabet": "ipa",
+    "engine": "styletts2",
+    "lang": "pt-PT-x-lisbon",
+    "style_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_adam.bin"
   }
 }

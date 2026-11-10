@@ -126,7 +126,7 @@ def list_engines() -> List[str]:
 # ------------------------------------------------------------------
 
 def _register_builtins() -> None:
-    from phoonnx.engines.vits import VitsAdapter
+    from phoonnx.engines.vits import VitsAdapter, VitsPriorSplitAdapter
     from phoonnx.engines.vits_streaming import VitsStreamingAdapter
     from phoonnx.engines.shami import ShamiAdapter
     from phoonnx.engines.matcha import MatchaAdapter
@@ -151,6 +151,7 @@ def _register_builtins() -> None:
     from phoonnx.engines.llasa import LlasaAdapter
     from phoonnx.engines.orpheus import OrpheusAdapter
     from phoonnx.engines.magpie import MagpieAdapter
+    from phoonnx.engines.mosstts import MossTTSNanoAdapter
 
     # OptiSpeech shares VITS-like x/x_lengths/scales inputs with Matcha, but has
     # a distinctive metadata + wav/durations output signature — check it first.
@@ -160,7 +161,18 @@ def _register_builtins() -> None:
     # matches split models (streaming:true + decoder_path), so it never steals a
     # normal single-graph voice, but a normal VITS voice must not steal a split one.
     register_engine("vits_streaming", VitsStreamingAdapter, detect_priority=48)
+    # Prior-split VITS (e.g. Inflect-v2's official duration.onnx/decode.onnx):
+    # detected purely by the duration graph's output signature, so it must be
+    # probed before the plain single-graph vits adapter.
+    register_engine("vits_prior_split", VitsPriorSplitAdapter, detect_priority=49)
     register_engine("vits", VitsAdapter, detect_priority=50)
+    # alphacep vosk-tts voices are plain VITS exports (input/input_lengths/
+    # scales[/sid]) - VitsAdapter.detect() matches them the same as any other
+    # VITS graph. The config loader always names the engine explicitly, so in
+    # practice this entry is reached through the named-engine lookup; the
+    # priority is still set *after* "vits" (not tied with it) so an anonymous
+    # VITS voice's auto-detect is never claimed under the "vosk" name instead.
+    register_engine("vosk", VitsAdapter, detect_priority=51)
     register_engine("matcha", MatchaAdapter, detect_priority=40)
     register_engine("glowtts", GlowTTSAdapter, detect_priority=42)
     register_engine("mixertts", MixerTTSAdapter, detect_priority=36)
@@ -185,6 +197,10 @@ def _register_builtins() -> None:
     register_engine("llasa", LlasaAdapter, detect_priority=15)
     register_engine("orpheus", OrpheusAdapter, detect_priority=14)
     register_engine("magpie", MagpieAdapter, detect_priority=19)
+    # MOSS-TTS-Nano is authoritative-only: detect() requires an explicit
+    # engine="mosstts" in the voice config, so its priority among the
+    # heuristic-probed engines above is irrelevant.
+    register_engine("mosstts", MossTTSNanoAdapter, detect_priority=20)
 
 
 _register_builtins()

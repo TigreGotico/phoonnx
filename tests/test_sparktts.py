@@ -161,9 +161,11 @@ def test_encode_text_uses_the_models_own_bpe():
     assert ad.encode_text("hi!", None, None) == [[ord("h"), ord("i"), ord("!")]]
 
 
-def test_encode_text_tokenizes_the_reference_transcription_with_the_same_bpe():
+def test_encode_text_does_not_stash_reference_state_on_the_adapter():
     # the transcription is text for this model, so it must not come from the shared
-    # phonemizer path (whose prompt_tokens are phoneme ids for ZipVoice-style engines)
+    # phonemizer path (whose prompt_tokens are phoneme ids for ZipVoice-style engines).
+    # It also must not be stashed on self -- this adapter instance is shared across
+    # concurrent requests, and reads it back from request.params in synthesize() instead.
     ad = _adapter()
 
     class _Bpe:
@@ -175,10 +177,7 @@ def test_encode_text_tokenizes_the_reference_transcription_with_the_same_bpe():
 
     ad.tokenizer = _Bpe()
     ad.encode_text("hi", None, _Syn())
-    assert ad._reference_text_ids == [ord("a"), ord("b")]
-    # a later call without a transcription clears it, so a stale reference never leaks
-    ad.encode_text("hi", None, None)
-    assert ad._reference_text_ids is None
+    assert not hasattr(ad, "_reference_text_ids")
 
 
 def test_encode_text_without_a_tokenizer_is_an_error():
@@ -258,8 +257,8 @@ def test_reference_encoding_is_reused_across_chunks():
     ad.speaker_tokenizer = _Sess()
     audio = np.sin(np.linspace(0, 200, 16000)).astype(np.float32)
     req = _req(reference_audio=(audio, 16000))
-    ad._resolve_speaker(req)
-    ad._resolve_speaker(req)
+    ad._resolve_speaker(req, None)
+    ad._resolve_speaker(req, None)
     assert len(calls) == 1
 
 
@@ -611,6 +610,41 @@ def test_synthesize_filters_out_non_semantic_token_ids_before_the_vocoder():
     feed = ad.vocoder.calls[0]
     assert feed["semantic_tokens"].tolist() == [[42]]   # only the one valid token survives
     assert result.extras == {"semantic_token_count": 1}
+
+
+def test_synthesize_uses_the_reference_text_from_request_params_not_from_encode_text():
+    """Regression: encode_text used to stash the tokenized reference transcription on
+    self, which the shared adapter (one per voice_id under the threaded server) could
+    serve to a different, concurrently-running request's synthesize() call. It must come
+    from request.params instead."""
+    base = SPECIAL["<|bicodec_semantic_0|>"]
+    eos = SPECIAL["<|im_end|>"]
+
+    class _Bpe:
+        def tokenize(self, text):
+            return [ord(c) for c in text]
+
+    ad, session = _synth_ready_adapter([base + 1, eos])
+    ad.tokenizer = _Bpe()
+
+    class _SynA:
+        speaker_reference_text = "AAA"
+
+    class _SynB:
+        speaker_reference_text = "BBB"
+
+    # simulate interleaving: request A's encode_text runs, then request B's encode_text
+    # runs on the same shared adapter (as would happen under a threaded server), and
+    # only then does request A's synthesize() run.
+    ad.encode_text("hi", None, _SynA())
+    ad.encode_text("hi", None, _SynB())
+
+    req_a = _req(speaker_reference_text="AAA")
+    ad.synthesize(req_a, session)
+
+    prompt = session.calls[0]["input_ids"][0].tolist()
+    assert [ord(c) for c in "AAA"] == prompt[2:5]
+    assert [ord(c) for c in "BBB"] != prompt[2:5]
 
 
 def test_synthesize_returns_silence_when_nothing_survives_the_filter_and_skips_the_vocoder():

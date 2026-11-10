@@ -13,7 +13,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "en-US"
+        "lang": "en-US",
+        "requires_reference": true
     },
     "chatterbox/turbo/en": {
         "voice_id": "chatterbox/turbo/en",
@@ -29,7 +30,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "en-US"
+        "lang": "en-US",
+        "requires_reference": true
     },
     "chatterbox/multilingual/ar": {
         "voice_id": "chatterbox/multilingual/ar",
@@ -45,7 +47,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar"
+        "lang": "ar",
+        "requires_reference": true
     },
     "chatterbox/multilingual/bg": {
         "voice_id": "chatterbox/multilingual/bg",
@@ -61,7 +64,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "bg-BG"
+        "lang": "bg-BG",
+        "requires_reference": true
     },
     "chatterbox/multilingual/cs": {
         "voice_id": "chatterbox/multilingual/cs",
@@ -77,7 +81,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "cs-CZ"
+        "lang": "cs-CZ",
+        "requires_reference": true
     },
     "chatterbox/multilingual/da": {
         "voice_id": "chatterbox/multilingual/da",
@@ -93,7 +98,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "da-DK"
+        "lang": "da-DK",
+        "requires_reference": true
     },
     "chatterbox/multilingual/de": {
         "voice_id": "chatterbox/multilingual/de",
@@ -109,7 +115,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "de-DE"
+        "lang": "de-DE",
+        "requires_reference": true
     },
     "chatterbox/multilingual/el": {
         "voice_id": "chatterbox/multilingual/el",
@@ -125,7 +132,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "el-GR"
+        "lang": "el-GR",
+        "requires_reference": true
     },
     "chatterbox/multilingual/en": {
         "voice_id": "chatterbox/multilingual/en",
@@ -141,7 +149,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "en-US"
+        "lang": "en-US",
+        "requires_reference": true
     },
     "chatterbox/multilingual/es": {
         "voice_id": "chatterbox/multilingual/es",
@@ -157,7 +166,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "es-ES"
+        "lang": "es-ES",
+        "requires_reference": true
     },
     "chatterbox/multilingual/fi": {
         "voice_id": "chatterbox/multilingual/fi",
@@ -173,7 +183,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "fi-FI"
+        "lang": "fi-FI",
+        "requires_reference": true
     },
     "chatterbox/multilingual/fr": {
         "voice_id": "chatterbox/multilingual/fr",
@@ -189,7 +200,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "fr-FR"
+        "lang": "fr-FR",
+        "requires_reference": true
     },
     "chatterbox/multilingual/he": {
         "voice_id": "chatterbox/multilingual/he",
@@ -205,7 +217,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "he-IL"
+        "lang": "he-IL",
+        "requires_reference": true
     },
     "chatterbox/multilingual/hi": {
         "voice_id": "chatterbox/multilingual/hi",
@@ -221,7 +234,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "hi-IN"
+        "lang": "hi-IN",
+        "requires_reference": true
     },
     "chatterbox/multilingual/hu": {
         "voice_id": "chatterbox/multilingual/hu",
@@ -237,7 +251,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "hu-HU"
+        "lang": "hu-HU",
+        "requires_reference": true
     },
     "chatterbox/multilingual/it": {
         "voice_id": "chatterbox/multilingual/it",
@@ -253,7 +268,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "it-IT"
+        "lang": "it-IT",
+        "requires_reference": true
     },
     "chatterbox/multilingual/ja": {
         "voice_id": "chatterbox/multilingual/ja",
@@ -269,7 +285,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ja-JP"
+        "lang": "ja-JP",
+        "requires_reference": true
     },
     "chatterbox/multilingual/ko": {
         "voice_id": "chatterbox/multilingual/ko",
@@ -285,7 +302,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ko-KR"
+        "lang": "ko-KR",
+        "requires_reference": true
     },
     "chatterbox/multilingual/ms": {
         "voice_id": "chatterbox/multilingual/ms",
@@ -301,7 +319,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ms-MY"
+        "lang": "ms-MY",
+        "requires_reference": true
     },
     "chatterbox/multilingual/nl": {
         "voice_id": "chatterbox/multilingual/nl",
@@ -317,7 +336,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "nl-NL"
+        "lang": "nl-NL",
+        "requires_reference": true
     },
     "chatterbox/multilingual/no": {
         "voice_id": "chatterbox/multilingual/no",
@@ -333,7 +353,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "no-NO"
+        "lang": "no-NO",
+        "requires_reference": true
     },
     "chatterbox/multilingual/pl": {
         "voice_id": "chatterbox/multilingual/pl",
@@ -349,7 +370,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "pl-PL"
+        "lang": "pl-PL",
+        "requires_reference": true
     },
     "chatterbox/multilingual/pt": {
         "voice_id": "chatterbox/multilingual/pt",
@@ -365,7 +387,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "pt-PT"
+        "lang": "pt-PT",
+        "requires_reference": true
     },
     "chatterbox/multilingual/ro": {
         "voice_id": "chatterbox/multilingual/ro",
@@ -381,7 +404,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ro-RO"
+        "lang": "ro-RO",
+        "requires_reference": true
     },
     "chatterbox/multilingual/ru": {
         "voice_id": "chatterbox/multilingual/ru",
@@ -397,7 +421,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ru-RU"
+        "lang": "ru-RU",
+        "requires_reference": true
     },
     "chatterbox/multilingual/sk": {
         "voice_id": "chatterbox/multilingual/sk",
@@ -413,7 +438,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "sk-SK"
+        "lang": "sk-SK",
+        "requires_reference": true
     },
     "chatterbox/multilingual/sv": {
         "voice_id": "chatterbox/multilingual/sv",
@@ -429,7 +455,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "sv-SE"
+        "lang": "sv-SE",
+        "requires_reference": true
     },
     "chatterbox/multilingual/sw": {
         "voice_id": "chatterbox/multilingual/sw",
@@ -445,7 +472,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "sw"
+        "lang": "sw",
+        "requires_reference": true
     },
     "chatterbox/multilingual/ta": {
         "voice_id": "chatterbox/multilingual/ta",
@@ -461,7 +489,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ta-IN"
+        "lang": "ta-IN",
+        "requires_reference": true
     },
     "chatterbox/multilingual/tr": {
         "voice_id": "chatterbox/multilingual/tr",
@@ -477,7 +506,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "tr-TR"
+        "lang": "tr-TR",
+        "requires_reference": true
     },
     "chatterbox/multilingual/vi": {
         "voice_id": "chatterbox/multilingual/vi",
@@ -493,7 +523,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "vi-VN"
+        "lang": "vi-VN",
+        "requires_reference": true
     },
     "chatterbox/multilingual/zh": {
         "voice_id": "chatterbox/multilingual/zh",
@@ -509,7 +540,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "zh-CN"
+        "lang": "zh-CN",
+        "requires_reference": true
     },
     "chatterbox/lahgtna/eg": {
         "voice_id": "chatterbox/lahgtna/eg",
@@ -525,7 +557,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-EG"
+        "lang": "ar-EG",
+        "requires_reference": true
     },
     "chatterbox/lahgtna/sa": {
         "voice_id": "chatterbox/lahgtna/sa",
@@ -541,7 +574,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-SA"
+        "lang": "ar-SA",
+        "requires_reference": true
     },
     "chatterbox/lahgtna/mo": {
         "voice_id": "chatterbox/lahgtna/mo",
@@ -557,7 +591,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-MA"
+        "lang": "ar-MA",
+        "requires_reference": true
     },
     "chatterbox/lahgtna/iq": {
         "voice_id": "chatterbox/lahgtna/iq",
@@ -573,7 +608,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-IQ"
+        "lang": "ar-IQ",
+        "requires_reference": true
     },
     "chatterbox/lahgtna/lb": {
         "voice_id": "chatterbox/lahgtna/lb",
@@ -589,7 +625,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-LB"
+        "lang": "ar-LB",
+        "requires_reference": true
     },
     "chatterbox/lahgtna/sd": {
         "voice_id": "chatterbox/lahgtna/sd",
@@ -605,7 +642,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-SD"
+        "lang": "ar-SD",
+        "requires_reference": true
     },
     "chatterbox/lahgtna/ly": {
         "voice_id": "chatterbox/lahgtna/ly",
@@ -621,7 +659,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-LY"
+        "lang": "ar-LY",
+        "requires_reference": true
     },
     "chatterbox/lahgtna/sy": {
         "voice_id": "chatterbox/lahgtna/sy",
@@ -637,7 +676,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-SY"
+        "lang": "ar-SY",
+        "requires_reference": true
     },
     "chatterbox/lahgtna/tn": {
         "voice_id": "chatterbox/lahgtna/tn",
@@ -653,7 +693,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-TN"
+        "lang": "ar-TN",
+        "requires_reference": true
     },
     "chatterbox/lahgtna/ps": {
         "voice_id": "chatterbox/lahgtna/ps",
@@ -669,6 +710,7 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-PS"
+        "lang": "ar-PS",
+        "requires_reference": true
     }
 }

@@ -44,6 +44,30 @@ class Engine(str, Enum):
     LLASA = "llasa"  # Llasa (HKUST): LLaMA codec-LM + XCodec2 decoder, 50 Hz single codebook
     ORPHEUS = "orpheus"  # Orpheus (Canopy Labs): Llama codec-LM + SNAC decoder, emotive tags
     MAGPIE = "magpie"  # NVIDIA Magpie-TTS: encoder-decoder codec LM, 8 codebooks, 12 languages
+    MOSSTTS = "mosstts"  # MOSS-TTS-Nano: autoregressive RVQ-16 codec-LM, zero-shot cloning @48kHz
+    VOSK = "vosk"  # alphacep vosk-tts: VITS + dictionary/rule Russian g2p
+
+    @classmethod
+    def _missing_(cls, value: object) -> Optional["Engine"]:
+        """Resolve a name a published config may use to the member that owns it.
+
+        The alias resolves to the *same* member, so every comparison against
+        ``Engine.STYLETTS2`` keeps working and a config is not routed to a
+        second, separate value.
+        """
+        if isinstance(value, str):
+            canonical = ENGINE_ALIASES.get(value.strip().lower())
+            if canonical is not None:
+                return cls(canonical)
+        return None
+
+
+#: Names a published config may use for an engine above. Kokoro is the
+#: StyleTTS2 graph under another name, and the sherpa-onnx and kokoro-onnx
+#: tooling writes "kokoro", so a config copied from there must not be refused.
+#: Kept beside the enum rather than inside it: a plain attribute in an Enum
+#: body becomes a member.
+ENGINE_ALIASES = {"kokoro": Engine.STYLETTS2.value}
 
 
 # Alphabet and PhonemeType are wire-format enums shared with scriptconv;
@@ -182,6 +206,15 @@ class VoiceConfig:
             self.alphabet = Alphabet.UNICODE
         if not isinstance(self.phoneme_type, PhonemeType) and isinstance(self.phoneme_type, str):
             self.phoneme_type = PhonemeType(self.phoneme_type)
+        if self.phoneme_type is None:
+            # Vocab- and tokens-file voices (transformers, sherpa) carry no
+            # phoneme_type of their own; they are character models, like the
+            # alphabet fallback above. GRAPHEMES (not UNICODE): the grapheme
+            # phonemizer case-folds and NFC-composes, so lowercase precomposed
+            # vocabs (the MMS shape) keep matching instead of dropping OOV
+            # codepoints, and it matches what the shipped index declares for
+            # every voice of this shape.
+            self.phoneme_type = PhonemeType.GRAPHEMES
 
         if self.add_diacritics is None:
             self.add_diacritics = False
@@ -192,77 +225,33 @@ class VoiceConfig:
 
     @staticmethod
     def is_mimic3(config: dict[str, Any]) -> bool:
-        # https://huggingface.co/mukowaty/mimic3-voices
-
-        # mimic3 models indicate a phonemizer strategy in their config
-        if ("phonemizer" not in config or
-                not isinstance(config["phonemizer"], str)):
-            return False
-
-        # mimic3 models include a "phonemes" section with token info
-        if "phonemes" not in config or not isinstance(config["phonemes"], dict):
-            return False
-
-        # validate phonemizer type as expected by mimic3
-        phonemizer = config["phonemizer"]
-        # class Phonemizer(str, Enum):
-        #     SYMBOLS = "symbols"
-        #     GRUUT = "gruut"
-        #     ESPEAK = "espeak"
-        #     EPITRAN = "epitran"
-        if phonemizer not in ["symbols", "gruut", "espeak", "epitran"]:
-            return False
-
-        return True
+        """Whether *config* is a mimic3 voice."""
+        from phoonnx.config_loaders import LoadRequest, Mimic3Loader
+        return Mimic3Loader.detect(LoadRequest(config=config))
 
     @staticmethod
     def is_piper(config: dict[str, Any]) -> bool:
-        if "piper_version" in config:
-            return True
-        # an explicitly declared non-piper engine wins over shape-sniffing: a
-        # canonical config (e.g. engine="coqui" with an espeak phoneme_id_map)
-        # must not be mistaken for piper just because it phonemizes with espeak.
-        engine = config.get("engine")
-        if engine and engine not in ("piper", Engine.PIPER, Engine.PIPER.value):
-            return False
-        # piper models indicate a phonemizer strategy in their config
-        if ("phoneme_type" not in config or
-                not isinstance(config["phoneme_type"], str)):
-            return False
+        """Whether *config* is a piper voice."""
+        from phoonnx.config_loaders import LoadRequest, PiperLoader
+        return PiperLoader.detect(LoadRequest(config=config))
 
-        # piper models include a "phoneme_id_map" section mapping phonemes to int
-        pid = config.get("phoneme_id_map")
-        if not isinstance(pid, dict) or not pid:
-            return False
-
-        # piper's phoneme_id_map values are *lists* ([id, ...]); a flat
-        # phoneme -> int map is the canonical phoonnx/coqui shape, not piper.
-        if not all(isinstance(v, (list, tuple)) for v in pid.values()):
-            return False
-
-        # validate phonemizer type as expected by piper
-        phonemizer = config["phoneme_type"]
-        if phonemizer not in ["text", "espeak"]:
-            return False
-
-        return True
+    @staticmethod
+    def is_vosk(config: dict[str, Any]) -> bool:
+        """Whether *config* is an alphacep vosk-tts voice."""
+        from phoonnx.config_loaders import LoadRequest, VoskLoader
+        return VoskLoader.detect(LoadRequest(config=config))
 
     @staticmethod
     def is_coqui_vits(config: dict[str, Any]) -> bool:
-        # coqui vits grapheme models include a "characters" section with token info
-        if "characters" not in config or not isinstance(config["characters"], dict):
-            return False
-
-        # double check this was trained with coqui
-        if config["characters"].get("characters_class", "") not in ["TTS.tts.models.vits.VitsCharacters",
-                                                                    "TTS.tts.utils.text.characters.Graphemes"]:
-            return False
-
-        return True
+        """Whether *config* is a Coqui VITS grapheme voice."""
+        from phoonnx.config_loaders import CoquiLoader, LoadRequest
+        return CoquiLoader.detect(LoadRequest(config=config))
 
     @staticmethod
     def is_phoonnx(config: dict[str, Any]) -> bool:
-        return "phoonnx_version" in config
+        """Whether *config* is a native phoonnx voice."""
+        from phoonnx.config_loaders import LoadRequest, PhoonnxLoader
+        return PhoonnxLoader.detect(LoadRequest(config=config))
 
     @staticmethod
     def from_dict(config: dict[str, Any],  # phoonnx/piper/coqui/mimic3
@@ -277,438 +266,53 @@ class VoiceConfig:
                    bpe_tokenizer_json: Optional[str] = None,
                    lang_tokens: Optional[Dict[str, str]] = None) -> "VoiceConfig":
         """
-        Create a VoiceConfig from a model configuration dictionary and optional external phoneme data.
-        
-        Builds a VoiceConfig by detecting the model engine (Phoonnx, Piper, Mimic3, Transformers or Coqui), deriving tokenizer and alphabet, and applying model-specific defaults and inference settings. Provided optional arguments override corresponding values found in the config.
-        
+        Build a VoiceConfig from a model configuration dictionary and its optional
+        companion files.
+
+        The config's format is recognised by the loader registry in
+        :mod:`phoonnx.config_loaders`, which yields the fields that differ per
+        format (tokenizer, engine, phoneme type, alphabet, language, diacritics);
+        :func:`~phoonnx.config_loaders.resolve_overrides` then folds in the
+        caller's overrides, and everything format-independent — audio, inference
+        scales, speaker and language maps, special tokens — is read straight off
+        the config here.
+
         Parameters:
-            config (dict[str, Any]): Parsed model configuration dictionary.
-            tokens_txt (Optional[str]): Path to an external tokens file (.txt or .json) used to build or override the tokenizer vocabulary.
-            lang_code (Optional[str]): Language code to override the config's language selection.
-            phoneme_type (Optional[PhonemeType]): Phoneme type name to override the config's phoneme_type value.
-            alphabet (Optional[Alphabet]): Alphabet name to override or supply the resulting VoiceConfig alphabet.
-        
-        Returns:
-            VoiceConfig: A populated VoiceConfig instance with tokenizer, alphabet, engine, phoneme_type, inference settings, and token tokens derived from the inputs.
-        
+            config: Parsed model configuration dictionary. Loaders may normalise
+                it in place (special tokens, a defaulted sample rate).
+            vocab: Token vocabulary of a transformers export.
+            tokenizer_config: ``tokenizer_config.json`` of a transformers export.
+            tokens_txt: Path to an external tokens file (``.txt`` or ``.json``),
+                required by mimic3 voices and by sherpa-onnx style models.
+            bpe_tokenizer_json: Path to a ``tokenizer.json``, required by Chatterbox.
+            lang_code, phoneme_type, alphabet, engine: Overrides that win over the
+                config's own values, except where the format pins them.
+            engine_params: Locally-resolved adapter parameters; these win over the
+                config's own ``engine_params``.
+            lang_tokens: Overrides the config's BCP47 -> language-token map.
+
         Raises:
-            ValueError: If the config is identified as a Mimic3 model but no phonemes_txt is provided.
+            ValueError: If the detected format needs a companion file that was
+                not provided.
         """
-        blank_type = BlankBetween.TOKENS_AND_WORDS
-        lang_code = lang_code or config.get("lang_code")
-        phoneme_type = phoneme_type or config.get("phoneme_type")
-        alphabet = alphabet or config.get("alphabet")
-        diacritics = False
-        ar_diacritizer_model = None
+        from phoonnx.config_loaders import LoadRequest, load_voice_fields
 
-        if (engine == Engine.CHATTERBOX or
-                (isinstance(engine, str) and engine == "chatterbox") or
-                config.get("engine") == "chatterbox"):
-            # Chatterbox tokenizes raw text with its own BPE; the multilingual variant
-            # uses ChatterboxMTLTokenizer (detected by the [SPACE] token).
-            engine = Engine.CHATTERBOX
-            if not bpe_tokenizer_json:
-                raise ValueError("Chatterbox voices require a tokenizer.json (bpe_tokenizer_json)")
-            from phoonnx.tokenizer import load_chatterbox_tokenizer
-            tokenizer = load_chatterbox_tokenizer(bpe_tokenizer_json)
-            phoneme_type = phoneme_type or PhonemeType.UNICODE
-            alphabet = alphabet or Alphabet.UNICODE
-            # Arabic/Hebrew need vocalization (niqqud/tashkeel) for correct pronunciation.
-            diacritics = (lang_code or "").lower().startswith(("ar", "he"))
-            config.setdefault("audio", {}).setdefault("sample_rate", 24000)
-            config.setdefault("num_symbols", tokenizer._tok.get_vocab_size())
+        loaded = load_voice_fields(LoadRequest(
+            config=config,
+            vocab=vocab,
+            tokenizer_config=tokenizer_config,
+            tokens_txt=tokens_txt,
+            bpe_tokenizer_json=bpe_tokenizer_json,
+            lang_code=lang_code or config.get("lang_code"),
+            phoneme_type=phoneme_type or config.get("phoneme_type"),
+            alphabet=alphabet or config.get("alphabet"),
+            engine=engine,
+        ))
+        LOG.debug(f"phonemizer: {loaded.phoneme_type}")
 
-        elif (engine == Engine.LLASA or
-                (isinstance(engine, str) and engine == "llasa") or
-                config.get("engine") == "llasa"):
-            # Llasa consumes raw text: the adapter owns the whole text -> id path
-            # (chat-template prompt assembly, then the checkpoint's own BPE, loaded
-            # from engine_params), so no phonemizer/tokenizer vocabulary is built
-            # here. Alphabet.GRAPHEMES routes TTSVoice.synthesize() through
-            # adapter.encode_text(). XCodec2 output is 16 kHz mono.
-            engine = Engine.LLASA
-            phoneme_type = phoneme_type or PhonemeType.UNICODE
-            alphabet = alphabet or Alphabet.GRAPHEMES
-            config.setdefault("audio", {}).setdefault("sample_rate", 16000)
-            tokenizer = TTSTokenizer(
-                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
-                add_blank_char=False,
-                add_blank_word=False,
-                use_eos_bos=False,
-                blank_at_end=False,
-                blank_at_start=False,
-            )
-
-        elif (engine == Engine.NEUTTS or
-                (isinstance(engine, str) and engine == "neutts") or
-                config.get("engine") == "neutts"):
-            # NeuTTS consumes raw text: the adapter owns the whole text -> id path
-            # (espeak-ng phonemization, prompt assembly, then the checkpoint's own BPE,
-            # all loaded from engine_params), so no phonemizer/tokenizer vocabulary is
-            # built here. Alphabet.GRAPHEMES routes TTSVoice.synthesize() through
-            # adapter.encode_text(). NeuCodec output is 24 kHz mono.
-            engine = Engine.NEUTTS
-            phoneme_type = phoneme_type or PhonemeType.UNICODE
-            alphabet = alphabet or Alphabet.GRAPHEMES
-            config.setdefault("audio", {}).setdefault("sample_rate", 24000)
-            tokenizer = TTSTokenizer(
-                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
-                add_blank_char=False,
-                add_blank_word=False,
-                use_eos_bos=False,
-                blank_at_end=False,
-                blank_at_start=False,
-            )
-
-        elif (engine == Engine.ORPHEUS or
-                (isinstance(engine, str) and engine == "orpheus") or
-                config.get("engine") == "orpheus"):
-            # Orpheus consumes raw text: the adapter owns the whole text -> id path
-            # (voice-name prefix, the served control tokens, then the checkpoint's own
-            # BPE from engine_params), so no phonemizer/tokenizer vocabulary is built
-            # here. The emotive tags (<laugh>, <sigh>, ...) are ordinary text that the
-            # same BPE encodes, so they must not be phonemized away. Alphabet.GRAPHEMES
-            # routes TTSVoice.synthesize() through adapter.encode_text(). SNAC output is
-            # 24 kHz mono.
-            engine = Engine.ORPHEUS
-            phoneme_type = phoneme_type or PhonemeType.UNICODE
-            alphabet = alphabet or Alphabet.GRAPHEMES
-            config.setdefault("audio", {}).setdefault("sample_rate", 24000)
-            tokenizer = TTSTokenizer(
-                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
-                add_blank_char=False,
-                add_blank_word=False,
-                use_eos_bos=False,
-                blank_at_end=False,
-                blank_at_start=False,
-            )
-
-        elif (engine == Engine.SUPERTONIC or
-                (isinstance(engine, str) and engine == "supertonic") or
-                config.get("engine") == "supertonic"):
-            # SuperTonic consumes raw text directly: the adapter owns text -> id
-            # conversion via its own unicode-codepoint indexer (loaded from
-            # engine_params), so no phonemizer/tokenizer vocabulary is needed here.
-            # Alphabet.GRAPHEMES routes TTSVoice.synthesize() through
-            # adapter.encode_text() instead of the phonemizer pipeline.
-            engine = Engine.SUPERTONIC
-            phoneme_type = phoneme_type or PhonemeType.UNICODE
-            alphabet = alphabet or Alphabet.GRAPHEMES
-            config.setdefault("audio", {}).setdefault("sample_rate", 44100)
-            tokenizer = TTSTokenizer(
-                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
-                add_blank_char=False,
-                add_blank_word=False,
-                use_eos_bos=False,
-                blank_at_end=False,
-                blank_at_start=False,
-            )
-
-        elif (engine == Engine.POCKETTTS or
-                (isinstance(engine, str) and engine == "pockettts") or
-                config.get("engine") == "pockettts"):
-            # Pocket TTS consumes raw text directly: the adapter tokenizes with the
-            # bundle's own SentencePiece model (loaded from engine_params), so no
-            # phonemizer or vocabulary is needed here. Alphabet.GRAPHEMES routes
-            # TTSVoice.synthesize() through adapter.encode_text().
-            engine = Engine.POCKETTTS
-            phoneme_type = phoneme_type or PhonemeType.UNICODE
-            alphabet = alphabet or Alphabet.GRAPHEMES
-            config.setdefault("audio", {}).setdefault("sample_rate", 24000)
-            tokenizer = TTSTokenizer(
-                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
-                add_blank_char=False,
-                add_blank_word=False,
-                use_eos_bos=False,
-                blank_at_end=False,
-                blank_at_start=False,
-            )
-
-        elif (engine == Engine.SPARKTTS or
-                (isinstance(engine, str) and engine == "sparktts") or
-                config.get("engine") == "sparktts"):
-            # Spark-TTS consumes raw text: the adapter owns text -> id conversion with the
-            # model's own subword BPE (loaded from engine_params, like SuperTonic's
-            # indexer), so no phonemizer vocabulary is needed here. Alphabet.GRAPHEMES
-            # routes TTSVoice.synthesize() through adapter.encode_text().
-            engine = Engine.SPARKTTS
-            phoneme_type = phoneme_type or PhonemeType.UNICODE
-            alphabet = alphabet or Alphabet.GRAPHEMES
-            config.setdefault("audio", {}).setdefault("sample_rate", 16000)
-            tokenizer = TTSTokenizer(
-                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
-                add_blank_char=False,
-                add_blank_word=False,
-                use_eos_bos=False,
-                blank_at_end=False,
-                blank_at_start=False,
-            )
-
-        elif (engine == Engine.INDIC_PARLER or
-                (isinstance(engine, str) and engine == "indic_parler") or
-                config.get("engine") == "indic_parler"):
-            # Indic Parler-TTS consumes raw text and a natural-language voice description.
-            # The adapter owns both: the prompt tokenizer (the checkpoint's own vocabulary)
-            # and the description tokenizer (the Flan-T5 one) are two *different*
-            # vocabularies loaded from engine_params, so no phonemizer vocabulary is built
-            # here. Alphabet.GRAPHEMES routes TTSVoice.synthesize() through
-            # adapter.encode_text(). DAC runs at 44.1 kHz.
-            engine = Engine.INDIC_PARLER
-            phoneme_type = phoneme_type or PhonemeType.UNICODE
-            alphabet = alphabet or Alphabet.GRAPHEMES
-            config.setdefault("audio", {}).setdefault("sample_rate", 44100)
-            tokenizer = TTSTokenizer(
-                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
-                add_blank_char=False,
-                add_blank_word=False,
-                use_eos_bos=False,
-                blank_at_end=False,
-                blank_at_start=False,
-            )
-
-        elif (engine == Engine.OMNIVOICE or
-                (isinstance(engine, str) and engine == "omnivoice") or
-                config.get("engine") == "omnivoice"):
-            # OmniVoice consumes raw text: the adapter owns text -> id conversion with
-            # the model's own Qwen3 subword BPE (loaded from engine_params, like
-            # Spark-TTS), so no phonemizer vocabulary is needed here. Alphabet.GRAPHEMES
-            # routes TTSVoice.synthesize() through adapter.encode_text().
-            engine = Engine.OMNIVOICE
-            phoneme_type = phoneme_type or PhonemeType.UNICODE
-            alphabet = alphabet or Alphabet.GRAPHEMES
-            config.setdefault("audio", {}).setdefault("sample_rate", 24000)
-            tokenizer = TTSTokenizer(
-                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
-                add_blank_char=False,
-                add_blank_word=False,
-                use_eos_bos=False,
-                blank_at_end=False,
-                blank_at_start=False,
-            )
-
-        elif (engine == Engine.MAGPIE or
-                (isinstance(engine, str) and engine == "magpie") or
-                config.get("engine") == "magpie"):
-            # Magpie consumes raw text: the adapter owns text -> id conversion with the
-            # checkpoint's own aggregated tokenizer (loaded from engine_params), so no
-            # phonemizer vocabulary is needed here. Alphabet.GRAPHEMES routes
-            # TTSVoice.synthesize() through adapter.encode_text().
-            engine = Engine.MAGPIE
-            phoneme_type = phoneme_type or PhonemeType.UNICODE
-            alphabet = alphabet or Alphabet.GRAPHEMES
-            config.setdefault("audio", {}).setdefault("sample_rate", 22050)
-            tokenizer = TTSTokenizer(
-                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
-                add_blank_char=False,
-                add_blank_word=False,
-                use_eos_bos=False,
-                blank_at_end=False,
-                blank_at_start=False,
-            )
-
-        elif (engine == Engine.ARKTTS or
-                (isinstance(engine, str) and engine == "arktts") or
-                config.get("engine") == "arktts"):
-            # ArkTTS consumes raw text: the adapter owns text -> id conversion with the
-            # model's own subword BPE (loaded from engine_params, like Qwen3-TTS), so no
-            # phonemizer vocabulary is needed here. Alphabet.GRAPHEMES routes
-            # TTSVoice.synthesize() through adapter.encode_text().
-            engine = Engine.ARKTTS
-            phoneme_type = phoneme_type or PhonemeType.UNICODE
-            alphabet = alphabet or Alphabet.GRAPHEMES
-            config.setdefault("audio", {}).setdefault("sample_rate", 44100)
-            tokenizer = TTSTokenizer(
-                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
-                add_blank_char=False,
-                add_blank_word=False,
-                use_eos_bos=False,
-                blank_at_end=False,
-                blank_at_start=False,
-            )
-
-        elif (engine == Engine.QWEN3TTS or
-                (isinstance(engine, str) and engine == "qwen3tts") or
-                config.get("engine") == "qwen3tts"):
-            # Qwen3-TTS consumes raw text: the adapter owns text -> id conversion with
-            # the model's own subword BPE (loaded from engine_params, like Spark-TTS),
-            # so no phonemizer vocabulary is needed here. Alphabet.GRAPHEMES routes
-            # TTSVoice.synthesize() through adapter.encode_text().
-            engine = Engine.QWEN3TTS
-            phoneme_type = phoneme_type or PhonemeType.UNICODE
-            alphabet = alphabet or Alphabet.GRAPHEMES
-            config.setdefault("audio", {}).setdefault("sample_rate", 24000)
-            tokenizer = TTSTokenizer(
-                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
-                add_blank_char=False,
-                add_blank_word=False,
-                use_eos_bos=False,
-                blank_at_end=False,
-                blank_at_start=False,
-            )
-
-        elif (engine == Engine.OUTETTS or
-                (isinstance(engine, str) and engine == "outetts") or
-                config.get("engine") == "outetts"):
-            # OuteTTS consumes raw text: the adapter owns text -> id conversion with the
-            # checkpoint's own tokenizer (loaded from engine_params), so no phonemizer
-            # vocabulary is needed here. Alphabet.GRAPHEMES routes
-            # TTSVoice.synthesize() through adapter.encode_text().
-            engine = Engine.OUTETTS
-            phoneme_type = phoneme_type or PhonemeType.UNICODE
-            alphabet = alphabet or Alphabet.GRAPHEMES
-            config.setdefault("audio", {}).setdefault("sample_rate", 24000)
-            tokenizer = TTSTokenizer(
-                Vocabulary(char2idx={}, pad=DEFAULT_PAD_TOKEN),
-                add_blank_char=False,
-                add_blank_word=False,
-                use_eos_bos=False,
-                blank_at_end=False,
-                blank_at_start=False,
-            )
-
-        elif VoiceConfig.is_phoonnx(config):
-            engine = engine or config.get("engine") or Engine.PHOONNX
-
-            lang_code = lang_code or config.get("lang_code")
-            phoneme_type = phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK)
-            alphabet = alphabet or Alphabet(config.get("alphabet", "ipa"))
-            diacritics = config.get("inference", {}).get("add_diacritics", True)
-            ar_diacritizer_model = config.get("inference", {}).get("diacritizer_model", None)
-
-            # Preserve the model's own special tokens when present (a native
-            # config may use any pad/blank/bos/eos); fall back to phoonnx defaults.
-            config["pad"] = config.get("pad") or DEFAULT_PAD_TOKEN
-            config["blank"] = config.get("blank") or DEFAULT_BLANK_TOKEN
-            config["bos"] = config.get("bos") or DEFAULT_BOS_TOKEN
-            config["eos"] = config.get("eos") or DEFAULT_EOS_TOKEN
-
-            tokenizer = TTSTokenizer.from_phoonnx_config(config)
-
-        # check if model was trained for PiperTTS
-        elif VoiceConfig.is_piper(config):
-            engine =  engine or Engine.PIPER
-
-            lang_code = lang_code or (config.get("language", {}).get("code") or
-                         config.get("espeak", {}).get("voice"))
-            diacritics = (lang_code or "").startswith("ar")
-            phoneme_type = phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK)
-            if phoneme_type == "text":
-                phoneme_type = PhonemeType.UNICODE
-                alphabet = Alphabet.UNICODE
-            elif phoneme_type == "pygoruut":
-                # special case: neurlang models
-                phoneme_type = PhonemeType.GORUUT
-                alphabet = Alphabet.IPA
-            else:
-                alphabet = alphabet or Alphabet.IPA
-
-            # not configurable in piper
-            config["pad"] =  DEFAULT_PAD_TOKEN
-            config["blank"] = DEFAULT_BLANK_TOKEN
-            config["blank_word"] = DEFAULT_BLANK_WORD_TOKEN
-            config["bos"] = DEFAULT_BOS_TOKEN
-            config["eos"] = DEFAULT_EOS_TOKEN
-
-            tokenizer = TTSTokenizer.from_piper_config(config)
-
-        # check if model was trained for Mimic3
-        elif VoiceConfig.is_mimic3(config):
-            engine =  engine or Engine.MIMIC3
-
-            if not tokens_txt:
-                raise ValueError("mimic3 models require an external phonemes.txt file in addition to the config")
-            lang_code = config.get("text_language")
-            phoneme_type = phoneme_type or config.get("phonemizer", PhonemeType.GRUUT)
-            # read phoneme settings
-            phoneme_cfg = config.get("phonemes", {})
-            blank_type = BlankBetween(phoneme_cfg.get("blank_between", "tokens_and_words"))
-            config.update(phoneme_cfg)
-
-            if phoneme_type == "symbols":
-                # Mimic3 "symbols" models are grapheme models
-                # symbol map comes from phonemes_txt
-                phoneme_type = PhonemeType.GRAPHEMES
-                alphabet = Alphabet.UNICODE
-            else:
-                alphabet = alphabet or Alphabet.IPA
-
-            tokenizer = TTSTokenizer.from_mimic3_config(config, tokens_txt)
-
-        # check if model was trained with Coqui
-        elif VoiceConfig.is_coqui_vits(config):
-            engine =  engine or Engine.COQUI
-            phoneme_type = phoneme_type or PhonemeType.GRAPHEMES
-            alphabet = alphabet or Alphabet.UNICODE
-
-            # NOTE: lang code usually not provided and often wrong :(
-            ds = config.get("datasets", [])
-            if ds and not lang_code:
-                lang_code = ds[0].get("language")
-
-            tokenizer = TTSTokenizer.from_coqui_config(config)
-        # for models trained with transformers
-        elif vocab:
-            add_blank = True
-            if tokenizer_config:
-                add_blank = tokenizer_config.get("add_blank", add_blank)
-                lang_code = tokenizer_config.get("language", lang_code)
-                config["blank"] = tokenizer_config.get("pad_token", config.get("blank", DEFAULT_BLANK_TOKEN))
-
-            tokenizer = TTSTokenizer(
-                Vocabulary(char2idx=vocab, blank=config.get("blank", DEFAULT_BLANK_TOKEN)),
-                add_blank_char=add_blank,
-                add_blank_word=False,
-                use_eos_bos=False,
-                blank_at_end=add_blank,
-                blank_at_start=add_blank
-            )
-
-        # for sherpa-onnx style models with tokens.txt only
-        elif tokens_txt:
-            if tokens_txt.endswith(".txt"):
-                # mimic3 / MMS / sherpa
-                with open(tokens_txt, "r", encoding="utf-8") as ids_file:
-                    tokenizer = TTSTokenizer(
-                        Vocabulary.from_tokens_txt(ids_file.read()),
-                        add_blank_char=True,
-                        add_blank_word=False,
-                        use_eos_bos=True,
-                        blank_at_end=True,
-                        blank_at_start=True
-                    )
-
-            elif tokens_txt.endswith(".json"):
-                with open(tokens_txt, "r", encoding="utf-8") as ids_file:
-                    tokenizer = TTSTokenizer(
-                        Vocabulary(char2idx=json.load(ids_file), pad=config["pad"]),
-                        add_blank_char=True,
-                        add_blank_word=False,
-                        use_eos_bos=True,
-                        blank_at_end=True,
-                        blank_at_start=True
-                    )
-
-        # Canonical config: the model ships its own phoneme_id_map (and declares
-        # engine / phoneme_type / alphabet). Use those values directly --
-        # config-shape engine detection is deprecated, so honour what the config
-        # declares instead of guessing or rejecting it.
-        else:
-            engine = engine or config.get("engine") or Engine.PHOONNX
-            phoneme_type = phoneme_type or config.get("phoneme_type", PhonemeType.GRAPHEMES)
-            alphabet = alphabet or Alphabet(config.get("alphabet", "ipa"))
-            diacritics = config.get("inference", {}).get("add_diacritics", False)
-            ar_diacritizer_model = config.get("inference", {}).get("diacritizer_model", ar_diacritizer_model)
-            config["pad"] = config.get("pad") or DEFAULT_PAD_TOKEN
-            config["blank"] = config.get("blank") or DEFAULT_BLANK_TOKEN
-            config["bos"] = config.get("bos") or DEFAULT_BOS_TOKEN
-            config["eos"] = config.get("eos") or DEFAULT_EOS_TOKEN
-            tokenizer = TTSTokenizer.from_phoonnx_config(config)
-        phoneme_type = PhonemeType(phoneme_type) if isinstance(phoneme_type, str) else phoneme_type
-        LOG.debug(f"phonemizer: {phoneme_type}")
         inference = config.get("inference", {})
-        engine = engine or Engine.PHOONNX
         return VoiceConfig(
-            tokenizer=tokenizer,
+            tokenizer=loaded.tokenizer,
             num_langs=config.get("num_langs", 1),
             num_symbols=config.get("num_symbols", 256),
             num_speakers=config.get("num_speakers", 1),
@@ -716,16 +320,16 @@ class VoiceConfig:
             noise_scale=inference.get("noise_scale", DEFAULT_NOISE_SCALE),
             length_scale=inference.get("length_scale", DEFAULT_LENGTH_SCALE),
             noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
-            add_diacritics=diacritics,
-            diacritizer_model=ar_diacritizer_model,
+            add_diacritics=loaded.add_diacritics,
+            diacritizer_model=loaded.diacritizer_model,
             hop_length=config.get("hop_length", DEFAULT_HOP_LENGTH),
-            lang_code=lang_code,
-            alphabet=Alphabet(alphabet) if isinstance(alphabet, str) else alphabet,
-            engine=Engine(engine) if isinstance(engine, str) else engine,
+            lang_code=loaded.lang_code,
+            alphabet=loaded.alphabet,
+            engine=loaded.engine,
             phonemizer_model=config.get("phonemizer_model"),
-            phoneme_type=PhonemeType(phoneme_type) if isinstance(phoneme_type, str) else phoneme_type,
+            phoneme_type=loaded.phoneme_type,
             speaker_id_map=config.get("speaker_id_map", {}),
-            blank_between=BlankBetween(blank_type) if isinstance(blank_type, str) else blank_type,
+            blank_between=BlankBetween(loaded.blank_between),
             blank_at_start=config.get("blank_at_start", True),
             blank_at_end=config.get("blank_at_end", True),
             pad_token=config.get("pad"),
@@ -761,7 +365,7 @@ class VoiceConfig:
         return {
             "phoonnx_version": version,
             "engine": self.engine.value if self.engine else "phoonnx",
-            "phoneme_type": self.phoneme_type.value if self.phoneme_type else "graphemes",
+            "phoneme_type": self.phoneme_type.value,
             "alphabet": self.alphabet.value if self.alphabet else "unicode",
             "lang_code": self.lang_code,
             "audio": {"sample_rate": self.sample_rate},
@@ -787,6 +391,7 @@ class VoiceConfig:
             "use_eos_bos": tok.use_eos_bos,
             "blank_at_start": tok.blank_at_start,
             "blank_at_end": tok.blank_at_end,
+            "fold_compounds": tok.fold_compounds,
             "word_sep_token": self.word_sep_token,
             "blank_between": self.blank_between.value if self.blank_between else "tokens_and_words",
             "engine_params": dict(self.engine_params or {}),
@@ -892,8 +497,90 @@ class SynthesisConfig:
     # ``super_resolution`` is True.
     super_resolution_model: Optional[str] = None
 
+    # post-synthesis universal voice conversion via ``voiceclonnx`` (pure-ONNX).
+    # ``None`` (the default) is a strict no-op: ``voiceclonnx`` is never imported and
+    # the audio is bit-for-bit the engine's own output. When set, every synthesized
+    # chunk is converted to the target speaker *after* generation, so any voice —
+    # including single-speaker models with no cloning support of their own — can speak
+    # with an arbitrary target timbre.
+    #
+    # Value: a path or URL to a short (5–30 s) target-speaker clip, or an
+    # ``(audio, sample_rate)`` tuple — the same shapes ``speaker_reference`` accepts.
+    #
+    # ``vc_reference`` vs ``speaker_reference``: ``speaker_reference`` is engine-native
+    # cloning at generation time, so the model is conditioned on the reference and
+    # prosody follows it as well as timbre, but only cloning-capable engines support
+    # it. ``vc_reference`` is post-hoc conversion on the waveform: it works with every
+    # engine, but prosody stays the source voice's and only the timbre moves. Prefer
+    # ``speaker_reference`` when the voice supports it.
+    vc_reference: Optional[Any] = None
+
+    # voiceclonnx engine alias used for ``vc_reference`` (e.g. ``"openvoice"``,
+    # ``"knnvc"``, ``"focalcodec"``). ``None`` (the default) selects ``"openvoice"``.
+    # Ignored unless ``vc_reference`` is set.
+    vc_engine: Optional[str] = None
+
     # Engine-specific per-call params (d_factor, p_factor, e_factor, …)
     extra_params: Dict[str, Any] = field(default_factory=dict)
+
+
+class UnsupportedVoiceLanguage(ValueError):
+    """Raised at voice load when no phonemizer backend serves the voice's language.
+
+    Surfacing this eagerly (instead of letting scriptconv's ``ValueError:
+    unsupported language code`` bubble up mid-synthesis, after the user has
+    already picked the voice and sent text) turns an opaque runtime crash
+    into an actionable, typed failure at load time.
+    """
+
+    def __init__(self, voice: str, lang_code: str, phoneme_type: "PhonemeType"):
+        self.voice = voice
+        self.lang_code = lang_code
+        self.phoneme_type = phoneme_type
+        super().__init__(
+            f"voice {voice!r}: no phonemizer backend supports lang "
+            f"{lang_code!r} for phoneme_type {phoneme_type.value!r}"
+        )
+
+
+def check_lang_supported(voice: str, lang_code: Optional[str],
+                         phoneme_type: PhonemeType) -> None:
+    """Eagerly verify a voice's phonemizer chain serves its language.
+
+    Only checks backends that actually restrict languages -- scriptconv's
+    registry query resolves the backend *class* (a lazy import; no
+    construction of the wrapper instance itself) and calls its ``get_lang``
+    classmethod when present. This is cheaper than instantiating the
+    phonemizer, but not free: a few backends' ``get_lang`` (e.g.
+    orthography2ipa) construct a lightweight G2P engine to answer, and
+    others (euskaphone, arbtok) import their optional backing package to
+    check. A missing optional package therefore surfaces as ``ImportError``
+    here, not ``ValueError`` -- that is not an unsupported-language verdict,
+    so it is treated the same as "no get_lang": skip, don't reject. Backends
+    without ``get_lang`` (grapheme/unicode passthroughs) accept any language
+    and are silently skipped, as are unresolvable phoneme types
+    (``get_phonemizer`` raises its own error for those).
+
+    Raises:
+        UnsupportedVoiceLanguage: If the resolved backend cannot serve
+            ``lang_code``.
+    """
+    if not lang_code or phoneme_type is None:
+        return
+    from scriptconv.phonemizers.registry import get_phonemizer_class
+    try:
+        phonemizer_cls = get_phonemizer_class(phoneme_type)
+    except (KeyError, ImportError, ValueError):
+        return
+    get_lang = getattr(phonemizer_cls, "get_lang", None)
+    if get_lang is None:
+        return
+    try:
+        get_lang(lang_code)
+    except ImportError:
+        return
+    except ValueError as e:
+        raise UnsupportedVoiceLanguage(voice, lang_code, phoneme_type) from e
 
 
 def get_phonemizer(phoneme_type: PhonemeType,

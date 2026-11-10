@@ -32,7 +32,9 @@ def _plugin(testcase, synth_side_effect=None):
     patchers = [
         patch("phoonnx.opm.TTSModelManager"),
         patch.object(PhoonnxTTSPlugin, "get_default_voice", return_value=MagicMock()),
-        patch.object(PhoonnxTTSPlugin, "get_model", return_value=model),
+        patch.object(PhoonnxTTSPlugin, "get_voice_info",
+                     side_effect=lambda v: MagicMock(
+                         load=MagicMock(return_value=model))),
         patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
         patch.object(PhoonnxTTSPlugin, "_resolve_speaker", return_value=None),
     ]
@@ -148,7 +150,9 @@ class TestATruncatedWriteIsNotPublished(unittest.TestCase):
         patchers = [
             patch("phoonnx.opm.TTSModelManager"),
             patch.object(PhoonnxTTSPlugin, "get_default_voice", return_value=MagicMock()),
-            patch.object(PhoonnxTTSPlugin, "get_model", return_value=model),
+            patch.object(PhoonnxTTSPlugin, "get_voice_info",
+                     side_effect=lambda v: MagicMock(
+                         load=MagicMock(return_value=model))),
             patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
             patch.object(PhoonnxTTSPlugin, "_resolve_speaker", return_value=None),
             patch("phoonnx.opm.wave.open", ShortWriter),

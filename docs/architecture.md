@@ -28,7 +28,7 @@ Step by step, as implemented in `TTSVoice.synthesize`:
 1. **Phonetic spellings** — when `enable_phonetic_spellings` is set, word-level
    replacements loaded from the voice's `locale/<lang>/phonetic_spellings.txt` are applied
    to the raw text.
-2. **Diacritics** — for Arabic/Hebrew voices, `add_diacritics` runs the phonemizer's
+2. **Diacritics** — for Arabic/Hebrew voices, `add_diacritics` runs scriptconv's
    diacritization pass before G2P. A per-call `SynthesisConfig.add_diacritics` wins; when
    unset it defers to the voice config so an undiacritized model is never force-diacritized.
 3. **Phonemize** — the selected [phonemizer](phonemizers.md) splits the text into sentences
