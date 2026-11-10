@@ -572,6 +572,11 @@ class CanonicalLoader(ConfigLoader):
     def load(cls, request: LoadRequest) -> LoadedFields:
         config = request.config
         inference = config.get("inference", {})
+        # the catch-all loader sees every format, so "language" is not
+        # always a piper-style {"code": ...} stanza
+        language = config.get("language")
+        lang_code = request.lang_code or (
+            language.get("code") if isinstance(language, dict) else None)
         # before any config write: an unknown alphabet raises, and the caller's
         # dict must come back untouched when it does
         alphabet = request.alphabet or Alphabet(config.get("alphabet", "ipa"))
@@ -584,19 +589,12 @@ class CanonicalLoader(ConfigLoader):
         return LoadedFields(
             tokenizer=TTSTokenizer.from_phoonnx_config(config),
             engine=config.get("engine"),
-            lang_code=request.lang_code or _config_lang_code(config),
+            lang_code=lang_code,
             phoneme_type=request.phoneme_type or config.get("phoneme_type", PhonemeType.GRAPHEMES),
             alphabet=alphabet,
             add_diacritics=inference.get("add_diacritics", False),
             diacritizer_model=inference.get("diacritizer_model", None),
         )
-
-
-def _config_lang_code(config: Dict[str, Any]) -> Optional[str]:
-    """The language a config declares: flat ``lang_code``, else ``language.code``."""
-    language = config.get("language")
-    nested = language.get("code") if isinstance(language, dict) else None
-    return config.get("lang_code") or nested or None
 
 
 def _raw_text_loader(engine: Engine, sample_rate: int) -> Type[RawTextLoader]:

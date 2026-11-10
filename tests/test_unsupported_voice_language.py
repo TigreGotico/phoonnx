@@ -67,8 +67,8 @@ class TestCheckLangSupported(unittest.TestCase):
             check_lang_supported("und-voice", "und", PhonemeType.ORTHOGRAPHY2IPA)
 
     def test_real_unsupported_lang_code_still_raises(self):
-        # "und" is special-cased; an actually unsupported real code must
-        # still be rejected with the typed error.
+        # A real code the backend does not support is rejected with the
+        # same typed error as "und".
         with self.assertRaises(UnsupportedVoiceLanguage) as ctx:
             check_lang_supported("xx-xx-voice", "xx-XX", PhonemeType.ESPEAK)
         err = ctx.exception
