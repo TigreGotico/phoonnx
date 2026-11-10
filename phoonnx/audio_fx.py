@@ -20,7 +20,8 @@ _EPS = 1e-9
 
 
 def _as_float(audio: np.ndarray) -> np.ndarray:
-    return np.asarray(audio, dtype=np.float32).reshape(-1)
+    """Mono float32 samples; NaN and infinity (a bad model output) become silence and full scale."""
+    return np.nan_to_num(np.asarray(audio, dtype=np.float32).reshape(-1), nan=0.0, posinf=1.0, neginf=-1.0)
 
 
 def resample(audio: np.ndarray, ratio: float) -> np.ndarray:
@@ -42,6 +43,7 @@ def time_stretch(audio: np.ndarray, factor: float, sample_rate: int) -> np.ndarr
     hop = frame // 2
     tolerance = frame // 4
     window = np.hanning(frame).astype(np.float32)
+    step = max(1, sample_rate // 11025)
     out_length = int(audio.size * factor)
     padded = np.concatenate([np.zeros(tolerance, np.float32), audio,
                              np.zeros(frame + 2 * tolerance, np.float32)])
@@ -61,8 +63,11 @@ def time_stretch(audio: np.ndarray, factor: float, sample_rate: int) -> np.ndarr
             if high <= low or template.size < frame:
                 start = min(wanted, padded.size - frame)
             else:
-                candidates = np.lib.stride_tricks.sliding_window_view(padded[low: high + frame], frame)
-                start = low + int(np.argmax(candidates @ template))
+                # Compare every `step`-th sample: the best overlap is a matter of waveform shape,
+                # and this cuts the cost of the search (the whole effect) by the same factor.
+                candidates = np.lib.stride_tricks.sliding_window_view(
+                    padded[low: high + frame], frame)[:, ::step]
+                start = low + int(np.argmax(candidates @ template[::step]))
         segment = padded[start: start + frame]
         if segment.size < frame:
             segment = np.pad(segment, (0, frame - segment.size))
@@ -86,8 +91,10 @@ def pitch_shift(audio: np.ndarray, sample_rate: int, semitones: float) -> np.nda
     # Reading faster by `ratio` raises the pitch and shortens the clip; stretch it back.
     shifted = time_stretch(resample(audio, ratio), ratio, sample_rate)
     if shifted.size > audio.size:
-        return shifted[: audio.size]
-    return np.pad(shifted, (0, audio.size - shifted.size))
+        shifted = shifted[: audio.size]
+    else:
+        shifted = np.pad(shifted, (0, audio.size - shifted.size))
+    return np.clip(shifted, -1.0, 1.0)
 
 
 def _stft(audio: np.ndarray, size: int, hop: int) -> np.ndarray:
@@ -101,13 +108,28 @@ def _stft(audio: np.ndarray, size: int, hop: int) -> np.ndarray:
 def _istft(spectrum: np.ndarray, size: int, hop: int, length: int) -> np.ndarray:
     window = np.hanning(size).astype(np.float32)
     frames = np.fft.irfft(spectrum, n=size, axis=1).astype(np.float32) * window
-    out = np.zeros(hop * (frames.shape[0] - 1) + size, np.float32)
+    count, parts = frames.shape[0], size // hop       # `size` is a whole number of hops
+    out = np.zeros((count + parts - 1) * hop, np.float32)
     norm = np.zeros_like(out)
-    for i, frame in enumerate(frames):
-        out[i * hop: i * hop + size] += frame
-        norm[i * hop: i * hop + size] += window ** 2
+    squared = np.broadcast_to(window ** 2, frames.shape)
+    for j in range(parts):  # overlap-add, one hop-wide slice of every frame at a time
+        at = j * hop
+        out[at: at + count * hop] += frames[:, j * hop: (j + 1) * hop].reshape(-1)
+        norm[at: at + count * hop] += squared[:, j * hop: (j + 1) * hop].reshape(-1)
     norm[norm < 1e-6] = 1.0
     return (out / norm)[size: size + length]
+
+
+def _box_smooth(values: np.ndarray, width: int) -> np.ndarray:
+    """A moving average of `width` bins along the last axis, all rows at once (edges use fewer bins)."""
+    half = width // 2
+    padded = np.concatenate([np.zeros((values.shape[0], half + 1), values.dtype), values,
+                             np.zeros((values.shape[0], half), values.dtype)], axis=1)
+    cumulative = np.cumsum(padded, axis=1, dtype=np.float64)
+    total = cumulative[:, width:] - cumulative[:, :-width]
+    counts = np.minimum(np.arange(values.shape[1]) + half + 1, values.shape[1]) - np.maximum(
+        np.arange(values.shape[1]) - half, 0)
+    return (total[:, : values.shape[1]] / counts).astype(np.float32)
 
 
 def whisper(audio: np.ndarray, sample_rate: int, seed: int | None = 0) -> np.ndarray:
@@ -121,9 +143,7 @@ def whisper(audio: np.ndarray, sample_rate: int, seed: int | None = 0) -> np.nda
     # Smooth the magnitude across ~350 Hz so the harmonics (the pitch) are gone and only the
     # envelope (the vowels and consonants) is left; random phase then makes it noise.
     width = max(3, int(round(350.0 / (sample_rate / size))) | 1)
-    kernel = np.ones(width, dtype=np.float32) / width
-    magnitude = np.apply_along_axis(lambda row: np.convolve(row, kernel, mode="same"),
-                                    1, np.abs(spectrum))
+    magnitude = _box_smooth(np.abs(spectrum), width)
     rng = np.random.default_rng(seed)
     phase = rng.uniform(-np.pi, np.pi, spectrum.shape).astype(np.float32)
     noisy = magnitude * np.exp(1j * phase)
@@ -137,16 +157,14 @@ def soft(audio: np.ndarray, sample_rate: int) -> np.ndarray:
     """A soft, slightly breathy voice: quieter, duller, with a little whisper mixed in."""
     audio = _as_float(audio)
     if audio.size < 512:
-        return audio * 0.6
-    # One-pole low-pass at roughly 4 kHz takes the edge off.
+        return np.clip(audio * 0.6, -1.0, 1.0)
+    # One-pole low-pass at roughly 4 kHz, as a truncated impulse response (no per-sample loop).
     alpha = float(np.exp(-2.0 * np.pi * 4000.0 / sample_rate))
-    dull = np.empty_like(audio)
-    state = 0.0
-    for i, sample in enumerate(audio):  # short clips: a Python loop is fine here
-        state = alpha * state + (1.0 - alpha) * sample
-        dull[i] = state
+    taps = max(8, int(np.ceil(np.log(1e-4) / np.log(max(alpha, 1e-6)))))
+    response = ((1.0 - alpha) * alpha ** np.arange(taps)).astype(np.float32)
+    dull = np.convolve(audio, response)[: audio.size].astype(np.float32)
     mixed = 0.8 * dull + 0.2 * whisper(audio, sample_rate)
-    return (mixed * 0.6).astype(np.float32)
+    return np.clip(mixed * 0.6, -1.0, 1.0).astype(np.float32)
 
 
 def compress(audio: np.ndarray, sample_rate: int, threshold_db: float = -26.0,

@@ -34,8 +34,10 @@ _CURRENCY_WORDS = {
     "pt": {"USD": ("dólar", "dólares", "centavo", "centavos"), "EUR": ("euro", "euros", "cêntimo", "cêntimos"),
            "BRL": ("real", "reais", "centavo", "centavos")},
     "it": {"USD": ("dollaro", "dollari", "centesimo", "centesimi"), "EUR": ("euro", "euro", "centesimo", "centesimi")},
+    "nl": {"USD": ("dollar", "dollar", "cent", "cent"), "EUR": ("euro", "euro", "cent", "cent"),
+           "GBP": ("pond", "pond", "penny", "pence")},
 }
-_AND = {"en": "and", "fr": "et", "es": "con", "de": "und", "pt": "e", "it": "e"}
+_AND = {"en": "and", "fr": "et", "es": "con", "de": "und", "pt": "e", "it": "e", "nl": "en"}
 _SYMBOLS = {"$": "USD", "US$": "USD", "€": "EUR", "£": "GBP", "¥": "JPY", "C$": "CAD", "CA$": "CAD",
             "R$": "BRL", "CHF": "CHF"}
 
@@ -52,38 +54,69 @@ def _language(lang: Optional[str]) -> str:
     return (lang or "en").replace("_", "-")
 
 
+# The number parser takes ages on absurd values (a 5000-digit "number" stalled it for minutes):
+# past this many digits a value is read digit by digit instead.
+_MAX_DIGITS = 15
+_MAX_TEXT = 200  # longest run of text read as a value
+
+
+def _digit_words(digits: str, lang: str) -> str:
+    from ovos_number_parser import pronounce_number
+
+    return " ".join(pronounce_number(int(d), lang=lang) for d in digits if d.isdigit())
+
+
+def _plain_amount(value: str, lang: str) -> str:
+    """`value` as digits with '.' for the decimal mark, whichever separators it was written with.
+
+    The last separator is the decimal mark when it is followed by one or two digits (or four or
+    more), or when the other separator also appears; three digits after a lone separator are
+    thousands in the usual convention of `lang` ("1,234" in English, "1.234" in German) and
+    decimals otherwise. Raises ValueError for anything that is not a number.
+    """
+    text = re.sub(r"[\s\u00a0\u202f']", "", value.strip())
+    if not re.fullmatch(r"[+-]?\d[\d.,]*", text):
+        raise ValueError(f"not a number: {value!r}")
+    marks = [(i, c) for i, c in enumerate(text) if c in ".,"]
+    if not marks:
+        return text
+    index, mark = marks[-1]
+    after = text[index + 1:]
+    kinds = {c for _, c in marks}
+    if len(marks) > 1 and len(kinds) == 1:
+        decimal = None                       # "1,234,567": only thousands marks
+    elif len(kinds) > 1:
+        decimal = mark                       # "1.234,5": the last one is the decimal mark
+    elif len(after) == 3 and not text.lstrip("+-").startswith("0" + mark):
+        usual = "," if lang.split("-")[0] in ("en", "ja", "zh", "ko", "he", "th") else "."
+        decimal = None if mark == usual else mark
+    else:
+        decimal = mark
+    if decimal is None:
+        return re.sub(r"[.,]", "", text)
+    return f"{re.sub(r'[.,]', '', text[:index])}.{after}"
+
+
 def _number(value: str, lang: str, ordinal: bool = False) -> str:
     """The words for a number written with the thousands and decimal marks of `lang`."""
     from ovos_number_parser import pronounce_number
 
-    text = value.strip()
-    decimal = "," if lang.split("-")[0] in ("fr", "es", "de", "pt", "it", "nl", "ru", "pl") else "."
-    thousands = "." if decimal == "," else ","
-    text = re.sub(r"[\s  ]", "", text)
-    if thousands in text and decimal in text and text.index(thousands) < text.index(decimal):
-        text = text.replace(thousands, "")
-    elif text.count(thousands) >= 1 and decimal not in text and re.fullmatch(
-            rf"\d{{1,3}}(?:\{thousands}\d{{3}})+", text):
-        text = text.replace(thousands, "")
-    text = text.replace(decimal, ".")
-    if not re.fullmatch(r"[+-]?\d+(?:\.\d+)?", text):
-        raise ValueError(f"not a number: {value!r}")
+    text = _plain_amount(value, lang)
+    whole_digits = text.lstrip("+-").partition(".")[0]
+    if len(whole_digits) > _MAX_DIGITS or len(text) > 4 * _MAX_DIGITS:
+        return _digit_words(text[:60], lang)
     number = float(text) if "." in text else int(text)
     if ordinal:
-        number = int(number)
-        try:
-            from ovos_number_parser import pronounce_ordinal
-
-            return pronounce_ordinal(number, lang)
-        except Exception:  # noqa: BLE001 - not every language has one: fall back to the generic form
-            return pronounce_number(number, lang=lang, ordinals=True)
-    said = pronounce_number(number, lang=lang)
-    if isinstance(number, float) and re.search(r"\d", said):
-        # Some languages leave a decimal above 999 as digits: say the two halves ourselves.
+        return _ordinal_words(int(number), lang)
+    if isinstance(number, float):
+        # Say the two halves ourselves: the parser drops a zero whole part in German, reads the
+        # decimals as one number in Portuguese and leaves them as digits above 999 in French.
         whole, _, fraction = text.partition(".")
+        sign = "" if not whole.startswith("-") else "-"
         point = _DECIMAL_WORD.get(lang.split("-")[0], "point")
         digits = " ".join(pronounce_number(int(d), lang=lang) for d in fraction)
-        said = f"{pronounce_number(int(whole), lang=lang)} {point} {digits}"
+        return f"{pronounce_number(int(whole or 0) if not sign else int(whole), lang=lang)} {point} {digits}"
+    said = pronounce_number(number, lang=lang)
     return said
 
 
@@ -91,15 +124,39 @@ _DECIMAL_WORD = {"en": "point", "fr": "virgule", "es": "coma", "pt": "vírgula",
                  "it": "virgola", "nl": "komma"}
 
 
+def _masculine(words: str, lang: str) -> str:
+    """The parser's ordinals come out feminine in Spanish, Italian and French: make them masculine."""
+    short = lang.split("-")[0]
+    if short in ("es", "it"):
+        return " ".join(w[:-1] + "o" if w.endswith("a") else w for w in words.split())
+    if short == "fr" and words.endswith("première"):
+        return words[: -len("première")] + "premier"
+    return words
+
+
+def _ordinal_words(number: int, lang: str) -> str:
+    from ovos_number_parser import pronounce_number, pronounce_ordinal
+
+    if len(str(number)) > _MAX_DIGITS:
+        return _digit_words(str(number), lang)
+    try:
+        words = pronounce_ordinal(number, lang)
+    except Exception:  # noqa: BLE001 - not every language has one: fall back to the generic form
+        words = pronounce_number(number, lang=lang, ordinals=True)
+    return _masculine(words, lang)
+
+
 def _ordinal(text: str, lang: str) -> str:
-    digits = re.sub(r"[^\d]", "", text)
-    return _number(digits, lang, ordinal=True)
+    digits = re.sub(r"[^\d]", "", text)[:60]
+    return _ordinal_words(int(digits), lang)
 
 
 def _fraction(text: str, lang: str) -> str:
     from ovos_number_parser import pronounce_fraction
 
     text = text.strip()
+    if any(len(run) > 6 for run in re.findall(r"\d+", text)):
+        raise ValueError("fraction too large to say")
     mixed = re.fullmatch(r"(\d+)\s+(\d+)\s*/\s*(\d+)", text)
     if mixed:
         whole, num, den = mixed.groups()
@@ -111,11 +168,44 @@ def _fraction(text: str, lang: str) -> str:
     return _number(text, lang)
 
 
+_PER = {  # "/h", "/s", "/min" -> "per hour" ...
+    "en": ("per", "hour", "second", "minute"), "fr": ("par", "heure", "seconde", "minute"),
+    "es": ("por", "hora", "segundo", "minuto"), "de": ("pro", "Stunde", "Sekunde", "Minute"),
+    "pt": ("por", "hora", "segundo", "minuto"), "it": ("a", "ora", "secondo", "minuto"),
+    "nl": ("per", "uur", "seconde", "minuut"),
+}
+# Units the text normalizer leaves as symbols in these languages: (singular, plural).
+_SYMBOL_UNITS = {
+    "it": {"km": ("chilometro", "chilometri"), "m": ("metro", "metri"), "cm": ("centimetro", "centimetri"),
+           "mm": ("millimetro", "millimetri"), "kg": ("chilogrammo", "chilogrammi"), "g": ("grammo", "grammi"),
+           "l": ("litro", "litri"), "ml": ("millilitro", "millilitri"), "°C": ("grado Celsius", "gradi Celsius"),
+           "%": ("per cento", "per cento")},
+    "nl": {"km": ("kilometer", "kilometer"), "m": ("meter", "meter"), "cm": ("centimeter", "centimeter"),
+           "mm": ("millimeter", "millimeter"), "kg": ("kilogram", "kilogram"), "g": ("gram", "gram"),
+           "l": ("liter", "liter"), "ml": ("milliliter", "milliliter"), "°C": ("graad Celsius", "graden Celsius"),
+           "%": ("procent", "procent")},
+}
+
+
 def _unit(text: str, lang: str) -> str:
     from phoonnx.normalization.units import _normalize_units
 
+    if re.search(r"\d{%d,}" % (_MAX_DIGITS + 1), text):
+        raise ValueError("number too long to say as a quantity")
+    short = lang.split("-")[0]
     spaced = re.sub(r"(?<=\d)(?=[^\d\s.,/-])", " ", text.strip())
     said = _normalize_units(spaced, lang)
+    table = _SYMBOL_UNITS.get(short, {})
+    if table:  # the normalizer left these as symbols: say them
+        def symbol(match: re.Match) -> str:
+            one, many = table[match.group(2)]
+            return f"{match.group(1)} {one if match.group(1).strip() in ('1', '1.0') else many}"
+
+        said = re.sub(r"(\d+(?:[.,]\d+)?)\s*(°C|km|cm|mm|ml|kg|m|g|l|%)(?![\w°])", symbol, said)
+    per = _PER.get(short, _PER["en"])
+    for suffix, word in (("h", per[1]), ("s", per[2]), ("min", per[3])):
+        glue = "'" if short == "it" and per[0] == "a" else " "
+        said = re.sub(rf"/{suffix}\b", f" {per[0]}{glue}{word}" if glue == " " else f" all'{word}", said)
     # Whatever the unit table did not turn into words, the number still can be.
     return re.sub(r"\d+(?:[.,]\d+)?", lambda m: _number(m.group(0), lang), said)
 
@@ -149,7 +239,10 @@ def _date(text: str, lang: str, fmt: Optional[str]) -> str:
     if year is not None and year < 100:
         year += 2000 if year < 70 else 1900
     if year and month and day:
-        return nice_date(datetime.date(year, month, day), lang)
+        date = datetime.date(year, month, day)
+        if lang.split("-")[0] in _COMPOSED_DATES:
+            return _composed_date(date, lang)
+        return nice_date(date, lang)
     spoken = []
     day_words = _number(str(day), lang, ordinal=lang.startswith("en")) if day is not None else None
     month_words = _month_name(month, lang) if month is not None else None
@@ -158,6 +251,25 @@ def _date(text: str, lang: str, fmt: Optional[str]) -> str:
     if year is not None:
         spoken.append(_number(str(year), lang))
     return " ".join(spoken)
+
+
+# Languages whose date formatter reads the year badly ("zwei tausend sechs und zwanzig"): build the
+# date from the number and month words, which are right. {d} day, {m} month, {y} year.
+_COMPOSED_DATES = {"de": "{d} {m} {y}", "nl": "{d} {m} {y}", "es": "{d} de {m} de {y}",
+                   "pt": "{d} de {m} de {y}", "it": "{d} {m} {y}"}
+
+
+def _composed_date(date: datetime.date, lang: str) -> str:
+    short = lang.split("-")[0]
+    first = date.day == 1
+    if short == "de":
+        day = _ordinal_words(date.day, lang)
+    elif short in ("it", "es", "pt") and first:
+        day = _ordinal_words(1, lang)
+    else:
+        day = _number(str(date.day), lang)
+    return _COMPOSED_DATES[short].format(d=day, m=_month_name(date.month, lang),
+                                         y=_number(str(date.year), lang))
 
 
 @functools.lru_cache(maxsize=64)
@@ -228,12 +340,10 @@ def _currency(text: str, lang: str) -> str:
         raise ValueError(f"not an amount: {text!r}")
     short = lang.split("-")[0]
     words = _CURRENCY_WORDS.get(short, {}).get(code)
-    amount = amount.strip()
-    decimal = "," if short in ("fr", "es", "de", "pt", "it") else "."
-    major_text, _, minor_text = amount.rpartition(decimal) if decimal in amount and re.search(
-        rf"\{decimal}\d{{1,2}}$", amount) else (amount, "", "")
-    major = int(re.sub(r"[^\d]", "", major_text) or 0)
-    minor = int((minor_text + "0")[:2]) if minor_text else 0
+    plain = _plain_amount(amount, lang)
+    whole, _, cents = plain.partition(".")
+    major = int(whole or 0)
+    minor = int((cents + "0")[:2]) if cents else 0
     if words is None:
         return f"{_number(str(major), lang)}{' ' + _number(str(minor), lang) if minor else ''} {code}".strip()
     one, many, minor_one, minor_many = words
@@ -281,6 +391,9 @@ def say_as_text(text: str, interpret_as: str, lang: Optional[str] = None,
     """
     kind = (interpret_as or "").strip().lower()
     lang = _language(lang)
+    if len(text) > _MAX_TEXT and kind not in SPELLED | DIGITS:
+        return text  # not a value, whatever it is called: say it as written
+    text = text if isinstance(text, str) else str(text)
     try:
         if kind in SPELLED:
             return " ".join(ch for ch in text if not ch.isspace())
@@ -306,5 +419,5 @@ def say_as_text(text: str, interpret_as: str, lang: Optional[str] = None,
             return ""
         # interjection and anything unknown: the written words, as they are.
     except Exception as error:  # noqa: BLE001 - a typo costs the formatting, not the reply
-        LOG.info("say-as %s: could not read %r (%s); reading it as written", kind, text, error)
+        LOG.info("say-as %s: could not read %.60r (%s); reading it as written", kind, text, error)
     return text

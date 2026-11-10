@@ -195,3 +195,36 @@ def test_synthesis_applies_pitch_and_breaths_between_sentences():
     assert [len(c.audio_float_array) for c in chunks].count(int(SR * 0.35)) == 2
     speech = chunks[0].audio_float_array
     assert _f0(speech) == pytest.approx(200 * 2 ** 0.5, rel=0.04)
+
+
+@pytest.mark.parametrize("text,kind,lang,expected", [
+    ("12,50 €", "currency", "en", "twelve euros and fifty cents"),
+    ("12,50 €", "currency", "nl", "twaalf euro en vijftig cent"),
+    ("12 km/h", "unit", "en", "twelve kilometers per hour"),
+    ("12 km/h", "unit", "fr", "douze kilomètres par heure"),
+    ("12 km/h", "unit", "it", "dodici chilometri all'ora"),
+    ("20°C", "unit", "nl", "twintig graden Celsius"),
+    ("1", "ordinal", "es", "primero"),
+    ("21", "ordinal", "es", "vigésimo primero"),
+    ("1", "ordinal", "it", "primo"),
+    ("1", "ordinal", "fr", "premier"),
+    ("12,5", "cardinal", "de", "zwölf Komma fünf"),
+    ("0,5", "cardinal", "de", "null Komma fünf"),
+    ("3.14159", "cardinal", "pt", "três vírgula um quatro um cinco nove"),
+    ("1.234", "cardinal", "de", "eintausendzweihundertvierunddreißig"),
+    ("1,234", "cardinal", "en", "one thousand, two hundred and thirty four"),
+    ("1.234", "cardinal", "en", "one point two three four"),
+    ("2026-11-09", "date", "de", "neunte november zweitausendsechsundzwanzig"),
+    ("2026-11-09", "date", "es", "nueve de noviembre de dos mil veintiséis"),
+])
+def test_say_as_in_other_languages_reads_what_a_speaker_would_say(text, kind, lang, expected):
+    assert say_as_text(text, kind, lang) == expected
+
+
+def test_a_huge_value_is_read_digit_by_digit_not_hung_on():
+    import time
+
+    started = time.perf_counter()
+    said = say_as_text("1" * 5000, "cardinal", "en")
+    assert said.startswith("one one one") and time.perf_counter() - started < 2
+    assert say_as_text("1" * 5000, "unit", "en") == "1" * 5000  # too long for a quantity: as written
