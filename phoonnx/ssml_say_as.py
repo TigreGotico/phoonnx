@@ -110,14 +110,16 @@ def _number(value: str, lang: str, ordinal: bool = False) -> str:
         return _ordinal_words(int(number), lang)
     if isinstance(number, float):
         whole, _, fraction = text.lstrip("+-").partition(".")
-        point = _DECIMAL_WORD.get(lang.split("-")[0])
+        short = lang.split("-")[0]
+        point = _DECIMAL_WORD.get(short) or _parser_decimal_word(short)
         if point is None:
             # The parser's own decimal reading; a language it has no words for raises, and the
             # value is then read as written.
             said = pronounce_number(abs(number), lang=lang, places=len(fraction))
         else:
             # Say the two halves ourselves: the parser drops a zero whole part in German, reads
-            # the decimals as one number in Portuguese and leaves them as digits above 999 in French.
+            # the decimals as one number in Portuguese, leaves them as digits above 999 in French,
+            # and truncates a float in the Nordic languages (44,29 is read 44,28).
             digits = " ".join(pronounce_number(int(d), lang=lang) for d in fraction)
             said = f"{pronounce_number(int(whole or 0), lang=lang)} {point} {digits}"
         if text.startswith("-"):
@@ -128,6 +130,21 @@ def _number(value: str, lang: str, ordinal: bool = False) -> str:
         return said
     said = pronounce_number(number, lang=lang)
     return said
+
+
+@functools.lru_cache(maxsize=64)
+def _parser_decimal_word(lang: str) -> Optional[str]:
+    """The word the number parser says between the halves of 1.5, when its reading has that shape."""
+    from ovos_number_parser import pronounce_number
+
+    try:
+        said = pronounce_number(1.5, lang=lang, places=1)
+        one, five = pronounce_number(1, lang=lang), pronounce_number(5, lang=lang)
+    except (NotImplementedError, ValueError):
+        return None
+    if said.startswith(one) and said.endswith(five):
+        return said[len(one):len(said) - len(five)].strip() or None
+    return None
 
 
 _DECIMAL_WORD = {"en": "point", "fr": "virgule", "es": "coma", "pt": "vírgula", "de": "Komma",

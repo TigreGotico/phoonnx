@@ -311,3 +311,26 @@ def test_sounds_with_no_words_after_them_are_made_at_the_model_rate():
     voice, _ = _voice()
     chunks = list(voice.synthesize_ssml('<speak><amazon:breath duration="short"/></speak>'))
     assert [(c.sample_rate, len(c.audio_float_array)) for c in chunks] == [(SR, SR // 4)]
+
+
+@pytest.mark.parametrize("text,lang,expected", [
+    ("44,29", "da", "fireogfyrre komma to ni"),
+    ("0,57", "da", "nul komma fem syv"),
+    ("44,29", "sv", "fyrtiofyra komma två nio"),
+])
+def test_say_as_a_nordic_decimal_says_its_own_digits(text, lang, expected):
+    assert say_as_text(text, "cardinal", lang) == expected
+
+
+@pytest.mark.parametrize("lang", ["da", "sv", "nb", "nn", "fy"])
+def test_say_as_every_two_place_decimal_says_each_written_digit(lang):
+    # The parser rounds and then truncates a float, so it reads 44.29 as 44.28; the expected
+    # reading is built from whole numbers only, which never pass through a float.
+    from ovos_number_parser import pronounce_number
+
+    for whole in (0, 7, 44, 999):
+        for hundredths in range(100):
+            tens, units = divmod(hundredths, 10)
+            expected = (f"{pronounce_number(whole, lang=lang)} komma "
+                        f"{pronounce_number(tens, lang=lang)} {pronounce_number(units, lang=lang)}")
+            assert say_as_text(f"{whole},{hundredths:02d}", "cardinal", lang) == expected
