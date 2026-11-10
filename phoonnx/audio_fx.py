@@ -132,25 +132,45 @@ def _box_smooth(values: np.ndarray, width: int) -> np.ndarray:
     return (total[:, : values.shape[1]] / counts).astype(np.float32)
 
 
-def whisper(audio: np.ndarray, sample_rate: int, seed: int | None = 0) -> np.ndarray:
-    """An approximation of whispered speech: the spectral envelope with random phase."""
+def _breath_noise(audio: np.ndarray, sample_rate: int, seed: int | None = 0) -> np.ndarray:
+    """Noise shaped like the speech: its smooth spectral envelope (the vowels and consonants), no voicing.
+
+    The envelope of every frame is found by cepstral smoothing, which keeps the broad formant
+    peaks and drops the harmonics (the pitch); it is then given random phase, so what is left is
+    breath with the words in it. The sound below ~180 Hz goes: a whisper has no voice to carry
+    it, and keeping it is what makes a whisper growl. The level is the input's.
+    """
+    size = 512 if sample_rate <= 24000 else 1024
+    hop = size // 4
+    spectrum = _stft(audio, size, hop)
+    magnitude = np.abs(spectrum).astype(np.float64)
+    floor = 1e-4 * (magnitude.max() + _EPS)
+    cepstrum = np.fft.irfft(np.log(magnitude + floor), n=size, axis=1)
+    keep = max(8, int(sample_rate / 1000) + 4)          # formants yes, harmonics no
+    lifter = np.zeros(size)
+    lifter[:keep] = 1.0
+    lifter[size - keep + 1:] = 1.0
+    envelope = np.exp(np.fft.rfft(cepstrum * lifter, axis=1).real) - floor
+    freqs = np.fft.rfftfreq(size, 1.0 / sample_rate)
+    envelope = np.maximum(envelope, 0.0) / (1.0 + (180.0 / np.maximum(freqs, 1.0)) ** 4)
+    phase = np.random.default_rng(seed).uniform(-np.pi, np.pi, envelope.shape)
+    out = _istft((envelope * np.exp(1j * phase)).astype(np.complex64), size, hop, audio.size)
+    return out * (np.sqrt(np.mean(audio ** 2)) + _EPS) / (np.sqrt(np.mean(out ** 2)) + _EPS)
+
+
+def whisper(audio: np.ndarray, sample_rate: int, seed: int | None = 0,
+            level_db: float = -8.0) -> np.ndarray:
+    """Whispered speech: the words as breath, `level_db` below the input (a whisper is quiet).
+
+    Shaped breath noise (see :func:`_breath_noise`): the vowels and consonants stay, the pitch and
+    everything below ~180 Hz go. An earlier version kept the loudness of the input and the rumble
+    below the voice, which came out as a loud, raspy growl rather than a whisper.
+    """
     audio = _as_float(audio)
     if audio.size < 512:
         return audio
-    size = 1024 if sample_rate >= 16000 else 512
-    hop = size // 4
-    spectrum = _stft(audio, size, hop)
-    # Smooth the magnitude across ~350 Hz so the harmonics (the pitch) are gone and only the
-    # envelope (the vowels and consonants) is left; random phase then makes it noise.
-    width = max(3, int(round(350.0 / (sample_rate / size))) | 1)
-    magnitude = _box_smooth(np.abs(spectrum), width)
-    rng = np.random.default_rng(seed)
-    phase = rng.uniform(-np.pi, np.pi, spectrum.shape).astype(np.float32)
-    noisy = magnitude * np.exp(1j * phase)
-    out = _istft(noisy, size, hop, audio.size)
-    # Keep the loudness of the input: whispering is not quieter on the page, only breathier.
-    scale = (np.sqrt(np.mean(audio ** 2)) + _EPS) / (np.sqrt(np.mean(out ** 2)) + _EPS)
-    return np.clip(out * min(scale, 8.0), -1.0, 1.0).astype(np.float32)
+    out = _breath_noise(audio, sample_rate, seed) * 10.0 ** (float(np.clip(level_db, -30.0, 0.0)) / 20.0)
+    return np.clip(out, -1.0, 1.0).astype(np.float32)
 
 
 def soft(audio: np.ndarray, sample_rate: int) -> np.ndarray:
@@ -163,7 +183,7 @@ def soft(audio: np.ndarray, sample_rate: int) -> np.ndarray:
     taps = max(8, int(np.ceil(np.log(1e-4) / np.log(max(alpha, 1e-6)))))
     response = ((1.0 - alpha) * alpha ** np.arange(taps)).astype(np.float32)
     dull = np.convolve(audio, response)[: audio.size].astype(np.float32)
-    mixed = 0.8 * dull + 0.2 * whisper(audio, sample_rate)
+    mixed = 0.8 * dull + 0.2 * _breath_noise(audio, sample_rate)
     return np.clip(mixed * 0.6, -1.0, 1.0).astype(np.float32)
 
 
@@ -190,21 +210,47 @@ def compress(audio: np.ndarray, sample_rate: int, threshold_db: float = -26.0,
     return np.clip(out, -1.0, 1.0).astype(np.float32)
 
 
-def breath(sample_rate: int, duration_ms: int = 350, volume: float = 1.0, seed: int | None = 1) -> np.ndarray:
-    """A short in-breath: band-limited noise with a slow rise and a quicker fall."""
+def _smoothstep(x: np.ndarray) -> np.ndarray:
+    x = np.clip(x, 0.0, 1.0)
+    return x * x * (3.0 - 2.0 * x)
+
+
+def breath(sample_rate: int, duration_ms: int = 350, volume: float = 1.0,
+           seed: int | None = None) -> np.ndarray:
+    """A quiet in-breath through the mouth, different every time (give `seed` to repeat one).
+
+    Noise whose spectrum moves while it lasts (duller at the start, brighter at the end, as the
+    mouth opens), with a soft attack, a gently falling plateau and an uneven level, at about
+    -34 dBFS: a breath a person takes between phrases. An earlier version was a fixed band of noise
+    under a symmetric swell, the same every time and as loud as speech at full volume, which
+    sounded like a respirator.
+    """
     length = max(1, int(sample_rate * duration_ms / 1000))
     rng = np.random.default_rng(seed)
-    noise = rng.standard_normal(length).astype(np.float32)
-    # Take the lows and highs off: roughly 300 Hz - 3 kHz.
-    spectrum = np.fft.rfft(noise)
-    frequencies = np.fft.rfftfreq(length, 1.0 / sample_rate)
-    spectrum[(frequencies < 300) | (frequencies > 3000)] = 0
-    noise = np.fft.irfft(spectrum, n=length).astype(np.float32)
-    envelope = np.concatenate([np.linspace(0, 1, int(length * 0.6)) ** 2,
-                               np.linspace(1, 0, length - int(length * 0.6))])
-    noise = noise * envelope.astype(np.float32)
-    peak = float(np.max(np.abs(noise))) + _EPS
-    return (noise / peak * 0.08 * float(np.clip(volume, 0.0, 3.0))).astype(np.float32)
+    white = rng.standard_normal(length).astype(np.float32)
+    level = 10.0 ** (-34.0 / 20.0) * float(np.clip(volume, 0.0, 2.0))
+    if length < 1024:
+        return (white / (np.sqrt(np.mean(white ** 2)) + _EPS) * level * np.hanning(length)).astype(np.float32)
+    size, hop = 512, 128
+    spectrum = _stft(white, size, hop)
+    freqs = np.fft.rfftfreq(size, 1.0 / sample_rate)[None, :]
+    progress = np.linspace(0.0, 1.0, spectrum.shape[0])[:, None]
+    # The broad peak (the mouth) climbs from about 0.9 kHz to 2.0 kHz; nothing below 200 Hz.
+    centre = 900.0 * (2000.0 / 900.0) ** progress * (1.0 + 0.08 * rng.standard_normal((1, 1)))
+    shape = np.exp(-0.5 * (np.log2(np.maximum(freqs, 1.0) / centre) / 1.2) ** 2)
+    shape = shape + 0.15 / (1.0 + (np.maximum(freqs, 1.0) / 500.0))      # a little low breath
+    shape = shape / (1.0 + (200.0 / np.maximum(freqs, 1.0)) ** 4) / (1.0 + (freqs / 7000.0) ** 4)
+    noise = _istft((spectrum * shape).astype(np.complex64), size, hop, length)
+    t = np.linspace(0.0, 1.0, length)
+    attack = _smoothstep(t / 0.28)
+    release = _smoothstep((1.0 - t) / 0.40)
+    plateau = 1.0 - 0.25 * t
+    # A slow, uneven wobble (a few hertz), never the same twice.
+    wobble = np.convolve(rng.standard_normal(length), np.hanning(max(8, sample_rate // 12)), mode="same")
+    wobble = 1.0 + 0.22 * wobble / (np.max(np.abs(wobble)) + _EPS)
+    out = noise * attack * release * plateau * wobble
+    out = out / (np.sqrt(np.mean(out ** 2)) + _EPS) * level
+    return np.clip(out, -1.0, 1.0).astype(np.float32)
 
 
 def beep(sample_rate: int, duration_ms: int = 350, frequency: float = 1000.0) -> np.ndarray:

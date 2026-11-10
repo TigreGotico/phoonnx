@@ -212,8 +212,7 @@ is spoken as written.
 
 Pitch, whisper, soft, compression, breaths and bleeps are applied to the finished audio
 (`phoonnx.audio_fx`, numpy only), not by the model: pitch shifts move the formants with the pitch,
-so keep them within a few semitones; whisper is an approximation that keeps the words and drops the
-voicing. Emotions and speaking styles are not something a VITS voice can do and are read as plain
+so keep them within a few semitones; whisper is breath shaped like the words (no pitch, nothing below about 180 Hz) and 8 dB quieter than the speech, set with `level_db` in `audio_fx.whisper`; a breath is quiet and different every time. Emotions and speaking styles are not something a VITS voice can do and are read as plain
 text. A document that does not parse is spoken as its text with the tags removed, and plain text
 containing a stray `<` is never mistaken for SSML (`phoonnx.ssml.looks_like_ssml`). The OVOS plugin
 (`phoonnx.opm`) routes SSML input here and advertises `ssml_tags`.
