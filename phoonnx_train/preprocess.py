@@ -131,7 +131,7 @@ def phonemize_worker(
                     # Process audio if not skipping
                     if not config.skip_audio:
                         audio_path = ensure_audio_path(utt, config.cache_dir)
-                        utt.audio_norm_path, utt.audio_spec_path = cache_norm_audio(
+                        utt.audio_norm_path, utt.audio_spec_path, utt.spec_frames = cache_norm_audio(
                             audio_path,
                             config.cache_dir,
                             silence_detector,
@@ -923,8 +923,12 @@ def cli(
             # Monotonic alignment needs at least one spectrogram frame per
             # phoneme id; a shorter spectrogram means the audio does not
             # contain the full text (e.g. a truncated clip)
+            # The worker that wrote or read the spectrogram measured it; an
+            # utterance without a count is read back from disk.
             if utt.audio_spec_path is not None:
-                spec_frames = torch.load(utt.audio_spec_path, map_location="cpu").size(-1)
+                spec_frames = utt.spec_frames
+                if spec_frames is None:
+                    spec_frames = torch.load(utt.audio_spec_path, map_location="cpu").size(-1)
                 if spec_frames < len(utt.phoneme_ids):
                     _LOGGER.warning(
                         "Skipping utterance with more phonemes (%d) than spectrogram frames (%d), "
