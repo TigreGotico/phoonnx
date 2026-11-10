@@ -264,7 +264,9 @@ _SENTENCES_EN_MISAKI = ["hello friend", "the cat sleeps"]
 def _misaki_en_symbols(text):
     from scriptconv.phonemizers.mul import MisakiEnPhonemizer
     p = MisakiEnPhonemizer()
-    chunks = p.phonemize(text, lang="en")
+    # kokoro/af is an American voice; bare "en" means en-GB, which misaki
+    # phonemizes with its British lexicon
+    chunks = p.phonemize(text, lang="en-US")
     return [sym for chunk in chunks for sym in chunk]
 
 

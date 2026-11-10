@@ -1686,8 +1686,8 @@
 | `supertonic/M3/ko` | `ko` | `supertonic` | `unicode` |
 | `supertonic/M4/ko` | `ko` | `supertonic` | `unicode` |
 | `supertonic/M5/ko` | `ko` | `supertonic` | `unicode` |
-| `mimic3/ko_KO/kss_low` | `ko-KO` | `mimic3` | `espeak` |
-| `piper_neurlang/ko-KO_kss-korean` | `ko-KO` | `piper` | `goruut` |
+| `mimic3/ko_KO/kss_low` | `ko-KR` | `mimic3` | `espeak` |
+| `piper_neurlang/ko-KO_kss-korean` | `ko-KR` | `piper` | `goruut` |
 | `arktts/audio8-antton/ko` | `ko-KR` | `arktts` | `unicode` |
 | `arktts/audio8-maider/ko` | `ko-KR` | `arktts` | `unicode` |
 | `chatterbox/multilingual/ko` | `ko-KR` | `chatterbox` | `unicode` |

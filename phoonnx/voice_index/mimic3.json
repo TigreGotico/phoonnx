@@ -328,7 +328,7 @@
         "voice_id": "mimic3/ko_KO/kss_low",
         "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/mimic3__ko_KO__kss_low/model.onnx",
         "phoneme_type": "espeak",
-        "lang": "ko-KO",
+        "lang": "ko-KR",
         "tokens_url": null,
         "tokenizer_config_url": null,
         "vocab_url": null,
