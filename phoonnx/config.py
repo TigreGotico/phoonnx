@@ -1,3 +1,4 @@
+import functools
 import json
 from dataclasses import dataclass, field
 from enum import Enum
@@ -607,7 +608,13 @@ def get_phonemizer(phoneme_type: PhonemeType,
     except KeyError:
         raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
 
-    phonemizer.normalizer = _normalize
+    if phoneme_type == PhonemeType.ESPEAK:
+        # espeak-ng reads a contraction the way people say it ("don't" -> dˈoʊnt). Expanding it
+        # first ("do not") makes every English sentence sound like a form letter, and the table
+        # is a guess for "he's" and "I'd". Numbers, dates, units and titles are still normalized.
+        phonemizer.normalizer = functools.partial(_normalize, expand_contractions=False)
+    else:
+        phonemizer.normalizer = _normalize
     return phonemizer
 
 
