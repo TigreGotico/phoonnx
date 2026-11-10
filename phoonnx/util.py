@@ -49,6 +49,17 @@ _MULTI_REGION = frozenset({
 })
 
 
+# linguatag measures `ar` with any region, and each individual Arabic language
+# (`arz`, `apc`, ...) in Arabic script, at 5 or less from `ar`. A tag in another
+# language or in another script is further away.
+_ARABIC_DISTANCE = 5
+
+
+def is_arabic(lang: str) -> bool:
+    """Whether ``lang`` names Arabic or an individual Arabic language, in Arabic script."""
+    return lang_distance(lang, "ar") <= _ARABIC_DISTANCE
+
+
 def normalize_lang(lang: str) -> str:
     if lang == "tgl" or lang == "tl":
         # HACK: langcodes erroneously (debatable) changes this one to "fil"

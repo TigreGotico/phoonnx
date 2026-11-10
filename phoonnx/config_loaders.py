@@ -44,6 +44,7 @@ from phoonnx.config import Engine
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
+from phoonnx.util import is_arabic
 
 
 @dataclass
@@ -217,13 +218,14 @@ class ChatterboxLoader(RawTextLoader):
         config = request.config
         config.setdefault("audio", {}).setdefault("sample_rate", cls.SAMPLE_RATE)
         config.setdefault("num_symbols", tokenizer._tok.get_vocab_size())
+        lang = request.lang_code or ""
         return LoadedFields(
             tokenizer=tokenizer,
             engine=Engine.CHATTERBOX,
             lang_code=request.lang_code,
             phoneme_type=request.phoneme_type or PhonemeType.UNICODE,
             alphabet=request.alphabet or cls.ALPHABET,
-            add_diacritics=(request.lang_code or "").lower().startswith(("ar", "he")),
+            add_diacritics=is_arabic(lang) or lang.lower().startswith("he"),
             pinned=frozenset({"engine"}),
         )
 
@@ -405,7 +407,7 @@ class PiperLoader(ConfigLoader):
             lang_code=lang_code,
             phoneme_type=phoneme_type,
             alphabet=alphabet,
-            add_diacritics=(lang_code or "").startswith("ar"),
+            add_diacritics=is_arabic(lang_code or ""),
             keep_punctuation=not cls.made_by_phoonnx(config),
             pinned=frozenset(pinned),
         )
