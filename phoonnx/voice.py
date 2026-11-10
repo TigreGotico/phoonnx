@@ -139,7 +139,7 @@ class PhoneticSpellings:
                     # apply() matches ignoring case, so a user word replaces every packaged
                     # word that differs from it only in case
                     for word, spelling in user.items():
-                        for key in [k for k in replacements if k.casefold() == word.casefold()]:
+                        for key in [k for k in replacements if k.lower() == word.lower()]:
                             del replacements[key]
                         replacements[word] = spelling
                     found = True
@@ -151,7 +151,7 @@ class PhoneticSpellings:
     @staticmethod
     def from_path(spellings_file: str):
         replacements = {}
-        with open(spellings_file, encoding="utf-8") as f:
+        with open(spellings_file, encoding="utf-8-sig") as f:
             lines = f.read().split("\n")
             for l in lines:
                 l = l.strip()

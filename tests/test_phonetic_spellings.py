@@ -92,3 +92,21 @@ def test_an_undecodable_user_file_is_skipped_and_the_packaged_spellings_stay(tmp
     assert ps.replacements == PhoneticSpellings.from_lang("en-US").replacements
     assert mock_log.warning.called
     assert "en.txt" in str(mock_log.warning.call_args)
+
+
+def test_a_user_file_saved_with_a_byte_order_mark_still_overrides(tmp_path):
+    (tmp_path / "en.txt").write_bytes("zzword: zed word\n".encode("utf-8-sig"))
+    ps = PhoneticSpellings.from_lang("en-US", user_dir=str(tmp_path))
+    assert ps.apply("say zzword") == "say zed word"
+
+
+def test_a_user_entry_removes_only_the_entries_the_case_insensitive_match_would_hit(tmp_path):
+    packaged = tmp_path / "packaged" / "de"
+    packaged.mkdir(parents=True)
+    (packaged / "phonetic_spellings.txt").write_text("Straße: Schtrasse\n")
+    user = tmp_path / "user"
+    user.mkdir()
+    (user / "de.txt").write_text("STRASSE: Strasse\n")
+    ps = PhoneticSpellings.from_lang("de", locale_path=str(tmp_path / "packaged"), user_dir=str(user))
+    assert ps.replacements == {"Straße": "Schtrasse", "STRASSE": "Strasse"}
+    assert ps.apply("die Straße") == "die Schtrasse"
