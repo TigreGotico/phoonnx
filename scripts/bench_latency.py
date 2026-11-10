@@ -19,6 +19,7 @@ import onnxruntime
 
 from phoonnx.config import SynthesisConfig
 from phoonnx.voice import AudioChunk, TTSVoice
+from scriptconv.diacritics import diacritize
 
 DEFAULT_TEXT_1SENT = "The quick brown fox jumps over the lazy dog."
 DEFAULT_TEXT_5SENT = (
@@ -141,8 +142,8 @@ def bench_stages(voice: TTSVoice, text: str, syn_config: SynthesisConfig) -> Dic
     if do_diacritics:
         diacritizer_model = syn_config.diacritizer_model or voice.config.diacritizer_model
         working_text, stages["diacritics"] = timed(
-            lambda: voice.phonemizer.add_diacritics(
-                working_text, voice.config.lang_code, model=diacritizer_model
+            lambda: diacritize(
+                working_text, voice.config.lang_code, diacritizer_model=diacritizer_model
             )
         )
     else:

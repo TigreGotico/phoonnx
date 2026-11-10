@@ -42,7 +42,7 @@
         "voice_id": "piper_neurlang/ko-KO_kss-korean",
         "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main/piper_neurlang__ko-KO_kss-korean/model.onnx",
         "phoneme_type": "goruut",
-        "lang": "ko-KO",
+        "lang": "ko-KR",
         "tokens_url": null,
         "tokenizer_config_url": null,
         "vocab_url": null,

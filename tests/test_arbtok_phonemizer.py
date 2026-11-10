@@ -6,6 +6,8 @@ undiacritized (bare) Arabic: it restores the tashkeel before transcribing.
 """
 import pytest
 
+from orthography2ipa.registry import resolve
+
 from phoonnx.config import PhonemeType, Alphabet, get_phonemizer
 from scriptconv.phonemizers.ar import ArbtokPhonemizer
 
@@ -45,9 +47,11 @@ def test_dialect_differs_from_msa():
 
 
 def test_get_lang_resolves_arabic_specs():
+    # orthography2ipa keys a lect with its own ISO 639-3 code by that code
+    # (Najdi is ars-SA); the old private tag stays an alias of the same spec.
     assert ArbtokPhonemizer.get_lang("ar")
     assert ArbtokPhonemizer.get_lang("ar-EG")
-    assert ArbtokPhonemizer.get_lang("ar-SA-x-najd") == "ar-SA-x-najd"
+    assert ArbtokPhonemizer.get_lang("ar-SA-x-najd") == resolve("ar-SA-x-najd")
 
 
 def test_non_ipa_alphabet_rejected():

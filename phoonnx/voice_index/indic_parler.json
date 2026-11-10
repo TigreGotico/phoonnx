@@ -244,7 +244,7 @@
         "phoneme_type": "unicode",
         "alphabet": "graphemes",
         "engine": "indic_parler",
-        "lang": "en",
+        "lang": "en-IN",
         "aux_model_urls": {
             "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
             "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
@@ -270,7 +270,7 @@
         "phoneme_type": "unicode",
         "alphabet": "graphemes",
         "engine": "indic_parler",
-        "lang": "en",
+        "lang": "en-IN",
         "aux_model_urls": {
             "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
             "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
