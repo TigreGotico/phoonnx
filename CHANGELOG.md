@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.96.2a2](https://github.com/TigreGotico/phoonnx/tree/1.96.2a2) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.2a1...1.96.2a2)
+
+**Merged pull requests:**
+
+- perf: take the spectrogram frame count from the worker that wrote it [\#466](https://github.com/TigreGotico/phoonnx/pull/466) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.96.2a1](https://github.com/TigreGotico/phoonnx/tree/1.96.2a1) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.1a1...1.96.2a1)
@@ -269,10 +277,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.8a1...1.91.8a2)
 
-**Merged pull requests:**
-
-- docs: link the TTS training notebooks [\#448](https://github.com/TigreGotico/phoonnx/pull/448) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.91.8a1](https://github.com/TigreGotico/phoonnx/tree/1.91.8a1) (2026-09-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.7a1...1.91.8a1)
@@ -341,17 +345,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.90.1a1...1.91.0a1)
 
-**Merged pull requests:**
-
-- feat: add logus2k/tts\_eu\_pt European Portuguese Kokoro voice [\#449](https://github.com/TigreGotico/phoonnx/pull/449) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.90.1a1](https://github.com/TigreGotico/phoonnx/tree/1.90.1a1) (2026-09-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.90.0a1...1.90.1a1)
-
-**Merged pull requests:**
-
-- fix: pin IR version of test-built ONNX graphs to what onnxruntime accepts [\#450](https://github.com/TigreGotico/phoonnx/pull/450) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.90.0a1](https://github.com/TigreGotico/phoonnx/tree/1.90.0a1) (2026-08-17)
 
