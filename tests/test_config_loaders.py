@@ -251,3 +251,22 @@ class TestVoskLoader(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCanonicalLoaderLanguage(unittest.TestCase):
+    @staticmethod
+    def _config(language):
+        return {"engine": "vits", "phoneme_id_map": {"_": [0], "a": [1]},
+                "alphabet": "ipa", "language": language}
+
+    def test_a_language_stanza_supplies_the_code(self):
+        loaded = CanonicalLoader.load(LoadRequest(config=self._config({"code": "kab"})))
+        self.assertEqual(loaded.lang_code, "kab")
+
+    def test_the_caller_lang_code_wins_over_the_stanza(self):
+        loaded = CanonicalLoader.load(LoadRequest(config=self._config({"code": "kab"}), lang_code="pt"))
+        self.assertEqual(loaded.lang_code, "pt")
+
+    def test_a_language_that_is_not_a_stanza_supplies_no_code(self):
+        loaded = CanonicalLoader.load(LoadRequest(config=self._config("kab")))
+        self.assertIsNone(loaded.lang_code)
