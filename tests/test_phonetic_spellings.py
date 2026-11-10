@@ -73,3 +73,40 @@ def test_a_language_with_nothing_anywhere_is_still_not_found(tmp_path):
     import pytest
     with pytest.raises(FileNotFoundError):
         PhoneticSpellings.from_lang("xx-YY", user_dir=str(tmp_path))
+
+
+def test_a_user_entry_overrides_a_packaged_entry_that_differs_only_in_case(tmp_path):
+    assert "OpenVoiceOS" in PhoneticSpellings.from_lang("en-US").replacements
+    (tmp_path / "en.txt").write_text("openvoiceos: user wins\n")
+    ps = PhoneticSpellings.from_lang("en-US", user_dir=str(tmp_path))
+    assert ps.apply("I use OpenVoiceOS daily") == "I use user wins daily"
+    assert "OpenVoiceOS" not in ps.replacements
+
+
+def test_an_undecodable_user_file_is_skipped_and_the_packaged_spellings_stay(tmp_path):
+    from unittest.mock import patch
+
+    (tmp_path / "en.txt").write_bytes(b"caf\xe9: kafay\n")
+    with patch("phoonnx.voice.LOG") as mock_log:
+        ps = PhoneticSpellings.from_lang("en-US", user_dir=str(tmp_path))
+    assert ps.replacements == PhoneticSpellings.from_lang("en-US").replacements
+    assert mock_log.warning.called
+    assert "en.txt" in str(mock_log.warning.call_args)
+
+
+def test_a_user_file_saved_with_a_byte_order_mark_still_overrides(tmp_path):
+    (tmp_path / "en.txt").write_bytes("zzword: zed word\n".encode("utf-8-sig"))
+    ps = PhoneticSpellings.from_lang("en-US", user_dir=str(tmp_path))
+    assert ps.apply("say zzword") == "say zed word"
+
+
+def test_a_user_entry_removes_only_the_entries_the_case_insensitive_match_would_hit(tmp_path):
+    packaged = tmp_path / "packaged" / "de"
+    packaged.mkdir(parents=True)
+    (packaged / "phonetic_spellings.txt").write_text("Straße: Schtrasse\n")
+    user = tmp_path / "user"
+    user.mkdir()
+    (user / "de.txt").write_text("STRASSE: Strasse\n")
+    ps = PhoneticSpellings.from_lang("de", locale_path=str(tmp_path / "packaged"), user_dir=str(user))
+    assert ps.replacements == {"Straße": "Schtrasse", "STRASSE": "Strasse"}
+    assert ps.apply("die Straße") == "die Schtrasse"
