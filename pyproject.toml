@@ -170,9 +170,9 @@ omnivoice = ["pydub"]
 # and needs no extra.
 indic-parler = ["tokenizers"]
 train = [
-    # diffusers>=0.36 references torch.xpu at import time, which only exists on
-    # torch>=2.4; capping keeps the vendored matcha decoder importable across
-    # the whole supported torch>=2.3 range.
+    # 0.42.1 fixes a trust_remote_code bypass in from_pretrained. diffusers
+    # 0.42 calls torch.accelerator when the vendored matcha decoder imports
+    # diffusers.models.attention, so it needs torch>=2.6 (floor below).
     "diffusers>=0.42.1,<0.43",
     "einops",
     "huggingface_hub",
@@ -185,8 +185,9 @@ train = [
     # beta that still references numpy<2 APIs (np.row_stack) at import
     "numba>=0.66; python_version>='3.13'",
     "pytorch-lightning>=2.0,<3",
-    # torch<2.3 is built against NumPy 1 and cannot convert NumPy 2 arrays
-    "torch>=2.3,<3",
+    # torch<2.3 is built against NumPy 1 and cannot convert NumPy 2 arrays;
+    # diffusers 0.42 needs torch.accelerator, added in torch 2.6
+    "torch>=2.6,<3",
     "tqdm",
     "scipy",
     # the training entry points are click commands
