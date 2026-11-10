@@ -777,7 +777,7 @@ class TestPhonemizerLangOverride(HubTestCase):
         info = self.make_info(lang="tdt-TL", phonemizer_lang="pt",
                               phoneme_type="espeak", alphabet="ipa",
                               engine="piper")
-        self.assertEqual(info.config.lang_code, "pt")
+        self.assertEqual(info.config.lang_code, "pt-PT")
         # lang stays the catalogue-facing value; unaffected by the override.
         self.assertEqual(info.lang, "tdt-TL")
 

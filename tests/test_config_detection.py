@@ -187,7 +187,7 @@ class TestFromDictCoqui(unittest.TestCase):
                               "characters": "ab", "punctuations": ""},
                "datasets": [{"language": "pt-pt"}]}
         vc = VoiceConfig.from_dict(cfg, lang_code="en")
-        self.assertEqual(vc.lang_code, "en")
+        self.assertEqual(vc.lang_code, "en-GB")
 
 
 class TestFromDictPiperBranches(unittest.TestCase):
@@ -239,7 +239,7 @@ class TestFromDictTransformersVocabBranch(unittest.TestCase):
         vc = VoiceConfig.from_dict({}, vocab=vocab, tokenizer_config=tok_cfg,
                                     phoneme_type="graphemes", alphabet="unicode")
         self.assertFalse(vc.tokenizer.add_blank_char)
-        self.assertEqual(vc.lang_code, "pt")
+        self.assertEqual(vc.lang_code, "pt-PT")
 
 
 class TestFromDictSherpaTokensTxtBranch(unittest.TestCase):

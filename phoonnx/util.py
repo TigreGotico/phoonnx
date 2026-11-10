@@ -7,8 +7,7 @@ import re
 import unicodedata
 from typing import List, Tuple, Union
 
-from langcodes import Language, standardize_tag
-from linguatag import lang_distance
+from linguatag import lang_distance, with_default_region
 from scriptconv.scripts import normalize_script_tag
 
 from phoonnx.log import LOG
@@ -38,17 +37,6 @@ def _private_use(names: List[str]) -> List[str]:
     return [t for t in tags if t]
 
 
-# Languages official/major in more than one country: the region is a real choice the
-# voice must declare, so we never guess one for these (a "pt" voice is as likely BR
-# as PT). For everything else a bare code has a single unambiguous CLDR region.
-_MULTI_REGION = frozenset({
-    "en", "es", "pt", "fr", "ar", "de", "nl", "it", "ru", "zh", "sw", "ms",
-    "hi", "bn", "ta", "ur", "pa", "ne", "fa", "ku", "ps", "az",
-    "ha", "ff", "yo", "om", "ln", "ti", "aa", "ee", "ny", "so", "wo", "kr",
-    "qu", "ay", "gn", "ca", "eu", "sq", "sv", "sr", "bs", "la", "os",
-})
-
-
 # linguatag measures `ar` with any region, and each individual Arabic language
 # (`arz`, `apc`, ...) in Arabic script, at 5 or less from `ar`. A tag in another
 # language or in another script is further away.
@@ -76,20 +64,10 @@ def normalize_lang(lang: str) -> str:
         elif "dialect" in parts[1:]:
             tags = _private_use([p for p in parts[1:] if p != "dialect"])
             lang = f"{parts[0]}-x-" + "-".join(tags) if tags else parts[0]
-    try:
-        lang = standardize_tag(lang)
-    except Exception:
-        return lang
-    # Add the CLDR region for bare 639-1 codes that map to a single country (cy ->
-    # cy-GB). Skip multi-region languages, whose region must come from the model.
-    if re.fullmatch(r"[a-z]{2}", lang) and lang not in _MULTI_REGION:
-        try:
-            territory = Language.get(lang).maximize().territory
-            if territory and len(territory) == 2:  # ISO-3166 alpha-2, not "419"
-                lang = f"{lang}-{territory}"
-        except Exception:
-            pass
-    return lang
+    # linguatag gives the standard form and inserts the default region, the place
+    # where the language first appeared and is still spoken (en-GB, pt-PT). A
+    # language with no default region stays bare.
+    return with_default_region(lang)
 
 
 def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Tuple[str, int]:
