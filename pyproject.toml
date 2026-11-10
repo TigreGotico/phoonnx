@@ -434,6 +434,9 @@ all = [
     # case, so pt-BR keeps the pt-br voice instead of falling to pt, European
     # Portuguese. Below this floor tests/test_phonemizer_mul.py
     # TestEspeakGetLang fails.
+    # >=0.0.4a36: phonemizers take keep_punctuation, which voices trained with
+    # punctuation need, and phonemize_to_list no longer returns espeak's
+    # clause-break newlines. Below this floor tests/test_punctuation.py fails.
     "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he]>=0.0.4a40",
     # scriptconv's own "stress" extra floors stressonnx at >=0.0.2, which
     # resolves to the latest *stable* release. The BCP-47 language resolver

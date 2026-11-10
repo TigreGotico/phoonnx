@@ -809,7 +809,8 @@ class TTSModelInfo:
             voice.config.phonemizer_model = self.phonemizer_model
             voice.phonemizer = get_phonemizer(voice.config.phoneme_type,
                                               alphabet=voice.config.alphabet,
-                                              model=self.phonemizer_model)
+                                              model=self.phonemizer_model,
+                                              keep_punctuation=voice.config.keep_punctuation)
         # override phoneme_type, if config.json is wrong
         if self.phoneme_type != voice.config.phoneme_type or self.alphabet != voice.config.alphabet:
             voice.config.phoneme_type = self.phoneme_type
@@ -820,7 +821,8 @@ class TTSModelInfo:
             check_lang_supported(self.voice_id, voice.config.lang_code, self.phoneme_type)
             voice.phonemizer = get_phonemizer(self.phoneme_type,
                                               alphabet=self.alphabet,
-                                              model=voice.config.phonemizer_model)
+                                              model=voice.config.phonemizer_model,
+                                              keep_punctuation=voice.config.keep_punctuation)
         return voice
 
 

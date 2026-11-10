@@ -86,6 +86,7 @@ class LoadedFields:
     add_diacritics: Optional[bool] = False
     diacritizer_model: Optional[str] = None
     blank_between: Union[str, BlankBetween] = BlankBetween.TOKENS_AND_WORDS
+    keep_punctuation: bool = False
     pinned: FrozenSet[str] = field(default_factory=frozenset)
 
 
@@ -330,6 +331,12 @@ class PiperLoader(ConfigLoader):
     ``text`` and ``pygoruut`` models pin both the phoneme type and the
     alphabet: their vocabulary is the model's own character or goruut token
     set, so a caller-supplied alphabet would mis-tokenise.
+
+    Piper trains with clause punctuation, so its voices keep it at synthesis.
+    phoonnx's own ``--piper`` export side-cars are piper-shaped too, but their
+    models were trained by phoonnx, without punctuation unless the config says
+    otherwise. They are recognised by a ``piper_version`` starting with
+    ``phoonnx`` or by an ``alphabet`` key, which Piper never writes.
     """
 
     @classmethod
@@ -359,6 +366,12 @@ class PiperLoader(ConfigLoader):
             return False
 
         return config["phoneme_type"] in ("text", "espeak")
+
+    @staticmethod
+    def made_by_phoonnx(config: Dict[str, Any]) -> bool:
+        """Whether *config* is a phoonnx export side-car rather than a Piper config."""
+        return (str(config.get("piper_version", "")).startswith("phoonnx")
+                or "alphabet" in config)
 
     @classmethod
     def load(cls, request: LoadRequest) -> LoadedFields:
@@ -393,6 +406,7 @@ class PiperLoader(ConfigLoader):
             phoneme_type=phoneme_type,
             alphabet=alphabet,
             add_diacritics=(lang_code or "").startswith("ar"),
+            keep_punctuation=not cls.made_by_phoonnx(config),
             pinned=frozenset(pinned),
         )
 
