@@ -263,3 +263,13 @@ def test_say_as_a_decimal_outside_the_seven_languages_has_no_english_point(text,
 ])
 def test_say_as_address_pairs_house_number_digits_only_in_english(text, lang, expected):
     assert say_as_text(text, "address", lang) == expected
+
+
+# Expected values: the X-SAMPA chart, https://en.wikipedia.org/wiki/X-SAMPA
+@pytest.mark.parametrize("xsampa,ipa", [
+    ("r\\`", "ɻ"), ("r`", "ɽ"), ("L\\", "ʟ"), ("M\\", "ɰ"), ("H\\", "ʜ"), ("s\\", "ɕ"),
+    ("z\\", "ʑ"), ("x\\", "ɧ"), ("v\\", "ʋ"), ("I\\", "ᵻ"), ("U\\", "ᵿ"), ("n_=", "n\u0329"),
+    ('"x\\A:l', "ˈɧɑːl"),
+])
+def test_xsampa_symbols_follow_the_chart(xsampa, ipa):
+    assert xsampa_to_ipa(xsampa) == ipa
