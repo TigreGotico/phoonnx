@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.94.8a2](https://github.com/TigreGotico/phoonnx/tree/1.94.8a2) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.8a1...1.94.8a2)
+
+## [1.94.8a1](https://github.com/TigreGotico/phoonnx/tree/1.94.8a1) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.7a2...1.94.8a1)
+
+## [1.94.7a2](https://github.com/TigreGotico/phoonnx/tree/1.94.7a2) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.7a1...1.94.7a2)
+
+**Merged pull requests:**
+
+- ci: pin conventional-release-labels and scope the label job [\#496](https://github.com/TigreGotico/phoonnx/pull/496) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix\(deps\): raise the ovos-plugin-manager floor above the pkg\_resources import [\#494](https://github.com/TigreGotico/phoonnx/pull/494) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- Update dependency onnx to \<1.24 [\#491](https://github.com/TigreGotico/phoonnx/pull/491) ([renovate[bot]](https://github.com/apps/renovate))
+
 ## [1.94.7a1](https://github.com/TigreGotico/phoonnx/tree/1.94.7a1) (2026-11-05)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.6a1...1.94.7a1)
@@ -331,17 +349,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.0a2...1.84.1a1)
 
-**Merged pull requests:**
-
-- fix: remove duplicate voice-index entries in piper/piper\_community [\#429](https://github.com/TigreGotico/phoonnx/pull/429) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.84.0a2](https://github.com/TigreGotico/phoonnx/tree/1.84.0a2) (2026-08-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.84.0a1...1.84.0a2)
-
-**Merged pull requests:**
-
-- refactor: per-format config loader registry [\#428](https://github.com/TigreGotico/phoonnx/pull/428) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.84.0a1](https://github.com/TigreGotico/phoonnx/tree/1.84.0a1) (2026-08-15)
 
