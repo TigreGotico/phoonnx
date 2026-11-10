@@ -221,10 +221,12 @@ def test_say_as_in_other_languages_reads_what_a_speaker_would_say(text, kind, la
     assert say_as_text(text, kind, lang) == expected
 
 
-def test_a_huge_value_is_read_digit_by_digit_not_hung_on():
+def test_a_huge_value_is_read_digit_by_digit_or_as_written_not_hung_on():
     import time
 
     started = time.perf_counter()
-    said = say_as_text("1" * 5000, "cardinal", "en")
-    assert said.startswith("one one one") and time.perf_counter() - started < 2
-    assert say_as_text("1" * 5000, "unit", "en") == "1" * 5000  # too long for a quantity: as written
+    assert say_as_text("1" * 40, "cardinal", "en").startswith("one one one")  # past 15 digits
+    assert say_as_text("1" * 5000, "cardinal", "en") == "1" * 5000           # not a value at all
+    assert say_as_text("1" * 5000, "unit", "en") == "1" * 5000
+    assert say_as_text("9" * 40, "ordinal", "fr").startswith("neuf neuf")
+    assert time.perf_counter() - started < 3
