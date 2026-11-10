@@ -129,10 +129,21 @@ class PhoneticSpellings:
             for name in dict.fromkeys((tag.split("-")[0], tag)):
                 for candidate in dict.fromkeys((name, name.lower())):
                     path = os.path.join(user_dir, f"{candidate}.txt")
-                    if os.path.isfile(path):
-                        replacements.update(PhoneticSpellings.from_path(path).replacements)
-                        found = True
+                    if not os.path.isfile(path):
+                        continue
+                    try:
+                        user = PhoneticSpellings.from_path(path).replacements
+                    except UnicodeDecodeError as e:
+                        LOG.warning(f"Skipping phonetic spellings file that is not UTF-8: {path} ({e})")
                         break
+                    # apply() matches ignoring case, so a user word replaces every packaged
+                    # word that differs from it only in case
+                    for word, spelling in user.items():
+                        for key in [k for k in replacements if k.casefold() == word.casefold()]:
+                            del replacements[key]
+                        replacements[word] = spelling
+                    found = True
+                    break
         if not found:
             raise FileNotFoundError(f"Spellings file for '{lang}' not found")
         return PhoneticSpellings(replacements)
@@ -140,7 +151,7 @@ class PhoneticSpellings:
     @staticmethod
     def from_path(spellings_file: str):
         replacements = {}
-        with open(spellings_file) as f:
+        with open(spellings_file, encoding="utf-8") as f:
             lines = f.read().split("\n")
             for l in lines:
                 l = l.strip()

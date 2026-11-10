@@ -73,3 +73,22 @@ def test_a_language_with_nothing_anywhere_is_still_not_found(tmp_path):
     import pytest
     with pytest.raises(FileNotFoundError):
         PhoneticSpellings.from_lang("xx-YY", user_dir=str(tmp_path))
+
+
+def test_a_user_entry_overrides_a_packaged_entry_that_differs_only_in_case(tmp_path):
+    assert "OpenVoiceOS" in PhoneticSpellings.from_lang("en-US").replacements
+    (tmp_path / "en.txt").write_text("openvoiceos: user wins\n")
+    ps = PhoneticSpellings.from_lang("en-US", user_dir=str(tmp_path))
+    assert ps.apply("I use OpenVoiceOS daily") == "I use user wins daily"
+    assert "OpenVoiceOS" not in ps.replacements
+
+
+def test_an_undecodable_user_file_is_skipped_and_the_packaged_spellings_stay(tmp_path):
+    from unittest.mock import patch
+
+    (tmp_path / "en.txt").write_bytes(b"caf\xe9: kafay\n")
+    with patch("phoonnx.voice.LOG") as mock_log:
+        ps = PhoneticSpellings.from_lang("en-US", user_dir=str(tmp_path))
+    assert ps.replacements == PhoneticSpellings.from_lang("en-US").replacements
+    assert mock_log.warning.called
+    assert "en.txt" in str(mock_log.warning.call_args)
