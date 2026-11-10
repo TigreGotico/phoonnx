@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.96.2a1](https://github.com/TigreGotico/phoonnx/tree/1.96.2a1) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.1a1...1.96.2a1)
+
+**Merged pull requests:**
+
+- fix: load an orthography2ipa or YourTTS export with its training language [\#481](https://github.com/TigreGotico/phoonnx/pull/481) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.96.1a1](https://github.com/TigreGotico/phoonnx/tree/1.96.1a1) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.0a1...1.96.1a1)
@@ -43,10 +51,6 @@
 ## [1.94.8a3](https://github.com/TigreGotico/phoonnx/tree/1.94.8a3) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.8a2...1.94.8a3)
-
-**Merged pull requests:**
-
-- Update dependency diffusers to \>=0.42.1,\<0.43 [\#447](https://github.com/TigreGotico/phoonnx/pull/447) ([renovate[bot]](https://github.com/apps/renovate))
 
 ## [1.94.8a2](https://github.com/TigreGotico/phoonnx/tree/1.94.8a2) (2026-11-10)
 
