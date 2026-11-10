@@ -76,10 +76,9 @@ class Utterance:
         """Custom asdict to handle Path objects for JSON serialization.
 
         The embedded audio bytes, the internal precomputed-phonemes flag and the
-        spectrogram frame count are dropped: the count is a preprocessing-time
-        detail that the cached spectrogram already carries, and bytes are not
-        JSON serializable and only exist to feed audio
-        processing, and the flag is a processing detail, not training data.
+        spectrogram frame count are dropped: bytes are not JSON serializable and
+        only exist to feed audio processing, the flag is a processing detail,
+        not training data, and the cached spectrogram already carries the count.
         """
         data = dataclasses.asdict(self)
         data.pop("audio_bytes", None)
