@@ -777,7 +777,7 @@ class TestPhonemizerLangOverride(HubTestCase):
         info = self.make_info(lang="tdt-TL", phonemizer_lang="pt",
                               phoneme_type="espeak", alphabet="ipa",
                               engine="piper")
-        self.assertEqual(info.config.lang_code, "pt-PT")
+        self.assertEqual(info.config.lang_code, "pt")
         # lang stays the catalogue-facing value; unaffected by the override.
         self.assertEqual(info.lang, "tdt-TL")
 
@@ -788,6 +788,20 @@ class TestPhonemizerLangOverride(HubTestCase):
         info = self.make_info(lang="en-US", phoneme_type="espeak",
                               alphabet="ipa", engine="piper")
         self.assertEqual(info.config.lang_code, "en-US")
+
+    def test_bare_en_espeak_voice_keeps_the_espeak_en_voice(self):
+        # The index names this voice "en", and its phonemizer gets "en", which
+        # espeak reads with its en-gb voice. The default region (en-GB) is for
+        # lookup only: espeak reads en-GB with en-gb-x-rp, another voice.
+        from importlib import resources
+        from scriptconv.phonemizers.mul import EspeakPhonemizer
+        with resources.files("phoonnx.voice_index").joinpath(
+                "piper_community.json").open("r", encoding="utf-8") as f:
+            entry = json.load(f)["piper_community/agentvibe/en_16Speakers"]
+        info = self.make_info(lang=entry["lang"], phoneme_type=entry["phoneme_type"],
+                              alphabet=entry["alphabet"], engine=entry["engine"])
+        self.assertEqual(info.config.lang_code, "en")
+        self.assertEqual(EspeakPhonemizer.get_lang(info.config.lang_code), "en-gb")
 
     def test_real_tdt_tl_joao_entry_carries_phonemizer_lang(self):
         import json as _json

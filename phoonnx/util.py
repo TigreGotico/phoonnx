@@ -7,7 +7,7 @@ import re
 import unicodedata
 from typing import List, Tuple, Union
 
-from linguatag import lang_distance, with_default_region
+from linguatag import lang_distance, standardize_lang, with_default_region
 from scriptconv.scripts import normalize_script_tag
 
 from phoonnx.log import LOG
@@ -48,7 +48,13 @@ def is_arabic(lang: str) -> bool:
     return lang_distance(lang, "ar") <= _ARABIC_DISTANCE
 
 
-def normalize_lang(lang: str) -> str:
+def normalize_lang(lang: str, default_region: bool = True) -> str:
+    """``lang`` in standard form, with its default region when ``default_region``.
+
+    Lookup and matching use the default region. A voice's phonemizer takes
+    ``default_region=False``: it gets the language its config names, because a
+    trained voice must keep the phonemes it was trained on.
+    """
     if lang == "tgl" or lang == "tl":
         # HACK: langcodes erroneously (debatable) changes this one to "fil"
         return "tl"
@@ -64,10 +70,9 @@ def normalize_lang(lang: str) -> str:
         elif "dialect" in parts[1:]:
             tags = _private_use([p for p in parts[1:] if p != "dialect"])
             lang = f"{parts[0]}-x-" + "-".join(tags) if tags else parts[0]
-    # linguatag gives the standard form and inserts the default region, the place
-    # where the language first appeared and is still spoken (en-GB, pt-PT). A
-    # language with no default region stays bare.
-    return with_default_region(lang)
+    # The default region is the place where the language first appeared and is
+    # still spoken (en-GB, pt-PT). A language with no default region stays bare.
+    return with_default_region(lang) if default_region else standardize_lang(lang)
 
 
 def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Tuple[str, int]:

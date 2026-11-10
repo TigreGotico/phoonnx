@@ -124,7 +124,7 @@ class TestPinnedFormats(unittest.TestCase):
         # language here would phonemize into a vocabulary the model never saw
         cfg = {"phonemizer": "gruut", "phonemes": {}, "text_language": "de"}
         voice = VoiceConfig.from_dict(cfg, tokens_txt=_tokens_txt(), lang_code="pt")
-        self.assertEqual(voice.lang_code, normalize_lang("de"))
+        self.assertEqual(voice.lang_code, normalize_lang("de", default_region=False))
 
     def test_mimic3_symbols_models_pin_their_grapheme_alphabet(self):
         cfg = {"phonemizer": "symbols", "phonemes": {}, "text_language": "de"}
@@ -137,13 +137,13 @@ class TestPinnedFormats(unittest.TestCase):
         voice = VoiceConfig.from_dict({}, vocab={"a": 1, "_": 0},
                                       tokenizer_config={"language": "ro"},
                                       lang_code="pt")
-        self.assertEqual(voice.lang_code, normalize_lang("ro"))
+        self.assertEqual(voice.lang_code, normalize_lang("ro", default_region=False))
 
     def test_a_caller_language_survives_a_tokenizer_config_without_one(self):
         voice = VoiceConfig.from_dict({}, vocab={"a": 1, "_": 0},
                                       tokenizer_config={"add_blank": True},
                                       lang_code="pt")
-        self.assertEqual(voice.lang_code, normalize_lang("pt"))
+        self.assertEqual(voice.lang_code, normalize_lang("pt", default_region=False))
 
     def test_a_config_naming_a_codec_engine_pins_it(self):
         voice = VoiceConfig.from_dict({"engine": "llasa"}, engine=Engine.PIPER)
@@ -236,11 +236,11 @@ class TestVoskLoader(unittest.TestCase):
         self.assertEqual(voice.engine, Engine.VOSK)
         self.assertEqual(voice.phoneme_type, PhonemeType.VOSK)
         self.assertEqual(voice.alphabet, Alphabet.VOSK)
-        self.assertEqual(voice.lang_code, normalize_lang("ru"))
+        self.assertEqual(voice.lang_code, normalize_lang("ru", default_region=False))
 
     def test_a_caller_lang_code_overrides_the_russian_default(self):
         voice = VoiceConfig.from_dict(_vosk_cfg(), lang_code="ru-RU")
-        self.assertEqual(voice.lang_code, normalize_lang("ru-RU"))
+        self.assertEqual(voice.lang_code, normalize_lang("ru-RU", default_region=False))
 
     def test_tokenizer_does_not_fold_compound_phonemes(self):
         # the phonemizer already emits complete tokens; folding would merge

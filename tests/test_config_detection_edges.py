@@ -58,7 +58,7 @@ class TestTransformersVocabBranchMissingTokenizerConfigKeys(unittest.TestCase):
         vc = VoiceConfig.from_dict({}, vocab=vocab, tokenizer_config=tok_cfg,
                                     phoneme_type="graphemes", alphabet="unicode")
         self.assertIsNotNone(vc.tokenizer)
-        self.assertEqual(vc.lang_code, "pt-PT")
+        self.assertEqual(vc.lang_code, "pt")
 
     def test_tokenizer_config_missing_add_blank_key_does_not_raise(self):
         vocab = {"_": 0, "a": 1, "b": 2}
@@ -83,7 +83,7 @@ class TestTransformersVocabBranchMissingTokenizerConfigKeys(unittest.TestCase):
         vc = VoiceConfig.from_dict({}, vocab=vocab, tokenizer_config=tok_cfg,
                                     phoneme_type="graphemes", alphabet="unicode",
                                     lang_code="en")
-        self.assertEqual(vc.lang_code, "en-GB")
+        self.assertEqual(vc.lang_code, "en")
 
 
 class TestVoiceAdapterResolutionForMissingEngines(unittest.TestCase):

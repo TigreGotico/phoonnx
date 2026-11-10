@@ -231,7 +231,7 @@ class VoiceConfig:
             if self.lang_code and is_arabic(self.lang_code):
                 self.add_diacritics = True
 
-        self.lang_code = normalize_lang(self.lang_code or "und")
+        self.lang_code = normalize_lang(self.lang_code or "und", default_region=False)
 
     @staticmethod
     def is_mimic3(config: dict[str, Any]) -> bool:
