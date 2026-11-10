@@ -152,7 +152,8 @@ def build_encoder(config: Dict, noise_scale=None, length_scale=None, noise_w=Non
 
     phoneme_type = PhonemeType(config["phoneme_type"])
     alphabet = Alphabet(config.get("alphabet") or "ipa")
-    ph = get_phonemizer(phoneme_type, alphabet, config.get("phonemizer_model"))
+    ph = get_phonemizer(phoneme_type, alphabet, config.get("phonemizer_model"),
+                        keep_punctuation=bool(config.get("keep_punctuation", False)))
     tokenizer = TTSTokenizer.from_phoonnx_config(config)
     lang = config.get("lang_code", "")
     sample_rate = int(config.get("audio", {}).get("sample_rate", 22050))
@@ -166,12 +167,12 @@ def build_encoder(config: Dict, noise_scale=None, length_scale=None, noise_w=Non
 
 
 def text_to_ids(text: str, ph, tokenizer, lang):
-    """Replicate preprocess.py: normalize -> phonemize_to_list (drop '\\n')
+    """Replicate preprocess.py: normalize -> phonemize_to_list
     -> tokenizer.tokenize (intersperse pad + BOS/EOS)."""
     from phoonnx.util import normalize
 
     utt = normalize(text, lang)
-    phonemes = [p for p in ph.phonemize_to_list(utt, lang) if p != "\n"]
+    phonemes = ph.phonemize_to_list(utt, lang)
     return phonemes, tokenizer.tokenize(phonemes)
 
 

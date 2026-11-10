@@ -31,6 +31,7 @@ from phoonnx.config import VoiceConfig
 | `add_diacritics` | `bool` | `False` | Auto-add diacritics (Arabic/Hebrew) |
 | `diacritizer_model` | `str` | `rawi-ensemble` | Diacritizer model name (Arabic `text2tashkeel`); round-tripped through the config's `inference` block |
 | `phonemizer_model` | `str` \| `None` | `None` | Model path/id or variant selector for phonemizers that take one (ByT5, AhoTTS, Cotovia, arbtok) |
+| `keep_punctuation` | `bool` | `False` (`True` for Piper configs) | The model was trained with clause punctuation (`, . ? ! : ;`), so synthesis keeps it. A phoonnx config without the key, or a Piper side-car phoonnx exported (`piper_version` starting with `phoonnx`, or an `alphabet` key), was trained without it |
 | `speaker_id_map` | `dict` | `{}` | Maps speaker names to integer IDs |
 | `lang_id_map` | `dict` | `{}` | Maps language codes to integer IDs (multi-lang voices) |
 | `lang_tokens` | `dict` | `{}` | Optional BCP-47 → model language-token override (dialect models) |
