@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.96.3a1](https://github.com/TigreGotico/phoonnx/tree/1.96.3a1) (2026-11-10)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.2a2...1.96.3a1)
+
+**Merged pull requests:**
+
+- fix: default Arabic diacritics by language, not by the "ar" prefix [\#555](https://github.com/TigreGotico/phoonnx/pull/555) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.96.2a2](https://github.com/TigreGotico/phoonnx/tree/1.96.2a2) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.2a1...1.96.2a2)
