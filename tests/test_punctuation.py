@@ -64,7 +64,7 @@ class TestSynthesis:
         # the ids a published voice receives are those of scriptconv's default
         # sentence phonemization, tokenized; nothing is added
         from scriptconv.phonemizers import get_phonemizer
-        from phoonnx.util import normalize
+        from text2spoken import normalize
         voice_config, ids = synthesis_ids(phoonnx_config(), QUESTION)
         phonemizer = get_phonemizer("espeak", normalizer=normalize)
         expected = [voice_config.tokenizer.tokenize(p)

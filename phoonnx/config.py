@@ -1,8 +1,10 @@
-import functools
 import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping, Optional, Union, Dict
+
+import text2spoken
+
 from phoonnx.util import LOG, is_arabic, normalize_lang
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
@@ -612,11 +614,11 @@ def get_phonemizer(phoneme_type: PhonemeType,
     """
     Create a phonemizer instance for the specified phonemeization strategy.
 
-    Delegates to scriptconv's registry, injecting phoonnx's text normalizer
-    (number/date expansion) so behavior matches the historical in-tree
-    phonemizers exactly.  All backends, including the license-quarantined
-    mantoq/KoG2P (vendored in scriptconv under their own licenses), come from
-    scriptconv, which also auto-provisions the Hebrew phonikud model.
+    Delegates to scriptconv's registry, injecting :func:`text2spoken.normalize`
+    as the text normalizer (number/date expansion).  All backends, including the
+    license-quarantined mantoq/KoG2P (vendored in scriptconv under their own
+    licenses), come from scriptconv, which also auto-provisions the Hebrew
+    phonikud model.
 
     ``keep_punctuation`` keeps clause punctuation in the phonemes; it must match
     how the model was trained (see :attr:`VoiceConfig.keep_punctuation`).
@@ -624,7 +626,6 @@ def get_phonemizer(phoneme_type: PhonemeType,
     Raises:
         ValueError: If the provided `phoneme_type` is not supported.
     """
-    from phoonnx.util import normalize as _normalize
     phoneme_type = PhonemeType(phoneme_type)
 
     from scriptconv.phonemizers import get_phonemizer as _sc_get
@@ -633,13 +634,7 @@ def get_phonemizer(phoneme_type: PhonemeType,
     except KeyError:
         raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
 
-    if phoneme_type == PhonemeType.ESPEAK:
-        # espeak-ng reads a contraction the way people say it ("don't" -> dˈoʊnt). Expanding it
-        # first ("do not") makes every English sentence sound like a form letter, and the table
-        # is a guess for "he's" and "I'd". Numbers, dates, units and titles are still normalized.
-        phonemizer.normalizer = functools.partial(_normalize, expand_contractions=False)
-    else:
-        phonemizer.normalizer = _normalize
+    phonemizer.normalizer = text2spoken.normalize
     phonemizer.keep_punctuation = keep_punctuation
     return phonemizer
 

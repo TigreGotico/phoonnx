@@ -1,7 +1,8 @@
 """Language-tag identity helpers.
 
-The text normalization pipeline lives in :mod:`phoonnx.normalization`; the
-names it used to export are re-exported here so existing imports keep working.
+Text normalization comes from :mod:`text2spoken`. The normalization names of
+:mod:`phoonnx.normalization` stay readable here, deprecated, until that package
+is removed.
 """
 import re
 import unicodedata
@@ -11,21 +12,7 @@ from linguatag import lang_distance, standardize_lang, with_default_region
 from scriptconv.scripts import normalize_script_tag
 
 from phoonnx.log import LOG
-from phoonnx.normalization import (
-    CONTRACTIONS,
-    TITLES,
-    UNITS,
-    _get_number_separators,
-    _normalize_dates_and_times,
-    _normalize_number_word,
-    _normalize_units,
-    _normalize_word,
-    _normalize_word_hyphen_digit,
-    is_fraction,
-    normalize,
-    pronounce_date,
-    pronounce_time,
-)
+from phoonnx import normalization as _normalization
 
 def _private_use(names: List[str]) -> List[str]:
     """ASCII-fold dialect names into valid BCP-47 private-use subtags (1-8 alnum)."""
@@ -103,3 +90,9 @@ def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Tuple[st
     if best_distance <= 10:
         return best_lang, best_distance
     return "und", 10000
+
+
+def __getattr__(name: str):
+    if name in _normalization.DEPRECATED_NAMES:
+        return getattr(_normalization, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
