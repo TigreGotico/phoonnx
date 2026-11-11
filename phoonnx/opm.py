@@ -19,6 +19,7 @@ from collections import OrderedDict
 from threading import RLock
 from typing import Dict, List, Optional
 from ovos_utils.log import LOG
+from linguatag import standardize_lang
 from ovos_plugin_manager.templates.tts import TTS, TTSContext
 
 from phoonnx.model_manager import TTSModelManager, TTSModelInfo
@@ -60,10 +61,11 @@ class PhoonnxTTSPlugin(TTS):
         # The env vars let a container image whose config carries no
         # lang2voice entry for a language be re-pointed per deployment without
         # editing mycroft.conf; they never override a language the config
-        # already names. Keys are normalised the same way the caller's ``lang``
-        # is, so "gl-ES"/"gl", "pt-br"/"pt_BR" and similar spellings agree.
+        # already names. Keys are kept in standard form with no region added,
+        # so that a bare key stays the primary subtag every region falls back
+        # to; "pt-br"/"pt_BR" and similar spellings agree.
         self.lang2voice: Dict[str, str] = {
-            normalize_lang(k).lower(): v
+            standardize_lang(k).lower(): v
             for k, v in (self.config.get("lang2voice") or {}).items()
         }
 
@@ -185,15 +187,15 @@ class PhoonnxTTSPlugin(TTS):
         The suffix is a lang tag with underscores in place of dashes, so
         ``PHOONNX_DEFAULT_VOICE_PT`` sets ``pt`` and
         ``PHOONNX_DEFAULT_VOICE_PT_BR`` sets ``pt-br``. The tag is normalised
-        the same way a caller's ``lang`` is, so it matches regardless of
-        region-tag casing.
+        to its standard form, as a ``lang2voice`` key is, so it matches
+        regardless of region-tag casing.
         """
         voices = {}
         for key, val in os.environ.items():
             if key.startswith(PhoonnxTTSPlugin.ENV_PREFIX) and val:
                 tag = key[len(PhoonnxTTSPlugin.ENV_PREFIX):].replace("_", "-").lower()
                 if tag:
-                    voices[normalize_lang(tag).lower()] = val
+                    voices[standardize_lang(tag).lower()] = val
         return voices
 
     def configured_voice_for_lang(self, lang: str) -> Optional[str]:
@@ -205,16 +207,16 @@ class PhoonnxTTSPlugin(TTS):
         BCP-47 tag before the primary subtag in each - so a primary-subtag
         entry in ``lang2voice`` still beats a full-tag entry in the env table,
         because the whole config table is tried before the env table is
-        looked at at all. ``lang`` is normalised (case, ``_``/``-``, a bare
-        subtag's default region) before matching, the same way the tables'
-        own keys are, so equivalent spellings agree. Returns None when
-        nothing is configured, leaving the voice index to pick the language
-        default.
+        looked at at all. ``lang`` is tried in standard form, then with its
+        default region (a bare ``en`` also matches an ``en-GB`` key), then as
+        its primary subtag. Returns None when nothing is configured, leaving
+        the voice index to pick the language default.
         """
-        full = normalize_lang(lang or "").lower()
-        primary = full.split("-")[0]
+        standard = standardize_lang(lang or "").lower()
+        regional = normalize_lang(lang or "").lower()
+        tags = dict.fromkeys((standard, regional, regional.split("-")[0]))
         for table in (self.lang2voice, self.env_lang_voices()):
-            for tag in (full, primary):
+            for tag in tags:
                 if tag in table:
                     return table[tag]
         return None

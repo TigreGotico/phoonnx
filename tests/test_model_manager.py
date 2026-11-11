@@ -789,6 +789,20 @@ class TestPhonemizerLangOverride(HubTestCase):
                               alphabet="ipa", engine="piper")
         self.assertEqual(info.config.lang_code, "en-US")
 
+    def test_bare_en_espeak_voice_keeps_the_espeak_en_voice(self):
+        # The index names this voice "en", and its phonemizer gets "en", which
+        # espeak reads with its en-gb voice. The default region (en-GB) is for
+        # lookup only: espeak reads en-GB with en-gb-x-rp, another voice.
+        from importlib import resources
+        from scriptconv.phonemizers.mul import EspeakPhonemizer
+        with resources.files("phoonnx.voice_index").joinpath(
+                "piper_community.json").open("r", encoding="utf-8") as f:
+            entry = json.load(f)["piper_community/agentvibe/en_16Speakers"]
+        info = self.make_info(lang=entry["lang"], phoneme_type=entry["phoneme_type"],
+                              alphabet=entry["alphabet"], engine=entry["engine"])
+        self.assertEqual(info.config.lang_code, "en")
+        self.assertEqual(EspeakPhonemizer.get_lang(info.config.lang_code), "en-gb")
+
     def test_real_tdt_tl_joao_entry_carries_phonemizer_lang(self):
         import json as _json
         from importlib import resources
@@ -1014,6 +1028,42 @@ class TestFullSerializationRoundTrip(ManagerTestCase):
         self.assertEqual(d["phoneme_type"], "espeak")
         # must be JSON serializable without a custom encoder
         json.dumps(d)
+
+
+class TestLanglessVoiceRoundTrip(ManagerTestCase):
+    """A voice added with no ``lang`` takes it from its config. The catalogue
+    lang gets the default region, but the phonemizer must keep the config
+    language after a save and a reload, or espeak reads ``en-GB`` with its
+    en-gb-x-rp voice instead of en-gb."""
+
+    def test_reloaded_voice_keeps_its_phonemizer_language(self):
+        from linguatag import standardize_lang, with_default_region
+        from scriptconv.phonemizers.mul import EspeakPhonemizer
+        for voice in ("en", "pt", "es"):
+            with self.subTest(espeak_voice=voice):
+                config = {"phoneme_type": "espeak", "espeak": {"voice": voice},
+                          "phoneme_id_map": {"_": [0], "a": [1]}}
+                voice_id = f"user/{voice}"
+                with patch.object(TTSModelInfo, "download_config",
+                                  lambda self, c=config: json.loads(json.dumps(c))):
+                    manager = TTSModelManager(cache_path=self.cache_path)
+                    info = TTSModelInfo(voice_id=voice_id, lang="",
+                                        model_url=f"{HUB}/model.onnx",
+                                        config_url=f"{HUB}/config.json")
+                    first = info.config.lang_code
+                    manager.add_voice(info)
+                    manager.save()
+
+                    reloaded_manager = TTSModelManager(cache_path=self.cache_path)
+                    reloaded_manager.load()
+                    reloaded = reloaded_manager.voices[voice_id]
+                    second = reloaded.config.lang_code
+
+                self.assertEqual(first, standardize_lang(voice))
+                self.assertEqual(second, standardize_lang(voice))
+                self.assertEqual(EspeakPhonemizer.get_lang(second),
+                                 EspeakPhonemizer.get_lang(voice))
+                self.assertEqual(reloaded.lang, with_default_region(voice))
 
 
 class TestVoiceIndexSources(unittest.TestCase):

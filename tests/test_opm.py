@@ -8,6 +8,8 @@ mocked so the tests stay fast and hermetic.
 import unittest
 from unittest.mock import MagicMock, patch
 
+from linguatag import default_region
+
 import phoonnx.opm as opm
 from phoonnx.voice import SynthesisConfig
 
@@ -449,6 +451,29 @@ class TestLangDefaultVoiceOverrides(unittest.TestCase):
             voices=(other, chosen))
         self.assertEqual(plugin.get_default_voice("gl").voice_id,
                          "proxectonos/celtia")
+
+    def test_default_region_config_key_matches_a_bare_request(self):
+        # a bare request names the default region of its language, so a key
+        # written with that region is the configured voice for the bare tag
+        chosen = _FakeVoiceInfo("voice/gb", lang="en-GB")
+        other = _FakeVoiceInfo("some/other", lang="en-GB")
+        plugin, _ = _make_plugin(
+            config={"lang": "en-GB",
+                    "lang2voice": {f"en-{default_region('en')}": "voice/gb"}},
+            voices=(other, chosen))
+        self.assertEqual(plugin.get_default_voice("en").voice_id, "voice/gb")
+
+    def test_bare_config_key_serves_every_region(self):
+        # a bare key is the primary subtag that every region falls back to,
+        # including regions other than the language's default one
+        chosen = _FakeVoiceInfo("voice/en", lang="en-GB")
+        other = _FakeVoiceInfo("some/other", lang="en-US")
+        plugin, _ = _make_plugin(
+            config={"lang": "en-US", "lang2voice": {"en": "voice/en"}},
+            voices=(other, chosen))
+        for lang in ("en", "en-US", "en-AU", f"en-{default_region('en')}"):
+            with self.subTest(lang=lang):
+                self.assertEqual(plugin.get_default_voice(lang).voice_id, "voice/en")
 
     def test_underscore_config_key_matches_a_dashed_request(self):
         chosen = _FakeVoiceInfo("voice/br", lang="pt-BR")

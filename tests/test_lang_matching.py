@@ -9,7 +9,9 @@ import unittest
 from unittest.mock import patch
 
 from phoonnx.model_manager import TTSModelInfo, TTSModelManager
-from phoonnx.util import match_lang
+from linguatag import default_region
+
+from phoonnx.util import match_lang, normalize_lang
 from phoonnx.voice import PhoneticSpellings
 
 
@@ -23,6 +25,33 @@ class TestMatchLangDefaultRegion(unittest.TestCase):
     def test_regional_request_keeps_its_region(self):
         self.assertEqual(match_lang("en-US", ["en-GB", "en-US"]), ("en-US", 0))
         self.assertEqual(match_lang("pt-BR", ["pt-PT", "pt-BR"]), ("pt-BR", 0))
+
+
+class TestNormalizeLangDefaultRegion(unittest.TestCase):
+    """normalize_lang gives a bare tag the region linguatag defaults it to."""
+
+    def test_rule_examples(self):
+        self.assertEqual(normalize_lang("en"), "en-GB")
+        self.assertEqual(normalize_lang("pt"), "pt-PT")
+
+    def test_languages_of_several_countries_get_their_default_region(self):
+        for lang in ("es", "fr", "de", "ar", "zh", "sw", "hi", "ur"):
+            with self.subTest(lang=lang):
+                self.assertEqual(normalize_lang(lang), f"{lang}-{default_region(lang)}")
+
+    def test_language_with_no_default_region_stays_bare(self):
+        for lang in ("ie", "oj", "pi", "tw", "bh"):
+            with self.subTest(lang=lang):
+                self.assertIsNone(default_region(lang))
+                self.assertEqual(normalize_lang(lang), lang)
+
+    def test_three_letter_and_script_tags_get_their_default_region(self):
+        for tag, expected in (("arz", f"arz-{default_region('arz')}"),
+                              ("yue", f"yue-{default_region('yue')}"),
+                              ("zh-Hant", f"zh-Hant-{default_region('zh-Hant')}"),
+                              ("crk-script_syllabics", f"crk-Cans-{default_region('crk-Cans')}")):
+            with self.subTest(tag=tag):
+                self.assertEqual(normalize_lang(tag), expected)
 
 
 class TestMatchLangUnparseableEntry(unittest.TestCase):

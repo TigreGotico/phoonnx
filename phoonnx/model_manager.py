@@ -400,7 +400,7 @@ class TTSModelInfo:
                 config["phonemizer_model"] = self.phonemizer_model
 
             override_lang = self.phonemizer_lang or self.lang
-            lang_code = normalize_lang(override_lang) if override_lang else None
+            lang_code = normalize_lang(override_lang, default_region=False) if override_lang else None
             alphabet = self.alphabet if self.alphabet else None
             phoneme_type = self.phoneme_type if self.phoneme_type else None
             engine = self.engine if self.engine else None
@@ -450,8 +450,13 @@ class TTSModelInfo:
                                                      engine=engine,
                                                      lang_code=lang_code)
 
-            # populate any missing properties
-            self.lang = self.lang or normalize_lang(self._config.lang_code)
+            # populate any missing properties. The catalogue lang takes the
+            # default region and the phonemizer lang_code does not, so a voice
+            # whose lang comes from its config also records its phonemizer
+            # language: a saved voice then reloads with the phonemes it had.
+            if not self.lang:
+                self.lang = normalize_lang(self._config.lang_code)
+                self.phonemizer_lang = self.phonemizer_lang or self._config.lang_code
             self.alphabet = self.alphabet or self._config.alphabet
             self.phoneme_type = self.phoneme_type or self._config.phoneme_type
             self.engine = self.engine or self._config.engine
