@@ -205,7 +205,8 @@ def test_synthesis_applies_pitch_and_breaths_between_sentences():
     ("12 km/h", "unit", "it", "dodici chilometri all'ora"),
     ("20°C", "unit", "nl", "twintig graden Celsius"),
     ("1", "ordinal", "es", "primero"),
-    ("21", "ordinal", "es", "vigésimo primero"),
+    # RAE, Diccionario panhispánico de dudas, "ordinales" § 3: 13 to 29 are one word, with one stress
+    ("21", "ordinal", "es", "vigesimoprimero"),
     ("1", "ordinal", "it", "primo"),
     ("1", "ordinal", "fr", "premier"),
     ("12,5", "cardinal", "de", "zwölf Komma fünf"),
