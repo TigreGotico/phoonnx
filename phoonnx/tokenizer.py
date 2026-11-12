@@ -835,13 +835,15 @@ class TTSTokenizer:
 def load_tokenizers_package(tokenizer_json: str):
     """Read a HuggingFace ``tokenizer.json`` with the ``tokenizers`` package.
 
-    The result encodes and decodes on tokenizers 0.x and 1.x. On 1.x a
-    ``Tokenizer`` only holds the configuration, and only the
-    ``CompiledTokenizer`` that ``compile()`` builds can encode.
+    The result encodes and decodes on tokenizers 0.x and 1.x. From 1.0.0rc4
+    a ``Tokenizer`` only holds the configuration, and only the
+    ``CompiledTokenizer`` that ``compile()`` builds can encode. Earlier 1.0
+    release candidates encode with the ``Tokenizer`` and have no
+    ``compile()``, so the test is for the method, not for the version.
     """
-    from tokenizers import Tokenizer, __version__
+    from tokenizers import Tokenizer
     tokenizer = Tokenizer.from_file(str(tokenizer_json))
-    if int(__version__.split(".")[0]) >= 1:
+    if hasattr(tokenizer, "compile"):
         return tokenizer.compile()
     return tokenizer
 

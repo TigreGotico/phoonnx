@@ -283,6 +283,41 @@ class TestVocabulariesThatMustBeDeclined(unittest.TestCase):
                     Tokenizer(spec).encode("a b")
 
 
+class _Rc3Tokenizer:
+    """tokenizers 1.0.0rc3: the Tokenizer itself encodes; there is no compile()."""
+
+    @classmethod
+    def from_file(cls, path):
+        return cls()
+
+
+class _Rc4Tokenizer(_Rc3Tokenizer):
+    """tokenizers 1.0.0rc4: only what compile() returns encodes."""
+
+    def compile(self):
+        return "compiled"
+
+
+@unittest.skipIf(ReferenceTokenizer is None, "the `tokenizers` package is not installed")
+class TestTheLoaderFollowsTheApi(unittest.TestCase):
+    """The release candidates of tokenizers 1.0 share the major version and
+    differ in API, so a version check picks the wrong path on one of them."""
+
+    def _load(self, stub, version):
+        from unittest import mock
+
+        import tokenizers
+        with mock.patch.object(tokenizers, "Tokenizer", stub), \
+                mock.patch.object(tokenizers, "__version__", version):
+            return load_tokenizers_package("tokenizer.json")
+
+    def test_a_tokenizer_without_compile_is_used_as_it_is(self):
+        self.assertIsInstance(self._load(_Rc3Tokenizer, "1.0.0-rc.3"), _Rc3Tokenizer)
+
+    def test_a_tokenizer_with_compile_is_compiled(self):
+        self.assertEqual(self._load(_Rc4Tokenizer, "0.0.0"), "compiled")
+
+
 class TestMergeLoopIsNotQuadratic(unittest.TestCase):
     """A pre-token is not always short. The pre-tokenizers these vocabularies
     declare keep a run of letters whole, so a paragraph of Chinese or Japanese —
