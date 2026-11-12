@@ -72,8 +72,6 @@ test = [
     "o2i-lexicons>=0.1.0a1",
     "arbtok",
     "euskaphone",
-    "g2p_barranquenho",
-    "mwl_phonemizer",
     # kokoro-family styletts2 voices phonemize through misaki; both extras
     # are pure-python (no heavy/compiled deps) so they belong in the base
     # test extra, not gated behind an importorskip.
@@ -300,8 +298,8 @@ he = ["epitran", "phonikud_onnx", "phonikud"]
 it = ["epitran", "gruut[it]>=2.3.0,<3.0"]
 ja = ["epitran", "gruut[ja]>=2.3.0,<3.0", "misaki[ja]", "spacy>=3.7,<4.0", "pyopenjtalk", "pykakasi", "cutlet", "unidic-lite"]
 ko = ["epitran", "g2pk", "misaki[ko]"]
-mwl = ["mwl_phonemizer"]
-pt = ["epitran", "g2p_barranquenho", "tugaphone", "gruut[pt]>=2.3.0,<3.0"]
+mwl = ["scriptconv[mwl]>=0.0.4a40"]
+pt = ["epitran", "scriptconv[o2i]>=0.0.4a40", "tugaphone", "gruut[pt]>=2.3.0,<3.0"]
 ru = ["epitran", "gruut[ru]>=2.3.0,<3.0"]
 sv = ["epitran", "gruut[sv]>=2.3.0,<3.0"]
 sw = ["epitran", "gruut[sw]>=2.3.0,<3.0"]
@@ -461,7 +459,7 @@ all = [
     "pycotovia>=0.4.0a1",
     "pykakasi==2.3.0", "spacy-pkuseg",
     "soundfile", "scipy",
-    "orthography2ipa", "o2i-lexicons>=0.1.0a1", "arbtok", "euskaphone", "g2p_barranquenho", "mwl_phonemizer",
+    "orthography2ipa", "o2i-lexicons>=0.1.0a1", "arbtok", "euskaphone",
     "pydub",
     # Indic Parler needs the compiled reader; `all` is what the image installs,
     # and it carried a working Indic Parler before.

@@ -1,14 +1,22 @@
-"""Tests for the g2p_barranquenho Barranquenho phonemizer.
+"""Tests for the Barranquenho phonemizer.
 
-g2p_barranquenho is a hard test dependency (declared in the ``test`` and ``pt``
-extras), so it is imported unconditionally -- no importorskip.
+scriptconv runs it on the orthography2ipa spec ``ext-PT-x-barranco``, so it
+needs no package of its own.  Every test blocks the ``g2p_barranquenho``
+module, so an import of it raises ``ImportError``.
 """
+import sys
+
 import pytest
 
 from phoonnx.config import PhonemeType, Alphabet, get_phonemizer
 from scriptconv.phonemizers.pt import BarranquenhoPhonemizer
 
 LANG = "ext-PT-x-barrancos"
+
+
+@pytest.fixture(autouse=True)
+def g2p_barranquenho_missing(monkeypatch):
+    monkeypatch.setitem(sys.modules, "g2p_barranquenho", None)
 
 
 def test_factory_dispatch():
@@ -22,7 +30,7 @@ def test_phonemize_sentence_returns_ipa():
     out = p.phonemize_string("Boca de la casa.", LANG)
     assert isinstance(out, str)
     assert out.strip()
-    # word-level engine joined per word, one space between words
+    # one space between words
     assert len(out.split()) == 4
 
 
