@@ -12,7 +12,7 @@ import time
 import unittest
 
 from phoonnx._bpe import Tokenizer, UnsupportedTokenizer
-from phoonnx.tokenizer import load_hf_tokenizer
+from phoonnx.tokenizer import BPETokenizer, load_hf_tokenizer, load_tokenizers_package
 
 try:
     from tokenizers import Tokenizer as ReferenceTokenizer
@@ -99,7 +99,7 @@ class TestDifferentialAgainstTokenizers(unittest.TestCase):
     """Every id the reader produces must equal the reference id."""
 
     def _pair(self, path):
-        return Tokenizer.from_file(path), ReferenceTokenizer.from_file(path)
+        return Tokenizer.from_file(path), load_tokenizers_package(path)
 
     def _compare(self, path):
         mine, reference = self._pair(path)
@@ -199,7 +199,8 @@ class TestReaderWithoutReference(unittest.TestCase):
         path = fixture_files()[0]
         with mock.patch.object(bpe.Tokenizer, "from_file",
                                side_effect=UnsupportedTokenizer("pretend")):
-            self.assertIsInstance(load_hf_tokenizer(path), ReferenceTokenizer)
+            self.assertIsInstance(load_hf_tokenizer(path),
+                                  type(load_tokenizers_package(path)))
 
 
 if __name__ == "__main__":
@@ -227,7 +228,20 @@ class TestVocabulariesThatMustBeDeclined(unittest.TestCase):
     def test_a_declined_vocab_is_handed_to_tokenizers(self):
         for path in declined_fixture_files():
             with self.subTest(fixture=os.path.basename(path)):
-                self.assertIsInstance(load_hf_tokenizer(path), ReferenceTokenizer)
+                self.assertIsInstance(load_hf_tokenizer(path),
+                                      type(load_tokenizers_package(path)))
+
+    def test_a_declined_vocab_encodes_through_tokenizers(self):
+        """The fallback encodes and decodes on tokenizers 0.x and 1.x. Each
+        character of this text is outside the vocabulary, so it becomes its
+        UTF-8 bytes as ``<0xNN>`` tokens, whose ids start at 3, after ``<s>``
+        (id 20001). tokenizers 0.23.3 gives the same ids."""
+        path = os.path.join(FIXTURES, "declined_bpe_byte_fallback.json")
+        tokenizer = BPETokenizer(path)
+        ids = tokenizer.tokenize(list("Hello, World! ¾"))
+        self.assertEqual(ids, [20001] + [3 + byte for byte in
+                                         "▁Hello,▁World!▁¾".encode()])
+        self.assertEqual(tokenizer.decode(ids), "▁Hello,▁World!▁¾")
 
     def _bpe(self, **options):
         spec = {"model": dict({"type": "BPE", "vocab": {"a": 0}, "merges": []},
@@ -316,7 +330,7 @@ class TestMergeLoopIsNotQuadratic(unittest.TestCase):
     def test_a_long_pre_token_still_agrees_with_the_reference(self):
         """Speed is worthless if it changed an id."""
         path = self._bytelevel_fixture()
-        mine, reference = Tokenizer.from_file(path), ReferenceTokenizer.from_file(path)
+        mine, reference = Tokenizer.from_file(path), load_tokenizers_package(path)
         for length in (200, 1000, 4000):
             text = (self.CHINESE * (length // len(self.CHINESE) + 1))[:length]
             with self.subTest(length=length):

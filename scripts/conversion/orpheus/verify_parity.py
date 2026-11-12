@@ -60,8 +60,8 @@ def main() -> int:
     torch.set_num_threads(args.threads)
 
     adapter = OrpheusAdapter()
-    from tokenizers import Tokenizer
-    adapter.tokenizer = Tokenizer.from_file(args.tokenizer)
+    from phoonnx.tokenizer import load_tokenizers_package
+    adapter.tokenizer = load_tokenizers_package(args.tokenizer)
     prompt_ids = adapter.build_prompt_ids(args.text, args.voice)
     print("served prompt ids (%d):" % len(prompt_ids), prompt_ids[:12], "...")
 
