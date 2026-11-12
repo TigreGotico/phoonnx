@@ -173,7 +173,7 @@ train = [
     # 0.42.1 fixes a trust_remote_code bypass in from_pretrained. diffusers
     # 0.42 calls torch.accelerator when the vendored matcha decoder imports
     # diffusers.models.attention, so it needs torch>=2.6 (floor below).
-    "diffusers>=0.42.1,<0.43",
+    "diffusers>=0.43,<0.44",
     "einops",
     "huggingface_hub",
     "librosa>=0.9.2,<1",
