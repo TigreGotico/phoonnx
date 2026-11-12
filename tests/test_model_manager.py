@@ -520,7 +520,7 @@ class TestLoad(HubTestCase):
         info = self.make_info(config_url=f"{HUB}/config.json",
                               tokens_url=f"{HUB}/tokens.txt")
         with patch("phoonnx.model_manager.TTSVoice") as voice_cls, \
-                patch("phoonnx.model_manager.get_phonemizer"):
+                patch("phoonnx.model_manager._voice_phonemizer"):
             info.load()
         kwargs = voice_cls.load.call_args.kwargs
         self.assertEqual(Path(kwargs["model_path"]).read_bytes(), b"onnxdata")

@@ -16,7 +16,7 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
-from phoonnx.config import Alphabet, SynthesisConfig
+from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig
 from scriptconv.phonemizers.base import (
     BasePhonemizer,
     GraphemePhonemizer,
@@ -101,6 +101,7 @@ def _make_lazy_voice(events, alphabet=Alphabet.IPA):
     voice.phonemizer = _RecordingPhonemizer(events)
 
     config = types.SimpleNamespace(
+        phoneme_type=PhonemeType.UNICODE,
         alphabet=alphabet,
         lang_code="en",
         add_diacritics=False,

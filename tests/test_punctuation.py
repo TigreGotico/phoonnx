@@ -172,7 +172,7 @@ class TestPreprocess:
                 voice = TTSVoice(session=MagicMock(), config=voice_config, adapter=MagicMock())
                 synth = [p for s in voice._iter_phonemes(
                     text, Alphabet.GRAPHEMES, voice_config.alphabet,
-                    *_route(voice, voice_config)) for p in s]
+                    voice._stages(SynthesisConfig())) for p in s]
                 assert row["phonemes"] == synth, text
 
     def test_opt_out_writes_no_punctuation(self):
@@ -201,11 +201,6 @@ class TestPreprocess:
             config, rows = _preprocess(tmp / "src", tmp / "out", "--resume", rows=2)
             assert config["keep_punctuation"] is False
             assert not set(",.?!:;") & set(rows[QUESTION]["phonemes"])
-
-
-def _route(voice, voice_config):
-    from phoonnx.config import get_conversion
-    return get_conversion(voice.phonemizer, voice_config, SynthesisConfig(), voice_config.alphabet)
 
 
 SIDE_CAR = Path(__file__).parent / "fixtures" / "miro_sv-SE.piper.json"

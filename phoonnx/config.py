@@ -1,5 +1,5 @@
-import functools
 import json
+import warnings
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping, Optional, Union, Dict
@@ -605,26 +605,48 @@ def check_lang_supported(voice: str, lang_code: Optional[str],
         raise UnsupportedVoiceLanguage(voice, lang_code, phoneme_type) from e
 
 
-def get_phonemizer(phoneme_type: PhonemeType,
-                   alphabet: Alphabet = Alphabet.IPA,
-                   model: Optional[str] = None,
-                   keep_punctuation: bool = False) -> 'Phonemizer':
-    """
-    Create a phonemizer instance for the specified phonemeization strategy.
+def _removal_version() -> str:
+    """The release that removes a name deprecated in this one: the next major."""
+    from phoonnx.version import VERSION_MAJOR
+    return f"{VERSION_MAJOR + 1}.0.0"
 
-    Delegates to scriptconv's registry, injecting phoonnx's text normalizer
-    (number/date expansion) so behavior matches the historical in-tree
-    phonemizers exactly.  All backends, including the license-quarantined
-    mantoq/KoG2P (vendored in scriptconv under their own licenses), come from
-    scriptconv, which also auto-provisions the Hebrew phonikud model.
 
-    ``keep_punctuation`` keeps clause punctuation in the phonemes; it must match
-    how the model was trained (see :attr:`VoiceConfig.keep_punctuation`).
+def _deprecated(name: str, replacement: str) -> None:
+    warnings.warn(f"phoonnx.config.{name} is deprecated and will be removed in phoonnx "
+                  f"{_removal_version()}. Use {replacement}.",
+                  DeprecationWarning, stacklevel=3)
+
+
+# espeak-ng reads a contraction the way people say it ("don't" -> dˈoʊnt). Expanding it
+# first ("do not") makes every English sentence sound like a form letter, and the table
+# is a guess for "he's" and "I'd". Numbers, dates, units and titles are still normalized.
+def _espeak_normalize(text: str, lang: str) -> str:
+    from phoonnx.util import normalize
+    return normalize(text, lang, expand_contractions=False)
+
+
+def _normalize(text: str, lang: str) -> str:
+    from phoonnx.util import normalize
+    return normalize(text, lang)
+
+
+def _voice_phonemizer(phoneme_type: PhonemeType,
+                      alphabet: Alphabet = Alphabet.IPA,
+                      model: Optional[str] = None,
+                      keep_punctuation: bool = False) -> 'Phonemizer':
+    """The phonemizer of a voice, with phoonnx's text normalizer as its ``normalizer``.
+
+    The backend comes from scriptconv's registry, which also holds the
+    license-quarantined mantoq and KoG2P and provisions the Hebrew phonikud
+    model. :class:`phoonnx.voice.TTSVoice`
+    moves the ``normalizer`` into its :class:`scriptconv.frontend.TextFrontend`,
+    so it runs before diacritization. ``keep_punctuation`` keeps clause
+    punctuation in the phonemes; it must match how the model was trained (see
+    :attr:`VoiceConfig.keep_punctuation`).
 
     Raises:
         ValueError: If the provided `phoneme_type` is not supported.
     """
-    from phoonnx.util import normalize as _normalize
     phoneme_type = PhonemeType(phoneme_type)
 
     from scriptconv.phonemizers import get_phonemizer as _sc_get
@@ -633,20 +655,33 @@ def get_phonemizer(phoneme_type: PhonemeType,
     except KeyError:
         raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
 
-    if phoneme_type == PhonemeType.ESPEAK:
-        # espeak-ng reads a contraction the way people say it ("don't" -> dˈoʊnt). Expanding it
-        # first ("do not") makes every English sentence sound like a form letter, and the table
-        # is a guess for "he's" and "I'd". Numbers, dates, units and titles are still normalized.
-        phonemizer.normalizer = functools.partial(_normalize, expand_contractions=False)
-    else:
-        phonemizer.normalizer = _normalize
+    phonemizer.normalizer = _espeak_normalize if phoneme_type == PhonemeType.ESPEAK else _normalize
     phonemizer.keep_punctuation = keep_punctuation
     return phonemizer
 
 
+def get_phonemizer(phoneme_type: PhonemeType,
+                   alphabet: Alphabet = Alphabet.IPA,
+                   model: Optional[str] = None,
+                   keep_punctuation: bool = False) -> 'Phonemizer':
+    """Deprecated. A phonemizer whose own ``normalizer`` runs phoonnx's text normalizer.
+
+    Use :attr:`phoonnx.voice.TTSVoice.frontend`, or build a
+    :class:`scriptconv.frontend.TextFrontend`.
+
+    Raises:
+        ValueError: If the provided `phoneme_type` is not supported.
+    """
+    _deprecated("get_phonemizer", "TTSVoice.frontend or scriptconv.frontend.TextFrontend")
+    return _voice_phonemizer(phoneme_type, alphabet, model, keep_punctuation)
+
+
 def get_conversion(phonemizer, voice_config: "VoiceConfig",
                    syn_config: "SynthesisConfig", tgt_alphabet: Alphabet):
-    """Build a voice's ``text -> tgt_alphabet`` conversion for one synthesis call.
+    """Deprecated. A voice's ``text -> tgt_alphabet`` conversion for one synthesis call.
+
+    Use :attr:`phoonnx.voice.TTSVoice.frontend`: its ``phonemize_lazy`` replaces
+    the graph, and its ``prepare`` replaces ``prepare_text``.
 
     Returns ``(graph, prepare_text)``:
 
@@ -666,6 +701,7 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     before G2P or the pronunciation is ambiguous; that restoration is scriptconv's
     and lives entirely behind these two values.
     """
+    _deprecated("get_conversion", "TTSVoice.frontend")
     from scriptconv.graph import ConversionGraph, Edge
     from scriptconv.diacritics import DIACRITIZED, diacritize
 
