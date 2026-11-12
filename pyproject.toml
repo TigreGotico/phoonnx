@@ -23,7 +23,9 @@ dependencies = [
     "linguatag>=0.1.5a1",
     "ovos-number-parser>=0.4.0",
     "ovos-date-parser>=0.6.4a1",
-    "scriptconv[phonemizers]>=0.0.4a40",
+    # >=0.0.4a65: Mirandese and Barranquenho run on the orthography2ipa specs,
+    # without mwl_phonemizer or g2p_barranquenho. Every extra relies on this floor.
+    "scriptconv[phonemizers]>=0.0.4a65",
     "unicode_rbnf",
     "click",
     "requests",
@@ -298,8 +300,8 @@ he = ["epitran", "phonikud_onnx", "phonikud"]
 it = ["epitran", "gruut[it]>=2.3.0,<3.0"]
 ja = ["epitran", "gruut[ja]>=2.3.0,<3.0", "misaki[ja]", "spacy>=3.7,<4.0", "pyopenjtalk", "pykakasi", "cutlet", "unidic-lite"]
 ko = ["epitran", "g2pk", "misaki[ko]"]
-mwl = ["scriptconv[mwl]>=0.0.4a40"]
-pt = ["epitran", "scriptconv[o2i]>=0.0.4a40", "tugaphone", "gruut[pt]>=2.3.0,<3.0"]
+mwl = ["scriptconv[mwl]"]
+pt = ["epitran", "scriptconv[o2i]", "tugaphone", "gruut[pt]>=2.3.0,<3.0"]
 ru = ["epitran", "gruut[ru]>=2.3.0,<3.0"]
 sv = ["epitran", "gruut[sv]>=2.3.0,<3.0"]
 sw = ["epitran", "gruut[sw]>=2.3.0,<3.0"]
@@ -392,7 +394,7 @@ zu = ["epitran"]
 cjk = ["pykakasi==2.3.0", "spacy-pkuseg"]
 
 # multilingual data-driven IPA backend (hundreds of language specs)
-o2i = ["orthography2ipa>=7.112.0a1", "o2i-lexicons>=0.1.0a1", "scriptconv>=0.0.4a40"]
+o2i = ["orthography2ipa>=7.112.0a1", "o2i-lexicons>=0.1.0a1"]
 
 # runtime deps for zero-shot voice cloning (reference loading + resampling)
 cloning = ["soundfile", "scipy"]
@@ -423,19 +425,7 @@ all = [
     # ("phoneme_type": "phonikud" in the voice_index) through scriptconv,
     # which auto-provisions the phonikud ONNX model, so scriptconv[he] is
     # the correct spelling rather than depending on phonikud-onnx directly.
-    # >=0.0.4a23: the release that actually fixes the "he" extra (pulls in
-    # both phonikud and phonikud-onnx), the zh alias map, MissingLanguageError,
-    # and the stress-routing fix — a19 predates all four.
-    # >=0.0.4a37: the orthography2ipa phonemizer enables the packaged
-    # o2i-lexicons.
-    # >=0.0.4a34: EspeakPhonemizer.get_lang matches a BCP-47 tag whatever its
-    # case, so pt-BR keeps the pt-br voice instead of falling to pt, European
-    # Portuguese. Below this floor tests/test_phonemizer_mul.py
-    # TestEspeakGetLang fails.
-    # >=0.0.4a36: phonemizers take keep_punctuation, which voices trained with
-    # punctuation need, and phonemize_to_list no longer returns espeak's
-    # clause-break newlines. Below this floor tests/test_punctuation.py fails.
-    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he]>=0.0.4a40",
+    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he]",
     # scriptconv's own "stress" extra floors stressonnx at >=0.0.2, which
     # resolves to the latest *stable* release. The BCP-47 language resolver
     # phoonnx needs only shipped in the 0.0.3 alpha train, so it must be
