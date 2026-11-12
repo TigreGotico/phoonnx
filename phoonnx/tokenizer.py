@@ -832,6 +832,22 @@ class TTSTokenizer:
                             use_eos_bos=use_eos_bos)
 
 
+def load_tokenizers_package(tokenizer_json: str):
+    """Read a HuggingFace ``tokenizer.json`` with the ``tokenizers`` package.
+
+    The result encodes and decodes on tokenizers 0.x and 1.x. From 1.0.0rc4
+    a ``Tokenizer`` only holds the configuration, and only the
+    ``CompiledTokenizer`` that ``compile()`` builds can encode. Earlier 1.0
+    release candidates encode with the ``Tokenizer`` and have no
+    ``compile()``, so the test is for the method, not for the version.
+    """
+    from tokenizers import Tokenizer
+    tokenizer = Tokenizer.from_file(str(tokenizer_json))
+    if hasattr(tokenizer, "compile"):
+        return tokenizer.compile()
+    return tokenizer
+
+
 def load_hf_tokenizer(tokenizer_json: str):
     """Read a HuggingFace ``tokenizer.json`` without a compiled dependency.
 
@@ -848,12 +864,12 @@ def load_hf_tokenizer(tokenizer_json: str):
         return PurePythonTokenizer.from_file(path)
     except UnsupportedTokenizer as unsupported:
         try:
-            from tokenizers import Tokenizer
+            import tokenizers  # noqa: F401
         except ImportError:
             raise unsupported
         LOG.debug("%s is beyond the built-in reader (%s); using `tokenizers`",
                   path, unsupported)
-        return Tokenizer.from_file(path)
+        return load_tokenizers_package(path)
 
 
 class BPETokenizer:
