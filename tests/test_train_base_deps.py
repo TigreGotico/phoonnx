@@ -88,7 +88,7 @@ class TestTrainBaseDependencies(unittest.TestCase):
             allowed = (
                 STDLIB_MODULES
                 | train_deps
-                | {"torch", "phoonnx_train", "phoonnx", "scriptconv", "click"}
+                | {"torch", "phoonnx_train", "phoonnx", "scriptconv", "text2spoken", "click"}
             )
             for extra_name in extra_names:
                 allowed |= _dist_names_to_import_names(extras[extra_name])

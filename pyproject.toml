@@ -21,6 +21,7 @@ dependencies = [
     "quebra-frases",
     "langcodes",
     "linguatag>=0.1.5a1",
+    "text2spoken>=0.0.2a28",
     "ovos-number-parser>=0.4.0",
     "ovos-date-parser>=0.6.4a1",
     "scriptconv[phonemizers]>=0.0.4a40",

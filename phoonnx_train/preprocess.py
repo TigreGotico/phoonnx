@@ -18,7 +18,7 @@ from scriptconv.diacritics import diacritize
 from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, \
     phoneme_map_seed, untrained_map_symbols, \
     DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN
-from phoonnx.util import normalize
+from text2spoken import normalize
 from phoonnx.version import VERSION_STR
 from phoonnx_train.dataset_loaders import (PreprocessorConfig, Utterance,
                                            ensure_audio_path, get_text_casing,
