@@ -120,11 +120,17 @@ def test_pitch_shift_moves_the_pitch_and_keeps_the_length(semitones):
     assert np.sqrt(np.mean(y ** 2)) == pytest.approx(np.sqrt(np.mean(x ** 2)), rel=0.1)
 
 
-def test_whisper_keeps_the_loudness_and_changes_the_samples():
+def test_whisper_is_quiet_and_has_nothing_below_the_voice():
+    """A whisper is quieter than speech (it was as loud, and growled) and has no rumble."""
     x = _voiced()
     y = audio_fx.whisper(x, SR)
     assert len(y) == len(x) and not np.allclose(x, y)
-    assert np.sqrt(np.mean(y ** 2)) == pytest.approx(np.sqrt(np.mean(x ** 2)), rel=0.15)
+    assert 20 * np.log10(np.sqrt(np.mean(y ** 2)) / np.sqrt(np.mean(x ** 2))) == pytest.approx(-8.0, abs=0.5)
+    quieter = audio_fx.whisper(x, SR, level_db=-14.0)
+    assert np.sqrt(np.mean(quieter ** 2)) < 0.6 * np.sqrt(np.mean(y ** 2))
+    spectrum = np.abs(np.fft.rfft(y * np.hanning(len(y)))) ** 2
+    freqs = np.fft.rfftfreq(len(y), 1 / SR)
+    assert spectrum[freqs < 150].sum() < 0.01 * spectrum.sum()
 
 
 def _periodicity(audio):
@@ -149,8 +155,16 @@ def test_soft_is_quieter_and_compress_narrows_the_range():
     assert rms(out[SR // 2:]) / rms(out[:SR // 2]) < rms(mixed[SR // 2:]) / rms(mixed[:SR // 2])
 
 
-def test_breath_and_beep_have_the_asked_length_and_stay_quiet_or_bounded():
-    assert len(audio_fx.breath(SR, 300)) == int(SR * 0.3) and np.max(np.abs(audio_fx.breath(SR, 300))) <= 0.1
+def test_a_breath_is_quiet_has_the_asked_length_and_is_never_the_same_twice():
+    first, second = audio_fx.breath(SR, 350), audio_fx.breath(SR, 350)
+    assert len(first) == int(SR * 0.35) and not np.allclose(first, second)
+    assert np.allclose(audio_fx.breath(SR, 350, seed=3), audio_fx.breath(SR, 350, seed=3))
+    level = 20 * np.log10(np.sqrt(np.mean(first ** 2)))
+    assert level == pytest.approx(-34.0, abs=0.5) and np.max(np.abs(first)) < 0.15
+    assert np.max(np.abs(audio_fx.breath(SR, 500, volume=1e9))) < 0.3          # volume is capped
+    # It swells and fades: the middle is louder than either end.
+    third = len(first) // 3
+    assert np.sqrt(np.mean(first[third:2 * third] ** 2)) > 2 * np.sqrt(np.mean(first[:third // 4] ** 2))
     assert len(audio_fx.beep(SR, 200)) == int(SR * 0.2) and np.max(np.abs(audio_fx.beep(SR, 200))) <= 0.3
 
 
@@ -185,6 +199,17 @@ def test_synthesis_reports_marks_in_time_and_adds_sounds():
     # first piece: 3 x 0.2 s; then 0.2 s of silence; the mark falls where "two" begins
     assert marks == [("m", pytest.approx(0.8, abs=1e-3))]
     assert len(chunks[-1].audio_float_array) == int(SR * 0.35)  # the bleep
+
+
+@pytest.mark.parametrize("sample_rate", [8000, 16000, 22050, 24000, 44100, 48000])
+def test_a_breath_of_any_duration_has_exactly_that_many_samples(sample_rate):
+    """The slow wobble is smoothed with a window the signal may be shorter than (CodeRabbit on #553)."""
+    for duration_ms in (0, 1, 5, 20, 47, 60, 83, 100, 200, 350):
+        length = max(1, int(sample_rate * duration_ms / 1000))
+        out = audio_fx.breath(sample_rate, duration_ms, seed=3)
+        assert out.shape == (length,), (sample_rate, duration_ms)
+        assert out.dtype == np.float32 and np.all(np.isfinite(out))
+        assert float(np.max(np.abs(out))) <= 1.0
 
 
 def test_synthesis_applies_pitch_and_breaths_between_sentences():
