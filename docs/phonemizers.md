@@ -47,12 +47,12 @@ matching [install extra](installation.md#language-extras).
 | `pypinyin` | PyPinyin | Chinese |
 | `xpinyin` | XPinyin | Chinese |
 | `jieba` | Jieba (word segmentation, not a true phonemizer) | Chinese |
-| `mwl_phonemizer` | Mirandese phonemizer | Mirandese |
+| `mwl_phonemizer` | Mirandese, through scriptconv on the orthography2ipa specs `mwl`, `mwl-x-sendim` and `mwl-x-ifanes` | Mirandese |
 | `vosk` | vosk-tts phoneme inventory (use with `Alphabet.VOSK`) | Russian |
 | `shami` | Levantine Arabic / English code-switching front-end (emits per-phoneme language IDs) | ar-LB / en |
 | `arbtok` | Dialect-aware Arabic on undiacritized text (o2i lattice; register via `phonemizer_model`) | Arabic |
 | `euskaphone` | Dialect-aware Basque (o2i lattice) | Basque |
-| `barranquenho` | Barranquenho contact variety (o2i lattice) | Barranquenho |
+| `barranquenho` | Barranquenho contact variety, through scriptconv on the orthography2ipa spec `ext-PT-x-barranco` | Barranquenho |
 | `orthography2ipa` | Multilingual data-driven IPA (o2i lattice) | Multilingual |
 
 ## Alphabet Reference

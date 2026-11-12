@@ -65,8 +65,8 @@ several add higher-quality engines.
 | `it` | Italian | `epitran` |
 | `ja` | Japanese | `epitran`, `gruut[ja]`, `misaki[ja]`, `spacy` |
 | `ko` | Korean | `epitran` |
-| `mwl` | Mirandese | `mwl_phonemizer` |
-| `pt` | Portuguese | `epitran`, `g2p_barranquenho` |
+| `mwl` | Mirandese | `scriptconv[mwl]`, which gives the orthography2ipa Mirandese specs |
+| `pt` | Portuguese | `epitran`, `scriptconv[o2i]`, which gives the orthography2ipa Barranquenho spec |
 | `ru` | Russian | `epitran` |
 | `sv` | Swedish | `epitran` |
 | `sw` | Swahili | `epitran` |
