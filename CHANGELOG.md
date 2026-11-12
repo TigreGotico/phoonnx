@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.96.4a1](https://github.com/TigreGotico/phoonnx/tree/1.96.4a1) (2026-11-11)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.3a1...1.96.4a1)
+
+**Merged pull requests:**
+
+- fix: take default regions from linguatag in normalize\_lang [\#557](https://github.com/TigreGotico/phoonnx/pull/557) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.96.3a1](https://github.com/TigreGotico/phoonnx/tree/1.96.3a1) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.2a2...1.96.3a1)
@@ -279,7 +287,6 @@
 **Merged pull requests:**
 
 - fix: carry the random state through a VITS checkpoint [\#464](https://github.com/TigreGotico/phoonnx/pull/464) ([JarbasAl](https://github.com/JarbasAl))
-- fix: keep digit ranges and scores intact in text normalization [\#455](https://github.com/TigreGotico/phoonnx/pull/455) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.91.8a2](https://github.com/TigreGotico/phoonnx/tree/1.91.8a2) (2026-09-16)
 
@@ -344,10 +351,6 @@
 ## [1.91.1a1](https://github.com/TigreGotico/phoonnx/tree/1.91.1a1) (2026-09-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.0a1...1.91.1a1)
-
-**Merged pull requests:**
-
-- fix: pass PYPI\_TOKEN and MATRIX\_TOKEN explicitly to cross-org release workflow [\#453](https://github.com/TigreGotico/phoonnx/pull/453) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.91.0a1](https://github.com/TigreGotico/phoonnx/tree/1.91.0a1) (2026-09-03)
 
