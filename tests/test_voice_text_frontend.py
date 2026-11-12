@@ -45,11 +45,11 @@ def _recording_tashkeel(seen):
 
 
 def _voice(lang, phoneme_type=PhonemeType.UNICODE, alphabet=Alphabet.UNICODE,
-           add_diacritics=False, keep_punctuation=False):
+           add_diacritics=False, keep_punctuation=False, diacritizer_model=None):
     config = VoiceConfig(num_symbols=1, num_speakers=1, num_langs=1, sample_rate=22050,
                          lang_code=lang, phoneme_type=phoneme_type, alphabet=alphabet,
                          phonemizer_model=None, add_diacritics=add_diacritics,
-                         keep_punctuation=keep_punctuation)
+                         keep_punctuation=keep_punctuation, diacritizer_model=diacritizer_model)
     voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
     voice.phonemes_to_ids = lambda phonemes: list(range(len(phonemes)))
     return voice
@@ -122,6 +122,32 @@ class TestTextTokenEngines(unittest.TestCase):
                                            Alphabet.GRAPHEMES, Alphabet.GRAPHEMES))
         self.assertEqual(seen, [])
         self.assertEqual(voice.adapter.encode_text.call_args[0][0], ARABIC_DIGITS)
+
+
+class TestPerCallSettings(unittest.TestCase):
+    """A setting in ``SynthesisConfig`` wins over the voice's own."""
+
+    def test_a_per_call_diacritizer_runs_on_a_voice_without_one(self):
+        voice = _voice("ar")
+        text = "عندي 3 قطط"
+        seen = []
+        with _recording_tashkeel(seen):
+            phonemes = _synthesis_phonemes(voice, text, SynthesisConfig(add_diacritics=True))
+        self.assertEqual(seen, [normalize(text, "ar")])
+        self.assertEqual(phonemes, [list(normalize(text, "ar") + "َ")])
+
+    def test_a_per_call_diacritizer_model_wins_over_the_voice_model(self):
+        voice = _voice("ar", add_diacritics=True, diacritizer_model="voice-model")
+        models = []
+
+        def tashkeel(model=None, waqf=False):
+            models.append(model)
+            return _RecordingDiacritizer([])
+
+        with patch.object(scd, "_tashkeel", tashkeel):
+            _synthesis_phonemes(voice, "قطط", SynthesisConfig(diacritizer_model="call-model"))
+            _synthesis_phonemes(voice, "قطط")
+        self.assertEqual(models, ["call-model", "voice-model"])
 
 
 class TestNormaliser(unittest.TestCase):
