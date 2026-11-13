@@ -184,6 +184,7 @@ register_engine("my_engine", MyTrainingEngine)
 | `mixer` / [MixerTTS](training/engines/mixertts.md) | `phoonnx_train/engines/mixer.py` | see page |
 | StyleTTS2 (`styletts2`, `styletts2-aligner`, `styletts2-plbert`, `styletts2-pitch`) | `phoonnx_train/engines/styletts2*.py` | see page |
 | YourTTS | `phoonnx_train/engines/yourtts.py` | see page |
+| [Rápido](training/engines/rapido.md) | `phoonnx_train/engines/rapido.py` | `base`, `low` |
 
 `Chatterbox`, `F5-TTS`, `SuperTonic` and `Pocket TTS` currently ship inference-only adapters
 (`phoonnx/engines/`) — there is no `phoonnx_train` training engine for them yet.

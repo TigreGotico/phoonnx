@@ -212,7 +212,8 @@ train-styletts2 = [
     "PyYAML",
 ]
 # resampling for engines whose features are defined at a fixed sample rate
-# (e.g. zipvoice at 24 kHz) when the dataset was preprocessed at another rate
+# (e.g. zipvoice at 24 kHz, rapido's AudioVAE latents at 16 kHz) when the
+# dataset was preprocessed at another rate
 train-resample = [
     "torchaudio",
 ]
