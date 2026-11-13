@@ -43,6 +43,7 @@ For anyone extending phoonnx or debugging a voice.
 - [OVOS plugin](ovos_plugin.md) — the `ovos-tts-plugin-phoonnx` TTS plugin
 - [Docker / TTS server](docker.md)
 - [Deployment](deployment.md) — running a long-lived server: cache, prefetch, health checks
+- [Voice sweep](voice_sweep.md) — load and synthesise every index voice, check the audio with ASR, compare two runs
 
 ## Per-engine guides
 
