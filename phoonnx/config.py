@@ -47,6 +47,7 @@ class Engine(str, Enum):
     MAGPIE = "magpie"  # NVIDIA Magpie-TTS: encoder-decoder codec LM, 8 codebooks, 12 languages
     MOSSTTS = "mosstts"  # MOSS-TTS-Nano: autoregressive RVQ-16 codec-LM, zero-shot cloning @48kHz
     VOSK = "vosk"  # alphacep vosk-tts: VITS + dictionary/rule Russian g2p
+    RAPIDO = "rapido"  # Rápido: flow-matching DiT over VoxCPM2 AudioVAE latents @48kHz
 
     @classmethod
     def _missing_(cls, value: object) -> Optional["Engine"]:
