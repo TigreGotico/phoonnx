@@ -514,22 +514,21 @@ class TTSVoice:
         It reads :attr:`phonemizer`. The phonemizer's ``normalizer`` becomes the
         frontend's normalisation hook, so it runs before diacritization, and the
         frontend reads a copy of the phonemizer without it. Every voice runs the
-        hook, except a voice whose backend names ``normalize`` in its
-        ``owned_stages``: that backend normalises the text itself.
+        hook. The frontend skips it for a backend that names ``normalize`` in its
+        ``owned_stages``, because that backend normalises the text itself.
 
         Assigning another phonemizer to :attr:`phonemizer`, as the Vosk voices
         do once their dictionary is known, reaches the frontend through
         :meth:`TextFrontend.with_backend`. A change to the phoneme type, the
-        language, or the phonemizer's ``keep_punctuation``, ``normalizer`` or
-        ``owned_stages`` builds a new frontend.
+        language, or the phonemizer's ``keep_punctuation`` or ``normalizer``
+        builds a new frontend.
         """
         phonemizer = self.phonemizer
         key = (self.config.phoneme_type, self.config.lang_code,
-               phonemizer.keep_punctuation, phonemizer.normalizer, phonemizer.owned_stages)
+               phonemizer.keep_punctuation, phonemizer.normalizer)
         if self._frontend is None or key != self._frontend_key:
-            normalizer = None if "normalize" in phonemizer.owned_stages else phonemizer.normalizer
             self._frontend = TextFrontend(
-                FrontendConfig(lang=self.config.lang_code, normalizer=normalizer,
+                FrontendConfig(lang=self.config.lang_code, normalizer=phonemizer.normalizer,
                                keep_punctuation=phonemizer.keep_punctuation),
                 backend=self._without_normalizer(phonemizer))
             self._frontend_key = key
