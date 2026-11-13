@@ -8,6 +8,8 @@ Covers:
 """
 import pytest
 
+from scriptconv.phonemizers.base import BasePhonemizer
+
 
 # ---------------------------------------------------------------------------
 # ARPABET → IPA
@@ -132,8 +134,9 @@ def test_phoneme_type_is_scriptconv_phonemizer_enum():
 def test_get_phonemizer_injects_normalizer():
     from phoonnx.config import PhonemeType, get_phonemizer
     from phoonnx.util import normalize
-    p = get_phonemizer(PhonemeType.GRAPHEMES)
-    assert p.normalizer is normalize
+    with pytest.warns(DeprecationWarning, match="get_phonemizer"):
+        p = get_phonemizer(PhonemeType.GRAPHEMES)
+    assert p.normalizer("I'm 2", "en") == normalize("I'm 2", "en") == "I am two"
     # normalization behavior preserved: digits expand as before the migration
     out = "".join(p.phonemize("2 cats", "en")[0])
     assert "2" not in out
@@ -187,38 +190,61 @@ def test_diacritization_delegates_to_scriptconv():
     assert scd.diacritize("hello world", "und") == "hello world"
 
 
-def test_voice_diacritization_delegates_to_scriptconv():
-    """phoonnx owns no diacritizer: a grapheme voice with add_diacritics=True
-    routes text through scriptconv's diacritizer graph edge before phonemization
-    (diacritization is a topological edge, not a phoonnx call). Asserted with a
-    spy on scriptconv.diacritics.diacritize — no backend/model needed."""
+class _RecordingPhonemizer(BasePhonemizer):
+    def __init__(self):
+        super().__init__()
+        self.seen = []
+
+    def phonemize_string(self, text, lang):
+        self.seen.append(text)
+        return text
+
+
+def _diacritizing_voice(lang, model):
     import types
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import MagicMock
     import numpy as np
-    import scriptconv.diacritics as scd
     from phoonnx.voice import TTSVoice
-    from phoonnx.config import Alphabet, SynthesisConfig
+    from phoonnx.config import Alphabet, PhonemeType
 
     voice = TTSVoice.__new__(TTSVoice)
     voice.phonetic_spellings = None
-    voice.phonemizer = MagicMock()
-    voice.phonemizer.phonemize_lazy = MagicMock(return_value=iter([list("n_ss")]))
-    voice.config = types.SimpleNamespace(alphabet=Alphabet.IPA, lang_code="ar",
-                                         add_diacritics=True, diacritizer_model="rawi-ensemble",
+    voice.phonemizer = _RecordingPhonemizer()
+    voice.config = types.SimpleNamespace(phoneme_type=PhonemeType.UNICODE,
+                                         alphabet=Alphabet.IPA, lang_code=lang,
+                                         add_diacritics=True, diacritizer_model=model,
                                          sample_rate=22050)
     voice.adapter = MagicMock()
     voice.phonemes_to_ids = lambda p: [1] * len(p)
     voice.phoneme_ids_to_audio = lambda ids, syn_config=None, language_ids=None, include_alignments=False: np.zeros(4, dtype=np.float32)
+    return voice
 
+
+def test_voice_diacritization_delegates_to_scriptconv():
+    """phoonnx owns no diacritizer: a grapheme voice with add_diacritics=True
+    sends its text through scriptconv's diacritizer before phonemization.
+    Asserted with a fake tashkeel backend — no model needed."""
+    from unittest.mock import patch
+    import scriptconv.diacritics as scd
+    from phoonnx.config import Alphabet, SynthesisConfig
+
+    voice = _diacritizing_voice("ar", "rawi-ensemble")
     seen = {}
-    def spy(text, lang="und", **k):
-        seen.update(text=text, lang=lang, kwargs=k)
-        return text
-    with patch.object(scd, "diacritize", side_effect=spy):
+
+    class _Tashkeel:
+        def diacritize(self, text):
+            seen["text"] = text
+            return text + "َ"
+
+    def tashkeel(model=None, waqf=False):
+        seen["model"] = model
+        return _Tashkeel()
+
+    with patch.object(scd, "_tashkeel", tashkeel):
         list(voice.synthesize("نص", SynthesisConfig(alphabet=Alphabet.GRAPHEMES,
                                                      normalize_audio=False)))
-    assert seen.get("text") == "نص" and seen.get("lang") == "ar"
-    assert seen["kwargs"].get("diacritizer_model") == "rawi-ensemble"
+    assert seen == {"text": "نص", "model": "rawi-ensemble"}
+    assert voice.phonemizer.seen == ["نصَ"]
 
 
 def test_en_module_reexports_arpa_to_ipa_lookup():
@@ -284,29 +310,23 @@ def test_hebrew_diacritizer_model_carries_the_phonikud_path():
     """The single diacritizer_model knob is overloaded per language: for Hebrew it
     is the phonikud ONNX path. Assert a voice's value reaches scriptconv's
     diacritizer for he (spy — no model download)."""
-    import types
-    from unittest.mock import patch, MagicMock
-    import numpy as np
+    from unittest.mock import patch
     import scriptconv.diacritics as scd
-    from phoonnx.voice import TTSVoice
     from phoonnx.config import Alphabet, SynthesisConfig
 
-    voice = TTSVoice.__new__(TTSVoice)
-    voice.phonetic_spellings = None
-    voice.phonemizer = MagicMock()
-    voice.phonemizer.phonemize_lazy = MagicMock(return_value=iter([list("ʃalom")]))
-    voice.config = types.SimpleNamespace(alphabet=Alphabet.IPA, lang_code="he",
-                                         add_diacritics=True,
-                                         diacritizer_model="/models/phonikud.onnx",
-                                         sample_rate=22050)
-    voice.adapter = MagicMock()
-    voice.phonemes_to_ids = lambda p: [1] * len(p)
-    voice.phoneme_ids_to_audio = lambda ids, syn_config=None, language_ids=None, include_alignments=False: np.zeros(4, dtype=np.float32)
-
+    voice = _diacritizing_voice("he", "/models/phonikud.onnx")
     seen = {}
-    with patch.object(scd, "diacritize",
-                      side_effect=lambda t, l="und", **k: seen.update(lang=l, **k) or t):
+
+    class _Phonikud:
+        def add_diacritics(self, text):
+            seen["text"] = text
+            return text
+
+    def phonikud(model=None):
+        seen["model"] = model
+        return _Phonikud()
+
+    with patch.object(scd, "_phonikud", phonikud):
         list(voice.synthesize("שלום", SynthesisConfig(alphabet=Alphabet.GRAPHEMES,
                                                       normalize_audio=False)))
-    assert seen.get("lang") == "he"
-    assert seen.get("diacritizer_model") == "/models/phonikud.onnx"
+    assert seen == {"text": "שלום", "model": "/models/phonikud.onnx"}

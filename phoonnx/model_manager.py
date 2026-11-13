@@ -15,7 +15,7 @@ from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
                                     OfflineModeIsEnabled)
 from json_database import JsonStorageXDG, JsonStorage, load_commented_json
 
-from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet, check_lang_supported
+from phoonnx.config import PhonemeType, _voice_phonemizer, VoiceConfig, Engine, Alphabet, check_lang_supported
 from phoonnx.util import match_lang, normalize_lang, LOG
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
 from phoonnx.voice import TTSVoice
@@ -810,12 +810,13 @@ class TTSModelInfo:
         # A phonemizer_model resolved from the index (the vosk pronunciation
         # dictionary) is an index-level artifact: the published config.json never
         # references it, so the config loaded from disk cannot carry it.
+        # TTSVoice.frontend reads the phonemizer assigned here, also after a first synthesis.
         if self.phonemizer_model and not voice.config.phonemizer_model:
             voice.config.phonemizer_model = self.phonemizer_model
-            voice.phonemizer = get_phonemizer(voice.config.phoneme_type,
-                                              alphabet=voice.config.alphabet,
-                                              model=self.phonemizer_model,
-                                              keep_punctuation=voice.config.keep_punctuation)
+            voice.phonemizer = _voice_phonemizer(voice.config.phoneme_type,
+                                                 alphabet=voice.config.alphabet,
+                                                 model=self.phonemizer_model,
+                                                 keep_punctuation=voice.config.keep_punctuation)
         # override phoneme_type, if config.json is wrong
         if self.phoneme_type != voice.config.phoneme_type or self.alphabet != voice.config.alphabet:
             voice.config.phoneme_type = self.phoneme_type
@@ -824,10 +825,10 @@ class TTSModelInfo:
             # can differ from the pre-download self.config.lang_code above, so
             # this re-checks against the phoneme_type actually being installed.
             check_lang_supported(self.voice_id, voice.config.lang_code, self.phoneme_type)
-            voice.phonemizer = get_phonemizer(self.phoneme_type,
-                                              alphabet=self.alphabet,
-                                              model=voice.config.phonemizer_model,
-                                              keep_punctuation=voice.config.keep_punctuation)
+            voice.phonemizer = _voice_phonemizer(self.phoneme_type,
+                                                 alphabet=self.alphabet,
+                                                 model=voice.config.phonemizer_model,
+                                                 keep_punctuation=voice.config.keep_punctuation)
         return voice
 
 

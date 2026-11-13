@@ -98,21 +98,31 @@ voice = TTSVoice.load(
 )
 ```
 
-Or instantiate one directly:
+The voice reads text through `voice.frontend`, a scriptconv `TextFrontend` over the voice's
+phonemizer. It gives the phonemes the voice synthesizes, one list per sentence:
 
 ```python
-from phoonnx.config import get_phonemizer, PhonemeType, Alphabet
-
-phonemizer = get_phonemizer(PhonemeType.ESPEAK, alphabet=Alphabet.IPA)
-phonemes = phonemizer.phonemize("Hello world", lang="en-US")
+voice.frontend.phonemize("Hello world. How are you?")
 ```
 
-`get_phonemizer(phoneme_type, alphabet=Alphabet.IPA, model=None)` takes an optional third
-argument, `model`, which is the voice's `phonemizer_model`. It selects a variant for the
-backends that support one, for example: the AhoTTS engine variant (`classic` / `modern` /
-`northern`), the Cotovia notation (`stress` for the stress-marked HiTZ Galician model), the
-arbtok register (`iʿrab` for the full case-ending register), or the model id/path for neural
-G2P (ByT5, CharSiu, DeepPhonemizer).
+To phonemize without a voice, build a `TextFrontend` directly:
+
+```python
+from scriptconv.frontend import FrontendConfig, TextFrontend
+from scriptconv.phonemizers import Phonemizer
+
+frontend = TextFrontend(FrontendConfig("en-US", Phonemizer.ESPEAK))
+frontend.phonemize("Hello world")
+```
+
+A voice's `phonemizer_model` selects a variant for the backends that support one, for
+example: the AhoTTS engine variant (`classic` / `modern` / `northern`), the Cotovia notation
+(`stress` for the stress-marked HiTZ Galician model), the arbtok register (`iʿrab` for the
+full case-ending register), or the model id/path for neural G2P (ByT5, CharSiu,
+DeepPhonemizer). `FrontendConfig.model` takes the same value.
+
+`phoonnx.config.get_phonemizer` and `phoonnx.config.get_conversion` are deprecated. They
+warn, and the warning names the release that removes them.
 
 Beyond `phonemize()` (grouped by sentence), every backend exposes `phonemize_to_list(text,
 lang)` for a flat phoneme list and `phonemize_string(text, lang)` for a single chunk.

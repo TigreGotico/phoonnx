@@ -8,6 +8,7 @@ empty part before a block landed a tuple in the sentence list that the block
 branch then tried to mutate.
 """
 from scriptconv.phonemizers.base import BasePhonemizer
+from phoonnx.config import PhonemeType
 from phoonnx.voice import TTSVoice
 
 
@@ -17,23 +18,27 @@ def _voice(phonemizer):
 
     class _Cfg:
         lang_code = "ar"
+        phoneme_type = PhonemeType.UNICODE
 
     v.config = _Cfg()
     return v
 
 
-class _ListPhonemizer:
+class _ListPhonemizer(BasePhonemizer):
     """Well-behaved: PhonemizedChunks == list[list[str]], [] for empty."""
 
-    def phonemize(self, text, lang):
-        return [list(text)] if text else []
+    def phonemize_string(self, text, lang):
+        return text
 
 
-class _TuplePhonemizer:
-    """Adversarial: returns immutable tuples (and the old malformed empty form)."""
+class _TuplePhonemizer(BasePhonemizer):
+    """Adversarial: yields immutable tuples."""
 
-    def phonemize(self, text, lang):
-        return [tuple(text)] if text else [("", "", True)]
+    def phonemize_string(self, text, lang):
+        return text
+
+    def phonemize_lazy(self, text, lang):
+        yield tuple(text)
 
 
 def test_base_phonemize_empty_returns_empty_list():

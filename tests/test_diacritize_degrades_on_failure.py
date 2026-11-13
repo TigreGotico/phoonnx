@@ -3,7 +3,7 @@
 synthesis must degrade to the unstressed input text instead of 500ing —
 matching the degradation contract already used by phoonnx.lang_preprocess's
 russian_add_stress. Regression for a production failure where a regional
-voice (e.g. ru-RU) hard-failed synthesis because the diacritize graph edge
+voice (e.g. ru-RU) hard-failed synthesis because the diacritize stage
 propagated the exception unguarded.
 """
 import types
@@ -13,17 +13,27 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 import scriptconv.diacritics as scd
-from phoonnx.config import Alphabet, SynthesisConfig
-from phoonnx.util import LOG
+from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig
 from phoonnx.voice import TTSVoice
+from scriptconv.phonemizers.base import BasePhonemizer
+
+
+class _RecordingPhonemizer(BasePhonemizer):
+    def __init__(self):
+        super().__init__()
+        self.seen = []
+
+    def phonemize_string(self, text, lang):
+        self.seen.append(text)
+        return text
 
 
 def _make_voice():
     voice = TTSVoice.__new__(TTSVoice)
     voice.phonetic_spellings = None
-    voice.phonemizer = MagicMock()
-    voice.phonemizer.phonemize_lazy = MagicMock(return_value=iter([list("test")]))
+    voice.phonemizer = _RecordingPhonemizer()
     voice.config = types.SimpleNamespace(
+        phoneme_type=PhonemeType.UNICODE,
         alphabet=Alphabet.IPA,
         lang_code="ru-RU",
         add_diacritics=True,
@@ -41,17 +51,16 @@ class TestDiacritizeDegradesOnFailure(unittest.TestCase):
         voice = _make_voice()
         syn_config = SynthesisConfig(alphabet=Alphabet.GRAPHEMES, normalize_audio=False)
 
-        def _raise(t, l="und", **k):
+        def _raise(*_, **__):
             raise RuntimeError("UnsupportedLanguageError('ru-RU')")
 
-        with patch.object(scd, "diacritize", side_effect=_raise), \
-             patch.object(LOG, "warning") as mock_warn:
-            list(voice.synthesize("privet", syn_config))
+        with patch.object(scd, "_stress", side_effect=_raise), \
+             self.assertLogs("scriptconv.frontend", "WARNING") as logs:
+            chunks = list(voice.synthesize("privet", syn_config))
 
-        voice.phonemizer.phonemize_lazy.assert_called_once()
-        called_text = voice.phonemizer.phonemize_lazy.call_args[0][0]
-        self.assertEqual(called_text, "privet")
-        mock_warn.assert_called()
+        self.assertEqual(voice.phonemizer.seen, ["privet"])
+        self.assertEqual([chunk.phonemes for chunk in chunks], [list("privet")])
+        self.assertIn("diacritize failed for lang='ru-RU'", logs.output[0])
 
 
 if __name__ == "__main__":
