@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.96.6a1](https://github.com/TigreGotico/phoonnx/tree/1.96.6a1) (2026-11-12)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.5a1...1.96.6a1)
+
+## [1.96.5a1](https://github.com/TigreGotico/phoonnx/tree/1.96.5a1) (2026-11-12)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.4a1...1.96.5a1)
+
+**Merged pull requests:**
+
+- fix\(tests\): read the Spanish ordinal 21 as one word, per the DPD [\#563](https://github.com/TigreGotico/phoonnx/pull/563) ([JarbasAl](https://github.com/JarbasAl))
+- fix\(deps\): take Mirandese and Barranquenho from scriptconv only [\#561](https://github.com/TigreGotico/phoonnx/pull/561) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.96.4a1](https://github.com/TigreGotico/phoonnx/tree/1.96.4a1) (2026-11-11)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.3a1...1.96.4a1)
@@ -296,17 +309,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.7a1...1.91.8a1)
 
-**Merged pull requests:**
-
-- fix: keep the voice index when it cannot be read [\#458](https://github.com/TigreGotico/phoonnx/pull/458) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.91.7a1](https://github.com/TigreGotico/phoonnx/tree/1.91.7a1) (2026-09-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.6a1...1.91.7a1)
-
-**Merged pull requests:**
-
-- fix: install ffmpeg in the Docker image so non-WAV output formats work [\#457](https://github.com/TigreGotico/phoonnx/pull/457) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.91.6a1](https://github.com/TigreGotico/phoonnx/tree/1.91.6a1) (2026-09-16)
 
