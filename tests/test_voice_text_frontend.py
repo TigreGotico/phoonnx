@@ -17,11 +17,14 @@ import warnings
 from unittest.mock import MagicMock, patch
 
 import scriptconv.diacritics as scd
+from scriptconv.frontend import Stages
+from scriptconv.phonemizers.base import GraphemePhonemizer, UnicodeCodepointPhonemizer
 from scriptconv.phonemizers.mul import EspeakPhonemizer
 from scriptconv.phonemizers.shami import ShamiPhonemizer
 
 from phoonnx.config import (Alphabet, PhonemeType, SynthesisConfig, VoiceConfig,
                             get_conversion, get_phonemizer)
+from phoonnx.engines import get_adapter
 from phoonnx.util import normalize
 from phoonnx.version import VERSION_MAJOR
 from phoonnx.voice import TTSVoice
@@ -101,27 +104,73 @@ class TestInlineBlocks(unittest.TestCase):
         self.assertEqual(_synthesis_phonemes(voice, "[[a]] [[b]]"), [["a", " ", " ", "b"]])
 
 
-class TestTextTokenEngines(unittest.TestCase):
-    """An engine that reads text gets diacritics and no normalisation."""
+def _spy_on_hook(voice):
+    """Replace the voice's normalisation hook with a spy that still calls it."""
+    spy = MagicMock(side_effect=voice.phonemizer.normalizer)
+    voice.phonemizer.normalizer = spy
+    return spy
 
-    def test_encode_text_gets_digits_as_written(self):
+
+def _encoded_text(voice, text, syn_config=None):
+    """The text that a text-token engine receives from one synthesis call."""
+    list(voice._iter_synthesis_ids(text, syn_config or SynthesisConfig(),
+                                   Alphabet.GRAPHEMES, Alphabet.GRAPHEMES))
+    voice.adapter.encode_text.assert_called_once()
+    return voice.adapter.encode_text.call_args[0][0]
+
+
+class TestTextTokenEngines(unittest.TestCase):
+    """An engine that reads text gets it after normalisation and diacritization."""
+
+    def test_encode_text_gets_digits_as_words(self):
+        voice = _voice("en", PhonemeType.GRAPHEMES, Alphabet.GRAPHEMES)
+        text = "I have 5 cats"
+        self.assertEqual(_encoded_text(voice, text), normalize(text, "en"))
+        self.assertNotIn("5", normalize(text, "en"))
+
+    def test_digits_reach_the_diacritizer_as_words(self):
         voice = _voice("ar", PhonemeType.GRAPHEMES, Alphabet.GRAPHEMES, add_diacritics=True)
         seen = []
         with _recording_tashkeel(seen):
-            list(voice._iter_synthesis_ids(ARABIC_DIGITS, SynthesisConfig(),
-                                           Alphabet.GRAPHEMES, Alphabet.GRAPHEMES))
-        self.assertEqual(seen, [ARABIC_DIGITS])
-        voice.adapter.encode_text.assert_called_once()
-        self.assertEqual(voice.adapter.encode_text.call_args[0][0], ARABIC_DIGITS + "َ")
+            encoded = _encoded_text(voice, ARABIC_DIGITS)
+        self.assertEqual(seen, [normalize(ARABIC_DIGITS, "ar")])
+        self.assertEqual(encoded, normalize(ARABIC_DIGITS, "ar") + "َ")
 
     def test_a_per_call_setting_wins_over_the_voice(self):
         voice = _voice("ar", PhonemeType.GRAPHEMES, Alphabet.GRAPHEMES, add_diacritics=True)
         seen = []
         with _recording_tashkeel(seen):
-            list(voice._iter_synthesis_ids(ARABIC_DIGITS, SynthesisConfig(add_diacritics=False),
-                                           Alphabet.GRAPHEMES, Alphabet.GRAPHEMES))
+            encoded = _encoded_text(voice, ARABIC_DIGITS, SynthesisConfig(add_diacritics=False))
         self.assertEqual(seen, [])
-        self.assertEqual(voice.adapter.encode_text.call_args[0][0], ARABIC_DIGITS)
+        self.assertEqual(encoded, normalize(ARABIC_DIGITS, "ar"))
+
+    def test_a_caller_switches_the_hook_off(self):
+        voice = _voice("en", PhonemeType.GRAPHEMES, Alphabet.GRAPHEMES)
+        text = "I have 5 cats"
+        stages = voice._stages(SynthesisConfig())
+        self.assertEqual(_encoded_text(voice, text), normalize(text, "en"))
+        self.assertEqual(voice.frontend.prepare(text, Stages(normalize=False)), text)
+        self.assertEqual(voice.frontend.phonemize(text, Stages(normalize=False)),
+                         GraphemePhonemizer().phonemize(text, "en"))
+        self.assertEqual(voice.frontend.prepare(text, stages), normalize(text, "en"))
+
+
+class TestGraphemeVoices(unittest.TestCase):
+    """A grapheme voice on the default adapter normalises once, before the diacritizer."""
+
+    def test_digits_reach_the_diacritizer_as_words(self):
+        voice = _voice("ar", PhonemeType.GRAPHEMES, Alphabet.GRAPHEMES, add_diacritics=True)
+        voice.adapter = get_adapter("vits")
+        phonemes = []
+        voice.phonemes_to_ids = lambda symbols: phonemes.append(symbols) or [0]
+        text = "عندي 3 قطط"
+        diacritized = []
+        spy = _spy_on_hook(voice)
+        with _recording_tashkeel(diacritized):
+            _synthesis_phonemes(voice, text)
+        self.assertEqual(diacritized, [normalize(text, "ar")])
+        self.assertEqual([c.args[0] for c in spy.call_args_list], [text])
+        self.assertEqual(phonemes, GraphemePhonemizer().phonemize(normalize(text, "ar") + "َ", "ar"))
 
 
 class TestPerCallSettings(unittest.TestCase):
@@ -166,11 +215,53 @@ class TestNormaliser(unittest.TestCase):
         self.assertEqual(_synthesis_phonemes(voice, "ab. cd."), [list("ab"), list("cd")])
         self.assertEqual(seen, ["ab.", "cd."])
 
-    def test_shami_reads_digits_with_its_own_front_end(self):
+    def test_a_shami_voice_runs_the_hook(self):
         voice = _voice("ar", PhonemeType.SHAMI, Alphabet.IPA)
         text = "عندي 12 قطة"
         self.assertEqual(_synthesis_phonemes(voice, text, SynthesisConfig(add_diacritics=False)),
-                         ShamiPhonemizer().phonemize(text, "ar"))
+                         ShamiPhonemizer().phonemize(normalize(text, "ar"), "ar"))
+        self.assertNotEqual(normalize(text, "ar"), text)
+
+
+class _OwnsNormalisation(UnicodeCodepointPhonemizer):
+    """A backend that reads digits itself, with a reading the hook never gives."""
+
+    owned_stages = frozenset({"normalize"})
+
+    def phonemize_string(self, text, lang):
+        return super().phonemize_string(text.replace("5", "cinco"), lang)
+
+
+class TestOwnedNormalisation(unittest.TestCase):
+    """A backend that names ``normalize`` in ``owned_stages`` reads the text as written."""
+
+    def _voice(self, phoneme_type, alphabet):
+        """A voice whose backend is swapped after its frontend is built, as TTSModelInfo.load does.
+
+        The new backend keeps the same hook, a spy, so only ``owned_stages`` differs.
+        """
+        voice = _voice("en", phoneme_type, alphabet)
+        spy = _spy_on_hook(voice)
+        self.assertIs(voice.frontend.config.normalizer, spy)
+        backend = _OwnsNormalisation()
+        backend.normalizer = spy
+        voice.phonemizer = backend
+        return voice, spy
+
+    def test_a_phoneme_voice_skips_the_hook(self):
+        voice, spy = self._voice(PhonemeType.UNICODE, Alphabet.UNICODE)
+        text = "I have 5 cats"
+        phonemes = _synthesis_phonemes(voice, text)
+        spy.assert_not_called()
+        self.assertEqual(phonemes, _OwnsNormalisation().phonemize(text, "en"))
+        self.assertIn("cinco", "".join(phonemes[0]))
+
+    def test_a_text_token_engine_gets_the_text_as_written(self):
+        voice, spy = self._voice(PhonemeType.GRAPHEMES, Alphabet.GRAPHEMES)
+        text = "I have 5 cats"
+        encoded = _encoded_text(voice, text)
+        spy.assert_not_called()
+        self.assertEqual(encoded, text)
 
 
 class TestPhonemizerChanges(unittest.TestCase):

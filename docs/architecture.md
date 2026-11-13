@@ -34,7 +34,7 @@ Step by step, as implemented in `TTSVoice.synthesize`:
    go into the output as written. A per-call `SynthesisConfig.add_diacritics` wins; when it
    is unset, the voice config decides, so an undiacritized model is never force-diacritized.
    An engine that reads text instead of phonemes gets the text from `TextFrontend.prepare`,
-   with diacritics and without normalization.
+   after the same normalization and diacritics as a phoneme voice.
 3. **Tokenize** — the `TTSTokenizer` maps phonemes/characters to integer IDs using the
    voice's `phoneme_id_map`, inserting blank/pad/bos/eos tokens per the voice config. For
    text-token engines (Chatterbox) the adapter's `encode_text` BPE-tokenizes the raw text
@@ -50,8 +50,9 @@ Text normalization of numbers, dates and units (via `ovos-number-parser` /
 `ovos-date-parser`) runs in the text frontend and during dataset
 [preprocessing](training/preprocess.md), before diacritization in both, so training text
 matches inference. An espeak voice keeps contractions, because espeak-ng reads them as people
-say them. A Shami voice skips the step, because the Shami phonemizer reads digits itself.
-Individual phonemizer backends may also clean their own input.
+say them. Every voice runs the step, text-token and grapheme engines included. The step is
+skipped only for a phonemizer that names `normalize` in its `owned_stages`, because that
+phonemizer normalizes its own input. Individual phonemizer backends may also clean their own input.
 
 ## Where the extension points live
 
