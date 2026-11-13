@@ -850,7 +850,7 @@ class TTSModelManager:
         # mosstts.json are new to this change.
         "outetts.json", "arktts.json", "omnivoice.json", "indic_parler.json",
         "llasa.json", "orpheus.json", "mosstts.json", "vosk.json",
-        "ghananlp.json",
+        "ghananlp.json", "rapido.json",
     )
 
     @classmethod
