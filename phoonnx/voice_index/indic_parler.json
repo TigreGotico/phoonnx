@@ -1,8 +1,8 @@
 {
     "indic_parler/amit/as": {
         "voice_id": "indic_parler/amit/as",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -12,12 +12,12 @@
         "engine": "indic_parler",
         "lang": "as",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Amit's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -27,8 +27,8 @@
     },
     "indic_parler/sita/as": {
         "voice_id": "indic_parler/sita/as",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -38,12 +38,12 @@
         "engine": "indic_parler",
         "lang": "as",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Sita speaks at a fast pace with a slightly low-pitched voice, captured clearly in a close-sounding environment with excellent recording quality.",
@@ -53,8 +53,8 @@
     },
     "indic_parler/arjun/bn": {
         "voice_id": "indic_parler/arjun/bn",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -64,12 +64,12 @@
         "engine": "indic_parler",
         "lang": "bn",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Arjun's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -79,8 +79,8 @@
     },
     "indic_parler/aditi/bn": {
         "voice_id": "indic_parler/aditi/bn",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -90,12 +90,12 @@
         "engine": "indic_parler",
         "lang": "bn",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Aditi speaks with a slightly higher pitch in a close-sounding environment. Her voice is clear, with subtle emotional depth and a normal pace, all captured in high-quality recording.",
@@ -105,8 +105,8 @@
     },
     "indic_parler/bikram/brx": {
         "voice_id": "indic_parler/bikram/brx",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -116,12 +116,12 @@
         "engine": "indic_parler",
         "lang": "brx",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Bikram speaks with a higher pitch and fast pace, conveying urgency. The recording is clear and intimate, with great emotional depth.",
@@ -131,8 +131,8 @@
     },
     "indic_parler/maya/brx": {
         "voice_id": "indic_parler/maya/brx",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -142,12 +142,12 @@
         "engine": "indic_parler",
         "lang": "brx",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Maya's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -157,8 +157,8 @@
     },
     "indic_parler/bhanu/hne": {
         "voice_id": "indic_parler/bhanu/hne",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -168,12 +168,12 @@
         "engine": "indic_parler",
         "lang": "hne",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Bhanu's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -183,8 +183,8 @@
     },
     "indic_parler/champa/hne": {
         "voice_id": "indic_parler/champa/hne",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -194,12 +194,12 @@
         "engine": "indic_parler",
         "lang": "hne",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Champa's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -209,8 +209,8 @@
     },
     "indic_parler/karan/doi": {
         "voice_id": "indic_parler/karan/doi",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -220,12 +220,12 @@
         "engine": "indic_parler",
         "lang": "doi",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Karan’s high-pitched, engaging voice is captured in a clear, close-sounding recording. His slightly slower delivery conveys a positive tone.",
@@ -235,8 +235,8 @@
     },
     "indic_parler/thoma/en": {
         "voice_id": "indic_parler/thoma/en",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -246,12 +246,12 @@
         "engine": "indic_parler",
         "lang": "en-IN",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Thoma's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -261,8 +261,8 @@
     },
     "indic_parler/mary/en": {
         "voice_id": "indic_parler/mary/en",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -272,12 +272,12 @@
         "engine": "indic_parler",
         "lang": "en-IN",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Mary's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -287,8 +287,8 @@
     },
     "indic_parler/yash/gu": {
         "voice_id": "indic_parler/yash/gu",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -298,12 +298,12 @@
         "engine": "indic_parler",
         "lang": "gu",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Yash's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -313,8 +313,8 @@
     },
     "indic_parler/neha/gu": {
         "voice_id": "indic_parler/neha/gu",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -324,12 +324,12 @@
         "engine": "indic_parler",
         "lang": "gu",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Neha's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -339,8 +339,8 @@
     },
     "indic_parler/rohit/hi": {
         "voice_id": "indic_parler/rohit/hi",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -350,12 +350,12 @@
         "engine": "indic_parler",
         "lang": "hi",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Rohit's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -365,8 +365,8 @@
     },
     "indic_parler/divya/hi": {
         "voice_id": "indic_parler/divya/hi",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -376,12 +376,12 @@
         "engine": "indic_parler",
         "lang": "hi",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Divya's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -391,8 +391,8 @@
     },
     "indic_parler/suresh/kn": {
         "voice_id": "indic_parler/suresh/kn",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -402,12 +402,12 @@
         "engine": "indic_parler",
         "lang": "kn",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Suresh's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -417,8 +417,8 @@
     },
     "indic_parler/anu/kn": {
         "voice_id": "indic_parler/anu/kn",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -428,12 +428,12 @@
         "engine": "indic_parler",
         "lang": "kn",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Anu's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -443,8 +443,8 @@
     },
     "indic_parler/anjali/ml": {
         "voice_id": "indic_parler/anjali/ml",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -454,12 +454,12 @@
         "engine": "indic_parler",
         "lang": "ml",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Anjali speaks with a high pitch at a normal pace in a clear, close-sounding environment. Her neutral tone is captured with excellent audio quality.",
@@ -469,8 +469,8 @@
     },
     "indic_parler/harish/ml": {
         "voice_id": "indic_parler/harish/ml",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -480,12 +480,12 @@
         "engine": "indic_parler",
         "lang": "ml",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Harish's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -495,8 +495,8 @@
     },
     "indic_parler/laishram/mni": {
         "voice_id": "indic_parler/laishram/mni",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -506,12 +506,12 @@
         "engine": "indic_parler",
         "lang": "mni",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Laishram's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -521,8 +521,8 @@
     },
     "indic_parler/ranjit/mni": {
         "voice_id": "indic_parler/ranjit/mni",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -532,12 +532,12 @@
         "engine": "indic_parler",
         "lang": "mni",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Ranjit's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -547,8 +547,8 @@
     },
     "indic_parler/sanjay/mr": {
         "voice_id": "indic_parler/sanjay/mr",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -558,12 +558,12 @@
         "engine": "indic_parler",
         "lang": "mr",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Sanjay's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -573,8 +573,8 @@
     },
     "indic_parler/sunita/mr": {
         "voice_id": "indic_parler/sunita/mr",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -584,12 +584,12 @@
         "engine": "indic_parler",
         "lang": "mr",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Sunita speaks with a high pitch in a close environment. Her voice is clear, with slight dynamic changes, and the recording is of excellent quality.",
@@ -599,8 +599,8 @@
     },
     "indic_parler/amrita/ne": {
         "voice_id": "indic_parler/amrita/ne",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -610,12 +610,12 @@
         "engine": "indic_parler",
         "lang": "ne",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Amrita speaks with a high pitch at a slow pace. Her voice is clear, with excellent recording quality and only moderate background noise.",
@@ -625,8 +625,8 @@
     },
     "indic_parler/manas/or": {
         "voice_id": "indic_parler/manas/or",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -636,12 +636,12 @@
         "engine": "indic_parler",
         "lang": "or",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Manas's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -651,8 +651,8 @@
     },
     "indic_parler/debjani/or": {
         "voice_id": "indic_parler/debjani/or",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -662,12 +662,12 @@
         "engine": "indic_parler",
         "lang": "or",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Debjani's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -677,8 +677,8 @@
     },
     "indic_parler/divjot/pa": {
         "voice_id": "indic_parler/divjot/pa",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -688,12 +688,12 @@
         "engine": "indic_parler",
         "lang": "pa",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Divjot's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -703,8 +703,8 @@
     },
     "indic_parler/gurpreet/pa": {
         "voice_id": "indic_parler/gurpreet/pa",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -714,12 +714,12 @@
         "engine": "indic_parler",
         "lang": "pa",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Gurpreet's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -729,8 +729,8 @@
     },
     "indic_parler/aryan/sa": {
         "voice_id": "indic_parler/aryan/sa",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -740,12 +740,12 @@
         "engine": "indic_parler",
         "lang": "sa",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Aryan's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -755,8 +755,8 @@
     },
     "indic_parler/jaya/ta": {
         "voice_id": "indic_parler/jaya/ta",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -766,12 +766,12 @@
         "engine": "indic_parler",
         "lang": "ta",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Jaya's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -781,8 +781,8 @@
     },
     "indic_parler/prakash/te": {
         "voice_id": "indic_parler/prakash/te",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -792,12 +792,12 @@
         "engine": "indic_parler",
         "lang": "te",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Prakash's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",
@@ -807,8 +807,8 @@
     },
     "indic_parler/lalitha/te": {
         "voice_id": "indic_parler/lalitha/te",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json",
         "vocab_url": null,
         "tokens_url": null,
         "tokenizer_config_url": null,
@@ -818,12 +818,12 @@
         "engine": "indic_parler",
         "lang": "te",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
-            "decoder_decode_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
-            "dac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
-            "prompt_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/tokenizer.json",
-            "description_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
-            "model_config_path": "https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/resolve/main/config.json"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/phoonnx-indic-parler/resolve/main/config.json"
         },
         "engine_options": {
             "description": "Lalitha's voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise.",

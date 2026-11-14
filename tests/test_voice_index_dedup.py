@@ -37,7 +37,7 @@ def test_no_duplicate_model_urls_in_piper_indices():
 def test_no_duplicate_voice_artifacts_in_piper_indices():
     """piper.json/piper_community.json must not carry two entries for the
     same underlying model artifact (same sha256), tracked via a fixture of
-    known content hashes for the OpenVoiceOS/phoonnx-vits voice files.
+    known content hashes for the Phoonnx/phoonnx-vits voice files.
     """
     sha_by_voice_id = json.loads(FIXTURE.read_text())
     entries = _load_piper_indices()

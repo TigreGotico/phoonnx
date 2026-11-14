@@ -9,7 +9,7 @@ CI — it documents what was actually run, when, and on what.
 * `wer.json` — the ONNX-side intelligibility/speed gate (`bench_wer.py`, no
   `--torch-floor`): 8 English + 8 Mandarin sentences synthesised through
   `TTSVoice`/`LlasaAdapter` on the **published mirror**
-  (`https://huggingface.co/OpenVoiceOS/phoonnx-llasa`), transcribed by
+  (`https://huggingface.co/Phoonnx/phoonnx-llasa`), transcribed by
   `nemo-parakeet-tdt-0.6b-v3` (English) and `OpenVoiceOS/omnilingual-asr-ctc-1b-onnx`
   (Mandarin).
 
@@ -38,7 +38,7 @@ instead of relying on a human reading a printed diff.
 | Date | 2026-08-04 |
 | Machine | ser9 (192.168.1.111) |
 | phoonnx commit | `feat/llasa` @ the commit that added this README |
-| Model mirror | `OpenVoiceOS/phoonnx-llasa` (fp32 `model.onnx` + `xcodec2_decoder.onnx`) |
+| Model mirror | `Phoonnx/phoonnx-llasa` (fp32 `model.onnx` + `xcodec2_decoder.onnx`) |
 | Voices used | `en_female_a` (English), `zh_male_a` (Mandarin) |
 | ASR (en) | `nemo-parakeet-tdt-0.6b-v3` via `onnx_asr` |
 | ASR (zh) | `OpenVoiceOS/omnilingual-asr-ctc-1b-onnx` via `onnx_asr` (`omnilingual-ctc`,

@@ -254,7 +254,7 @@ def test_f5tts_voice_index_catalog():
         assert info.engine == "f5tts"
         assert set(info.aux_model_urls) == {"preprocess_path", "decode_path"}
         for url in info.aux_model_urls.values():
-            assert url.startswith("https://huggingface.co/OpenVoiceOS/phoonnx-f5tts/")
+            assert url.startswith("https://huggingface.co/Phoonnx/phoonnx-f5tts/")
 
 
 def test_aux_model_urls_resolved_in_engine_params(tmp_path, monkeypatch):

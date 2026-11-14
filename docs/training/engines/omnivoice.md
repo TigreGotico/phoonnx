@@ -21,7 +21,7 @@ Three consequences follow, and they drive the whole adapter:
 ## Graphs
 
 Published at
-[`OpenVoiceOS/phoonnx-omnivoice`](https://huggingface.co/OpenVoiceOS/phoonnx-omnivoice).
+[`Phoonnx/phoonnx-omnivoice`](https://huggingface.co/Phoonnx/phoonnx-omnivoice).
 
 | `engine_params` key | Graph | Contract |
 |---|---|---|
@@ -114,7 +114,7 @@ against upstream PyTorch on a fixed input, its `llm_decoder` matches a *causal* 
 (cos 0.99945) and not the bidirectional one the model needs (cos 0.954), leaving **18 %**
 greedy-token agreement end to end. Do not point this adapter at it.
 
-The re-export in `OpenVoiceOS/phoonnx-omnivoice` keeps the bidirectional mask and reaches
+The re-export in `Phoonnx/phoonnx-omnivoice` keeps the bidirectional mask and reaches
 cos 1.0000000 and 100 % agreement, and 100 % codec-token agreement through the full
 32-step sampler. The community **codec** graphs are exact and are mirrored unchanged.
 
