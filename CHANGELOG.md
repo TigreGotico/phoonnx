@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.98.0a2](https://github.com/TigreGotico/phoonnx/tree/1.98.0a2) (2026-11-14)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.0a1...1.98.0a2)
+
+**Merged pull requests:**
+
+- test: mark the diacritics stage with a letter, not punctuation [\#580](https://github.com/TigreGotico/phoonnx/pull/580) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.98.0a1](https://github.com/TigreGotico/phoonnx/tree/1.98.0a1) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.97.1a2...1.98.0a1)
@@ -344,10 +352,6 @@
 ## [1.91.4a1](https://github.com/TigreGotico/phoonnx/tree/1.91.4a1) (2026-09-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.3a1...1.91.4a1)
-
-**Merged pull requests:**
-
-- fix: catalog the Frisian and Colombian voices we publish and recommend [\#469](https://github.com/TigreGotico/phoonnx/pull/469) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.91.3a1](https://github.com/TigreGotico/phoonnx/tree/1.91.3a1) (2026-09-10)
 
