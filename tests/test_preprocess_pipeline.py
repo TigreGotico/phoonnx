@@ -52,6 +52,10 @@ class _DummyPhonemizer:
     def phonemize_to_list(self, text, lang):
         return list(text.replace(" ", ""))
 
+    def identity(self, lang):
+        from scriptconv.phonemizers.base import PhonemizerIdentity
+        return PhonemizerIdentity("dummy", "dummy", "0", lang)
+
 
 def _jsonl(path: Path, rows) -> None:
     with open(path, "w", encoding="utf-8") as f:
@@ -353,6 +357,11 @@ class TestPhonemizerProvenance(unittest.TestCase):
                              importlib.metadata.version("scriptconv"))
             self.assertEqual(config["phonemes_phonemized"], 1)
             self.assertEqual(config["phonemes_from_column"], 0)
+            # The engine itself: scriptconv's grapheme backend reading English.
+            self.assertEqual(config["phonemizer_identity"], {
+                "backend": "graphemes", "distribution": "scriptconv",
+                "version": importlib.metadata.version("scriptconv"),
+                "lang": "en", "revision": None})
 
     def test_column_run_claims_no_producer(self):
         with TemporaryDirectory() as tmp:
@@ -368,6 +377,7 @@ class TestPhonemizerProvenance(unittest.TestCase):
             config = json.loads((out / "config.json").read_text())
             self.assertEqual(config["phonemizer_registry"], "")
             self.assertEqual(config["phonemizer_registry_version"], "")
+            self.assertEqual(config["phonemizer_identity"], {})
             self.assertEqual(config["phonemes_phonemized"], 0)
             self.assertEqual(config["phonemes_from_column"], 1)
 
@@ -431,7 +441,7 @@ class TestPhonemizerProvenance(unittest.TestCase):
             # a config from before these keys existed
             stale = json.loads((out / "config.json").read_text())
             for key in ("phonemizer_registry", "phonemizer_registry_version",
-                        "phonemes_phonemized", "phonemes_from_column"):
+                        "phonemizer_identity", "phonemes_phonemized", "phonemes_from_column"):
                 stale.pop(key, None)
             (out / "config.json").write_text(json.dumps(stale))
 
@@ -443,7 +453,7 @@ class TestPhonemizerProvenance(unittest.TestCase):
                     catch_exceptions=False).exit_code, 0)
             resumed = json.loads((out / "config.json").read_text())
             for key in ("phonemizer_registry", "phonemizer_registry_version",
-                        "phonemes_phonemized", "phonemes_from_column"):
+                        "phonemizer_identity", "phonemes_phonemized", "phonemes_from_column"):
                 self.assertNotIn(key, resumed)
 
     def test_counts_describe_the_manifest_when_a_row_is_dropped(self):
@@ -513,8 +523,80 @@ class TestPhonemizerProvenance(unittest.TestCase):
 
             resumed = json.loads((out / "config.json").read_text())
             for key in ("phonemizer_registry", "phonemizer_registry_version",
-                        "phonemes_phonemized", "phonemes_from_column"):
+                        "phonemizer_identity", "phonemes_phonemized", "phonemes_from_column"):
                 self.assertNotIn(key, resumed)
+
+    def test_resume_under_a_different_engine_version_records_nothing(self):
+        """Same scriptconv, different engine build: the earlier rows are not this run's."""
+        import click.testing
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, out = tmp / "a.jsonl", tmp / "out"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"}])
+            argv = ["-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                    "--phoneme-type", "graphemes", "--alphabet", "ipa",
+                    "--max-workers", "1"]
+            self.assertEqual(
+                click.testing.CliRunner().invoke(
+                    preprocess.cli, argv, catch_exceptions=False).exit_code, 0)
+
+            first = json.loads((out / "config.json").read_text())
+            first["phonemizer_identity"]["version"] = "0.0.1-ancient"
+            (out / "config.json").write_text(json.dumps(first))
+
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"},
+                         {"text": "hue", "audio": "c.wav"}])
+            self.assertEqual(
+                click.testing.CliRunner().invoke(
+                    preprocess.cli, argv + ["--resume"],
+                    catch_exceptions=False).exit_code, 0)
+
+            resumed = json.loads((out / "config.json").read_text())
+            for key in ("phonemizer_registry", "phonemizer_registry_version",
+                        "phonemizer_identity", "phonemes_phonemized", "phonemes_from_column"):
+                self.assertNotIn(key, resumed)
+
+    def _column_only_resume(self, strip_identity):
+        """Phonemize one row, then resume adding one row from a phonemes column."""
+        import click.testing
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, out = tmp / "a.jsonl", tmp / "out"
+            argv = ["-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                    "--phoneme-type", "graphemes", "--alphabet", "ipa",
+                    "--max-workers", "1"]
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"}])
+            self.assertEqual(click.testing.CliRunner().invoke(
+                preprocess.cli, argv, catch_exceptions=False).exit_code, 0)
+            first = json.loads((out / "config.json").read_text())
+            self.assertEqual(first["phonemes_phonemized"], 1)
+            if strip_identity:
+                first.pop("phonemizer_identity")
+                (out / "config.json").write_text(json.dumps(first))
+
+            # "phon" is null on the row the first run phonemized: the resume skips it
+            _jsonl(src, [{"text": "hi", "audio": "a.wav", "phon": None},
+                         {"text": "ho", "audio": "b.wav", "phon": "\u0294 \u0295"}])
+            self.assertEqual(click.testing.CliRunner().invoke(
+                preprocess.cli, argv + ["--phonemes-column", "phon", "--resume"],
+                catch_exceptions=False).exit_code, 0)
+            return json.loads((out / "config.json").read_text())
+
+    def test_a_column_only_resume_keeps_the_engine_of_the_earlier_rows(self):
+        resumed = self._column_only_resume(strip_identity=False)
+        self.assertEqual(resumed["phonemizer_identity"], {
+            "backend": "graphemes", "distribution": "scriptconv",
+            "version": importlib.metadata.version("scriptconv"),
+            "lang": "en", "revision": None})
+        self.assertEqual((resumed["phonemes_phonemized"], resumed["phonemes_from_column"]), (1, 1))
+
+    def test_a_column_only_resume_onto_a_config_without_an_engine_names_none(self):
+        resumed = self._column_only_resume(strip_identity=True)
+        self.assertNotIn("phonemizer_identity", resumed)
+        self.assertEqual(resumed["phonemizer_registry"], "scriptconv")
+        self.assertEqual((resumed["phonemes_phonemized"], resumed["phonemes_from_column"]), (1, 1))
 
     def test_a_phonemizer_outside_any_distribution_names_its_module(self):
         stub = type("StubPhonemizer", (), {"__module__": "not_a_distribution"})()
