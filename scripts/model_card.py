@@ -4,18 +4,24 @@
 Every card has the same sections in the same order. The "Model details"
 table is built from the voice's own ``config.json``, so the card states what
 phoonnx reads when it loads the voice. The front matter, the lead text and
-the "How to use", "Training data", "Related links" and "Ownership and
-licensing" sections are copied from the live card; the licence text is never
-generated. A live card with any other section, a duplicate section or a
+the "Training data", "Related links" and "Ownership and licensing" sections
+are copied from the live card; the licence text is never generated. "How to
+use" is generated, so every card shows the same, working phoonnx usage; only
+its sample sentence comes from the live card. A live card with any other section, a duplicate section or a
 different title is refused. A live "Model details" section is replaced.
 
 A training fact that the config does not record is never guessed. A config
 without ``keep_punctuation`` is refused unless ``model_card_provenance.json``
 gives a note that says why the value is unknown.
 
+When the config records no phonemizer or training code version, the
+provenance file may give ``version_at_most``: the newest release of that
+package before the model weights were first uploaded. The card states it as
+an upper bound that holds if a released package was used.
+
 Usage::
 
-    python scripts/model_card.py OpenVoiceOS/phoonnx_pt-PT_miro_unicode --out cards/
+    python scripts/model_card.py Phoonnx/phoonnx_pt-PT_miro_unicode --out cards/
     python scripts/model_card.py --all-inhouse --out cards/
 """
 import json
@@ -78,6 +84,11 @@ class CardFacts:
     upstream: str = ""
     unpublished_datasets: Tuple[str, ...] = ()
     unpublished_base_models: Tuple[str, ...] = ()
+    voice_id: Optional[str] = None
+    model_file: str = ""
+    config_file: str = ""
+    checkpoints: Tuple[str, ...] = ()
+    sample_text: str = ""
 
 
 @dataclass(frozen=True)
@@ -148,6 +159,13 @@ def _training_code(config: Dict[str, Any]) -> str:
     return "Not recorded in the config"
 
 
+def _at_most(text: str, bound: Optional[Dict[str, str]], uploaded: str) -> str:
+    if not bound:
+        return text
+    return (f"{text}. If a released {bound['distribution']} was used, it was at most {bound['version']} "
+            f"(released {bound['released']}), the newest release before the model was first uploaded on {uploaded}.")
+
+
 def _phonemizer(config: Dict[str, Any], engine: str) -> str:
     identity = config.get("phonemizer_identity")
     if identity:
@@ -183,8 +201,24 @@ def _sample_rate(repo_id: str, config: Dict[str, Any]) -> int:
     return int(rate)
 
 
+# The sample sentence of the live "How to use" section: a phoonnx call or a Piper command line.
+SAMPLE_PATTERNS = (r'synthesize_wav\(\s*"([^"]+)"', r'echo "([^"]+)" \|')
+
+
+def _sample_text(card: LiveCard) -> str:
+    usage = card.sections.get("How to use", "")
+    for pattern in SAMPLE_PATTERNS:
+        match = re.search(pattern, usage)
+        if match and match.group(1) != "...":
+            if "\\" in match.group(1) or "\n" in match.group(1):
+                raise CardError(f"the sample sentence {match.group(1)!r} cannot be quoted in the usage example")
+            return match.group(1)
+    return ""
+
+
 def facts_from(repo_id: str, config: Dict[str, Any], card: LiveCard,
-               provenance: Optional[Dict[str, Any]] = None) -> CardFacts:
+               provenance: Optional[Dict[str, Any]] = None, voice_id: Optional[str] = None,
+               files: Tuple[str, ...] = (), model_file: str = "", config_file: str = "") -> CardFacts:
     """Collect the card facts of one voice; raise CardError when a required fact is missing."""
     provenance = provenance or {}
     engine = "piper" if config.get("piper_version") and not config.get("phoonnx_version") else "phoonnx"
@@ -206,6 +240,18 @@ def facts_from(repo_id: str, config: Dict[str, Any], card: LiveCard,
                         ("licence", licence)):
         if not value:
             raise CardError(f"{repo_id}: no {name}")
+    at_most = provenance.get("version_at_most", {})
+    if at_most and not at_most.get("uploaded"):
+        raise CardError(f"{repo_id}: a version bound without the date the model was first uploaded")
+    for kind in ("phonemizer", "training_code"):
+        if at_most.get(kind) and at_most[kind]["released"] > at_most["uploaded"]:
+            raise CardError(f"{repo_id}: the {kind} bound was released after the model was first uploaded")
+    if at_most.get("phonemizer") and config.get("phoneme_type") == "unicode":
+        raise CardError(f"{repo_id}: a phonemizer version bound for a voice that reads Unicode codepoints")
+    if at_most.get("phonemizer") and (config.get("phonemizer_identity") or provenance.get("phonemizer")):
+        raise CardError(f"{repo_id}: a phonemizer version bound for a voice whose phonemizer is recorded")
+    if at_most.get("training_code") and (config.get("phoonnx_version") or config.get("piper_version")):
+        raise CardError(f"{repo_id}: a training code version bound for a voice whose version stamp is recorded")
     # A mark the phoneme map lacks never reached the model, whatever the key says.
     phoneme_map = config.get("phoneme_id_map") or {}
     return CardFacts(
@@ -219,8 +265,9 @@ def facts_from(repo_id: str, config: Dict[str, Any], card: LiveCard,
         punctuation_note=note,
         sample_rate=_sample_rate(repo_id, config),
         num_speakers=int(config.get("num_speakers", 1)),
-        training_code=_training_code(config),
-        phonemizer=provenance.get("phonemizer") or _phonemizer(config, engine),
+        training_code=_at_most(_training_code(config), at_most.get("training_code"), at_most.get("uploaded", "")),
+        phonemizer=_at_most(provenance.get("phonemizer") or _phonemizer(config, engine),
+                            at_most.get("phonemizer"), at_most.get("uploaded", "")),
         datasets=datasets,
         base_models=front_matter_list(card.front_matter, "base_model"),
         trained_by=provenance.get("trained_by", "TigreGotico Lda"),
@@ -228,6 +275,11 @@ def facts_from(repo_id: str, config: Dict[str, Any], card: LiveCard,
         upstream=provenance.get("upstream", ""),
         unpublished_datasets=unpublished_datasets,
         unpublished_base_models=tuple(provenance.get("unpublished_base_models", ())),
+        voice_id=voice_id,
+        model_file=model_file,
+        config_file=config_file,
+        checkpoints=tuple(sorted(f for f in files if f.endswith(".ckpt"))),
+        sample_text=_sample_text(card),
     )
 
 
@@ -262,7 +314,8 @@ def punctuation_row(facts: CardFacts) -> str:
 
 def details_table(facts: CardFacts) -> str:
     rows: List[Tuple[str, str]] = [
-        ("Voice id", f"`{facts.repo_id}`"),
+        ("Repository", f"`{facts.repo_id}`"),
+        ("Voice id", f"`{facts.voice_id}`" if facts.voice_id else "Not in the phoonnx voice index"),
         ("Languages", ", ".join(f"`{lang}`" for lang in facts.languages)),
         ("Architecture", "VITS"),
         ("Text input", _text_input(facts.phoneme_type, facts.alphabet)),
@@ -273,6 +326,8 @@ def details_table(facts: CardFacts) -> str:
         ("Phonemizer", facts.phonemizer),
         ("Training data", _repo_list(facts.datasets, facts.unpublished_datasets, "datasets")),
         ("Base model", _repo_list(facts.base_models, facts.unpublished_base_models) or "Not recorded"),
+        ("Training checkpoint", ", ".join(f"`{c}`" for c in facts.checkpoints) + ", in this repository for fine-tuning"
+         if facts.checkpoints else "None in this repository"),
     ]
     if facts.upstream:
         rows.append(("Upstream", facts.upstream))
@@ -285,48 +340,72 @@ def details_table(facts: CardFacts) -> str:
     return "\n".join(lines)
 
 
-def how_to_use(facts: CardFacts) -> str:
-    if facts.engine == "piper":
-        return f"""This is a [Piper](https://github.com/OHF-Voice/piper1-gpl) VITS voice, in
-ONNX format. Use it with any Piper-compatible runtime, with
-[phoonnx](https://github.com/TigreGotico/phoonnx), or with
-[ovos-tts-plugin-piper](https://github.com/OpenVoiceOS/ovos-tts-plugin-piper)
-in OVOS:
+# What a phoneme type needs beyond phoonnx itself.
+EXTRA_PACKAGES = {"tugaphone": ' "scriptconv[pt-phonemizers]"', "orthography2ipa": ' "scriptconv[o2i]"'}
+ESPEAK_NOTE = ("\n\nThe phonemes come from the espeak-ng program, so install it too (for example\n"
+               "`apt install espeak-ng`). Without it, `pip install --pre \"phoonnx[espeak]\"` gives\n"
+               "phoonnx the espyak port of espeak-ng. Some espyak phonemes differ from those of\n"
+               "espeak-ng, so the voice can say some words wrong with espyak.")
 
-```json
-{{
-  "tts": {{
-    "module": "ovos-tts-plugin-piper",
-    "ovos-tts-plugin-piper": {{
-      "voice": "{facts.repo_id}"
-    }}
-  }}
-}}
-```"""
-    return f"""Install [phoonnx](https://github.com/TigreGotico/phoonnx) and run:
+
+def _install(facts: CardFacts) -> str:
+    line = f"```bash\npip install --pre phoonnx{EXTRA_PACKAGES.get(facts.phoneme_type, '')}\n```"
+    return line + (ESPEAK_NOTE if facts.phoneme_type == "espeak" else "")
+
+
+def how_to_use(facts: CardFacts) -> str:
+    """phoonnx usage for the voice: by voice id when the voice index lists it, else from its files."""
+    if not facts.sample_text:
+        raise CardError(f"{facts.repo_id}: the live 'How to use' section has no sample sentence")
+    if not facts.voice_id:
+        return f"""The phoonnx voice index does not list this voice. Install
+[phoonnx](https://github.com/TigreGotico/phoonnx):
+
+{_install(facts)}
+
+Then load the voice from its files:
 
 ```python
 import wave
-from phoonnx.config import SynthesisConfig
+from huggingface_hub import hf_hub_download
 from phoonnx.voice import TTSVoice
 
-voice = TTSVoice.from_hf("{facts.repo_id}")
-
-synthesis_config = SynthesisConfig(noise_scale=0.667, length_scale=1.0, noise_w_scale=0.8)
+model = hf_hub_download("{facts.repo_id}", "{facts.model_file}")
+config = hf_hub_download("{facts.repo_id}", "{facts.config_file}")
+voice = TTSVoice.load(model, config)
 
 with wave.open("output.wav", "wb") as wav_file:
-    voice.synthesize_wav("...", wav_file, synthesis_config)
+    voice.synthesize_wav("{facts.sample_text}", wav_file)
+```"""
+    return f"""Install [phoonnx](https://github.com/TigreGotico/phoonnx):
+
+{_install(facts)}
+
+Then run:
+
+```python
+import wave
+from phoonnx.model_manager import TTSModelManager
+
+manager = TTSModelManager()
+manager.load()
+manager.merge_default_voices()
+
+voice = manager.voices["{facts.voice_id}"].load()
+
+with wave.open("output.wav", "wb") as wav_file:
+    voice.synthesize_wav("{facts.sample_text}", wav_file)
 ```
 
-You can also use this model in OVOS with
-[ovos-tts-plugin-phoonnx](https://github.com/OpenVoiceOS/ovos-tts-plugin-phoonnx):
+In OVOS, phoonnx installs the `ovos-tts-plugin-phoonnx` plugin. Select this voice in
+`mycroft.conf`:
 
 ```json
 {{
   "tts": {{
     "module": "ovos-tts-plugin-phoonnx",
     "ovos-tts-plugin-phoonnx": {{
-      "voice": "{facts.repo_id}"
+      "voice": "{facts.voice_id}"
     }}
   }}
 }}
@@ -348,7 +427,7 @@ def render(facts: CardFacts, card: LiveCard) -> str:
         raise CardError(f"{facts.repo_id}: the live card has no 'Ownership and licensing' section")
     sections = {
         "Model details": details_table(facts),
-        "How to use": card.sections.get("How to use") or how_to_use(facts),
+        "How to use": how_to_use(facts),
         "Training data": card.sections.get("Training data") or "Trained on " + _repo_list(
             facts.datasets, facts.unpublished_datasets, "datasets") + ".",
         "Related links": card.sections.get("Related links") or DEFAULT_RELATED_LINKS,
@@ -367,24 +446,59 @@ def load_provenance(path: Path = PROVENANCE_FILE) -> Dict[str, Dict[str, str]]:
 
 def render_repo(repo_id: str, files: List[str], download: Callable[[str], str],
                 repo_exists: Callable[[str, str], bool],
-                provenance: Optional[Dict[str, Any]] = None) -> str:
+                provenance: Optional[Dict[str, Any]] = None,
+                index: Optional[Dict[str, Dict[str, Any]]] = None) -> str:
     """Render one Hub repo's card; raise CardError when it cannot be rendered truthfully."""
-    config = json.loads(download(_voice_config_file(repo_id, files)))
+    voice_id, entry = _index_entry(repo_id, load_voice_index() if index is None else index)
+    if entry:
+        model_file = _repo_file(repo_id, entry["model_url"])
+        config_file = _repo_file(repo_id, entry["config_url"]) if entry.get("config_url") else _single_config(repo_id, files)
+    else:
+        models = [f for f in files if f.endswith(".onnx")]
+        if len(models) != 1:
+            raise CardError(f"{repo_id}: cannot pick the voice model from {models}")
+        model_file, config_file = models[0], _single_config(repo_id, files)
+    config = json.loads(download(config_file))
     card = parse_card(download("README.md"))
-    facts = facts_from(repo_id, config, card, provenance)
+    facts = facts_from(repo_id, config, card, provenance, voice_id=voice_id, files=tuple(files),
+                       model_file=model_file, config_file=config_file)
     missing = [repo for repo, kind in linked_repos(facts) if not repo_exists(repo, kind)]
     if missing:
         raise CardError(f"{repo_id}: links to repos that do not exist: {', '.join(missing)}")
     return render(facts, card)
 
 
-def _voice_config_file(repo_id: str, files: List[str]) -> str:
-    """The config phoonnx loads: the voice-index config_url, else the repo's single voice config."""
+def load_voice_index() -> Dict[str, Dict[str, Any]]:
+    """Every voice-index entry phoonnx ships, keyed by voice id."""
     from phoonnx.model_manager import TTSModelManager
+    index: Dict[str, Dict[str, Any]] = {}
     for index_file in TTSModelManager.voice_index_files():
-        entry = json.loads(Path(index_file).read_text(encoding="utf-8")).get(repo_id)
-        if entry and entry.get("config_url"):
-            return entry["config_url"].split("/resolve/main/", 1)[1]
+        index.update(json.loads(Path(index_file).read_text(encoding="utf-8")))
+    return index
+
+
+def _index_entry(repo_id: str, index: Dict[str, Dict[str, Any]]) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+    """The voice id and entry whose model file lives in ``repo_id``; the id and the repo can differ."""
+    prefix = f"https://huggingface.co/{repo_id}/resolve/main/"
+    matches = [(voice_id, entry) for voice_id, entry in index.items()
+               if (entry.get("model_url") or "").startswith(prefix)]
+    if len(matches) > 1:
+        raise CardError(f"{repo_id}: the voice index lists more than one voice in this repo")
+    org, name = repo_id.split("/", 1)
+    elsewhere = [entry["model_url"] for entry in index.values()
+                 if re.match(rf"https://huggingface\.co/(?!{re.escape(org)}/)[^/]+/{re.escape(name)}/resolve/",
+                             entry.get("model_url") or "")]
+    if not matches and elsewhere:
+        raise CardError(f"{repo_id}: the voice index points at {elsewhere[0]}; render with an index that "
+                        f"names the repo where it lives")
+    return matches[0] if matches else (None, None)
+
+
+def _repo_file(repo_id: str, url: str) -> str:
+    return url.split(f"https://huggingface.co/{repo_id}/resolve/main/", 1)[1]
+
+
+def _single_config(repo_id: str, files: List[str]) -> str:
     configs = [f for f in files if f.endswith(".json") and not f.endswith(".piper.json")]
     if len(configs) != 1:
         raise CardError(f"{repo_id}: cannot pick the voice config from {configs}")
@@ -394,7 +508,7 @@ def _voice_config_file(repo_id: str, files: List[str]) -> str:
 @click.command()
 @click.argument("repos", nargs=-1)
 @click.option("--all-inhouse", is_flag=True,
-              help="Render every OpenVoiceOS phoonnx_* and pipertts_* repo.")
+              help="Render every Phoonnx phoonnx_* and pipertts_* repo.")
 @click.option("--out", "out_dir", type=click.Path(path_type=Path), required=True,
               help="Directory that receives <repo name>/README.md.")
 def main(repos: Tuple[str, ...], all_inhouse: bool, out_dir: Path) -> None:
@@ -403,9 +517,10 @@ def main(repos: Tuple[str, ...], all_inhouse: bool, out_dir: Path) -> None:
     api = HfApi()
     repo_ids = list(repos)
     if all_inhouse:
-        repo_ids += sorted(m.id for m in api.list_models(author="OpenVoiceOS")
+        repo_ids += sorted(m.id for m in api.list_models(author="Phoonnx")
                            if m.id.split("/")[1].startswith(("phoonnx_", "pipertts_")))
     provenance = load_provenance()
+    index = load_voice_index()
     failed = []
     for repo_id in repo_ids:
         def download(name: str) -> str:
@@ -413,7 +528,7 @@ def main(repos: Tuple[str, ...], all_inhouse: bool, out_dir: Path) -> None:
         try:
             text = render_repo(repo_id, api.list_repo_files(repo_id), download,
                                lambda repo, kind: api.repo_exists(repo, repo_type=kind),
-                               provenance.get(repo_id))
+                               provenance.get(repo_id), index)
         except Exception as error:  # one repo must not stop the batch; the refusal names the cause
             failed.append(f"{repo_id}: {type(error).__name__}: {error}")
             continue
