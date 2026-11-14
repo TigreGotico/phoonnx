@@ -1,0 +1,35 @@
+{
+  "OpenVoiceOS/phoonnx_ar_dii_espeak": {
+    "punctuation_note": "Each clause break reached training as the line-break token that espeak-ng prints. phoonnx sends no such token at synthesis."
+  },
+  "OpenVoiceOS/phoonnx_ar_miro_espeak": {
+    "punctuation_note": "Each clause break reached training as the line-break token that espeak-ng prints. phoonnx sends no such token at synthesis."
+  },
+  "OpenVoiceOS/phoonnx_ar_miro_espeak_V2": {
+    "punctuation_note": "Each clause break reached training as the line-break token that espeak-ng prints. phoonnx sends no such token at synthesis."
+  },
+  "OpenVoiceOS/phoonnx_ast_dii_unicode": {
+    "unpublished_base_models": [
+      "OpenVoiceOS/phoonnx_gl-ES_dii_unicode"
+    ]
+  },
+  "OpenVoiceOS/phoonnx_kab-DZ_miro_o2i": {
+    "punctuation_note": "The training run is not recorded."
+  },
+  "OpenVoiceOS/phoonnx_oc_dii_unicode": {
+    "unpublished_datasets": [
+      "TigreGotico/tts_vc_mcv-scripted-v23.0_oc_dii"
+    ]
+  },
+  "OpenVoiceOS/phoonnx_oc_miro_unicode": {
+    "unpublished_datasets": [
+      "TigreGotico/tts_vc_mcv-scripted-v23.0_oc_miro"
+    ]
+  },
+  "OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone": {
+    "punctuation_note": "The training code passed the punctuation tokens of tugaphone 0.0.x to the model."
+  },
+  "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone": {
+    "punctuation_note": "The training code passed the punctuation tokens of tugaphone 0.0.x to the model."
+  }
+}
