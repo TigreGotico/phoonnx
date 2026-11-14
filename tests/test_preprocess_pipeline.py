@@ -779,11 +779,11 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
             task_q.put([Utterance(text="hi", audio_path=tmp / "a.wav")])
             task_q.put(None)
             with patch.object(preprocess, "make_silence_detector", return_value=_FakeSilenceDetector()), \
-                    patch.object(preprocess, "diacritize", side_effect=lambda text, lang: text + "!"):
+                    patch.object(preprocess, "diacritize", side_effect=lambda text, lang: text + "a"):
                 preprocess.phonemize_worker(config, task_q, result_q, GraphemePhonemizer())
         processed, _ = result_q.get()
         self.assertIsNotNone(processed)
-        self.assertEqual("".join(processed.phonemes), "hi!")
+        self.assertEqual("".join(processed.phonemes), "hia")
 
     def test_empty_precomputed_phonemes_raises_and_is_dropped(self):
         with TemporaryDirectory() as tmp:
