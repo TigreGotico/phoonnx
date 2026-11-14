@@ -1,8 +1,8 @@
 {
     "Tushe/shami-tts": {
         "voice_id": "Tushe/shami-tts",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-shami/resolve/main/model.onnx",
-        "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-shami/resolve/main/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-shami/resolve/main/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-shami/resolve/main/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,

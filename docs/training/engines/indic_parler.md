@@ -33,7 +33,7 @@ Mixing them up produces speech, just not the speech you asked for.
 ## Graphs
 
 Published at
-[`OpenVoiceOS/phoonnx-indic-parler`](https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler).
+[`Phoonnx/phoonnx-indic-parler`](https://huggingface.co/Phoonnx/phoonnx-indic-parler).
 
 | `engine_params` key | Graph | Contract |
 |---|---|---|
@@ -153,4 +153,4 @@ languages, real-time factor is **4.1 to 4.7** (mean 4.5). Use it where quality m
 more than latency.
 
 Per-language samples and the intelligibility report live in the mirror under
-[`samples/`](https://huggingface.co/OpenVoiceOS/phoonnx-indic-parler/tree/main/samples).
+[`samples/`](https://huggingface.co/Phoonnx/phoonnx-indic-parler/tree/main/samples).

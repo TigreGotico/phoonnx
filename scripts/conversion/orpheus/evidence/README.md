@@ -10,7 +10,7 @@ agreement, 0.166 max prefill logit diff; `model_q4` 23/25, `model_q4f16` 10/25),
 noise-floor table (fp32 0.89x the floor; int8 6.02x; uint8/quantized 4.83x) and the WER
 table (mean 0.0000 over six tag-free utterances) were produced during the original
 conversion/verification work that authored this PR and the
-[`OpenVoiceOS/phoonnx-orpheus`](https://huggingface.co/OpenVoiceOS/phoonnx-orpheus)
+[`Phoonnx/phoonnx-orpheus`](https://huggingface.co/Phoonnx/phoonnx-orpheus)
 mirror.
 
 - **Machine**: a `.200`-class CPU worker (12 cores, fp32) — the box the RTF numbers in
@@ -33,7 +33,7 @@ mirror.
     a licence agreement on someone else's behalf is not this agent's call to make). All
     parity work used the ungated third-party mirrors above.
 - **Output**: `wer.json` in this directory is fetched verbatim from
-  `OpenVoiceOS/phoonnx-orpheus/samples/wer.json` — the original run's own output file,
+  `Phoonnx/phoonnx-orpheus/samples/wer.json` — the original run's own output file,
   re-hosted alongside the mirrored weights — not regenerated. Its numbers match the PR
   body's WER/RTF table exactly (mean WER 0.0000, mean RTF ~38.7x).
 
@@ -48,7 +48,7 @@ not stubs. This is stated honestly rather than presented as if it were the origi
 run's untouched tooling.
 
 - **`probe_prompt.py` was actually run** against `tokenizer.json` fetched from
-  `OpenVoiceOS/phoonnx-orpheus/orpheus-3b-en-onnx/tokenizer.json` (15.7 MB, the only
+  `Phoonnx/phoonnx-orpheus/orpheus-3b-en-onnx/tokenizer.json` (15.7 MB, the only
   artifact this check needs) on this machine, `miro-asustufgamingf15fx506hmfx506hm`,
   2026-08-04T18:50Z, Python 3.12.13. Output committed at `probe_prompt_output.txt`.
   Result: **double-BOS confirmed** — `served_ids` reproduces

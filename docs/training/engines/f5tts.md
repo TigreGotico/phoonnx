@@ -156,7 +156,7 @@ than raising.
 ## Obtaining / usage
 
 Download a converted voice from
-[`OpenVoiceOS/phoonnx-f5tts`](https://huggingface.co/OpenVoiceOS/phoonnx-f5tts)
+[`Phoonnx/phoonnx-f5tts`](https://huggingface.co/Phoonnx/phoonnx-f5tts)
 and load it like any other phoonnx voice. F5-TTS is in-context, so every call
 needs the reference clip **and its transcription**:
 
@@ -164,7 +164,7 @@ needs the reference clip **and its transcription**:
 from huggingface_hub import snapshot_download
 from phoonnx.voice import TTSVoice, SynthesisConfig
 
-voice_dir = snapshot_download("OpenVoiceOS/phoonnx-f5tts",
+voice_dir = snapshot_download("Phoonnx/phoonnx-f5tts",
                               allow_patterns=["f5tts-v1-base/*"])
 voice_dir = f"{voice_dir}/f5tts-v1-base"
 
@@ -231,7 +231,7 @@ are CC-BY-NC-SA-4.0** (restricted by the SADA and Mixat datasets), while
 **ALG, EGY, IRQ, MAR and MSA are Apache-2.0**. **SILMA TTS v1 is Apache-2.0**
 (commercial use allowed). **NAMAA-Saudi-TTS-V2 is CC-BY-NC-SA-4.0**
 (non-commercial — inherited from its Habibi-TTS base). The ONNX conversions in
-`OpenVoiceOS/phoonnx-f5tts` inherit those licenses.
+`Phoonnx/phoonnx-f5tts` inherit those licenses.
 
 ## Variants
 
@@ -264,14 +264,14 @@ is supported by this adapter.
 | Repo | <https://github.com/SWivid/F5-TTS> |
 | Paper | [arXiv:2410.06885](https://arxiv.org/abs/2410.06885) |
 | ONNX export | <https://github.com/DakeQQ/F5-TTS-ONNX> |
-| Ready-made ONNX voices | [`OpenVoiceOS/phoonnx-f5tts`](https://huggingface.co/OpenVoiceOS/phoonnx-f5tts) |
+| Ready-made ONNX voices | [`Phoonnx/phoonnx-f5tts`](https://huggingface.co/Phoonnx/phoonnx-f5tts) |
 
 ## Habibi quality audit (retroactive, 2026-08)
 
 The 8 Habibi voices (`habibi/ar-unified` + 7 specialized dialects) shipped
 before the WER-gate standard existed for phoonnx voice releases. This is a
 retroactive quality pass to backfill that gate, run against the published
-[`OpenVoiceOS/phoonnx-f5tts`](https://huggingface.co/OpenVoiceOS/phoonnx-f5tts)
+[`Phoonnx/phoonnx-f5tts`](https://huggingface.co/Phoonnx/phoonnx-f5tts)
 mirror through the real `F5TTSAdapter` synthesis path (not a mock).
 
 Note: the catalog has **8 Habibi voices, not 9** — 1 Unified + 7 specialized

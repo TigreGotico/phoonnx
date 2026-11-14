@@ -32,8 +32,8 @@ because they ship byte-identical model code, tokenizer and codec weights:
 
 | Checkpoint | Mirror | Languages |
 | --- | --- | --- |
-| [`Audio8/Audio8-TTS-Preview-0.6b`](https://huggingface.co/Audio8/Audio8-TTS-Preview-0.6b) | `OpenVoiceOS/phoonnx-audio8-tts` | Cantonese, Chinese, Dutch, English, French, German, Italian, Japanese, Korean, Polish, Spanish |
-| [`itzune/zortzi-tts`](https://huggingface.co/itzune/zortzi-tts) | `OpenVoiceOS/phoonnx-zortzi-tts` | Basque |
+| [`Audio8/Audio8-TTS-Preview-0.6b`](https://huggingface.co/Audio8/Audio8-TTS-Preview-0.6b) | `Phoonnx/phoonnx-audio8-tts` | Cantonese, Chinese, Dutch, English, French, German, Italian, Japanese, Korean, Polish, Spanish |
+| [`itzune/zortzi-tts`](https://huggingface.co/itzune/zortzi-tts) | `Phoonnx/phoonnx-zortzi-tts` | Basque |
 
 Both are Apache-2.0. Zortzi is a Basque fine-tune of Audio8 and speaks only Basque.
 

@@ -17,7 +17,7 @@ KV cache, one token stream. Parler splits the conditioning in two:
   input embeddings** (``prompt_cross_attention=False`` upstream). It is part of the
   self-attention stream, not of the cross-attention stream.
 
-Four ONNX graphs (mirror: ``OpenVoiceOS/phoonnx-indic-parler``)::
+Four ONNX graphs (mirror: ``Phoonnx/phoonnx-indic-parler``)::
 
     text_encoder     : input_ids, attention_mask -> encoder_hidden_states
     decoder_prefill  : codec_input_ids, prompt_input_ids, encoder_hidden_states,

@@ -20,7 +20,7 @@ Two kinds of tests:
        (b) every emitted symbol is a key in the *actual* shipped voice's
            phoneme_id_map (vendored fixture in
            tests/fixtures_scriptconv_vocabs.json, extracted from the real
-           config.json hosted at OpenVoiceOS/phoonnx-styletts2 on HF — see
+           config.json hosted at Phoonnx/phoonnx-styletts2 on HF — see
            that file's docstring-equivalent comment below for provenance)
        (c) a couple of exact phonemizations are pinned as regression
            anchors — these encode *current* scriptconv behavior, not a

@@ -300,7 +300,7 @@ def export(lang, out):
     _fix_negative_transpose_perms(f"{out}/model.onnx")
     _fix_negative_transpose_perms(f"{out}/style_encoder.onnx")
 
-    ddatt = json.load(open(hf_hub_download("OpenVoiceOS/phoonnx-styletts2", "ddatt-en-styletts2/config.json")))
+    ddatt = json.load(open(hf_hub_download("Phoonnx/phoonnx-styletts2", "ddatt-en-styletts2/config.json")))
     ddatt["lang_code"] = lang
     json.dump(ddatt, open(f"{out}/config.json", "w"), ensure_ascii=False, indent=2)
 

@@ -61,7 +61,7 @@ Parameters:
 ### Loading indexed voices
 
 Mixer-TTS voices ship in `phoonnx/voice_index/mixertts.json`, mirrored under
-`OpenVoiceOS/phoonnx-mixertts`. The reference models are the
+`Phoonnx/phoonnx-mixertts`. The reference models are the
 [nipponjo/mixer-tts-pytorch](https://github.com/nipponjo/mixer-tts-pytorch)
 LJSpeech checkpoints (1.74M / 3.17M / 20.6M params), 22 kHz English.
 
@@ -124,7 +124,7 @@ voice.synthesize("Hello from Mixer-TTS.",
 
 The 80-channel mel is the HiFi-GAN-compatible mel, so the indexed voices use the
 **universal Vocos** vocoder (`BSC-LT/vocos-mel-22khz`, mirrored as
-`OpenVoiceOS/phoonnx-vocoders/vocos-mel-22khz-univ`) — the same one the
+`Phoonnx/phoonnx-vocoders/vocos-mel-22khz-univ`) — the same one the
 reference repo pairs Mixer-TTS with. Griffin-Lim works too (`spec_gain = ln(10)`
 inverts the natural-log mel) as a no-model-file fallback. See
 [vocoders.md](../../vocoders.md).

@@ -1,7 +1,7 @@
 {
     "orpheus/canopylabs/en/tara": {
         "voice_id": "orpheus/canopylabs/en/tara",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -12,15 +12,15 @@
         "engine": "orpheus",
         "lang": "en",
         "aux_model_urls": {
-            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
-            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
-            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
-            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
-            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
-            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
-            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
-            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
-            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+            "lm_weights_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
         },
         "engine_options": {
             "voice": "tara"
@@ -29,7 +29,7 @@
     },
     "orpheus/canopylabs/en/leah": {
         "voice_id": "orpheus/canopylabs/en/leah",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -40,15 +40,15 @@
         "engine": "orpheus",
         "lang": "en",
         "aux_model_urls": {
-            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
-            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
-            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
-            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
-            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
-            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
-            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
-            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
-            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+            "lm_weights_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
         },
         "engine_options": {
             "voice": "leah"
@@ -57,7 +57,7 @@
     },
     "orpheus/canopylabs/en/jess": {
         "voice_id": "orpheus/canopylabs/en/jess",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -68,15 +68,15 @@
         "engine": "orpheus",
         "lang": "en",
         "aux_model_urls": {
-            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
-            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
-            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
-            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
-            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
-            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
-            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
-            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
-            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+            "lm_weights_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
         },
         "engine_options": {
             "voice": "jess"
@@ -85,7 +85,7 @@
     },
     "orpheus/canopylabs/en/leo": {
         "voice_id": "orpheus/canopylabs/en/leo",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -96,15 +96,15 @@
         "engine": "orpheus",
         "lang": "en",
         "aux_model_urls": {
-            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
-            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
-            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
-            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
-            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
-            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
-            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
-            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
-            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+            "lm_weights_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
         },
         "engine_options": {
             "voice": "leo"
@@ -113,7 +113,7 @@
     },
     "orpheus/canopylabs/en/dan": {
         "voice_id": "orpheus/canopylabs/en/dan",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -124,15 +124,15 @@
         "engine": "orpheus",
         "lang": "en",
         "aux_model_urls": {
-            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
-            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
-            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
-            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
-            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
-            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
-            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
-            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
-            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+            "lm_weights_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
         },
         "engine_options": {
             "voice": "dan"
@@ -141,7 +141,7 @@
     },
     "orpheus/canopylabs/en/mia": {
         "voice_id": "orpheus/canopylabs/en/mia",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -152,15 +152,15 @@
         "engine": "orpheus",
         "lang": "en",
         "aux_model_urls": {
-            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
-            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
-            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
-            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
-            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
-            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
-            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
-            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
-            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+            "lm_weights_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
         },
         "engine_options": {
             "voice": "mia"
@@ -169,7 +169,7 @@
     },
     "orpheus/canopylabs/en/zac": {
         "voice_id": "orpheus/canopylabs/en/zac",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -180,15 +180,15 @@
         "engine": "orpheus",
         "lang": "en",
         "aux_model_urls": {
-            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
-            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
-            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
-            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
-            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
-            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
-            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
-            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
-            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+            "lm_weights_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
         },
         "engine_options": {
             "voice": "zac"
@@ -197,7 +197,7 @@
     },
     "orpheus/canopylabs/en/zoe": {
         "voice_id": "orpheus/canopylabs/en/zoe",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -208,15 +208,15 @@
         "engine": "orpheus",
         "lang": "en",
         "aux_model_urls": {
-            "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
-            "lm_weights_path_1": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
-            "lm_weights_path_2": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
-            "lm_weights_path_3": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
-            "lm_weights_path_4": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
-            "lm_weights_path_5": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
-            "lm_weights_path_6": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
-            "snac_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
-            "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
+            "lm_weights_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data",
+            "lm_weights_path_1": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_1",
+            "lm_weights_path_2": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_2",
+            "lm_weights_path_3": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_3",
+            "lm_weights_path_4": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_4",
+            "lm_weights_path_5": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_5",
+            "lm_weights_path_6": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/model.onnx_data_6",
+            "snac_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/snac_decoder.onnx",
+            "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-orpheus/resolve/main/orpheus-3b-en-onnx/tokenizer.json"
         },
         "engine_options": {
             "voice": "zoe"

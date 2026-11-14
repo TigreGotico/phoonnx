@@ -15,7 +15,7 @@ loop is two-level: global step -> local frame -> feed the frame back as the next
 input row.
 
 Weights are mirrored in the OVOS HuggingFace org, under
-``OpenVoiceOS/phoonnx-moss`` (``tts-nano-100m-onnx/`` and
+``Phoonnx/phoonnx-moss`` (``tts-nano-100m-onnx/`` and
 ``audio-tokenizer-nano-onnx/`` subfolders), crediting upstream OpenMOSS
 (Apache-2.0).
 
