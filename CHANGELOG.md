@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.98.1a1](https://github.com/TigreGotico/phoonnx/tree/1.98.1a1) (2026-11-14)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.0a2...1.98.1a1)
+
+**Merged pull requests:**
+
+- fix: point the voice index at the Phoonnx Hugging Face org [\#578](https://github.com/TigreGotico/phoonnx/pull/578) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.98.0a2](https://github.com/TigreGotico/phoonnx/tree/1.98.0a2) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.0a1...1.98.0a2)
@@ -344,10 +352,6 @@
 ## [1.91.5a1](https://github.com/TigreGotico/phoonnx/tree/1.91.5a1) (2026-09-13)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.4a1...1.91.5a1)
-
-**Merged pull requests:**
-
-- fix: make pyproject extras the only source of per-language dependencies [\#470](https://github.com/TigreGotico/phoonnx/pull/470) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.91.4a1](https://github.com/TigreGotico/phoonnx/tree/1.91.4a1) (2026-09-10)
 
