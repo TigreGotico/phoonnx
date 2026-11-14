@@ -1,35 +1,328 @@
 {
-  "OpenVoiceOS/phoonnx_ar_dii_espeak": {
-    "punctuation_note": "Each clause break reached training as the line-break token that espeak-ng prints. phoonnx sends no such token at synthesis."
+  "Phoonnx/phoonnx_an_miro_espeak": {
+    "version_at_most": {
+      "uploaded": "2026-10-12",
+      "phonemizer": {
+        "distribution": "espeak-ng",
+        "version": "1.52.0",
+        "released": "2024-12-12"
+      }
+    }
   },
-  "OpenVoiceOS/phoonnx_ar_miro_espeak": {
-    "punctuation_note": "Each clause break reached training as the line-break token that espeak-ng prints. phoonnx sends no such token at synthesis."
+  "Phoonnx/phoonnx_ar_dii_espeak": {
+    "punctuation_note": "Each clause break reached training as the line-break token that espeak-ng prints. phoonnx sends no such token at synthesis.",
+    "version_at_most": {
+      "uploaded": "2025-09-30",
+      "phonemizer": {
+        "distribution": "espeak-ng",
+        "version": "1.52.0",
+        "released": "2024-12-12"
+      }
+    }
   },
-  "OpenVoiceOS/phoonnx_ar_miro_espeak_V2": {
-    "punctuation_note": "Each clause break reached training as the line-break token that espeak-ng prints. phoonnx sends no such token at synthesis."
+  "Phoonnx/phoonnx_ar_miro_espeak": {
+    "punctuation_note": "Each clause break reached training as the line-break token that espeak-ng prints. phoonnx sends no such token at synthesis.",
+    "version_at_most": {
+      "uploaded": "2025-09-21",
+      "phonemizer": {
+        "distribution": "espeak-ng",
+        "version": "1.52.0",
+        "released": "2024-12-12"
+      }
+    }
   },
-  "OpenVoiceOS/phoonnx_ast_dii_unicode": {
+  "Phoonnx/phoonnx_ar_miro_espeak_V2": {
+    "punctuation_note": "Each clause break reached training as the line-break token that espeak-ng prints. phoonnx sends no such token at synthesis.",
+    "version_at_most": {
+      "uploaded": "2025-10-01",
+      "phonemizer": {
+        "distribution": "espeak-ng",
+        "version": "1.52.0",
+        "released": "2024-12-12"
+      }
+    }
+  },
+  "Phoonnx/phoonnx_ast_dii_unicode": {
     "unpublished_base_models": [
       "OpenVoiceOS/phoonnx_gl-ES_dii_unicode"
     ]
   },
-  "OpenVoiceOS/phoonnx_kab-DZ_miro_o2i": {
-    "punctuation_note": "The training run is not recorded."
+  "Phoonnx/phoonnx_ca_miro_espeak": {
+    "version_at_most": {
+      "uploaded": "2025-12-17",
+      "phonemizer": {
+        "distribution": "espeak-ng",
+        "version": "1.52.0",
+        "released": "2024-12-12"
+      }
+    }
   },
-  "OpenVoiceOS/phoonnx_oc_dii_unicode": {
+  "Phoonnx/phoonnx_da-DK_miro_espeak": {
+    "version_at_most": {
+      "uploaded": "2025-10-12",
+      "phonemizer": {
+        "distribution": "espeak-ng",
+        "version": "1.52.0",
+        "released": "2024-12-12"
+      }
+    }
+  },
+  "Phoonnx/phoonnx_es-CO_dii_espeak": {
+    "version_at_most": {
+      "uploaded": "2026-01-23",
+      "phonemizer": {
+        "distribution": "espeak-ng",
+        "version": "1.52.0",
+        "released": "2024-12-12"
+      }
+    }
+  },
+  "Phoonnx/phoonnx_es-CO_miro_espeak": {
+    "version_at_most": {
+      "uploaded": "2026-01-23",
+      "phonemizer": {
+        "distribution": "espeak-ng",
+        "version": "1.52.0",
+        "released": "2024-12-12"
+      }
+    }
+  },
+  "Phoonnx/phoonnx_es-ES_dii_espeak": {
+    "version_at_most": {
+      "uploaded": "2025-10-10",
+      "phonemizer": {
+        "distribution": "espeak-ng",
+        "version": "1.52.0",
+        "released": "2024-12-12"
+      }
+    }
+  },
+  "Phoonnx/phoonnx_eu-ES_dii_espeak": {
+    "version_at_most": {
+      "uploaded": "2025-10-06",
+      "phonemizer": {
+        "distribution": "espeak-ng",
+        "version": "1.52.0",
+        "released": "2024-12-12"
+      }
+    }
+  },
+  "Phoonnx/phoonnx_eu-ES_miro_espeak": {
+    "version_at_most": {
+      "uploaded": "2025-10-05",
+      "phonemizer": {
+        "distribution": "espeak-ng",
+        "version": "1.52.0",
+        "released": "2024-12-12"
+      }
+    }
+  },
+  "Phoonnx/phoonnx_kab-DZ_miro_o2i": {
+    "punctuation_note": "The training run is not recorded.",
+    "version_at_most": {
+      "uploaded": "2026-10-12",
+      "phonemizer": {
+        "distribution": "orthography2ipa",
+        "version": "7.109.0a2",
+        "released": "2026-10-01"
+      },
+      "training_code": {
+        "distribution": "phoonnx",
+        "version": "1.93.2a1",
+        "released": "2026-10-12"
+      }
+    }
+  },
+  "Phoonnx/phoonnx_oc_dii_unicode": {
     "unpublished_datasets": [
       "TigreGotico/tts_vc_mcv-scripted-v23.0_oc_dii"
     ]
   },
-  "OpenVoiceOS/phoonnx_oc_miro_unicode": {
+  "Phoonnx/phoonnx_oc_miro_unicode": {
     "unpublished_datasets": [
       "TigreGotico/tts_vc_mcv-scripted-v23.0_oc_miro"
     ]
   },
-  "OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone": {
-    "punctuation_note": "The training code passed the punctuation tokens of tugaphone 0.0.x to the model."
+  "Phoonnx/phoonnx_pt-PT_dii_tugaphone": {
+    "punctuation_note": "The training code passed the punctuation tokens of tugaphone 0.0.x to the model.",
+    "version_at_most": {
+      "uploaded": "2025-10-13",
+      "phonemizer": {
+        "distribution": "tugaphone",
+        "version": "0.0.2",
+        "released": "2025-10-12"
+      }
+    }
   },
-  "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone": {
-    "punctuation_note": "The training code passed the punctuation tokens of tugaphone 0.0.x to the model."
+  "Phoonnx/phoonnx_pt-PT_miro_tugaphone": {
+    "punctuation_note": "The training code passed the punctuation tokens of tugaphone 0.0.x to the model.",
+    "version_at_most": {
+      "uploaded": "2025-10-13",
+      "phonemizer": {
+        "distribution": "tugaphone",
+        "version": "0.0.2",
+        "released": "2025-10-12"
+      }
+    }
+  },
+  "Phoonnx/phoonnx_sv-SE_miro_espeak": {
+    "version_at_most": {
+      "uploaded": "2025-10-12",
+      "phonemizer": {
+        "distribution": "espeak-ng",
+        "version": "1.52.0",
+        "released": "2024-12-12"
+      }
+    }
+  },
+  "Phoonnx/pipertts_de-DE_dii": {
+    "version_at_most": {
+      "uploaded": "2025-08-24",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
+  },
+  "Phoonnx/pipertts_de-DE_miro": {
+    "version_at_most": {
+      "uploaded": "2025-07-30",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
+  },
+  "Phoonnx/pipertts_en-GB_dii": {
+    "version_at_most": {
+      "uploaded": "2025-07-20",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
+  },
+  "Phoonnx/pipertts_en-GB_miro": {
+    "version_at_most": {
+      "uploaded": "2025-07-20",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
+  },
+  "Phoonnx/pipertts_en-US_miro": {
+    "version_at_most": {
+      "uploaded": "2025-08-01",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
+  },
+  "Phoonnx/pipertts_es-ES_miro": {
+    "version_at_most": {
+      "uploaded": "2025-07-18",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
+  },
+  "Phoonnx/pipertts_fr-FR_miro": {
+    "version_at_most": {
+      "uploaded": "2025-07-08",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
+  },
+  "Phoonnx/pipertts_it-IT_dii": {
+    "version_at_most": {
+      "uploaded": "2025-06-29",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
+  },
+  "Phoonnx/pipertts_it-IT_miro": {
+    "version_at_most": {
+      "uploaded": "2025-07-19",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
+  },
+  "Phoonnx/pipertts_nl-NL_dii": {
+    "version_at_most": {
+      "uploaded": "2025-07-18",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
+  },
+  "Phoonnx/pipertts_nl-NL_miro": {
+    "version_at_most": {
+      "uploaded": "2025-07-08",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
+  },
+  "Phoonnx/pipertts_pt-BR_dii": {
+    "version_at_most": {
+      "uploaded": "2025-06-28",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
+  },
+  "Phoonnx/pipertts_pt-BR_miro": {
+    "version_at_most": {
+      "uploaded": "2025-06-27",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
+  },
+  "Phoonnx/pipertts_pt-PT_dii": {
+    "version_at_most": {
+      "uploaded": "2025-06-26",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
+  },
+  "Phoonnx/pipertts_pt-PT_miro": {
+    "version_at_most": {
+      "uploaded": "2025-06-25",
+      "phonemizer": {
+        "distribution": "piper-phonemize",
+        "version": "1.1.0",
+        "released": "2023-07-31"
+      }
+    }
   }
 }
