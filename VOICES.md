@@ -89,6 +89,7 @@
 | `facebook/mms-tts-aoz-Uab Meto` | `aoz` | `transformers` | `graphemes` |
 | `facebook/mms-tts-apb-Sa’a` | `apb` | `transformers` | `graphemes` |
 | `omnivoice/apc` | `apc` | `omnivoice` | `unicode` |
+| `Tushe/shami-tts` | `apc` | `shami` | `shami` |
 | `omnivoice/apd` | `apd` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-apr-Arop-Lokep` | `apr` | `transformers` | `graphemes` |
 | `chatterbox/multilingual/ar` | `ar` | `chatterbox` | `unicode` |
@@ -130,7 +131,6 @@
 | `piper/ar_JO-kareem-low` | `ar-JO` | `piper` | `espeak` |
 | `piper/ar_JO-kareem-medium` | `ar-JO` | `piper` | `espeak` |
 | `chatterbox/lahgtna/lb` | `ar-LB` | `chatterbox` | `unicode` |
-| `Tushe/shami-tts` | `ar-LB` | `shami` | `shami` |
 | `chatterbox/lahgtna/ly` | `ar-LY` | `chatterbox` | `unicode` |
 | `chatterbox/lahgtna/mo` | `ar-MA` | `chatterbox` | `unicode` |
 | `habibi/ar-mar` | `ar-MA` | `f5tts` | `graphemes` |

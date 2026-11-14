@@ -1,4 +1,5 @@
 """Test suite for the Shami (Levantine Arabic) phonemizer and adapter."""
+import os
 import types
 import unittest
 from unittest.mock import patch
@@ -178,3 +179,42 @@ class TestShamiSpeakerIdAlwaysFed(unittest.TestCase):
         sess = self._Session("phoneme_ids", "phoneme_lengths", "language_ids")
         feed = ShamiAdapter().build_feed_dict(self._req(0), sess)
         self.assertNotIn("speaker_id", feed)
+
+
+class TestShamiVoiceTag(unittest.TestCase):
+    """The voice is trained on mohammedaly22/lahgtna-levantine-tts, whose card
+    names the variety "Levantine Arabic dialect (apc — ISO 639-3)" and no
+    single region. The tag ranks the voice for a request, and the text stack
+    reads its primary subtag to choose a normaliser, so a Standard Arabic tag
+    would send Levantine text through Standard Arabic rules."""
+
+    VOICE = "Tushe/shami-tts"
+
+    @classmethod
+    def setUpClass(cls):
+        import tempfile
+        from phoonnx.model_manager import TTSModelManager
+        cls._tmp = tempfile.TemporaryDirectory()
+        cls.manager = TTSModelManager(cache_path=os.path.join(cls._tmp.name, "voices.json"))
+        cls.manager.merge_default_voices()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._tmp.cleanup()
+
+    def _ids(self, lang):
+        return [v.voice_id for v in self.manager.get_lang_voices(lang)]
+
+    def test_a_levantine_request_finds_the_voice(self):
+        for lang in ("apc", "apc-LB", "apc-SY"):
+            with self.subTest(lang=lang):
+                self.assertIn(self.VOICE, self._ids(lang))
+
+    def test_a_standard_arabic_request_does_not(self):
+        for lang in ("ar", "ar-SA", "ar-EG"):
+            with self.subTest(lang=lang):
+                self.assertNotIn(self.VOICE, self._ids(lang))
+
+    def test_the_phonemizer_accepts_the_voice_tag(self):
+        tag = self.manager.voices[self.VOICE].lang
+        self.assertEqual(ShamiPhonemizer.get_lang(tag), "ar")
