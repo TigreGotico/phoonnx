@@ -1,8 +1,8 @@
 {
   "ghananlpcommunity/stable-twi-tts": {
     "voice_id": "ghananlpcommunity/stable-twi-tts",
-    "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/main/ghananlpcommunity__stable-twi-tts/model.onnx",
-    "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/main/ghananlpcommunity__stable-twi-tts/config.json",
+    "model_url": "https://huggingface.co/Phoonnx/vits-ghananlpcommunity_stable-twi-tts/resolve/main/ghananlpcommunity__stable-twi-tts/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/vits-ghananlpcommunity_stable-twi-tts/resolve/main/ghananlpcommunity__stable-twi-tts/config.json",
     "vocab_url": null,
     "tokenizer_config_url": null,
     "tokens_url": null,
@@ -16,8 +16,8 @@
   },
   "ghananlpcommunity/nano-twi": {
     "voice_id": "ghananlpcommunity/nano-twi",
-    "model_url": "https://huggingface.co/Phoonnx/phoonnx-matcha/resolve/main/ghananlpcommunity__nano-twi/model.onnx",
-    "config_url": "https://huggingface.co/Phoonnx/phoonnx-matcha/resolve/main/ghananlpcommunity__nano-twi/config.json",
+    "model_url": "https://huggingface.co/Phoonnx/matcha-ghananlpcommunity_nano-twi/resolve/main/ghananlpcommunity__nano-twi/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/matcha-ghananlpcommunity_nano-twi/resolve/main/ghananlpcommunity__nano-twi/config.json",
     "vocab_url": null,
     "tokenizer_config_url": null,
     "tokens_url": null,
@@ -27,15 +27,15 @@
     "engine": "matcha",
     "lang": "tw",
     "phonemizer_lang": "lfn",
-    "vocoder_url": "https://huggingface.co/Phoonnx/phoonnx-matcha/resolve/main/ghananlpcommunity__nano-twi/vocoder.onnx",
+    "vocoder_url": "https://huggingface.co/Phoonnx/matcha-ghananlpcommunity_nano-twi/resolve/main/ghananlpcommunity__nano-twi/vocoder.onnx",
     "vocoder_config_url": null,
     "vocoder_type": "vocos",
     "display_name": "Twi (nano-twi, {engine})"
   },
   "ghananlpcommunity/poto-tts-kokoro-gh": {
     "voice_id": "ghananlpcommunity/poto-tts-kokoro-gh",
-    "model_url": "https://huggingface.co/Phoonnx/phoonnx-styletts2/resolve/main/ghananlpcommunity__poto-tts-kokoro-gh/model.onnx",
-    "config_url": "https://huggingface.co/Phoonnx/phoonnx-styletts2/resolve/main/ghananlpcommunity__poto-tts-kokoro-gh/config.json",
+    "model_url": "https://huggingface.co/Phoonnx/styletts2-ghananlpcommunity_poto-tts-kokoro-gh/resolve/main/ghananlpcommunity__poto-tts-kokoro-gh/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/styletts2-ghananlpcommunity_poto-tts-kokoro-gh/resolve/main/ghananlpcommunity__poto-tts-kokoro-gh/config.json",
     "vocab_url": null,
     "tokenizer_config_url": null,
     "tokens_url": null,
@@ -45,7 +45,7 @@
     "engine": "styletts2",
     "lang": "en-GH",
     "phonemizer_lang": "en-gb",
-    "style_url": "https://huggingface.co/Phoonnx/phoonnx-styletts2/resolve/main/ghananlpcommunity__poto-tts-kokoro-gh/voices/bf_alice.bin",
+    "style_url": "https://huggingface.co/Phoonnx/styletts2-ghananlpcommunity_poto-tts-kokoro-gh/resolve/main/ghananlpcommunity__poto-tts-kokoro-gh/voices/bf_alice.bin",
     "display_name": "Ghanaian English (poto-tts Kokoro, {engine})"
   }
 }

@@ -1,8 +1,8 @@
 {
     "nipponjo/tts-arabic-fastpitch": {
         "voice_id": "nipponjo/tts-arabic-fastpitch",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-fastpitch/resolve/main/nipponjo-arabic-fastpitch/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-fastpitch/resolve/main/nipponjo-arabic-fastpitch/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/fastpitch-nipponjo-arabic-fastpitch/resolve/main/nipponjo-arabic-fastpitch/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/fastpitch-nipponjo-arabic-fastpitch/resolve/main/nipponjo-arabic-fastpitch/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -11,14 +11,14 @@
         "alphabet": "buckwalter",
         "engine": "fastpitch",
         "lang": "ar",
-        "vocoder_url": "https://huggingface.co/Phoonnx/phoonnx-vocoders/resolve/main/tts-arabic-hifigan/model.onnx",
-        "vocoder_config_url": "https://huggingface.co/Phoonnx/phoonnx-vocoders/resolve/main/tts-arabic-hifigan/vocoder.json",
+        "vocoder_url": "https://huggingface.co/Phoonnx/vocoders-tts-arabic-hifigan/resolve/main/tts-arabic-hifigan/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/Phoonnx/vocoders-tts-arabic-hifigan/resolve/main/tts-arabic-hifigan/vocoder.json",
         "vocoder_type": "hifigan"
     },
     "coqui/en-ljspeech-fast_pitch": {
         "voice_id": "coqui/en-ljspeech-fast_pitch",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-fastpitch/resolve/main/coqui-ljspeech-fastpitch/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-fastpitch/resolve/main/coqui-ljspeech-fastpitch/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/fastpitch-coqui-ljspeech-fastpitch/resolve/main/coqui-ljspeech-fastpitch/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/fastpitch-coqui-ljspeech-fastpitch/resolve/main/coqui-ljspeech-fastpitch/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -27,14 +27,14 @@
         "alphabet": "ipa",
         "engine": "fastpitch",
         "lang": "en-US",
-        "vocoder_url": "https://huggingface.co/Phoonnx/phoonnx-vocoders/resolve/main/coqui-ljspeech-hifigan-v2/model.onnx",
-        "vocoder_config_url": "https://huggingface.co/Phoonnx/phoonnx-vocoders/resolve/main/coqui-ljspeech-hifigan-v2/vocoder.json",
+        "vocoder_url": "https://huggingface.co/Phoonnx/vocoders-coqui-ljspeech-hifigan-v2/resolve/main/coqui-ljspeech-hifigan-v2/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/Phoonnx/vocoders-coqui-ljspeech-hifigan-v2/resolve/main/coqui-ljspeech-hifigan-v2/vocoder.json",
         "vocoder_type": "hifigan"
     },
     "coqui/en-ljspeech-speedy-speech": {
         "voice_id": "coqui/en-ljspeech-speedy-speech",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-fastpitch/resolve/main/coqui-ljspeech-speedyspeech/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-fastpitch/resolve/main/coqui-ljspeech-speedyspeech/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/fastpitch-coqui-ljspeech-speedyspeech/resolve/main/coqui-ljspeech-speedyspeech/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/fastpitch-coqui-ljspeech-speedyspeech/resolve/main/coqui-ljspeech-speedyspeech/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -43,14 +43,14 @@
         "alphabet": "ipa",
         "engine": "fastpitch",
         "lang": "en-US",
-        "vocoder_url": "https://huggingface.co/Phoonnx/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
-        "vocoder_config_url": "https://huggingface.co/Phoonnx/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
+        "vocoder_url": "https://huggingface.co/Phoonnx/vocoders-vocos-mel-22khz-univ/resolve/main/vocos-mel-22khz-univ/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/Phoonnx/vocoders-vocos-mel-22khz-univ/resolve/main/vocos-mel-22khz-univ/vocoder.json",
         "vocoder_type": "vocos"
     },
     "coqui/en-vctk-fast_pitch": {
         "voice_id": "coqui/en-vctk-fast_pitch",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-fastpitch/resolve/main/coqui-vctk-fastpitch/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-fastpitch/resolve/main/coqui-vctk-fastpitch/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/fastpitch-coqui-vctk-fastpitch/resolve/main/coqui-vctk-fastpitch/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/fastpitch-coqui-vctk-fastpitch/resolve/main/coqui-vctk-fastpitch/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -59,8 +59,8 @@
         "alphabet": "ipa",
         "engine": "fastpitch",
         "lang": "en-US",
-        "vocoder_url": "https://huggingface.co/Phoonnx/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/model.onnx",
-        "vocoder_config_url": "https://huggingface.co/Phoonnx/phoonnx-vocoders/resolve/main/vocos-mel-22khz-univ/vocoder.json",
+        "vocoder_url": "https://huggingface.co/Phoonnx/vocoders-vocos-mel-22khz-univ/resolve/main/vocos-mel-22khz-univ/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/Phoonnx/vocoders-vocos-mel-22khz-univ/resolve/main/vocos-mel-22khz-univ/vocoder.json",
         "vocoder_type": "vocos"
     }
 }

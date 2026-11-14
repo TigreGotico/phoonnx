@@ -5,8 +5,8 @@ null in all three, and ``espeak.voice`` is ``lfn``. So the language a caller
 asks for comes from the index or from nowhere, and ``lang`` here is the only
 record of which voice speaks Twi, Chichewa or Makhuwa.
 
-The model files come from ``Phoonnx/phoonnx-vits``, the architecture
-repository that holds every VITS voice phoonnx loads, one folder per voice.
+The model files come from one repository per voice, ``Phoonnx/vits-<folder>``,
+split from ``Phoonnx/phoonnx-vits`` with the folder path kept.
 Upstream publishes two of the three as a zip on a GitHub release only, which
 phoonnx cannot read, and the third from an account that carries no licence
 file. That mirror is the one stable url for all three.
@@ -19,9 +19,8 @@ from phoonnx.model_manager import TTSModelManager
 
 INDEX = "piper_community.json"
 
-ARCHITECTURE_REPO = "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/main"
 
-# voice id -> the language tag, and the folder inside the architecture repository
+# voice id -> the language tag, and the folder of the voice in its repository
 EXPECTED = {
     "piper_community/ghananlpcommunity/kasanoma-twi": ("tw", "tw-kasanoma"),
     "piper_community/michsethowusu/kasanoma-chichewa": ("ny", "ny-kasanoma"),
@@ -72,6 +71,6 @@ class TestKasanomaIndex(unittest.TestCase):
         for voice_id, (_, folder) in EXPECTED.items():
             with self.subTest(voice_id):
                 entry = entries[voice_id]
-                base = f"{ARCHITECTURE_REPO}/{folder}/"
+                base = f"https://huggingface.co/Phoonnx/vits-{folder}/resolve/main/{folder}/"
                 self.assertEqual(entry["model_url"], base + "model.onnx")
                 self.assertEqual(entry["config_url"], base + "model.onnx.json")

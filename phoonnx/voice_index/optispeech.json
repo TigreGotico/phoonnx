@@ -1,8 +1,8 @@
 {
     "hf_community/mush42/optispeech-lightspeech-en-us-emily": {
         "voice_id": "hf_community/mush42/optispeech-lightspeech-en-us-emily",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-optispeech/resolve/main/mush42__optispeech-lightspeech-en-us-emily/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-optispeech/resolve/main/mush42__optispeech-lightspeech-en-us-emily/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/optispeech-mush42_optispeech-lightspeech-en-us-emily/resolve/main/mush42__optispeech-lightspeech-en-us-emily/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/optispeech-mush42_optispeech-lightspeech-en-us-emily/resolve/main/mush42__optispeech-lightspeech-en-us-emily/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -14,8 +14,8 @@
     },
     "hf_community/mush42/optispeech-lightspeech-en-us-mike": {
         "voice_id": "hf_community/mush42/optispeech-lightspeech-en-us-mike",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-optispeech/resolve/main/mush42__optispeech-lightspeech-en-us-mike/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-optispeech/resolve/main/mush42__optispeech-lightspeech-en-us-mike/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/optispeech-mush42_optispeech-lightspeech-en-us-mike/resolve/main/mush42__optispeech-lightspeech-en-us-mike/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/optispeech-mush42_optispeech-lightspeech-en-us-mike/resolve/main/mush42__optispeech-lightspeech-en-us-mike/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -27,8 +27,8 @@
     },
     "hf_community/mush42/optispeech-convnext-en-us-emily": {
         "voice_id": "hf_community/mush42/optispeech-convnext-en-us-emily",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-optispeech/resolve/main/mush42__optispeech-convnext-en-us-emily/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-optispeech/resolve/main/mush42__optispeech-convnext-en-us-emily/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/optispeech-mush42_optispeech-convnext-en-us-emily/resolve/main/mush42__optispeech-convnext-en-us-emily/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/optispeech-mush42_optispeech-convnext-en-us-emily/resolve/main/mush42__optispeech-convnext-en-us-emily/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,

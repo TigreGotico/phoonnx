@@ -1364,3 +1364,55 @@ class TestCopyCachedBeforeTheMove(unittest.TestCase):
         self.assertEqual(self.repo_ids(), [self.OLD] * 3)
         self.assertEqual([call.kwargs["filename"] for call in self.download.call_args_list],
                          ["miro_pt-PT.onnx", "miro_pt-PT.onnx_data", "model.onnx_data_1"])
+
+
+class TestCopyCachedFromTheMirror(unittest.TestCase):
+    """A voice fetched from a Phoonnx mirror repo is fetched through it after the voice gets its own repo."""
+
+    setUp = TestCopyCachedBeforeTheMove.setUp
+    _download = TestCopyCachedBeforeTheMove._download
+    cached = TestCopyCachedBeforeTheMove.cached
+
+    URL = "https://huggingface.co/Phoonnx/kitten-tts-mini-0.1/resolve/main/mini-0.1/model.onnx"
+    TARGET = "Phoonnx/kitten-tts-mini-0.1"
+    MIRROR = "Phoonnx/phoonnx-kitten-tts"
+    MIRROR_BEFORE_MOVE = "OpenVoiceOS/phoonnx-kitten-tts"
+
+    def test_a_voice_cached_from_the_mirror_is_fetched_through_it(self):
+        self.cached(self.MIRROR)
+        self.assertEqual(_hf_fetch(self.URL), Path(f"/fetched/{self.MIRROR}/mini-0.1/model.onnx"))
+
+    def test_a_voice_cached_before_the_move_is_fetched_through_the_oldest_id(self):
+        self.cached(self.MIRROR, self.MIRROR_BEFORE_MOVE)
+        self.assertEqual(_hf_fetch(self.URL), Path(f"/fetched/{self.MIRROR_BEFORE_MOVE}/mini-0.1/model.onnx"))
+
+    def test_a_split_repo_with_nothing_cached_uses_its_own_id(self):
+        self.cached(self.TARGET)
+        self.assertEqual(_hf_fetch(self.URL), Path(f"/fetched/{self.TARGET}/mini-0.1/model.onnx"))
+
+    def test_every_split_repo_names_a_mirror_repo(self):
+        from phoonnx.model_manager import _SPLIT_FROM
+        self.assertEqual(len(_SPLIT_FROM), 1730)
+        self.assertTrue(all(source.startswith("Phoonnx/phoonnx-") for source in _SPLIT_FROM.values()))
+        self.assertEqual(_SPLIT_FROM[self.TARGET], self.MIRROR)
+
+    def test_every_index_url_of_a_split_repo_keeps_the_mirror_path(self):
+        """The fallback asks the mirror for the same path, so every split-repo URL must name a mirror folder."""
+        from phoonnx.model_manager import _HF_URL, _SPLIT_FROM, TTSModelManager
+
+        def urls(value):
+            if isinstance(value, str):
+                yield value
+            elif isinstance(value, dict):
+                for item in value.values():
+                    yield from urls(item)
+
+        checked = 0
+        for index_file in TTSModelManager.voice_index_files():
+            for entry in json.loads(Path(index_file).read_text(encoding="utf-8")).values():
+                for url in urls(entry):
+                    match = _HF_URL.match(url)
+                    if match and match["repo"] in _SPLIT_FROM:
+                        self.assertIn("/", match["path"], url)
+                        checked += 1
+        self.assertEqual(checked, 5600)

@@ -213,14 +213,23 @@ _NO_SUCH_FILE = (EntryNotFoundError, OfflineModeIsEnabled, LocalEntryNotFoundErr
 # tool fetched under the new id does not cut the voice off from its cache. Drop this once
 # a stable release has shipped the Phoonnx URLs for a full release cycle.
 _MOVED_FROM = {"Phoonnx": "OpenVoiceOS"}
+# Each model of a Phoonnx mirror repo (Phoonnx/phoonnx-<family>) also has a repo of its own, which
+# keeps the mirror's file paths. A voice fetched from the mirror is fetched through it in the same way.
+_SPLIT_FROM: Dict[str, str] = json.loads((Path(__file__).parent / "split_repos.json").read_text(encoding="utf-8"))
+
+
+def _earlier_ids(repo_id: str) -> List[str]:
+    """The repo ids that served this repo's files before, oldest first."""
+    source = _SPLIT_FROM.get(repo_id, repo_id)
+    org, name = source.split("/", 1)
+    earlier = [f"{_MOVED_FROM[org]}/{name}"] if org in _MOVED_FROM else []
+    return earlier + ([source] if source != repo_id else [])
 
 
 def _repo_cached_before_move(repo_id: str) -> Optional[str]:
-    """The old repo id when the cache holds the repo under that id. Reads no network."""
-    org, name = repo_id.split("/", 1)
-    if org not in _MOVED_FROM:
-        return None
-    return f"{_MOVED_FROM[org]}/{name}" if (Path(HF_HUB_CACHE) / f"models--{_MOVED_FROM[org]}--{name}").is_dir() else None
+    """The oldest earlier repo id that the cache holds, if any. Reads no network."""
+    cache = Path(HF_HUB_CACHE)
+    return next((old for old in _earlier_ids(repo_id) if (cache / f"models--{old.replace('/', '--')}").is_dir()), None)
 
 
 def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
