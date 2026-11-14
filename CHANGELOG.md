@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.97.1a1](https://github.com/TigreGotico/phoonnx/tree/1.97.1a1) (2026-11-14)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.97.0a1...1.97.1a1)
+
+**Merged pull requests:**
+
+- fix: tag the Shami voice as Levantine Arabic \(apc\) [\#572](https://github.com/TigreGotico/phoonnx/pull/572) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.97.0a1](https://github.com/TigreGotico/phoonnx/tree/1.97.0a1) (2026-11-13)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.6a1...1.97.0a1)
@@ -293,10 +301,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.10a1...1.91.11a1)
 
-**Merged pull requests:**
-
-- fix: record which phonemizer produced the phonemes [\#461](https://github.com/TigreGotico/phoonnx/pull/461) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.91.10a1](https://github.com/TigreGotico/phoonnx/tree/1.91.10a1) (2026-09-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.9a1...1.91.10a1)
@@ -344,10 +348,6 @@
 ## [1.91.3a1](https://github.com/TigreGotico/phoonnx/tree/1.91.3a1) (2026-09-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.2a1...1.91.3a1)
-
-**Merged pull requests:**
-
-- fix: pad the final trim chunk the detector cannot score [\#462](https://github.com/TigreGotico/phoonnx/pull/462) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.91.2a1](https://github.com/TigreGotico/phoonnx/tree/1.91.2a1) (2026-09-09)
 
