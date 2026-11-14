@@ -1,8 +1,8 @@
 {
   "llasa/HKUST/en/en_female_a": {
     "voice_id": "llasa/HKUST/en/en_female_a",
-    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx",
-    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/config.json",
+    "model_url": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/config.json",
     "vocab_url": null,
     "tokens_url": null,
     "tokenizer_config_url": null,
@@ -12,10 +12,10 @@
     "engine": "llasa",
     "lang": "en-US",
     "aux_model_urls": {
-      "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx_data",
-      "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/xcodec2_decoder.onnx",
-      "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/tokenizer.json",
-      "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/voices.json"
+      "lm_weights_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx_data",
+      "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/xcodec2_decoder.onnx",
+      "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/tokenizer.json",
+      "voices_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/voices.json"
     },
     "engine_options": {
       "voice": "en_female_a"
@@ -24,8 +24,8 @@
   },
   "llasa/HKUST/en/en_male_a": {
     "voice_id": "llasa/HKUST/en/en_male_a",
-    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx",
-    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/config.json",
+    "model_url": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/config.json",
     "vocab_url": null,
     "tokens_url": null,
     "tokenizer_config_url": null,
@@ -35,10 +35,10 @@
     "engine": "llasa",
     "lang": "en-US",
     "aux_model_urls": {
-      "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx_data",
-      "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/xcodec2_decoder.onnx",
-      "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/tokenizer.json",
-      "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/voices.json"
+      "lm_weights_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx_data",
+      "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/xcodec2_decoder.onnx",
+      "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/tokenizer.json",
+      "voices_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/voices.json"
     },
     "engine_options": {
       "voice": "en_male_a"
@@ -47,8 +47,8 @@
   },
   "llasa/HKUST/zh/zh_female_a": {
     "voice_id": "llasa/HKUST/zh/zh_female_a",
-    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx",
-    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/config.json",
+    "model_url": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/config.json",
     "vocab_url": null,
     "tokens_url": null,
     "tokenizer_config_url": null,
@@ -58,10 +58,10 @@
     "engine": "llasa",
     "lang": "zh-CN",
     "aux_model_urls": {
-      "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx_data",
-      "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/xcodec2_decoder.onnx",
-      "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/tokenizer.json",
-      "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/voices.json"
+      "lm_weights_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx_data",
+      "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/xcodec2_decoder.onnx",
+      "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/tokenizer.json",
+      "voices_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/voices.json"
     },
     "engine_options": {
       "voice": "zh_female_a"
@@ -70,8 +70,8 @@
   },
   "llasa/HKUST/zh/zh_male_a": {
     "voice_id": "llasa/HKUST/zh/zh_male_a",
-    "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx",
-    "config_url": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/config.json",
+    "model_url": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/config.json",
     "vocab_url": null,
     "tokens_url": null,
     "tokenizer_config_url": null,
@@ -81,10 +81,10 @@
     "engine": "llasa",
     "lang": "zh-CN",
     "aux_model_urls": {
-      "lm_weights_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx_data",
-      "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/xcodec2_decoder.onnx",
-      "tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/tokenizer.json",
-      "voices_path": "https://huggingface.co/OpenVoiceOS/phoonnx-llasa/resolve/main/llasa-1b-onnx/voices.json"
+      "lm_weights_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/model.onnx_data",
+      "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/xcodec2_decoder.onnx",
+      "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/tokenizer.json",
+      "voices_path": "https://huggingface.co/Phoonnx/phoonnx-llasa/resolve/main/llasa-1b-onnx/voices.json"
     },
     "engine_options": {
       "voice": "zh_male_a"

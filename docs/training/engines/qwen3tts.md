@@ -89,7 +89,7 @@ Every group has its own embedding table and its own output head, so the step gra
 the group index as an input and gathers both from a stacked weight. The graphs are
 float32 and total about 4.4 GB, which is what a voice downloads once.
 
-The mirror is [`OpenVoiceOS/phoonnx-qwen3-tts`](https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts).
+The mirror is [`Phoonnx/phoonnx-qwen3-tts`](https://huggingface.co/Phoonnx/phoonnx-qwen3-tts).
 The export script is `scripts/conversion/qwen3tts/export_qwen3tts_onnx.py`.
 
 ## Control parameters

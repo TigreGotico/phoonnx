@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.98.0a1](https://github.com/TigreGotico/phoonnx/tree/1.98.0a1) (2026-11-14)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.97.1a2...1.98.0a1)
+
+**Merged pull requests:**
+
+- feat\(train\): record the phonemizer engine and its version in config.json [\#575](https://github.com/TigreGotico/phoonnx/pull/575) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.97.1a2](https://github.com/TigreGotico/phoonnx/tree/1.97.1a2) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.97.1a1...1.97.1a2)
@@ -56,10 +64,6 @@
 ## [1.96.2a2](https://github.com/TigreGotico/phoonnx/tree/1.96.2a2) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.2a1...1.96.2a2)
-
-**Merged pull requests:**
-
-- perf: take the spectrogram frame count from the worker that wrote it [\#466](https://github.com/TigreGotico/phoonnx/pull/466) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.96.2a1](https://github.com/TigreGotico/phoonnx/tree/1.96.2a1) (2026-11-10)
 
@@ -276,10 +280,6 @@
 ## [1.92.1a1](https://github.com/TigreGotico/phoonnx/tree/1.92.1a1) (2026-09-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.92.0a1...1.92.1a1)
-
-**Merged pull requests:**
-
-- fix: let a trained VITS model be exported on the machine that trained it [\#465](https://github.com/TigreGotico/phoonnx/pull/465) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.92.0a1](https://github.com/TigreGotico/phoonnx/tree/1.92.0a1) (2026-09-18)
 

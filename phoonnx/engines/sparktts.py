@@ -13,7 +13,7 @@ tokens, and then writes the semantic stream. This is the same autoregressive fam
 :class:`phoonnx.engines.chatterbox.ChatterboxAdapter`, so it also drives the overridable
 ``BaseOnnxAdapter.synthesize`` rather than the single-graph ``build_feed_dict`` path.
 
-Five ONNX graphs (HF: ``OpenVoiceOS/phoonnx-spark-tts``)::
+Five ONNX graphs (HF: ``Phoonnx/phoonnx-spark-tts``)::
 
     model.onnx                      Qwen2 LM, KV-cached AR step (= the voice's ``session``)
     bicodec_vocoder.onnx            semantic + global tokens -> waveform @ 16 kHz

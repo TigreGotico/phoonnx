@@ -14,7 +14,7 @@ from phoonnx.config import PhonemeType, get_phonemizer
 
 # --- StyleTTS2-eu symbol set (single-char-collapsed IPA) -------------------
 # Built inline from the StyleTTS2 symbol set, matching the phoneme_id_map of
-# the OpenVoiceOS/phoonnx-styletts2/hitz-eu-styletts2 voice. The phonemizer
+# the Phoonnx/phoonnx-styletts2/hitz-eu-styletts2 voice. The phonemizer
 # output must be tokenizable by this map (every output char is a key here).
 _pad = "$"
 _punctuation = ';:,.!?¡¿—…"<>“” '
@@ -98,7 +98,7 @@ def test_unknown_engine_raises():
 # The AhoTTS phonemizer also serves Spanish (HiTZ es VITS voices), selected by
 # the per-call ``lang`` argument.  The "classic" engine matches the AhoTTS es
 # front-end the HiTZ es models were trained on; its output must tokenize against
-# the recovered es phoneme_id_map (keys below = OpenVoiceOS/phoonnx-vits hitz-es).
+# the recovered es phoneme_id_map (keys below = Phoonnx/phoonnx-vits hitz-es).
 ES_SYMBOLS = set("ACEIOUabdefijklmnoprstuwxðɡɣɲɾʎʝβθ")
 
 ES_SENTENCES = [

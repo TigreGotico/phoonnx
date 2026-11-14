@@ -5,7 +5,7 @@ Pocket TTS is a small text-to-speech model from [Kyutai](https://kyutai.org/tts/
 languages: English, French, German, Italian, Portuguese and Spanish.
 
 Each language is a separate weight bundle. phoonnx serves them from the
-[`OpenVoiceOS/phoonnx-pocket-tts`](https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts)
+[`Phoonnx/phoonnx-pocket-tts`](https://huggingface.co/Phoonnx/phoonnx-pocket-tts)
 mirror, with 26 speakers per language.
 
 ## Use a voice

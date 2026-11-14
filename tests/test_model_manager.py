@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 import onnxruntime
 import requests
 
-from huggingface_hub.errors import (EntryNotFoundError, HfHubHTTPError,
+from huggingface_hub.errors import (EntryNotFoundError, HfHubHTTPError, RemoteEntryNotFoundError,
                                     LocalEntryNotFoundError)
 
 from phoonnx.model_manager import (TTSModelInfo, TTSModelManager, _direct_dir,
@@ -1292,3 +1292,75 @@ class TestDiskSize(unittest.TestCase):
         dest.mkdir(parents=True, exist_ok=True)
         (dest / "model.onnx").write_bytes(b"")
         self.assertIsNone(_cached_path(url))
+
+
+class TestCopyCachedBeforeTheMove(unittest.TestCase):
+    """A voice fetched from OpenVoiceOS before its repo moved to Phoonnx is fetched through the old id."""
+
+    BASE = "https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_unicode/resolve/main"
+    URL = f"{BASE}/miro_pt-PT.onnx"
+    OLD = "OpenVoiceOS/phoonnx_pt-PT_miro_unicode"
+    NEW = "Phoonnx/phoonnx_pt-PT_miro_unicode"
+
+    def setUp(self):
+        self._cache = tempfile.TemporaryDirectory()
+        self.addCleanup(self._cache.cleanup)
+        self.cache = Path(self._cache.name)
+        patcher = patch("phoonnx.model_manager.HF_HUB_CACHE", self._cache.name)
+        self.addCleanup(patcher.stop)
+        patcher.start()
+        self.missing_online = set()
+        self.fetched = patch("phoonnx.model_manager.hf_hub_download", side_effect=self._download)
+        self.addCleanup(self.fetched.stop)
+        self.download = self.fetched.start()
+
+    def _download(self, repo_id, filename, revision, local_files_only=False, **kwargs):
+        if repo_id in self.missing_online:
+            raise RemoteEntryNotFoundError("404", response=MagicMock(status_code=404))
+        return f"/{'cache' if local_files_only else 'fetched'}/{repo_id}/{filename}"
+
+    def cached(self, *repo_ids):
+        for repo_id in repo_ids:
+            (self.cache / f"models--{repo_id.replace('/', '--')}").mkdir()
+
+    def repo_ids(self):
+        return [call.kwargs["repo_id"] for call in self.download.call_args_list]
+
+    def test_a_repo_cached_before_the_move_is_fetched_through_the_old_id(self):
+        self.cached(self.OLD)
+        self.assertEqual(_hf_fetch(self.URL), Path(f"/fetched/{self.OLD}/miro_pt-PT.onnx"))
+
+    def test_a_file_another_tool_fetched_under_the_new_id_does_not_move_the_voice(self):
+        self.cached(self.OLD, self.NEW)
+        self.assertEqual(_hf_fetch(self.URL), Path(f"/fetched/{self.OLD}/miro_pt-PT.onnx"))
+
+    def test_nothing_cached_uses_the_new_id(self):
+        self.assertEqual(_hf_fetch(self.URL), Path(f"/fetched/{self.NEW}/miro_pt-PT.onnx"))
+
+    def test_a_404_from_the_moved_repo_is_never_hidden_by_an_old_copy(self):
+        self.cached(self.OLD)
+        self.missing_online = {self.NEW, self.OLD}
+        with self.assertRaises(RemoteEntryNotFoundError):
+            _hf_fetch(self.URL)
+
+    def test_a_repo_that_never_moved_has_no_fallback(self):
+        self.cached("OpenVoiceOS/a-repo")
+        url = "https://huggingface.co/an-org/a-repo/resolve/main/model.onnx"
+        self.assertEqual(_hf_fetch(url), Path("/fetched/an-org/a-repo/model.onnx"))
+
+    def test_the_cache_size_question_sees_the_copy_from_before_the_move(self):
+        from phoonnx.model_manager import _cached_path
+        self.cached(self.OLD)
+        self.assertEqual(_cached_path(self.URL), Path(f"/cache/{self.OLD}/miro_pt-PT.onnx"))
+
+    def test_every_file_of_a_voice_follows_the_repo_not_the_file(self):
+        """Graph, sidecar, config and weights shards share one folder, whatever each file's snapshot holds."""
+        self.cached(self.OLD)
+        info = TTSModelInfo(voice_id=self.OLD, lang="pt-PT", model_url=self.URL,
+                            config_url=f"{self.BASE}/miro_pt-PT.json",
+                            aux_model_urls={"lm_weights_path_1": f"{self.BASE}/model.onnx_data_1"})
+        info.download_model()
+        info.download_aux_models()
+        self.assertEqual(self.repo_ids(), [self.OLD] * 3)
+        self.assertEqual([call.kwargs["filename"] for call in self.download.call_args_list],
+                         ["miro_pt-PT.onnx", "miro_pt-PT.onnx_data", "model.onnx_data_1"])

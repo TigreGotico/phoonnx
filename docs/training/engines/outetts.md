@@ -169,7 +169,7 @@ only where a long passage is cut, never the tokens inside a chunk.
 ## Weights and licensing
 
 The graphs live at
-[`OpenVoiceOS/phoonnx-outetts`](https://huggingface.co/OpenVoiceOS/phoonnx-outetts),
+[`Phoonnx/phoonnx-outetts`](https://huggingface.co/Phoonnx/phoonnx-outetts),
 mirrored unchanged from OuteAI and IBM Research.
 
 **Only float32 graphs are indexed.** Every quantized 0.6B export published upstream

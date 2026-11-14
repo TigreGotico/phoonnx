@@ -130,7 +130,7 @@ return `False` from `detect`) for vocoders that should only be chosen explicitly
 
 ## Converting vocoders (provenance)
 
-The ONNX vocoders under `OpenVoiceOS/phoonnx-vocoders` are produced by standalone
+The ONNX vocoders under `Phoonnx/phoonnx-vocoders` are produced by standalone
 exporters that vendor only the pure-torch generator code (no `coqui-tts` / Larynx
 package dependency):
 
