@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.98.1a2](https://github.com/TigreGotico/phoonnx/tree/1.98.1a2) (2026-11-14)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.1a1...1.98.1a2)
+
+**Merged pull requests:**
+
+- chore: render working usage, checkpoints and version bounds on voice cards [\#579](https://github.com/TigreGotico/phoonnx/pull/579) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.98.1a1](https://github.com/TigreGotico/phoonnx/tree/1.98.1a1) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.0a2...1.98.1a1)
