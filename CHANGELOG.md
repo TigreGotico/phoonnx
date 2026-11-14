@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.97.0a1](https://github.com/TigreGotico/phoonnx/tree/1.97.0a1) (2026-11-13)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.6a1...1.97.0a1)
+
+**Merged pull requests:**
+
+- feat: rapido flow-matching engine with onnx export [\#567](https://github.com/TigreGotico/phoonnx/pull/567) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.96.6a1](https://github.com/TigreGotico/phoonnx/tree/1.96.6a1) (2026-11-12)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.5a1...1.96.6a1)
@@ -317,10 +325,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.5a1...1.91.6a1)
 
-**Merged pull requests:**
-
-- fix: give each download its own temporary file [\#459](https://github.com/TigreGotico/phoonnx/pull/459) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.91.5a1](https://github.com/TigreGotico/phoonnx/tree/1.91.5a1) (2026-09-13)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.4a1...1.91.5a1)
@@ -348,10 +352,6 @@
 ## [1.91.2a1](https://github.com/TigreGotico/phoonnx/tree/1.91.2a1) (2026-09-09)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.1a1...1.91.2a1)
-
-**Merged pull requests:**
-
-- fix: ship the training VAD model in the built distribution [\#460](https://github.com/TigreGotico/phoonnx/pull/460) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.91.1a1](https://github.com/TigreGotico/phoonnx/tree/1.91.1a1) (2026-09-03)
 
