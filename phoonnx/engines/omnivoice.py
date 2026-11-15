@@ -14,7 +14,7 @@ Because it never emits an end-of-speech token, the output length is decided **be
 decoding from a rule-based estimate over the character weights of the text (see
 :class:`phoonnx.thirdparty.omnivoice.RuleDurationEstimator`); ``length_scale`` rescales it.
 
-Two graph families (HF: ``OpenVoiceOS/phoonnx-omnivoice``)::
+Two graph families (HF: ``Phoonnx/phoonnx-omnivoice``)::
 
     omnivoice_backbone.onnx    (input_ids[B,8,S], audio_mask[B,S]) -> logits[B,8,S,1025]
     acoustic_encoder.onnx      reference wav @24 kHz -> acoustic features   (cloning only)
@@ -44,7 +44,7 @@ real length", which is what two separate forwards of different lengths compute.
    ``com.microsoft::GroupQueryAttention``, which is unconditionally **causal**. Its
    hidden states match a causal PyTorch run (cos 0.9995) and not the bidirectional one
    the model needs (cos 0.954), which leaves only **18 %** greedy-token agreement with
-   upstream. ``OpenVoiceOS/phoonnx-omnivoice`` therefore ships a fresh bidirectional
+   upstream. ``Phoonnx/phoonnx-omnivoice`` therefore ships a fresh bidirectional
    export (cos 1.0000000, 100 % agreement). Its Higgs codec graphs *are* exact and are
    mirrored unchanged. Do not point this adapter at the community backbone.
 """

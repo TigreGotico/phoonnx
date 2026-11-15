@@ -193,4 +193,4 @@ def test_lahgtna_voice_index_entries():
         for field in ("model_url", "speech_encoder_url", "embed_tokens_url",
                       "conditional_decoder_url", "tokenizer_config_url"):
             assert entry[field].startswith(
-                "https://huggingface.co/OpenVoiceOS/phoonnx-chatterbox-lahgtna/")
+                "https://huggingface.co/Phoonnx/phoonnx-chatterbox-lahgtna/")
