@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.98.3a1](https://github.com/TigreGotico/phoonnx/tree/1.98.3a1) (2026-11-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.2a1...1.98.3a1)
+
+**Merged pull requests:**
+
+- fix: install the scriptconv-copyleft and scriptconv-nonfree wrappers [\#591](https://github.com/TigreGotico/phoonnx/pull/591) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.98.2a1](https://github.com/TigreGotico/phoonnx/tree/1.98.2a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.1a4...1.98.2a1)
@@ -116,10 +124,6 @@
 ## [1.96.2a1](https://github.com/TigreGotico/phoonnx/tree/1.96.2a1) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.1a1...1.96.2a1)
-
-**Merged pull requests:**
-
-- fix: load an orthography2ipa or YourTTS export with its training language [\#481](https://github.com/TigreGotico/phoonnx/pull/481) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.96.1a1](https://github.com/TigreGotico/phoonnx/tree/1.96.1a1) (2026-11-10)
 
