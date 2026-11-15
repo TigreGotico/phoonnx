@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.98.1a3](https://github.com/TigreGotico/phoonnx/tree/1.98.1a3) (2026-11-14)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.1a2...1.98.1a3)
+
+**Merged pull requests:**
+
+- chore: plan the split of a mirror repo into one repo per model [\#584](https://github.com/TigreGotico/phoonnx/pull/584) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.98.1a2](https://github.com/TigreGotico/phoonnx/tree/1.98.1a2) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.1a1...1.98.1a2)
