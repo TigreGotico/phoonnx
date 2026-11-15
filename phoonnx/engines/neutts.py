@@ -274,8 +274,8 @@ class NeuTTSAdapter(BaseOnnxAdapter):
         addressed directly.
         """
         if self._phonemizer is None:
-            from scriptconv.phonemizers.mul import EspeakPhonemizer
-            self._phonemizer = EspeakPhonemizer()
+            from scriptconv.phonemizers import Phonemizer, get_phonemizer
+            self._phonemizer = get_phonemizer(Phonemizer.ESPEAK)
         return preserve_punctuation_phonemize(
             text, lambda part: self._phonemizer.phonemize_string(part, ESPEAK_VOICE).strip())
 

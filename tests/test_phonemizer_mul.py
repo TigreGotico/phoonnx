@@ -12,15 +12,13 @@ from unittest.mock import MagicMock, call, patch
 
 from phoonnx.config import Alphabet
 from scriptconv.phonemizers.mul import (
-    EspeakPhonemizer,
-    EspeakError,
     GruutPhonemizer,
     GoruutPhonemizer,
     EpitranPhonemizer,
-    MisakiPhonemizer,
     CharsiuPhonemizer,
     ByT5Phonemizer,
 )
+from scriptconv_copyleft.phonemizers.mul import EspeakError, EspeakPhonemizer, MisakiPhonemizer
 
 
 class TestEspeakGetLang(unittest.TestCase):

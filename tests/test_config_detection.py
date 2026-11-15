@@ -264,7 +264,7 @@ class TestGetPhonemizerDispatch(unittest.TestCase):
 
     def test_espeak_phoneme_type_returns_espeak_phonemizer(self):
         from phoonnx.config import get_phonemizer
-        from scriptconv.phonemizers.mul import EspeakPhonemizer
+        from scriptconv_copyleft.phonemizers.mul import EspeakPhonemizer
         phonemizer = get_phonemizer(PhonemeType.ESPEAK)
         self.assertIsInstance(phonemizer, EspeakPhonemizer)
 

@@ -4,7 +4,7 @@ This language note is for anyone working with Galician voices. After reading it 
 how the Cotovia phonemizer emits IPA or native Cotovia notation and how to select the
 stress-marked variant. It is part of the [phonemizer catalog](phonemizers.md).
 
-The `CotoviaPhonemizer` class in `scriptconv.phonemizers.gl` produces Galician
+The `CotoviaPhonemizer` class in `scriptconv_copyleft.phonemizers.gl` produces Galician
 phonemes using [pycotovia](https://github.com/TigreGotico/pycotovia), a pure-Python
 port of the [Cotovia](http://webs.uvigo.es/gtm_voz) G2P engine.
 
@@ -24,13 +24,13 @@ binary-parity-tested against it (see `pycotovia/docs/parity.md`).
 ```bash
 pip install phoonnx[gl]
 # or directly:
-pip install pycotovia
+pip install "scriptconv[gl]"
 ```
 
 ## Usage
 
 ```python
-from scriptconv.phonemizers.gl import CotoviaPhonemizer
+from scriptconv_copyleft.phonemizers.gl import CotoviaPhonemizer
 from phoonnx.config import Alphabet
 
 p_ipa = CotoviaPhonemizer(alphabet=Alphabet.IPA)
