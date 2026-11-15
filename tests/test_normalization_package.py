@@ -89,3 +89,27 @@ class TestPipelineStillNormalizes(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestUnitCase(unittest.TestCase):
+    """The unit regex ignores case, so a unit in any case reads like its table key."""
+
+    def test_no_two_units_differ_only_in_case(self):
+        for lang, table in units_module.UNITS.items():
+            keys = [k for k in table if k.isalnum()]
+            with self.subTest(lang=lang):
+                self.assertEqual(len(keys), len({k.casefold() for k in keys}))
+
+    def test_unit_in_any_case_reads_like_the_table_key(self):
+        for lang, table in units_module.UNITS.items():
+            full_lang = util.normalize_lang(lang)
+            for key in (k for k in table if k.isalnum()):
+                expected = units_module._normalize_units(f"5 {key}", full_lang)
+                for variant in (key.lower(), key.upper()):
+                    with self.subTest(lang=lang, unit=variant):
+                        self.assertEqual(units_module._normalize_units(f"5 {variant}", full_lang), expected)
+
+    def test_portuguese_millilitre_in_lower_case(self):
+        out = util.normalize("Junte 50 ml de azeite.", "pt-PT")
+        self.assertIn(units_module.UNITS["pt"]["mL"], out)
+        self.assertNotIn(" ml ", out)
