@@ -172,6 +172,7 @@ to a dedicated adapter. The adapter registry itself is described in [Engines](en
 | `yourtts` | Multilingual VITS + d-vector cloning | [Cloning](cloning.md) |
 | `zipvoice` | Flow-matching in-context cloning | [ZipVoice](training/engines/zipvoice.md) |
 | `shami` | Levantine Arabic / English (HamsVITS) | [Shami](training/engines/shami.md) |
+| `tinyvoca` | Source-filter acoustic model on dizione tokens and stress | [Engines](engines.md) |
 | `f5tts` | DiT flow-matching (F5-TTS / Habibi) | [F5-TTS](training/engines/f5tts.md) |
 | `chatterbox` | Autoregressive codec-LM cloning | [Chatterbox](training/engines/chatterbox.md) |
 | `vosk` | VITS (shared adapter), vosk-tts Russian front-end | [Engines](engines.md) |

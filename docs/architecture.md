@@ -33,9 +33,11 @@ Step by step, as implemented in `TTSVoice.synthesize`:
    unset it defers to the voice config so an undiacritized model is never force-diacritized.
 3. **Phonemize** — the selected [phonemizer](phonemizers.md) splits the text into sentences
    and converts each to a list of phoneme (or grapheme) strings. Inline `[[...]]` blocks
-   bypass the phonemizer and are inserted verbatim. Language-aware phonemizers (Shami) emit
-   per-phoneme language IDs through a `phonemize_with_language_ids` hook so the two streams
-   stay aligned.
+   bypass the phonemizer and are inserted verbatim. Some phonemizers give a value per symbol
+   beside the symbols: Shami a language ID (`phonemize_with_language_ids_lazy`), dizione a
+   stress value (`tokens`). Each reaches the engine as the request field of the same name
+   (`language_ids`, `stress`), one value per phoneme ID. dizione reads raw text with its own
+   rules, so phoonnx gives it no normalizer.
 4. **Tokenize** — the `TTSTokenizer` maps phonemes/characters to integer IDs using the
    voice's `phoneme_id_map`, inserting blank/pad/bos/eos tokens per the voice config. For
    text-token engines (Chatterbox) the adapter's `encode_text` BPE-tokenizes the raw text
