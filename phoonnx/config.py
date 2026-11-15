@@ -652,8 +652,10 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     Returns ``(graph, prepare_text)``:
 
     * ``graph`` — a scriptconv ``ConversionGraph`` whose phoneme edge is the
-      voice's own (lazy) phonemizer. When the voice vocalizes, scriptconv's
-      ``text -> text-diacritized`` edge is added and the direct edge omitted, so
+      voice's own (lazy) phonemizer. The edge yields ``(phonemes, streams)`` per
+      sentence: ``streams`` maps an ``AdapterSynthesisRequest`` field name to one
+      value per symbol, and is empty unless the phonemizer tags its symbols.
+      When the voice vocalizes, scriptconv's ``text -> text-diacritized`` edge is added and the direct edge omitted, so
       routing is forced through the vocalizer by *topology* rather than a runtime
       flag. Language and model are closed over, so callers route with
       ``graph.convert(text, "text", tgt_alphabet.value)`` and carry no conversion
@@ -679,8 +681,17 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
 
     # phonemize_lazy is a BasePhonemizer method, so every phonemizer has it: a
     # per-sentence generator, keeping sentence N+1 off the critical path of N.
+    # A phonemizer that tags each symbol with its language (Shami) yields the
+    # tags beside the symbols, for engines with a language_ids input.
+    with_language_ids = getattr(phonemizer, "phonemize_with_language_ids_lazy", None)
+
     def phonemize(text, **_):
-        return phonemizer.phonemize_lazy(text, lang)
+        if with_language_ids is None:
+            for phonemes in phonemizer.phonemize_lazy(text, lang):
+                yield phonemes, {}
+        else:
+            for phonemes, language_ids in with_language_ids(text, lang):
+                yield phonemes, {"language_ids": language_ids}
 
     graph = ConversionGraph()
     if not enabled:
