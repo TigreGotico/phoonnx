@@ -115,5 +115,32 @@ class TestUnitCase(unittest.TestCase):
         self.assertEqual(units_module._normalize_units("5 \u017f", "en-GB"),
                          units_module._normalize_units("5 s", "en-GB"))
 
+
+class TestUnitNumbers(unittest.TestCase):
+    """A number before a unit reads the same with or without its thousands separator."""
+
+    def test_grouped_number_reads_like_the_plain_number(self):
+        cases = [("1,500 km", "1500 km", "en-US"), ("12,345.6 km", "12345.6 km", "en-US"),
+                 ("1,500,000 km", "1500000 km", "en-US"), ("1,500%", "1500%", "en-US"),
+                 ("1.500 km", "1500 km", "pt-PT"), ("1.500,5 km", "1500,5 km", "pt-PT")]
+        for grouped, plain, lang in cases:
+            with self.subTest(text=grouped, lang=lang):
+                self.assertEqual(units_module._normalize_units(grouped, lang),
+                                 units_module._normalize_units(plain, lang))
+
+    def test_number_that_is_not_grouped_in_threes_is_left_as_written(self):
+        for text, lang in [("2,5 km", "en-US"), ("1234,567 km", "en-US"), ("1.5 km", "pt-PT")]:
+            with self.subTest(text=text, lang=lang):
+                self.assertEqual(units_module._normalize_units(text, lang), text)
+
+    def test_unit_that_matches_only_without_case_is_left_as_written(self):
+        # "İ" matches "i" in an IGNORECASE regex, but casefolds to "i̇".
+        self.assertEqual(units_module._normalize_units("5 MİN", "pt-PT"), "5 MİN")
+
+    def test_no_crash_in_full_normalisation(self):
+        for text, lang in [("1,500 km", "en-US"), ("2,5 km", "en-US"), ("1.5 km", "pt-PT")]:
+            with self.subTest(text=text, lang=lang):
+                self.assertNotRegex(util.normalize(text, lang), r"\d")
+
 if __name__ == "__main__":
     unittest.main()
