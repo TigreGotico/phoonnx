@@ -121,7 +121,8 @@ FULL_SCALE = 0.99
 #: measured at most 0.00004.
 CLIP_FRACTION = 0.01
 #: Median spectral flatness of the loud frames above which the audio is noise. The voices
-#: measured at most 0.009, and white noise measures 0.56. Coloured noise and speech under
+#: measured at most 0.009 on ordinary text and 0.164 on a line dense in fricatives;
+#: white noise measures 0.56. Coloured noise and speech under
 #: noise stay below the bound: only the ASR score catches those.
 NOISE_FLATNESS = 0.3
 #: Sentence faults, most severe first. A voice with no passing sentence gets the first
@@ -372,17 +373,21 @@ def cached_repos(cache: str) -> set[str]:
 
 
 def evict(names: set[str], cache: str) -> None:
-    """Delete these model repos from the cache, each repo folder as a whole.
+    """Delete these model repos from the cache, the shared blob store included.
 
-    That is what huggingface_hub does when it deletes every revision of a repo. Its
-    delete_revisions is not used: it looks a commit hash up in whichever cached repo
-    holds it first, and a moved repo shares its commit hashes with its old id.
+    huggingface_hub's own deletion runs on a view of the cache that holds one repo at a
+    time. Its delete_revisions looks a commit hash up in whichever cached repo holds it
+    first, and a moved repo shares its commit hashes with its old id, so the view keeps
+    it from picking the other id. Its execute() also clears the files that only this
+    repo used from the cache-wide blob store, which removing the repo folder does not.
     """
-    import shutil
+    import dataclasses
     from huggingface_hub import scan_cache_dir
-    for repo in scan_cache_dir(cache).repos:
+    info = scan_cache_dir(cache)
+    for repo in info.repos:
         if repo.repo_type == "model" and repo.repo_id in names:
-            shutil.rmtree(repo.repo_path)
+            view = dataclasses.replace(info, repos=frozenset([repo]))
+            view.delete_revisions(*(rev.commit_hash for rev in repo.revisions)).execute()
 
 
 def cache_bytes(path: str) -> int:

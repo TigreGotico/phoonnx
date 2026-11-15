@@ -216,6 +216,35 @@ def test_evict_removes_the_named_repos_when_commits_match(tmp_path):
     assert old.is_dir()
 
 
+def share_blob(folder: Path, cache: Path, xet_hash: str) -> Path:
+    """Move a repo's blob into the cache-wide store, as huggingface_hub does after a Xet download."""
+    from huggingface_hub.utils import _shared_blobs
+    blob = next((folder / "blobs").iterdir())
+    assert _shared_blobs.publish_blob_to_shared_store(
+        blob_path=str(blob), xet_hash=xet_hash, cache_dir=cache, expected_size=blob.stat().st_size)
+    return _shared_blobs.shared_blob_path(cache, xet_hash)
+
+
+def test_evict_frees_the_shared_blob_store(tmp_path):
+    xet_hash = "a" * 64
+    stored = share_blob(make_repo(tmp_path, "Phoonnx/x"), tmp_path, xet_hash)
+    assert stored.is_file()
+    vs.evict({"Phoonnx/x"}, str(tmp_path))
+    assert not stored.exists()
+
+
+def test_evict_keeps_a_shared_blob_the_other_id_still_uses(tmp_path):
+    commit, xet_hash = "0" * 40, "b" * 64
+    moved, old = (make_repo(tmp_path, repo, commit) for repo in ("Phoonnx/x", "OpenVoiceOS/x"))
+    stored = share_blob(moved, tmp_path, xet_hash)
+    share_blob(old, tmp_path, xet_hash)
+    vs.evict({"Phoonnx/x"}, str(tmp_path))
+    assert not moved.exists()
+    assert (old / "snapshots" / commit / "model.onnx").read_bytes() == b"onnx"
+    vs.evict({"OpenVoiceOS/x"}, str(tmp_path))
+    assert not stored.exists()
+
+
 # Stands in for `voice_sweep.py worker`: it "downloads" each voice's repo into the cache
 # the way the loader would (under the old id when the cache holds that one) and reports
 # the voice as ok.

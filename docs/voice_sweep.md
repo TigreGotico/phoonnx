@@ -13,7 +13,7 @@ A voice passes when it loads through the index path (`TTSModelInfo.load`) and `T
 | `clipped` | more than 1% of the samples at full scale (0.99) |
 | `noise` | a median spectral flatness above 0.3 in the frames within 20 dB of the loudest |
 
-Six cached voices of five engines (piper, VITS, MMS, glow-tts, matcha) set the bounds. In English, Basque, Catalan and Occitan they measured 0.061 to 0.146 s per character, a mean of at most 0.002, at most 0.004% of samples at full scale, and a flatness of at most 0.009. White noise has a flatness of 0.56.
+Six cached voices of five engines (piper, VITS, MMS, glow-tts, matcha) set the bounds. In English, Basque, Catalan and Occitan they measured 0.061 to 0.146 s per character, a mean of at most 0.002, at most 0.004% of samples at full scale, and a flatness of at most 0.009. A line dense in fricatives measured 0.164. White noise has a flatness of 0.56.
 
 Where an ASR model is verified for the language, the tool also transcribes the audio and records WER and CER. A wrong token id or a wrong phonemizer gives fluent audio that says the wrong thing, and only the transcript shows it. Coloured noise and speech under noise also pass the audio checks, so for a language without a verified ASR model, `ok` means that the audio has none of the faults above, not that it is intelligible.
 
