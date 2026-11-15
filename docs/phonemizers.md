@@ -49,7 +49,8 @@ matching [install extra](installation.md#language-extras).
 | `jieba` | Jieba (word segmentation, not a true phonemizer) | Chinese |
 | `mwl_phonemizer` | Mirandese, through scriptconv on the orthography2ipa specs `mwl`, `mwl-x-sendim` and `mwl-x-ifanes` | Mirandese |
 | `vosk` | vosk-tts phoneme inventory (use with `Alphabet.VOSK`) | Russian |
-| `shami` | Levantine Arabic / English code-switching front-end (emits per-phoneme language IDs) | ar-LB / en |
+| `shami` | Levantine Arabic / English code-switching front-end (emits per-phoneme language IDs) | apc / en |
+| `dizione` | American English: CMUdict lexicon, homograph rules and its own text rules; emits the tiny-voca tokens with a stress value each | en-US |
 | `arbtok` | Dialect-aware Arabic on undiacritized text (o2i lattice; register via `phonemizer_model`) | Arabic |
 | `euskaphone` | Dialect-aware Basque (o2i lattice) | Basque |
 | `barranquenho` | Barranquenho contact variety, through scriptconv on the orthography2ipa spec `ext-PT-x-barranco` | Barranquenho |
@@ -129,16 +130,20 @@ lang)` for a flat phoneme list and `phonemize_string(text, lang)` for a single c
 
 ## Special Language Notes
 
-### Arabic / Hebrew
+### Diacritics, stress and sense marks
 
-Models trained with Arabic or Hebrew may need diacritics added before phonemization. Enable this via `SynthesisConfig`:
+The diacritize stage adds marks before phonemization. It restores vowels for Arabic and Hebrew, marks stress for Russian, Ukrainian and other stress languages, and marks homograph readings for Portuguese. A voice turns it on in its config JSON, under `inference`:
+
+```json
+"inference": {"add_diacritics": true}
+```
+
+A key at the top level of the config is not read. When the config has no key, the stage is on for Arabic language tags (`ar` and the Arabic varieties written in Arabic script, such as `apc` and `arz`) and off for every other language. A call can override the voice with `SynthesisConfig`:
 
 ```python
 from phoonnx.config import SynthesisConfig
 syn_config = SynthesisConfig(add_diacritics=True)
 ```
-
-Or set it in the voice config JSON: `"add_diacritics": true`. For Arabic, it is enabled automatically when `lang_code` starts with `"ar"`.
 
 Arabic diacritization uses [`text2tashkeel`](https://pypi.org/project/text2tashkeel/), installed
 by the [`ar` extra](installation.md#language-extras). The diacritizer model defaults to
@@ -149,7 +154,7 @@ Phonikud.
 
 ### Galician (Cotovia)
 
-The `cotovia` phonemizer requires the `cotovia` binary to be installed. phoonnx searches for it in `PATH`, a bundled binary, and `/usr/bin/cotovia`. The alphabet can be either native Cotovia or IPA.
+The `cotovia` phonemizer runs [pycotovia](https://github.com/TigreGotico/pycotovia), a pure-Python port of the Cotovia G2P engine, through scriptconv. Install it with the scriptconv `gl` extra. The alphabet can be either native Cotovia or IPA. See [galician.md](galician.md).
 
 ### Chinese
 
@@ -183,7 +188,7 @@ gives the install and configuration steps.
 
 phoonnx wraps and, where licensing allows, bundles domain-specific G2P work, including:
 
-- [cotovia](https://github.com/TigreGotico/cotovia-mirror) — Galician phonemization (bundled binaries)
+- [cotovia](https://github.com/TigreGotico/cotovia-mirror) — Galician phonemization, through its pure-Python port [pycotovia](https://github.com/TigreGotico/pycotovia)
 - [mantoq](https://github.com/mush42/mantoq) — Arabic phonemization; [text2tashkeel](https://pypi.org/project/text2tashkeel/) — Arabic diacritization
 - [hams-levantine-tts](https://github.com/Al-aminI/hams-levantine-tts) — the Shami (Levantine Arabic / English) front-end
 - [KoG2P](https://github.com/scarletcho/KoG2P) and [hangul_to_ipa](https://github.com/stannam/hangul_to_ipa) — Korean phonemization and Hangul→IPA

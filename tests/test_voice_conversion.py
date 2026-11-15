@@ -355,7 +355,7 @@ class TestSynthesisPipelineWiring(unittest.TestCase):
         v = self._voice()
         audio = np.linspace(-0.5, 0.5, 22050, dtype=np.float32)
         with patch.object(TTSVoice, "_iter_synthesis_ids",
-                          return_value=iter([(["a"], [1, 2, 3])])), \
+                          return_value=iter([(["a"], [1, 2, 3], {})])), \
                 patch.object(TTSVoice, "phoneme_ids_to_audio", return_value=audio):
             return list(TTSVoice.synthesize(v, "hello", syn_config=cfg))
 
@@ -417,8 +417,8 @@ class TestSynthesisPipelineWiring(unittest.TestCase):
         audio = np.linspace(-0.5, 0.5, 22050, dtype=np.float32)
         with tempfile.TemporaryDirectory() as d, \
                 patch.object(TTSVoice, "_iter_synthesis_ids",
-                             return_value=iter([(["a"], [1]), (["b"], [2]),
-                                                (["c"], [3])])), \
+                             return_value=iter([(["a"], [1], {}), (["b"], [2], {}),
+                                                (["c"], [3], {})])), \
                 patch.object(TTSVoice, "phoneme_ids_to_audio", return_value=audio):
             mine = _ref_wav(d)
             theirs = _write_wav(os.path.join(d, "theirs.wav"),

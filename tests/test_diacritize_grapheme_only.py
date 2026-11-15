@@ -49,7 +49,7 @@ def _make_voice(model_alphabet, seen):
     )
     voice.adapter = MagicMock()
     voice.phonemes_to_ids = lambda phonemes: [1] * len(phonemes)
-    voice.phoneme_ids_to_audio = lambda phoneme_ids, syn_config=None, language_ids=None, include_alignments=False: np.zeros(4, dtype=np.float32)
+    voice.phoneme_ids_to_audio = lambda phoneme_ids, syn_config=None, include_alignments=False, streams=None: np.zeros(4, dtype=np.float32)
     return voice
 
 

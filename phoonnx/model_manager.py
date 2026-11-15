@@ -204,6 +204,25 @@ _HF_URL = re.compile(
 _NO_SUCH_FILE = (EntryNotFoundError, OfflineModeIsEnabled, LocalEntryNotFoundError)
 
 
+# The Phoonnx repos lived in OpenVoiceOS under the same names, so a voice fetched before the
+# move sits in the cache under the old repo id. While the cache holds the repo under that id,
+# every file of the repo is fetched through it: offline it loads from that cache, online the
+# Hub redirect serves the current Phoonnx file into the same folder, as before the move. The
+# choice is per repo, never per file, so a graph and its weights files share one folder, a
+# commit to the moved repo does not make the cached files look missing, and a file another
+# tool fetched under the new id does not cut the voice off from its cache. Drop this once
+# a stable release has shipped the Phoonnx URLs for a full release cycle.
+_MOVED_FROM = {"Phoonnx": "OpenVoiceOS"}
+
+
+def _repo_cached_before_move(repo_id: str) -> Optional[str]:
+    """The old repo id when the cache holds the repo under that id. Reads no network."""
+    org, name = repo_id.split("/", 1)
+    if org not in _MOVED_FROM:
+        return None
+    return f"{_MOVED_FROM[org]}/{name}" if (Path(HF_HUB_CACHE) / f"models--{_MOVED_FROM[org]}--{name}").is_dir() else None
+
+
 def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
     """Give the shared HuggingFace cache path for ``url``, downloading it once.
 
@@ -218,7 +237,7 @@ def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
     match = _HF_URL.match(url.split("?")[0])
     if not match:
         return None
-    return Path(hf_hub_download(repo_id=match["repo"],
+    return Path(hf_hub_download(repo_id=_repo_cached_before_move(match["repo"]) or match["repo"],
                                 filename=match["path"],
                                 revision=match["rev"],
                                 etag_timeout=min(timeout, _ETAG_TIMEOUT)))
@@ -241,7 +260,7 @@ def _cached_path(url: str) -> Optional[Path]:
     match = _HF_URL.match(url.split("?")[0])
     if match:
         try:
-            return Path(hf_hub_download(repo_id=match["repo"],
+            return Path(hf_hub_download(repo_id=_repo_cached_before_move(match["repo"]) or match["repo"],
                                         filename=match["path"],
                                         revision=match["rev"],
                                         local_files_only=True))

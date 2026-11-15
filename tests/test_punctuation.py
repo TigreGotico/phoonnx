@@ -46,7 +46,7 @@ def piper_config(**extra):
 def synthesis_ids(config: dict, text: str):
     voice_config = VoiceConfig.from_dict(json.loads(json.dumps(config)))
     voice = TTSVoice(session=MagicMock(), config=voice_config, adapter=MagicMock())
-    return voice_config, [ids for _, ids in voice._iter_synthesis_ids(
+    return voice_config, [ids for _, ids, _ in voice._iter_synthesis_ids(
         text, SynthesisConfig(), Alphabet.GRAPHEMES, voice_config.alphabet)]
 
 
@@ -170,7 +170,7 @@ class TestPreprocess:
             for text, row in rows.items():
                 voice_config = VoiceConfig.from_dict(json.loads(json.dumps(config)))
                 voice = TTSVoice(session=MagicMock(), config=voice_config, adapter=MagicMock())
-                synth = [p for s in voice._iter_phonemes(
+                synth = [p for s, _ in voice._iter_phonemes(
                     text, Alphabet.GRAPHEMES, voice_config.alphabet,
                     voice._stages(SynthesisConfig())) for p in s]
                 assert row["phonemes"] == synth, text

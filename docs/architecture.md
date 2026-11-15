@@ -35,6 +35,10 @@ Step by step, as implemented in `TTSVoice.synthesize`:
    is unset, the voice config decides, so an undiacritized model is never force-diacritized.
    An engine that reads text instead of phonemes gets the text from `TextFrontend.prepare`,
    after the same normalization and diacritics as a phoneme voice.
+   Some phonemizers give a value per symbol beside the symbols: Shami a language ID
+   (`phonemize_with_language_ids_lazy`), dizione a stress value (`tokens`). Each reaches the
+   engine as the request field of the same name (`language_ids`, `stress`), one value per
+   phoneme ID.
 3. **Tokenize** — the `TTSTokenizer` maps phonemes/characters to integer IDs using the
    voice's `phoneme_id_map`, inserting blank/pad/bos/eos tokens per the voice config. For
    text-token engines (Chatterbox) the adapter's `encode_text` BPE-tokenizes the raw text

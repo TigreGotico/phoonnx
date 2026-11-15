@@ -152,6 +152,8 @@ def _register_builtins() -> None:
     from phoonnx.engines.orpheus import OrpheusAdapter
     from phoonnx.engines.magpie import MagpieAdapter
     from phoonnx.engines.mosstts import MossTTSNanoAdapter
+    from phoonnx.engines.rapido import RapidoAdapter
+    from phoonnx.engines.tinyvoca import TinyVocaAdapter
 
     # OptiSpeech shares VITS-like x/x_lengths/scales inputs with Matcha, but has
     # a distinctive metadata + wav/durations output signature — check it first.
@@ -197,10 +199,14 @@ def _register_builtins() -> None:
     register_engine("llasa", LlasaAdapter, detect_priority=15)
     register_engine("orpheus", OrpheusAdapter, detect_priority=14)
     register_engine("magpie", MagpieAdapter, detect_priority=19)
+    # tiny-voca is the only graph that takes a stress input beside its tokens.
+    register_engine("tinyvoca", TinyVocaAdapter, detect_priority=20)
     # MOSS-TTS-Nano is authoritative-only: detect() requires an explicit
     # engine="mosstts" in the voice config, so its priority among the
     # heuristic-probed engines above is irrelevant.
     register_engine("mosstts", MossTTSNanoAdapter, detect_priority=20)
+    # Rápido is authoritative-only too: detect() requires engine="rapido".
+    register_engine("rapido", RapidoAdapter, detect_priority=37)
 
 
 _register_builtins()

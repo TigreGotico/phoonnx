@@ -7,8 +7,8 @@ Covers:
 - normalize_lang MMS script-tag cases (crk-script_syllabics, cmo-khmer-script)
 """
 import pytest
-
 from scriptconv.phonemizers.base import BasePhonemizer
+
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ def test_en_phonemizer_uses_arpa_lookup():
 
 def test_arabic_to_buckwalter_roundtrip():
     """arabic_to_buckwalter → buckwalter_to_arabic should recover the original."""
-    from scriptconv.phonemizers._vendored.mantoq.buck.phonetise_buckwalter import (
+    from scriptconv_nonfree.phonemizers._vendored.mantoq.buck.phonetise_buckwalter import (
         arabic_to_buckwalter,
         buckwalter_to_arabic,
     )
@@ -74,14 +74,14 @@ def test_arabic_to_buckwalter_roundtrip():
 
 
 def test_arabic_to_buckwalter_known_values():
-    from scriptconv.phonemizers._vendored.mantoq.buck.phonetise_buckwalter import arabic_to_buckwalter
+    from scriptconv_nonfree.phonemizers._vendored.mantoq.buck.phonetise_buckwalter import arabic_to_buckwalter
     assert arabic_to_buckwalter("مرحبا") == "mrHbA"
     assert arabic_to_buckwalter("الشمس") == "Al$ms"
 
 
 def test_mantoq_phonemizer_arabic_ipa_smoke():
     """MantoqPhonemizer with IPA alphabet should produce a non-empty string."""
-    from scriptconv.phonemizers.ar import MantoqPhonemizer
+    from scriptconv_nonfree.phonemizers.ar import MantoqPhonemizer
     from phoonnx.config import Alphabet
     p = MantoqPhonemizer(alphabet=Alphabet.IPA)
     result = p.phonemize_string("مرحبا", lang="ar")
@@ -144,19 +144,24 @@ def test_get_phonemizer_injects_normalizer():
 
 def test_licensed_backends_construct_from_scriptconv_quarantine():
     from phoonnx.config import PhonemeType, get_phonemizer
-    from scriptconv.phonemizers.ar import MantoqPhonemizer
+    from scriptconv_nonfree.phonemizers.ar import MantoqPhonemizer
     m = get_phonemizer(PhonemeType.MANTOQ)
     assert isinstance(m, MantoqPhonemizer)
-    assert type(m).__module__.startswith("scriptconv.")
+    assert type(m).__module__ == "scriptconv_nonfree.phonemizers.ar"
 
 
 # ---------------------------------------------------------------------------
 # Per-language phonemizer modules re-export the shared contract types
 # ---------------------------------------------------------------------------
 
+# fa, gl and ko hold only copyleft wrappers and vi only a non-commercial one,
+# so those modules are in scriptconv-copyleft and scriptconv-nonfree.
 _PHONEMIZER_MODULES = [
-    "ar", "en", "eu", "fa", "gl", "he", "ja", "ko",
-    "mwl", "o2ipa", "pt", "vi", "zh", "shami",
+    *(f"scriptconv.phonemizers.{name}" for name in (
+        "ar", "en", "eu", "he", "ja", "mwl", "o2ipa", "pt", "zh", "shami")),
+    *(f"scriptconv_copyleft.phonemizers.{name}" for name in (
+        "eu", "fa", "gl", "ja", "ko", "mul")),
+    *(f"scriptconv_nonfree.phonemizers.{name}" for name in ("ar", "vi")),
 ]
 
 
@@ -165,7 +170,7 @@ def test_shim_reexports_alphabet_and_base_phonemizer(module_name):
     """Every per-language phonemizer module carries the shared contract types
     (Alphabet, BasePhonemizer) alongside its language-specific classes."""
     import importlib
-    mod = importlib.import_module(f"scriptconv.phonemizers.{module_name}")
+    mod = importlib.import_module(module_name)
     from scriptconv.phonemizers.enums import Alphabet
     from scriptconv.phonemizers.base import BasePhonemizer
     assert mod.Alphabet is Alphabet
@@ -216,7 +221,7 @@ def _diacritizing_voice(lang, model):
                                          sample_rate=22050)
     voice.adapter = MagicMock()
     voice.phonemes_to_ids = lambda p: [1] * len(p)
-    voice.phoneme_ids_to_audio = lambda ids, syn_config=None, language_ids=None, include_alignments=False: np.zeros(4, dtype=np.float32)
+    voice.phoneme_ids_to_audio = lambda ids, syn_config=None, include_alignments=False, streams=None: np.zeros(4, dtype=np.float32)
     return voice
 
 
@@ -284,7 +289,7 @@ def test_phonemic_input_transcodes_to_model_alphabet_via_scriptconv():
     voice = _phonemic_voice(Alphabet.ARPA)
     out = list(voice._iter_synthesis_ids(
         "S@", SynthesisConfig(alphabet=Alphabet.XSAMPA), Alphabet.XSAMPA, Alphabet.ARPA))
-    assert [p for p, _ in out] == [["SH", "AX"]]
+    assert [p for p, _, _ in out] == [["SH", "AX"]]
 
 
 def test_phonemic_input_same_alphabet_passes_through_unchanged():
@@ -293,7 +298,7 @@ def test_phonemic_input_same_alphabet_passes_through_unchanged():
     voice = _phonemic_voice(Alphabet.ARPA)
     out = list(voice._iter_synthesis_ids(
         "SH AX", SynthesisConfig(alphabet=Alphabet.ARPA), Alphabet.ARPA, Alphabet.ARPA))
-    assert [p for p, _ in out] == [["SH", "AX"]]
+    assert [p for p, _, _ in out] == [["SH", "AX"]]
 
 
 def test_unroutable_phonemic_pair_passes_text_through():
@@ -303,7 +308,7 @@ def test_unroutable_phonemic_pair_passes_text_through():
     voice = _phonemic_voice(Alphabet.ARPA)
     out = list(voice._iter_synthesis_ids(
         "abc", SynthesisConfig(alphabet=Alphabet.HANGUL), Alphabet.HANGUL, Alphabet.ARPA))
-    assert [p for p, _ in out] == [["abc"]]
+    assert [p for p, _, _ in out] == [["abc"]]
 
 
 def test_hebrew_diacritizer_model_carries_the_phonikud_path():

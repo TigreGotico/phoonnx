@@ -2,7 +2,7 @@ import json
 import warnings
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Mapping, Optional, Union, Dict
+from typing import Any, Callable, Mapping, Optional, Union, Dict
 from phoonnx.util import LOG, is_arabic, normalize_lang
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
@@ -47,6 +47,8 @@ class Engine(str, Enum):
     MAGPIE = "magpie"  # NVIDIA Magpie-TTS: encoder-decoder codec LM, 8 codebooks, 12 languages
     MOSSTTS = "mosstts"  # MOSS-TTS-Nano: autoregressive RVQ-16 codec-LM, zero-shot cloning @48kHz
     VOSK = "vosk"  # alphacep vosk-tts: VITS + dictionary/rule Russian g2p
+    RAPIDO = "rapido"  # Rápido: flow-matching DiT over VoxCPM2 AudioVAE latents @48kHz
+    TINYVOCA = "tinyvoca"  # tiny-voca: dizione tokens + stress, source-filter waveform head
 
     @classmethod
     def _missing_(cls, value: object) -> Optional["Engine"]:
@@ -655,7 +657,8 @@ def _voice_phonemizer(phoneme_type: PhonemeType,
     except KeyError:
         raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
 
-    phonemizer.normalizer = _espeak_normalize if phoneme_type == PhonemeType.ESPEAK else _normalize
+    if "normalize" not in phonemizer.owned_stages:  # dizione normalises raw text itself
+        phonemizer.normalizer = _espeak_normalize if phoneme_type == PhonemeType.ESPEAK else _normalize
     phonemizer.keep_punctuation = keep_punctuation
     return phonemizer
 
@@ -676,6 +679,35 @@ def get_phonemizer(phoneme_type: PhonemeType,
     return _voice_phonemizer(phoneme_type, alphabet, model, keep_punctuation)
 
 
+def _side_stream_reader(phonemizer) -> Optional[Callable]:
+    """A ``(text, lang) -> (phonemes, streams)`` reader for a phonemizer that tags its symbols.
+
+    ``streams`` maps an ``AdapterSynthesisRequest`` field name to one value per
+    symbol. Shami tags each symbol with its language, for engines with a
+    ``language_ids`` input. dizione gives its own tokens with a stress value
+    each, for engines with a ``stress`` input (tiny-voca); its ValueError means
+    the text has nothing to pronounce. ByT5 holds a dict named ``tokens``, so
+    only a callable counts. Any other phonemizer gives ``None``.
+    """
+    with_language_ids = getattr(phonemizer, "phonemize_with_language_ids_lazy", None)
+    if with_language_ids is not None:
+        def read(text, lang):
+            for phonemes, language_ids in with_language_ids(text, lang):
+                yield phonemes, {"language_ids": language_ids}
+        return read
+    with_stress = getattr(phonemizer, "tokens", None)
+    if callable(with_stress):
+        def read(text, lang):
+            try:
+                tokens = with_stress(text)
+            except ValueError as e:
+                LOG.warning(f"skipping {text!r}: {e}")
+                return
+            yield list(tokens.symbols), {"stress": list(tokens.stress)}
+        return read
+    return None
+
+
 def get_conversion(phonemizer, voice_config: "VoiceConfig",
                    syn_config: "SynthesisConfig", tgt_alphabet: Alphabet):
     """Deprecated. A voice's ``text -> tgt_alphabet`` conversion for one synthesis call.
@@ -686,8 +718,10 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     Returns ``(graph, prepare_text)``:
 
     * ``graph`` — a scriptconv ``ConversionGraph`` whose phoneme edge is the
-      voice's own (lazy) phonemizer. When the voice vocalizes, scriptconv's
-      ``text -> text-diacritized`` edge is added and the direct edge omitted, so
+      voice's own (lazy) phonemizer. The edge yields ``(phonemes, streams)`` per
+      sentence: ``streams`` maps an ``AdapterSynthesisRequest`` field name to one
+      value per symbol, and is empty unless the phonemizer tags its symbols.
+      When the voice vocalizes, scriptconv's ``text -> text-diacritized`` edge is added and the direct edge omitted, so
       routing is forced through the vocalizer by *topology* rather than a runtime
       flag. Language and model are closed over, so callers route with
       ``graph.convert(text, "text", tgt_alphabet.value)`` and carry no conversion
@@ -712,10 +746,16 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     model = syn_config.diacritizer_model or voice_config.diacritizer_model
     lang, alpha = voice_config.lang_code, tgt_alphabet.value
 
-    # phonemize_lazy is a BasePhonemizer method, so every phonemizer has it: a
-    # per-sentence generator, keeping sentence N+1 off the critical path of N.
+    read_streams = _side_stream_reader(phonemizer)
+
     def phonemize(text, **_):
-        return phonemizer.phonemize_lazy(text, lang)
+        if read_streams is not None:
+            yield from read_streams(text, lang)
+        else:
+            # phonemize_lazy is a BasePhonemizer method, so every phonemizer has it: a
+            # per-sentence generator, keeping sentence N+1 off the critical path of N.
+            for phonemes in phonemizer.phonemize_lazy(text, lang):
+                yield phonemes, {}
 
     graph = ConversionGraph()
     if not enabled:

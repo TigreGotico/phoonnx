@@ -705,7 +705,7 @@ def test_voice_index_entries_carry_every_auxiliary_graph():
 def test_voice_index_urls_point_at_the_mirror():
     for entry in _index().values():
         urls = [entry["model_url"], *entry["aux_model_urls"].values()]
-        assert all(u.startswith("https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts/")
+        assert all(u.startswith("https://huggingface.co/Phoonnx/phoonnx-pocket-tts/")
                    for u in urls)
 
 

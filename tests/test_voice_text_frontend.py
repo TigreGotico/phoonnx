@@ -59,7 +59,7 @@ def _voice(lang, phoneme_type=PhonemeType.UNICODE, alphabet=Alphabet.UNICODE,
 
 
 def _synthesis_phonemes(voice, text, syn_config=None):
-    return [phonemes for phonemes, _ in voice._iter_synthesis_ids(
+    return [phonemes for phonemes, _, _ in voice._iter_synthesis_ids(
         text, syn_config or SynthesisConfig(), Alphabet.GRAPHEMES, voice.config.alphabet)]
 
 
@@ -100,8 +100,9 @@ class TestInlineBlocks(unittest.TestCase):
 
     def test_two_blocks_with_a_space_between_are_one_sentence(self):
         voice = _voice("en")
-        self.assertEqual(voice.phonemize("[[a]] [[b]]"), [["a", " ", " ", "b"]])
-        self.assertEqual(_synthesis_phonemes(voice, "[[a]] [[b]]"), [["a", " ", " ", "b"]])
+        # scriptconv puts one space around a block (scriptconv #236).
+        self.assertEqual(voice.phonemize("[[a]] [[b]]"), [["a", " ", "b"]])
+        self.assertEqual(_synthesis_phonemes(voice, "[[a]] [[b]]"), [["a", " ", "b"]])
 
 
 def _spy_on_hook(voice):
@@ -309,7 +310,7 @@ class TestDeprecatedShims(unittest.TestCase):
             graph, prepare = get_conversion(voice.phonemizer, voice.config, SynthesisConfig(),
                                             Alphabet.UNICODE)
         self.assertIn(f"removed in phoonnx {self.removal}", str(caught.warning))
-        self.assertEqual(list(graph.convert("ab", "text", "unicode")), [["a", "b"]])
+        self.assertEqual(list(graph.convert("ab", "text", "unicode")), [(["a", "b"], {})])
         self.assertEqual(prepare("ab"), "ab")
 
     def test_a_voice_uses_no_deprecated_name(self):
@@ -326,7 +327,7 @@ class TestOldConfigs(unittest.TestCase):
                                         "alphabet": "unicode",
                                         "phoneme_id_map": {"_": [0], "a": [1], "b": [2]}})
         voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
-        self.assertEqual([ids for _, ids in voice._iter_synthesis_ids(
+        self.assertEqual([ids for _, ids, _ in voice._iter_synthesis_ids(
             "ab", SynthesisConfig(), Alphabet.GRAPHEMES, Alphabet.UNICODE)],
             [voice.phonemes_to_ids(["a", "b"])])
 

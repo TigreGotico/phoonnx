@@ -23,11 +23,12 @@ from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Uni
 import numpy as np
 import onnxruntime
 from linguatag import closest_lang
+from quebra_frases import sentence_tokenize
 from scriptconv.frontend import FrontendConfig, Stages, TextFrontend
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
-    check_lang_supported
+    _side_stream_reader, check_lang_supported
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.engines.base import (
@@ -47,6 +48,9 @@ from phoonnx.util import LOG
 
 # Alias kept for callers that imported the sentinel from here before it moved.
 _UNSET = UNSET
+
+# An inline [[...]] block: its symbols carry no side stream.
+_INLINE_BLOCK = re.compile(r"\[\[.*?\]\]")
 
 
 def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunks:
@@ -581,10 +585,16 @@ class TTSVoice:
         token_ids =  self.tokenizer.tokenize(phonemes)
         return token_ids
 
-    def _iter_phonemes(self, text: str, src_alphabet: Alphabet, tgt_alphabet: Alphabet,
-                       stages: Stages) -> Iterable[List[str]]:
-        """Yield per-sentence phoneme lists for *text*, by whichever conversion
-        its alphabet calls for. One job: getting phonemes."""
+    def _iter_phonemes(
+            self, text: str, src_alphabet: Alphabet, tgt_alphabet: Alphabet, stages: Stages,
+    ) -> Iterable[Tuple[List[str], Dict[str, List[int]]]]:
+        """Yield ``(phonemes, streams)`` per sentence of *text*, by whichever
+        conversion its alphabet calls for. One job: getting phonemes.
+
+        ``streams`` holds the per-symbol values a phonemizer gives beside its
+        symbols, keyed by ``AdapterSynthesisRequest`` field (see
+        ``phoonnx.config._side_stream_reader``). Phonemic input and text with
+        inline blocks carry none."""
         # Already-phonemic input: transcode to the model's alphabet through
         # scriptconv's graph (a no-op when src == tgt), then split.
         if src_alphabet != Alphabet.GRAPHEMES:
@@ -593,30 +603,41 @@ class TTSVoice:
                                              lang=self.config.lang_code)
             except ValueError:
                 LOG.debug("no conversion path %s -> %s; passing through", src_alphabet, tgt_alphabet)
-            yield from _phonemic_chunks(text, tgt_alphabet)
+            for phonemes in _phonemic_chunks(text, tgt_alphabet):
+                yield phonemes, {}
             return
 
-        # Graphemes: the text frontend, one sentence at a time.
-        yield from self.frontend.phonemize_lazy(text, stages)
+        read_streams = _side_stream_reader(self.frontend.backend)
+        if read_streams is None or _INLINE_BLOCK.search(text):
+            # Graphemes: the text frontend, one sentence at a time.
+            for phonemes in self.frontend.phonemize_lazy(text, stages):
+                yield phonemes, {}
+            return
+
+        # A phonemizer that tags its symbols reads each sentence after the frontend's stages.
+        lang = stages.lang or self.config.lang_code
+        for sentence in sentence_tokenize(text):
+            if sentence.strip():
+                yield from read_streams(self.frontend.prepare(sentence, stages), lang)
 
     def _iter_synthesis_ids(
             self, text, syn_config,
             src_alphabet: Alphabet, tgt_alphabet: Alphabet,
     ) -> Iterable[tuple]:
-        """Lazily yield ``(phonemes, phoneme_ids)`` per sentence — ``phonemes`` is
-        ``None`` for text-token models, whose adapter owns text→ids outright."""
+        """Lazily yield ``(phonemes, phoneme_ids, streams)`` per sentence — ``phonemes``
+        is ``None`` for text-token models, whose adapter owns text→ids outright."""
         stages = self._stages(syn_config)
 
         if src_alphabet == tgt_alphabet == Alphabet.GRAPHEMES:
             # An engine that reads text gets it after the same stages as a phoneme voice.
             text = self.frontend.prepare(text, stages)
             for ids in self.adapter.encode_text(text, self, syn_config):
-                yield None, ids
+                yield None, ids, {}
             return
 
-        for phonemes in self._iter_phonemes(text, src_alphabet, tgt_alphabet, stages):
+        for phonemes, streams in self._iter_phonemes(text, src_alphabet, tgt_alphabet, stages):
             if phonemes:
-                yield phonemes, self.phonemes_to_ids(phonemes)
+                yield phonemes, self.phonemes_to_ids(phonemes), streams
 
     def _load_super_resolution(self, syn_config: SynthesisConfig):
         """
@@ -870,13 +891,14 @@ class TTSVoice:
                 # instead of raising, since alignment is an optional feature.
                 include_alignments = False
 
-        for phonemes, phoneme_ids in id_stream:
+        for phonemes, phoneme_ids, streams in id_stream:
             if not phoneme_ids:
                 continue
 
             phoneme_id_samples: Optional[np.ndarray] = None
             audio_result = self.phoneme_ids_to_audio(
                 phoneme_ids, syn_config, include_alignments=include_alignments,
+                streams=streams,
             )
             if isinstance(audio_result, tuple):
                 audio, phoneme_id_samples = audio_result
@@ -1211,6 +1233,7 @@ class TTSVoice:
     def phoneme_ids_to_audio(
             self, phoneme_ids: list[int], syn_config: Optional[SynthesisConfig] = None,
             include_alignments: bool = False,
+            streams: Optional[Dict[str, List[int]]] = None,
     ) -> Union[np.ndarray, Tuple[np.ndarray, Optional[np.ndarray]]]:
         """
         Synthesize raw audio from phoneme ids.
@@ -1221,6 +1244,8 @@ class TTSVoice:
         :param phoneme_ids: List of phoneme ids.
         :param syn_config: Synthesis configuration.
         :param include_alignments: When True, also return per-phoneme sample counts.
+        :param streams: Per-id side streams, keyed by ``AdapterSynthesisRequest``
+            field, e.g. ``{"language_ids": [...]}``; each holds one value per id.
         :return: Audio float numpy array (unnormalized, in range [-1, 1]).
 
         When ``include_alignments`` is True the return value is instead a
@@ -1281,12 +1306,24 @@ class TTSVoice:
         if syn_config.top_p is not None:
             params["top_p"] = syn_config.top_p
 
+        # A stream holds one value per phonemizer symbol. A tokenizer that adds
+        # blanks or BOS/EOS breaks that 1:1 match; the stream is then left out and
+        # the adapter applies its own default, as for a phonemizer with no stream.
+        side_streams = {}
+        for name, values in (streams or {}).items():
+            if len(values) == len(phoneme_ids):
+                side_streams[name] = np.array([values], dtype=np.int64)
+            else:
+                LOG.warning(f"{name} left out: {len(values)} values for "
+                            f"{len(phoneme_ids)} phoneme ids")
+
         request = AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,
             phoneme_lengths=phoneme_ids_lengths,
             speaker_id=syn_config.speaker_id or 0,
             language_id=syn_config.lang_id or 0,
             params=params,
+            **side_streams,
         )
 
         # Once a prior call already retrofitted a working alignment session
@@ -1336,9 +1373,10 @@ class TTSVoice:
         return result.audio, phoneme_id_samples
 
 if __name__ == "__main__":
-    from scriptconv.phonemizers.gl import CotoviaPhonemizer
     from scriptconv.phonemizers.he import PhonikudPhonemizer
-    from scriptconv.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, GruutPhonemizer, ByT5Phonemizer)
+    from scriptconv.phonemizers.mul import EpitranPhonemizer, GruutPhonemizer, ByT5Phonemizer
+    from scriptconv_copyleft.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv_copyleft.phonemizers.mul import EspeakPhonemizer
 
     syn_config = SynthesisConfig(enable_phonetic_spellings=True)
 
