@@ -280,7 +280,7 @@ def test_cotovia_phonemizer_covers_the_galician_vocabulary():
     """Every symbol a stress-marked Cotovia transcription emits must be in the
     voice's vocabulary -- otherwise the tokenizer silently drops phonemes."""
     pytest.importorskip("pycotovia")
-    from scriptconv.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv_copyleft.phonemizers.gl import CotoviaPhonemizer
     from phoonnx.config import Alphabet
 
     vocab = build_phoneme_id_map(_GL_TOKEN_MAP)

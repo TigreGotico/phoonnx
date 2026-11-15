@@ -1355,9 +1355,10 @@ class TTSVoice:
         return result.audio, phoneme_id_samples
 
 if __name__ == "__main__":
-    from scriptconv.phonemizers.gl import CotoviaPhonemizer
     from scriptconv.phonemizers.he import PhonikudPhonemizer
-    from scriptconv.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, GruutPhonemizer, ByT5Phonemizer)
+    from scriptconv.phonemizers.mul import EpitranPhonemizer, GruutPhonemizer, ByT5Phonemizer
+    from scriptconv_copyleft.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv_copyleft.phonemizers.mul import EspeakPhonemizer
 
     syn_config = SynthesisConfig(enable_phonetic_spellings=True)
 

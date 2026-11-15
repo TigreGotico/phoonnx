@@ -615,9 +615,11 @@ def get_phonemizer(phoneme_type: PhonemeType,
 
     Delegates to scriptconv's registry, injecting phoonnx's text normalizer
     (number/date expansion) so behavior matches the historical in-tree
-    phonemizers exactly.  All backends, including the license-quarantined
-    mantoq/KoG2P (vendored in scriptconv under their own licenses), come from
-    scriptconv, which also auto-provisions the Hebrew phonikud model.
+    phonemizers exactly.  All backends come through scriptconv's registry,
+    which also auto-provisions the Hebrew phonikud model.  The copyleft
+    wrappers (eSpeak, Cotovia, misaki, KoG2P, ...) are in scriptconv-copyleft
+    and the non-commercial ones (mantoq, VIPhoneme, ...) in scriptconv-nonfree;
+    a missing package raises ImportError naming the scriptconv extra.
 
     ``keep_punctuation`` keeps clause punctuation in the phonemes; it must match
     how the model was trained (see :attr:`VoiceConfig.keep_punctuation`).

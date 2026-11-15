@@ -144,7 +144,7 @@ def test_ipa_tokenizer_routes_through_phoonnx_espeak():
     from phoonnx_train.optispeech.text import symbols
     from phoonnx_train.optispeech.text.normalization import (
         collapse_whitespace, intersperse)
-    from scriptconv.phonemizers.mul import EspeakPhonemizer
+    from scriptconv_copyleft.phonemizers.mul import EspeakPhonemizer
 
     text = "hello world"
     tok = IPATokenizer(add_blank=False, add_bos_eos=False, normalize_text=True)
