@@ -43,6 +43,8 @@ def _normalize_units(text: str, full_lang: str) -> str:
         # Separate units into symbolic and alphanumeric
         symbolic_units = {k: v for k, v in UNITS[lang_code].items() if not k.isalnum()}
         alphanumeric_units = {k: v for k, v in UNITS[lang_code].items() if k.isalnum()}
+        # The unit regex ignores case, so "ml" must find the key "mL".
+        folded_units = {k.casefold(): v for k, v in alphanumeric_units.items()}
 
         # Create regex pattern for symbolic units and replace them first
         sorted_symbolic = sorted(symbolic_units.keys(), key=len, reverse=True)
@@ -89,7 +91,7 @@ def _normalize_units(text: str, full_lang: str) -> str:
                 elif decimal_separator != "." and decimal_separator in number:
                     number = number.replace(decimal_separator, ".")
                 unit_symbol = match.group(2)
-                unit_word = alphanumeric_units[unit_symbol]
+                unit_word = folded_units[unit_symbol.casefold()]
                 return f"{pronounce_number(float(number) if '.' in number else int(number), full_lang)} {unit_word}"
 
             text = alphanumeric_pattern.sub(replace_alphanumeric, text)
