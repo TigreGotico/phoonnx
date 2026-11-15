@@ -1,7 +1,7 @@
 """The per-language misaki phonemizers (split from the legacy dispatcher)."""
 from phoonnx.config import get_phonemizer, PhonemeType, Alphabet
-from scriptconv.phonemizers.mul import (MisakiPhonemizer, MisakiEnPhonemizer, MisakiJaPhonemizer,
-                                     MisakiZhPhonemizer, MisakiKoPhonemizer, MisakiViPhonemizer)
+from scriptconv_copyleft.phonemizers.mul import (MisakiPhonemizer, MisakiEnPhonemizer, MisakiJaPhonemizer,
+                                              MisakiZhPhonemizer, MisakiKoPhonemizer, MisakiViPhonemizer)
 
 
 def test_each_type_maps_to_its_class():

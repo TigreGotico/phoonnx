@@ -794,7 +794,7 @@ class TestPhonemizerLangOverride(HubTestCase):
         # espeak reads with its en-gb voice. The default region (en-GB) is for
         # lookup only: espeak reads en-GB with en-gb-x-rp, another voice.
         from importlib import resources
-        from scriptconv.phonemizers.mul import EspeakPhonemizer
+        from scriptconv_copyleft.phonemizers.mul import EspeakPhonemizer
         with resources.files("phoonnx.voice_index").joinpath(
                 "piper_community.json").open("r", encoding="utf-8") as f:
             entry = json.load(f)["piper_community/agentvibe/en_16Speakers"]
@@ -1038,7 +1038,7 @@ class TestLanglessVoiceRoundTrip(ManagerTestCase):
 
     def test_reloaded_voice_keeps_its_phonemizer_language(self):
         from linguatag import standardize_lang, with_default_region
-        from scriptconv.phonemizers.mul import EspeakPhonemizer
+        from scriptconv_copyleft.phonemizers.mul import EspeakPhonemizer
         for voice in ("en", "pt", "es"):
             with self.subTest(espeak_voice=voice):
                 config = {"phoneme_type": "espeak", "espeak": {"voice": voice},

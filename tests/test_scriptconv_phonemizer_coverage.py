@@ -140,7 +140,7 @@ _SENTENCES_EN = ["hello friend", "the cat sleeps"]
 
 
 def _espeak_symbols(text, lang):
-    from scriptconv.phonemizers.mul import EspeakPhonemizer
+    from scriptconv_copyleft.phonemizers.mul import EspeakPhonemizer
     p = EspeakPhonemizer()
     chunks = p.phonemize(text, lang=lang)
     assert isinstance(chunks, list) and chunks and isinstance(chunks[0], list)
@@ -213,7 +213,7 @@ _SENTENCES_GL = ["Ola amigo", "O gato dorme"]
 
 
 def _cotovia_output(text):
-    from scriptconv.phonemizers.gl import CotoviaPhonemizer
+    from scriptconv_copyleft.phonemizers.gl import CotoviaPhonemizer
     p = CotoviaPhonemizer()
     return p.phonemize_string(text, lang="gl")
 
@@ -244,10 +244,10 @@ def test_cotovia_call_site_uses_stress_level_not_raw():
     which is unaffected either way, but pins the exact call so an upstream
     edit that starts asking for a higher tra shows up here."""
     import inspect
-    from scriptconv.phonemizers import gl as gl_mod
+    from scriptconv_copyleft.phonemizers import gl as gl_mod
     src = inspect.getsource(gl_mod)
     assert "tra=2" in src, (
-        "scriptconv.phonemizers.gl no longer calls pycotovia with tra=2 — "
+        "scriptconv_copyleft.phonemizers.gl no longer calls pycotovia with tra=2 — "
         "re-verify against the pycotovia>=0.4.0a1 tra table (1=phonemes, "
         "2=+stress, 3=+syllable-sep, 4=+prosody/-t3, 5=raw) before bumping "
         "the floor further."
@@ -262,7 +262,7 @@ _SENTENCES_EN_MISAKI = ["hello friend", "the cat sleeps"]
 
 
 def _misaki_en_symbols(text):
-    from scriptconv.phonemizers.mul import MisakiEnPhonemizer
+    from scriptconv_copyleft.phonemizers.mul import MisakiEnPhonemizer
     p = MisakiEnPhonemizer()
     # kokoro/af is an American voice; bare "en" means en-GB, which misaki
     # phonemizes with its British lexicon
@@ -284,7 +284,7 @@ def test_misaki_en_regression_anchor():
 
 
 def _misaki_zh_symbols(text):
-    from scriptconv.phonemizers.mul import MisakiZhPhonemizer
+    from scriptconv_copyleft.phonemizers.mul import MisakiZhPhonemizer
     p = MisakiZhPhonemizer()
     chunks = p.phonemize(text, lang="zh")
     return [sym for chunk in chunks for sym in chunk]
@@ -313,7 +313,7 @@ def test_misaki_zh_regression_anchor():
 # ---------------------------------------------------------------------------
 
 def _ahotts_eu_symbols(text):
-    from scriptconv.phonemizers.eu import AhoTTSPhonemizer
+    from scriptconv_copyleft.phonemizers.eu import AhoTTSPhonemizer
     p = AhoTTSPhonemizer()
     chunks = p.phonemize(text, lang="eu")
     return [sym for chunk in chunks for sym in chunk]
