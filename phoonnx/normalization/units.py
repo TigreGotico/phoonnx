@@ -46,21 +46,31 @@ def _normalize_units(text: str, full_lang: str) -> str:
         # The unit regex ignores case, so "ml" must find the key "mL".
         folded_units = {k.casefold(): v for k, v in alphanumeric_units.items()}
 
+        # A number is one of: digits grouped in threes by the thousands separator
+        # ("1,500" and "12,345.6" in English, "1.500,5" in Portuguese); digits
+        # with a "." decimal part, which comma-decimal languages also meet
+        # ("1.5 km"); digits with the language's decimal part. A number never
+        # starts right after a digit and a separator, so "2,5 km" in English
+        # stays as written instead of reading "2," and "5 km" apart.
+        thousands, decimal = re.escape(thousands_separator), re.escape(decimal_separator)
+        grouped = rf"\d{{1,3}}(?:{thousands}\d{{3}})+(?:{decimal}\d+)?"
+        number_pattern_str = (rf"(?<!\d)(?<!\d[{thousands}{decimal}])"
+                              rf"({grouped}|\d+\.\d+(?![.\d])|\d+(?:{decimal}\d+)?)")
+
+        def number_value(number: str):
+            if re.fullmatch(grouped, number):
+                number = number.replace(thousands_separator, "")
+            number = number.replace(decimal_separator, ".")
+            return float(number) if "." in number else int(number)
+
         # Create regex pattern for symbolic units and replace them first
         sorted_symbolic = sorted(symbolic_units.keys(), key=len, reverse=True)
         symbolic_pattern_str = "|".join(re.escape(unit) for unit in sorted_symbolic)
         if symbolic_pattern_str:
-            # Pattern to match numbers with optional thousands and decimal separators
-            number_pattern_str = rf"(\d+[{re.escape(thousands_separator)}]?\d*[{re.escape(decimal_separator)}]?\d*)"
             symbolic_pattern = re.compile(number_pattern_str + r"\s*(" + symbolic_pattern_str + r")", re.IGNORECASE)
 
             def replace_symbolic(match):
                 number = match.group(1)
-                # Remove thousands separator and replace decimal separator for parsing
-                if thousands_separator in number and decimal_separator in number:
-                    number = number.replace(thousands_separator, "").replace(decimal_separator, ".")
-                elif decimal_separator != "." and decimal_separator in number:
-                    number = number.replace(decimal_separator, ".")
                 unit_symbol = match.group(2)
                 # The regex is IGNORECASE (e.g. "°c" matches "°C"), so the
                 # matched text may not share the dict key's exact case.
@@ -68,7 +78,7 @@ def _normalize_units(text: str, full_lang: str) -> str:
                              or symbolic_units.get(unit_symbol.upper())
                              or symbolic_units.get(unit_symbol.lower()))
                 try:
-                    return f"{pronounce_number(float(number) if '.' in number else int(number), full_lang)} {unit_word}"
+                    return f"{pronounce_number(number_value(number), full_lang)} {unit_word}"
                 except Exception as e:
                     LOG.error(f"Failed to pronounce number with unit: {number}{unit_symbol} - ({e})")
                     return match.group(0)
@@ -79,20 +89,21 @@ def _normalize_units(text: str, full_lang: str) -> str:
         sorted_alphanumeric = sorted(alphanumeric_units.keys(), key=len, reverse=True)
         alphanumeric_pattern_str = "|".join(re.escape(unit) for unit in sorted_alphanumeric)
         if alphanumeric_pattern_str:
-            number_pattern_str = rf"(\d+[{re.escape(thousands_separator)}]?\d*[{re.escape(decimal_separator)}]?\d*)"
             alphanumeric_pattern = re.compile(number_pattern_str + r"\s*(" + alphanumeric_pattern_str + r")\b",
                                               re.IGNORECASE)
 
             def replace_alphanumeric(match):
                 number = match.group(1)
-                # Remove thousands separator and replace decimal separator for parsing
-                if thousands_separator in number and decimal_separator in number:
-                    number = number.replace(thousands_separator, "").replace(decimal_separator, ".")
-                elif decimal_separator != "." and decimal_separator in number:
-                    number = number.replace(decimal_separator, ".")
                 unit_symbol = match.group(2)
-                unit_word = folded_units[unit_symbol.casefold()]
-                return f"{pronounce_number(float(number) if '.' in number else int(number), full_lang)} {unit_word}"
+                # None for a letter that matches only without case, such as "İ".
+                unit_word = folded_units.get(unit_symbol.casefold())
+                if unit_word is None:
+                    return match.group(0)
+                try:
+                    return f"{pronounce_number(number_value(number), full_lang)} {unit_word}"
+                except Exception as e:
+                    LOG.error(f"Failed to pronounce number with unit: {number}{unit_symbol} - ({e})")
+                    return match.group(0)
 
             text = alphanumeric_pattern.sub(replace_alphanumeric, text)
     return text
