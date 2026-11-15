@@ -258,7 +258,7 @@ class PhoonnxLoader(ConfigLoader):
             lang_code=request.lang_code or config.get("lang_code"),
             phoneme_type=request.phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK),
             alphabet=alphabet,
-            add_diacritics=inference.get("add_diacritics", True),
+            add_diacritics=inference.get("add_diacritics"),
             diacritizer_model=inference.get("diacritizer_model", None),
         )
 
