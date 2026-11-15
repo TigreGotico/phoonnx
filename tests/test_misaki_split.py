@@ -5,15 +5,16 @@ from scriptconv.phonemizers.mul import (MisakiPhonemizer, MisakiEnPhonemizer, Mi
 
 
 def test_each_type_maps_to_its_class():
+    # misaki's Korean G2P writes Hangul pronunciation, not IPA
     cases = {
-        PhonemeType.MISAKI_EN: MisakiEnPhonemizer,
-        PhonemeType.MISAKI_JA: MisakiJaPhonemizer,
-        PhonemeType.MISAKI_ZH: MisakiZhPhonemizer,
-        PhonemeType.MISAKI_KO: MisakiKoPhonemizer,
-        PhonemeType.MISAKI_VI: MisakiViPhonemizer,
+        PhonemeType.MISAKI_EN: (MisakiEnPhonemizer, Alphabet.IPA),
+        PhonemeType.MISAKI_JA: (MisakiJaPhonemizer, Alphabet.IPA),
+        PhonemeType.MISAKI_ZH: (MisakiZhPhonemizer, Alphabet.IPA),
+        PhonemeType.MISAKI_KO: (MisakiKoPhonemizer, Alphabet.HANGUL),
+        PhonemeType.MISAKI_VI: (MisakiViPhonemizer, Alphabet.IPA),
     }
-    for pt, cls in cases.items():
-        assert type(get_phonemizer(pt, Alphabet.IPA, None)) is cls
+    for pt, (cls, alphabet) in cases.items():
+        assert type(get_phonemizer(pt, alphabet, None)) is cls
 
 
 def test_zh_representation_is_alphabet_driven():
