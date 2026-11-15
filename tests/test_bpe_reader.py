@@ -317,6 +317,15 @@ class TestTheLoaderFollowsTheApi(unittest.TestCase):
     def test_a_tokenizer_with_compile_is_compiled(self):
         self.assertEqual(self._load(_Rc4Tokenizer, "0.0.0"), "compiled")
 
+    def test_a_declined_vocab_reaches_the_loader(self):
+        """CI resolves a tokenizers 0.x, so this pins the 1.0 wiring there too."""
+        from unittest import mock
+
+        import tokenizers
+        path = os.path.join(FIXTURES, "declined_bpe_byte_fallback.json")
+        with mock.patch.object(tokenizers, "Tokenizer", _Rc4Tokenizer):
+            self.assertEqual(load_hf_tokenizer(path), "compiled")
+
 
 class TestMergeLoopIsNotQuadratic(unittest.TestCase):
     """A pre-token is not always short. The pre-tokenizers these vocabularies
