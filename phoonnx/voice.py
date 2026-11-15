@@ -6,6 +6,7 @@ all ONNX-specific I/O to an engine adapter (``phoonnx.engines``),
 which means the same TTSVoice class works for VITS or
 any future architecture without code changes here.
 """
+import copy
 import hashlib
 import json
 import os.path
@@ -23,10 +24,11 @@ import numpy as np
 import onnxruntime
 from linguatag import closest_lang
 from quebra_frases import sentence_tokenize
+from scriptconv.frontend import FrontendConfig, Stages, TextFrontend
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
-from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, get_phonemizer, get_conversion, \
-    check_lang_supported
+from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
+    _side_stream_reader, check_lang_supported
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.engines.base import (
@@ -44,10 +46,11 @@ from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
 
-_PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
-
 # Alias kept for callers that imported the sentinel from here before it moved.
 _UNSET = UNSET
+
+# An inline [[...]] block: its symbols carry no side stream.
+_INLINE_BLOCK = re.compile(r"\[\[.*?\]\]")
 
 
 def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunks:
@@ -294,6 +297,12 @@ class TTSVoice:
     # ``onnx``. Set to an ``onnxruntime.InferenceSession`` on success, or
     # ``None`` on a cached negative result (tried once, no dice).
     _alignment_session: Any = field(default=UNSET, repr=False, compare=False)
+    # The text frontend, the phonemizer it was built for, and the values it was
+    # built from. ``frontend`` rebuilds it when one of them changes.
+    _frontend: Optional[TextFrontend] = field(default=None, init=False, repr=False, compare=False)
+    _frontend_phonemizer: Optional[BasePhonemizer] = field(default=None, init=False, repr=False,
+                                                           compare=False)
+    _frontend_key: Any = field(default=None, init=False, repr=False, compare=False)
 
     def __post_init__(self):
         """
@@ -323,7 +332,7 @@ class TTSVoice:
                 self.config.lang_code,
                 self.config.phoneme_type,
             )
-            self.phonemizer = get_phonemizer(
+            self.phonemizer = _voice_phonemizer(
                 self.config.phoneme_type,
                 self.config.alphabet,
                 self.config.phonemizer_model,
@@ -502,9 +511,58 @@ class TTSVoice:
             voice.warmup()
         return voice
 
+    @property
+    def frontend(self) -> TextFrontend:
+        """The text frontend that takes this voice's text to phonemes.
+
+        It reads :attr:`phonemizer`. The phonemizer's ``normalizer`` becomes the
+        frontend's normalisation hook, so it runs before diacritization, and the
+        frontend reads a copy of the phonemizer without it. Every voice runs the
+        hook. The frontend skips it for a backend that names ``normalize`` in its
+        ``owned_stages``, because that backend normalises the text itself.
+
+        Assigning another phonemizer to :attr:`phonemizer`, as the Vosk voices
+        do once their dictionary is known, reaches the frontend through
+        :meth:`TextFrontend.with_backend`. A change to the phoneme type, the
+        language, or the phonemizer's ``keep_punctuation`` or ``normalizer``
+        builds a new frontend.
+        """
+        phonemizer = self.phonemizer
+        key = (self.config.phoneme_type, self.config.lang_code,
+               phonemizer.keep_punctuation, phonemizer.normalizer)
+        if self._frontend is None or key != self._frontend_key:
+            self._frontend = TextFrontend(
+                FrontendConfig(lang=self.config.lang_code, normalizer=phonemizer.normalizer,
+                               keep_punctuation=phonemizer.keep_punctuation),
+                backend=self._without_normalizer(phonemizer))
+            self._frontend_key = key
+        elif phonemizer is not self._frontend_phonemizer:
+            self._frontend = self._frontend.with_backend(self._without_normalizer(phonemizer))
+        self._frontend_phonemizer = phonemizer
+        return self._frontend
+
+    @staticmethod
+    def _without_normalizer(phonemizer: BasePhonemizer) -> BasePhonemizer:
+        """*phonemizer*, or a shallow copy of it with no ``normalizer``."""
+        if phonemizer.normalizer is None:
+            return phonemizer
+        backend = copy.copy(phonemizer)
+        backend.normalizer = None
+        return backend
+
+    def _stages(self, syn_config: SynthesisConfig) -> Stages:
+        """The text stages of one synthesis call: an explicit setting wins, then the voice's own."""
+        diacritize = syn_config.add_diacritics
+        if diacritize is None:
+            diacritize = self.config.add_diacritics
+        return Stages(diacritize=diacritize,
+                      diacritizer_model=syn_config.diacritizer_model or self.config.diacritizer_model)
+
     def phonemize(self, text: str, lang: Optional[str] = None) -> PhonemizedChunks:
         """
-        Text to phonemes grouped by sentence.
+        Text to phonemes grouped by sentence, with no diacritizer.
+
+        Inline ``[[phoneme]]`` blocks reach the output as written.
 
         :param text: Text to phonemize.
         :param lang: Language code to phonemize in; defaults to the voice's own
@@ -512,42 +570,7 @@ class TTSVoice:
             *its* language (which may differ from the target's).
         :return: List of phonemes for each sentence.
         """
-        lang = lang or self.config.lang_code
-        phonemes: list[list[str]] = []
-
-        text_parts = _PHONEME_BLOCK_PATTERN.split(text)
-
-        for i, text_part in enumerate(text_parts):
-            if text_part.startswith("[["):
-                # Phonemes
-                if not phonemes:
-                    # Start new sentence
-                    phonemes.append([])
-                # the preceding text chunk may have come back as an immutable
-                # sequence; ensure the current sentence is a mutable list before
-                # appending the inline phonemes to it
-                if not isinstance(phonemes[-1], list):
-                    phonemes[-1] = list(phonemes[-1])
-
-                if (i > 0) and (text_parts[i - 1].endswith(" ")):
-                    phonemes[-1].append(" ")
-
-                phonemes[-1].extend(list(text_part[2:-2].strip()))  # Ensure characters are split
-
-                if (i < (len(text_parts)) - 1) and (text_parts[i + 1].startswith(" ")):
-                    phonemes[-1].append(" ")
-
-                continue
-
-            if not text_part:
-                continue
-            phonemes.extend(list(chunk) for chunk in self.phonemizer.phonemize(text_part, lang))
-
-        if phonemes and (not phonemes[-1]):
-            # Remove empty phonemes
-            phonemes.pop()
-
-        return phonemes
+        return self.frontend.phonemize(text, Stages(diacritize=False, lang=lang))
 
     def phonemes_to_ids(self, phonemes: list[str]) -> list[int]:
         """
@@ -562,23 +585,16 @@ class TTSVoice:
         token_ids =  self.tokenizer.tokenize(phonemes)
         return token_ids
 
-    def _text_parts(self, text: str) -> Iterable[str]:
-        """Split into sentences — always, as a time-to-first-audio measure (keep
-        sentence N+1 off the critical path of sentence N's audio)."""
-        for sentence in sentence_tokenize(text):
-            if sentence.strip():
-                yield sentence
-
     def _iter_phonemes(
-            self, text: str, src_alphabet: Alphabet, tgt_alphabet: Alphabet,
-            route, prepare_text,
+            self, text: str, src_alphabet: Alphabet, tgt_alphabet: Alphabet, stages: Stages,
     ) -> Iterable[Tuple[List[str], Dict[str, List[int]]]]:
         """Yield ``(phonemes, streams)`` per sentence of *text*, by whichever
         conversion its alphabet calls for. One job: getting phonemes.
 
         ``streams`` holds the per-symbol values a phonemizer gives beside its
         symbols, keyed by ``AdapterSynthesisRequest`` field (see
-        ``get_conversion``). Phonemic input and inline overrides carry none."""
+        ``phoonnx.config._side_stream_reader``). Phonemic input and text with
+        inline blocks carry none."""
         # Already-phonemic input: transcode to the model's alphabet through
         # scriptconv's graph (a no-op when src == tgt), then split.
         if src_alphabet != Alphabet.GRAPHEMES:
@@ -591,16 +607,18 @@ class TTSVoice:
                 yield phonemes, {}
             return
 
-        # Inline [[phoneme]] overrides bypass the phonemizer and merge across the
-        # whole text, so they stay whole-text rather than per sentence.
-        if _PHONEME_BLOCK_PATTERN.search(text):
-            for phonemes in self.phonemize(prepare_text(text)):
+        read_streams = _side_stream_reader(self.frontend.backend)
+        if read_streams is None or _INLINE_BLOCK.search(text):
+            # Graphemes: the text frontend, one sentence at a time.
+            for phonemes in self.frontend.phonemize_lazy(text, stages):
                 yield phonemes, {}
             return
 
-        # Graphemes: the voice's conversion route, one sentence at a time.
-        for sentence in self._text_parts(text):
-            yield from route.convert(sentence, "text", tgt_alphabet.value)
+        # A phonemizer that tags its symbols reads each sentence after the frontend's stages.
+        lang = stages.lang or self.config.lang_code
+        for sentence in sentence_tokenize(text):
+            if sentence.strip():
+                yield from read_streams(self.frontend.prepare(sentence, stages), lang)
 
     def _iter_synthesis_ids(
             self, text, syn_config,
@@ -608,16 +626,16 @@ class TTSVoice:
     ) -> Iterable[tuple]:
         """Lazily yield ``(phonemes, phoneme_ids, streams)`` per sentence — ``phonemes``
         is ``None`` for text-token models, whose adapter owns text→ids outright."""
-        route, prepare_text = get_conversion(
-            self.phonemizer, self.config, syn_config, tgt_alphabet)
+        stages = self._stages(syn_config)
 
         if src_alphabet == tgt_alphabet == Alphabet.GRAPHEMES:
-            for ids in self.adapter.encode_text(prepare_text(text), self, syn_config):
+            # An engine that reads text gets it after the same stages as a phoneme voice.
+            text = self.frontend.prepare(text, stages)
+            for ids in self.adapter.encode_text(text, self, syn_config):
                 yield None, ids, {}
             return
 
-        for phonemes, streams in self._iter_phonemes(text, src_alphabet, tgt_alphabet,
-                                                     route, prepare_text):
+        for phonemes, streams in self._iter_phonemes(text, src_alphabet, tgt_alphabet, stages):
             if phonemes:
                 yield phonemes, self.phonemes_to_ids(phonemes), streams
 

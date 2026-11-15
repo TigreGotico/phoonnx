@@ -23,8 +23,9 @@ dependencies = [
     "linguatag>=0.1.5a1",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
-    # >=0.0.4a99: the dizione phonemizer of the tiny-voca voices, and owned_stages
-    # on every phonemizer. Every extra relies on this floor.
+    # >=0.0.4a99: the dizione phonemizer of the tiny-voca voices, owned_stages on every
+    # phonemizer, and TextFrontend skipping the hook for a backend that owns
+    # normalisation. Every extra relies on this floor.
     "scriptconv[phonemizers]>=0.0.4a99",
     "unicode_rbnf",
     "click",
