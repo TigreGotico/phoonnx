@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.98.1a4](https://github.com/TigreGotico/phoonnx/tree/1.98.1a4) (2026-11-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.1a3...1.98.1a4)
+
+**Merged pull requests:**
+
+- test: ask misaki\_ko for Hangul, the only alphabet it emits [\#587](https://github.com/TigreGotico/phoonnx/pull/587) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.98.1a3](https://github.com/TigreGotico/phoonnx/tree/1.98.1a3) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.1a2...1.98.1a3)
