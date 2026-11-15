@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.99.2a1](https://github.com/TigreGotico/phoonnx/tree/1.99.2a1) (2026-11-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.1a1...1.99.2a1)
+
+**Merged pull requests:**
+
+- fix: native configs default add\_diacritics by language, not to true [\#596](https://github.com/TigreGotico/phoonnx/pull/596) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.99.1a1](https://github.com/TigreGotico/phoonnx/tree/1.99.1a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.0a1...1.99.1a1)
