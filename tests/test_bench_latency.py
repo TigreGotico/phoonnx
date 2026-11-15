@@ -40,7 +40,7 @@ def _make_mock_voice(sample_rate=16000, add_diacritics=False):
 
     voice.synthesize.side_effect = _synthesize
 
-    def _phoneme_ids_to_audio(phoneme_ids, syn_config=None, language_ids=None):
+    def _phoneme_ids_to_audio(phoneme_ids, syn_config=None):
         return np.zeros(sample_rate // 4, dtype=np.float32)
 
     voice.phoneme_ids_to_audio.side_effect = _phoneme_ids_to_audio

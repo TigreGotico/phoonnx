@@ -267,4 +267,5 @@ audio = voice.phoneme_ids_to_audio(ids)
 
 `phonemize()` accepts an optional `lang` to phonemize in a language other than the voice's own
 (used for cross-lingual cloning references). `phoneme_ids_to_audio()` accepts a
-`SynthesisConfig` and optional per-phoneme `language_ids`.
+`SynthesisConfig` and optional per-id side streams, e.g. `streams={"language_ids": [...]}`,
+with one value per phoneme id.

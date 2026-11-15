@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 import scriptconv.diacritics as scd
+from scriptconv.phonemizers.base import BasePhonemizer
 from phoonnx.config import Alphabet, SynthesisConfig
 from phoonnx.util import LOG
 from phoonnx.voice import TTSVoice
@@ -21,7 +22,7 @@ from phoonnx.voice import TTSVoice
 def _make_voice():
     voice = TTSVoice.__new__(TTSVoice)
     voice.phonetic_spellings = None
-    voice.phonemizer = MagicMock()
+    voice.phonemizer = MagicMock(spec=BasePhonemizer)
     voice.phonemizer.phonemize_lazy = MagicMock(return_value=iter([list("test")]))
     voice.config = types.SimpleNamespace(
         alphabet=Alphabet.IPA,
@@ -32,7 +33,7 @@ def _make_voice():
     )
     voice.adapter = MagicMock()
     voice.phonemes_to_ids = lambda phonemes: [1] * len(phonemes)
-    voice.phoneme_ids_to_audio = lambda phoneme_ids, syn_config=None, language_ids=None, include_alignments=False: np.zeros(4, dtype=np.float32)
+    voice.phoneme_ids_to_audio = lambda phoneme_ids, syn_config=None, include_alignments=False, streams=None: np.zeros(4, dtype=np.float32)
     return voice
 
 

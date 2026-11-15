@@ -7,6 +7,7 @@ Covers:
 - normalize_lang MMS script-tag cases (crk-script_syllabics, cmo-khmer-script)
 """
 import pytest
+from scriptconv.phonemizers.base import BasePhonemizer
 
 
 # ---------------------------------------------------------------------------
@@ -206,14 +207,14 @@ def test_voice_diacritization_delegates_to_scriptconv():
 
     voice = TTSVoice.__new__(TTSVoice)
     voice.phonetic_spellings = None
-    voice.phonemizer = MagicMock()
+    voice.phonemizer = MagicMock(spec=BasePhonemizer)
     voice.phonemizer.phonemize_lazy = MagicMock(return_value=iter([list("n_ss")]))
     voice.config = types.SimpleNamespace(alphabet=Alphabet.IPA, lang_code="ar",
                                          add_diacritics=True, diacritizer_model="rawi-ensemble",
                                          sample_rate=22050)
     voice.adapter = MagicMock()
     voice.phonemes_to_ids = lambda p: [1] * len(p)
-    voice.phoneme_ids_to_audio = lambda ids, syn_config=None, language_ids=None, include_alignments=False: np.zeros(4, dtype=np.float32)
+    voice.phoneme_ids_to_audio = lambda ids, syn_config=None, include_alignments=False, streams=None: np.zeros(4, dtype=np.float32)
 
     seen = {}
     def spy(text, lang="und", **k):
@@ -224,6 +225,7 @@ def test_voice_diacritization_delegates_to_scriptconv():
                                                      normalize_audio=False)))
     assert seen.get("text") == "نص" and seen.get("lang") == "ar"
     assert seen["kwargs"].get("diacritizer_model") == "rawi-ensemble"
+    voice.phonemizer.phonemize_lazy.assert_called_once_with("نص", "ar")
 
 
 def test_en_module_reexports_arpa_to_ipa_lookup():
@@ -263,7 +265,7 @@ def test_phonemic_input_transcodes_to_model_alphabet_via_scriptconv():
     voice = _phonemic_voice(Alphabet.ARPA)
     out = list(voice._iter_synthesis_ids(
         "S@", SynthesisConfig(alphabet=Alphabet.XSAMPA), Alphabet.XSAMPA, Alphabet.ARPA))
-    assert [p for p, _ in out] == [["SH", "AX"]]
+    assert [p for p, _, _ in out] == [["SH", "AX"]]
 
 
 def test_phonemic_input_same_alphabet_passes_through_unchanged():
@@ -272,7 +274,7 @@ def test_phonemic_input_same_alphabet_passes_through_unchanged():
     voice = _phonemic_voice(Alphabet.ARPA)
     out = list(voice._iter_synthesis_ids(
         "SH AX", SynthesisConfig(alphabet=Alphabet.ARPA), Alphabet.ARPA, Alphabet.ARPA))
-    assert [p for p, _ in out] == [["SH", "AX"]]
+    assert [p for p, _, _ in out] == [["SH", "AX"]]
 
 
 def test_unroutable_phonemic_pair_passes_text_through():
@@ -282,7 +284,7 @@ def test_unroutable_phonemic_pair_passes_text_through():
     voice = _phonemic_voice(Alphabet.ARPA)
     out = list(voice._iter_synthesis_ids(
         "abc", SynthesisConfig(alphabet=Alphabet.HANGUL), Alphabet.HANGUL, Alphabet.ARPA))
-    assert [p for p, _ in out] == [["abc"]]
+    assert [p for p, _, _ in out] == [["abc"]]
 
 
 def test_hebrew_diacritizer_model_carries_the_phonikud_path():
@@ -298,7 +300,7 @@ def test_hebrew_diacritizer_model_carries_the_phonikud_path():
 
     voice = TTSVoice.__new__(TTSVoice)
     voice.phonetic_spellings = None
-    voice.phonemizer = MagicMock()
+    voice.phonemizer = MagicMock(spec=BasePhonemizer)
     voice.phonemizer.phonemize_lazy = MagicMock(return_value=iter([list("ʃalom")]))
     voice.config = types.SimpleNamespace(alphabet=Alphabet.IPA, lang_code="he",
                                          add_diacritics=True,
@@ -306,7 +308,7 @@ def test_hebrew_diacritizer_model_carries_the_phonikud_path():
                                          sample_rate=22050)
     voice.adapter = MagicMock()
     voice.phonemes_to_ids = lambda p: [1] * len(p)
-    voice.phoneme_ids_to_audio = lambda ids, syn_config=None, language_ids=None, include_alignments=False: np.zeros(4, dtype=np.float32)
+    voice.phoneme_ids_to_audio = lambda ids, syn_config=None, include_alignments=False, streams=None: np.zeros(4, dtype=np.float32)
 
     seen = {}
     with patch.object(scd, "diacritize",
@@ -315,3 +317,4 @@ def test_hebrew_diacritizer_model_carries_the_phonikud_path():
                                                       normalize_audio=False)))
     assert seen.get("lang") == "he"
     assert seen.get("diacritizer_model") == "/models/phonikud.onnx"
+    voice.phonemizer.phonemize_lazy.assert_called_once_with("שלום", "he")
