@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.99.0a1](https://github.com/TigreGotico/phoonnx/tree/1.99.0a1) (2026-11-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.4a1...1.99.0a1)
+
+**Merged pull requests:**
+
+- feat: tiny-voca engine with dizione tokens and stress [\#592](https://github.com/TigreGotico/phoonnx/pull/592) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.98.4a1](https://github.com/TigreGotico/phoonnx/tree/1.98.4a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.3a1...1.98.4a1)
@@ -333,10 +341,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.92.1a1...1.93.0a1)
 
-**Merged pull requests:**
-
-- feat: add the kasanoma Twi voice to the piper community index [\#485](https://github.com/TigreGotico/phoonnx/pull/485) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.92.1a1](https://github.com/TigreGotico/phoonnx/tree/1.92.1a1) (2026-09-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.92.0a1...1.92.1a1)
@@ -344,10 +348,6 @@
 ## [1.92.0a1](https://github.com/TigreGotico/phoonnx/tree/1.92.0a1) (2026-09-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.91.13a1...1.92.0a1)
-
-**Merged pull requests:**
-
-- feat: add the three GhanaNLP community voices to the index [\#484](https://github.com/TigreGotico/phoonnx/pull/484) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.91.13a1](https://github.com/TigreGotico/phoonnx/tree/1.91.13a1) (2026-09-18)
 
