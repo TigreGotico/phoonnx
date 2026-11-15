@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.99.1a1](https://github.com/TigreGotico/phoonnx/tree/1.99.1a1) (2026-11-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.0a1...1.99.1a1)
+
+**Merged pull requests:**
+
+- fix: read a unit in any case in the text normaliser [\#597](https://github.com/TigreGotico/phoonnx/pull/597) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.99.0a1](https://github.com/TigreGotico/phoonnx/tree/1.99.0a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.4a1...1.99.0a1)
@@ -324,10 +332,6 @@
 ## [1.93.1a2](https://github.com/TigreGotico/phoonnx/tree/1.93.1a2) (2026-10-01)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.1a1...1.93.1a2)
-
-**Merged pull requests:**
-
-- chore\(ci\): drop the broken Dependabot config [\#486](https://github.com/TigreGotico/phoonnx/pull/486) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.93.1a1](https://github.com/TigreGotico/phoonnx/tree/1.93.1a1) (2026-09-27)
 
