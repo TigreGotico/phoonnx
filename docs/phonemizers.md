@@ -120,16 +120,20 @@ lang)` for a flat phoneme list and `phonemize_string(text, lang)` for a single c
 
 ## Special Language Notes
 
-### Arabic / Hebrew
+### Diacritics, stress and sense marks
 
-Models trained with Arabic or Hebrew may need diacritics added before phonemization. Enable this via `SynthesisConfig`:
+The diacritize stage adds marks before phonemization. It restores vowels for Arabic and Hebrew, marks stress for Russian, Ukrainian and other stress languages, and marks homograph readings for Portuguese. A voice turns it on in its config JSON, under `inference`:
+
+```json
+"inference": {"add_diacritics": true}
+```
+
+A key at the top level of the config is not read. When the config has no key, the stage is on for Arabic language tags (`ar` and the Arabic varieties written in Arabic script, such as `apc` and `arz`) and off for every other language. A call can override the voice with `SynthesisConfig`:
 
 ```python
 from phoonnx.config import SynthesisConfig
 syn_config = SynthesisConfig(add_diacritics=True)
 ```
-
-Or set it in the voice config JSON: `"add_diacritics": true`. For Arabic, it is enabled automatically when `lang_code` starts with `"ar"`.
 
 Arabic diacritization uses [`text2tashkeel`](https://pypi.org/project/text2tashkeel/), installed
 by the [`ar` extra](installation.md#language-extras). The diacritizer model defaults to

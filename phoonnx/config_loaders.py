@@ -577,7 +577,7 @@ class CanonicalLoader(ConfigLoader):
     Config-shape engine detection is deprecated, so a config that declares its
     engine, phoneme type and alphabet is honoured as-is rather than guessed at
     or rejected.  Unlike the native phoonnx format it does not assume espeak
-    phonemes or diacritization.
+    phonemes.
     """
 
     @classmethod
