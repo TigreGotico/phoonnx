@@ -90,9 +90,10 @@ def pitch_shift(audio: np.ndarray, sample_rate: int, semitones: float) -> np.nda
     ratio = 2.0 ** (float(np.clip(semitones, -12.0, 12.0)) / 12.0)
     # Reading faster by `ratio` raises the pitch and shortens the clip; stretch it back.
     shifted = time_stretch(resample(audio, ratio), ratio, sample_rate)
-    if shifted.size > audio.size:
-        shifted = shifted[: audio.size]
-    else:
+    shifted = shifted[: audio.size]
+    # A tail cut off (or padded with silence after) on a loud sample is a click.
+    shifted = declick(shifted, sample_rate)
+    if shifted.size < audio.size:
         shifted = np.pad(shifted, (0, audio.size - shifted.size))
     return np.clip(shifted, -1.0, 1.0)
 
@@ -218,3 +219,23 @@ def beep(sample_rate: int, duration_ms: int = 350, frequency: float = 1000.0) ->
         tone[:fade] *= ramp
         tone[-fade:] *= ramp[::-1]
     return tone.astype(np.float32)
+
+
+def declick(audio: np.ndarray, sample_rate: int, threshold: float = 0.02, ms: float = 4.0) -> np.ndarray:
+    """`audio` with a short fade where it starts or ends on a sample louder than `threshold`.
+
+    Speech that begins or stops mid-wave is a click against the silence or the breath beside it.
+    An edge already near zero (what a voice normally gives) is left alone, so the common case is
+    the same array back, not a copy.
+    """
+    audio = _as_float(audio)
+    fade = min(audio.size // 2, max(1, int(sample_rate * ms / 1000)))
+    if audio.size < 2 or (abs(float(audio[0])) <= threshold and abs(float(audio[-1])) <= threshold):
+        return audio
+    audio = audio.copy()
+    ramp = np.linspace(0.0, 1.0, fade, dtype=np.float32)
+    if abs(float(audio[0])) > threshold:
+        audio[:fade] *= ramp
+    if abs(float(audio[-1])) > threshold:
+        audio[-fade:] *= ramp[::-1]
+    return audio

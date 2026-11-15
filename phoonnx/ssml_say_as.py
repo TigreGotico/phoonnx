@@ -32,8 +32,9 @@ _CURRENCY_WORDS = {
     "de": {"USD": ("Dollar", "Dollar", "Cent", "Cent"), "EUR": ("Euro", "Euro", "Cent", "Cent"),
            "GBP": ("Pfund", "Pfund", "Penny", "Pence"), "CHF": ("Franken", "Franken", "Rappen", "Rappen")},
     "pt": {"USD": ("dólar", "dólares", "centavo", "centavos"), "EUR": ("euro", "euros", "cêntimo", "cêntimos"),
-           "BRL": ("real", "reais", "centavo", "centavos")},
-    "it": {"USD": ("dollaro", "dollari", "centesimo", "centesimi"), "EUR": ("euro", "euro", "centesimo", "centesimi")},
+           "BRL": ("real", "reais", "centavo", "centavos"), "GBP": ("libra", "libras", "péni", "pence")},
+    "it": {"USD": ("dollaro", "dollari", "centesimo", "centesimi"), "EUR": ("euro", "euro", "centesimo", "centesimi"),
+           "GBP": ("sterlina", "sterline", "penny", "penny")},
     "nl": {"USD": ("dollar", "dollar", "cent", "cent"), "EUR": ("euro", "euro", "cent", "cent"),
            "GBP": ("pond", "pond", "penny", "pence")},
 }
@@ -221,6 +222,21 @@ def _unit(text: str, lang: str) -> str:
         raise ValueError("number too long to say as a quantity")
     short = lang.split("-")[0]
     spaced = re.sub(r"(?<=\d)(?=[^\d\s.,/-])", " ", text.strip())
+    # The quantity is read here, not by the unit normalizer, which reads "1,5 L" as "eins Komma
+    # fünf null null Liter" in German and "1 200 km" as "un deux cents": it is given a 1 or a 2
+    # (for the singular or plural of the unit) and the real number put back in its place.
+    spaced = re.sub(r"(?<=\d )l\b", "L", spaced)  # the normalizer knows litres as "L" only
+    lead = re.match(r"([+-]?\d(?:[\d.,\u00a0\u202f ]*\d)?)(?=\s*[^\d\s.,])", spaced)
+    stand_in = real = None
+    if lead:
+        try:
+            amount = float(_plain_amount(lead.group(1), lang))
+        except ValueError:
+            amount = None
+        if amount is not None:
+            stand_in = "1" if amount == 1 else "2"
+            real = _number(lead.group(1), lang)
+            spaced = stand_in + spaced[lead.end():]
     said = _normalize_units(spaced, lang)
     table = _SYMBOL_UNITS.get(short, {})
     if table:  # the normalizer left these as symbols: say them
@@ -234,20 +250,76 @@ def _unit(text: str, lang: str) -> str:
         glue = "'" if short == "it" and per[0] == "a" else " "
         said = re.sub(rf"/{suffix}\b", f" {per[0]}{glue}{word}" if glue == " " else f" all'{word}", said)
     # Whatever the unit table did not turn into words, the number still can be.
-    return re.sub(r"\d+(?:[.,]\d+)?", lambda m: _number(m.group(0), lang), said)
+    said = re.sub(r"\d+(?:[.,]\d+)?", lambda m: _number(m.group(0), lang), said)
+    if stand_in is not None:
+        placeholder = _number(stand_in, lang)
+        if said.startswith(placeholder):
+            rest = said[len(placeholder):]
+            if stand_in == "1" and short in ("en", "fr", "es", "pt"):
+                rest = _singular(rest)
+            if stand_in == "1" and real == placeholder:
+                # "uno kilómetro", "eins Kilogramm": before a noun it is "un" and "ein".
+                real = {"es": "un", "it": "un", "de": "ein"}.get(short, real)
+            said = real + rest
+    return said
+
+
+def _singular(rest: str) -> str:
+    """" kilograms per hour" -> " kilogram per hour": the normalizer pluralises the unit after a 1."""
+    found = re.match(r"(\s+)([^\s]{4,})", rest)
+    if not found or not found.group(2).endswith("s") or found.group(2).endswith(("ss", "ius")):
+        return rest
+    word = found.group(2)
+    word = word[:-2] if word.endswith(("ches", "shes")) else word[:-1]
+    return found.group(1) + word + rest[found.end():]
 
 
 _DATE_ORDERS = {"ymd", "ydm", "mdy", "myd", "dmy", "dym", "ym", "my", "md", "dm", "y", "m", "d"}
+
+
+def _written_date(parts: list, lang: str) -> Optional[tuple]:
+    """``(order, parts)`` for a date with its month written out ("1er mai 2026"), else None.
+
+    The month becomes its number so the date is read like a numeric one; a day may carry an
+    ordinal suffix ("1er", "1st", "2e", "3º").
+    """
+    months = {word: number for number, name in _month_names(lang).items() for word in name.split()}
+    if lang.split("-")[0] == "en":
+        months.update({w: i + 1 for i, w in enumerate(
+            "january february march april may june july august september october november december".split())})
+    order, numbers = "", []
+    for part in parts:
+        if part.lower() in ("de", "of", "del", "the", "van"):  # "9 de noviembre de 2026", "1st of May"
+            continue
+        bare = re.sub(r"(?<=\d)(?:st|nd|rd|th|er|re|e|ème|º|°)$", "", part.lower())
+        if part.lower() in months and "m" not in order:
+            order, numbers = order + "m", numbers + [str(months[part.lower()])]
+        elif bare.isdigit() and len(bare) == 4 and "y" not in order:
+            order, numbers = order + "y", numbers + [bare]
+        elif bare.isdigit() and len(bare) <= 2 and "d" not in order:
+            order, numbers = order + "d", numbers + [bare]
+        else:
+            return None
+    return (order, numbers) if "m" in order and order in _DATE_ORDERS else None
 
 
 def _date(text: str, lang: str, fmt: Optional[str]) -> str:
     from ovos_date_parser import nice_date
 
     parts = [p for p in re.split(r"[-/.\s,]+", text.strip()) if p]
+    # A weekday is said only when the text has one ("lun. 10/11/2026"): the date alone is just a date.
+    weekday = next((day for day in (_weekday_of(p, lang) for p in parts) if day is not None), None)
+    parts = [p for p in parts if _weekday_of(p, lang) is None]
     numeric = all(p.isdigit() for p in parts)
     order = (fmt or "").lower()
-    if not numeric and not order:
-        return text
+    if not numeric:
+        written = _written_date(parts, lang)  # "9 novembre 2026", "November 9, 2026"
+        if written is None:
+            if not order:
+                return text
+        else:
+            order, parts = written
+            numeric = True
     if numeric and not order:
         if len(parts) == 3 and len(parts[0]) == 4:
             order = "ymd"
@@ -267,36 +339,79 @@ def _date(text: str, lang: str, fmt: Optional[str]) -> str:
         year += 2000 if year < 70 else 1900
     if year and month and day:
         date = datetime.date(year, month, day)
+        said_weekday = _weekday_names(lang).get(weekday) if weekday is not None else None
         if lang.split("-")[0] in _COMPOSED_DATES:
-            return _composed_date(date, lang)
-        return nice_date(date, lang)
+            said = _composed_date(date, lang)
+        else:
+            said = nice_date(date, lang)
+            first = said.split(maxsplit=1)
+            if first and first[0].strip(",").lower() == _weekday_names(lang).get(date.weekday()):
+                said = first[1] if len(first) > 1 else ""   # the parser says a weekday nobody wrote
+        if said_weekday and lang.split("-")[0] == "fr":
+            said = said.removeprefix("le ")  # "lundi dix novembre", not "lundi le dix novembre"
+        return f"{said_weekday} {said}" if said_weekday else said
     spoken = []
     day_words = _number(str(day), lang, ordinal=lang.startswith("en")) if day is not None else None
     month_words = _month_name(month, lang) if month is not None else None
     month_first = lang.split("-")[0] == "en" and not lang.endswith(("GB", "AU", "NZ", "IE", "IN"))
     spoken.extend(w for w in ((month_words, day_words) if month_first else (day_words, month_words)) if w)
     if year is not None:
-        spoken.append(_number(str(year), lang))
+        spoken.append(_year_words(year, lang))
     return " ".join(spoken)
 
 
 # Languages whose date formatter reads the year badly ("zwei tausend sechs und zwanzig"): build the
 # date from the number and month words, which are right. {d} day, {m} month, {y} year.
-_COMPOSED_DATES = {"de": "{d} {m} {y}", "nl": "{d} {m} {y}", "es": "{d} de {m} de {y}",
+_COMPOSED_DATES = {"en": "the {d} of {m}, {y}", "fr": "le {d} {m} {y}", "de": "{d} {m} {y}", "nl": "{d} {m} {y}", "es": "{d} de {m} de {y}",
                    "pt": "{d} de {m} de {y}", "it": "{d} {m} {y}"}
 
 
 def _composed_date(date: datetime.date, lang: str) -> str:
     short = lang.split("-")[0]
     first = date.day == 1
-    if short == "de":
+    if short in ("de", "en"):
         day = _ordinal_words(date.day, lang)
-    elif short in ("it", "es", "pt") and first:
+    elif short in ("it", "es", "pt", "fr") and first:
         day = _ordinal_words(1, lang)
     else:
         day = _number(str(date.day), lang)
     return _COMPOSED_DATES[short].format(d=day, m=_month_name(date.month, lang),
-                                         y=_number(str(date.year), lang))
+                                         y=_year_words(date.year, lang))
+
+
+def _year_words(year: int, lang: str) -> str:
+    """A year as a person says it: "twenty twenty six" in English, the number elsewhere."""
+    if lang.split("-")[0] == "en" and (1100 <= year <= 1999 or 2010 <= year <= 2099):
+        high, low = divmod(year, 100)
+        return f"{_number(str(high), lang)} " + ("hundred" if not low else f"oh {_number(str(low), lang)}"
+                                                 if low < 10 else _number(str(low), lang))
+    if lang.split("-")[0] == "en" and 2000 <= year <= 2009:
+        return "two thousand" + (f" {_number(str(year - 2000), lang)}" if year > 2000 else "")
+    return _number(str(year), lang)
+
+
+@functools.lru_cache(maxsize=64)
+def _weekday_names(lang: str) -> dict:
+    """Weekday number (Monday 0) -> name, the first word of what the date parser says for that day."""
+    from ovos_date_parser import nice_date
+
+    names = {}
+    for offset in range(7):
+        date = datetime.date(2026, 11, 9 + offset)
+        words = nice_date(date, lang).lower().split()
+        names[offset] = words[0].strip(",") if words else ""
+    return names
+
+
+def _weekday_of(token: str, lang: str) -> Optional[int]:
+    """The weekday number a written token names ("lundi", "lun.", "Mon"), else None."""
+    word = token.lower().strip(".")
+    if len(word) < 3 or word.isdigit():
+        return None
+    for number, name in _weekday_names(lang).items():
+        if name and (word == name or name.startswith(word)):
+            return number
+    return None
 
 
 @functools.lru_cache(maxsize=64)
@@ -331,21 +446,39 @@ def _month_name(month: int, lang: str) -> str:
     return _month_names(lang).get(month, "")
 
 
+_TIME = re.compile(r"(\d{1,2})(?:\s*[:h]\s*(\d{2})?(?::(\d{2}))?)?\s*(?:(?:uhr|uur|horas?|ore|heures?)\b)?"
+                   r"\s*(a\.?\s?m\.?|p\.?\s?m\.?)?")
+# A bare number is not a time: one of these must say so ("9 pm", "14 h", "14:30", "14 Uhr").
+_TIME_MARK = re.compile(r"[:h]|uhr|uur|hora|ore|heure|[ap]\.?\s?m")
+
+
 def _time(text: str, lang: str, fmt: Optional[str]) -> str:
     from ovos_date_parser import nice_time
 
-    raw = text.strip().lower().replace(".", ":", 1) if re.fullmatch(r"\d{1,2}\.\d{2}", text.strip()) else text.strip().lower()
-    m = re.fullmatch(r"(\d{1,2})\s*[:h]\s*(\d{2})?(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?", raw)
-    if not m:
+    # "14.30" is a time in most of Europe; the dot goes before the pattern sees it.
+    raw = re.sub(r"^(\d{1,2})\.(\d{2})\b", r"\1:\2", text.strip().lower())
+    m = _TIME.fullmatch(raw)
+    if not m or not _TIME_MARK.search(raw):
         raise ValueError(f"not a time: {text!r}")
     hour, minute = int(m.group(1)), int(m.group(2) or 0)
-    suffix = (m.group(4) or "").replace(".", "")
+    suffix = re.sub(r"[.\s]", "", m.group(4) or "")
+    if suffix and not 1 <= hour <= 12:
+        raise ValueError(f"not a 12-hour time: {text!r}")
     if suffix == "pm" and hour < 12:
         hour += 12
     if suffix == "am" and hour == 12:
         hour = 0
-    use_24 = bool(fmt and "24" in fmt) or (not suffix and lang.split("-")[0] != "en")
-    return nice_time(datetime.time(hour, minute), lang, speech=True, use_24hour=use_24, use_ampm=not use_24)
+    short = lang.split("-")[0]
+    use_24 = bool(fmt and "24" in fmt) or (not suffix and short != "en")
+    said = nice_time(datetime.time(hour, minute), lang, speech=True, use_24hour=use_24, use_ampm=not use_24)
+    if short == "en":
+        # "p.m." ends in a full stop of its own: before the stop that ends the sentence it read
+        # "p.m.." and pronounced the pause twice. Say the letters.
+        said = re.sub(r"\b([ap])\.m\.?", lambda found: f"{found.group(1).upper()} M", said)
+    elif short == "fr":
+        # "heure" is feminine, so its half is "demie"; "midi" and "minuit" are masculine ("midi et demi").
+        said = re.sub(r"\b(heures?) et demi\b", r"\1 et demie", said)
+    return said
 
 
 def _currency(text: str, lang: str) -> str:
@@ -372,12 +505,28 @@ def _currency(text: str, lang: str) -> str:
     major = int(whole or 0)
     minor = int((cents + "0")[:2]) if cents else 0
     if words is None:
-        return f"{_number(str(major), lang)}{' ' + _number(str(minor), lang) if minor else ''} {code}".strip()
+        # No words for the currency: the code, with "and" so that 1200 and 50 are not 1250.
+        out = f"{_number(str(major), lang)} {code}"
+        return out + (f" {_AND.get(short, 'and')} {_number(str(minor), lang)}" if minor else "")
     one, many, minor_one, minor_many = words
-    out = f"{_number(str(major), lang)} {one if major == 1 else many}"
+    major_words = _number(str(major), lang)
+    if major == 1 and one == "sterlina":
+        major_words = "una"
+    if one in ("libra",) and short in ("es", "pt"):
+        major_words = _feminine(major_words, short)
+    out = f"{major_words} {one if major == 1 else many}"
     if minor:
         out += f" {_AND.get(short, 'and')} {_number(str(minor), lang)} {minor_one if minor == 1 else minor_many}"
     return out
+
+
+def _feminine(words: str, short: str) -> str:
+    """Spanish and Portuguese numbers before a feminine noun: "doscientas libras", "una libra"."""
+    last = {"es": {"uno": "una", "veintiuno": "veintiuna"}, "pt": {"um": "uma", "dois": "duas"}}[short]
+    parts = words.split()
+    if parts:
+        parts[-1] = last.get(parts[-1], parts[-1])
+    return re.sub(r"(ient|ent)os\b", r"\1as", " ".join(parts))
 
 
 def _address(text: str, lang: str) -> str:

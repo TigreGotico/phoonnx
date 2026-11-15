@@ -190,12 +190,15 @@ voice.phonetic_spellings  # PhoneticSpellings (.replacements dict, .apply(text))
 
 `TTSVoice.synthesize_ssml()` and `synthesize_ssml_wav()` read SSML and turn it into silence, pace,
 loudness, pitch, language and sound effects. Input that is not SSML is synthesized as it is.
+The full support table (every W3C SSML 1.1, Polly and Alexa element, measured in English and French), the
+limits and the cost of each feature are in [SSML](ssml.md).
 
 | Tag | Effect |
 | --- | --- |
 | `<break time="500ms"/>`, `strength=` | silence of that length |
 | `<p>`, `<s>` | a pause at the paragraph / sentence edge |
 | `<prosody rate= volume= pitch=>` | pace (the voice's length scale), loudness, and pitch (`+2st`, `-10%`, `high`; Hz is ignored) |
+| `<prosody duration=>`, `amazon:max-duration=` | the speech is stretched or squeezed (0.5x to 2x) to that time, or to at most that time |
 | `<emphasis level=>` | a little slower and louder (or softer for `reduced`) |
 | `<lang xml:lang=>`, `<voice>` | a multilingual voice uses that language's id for the piece; a monolingual voice says the words in its own language. `<say-as>` inside it also reads its value in that language |
 | `<say-as interpret-as=...>` | `cardinal`, `ordinal`, `digits`, `fraction`, `unit`, `date` (+`format="mdy"`), `time`, `currency`, `address`, `telephone`, `characters`/`spell-out`, `expletive` (a bleep), `interjection` |
