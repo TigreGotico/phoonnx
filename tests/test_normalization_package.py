@@ -87,10 +87,6 @@ class TestPipelineStillNormalizes(unittest.TestCase):
         self.assertIn("twenty", out.lower())
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestUnitCase(unittest.TestCase):
     """The unit regex ignores case, so a unit in any case reads like its table key."""
 
@@ -113,3 +109,11 @@ class TestUnitCase(unittest.TestCase):
         out = util.normalize("Junte 50 ml de azeite.", "pt-PT")
         self.assertIn(units_module.UNITS["pt"]["mL"], out)
         self.assertNotIn(" ml ", out)
+
+    def test_unit_with_a_letter_that_lower_does_not_fold(self):
+        # casefold maps the long s to "s"; lower keeps it.
+        self.assertEqual(units_module._normalize_units("5 \u017f", "en-GB"),
+                         units_module._normalize_units("5 s", "en-GB"))
+
+if __name__ == "__main__":
+    unittest.main()
