@@ -3,25 +3,42 @@
 
 `run` takes each index entry through the index path (TTSModelInfo.load), synthesises
 a few sentences in the voice's language with TTSVoice.synthesize, and writes one JSON
-line per voice: load and synthesis status, duration, peak, RMS, NaN, silence, real-time
-factor, and, where a verified ASR model exists for the language, the transcript with
-its WER and CER. A failure or a timeout is a result, recorded like any other.
+line per voice: load and synthesis status, duration, peak, RMS, DC offset, clipped
+fraction, spectral flatness, real-time factor, and, where a verified ASR model exists
+for the language, the transcript with its WER and CER. A failure or a timeout is a
+result, recorded like any other.
+
+Each sentence's audio is checked for samples that are not finite, silence, a duration
+too short for the text, a DC offset, hard clipping and white noise (see `measure`).
+A voice whose every sentence passes is "ok"; one where some sentences pass and others
+do not is "partial"; one where none passes gets the name of its fault. A voice that is
+"ok" and whose WER (CER for scripts without spaces) is above --max-wer (--max-cer)
+becomes "unintelligible". Coloured noise, speech under noise and fluent audio in the
+wrong words pass the audio checks; only the ASR score catches them, so a language
+without a verified ASR model is checked for audio faults only. `run` exits 1 when any
+voice fails, and 2 when an option is wrong.
 
 Voices that share model files form a group. A group runs in one worker process, so
-its files download once, and with --evict they leave the cache when the group ends.
-A worker that crashes or stops answering is replaced; the voice it was on is recorded
-as "crash" or "timeout", and the rest of the group continues in a new worker.
+its files download once, and with --evict the repos that the run downloaded leave the
+cache when the group ends. Repos that were in the cache before the run stay.
+A worker that crashes or stops answering is replaced; the voice it was on, or the
+next voice when it had not started one, is recorded as "crash" or "timeout", and the
+rest of the group continues in a new worker. So every relaunch uses up one voice.
 
 `floor` checks each ASR model on real speech (the FLEURS test split) and writes the
 languages whose WER is low enough for a voice's WER to mean something. `run` reads
 that file with --asr-floor; a language that is not in it gets no WER.
 
-`diff` compares two runs and lists the regressions: a voice that loaded and spoke in
-the first run and fails in the second, or whose WER rose by more than --wer-margin.
+`diff` compares two runs and lists the regressions: a voice whose status is worse in
+the second run (ok, then partial, then any failure), a voice that is missing from the
+second run, a WER that is missing from the second run, and a WER that rose by more
+than --wer-margin. A voice that the second run did not test (no_sentences,
+needs_reference) is listed but is not a regression.
 
     voice_sweep.py floor --out floor.json [--clips 15] [--max-wer 0.30]
     voice_sweep.py run --sentences sentences.tsv --out run.jsonl [--asr-floor floor.json]
                        [--jobs 3 --cpus 0-11] [--timeout 600] [--evict] [--engine NAME ...]
+                       [--max-wer 0.5 --max-cer 0.35]
     voice_sweep.py diff A.jsonl B.jsonl [--wer-margin 0.15]
 
 The sentence file is the voice snapshot's TSV (lang, id, category, text, source). Each
@@ -40,6 +57,7 @@ import re
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 import unicodedata
 import warnings
@@ -87,6 +105,30 @@ MACRO = {
 BLOCK = re.compile(r"\[\[.*?\]\]")
 ARABIC_LETTERS = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا", "ى": "ي", "ة": "ه", "ـ": None})
 SILENCE_RMS = 1e-3
+# The bounds below come from six cached voices of five engines (piper, VITS, MMS,
+# glow-tts, matcha) that each spoke one to three sentences in English, Basque, Catalan
+# or Occitan. Each bound sits far from what those voices measured.
+#: Seconds of audio per letter or digit of the text, below which a sentence is too short
+#: to hold the text. The voices measured 0.061 to 0.146 s per character.
+MIN_SECONDS_PER_CHAR = 0.02
+#: Mean sample value above which the audio carries a DC offset. The voices measured at
+#: most 0.002 in absolute value.
+DC_LIMIT = 0.1
+#: A sample at or above this absolute value is at full scale. phoonnx peak-normalises
+#: each sentence, so a few samples per sentence reach it in healthy audio.
+FULL_SCALE = 0.99
+#: Fraction of samples at full scale above which the audio is hard-clipped. The voices
+#: measured at most 0.00004.
+CLIP_FRACTION = 0.01
+#: Median spectral flatness of the loud frames above which the audio is noise. The voices
+#: measured at most 0.009, and white noise measures 0.56. Coloured noise and speech under
+#: noise stay below the bound: only the ASR score catches those.
+NOISE_FLATNESS = 0.3
+#: Sentence faults, most severe first. A voice with no passing sentence gets the first
+#: fault that any of its sentences has.
+PROBLEMS = ("nonfinite", "silent", "too_short", "dc_offset", "clipped", "noise")
+#: Statuses that mean the run did not test the voice, as opposed to a voice that failed.
+UNTESTED = {"no_sentences", "needs_reference"}
 
 
 # ---------------------------------------------------------------- language and text
@@ -223,13 +265,16 @@ def floor(args) -> int:
         if lang in result or lang not in codes:
             result.setdefault(lang, {"verified": False, "reason": "no FLEURS test split"})
             continue
-        try:
-            path = hf_hub_download("google/fleurs", f"parquet-data/{codes[lang]}/test-00000-of-00001.parquet",
-                                   repo_type="dataset")
-        except Exception as error:
-            result[lang] = {"fleurs": codes[lang], "verified": False, "reason": describe(error)}
-            continue
-        rows = pq.ParquetFile(path).read_row_group(0).slice(0, args.clips + 3).to_pylist()
+        # The split goes to a temporary folder and not to the shared cache, so removing
+        # it afterwards cannot touch a file that another program cached.
+        with tempfile.TemporaryDirectory() as folder:
+            try:
+                path = hf_hub_download("google/fleurs", f"parquet-data/{codes[lang]}/test-00000-of-00001.parquet",
+                                       repo_type="dataset", local_dir=folder)
+            except Exception as error:
+                result[lang] = {"fleurs": codes[lang], "verified": False, "reason": describe(error)}
+                continue
+            rows = pq.ParquetFile(path).read_row_group(0).slice(0, args.clips + 3).to_pylist()
         tried = []
         for model in ASR_CANDIDATES.get(lang, []) + [WHISPER]:
             started, scored = time.time(), []
@@ -270,8 +315,6 @@ def floor(args) -> int:
         Path(args.out).write_text(json.dumps(result, ensure_ascii=False, indent=1))
         print(lang, result[lang]["model"], round(best[metric], 3) if best else None,
               "verified" if result[lang]["verified"] else "not verified", flush=True)
-        os.remove(os.path.realpath(path))
-        os.remove(path)
     print(f"languages in: {len(wanted)}  languages out: {sum(l in result for l in wanted)}  "
           f"verified: {sum(result[l]['verified'] for l in wanted if l in result)}")
     return 0 if all(l in result for l in wanted) else 1
@@ -314,14 +357,32 @@ def repos(entry: dict) -> set[str]:
     return {match["repo"] for u in urls(entry) if (match := HF_URL.match(u.split("?")[0]))}
 
 
+def cache_ids(repo: str) -> set[str]:
+    """The ids a repo can be cached under: its own, and the one it had before it moved,
+    which the loader uses while the cache holds the repo under that id."""
+    from phoonnx.model_manager import _MOVED_FROM
+    org, name = repo.split("/", 1)
+    return {repo, f"{_MOVED_FROM[org]}/{name}"} if org in _MOVED_FROM else {repo}
+
+
+def cached_repos(cache: str) -> set[str]:
+    """The model repos that have a folder in the cache."""
+    return {name[len("models--"):].replace("--", "/", 1)
+            for name in os.listdir(cache) if name.startswith("models--")}
+
+
 def evict(names: set[str], cache: str) -> None:
-    """Delete these repos from the cache through huggingface_hub, which keeps its shared
-    blob store consistent (a blob there can back files of other repos)."""
+    """Delete these model repos from the cache, each repo folder as a whole.
+
+    That is what huggingface_hub does when it deletes every revision of a repo. Its
+    delete_revisions is not used: it looks a commit hash up in whichever cached repo
+    holds it first, and a moved repo shares its commit hashes with its old id.
+    """
+    import shutil
     from huggingface_hub import scan_cache_dir
-    info = scan_cache_dir(cache)
-    revisions = [rev.commit_hash for repo in info.repos if repo.repo_id in names for rev in repo.revisions]
-    if revisions:
-        info.delete_revisions(*revisions).execute()
+    for repo in scan_cache_dir(cache).repos:
+        if repo.repo_type == "model" and repo.repo_id in names:
+            shutil.rmtree(repo.repo_path)
 
 
 def cache_bytes(path: str) -> int:
@@ -385,6 +446,66 @@ def reference_clip(directory: str | None, lang: str):
     return None
 
 
+def flatness(audio) -> float:
+    """Median spectral flatness of the frames within 20 dB of the loudest frame.
+
+    Flatness is the geometric over the arithmetic mean of the power spectrum: near 0 for
+    voiced speech, near 0.56 for white noise. 0 when no frame has any energy.
+    """
+    import numpy as np
+    frame, hop = 1024, 512
+    if len(audio) < frame:
+        return 0.0
+    frames = np.stack([audio[i:i + frame] for i in range(0, len(audio) - frame + 1, hop)]) * np.hanning(frame)
+    energy = np.sqrt(np.mean(frames ** 2, axis=1))
+    loud = frames[energy > 0.1 * energy.max()]
+    if not len(loud):
+        return 0.0
+    power = np.abs(np.fft.rfft(loud, axis=1)) ** 2 + 1e-12
+    return float(np.median(np.exp(np.mean(np.log(power), axis=1)) / np.mean(power, axis=1)))
+
+
+def measure(audio, rate: int, text: str) -> dict:
+    """Level and faults of one sentence's audio, the faults listed in `problems`.
+
+    nonfinite: a NaN or infinite sample. silent: RMS below SILENCE_RMS. too_short: less
+    than MIN_SECONDS_PER_CHAR seconds per letter or digit of `text`. dc_offset: a mean
+    above DC_LIMIT. clipped: more than CLIP_FRACTION of the samples at full scale.
+    noise: a spectral flatness above NOISE_FLATNESS, which white noise has.
+    """
+    import numpy as np
+    finite = np.isfinite(audio)
+    clean = np.where(finite, audio, 0.0)
+    duration = len(audio) / rate if rate else 0.0
+    rms = float(np.sqrt(np.mean(clean ** 2))) if audio.size else 0.0
+    dc = float(np.mean(clean)) if audio.size else 0.0
+    clipped = float(np.mean(np.abs(clean) >= FULL_SCALE)) if audio.size else 0.0
+    flat = flatness(clean)
+    checks = {"nonfinite": not finite.all(),
+              "silent": rms < SILENCE_RMS,
+              "too_short": duration < sum(c.isalnum() for c in text) * MIN_SECONDS_PER_CHAR,
+              "dc_offset": abs(dc) > DC_LIMIT,
+              "clipped": clipped > CLIP_FRACTION,
+              "noise": flat > NOISE_FLATNESS}
+    return {"duration": round(duration, 3), "peak": round(float(np.abs(clean).max()) if audio.size else 0.0, 5),
+            "rms": round(rms, 6), "dc": round(dc, 5), "clipped": round(clipped, 5), "flatness": round(flat, 4),
+            "problems": [name for name in PROBLEMS if checks[name]]}
+
+
+def voice_status(sentences: list) -> tuple[str, str | None]:
+    """The status of a voice that loaded, and its error, from its sentence results."""
+    if not sentences:
+        return "no_sentences", None
+    bad = [s for s in sentences if "error" in s or s["problems"]]
+    if not bad:
+        return "ok", None
+    error = "; ".join(f"{s['id']}: {s.get('error') or ', '.join(s['problems'])}" for s in bad)
+    if len(bad) < len(sentences):
+        return "partial", error
+    found = {p for s in bad for p in s.get("problems", [])}
+    return next((p for p in PROBLEMS if p in found), "synth_failed"), error
+
+
 def synthesise_voice(record: dict, entry: dict, sentences: list, args) -> None:
     """Fill `record` as the voice loads and speaks, so a timeout keeps what was done."""
     import numpy as np
@@ -410,7 +531,9 @@ def synthesise_voice(record: dict, entry: dict, sentences: list, args) -> None:
     model = HF_URL.match(entry["model_url"].split("?")[0])
     if model:
         from huggingface_hub import try_to_load_from_cache
-        path = try_to_load_from_cache(model["repo"], model["path"], revision=model["rev"])
+        from phoonnx.model_manager import _repo_cached_before_move
+        path = try_to_load_from_cache(_repo_cached_before_move(model["repo"]) or model["repo"], model["path"],
+                                      revision=model["rev"])
         if isinstance(path, str) and "/snapshots/" in path:
             record["snapshot"] = path.split("/snapshots/")[1].split("/")[0]
     syn = SynthesisConfig()
@@ -420,7 +543,6 @@ def synthesise_voice(record: dict, entry: dict, sentences: list, args) -> None:
             record.update(status="needs_reference", error="requires_reference and no --reference-dir clip")
             return
         syn.speaker_reference, syn.speaker_reference_text = clip
-    failures = 0
     for number, sentence in enumerate(sentences):
         result = {"id": sentence["id"], "text": sentence["text"], "native": sentence["native"]}
         random.seed(number)
@@ -432,32 +554,21 @@ def synthesise_voice(record: dict, entry: dict, sentences: list, args) -> None:
                      if chunks else np.zeros(0, dtype=np.float32))
             rate = chunks[0].sample_rate if chunks else config.sample_rate
             seconds = time.time() - began
-            nan = bool(np.isnan(audio).any())
-            clean = np.nan_to_num(audio)
-            duration = len(audio) / rate if rate else 0.0
-            rms = float(np.sqrt(np.mean(clean ** 2))) if audio.size else 0.0
-            result.update(duration=round(duration, 3), peak=round(float(np.abs(clean).max()) if audio.size else 0.0, 5),
-                          rms=round(rms, 6), nan=nan, silent=bool(rms < SILENCE_RMS),
-                          rtf=round(seconds / duration, 4) if duration else None, sample_rate=rate)
+            result.update(measure(audio, rate, sentence["text"]))
+            result.update(rtf=round(seconds / result["duration"], 4) if result["duration"] else None,
+                          sample_rate=rate)
             if args.audio_dir and audio.size:
                 wav = Path(args.audio_dir) / f"{re.sub(r'[^A-Za-z0-9._-]+', '_', voice_id)}__{sentence['id']}.wav"
-                sf.write(wav, clean, rate, subtype="PCM_16")
+                sf.write(wav, np.where(np.isfinite(audio), audio, 0.0), rate, subtype="PCM_16")
                 result["wav"] = str(wav)
         except (Exception, SystemExit) as error:
-            failures += 1
             result["error"] = describe(error)
         record["sentences"].append(result)
+    status, error = voice_status(record["sentences"])
+    record["status"] = status
+    if error:
+        record["error"] = error
     spoken_rows = [s for s in record["sentences"] if "error" not in s]
-    if failures == len(sentences):
-        record.update(status="synth_failed", error=record["sentences"][0]["error"] if sentences else "no sentences")
-    elif not sentences:
-        record.update(status="no_sentences")
-    elif any(s["nan"] for s in spoken_rows):
-        record["status"] = "nan"
-    elif all(s["silent"] for s in spoken_rows):
-        record["status"] = "silent"
-    else:
-        record["status"] = "ok" if not failures else "partial"
     if spoken_rows:
         record.update(duration=round(sum(s["duration"] for s in spoken_rows), 3),
                       peak=max(s["peak"] for s in spoken_rows),
@@ -509,8 +620,40 @@ def cpu_sets(spec: str, jobs: int) -> list[str | None]:
     return [",".join(map(str, cpus[i * size:(i + 1) * size])) for i in range(jobs)]
 
 
+def input_errors(args, index: dict) -> list[str]:
+    """What is wrong with the options of `run`, checked before any worker starts."""
+    errors = []
+    for name in ("jobs", "group_size", "timeout", "threads"):
+        if getattr(args, name) < 1:
+            errors.append(f"--{name.replace('_', '-')} must be at least 1")
+    try:
+        if not any(read_sentences(args.sentences, args.sentence_ids).values()):
+            errors.append(f"--sentences {args.sentences}: no row has an id in --sentence-ids {args.sentence_ids}")
+    except (OSError, ValueError, KeyError, csv.Error) as error:
+        errors.append(f"--sentences {args.sentences}: {describe(error)}")
+    if args.asr_floor:
+        try:
+            json.loads(Path(args.asr_floor).read_text())
+        except (OSError, ValueError) as error:
+            errors.append(f"--asr-floor {args.asr_floor}: {describe(error)}")
+    if args.reference_dir and not Path(args.reference_dir).is_dir():
+        errors.append(f"--reference-dir {args.reference_dir}: not a directory")
+    if args.voices:
+        try:
+            unknown = sorted(set(Path(args.voices).read_text().split()) - set(index))
+        except OSError as error:
+            errors.append(f"--voices {args.voices}: {describe(error)}")
+        else:
+            errors += [f"--voices {args.voices}: not in the index: {voice_id}" for voice_id in unknown]
+    return errors
+
+
 def run(args) -> int:
     index = read_index()
+    errors = input_errors(args, index)
+    if errors:
+        print("\n".join(errors), file=sys.stderr)
+        return 2
     chosen = {v: e for v, e in index.items() if not args.engine or e[1].get("engine") in args.engine}
     if args.voices:
         wanted = set(Path(args.voices).read_text().split())
@@ -544,8 +687,9 @@ def run(args) -> int:
     slots = cpu_sets(args.cpus, args.jobs)
     running = {}
     sink = open(synth_path, "a", encoding="utf-8")
-    cache = os.environ.get("HF_HUB_CACHE") or os.path.expanduser("~/.cache/huggingface/hub")
+    from huggingface_hub.constants import HF_HUB_CACHE as cache
     os.makedirs(cache, exist_ok=True)
+    cached_before = cached_repos(cache)
 
     def launch(number, voices):
         slot = slots[number]
@@ -559,10 +703,12 @@ def run(args) -> int:
         return {"process": process, "voices": list(voices), "current": None, "seen": time.time(), "buffer": b""}
 
     def evict_finished(group):
-        """Evict a finished group's repos that no pending or running voice downloads from."""
+        """Evict a finished group's repos that this run downloaded and that no pending or
+        running voice downloads from."""
         pending = [v for g in queue for v in g] + [v for job in running.values() for v in job["voices"]]
-        in_use = {r for v in pending for r in repos(index[v][1])}
-        evict({r for v in group for r in repos(index[v][1])} - in_use, cache)
+        in_use = {i for v in pending for r in repos(index[v][1]) for i in cache_ids(r)}
+        finished = {i for v in group for r in repos(index[v][1]) for i in cache_ids(r)}
+        evict(finished - in_use - cached_before, cache)
 
     def record(entry):
         sink.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -615,11 +761,14 @@ def run(args) -> int:
             process.wait()
             process.stdout.close()
             remaining = job["voices"]
-            if job["current"] in remaining:
-                record(stub(job["current"], "timeout" if stalled else "crash",
+            # A worker that ends before it starts a voice is blamed on the next one, so
+            # every relaunch uses up a voice and a worker that cannot start ends the group.
+            failed = job["current"] if job["current"] in remaining else (remaining[0] if remaining else None)
+            if failed:
+                record(stub(failed, "timeout" if stalled else "crash",
                             f"worker {'stopped answering' if stalled else f'exited {process.returncode}'} "
-                            f"on this voice"))
-                remaining.remove(job["current"])
+                            f"{'on' if failed == job['current'] else 'before it started'} this voice"))
+                remaining.remove(failed)
             del running[slot]
             if remaining:
                 running[slot] = launch(slot, remaining)
@@ -659,6 +808,11 @@ def score_run(args, index, chosen, done) -> int:
                 if scored:
                     record["wer"] = round(sum(s["wer"] for s in scored) / len(scored), 4)
                     record["cer"] = round(sum(s["cer"] for s in scored) / len(scored), 4)
+                    metric = "cer" if lang in UNSEGMENTED else "wer"
+                    limit = args.max_cer if metric == "cer" else args.max_wer
+                    if record["status"] == "ok" and record[metric] > limit:
+                        record.update(status="unintelligible",
+                                      error=f"{metric.upper()} {record[metric]} is above {limit}")
             if not args.keep_audio:
                 for sentence in record.get("sentences", []):
                     if "wav" in sentence and os.path.exists(sentence["wav"]):
@@ -668,13 +822,15 @@ def score_run(args, index, chosen, done) -> int:
     results = [json.loads(l) for l in Path(args.out).read_text(encoding="utf-8").splitlines()]
     ids = {r["voice"] for r in results}
     statuses = Counter(r["status"] for r in results if r["voice"] in chosen)
-    print(f"voices in: {len(chosen)}  results out: {len(ids & set(chosen))}  {dict(statuses)}")
-    return 0 if ids >= set(chosen) and len(results) == len(ids) else 1
+    failing = sum(n for status, n in statuses.items() if status != "ok" and status not in UNTESTED)
+    print(f"voices in: {len(chosen)}  results out: {len(ids & set(chosen))}  failing: {failing}  {dict(statuses)}")
+    return 0 if ids >= set(chosen) and len(results) == len(ids) and not failing else 1
 
 
 # ---------------------------------------------------------------- diff
 
-SPEAKING = {"ok", "partial"}
+#: How well a voice did: it spoke every sentence, some of them, or none.
+RANK = {"ok": 2, "partial": 1}
 
 
 def diff(args) -> int:
@@ -684,16 +840,28 @@ def diff(args) -> int:
     lines, regressions = [], 0
     for voice_id in sorted(set(old) | set(new)):
         a, b = old.get(voice_id), new.get(voice_id)
-        if a is None or b is None:
-            lines.append(f"{'added' if a is None else 'removed'}  {voice_id}")
+        if a is None:
+            lines.append(f"added  {voice_id}")
             continue
-        if a["status"] in SPEAKING and b["status"] not in SPEAKING:
+        if b is None:
+            regressions += 1
+            lines.append(f"REGRESSION missing {voice_id}: {a['status']} in A, no result in B")
+            continue
+        if b["status"] in UNTESTED:
+            lines.append(f"untested  {voice_id}: {a['status']} -> {b['status']}")
+            continue
+        before, after = RANK.get(a["status"], 0), RANK.get(b["status"], 0)
+        if after < before:
             regressions += 1
             lines.append(f"REGRESSION status {voice_id}: {a['status']} -> {b['status']}  {b.get('error', '')}")
-        elif a["status"] not in SPEAKING and b["status"] in SPEAKING:
+            continue
+        if after > before:
             lines.append(f"fixed  {voice_id}: {a['status']} -> {b['status']}")
         metric = "cer" if b.get("asr", {}).get("lang") in UNSEGMENTED else "wer"
-        if metric in a and metric in b and b[metric] - a[metric] > args.wer_margin:
+        if metric in a and metric not in b and b["status"] in RANK:
+            regressions += 1
+            lines.append(f"REGRESSION {metric} {voice_id}: {a[metric]:.3f} -> no {metric} in B")
+        elif metric in a and metric in b and b[metric] - a[metric] > args.wer_margin:
             regressions += 1
             lines.append(f"REGRESSION {metric} {voice_id}: {a[metric]:.3f} -> {b[metric]:.3f}")
     print("\n".join(lines))
@@ -729,6 +897,13 @@ def main() -> int:
                           help="start no new group while the Hugging Face cache holds more than this")
     run_args.add_argument("--keep-audio", action="store_true")
     run_args.add_argument("--group-size", type=int, default=40, help="most voices one worker runs in a row")
+    # An ASR model passes `floor` at a WER of up to 0.30 on human speech, so a voice's
+    # limit sits above that. A voice that says the wrong words scores near 1.0.
+    run_args.add_argument("--max-wer", type=float, default=0.5,
+                          help="mean WER above which an ok voice becomes unintelligible")
+    run_args.add_argument("--max-cer", type=float, default=0.35,
+                          help="mean CER above which an ok voice becomes unintelligible, "
+                               "for scripts without spaces")
     run_args.set_defaults(run=run)
 
     worker_args = commands.add_parser("worker", help=argparse.SUPPRESS)
