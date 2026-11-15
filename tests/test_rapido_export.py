@@ -164,12 +164,15 @@ def test_released_weights_match_upstream():
     rapido-tts code computed for the same sentence and noise."""
     from huggingface_hub import hf_hub_download
 
+    from phoonnx_train.rapido import audio_vae as released_vae, model as released_model
     from phoonnx_train.rapido.audio_vae import load_audio_vae
     from phoonnx_train.rapido.model import load_checkpoint
 
     gold = json.loads((Path(__file__).parent / "fixtures" / "rapido_upstream_reference.json").read_text("utf-8"))
-    checkpoint = load_checkpoint(retry_download(hf_hub_download, "edwixx/rapido-tts", "rapido.pt"))
-    retry_download(hf_hub_download, "openbmb/VoxCPM2", "audiovae.pth")
+    checkpoint = load_checkpoint(retry_download(hf_hub_download, released_model.REPO_ID, released_model.CHECKPOINT_FILE,
+                                                revision=released_model.REVISION))
+    retry_download(hf_hub_download, released_vae.REPO_ID, released_vae.WEIGHTS_FILE,
+                   revision=released_vae.REVISION)
     model = RapidoModel.from_checkpoint(checkpoint)
     vae = load_audio_vae()
     ids = gold["ids"]

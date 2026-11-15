@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import dataclasses
 import itertools
 import json
 import logging
@@ -61,6 +62,17 @@ def phonemizer_registry(phonemizer: Any) -> Tuple[str, str]:
         return dist, version(dist)
     except PackageNotFoundError:
         return dist, ""
+
+
+def phonemizer_identity(phonemizer: Any, lang: str) -> Dict[str, Optional[str]]:
+    """Name the engine that phonemized the rows, as scriptconv reports it.
+
+    The keys are ``backend``, ``distribution``, ``version`` (for espeak-ng, the
+    version of the binary), ``lang`` (the resolved lect) and ``revision`` (the
+    orthography2ipa spec revision, or None). Unlike :func:`phonemizer_registry`,
+    this names the grapheme-to-phoneme engine itself.
+    """
+    return dataclasses.asdict(phonemizer.identity(lang))
 
 
 class PathEncoder(json.JSONEncoder):
@@ -978,11 +990,17 @@ def cli(
     # A resumed run re-emits rows it never processed, so its own counts cover
     # only part of the manifest. Fold the previous config's counts in and the
     # pair keeps describing the whole file across any number of resumes. Two
-    # cases cannot be folded and then all four fields are omitted rather than
+    # cases cannot be folded and then all five fields are omitted rather than
     # left describing a subset: a previous config predating these keys, and one
-    # written by a different registry version, whose rows this run's version did
-    # not produce and must not be named over.
+    # written by a different registry version or phonemizer engine, whose rows
+    # this run did not produce and must not be named over.
     registry, registry_version = phonemizer_registry(phonemizer)
+    # Only a run that phonemized rows asks the engine. A column-only resume adds
+    # no rows of an engine's making, so it keeps the earlier rows' engine, or
+    # records none when the earlier config did not name one.
+    identity: Optional[Dict[str, Optional[str]]] = (
+        phonemizer_identity(phonemizer, config.language) if written_phonemized
+        else prior_config.get("phonemizer_identity"))
     phonemized_total: Optional[int] = written_phonemized
     from_column_total: Optional[int] = written_from_column
     if resume_rows:
@@ -993,7 +1011,9 @@ def cli(
         same_producer = (
             prior_phonemized == 0
             or (prior_config.get("phonemizer_registry") == registry
-                and prior_config.get("phonemizer_registry_version") == registry_version)
+                and prior_config.get("phonemizer_registry_version") == registry_version
+                and (not written_phonemized
+                     or prior_config.get("phonemizer_identity") == identity))
         )
         if (prior_phonemized is not None
                 and "phonemes_from_column" in prior_config
@@ -1007,9 +1027,11 @@ def cli(
         # Nothing was phonemized here, so no producer is claimed: the phonemes
         # came out of a dataset column and this run cannot vouch for them.
         if not phonemized_total:
-            registry, registry_version = "", ""
+            registry, registry_version, identity = "", "", {}
         config_data["phonemizer_registry"] = registry
         config_data["phonemizer_registry_version"] = registry_version
+        if identity is not None:
+            config_data["phonemizer_identity"] = identity
         config_data["phonemes_phonemized"] = phonemized_total
         config_data["phonemes_from_column"] = from_column_total
 

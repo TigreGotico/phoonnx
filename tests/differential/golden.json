@@ -13188,7 +13188,7 @@
    "phoonnx_version": "1.0"
   },
   "voice_config": {
-   "add_diacritics": true,
+   "add_diacritics": false,
    "alphabet": "arpa",
    "blank_at_end": true,
    "blank_at_start": true,
@@ -13262,7 +13262,7 @@
    "phoonnx_version": "1.0"
   },
   "voice_config": {
-   "add_diacritics": true,
+   "add_diacritics": false,
    "alphabet": "ipa",
    "blank_at_end": true,
    "blank_at_start": true,
@@ -13572,7 +13572,7 @@
    "phoonnx_version": "1.0"
   },
   "voice_config": {
-   "add_diacritics": true,
+   "add_diacritics": false,
    "alphabet": "ipa",
    "blank_at_end": true,
    "blank_at_start": true,
@@ -13643,7 +13643,7 @@
    "phoonnx_version": "1.0"
   },
   "voice_config": {
-   "add_diacritics": true,
+   "add_diacritics": false,
    "alphabet": "ipa",
    "blank_at_end": true,
    "blank_at_start": true,
@@ -13714,7 +13714,7 @@
    "phoonnx_version": "1.0"
   },
   "voice_config": {
-   "add_diacritics": true,
+   "add_diacritics": false,
    "alphabet": "ipa",
    "blank_at_end": true,
    "blank_at_start": true,
@@ -13785,7 +13785,7 @@
    "phoonnx_version": "1.0"
   },
   "voice_config": {
-   "add_diacritics": true,
+   "add_diacritics": false,
    "alphabet": "arpa",
    "blank_at_end": true,
    "blank_at_start": true,
@@ -13856,7 +13856,7 @@
    "phoonnx_version": "1.0"
   },
   "voice_config": {
-   "add_diacritics": true,
+   "add_diacritics": false,
    "alphabet": "ipa",
    "blank_at_end": true,
    "blank_at_start": true,
@@ -13927,7 +13927,7 @@
    "phoonnx_version": "1.0"
   },
   "voice_config": {
-   "add_diacritics": true,
+   "add_diacritics": false,
    "alphabet": "ipa",
    "blank_at_end": true,
    "blank_at_start": true,
@@ -13998,7 +13998,7 @@
    "phoonnx_version": "1.0"
   },
   "voice_config": {
-   "add_diacritics": true,
+   "add_diacritics": false,
    "alphabet": "ipa",
    "blank_at_end": true,
    "blank_at_start": true,

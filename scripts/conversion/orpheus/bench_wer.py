@@ -64,7 +64,7 @@ def main() -> None:
                                   formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--onnx", default="./orpheus-3b-en-onnx",
                      help="dir with model.onnx(+_data shards), snac_decoder.onnx, "
-                          "tokenizer.json — the layout of OpenVoiceOS/phoonnx-orpheus")
+                          "tokenizer.json — the layout of Phoonnx/phoonnx-orpheus")
     ap.add_argument("--asr", default="OpenVoiceOS/qwen3-asr-0.6b-onnx")
     ap.add_argument("--wavdir", type=Path, default=Path("./samples"))
     ap.add_argument("--out", type=Path, default=Path("./evidence/wer.json"))

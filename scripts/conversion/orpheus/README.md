@@ -1,7 +1,7 @@
 # Orpheus conversion & verification tooling
 
 There is no `export_orpheus_onnx.py` in this directory: the ONNX graphs mirrored at
-[`OpenVoiceOS/phoonnx-orpheus`](https://huggingface.co/OpenVoiceOS/phoonnx-orpheus) are
+[`Phoonnx/phoonnx-orpheus`](https://huggingface.co/Phoonnx/phoonnx-orpheus) are
 re-hosted from [`onnx-community/orpheus-3b-0.1-ft-ONNX`](https://huggingface.co/onnx-community/orpheus-3b-0.1-ft-ONNX)
 (LM) and [`onnx-community/snac_24khz-ONNX`](https://huggingface.co/onnx-community/snac_24khz-ONNX)
 (SNAC decoder), unmodified — nothing here re-exports them. What this directory holds is
@@ -60,7 +60,7 @@ fetched from the mirror rather than regenerated (see `evidence/README.md`).
 
 ## `evidence/`
 
-- `wer.json` — fetched from `OpenVoiceOS/phoonnx-orpheus/samples/wer.json`, the original
+- `wer.json` — fetched from `Phoonnx/phoonnx-orpheus/samples/wer.json`, the original
   run's WER/RTF numbers quoted in the PR body and mirror README.
 - `probe_prompt_output.txt` — this PR's actual, freshly reproduced `probe_prompt.py` run
   against the mirrored `tokenizer.json`.
@@ -71,4 +71,4 @@ Source model: [`canopylabs/orpheus-3b-0.1-ft`](https://huggingface.co/canopylabs
 (gated; verification used the ungated [`unsloth/orpheus-3b-0.1-ft`](https://huggingface.co/unsloth/orpheus-3b-0.1-ft)
 mirror instead), Apache-2.0, Canopy Labs.
 SNAC: [`hubertsiuzdak/snac_24khz`](https://huggingface.co/hubertsiuzdak/snac_24khz), Apache-2.0.
-Mirror: [`OpenVoiceOS/phoonnx-orpheus`](https://huggingface.co/OpenVoiceOS/phoonnx-orpheus).
+Mirror: [`Phoonnx/phoonnx-orpheus`](https://huggingface.co/Phoonnx/phoonnx-orpheus).

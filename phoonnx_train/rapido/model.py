@@ -11,6 +11,8 @@ Three stages, each usable on its own:
 
 Parameter names match the released ``rapido.pt`` checkpoint (``ema`` state dict), so
 ``load_state_dict(strict=True)`` loads it. All stages take padded batches with masks.
+
+Ported from the upstream rapido-tts code (anurag12-webster/rapido-tts, Apache-2.0).
 """
 import math
 from dataclasses import dataclass, fields
@@ -24,6 +26,7 @@ import torch.nn.functional as F
 from phoonnx.engines.rapido import frame_layout, ode_times, word_frame_counts, word_layout
 
 REPO_ID = "edwixx/rapido-tts"
+REVISION = "d4399f4f42c056b0864108eb7298b74cddcf81c0"
 CHECKPOINT_FILE = "rapido.pt"
 
 
@@ -366,5 +369,5 @@ def load_checkpoint(path: Optional[str] = None) -> Dict[str, Any]:
     """Read a released-format Rápido checkpoint; the Hub's ``rapido.pt`` when no path is given."""
     if path is None:
         from huggingface_hub import hf_hub_download
-        path = hf_hub_download(REPO_ID, CHECKPOINT_FILE)
-    return torch.load(path, map_location="cpu", weights_only=False)
+        path = hf_hub_download(REPO_ID, CHECKPOINT_FILE, revision=REVISION)
+    return torch.load(path, map_location="cpu", weights_only=True)

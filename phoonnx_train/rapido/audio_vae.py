@@ -20,6 +20,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 REPO_ID = "openbmb/VoxCPM2"
+REVISION = "7936080b41163874f38610f46f438e2c0757f9fd"
 WEIGHTS_FILE = "audiovae.pth"
 CONFIG_FILE = "config.json"
 
@@ -272,9 +273,9 @@ class AudioVAE(nn.Module):
 def load_audio_vae(device: str = "cpu") -> AudioVAE:
     """The frozen VoxCPM2 AudioVAE v2 from the Hub, weights loaded strictly, in eval mode."""
     from huggingface_hub import hf_hub_download
-    with open(hf_hub_download(REPO_ID, CONFIG_FILE), encoding="utf-8") as f:
+    with open(hf_hub_download(REPO_ID, CONFIG_FILE, revision=REVISION), encoding="utf-8") as f:
         config = AudioVAEConfig.from_dict(json.load(f)["audio_vae_config"])
     vae = AudioVAE(config)
-    state = torch.load(hf_hub_download(REPO_ID, WEIGHTS_FILE), map_location="cpu", weights_only=True)
+    state = torch.load(hf_hub_download(REPO_ID, WEIGHTS_FILE, revision=REVISION), map_location="cpu", weights_only=True)
     vae.load_state_dict(state["state_dict"], strict=True)
     return vae.to(device).eval().requires_grad_(False)

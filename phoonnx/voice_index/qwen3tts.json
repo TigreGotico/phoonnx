@@ -1,7 +1,7 @@
 {
     "qwen3tts/vivian/zh": {
         "voice_id": "qwen3tts/vivian/zh",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -12,13 +12,13 @@
         "engine": "qwen3tts",
         "lang": "zh-CN",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Vivian (bright young female)",
         "engine_options": {
@@ -28,7 +28,7 @@
     },
     "qwen3tts/serena/zh": {
         "voice_id": "qwen3tts/serena/zh",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -39,13 +39,13 @@
         "engine": "qwen3tts",
         "lang": "zh-CN",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Serena (warm gentle young female)",
         "engine_options": {
@@ -55,7 +55,7 @@
     },
     "qwen3tts/uncle_fu/zh": {
         "voice_id": "qwen3tts/uncle_fu/zh",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -66,13 +66,13 @@
         "engine": "qwen3tts",
         "lang": "zh-CN",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Uncle Fu (seasoned male, mellow)",
         "engine_options": {
@@ -82,7 +82,7 @@
     },
     "qwen3tts/dylan/zh": {
         "voice_id": "qwen3tts/dylan/zh",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -93,13 +93,13 @@
         "engine": "qwen3tts",
         "lang": "zh-CN",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Dylan (youthful Beijing male)",
         "engine_options": {
@@ -109,7 +109,7 @@
     },
     "qwen3tts/eric/zh": {
         "voice_id": "qwen3tts/eric/zh",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -120,13 +120,13 @@
         "engine": "qwen3tts",
         "lang": "zh-CN",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Eric (lively Chengdu male)",
         "engine_options": {
@@ -136,7 +136,7 @@
     },
     "qwen3tts/ryan/en": {
         "voice_id": "qwen3tts/ryan/en",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -147,13 +147,13 @@
         "engine": "qwen3tts",
         "lang": "en-US",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Ryan (dynamic male)",
         "engine_options": {
@@ -163,7 +163,7 @@
     },
     "qwen3tts/aiden/en": {
         "voice_id": "qwen3tts/aiden/en",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -174,13 +174,13 @@
         "engine": "qwen3tts",
         "lang": "en-US",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Aiden (sunny American male)",
         "engine_options": {
@@ -190,7 +190,7 @@
     },
     "qwen3tts/ono_anna/ja": {
         "voice_id": "qwen3tts/ono_anna/ja",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -201,13 +201,13 @@
         "engine": "qwen3tts",
         "lang": "ja-JP",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Ono Anna (playful Japanese female)",
         "engine_options": {
@@ -217,7 +217,7 @@
     },
     "qwen3tts/sohee/ko": {
         "voice_id": "qwen3tts/sohee/ko",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -228,13 +228,13 @@
         "engine": "qwen3tts",
         "lang": "ko-KR",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Sohee (warm Korean female)",
         "engine_options": {
@@ -244,7 +244,7 @@
     },
     "qwen3tts/ryan/de": {
         "voice_id": "qwen3tts/ryan/de",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -255,13 +255,13 @@
         "engine": "qwen3tts",
         "lang": "de-DE",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Ryan (German)",
         "engine_options": {
@@ -271,7 +271,7 @@
     },
     "qwen3tts/ryan/fr": {
         "voice_id": "qwen3tts/ryan/fr",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -282,13 +282,13 @@
         "engine": "qwen3tts",
         "lang": "fr-FR",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Ryan (French)",
         "engine_options": {
@@ -298,7 +298,7 @@
     },
     "qwen3tts/ryan/ru": {
         "voice_id": "qwen3tts/ryan/ru",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -309,13 +309,13 @@
         "engine": "qwen3tts",
         "lang": "ru-RU",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Ryan (Russian)",
         "engine_options": {
@@ -325,7 +325,7 @@
     },
     "qwen3tts/ryan/pt": {
         "voice_id": "qwen3tts/ryan/pt",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -336,13 +336,13 @@
         "engine": "qwen3tts",
         "lang": "pt-BR",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Ryan (Portuguese)",
         "engine_options": {
@@ -352,7 +352,7 @@
     },
     "qwen3tts/ryan/es": {
         "voice_id": "qwen3tts/ryan/es",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -363,13 +363,13 @@
         "engine": "qwen3tts",
         "lang": "es-ES",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Ryan (Spanish)",
         "engine_options": {
@@ -379,7 +379,7 @@
     },
     "qwen3tts/ryan/it": {
         "voice_id": "qwen3tts/ryan/it",
-        "model_url": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/talker.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/talker.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -390,13 +390,13 @@
         "engine": "qwen3tts",
         "lang": "it-IT",
         "aux_model_urls": {
-            "text_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
-            "codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
-            "code_predictor_prefill_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
-            "code_predictor_step_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
-            "sub_codec_embed_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
-            "codec_decoder_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
-            "bpe_tokenizer_path": "https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
+            "text_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/text_embed.onnx",
+            "codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_embed.onnx",
+            "code_predictor_prefill_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_prefill.onnx",
+            "code_predictor_step_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/code_predictor_step.onnx",
+            "sub_codec_embed_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/sub_codec_embed.onnx",
+            "codec_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/codec_decoder.onnx",
+            "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-qwen3-tts/resolve/main/tokenizer.json"
         },
         "display_name": "Qwen3-TTS Ryan (Italian)",
         "engine_options": {
