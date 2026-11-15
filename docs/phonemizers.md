@@ -139,7 +139,7 @@ Phonikud.
 
 ### Galician (Cotovia)
 
-The `cotovia` phonemizer requires the `cotovia` binary to be installed. phoonnx searches for it in `PATH`, a bundled binary, and `/usr/bin/cotovia`. The alphabet can be either native Cotovia or IPA.
+The `cotovia` phonemizer runs [pycotovia](https://github.com/TigreGotico/pycotovia), a pure-Python port of the Cotovia G2P engine, through scriptconv. Install it with the scriptconv `gl` extra. The alphabet can be either native Cotovia or IPA. See [galician.md](galician.md).
 
 ### Chinese
 
@@ -173,7 +173,7 @@ gives the install and configuration steps.
 
 phoonnx wraps and, where licensing allows, bundles domain-specific G2P work, including:
 
-- [cotovia](https://github.com/TigreGotico/cotovia-mirror) — Galician phonemization (bundled binaries)
+- [cotovia](https://github.com/TigreGotico/cotovia-mirror) — Galician phonemization, through its pure-Python port [pycotovia](https://github.com/TigreGotico/pycotovia)
 - [mantoq](https://github.com/mush42/mantoq) — Arabic phonemization; [text2tashkeel](https://pypi.org/project/text2tashkeel/) — Arabic diacritization
 - [hams-levantine-tts](https://github.com/Al-aminI/hams-levantine-tts) — the Shami (Levantine Arabic / English) front-end
 - [KoG2P](https://github.com/scarletcho/KoG2P) and [hangul_to_ipa](https://github.com/stannam/hangul_to_ipa) — Korean phonemization and Hangul→IPA
