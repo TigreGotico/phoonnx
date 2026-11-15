@@ -258,7 +258,7 @@ class PhoonnxLoader(ConfigLoader):
             lang_code=request.lang_code or config.get("lang_code"),
             phoneme_type=request.phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK),
             alphabet=alphabet,
-            add_diacritics=inference.get("add_diacritics", True),
+            add_diacritics=inference.get("add_diacritics"),
             diacritizer_model=inference.get("diacritizer_model", None),
         )
 
@@ -577,7 +577,7 @@ class CanonicalLoader(ConfigLoader):
     Config-shape engine detection is deprecated, so a config that declares its
     engine, phoneme type and alphabet is honoured as-is rather than guessed at
     or rejected.  Unlike the native phoonnx format it does not assume espeak
-    phonemes or diacritization.
+    phonemes.
     """
 
     @classmethod
