@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.99.3a2](https://github.com/TigreGotico/phoonnx/tree/1.99.3a2) (2026-11-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.3a1...1.99.3a2)
+
+**Merged pull requests:**
+
+- Update dependency diffusers to \>=0.43,\<0.44 [\#562](https://github.com/TigreGotico/phoonnx/pull/562) ([renovate[bot]](https://github.com/apps/renovate))
+
 ## [1.99.3a1](https://github.com/TigreGotico/phoonnx/tree/1.99.3a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.2a1...1.99.3a1)
