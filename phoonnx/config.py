@@ -48,6 +48,7 @@ class Engine(str, Enum):
     MOSSTTS = "mosstts"  # MOSS-TTS-Nano: autoregressive RVQ-16 codec-LM, zero-shot cloning @48kHz
     VOSK = "vosk"  # alphacep vosk-tts: VITS + dictionary/rule Russian g2p
     RAPIDO = "rapido"  # Rápido: flow-matching DiT over VoxCPM2 AudioVAE latents @48kHz
+    TINYVOCA = "tinyvoca"  # tiny-voca: dizione tokens + stress, source-filter waveform head
 
     @classmethod
     def _missing_(cls, value: object) -> Optional["Engine"]:
@@ -636,7 +637,9 @@ def get_phonemizer(phoneme_type: PhonemeType,
     except KeyError:
         raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
 
-    if phoneme_type == PhonemeType.ESPEAK:
+    if "normalize" in phonemizer.owned_stages:
+        pass  # the backend reads raw text with its own rules (dizione)
+    elif phoneme_type == PhonemeType.ESPEAK:
         # espeak-ng reads a contraction the way people say it ("don't" -> dˈoʊnt). Expanding it
         # first ("do not") makes every English sentence sound like a form letter, and the table
         # is a guess for "he's" and "I'd". Numbers, dates, units and titles are still normalized.
@@ -684,16 +687,30 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     # phonemize_lazy is a BasePhonemizer method, so every phonemizer has it: a
     # per-sentence generator, keeping sentence N+1 off the critical path of N.
     # A phonemizer that tags each symbol with its language (Shami) yields the
-    # tags beside the symbols, for engines with a language_ids input.
+    # tags beside the symbols, for engines with a language_ids input. dizione
+    # gives its own tokens with a stress value each, for engines with a stress
+    # input (tiny-voca); its ValueError means the text has nothing to pronounce.
     with_language_ids = getattr(phonemizer, "phonemize_with_language_ids_lazy", None)
+    # dizione gives ids and stress through tokens(). ByT5 holds a dict named
+    # tokens, so only a callable counts.
+    with_stress = getattr(phonemizer, "tokens", None)
+    if not callable(with_stress):
+        with_stress = None
 
     def phonemize(text, **_):
-        if with_language_ids is None:
-            for phonemes in phonemizer.phonemize_lazy(text, lang):
-                yield phonemes, {}
-        else:
+        if with_language_ids is not None:
             for phonemes, language_ids in with_language_ids(text, lang):
                 yield phonemes, {"language_ids": language_ids}
+        elif with_stress is not None:
+            try:
+                tokens = with_stress(text)
+            except ValueError as e:
+                LOG.warning(f"skipping {text!r}: {e}")
+                return
+            yield list(tokens.symbols), {"stress": list(tokens.stress)}
+        else:
+            for phonemes in phonemizer.phonemize_lazy(text, lang):
+                yield phonemes, {}
 
     graph = ConversionGraph()
     if not enabled:

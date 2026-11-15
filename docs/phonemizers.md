@@ -50,6 +50,7 @@ matching [install extra](installation.md#language-extras).
 | `mwl_phonemizer` | Mirandese, through scriptconv on the orthography2ipa specs `mwl`, `mwl-x-sendim` and `mwl-x-ifanes` | Mirandese |
 | `vosk` | vosk-tts phoneme inventory (use with `Alphabet.VOSK`) | Russian |
 | `shami` | Levantine Arabic / English code-switching front-end (emits per-phoneme language IDs) | apc / en |
+| `dizione` | American English: CMUdict lexicon, homograph rules and its own text rules; emits the tiny-voca tokens with a stress value each | en-US |
 | `arbtok` | Dialect-aware Arabic on undiacritized text (o2i lattice; register via `phonemizer_model`) | Arabic |
 | `euskaphone` | Dialect-aware Basque (o2i lattice) | Basque |
 | `barranquenho` | Barranquenho contact variety, through scriptconv on the orthography2ipa spec `ext-PT-x-barranco` | Barranquenho |

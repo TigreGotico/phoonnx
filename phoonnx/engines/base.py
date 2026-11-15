@@ -35,6 +35,10 @@ class AdapterSynthesisRequest:
     # (e.g. ShamiVITS).  Shape (1, T), dtype int64, when provided.
     language_ids: Optional[np.ndarray] = None
 
+    # Per-phoneme stress (0 none, 1 primary, 2 secondary) for models with a stress
+    # input (e.g. tiny-voca).  Shape (1, T), dtype int64, when provided.
+    stress: Optional[np.ndarray] = None
+
     # Engine-specific key→value (noise_scale, d_factor, …).
     # Populated from SynthesisConfig + VoiceConfig defaults.
     params: Dict[str, Any] = field(default_factory=dict)
