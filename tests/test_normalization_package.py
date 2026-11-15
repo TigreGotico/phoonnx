@@ -1,4 +1,7 @@
 import unittest
+from unittest import mock
+
+from ovos_number_parser import pronounce_number
 
 import phoonnx.normalization as normalization
 import phoonnx.util as util
@@ -117,30 +120,39 @@ class TestUnitCase(unittest.TestCase):
 
 
 class TestUnitNumbers(unittest.TestCase):
-    """A number before a unit reads the same with or without its thousands separator."""
+    """The unit pass reads the number before a unit by the language's separators."""
 
-    def test_grouped_number_reads_like_the_plain_number(self):
-        cases = [("1,500 km", "1500 km", "en-US"), ("12,345.6 km", "12345.6 km", "en-US"),
-                 ("1,500,000 km", "1500000 km", "en-US"), ("1,500%", "1500%", "en-US"),
-                 ("1.500 km", "1500 km", "pt-PT"), ("1.500,5 km", "1500,5 km", "pt-PT")]
-        for grouped, plain, lang in cases:
-            with self.subTest(text=grouped, lang=lang):
-                self.assertEqual(units_module._normalize_units(grouped, lang),
-                                 units_module._normalize_units(plain, lang))
+    def spoken(self, value, lang, unit):
+        return f"{pronounce_number(value, lang)} {units_module.UNITS[lang.split('-')[0]][unit]}"
 
-    def test_number_that_is_not_grouped_in_threes_is_left_as_written(self):
-        for text, lang in [("2,5 km", "en-US"), ("1234,567 km", "en-US"), ("1.5 km", "pt-PT")]:
+    def test_number_before_a_unit_reads_its_value(self):
+        cases = [("1,500 km", "en-US", 1500, "km"), ("1,500,000 km", "en-US", 1500000, "km"),
+                 ("12,345.6 km", "en-US", 12345.6, "km"), ("2.5 km", "en-US", 2.5, "km"),
+                 ("1,500%", "en-US", 1500, "%"),
+                 ("1.500 km", "pt-PT", 1500, "km"), ("1.500,5 km", "pt-PT", 1500.5, "km"),
+                 ("1,5 km", "pt-PT", 1.5, "km"), ("1.5 km", "pt-PT", 1.5, "km"),
+                 ("1.25 kg", "pt-PT", 1.25, "kg"), ("0.25%", "pt-PT", 0.25, "%"),
+                 ("36.6°C", "pt-PT", 36.6, "°C"), ("0.5 km", "es-ES", 0.5, "km")]
+        for text, lang, value, unit in cases:
             with self.subTest(text=text, lang=lang):
-                self.assertEqual(units_module._normalize_units(text, lang), text)
+                self.assertEqual(units_module._normalize_units(text, lang), self.spoken(value, lang, unit))
+
+    def test_number_after_a_letter_and_a_full_stop_is_read(self):
+        self.assertEqual(units_module._normalize_units("approx.5 km", "en-US"),
+                         "approx." + self.spoken(5, "en-US", "km"))
+
+    def test_number_that_continues_another_number_is_left_as_written(self):
+        for text in ("2,5 km", "1234,567 km"):
+            with self.subTest(text=text):
+                self.assertEqual(units_module._normalize_units(text, "en-US"), text)
 
     def test_unit_that_matches_only_without_case_is_left_as_written(self):
         # "İ" matches "i" in an IGNORECASE regex, but casefolds to "i̇".
         self.assertEqual(units_module._normalize_units("5 MİN", "pt-PT"), "5 MİN")
 
-    def test_no_crash_in_full_normalisation(self):
-        for text, lang in [("1,500 km", "en-US"), ("2,5 km", "en-US"), ("1.5 km", "pt-PT")]:
-            with self.subTest(text=text, lang=lang):
-                self.assertNotRegex(util.normalize(text, lang), r"\d")
+    def test_number_that_cannot_be_spoken_is_left_as_written(self):
+        with mock.patch.object(units_module, "pronounce_number", side_effect=ValueError):
+            self.assertEqual(units_module._normalize_units("5 km", "en-US"), "5 km")
 
 if __name__ == "__main__":
     unittest.main()

@@ -46,16 +46,21 @@ def _normalize_units(text: str, full_lang: str) -> str:
         # The unit regex ignores case, so "ml" must find the key "mL".
         folded_units = {k.casefold(): v for k, v in alphanumeric_units.items()}
 
-        # A number is digits with an optional decimal part, or digits grouped in
-        # threes by the thousands separator ("1,500", "12,345.6" in English). It
-        # never starts inside another number, so "2,5 km" in English stays as
-        # written instead of reading "2," and "5 km" apart.
+        # A number is one of: digits grouped in threes by the thousands separator
+        # ("1,500" and "12,345.6" in English, "1.500,5" in Portuguese); digits
+        # with a "." decimal part, which comma-decimal languages also meet
+        # ("1.5 km"); digits with the language's decimal part. A number never
+        # starts right after a digit and a separator, so "2,5 km" in English
+        # stays as written instead of reading "2," and "5 km" apart.
         thousands, decimal = re.escape(thousands_separator), re.escape(decimal_separator)
-        number_pattern_str = (rf"(?<![\d{thousands}{decimal}])"
-                              rf"(\d{{1,3}}(?:{thousands}\d{{3}})+(?:{decimal}\d+)?|\d+(?:{decimal}\d+)?)")
+        grouped = rf"\d{{1,3}}(?:{thousands}\d{{3}})+(?:{decimal}\d+)?"
+        number_pattern_str = (rf"(?<!\d)(?<!\d[{thousands}{decimal}])"
+                              rf"({grouped}|\d+\.\d+(?![.\d])|\d+(?:{decimal}\d+)?)")
 
         def number_value(number: str):
-            number = number.replace(thousands_separator, "").replace(decimal_separator, ".")
+            if re.fullmatch(grouped, number):
+                number = number.replace(thousands_separator, "")
+            number = number.replace(decimal_separator, ".")
             return float(number) if "." in number else int(number)
 
         # Create regex pattern for symbolic units and replace them first
