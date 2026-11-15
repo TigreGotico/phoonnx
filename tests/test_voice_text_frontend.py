@@ -223,6 +223,14 @@ class TestNormaliser(unittest.TestCase):
                          ShamiPhonemizer().phonemize(normalize(text, "ar"), "ar"))
         self.assertNotEqual(normalize(text, "ar"), text)
 
+    def test_a_shami_voice_diacritizes_the_normalised_sentence(self):
+        voice = _voice("ar", PhonemeType.SHAMI, Alphabet.IPA, add_diacritics=True)
+        text, marked = "عندي 12 قطة", "عِنْدِي اثنا عشر قِطَّة"
+        with patch("scriptconv.frontend.diacritize", return_value=marked) as diacritize:
+            phonemes = _synthesis_phonemes(voice, text)
+        self.assertEqual(diacritize.call_args.args[0], normalize(text, "ar"))
+        self.assertEqual(phonemes, ShamiPhonemizer().phonemize(marked, "ar"))
+
 
 class _OwnsNormalisation(UnicodeCodepointPhonemizer):
     """A backend that reads digits itself, with a reading the hook never gives."""
