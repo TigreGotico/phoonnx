@@ -74,8 +74,11 @@ ref.wav ──────────────────────┤
 ### The sampling loop
 
 Flow matching integrates `noise` from `t=0` to `t=1` using a pre-computed
-sway-sampled time schedule (`nfe` defaults to **32**; lower = faster,
-higher = better). `cfg_strength` (default 2.0) controls classifier-free guidance,
+sway-sampled time schedule. The export fixes the number of steps, so `nfe` is not
+a speed setting. A graph that stores `nfe_step` in its metadata always runs that
+many steps; the adapter logs a warning and ignores any other `nfe`. For a graph
+without that key, `nfe` (default **32**) must equal the export's step count.
+`cfg_strength` (default 2.0) controls classifier-free guidance,
 applied internally by the transformer export.
 
 > **ONNX-name auto-detect fallback.** `torch.onnx.export` can rename an input
@@ -128,7 +131,7 @@ If **neither** `decode_path` nor `vocoder_path` is supplied, synthesis raises a
 | Param | Default | Description |
 |---|---|---|
 | `speed` | 1.0 | Speaking rate — scales the estimated generation duration (>1 faster). Settable in `engine_params` or per call via `extra_params`. |
-| `nfe` | 32 | ODE steps (quality/speed trade-off) |
+| `nfe` | 32 | ODE steps. The export fixes this value: a graph with `nfe_step` metadata ignores any other value, and for other graphs it must match the export |
 | `cfg_strength` | 2.0 | Classifier-free guidance strength |
 | `dialect` | `UNK` | Habibi Unified dialect control tag (see below) |
 
@@ -217,6 +220,7 @@ The catalog voices ship in `phoonnx/voice_index/f5tts.json`:
 | `namaa/ar-sa-v2` | NAMAA Saudi TTS V2 (Habibi fine-tune, non-commercial) | Arabic (Saudi) |
 | `silma/v1` | SILMA TTS v1 (Apache-2.0, commercial OK) | Arabic (MSA/Fusha, full tashkeel support) |
 | `silma/v1-en` | SILMA TTS v1 (same model, English listing) | English |
+| `openbible/tw-asante` | F5-TTS OpenBible Twi (Asante), name-bound export | Twi (Asante) |
 
 The model manager downloads the three ONNX graphs on first use: the
 `aux_model_urls` mechanism resolves `preprocess_path` / `decode_path` to the
@@ -230,7 +234,8 @@ licensing is per model (see its
 are CC-BY-NC-SA-4.0** (restricted by the SADA and Mixat datasets), while
 **ALG, EGY, IRQ, MAR and MSA are Apache-2.0**. **SILMA TTS v1 is Apache-2.0**
 (commercial use allowed). **NAMAA-Saudi-TTS-V2 is CC-BY-NC-SA-4.0**
-(non-commercial — inherited from its Habibi-TTS base). The ONNX conversions in
+(non-commercial — inherited from its Habibi-TTS base). **F5-TTS OpenBible Twi
+(Asante) is CC-BY-SA-4.0** (share-alike). The ONNX conversions in
 `Phoonnx/phoonnx-f5tts` inherit those licenses.
 
 ## Variants
