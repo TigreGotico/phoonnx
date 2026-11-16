@@ -38,8 +38,13 @@ from typing import List, Tuple
 
 import numpy as np
 
+from phoonnx.log import LOG
+
 MAX_AMPLITUDE = 32768.0
 """pydub measures dBFS against a full-scale 16-bit sample, so we do too."""
+
+#: modules whose absence the numpy fallback has already logged in this process
+_WARNED_MISSING = set()
 
 
 # ---------------------------------------------------------------------------
@@ -209,8 +214,12 @@ def remove_silence(audio: np.ndarray, sampling_rate: int, mid_sil: int = 300,
     try:
         return _remove_silence_pydub(audio, sampling_rate, mid_sil, lead_sil,
                                      trail_sil, silence_threshold)
-    except ImportError:
-        pass
+    except ImportError as err:
+        if err.name not in _WARNED_MISSING:
+            _WARNED_MISSING.add(err.name)
+            LOG.warning("OmniVoice silence trim uses the numpy fallback, not pydub: "
+                        "cannot import %r. Install phoonnx[omnivoice] for the pydub path.",
+                        err.name)
 
     a = np.asarray(audio, np.float32)
     if a.ndim == 1:

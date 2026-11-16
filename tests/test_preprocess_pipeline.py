@@ -358,10 +358,12 @@ class TestPhonemizerProvenance(unittest.TestCase):
             self.assertEqual(config["phonemes_phonemized"], 1)
             self.assertEqual(config["phonemes_from_column"], 0)
             # The engine itself: scriptconv's grapheme backend reading English.
+            # preprocess calls the backend directly, not through TextFrontend,
+            # so scriptconv gives no frontend version.
             self.assertEqual(config["phonemizer_identity"], {
                 "backend": "graphemes", "distribution": "scriptconv",
                 "version": importlib.metadata.version("scriptconv"),
-                "lang": "en", "revision": None})
+                "lang": "en", "revision": None, "frontend": None})
 
     def test_column_run_claims_no_producer(self):
         with TemporaryDirectory() as tmp:
@@ -557,6 +559,42 @@ class TestPhonemizerProvenance(unittest.TestCase):
                         "phonemizer_identity", "phonemes_phonemized", "phonemes_from_column"):
                 self.assertNotIn(key, resumed)
 
+    def test_resume_onto_an_identity_without_the_frontend_field_records_nothing(self):
+        """An identity written before scriptconv had the ``frontend`` field is not this run's.
+
+        scriptconv 0.0.4a103 and older wrote no ``frontend`` key. Only that
+        key differs here, so the identity comparison alone must refuse the fold.
+        """
+        import click.testing
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, out = tmp / "a.jsonl", tmp / "out"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"}])
+            argv = ["-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                    "--phoneme-type", "graphemes", "--alphabet", "ipa",
+                    "--max-workers", "1"]
+            self.assertEqual(
+                click.testing.CliRunner().invoke(
+                    preprocess.cli, argv, catch_exceptions=False).exit_code, 0)
+
+            first = json.loads((out / "config.json").read_text())
+            self.assertEqual(first["phonemes_phonemized"], 1)
+            first["phonemizer_identity"].pop("frontend", None)
+            (out / "config.json").write_text(json.dumps(first))
+
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"},
+                         {"text": "hue", "audio": "c.wav"}])
+            self.assertEqual(
+                click.testing.CliRunner().invoke(
+                    preprocess.cli, argv + ["--resume"],
+                    catch_exceptions=False).exit_code, 0)
+
+            resumed = json.loads((out / "config.json").read_text())
+            for key in ("phonemizer_registry", "phonemizer_registry_version",
+                        "phonemizer_identity", "phonemes_phonemized", "phonemes_from_column"):
+                self.assertNotIn(key, resumed)
+
     def _column_only_resume(self, strip_identity):
         """Phonemize one row, then resume adding one row from a phonemes column."""
         import click.testing
@@ -589,7 +627,7 @@ class TestPhonemizerProvenance(unittest.TestCase):
         self.assertEqual(resumed["phonemizer_identity"], {
             "backend": "graphemes", "distribution": "scriptconv",
             "version": importlib.metadata.version("scriptconv"),
-            "lang": "en", "revision": None})
+            "lang": "en", "revision": None, "frontend": None})
         self.assertEqual((resumed["phonemes_phonemized"], resumed["phonemes_from_column"]), (1, 1))
 
     def test_a_column_only_resume_onto_a_config_without_an_engine_names_none(self):

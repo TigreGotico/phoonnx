@@ -13,7 +13,7 @@ serves a single-graph VITS voice and a multi-graph flow-matching voice without c
 ```mermaid
 flowchart TD
     T[Input text] --> PS[Phonetic spellings<br/>word-level overrides]
-    PS --> P[scriptconv TextFrontend<br/>blocks, sentences, normalize,<br/>diacritize, phonemizer]
+    PS --> P[scriptconv TextFrontend<br/>blocks, normalize, sentences,<br/>diacritize, phonemizer]
     P --> TK[Tokenizer<br/>phonemes / graphemes to IDs]
     TK --> A[Engine adapter<br/>build feed dict]
     A --> S[(ONNX Runtime session<br/>+ auxiliary graphs)]
@@ -29,8 +29,9 @@ Step by step, as implemented in `TTSVoice.synthesize`:
    to the raw text.
 2. **Text frontend** — `TTSVoice.frontend` is a scriptconv `TextFrontend` over the voice's
    [phonemizer](phonemizers.md). It runs a fixed order: it splits out inline `[[...]]`
-   blocks, splits the text into sentences, normalizes each sentence, adds diacritics when
-   the voice or the call asks for them, and then runs the phonemizer. The symbols of a block
+   blocks, normalizes the whole text, splits it into sentences, adds diacritics when
+   the voice or the call asks for them, and then runs the phonemizer. The side-stream
+   path below still splits the raw text into sentences before it normalizes each one. The symbols of a block
    go into the output as written. A per-call `SynthesisConfig.add_diacritics` wins; when it
    is unset, the voice config decides, so an undiacritized model is never force-diacritized.
    An engine that reads text instead of phonemes gets the text from `TextFrontend.prepare`,

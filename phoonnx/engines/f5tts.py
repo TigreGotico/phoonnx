@@ -15,6 +15,26 @@ The ONNX export (e.g. `DakeQQ/F5-TTS-ONNX
   decode     : denoised, ref_signal_len
                → waveform                      (Vocos + ISTFT baked in)
 
+The exporter's later runtime contract (``Inference_F5_TTS_ONNX.py``) changes the
+graph signatures and binds the tensors by name::
+
+  preprocess : audio, text_ids, max_duration
+               → noise, rope_cos, rope_sin, cat_mel_text, cat_mel_text_drop,
+                 ref_signal_len, rms_scale, ref_mel_tail
+  transformer: noise, rope_cos, rope_sin, cat_mel_text, cat_mel_text_drop, time_step
+               → denoised                      (time_step = 0 .. NFE-1, fed by the caller)
+  decode     : denoised, ref_signal_len, rms_scale, ref_mel_tail
+               → output_audio
+
+A transformer with six inputs selects this contract.
+
+The step count is fixed at export time on both contracts. The name-bound export
+stores it in its metadata as ``nfe_step``: the adapter then runs exactly that many
+steps and logs a warning when a call asks for another ``nfe``. On a graph without
+that key, and on the older contract, ``nfe`` comes from ``engine_params`` or from
+``SynthesisConfig.extra_params`` (default 32) and must equal the export's value.
+The voice config's ``inference`` section does not set it.
+
 This adapter overrides :meth:`synthesize` to drive the iterative ODE loop
 across the three graphs.  The voice's primary model is the ``transformer``;
 the ``preprocess`` and ``decode`` graphs, plus an optional standalone Vocos
@@ -39,6 +59,7 @@ vocoder, are loaded in :meth:`configure` from ``engine_params``.
 The adapter also works for **Habibi-TTS** and any other model built on the
 F5-TTS architecture (same ONNX layout, different weights).
 """
+import logging
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -50,6 +71,8 @@ from phoonnx.engines.base import (
     BaseOnnxAdapter,
 )
 from phoonnx.providers import make_session
+
+LOG = logging.getLogger(__name__)
 
 
 # Habibi-TTS dialect control tokens (Unified model only). Upstream wraps the
@@ -201,6 +224,9 @@ class F5TTSAdapter(BaseOnnxAdapter):
         })
         # outputs: noise, rope_cos_q, rope_sin_q, rope_cos_k, rope_sin_k,
         #          cat_mel_text, cat_mel_text_drop, ref_signal_len
+        transformer_inputs = [inp.name for inp in session.get_inputs()]
+        if len(transformer_inputs) == len(self._BY_NAME_TRANSFORMER_INPUTS):
+            return self._synthesize_by_name(session, pre_out, transformer_inputs, nfe)
         noise = pre_out[0]
         rope_cos_q = pre_out[1]
         rope_sin_q = pre_out[2]
@@ -220,7 +246,6 @@ class F5TTSAdapter(BaseOnnxAdapter):
         # (e.g. "time_step" -> "time_step.1") — feed by declared input order rather
         # than by hardcoded name so the adapter survives that renaming across
         # export runs / PyTorch versions.
-        transformer_inputs = [inp.name for inp in session.get_inputs()]
         time_step = np.array([0], dtype=np.int32)
         for _ in range(max(nfe - 1, 0)):
             values = [noise, rope_cos_q, rope_sin_q, rope_cos_k, rope_sin_k,
@@ -248,6 +273,44 @@ class F5TTSAdapter(BaseOnnxAdapter):
             )
 
         return AdapterSynthesisResult(audio=audio)
+
+    #: transformer inputs of the name-bound contract; the state is the first one
+    _BY_NAME_TRANSFORMER_INPUTS = ("noise", "rope_cos", "rope_sin", "cat_mel_text",
+                                   "cat_mel_text_drop", "time_step")
+
+    def _synthesize_by_name(self, session: onnxruntime.InferenceSession,
+                            pre_out: List[np.ndarray], transformer_inputs: List[str],
+                            nfe: int) -> AdapterSynthesisResult:
+        """ODE loop and decode for the name-bound export contract.
+
+        As in the exporter's own runner, every transformer and decode input that the
+        preprocess graph outputs is fed under its name, the one transformer input it
+        does not output is the step index (0 .. nfe-1), and the denoised state goes
+        back into the transformer's first input and, at the end, into the one decode
+        input that preprocess does not output.
+        """
+        if self.decode is None:
+            raise RuntimeError("F5-TTS requires 'decode_path' in engine_params")
+        export_nfe = session.get_modelmeta().custom_metadata_map.get("nfe_step")
+        if export_nfe is not None:
+            if int(export_nfe) != nfe:
+                LOG.warning("F5-TTS export runs a fixed %s steps; ignoring nfe=%s",
+                            export_nfe, nfe)
+            nfe = int(export_nfe)
+        pre = dict(zip((o.name for o in self.preprocess.get_outputs()), pre_out))
+        step_input, = (i for i in session.get_inputs() if i.name not in pre)
+        step_dtype = np.int64 if "int64" in step_input.type else np.int32
+        state_name = transformer_inputs[0]
+        feed = {name: pre[name] for name in transformer_inputs if name != step_input.name}
+        for step in range(nfe):
+            feed[step_input.name] = np.array([step], dtype=step_dtype)
+            feed[state_name] = session.run(None, feed)[0]
+        decode_feed = {i.name: pre.get(i.name, feed[state_name])
+                       for i in self.decode.get_inputs()}
+        audio = np.asarray(self.decode.run(None, decode_feed)[0])
+        if audio.dtype == np.int16:
+            audio = audio.astype(np.float32) / 32768.0
+        return AdapterSynthesisResult(audio=audio.astype(np.float32).reshape(-1))
 
     # --- ABC stubs (unused — synthesize() drives the loop) ---
 

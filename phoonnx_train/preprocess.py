@@ -69,7 +69,8 @@ def phonemizer_identity(phonemizer: Any, lang: str) -> Dict[str, Optional[str]]:
 
     The keys are ``backend``, ``distribution``, ``version`` (for espeak-ng, the
     version of the binary), ``lang`` (the resolved lect) and ``revision`` (the
-    orthography2ipa spec revision, or None). Unlike :func:`phonemizer_registry`,
+    orthography2ipa spec revision, or None) and ``frontend`` (None, because the
+    backend is called directly). Unlike :func:`phonemizer_registry`,
     this names the grapheme-to-phoneme engine itself.
     """
     return dataclasses.asdict(phonemizer.identity(lang))
