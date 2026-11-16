@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.100.0a2](https://github.com/TigreGotico/phoonnx/tree/1.100.0a2) (2026-11-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.100.0a1...1.100.0a2)
+
+**Merged pull requests:**
+
+- test: add a sweep that loads and synthesises every index voice [\#569](https://github.com/TigreGotico/phoonnx/pull/569) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.100.0a1](https://github.com/TigreGotico/phoonnx/tree/1.100.0a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.4a1...1.100.0a1)
@@ -224,10 +232,6 @@
 ## [1.95.0a1](https://github.com/TigreGotico/phoonnx/tree/1.95.0a1) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.8a3...1.95.0a1)
-
-**Merged pull requests:**
-
-- feat: the three kasanoma voices read from the OpenVoiceOS mirrors [\#498](https://github.com/TigreGotico/phoonnx/pull/498) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.94.8a3](https://github.com/TigreGotico/phoonnx/tree/1.94.8a3) (2026-11-10)
 
