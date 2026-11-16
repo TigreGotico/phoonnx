@@ -33,6 +33,12 @@ class TestRapidoIndex(unittest.TestCase):
         by_source = TTSModelManager().get_available_voice_ids_by_source()
         self.assertEqual(sorted(by_source["rapido"]), ["edwixx/pt-BR-rapido", "edwixx/pt-BR-rapido-int8"])
 
+    def test_every_url_is_in_the_phoonnx_org(self):
+        for voice_id, entry in _entries().items():
+            urls = [entry["model_url"], entry["config_url"], *entry["aux_model_urls"].values()]
+            for url in urls:
+                self.assertTrue(url.startswith("https://huggingface.co/Phoonnx/phoonnx-rapido/"), (voice_id, url))
+
     def test_each_voice_names_the_three_graphs_from_its_own_folder(self):
         # The int8 voice shares the fp32 text encoder, aligner and decoder by
         # content, but each entry reads them from its own folder, so the two
