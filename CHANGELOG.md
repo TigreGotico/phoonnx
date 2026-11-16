@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.101.0a1](https://github.com/TigreGotico/phoonnx/tree/1.101.0a1) (2026-11-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.100.0a2...1.101.0a1)
+
+**Merged pull requests:**
+
+- feat: rapido pt-BR voices in the voice index [\#570](https://github.com/TigreGotico/phoonnx/pull/570) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.100.0a2](https://github.com/TigreGotico/phoonnx/tree/1.100.0a2) (2026-11-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.100.0a1...1.100.0a2)
@@ -337,10 +345,6 @@
 ## [1.94.1a1](https://github.com/TigreGotico/phoonnx/tree/1.94.1a1) (2026-10-28)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.0a1...1.94.1a1)
-
-**Merged pull requests:**
-
-- fix: build the image with uv, which can resolve what pip refuses [\#500](https://github.com/TigreGotico/phoonnx/pull/500) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.94.0a1](https://github.com/TigreGotico/phoonnx/tree/1.94.0a1) (2026-10-28)
 
