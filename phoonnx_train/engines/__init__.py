@@ -107,6 +107,7 @@ def _register_builtins() -> None:
     from phoonnx_train.engines.styletts2_pitch import PitchTrainingEngine
     from phoonnx_train.engines.yourtts import YourttsTrainingEngine
     from phoonnx_train.engines.supertonic import SuperTonicTrainingEngine
+    from phoonnx_train.engines.rapido import RapidoTrainingEngine
 
     register_engine("vits", VitsTrainingEngine)
     register_engine("glowtts", GlowTTSTrainingEngine)
@@ -123,6 +124,7 @@ def _register_builtins() -> None:
     register_engine("styletts2-pitch", PitchTrainingEngine)
     register_engine("yourtts", YourttsTrainingEngine)
     register_engine("supertonic", SuperTonicTrainingEngine)
+    register_engine("rapido", RapidoTrainingEngine)
 
 
 _register_builtins()

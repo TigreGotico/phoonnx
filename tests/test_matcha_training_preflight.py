@@ -237,7 +237,7 @@ def test_plain_resume_passes_ckpt_path_to_fit(tmp_path, monkeypatch):
     (ds / "config.json").write_text(json.dumps(
         {"num_symbols": 30, "num_speakers": 1, "audio": {"sample_rate": 22050}}))
     ckpt = tmp_path / "prev.ckpt"
-    ckpt.write_bytes(b"x")
+    torch.save({"pytorch-lightning_version": "2.6.6", "state_dict": {}}, ckpt)
 
     runner = CliRunner()
     result = runner.invoke(train_mod.main, [
