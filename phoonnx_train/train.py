@@ -32,6 +32,14 @@ def _build_extra(quality_kwargs: dict, engine_params: dict, **cli_values) -> dic
 _LOGGER = logging.getLogger(__package__)
 
 
+def _is_lightning_checkpoint(path: str) -> bool:
+    """Whether Lightning wrote ``path``, so that it carries a training state to resume."""
+    from phoonnx_train.torch_compat import trusting_torch_load
+
+    with trusting_torch_load():
+        return "pytorch-lightning_version" in torch.load(path, map_location="cpu")
+
+
 def _validate_engine(ctx, param, value):
     available = list_engines()
     if value.lower() not in [e.lower() for e in available]:
@@ -199,8 +207,11 @@ def main(
     # Trainer.fit(ckpt_path=...); a manual state_dict load copies weights only.
     # The --discard-encoder and single-speaker paths intentionally change the
     # architecture, so they stay weight-only warm starts (fit_ckpt_path=None).
+    # So does a checkpoint that Lightning did not write (e.g. an upstream
+    # release): it holds weights and no training state to resume.
     fit_ckpt_path: Optional[str] = None
-    if resume_from_checkpoint and not discard_encoder:
+    if resume_from_checkpoint and not discard_encoder \
+            and _is_lightning_checkpoint(resume_from_checkpoint):
         fit_ckpt_path = resume_from_checkpoint
         _LOGGER.info("Resuming full training state from checkpoint: %s",
                      resume_from_checkpoint)
@@ -314,6 +325,11 @@ def main(
                 # data-dependent control flow cannot be traced by dynamo. Only
                 # once compile succeeded; export paths never see the wrapper.
                 disable_compile_on_transforms()
+            elif engine == "rapido":
+                # the Rápido loop calls the text, condition and velocity stages and
+                # never model.forward, so a compiled wrapper would only rename every
+                # checkpoint key to model._orig_mod.* and break the export
+                _LOGGER.warning("compile not supported for engine %r — running uncompiled", engine)
             elif hasattr(model, "model") and isinstance(getattr(model, "model"), torch.nn.Module):
                 _LOGGER.info("Compiling model with torch.compile (mode=%s)", compile_mode)
                 model.model = torch.compile(model.model, mode=compile_mode)

@@ -12,10 +12,12 @@ alignment search, so no external aligner is needed. Latents are cached beside
 the normalized-audio cache, by ``preprocess.py --engine rapido`` or on the
 first training run.
 
-Fine-tuning from the released weights: pass the upstream ``rapido.pt``, or a
-Lightning checkpoint of this engine, as ``--resume-from-checkpoint <path>
---discard-encoder``. Tensors whose shape differs are dropped, and the letter
-embedding is dropped whenever the vocabulary differs from the dataset's.
+Fine-tuning from the released weights: pass the upstream ``rapido.pt`` as
+``--resume-from-checkpoint <path>``. It holds no Lightning training state, so
+the CLI loads it as a warm start. A Lightning checkpoint of this engine is a
+warm start with ``--discard-encoder`` and a full resume without it. Tensors
+whose shape differs are dropped, and the letter embedding is dropped whenever
+the vocabulary differs from the dataset's or ``--discard-encoder`` is set.
 """
 import dataclasses
 import json

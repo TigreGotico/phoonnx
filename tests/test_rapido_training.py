@@ -102,9 +102,9 @@ def test_eval_text_to_ids_matches_the_training_ids():
     from phoonnx.util import normalize
 
     text = "Olá, tudo bem? São às 21 horas."
-    config = {"phoneme_type": "tugaphone", "alphabet": "ipa", "lang_code": "pt-BR",
+    config = {"phoneme_type": "espeak", "alphabet": "ipa", "lang_code": "pt-BR",
               "keep_punctuation": True, "phoneme_id_map": {}}
-    phonemizer = get_phonemizer(PhonemeType("tugaphone"), Alphabet.IPA, "",
+    phonemizer = get_phonemizer(PhonemeType("espeak"), Alphabet.IPA, "",
                                 keep_punctuation=True)
     phonemes = phonemizer.phonemize_to_list(normalize(text, "pt-BR"), "pt-BR")
     id_map = {"_": 0, "^": 1, "$": 2, " ": 3}
@@ -334,3 +334,247 @@ def test_checkpoint_state_strips_the_lightning_prefix():
     state = {"model.net.x": 1, "prior.weight": 2}
     assert checkpoint_state({"state_dict": state}) == {"net.x": 1}
     assert checkpoint_state({"ema": {"net.x": 3}}) == {"net.x": 3}
+
+
+# ----------------------------------------------------------------------
+# Train, export, load: the voice reads the ids the model trained on
+# ----------------------------------------------------------------------
+
+# (text, speaker, latent frames); the last clip has 1 frame for more than 4
+# letters, so it cannot be aligned at mas_upsample 4 and training skips it
+ROUND_TRIP_ROWS = [
+    ("Olá, tudo bem com você?", "ana", 40),
+    ("Hoje o dia está lindo.", "rui", 36),
+    ("Ele disse: não sei!", "ana", 30),
+    ("São quinze horas e trinta minutos.", "rui", 50),
+    ("As crianças brincaram no parque até o sol se pôr.", "ana", 1),
+]
+
+
+def _tiny_vae():
+    from phoonnx_train.rapido.audio_vae import AudioVAE, AudioVAEConfig
+
+    torch.manual_seed(0)
+    return AudioVAE(AudioVAEConfig(encoder_dim=4, encoder_rates=(2, 2), latent_dim=64,
+                                   decoder_dim=16, decoder_rates=(2, 2))).eval()
+
+
+@pytest.fixture(scope="module")
+def round_trip(tmp_path_factory):
+    """Preprocess five pt-BR rows with eSpeak, train a ``low`` model for two
+    steps, export it and load the voice with ``TTSVoice``.
+
+    Preprocessing skips the audio and this fixture writes the latent caches,
+    so the AudioVAE is never loaded; the export decodes with a tiny
+    randomly-initialised VAE."""
+    import json
+
+    import click.testing
+    import pytorch_lightning as pl
+
+    from phoonnx.voice import TTSVoice
+    from phoonnx_train import preprocess
+    from phoonnx_train.engines.base import TrainingEngineConfig
+    from phoonnx_train.rapido.dataset import latent_cache_path
+
+    tmp = tmp_path_factory.mktemp("rapido-round-trip")
+    rows = [json.dumps({"text": text, "audio": str(tmp / f"u{i}.wav"), "speaker": speaker})
+            for i, (text, speaker, _) in enumerate(ROUND_TRIP_ROWS)]
+    (tmp / "src.jsonl").write_text("\n".join(rows) + "\n", encoding="utf-8")
+    data = tmp / "data"
+    result = click.testing.CliRunner().invoke(preprocess.cli, [
+        "-i", str(tmp / "src.jsonl"), "-o", str(data), "-l", "pt-BR",
+        "--phoneme-type", "espeak", "--alphabet", "ipa", "--keep-punctuation",
+        "--skip-audio", "--max-workers", "1"], catch_exceptions=False)
+    assert result.exit_code == 0, result.output
+    dataset_config = json.loads((data / "config.json").read_text(encoding="utf-8"))
+    utterances = [json.loads(line) for line in
+                  (data / "dataset.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert len(utterances) == len(ROUND_TRIP_ROWS)
+
+    frames = {text: n for text, _, n in ROUND_TRIP_ROWS}
+    gen = torch.Generator().manual_seed(3)
+    latents = {}
+    for i, utt in enumerate(utterances):
+        utt["audio_norm_path"] = str(tmp / f"u{i}.pt")
+        lat = torch.randn(frames[utt["text"]], 64, generator=gen) * 2 + torch.arange(64) / 8
+        torch.save(lat, latent_cache_path(utt["audio_norm_path"]))
+        latents[utt["text"]] = lat.double().numpy()
+    (data / "dataset.jsonl").write_text(
+        "".join(json.dumps(utt, ensure_ascii=False) + "\n" for utt in utterances),
+        encoding="utf-8")
+
+    engine = get_engine("rapido")
+    module = engine.create_model(
+        TrainingEngineConfig(num_symbols=dataset_config["num_symbols"],
+                             num_speakers=dataset_config["num_speakers"],
+                             sample_rate=22050,
+                             extra={**_QUALITY_PRESETS["low"], "batch_size": 2,
+                                    "num_workers": 0}),
+        dataset_paths=[data])
+    torch.manual_seed(0)
+    trainer = pl.Trainer(max_steps=2, accelerator="cpu", logger=False,
+                         enable_checkpointing=False, enable_progress_bar=False,
+                         enable_model_summary=False, limit_val_batches=0,
+                         default_root_dir=tmp)
+    trainer.fit(module)
+    checkpoint = tmp / "rapido.ckpt"
+    trainer.save_checkpoint(checkpoint)
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr("phoonnx_train.rapido.audio_vae.load_audio_vae", _tiny_vae)
+        config_path = engine.export_onnx(checkpoint, data / "config.json", tmp / "voice")
+    voice = TTSVoice.load(tmp / "voice" / "model.onnx", config_path=config_path)
+    return {"dataset_config": dataset_config, "training": module._train_dataset.dataset,
+            "latents": latents, "voice": voice,
+            "voice_config": json.loads(config_path.read_text(encoding="utf-8"))}
+
+
+def test_round_trip_runtime_ids_equal_the_ids_training_read(round_trip):
+    training = round_trip["training"]
+    voice = round_trip["voice"]
+    assert len(training) == 4
+    blank = round_trip["dataset_config"]["phoneme_id_map"]["_"]
+    for i, utt in enumerate(training.utterances):
+        ids = training[i]["ids"].tolist()
+        assert blank not in ids
+        chunks = voice.phonemize(utt["text"])
+        assert [voice.phonemes_to_ids(chunk) for chunk in chunks] == [ids], utt["text"]
+
+
+def test_round_trip_voice_config_turns_blanks_off_and_keeps_bos_eos(round_trip):
+    config = round_trip["voice_config"]
+    id_map = round_trip["dataset_config"]["phoneme_id_map"]
+    assert config["add_blank_char"] is False and config["use_eos_bos"] is True
+    assert config["phoneme_id_map"] == id_map
+    ids = round_trip["voice"].phonemes_to_ids(["o", "l", "a"])
+    assert ids == [id_map["^"], id_map["o"], id_map["l"], id_map["a"], id_map["$"]]
+
+
+def test_round_trip_skips_the_clip_with_too_few_frames(round_trip):
+    texts = {utt["text"] for utt in round_trip["training"].utterances}
+    assert texts == {text for text, _, n in ROUND_TRIP_ROWS if n > 1}
+
+
+def test_round_trip_exports_the_latent_statistics_of_the_trained_clips(round_trip):
+    kept = np.concatenate([lat for text, lat in round_trip["latents"].items()
+                           if text != ROUND_TRIP_ROWS[-1][0]])
+    params = round_trip["voice_config"]["engine_params"]
+    assert params["latent_mean"] == pytest.approx(kept.mean(0).tolist(), rel=1e-5)
+    assert params["latent_std"] == pytest.approx(kept.std(0).tolist(), rel=1e-5)
+
+
+def test_round_trip_training_reads_each_clip_with_its_speaker(round_trip):
+    speaker_of = {text: speaker for text, speaker, _ in ROUND_TRIP_ROWS}
+    speaker_ids = round_trip["dataset_config"]["speaker_id_map"]
+    training = round_trip["training"]
+    speakers = [training[i]["speaker"] for i in range(len(training))]
+    assert speakers == [speaker_ids[speaker_of[utt["text"]]] for utt in training.utterances]
+    assert set(speakers) == {0, 1}
+
+
+# ----------------------------------------------------------------------
+# Latent statistics cache
+# ----------------------------------------------------------------------
+
+def test_statistics_cache_is_rebuilt_when_the_latents_change(tmp_path):
+    from phoonnx_train.rapido.dataset import latent_cache_path, load_or_compute_statistics
+
+    utterances = [{"audio_norm_path": str(tmp_path / f"{i}.pt")} for i in range(3)]
+    for utt in utterances:
+        torch.save(torch.full((5, 64), 1.0), latent_cache_path(utt["audio_norm_path"]))
+    mean, _ = load_or_compute_statistics([tmp_path], utterances)
+    assert mean == [1.0] * 64
+
+    # preprocessed again into the same directory: same clips, new latents
+    for i, utt in enumerate(utterances):
+        torch.save(torch.full((5, 64), 4.0 + 3 * i), latent_cache_path(utt["audio_norm_path"]))
+    mean, std = load_or_compute_statistics([tmp_path], utterances)
+    assert mean == pytest.approx([7.0] * 64)                 # (4 + 7 + 10) / 3
+    assert std == pytest.approx([6 ** 0.5] * 64)             # sqrt((9 + 0 + 9) / 3)
+
+
+def test_statistics_cache_is_reused_for_the_same_latents(tmp_path, monkeypatch):
+    from phoonnx_train.rapido import dataset
+
+    utterances = [{"audio_norm_path": str(tmp_path / f"{i}.pt")} for i in range(2)]
+    for i, utt in enumerate(utterances):
+        torch.save(torch.full((4, 64), float(i)), dataset.latent_cache_path(utt["audio_norm_path"]))
+    first = dataset.load_or_compute_statistics([tmp_path], utterances)
+    monkeypatch.setattr(dataset, "latent_statistics", lambda utts: pytest.fail("recomputed"))
+    assert dataset.load_or_compute_statistics([tmp_path], utterances) == first
+
+
+# ----------------------------------------------------------------------
+# Training CLI: --compile and --resume-from-checkpoint
+# ----------------------------------------------------------------------
+
+class RecordingTrainer:
+    """Stands in for ``pytorch_lightning.Trainer``: records ``fit`` calls."""
+
+    fits = []
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def fit(self, model, ckpt_path=None):
+        RecordingTrainer.fits.append((model, ckpt_path))
+
+
+def train_cli(dataset_dir, *args):
+    """Run ``phoonnx_train.train`` with the real engine up to ``Trainer.fit``."""
+    from unittest import mock
+
+    from click.testing import CliRunner
+
+    from phoonnx_train import train
+
+    RecordingTrainer.fits = []
+    with mock.patch.object(train, "Trainer", RecordingTrainer):
+        result = CliRunner().invoke(train.main, [
+            "--dataset-dir", str(dataset_dir), "--engine", "rapido",
+            "--default-root-dir", str(dataset_dir / "run"), *args], catch_exceptions=False)
+    assert result.exit_code == 0, result.output
+    assert len(RecordingTrainer.fits) == 1
+    return RecordingTrainer.fits[0]
+
+
+def write_dataset_config(path, symbols, num_speakers=1):
+    import json
+
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "config.json").write_text(json.dumps({
+        "phoneme_id_map": {s: [i] for i, s in enumerate(symbols)},
+        "num_symbols": len(symbols), "num_speakers": num_speakers,
+        "audio": {"sample_rate": 22050}}), encoding="utf-8")
+    return path
+
+
+def test_compile_leaves_the_rapido_checkpoint_keys_exportable(tmp_path):
+    data = write_dataset_config(tmp_path / "data", list(ID_MAP))
+    model, _ = train_cli(data, "--quality", "low", "--compile")
+    # export loads the checkpoint into an uncompiled RapidoModule, strictly
+    assert sorted(model.state_dict()) == sorted(tiny_module().state_dict())
+
+
+def test_released_rapido_pt_warm_starts_without_discard_encoder(tmp_path):
+    from huggingface_hub import hf_hub_download
+
+    path = retry_download(hf_hub_download, "edwixx/rapido-tts", "rapido.pt")
+    released = load_checkpoint(path)
+    data = write_dataset_config(tmp_path / "data", released["vocab"])
+    model, ckpt_path = train_cli(data, "--quality", "base", "--resume-from-checkpoint", path)
+    # rapido.pt holds weights only, so it is a warm start and not a Lightning resume
+    assert ckpt_path is None
+    # the dataset reads the released vocabulary, so the letter embedding loads too
+    assert model.load_report["same_vocab"] is True
+    assert torch.equal(model.model.net.text.emb.weight, released["ema"][EMBEDDING_KEY].float())
+
+
+def test_lightning_checkpoint_resumes_the_training_state(tmp_path):
+    data = write_dataset_config(tmp_path / "data", list(ID_MAP))
+    path = tmp_path / "last.ckpt"
+    torch.save({"pytorch-lightning_version": "2.6.6", "state_dict": {}}, path)
+    model, ckpt_path = train_cli(data, "--quality", "low", "--resume-from-checkpoint", str(path))
+    assert ckpt_path == str(path)
+    assert not hasattr(model, "load_report")

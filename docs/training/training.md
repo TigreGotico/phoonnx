@@ -29,7 +29,7 @@ python -m phoonnx_train.train --dataset-dir DIR [options]
 | `--precision TEXT` | `32` | Precision: `16`, `32`, `bf16`, `16-mixed`, … (a string) |
 | `--default-root-dir DIR` | none | Root for logs and checkpoints |
 | `--seed INT` | `1234` | Random seed |
-| `--resume-from-checkpoint PATH` | none | Load a checkpoint and resume |
+| `--resume-from-checkpoint PATH` | none | Resume the run of a Lightning checkpoint; load any other checkpoint as a weight-only warm start |
 | `--resume-from-single-speaker-checkpoint PATH` | none | Convert a single-speaker checkpoint to multi-speaker and resume |
 | `--discard-encoder` | off | Discard encoder weights from the base checkpoint (not supported by all engines) |
 | `--log-audio-samples / --no-log-audio-samples` | off | Log synthesized validation audio each epoch (needs a TensorBoard logger) |

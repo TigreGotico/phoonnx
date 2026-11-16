@@ -135,17 +135,32 @@ def latent_statistics(utterances: Sequence[Mapping[str, Any]]) -> Tuple[List[flo
     return mean.tolist(), std.tolist()
 
 
+def latent_set_key(utterances: Sequence[Mapping[str, Any]]) -> str:
+    """SHA-256 over the path and bytes of every latent cache, in path order.
+
+    A dataset preprocessed again into the same directory keeps its cache
+    paths, so only the bytes tell its latents apart.
+    """
+    digest = sha256()
+    for path in sorted(latent_cache_path(u["audio_norm_path"]) for u in utterances):
+        digest.update(str(path).encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
 def load_or_compute_statistics(dataset_paths: Sequence[Path],
                                utterances: Sequence[Mapping[str, Any]]) -> Tuple[List[float], List[float]]:
-    """Latent statistics, cached as ``rapido_latent_stats.json`` beside the data."""
+    """Latent statistics, cached as ``rapido_latent_stats.json`` beside the data
+    and keyed on the latents they were computed from."""
     first = Path(dataset_paths[0])
     cache = (first if first.is_dir() else first.parent) / STATS_FILE
+    key = latent_set_key(utterances)
     if cache.is_file():
         stats = json.loads(cache.read_text(encoding="utf-8"))
-        if stats.get("utterances") == len(utterances):
+        if stats.get("latents_sha256") == key:
             return stats["lat_mean"], stats["lat_std"]
     mean, std = latent_statistics(utterances)
-    cache.write_text(json.dumps({"utterances": len(utterances),
+    cache.write_text(json.dumps({"latents_sha256": key, "utterances": len(utterances),
                                  "lat_mean": mean, "lat_std": std}),
                      encoding="utf-8")
     return mean, std

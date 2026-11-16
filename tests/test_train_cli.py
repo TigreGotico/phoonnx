@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import click
 import click.testing
+import torch
 
 from phoonnx_train.engines.base import BaseTrainingEngine, TrainingEngineConfig
 from phoonnx_train.train import _build_extra, main
@@ -161,12 +162,31 @@ class TestMainCliEngineSelection(unittest.TestCase):
         # them, so load_checkpoint must NOT be called on this path.
         with self.runner.isolated_filesystem() as td:
             Path("ds").mkdir()
+            torch.save({"pytorch-lightning_version": "2.6.6", "state_dict": {}}, "last.ckpt")
             result, trainer_instance, _ = self._run(
-                Path(td), ["--resume-from-checkpoint", "no/such/file.ckpt"],
+                Path(td), ["--resume-from-checkpoint", "last.ckpt"],
             )
         self.assertEqual(result.exit_code, 0, result.output)
         _, fit_kwargs = trainer_instance.fit.call_args
-        self.assertEqual(fit_kwargs.get("ckpt_path"), "no/such/file.ckpt")
+        self.assertEqual(fit_kwargs.get("ckpt_path"), "last.ckpt")
+
+    def test_plain_resume_of_a_weights_only_checkpoint_is_a_warm_start(self):
+        # Lightning restores a training state only from a checkpoint it wrote;
+        # an upstream release holds weights only, so it goes to load_checkpoint
+        loaded = []
+        self.fake_engine.load_checkpoint = (
+            lambda model, checkpoint_path, **kw: loaded.append((str(checkpoint_path), kw)) or model
+        )
+        with self.runner.isolated_filesystem() as td:
+            Path("ds").mkdir()
+            torch.save({"ema": {}}, "release.pt")
+            result, trainer_instance, _ = self._run(
+                Path(td), ["--resume-from-checkpoint", "release.pt"],
+            )
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(loaded, [("release.pt", {"discard_encoder": False})])
+        _, fit_kwargs = trainer_instance.fit.call_args
+        self.assertIsNone(fit_kwargs.get("ckpt_path"))
 
     def test_discard_encoder_resume_is_weight_only_not_ckpt_path(self):
         # --discard-encoder changes the architecture: it stays a weight-only

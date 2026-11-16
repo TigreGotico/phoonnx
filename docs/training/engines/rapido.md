@@ -76,7 +76,9 @@ also learns the unconditional velocity that classifier-free guidance needs.
 The latents are normalized per dimension by the mean and standard deviation of
 the training set. The engine computes them on the first run, stores them in
 `rapido_latent_stats.json` beside the dataset and writes them into the model
-buffers that the export reads.
+buffers that the export reads. The stored statistics carry a hash of the latent
+caches. When you preprocess the dataset again, the hash changes and the engine
+computes the statistics again.
 
 ## Train
 
@@ -96,6 +98,10 @@ python -m phoonnx_train.export_onnx <run>/checkpoints/<last>.ckpt --engine rapid
 If you preprocess without `--engine rapido`, the first training run encodes
 the latents instead.
 
+The engine always trains uncompiled. The training loop never calls the model's
+`forward`, so `--compile` gives no speed-up. The CLI ignores the flag for this
+engine and logs a warning.
+
 Engine options go in the `engine_params` object of the dataset `config.json`:
 
 | Option | Default | Effect |
@@ -112,14 +118,22 @@ Give the upstream `rapido.pt` (from `edwixx/rapido-tts`) as a warm start:
 
 ```bash
 python -m phoonnx_train.train --dataset-dir <out> --engine rapido --quality base \
-    --resume-from-checkpoint rapido.pt --discard-encoder
+    --resume-from-checkpoint rapido.pt
 ```
 
-The engine loads every tensor with the same shape. It drops the speaker table
-when the speaker count differs. It drops the letter embedding when the
-vocabulary differs from the dataset's, because the released model reads
-Portuguese letters and a phonemized dataset has an IPA vocabulary. The log
-gives the counts of loaded and dropped tensors.
+`rapido.pt` holds weights and no Lightning training state. The CLI therefore
+loads it as a warm start and does not resume a run. The engine loads every
+tensor with the same shape. It drops the speaker table when the speaker count
+differs. It keeps the letter embedding only when the dataset's
+`phoneme_id_map` lists the released vocabulary in the same order. The released
+model reads Portuguese letters, and a phonemized dataset has an IPA
+vocabulary, so for such a dataset the engine drops the embedding and trains it
+from the start. Add `--discard-encoder` to drop the embedding in all cases. The
+log gives the counts of loaded and dropped tensors.
+
+A warm start does not keep the released latent normalization: the engine
+replaces the mean and standard deviation of `rapido.pt` with the statistics of
+your training set.
 
 A two-phase recipe that is known to work for a new language: train with
 `freeze_backbone_steps` set for the early steps, then continue with
