@@ -75,13 +75,13 @@ def main() -> None:
                                   formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--tokenizer", default="./tokenizer.json",
                      help="the checkpoint's tokenizer.json (mirrored at "
-                          "OpenVoiceOS/phoonnx-orpheus/orpheus-3b-en-onnx/tokenizer.json)")
+                          "Phoonnx/phoonnx-orpheus/orpheus-3b-en-onnx/tokenizer.json)")
     ap.add_argument("--voice", default="tara")
     ap.add_argument("--text", default="The quick brown fox jumps over the lazy dog.")
     args = ap.parse_args()
 
-    from tokenizers import Tokenizer
-    tok = Tokenizer.from_file(args.tokenizer)
+    from phoonnx.tokenizer import load_tokenizers_package
+    tok = load_tokenizers_package(args.tokenizer)
 
     literal = literal_all_input_ids(tok, args.voice, args.text)
     served = served_ids(tok, literal)

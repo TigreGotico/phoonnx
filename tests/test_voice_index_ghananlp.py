@@ -81,5 +81,5 @@ class TestGhanaNlpIndex(unittest.TestCase):
         for voice_id, entry in _entries().items():
             for key, value in entry.items():
                 if key.endswith("_url") and value:
-                    self.assertIn("huggingface.co/OpenVoiceOS/", value,
+                    self.assertIn("huggingface.co/Phoonnx/", value,
                                   f"{voice_id}.{key} does not point at our mirror")

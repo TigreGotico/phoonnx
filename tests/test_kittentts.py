@@ -171,9 +171,9 @@ def test_kittentts_voice_index_well_formed():
         assert entry["alphabet"] == "ipa"
         assert entry["lang"] == "en-US"
         assert entry["model_url"].startswith(
-            "https://huggingface.co/OpenVoiceOS/phoonnx-kitten-tts/resolve/main/")
+            "https://huggingface.co/Phoonnx/phoonnx-kitten-tts/resolve/main/")
         assert entry["config_url"].startswith(
-            "https://huggingface.co/OpenVoiceOS/phoonnx-kitten-tts/resolve/main/")
+            "https://huggingface.co/Phoonnx/phoonnx-kitten-tts/resolve/main/")
         assert entry["style_url"] and entry["style_url"].endswith(".bin")
         tier = vid.split("/", 1)[1].rsplit("-expr-voice", 1)[0]
         for t in tiers:

@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import onnxruntime
+from scriptconv.frontend import Stages
 
 
 @dataclass
@@ -34,6 +35,10 @@ class AdapterSynthesisRequest:
     # Per-phoneme language IDs for models that consume a parallel language stream
     # (e.g. ShamiVITS).  Shape (1, T), dtype int64, when provided.
     language_ids: Optional[np.ndarray] = None
+
+    # Per-phoneme stress (0 none, 1 primary, 2 secondary) for models with a stress
+    # input (e.g. tiny-voca).  Shape (1, T), dtype int64, when provided.
+    stress: Optional[np.ndarray] = None
 
     # Engine-specific key→value (noise_scale, d_factor, …).
     # Populated from SynthesisConfig + VoiceConfig defaults.
@@ -164,15 +169,17 @@ class BaseOnnxAdapter(ABC):
     # ------------------------------------------------------------------
 
     def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
-        """Turn (already-preprocessed) text into the model's input token-id sequences,
-        one per sentence.
+        """Turn text into the model's input token-id sequences, one per sentence.
 
-        Every engine receives text and produces the ids its model consumes. The default
-        is the phoneme pipeline — phonemize, then vocab-tokenize. Text-token engines
-        (e.g. Chatterbox, whose subword BPE does its own normalization) override this to
-        BPE the raw text directly. ``voice`` exposes the phonemizer / tokenizer.
+        *text* comes from ``voice.frontend.prepare``, so it is normalised and
+        diacritized already. Every engine receives text and produces the ids its
+        model consumes. The default is the phoneme pipeline — phonemize with no
+        text stage, then vocab-tokenize. Text-token engines (e.g. Chatterbox,
+        whose subword BPE does its own normalization) override this to BPE the
+        text directly. ``voice`` exposes the frontend / tokenizer.
         """
-        return [voice.phonemes_to_ids(p) for p in voice.phonemize(text) if p]
+        stages = Stages(normalize=False, diacritize=False)
+        return [voice.phonemes_to_ids(p) for p in voice.frontend.phonemize(text, stages) if p]
 
     def synthesize(
         self,

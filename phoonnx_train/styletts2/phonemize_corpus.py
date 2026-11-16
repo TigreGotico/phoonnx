@@ -36,24 +36,13 @@ _SYMBOL_SET = set(symbols)
 
 
 def get_phonemizer(name: str = "espeak"):
-    import scriptconv.phonemizers as P
-    aliases = {
-        "espeak": "EspeakPhonemizer",
-        "gruut": "GruutPhonemizer",
-        "epitran": "EpitranPhonemizer",
-        "goruut": "GoruutPhonemizer",
-        "byt5": "ByT5Phonemizer",
-        "charsiu": "CharsiuPhonemizer",
-        "transphone": "TransphonePhonemizer",
-        "grapheme": "GraphemePhonemizer",
-        "unicode": "UnicodeCodepointPhonemizer",
-    }
-    cls_name = aliases.get(name, name)
-    cls = getattr(P, cls_name, None)
-    if cls is None:
+    from scriptconv.phonemizers import Phonemizer, get_phonemizer as get_backend
+    try:
+        backend = Phonemizer("graphemes" if name == "grapheme" else name)
+    except ValueError:
         raise ValueError(f"Unknown phonemizer '{name}' — use one of "
-                         f"{sorted(aliases)} or a phoonnx phonemizer class name")
-    return cls()
+                         f"{sorted(p.value for p in Phonemizer)}") from None
+    return get_backend(backend)
 
 
 def check_symbol_coverage(phonemes: str, context: str = "") -> str:

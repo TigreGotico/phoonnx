@@ -7,6 +7,8 @@ Covers:
 - normalize_lang MMS script-tag cases (crk-script_syllabics, cmo-khmer-script)
 """
 import pytest
+from scriptconv.phonemizers.base import BasePhonemizer
+
 
 
 # ---------------------------------------------------------------------------
@@ -60,7 +62,7 @@ def test_en_phonemizer_uses_arpa_lookup():
 
 def test_arabic_to_buckwalter_roundtrip():
     """arabic_to_buckwalter → buckwalter_to_arabic should recover the original."""
-    from scriptconv.phonemizers._vendored.mantoq.buck.phonetise_buckwalter import (
+    from scriptconv_nonfree.phonemizers._vendored.mantoq.buck.phonetise_buckwalter import (
         arabic_to_buckwalter,
         buckwalter_to_arabic,
     )
@@ -72,14 +74,14 @@ def test_arabic_to_buckwalter_roundtrip():
 
 
 def test_arabic_to_buckwalter_known_values():
-    from scriptconv.phonemizers._vendored.mantoq.buck.phonetise_buckwalter import arabic_to_buckwalter
+    from scriptconv_nonfree.phonemizers._vendored.mantoq.buck.phonetise_buckwalter import arabic_to_buckwalter
     assert arabic_to_buckwalter("مرحبا") == "mrHbA"
     assert arabic_to_buckwalter("الشمس") == "Al$ms"
 
 
 def test_mantoq_phonemizer_arabic_ipa_smoke():
     """MantoqPhonemizer with IPA alphabet should produce a non-empty string."""
-    from scriptconv.phonemizers.ar import MantoqPhonemizer
+    from scriptconv_nonfree.phonemizers.ar import MantoqPhonemizer
     from phoonnx.config import Alphabet
     p = MantoqPhonemizer(alphabet=Alphabet.IPA)
     result = p.phonemize_string("مرحبا", lang="ar")
@@ -132,8 +134,9 @@ def test_phoneme_type_is_scriptconv_phonemizer_enum():
 def test_get_phonemizer_injects_normalizer():
     from phoonnx.config import PhonemeType, get_phonemizer
     from phoonnx.util import normalize
-    p = get_phonemizer(PhonemeType.GRAPHEMES)
-    assert p.normalizer is normalize
+    with pytest.warns(DeprecationWarning, match="get_phonemizer"):
+        p = get_phonemizer(PhonemeType.GRAPHEMES)
+    assert p.normalizer("I'm 2", "en") == normalize("I'm 2", "en") == "I am two"
     # normalization behavior preserved: digits expand as before the migration
     out = "".join(p.phonemize("2 cats", "en")[0])
     assert "2" not in out
@@ -141,19 +144,24 @@ def test_get_phonemizer_injects_normalizer():
 
 def test_licensed_backends_construct_from_scriptconv_quarantine():
     from phoonnx.config import PhonemeType, get_phonemizer
-    from scriptconv.phonemizers.ar import MantoqPhonemizer
+    from scriptconv_nonfree.phonemizers.ar import MantoqPhonemizer
     m = get_phonemizer(PhonemeType.MANTOQ)
     assert isinstance(m, MantoqPhonemizer)
-    assert type(m).__module__.startswith("scriptconv.")
+    assert type(m).__module__ == "scriptconv_nonfree.phonemizers.ar"
 
 
 # ---------------------------------------------------------------------------
 # Per-language phonemizer modules re-export the shared contract types
 # ---------------------------------------------------------------------------
 
+# fa, gl and ko hold only copyleft wrappers and vi only a non-commercial one,
+# so those modules are in scriptconv-copyleft and scriptconv-nonfree.
 _PHONEMIZER_MODULES = [
-    "ar", "en", "eu", "fa", "gl", "he", "ja", "ko",
-    "mwl", "o2ipa", "pt", "vi", "zh", "shami",
+    *(f"scriptconv.phonemizers.{name}" for name in (
+        "ar", "en", "eu", "he", "ja", "mwl", "o2ipa", "pt", "zh", "shami")),
+    *(f"scriptconv_copyleft.phonemizers.{name}" for name in (
+        "eu", "fa", "gl", "ja", "ko", "mul")),
+    *(f"scriptconv_nonfree.phonemizers.{name}" for name in ("ar", "vi")),
 ]
 
 
@@ -162,7 +170,7 @@ def test_shim_reexports_alphabet_and_base_phonemizer(module_name):
     """Every per-language phonemizer module carries the shared contract types
     (Alphabet, BasePhonemizer) alongside its language-specific classes."""
     import importlib
-    mod = importlib.import_module(f"scriptconv.phonemizers.{module_name}")
+    mod = importlib.import_module(module_name)
     from scriptconv.phonemizers.enums import Alphabet
     from scriptconv.phonemizers.base import BasePhonemizer
     assert mod.Alphabet is Alphabet
@@ -187,38 +195,61 @@ def test_diacritization_delegates_to_scriptconv():
     assert scd.diacritize("hello world", "und") == "hello world"
 
 
-def test_voice_diacritization_delegates_to_scriptconv():
-    """phoonnx owns no diacritizer: a grapheme voice with add_diacritics=True
-    routes text through scriptconv's diacritizer graph edge before phonemization
-    (diacritization is a topological edge, not a phoonnx call). Asserted with a
-    spy on scriptconv.diacritics.diacritize — no backend/model needed."""
+class _RecordingPhonemizer(BasePhonemizer):
+    def __init__(self):
+        super().__init__()
+        self.seen = []
+
+    def phonemize_string(self, text, lang):
+        self.seen.append(text)
+        return text
+
+
+def _diacritizing_voice(lang, model):
     import types
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import MagicMock
     import numpy as np
-    import scriptconv.diacritics as scd
     from phoonnx.voice import TTSVoice
-    from phoonnx.config import Alphabet, SynthesisConfig
+    from phoonnx.config import Alphabet, PhonemeType
 
     voice = TTSVoice.__new__(TTSVoice)
     voice.phonetic_spellings = None
-    voice.phonemizer = MagicMock()
-    voice.phonemizer.phonemize_lazy = MagicMock(return_value=iter([list("n_ss")]))
-    voice.config = types.SimpleNamespace(alphabet=Alphabet.IPA, lang_code="ar",
-                                         add_diacritics=True, diacritizer_model="rawi-ensemble",
+    voice.phonemizer = _RecordingPhonemizer()
+    voice.config = types.SimpleNamespace(phoneme_type=PhonemeType.UNICODE,
+                                         alphabet=Alphabet.IPA, lang_code=lang,
+                                         add_diacritics=True, diacritizer_model=model,
                                          sample_rate=22050)
     voice.adapter = MagicMock()
     voice.phonemes_to_ids = lambda p: [1] * len(p)
-    voice.phoneme_ids_to_audio = lambda ids, syn_config=None, language_ids=None, include_alignments=False: np.zeros(4, dtype=np.float32)
+    voice.phoneme_ids_to_audio = lambda ids, syn_config=None, include_alignments=False, streams=None: np.zeros(4, dtype=np.float32)
+    return voice
 
+
+def test_voice_diacritization_delegates_to_scriptconv():
+    """phoonnx owns no diacritizer: a grapheme voice with add_diacritics=True
+    sends its text through scriptconv's diacritizer before phonemization.
+    Asserted with a fake tashkeel backend — no model needed."""
+    from unittest.mock import patch
+    import scriptconv.diacritics as scd
+    from phoonnx.config import Alphabet, SynthesisConfig
+
+    voice = _diacritizing_voice("ar", "rawi-ensemble")
     seen = {}
-    def spy(text, lang="und", **k):
-        seen.update(text=text, lang=lang, kwargs=k)
-        return text
-    with patch.object(scd, "diacritize", side_effect=spy):
+
+    class _Tashkeel:
+        def diacritize(self, text):
+            seen["text"] = text
+            return text + "َ"
+
+    def tashkeel(model=None, waqf=False):
+        seen["model"] = model
+        return _Tashkeel()
+
+    with patch.object(scd, "_tashkeel", tashkeel):
         list(voice.synthesize("نص", SynthesisConfig(alphabet=Alphabet.GRAPHEMES,
                                                      normalize_audio=False)))
-    assert seen.get("text") == "نص" and seen.get("lang") == "ar"
-    assert seen["kwargs"].get("diacritizer_model") == "rawi-ensemble"
+    assert seen == {"text": "نص", "model": "rawi-ensemble"}
+    assert voice.phonemizer.seen == ["نصَ"]
 
 
 def test_en_module_reexports_arpa_to_ipa_lookup():
@@ -258,7 +289,7 @@ def test_phonemic_input_transcodes_to_model_alphabet_via_scriptconv():
     voice = _phonemic_voice(Alphabet.ARPA)
     out = list(voice._iter_synthesis_ids(
         "S@", SynthesisConfig(alphabet=Alphabet.XSAMPA), Alphabet.XSAMPA, Alphabet.ARPA))
-    assert [p for p, _ in out] == [["SH", "AX"]]
+    assert [p for p, _, _ in out] == [["SH", "AX"]]
 
 
 def test_phonemic_input_same_alphabet_passes_through_unchanged():
@@ -267,7 +298,7 @@ def test_phonemic_input_same_alphabet_passes_through_unchanged():
     voice = _phonemic_voice(Alphabet.ARPA)
     out = list(voice._iter_synthesis_ids(
         "SH AX", SynthesisConfig(alphabet=Alphabet.ARPA), Alphabet.ARPA, Alphabet.ARPA))
-    assert [p for p, _ in out] == [["SH", "AX"]]
+    assert [p for p, _, _ in out] == [["SH", "AX"]]
 
 
 def test_unroutable_phonemic_pair_passes_text_through():
@@ -277,36 +308,30 @@ def test_unroutable_phonemic_pair_passes_text_through():
     voice = _phonemic_voice(Alphabet.ARPA)
     out = list(voice._iter_synthesis_ids(
         "abc", SynthesisConfig(alphabet=Alphabet.HANGUL), Alphabet.HANGUL, Alphabet.ARPA))
-    assert [p for p, _ in out] == [["abc"]]
+    assert [p for p, _, _ in out] == [["abc"]]
 
 
 def test_hebrew_diacritizer_model_carries_the_phonikud_path():
     """The single diacritizer_model knob is overloaded per language: for Hebrew it
     is the phonikud ONNX path. Assert a voice's value reaches scriptconv's
     diacritizer for he (spy — no model download)."""
-    import types
-    from unittest.mock import patch, MagicMock
-    import numpy as np
+    from unittest.mock import patch
     import scriptconv.diacritics as scd
-    from phoonnx.voice import TTSVoice
     from phoonnx.config import Alphabet, SynthesisConfig
 
-    voice = TTSVoice.__new__(TTSVoice)
-    voice.phonetic_spellings = None
-    voice.phonemizer = MagicMock()
-    voice.phonemizer.phonemize_lazy = MagicMock(return_value=iter([list("ʃalom")]))
-    voice.config = types.SimpleNamespace(alphabet=Alphabet.IPA, lang_code="he",
-                                         add_diacritics=True,
-                                         diacritizer_model="/models/phonikud.onnx",
-                                         sample_rate=22050)
-    voice.adapter = MagicMock()
-    voice.phonemes_to_ids = lambda p: [1] * len(p)
-    voice.phoneme_ids_to_audio = lambda ids, syn_config=None, language_ids=None, include_alignments=False: np.zeros(4, dtype=np.float32)
-
+    voice = _diacritizing_voice("he", "/models/phonikud.onnx")
     seen = {}
-    with patch.object(scd, "diacritize",
-                      side_effect=lambda t, l="und", **k: seen.update(lang=l, **k) or t):
+
+    class _Phonikud:
+        def add_diacritics(self, text):
+            seen["text"] = text
+            return text
+
+    def phonikud(model=None):
+        seen["model"] = model
+        return _Phonikud()
+
+    with patch.object(scd, "_phonikud", phonikud):
         list(voice.synthesize("שלום", SynthesisConfig(alphabet=Alphabet.GRAPHEMES,
                                                       normalize_audio=False)))
-    assert seen.get("lang") == "he"
-    assert seen.get("diacritizer_model") == "/models/phonikud.onnx"
+    assert seen == {"text": "שלום", "model": "/models/phonikud.onnx"}

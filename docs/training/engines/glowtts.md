@@ -65,8 +65,8 @@ Parameters:
 ### Loading an indexed voice
 
 GlowTTS voices ship in `phoonnx/voice_index/glowtts.json`, mirrored under
-`OpenVoiceOS/phoonnx-glowtts` (model + native config) with the HiFi-GAN vocoder
-under `OpenVoiceOS/phoonnx-vocoders` (linked per entry via `vocoder_url`,
+`Phoonnx/phoonnx-glowtts` (model + native config) with the HiFi-GAN vocoder
+under `Phoonnx/phoonnx-vocoders` (linked per entry via `vocoder_url`,
 `vocoder_type: hifigan`):
 
 ```python
@@ -204,7 +204,7 @@ GlowTTS is two-stage, so each indexed voice links a vocoder (see
 [vocoders.md](../../vocoders.md)):
 
 - **Neural** (`vocoder_type: hifigan` / `melgan`) — an ONNX vocoder under
-  `OpenVoiceOS/phoonnx-vocoders`, downloaded alongside the model. Best quality;
+  `Phoonnx/phoonnx-vocoders`, downloaded alongside the model. Best quality;
   used where a **mel-matched** vocoder exists (Larynx HiFi-GAN; Coqui models'
   paired `default_vocoder`).
 - **Griffin-Lim** (`vocoder_type: griffinlim`) — a parametric fallback (no model

@@ -9,9 +9,11 @@ import glob
 import json
 import os
 import random
+import tempfile
 import unittest
 
 from phoonnx._bpe import Tokenizer, UnsupportedTokenizer
+from phoonnx.tokenizer import load_tokenizers_package
 
 try:
     from tokenizers import Tokenizer as ReferenceTokenizer
@@ -89,7 +91,7 @@ class TestDecoderChainAgainstTokenizers(unittest.TestCase):
             self.skipTest("the `tokenizers` package is not installed")
 
     def _pair(self, path):
-        return Tokenizer.from_file(path), ReferenceTokenizer.from_file(path)
+        return Tokenizer.from_file(path), load_tokenizers_package(path)
 
     def _compare_round_trips(self, path):
         mine, reference = self._pair(path)
@@ -169,7 +171,11 @@ class TestDecoderChainAgainstTokenizers(unittest.TestCase):
 
     def _compare_spec(self, spec, ids_pool):
         mine = Tokenizer(spec)
-        reference = ReferenceTokenizer.from_str(json.dumps(spec))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "tokenizer.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(spec, fh)
+            reference = load_tokenizers_package(path)
         for ids in ids_pool:
             for skip in (True, False):
                 self.assertEqual(mine.decode(ids, skip_special_tokens=skip),
