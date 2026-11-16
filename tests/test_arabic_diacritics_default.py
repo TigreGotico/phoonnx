@@ -30,6 +30,13 @@ def _piper_default(lang_code):
     return VoiceConfig.from_dict(cfg, lang_code=lang_code).add_diacritics
 
 
+def _phoonnx_default(lang_code, inference=None):
+    cfg = {"phoonnx_version": "1.0", "phoneme_type": "espeak", "alphabet": "ipa",
+           "lang_code": lang_code, "phoneme_id_map": {"a": [0], "b": [1]},
+           "inference": inference or {}}
+    return VoiceConfig.from_dict(cfg).add_diacritics
+
+
 class TestPostInitDefault(unittest.TestCase):
     def test_arabic_in_arabic_script_defaults_on(self):
         for lang in ARABIC:
@@ -52,6 +59,27 @@ class TestPiperDefault(unittest.TestCase):
         for lang in NOT_ARABIC:
             with self.subTest(lang=lang):
                 self.assertIs(_piper_default(lang), False)
+
+
+class TestPhoonnxNativeDefault(unittest.TestCase):
+    """A native config without ``inference.add_diacritics`` follows the language."""
+
+    def test_arabic_in_arabic_script_defaults_on(self):
+        for lang in ARABIC:
+            with self.subTest(lang=lang):
+                self.assertIs(_phoonnx_default(lang), True)
+                self.assertIs(_phoonnx_default(lang), _post_init_default(lang))
+
+    def test_other_languages_default_off(self):
+        for lang in NOT_ARABIC:
+            with self.subTest(lang=lang):
+                self.assertIs(_phoonnx_default(lang), False)
+                self.assertIs(_phoonnx_default(lang), _post_init_default(lang))
+
+    def test_explicit_inference_value_wins(self):
+        self.assertIs(_phoonnx_default("ar", {"add_diacritics": False}), False)
+        self.assertIs(_phoonnx_default("en", {"add_diacritics": True}), True)
+        self.assertIs(_phoonnx_default("he", {"add_diacritics": True}), True)
 
 
 class TestChatterboxDefault(unittest.TestCase):

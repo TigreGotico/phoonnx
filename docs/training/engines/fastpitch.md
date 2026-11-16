@@ -38,7 +38,7 @@ of the `train` deps).
 ### Loading indexed voices
 
 FastPitch voices ship in `phoonnx/voice_index/fastpitch.json`, mirrored under
-`OpenVoiceOS/phoonnx-fastpitch`. The reference model is the multi-speaker Arabic
+`Phoonnx/phoonnx-fastpitch`. The reference model is the multi-speaker Arabic
 FastPitch from [nipponjo/tts_arabic](https://github.com/nipponjo/tts_arabic)
 (`mantoq` / buckwalter tokenization, paired with the matched
 `tts-arabic-hifigan`).

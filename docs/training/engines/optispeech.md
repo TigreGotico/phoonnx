@@ -100,7 +100,7 @@ so they load through the standard path — `engine: optispeech` routes to
 ### Voice index
 
 OptiSpeech voices ship in `phoonnx/voice_index/optispeech.json`, mirrored under
-`OpenVoiceOS/phoonnx-optispeech` (each subfolder = `model.onnx` + native
+`Phoonnx/phoonnx-optispeech` (each subfolder = `model.onnx` + native
 `config.json`):
 
 ```python

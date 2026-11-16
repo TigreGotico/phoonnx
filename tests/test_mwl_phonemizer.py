@@ -1,14 +1,22 @@
 """Tests for the Mirandese phonemizer.
 
-mwl_phonemizer is a hard test dependency (declared in the ``test`` and ``mwl``
-extras), so it is imported unconditionally -- no importorskip.  The wrapper is
-dialect-aware: central Mirandese (``mwl``, the default), Sendinese
+scriptconv runs it on the orthography2ipa specs, so it needs no package of its
+own.  It is dialect-aware: central Mirandese (``mwl``, the default), Sendinese
 (``mwl-x-sendim``) and the Raiano/Ifanês border variety (``mwl-x-ifanes``).
+Every test blocks the ``mwl_phonemizer`` module, so an import of it raises
+``ImportError``.
 """
+import sys
+
 import pytest
 
 from phoonnx.config import PhonemeType, Alphabet, get_phonemizer
 from scriptconv.phonemizers.mwl import MirandesePhonemizer, DIALECTS
+
+
+@pytest.fixture(autouse=True)
+def mwl_phonemizer_missing(monkeypatch):
+    monkeypatch.setitem(sys.modules, "mwl_phonemizer", None)
 
 
 def test_factory_dispatch():

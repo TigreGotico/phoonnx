@@ -18,4 +18,4 @@ phoonnx adapter and reports prompt, logit, token and waveform differences. Greed
 only comparable setting: with sampling the two sides draw from different random streams.
 
 Source model: [`Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice`](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice), Apache-2.0.
-Mirror: [`OpenVoiceOS/phoonnx-qwen3-tts`](https://huggingface.co/OpenVoiceOS/phoonnx-qwen3-tts).
+Mirror: [`Phoonnx/phoonnx-qwen3-tts`](https://huggingface.co/Phoonnx/phoonnx-qwen3-tts).

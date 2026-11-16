@@ -350,6 +350,10 @@ class TestPreprocessIntegration(unittest.TestCase):
         def phonemize_to_list(self, text, lang):
             return list(text.replace(" ", ""))
 
+        def identity(self, lang):
+            from scriptconv.phonemizers.base import PhonemizerIdentity
+            return PhonemizerIdentity("dummy", "dummy", "0", lang)
+
     def _jsonl(self, path, rows):
         with open(path, "w") as f:
             for r in rows:

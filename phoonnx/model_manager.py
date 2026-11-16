@@ -15,7 +15,7 @@ from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
                                     OfflineModeIsEnabled)
 from json_database import JsonStorageXDG, JsonStorage, load_commented_json
 
-from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet, check_lang_supported
+from phoonnx.config import PhonemeType, _voice_phonemizer, VoiceConfig, Engine, Alphabet, check_lang_supported
 from phoonnx.util import match_lang, normalize_lang, LOG
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
 from phoonnx.voice import TTSVoice
@@ -204,6 +204,25 @@ _HF_URL = re.compile(
 _NO_SUCH_FILE = (EntryNotFoundError, OfflineModeIsEnabled, LocalEntryNotFoundError)
 
 
+# The Phoonnx repos lived in OpenVoiceOS under the same names, so a voice fetched before the
+# move sits in the cache under the old repo id. While the cache holds the repo under that id,
+# every file of the repo is fetched through it: offline it loads from that cache, online the
+# Hub redirect serves the current Phoonnx file into the same folder, as before the move. The
+# choice is per repo, never per file, so a graph and its weights files share one folder, a
+# commit to the moved repo does not make the cached files look missing, and a file another
+# tool fetched under the new id does not cut the voice off from its cache. Drop this once
+# a stable release has shipped the Phoonnx URLs for a full release cycle.
+_MOVED_FROM = {"Phoonnx": "OpenVoiceOS"}
+
+
+def _repo_cached_before_move(repo_id: str) -> Optional[str]:
+    """The old repo id when the cache holds the repo under that id. Reads no network."""
+    org, name = repo_id.split("/", 1)
+    if org not in _MOVED_FROM:
+        return None
+    return f"{_MOVED_FROM[org]}/{name}" if (Path(HF_HUB_CACHE) / f"models--{_MOVED_FROM[org]}--{name}").is_dir() else None
+
+
 def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
     """Give the shared HuggingFace cache path for ``url``, downloading it once.
 
@@ -218,7 +237,7 @@ def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
     match = _HF_URL.match(url.split("?")[0])
     if not match:
         return None
-    return Path(hf_hub_download(repo_id=match["repo"],
+    return Path(hf_hub_download(repo_id=_repo_cached_before_move(match["repo"]) or match["repo"],
                                 filename=match["path"],
                                 revision=match["rev"],
                                 etag_timeout=min(timeout, _ETAG_TIMEOUT)))
@@ -241,7 +260,7 @@ def _cached_path(url: str) -> Optional[Path]:
     match = _HF_URL.match(url.split("?")[0])
     if match:
         try:
-            return Path(hf_hub_download(repo_id=match["repo"],
+            return Path(hf_hub_download(repo_id=_repo_cached_before_move(match["repo"]) or match["repo"],
                                         filename=match["path"],
                                         revision=match["rev"],
                                         local_files_only=True))
@@ -810,12 +829,13 @@ class TTSModelInfo:
         # A phonemizer_model resolved from the index (the vosk pronunciation
         # dictionary) is an index-level artifact: the published config.json never
         # references it, so the config loaded from disk cannot carry it.
+        # TTSVoice.frontend reads the phonemizer assigned here, also after a first synthesis.
         if self.phonemizer_model and not voice.config.phonemizer_model:
             voice.config.phonemizer_model = self.phonemizer_model
-            voice.phonemizer = get_phonemizer(voice.config.phoneme_type,
-                                              alphabet=voice.config.alphabet,
-                                              model=self.phonemizer_model,
-                                              keep_punctuation=voice.config.keep_punctuation)
+            voice.phonemizer = _voice_phonemizer(voice.config.phoneme_type,
+                                                 alphabet=voice.config.alphabet,
+                                                 model=self.phonemizer_model,
+                                                 keep_punctuation=voice.config.keep_punctuation)
         # override phoneme_type, if config.json is wrong
         if self.phoneme_type != voice.config.phoneme_type or self.alphabet != voice.config.alphabet:
             voice.config.phoneme_type = self.phoneme_type
@@ -824,10 +844,10 @@ class TTSModelInfo:
             # can differ from the pre-download self.config.lang_code above, so
             # this re-checks against the phoneme_type actually being installed.
             check_lang_supported(self.voice_id, voice.config.lang_code, self.phoneme_type)
-            voice.phonemizer = get_phonemizer(self.phoneme_type,
-                                              alphabet=self.alphabet,
-                                              model=voice.config.phonemizer_model,
-                                              keep_punctuation=voice.config.keep_punctuation)
+            voice.phonemizer = _voice_phonemizer(self.phoneme_type,
+                                                 alphabet=self.alphabet,
+                                                 model=voice.config.phonemizer_model,
+                                                 keep_punctuation=voice.config.keep_punctuation)
         return voice
 
 

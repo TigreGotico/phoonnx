@@ -34,7 +34,7 @@ Install extras with `pip install "phoonnx[<name>]"`. Combine them with commas, e
 
 | Extra | Unlocks | Pulls in |
 |---|---|---|
-| `espeak` | The eSpeak phonemizer without a system binary | `espyak` (a pure-Python port of the eSpeak phonemizer, byte-for-byte parity) |
+| `espeak` | The eSpeak phonemizer, which every eSpeak voice needs | `scriptconv[espeak]`, which gives the eSpeak wrapper in `scriptconv-copyleft`, and `espyak` (a pure-Python port of the eSpeak phonemizer, byte-for-byte parity) |
 | `cloning` | Loading non-WAV reference clips for [voice cloning](cloning.md) | `soundfile`, `scipy` |
 | `streaming` | Auto-splitting a monolithic VITS voice into a [streaming](streaming.md) encoder/decoder pair | `onnx` (graph surgery) |
 | `matcha` | Matcha two-stage synthesis helpers | `scipy` |
@@ -49,29 +49,34 @@ Install extras with `pip install "phoonnx[<name>]"`. Combine them with commas, e
 Each language extra installs the phonemizer backends for that language. Most pull `epitran`;
 several add higher-quality engines.
 
+Some wrappers are not in the Apache-2.0 `scriptconv` wheel. The eSpeak, Cotovia, AhoTTS,
+Persian, Korean, pykakasi and misaki wrappers are in `scriptconv-copyleft`. The mantoq, Halabi,
+Iqra and VIPhoneme wrappers are in `scriptconv-nonfree`, which is under a non-commercial licence.
+The extras that use these wrappers install the package that holds them.
+
 | Extra | Language | Notable backends |
 |---|---|---|
-| `ar` | Arabic | `epitran`, `arbtok`, `text2tashkeel` |
+| `ar` | Arabic | `epitran`, `scriptconv[ar-phonemizers]` (`arbtok`, `scriptconv-nonfree`), `text2tashkeel` |
 | `ca` | Catalan | `epitran` |
 | `cs` | Czech | `epitran` |
 | `de` | German | `epitran`, `gruut[de]` |
-| `en` | English | `epitran`, `gruut[en]`, `misaki[en]`, `spacy` |
+| `en` | English | `epitran`, `gruut[en]`, `misaki[en]`, `scriptconv-copyleft`, `spacy` |
 | `es` | Spanish | `epitran` |
-| `eu` | Basque | `ahotts-g2p`, `euskaphone` |
-| `fa` | Persian | `epitran` |
+| `eu` | Basque | `scriptconv[eu]`, `ahotts-g2p`, `euskaphone` |
+| `fa` | Persian | `epitran`, `scriptconv[fa]` (installs `scriptconv-copyleft[fa]`) |
 | `fr` | French | `epitran` |
-| `gl` | Galician | `pycotovia` (see [Galician](galician.md)) |
+| `gl` | Galician | `scriptconv[gl]`, `pycotovia` (see [Galician](galician.md)) |
 | `he` | Hebrew | `epitran` |
 | `it` | Italian | `epitran` |
-| `ja` | Japanese | `epitran`, `gruut[ja]`, `misaki[ja]`, `spacy` |
-| `ko` | Korean | `epitran` |
-| `mwl` | Mirandese | `mwl_phonemizer` |
-| `pt` | Portuguese | `epitran`, `g2p_barranquenho` |
+| `ja` | Japanese | `epitran`, `gruut[ja]`, `scriptconv[ja-phonemizers]`, `misaki[ja]`, `spacy` |
+| `ko` | Korean | `epitran`, `scriptconv[ko]`, `g2pk`, `misaki[ko]` |
+| `mwl` | Mirandese | `scriptconv[mwl]`, which gives the orthography2ipa Mirandese specs |
+| `pt` | Portuguese | `epitran`, `scriptconv[o2i]`, which gives the orthography2ipa Barranquenho spec |
 | `ru` | Russian | `epitran` |
 | `sv` | Swedish | `epitran` |
 | `sw` | Swahili | `epitran` |
-| `vi` | Vietnamese | `epitran`, `gruut[vi]`, `misaki[vi]`, `spacy` |
-| `zh` | Chinese | `epitran`, `gruut[zh]`, `misaki[zh]`, `spacy` |
+| `vi` | Vietnamese | `epitran`, `gruut[vi]`, `scriptconv[vi]`, `misaki[vi]`, `scriptconv-copyleft`, `spacy` |
+| `zh` | Chinese | `epitran`, `gruut[zh]`, `misaki[zh]`, `scriptconv-copyleft`, `spacy` |
 
 > **Arabic note.** The `ar` extra installs `epitran`, `arbtok` and `text2tashkeel`, **not**
 > `mantoq`. The `mantoq` phonemizer has no extra of its own — install it separately if a voice
@@ -125,8 +130,9 @@ restarts and reduce cold-start session-creation time.
 
 ## System dependency: espeak-ng
 
-The eSpeak phonemizer can drive the system `espeak-ng` binary directly. Install it from your
-package manager if a voice uses it and you are not using the `espeak` extra:
+The eSpeak phonemizer can drive the system `espeak-ng` binary directly. The wrapper itself comes
+from the `espeak` extra, so an eSpeak voice needs that extra in every case. Install the binary
+from your package manager if you want espeak-ng instead of the pure-Python port:
 
 ```bash
 sudo apt-get install espeak-ng   # Debian/Ubuntu
