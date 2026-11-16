@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.102.0a2](https://github.com/TigreGotico/phoonnx/tree/1.102.0a2) (2026-11-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.102.0a1...1.102.0a2)
+
+**Merged pull requests:**
+
+- test: follow scriptconv 0.0.4a104 frontend order [\#615](https://github.com/TigreGotico/phoonnx/pull/615) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.102.0a1](https://github.com/TigreGotico/phoonnx/tree/1.102.0a1) (2026-11-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.101.0a1...1.102.0a1)
@@ -369,10 +377,6 @@
 ## [1.93.2a1](https://github.com/TigreGotico/phoonnx/tree/1.93.2a1) (2026-10-12)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.1a2...1.93.2a1)
-
-**Merged pull requests:**
-
-- fix: VITS export writes loadable phoonnx, Piper and sherpa side-cars [\#504](https://github.com/TigreGotico/phoonnx/pull/504) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.93.1a2](https://github.com/TigreGotico/phoonnx/tree/1.93.1a2) (2026-10-01)
 
