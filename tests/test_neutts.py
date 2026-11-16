@@ -285,6 +285,112 @@ def test_encode_text_without_a_tokenizer_is_an_error(adapter):
         adapter.encode_text("hello", None, None)
 
 
+# ------------------------------------------------- the checkpoint's own front end
+FIXTURES = __import__("pathlib").Path(__file__).parent / "fixtures"
+
+
+def _upstream_polish():
+    """Prompt ids that upstream ``neutts`` 1.4.1 builds for shefowl/neutts-nano-polish.
+
+    Made in a separate venv by ``NeuTTS._apply_chat_template`` with the checkpoint's
+    tokenizer.json, espeak-ng 1.52.0.1 at ``pl`` and the repository's own
+    ``polish_phonemes.split_phonemes`` cleanup. ``parts`` is that espeak's output for each
+    punctuation-free run of words. The tokenizer fixture is the checkpoint's tokenizer.json
+    cut down to the merges these prompts reach, ids unchanged.
+    """
+    return json.loads((FIXTURES / "neutts_nano_polish_upstream.json").read_text("utf-8"))
+
+
+POLISH_PARAMS = {
+    "espeak_voice": "pl",
+    "prompt_template": "neuphonic",
+    "phoneme_substitutions": [["([a-zA-Z0-9])", " \\1"]],
+}
+
+
+@pytest.fixture
+def polish(tmp_path):
+    from phoonnx.tokenizer import load_hf_tokenizer
+    up = _upstream_polish()
+    voices = tmp_path / "voices.json"
+    voices.write_text(json.dumps({"default_voice": "ref", "presets": {
+        "ref": {"text": up["ref_text"], "codes": up["ref_codes"]}}}))
+
+    class VC:
+        engine_params = {**POLISH_PARAMS, "voices_path": str(voices),
+                         "tokenizer_path": str(FIXTURES / "neutts_nano_polish_tokenizer.json")}
+
+    ad = NeuTTSAdapter()
+    ad.configure(VC())
+    # espeak at the voice the call names; any other voice reads the text differently
+    ad._phonemizer = type("P", (), {"phonemize_string": staticmethod(
+        lambda t, lang: up["parts"][t] if lang == "pl" else f"<{lang}:{t}>")})()
+    return ad, up
+
+
+def test_neuphonic_fine_tune_prompts_match_upstream_ids(polish):
+    adapter, up = polish
+    for row in up["rows"]:
+        assert adapter.encode_text(row["text"], None, None) == [row["ids"]], row["text"]
+
+
+def test_neuphonic_fine_tune_phones_match_upstream(polish):
+    adapter, up = polish
+    assert adapter._espeak(up["ref_text"]) == up["ref_phones"]
+    for row in up["rows"]:
+        assert adapter._espeak(row["text"]) == row["phones"]
+
+
+def test_the_chat_prompt_starts_with_the_tokenizers_bos(polish):
+    adapter, up = polish
+    ids = adapter.encode_text(up["rows"][0]["text"], None, None)[0]
+    assert ids[0] == adapter.tokenizer.token_to_id("<|begin_of_text|>")
+
+
+def test_the_neuphonic_template_wraps_the_parts_in_a_chat_turn(tmp_path):
+    ad = NeuTTSAdapter()
+
+    class VC:
+        engine_params = {"prompt_template": "neuphonic"}
+
+    ad.configure(VC())
+    assert ad.build_prompt("TGT", "REF", [1]) == (
+        f"user: Convert the text to speech:{TEXT_PROMPT_START}REF TGT{TEXT_PROMPT_END}"
+        f"\nassistant:{SPEECH_GENERATION_START}<|speech_1|>")
+
+
+def test_the_neuphonic_template_keeps_every_reference_code():
+    class VC:
+        engine_params = {"prompt_template": "neuphonic"}
+
+    ad = NeuTTSAdapter()
+    ad.configure(VC())
+    assert ad.build_prompt("T", "R", list(range(500))).count("<|speech_") == 500
+
+
+def test_an_unknown_prompt_template_is_rejected():
+    class VC:
+        engine_params = {"prompt_template": "llama"}
+
+    with pytest.raises(ValueError, match="unknown NeuTTS prompt_template"):
+        NeuTTSAdapter().configure(VC())
+
+
+def test_a_voice_without_front_end_params_keeps_the_akiti_front_end(adapter):
+    assert adapter.espeak_voice == ESPEAK_VOICE
+    assert adapter.phoneme_substitutions == []
+    assert adapter.build_prompt("T") == f"{TEXT_PROMPT_START}T{TEXT_PROMPT_END}{SPEECH_GENERATION_START}"
+
+
+def test_substitutions_run_in_order_before_whitespace_collapses(adapter):
+    import re
+    adapter.phoneme_substitutions = [(re.compile("a"), "b"), (re.compile("b"), "x y")]
+    adapter._phonemizer = type("P", (), {
+        "phonemize_string": staticmethod(lambda t, lang: "ab  ˈa")})()
+    # a->b first: "bb  ˈb" -> "x yx y  ˈx y"; the reverse order would give "bx y ˈb"
+    assert adapter._espeak("x") == "x yx y ˈx y"
+
+
 # --------------------------------------------------------------------- chunking
 def test_short_text_is_one_chunk(adapter):
     assert adapter.chunk_text("Meda wo ase.", 200) == ["Meda wo ase."]
