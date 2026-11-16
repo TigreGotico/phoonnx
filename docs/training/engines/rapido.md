@@ -77,8 +77,8 @@ The latents are normalized per dimension by the mean and standard deviation of
 the training set. The engine computes them on the first run, stores them in
 `rapido_latent_stats.json` beside the dataset and writes them into the model
 buffers that the export reads. The stored statistics carry a hash of the latent
-caches. When you preprocess the dataset again, the hash changes and the engine
-computes the statistics again.
+caches. When the latents change, the hash changes and the engine computes the
+statistics again.
 
 ## Train
 

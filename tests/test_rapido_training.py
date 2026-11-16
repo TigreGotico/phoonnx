@@ -97,26 +97,6 @@ def test_stripped_ids_equal_the_runtime_tokenizer_of_the_exported_voice():
     assert strip_blanks(preprocess_ids(PHONEMES), 0) == runtime.tokenize(PHONEMES)
 
 
-def test_eval_text_to_ids_matches_the_training_ids():
-    from phoonnx.config import Alphabet, PhonemeType, get_phonemizer
-    from phoonnx.util import normalize
-
-    text = "Olá, tudo bem? São às 21 horas."
-    config = {"phoneme_type": "espeak", "alphabet": "ipa", "lang_code": "pt-BR",
-              "keep_punctuation": True, "phoneme_id_map": {}}
-    phonemizer = get_phonemizer(PhonemeType("espeak"), Alphabet.IPA, "",
-                                keep_punctuation=True)
-    phonemes = phonemizer.phonemize_to_list(normalize(text, "pt-BR"), "pt-BR")
-    id_map = {"_": 0, "^": 1, "$": 2, " ": 3}
-    for p in phonemes:
-        id_map.setdefault(p, len(id_map))
-    config["phoneme_id_map"] = id_map
-    training = strip_blanks(TTSTokenizer.from_phoonnx_config(config).tokenize(phonemes), 0)
-
-    assert RapidoTrainingEngine().eval_text_to_ids(text, config) == training
-    assert 0 not in training
-
-
 # ----------------------------------------------------------------------
 # Word and frame layout
 # ----------------------------------------------------------------------
@@ -311,6 +291,14 @@ def test_load_released_rapido_checkpoint_counts(tmp_path):
     assert len(module.load_report["loaded"]) == total - 1
     assert EMBEDDING_KEY not in module.load_report["loaded"]
 
+    # the released symbols in another order: each row would read another symbol
+    module = RapidoModule(num_symbols=n_vocab, num_speakers=n_speakers, boundary_ids=[],
+                          blank=None, sample_rate=22050,
+                          phoneme_id_map={s: i for i, s in enumerate(reversed(released["vocab"]))})
+    get_engine("rapido").load_checkpoint(module, path)
+    assert module.load_report["same_vocab"] is False
+    assert EMBEDDING_KEY not in module.load_report["loaded"]
+
 
 def test_load_own_lightning_checkpoint_keeps_everything(tmp_path):
     module = tiny_module()
@@ -425,8 +413,8 @@ def round_trip(tmp_path_factory):
         mp.setattr("phoonnx_train.rapido.audio_vae.load_audio_vae", _tiny_vae)
         config_path = engine.export_onnx(checkpoint, data / "config.json", tmp / "voice")
     voice = TTSVoice.load(tmp / "voice" / "model.onnx", config_path=config_path)
-    return {"dataset_config": dataset_config, "training": module._train_dataset.dataset,
-            "latents": latents, "voice": voice,
+    return {"dataset_config": dataset_config, "module": module,
+            "training": module._train_dataset.dataset, "latents": latents, "voice": voice,
             "voice_config": json.loads(config_path.read_text(encoding="utf-8"))}
 
 
@@ -449,6 +437,26 @@ def test_round_trip_voice_config_turns_blanks_off_and_keeps_bos_eos(round_trip):
     assert config["phoneme_id_map"] == id_map
     ids = round_trip["voice"].phonemes_to_ids(["o", "l", "a"])
     assert ids == [id_map["^"], id_map["o"], id_map["l"], id_map["a"], id_map["$"]]
+
+
+def test_round_trip_eval_text_to_ids_equals_the_ids_training_read(round_trip):
+    training = round_trip["training"]
+    engine = RapidoTrainingEngine()
+    for i, utt in enumerate(training.utterances):
+        assert engine.eval_text_to_ids(utt["text"], round_trip["dataset_config"]) == \
+            training[i]["ids"].tolist(), utt["text"]
+
+
+def test_round_trip_voice_finds_the_words_training_found(round_trip):
+    voice_boundaries = round_trip["voice"].adapter.boundary_ids
+    assert set(round_trip["module"].boundary_ids) == set(voice_boundaries)
+    id_map = round_trip["dataset_config"]["phoneme_id_map"]
+    assert {id_map[s] for s in (" ", "^", "$", ",", ".", "?", "!", ":")} <= voice_boundaries
+
+
+def test_round_trip_voice_keeps_the_speaker_map(round_trip):
+    assert round_trip["voice"].config.speaker_id_map == \
+        round_trip["dataset_config"]["speaker_id_map"]
 
 
 def test_round_trip_skips_the_clip_with_too_few_frames(round_trip):

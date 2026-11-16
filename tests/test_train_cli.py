@@ -173,20 +173,55 @@ class TestMainCliEngineSelection(unittest.TestCase):
     def test_plain_resume_of_a_weights_only_checkpoint_is_a_warm_start(self):
         # Lightning restores a training state only from a checkpoint it wrote;
         # an upstream release holds weights only, so it goes to load_checkpoint
-        loaded = []
-        self.fake_engine.load_checkpoint = (
-            lambda model, checkpoint_path, **kw: loaded.append((str(checkpoint_path), kw)) or model
-        )
+        for checkpoint in ({"ema": {}}, {"state_dict": {"w": torch.zeros(1)}}):
+            with self.subTest(keys=sorted(checkpoint)):
+                loaded = []
+                self.fake_engine.load_checkpoint = (
+                    lambda model, checkpoint_path, **kw:
+                        loaded.append((str(checkpoint_path), kw)) or model
+                )
+                with self.runner.isolated_filesystem() as td:
+                    Path("ds").mkdir()
+                    torch.save(checkpoint, "release.pt")
+                    with self.assertLogs("phoonnx_train", level="WARNING") as logs:
+                        result, trainer_instance, _ = self._run(
+                            Path(td), ["--resume-from-checkpoint", "release.pt"],
+                        )
+                self.assertEqual(result.exit_code, 0, result.output)
+                self.assertEqual(loaded, [("release.pt", {"discard_encoder": False})])
+                _, fit_kwargs = trainer_instance.fit.call_args
+                self.assertIsNone(fit_kwargs.get("ckpt_path"))
+                self.assertTrue(any("not a Lightning checkpoint" in line
+                                    and "optimizer state and the step count start again" in line
+                                    for line in logs.output), logs.output)
+
+    def test_plain_resume_reads_a_legacy_format_lightning_checkpoint(self):
+        # torch.save without the zip format cannot be memory-mapped
         with self.runner.isolated_filesystem() as td:
             Path("ds").mkdir()
-            torch.save({"ema": {}}, "release.pt")
+            torch.save({"pytorch-lightning_version": "1.5.0", "state_dict": {}}, "old.ckpt",
+                       _use_new_zipfile_serialization=False)
             result, trainer_instance, _ = self._run(
-                Path(td), ["--resume-from-checkpoint", "release.pt"],
+                Path(td), ["--resume-from-checkpoint", "old.ckpt"],
             )
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertEqual(loaded, [("release.pt", {"discard_encoder": False})])
         _, fit_kwargs = trainer_instance.fit.call_args
-        self.assertIsNone(fit_kwargs.get("ckpt_path"))
+        self.assertEqual(fit_kwargs.get("ckpt_path"), "old.ckpt")
+
+    def test_plain_resume_of_a_remote_checkpoint_goes_to_fit_unchanged(self):
+        # Lightning reads URLs and fsspec paths; only a local file is inspected
+        for url in ("https://example.com/runs/last.ckpt", "s3://bucket/runs/last.ckpt"):
+            with self.subTest(url=url):
+                self.fake_engine.load_checkpoint = MagicMock()
+                with self.runner.isolated_filesystem() as td:
+                    Path("ds").mkdir()
+                    result, trainer_instance, _ = self._run(
+                        Path(td), ["--resume-from-checkpoint", url],
+                    )
+                self.assertEqual(result.exit_code, 0, result.output)
+                _, fit_kwargs = trainer_instance.fit.call_args
+                self.assertEqual(fit_kwargs.get("ckpt_path"), url)
+                self.fake_engine.load_checkpoint.assert_not_called()
 
     def test_discard_encoder_resume_is_weight_only_not_ckpt_path(self):
         # --discard-encoder changes the architecture: it stays a weight-only

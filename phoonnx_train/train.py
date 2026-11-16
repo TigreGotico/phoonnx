@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -32,12 +33,22 @@ def _build_extra(quality_kwargs: dict, engine_params: dict, **cli_values) -> dic
 _LOGGER = logging.getLogger(__package__)
 
 
-def _is_lightning_checkpoint(path: str) -> bool:
-    """Whether Lightning wrote ``path``, so that it carries a training state to resume."""
+def _resumes_training_state(path: str) -> bool:
+    """Whether Lightning can resume a training state from ``path``.
+
+    Only a local file is read: it resumes when Lightning wrote it. A URL or a
+    remote path goes to Lightning as given, which reads it.
+    """
     from phoonnx_train.torch_compat import trusting_torch_load
 
+    if not os.path.isfile(path):
+        return True
     with trusting_torch_load():
-        return "pytorch-lightning_version" in torch.load(path, map_location="cpu")
+        try:
+            checkpoint = torch.load(path, map_location="cpu", mmap=True)
+        except RuntimeError:  # mmap needs the zip format, the torch.save default since 1.6
+            checkpoint = torch.load(path, map_location="cpu")
+    return "pytorch-lightning_version" in checkpoint
 
 
 def _validate_engine(ctx, param, value):
@@ -207,15 +218,19 @@ def main(
     # Trainer.fit(ckpt_path=...); a manual state_dict load copies weights only.
     # The --discard-encoder and single-speaker paths intentionally change the
     # architecture, so they stay weight-only warm starts (fit_ckpt_path=None).
-    # So does a checkpoint that Lightning did not write (e.g. an upstream
+    # So does a local file that Lightning did not write (e.g. an upstream
     # release): it holds weights and no training state to resume.
     fit_ckpt_path: Optional[str] = None
     if resume_from_checkpoint and not discard_encoder \
-            and _is_lightning_checkpoint(resume_from_checkpoint):
+            and _resumes_training_state(resume_from_checkpoint):
         fit_ckpt_path = resume_from_checkpoint
         _LOGGER.info("Resuming full training state from checkpoint: %s",
                      resume_from_checkpoint)
     elif resume_from_checkpoint:
+        if not discard_encoder:
+            _LOGGER.warning("%s is not a Lightning checkpoint: loading its weights only, so "
+                            "the optimizer state and the step count start again",
+                            resume_from_checkpoint)
         training_engine.load_checkpoint(
             model,
             Path(resume_from_checkpoint),
