@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.102.1a1](https://github.com/TigreGotico/phoonnx/tree/1.102.1a1) (2026-11-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.102.0a2...1.102.1a1)
+
+**Merged pull requests:**
+
+- fix: let a voice's own speaker apply when the call names none [\#610](https://github.com/TigreGotico/phoonnx/pull/610) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.102.0a2](https://github.com/TigreGotico/phoonnx/tree/1.102.0a2) (2026-11-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.102.0a1...1.102.0a2)
@@ -225,10 +233,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.0a1...1.96.1a1)
 
-**Merged pull requests:**
-
-- fix: feed clause punctuation to models trained with it [\#507](https://github.com/TigreGotico/phoonnx/pull/507) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.96.0a1](https://github.com/TigreGotico/phoonnx/tree/1.96.0a1) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.95.1a1...1.96.0a1)
@@ -369,10 +373,6 @@
 ## [1.93.3a1](https://github.com/TigreGotico/phoonnx/tree/1.93.3a1) (2026-10-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.2a1...1.93.3a1)
-
-**Merged pull requests:**
-
-- fix: load Piper checkpoints in VITS fine-tuning on torch 2.6 and later [\#508](https://github.com/TigreGotico/phoonnx/pull/508) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.93.2a1](https://github.com/TigreGotico/phoonnx/tree/1.93.2a1) (2026-10-12)
 
