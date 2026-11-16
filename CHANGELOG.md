@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.99.4a1](https://github.com/TigreGotico/phoonnx/tree/1.99.4a1) (2026-11-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.3a2...1.99.4a1)
+
+**Merged pull requests:**
+
+- fix: encode through Tokenizer.compile\(\) on tokenizers 1.0 [\#560](https://github.com/TigreGotico/phoonnx/pull/560) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.99.3a2](https://github.com/TigreGotico/phoonnx/tree/1.99.3a2) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.3a1...1.99.3a2)
@@ -232,7 +240,6 @@
 **Merged pull requests:**
 
 - ci: pin conventional-release-labels and scope the label job [\#496](https://github.com/TigreGotico/phoonnx/pull/496) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix\(deps\): raise the ovos-plugin-manager floor above the pkg\_resources import [\#494](https://github.com/TigreGotico/phoonnx/pull/494) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.94.7a1](https://github.com/TigreGotico/phoonnx/tree/1.94.7a1) (2026-11-05)
 
