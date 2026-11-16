@@ -112,7 +112,7 @@ class MatchaAdapter(BaseOnnxAdapter):
             "scales": np.array([temperature, length_scale], dtype=np.float32),
         }
 
-        spk_id = params.get("spk_id", request.speaker_id)
+        spk_id = params.get("spk_id", request.speaker_id or 0)
         if spk_id is not None:
             args["spks"] = np.array([int(spk_id)], dtype=np.int64)
 

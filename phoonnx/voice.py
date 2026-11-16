@@ -1320,8 +1320,8 @@ class TTSVoice:
         request = AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,
             phoneme_lengths=phoneme_ids_lengths,
-            speaker_id=syn_config.speaker_id or 0,
-            language_id=syn_config.lang_id or 0,
+            speaker_id=syn_config.speaker_id,
+            language_id=syn_config.lang_id,
             params=params,
             **side_streams,
         )

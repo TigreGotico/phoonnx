@@ -75,13 +75,9 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
             "scales": np.array([d_factor, p_factor, e_factor], dtype=np.float32),
         }
 
-        # Multi-speaker
-        if request.speaker_id is not None:
-            args["sids"] = np.array([request.speaker_id], dtype=np.int64)
-
-        # Multi-language
-        if request.language_id is not None:
-            args["lids"] = np.array([request.language_id], dtype=np.int64)
+        # Multi-speaker and multi-language graphs; 0 when the request names none.
+        args["sids"] = np.array([request.speaker_id or 0], dtype=np.int64)
+        args["lids"] = np.array([request.language_id or 0], dtype=np.int64)
 
         return self._filter_inputs(args, session)
 
