@@ -21,13 +21,13 @@ dependencies = [
     "quebra-frases",
     "langcodes",
     "linguatag>=0.1.5a1",
-    "text2spoken>=0.0.2a28",
+    "text2spoken>=0.0.2a55",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
     # >=0.0.4a99: the dizione phonemizer of the tiny-voca voices, owned_stages on every
     # phonemizer, and TextFrontend skipping the hook for a backend that owns
     # normalisation. Every extra relies on this floor.
-    "scriptconv[phonemizers]>=0.0.4a99",
+    "scriptconv[phonemizers]>=0.0.4a104",
     "unicode_rbnf",
     "click",
     "requests",
@@ -72,7 +72,7 @@ test = [
     # and the mantoq, Halabi and Iqra wrappers are in scriptconv-nonfree. These
     # scriptconv extras install the two packages. espyak, pycotovia and
     # ahotts-g2p stay listed here for their version floors.
-    "scriptconv[espeak,gl,eu,ar-phonemizers]>=0.0.4a98",
+    "scriptconv[espeak,gl,eu,ar-phonemizers]>=0.0.4a104",
     "espyak>=0.0.3a1",
     # the voice-conversion post-stage's end-to-end test runs the real engine;
     # pure-ONNX with no torch of its own, so it is cheap to have here.
@@ -155,7 +155,7 @@ test = [
 streaming = ["onnx"]
 # The eSpeak wrapper is in scriptconv-copyleft (GPL), so an eSpeak voice needs
 # this extra even when the espeak-ng binary is installed.
-espeak = ["scriptconv[espeak]>=0.0.4a98", "espyak>=0.0.3a1"]
+espeak = ["scriptconv[espeak]>=0.0.4a104", "espyak>=0.0.3a1"]
 matcha = [
     "scipy",
 ]
@@ -298,28 +298,28 @@ train-pyworld = [
 ]
 # scriptconv[ar-phonemizers] installs arbtok and scriptconv-nonfree, which holds
 # the mantoq, Halabi and Iqra wrappers (CC BY-NC 4.0).
-ar = ["epitran", "scriptconv[ar-phonemizers]>=0.0.4a98", "arbtok", "text2tashkeel", "gruut[ar]>=2.3.0,<3.0"]
+ar = ["epitran", "scriptconv[ar-phonemizers]>=0.0.4a104", "arbtok", "text2tashkeel", "gruut[ar]>=2.3.0,<3.0"]
 ca = ["epitran", "gruut[ca]>=2.3.0,<3.0"]
-gl = ["scriptconv[gl]>=0.0.4a98", "pycotovia>=0.4.0a1", "epitran"]
+gl = ["scriptconv[gl]>=0.0.4a104", "pycotovia>=0.4.0a1", "epitran"]
 cs = ["epitran", "gruut[cs]>=2.3.0,<3.0"]
 de = ["epitran", "gruut[de]>=2.3.0,<3.0"]
 # scriptconv-copyleft holds the misaki wrappers. The scriptconv[misaki] extra
 # would also install the Japanese, Korean and Chinese misaki engines.
 en = ["epitran", "gruut[en]>=2.3.0,<3.0", "scriptconv-copyleft>=0.1.0a1", "misaki[en]", "spacy>=3.7,<4.0"]
 es = ["epitran", "gruut[es]>=2.3.0,<3.0"]
-eu = ["scriptconv[eu]>=0.0.4a98", "ahotts-g2p>=0.1.0", "euskaphone", "epitran"]
-fa = ["epitran", "scriptconv[fa]>=0.0.4a98"]
+eu = ["scriptconv[eu]>=0.0.4a104", "ahotts-g2p>=0.1.0", "euskaphone", "epitran"]
+fa = ["epitran", "scriptconv[fa]>=0.0.4a104"]
 fr = ["epitran", "gruut[fr]>=2.3.0,<3.0"]
 he = ["epitran", "phonikud_onnx", "phonikud"]
 it = ["epitran", "gruut[it]>=2.3.0,<3.0"]
-ja = ["epitran", "gruut[ja]>=2.3.0,<3.0", "scriptconv[ja-phonemizers]>=0.0.4a98", "misaki[ja]", "spacy>=3.7,<4.0", "pyopenjtalk", "pykakasi", "cutlet", "unidic-lite"]
-ko = ["epitran", "scriptconv[ko]>=0.0.4a98", "g2pk", "misaki[ko]"]
+ja = ["epitran", "gruut[ja]>=2.3.0,<3.0", "scriptconv[ja-phonemizers]>=0.0.4a104", "misaki[ja]", "spacy>=3.7,<4.0", "pyopenjtalk", "pykakasi", "cutlet", "unidic-lite"]
+ko = ["epitran", "scriptconv[ko]>=0.0.4a104", "g2pk", "misaki[ko]"]
 mwl = ["scriptconv[mwl]"]
 pt = ["epitran", "scriptconv[o2i]", "tugaphone", "gruut[pt]>=2.3.0,<3.0"]
 ru = ["epitran", "gruut[ru]>=2.3.0,<3.0"]
 sv = ["epitran", "gruut[sv]>=2.3.0,<3.0"]
 sw = ["epitran", "gruut[sw]>=2.3.0,<3.0"]
-vi = ["epitran", "gruut[vi]>=2.3.0,<3.0", "scriptconv[vi]>=0.0.4a98", "scriptconv-copyleft>=0.1.0a1", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
+vi = ["epitran", "gruut[vi]>=2.3.0,<3.0", "scriptconv[vi]>=0.0.4a104", "scriptconv-copyleft>=0.1.0a1", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
 zh = ["epitran", "gruut[zh]>=2.3.0,<3.0", "scriptconv-copyleft>=0.1.0a1", "misaki[zh]", "spacy>=3.7,<4.0", "g2pM", "pypinyin", "xpinyin", "pinyin_to_ipa", "jieba", "cn2an"]
 aa = ["epitran"]
 aii = ["epitran"]
@@ -442,7 +442,7 @@ all = [
     # "espeak", "gl" and "eu" install scriptconv-copyleft, which holds the
     # eSpeak, Cotovia, AhoTTS and misaki wrappers; "ar-phonemizers" installs
     # scriptconv-nonfree, which holds the mantoq wrapper.
-    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he,espeak,gl,eu]>=0.0.4a98",
+    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he,espeak,gl,eu]>=0.0.4a104",
     # scriptconv's own "stress" extra floors stressonnx at >=0.0.2, which
     # resolves to the latest *stable* release. The BCP-47 language resolver
     # phoonnx needs only shipped in the 0.0.3 alpha train, so it must be
