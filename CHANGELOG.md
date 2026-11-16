@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.102.0a2](https://github.com/TigreGotico/phoonnx/tree/1.102.0a2) (2026-11-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.102.0a1...1.102.0a2)
+
+**Merged pull requests:**
+
+- test: follow scriptconv 0.0.4a104 frontend order [\#615](https://github.com/TigreGotico/phoonnx/pull/615) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.102.0a1](https://github.com/TigreGotico/phoonnx/tree/1.102.0a1) (2026-11-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.101.0a1...1.102.0a1)
+
+**Merged pull requests:**
+
+- feat: rapido training engine [\#568](https://github.com/TigreGotico/phoonnx/pull/568) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.101.0a1](https://github.com/TigreGotico/phoonnx/tree/1.101.0a1) (2026-11-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.100.0a2...1.101.0a1)
@@ -350,10 +366,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.3a1...1.94.0a1)
 
-**Merged pull requests:**
-
-- feat: choose the speaker and the speech-variation scales per request [\#502](https://github.com/TigreGotico/phoonnx/pull/502) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.93.3a1](https://github.com/TigreGotico/phoonnx/tree/1.93.3a1) (2026-10-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.2a1...1.93.3a1)
@@ -365,11 +377,6 @@
 ## [1.93.2a1](https://github.com/TigreGotico/phoonnx/tree/1.93.2a1) (2026-10-12)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.1a2...1.93.2a1)
-
-**Merged pull requests:**
-
-- fix: VITS export writes loadable phoonnx, Piper and sherpa side-cars [\#504](https://github.com/TigreGotico/phoonnx/pull/504) ([JarbasAl](https://github.com/JarbasAl))
-- Make EOS logit extraction robust to varying tensor shapes Description [\#503](https://github.com/TigreGotico/phoonnx/pull/503) ([timonvanhasselt](https://github.com/timonvanhasselt))
 
 ## [1.93.1a2](https://github.com/TigreGotico/phoonnx/tree/1.93.1a2) (2026-10-01)
 
