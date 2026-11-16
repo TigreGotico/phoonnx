@@ -18,6 +18,8 @@ lines of varint reading replace the protobuf runtime as well.
 import struct
 from typing import Dict, List, Optional, Sequence, Tuple
 
+from phoonnx.errors import UnsupportedSentencePieceModel
+
 # Unigram scores are single-precision floats in the file, and SentencePiece
 # adds them up in single precision too. Ties in the Viterbi search are broken
 # by node order, so a sum that rounds differently can pick a different — and
@@ -38,10 +40,6 @@ _NORMAL, _UNKNOWN, _CONTROL, _USER_DEFINED, _UNUSED, _BYTE = 1, 2, 3, 4, 5, 6
 
 # TrainerSpec.ModelType
 _MODEL_TYPES = {1: "UNIGRAM", 2: "BPE", 3: "WORD", 4: "CHAR"}
-
-
-class UnsupportedSentencePieceModel(Exception):
-    """The .model declares a feature this reader does not implement."""
 
 
 def _read_varint(blob: bytes, index: int) -> Tuple[int, int]:
