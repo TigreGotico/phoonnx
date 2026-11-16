@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.101.0a1](https://github.com/TigreGotico/phoonnx/tree/1.101.0a1) (2026-11-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.100.0a2...1.101.0a1)
+
+**Merged pull requests:**
+
+- feat: rapido pt-BR voices in the voice index [\#570](https://github.com/TigreGotico/phoonnx/pull/570) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.100.0a2](https://github.com/TigreGotico/phoonnx/tree/1.100.0a2) (2026-11-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.100.0a1...1.100.0a2)
+
+**Merged pull requests:**
+
+- test: add a sweep that loads and synthesises every index voice [\#569](https://github.com/TigreGotico/phoonnx/pull/569) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.100.0a1](https://github.com/TigreGotico/phoonnx/tree/1.100.0a1) (2026-11-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.4a1...1.100.0a1)
+
+**Merged pull requests:**
+
+- feat: TTSVoice reads text through scriptconv's TextFrontend [\#566](https://github.com/TigreGotico/phoonnx/pull/566) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.99.4a1](https://github.com/TigreGotico/phoonnx/tree/1.99.4a1) (2026-11-15)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.3a2...1.99.4a1)
+
+**Merged pull requests:**
+
+- fix: encode through Tokenizer.compile\(\) on tokenizers 1.0 [\#560](https://github.com/TigreGotico/phoonnx/pull/560) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.99.3a2](https://github.com/TigreGotico/phoonnx/tree/1.99.3a2) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.3a1...1.99.3a2)
@@ -209,10 +241,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.8a3...1.95.0a1)
 
-**Merged pull requests:**
-
-- feat: the three kasanoma voices read from the OpenVoiceOS mirrors [\#498](https://github.com/TigreGotico/phoonnx/pull/498) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.94.8a3](https://github.com/TigreGotico/phoonnx/tree/1.94.8a3) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.8a2...1.94.8a3)
@@ -228,11 +256,6 @@
 ## [1.94.7a2](https://github.com/TigreGotico/phoonnx/tree/1.94.7a2) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.7a1...1.94.7a2)
-
-**Merged pull requests:**
-
-- ci: pin conventional-release-labels and scope the label job [\#496](https://github.com/TigreGotico/phoonnx/pull/496) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix\(deps\): raise the ovos-plugin-manager floor above the pkg\_resources import [\#494](https://github.com/TigreGotico/phoonnx/pull/494) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.94.7a1](https://github.com/TigreGotico/phoonnx/tree/1.94.7a1) (2026-11-05)
 
@@ -323,10 +346,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.0a1...1.94.1a1)
 
-**Merged pull requests:**
-
-- fix: build the image with uv, which can resolve what pip refuses [\#500](https://github.com/TigreGotico/phoonnx/pull/500) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.94.0a1](https://github.com/TigreGotico/phoonnx/tree/1.94.0a1) (2026-10-28)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.3a1...1.94.0a1)
@@ -359,10 +378,6 @@
 ## [1.93.1a1](https://github.com/TigreGotico/phoonnx/tree/1.93.1a1) (2026-09-27)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.93.0a1...1.93.1a1)
-
-**Merged pull requests:**
-
-- fix: floor datasets and scriptconv, correct the pt-BR test, and run build\_tests on dev [\#497](https://github.com/TigreGotico/phoonnx/pull/497) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.93.0a1](https://github.com/TigreGotico/phoonnx/tree/1.93.0a1) (2026-09-19)
 
