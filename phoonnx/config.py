@@ -1,8 +1,8 @@
-import functools
 import json
+import warnings
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Mapping, Optional, Union, Dict
+from typing import Any, Callable, Mapping, Optional, Union, Dict
 from phoonnx.util import LOG, is_arabic, normalize_lang
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
@@ -607,28 +607,48 @@ def check_lang_supported(voice: str, lang_code: Optional[str],
         raise UnsupportedVoiceLanguage(voice, lang_code, phoneme_type) from e
 
 
-def get_phonemizer(phoneme_type: PhonemeType,
-                   alphabet: Alphabet = Alphabet.IPA,
-                   model: Optional[str] = None,
-                   keep_punctuation: bool = False) -> 'Phonemizer':
-    """
-    Create a phonemizer instance for the specified phonemeization strategy.
+def _removal_version() -> str:
+    """The release that removes a name deprecated in this one: the next major."""
+    from phoonnx.version import VERSION_MAJOR
+    return f"{VERSION_MAJOR + 1}.0.0"
 
-    Delegates to scriptconv's registry, injecting phoonnx's text normalizer
-    (number/date expansion) so behavior matches the historical in-tree
-    phonemizers exactly.  All backends come through scriptconv's registry,
-    which also auto-provisions the Hebrew phonikud model.  The copyleft
-    wrappers (eSpeak, Cotovia, misaki, KoG2P, ...) are in scriptconv-copyleft
-    and the non-commercial ones (mantoq, VIPhoneme, ...) in scriptconv-nonfree;
-    a missing package raises ImportError naming the scriptconv extra.
 
-    ``keep_punctuation`` keeps clause punctuation in the phonemes; it must match
-    how the model was trained (see :attr:`VoiceConfig.keep_punctuation`).
+def _deprecated(name: str, replacement: str) -> None:
+    warnings.warn(f"phoonnx.config.{name} is deprecated and will be removed in phoonnx "
+                  f"{_removal_version()}. Use {replacement}.",
+                  DeprecationWarning, stacklevel=3)
+
+
+# espeak-ng reads a contraction the way people say it ("don't" -> dˈoʊnt). Expanding it
+# first ("do not") makes every English sentence sound like a form letter, and the table
+# is a guess for "he's" and "I'd". Numbers, dates, units and titles are still normalized.
+def _espeak_normalize(text: str, lang: str) -> str:
+    from phoonnx.util import normalize
+    return normalize(text, lang, expand_contractions=False)
+
+
+def _normalize(text: str, lang: str) -> str:
+    from phoonnx.util import normalize
+    return normalize(text, lang)
+
+
+def _voice_phonemizer(phoneme_type: PhonemeType,
+                      alphabet: Alphabet = Alphabet.IPA,
+                      model: Optional[str] = None,
+                      keep_punctuation: bool = False) -> 'Phonemizer':
+    """The phonemizer of a voice, with phoonnx's text normalizer as its ``normalizer``.
+
+    The backend comes from scriptconv's registry, which also holds the
+    license-quarantined mantoq and KoG2P and provisions the Hebrew phonikud
+    model. :class:`phoonnx.voice.TTSVoice`
+    moves the ``normalizer`` into its :class:`scriptconv.frontend.TextFrontend`,
+    so it runs before diacritization. ``keep_punctuation`` keeps clause
+    punctuation in the phonemes; it must match how the model was trained (see
+    :attr:`VoiceConfig.keep_punctuation`).
 
     Raises:
         ValueError: If the provided `phoneme_type` is not supported.
     """
-    from phoonnx.util import normalize as _normalize
     phoneme_type = PhonemeType(phoneme_type)
 
     from scriptconv.phonemizers import get_phonemizer as _sc_get
@@ -637,22 +657,63 @@ def get_phonemizer(phoneme_type: PhonemeType,
     except KeyError:
         raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
 
-    if "normalize" in phonemizer.owned_stages:
-        pass  # the backend reads raw text with its own rules (dizione)
-    elif phoneme_type == PhonemeType.ESPEAK:
-        # espeak-ng reads a contraction the way people say it ("don't" -> dˈoʊnt). Expanding it
-        # first ("do not") makes every English sentence sound like a form letter, and the table
-        # is a guess for "he's" and "I'd". Numbers, dates, units and titles are still normalized.
-        phonemizer.normalizer = functools.partial(_normalize, expand_contractions=False)
-    else:
-        phonemizer.normalizer = _normalize
+    if "normalize" not in phonemizer.owned_stages:  # dizione normalises raw text itself
+        phonemizer.normalizer = _espeak_normalize if phoneme_type == PhonemeType.ESPEAK else _normalize
     phonemizer.keep_punctuation = keep_punctuation
     return phonemizer
 
 
+def get_phonemizer(phoneme_type: PhonemeType,
+                   alphabet: Alphabet = Alphabet.IPA,
+                   model: Optional[str] = None,
+                   keep_punctuation: bool = False) -> 'Phonemizer':
+    """Deprecated. A phonemizer whose own ``normalizer`` runs phoonnx's text normalizer.
+
+    Use :attr:`phoonnx.voice.TTSVoice.frontend`, or build a
+    :class:`scriptconv.frontend.TextFrontend`.
+
+    Raises:
+        ValueError: If the provided `phoneme_type` is not supported.
+    """
+    _deprecated("get_phonemizer", "TTSVoice.frontend or scriptconv.frontend.TextFrontend")
+    return _voice_phonemizer(phoneme_type, alphabet, model, keep_punctuation)
+
+
+def _side_stream_reader(phonemizer) -> Optional[Callable]:
+    """A ``(text, lang) -> (phonemes, streams)`` reader for a phonemizer that tags its symbols.
+
+    ``streams`` maps an ``AdapterSynthesisRequest`` field name to one value per
+    symbol. Shami tags each symbol with its language, for engines with a
+    ``language_ids`` input. dizione gives its own tokens with a stress value
+    each, for engines with a ``stress`` input (tiny-voca); its ValueError means
+    the text has nothing to pronounce. ByT5 holds a dict named ``tokens``, so
+    only a callable counts. Any other phonemizer gives ``None``.
+    """
+    with_language_ids = getattr(phonemizer, "phonemize_with_language_ids_lazy", None)
+    if with_language_ids is not None:
+        def read(text, lang):
+            for phonemes, language_ids in with_language_ids(text, lang):
+                yield phonemes, {"language_ids": language_ids}
+        return read
+    with_stress = getattr(phonemizer, "tokens", None)
+    if callable(with_stress):
+        def read(text, lang):
+            try:
+                tokens = with_stress(text)
+            except ValueError as e:
+                LOG.warning(f"skipping {text!r}: {e}")
+                return
+            yield list(tokens.symbols), {"stress": list(tokens.stress)}
+        return read
+    return None
+
+
 def get_conversion(phonemizer, voice_config: "VoiceConfig",
                    syn_config: "SynthesisConfig", tgt_alphabet: Alphabet):
-    """Build a voice's ``text -> tgt_alphabet`` conversion for one synthesis call.
+    """Deprecated. A voice's ``text -> tgt_alphabet`` conversion for one synthesis call.
+
+    Use :attr:`phoonnx.voice.TTSVoice.frontend`: its ``phonemize_lazy`` replaces
+    the graph, and its ``prepare`` replaces ``prepare_text``.
 
     Returns ``(graph, prepare_text)``:
 
@@ -674,6 +735,7 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     before G2P or the pronunciation is ambiguous; that restoration is scriptconv's
     and lives entirely behind these two values.
     """
+    _deprecated("get_conversion", "TTSVoice.frontend")
     from scriptconv.graph import ConversionGraph, Edge
     from scriptconv.diacritics import DIACRITIZED, diacritize
 
@@ -684,31 +746,14 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     model = syn_config.diacritizer_model or voice_config.diacritizer_model
     lang, alpha = voice_config.lang_code, tgt_alphabet.value
 
-    # phonemize_lazy is a BasePhonemizer method, so every phonemizer has it: a
-    # per-sentence generator, keeping sentence N+1 off the critical path of N.
-    # A phonemizer that tags each symbol with its language (Shami) yields the
-    # tags beside the symbols, for engines with a language_ids input. dizione
-    # gives its own tokens with a stress value each, for engines with a stress
-    # input (tiny-voca); its ValueError means the text has nothing to pronounce.
-    with_language_ids = getattr(phonemizer, "phonemize_with_language_ids_lazy", None)
-    # dizione gives ids and stress through tokens(). ByT5 holds a dict named
-    # tokens, so only a callable counts.
-    with_stress = getattr(phonemizer, "tokens", None)
-    if not callable(with_stress):
-        with_stress = None
+    read_streams = _side_stream_reader(phonemizer)
 
     def phonemize(text, **_):
-        if with_language_ids is not None:
-            for phonemes, language_ids in with_language_ids(text, lang):
-                yield phonemes, {"language_ids": language_ids}
-        elif with_stress is not None:
-            try:
-                tokens = with_stress(text)
-            except ValueError as e:
-                LOG.warning(f"skipping {text!r}: {e}")
-                return
-            yield list(tokens.symbols), {"stress": list(tokens.stress)}
+        if read_streams is not None:
+            yield from read_streams(text, lang)
         else:
+            # phonemize_lazy is a BasePhonemizer method, so every phonemizer has it: a
+            # per-sentence generator, keeping sentence N+1 off the critical path of N.
             for phonemes in phonemizer.phonemize_lazy(text, lang):
                 yield phonemes, {}
 

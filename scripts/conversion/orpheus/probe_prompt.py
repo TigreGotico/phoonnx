@@ -80,8 +80,8 @@ def main() -> None:
     ap.add_argument("--text", default="The quick brown fox jumps over the lazy dog.")
     args = ap.parse_args()
 
-    from tokenizers import Tokenizer
-    tok = Tokenizer.from_file(args.tokenizer)
+    from phoonnx.tokenizer import load_tokenizers_package
+    tok = load_tokenizers_package(args.tokenizer)
 
     literal = literal_all_input_ids(tok, args.voice, args.text)
     served = served_ids(tok, literal)

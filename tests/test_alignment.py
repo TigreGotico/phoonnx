@@ -23,6 +23,7 @@ import numpy as np
 from phoonnx.config import VoiceConfig, DEFAULT_HOP_LENGTH, PhonemeType, Alphabet
 from phoonnx.engines.vits import VitsAdapter
 from phoonnx.voice import AudioChunk, PhonemeAlignment, TTSVoice
+from scriptconv.phonemizers.base import BasePhonemizer
 
 from tests.conftest import retry_download
 
@@ -37,16 +38,14 @@ class _Input:
         self.name = name
 
 
-class _FakePhonemizer:
-    """A minimal phonemizer honouring the parts of the BasePhonemizer contract the
-    conversion route uses: ``phonemize`` plus the per-sentence ``phonemize_lazy``
-    generator (a MagicMock would return non-iterable sentinels instead).
-    """
+class _FakePhonemizer(BasePhonemizer):
+    """A phonemizer that gives fixed sentences for any text."""
     def __init__(self, result):
+        super().__init__()
         self._result = result
 
-    def phonemize(self, text, lang=None):
-        return self._result
+    def phonemize_string(self, text, lang):
+        return "".join(p for sentence in self._result for p in sentence)
 
     def phonemize_lazy(self, text, lang=None):
         yield from self._result
@@ -389,18 +388,19 @@ class TestAlignmentReconstruction(unittest.TestCase):
 # include_alignments=False is a strict no-op on the audio
 # ---------------------------------------------------------------------------
 
-class _OrderPhonemizer:
-    """A lazy phonemizer that records the index of each sentence as it is
-    actually produced, so a test can assert nothing downstream forced later
-    sentences to be phonemized early."""
-    def __init__(self, sentences, log):
-        self._sentences = sentences
+class _OrderPhonemizer(BasePhonemizer):
+    """A phonemizer that records each sentence it reads, so a test can assert
+    nothing downstream forced later sentences to be phonemized early."""
+    def __init__(self, log):
+        super().__init__()
         self._log = log
 
+    def phonemize_string(self, text, lang):
+        return "h"
+
     def phonemize_lazy(self, text, lang=None):
-        for i, sentence in enumerate(self._sentences):
-            self._log.append(i)
-            yield sentence
+        self._log.append(text)
+        yield ["h"]
 
 
 class TestAlignmentNoOp(unittest.TestCase):
@@ -434,13 +434,13 @@ class TestAlignmentNoOp(unittest.TestCase):
         log = []
         voice = _make_voice([_fake_audio()[np.newaxis, np.newaxis, :]],
                             phonemize_result=None, token_ids=[1, 0, 3, 0, 2])
-        voice.phonemizer = _OrderPhonemizer([["h"], ["e"]], log)
+        voice.phonemizer = _OrderPhonemizer(log)
 
         gen = voice.synthesize("s1. s2", include_alignments=True)
         next(gen)
-        self.assertEqual(log, [0], "second sentence phonemized before first yield")
+        self.assertEqual(log, ["s1."], "second sentence phonemized before first yield")
         next(gen)
-        self.assertEqual(log, [0, 1])
+        self.assertEqual(log, ["s1.", "s2"])
 
 
 # ---------------------------------------------------------------------------
