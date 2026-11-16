@@ -204,6 +204,77 @@ def test_supported_language_sets_do_not_overlap():
     assert not BYTE_LANGUAGES & CHAR_LANGUAGES
 
 
+# ---- exports that record each sub-tokenizer's kind -------------------
+# Assets dumped by scripts/conversion/magpie/dump_assets.py from two fine-tunes, and the
+# ids NeMo itself gives them: ``model.tokenizer.encode(text, name) + [model.eos_id]``.
+FIXTURES = __import__("pathlib").Path(__file__).parent / "fixtures"
+GEORGIAN = FIXTURES / "magpie_ka_tokenizer.json"   # NMikka/Magpie-TTS-Geo-357m
+THIRTEEN = FIXTURES / "magpie_13lang_tokenizer.json"   # infiniatechnologies/magpie-tts-13lang-357m
+
+
+def _nemo_rows(name):
+    return json.loads((FIXTURES / name).read_text(encoding="utf-8"))["rows"]
+
+
+@pytest.mark.parametrize("row", _nemo_rows("magpie_ka_nemo_ids.json"), ids=lambda r: r["text"][:12])
+def test_a_byt5_sub_tokenizer_gives_nemo_ids(row):
+    """The Georgian fine-tune reads Georgian through the ByT5 ``text_ce_tokenizer``."""
+    assert MagpieTokenizer(str(GEORGIAN)).encode(row["text"], "ka", "text_ce_tokenizer") == row["ids"]
+
+
+@pytest.mark.parametrize("row", _nemo_rows("magpie_13lang_sw_nemo_ids.json"), ids=lambda r: r["text"][:12])
+def test_a_byt5_sub_tokenizer_added_by_a_fine_tune_gives_nemo_ids(row):
+    """The 13-language fine-tune adds Swahili as a new ByT5 ``swahili_chartokenizer``."""
+    assert MagpieTokenizer(str(THIRTEEN)).encode(row["text"], "sw", "swahili_chartokenizer") == row["ids"]
+
+
+@pytest.mark.parametrize("row", _nemo_rows("magpie_13lang_ar_nemo_ids.json"), ids=lambda r: repr(r["text"][:12]))
+def test_an_arabic_chars_sub_tokenizer_gives_nemo_ids(row):
+    """Space pad, space collapse, NFC and the apostrophe rule, as ArabicCharsTokenizer."""
+    assert MagpieTokenizer(str(THIRTEEN)).encode(row["text"], "ar", "arabic_SA_chartokenizer") == row["ids"]
+
+
+def test_the_byt5_kind_closes_the_text_with_its_own_end_token():
+    tokenizer = MagpieTokenizer(str(GEORGIAN))
+    offset = tokenizer.offsets["text_ce_tokenizer"]
+    assert tokenizer.encode("a", "ka", "text_ce_tokenizer") == [
+        offset + BYTE_TOKENIZER_PREFIX + ord("a"), offset + 1, tokenizer.eos_id]
+
+
+def test_the_voice_names_a_sub_tokenizer_its_checkpoint_has_no_language_for():
+    class VC:
+        engine_params = {"tokenizer_path": str(GEORGIAN), "tokenizer_name": "text_ce_tokenizer",
+                         "lang": "ka"}
+        lang_code = "ka"
+
+    row = _nemo_rows("magpie_ka_nemo_ids.json")[1]
+    adapter = MagpieAdapter()
+    adapter.configure(VC())
+    assert adapter.encode_text(row["text"], None, None) == [row["ids"]]
+
+
+def test_a_sub_tokenizer_that_needs_g2p_is_refused():
+    with pytest.raises(NotImplementedError, match="english_phoneme"):
+        MagpieTokenizer(str(GEORGIAN)).encode("hello", "en", "english_phoneme")
+
+
+def test_an_alnum_chars_kind_drops_symbols_that_are_neither_letters_nor_punctuation(tmp_path):
+    """BaseCharsTokenizer keeps a table symbol only if it is alphanumeric, an apostrophe
+    or in its punctuation list; ArabicCharsTokenizer keeps every table symbol."""
+    tokens = [" ", "a", "b", "~", ",", "<pad>", "<oov>"]
+    kinds = {"chars": {"kind": "chars", "accept": "alnum", "punct": [","],
+                       "pad_with_space": False, "preprocessing": "none"}}
+    payload = {"vocab_size": len(tokens), "tokens": tokens, "eos_id": len(tokens),
+               "tokenizer_offsets": {"chars": 0}, "num_tokens_per_tokenizer": {"chars": len(tokens)},
+               "tokenizer_pad_ids": {"chars": 5}, "tokenizer_kinds": kinds}
+    path = tmp_path / "tokenizer.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    assert MagpieTokenizer(str(path)).encode(" a~ ,b ", "xx", "chars") == [1, 0, 4, 2, len(tokens)]
+    kinds["chars"]["accept"] = "any"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    assert MagpieTokenizer(str(path)).encode(" a~ ,b ", "xx", "chars") == [1, 3, 0, 4, 2, len(tokens)]
+
+
 def test_tokenizer_name_lookup_handles_region_tags(tmp_path):
     adapter = _adapter(tmp_path)
     assert adapter.tokenizer_name_for("fr") == "french_chartokenizer"
