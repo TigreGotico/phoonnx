@@ -198,8 +198,8 @@ def test_f5tts_dialect_wrapping():
         _FakeTransformer(),
     )
     ids = pre.text_ids[0].tolist()
-    # ref tokens first, then ⑥ 〈 gen 〉
-    assert ids == [7, 8, 2713, 2728, 4, 5, 6, 2729]
+    # ⑥ 〈 ref gen 〉: upstream wraps the whole ref_text + gen_text string
+    assert ids == [2713, 2728, 7, 8, 4, 5, 6, 2729]
     assert HABIBI_DIALECT_MAP["EGY"] == "⑥"
 
 
@@ -370,3 +370,53 @@ def test_namaa_saudi_listed_for_arabic():
     assert "namaa/ar-sa-v2" in manager.voices
     ar_ids = [v.voice_id for v in manager.get_lang_voices("ar")]
     assert "namaa/ar-sa-v2" in ar_ids
+
+
+# Whole model calls recorded with the upstream code: the reference text ends as
+# preprocess_ref_audio_text and infer_batch_process leave it (SWivid/F5-TTS
+# 600e5fd, src/f5_tts/infer/utils_infer.py), the text function reads
+# ref_text + gen_text (text_list_formatter of SWivid/Habibi-TTS 9274498, or
+# convert_char_to_pinyin of F5-TTS), and each token maps with get(c, 0)
+# through the voice's vocab.txt. prompt_tokens and phoneme_ids are the ids of
+# the reference and generation text alone, as TTSVoice gives them.
+UPSTREAM_CALLS = [
+    {"reference_text": "قال.", "dialect": "EGY", "prompt_tokens": [1739, 2550, 1741, 14],
+     "phoneme_ids": [1743, 1738, 1742],
+     "text_ids": [2713, 2728, 1739, 2550, 1741, 14, 0, 0, 1743, 1738, 1742, 2729],
+     "char2idx": {" ": 0, ".": 14, "ا": 2550, "ع": 1738, "ق": 1739, "ل": 1741, "م": 1742,
+                  "ن": 1743, "⑥": 2713, "〈": 2728, "〉": 2729}},
+    {"reference_text": "قال", "dialect": "UNK", "prompt_tokens": [1739, 2550, 1741],
+     "phoneme_ids": [1743, 1738, 1742],
+     "text_ids": [2707, 2728, 1739, 2550, 1741, 14, 0, 0, 1743, 1738, 1742, 2729],
+     "char2idx": {" ": 0, ".": 14, "ا": 2550, "ع": 1738, "ق": 1739, "ل": 1741, "م": 1742,
+                  "ن": 1743, "⓪": 2707, "〈": 2728, "〉": 2729}},
+    {"reference_text": "هل؟", "dialect": None, "prompt_tokens": [1744, 1741, 0],
+     "phoneme_ids": [1743, 1738, 1742], "text_ids": [1744, 1741, 0, 14, 0, 0, 1743, 1738, 1742],
+     "char2idx": {" ": 0, ".": 14, "ع": 1738, "ل": 1741, "م": 1742, "ن": 1743, "ه": 1744}},
+    {"reference_text": "好。", "dialect": None, "prompt_tokens": [0, 458, 1895],
+     "phoneme_ids": [0, 458], "text_ids": [0, 458, 1895, 0, 458],
+     "char2idx": {" ": 0, "hao3": 458, "。": 1895}},
+]
+
+
+@pytest.mark.parametrize("call", UPSTREAM_CALLS, ids=lambda c: c["reference_text"])
+def test_f5tts_text_ids_equal_the_upstream_call(call):
+    """The reference text ends in ". " plus a space unless it ends in 。, and the
+    dialect tag wraps the reference and the generation text together."""
+    class _RecordingPreprocess(_FakePreprocess):
+        def run(self, output_names, feed):
+            self.text_ids = feed["text_ids"].copy()
+            return super().run(output_names, feed)
+
+    ad = _configured_adapter(nfe=2)
+    ad.preprocess = pre = _RecordingPreprocess()
+    ad._char2idx = call["char2idx"]
+    params = {"reference_audio": (np.zeros(24000, np.float32), 24000),
+              "prompt_tokens": call["prompt_tokens"], "speaker_reference_text": call["reference_text"]}
+    if call["dialect"]:
+        params["dialect"] = call["dialect"]
+    request = AdapterSynthesisRequest(phoneme_ids=np.array([call["phoneme_ids"]], np.int64),
+                                      phoneme_lengths=np.array([len(call["phoneme_ids"])], np.int64),
+                                      speaker_id=0, language_id=0, params=params)
+    ad.synthesize(request, _FakeTransformer())
+    assert pre.text_ids[0].tolist() == call["text_ids"]

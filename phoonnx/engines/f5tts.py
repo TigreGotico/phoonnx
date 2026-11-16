@@ -168,11 +168,10 @@ class F5TTSAdapter(BaseOnnxAdapter):
                 np.float32,
             ).reshape(1, 1, -1)
 
-        # Combine ref_text + gen_text token IDs
-        ref_text_ids = np.asarray(ref_text_tokens, np.int32).reshape(1, -1)
+        ref_text_ids = self._reference_ids(ref_text_tokens, p.get("speaker_reference_text"))
         gen_text_ids = request.phoneme_ids.astype(np.int32).reshape(1, -1)
-        gen_text_ids = self._wrap_dialect(gen_text_ids, p.get("dialect", self._dialect))
-        text_ids = np.concatenate([ref_text_ids, gen_text_ids], axis=1)
+        text_ids = self._wrap_dialect(np.concatenate([ref_text_ids, gen_text_ids], axis=1),
+                                      p.get("dialect", self._dialect))
 
         # max_duration: estimated from ref audio length and text length ratio
         ref_audio_len = ref_audio_arr.shape[-1]
@@ -283,10 +282,38 @@ class F5TTSAdapter(BaseOnnxAdapter):
             "speed": "Speed",
         }
 
-    def _wrap_dialect(self, gen_text_ids: np.ndarray,
+    def _reference_ids(self, ref_text_tokens: Any, reference_text: Optional[str]) -> np.ndarray:
+        """The ids of the reference text, with the end that the upstream code gives it.
+
+        Upstream, ``preprocess_ref_audio_text`` ends the reference text in
+        ``". "`` unless it ends in ``". "`` or ``"。"``, and
+        ``infer_batch_process`` adds one more space when its last character is
+        one byte (``src/f5_tts/infer/utils_infer.py``, SWivid/F5-TTS 600e5fd;
+        Habibi-TTS and SILMA TTS do the same). The model then reads the
+        reference text and the generation text as one string. The ids of
+        *reference_text* come from the voice's frontend, which removes the
+        whitespace at its end, so the end is computed on the text without it.
+        With no *reference_text*, the ids stay as given.
+        """
+        ids = list(ref_text_tokens)
+        if reference_text:
+            text = reference_text.rstrip()
+            if text.endswith("。"):
+                end = ""
+            elif text.endswith("."):
+                end = "  "
+            else:
+                end = ".  "
+            ids += [self._char2idx.get(char, 0) for char in end]
+        return np.asarray(ids, np.int32).reshape(1, -1)
+
+    def _wrap_dialect(self, text_ids: np.ndarray,
                       dialect: Optional[str]) -> np.ndarray:
-        """Wrap the generation-text token IDs with the Habibi dialect control
-        tokens: ``{dialect_char}〈 ... 〉`` (Unified model only).
+        """Wrap the text ids of one call, reference and generation text, in the
+        Habibi dialect control tokens: ``{dialect_char}〈 ... 〉`` (Unified
+        model only). Upstream wraps the whole ``ref_text + gen_text`` string
+        (``text_list_formatter`` in ``src/habibi_tts/model/utils.py``,
+        SWivid/Habibi-TTS 9274498).
 
         No-op when *dialect* is unset. Raises ``ValueError`` for an unknown
         dialect name. If the voice's vocab lacks the control tokens (the
@@ -294,7 +321,7 @@ class F5TTSAdapter(BaseOnnxAdapter):
         a warning — those models were trained on untagged text.
         """
         if not dialect:
-            return gen_text_ids
+            return text_ids
         name = str(dialect).upper()
         if name not in HABIBI_DIALECT_MAP:
             raise ValueError(
@@ -308,11 +335,11 @@ class F5TTSAdapter(BaseOnnxAdapter):
                 "Voice vocab lacks the Habibi dialect control tokens "
                 "(%s) — 'dialect' only applies to the Unified model; "
                 "synthesizing untagged text.", "".join(chars))
-            return gen_text_ids
+            return text_ids
         prefix = np.array([[self._char2idx[chars[0]], self._char2idx[chars[1]]]],
-                          dtype=gen_text_ids.dtype)
-        suffix = np.array([[self._char2idx[chars[2]]]], dtype=gen_text_ids.dtype)
-        return np.concatenate([prefix, gen_text_ids, suffix], axis=1)
+                          dtype=text_ids.dtype)
+        suffix = np.array([[self._char2idx[chars[2]]]], dtype=text_ids.dtype)
+        return np.concatenate([prefix, text_ids, suffix], axis=1)
 
     @staticmethod
     def _resample(audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
