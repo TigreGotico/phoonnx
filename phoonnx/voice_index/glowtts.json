@@ -883,8 +883,6 @@
         "voice_id": "coqui-be-common-voice-glow-tts",
         "engine": "glowtts",
         "lang": "be-BY",
-        "phoneme_type": "graphemes",
-        "alphabet": "unicode",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
