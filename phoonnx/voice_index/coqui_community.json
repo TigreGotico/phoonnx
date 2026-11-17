@@ -63,5 +63,19 @@
         "alphabet": "unicode",
         "engine": "coqui",
         "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/main/hf_community__anzorq__kbd-vits-tts-male/config.json"
+    },
+    "hf_community/multilingual-tts/VITS-OpenBible-Igbo": {
+        "voice_id": "hf_community/multilingual-tts/VITS-OpenBible-Igbo",
+        "model_url": "https://huggingface.co/Phoonnx/vits-ig-openbible-graphemes/resolve/main/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-ig-openbible-graphemes/resolve/main/config.json",
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "coqui",
+        "lang": "ig",
+        "display_name": "Igbo (OpenBible, {engine})"
     }
 }

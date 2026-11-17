@@ -189,9 +189,35 @@
         "tokenizer_config_url": null,
         "tokens_url": null,
         "phoneme_map_url": null,
+        "engine": "piper",
+        "lang": "es-419"
+    },
+    "hf_community/UBC-NLP/Simba-TTS-xho": {
+        "voice_id": "hf_community/UBC-NLP/Simba-TTS-xho",
+        "model_url": "https://huggingface.co/Phoonnx/vits-xh-simba-graphemes/resolve/main/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-xh-simba-graphemes/resolve/main/config.json",
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
         "phoneme_type": "graphemes",
         "alphabet": "unicode",
         "engine": "transformers",
-        "lang": "es-419"
+        "lang": "xh",
+        "display_name": "Xhosa (Simba, {engine})"
+    },
+    "hf_community/UBC-NLP/Simba-TTS-sot": {
+        "voice_id": "hf_community/UBC-NLP/Simba-TTS-sot",
+        "model_url": "https://huggingface.co/Phoonnx/vits-st-simba-graphemes/resolve/main/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-st-simba-graphemes/resolve/main/config.json",
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "transformers",
+        "lang": "st",
+        "display_name": "Southern Sotho (Simba, {engine})"
     }
 }

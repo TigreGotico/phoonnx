@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from card_examples import UnsupportedExample, index_files, standalone_example  # noqa: E402
 from phoonnx.engines import magpie  # noqa: E402
 
-REPO = "Phoonnx/phoonnx-magpie-tts"
+REPO = "Phoonnx/magpietts-multi-357m-unicode"
 ENTRIES = [e for e in json.loads((ROOT / "phoonnx/voice_index/magpie.json").read_text()).values()
            if isinstance(e, dict)]
 CONFIG = {"num_audio_codebooks": 2, "frame_stacking_factor": 2, "codebook_size": 92, "num_all_tokens_per_codebook": 100,

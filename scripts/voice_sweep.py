@@ -359,11 +359,10 @@ def repos(entry: dict) -> set[str]:
 
 
 def cache_ids(repo: str) -> set[str]:
-    """The ids a repo can be cached under: its own, and the one it had before it moved,
-    which the loader uses while the cache holds the repo under that id."""
-    from phoonnx.model_manager import _MOVED_FROM
-    org, name = repo.split("/", 1)
-    return {repo, f"{_MOVED_FROM[org]}/{name}"} if org in _MOVED_FROM else {repo}
+    """The ids a repo can be cached under: its own, and the ones it had before it moved or
+    was renamed, which the loader uses while the cache holds the repo under one of them."""
+    from phoonnx.model_manager import _earlier_ids
+    return {repo, *_earlier_ids(repo)}
 
 
 def cached_repos(cache: str) -> set[str]:
