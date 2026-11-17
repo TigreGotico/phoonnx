@@ -21,7 +21,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/alba.safetensors"
         },
-        "display_name": "Pocket TTS Alba"
+        "display_name": "Pocket TTS Alba",
+        "precision": "int8"
     },
     "pockettts/en/anna": {
         "voice_id": "pockettts/en/anna",
@@ -45,7 +46,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/anna.safetensors"
         },
-        "display_name": "Pocket TTS Anna"
+        "display_name": "Pocket TTS Anna",
+        "precision": "int8"
     },
     "pockettts/en/azelma": {
         "voice_id": "pockettts/en/azelma",
@@ -69,7 +71,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/azelma.safetensors"
         },
-        "display_name": "Pocket TTS Azelma"
+        "display_name": "Pocket TTS Azelma",
+        "precision": "int8"
     },
     "pockettts/en/bill_boerst": {
         "voice_id": "pockettts/en/bill_boerst",
@@ -93,7 +96,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/bill_boerst.safetensors"
         },
-        "display_name": "Pocket TTS Bill Boerst"
+        "display_name": "Pocket TTS Bill Boerst",
+        "precision": "int8"
     },
     "pockettts/en/caro_davy": {
         "voice_id": "pockettts/en/caro_davy",
@@ -117,7 +121,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/caro_davy.safetensors"
         },
-        "display_name": "Pocket TTS Caro Davy"
+        "display_name": "Pocket TTS Caro Davy",
+        "precision": "int8"
     },
     "pockettts/en/charles": {
         "voice_id": "pockettts/en/charles",
@@ -141,7 +146,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/charles.safetensors"
         },
-        "display_name": "Pocket TTS Charles"
+        "display_name": "Pocket TTS Charles",
+        "precision": "int8"
     },
     "pockettts/en/cosette": {
         "voice_id": "pockettts/en/cosette",
@@ -165,7 +171,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/cosette.safetensors"
         },
-        "display_name": "Pocket TTS Cosette"
+        "display_name": "Pocket TTS Cosette",
+        "precision": "int8"
     },
     "pockettts/en/eponine": {
         "voice_id": "pockettts/en/eponine",
@@ -189,7 +196,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/eponine.safetensors"
         },
-        "display_name": "Pocket TTS Eponine"
+        "display_name": "Pocket TTS Eponine",
+        "precision": "int8"
     },
     "pockettts/en/estelle": {
         "voice_id": "pockettts/en/estelle",
@@ -213,7 +221,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/estelle.safetensors"
         },
-        "display_name": "Pocket TTS Estelle"
+        "display_name": "Pocket TTS Estelle",
+        "precision": "int8"
     },
     "pockettts/en/eve": {
         "voice_id": "pockettts/en/eve",
@@ -237,7 +246,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/eve.safetensors"
         },
-        "display_name": "Pocket TTS Eve"
+        "display_name": "Pocket TTS Eve",
+        "precision": "int8"
     },
     "pockettts/en/fantine": {
         "voice_id": "pockettts/en/fantine",
@@ -261,7 +271,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/fantine.safetensors"
         },
-        "display_name": "Pocket TTS Fantine"
+        "display_name": "Pocket TTS Fantine",
+        "precision": "int8"
     },
     "pockettts/en/george": {
         "voice_id": "pockettts/en/george",
@@ -285,7 +296,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/george.safetensors"
         },
-        "display_name": "Pocket TTS George"
+        "display_name": "Pocket TTS George",
+        "precision": "int8"
     },
     "pockettts/en/giovanni": {
         "voice_id": "pockettts/en/giovanni",
@@ -309,7 +321,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/giovanni.safetensors"
         },
-        "display_name": "Pocket TTS Giovanni"
+        "display_name": "Pocket TTS Giovanni",
+        "precision": "int8"
     },
     "pockettts/en/jane": {
         "voice_id": "pockettts/en/jane",
@@ -333,7 +346,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/jane.safetensors"
         },
-        "display_name": "Pocket TTS Jane"
+        "display_name": "Pocket TTS Jane",
+        "precision": "int8"
     },
     "pockettts/en/javert": {
         "voice_id": "pockettts/en/javert",
@@ -357,7 +371,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/javert.safetensors"
         },
-        "display_name": "Pocket TTS Javert"
+        "display_name": "Pocket TTS Javert",
+        "precision": "int8"
     },
     "pockettts/en/jean": {
         "voice_id": "pockettts/en/jean",
@@ -381,7 +396,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/jean.safetensors"
         },
-        "display_name": "Pocket TTS Jean"
+        "display_name": "Pocket TTS Jean",
+        "precision": "int8"
     },
     "pockettts/en/juergen": {
         "voice_id": "pockettts/en/juergen",
@@ -405,7 +421,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/juergen.safetensors"
         },
-        "display_name": "Pocket TTS Juergen"
+        "display_name": "Pocket TTS Juergen",
+        "precision": "int8"
     },
     "pockettts/en/lola": {
         "voice_id": "pockettts/en/lola",
@@ -429,7 +446,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/lola.safetensors"
         },
-        "display_name": "Pocket TTS Lola"
+        "display_name": "Pocket TTS Lola",
+        "precision": "int8"
     },
     "pockettts/en/marius": {
         "voice_id": "pockettts/en/marius",
@@ -453,7 +471,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/marius.safetensors"
         },
-        "display_name": "Pocket TTS Marius"
+        "display_name": "Pocket TTS Marius",
+        "precision": "int8"
     },
     "pockettts/en/mary": {
         "voice_id": "pockettts/en/mary",
@@ -477,7 +496,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/mary.safetensors"
         },
-        "display_name": "Pocket TTS Mary"
+        "display_name": "Pocket TTS Mary",
+        "precision": "int8"
     },
     "pockettts/en/michael": {
         "voice_id": "pockettts/en/michael",
@@ -501,7 +521,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/michael.safetensors"
         },
-        "display_name": "Pocket TTS Michael"
+        "display_name": "Pocket TTS Michael",
+        "precision": "int8"
     },
     "pockettts/en/paul": {
         "voice_id": "pockettts/en/paul",
@@ -525,7 +546,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/paul.safetensors"
         },
-        "display_name": "Pocket TTS Paul"
+        "display_name": "Pocket TTS Paul",
+        "precision": "int8"
     },
     "pockettts/en/peter_yearsley": {
         "voice_id": "pockettts/en/peter_yearsley",
@@ -549,7 +571,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/peter_yearsley.safetensors"
         },
-        "display_name": "Pocket TTS Peter Yearsley"
+        "display_name": "Pocket TTS Peter Yearsley",
+        "precision": "int8"
     },
     "pockettts/en/rafael": {
         "voice_id": "pockettts/en/rafael",
@@ -573,7 +596,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/rafael.safetensors"
         },
-        "display_name": "Pocket TTS Rafael"
+        "display_name": "Pocket TTS Rafael",
+        "precision": "int8"
     },
     "pockettts/en/stuart_bell": {
         "voice_id": "pockettts/en/stuart_bell",
@@ -597,7 +621,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/stuart_bell.safetensors"
         },
-        "display_name": "Pocket TTS Stuart Bell"
+        "display_name": "Pocket TTS Stuart Bell",
+        "precision": "int8"
     },
     "pockettts/en/vera": {
         "voice_id": "pockettts/en/vera",
@@ -621,7 +646,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/english_2026-04/voices/vera.safetensors"
         },
-        "display_name": "Pocket TTS Vera"
+        "display_name": "Pocket TTS Vera",
+        "precision": "int8"
     },
     "pockettts/fr/alba": {
         "voice_id": "pockettts/fr/alba",
@@ -645,7 +671,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/alba.safetensors"
         },
-        "display_name": "Pocket TTS Alba"
+        "display_name": "Pocket TTS Alba",
+        "precision": "int8"
     },
     "pockettts/fr/anna": {
         "voice_id": "pockettts/fr/anna",
@@ -669,7 +696,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/anna.safetensors"
         },
-        "display_name": "Pocket TTS Anna"
+        "display_name": "Pocket TTS Anna",
+        "precision": "int8"
     },
     "pockettts/fr/azelma": {
         "voice_id": "pockettts/fr/azelma",
@@ -693,7 +721,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/azelma.safetensors"
         },
-        "display_name": "Pocket TTS Azelma"
+        "display_name": "Pocket TTS Azelma",
+        "precision": "int8"
     },
     "pockettts/fr/bill_boerst": {
         "voice_id": "pockettts/fr/bill_boerst",
@@ -717,7 +746,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/bill_boerst.safetensors"
         },
-        "display_name": "Pocket TTS Bill Boerst"
+        "display_name": "Pocket TTS Bill Boerst",
+        "precision": "int8"
     },
     "pockettts/fr/caro_davy": {
         "voice_id": "pockettts/fr/caro_davy",
@@ -741,7 +771,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/caro_davy.safetensors"
         },
-        "display_name": "Pocket TTS Caro Davy"
+        "display_name": "Pocket TTS Caro Davy",
+        "precision": "int8"
     },
     "pockettts/fr/charles": {
         "voice_id": "pockettts/fr/charles",
@@ -765,7 +796,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/charles.safetensors"
         },
-        "display_name": "Pocket TTS Charles"
+        "display_name": "Pocket TTS Charles",
+        "precision": "int8"
     },
     "pockettts/fr/cosette": {
         "voice_id": "pockettts/fr/cosette",
@@ -789,7 +821,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/cosette.safetensors"
         },
-        "display_name": "Pocket TTS Cosette"
+        "display_name": "Pocket TTS Cosette",
+        "precision": "int8"
     },
     "pockettts/fr/eponine": {
         "voice_id": "pockettts/fr/eponine",
@@ -813,7 +846,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/eponine.safetensors"
         },
-        "display_name": "Pocket TTS Eponine"
+        "display_name": "Pocket TTS Eponine",
+        "precision": "int8"
     },
     "pockettts/fr/estelle": {
         "voice_id": "pockettts/fr/estelle",
@@ -837,7 +871,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/estelle.safetensors"
         },
-        "display_name": "Pocket TTS Estelle"
+        "display_name": "Pocket TTS Estelle",
+        "precision": "int8"
     },
     "pockettts/fr/eve": {
         "voice_id": "pockettts/fr/eve",
@@ -861,7 +896,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/eve.safetensors"
         },
-        "display_name": "Pocket TTS Eve"
+        "display_name": "Pocket TTS Eve",
+        "precision": "int8"
     },
     "pockettts/fr/fantine": {
         "voice_id": "pockettts/fr/fantine",
@@ -885,7 +921,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/fantine.safetensors"
         },
-        "display_name": "Pocket TTS Fantine"
+        "display_name": "Pocket TTS Fantine",
+        "precision": "int8"
     },
     "pockettts/fr/george": {
         "voice_id": "pockettts/fr/george",
@@ -909,7 +946,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/george.safetensors"
         },
-        "display_name": "Pocket TTS George"
+        "display_name": "Pocket TTS George",
+        "precision": "int8"
     },
     "pockettts/fr/giovanni": {
         "voice_id": "pockettts/fr/giovanni",
@@ -933,7 +971,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/giovanni.safetensors"
         },
-        "display_name": "Pocket TTS Giovanni"
+        "display_name": "Pocket TTS Giovanni",
+        "precision": "int8"
     },
     "pockettts/fr/jane": {
         "voice_id": "pockettts/fr/jane",
@@ -957,7 +996,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/jane.safetensors"
         },
-        "display_name": "Pocket TTS Jane"
+        "display_name": "Pocket TTS Jane",
+        "precision": "int8"
     },
     "pockettts/fr/javert": {
         "voice_id": "pockettts/fr/javert",
@@ -981,7 +1021,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/javert.safetensors"
         },
-        "display_name": "Pocket TTS Javert"
+        "display_name": "Pocket TTS Javert",
+        "precision": "int8"
     },
     "pockettts/fr/jean": {
         "voice_id": "pockettts/fr/jean",
@@ -1005,7 +1046,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/jean.safetensors"
         },
-        "display_name": "Pocket TTS Jean"
+        "display_name": "Pocket TTS Jean",
+        "precision": "int8"
     },
     "pockettts/fr/juergen": {
         "voice_id": "pockettts/fr/juergen",
@@ -1029,7 +1071,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/juergen.safetensors"
         },
-        "display_name": "Pocket TTS Juergen"
+        "display_name": "Pocket TTS Juergen",
+        "precision": "int8"
     },
     "pockettts/fr/lola": {
         "voice_id": "pockettts/fr/lola",
@@ -1053,7 +1096,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/lola.safetensors"
         },
-        "display_name": "Pocket TTS Lola"
+        "display_name": "Pocket TTS Lola",
+        "precision": "int8"
     },
     "pockettts/fr/marius": {
         "voice_id": "pockettts/fr/marius",
@@ -1077,7 +1121,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/marius.safetensors"
         },
-        "display_name": "Pocket TTS Marius"
+        "display_name": "Pocket TTS Marius",
+        "precision": "int8"
     },
     "pockettts/fr/mary": {
         "voice_id": "pockettts/fr/mary",
@@ -1101,7 +1146,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/mary.safetensors"
         },
-        "display_name": "Pocket TTS Mary"
+        "display_name": "Pocket TTS Mary",
+        "precision": "int8"
     },
     "pockettts/fr/michael": {
         "voice_id": "pockettts/fr/michael",
@@ -1125,7 +1171,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/michael.safetensors"
         },
-        "display_name": "Pocket TTS Michael"
+        "display_name": "Pocket TTS Michael",
+        "precision": "int8"
     },
     "pockettts/fr/paul": {
         "voice_id": "pockettts/fr/paul",
@@ -1149,7 +1196,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/paul.safetensors"
         },
-        "display_name": "Pocket TTS Paul"
+        "display_name": "Pocket TTS Paul",
+        "precision": "int8"
     },
     "pockettts/fr/peter_yearsley": {
         "voice_id": "pockettts/fr/peter_yearsley",
@@ -1173,7 +1221,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/peter_yearsley.safetensors"
         },
-        "display_name": "Pocket TTS Peter Yearsley"
+        "display_name": "Pocket TTS Peter Yearsley",
+        "precision": "int8"
     },
     "pockettts/fr/rafael": {
         "voice_id": "pockettts/fr/rafael",
@@ -1197,7 +1246,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/rafael.safetensors"
         },
-        "display_name": "Pocket TTS Rafael"
+        "display_name": "Pocket TTS Rafael",
+        "precision": "int8"
     },
     "pockettts/fr/stuart_bell": {
         "voice_id": "pockettts/fr/stuart_bell",
@@ -1221,7 +1271,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/stuart_bell.safetensors"
         },
-        "display_name": "Pocket TTS Stuart Bell"
+        "display_name": "Pocket TTS Stuart Bell",
+        "precision": "int8"
     },
     "pockettts/fr/vera": {
         "voice_id": "pockettts/fr/vera",
@@ -1245,7 +1296,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/french_24l/voices/vera.safetensors"
         },
-        "display_name": "Pocket TTS Vera"
+        "display_name": "Pocket TTS Vera",
+        "precision": "int8"
     },
     "pockettts/de/alba": {
         "voice_id": "pockettts/de/alba",
@@ -1269,7 +1321,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/alba.safetensors"
         },
-        "display_name": "Pocket TTS Alba"
+        "display_name": "Pocket TTS Alba",
+        "precision": "int8"
     },
     "pockettts/de/anna": {
         "voice_id": "pockettts/de/anna",
@@ -1293,7 +1346,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/anna.safetensors"
         },
-        "display_name": "Pocket TTS Anna"
+        "display_name": "Pocket TTS Anna",
+        "precision": "int8"
     },
     "pockettts/de/azelma": {
         "voice_id": "pockettts/de/azelma",
@@ -1317,7 +1371,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/azelma.safetensors"
         },
-        "display_name": "Pocket TTS Azelma"
+        "display_name": "Pocket TTS Azelma",
+        "precision": "int8"
     },
     "pockettts/de/bill_boerst": {
         "voice_id": "pockettts/de/bill_boerst",
@@ -1341,7 +1396,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/bill_boerst.safetensors"
         },
-        "display_name": "Pocket TTS Bill Boerst"
+        "display_name": "Pocket TTS Bill Boerst",
+        "precision": "int8"
     },
     "pockettts/de/caro_davy": {
         "voice_id": "pockettts/de/caro_davy",
@@ -1365,7 +1421,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/caro_davy.safetensors"
         },
-        "display_name": "Pocket TTS Caro Davy"
+        "display_name": "Pocket TTS Caro Davy",
+        "precision": "int8"
     },
     "pockettts/de/charles": {
         "voice_id": "pockettts/de/charles",
@@ -1389,7 +1446,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/charles.safetensors"
         },
-        "display_name": "Pocket TTS Charles"
+        "display_name": "Pocket TTS Charles",
+        "precision": "int8"
     },
     "pockettts/de/cosette": {
         "voice_id": "pockettts/de/cosette",
@@ -1413,7 +1471,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/cosette.safetensors"
         },
-        "display_name": "Pocket TTS Cosette"
+        "display_name": "Pocket TTS Cosette",
+        "precision": "int8"
     },
     "pockettts/de/eponine": {
         "voice_id": "pockettts/de/eponine",
@@ -1437,7 +1496,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/eponine.safetensors"
         },
-        "display_name": "Pocket TTS Eponine"
+        "display_name": "Pocket TTS Eponine",
+        "precision": "int8"
     },
     "pockettts/de/estelle": {
         "voice_id": "pockettts/de/estelle",
@@ -1461,7 +1521,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/estelle.safetensors"
         },
-        "display_name": "Pocket TTS Estelle"
+        "display_name": "Pocket TTS Estelle",
+        "precision": "int8"
     },
     "pockettts/de/eve": {
         "voice_id": "pockettts/de/eve",
@@ -1485,7 +1546,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/eve.safetensors"
         },
-        "display_name": "Pocket TTS Eve"
+        "display_name": "Pocket TTS Eve",
+        "precision": "int8"
     },
     "pockettts/de/fantine": {
         "voice_id": "pockettts/de/fantine",
@@ -1509,7 +1571,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/fantine.safetensors"
         },
-        "display_name": "Pocket TTS Fantine"
+        "display_name": "Pocket TTS Fantine",
+        "precision": "int8"
     },
     "pockettts/de/george": {
         "voice_id": "pockettts/de/george",
@@ -1533,7 +1596,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/george.safetensors"
         },
-        "display_name": "Pocket TTS George"
+        "display_name": "Pocket TTS George",
+        "precision": "int8"
     },
     "pockettts/de/giovanni": {
         "voice_id": "pockettts/de/giovanni",
@@ -1557,7 +1621,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/giovanni.safetensors"
         },
-        "display_name": "Pocket TTS Giovanni"
+        "display_name": "Pocket TTS Giovanni",
+        "precision": "int8"
     },
     "pockettts/de/jane": {
         "voice_id": "pockettts/de/jane",
@@ -1581,7 +1646,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/jane.safetensors"
         },
-        "display_name": "Pocket TTS Jane"
+        "display_name": "Pocket TTS Jane",
+        "precision": "int8"
     },
     "pockettts/de/javert": {
         "voice_id": "pockettts/de/javert",
@@ -1605,7 +1671,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/javert.safetensors"
         },
-        "display_name": "Pocket TTS Javert"
+        "display_name": "Pocket TTS Javert",
+        "precision": "int8"
     },
     "pockettts/de/jean": {
         "voice_id": "pockettts/de/jean",
@@ -1629,7 +1696,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/jean.safetensors"
         },
-        "display_name": "Pocket TTS Jean"
+        "display_name": "Pocket TTS Jean",
+        "precision": "int8"
     },
     "pockettts/de/juergen": {
         "voice_id": "pockettts/de/juergen",
@@ -1653,7 +1721,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/juergen.safetensors"
         },
-        "display_name": "Pocket TTS Juergen"
+        "display_name": "Pocket TTS Juergen",
+        "precision": "int8"
     },
     "pockettts/de/lola": {
         "voice_id": "pockettts/de/lola",
@@ -1677,7 +1746,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/lola.safetensors"
         },
-        "display_name": "Pocket TTS Lola"
+        "display_name": "Pocket TTS Lola",
+        "precision": "int8"
     },
     "pockettts/de/marius": {
         "voice_id": "pockettts/de/marius",
@@ -1701,7 +1771,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/marius.safetensors"
         },
-        "display_name": "Pocket TTS Marius"
+        "display_name": "Pocket TTS Marius",
+        "precision": "int8"
     },
     "pockettts/de/mary": {
         "voice_id": "pockettts/de/mary",
@@ -1725,7 +1796,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/mary.safetensors"
         },
-        "display_name": "Pocket TTS Mary"
+        "display_name": "Pocket TTS Mary",
+        "precision": "int8"
     },
     "pockettts/de/michael": {
         "voice_id": "pockettts/de/michael",
@@ -1749,7 +1821,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/michael.safetensors"
         },
-        "display_name": "Pocket TTS Michael"
+        "display_name": "Pocket TTS Michael",
+        "precision": "int8"
     },
     "pockettts/de/paul": {
         "voice_id": "pockettts/de/paul",
@@ -1773,7 +1846,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/paul.safetensors"
         },
-        "display_name": "Pocket TTS Paul"
+        "display_name": "Pocket TTS Paul",
+        "precision": "int8"
     },
     "pockettts/de/peter_yearsley": {
         "voice_id": "pockettts/de/peter_yearsley",
@@ -1797,7 +1871,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/peter_yearsley.safetensors"
         },
-        "display_name": "Pocket TTS Peter Yearsley"
+        "display_name": "Pocket TTS Peter Yearsley",
+        "precision": "int8"
     },
     "pockettts/de/rafael": {
         "voice_id": "pockettts/de/rafael",
@@ -1821,7 +1896,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/rafael.safetensors"
         },
-        "display_name": "Pocket TTS Rafael"
+        "display_name": "Pocket TTS Rafael",
+        "precision": "int8"
     },
     "pockettts/de/stuart_bell": {
         "voice_id": "pockettts/de/stuart_bell",
@@ -1845,7 +1921,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/stuart_bell.safetensors"
         },
-        "display_name": "Pocket TTS Stuart Bell"
+        "display_name": "Pocket TTS Stuart Bell",
+        "precision": "int8"
     },
     "pockettts/de/vera": {
         "voice_id": "pockettts/de/vera",
@@ -1869,7 +1946,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/german/voices/vera.safetensors"
         },
-        "display_name": "Pocket TTS Vera"
+        "display_name": "Pocket TTS Vera",
+        "precision": "int8"
     },
     "pockettts/it/alba": {
         "voice_id": "pockettts/it/alba",
@@ -1893,7 +1971,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/alba.safetensors"
         },
-        "display_name": "Pocket TTS Alba"
+        "display_name": "Pocket TTS Alba",
+        "precision": "int8"
     },
     "pockettts/it/anna": {
         "voice_id": "pockettts/it/anna",
@@ -1917,7 +1996,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/anna.safetensors"
         },
-        "display_name": "Pocket TTS Anna"
+        "display_name": "Pocket TTS Anna",
+        "precision": "int8"
     },
     "pockettts/it/azelma": {
         "voice_id": "pockettts/it/azelma",
@@ -1941,7 +2021,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/azelma.safetensors"
         },
-        "display_name": "Pocket TTS Azelma"
+        "display_name": "Pocket TTS Azelma",
+        "precision": "int8"
     },
     "pockettts/it/bill_boerst": {
         "voice_id": "pockettts/it/bill_boerst",
@@ -1965,7 +2046,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/bill_boerst.safetensors"
         },
-        "display_name": "Pocket TTS Bill Boerst"
+        "display_name": "Pocket TTS Bill Boerst",
+        "precision": "int8"
     },
     "pockettts/it/caro_davy": {
         "voice_id": "pockettts/it/caro_davy",
@@ -1989,7 +2071,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/caro_davy.safetensors"
         },
-        "display_name": "Pocket TTS Caro Davy"
+        "display_name": "Pocket TTS Caro Davy",
+        "precision": "int8"
     },
     "pockettts/it/charles": {
         "voice_id": "pockettts/it/charles",
@@ -2013,7 +2096,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/charles.safetensors"
         },
-        "display_name": "Pocket TTS Charles"
+        "display_name": "Pocket TTS Charles",
+        "precision": "int8"
     },
     "pockettts/it/cosette": {
         "voice_id": "pockettts/it/cosette",
@@ -2037,7 +2121,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/cosette.safetensors"
         },
-        "display_name": "Pocket TTS Cosette"
+        "display_name": "Pocket TTS Cosette",
+        "precision": "int8"
     },
     "pockettts/it/eponine": {
         "voice_id": "pockettts/it/eponine",
@@ -2061,7 +2146,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/eponine.safetensors"
         },
-        "display_name": "Pocket TTS Eponine"
+        "display_name": "Pocket TTS Eponine",
+        "precision": "int8"
     },
     "pockettts/it/estelle": {
         "voice_id": "pockettts/it/estelle",
@@ -2085,7 +2171,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/estelle.safetensors"
         },
-        "display_name": "Pocket TTS Estelle"
+        "display_name": "Pocket TTS Estelle",
+        "precision": "int8"
     },
     "pockettts/it/eve": {
         "voice_id": "pockettts/it/eve",
@@ -2109,7 +2196,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/eve.safetensors"
         },
-        "display_name": "Pocket TTS Eve"
+        "display_name": "Pocket TTS Eve",
+        "precision": "int8"
     },
     "pockettts/it/fantine": {
         "voice_id": "pockettts/it/fantine",
@@ -2133,7 +2221,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/fantine.safetensors"
         },
-        "display_name": "Pocket TTS Fantine"
+        "display_name": "Pocket TTS Fantine",
+        "precision": "int8"
     },
     "pockettts/it/george": {
         "voice_id": "pockettts/it/george",
@@ -2157,7 +2246,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/george.safetensors"
         },
-        "display_name": "Pocket TTS George"
+        "display_name": "Pocket TTS George",
+        "precision": "int8"
     },
     "pockettts/it/giovanni": {
         "voice_id": "pockettts/it/giovanni",
@@ -2181,7 +2271,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/giovanni.safetensors"
         },
-        "display_name": "Pocket TTS Giovanni"
+        "display_name": "Pocket TTS Giovanni",
+        "precision": "int8"
     },
     "pockettts/it/jane": {
         "voice_id": "pockettts/it/jane",
@@ -2205,7 +2296,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/jane.safetensors"
         },
-        "display_name": "Pocket TTS Jane"
+        "display_name": "Pocket TTS Jane",
+        "precision": "int8"
     },
     "pockettts/it/javert": {
         "voice_id": "pockettts/it/javert",
@@ -2229,7 +2321,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/javert.safetensors"
         },
-        "display_name": "Pocket TTS Javert"
+        "display_name": "Pocket TTS Javert",
+        "precision": "int8"
     },
     "pockettts/it/jean": {
         "voice_id": "pockettts/it/jean",
@@ -2253,7 +2346,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/jean.safetensors"
         },
-        "display_name": "Pocket TTS Jean"
+        "display_name": "Pocket TTS Jean",
+        "precision": "int8"
     },
     "pockettts/it/juergen": {
         "voice_id": "pockettts/it/juergen",
@@ -2277,7 +2371,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/juergen.safetensors"
         },
-        "display_name": "Pocket TTS Juergen"
+        "display_name": "Pocket TTS Juergen",
+        "precision": "int8"
     },
     "pockettts/it/lola": {
         "voice_id": "pockettts/it/lola",
@@ -2301,7 +2396,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/lola.safetensors"
         },
-        "display_name": "Pocket TTS Lola"
+        "display_name": "Pocket TTS Lola",
+        "precision": "int8"
     },
     "pockettts/it/marius": {
         "voice_id": "pockettts/it/marius",
@@ -2325,7 +2421,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/marius.safetensors"
         },
-        "display_name": "Pocket TTS Marius"
+        "display_name": "Pocket TTS Marius",
+        "precision": "int8"
     },
     "pockettts/it/mary": {
         "voice_id": "pockettts/it/mary",
@@ -2349,7 +2446,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/mary.safetensors"
         },
-        "display_name": "Pocket TTS Mary"
+        "display_name": "Pocket TTS Mary",
+        "precision": "int8"
     },
     "pockettts/it/michael": {
         "voice_id": "pockettts/it/michael",
@@ -2373,7 +2471,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/michael.safetensors"
         },
-        "display_name": "Pocket TTS Michael"
+        "display_name": "Pocket TTS Michael",
+        "precision": "int8"
     },
     "pockettts/it/paul": {
         "voice_id": "pockettts/it/paul",
@@ -2397,7 +2496,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/paul.safetensors"
         },
-        "display_name": "Pocket TTS Paul"
+        "display_name": "Pocket TTS Paul",
+        "precision": "int8"
     },
     "pockettts/it/peter_yearsley": {
         "voice_id": "pockettts/it/peter_yearsley",
@@ -2421,7 +2521,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/peter_yearsley.safetensors"
         },
-        "display_name": "Pocket TTS Peter Yearsley"
+        "display_name": "Pocket TTS Peter Yearsley",
+        "precision": "int8"
     },
     "pockettts/it/rafael": {
         "voice_id": "pockettts/it/rafael",
@@ -2445,7 +2546,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/rafael.safetensors"
         },
-        "display_name": "Pocket TTS Rafael"
+        "display_name": "Pocket TTS Rafael",
+        "precision": "int8"
     },
     "pockettts/it/stuart_bell": {
         "voice_id": "pockettts/it/stuart_bell",
@@ -2469,7 +2571,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/stuart_bell.safetensors"
         },
-        "display_name": "Pocket TTS Stuart Bell"
+        "display_name": "Pocket TTS Stuart Bell",
+        "precision": "int8"
     },
     "pockettts/it/vera": {
         "voice_id": "pockettts/it/vera",
@@ -2493,7 +2596,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/italian/voices/vera.safetensors"
         },
-        "display_name": "Pocket TTS Vera"
+        "display_name": "Pocket TTS Vera",
+        "precision": "int8"
     },
     "pockettts/pt/alba": {
         "voice_id": "pockettts/pt/alba",
@@ -2517,7 +2621,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/alba.safetensors"
         },
-        "display_name": "Pocket TTS Alba"
+        "display_name": "Pocket TTS Alba",
+        "precision": "int8"
     },
     "pockettts/pt/anna": {
         "voice_id": "pockettts/pt/anna",
@@ -2541,7 +2646,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/anna.safetensors"
         },
-        "display_name": "Pocket TTS Anna"
+        "display_name": "Pocket TTS Anna",
+        "precision": "int8"
     },
     "pockettts/pt/azelma": {
         "voice_id": "pockettts/pt/azelma",
@@ -2565,7 +2671,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/azelma.safetensors"
         },
-        "display_name": "Pocket TTS Azelma"
+        "display_name": "Pocket TTS Azelma",
+        "precision": "int8"
     },
     "pockettts/pt/bill_boerst": {
         "voice_id": "pockettts/pt/bill_boerst",
@@ -2589,7 +2696,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/bill_boerst.safetensors"
         },
-        "display_name": "Pocket TTS Bill Boerst"
+        "display_name": "Pocket TTS Bill Boerst",
+        "precision": "int8"
     },
     "pockettts/pt/caro_davy": {
         "voice_id": "pockettts/pt/caro_davy",
@@ -2613,7 +2721,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/caro_davy.safetensors"
         },
-        "display_name": "Pocket TTS Caro Davy"
+        "display_name": "Pocket TTS Caro Davy",
+        "precision": "int8"
     },
     "pockettts/pt/charles": {
         "voice_id": "pockettts/pt/charles",
@@ -2637,7 +2746,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/charles.safetensors"
         },
-        "display_name": "Pocket TTS Charles"
+        "display_name": "Pocket TTS Charles",
+        "precision": "int8"
     },
     "pockettts/pt/cosette": {
         "voice_id": "pockettts/pt/cosette",
@@ -2661,7 +2771,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/cosette.safetensors"
         },
-        "display_name": "Pocket TTS Cosette"
+        "display_name": "Pocket TTS Cosette",
+        "precision": "int8"
     },
     "pockettts/pt/eponine": {
         "voice_id": "pockettts/pt/eponine",
@@ -2685,7 +2796,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/eponine.safetensors"
         },
-        "display_name": "Pocket TTS Eponine"
+        "display_name": "Pocket TTS Eponine",
+        "precision": "int8"
     },
     "pockettts/pt/estelle": {
         "voice_id": "pockettts/pt/estelle",
@@ -2709,7 +2821,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/estelle.safetensors"
         },
-        "display_name": "Pocket TTS Estelle"
+        "display_name": "Pocket TTS Estelle",
+        "precision": "int8"
     },
     "pockettts/pt/eve": {
         "voice_id": "pockettts/pt/eve",
@@ -2733,7 +2846,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/eve.safetensors"
         },
-        "display_name": "Pocket TTS Eve"
+        "display_name": "Pocket TTS Eve",
+        "precision": "int8"
     },
     "pockettts/pt/fantine": {
         "voice_id": "pockettts/pt/fantine",
@@ -2757,7 +2871,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/fantine.safetensors"
         },
-        "display_name": "Pocket TTS Fantine"
+        "display_name": "Pocket TTS Fantine",
+        "precision": "int8"
     },
     "pockettts/pt/george": {
         "voice_id": "pockettts/pt/george",
@@ -2781,7 +2896,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/george.safetensors"
         },
-        "display_name": "Pocket TTS George"
+        "display_name": "Pocket TTS George",
+        "precision": "int8"
     },
     "pockettts/pt/giovanni": {
         "voice_id": "pockettts/pt/giovanni",
@@ -2805,7 +2921,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/giovanni.safetensors"
         },
-        "display_name": "Pocket TTS Giovanni"
+        "display_name": "Pocket TTS Giovanni",
+        "precision": "int8"
     },
     "pockettts/pt/jane": {
         "voice_id": "pockettts/pt/jane",
@@ -2829,7 +2946,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/jane.safetensors"
         },
-        "display_name": "Pocket TTS Jane"
+        "display_name": "Pocket TTS Jane",
+        "precision": "int8"
     },
     "pockettts/pt/javert": {
         "voice_id": "pockettts/pt/javert",
@@ -2853,7 +2971,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/javert.safetensors"
         },
-        "display_name": "Pocket TTS Javert"
+        "display_name": "Pocket TTS Javert",
+        "precision": "int8"
     },
     "pockettts/pt/jean": {
         "voice_id": "pockettts/pt/jean",
@@ -2877,7 +2996,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/jean.safetensors"
         },
-        "display_name": "Pocket TTS Jean"
+        "display_name": "Pocket TTS Jean",
+        "precision": "int8"
     },
     "pockettts/pt/juergen": {
         "voice_id": "pockettts/pt/juergen",
@@ -2901,7 +3021,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/juergen.safetensors"
         },
-        "display_name": "Pocket TTS Juergen"
+        "display_name": "Pocket TTS Juergen",
+        "precision": "int8"
     },
     "pockettts/pt/lola": {
         "voice_id": "pockettts/pt/lola",
@@ -2925,7 +3046,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/lola.safetensors"
         },
-        "display_name": "Pocket TTS Lola"
+        "display_name": "Pocket TTS Lola",
+        "precision": "int8"
     },
     "pockettts/pt/marius": {
         "voice_id": "pockettts/pt/marius",
@@ -2949,7 +3071,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/marius.safetensors"
         },
-        "display_name": "Pocket TTS Marius"
+        "display_name": "Pocket TTS Marius",
+        "precision": "int8"
     },
     "pockettts/pt/mary": {
         "voice_id": "pockettts/pt/mary",
@@ -2973,7 +3096,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/mary.safetensors"
         },
-        "display_name": "Pocket TTS Mary"
+        "display_name": "Pocket TTS Mary",
+        "precision": "int8"
     },
     "pockettts/pt/michael": {
         "voice_id": "pockettts/pt/michael",
@@ -2997,7 +3121,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/michael.safetensors"
         },
-        "display_name": "Pocket TTS Michael"
+        "display_name": "Pocket TTS Michael",
+        "precision": "int8"
     },
     "pockettts/pt/paul": {
         "voice_id": "pockettts/pt/paul",
@@ -3021,7 +3146,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/paul.safetensors"
         },
-        "display_name": "Pocket TTS Paul"
+        "display_name": "Pocket TTS Paul",
+        "precision": "int8"
     },
     "pockettts/pt/peter_yearsley": {
         "voice_id": "pockettts/pt/peter_yearsley",
@@ -3045,7 +3171,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/peter_yearsley.safetensors"
         },
-        "display_name": "Pocket TTS Peter Yearsley"
+        "display_name": "Pocket TTS Peter Yearsley",
+        "precision": "int8"
     },
     "pockettts/pt/rafael": {
         "voice_id": "pockettts/pt/rafael",
@@ -3069,7 +3196,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/rafael.safetensors"
         },
-        "display_name": "Pocket TTS Rafael"
+        "display_name": "Pocket TTS Rafael",
+        "precision": "int8"
     },
     "pockettts/pt/stuart_bell": {
         "voice_id": "pockettts/pt/stuart_bell",
@@ -3093,7 +3221,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/stuart_bell.safetensors"
         },
-        "display_name": "Pocket TTS Stuart Bell"
+        "display_name": "Pocket TTS Stuart Bell",
+        "precision": "int8"
     },
     "pockettts/pt/vera": {
         "voice_id": "pockettts/pt/vera",
@@ -3117,7 +3246,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/portuguese/voices/vera.safetensors"
         },
-        "display_name": "Pocket TTS Vera"
+        "display_name": "Pocket TTS Vera",
+        "precision": "int8"
     },
     "pockettts/es/alba": {
         "voice_id": "pockettts/es/alba",
@@ -3141,7 +3271,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/alba.safetensors"
         },
-        "display_name": "Pocket TTS Alba"
+        "display_name": "Pocket TTS Alba",
+        "precision": "int8"
     },
     "pockettts/es/anna": {
         "voice_id": "pockettts/es/anna",
@@ -3165,7 +3296,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/anna.safetensors"
         },
-        "display_name": "Pocket TTS Anna"
+        "display_name": "Pocket TTS Anna",
+        "precision": "int8"
     },
     "pockettts/es/azelma": {
         "voice_id": "pockettts/es/azelma",
@@ -3189,7 +3321,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/azelma.safetensors"
         },
-        "display_name": "Pocket TTS Azelma"
+        "display_name": "Pocket TTS Azelma",
+        "precision": "int8"
     },
     "pockettts/es/bill_boerst": {
         "voice_id": "pockettts/es/bill_boerst",
@@ -3213,7 +3346,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/bill_boerst.safetensors"
         },
-        "display_name": "Pocket TTS Bill Boerst"
+        "display_name": "Pocket TTS Bill Boerst",
+        "precision": "int8"
     },
     "pockettts/es/caro_davy": {
         "voice_id": "pockettts/es/caro_davy",
@@ -3237,7 +3371,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/caro_davy.safetensors"
         },
-        "display_name": "Pocket TTS Caro Davy"
+        "display_name": "Pocket TTS Caro Davy",
+        "precision": "int8"
     },
     "pockettts/es/charles": {
         "voice_id": "pockettts/es/charles",
@@ -3261,7 +3396,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/charles.safetensors"
         },
-        "display_name": "Pocket TTS Charles"
+        "display_name": "Pocket TTS Charles",
+        "precision": "int8"
     },
     "pockettts/es/cosette": {
         "voice_id": "pockettts/es/cosette",
@@ -3285,7 +3421,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/cosette.safetensors"
         },
-        "display_name": "Pocket TTS Cosette"
+        "display_name": "Pocket TTS Cosette",
+        "precision": "int8"
     },
     "pockettts/es/eponine": {
         "voice_id": "pockettts/es/eponine",
@@ -3309,7 +3446,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/eponine.safetensors"
         },
-        "display_name": "Pocket TTS Eponine"
+        "display_name": "Pocket TTS Eponine",
+        "precision": "int8"
     },
     "pockettts/es/estelle": {
         "voice_id": "pockettts/es/estelle",
@@ -3333,7 +3471,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/estelle.safetensors"
         },
-        "display_name": "Pocket TTS Estelle"
+        "display_name": "Pocket TTS Estelle",
+        "precision": "int8"
     },
     "pockettts/es/eve": {
         "voice_id": "pockettts/es/eve",
@@ -3357,7 +3496,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/eve.safetensors"
         },
-        "display_name": "Pocket TTS Eve"
+        "display_name": "Pocket TTS Eve",
+        "precision": "int8"
     },
     "pockettts/es/fantine": {
         "voice_id": "pockettts/es/fantine",
@@ -3381,7 +3521,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/fantine.safetensors"
         },
-        "display_name": "Pocket TTS Fantine"
+        "display_name": "Pocket TTS Fantine",
+        "precision": "int8"
     },
     "pockettts/es/george": {
         "voice_id": "pockettts/es/george",
@@ -3405,7 +3546,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/george.safetensors"
         },
-        "display_name": "Pocket TTS George"
+        "display_name": "Pocket TTS George",
+        "precision": "int8"
     },
     "pockettts/es/giovanni": {
         "voice_id": "pockettts/es/giovanni",
@@ -3429,7 +3571,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/giovanni.safetensors"
         },
-        "display_name": "Pocket TTS Giovanni"
+        "display_name": "Pocket TTS Giovanni",
+        "precision": "int8"
     },
     "pockettts/es/jane": {
         "voice_id": "pockettts/es/jane",
@@ -3453,7 +3596,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/jane.safetensors"
         },
-        "display_name": "Pocket TTS Jane"
+        "display_name": "Pocket TTS Jane",
+        "precision": "int8"
     },
     "pockettts/es/javert": {
         "voice_id": "pockettts/es/javert",
@@ -3477,7 +3621,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/javert.safetensors"
         },
-        "display_name": "Pocket TTS Javert"
+        "display_name": "Pocket TTS Javert",
+        "precision": "int8"
     },
     "pockettts/es/jean": {
         "voice_id": "pockettts/es/jean",
@@ -3501,7 +3646,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/jean.safetensors"
         },
-        "display_name": "Pocket TTS Jean"
+        "display_name": "Pocket TTS Jean",
+        "precision": "int8"
     },
     "pockettts/es/juergen": {
         "voice_id": "pockettts/es/juergen",
@@ -3525,7 +3671,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/juergen.safetensors"
         },
-        "display_name": "Pocket TTS Juergen"
+        "display_name": "Pocket TTS Juergen",
+        "precision": "int8"
     },
     "pockettts/es/lola": {
         "voice_id": "pockettts/es/lola",
@@ -3549,7 +3696,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/lola.safetensors"
         },
-        "display_name": "Pocket TTS Lola"
+        "display_name": "Pocket TTS Lola",
+        "precision": "int8"
     },
     "pockettts/es/marius": {
         "voice_id": "pockettts/es/marius",
@@ -3573,7 +3721,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/marius.safetensors"
         },
-        "display_name": "Pocket TTS Marius"
+        "display_name": "Pocket TTS Marius",
+        "precision": "int8"
     },
     "pockettts/es/mary": {
         "voice_id": "pockettts/es/mary",
@@ -3597,7 +3746,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/mary.safetensors"
         },
-        "display_name": "Pocket TTS Mary"
+        "display_name": "Pocket TTS Mary",
+        "precision": "int8"
     },
     "pockettts/es/michael": {
         "voice_id": "pockettts/es/michael",
@@ -3621,7 +3771,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/michael.safetensors"
         },
-        "display_name": "Pocket TTS Michael"
+        "display_name": "Pocket TTS Michael",
+        "precision": "int8"
     },
     "pockettts/es/paul": {
         "voice_id": "pockettts/es/paul",
@@ -3645,7 +3796,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/paul.safetensors"
         },
-        "display_name": "Pocket TTS Paul"
+        "display_name": "Pocket TTS Paul",
+        "precision": "int8"
     },
     "pockettts/es/peter_yearsley": {
         "voice_id": "pockettts/es/peter_yearsley",
@@ -3669,7 +3821,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/peter_yearsley.safetensors"
         },
-        "display_name": "Pocket TTS Peter Yearsley"
+        "display_name": "Pocket TTS Peter Yearsley",
+        "precision": "int8"
     },
     "pockettts/es/rafael": {
         "voice_id": "pockettts/es/rafael",
@@ -3693,7 +3846,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/rafael.safetensors"
         },
-        "display_name": "Pocket TTS Rafael"
+        "display_name": "Pocket TTS Rafael",
+        "precision": "int8"
     },
     "pockettts/es/stuart_bell": {
         "voice_id": "pockettts/es/stuart_bell",
@@ -3717,7 +3871,8 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/stuart_bell.safetensors"
         },
-        "display_name": "Pocket TTS Stuart Bell"
+        "display_name": "Pocket TTS Stuart Bell",
+        "precision": "int8"
     },
     "pockettts/es/vera": {
         "voice_id": "pockettts/es/vera",
@@ -3741,6 +3896,7 @@
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/main/spanish/voices/vera.safetensors"
         },
-        "display_name": "Pocket TTS Vera"
+        "display_name": "Pocket TTS Vera",
+        "precision": "int8"
     }
 }

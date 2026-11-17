@@ -22,7 +22,7 @@ from ovos_utils.log import LOG
 from linguatag import standardize_lang
 from ovos_plugin_manager.templates.tts import TTS, TTSContext
 
-from phoonnx.model_manager import TTSModelManager, TTSModelInfo
+from phoonnx.model_manager import TTSModelManager, TTSModelInfo, choose_precision, resolve_precision
 from phoonnx.ssml import SUPPORTED_TAGS, looks_like_ssml
 from phoonnx.util import normalize_lang
 from phoonnx.voice import TTSVoice, SynthesisConfig
@@ -69,9 +69,11 @@ class PhoonnxTTSPlugin(TTS):
             for k, v in (self.config.get("lang2voice") or {}).items()
         }
 
+        # The cache holds each voice with the files the precision setting
+        # loads, so its memory accounting measures those files.
         self.voice_cache = VoiceCache(
-            resolve=lambda voice_id: self.get_voice_info(voice_id),
-            load=lambda info: info.load(providers=self._providers()),
+            resolve=lambda voice_id: self._as_loaded(self.get_voice_info(voice_id)),
+            load=lambda info: info.load(providers=self._providers(), precision=self._precision()),
             max_loaded_voices=self.config.get("max_loaded_voices"),
             max_loaded_bytes=self.config.get("max_loaded_bytes"),
             pinned_voices=self.config.get("pinned_voices"),
@@ -85,6 +87,8 @@ class PhoonnxTTSPlugin(TTS):
         # raises here; an unset voice (or "default") resolves to the language's
         # default. Loading is deferred to the first synthesis so that fetching a
         # model is never what decides whether the TTS service can start.
+        # A bad precision key is a configuration error, raised before any load.
+        resolve_precision(self._precision())
         if self.voice and self.voice != "default":
             self.voice_info = self.get_voice_info(self.voice)
         else:
@@ -127,6 +131,24 @@ class PhoonnxTTSPlugin(TTS):
         if isinstance(providers, str):
             return [providers]
         return list(providers) if providers else None
+
+    def _precision(self) -> Optional[str]:
+        """The ``precision`` plugin key: ``int8``, ``full`` or ``auto``.
+
+        Unset, the precision comes from ``PHOONNX_PRECISION``, else ``auto``.
+        """
+        return self.config.get("precision")
+
+    def _loads_int8_variant(self, info: TTSModelInfo) -> bool:
+        """Whether ``info`` loads its int8 variant instead of its own files."""
+        return info.precision != "int8" and choose_precision(
+            info, resolve_precision(self._precision()), self._providers()) == "int8"
+
+    def _as_loaded(self, info: TTSModelInfo) -> TTSModelInfo:
+        """``info`` with the files the precision setting loads."""
+        if self._loads_int8_variant(info):
+            return info.with_precision("int8")
+        return info
 
     def _resolve_speaker(self, voice_info, requested=None) -> Optional[int]:
         """
@@ -313,8 +335,16 @@ class PhoonnxTTSPlugin(TTS):
         audio of a sentence in the same way. Only the
         identity changes; ``synth_kwargs`` still carries the real voice id, so
         the model that gets loaded is unaffected.
+
+        A voice that loads its int8 variant gets ``#int8`` in its identity, so
+        its audio and the audio of its full files never share an entry. A voice
+        that loads its full files, or has int8 files only, keeps its identity.
         """
         ctxt = super()._get_ctxt(kwargs)
+        info = (self.get_voice_info(ctxt.voice) if ctxt.voice and ctxt.voice != "default"
+                else self.get_default_voice(ctxt.lang))
+        if self._loads_int8_variant(info):
+            ctxt.voice = f"{ctxt.voice}#int8"
         kwargs = kwargs or {}
         reference = tuple(
             kwargs.get(key) for key in
