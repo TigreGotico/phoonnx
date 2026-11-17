@@ -204,6 +204,175 @@ def test_supported_language_sets_do_not_overlap():
     assert not BYTE_LANGUAGES & CHAR_LANGUAGES
 
 
+# ---- exports that record each sub-tokenizer's kind -------------------
+# Assets dumped by scripts/conversion/magpie/dump_assets.py from two fine-tunes, and the
+# ids NeMo itself gives them: ``model.tokenizer.encode(text, name) + [model.eos_id]``.
+FIXTURES = __import__("pathlib").Path(__file__).parent / "fixtures"
+GEORGIAN = FIXTURES / "magpie_ka_tokenizer.json"   # NMikka/Magpie-TTS-Geo-357m
+THIRTEEN = FIXTURES / "magpie_13lang_tokenizer.json"   # infiniatechnologies/magpie-tts-13lang-357m
+
+
+def _nemo_rows(name):
+    return json.loads((FIXTURES / name).read_text(encoding="utf-8"))["rows"]
+
+
+@pytest.mark.parametrize("row", _nemo_rows("magpie_ka_nemo_ids.json"), ids=lambda r: r["text"][:12])
+def test_a_byt5_sub_tokenizer_gives_nemo_ids(row):
+    """The Georgian fine-tune reads Georgian through the ByT5 ``text_ce_tokenizer``."""
+    assert MagpieTokenizer(str(GEORGIAN)).encode(row["text"], "ka", "text_ce_tokenizer") == row["ids"]
+
+
+@pytest.mark.parametrize("row", _nemo_rows("magpie_13lang_sw_nemo_ids.json"), ids=lambda r: r["text"][:12])
+def test_a_byt5_sub_tokenizer_added_by_a_fine_tune_gives_nemo_ids(row):
+    """The 13-language fine-tune adds Swahili as a new ByT5 ``swahili_chartokenizer``."""
+    assert MagpieTokenizer(str(THIRTEEN)).encode(row["text"], "sw", "swahili_chartokenizer") == row["ids"]
+
+
+@pytest.mark.parametrize("row", _nemo_rows("magpie_13lang_ar_nemo_ids.json"), ids=lambda r: repr(r["text"][:12]))
+def test_an_arabic_chars_sub_tokenizer_gives_nemo_ids(row):
+    """Space pad, space collapse, NFC and the apostrophe rule, as ArabicCharsTokenizer."""
+    assert MagpieTokenizer(str(THIRTEEN)).encode(row["text"], "ar", "arabic_SA_chartokenizer") == row["ids"]
+
+
+def test_the_byt5_kind_closes_the_text_with_its_own_end_token():
+    tokenizer = MagpieTokenizer(str(GEORGIAN))
+    offset = tokenizer.offsets["text_ce_tokenizer"]
+    assert tokenizer.encode("a", "ka", "text_ce_tokenizer") == [
+        offset + BYTE_TOKENIZER_PREFIX + ord("a"), offset + 1, tokenizer.eos_id]
+
+
+def test_the_voice_names_a_sub_tokenizer_its_checkpoint_has_no_language_for():
+    class VC:
+        engine_params = {"tokenizer_path": str(GEORGIAN), "tokenizer_name": "text_ce_tokenizer",
+                         "lang": "ka"}
+        lang_code = "ka"
+
+    row = _nemo_rows("magpie_ka_nemo_ids.json")[1]
+    adapter = MagpieAdapter()
+    adapter.configure(VC())
+    assert adapter.encode_text(row["text"], None, None) == [row["ids"]]
+
+
+def test_a_sub_tokenizer_that_needs_g2p_is_refused():
+    with pytest.raises(NotImplementedError, match="english_phoneme"):
+        MagpieTokenizer(str(GEORGIAN)).encode("hello", "en", "english_phoneme")
+
+
+def test_an_alnum_chars_kind_drops_symbols_that_are_neither_letters_nor_punctuation(tmp_path):
+    """BaseCharsTokenizer keeps a table symbol only if it is alphanumeric, an apostrophe
+    or in its punctuation list; ArabicCharsTokenizer keeps every table symbol."""
+    tokens = [" ", "a", "b", "~", ",", "<pad>", "<oov>"]
+    kinds = {"chars": {"kind": "chars", "accept": "alnum", "punct": [","],
+                       "pad_with_space": False, "preprocessing": "none"}}
+    payload = {"vocab_size": len(tokens), "tokens": tokens, "eos_id": len(tokens),
+               "tokenizer_offsets": {"chars": 0}, "num_tokens_per_tokenizer": {"chars": len(tokens)},
+               "tokenizer_pad_ids": {"chars": 5}, "tokenizer_kinds": kinds}
+    path = tmp_path / "tokenizer.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    assert MagpieTokenizer(str(path)).encode(" a~ ,b ", "xx", "chars") == [1, 0, 4, 2, len(tokens)]
+    kinds["chars"]["accept"] = "any"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    assert MagpieTokenizer(str(path)).encode(" a~ ,b ", "xx", "chars") == [1, 3, 0, 4, 2, len(tokens)]
+
+
+#: The published checkpoint's language map, in its order: ar-AE comes before ar-SA and ar-MSA.
+PUBLISHED_LANGUAGES = {"en": ["english_phoneme"], "fr": ["french_chartokenizer"],
+                       "ar-AE": ["arabic_AE_chartokenizer"], "ar-SA": ["arabic_SA_chartokenizer"],
+                       "ar-MSA": ["arabic_MSA_chartokenizer"]}
+
+
+def _voice_on_an_asset_without_kinds(tmp_path, lang, tokenizer_name=None, keep_kinds=False):
+    """A voice on an asset like the published one: the 13-language token table with no
+    ``tokenizer_kinds`` (unless ``keep_kinds``), and the published checkpoint's language map."""
+    asset = json.loads(THIRTEEN.read_text(encoding="utf-8"))
+    if not keep_kinds:
+        del asset["tokenizer_kinds"]
+    (tmp_path / "tokenizer.json").write_text(json.dumps(asset), encoding="utf-8")
+    config = {"language_to_tokenizer": PUBLISHED_LANGUAGES}
+    (tmp_path / "magpie_config.json").write_text(json.dumps(config), encoding="utf-8")
+
+    class VC:
+        engine_params = {"tokenizer_path": str(tmp_path / "tokenizer.json"),
+                         "magpie_config_path": str(tmp_path / "magpie_config.json"), "lang": lang}
+        lang_code = lang
+
+    if tokenizer_name:
+        VC.engine_params["tokenizer_name"] = tokenizer_name
+    adapter = MagpieAdapter()
+    adapter.configure(VC())
+    return adapter
+
+
+@pytest.mark.parametrize("lang, tokenizer_name, own", [
+    ("fr", "english_phoneme", "french_chartokenizer"),   # bytes at the English IPA offset
+    ("ar", "french_chartokenizer", "arabic_AE_chartokenizer"),   # every character dropped
+])
+def test_an_asset_without_kinds_refuses_a_tokenizer_name_its_language_does_not_use(
+        tmp_path, lang, tokenizer_name, own):
+    with pytest.raises(ValueError, match=f"{tokenizer_name!r} for language {lang!r}.*{own!r}"):
+        _voice_on_an_asset_without_kinds(tmp_path, lang, tokenizer_name)
+
+
+def test_an_asset_without_kinds_accepts_the_tokenizer_name_of_its_language(tmp_path):
+    named = _voice_on_an_asset_without_kinds(tmp_path, "fr", "french_chartokenizer")
+    unnamed = _voice_on_an_asset_without_kinds(tmp_path, "fr")
+    offset = named.tokenizer.offsets["french_chartokenizer"]
+    assert named.encode_text("Ça", None, None) == unnamed.encode_text("Ça", None, None) == [
+        [offset + BYTE_TOKENIZER_PREFIX + b for b in "Ça".encode("utf-8")] + [named.tokenizer.eos_id]]
+
+
+@pytest.mark.parametrize("lang, own", [
+    ("ar-SA", "arabic_SA_chartokenizer"),
+    ("ar-MSA", "arabic_MSA_chartokenizer"),
+    ("ar", "arabic_AE_chartokenizer"),   # a bare base language takes the first entry
+    ("AR_sa", "arabic_SA_chartokenizer"),
+])
+def test_an_exact_language_tag_picks_its_own_sub_tokenizer(tmp_path, lang, own):
+    assert _voice_on_an_asset_without_kinds(tmp_path, lang).tokenizer_name_for(lang) == own
+
+
+@pytest.mark.parametrize("lang, tokenizer_name", [
+    ("ar-SA", "arabic_SA_chartokenizer"),
+    ("ar-MSA", "arabic_MSA_chartokenizer"),
+    ("ar", "arabic_SA_chartokenizer"),
+])
+def test_an_asset_without_kinds_accepts_a_sub_tokenizer_of_the_same_base_language(
+        tmp_path, lang, tokenizer_name):
+    # NeMo's ids for this text through arabic_SA_chartokenizer, without the two pad spaces
+    # that an asset without kinds does not add. The three Arabic tables are identical, so
+    # another one gives the same ids at its own offset.
+    row = _nemo_rows("magpie_13lang_ar_nemo_ids.json")[0]
+    assert row["text"] == "مرحبا، كيف حالك اليوم؟"
+    adapter = _voice_on_an_asset_without_kinds(tmp_path, lang, tokenizer_name)
+    offsets = adapter.tokenizer.offsets
+    shift = offsets[tokenizer_name] - offsets["arabic_SA_chartokenizer"]
+    assert adapter.encode_text(row["text"], None, None) == [
+        [i + shift for i in row["ids"][1:-2]] + [adapter.tokenizer.eos_id]]
+
+
+def test_the_tokenizer_name_is_checked_again_for_the_language_of_the_call(tmp_path):
+    """A voice config without ``lang`` takes the language of the voice at each call."""
+    adapter = _voice_on_an_asset_without_kinds(tmp_path, "fr", "french_chartokenizer")
+    del adapter._params["lang"]
+
+    class ArabicVoice:
+        lang = "ar"
+
+    with pytest.raises(ValueError, match="'french_chartokenizer' for language 'ar'"):
+        adapter.encode_text("مرحبا", ArabicVoice(), None)
+
+
+@pytest.mark.parametrize("tokenizer_name, error", [
+    ("French_Chartokenizer", ValueError),   # names are case-sensitive
+    ("nope", ValueError),
+    ("english_phoneme", NotImplementedError),   # a G2P sub-tokenizer
+])
+def test_an_asset_with_kinds_refuses_a_sub_tokenizer_it_cannot_encode_at_load(
+        tmp_path, tokenizer_name, error):
+    with pytest.raises(error, match=repr(tokenizer_name)):
+        _voice_on_an_asset_without_kinds(tmp_path, "fr", tokenizer_name, keep_kinds=True)
+
+
 def test_tokenizer_name_lookup_handles_region_tags(tmp_path):
     adapter = _adapter(tmp_path)
     assert adapter.tokenizer_name_for("fr") == "french_chartokenizer"
