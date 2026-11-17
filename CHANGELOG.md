@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.110.0a1](https://github.com/TigreGotico/phoonnx/tree/1.110.0a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.109.4a1...1.110.0a1)
+
+**Merged pull requests:**
+
+- feat: split synthesis into prepare and render [\#659](https://github.com/TigreGotico/phoonnx/pull/659) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.109.4a1](https://github.com/TigreGotico/phoonnx/tree/1.109.4a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.109.3a1...1.109.4a1)
@@ -385,10 +393,6 @@
 ## [1.95.1a1](https://github.com/TigreGotico/phoonnx/tree/1.95.1a1) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.95.0a2...1.95.1a1)
-
-**Merged pull requests:**
-
-- fix: user phonetic spellings override across case; a non-UTF-8 user file is skipped [\#546](https://github.com/TigreGotico/phoonnx/pull/546) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.95.0a2](https://github.com/TigreGotico/phoonnx/tree/1.95.0a2) (2026-11-10)
 
