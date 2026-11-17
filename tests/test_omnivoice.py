@@ -501,20 +501,17 @@ def _silence_padded_tone(sr=16000, lead_ms=300, tone_ms=500, trail_ms=300, freq=
 
 
 def test_remove_silence_pydub_path_trims_the_padded_edges():
-    """Locks the upstream pydub branch: silent lead/trail shrink, the tone stays."""
-    audio, sr, voice_start, voice_end = _silence_padded_tone()
-    out = remove_silence(audio, sr, mid_sil=300, lead_sil=50, trail_sil=50,
-                         silence_threshold=-50.0)
+    """Locks the upstream pydub branch. It is called directly, because
+    ``remove_silence`` falls back to numpy when pydub cannot import. The 300 ms
+    edges shrink to the 50 ms kept, so 50 + 500 + 50 ms at 16 kHz remain."""
+    from phoonnx.thirdparty.omnivoice.audio import _remove_silence_pydub
+    audio, sr, voice_start, _ = _silence_padded_tone()
+    out = _remove_silence_pydub(audio, sr, mid_sil=300, lead_sil=50, trail_sil=50,
+                                silence_threshold=-50.0)
 
-    assert out.shape[0] == 1
-    # most of the padding got cut, but the tone (200ms in) must survive
-    assert out.shape[-1] < audio.shape[-1]
-    assert out.shape[-1] > voice_end - voice_start
-    # the loud tone is still present somewhere in the trimmed output
-    assert np.abs(out).max() == pytest.approx(1.0, abs=0.05)
-    # a contiguous loud region close to the tone's own length remains
-    loud = np.abs(out[0]) > 0.1
-    assert loud.sum() >= (voice_end - voice_start) * 0.9
+    assert out.shape == (1, 9600)
+    kept_lead = voice_start - sr * 50 // 1000
+    np.testing.assert_allclose(out[0], audio[0, kept_lead:kept_lead + 9600], atol=1 / 32768)
 
 
 def test_remove_silence_falls_back_to_numpy_when_pydub_is_unavailable(monkeypatch):
@@ -550,6 +547,34 @@ def test_remove_silence_falls_back_to_numpy_when_pydub_is_unavailable(monkeypatc
     assert np.abs(fallback).max() == pytest.approx(1.0, abs=0.05)
     loud = np.abs(fallback[0]) > 0.1
     assert loud.sum() >= (voice_end - voice_start) * 0.9
+
+
+def test_remove_silence_warns_naming_the_module_it_could_not_import(monkeypatch):
+    """Python 3.13 removed the stdlib ``audioop`` that pydub imports; pydub then tries
+    ``pyaudioop`` from audioop-lts. With neither, the trim leaves pydub for the numpy
+    fallback, and the log must name the module it could not import."""
+    from phoonnx.thirdparty.omnivoice import audio as audio_module
+
+    class _Log:
+        warnings = []
+
+        @classmethod
+        def warning(cls, msg, *args):
+            cls.warnings.append(msg % args)
+
+    monkeypatch.setattr(audio_module, "LOG", _Log, raising=False)
+    monkeypatch.setattr(audio_module, "_WARNED_MISSING", set(), raising=False)
+    for name in [m for m in sys.modules if m == "pydub" or m.startswith("pydub.")]:
+        monkeypatch.delitem(sys.modules, name)
+    monkeypatch.setitem(sys.modules, "audioop", None)
+    monkeypatch.setitem(sys.modules, "pyaudioop", None)
+    audio, sr, _, _ = _silence_padded_tone()
+
+    remove_silence(audio, sr)
+    remove_silence(audio, sr)
+
+    assert len(_Log.warnings) == 1, "one warning per process, not one per synthesis"
+    assert "'pyaudioop'" in _Log.warnings[0]
 
 
 # ---------------------------------------------------------------------------
