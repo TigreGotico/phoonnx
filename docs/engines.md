@@ -114,14 +114,17 @@ decide which sub-tokenizer encodes a voice's text and how:
 | Key | Where | What it sets |
 | --- | --- | --- |
 | `tokenizer_kinds` | `tokenizer.json`, written by `scripts/conversion/magpie/dump_assets.py` | The encoder of each sub-tokenizer. `{"kind": "byt5"}` is NeMo's ByT5 byte tokenizer: each UTF-8 byte, then `</s>`. `{"kind": "chars", ...}` is NeMo's `BaseCharsTokenizer` (`"accept": "alnum"`) or `ArabicCharsTokenizer` (`"accept": "any"`), with its punctuation list, `pad_with_space` and text preprocessing. Any other kind is a NeMo class name, and phoonnx refuses it, because it needs G2P. |
-| `tokenizer_name` | the voice's `engine_params` | The sub-tokenizer to use, for example `text_ce_tokenizer` or `swahili_chartokenizer`. Without it, the voice uses the sub-tokenizer that the checkpoint's `language_to_tokenizer` gives for its language. |
+| `tokenizer_name` | the voice's `engine_params` | The sub-tokenizer to use, for example `text_ce_tokenizer` or `swahili_chartokenizer`. Without it, the voice uses the sub-tokenizer that the checkpoint's `language_to_tokenizer` gives for its exact tag, such as `ar-SA`. A tag with no entry of its own takes the first entry with the same base language: on the base checkpoint, `ar` takes `ar-AE`. |
 
 A `tokenizer.json` with `tokenizer_kinds` encodes as NeMo's `AggregatedTTSTokenizer`
-does, and a voice can name any byte or character sub-tokenizer in it. A `tokenizer.json`
-without `tokenizer_kinds` keeps the older encoders: fr, it, vi and ko as bytes with no
-`</s>`, and ar as every known character, with no space collapse and no space pad. It can
-only encode a language with that language's own sub-tokenizer, so a voice that names
-another `tokenizer_name` on it does not load.
+does, and a voice can name any byte or character sub-tokenizer in it. A voice that names
+a sub-tokenizer the asset does not have, or a G2P one, does not load.
+
+A `tokenizer.json` without `tokenizer_kinds` keeps the older encoders: fr, it, vi and ko
+as bytes with no `</s>`, and ar as every known character, with no space collapse and no
+space pad. It can only encode a language with a sub-tokenizer that the checkpoint maps to
+the same base language. A voice in `ar` can name `arabic_SA_chartokenizer`, but a voice in
+`fr` that names `english_phoneme` does not load.
 
 A fine-tune whose checkpoint has no language map names its sub-tokenizer:
 

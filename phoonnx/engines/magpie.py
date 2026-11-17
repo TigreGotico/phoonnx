@@ -50,6 +50,11 @@ BYTE_LANGUAGES = {"fr", "it", "vi", "ko"}
 CHAR_LANGUAGES = {"ar"}
 
 
+def _base_language(tag: str) -> str:
+    """``ar`` for ``ar-SA``, ``ar_SA`` or ``AR``."""
+    return tag.split("-")[0].split("_")[0].lower()
+
+
 def _any_locale_text_preprocessing(text: str) -> str:
     """NeMo's ``any_locale_text_preprocessing``: NFC, and U+2019 read as an apostrophe."""
     return unicodedata.normalize("NFC", text).replace("\u2019", "'")
@@ -152,7 +157,7 @@ class MagpieTokenizer:
         """Turn text into global token ids, with the end-of-sentence id appended."""
         if self.kinds:
             return self.encode_by_kind(text, tokenizer_name) + [self.eos_id]
-        base = lang.split("-")[0].split("_")[0].lower()
+        base = _base_language(lang)
         if base not in BYTE_LANGUAGES and base not in CHAR_LANGUAGES:
             raise NotImplementedError(
                 f"Magpie needs grapheme-to-phoneme conversion for {base!r} "
@@ -171,22 +176,27 @@ class MagpieTokenizer:
             ids = [symbols[c] for c in text if c in symbols]
         return ids + [self.eos_id]
 
+    def encodable_kind(self, tokenizer_name: str) -> Dict[str, Any]:
+        """The recorded kind of a sub-tokenizer, refused unless phoonnx can encode it."""
+        if tokenizer_name not in self.offsets:
+            raise ValueError(f"Magpie tokenizer has no sub-tokenizer {tokenizer_name!r}")
+        kind = self.kinds.get(tokenizer_name, {})
+        if kind.get("kind") not in ("byt5", "chars"):
+            raise NotImplementedError(
+                f"Magpie sub-tokenizer {tokenizer_name!r} is of kind {kind.get('kind')!r}, which "
+                f"needs grapheme-to-phoneme conversion. phoonnx keeps phonemizers in scriptconv; "
+                f"only the byt5 and chars kinds are supported so far."
+            )
+        return kind
+
     def encode_by_kind(self, text: str, tokenizer_name: str) -> List[int]:
         """Encode as NeMo's ``AggregatedTTSTokenizer.encode`` does: the sub-tokenizer's
         own ids, shifted by its offset."""
-        if tokenizer_name not in self.offsets:
-            raise ValueError(f"Magpie tokenizer has no sub-tokenizer {tokenizer_name!r}")
-        offset = self.offsets[tokenizer_name]
-        kind = self.kinds.get(tokenizer_name, {})
-        if kind.get("kind") == "byt5":
+        kind = self.encodable_kind(tokenizer_name)
+        if kind["kind"] == "byt5":
+            offset = self.offsets[tokenizer_name]
             return [offset + BYTE_TOKENIZER_PREFIX + b for b in text.encode("utf-8")] + [offset + 1]
-        if kind.get("kind") == "chars":
-            return self._encode_chars(text, tokenizer_name, kind)
-        raise NotImplementedError(
-            f"Magpie sub-tokenizer {tokenizer_name!r} is of kind {kind.get('kind')!r}, which "
-            f"needs grapheme-to-phoneme conversion. phoonnx keeps phonemizers in scriptconv; "
-            f"only the byt5 and chars kinds are supported so far."
-        )
+        return self._encode_chars(text, tokenizer_name, kind)
 
     def _encode_chars(self, text: str, tokenizer_name: str, kind: Dict[str, Any]) -> List[int]:
         """NeMo's character tokenizers: one space between words and none at either end,
@@ -332,11 +342,15 @@ class MagpieAdapter(BaseOnnxAdapter):
     # ------------------------------------------------------------------
 
     def tokenizer_name_for(self, lang: str) -> str:
-        """Sub-tokenizer that the checkpoint assigns to a language."""
+        """Sub-tokenizer that the checkpoint assigns to a language: the entry for the exact
+        tag (``ar-SA``), else the first entry with the same base language (``ar``)."""
         mapping = self.config.get("language_to_tokenizer", {})
-        base = lang.split("-")[0].split("_")[0].lower()
+        tag = lang.replace("_", "-").lower()
         for key, names in mapping.items():
-            if key.lower() == lang.lower() or key.split("-")[0].lower() == base:
+            if key.replace("_", "-").lower() == tag:
+                return names[0]
+        for key, names in mapping.items():
+            if _base_language(key) == _base_language(lang):
                 return names[0]
         raise ValueError(f"Magpie has no tokenizer for language {lang!r}. "
                          f"Known: {sorted(mapping)}")
@@ -344,20 +358,27 @@ class MagpieAdapter(BaseOnnxAdapter):
     def sub_tokenizer_name(self, lang: str) -> str:
         """The voice's ``tokenizer_name``, else the sub-tokenizer of its language.
 
-        An asset without ``tokenizer_kinds`` picks its encoder by language, so it can only
-        encode a language with that language's own sub-tokenizer. Any other name would give
-        ids at the wrong offset, or drop every character, so it is refused.
+        On an asset with ``tokenizer_kinds`` the name must be a byte or character
+        sub-tokenizer of the asset. An asset without them picks its encoder by base
+        language, so it can only encode a language with a sub-tokenizer that the checkpoint
+        maps to the same base language. Any other name would give ids at the wrong offset,
+        or drop every character, so it is refused.
         """
         name = self._params.get("tokenizer_name")
-        if name and self.tokenizer.kinds:
+        if not name:
+            return self.tokenizer_name_for(lang)
+        if self.tokenizer.kinds:
+            self.tokenizer.encodable_kind(name)
             return name
-        own = self.tokenizer_name_for(lang)
-        if name and name != own:
+        same_base = sorted(sub for key, subs in self.config.get("language_to_tokenizer", {}).items()
+                           if _base_language(key) == _base_language(lang) for sub in subs)
+        if name not in same_base:
             raise ValueError(
                 f"Magpie voice names tokenizer_name {name!r} for language {lang!r}, but its "
                 f"tokenizer.json has no tokenizer_kinds, so it can only encode {lang!r} with "
-                f"{own!r}. Remove tokenizer_name, or use an asset that records tokenizer_kinds.")
-        return own
+                f"{' or '.join(map(repr, same_base)) or 'no sub-tokenizer'}. Remove "
+                f"tokenizer_name, or use an asset that records tokenizer_kinds.")
+        return name
 
     def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
         """Turn text into one token-id list per autoregressive pass."""
