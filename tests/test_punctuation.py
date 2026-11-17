@@ -46,8 +46,8 @@ def piper_config(**extra):
 def synthesis_ids(config: dict, text: str):
     voice_config = VoiceConfig.from_dict(json.loads(json.dumps(config)))
     voice = TTSVoice(session=MagicMock(), config=voice_config, adapter=MagicMock())
-    return voice_config, [ids for _, ids, _ in voice._iter_synthesis_ids(
-        text, SynthesisConfig(), Alphabet.GRAPHEMES, voice_config.alphabet)]
+    return voice_config, [list(utterance.ids) for utterance in voice.prepare(
+        text, SynthesisConfig(enable_phonetic_spellings=False))]
 
 
 def flat(sentences):

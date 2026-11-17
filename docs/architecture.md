@@ -22,7 +22,11 @@ flowchart TD
     N --> C[AudioChunk per sentence]
 ```
 
-Step by step, as implemented in `TTSVoice.synthesize`:
+`TTSVoice.synthesize` is two public steps. `TTSVoice.prepare` does steps 1 to 3 and yields
+one `Utterance` (text, symbols, token IDs, side streams) for each engine call.
+`TTSVoice.render` does steps 4 and 5 for one `Utterance` and returns one `AudioChunk`.
+`synthesize` calls `render` on each utterance that `prepare` yields, one at a time. Thus the
+first sentence becomes audio before the second sentence is phonemized. Step by step:
 
 1. **Phonetic spellings** — when `enable_phonetic_spellings` is set, word-level
    replacements loaded from the voice's `locale/<lang>/phonetic_spellings.txt` are applied
@@ -44,12 +48,14 @@ Step by step, as implemented in `TTSVoice.synthesize`:
    voice's `phoneme_id_map`, inserting blank/pad/bos/eos tokens per the voice config. For
    text-token engines (Chatterbox) the adapter's `encode_text` BPE-tokenizes the raw text
    instead.
-4. **Adapter synthesize** — `phoneme_ids_to_audio` merges scale parameters (adapter defaults
+4. **Adapter synthesize** — `render` merges scale parameters (adapter defaults
    → voice config → per-call `SynthesisConfig` → engine extras), builds an
    `AdapterSynthesisRequest`, and hands it to the engine adapter, which runs the ONNX
    session(s) and returns a float32 waveform.
 5. **Post-process** — the waveform is optionally peak-normalized, volume-scaled, and clipped
-   to `[-1, 1]`, then yielded as one `AudioChunk` per sentence.
+   to `[-1, 1]`. Voice conversion and super-resolution run last when the call asks for
+   them. The result is one `AudioChunk` per utterance. `phoonnx.audio.write_wav` writes a
+   stream of chunks to a WAV file. `synthesize_wav` and `synthesize_ssml_wav` use it.
 
 Text normalization of numbers, dates and units (`text2spoken.normalize`) runs in the text
 frontend and during dataset [preprocessing](training/preprocess.md), before diacritization in

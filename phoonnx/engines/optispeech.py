@@ -90,7 +90,7 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
         # OptiSpeech returns [wav, wav_lengths, durations]. ``durations`` is a
         # per-phoneme frame count from the internal duration predictor (like
         # VITS's w_ceil) — exposed as ``phoneme_id_samples`` so
-        # ``TTSVoice.phoneme_ids_to_audio`` picks it up uniformly and scales
+        # ``TTSVoice.render`` picks it up uniformly and scales
         # it to samples via ``VoiceConfig.hop_length``.
         audio = outputs[0].squeeze()
 
@@ -104,7 +104,7 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
         if durations is not None:
             # Keep the historical "durations" key for back-compat, and also
             # expose the value as "phoneme_id_samples" — the name
-            # TTSVoice.phoneme_ids_to_audio looks for uniformly across engines.
+            # TTSVoice.render looks for uniformly across engines.
             extras["durations"] = durations
             extras["phoneme_id_samples"] = np.asarray(durations).squeeze()
 
