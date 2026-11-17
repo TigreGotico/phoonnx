@@ -73,6 +73,40 @@ def _describes(value: Any, annotation: Any) -> bool:
     raise TypeError(f"index_schema cannot describe {annotation!r}")
 
 
+#: Fields a precision variant may replace: the files of the voice.
+VARIANT_FIELDS = frozenset(name for name in _FIELD_TYPES
+                           if name.endswith("_url") or name == "aux_model_urls")
+
+
+def _precision_problems(voice_id: str, entry: Dict[str, Any]) -> List[str]:
+    """How the ``precision`` and ``variants`` fields of ``entry`` are wrong."""
+    problems = []
+    if entry.get("precision") not in (None, "int8", "full"):
+        problems.append(f"{voice_id}: precision is {entry['precision']!r}, expected 'int8' or 'full'")
+    variants = entry.get("variants")
+    if not isinstance(variants, dict):
+        return problems
+    for name in sorted(set(variants) - {"int8"}):
+        problems.append(f"{voice_id}: unknown variant {name!r}; the only variant is 'int8'")
+    variant = variants.get("int8")
+    if variant is None:
+        return problems
+    if entry.get("precision") == "int8":
+        problems.append(f"{voice_id}: an int8-only entry cannot carry an int8 variant")
+    if not set(variant) & VARIANT_FIELDS:
+        problems.append(f"{voice_id}: the int8 variant names no file")
+    for name, value in sorted(variant.items()):
+        if name == "auto":
+            if not isinstance(value, bool):
+                problems.append(f"{voice_id}: variant 'auto' is {value!r}, expected true or false")
+        elif name not in VARIANT_FIELDS:
+            problems.append(f"{voice_id}: variant field {name!r} is not a file field")
+        elif not _describes(value, _FIELD_TYPES[name]):
+            problems.append(f"{voice_id}: variant field {name!r} has {value!r}, "
+                            f"expected {_FIELD_TYPES[name]}")
+    return problems
+
+
 def validate_entry(voice_id: str, entry: Dict[str, Any]) -> List[str]:
     """Every way ``entry`` fails the schema, as human-readable messages."""
     problems = []
@@ -97,6 +131,8 @@ def validate_entry(voice_id: str, entry: Dict[str, Any]) -> List[str]:
             f"{voice_id}: voice_id field is {entry['voice_id']!r}, "
             f"which does not match the key it is filed under"
         )
+
+    problems += _precision_problems(voice_id, entry)
 
     for name in ("lang", "phonemizer_lang"):
         tag = entry.get(name)

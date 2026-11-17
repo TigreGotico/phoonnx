@@ -31,25 +31,39 @@ class TestRapidoIndex(unittest.TestCase):
 
     def test_every_voice_is_reachable_by_source(self):
         by_source = TTSModelManager().get_available_voice_ids_by_source()
-        self.assertEqual(sorted(by_source["rapido"]), ["edwixx/pt-BR-rapido", "edwixx/pt-BR-rapido-int8"])
+        self.assertEqual(sorted(by_source["rapido"]), ["edwixx/pt-BR-rapido"])
+
+    def _file_sets(self):
+        """Each precision of each voice: the entry and its int8 variant."""
+        for voice_id, entry in _entries().items():
+            yield voice_id, entry
+            for name, variant in (entry.get("variants") or {}).items():
+                yield f"{voice_id} ({name})", variant
 
     def test_every_url_is_in_the_phoonnx_org(self):
-        for voice_id, entry in _entries().items():
-            urls = [entry["model_url"], entry["config_url"], *entry["aux_model_urls"].values()]
+        for voice_id, files in self._file_sets():
+            urls = [files["model_url"], files["config_url"], *files["aux_model_urls"].values()]
             for url in urls:
                 self.assertTrue(url.startswith("https://huggingface.co/Phoonnx/phoonnx-rapido/"), (voice_id, url))
 
-    def test_each_voice_names_the_three_graphs_from_its_own_folder(self):
-        # The int8 voice shares the fp32 text encoder, aligner and decoder by
-        # content, but each entry reads them from its own folder, so the two
-        # voices never depend on each other's layout.
+    def test_each_precision_names_the_three_graphs_from_its_own_folder(self):
+        # The int8 files share the fp32 text encoder, aligner and decoder by
+        # content, but each precision reads them from its own folder, so the
+        # two never depend on each other's layout.
+        for voice_id, files in self._file_sets():
+            folder = files["model_url"].rsplit("/", 1)[0]
+            self.assertEqual(files["config_url"], f"{folder}/config.json")
+            self.assertEqual(files["aux_model_urls"],
+                             {key: f"{folder}/{name}" for key, name in AUX_KEYS.items()}, voice_id)
         for voice_id, entry in _entries().items():
-            folder = entry["model_url"].rsplit("/", 1)[0]
             self.assertEqual(entry["engine"], "rapido")
             self.assertEqual(entry["lang"], "pt-BR")
-            self.assertEqual(entry["config_url"], f"{folder}/config.json")
-            self.assertEqual(entry["aux_model_urls"],
-                             {key: f"{folder}/{name}" for key, name in AUX_KEYS.items()}, voice_id)
+
+    def test_the_int8_files_are_a_variant_of_the_voice(self):
+        variant = _entries()["edwixx/pt-BR-rapido"]["variants"]["int8"]
+        self.assertTrue(variant["model_url"].endswith("/edwixx__rapido-tts-int8/model.onnx"))
+        # Not measured faster than full yet, so auto keeps the full files.
+        self.assertNotIn("auto", variant)
 
 
 if __name__ == "__main__":

@@ -4,10 +4,11 @@ import os
 import re
 import tempfile
 import threading
-from dataclasses import asdict, dataclass, field
+import warnings
+from dataclasses import asdict, dataclass, field, replace
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, List, Any, Sequence
+from typing import Optional, Dict, List, Any, Callable, Sequence
 import requests
 from huggingface_hub import hf_hub_download
 from huggingface_hub.constants import HF_HUB_CACHE
@@ -15,9 +16,10 @@ from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
                                     OfflineModeIsEnabled)
 from json_database import JsonStorageXDG, JsonStorage, load_commented_json
 
-from phoonnx.config import PhonemeType, _voice_phonemizer, VoiceConfig, Engine, Alphabet, check_lang_supported
+from phoonnx.config import (PhonemeType, _removal_version, _voice_phonemizer, VoiceConfig, Engine,
+                            Alphabet, check_lang_supported)
 from phoonnx.util import match_lang, normalize_lang, LOG
-from phoonnx.providers import ProviderSpec, make_session, resolve_providers
+from phoonnx.providers import ProviderSpec, make_session, resolve_providers, uses_gpu
 from phoonnx.voice import TTSVoice
 
 
@@ -295,6 +297,96 @@ def _hub_json(url: str) -> Any:
     return _read_json(_resolve(url))
 
 
+#: The values of the ``precision`` setting. ``int8`` and ``full`` name the
+#: files to load; ``auto`` lets :func:`choose_precision` pick one of them.
+PRECISIONS = ("int8", "full", "auto")
+DEFAULT_PRECISION = "auto"
+#: Environment variable that sets the precision when no argument and no
+#: plugin key sets it.
+PRECISION_ENV_VAR = "PHOONNX_PRECISION"
+
+
+class PrecisionUnavailable(ValueError):
+    """Raised when a voice has no files for the precision a caller asked for."""
+
+    def __init__(self, voice_id: str, precision: str):
+        self.voice_id = voice_id
+        self.precision = precision
+        other = "full" if precision == "int8" else "int8"
+        super().__init__(
+            f"voice {voice_id!r} has no {precision} files; precision 'auto' "
+            f"or {other!r} loads it")
+
+
+def resolve_precision(precision: Optional[str] = None) -> str:
+    """The precision setting in force: the argument, else the env var, else ``auto``.
+
+    The argument is the load kwarg or the plugin key ``precision``; the plugin
+    passes its key as the argument, so a kwarg and a plugin key never meet.
+
+    Raises:
+        ValueError: the value is not one of :data:`PRECISIONS`.
+    """
+    value = precision if precision is not None else os.environ.get(PRECISION_ENV_VAR, "")
+    value = value.strip().lower() or DEFAULT_PRECISION
+    if value not in PRECISIONS:
+        raise ValueError(f"precision must be one of {', '.join(PRECISIONS)}, not {value!r}")
+    return value
+
+
+def choose_precision(info: "TTSModelInfo", precision: str,
+                     providers: Optional[Sequence[ProviderSpec]] = None) -> str:
+    """Which files of ``info`` load under ``precision``: ``int8`` or ``full``.
+
+    ``int8`` and ``full`` raise :class:`PrecisionUnavailable` when the entry has
+    no such files. ``auto`` picks int8 only for an int8 variant marked
+    ``"auto": true`` while no GPU provider is in the resolved providers; an
+    entry that has only int8 files loads them. In every other case ``auto``
+    picks full.
+    """
+    int8_only = info.precision == "int8"
+    variant = (info.variants or {}).get("int8")
+    if precision == "int8":
+        if int8_only or variant:
+            return "int8"
+        raise PrecisionUnavailable(info.voice_id, "int8")
+    if precision == "full":
+        if int8_only:
+            raise PrecisionUnavailable(info.voice_id, "full")
+        return "full"
+    if int8_only:
+        return "int8"
+    if variant and variant.get("auto") is True and not uses_gpu(resolve_providers(providers)):
+        return "int8"
+    return "full"
+
+
+#: Voice ids folded into another voice as one of its precisions:
+#: old id -> (voice id, precision).
+_PRECISION_ALIASES = {
+    "edwixx/pt-BR-rapido-int8": ("edwixx/pt-BR-rapido", "int8"),
+}
+# Aliases already named in the log. A plugin looks a voice up for every
+# sentence, and one log line per process is enough.
+_LOGGED_ALIASES: set = set()
+
+
+def _alias_info(voice_id: str, lookup: Callable[[str], Optional["TTSModelInfo"]]
+                ) -> Optional["TTSModelInfo"]:
+    """The entry an old precision id names, with a deprecation warning."""
+    target, precision = _PRECISION_ALIASES[voice_id]
+    info = lookup(target)
+    if info is None:
+        return None
+    message = (f"voice id {voice_id!r} is deprecated and will be removed in phoonnx "
+               f"{_removal_version()}; use {target!r} with precision {precision!r}")
+    warnings.warn(message, DeprecationWarning, stacklevel=3)
+    if voice_id not in _LOGGED_ALIASES:
+        _LOGGED_ALIASES.add(voice_id)
+        LOG.warning(message)
+    return info.with_precision(precision)
+
+
 @dataclass
 
 class TTSModelInfo:
@@ -374,6 +466,14 @@ class TTSModelInfo:
     # (e.g. Portuguese espeak). When set, this field — not ``lang`` — becomes
     # the lang_code override passed into VoiceConfig.from_dict.
     phonemizer_lang: Optional[str] = None
+
+    # The precision of the files this entry names: "int8" for an entry that has
+    # only int8 files, unset for full files.
+    precision: Optional[str] = None
+    # Other precisions of the same voice. ``{"int8": {...}}`` holds only the URL
+    # fields that differ from this entry, and ``"auto": true`` when the
+    # ``auto`` precision may pick it. See :meth:`with_precision`.
+    variants: Optional[Dict[str, Dict[str, Any]]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -509,6 +609,28 @@ class TTSModelInfo:
                 )
             except (AttributeError, KeyError):
                 LOG.warning(f"Could not format display_name for {self.voice_id}.")
+
+    def with_precision(self, precision: Optional[str] = None,
+                       providers: Optional[Sequence[ProviderSpec]] = None) -> "TTSModelInfo":
+        """This entry as it loads under ``precision``.
+
+        ``precision`` is ``int8``, ``full`` or ``auto``; unset, it comes from
+        ``PHOONNX_PRECISION``, else ``auto``. ``providers`` matter only to
+        ``auto``. When the int8 variant is chosen, the result is a new entry
+        with the variant's URLs over this entry's, ``aux_model_urls`` merged
+        key by key. Otherwise the result is this entry.
+
+        Raises:
+            ValueError: ``precision`` is not a known value.
+            PrecisionUnavailable: the entry has no files for ``precision``.
+        """
+        chosen = choose_precision(self, resolve_precision(precision), providers)
+        if chosen == "full" or self.precision == "int8":
+            return self
+        urls = {k: v for k, v in self.variants["int8"].items() if k != "auto"}
+        if "aux_model_urls" in urls:
+            urls["aux_model_urls"] = {**(self.aux_model_urls or {}), **urls["aux_model_urls"]}
+        return replace(self, **urls, precision="int8", variants=None)
 
     def hub_path(self, url: Optional[str]) -> Optional[Path]:
         """Give the local path of ``url``, downloading it if needed.
@@ -682,7 +804,8 @@ class TTSModelInfo:
                 params[key] = str(self._fetch_onnx(url))
         return params
 
-    def download_all(self) -> Path:
+    def download_all(self, precision: Optional[str] = None,
+                     providers: Optional[Sequence[ProviderSpec]] = None) -> Path:
         """Download everything this voice needs to load offline.
 
         The primary graph, the config JSON, whichever tokenizer artifact the
@@ -693,9 +816,14 @@ class TTSModelInfo:
         This is the single definition of "fully downloaded" shared by the CLI
         and :meth:`TTSModelManager.download_voice_by_id`.
 
+        ``precision`` and ``providers`` pick the files as :meth:`load` does.
+
         Returns:
             Path: local path of the primary ONNX model.
         """
+        info = self.with_precision(precision, providers)
+        if info is not self:
+            return info.download_all(precision="int8")
         model_path = self.download_model()
 
         cfg: Dict[str, Any] = self.download_config() if self.config_url else {}
@@ -773,7 +901,8 @@ class TTSModelInfo:
         # each distinct file once.
         return sum(_file_bytes(u) for u in self.artifact_urls())
 
-    def load(self, providers: Optional[Sequence[ProviderSpec]] = None) -> TTSVoice:
+    def load(self, providers: Optional[Sequence[ProviderSpec]] = None,
+             precision: Optional[str] = None) -> TTSVoice:
         """
         Load and return a TTSVoice for this model, ensuring the ONNX model is downloaded and the voice configuration is applied.
 
@@ -781,12 +910,20 @@ class TTSModelInfo:
             providers (Sequence, optional): Ordered ONNX Runtime execution providers,
                 e.g. ``["ROCMExecutionProvider", "CPUExecutionProvider"]``. When omitted the
                 providers are resolved from the environment / auto-detection.
-        
+            precision (str, optional): ``int8``, ``full`` or ``auto``. When omitted it comes
+                from ``PHOONNX_PRECISION``, else ``auto``. See :meth:`with_precision`.
+
         Loads a TTSVoice from the cached model and config files (and tokens file if available). If this TTSModelInfo specifies a different phoneme type or alphabet than the loaded voice, updates the loaded voice's phoneme_type and alphabet and rebuilds its phonemizer accordingly.
-        
+
         Returns:
             TTSVoice: The configured TTSVoice instance ready for synthesis.
+
+        Raises:
+            PrecisionUnavailable: the voice has no files for ``precision``.
         """
+        info = self.with_precision(precision, providers)
+        if info is not self:
+            return info.load(providers=providers, precision="int8")
         # self.config resolves the final phoneme_type/lang_code (index override
         # applied) from the small config.json, if any -- cheap next to
         # download_model()'s multi-MB model weights, so the language check
@@ -947,8 +1084,13 @@ class TTSModelManager:
 
         The lookup readers should use: it sees the registry either as it was
         before a concurrent rebuild or as it is after, never mid-rebuild.
+
+        An old id that now names one precision of another voice gives that
+        voice at that precision, with a deprecation warning.
         """
         with self._registry_lock:
+            if voice_id in _PRECISION_ALIASES:
+                return _alias_info(voice_id, self.voices.get)
             return self.voices.get(voice_id)
 
     def load(self):
@@ -1022,6 +1164,9 @@ class TTSModelManager:
         """
         voices: Dict[str, TTSModelInfo] = {}
         for voice_id, voice_dict in self.cache.items():
+            if voice_id in _PRECISION_ALIASES:
+                # Left in a cache saved before the id became an alias.
+                continue
             try:
                 voices[voice_id] = TTSModelInfo(**voice_dict)
             except Exception as e:
@@ -1048,7 +1193,16 @@ class TTSModelManager:
             result[path.stem.lower()] = sorted(data.keys())
         return result
 
-    def download_voice_by_id(self, voice_id: str) -> bool:
+    def _bundled_voice(self, voice_id: str) -> Optional[TTSModelInfo]:
+        """The entry for ``voice_id`` read from the bundled indexes, or None."""
+        for path in self.voice_index_files():
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if voice_id in data:
+                return TTSModelInfo(**data[voice_id])
+        return None
+
+    def download_voice_by_id(self, voice_id: str, precision: Optional[str] = None) -> bool:
         """
         Download everything a voice needs to load offline, by its ID.
 
@@ -1059,26 +1213,25 @@ class TTSModelManager:
 
         Fetches the full set of artifacts via ``TTSModelInfo.download_all``:
         the ONNX graph, the config JSON, the tokenizer artifacts and any
-        vocoder / style / speaker-encoder / auxiliary graphs.
+        vocoder / style / speaker-encoder / auxiliary graphs. ``precision``
+        picks the files as ``TTSModelInfo.load`` does.
 
         Returns:
             bool: True if the voice was found and its download was attempted,
             False if the voice ID could not be resolved.
         """
-        voice_info = self.voices.get(voice_id)
+        voice_info = self.get_voice(voice_id)
         if not voice_info:
-            for path in self.voice_index_files():
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                if voice_id in data:
-                    voice_info = TTSModelInfo(**data[voice_id])
-                    break
+            if voice_id in _PRECISION_ALIASES:
+                voice_info = _alias_info(voice_id, self._bundled_voice)
+            else:
+                voice_info = self._bundled_voice(voice_id)
 
         if not voice_info:
             LOG.error(f"Cannot find voice information for ID: {voice_id}")
             return False
 
-        voice_info.download_all()
+        voice_info.download_all(precision=precision)
         return True
 
 

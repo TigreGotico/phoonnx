@@ -1,5 +1,5 @@
 import click
-from phoonnx.model_manager import TTSModelManager, TTSModelInfo
+from phoonnx.model_manager import PRECISIONS, TTSModelManager, TTSModelInfo
 import requests
 from huggingface_hub.errors import HfHubHTTPError
 
@@ -127,7 +127,9 @@ def list_available():
 
 @cli.command(name="download")
 @click.argument("voice_id", type=str)
-def download_voice(voice_id):
+@click.option("--precision", type=click.Choice(PRECISIONS), default=None,
+              help="Which files to download. Defaults to PHOONNX_PRECISION, else auto.")
+def download_voice(voice_id, precision):
     """
     Downloads the model, config, and token files for a specific VOICE_ID.
     Looks the voice up in the local cache first (run update-cache to
@@ -145,12 +147,12 @@ def download_voice(voice_id):
             click.echo(f"Attempting to download files for: {voice_id} ({voice_info.lang})")
 
             click.echo("-> Downloading ONNX model and side files (this may take a while)...")
-            voice_info.download_all()
+            model_path = voice_info.download_all(precision=precision)
 
-            click.echo(f"\nDownload complete. Files saved to: {voice_info.voice_path}")
+            click.echo(f"\nDownload complete. Files saved to: {model_path.parent}")
         else:
             click.echo(f"Voice ID '{voice_id}' not found in local cache, looking it up in bundled indexes...")
-            if not manager.download_voice_by_id(voice_id):
+            if not manager.download_voice_by_id(voice_id, precision=precision):
                 click.echo(f"Error: Voice ID '{voice_id}' not found.", err=True)
                 click.echo("Hint: Run 'phoonnx-voices list-available' to see available voice IDs.", err=True)
                 return

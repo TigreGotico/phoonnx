@@ -1,7 +1,7 @@
 # Configuration Reference
 
 This page is the exhaustive reference for advanced users: every `VoiceConfig` and
-`SynthesisConfig` field, the `model.json` schema, engine detection, and execution providers.
+`SynthesisConfig` field, the `model.json` schema, engine detection, execution providers and precision.
 For a task-oriented walkthrough see [Usage](usage.md) instead.
 
 ## VoiceConfig
@@ -290,3 +290,76 @@ Check what a machine actually offers:
 import onnxruntime
 print(onnxruntime.get_available_providers())
 ```
+
+## Precision
+
+Some voices have two sets of files: full files and smaller int8 files. The
+`precision` setting picks the set that loads. It has three values:
+
+| Value | Files that load |
+|---|---|
+| `auto` | The default. Full files, except where the int8 files are marked for `auto` and no GPU provider runs the voice. |
+| `int8` | The int8 files. A voice that has no int8 files raises `PrecisionUnavailable`. |
+| `full` | The full files. A voice that has only int8 files raises `PrecisionUnavailable`. |
+
+Pass it to a load:
+
+```python
+voice = manager.get_voice("edwixx/pt-BR-rapido").load(precision="int8")
+```
+
+Or set it once for the process:
+
+```bash
+export PHOONNX_PRECISION=int8
+```
+
+The load argument wins over the environment variable. In the OVOS plugin, the
+`precision` key wins over the environment variable. With neither, the value is
+`auto`. Any other value raises `ValueError`.
+
+`PrecisionUnavailable` is a `ValueError`. Its message names the voice and the
+value that loads it.
+
+`auto` picks the int8 files only when both of these are true:
+
+1. The index marks the int8 files with `"auto": true`. The mark goes on a voice
+   whose int8 files pass the quality check and run faster than its full files.
+2. No GPU provider is in the resolved providers. The GPU providers are
+   `CUDAExecutionProvider`, `ROCMExecutionProvider`, `MIGraphXExecutionProvider`,
+   `DmlExecutionProvider` and `CoreMLExecutionProvider`.
+
+In every other case `auto` loads the full files. A voice that has only int8
+files, such as each Pocket TTS voice, loads its int8 files under `auto`.
+
+### Precision in the voice index
+
+An index entry names the full files of a voice. The int8 files go in the
+optional `variants` field, which holds only the URL fields that differ.
+`aux_model_urls` merges key by key, so the int8 entry below loads
+`flow_int8.onnx` and the full `text_encoder.onnx`:
+
+```json
+{
+  "model_url": "https://huggingface.co/Phoonnx/demo/resolve/main/model.onnx",
+  "aux_model_urls": {
+    "text_encoder_path": "https://huggingface.co/Phoonnx/demo/resolve/main/text_encoder.onnx",
+    "flow_path": "https://huggingface.co/Phoonnx/demo/resolve/main/flow.onnx"
+  },
+  "variants": {
+    "int8": {
+      "model_url": "https://huggingface.co/Phoonnx/demo/resolve/main/model_int8.onnx",
+      "aux_model_urls": {
+        "flow_path": "https://huggingface.co/Phoonnx/demo/resolve/main/flow_int8.onnx"
+      },
+      "auto": true
+    }
+  }
+}
+```
+
+An entry that has only int8 files carries `"precision": "int8"` and no variant.
+
+The voice id `edwixx/pt-BR-rapido-int8` is deprecated. It loads the int8 files
+of `edwixx/pt-BR-rapido` and logs a warning that names the release that removes
+it. Use `edwixx/pt-BR-rapido` with `precision="int8"`.
