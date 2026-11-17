@@ -101,6 +101,8 @@ def _precision_problems(voice_id: str, entry: Dict[str, Any]) -> List[str]:
                 problems.append(f"{voice_id}: variant 'auto' is {value!r}, expected true or false")
         elif name not in VARIANT_FIELDS:
             problems.append(f"{voice_id}: variant field {name!r} is not a file field")
+        elif value is None:
+            problems.append(f"{voice_id}: variant field {name!r} is null; leave it out to keep the base value")
         elif not _describes(value, _FIELD_TYPES[name]):
             problems.append(f"{voice_id}: variant field {name!r} has {value!r}, "
                             f"expected {_FIELD_TYPES[name]}")

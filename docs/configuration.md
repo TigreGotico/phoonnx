@@ -315,8 +315,11 @@ export PHOONNX_PRECISION=int8
 ```
 
 The load argument wins over the environment variable. In the OVOS plugin, the
-`precision` key wins over the environment variable. With neither, the value is
-`auto`. Any other value raises `ValueError`.
+`precision` key wins over the environment variable. An argument or key that is
+`None`, `null` or an empty string counts as unset, so the environment variable
+applies. With nothing set, the value is `auto`. Case and surrounding spaces do
+not matter. A value that is not a string, or not one of the three values,
+raises `ValueError`.
 
 `PrecisionUnavailable` is a `ValueError`. Its message names the voice and the
 value that loads it.

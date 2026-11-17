@@ -127,7 +127,7 @@ def list_available():
 
 @cli.command(name="download")
 @click.argument("voice_id", type=str)
-@click.option("--precision", type=click.Choice(PRECISIONS), default=None,
+@click.option("--precision", type=click.Choice(PRECISIONS, case_sensitive=False), default=None,
               help="Which files to download. Defaults to PHOONNX_PRECISION, else auto.")
 def download_voice(voice_id, precision):
     """

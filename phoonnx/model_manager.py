@@ -5,7 +5,7 @@ import re
 import tempfile
 import threading
 import warnings
-from dataclasses import asdict, dataclass, field, replace
+from dataclasses import asdict, dataclass, field, fields, replace
 from enum import Enum
 from pathlib import Path
 from typing import Optional, Dict, List, Any, Callable, Sequence
@@ -323,12 +323,16 @@ def resolve_precision(precision: Optional[str] = None) -> str:
 
     The argument is the load kwarg or the plugin key ``precision``; the plugin
     passes its key as the argument, so a kwarg and a plugin key never meet.
+    ``None`` and an empty string count as unset. Case and surrounding spaces
+    are ignored.
 
     Raises:
-        ValueError: the value is not one of :data:`PRECISIONS`.
+        ValueError: the value is not a string, or not one of :data:`PRECISIONS`.
     """
-    value = precision if precision is not None else os.environ.get(PRECISION_ENV_VAR, "")
-    value = value.strip().lower() or DEFAULT_PRECISION
+    if precision is not None and not isinstance(precision, str):
+        raise ValueError(f"precision must be one of {', '.join(PRECISIONS)}, not {precision!r}")
+    value = (precision or "").strip() or os.environ.get(PRECISION_ENV_VAR, "").strip()
+    value = value.lower() or DEFAULT_PRECISION
     if value not in PRECISIONS:
         raise ValueError(f"precision must be one of {', '.join(PRECISIONS)}, not {value!r}")
     return value
@@ -369,11 +373,17 @@ _PRECISION_ALIASES = {
 # Aliases already named in the log. A plugin looks a voice up for every
 # sentence, and one log line per process is enough.
 _LOGGED_ALIASES: set = set()
+# Index keys this release does not know, already named in the log.
+_LOGGED_UNKNOWN_KEYS: set = set()
 
 
 def _alias_info(voice_id: str, lookup: Callable[[str], Optional["TTSModelInfo"]]
                 ) -> Optional["TTSModelInfo"]:
-    """The entry an old precision id names, with a deprecation warning."""
+    """The entry an old precision id names, with a deprecation warning.
+
+    The entry keeps the old id, so a caller that looks the voice up again by
+    the id it got back finds the same files.
+    """
     target, precision = _PRECISION_ALIASES[voice_id]
     info = lookup(target)
     if info is None:
@@ -384,7 +394,7 @@ def _alias_info(voice_id: str, lookup: Callable[[str], Optional["TTSModelInfo"]]
     if voice_id not in _LOGGED_ALIASES:
         _LOGGED_ALIASES.add(voice_id)
         LOG.warning(message)
-    return info.with_precision(precision)
+    return replace(info.with_precision(precision), voice_id=voice_id)
 
 
 @dataclass
@@ -627,7 +637,7 @@ class TTSModelInfo:
         chosen = choose_precision(self, resolve_precision(precision), providers)
         if chosen == "full" or self.precision == "int8":
             return self
-        urls = {k: v for k, v in self.variants["int8"].items() if k != "auto"}
+        urls = {k: v for k, v in self.variants["int8"].items() if k in _INDEX_FIELDS}
         if "aux_model_urls" in urls:
             urls["aux_model_urls"] = {**(self.aux_model_urls or {}), **urls["aux_model_urls"]}
         return replace(self, **urls, precision="int8", variants=None)
@@ -988,6 +998,22 @@ class TTSModelInfo:
         return voice
 
 
+_INDEX_FIELDS = frozenset(f.name for f in fields(TTSModelInfo))
+
+
+def _known_fields(entry: Dict[str, Any]) -> Dict[str, Any]:
+    """An index or cache record without the keys this release does not know.
+
+    Each unknown key is logged once at debug level, so a field that a newer
+    index adds cannot stop the voice from loading.
+    """
+    for key in sorted(entry.keys() - _INDEX_FIELDS):
+        if key not in _LOGGED_UNKNOWN_KEYS:
+            _LOGGED_UNKNOWN_KEYS.add(key)
+            LOG.debug(f"ignoring voice index key {key!r}: this phoonnx release does not use it")
+    return {k: v for k, v in entry.items() if k in _INDEX_FIELDS}
+
+
 class TTSModelManager:
     # Explicit merge order for the bundled indexes: later files win when two
     # sources publish the same voice_id. Any index file not listed here is
@@ -1090,7 +1116,7 @@ class TTSModelManager:
         """
         with self._registry_lock:
             if voice_id in _PRECISION_ALIASES:
-                return _alias_info(voice_id, self.voices.get)
+                return _alias_info(voice_id, self._alias_target)
             return self.voices.get(voice_id)
 
     def load(self):
@@ -1168,7 +1194,7 @@ class TTSModelManager:
                 # Left in a cache saved before the id became an alias.
                 continue
             try:
-                voices[voice_id] = TTSModelInfo(**voice_dict)
+                voices[voice_id] = TTSModelInfo(**_known_fields(voice_dict))
             except Exception as e:
                 LOG.error(f"Failed to load '{voice_id}': ({e})")
         return voices
@@ -1199,8 +1225,21 @@ class TTSModelManager:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             if voice_id in data:
-                return TTSModelInfo(**data[voice_id])
+                return TTSModelInfo(**_known_fields(data[voice_id]))
         return None
+
+    def _alias_target(self, voice_id: str) -> Optional[TTSModelInfo]:
+        """The registry entry an alias points at, for :func:`_alias_info`.
+
+        A cache written before the alias existed holds the target without its
+        variants. That entry is replaced once from the bundled index, so the
+        alias still finds its files.
+        """
+        info = self.voices.get(voice_id)
+        if info is not None and not info.variants and info.precision is None:
+            info = self._bundled_voice(voice_id) or info
+            self.voices[voice_id] = info
+        return info
 
     def download_voice_by_id(self, voice_id: str, precision: Optional[str] = None) -> bool:
         """

@@ -136,8 +136,8 @@ is accepted as an alias. Running on a GPU needs the matching ONNX Runtime build
 ### Precision
 
 `precision` picks the files of a voice that has full files and int8 files:
-`auto` (the default), `int8` or `full`. Unset, the value comes from the
-`PHOONNX_PRECISION` environment variable.
+`auto` (the default), `int8` or `full`. When the key is unset, `null` or an
+empty string, the value comes from the `PHOONNX_PRECISION` environment variable.
 
 ```json
 {
@@ -150,7 +150,7 @@ is accepted as an alias. Running on a GPU needs the matching ONNX Runtime build
 }
 ```
 
-A value that is not one of the three stops the plugin at start. A voice that
+A value that is not a string, or not one of the three, stops the plugin at start. A voice that
 has no files for the value raises `PrecisionUnavailable` at its first synthesis.
 Audio from int8 files is cached apart from audio of the full files. See
 [configuration.md](configuration.md#precision) for what `auto` picks.
