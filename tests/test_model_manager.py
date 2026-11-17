@@ -583,32 +583,36 @@ class TestExternalDataNames(HubTestCase):
         import numpy as np
         import onnx
         from onnx import helper, numpy_helper, TensorProto
-        from onnxruntime.quantization import quantize_dynamic
 
         build = Path(tempfile.mkdtemp())
         self.addCleanup(lambda: __import__("shutil").rmtree(build, ignore_errors=True))
-        weight = np.random.default_rng(0).standard_normal((64, 64)).astype(np.float32)
+        weight = np.random.default_rng(0).integers(-100, 100, (64, 64)).astype(np.int8)
         graph = helper.make_graph(
-            [helper.make_node("MatMul", ["X", "W"], ["Y"])], "g",
+            [helper.make_node("Cast", ["W"], ["Wf"], to=TensorProto.FLOAT),
+             helper.make_node("MatMul", ["X", "Wf"], ["Y"])], "g",
             [helper.make_tensor_value_info("X", TensorProto.FLOAT, [1, 64])],
             [helper.make_tensor_value_info("Y", TensorProto.FLOAT, [1, 64])],
             [numpy_helper.from_array(weight, name="W")])
         model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)])
         model.ir_version = 10
-        onnx.save(model, str(build / "model.onnx"))
-        quantize_dynamic(str(build / "model.onnx"), str(build / "model_int8.onnx"),
-                         use_external_data_format=True)
+        # the layout quantize_dynamic(use_external_data_format=True) writes
+        onnx.save_model(model, str(build / "model_int8.onnx"),
+                        save_as_external_data=True, all_tensors_to_one_file=True,
+                        location="model_int8.onnx.data", size_threshold=0)
         self.assertEqual(sorted(p.name for p in build.iterdir()),
-                         ["model.onnx", "model_int8.onnx", "model_int8.onnx.data"])
+                         ["model_int8.onnx", "model_int8.onnx.data"])
         for name in ("model_int8.onnx", "model_int8.onnx.data"):
             self.hub.stage(f"{HUB}/{name}", (build / name).read_bytes())
 
         path = self.make_info(model_url=f"{HUB}/model_int8.onnx").download_model()
         self.assertEqual(self._fetched(),
                          ["model_int8.onnx", "model_int8.onnx.data"])
-        x = np.ones((1, 64), dtype=np.float32)
+        x = np.random.default_rng(1).standard_normal((1, 64)).astype(np.float32)
+        expected = onnxruntime.InferenceSession(
+            str(build / "model_int8.onnx"), providers=["CPUExecutionProvider"]).run(None, {"X": x})[0]
         session = onnxruntime.InferenceSession(str(path), providers=["CPUExecutionProvider"])
-        np.testing.assert_allclose(session.run(None, {"X": x})[0], x @ weight, atol=0.5)
+        np.testing.assert_array_equal(session.run(None, {"X": x})[0], expected)
+        np.testing.assert_allclose(expected, x @ weight.astype(np.float32), rtol=1e-4, atol=1e-3)
 
     def test_a_file_outside_the_folder_is_refused(self):
         for i, location in enumerate(("../weights.bin", "sub/../../weights.bin",
@@ -1415,6 +1419,19 @@ class TestDiskSize(unittest.TestCase):
                             model_url=f"{self.URL}model.onnx",
                             aux_model_urls={"lm_weights_path": f"{self.URL}model.onnx_data"})
         self.assertEqual(info.disk_size(), len(graph) + 5000 + 3000)
+
+    def test_two_names_of_one_blob_are_counted_once(self):
+        # the hub stores identical files once, as in the magpie voices
+        graph, _, _ = _external_data_graph(["audio_embed.onnx_data", "lt_embed.onnx_data"])
+        blob = self.root / "blobs" / "graph-sha"
+        blob.write_bytes(graph)
+        (self.snapshot / "model.onnx").symlink_to(blob)
+        shared = self.root / "blobs" / "shared-sha"
+        shared.write_bytes(b"x" * 5000)
+        for name in ("audio_embed.onnx_data", "lt_embed.onnx_data"):
+            (self.snapshot / name).symlink_to(shared)
+        info = TTSModelInfo(voice_id="v", lang="en-US", model_url=f"{self.URL}model.onnx")
+        self.assertEqual(info.disk_size(), len(graph) + 5000)
 
     def test_a_voice_hosted_outside_the_hub_is_measured_too(self):
         from phoonnx.model_manager import _file_bytes

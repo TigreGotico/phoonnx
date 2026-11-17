@@ -30,7 +30,8 @@ _ENTRY_KEY, _ENTRY_VALUE = 1, 2
 
 
 def _varint(buf, index: int) -> Tuple[int, int]:
-    """Read one base-128 varint, returning its value and the next index."""
+    """Read one base-128 varint of at most 10 bytes, returning its value and
+    the next index."""
     value = shift = 0
     while True:
         byte = buf[index]
@@ -39,6 +40,8 @@ def _varint(buf, index: int) -> Tuple[int, int]:
         if byte < 0x80:
             return value, index
         shift += 7
+        if shift > 63:
+            raise ValueError("a protobuf varint is longer than 10 bytes")
 
 
 def _fields(buf, start: int, end: int) -> Iterator[Tuple[int, int, int]]:
@@ -122,6 +125,8 @@ def external_data_locations(path: Union[str, Path]) -> List[str]:
                     locations += _graph_locations(buf, start, end, _FUNCTION_NODE)
         except IndexError as exc:
             raise ValueError(f"'{path}' ends inside a protobuf field") from exc
+        except RecursionError as exc:
+            raise ValueError(f"'{path}' nests graphs too deeply") from exc
     if not has_graph:
         raise ValueError(f"'{path}' is not an ONNX model: it has no graph")
     return list(dict.fromkeys(locations))

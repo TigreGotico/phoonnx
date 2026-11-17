@@ -111,6 +111,52 @@ class TestExternalDataLocations(unittest.TestCase):
         with self.assertRaises(OSError):
             external_data_locations(self.dir / "absent.onnx")
 
+    def test_a_varint_is_at_most_ten_bytes(self):
+        model = _nested_model().SerializeToString()
+        # an unknown field 15 of wire type 0: 2**64 - 1 takes 10 bytes
+        ten = b"\x78" + b"\xff" * 9 + b"\x01"
+        eleven = b"\x78" + b"\xff" * 10 + b"\x01"
+        expected = external_data_locations(self.write("plain.onnx", model))
+        self.assertEqual(external_data_locations(self.write("ten.onnx", model + ten)), expected)
+        with self.assertRaisesRegex(ValueError, "varint"):
+            external_data_locations(self.write("eleven.onnx", model + eleven))
+
+    def test_a_graph_nested_too_deeply_is_rejected(self):
+        def field(number, payload):
+            return _encode_varint(number << 3 | 2) + _encode_varint(len(payload)) + payload
+
+        payload = b""
+        for _ in range(1500):
+            # graph -> node (1) -> attribute (5) -> graph (6)
+            payload = field(1, field(5, field(6, payload)))
+        data = field(7, payload)
+        with self.assertRaisesRegex(ValueError, "too deeply"):
+            external_data_locations(self.write("deep.onnx", data))
+
+    def test_tensors_and_graphs_list_attributes_are_walked(self):
+        def sub(name, location):
+            return helper.make_graph(
+                [helper.make_node("Identity", [name], [name + "_o"])], name, [],
+                [_value(name + "_o")], [_external(name, location)])
+
+        node = helper.make_node("Custom", [], ["y"], domain="local")
+        node.attribute.append(helper.make_attribute("ts", [_external("a", "tensors_list.bin")]))
+        node.attribute.append(helper.make_attribute("gs", [sub("g", "graphs_list.bin")]))
+        graph = helper.make_graph([node], "g", [], [_value("y")])
+        model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 17)])
+        path = self.write("lists.onnx", model.SerializeToString())
+        self.assertEqual(sorted(external_data_locations(path)),
+                         ["graphs_list.bin", "tensors_list.bin"])
+
+
+def _encode_varint(value: int) -> bytes:
+    out = bytearray()
+    while value > 0x7F:
+        out.append(value & 0x7F | 0x80)
+        value >>= 7
+    out.append(value)
+    return bytes(out)
+
 
 if __name__ == "__main__":
     unittest.main()
