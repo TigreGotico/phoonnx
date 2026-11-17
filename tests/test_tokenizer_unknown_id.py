@@ -33,3 +33,21 @@ def test_another_engine_still_drops_an_unknown_symbol_and_falls_back():
     tokenizer = VoiceConfig.from_dict(_f5_config(engine="phoonnx")).tokenizer
     assert tokenizer.unknown_id is None
     assert tokenizer.tokenize(F5_BASE_ROW["tokens"]) == [34, 1574, 62, 827, 0, 1550, 1236, 1550, 0, 827, 560]
+
+
+# A row recorded with the upstream code: convert_char_to_pinyin(["我㗑你㕶"])
+# (SWivid/F5-TTS 600e5fd, f5-tts 1.1.22) gives the syllables bai and n3, which
+# the F5-TTS v1 Base vocab.txt lacks, and list_str_to_idx reads each as id 0.
+# The map holds the vocab.txt entries of the row and the two nearest syllables.
+F5_BASE_PINYIN_ROW = {
+    "tokens": [" ", "wo3", " ", "bai", " ", "ni3", " ", "n3"],
+    "ids": [0, 1178, 0, 0, 0, 794, 0, 0],
+    "phoneme_id_map": {" ": 0, "wo3": 1178, "ni3": 794, "bai2": 85, "n2": 766},
+}
+
+
+def test_f5tts_reads_a_pinyin_syllable_its_vocabulary_lacks_as_id_0():
+    """A missing token of several characters takes id 0 too, as one token."""
+    config = dict(_f5_config(), phoneme_id_map=F5_BASE_PINYIN_ROW["phoneme_id_map"])
+    tokenizer = VoiceConfig.from_dict(config).tokenizer
+    assert tokenizer.tokenize(F5_BASE_PINYIN_ROW["tokens"]) == F5_BASE_PINYIN_ROW["ids"]
