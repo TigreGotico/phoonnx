@@ -32,6 +32,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import click
 
+from card_examples import (WITHOUT_PHOONNX, UnsupportedExample, index_files, index_overrides, onnx_io,
+                           standalone_example)
+
 PROVENANCE_FILE = Path(__file__).with_name("model_card_provenance.json")
 
 SECTION_ORDER = ("Model details", "How to use", "Training data", "Related links",
@@ -89,6 +92,7 @@ class CardFacts:
     config_file: str = ""
     checkpoints: Tuple[str, ...] = ()
     sample_text: str = ""
+    example: str = ""
 
 
 @dataclass(frozen=True)
@@ -218,7 +222,8 @@ def _sample_text(card: LiveCard) -> str:
 
 def facts_from(repo_id: str, config: Dict[str, Any], card: LiveCard,
                provenance: Optional[Dict[str, Any]] = None, voice_id: Optional[str] = None,
-               files: Tuple[str, ...] = (), model_file: str = "", config_file: str = "") -> CardFacts:
+               files: Tuple[str, ...] = (), model_file: str = "", config_file: str = "",
+               example: str = "") -> CardFacts:
     """Collect the card facts of one voice; raise CardError when a required fact is missing."""
     provenance = provenance or {}
     engine = "piper" if config.get("piper_version") and not config.get("phoonnx_version") else "phoonnx"
@@ -280,6 +285,7 @@ def facts_from(repo_id: str, config: Dict[str, Any], card: LiveCard,
         config_file=config_file,
         checkpoints=tuple(sorted(f for f in files if f.endswith(".ckpt"))),
         sample_text=_sample_text(card),
+        example=example,
     )
 
 
@@ -354,6 +360,12 @@ def _install(facts: CardFacts) -> str:
 
 
 def how_to_use(facts: CardFacts) -> str:
+    """phoonnx usage for the voice, then the standalone example when there is one."""
+    usage = _phoonnx_usage(facts)
+    return usage + "\n\n" + WITHOUT_PHOONNX + facts.example if facts.example else usage
+
+
+def _phoonnx_usage(facts: CardFacts) -> str:
     """phoonnx usage for the voice: by voice id when the voice index lists it, else from its files."""
     if not facts.sample_text:
         raise CardError(f"{facts.repo_id}: the live 'How to use' section has no sample sentence")
@@ -447,8 +459,14 @@ def load_provenance(path: Path = PROVENANCE_FILE) -> Dict[str, Dict[str, str]]:
 def render_repo(repo_id: str, files: List[str], download: Callable[[str], str],
                 repo_exists: Callable[[str, str], bool],
                 provenance: Optional[Dict[str, Any]] = None,
-                index: Optional[Dict[str, Dict[str, Any]]] = None) -> str:
-    """Render one Hub repo's card; raise CardError when it cannot be rendered truthfully."""
+                index: Optional[Dict[str, Dict[str, Any]]] = None,
+                graph_io: Optional[Callable[[str], Dict[str, Dict[str, int]]]] = None) -> str:
+    """Render one Hub repo's card; raise CardError when it cannot be rendered truthfully.
+
+    ``graph_io`` reads the inputs and outputs of an ONNX file in the repo, as
+    ``card_examples.onnx_io`` does. With it, the card also gets the standalone
+    example of the voice, unless no example template covers the voice.
+    """
     voice_id, entry = _index_entry(repo_id, load_voice_index() if index is None else index)
     if entry:
         model_file = _repo_file(repo_id, entry["model_url"])
@@ -460,12 +478,34 @@ def render_repo(repo_id: str, files: List[str], download: Callable[[str], str],
         model_file, config_file = models[0], _single_config(repo_id, files)
     config = json.loads(download(config_file))
     card = parse_card(download("README.md"))
+    example = _example(repo_id, config, entry or {}, model_file, config_file, _sample_text(card), graph_io) \
+        if graph_io else ""
     facts = facts_from(repo_id, config, card, provenance, voice_id=voice_id, files=tuple(files),
-                       model_file=model_file, config_file=config_file)
+                       model_file=model_file, config_file=config_file, example=example)
     missing = [repo for repo, kind in linked_repos(facts) if not repo_exists(repo, kind)]
     if missing:
         raise CardError(f"{repo_id}: links to repos that do not exist: {', '.join(missing)}")
     return render(facts, card)
+
+
+def _example(repo_id: str, config: Dict[str, Any], entry: Dict[str, Any], model_file: str, config_file: str,
+             text: str, graph_io: Callable[[str], Dict[str, Dict[str, int]]]) -> str:
+    """The standalone example block of the voice, or "" when no template covers it or its graph cannot be read."""
+    try:
+        io = graph_io(model_file)
+    except Exception as error:  # the card loses its example, not the rest of the card
+        click.echo(f"{repo_id}: no standalone example, the graph names of {model_file} did not read: "
+                   f"{type(error).__name__}: {error}", err=True)
+        return ""
+    files = {"model": model_file, "config": config_file, "inputs": io["inputs"], "outputs": list(io["outputs"])}
+    if entry.get("dictionary_url"):
+        files["dictionary"] = index_files(entry)["dictionary"]
+    try:
+        return standalone_example(config, files, repo_id=repo_id, text=text or None,
+                                  lang=entry.get("phonemizer_lang") or entry.get("lang"),
+                                  overrides=index_overrides(entry))
+    except UnsupportedExample:
+        return ""
 
 
 def load_voice_index() -> Dict[str, Dict[str, Any]]:
@@ -528,7 +568,7 @@ def main(repos: Tuple[str, ...], all_inhouse: bool, out_dir: Path) -> None:
         try:
             text = render_repo(repo_id, api.list_repo_files(repo_id), download,
                                lambda repo, kind: api.repo_exists(repo, repo_type=kind),
-                               provenance.get(repo_id), index)
+                               provenance.get(repo_id), index, lambda name: onnx_io(repo_id, name))
         except Exception as error:  # one repo must not stop the batch; the refusal names the cause
             failed.append(f"{repo_id}: {type(error).__name__}: {error}")
             continue

@@ -71,8 +71,10 @@ test = [
     # The eSpeak, Cotovia, AhoTTS and misaki wrappers are in scriptconv-copyleft,
     # and the mantoq, Halabi and Iqra wrappers are in scriptconv-nonfree. These
     # scriptconv extras install the two packages. espyak, pycotovia and
-    # ahotts-g2p stay listed here for their version floors.
-    "scriptconv[espeak,gl,eu,ar-phonemizers]>=0.0.4a104",
+    # ahotts-g2p stay listed here for their version floors. pt-phonemizers installs
+    # tugaphone, which the card example tests run as a backend that owns its
+    # diacritize stage.
+    "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a104",
     "espyak>=0.0.3a1",
     # the voice-conversion post-stage's end-to-end test runs the real engine;
     # pure-ONNX with no torch of its own, so it is cheap to have here.
@@ -152,6 +154,9 @@ test = [
     # fallback taken when pydub cannot import its audioop module
     "pydub",
     "audioop-lts; python_version >= '3.13'",
+    # the Pocket TTS card example test runs the engine's adapter, which reads the
+    # voice state with safetensors
+    "safetensors",
 ]
 # Load-time auto-split of a monolithic VITS model into a streaming
 # encoder/decoder pair. Only needed to CREATE a split; a pre-split ("+RT")
