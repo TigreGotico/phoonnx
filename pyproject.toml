@@ -21,7 +21,7 @@ dependencies = [
     "quebra-frases",
     "langcodes",
     "linguatag>=0.1.5a1",
-    "text2spoken>=0.0.2a61",
+    "text2spoken>=0.0.2a66",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
     # >=0.0.4a109: the dizione phonemizer of the tiny-voca voices, owned_stages on every
