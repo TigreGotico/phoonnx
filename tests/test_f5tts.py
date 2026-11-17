@@ -315,7 +315,7 @@ def test_silma_voice_index_entries():
     assert en.lang == "en"
     for info in (ar, en):
         assert info.engine == "f5tts"
-        assert info.phoneme_type == "graphemes"
+        assert info.phoneme_type == "f5tts_char"
         assert "/silma-tts-v1/" in info.model_url
         assert info.model_url.endswith("model.onnx")
         assert info.aux_model_urls["preprocess_path"].endswith("F5_Preprocess.onnx")
@@ -355,7 +355,7 @@ def test_namaa_saudi_voice_index_entry():
     info = TTSModelInfo(**entries["namaa/ar-sa-v2"])
     assert info.engine == "f5tts"
     assert info.lang == "ar-SA"
-    assert info.phoneme_type == "graphemes"
+    assert info.phoneme_type == "f5tts_char"
     assert "/namaa-saudi-tts-v2/" in info.model_url
     assert info.model_url.endswith("model.onnx")
     assert info.aux_model_urls["preprocess_path"].endswith("F5_Preprocess.onnx")
@@ -520,7 +520,7 @@ def test_twi_asante_openbible_voice_index_entry():
     info = TTSModelInfo(**entries["openbible/tw-asante"])
     folder = "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/tw-asante-openbible/"
     assert info.engine == "f5tts"
-    assert info.phoneme_type == "graphemes"
+    assert info.phoneme_type == "f5tts_pinyin"
     assert info.model_url == folder + "model.onnx"
     assert info.config_url == folder + "config.json"
     assert info.aux_model_urls == {"preprocess_path": folder + "F5_Preprocess.onnx",
@@ -555,3 +555,40 @@ def test_entry_language_matches_the_source_and_reaches_the_front_end(voice_id):
     if three is not None:
         voice = TTSVoice(config=info.config, session=None)
         assert "".join(voice.phonemize("3")[0]) == three
+
+
+# The text function of each voice's upstream inference code: SWivid/F5-TTS
+# 600e5fd runs convert_char_to_pinyin (F5-TTS v1 Base, and the Twi fine-tune
+# that runs its code); SWivid/Habibi-TTS 9274498 and silma-ai/silma-tts 2816b5a
+# read the text one character per token (NAMAA v2 runs the Habibi-TTS code).
+_UPSTREAM_TEXT_FUNCTION = {
+    "f5tts/v1-base": "f5tts_pinyin", "openbible/tw-asante": "f5tts_pinyin",
+    **{f"habibi/ar-{d}": "f5tts_char" for d in ("unified", "alg", "egy", "irq", "mar", "msa", "sau", "uae")},
+    "namaa/ar-sa-v2": "f5tts_char", "silma/v1": "f5tts_char", "silma/v1-en": "f5tts_char",
+}
+
+
+@pytest.mark.parametrize("voice_id", sorted(_UPSTREAM_TEXT_FUNCTION))
+def test_entry_selects_the_text_function_of_its_upstream_code(voice_id):
+    """TTSModelInfo.load gives the voice the entry's phoneme_type over the config's."""
+    assert _f5_index()[voice_id]["phoneme_type"] == _UPSTREAM_TEXT_FUNCTION[voice_id]
+
+
+def test_base_entry_reads_hanzi_as_pinyin_over_a_graphemes_config():
+    """The config on the Hub says graphemes, which reads every hanzi as id 0.
+    The entry's phoneme_type wins, as in TTSModelInfo.load, so the voice reads
+    the pinyin ids of convert_char_to_pinyin (SWivid/F5-TTS 600e5fd) through
+    the F5-TTS v1 Base vocab.txt ids, recorded with the upstream code."""
+    from phoonnx.model_manager import TTSModelInfo
+    from phoonnx.voice import TTSVoice
+
+    vocab = {" ": 0, "wo3": 1178, "zuo2": 1410, "tian1": 1108, "mai3": 711, "le": 634, "yi1": 1259,
+             "yi4": 1262, "tai2": 1088, "xin1": 1208, "dian4": 289, "nao3": 783}
+    info = TTSModelInfo(**_f5_index()["f5tts/v1-base"])
+    info.download_config = lambda: {"engine": "f5tts", "phoneme_type": "graphemes", "alphabet": "unicode",
+                                    "lang_code": "zh", "phoneme_id_map": vocab, "fold_compounds": False,
+                                    "add_blank_char": False, "blank_at_start": False, "blank_at_end": False,
+                                    "use_eos_bos": False}
+    voice = TTSVoice(config=info.config, session=None)
+    ids = [voice.phonemes_to_ids(chunk) for chunk in voice.phonemize("我昨天买了一台新电脑")]
+    assert ids == [[0, 1178, 0, 1410, 0, 1108, 0, 711, 0, 634, 0, 1259, 0, 1088, 0, 1208, 0, 289, 0, 783]]
