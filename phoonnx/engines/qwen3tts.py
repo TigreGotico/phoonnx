@@ -16,7 +16,7 @@ with the next slice of the text. This engine drives the overridable
 ``BaseOnnxAdapter.synthesize`` rather than the single-graph ``build_feed_dict`` path,
 like the sibling :class:`phoonnx.engines.sparktts.SparkTTSAdapter`.
 
-Seven ONNX graphs (HF: ``Phoonnx/phoonnx-qwen3-tts``)::
+Seven ONNX graphs (HF: ``Phoonnx/qwen3tts-multi-customvoice-0.6b-unicode``)::
 
     talker.onnx                 28-layer KV-cached talker step (= the voice's ``session``)
     text_embed.onnx             text ids -> projected text hidden (1024)

@@ -18,7 +18,7 @@ drives the overridable ``BaseOnnxAdapter.synthesize`` rather than the single-gra
 ``build_feed_dict`` path, like its siblings :mod:`phoonnx.engines.qwen3tts` and
 :mod:`phoonnx.engines.sparktts`.
 
-Three ONNX graphs (HF: ``Phoonnx/phoonnx-zortzi-tts``, ``Phoonnx/phoonnx-audio8-tts``)::
+Three ONNX graphs (HF: ``Phoonnx/arktts-eu_es-zortzi-unicode``, ``Phoonnx/arktts-multi-audio8_preview-0.6b-unicode``)::
 
     slow_ar.onnx        24-layer KV-cached backbone step (= the voice's ``session``)
     fast_ar.onnx        4-layer depth transformer over the ten codebooks

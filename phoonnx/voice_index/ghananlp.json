@@ -1,8 +1,8 @@
 {
   "ghananlpcommunity/stable-twi-tts": {
     "voice_id": "ghananlpcommunity/stable-twi-tts",
-    "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/2220e4afa232a599653fdf8c3b2a77e638bca5ff/ghananlpcommunity__stable-twi-tts/model.onnx",
-    "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/2220e4afa232a599653fdf8c3b2a77e638bca5ff/ghananlpcommunity__stable-twi-tts/config.json",
+    "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/ghananlpcommunity__stable-twi-tts/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/ghananlpcommunity__stable-twi-tts/config.json",
     "vocab_url": null,
     "tokenizer_config_url": null,
     "tokens_url": null,
@@ -34,8 +34,8 @@
   },
   "ghananlpcommunity/poto-tts-kokoro-gh": {
     "voice_id": "ghananlpcommunity/poto-tts-kokoro-gh",
-    "model_url": "https://huggingface.co/Phoonnx/phoonnx-styletts2/resolve/e981313cb330346af24882903cfc0ef7c7443b2b/ghananlpcommunity__poto-tts-kokoro-gh/model.onnx",
-    "config_url": "https://huggingface.co/Phoonnx/phoonnx-styletts2/resolve/e981313cb330346af24882903cfc0ef7c7443b2b/ghananlpcommunity__poto-tts-kokoro-gh/config.json",
+    "model_url": "https://huggingface.co/Phoonnx/phoonnx-styletts2/resolve/a6aca4615d27cfb00e4e2879a4e8ff404296ccbb/ghananlpcommunity__poto-tts-kokoro-gh/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/phoonnx-styletts2/resolve/a6aca4615d27cfb00e4e2879a4e8ff404296ccbb/ghananlpcommunity__poto-tts-kokoro-gh/config.json",
     "vocab_url": null,
     "tokenizer_config_url": null,
     "tokens_url": null,
@@ -45,7 +45,7 @@
     "engine": "styletts2",
     "lang": "en-GH",
     "phonemizer_lang": "en-gb",
-    "style_url": "https://huggingface.co/Phoonnx/phoonnx-styletts2/resolve/e981313cb330346af24882903cfc0ef7c7443b2b/ghananlpcommunity__poto-tts-kokoro-gh/voices/bf_alice.bin",
+    "style_url": "https://huggingface.co/Phoonnx/phoonnx-styletts2/resolve/a6aca4615d27cfb00e4e2879a4e8ff404296ccbb/ghananlpcommunity__poto-tts-kokoro-gh/voices/bf_alice.bin",
     "display_name": "Ghanaian English (poto-tts Kokoro, {engine})"
   }
 }

@@ -106,6 +106,14 @@ class TestOfflineFallback(_Cache):
         self.assertEqual(path.read_bytes(), b"old")
         self.assertIn("models--OpenVoiceOS--a-repo", str(path))
 
+    def test_a_renamed_repo_falls_back_in_the_cache_of_its_earlier_id(self):
+        renamed = {REPO: ["Phoonnx/a-repo-before", "OpenVoiceOS/a-repo-first"]}
+        with patch.dict(model_manager._RENAMED_FROM, renamed):
+            self.snapshot(OLD, {"config.json": b"old"}, mtime=1000, repo="Phoonnx/a-repo-before")
+            path = _hf_fetch(url("config.json"))
+        self.assertEqual(path.read_bytes(), b"old")
+        self.assertIn("models--Phoonnx--a-repo-before", str(path))
+
     def test_the_size_question_reads_the_fallback_offline_only(self):
         self.snapshot(OLD, {"model.onnx": b"graph"}, mtime=1000, main=True)
         self.assertEqual(_cached_path(url("model.onnx")).read_bytes(), b"graph")

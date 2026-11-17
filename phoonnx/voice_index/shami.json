@@ -1,8 +1,8 @@
 {
     "Tushe/shami-tts": {
         "voice_id": "Tushe/shami-tts",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-shami/resolve/74e36fd80ddc9ec6f8efd7db87a3c2938d67c805/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-shami/resolve/74e36fd80ddc9ec6f8efd7db87a3c2938d67c805/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/shami-apc-shami/resolve/74e36fd80ddc9ec6f8efd7db87a3c2938d67c805/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/shami-apc-shami/resolve/74e36fd80ddc9ec6f8efd7db87a3c2938d67c805/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,

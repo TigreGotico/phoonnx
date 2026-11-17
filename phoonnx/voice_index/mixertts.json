@@ -1,8 +1,8 @@
 {
     "nipponjo/mixer-tts-ljspeech-80": {
         "voice_id": "nipponjo/mixer-tts-ljspeech-80",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/b24b1363f7fd92127dd317fe482126343db21b8a/ljspeech-80/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/b24b1363f7fd92127dd317fe482126343db21b8a/ljspeech-80/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/1dea7b69a8429dc1b7b51d51ccbc86ee6a9473f5/ljspeech-80/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/1dea7b69a8429dc1b7b51d51ccbc86ee6a9473f5/ljspeech-80/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -17,8 +17,8 @@
     },
     "nipponjo/mixer-tts-ljspeech-128": {
         "voice_id": "nipponjo/mixer-tts-ljspeech-128",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/b24b1363f7fd92127dd317fe482126343db21b8a/ljspeech-128/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/b24b1363f7fd92127dd317fe482126343db21b8a/ljspeech-128/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/1dea7b69a8429dc1b7b51d51ccbc86ee6a9473f5/ljspeech-128/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/1dea7b69a8429dc1b7b51d51ccbc86ee6a9473f5/ljspeech-128/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -33,8 +33,8 @@
     },
     "nipponjo/mixer-tts-ljspeech-384": {
         "voice_id": "nipponjo/mixer-tts-ljspeech-384",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/b24b1363f7fd92127dd317fe482126343db21b8a/ljspeech-384/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/b24b1363f7fd92127dd317fe482126343db21b8a/ljspeech-384/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/1dea7b69a8429dc1b7b51d51ccbc86ee6a9473f5/ljspeech-384/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/1dea7b69a8429dc1b7b51d51ccbc86ee6a9473f5/ljspeech-384/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -49,8 +49,8 @@
     },
     "nipponjo/tts-arabic-mixer80": {
         "voice_id": "nipponjo/tts-arabic-mixer80",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/b24b1363f7fd92127dd317fe482126343db21b8a/nipponjo-arabic-mixer80/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/b24b1363f7fd92127dd317fe482126343db21b8a/nipponjo-arabic-mixer80/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/1dea7b69a8429dc1b7b51d51ccbc86ee6a9473f5/nipponjo-arabic-mixer80/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/1dea7b69a8429dc1b7b51d51ccbc86ee6a9473f5/nipponjo-arabic-mixer80/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -65,8 +65,8 @@
     },
     "nipponjo/tts-arabic-mixer128": {
         "voice_id": "nipponjo/tts-arabic-mixer128",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/b24b1363f7fd92127dd317fe482126343db21b8a/nipponjo-arabic-mixer128/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/b24b1363f7fd92127dd317fe482126343db21b8a/nipponjo-arabic-mixer128/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/1dea7b69a8429dc1b7b51d51ccbc86ee6a9473f5/nipponjo-arabic-mixer128/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx-mixertts/resolve/1dea7b69a8429dc1b7b51d51ccbc86ee6a9473f5/nipponjo-arabic-mixer128/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
