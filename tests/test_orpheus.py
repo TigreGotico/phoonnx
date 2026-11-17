@@ -403,3 +403,179 @@ def test_detect_matches_only_the_named_engine():
     assert OrpheusAdapter.detect(config={"engine": "orpheus"}) is True
     assert OrpheusAdapter.detect(config={"engine": "neutts"}) is False
     assert OrpheusAdapter.detect(config=None) is False
+
+
+# ----------------------------------------------------------------------
+# reproducibility across processes
+# ----------------------------------------------------------------------
+
+def _noisy_snac(path):
+    """A stand-in SNAC decoder with the real one's noise op: a seedless
+    RandomNormalLike over the stream-0 codes, which draws from onnxruntime's
+    process-wide generator."""
+    import onnx
+    from onnx import TensorProto, helper
+    codes = [helper.make_tensor_value_info(f"audio_codes.{i}", TensorProto.INT64, [1, None])
+             for i in range(3)]
+    nodes = [helper.make_node("Cast", ["audio_codes.0"], ["codes"], to=TensorProto.FLOAT),
+             helper.make_node("RandomNormalLike", ["codes"], ["noise"]),
+             helper.make_node("Add", ["codes", "noise"], ["audio"])]
+    out = helper.make_tensor_value_info("audio", TensorProto.FLOAT, [1, None])
+    graph = helper.make_graph(nodes, "noisy_snac", codes, [out])
+    model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 17)])
+    model.ir_version = 8
+    onnx.save(model, path)
+
+
+_SYNTHESIZE = """
+import sys
+import numpy as np
+from phoonnx.engines.base import AdapterSynthesisRequest
+from phoonnx.engines.orpheus import OrpheusAdapter
+from tests.test_orpheus import (AUDIO_TOKEN_BASE, CODEBOOK_SIZE, END_OF_SPEECH, EN_VOICES,
+                                TOKENS_PER_FRAME, _Cfg, _FakeSession, _FakeTokenizer,
+                                _logits_emitting)
+
+snac_path, steps = sys.argv[1], sys.argv[2:]
+frames = [[AUDIO_TOKEN_BASE + i * CODEBOOK_SIZE + f for i in range(TOKENS_PER_FRAME)]
+          for f in range(8)]
+voice = None
+for step in steps:
+    if step == "voice":
+        voice = OrpheusAdapter()
+        voice.tokenizer = _FakeTokenizer()
+        voice.configure(_Cfg(engine_params={"snac_decoder_path": snac_path,
+                                            "voices": EN_VOICES}))
+        continue
+    params = {"temperature": 0.0, "max_new_tokens": 100}
+    if step != "none":
+        params["seed"] = int(step)
+    req = AdapterSynthesisRequest(phoneme_ids=np.asarray([[1, 2, 3]], np.int64),
+                                  phoneme_lengths=np.asarray([3], np.int64), params=params)
+    lm = _FakeSession(_logits_emitting(sum(frames, []) + [END_OF_SPEECH]))
+    print(voice.synthesize(req, lm).audio.tobytes().hex())
+"""
+
+
+def _synthesize_in_a_fresh_process(snac_path, *steps):
+    """Run ``steps`` in a new process: ``voice`` configures a new adapter with its own
+    SNAC session, a number is a call with that seed and ``none`` a call with no seed.
+    Returns the audio of each call."""
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+    env = {**os.environ, "PHOONNX_SHARE_ONNX_SESSIONS": "0"}
+    run = subprocess.run([sys.executable, "-c", _SYNTHESIZE, str(snac_path), *steps],
+                         cwd=Path(__file__).resolve().parents[1], capture_output=True,
+                         text=True, check=False, env=env)
+    assert run.returncode == 0, run.stderr
+    return [bytes.fromhex(line) for line in run.stdout.split()]
+
+
+@pytest.fixture
+def noisy_snac(tmp_path):
+    snac = tmp_path / "snac_decoder.onnx"
+    _noisy_snac(snac)
+    return snac
+
+
+def test_a_seed_fixes_the_snac_noise_across_calls_and_processes(noisy_snac):
+    """The seed must fix the audio, not only the tokens: SNAC's noise nodes draw from
+    onnxruntime's generator, which a numpy seed does not reach. Each process makes two
+    calls on one adapter."""
+    unseeded = _synthesize_in_a_fresh_process(noisy_snac, "voice", "none", "none") + \
+        _synthesize_in_a_fresh_process(noisy_snac, "voice", "none", "none")
+    assert len(set(unseeded)) == 4, "the stand-in decoder must draw fresh noise on every run"
+    seeded = _synthesize_in_a_fresh_process(noisy_snac, "voice", "0", "0") + \
+        _synthesize_in_a_fresh_process(noisy_snac, "voice", "0", "0")
+    assert len(seeded[0]) == 8 * 4, "eight frames, one float32 sample per stream-0 code"
+    assert seeded[0] == seeded[1] == seeded[2] == seeded[3]
+    other = _synthesize_in_a_fresh_process(noisy_snac, "voice", "1")
+    assert other[0] != seeded[0], "a different seed draws different noise"
+
+
+def test_a_voice_loaded_after_a_seeded_call_draws_fresh_noise(noisy_snac):
+    """onnxruntime keeps its seed for the rest of the process. A session built after a
+    seeded call must not start from that seed, or its first unseeded call repeats the
+    seeded audio."""
+    seeded, later = _synthesize_in_a_fresh_process(noisy_snac, "voice", "0", "voice", "none")
+    assert later != seeded
+
+
+def test_a_seed_beyond_int64_decodes(noisy_snac):
+    """numpy takes any non-negative seed; onnxruntime's set_seed takes an int64 only.
+    A 64-bit seed reaches the decoder modulo 2**63, so 2**64 gives the noise of 0."""
+    zero, big, big_again = _synthesize_in_a_fresh_process(
+        noisy_snac, "voice", "0", "voice", str(2 ** 64), str(2 ** 64))
+    assert len(big) == 8 * 4
+    assert big == big_again == zero
+
+
+def test_a_seeded_decode_holds_the_seed_lock_until_it_reseeds(monkeypatch):
+    """set_seed, the private session build, its run and the reseed from entropy all
+    happen under the seed lock, on the providers the voice configured. The shared
+    session is also built under the lock, so it cannot read a seeded call's seed. A
+    call with no seed decodes on the shared session and never touches the seed."""
+    from phoonnx.engines import orpheus
+    events = []
+
+    class _RecordingSnac(_FakeSnac):
+        def run(self, _none, feed):
+            events.append(("run", orpheus._SEED_LOCK.locked()))
+            return super().run(_none, feed)
+
+    def make_session(path, providers=None, sess_options=None):
+        events.append(("build", path, providers, sess_options is not None,
+                       orpheus._SEED_LOCK.locked()))
+        return _RecordingSnac()
+
+    monkeypatch.setattr(orpheus, "make_session", make_session)
+    monkeypatch.setattr(orpheus.onnxruntime, "set_seed",
+                        lambda seed: events.append(("set_seed", seed,
+                                                    orpheus._SEED_LOCK.locked())))
+    a = OrpheusAdapter()
+    a.tokenizer = _FakeTokenizer()
+    a.configure(_Cfg(engine_params={"snac_decoder_path": "snac.onnx",
+                                    "providers": ["CPUExecutionProvider"]}))
+    frame = [AUDIO_TOKEN_BASE + i * CODEBOOK_SIZE for i in range(TOKENS_PER_FRAME)]
+
+    def call(**seed):
+        req = AdapterSynthesisRequest(phoneme_ids=np.asarray([[1, 2, 3]], np.int64),
+                                      phoneme_lengths=np.asarray([3], np.int64),
+                                      params={"temperature": 0.0, **seed})
+        a.synthesize(req, _FakeSession(_logits_emitting(frame + [END_OF_SPEECH])))
+        out = events[:]
+        events.clear()
+        return out
+
+    assert call() == [("build", "snac.onnx", ["CPUExecutionProvider"], False, True),
+                      ("run", False)]
+    first, second = call(seed=7), call(seed=7)
+    for seeded in (first, second):
+        assert seeded[:3] == [("set_seed", 7, True),
+                              ("build", "snac.onnx", ["CPUExecutionProvider"], True, True),
+                              ("run", True)]
+        assert len(seeded) == 4 and seeded[3][0] == "set_seed" and seeded[3][2] is True
+    assert first[3][1] != second[3][1], "the reseed draws from entropy, not a constant"
+    assert not orpheus._SEED_LOCK.locked()
+
+
+def test_a_failed_seeded_decode_still_reseeds_and_releases_the_lock(monkeypatch):
+    """When the decode raises, the error reaches the caller, onnxruntime is reseeded
+    from entropy and the seed lock is free again."""
+    from phoonnx.engines import orpheus
+    seeds = []
+
+    class _BrokenSnac(_FakeSnac):
+        def run(self, _none, feed):
+            raise RuntimeError("decode failed")
+
+    monkeypatch.setattr(orpheus, "make_session", lambda *a, **k: _BrokenSnac())
+    monkeypatch.setattr(orpheus.onnxruntime, "set_seed", seeds.append)
+    a = OrpheusAdapter()
+    a.snac_path, a.snac_providers = "snac.onnx", None
+    with pytest.raises(RuntimeError, match="decode failed"):
+        a.decode_codes_seeded([[0], [0, 0], [0, 0, 0, 0]], seed=7)
+    assert seeds[0] == 7 and len(seeds) == 2 and seeds[1] != 7
+    assert not orpheus._SEED_LOCK.locked()

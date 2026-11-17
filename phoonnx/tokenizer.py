@@ -226,7 +226,8 @@ class Vocabulary:
     A dataclass to store the mapping between characters/phonemes and their integer IDs,
     along with special tokens used in Text-to-Speech (TTS) models.
     """
-    char2idx: Dict[str, int]
+    char2idx: Dict[str, Union[int, List[int]]]
+    """Symbol to id. A list value is a symbol that gives several ids, or none."""
     pad: Optional[str] = None
     eos: Optional[str] = None
     bos: Optional[str] = None
@@ -242,21 +243,25 @@ class Vocabulary:
             cfg (Dict[str, Any]): Configuration mapping expected to contain "phoneme_id_map"
                 (mapping phoneme strings to integer IDs). Optional keys "pad", "eos", "bos",
                 and "blank" override the corresponding special token names; defaults are used when absent.
-        
+                The optional "blank_word" names the symbol put between words when
+                "add_blank_word" is true, as in the Mimic 3 "phonemes" section.
+
         Returns:
             Vocabulary: Vocabulary populated with the parsed char-to-index map and configured special tokens.
         """
-        # Some hybrid configs (phoonnx_version present but Piper-style phoneme_id_map)
-        # carry list-valued ids, e.g. "a": [14]; unwrap those like from_piper_config does.
-        char2idx: Dict[str, int] = {
-            char: (idx[0] if isinstance(idx, (list, tuple)) else idx)
+        # A list value holds the ids of one symbol, as in a Piper phoneme_id_map.
+        # A one-id list is the plain id. A longer or empty list is kept whole: the
+        # symbol gives each id in turn, or no id (a Mimic 3 phoneme_map.txt entry).
+        char2idx: Dict[str, Union[int, List[int]]] = {
+            char: (idx[0] if len(idx) == 1 else list(idx)) if isinstance(idx, (list, tuple)) else idx
             for char, idx in cfg.get("phoneme_id_map", {}).items()
         }
         pad: Optional[str] = cfg.get("pad") or DEFAULT_PAD_TOKEN
         eos: Optional[str] = cfg.get("eos") or DEFAULT_EOS_TOKEN
         bos: Optional[str] = cfg.get("bos") or DEFAULT_BOS_TOKEN
         blank: Optional[str] = cfg.get("blank") or DEFAULT_BLANK_TOKEN
-        return Vocabulary(char2idx=char2idx, pad=pad, eos=eos, bos=bos, blank=blank)
+        return Vocabulary(char2idx=char2idx, pad=pad, eos=eos, bos=bos, blank=blank,
+                          blank_word=cfg.get("blank_word"))
 
     @staticmethod
     def from_piper_config(cfg: Dict[str, Any]) -> 'Vocabulary':
@@ -421,8 +426,9 @@ class Vocabulary:
         
         Returns:
             idx2char (Dict[int, str]): A dictionary mapping each token ID to its character.
+            A symbol with a list of ids has no entry of its own.
         """
-        return {idx: char for char, idx in self.char2idx.items()}
+        return {idx: char for char, idx in self.char2idx.items() if isinstance(idx, int)}
 
     @property
     def pad_id(self) -> Optional[int]:
@@ -564,7 +570,7 @@ class TTSTokenizer:
             if i in compound_idxs:
                 idx = None
             elif self.add_blank_word and char == " ":
-                idx = self.blank_word_id
+                idx = self.blank_word_id if self._ends_word(token_ids) else None
             else:
                 idx = self.vocabulary.char2idx.get(char)
 
@@ -604,13 +610,19 @@ class TTSTokenizer:
                     self._warn_unknown(char)
 
             if isinstance(idx, list):
+                # a break entry such as ".": [#, ·, ·] starts with the word blank;
+                # drop it where no word ends, as phonemes2ids gives no second one
+                if (self.add_blank_word and idx and idx[0] == self.blank_word_id
+                        and not self._ends_word(token_ids)):
+                    idx = idx[1:]
                 token_ids.extend(idx)
             else:
                 token_ids.append(idx)
 
         # NOTE: mimic3 adds an extra word_blank at end, so we match that behaviour here
         #  instead of ending [..., BLANK, EOS] it ends with [..., BLANK, BLANK_WORD, BLANK, EOS]
-        if self.add_blank_word and self.blank_at_end and self.blank_word_id is not None:
+        if (self.add_blank_word and self.blank_at_end and self.blank_word_id is not None
+                and self._ends_word(token_ids)):
             token_ids.append(self.blank_word_id)
 
         # Filter out None values (out-of-vocabulary characters)
@@ -625,6 +637,16 @@ class TTSTokenizer:
         LOG.warning(f"Out-of-vocabulary phoneme {char!r} "
                     f"(codepoints: {[hex(ord(c)) for c in char]}) "
                     f"not found in vocabulary, {action}")
+
+    def _ends_word(self, token_ids: List[Optional[int]]) -> bool:
+        """Whether a word blank goes after *token_ids*.
+
+        Mimic 3 (phonemes2ids) puts the word blank after each word that gives
+        at least one id. So a space after a word blank, a space at the start, or
+        a trailing space after the final word blank gives no second one.
+        """
+        last = next((t for t in reversed(token_ids) if t is not None), None)
+        return last is not None and last != self.blank_word_id
 
     def tokenize(self, text: Union[str, List[str]]) -> List[int]:
         """

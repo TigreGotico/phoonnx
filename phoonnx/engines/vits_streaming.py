@@ -177,8 +177,7 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
             "input_lengths": request.phoneme_lengths,
             "scales": scales,
         }
-        if request.speaker_id is not None:
-            args["sid"] = np.array([request.speaker_id], dtype=np.int64)
+        args["sid"] = np.array([request.speaker_id or 0], dtype=np.int64)
         return self._filter_inputs(args, session)
 
     def parse_outputs(self, outputs: List[np.ndarray],
@@ -262,7 +261,7 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
         # 1) Encoder runs once, producing the full latent sequence.
         feed = self.build_feed_dict(request, session)
         z, y_mask = self._run_encoder(session, feed)
-        sid = request.speaker_id
+        sid = request.speaker_id or 0
         T = z.shape[2]
 
         M = self._streaming["context_margin"]

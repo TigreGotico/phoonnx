@@ -98,8 +98,7 @@ class GlowTTSAdapter(BaseOnnxAdapter):
             "input_lengths": request.phoneme_lengths.astype(np.int64),
             "scales": np.array([noise_scale, length_scale], dtype=np.float32),
         }
-        if request.speaker_id is not None:
-            args["sid"] = np.array([int(request.speaker_id)], dtype=np.int64)
+        args["sid"] = np.array([int(request.speaker_id or 0)], dtype=np.int64)
         return self._filter_inputs(args, session)
 
     def parse_outputs(
