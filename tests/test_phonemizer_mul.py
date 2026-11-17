@@ -7,6 +7,7 @@ onnxruntime models) are mocked so these run without the optional extras.
 """
 import subprocess
 import sys
+import threading
 import unittest
 from unittest.mock import MagicMock, call, patch
 
@@ -18,6 +19,7 @@ from scriptconv.phonemizers.mul import (
     CharsiuPhonemizer,
     ByT5Phonemizer,
 )
+import scriptconv.phonemizers.mul as scriptconv_mul
 from scriptconv_copyleft.phonemizers.mul import EspeakError, EspeakPhonemizer, MisakiPhonemizer
 
 
@@ -160,55 +162,44 @@ class TestGruutGetLangAndDispatch(unittest.TestCase):
         sentence.__bool__.return_value = True
         return sentence
 
-    def test_question_mark_forces_final_token(self):
-        inst = GruutPhonemizer()
-        sentence = self._make_sentence("hi?", [["h", "i"]])
+    def _phonemize(self, text, sentences):
+        """Run GruutPhonemizer on a fake gruut TextProcessor that yields
+        ``sentences``, with an empty per-language processor cache so a real
+        processor cached by an earlier test is never reused."""
+        processor = MagicMock(return_value=(MagicMock(), MagicMock()))
+        processor.sentences.return_value = sentences
+        processor.get_settings.return_value.lookup_phonemes = None
         fake_gruut = MagicMock()
-        fake_gruut.sentences.return_value = [sentence]
-        with patch.dict(sys.modules, {"gruut": fake_gruut}):
-            result = inst.phonemize_string("hi?", "en")
-        self.assertTrue(result.endswith("?"))
+        fake_gruut.TextProcessor.return_value = processor
+        with patch.dict(sys.modules, {"gruut": fake_gruut}), \
+                patch.object(scriptconv_mul, "_GRUUT", threading.local()):
+            return GruutPhonemizer().phonemize_string(text, "en")
+
+    def test_question_mark_forces_final_token(self):
+        sentence = self._make_sentence("hi?", [["h", "i"]])
+        result = self._phonemize("hi?", [sentence])
+        self.assertEqual(result.split()[-1], "?")
 
     def test_exclamation_forces_final_token(self):
-        inst = GruutPhonemizer()
         sentence = self._make_sentence("wow!", [["w", "aʊ"]])
-        fake_gruut = MagicMock()
-        fake_gruut.sentences.return_value = [sentence]
-        with patch.dict(sys.modules, {"gruut": fake_gruut}):
-            result = inst.phonemize_string("wow!", "en")
-        self.assertTrue(result.endswith("!"))
+        result = self._phonemize("wow!", [sentence])
+        self.assertEqual(result.split()[-1], "!")
 
     def test_period_forces_final_token(self):
-        inst = GruutPhonemizer()
         sentence = self._make_sentence("done.", [["d", "ʌ", "n"]])
-        fake_gruut = MagicMock()
-        fake_gruut.sentences.return_value = [sentence]
-        with patch.dict(sys.modules, {"gruut": fake_gruut}):
-            result = inst.phonemize_string("done.", "en")
-        self.assertTrue(result.endswith("."))
+        result = self._phonemize("done.", [sentence])
+        self.assertEqual(result.split()[-1], ".")
 
     def test_empty_word_phonemes_raises_runtime_error_hinting_missing_lang_pack(self):
         """Gruut sentence with no phonemized words signals a missing
         language pack; this must raise a clear RuntimeError, not silently
         drop the sentence or crash with an IndexError."""
-        inst = GruutPhonemizer()
-        sentence = MagicMock()
-        sentence.text = "hello"
-        sentence.__iter__.return_value = iter([MagicMock(phonemes=[])])
-        sentence.__bool__.return_value = True
-        fake_gruut = MagicMock()
-        fake_gruut.sentences.return_value = [sentence]
-        with patch.dict(sys.modules, {"gruut": fake_gruut}):
-            with self.assertRaises(RuntimeError):
-                inst.phonemize_string("hello", "en")
+        sentence = self._make_sentence("hello", [[]])
+        with self.assertRaises(RuntimeError):
+            self._phonemize("hello", [sentence])
 
     def test_empty_input_text_yields_empty_output(self):
-        inst = GruutPhonemizer()
-        fake_gruut = MagicMock()
-        fake_gruut.sentences.return_value = []
-        with patch.dict(sys.modules, {"gruut": fake_gruut}):
-            result = inst.phonemize_string("", "en")
-        self.assertEqual(result, "")
+        self.assertEqual(self._phonemize("", []), "")
 
 
 class TestGoruutGetLang(unittest.TestCase):

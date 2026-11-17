@@ -403,6 +403,7 @@ class VoiceConfig:
             },
             "phoneme_id_map": dict(voc.char2idx),
             "pad": voc.pad, "blank": voc.blank, "bos": voc.bos, "eos": voc.eos,
+            "blank_word": voc.blank_word,
             "add_blank_char": tok.add_blank_char,
             "add_blank_word": tok.add_blank_word,
             "use_eos_bos": tok.use_eos_bos,

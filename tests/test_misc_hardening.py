@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import threading
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -70,6 +71,7 @@ class TestGruutEmptySentence(unittest.TestCase):
     """An empty gruut sentence result must not IndexError on sent_phonemes[-1]."""
 
     def test_empty_sentence_phonemes_skipped(self):
+        import scriptconv.phonemizers.mul as scriptconv_mul
         from scriptconv.phonemizers.mul import GruutPhonemizer
 
         fake_sentence = MagicMock()
@@ -77,12 +79,16 @@ class TestGruutEmptySentence(unittest.TestCase):
         fake_sentence.__bool__ = lambda self: False  # empty sentence -> empty sent_phonemes
         fake_sentence.text = ""
 
-        phonemizer = GruutPhonemizer.__new__(GruutPhonemizer)
-        phonemizer.get_lang = lambda lang: lang
+        processor = MagicMock(return_value=(MagicMock(), MagicMock()))
+        processor.sentences.return_value = [fake_sentence]
+        processor.get_settings.return_value.lookup_phonemes = None
+        fake_gruut = MagicMock()
+        fake_gruut.TextProcessor.return_value = processor
 
-        with patch("gruut.sentences", return_value=[fake_sentence]):
+        with patch.dict(sys.modules, {"gruut": fake_gruut}), \
+                patch.object(scriptconv_mul, "_GRUUT", threading.local()):
             # must not raise IndexError; empty result is simply skipped
-            result = list(phonemizer._text_to_phonemes("...", "en"))
+            result = list(GruutPhonemizer()._text_to_phonemes("...", "en"))
         self.assertEqual(result, [])
 
 
