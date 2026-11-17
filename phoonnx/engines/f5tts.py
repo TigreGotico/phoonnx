@@ -368,8 +368,9 @@ class F5TTSAdapter(BaseOnnxAdapter):
         Habibi-TTS and SILMA TTS do the same). The model then reads the
         reference text and the generation text as one string. The end is
         computed on *reference_text* without the whitespace at its end. The
-        frontend keeps some of that whitespace as space ids and drops the
-        rest, so the space ids at the end of the ids go first: the result is
+        frontend keeps some of that whitespace as ids (a space, or a tab in
+        the vocabularies that hold one) and drops the rest, so the whitespace
+        ids at the end of the ids go first: the result is
         the same for a reference text with or without whitespace at its end.
         With no *reference_text*, the ids stay as given.
         """
@@ -377,8 +378,7 @@ class F5TTSAdapter(BaseOnnxAdapter):
         if reference_text:
             text = reference_text.rstrip()
             trailing = len(reference_text) - len(text)
-            space = self._char2idx.get(" ")
-            while trailing and ids and ids[-1] == space:
+            while trailing and ids and self._idx2char.get(ids[-1], "").isspace():
                 ids.pop()
                 trailing -= 1
             if text.endswith("。"):

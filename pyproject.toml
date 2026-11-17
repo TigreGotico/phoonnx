@@ -29,6 +29,10 @@ dependencies = [
     # normalisation, and TextFrontend normalising the whole text before the
     # sentence split. Every extra relies on this floor.
     "scriptconv[phonemizers]>=0.0.4a110",
+    # the F5-TTS pinyin text function (f5tts_pinyin) of F5-TTS v1 Base and Twi
+    # Asante segments with rjieba and reads hanzi with pypinyin
+    "rjieba>=0.2.2",
+    "pypinyin>=0.50",
     "unicode_rbnf",
     "click",
     "requests",
@@ -120,8 +124,6 @@ test = [
     # after 0.44 — older resolved versions (pulled in transitively by
     # espnet/f5-tts) fail at import time with an ImportError
     "pypinyin>=0.50",
-    # the F5-TTS pinyin text function (scriptconv f5tts_pinyin) segments with rjieba
-    "rjieba>=0.2.2",
     # cross-check reference for the Larynx/Mimic3 tokenization golden tests
     "gruut[en]>=2.3.0,<3.0",
     # reference implementation for tests/test_bpe_reader.py. phoonnx reads
@@ -333,8 +335,6 @@ ru = ["epitran", "gruut[ru]>=2.3.0,<3.0"]
 sv = ["epitran", "gruut[sv]>=2.3.0,<3.0"]
 sw = ["epitran", "gruut[sw]>=2.3.0,<3.0"]
 vi = ["epitran", "gruut[vi]>=2.3.0,<3.0", "scriptconv[vi]>=0.0.4a110", "scriptconv-copyleft>=0.1.0a1", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
-# scriptconv[zh-phonemizers] installs rjieba and pypinyin, which the F5-TTS
-# pinyin text function (f5tts_pinyin) of F5-TTS v1 Base and Twi Asante needs.
 zh = ["scriptconv[zh-phonemizers]>=0.0.4a110", "epitran", "gruut[zh]>=2.3.0,<3.0", "scriptconv-copyleft>=0.1.0a1", "misaki[zh]", "spacy>=3.7,<4.0", "g2pM", "pypinyin", "xpinyin", "pinyin_to_ipa", "jieba", "cn2an"]
 aa = ["epitran"]
 aii = ["epitran"]
