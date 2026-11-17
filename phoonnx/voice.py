@@ -1095,8 +1095,9 @@ class TTSVoice:
         1.25 is ``length_scale / 1.25``); ``<prosody volume>`` scales the samples; ``<prosody
         pitch>`` and ``vocal-tract-length`` shift the finished audio (:mod:`phoonnx.audio_fx`);
         ``<lang>`` picks the language id of a multilingual voice when it has one (a monolingual
-        voice says the words in its own language); ``<say-as>``, ``<sub>`` and ``<phoneme>`` are
-        read as words and phonemes; ``<amazon:effect>`` whispers, softens or compresses the audio;
+        voice says the words in its own language); :meth:`scriptconv.frontend.TextFrontend.say_as`
+        of :attr:`frontend` reads ``<say-as>``; ``<sub>`` and ``<phoneme>`` are read as words and
+        phonemes; ``<amazon:effect>`` whispers, softens or compresses the audio;
         ``<amazon:auto-breaths>`` and ``<amazon:breath>`` add breaths; an expletive is a bleep. A
         text that is not SSML is synthesized as it is.
 
@@ -1147,7 +1148,7 @@ class TTSVoice:
                 kind, ms, volume = piece.sound
                 yield passed(tone(kind, ms, volume, at_rate))
 
-        for piece in parse_ssml(ssml, voice_lang):
+        for piece in parse_ssml(ssml, voice_lang, self.frontend):
             if piece.sound is not None or not piece.text:
                 if rate is None:
                     waiting.append(piece)
