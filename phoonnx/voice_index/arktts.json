@@ -550,5 +550,28 @@
   "engine_options": {
    "voice": "antton"
   }
+ },
+ "arktts/realistic-air-lj/en": {
+  "voice_id": "arktts/realistic-air-lj/en",
+  "model_url": "https://huggingface.co/Phoonnx/arktts-multi-realistic-unicode/resolve/main/slow_ar_fp32.onnx",
+  "config_url": "https://huggingface.co/Phoonnx/arktts-multi-realistic-unicode/resolve/main/config.json",
+  "vocab_url": null,
+  "tokens_url": null,
+  "tokenizer_config_url": null,
+  "phoneme_map_url": null,
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
+  "engine": "arktts",
+  "lang": "en-US",
+  "aux_model_urls": {
+   "fast_ar_path": "https://huggingface.co/Phoonnx/arktts-multi-realistic-unicode/resolve/main/fast_ar_fp32.onnx",
+   "codec_decoder_path": "https://huggingface.co/Phoonnx/arktts-multi-realistic-unicode/resolve/main/codec_decoder_fp32.onnx",
+   "bpe_tokenizer_path": "https://huggingface.co/Phoonnx/arktts-multi-realistic-unicode/resolve/main/tokenizer.json",
+   "voice_codes_path": "https://huggingface.co/Phoonnx/arktts-multi-realistic-unicode/resolve/main/voices/lj.json"
+  },
+  "display_name": "Audio8-TTS Realistic-Air LJ (English)",
+  "engine_options": {
+   "voice": "lj"
+  }
  }
 }
