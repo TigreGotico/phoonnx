@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.104.1a1](https://github.com/TigreGotico/phoonnx/tree/1.104.1a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.104.0a1...1.104.1a1)
+
+**Merged pull requests:**
+
+- fix: gruut tests mock the TextProcessor that scriptconv calls [\#633](https://github.com/TigreGotico/phoonnx/pull/633) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.104.0a1](https://github.com/TigreGotico/phoonnx/tree/1.104.0a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.103.0a1...1.104.0a1)
@@ -372,10 +380,6 @@
 ## [1.94.4a1](https://github.com/TigreGotico/phoonnx/tree/1.94.4a1) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.3a1...1.94.4a1)
-
-**Merged pull requests:**
-
-- fix: tag British Kokoro, accented PocketTTS and Kristin by training source [\#521](https://github.com/TigreGotico/phoonnx/pull/521) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.94.3a1](https://github.com/TigreGotico/phoonnx/tree/1.94.3a1) (2026-11-04)
 
