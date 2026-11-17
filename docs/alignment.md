@@ -62,19 +62,20 @@ Convert `num_samples` to milliseconds: `num_samples / chunk.sample_rate * 1000`.
 
 ---
 
-## Lower-level: `phoneme_ids_to_audio()`
+## Lower-level: `render()`
 
-If you are working at the phoneme-ID level you can call the method directly:
+If you work with token IDs, put them in an `Utterance` and render it with `alignments=True`:
 
 ```python
-audio_or_tuple = voice.phoneme_ids_to_audio(phoneme_ids, include_alignments=True)
+from phoonnx.voice import Utterance
 
-if isinstance(audio_or_tuple, tuple):
-    audio, phoneme_id_samples = audio_or_tuple
-    # phoneme_id_samples[i] = samples for phoneme_ids[i], or None if unsupported
-else:
-    audio = audio_or_tuple  # include_alignments=False
+chunk = voice.render(Utterance(text="", symbols=None, ids=tuple(phoneme_ids)), alignments=True)
+samples = chunk.phoneme_id_samples  # samples for each ID, or None if the model has no durations
 ```
+
+`render()` always returns an `AudioChunk`. When the model gives durations,
+`chunk.phoneme_alignments` also holds the samples of each phoneme, read from the voice's
+vocabulary as in `synthesize()`.
 
 ---
 
@@ -104,7 +105,7 @@ voice.config.hop_length = 256
 Alignment works uniformly across every duration-predictor engine adapter — not
 just VITS. Each adapter's `parse_outputs` looks for a per-phoneme duration
 tensor among the model's ONNX outputs by name (see `DURATION_OUTPUT_NAMES` on
-each adapter class), and `TTSVoice.phoneme_ids_to_audio` converts whatever it
+each adapter class), and `TTSVoice.render` converts whatever it
 finds to samples the same way for every engine: `samples = frames * hop_length`.
 This holds for single-stage engines (the "frames" are the internal
 duration-predictor's frame rate, matching the decoder's implicit hop) and for
@@ -182,7 +183,7 @@ export_alignment_model("model.onnx", "model-aligned.onnx")
 
 You don't have to re-export a model to get alignments from it.
 ``TTSVoice.synthesize(include_alignments=True)`` (and
-``phoneme_ids_to_audio(include_alignments=True)``) retrofit the duration
+``render(utterance, alignments=True)``) retrofit the duration
 output automatically the first time they are asked for one and the loaded
 session doesn't already have it:
 

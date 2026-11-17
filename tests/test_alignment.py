@@ -90,8 +90,8 @@ def _make_tokenizer(char2idx=None):
 def _make_voice(session_outputs, phonemize_result=None, token_ids=None, char2idx=None):
     """Build a TTSVoice with a mocked ONNX session.
 
-    ``voice.phonemize`` and ``voice.phonemes_to_ids`` are mocked at the
-    instance level to bypass all text-processing paths.
+    The phonemizer and ``config.tokenizer.tokenize`` are mocked to bypass all
+    text-processing paths.
 
     session_outputs: list of numpy arrays the fake session.run() returns.
     token_ids: the full sequence including bos/blank/eos that the tokenizer
@@ -125,6 +125,7 @@ def _make_voice(session_outputs, phonemize_result=None, token_ids=None, char2idx
     cfg.diacritizer_model = None
     cfg.engine_params = {}
     cfg.tokenizer = _make_tokenizer(char2idx)
+    cfg.tokenizer.tokenize.return_value = token_ids
 
     voice = TTSVoice.__new__(TTSVoice)
     voice.session = session
@@ -132,7 +133,6 @@ def _make_voice(session_outputs, phonemize_result=None, token_ids=None, char2idx
     voice.phonemizer = _FakePhonemizer(phonemize_result)
     voice.phonetic_spellings = None
     voice.adapter = VitsAdapter()
-    voice.phonemes_to_ids = MagicMock(return_value=token_ids)
     return voice
 
 
@@ -611,10 +611,11 @@ class TestTokenizerWithoutVocabulary(unittest.TestCase):
             token_ids=ids,
         )
         # Simulate a BPE-style tokenizer: no ``vocabulary`` attribute at all.
-        tok = MagicMock(spec=["pad_id", "blank_id", "blank_word_id"])
+        tok = MagicMock(spec=["pad_id", "blank_id", "blank_word_id", "tokenize"])
         tok.pad_id = 0
         tok.blank_id = 0
         tok.blank_word_id = 0
+        tok.tokenize.return_value = ids
         voice.config.tokenizer = tok
         return voice
 

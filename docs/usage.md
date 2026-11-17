@@ -92,12 +92,13 @@ for chunk in voice.synthesize("Hello! How are you today?", syn_config=syn_config
 
 ### From Phoneme IDs Directly
 
-If you have pre-computed phoneme IDs, you can synthesize raw audio directly:
+If you have token IDs for the voice already, put them in an `Utterance` and render it:
 
 ```python
-import numpy as np
-phoneme_ids = [1, 5, 23, 7, 2]  # example IDs
-audio: np.ndarray = voice.phoneme_ids_to_audio(phoneme_ids)
+from phoonnx.voice import Utterance
+
+chunk = voice.render(Utterance(text="", symbols=None, ids=(1, 5, 23, 7, 2)))
+audio = chunk.audio_float_array
 ```
 
 ### Phoneme Alignment
@@ -252,20 +253,43 @@ Each `AudioChunk` has the following attributes:
 
 ## Low-level API
 
-`synthesize()` is built from three composable steps you can call yourself:
+`synthesize()` has two steps that you can call yourself: `prepare()` turns text into model
+input, and `render()` turns model input into audio.
 
 ```python
-# text -> phonemes grouped by sentence (a list of lists of phoneme strings)
-chunks = voice.phonemize("Hello world", lang="en-US")
+from phoonnx.config import SynthesisConfig
 
-# phonemes -> integer token IDs
-ids = voice.phonemes_to_ids(chunks[0])
-
-# token IDs -> raw float32 audio (unnormalized)
-audio = voice.phoneme_ids_to_audio(ids)
+config = SynthesisConfig(length_scale=1.1)
+for utterance in voice.prepare("Hello world. How are you?", config):
+    print(utterance.symbols)  # the phonemes of one sentence, or None
+    print(utterance.ids)      # the token IDs that the engine reads
+    chunk = voice.render(utterance, config)
 ```
 
-`phonemize()` accepts an optional `lang` to phonemize in a language other than the voice's own
-(used for cross-lingual cloning references). `phoneme_ids_to_audio()` accepts a
-`SynthesisConfig` and optional per-id side streams, e.g. `streams={"language_ids": [...]}`,
-with one value per phoneme id.
+`prepare()` yields one `Utterance` for each engine call, usually one for each sentence. An
+`Utterance` cannot be changed after it is made. It has four fields:
+
+| Field | Value |
+|-------|-------|
+| `text` | The text that `prepare()` read |
+| `symbols` | The phonemes or characters that the tokenizer read. `None` for an engine that reads text, such as Pocket TTS. Its adapter makes the IDs from the text |
+| `ids` | The token IDs |
+| `streams` | Values that some phonemizers give for each ID, such as `language_ids` from Shami |
+
+`render()` runs the engine and then does the same audio steps as `synthesize()`: level,
+volume, clip, voice conversion and super-resolution. It always returns one `AudioChunk`.
+Use `render(utterance, config, alignments=True)` to get the durations of the phonemes in the
+chunk.
+
+The two steps let you do work between them. For example, you can keep the utterances of a
+text and render them again with another speaker or another length scale.
+The text settings of `SynthesisConfig` (diacritics, phonetic spellings, input alphabet) apply
+in `prepare()`, and the engine and audio settings apply in `render()`.
+
+`phonemize()` gives the phonemes of a text with no diacritizer, one list for each sentence.
+It accepts an optional `lang`, so that a cloning reference can be phonemized in its own
+language. `voice.tokenizer.tokenize(phonemes)` turns one such list into token IDs.
+
+`phonemes_to_ids()` and `phoneme_ids_to_audio()` are deprecated. Use `voice.tokenizer.tokenize`
+and `render()`. `phoneme_ids_to_audio()` returns the engine audio before the level, volume
+and clip steps.

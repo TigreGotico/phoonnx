@@ -174,7 +174,7 @@ def test_tokenization_mimic3_gruut_ids():
     """
     import json
     import os
-    from phoonnx.config import Alphabet, SynthesisConfig, VoiceConfig
+    from phoonnx.config import SynthesisConfig, VoiceConfig
     from phoonnx.engines import get_adapter
     from phoonnx.voice import TTSVoice
 
@@ -185,10 +185,9 @@ def test_tokenization_mimic3_gruut_ids():
                      adapter=get_adapter("vits"))
     assert voice.config.tokenizer.vocabulary.char2idx, "the voice has an empty phoneme_id_map"
     for text, upstream in fixture["upstream"].items():
-        calls = list(voice._iter_synthesis_ids(text, SynthesisConfig(), Alphabet.GRAPHEMES,
-                                               voice.config.alphabet))
-        assert [ids for _, ids, _ in calls] == [upstream["ids"]], (
-            text, ["".join(p) for p, _, _ in calls], upstream["phonemes"])
+        calls = list(voice.prepare(text, SynthesisConfig(enable_phonetic_spellings=False)))
+        assert [list(u.ids) for u in calls] == [upstream["ids"]], (
+            text, ["".join(u.symbols) for u in calls], upstream["phonemes"])
     assert not voice.config.tokenizer.not_found_characters
 
 
