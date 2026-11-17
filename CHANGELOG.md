@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.102.5a1](https://github.com/TigreGotico/phoonnx/tree/1.102.5a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.102.4a1...1.102.5a1)
+
+**Merged pull requests:**
+
+- fix: give the Mimic 3 ids from a native config [\#618](https://github.com/TigreGotico/phoonnx/pull/618) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.102.4a1](https://github.com/TigreGotico/phoonnx/tree/1.102.4a1) (2026-11-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.102.3a1...1.102.4a1)
@@ -364,10 +372,6 @@
 ## [1.94.2a1](https://github.com/TigreGotico/phoonnx/tree/1.94.2a1) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.1a3...1.94.2a1)
-
-**Merged pull requests:**
-
-- fix: let the train extra install NumPy 2 so pyarrow imports [\#516](https://github.com/TigreGotico/phoonnx/pull/516) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.94.1a3](https://github.com/TigreGotico/phoonnx/tree/1.94.1a3) (2026-11-04)
 
