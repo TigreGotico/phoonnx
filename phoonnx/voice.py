@@ -39,7 +39,7 @@ from phoonnx.engines.base import (
     AdapterSynthesisResult,
     BaseOnnxAdapter,
 )
-from scriptconv.phonemizers.base import BasePhonemizer
+from scriptconv.phonemizers.base import BasePhonemizer, PhonemizerIdentity
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
 from phoonnx.reference_audio import load_reference_audio
 from phoonnx import audio_fx
@@ -340,15 +340,16 @@ class TTSVoice:
         except FileNotFoundError:
             pass
 
+        # Name the voice by its model filename (e.g. "tdt-TL_joao"), not the
+        # full HF snapshot path -- ``model_path`` is a cache path, not a
+        # human-facing identifier.
+        voice_name = Path(self.model_path).stem if self.model_path else "<voice>"
+
         # Phonemizer
         if self.phonemizer is None:
             # Fail fast (typed) if no scriptconv backend serves this voice's
             # language, instead of the voice loading fine and crashing mid
-            # synthesis with an opaque ValueError once text is sent. Name the
-            # voice by its model filename (e.g. "tdt-TL_joao"), not the full
-            # HF snapshot path -- ``model_path`` is a cache path, not a
-            # human-facing identifier.
-            voice_name = Path(self.model_path).stem if self.model_path else "<voice>"
+            # synthesis with an opaque ValueError once text is sent.
             check_lang_supported(
                 voice_name,
                 self.config.lang_code,
@@ -381,6 +382,37 @@ class TTSVoice:
         # Let the adapter set up engine-specific runtime state (e.g. Matcha
         # building its vocoder from config.engine_params).
         self.adapter.configure(self.config)
+        self._check_provenance(voice_name)
+
+    def _check_provenance(self, voice_name: str) -> None:
+        """Warn when the running phonemizer differs from the one the voice was trained with.
+
+        The config's ``phonemizer_identity`` names the phonemizer of training.
+        A field that differs from :meth:`TextFrontend.identity`, by
+        :meth:`PhonemizerIdentity.differs_from`, gives one warning. A block that
+        cannot be read, or a running phonemizer that cannot name itself, gives
+        one warning too. The voice loads in every case. A voice with no block,
+        or one whose engine reads text, is not checked.
+        """
+        recorded = self.config.phonemizer_identity
+        if not recorded or self.config.alphabet == Alphabet.GRAPHEMES:
+            return
+        try:
+            trained = PhonemizerIdentity(**recorded)
+            running = self.frontend.identity()
+        except Exception as err:
+            LOG.warning(f"Voice {voice_name}: cannot compare phonemizer_identity {recorded!r} "
+                        f"with the running phonemizer ({err}). The voice loads without the check.")
+            return
+        if trained.frontend is None:
+            # Preprocessing calls the backend directly and records no frontend version.
+            running = replace(running, frontend=None)
+        differing = "; ".join(
+            f"{name}: trained {getattr(trained, name)!r}, running {getattr(running, name)!r}"
+            for name in trained.differs_from(running))
+        if differing:
+            LOG.warning(f"Voice {voice_name} was trained with another phonemizer: {differing}. "
+                        "The voice loads, but its pronunciation can differ from training.")
 
     def warmup(self) -> None:
         """

@@ -189,6 +189,14 @@ class VoiceConfig:
     # the base tokens with a literal token string). Empty -> derive the token from lang_code.
     lang_tokens: Dict[str, str] = field(default_factory=dict)
 
+    phonemizer_identity: Optional[Dict[str, Any]] = None
+    """The phonemizer that made the training phonemes, as preprocessing records it.
+
+    The keys are those of :class:`scriptconv.phonemizers.base.PhonemizerIdentity`.
+    :class:`phoonnx.voice.TTSVoice` compares it with the running phonemizer at
+    load and warns on a difference. ``None`` for a voice that records none.
+    """
+
     keep_punctuation: bool = False
     """Whether the model was trained with clause punctuation (``, . ? ! : ;``).
 
@@ -340,6 +348,7 @@ class VoiceConfig:
             engine=loaded.engine,
             phonemizer_model=config.get("phonemizer_model"),
             keep_punctuation=bool(config.get("keep_punctuation", loaded.keep_punctuation)),
+            phonemizer_identity=config.get("phonemizer_identity"),
             phoneme_type=loaded.phoneme_type,
             speaker_id_map=config.get("speaker_id_map", {}),
             blank_between=BlankBetween(loaded.blank_between),
