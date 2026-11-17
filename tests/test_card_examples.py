@@ -8,8 +8,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-import scriptconv.diacritics
 import scriptconv.frontend
+import text2tashkeel
 from onnx import TensorProto, helper
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
@@ -396,6 +396,28 @@ def recording(calls):
     return diacritize
 
 
+def example_diacritizer(monkeypatch, calls=None):
+    """Put :func:`stub_diacritize` in place of text2tashkeel's Diacritizer, which the example calls.
+
+    The default model is written as none, as phoonnx passes it to scriptconv. Each call keeps its text and model.
+    """
+    class Diacritizer:
+        def __init__(self, model=card_examples.RAWI, **_):
+            self.model = None if model == card_examples.RAWI else model
+
+        def diacritize(self, text):
+            if calls is not None:
+                calls.append((text.strip(), self.model))
+            return stub_diacritize(text, "ar", self.model)
+
+    monkeypatch.setattr(text2tashkeel, "Diacritizer", Diacritizer)
+
+
+def without_language(calls):
+    """phoonnx's diacritize calls as (text, model): text2tashkeel takes no language."""
+    return [(text, model) for text, _, model in calls]
+
+
 @pytest.mark.parametrize("config", [
     ARABIC,
     {**ARABIC, "inference": {"add_diacritics": True}},
@@ -419,11 +441,11 @@ def test_vowel_marks_are_added_as_phoonnx_adds_them(config, monkeypatch):
     voice = voice_of(config)
     expected = [i for _, ids, _ in voice._iter_synthesis_ids(ARABIC_TEXT, SynthesisConfig(), Alphabet.GRAPHEMES,
                                                              voice.config.alphabet) for i in ids]
-    monkeypatch.setattr(scriptconv.diacritics, "diacritize", recording(example_calls))
+    example_diacritizer(monkeypatch, example_calls)
     assert example_text_ids(config, ARABIC_TEXT) == expected
-    assert example_calls == phoonnx_calls  # the same language and model, once for the one sentence
+    assert example_calls == without_language(phoonnx_calls)  # the same model, once for the one sentence
     code = example(config, VITS_FILES)
-    assert ("from scriptconv.diacritics import diacritize" in code) == voice.config.add_diacritics
+    assert ("from text2tashkeel import Diacritizer" in code) == voice.config.add_diacritics
     assert ("tashkeel" in code.splitlines()[0]) == voice.config.add_diacritics
 
 
@@ -433,10 +455,10 @@ def test_the_vowel_marks_go_to_each_sentence_on_its_own_as_phoonnx_gives_them(mo
     monkeypatch.setattr(scriptconv.frontend, "diacritize", recording(phoonnx_calls))
     voice = voice_of(ARABIC)
     list(voice._iter_synthesis_ids(text, SynthesisConfig(), Alphabet.GRAPHEMES, voice.config.alphabet))
-    monkeypatch.setattr(scriptconv.diacritics, "diacritize", recording(example_calls))
+    example_diacritizer(monkeypatch, example_calls)
     example_text_ids(ARABIC, text)
     assert len(phoonnx_calls) == 2  # quebra-frases does not cut at the Arabic question mark
-    assert example_calls == phoonnx_calls
+    assert example_calls == without_language(phoonnx_calls)
 
 
 def test_a_voice_diacritized_in_another_language_is_refused():
@@ -477,7 +499,7 @@ def test_the_diacritize_step_follows_the_stage_phoonnx_s_frontend_resolves(confi
     voice = voice_of(config)
     resolved = voice.frontend._resolve(voice._stages(SynthesisConfig()))
     code = example(config, VITS_FILES)
-    assert ("from scriptconv.diacritics import diacritize" in code) == resolved.diacritize
+    assert ("from text2tashkeel import Diacritizer" in code) == resolved.diacritize
     assert ("tashkeel" in code.splitlines()[0]) == resolved.diacritize
 
 
@@ -488,7 +510,7 @@ def test_a_backend_that_owns_the_diacritize_stage_gets_the_text_as_phoonnx_gives
     voice = voice_of(OWNERS[owner])
     expected = [i for _, ids, _ in voice._iter_synthesis_ids(text, SynthesisConfig(), Alphabet.GRAPHEMES,
                                                              voice.config.alphabet) for i in ids]
-    monkeypatch.setattr(scriptconv.diacritics, "diacritize", recording(example_calls))
+    example_diacritizer(monkeypatch, example_calls)
     assert example_text_ids(OWNERS[owner], text) == expected
     assert example_calls == phoonnx_calls == []
 
@@ -513,9 +535,10 @@ def index_route_ids(config, entry, text, dictionary=None):
 def card_example_ids(config, entry, text):
     """The ids of the example that ``model_card`` renders for the voice of the index *entry*."""
     import model_card
-    block = model_card._example("Phoonnx/test-voice", config, entry, "model.onnx", "config.json", text,
-                                lambda name: {"inputs": VITS_FILES["inputs"], "outputs": {"output": 3}})
-    assert block.startswith("```python\n")
+    section = model_card._example("Phoonnx/test-voice", config, entry, "model.onnx", "config.json", text,
+                                  lambda name: {"inputs": VITS_FILES["inputs"], "outputs": {"output": 3}})
+    assert section.startswith("### Without phoonnx\n")
+    block = section[section.rindex("```python\n"):]
     return run_lines(block.removeprefix("```python\n").removesuffix("\n```"), "text = ",
                      {"repo": "Phoonnx/test-voice", "config": copy.deepcopy(config)})
 
@@ -582,7 +605,7 @@ def test_a_vosk_voice_reads_its_index_dictionary_as_phoonnx_reads_it(tmp_path, m
 def test_the_index_phoneme_type_decides_the_diacritize_step(monkeypatch):
     # the index reads an espeak config with arbtok, which restores the vowel marks itself
     monkeypatch.setattr(scriptconv.frontend, "diacritize", stub_diacritize)
-    monkeypatch.setattr(scriptconv.diacritics, "diacritize", stub_diacritize)
+    example_diacritizer(monkeypatch)
     config, entry = {**OWNERS["arbtok"], "phoneme_type": "espeak"}, {"lang": "ar", "phoneme_type": "arbtok"}
     assert card_example_ids(config, entry, ARBTOK_TEXT) == index_route_ids(config, entry, ARBTOK_TEXT)
 
@@ -639,14 +662,14 @@ def test_shami_example_reads_every_sentence_and_its_language_as_phoonnx(monkeypa
     sentences = list(voice._iter_synthesis_ids(SHAMI_TEXT, SynthesisConfig(), Alphabet.GRAPHEMES, voice.config.alphabet))
     assert len(sentences) == 2
     phoonnx_langs, langs[:] = list(langs), []
-    monkeypatch.setattr(scriptconv.diacritics, "diacritize", recording(example_calls))
+    example_diacritizer(monkeypatch, example_calls)
     code = example(config, {"inputs": {"phoneme_ids": 2, "phoneme_lengths": 1, "language_ids": 2}}, text=SHAMI_TEXT)
     names = {"config": copy.deepcopy(config)}
     run_lines(code, "text = ", names)
     assert names["ids"] == [i for _, ids, _ in sentences for i in ids]
     assert names["language_ids"] == [i for _, _, streams in sentences for i in streams["language_ids"]]
     assert set(langs) == set(phoonnx_langs) == {"ar"}
-    assert example_calls == phoonnx_calls  # the vowel marks of each sentence, on its own
+    assert example_calls == without_language(phoonnx_calls)  # the vowel marks of each sentence, on its own
 
 
 # --- the feeds of the graphs against phoonnx's adapters ------------------------
@@ -869,3 +892,82 @@ def test_index_files_names_each_file_of_the_entry_in_the_repo_that_holds_it():
     assert files == {"model": {"repo": "Phoonnx/new-name", "file": "lm/model.onnx"},
                      "tokenizer_config": {"repo": "Phoonnx/new-name", "file": "lm/tokenizer.json"},
                      "codec_decoder_path": {"repo": "Phoonnx/codec", "file": "decoder.onnx"}}
+
+
+# --- the text above the example: what prepares the text ------------------------------
+
+def test_the_rawi_model_is_the_one_phoonnx_diacritizes_with():
+    import inspect
+    assert card_examples.RAWI == inspect.signature(text2tashkeel.Diacritizer).parameters["model"].default
+    assert card_examples.RAWI in text2tashkeel.available_models(bundled_only=True)  # no [hf] extra needed
+
+
+def test_the_letters_are_each_accented_letter_that_bifonia_writes_on_a_homograph():
+    import bifonia
+    # each marked form keeps the length of its word: the letters that differ are the accents bifonia adds
+    written = {c for (word, _), form in bifonia._DIACRITIZED.items() for c, b in zip(form, word) if c != b}
+    assert written == set(card_examples.BIFONIA_LETTERS)
+
+
+def test_espeak_reads_the_accents_that_bifonia_writes():
+    import unicodedata
+    import bifonia
+
+    def bare(word):
+        return "".join(c for c in unicodedata.normalize("NFD", word) if not unicodedata.combining(c))
+    espeak = get_phonemizer("espeak", "ipa")
+    for lang in ("pt-PT", "pt-BR"):
+        pairs = {(bare(form), form) for form in bifonia._DIACRITIZED.values()}
+        read = {pair for pair in pairs
+                if espeak.phonemize_to_list(pair[0], lang) != espeak.phonemize_to_list(pair[1], lang)}
+        # each homograph has two marked forms; espeak reads the plain word as one of them, so at least one changes
+        by_word = {}
+        for word, form in pairs:
+            by_word.setdefault(word, []).append((word, form) in read)
+        assert all(any(changed) for word, changed in by_word.items() if len(changed) > 1), lang
+    assert "espeak" in card_examples.READS_PT_MARKS
+
+
+def test_a_backend_that_owns_normalisation_gets_no_text2spoken_step():
+    module, name, _ = PHONEMIZER_REGISTRY[Phonemizer("dizione")]
+    assert "normalize" in getattr(importlib.import_module(module), name).owned_stages
+    text = card_examples.without_phoonnx({**NATIVE, "phoneme_type": "dizione"})
+    assert "normalize(" not in text
+    assert "The dizione phonemizer of this voice normalises the text itself" in text
+
+
+@pytest.mark.parametrize("lang", ["ptu", "en-US", "es-ES"])
+def test_only_a_portuguese_voice_gets_bifonia(lang):
+    text = card_examples.without_phoonnx({**NATIVE, "lang_code": lang})
+    assert "bifonia" not in text
+    assert "from text2spoken import normalize" in text
+
+
+def test_an_engine_with_its_own_tokenizer_gets_text2spoken_and_no_bifonia():
+    entry = {"engine": "supertonic", "lang": "pt-PT", "voice_id": "supertonic/x"}
+    text = card_examples.without_phoonnx(entry)
+    assert '"text2spoken[pt]"' in text and 'normalize(text, "pt-PT")' in text
+    assert "bifonia" not in text and "Diacritizer" not in text
+
+
+def test_a_brazilian_voice_needs_the_letters_of_its_own_marks():
+    # pt-BR marks "lingüiça" with no context; a vocabulary without "ü" does not read it
+    from bifonia import context_free_marks
+    assert any("ü" in marked for marked in context_free_marks("pt-BR").values())
+    graphemes = get_phonemizer("graphemes", "unicode")
+    letters = set(graphemes.phonemize_to_list("abcdefghijlmnopqrstuvxzáéêíóôãõç", "pt-BR"))
+    base = {**NATIVE, "phoneme_type": "graphemes", "alphabet": "unicode", "lang_code": "pt-BR",
+            "keep_punctuation": False}
+    without = card_examples.without_phoonnx({**base, "phoneme_id_map": {c: n for n, c in enumerate(letters)}})
+    letters |= set(graphemes.phonemize_to_list("ü", "pt-BR"))
+    with_it = card_examples.without_phoonnx({**base, "phoneme_id_map": {c: n for n, c in enumerate(letters)}})
+    assert "bifonia" not in without
+    assert 'add_extra_diacritics(text, lang="pt-BR")' in with_it
+
+
+def test_a_phonemizer_that_owns_the_diacritize_stage_gets_no_bifonia_even_when_it_reads_the_marks(monkeypatch):
+    # tugaphone runs bifonia itself; a second run would mark the text twice
+    monkeypatch.setattr(card_examples, "READS_PT_MARKS", ("espeak", "tugaphone"))
+    text = card_examples.without_phoonnx({**NATIVE, "phoneme_type": "tugaphone", "lang_code": "pt-PT"})
+    assert "add_extra_diacritics" not in text
+    assert "The tugaphone phonemizer of this voice puts the accents on homographs itself" in text

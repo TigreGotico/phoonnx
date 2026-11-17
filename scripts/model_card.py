@@ -32,8 +32,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import click
 
-from card_examples import (WITHOUT_PHOONNX, UnsupportedExample, index_files, index_overrides, onnx_io,
-                           standalone_example)
+from card_examples import (UnsupportedExample, index_files, index_overrides, onnx_io, standalone_example,
+                           without_phoonnx)
 
 PROVENANCE_FILE = Path(__file__).with_name("model_card_provenance.json")
 
@@ -362,7 +362,7 @@ def _install(facts: CardFacts) -> str:
 def how_to_use(facts: CardFacts) -> str:
     """phoonnx usage for the voice, then the standalone example when there is one."""
     usage = _phoonnx_usage(facts)
-    return usage + "\n\n" + WITHOUT_PHOONNX + facts.example if facts.example else usage
+    return usage + "\n\n" + facts.example if facts.example else usage
 
 
 def _phoonnx_usage(facts: CardFacts) -> str:
@@ -490,7 +490,8 @@ def render_repo(repo_id: str, files: List[str], download: Callable[[str], str],
 
 def _example(repo_id: str, config: Dict[str, Any], entry: Dict[str, Any], model_file: str, config_file: str,
              text: str, graph_io: Callable[[str], Dict[str, Dict[str, int]]]) -> str:
-    """The standalone example block of the voice, or "" when no template covers it or its graph cannot be read."""
+    """The standalone example of the voice with the text above it, or "" when no template covers it or its graph
+    cannot be read."""
     try:
         io = graph_io(model_file)
     except Exception as error:  # the card loses its example, not the rest of the card
@@ -500,10 +501,10 @@ def _example(repo_id: str, config: Dict[str, Any], entry: Dict[str, Any], model_
     files = {"model": model_file, "config": config_file, "inputs": io["inputs"], "outputs": list(io["outputs"])}
     if entry.get("dictionary_url"):
         files["dictionary"] = index_files(entry)["dictionary"]
+    lang, overrides = entry.get("phonemizer_lang") or entry.get("lang"), index_overrides(entry)
     try:
-        return standalone_example(config, files, repo_id=repo_id, text=text or None,
-                                  lang=entry.get("phonemizer_lang") or entry.get("lang"),
-                                  overrides=index_overrides(entry))
+        return without_phoonnx(config, lang=lang, overrides=overrides, voice_lang=entry.get("lang")) + \
+            standalone_example(config, files, repo_id=repo_id, text=text or None, lang=lang, overrides=overrides)
     except UnsupportedExample:
         return ""
 

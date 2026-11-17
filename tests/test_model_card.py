@@ -461,12 +461,18 @@ def example_repo(config):
                        index={}, graph_io=lambda name: io)
 
 
+def example_code(card_text):
+    """The standalone example of a card: the last Python block of its "Without phoonnx" section."""
+    section = usage(card_text).split("### Without phoonnx", 1)[1]
+    return section[section.rindex("```python\n"):].removeprefix("```python\n").split("\n```", 1)[0]
+
+
 def test_a_card_shows_the_standalone_example_that_compiles():
     config = phoonnx_config(keep_punctuation=False, phoneme_id_map={"_": 0, "^": 1, "$": 2, " ": 3, "b": 4,
                                                                     "o": 5, "m": 6, "d": 7, "i": 8, "a": 9})
     text = usage(example_repo(config))
     assert "### Without phoonnx" in text
-    code = text.split("### Without phoonnx", 1)[1].split("```python\n", 1)[1].split("\n```", 1)[0]
+    code = example_code(example_repo(config))
     compile(code, "example", "exec")
     assert 'repo = "Phoonnx/not_indexed_voice"' in code
     assert 'hf_hub_download(repo, "voice.onnx")' in code
@@ -474,35 +480,19 @@ def test_a_card_shows_the_standalone_example_that_compiles():
     assert parse_card(example_repo(config)).sections["How to use"] == text
 
 
-def without_phoonnx_text():
-    """The prose of the card's "Without phoonnx" section, above its code."""
-    config = phoonnx_config(keep_punctuation=False, phoneme_id_map={"_": 0, "^": 1, "$": 2, " ": 3, "b": 4})
-    return usage(example_repo(config)).split("### Without phoonnx", 1)[1].split("```python", 1)[0]
+def without_phoonnx_text(config=None):
+    """The prose and the preparation lines of the card's "Without phoonnx" section, above its example."""
+    config = config or phoonnx_config(keep_punctuation=False, phoneme_id_map={"_": 0, "^": 1, "$": 2, " ": 3, "b": 4})
+    section = usage(example_repo(config)).split("### Without phoonnx", 1)[1]
+    return section[:section.rindex("```python")]
 
 
-@pytest.mark.parametrize("phoneme_type, lang, text, named", [
-    ("unicode", "pt", "O Dr. Silva chegou.", '"Dr."'),
-    ("graphemes", "en", "Mr. Brown won't come.", '"Dr."'),
-    ("graphemes", "en", "We can't go.", "English contractions"),
-    ("graphemes", "en", "It’s fine.", "typographic apostrophe"),
-    ("espeak", "en", "Line one\nline two", "line breaks"),
-    ("espeak", "en", "Line  one", "runs of spaces"),
-    ("espeak", "en", "I have 3 cats.", "numbers"),
-    ("espeak", "en", "It weighs 10kg.", "units"),
-    ("espeak", "pt", "Chego às 10h30.", "times"),
-    ("espeak", "en-US", "The date is 08/03/2025.", "dates"),
-])
-def test_the_card_names_each_change_the_phoonnx_normaliser_makes(phoneme_type, lang, text, named):
-    from phoonnx.config import _voice_phonemizer
-    assert _voice_phonemizer(phoneme_type).normalizer(text, lang) != text
-    assert named in without_phoonnx_text()
-
-
-def test_the_card_says_that_an_espeak_voice_keeps_english_contractions():
-    from phoonnx.config import _voice_phonemizer
-    assert _voice_phonemizer("espeak").normalizer("We can't go.", "en") == "We can't go."
-    assert _voice_phonemizer("graphemes").normalizer("We can't go.", "en") != "We can't go."
-    assert "For a voice that does not use espeak, it also expands English contractions" in without_phoonnx_text()
+@pytest.mark.parametrize("claim", ["English contractions", "typographic apostrophe", 'titles such as "Dr."',
+                                   "phoonnx normalises the text before the model reads it",
+                                   "runs of spaces to one space"])
+def test_the_card_makes_no_claim_about_the_phoonnx_normaliser(claim):
+    # the normaliser of phoonnx moves to text2spoken; the card recommends text2spoken and describes no other normaliser
+    assert claim not in without_phoonnx_text()
 
 
 def test_the_card_says_that_phoonnx_reads_each_sentence_on_its_own():
@@ -515,6 +505,36 @@ def test_the_card_says_that_phoonnx_reads_each_sentence_on_its_own():
     text = without_phoonnx_text()
     assert "reads the whole text as one piece" in text
     assert "phoonnx splits the text into sentences" in text
+
+
+def test_the_card_says_that_phoonnx_cuts_after_an_abbreviation_that_normalisation_keeps():
+    from phoonnx.config import VoiceConfig
+    from phoonnx.voice import TTSVoice
+    from quebra_frases import sentence_tokenize
+    from text2spoken import normalize
+    sentence = "Mieszkam przy ul. Długiej."
+    letters = sorted(set(sentence.lower()) - set(" ."))
+    config = phoonnx_config(keep_punctuation=False, phoneme_type="graphemes", alphabet="unicode", lang_code="pl",
+                            phoneme_id_map={"_": 0, "^": 1, "$": 2, " ": 3, **{c: n for n, c in enumerate(letters, 4)}})
+    assert normalize(sentence, "pl") == sentence
+    assert len(TTSVoice(session=None, config=VoiceConfig.from_dict(config)).phonemize(sentence)) == 2
+    # the splitter knows other abbreviations, and does not cut after them
+    assert sentence_tokenize("I met Dr. Smith today.") == ["I met Dr. Smith today."]
+    text = without_phoonnx_text()
+    assert "after some abbreviations" in text
+    assert 'such as "ul." in Polish' in text
+
+
+def test_the_card_says_that_the_example_takes_no_inline_phoneme_block():
+    from phoonnx.config import VoiceConfig
+    from phoonnx.voice import TTSVoice
+    config = phoonnx_config(keep_punctuation=False, phoneme_type="graphemes", alphabet="unicode", lang_code="pt",
+                            phoneme_id_map={"_": 0, "^": 1, "$": 2, " ": 3, "a": 4, "b": 5, "ʃ": 6})
+    phonemes = [p for chunk in TTSVoice(session=None, config=VoiceConfig.from_dict(config)).phonemize("ab [[ʃ]] ba")
+                for p in chunk]
+    assert "ʃ" in phonemes and "[" not in phonemes
+    assert "This code takes plain text." in without_phoonnx_text()
+    assert "`[[...]]`" in without_phoonnx_text()
 
 
 def test_a_voice_no_template_covers_gets_no_standalone_example():
@@ -705,3 +725,161 @@ def test_a_bound_released_on_the_upload_day_holds():
 def test_the_espeak_note_says_espyak_can_differ():
     text = usage(rendered(phoonnx_config(keep_punctuation=True, phoneme_type="espeak", alphabet="ipa")))
     assert "Some espyak phonemes differ from those of\nespeak-ng" in text
+
+
+# --- the text that the card prepares: text2spoken, bifonia, text2tashkeel ------------
+
+def preparation(card_text):
+    """The Python block of the card's "Prepare the text" part."""
+    assert "#### Prepare the text" in usage(card_text)
+    section = usage(card_text).split("#### Prepare the text", 1)[1]
+    return section.split("```python\n", 1)[1].split("\n```", 1)[0]
+
+
+def prepared(card_text, text):
+    """*text* after the preparation lines of the card, run as the card says: after the line that sets ``text``."""
+    names = {"text": text}
+    exec(preparation(card_text), names)
+    return names["text"]
+
+
+def text2spoken_extra(tag):
+    """The extra that installs the text2spoken language of *tag*, from the distribution's own metadata."""
+    from importlib.metadata import metadata
+    from text2spoken import supports
+    code = supports(tag).code
+    return code if code in metadata("text2spoken").get_all("Provides-Extra") else None
+
+
+def unicode_voice(phoneme_type, letters, lang="pt-PT"):
+    """A voice that reads its text, whose map holds each symbol that its phonemizer gives for *letters*."""
+    from scriptconv.phonemizers import get_phonemizer
+    symbols = sorted(set(get_phonemizer(phoneme_type, "unicode").phonemize_to_list(letters, lang)) - {" "})
+    return phoonnx_config(keep_punctuation=False, phoneme_type=phoneme_type, alphabet="unicode", lang_code=lang,
+                          phoneme_id_map={"_": 0, "^": 1, "$": 2, " ": 3, **{c: n for n, c in enumerate(symbols, 4)}})
+
+
+def espeak_voice(lang, **extra):
+    return phoonnx_config(keep_punctuation=False, phoneme_type="espeak", alphabet="ipa", lang_code=lang,
+                          phoneme_id_map={"_": 0, "^": 1, "$": 2, " ": 3, "a": 4}, **extra)
+
+
+def test_an_english_voice_gets_text2spoken_with_no_extra():
+    from text2spoken import normalize, supports
+    card = example_repo(espeak_voice("en-US"))
+    assert text2spoken_extra("en-US") is None
+    assert "# uv pip install --prerelease=allow text2spoken\n" in preparation(card) + "\n"
+    assert f'normalize(text, "{supports("en-US").tag}")' in preparation(card)
+    text = "Dr Smith paid $3.50 for 2 tickets."
+    assert prepared(card, text) == normalize(text, "en-US") != text
+    assert "bifonia" not in usage(card) and "Diacritizer" not in usage(card)
+    assert "no language file" not in usage(card)
+
+
+@pytest.mark.parametrize("config", [
+    espeak_voice("pt-PT"),
+    # voices that read their text, with each symbol their phonemizer gives for the accented letters
+    unicode_voice("unicode", "abcdefghijlmnopqrstuvxzáéêíóôãõç"),
+    unicode_voice("graphemes", "abcdefghijlmnopqrstuvxzáéêíóôãõç"),
+], ids=["espeak", "unicode", "graphemes"])
+def test_a_european_portuguese_voice_gets_the_pt_extra_and_bifonia(config):
+    from bifonia import add_extra_diacritics
+    from text2spoken import normalize
+    card = example_repo(config)
+    extra = text2spoken_extra("pt-PT")
+    assert extra == "pt"
+    assert f'# uv pip install --prerelease=allow "text2spoken[{extra}]" bifonia' in preparation(card)
+    text = "A sede da empresa tem 2 andares."
+    expected = add_extra_diacritics(normalize(text, "pt-PT"), lang="pt-PT")
+    assert expected != normalize(text, "pt-PT")  # bifonia marks "sede" here
+    assert prepared(card, text) == expected
+
+
+@pytest.mark.parametrize("phoneme_type", ["unicode", "graphemes"])
+def test_a_portuguese_voice_whose_vocabulary_lacks_the_marks_gets_no_bifonia(phoneme_type):
+    from bifonia import add_extra_diacritics
+    from scriptconv.phonemizers import get_phonemizer
+    config = unicode_voice(phoneme_type, "abcdefghijlmnopqrstuvxzãõç")
+    marked = get_phonemizer(phoneme_type, "unicode").phonemize_to_list(
+        add_extra_diacritics("a sede da empresa", lang="pt-PT"), "pt-PT")
+    assert set(marked) - set(config["phoneme_id_map"])  # the marks would be symbols the voice lacks
+    card = example_repo(config)
+    assert "bifonia" not in usage(card)
+    assert '"text2spoken[pt]"' in preparation(card)
+
+
+@pytest.mark.parametrize("lang", ["ar", "ar-JO"])
+def test_a_diacritized_arabic_voice_gets_text2tashkeel_with_the_rawi_model(lang):
+    import inspect
+    import scriptconv.diacritics
+    import text2tashkeel
+    from phoonnx.config import VoiceConfig
+    model = inspect.signature(text2tashkeel.Diacritizer).parameters["model"].default
+    assert model == scriptconv.diacritics._DEFAULT_DIACRITIZER_MODEL  # the model phoonnx diacritizes with
+    assert model.startswith("rawi")
+    config = espeak_voice(lang)
+    assert VoiceConfig.from_dict(config).add_diacritics
+    card = example_repo(config)
+    section = usage(card).split("### Without phoonnx", 1)[1]
+    assert f'diacritizer = Diacritizer("{model}")' in example_code(card)
+    assert section.count("Diacritizer(") == 1  # the marks are added once, in the example
+    assert f"[text2tashkeel](https://github.com/TigreGotico/text2tashkeel) and its `{model}` model" in section
+    assert f'"text2spoken[{text2spoken_extra(lang)}]"' in preparation(card)
+    # the preparation goes in after the sample sentence, so the marks go on the normalised text
+    code = example_code(card)
+    assert code.index('text = "Bom dia."') < code.index("diacritizer = Diacritizer(")
+
+
+@pytest.mark.parametrize("lang", ["bg-BG", "oc"])
+def test_a_language_with_no_text2spoken_file_gets_a_request_for_one(lang):
+    from text2spoken import Form, normalize, supports
+    support = supports(lang)
+    assert not support.forms - {Form.CARDINAL, Form.LEXICON}  # text2spoken reads no form of its own here
+    card = example_repo(espeak_voice(lang))
+    assert "#### Prepare the text" in usage(card)
+    prose = usage(card).split("#### Prepare the text", 1)[1]
+    assert f"text2spoken has no language file for `{support.tag}`" in prose
+    assert "https://github.com/TigreGotico/text2spoken/blob/dev/docs/adding-a-language.md" in prose
+    assert "open a pull request" in prose
+    reads_cardinals = normalize("2", lang) != "2"
+    assert ("reads only cardinal numbers" in prose) == reads_cardinals
+    assert ("leaves text in this language as it is written" in prose) == (not reads_cardinals)
+
+
+@pytest.mark.parametrize("phoneme_type, lang", [("tugaphone", "pt-PT"), ("arbtok", "ar")])
+def test_a_phonemizer_that_owns_the_diacritize_stage_gets_no_marks_step(phoneme_type, lang):
+    import importlib
+    from scriptconv.phonemizers.enums import Phonemizer
+    from scriptconv.phonemizers.registry import PHONEMIZER_REGISTRY
+    module, name, _ = PHONEMIZER_REGISTRY[Phonemizer(phoneme_type)]
+    assert "diacritize" in getattr(importlib.import_module(module), name).owned_stages
+    card = example_repo(phoonnx_config(keep_punctuation=False, phoneme_type=phoneme_type, alphabet="ipa",
+                                       lang_code=lang, phoneme_id_map={"_": 0, "^": 1, "$": 2, " ": 3, "a": 4}))
+    section = usage(card).split("### Without phoonnx", 1)[1]
+    assert "add_extra_diacritics" not in section and "Diacritizer" not in section
+    assert f"The {phoneme_type} phonemizer of this voice" in section
+    assert "from text2spoken import normalize" in preparation(card)
+
+
+def test_the_text_is_prepared_in_the_language_of_the_voice_not_of_its_phonemizer():
+    # a Tetum voice that the voice index reads with the Portuguese phonemizer of espeak
+    from text2spoken import supports
+    config = espeak_voice("pt")
+    card = LIVE_CARD.replace("# phoonnx_pt-PT_miro_unicode", "# v")
+    files = {"voice.json": json.dumps(config), "voice.onnx": "", "README.md": card}
+    index = {"piper_community/tdt-TL_joao": {"model_url": "https://huggingface.co/Phoonnx/v/resolve/main/voice.onnx",
+                                             "config_url": "https://huggingface.co/Phoonnx/v/resolve/main/voice.json",
+                                             "lang": "tdt-TL", "phonemizer_lang": "pt", "phoneme_type": "espeak"}}
+    io = {"inputs": {"input": 2, "input_lengths": 1, "scales": 1}, "outputs": {"output": 3}}
+    text = render_repo("Phoonnx/v", list(files), files.__getitem__, lambda repo, kind: True, index=index,
+                       graph_io=lambda name: io)
+    assert f'normalize(text, "{supports("tdt-TL").tag}")' in preparation(text)
+    assert "bifonia" not in usage(text)
+    assert 'phonemizer.phonemize_to_list(text, "pt")' in example_code(text)
+
+
+def test_a_voice_of_no_single_language_asks_for_the_tag_of_the_text():
+    import card_examples
+    text = card_examples.without_phoonnx({"engine": "f5tts", "lang": "mul", "voice_id": "f5tts/x"})
+    assert "give text2spoken the tag of the language of the text" in text
+    assert "no language file" not in text
