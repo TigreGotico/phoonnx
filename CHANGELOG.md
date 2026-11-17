@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.112.0a1](https://github.com/TigreGotico/phoonnx/tree/1.112.0a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.111.0a1...1.112.0a1)
+
+**Merged pull requests:**
+
+- feat: warn at load when the phonemizer differs from training [\#672](https://github.com/TigreGotico/phoonnx/pull/672) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.111.0a1](https://github.com/TigreGotico/phoonnx/tree/1.111.0a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.110.0a1...1.111.0a1)
