@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.109.3a1](https://github.com/TigreGotico/phoonnx/tree/1.109.3a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.109.2a1...1.109.3a1)
+
+**Merged pull requests:**
+
+- fix: F5-TTS index entries select the upstream text function [\#637](https://github.com/TigreGotico/phoonnx/pull/637) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.109.2a1](https://github.com/TigreGotico/phoonnx/tree/1.109.2a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.109.1a1...1.109.2a1)
