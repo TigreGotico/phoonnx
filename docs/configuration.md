@@ -150,6 +150,50 @@ phoonnx supports multiple JSON config schemas. The native phoonnx format looks l
 
 Piper, Mimic3, and Coqui config formats are also parsed automatically.
 
+### Tokenizer keys
+
+These keys of the native format control how the phonemes become ids.
+
+| Key | Default | Effect |
+|-----|---------|--------|
+| `phoneme_id_map` | — | Symbol to id. A value is an id or a list of ids. A list of one id is that id. A longer list gives each id in turn, and an empty list gives no id. |
+| `add_blank_char` | `true` | Put the `blank` symbol between all ids, and at the start and end as `blank_at_start` and `blank_at_end` say. |
+| `add_blank_word` | `false` | Put the `blank_word` symbol after each word that gives an id. With `blank_at_end`, the last word gets one too. |
+| `blank_word` | none | The symbol that `add_blank_word` puts between words. Without it, a space gives no id. |
+| `use_eos_bos` | `true` | Put `bos` before the ids and `eos` after them. |
+| `fold_compounds` | `true` | Read the longest map key that starts at each symbol, so that `t͡ʃ` gives one id. |
+| `keep_punctuation` | `false` | Keep the clause punctuation `, . ? ! : ;` for the map to read. |
+
+A Mimic 3 voice has its tokenizer rules in a `phonemes` section and in a
+`phoneme_map.txt` file. Its native config has the same rules in the keys above:
+
+- `"add_blank_word": true` and `"blank_word": "#"` put `#` between words.
+- Each `phoneme_map.txt` line becomes a list value. The line `‖ · ·` gives `"‖": [3, 3]`.
+- `"keep_punctuation": true` keeps the punctuation, and the map gives its ids.
+  A gruut voice writes a break as a word of its own, so its entry starts with
+  the `#` id: `".": [4, 3, 3]`.
+
+```json
+{
+  "phoonnx_version": "1.0",
+  "phoneme_type": "gruut",
+  "alphabet": "ipa",
+  "lang_code": "en-US",
+  "phoneme_id_map": {"_": 0, "^": 1, "$": 2, "·": 3, "#": 4, "ˈ": 5, "‖": [3, 3], ".": [4, 3, 3], ",": [4, 3]},
+  "pad": "_", "blank": "_", "bos": "^", "eos": "$",
+  "add_blank_char": true,
+  "add_blank_word": true,
+  "blank_word": "#",
+  "keep_punctuation": true
+}
+```
+
+Two Mimic 3 steps are not tokenizer rules, and a native config does not hold
+them. Mimic 3 adds `auto_append_text` (usually `.`) to the end of the text when
+the text does not end with it. With `minor_break_ms` set, Mimic 3 also sends
+each clause to the model in a separate call. phoonnx sends one call for each
+sentence.
+
 ## Engine Enum
 
 `Engine` (in `phoonnx.config`) records which framework a voice was built with. It has 17
