@@ -141,7 +141,8 @@ class PhoonnxTTSPlugin(TTS):
 
         Returns:
             int | None: The speaker index, or None for single-speaker voices /
-            when nothing is configured (the engine then defaults to speaker 0).
+            when nothing is configured (the engine then uses the voice's own
+            speaker, or speaker 0 when the voice names none).
         """
         spk = requested if requested is not None else self._cfg_opt(
             None, "speaker_id", "speaker")

@@ -83,11 +83,10 @@ class VitsAdapter(BaseOnnxAdapter):
             "length_scale": np.array([length_scale], dtype=np.float32),
         }
 
-        # Optional speaker / language ids
-        if request.language_id is not None:
-            args["langid"] = np.array([request.language_id], dtype=np.int64)
-        if request.speaker_id is not None:
-            args["sid"] = np.array([request.speaker_id], dtype=np.int64)
+        # Speaker and language 0 when the request names none; graphs that do
+        # not declare the input drop it below.
+        args["langid"] = np.array([request.language_id or 0], dtype=np.int64)
+        args["sid"] = np.array([request.speaker_id or 0], dtype=np.int64)
 
         return self._filter_inputs(args, session)
 
