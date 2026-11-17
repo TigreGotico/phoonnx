@@ -483,10 +483,6 @@ def without_phoonnx_text():
 @pytest.mark.parametrize("phoneme_type, lang, text, named", [
     ("unicode", "pt", "O Dr. Silva chegou.", '"Dr."'),
     ("graphemes", "en", "Mr. Brown won't come.", '"Dr."'),
-    ("graphemes", "en", "We can't go.", "English contractions"),
-    ("graphemes", "en", "It’s fine.", "typographic apostrophe"),
-    ("espeak", "en", "Line one\nline two", "line breaks"),
-    ("espeak", "en", "Line  one", "runs of spaces"),
     ("espeak", "en", "I have 3 cats.", "numbers"),
     ("espeak", "en", "It weighs 10kg.", "units"),
     ("espeak", "pt", "Chego às 10h30.", "times"),
@@ -498,11 +494,18 @@ def test_the_card_names_each_change_the_phoonnx_normaliser_makes(phoneme_type, l
     assert named in without_phoonnx_text()
 
 
-def test_the_card_says_that_an_espeak_voice_keeps_english_contractions():
+@pytest.mark.parametrize("phoneme_type, text", [
+    ("espeak", "We can't go."),
+    ("graphemes", "We can't go."),
+    ("graphemes", "It’s fine."),
+    ("espeak", "Line one\nline two"),
+    ("espeak", "Line  one"),
+])
+def test_the_card_names_what_the_normaliser_leaves_as_written(phoneme_type, text):
     from phoonnx.config import _voice_phonemizer
-    assert _voice_phonemizer("espeak").normalizer("We can't go.", "en") == "We can't go."
-    assert _voice_phonemizer("graphemes").normalizer("We can't go.", "en") != "We can't go."
-    assert "For a voice that does not use espeak, it also expands English contractions" in without_phoonnx_text()
+    assert _voice_phonemizer(phoneme_type).normalizer(text, "en") == text
+    assert ("It leaves contractions such as \"can't\", the typographic apostrophe (’), line breaks and runs of "
+            "spaces as written.") in " ".join(without_phoonnx_text().split())
 
 
 def test_the_card_says_that_phoonnx_reads_each_sentence_on_its_own():

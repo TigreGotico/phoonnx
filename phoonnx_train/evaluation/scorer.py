@@ -169,7 +169,7 @@ def build_encoder(config: Dict, noise_scale=None, length_scale=None, noise_w=Non
 def text_to_ids(text: str, ph, tokenizer, lang):
     """Replicate preprocess.py: normalize -> phonemize_to_list
     -> tokenizer.tokenize (intersperse pad + BOS/EOS)."""
-    from phoonnx.util import normalize
+    from text2spoken import normalize
 
     utt = normalize(text, lang)
     phonemes = ph.phonemize_to_list(utt, lang)
