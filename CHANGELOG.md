@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.109.2a1](https://github.com/TigreGotico/phoonnx/tree/1.109.2a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.109.1a1...1.109.2a1)
+
+**Merged pull requests:**
+
+- fix: point the single-model voices at their renamed Hub repos [\#639](https://github.com/TigreGotico/phoonnx/pull/639) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.109.1a1](https://github.com/TigreGotico/phoonnx/tree/1.109.1a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.109.0a1...1.109.1a1)
