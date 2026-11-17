@@ -69,6 +69,16 @@ PREFERRED_PROVIDERS: List[str] = [
     CPU_PROVIDER,
 ]
 
+#: Providers that run a graph on a GPU. On these, the ``auto`` precision keeps
+#: the full files, because dynamic int8 graphs are built for CPU kernels.
+GPU_PROVIDERS = frozenset({
+    "CUDAExecutionProvider",
+    "ROCMExecutionProvider",
+    "MIGraphXExecutionProvider",
+    "DmlExecutionProvider",
+    "CoreMLExecutionProvider",
+})
+
 #: Default session options per provider, applied when a provider is requested
 #: by name only.
 PROVIDER_OPTIONS: Dict[str, Dict[str, Any]] = {
@@ -155,6 +165,11 @@ def resolve_providers(
 
     LOG.debug(f"onnxruntime execution providers: {[_name(p) for p in resolved]}")
     return resolved
+
+
+def uses_gpu(providers: Sequence[ProviderSpec]) -> bool:
+    """Whether a resolved provider list holds a GPU provider."""
+    return any(_name(p) in GPU_PROVIDERS for p in providers)
 
 
 def _cache_key_path(

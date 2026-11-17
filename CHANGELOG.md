@@ -1,5 +1,45 @@
 # Changelog
 
+## [1.107.0a1](https://github.com/TigreGotico/phoonnx/tree/1.107.0a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.106.0a1...1.107.0a1)
+
+**Merged pull requests:**
+
+- feat: choose int8 or full voice files with one precision setting [\#631](https://github.com/TigreGotico/phoonnx/pull/631) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.106.0a1](https://github.com/TigreGotico/phoonnx/tree/1.106.0a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.105.0a1...1.106.0a1)
+
+**Merged pull requests:**
+
+- feat\(magpie\): encode any byte or character sub-tokenizer as NeMo does [\#627](https://github.com/TigreGotico/phoonnx/pull/627) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.105.0a1](https://github.com/TigreGotico/phoonnx/tree/1.105.0a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.104.1a1...1.105.0a1)
+
+**Merged pull requests:**
+
+- feat\(neutts\): read the checkpoint's text front end from engine\_params [\#616](https://github.com/TigreGotico/phoonnx/pull/616) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.104.1a1](https://github.com/TigreGotico/phoonnx/tree/1.104.1a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.104.0a1...1.104.1a1)
+
+**Merged pull requests:**
+
+- fix: gruut tests mock the TextProcessor that scriptconv calls [\#633](https://github.com/TigreGotico/phoonnx/pull/633) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.104.0a1](https://github.com/TigreGotico/phoonnx/tree/1.104.0a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.103.0a1...1.104.0a1)
+
+**Merged pull requests:**
+
+- feat: standalone onnxruntime examples for model cards [\#608](https://github.com/TigreGotico/phoonnx/pull/608) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.103.0a1](https://github.com/TigreGotico/phoonnx/tree/1.103.0a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.102.5a1...1.103.0a1)
@@ -345,17 +385,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.5a2...1.94.5a3)
 
-**Merged pull requests:**
-
-- test: expect one misaki English G2P per variety [\#523](https://github.com/TigreGotico/phoonnx/pull/523) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.94.5a2](https://github.com/TigreGotico/phoonnx/tree/1.94.5a2) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.5a1...1.94.5a2)
-
-**Merged pull requests:**
-
-- test: phonemize the misaki anchor as en-US [\#524](https://github.com/TigreGotico/phoonnx/pull/524) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.94.5a1](https://github.com/TigreGotico/phoonnx/tree/1.94.5a1) (2026-11-04)
 
@@ -364,10 +396,6 @@
 ## [1.94.4a1](https://github.com/TigreGotico/phoonnx/tree/1.94.4a1) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.3a1...1.94.4a1)
-
-**Merged pull requests:**
-
-- fix: tag British Kokoro, accented PocketTTS and Kristin by training source [\#521](https://github.com/TigreGotico/phoonnx/pull/521) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.94.3a1](https://github.com/TigreGotico/phoonnx/tree/1.94.3a1) (2026-11-04)
 
