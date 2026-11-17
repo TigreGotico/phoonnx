@@ -278,21 +278,26 @@ _OFFLINE_SNAPSHOTS: Dict[Tuple[Path, str, str], Path] = {}
 def _offline_snapshot(repo_id: str, revision: str, filename: str) -> Optional[Path]:
     """The cached ``filename`` from another snapshot of ``repo_id``, for when ``revision`` is not cached.
 
-    The snapshot that ``refs/main`` names comes first, then the newest by modification time;
-    the chosen one must hold ``filename``. Later files of the same folder come from the same
-    snapshot or not at all. Reads no network.
+    The newest snapshot by modification time that holds ``filename`` is chosen, never the one
+    ``refs/main`` names: a fetch at a commit writes no ref, so ``refs/main`` stays at the last
+    commit an unpinned install fetched. Later files of the same folder come from the same
+    snapshot or not at all. A folder that the pinned snapshot holds in part, as after an
+    interrupted download, never falls back, so its files cannot mix two commits. Reads no
+    network.
     """
     repo_dir = Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
-    key = (repo_dir, revision, posixpath.dirname(filename))
+    folder = posixpath.dirname(filename)
+    pinned_folder = repo_dir / "snapshots" / revision / folder
+    if pinned_folder.is_dir() and any(entry.is_file() for entry in pinned_folder.iterdir()):
+        return None
+    key = (repo_dir, revision, folder)
     chosen = _OFFLINE_SNAPSHOTS.get(key)
     if chosen is None or not chosen.is_dir():
-        main_ref = repo_dir / "refs" / "main"
-        main = main_ref.read_text(encoding="utf-8").strip() if main_ref.is_file() else None
         holding = [snapshot for snapshot in (repo_dir / "snapshots").glob("*")
                    if snapshot.name != revision and (snapshot / filename).exists()]
         if not holding:
             return None
-        chosen = max(holding, key=lambda snapshot: (snapshot.name == main, snapshot.stat().st_mtime))
+        chosen = max(holding, key=lambda snapshot: snapshot.stat().st_mtime)
         _OFFLINE_SNAPSHOTS[key] = chosen
         LOG.warning(f"{repo_id} is not cached at the pinned commit {revision} and the hub cannot "
                     f"be reached; loading the cached snapshot {chosen.name} instead")

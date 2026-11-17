@@ -200,12 +200,14 @@ through a new index. The index schema check rejects a Hub URL that names a branc
 A hub cache keeps one snapshot folder per commit. Online, phoonnx fetches the pinned
 commit: the client downloads only the files that changed and reuses the others. Offline, or
 when the hub does not answer, a voice that is not cached at the pinned commit loads from
-another cached snapshot of the same repo: the one `refs/main` names, else the newest one that
-holds the file.
+another cached snapshot of the same repo: the newest one that holds the file. phoonnx does not
+read `refs/main` for this, because a fetch at a commit does not move it.
 
-phoonnx logs one warning with the repo, the pinned commit and the snapshot it
-reads. All the files in one folder of the repo come from the same snapshot, so a graph and its
-external-data files always match.
+phoonnx logs one warning with the repo, the pinned commit and the snapshot it reads. The files
+that one folder of the repo gives through this fallback all come from one snapshot, so a graph
+and its external-data files match. When the pinned commit holds some files of a folder but not
+all of them, as after an interrupted download, the missing files do not fall back: the load
+fails, so that a graph and its config never come from two commits.
 
 Key methods and properties: `config` (lazy `VoiceConfig`), `voice_path`,
 `download_model()`, `download_all()` (model + config + tokenizer + vocoder/style/

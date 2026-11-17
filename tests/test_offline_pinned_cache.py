@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from huggingface_hub import constants
-from huggingface_hub.errors import LocalEntryNotFoundError
+from huggingface_hub.errors import EntryNotFoundError, LocalEntryNotFoundError
 
 from phoonnx import model_manager
 from phoonnx.model_manager import _cached_path, _hf_fetch
@@ -79,10 +79,18 @@ class TestOfflineFallback(_Cache):
         self.assertFalse((self.cache / "models--Phoonnx--a-repo" / "refs").exists())
         self.assertEqual(_hf_fetch(url("config.json")).read_bytes(), b"mid")
 
-    def test_the_snapshot_refs_main_names_wins_over_a_newer_one(self):
+    def test_refs_main_does_not_outrank_a_newer_snapshot(self):
         self.snapshot(OLD, {"config.json": b"old"}, mtime=1000, main=True)
         self.snapshot(MID, {"config.json": b"mid"}, mtime=2000)
-        self.assertEqual(_hf_fetch(url("config.json")).read_bytes(), b"old")
+        self.assertEqual(_hf_fetch(url("config.json")).read_bytes(), b"mid")
+
+    def test_a_pin_bump_offline_keeps_the_pinned_bytes_the_device_last_loaded(self):
+        # A fetch at a sha writes no ref, so refs/main stays at the last commit an unpinned
+        # install fetched. The device then loaded the pin MID, and the index moves on to NEW.
+        self.snapshot(OLD, {"config.json": b"before-the-fix"}, mtime=1000, main=True)
+        self.snapshot(MID, {"config.json": b"fixed"}, mtime=2000)
+        self.assertEqual(_hf_fetch(url("config.json", rev=MID)).read_bytes(), b"fixed")
+        self.assertEqual(_hf_fetch(url("config.json", rev=NEW)).read_bytes(), b"fixed")
 
     def test_a_snapshot_without_the_file_is_passed_over(self):
         self.snapshot(OLD, {"config.json": b"old"}, mtime=1000)
@@ -124,14 +132,14 @@ class TestOfflineFallback(_Cache):
 class TestOneSnapshotPerFolder(_Cache):
 
     def test_a_graph_and_its_sidecar_come_from_one_snapshot(self):
-        self.snapshot(OLD, {"model.onnx": b"graph-old", "model.onnx_data": b"data-old"}, mtime=1000, main=True)
+        self.snapshot(OLD, {"model.onnx": b"graph-old", "model.onnx_data": b"data-old"}, mtime=3000)
         self.snapshot(MID, {"model.onnx": b"graph-mid", "model.onnx_data": b"data-mid"}, mtime=2000)
         self.assertEqual(_hf_fetch(url("model.onnx")).read_bytes(), b"graph-old")
         self.assertEqual(_hf_fetch(url("model.onnx_data")).read_bytes(), b"data-old")
         self.assertEqual(len(self.warnings()), 1)
 
     def test_a_sidecar_never_comes_from_another_commit_than_its_graph(self):
-        self.snapshot(OLD, {"model.onnx": b"graph-old"}, mtime=1000, main=True)
+        self.snapshot(OLD, {"model.onnx": b"graph-old"}, mtime=3000)
         self.snapshot(MID, {"model.onnx": b"graph-mid", "model.onnx_data": b"data-mid"}, mtime=2000)
         self.assertEqual(_hf_fetch(url("model.onnx")).read_bytes(), b"graph-old")
         with self.assertRaises(LocalEntryNotFoundError):
@@ -142,6 +150,23 @@ class TestOneSnapshotPerFolder(_Cache):
         self.snapshot(MID, {"b/model.onnx": b"voice-b"}, mtime=2000, main=True)
         self.assertEqual(_hf_fetch(url("b/model.onnx")).read_bytes(), b"voice-b")
         self.assertEqual(_hf_fetch(url("a/model.onnx")).read_bytes(), b"voice-a")
+
+    def test_a_folder_the_pinned_snapshot_holds_in_part_never_falls_back(self):
+        # a download cut off after the config of the new pin: the graph must not come from
+        # an older commit than the config, so the load fails as it does without pins
+        self.snapshot(OLD, {"config.json": b"config-old", "model.onnx": b"graph-old"}, mtime=1000)
+        self.snapshot(NEW, {"config.json": b"config-new"}, mtime=2000)
+        self.assertEqual(_hf_fetch(url("config.json")).read_bytes(), b"config-new")
+        with self.assertRaises(LocalEntryNotFoundError):
+            _hf_fetch(url("model.onnx"))
+        self.assertIsNone(_cached_path(url("model.onnx")))
+        self.assertEqual(self.warnings(), [])
+
+    def test_other_folders_of_a_partly_pinned_repo_still_fall_back(self):
+        self.snapshot(OLD, {"config.json": b"root-old", "b/model.onnx": b"voice-b-old"}, mtime=1000)
+        self.snapshot(NEW, {"a/model.onnx": b"voice-a-new"}, mtime=2000)
+        self.assertEqual(_hf_fetch(url("b/model.onnx")).read_bytes(), b"voice-b-old")
+        self.assertEqual(_hf_fetch(url("config.json")).read_bytes(), b"root-old")
 
 
 class TestOnline(_Cache):
@@ -162,6 +187,15 @@ class TestOnline(_Cache):
         with patch.object(model_manager, "hf_hub_download", side_effect=download) as fetch:
             self.assertEqual(_hf_fetch(url("config.json")).read_bytes(), b"new")
         self.assertEqual(fetch.call_args.kwargs["revision"], NEW)
+        self.assertEqual(self.warnings(), [])
+
+    def test_a_file_missing_at_the_pin_online_raises_and_never_falls_back(self):
+        # a wrong pin must show: the cached snapshot holds the file, and it is not read
+        with patch.object(model_manager, "hf_hub_download",
+                          side_effect=EntryNotFoundError("404 at the pinned commit")):
+            with self.assertRaises(EntryNotFoundError) as raised:
+                _hf_fetch(url("config.json"))
+        self.assertNotIsInstance(raised.exception, LocalEntryNotFoundError)
         self.assertEqual(self.warnings(), [])
 
     def test_a_hub_that_does_not_answer_falls_back(self):
