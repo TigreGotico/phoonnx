@@ -72,6 +72,8 @@ around **30x slower than real time** — Orpheus is a GPU engine. Canopy Labs an
 ``"not supported ... will be released very soon"``), so there is no smaller Orpheus to
 fall back to. The voices are indexed for completeness; do not pick one as a CPU default.
 """
+import secrets
+import threading
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -101,6 +103,12 @@ END_OF_SPEECH = 128258      # <custom_token_2>
 AUDIO_TOKEN_BASE = 128266
 CODEBOOK_SIZE = 4096
 AUDIO_TOKEN_LAST = AUDIO_TOKEN_BASE + TOKENS_PER_FRAME * CODEBOOK_SIZE - 1   # 156937
+
+#: onnxruntime's seed is process-wide; it must not change between set_seed, the
+#: session build that reads it and the run that draws the noise
+_SEED_LOCK = threading.Lock()
+#: onnxruntime.set_seed takes an int64
+_ORT_SEED_RANGE = 2 ** 63
 
 
 def _softmax(x: np.ndarray) -> np.ndarray:
@@ -172,6 +180,8 @@ class OrpheusAdapter(BaseOnnxAdapter):
 
     def __init__(self):
         self.snac: Optional[onnxruntime.InferenceSession] = None
+        self.snac_path: Optional[str] = None
+        self.snac_providers: Optional[List[Any]] = None
         self.tokenizer = None
         self.voices: List[str] = []
         self.default_voice: Optional[str] = None
@@ -213,7 +223,11 @@ class OrpheusAdapter(BaseOnnxAdapter):
         ``engine_params``."""
         ep = getattr(voice_config, "engine_params", None) or {}
         if self.snac is None and ep.get("snac_decoder_path"):
-            self.snac = make_session(ep["snac_decoder_path"], providers=ep.get("providers"))
+            self.snac_path = ep["snac_decoder_path"]
+            self.snac_providers = ep.get("providers")
+            # a session built while a seeded call holds the seed would repeat its noise
+            with _SEED_LOCK:
+                self.snac = make_session(self.snac_path, providers=self.snac_providers)
         if self.tokenizer is None and ep.get("tokenizer_path"):
             from phoonnx.tokenizer import load_hf_tokenizer
             self.tokenizer = load_hf_tokenizer(ep["tokenizer_path"])
@@ -355,14 +369,42 @@ class OrpheusAdapter(BaseOnnxAdapter):
             s2.extend((c[2], c[3], c[5], c[6]))
         return [s0, s1, s2]
 
-    def decode_codes(self, streams: List[List[int]]) -> np.ndarray:
+    def decode_codes(self, streams: List[List[int]],
+                     snac: Optional[onnxruntime.InferenceSession] = None) -> np.ndarray:
         """Three SNAC code streams -> mono float32 waveform at 24 kHz."""
         if not streams[0]:
             return np.zeros(0, np.float32)
-        names = [i.name for i in self.snac.get_inputs()]
+        snac = snac or self.snac
+        names = [i.name for i in snac.get_inputs()]
         feed = {n: np.asarray(s, np.int64).reshape(1, -1) for n, s in zip(names, streams)}
-        audio = self.snac.run(None, feed)[0]
+        audio = snac.run(None, feed)[0]
         return np.asarray(audio, np.float32).reshape(-1)
+
+    def decode_codes_seeded(self, streams: List[List[int]], seed: int) -> np.ndarray:
+        """Decode on a private SNAC session whose noise starts from ``seed``.
+
+        SNAC's noise blocks are ``RandomNormalLike`` nodes with no seed attribute.
+        onnxruntime seeds each one from its process-wide seed when it builds the
+        session, then advances it on every run. A seed therefore fixes only the first
+        run of a session built right after ``onnxruntime.set_seed``, so a seeded call
+        decodes on a new session and leaves the shared one alone. The process-wide
+        seed is drawn from entropy again before the lock is released, so a session
+        built later does not repeat this call's noise. Seeds that differ by a
+        multiple of 2**63 give the same SNAC noise. Each seeded call pays for one
+        session build, about 0.3 s on CPU.
+
+        On CUDA the noise nodes draw from one process-wide generator, so an unseeded
+        decode that runs during a seeded one can still change the seeded audio. Only
+        a decode on CPU, or with no concurrent decode, reproduces exactly.
+        """
+        with _SEED_LOCK:
+            onnxruntime.set_seed(seed % _ORT_SEED_RANGE)
+            try:
+                snac = make_session(self.snac_path, providers=self.snac_providers,
+                                    sess_options=onnxruntime.SessionOptions())
+                return self.decode_codes(streams, snac)
+            finally:
+                onnxruntime.set_seed(secrets.randbits(63))
 
     # ------------------------------------------------------------------
     # autoregressive loop
@@ -433,14 +475,23 @@ class OrpheusAdapter(BaseOnnxAdapter):
 
         p = {**self.default_params(), **request.params}
         seed = p.get("seed")
-        rng = np.random.default_rng(None if seed is None else int(seed))
+        if seed is not None:
+            seed = int(seed)
+            if seed < 0:
+                raise ValueError(f"an Orpheus seed must be a non-negative integer, got {seed}")
+            if self.snac_path is None:
+                raise RuntimeError("a seeded Orpheus call rebuilds the SNAC decoder and "
+                                   "needs snac_decoder_path in engine_params")
+        rng = np.random.default_rng(seed)
         prompt_ids = [int(i) for i in np.asarray(request.phoneme_ids).reshape(-1)]
         token_ids = self.generate(session, prompt_ids, p, rng)
         streams = self.token_ids_to_codes(token_ids)
         if not streams[0]:
             raise RuntimeError("Orpheus generated no complete SNAC frame — lower the "
                                "temperature or pick another voice")
-        return AdapterSynthesisResult(audio=self.decode_codes(streams),
+        audio = (self.decode_codes(streams) if seed is None
+                 else self.decode_codes_seeded(streams, seed))
+        return AdapterSynthesisResult(audio=audio,
                                       extras={"frames": len(streams[0]),
                                               "tokens": len(token_ids)})
 

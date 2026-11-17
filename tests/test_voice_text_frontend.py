@@ -2,8 +2,8 @@
 
 The contract (``speech-stack-contract.md``, section phoonnx) says: "``TTSVoice``
 builds one ``TextFrontend`` at load, and maps ``SynthesisConfig`` overrides to
-``Stages`` for each call." The frontend runs inline blocks, sentences,
-normalisation, diacritization and the backend, in that order.
+``Stages`` for each call." The frontend runs inline blocks, normalisation of the
+whole text, sentences, diacritization and the backend, in that order.
 
 The diacritizer is replaced with a recorder, so no model is needed. Every
 expected value comes from a function outside the voice text path: phoonnx's own
@@ -209,12 +209,12 @@ class TestNormaliser(unittest.TestCase):
         expected = EspeakPhonemizer().phonemize(normalize(text, "en-US", expand_contractions=False), "en-US")
         self.assertEqual(_synthesis_phonemes(voice, text), expected)
 
-    def test_the_normaliser_runs_once_per_sentence(self):
+    def test_the_normaliser_reads_the_whole_text_before_the_sentence_split(self):
         voice = _voice("en")
         seen = []
         voice.phonemizer.normalizer = lambda text, lang: seen.append(text) or text
         self.assertEqual(_synthesis_phonemes(voice, "ab. cd."), [list("ab"), list("cd")])
-        self.assertEqual(seen, ["ab.", "cd."])
+        self.assertEqual(seen, ["ab. cd."])
 
     def test_a_shami_voice_runs_the_hook(self):
         voice = _voice("ar", PhonemeType.SHAMI, Alphabet.IPA)
