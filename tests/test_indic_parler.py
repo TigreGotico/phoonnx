@@ -598,7 +598,7 @@ def test_available_langs_cover_the_indexed_voices():
 # voice index
 # ---------------------------------------------------------------------------
 
-INDIC_PARLER_REPO = "https://huggingface.co/Phoonnx/phoonnx-indic-parler/"
+INDIC_PARLER_REPO = "https://huggingface.co/Phoonnx/parlertts-multi-indic-unicode/"
 AUX_GRAPHS = {"text_encoder_path", "decoder_decode_path", "dac_decoder_path", "prompt_tokenizer_path",
               "description_tokenizer_path", "model_config_path"}
 
