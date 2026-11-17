@@ -512,6 +512,138 @@ class TestExternalDataGraphLoads(HubTestCase):
         self.assertEqual([i.name for i in session.get_inputs()], ["X"])
 
 
+def _external_data_graph(locations):
+    """A graph ``Y = X + W0 + W1 + ...`` whose initializer ``Wi`` lives in the
+    file ``locations[i]``, or inside the graph when that is None.
+
+    Returns the graph bytes and ``{location: bytes}`` of the files it names,
+    and the expected output for ``X = 0``.
+    """
+    import numpy as np
+    import onnx
+    from onnx import helper, numpy_helper, TensorProto
+    from onnx.external_data_helper import set_external_data
+
+    files, initializers, nodes, last = {}, [], [], "X"
+    for i, location in enumerate(locations):
+        tensor = numpy_helper.from_array(np.full(4, i + 1, dtype=np.float32), name=f"W{i}")
+        if location is not None:
+            offset = len(files.get(location, b""))
+            files[location] = files.get(location, b"") + tensor.raw_data
+            set_external_data(tensor, location, offset=offset, length=len(tensor.raw_data))
+            tensor.ClearField("raw_data")
+        initializers.append(tensor)
+        out = f"S{i}" if i < len(locations) - 1 else "Y"
+        nodes.append(helper.make_node("Add", [last, f"W{i}"], [out]))
+        last = out
+    graph = helper.make_graph(
+        nodes, "g", [helper.make_tensor_value_info("X", TensorProto.FLOAT, [4])],
+        [helper.make_tensor_value_info("Y", TensorProto.FLOAT, [4])], initializers)
+    model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)])
+    model.ir_version = 10
+    expected = np.full(4, sum(range(1, len(locations) + 1)), dtype=np.float32)
+    return model.SerializeToString(), files, expected
+
+
+class TestExternalDataNames(HubTestCase):
+    """Every file a graph names as external data is fetched beside it.
+
+    Exporters do not agree on the names. A graph whose files are fetched only
+    by the ``<graph>_data`` guess fails in onnxruntime with "External data path
+    escapes model directory", which hides the real cause: a missing file.
+    """
+
+    def _stage(self, graph_name, locations):
+        graph, files, expected = _external_data_graph(locations)
+        self.hub.stage(f"{HUB}/{graph_name}", graph)
+        for location, data in files.items():
+            self.hub.stage(f"{HUB}/{location}", data)
+        return expected
+
+    def _fetched(self):
+        return sorted(filename for _, filename, _ in self.hub.unique_downloads)
+
+    def _run(self, path):
+        import numpy as np
+        session = onnxruntime.InferenceSession(
+            str(path), providers=["CPUExecutionProvider"])
+        return session.run(None, {"X": np.zeros(4, dtype=np.float32)})[0]
+
+    def test_a_series_of_data_files_is_fetched(self):
+        locations = ["model.onnx_data", "model.onnx_data_1", "model.onnx_data_2",
+                     "model.onnx_data_1"]
+        expected = self._stage("model.onnx", locations)
+        path = self.make_info().download_model()
+        self.assertEqual(self._fetched(),
+                         ["model.onnx", "model.onnx_data", "model.onnx_data_1",
+                          "model.onnx_data_2"])
+        self.assertEqual(self._run(path).tolist(), expected.tolist())
+
+    def test_the_file_onnxruntime_quantization_writes_is_fetched(self):
+        import numpy as np
+        import onnx
+        from onnx import helper, numpy_helper, TensorProto
+        from onnxruntime.quantization import quantize_dynamic
+
+        build = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(build, ignore_errors=True))
+        weight = np.random.default_rng(0).standard_normal((64, 64)).astype(np.float32)
+        graph = helper.make_graph(
+            [helper.make_node("MatMul", ["X", "W"], ["Y"])], "g",
+            [helper.make_tensor_value_info("X", TensorProto.FLOAT, [1, 64])],
+            [helper.make_tensor_value_info("Y", TensorProto.FLOAT, [1, 64])],
+            [numpy_helper.from_array(weight, name="W")])
+        model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)])
+        model.ir_version = 10
+        onnx.save(model, str(build / "model.onnx"))
+        quantize_dynamic(str(build / "model.onnx"), str(build / "model_int8.onnx"),
+                         use_external_data_format=True)
+        self.assertEqual(sorted(p.name for p in build.iterdir()),
+                         ["model.onnx", "model_int8.onnx", "model_int8.onnx.data"])
+        for name in ("model_int8.onnx", "model_int8.onnx.data"):
+            self.hub.stage(f"{HUB}/{name}", (build / name).read_bytes())
+
+        path = self.make_info(model_url=f"{HUB}/model_int8.onnx").download_model()
+        self.assertEqual(self._fetched(),
+                         ["model_int8.onnx", "model_int8.onnx.data"])
+        x = np.ones((1, 64), dtype=np.float32)
+        session = onnxruntime.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+        np.testing.assert_allclose(session.run(None, {"X": x})[0], x @ weight, atol=0.5)
+
+    def test_a_file_outside_the_folder_is_refused(self):
+        for i, location in enumerate(("../weights.bin", "sub/../../weights.bin",
+                                      "/etc/weights.bin", "..\\weights.bin",
+                                      "C:/weights.bin")):
+            with self.subTest(location=location):
+                self.hub.downloads.clear()
+                graph = f"model{i}.onnx"
+                self.hub.stage(f"{HUB}/{graph}", _external_data_graph([location])[0])
+                with self.assertRaisesRegex(ValueError, "outside its folder"):
+                    self.make_info(model_url=f"{HUB}/{graph}").download_model()
+                self.assertEqual(self._fetched(), [graph])
+
+    def test_a_graph_without_external_data_fetches_nothing_else(self):
+        expected = self._stage("model.onnx", [None, None])
+        path = self.make_info().download_model()
+        self.assertEqual(self._fetched(), ["model.onnx"])
+        self.assertEqual(self._run(path).tolist(), expected.tolist())
+
+    def test_the_graph_data_name_still_loads(self):
+        expected = self._stage("model.onnx", ["model.onnx_data", "model.onnx_data"])
+        path = self.make_info().download_model()
+        self.assertEqual(self._fetched(), ["model.onnx", "model.onnx_data"])
+        self.assertEqual(self._run(path).tolist(), expected.tolist())
+
+    def test_a_named_file_comes_from_a_self_hosted_folder_too(self):
+        graph, files, expected = _external_data_graph(["model.onnx.data"])
+        url = "https://mirror.example.org/v/model.onnx?download=true"
+        with self.stream({"model.onnx.data?download=true":
+                              _mock_response(200, content=files["model.onnx.data"]),
+                          "model.onnx?download=true": _mock_response(200, content=graph)}):
+            path = self.make_info(model_url=url).download_model()
+        self.assertEqual(self._run(path).tolist(), expected.tolist())
+
+
 class TestLoad(HubTestCase):
     def test_load_hands_every_artifact_path_to_ttsvoice(self):
         self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
@@ -1270,6 +1402,19 @@ class TestDiskSize(unittest.TestCase):
         info = TTSModelInfo(voice_id="v", lang="en-US",
                             model_url=f"{self.URL}cold.onnx")
         self.assertEqual(info.disk_size(), 0)
+
+    def test_every_data_file_a_graph_names_is_counted_once(self):
+        graph, _, _ = _external_data_graph(["model.onnx_data", "model.onnx_data_1"])
+        blob = self.root / "blobs" / "graph-sha"
+        blob.write_bytes(graph)
+        (self.snapshot / "model.onnx").symlink_to(blob)
+        self.add("model.onnx_data", 5000)
+        self.add("model.onnx_data_1", 3000)
+        # the index entry also names a data file, as the Orpheus entries do
+        info = TTSModelInfo(voice_id="v", lang="en-US",
+                            model_url=f"{self.URL}model.onnx",
+                            aux_model_urls={"lm_weights_path": f"{self.URL}model.onnx_data"})
+        self.assertEqual(info.disk_size(), len(graph) + 5000 + 3000)
 
     def test_a_voice_hosted_outside_the_hub_is_measured_too(self):
         from phoonnx.model_manager import _file_bytes

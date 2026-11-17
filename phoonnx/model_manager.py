@@ -19,6 +19,7 @@ from phoonnx.config import PhonemeType, _voice_phonemizer, VoiceConfig, Engine, 
 from phoonnx.util import match_lang, normalize_lang, LOG
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
 from phoonnx.voice import TTSVoice
+from phoonnx._onnx_external import external_data_locations
 
 
 def _tmp_path(dest: Path) -> Path:
@@ -87,6 +88,36 @@ def _sidecar_url(url: str) -> str:
     """
     head, sep, tail = url.partition("?")
     return f"{head}_data{sep}{tail}"
+
+
+def _sidecar_urls(url: str, graph: Optional[Path]) -> List[str]:
+    """The URLs of the external-data files that the graph at ``graph`` names.
+
+    onnxruntime reads each file from the folder of the graph, by the name the
+    graph gives it, so the files come from the folder of ``url``. Exporters do
+    not agree on the names: ``model.onnx_data``, a series ``model.onnx_data_1``
+    to ``_6``, ``model_int8.onnx.data`` from onnxruntime quantization. Only a
+    graph that cannot be read falls back to the ``<graph>_data`` guess.
+
+    Raises:
+        ValueError: the graph names a file outside its own folder.
+    """
+    if graph is None:
+        return [_sidecar_url(url)]
+    try:
+        locations = external_data_locations(graph)
+    except (OSError, ValueError) as e:
+        LOG.debug(f"cannot read the external-data names of '{url}', "
+                  f"guessing '<graph>_data': {e}")
+        return [_sidecar_url(url)]
+    head, sep, tail = url.partition("?")
+    folder = head.rsplit("/", 1)[0]
+    for location in locations:
+        parts = location.replace("\\", "/").split("/")
+        if parts[0] == "" or ":" in parts[0] or ".." in parts:
+            raise ValueError(f"'{url}' names external data outside its folder: "
+                             f"{location!r}")
+    return [f"{folder}/{location}{sep}{tail}" for location in locations]
 
 
 def _expected_size(response) -> Optional[int]:
@@ -270,15 +301,28 @@ def _cached_path(url: str) -> Optional[Path]:
     return dest if _is_cached(dest) else None
 
 
-def _file_bytes(url: str) -> int:
-    """On-disk size of ``url``'s cached copy, plus its weights sidecar."""
-    total = 0
-    for candidate in (url, _sidecar_url(url)):
-        path = _cached_path(candidate)
-        if path is None:
+def _file_bytes(*urls: str) -> int:
+    """On-disk size of the cached copies of ``urls`` and of their external data.
+
+    A file counts once, also when two URLs name it, or a URL and a graph that
+    keeps its weights in it.
+    """
+    files = set()
+    for url in urls:
+        graph = _cached_path(url)
+        if graph is None:
             continue
         try:
-            total += path.stat().st_size
+            sidecars = _sidecar_urls(url, graph)
+        except ValueError:
+            sidecars = []
+        for path in [graph, *map(_cached_path, sidecars)]:
+            if path is not None:
+                files.add(os.path.realpath(path))
+    total = 0
+    for path in files:
+        try:
+            total += os.stat(path).st_size
         except OSError:
             continue
     return total
@@ -576,13 +620,15 @@ class TTSModelInfo:
             return None
 
     def _fetch_onnx(self, url: str) -> Path:
-        """Give the local path of an ONNX graph, with its sidecar alongside.
+        """Give the local path of an ONNX graph, with its sidecars alongside.
 
-        A graph with external weights names its sidecar by filename and
+        A graph with external weights names each sidecar by filename and
         onnxruntime resolves that name against the directory the graph itself
-        resolves to, so the two must share a directory. Fetching the sidecar
-        from the same source puts it there, and the graph loads where it lies.
-        Single-file graphs (piper/vits exports) simply have no sidecar.
+        resolves to, so they must share a directory. Fetching every sidecar
+        the graph names from the same source puts it there, and the graph
+        loads where it lies. Single-file graphs (piper/vits exports) simply
+        have no sidecar. A graph that names a file outside its own folder
+        raises ``ValueError``, and that file is not fetched.
 
         "No sidecar" and "the sidecar failed to arrive" are not the same
         answer. The sidecar carries the weights, so a failure that is mistaken
@@ -590,23 +636,24 @@ class TTSModelInfo:
         Only a 404, and being offline with nothing cached, count as absence.
         """
         path = _resolve(url)
-        try:
-            _resolve(_sidecar_url(url))
-        except _NO_SUCH_FILE as e:
-            # There is no sidecar at that URL, or we are offline and have never
-            # seen one; a single-file graph loads fine either way.
-            LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
-        except (requests.exceptions.ConnectionError,
-                requests.exceptions.Timeout) as e:
-            # Offline/DNS/timeout on the direct (non-hub) path.
-            LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
-        except requests.exceptions.HTTPError as e:
-            # Only a 404 means "no sidecar here". Anything else — a 500, a 403,
-            # a status we cannot read — is a real failure and must not be
-            # swallowed.
-            if getattr(getattr(e, "response", None), "status_code", None) != 404:
-                raise
-            LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
+        for sidecar in _sidecar_urls(url, path):
+            try:
+                _resolve(sidecar)
+            except _NO_SUCH_FILE as e:
+                # There is no sidecar at that URL, or we are offline and have
+                # never seen one; a single-file graph loads fine either way.
+                LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
+            except (requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout) as e:
+                # Offline/DNS/timeout on the direct (non-hub) path.
+                LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
+            except requests.exceptions.HTTPError as e:
+                # Only a 404 means "no sidecar here". Anything else — a 500, a
+                # 403, a status we cannot read — is a real failure and must not
+                # be swallowed.
+                if getattr(getattr(e, "response", None), "status_code", None) != 404:
+                    raise
+                LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
         return path
 
     def download_model(self) -> Path:
@@ -771,7 +818,7 @@ class TTSModelInfo:
         """
         # One file may be named by several fields (and several voices); count
         # each distinct file once.
-        return sum(_file_bytes(u) for u in self.artifact_urls())
+        return _file_bytes(*self.artifact_urls())
 
     def load(self, providers: Optional[Sequence[ProviderSpec]] = None) -> TTSVoice:
         """
