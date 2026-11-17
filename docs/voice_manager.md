@@ -190,6 +190,17 @@ relevant to specific engine families (see [engines.md](engines.md), [cloning.md]
 | `precision` | `str` \| `None` | `int8` for an entry that has only int8 files, unset for full files |
 | `variants` | `dict` \| `None` | `{"int8": {...}}`: the URL fields of the int8 files that differ, and `"auto": true` when `auto` may pick them |
 
+### Hub revisions in the bundled index
+
+Each Hugging Face URL in a bundled index file names a commit sha, never `main`:
+`https://huggingface.co/<repo>/resolve/<40-hex sha>/<path>`. An installed phoonnx then
+loads the files it was released with, and an upload to a voice repo reaches users only
+through a new index. The index schema check rejects a Hub URL that names a branch or a tag.
+
+A hub cache keeps one snapshot folder per commit. A voice that is already cached at the
+pinned commit loads offline. A cache filled at an older commit needs one online load: the
+client downloads only the files that changed and reuses the others.
+
 Key methods and properties: `config` (lazy `VoiceConfig`), `voice_path`,
 `download_model()`, `download_all()` (model + config + tokenizer + vocoder/style/
 speaker-encoder/aux graphs), `download_vocoder()`, `load(providers=None, precision=None)`,

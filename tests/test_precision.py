@@ -24,7 +24,7 @@ from phoonnx.index_schema import validate_entry
 from phoonnx.model_manager import TTSModelInfo, TTSModelManager
 from phoonnx.version import VERSION_MAJOR
 
-BASE = "https://huggingface.co/Phoonnx/demo/resolve/main"
+BASE = "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567"
 CPU = ["CPUExecutionProvider"]
 GPUS = ["CUDAExecutionProvider", "ROCMExecutionProvider", "MIGraphXExecutionProvider",
         "DmlExecutionProvider", "CoreMLExecutionProvider"]

@@ -566,6 +566,17 @@ def test_the_index_entry_is_found_by_the_model_url_not_the_voice_id():
     assert row(text, "Repository") == "`Phoonnx/v`"
 
 
+def test_the_index_entry_is_found_at_a_pinned_revision():
+    sha = "0123456789abcdef0123456789abcdef01234567"
+    card = LIVE_CARD.replace("# phoonnx_pt-PT_miro_unicode", "# v")
+    files = {"m.onnx.json": json.dumps(phoonnx_config(keep_punctuation=True)), "other.json": "{}",
+             "m.onnx": "", "README.md": card}
+    index = {"OpenVoiceOS/v": {"model_url": f"https://huggingface.co/Phoonnx/v/resolve/{sha}/m.onnx",
+                               "config_url": f"https://huggingface.co/Phoonnx/v/resolve/{sha}/m.onnx.json"}}
+    text = render_repo("Phoonnx/v", list(files), files.__getitem__, lambda repo, kind: True, index=index)
+    assert row(text, "Voice id") == "`OpenVoiceOS/v`"
+
+
 def test_two_index_voices_in_one_repo_are_refused():
     entry = {"model_url": "https://huggingface.co/Phoonnx/not_indexed_voice/resolve/main/voice.onnx"}
     card = LIVE_CARD.replace("# phoonnx_pt-PT_miro_unicode", "# not_indexed_voice")

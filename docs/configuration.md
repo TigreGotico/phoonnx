@@ -344,16 +344,16 @@ optional `variants` field, which holds only the URL fields that differ.
 
 ```json
 {
-  "model_url": "https://huggingface.co/Phoonnx/demo/resolve/main/model.onnx",
+  "model_url": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/model.onnx",
   "aux_model_urls": {
-    "text_encoder_path": "https://huggingface.co/Phoonnx/demo/resolve/main/text_encoder.onnx",
-    "flow_path": "https://huggingface.co/Phoonnx/demo/resolve/main/flow.onnx"
+    "text_encoder_path": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/text_encoder.onnx",
+    "flow_path": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/flow.onnx"
   },
   "variants": {
     "int8": {
-      "model_url": "https://huggingface.co/Phoonnx/demo/resolve/main/model_int8.onnx",
+      "model_url": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/model_int8.onnx",
       "aux_model_urls": {
-        "flow_path": "https://huggingface.co/Phoonnx/demo/resolve/main/flow_int8.onnx"
+        "flow_path": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/flow_int8.onnx"
       },
       "auto": true
     }
