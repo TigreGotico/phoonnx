@@ -74,7 +74,7 @@ test = [
     # ahotts-g2p stay listed here for their version floors. pt-phonemizers installs
     # tugaphone, which the card example tests run as a backend that owns its
     # diacritize stage.
-    "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a109",
+    "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a110",
     "espyak>=0.0.3a1",
     # the voice-conversion post-stage's end-to-end test runs the real engine;
     # pure-ONNX with no torch of its own, so it is cheap to have here.
@@ -119,6 +119,8 @@ test = [
     # after 0.44 — older resolved versions (pulled in transitively by
     # espnet/f5-tts) fail at import time with an ImportError
     "pypinyin>=0.50",
+    # the F5-TTS pinyin text function (scriptconv f5tts_pinyin) segments with rjieba
+    "rjieba>=0.2.2",
     # cross-check reference for the Larynx/Mimic3 tokenization golden tests
     "gruut[en]>=2.3.0,<3.0",
     # reference implementation for tests/test_bpe_reader.py. phoonnx reads
