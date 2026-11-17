@@ -106,7 +106,11 @@ vocoder, style embedding, speaker encoder or auxiliary graph the voice uses.
 
 ```bash
 phoonnx-voices download VOICE_ID
+phoonnx-voices download VOICE_ID --precision int8
 ```
+
+`--precision` takes `auto`, `int8` or `full` and downloads the files that load
+with that value. Unset, the value comes from `PHOONNX_PRECISION`, else `auto`.
 
 The voice is looked up in the local cache first; if it is not cached, the download
 falls back to the bundled indexes, so a single voice can be fetched without running

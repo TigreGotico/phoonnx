@@ -16,25 +16,17 @@
             "aligner_path": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/main/edwixx__rapido-tts/aligner.onnx",
             "decoder_path": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/main/edwixx__rapido-tts/decoder.onnx"
         },
-        "display_name": "Rápido pt-BR"
-    },
-    "edwixx/pt-BR-rapido-int8": {
-        "voice_id": "edwixx/pt-BR-rapido-int8",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/main/edwixx__rapido-tts-int8/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/main/edwixx__rapido-tts-int8/config.json",
-        "vocab_url": null,
-        "tokenizer_config_url": null,
-        "tokens_url": null,
-        "phoneme_map_url": null,
-        "phoneme_type": "graphemes",
-        "alphabet": "unicode",
-        "engine": "rapido",
-        "lang": "pt-BR",
-        "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/main/edwixx__rapido-tts-int8/text_encoder.onnx",
-            "aligner_path": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/main/edwixx__rapido-tts-int8/aligner.onnx",
-            "decoder_path": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/main/edwixx__rapido-tts-int8/decoder.onnx"
-        },
-        "display_name": "Rápido pt-BR (int8)"
+        "display_name": "Rápido pt-BR",
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/main/edwixx__rapido-tts-int8/model.onnx",
+                "config_url": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/main/edwixx__rapido-tts-int8/config.json",
+                "aux_model_urls": {
+                    "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/main/edwixx__rapido-tts-int8/text_encoder.onnx",
+                    "aligner_path": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/main/edwixx__rapido-tts-int8/aligner.onnx",
+                    "decoder_path": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/main/edwixx__rapido-tts-int8/decoder.onnx"
+                }
+            }
+        }
     }
 }
