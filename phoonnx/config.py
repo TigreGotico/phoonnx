@@ -440,10 +440,12 @@ class SynthesisConfig:
     """
 
     speaker_id: Optional[int] = None
-    """Index of speaker to use (multi-speaker voices only)."""
+    """Index of speaker to use (multi-speaker voices only). None uses the voice's own
+    speaker, or speaker 0 when the voice names none."""
 
     lang_id: Optional[int] = None
-    """Index of lang to use (multi-lang voices only)."""
+    """Index of lang to use (multi-lang voices only). None uses the voice's own
+    language, or language 0 when the voice names none."""
 
     speaker_reference: Optional[Any] = None
     """Reference audio for zero-shot voice cloning (cloning engines). A path to a wav
