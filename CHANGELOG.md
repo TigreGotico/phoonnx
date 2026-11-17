@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.109.4a1](https://github.com/TigreGotico/phoonnx/tree/1.109.4a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.109.3a1...1.109.4a1)
+
+**Merged pull requests:**
+
+- fix: load five voices with the text path of their config [\#660](https://github.com/TigreGotico/phoonnx/pull/660) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.109.3a1](https://github.com/TigreGotico/phoonnx/tree/1.109.3a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.109.2a1...1.109.3a1)
