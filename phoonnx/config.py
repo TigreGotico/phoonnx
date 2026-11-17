@@ -3,6 +3,9 @@ import warnings
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping, Optional, Union, Dict
+
+import text2spoken
+
 from phoonnx.util import LOG, is_arabic, normalize_lang
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
@@ -640,24 +643,11 @@ def _deprecated(name: str, replacement: str) -> None:
                   DeprecationWarning, stacklevel=3)
 
 
-# espeak-ng reads a contraction the way people say it ("don't" -> dˈoʊnt). Expanding it
-# first ("do not") makes every English sentence sound like a form letter, and the table
-# is a guess for "he's" and "I'd". Numbers, dates, units and titles are still normalized.
-def _espeak_normalize(text: str, lang: str) -> str:
-    from phoonnx.util import normalize
-    return normalize(text, lang, expand_contractions=False)
-
-
-def _normalize(text: str, lang: str) -> str:
-    from phoonnx.util import normalize
-    return normalize(text, lang)
-
-
 def _voice_phonemizer(phoneme_type: PhonemeType,
                       alphabet: Alphabet = Alphabet.IPA,
                       model: Optional[str] = None,
                       keep_punctuation: bool = False) -> 'Phonemizer':
-    """The phonemizer of a voice, with phoonnx's text normalizer as its ``normalizer``.
+    """The phonemizer of a voice, with :func:`text2spoken.normalize` as its ``normalizer``.
 
     The backend comes from scriptconv's registry, which also holds the
     license-quarantined mantoq and KoG2P and provisions the Hebrew phonikud
@@ -681,7 +671,7 @@ def _voice_phonemizer(phoneme_type: PhonemeType,
         raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
 
     if "normalize" not in phonemizer.owned_stages:  # dizione normalises raw text itself
-        phonemizer.normalizer = _espeak_normalize if phoneme_type == PhonemeType.ESPEAK else _normalize
+        phonemizer.normalizer = text2spoken.normalize
     phonemizer.keep_punctuation = keep_punctuation
     return phonemizer
 
@@ -690,7 +680,7 @@ def get_phonemizer(phoneme_type: PhonemeType,
                    alphabet: Alphabet = Alphabet.IPA,
                    model: Optional[str] = None,
                    keep_punctuation: bool = False) -> 'Phonemizer':
-    """Deprecated. A phonemizer whose own ``normalizer`` runs phoonnx's text normalizer.
+    """Deprecated. A phonemizer whose own ``normalizer`` is :func:`text2spoken.normalize`.
 
     Use :attr:`phoonnx.voice.TTSVoice.frontend`, or build a
     :class:`scriptconv.frontend.TextFrontend`.

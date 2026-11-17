@@ -57,11 +57,9 @@ first sentence becomes audio before the second sentence is phonemized. Step by s
    them. The result is one `AudioChunk` per utterance. `phoonnx.audio.write_wav` writes a
    stream of chunks to a WAV file. `synthesize_wav` and `synthesize_ssml_wav` use it.
 
-Text normalization of numbers, dates and units (via `ovos-number-parser` /
-`ovos-date-parser`) runs in the text frontend and during dataset
-[preprocessing](training/preprocess.md), before diacritization in both, so training text
-matches inference. An espeak voice keeps contractions, because espeak-ng reads them as people
-say them. Every voice runs the step, text-token and grapheme engines included. The step is
+Text normalization of numbers, dates and units (`text2spoken.normalize`) runs in the text
+frontend and during dataset [preprocessing](training/preprocess.md), before diacritization in
+both, so training text matches inference. Contractions stay as written. Every voice runs the step, text-token and grapheme engines included. The step is
 skipped only for a phonemizer that names `normalize` in its `owned_stages`, because that
 phonemizer normalizes its own input. Individual phonemizer backends may also clean their own input.
 

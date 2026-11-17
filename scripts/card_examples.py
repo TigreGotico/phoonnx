@@ -45,10 +45,10 @@ WITHOUT_PHOONNX = """### Without phoonnx
 
 This code runs the voice without phoonnx. Its first line names the packages it needs.
 
-phoonnx normalises the text before the model reads it, and this code does not. In the languages that it has rules
-for, the phoonnx normaliser writes numbers, dates, times and units as words, and it expands titles such as "Dr.".
-For a voice that does not use espeak, it also expands English contractions such as "can't". It changes the
-typographic apostrophe (’) to a plain one ('), and it changes line breaks and runs of spaces to one space.
+phoonnx normalises the text with text2spoken before the model reads it, and this code does not. In the languages
+that it has rules for, text2spoken writes numbers, dates, times and units as words, and it expands titles such as
+"Dr.". It leaves contractions such as "can't", the typographic apostrophe (’), line breaks and runs of spaces as
+written.
 
 This code also reads the whole text as one piece, in one run of the model. phoonnx splits the text into sentences
 or chunks and runs the model once for each piece. Give this code one sentence of normalised text, and it builds the

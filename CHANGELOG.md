@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.111.0a1](https://github.com/TigreGotico/phoonnx/tree/1.111.0a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.110.0a1...1.111.0a1)
+
+**Merged pull requests:**
+
+- feat: pin every voice-index file to a Hub commit [\#656](https://github.com/TigreGotico/phoonnx/pull/656) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.110.0a1](https://github.com/TigreGotico/phoonnx/tree/1.110.0a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.109.4a1...1.110.0a1)
@@ -385,10 +393,6 @@
 ## [1.96.0a1](https://github.com/TigreGotico/phoonnx/tree/1.96.0a1) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.95.1a1...1.96.0a1)
-
-**Merged pull requests:**
-
-- feat\(ssml\): say-as types, pitch, marks, X-SAMPA, whisper/soft/drc, breaths [\#547](https://github.com/TigreGotico/phoonnx/pull/547) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.95.1a1](https://github.com/TigreGotico/phoonnx/tree/1.95.1a1) (2026-11-10)
 

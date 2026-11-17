@@ -132,12 +132,11 @@ def test_phoneme_type_is_scriptconv_phonemizer_enum():
 
 
 def test_get_phonemizer_injects_normalizer():
+    import text2spoken
     from phoonnx.config import PhonemeType, get_phonemizer
-    from phoonnx.util import normalize
     with pytest.warns(DeprecationWarning, match="get_phonemizer"):
         p = get_phonemizer(PhonemeType.GRAPHEMES)
-    assert p.normalizer("I'm 2", "en") == normalize("I'm 2", "en") == "I am two"
-    # normalization behavior preserved: digits expand as before the migration
+    assert p.normalizer is text2spoken.normalize
     out = "".join(p.phonemize("2 cats", "en")[0])
     assert "2" not in out
 
