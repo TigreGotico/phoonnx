@@ -60,7 +60,7 @@ The adapter also works for **Habibi-TTS** and any other model built on the
 F5-TTS architecture (same ONNX layout, different weights).
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import onnxruntime
@@ -105,6 +105,8 @@ class F5TTSAdapter(BaseOnnxAdapter):
         self._speed: float = 1.0
         self._dialect: Optional[str] = None
         self._char2idx: Dict[str, int] = {}
+        self._idx2char: Dict[int, str] = {}
+        self._text_tokens: Optional[Callable[[str], List[str]]] = None
 
     def default_params(self) -> Dict[str, float]:
         return {
@@ -152,6 +154,15 @@ class F5TTSAdapter(BaseOnnxAdapter):
         tokenizer = getattr(voice_config, "tokenizer", None)
         vocabulary = getattr(tokenizer, "vocabulary", None)
         self._char2idx = dict(getattr(vocabulary, "char2idx", None) or {})
+        self._idx2char = {i: c for c, i in self._char2idx.items()}
+
+        # The pinyin text function adds a space between the reference and the
+        # generation text in some cases (see _join_space).
+        phoneme_type = getattr(voice_config, "phoneme_type", None)
+        self._text_tokens = None
+        if getattr(phoneme_type, "value", phoneme_type) == "f5tts_pinyin":
+            from scriptconv.phonemizers.f5tts import F5TTSPinyinPhonemizer
+            self._text_tokens = F5TTSPinyinPhonemizer().text_tokens
 
     def synthesize(
         self,
@@ -191,11 +202,11 @@ class F5TTSAdapter(BaseOnnxAdapter):
                 np.float32,
             ).reshape(1, 1, -1)
 
-        # Combine ref_text + gen_text token IDs
-        ref_text_ids = np.asarray(ref_text_tokens, np.int32).reshape(1, -1)
         gen_text_ids = request.phoneme_ids.astype(np.int32).reshape(1, -1)
-        gen_text_ids = self._wrap_dialect(gen_text_ids, p.get("dialect", self._dialect))
-        text_ids = np.concatenate([ref_text_ids, gen_text_ids], axis=1)
+        ref_text_ids = self._reference_ids(ref_text_tokens, p.get("speaker_reference_text"),
+                                           gen_text_ids[0].tolist())
+        text_ids = self._wrap_dialect(np.concatenate([ref_text_ids, gen_text_ids], axis=1),
+                                      p.get("dialect", self._dialect))
 
         # max_duration: estimated from ref audio length and text length ratio
         ref_audio_len = ref_audio_arr.shape[-1]
@@ -346,10 +357,72 @@ class F5TTSAdapter(BaseOnnxAdapter):
             "speed": "Speed",
         }
 
-    def _wrap_dialect(self, gen_text_ids: np.ndarray,
+    def _reference_ids(self, ref_text_tokens: Any, reference_text: Optional[str],
+                       gen_text_ids: List[int]) -> np.ndarray:
+        """The ids of the reference text, with the end that the upstream code gives it.
+
+        Upstream, ``preprocess_ref_audio_text`` ends the reference text in
+        ``". "`` unless it ends in ``". "`` or ``"。"``, and
+        ``infer_batch_process`` adds one more space when its last character is
+        one byte (``src/f5_tts/infer/utils_infer.py``, SWivid/F5-TTS 600e5fd;
+        Habibi-TTS and SILMA TTS do the same). The model then reads the
+        reference text and the generation text as one string. The end is
+        computed on *reference_text* without the whitespace at its end. The
+        frontend keeps some of that whitespace as space ids and drops the
+        rest, so the space ids at the end of the ids go first: the result is
+        the same for a reference text with or without whitespace at its end.
+        With no *reference_text*, the ids stay as given.
+        """
+        ids = list(ref_text_tokens)
+        if reference_text:
+            text = reference_text.rstrip()
+            trailing = len(reference_text) - len(text)
+            space = self._char2idx.get(" ")
+            while trailing and ids and ids[-1] == space:
+                ids.pop()
+                trailing -= 1
+            if text.endswith("。"):
+                end = self._join_space(gen_text_ids)
+            elif text.endswith("."):
+                end = "  "
+            else:
+                end = ".  "
+            ids += [self._char2idx.get(char, 0) for char in end]
+        return np.asarray(ids, np.int32).reshape(1, -1)
+
+    def _join_space(self, gen_text_ids: List[int]) -> str:
+        """The space that the pinyin text function puts between a reference text that ends in ``"。"`` and the generation text.
+
+        Upstream runs ``convert_char_to_pinyin`` on ``ref_text + gen_text``. A
+        segment of two or more ASCII characters there follows a space unless
+        the token before it is a space, ``:``, ``'`` or ``"``. Every other
+        reference end is a space, so only a ``"。"`` end and an ASCII word at
+        the start of the generation text give this space. The ASCII
+        characters at the start of the generation text are read back from
+        its ids, and the voice's own text function runs on ``"。"`` and those
+        characters. The voices that read each character as one token get no
+        space. The ids hold no hanzi, so a jieba dictionary word that joins
+        those characters to the hanzi after them, such as ``IC卡``, still
+        gets the space here, and upstream gives none.
+        """
+        if self._text_tokens is None:
+            return ""
+        start = ""
+        for token_id in gen_text_ids:
+            char = self._idx2char.get(token_id, "")
+            if len(char) != 1 or not char.isascii() or char.isspace():
+                break
+            start += char
+        joined = self._text_tokens("。" + start)
+        return "".join(joined[1:len(joined) - len(self._text_tokens(start))])
+
+    def _wrap_dialect(self, text_ids: np.ndarray,
                       dialect: Optional[str]) -> np.ndarray:
-        """Wrap the generation-text token IDs with the Habibi dialect control
-        tokens: ``{dialect_char}〈 ... 〉`` (Unified model only).
+        """Wrap the text ids of one call, reference and generation text, in the
+        Habibi dialect control tokens: ``{dialect_char}〈 ... 〉`` (Unified
+        model only). Upstream wraps the whole ``ref_text + gen_text`` string
+        (``text_list_formatter`` in ``src/habibi_tts/model/utils.py``,
+        SWivid/Habibi-TTS 9274498).
 
         No-op when *dialect* is unset. Raises ``ValueError`` for an unknown
         dialect name. If the voice's vocab lacks the control tokens (the
@@ -357,7 +430,7 @@ class F5TTSAdapter(BaseOnnxAdapter):
         a warning — those models were trained on untagged text.
         """
         if not dialect:
-            return gen_text_ids
+            return text_ids
         name = str(dialect).upper()
         if name not in HABIBI_DIALECT_MAP:
             raise ValueError(
@@ -371,11 +444,11 @@ class F5TTSAdapter(BaseOnnxAdapter):
                 "Voice vocab lacks the Habibi dialect control tokens "
                 "(%s) — 'dialect' only applies to the Unified model; "
                 "synthesizing untagged text.", "".join(chars))
-            return gen_text_ids
+            return text_ids
         prefix = np.array([[self._char2idx[chars[0]], self._char2idx[chars[1]]]],
-                          dtype=gen_text_ids.dtype)
-        suffix = np.array([[self._char2idx[chars[2]]]], dtype=gen_text_ids.dtype)
-        return np.concatenate([prefix, gen_text_ids, suffix], axis=1)
+                          dtype=text_ids.dtype)
+        suffix = np.array([[self._char2idx[chars[2]]]], dtype=text_ids.dtype)
+        return np.concatenate([prefix, text_ids, suffix], axis=1)
 
     @staticmethod
     def _resample(audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
