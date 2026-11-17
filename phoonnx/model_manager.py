@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import posixpath
 import re
 import tempfile
 import threading
@@ -8,9 +9,9 @@ import warnings
 from dataclasses import asdict, dataclass, field, fields, replace
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, List, Any, Callable, Sequence
+from typing import Optional, Dict, List, Any, Callable, Sequence, Tuple
 import requests
-from huggingface_hub import hf_hub_download
+from huggingface_hub import constants as hub_constants, hf_hub_download
 from huggingface_hub.constants import HF_HUB_CACHE
 from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
                                     OfflineModeIsEnabled)
@@ -265,6 +266,45 @@ def _repo_cached_before_move(repo_id: str) -> Optional[str]:
                  if (Path(HF_HUB_CACHE) / f"models--{old.replace('/', '--')}").is_dir()), None)
 
 
+# The snapshot an offline load reads in place of a pinned commit the cache does not hold: one
+# per cache folder, pinned commit and folder inside the repo. The index pins every file, so a
+# device that cached a voice at an older commit would lose it offline after a pin bump; it
+# keeps the voice it has instead. One choice per folder, never per file, so a graph and every
+# data file it names come from the same commit. A mirror repo holds one voice per folder, so
+# two voices cached at different commits each keep their own snapshot.
+_OFFLINE_SNAPSHOTS: Dict[Tuple[Path, str, str], Path] = {}
+
+
+def _offline_snapshot(repo_id: str, revision: str, filename: str) -> Optional[Path]:
+    """The cached ``filename`` from another snapshot of ``repo_id``, for when ``revision`` is not cached.
+
+    The newest snapshot by modification time that holds ``filename`` is chosen, never the one
+    ``refs/main`` names: a fetch at a commit writes no ref, so ``refs/main`` stays at the last
+    commit an unpinned install fetched. Later files of the same folder come from the same
+    snapshot or not at all. A folder that the pinned snapshot holds in part, as after an
+    interrupted download, never falls back, so its files cannot mix two commits. Reads no
+    network.
+    """
+    repo_dir = Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
+    folder = posixpath.dirname(filename)
+    pinned_folder = repo_dir / "snapshots" / revision / folder
+    if pinned_folder.is_dir() and any(entry.is_file() for entry in pinned_folder.iterdir()):
+        return None
+    key = (repo_dir, revision, folder)
+    chosen = _OFFLINE_SNAPSHOTS.get(key)
+    if chosen is None or not chosen.is_dir():
+        holding = [snapshot for snapshot in (repo_dir / "snapshots").glob("*")
+                   if snapshot.name != revision and (snapshot / filename).exists()]
+        if not holding:
+            return None
+        chosen = max(holding, key=lambda snapshot: snapshot.stat().st_mtime)
+        _OFFLINE_SNAPSHOTS[key] = chosen
+        LOG.warning(f"{repo_id} is not cached at the pinned commit {revision} and the hub cannot "
+                    f"be reached; loading the cached snapshot {chosen.name} instead")
+    path = chosen / filename
+    return path if path.exists() else None
+
+
 def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
     """Give the shared HuggingFace cache path for ``url``, downloading it once.
 
@@ -279,10 +319,18 @@ def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
     match = _HF_URL.match(url.split("?")[0])
     if not match:
         return None
-    return Path(hf_hub_download(repo_id=_repo_cached_before_move(match["repo"]) or match["repo"],
-                                filename=match["path"],
-                                revision=match["rev"],
-                                etag_timeout=min(timeout, _ETAG_TIMEOUT)))
+    repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
+    try:
+        return Path(hf_hub_download(repo_id=repo_id,
+                                    filename=match["path"],
+                                    revision=match["rev"],
+                                    etag_timeout=min(timeout, _ETAG_TIMEOUT)))
+    except (LocalEntryNotFoundError, OfflineModeIsEnabled):
+        # offline, or the hub did not answer, and the cache lacks this commit
+        fallback = _offline_snapshot(repo_id, match["rev"], match["path"])
+        if fallback is None:
+            raise
+        return fallback
 
 
 def _warn_offhub(url: str) -> None:
@@ -301,12 +349,19 @@ def _cached_path(url: str) -> Optional[Path]:
         return None
     match = _HF_URL.match(url.split("?")[0])
     if match:
+        repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
         try:
-            return Path(hf_hub_download(repo_id=_repo_cached_before_move(match["repo"]) or match["repo"],
+            return Path(hf_hub_download(repo_id=repo_id,
                                         filename=match["path"],
                                         revision=match["rev"],
                                         local_files_only=True))
         except Exception:
+            pass
+        if not hub_constants.HF_HUB_OFFLINE:
+            return None
+        try:
+            return _offline_snapshot(repo_id, match["rev"], match["path"])
+        except OSError:
             return None
     dest = _direct_dir(url) / (url.split("?")[0].rsplit("/", 1)[-1] or "artifact")
     return dest if _is_cached(dest) else None
