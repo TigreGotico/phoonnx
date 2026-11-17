@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.102.4a1](https://github.com/TigreGotico/phoonnx/tree/1.102.4a1) (2026-11-16)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.102.3a1...1.102.4a1)
+
+**Merged pull requests:**
+
+- fix: make a seeded Orpheus call reproduce its audio, not only its tokens [\#611](https://github.com/TigreGotico/phoonnx/pull/611) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.102.3a1](https://github.com/TigreGotico/phoonnx/tree/1.102.3a1) (2026-11-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.102.2a1...1.102.3a1)
@@ -344,7 +352,6 @@
 **Merged pull requests:**
 
 - fix: tag British Kokoro, accented PocketTTS and Kristin by training source [\#521](https://github.com/TigreGotico/phoonnx/pull/521) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: match language tags with linguatag [\#514](https://github.com/TigreGotico/phoonnx/pull/514) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.94.3a1](https://github.com/TigreGotico/phoonnx/tree/1.94.3a1) (2026-11-04)
 
@@ -373,10 +380,6 @@
 ## [1.94.1a2](https://github.com/TigreGotico/phoonnx/tree/1.94.1a2) (2026-11-03)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.1a1...1.94.1a2)
-
-**Merged pull requests:**
-
-- build: install o2i-lexicons with orthography2ipa and require scriptconv 0.0.4a37 [\#512](https://github.com/TigreGotico/phoonnx/pull/512) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.94.1a1](https://github.com/TigreGotico/phoonnx/tree/1.94.1a1) (2026-10-28)
 
