@@ -316,7 +316,7 @@ def test_silma_voice_index_entries():
     assert en.lang == "en"
     for info in (ar, en):
         assert info.engine == "f5tts"
-        assert info.phoneme_type == "graphemes"
+        assert info.phoneme_type == "f5tts_char"
         assert "/silma-tts-v1/" in info.model_url
         assert info.model_url.endswith("model.onnx")
         assert info.aux_model_urls["preprocess_path"].endswith("F5_Preprocess.onnx")
@@ -356,7 +356,7 @@ def test_namaa_saudi_voice_index_entry():
     info = TTSModelInfo(**entries["namaa/ar-sa-v2"])
     assert info.engine == "f5tts"
     assert info.lang == "ar-SA"
-    assert info.phoneme_type == "graphemes"
+    assert info.phoneme_type == "f5tts_char"
     assert "/namaa-saudi-tts-v2/" in info.model_url
     assert info.model_url.endswith("model.onnx")
     assert info.aux_model_urls["preprocess_path"].endswith("F5_Preprocess.onnx")
@@ -426,9 +426,9 @@ def test_f5tts_text_ids_equal_the_upstream_call(call):
 
 
 # Whole model calls recorded with the upstream code through TTSVoice inputs
-# (fixes/record_test_rows.py in the f5-parity audit): preprocess_ref_audio_text
-# and the one-byte rule of infer_batch_process (SWivid/F5-TTS 600e5fd) end the
-# reference text, convert_char_to_pinyin (F5-TTS v1 Base) or the Habibi-TTS
+# (fixes/record_test_rows.py and fixes/record_r2_rows.py in the f5-parity
+# audit): preprocess_ref_audio_text and the one-byte rule of
+# infer_batch_process (SWivid/F5-TTS 600e5fd) end the reference text, convert_char_to_pinyin (F5-TTS v1 Base) or the Habibi-TTS
 # 9274498 text function reads ref_text + gen_text, and list_str_to_idx maps the
 # tokens through vocab.txt. A reference text with whitespace at its end gives
 # the ids of upstream on the reference text without it. Each map holds the
@@ -464,6 +464,30 @@ JOINED_CALLS = [
     {'phoneme_type': 'f5tts_char', 'reference_text': 'قال \n', 'text': 'نعم.', 'lang': 'ar',
      'text_ids': [1739, 2550, 1741, 14, 0, 0, 1743, 1738, 1742, 14],
      'phoneme_id_map': {" ": 0, ".": 14, "ا": 2550, "ع": 1738, "ق": 1739, "ل": 1741, "م": 1742, "ن": 1743, "。": 1895}},
+    {'phoneme_type': 'f5tts_pinyin', 'reference_text': '这就是我。', 'text': '"GPU"很好。', 'lang': 'zh',
+     'text_ids': [0, 1341, 0, 546, 0, 1030, 0, 1178, 1895, 2, 38, 47, 52, 2, 0, 465, 0, 458, 1895],
+     'phoneme_id_map': {" ": 0, "\"": 2, ".": 14, "G": 38, "P": 47, "U": 52, "hao3": 458, "hen3": 465, "jiu4": 546, "shi4": 1030, "wo3": 1178, "zhe4": 1341, "。": 1895}},
+    {'phoneme_type': 'f5tts_pinyin', 'reference_text': '这就是我。', 'text': '+86电话。', 'lang': 'zh',
+     'text_ids': [0, 1341, 0, 546, 0, 1030, 0, 1178, 1895, 11, 0, 24, 22, 0, 289, 0, 484, 1895],
+     'phoneme_id_map': {" ": 0, "+": 11, ".": 14, "6": 22, "8": 24, "dian4": 289, "hua4": 484, "jiu4": 546, "shi4": 1030, "wo3": 1178, "zhe4": 1341, "。": 1895}},
+    {'phoneme_type': 'f5tts_pinyin', 'reference_text': '这就是我。', 'text': "O'Neil来了。", 'lang': 'zh',
+     'text_ids': [0, 1341, 0, 546, 0, 1030, 0, 1178, 1895, 46, 7, 45, 325, 507, 615, 0, 621, 0, 634, 1895],
+     'phoneme_id_map': {" ": 0, "'": 7, ".": 14, "N": 45, "O": 46, "e": 325, "i": 507, "jiu4": 546, "l": 615, "lai2": 621, "le": 634, "shi4": 1030, "wo3": 1178, "zhe4": 1341, "。": 1895}},
+    {'phoneme_type': 'f5tts_pinyin', 'reference_text': '这就是我！', 'text': 'GPU很好。', 'lang': 'zh',
+     'text_ids': [0, 1341, 0, 546, 0, 1030, 0, 1178, 2540, 14, 0, 0, 38, 47, 52, 0, 465, 0, 458, 1895],
+     'phoneme_id_map': {" ": 0, ".": 14, "G": 38, "P": 47, "U": 52, "hao3": 458, "hen3": 465, "jiu4": 546, "shi4": 1030, "wo3": 1178, "zhe4": 1341, "。": 1895, "！": 2540}},
+    {'phoneme_type': 'f5tts_pinyin', 'reference_text': '这就是我？', 'text': '你好。', 'lang': 'zh',
+     'text_ids': [0, 1341, 0, 546, 0, 1030, 0, 1178, 2542, 14, 0, 0, 0, 793, 0, 458, 1895],
+     'phoneme_id_map': {" ": 0, ".": 14, "hao3": 458, "jiu4": 546, "ni2": 793, "shi4": 1030, "wo3": 1178, "zhe4": 1341, "。": 1895, "？": 2542}},
+    {'phoneme_type': 'f5tts_char', 'reference_text': 'قال\t', 'text': 'نعم.', 'lang': 'ar',
+     'text_ids': [1739, 2550, 1741, 14, 0, 0, 1743, 1738, 1742, 14],
+     'phoneme_id_map': {"\t": 2666, " ": 0, ".": 14, "ا": 2550, "ع": 1738, "ق": 1739, "ل": 1741, "م": 1742, "ن": 1743, "。": 1895}},
+    {'phoneme_type': 'f5tts_char', 'reference_text': 'قال \t', 'text': 'نعم.', 'lang': 'ar',
+     'text_ids': [1739, 2550, 1741, 14, 0, 0, 1743, 1738, 1742, 14],
+     'phoneme_id_map': {"\t": 2666, " ": 0, ".": 14, "ا": 2550, "ع": 1738, "ق": 1739, "ل": 1741, "م": 1742, "ن": 1743, "。": 1895}},
+    {'phoneme_type': 'f5tts_pinyin', 'reference_text': '我㗑', 'text': '你好。', 'lang': 'zh',
+     'text_ids': [0, 1178, 0, 0, 14, 0, 0, 0, 793, 0, 458, 1895],
+     'phoneme_id_map': {" ": 0, ".": 14, "hao3": 458, "ni2": 793, "wo3": 1178, "。": 1895}},
 ]
 
 
@@ -667,7 +691,7 @@ def test_twi_asante_openbible_voice_index_entry():
     assert pin, info.model_url
     folder = f"https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/{pin[1]}/tw-asante-openbible/"
     assert info.engine == "f5tts"
-    assert info.phoneme_type == "graphemes"
+    assert info.phoneme_type == "f5tts_pinyin"
     assert info.model_url == folder + "model.onnx"
     assert info.config_url == folder + "config.json"
     assert info.aux_model_urls == {"preprocess_path": folder + "F5_Preprocess.onnx",
@@ -702,3 +726,54 @@ def test_entry_language_matches_the_source_and_reaches_the_front_end(voice_id):
     if three is not None:
         voice = TTSVoice(config=info.config, session=None)
         assert "".join(voice.phonemize("3")[0]) == three
+
+
+# The text function of each voice's upstream inference code: SWivid/F5-TTS
+# 600e5fd runs convert_char_to_pinyin (F5-TTS v1 Base, and the Twi fine-tune
+# that runs its code); SWivid/Habibi-TTS 9274498 and silma-ai/silma-tts 2816b5a
+# read the text one character per token (NAMAA v2 runs the Habibi-TTS code).
+_UPSTREAM_TEXT_FUNCTION = {
+    "f5tts/v1-base": "f5tts_pinyin", "openbible/tw-asante": "f5tts_pinyin",
+    **{f"habibi/ar-{d}": "f5tts_char" for d in ("unified", "alg", "egy", "irq", "mar", "msa", "sau", "uae")},
+    "namaa/ar-sa-v2": "f5tts_char", "silma/v1": "f5tts_char", "silma/v1-en": "f5tts_char",
+}
+
+
+@pytest.mark.parametrize("voice_id", sorted(_UPSTREAM_TEXT_FUNCTION))
+def test_entry_selects_the_text_function_of_its_upstream_code(voice_id):
+    """TTSModelInfo.load gives the voice the entry's phoneme_type over the config's."""
+    assert _f5_index()[voice_id]["phoneme_type"] == _UPSTREAM_TEXT_FUNCTION[voice_id]
+
+
+def test_base_install_brings_the_pinyin_text_function_dependencies():
+    """The pinyin text function imports rjieba and pypinyin, and the index
+    selects it for voices of every language, so a base install needs both."""
+    import tomllib
+    from pathlib import Path
+    from packaging.requirements import Requirement
+
+    pyproject = tomllib.loads((Path(__file__).parents[1] / "pyproject.toml").read_text(encoding="utf-8"))
+    base = {Requirement(r).name.lower() for r in pyproject["project"]["dependencies"]}
+    pinyin_voices = {v for v, e in _f5_index().items() if e["phoneme_type"] == "f5tts_pinyin"}
+    assert {"f5tts/v1-base", "openbible/tw-asante"} <= pinyin_voices
+    assert {"rjieba", "pypinyin"} <= base
+
+
+def test_base_entry_reads_hanzi_as_pinyin_over_a_graphemes_config():
+    """The config on the Hub says graphemes, which reads every hanzi as id 0.
+    The entry's phoneme_type wins, as in TTSModelInfo.load, so the voice reads
+    the pinyin ids of convert_char_to_pinyin (SWivid/F5-TTS 600e5fd) through
+    the F5-TTS v1 Base vocab.txt ids, recorded with the upstream code."""
+    from phoonnx.model_manager import TTSModelInfo
+    from phoonnx.voice import TTSVoice
+
+    vocab = {" ": 0, "wo3": 1178, "zuo2": 1410, "tian1": 1108, "mai3": 711, "le": 634, "yi1": 1259,
+             "yi4": 1262, "tai2": 1088, "xin1": 1208, "dian4": 289, "nao3": 783}
+    info = TTSModelInfo(**_f5_index()["f5tts/v1-base"])
+    info.download_config = lambda: {"engine": "f5tts", "phoneme_type": "graphemes", "alphabet": "unicode",
+                                    "lang_code": "zh", "phoneme_id_map": vocab, "fold_compounds": False,
+                                    "add_blank_char": False, "blank_at_start": False, "blank_at_end": False,
+                                    "use_eos_bos": False}
+    voice = TTSVoice(config=info.config, session=None)
+    ids = [voice.phonemes_to_ids(chunk) for chunk in voice.phonemize("我昨天买了一台新电脑")]
+    assert ids == [[0, 1178, 0, 1410, 0, 1108, 0, 711, 0, 634, 0, 1259, 0, 1088, 0, 1208, 0, 289, 0, 783]]
