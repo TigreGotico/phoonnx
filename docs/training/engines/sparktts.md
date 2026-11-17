@@ -124,7 +124,7 @@ audio).
 ## Weights and licensing
 
 The graphs live at
-[`Phoonnx/phoonnx-spark-tts`](https://huggingface.co/Phoonnx/phoonnx-spark-tts).
+[`Phoonnx/sparktts-multi-0.5b-unicode`](https://huggingface.co/Phoonnx/sparktts-multi-0.5b-unicode).
 The language model is mirrored from `Fhrozen/Spark-TTS-0.5B-ONNX` after being verified
 against the SparkAudio torch weights; the four BiCodec and wav2vec2 graphs were exported
 from `SparkAudio/Spark-TTS-0.5B` at opset 17.

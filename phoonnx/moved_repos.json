@@ -1,0 +1,92 @@
+{
+    "Phoonnx/arktts-eu_es-zortzi-unicode": [
+        "Phoonnx/arktts-eu_es-zortzi",
+        "Phoonnx/phoonnx-zortzi-tts",
+        "OpenVoiceOS/phoonnx-zortzi-tts"
+    ],
+    "Phoonnx/arktts-multi-audio8_preview-0.6b-unicode": [
+        "Phoonnx/arktts-multi-audio8_preview-0.6b",
+        "Phoonnx/phoonnx-audio8-tts",
+        "OpenVoiceOS/phoonnx-audio8-tts"
+    ],
+    "Phoonnx/chatterbox-ar-lahgtna-v1-unicode": [
+        "Phoonnx/chatterbox-ar-lahgtna-v1",
+        "Phoonnx/phoonnx-chatterbox-lahgtna",
+        "OpenVoiceOS/phoonnx-chatterbox-lahgtna"
+    ],
+    "Phoonnx/chatterbox-en_us-turbo-unicode": [
+        "Phoonnx/chatterbox-en_us-turbo",
+        "Phoonnx/phoonnx-chatterbox-turbo",
+        "OpenVoiceOS/phoonnx-chatterbox-turbo"
+    ],
+    "Phoonnx/chatterbox-en_us-unicode": [
+        "Phoonnx/chatterbox-en_us",
+        "Phoonnx/phoonnx-chatterbox",
+        "OpenVoiceOS/phoonnx-chatterbox"
+    ],
+    "Phoonnx/chatterbox-multi-unicode": [
+        "Phoonnx/chatterbox-multi",
+        "Phoonnx/phoonnx-chatterbox-multilingual",
+        "OpenVoiceOS/phoonnx-chatterbox-multilingual"
+    ],
+    "Phoonnx/llasa-multi-1b-unicode": [
+        "Phoonnx/llasa-multi-1b",
+        "Phoonnx/phoonnx-llasa",
+        "OpenVoiceOS/phoonnx-llasa"
+    ],
+    "Phoonnx/magpietts-multi-357m-unicode": [
+        "Phoonnx/magpietts-multi-357m",
+        "Phoonnx/phoonnx-magpie-tts",
+        "OpenVoiceOS/phoonnx-magpie-tts"
+    ],
+    "Phoonnx/neutts-tw-akiti-unicode": [
+        "Phoonnx/neutts-tw-akiti",
+        "Phoonnx/phoonnx-neutts",
+        "OpenVoiceOS/phoonnx-neutts"
+    ],
+    "Phoonnx/omnivoice-multi-unicode": [
+        "Phoonnx/omnivoice-multi",
+        "Phoonnx/phoonnx-omnivoice",
+        "OpenVoiceOS/phoonnx-omnivoice"
+    ],
+    "Phoonnx/orpheus-en-3b-unicode": [
+        "Phoonnx/orpheus-en-3b",
+        "Phoonnx/phoonnx-orpheus",
+        "OpenVoiceOS/phoonnx-orpheus"
+    ],
+    "Phoonnx/parlertts-multi-indic-unicode": [
+        "Phoonnx/parlertts-multi-indic",
+        "Phoonnx/phoonnx-indic-parler",
+        "OpenVoiceOS/phoonnx-indic-parler"
+    ],
+    "Phoonnx/qwen3tts-multi-customvoice-0.6b-unicode": [
+        "Phoonnx/qwen3tts-multi-customvoice-0.6b",
+        "Phoonnx/phoonnx-qwen3-tts",
+        "OpenVoiceOS/phoonnx-qwen3-tts"
+    ],
+    "Phoonnx/shami-apc-shami": [
+        "Phoonnx/shami-apc",
+        "Phoonnx/phoonnx-shami",
+        "OpenVoiceOS/phoonnx-shami"
+    ],
+    "Phoonnx/sparktts-multi-0.5b-unicode": [
+        "Phoonnx/sparktts-multi-0.5b",
+        "Phoonnx/phoonnx-spark-tts",
+        "OpenVoiceOS/phoonnx-spark-tts"
+    ],
+    "Phoonnx/supertonic-multi-unicode": [
+        "Phoonnx/supertonic-multi",
+        "Phoonnx/phoonnx-supertonic",
+        "OpenVoiceOS/phoonnx-supertonic"
+    ],
+    "Phoonnx/vits2-ru-natasha-graphemes": [
+        "Phoonnx/vits2-ru-natasha",
+        "Phoonnx/phoonnx-vits2",
+        "OpenVoiceOS/phoonnx-vits2"
+    ],
+    "Phoonnx/yourtts-multi-graphemes": [
+        "Phoonnx/yourtts-multi",
+        "Phoonnx/phoonnx-yourtts",
+        "OpenVoiceOS/phoonnx-yourtts"
+    ]
+}
