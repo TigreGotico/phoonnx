@@ -5,8 +5,9 @@ The checkpoint comes from the Hugging Face cache. The output directory is
 """
 import os
 
-REPO = "nvidia/magpie_tts_multilingual_357m"
-CHECKPOINT_FILE = "magpie_tts_multilingual_357m.nemo"
+#: The checkpoint to export. ``MAGPIE_REPO`` and ``MAGPIE_CHECKPOINT`` select a fine-tune.
+REPO = os.environ.get("MAGPIE_REPO", "nvidia/magpie_tts_multilingual_357m")
+CHECKPOINT_FILE = os.environ.get("MAGPIE_CHECKPOINT", "magpie_tts_multilingual_357m.nemo")
 
 
 def checkpoint_path() -> str:
