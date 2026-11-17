@@ -240,7 +240,8 @@ def test_f5tts_dialect_skipped_without_vocab_tokens():
 
 def test_f5tts_voice_index_catalog():
     """The bundled catalog entries must construct valid TTSModelInfo objects
-    with aux_model_urls pointing at the preprocess/decode graphs."""
+    with aux_model_urls pointing at the preprocess/decode graphs of the voice's
+    own Phoonnx repo, the repo that holds its model and config."""
     import json
     import os
     from phoonnx.model_manager import TTSModelInfo
@@ -255,8 +256,10 @@ def test_f5tts_voice_index_catalog():
         info = TTSModelInfo(**entry)
         assert info.engine == "f5tts"
         assert set(info.aux_model_urls) == {"preprocess_path", "decode_path"}
-        for url in info.aux_model_urls.values():
-            assert url.startswith("https://huggingface.co/Phoonnx/phoonnx-f5tts/")
+        repo = info.model_url.split("/resolve/")[0]
+        assert repo.startswith("https://huggingface.co/Phoonnx/"), voice_id
+        for url in (info.config_url, *info.aux_model_urls.values()):
+            assert url.startswith(repo + "/resolve/"), (voice_id, url)
 
 
 def test_aux_model_urls_resolved_in_engine_params(tmp_path, monkeypatch):
