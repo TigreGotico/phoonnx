@@ -414,7 +414,7 @@ Preprocess writes a `config.json` that both training and inference read. Key fie
 | `phoonnx_version` | Version of the preprocessing pipeline |
 | `keep_punctuation` | The phonemes keep clause punctuation (`, . ? ! : ;`) |
 | `phonemizer_registry` / `phonemizer_registry_version` | The distribution that resolved the phonemizer, and its version |
-| `phonemizer_identity` | The engine that phonemized the rows: `backend`, `distribution`, `version` (for espeak-ng, the binary), `lang` (the resolved lect) and `revision` (the orthography2ipa spec revision). Empty when every row came from a phonemes column |
+| `phonemizer_identity` | The engine that phonemized the rows: `backend`, `distribution`, `version` (for espeak-ng, the binary), `lang` (the resolved lect), `revision` (the orthography2ipa spec revision) and `frontend` (null, because preprocess calls the backend directly and not through `TextFrontend`). Empty when every row came from a phonemes column |
 | `phonemes_phonemized` / `phonemes_from_column` | How many manifest rows were phonemized, and how many came from a phonemes column |
 
 The full loaded form (tokenizer flags, special tokens, `engine_params`) is documented in the
