@@ -9,6 +9,7 @@ guard the vocab/index against regressions.
 import ast
 import inspect
 import json
+import re
 import textwrap
 from pathlib import Path
 
@@ -170,10 +171,8 @@ def test_kittentts_voice_index_well_formed():
         assert entry["phoneme_type"] == "espeak"
         assert entry["alphabet"] == "ipa"
         assert entry["lang"] == "en-US"
-        assert entry["model_url"].startswith(
-            "https://huggingface.co/Phoonnx/phoonnx-kitten-tts/resolve/main/")
-        assert entry["config_url"].startswith(
-            "https://huggingface.co/Phoonnx/phoonnx-kitten-tts/resolve/main/")
+        assert re.match(r"https://huggingface\.co/Phoonnx/phoonnx-kitten-tts/resolve/[0-9a-f]{40}/", entry["model_url"])
+        assert re.match(r"https://huggingface\.co/Phoonnx/phoonnx-kitten-tts/resolve/[0-9a-f]{40}/", entry["config_url"])
         assert entry["style_url"] and entry["style_url"].endswith(".bin")
         tier = vid.split("/", 1)[1].rsplit("-expr-voice", 1)[0]
         for t in tiers:

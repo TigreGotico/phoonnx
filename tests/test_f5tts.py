@@ -1,3 +1,4 @@
+import re
 import types
 
 import numpy as np
@@ -662,7 +663,9 @@ def test_twi_asante_openbible_voice_index_entry():
     entries = _f5_index()
     assert "openbible/tw-asante" in entries
     info = TTSModelInfo(**entries["openbible/tw-asante"])
-    folder = "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/tw-asante-openbible/"
+    pin = re.match(r"https://huggingface\.co/Phoonnx/phoonnx-f5tts/resolve/([0-9a-f]{40})/", info.model_url)
+    assert pin, info.model_url
+    folder = f"https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/{pin[1]}/tw-asante-openbible/"
     assert info.engine == "f5tts"
     assert info.phoneme_type == "graphemes"
     assert info.model_url == folder + "model.onnx"
