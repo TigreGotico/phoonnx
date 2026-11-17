@@ -133,6 +133,28 @@ is accepted as an alias. Running on a GPU needs the matching ONNX Runtime build
 (`onnxruntime-rocm`, `onnxruntime-gpu`, `onnxruntime-directml`, ...) — see
 [configuration.md](configuration.md#execution-providers).
 
+### Precision
+
+`precision` picks the files of a voice that has full files and int8 files:
+`auto` (the default), `int8` or `full`. When the key is unset, `null` or an
+empty string, the value comes from the `PHOONNX_PRECISION` environment variable.
+
+```json
+{
+  "tts": {
+    "module": "ovos-tts-plugin-phoonnx",
+    "ovos-tts-plugin-phoonnx": {
+      "precision": "int8"
+    }
+  }
+}
+```
+
+A value that is not a string, or not one of the three, stops the plugin at start. A voice that
+has no files for the value raises `PrecisionUnavailable` at its first synthesis.
+Audio from int8 files is cached apart from audio of the full files. See
+[configuration.md](configuration.md#precision) for what `auto` picks.
+
 ### Audio super-resolution
 
 The optional `super_resolution` switch upscales synthesized audio to 48 kHz after
@@ -206,6 +228,7 @@ underscore name plus legacy aliases (resolved by `_cfg_opt` in `phoonnx/opm.py`)
 | Reference text | `speaker_reference_text`, `ref_text` | In-context reference transcription |
 | Reference lang | `speaker_reference_lang`, `ref_lang` | In-context reference language |
 | Providers | `onnx_providers`, `providers` | ONNX Runtime execution providers |
+| Precision | `precision` | `auto`, `int8` or `full` (see above) |
 | Super-resolution | `super_resolution` | Enable 48 kHz upscaling (bool, off by default) |
 | Super-resolution model | `super_resolution_model` | `audiosronnx` engine name (default `novasr`) |
 

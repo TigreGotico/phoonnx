@@ -508,6 +508,11 @@ class TTSTokenizer:
     (mimic3 diphthongs). Must be ``False`` when the input is already a list of
     complete phoneme tokens (e.g. vosk), where merging would corrupt genuine
     consonant clusters like ``s h`` -> ``sh``."""
+    unknown_id: Optional[int] = None
+    """The id that a symbol takes when the vocabulary lacks it. ``None`` drops
+    the symbol. A set id also turns off the decomposition and lowercase
+    fallbacks, because the model reads that id where its own inference code
+    puts it."""
     not_found_characters: Set[str] = field(default_factory=set)
 
     @property
@@ -544,13 +549,13 @@ class TTSTokenizer:
         """
         Map input characters (string or list of single-character strings) to their vocabulary token IDs.
         
-        If `add_blank_word` is enabled, space characters are mapped to the vocabulary's blank-word token. Unknown characters are discarded from the returned sequence but their first occurrences are recorded in `self.not_found_characters`. If `add_blank_word` and `blank_at_end` are enabled and a blank-word token exists, a trailing blank-word token is appended.
+        If `add_blank_word` is enabled, space characters are mapped to the vocabulary's blank-word token. An unknown character takes `unknown_id` when it is set, and is discarded otherwise; its first occurrence is recorded in `self.not_found_characters`. If `add_blank_word` and `blank_at_end` are enabled and a blank-word token exists, a trailing blank-word token is appended.
         
         Parameters:
             text (str | List[str]): Input text as a string or a list of single-character strings to encode.
         
         Returns:
-            List[int]: Sequence of token IDs corresponding to the input characters, with unknown characters removed.
+            List[int]: Sequence of token IDs corresponding to the input characters.
         """
         # first pre-process phoneme_map to check for dipthongs having their own phoneme_id
         # common in mimic3 models
@@ -578,6 +583,10 @@ class TTSTokenizer:
                         compound_idxs += [i for i in range(i, i+n)]
                         break
 
+                if idx is None and self.unknown_id is not None:
+                    self._warn_unknown(char)
+                    idx = self.unknown_id
+
                 if idx is None and len(char) == 1:
                     # Phonemizers emit precomposed characters (e.g. U+00F5 "õ") while
                     # some vocabularies (e.g. Kokoro/StyleTTS2) only know the base
@@ -597,11 +606,8 @@ class TTSTokenizer:
                     if lowered != char and lowered in self.vocabulary.char2idx:
                         idx = self.vocabulary.char2idx[lowered]
 
-                if idx is None and char not in self.not_found_characters:
-                    self.not_found_characters.add(char)
-                    LOG.warning(f"Out-of-vocabulary phoneme {char!r} "
-                                f"(codepoints: {[hex(ord(c)) for c in char]}) "
-                                f"not found in vocabulary, dropping it")
+                if idx is None:
+                    self._warn_unknown(char)
 
             if isinstance(idx, list):
                 # a break entry such as ".": [#, ·, ·] starts with the word blank;
@@ -621,6 +627,16 @@ class TTSTokenizer:
 
         # Filter out None values (out-of-vocabulary characters)
         return [t for t in token_ids if t is not None]
+
+    def _warn_unknown(self, char: str) -> None:
+        """Log the first time that the vocabulary lacks *char*, with what the tokenizer does instead."""
+        if char in self.not_found_characters:
+            return
+        self.not_found_characters.add(char)
+        action = "dropping it" if self.unknown_id is None else f"reading it as id {self.unknown_id}"
+        LOG.warning(f"Out-of-vocabulary phoneme {char!r} "
+                    f"(codepoints: {[hex(ord(c)) for c in char]}) "
+                    f"not found in vocabulary, {action}")
 
     def _ends_word(self, token_ids: List[Optional[int]]) -> bool:
         """Whether a word blank goes after *token_ids*.
@@ -735,9 +751,14 @@ class TTSTokenizer:
         use_eos_bos: bool = cfg.get("use_eos_bos", True)
         add_blank_word: bool = cfg.get("add_blank_word", False)
         fold_compounds: bool = cfg.get("fold_compounds", True)
+        # F5-TTS gives id 0 to a token that its vocabulary lacks:
+        # list_str_to_idx in src/f5_tts/model/utils.py (SWivid/F5-TTS 600e5fd)
+        # reads vocab_char_map.get(c, 0), and Habibi-TTS and SILMA TTS run the same code.
+        unknown_id: Optional[int] = 0 if cfg.get("engine") == "f5tts" else None
         return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
                             blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                            use_eos_bos=use_eos_bos, fold_compounds=fold_compounds)
+                            use_eos_bos=use_eos_bos, fold_compounds=fold_compounds,
+                            unknown_id=unknown_id)
 
     @staticmethod
     def from_piper_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':

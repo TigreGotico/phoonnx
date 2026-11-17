@@ -55,7 +55,7 @@ class FakeF5Graph:
 def test_f5tts_example_matches_the_adapter(tmp_path, monkeypatch):
     (tmp_path / "config.json").write_text(json.dumps(F5_CONFIG), encoding="utf-8")
     (tmp_path / "reference.txt").write_text(F5_REFERENCE_TEXT, encoding="utf-8")
-    pcm = (np.sin(np.arange(3000) / 7.0) * 12000).astype(np.int16)
+    pcm = (np.sin(np.arange(24000) / 7.0) * 12000).astype(np.int16)  # 1 s: the length estimate shows a 3-id end
     with wave.open(str(tmp_path / "reference.wav"), "wb") as wav:
         wav.setnchannels(1)
         wav.setsampwidth(2)
@@ -85,9 +85,12 @@ def test_f5tts_example_matches_the_adapter(tmp_path, monkeypatch):
     exact = ((pcm.astype(np.float64) + 0.5 * np.sign(pcm)) / 32767).astype(np.float32)
     result = adapter.synthesize(AdapterSynthesisRequest(
         np.array([text_ids]), np.array([len(text_ids)]),
-        params={"reference_audio": (exact, 24000), "prompt_tokens": prompt, "nfe": 6}), graphs["model.onnx"])
-    tag = [F5_CONFIG["phoneme_id_map"][c] for c in "⑥〈"]
-    assert names["ids"] == prompt + tag + text_ids + [F5_CONFIG["phoneme_id_map"]["〉"]]
+        params={"reference_audio": (exact, 24000), "prompt_tokens": prompt, "nfe": 6,
+                "speaker_reference_text": F5_REFERENCE_TEXT}), graphs["model.onnx"])
+    id_map = F5_CONFIG["phoneme_id_map"]
+    # ⑥〈 reference, its end ".  " (it ends in "!"), text 〉
+    assert names["ids"] == [id_map["⑥"], id_map["〈"], *prompt, id_map["."], id_map[" "], id_map[" "],
+                            *text_ids, id_map["〉"]]
     np.testing.assert_array_equal(names["audio"], result.audio)
 
 

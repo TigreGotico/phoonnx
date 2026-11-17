@@ -81,7 +81,13 @@ tts_voice = voice_info.load()   # downloads the model if not cached, returns TTS
 
 # optional: pin ONNX Runtime execution providers
 tts_voice = voice_info.load(providers=["ROCMExecutionProvider", "CPUExecutionProvider"])
+
+# optional: load the int8 files of a voice that has them
+tts_voice = voice_info.load(precision="int8")
 ```
+
+`precision` is `auto` (the default), `int8` or `full`. See
+[configuration.md](configuration.md#precision).
 
 ## Updating the Cache
 
@@ -181,7 +187,10 @@ relevant to specific engine families (see [engines.md](engines.md), [cloning.md]
 | `engine_options` | `dict` \| `None` | Plain per-voice engine settings that are not downloadable files, merged into `engine_params` as-is (e.g. NeuTTS's `voice` preset name) |
 | `display_name` | `str` \| `None` | Friendly name for UIs/CLIs; may contain `{engine}`/`{phoneme_type}` placeholders |
 | `vocab_override` | `dict` \| `None` | Custom token-to-ID mapping |
+| `precision` | `str` \| `None` | `int8` for an entry that has only int8 files, unset for full files |
+| `variants` | `dict` \| `None` | `{"int8": {...}}`: the URL fields of the int8 files that differ, and `"auto": true` when `auto` may pick them |
 
 Key methods and properties: `config` (lazy `VoiceConfig`), `voice_path`,
 `download_model()`, `download_all()` (model + config + tokenizer + vocoder/style/
-speaker-encoder/aux graphs), `download_vocoder()`, and `load(providers=None)`.
+speaker-encoder/aux graphs), `download_vocoder()`, `load(providers=None, precision=None)`,
+and `with_precision(precision)`, which gives the entry with the files that precision loads.
