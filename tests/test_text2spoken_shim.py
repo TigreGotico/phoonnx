@@ -56,6 +56,16 @@ class TestShimNamesWarn(unittest.TestCase):
                     self.assertEqual(shim(text, lang), expected)
                     self.assertEqual(shim(text, lang, expand_contractions=False), expected)
 
+    def test_normalize_returns_the_text_for_a_tag_that_is_not_bcp_47(self):
+        """phoonnx's normalize gave back the text for a tag it could not read.
+        text2spoken raises InvalidLanguageTagError for such a tag."""
+        with self.assertRaises(text2spoken.InvalidLanguageTagError):
+            text2spoken.normalize("test 7", "unsupported-lang")
+        for module in (normalization, util):
+            with self.subTest(module=module.__name__), warnings.catch_warnings():
+                warnings.simplefilter("ignore", DeprecationWarning)
+                self.assertEqual(module.normalize("test 7", "unsupported-lang"), "test 7")
+
     def test_each_local_helper_warns_and_is_the_local_code(self):
         for module in (normalization, util):
             for name, submodule in LOCAL_HELPERS.items():

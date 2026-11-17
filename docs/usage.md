@@ -205,8 +205,8 @@ loudness, pitch, language and sound effects. Input that is not SSML is synthesiz
 | `<amazon:effect name="whispered\|drc">`, `phonation="soft"`, `vocal-tract-length="+10%"` | whisper, soft voice, dynamic range compression, a longer or shorter vocal tract |
 | `<amazon:auto-breaths>`, `<amazon:breath>` | breaths between sentences, or at a point |
 
-`say-as` reads numbers, dates, times and units with the same parsers as the text normalizer
-(`ovos-number-parser`, `ovos-date-parser`), in the language of the text, so `<lang>` changes how
+`say-as` reads numbers, dates, times and units with `ovos-number-parser` and
+`ovos-date-parser`, in the language of the text, so `<lang>` changes how
 they are read. A value that cannot be read that way (`<say-as interpret-as="date">soon</say-as>`)
 is spoken as written.
 

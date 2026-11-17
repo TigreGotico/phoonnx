@@ -34,8 +34,12 @@ DEPRECATED_NAMES = frozenset({"normalize", *_LOCAL_NAMES})
 
 def _normalize(text: str, lang: str, expand_contractions: bool = True) -> str:
     """:func:`text2spoken.normalize`. text2spoken leaves contractions as written, so
-    ``expand_contractions`` changes nothing."""
-    return text2spoken.normalize(text, lang)
+    ``expand_contractions`` changes nothing. A *lang* that is not a BCP 47 tag gives
+    back *text*, as phoonnx's own normalizer did."""
+    try:
+        return text2spoken.normalize(text, lang)
+    except text2spoken.InvalidLanguageTagError:
+        return text
 
 
 def deprecated_name(module: str, name: str):
