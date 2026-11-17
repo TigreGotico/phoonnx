@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.103.0a1](https://github.com/TigreGotico/phoonnx/tree/1.103.0a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.102.5a1...1.103.0a1)
+
+**Merged pull requests:**
+
+- feat: add new ArkTTS voices [\#623](https://github.com/TigreGotico/phoonnx/pull/623) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.102.5a1](https://github.com/TigreGotico/phoonnx/tree/1.102.5a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.102.4a1...1.102.5a1)
@@ -365,10 +373,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.2a1...1.94.3a1)
 
-**Merged pull requests:**
-
-- fix: tag regional voices with the variety they were trained on [\#518](https://github.com/TigreGotico/phoonnx/pull/518) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.94.2a1](https://github.com/TigreGotico/phoonnx/tree/1.94.2a1) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.1a3...1.94.2a1)
@@ -376,10 +380,6 @@
 ## [1.94.1a3](https://github.com/TigreGotico/phoonnx/tree/1.94.1a3) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.1a2...1.94.1a3)
-
-**Merged pull requests:**
-
-- test: compare the arbtok Najdi lect with the key orthography2ipa resolves it to [\#517](https://github.com/TigreGotico/phoonnx/pull/517) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.94.1a2](https://github.com/TigreGotico/phoonnx/tree/1.94.1a2) (2026-11-03)
 
