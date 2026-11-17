@@ -92,7 +92,7 @@ Lower `detect_priority` values are probed first during auto-detection.
 | [Chatterbox](training/engines/chatterbox.md) | `phoonnx/engines/chatterbox.py` | `engine == "chatterbox"` — first **autoregressive** engine (codec-LM), d-vector [cloning](cloning.md) + exaggeration |
 | Vosk | `phoonnx/engines/vits.py` (shared) | `engine == "vosk"` — alphacep vosk-tts Russian voices: plain VITS exports whose front-end is scriptconv's dictionary/rule `VoskPhonemizer` |
 | SuperTonic | `phoonnx/engines/supertonic.py` | `engine == "supertonic"` — multi-graph flow-matching engine (4 ONNX graphs via `aux_model_urls`), raw-text (no phonemizer), fixed per-speaker style instead of cloning |
-| NeuTTS (NeuTTS Air / VieNeu / Akiti) | `phoonnx/engines/neutts.py` | `engine == "neutts"` — autoregressive single-codebook codec-LM (Qwen3 backbone + NeuCodec decoder), raw text phonemized with espeak-ng, in-context [cloning](cloning.md) from pre-encoded voice presets, 24 kHz |
+| NeuTTS (NeuTTS Air / VieNeu / Akiti) | `phoonnx/engines/neutts.py` | `engine == "neutts"` — autoregressive single-codebook codec-LM (Qwen3 or Llama backbone + NeuCodec decoder), raw text phonemized with espeak-ng in the checkpoint's language ([front-end keys](#neutts-front-end)), in-context [cloning](cloning.md) from pre-encoded voice presets, 24 kHz |
 | [Pocket TTS](pockettts.md) | `phoonnx/engines/pockettts.py` | `engine == "pockettts"` — 5-graph flow-matching codec LM with explicit stream state, raw-text (no phonemizer), state-based voices and reference [cloning](cloning.md) |
 | [Spark-TTS](training/engines/sparktts.md) | `phoonnx/engines/sparktts.py` | `engine == "sparktts"` — autoregressive codec-LM (Qwen2 + BiCodec), raw-text, en/zh; preset 32-token speakers or zero-shot [cloning](cloning.md) |
 | [Qwen3-TTS](training/engines/qwen3tts.md) | `phoonnx/engines/qwen3tts.py` | `engine == "qwen3tts"` — two autoregressive stages (28-layer talker + 5-layer code predictor) writing 16 code groups per 12.5 Hz frame, raw-text, 10 languages, nine fixed timbres, 24 kHz |
@@ -102,9 +102,35 @@ Lower `detect_priority` values are probed first during auto-detection.
 | [OmniVoice](training/engines/omnivoice.md) | `phoonnx/engines/omnivoice.py` | `engine == "omnivoice"` — first **masked-diffusion** engine: a Qwen3 backbone unmasks 8 Higgs-codec streams over 32 bidirectional full-sequence steps, raw-text, 600+ languages, in-context [cloning](cloning.md), 24 kHz |
 | [Indic Parler-TTS](training/engines/indic_parler.md) | `phoonnx/engines/indic_parler.py` | `engine == "indic_parler"` — first **encoder-decoder** engine: a frozen Flan-T5 encoder turns a natural-language voice description into cross-attention states for a 24-layer AR decoder over 9 delayed DAC codebooks, raw-text, 20 Indic languages + English, 44.1 kHz |
 | [Orpheus](orpheus.md) | `phoonnx/engines/orpheus.py` | `engine == "orpheus"` — autoregressive codec-LM (Llama-3.2-3B backbone + SNAC decoder), raw text with emotive tags, eight named English voices, 24 kHz. **GPU engine**: ~37x realtime on 12 CPU cores |
-| Magpie-TTS | `phoonnx/engines/magpie.py` | `engine == "magpie"` — encoder-decoder codec-LM (6-layer causal text encoder, 12-layer causal decoder + 2-layer local transformer refiner, NanoCodec decoder), 8 codebooks over 2 stacked frames per step, attention-prior alignment (no learned monotonic alignment), five fixed baked-context voices (no cloning), 5 of 12 languages shipped (fr/it/vi/ko byte tokenizers + ar character tokenizer; en/de/es/pt/hi/zh/ja need scriptconv IPA/G2P and are refused with `NotImplementedError`), 22.05 kHz |
+| Magpie-TTS | `phoonnx/engines/magpie.py` | `engine == "magpie"` — encoder-decoder codec-LM (6-layer causal text encoder, 12-layer causal decoder + 2-layer local transformer refiner, NanoCodec decoder), 8 codebooks over 2 stacked frames per step, attention-prior alignment (no learned monotonic alignment), five fixed baked-context voices (no cloning), byte (ByT5) and character sub-tokenizers encoded as NeMo encodes them, picked by language or by the voice ([sub-tokenizer keys](#magpie-sub-tokenizers)); the G2P sub-tokenizers (en/de/es/pt/hi/zh/ja) need scriptconv IPA and are refused with `NotImplementedError`, 22.05 kHz |
 | MOSS-TTS-Nano | `phoonnx/engines/mosstts.py` | `engine == "mosstts"` — autoregressive RVQ-16 codec-LM (6 ONNX graphs via `aux_model_urls`), raw text via SentencePiece, in-context [cloning](cloning.md) from a reference clip alone, native 48 kHz |
 | Rápido | `phoonnx/engines/rapido.py` | `engine == "rapido"` — flow-matching DiT (4 ONNX graphs: text encoder, aligner, velocity model, VoxCPM2 AudioVAE decoder), token ids from the voice pipeline with no text path of its own, midpoint ODE with classifier-free guidance, 42 preset speakers, 48 kHz. Export with `python -m phoonnx_train.rapido.export_onnx --output-dir <dir>` |
+
+#### Magpie sub-tokenizers
+
+A Magpie checkpoint joins one sub-tokenizer per language into one id space. Two keys
+decide which sub-tokenizer encodes a voice's text and how:
+
+| Key | Where | What it sets |
+| --- | --- | --- |
+| `tokenizer_kinds` | `tokenizer.json`, written by `scripts/conversion/magpie/dump_assets.py` | The encoder of each sub-tokenizer. `{"kind": "byt5"}` is NeMo's ByT5 byte tokenizer: each UTF-8 byte, then `</s>`. `{"kind": "chars", ...}` is NeMo's `BaseCharsTokenizer` (`"accept": "alnum"`) or `ArabicCharsTokenizer` (`"accept": "any"`), with its punctuation list, `pad_with_space` and text preprocessing. Any other kind is a NeMo class name, and phoonnx refuses it, because it needs G2P. |
+| `tokenizer_name` | the voice's `engine_params` | The sub-tokenizer to use, for example `text_ce_tokenizer` or `swahili_chartokenizer`. Without it, the voice uses the sub-tokenizer that the checkpoint's `language_to_tokenizer` gives for its exact tag, such as `ar-SA`. A tag with no entry of its own takes the first entry with the same base language: on the base checkpoint, `ar` takes `ar-AE`. |
+
+A `tokenizer.json` with `tokenizer_kinds` encodes as NeMo's `AggregatedTTSTokenizer`
+does, and a voice can name any byte or character sub-tokenizer in it. A voice that names
+a sub-tokenizer the asset does not have, or a G2P one, does not load.
+
+A `tokenizer.json` without `tokenizer_kinds` keeps the older encoders: fr, it, vi and ko
+as bytes with no `</s>`, and ar as every known character, with no space collapse and no
+space pad. It can only encode a language with a sub-tokenizer that the checkpoint maps to
+the same base language. A voice in `ar` can name `arabic_SA_chartokenizer`, but a voice in
+`fr` that names `english_phoneme` does not load.
+
+A fine-tune whose checkpoint has no language map names its sub-tokenizer:
+
+```json
+"engine_params": {"lang": "ka", "tokenizer_name": "text_ce_tokenizer"}
+```
 
 ---
 
@@ -238,6 +264,32 @@ cfg = VoiceConfig.from_dict(config, engine_params={"noise_scale": 0.5})
 ```
 
 These are forwarded to the adapter as `request.params` at synthesis time.
+
+#### NeuTTS front end
+
+A NeuTTS fine-tune reads phonemes in the form its own training code made them. Three
+`engine_params` keys describe that front end, so a fine-tune needs a voice config and no
+code. A voice without them gets the Akiti-TTS front end.
+
+| Key | Default | What it sets |
+| --- | --- | --- |
+| `espeak_voice` | `lfn` | The espeak-ng language the checkpoint was trained with, for example `pl` or `en-us`. |
+| `prompt_template` | `vieneu` | `vieneu` is the bare prompt of VieNeu-TTS and Akiti-TTS, with at most 200 reference codes. `neuphonic` is the chat turn of Neuphonic's NeuTTS Air and Nano (`user: Convert the text to speech:` ... `assistant:`), with every reference code. |
+| `phoneme_substitutions` | none | A list of `[pattern, replacement]` regular-expression pairs. They run on the phones in list order. The voice does not load if the value is not a list of string pairs. It also does not load if a pattern does not compile, or if a replacement names a group that is not in its pattern. |
+
+After the substitutions, runs of whitespace become one space for every voice. The
+newline that espeak-ng writes at a clause break, such as an en dash, also becomes a
+space, as in the `phonemizer` package that VieNeu-TTS and Akiti-TTS use.
+
+The voice config for `shefowl/neutts-nano-polish`:
+
+```json
+"engine_params": {
+  "espeak_voice": "pl",
+  "prompt_template": "neuphonic",
+  "phoneme_substitutions": [["([a-zA-Z0-9])", " \\1"]]
+}
+```
 
 ### SynthesisConfig extra params
 
