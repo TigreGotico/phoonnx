@@ -38,11 +38,17 @@ def _normalize(text: str, lang: str, expand_contractions: bool = True) -> str:
     return text2spoken.normalize(text, lang)
 
 
-def __getattr__(name: str):
-    if name not in DEPRECATED_NAMES:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    warnings.warn(f"phoonnx.normalization.{name} is deprecated and is removed in phoonnx "
-                  f"{REMOVAL_VERSION}. Use text2spoken.normalize.", DeprecationWarning, stacklevel=2)
+def deprecated_name(module: str, name: str):
+    """The object a deprecated *name* stands for, after a warning that names *module*
+    and points at the code that read the name."""
+    warnings.warn(f"{module}.{name} is deprecated and is removed in phoonnx "
+                  f"{REMOVAL_VERSION}. Use text2spoken.normalize.", DeprecationWarning, stacklevel=3)
     if name == "normalize":
         return _normalize
     return getattr(import_module(f"{__name__}.{_LOCAL_NAMES[name]}"), name)
+
+
+def __getattr__(name: str):
+    if name not in DEPRECATED_NAMES:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    return deprecated_name(__name__, name)

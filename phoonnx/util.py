@@ -94,5 +94,5 @@ def match_lang(target_lang: str, valid_langs: Union[str, List[str]]) -> Tuple[st
 
 def __getattr__(name: str):
     if name in _normalization.DEPRECATED_NAMES:
-        return getattr(_normalization, name)
+        return _normalization.deprecated_name(__name__, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

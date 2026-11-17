@@ -5,6 +5,7 @@ deprecated: each one warns, and ``normalize`` returns what text2spoken returns.
 phoonnx's own call sites call text2spoken directly, so they emit no warning.
 """
 import json
+import os
 import subprocess
 import sys
 import unittest
@@ -63,6 +64,19 @@ class TestShimNamesWarn(unittest.TestCase):
                         value = getattr(module, name)
                     local = import_module(f"phoonnx.normalization.{submodule}")
                     self.assertIs(value, getattr(local, name))
+
+
+class TestShimWarningsShowByDefault(unittest.TestCase):
+    """Python shows a DeprecationWarning by default only when it points at __main__,
+    so each route must point the warning at the code that reads the name."""
+
+    def test_each_route_warns_under_the_default_filters(self):
+        env = {k: v for k, v in os.environ.items() if k != "PYTHONWARNINGS"}
+        for module in ("phoonnx.normalization", "phoonnx.util"):
+            with self.subTest(module=module):
+                result = subprocess.run([sys.executable, "-c", f"from {module} import normalize"],
+                                        capture_output=True, text=True, env=env, check=True)
+                self.assertIn(f"DeprecationWarning: {module}.normalize is deprecated", result.stderr)
 
 
 class TestCallSitesUseText2spoken(unittest.TestCase):
