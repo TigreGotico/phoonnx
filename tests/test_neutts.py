@@ -391,6 +391,53 @@ def test_substitutions_run_in_order_before_whitespace_collapses(adapter):
     assert adapter._espeak("x") == "x yx y ˈx y"
 
 
+def test_a_voice_without_substitutions_reads_an_espeak_clause_break_as_a_space(adapter):
+    # espeak-ng writes "\n" at a clause break (an en dash); the phonemizer package that
+    # Akiti-TTS trained with joins clauses with a space: "ˈama nˈe kwˈame kˈoo fˈie."
+    assert adapter.phoneme_substitutions == []
+    adapter._phonemizer = type("P", (), {
+        "phonemize_string": staticmethod(lambda t, lang: "ˈama\nnˈe kwˈame\nkˈoo fˈie")})()
+    assert adapter._espeak("Ama – ne Kwame – kɔɔ fie") == "ˈama nˈe kwˈame kˈoo fˈie"
+
+
+def _configure_substitutions(rules):
+    class VC:
+        engine_params = {"phoneme_substitutions": rules}
+
+    adapter = NeuTTSAdapter()
+    adapter.configure(VC())
+    return adapter
+
+
+@pytest.mark.parametrize("rules, type_name", [({"ɐ̃": "ã"}, "dict"), ({}, "dict"), ("ab", "str")])
+def test_substitutions_given_as_a_json_object_are_refused(rules, type_name):
+    # the key "ɐ̃" is two code points; iterating the object would make it the rule ɐ -> ̃
+    with pytest.raises(ValueError, match=f"list of \\[pattern, replacement\\] pairs, not {type_name}"):
+        _configure_substitutions(rules)
+
+
+@pytest.mark.parametrize("rule", ["ab", ["a"], ["a", "b", "c"], ["a", 1], [None, "b"]])
+def test_a_substitution_rule_that_is_not_a_pair_of_strings_is_refused(rule):
+    with pytest.raises(ValueError, match="pair of strings"):
+        _configure_substitutions([rule])
+
+
+@pytest.mark.parametrize("rule, reason", [
+    (["([a-z])", " \\2"], "invalid group reference 2"),
+    (["([a-z])", "\\g<name>"], "unknown group name"),
+    (["(", "x"], "missing \\)"),
+])
+def test_a_substitution_rule_that_cannot_run_fails_when_the_voice_loads(rule, reason):
+    with pytest.raises(ValueError, match=reason):
+        _configure_substitutions([rule])
+
+
+def test_valid_substitutions_compile_in_their_order():
+    adapter = _configure_substitutions([["([a-zA-Z0-9])", " \\1"], ("ɐ̃", "ã")])
+    assert [(p.pattern, r) for p, r in adapter.phoneme_substitutions] == [
+        ("([a-zA-Z0-9])", " \\1"), ("ɐ̃", "ã")]
+
+
 # --------------------------------------------------------------------- chunking
 def test_short_text_is_one_chunk(adapter):
     assert adapter.chunk_text("Meda wo ase.", 200) == ["Meda wo ase."]

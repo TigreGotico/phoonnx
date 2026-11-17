@@ -92,7 +92,7 @@ Lower `detect_priority` values are probed first during auto-detection.
 | [Chatterbox](training/engines/chatterbox.md) | `phoonnx/engines/chatterbox.py` | `engine == "chatterbox"` — first **autoregressive** engine (codec-LM), d-vector [cloning](cloning.md) + exaggeration |
 | Vosk | `phoonnx/engines/vits.py` (shared) | `engine == "vosk"` — alphacep vosk-tts Russian voices: plain VITS exports whose front-end is scriptconv's dictionary/rule `VoskPhonemizer` |
 | SuperTonic | `phoonnx/engines/supertonic.py` | `engine == "supertonic"` — multi-graph flow-matching engine (4 ONNX graphs via `aux_model_urls`), raw-text (no phonemizer), fixed per-speaker style instead of cloning |
-| NeuTTS (NeuTTS Air / VieNeu / Akiti) | `phoonnx/engines/neutts.py` | `engine == "neutts"` — autoregressive single-codebook codec-LM (Qwen3 backbone + NeuCodec decoder), raw text phonemized with espeak-ng, in-context [cloning](cloning.md) from pre-encoded voice presets, 24 kHz |
+| NeuTTS (NeuTTS Air / VieNeu / Akiti) | `phoonnx/engines/neutts.py` | `engine == "neutts"` — autoregressive single-codebook codec-LM (Qwen3 or Llama backbone + NeuCodec decoder), raw text phonemized with espeak-ng in the checkpoint's language ([front-end keys](#neutts-front-end)), in-context [cloning](cloning.md) from pre-encoded voice presets, 24 kHz |
 | [Pocket TTS](pockettts.md) | `phoonnx/engines/pockettts.py` | `engine == "pockettts"` — 5-graph flow-matching codec LM with explicit stream state, raw-text (no phonemizer), state-based voices and reference [cloning](cloning.md) |
 | [Spark-TTS](training/engines/sparktts.md) | `phoonnx/engines/sparktts.py` | `engine == "sparktts"` — autoregressive codec-LM (Qwen2 + BiCodec), raw-text, en/zh; preset 32-token speakers or zero-shot [cloning](cloning.md) |
 | [Qwen3-TTS](training/engines/qwen3tts.md) | `phoonnx/engines/qwen3tts.py` | `engine == "qwen3tts"` — two autoregressive stages (28-layer talker + 5-layer code predictor) writing 16 code groups per 12.5 Hz frame, raw-text, 10 languages, nine fixed timbres, 24 kHz |
@@ -238,6 +238,32 @@ cfg = VoiceConfig.from_dict(config, engine_params={"noise_scale": 0.5})
 ```
 
 These are forwarded to the adapter as `request.params` at synthesis time.
+
+#### NeuTTS front end
+
+A NeuTTS fine-tune reads phonemes in the form its own training code made them. Three
+`engine_params` keys describe that front end, so a fine-tune needs a voice config and no
+code. A voice without them gets the Akiti-TTS front end.
+
+| Key | Default | What it sets |
+| --- | --- | --- |
+| `espeak_voice` | `lfn` | The espeak-ng language the checkpoint was trained with, for example `pl` or `en-us`. |
+| `prompt_template` | `vieneu` | `vieneu` is the bare prompt of VieNeu-TTS and Akiti-TTS, with at most 200 reference codes. `neuphonic` is the chat turn of Neuphonic's NeuTTS Air and Nano (`user: Convert the text to speech:` ... `assistant:`), with every reference code. |
+| `phoneme_substitutions` | none | A list of `[pattern, replacement]` regular-expression pairs. They run on the phones in list order. The voice does not load if the value is not a list of string pairs. It also does not load if a pattern does not compile, or if a replacement names a group that is not in its pattern. |
+
+After the substitutions, runs of whitespace become one space for every voice. The
+newline that espeak-ng writes at a clause break, such as an en dash, also becomes a
+space, as in the `phonemizer` package that VieNeu-TTS and Akiti-TTS use.
+
+The voice config for `shefowl/neutts-nano-polish`:
+
+```json
+"engine_params": {
+  "espeak_voice": "pl",
+  "prompt_template": "neuphonic",
+  "phoneme_substitutions": [["([a-zA-Z0-9])", " \\1"]]
+}
+```
 
 ### SynthesisConfig extra params
 

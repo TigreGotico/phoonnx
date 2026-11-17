@@ -158,6 +158,36 @@ def preserve_punctuation_phonemize(text: str, phonemize) -> str:
     return joined
 
 
+def _compile_substitutions(rules: Any) -> List[Tuple[re.Pattern, str]]:
+    """Compile ``engine_params["phoneme_substitutions"]``: a list of
+    ``[pattern, replacement]`` pairs of strings.
+
+    A JSON object is refused, because its keys would unpack as pairs: the two-code-point
+    key ``"ɐ̃"`` would become the rule "``ɐ`` to a lone combining tilde". Each rule is tried once on
+    an empty string: ``re`` parses the replacement before it scans, so a group reference
+    the pattern has no group for fails at load, not at the first synthesis.
+    """
+    if rules is None:
+        return []
+    if not isinstance(rules, (list, tuple)):
+        raise ValueError("NeuTTS phoneme_substitutions must be a list of "
+                         f"[pattern, replacement] pairs, not {type(rules).__name__}")
+    compiled = []
+    for rule in rules:
+        if not (isinstance(rule, (list, tuple)) and len(rule) == 2
+                and all(isinstance(part, str) for part in rule)):
+            raise ValueError("each NeuTTS phoneme_substitutions rule must be a "
+                             f"[pattern, replacement] pair of strings, not {rule!r}")
+        pattern, replacement = rule
+        try:
+            regex = re.compile(pattern)
+            regex.sub(replacement, "")
+        except (re.error, IndexError) as error:
+            raise ValueError(f"bad NeuTTS phoneme_substitutions rule {rule!r}: {error}") from error
+        compiled.append((regex, replacement))
+    return compiled
+
+
 def _softmax(x: np.ndarray) -> np.ndarray:
     z = np.asarray(x, np.float64)
     z = z - z.max()
@@ -280,9 +310,7 @@ class NeuTTSAdapter(BaseOnnxAdapter):
             raise ValueError(f"unknown NeuTTS prompt_template {template!r}; "
                              f"available: {sorted(PROMPT_TEMPLATES)}")
         self.prompt_layout = PROMPT_TEMPLATES[template]
-        self.phoneme_substitutions = [(re.compile(pattern), replacement)
-                                      for pattern, replacement in
-                                      ep.get("phoneme_substitutions") or []]
+        self.phoneme_substitutions = _compile_substitutions(ep.get("phoneme_substitutions"))
         if self.codec is None and ep.get("codec_decoder_path"):
             self.codec = make_session(ep["codec_decoder_path"], providers=ep.get("providers"))
         if self.tokenizer is None and ep.get("tokenizer_path"):
@@ -316,7 +344,10 @@ class NeuTTSAdapter(BaseOnnxAdapter):
         ``Alphabet.GRAPHEMES``, whose phonemizer passes text through unchanged. Which
         phonemes this model consumes is a property of the checkpoint, so espeak-ng is
         addressed directly. The checkpoint's substitutions run on the result, then
-        whitespace collapses to single spaces, as upstream's ``_to_phones`` does.
+        whitespace collapses to single spaces, for every voice. Upstream ``neutts``
+        ``_to_phones`` collapses it. The VieNeu and Akiti front end, the ``phonemizer``
+        package, joins espeak's clauses with a space, so the newline that espeak-ng
+        writes at a clause break, such as an en dash, also becomes a space.
         """
         if self._phonemizer is None:
             from scriptconv.phonemizers import Phonemizer, get_phonemizer
