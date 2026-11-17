@@ -200,8 +200,8 @@ def test_f5tts_dialect_wrapping():
         _FakeTransformer(),
     )
     ids = pre.text_ids[0].tolist()
-    # ref tokens first, then ⑥ 〈 gen 〉
-    assert ids == [7, 8, 2713, 2728, 4, 5, 6, 2729]
+    # ⑥ 〈 ref gen 〉: upstream wraps the whole ref_text + gen_text string
+    assert ids == [2713, 2728, 7, 8, 4, 5, 6, 2729]
     assert HABIBI_DIALECT_MAP["EGY"] == "⑥"
 
 
@@ -372,6 +372,150 @@ def test_namaa_saudi_listed_for_arabic():
     assert "namaa/ar-sa-v2" in manager.voices
     ar_ids = [v.voice_id for v in manager.get_lang_voices("ar")]
     assert "namaa/ar-sa-v2" in ar_ids
+
+
+# Whole model calls recorded with the upstream code: the reference text ends as
+# preprocess_ref_audio_text and infer_batch_process leave it (SWivid/F5-TTS
+# 600e5fd, src/f5_tts/infer/utils_infer.py), the text function reads
+# ref_text + gen_text (text_list_formatter of SWivid/Habibi-TTS 9274498, or
+# convert_char_to_pinyin of F5-TTS), and each token maps with get(c, 0)
+# through the voice's vocab.txt. prompt_tokens and phoneme_ids are the ids of
+# the reference and generation text alone, as TTSVoice gives them.
+UPSTREAM_CALLS = [
+    {"reference_text": "قال.", "dialect": "EGY", "prompt_tokens": [1739, 2550, 1741, 14],
+     "phoneme_ids": [1743, 1738, 1742],
+     "text_ids": [2713, 2728, 1739, 2550, 1741, 14, 0, 0, 1743, 1738, 1742, 2729],
+     "char2idx": {" ": 0, ".": 14, "ا": 2550, "ع": 1738, "ق": 1739, "ل": 1741, "م": 1742,
+                  "ن": 1743, "⑥": 2713, "〈": 2728, "〉": 2729}},
+    {"reference_text": "قال", "dialect": "UNK", "prompt_tokens": [1739, 2550, 1741],
+     "phoneme_ids": [1743, 1738, 1742],
+     "text_ids": [2707, 2728, 1739, 2550, 1741, 14, 0, 0, 1743, 1738, 1742, 2729],
+     "char2idx": {" ": 0, ".": 14, "ا": 2550, "ع": 1738, "ق": 1739, "ل": 1741, "م": 1742,
+                  "ن": 1743, "⓪": 2707, "〈": 2728, "〉": 2729}},
+    {"reference_text": "هل؟", "dialect": None, "prompt_tokens": [1744, 1741, 0],
+     "phoneme_ids": [1743, 1738, 1742], "text_ids": [1744, 1741, 0, 14, 0, 0, 1743, 1738, 1742],
+     "char2idx": {" ": 0, ".": 14, "ع": 1738, "ل": 1741, "م": 1742, "ن": 1743, "ه": 1744}},
+    {"reference_text": "好。", "dialect": None, "prompt_tokens": [0, 458, 1895],
+     "phoneme_ids": [0, 458], "text_ids": [0, 458, 1895, 0, 458],
+     "char2idx": {" ": 0, "hao3": 458, "。": 1895}},
+]
+
+
+@pytest.mark.parametrize("call", UPSTREAM_CALLS, ids=lambda c: c["reference_text"])
+def test_f5tts_text_ids_equal_the_upstream_call(call):
+    """The reference text ends in ". " plus a space unless it ends in 。, and the
+    dialect tag wraps the reference and the generation text together."""
+    class _RecordingPreprocess(_FakePreprocess):
+        def run(self, output_names, feed):
+            self.text_ids = feed["text_ids"].copy()
+            return super().run(output_names, feed)
+
+    ad = _configured_adapter(nfe=2)
+    ad.preprocess = pre = _RecordingPreprocess()
+    ad._char2idx = call["char2idx"]
+    params = {"reference_audio": (np.zeros(24000, np.float32), 24000),
+              "prompt_tokens": call["prompt_tokens"], "speaker_reference_text": call["reference_text"]}
+    if call["dialect"]:
+        params["dialect"] = call["dialect"]
+    request = AdapterSynthesisRequest(phoneme_ids=np.array([call["phoneme_ids"]], np.int64),
+                                      phoneme_lengths=np.array([len(call["phoneme_ids"])], np.int64),
+                                      speaker_id=0, language_id=0, params=params)
+    ad.synthesize(request, _FakeTransformer())
+    assert pre.text_ids[0].tolist() == call["text_ids"]
+
+
+# Whole model calls recorded with the upstream code through TTSVoice inputs
+# (fixes/record_test_rows.py in the f5-parity audit): preprocess_ref_audio_text
+# and the one-byte rule of infer_batch_process (SWivid/F5-TTS 600e5fd) end the
+# reference text, convert_char_to_pinyin (F5-TTS v1 Base) or the Habibi-TTS
+# 9274498 text function reads ref_text + gen_text, and list_str_to_idx maps the
+# tokens through vocab.txt. A reference text with whitespace at its end gives
+# the ids of upstream on the reference text without it. Each map holds the
+# vocab.txt entries that the texts can give, with their vocab.txt ids.
+JOINED_CALLS = [
+    {'phoneme_type': 'f5tts_pinyin', 'reference_text': '这就是我。', 'text': 'GPU和CPU不一样。', 'lang': 'zh',
+     'text_ids': [0, 1341, 0, 546, 0, 1030, 0, 1178, 1895, 0, 38, 47, 52, 0, 461, 0, 34, 47, 52, 0, 142, 0, 1259, 0, 1249, 1895],
+     'phoneme_id_map': {" ": 0, ".": 14, "C": 34, "G": 38, "P": 47, "U": 52, "bu4": 142, "he2": 461, "jiu4": 546, "shi4": 1030, "wo3": 1178, "yang4": 1249, "yi1": 1259, "yi2": 1260, "zhe4": 1341, "。": 1895}},
+    {'phoneme_type': 'f5tts_pinyin', 'reference_text': '这就是我。', 'text': 'Python是一种编程语言，对吧？', 'lang': 'zh',
+     'text_ids': [0, 1341, 0, 546, 0, 1030, 0, 1178, 1895, 0, 47, 1236, 1082, 441, 827, 765, 0, 1030, 0, 1262, 0, 1356, 0, 118, 0, 190, 0, 1282, 0, 1243, 2541, 0, 317, 0, 79, 2542],
+     'phoneme_id_map': {" ": 0, ".": 14, "P": 47, "ba": 79, "bian1": 118, "cheng2": 190, "dui4": 317, "h": 441, "jiu4": 546, "n": 765, "o": 827, "shi4": 1030, "t": 1082, "wo3": 1178, "y": 1236, "yan2": 1243, "yi4": 1262, "yu3": 1282, "zhe4": 1341, "zhong3": 1356, "。": 1895, "，": 2541, "？": 2542}},
+    {'phoneme_type': 'f5tts_pinyin', 'reference_text': '这就是我。', 'text': 'I am here.', 'lang': 'en',
+     'text_ids': [0, 1341, 0, 546, 0, 1030, 0, 1178, 1895, 40, 0, 62, 704, 0, 441, 325, 940, 325, 14],
+     'phoneme_id_map': {" ": 0, ".": 14, "I": 40, "a": 62, "e": 325, "h": 441, "jiu4": 546, "m": 704, "r": 940, "shi4": 1030, "wo3": 1178, "zhe4": 1341, "。": 1895}},
+    {'phoneme_type': 'f5tts_pinyin', 'reference_text': '这就是我。', 'text': '你好。', 'lang': 'zh',
+     'text_ids': [0, 1341, 0, 546, 0, 1030, 0, 1178, 1895, 0, 793, 0, 458, 1895],
+     'phoneme_id_map': {" ": 0, ".": 14, "hao3": 458, "jiu4": 546, "ni2": 793, "shi4": 1030, "wo3": 1178, "zhe4": 1341, "。": 1895}},
+    {'phoneme_type': 'f5tts_pinyin', 'reference_text': '这就是我。', 'text': 'OK.', 'lang': 'en',
+     'text_ids': [0, 1341, 0, 546, 0, 1030, 0, 1178, 1895, 0, 46, 42, 14],
+     'phoneme_id_map': {" ": 0, ".": 14, "K": 42, "O": 46, "jiu4": 546, "shi4": 1030, "wo3": 1178, "zhe4": 1341, "。": 1895}},
+    {'phoneme_type': 'f5tts_pinyin', 'reference_text': 'Mother nature.', 'text': 'GPU和CPU不一样。', 'lang': 'zh',
+     'text_ids': [44, 827, 1082, 441, 325, 940, 0, 765, 62, 1082, 1147, 940, 325, 14, 0, 0, 38, 47, 52, 0, 461, 0, 34, 47, 52, 0, 142, 0, 1259, 0, 1249, 1895],
+     'phoneme_id_map': {" ": 0, ".": 14, "C": 34, "G": 38, "M": 44, "P": 47, "U": 52, "a": 62, "bu4": 142, "e": 325, "h": 441, "he2": 461, "n": 765, "o": 827, "r": 940, "t": 1082, "u": 1147, "yang4": 1249, "yi1": 1259, "yi2": 1260, "。": 1895}},
+    {'phoneme_type': 'f5tts_char', 'reference_text': 'قال。', 'text': 'OK.', 'lang': 'en',
+     'text_ids': [1739, 2550, 1741, 1895, 46, 42, 14],
+     'phoneme_id_map': {" ": 0, ".": 14, "K": 42, "O": 46, "ا": 2550, "ق": 1739, "ل": 1741, "。": 1895}},
+    {'phoneme_type': 'f5tts_pinyin', 'reference_text': '这就是我。 ', 'text': 'GPU和CPU不一样。', 'lang': 'zh',
+     'text_ids': [0, 1341, 0, 546, 0, 1030, 0, 1178, 1895, 0, 38, 47, 52, 0, 461, 0, 34, 47, 52, 0, 142, 0, 1259, 0, 1249, 1895],
+     'phoneme_id_map': {" ": 0, ".": 14, "C": 34, "G": 38, "P": 47, "U": 52, "bu4": 142, "he2": 461, "jiu4": 546, "shi4": 1030, "wo3": 1178, "yang4": 1249, "yi1": 1259, "yi2": 1260, "zhe4": 1341, "。": 1895}},
+    {'phoneme_type': 'f5tts_pinyin', 'reference_text': 'mother nature ', 'text': 'Hello there.', 'lang': 'en',
+     'text_ids': [704, 827, 1082, 441, 325, 940, 0, 765, 62, 1082, 1147, 940, 325, 14, 0, 0, 39, 325, 615, 615, 827, 0, 1082, 441, 325, 940, 325, 14],
+     'phoneme_id_map': {" ": 0, ".": 14, "H": 39, "a": 62, "e": 325, "h": 441, "l": 615, "m": 704, "n": 765, "o": 827, "r": 940, "t": 1082, "u": 1147, "。": 1895}},
+    {'phoneme_type': 'f5tts_char', 'reference_text': 'قال \n', 'text': 'نعم.', 'lang': 'ar',
+     'text_ids': [1739, 2550, 1741, 14, 0, 0, 1743, 1738, 1742, 14],
+     'phoneme_id_map': {" ": 0, ".": 14, "ا": 2550, "ع": 1738, "ق": 1739, "ل": 1741, "م": 1742, "ن": 1743, "。": 1895}},
+]
+
+
+class _RecordingPreprocess(_FakePreprocess):
+    def __init__(self):
+        self.text_ids, self.max_duration = [], []
+
+    def run(self, output_names, feed):
+        self.text_ids.append(feed["text_ids"][0].tolist())
+        self.max_duration.append(int(feed["max_duration"][0]))
+        return super().run(output_names, feed)
+
+
+def _f5_voice(phoneme_type, phoneme_id_map, lang):
+    from phoonnx.config import VoiceConfig
+    from phoonnx.voice import TTSVoice
+    config = VoiceConfig.from_dict({
+        "phoonnx_version": "1.0", "engine": "f5tts", "phoneme_type": phoneme_type, "alphabet": "unicode",
+        "lang_code": lang, "audio": {"sample_rate": 24000}, "phoneme_id_map": phoneme_id_map,
+        "add_blank_char": False, "blank_at_start": False, "blank_at_end": False, "use_eos_bos": False,
+        "fold_compounds": False, "engine_params": {"nfe": 2}})
+    voice = TTSVoice(session=_FakeTransformer(), config=config, adapter=F5TTSAdapter())
+    voice.adapter.preprocess, voice.adapter.decode = _RecordingPreprocess(), _FakeDecode()
+    return voice
+
+
+def _synthesize(voice, reference_text, text):
+    from phoonnx.config import SynthesisConfig
+    list(voice.synthesize(text, SynthesisConfig(
+        speaker_reference=(np.zeros(24000, np.float32), 24000), speaker_reference_text=reference_text)))
+    return voice.adapter.preprocess
+
+
+@pytest.mark.parametrize("call", JOINED_CALLS, ids=lambda c: f"{c['reference_text']!r}+{c['text']}")
+def test_f5tts_call_ids_equal_upstream_on_the_joined_text(call):
+    """After a reference text that ends in 。, upstream puts a space before a
+    generation text that starts with an ASCII word of two or more characters,
+    for the pinyin text function only. Whitespace at the end of the reference
+    text changes no id."""
+    voice = _f5_voice(call["phoneme_type"], call["phoneme_id_map"], call["lang"])
+    assert _synthesize(voice, call["reference_text"], call["text"]).text_ids == [call["text_ids"]]
+
+
+def test_f5tts_length_estimate_counts_the_reference_end():
+    """max_duration: the reference frames, and as many again per generation id
+    as the reference took per id, with the reference end ".  " counted."""
+    call = JOINED_CALLS[8]  # "mother nature " + "Hello there."
+    preprocess = _synthesize(_f5_voice(call["phoneme_type"], call["phoneme_id_map"], call["lang"]),
+                             call["reference_text"], call["text"])
+    frames = 24000 // 256 + 1
+    reference_ids = len("mother nature.  ")
+    generation_ids = len("Hello there.")
+    assert preprocess.max_duration == [frames + int(frames / reference_ids * generation_ids)]
 
 
 class _NamedIO:
