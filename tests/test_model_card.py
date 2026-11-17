@@ -543,6 +543,14 @@ def test_a_voice_no_template_covers_gets_no_standalone_example():
     assert 'voice.synthesize_wav("Bom dia.", wav_file)' in text
 
 
+def test_a_voice_no_template_covers_gets_the_text_stack_beside_its_phoonnx_usage():
+    text = usage(example_repo(phoonnx_config(keep_punctuation=False)))  # no phoneme_id_map
+    prepare = text.index("### Prepare the text")
+    assert prepare > text.index('voice.synthesize_wav("Bom dia.", wav_file)')
+    assert 'text = normalize(text, "pt-PT")' in text[prepare:]
+    assert "before it goes to `voice.synthesize_wav`" in text[prepare:]
+
+
 @pytest.mark.parametrize("config", [
     phoonnx_config(keep_punctuation=False, phoneme_id_map={"_": 0, "^": 1, "$": 2, " ": 3, "b": 4, "o": 5, "m": 6}),
     phoonnx_config(keep_punctuation=False),  # no template covers it
@@ -552,9 +560,12 @@ def test_a_graph_that_does_not_read_leaves_out_only_the_example(config, capsys):
     files = {"voice.json": json.dumps(config), "README.md": card, "voice.onnx": ""}
     args = ("Phoonnx/not_indexed_voice", list(files), files.__getitem__, lambda repo, kind: True)
     without = render_repo(*args, index={})
-    assert render_repo(*args, index={}, graph_io=lambda name: failed_graph_read("Phoonnx/not_indexed_voice", name)) \
-        == without
-    assert "Without phoonnx" not in without
+    failed = render_repo(*args, index={}, graph_io=lambda name: failed_graph_read("Phoonnx/not_indexed_voice", name))
+    # the card keeps the lines that prepare the text, beside the phoonnx usage, and loses only the example
+    start = failed.index("\n\n### Prepare the text\n")
+    end = failed.index("\n\n## ", start)
+    assert failed[:start] + failed[end:] == without
+    assert "Without phoonnx" not in failed
     assert "no standalone example" in capsys.readouterr().err
 
 

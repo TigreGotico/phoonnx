@@ -75,6 +75,11 @@ test = [
     # tugaphone, which the card example tests run as a backend that owns its
     # diacritize stage.
     "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a109",
+    # the model card tests render the text stack that the cards recommend, from
+    # these libraries' own language list, call names and default model
+    "text2spoken>=0.0.2a58",
+    "bifonia>=0.5.0",
+    "text2tashkeel>=0.3.1a3",
     "espyak>=0.0.3a1",
     # the voice-conversion post-stage's end-to-end test runs the real engine;
     # pure-ONNX with no torch of its own, so it is cheap to have here.

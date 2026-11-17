@@ -971,3 +971,64 @@ def test_a_phonemizer_that_owns_the_diacritize_stage_gets_no_bifonia_even_when_i
     text = card_examples.without_phoonnx({**NATIVE, "phoneme_type": "tugaphone", "lang_code": "pt-PT"})
     assert "add_extra_diacritics" not in text
     assert "The tugaphone phonemizer of this voice puts the accents on homographs itself" in text
+
+
+# --- the text beside the phoonnx usage of a voice with no standalone example -------------
+
+def phoonnx_diacritizes(config):
+    voice = voice_of(config)
+    return voice.frontend._resolve(voice._stages(SynthesisConfig())).diacritize
+
+
+@pytest.mark.parametrize("config", [ARABIC, {**ARABIC, "inference": {"add_diacritics": False}}])
+def test_with_phoonnx_names_the_vowel_mark_model_of_phoonnx_s_own_step(config):
+    text = card_examples.with_phoonnx(config)
+    assert text.startswith("### Prepare the text\n")
+    assert 'normalize(text, "ar-001")' in text
+    assert "Diacritizer(" not in text  # phoonnx diacritizes; the reader does not do it again
+    named = "phoonnx then adds the Arabic vowel marks with [text2tashkeel]" in text
+    assert named == phoonnx_diacritizes(config)
+    assert ("`rawi-ensemble` model" in text) == named
+
+
+def test_with_phoonnx_names_the_config_s_own_diacritizer_model():
+    config = {**ARABIC, "inference": {"add_diacritics": True, "diacritizer_model": "rawi-v2"}}
+    assert "its `rawi-v2` model" in card_examples.with_phoonnx(config)
+
+
+def test_with_phoonnx_gives_bifonia_to_a_portuguese_voice_that_phoonnx_does_not_diacritize():
+    config = {**NATIVE, "lang_code": "pt-PT", "inference": {"add_diacritics": False}}
+    assert not phoonnx_diacritizes(config)
+    text = card_examples.with_phoonnx(config)
+    assert 'text = add_extra_diacritics(text, lang="pt-PT")' in text
+    assert "sound different from phoonnx" not in text  # the reader runs bifonia before phoonnx
+
+
+def test_with_phoonnx_gives_no_bifonia_to_a_portuguese_voice_that_phoonnx_diacritizes():
+    config = {**NATIVE, "lang_code": "pt-PT", "inference": {"add_diacritics": True}}
+    assert phoonnx_diacritizes(config)
+    text = card_examples.with_phoonnx(config)
+    assert "add_extra_diacritics" not in text
+    assert "phoonnx runs its own vowel-mark step on the text of this voice" in text
+    with pytest.raises(card_examples.UnsupportedExample):  # the standalone example refuses this voice
+        card_examples.without_phoonnx(config)
+
+
+@pytest.mark.parametrize("lang, named", [("ar", True), ("en", False)])
+def test_with_phoonnx_on_chatterbox_names_the_vowel_marks_only_for_arabic(lang, named):
+    text = card_examples.with_phoonnx({"engine": "chatterbox", "voice_id": "chatterbox/lahgtna", "lang": lang})
+    assert "from text2spoken import normalize" in text
+    assert ("`rawi-ensemble` model" in text) == named
+
+
+def test_with_phoonnx_asks_for_a_language_file_that_text2spoken_lacks():
+    text = card_examples.with_phoonnx({**NATIVE, "lang_code": "it-IT"})
+    assert 'normalize(text, "it-IT")' in text
+    assert "text2spoken has no language file for `it-IT`" in text
+    assert card_examples.ADDING_A_LANGUAGE in text
+
+
+def test_with_phoonnx_gives_no_text2spoken_step_to_a_backend_that_owns_normalisation():
+    text = card_examples.with_phoonnx({**NATIVE, "phoneme_type": "dizione"})
+    assert "normalize(" not in text
+    assert "The dizione phonemizer of this voice normalises the text itself" in text
