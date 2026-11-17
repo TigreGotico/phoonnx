@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.107.1a1](https://github.com/TigreGotico/phoonnx/tree/1.107.1a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.107.0a1...1.107.1a1)
+
+**Merged pull requests:**
+
+- fix: F5-TTS reads a symbol its vocabulary lacks as id 0 [\#619](https://github.com/TigreGotico/phoonnx/pull/619) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.107.0a1](https://github.com/TigreGotico/phoonnx/tree/1.107.0a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.106.0a1...1.107.0a1)
@@ -369,17 +377,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.5a4...1.94.6a1)
 
-**Merged pull requests:**
-
-- fix: tag the two KSS Korean voices ko-KR [\#529](https://github.com/TigreGotico/phoonnx/pull/529) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.94.5a4](https://github.com/TigreGotico/phoonnx/tree/1.94.5a4) (2026-11-04)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.94.5a3...1.94.5a4)
-
-**Merged pull requests:**
-
-- test: check the epitran cache on a map that needs no system binary [\#530](https://github.com/TigreGotico/phoonnx/pull/530) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.94.5a3](https://github.com/TigreGotico/phoonnx/tree/1.94.5a3) (2026-11-04)
 
