@@ -277,6 +277,8 @@ class MagpieAdapter(BaseOnnxAdapter):
                       or getattr(voice_config, "lang_code", None)
                       or getattr(voice_config, "lang", None)
                       or "en")
+        if self.tokenizer is not None and ep.get("tokenizer_name"):
+            self.sub_tokenizer_name(self._lang)
 
     # ------------------------------------------------------------------
     # Derived model constants
@@ -339,6 +341,24 @@ class MagpieAdapter(BaseOnnxAdapter):
         raise ValueError(f"Magpie has no tokenizer for language {lang!r}. "
                          f"Known: {sorted(mapping)}")
 
+    def sub_tokenizer_name(self, lang: str) -> str:
+        """The voice's ``tokenizer_name``, else the sub-tokenizer of its language.
+
+        An asset without ``tokenizer_kinds`` picks its encoder by language, so it can only
+        encode a language with that language's own sub-tokenizer. Any other name would give
+        ids at the wrong offset, or drop every character, so it is refused.
+        """
+        name = self._params.get("tokenizer_name")
+        if name and self.tokenizer.kinds:
+            return name
+        own = self.tokenizer_name_for(lang)
+        if name and name != own:
+            raise ValueError(
+                f"Magpie voice names tokenizer_name {name!r} for language {lang!r}, but its "
+                f"tokenizer.json has no tokenizer_kinds, so it can only encode {lang!r} with "
+                f"{own!r}. Remove tokenizer_name, or use an asset that records tokenizer_kinds.")
+        return own
+
     def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
         """Turn text into one token-id list per autoregressive pass."""
         if self.tokenizer is None:
@@ -347,7 +367,7 @@ class MagpieAdapter(BaseOnnxAdapter):
                 or getattr(voice, "lang", None)
                 or getattr(getattr(voice, "config", None), "lang_code", None)
                 or self._lang)
-        name = self._params.get("tokenizer_name") or self.tokenizer_name_for(lang)
+        name = self.sub_tokenizer_name(lang)
         return [self.tokenizer.encode(chunk, lang, name) for chunk in chunk_text(text)]
 
     # ------------------------------------------------------------------

@@ -275,6 +275,46 @@ def test_an_alnum_chars_kind_drops_symbols_that_are_neither_letters_nor_punctuat
     assert MagpieTokenizer(str(path)).encode(" a~ ,b ", "xx", "chars") == [1, 3, 0, 4, 2, len(tokens)]
 
 
+def _voice_on_an_asset_without_kinds(tmp_path, lang, tokenizer_name=None):
+    """A voice on an asset like the published one: the 13-language token table with no
+    ``tokenizer_kinds``, and the published checkpoint's language map."""
+    asset = json.loads(THIRTEEN.read_text(encoding="utf-8"))
+    del asset["tokenizer_kinds"]
+    (tmp_path / "tokenizer.json").write_text(json.dumps(asset), encoding="utf-8")
+    config = {"language_to_tokenizer": {"en": ["english_phoneme"], "fr": ["french_chartokenizer"],
+                                        "ar-AE": ["arabic_AE_chartokenizer"]}}
+    (tmp_path / "magpie_config.json").write_text(json.dumps(config), encoding="utf-8")
+
+    class VC:
+        engine_params = {"tokenizer_path": str(tmp_path / "tokenizer.json"),
+                         "magpie_config_path": str(tmp_path / "magpie_config.json"), "lang": lang}
+        lang_code = lang
+
+    if tokenizer_name:
+        VC.engine_params["tokenizer_name"] = tokenizer_name
+    adapter = MagpieAdapter()
+    adapter.configure(VC())
+    return adapter
+
+
+@pytest.mark.parametrize("lang, tokenizer_name, own", [
+    ("fr", "english_phoneme", "french_chartokenizer"),   # bytes at the English IPA offset
+    ("ar", "french_chartokenizer", "arabic_AE_chartokenizer"),   # every character dropped
+])
+def test_an_asset_without_kinds_refuses_a_tokenizer_name_its_language_does_not_use(
+        tmp_path, lang, tokenizer_name, own):
+    with pytest.raises(ValueError, match=f"{tokenizer_name!r} for language {lang!r}.*{own!r}"):
+        _voice_on_an_asset_without_kinds(tmp_path, lang, tokenizer_name)
+
+
+def test_an_asset_without_kinds_accepts_the_tokenizer_name_of_its_language(tmp_path):
+    named = _voice_on_an_asset_without_kinds(tmp_path, "fr", "french_chartokenizer")
+    unnamed = _voice_on_an_asset_without_kinds(tmp_path, "fr")
+    offset = named.tokenizer.offsets["french_chartokenizer"]
+    assert named.encode_text("Ça", None, None) == unnamed.encode_text("Ça", None, None) == [
+        [offset + BYTE_TOKENIZER_PREFIX + b for b in "Ça".encode("utf-8")] + [named.tokenizer.eos_id]]
+
+
 def test_tokenizer_name_lookup_handles_region_tags(tmp_path):
     adapter = _adapter(tmp_path)
     assert adapter.tokenizer_name_for("fr") == "french_chartokenizer"
