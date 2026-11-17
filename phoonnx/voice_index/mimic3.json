@@ -484,7 +484,7 @@
         "voice_id": "mimic3/uk_UK/m-ailabs_low",
         "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/mimic3__uk_UK__m-ailabs_low/model.onnx",
         "phoneme_type": "unicode",
-        "lang": "uk-GB",
+        "lang": "uk-UA",
         "tokens_url": null,
         "tokenizer_config_url": null,
         "vocab_url": null,

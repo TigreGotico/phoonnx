@@ -189,9 +189,7 @@
         "tokenizer_config_url": null,
         "tokens_url": null,
         "phoneme_map_url": null,
-        "phoneme_type": "graphemes",
-        "alphabet": "unicode",
-        "engine": "transformers",
+        "engine": "piper",
         "lang": "es-419"
     },
     "hf_community/UBC-NLP/Simba-TTS-xho": {

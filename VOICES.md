@@ -215,7 +215,7 @@
 | `facebook/mms-tts-bdu-Oroko` | `bdu` | `transformers` | `graphemes` |
 | `facebook/mms-tts-bdv-Bodo Parja` | `bdv` | `transformers` | `graphemes` |
 | `omnivoice/be` | `be` | `omnivoice` | `unicode` |
-| `coqui-be-common-voice-glow-tts` | `be-BY` | `glowtts` | `graphemes` |
+| `coqui-be-common-voice-glow-tts` | `be-BY` | `glowtts` | `espeak` |
 | `outetts/1B/be` | `be-BY` | `outetts` | `unicode` |
 | `omnivoice/beb` | `beb` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-beh-Biali` | `beh` | `transformers` | `graphemes` |
@@ -987,7 +987,7 @@
 | `supertonic/M3/es` | `es` | `supertonic` | `unicode` |
 | `supertonic/M4/es` | `es` | `supertonic` | `unicode` |
 | `supertonic/M5/es` | `es` | `supertonic` | `unicode` |
-| `hf_community/HirCoir/piper-sorah-neuronal` | `es-419` | `transformers` | `graphemes` |
+| `hf_community/HirCoir/piper-sorah-neuronal` | `es-419` | `piper` | `espeak` |
 | `hf_community/ylacombe/mms-spa-finetuned-argentinian-monospeaker` | `es-AR` | `transformers` | `graphemes` |
 | `piper_community/larcanio/es-AR_daniela` | `es-AR` | `piper` | `espeak` |
 | `hf_community/ylacombe/mms-spa-finetuned-chilean-monospeaker` | `es-CL` | `transformers` | `graphemes` |
@@ -2844,7 +2844,7 @@
 | `supertonic/M3/uk` | `uk` | `supertonic` | `unicode` |
 | `supertonic/M4/uk` | `uk` | `supertonic` | `unicode` |
 | `supertonic/M5/uk` | `uk` | `supertonic` | `unicode` |
-| `mimic3/uk_UK/m-ailabs_low` | `uk-GB` | `mimic3` | `graphemes` |
+| `mimic3/uk_UK/m-ailabs_low` | `uk-UA` | `mimic3` | `graphemes` |
 | `coqui-uk-mai-glow-tts` | `uk-UA` | `glowtts` | `graphemes` |
 | `coqui/uk-mai-vits` | `uk-UA` | `coqui` | `graphemes` |
 | `facebook/mms-tts-ukr-Ukrainian` | `uk-UA` | `transformers` | `graphemes` |
