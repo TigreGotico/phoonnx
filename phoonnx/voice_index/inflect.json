@@ -1,6 +1,7 @@
 {
     "inflect/micro-en": {
         "voice_id": "inflect/micro-en",
+        "engine": "phoonnx",
         "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/hf_community__owensong__inflect-micro-v2-onnx/duration.onnx",
         "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/hf_community__owensong__inflect-micro-v2-onnx/duration.onnx.json",
         "vocab_url": null,
@@ -16,6 +17,7 @@
     },
     "inflect/nano-en": {
         "voice_id": "inflect/nano-en",
+        "engine": "phoonnx",
         "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/hf_community__owensong__inflect-nano-v2-onnx/duration.onnx",
         "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/hf_community__owensong__inflect-nano-v2-onnx/duration.onnx.json",
         "vocab_url": null,
