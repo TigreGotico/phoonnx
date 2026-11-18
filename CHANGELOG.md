@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.113.10a2](https://github.com/TigreGotico/phoonnx/tree/1.113.10a2) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.10a1...1.113.10a2)
+
+**Merged pull requests:**
+
+- refactor: read SSML say-as through the voice's text frontend [\#681](https://github.com/TigreGotico/phoonnx/pull/681) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.113.10a1](https://github.com/TigreGotico/phoonnx/tree/1.113.10a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.9a1...1.113.10a1)
@@ -365,10 +373,6 @@
 ## [1.98.2a1](https://github.com/TigreGotico/phoonnx/tree/1.98.2a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.1a4...1.98.2a1)
-
-**Merged pull requests:**
-
-- fix: stop shipping the unused vendored Cotovía files [\#586](https://github.com/TigreGotico/phoonnx/pull/586) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.98.1a4](https://github.com/TigreGotico/phoonnx/tree/1.98.1a4) (2026-11-15)
 
