@@ -6,6 +6,7 @@ from typing import Any, Mapping, Optional, Union, Dict
 import text2spoken
 
 from phoonnx.util import LOG, is_arabic, normalize_lang
+from phoonnx.version import VERSION_STR
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
@@ -80,7 +81,7 @@ ENGINE_ALIASES = {"kokoro": Engine.STYLETTS2.value}
 # (not redefinition) keeps enum identity: values stored in voice configs and
 # pickles resolve to the same class everywhere.
 from scriptconv.phonemizers.enums import Alphabet, Phonemizer as PhonemeType
-from scriptconv.frontend import Chunk
+from scriptconv.frontend import Chunk, FrontendConfig, Stages
 
 @dataclass
 class VoiceConfig:
@@ -276,6 +277,15 @@ class VoiceConfig:
         from phoonnx.config_loaders import LoadRequest, PhoonnxLoader
         return PhoonnxLoader.detect(LoadRequest(config=config))
 
+    @property
+    def frontend(self) -> FrontendConfig:
+        """What the text frontend is built from. The voice adds the normaliser, a callable."""
+        return FrontendConfig(lang=self.lang_code, phonemizer=self.phoneme_type, alphabet=self.alphabet,
+                              model=self.phonemizer_model,
+                              stages=Stages(diacritize=self.add_diacritics,
+                                            diacritizer_model=self.diacritizer_model),
+                              keep_punctuation=self.keep_punctuation)
+
     @staticmethod
     def from_dict(config: dict[str, Any],  # phoonnx/piper/coqui/mimic3
                   vocab: Optional[Dict[str, Any]] = None,  # transformers
@@ -369,26 +379,19 @@ class VoiceConfig:
             lang_id_map=config.get("lang_id_map", {}),
         )
 
-    def to_native_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this config to a **native phoonnx** ``config.json`` dict.
+    def to_dict(self) -> Dict[str, Any]:
+        """The native ``config.json`` dict, which :meth:`from_dict` reads back.
 
-        The result loads back through the ``is_phoonnx`` path in
-        :meth:`from_dict` (it carries ``phoonnx_version``), folding the
-        tokenizer vocabulary into ``phoneme_id_map`` and recording the
-        tokenizer flags + special tokens explicitly, so any model round-trips
-        without relying on the foreign-config detection heuristics.
+        A raw-text tokenizer (Chatterbox) has no symbol table, so its vocabulary is empty.
+        A special token that the vocabulary lacks reads back as the phoonnx default, so the
+        flags that need it are written off and the ids stay the same.
         """
-        try:
-            from phoonnx.version import VERSION as _v
-            version = ".".join(str(p) for p in _v) if isinstance(_v, (tuple, list)) else str(_v)
-        except Exception:
-            version = "1.0"
-
-        tok = self.tokenizer
+        tok = self.tokenizer if isinstance(self.tokenizer, TTSTokenizer) else TTSTokenizer(
+            Vocabulary(char2idx={}), add_blank_char=False, add_blank_word=False, use_eos_bos=False,
+            blank_at_end=False, blank_at_start=False)
         voc = tok.vocabulary
-        return {
-            "phoonnx_version": version,
+        native = {
+            "phoonnx_version": VERSION_STR,
             "engine": self.engine.value if self.engine else "phoonnx",
             "phoneme_type": self.phoneme_type.value,
             "alphabet": self.alphabet.value if self.alphabet else "unicode",
@@ -413,16 +416,24 @@ class VoiceConfig:
             "phoneme_id_map": dict(voc.char2idx),
             "pad": voc.pad, "blank": voc.blank, "bos": voc.bos, "eos": voc.eos,
             "blank_word": voc.blank_word,
-            "add_blank_char": tok.add_blank_char,
+            "add_blank_char": tok.add_blank_char and tok.blank_id is not None,
             "add_blank_word": tok.add_blank_word,
-            "use_eos_bos": tok.use_eos_bos,
-            "blank_at_start": tok.blank_at_start,
+            "use_eos_bos": tok.use_eos_bos and voc.bos_id is not None and voc.eos_id is not None,
+            "blank_at_start": tok.blank_at_start and tok.blank_id is not None,
             "blank_at_end": tok.blank_at_end,
             "fold_compounds": tok.fold_compounds,
             "word_sep_token": self.word_sep_token,
             "blank_between": self.blank_between.value if self.blank_between else "tokens_and_words",
-            "engine_params": dict(self.engine_params or {}),
+            "engine_params": {k: v for k, v in (self.engine_params or {}).items() if k != "providers"},
         }
+        if self.phonemizer_identity is not None:
+            native["phonemizer_identity"] = dict(self.phonemizer_identity)
+        return native
+
+    def to_native_dict(self) -> Dict[str, Any]:
+        """Deprecated. Use :meth:`to_dict`."""
+        _warn_moved("VoiceConfig.to_native_dict", "VoiceConfig.to_dict")
+        return self.to_dict()
 
 
 @dataclass
@@ -643,6 +654,11 @@ def _removal_version() -> str:
     """The release that removes a name deprecated in this one: the next major."""
     from phoonnx.version import VERSION_MAJOR
     return f"{VERSION_MAJOR + 1}.0.0"
+
+
+def _warn_moved(old: str, new: str, stacklevel: int = 3) -> None:
+    warnings.warn(f"{old} is deprecated and will be removed in phoonnx {_removal_version()}. "
+                  f"Use {new}.", DeprecationWarning, stacklevel=stacklevel)
 
 
 def _deprecated(name: str, replacement: str) -> None:
