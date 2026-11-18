@@ -48,6 +48,9 @@ class AdapterSynthesisRequest:
     # Populated from SynthesisConfig + VoiceConfig defaults.
     params: Dict[str, Any] = field(default_factory=dict)
 
+    text: Optional[str] = None
+    """The chunk's text, per ``Utterance.text``."""
+
 
 @dataclass
 class AdapterSynthesisResult:

@@ -220,7 +220,7 @@ def _diacritizing_voice(lang, model):
                                          sample_rate=22050)
     voice.adapter = MagicMock()
     voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda p: [1] * len(p))
-    voice._infer = lambda ids, syn_config, include_alignments=False, streams=None: (np.zeros(4, dtype=np.float32), None)
+    voice._infer = lambda ids, syn_config, include_alignments=False, streams=None, text=None: (np.zeros(4, dtype=np.float32), None)
     return voice
 
 
