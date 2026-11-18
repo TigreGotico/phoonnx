@@ -20,8 +20,8 @@ Three properties of the model shape this adapter. Upstream's
   adds a full stop token before ``<eos>`` when the last token, closing quotes
   aside, is no mark. Upstream adds "." to the text, so dizione can read it as
   part of an abbreviation ("etc." against "etc").
-* One call reads at most 512 tokens. The adapter packs a longer sentence into
-  pieces of at most 500 tokens, cut after the last clause mark that fits, else
+* One call reads at most 512 tokens. The adapter cuts a longer sentence into
+  pieces of at most 500 tokens, after the last clause mark that fits, else
   between words. Upstream cuts the text after every clause mark and phonemizes
   each piece again.
 * The audio can peak above 1.0. The adapter scales each sentence down to a
@@ -44,8 +44,6 @@ from phoonnx.engines.base import (
 )
 
 PEAK = 0.99
-# upstream's limit for one call: max_tokens (512) less a margin of 12
-MAX_TOKENS = 500
 MARKS = (".", "!", "?", "…", ",", ";", ":")
 CLOSING = ('"', "'", ")")
 CLAUSE_MARKS = (",", ";", ":", "—")
@@ -55,6 +53,8 @@ class TinyVocaAdapter(BaseOnnxAdapter):
     """Adapter for tiny-voca ONNX models."""
 
     DURATION_OUTPUT_NAMES = ["durations"]
+    # upstream's limit for one call: max_tokens (512) less a margin of 12
+    max_input_tokens = 500
 
     def configure(self, voice_config: Any) -> None:
         vocab = voice_config.tokenizer.vocabulary.char2idx
@@ -72,22 +72,18 @@ class TinyVocaAdapter(BaseOnnxAdapter):
         ids = request.phoneme_ids[0].tolist()
         stress = request.stress[0].tolist() if request.stress is not None else [0] * len(ids)
         finished = self._finished(ids, stress)
-        pieces = self._pieces(*finished)
-        results = [super(TinyVocaAdapter, self).synthesize(self._request(request, *piece), session)
-                   for piece in pieces]
-        audio = np.concatenate([r.audio for r in results])
+        result = super().synthesize(self._request(request, *finished), session)
+        audio = result.audio
         peak = float(np.abs(audio).max()) if audio.size else 0.0
         if peak > PEAK:
             audio = audio * (PEAK / peak)
-        extras = {}
-        if len(pieces) == 1:
-            extras = dict(results[0].extras)
-            durations = extras.get("phoneme_id_samples")
-            if durations is not None and len(finished[0]) > len(ids):
-                # the added full stop is a pause before <eos>
-                durations = np.asarray(durations).copy()
-                durations[-1] += durations[-2]
-                extras["phoneme_id_samples"] = np.delete(durations, -2)
+        extras = dict(result.extras)
+        durations = extras.get("phoneme_id_samples")
+        if durations is not None and len(finished[0]) > len(ids):
+            # the added full stop is a pause before <eos>
+            durations = np.asarray(durations).copy()
+            durations[-1] += durations[-2]
+            extras["phoneme_id_samples"] = np.delete(durations, -2)
         return AdapterSynthesisResult(audio=audio.astype(np.float32), extras=extras)
 
     def _finished(self, ids: List[int], stress: List[int]) -> Tuple[List[int], List[int]]:
@@ -100,30 +96,6 @@ class TinyVocaAdapter(BaseOnnxAdapter):
         if ids[last] in self.marks:
             return ids, stress
         return ids[:-1] + [self.full_stop, self.eos], stress[:-1] + [0, 0]
-
-    def _pieces(self, ids: List[int], stress: List[int]) -> List[Tuple[List[int], List[int]]]:
-        """*ids* cut into pieces of at most ``MAX_TOKENS``, each with ``<bos>`` and ``<eos>``."""
-        if len(ids) <= MAX_TOKENS:
-            return [(ids, stress)]
-        body, body_stress = ids[1:-1], stress[1:-1]
-        room = MAX_TOKENS - 2
-        pieces = []
-        start = 0
-        while len(body) - start > room:
-            window = range(start + room - 1, start, -1)
-            cut = next((i + 1 for i in window if body[i] in self.clause_marks), None)
-            if cut is not None:
-                end, resume = cut, cut + (body[cut] == self.word_gap)
-            else:
-                gap = next((i for i in range(start + room, start, -1) if body[i] == self.word_gap), None)
-                if gap is None:
-                    raise ValueError(f"one word is longer than {MAX_TOKENS} tokens")
-                end, resume = gap, gap + 1
-            pieces.append(([self.bos] + body[start:end] + [self.eos],
-                           [0] + body_stress[start:end] + [0]))
-            start = resume
-        pieces.append(([self.bos] + body[start:] + [self.eos], [0] + body_stress[start:] + [0]))
-        return pieces
 
     @staticmethod
     def _request(request: AdapterSynthesisRequest, ids: List[int],
