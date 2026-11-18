@@ -1,3 +1,4 @@
+import functools
 import re
 import types
 
@@ -6,6 +7,7 @@ import pytest
 
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.f5tts import F5TTSAdapter
+from tests.conftest import retry_download
 
 
 def _req(**params):
@@ -787,22 +789,34 @@ def test_entry_selects_the_text_function_of_its_upstream_code(voice_id):
     assert _f5_index()[voice_id]["phoneme_type"] == _UPSTREAM_TEXT_FUNCTION[voice_id]
 
 
-@pytest.mark.parametrize("voice_id", sorted(_UPSTREAM_TEXT_FUNCTION))
-def test_pinned_config_reads_text_as_the_entry_does(voice_id, tmp_path):
-    """The config.json at the entry's pinned commit selects the entry's text function
-    and maps each token on its own, as the upstream code does, so a voice loaded
-    from its files alone reads text as the index load does. A config that serves
-    one entry also carries that entry's language."""
+@functools.lru_cache(maxsize=None)
+def _pinned_config(config_url, cache_dir):
+    """Download (with retry) and parse one pinned config.json, once per URL."""
     import json
     from pathlib import Path
     from huggingface_hub import hf_hub_download
 
+    repo, revision, filename = re.fullmatch(
+        r"https://huggingface\.co/([^/]+/[^/]+)/resolve/([0-9a-f]{40})/(.+)", config_url).groups()
+    path = retry_download(hf_hub_download, repo, filename, revision=revision, cache_dir=cache_dir)
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+@pytest.fixture(scope="module")
+def _pinned_config_cache(tmp_path_factory):
+    """A module-wide cache dir so each pinned config is downloaded once."""
+    return str(tmp_path_factory.mktemp("f5tts-config"))
+
+
+@pytest.mark.parametrize("voice_id", sorted(_UPSTREAM_TEXT_FUNCTION))
+def test_pinned_config_reads_text_as_the_entry_does(voice_id, _pinned_config_cache):
+    """The config.json at the entry's pinned commit selects the entry's text function
+    and maps each token on its own, as the upstream code does, so a voice loaded
+    from its files alone reads text as the index load does. A config that serves
+    one entry also carries that entry's language."""
     index = _f5_index()
     entry = index[voice_id]
-    repo, revision, filename = re.fullmatch(
-        r"https://huggingface\.co/([^/]+/[^/]+)/resolve/([0-9a-f]{40})/(.+)", entry["config_url"]).groups()
-    config = json.loads(Path(hf_hub_download(repo, filename, revision=revision, cache_dir=tmp_path))
-                        .read_text(encoding="utf-8"))
+    config = _pinned_config(entry["config_url"], _pinned_config_cache)
     assert config["phoneme_type"] == entry["phoneme_type"]
     assert config["fold_compounds"] is False
     if sum(e["config_url"] == entry["config_url"] for e in index.values()) == 1:
