@@ -390,7 +390,8 @@ value that loads it.
    `DmlExecutionProvider` and `CoreMLExecutionProvider`.
 
 In every other case `auto` loads the full files. A voice that has only int8
-files, such as each Pocket TTS voice, loads its int8 files under `auto`.
+files, such as a Pocket TTS voice in any language but Italian, loads its int8
+files under `auto`.
 
 ### Precision in the voice index
 
