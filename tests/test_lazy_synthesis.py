@@ -113,7 +113,7 @@ def _make_lazy_voice(events, alphabet=Alphabet.IPA):
 
     config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: [1] * len(phonemes))
 
-    def _synth(phoneme_ids, syn_config, include_alignments=False, streams=None):
+    def _synth(phoneme_ids, syn_config, include_alignments=False, streams=None, text=None):
         events.append(("run", tuple(phoneme_ids)))
         return np.zeros(4, dtype=np.float32), None
 

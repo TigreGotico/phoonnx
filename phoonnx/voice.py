@@ -390,15 +390,16 @@ class TTSVoice:
         A field that differs from the running identity, by
         :meth:`PhonemizerIdentity.differs_from`, gives one warning. A block that
         cannot be read, or a running phonemizer that cannot name itself, gives
-        one warning too. The voice loads in every case. A voice with no block,
-        or one whose engine reads text, is not checked.
+        one warning too. The voice loads in every case. A voice with no block
+        (``phonemizer_identity`` ``None`` or ``{}``), or one whose engine reads
+        text, is not checked.
 
         A block with no ``frontend`` was trained through the backend alone, so
         it is compared with the backend's identity. A block with a ``frontend``
         is compared with :meth:`TextFrontend.identity`.
         """
         recorded = self.config.phonemizer_identity
-        if not recorded or self.config.alphabet == Alphabet.GRAPHEMES:
+        if recorded is None or recorded == {} or self.config.alphabet == Alphabet.GRAPHEMES:
             return
         try:
             trained = PhonemizerIdentity(**recorded)

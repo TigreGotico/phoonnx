@@ -1,3 +1,4 @@
+import functools
 import re
 import types
 
@@ -6,6 +7,7 @@ import pytest
 
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.f5tts import F5TTSAdapter
+from tests.conftest import retry_download
 
 
 def _req(**params):
@@ -584,55 +586,6 @@ def test_f5tts_length_estimate_counts_the_reference_end():
     assert preprocess.max_duration == [frames + int(frames / reference_ids * generation_ids)]
 
 
-def test_f5tts_max_duration_uses_utf8_byte_lengths():
-    """max_duration is sized from the UTF-8 byte lengths of the two texts, as
-    upstream does (SWivid/F5-TTS 600e5fd, utils_infer.py): an Arabic generation
-    text against an English reference gets its full length, not half of it."""
-    ad = _configured_adapter(nfe=2)
-    pre = _RecordingPreprocess()
-    ad.preprocess = pre
-    reference_text = "Hello world."
-    gen_text = "مرحبا بالعالم"
-    request = AdapterSynthesisRequest(
-        phoneme_ids=np.array([[4, 5, 6]], np.int64),
-        phoneme_lengths=np.array([3], np.int64),
-        speaker_id=0, language_id=0, text=gen_text,
-        params={"reference_audio": (np.zeros(24000, np.float32), 24000),
-                "prompt_tokens": [1, 2, 3],
-                "speaker_reference_text": reference_text,
-                "speed": 1.0},
-    )
-    ad.synthesize(request, _FakeTransformer())
-    # the ended reference text: rstrip, ". " unless it ends in "." or "。",
-    # plus one space when the last character is one byte
-    ended = reference_text.rstrip() + "  "  # ends in "." -> " " then the one-byte space
-    frames = 24000 // 256 + 1
-    ref_text_len = len(ended.encode("utf-8"))
-    gen_text_len = len(gen_text.encode("utf-8"))
-    assert pre.max_duration == [frames + int(frames / ref_text_len * gen_text_len / 1.0)]
-
-
-def test_f5tts_max_duration_without_text_keeps_the_token_count():
-    """text=None keeps today's token-count estimate."""
-    ad = _configured_adapter(nfe=2)
-    pre = _RecordingPreprocess()
-    ad.preprocess = pre
-    request = AdapterSynthesisRequest(
-        phoneme_ids=np.array([[4, 5, 6]], np.int64),
-        phoneme_lengths=np.array([3], np.int64),
-        speaker_id=0, language_id=0,
-        params={"reference_audio": (np.zeros(24000, np.float32), 24000),
-                "prompt_tokens": [1, 2, 3],
-                "speaker_reference_text": "Hello world.",
-                "speed": 1.0},
-    )
-    ad.synthesize(request, _FakeTransformer())
-    frames = 24000 // 256 + 1
-    reference_ids = 3 + 2  # 3 prompt tokens + the "  " end the "." reference gets
-    generation_ids = 3
-    assert pre.max_duration == [frames + int(frames / reference_ids * generation_ids / 1.0)]
-
-
 class _NamedIO:
     def __init__(self, name, type_="tensor(float)"):
         self.name = name
@@ -836,22 +789,34 @@ def test_entry_selects_the_text_function_of_its_upstream_code(voice_id):
     assert _f5_index()[voice_id]["phoneme_type"] == _UPSTREAM_TEXT_FUNCTION[voice_id]
 
 
-@pytest.mark.parametrize("voice_id", sorted(_UPSTREAM_TEXT_FUNCTION))
-def test_pinned_config_reads_text_as_the_entry_does(voice_id, tmp_path):
-    """The config.json at the entry's pinned commit selects the entry's text function
-    and maps each token on its own, as the upstream code does, so a voice loaded
-    from its files alone reads text as the index load does. A config that serves
-    one entry also carries that entry's language."""
+@functools.lru_cache(maxsize=None)
+def _pinned_config(config_url, cache_dir):
+    """Download (with retry) and parse one pinned config.json, once per URL."""
     import json
     from pathlib import Path
     from huggingface_hub import hf_hub_download
 
+    repo, revision, filename = re.fullmatch(
+        r"https://huggingface\.co/([^/]+/[^/]+)/resolve/([0-9a-f]{40})/(.+)", config_url).groups()
+    path = retry_download(hf_hub_download, repo, filename, revision=revision, cache_dir=cache_dir)
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+@pytest.fixture(scope="module")
+def _pinned_config_cache(tmp_path_factory):
+    """A module-wide cache dir so each pinned config is downloaded once."""
+    return str(tmp_path_factory.mktemp("f5tts-config"))
+
+
+@pytest.mark.parametrize("voice_id", sorted(_UPSTREAM_TEXT_FUNCTION))
+def test_pinned_config_reads_text_as_the_entry_does(voice_id, _pinned_config_cache):
+    """The config.json at the entry's pinned commit selects the entry's text function
+    and maps each token on its own, as the upstream code does, so a voice loaded
+    from its files alone reads text as the index load does. A config that serves
+    one entry also carries that entry's language."""
     index = _f5_index()
     entry = index[voice_id]
-    repo, revision, filename = re.fullmatch(
-        r"https://huggingface\.co/([^/]+/[^/]+)/resolve/([0-9a-f]{40})/(.+)", entry["config_url"]).groups()
-    config = json.loads(Path(hf_hub_download(repo, filename, revision=revision, cache_dir=tmp_path))
-                        .read_text(encoding="utf-8"))
+    config = _pinned_config(entry["config_url"], _pinned_config_cache)
     assert config["phoneme_type"] == entry["phoneme_type"]
     assert config["fold_compounds"] is False
     if sum(e["config_url"] == entry["config_url"] for e in index.values()) == 1:

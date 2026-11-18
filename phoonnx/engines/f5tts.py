@@ -203,25 +203,16 @@ class F5TTSAdapter(BaseOnnxAdapter):
             ).reshape(1, 1, -1)
 
         gen_text_ids = request.phoneme_ids.astype(np.int32).reshape(1, -1)
-        reference_text = p.get("speaker_reference_text")
-        ref_text_ids = self._reference_ids(ref_text_tokens, reference_text,
+        ref_text_ids = self._reference_ids(ref_text_tokens, p.get("speaker_reference_text"),
                                            gen_text_ids[0].tolist())
         text_ids = self._wrap_dialect(np.concatenate([ref_text_ids, gen_text_ids], axis=1),
                                       p.get("dialect", self._dialect))
 
-        # max_duration: estimated from ref audio length and text length ratio.
-        # Upstream sizes it from the UTF-8 byte lengths of the two texts, so a
-        # two-byte script (Arabic) against a one-byte reference gets the right
-        # length instead of half of it. Without a chunk text, the token count
-        # stands in, as before.
+        # max_duration: estimated from ref audio length and text length ratio
         ref_audio_len = ref_audio_arr.shape[-1]
+        ref_text_len = ref_text_ids.shape[1]
+        gen_text_len = gen_text_ids.shape[1]
         ref_audio_frames = ref_audio_len // 256 + 1  # HOP_LENGTH = 256
-        if request.text and reference_text:
-            ref_text_len = len(self._ended_reference_text(reference_text).encode("utf-8"))
-            gen_text_len = len(request.text.encode("utf-8"))
-        else:
-            ref_text_len = ref_text_ids.shape[1]
-            gen_text_len = gen_text_ids.shape[1]
         max_duration = np.array(
             [ref_audio_frames + int(ref_audio_frames / max(ref_text_len, 1) * gen_text_len / speed)],
             dtype=np.int64,
@@ -366,21 +357,6 @@ class F5TTSAdapter(BaseOnnxAdapter):
             "speed": "Speed",
         }
 
-    def _ended_reference_text(self, reference_text: str) -> str:
-        """*reference_text* with the end that the upstream code gives it.
-
-        ``preprocess_ref_audio_text`` ends the reference text in ``". "`` unless
-        it ends in ``"."`` or ``"。"``, and ``infer_batch_process`` adds one more
-        space when its last character is one byte (``src/f5_tts/infer/utils_infer.py``,
-        SWivid/F5-TTS 600e5fd). The text is read without the whitespace at its end.
-        """
-        text = reference_text.rstrip()
-        if not text.endswith("。"):
-            text += " " if text.endswith(".") else ". "
-        if text and len(text[-1].encode("utf-8")) == 1:
-            text += " "
-        return text
-
     def _reference_ids(self, ref_text_tokens: Any, reference_text: Optional[str],
                        gen_text_ids: List[int]) -> np.ndarray:
         """The ids of the reference text, with the end that the upstream code gives it.
@@ -407,8 +383,10 @@ class F5TTSAdapter(BaseOnnxAdapter):
                 trailing -= 1
             if text.endswith("。"):
                 end = self._join_space(gen_text_ids)
+            elif text.endswith("."):
+                end = "  "
             else:
-                end = self._ended_reference_text(reference_text)[len(text):]
+                end = ".  "
             ids += [self._char2idx.get(char, 0) for char in end]
         return np.asarray(ids, np.int32).reshape(1, -1)
 

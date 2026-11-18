@@ -328,7 +328,7 @@ fa = ["epitran", "scriptconv[fa]>=0.0.4a120"]
 fr = ["epitran", "gruut[fr]>=2.3.0,<3.0"]
 he = ["epitran", "phonikud_onnx", "phonikud"]
 it = ["epitran", "gruut[it]>=2.3.0,<3.0"]
-ja = ["epitran", "gruut[ja]>=2.3.0,<3.0", "scriptconv[ja-phonemizers]>=0.0.4a120", "misaki[ja]", "spacy>=3.7,<4.0", "pyopenjtalk", "pykakasi", "cutlet", "unidic-lite"]
+ja = ["epitran", "gruut[ja]>=2.3.0,<3.0", "scriptconv[ja-phonemizers]>=0.0.4a120", "misaki", "fugashi", "jaconv", "mojimoji", "spacy>=3.7,<4.0", "pyopenjtalk-plus[onnxruntime]>=0.4.1.post10", "pykakasi", "cutlet", "unidic-lite"]
 ko = ["epitran", "scriptconv[ko]>=0.0.4a120", "g2pk", "misaki[ko]"]
 mwl = ["scriptconv[mwl]"]
 pt = ["epitran", "scriptconv[o2i]", "tugaphone", "gruut[pt]>=2.3.0,<3.0"]
@@ -476,7 +476,7 @@ all = [
     "gruut[fr]>=2.3.0,<3.0", "gruut[it]>=2.3.0,<3.0", "gruut[ja]>=2.3.0,<3.0",
     "gruut[nl]>=2.3.0,<3.0", "gruut[ru]>=2.3.0,<3.0", "gruut[sv]>=2.3.0,<3.0",
     "gruut[sw]>=2.3.0,<3.0", "gruut[vi]>=2.3.0,<3.0", "gruut[zh]>=2.3.0,<3.0",
-    "misaki[en]", "misaki[ja]", "misaki[vi]", "misaki[zh]",
+    "misaki[en]", "fugashi", "jaconv", "mojimoji", "unidic-lite", "pyopenjtalk-plus[onnxruntime]>=0.4.1.post10", "misaki[vi]", "misaki[zh]",
     "ahotts-g2p>=0.1.0",
     "spacy>=3.7,<4.0",
     "pycotovia>=0.4.0a1",

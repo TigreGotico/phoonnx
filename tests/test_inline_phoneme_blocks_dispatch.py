@@ -45,7 +45,7 @@ def _make_voice(phonemizer):
     )
     voice.adapter = MagicMock()
     voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: [1] * len(phonemes))
-    voice._infer = lambda phoneme_ids, syn_config, include_alignments=False, streams=None: (np.zeros(4, dtype=np.float32), None)
+    voice._infer = lambda phoneme_ids, syn_config, include_alignments=False, streams=None, text=None: (np.zeros(4, dtype=np.float32), None)
     return voice
 
 

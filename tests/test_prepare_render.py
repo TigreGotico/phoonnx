@@ -246,6 +246,14 @@ class TestRender(unittest.TestCase):
         voice.render(Utterance(text="", symbols=("a", "b"), ids=(5, 6), streams={"language_ids": (3, 4)}))
         np.testing.assert_array_equal(seen[0].language_ids, [[3, 4]])
 
+    def test_render_passes_the_utterance_text_to_the_adapter(self):
+        voice = _symbol_voice()
+        seen = []
+        synthesize = voice.adapter.synthesize
+        voice.adapter.synthesize = lambda request, session: seen.append(request) or synthesize(request, session)
+        voice.render(Utterance(text="Hi there.", symbols=("H", "i"), ids=(5, 6)))
+        self.assertEqual(seen[0].text, "Hi there.")
+
 
 class TestSynthesizeIsRenderOverPrepare(unittest.TestCase):
     def assert_same_chunks(self, voice, text, config=None, alignments=False):

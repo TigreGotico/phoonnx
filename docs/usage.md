@@ -271,7 +271,7 @@ for utterance in voice.prepare("Hello world. How are you?", config):
 
 | Field | Value |
 |-------|-------|
-| `text` | The text that `prepare()` read |
+| `text` | The text of this engine call's chunk. `""` when the previous utterance's text covers this chunk, and `None` when it is unknown |
 | `symbols` | The phonemes or characters that the tokenizer read. `None` for an engine that reads text, such as Pocket TTS. Its adapter makes the IDs from the text |
 | `ids` | The token IDs |
 | `streams` | Values that some phonemizers give for each ID, such as `language_ids` from Shami |

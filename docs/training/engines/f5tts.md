@@ -158,18 +158,17 @@ than raising.
 
 ## Obtaining / usage
 
-Download a converted voice from
-[`Phoonnx/phoonnx-f5tts`](https://huggingface.co/Phoonnx/phoonnx-f5tts)
-and load it like any other phoonnx voice. F5-TTS is in-context, so every call
-needs the reference clip **and its transcription**:
+Download a converted voice from the
+[F5-TTS collection](https://huggingface.co/collections/Phoonnx/f5-tts-6af8ea7f407234f6f1f08b30)
+and load it like any other phoonnx voice. Each voice lives in its own repo (see
+the table below). F5-TTS is in-context, so every call needs the reference clip
+**and its transcription**:
 
 ```python
 from huggingface_hub import snapshot_download
 from phoonnx.voice import TTSVoice, SynthesisConfig
 
-voice_dir = snapshot_download("Phoonnx/phoonnx-f5tts",
-                              allow_patterns=["f5tts-v1-base/*"])
-voice_dir = f"{voice_dir}/f5tts-v1-base"
+voice_dir = snapshot_download("Phoonnx/f5tts-multi-base-v1-graphemes")
 
 voice = TTSVoice.load(
     f"{voice_dir}/model.onnx",              # the transformer graph
@@ -188,6 +187,22 @@ with wave.open("out.wav", "wb") as f:
             speaker_reference_text="transcription of the reference clip",
         ))
 ```
+
+| voice id | Hub repo |
+|---|---|
+| `f5tts/v1-base` | `Phoonnx/f5tts-multi-base-v1-graphemes` |
+| `habibi/ar-unified` | `Phoonnx/f5tts-ar-habibi_unified-graphemes` |
+| `habibi/ar-alg` | `Phoonnx/f5tts-ar_dz-habibi_alg-graphemes` |
+| `habibi/ar-egy` | `Phoonnx/f5tts-ar_eg-habibi_egy-graphemes` |
+| `habibi/ar-irq` | `Phoonnx/f5tts-ar_iq-habibi_irq-graphemes` |
+| `habibi/ar-mar` | `Phoonnx/f5tts-ar_ma-habibi_mar-graphemes` |
+| `habibi/ar-msa` | `Phoonnx/f5tts-ar-habibi_msa-graphemes` |
+| `habibi/ar-sau` | `Phoonnx/f5tts-ar_sa-habibi_sau-graphemes` |
+| `habibi/ar-uae` | `Phoonnx/f5tts-ar_ae-habibi_uae-graphemes` |
+| `namaa/ar-sa-v2` | `Phoonnx/f5tts-ar_sa-namaa_space-v2-graphemes` |
+| `silma/v1` | `Phoonnx/f5tts-multi-silma_ai-v1-graphemes` |
+| `silma/v1-en` | `Phoonnx/f5tts-multi-silma_ai-v1-graphemes` |
+| `openbible/tw-asante` | `Phoonnx/f5tts-tw-asante_openbible-graphemes` |
 
 ### OVOS plugin
 
@@ -235,8 +250,8 @@ are CC-BY-NC-SA-4.0** (restricted by the SADA and Mixat datasets), while
 **ALG, EGY, IRQ, MAR and MSA are Apache-2.0**. **SILMA TTS v1 is Apache-2.0**
 (commercial use allowed). **NAMAA-Saudi-TTS-V2 is CC-BY-NC-SA-4.0**
 (non-commercial — inherited from its Habibi-TTS base). **F5-TTS OpenBible Twi
-(Asante) is CC-BY-SA-4.0** (share-alike). The ONNX conversions in
-`Phoonnx/phoonnx-f5tts` inherit those licenses.
+(Asante) is CC-BY-SA-4.0** (share-alike). The ONNX conversions in the
+F5-TTS collection inherit those licenses.
 
 ## Variants
 
@@ -269,7 +284,7 @@ is supported by this adapter.
 | Repo | <https://github.com/SWivid/F5-TTS> |
 | Paper | [arXiv:2410.06885](https://arxiv.org/abs/2410.06885) |
 | ONNX export | <https://github.com/DakeQQ/F5-TTS-ONNX> |
-| Ready-made ONNX voices | [`Phoonnx/phoonnx-f5tts`](https://huggingface.co/Phoonnx/phoonnx-f5tts) |
+| Ready-made ONNX voices | [F5-TTS collection](https://huggingface.co/collections/Phoonnx/f5-tts-6af8ea7f407234f6f1f08b30) |
 
 ## Habibi quality audit (retroactive, 2026-08)
 
