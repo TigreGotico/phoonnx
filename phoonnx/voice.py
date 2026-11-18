@@ -13,6 +13,7 @@ import os.path
 import re
 import shutil
 import tempfile
+import threading
 import wave
 import warnings
 import weakref
@@ -322,6 +323,9 @@ class TTSVoice:
     _frontend_phonemizer: Optional[BasePhonemizer] = field(default=None, init=False, repr=False,
                                                            compare=False)
     _frontend_key: Any = field(default=None, init=False, repr=False, compare=False)
+    # The thread of the provenance check; None when the voice has nothing to check.
+    _provenance_thread: Optional[threading.Thread] = field(default=None, init=False, repr=False,
+                                                           compare=False)
 
     def __post_init__(self):
         """
@@ -379,13 +383,38 @@ class TTSVoice:
         # Let the adapter set up engine-specific runtime state (e.g. Matcha
         # building its vocoder from config.engine_params).
         self.adapter.configure(self.config)
-        self._check_provenance(voice_name)
+        self._provenance_thread = self._start_provenance_check(voice_name)
 
-    def _check_provenance(self, voice_name: str) -> None:
+    def _start_provenance_check(self, voice_name: str) -> Optional[threading.Thread]:
+        """Start :meth:`_check_provenance` in a daemon thread, or return None when there is nothing to check.
+
+        The frontend is built here, on the load path as before. Only its
+        ``identity()``, which can take seconds, runs in the thread, so the
+        thread and a first synthesis never build the frontend twice. A frontend
+        that fails to build is built again in the thread, which reports it.
+        """
+        if not self._has_provenance_block():
+            return None
+        try:
+            frontend = self.frontend
+        except Exception:
+            frontend = None
+        thread = threading.Thread(target=self._check_provenance, args=(voice_name, frontend),
+                                  name=f"phoonnx-provenance-{voice_name}", daemon=True)
+        thread.start()
+        return thread
+
+    def _has_provenance_block(self) -> bool:
+        recorded = self.config.phonemizer_identity
+        return not (recorded is None or recorded == {} or self.config.alphabet == Alphabet.GRAPHEMES)
+
+    def _check_provenance(self, voice_name: str, frontend: Optional[TextFrontend] = None) -> None:
         """Warn when the running phonemizer differs from the one the voice was trained with.
 
-        The config's ``phonemizer_identity`` names the phonemizer of training.
-        A field that differs from the running identity, by
+        A load runs it in a background thread (:meth:`_start_provenance_check`)
+        and never waits for it, so the warning comes when the thread ends. The config's
+        ``phonemizer_identity`` names the phonemizer of training. A field that
+        differs from the running identity, by
         :meth:`PhonemizerIdentity.differs_from`, gives one warning. A block that
         cannot be read, or a running phonemizer that cannot name itself, gives
         one warning too. The voice loads in every case. A voice with no block
@@ -396,15 +425,19 @@ class TTSVoice:
         it is compared with the backend's identity. A block with a ``frontend``
         is compared with :meth:`TextFrontend.identity`.
         """
-        recorded = self.config.phonemizer_identity
-        if recorded is None or recorded == {} or self.config.alphabet == Alphabet.GRAPHEMES:
+        if not self._has_provenance_block():
             return
+        recorded = self.config.phonemizer_identity
         try:
             trained = PhonemizerIdentity(**recorded)
-            running = self.frontend.identity()
+            if frontend is None:
+                frontend = self.frontend
+            # identity() leaves the backend's engine cache alone, and its revision
+            # probes run in a subprocess, so it needs no lock against a synthesis.
+            running = frontend.identity()
             if trained.frontend is None:
                 # Preprocessing calls the backend directly and records no frontend version.
-                running = self.frontend.backend.identity(running.lang)
+                running = frontend.backend.identity(running.lang)
         except Exception as err:
             LOG.warning(f"Voice {voice_name}: cannot compare phonemizer_identity {recorded!r} "
                         f"with the running phonemizer ({err}). The voice loads without the check.")
