@@ -385,11 +385,15 @@ class TTSVoice:
         """Warn when the running phonemizer differs from the one the voice was trained with.
 
         The config's ``phonemizer_identity`` names the phonemizer of training.
-        A field that differs from :meth:`TextFrontend.identity`, by
+        A field that differs from the running identity, by
         :meth:`PhonemizerIdentity.differs_from`, gives one warning. A block that
         cannot be read, or a running phonemizer that cannot name itself, gives
         one warning too. The voice loads in every case. A voice with no block,
         or one whose engine reads text, is not checked.
+
+        A block with no ``frontend`` was trained through the backend alone, so
+        it is compared with the backend's identity. A block with a ``frontend``
+        is compared with :meth:`TextFrontend.identity`.
         """
         recorded = self.config.phonemizer_identity
         if not recorded or self.config.alphabet == Alphabet.GRAPHEMES:
@@ -397,13 +401,13 @@ class TTSVoice:
         try:
             trained = PhonemizerIdentity(**recorded)
             running = self.frontend.identity()
+            if trained.frontend is None:
+                # Preprocessing calls the backend directly and records no frontend version.
+                running = self.frontend.backend.identity(running.lang)
         except Exception as err:
             LOG.warning(f"Voice {voice_name}: cannot compare phonemizer_identity {recorded!r} "
                         f"with the running phonemizer ({err}). The voice loads without the check.")
             return
-        if trained.frontend is None:
-            # Preprocessing calls the backend directly and records no frontend version.
-            running = replace(running, frontend=None)
         differing = "; ".join(
             f"{name}: trained {getattr(trained, name)!r}, running {getattr(running, name)!r}"
             for name in trained.differs_from(running))
