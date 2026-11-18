@@ -896,10 +896,9 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
             self.assertTrue(Path(processed.audio_norm_path).is_file())
             self.assertTrue(Path(processed.audio_spec_path).is_file())
 
-    def test_worker_process_level_failure_logged_not_raised(self):
-        # a failure setting up the worker (e.g. the VAD model) must not
-        # propagate out of phonemize_worker and kill the whole pool silently
-        # -- it is caught by the outer try/except and merely logged.
+    def test_worker_setup_failure_is_logged_and_exits_non_zero(self):
+        # A failure setting up the worker (e.g. the VAD model) is logged, and
+        # the worker exits with code 1 so the parent stops instead of waiting.
         with TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             config = self._config(tmp, skip_audio=True)
@@ -910,8 +909,10 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
 
             with patch.object(preprocess, "make_silence_detector",
                                side_effect=RuntimeError("boom")):
-                with self.assertLogs("preprocess", level="ERROR") as logs:
+                with self.assertLogs("preprocess", level="ERROR") as logs, \
+                        self.assertRaises(SystemExit) as exit_:
                     preprocess.phonemize_worker(config, task_q, result_q, object)
+            self.assertEqual(exit_.exception.code, 1)
             self.assertTrue(any("Worker process failed" in m for m in logs.output))
             self.assertTrue(result_q.empty())  # nothing was ever processed
 
@@ -1112,6 +1113,53 @@ class TestWorkersBuildTheirOwnPhonemizer(unittest.TestCase):
             self.assertEqual(result.exit_code, 0, f"{result.output}\n{result.exception!r}")
             rows = [json.loads(x) for x in (out / "dataset.jsonl").read_text().splitlines() if x]
             self.assertEqual(sorted("".join(r["phonemes"]) for r in rows), ["hi", "there"])
+
+
+class TestAWorkerThatCannotStartStopsTheRun(unittest.TestCase):
+    """A worker that fails before its first batch must fail the run, not hang it.
+
+    The parent waits for one result per utterance. A worker that dies during
+    setup sends none, and its stop signal stays in the task queue.
+    """
+
+    def test_a_worker_setup_failure_exits_non_zero(self):
+        import multiprocessing
+        import threading
+        import click.testing
+
+        def broken_detector():
+            raise RuntimeError("silence detector model is missing")
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"},
+                         {"text": "there", "audio": "b.wav"}])
+            out = tmp / "out"
+            # fork, so the patched detector reaches the workers.
+            fork = multiprocessing.get_context("fork")
+            outcome = {}
+
+            def run():
+                outcome["result"] = click.testing.CliRunner().invoke(preprocess.cli, [
+                    "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                    "--phoneme-type", "graphemes", "--alphabet", "unicode",
+                    "--max-workers", "2",
+                ])
+
+            with patch.object(preprocess, "make_silence_detector", broken_detector), \
+                    patch.object(preprocess, "Process", fork.Process), \
+                    patch.object(preprocess, "Queue", fork.Queue), \
+                    patch.object(preprocess, "JoinableQueue", fork.JoinableQueue):
+                runner = threading.Thread(target=run, daemon=True)
+                runner.start()
+                runner.join(timeout=60)
+
+            self.assertFalse(runner.is_alive(), "preprocess still waits for a worker that exited")
+            result = outcome["result"]
+            self.assertNotEqual(result.exit_code, 0)
+            self.assertIn("exit code 1", str(result.exception))
+            self.assertFalse((out / "dataset.jsonl").exists())
 
 
 class TestConfigIsWrittenAfterTheManifest(unittest.TestCase):
