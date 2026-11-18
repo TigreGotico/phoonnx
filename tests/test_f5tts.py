@@ -256,8 +256,49 @@ def test_f5tts_voice_index_catalog():
         info = TTSModelInfo(**entry)
         assert info.engine == "f5tts"
         assert set(info.aux_model_urls) == {"preprocess_path", "decode_path"}
+        assert info.model_url.startswith(_F5_REPOS[voice_id])
         for url in info.aux_model_urls.values():
-            assert url.startswith("https://huggingface.co/Phoonnx/phoonnx-f5tts/")
+            assert url.startswith(_F5_REPOS[voice_id])
+
+
+# voice id -> the per-voice repo of its files
+_F5_REPOS = {voice_id: f"https://huggingface.co/Phoonnx/f5tts-{name}/resolve/" for voice_id, name in {
+    "f5tts/v1-base": "multi-base-v1-graphemes",
+    "habibi/ar-unified": "ar-habibi_unified-graphemes",
+    "habibi/ar-alg": "ar_dz-habibi_alg-graphemes",
+    "habibi/ar-egy": "ar_eg-habibi_egy-graphemes",
+    "habibi/ar-irq": "ar_iq-habibi_irq-graphemes",
+    "habibi/ar-mar": "ar_ma-habibi_mar-graphemes",
+    "habibi/ar-msa": "ar-habibi_msa-graphemes",
+    "habibi/ar-sau": "ar_sa-habibi_sau-graphemes",
+    "habibi/ar-uae": "ar_ae-habibi_uae-graphemes",
+    "namaa/ar-sa-v2": "ar_sa-namaa_space-v2-graphemes",
+    "silma/v1": "multi-silma_ai-v1-graphemes",
+    "silma/v1-en": "multi-silma_ai-v1-graphemes",
+    "openbible/tw-asante": "tw-asante_openbible-graphemes",
+}.items()}
+
+
+@pytest.mark.parametrize("voice_id", sorted(_F5_REPOS))
+def test_entry_loads_the_full_graphs_and_offers_the_int8_graphs(voice_id):
+    """Each voice loads its full graphs unless int8 is asked for. The int8 variant
+    names the three int8 graphs of the same repo and commit, and keeps the config."""
+    from phoonnx.model_manager import TTSModelInfo
+
+    info = TTSModelInfo(**_f5_index()[voice_id])
+    pin = re.fullmatch(re.escape(_F5_REPOS[voice_id]) + r"([0-9a-f]{40})/model\.onnx", info.model_url)
+    assert pin, info.model_url
+    folder = f"{_F5_REPOS[voice_id]}{pin[1]}/"
+    assert info.precision is None
+    assert info.config_url == folder + "config.json"
+    assert info.aux_model_urls == {"preprocess_path": folder + "F5_Preprocess.onnx",
+                                   "decode_path": folder + "F5_Decode.onnx"}
+    assert info.with_precision("auto", ["CPUExecutionProvider"]) is info
+    int8 = info.with_precision("int8")
+    assert int8.model_url == folder + "model_int8.onnx"
+    assert int8.config_url == info.config_url
+    assert int8.aux_model_urls == {"preprocess_path": folder + "F5_Preprocess_int8.onnx",
+                                   "decode_path": folder + "F5_Decode_int8.onnx"}
 
 
 def test_aux_model_urls_resolved_in_engine_params(tmp_path, monkeypatch):
@@ -317,7 +358,7 @@ def test_silma_voice_index_entries():
     for info in (ar, en):
         assert info.engine == "f5tts"
         assert info.phoneme_type == "f5tts_char"
-        assert "/silma-tts-v1/" in info.model_url
+        assert info.model_url.startswith("https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/")
         assert info.model_url.endswith("model.onnx")
         assert info.aux_model_urls["preprocess_path"].endswith("F5_Preprocess.onnx")
         assert info.aux_model_urls["decode_path"].endswith("F5_Decode.onnx")
@@ -357,7 +398,7 @@ def test_namaa_saudi_voice_index_entry():
     assert info.engine == "f5tts"
     assert info.lang == "ar-SA"
     assert info.phoneme_type == "f5tts_char"
-    assert "/namaa-saudi-tts-v2/" in info.model_url
+    assert info.model_url.startswith("https://huggingface.co/Phoonnx/f5tts-ar_sa-namaa_space-v2-graphemes/")
     assert info.model_url.endswith("model.onnx")
     assert info.aux_model_urls["preprocess_path"].endswith("F5_Preprocess.onnx")
     assert info.aux_model_urls["decode_path"].endswith("F5_Decode.onnx")
@@ -687,9 +728,10 @@ def test_twi_asante_openbible_voice_index_entry():
     entries = _f5_index()
     assert "openbible/tw-asante" in entries
     info = TTSModelInfo(**entries["openbible/tw-asante"])
-    pin = re.match(r"https://huggingface\.co/Phoonnx/phoonnx-f5tts/resolve/([0-9a-f]{40})/", info.model_url)
+    pin = re.match(r"https://huggingface\.co/Phoonnx/f5tts-tw-asante_openbible-graphemes/resolve/([0-9a-f]{40})/",
+                   info.model_url)
     assert pin, info.model_url
-    folder = f"https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/{pin[1]}/tw-asante-openbible/"
+    folder = f"https://huggingface.co/Phoonnx/f5tts-tw-asante_openbible-graphemes/resolve/{pin[1]}/"
     assert info.engine == "f5tts"
     assert info.phoneme_type == "f5tts_pinyin"
     assert info.model_url == folder + "model.onnx"
