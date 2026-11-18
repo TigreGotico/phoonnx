@@ -1162,6 +1162,51 @@ class TestAWorkerThatCannotStartStopsTheRun(unittest.TestCase):
             self.assertFalse((out / "dataset.jsonl").exists())
 
 
+class TestAFailedRunExitsWithQueuedWork(unittest.TestCase):
+    """The parent queues every batch before it reads a result. When all workers
+    die, those batches stay in the pipe, and the queue's feeder thread must not
+    hold the process open at exit."""
+
+    def test_the_process_exits_when_the_workers_die_with_megabytes_queued(self):
+        import subprocess
+        import textwrap
+
+        script = textwrap.dedent("""
+            import json, multiprocessing, sys
+            from pathlib import Path
+            from unittest.mock import patch
+            import click.testing
+            from phoonnx_train import preprocess
+
+            def broken_detector():
+                raise RuntimeError("silence detector model is missing")
+
+            src, out = Path(sys.argv[1]), Path(sys.argv[2])
+            with src.open("w") as f:
+                for i in range(400):
+                    f.write(json.dumps({"text": "word " * 500, "audio": f"{i}.wav"}) + "\\n")
+            fork = multiprocessing.get_context("fork")
+            with patch.object(preprocess, "make_silence_detector", broken_detector), \\
+                    patch.object(preprocess, "Process", fork.Process), \\
+                    patch.object(preprocess, "Queue", fork.Queue), \\
+                    patch.object(preprocess, "JoinableQueue", fork.JoinableQueue):
+                result = click.testing.CliRunner().invoke(preprocess.cli, [
+                    "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                    "--phoneme-type", "graphemes", "--alphabet", "unicode",
+                    "--max-workers", "2"])
+            print("EXIT", result.exit_code, result.exception)
+        """)
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            try:
+                done = subprocess.run([sys.executable, "-c", script, str(tmp / "a.jsonl"), str(tmp / "out")],
+                                      capture_output=True, text=True, timeout=120)
+            except subprocess.TimeoutExpired:
+                self.fail("preprocess did not exit after its workers died")
+        self.assertIn("EXIT 1", done.stdout, done.stderr[-2000:])
+        self.assertIn("exit code 1", done.stdout)
+
+
 class TestConfigIsWrittenAfterTheManifest(unittest.TestCase):
     """The order is the guarantee, so something has to hold it in place.
 

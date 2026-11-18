@@ -178,11 +178,14 @@ def phonemize_worker(
         raise SystemExit(1)
 
 
-def next_result(result_queue: Queue, processes: List[Process]) -> Tuple[Optional[Utterance], Set[str]]:
+def next_result(result_queue: Queue, task_queue: JoinableQueue,
+                processes: List[Process]) -> Tuple[Optional[Utterance], Set[str]]:
     """Wait for the next worker result; stop every worker when one has failed.
 
     A worker that dies sends no result for the batch it held, and its stop
-    signal stays in the task queue, so waiting longer would never end.
+    signal stays in the task queue, so waiting longer would never end. The
+    batches nobody will read stay in the pipe, so the queues' feeder threads
+    are not joined at exit.
     """
     while True:
         try:
@@ -192,6 +195,8 @@ def next_result(result_queue: Queue, processes: List[Process]) -> Tuple[Optional
             if failed:
                 for proc in processes:
                     proc.terminate()
+                task_queue.cancel_join_thread()
+                result_queue.cancel_join_thread()
                 raise RuntimeError(f"{len(failed)} preprocessing worker(s) stopped, the first with "
                                    f"exit code {failed[0].exitcode}; see the worker log above")
 
@@ -800,7 +805,7 @@ def cli(
     num_from_column: int = 0
     num_phonemized: int = 0
     for _ in tqdm(range(task_count), desc="Processing utterances"):
-        result: Tuple[Optional[Utterance], Set[str]] = next_result(result_queue, processes)
+        result: Tuple[Optional[Utterance], Set[str]] = next_result(result_queue, task_queue, processes)
         utt, unique_phonemes = result
         if utt is not None:
             processed_utterances.append(utt)
