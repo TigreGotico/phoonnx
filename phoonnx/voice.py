@@ -272,8 +272,10 @@ class AudioChunk:
 class Utterance:
     """The model input for one engine call, from :meth:`TTSVoice.prepare`."""
 
-    text: str
-    """The text that ``prepare`` read."""
+    text: Optional[str]
+    """The text of this engine call's chunk, from ``Segment.text``. ``""`` when
+    the previous utterance's text covers this chunk, and None when it is
+    unknown."""
 
     symbols: Optional[Tuple[str, ...]]
     """The phonemes or characters that the tokenizer read. None for an engine
@@ -676,13 +678,15 @@ class TTSVoice:
 
     def _iter_phonemes(
             self, text: str, src_alphabet: Alphabet, tgt_alphabet: Alphabet, stages: Stages,
-    ) -> Iterable[Tuple[List[str], Dict[str, List[int]]]]:
-        """Yield ``(phonemes, streams)`` per chunk of *text*, by whichever
+    ) -> Iterable[Tuple[List[str], Dict[str, List[int]], Optional[str]]]:
+        """Yield ``(phonemes, streams, text)`` per chunk of *text*, by whichever
         conversion its alphabet calls for. One job: getting phonemes.
 
         ``streams`` holds the per-symbol values a phonemizer gives beside its
         symbols, keyed by ``AdapterSynthesisRequest`` field, such as Shami's
-        ``language_ids`` and dizione's ``stress``. Phonemic input carries none."""
+        ``language_ids`` and dizione's ``stress``. Phonemic input carries none.
+        The third element is the chunk's staged source text from
+        ``Segment.text``; phonemic input has none, so it is None."""
         # Already-phonemic input: transcode to the model's alphabet through
         # scriptconv's graph (a no-op when src == tgt), then split.
         if src_alphabet != Alphabet.GRAPHEMES:
@@ -692,13 +696,13 @@ class TTSVoice:
             except ValueError:
                 LOG.debug("no conversion path %s -> %s; passing through", src_alphabet, tgt_alphabet)
             for phonemes in _phonemic_chunks(text, tgt_alphabet):
-                yield phonemes, {}
+                yield phonemes, {}, None
             return
 
         # Graphemes: the text frontend reads the whole text, then yields one chunk at a time.
         for segment in self.frontend.segments(text, stages):
             yield list(segment.phonemes), {name: list(values) for name, values in segment.streams.items()
-                                           if name in SIDE_STREAMS}
+                                           if name in SIDE_STREAMS}, segment.text
 
     def prepare(self, text: str, config: Optional[SynthesisConfig] = None) -> Iterator[Utterance]:
         """Turn *text* into model input: one :class:`Utterance` per engine call.
@@ -733,17 +737,19 @@ class TTSVoice:
 
         if src_alphabet == tgt_alphabet == Alphabet.GRAPHEMES:
             prepared = self.frontend.prepare(spoken, stages)
-            for ids in self.adapter.encode_text(prepared, self, config):
+            id_lists = self.adapter.encode_text(prepared, self, config)
+            chunk_text = prepared if len(id_lists) == 1 else None
+            for ids in id_lists:
                 if ids:
-                    yield Utterance(text=text, symbols=None, ids=tuple(ids))
+                    yield Utterance(text=chunk_text, symbols=None, ids=tuple(ids))
             return
 
-        for symbols, streams in self._iter_phonemes(spoken, src_alphabet, tgt_alphabet, stages):
+        for symbols, streams, chunk_text in self._iter_phonemes(spoken, src_alphabet, tgt_alphabet, stages):
             if not symbols:
                 continue
             ids = self.tokenizer.tokenize(symbols)
             if ids:
-                yield Utterance(text=text, symbols=tuple(symbols), ids=tuple(ids), streams=streams)
+                yield Utterance(text=chunk_text, symbols=tuple(symbols), ids=tuple(ids), streams=streams)
 
     def _load_super_resolution(self, syn_config: SynthesisConfig):
         """
@@ -989,7 +995,8 @@ class TTSVoice:
                 include_alignments = False
 
         audio, phoneme_id_samples = self._infer(
-            utterance.ids, syn_config, include_alignments, utterance.streams)
+            utterance.ids, syn_config, include_alignments, utterance.streams,
+            text=utterance.text)
 
         audio = level_audio(audio, syn_config, self.config.sample_rate)
 
@@ -1300,6 +1307,7 @@ class TTSVoice:
             self, phoneme_ids: Sequence[int], syn_config: SynthesisConfig,
             include_alignments: bool = False,
             streams: Optional[Mapping[str, Sequence[int]]] = None,
+            text: Optional[str] = None,
     ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         """
         Run the engine on one id sequence: the engine step of :meth:`render`.
@@ -1312,6 +1320,7 @@ class TTSVoice:
         :param include_alignments: When True, also return per-phoneme sample counts.
         :param streams: Per-id side streams, keyed by ``AdapterSynthesisRequest``
             field, e.g. ``{"language_ids": [...]}``; each holds one value per id.
+        :param text: The chunk's text, as ``Utterance.text`` gives it.
         :return: ``(audio, phoneme_id_samples)``. The audio is a float numpy
             array, not normalized. ``phoneme_id_samples`` is the per-id audio-sample
             count (durations scaled from model frames via ``VoiceConfig.hop_length``),
@@ -1385,6 +1394,7 @@ class TTSVoice:
             speaker_id=syn_config.speaker_id,
             language_id=syn_config.lang_id,
             params=params,
+            text=text,
             **side_streams,
         )
 

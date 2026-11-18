@@ -132,13 +132,19 @@ class TestPrepare(unittest.TestCase):
         utterances = list(voice.prepare(TEXT))
         self.assertEqual([u.symbols for u in utterances],
                          [tuple("Hi there"), tuple("Who is it")])
+        # each utterance carries its own chunk's text, not the whole input
+        self.assertEqual([u.text for u in utterances], ["Hi there.", "Who is it?"])
         # blank between symbols, BOS and EOS around them, upper case read as lower case
         for utterance in utterances:
             letters = [CONFIG["phoneme_id_map"][s.lower()][0] for s in utterance.symbols]
             expected = [1] + [i for letter in letters for i in (0, letter)] + [0, 2]
             self.assertEqual(utterance.ids, tuple(expected))
-            self.assertEqual(utterance.text, TEXT)
             self.assertEqual(dict(utterance.streams), {})
+
+    def test_a_whole_text_utterance_carries_the_joined_text(self):
+        voice = _symbol_voice()
+        utterances = list(voice.prepare(TEXT, SynthesisConfig(chunk="none")))
+        self.assertEqual([u.text for u in utterances], ["Hi there. Who is it?"])
 
     def test_a_text_voice_gives_the_adapter_ids_and_no_symbols(self):
         voice = _text_voice()
@@ -239,6 +245,14 @@ class TestRender(unittest.TestCase):
         voice.adapter.synthesize = lambda request, session: seen.append(request) or synthesize(request, session)
         voice.render(Utterance(text="", symbols=("a", "b"), ids=(5, 6), streams={"language_ids": (3, 4)}))
         np.testing.assert_array_equal(seen[0].language_ids, [[3, 4]])
+
+    def test_render_passes_the_utterance_text_to_the_adapter(self):
+        voice = _symbol_voice()
+        seen = []
+        synthesize = voice.adapter.synthesize
+        voice.adapter.synthesize = lambda request, session: seen.append(request) or synthesize(request, session)
+        voice.render(Utterance(text="Hi there.", symbols=("H", "i"), ids=(5, 6)))
+        self.assertEqual(seen[0].text, "Hi there.")
 
 
 class TestSynthesizeIsRenderOverPrepare(unittest.TestCase):

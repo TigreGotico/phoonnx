@@ -243,27 +243,34 @@ def _sharing_enabled() -> bool:
     return value.strip().lower() not in ("0", "false", "no", "off")
 
 
-def _external_data_path(*model_paths: str) -> Optional[str]:
-    """Path of a model's external-weights sidecar, if it names one on disk.
+def _external_data_paths(*model_paths: str) -> List[str]:
+    """Paths of the external-weights sidecars of a graph, sorted, or ``[]``.
 
-    onnxruntime resolves the sidecar it finds inside the graph against the
-    graph's own directory, and phoonnx fetches models with that sidecar named
-    ``<model>_data`` (see ``model_manager._sidecar_url``) or, for graphs
-    exported with onnxruntime's own convention, ``<model>.data``. Either one,
-    if present, holds the weights the graph itself does not carry.
+    phoonnx fetches a graph's external weights under the names
+    ``<model>_data``, ``<model>.data`` and the series ``<model>_data_1``,
+    ``<model>_data_2``, ... (see ``model_manager._sidecar_urls``), and
+    onnxruntime resolves each of them against the graph's own folder, so these
+    are the names a fetched graph has beside it. The series ends at the first
+    number that is not on disk, because exporters number it from one without
+    gaps.
 
     Takes several candidate locations for the graph, tried in order: the hub
     cache lays a voice out as ``snapshots/<rev>/model.onnx``, a symlink whose
-    sidecar sits alongside *it*, resolving to ``blobs/<sha>`` with nothing
-    beside the blob at all. Probing only the resolved real path — as this
-    used to — never finds that sidecar, so external-data weights fetched
-    through the hub never entered the session key at all.
+    sidecars sit alongside *it*, resolving to ``blobs/<sha>`` with nothing
+    beside the blob. The first location that has any sidecar is the one
+    onnxruntime reads, so its sidecars are the ones returned.
     """
     for model_path in model_paths:
-        for candidate in (f"{model_path}_data", f"{model_path}.data"):
-            if os.path.isfile(candidate):
-                return candidate
-    return None
+        found = [candidate
+                 for candidate in (f"{model_path}_data", f"{model_path}.data")
+                 if os.path.isfile(candidate)]
+        number = 1
+        while os.path.isfile(f"{model_path}_data_{number}"):
+            found.append(f"{model_path}_data_{number}")
+            number += 1
+        if found:
+            return sorted(found)
+    return []
 
 
 def session_key(model_path: Any,
@@ -276,10 +283,10 @@ def session_key(model_path: Any,
     through a different symlink or a non-normalized path shares one session,
     while a file that was replaced on disk gets a new one rather than a stale
     session over weights that are no longer there. A graph with external
-    weights keeps the actual weights in a sidecar file the graph itself does
-    not change size or mtime when replaced, so that sidecar's (size, mtime)
-    is folded into the key too — otherwise a stable stub graph pointing at
-    swapped-out weights would keep serving the old session forever.
+    weights keeps those weights in sidecar files that the graph's own size and
+    mtime do not track, so each sidecar's name, size and mtime are folded in
+    too: a stable stub graph pointing at swapped-out weights would otherwise
+    keep serving the old session.
     """
     try:
         resolved_path = os.path.realpath(str(model_path))
@@ -290,13 +297,13 @@ def session_key(model_path: Any,
         version = (stat.st_size, stat.st_mtime_ns)
     except OSError:
         version = ()
-    sidecar = _external_data_path(str(model_path), resolved_path)
-    if sidecar is not None:
+    for sidecar in _external_data_paths(str(model_path), resolved_path):
         try:
             sidecar_stat = os.stat(sidecar)
-            version = version + (sidecar_stat.st_size, sidecar_stat.st_mtime_ns)
         except OSError:
-            pass
+            continue
+        version = version + (os.path.basename(sidecar), sidecar_stat.st_size,
+                             sidecar_stat.st_mtime_ns)
     return (resolved_path, version, repr(list(resolved)), str(cache_dir or ""))
 
 

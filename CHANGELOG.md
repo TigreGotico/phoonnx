@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.113.9a1](https://github.com/TigreGotico/phoonnx/tree/1.113.9a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.8a1...1.113.9a1)
+
+**Merged pull requests:**
+
+- fix: each Utterance carries its own chunk's text, and the adapter receives it [\#695](https://github.com/TigreGotico/phoonnx/pull/695) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.113.8a1](https://github.com/TigreGotico/phoonnx/tree/1.113.8a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.7a1...1.113.8a1)
+
+## [1.113.7a1](https://github.com/TigreGotico/phoonnx/tree/1.113.7a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.6a1...1.113.7a1)
+
+**Merged pull requests:**
+
+- fix: measure a voice that loaded from the offline fallback with the hub down [\#707](https://github.com/TigreGotico/phoonnx/pull/707) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: run the provenance check off the voice load path [\#706](https://github.com/TigreGotico/phoonnx/pull/706) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.113.6a1](https://github.com/TigreGotico/phoonnx/tree/1.113.6a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.5a2...1.113.6a1)
+
+**Merged pull requests:**
+
+- fix: a falsy non-dict phonemizer\_identity block warns; cover the provenance gaps [\#703](https://github.com/TigreGotico/phoonnx/pull/703) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.113.5a2](https://github.com/TigreGotico/phoonnx/tree/1.113.5a2) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.5a1...1.113.5a2)
@@ -353,33 +382,17 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.1a1...1.98.1a2)
 
-**Merged pull requests:**
-
-- chore: render working usage, checkpoints and version bounds on voice cards [\#579](https://github.com/TigreGotico/phoonnx/pull/579) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.98.1a1](https://github.com/TigreGotico/phoonnx/tree/1.98.1a1) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.0a2...1.98.1a1)
-
-**Merged pull requests:**
-
-- fix: point the voice index at the Phoonnx Hugging Face org [\#578](https://github.com/TigreGotico/phoonnx/pull/578) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.98.0a2](https://github.com/TigreGotico/phoonnx/tree/1.98.0a2) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.0a1...1.98.0a2)
 
-**Merged pull requests:**
-
-- test: mark the diacritics stage with a letter, not punctuation [\#580](https://github.com/TigreGotico/phoonnx/pull/580) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.98.0a1](https://github.com/TigreGotico/phoonnx/tree/1.98.0a1) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.97.1a2...1.98.0a1)
-
-**Merged pull requests:**
-
-- feat\(train\): record the phonemizer engine and its version in config.json [\#575](https://github.com/TigreGotico/phoonnx/pull/575) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.97.1a2](https://github.com/TigreGotico/phoonnx/tree/1.97.1a2) (2026-11-14)
 
