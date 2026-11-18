@@ -38,7 +38,8 @@ class _Cache(unittest.TestCase):
         for patcher in (patch.object(constants, "HF_HUB_CACHE", str(self.cache)),
                         patch.object(model_manager, "HF_HUB_CACHE", str(self.cache)),
                         patch.object(constants, "HF_HUB_OFFLINE", True),
-                        patch.dict(model_manager._OFFLINE_SNAPSHOTS, clear=True)):
+                        patch.dict(model_manager._OFFLINE_SNAPSHOTS, clear=True),
+                        patch.dict(model_manager._VOICE_SNAPSHOTS, clear=True)):
             patcher.start()
             self.addCleanup(patcher.stop)
         self.log = patch.object(model_manager, "LOG").start()
@@ -190,6 +191,102 @@ class TestOneSnapshotPerFolder(_Cache):
         self.snapshot(NEW, {"a/model.onnx": b"voice-a-new"}, mtime=2000)
         self.assertEqual(_hf_fetch(url("b/model.onnx")).read_bytes(), b"voice-b-old")
         self.assertEqual(_hf_fetch(url("config.json")).read_bytes(), b"root-old")
+
+
+class TestOneSnapshotPerVoice(_Cache):
+    """A voice whose files sit in two folders of one repo loads from one commit.
+
+    The pockettts layout: the graph is published per language, the voice states under
+    ``<lang>/voices/``. Loading one voice must not read its graph from the commit that
+    last cached the graph folder and its voice state from an older one.
+    """
+
+    GRAPH = "en/model.onnx"
+    ALBA = "en/voices/alba.bin"
+    ANNA = "en/voices/anna.bin"
+    PAULA = "en/voices/paula.bin"
+
+    def cache_two_voices(self):
+        """OLD holds the graph and alba, the newer MID the graph and anna. NEW is not cached."""
+        self.snapshot(OLD, {self.GRAPH: b"graph-old", self.ALBA: b"alba-old"}, mtime=1000)
+        self.snapshot(MID, {self.GRAPH: b"graph-mid", self.ANNA: b"anna-mid"}, mtime=2000)
+
+    def voice(self, state, voice_id="alba"):
+        return TTSModelInfo(voice_id=voice_id, lang="en-US",
+                            model_url=url(self.GRAPH), style_url=url(state))
+
+    def test_a_voice_loads_its_graph_and_its_state_from_the_same_snapshot(self):
+        self.cache_two_voices()
+        with model_manager._voice_scope(self.voice(self.ALBA)):
+            graph = _hf_fetch(url(self.GRAPH))
+            alba = _hf_fetch(url(self.ALBA))
+            self.assertEqual(graph.read_bytes(), b"graph-old")
+            self.assertEqual(alba.read_bytes(), b"alba-old")
+            # the size question reads the files the load reads
+            self.assertEqual(_cached_path(url(self.GRAPH)), graph)
+            self.assertEqual(_cached_path(url(self.ALBA)), alba)
+        [warning] = self.warnings()
+        self.assertIn(REPO, warning)
+        self.assertIn(NEW, warning)
+        self.assertIn(OLD, warning)
+        # the choice is the voice load's, not the folder's
+        self.assertFalse(model_manager._OFFLINE_SNAPSHOTS)
+
+    def test_a_second_voice_of_the_same_repo_takes_both_files_from_mid(self):
+        self.cache_two_voices()
+        with model_manager._voice_scope(self.voice(self.ANNA, voice_id="anna")):
+            self.assertEqual(_hf_fetch(url(self.GRAPH)).read_bytes(), b"graph-mid")
+            self.assertEqual(_hf_fetch(url(self.ANNA)).read_bytes(), b"anna-mid")
+        self.assertEqual(len(self.warnings()), 1)
+
+    def test_a_voice_no_snapshot_holds_in_full_does_not_load_mixed(self):
+        self.cache_two_voices()
+        self.snapshot("4" * 40, {self.PAULA: b"paula-late"}, mtime=3000)
+        with model_manager._voice_scope(self.voice(self.PAULA, voice_id="paula")):
+            with self.assertRaises(LocalEntryNotFoundError):
+                _hf_fetch(url(self.GRAPH))
+            with self.assertRaises(LocalEntryNotFoundError):
+                _hf_fetch(url(self.PAULA))
+            self.assertIsNone(_cached_path(url(self.PAULA)))
+        self.assertEqual(self.warnings(), [])
+
+    def test_disk_size_measures_the_files_of_one_snapshot(self):
+        # graph-old is 9 bytes, the newer graph-mid 99, alba-old 5: the voice is 14 bytes
+        self.snapshot(OLD, {self.GRAPH: b"g" * 9, self.ALBA: b"a" * 5}, mtime=1000)
+        self.snapshot(MID, {self.GRAPH: b"g" * 99, self.ANNA: b"n" * 7}, mtime=2000)
+        self.assertEqual(self.voice(self.ALBA).disk_size(), 9 + 5)
+        self.assertEqual(self.voice(self.ANNA, voice_id="anna").disk_size(), 99 + 7)
+
+    def test_a_voice_load_fallback_is_measured_with_the_offline_flag_unset(self):
+        # the hub does not answer and HF_HUB_OFFLINE is unset: the load falls back to OLD for
+        # both files, and a later size question reads the same two files
+        self.snapshot(OLD, {self.GRAPH: b"g" * 9, self.ALBA: b"a" * 5}, mtime=1000)
+        self.snapshot(MID, {self.GRAPH: b"g" * 99, self.ANNA: b"n" * 7}, mtime=2000)
+        alba = self.voice(self.ALBA)
+        with patch.object(constants, "HF_HUB_OFFLINE", False), \
+                patch.object(model_manager, "hf_hub_download",
+                             side_effect=LocalEntryNotFoundError("connection error")):
+            with model_manager._voice_scope(alba):
+                self.assertEqual(_hf_fetch(url(self.GRAPH)).read_bytes(), b"g" * 9)
+            self.assertEqual(alba.disk_size(), 9 + 5)
+
+    def test_the_external_data_of_a_graph_follows_the_voice_snapshot(self):
+        sidecar = self.GRAPH + "_data"
+        self.snapshot(OLD, {self.GRAPH: b"graph-old", sidecar: b"data-old", self.ALBA: b"alba-old"},
+                      mtime=1000)
+        self.snapshot(MID, {self.GRAPH: b"graph-mid", sidecar: b"data-mid", self.ANNA: b"anna-mid"},
+                      mtime=2000)
+        with model_manager._voice_scope(self.voice(self.ALBA)):
+            self.assertEqual(_hf_fetch(url(self.GRAPH)).read_bytes(), b"graph-old")
+            self.assertEqual(_hf_fetch(url(sidecar)).read_bytes(), b"data-old")
+            self.assertEqual(_cached_path(url(sidecar)).read_bytes(), b"data-old")
+
+    def test_outside_a_voice_scope_the_folder_rule_still_decides(self):
+        # the behaviour before the per-voice rule: the newest snapshot holding the graph,
+        # and the only snapshot holding alba
+        self.cache_two_voices()
+        self.assertEqual(_hf_fetch(url(self.GRAPH)).read_bytes(), b"graph-mid")
+        self.assertEqual(_hf_fetch(url(self.ALBA)).read_bytes(), b"alba-old")
 
 
 class TestOnline(_Cache):
