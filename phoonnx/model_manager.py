@@ -275,7 +275,8 @@ def _repo_cached_before_move(repo_id: str) -> Optional[str]:
 _OFFLINE_SNAPSHOTS: Dict[Tuple[Path, str, str], Path] = {}
 
 
-def _offline_snapshot(repo_id: str, revision: str, filename: str) -> Optional[Path]:
+def _offline_snapshot(repo_id: str, revision: str, filename: str,
+                      record: bool = True) -> Optional[Path]:
     """The cached ``filename`` from another snapshot of ``repo_id``, for when ``revision`` is not cached.
 
     The newest snapshot by modification time that holds ``filename`` is chosen, never the one
@@ -284,6 +285,10 @@ def _offline_snapshot(repo_id: str, revision: str, filename: str) -> Optional[Pa
     snapshot or not at all. A folder that the pinned snapshot holds in part, as after an
     interrupted download, never falls back, so its files cannot mix two commits. Reads no
     network.
+
+    ``record`` is False when the caller only measures: the chosen snapshot is then not
+    remembered in :data:`_OFFLINE_SNAPSHOTS`, so a size question cannot make a voice look like
+    it loaded from a fallback it never took.
     """
     repo_dir = Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
     folder = posixpath.dirname(filename)
@@ -298,9 +303,10 @@ def _offline_snapshot(repo_id: str, revision: str, filename: str) -> Optional[Pa
         if not holding:
             return None
         chosen = max(holding, key=lambda snapshot: snapshot.stat().st_mtime)
-        _OFFLINE_SNAPSHOTS[key] = chosen
-        LOG.warning(f"{repo_id} is not cached at the pinned commit {revision} and the hub cannot "
-                    f"be reached; loading the cached snapshot {chosen.name} instead")
+        if record:
+            _OFFLINE_SNAPSHOTS[key] = chosen
+            LOG.warning(f"{repo_id} is not cached at the pinned commit {revision} and the hub cannot "
+                        f"be reached; loading the cached snapshot {chosen.name} instead")
     path = chosen / filename
     return path if path.exists() else None
 
@@ -357,10 +363,19 @@ def _cached_path(url: str) -> Optional[Path]:
                                         local_files_only=True))
         except Exception:
             pass
+        # A fallback that _hf_fetch took is what loaded, also when HF_HUB_OFFLINE is
+        # unset and the hub was unreachable, so its file is the one to measure.
+        repo_dir = Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
+        folder = posixpath.dirname(match["path"])
+        chosen = _OFFLINE_SNAPSHOTS.get((repo_dir, match["rev"], folder))
+        if chosen is not None:
+            path = chosen / match["path"]
+            if path.exists():
+                return path
         if not hub_constants.HF_HUB_OFFLINE:
             return None
         try:
-            return _offline_snapshot(repo_id, match["rev"], match["path"])
+            return _offline_snapshot(repo_id, match["rev"], match["path"], record=False)
         except OSError:
             return None
     dest = _direct_dir(url) / (url.split("?")[0].rsplit("/", 1)[-1] or "artifact")
