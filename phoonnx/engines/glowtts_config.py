@@ -16,6 +16,7 @@ here for backwards compatibility.
 from typing import Any, Dict
 
 from phoonnx.config import Alphabet, Engine, PhonemeType, VoiceConfig
+from phoonnx.compat import from_tokens_txt
 from phoonnx.tokenizer import BlankBetween, TTSTokenizer, Vocabulary
 from phoonnx.engines.coqui_config import voice_config_from_coqui  # noqa: F401  (re-export)
 
@@ -34,7 +35,7 @@ def voice_config_from_larynx(
     model = config.get("model", {})
 
     # phonemes.txt is "<id> <phoneme>" per line
-    tok = TTSTokenizer.from_tokens_txt(phonemes_txt, id_first=True)
+    tok = from_tokens_txt(phonemes_txt, id_first=True)
     # GlowTTS interleaves the blank (PAD, id 0) between symbols, no BOS/EOS.
     tok.add_blank_char = True
     tok.add_blank_word = False

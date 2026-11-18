@@ -8,7 +8,7 @@ import text2spoken
 from phoonnx.util import LOG, is_arabic, normalize_lang
 from phoonnx.version import VERSION_STR
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
-                                 DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
+                                 DEFAULT_BLANK_WORD_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
 
 DEFAULT_NOISE_SCALE = 0.667
@@ -250,31 +250,31 @@ class VoiceConfig:
     @staticmethod
     def is_mimic3(config: dict[str, Any]) -> bool:
         """Whether *config* is a mimic3 voice."""
-        from phoonnx.config_loaders import LoadRequest, Mimic3Loader
+        from phoonnx.compat import LoadRequest, Mimic3Loader
         return Mimic3Loader.detect(LoadRequest(config=config))
 
     @staticmethod
     def is_piper(config: dict[str, Any]) -> bool:
         """Whether *config* is a piper voice."""
-        from phoonnx.config_loaders import LoadRequest, PiperLoader
+        from phoonnx.compat import LoadRequest, PiperLoader
         return PiperLoader.detect(LoadRequest(config=config))
 
     @staticmethod
     def is_vosk(config: dict[str, Any]) -> bool:
         """Whether *config* is an alphacep vosk-tts voice."""
-        from phoonnx.config_loaders import LoadRequest, VoskLoader
+        from phoonnx.compat import LoadRequest, VoskLoader
         return VoskLoader.detect(LoadRequest(config=config))
 
     @staticmethod
     def is_coqui_vits(config: dict[str, Any]) -> bool:
         """Whether *config* is a Coqui VITS grapheme voice."""
-        from phoonnx.config_loaders import CoquiLoader, LoadRequest
+        from phoonnx.compat import CoquiLoader, LoadRequest
         return CoquiLoader.detect(LoadRequest(config=config))
 
     @staticmethod
     def is_phoonnx(config: dict[str, Any]) -> bool:
         """Whether *config* is a native phoonnx voice."""
-        from phoonnx.config_loaders import LoadRequest, PhoonnxLoader
+        from phoonnx.compat import LoadRequest, PhoonnxLoader
         return PhoonnxLoader.detect(LoadRequest(config=config))
 
     @property
@@ -287,7 +287,7 @@ class VoiceConfig:
                               keep_punctuation=self.keep_punctuation)
 
     @staticmethod
-    def from_dict(config: dict[str, Any],  # phoonnx/piper/coqui/mimic3
+    def from_dict(config: dict[str, Any],
                   vocab: Optional[Dict[str, Any]] = None,  # transformers
                   tokenizer_config: Optional[Dict[str, Any]] = None,  # transformers
                   tokens_txt: Optional[str] = None,  # sherpa/mimic3
@@ -295,92 +295,36 @@ class VoiceConfig:
                   phoneme_type: Optional[Union[str, PhonemeType]] = None,
                   alphabet: Optional[Union[str, Alphabet]] = None,
                   engine: Optional[Union[str, Engine]] = None,
-                   engine_params: Optional[Dict[str, Any]] = None,
-                   bpe_tokenizer_json: Optional[str] = None,
-                   lang_tokens: Optional[Dict[str, str]] = None) -> "VoiceConfig":
+                  engine_params: Optional[Dict[str, Any]] = None,
+                  bpe_tokenizer_json: Optional[str] = None,
+                  lang_tokens: Optional[Dict[str, str]] = None) -> "VoiceConfig":
         """
         Build a VoiceConfig from a model configuration dictionary and its optional
         companion files.
 
-        The config's format is recognised by the loader registry in
-        :mod:`phoonnx.config_loaders`, which yields the fields that differ per
-        format (tokenizer, engine, phoneme type, alphabet, language, diacritics);
-        :func:`~phoonnx.config_loaders.resolve_overrides` then folds in the
-        caller's overrides, and everything format-independent — audio, inference
-        scales, speaker and language maps, special tokens — is read straight off
-        the config here.
-
-        Parameters:
-            config: Parsed model configuration dictionary. Loaders may normalise
-                it in place (special tokens, a defaulted sample rate).
-            vocab: Token vocabulary of a transformers export.
-            tokenizer_config: ``tokenizer_config.json`` of a transformers export.
-            tokens_txt: Path to an external tokens file (``.txt`` or ``.json``),
-                required by mimic3 voices and by sherpa-onnx style models.
-            bpe_tokenizer_json: Path to a ``tokenizer.json``, required by Chatterbox.
-            lang_code, phoneme_type, alphabet, engine: Overrides that win over the
-                config's own values, except where the format pins them.
-            engine_params: Locally-resolved adapter parameters; these win over the
-                config's own ``engine_params``.
-            lang_tokens: Overrides the config's BCP47 -> language-token map.
+        A config with a ``phoonnx_version`` key is in the native format. Any other
+        config is a third-party format, which :mod:`phoonnx.compat` converts at load
+        with a ``DeprecationWarning``; :func:`phoonnx.compat.convert_config` writes
+        the native config once. The parameters are those of
+        :func:`phoonnx.compat.build_voice_config`.
 
         Raises:
             ValueError: If the detected format needs a companion file that was
                 not provided.
         """
-        from phoonnx.config_loaders import LoadRequest, load_voice_fields
+        from phoonnx.compat import build_voice_config
 
-        loaded = load_voice_fields(LoadRequest(
-            config=config,
-            vocab=vocab,
-            tokenizer_config=tokenizer_config,
-            tokens_txt=tokens_txt,
-            bpe_tokenizer_json=bpe_tokenizer_json,
-            lang_code=lang_code or config.get("lang_code"),
-            phoneme_type=phoneme_type or config.get("phoneme_type"),
-            alphabet=alphabet or config.get("alphabet"),
-            engine=engine,
-        ))
-        LOG.debug(f"phonemizer: {loaded.phoneme_type}")
-
-        inference = config.get("inference", {})
-        return VoiceConfig(
-            tokenizer=loaded.tokenizer,
-            num_langs=config.get("num_langs", 1),
-            num_symbols=config.get("num_symbols", 256),
-            num_speakers=config.get("num_speakers", 1),
-            sample_rate=config.get("audio", {}).get("sample_rate", 16000),
-            noise_scale=inference.get("noise_scale", DEFAULT_NOISE_SCALE),
-            length_scale=inference.get("length_scale", DEFAULT_LENGTH_SCALE),
-            noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
-            add_diacritics=loaded.add_diacritics,
-            diacritizer_model=loaded.diacritizer_model,
-            hop_length=config.get("hop_length", DEFAULT_HOP_LENGTH),
-            lang_code=loaded.lang_code,
-            alphabet=loaded.alphabet,
-            engine=loaded.engine,
-            phonemizer_model=config.get("phonemizer_model"),
-            keep_punctuation=bool(config.get("keep_punctuation", loaded.keep_punctuation)),
-            phonemizer_identity=config.get("phonemizer_identity"),
-            phoneme_type=loaded.phoneme_type,
-            speaker_id_map=config.get("speaker_id_map", {}),
-            blank_between=BlankBetween(loaded.blank_between),
-            blank_at_start=config.get("blank_at_start", True),
-            blank_at_end=config.get("blank_at_end", True),
-            pad_token=config.get("pad"),
-            blank_token=config.get("blank"),
-            bos_token=config.get("bos"),
-            eos_token=config.get("eos"),
-            word_sep_token=config.get("word_sep_token") or config.get("blank_word", " "),
-            # config's own engine_params (e.g. a baked YourTTS d-vector) merged with
-            # any locally-resolved paths the manager passes in (the latter win).
-            engine_params={**(config.get("engine_params") or {}), **(engine_params or {})},
-            lang_tokens=lang_tokens or config.get("lang_tokens") or {},
-            lang_id_map=config.get("lang_id_map", {}),
-        )
+        if "phoonnx_version" not in config:
+            warnings.warn("The config is not in the native phoonnx format. phoonnx "
+                          f"{_removal_version()} reads only the native format. Convert it once with "
+                          "phoonnx.compat.convert_config.", DeprecationWarning, stacklevel=2)
+        return build_voice_config(config, vocab=vocab, tokenizer_config=tokenizer_config,
+                                  tokens_txt=tokens_txt, lang_code=lang_code, phoneme_type=phoneme_type,
+                                  alphabet=alphabet, engine=engine, engine_params=engine_params,
+                                  bpe_tokenizer_json=bpe_tokenizer_json, lang_tokens=lang_tokens)
 
     def to_dict(self) -> Dict[str, Any]:
-        """The native ``config.json`` dict, which :meth:`from_dict` reads back.
+        """The native ``config.json`` dict, which :meth:`from_dict` reads back with no warning.
 
         A raw-text tokenizer (Chatterbox) has no symbol table, so its vocabulary is empty.
         A special token that the vocabulary lacks reads back as the phoonnx default, so the
