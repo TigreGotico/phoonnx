@@ -14,6 +14,8 @@ import pytest
 import torch
 
 from phoonnx.config import VoiceConfig
+from phoonnx.engines import detect_engine
+from phoonnx.voice import TTSVoice
 from phoonnx_train.engines import get_engine
 from phoonnx_train.engines.base import TrainingEngineConfig
 
@@ -111,3 +113,57 @@ def test_styletts2_exported_config_loads_with_training_facts(tmp_path):
     config = json.loads((tmp_path / "out" / "config.json").read_text(encoding="utf-8"))
     assert config["engine"] == "styletts2"
     _assert_loads_with_training_facts(tmp_path / "out" / "config.json")
+
+
+@pytest.mark.parametrize("engine_name, config_name, adapter_name", [
+    ("glowtts", "last.json", "GlowTTSAdapter"),
+    ("fastpitch", "last.json", "FastPitchAdapter"),
+    ("mixer", "last.json", "MixerTTSAdapter"),
+    ("matcha", "model.json", "MatchaAdapter"),
+])
+def test_exported_voice_loads_with_its_own_adapter(engine_name, config_name, adapter_name, tmp_path):
+    out = _export(engine_name, tmp_path, TRAINING_CONFIG)
+    onnx_path = next(out.glob("*.onnx"))
+    voice = TTSVoice.load(str(onnx_path), config_path=str(out / config_name))
+    assert type(voice.adapter).__name__ == adapter_name
+    # the config alone names the engine, with no ONNX graph to probe
+    written = json.loads((out / config_name).read_text(encoding="utf-8"))
+    assert type(detect_engine(config=written)).__name__ == adapter_name
+
+
+def _optispeech_checkpoint(path: Path) -> None:
+    import pytorch_lightning as pl
+
+    from tests.test_optispeech_training import _tiny_config
+
+    model = get_engine("optispeech").create_model(_tiny_config(), [])
+    trainer = pl.Trainer(logger=False, enable_checkpointing=False, accelerator="cpu",
+                         enable_progress_bar=False)
+    trainer.strategy.connect(model)
+    trainer.save_checkpoint(str(path))
+
+
+def test_optispeech_exported_voice_loads_with_its_own_adapter(tmp_path):
+    checkpoint = tmp_path / "last.ckpt"
+    _optispeech_checkpoint(checkpoint)
+    config_path = tmp_path / "training.json"
+    config_path.write_text(json.dumps(TRAINING_CONFIG), encoding="utf-8")
+    onnx_path = get_engine("optispeech").export_onnx(checkpoint, config_path, tmp_path / "out")
+    voice = TTSVoice.load(str(onnx_path), config_path=str(tmp_path / "out" / "model.json"))
+    assert type(voice.adapter).__name__ == "OptiSpeechAdapter"
+    written = json.loads((tmp_path / "out" / "model.json").read_text(encoding="utf-8"))
+    assert type(detect_engine(config=written)).__name__ == "OptiSpeechAdapter"
+
+
+@pytest.mark.parametrize("engine_name", ["matcha", "optispeech"])
+def test_export_without_a_config_path_writes_no_config(engine_name, tmp_path, caplog):
+    checkpoint = tmp_path / "last.ckpt"
+    if engine_name == "optispeech":
+        _optispeech_checkpoint(checkpoint)
+    else:
+        _lightning_checkpoint(engine_name, checkpoint)
+    with caplog.at_level("WARNING"):
+        onnx_path = get_engine(engine_name).export_onnx(checkpoint, None, tmp_path / "out")
+    assert onnx_path.is_file()
+    assert not list((tmp_path / "out").glob("*.json"))
+    assert [r.message for r in caplog.records if "no config was written" in r.message] != []

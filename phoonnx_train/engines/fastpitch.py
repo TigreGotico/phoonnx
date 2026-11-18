@@ -251,7 +251,7 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
         except ImportError:
             _LOG.warning("onnx package not installed — skipping metadata")
 
-        write_sidecars(model_config, output_dir, output_path.stem,
+        write_sidecars({**model_config, "engine": "fastpitch"}, output_dir, output_path.stem,
                        generate_tokens=kwargs.get("generate_tokens", False),
                        piper=kwargs.get("piper", False))
 
