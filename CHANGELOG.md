@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.113.3a2](https://github.com/TigreGotico/phoonnx/tree/1.113.3a2) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.3a1...1.113.3a2)
+
+**Merged pull requests:**
+
+- docs: point the F5-TTS page at the per-voice Hub repos [\#696](https://github.com/TigreGotico/phoonnx/pull/696) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.113.3a1](https://github.com/TigreGotico/phoonnx/tree/1.113.3a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.2a1...1.113.3a1)
@@ -228,10 +236,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.101.0a1...1.102.0a1)
 
-**Merged pull requests:**
-
-- feat: rapido training engine [\#568](https://github.com/TigreGotico/phoonnx/pull/568) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.101.0a1](https://github.com/TigreGotico/phoonnx/tree/1.101.0a1) (2026-11-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.100.0a2...1.101.0a1)
@@ -243,10 +247,6 @@
 ## [1.100.0a2](https://github.com/TigreGotico/phoonnx/tree/1.100.0a2) (2026-11-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.100.0a1...1.100.0a2)
-
-**Merged pull requests:**
-
-- test: add a sweep that loads and synthesises every index voice [\#569](https://github.com/TigreGotico/phoonnx/pull/569) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.100.0a1](https://github.com/TigreGotico/phoonnx/tree/1.100.0a1) (2026-11-15)
 
@@ -383,10 +383,6 @@
 ## [1.97.0a1](https://github.com/TigreGotico/phoonnx/tree/1.97.0a1) (2026-11-13)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.6a1...1.97.0a1)
-
-**Merged pull requests:**
-
-- feat: rapido flow-matching engine with onnx export [\#567](https://github.com/TigreGotico/phoonnx/pull/567) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.96.6a1](https://github.com/TigreGotico/phoonnx/tree/1.96.6a1) (2026-11-12)
 
