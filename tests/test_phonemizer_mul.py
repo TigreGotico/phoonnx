@@ -175,20 +175,27 @@ class TestGruutGetLangAndDispatch(unittest.TestCase):
                 patch.object(scriptconv_mul, "_GRUUT", threading.local()):
             return GruutPhonemizer().phonemize_string(text, "en")
 
-    def test_question_mark_forces_final_token(self):
-        sentence = self._make_sentence("hi?", [["h", "i"]])
-        result = self._phonemize("hi?", [sentence])
-        self.assertEqual(result.split()[-1], "?")
+    # Real gruut ends every sentence with a "‖" word; the end mark replaces it.
+    def test_question_mark_replaces_the_pause_word(self):
+        sentence = self._make_sentence("hi?", [["h", "aɪ"], ["‖"]])
+        self.assertEqual(self._phonemize("hi?", [sentence]), "haɪ ?")
 
-    def test_exclamation_forces_final_token(self):
-        sentence = self._make_sentence("wow!", [["w", "aʊ"]])
-        result = self._phonemize("wow!", [sentence])
-        self.assertEqual(result.split()[-1], "!")
+    def test_exclamation_replaces_the_pause_word(self):
+        sentence = self._make_sentence("wow!", [["w", "aʊ"], ["‖"]])
+        self.assertEqual(self._phonemize("wow!", [sentence]), "waʊ !")
 
-    def test_period_forces_final_token(self):
-        sentence = self._make_sentence("done.", [["d", "ʌ", "n"]])
-        result = self._phonemize("done.", [sentence])
-        self.assertEqual(result.split()[-1], ".")
+    def test_period_replaces_the_pause_word(self):
+        sentence = self._make_sentence("done.", [["d", "ʌ", "n"], ["‖"]])
+        self.assertEqual(self._phonemize("done.", [sentence]), "dʌn .")
+
+    def test_a_sentence_with_no_mark_ends_with_a_period(self):
+        sentence = self._make_sentence("done", [["d", "ʌ", "n"], ["‖"]])
+        self.assertEqual(self._phonemize("done", [sentence]), "dʌn .")
+
+    def test_each_sentence_keeps_its_own_mark(self):
+        sentences = [self._make_sentence("hi?", [["h", "aɪ"], ["‖"]]),
+                     self._make_sentence("wow!", [["w", "aʊ"], ["‖"]])]
+        self.assertEqual(self._phonemize("hi? wow!", sentences), "haɪ ? waʊ !")
 
     def test_empty_word_phonemes_raises_runtime_error_hinting_missing_lang_pack(self):
         """Gruut sentence with no phonemized words signals a missing
