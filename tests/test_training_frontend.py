@@ -112,6 +112,19 @@ class TestTrainingIdsEqualSynthesisIds(unittest.TestCase):
         self.assertEqual(phonemes, row)
         self.assertEqual(ids, _tokenizer().tokenize(row))
 
+    def test_the_scorer_diacritizes_a_config_written_by_preprocess(self):
+        from phoonnx_train.evaluation.scorer import build_encoder
+        config = {"lang_code": "ar", "phoneme_type": "unicode", "alphabet": "unicode",
+                  "phonemizer_model": "", "keep_punctuation": False, "audio": {"sample_rate": 22050},
+                  "inference": {"noise_scale": 0.667, "length_scale": 1, "noise_w": 0.8,
+                                "add_diacritics": True},
+                  "phoneme_id_map": {"_": [0], "^": [1], "$": [2]}, "num_symbols": 3}
+        text = "عندي 3 قطط. هذا بيت."
+        with patch.object(scd, "_tashkeel", lambda *_, **__: _Fatha()):
+            frontend, *_ = build_encoder(config)
+            phonemes, _ = text_to_ids(text, frontend, _tokenizer(), "ar")
+        self.assertEqual(phonemes.count("َ"), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

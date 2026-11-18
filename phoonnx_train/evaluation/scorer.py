@@ -147,7 +147,7 @@ def speaker_similarity(emb, ref, wav: np.ndarray, sr: int) -> float:
 def build_encoder(config: Dict, noise_scale=None, length_scale=None, noise_w=None):
     """Return ``(frontend, tokenizer, lang, sample_rate, scales)`` matching
     preprocess/train exactly."""
-    from phoonnx.config import Alphabet, PhonemeType, get_phonemizer, voice_frontend
+    from phoonnx.config import Alphabet, PhonemeType, VoiceConfig, get_phonemizer, voice_frontend
     from phoonnx.tokenizer import TTSTokenizer
     from scriptconv.frontend import Stages
 
@@ -157,8 +157,10 @@ def build_encoder(config: Dict, noise_scale=None, length_scale=None, noise_w=Non
                         keep_punctuation=bool(config.get("keep_punctuation", False)))
     tokenizer = TTSTokenizer.from_phoonnx_config(config)
     lang = config.get("lang_code", "")
-    stages = Stages(diacritize=bool(config.get("add_diacritics", False)),
-                    diacritizer_model=config.get("diacritizer_model"))
+    # Read the text settings the way synthesis reads them.
+    voice_config = VoiceConfig.from_dict(config)
+    stages = Stages(diacritize=bool(voice_config.add_diacritics),
+                    diacritizer_model=voice_config.diacritizer_model)
     frontend = voice_frontend(ph, lang, stages)
     sample_rate = int(config.get("audio", {}).get("sample_rate", 22050))
     inf = config.get("inference", {})

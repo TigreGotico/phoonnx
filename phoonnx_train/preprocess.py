@@ -734,6 +734,12 @@ def cli(
                                 config.phonemizer_model,
                                 keep_punctuation=keep_punctuation)
 
+    if any(not utt.phonemes_precomputed for utt in utterances):
+        # A worker that cannot build its frontend (an unsupported language, a
+        # missing backend) dies before it reads a task, and the run would wait
+        # for its results forever.
+        make_frontend()
+
     if config.add_diacritics and any(not utt.phonemes_precomputed for utt in utterances):
         # In a worker this failure is per utterance, so a missing backend would
         # drop every row and still exit 0.

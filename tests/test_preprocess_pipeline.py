@@ -271,6 +271,14 @@ class TestFinetunePhonemeMap(unittest.TestCase):
                     self._invoke_real_phonemizer(self._diacritics_args(tmp, "ar"))
             self.assertFalse((tmp / "out" / "config.json").exists())
 
+    def test_a_frontend_that_cannot_be_built_stops_the_run(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            with patch.object(preprocess, "build_frontend", side_effect=ValueError("unsupported language xx")):
+                with self.assertRaisesRegex(ValueError, "unsupported language xx"):
+                    self._invoke_real_phonemizer(self._diacritics_args(tmp, "en"))
+            self.assertFalse((tmp / "out" / "config.json").exists())
+
     def test_precomputed_phonemes_need_no_diacritizer(self):
         with TemporaryDirectory() as tmp:
             tmp = Path(tmp)
