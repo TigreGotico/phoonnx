@@ -1,6 +1,7 @@
 """Tests for cold-start latency fixes: ORT-optimized-graph caching, voice
 warmup, and the silent-provider-fallback warning.
 """
+import json
 import logging
 import os
 import tempfile
@@ -16,6 +17,12 @@ from phoonnx.providers import (
     CPU_PROVIDER,
     make_session,
 )
+
+
+def _write_unicode_config(model_path: Path) -> str:
+    config_path = Path(f"{model_path}.json")
+    config_path.write_text(json.dumps({"phoneme_type": "unicode", "alphabet": "unicode"}))
+    return str(config_path)
 
 
 def _build_tiny_onnx_model(path: Path) -> None:
@@ -235,7 +242,7 @@ class TestTTSVoiceWarmup(unittest.TestCase):
             fake_adapter.synthesize.return_value = MagicMock(audio=np.zeros(4, dtype=np.float32))
 
             with patch("phoonnx.voice.detect_engine", return_value=fake_adapter):
-                voice = TTSVoice.load(model_path=model_path, config_path=str(model_path) + ".missing",
+                voice = TTSVoice.load(model_path=model_path, config_path=_write_unicode_config(model_path),
                                        providers=[CPU_PROVIDER], warmup=True)
 
         self.assertEqual(fake_adapter.synthesize.call_count, 1)
@@ -252,7 +259,7 @@ class TestTTSVoiceWarmup(unittest.TestCase):
             fake_adapter.default_params.return_value = {}
 
             with patch("phoonnx.voice.detect_engine", return_value=fake_adapter):
-                TTSVoice.load(model_path=model_path, config_path=str(model_path) + ".missing",
+                TTSVoice.load(model_path=model_path, config_path=_write_unicode_config(model_path),
                                providers=[CPU_PROVIDER], warmup=False)
 
         fake_adapter.synthesize.assert_not_called()

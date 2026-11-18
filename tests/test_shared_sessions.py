@@ -15,6 +15,7 @@ then loaded again — three loads of one file, and four kernel OOM kills.
 These tests pin the two halves of the fix: sessions are shared between voices
 that name the same artifacts, and the cache charges the memory once.
 """
+import json
 import os
 import tempfile
 import unittest
@@ -51,6 +52,7 @@ class TestOneModelOneSession(unittest.TestCase):
         self.addCleanup(self.tmpdir.cleanup)
         self.model_path = Path(self.tmpdir.name) / "backbone.onnx"
         _build_tiny_onnx_model(self.model_path)
+        Path(f"{self.model_path}.json").write_text(json.dumps({"phoneme_type": "unicode", "alphabet": "unicode"}))
         env = patch.dict(os.environ, {}, clear=False)
         env.start()
         self.addCleanup(env.stop)
@@ -311,6 +313,7 @@ class TestBuildLocksDoNotGrowForever(unittest.TestCase):
         self.addCleanup(self.tmpdir.cleanup)
         self.model_path = Path(self.tmpdir.name) / "backbone.onnx"
         _build_tiny_onnx_model(self.model_path)
+        Path(f"{self.model_path}.json").write_text(json.dumps({"phoneme_type": "unicode", "alphabet": "unicode"}))
         env = patch.dict(os.environ, {}, clear=False)
         env.start()
         self.addCleanup(env.stop)
