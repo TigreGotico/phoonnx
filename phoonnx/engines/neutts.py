@@ -303,7 +303,7 @@ class NeuTTSAdapter(BaseOnnxAdapter):
     def configure(self, voice_config: Any) -> None:
         """Load the NeuCodec decoder, the checkpoint's BPE, the voice presets and the
         checkpoint's text front end from ``engine_params``."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         self.espeak_voice = ep.get("espeak_voice") or ESPEAK_VOICE
         template = ep.get("prompt_template") or DEFAULT_PROMPT_TEMPLATE
         if template not in PROMPT_TEMPLATES:

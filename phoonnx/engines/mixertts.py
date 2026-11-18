@@ -52,7 +52,7 @@ class MixerTTSAdapter(BaseOnnxAdapter):
     # ------------------------------------------------------------------
 
     def configure(self, voice_config: Any) -> None:
-        self.configure_from_params(getattr(voice_config, "engine_params", None) or {})
+        self.configure_from_params(voice_config.engine_params)
 
     def configure_from_params(self, engine_params: Dict[str, Any]) -> None:
         self._engine_params = engine_params or {}

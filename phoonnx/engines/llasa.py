@@ -196,7 +196,7 @@ class LlasaAdapter(BaseOnnxAdapter):
 
     def configure(self, voice_config: Any) -> None:
         """Load the XCodec2 decoder, the checkpoint's BPE and the presets."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         if self.codec is None and ep.get("codec_decoder_path"):
             self.codec = make_session(ep["codec_decoder_path"], providers=ep.get("providers"))
         if self.tokenizer is None and ep.get("tokenizer_path"):

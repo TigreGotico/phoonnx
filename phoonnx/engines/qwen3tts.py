@@ -287,7 +287,7 @@ class Qwen3TTSAdapter(BaseOnnxAdapter):
         has nine trained timbres and no speaker encoder. The language comes from the
         voice's ``lang_code`` unless ``engine_params`` names one explicitly.
         """
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         self._params = dict(ep)
         providers = ep.get("providers")
 

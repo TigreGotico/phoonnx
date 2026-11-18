@@ -217,7 +217,7 @@ class VitsPriorSplitAdapter(VitsAdapter):
         self.decode: Optional[onnxruntime.InferenceSession] = None
 
     def configure(self, voice_config: Any) -> None:
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         if self.decode is None and ep.get("decode_path"):
             self.decode = make_session(ep["decode_path"], providers=ep.get("providers"))
 

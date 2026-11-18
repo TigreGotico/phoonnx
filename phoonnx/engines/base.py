@@ -204,15 +204,7 @@ class BaseOnnxAdapter(ABC):
         """
         feed = self.build_feed_dict(request, session)
         outputs = session.run(None, feed)
-        try:
-            return self.parse_outputs(
-                outputs, request, output_names=self._safe_output_names(session)
-            )
-        except TypeError:
-            # Third-party / test subclasses that predate the ``output_names``
-            # parameter and don't accept **kwargs — fall back to the
-            # original two-argument call so they keep working unmodified.
-            return self.parse_outputs(outputs, request)
+        return self.parse_outputs(outputs, request, output_names=self._safe_output_names(session))
 
     @staticmethod
     def detect(

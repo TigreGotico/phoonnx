@@ -41,7 +41,7 @@ class YourTTSAdapter(BaseOnnxAdapter):
     def configure(self, voice_config: Any) -> None:
         """Load the bundled d-vector, language id, and (for cloning) the speaker
         encoder from ``engine_params``."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         if self.d_vector is None and ep.get("d_vector") is not None:
             self.d_vector = np.asarray(ep["d_vector"], np.float32).reshape(1, -1)
         if "langid" in ep:

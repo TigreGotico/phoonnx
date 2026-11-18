@@ -520,18 +520,3 @@ class PhoonnxTTSPlugin(TTS):
                 raise
 
         return wav_file, None
-
-
-if __name__ == "__main__":
-    utterance = "Guimarães é uma das mais importantes cidades históricas do país, estando o seu centro histórico inscrito na lista de Património Mundial da UNESCO desde 2001, o que a torna definitivamente num dos maiores centros turísticos da região. As suas ruas e monumentos respiram história e encantam quem a visita."
-    #utterance = "Um arco-íris, também popularmente denominado arco-da-velha, é um fenômeno óptico e meteorológico que separa a luz do sol em seu espectro contínuo quando o sol brilha sobre gotículas de água suspensas no ar."
-
-    tts = PhoonnxTTSPlugin()
-    tts.get_tts(utterance, "tmiro-pt-PT.wav",
-                voice="OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone")
-    tts.get_tts(utterance, "tdii-pt-PT.wav",
-                voice="OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone")
-    tts.get_tts(utterance, "miro-pt-PT.wav",
-                voice="OpenVoiceOS/pipertts_pt-PT_miro")
-    tts.get_tts(utterance, "dii-pt-PT.wav",
-                voice="OpenVoiceOS/pipertts_pt-PT_dii")

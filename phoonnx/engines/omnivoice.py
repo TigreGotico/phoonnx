@@ -171,7 +171,7 @@ class OmniVoiceAdapter(BaseOnnxAdapter):
         The three encoder graphs are only needed to clone, and the semantic encoder alone
         is several hundred megabytes, so they open on first use rather than at load.
         """
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         self._params = dict(ep)
         if self.decoder is None and ep.get("decoder_path"):
             self.decoder = make_session(ep["decoder_path"], providers=ep.get("providers"))

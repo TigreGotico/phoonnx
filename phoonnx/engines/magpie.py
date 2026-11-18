@@ -259,7 +259,7 @@ class MagpieAdapter(BaseOnnxAdapter):
         The main session held by the voice layer is the decoder step, the graph that runs
         once per frame. Everything else is opened here.
         """
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         self._params = dict(ep)
         providers = ep.get("providers")
 

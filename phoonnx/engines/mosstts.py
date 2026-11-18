@@ -237,7 +237,7 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
     def configure(self, voice_config: Any) -> None:
         """Load the five auxiliary graphs and the SentencePiece model from
         ``engine_params`` (the prefill graph is the voice's own session)."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         providers = ep.get("providers")
 
         def sess(key):
