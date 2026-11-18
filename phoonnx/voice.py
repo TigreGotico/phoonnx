@@ -1203,7 +1203,7 @@ class TTSVoice:
         if base_length is None:
             base_length = self.config.length_scale
         if base_length is None:
-            base_length = 1.0
+            base_length = self.adapter.default_params().get("length_scale", 1.0)
         voice_lang = lang or self.config.lang_code
         # Set by the first speech chunk: voice conversion and super-resolution can move it off
         # the model's own rate, and every chunk of one stream must share it.

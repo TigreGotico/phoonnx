@@ -103,11 +103,11 @@ print(SynthesisConfig(speaker_id=2, length_scale=1.2).speaker_id)
 ```
 
 ```text
-1.0 None
+None None
 2
 ```
 
-The voice holds `1.0` and the call holds `None`, so the voice value wins unless you pass one.
+This config sets no `inference` scales and the call sets none, so the engine's own default applies. A scale in the call wins over one in `config.json`, and that wins over the engine's default.
 
 ## Part 2: What exists in 1.x
 
@@ -208,7 +208,7 @@ The objects in this part are targets, except where a row says that a name exists
 | `VoiceConfig.frontend: FrontendConfig` | `lang_code`, `phoneme_type`, `alphabet`, `phonemizer_model`, `keep_punctuation`, `add_diacritics`, `diacritizer_model`, `lang_tokens` |
 | `VoiceConfig.tokenizer: TokenizerConfig` | The copies of tokenizer fields on `VoiceConfig` (`blank_at_start`, `blank_at_end`, `pad_token`, `blank_token`, `bos_token`, `eos_token`, `word_sep_token`, `blank_between`) and the format-specific tokenizer constructors |
 | `VoiceConfig.speakers`, `languages` | `speaker_id_map`, `lang_id_map` |
-| `VoiceConfig.defaults` | `length_scale`, `noise_scale`, `noise_w_scale`, which take fixed defaults when `config.json` omits them, so the adapter's defaults for these keys never apply |
+| `VoiceConfig.defaults` | `length_scale`, `noise_scale`, `noise_w_scale`, which are `None` when `config.json` omits them, so the engine's default applies |
 | `VoiceConfig.assets` | `engine_params`, without `providers` |
 | `VoiceConfig.to_dict()` and a JSON Schema | `to_native_dict()` |
 | `SynthesisConfig.stages: Stages` | `add_diacritics`, `diacritizer_model`, `chunk` |

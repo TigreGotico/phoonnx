@@ -158,10 +158,11 @@ class VoiceConfig:
     # Info about what framework was used to train the model
     engine: Engine = Engine.PHOONNX
 
-    # Inference settings
-    length_scale: float = DEFAULT_LENGTH_SCALE
-    noise_scale: float = DEFAULT_NOISE_SCALE
-    noise_w_scale: float = DEFAULT_NOISE_W_SCALE
+    # Inference scales from the config's ``inference`` block; None lets the engine's
+    # ``default_params()`` decide.
+    length_scale: Optional[float] = None
+    noise_scale: Optional[float] = None
+    noise_w_scale: Optional[float] = None
     add_diacritics: bool = None # arabic and hebrew
     # diacritizer model for languages that need one; scriptconv routes it to the
     # right backend: Arabic text2tashkeel model name (e.g. "rawi-ensemble"),
@@ -342,9 +343,9 @@ class VoiceConfig:
             num_symbols=config.get("num_symbols", 256),
             num_speakers=config.get("num_speakers", 1),
             sample_rate=config.get("audio", {}).get("sample_rate", 16000),
-            noise_scale=inference.get("noise_scale", DEFAULT_NOISE_SCALE),
-            length_scale=inference.get("length_scale", DEFAULT_LENGTH_SCALE),
-            noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
+            noise_scale=inference.get("noise_scale"),
+            length_scale=inference.get("length_scale"),
+            noise_w_scale=inference.get("noise_w"),
             add_diacritics=loaded.add_diacritics,
             diacritizer_model=loaded.diacritizer_model,
             hop_length=config.get("hop_length", DEFAULT_HOP_LENGTH),
