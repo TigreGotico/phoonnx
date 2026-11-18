@@ -32,6 +32,11 @@ def _running_identity(lang=LANG):
     return asdict(get_phonemizer(PhonemeType.ORTHOGRAPHY2IPA).identity(lang))
 
 
+def _unicode_identity(lang=LANG):
+    """The identity a unicode voice records: the codepoint backend alone, no frontend version."""
+    return asdict(get_phonemizer(PhonemeType.UNICODE).identity(lang))
+
+
 def _write_model(path):
     ids = helper.make_tensor_value_info("input", TensorProto.INT64, [1, "T"])
     output = helper.make_tensor_value_info("output", TensorProto.INT64, [1, "T"])
@@ -127,6 +132,38 @@ def test_a_malformed_block_warns_and_the_voice_loads(tmp_path, block):
     assert len(warnings) == 1
     assert "pt_PT-provenance" in warnings[0]
     assert f"cannot compare phonemizer_identity {block!r} with the running phonemizer" in warnings[0]
+
+
+@pytest.mark.parametrize("block", ["", [], 0])
+def test_a_falsy_non_dict_block_warns_and_the_voice_loads(tmp_path, block):
+    warnings = _load_warnings(tmp_path, phonemizer_identity=block)
+    assert len(warnings) == 1
+    assert "pt_PT-provenance" in warnings[0]
+    assert f"cannot compare phonemizer_identity {block!r} with the running phonemizer" in warnings[0]
+
+
+def test_a_running_phonemizer_that_cannot_name_itself_warns(tmp_path):
+    with patch("scriptconv.frontend.TextFrontend.identity", side_effect=RuntimeError("no identity")):
+        warnings = _load_warnings(tmp_path, phonemizer_identity=_running_identity())
+    assert len(warnings) == 1
+    assert "pt_PT-provenance" in warnings[0]
+    assert "cannot compare phonemizer_identity" in warnings[0]
+
+
+def test_a_unicode_voice_with_a_matching_block_gives_no_warning(tmp_path):
+    config = {"phoneme_type": "unicode", "alphabet": "unicode",
+              "phonemizer_identity": _unicode_identity()}
+    assert _load_warnings(tmp_path, **config) == []
+
+
+def test_a_unicode_voice_with_a_changed_block_warns(tmp_path):
+    trained = dict(_unicode_identity(), backend="graphemes")
+    config = {"phoneme_type": "unicode", "alphabet": "unicode",
+              "phonemizer_identity": trained}
+    warnings = _load_warnings(tmp_path, **config)
+    assert len(warnings) == 1
+    assert "pt_PT-provenance" in warnings[0]
+    assert "backend: trained 'graphemes', running 'unicode'" in warnings[0]
 
 
 def test_a_raw_text_engine_gives_no_warning(tmp_path):
