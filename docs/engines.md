@@ -106,6 +106,22 @@ Lower `detect_priority` values are probed first during auto-detection.
 | MOSS-TTS-Nano | `phoonnx/engines/mosstts.py` | `engine == "mosstts"` — autoregressive RVQ-16 codec-LM (6 ONNX graphs via `aux_model_urls`), raw text via SentencePiece, in-context [cloning](cloning.md) from a reference clip alone, native 48 kHz |
 | Rápido | `phoonnx/engines/rapido.py` | `engine == "rapido"` — flow-matching DiT (4 ONNX graphs: text encoder, aligner, velocity model, VoxCPM2 AudioVAE decoder), token ids from the voice pipeline with no text path of its own, midpoint ODE with classifier-free guidance, 42 preset speakers, 48 kHz. Export with `python -m phoonnx_train.rapido.export_onnx --output-dir <dir>` |
 
+#### Engines with no index voice
+
+Each other registered adapter is reached by at least one voice in `phoonnx/voice_index/`.
+The voices in the `phoonnx`, `piper`, `mimic3`, `coqui` and `transformers` formats reach
+the VITS adapter, and the Inflect entries reach the prior-split VITS adapter. Four
+adapters have no voice of their own:
+
+| Adapter | Why no index voice |
+| --- | --- |
+| `vits_streaming` | It is a mode of a VITS voice, not a voice. A config with `"streaming": true` selects it, and phoonnx splits the model on first load. See [streaming](streaming.md). |
+| `yourtts` | `Phoonnx/yourtts-multi-graphemes` holds the model and six fixed-speaker configs (English and Portuguese). They join the index after an ASR round trip. |
+| `zipvoice` | It clones from a reference clip and its transcript on each request, and the Phoonnx organisation has no converted ZipVoice model. |
+| `tinyvoca` | The mirror `Phoonnx/tinyvoca-en_us` is not public. The index entry joins with it. |
+
+`tests/test_engine_coverage.py` fails when an adapter has no voice and is not in this table.
+
 #### Magpie sub-tokenizers
 
 A Magpie checkpoint joins one sub-tokenizer per language into one id space. Two keys
