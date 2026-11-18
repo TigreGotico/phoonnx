@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.113.15a2](https://github.com/TigreGotico/phoonnx/tree/1.113.15a2) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.15a1...1.113.15a2)
+
+**Merged pull requests:**
+
+- test: gruut fakes end with the pause word; assert the whole string [\#721](https://github.com/TigreGotico/phoonnx/pull/721) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.113.15a1](https://github.com/TigreGotico/phoonnx/tree/1.113.15a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.14a1...1.113.15a1)
@@ -366,10 +374,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.2a1...1.99.3a1)
 
-**Merged pull requests:**
-
-- fix: read grouped numbers before a unit, and never crash on one [\#599](https://github.com/TigreGotico/phoonnx/pull/599) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.99.2a1](https://github.com/TigreGotico/phoonnx/tree/1.99.2a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.1a1...1.99.2a1)
@@ -377,10 +381,6 @@
 ## [1.99.1a1](https://github.com/TigreGotico/phoonnx/tree/1.99.1a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.0a1...1.99.1a1)
-
-**Merged pull requests:**
-
-- fix: read a unit in any case in the text normaliser [\#597](https://github.com/TigreGotico/phoonnx/pull/597) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.99.0a1](https://github.com/TigreGotico/phoonnx/tree/1.99.0a1) (2026-11-15)
 
