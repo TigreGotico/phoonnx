@@ -111,3 +111,9 @@ def test_styletts2_exported_config_loads_with_training_facts(tmp_path):
     config = json.loads((tmp_path / "out" / "config.json").read_text(encoding="utf-8"))
     assert config["engine"] == "styletts2"
     _assert_loads_with_training_facts(tmp_path / "out" / "config.json")
+
+
+def test_styletts2_export_leaves_gradients_on(tmp_path):
+    import torch
+    test_styletts2_exported_config_loads_with_training_facts(tmp_path)
+    assert torch.is_grad_enabled()

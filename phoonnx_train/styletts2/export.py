@@ -176,6 +176,7 @@ def _load_config(config_path: Path) -> Dict[str, Any]:
     return json.loads(text)
 
 
+@torch.no_grad()
 def export_styletts2_onnx(
     checkpoint_path: Path,
     config_path: Path,
@@ -228,7 +229,6 @@ def export_styletts2_onnx(
         model[k].requires_grad_(False)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    torch.set_grad_enabled(False)
 
     synth = Synth(model, mp.style_dim,
                   hifigan_shift=(mp.decoder.type == "hifigan")).eval()
