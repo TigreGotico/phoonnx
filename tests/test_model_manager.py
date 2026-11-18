@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -1083,6 +1084,144 @@ class TestManagerRegistry(ManagerTestCase):
         manager.voices = {"a/1": v_en}
         result = manager.get_lang_voices("zz-ZZ")
         self.assertEqual(result, [])
+
+
+def _scan(voices, lang):
+    """The lookup with nothing kept: every voice's distance, every time."""
+    from phoonnx.util import match_lang
+    ranked = sorted(((v, match_lang(v.lang, lang)[-1]) for v in voices.values()),
+                    key=lambda k: k[1])
+    return [v.voice_id for v, distance in ranked if distance < 10]
+
+
+class TestLangVoicesAreKeptPerLanguage(ManagerTestCase):
+    """Kept answers must equal a full scan, per language."""
+
+    def _manager(self, *langs):
+        manager = TTSModelManager(cache_path=self.cache_path)
+        manager.voices = {f"v/{lang}": TTSModelInfo(voice_id=f"v/{lang}", lang=lang,
+                                                    model_url=f"https://example.com/{lang}.onnx")
+                          for lang in langs}
+        return manager
+
+    def _counting(self):
+        from phoonnx.util import match_lang
+        return patch("phoonnx.model_manager.match_lang", side_effect=match_lang)
+
+    def test_the_bundled_index_gives_the_answers_of_a_full_scan(self):
+        manager = TTSModelManager(cache_path=self.cache_path)
+        manager.merge_default_voices()
+        langs = ["en", "en-US", "en-GB", "pt", "pt-BR", "gl", "apc-LB", "zz-ZZ"]
+        expected = {lang: _scan(manager.voices, lang) for lang in langs}
+        self.assertTrue(expected["pt-BR"])
+        self.assertEqual(expected["zz-ZZ"], [], "an unknown language has no voice")
+        # Asked in another order first, so each answer is read back from what
+        # the other languages left behind.
+        for lang in reversed(langs):
+            manager.get_lang_voices(lang)
+        for lang in langs:
+            with self.subTest(lang=lang):
+                self.assertEqual([v.voice_id for v in manager.get_lang_voices(lang)],
+                                 expected[lang])
+
+    def test_the_distances_are_measured_once_per_language(self):
+        manager = self._manager("en-US", "en-GB", "pt-PT")
+        with self._counting() as distance:
+            for _ in range(5):
+                manager.get_lang_voices("en-US")
+                manager.get_lang_voices("pt-PT")
+        self.assertEqual(distance.call_count, 2 * 3,
+                         "one scan of the three voices per language, not per sentence")
+
+    def test_a_new_voice_is_seen(self):
+        manager = self._manager("en-US")
+        self.assertEqual(manager.get_lang_voices("pt-PT"), [])
+        manager.add_voice(TTSModelInfo(voice_id="v/pt-PT", lang="pt-PT",
+                                       model_url="https://example.com/pt.onnx"))
+        with self._counting() as distance:
+            for _ in range(3):
+                self.assertEqual([v.voice_id for v in manager.get_lang_voices("pt-PT")],
+                                 ["v/pt-PT"])
+        self.assertEqual(distance.call_count, 2, "one new scan of the two voices")
+
+    def test_a_new_registry_is_seen(self):
+        manager = self._manager("en-US")
+        self.assertEqual(manager.get_lang_voices("pt-PT"), [])
+        manager.voices = self._manager("pt-PT").voices
+        with self._counting() as distance:
+            for _ in range(3):
+                self.assertEqual([v.voice_id for v in manager.get_lang_voices("pt-PT")],
+                                 ["v/pt-PT"])
+        self.assertEqual(distance.call_count, 1, "one new scan of the one voice")
+
+    def test_a_voice_without_a_language_is_never_kept_out(self):
+        # A voice takes its language when its config loads. Until then it is
+        # out of every answer, and an answer kept from then would leave it out.
+        manager = self._manager("en-GB")
+        bare = TTSModelInfo(voice_id="v/bare", lang="", model_url="https://example.com/bare.onnx")
+        manager.add_voice(bare)
+        self.assertEqual([v.voice_id for v in manager.get_lang_voices("en-US")], ["v/en-GB"])
+        bare.lang = "en-US"
+        self.assertEqual([v.voice_id for v in manager.get_lang_voices("en-US")],
+                         ["v/bare", "v/en-GB"])
+
+    def test_a_caller_cannot_change_the_answer_of_the_next(self):
+        manager = self._manager("en-US")
+        manager.get_lang_voices("en-US").clear()
+        self.assertEqual([v.voice_id for v in manager.get_lang_voices("en-US")], ["v/en-US"])
+
+    def _paused_scan(self, manager, lang):
+        """Start a lookup of ``lang`` in a thread, paused inside its scan."""
+        from phoonnx.util import match_lang
+        inside, release, answer = threading.Event(), threading.Event(), []
+
+        def distance(voice_lang, target):
+            if target == lang and threading.current_thread() is worker:
+                inside.set()
+                self.assertTrue(release.wait(10), "the paused scan was never released")
+            return match_lang(voice_lang, target)
+
+        worker = threading.Thread(
+            target=lambda: answer.append([v.voice_id for v in manager.get_lang_voices(lang)]))
+        distance_patch = patch("phoonnx.model_manager.match_lang", side_effect=distance)
+        distance_patch.start()
+        self.addCleanup(distance_patch.stop)
+        worker.start()
+        self.assertTrue(inside.wait(10), "the lookup never reached its scan")
+        return release, worker, answer
+
+    def test_two_languages_at_once_keep_their_own_answers(self):
+        manager = self._manager("en-US", "en-GB", "pt-PT", "pt-BR")
+        expected = {lang: _scan(manager.voices, lang) for lang in ("en-US", "pt-PT")}
+        self.assertNotEqual(expected["en-US"], expected["pt-PT"])
+
+        # The English lookup stops inside its scan; the Portuguese one runs
+        # from start to end meanwhile, over the same registry.
+        release, worker, english = self._paused_scan(manager, "en-US")
+        portuguese = [v.voice_id for v in manager.get_lang_voices("pt-PT")]
+        release.set()
+        worker.join(10)
+        self.assertFalse(worker.is_alive())
+
+        self.assertEqual(english, [expected["en-US"]])
+        self.assertEqual(portuguese, expected["pt-PT"])
+        with self._counting() as distance:
+            for lang in ("en-US", "pt-PT"):
+                self.assertEqual([v.voice_id for v in manager.get_lang_voices(lang)],
+                                 expected[lang])
+        self.assertEqual(distance.call_count, 0, "both answers were kept")
+
+    def test_a_scan_of_a_replaced_registry_is_not_kept(self):
+        manager = self._manager("en-US")
+        release, worker, old_answer = self._paused_scan(manager, "en-US")
+        # The registry is rebuilt while the scan of the old one is paused.
+        manager.voices = self._manager("en-GB").voices
+        release.set()
+        worker.join(10)
+        self.assertFalse(worker.is_alive())
+
+        self.assertEqual(old_answer, [["v/en-US"]])
+        self.assertEqual([v.voice_id for v in manager.get_lang_voices("en-US")], ["v/en-GB"])
 
 
 class TestGetAvailableVoiceIdsBySource(ManagerTestCase):

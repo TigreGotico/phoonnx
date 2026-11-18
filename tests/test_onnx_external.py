@@ -4,15 +4,18 @@
 runtime. The reader must find the same file names in the same graphs, without
 it, and must reject a file that is not an ONNX model.
 """
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import onnx
 from onnx import TensorProto, helper, numpy_helper
 from onnx.external_data_helper import _get_all_tensors, set_external_data, uses_external_data
 
+from phoonnx import _onnx_external
 from phoonnx._onnx_external import external_data_locations
 
 
@@ -147,6 +150,67 @@ class TestExternalDataLocations(unittest.TestCase):
         path = self.write("lists.onnx", model.SerializeToString())
         self.assertEqual(sorted(external_data_locations(path)),
                          ["graphs_list.bin", "tensors_list.bin"])
+
+
+def _naming(location):
+    """A model whose one initializer keeps its bytes in ``location``."""
+    graph = helper.make_graph([helper.make_node("Identity", ["W"], ["Y"])], "g", [],
+                              [_value("Y")], [_external("W", location)])
+    return helper.make_model(graph).SerializeToString()
+
+
+class TestTheWalkRunsOncePerFile(unittest.TestCase):
+    """The walk runs once per file, and again when the file changes."""
+
+    def setUp(self):
+        self._dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._dir.cleanup)
+        self.path = Path(self._dir.name) / "model.onnx"
+        walk = patch.object(_onnx_external, "_fields", wraps=_onnx_external._fields)
+        self.fields = walk.start()
+        self.addCleanup(walk.stop)
+
+    def walks(self):
+        """Top-level walks so far: a walk starts at offset 0 of the file."""
+        return sum(1 for call in self.fields.call_args_list if call.args[1] == 0)
+
+    def test_the_same_file_is_walked_once(self):
+        self.path.write_bytes(_naming("a.bin"))
+        for _ in range(3):
+            self.assertEqual(external_data_locations(self.path), ["a.bin"])
+        self.assertEqual(self.walks(), 1)
+
+    def test_a_link_to_the_file_is_the_same_file(self):
+        # The hub lays a graph out as a snapshot link to a blob.
+        self.path.write_bytes(_naming("a.bin"))
+        link = self.path.with_name("link.onnx")
+        link.symlink_to(self.path)
+        self.assertEqual(external_data_locations(self.path), ["a.bin"])
+        self.assertEqual(external_data_locations(link), ["a.bin"])
+        self.assertEqual(self.walks(), 1)
+
+    def test_a_changed_file_is_read_again(self):
+        self.path.write_bytes(_naming("a.bin"))
+        self.assertEqual(external_data_locations(self.path), ["a.bin"])
+        self.assertEqual(external_data_locations(self.path), ["a.bin"])
+        stat = self.path.stat()
+
+        # Same size, other content: only the modification time tells.
+        self.path.write_bytes(_naming("b.bin"))
+        self.assertEqual(self.path.stat().st_size, stat.st_size)
+        os.utime(self.path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1))
+        self.assertEqual(external_data_locations(self.path), ["b.bin"])
+
+        # Another size.
+        self.path.write_bytes(_naming("longer.bin"))
+        os.utime(self.path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 2))
+        self.assertEqual(external_data_locations(self.path), ["longer.bin"])
+        self.assertEqual(self.walks(), 3)
+
+    def test_a_caller_cannot_change_the_answer_of_the_next(self):
+        self.path.write_bytes(_naming("a.bin"))
+        external_data_locations(self.path).append("other.bin")
+        self.assertEqual(external_data_locations(self.path), ["a.bin"])
 
 
 def _encode_varint(value: int) -> bytes:

@@ -1321,6 +1321,8 @@ class TTSModelManager:
         self._registry_lock = threading.RLock()
         # bundled entries an alias read, so a lookup per sentence reads the index once
         self._alias_fallbacks: Dict[str, Optional[TTSModelInfo]] = {}
+        # get_lang_voices answers as (registry, {lang: voices}), replaced whole
+        self._lang_voices_memo: Tuple[Optional[dict], dict] = (None, {})
         if cache_path:
             self.cache = JsonStorage(cache_path)
         else:
@@ -1406,14 +1408,30 @@ class TTSModelManager:
         with self._registry_lock:
             self.voices[voice_info.voice_id] = voice_info
             self.cache[voice_info.voice_id] = voice_info.to_dict()
+            # after the change, or a reader could keep an answer without the new voice
+            self._lang_voices_memo = (None, {})
 
     def get_lang_voices(self, lang: str) -> List[TTSModelInfo]:
-        voices = sorted(
-            [
-                (voice_info, match_lang(voice_info.lang, lang)[-1])
-                for voice_info in self.voices.values()
-            ], key=lambda k: k[1])
-        return [v[0] for v in voices if v[1] < 10]
+        """The voices that speak ``lang``, nearest language first.
+
+        Kept per language until the registry changes. A voice with no ``lang``
+        gets one when its config loads, so such a registry is never kept.
+        """
+        registry, answers = self._lang_voices_memo
+        if registry is not self.voices:
+            registry, answers = self.voices, {}
+            self._lang_voices_memo = (registry, answers)
+        voices = answers.get(lang)
+        if voices is None:
+            ranked = sorted(
+                [
+                    (voice_info, match_lang(voice_info.lang, lang)[-1])
+                    for voice_info in registry.values()
+                ], key=lambda k: k[1])
+            voices = [v[0] for v in ranked if v[1] < 10]
+            if all(voice_info.lang for voice_info in registry.values()):
+                answers[lang] = voices
+        return list(voices)
 
     def merge_default_voices(self, store=False):
         """

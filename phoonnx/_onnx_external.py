@@ -15,7 +15,9 @@ subgraphs, and the tensor attributes of every node, also in model functions.
 
 The field numbers come from ``onnx.proto``.
 """
+import functools
 import mmap
+import os
 from pathlib import Path
 from typing import Iterator, List, Optional, Tuple, Union
 
@@ -107,10 +109,21 @@ def external_data_locations(path: Union[str, Path]) -> List[str]:
     graph that keeps all its weights inside gives an empty list. The names are
     given as written in the graph: this function does not check them.
 
+    The walk runs once per file, keyed like a shared session on the real path,
+    size and modification time, so a changed file is read again.
+
     Raises:
         OSError: the file cannot be read.
         ValueError: the file is not an ONNX model.
     """
+    real_path = os.path.realpath(path)
+    stat = os.stat(real_path)
+    return list(_read_locations(real_path, stat.st_size, stat.st_mtime_ns))
+
+
+@functools.lru_cache(maxsize=1024)
+def _read_locations(path: str, size: int, mtime_ns: int) -> Tuple[str, ...]:
+    """``size`` and ``mtime_ns`` only key the cache."""
     with open(path, "rb") as handle, \
             mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as buf:
         locations: List[str] = []
@@ -129,4 +142,4 @@ def external_data_locations(path: Union[str, Path]) -> List[str]:
             raise ValueError(f"'{path}' nests graphs too deeply") from exc
     if not has_graph:
         raise ValueError(f"'{path}' is not an ONNX model: it has no graph")
-    return list(dict.fromkeys(locations))
+    return tuple(dict.fromkeys(locations))

@@ -326,6 +326,58 @@ class TestBuildLocksDoNotGrowForever(unittest.TestCase):
             "by one entry per model ever seen")
 
 
+class TestALoadReadsTheGraphOnce(unittest.TestCase):
+    """A load walks its graph once: the sidecar fetch and the session key
+    share the walk, and a session hit walks nothing."""
+
+    def setUp(self):
+        import numpy as np
+        import onnx
+        from onnx import TensorProto, helper, numpy_helper
+        from phoonnx import _onnx_external
+
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+        env = patch.dict(os.environ, {}, clear=False)
+        env.start()
+        self.addCleanup(env.stop)
+        os.environ.pop(SHARE_SESSIONS_ENV_VAR, None)
+
+        w = numpy_helper.from_array(np.ones((1, 4), dtype=np.float32), "w")
+        x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 4])
+        y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 4])
+        graph = helper.make_graph([helper.make_node("Mul", ["x", "w"], ["y"])],
+                                  "g", [x], [y], [w])
+        model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)])
+        model.ir_version = 8
+        self.model_path = Path(self.tmpdir.name) / "model.onnx"
+        onnx.save(model, str(self.model_path), save_as_external_data=True,
+                  location="model.onnx_data", size_threshold=0)
+
+        walk = patch.object(_onnx_external, "_fields", wraps=_onnx_external._fields)
+        self.fields = walk.start()
+        self.addCleanup(walk.stop)
+
+    def walks(self):
+        """Top-level walks so far: a walk starts at offset 0 of the file."""
+        return sum(1 for call in self.fields.call_args_list if call.args[1] == 0)
+
+    def load(self):
+        """The two reads a voice load makes of its graph."""
+        from phoonnx.model_manager import _sidecar_urls
+        url = "https://huggingface.co/org/repo/resolve/main/model.onnx"
+        self.assertEqual(_sidecar_urls(url, self.model_path),
+                         ["https://huggingface.co/org/repo/resolve/main/model.onnx_data"])
+        return make_session(self.model_path, providers=[CPU_PROVIDER])
+
+    def test_one_walk_per_load_and_none_on_a_session_hit(self):
+        first = self.load()
+        self.assertEqual(self.walks(), 1, "one load walks the graph once")
+        second = self.load()
+        self.assertIs(second, first, "the second voice reuses the session")
+        self.assertEqual(self.walks(), 1, "a session hit walks nothing")
+
+
 class TestArtifactKey(unittest.TestCase):
     """What the cache charges memory against."""
 
