@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.113.15a1](https://github.com/TigreGotico/phoonnx/tree/1.113.15a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.14a1...1.113.15a1)
+
+**Merged pull requests:**
+
+- fix: chunk setting follow-ups: early error, OVOS plugin key, docs [\#722](https://github.com/TigreGotico/phoonnx/pull/722) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.113.14a1](https://github.com/TigreGotico/phoonnx/tree/1.113.14a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.13a1...1.113.14a1)
+
+**Merged pull requests:**
+
+- fix: precision follow-ups: alias lookup keeps the user's entry, unknown keys warn, variants replace only files [\#719](https://github.com/TigreGotico/phoonnx/pull/719) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.113.13a1](https://github.com/TigreGotico/phoonnx/tree/1.113.13a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.12a1...1.113.13a1)
@@ -357,10 +373,6 @@
 ## [1.99.2a1](https://github.com/TigreGotico/phoonnx/tree/1.99.2a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.1a1...1.99.2a1)
-
-**Merged pull requests:**
-
-- fix: native configs default add\_diacritics by language, not to true [\#596](https://github.com/TigreGotico/phoonnx/pull/596) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.99.1a1](https://github.com/TigreGotico/phoonnx/tree/1.99.1a1) (2026-11-15)
 
