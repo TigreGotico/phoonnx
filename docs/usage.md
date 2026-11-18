@@ -75,7 +75,7 @@ with wave.open("output.wav", "wb") as wav_file:
 
 ### Streaming Audio Chunks
 
-`synthesize()` is a generator that yields one `AudioChunk` per sentence. This enables low-latency streaming:
+`synthesize()` is a generator that yields one `AudioChunk` per sentence. This enables low-latency streaming. `SynthesisConfig(chunk=...)` changes the size of a chunk: `clause` gives the first audio sooner on a long sentence, and `paragraph` or `none` gives fewer false sentence ends.
 
 ```python
 from phoonnx.voice import TTSVoice

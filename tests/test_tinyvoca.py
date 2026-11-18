@@ -6,18 +6,16 @@ n4ze3m/tiny-voca: <bos> 1, <eos> 2, <sp> 3, "," 5, "." 6, "!" 8, '"' 11, "k" 21,
 import json
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-from scriptconv.phonemizers.base import BasePhonemizer
 from scriptconv.phonemizers.dizione import DizionePhonemizer
 
-from phoonnx.config import Alphabet, SynthesisConfig, VoiceConfig, get_conversion
+from phoonnx.config import SynthesisConfig, VoiceConfig
 from phoonnx.engines import detect_engine
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.tinyvoca import MAX_TOKENS, TinyVocaAdapter
-from phoonnx.util import LOG
 from phoonnx.voice import TTSVoice
 
 CONFIG = json.loads((Path(__file__).parent / "fixtures" / "tinyvoca_config.json").read_text())
@@ -176,13 +174,14 @@ class TestDetect:
 
 
 class TestDizioneTokens:
-    """The voice sends dizione's own ids and stress, as tokens() gives them."""
+    """The voice sends dizione's own ids and stress, one engine call per sentence as dizione cuts it."""
 
     # "Hello" holds the adjacent ə and l that compound folding would merge into əl
     TEXTS = ["Hello! This is tiny voca.",
              "Please record the record before the concert.",
              "Dr. Patel paid $12.99 for the book",
-             "I read the paper yesterday, and I will read the next one tomorrow."]
+             "I read the paper yesterday, and I will read the next one tomorrow.",
+             "On Jan. 1, 2000 we met Dr. Patel. He paid $5."]
 
     def _voice(self):
         adapter = MagicMock()
@@ -190,30 +189,35 @@ class TestDizioneTokens:
         adapter.synthesize.return_value = SimpleNamespace(audio=np.zeros(4, np.float32), extras={})
         return TTSVoice(session=MagicMock(), config=_config(), adapter=adapter)
 
-    @pytest.mark.parametrize("text", TEXTS)
-    def test_ids_and_stress_match_dizione(self, text):
+    def _sent(self, text, **settings):
         voice = self._voice()
-        list(voice.synthesize(text, SynthesisConfig(normalize_audio=False)))
-        sent = [c.args[0] for c in voice.adapter.synthesize.call_args_list]
+        list(voice.synthesize(text, SynthesisConfig(normalize_audio=False, **settings)))
+        return [(tuple(c.args[0].phoneme_ids[0].tolist()), tuple(c.args[0].stress[0].tolist()))
+                for c in voice.adapter.synthesize.call_args_list]
+
+    @pytest.mark.parametrize("text", TEXTS)
+    def test_one_call_per_dizione_sentence(self, text):
+        assert self._sent(text) == [(s.ids, s.stress) for s in DizionePhonemizer().token_segments(text)]
+
+    @pytest.mark.parametrize("text", TEXTS)
+    def test_the_whole_text_is_one_call_of_tokens(self, text):
         expected = DizionePhonemizer().tokens(text)
-        assert [i for r in sent for i in r.phoneme_ids[0].tolist()] == list(expected.ids)
-        assert [s for r in sent for s in r.stress[0].tolist()] == list(expected.stress)
+        assert self._sent(text, chunk="none") == [(expected.ids, expected.stress)]
+
+    def test_an_abbreviation_ends_no_sentence(self):
+        """A split of the raw text cuts "Jan." from its date; dizione reads one sentence."""
+        expected = DizionePhonemizer().tokens("Jan. 1, 2000")
+        assert self._sent("Jan. 1, 2000") == [(expected.ids, expected.stress)]
+
+    def test_two_sentences_are_two_calls(self):
+        sentences = DizionePhonemizer().token_segments("On Jan. 1, 2000 we met Dr. Patel. He paid $5.")
+        assert len(sentences) == 2
+        assert len(self._sent("On Jan. 1, 2000 we met Dr. Patel. He paid $5.")) == 2
 
     def test_phoonnx_normalizer_left_out(self):
         assert self._voice().phonemizer.normalizer is None
 
-    def test_tokens_attribute_that_is_not_callable_is_ignored(self):
-        """ByT5 and Charsiu hold a dict named ``tokens``; they phonemize as before."""
-        phonemizer = MagicMock(spec=BasePhonemizer)
-        phonemizer.tokens = {"a": 1}
-        phonemizer.owned_stages = frozenset()
-        phonemizer.phonemize_lazy.return_value = iter([["h", "ə"]])
-        route, _ = get_conversion(phonemizer, _config(), SynthesisConfig(), Alphabet.IPA)
-        assert list(route.convert("hello", "text", "ipa")) == [(["h", "ə"], {})]
-
-    def test_nothing_to_pronounce_is_skipped(self):
-        voice = self._voice()
-        route, _ = get_conversion(voice.phonemizer, voice.config, SynthesisConfig(), Alphabet.IPA)
-        with patch.object(LOG, "warning") as warn:
-            assert list(route.convert("مرحبا", "text", "ipa")) == []
-        assert "nothing to pronounce" in warn.call_args.args[0]
+    def test_nothing_to_pronounce_is_skipped(self, caplog):
+        with caplog.at_level("WARNING", logger="scriptconv.frontend"):
+            assert self._sent("مرحبا") == []
+        assert "no phonemes for 'مرحبا'" in caplog.text

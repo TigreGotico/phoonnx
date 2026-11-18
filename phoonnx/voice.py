@@ -25,19 +25,19 @@ from typing import (Any, Callable, Iterable, Iterator, List, Mapping, Optional, 
 import numpy as np
 import onnxruntime
 from linguatag import closest_lang
-from quebra_frases import sentence_tokenize
 from scriptconv.frontend import FrontendConfig, Stages, TextFrontend
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
-    _removal_version, _side_stream_reader, check_lang_supported
+    _removal_version, check_lang_supported
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.engines.base import (
     AdapterSynthesisRequest,
     AdapterSynthesisResult,
     BaseOnnxAdapter,
+    SIDE_STREAMS,
 )
 from scriptconv.phonemizers.base import BasePhonemizer, PhonemizerIdentity
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
@@ -51,9 +51,6 @@ from phoonnx.util import LOG
 
 # Alias kept for callers that imported the sentinel from here before it moved.
 _UNSET = UNSET
-
-# An inline [[...]] block: its symbols carry no side stream.
-_INLINE_BLOCK = re.compile(r"\[\[.*?\]\]")
 
 
 def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunks:
@@ -610,7 +607,8 @@ class TTSVoice:
         if diacritize is None:
             diacritize = self.config.add_diacritics
         return Stages(diacritize=diacritize,
-                      diacritizer_model=syn_config.diacritizer_model or self.config.diacritizer_model)
+                      diacritizer_model=syn_config.diacritizer_model or self.config.diacritizer_model,
+                      chunk=syn_config.chunk)
 
     def phonemize(self, text: str, lang: Optional[str] = None) -> PhonemizedChunks:
         """
@@ -636,13 +634,12 @@ class TTSVoice:
     def _iter_phonemes(
             self, text: str, src_alphabet: Alphabet, tgt_alphabet: Alphabet, stages: Stages,
     ) -> Iterable[Tuple[List[str], Dict[str, List[int]]]]:
-        """Yield ``(phonemes, streams)`` per sentence of *text*, by whichever
+        """Yield ``(phonemes, streams)`` per chunk of *text*, by whichever
         conversion its alphabet calls for. One job: getting phonemes.
 
         ``streams`` holds the per-symbol values a phonemizer gives beside its
-        symbols, keyed by ``AdapterSynthesisRequest`` field (see
-        ``phoonnx.config._side_stream_reader``). Phonemic input and text with
-        inline blocks carry none."""
+        symbols, keyed by ``AdapterSynthesisRequest`` field, such as Shami's
+        ``language_ids`` and dizione's ``stress``. Phonemic input carries none."""
         # Already-phonemic input: transcode to the model's alphabet through
         # scriptconv's graph (a no-op when src == tgt), then split.
         if src_alphabet != Alphabet.GRAPHEMES:
@@ -655,18 +652,10 @@ class TTSVoice:
                 yield phonemes, {}
             return
 
-        read_streams = _side_stream_reader(self.frontend.backend)
-        if read_streams is None or _INLINE_BLOCK.search(text):
-            # Graphemes: the text frontend, one sentence at a time.
-            for phonemes in self.frontend.phonemize_lazy(text, stages):
-                yield phonemes, {}
-            return
-
-        # A phonemizer that tags its symbols reads each sentence after the frontend's stages.
-        lang = stages.lang or self.config.lang_code
-        for sentence in sentence_tokenize(text):
-            if sentence.strip():
-                yield from read_streams(self.frontend.prepare(sentence, stages), lang)
+        # Graphemes: the text frontend reads the whole text, then yields one chunk at a time.
+        for segment in self.frontend.segments(text, stages):
+            yield list(segment.phonemes), {name: list(values) for name, values in segment.streams.items()
+                                           if name in SIDE_STREAMS}
 
     def prepare(self, text: str, config: Optional[SynthesisConfig] = None) -> Iterator[Utterance]:
         """Turn *text* into model input: one :class:`Utterance` per engine call.
@@ -674,13 +663,14 @@ class TTSVoice:
         This is the text half of :meth:`synthesize`. It applies the phonetic
         spellings and reads the text through :attr:`frontend` with the stages of
         *config*. A voice that reads symbols gets them from the frontend one
-        sentence at a time, and :attr:`tokenizer` turns each sentence into ids.
+        chunk at a time, a sentence unless ``config.chunk`` names another size,
+        and :attr:`tokenizer` turns each chunk into ids.
         An engine that reads text gets it from ``frontend.prepare``, and its
         adapter's ``encode_text`` turns the text into ids. Input in a phonemic
         alphabet (``config.alphabet``) is converted to the voice's alphabet and
         is not phonemized.
 
-        The method is a generator, so the second sentence is read only after
+        The method is a generator, so the second chunk is read only after
         the caller has rendered the first. An utterance with no ids is not
         yielded.
 
