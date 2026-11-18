@@ -17,6 +17,13 @@ Every voice has two alphabet fields:
 `Alphabet.GRAPHEMES` — ordinary transcription text.  Set it only when passing
 pre-converted content (e.g. an IPA string or Hangul text).
 
+ARPABET text on an IPA voice can name an r-coloured vowel that the voice's phoneme
+map lacks. The voice then speaks the nearest spelling that its map holds: `ɝ` as
+`ɜɹ`, `ɜr`, `ɚ`, `əɹ` or `ər`, and `ɚ` as `əɹ` or `ər`, in that order. The same
+rule applies to `ɜr` and `ər` when the map lacks one of their symbols. A voice that
+holds the symbol keeps it. With no such spelling, the tokenizer drops the symbol
+with a warning. Text with no `SynthesisConfig.alphabet` is not respelled.
+
 ## Conversion is scriptconv's job
 
 phoonnx does not implement alphabet/phoneme conversion — that is
