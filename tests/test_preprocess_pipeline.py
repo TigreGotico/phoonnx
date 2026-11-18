@@ -363,7 +363,7 @@ class TestPhonemizerProvenance(unittest.TestCase):
             self.assertEqual(config["phonemizer_identity"], {
                 "backend": "graphemes", "distribution": "scriptconv",
                 "version": importlib.metadata.version("scriptconv"),
-                "lang": "en", "revision": None, "frontend": None})
+                "lang": "en", "revision": GraphemePhonemizer().identity("en").revision, "frontend": None})
 
     def test_column_run_claims_no_producer(self):
         with TemporaryDirectory() as tmp:
@@ -627,7 +627,7 @@ class TestPhonemizerProvenance(unittest.TestCase):
         self.assertEqual(resumed["phonemizer_identity"], {
             "backend": "graphemes", "distribution": "scriptconv",
             "version": importlib.metadata.version("scriptconv"),
-            "lang": "en", "revision": None, "frontend": None})
+            "lang": "en", "revision": GraphemePhonemizer().identity("en").revision, "frontend": None})
         self.assertEqual((resumed["phonemes_phonemized"], resumed["phonemes_from_column"]), (1, 1))
 
     def test_a_column_only_resume_onto_a_config_without_an_engine_names_none(self):
