@@ -292,6 +292,26 @@ class TestACacheFromAnEarlierRelease(unittest.TestCase):
             info = manager.get_voice("edwixx/pt-BR-rapido-int8")
         self.assertTrue(info.model_url.endswith("/edwixx__rapido-tts-int8/model.onnx"))
 
+    def test_an_alias_lookup_keeps_the_entry_the_registry_holds(self):
+        manager = TTSModelManager(cache_path=str(self.path))
+        manager.load()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            manager.get_voice("edwixx/pt-BR-rapido-int8")
+        kept = manager.voices["edwixx/pt-BR-rapido"]
+        self.assertEqual(kept.model_url, _OLD_RAPIDO["model_url"])
+        self.assertFalse(kept.variants)
+
+    def test_the_cli_precision_option_ignores_case(self):
+        empty = str(Path(self.tmp.name) / "empty.json")
+        with patch("phoonnx.cli.TTSModelManager",
+                   side_effect=lambda: TTSModelManager(cache_path=empty)), \
+                _recording_downloads() as downloaded:
+            result = CliRunner().invoke(cli, ["download", "edwixx/pt-BR-rapido", "--precision", "INT8"])
+        self.assertIsNone(result.exception, result.output)
+        self.assertEqual(len(downloaded), 1, result.output)
+        self.assertTrue(downloaded[0].endswith("/edwixx__rapido-tts-int8/model.onnx"), downloaded)
+
     def test_the_cli_downloads_the_old_id(self):
         with patch("phoonnx.cli.TTSModelManager",
                    side_effect=lambda: TTSModelManager(cache_path=str(self.path))), \
@@ -451,7 +471,7 @@ class TestCacheKeys(unittest.TestCase):
 
 class TestUnknownIndexKeys(unittest.TestCase):
 
-    def test_an_unknown_key_is_ignored_with_one_debug_line(self):
+    def test_an_unknown_key_is_ignored_with_one_warning(self):
         model_manager._LOGGED_UNKNOWN_KEYS.clear()
         entry = {"voice_id": "demo/voice", "lang": "pt-BR", "model_url": f"{BASE}/model.onnx",
                  "a_future_field": {"x": 1}}
@@ -459,8 +479,9 @@ class TestUnknownIndexKeys(unittest.TestCase):
             first = TTSModelInfo(**model_manager._known_fields(entry))
             TTSModelInfo(**model_manager._known_fields(entry))
         self.assertEqual(first.model_url, f"{BASE}/model.onnx")
-        self.assertEqual(len(log.debug.call_args_list), 1)
-        self.assertIn("a_future_field", log.debug.call_args.args[0])
+        self.assertEqual(len(log.warning.call_args_list), 1)
+        self.assertIn("a_future_field", log.warning.call_args.args[0])
+        self.assertIn("demo/voice", log.warning.call_args.args[0])
 
     def test_a_cached_entry_with_an_unknown_key_is_listed(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -471,6 +492,12 @@ class TestUnknownIndexKeys(unittest.TestCase):
             manager = TTSModelManager(cache_path=str(path))
             manager.load()
         self.assertEqual(manager.get_voice("demo/voice").model_url, f"{BASE}/model.onnx")
+
+    def test_a_variant_replaces_only_the_files(self):
+        info = _entry({**INT8, "lang": "en-US", "precision": "full"}).with_precision("int8")
+        self.assertEqual(info.model_url, f"{BASE}/model_int8.onnx")
+        self.assertEqual(info.lang, "pt-BR")
+        self.assertEqual(info.precision, "int8")
 
     def test_an_unknown_variant_key_is_ignored(self):
         info = _entry({**INT8, "rtf": 0.2}).with_precision("int8")

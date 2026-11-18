@@ -25,7 +25,7 @@ from typing import Any, Dict, Iterator, List, Union, get_args, get_origin
 
 from langcodes import Language
 
-from phoonnx.model_manager import _HF_URL, TTSModelInfo
+from phoonnx.model_manager import _HF_URL, VARIANT_FIELDS, TTSModelInfo
 
 _FIELD_TYPES: Dict[str, Any] = {f.name: f.type for f in fields(TTSModelInfo)}
 
@@ -78,9 +78,6 @@ def _describes(value: Any, annotation: Any) -> bool:
     raise TypeError(f"index_schema cannot describe {annotation!r}")
 
 
-#: Fields a precision variant may replace: the files of the voice.
-VARIANT_FIELDS = frozenset(name for name in _FIELD_TYPES
-                           if name.endswith("_url") or name == "aux_model_urls")
 
 
 #: A Hub revision an index URL may name: a full commit sha, so that a later
