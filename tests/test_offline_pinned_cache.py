@@ -17,7 +17,7 @@ from huggingface_hub import constants
 from huggingface_hub.errors import EntryNotFoundError, LocalEntryNotFoundError
 
 from phoonnx import model_manager
-from phoonnx.model_manager import _cached_path, _hf_fetch
+from phoonnx.model_manager import TTSModelInfo, _cached_path, _hf_fetch
 
 OLD = "1" * 40
 MID = "2" * 40
@@ -125,6 +125,29 @@ class TestOfflineFallback(_Cache):
     def test_the_size_question_reads_the_fallback_offline_only(self):
         self.snapshot(OLD, {"model.onnx": b"graph"}, mtime=1000, main=True)
         self.assertEqual(_cached_path(url("model.onnx")).read_bytes(), b"graph")
+        with patch.object(constants, "HF_HUB_OFFLINE", False):
+            self.assertIsNone(_cached_path(url("model.onnx")))
+
+    def test_a_fallback_load_is_measured_with_the_offline_flag_unset(self):
+        # A hub that does not answer (connection error) with HF_HUB_OFFLINE unset: the voice
+        # loads from the OLD snapshot through _hf_fetch, and the size question then reads that
+        # recorded fallback instead of charging the voice 0 bytes.
+        self.snapshot(OLD, {"model.onnx": b"x" * 777}, mtime=1000, main=True)
+        with patch.object(constants, "HF_HUB_OFFLINE", False), \
+                patch.object(model_manager, "hf_hub_download",
+                             side_effect=LocalEntryNotFoundError("connection error")):
+            loaded = _hf_fetch(url("model.onnx"))
+            self.assertEqual(loaded.read_bytes(), b"x" * 777)
+            [warning] = self.warnings()
+            self.assertIn(REPO, warning)
+            self.assertEqual(_cached_path(url("model.onnx")), loaded)
+            info = TTSModelInfo(voice_id="v", lang="en-US", model_url=url("model.onnx"))
+            self.assertEqual(info.disk_size(), 777)
+
+    def test_no_fallback_taken_still_measures_none_with_the_offline_flag_unset(self):
+        # No load has fallen back, so the uncached pinned URL has no recorded snapshot and the
+        # size question stays None online, exactly as it did before the fix.
+        self.snapshot(OLD, {"model.onnx": b"graph"}, mtime=1000, main=True)
         with patch.object(constants, "HF_HUB_OFFLINE", False):
             self.assertIsNone(_cached_path(url("model.onnx")))
 
