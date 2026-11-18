@@ -43,11 +43,13 @@ def test_a_voice_with_its_config_still_loads(tmp_path, fake_runtime):
     fake_runtime.assert_called_once()
 
 
-def _vits_voice(tmp_path, adapter_cls, num_symbols):
+def _vits_voice(tmp_path, adapter_cls, num_symbols, id_map=None):
     from phoonnx.engines.vits import VitsAdapter
-    config = tmp_path / "model.onnx.json"
-    config.write_text(json.dumps({"phoneme_type": "unicode", "alphabet": "unicode", "num_symbols": num_symbols,
-                                  "phoneme_id_map": {"_": [0], "^": [1], "$": [2], "a": [3], "b": [4]}}))
+    config = {"phoneme_type": "unicode", "alphabet": "unicode",
+              "phoneme_id_map": id_map or {"_": [0], "^": [1], "$": [2], "a": [3], "b": [4]}}
+    if num_symbols is not None:
+        config["num_symbols"] = num_symbols
+    (tmp_path / "model.onnx.json").write_text(json.dumps(config))
     adapter = MagicMock(spec=adapter_cls or VitsAdapter)
     with patch("phoonnx.voice.detect_engine", return_value=adapter):
         return TTSVoice.load(tmp_path / "model.onnx")
@@ -65,3 +67,8 @@ def test_a_vits_vocabulary_that_fits_loads(tmp_path, fake_runtime):
 def test_engines_whose_graph_ignores_num_symbols_are_not_checked(tmp_path, fake_runtime):
     from phoonnx.engines.styletts2 import StyleTTS2Adapter
     assert _vits_voice(tmp_path, StyleTTS2Adapter, num_symbols=4).config.num_symbols == 4
+
+
+def test_a_vits_config_without_num_symbols_is_not_checked(tmp_path, fake_runtime):
+    id_map = {chr(0x100 + i): [i] for i in range(300)}
+    assert _vits_voice(tmp_path, None, num_symbols=None, id_map=id_map).config.num_symbols == 256
