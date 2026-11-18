@@ -1951,7 +1951,7 @@
     },
     "pockettts/it/alba": {
         "voice_id": "pockettts/it/alba",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -1966,17 +1966,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/alba.safetensors"
         },
         "display_name": "Pocket TTS Alba",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/anna": {
         "voice_id": "pockettts/it/anna",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -1991,17 +1999,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/anna.safetensors"
         },
         "display_name": "Pocket TTS Anna",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/azelma": {
         "voice_id": "pockettts/it/azelma",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2016,17 +2032,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/azelma.safetensors"
         },
         "display_name": "Pocket TTS Azelma",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/bill_boerst": {
         "voice_id": "pockettts/it/bill_boerst",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2041,17 +2065,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/bill_boerst.safetensors"
         },
         "display_name": "Pocket TTS Bill Boerst",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/caro_davy": {
         "voice_id": "pockettts/it/caro_davy",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2066,17 +2098,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/caro_davy.safetensors"
         },
         "display_name": "Pocket TTS Caro Davy",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/charles": {
         "voice_id": "pockettts/it/charles",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2091,17 +2131,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/charles.safetensors"
         },
         "display_name": "Pocket TTS Charles",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/cosette": {
         "voice_id": "pockettts/it/cosette",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2116,17 +2164,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/cosette.safetensors"
         },
         "display_name": "Pocket TTS Cosette",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/eponine": {
         "voice_id": "pockettts/it/eponine",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2141,17 +2197,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/eponine.safetensors"
         },
         "display_name": "Pocket TTS Eponine",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/estelle": {
         "voice_id": "pockettts/it/estelle",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2166,17 +2230,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/estelle.safetensors"
         },
         "display_name": "Pocket TTS Estelle",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/eve": {
         "voice_id": "pockettts/it/eve",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2191,17 +2263,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/eve.safetensors"
         },
         "display_name": "Pocket TTS Eve",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/fantine": {
         "voice_id": "pockettts/it/fantine",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2216,17 +2296,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/fantine.safetensors"
         },
         "display_name": "Pocket TTS Fantine",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/george": {
         "voice_id": "pockettts/it/george",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2241,17 +2329,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/george.safetensors"
         },
         "display_name": "Pocket TTS George",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/giovanni": {
         "voice_id": "pockettts/it/giovanni",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2266,17 +2362,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/giovanni.safetensors"
         },
         "display_name": "Pocket TTS Giovanni",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/jane": {
         "voice_id": "pockettts/it/jane",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2291,17 +2395,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/jane.safetensors"
         },
         "display_name": "Pocket TTS Jane",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/javert": {
         "voice_id": "pockettts/it/javert",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2316,17 +2428,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/javert.safetensors"
         },
         "display_name": "Pocket TTS Javert",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/jean": {
         "voice_id": "pockettts/it/jean",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2341,17 +2461,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/jean.safetensors"
         },
         "display_name": "Pocket TTS Jean",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/juergen": {
         "voice_id": "pockettts/it/juergen",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2366,17 +2494,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/juergen.safetensors"
         },
         "display_name": "Pocket TTS Juergen",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/lola": {
         "voice_id": "pockettts/it/lola",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2391,17 +2527,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/lola.safetensors"
         },
         "display_name": "Pocket TTS Lola",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/marius": {
         "voice_id": "pockettts/it/marius",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2416,17 +2560,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/marius.safetensors"
         },
         "display_name": "Pocket TTS Marius",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/mary": {
         "voice_id": "pockettts/it/mary",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2441,17 +2593,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/mary.safetensors"
         },
         "display_name": "Pocket TTS Mary",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/michael": {
         "voice_id": "pockettts/it/michael",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2466,17 +2626,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/michael.safetensors"
         },
         "display_name": "Pocket TTS Michael",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/paul": {
         "voice_id": "pockettts/it/paul",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2491,17 +2659,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/paul.safetensors"
         },
         "display_name": "Pocket TTS Paul",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/peter_yearsley": {
         "voice_id": "pockettts/it/peter_yearsley",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2516,17 +2692,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/peter_yearsley.safetensors"
         },
         "display_name": "Pocket TTS Peter Yearsley",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/rafael": {
         "voice_id": "pockettts/it/rafael",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2541,17 +2725,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/rafael.safetensors"
         },
         "display_name": "Pocket TTS Rafael",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/stuart_bell": {
         "voice_id": "pockettts/it/stuart_bell",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2566,17 +2758,25 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/stuart_bell.safetensors"
         },
         "display_name": "Pocket TTS Stuart Bell",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/it/vera": {
         "voice_id": "pockettts/it/vera",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main.onnx",
         "config_url": null,
         "vocab_url": null,
         "tokens_url": null,
@@ -2591,13 +2791,21 @@
             "tokenizer_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/tokenizer.model",
             "bos_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/bos_before_voice.npy",
             "text_conditioner_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/text_conditioner.onnx",
-            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
-            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx",
+            "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow.onnx",
+            "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder.onnx",
             "mimi_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_encoder.onnx",
             "voice_state_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/voices/vera.safetensors"
         },
         "display_name": "Pocket TTS Vera",
-        "precision": "int8"
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_main_int8.onnx",
+                "aux_model_urls": {
+                    "flow_lm_flow_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/flow_lm_flow_int8.onnx",
+                    "mimi_decoder_path": "https://huggingface.co/Phoonnx/phoonnx-pocket-tts/resolve/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian/mimi_decoder_int8.onnx"
+                }
+            }
+        }
     },
     "pockettts/pt/alba": {
         "voice_id": "pockettts/pt/alba",

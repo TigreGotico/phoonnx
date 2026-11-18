@@ -1,5 +1,85 @@
 # Changelog
 
+## [1.113.5a2](https://github.com/TigreGotico/phoonnx/tree/1.113.5a2) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.5a1...1.113.5a2)
+
+**Merged pull requests:**
+
+- test: download the pinned F5 configs once, through retry\_download [\#702](https://github.com/TigreGotico/phoonnx/pull/702) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.113.5a1](https://github.com/TigreGotico/phoonnx/tree/1.113.5a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.4a1...1.113.5a1)
+
+## [1.113.4a1](https://github.com/TigreGotico/phoonnx/tree/1.113.4a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.3a2...1.113.4a1)
+
+**Merged pull requests:**
+
+- fix: Pocket TTS clones from the \(audio, sample\_rate\) reference tuple [\#699](https://github.com/TigreGotico/phoonnx/pull/699) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: the ja and all extras install pyopenjtalk-plus, never plain pyopenjtalk [\#698](https://github.com/TigreGotico/phoonnx/pull/698) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.113.3a2](https://github.com/TigreGotico/phoonnx/tree/1.113.3a2) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.3a1...1.113.3a2)
+
+**Merged pull requests:**
+
+- docs: point the F5-TTS page at the per-voice Hub repos [\#696](https://github.com/TigreGotico/phoonnx/pull/696) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.113.3a1](https://github.com/TigreGotico/phoonnx/tree/1.113.3a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.2a1...1.113.3a1)
+
+## [1.113.2a1](https://github.com/TigreGotico/phoonnx/tree/1.113.2a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.1a2...1.113.2a1)
+
+## [1.113.1a2](https://github.com/TigreGotico/phoonnx/tree/1.113.1a2) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.1a1...1.113.1a2)
+
+**Merged pull requests:**
+
+- fix: load F5 voices from their own repos, Italian Pocket TTS in full precision [\#689](https://github.com/TigreGotico/phoonnx/pull/689) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: Pocket TTS gives no ids for empty or blank text [\#687](https://github.com/TigreGotico/phoonnx/pull/687) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- test: prepare skips a sentence whose ids are empty [\#686](https://github.com/TigreGotico/phoonnx/pull/686) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.113.1a1](https://github.com/TigreGotico/phoonnx/tree/1.113.1a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.0a1...1.113.1a1)
+
+**Merged pull requests:**
+
+- fix: compare a backend-recorded phonemizer\_identity with the backend [\#688](https://github.com/TigreGotico/phoonnx/pull/688) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.113.0a1](https://github.com/TigreGotico/phoonnx/tree/1.113.0a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.112.1a1...1.113.0a1)
+
+## [1.112.1a1](https://github.com/TigreGotico/phoonnx/tree/1.112.1a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.112.0a2...1.112.1a1)
+
+**Merged pull requests:**
+
+- feat: choose the chunk size per call, and read side streams after the stages [\#678](https://github.com/TigreGotico/phoonnx/pull/678) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: pin the F5-TTS voices to Hub configs that select their text function [\#673](https://github.com/TigreGotico/phoonnx/pull/673) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.112.0a2](https://github.com/TigreGotico/phoonnx/tree/1.112.0a2) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.112.0a1...1.112.0a2)
+
+## [1.112.0a1](https://github.com/TigreGotico/phoonnx/tree/1.112.0a1) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.111.0a1...1.112.0a1)
+
+**Merged pull requests:**
+
+- feat: warn at load when the phonemizer differs from training [\#672](https://github.com/TigreGotico/phoonnx/pull/672) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.111.0a1](https://github.com/TigreGotico/phoonnx/tree/1.111.0a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.110.0a1...1.111.0a1)
@@ -177,49 +257,25 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.101.0a1...1.102.0a1)
 
-**Merged pull requests:**
-
-- feat: rapido training engine [\#568](https://github.com/TigreGotico/phoonnx/pull/568) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.101.0a1](https://github.com/TigreGotico/phoonnx/tree/1.101.0a1) (2026-11-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.100.0a2...1.101.0a1)
-
-**Merged pull requests:**
-
-- feat: rapido pt-BR voices in the voice index [\#570](https://github.com/TigreGotico/phoonnx/pull/570) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.100.0a2](https://github.com/TigreGotico/phoonnx/tree/1.100.0a2) (2026-11-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.100.0a1...1.100.0a2)
 
-**Merged pull requests:**
-
-- test: add a sweep that loads and synthesises every index voice [\#569](https://github.com/TigreGotico/phoonnx/pull/569) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.100.0a1](https://github.com/TigreGotico/phoonnx/tree/1.100.0a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.4a1...1.100.0a1)
-
-**Merged pull requests:**
-
-- feat: TTSVoice reads text through scriptconv's TextFrontend [\#566](https://github.com/TigreGotico/phoonnx/pull/566) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.99.4a1](https://github.com/TigreGotico/phoonnx/tree/1.99.4a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.3a2...1.99.4a1)
 
-**Merged pull requests:**
-
-- fix: encode through Tokenizer.compile\(\) on tokenizers 1.0 [\#560](https://github.com/TigreGotico/phoonnx/pull/560) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.99.3a2](https://github.com/TigreGotico/phoonnx/tree/1.99.3a2) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.3a1...1.99.3a2)
-
-**Merged pull requests:**
-
-- Update dependency diffusers to \>=0.43,\<0.44 [\#562](https://github.com/TigreGotico/phoonnx/pull/562) ([renovate[bot]](https://github.com/apps/renovate))
 
 ## [1.99.3a1](https://github.com/TigreGotico/phoonnx/tree/1.99.3a1) (2026-11-15)
 
@@ -329,25 +385,13 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.97.1a1...1.97.1a2)
 
-**Merged pull requests:**
-
-- chore: render voice model cards from the voice config [\#574](https://github.com/TigreGotico/phoonnx/pull/574) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.97.1a1](https://github.com/TigreGotico/phoonnx/tree/1.97.1a1) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.97.0a1...1.97.1a1)
 
-**Merged pull requests:**
-
-- fix: tag the Shami voice as Levantine Arabic \(apc\) [\#572](https://github.com/TigreGotico/phoonnx/pull/572) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.97.0a1](https://github.com/TigreGotico/phoonnx/tree/1.97.0a1) (2026-11-13)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.6a1...1.97.0a1)
-
-**Merged pull requests:**
-
-- feat: rapido flow-matching engine with onnx export [\#567](https://github.com/TigreGotico/phoonnx/pull/567) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.96.6a1](https://github.com/TigreGotico/phoonnx/tree/1.96.6a1) (2026-11-12)
 
@@ -357,26 +401,13 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.4a1...1.96.5a1)
 
-**Merged pull requests:**
-
-- fix\(tests\): read the Spanish ordinal 21 as one word, per the DPD [\#563](https://github.com/TigreGotico/phoonnx/pull/563) ([JarbasAl](https://github.com/JarbasAl))
-- fix\(deps\): take Mirandese and Barranquenho from scriptconv only [\#561](https://github.com/TigreGotico/phoonnx/pull/561) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.96.4a1](https://github.com/TigreGotico/phoonnx/tree/1.96.4a1) (2026-11-11)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.3a1...1.96.4a1)
 
-**Merged pull requests:**
-
-- fix: take default regions from linguatag in normalize\_lang [\#557](https://github.com/TigreGotico/phoonnx/pull/557) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.96.3a1](https://github.com/TigreGotico/phoonnx/tree/1.96.3a1) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.2a2...1.96.3a1)
-
-**Merged pull requests:**
-
-- fix: default Arabic diacritics by language, not by the "ar" prefix [\#555](https://github.com/TigreGotico/phoonnx/pull/555) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.96.2a2](https://github.com/TigreGotico/phoonnx/tree/1.96.2a2) (2026-11-10)
 

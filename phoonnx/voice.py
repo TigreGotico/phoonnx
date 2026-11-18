@@ -13,6 +13,7 @@ import os.path
 import re
 import shutil
 import tempfile
+import threading
 import wave
 import warnings
 import weakref
@@ -25,19 +26,19 @@ from typing import (Any, Callable, Iterable, Iterator, List, Mapping, Optional, 
 import numpy as np
 import onnxruntime
 from linguatag import closest_lang
-from quebra_frases import sentence_tokenize
 from scriptconv.frontend import FrontendConfig, Stages, TextFrontend, spoken_normalizer
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
 from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
-    _removal_version, _side_stream_reader, check_lang_supported
+    _removal_version, check_lang_supported
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.engines.base import (
     AdapterSynthesisRequest,
     AdapterSynthesisResult,
     BaseOnnxAdapter,
+    SIDE_STREAMS,
 )
 from scriptconv.phonemizers.base import BasePhonemizer, PhonemizerIdentity
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
@@ -51,9 +52,6 @@ from phoonnx.util import LOG
 
 # Alias kept for callers that imported the sentinel from here before it moved.
 _UNSET = UNSET
-
-# An inline [[...]] block: its symbols carry no side stream.
-_INLINE_BLOCK = re.compile(r"\[\[.*?\]\]")
 
 
 def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunks:
@@ -325,6 +323,9 @@ class TTSVoice:
     _frontend_phonemizer: Optional[BasePhonemizer] = field(default=None, init=False, repr=False,
                                                            compare=False)
     _frontend_key: Any = field(default=None, init=False, repr=False, compare=False)
+    # The thread of the provenance check; None when the voice has nothing to check.
+    _provenance_thread: Optional[threading.Thread] = field(default=None, init=False, repr=False,
+                                                           compare=False)
 
     def __post_init__(self):
         """
@@ -382,31 +383,65 @@ class TTSVoice:
         # Let the adapter set up engine-specific runtime state (e.g. Matcha
         # building its vocoder from config.engine_params).
         self.adapter.configure(self.config)
-        self._check_provenance(voice_name)
+        self._provenance_thread = self._start_provenance_check(voice_name)
 
-    def _check_provenance(self, voice_name: str) -> None:
+    def _start_provenance_check(self, voice_name: str) -> Optional[threading.Thread]:
+        """Start :meth:`_check_provenance` in a daemon thread, or return None when there is nothing to check.
+
+        The frontend is built here, on the load path as before. Only its
+        ``identity()``, which can take seconds, runs in the thread, so the
+        thread and a first synthesis never build the frontend twice. A frontend
+        that fails to build is built again in the thread, which reports it.
+        """
+        if not self._has_provenance_block():
+            return None
+        try:
+            frontend = self.frontend
+        except Exception:
+            frontend = None
+        thread = threading.Thread(target=self._check_provenance, args=(voice_name, frontend),
+                                  name=f"phoonnx-provenance-{voice_name}", daemon=True)
+        thread.start()
+        return thread
+
+    def _has_provenance_block(self) -> bool:
+        recorded = self.config.phonemizer_identity
+        return not (recorded is None or recorded == {} or self.config.alphabet == Alphabet.GRAPHEMES)
+
+    def _check_provenance(self, voice_name: str, frontend: Optional[TextFrontend] = None) -> None:
         """Warn when the running phonemizer differs from the one the voice was trained with.
 
-        The config's ``phonemizer_identity`` names the phonemizer of training.
-        A field that differs from :meth:`TextFrontend.identity`, by
+        A load runs it in a background thread (:meth:`_start_provenance_check`)
+        and never waits for it, so the warning comes when the thread ends. The config's
+        ``phonemizer_identity`` names the phonemizer of training. A field that
+        differs from the running identity, by
         :meth:`PhonemizerIdentity.differs_from`, gives one warning. A block that
         cannot be read, or a running phonemizer that cannot name itself, gives
-        one warning too. The voice loads in every case. A voice with no block,
-        or one whose engine reads text, is not checked.
+        one warning too. The voice loads in every case. A voice with no block
+        (``phonemizer_identity`` ``None`` or ``{}``), or one whose engine reads
+        text, is not checked.
+
+        A block with no ``frontend`` was trained through the backend alone, so
+        it is compared with the backend's identity. A block with a ``frontend``
+        is compared with :meth:`TextFrontend.identity`.
         """
-        recorded = self.config.phonemizer_identity
-        if not recorded or self.config.alphabet == Alphabet.GRAPHEMES:
+        if not self._has_provenance_block():
             return
+        recorded = self.config.phonemizer_identity
         try:
             trained = PhonemizerIdentity(**recorded)
-            running = self.frontend.identity()
+            if frontend is None:
+                frontend = self.frontend
+            # identity() leaves the backend's engine cache alone, and its revision
+            # probes run in a subprocess, so it needs no lock against a synthesis.
+            running = frontend.identity()
+            if trained.frontend is None:
+                # Preprocessing calls the backend directly and records no frontend version.
+                running = frontend.backend.identity(running.lang)
         except Exception as err:
             LOG.warning(f"Voice {voice_name}: cannot compare phonemizer_identity {recorded!r} "
                         f"with the running phonemizer ({err}). The voice loads without the check.")
             return
-        if trained.frontend is None:
-            # Preprocessing calls the backend directly and records no frontend version.
-            running = replace(running, frontend=None)
         differing = "; ".join(
             f"{name}: trained {getattr(trained, name)!r}, running {getattr(running, name)!r}"
             for name in trained.differs_from(running))
@@ -615,7 +650,8 @@ class TTSVoice:
         if diacritize is None:
             diacritize = self.config.add_diacritics
         return Stages(diacritize=diacritize,
-                      diacritizer_model=syn_config.diacritizer_model or self.config.diacritizer_model)
+                      diacritizer_model=syn_config.diacritizer_model or self.config.diacritizer_model,
+                      chunk=syn_config.chunk)
 
     def phonemize(self, text: str, lang: Optional[str] = None) -> PhonemizedChunks:
         """
@@ -641,13 +677,12 @@ class TTSVoice:
     def _iter_phonemes(
             self, text: str, src_alphabet: Alphabet, tgt_alphabet: Alphabet, stages: Stages,
     ) -> Iterable[Tuple[List[str], Dict[str, List[int]]]]:
-        """Yield ``(phonemes, streams)`` per sentence of *text*, by whichever
+        """Yield ``(phonemes, streams)`` per chunk of *text*, by whichever
         conversion its alphabet calls for. One job: getting phonemes.
 
         ``streams`` holds the per-symbol values a phonemizer gives beside its
-        symbols, keyed by ``AdapterSynthesisRequest`` field (see
-        ``phoonnx.config._side_stream_reader``). Phonemic input and text with
-        inline blocks carry none."""
+        symbols, keyed by ``AdapterSynthesisRequest`` field, such as Shami's
+        ``language_ids`` and dizione's ``stress``. Phonemic input carries none."""
         # Already-phonemic input: transcode to the model's alphabet through
         # scriptconv's graph (a no-op when src == tgt), then split.
         if src_alphabet != Alphabet.GRAPHEMES:
@@ -660,18 +695,10 @@ class TTSVoice:
                 yield phonemes, {}
             return
 
-        read_streams = _side_stream_reader(self.frontend.backend)
-        if read_streams is None or _INLINE_BLOCK.search(text):
-            # Graphemes: the text frontend, one sentence at a time.
-            for phonemes in self.frontend.phonemize_lazy(text, stages):
-                yield phonemes, {}
-            return
-
-        # A phonemizer that tags its symbols reads each sentence after the frontend's stages.
-        lang = stages.lang or self.config.lang_code
-        for sentence in sentence_tokenize(text):
-            if sentence.strip():
-                yield from read_streams(self.frontend.prepare(sentence, stages), lang)
+        # Graphemes: the text frontend reads the whole text, then yields one chunk at a time.
+        for segment in self.frontend.segments(text, stages):
+            yield list(segment.phonemes), {name: list(values) for name, values in segment.streams.items()
+                                           if name in SIDE_STREAMS}
 
     def prepare(self, text: str, config: Optional[SynthesisConfig] = None) -> Iterator[Utterance]:
         """Turn *text* into model input: one :class:`Utterance` per engine call.
@@ -679,13 +706,14 @@ class TTSVoice:
         This is the text half of :meth:`synthesize`. It applies the phonetic
         spellings and reads the text through :attr:`frontend` with the stages of
         *config*. A voice that reads symbols gets them from the frontend one
-        sentence at a time, and :attr:`tokenizer` turns each sentence into ids.
+        chunk at a time, a sentence unless ``config.chunk`` names another size,
+        and :attr:`tokenizer` turns each chunk into ids.
         An engine that reads text gets it from ``frontend.prepare``, and its
         adapter's ``encode_text`` turns the text into ids. Input in a phonemic
         alphabet (``config.alphabet``) is converted to the voice's alphabet and
         is not phonemized.
 
-        The method is a generator, so the second sentence is read only after
+        The method is a generator, so the second chunk is read only after
         the caller has rendered the first. An utterance with no ids is not
         yielded.
 

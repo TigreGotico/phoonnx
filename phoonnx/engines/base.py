@@ -19,6 +19,10 @@ import onnxruntime
 from scriptconv.frontend import Stages
 
 
+#: The request fields that hold one value per phoneme id, as a phonemizer's side streams fill them.
+SIDE_STREAMS = ("language_ids", "stress")
+
+
 @dataclass
 class AdapterSynthesisRequest:
     """Architecture-agnostic container for a single synthesis call."""
