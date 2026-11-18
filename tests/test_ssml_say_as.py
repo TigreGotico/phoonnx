@@ -7,16 +7,21 @@ of the text, and an ``expletive`` is a bleep that "does not call text2spoken".
 Each expected reading is text2spoken called directly with ``say_as=SayAs(...)``, or a row of the
 design's own table (17.9) with its cited source.
 """
+import json
 import types
 import warnings
+from pathlib import Path
 from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 import text2spoken
+from scriptconv.frontend import FrontendConfig, TextFrontend
+from scriptconv.phonemizers.dizione import DizionePhonemizer
 from text2spoken import SayAs
 
 import phoonnx.voice
-from phoonnx.config import Alphabet, PhonemeType, VoiceConfig
+from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig, VoiceConfig
 from phoonnx.ssml import parse_ssml
 from phoonnx.voice import TTSVoice
 
@@ -139,13 +144,63 @@ def test_a_text_with_no_such_value_gives_the_plain_reading():
 
 def test_an_expletive_is_a_bleep_and_does_not_call_the_hook():
     voice = _voice()
-    voice.phonemizer.normalizer = MagicMock(side_effect=AssertionError("the hook ran"))
+    calls = []
+    voice.phonemizer.normalizer = lambda text, lang, say_as=None: calls.append(text) or text
     got = parse_ssml('<speak>oh <say-as interpret-as="expletive">darn</say-as> well</speak>', "en-US",
                      voice.frontend)
     assert [(p.text, p.sound) for p in got] == [("oh", None), ("", ("beep", 350, 1.0)), ("well", None)]
+    assert calls == []
 
 
 def test_with_no_frontend_a_say_as_reads_as_written(caplog):
     (piece,) = parse_ssml('<speak><say-as interpret-as="ordinal">3</say-as></speak>', "en-US")
     assert piece.text == "3"
     assert "needs a text frontend" in caplog.text
+
+
+TINYVOCA = Path(__file__).parent / "fixtures" / "tinyvoca_config.json"
+PLAIN = ["I have 3 cats.", "It is 2026-11-09, at 9:21 PM.", "Dr. Patel paid $12.99 for the book",
+         "Call 555-0199 before the 21st."]
+
+
+def _tinyvoca():
+    """The dizione fixture voice: its backend owns the ``normalize`` stage."""
+    adapter = MagicMock()
+    adapter.default_params.return_value = {}
+    adapter.synthesize.return_value = types.SimpleNamespace(audio=np.zeros(4, np.float32), extras={})
+    config = VoiceConfig.from_dict(json.loads(TINYVOCA.read_text()))
+    return TTSVoice(session=MagicMock(), config=config, adapter=adapter)
+
+
+def _sent_ids(voice):
+    ids = [i for call in voice.adapter.synthesize.call_args_list for i in call.args[0].phoneme_ids[0].tolist()]
+    voice.adapter.synthesize.reset_mock()
+    return ids
+
+
+@pytest.mark.parametrize("interpret_as, text", [("ordinal", "3"), ("date", "2026-11-09"), ("characters", "XK7")])
+def test_a_backend_that_owns_normalize_reads_a_say_as_through_the_hook(interpret_as, text):
+    """text2spoken-design.md 17.8: for a backend that owns ``normalize``, "The hook still runs for the say-as"."""
+    voice = _tinyvoca()
+    assert "normalize" in voice.frontend.backend.owned_stages
+    expected = text2spoken.normalize(text, "en-US", say_as=SayAs(interpret_as=interpret_as))
+    assert expected != text
+    (piece,) = parse_ssml(f'<speak><say-as interpret-as="{interpret_as}">{text}</say-as></speak>', "en-US",
+                          voice.frontend)
+    assert piece.text == expected
+    list(voice.synthesize_ssml(f'<speak><say-as interpret-as="{interpret_as}">{text}</say-as></speak>',
+                               SynthesisConfig(normalize_audio=False)))
+    got = _sent_ids(voice)
+    list(voice.synthesize(expected, SynthesisConfig(normalize_audio=False)))
+    assert got == _sent_ids(voice)
+
+
+@pytest.mark.parametrize("text", PLAIN)
+def test_a_backend_that_owns_normalize_reads_plain_text_without_the_hook(text):
+    """The hook reads only the say-as: dizione still reads the plain text with its own rules."""
+    voice = _tinyvoca()
+    own = TextFrontend(FrontendConfig(lang="en-US", normalizer=None, keep_punctuation=True),
+                       backend=DizionePhonemizer())
+    assert voice.frontend.phonemize(text) == own.phonemize(text)
+    list(voice.synthesize(text, SynthesisConfig(normalize_audio=False)))
+    assert _sent_ids(voice) == list(DizionePhonemizer().tokens(text).ids)

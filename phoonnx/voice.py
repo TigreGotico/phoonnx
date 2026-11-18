@@ -26,7 +26,7 @@ import numpy as np
 import onnxruntime
 from linguatag import closest_lang
 from quebra_frases import sentence_tokenize
-from scriptconv.frontend import FrontendConfig, Stages, TextFrontend
+from scriptconv.frontend import FrontendConfig, Stages, TextFrontend, spoken_normalizer
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
@@ -573,7 +573,9 @@ class TTSVoice:
         frontend's normalisation hook, so it runs before diacritization, and the
         frontend reads a copy of the phonemizer without it. Every voice runs the
         hook. The frontend skips it for a backend that names ``normalize`` in its
-        ``owned_stages``, because that backend normalises the text itself.
+        ``owned_stages``, because that backend normalises the text itself. Such a
+        phonemizer has no ``normalizer``, so its frontend gets
+        :func:`scriptconv.frontend.spoken_normalizer`, which reads only a ``<say-as>``.
 
         Assigning another phonemizer to :attr:`phonemizer`, as the Vosk voices
         do once their dictionary is known, reaches the frontend through
@@ -585,8 +587,11 @@ class TTSVoice:
         key = (self.config.phoneme_type, self.config.lang_code,
                phonemizer.keep_punctuation, phonemizer.normalizer)
         if self._frontend is None or key != self._frontend_key:
+            normalizer = phonemizer.normalizer
+            if normalizer is None and "normalize" in phonemizer.owned_stages:
+                normalizer = spoken_normalizer()
             self._frontend = TextFrontend(
-                FrontendConfig(lang=self.config.lang_code, normalizer=phonemizer.normalizer,
+                FrontendConfig(lang=self.config.lang_code, normalizer=normalizer,
                                keep_punctuation=phonemizer.keep_punctuation),
                 backend=self._without_normalizer(phonemizer))
             self._frontend_key = key
