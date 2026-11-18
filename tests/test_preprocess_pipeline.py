@@ -15,6 +15,7 @@ import json
 import queue
 import sys
 import unittest
+from functools import partial
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -23,9 +24,10 @@ import numpy as np
 import soundfile as sf
 import torch
 
-from phoonnx.config import Alphabet, PhonemeType
+from phoonnx.config import Alphabet, PhonemeType, voice_frontend
 from phoonnx_train import preprocess
 from phoonnx_train.dataset_loaders import PreprocessorConfig, Utterance
+import scriptconv.frontend as scriptconv_frontend
 from scriptconv.phonemizers.base import GraphemePhonemizer
 
 # This module both runs real torch ops in-process (via direct
@@ -45,13 +47,12 @@ def _wav_bytes(seconds: float = 0.5, sr: int = 16000) -> bytes:
     return buf.getvalue()
 
 
-class _DummyPhonemizer:
+class _DummyPhonemizer(GraphemePhonemizer):
     """Mirrors test_dataset_loaders' stub: no real phonemizer backend needed
     since every row supplies precomputed phonemes via --phonemes-column."""
-    alphabet = Alphabet.IPA
 
-    def phonemize_to_list(self, text, lang):
-        return list(text.replace(" ", ""))
+    def __init__(self):
+        super().__init__(Alphabet.IPA)
 
     def identity(self, lang):
         from scriptconv.phonemizers.base import PhonemizerIdentity
@@ -790,13 +791,10 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
         task_q.put(list(utterances))
         task_q.put(None)
 
-        class _Phonemizer:
-            def phonemize_to_list(self, text, lang):
-                return list(text.replace(" ", "")) or []
-
         with patch.object(preprocess, "make_silence_detector",
                            return_value=_FakeSilenceDetector()):
-            preprocess.phonemize_worker(config, task_q, result_q, _Phonemizer)
+            preprocess.phonemize_worker(config, task_q, result_q, partial(
+                voice_frontend, GraphemePhonemizer(), config.language))
         results = []
         while not result_q.empty():
             results.append(result_q.get())
@@ -819,10 +817,11 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
             tmp = Path(tmp)
             config = self._config(tmp, skip_audio=True, add_diacritics=True, language="ar")
             utt = Utterance(text="hi", audio_path=tmp / "a.wav")
-            with patch.object(preprocess, "diacritize", side_effect=lambda text, lang: f"D{lang}{text}"):
+            with patch.object(scriptconv_frontend, "diacritize",
+                              side_effect=lambda text, lang, **_: f"D{lang}{text}"):
                 results = self._run_worker(config, [utt])
         processed, _ = results[0]
-        self.assertEqual(processed.phonemes, list("Darhi"))
+        self.assertEqual(processed.phonemes, list("darhi"))
 
     def test_add_diacritics_runs_on_a_real_phonemizer(self):
         """A real backend has no diacritics method: scriptconv owns that stage."""
@@ -833,8 +832,10 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
             task_q.put([Utterance(text="hi", audio_path=tmp / "a.wav")])
             task_q.put(None)
             with patch.object(preprocess, "make_silence_detector", return_value=_FakeSilenceDetector()), \
-                    patch.object(preprocess, "diacritize", side_effect=lambda text, lang: text + "a"):
-                preprocess.phonemize_worker(config, task_q, result_q, GraphemePhonemizer)
+                    patch.object(scriptconv_frontend, "diacritize",
+                                 side_effect=lambda text, lang, **_: text + "a"):
+                preprocess.phonemize_worker(config, task_q, result_q, partial(
+                    voice_frontend, GraphemePhonemizer(), config.language))
         processed, _ = result_q.get()
         self.assertIsNotNone(processed)
         self.assertEqual("".join(processed.phonemes), "hia")

@@ -1,3 +1,4 @@
+import copy
 import warnings
 from dataclasses import dataclass, field
 from enum import Enum
@@ -80,7 +81,7 @@ ENGINE_ALIASES = {"kokoro": Engine.STYLETTS2.value}
 # (not redefinition) keeps enum identity: values stored in voice configs and
 # pickles resolve to the same class everywhere.
 from scriptconv.phonemizers.enums import Alphabet, Phonemizer as PhonemeType
-from scriptconv.frontend import Chunk
+from scriptconv.frontend import Chunk, FrontendConfig, Stages, TextFrontend, spoken_normalizer
 
 @dataclass
 class VoiceConfig:
@@ -682,6 +683,37 @@ def _voice_phonemizer(phoneme_type: PhonemeType,
         phonemizer.normalizer = text2spoken.normalize
     phonemizer.keep_punctuation = keep_punctuation
     return phonemizer
+
+
+def without_normalizer(phonemizer: 'Phonemizer') -> 'Phonemizer':
+    """*phonemizer*, or a shallow copy of it with no ``normalizer``."""
+    if phonemizer.normalizer is None:
+        return phonemizer
+    backend = copy.copy(phonemizer)
+    backend.normalizer = None
+    return backend
+
+
+def voice_frontend(phonemizer: 'Phonemizer', lang: str, stages: Stages = Stages()) -> TextFrontend:
+    """The text frontend of a voice that reads *phonemizer*, in language *lang*.
+
+    The phonemizer's ``normalizer`` becomes the frontend's normalisation hook
+    and the frontend reads a copy of the phonemizer without it. The frontend
+    skips the hook for a backend that names ``normalize`` in its
+    ``owned_stages``, because that backend normalises the text itself. Such a
+    phonemizer has no ``normalizer``, so its frontend gets
+    :func:`scriptconv.frontend.spoken_normalizer`, which reads only a ``<say-as>``.
+    Inference (:attr:`phoonnx.voice.TTSVoice.frontend`) and dataset building
+    (``phoonnx_train.preprocess``) both build their frontend here, so a text
+    gives the same phonemes in both.
+    """
+    normalizer = phonemizer.normalizer
+    if normalizer is None and "normalize" in phonemizer.owned_stages:
+        normalizer = spoken_normalizer()
+    return TextFrontend(
+        FrontendConfig(lang=lang, normalizer=normalizer, keep_punctuation=phonemizer.keep_punctuation,
+                       stages=stages),
+        backend=without_normalizer(phonemizer))
 
 
 def get_phonemizer(phoneme_type: PhonemeType,

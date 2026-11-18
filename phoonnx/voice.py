@@ -6,7 +6,6 @@ all ONNX-specific I/O to an engine adapter (``phoonnx.engines``),
 which means the same TTSVoice class works for VITS or
 any future architecture without code changes here.
 """
-import copy
 import hashlib
 import json
 import os.path
@@ -26,12 +25,12 @@ from typing import (Any, Callable, Iterable, Iterator, List, Mapping, Optional, 
 import numpy as np
 import onnxruntime
 from linguatag import closest_lang
-from scriptconv.frontend import FrontendConfig, Stages, TextFrontend, spoken_normalizer
+from scriptconv.frontend import Stages, TextFrontend
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
 from phoonnx.config import VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
-    _removal_version, check_lang_supported
+    _removal_version, check_lang_supported, voice_frontend, without_normalizer
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.engines.base import (
@@ -624,27 +623,12 @@ class TTSVoice:
         key = (self.config.phoneme_type, self.config.lang_code,
                phonemizer.keep_punctuation, phonemizer.normalizer)
         if self._frontend is None or key != self._frontend_key:
-            normalizer = phonemizer.normalizer
-            if normalizer is None and "normalize" in phonemizer.owned_stages:
-                normalizer = spoken_normalizer()
-            self._frontend = TextFrontend(
-                FrontendConfig(lang=self.config.lang_code, normalizer=normalizer,
-                               keep_punctuation=phonemizer.keep_punctuation),
-                backend=self._without_normalizer(phonemizer))
+            self._frontend = voice_frontend(phonemizer, self.config.lang_code)
             self._frontend_key = key
         elif phonemizer is not self._frontend_phonemizer:
-            self._frontend = self._frontend.with_backend(self._without_normalizer(phonemizer))
+            self._frontend = self._frontend.with_backend(without_normalizer(phonemizer))
         self._frontend_phonemizer = phonemizer
         return self._frontend
-
-    @staticmethod
-    def _without_normalizer(phonemizer: BasePhonemizer) -> BasePhonemizer:
-        """*phonemizer*, or a shallow copy of it with no ``normalizer``."""
-        if phonemizer.normalizer is None:
-            return phonemizer
-        backend = copy.copy(phonemizer)
-        backend.normalizer = None
-        return backend
 
     def _stages(self, syn_config: SynthesisConfig) -> Stages:
         """The text stages of one synthesis call: an explicit setting wins, then the voice's own."""
