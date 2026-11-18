@@ -15,7 +15,7 @@ import click
 import torch
 from tqdm import tqdm
 
-from phoonnx.config import PhonemeType, get_phonemizer, Alphabet
+from phoonnx.config import PhonemeType, get_phonemizer, get_text_casing, Alphabet
 from scriptconv.diacritics import diacritize
 from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, \
     phoneme_map_seed, untrained_map_symbols, \
@@ -23,7 +23,7 @@ from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_
 from text2spoken import normalize
 from phoonnx.version import VERSION_STR
 from phoonnx_train.dataset_loaders import (PreprocessorConfig, Utterance,
-                                           ensure_audio_path, get_text_casing,
+                                           ensure_audio_path,
                                            known_loaders, load_source)
 from phoonnx_train.norm_audio import cache_norm_audio, make_silence_detector
 from phoonnx_train.quality_filter import (FilterSpec, apply_quality_filters,
@@ -892,6 +892,7 @@ def cli(
         "phoneme_type": config.phoneme_type.value,
         "phonemizer_model": config.phonemizer_model,
         "keep_punctuation": keep_punctuation,
+        "text_casing": config.text_casing,
         "phoneme_id_map": final_phoneme_id_map,
         "num_symbols": prev_num_symbols if prev_config else len(final_phoneme_id_map),
         "num_speakers": len(speaker_counts) if is_multispeaker else 1,

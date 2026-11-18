@@ -1,7 +1,7 @@
 import warnings
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Mapping, Optional, Union, Dict
+from typing import Any, Callable, Mapping, Optional, Union, Dict
 
 import text2spoken
 
@@ -81,6 +81,25 @@ ENGINE_ALIASES = {"kokoro": Engine.STYLETTS2.value}
 # pickles resolve to the same class everywhere.
 from scriptconv.phonemizers.enums import Alphabet, Phonemizer as PhonemeType
 from scriptconv.frontend import Chunk
+
+def get_text_casing(casing: str) -> Callable[[str], str]:
+    """
+    Returns a function to apply text casing based on a string name.
+
+    Args:
+        casing: The name of the casing function ('lower', 'upper', 'casefold', or 'ignore').
+
+    Returns:
+        A callable function (str) -> str.
+    """
+    if casing == "lower":
+        return str.lower
+    if casing == "upper":
+        return str.upper
+    if casing == "casefold":
+        return str.casefold
+    return lambda s: s
+
 
 @dataclass
 class VoiceConfig:
@@ -207,6 +226,14 @@ class VoiceConfig:
     symbols it learned and nothing else. Piper voices are trained with it.
     phoonnx datasets record it in ``config.json`` from preprocessing; a phoonnx
     config without the key was trained without it.
+    """
+
+    text_casing: str = "ignore"
+    """The casing training applied to the text before phonemization: ``lower``,
+    ``upper``, ``casefold`` or ``ignore``. Synthesis applies the same casing,
+    after normalisation, so the model reads the text as it learned it.
+    phoonnx datasets record it in ``config.json`` from preprocessing; a config
+    without the key applies none.
     """
 
     def __post_init__(self):
@@ -351,6 +378,7 @@ class VoiceConfig:
             engine=loaded.engine,
             phonemizer_model=config.get("phonemizer_model"),
             keep_punctuation=bool(config.get("keep_punctuation", loaded.keep_punctuation)),
+            text_casing=config.get("text_casing", "ignore"),
             phonemizer_identity=config.get("phonemizer_identity"),
             phoneme_type=loaded.phoneme_type,
             speaker_id_map=config.get("speaker_id_map", {}),
@@ -403,6 +431,7 @@ class VoiceConfig:
             "lang_tokens": dict(self.lang_tokens or {}),
             "phonemizer_model": self.phonemizer_model,
             "keep_punctuation": self.keep_punctuation,
+            "text_casing": self.text_casing,
             "inference": {
                 "noise_scale": self.noise_scale,
                 "length_scale": self.length_scale,

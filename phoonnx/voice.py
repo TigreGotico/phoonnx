@@ -31,7 +31,7 @@ from scriptconv.frontend import FrontendConfig, Stages, TextFrontend, spoken_nor
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
 from phoonnx.config import VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
-    _removal_version, check_lang_supported
+    _removal_version, check_lang_supported, get_text_casing
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.engines.base import (
@@ -653,7 +653,8 @@ class TTSVoice:
             diacritize = self.config.add_diacritics
         return Stages(diacritize=diacritize,
                       diacritizer_model=syn_config.diacritizer_model or self.config.diacritizer_model,
-                      chunk=syn_config.chunk)
+                      chunk=syn_config.chunk,
+                      casing=get_text_casing(self.config.text_casing))
 
     def phonemize(self, text: str, lang: Optional[str] = None) -> PhonemizedChunks:
         """
