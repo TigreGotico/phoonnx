@@ -7,8 +7,6 @@ import json
 import types
 from unittest.mock import MagicMock
 
-import pytest
-
 from phoonnx.config import SynthesisConfig, VoiceConfig
 from phoonnx.encoders import SymbolEncoder, TextEncoder, Utterance
 from phoonnx.engines import get_adapter
@@ -69,20 +67,6 @@ def test_text_encoder_whole_text_hands_the_prepared_text_over_once():
     utterances = list(encoder.encode("x", SynthesisConfig()))
     assert seen == ["One. Two."]
     assert [(u.text, u.ids) for u in utterances] == [(None, (1,)), (None, (2,))]
-
-
-def test_text_encoder_cuts_a_chunk_longer_than_the_budget_at_word_gaps():
-    # one id per word, so the budget of 3 holds three words
-    encoder = TextEncoder(_frontend([_segment("a b c d e f g")]),
-                          lambda text, config: [list(range(len(text.split())))], max_tokens=3)
-    assert [u.text for u in encoder.encode("x", SynthesisConfig())] == ["a b c", "d e f", "g"]
-
-
-def test_text_encoder_refuses_a_word_longer_than_the_budget():
-    encoder = TextEncoder(_frontend([_segment("a bbb c")]),
-                          lambda text, config: [list(range(len(text.replace(" ", ""))))], max_tokens=2)
-    with pytest.raises(ValueError, match="longer than 2 tokens"):
-        list(encoder.encode("x", SynthesisConfig()))
 
 
 def test_text_encoder_reads_symbols_as_the_text_they_spell():

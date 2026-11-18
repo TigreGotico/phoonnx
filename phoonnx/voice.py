@@ -34,12 +34,11 @@ from phoonnx.config import VoiceConfig, SynthesisConfig, Alphabet, _voice_phonem
     _removal_version, check_lang_supported
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
-from phoonnx.encoders import Encoder, SymbolEncoder, Utterance, stages_of
+from phoonnx.encoders import SIDE_STREAMS, Encoder, SymbolEncoder, Utterance, stages_of
 from phoonnx.engines.base import (
     AdapterSynthesisRequest,
     AdapterSynthesisResult,
     BaseOnnxAdapter,
-    SIDE_STREAMS,
 )
 from scriptconv.phonemizers.base import BasePhonemizer, PhonemizerIdentity
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
@@ -714,12 +713,9 @@ class TTSVoice:
 
         This is the text half of :meth:`synthesize`. It applies the phonetic
         spellings and reads the text through :attr:`frontend` with the stages of
-        *config*. A voice that reads symbols gets them from the frontend one
-        chunk at a time, a sentence unless ``config.chunk`` names another size,
-        and :attr:`tokenizer` turns each chunk into ids.
-        :attr:`encoder` turns the text into ids: symbols through :attr:`tokenizer`, or the
-        staged text of each chunk through the engine's own tokenizer. Input in a phonemic
-        alphabet (``config.alphabet``) is converted to the voice's alphabet, is not
+        *config*. :attr:`encoder` turns each chunk into ids, a sentence unless
+        ``config.chunk`` names another size. Input in a phonemic alphabet
+        (``config.alphabet``) is converted to the voice's alphabet, is not
         phonemized, and goes to ``encoder.encode_symbols``.
 
         The method is a generator, so the second chunk is read only after
@@ -729,8 +725,7 @@ class TTSVoice:
         :param text: The text to read.
         :param config: The synthesis settings. Only the text settings apply.
         """
-        if config is None:
-            config = SynthesisConfig()
+        config = self._with_voice_defaults(config or SynthesisConfig())
         LOG.debug("text=%s", text)
         spoken = text
         if self.phonetic_spellings and config.enable_phonetic_spellings:
@@ -738,11 +733,11 @@ class TTSVoice:
 
         src_alphabet = config.alphabet if config.alphabet is not None else Alphabet.GRAPHEMES
         if src_alphabet == Alphabet.GRAPHEMES:
-            yield from self.encoder.encode(spoken, self._with_voice_defaults(config))
+            yield from self.encoder.encode(spoken, config)
             return
 
         for symbols, _, _ in self._iter_phonemes(spoken, src_alphabet, self.config.alphabet,
-                                                 self._stages(config)):
+                                                 stages_of(config)):
             if symbols:
                 utterance = self.encoder.encode_symbols(symbols, config)
                 if utterance.ids:

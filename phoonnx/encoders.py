@@ -82,9 +82,7 @@ class SymbolEncoder:
 class TextEncoder:
     """The staged text of each frontend chunk, tokenized by the engine's own tokenizer.
 
-    ``tokenize(text, config)`` returns one id list per engine call that the text needs. A chunk
-    that gives more than ``max_tokens`` ids is cut at word gaps into pieces that fit, and a word
-    longer than ``max_tokens`` raises ``ValueError``.
+    ``tokenize(text, config)`` returns one id list per engine call that the text needs.
 
     With ``whole_text`` the encoder gives ``tokenize`` the whole staged text in one call, as the
     ``encode_text`` of an adapter expects, and that adapter cuts the text itself.
@@ -92,7 +90,6 @@ class TextEncoder:
 
     frontend: TextFrontend
     tokenize: Callable[[str, SynthesisConfig], List[List[int]]]
-    max_tokens: Optional[int] = None
     whole_text: bool = False
 
     def encode(self, text: str, config: SynthesisConfig) -> Iterator[Utterance]:
@@ -106,35 +103,12 @@ class TextEncoder:
                     yield Utterance(text=chunk_text, symbols=None, ids=tuple(ids))
             return
         for segment in self.frontend.segments(text, stages):
-            for piece in self._fit(segment.text, config):
-                for ids in self.tokenize(piece, config):
-                    if ids:
-                        yield Utterance(text=piece, symbols=None, ids=tuple(ids))
+            for ids in self.tokenize(segment.text, config):
+                if ids:
+                    yield Utterance(text=segment.text, symbols=None, ids=tuple(ids))
 
     def encode_symbols(self, symbols: Sequence[str], config: SynthesisConfig) -> Utterance:
         """A text engine reads symbols as the text they spell."""
         text = "".join(symbols)
         ids = [i for chunk in self.tokenize(text, config) for i in chunk]
         return Utterance(text=text, symbols=tuple(symbols), ids=tuple(ids))
-
-    def _fit(self, text: str, config: SynthesisConfig) -> List[str]:
-        """*text*, or pieces of it that each tokenize to at most ``max_tokens`` ids."""
-        if self.max_tokens is None or self._length(text, config) <= self.max_tokens:
-            return [text]
-        pieces: List[str] = []
-        current = ""
-        for word in text.split():
-            candidate = f"{current} {word}" if current else word
-            if self._length(candidate, config) <= self.max_tokens:
-                current = candidate
-            elif current:
-                pieces.append(current)
-                current = word
-            else:
-                raise ValueError(f"one word is longer than {self.max_tokens} tokens")
-            if self._length(current, config) > self.max_tokens:
-                raise ValueError(f"one word is longer than {self.max_tokens} tokens")
-        return pieces + [current]
-
-    def _length(self, text: str, config: SynthesisConfig) -> int:
-        return sum(len(ids) for ids in self.tokenize(text, config))

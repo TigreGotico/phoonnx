@@ -19,7 +19,7 @@ import numpy as np
 import onnxruntime
 from scriptconv.frontend import Stages, TextFrontend
 
-from phoonnx.encoders import SIDE_STREAMS, Encoder, SymbolEncoder, TextEncoder
+from phoonnx.encoders import Encoder, SymbolEncoder, TextEncoder
 
 
 @dataclass
