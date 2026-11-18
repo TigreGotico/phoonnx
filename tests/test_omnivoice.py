@@ -754,3 +754,38 @@ def test_reference_cache_never_pairs_one_clips_key_with_anothers_codes():
     assert ad.encode_reference(clip(1.0), 24000)[0][0, 0] == 1
     assert seen == [1]
     assert ad.encode_reference(clip(2.0), 24000)[0][0, 0] == 2
+
+
+def test_reference_encoders_run_once_per_distinct_clip():
+    """The same clip twice runs each encoder once; a different clip runs them again."""
+    class _Counting:
+        def __init__(self, fn):
+            self.fn = fn
+            self.runs = 0
+
+        def run(self, _names, feed):
+            self.runs += 1
+            return [self.fn(feed)]
+
+    sessions = {
+        "acoustic_encoder": _Counting(lambda f: np.full((1, 1, 4), f["waveform_24k"][0, 0, 0], np.float32)),
+        "semantic_encoder": _Counting(lambda f: np.zeros((1, 1, 4), np.float32)),
+        "quantizer_encoder": _Counting(lambda f: np.full(
+            (1, NUM_CODEBOOKS, 4), f["acoustic_features"][0, 0, 0], np.float32)),
+    }
+    ad = OmniVoiceAdapter()
+    ad._cloning_session = lambda attr, _path: sessions[attr]
+    ad._preprocess_reference = lambda audio, sr: (audio.reshape(-1), 0.1)
+
+    def clip(clip_id):
+        return np.full(2400, clip_id, np.float32)
+
+    def runs():
+        return [s.runs for s in sessions.values()]
+
+    assert ad.encode_reference(clip(1.0), 24000)[0][0, 0] == 1
+    assert runs() == [1, 1, 1]
+    assert ad.encode_reference(clip(1.0), 24000)[0][0, 0] == 1     # same clip, cache hit
+    assert runs() == [1, 1, 1]
+    assert ad.encode_reference(clip(2.0), 24000)[0][0, 0] == 2     # different clip
+    assert runs() == [2, 2, 2]
