@@ -1082,9 +1082,12 @@ class TestWorkersBuildTheirOwnPhonemizer(unittest.TestCase):
             _jsonl(src, [{"text": "hi", "audio": "a.wav"},
                          {"text": "there", "audio": "b.wav"}])
             out = tmp / "out"
+            # The queues must come from the same context as the processes.
+            forkserver = multiprocessing.get_context("forkserver")
             with patch.object(preprocess, "get_phonemizer", side_effect=with_native_handle), \
-                    patch.object(preprocess, "Process",
-                                 multiprocessing.get_context("forkserver").Process):
+                    patch.object(preprocess, "Process", forkserver.Process), \
+                    patch.object(preprocess, "Queue", forkserver.Queue), \
+                    patch.object(preprocess, "JoinableQueue", forkserver.JoinableQueue):
                 result = click.testing.CliRunner().invoke(preprocess.cli, [
                     "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
                     "--phoneme-type", "graphemes", "--alphabet", "unicode",
