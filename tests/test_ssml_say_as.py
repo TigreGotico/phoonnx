@@ -200,7 +200,7 @@ def test_a_backend_that_owns_normalize_reads_plain_text_without_the_hook(text):
     """The hook reads only the say-as: dizione still reads the plain text with its own rules."""
     voice = _tinyvoca()
     own = TextFrontend(FrontendConfig(lang="en-US", normalizer=None, keep_punctuation=True),
-                       backend=DizionePhonemizer())
+                       backend=DizionePhonemizer(tokens=True))
     assert voice.frontend.phonemize(text) == own.phonemize(text)
     list(voice.synthesize(text, SynthesisConfig(normalize_audio=False)))
     assert _sent_ids(voice) == list(DizionePhonemizer().tokens(text).ids)
