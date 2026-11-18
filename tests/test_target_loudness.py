@@ -6,7 +6,7 @@ from unittest import mock
 import numpy as np
 
 from phoonnx.config import SynthesisConfig
-from phoonnx.engines.outetts import integrated_loudness
+from phoonnx.audio_fx import integrated_loudness
 from phoonnx.voice import level_audio
 
 RATE = 22050

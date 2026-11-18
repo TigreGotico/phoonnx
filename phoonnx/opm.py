@@ -473,6 +473,7 @@ class PhoonnxTTSPlugin(TTS):
                 # chunk, so the WAV header follows.
                 super_resolution=bool(self._cfg_opt(False, "super_resolution")),
                 super_resolution_model=self._cfg_opt(None, "super_resolution_model"),
+                chunk=self._cfg_opt(None, "chunk"),
             )
             # Written beside the target and moved into place only once the
             # synthesis has finished. Opening the target directly creates it

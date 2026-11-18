@@ -33,6 +33,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import onnxruntime
 
+from phoonnx._onnx_external import external_data_locations
 from phoonnx.util import LOG
 
 #: A provider is either a name or a ``(name, options)`` pair.
@@ -259,17 +260,27 @@ def _external_data_paths(*model_paths: str) -> List[str]:
     sidecars sit alongside *it*, resolving to ``blobs/<sha>`` with nothing
     beside the blob. The first location that has any sidecar is the one
     onnxruntime reads, so its sidecars are the ones returned.
+
+    The file names the graph itself gives in its ``external_data`` entries
+    count too, so a graph that names another file (``moss_encode.data``) is
+    keyed on that file.
     """
+    try:
+        named = external_data_locations(model_paths[0]) if model_paths else []
+    except (OSError, ValueError):
+        named = []
     for model_path in model_paths:
+        folder = os.path.dirname(model_path)
         found = [candidate
-                 for candidate in (f"{model_path}_data", f"{model_path}.data")
+                 for candidate in (f"{model_path}_data", f"{model_path}.data",
+                                   *(os.path.join(folder, name) for name in named))
                  if os.path.isfile(candidate)]
         number = 1
         while os.path.isfile(f"{model_path}_data_{number}"):
             found.append(f"{model_path}_data_{number}")
             number += 1
         if found:
-            return sorted(found)
+            return sorted(set(found))
     return []
 
 

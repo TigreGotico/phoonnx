@@ -34,14 +34,13 @@ first sentence becomes audio before the second sentence is phonemized. Step by s
 2. **Text frontend** — `TTSVoice.frontend` is a scriptconv `TextFrontend` over the voice's
    [phonemizer](phonemizers.md). It runs a fixed order: it splits out inline `[[...]]`
    blocks, normalizes the whole text, splits it into sentences, adds diacritics when
-   the voice or the call asks for them, and then runs the phonemizer. The side-stream
-   path below still splits the raw text into sentences before it normalizes each one. The symbols of a block
+   the voice or the call asks for them, and then runs the phonemizer. The symbols of a block
    go into the output as written. A per-call `SynthesisConfig.add_diacritics` wins; when it
    is unset, the voice config decides, so an undiacritized model is never force-diacritized.
    An engine that reads text instead of phonemes gets the text from `TextFrontend.prepare`,
    after the same normalization and diacritics as a phoneme voice.
-   Some phonemizers give a value per symbol beside the symbols: Shami a language ID
-   (`phonemize_with_language_ids_lazy`), dizione a stress value (`tokens`). Each reaches the
+   Some phonemizers give a value per symbol beside the symbols, in the `streams` of each
+   segment from `phonemize_segments`: Shami a language ID, dizione a stress value. Each reaches the
    engine as the request field of the same name (`language_ids`, `stress`), one value per
    phoneme ID.
 3. **Tokenize** — the `TTSTokenizer` maps phonemes/characters to integer IDs using the

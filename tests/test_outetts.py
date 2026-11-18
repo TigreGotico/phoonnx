@@ -12,11 +12,12 @@ import numpy as np
 import pytest
 
 from phoonnx.engines.base import AdapterSynthesisRequest
+from phoonnx.audio_fx import integrated_loudness, normalize_loudness
 from phoonnx.engines.outetts import (
     AUDIO_END, AUDIO_START, BOS, C1, C2, CODE, CODEBOOK_TOKENS, EOS, FEATURES,
     REPETITION_WINDOW, SAMPLE_RATE, TEXT_END, TEXT_START, WORD_END, WORD_START,
     OuteTTSAdapter, _apply_repetition_penalty, _sample, chunk_text,
-    integrated_loudness, normalize_loudness, split_into_sentences, text_normalizations,
+    split_into_sentences, text_normalizations,
 )
 
 LAYERS = 2
@@ -729,41 +730,41 @@ def _sine(seconds=3.0, amplitude=0.5, freq=1000.0):
 
 
 def test_integrated_loudness_tracks_amplitude_by_the_decibel():
-    loud = integrated_loudness(_sine(amplitude=0.5))
-    quiet = integrated_loudness(_sine(amplitude=0.25))
+    loud = integrated_loudness(_sine(amplitude=0.5), SAMPLE_RATE)
+    quiet = integrated_loudness(_sine(amplitude=0.25), SAMPLE_RATE)
     assert loud - quiet == pytest.approx(6.02, abs=0.05)
 
 
 def test_integrated_loudness_of_silence_is_minus_infinity():
-    assert integrated_loudness(np.zeros(SAMPLE_RATE, np.float32)) == -np.inf
+    assert integrated_loudness(np.zeros(SAMPLE_RATE, np.float32), SAMPLE_RATE) == -np.inf
 
 
 def test_integrated_loudness_of_a_too_short_clip_is_minus_infinity():
-    assert integrated_loudness(_sine(seconds=0.1)) == -np.inf
+    assert integrated_loudness(_sine(seconds=0.1), SAMPLE_RATE) == -np.inf
 
 
 def test_normalize_loudness_hits_the_target():
-    out = normalize_loudness(_sine(amplitude=0.2), target=-18.0)
-    assert integrated_loudness(out) == pytest.approx(-18.0, abs=0.1)
+    out = normalize_loudness(_sine(amplitude=0.2), target=-18.0, rate=SAMPLE_RATE)
+    assert integrated_loudness(out, SAMPLE_RATE) == pytest.approx(-18.0, abs=0.1)
 
 
 def test_normalize_loudness_respects_the_peak_ceiling():
-    out = normalize_loudness(_sine(amplitude=0.01), target=0.0, peak_limit=-1.0)
+    out = normalize_loudness(_sine(amplitude=0.01), target=0.0, peak_limit=-1.0, rate=SAMPLE_RATE)
     assert np.max(np.abs(out)) == pytest.approx(10 ** (-1.0 / 20.0), rel=1e-6)
 
 
 def test_normalize_loudness_keeps_the_original_length():
     short = _sine(seconds=0.05)
-    assert normalize_loudness(short).shape == short.shape
+    assert normalize_loudness(short, rate=SAMPLE_RATE).shape == short.shape
 
 
 def test_normalize_loudness_passes_silence_through():
-    out = normalize_loudness(np.zeros(SAMPLE_RATE, np.float32))
+    out = normalize_loudness(np.zeros(SAMPLE_RATE, np.float32), rate=SAMPLE_RATE)
     assert np.all(out == 0.0)
 
 
 def test_normalize_loudness_of_an_empty_array():
-    assert normalize_loudness(np.zeros(0, np.float32)).shape == (0,)
+    assert normalize_loudness(np.zeros(0, np.float32), rate=SAMPLE_RATE).shape == (0,)
 
 
 # ----------------------------------------------------------------------------------

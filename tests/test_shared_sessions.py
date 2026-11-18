@@ -257,6 +257,35 @@ class TestOneModelOneSession(unittest.TestCase):
 
         self.assertEqual(found, [str(beside)])
 
+    def test_a_data_file_the_graph_names_is_keyed(self):
+        # A graph may name any file for its weights. Two snapshots can link one
+        # graph blob and keep different weights beside it; replacing that file
+        # must not reuse the session over the old weights.
+        import numpy as np
+        import onnx
+        from onnx import TensorProto, helper, numpy_helper
+
+        folder = Path(self.tmpdir.name) / "named"
+        folder.mkdir()
+        w = numpy_helper.from_array(np.ones((1, 4), dtype=np.float32), "w")
+        x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 4])
+        y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 4])
+        graph = helper.make_graph([helper.make_node("Mul", ["x", "w"], ["y"])],
+                                  "named", [x], [y], [w])
+        model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)])
+        model.ir_version = 8
+        path = folder / "moss.onnx"
+        onnx.save(model, str(path), save_as_external_data=True,
+                  location="moss_encode.data", size_threshold=0)
+        data = folder / "moss_encode.data"
+        self.assertTrue(data.is_file())
+
+        self.assertEqual(providers._external_data_paths(str(path)), [str(data)])
+        before = providers.session_key(path, [CPU_PROVIDER], None)
+        data.write_bytes(data.read_bytes() * 2)
+        after = providers.session_key(path, [CPU_PROVIDER], None)
+        self.assertNotEqual(before, after)
+
     def test_no_sidecar_is_unaffected(self):
         # A single-file graph (no external-data sidecar) must key exactly as
         # it did before: this only changes behaviour for models that have one.

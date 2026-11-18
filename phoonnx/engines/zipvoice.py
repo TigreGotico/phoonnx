@@ -26,21 +26,9 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import onnxruntime
 
+from phoonnx.audio_fx import resample_rate
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
-
-
-def _resample(audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
-    if sr == target_sr:
-        return audio
-    try:
-        from scipy.signal import resample_poly
-        from math import gcd
-        g = gcd(sr, target_sr)
-        return resample_poly(audio, target_sr // g, sr // g).astype(np.float32)
-    except Exception:
-        n = int(round(len(audio) * target_sr / sr))
-        return np.interp(np.linspace(0, len(audio) - 1, n), np.arange(len(audio)), audio).astype(np.float32)
 
 
 class ZipVoiceAdapter(BaseOnnxAdapter):
@@ -79,7 +67,7 @@ class ZipVoiceAdapter(BaseOnnxAdapter):
 
     def _prompt_mel(self, audio: np.ndarray, sr: int):
         """ref wav -> 24kHz -> rms-norm to target_rms -> log-mel * feat_scale ([1,T,100])."""
-        audio = _resample(np.asarray(audio, np.float32).reshape(-1), int(sr), self.SAMPLE_RATE)
+        audio = resample_rate(np.asarray(audio, np.float32).reshape(-1), int(sr), self.SAMPLE_RATE)
         rms = float(np.sqrt(np.mean(audio ** 2)) + 1e-9)
         audio = audio * self.TARGET_RMS / rms
         mel = self.mel.run(None, {"waveform": audio[None, :].astype(np.float32)})[0]   # [1,100,T]

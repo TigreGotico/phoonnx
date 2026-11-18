@@ -533,7 +533,8 @@ class SynthesisConfig:
     (the whole text). ``None`` (the default) reads one sentence per call. The
     size moves only the cuts: the text is read whole before it is cut. An
     engine that reads text, not symbols, gets the whole text and cuts it
-    itself."""
+    itself. Phonemic input (``alphabet`` set) is cut per sentence whatever
+    the value."""
 
     # post-synthesis audio super-resolution via ``audiosronnx`` (pure-ONNX). Off by
     # default; when ``True`` each synthesized chunk is upscaled to 48 kHz before being
@@ -571,6 +572,14 @@ class SynthesisConfig:
 
     # Engine-specific per-call params (d_factor, p_factor, e_factor, …)
     extra_params: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        if self.chunk is not None and not isinstance(self.chunk, Chunk):
+            try:
+                Chunk(self.chunk)
+            except ValueError:
+                raise ValueError(f"chunk must be one of {[c.value for c in Chunk]} or None, "
+                                 f"not {self.chunk!r}") from None
 
 
 def check_lang_supported(voice: str, lang_code: Optional[str],
