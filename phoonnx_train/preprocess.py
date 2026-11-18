@@ -546,6 +546,15 @@ def cli(
         click.Abort: If mutually exclusive CLI options are provided (e.g., both --single-speaker and --speaker-id).
         ValueError: If finetuning with a previous config and the new dataset contains phonemes not present in that config and drop_extra_phonemes is False.
     """
+    if metrics_out or metrics_in:
+        # Checked first: the sidecar is written after the filter metrics are computed.
+        try:
+            import pandas  # noqa: F401
+            import pyarrow  # noqa: F401
+        except ImportError as e:
+            raise click.UsageError(f"--metrics-out and --metrics-in need pandas and pyarrow "
+                                   f"({e.name} is missing); install phoonnx[train-data]") from None
+
     # Split any comma-separated sources into a flat list.
     sources: List[str] = [s.strip() for spec in input_sources for s in spec.split(",") if s.strip()]
 
