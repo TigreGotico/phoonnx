@@ -141,6 +141,9 @@ class PocketTTSAdapter(BaseOnnxAdapter):
             "max_token_per_chunk", "model_recommended_frames_after_eos",
             "insert_bos_before_voice", "pad_with_spaces_for_short_inputs",
             "remove_semicolons", "mimi_state_manifest", "flow_state_manifest"}),
+        # The encoder session is built on first use from the voice config's
+        # path, so every request gets the same one.
+        "encode_reference": frozenset({"mimi_encoder"}),
     }
 
     def __init__(self, temperature: float = DEFAULT_TEMPERATURE,
