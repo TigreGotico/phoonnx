@@ -55,7 +55,7 @@ def _voice(lang, phoneme_type=PhonemeType.UNICODE, alphabet=Alphabet.UNICODE,
                          lang_code=lang, phoneme_type=phoneme_type, alphabet=alphabet,
                          phonemizer_model=None, add_diacritics=add_diacritics,
                          keep_punctuation=keep_punctuation, diacritizer_model=diacritizer_model)
-    voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
+    voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock(READS_TEXT=False))
     voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: list(range(len(phonemes))))
     return voice
 
@@ -340,7 +340,7 @@ class TestOldConfigs(unittest.TestCase):
         config = VoiceConfig.from_dict({"lang_code": "en", "phoneme_type": "unicode",
                                         "alphabet": "unicode",
                                         "phoneme_id_map": {"_": [0], "a": [1], "b": [2]}})
-        voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
+        voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock(READS_TEXT=False))
         self.assertEqual([list(utterance.ids) for utterance in _prepared(voice, "ab")],
                          [voice.tokenizer.tokenize(["a", "b"])])
 
@@ -353,7 +353,7 @@ class TestOldConfigs(unittest.TestCase):
                 "phonemizer": "symbols", "text_language": "en",
                 "phonemes": {"blank_between": "tokens_and_words"}})), tokens_txt=tokens)
         self.assertEqual(config.phoneme_type, PhonemeType.GRAPHEMES)
-        voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
+        voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock(READS_TEXT=False))
         self.assertEqual(voice.phonemize("ab"), [["a", "b"]])
 
 

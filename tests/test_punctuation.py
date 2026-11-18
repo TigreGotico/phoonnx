@@ -45,7 +45,7 @@ def piper_config(**extra):
 
 def synthesis_ids(config: dict, text: str):
     voice_config = VoiceConfig.from_dict(json.loads(json.dumps(config)))
-    voice = TTSVoice(session=MagicMock(), config=voice_config, adapter=MagicMock())
+    voice = TTSVoice(session=MagicMock(), config=voice_config, adapter=MagicMock(READS_TEXT=False))
     return voice_config, [list(utterance.ids) for utterance in voice.prepare(
         text, SynthesisConfig(enable_phonetic_spellings=False))]
 
@@ -169,7 +169,7 @@ class TestPreprocess:
             config, rows = _preprocess(tmp / "src", tmp / "out", rows=2)
             for text, row in rows.items():
                 voice_config = VoiceConfig.from_dict(json.loads(json.dumps(config)))
-                voice = TTSVoice(session=MagicMock(), config=voice_config, adapter=MagicMock())
+                voice = TTSVoice(session=MagicMock(), config=voice_config, adapter=MagicMock(READS_TEXT=False))
                 synth = [p for s, _, _ in voice._iter_phonemes(
                     text, Alphabet.GRAPHEMES, voice_config.alphabet,
                     voice._stages(SynthesisConfig())) for p in s]

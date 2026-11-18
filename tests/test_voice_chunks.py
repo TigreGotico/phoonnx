@@ -32,7 +32,7 @@ def _unicode_voice(normalise: bool = False):
     config = VoiceConfig(num_symbols=1, num_speakers=1, num_langs=1, sample_rate=22050,
                          lang_code="en", phoneme_type=PhonemeType.UNICODE, alphabet=Alphabet.UNICODE,
                          phonemizer_model=None, add_diacritics=False, keep_punctuation=False)
-    voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
+    voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock(READS_TEXT=False))
     voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: list(range(len(phonemes))))
     if not normalise:
         voice.phonemizer.normalizer = None
@@ -43,7 +43,7 @@ def _shami_voice():
     config = VoiceConfig(num_symbols=1, num_speakers=1, num_langs=1, sample_rate=22050,
                          lang_code="ar", phoneme_type=PhonemeType.SHAMI, alphabet=Alphabet.IPA,
                          phonemizer_model=None, add_diacritics=False, keep_punctuation=False)
-    voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
+    voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock(READS_TEXT=False))
     voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: list(range(len(phonemes))))
     return voice
 

@@ -32,7 +32,7 @@ def _shami_voice():
         "use_eos_bos": False, "blank_at_start": False, "blank_at_end": False,
         "add_diacritics": False,
     }
-    adapter = MagicMock()
+    adapter = MagicMock(READS_TEXT=False)
     adapter.default_params.return_value = {}
     adapter.synthesize.return_value = AdapterSynthesisResult(audio=np.zeros(8, dtype=np.float32))
     voice = TTSVoice(session=MagicMock(), config=VoiceConfig.from_dict(json.loads(json.dumps(config))),

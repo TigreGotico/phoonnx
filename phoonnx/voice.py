@@ -713,7 +713,9 @@ class TTSVoice:
         chunk at a time, a sentence unless ``config.chunk`` names another size,
         and :attr:`tokenizer` turns each chunk into ids.
         An engine that reads text gets it from ``frontend.prepare``, and its
-        adapter's ``encode_text`` turns the text into ids. Input in a phonemic
+        adapter's ``encode_text`` turns the text into ids. An adapter with
+        ``READS_TEXT`` on a voice that declares symbols gets the staged text of
+        each frontend chunk, so it keeps one engine call per chunk. Input in a phonemic
         alphabet (``config.alphabet``) is converted to the voice's alphabet and
         is not phonemized.
 

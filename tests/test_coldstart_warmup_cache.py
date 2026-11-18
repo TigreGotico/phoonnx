@@ -194,7 +194,7 @@ class TestTTSVoiceWarmup(unittest.TestCase):
         voice.config = MagicMock()
         voice.phonetic_spellings = None
         voice.phonemizer = MagicMock()
-        adapter = MagicMock()
+        adapter = MagicMock(READS_TEXT=False)
         adapter.default_params.return_value = {"noise_scale": 0.667}
         adapter.synthesize.return_value = MagicMock(audio=np.zeros(4, dtype=np.float32))
         voice.adapter = adapter
@@ -230,7 +230,7 @@ class TestTTSVoiceWarmup(unittest.TestCase):
             model_path = Path(tmp) / "model.onnx"
             _build_tiny_onnx_model(model_path)
 
-            fake_adapter = MagicMock()
+            fake_adapter = MagicMock(READS_TEXT=False)
             fake_adapter.default_params.return_value = {}
             fake_adapter.synthesize.return_value = MagicMock(audio=np.zeros(4, dtype=np.float32))
 
@@ -248,7 +248,7 @@ class TestTTSVoiceWarmup(unittest.TestCase):
             model_path = Path(tmp) / "model.onnx"
             _build_tiny_onnx_model(model_path)
 
-            fake_adapter = MagicMock()
+            fake_adapter = MagicMock(READS_TEXT=False)
             fake_adapter.default_params.return_value = {}
 
             with patch("phoonnx.voice.detect_engine", return_value=fake_adapter):

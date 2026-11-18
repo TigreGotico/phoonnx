@@ -109,7 +109,7 @@ def _make_lazy_voice(events, alphabet=Alphabet.IPA):
         sample_rate=22050,
     )
     voice.config = config
-    voice.adapter = MagicMock()
+    voice.adapter = MagicMock(READS_TEXT=False)
 
     config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: [1] * len(phonemes))
 

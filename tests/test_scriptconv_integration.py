@@ -218,7 +218,7 @@ def _diacritizing_voice(lang, model):
                                          alphabet=Alphabet.IPA, lang_code=lang,
                                          add_diacritics=True, diacritizer_model=model,
                                          sample_rate=22050)
-    voice.adapter = MagicMock()
+    voice.adapter = MagicMock(READS_TEXT=False)
     voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda p: [1] * len(p))
     voice._infer = lambda ids, syn_config, include_alignments=False, streams=None, text=None: (np.zeros(4, dtype=np.float32), None)
     return voice

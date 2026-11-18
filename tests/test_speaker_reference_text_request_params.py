@@ -47,7 +47,7 @@ def _make_voice():
         # engines' phoneme prompt) through the voice's own tokenizer
         tokenizer=types.SimpleNamespace(tokenize=MagicMock(return_value=[1, 2, 3])),
     )
-    voice.adapter = MagicMock()
+    voice.adapter = MagicMock(READS_TEXT=False)
     voice.adapter.default_params.return_value = {}
     voice.adapter.synthesize.return_value = AdapterSynthesisResult(
         audio=np.zeros(4, dtype=np.float32))

@@ -30,7 +30,7 @@ def _voice(lang="en-US"):
     config = VoiceConfig(num_symbols=1, num_speakers=1, num_langs=1, sample_rate=22050,
                          lang_code=lang, phoneme_type=PhonemeType.UNICODE, alphabet=Alphabet.UNICODE,
                          phonemizer_model=None, add_diacritics=False, keep_punctuation=False)
-    voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
+    voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock(READS_TEXT=False))
     voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: list(range(len(phonemes))))
     return voice
 
@@ -165,7 +165,7 @@ PLAIN = ["I have 3 cats.", "It is 2026-11-09, at 9:21 PM.", "Dr. Patel paid $12.
 
 def _tinyvoca():
     """The dizione fixture voice: its backend owns the ``normalize`` stage."""
-    adapter = MagicMock()
+    adapter = MagicMock(READS_TEXT=False)
     adapter.default_params.return_value = {}
     adapter.synthesize.return_value = types.SimpleNamespace(audio=np.zeros(4, np.float32), extras={})
     config = VoiceConfig.from_dict(json.loads(TINYVOCA.read_text()))

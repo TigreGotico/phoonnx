@@ -36,7 +36,7 @@ def _frontend():
     config = VoiceConfig(num_symbols=1, num_speakers=1, num_langs=1, sample_rate=22050,
                          lang_code="en", phoneme_type=PhonemeType.UNICODE, alphabet=Alphabet.UNICODE,
                          phonemizer_model=None, add_diacritics=False, keep_punctuation=False)
-    voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
+    voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock(READS_TEXT=False))
     voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: list(range(len(phonemes))))
     return voice.frontend
 

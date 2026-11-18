@@ -100,7 +100,7 @@ class TestOneModelOneSession(unittest.TestCase):
 
         seen = []
         for voice in (english, spanish):
-            adapter = MagicMock()
+            adapter = MagicMock(READS_TEXT=False)
             adapter.configure = lambda cfg, _s=seen: None
             voice.adapter = adapter
         for voice in (english, spanish):

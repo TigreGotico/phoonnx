@@ -184,7 +184,7 @@ class TestDizioneTokens:
              "On Jan. 1, 2000 we met Dr. Patel. He paid $5."]
 
     def _voice(self):
-        adapter = MagicMock()
+        adapter = MagicMock(READS_TEXT=False)
         adapter.default_params.return_value = {}
         adapter.synthesize.return_value = SimpleNamespace(audio=np.zeros(4, np.float32), extras={})
         return TTSVoice(session=MagicMock(), config=_config(), adapter=adapter)
