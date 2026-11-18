@@ -13,6 +13,7 @@ import importlib.metadata
 import io
 import json
 import queue
+import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -172,6 +173,21 @@ class TestQualityFilterWiring(unittest.TestCase):
             self.assertEqual(result.exit_code, 0, result.output)
             self.assertTrue(any("No utterances left after quality filtering" in m for m in logs.output))
             self.assertFalse((out / "dataset.jsonl").exists())
+
+    def test_a_metrics_sidecar_without_pandas_stops_before_any_work(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = self._dataset(tmp)
+            out = tmp / "out"
+            with patch.dict(sys.modules, {"pandas": None}):
+                result = _invoke([
+                    "-i", str(src), "-o", str(out), "-l", "en", "--phonemes-column", "phon",
+                    "--filter", "wpm:0:", "--metrics-out", str(tmp / "metrics.parquet"),
+                ])
+            self.assertEqual(result.exit_code, 2, result.output)
+            self.assertIn("phoonnx[train-data]", result.output)
+            self.assertIn("pandas is missing", result.output)
+            self.assertFalse(out.exists())
 
     def test_filter_keeping_utterances_writes_metrics_sidecar(self):
         with TemporaryDirectory() as tmp:
