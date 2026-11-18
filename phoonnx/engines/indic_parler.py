@@ -39,7 +39,7 @@ and ``top_k`` exposed as engine parameters. Set ``do_sample`` to 0 for the deter
 path used by the parity tests.
 """
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import onnxruntime
@@ -139,6 +139,8 @@ class IndicParlerAdapter(BaseOnnxAdapter):
     MEMOIZED_WRITES = {
         # The prefill graph's output names, read off the session.
         "generate_codes": frozenset({"_prefill_outputs"}),
+        # Encoder output for the last description, keyed on that description.
+        "encode_description": frozenset({"_description_cache"}),
     }
 
     #: hard ceiling from the upstream generation config (2610 total positions)
@@ -161,6 +163,9 @@ class IndicParlerAdapter(BaseOnnxAdapter):
         self._decode_inputs: set = set()
         self._prefill_outputs: List[str] = []
         self._decode_outputs: List[str] = []
+        # (description, (hidden, mask)) in one attribute, so a key never pairs
+        # with another request's output.
+        self._description_cache: Optional[Tuple[str, Tuple[np.ndarray, np.ndarray]]] = None
 
     # ------------------------------------------------------------------
     # setup
@@ -234,17 +239,22 @@ class IndicParlerAdapter(BaseOnnxAdapter):
 
         Returns ``(encoder_hidden_states, encoder_attention_mask)``. The mask is applied
         to the hidden states inside the exported graph, exactly as upstream does before
-        handing them to the decoder.
+        handing them to the decoder. The result for the last description is kept.
         """
         if self.text_encoder is None or self.description_tokenizer is None:
             raise RuntimeError("Indic Parler voice missing text_encoder_path / "
                                "description_tokenizer_path in engine_params")
+        cached = self._description_cache
+        if cached is not None and cached[0] == description:
+            return cached[1]
         enc = self.description_tokenizer.encode(description)
         input_ids = np.asarray([enc.ids], np.int64)
         attention_mask = np.ones_like(input_ids, np.int64)
         hidden = self.text_encoder.run(None, {"input_ids": input_ids,
                                               "attention_mask": attention_mask})[0]
-        return np.asarray(hidden, np.float32), attention_mask
+        encoded = (np.asarray(hidden, np.float32), attention_mask)
+        self._description_cache = (description, encoded)
+        return encoded
 
     @staticmethod
     def _eos_delay_constraint(logits: np.ndarray, raw_ids: np.ndarray,

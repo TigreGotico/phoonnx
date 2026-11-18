@@ -358,9 +358,8 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
     def _seen_mask(seen_by_channel: List[set]) -> np.ndarray:
         mask = np.zeros((1, N_VQ, CODEBOOK_SIZE), np.int32)
         for ch, seen in enumerate(seen_by_channel):
-            for token in seen:
-                if 0 <= token < CODEBOOK_SIZE:
-                    mask[0, ch, token] = 1
+            tokens = np.fromiter(seen, np.int64, len(seen))
+            mask[0, ch, tokens[(tokens >= 0) & (tokens < CODEBOOK_SIZE)]] = 1
         return mask
 
     def _fixed_frame(self, global_hidden: np.ndarray, seen_by_channel: List[set],

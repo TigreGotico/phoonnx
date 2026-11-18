@@ -24,6 +24,26 @@ def _periodic_hann(n: int) -> np.ndarray:
     return 0.5 - 0.5 * np.cos(2.0 * np.pi * np.arange(n) / n)
 
 
+def _overlap_add(frames: np.ndarray, hop_length: int) -> np.ndarray:
+    """Overlap-add ``[B, win_length, T]`` frames spaced ``hop_length`` apart.
+
+    Block planes are added last to first, so each sample sums its frames in
+    ascending ``t``, the order of a per-frame loop: the float64 sums match it
+    bit for bit. The pad is -0.0 because ``x + -0.0 == x`` for every ``x``.
+    """
+    B, win_length, T = frames.shape
+    n_blocks = -(-win_length // hop_length)
+    padded = np.full((B, n_blocks * hop_length, T), -0.0)
+    padded[:, :win_length] = frames
+    # [B, n_blocks, T * hop_length]: block j of every frame, laid end to end
+    blocks = padded.reshape(B, n_blocks, hop_length, T).transpose(0, 1, 3, 2)
+    blocks = blocks.reshape(B, n_blocks, T * hop_length)
+    out = np.zeros((B, (T + n_blocks - 1) * hop_length), dtype=np.float64)
+    for j in reversed(range(n_blocks)):
+        out[:, j * hop_length:j * hop_length + T * hop_length] += blocks[:, j]
+    return out[:, :(T - 1) * hop_length + win_length]
+
+
 class VocosVocoder(BaseVocoder):
     """ISTFT-based vocoder emitting STFT coefficients (Vocos / alVoCat)."""
 
@@ -81,20 +101,14 @@ class VocosVocoder(BaseVocoder):
 
         window = _periodic_hann(win_length)
 
-        B, _, T = spectrogram.shape
+        T = spectrogram.shape[-1]
 
         # Inverse FFT per frame, windowed: [B, win_length, T]
         ifft = np.fft.irfft(spectrogram, n=n_fft, axis=1) * window[None, :, None]
 
-        output_size = (T - 1) * hop_length + win_length
-        y = np.zeros((B, output_size), dtype=np.float64)
-        window_envelope = np.zeros((B, output_size), dtype=np.float64)
-        window_sq = window ** 2
-
-        for t in range(T):
-            start = t * hop_length
-            y[:, start:start + win_length] += ifft[:, :, t]
-            window_envelope[:, start:start + win_length] += window_sq[None, :]
+        y = _overlap_add(ifft, hop_length)
+        window_sq = np.broadcast_to(window[None, :, None] ** 2, (1, win_length, T))
+        window_envelope = _overlap_add(window_sq, hop_length)
 
         y /= np.maximum(window_envelope, 1e-11)
         # Vocos STFT uses center=True (signal padded by n_fft//2 each side); trim
