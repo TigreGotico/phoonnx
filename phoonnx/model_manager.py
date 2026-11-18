@@ -874,7 +874,7 @@ class TTSModelInfo:
         chosen = choose_precision(self, resolve_precision(precision), providers)
         if chosen == "full" or self.precision == "int8":
             return self
-        urls = {k: v for k, v in self.variants["int8"].items() if k in _INDEX_FIELDS}
+        urls = {k: v for k, v in self.variants["int8"].items() if k in VARIANT_FIELDS}
         if "aux_model_urls" in urls:
             urls["aux_model_urls"] = {**(self.aux_model_urls or {}), **urls["aux_model_urls"]}
         return replace(self, **urls, precision="int8", variants=None)
@@ -1242,18 +1242,23 @@ class TTSModelInfo:
 
 
 _INDEX_FIELDS = frozenset(f.name for f in fields(TTSModelInfo))
+#: Fields a precision variant may replace: the files of the voice.
+VARIANT_FIELDS = frozenset(name for name in _INDEX_FIELDS
+                           if name.endswith("_url") or name == "aux_model_urls")
 
 
 def _known_fields(entry: Dict[str, Any]) -> Dict[str, Any]:
     """An index or cache record without the keys this release does not know.
 
-    Each unknown key is logged once at debug level, so a field that a newer
-    index adds cannot stop the voice from loading.
+    Each unknown key is logged once as a warning, so a typo in a hand-written
+    entry is seen, and a field that a newer index adds cannot stop the voice
+    from loading.
     """
     for key in sorted(entry.keys() - _INDEX_FIELDS):
         if key not in _LOGGED_UNKNOWN_KEYS:
             _LOGGED_UNKNOWN_KEYS.add(key)
-            LOG.debug(f"ignoring voice index key {key!r}: this phoonnx release does not use it")
+            LOG.warning(f"ignoring key {key!r} of voice {entry.get('voice_id')!r}: "
+                        f"this phoonnx release does not know it")
     return {k: v for k, v in entry.items() if k in _INDEX_FIELDS}
 
 
@@ -1314,6 +1319,8 @@ class TTSModelManager:
         # Every rebuild therefore happens in a local dict and is published by a
         # single assignment, under this lock so two rebuilds cannot interleave.
         self._registry_lock = threading.RLock()
+        # bundled entries an alias read, so a lookup per sentence reads the index once
+        self._alias_fallbacks: Dict[str, Optional[TTSModelInfo]] = {}
         if cache_path:
             self.cache = JsonStorage(cache_path)
         else:
@@ -1475,13 +1482,14 @@ class TTSModelManager:
         """The registry entry an alias points at, for :func:`_alias_info`.
 
         A cache written before the alias existed holds the target without its
-        variants. That entry is replaced once from the bundled index, so the
-        alias still finds its files.
+        variants. The alias then reads the bundled entry, so it still finds its
+        files, and the registry keeps the entry it holds.
         """
         info = self.voices.get(voice_id)
         if info is not None and not info.variants and info.precision is None:
-            info = self._bundled_voice(voice_id) or info
-            self.voices[voice_id] = info
+            if voice_id not in self._alias_fallbacks:
+                self._alias_fallbacks[voice_id] = self._bundled_voice(voice_id)
+            info = self._alias_fallbacks[voice_id] or info
         return info
 
     def download_voice_by_id(self, voice_id: str, precision: Optional[str] = None) -> bool:
