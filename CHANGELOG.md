@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.112.0a2](https://github.com/TigreGotico/phoonnx/tree/1.112.0a2) (2026-11-17)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.112.0a1...1.112.0a2)
+
+**Merged pull requests:**
+
+- refactor: take text normalisation from text2spoken [\#559](https://github.com/TigreGotico/phoonnx/pull/559) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [1.112.0a1](https://github.com/TigreGotico/phoonnx/tree/1.112.0a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.111.0a1...1.112.0a1)
@@ -381,10 +389,6 @@
 ## [1.96.3a1](https://github.com/TigreGotico/phoonnx/tree/1.96.3a1) (2026-11-10)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.2a2...1.96.3a1)
-
-**Merged pull requests:**
-
-- fix: default Arabic diacritics by language, not by the "ar" prefix [\#555](https://github.com/TigreGotico/phoonnx/pull/555) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.96.2a2](https://github.com/TigreGotico/phoonnx/tree/1.96.2a2) (2026-11-10)
 
