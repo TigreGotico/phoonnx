@@ -98,6 +98,22 @@ def test_a_recorded_frontend_version_is_compared(tmp_path):
     assert "frontend: trained -1, running " in warnings[0]
 
 
+def test_a_frontend_block_with_the_backend_revision_warns(tmp_path):
+    # A block recorded through a frontend carries the backend's revision, not the
+    # frontend's ``sc1:`` revision, so comparing it with the frontend identity names
+    # ``revision``.
+    model = tmp_path / "pt_PT-provenance.onnx"
+    _write_model(model)
+    (tmp_path / "pt_PT-provenance.onnx.json").write_text(
+        json.dumps(copy.deepcopy(CONFIG)), encoding="utf-8")
+    frontend = asdict(TTSVoice.load(model).frontend.identity())
+    backend = asdict(get_phonemizer(PhonemeType.ORTHOGRAPHY2IPA).identity(LANG))
+    trained = dict(backend, frontend=frontend["frontend"])
+    warnings = _load_warnings(tmp_path, phonemizer_identity=trained)
+    assert len(warnings) == 1
+    assert f"revision: trained {backend['revision']!r}, running {frontend['revision']!r}" in warnings[0]
+
+
 @pytest.mark.parametrize("config", [{}, {"phonemizer_identity": None}, {"phonemizer_identity": {}}])
 def test_no_block_gives_no_warning(tmp_path, config):
     assert _load_warnings(tmp_path, **config) == []
