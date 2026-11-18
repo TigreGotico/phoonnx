@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.113.0a1](https://github.com/TigreGotico/phoonnx/tree/1.113.0a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.112.1a1...1.113.0a1)
+
+## [1.112.1a1](https://github.com/TigreGotico/phoonnx/tree/1.112.1a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.112.0a2...1.112.1a1)
+
+**Merged pull requests:**
+
+- feat: choose the chunk size per call, and read side streams after the stages [\#678](https://github.com/TigreGotico/phoonnx/pull/678) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: pin the F5-TTS voices to Hub configs that select their text function [\#673](https://github.com/TigreGotico/phoonnx/pull/673) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.112.0a2](https://github.com/TigreGotico/phoonnx/tree/1.112.0a2) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.112.0a1...1.112.0a2)
@@ -381,10 +394,6 @@
 ## [1.96.4a1](https://github.com/TigreGotico/phoonnx/tree/1.96.4a1) (2026-11-11)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.3a1...1.96.4a1)
-
-**Merged pull requests:**
-
-- fix: take default regions from linguatag in normalize\_lang [\#557](https://github.com/TigreGotico/phoonnx/pull/557) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.96.3a1](https://github.com/TigreGotico/phoonnx/tree/1.96.3a1) (2026-11-10)
 
