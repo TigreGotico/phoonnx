@@ -12,15 +12,14 @@ so that TTSVoice.render works identically for any engine.
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 import onnxruntime
-from scriptconv.frontend import Stages
+from scriptconv.frontend import Stages, TextFrontend
 
-
-#: The request fields that hold one value per phoneme id, as a phonemizer's side streams fill them.
-SIDE_STREAMS = ("language_ids", "stress")
+from phoonnx.encoders import SIDE_STREAMS, Encoder, SymbolEncoder, TextEncoder
 
 
 @dataclass
@@ -187,6 +186,20 @@ class BaseOnnxAdapter(ABC):
         """
         stages = Stages(normalize=False, diacritize=False)
         return [voice.tokenizer.tokenize(p) for p in voice.frontend.phonemize(text, stages) if p]
+
+    def make_encoder(self, voice_config: Any, frontend: TextFrontend, tokenizer: Any) -> Encoder:
+        """The encoder that turns text into this engine's ids.
+
+        The default reads the symbols of the frontend. An adapter that overrides
+        :meth:`encode_text` gets a :class:`TextEncoder` that hands the whole prepared text to
+        ``encode_text``, which cuts it itself. An engine that tokenizes each chunk itself returns
+        a ``TextEncoder`` of its own.
+        """
+        if type(self).encode_text is BaseOnnxAdapter.encode_text:
+            return SymbolEncoder(frontend, tokenizer)
+        voice = SimpleNamespace(config=voice_config, frontend=frontend, tokenizer=tokenizer)
+        return TextEncoder(frontend, lambda text, config: self.encode_text(text, voice, config),
+                           whole_text=True)
 
     def synthesize(
         self,

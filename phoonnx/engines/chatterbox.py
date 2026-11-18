@@ -16,12 +16,14 @@ Cloning is d-vector style (a reference wav, **no transcription**), so it uses th
 model's own BPE (``phoonnx.tokenizer.BPETokenizer`` + the UNICODE phonemizer), so
 ``request.phoneme_ids`` already carries the subword ids.
 """
+from dataclasses import replace
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 import onnxruntime
 
 from phoonnx.audio_fx import resample_rate
+from phoonnx.encoders import Encoder
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 
@@ -93,6 +95,10 @@ class ChatterboxAdapter(BaseOnnxAdapter):
             return [voice.tokenizer.tokenize(text, language=lang, lang_tokens=lang_tokens)]
         except TypeError:        # tokenizer without a language-aware signature
             return [voice.tokenizer.tokenize(text)]
+
+    def make_encoder(self, voice_config: Any, frontend: Any, tokenizer: Any) -> Encoder:
+        """Tokenize the staged text of each frontend chunk, so every call starts with the ``[lang]`` token."""
+        return replace(super().make_encoder(voice_config, frontend, tokenizer), whole_text=False)
 
     def configure(self, voice_config: Any) -> None:
         """Load the auxiliary graphs from ``engine_params`` and read the LM's KV-cache

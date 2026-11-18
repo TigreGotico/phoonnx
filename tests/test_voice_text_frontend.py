@@ -119,11 +119,24 @@ def _spy_on_hook(voice):
     return spy
 
 
+class _TextAdapter(type(get_adapter("vits"))):
+    """An engine that reads text: it records what ``encode_text`` receives."""
+
+    def __init__(self):
+        super().__init__()
+        self.texts = []
+
+    def encode_text(self, text, voice, syn_config):
+        self.texts.append(text)
+        return [[1]]
+
+
 def _encoded_text(voice, text, syn_config=None):
     """The text that a text-token engine receives from one synthesis call."""
+    voice.adapter = _TextAdapter()
     _prepared(voice, text, syn_config)
-    voice.adapter.encode_text.assert_called_once()
-    return voice.adapter.encode_text.call_args[0][0]
+    assert len(voice.adapter.texts) == 1
+    return voice.adapter.texts[0]
 
 
 class TestTextTokenEngines(unittest.TestCase):
