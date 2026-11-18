@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import onnxruntime
 
+from phoonnx.audio_fx import resample_rate
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 
@@ -28,19 +29,6 @@ S3GEN_SR = 24000
 START_SPEECH_TOKEN = 6561
 STOP_SPEECH_TOKEN = 6562
 SILENCE_TOKEN = 4299
-
-
-def _resample(audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
-    if sr == target_sr:
-        return audio
-    try:
-        from scipy.signal import resample_poly
-        from math import gcd
-        g = gcd(sr, target_sr)
-        return resample_poly(audio, target_sr // g, sr // g).astype(np.float32)
-    except Exception:
-        n = int(round(len(audio) * target_sr / sr))
-        return np.interp(np.linspace(0, len(audio) - 1, n), np.arange(len(audio)), audio).astype(np.float32)
 
 
 def _apply_repetition_penalty(prev_ids: np.ndarray, scores: np.ndarray, penalty: float) -> np.ndarray:
@@ -148,7 +136,7 @@ class ChatterboxAdapter(BaseOnnxAdapter):
             self._read_kv_shape(session)
 
         # speaker conditioning from the reference clip (no transcription needed)
-        audio = _resample(np.asarray(ref[0], np.float32).reshape(-1), int(ref[1]), S3GEN_SR)
+        audio = resample_rate(np.asarray(ref[0], np.float32).reshape(-1), int(ref[1]), S3GEN_SR)
         cond_emb, prompt_token, x_vector, prompt_feat = self.speech_encoder.run(
             None, {"audio_values": audio[None, :].astype(np.float32)})
 

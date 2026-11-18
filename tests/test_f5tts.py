@@ -5,6 +5,7 @@ import types
 import numpy as np
 import pytest
 
+from phoonnx.audio_fx import resample_rate
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.f5tts import F5TTSAdapter
 from tests.conftest import retry_download
@@ -336,8 +337,8 @@ def test_aux_model_urls_resolved_in_engine_params(tmp_path, monkeypatch):
 
 def test_f5tts_resample():
     a = np.zeros(1000, np.float32)
-    assert F5TTSAdapter._resample(a, 24000, 24000) is a  # no-op
-    out = F5TTSAdapter._resample(a, 22050, 24000)
+    assert resample_rate(a, 24000, 24000) is a  # no-op
+    out = resample_rate(a, 22050, 24000)
     assert abs(len(out) - 1000 * 24000 / 22050) <= 2
 
 

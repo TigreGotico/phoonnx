@@ -68,6 +68,7 @@ import numpy as np
 import onnxruntime
 from quebra_frases import sentence_tokenize
 
+from phoonnx.engines._sampling import softmax
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.util import LOG
@@ -102,13 +103,6 @@ SPEECH_TOKEN_ZERO = "<|s_0|>"
 MAX_REFERENCE_CODES = 500
 
 
-def _softmax(x: np.ndarray) -> np.ndarray:
-    z = np.asarray(x, np.float64)
-    z = z - z.max()
-    e = np.exp(z)
-    return e / e.sum()
-
-
 def _sample(scores: np.ndarray, temperature: float, top_p: float,
             rng: np.random.Generator) -> int:
     """Temperature, then nucleus — HuggingFace's warper order (argmax if temp<=0).
@@ -121,7 +115,7 @@ def _sample(scores: np.ndarray, temperature: float, top_p: float,
     s = np.asarray(scores, np.float64)
     if temperature <= 0:
         return int(np.argmax(s))
-    probs = _softmax(s / float(temperature))
+    probs = softmax(s / float(temperature))
     if 0 < top_p < 1:
         order = np.argsort(probs)[::-1]
         cumulative = np.cumsum(probs[order])

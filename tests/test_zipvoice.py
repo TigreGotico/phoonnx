@@ -3,7 +3,8 @@ import pytest
 
 from phoonnx.engines.base import (AdapterSynthesisRequest, AdapterSynthesisResult,
                                    BaseOnnxAdapter)
-from phoonnx.engines.zipvoice import ZipVoiceAdapter, _resample
+from phoonnx.audio_fx import resample_rate
+from phoonnx.engines.zipvoice import ZipVoiceAdapter
 
 
 def _req(**params):
@@ -53,8 +54,8 @@ def test_synthesize_hook_default_is_single_pass():
 
 def test_resample():
     a = np.zeros(1000, np.float32)
-    assert _resample(a, 24000, 24000) is a                          # no-op
-    assert abs(len(_resample(a, 22050, 24000)) - 1000 * 24000 / 22050) <= 2
+    assert resample_rate(a, 24000, 24000) is a                          # no-op
+    assert abs(len(resample_rate(a, 22050, 24000)) - 1000 * 24000 / 22050) <= 2
 
 
 def testload_reference_audio(tmp_path):
