@@ -10,11 +10,13 @@ backend called directly, not from the voice.
 """
 import copy
 import json
+import time
 from dataclasses import asdict
 from unittest.mock import patch
 
 import pytest
 from onnx import TensorProto, helper, save
+from scriptconv.frontend import TextFrontend
 from scriptconv.phonemizers import get_phonemizer
 
 from phoonnx.config import PhonemeType
@@ -55,6 +57,8 @@ def _load_warnings(tmp_path, **config):
         json.dumps({**copy.deepcopy(CONFIG), **config}), encoding="utf-8")
     with patch("phoonnx.voice.LOG") as log:
         voice = TTSVoice.load(model)
+        if voice._provenance_thread is not None:
+            voice._provenance_thread.join()
     assert isinstance(voice, TTSVoice)
     return [str(call.args[0]) for call in log.warning.call_args_list]
 
@@ -171,3 +175,46 @@ def test_a_raw_text_engine_gives_no_warning(tmp_path):
     trained = dict(_running_identity(), revision=OTHER_REVISION, lang="es-ES")
     config = {"engine": "orpheus", "phoneme_type": None, "alphabet": None, "phonemizer_identity": trained}
     assert _load_warnings(tmp_path, **config) == []
+
+
+def test_load_returns_before_the_check_finishes(tmp_path):
+    """A slow ``identity`` does not hold the load: it returns while the check still runs.
+
+    The provenance check runs in a daemon thread, so a 2 s identity must not
+    make ``TTSVoice.load`` take 2 s. The warning still appears once the thread
+    ends.
+    """
+    model = tmp_path / "pt_PT-provenance.onnx"
+    _write_model(model)
+    (tmp_path / "pt_PT-provenance.onnx.json").write_text(
+        json.dumps({**copy.deepcopy(CONFIG),
+                    "phonemizer_identity": dict(_running_identity(), revision=OTHER_REVISION)}),
+        encoding="utf-8")
+
+    original_identity = TextFrontend.identity
+
+    def slow_identity(self):
+        time.sleep(2)
+        return original_identity(self)
+
+    with patch.object(TextFrontend, "identity", slow_identity), patch("phoonnx.voice.LOG") as log:
+        started = time.monotonic()
+        voice = TTSVoice.load(model)
+        elapsed = time.monotonic() - started
+        assert elapsed < 1.0, f"load waited {elapsed:.2f}s for the provenance check"
+        assert voice._provenance_thread is not None
+        voice._provenance_thread.join()
+    warnings = [str(call.args[0]) for call in log.warning.call_args_list]
+    assert len(warnings) == 1
+    assert "pt_PT-provenance" in warnings[0]
+    assert "was trained with another phonemizer" in warnings[0]
+
+
+def test_no_block_starts_no_thread(tmp_path):
+    """A voice with no provenance block starts no background check."""
+    model = tmp_path / "pt_PT-provenance.onnx"
+    _write_model(model)
+    (tmp_path / "pt_PT-provenance.onnx.json").write_text(
+        json.dumps(copy.deepcopy(CONFIG)), encoding="utf-8")
+    voice = TTSVoice.load(model)
+    assert voice._provenance_thread is None
