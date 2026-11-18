@@ -2,7 +2,7 @@
 
 This page is for developers who use phoonnx as a library. Part 1 is a walk-through of the API that exists in the code. Part 2 lists each name with its module. Part 3 describes the target API for phoonnx 2.0. For every target object it names the 1.x name that it replaces.
 
-Every example in Parts 1 and 2 runs offline. None of them downloads a model. The output shown is the real output.
+Every example in Parts 1 and 2 runs offline. None of them downloads a model. The output shown is the real output. Run the examples in order in one Python session.
 
 ## Part 1: Walk-through
 
@@ -111,14 +111,14 @@ The voice holds `1.0` and the call holds `None`, so the voice value wins unless 
 
 ## Part 2: What exists in 1.x
 
-This part lists the names that `git grep` finds on the dev branch. The package root `phoonnx/__init__.py` is empty. Import every name from its own module.
+This part lists the names that exist in the 1.x code. The package root exports nine names, listed below. Import every other name from its own module.
 
 ### Voice and audio
 
 | Name | Module | Role |
 | --- | --- | --- |
 | `TTSVoice` | `phoonnx.voice` | A loaded voice. A dataclass built by `TTSVoice.load`. |
-| `TTSVoice.load` | `phoonnx.voice` | Takes `model_path`, `config_path`, the foreign-format file arguments, `providers` and `warmup`. |
+| `TTSVoice.load` | `phoonnx.voice` | Takes `model_path`, `config_path`, `vocab_path`, `tokenizer_config_path`, `phonemes_txt`, `phoneme_map`, `lang_code`, `phoneme_type_str`, `alphabet_str`, `engine_params`, `providers`, `warmup` and the deprecated `use_cuda`. |
 | `TTSVoice.prepare` | `phoonnx.voice` | Text to `Iterator[Utterance]`. |
 | `TTSVoice.render` | `phoonnx.voice` | One `Utterance` to one `AudioChunk`. |
 | `TTSVoice.synthesize` | `phoonnx.voice` | Text to `Iterable[AudioChunk]`. Argument `syn_config`, flag `include_alignments`. |
@@ -160,7 +160,15 @@ print(sorted(set(e.value for e in Engine) ^ set(list_engines())))
 ['coqui', 'mimic3', 'phoonnx', 'piper', 'transformers', 'vits', 'vits_prior_split', 'vits_streaming']
 ```
 
-An adapter subclasses `BaseOnnxAdapter` in `phoonnx.engines.base`. It receives an `AdapterSynthesisRequest` and returns an `AdapterSynthesisResult`. `phoonnx.errors` re-exports four exceptions: `UnsupportedSentencePieceModel`, `UnsupportedTokenizer`, `UnsupportedVoiceLanguage` and `VoiceExceedsMemoryBudget`. They share no base class.
+An adapter subclasses `BaseOnnxAdapter` in `phoonnx.engines.base`. It receives an `AdapterSynthesisRequest` and returns an `AdapterSynthesisResult`. `phoonnx.errors` defines `PhoonnxError` and the classes below it:
+
+- `VoiceLoadError`, with the subclasses `FrontendMismatchError`, `UnsupportedConfigError` and `PrecisionUnavailable`.
+- `ExportNotSupported`.
+- `UnsupportedTokenizer`, `UnsupportedSentencePieceModel`, `UnsupportedVoiceLanguage` and `VoiceExceedsMemoryBudget`.
+
+`PrecisionUnavailable` and `UnsupportedVoiceLanguage` also subclass `ValueError`. `VoiceExceedsMemoryBudget` also subclasses `RuntimeError`. Only `PrecisionUnavailable` and the four classes that predate the hierarchy are raised in 1.x. `VoiceLoadError`, `FrontendMismatchError`, `UnsupportedConfigError` and `ExportNotSupported` have no raise site until the 2.0 steps in Part 3 land.
+
+The root package exports `TTSVoice`, `AudioChunk`, `Utterance`, `VoiceConfig`, `SynthesisConfig`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. Each name loads on first access, so `import phoonnx` stays cheap.
 
 ### Writing the native config
 
@@ -177,11 +185,11 @@ print(d["phoonnx_version"])
 1.0
 ```
 
-The version is always `"1.0"`. The code looks up a `phoonnx.version.VERSION` name that does not exist, and the lookup falls back to `"1.0"`.
+The `phoonnx_version` value is a fixed string. It is not the installed package version. The 2.0 `to_dict()` writes the real version.
 
 ## Part 3: The target API for phoonnx 2.0
 
-Nothing in this part exists in the code yet, except where a row says so. Each object is the target of a task in the roadmap. The code examples in Parts 1 and 2 keep working through the 1.x shims until 2.0.
+The objects in this part are targets, except where a row says that a name exists in 1.x. Each object is the target of a task in the roadmap. The code examples in Parts 1 and 2 keep working through the 1.x shims until 2.0.
 
 ### Design rules
 
@@ -198,9 +206,9 @@ Nothing in this part exists in the code yet, except where a row says so. Each ob
 | --- | --- |
 | `VoiceConfig` frozen, with `engine` as the architecture, `frontend`, `tokenizer`, `speakers`, `languages`, `defaults`, `assets` | Mutable `VoiceConfig`, where `engine` can mean a file format such as `piper` |
 | `VoiceConfig.frontend: FrontendConfig` | `lang_code`, `phoneme_type`, `alphabet`, `phonemizer_model`, `keep_punctuation`, `add_diacritics`, `diacritizer_model`, `lang_tokens` |
-| `VoiceConfig.tokenizer: TokenizerConfig` | The seven copies of tokenizer fields on `VoiceConfig` and the format-specific tokenizer constructors |
+| `VoiceConfig.tokenizer: TokenizerConfig` | The copies of tokenizer fields on `VoiceConfig` (`blank_at_start`, `blank_at_end`, `pad_token`, `blank_token`, `bos_token`, `eos_token`, `word_sep_token`, `blank_between`) and the format-specific tokenizer constructors |
 | `VoiceConfig.speakers`, `languages` | `speaker_id_map`, `lang_id_map` |
-| `VoiceConfig.defaults` | `length_scale`, `noise_scale`, `noise_w_scale`, which are never `None` today, so an adapter's `default_params()` never wins |
+| `VoiceConfig.defaults` | `length_scale`, `noise_scale`, `noise_w_scale`, which take fixed defaults when `config.json` omits them, so the adapter's defaults for these keys never apply |
 | `VoiceConfig.assets` | `engine_params`, without `providers` |
 | `VoiceConfig.to_dict()` and a JSON Schema | `to_native_dict()` |
 | `SynthesisConfig.stages: Stages` | `add_diacritics`, `diacritizer_model`, `chunk` |
@@ -209,7 +217,7 @@ Nothing in this part exists in the code yet, except where a row says so. Each ob
 | `SynthesisConfig.extra` | `extra_params` |
 | `TTSVoice.load(model, config=None, *, frontend=None, providers=None, runtime=None, warmup=False)` | `TTSVoice.load(model_path, config_path, vocab_path, tokenizer_config_path, phonemes_txt, phoneme_map, lang_code, phoneme_type_str, alphabet_str, engine_params, providers, use_cuda, warmup)` |
 | `voice.with_frontend(frontend)` | Reassignment of `voice.phonemizer`, `phoneme_type` and `alphabet` after load, as the model manager does |
-| `voice.prepare`, `voice.render` | Exist in 1.x. In 2.0 `render` takes `config`, and `alignments` replaces `include_alignments` |
+| `voice.prepare`, `voice.render` | Exist in 1.x with this signature |
 | `voice.synthesize(text, config=None, *, alignments=False)` | `syn_config` and `include_alignments` |
 | `AudioChunk.durations` | `phoneme_id_samples`, kept as a property |
 | `EngineRequest`, `EngineResult` | `AdapterSynthesisRequest`, `AdapterSynthesisResult` |
@@ -219,7 +227,7 @@ Nothing in this part exists in the code yet, except where a row says so. Each ob
 | `phoonnx.compat.convert_config` | The loaders of `config_loaders.py` and the `from_piper_config`, `from_vosk_config`, `from_mimic3_config`, `from_coqui_config` and `from_tokens_txt` constructors |
 | `phoonnx.compat.export_piper`, `export_sherpa` | The writers in `phoonnx_train/engines/vits.py` |
 | `OPTION_ALIASES` in the OPM plugin | The per-key handling of `mycroft.conf` options |
-| `phoonnx.errors.PhoonnxError` and the new subclasses | Four unrelated exception classes |
+| Raise sites for `VoiceLoadError`, `FrontendMismatchError`, `UnsupportedConfigError` and `ExportNotSupported` | The classes exist in 1.x. Nothing raises them |
 
 ### The three configs
 
@@ -259,9 +267,9 @@ An adapter must define `detect(session, config)` (static), `default_params()`, `
 
 ### Package root and errors
 
-`phoonnx/__init__.py` exports `TTSVoice`, `VoiceConfig`, `SynthesisConfig`, `AudioPost`, `SpeakerReference`, `Utterance`, `AudioChunk`, `TTSModelManager` and `Runtime`. It also re-exports `Stages`, `FrontendConfig` and `Chunk` from scriptconv.
+The root already exports `TTSVoice`, `VoiceConfig`, `SynthesisConfig`, `Utterance`, `AudioChunk`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. The target adds `AudioPost`, `SpeakerReference` and `Runtime`.
 
-`phoonnx.errors` gets a base class `PhoonnxError`. The four existing exceptions move under it. `VoiceLoadError` covers a missing config and a `num_symbols` mismatch. `FrontendMismatchError` and `UnsupportedConfigError` are subclasses of it. `ExportNotSupported` is a direct subclass of `PhoonnxError`.
+The hierarchy of `phoonnx.errors` exists in 1.x. The target is the raise sites. `VoiceLoadError` covers a missing config and a `num_symbols` mismatch. `with_frontend` raises `FrontendMismatchError`. A foreign config raises `UnsupportedConfigError`. An export that the target cannot run raises `ExportNotSupported`.
 
 ### Model manager
 
