@@ -328,6 +328,12 @@ class TestNonHubExternalData(HubTestCase):
                              {"weights/w.bin": "/v/weights/w.bin", "./x.bin": "/v/./x.bin"})
         self.assertTrue((path.parent / "weights" / "w.bin").is_file())
 
+    def test_disk_size_counts_the_data_files_in_their_subfolder(self):
+        path, _ = self._load(["weights/w.bin", "w%41.bin"],
+                             {"weights/w.bin": "/v/weights/w.bin", "w%41.bin": "/v/w%2541.bin"})
+        expected = sum(f.stat().st_size for f in path.parent.rglob("*") if f.is_file())
+        self.assertEqual(self.make_info(model_url=self.URL).disk_size(), expected)
+
     def test_a_name_with_url_syntax_is_requested_by_its_literal_name(self):
         path, requested = self._load(
             ["w%41.bin", "w#1.bin", "%2e%2e/x.bin"],
@@ -613,6 +619,12 @@ class TestExternalDataNames(HubTestCase):
         self.assertEqual(self._fetched(),
                          ["model.onnx", "model.onnx_data", "model.onnx_data_1",
                           "model.onnx_data_2"])
+        self.assertEqual(self._run(path).tolist(), expected.tolist())
+
+    def test_a_hub_data_file_name_is_passed_to_the_hub_literally(self):
+        expected = self._stage("model.onnx", ["w 1.bin"])
+        path = self.make_info().download_model()
+        self.assertEqual(self._fetched(), ["model.onnx", "w 1.bin"])
         self.assertEqual(self._run(path).tolist(), expected.tolist())
 
     def test_the_file_onnxruntime_quantization_writes_is_fetched(self):
