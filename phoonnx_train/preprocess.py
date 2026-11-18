@@ -124,7 +124,9 @@ def phonemize_worker(
             every argument. ``forkserver`` is the Linux default from Python 3.14.
     """
     try:
-        frontend = make_frontend()
+        # Built on the first row that needs it: a run of precomputed phonemes
+        # never reads text, so a backend that rejects the language must not stop it.
+        frontend: Optional[TextFrontend] = None
         casing: Callable[[str], str] = get_text_casing(config.text_casing)
         silence_detector = make_silence_detector()
 
@@ -144,6 +146,8 @@ def phonemize_worker(
                         if not utt.phonemes:
                             raise RuntimeError("empty precomputed phonemes")
                     else:
+                        if frontend is None:
+                            frontend = make_frontend()
                         # Normalize, case, diacritize and phonemize as synthesis does
                         utt.phonemes = frontend.phonemize_flat(
                             utt.text, Stages(diacritize=config.add_diacritics, casing=casing))

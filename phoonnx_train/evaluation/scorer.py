@@ -11,6 +11,7 @@ optionally adds
 speaker similarity against a reference-speaker centroid, and returns a structured
 :class:`EvalRow`.
 """
+import copy
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -158,7 +159,7 @@ def build_encoder(config: Dict, noise_scale=None, length_scale=None, noise_w=Non
     tokenizer = TTSTokenizer.from_phoonnx_config(config)
     lang = config.get("lang_code", "")
     # Read the text settings the way synthesis reads them.
-    voice_config = VoiceConfig.from_dict(config)
+    voice_config = VoiceConfig.from_dict(copy.deepcopy(config))
     stages = Stages(diacritize=bool(voice_config.add_diacritics),
                     diacritizer_model=voice_config.diacritizer_model)
     frontend = voice_frontend(ph, lang, stages)

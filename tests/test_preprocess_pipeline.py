@@ -279,6 +279,19 @@ class TestFinetunePhonemeMap(unittest.TestCase):
                     self._invoke_real_phonemizer(self._diacritics_args(tmp, "en"))
             self.assertFalse((tmp / "out" / "config.json").exists())
 
+    def test_precomputed_phonemes_need_no_frontend(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav", "phonemes": "h i"}])
+            args = ["-i", str(src), "-o", str(tmp / "out"), "-l", "zz", "--skip-audio",
+                    "--phoneme-type", "espeak", "--phonemes-column", "phonemes"]
+            # espeak has no voice "zz", so a worker that built its frontend at start would die
+            result = self._invoke_real_phonemizer(args)
+            self.assertEqual(result.exit_code, 0, result.output)
+            config = json.loads((tmp / "out" / "config.json").read_text())
+            self.assertEqual(config["phonemes_from_column"], 1)
+
     def test_precomputed_phonemes_need_no_diacritizer(self):
         with TemporaryDirectory() as tmp:
             tmp = Path(tmp)
