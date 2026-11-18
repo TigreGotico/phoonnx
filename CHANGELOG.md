@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.113.13a1](https://github.com/TigreGotico/phoonnx/tree/1.113.13a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.12a1...1.113.13a1)
+
+**Merged pull requests:**
+
+- fix: raise the scriptconv floors past the long-run crashes in dizione and mantoq [\#717](https://github.com/TigreGotico/phoonnx/pull/717) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.113.12a1](https://github.com/TigreGotico/phoonnx/tree/1.113.12a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.11a1...1.113.12a1)
@@ -366,10 +374,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.4a1...1.99.0a1)
 
-**Merged pull requests:**
-
-- feat: tiny-voca engine with dizione tokens and stress [\#592](https://github.com/TigreGotico/phoonnx/pull/592) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.98.4a1](https://github.com/TigreGotico/phoonnx/tree/1.98.4a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.3a1...1.98.4a1)
@@ -377,10 +381,6 @@
 ## [1.98.3a1](https://github.com/TigreGotico/phoonnx/tree/1.98.3a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.2a1...1.98.3a1)
-
-**Merged pull requests:**
-
-- fix: install the scriptconv-copyleft and scriptconv-nonfree wrappers [\#591](https://github.com/TigreGotico/phoonnx/pull/591) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.98.2a1](https://github.com/TigreGotico/phoonnx/tree/1.98.2a1) (2026-11-15)
 
