@@ -12,7 +12,7 @@ so that TTSVoice.render works identically for any engine.
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 import numpy as np
 import onnxruntime
@@ -125,6 +125,9 @@ class BaseOnnxAdapter(ABC):
     # this only makes detection automatic once a model *does* expose one.
     DURATION_OUTPUT_NAMES: List[str] = []
 
+    # True for an adapter that reads the text of a phonemizing voice itself, in ``read_text``.
+    READS_TEXT: bool = False
+
     # ------------------------------------------------------------------
     # Required
     # ------------------------------------------------------------------
@@ -187,6 +190,16 @@ class BaseOnnxAdapter(ABC):
         """
         stages = Stages(normalize=False, diacritize=False)
         return [voice.tokenizer.tokenize(p) for p in voice.frontend.phonemize(text, stages) if p]
+
+    def read_text(self, text: str, voice: Any, config: Any, stages: Any) -> Iterator[Any]:
+        """Yield the :class:`~phoonnx.voice.Utterance` objects of *text*, one per engine call.
+
+        Only an adapter with ``READS_TEXT`` is asked. An engine that needs more than ids from
+        the text, such as the word each token belongs to, reads it here, through
+        ``voice.frontend`` and ``voice.tokenizer``, and puts what it learned in
+        ``Utterance.params``. Those values join the request params of that utterance.
+        """
+        raise NotImplementedError
 
     def synthesize(
         self,

@@ -104,13 +104,14 @@ Lower `detect_priority` values are probed first during auto-detection.
 | [Orpheus](orpheus.md) | `phoonnx/engines/orpheus.py` | `engine == "orpheus"` — autoregressive codec-LM (Llama-3.2-3B backbone + SNAC decoder), raw text with emotive tags, eight named English voices, 24 kHz. **GPU engine**: ~37x realtime on 12 CPU cores |
 | Magpie-TTS | `phoonnx/engines/magpie.py` | `engine == "magpie"` — encoder-decoder codec-LM (6-layer causal text encoder, 12-layer causal decoder + 2-layer local transformer refiner, NanoCodec decoder), 8 codebooks over 2 stacked frames per step, attention-prior alignment (no learned monotonic alignment), five fixed baked-context voices (no cloning), byte (ByT5) and character sub-tokenizers encoded as NeMo encodes them, picked by language or by the voice ([sub-tokenizer keys](#magpie-sub-tokenizers)); the G2P sub-tokenizers (en/de/es/pt/hi/zh/ja) need scriptconv IPA and are refused with `NotImplementedError`, 22.05 kHz |
 | MOSS-TTS-Nano | `phoonnx/engines/mosstts.py` | `engine == "mosstts"` — autoregressive RVQ-16 codec-LM (6 ONNX graphs via `aux_model_urls`), raw text via SentencePiece, in-context [cloning](cloning.md) from a reference clip alone, native 48 kHz |
+| [x-vits](training/engines/xvits.md) | `phoonnx/engines/xvits.py` | `engine == "xvits"` — Piper/VITS with a flow-matching prosody model: 5 ONNX graphs (encoder, prosody predictor, duration, acoustic, prominence; the encoder is the voice's own graph, the others load from `aux_model_urls`), six styles, `*word*` emphasis, espeak ids from the voice pipeline, 22.05 kHz |
 | Rápido | `phoonnx/engines/rapido.py` | `engine == "rapido"` — flow-matching DiT (4 ONNX graphs: text encoder, aligner, velocity model, VoxCPM2 AudioVAE decoder), token ids from the voice pipeline with no text path of its own, midpoint ODE with classifier-free guidance, 42 preset speakers, 48 kHz. Export with `python -m phoonnx_train.rapido.export_onnx --output-dir <dir>` |
 
 #### Engines with no index voice
 
 Each other registered adapter is reached by at least one voice in `phoonnx/voice_index/`.
 The voices in the `phoonnx`, `piper`, `mimic3`, `coqui` and `transformers` formats reach
-the VITS adapter, and the Inflect entries reach the prior-split VITS adapter. Four
+the VITS adapter, and the Inflect entries reach the prior-split VITS adapter. Five
 adapters have no voice of their own:
 
 | Adapter | Why no index voice |
@@ -119,6 +120,7 @@ adapters have no voice of their own:
 | `yourtts` | `Phoonnx/yourtts-multi-graphemes` holds the model and six fixed-speaker configs (English and Portuguese). They join the index after an ASR round trip. |
 | `zipvoice` | It clones from a reference clip and its transcript on each request, and the Phoonnx organisation has no converted ZipVoice model. |
 | `tinyvoca` | The mirror `Phoonnx/tinyvoca-en_us` is not public. The index entry joins with it. |
+| `xvits` | The weights of `fdemelo/x-vits` are CC BY-NC 4.0. The index entry joins with the mirror, after a listening check. |
 
 `tests/test_engine_coverage.py` fails when an adapter has no voice and is not in this table.
 
