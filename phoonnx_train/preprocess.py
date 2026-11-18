@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import dataclasses
+import functools
 import itertools
 import json
 import logging
@@ -94,11 +95,17 @@ class PathEncoder(json.JSONEncoder):
         return super().default(o)
 
 
+def build_phonemizer(phoneme_type: PhonemeType, alphabet: Alphabet,
+                     model: Optional[str], keep_punctuation: bool) -> Any:
+    """Build the phonemizer a worker uses. Module level, so a partial of it pickles."""
+    return get_phonemizer(phoneme_type, alphabet, model, keep_punctuation=keep_punctuation)
+
+
 def phonemize_worker(
         config: PreprocessorConfig,
         task_queue: JoinableQueue,
         result_queue: Queue,
-        phonemizer: PhonemeType,
+        make_phonemizer: Callable[[], Any],
 ) -> None:
     """
     Worker process for phonemization and audio processing.
@@ -107,9 +114,13 @@ def phonemize_worker(
         config: The configuration object containing runtime parameters.
         task_queue: Queue for receiving batches of Utterance objects.
         result_queue: Queue for sending processed results (Utterance, set of phonemes).
-        phonemizer: The initialized Phonemizer instance.
+        make_phonemizer: Builds this worker's phonemizer. The worker builds its
+            own because a loaded phonemizer may hold native handles that do not
+            pickle, and the ``spawn`` and ``forkserver`` start methods pickle
+            every argument. ``forkserver`` is the Linux default from Python 3.14.
     """
     try:
+        phonemizer = make_phonemizer()
         casing: Callable[[str], str] = get_text_casing(config.text_casing)
         silence_detector = make_silence_detector()
 
@@ -717,11 +728,13 @@ def cli(
                             resumed_punctuation)
         keep_punctuation = resumed_punctuation
 
-    # Initialize the phonemizer only once in the main process
-    phonemizer: PhonemeType = get_phonemizer(config.phoneme_type,
-                                            config.alphabet,
-                                            config.phonemizer_model,
-                                            keep_punctuation=keep_punctuation)
+    make_phonemizer = functools.partial(build_phonemizer, config.phoneme_type, config.alphabet,
+                                        config.phonemizer_model, keep_punctuation)
+    # The parent keeps its own phonemizer for the alphabet and the provenance record.
+    phonemizer = get_phonemizer(config.phoneme_type,
+                                config.alphabet,
+                                config.phonemizer_model,
+                                keep_punctuation=keep_punctuation)
 
     if config.add_diacritics and any(not utt.phonemes_precomputed for utt in utterances):
         # In a worker this failure is per utterance, so a missing backend would
@@ -738,7 +751,7 @@ def cli(
     processes: List[Process] = [
         Process(
             target=phonemize_worker,
-            args=(config, task_queue, result_queue, phonemizer)
+            args=(config, task_queue, result_queue, make_phonemizer)
         )
         for _ in range(config.max_workers)
     ]

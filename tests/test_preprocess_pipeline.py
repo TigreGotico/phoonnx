@@ -796,7 +796,7 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
 
         with patch.object(preprocess, "make_silence_detector",
                            return_value=_FakeSilenceDetector()):
-            preprocess.phonemize_worker(config, task_q, result_q, _Phonemizer())
+            preprocess.phonemize_worker(config, task_q, result_q, _Phonemizer)
         results = []
         while not result_q.empty():
             results.append(result_q.get())
@@ -834,7 +834,7 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
             task_q.put(None)
             with patch.object(preprocess, "make_silence_detector", return_value=_FakeSilenceDetector()), \
                     patch.object(preprocess, "diacritize", side_effect=lambda text, lang: text + "a"):
-                preprocess.phonemize_worker(config, task_q, result_q, GraphemePhonemizer())
+                preprocess.phonemize_worker(config, task_q, result_q, GraphemePhonemizer)
         processed, _ = result_q.get()
         self.assertIsNotNone(processed)
         self.assertEqual("".join(processed.phonemes), "hia")
@@ -911,7 +911,7 @@ class TestPhonemizeWorkerDirect(unittest.TestCase):
             with patch.object(preprocess, "make_silence_detector",
                                side_effect=RuntimeError("boom")):
                 with self.assertLogs("preprocess", level="ERROR") as logs:
-                    preprocess.phonemize_worker(config, task_q, result_q, object())
+                    preprocess.phonemize_worker(config, task_q, result_q, object)
             self.assertTrue(any("Worker process failed" in m for m in logs.output))
             self.assertTrue(result_q.empty())  # nothing was ever processed
 
@@ -1070,6 +1070,48 @@ class TestTheWorkerStartsUnderWhateverTheDefaultIs(unittest.TestCase):
                 len(lines), 2,
                 f"workers produced {len(lines)} rows under "
                 f"{multiprocessing.get_start_method()!r}")
+
+
+class TestWorkersBuildTheirOwnPhonemizer(unittest.TestCase):
+    """TigreGotico/phoonnx#467 and #28: a worker never receives the parent's phonemizer.
+
+    A used phonemizer can hold a native handle (an onnxruntime session) that
+    does not pickle. Under ``spawn`` and ``forkserver`` every ``Process``
+    argument is pickled, so passing that object fails the whole run.
+    """
+
+    def test_a_parent_phonemizer_that_does_not_pickle_does_not_reach_forkserver_workers(self):
+        import multiprocessing
+        import threading
+        import click.testing
+
+        real = preprocess.get_phonemizer
+
+        def with_native_handle(*args, **kwargs):
+            phonemizer = real(*args, **kwargs)
+            phonemizer.native_handle = threading.Lock()  # does not pickle, like a session
+            return phonemizer
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "hi", "audio": "a.wav"},
+                         {"text": "there", "audio": "b.wav"}])
+            out = tmp / "out"
+            # The queues must come from the same context as the processes.
+            forkserver = multiprocessing.get_context("forkserver")
+            with patch.object(preprocess, "get_phonemizer", side_effect=with_native_handle), \
+                    patch.object(preprocess, "Process", forkserver.Process), \
+                    patch.object(preprocess, "Queue", forkserver.Queue), \
+                    patch.object(preprocess, "JoinableQueue", forkserver.JoinableQueue):
+                result = click.testing.CliRunner().invoke(preprocess.cli, [
+                    "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                    "--phoneme-type", "graphemes", "--alphabet", "unicode",
+                    "--max-workers", "2",
+                ])
+            self.assertEqual(result.exit_code, 0, f"{result.output}\n{result.exception!r}")
+            rows = [json.loads(x) for x in (out / "dataset.jsonl").read_text().splitlines() if x]
+            self.assertEqual(sorted("".join(r["phonemes"]) for r in rows), ["hi", "there"])
 
 
 class TestConfigIsWrittenAfterTheManifest(unittest.TestCase):
