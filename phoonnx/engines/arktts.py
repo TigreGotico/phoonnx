@@ -228,7 +228,7 @@ class ArkTTSAdapter(BaseOnnxAdapter):
 
     def configure(self, voice_config: Any) -> None:
         """Open the two side graphs, the model's subword BPE, and the voice's codes."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         self._params = dict(ep)
         providers = ep.get("providers")
 

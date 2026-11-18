@@ -61,7 +61,7 @@ class MatchaAdapter(BaseOnnxAdapter):
 
     def configure(self, voice_config: Any) -> None:
         """Build the vocoder from ``voice_config.engine_params``."""
-        engine_params = getattr(voice_config, "engine_params", None) or {}
+        engine_params = voice_config.engine_params
         self.configure_from_params(engine_params)
 
     def configure_from_params(self, engine_params: Dict[str, Any]) -> None:

@@ -30,7 +30,7 @@ from scriptconv.frontend import FrontendConfig, Stages, TextFrontend, spoken_nor
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
-from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
+from phoonnx.config import VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
     _removal_version, check_lang_supported
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
@@ -1346,8 +1346,7 @@ class TTSVoice:
             }.items() if v is not None
         })
         # Override with any engine-specific extras from voice config
-        if hasattr(self.config, 'engine_params'):
-            params.update(self.config.engine_params)
+        params.update(self.config.engine_params)
         # Override with per-call SynthesisConfig
         if syn_config.noise_scale is not None:
             params["noise_scale"] = syn_config.noise_scale
@@ -1443,133 +1442,3 @@ class TTSVoice:
         ).astype(np.int64)
 
         return result.audio, phoneme_id_samples
-
-if __name__ == "__main__":
-    from scriptconv.phonemizers.he import PhonikudPhonemizer
-    from scriptconv.phonemizers.mul import EpitranPhonemizer, GruutPhonemizer, ByT5Phonemizer
-    from scriptconv_copyleft.phonemizers.gl import CotoviaPhonemizer
-    from scriptconv_copyleft.phonemizers.mul import EspeakPhonemizer
-
-    syn_config = SynthesisConfig(enable_phonetic_spellings=True)
-
-    # test hebrew piper
-    model = "/home/miro/PycharmProjects/phoonnx_tts/phonikud/model.onnx"
-    config = "/home/miro/PycharmProjects/phoonnx_tts/phonikud/model.config.json"
-
-    voice = TTSVoice.load(model_path=model, config_path=config, use_cuda=False)
-
-    print("\n################")
-    # hebrew phonemes (raw input model)
-    pho = PhonikudPhonemizer(diacritics=True)
-    sentence = "הכוח לשנות מתחיל ברגע שבו אתה מאמין שזה אפשרי!"
-    sentence = pho.phonemize_string(sentence, "he")
-
-    print("## piper hebrew (raw)")
-    print("-", voice.config.phoneme_type)
-    slug = f"piper_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
-    with wave.open(f"{slug}.wav", "wb") as wav_file:
-        voice.synthesize_wav(sentence, wav_file, syn_config)
-
-    print("\n################")
-    sentence = "הכוח לשנות מתחיל ברגע שבו אתה מאמין שזה אפשרי!"
-    voice.config.phoneme_type = PhonemeType.PHONIKUD
-    voice.phonemizer = pho
-
-    print("## piper hebrew (phonikud)")
-    print("-", voice.config.phoneme_type)
-    slug = f"piper_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
-    with wave.open(f"{slug}.wav", "wb") as wav_file:
-        voice.synthesize_wav(sentence, wav_file, syn_config)
-
-    exit()
-    # test piper
-    model = "/home/miro/PycharmProjects/phoonnx_tts/miro_en-GB.onnx"
-    config = "/home/miro/PycharmProjects/phoonnx_tts/piper_espeak.json"
-
-    voice = TTSVoice.load(model_path=model, config_path=config, use_cuda=False)
-    byt5_phonemizer = ByT5Phonemizer()
-    gruut_phonemizer = GruutPhonemizer()
-    espeak_phonemizer = EspeakPhonemizer()
-    epitran_phonemizer = EpitranPhonemizer()
-    cotovia_phonemizer = CotoviaPhonemizer()
-
-    sentence = "A rainbow is a meteorological phenomenon that is caused by reflection, refraction and dispersion of light in water droplets resulting in a spectrum of light appearing in the sky. It takes the form of a multi-colored circular arc. Rainbows caused by sunlight always appear in the section of sky directly opposite the Sun."
-
-    print("\n################")
-    print("## piper")
-    for phonemizer_type, phonemizer in [
-        (PhonemeType.ESPEAK, espeak_phonemizer),
-        (PhonemeType.BYT5, byt5_phonemizer),
-        (PhonemeType.GRUUT, gruut_phonemizer),
-        (PhonemeType.EPITRAN, epitran_phonemizer)
-    ]:
-        voice.config.phoneme_type = phonemizer_type
-        voice.phonemizer = phonemizer
-        print("-", phonemizer_type)
-
-        slug = f"piper_{phonemizer_type.value}_{voice.config.lang_code}"
-        with wave.open(f"{slug}.wav", "wb") as wav_file:
-            voice.synthesize_wav(sentence, wav_file, syn_config)
-
-    print("\n################")
-    print("## mimic3")
-    model = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/generator.onnx"
-    config = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/config.json"
-    phonemes_txt = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt"
-    phoneme_map = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phoneme_map.txt"
-
-    voice = TTSVoice.load(model_path=model, config_path=config,
-                          phonemes_txt=phonemes_txt, phoneme_map=phoneme_map,
-                          use_cuda=False)
-    for phonemizer_type, phonemizer in [
-        (PhonemeType.ESPEAK, espeak_phonemizer),
-        (PhonemeType.BYT5, byt5_phonemizer),
-        (PhonemeType.GRUUT, gruut_phonemizer),
-        (PhonemeType.EPITRAN, epitran_phonemizer)
-    ]:
-        voice.config.phoneme_type = phonemizer_type
-        voice.phonemizer = phonemizer
-        print("-", phonemizer_type)
-        slug = f"mimic3_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
-        with wave.open(f"{slug}.wav", "wb") as wav_file:
-            voice.synthesize_wav(sentence, wav_file, syn_config)
-
-    # Test grapheme model directly
-    print("\n################")
-    print("## coqui vits")
-    model = "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits/model.onnx"
-    config = "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits/config.json"
-
-    sentence = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
-
-    voice = TTSVoice.load(model_path=model, config_path=config,
-                          use_cuda=False, lang_code="gl-ES")
-    print("-", voice.config.phoneme_type)
-    print(voice.config)
-    phones = voice.phonemize(sentence)
-    print(phones)
-    print(voice.tokenizer.tokenize(phones[0]))
-
-    slug = f"vits_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
-    with wave.open(f"{slug}.wav", "wb") as wav_file:
-        voice.synthesize_wav(sentence, wav_file, syn_config)
-
-    # Test cotovia phonemizer
-    print("\n################")
-    print("## cotovia coqui vits")
-    model = "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia/model.onnx"
-    config = "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia/config.json"
-
-    sentence = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
-
-    voice = TTSVoice.load(model_path=model, config_path=config,
-                          use_cuda=False, lang_code="gl-ES")
-    print("-", voice.config.phoneme_type)
-    print(voice.config)
-    phones = voice.phonemize(sentence)
-    print(phones)
-    print(voice.tokenizer.tokenize(phones[0]))
-
-    slug = f"vits_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
-    with wave.open(f"{slug}.wav", "wb") as wav_file:
-        voice.synthesize_wav(sentence, wav_file, syn_config)

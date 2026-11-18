@@ -219,14 +219,7 @@ class BaseOnnxAdapter(ABC):
         for piece in self._cut(request):
             feed = self.build_feed_dict(piece, session)
             outputs = session.run(None, feed)
-            try:
-                results.append(self.parse_outputs(
-                    outputs, piece, output_names=self._safe_output_names(session)))
-            except TypeError:
-                # Third-party / test subclasses that predate the ``output_names``
-                # parameter and don't accept **kwargs — fall back to the
-                # original two-argument call so they keep working unmodified.
-                results.append(self.parse_outputs(outputs, piece))
+            results.append(self.parse_outputs(outputs, piece, output_names=self._safe_output_names(session)))
         if len(results) == 1:
             return results[0]
         return AdapterSynthesisResult(audio=np.concatenate([r.audio for r in results]))

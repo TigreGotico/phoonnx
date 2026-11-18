@@ -255,7 +255,7 @@ class SparkTTSAdapter(BaseOnnxAdapter):
         preset voice never touches them, and the wav2vec2 front end alone costs about a
         gigabyte of memory to hold open.
         """
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         self._params = dict(ep)
 
         if self.vocoder is None and ep.get("vocoder_path"):

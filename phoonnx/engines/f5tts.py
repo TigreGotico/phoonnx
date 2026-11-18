@@ -120,7 +120,7 @@ class F5TTSAdapter(BaseOnnxAdapter):
 
     def configure(self, voice_config: Any) -> None:
         """Load auxiliary ONNX graphs and optional vocoder from engine_params."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         sess = lambda p: make_session(p, providers=ep.get("providers"))
 
         if self.preprocess is None and ep.get("preprocess_path"):
@@ -329,7 +329,7 @@ class F5TTSAdapter(BaseOnnxAdapter):
     def build_feed_dict(self, request, session):
         raise NotImplementedError("F5-TTS is iterative — use synthesize()")
 
-    def parse_outputs(self, outputs, request):
+    def parse_outputs(self, outputs, request, output_names=None):
         raise NotImplementedError("F5-TTS is iterative — use synthesize()")
 
     @staticmethod

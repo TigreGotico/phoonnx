@@ -60,6 +60,7 @@ class ShamiAdapter(BaseOnnxAdapter):
         self,
         outputs: List[np.ndarray],
         request: AdapterSynthesisRequest,
+        output_names: Optional[List[str]] = None,
     ) -> AdapterSynthesisResult:
         audio = outputs[0].squeeze()
         return AdapterSynthesisResult(audio=audio)

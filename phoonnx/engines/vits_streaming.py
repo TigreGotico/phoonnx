@@ -96,7 +96,7 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
 
     def configure(self, voice_config: Any) -> None:
         """Load the decoder graph and streaming parameters from the voice config."""
-        engine_params = getattr(voice_config, "engine_params", None) or {}
+        engine_params = voice_config.engine_params
         self.configure_from_params(engine_params)
         hop = getattr(voice_config, "hop_length", None)
         if hop:
@@ -180,8 +180,8 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
         args["sid"] = np.array([request.speaker_id or 0], dtype=np.int64)
         return self._filter_inputs(args, session)
 
-    def parse_outputs(self, outputs: List[np.ndarray],
-                      request: AdapterSynthesisRequest) -> AdapterSynthesisResult:
+    def parse_outputs(self, outputs: List[np.ndarray], request: AdapterSynthesisRequest,
+                      output_names: Optional[List[str]] = None) -> AdapterSynthesisResult:
         """Required by the base interface. Streaming synthesis is driven by
         ``synthesize`` (which loops over the decoder), so this is only used if a
         caller runs the encoder graph directly: it wraps the first output as audio."""
