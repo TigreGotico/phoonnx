@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.113.10a1](https://github.com/TigreGotico/phoonnx/tree/1.113.10a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.9a1...1.113.10a1)
+
+**Merged pull requests:**
+
+- fix: the session key covers every external-data file beside a graph [\#711](https://github.com/TigreGotico/phoonnx/pull/711) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.113.9a1](https://github.com/TigreGotico/phoonnx/tree/1.113.9a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.8a1...1.113.9a1)
@@ -373,10 +381,6 @@
 ## [1.98.1a3](https://github.com/TigreGotico/phoonnx/tree/1.98.1a3) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.1a2...1.98.1a3)
-
-**Merged pull requests:**
-
-- chore: plan the split of a mirror repo into one repo per model [\#584](https://github.com/TigreGotico/phoonnx/pull/584) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.98.1a2](https://github.com/TigreGotico/phoonnx/tree/1.98.1a2) (2026-11-14)
 
