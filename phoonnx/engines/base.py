@@ -12,7 +12,7 @@ so that TTSVoice.render works identically for any engine.
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 import numpy as np
 import onnxruntime
@@ -205,6 +205,18 @@ class BaseOnnxAdapter(ABC):
         feed = self.build_feed_dict(request, session)
         outputs = session.run(None, feed)
         return self.parse_outputs(outputs, request, output_names=self._safe_output_names(session))
+
+    def synthesize_stream(
+        self,
+        request: AdapterSynthesisRequest,
+        session: onnxruntime.InferenceSession,
+    ) -> Iterator[AdapterSynthesisResult]:
+        """Yield the audio of one request in parts; joined, they are :meth:`synthesize`'s audio.
+
+        An engine that makes audio in steps yields each part once it exists. The
+        default yields the one result of :meth:`synthesize`.
+        """
+        yield self.synthesize(request, session)
 
     @staticmethod
     def detect(
