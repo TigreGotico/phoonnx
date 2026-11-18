@@ -8,11 +8,13 @@ from importlib import import_module
 _HOMES = {
     "TTSVoice": "phoonnx.voice",
     "AudioChunk": "phoonnx.voice",
+    "Utterance": "phoonnx.voice",
     "VoiceConfig": "phoonnx.config",
     "SynthesisConfig": "phoonnx.config",
     "TTSModelManager": "phoonnx.model_manager",
     "Stages": "scriptconv.frontend",
     "FrontendConfig": "scriptconv.frontend",
+    "Chunk": "scriptconv.frontend",
 }
 
 __all__ = list(_HOMES)

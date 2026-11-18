@@ -12,6 +12,7 @@ import phoonnx.errors as errors
 from phoonnx._bpe import UnsupportedTokenizer
 from phoonnx._sentencepiece import UnsupportedSentencePieceModel
 from phoonnx.config import PhonemeType, UnsupportedVoiceLanguage
+from phoonnx.model_manager import PrecisionUnavailable
 from phoonnx.voice_cache import VoiceExceedsMemoryBudget
 
 
@@ -27,11 +28,13 @@ class TestPackageRoot(unittest.TestCase):
         homes = {
             "TTSVoice": phoonnx.voice,
             "AudioChunk": phoonnx.voice,
+            "Utterance": phoonnx.voice,
             "VoiceConfig": phoonnx.config,
             "SynthesisConfig": phoonnx.config,
             "TTSModelManager": phoonnx.model_manager,
             "Stages": scriptconv.frontend,
             "FrontendConfig": scriptconv.frontend,
+            "Chunk": scriptconv.frontend,
         }
         self.assertEqual(set(phoonnx.__all__), set(homes))
         for name, home in homes.items():
@@ -74,7 +77,7 @@ class TestPackageRoot(unittest.TestCase):
 class TestErrorHierarchy(unittest.TestCase):
 
     def old_errors(self):
-        """Each of the four older errors, an instance of it, and its builtin base."""
+        """Each error that predates the hierarchy, an instance of it, and its builtin base."""
         return [
             (UnsupportedTokenizer, UnsupportedTokenizer("Split pattern"), Exception),
             (UnsupportedSentencePieceModel,
@@ -83,6 +86,7 @@ class TestErrorHierarchy(unittest.TestCase):
              UnsupportedVoiceLanguage("voice", "xx", PhonemeType.ESPEAK), ValueError),
             (VoiceExceedsMemoryBudget, VoiceExceedsMemoryBudget("too big"),
              RuntimeError),
+            (PrecisionUnavailable, PrecisionUnavailable("demo/voice", "int8"), ValueError),
         ]
 
     def test_each_old_error_is_caught_by_phoonnx_error_and_its_old_base(self):
@@ -105,6 +109,13 @@ class TestErrorHierarchy(unittest.TestCase):
             str(error),
             "voice 'voice': no phonemizer backend supports lang 'xx' for "
             "phoneme_type 'espeak'")
+
+    def test_a_missing_precision_is_a_load_error(self):
+        error = PrecisionUnavailable("demo/voice", "int8")
+        self.assertIsInstance(error, errors.VoiceLoadError)
+        self.assertEqual((error.voice_id, error.precision), ("demo/voice", "int8"))
+        self.assertEqual(str(error), "voice 'demo/voice' has no int8 files; "
+                                     "precision 'auto' or 'full' loads it")
 
     def test_new_error_tree(self):
         parents = {

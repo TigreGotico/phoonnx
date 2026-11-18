@@ -27,6 +27,7 @@ from phoonnx.util import match_lang, normalize_lang, LOG
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers, uses_gpu
 from phoonnx.voice import TTSVoice
 from phoonnx._onnx_external import external_data_locations
+from phoonnx.errors import PrecisionUnavailable
 
 
 def _tmp_path(dest: Path) -> Path:
@@ -541,18 +542,6 @@ DEFAULT_PRECISION = "auto"
 #: Environment variable that sets the precision when no argument and no
 #: plugin key sets it.
 PRECISION_ENV_VAR = "PHOONNX_PRECISION"
-
-
-class PrecisionUnavailable(ValueError):
-    """Raised when a voice has no files for the precision a caller asked for."""
-
-    def __init__(self, voice_id: str, precision: str):
-        self.voice_id = voice_id
-        self.precision = precision
-        other = "full" if precision == "int8" else "int8"
-        super().__init__(
-            f"voice {voice_id!r} has no {precision} files; precision 'auto' "
-            f"or {other!r} loads it")
 
 
 def resolve_precision(precision: Optional[str] = None) -> str:

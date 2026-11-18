@@ -48,6 +48,7 @@ __all__ = [
     "ExportNotSupported",
     "FrontendMismatchError",
     "PhoonnxError",
+    "PrecisionUnavailable",
     "UnsupportedConfigError",
     "UnsupportedSentencePieceModel",
     "UnsupportedTokenizer",
@@ -73,6 +74,18 @@ class FrontendMismatchError(VoiceLoadError):
 
 class UnsupportedConfigError(VoiceLoadError):
     """A ``config.json`` is in a format phoonnx does not read."""
+
+
+class PrecisionUnavailable(VoiceLoadError, ValueError):
+    """A voice has no files for the precision a caller asked for."""
+
+    def __init__(self, voice_id: str, precision: str):
+        self.voice_id = voice_id
+        self.precision = precision
+        other = "full" if precision == "int8" else "int8"
+        super().__init__(
+            f"voice {voice_id!r} has no {precision} files; precision 'auto' "
+            f"or {other!r} loads it")
 
 
 class ExportNotSupported(PhoonnxError):

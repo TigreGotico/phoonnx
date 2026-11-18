@@ -20,7 +20,7 @@ class TestErrorTaxonomy(unittest.TestCase):
         self.assertEqual(
             set(errors.__all__),
             {"PhoonnxError", "VoiceLoadError", "FrontendMismatchError",
-             "UnsupportedConfigError", "ExportNotSupported",
+             "UnsupportedConfigError", "ExportNotSupported", "PrecisionUnavailable",
              "UnsupportedVoiceLanguage", "VoiceExceedsMemoryBudget",
              "UnsupportedTokenizer", "UnsupportedSentencePieceModel"},
         )
