@@ -151,6 +151,9 @@ class PocketTTSAdapter(BaseOnnxAdapter):
         self.flow_lm_flow: Optional[onnxruntime.InferenceSession] = None
         self.mimi_decoder: Optional[onnxruntime.InferenceSession] = None
         self.mimi_encoder: Optional[onnxruntime.InferenceSession] = None
+        # Only voice cloning runs the encoder, so it is built on first use.
+        self._mimi_encoder_path: Optional[str] = None
+        self._providers: Any = None
         self.tokenizer = None
         self.metadata: Dict[str, Any] = {}
         self.bos_before_voice: Optional[np.ndarray] = None
@@ -212,8 +215,9 @@ class PocketTTSAdapter(BaseOnnxAdapter):
             self.flow_lm_flow = sess(ep["flow_lm_flow_path"])
         if self.mimi_decoder is None and ep.get("mimi_decoder_path"):
             self.mimi_decoder = sess(ep["mimi_decoder_path"])
-        if self.mimi_encoder is None and ep.get("mimi_encoder_path"):
-            self.mimi_encoder = sess(ep["mimi_encoder_path"])
+        if ep.get("mimi_encoder_path"):
+            self._mimi_encoder_path = ep["mimi_encoder_path"]
+            self._providers = ep.get("providers")
 
         if self.tokenizer is None and ep.get("tokenizer_path"):
             from phoonnx._sentencepiece import SentencePieceProcessor
@@ -358,7 +362,9 @@ class PocketTTSAdapter(BaseOnnxAdapter):
     def encode_reference(self, audio: np.ndarray) -> np.ndarray:
         """Turn a mono 24 kHz reference clip into Mimi latent frames for cloning."""
         if self.mimi_encoder is None:
-            raise RuntimeError("Pocket TTS voice missing mimi_encoder_path in engine_params")
+            if self._mimi_encoder_path is None:
+                raise RuntimeError("Pocket TTS voice missing mimi_encoder_path in engine_params")
+            self.mimi_encoder = make_session(self._mimi_encoder_path, providers=self._providers)
         audio = np.asarray(audio, dtype=np.float32).reshape(1, 1, -1)
         embeddings = self.mimi_encoder.run(None, {"audio": audio})[0]
         while embeddings.ndim > 3:
