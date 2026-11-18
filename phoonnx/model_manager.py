@@ -1319,6 +1319,8 @@ class TTSModelManager:
         # Every rebuild therefore happens in a local dict and is published by a
         # single assignment, under this lock so two rebuilds cannot interleave.
         self._registry_lock = threading.RLock()
+        # bundled entries an alias read, so a lookup per sentence reads the index once
+        self._alias_fallbacks: Dict[str, Optional[TTSModelInfo]] = {}
         if cache_path:
             self.cache = JsonStorage(cache_path)
         else:
@@ -1485,7 +1487,9 @@ class TTSModelManager:
         """
         info = self.voices.get(voice_id)
         if info is not None and not info.variants and info.precision is None:
-            info = self._bundled_voice(voice_id) or info
+            if voice_id not in self._alias_fallbacks:
+                self._alias_fallbacks[voice_id] = self._bundled_voice(voice_id)
+            info = self._alias_fallbacks[voice_id] or info
         return info
 
     def download_voice_by_id(self, voice_id: str, precision: Optional[str] = None) -> bool:

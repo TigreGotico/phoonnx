@@ -78,8 +78,6 @@ def _describes(value: Any, annotation: Any) -> bool:
     raise TypeError(f"index_schema cannot describe {annotation!r}")
 
 
-
-
 #: A Hub revision an index URL may name: a full commit sha, so that a later
 #: upload to the repo changes nothing a released index loads.
 COMMIT_REVISION = re.compile(r"[0-9a-f]{40}")

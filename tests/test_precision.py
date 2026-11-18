@@ -302,6 +302,17 @@ class TestACacheFromAnEarlierRelease(unittest.TestCase):
         self.assertEqual(kept.model_url, _OLD_RAPIDO["model_url"])
         self.assertFalse(kept.variants)
 
+    def test_repeated_alias_lookups_read_the_bundled_index_once(self):
+        manager = TTSModelManager(cache_path=str(self.path))
+        manager.load()
+        with patch.object(manager, "_bundled_voice", wraps=manager._bundled_voice) as bundled, \
+                warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            for _ in range(3):
+                info = manager.get_voice("edwixx/pt-BR-rapido-int8")
+        self.assertEqual(bundled.call_count, 1)
+        self.assertTrue(info.model_url.endswith("/edwixx__rapido-tts-int8/model.onnx"))
+
     def test_the_cli_precision_option_ignores_case(self):
         empty = str(Path(self.tmp.name) / "empty.json")
         with patch("phoonnx.cli.TTSModelManager",
