@@ -56,7 +56,7 @@ runtime contract published with the exported graphs.
 """
 import json
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
 import onnxruntime
@@ -77,6 +77,9 @@ DEFAULT_EOS_THRESHOLD = -4.0
 # three text tokens per second of speech, plus a two-second allowance.
 TOKENS_PER_SECOND_ESTIMATE = 3.0
 GEN_SECONDS_PADDING = 2.0
+
+# Latent frames the Mimi decoder reads per call.
+DECODE_CHUNK_FRAMES = 15
 
 _NUMPY_DTYPES = {
     "float32": np.float32,
@@ -476,11 +479,11 @@ class PocketTTSAdapter(BaseOnnxAdapter):
         seconds = token_count / TOKENS_PER_SECOND_ESTIMATE + GEN_SECONDS_PADDING
         return int(math.ceil(seconds * self.frame_rate))
 
-    def generate_latents(self, token_ids: np.ndarray, voice_state: Dict[str, np.ndarray],
-                         session: onnxruntime.InferenceSession, temperature: float,
-                         lsd_steps: int, eos_threshold: float,
-                         rng: np.random.Generator) -> np.ndarray:
-        """Run the autoregressive loop for one chunk and return its latent frames.
+    def iter_latents(self, token_ids: np.ndarray, voice_state: Dict[str, np.ndarray],
+                     session: onnxruntime.InferenceSession, temperature: float,
+                     lsd_steps: int, eos_threshold: float,
+                     rng: np.random.Generator) -> Iterator[np.ndarray]:
+        """Run the autoregressive loop for one chunk and yield each latent frame when it exists.
 
         Each step asks ``flow_lm_main`` for a conditioning vector and an end-of-speech
         logit, then integrates ``flow_lm_flow`` from a Gaussian sample to the next latent
@@ -507,7 +510,6 @@ class PocketTTSAdapter(BaseOnnxAdapter):
                       for j in range(lsd_steps)]
 
         curr = np.full((1, 1, self.latent_dim), np.nan, dtype=np.float32)
-        latents: List[np.ndarray] = []
         eos_step: Optional[int] = None
 
         for step in range(frame_limit):
@@ -531,31 +533,42 @@ class PocketTTSAdapter(BaseOnnxAdapter):
                     None, {"c": conditioning, "s": s_arr, "t": t_arr, "x": x})[0] * dt
 
             curr = x.reshape(1, 1, self.latent_dim)
-            latents.append(curr)
+            yield curr
 
+    def generate_latents(self, token_ids: np.ndarray, voice_state: Dict[str, np.ndarray],
+                         session: onnxruntime.InferenceSession, temperature: float,
+                         lsd_steps: int, eos_threshold: float,
+                         rng: np.random.Generator) -> np.ndarray:
+        """Run the autoregressive loop for one chunk and return its latent frames."""
+        latents = list(self.iter_latents(token_ids, voice_state, session, temperature,
+                                         lsd_steps, eos_threshold, rng))
         if not latents:
             return np.zeros((1, 0, self.latent_dim), dtype=np.float32)
         return np.concatenate(latents, axis=1)
 
-    def decode_latents(self, latents: np.ndarray, chunk_size: int = 15) -> np.ndarray:
+    def _decode(self, latents: np.ndarray, state: Dict[str, np.ndarray]) -> np.ndarray:
+        """Decode one slice of latent frames, updating the decoder *state* in place."""
+        outputs = self.mimi_decoder.run(None, {"latent": latents, **state})
+        self._update_state(state, outputs, self.mimi_state_manifest, output_offset=1)
+        return np.asarray(outputs[0], np.float32).reshape(-1)
+
+    def decode_latents(self, latents: np.ndarray,
+                       chunk_size: int = DECODE_CHUNK_FRAMES) -> np.ndarray:
         """Turn latent frames into audio, feeding the decoder in small chunks and
         carrying its state forward so the joins are seamless within this call's
         latents. Each call to synthesize() starts flow_lm_main from the voice's
         saved state again, so this continuity does not carry across sentence-level
         text chunks — the flow-LM state resets there by design."""
         state = self.init_state(self.mimi_state_manifest)
-        audio: List[np.ndarray] = []
-        for index in range(0, latents.shape[1], chunk_size):
-            outputs = self.mimi_decoder.run(
-                None, {"latent": latents[:, index:index + chunk_size, :], **state})
-            audio.append(np.asarray(outputs[0], np.float32).reshape(-1))
-            self._update_state(state, outputs, self.mimi_state_manifest, output_offset=1)
+        audio = [self._decode(latents[:, index:index + chunk_size, :], state)
+                 for index in range(0, latents.shape[1], chunk_size)]
         if not audio:
             return np.zeros((0,), dtype=np.float32)
         return np.concatenate(audio)
 
-    def synthesize(self, request: AdapterSynthesisRequest,
-                   session: onnxruntime.InferenceSession) -> AdapterSynthesisResult:
+    def _generation_args(self, request: AdapterSynthesisRequest,
+                         session: onnxruntime.InferenceSession) -> tuple:
+        """The checked arguments of :meth:`iter_latents` for *request*."""
         if self.text_conditioner is None or self.flow_lm_flow is None or self.mimi_decoder is None:
             raise RuntimeError("Pocket TTS voice missing text_conditioner_path / "
                                "flow_lm_flow_path / mimi_decoder_path in engine_params")
@@ -585,11 +598,42 @@ class PocketTTSAdapter(BaseOnnxAdapter):
                                "and no speaker_reference was given")
 
         token_ids = np.asarray(request.phoneme_ids, np.int64).reshape(1, -1)
-        latents = self.generate_latents(token_ids, voice_state, session, temperature,
-                                        lsd_steps, eos_threshold, rng)
+        return token_ids, voice_state, session, temperature, lsd_steps, eos_threshold, rng
+
+    def synthesize(self, request: AdapterSynthesisRequest,
+                   session: onnxruntime.InferenceSession) -> AdapterSynthesisResult:
+        latents = self.generate_latents(*self._generation_args(request, session))
         audio = self.decode_latents(latents)
         return AdapterSynthesisResult(
             audio=audio, extras={"frames": int(latents.shape[1])})
+
+    def synthesize_stream(self, request: AdapterSynthesisRequest,
+                          session: onnxruntime.InferenceSession) -> Iterator[AdapterSynthesisResult]:
+        """Yield the audio of each ``DECODE_CHUNK_FRAMES`` latent frames once they exist.
+
+        The decoder reads the slices of :meth:`synthesize` in the same order, so the
+        joined parts are its samples. No frames yield one empty part.
+        """
+        latents = self.iter_latents(*self._generation_args(request, session))
+        state = self.init_state(self.mimi_state_manifest)
+
+        def part(frames: List[np.ndarray]) -> AdapterSynthesisResult:
+            return AdapterSynthesisResult(
+                audio=self._decode(np.concatenate(frames, axis=1), state),
+                extras={"frames": len(frames)})
+
+        frames: List[np.ndarray] = []
+        decoded = False
+        for frame in latents:
+            frames.append(frame)
+            if len(frames) == DECODE_CHUNK_FRAMES:
+                yield part(frames)
+                frames, decoded = [], True
+        if frames:
+            yield part(frames)
+        elif not decoded:
+            yield AdapterSynthesisResult(audio=np.zeros((0,), dtype=np.float32),
+                                         extras={"frames": 0})
 
     # build_feed_dict / parse_outputs are required by the ABC but unused — synthesize()
     # drives the multi-graph pipeline directly.
