@@ -175,7 +175,8 @@ class TestGruutGetLangAndDispatch(unittest.TestCase):
                 patch.object(scriptconv_mul, "_GRUUT", threading.local()):
             return GruutPhonemizer().phonemize_string(text, "en")
 
-    # Real gruut ends every sentence with a "‖" word; the end mark replaces it.
+    # Real gruut ends a sentence that has end punctuation with a "‖" word, and
+    # the end mark replaces that word.
     def test_question_mark_replaces_the_pause_word(self):
         sentence = self._make_sentence("hi?", [["h", "aɪ"], ["‖"]])
         self.assertEqual(self._phonemize("hi?", [sentence]), "haɪ ?")
@@ -188,9 +189,13 @@ class TestGruutGetLangAndDispatch(unittest.TestCase):
         sentence = self._make_sentence("done.", [["d", "ʌ", "n"], ["‖"]])
         self.assertEqual(self._phonemize("done.", [sentence]), "dʌn .")
 
-    def test_a_sentence_with_no_mark_ends_with_a_period(self):
+    def test_a_trailing_pause_word_becomes_a_period(self):
         sentence = self._make_sentence("done", [["d", "ʌ", "n"], ["‖"]])
         self.assertEqual(self._phonemize("done", [sentence]), "dʌn .")
+
+    def test_a_sentence_with_no_punctuation_gets_no_mark(self):
+        sentence = self._make_sentence("done", [["d", "ʌ", "n"]])
+        self.assertEqual(self._phonemize("done", [sentence]), "dʌn")
 
     def test_each_sentence_keeps_its_own_mark(self):
         sentences = [self._make_sentence("hi?", [["h", "aɪ"], ["‖"]]),
