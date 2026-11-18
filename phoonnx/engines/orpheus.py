@@ -80,6 +80,8 @@ import numpy as np
 import onnxruntime
 from quebra_frases import sentence_tokenize
 
+from phoonnx.engines._sampling import apply_repetition_penalty
+from phoonnx.engines._sampling import softmax
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.util import LOG
@@ -111,33 +113,6 @@ _SEED_LOCK = threading.Lock()
 _ORT_SEED_RANGE = 2 ** 63
 
 
-def _softmax(x: np.ndarray) -> np.ndarray:
-    z = np.asarray(x, np.float64)
-    z = z - z.max()
-    e = np.exp(z)
-    return e / e.sum()
-
-
-def _apply_repetition_penalty(scores: np.ndarray, seen: np.ndarray, penalty: float) -> np.ndarray:
-    """Divide the score of tokens in ``seen`` by ``penalty`` (multiply when negative).
-
-    ``seen`` spans the **prompt as well as the generated run**, and is not windowed. That
-    is vLLM's ``repetition_penalty``, which is the sampler upstream serves this checkpoint
-    with — unlike llama.cpp's windowed penalty (see
-    :data:`phoonnx.engines.neutts.REPETITION_WINDOW`) and unlike penalising only what has
-    been generated. Orpheus needs a strong penalty (upstream default 1.3) or it stalls on
-    runs of silence tokens.
-    """
-    if penalty == 1.0 or seen.size == 0:
-        return scores
-    out = scores.copy()
-    idx = np.unique(seen[(seen >= 0) & (seen < out.shape[0])])
-    if idx.size:
-        s = out[idx]
-        out[idx] = np.where(s < 0, s * penalty, s / penalty)
-    return out
-
-
 def _sample(scores: np.ndarray, temperature: float, top_p: float,
             rng: np.random.Generator) -> int:
     """Temperature, then nucleus — vLLM's sampler order (argmax if temperature<=0).
@@ -151,7 +126,7 @@ def _sample(scores: np.ndarray, temperature: float, top_p: float,
     s = np.asarray(scores, np.float32)
     if temperature <= 0:
         return int(np.argmax(s))
-    probs = _softmax(s / float(temperature))
+    probs = softmax(s / float(temperature))
     if 0 < top_p < 1:
         order = np.argsort(probs)[::-1]
         cumulative = np.cumsum(probs[order])
@@ -432,7 +407,7 @@ class OrpheusAdapter(BaseOnnxAdapter):
         history = list(prompt_ids)
         for step in range(max_new):
             scores = np.asarray(logits, np.float32)[0, -1]
-            scores = _apply_repetition_penalty(scores, np.asarray(history, np.int64), penalty)
+            scores = apply_repetition_penalty(scores, np.asarray(history, np.int64), penalty)
             token = _sample(scores, temperature, top_p, rng)
             # upstream passes ``stop_token_ids=[49158]``, which is the *text* token
             # "Ġrez" and can never be emitted mid-audio — a no-op left in their serving

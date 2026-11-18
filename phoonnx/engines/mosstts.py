@@ -77,6 +77,8 @@ import numpy as np
 import onnxruntime
 from quebra_frases import sentence_tokenize
 
+from phoonnx.audio_fx import resample_rate
+from phoonnx.engines._sampling import softmax
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.util import LOG
@@ -129,26 +131,6 @@ SAMPLE_MODE_FULL = "full"        # host sampling via local_cached_step (tunable)
 SAMPLE_MODE_GREEDY = "greedy"    # host argmax via local_cached_step
 
 
-def _resample(audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
-    if sr == target_sr:
-        return audio
-    try:
-        from scipy.signal import resample_poly
-        from math import gcd
-        g = gcd(sr, target_sr)
-        return resample_poly(audio, target_sr // g, sr // g).astype(np.float32)
-    except Exception:
-        n = int(round(len(audio) * target_sr / sr))
-        return np.interp(np.linspace(0, len(audio) - 1, n), np.arange(len(audio)), audio).astype(np.float32)
-
-
-def _softmax(x: np.ndarray) -> np.ndarray:
-    z = np.asarray(x, np.float64)
-    z = z - z.max()
-    e = np.exp(z)
-    return e / e.sum()
-
-
 def _apply_repetition_penalty(scores: np.ndarray, seen: set, penalty: float) -> np.ndarray:
     """Divide the score of already-emitted tokens by ``penalty`` (multiply when negative).
 
@@ -179,13 +161,13 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
         s = np.where(s < threshold, -np.inf, s)
     if 0 < top_p < 1:
         order = np.argsort(s)[::-1]
-        cumulative = np.cumsum(_softmax(s[order]))
+        cumulative = np.cumsum(softmax(s[order]))
         # keep every token up to and including the one that crosses top_p
         keep = np.ones(order.shape[0], bool)
         keep[1:] = cumulative[:-1] <= top_p
         s = np.full_like(s, -np.inf)
         s[order[keep]] = np.asarray(scores, np.float32)[order[keep]] / float(temperature)
-    probs = _softmax(s)
+    probs = softmax(s)
     return int(rng.choice(probs.shape[0], p=probs))
 
 
@@ -348,7 +330,7 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
     def encode_reference(self, audio: np.ndarray, sr: int) -> List[List[int]]:
         """Reference clip -> RVQ-16 prompt codes. Mono is duplicated to stereo, since
         the tokenizer was trained on 2-channel 48 kHz audio."""
-        wav = _resample(np.asarray(audio, np.float32).reshape(-1), int(sr), SAMPLE_RATE)
+        wav = resample_rate(np.asarray(audio, np.float32).reshape(-1), int(sr), SAMPLE_RATE)
         stereo = np.repeat(wav[None, None, :], CHANNELS, axis=1).astype(np.float32)
         codes, lengths = self.codec_encode.run(None, {
             "waveform": stereo,

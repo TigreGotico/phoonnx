@@ -186,7 +186,7 @@ def level_audio(audio: np.ndarray, syn_config: "SynthesisConfig", sample_rate: i
     global _LOUDNESS_WARNED
     if syn_config.target_loudness is not None:
         try:
-            from phoonnx.engines.outetts import normalize_loudness
+            from phoonnx.audio_fx import normalize_loudness
             return normalize_loudness(audio, float(syn_config.target_loudness), rate=sample_rate)
         except ImportError:
             if not _LOUDNESS_WARNED:

@@ -10,10 +10,11 @@ import json
 import numpy as np
 import pytest
 
+from phoonnx.engines._sampling import apply_repetition_penalty
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.neutts import (
     ESPEAK_VOICE, MAX_REFERENCE_CODES, SPEECH_GENERATION_START, SPEECH_TOKEN_TEMPLATE,
-    TEXT_PROMPT_END, TEXT_PROMPT_START, NeuTTSAdapter, _apply_repetition_penalty,
+    TEXT_PROMPT_END, TEXT_PROMPT_START, NeuTTSAdapter,
     _sample, preserve_punctuation_phonemize,
 )
 
@@ -475,24 +476,24 @@ def test_top_k_of_one_is_deterministic():
 
 def test_repetition_penalty_lowers_seen_positive_scores():
     scores = np.array([2.0, 2.0], np.float32)
-    out = _apply_repetition_penalty(scores, np.array([0]), 2.0)
+    out = apply_repetition_penalty(scores, np.array([0]), 2.0)
     assert out[0] == pytest.approx(1.0)
     assert out[1] == 2.0
 
 
 def test_repetition_penalty_raises_the_magnitude_of_negative_scores():
-    out = _apply_repetition_penalty(np.array([-2.0], np.float32), np.array([0]), 2.0)
+    out = apply_repetition_penalty(np.array([-2.0], np.float32), np.array([0]), 2.0)
     assert out[0] == pytest.approx(-4.0)
 
 
 def test_repetition_penalty_of_one_is_a_no_op():
     scores = np.array([2.0, -2.0], np.float32)
-    assert np.array_equal(_apply_repetition_penalty(scores, np.array([0, 1]), 1.0), scores)
+    assert np.array_equal(apply_repetition_penalty(scores, np.array([0, 1]), 1.0), scores)
 
 
 def test_repetition_penalty_ignores_out_of_range_tokens():
     scores = np.array([2.0], np.float32)
-    assert np.array_equal(_apply_repetition_penalty(scores, np.array([9]), 2.0), scores)
+    assert np.array_equal(apply_repetition_penalty(scores, np.array([9]), 2.0), scores)
 
 
 # --------------------------------------------------------------- decode loop

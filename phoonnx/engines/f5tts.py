@@ -65,6 +65,7 @@ from typing import Any, Callable, Dict, List, Optional
 import numpy as np
 import onnxruntime
 
+from phoonnx.audio_fx import resample_rate
 from phoonnx.engines.base import (
     AdapterSynthesisRequest,
     AdapterSynthesisResult,
@@ -198,7 +199,7 @@ class F5TTSAdapter(BaseOnnxAdapter):
         ref_audio_arr = np.asarray(ref_audio[0], np.float32).reshape(1, 1, -1)
         if ref_audio[1] != self.SAMPLE_RATE:
             ref_audio_arr = np.asarray(
-                self._resample(ref_audio_arr.reshape(-1), ref_audio[1], self.SAMPLE_RATE),
+                resample_rate(ref_audio_arr.reshape(-1), ref_audio[1], self.SAMPLE_RATE),
                 np.float32,
             ).reshape(1, 1, -1)
 
@@ -450,19 +451,3 @@ class F5TTSAdapter(BaseOnnxAdapter):
         suffix = np.array([[self._char2idx[chars[2]]]], dtype=text_ids.dtype)
         return np.concatenate([prefix, text_ids, suffix], axis=1)
 
-    @staticmethod
-    def _resample(audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
-        if sr == target_sr:
-            return audio
-        try:
-            from scipy.signal import resample_poly
-            from math import gcd
-            g = gcd(sr, target_sr)
-            return resample_poly(audio, target_sr // g, sr // g).astype(np.float32)
-        except Exception:
-            n = int(round(len(audio) * target_sr / sr))
-            return np.interp(
-                np.linspace(0, len(audio) - 1, n),
-                np.arange(len(audio)),
-                audio,
-            ).astype(np.float32)
