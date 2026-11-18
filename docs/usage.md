@@ -199,17 +199,23 @@ loudness, pitch, language and sound effects. Input that is not SSML is synthesiz
 | `<prosody rate= volume= pitch=>` | pace (the voice's length scale), loudness, and pitch (`+2st`, `-10%`, `high`; Hz is ignored) |
 | `<emphasis level=>` | a little slower and louder (or softer for `reduced`) |
 | `<lang xml:lang=>`, `<voice>` | a multilingual voice uses that language's id for the piece; a monolingual voice says the words in its own language. `<say-as>` inside it also reads its value in that language |
-| `<say-as interpret-as=...>` | `cardinal`, `ordinal`, `digits`, `fraction`, `unit`, `date` (+`format="mdy"`), `time`, `currency`, `address`, `telephone`, `characters`/`spell-out`, `expletive` (a bleep), `interjection` |
+| `<say-as interpret-as=...>` | `cardinal`, `number`, `ordinal`, `digits`, `fraction`, `unit`, `date` (+`format="mdy"`), `time`, `currency`, `telephone`, `characters`/`spell-out`/`letters`/`verbatim`, and `expletive` (a bleep) |
 | `<sub alias=>` | substituted text |
 | `<phoneme alphabet="ipa\|x-sampa" ph=>` | inline phonemes (X-SAMPA is converted to IPA) |
 | `<mark name=>` | `on_mark(name, seconds)` is called as the audio that follows is produced |
 | `<amazon:effect name="whispered\|drc">`, `phonation="soft"`, `vocal-tract-length="+10%"` | whisper, soft voice, dynamic range compression, a longer or shorter vocal tract |
 | `<amazon:auto-breaths>`, `<amazon:breath>` | breaths between sentences, or at a point |
 
-`say-as` reads numbers, dates, times and units with `ovos-number-parser` and
-`ovos-date-parser`, in the language of the text, so `<lang>` changes how
-they are read. A value that cannot be read that way (`<say-as interpret-as="date">soon</say-as>`)
-is spoken as written.
+The voice's text frontend reads `say-as` with `TextFrontend.say_as` from scriptconv. That method
+calls text2spoken through the normalisation hook of the voice. So `say-as` reads with the
+settings of the voice, and in the language of the text: `<lang>` changes how a value is read.
+Each value text2spoken does not read, such as `address` or `interjection`, reads as plain text,
+with a warning. A text that does not hold the value (`<say-as interpret-as="date">soon</say-as>`)
+also reads as plain text, with a warning.
+
+```python
+voice.frontend.say_as("3", "ordinal", lang="en-US")  # 'third'
+```
 
 Pitch, whisper, soft, compression, breaths and bleeps are applied to the finished audio
 (`phoonnx.audio_fx`, numpy only), not by the model: pitch shifts move the formants with the pitch,

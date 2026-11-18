@@ -26,7 +26,7 @@ from typing import (Any, Callable, Iterable, Iterator, List, Mapping, Optional, 
 import numpy as np
 import onnxruntime
 from linguatag import closest_lang
-from scriptconv.frontend import FrontendConfig, Stages, TextFrontend
+from scriptconv.frontend import FrontendConfig, Stages, TextFrontend, spoken_normalizer
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
@@ -610,7 +610,9 @@ class TTSVoice:
         frontend's normalisation hook, so it runs before diacritization, and the
         frontend reads a copy of the phonemizer without it. Every voice runs the
         hook. The frontend skips it for a backend that names ``normalize`` in its
-        ``owned_stages``, because that backend normalises the text itself.
+        ``owned_stages``, because that backend normalises the text itself. Such a
+        phonemizer has no ``normalizer``, so its frontend gets
+        :func:`scriptconv.frontend.spoken_normalizer`, which reads only a ``<say-as>``.
 
         Assigning another phonemizer to :attr:`phonemizer`, as the Vosk voices
         do once their dictionary is known, reaches the frontend through
@@ -622,8 +624,11 @@ class TTSVoice:
         key = (self.config.phoneme_type, self.config.lang_code,
                phonemizer.keep_punctuation, phonemizer.normalizer)
         if self._frontend is None or key != self._frontend_key:
+            normalizer = phonemizer.normalizer
+            if normalizer is None and "normalize" in phonemizer.owned_stages:
+                normalizer = spoken_normalizer()
             self._frontend = TextFrontend(
-                FrontendConfig(lang=self.config.lang_code, normalizer=phonemizer.normalizer,
+                FrontendConfig(lang=self.config.lang_code, normalizer=normalizer,
                                keep_punctuation=phonemizer.keep_punctuation),
                 backend=self._without_normalizer(phonemizer))
             self._frontend_key = key
@@ -1130,8 +1135,9 @@ class TTSVoice:
         1.25 is ``length_scale / 1.25``); ``<prosody volume>`` scales the samples; ``<prosody
         pitch>`` and ``vocal-tract-length`` shift the finished audio (:mod:`phoonnx.audio_fx`);
         ``<lang>`` picks the language id of a multilingual voice when it has one (a monolingual
-        voice says the words in its own language); ``<say-as>``, ``<sub>`` and ``<phoneme>`` are
-        read as words and phonemes; ``<amazon:effect>`` whispers, softens or compresses the audio;
+        voice says the words in its own language); :meth:`scriptconv.frontend.TextFrontend.say_as`
+        of :attr:`frontend` reads ``<say-as>``; ``<sub>`` and ``<phoneme>`` are read as words and
+        phonemes; ``<amazon:effect>`` whispers, softens or compresses the audio;
         ``<amazon:auto-breaths>`` and ``<amazon:breath>`` add breaths; an expletive is a bleep. A
         text that is not SSML is synthesized as it is.
 
@@ -1182,7 +1188,7 @@ class TTSVoice:
                 kind, ms, volume = piece.sound
                 yield passed(tone(kind, ms, volume, at_rate))
 
-        for piece in parse_ssml(ssml, voice_lang):
+        for piece in parse_ssml(ssml, voice_lang, self.frontend):
             if piece.sound is not None or not piece.text:
                 if rate is None:
                     waiting.append(piece)

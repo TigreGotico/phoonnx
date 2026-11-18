@@ -1,4 +1,7 @@
-"""SSML beyond pauses: say-as, pitch, marks, effects, breaths, X-SAMPA, and their audio."""
+"""SSML beyond pauses: pitch, marks, effects, breaths, X-SAMPA, and their audio.
+
+tests/test_ssml_say_as.py holds ``<say-as>``.
+"""
 from __future__ import annotations
 
 import numpy as np
@@ -6,53 +9,10 @@ import pytest
 
 from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
-from phoonnx.ssml_say_as import say_as_text
 from phoonnx.voice import AudioChunk, TTSVoice
 from phoonnx.xsampa import xsampa_to_ipa
 
 SR = 22050
-
-
-@pytest.mark.parametrize("text,kind,lang,expected", [
-    ("21", "cardinal", "en", "twenty one"),
-    ("3", "ordinal", "en", "third"),
-    ("1/2", "fraction", "en", "one half"),
-    ("2 3/4", "fraction", "en", "two and three quarters"),
-    ("5km", "unit", "en", "five kilometers"),
-    ("2026-11-09", "date", "en", "monday, november ninth, twenty twenty six"),
-    ("09/11/2026", "date", "fr", "lundi neuf novembre deux-mille-vingt-six"),
-    ("11/09", "date", "en", "november ninth"),
-    ("14h30", "time", "fr", "quatorze heures trente"),
-    ("$12.50", "currency", "en", "twelve dollars and fifty cents"),
-    ("12,50 €", "currency", "fr", "douze euros et cinquante centimes"),
-    ("1600 Pennsylvania Ave.", "address", "en", "sixteen hundred Pennsylvania Avenue"),
-    ("555-0100", "telephone", "en", "5 5 5 0 1 0 0"),
-    ("XK7", "characters", "en", "X K 7"),
-    ("hello", "interjection", "en", "hello"),
-])
-def test_say_as_reads_text_the_way_it_is_asked(text, kind, lang, expected):
-    assert say_as_text(text, kind, lang) == expected
-
-
-def test_say_as_a_decimal_above_999_is_still_words():
-    assert say_as_text("1 234,5", "cardinal", "fr") == "mille deux cent trente-quatre virgule cinq"
-
-
-def test_say_as_date_format_attribute_orders_the_fields():
-    assert say_as_text("11-09-2026", "date", "en", "dmy") == "friday, september eleventh, twenty twenty six"
-
-
-@pytest.mark.parametrize("text,kind", [("hello", "cardinal"), ("13/45/9999", "date"), ("soon", "time"),
-                                       ("abc", "currency"), ("x", "no-such-kind")])
-def test_say_as_that_cannot_be_read_keeps_the_written_text(text, kind):
-    assert say_as_text(text, kind, "en") == text
-
-
-def test_say_as_in_a_document_uses_the_language_in_force():
-    (piece,) = parse_ssml('<speak><lang xml:lang="fr-FR"><say-as interpret-as="ordinal">21</say-as></lang></speak>')
-    assert piece.text == "vingt-et-unième"
-    (piece,) = parse_ssml('<speak>It is <say-as interpret-as="cardinal">1,200</say-as>.</speak>', "en")
-    assert piece.text == "It is one thousand, two hundred."
 
 
 @pytest.mark.parametrize("value,expected", [
@@ -161,8 +121,12 @@ class _Config:
     lang_id_map = None
 
 
+class _Voice(TTSVoice):
+    frontend = None  # no phonemizer: these documents hold no say-as but an expletive
+
+
 def _voice():
-    voice = TTSVoice.__new__(TTSVoice)
+    voice = _Voice.__new__(_Voice)
     voice.config = _Config()
     seen = []
 
@@ -197,75 +161,6 @@ def test_synthesis_applies_pitch_and_breaths_between_sentences():
     assert _f0(speech) == pytest.approx(200 * 2 ** 0.5, rel=0.04)
 
 
-@pytest.mark.parametrize("text,kind,lang,expected", [
-    ("12,50 €", "currency", "en", "twelve euros and fifty cents"),
-    ("12,50 €", "currency", "nl", "twaalf euro en vijftig cent"),
-    ("12 km/h", "unit", "en", "twelve kilometers per hour"),
-    ("12 km/h", "unit", "fr", "douze kilomètres par heure"),
-    ("12 km/h", "unit", "it", "dodici chilometri all'ora"),
-    ("20°C", "unit", "nl", "twintig graden Celsius"),
-    ("1", "ordinal", "es", "primero"),
-    # RAE, Diccionario panhispánico de dudas, "ordinales" § 3: 13 to 29 are one word, with one stress
-    ("21", "ordinal", "es", "vigesimoprimero"),
-    ("1", "ordinal", "it", "primo"),
-    ("1", "ordinal", "fr", "premier"),
-    ("12,5", "cardinal", "de", "zwölf Komma fünf"),
-    ("0,5", "cardinal", "de", "null Komma fünf"),
-    ("3.14159", "cardinal", "pt", "três vírgula um quatro um cinco nove"),
-    ("1.234", "cardinal", "de", "eintausendzweihundertvierunddreißig"),
-    ("1,234", "cardinal", "en", "one thousand, two hundred and thirty four"),
-    ("1.234", "cardinal", "en", "one point two three four"),
-    ("2026-11-09", "date", "de", "neunte november zweitausendsechsundzwanzig"),
-    ("2026-11-09", "date", "es", "nueve de noviembre de dos mil veintiséis"),
-])
-def test_say_as_in_other_languages_reads_what_a_speaker_would_say(text, kind, lang, expected):
-    assert say_as_text(text, kind, lang) == expected
-
-
-def test_a_huge_value_is_read_digit_by_digit_or_as_written_not_hung_on():
-    import time
-
-    started = time.perf_counter()
-    assert say_as_text("1" * 40, "cardinal", "en").startswith("one one one")  # past 15 digits
-    assert say_as_text("1" * 5000, "cardinal", "en") == "1" * 5000           # not a value at all
-    assert say_as_text("1" * 5000, "unit", "en") == "1" * 5000
-    assert say_as_text("9" * 40, "ordinal", "fr").startswith("neuf neuf")
-    assert time.perf_counter() - started < 3
-
-
-@pytest.mark.parametrize("text,lang,expected", [
-    ("-0.5", "en", "minus zero point five"),
-    ("-0,5", "pt", "menos zero vírgula cinco"),
-    ("-0,25", "de", "minus null Komma zwei fünf"),
-    ("-3.5", "en", "minus three point five"),
-])
-def test_say_as_a_negative_decimal_keeps_its_sign(text, lang, expected):
-    assert say_as_text(text, "cardinal", lang) == expected
-
-
-@pytest.mark.parametrize("text,lang,expected", [
-    ("3.5", "eu", "hiru koma bost"),
-    ("3.5", "ar", "ثلاثة فاصلة خمسة"),
-    ("3,5", "ca", "tres coma cinc"),
-    ("-12,25", "af", "min twaalf komma twee vyf"),
-    ("-0.5", "sw", "kasoro sifuri nukta tano"),
-    ("3.5", "xx", "3.5"),  # no number words for the language: read as written
-])
-def test_say_as_a_decimal_outside_the_seven_languages_has_no_english_point(text, lang, expected):
-    assert say_as_text(text, "cardinal", lang) == expected
-
-
-@pytest.mark.parametrize("text,lang,expected", [
-    ("221B Baker St.", "en", "two twenty one B Baker Street"),
-    ("Rua Augusta 221", "pt", "Rua Augusta duzentos e vinte e um"),
-    ("Hauptstraße 221", "de", "Hauptstraße zweihunderteinundzwanzig"),
-    ("1600 av. Foch", "fr", "mille six cents avenue Foch"),
-    ("Calle Mayor 1600", "es", "Calle Mayor mil seiscientos"),
-])
-def test_say_as_address_pairs_house_number_digits_only_in_english(text, lang, expected):
-    assert say_as_text(text, "address", lang) == expected
-
-
 # Expected values: the X-SAMPA chart, https://en.wikipedia.org/wiki/X-SAMPA
 @pytest.mark.parametrize("xsampa,ipa", [
     ("r\\`", "ɻ"), ("r`", "ɽ"), ("L\\", "ʟ"), ("M\\", "ɰ"), ("H\\", "ʜ"), ("s\\", "ɕ"),
@@ -282,7 +177,7 @@ def test_a_sound_before_the_first_words_is_made_at_the_rate_of_the_speech():
     import wave
 
     rate = 44100  # the model's own rate is SR (22050)
-    voice = TTSVoice.__new__(TTSVoice)
+    voice = _Voice.__new__(_Voice)
     voice.config = _Config()
 
     def synthesize(text, syn_config=None, include_alignments=False):
@@ -312,26 +207,3 @@ def test_sounds_with_no_words_after_them_are_made_at_the_model_rate():
     voice, _ = _voice()
     chunks = list(voice.synthesize_ssml('<speak><amazon:breath duration="short"/></speak>'))
     assert [(c.sample_rate, len(c.audio_float_array)) for c in chunks] == [(SR, SR // 4)]
-
-
-@pytest.mark.parametrize("text,lang,expected", [
-    ("44,29", "da", "fireogfyrre komma to ni"),
-    ("0,57", "da", "nul komma fem syv"),
-    ("44,29", "sv", "fyrtiofyra komma två nio"),
-])
-def test_say_as_a_nordic_decimal_says_its_own_digits(text, lang, expected):
-    assert say_as_text(text, "cardinal", lang) == expected
-
-
-@pytest.mark.parametrize("lang", ["da", "sv", "nb", "nn", "fy"])
-def test_say_as_every_two_place_decimal_says_each_written_digit(lang):
-    # The parser rounds and then truncates a float, so it reads 44.29 as 44.28; the expected
-    # reading is built from whole numbers only, which never pass through a float.
-    from ovos_number_parser import pronounce_number
-
-    for whole in (0, 7, 44, 999):
-        for hundredths in range(100):
-            tens, units = divmod(hundredths, 10)
-            expected = (f"{pronounce_number(whole, lang=lang)} komma "
-                        f"{pronounce_number(tens, lang=lang)} {pronounce_number(units, lang=lang)}")
-            assert say_as_text(f"{whole},{hundredths:02d}", "cardinal", lang) == expected

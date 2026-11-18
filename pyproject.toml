@@ -21,14 +21,17 @@ dependencies = [
     "quebra-frases",
     "langcodes",
     "linguatag>=0.1.5a1",
-    "text2spoken>=0.0.2a66",
+    # >=0.0.2a78: text2spoken.SayAs, which TextFrontend.say_as passes to the hook, and its
+    # digits, telephone, characters, ordinal and date readings in every language with numbers
+    "text2spoken>=0.0.2a78",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
-    # >=0.0.4a110: the f5tts_char and f5tts_pinyin text phonemizers of the F5-TTS
+    # >=0.0.4a120: the f5tts_char and f5tts_pinyin text phonemizers of the F5-TTS
     # voices, the dizione phonemizer of the tiny-voca voices, owned_stages on every
     # phonemizer, TextFrontend skipping the hook for a backend that owns
-    # normalisation, and TextFrontend normalising the whole text before the
-    # sentence split. Every extra relies on this floor.
+    # normalisation, TextFrontend normalising the whole text before the
+    # sentence split, TextFrontend.say_as for SSML <say-as>, and Segment.text.
+    # Every extra relies on this floor.
     "scriptconv[phonemizers]>=0.0.4a120",
     # the F5-TTS pinyin text function (f5tts_pinyin) of F5-TTS v1 Base and Twi
     # Asante segments with rjieba and reads hanzi with pypinyin
