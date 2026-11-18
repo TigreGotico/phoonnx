@@ -274,14 +274,14 @@ class BaseOnnxAdapter(ABC):
         The request's ids run from ``bos`` to ``eos``. A piece ends after the
         last clause mark that fits, else before the last word gap that fits; the
         word gap at the cut is dropped. Every piece gets ``bos`` and ``eos``
-        again, and each side stream is cut at the same places, its first and
-        last value repeated for the added tokens.
+        again, and each side stream is cut at the same places. The request's own
+        ``bos`` and ``eos`` keep their stream values; every ``bos`` and ``eos``
+        the cut adds gets the neutral value 0.
         """
-        ids = request.phoneme_ids[0].tolist()
         limit = self.max_input_tokens
-        if limit is None or len(ids) <= limit:
+        if limit is None or request.phoneme_ids.shape[1] <= limit:
             return [request]
-        body = ids[1:-1]
+        body = request.phoneme_ids[0].tolist()[1:-1]
         room = limit - 2
         spans = []
         start = 0
@@ -301,9 +301,12 @@ class BaseOnnxAdapter(ABC):
         streams = {name: getattr(request, name)[0].tolist()
                    for name in SIDE_STREAMS if getattr(request, name) is not None}
         pieces = []
-        for start, end in spans:
+        last = len(spans) - 1
+        for index, (start, end) in enumerate(spans):
             piece_ids = [self.bos] + body[start:end] + [self.eos]
-            fields = {name: np.array([[values[0]] + values[1:-1][start:end] + [values[-1]]], dtype=np.int64)
+            fields = {name: np.array([[values[0] if index == 0 else 0]
+                                      + values[1:-1][start:end]
+                                      + [values[-1] if index == last else 0]], dtype=np.int64)
                       for name, values in streams.items()}
             pieces.append(replace(request,
                                   phoneme_ids=np.array([piece_ids], dtype=np.int64),

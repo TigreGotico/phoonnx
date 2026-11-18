@@ -82,7 +82,9 @@ def test_pieces_rejoin_and_fit(seed):
         # request's inner values minus those of the word gaps dropped at a cut
         inner = [v for s in streams for v in s[1:-1]]
         kept = values[1:-1]
-        assert all(s[0] == values[0] and s[-1] == values[-1] for s in streams)
+        # the request's own bos and eos keep their values; each one the cut adds is 0
+        assert streams[0][0] == values[0] and streams[-1][-1] == values[-1]
+        assert all(s[-1] == 0 for s in streams[:-1]) and all(s[0] == 0 for s in streams[1:])
         position, expected = 0, []
         for piece in ids:
             size = len(piece) - 2
