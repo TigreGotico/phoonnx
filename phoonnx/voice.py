@@ -38,6 +38,7 @@ from phoonnx.engines.base import (
     AdapterSynthesisRequest,
     AdapterSynthesisResult,
     BaseOnnxAdapter,
+    INLINE_BLOCK,
     SIDE_STREAMS,
 )
 from scriptconv.phonemizers.base import BasePhonemizer, PhonemizerIdentity
@@ -66,8 +67,14 @@ def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunk
     return [[c for c in chunk] for chunk, _, _ in chunks if chunk]
 
 
-_BLOCK = re.compile(r"\[\[(.*?)\]\]")
-"""An inline phoneme block: the shortest ``[[...]]`` on one line, as scriptconv's frontend reads it."""
+_SKIPPED_BLOCKS = re.compile(r"(\s*)(?:\[\[.*?\]\](\s*))+")
+
+
+def _gap(match: "re.Match[str]") -> str:
+    """What stands where a skipped block was: the whitespace before it if that has a line break,
+    else the whitespace after it if that has one, else one space."""
+    before, after = match[1], match[2]
+    return before if "\n" in before else after if "\n" in after else " "
 
 
 def _write_wav(path: str, audio: np.ndarray, sample_rate: int) -> str:
@@ -708,6 +715,10 @@ class TTSVoice:
             yield list(segment.phonemes), {name: list(values) for name, values in segment.streams.items()
                                            if name in SIDE_STREAMS}, segment.text
 
+    @property
+    def _voice_name(self) -> str:
+        return Path(self.model_path).stem if self.model_path else "<voice>"
+
     def _inline_blocks(self, text: str, alphabet: Optional[Alphabet]) -> str:
         """*text* with each ``[[...]]`` block in the voice's *alphabet*, or with the blocks left out.
 
@@ -717,14 +728,13 @@ class TTSVoice:
         written where it has none. ARPA symbols have more than one character, and the
         frontend adds a block one character at a time, so an ARPA voice keeps the IPA.
         """
-        blocks = _BLOCK.findall(text)
+        blocks = INLINE_BLOCK.findall(text)
         if not blocks:
             return text
         if not self.adapter.takes_symbols:
-            name = Path(self.model_path).stem if self.model_path else "<voice>"
-            LOG.warning("Voice %s takes no symbol input: skipping the inline blocks %s", name,
+            LOG.warning("Voice %s takes no symbol input: skipping the inline blocks %s", self._voice_name,
                         ["[[%s]]" % block for block in blocks])
-            return re.sub(r"\s*\[\[.*?\]\]", "", text).strip()
+            return _SKIPPED_BLOCKS.sub(_gap, text).strip()
         if alphabet in (None, Alphabet.IPA, Alphabet.ARPA):
             return text
 
@@ -736,7 +746,7 @@ class TTSVoice:
                 return block[0]
             return f"[[{symbols}]]"
 
-        return _BLOCK.sub(convert, text)
+        return INLINE_BLOCK.sub(convert, text)
 
     def prepare(self, text: str, config: Optional[SynthesisConfig] = None) -> Iterator[Utterance]:
         """Turn *text* into model input: one :class:`Utterance` per engine call.
@@ -770,6 +780,9 @@ class TTSVoice:
         stages = self._stages(config)
         if src_alphabet == Alphabet.GRAPHEMES:
             spoken = self._inline_blocks(spoken, tgt_alphabet)
+        elif not self.adapter.takes_symbols:
+            LOG.warning("Voice %s takes no symbol input: phonetic input in %s is not supported",
+                        self._voice_name, src_alphabet.value)
 
         if src_alphabet == tgt_alphabet == Alphabet.GRAPHEMES:
             prepared = self.frontend.prepare(spoken, stages)
@@ -1224,7 +1237,7 @@ class TTSVoice:
                 kind, ms, volume = piece.sound
                 yield passed(tone(kind, ms, volume, at_rate))
 
-        for piece in parse_ssml(ssml, voice_lang, self.frontend):
+        for piece in parse_ssml(ssml, voice_lang, self.frontend, self.adapter.takes_symbols):
             if piece.sound is not None or not piece.text:
                 if rate is None:
                     waiting.append(piece)

@@ -269,11 +269,13 @@ def test_shami_module_reexports_frontend_helpers():
 def _phonemic_voice(model_alphabet):
     """Minimal voice for the already-phonemic dispatch (no phonemizer needed)."""
     import types
+    from unittest.mock import MagicMock
     from phoonnx.voice import TTSVoice
     from phoonnx.config import Alphabet
     voice = TTSVoice.__new__(TTSVoice)
     voice.phonemizer = None
     voice.phonetic_spellings = None
+    voice.adapter = MagicMock()
     voice.config = types.SimpleNamespace(lang_code="en", alphabet=model_alphabet,
                                          add_diacritics=False, diacritizer_model=None)
     voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda p: list(range(len(p))))

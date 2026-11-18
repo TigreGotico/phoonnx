@@ -10,6 +10,7 @@ Each TTS architecture (VITS, OptiSpeech, Matcha-TTS, etc.) has different:
 An OnnxAdapter encapsulates these differences behind a single interface
 so that TTSVoice.render works identically for any engine.
 """
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -21,6 +22,9 @@ from scriptconv.frontend import Stages
 
 #: The request fields that hold one value per phoneme id, as a phonemizer's side streams fill them.
 SIDE_STREAMS = ("language_ids", "stress")
+
+INLINE_BLOCK = re.compile(r"\[\[(.*?)\]\]")
+"""An inline phoneme block: the shortest ``[[...]]`` on one line, as scriptconv's frontend reads it."""
 
 
 @dataclass
