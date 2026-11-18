@@ -1,7 +1,7 @@
 import unicodedata
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Mapping, List, Dict, Optional, Any, Set, Union
+from typing import Mapping, List, Dict, Optional, Any, Set, Tuple, Union
 
 from phoonnx.util import LOG
 
@@ -514,6 +514,9 @@ class TTSTokenizer:
     fallbacks, because the model reads that id where its own inference code
     puts it."""
     not_found_characters: Set[str] = field(default_factory=set)
+    # multi-character keys by length, longest first; built at the first encode
+    _compounds: Optional[List[Tuple[int, Set[str]]]] = field(
+        default=None, init=False, repr=False, compare=False)
 
     @property
     def pad_id(self) -> Optional[int]:
@@ -557,14 +560,17 @@ class TTSTokenizer:
         Returns:
             List[int]: Sequence of token IDs corresponding to the input characters.
         """
-        # first pre-process phoneme_map to check for dipthongs having their own phoneme_id
-        # common in mimic3 models
-        compound_toks = sorted((k for k in self.vocabulary.char2idx
-                                if len(k) > 1), key=len, reverse=True) if self.fold_compounds else []
+        if self._compounds is None:
+            groups: Dict[int, Set[str]] = {}
+            if self.fold_compounds:
+                for key in self.vocabulary.char2idx:
+                    if len(key) > 1:
+                        groups.setdefault(len(key), set()).add(key)
+            self._compounds = sorted(groups.items(), reverse=True)
 
         token_ids: List[Optional[int]] = []
 
-        compound_idxs: List[int] = []
+        compound_idxs: Set[int] = set()
 
         for i, char in enumerate(text):
             if i in compound_idxs:
@@ -574,13 +580,13 @@ class TTSTokenizer:
             else:
                 idx = self.vocabulary.char2idx.get(char)
 
-                # Try to match compound phonemes starting at index i
-                for compound in compound_toks:
-                    n = len(compound)
+                # Try to match compound phonemes starting at index i, such as
+                # the diphthongs with their own id in mimic3 vocabularies
+                for n, compounds in self._compounds:
                     joined = ''.join(text[i:i + n])
-                    if joined == compound:
-                        idx = self.vocabulary.char2idx[compound]
-                        compound_idxs += [i for i in range(i, i+n)]
+                    if joined in compounds:
+                        idx = self.vocabulary.char2idx[joined]
+                        compound_idxs.update(range(i, i + n))
                         break
 
                 if idx is None and self.unknown_id is not None:

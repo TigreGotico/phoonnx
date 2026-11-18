@@ -8,9 +8,15 @@ import glob
 import json
 import os
 import random
+import re
+import sys
+import tempfile
 import time
+import unicodedata
 import unittest
+from unittest import mock
 
+from phoonnx import _bpe
 from phoonnx._bpe import Tokenizer, UnsupportedTokenizer
 from phoonnx.tokenizer import BPETokenizer, load_hf_tokenizer, load_tokenizers_package
 
@@ -379,3 +385,149 @@ class TestMergeLoopIsNotQuadratic(unittest.TestCase):
             text = (self.CHINESE * (length // len(self.CHINESE) + 1))[:length]
             with self.subTest(length=length):
                 self.assertEqual(mine.encode(text).ids, reference.encode(text).ids)
+
+
+# Added tokens that overlap, prefix each other, hold regex syntax, or sit
+# where a pre-tokenizer would cut them.
+OVERLAPPING_ADDED = [
+    "<|", "<|a|>", "<|a|>b", "<|speech_1|>", "<|speech_12|>", "<|speech_123|>",
+    "[S]", "[SPACE]", "[SPACE]x", "ab", "abc", "b c", "-", "^x", "]", "\\",
+    ".*", "世界", "界", "🌍x", " e",
+]
+
+ADDED_TEXTS = TEXTS + [
+    "<|", "<|a|", "<|a|>", "<|a|>b", "<|a|><|a|>b<|", "<|speech_1234|>",
+    "<|speech_12|>3", "[SPACE][SPACE]x[S]", "abcab cabc", "a b c", "世界界",
+    "🌍x🌍", "^x^", "\\]-.*", " e e", "<|<|<|a|>", "x<|endoftext|>y",
+]
+
+ADDED_ALPHABET = "<|>a_bcspeh123[SPACEx]^\\.*-世界🌍 "
+
+
+def _regex_split(added, text):
+    """The alternation the reader used to cut added tokens out of text."""
+    pattern = "(" + "|".join(sorted(map(re.escape, added), key=len, reverse=True)) + ")"
+    return re.split(pattern, text)
+
+
+def _with_added(path, contents, special=()):
+    """A fixture spec with *contents* appended as added tokens, numbered as
+    `tokenizers` numbers them: a token the model vocab holds keeps its id,
+    and a new one takes the next free id."""
+    with open(path, encoding="utf-8") as handle:
+        spec = json.load(handle)
+    vocab = spec["model"]["vocab"]
+    next_id = max(list(vocab.values()) + [t["id"] for t in spec["added_tokens"]]) + 1
+    for content in contents:
+        if content in vocab:
+            token_id = vocab[content]
+        else:
+            token_id, next_id = next_id, next_id + 1
+        spec["added_tokens"].append({
+            "id": token_id, "content": content, "single_word": False,
+            "lstrip": False, "rstrip": False, "normalized": False,
+            "special": content in special})
+    return spec
+
+
+class TestAddedTokens(unittest.TestCase):
+    """Added tokens are cut out of the text before anything else: leftmost
+    first, and the longest where several start at the same place."""
+
+    def _spec(self, contents=OVERLAPPING_ADDED, special=("<|a|>", "[S]")):
+        return _with_added(os.path.join(FIXTURES, "tokenizer_bpe_qwen.json"),
+                           contents, special)
+
+    def _fuzz(self, count=600):
+        rng = random.Random(20261118)
+        return ["".join(rng.choice(ADDED_ALPHABET) for _ in range(rng.randint(0, 40)))
+                for _ in range(count)]
+
+    def test_the_cut_equals_the_longest_first_alternation(self):
+        spec = self._spec()
+        mine = Tokenizer(spec)
+        added = [t["content"] for t in spec["added_tokens"]]
+        for text in ADDED_TEXTS + self._fuzz():
+            self.assertEqual(mine._split_added(text), _regex_split(added, text),
+                             f"cut disagrees on {text!r}")
+
+    def test_a_vocab_without_added_tokens_keeps_the_text_whole(self):
+        spec = self._spec()
+        spec["added_tokens"] = []
+        mine = Tokenizer(spec)
+        for text in ("", "<|a|>", "hello"):
+            self.assertEqual(mine._split_added(text), [text])
+
+    @unittest.skipIf(ReferenceTokenizer is None, "the `tokenizers` package is not installed")
+    def test_overlapping_added_tokens_encode_as_the_reference_does(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "tokenizer.json")
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump(self._spec(), handle)
+            mine, reference = Tokenizer.from_file(path), load_tokenizers_package(path)
+            for text in ADDED_TEXTS + self._fuzz(300):
+                for add_special in (True, False):
+                    self.assertEqual(
+                        mine.encode(text, add_special_tokens=add_special).ids,
+                        reference.encode(text, add_special_tokens=add_special).ids,
+                        f"disagrees on {text!r}, add_special_tokens={add_special}")
+                self.assertEqual(mine.decode(mine.encode(text).ids),
+                                 reference.decode(reference.encode(text).ids))
+
+    def test_65536_speech_tokens(self):
+        """The NeuTTS and Llasa shape: one added token per codec code. The
+        `tokenizers` 1.0 release candidates panic on this many, so the ids are
+        checked against the codes they encode."""
+        spec = self._spec([f"<|speech_{code}|>" for code in range(65536)])
+        first = spec["added_tokens"][-65536]["id"]
+        mine = Tokenizer(spec)
+        codes = random.Random(7).choices(range(65536), k=200)
+        prompt = "".join(f"<|speech_{code}|>" for code in codes)
+        self.assertEqual(mine.encode(prompt, add_special_tokens=False).ids,
+                         [first + code for code in codes])
+        added = [t["content"] for t in spec["added_tokens"]]
+        for text in ("user: hello<|speech_1|><|speech_65535|>world<|speech_",
+                     "<|speech_655360|><|speech_|><|speech_00|><|speech_6553|>5"):
+            self.assertEqual(mine._split_added(text), _regex_split(added, text))
+
+
+class TestUnicodeProperties(unittest.TestCase):
+    """`re` has no \\p{..}, so the reader writes a property out as ranges."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.everything = "".join(map(chr, range(sys.maxunicode + 1)))
+        cls.by_category = {}
+        for char in cls.everything:
+            cls.by_category.setdefault(unicodedata.category(char), []).append(char)
+
+    def test_each_property_matches_exactly_its_code_points(self):
+        majors = sorted({category[0] for category in self.by_category})
+        for prop in majors + sorted(self.by_category):
+            with self.subTest(prop=prop):
+                members = [chars for category, chars in self.by_category.items()
+                           if (category.startswith(prop) if len(prop) == 1
+                               else category == prop)]
+                expected = "".join(sorted(char for chars in members for char in chars))
+                found = re.findall("[" + _bpe._category_ranges(prop) + "]",
+                                   self.everything)
+                self.assertEqual("".join(found), expected)
+
+    def test_the_code_space_is_read_once_for_every_property(self):
+        """Each property used to read the category of all 1.1 million code
+        points again; a GPT-4 style split asks for several."""
+        for value in vars(_bpe).values():
+            if hasattr(value, "cache_clear"):
+                value.cache_clear()
+        calls = 0
+        real = unicodedata.category
+
+        def counted(char):
+            nonlocal calls
+            calls += 1
+            return real(char)
+
+        with mock.patch.object(unicodedata, "category", counted):
+            for prop in ("L", "N", "Lu", "M"):
+                _bpe._category_ranges(prop)
+        self.assertEqual(calls, sys.maxunicode + 1)
