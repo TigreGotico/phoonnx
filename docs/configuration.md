@@ -327,6 +327,29 @@ on any machine.
 
 `use_cuda=True` is a deprecated alias for `providers=["CUDAExecutionProvider"]`.
 
+### Thread count
+
+Each ONNX Runtime session uses a number of threads inside one operator
+(`intra_op_num_threads`). Limit it when several voices run on one host, or when
+the voice shares the CPU with other jobs:
+
+```python
+voice = TTSVoice.load("model.onnx", "config.json", threads=2)
+```
+
+`TTSModelInfo.load(threads=2)` and the OVOS plugin key `onnx_threads` do the same.
+The value applies to every session the voice opens, also a graph that opens at the
+first synthesis call, such as a cloning encoder. Or set it once for the process:
+
+```bash
+export PHOONNX_ONNX_THREADS=2
+```
+
+The argument wins over the variable. With neither, onnxruntime chooses. A value
+that is not a whole number of at least 1 raises `ValueError`. Sessions with
+different thread counts are separate sessions, so two voices over one graph share
+it only when their counts are equal.
+
 ### Runtime packages
 
 Which providers exist depends on the installed ONNX Runtime build, not on phoonnx.

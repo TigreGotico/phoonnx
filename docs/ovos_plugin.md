@@ -228,6 +228,7 @@ underscore name plus legacy aliases (resolved by `_cfg_opt` in `phoonnx/opm.py`)
 | Reference text | `speaker_reference_text`, `ref_text` | In-context reference transcription |
 | Reference lang | `speaker_reference_lang`, `ref_lang` | In-context reference language |
 | Providers | `onnx_providers`, `providers` | ONNX Runtime execution providers |
+| Thread count | `onnx_threads` | Intra-op threads of each ONNX Runtime session; unset uses `PHOONNX_ONNX_THREADS`, else the onnxruntime default |
 | Precision | `precision` | `auto`, `int8` or `full` (see above) |
 | Super-resolution | `super_resolution` | Enable 48 kHz upscaling (bool, off by default) |
 | Super-resolution model | `super_resolution_model` | `audiosronnx` engine name (default `novasr`) |

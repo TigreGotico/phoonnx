@@ -54,6 +54,7 @@ from phoonnx.engines.base import (
     AdapterSynthesisResult,
     BaseOnnxAdapter,
 )
+from phoonnx.providers import resolve_threads
 
 
 # Proven defaults from empirical tuning (see docs/streaming.md):
@@ -116,6 +117,8 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
     def _build_decoder(path: str, threads: Optional[int]) -> onnxruntime.InferenceSession:
         import os
         so = onnxruntime.SessionOptions()
+        if threads is None:
+            threads = resolve_threads()
         if threads is None:
             threads = max(1, (os.cpu_count() or 4) // 2)
         so.intra_op_num_threads = int(threads)

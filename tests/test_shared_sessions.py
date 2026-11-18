@@ -262,7 +262,8 @@ class TestOneModelOneSession(unittest.TestCase):
         # it did before: this only changes behaviour for models that have one.
         self.assertEqual(providers._external_data_paths(str(self.model_path)), [])
         key = providers.session_key(self.model_path, [CPU_PROVIDER], None)
-        self.assertEqual(len(key), 4)
+        stat = os.stat(self.model_path)
+        self.assertEqual(key[1], (stat.st_size, stat.st_mtime_ns))
 
     def test_a_session_nobody_uses_is_not_kept_alive(self):
         import gc

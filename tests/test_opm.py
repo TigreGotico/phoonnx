@@ -34,11 +34,13 @@ class _FakeVoiceInfo:
         self.config = _FakeVoiceConfig(speaker_id_map=speaker_id_map)
         self.tts_voice = MagicMock(name=f"TTSVoice[{voice_id}]")
         self.load_providers = "unset"
+        self.load_threads = "unset"
         self.precision = None
         self.variants = None
 
-    def load(self, providers=None, precision=None):
+    def load(self, providers=None, precision=None, threads=None):
         self.load_providers = providers
+        self.load_threads = threads
         return self.tts_voice
 
 
@@ -169,6 +171,18 @@ class TestVoiceResolution(unittest.TestCase):
         plugin, _ = _make_plugin(voices=[v])
         plugin.get_model(v.voice_id)
         self.assertIsNone(v.load_providers)
+
+    def test_the_thread_count_key_reaches_the_voice_loader(self):
+        v = _FakeVoiceInfo("OpenVoiceOS/known")
+        plugin, _ = _make_plugin(config={"onnx_threads": 2}, voices=[v])
+        plugin.get_model(v.voice_id)
+        self.assertEqual(v.load_threads, 2)
+
+    def test_no_thread_count_key_leaves_the_choice_to_the_loader(self):
+        v = _FakeVoiceInfo("OpenVoiceOS/known")
+        plugin, _ = _make_plugin(voices=[v])
+        plugin.get_model(v.voice_id)
+        self.assertIsNone(v.load_threads)
 
     def test_get_model_caches(self):
         v = _FakeVoiceInfo("OpenVoiceOS/known")

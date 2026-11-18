@@ -41,7 +41,8 @@ from phoonnx.engines.base import (
     SIDE_STREAMS,
 )
 from scriptconv.phonemizers.base import BasePhonemizer, PhonemizerIdentity
-from phoonnx.providers import ProviderSpec, make_session, resolve_providers
+from phoonnx.providers import (ProviderSpec, make_session, onnx_threads, resolve_providers,
+                               resolve_threads)
 from phoonnx.reference_audio import load_reference_audio
 from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
@@ -312,6 +313,10 @@ class TTSVoice:
     # ``None`` for voices constructed directly from a session (e.g. tests),
     # which simply skip the on-demand-surgery path.
     model_path: Optional[str] = None
+    # Intra-op threads of every session this voice opens, at load and later
+    # (a cloning graph opens at its first call). None leaves the choice to
+    # PHOONNX_ONNX_THREADS, else to onnxruntime.
+    onnx_threads: Optional[int] = None
     # Cache for the on-demand alignment-surgery outcome: unset (sentinel
     # object, distinguishable from a real ``None`` "surgery ran and failed"
     # result) until the first ``include_alignments=True`` call actually needs
@@ -504,6 +509,7 @@ class TTSVoice:
             providers: Optional[Sequence[ProviderSpec]] = None,
             use_cuda: bool = False,
             warmup: bool = False,
+            threads: Optional[int] = None,
     ) -> "TTSVoice":
         """
         Load a TTS voice ONNX model and its configuration into a TTSVoice instance.
@@ -526,6 +532,9 @@ class TTSVoice:
             warmup (bool): Run a throwaway inference (see :meth:`TTSVoice.warmup`)
                 before returning, so the first real ``synthesize`` call does not
                 pay ONNX Runtime's first-call kernel-selection cost.
+            threads (int, optional): Intra-op threads of each ONNX Runtime session
+                the voice opens. When omitted, ``PHOONNX_ONNX_THREADS`` is used, else
+                onnxruntime chooses.
 
         Returns:
             TTSVoice: A TTSVoice instance prepared with the loaded ONNX session and merged configuration.
@@ -547,57 +556,60 @@ class TTSVoice:
             if tokenizer_config_path and os.path.isfile(tokenizer_config_path):
                 with open(tokenizer_config_path, "r", encoding="utf-8") as tokenizer_file:
                     tokenizer_dict = json.load(tokenizer_file)
-        resolved_providers = resolve_providers(providers, use_cuda=use_cuda)
+        threads = resolve_threads(threads)
+        with onnx_threads(threads):
+            resolved_providers = resolve_providers(providers, use_cuda=use_cuda)
 
-        # Auto-split: a voice may request streaming on a monolithic single-graph
-        # VITS model. When it declares "streaming": true but ships no decoder
-        # graph, split the model into an encoder/decoder pair on the fly (cached
-        # next to the model) so it can stream without a re-export. If the model
-        # is not a splittable VITS, fall back to loading it as a normal voice.
-        _cfg_ep = config_dict.get("engine_params") or {}
-        _has_decoder = _cfg_ep.get("decoder_path") or (engine_params or {}).get("decoder_path")
-        if config_dict.get("streaming") and not _has_decoder:
-            try:
-                from phoonnx.engines.vits_split import ensure_split_vits
-                enc_path, dec_path = ensure_split_vits(str(model_path))
-                model_path = enc_path
-                config_dict["engine_params"] = {**_cfg_ep, "decoder_path": dec_path}
-            except Exception as e:
-                LOG.warning(f"Streaming requested but auto-split of "
-                            f"'{model_path}' failed ({e}); loading as a normal "
-                            f"single-graph voice.")
+            # Auto-split: a voice may request streaming on a monolithic single-graph
+            # VITS model. When it declares "streaming": true but ships no decoder
+            # graph, split the model into an encoder/decoder pair on the fly (cached
+            # next to the model) so it can stream without a re-export. If the model
+            # is not a splittable VITS, fall back to loading it as a normal voice.
+            _cfg_ep = config_dict.get("engine_params") or {}
+            _has_decoder = _cfg_ep.get("decoder_path") or (engine_params or {}).get("decoder_path")
+            if config_dict.get("streaming") and not _has_decoder:
+                try:
+                    from phoonnx.engines.vits_split import ensure_split_vits
+                    enc_path, dec_path = ensure_split_vits(str(model_path))
+                    model_path = enc_path
+                    config_dict["engine_params"] = {**_cfg_ep, "decoder_path": dec_path}
+                except Exception as e:
+                    LOG.warning(f"Streaming requested but auto-split of "
+                                f"'{model_path}' failed ({e}); loading as a normal "
+                                f"single-graph voice.")
 
-        session = make_session(model_path, providers=resolved_providers)
+            session = make_session(model_path, providers=resolved_providers)
 
-        # Auto-detect engine adapter from config + session
-        adapter = detect_engine(config=config_dict, session=session)
+            # Auto-detect engine adapter from config + session
+            adapter = detect_engine(config=config_dict, session=session)
 
-        # Engine-specific params (e.g. Matcha's vocoder_path) come either from
-        # the caller (the voice manager injects locally-downloaded paths) or
-        # from the model's own config JSON.
-        engine_params = engine_params or config_dict.get("engine_params") or {}
-        # Engines load auxiliary graphs of their own (vocoders, speaker encoders,
-        # text encoders); they run on the same providers as the voice itself.
-        engine_params = dict(engine_params)
-        engine_params.setdefault("providers", resolved_providers)
+            # Engine-specific params (e.g. Matcha's vocoder_path) come either from
+            # the caller (the voice manager injects locally-downloaded paths) or
+            # from the model's own config JSON.
+            engine_params = engine_params or config_dict.get("engine_params") or {}
+            # Engines load auxiliary graphs of their own (vocoders, speaker encoders,
+            # text encoders); they run on the same providers as the voice itself.
+            engine_params = dict(engine_params)
+            engine_params.setdefault("providers", resolved_providers)
 
-        voice_config = VoiceConfig.from_dict(
-            config_dict,
-            vocab=vocab_dict,
-            tokenizer_config=tokenizer_dict,
-            alphabet=alphabet_str,
-            tokens_txt=phonemes_txt,
-            lang_code=lang_code,
-            phoneme_type=phoneme_type_str,
-            engine_params=engine_params,
-        )
+            voice_config = VoiceConfig.from_dict(
+                config_dict,
+                vocab=vocab_dict,
+                tokenizer_config=tokenizer_dict,
+                alphabet=alphabet_str,
+                tokens_txt=phonemes_txt,
+                lang_code=lang_code,
+                phoneme_type=phoneme_type_str,
+                engine_params=engine_params,
+            )
 
-        voice = TTSVoice(
-            config=voice_config,
-            session=session,
-            adapter=adapter,
-            model_path=str(model_path),
-        )
+            voice = TTSVoice(
+                config=voice_config,
+                session=session,
+                adapter=adapter,
+                model_path=str(model_path),
+            )
+        voice.onnx_threads = threads
         if warmup:
             voice.warmup()
         return voice
@@ -994,9 +1006,10 @@ class TTSVoice:
                 # instead of raising, since alignment is an optional feature.
                 include_alignments = False
 
-        audio, phoneme_id_samples = self._infer(
-            utterance.ids, syn_config, include_alignments, utterance.streams,
-            text=utterance.text)
+        with onnx_threads(self.onnx_threads):
+            audio, phoneme_id_samples = self._infer(
+                utterance.ids, syn_config, include_alignments, utterance.streams,
+                text=utterance.text)
 
         audio = level_audio(audio, syn_config, self.config.sample_rate)
 
