@@ -30,7 +30,7 @@ from scriptconv.frontend import FrontendConfig, Stages, TextFrontend, spoken_nor
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
-from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
+from phoonnx.config import VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
     _removal_version, check_lang_supported
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter

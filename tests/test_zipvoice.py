@@ -41,7 +41,7 @@ def test_synthesize_hook_default_is_single_pass():
     """The base synthesize() hook = build_feed_dict -> run -> parse_outputs."""
     class _A(BaseOnnxAdapter):
         def build_feed_dict(self, request, session): return {"x": np.array([3.0])}
-        def parse_outputs(self, outputs, request): return AdapterSynthesisResult(audio=outputs[0])
+        def parse_outputs(self, outputs, request, output_names=None): return AdapterSynthesisResult(audio=outputs[0])
         def default_params(self): return {}
 
     class _S:
