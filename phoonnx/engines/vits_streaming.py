@@ -130,20 +130,6 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
     def default_params(self) -> Dict[str, float]:
         return {"noise_scale": 0.667, "length_scale": 1.0, "noise_w_scale": 0.8}
 
-    def parse_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        inference = config.get("inference", {})
-        defaults = self.default_params()
-        return {
-            "noise_scale": inference.get("noise_scale", defaults["noise_scale"]),
-            "length_scale": inference.get("length_scale", defaults["length_scale"]),
-            "noise_w_scale": inference.get("noise_w", defaults["noise_w_scale"]),
-        }
-
-    def param_labels(self) -> Dict[str, str]:
-        return {"noise_scale": "Noise scale",
-                "length_scale": "Length scale",
-                "noise_w_scale": "Noise W"}
-
     @staticmethod
     def detect(config: Optional[Dict[str, Any]] = None,
                session: Optional[onnxruntime.InferenceSession] = None) -> bool:

@@ -141,11 +141,6 @@ def test_default_params_match_upstream_generation_config():
     assert p["class_temperature"] == 0.0
 
 
-def test_every_param_has_a_label():
-    ad = OmniVoiceAdapter()
-    assert set(ad.param_labels()) == set(ad.default_params())
-
-
 def test_codec_constants_match_the_checkpoint():
     assert (NUM_CODEBOOKS, AUDIO_VOCAB_SIZE, AUDIO_MASK_ID) == (8, 1025, 1024)
     assert SAMPLE_RATE // HOP_LENGTH == FRAME_RATE == 25

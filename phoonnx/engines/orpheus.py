@@ -183,16 +183,6 @@ class OrpheusAdapter(BaseOnnxAdapter):
             "max_chunk_chars": float(self.MAX_CHUNK_CHARS),
         }
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "temperature": "sampling temperature",
-            "top_p": "top-p (nucleus)",
-            "repetition_penalty": "repetition penalty",
-            "max_new_tokens": "max audio tokens (~82/s)",
-            "max_chunk_chars": "target characters per model call",
-            "voice": "voice name written into the prompt",
-        }
-
     def configure(self, voice_config: Any) -> None:
         """Load the SNAC decoder, the checkpoint's BPE and the voice list from
         ``engine_params``."""
