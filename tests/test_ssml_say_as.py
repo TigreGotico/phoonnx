@@ -204,3 +204,10 @@ def test_a_backend_that_owns_normalize_reads_plain_text_without_the_hook(text):
     assert voice.frontend.phonemize(text) == own.phonemize(text)
     list(voice.synthesize(text, SynthesisConfig(normalize_audio=False)))
     assert _sent_ids(voice) == list(DizionePhonemizer().tokens(text).ids)
+
+
+def test_a_very_long_letter_run_reads_in_bounded_memory():
+    """A 20,000-letter run through the dizione voice finishes; it used to exhaust memory."""
+    voice = _tinyvoca()
+    list(voice.synthesize("abcdefghij" * 2000, SynthesisConfig(normalize_audio=False)))
+    assert _sent_ids(voice)
