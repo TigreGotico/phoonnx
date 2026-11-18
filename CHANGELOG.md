@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.113.1a1](https://github.com/TigreGotico/phoonnx/tree/1.113.1a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.0a1...1.113.1a1)
+
+**Merged pull requests:**
+
+- fix: compare a backend-recorded phonemizer\_identity with the backend [\#688](https://github.com/TigreGotico/phoonnx/pull/688) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.113.0a1](https://github.com/TigreGotico/phoonnx/tree/1.113.0a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.112.1a1...1.113.0a1)
@@ -16,10 +24,6 @@
 ## [1.112.0a2](https://github.com/TigreGotico/phoonnx/tree/1.112.0a2) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.112.0a1...1.112.0a2)
-
-**Merged pull requests:**
-
-- refactor: take text normalisation from text2spoken [\#559](https://github.com/TigreGotico/phoonnx/pull/559) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.112.0a1](https://github.com/TigreGotico/phoonnx/tree/1.112.0a1) (2026-11-17)
 
@@ -238,17 +242,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.3a2...1.99.4a1)
 
-**Merged pull requests:**
-
-- fix: encode through Tokenizer.compile\(\) on tokenizers 1.0 [\#560](https://github.com/TigreGotico/phoonnx/pull/560) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.99.3a2](https://github.com/TigreGotico/phoonnx/tree/1.99.3a2) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.3a1...1.99.3a2)
-
-**Merged pull requests:**
-
-- Update dependency diffusers to \>=0.43,\<0.44 [\#562](https://github.com/TigreGotico/phoonnx/pull/562) ([renovate[bot]](https://github.com/apps/renovate))
 
 ## [1.99.3a1](https://github.com/TigreGotico/phoonnx/tree/1.99.3a1) (2026-11-15)
 
@@ -389,7 +385,6 @@
 **Merged pull requests:**
 
 - fix\(tests\): read the Spanish ordinal 21 as one word, per the DPD [\#563](https://github.com/TigreGotico/phoonnx/pull/563) ([JarbasAl](https://github.com/JarbasAl))
-- fix\(deps\): take Mirandese and Barranquenho from scriptconv only [\#561](https://github.com/TigreGotico/phoonnx/pull/561) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.96.4a1](https://github.com/TigreGotico/phoonnx/tree/1.96.4a1) (2026-11-11)
 
