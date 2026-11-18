@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.113.8a1](https://github.com/TigreGotico/phoonnx/tree/1.113.8a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.7a1...1.113.8a1)
+
+## [1.113.7a1](https://github.com/TigreGotico/phoonnx/tree/1.113.7a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.6a1...1.113.7a1)
+
+**Merged pull requests:**
+
+- fix: measure a voice that loaded from the offline fallback with the hub down [\#707](https://github.com/TigreGotico/phoonnx/pull/707) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: run the provenance check off the voice load path [\#706](https://github.com/TigreGotico/phoonnx/pull/706) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.113.6a1](https://github.com/TigreGotico/phoonnx/tree/1.113.6a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.5a2...1.113.6a1)
@@ -361,25 +374,13 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.1a1...1.98.1a2)
 
-**Merged pull requests:**
-
-- chore: render working usage, checkpoints and version bounds on voice cards [\#579](https://github.com/TigreGotico/phoonnx/pull/579) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.98.1a1](https://github.com/TigreGotico/phoonnx/tree/1.98.1a1) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.0a2...1.98.1a1)
 
-**Merged pull requests:**
-
-- fix: point the voice index at the Phoonnx Hugging Face org [\#578](https://github.com/TigreGotico/phoonnx/pull/578) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.98.0a2](https://github.com/TigreGotico/phoonnx/tree/1.98.0a2) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.98.0a1...1.98.0a2)
-
-**Merged pull requests:**
-
-- test: mark the diacritics stage with a letter, not punctuation [\#580](https://github.com/TigreGotico/phoonnx/pull/580) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.98.0a1](https://github.com/TigreGotico/phoonnx/tree/1.98.0a1) (2026-11-14)
 
