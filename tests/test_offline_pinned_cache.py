@@ -10,6 +10,7 @@ import hashlib
 import os
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -280,6 +281,53 @@ class TestOneSnapshotPerVoice(_Cache):
             self.assertEqual(_hf_fetch(url(self.GRAPH)).read_bytes(), b"graph-old")
             self.assertEqual(_hf_fetch(url(sidecar)).read_bytes(), b"data-old")
             self.assertEqual(_cached_path(url(sidecar)).read_bytes(), b"data-old")
+
+    def spy_fetches(self, info, **kwargs):
+        """The bytes of every file ``info.download_all`` reads."""
+        read = []
+        real = model_manager._hf_fetch
+
+        def spy(*args, **kw):
+            path = real(*args, **kw)
+            read.append(path.read_bytes())
+            return path
+        with patch.object(model_manager, "_hf_fetch", side_effect=spy):
+            info.download_all(**kwargs)
+        return read
+
+    def test_download_all_reads_the_voice_from_one_snapshot(self):
+        self.cache_two_voices()
+        self.assertEqual(self.spy_fetches(self.voice(self.ALBA), precision="full"),
+                         [b"graph-old", b"alba-old"])
+
+    def test_the_int8_variant_reads_the_voice_from_one_snapshot(self):
+        graph8 = "en/model_int8.onnx"
+        self.snapshot(OLD, {graph8: b"g8-old", self.ALBA: b"alba-old"}, mtime=1000)
+        self.snapshot(MID, {graph8: b"g8-mid", self.ANNA: b"anna-mid"}, mtime=2000)
+        info = replace(self.voice(self.ALBA), variants={"int8": {"model_url": url(graph8), "auto": True}})
+        self.assertEqual(self.spy_fetches(info, precision="int8"), [b"g8-old", b"alba-old"])
+
+    def test_a_file_cached_at_the_pin_later_stops_the_recorded_fallback(self):
+        # alba fell back to OLD; then the shared graph is cached at the pin: mixing the pinned
+        # graph with the OLD state is refused, as the folder rule refuses it
+        self.cache_two_voices()
+        alba = self.voice(self.ALBA)
+        with model_manager._voice_scope(alba):
+            self.assertEqual(_hf_fetch(url(self.GRAPH)).read_bytes(), b"graph-old")
+        self.snapshot(NEW, {self.GRAPH: b"graph-new", self.ANNA: b"anna-new"}, mtime=3000)
+        with model_manager._voice_scope(alba):
+            self.assertEqual(_hf_fetch(url(self.GRAPH)).read_bytes(), b"graph-new")
+            with self.assertRaises(LocalEntryNotFoundError):
+                _hf_fetch(url(self.ALBA))
+
+    def test_a_voice_without_its_optional_dictionary_still_loads(self):
+        self.snapshot(OLD, {"v/model.onnx": b"model-old"}, mtime=1000)
+        info = TTSModelInfo(voice_id="vosk/x", lang="ru-RU", model_url=url("v/model.onnx"),
+                            dictionary_url=url("v/dictionary"))
+        with model_manager._voice_scope(info):
+            self.assertEqual(_hf_fetch(url("v/model.onnx")).read_bytes(), b"model-old")
+            with self.assertRaises(LocalEntryNotFoundError):
+                _hf_fetch(url("v/dictionary"))
 
     def test_outside_a_voice_scope_the_folder_rule_still_decides(self):
         # the behaviour before the per-voice rule: the newest snapshot holding the graph,

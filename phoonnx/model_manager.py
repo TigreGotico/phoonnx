@@ -291,7 +291,9 @@ _VOICE_FILES: contextvars.ContextVar[Optional[Dict[Tuple[str, str], Set[str]]]] 
 def _voice_scope(info: "TTSModelInfo") -> Iterator[None]:
     """Fetch the files of ``info`` so that an offline fallback reads them all from one commit."""
     files: Dict[Tuple[str, str], Set[str]] = {}
-    urls = [getattr(info, f.name) for f in fields(info) if f.name.endswith("_url")]
+    # the vosk dictionary is optional: a load goes on without it, so it does not bind the choice
+    urls = [getattr(info, f.name) for f in fields(info)
+            if f.name.endswith("_url") and f.name != "dictionary_url"]
     urls += list((info.aux_model_urls or {}).values())
     for url in urls:
         match = _HF_URL.match(url.split("?")[0]) if isinstance(url, str) else None
@@ -341,12 +343,11 @@ def _voice_snapshot(repo_id: str, revision: str, filename: str,
     if key is None:
         return False, None
     repo_dir, _, wanted = key
+    needed = wanted | {filename}
+    if any((repo_dir / "snapshots" / revision / name).exists() for name in needed):
+        return True, None
     chosen = _VOICE_SNAPSHOTS.get(key)
     if chosen is None or not chosen.is_dir():
-        pinned = repo_dir / "snapshots" / revision
-        needed = wanted | {filename}
-        if any((pinned / name).exists() for name in needed):
-            return True, None
         holding = [snapshot for snapshot in (repo_dir / "snapshots").glob("*")
                    if snapshot.name != revision
                    and all((snapshot / name).exists() for name in needed)]
