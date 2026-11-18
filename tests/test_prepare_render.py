@@ -88,6 +88,37 @@ def _text_voice():
     return TTSVoice(config=config, session=_session(), adapter=_TextTokenAdapter())
 
 
+EMPTY_ID_MAP = {c: i for i, c in enumerate(" hitrewos")}
+"""A phoneme_id_map with no blank/BOS/EOS: a sentence made only of other
+letters tokenizes to an empty id list."""
+
+
+class _TextSkipAdapter(VitsAdapter):
+    """A text engine that gives the second sentence no ids, one sequence per sentence."""
+
+    def __init__(self):
+        super().__init__()
+        self.texts = []
+
+    def encode_text(self, text, voice, syn_config):
+        self.texts.append(text)
+        ids = []
+        for i, sentence in enumerate(text.split(". ")):
+            ids.append([] if i == 1 else [ord(c) % 60 + 3 for c in sentence])
+        return ids
+
+
+def _empty_ids_symbol_voice():
+    config = dict(CONFIG)
+    config["phoneme_id_map"] = EMPTY_ID_MAP
+    return TTSVoice(config=VoiceConfig.from_dict(config), session=_session())
+
+
+def _text_skip_voice():
+    config = VoiceConfig.from_dict(dict(CONFIG, phoneme_type="graphemes", alphabet="graphemes"))
+    return TTSVoice(config=config, session=_session(), adapter=_TextSkipAdapter())
+
+
 def _wav_bytes(write):
     buffer = io.BytesIO()
     with wave.open(buffer, "wb") as wav_file:
@@ -141,6 +172,34 @@ class TestPrepare(unittest.TestCase):
         self.assertEqual(read, [])
         next(utterances)
         self.assertEqual(len(read), 1)
+
+
+class TestPrepareSkipsEmptyIds(unittest.TestCase):
+    """A sentence whose ids are empty yields no utterance and no chunk."""
+
+    TEXT = "Hi there. Buzz. Who is it"
+
+    def test_a_symbol_voice_skips_a_sentence_with_no_ids(self):
+        voice = _empty_ids_symbol_voice()
+        utterances = list(voice.prepare(self.TEXT))
+        # "Buzz" is dropped: every symbol is out of vocabulary, and the map
+        # holds no blank/BOS/EOS to leave ids behind.
+        self.assertEqual([u.symbols for u in utterances],
+                         [tuple("Hi there"), tuple("Who is it")])
+        for utterance in utterances:
+            expected = tuple(EMPTY_ID_MAP[s.lower()] for s in utterance.symbols)
+            self.assertEqual(utterance.ids, expected)
+        self.assertEqual(len(list(voice.synthesize(self.TEXT))), 2)
+
+    def test_a_text_voice_skips_a_sentence_with_no_ids(self):
+        voice = _text_skip_voice()
+        utterances = list(voice.prepare(self.TEXT))
+        spoken = normalize(self.TEXT, "en-US")
+        expected = [tuple(ord(c) % 60 + 3 for c in sentence)
+                    for i, sentence in enumerate(spoken.split(". ")) if i != 1]
+        self.assertEqual([u.symbols for u in utterances], [None, None])
+        self.assertEqual([u.ids for u in utterances], expected)
+        self.assertEqual(len(list(voice.synthesize(self.TEXT))), 2)
 
 
 class TestRender(unittest.TestCase):
