@@ -125,6 +125,11 @@ class BaseOnnxAdapter(ABC):
     # this only makes detection automatic once a model *does* expose one.
     DURATION_OUTPUT_NAMES: List[str] = []
 
+    # True for an engine that reads text: ``TTSVoice.prepare`` gives it the
+    # frontend's prepared text and its ``encode_text`` builds the ids, whatever
+    # alphabet the voice config names. Engines that read symbols leave it False.
+    READS_TEXT: bool = False
+
     # ------------------------------------------------------------------
     # Required
     # ------------------------------------------------------------------

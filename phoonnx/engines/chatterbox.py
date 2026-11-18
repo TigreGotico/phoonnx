@@ -62,6 +62,8 @@ class ChatterboxAdapter(BaseOnnxAdapter):
                                      "lm_needs_pos"}),
     }
 
+    READS_TEXT = True
+
     REPETITION_PENALTY = 1.2
     MAX_NEW_TOKENS = 1000
 

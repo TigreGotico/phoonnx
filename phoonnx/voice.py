@@ -735,7 +735,7 @@ class TTSVoice:
         tgt_alphabet = self.config.alphabet
         stages = self._stages(config)
 
-        if src_alphabet == tgt_alphabet == Alphabet.GRAPHEMES:
+        if src_alphabet == Alphabet.GRAPHEMES and (tgt_alphabet == Alphabet.GRAPHEMES or self.adapter.READS_TEXT):
             prepared = self.frontend.prepare(spoken, stages)
             id_lists = self.adapter.encode_text(prepared, self, config)
             chunk_text = prepared if len(id_lists) == 1 else None
