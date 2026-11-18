@@ -13,6 +13,7 @@ from dataclasses import asdict, dataclass, field, fields, replace
 from enum import Enum
 from pathlib import Path
 from typing import Optional, Dict, Iterator, List, Any, Callable, Sequence, Set, Tuple
+from urllib.parse import quote, unquote
 import requests
 from huggingface_hub import constants as hub_constants, hf_hub_download
 from huggingface_hub.constants import HF_HUB_CACHE
@@ -123,6 +124,9 @@ def _sidecar_urls(url: str, graph: Optional[Path]) -> List[str]:
         if parts[0] == "" or ":" in parts[0] or ".." in parts:
             raise ValueError(f"'{url}' names external data outside its folder: "
                              f"{location!r}")
+    if not _HF_URL.match(head):
+        # a location is a literal file name, and a URL reads %, # and ? as syntax
+        locations = [quote(location, safe="/") for location in locations]
     return [f"{folder}/{location}{sep}{tail}" for location in locations]
 
 
@@ -205,7 +209,20 @@ def _direct_dir(url: str) -> Path:
     return Path(HF_HUB_CACHE) / "phoonnx-direct" / digest
 
 
-def _resolve(url: str, timeout: int = 120) -> Path:
+def _direct_path(url: str, graph_url: Optional[str] = None) -> Path:
+    """Where the file at a URL the hub cannot serve is kept.
+
+    The external data of a graph keeps its place relative to the graph, also in a
+    subfolder, because onnxruntime reads it there. ``graph_url`` names that graph.
+    """
+    head = url.split("?")[0]
+    if graph_url is None:
+        return _direct_dir(url) / (head.rsplit("/", 1)[-1] or "artifact")
+    folder = graph_url.split("?")[0].rsplit("/", 1)[0]
+    return _direct_dir(graph_url) / unquote(head[len(folder) + 1:])
+
+
+def _resolve(url: str, timeout: int = 120, graph_url: Optional[str] = None) -> Path:
     """Give the local path of ``url``, downloading it once.
 
     Hub files are fetched with the hub client and used exactly where it puts
@@ -217,7 +234,8 @@ def _resolve(url: str, timeout: int = 120) -> Path:
 
     A URL the hub cannot serve is streamed into :func:`_direct_dir` instead,
     with a warning, because breaking self-hosted voices costs more than the
-    duplicate copy they keep.
+    duplicate copy they keep. ``graph_url`` names the graph whose external data
+    ``url`` is, so the file lands beside it (:func:`_direct_path`).
 
     Raises:
         huggingface_hub.errors.EntryNotFoundError: no such file on the hub.
@@ -227,7 +245,7 @@ def _resolve(url: str, timeout: int = 120) -> Path:
     if cached is not None:
         return cached
     _warn_offhub(url)
-    dest = _direct_dir(url) / (url.split("?")[0].rsplit("/", 1)[-1] or "artifact")
+    dest = _direct_path(url, graph_url)
     if _is_cached(dest):
         return dest
     return _direct_stream(url, dest, timeout)
@@ -436,7 +454,7 @@ def _warn_offhub(url: str) -> None:
                 f"that no other voice or program can share: {url}")
 
 
-def _cached_path(url: str) -> Optional[Path]:
+def _cached_path(url: str, graph_url: Optional[str] = None) -> Optional[Path]:
     """Local path of ``url`` if it is already downloaded, else None.
 
     Never touches the network: this answers "how big is what we already
@@ -472,7 +490,7 @@ def _cached_path(url: str) -> Optional[Path]:
             return _offline_snapshot(repo_id, match["rev"], match["path"], record=False)
         except OSError:
             return None
-    dest = _direct_dir(url) / (url.split("?")[0].rsplit("/", 1)[-1] or "artifact")
+    dest = _direct_path(url, graph_url)
     return dest if _is_cached(dest) else None
 
 
@@ -487,11 +505,13 @@ def _file_bytes(*urls: str) -> int:
         graph = _cached_path(url)
         if graph is None:
             continue
-        try:
-            sidecars = _sidecar_urls(url, graph)
-        except ValueError:
-            sidecars = []
-        for path in [graph, *map(_cached_path, sidecars)]:
+        sidecars = []
+        if url.split("?")[0].endswith(".onnx"):  # only a graph has external data
+            try:
+                sidecars = _sidecar_urls(url, graph)
+            except ValueError:
+                pass
+        for path in [graph, *(_cached_path(sidecar, graph_url=url) for sidecar in sidecars)]:
             if path is not None:
                 files.add(os.path.realpath(path))
     total = 0
@@ -943,7 +963,7 @@ class TTSModelInfo:
         path = _resolve(url)
         for sidecar in _sidecar_urls(url, path):
             try:
-                _resolve(sidecar)
+                _resolve(sidecar, graph_url=url)
             except _NO_SUCH_FILE as e:
                 # There is no sidecar at that URL, or we are offline and have
                 # never seen one; a single-file graph loads fine either way.

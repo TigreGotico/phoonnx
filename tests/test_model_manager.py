@@ -302,6 +302,48 @@ class TestNonHubVoices(HubTestCase):
         self.assertFalse((_direct_dir(self.URL) / "model.onnx").exists())
 
 
+class TestNonHubExternalData(HubTestCase):
+    """A self-hosted graph reads its external data from beside it, by the literal name."""
+
+    URL = "https://mirror.example.org/v/model.onnx"
+
+    def _load(self, locations, served):
+        """Serve the graph and each named file at ``served[location]``, load and run it."""
+        import numpy as np
+        graph, files, expected = _external_data_graph(locations)
+        bodies = {"/v/model.onnx": _mock_response(200, content=graph)}
+        for location, data in files.items():
+            bodies[served[location]] = _mock_response(200, content=data)
+        requested = []
+        with self.stream(bodies) as mock_get:
+            path = self.make_info(model_url=self.URL).download_model()
+            requested = [call.args[0] for call in mock_get.call_args_list]
+        session = onnxruntime.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+        got = session.run(None, {"X": np.zeros(4, dtype=np.float32)})[0]
+        self.assertEqual(got.tolist(), expected.tolist())
+        return path, requested
+
+    def test_a_data_file_in_a_subfolder_lands_beside_the_graph(self):
+        path, _ = self._load(["weights/w.bin", "./x.bin"],
+                             {"weights/w.bin": "/v/weights/w.bin", "./x.bin": "/v/./x.bin"})
+        self.assertTrue((path.parent / "weights" / "w.bin").is_file())
+
+    def test_disk_size_counts_the_data_files_in_their_subfolder(self):
+        path, _ = self._load(["weights/w.bin", "w%41.bin"],
+                             {"weights/w.bin": "/v/weights/w.bin", "w%41.bin": "/v/w%2541.bin"})
+        expected = sum(f.stat().st_size for f in path.parent.rglob("*") if f.is_file())
+        self.assertEqual(self.make_info(model_url=self.URL).disk_size(), expected)
+
+    def test_a_name_with_url_syntax_is_requested_by_its_literal_name(self):
+        path, requested = self._load(
+            ["w%41.bin", "w#1.bin", "%2e%2e/x.bin"],
+            {"w%41.bin": "/v/w%2541.bin", "w#1.bin": "/v/w%231.bin",
+             "%2e%2e/x.bin": "/v/%252e%252e/x.bin"})
+        self.assertIn("https://mirror.example.org/v/%252e%252e/x.bin", requested)
+        self.assertTrue((path.parent / "w%41.bin").is_file())
+        self.assertTrue((path.parent / "%2e%2e" / "x.bin").is_file())
+
+
 class TestMetadataTimeout(unittest.TestCase):
     """The metadata lookup must give up long before the body budget.
 
@@ -577,6 +619,12 @@ class TestExternalDataNames(HubTestCase):
         self.assertEqual(self._fetched(),
                          ["model.onnx", "model.onnx_data", "model.onnx_data_1",
                           "model.onnx_data_2"])
+        self.assertEqual(self._run(path).tolist(), expected.tolist())
+
+    def test_a_hub_data_file_name_is_passed_to_the_hub_literally(self):
+        expected = self._stage("model.onnx", ["w 1.bin"])
+        path = self.make_info().download_model()
+        self.assertEqual(self._fetched(), ["model.onnx", "w 1.bin"])
         self.assertEqual(self._run(path).tolist(), expected.tolist())
 
     def test_the_file_onnxruntime_quantization_writes_is_fetched(self):
@@ -1354,6 +1402,15 @@ class TestDiskSize(unittest.TestCase):
         self.add("model.onnx", 1000)
         self.add("model.onnx_data", 5000)
         self.assertEqual(_file_bytes(f"{self.URL}model.onnx"), 6000)
+
+    def test_only_a_graph_is_read_for_external_data_names(self):
+        from phoonnx.model_manager import _file_bytes
+        self.add("voice.bin", 300)
+        self.add("model.onnx", 1000)
+        with patch("phoonnx.model_manager.external_data_locations",
+                   return_value=[]) as read:
+            self.assertEqual(_file_bytes(f"{self.URL}voice.bin", f"{self.URL}model.onnx"), 1300)
+        self.assertEqual([Path(call.args[0]).name for call in read.call_args_list], ["model.onnx"])
 
     def test_a_graph_without_a_sidecar_is_just_the_graph(self):
         from phoonnx.model_manager import _file_bytes
