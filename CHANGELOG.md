@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.113.5a1](https://github.com/TigreGotico/phoonnx/tree/1.113.5a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.4a1...1.113.5a1)
+
+## [1.113.4a1](https://github.com/TigreGotico/phoonnx/tree/1.113.4a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.3a2...1.113.4a1)
+
+**Merged pull requests:**
+
+- fix: Pocket TTS clones from the \(audio, sample\_rate\) reference tuple [\#699](https://github.com/TigreGotico/phoonnx/pull/699) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: the ja and all extras install pyopenjtalk-plus, never plain pyopenjtalk [\#698](https://github.com/TigreGotico/phoonnx/pull/698) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.113.3a2](https://github.com/TigreGotico/phoonnx/tree/1.113.3a2) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.3a1...1.113.3a2)
@@ -240,10 +253,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.100.0a2...1.101.0a1)
 
-**Merged pull requests:**
-
-- feat: rapido pt-BR voices in the voice index [\#570](https://github.com/TigreGotico/phoonnx/pull/570) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.100.0a2](https://github.com/TigreGotico/phoonnx/tree/1.100.0a2) (2026-11-16)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.100.0a1...1.100.0a2)
@@ -375,10 +384,6 @@
 ## [1.97.1a1](https://github.com/TigreGotico/phoonnx/tree/1.97.1a1) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.97.0a1...1.97.1a1)
-
-**Merged pull requests:**
-
-- fix: tag the Shami voice as Levantine Arabic \(apc\) [\#572](https://github.com/TigreGotico/phoonnx/pull/572) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.97.0a1](https://github.com/TigreGotico/phoonnx/tree/1.97.0a1) (2026-11-13)
 
