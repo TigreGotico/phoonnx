@@ -132,13 +132,19 @@ class TestPrepare(unittest.TestCase):
         utterances = list(voice.prepare(TEXT))
         self.assertEqual([u.symbols for u in utterances],
                          [tuple("Hi there"), tuple("Who is it")])
+        # each utterance carries its own chunk's text, not the whole input
+        self.assertEqual([u.text for u in utterances], ["Hi there.", "Who is it?"])
         # blank between symbols, BOS and EOS around them, upper case read as lower case
         for utterance in utterances:
             letters = [CONFIG["phoneme_id_map"][s.lower()][0] for s in utterance.symbols]
             expected = [1] + [i for letter in letters for i in (0, letter)] + [0, 2]
             self.assertEqual(utterance.ids, tuple(expected))
-            self.assertEqual(utterance.text, TEXT)
             self.assertEqual(dict(utterance.streams), {})
+
+    def test_a_whole_text_utterance_carries_the_joined_text(self):
+        voice = _symbol_voice()
+        utterances = list(voice.prepare(TEXT, SynthesisConfig(chunk="none")))
+        self.assertEqual([u.text for u in utterances], ["Hi there. Who is it?"])
 
     def test_a_text_voice_gives_the_adapter_ids_and_no_symbols(self):
         voice = _text_voice()

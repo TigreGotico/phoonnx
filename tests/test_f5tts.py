@@ -584,6 +584,55 @@ def test_f5tts_length_estimate_counts_the_reference_end():
     assert preprocess.max_duration == [frames + int(frames / reference_ids * generation_ids)]
 
 
+def test_f5tts_max_duration_uses_utf8_byte_lengths():
+    """max_duration is sized from the UTF-8 byte lengths of the two texts, as
+    upstream does (SWivid/F5-TTS 600e5fd, utils_infer.py): an Arabic generation
+    text against an English reference gets its full length, not half of it."""
+    ad = _configured_adapter(nfe=2)
+    pre = _RecordingPreprocess()
+    ad.preprocess = pre
+    reference_text = "Hello world."
+    gen_text = "مرحبا بالعالم"
+    request = AdapterSynthesisRequest(
+        phoneme_ids=np.array([[4, 5, 6]], np.int64),
+        phoneme_lengths=np.array([3], np.int64),
+        speaker_id=0, language_id=0, text=gen_text,
+        params={"reference_audio": (np.zeros(24000, np.float32), 24000),
+                "prompt_tokens": [1, 2, 3],
+                "speaker_reference_text": reference_text,
+                "speed": 1.0},
+    )
+    ad.synthesize(request, _FakeTransformer())
+    # the ended reference text: rstrip, ". " unless it ends in "." or "。",
+    # plus one space when the last character is one byte
+    ended = reference_text.rstrip() + "  "  # ends in "." -> " " then the one-byte space
+    frames = 24000 // 256 + 1
+    ref_text_len = len(ended.encode("utf-8"))
+    gen_text_len = len(gen_text.encode("utf-8"))
+    assert pre.max_duration == [frames + int(frames / ref_text_len * gen_text_len / 1.0)]
+
+
+def test_f5tts_max_duration_without_text_keeps_the_token_count():
+    """text=None keeps today's token-count estimate."""
+    ad = _configured_adapter(nfe=2)
+    pre = _RecordingPreprocess()
+    ad.preprocess = pre
+    request = AdapterSynthesisRequest(
+        phoneme_ids=np.array([[4, 5, 6]], np.int64),
+        phoneme_lengths=np.array([3], np.int64),
+        speaker_id=0, language_id=0,
+        params={"reference_audio": (np.zeros(24000, np.float32), 24000),
+                "prompt_tokens": [1, 2, 3],
+                "speaker_reference_text": "Hello world.",
+                "speed": 1.0},
+    )
+    ad.synthesize(request, _FakeTransformer())
+    frames = 24000 // 256 + 1
+    reference_ids = 3 + 2  # 3 prompt tokens + the "  " end the "." reference gets
+    generation_ids = 3
+    assert pre.max_duration == [frames + int(frames / reference_ids * generation_ids / 1.0)]
+
+
 class _NamedIO:
     def __init__(self, name, type_="tensor(float)"):
         self.name = name
