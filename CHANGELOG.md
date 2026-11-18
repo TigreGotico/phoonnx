@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.113.5a2](https://github.com/TigreGotico/phoonnx/tree/1.113.5a2) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.5a1...1.113.5a2)
+
+**Merged pull requests:**
+
+- test: download the pinned F5 configs once, through retry\_download [\#702](https://github.com/TigreGotico/phoonnx/pull/702) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.113.5a1](https://github.com/TigreGotico/phoonnx/tree/1.113.5a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.4a1...1.113.5a1)
@@ -376,10 +384,6 @@
 ## [1.97.1a2](https://github.com/TigreGotico/phoonnx/tree/1.97.1a2) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.97.1a1...1.97.1a2)
-
-**Merged pull requests:**
-
-- chore: render voice model cards from the voice config [\#574](https://github.com/TigreGotico/phoonnx/pull/574) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.97.1a1](https://github.com/TigreGotico/phoonnx/tree/1.97.1a1) (2026-11-14)
 
