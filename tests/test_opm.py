@@ -338,6 +338,12 @@ class TestSuperResolutionConfigThreading(unittest.TestCase):
         self.assertIs(cfg.super_resolution, True)
         self.assertIsNone(cfg.super_resolution_model)
 
+    def test_the_chunk_key_reaches_synthesis_config(self):
+        self.assertEqual(self._synthesize({"chunk": "clause"}).chunk, "clause")
+
+    def test_no_chunk_key_reads_one_sentence_per_call(self):
+        self.assertIsNone(self._synthesize().chunk)
+
 
 if __name__ == "__main__":
     unittest.main()
