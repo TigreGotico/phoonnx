@@ -735,7 +735,16 @@ class TTSVoice:
         tgt_alphabet = self.config.alphabet
         stages = self._stages(config)
 
-        if src_alphabet == Alphabet.GRAPHEMES and (tgt_alphabet == Alphabet.GRAPHEMES or self.adapter.READS_TEXT):
+        if src_alphabet == Alphabet.GRAPHEMES and tgt_alphabet != Alphabet.GRAPHEMES and self.adapter.READS_TEXT:
+            # The engine reads text but its voice declares symbols: keep one
+            # engine call per frontend chunk, each encoded by the engine.
+            for segment in self.frontend.segments(spoken, stages):
+                for ids in self.adapter.encode_text(segment.text, self, config):
+                    if ids:
+                        yield Utterance(text=segment.text, symbols=None, ids=tuple(ids))
+            return
+
+        if src_alphabet == tgt_alphabet == Alphabet.GRAPHEMES:
             prepared = self.frontend.prepare(spoken, stages)
             id_lists = self.adapter.encode_text(prepared, self, config)
             chunk_text = prepared if len(id_lists) == 1 else None

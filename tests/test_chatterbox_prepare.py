@@ -56,3 +56,13 @@ def test_a_voice_that_reads_symbols_gives_the_same_ids(tmp_path):
                      adapter=get_adapter("vits"))
     ids = [list(u.ids) for u in voice.prepare("hi")]
     assert ids == [[1, 0, 10, 0, 11, 0, 2]]
+
+
+def test_each_sentence_is_one_engine_call_with_its_own_language_token(tmp_path):
+    voice = _voice(tmp_path, {"engine": "chatterbox", "lang_code": "pt-PT", "alphabet": "unicode"})
+    ids = [list(u.ids) for u in voice.prepare("hi. ola.")]
+    letters = {VOCAB[c] for c in "hiola"}
+    assert len(ids) == 2
+    assert [chunk[0] for chunk in ids] == [VOCAB["[pt]"], VOCAB["[pt]"]]
+    assert [[i for i in chunk if i in letters] for chunk in ids] == [
+        [VOCAB["h"], VOCAB["i"]], [VOCAB["o"], VOCAB["l"], VOCAB["a"]]]
