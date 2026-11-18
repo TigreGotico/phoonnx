@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.113.3a1](https://github.com/TigreGotico/phoonnx/tree/1.113.3a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.2a1...1.113.3a1)
+
+## [1.113.2a1](https://github.com/TigreGotico/phoonnx/tree/1.113.2a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.1a2...1.113.2a1)
+
+## [1.113.1a2](https://github.com/TigreGotico/phoonnx/tree/1.113.1a2) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.1a1...1.113.1a2)
+
+**Merged pull requests:**
+
+- fix: load F5 voices from their own repos, Italian Pocket TTS in full precision [\#689](https://github.com/TigreGotico/phoonnx/pull/689) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: Pocket TTS gives no ids for empty or blank text [\#687](https://github.com/TigreGotico/phoonnx/pull/687) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- test: prepare skips a sentence whose ids are empty [\#686](https://github.com/TigreGotico/phoonnx/pull/686) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.113.1a1](https://github.com/TigreGotico/phoonnx/tree/1.113.1a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.0a1...1.113.1a1)
@@ -234,10 +252,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.4a1...1.100.0a1)
 
-**Merged pull requests:**
-
-- feat: TTSVoice reads text through scriptconv's TextFrontend [\#566](https://github.com/TigreGotico/phoonnx/pull/566) ([JarbasAl](https://github.com/JarbasAl))
-
 ## [1.99.4a1](https://github.com/TigreGotico/phoonnx/tree/1.99.4a1) (2026-11-15)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.99.3a2...1.99.4a1)
@@ -381,10 +395,6 @@
 ## [1.96.5a1](https://github.com/TigreGotico/phoonnx/tree/1.96.5a1) (2026-11-12)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.96.4a1...1.96.5a1)
-
-**Merged pull requests:**
-
-- fix\(tests\): read the Spanish ordinal 21 as one word, per the DPD [\#563](https://github.com/TigreGotico/phoonnx/pull/563) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.96.4a1](https://github.com/TigreGotico/phoonnx/tree/1.96.4a1) (2026-11-11)
 
