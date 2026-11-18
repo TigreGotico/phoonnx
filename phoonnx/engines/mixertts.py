@@ -154,7 +154,7 @@ class MixerTTSAdapter(BaseOnnxAdapter):
 
         extras: Dict[str, Any] = {}
         # Mel-frame durations, when the export exposes them. Converted to
-        # audio samples uniformly by TTSVoice.phoneme_ids_to_audio via
+        # audio samples uniformly by TTSVoice.render via
         # VoiceConfig.hop_length (mel frame rate == vocoder hop_length for
         # the standard HiFi-GAN/Vocos vocoders this adapter pairs with).
         durations = self._find_duration_output(outputs, output_names)

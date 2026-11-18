@@ -175,9 +175,92 @@ class TestOneModelOneSession(unittest.TestCase):
                             "the sidecar beside a hub-cache symlink must be "
                             "found, not only one beside the resolved blob")
 
+    def test_a_second_numbered_sidecar_is_part_of_the_key(self):
+        # Orpheus names its weights model.onnx_data_1 to _6, and any one of
+        # them can be replaced under a graph that keeps its own bytes: every
+        # sidecar of the series belongs in the key, not only the first.
+        one = Path(str(self.model_path) + "_data_1")
+        two = Path(str(self.model_path) + "_data_2")
+        one.write_bytes(b"weights-1")
+        two.write_bytes(b"weights-2")
+        stamp = 1_600_000_000_000_000_000
+        for path in (self.model_path, one, two):
+            os.utime(path, ns=(stamp, stamp))
+
+        first = providers.session_key(self.model_path, [CPU_PROVIDER], None)
+        two.write_bytes(b"weights-2-longer")
+        os.utime(two, ns=(stamp, stamp))
+        second = providers.session_key(self.model_path, [CPU_PROVIDER], None)
+
+        self.assertNotEqual(first, second,
+                            "a replaced _data_2 must change the session key")
+
+    def test_every_numbered_sidecar_beside_a_hub_symlink_is_in_the_key(self):
+        blobs = Path(self.tmpdir.name) / "blobs"
+        snapshots = Path(self.tmpdir.name) / "snapshots" / "rev1"
+        blobs.mkdir()
+        snapshots.mkdir(parents=True)
+        blob = blobs / "deadbeef"
+        _build_tiny_onnx_model(blob)
+        stub = snapshots / "model.onnx"
+        stub.symlink_to(blob)
+        one = snapshots / "model.onnx_data_1"
+        two = snapshots / "model.onnx_data_2"
+        one.write_bytes(b"weights-1")
+        two.write_bytes(b"weights-2")
+        stamp = 1_600_000_000_000_000_000
+        for path in (blob, one, two):
+            os.utime(path, ns=(stamp, stamp))
+
+        baseline = providers.session_key(stub, [CPU_PROVIDER], None)
+        one.write_bytes(b"weights-1-longer")
+        os.utime(one, ns=(stamp, stamp))
+        after_data_1 = providers.session_key(stub, [CPU_PROVIDER], None)
+        one.write_bytes(b"weights-1")
+        os.utime(one, ns=(stamp, stamp))
+        self.assertEqual(baseline, providers.session_key(stub, [CPU_PROVIDER],
+                                                        None),
+                         "the same files must key the same")
+        two.write_bytes(b"weights-2-longer")
+        os.utime(two, ns=(stamp, stamp))
+        after_data_2 = providers.session_key(stub, [CPU_PROVIDER], None)
+
+        self.assertNotEqual(baseline, after_data_1,
+                            "a replaced _data_1 must change the key")
+        self.assertNotEqual(baseline, after_data_2,
+                            "a replaced _data_2 must change the key")
+
+    def test_sidecar_discovery_names_every_data_file(self):
+        for suffix in ("_data", ".data", "_data_1", "_data_2"):
+            Path(str(self.model_path) + suffix).write_bytes(b"w")
+        found = providers._external_data_paths(str(self.model_path))
+        self.assertEqual([Path(p).name for p in found],
+                         ["backbone.onnx.data", "backbone.onnx_data",
+                          "backbone.onnx_data_1", "backbone.onnx_data_2"])
+
+    def test_the_first_location_with_a_sidecar_wins(self):
+        # The hub lays a voice out as a symlink whose sidecars sit beside it,
+        # so that location is asked first and its sidecars are the ones keyed.
+        blobs = Path(self.tmpdir.name) / "blobs"
+        snapshots = Path(self.tmpdir.name) / "snapshots" / "rev1"
+        blobs.mkdir()
+        snapshots.mkdir(parents=True)
+        blob = blobs / "deadbeef"
+        _build_tiny_onnx_model(blob)
+        (blobs / "deadbeef.data").write_bytes(b"real-path-weights")
+        stub = snapshots / "model.onnx"
+        stub.symlink_to(blob)
+        beside = snapshots / "model.onnx_data"
+        beside.write_bytes(b"snapshot-weights")
+
+        found = providers._external_data_paths(str(stub), str(blob))
+
+        self.assertEqual(found, [str(beside)])
+
     def test_no_sidecar_is_unaffected(self):
         # A single-file graph (no external-data sidecar) must key exactly as
         # it did before: this only changes behaviour for models that have one.
+        self.assertEqual(providers._external_data_paths(str(self.model_path)), [])
         key = providers.session_key(self.model_path, [CPU_PROVIDER], None)
         self.assertEqual(len(key), 4)
 

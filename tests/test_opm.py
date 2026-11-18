@@ -34,8 +34,10 @@ class _FakeVoiceInfo:
         self.config = _FakeVoiceConfig(speaker_id_map=speaker_id_map)
         self.tts_voice = MagicMock(name=f"TTSVoice[{voice_id}]")
         self.load_providers = "unset"
+        self.precision = None
+        self.variants = None
 
-    def load(self, providers=None):
+    def load(self, providers=None, precision=None):
         self.load_providers = providers
         return self.tts_voice
 

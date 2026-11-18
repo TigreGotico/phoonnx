@@ -585,13 +585,9 @@ def test_configure_reads_engine_options(tmp_path):
 
 
 def test_available_langs_cover_the_indexed_voices():
-    from phoonnx.model_manager import TTSModelManager
-    m = TTSModelManager()
-    m.merge_default_voices()
     # the card lists languages without regions; the English voices are
     # tagged en-IN because the card names their accent as Indian English
-    langs = {v.lang.split("-")[0] for v in m.voices.values()
-             if v.engine and v.engine.value == "indic_parler"}
+    langs = {v.lang.split("-")[0] for v in _indexed()}
     assert langs
     # every indexed voice's language is one the model card claims support for,
     # except Chhattisgarhi (hne) which the card lists as a supported *speaker* language
@@ -602,11 +598,21 @@ def test_available_langs_cover_the_indexed_voices():
 # voice index
 # ---------------------------------------------------------------------------
 
-def _indexed():
+INDIC_PARLER_REPO = "https://huggingface.co/Phoonnx/parlertts-multi-indic-unicode/"
+AUX_GRAPHS = {"text_encoder_path", "decoder_decode_path", "dac_decoder_path", "prompt_tokenizer_path",
+              "description_tokenizer_path", "model_config_path"}
+
+
+def _engine_voices():
     from phoonnx.model_manager import TTSModelManager
     m = TTSModelManager()
     m.merge_default_voices()
     return [v for v in m.voices.values() if v.engine and v.engine.value == "indic_parler"]
+
+
+def _indexed():
+    """The voices of the Indic Parler-TTS checkpoint. The engine also runs other Parler-TTS checkpoints."""
+    return [v for v in _engine_voices() if v.model_url.startswith(INDIC_PARLER_REPO)]
 
 
 def test_index_has_every_recommended_speaker():
@@ -621,9 +627,7 @@ def test_every_voice_carries_a_description_and_all_four_graphs():
         desc = v.engine_options["description"]
         assert v.engine_options["speaker"] in desc
         assert desc.endswith(".")
-        assert set(v.aux_model_urls) == {"text_encoder_path", "decoder_decode_path",
-                                          "dac_decoder_path", "prompt_tokenizer_path",
-                                          "description_tokenizer_path", "model_config_path"}
+        assert set(v.aux_model_urls) == AUX_GRAPHS
         assert v.model_url.endswith("decoder_prefill.onnx")
 
 
@@ -631,3 +635,18 @@ def test_voice_ids_are_unique_and_namespaced():
     ids = [v.voice_id for v in _indexed()]
     assert len(ids) == len(set(ids))
     assert all(i.startswith("indic_parler/") for i in ids)
+
+
+def test_other_parler_checkpoints_live_in_their_own_index_and_namespace():
+    from phoonnx.model_manager import TTSModelManager
+    others = [v for v in _engine_voices() if not v.model_url.startswith(INDIC_PARLER_REPO)]
+    assert {v.voice_id for v in others} >= {"parlertts/adia/wo"}
+    path = TTSModelManager.voice_index_path() / "parlertts.json"
+    assert {v.voice_id for v in others} == set(json.loads(path.read_text(encoding="utf-8")))
+    for v in others:
+        assert v.voice_id.startswith("parlertts/")
+        repo = v.model_url.split("/resolve/")[0]
+        assert v.model_url.endswith("decoder_prefill.onnx")
+        assert set(v.aux_model_urls) == AUX_GRAPHS
+        assert all(url.startswith(repo + "/resolve/") for url in v.aux_model_urls.values())
+        assert v.engine_options["description"]

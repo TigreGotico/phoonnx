@@ -149,7 +149,11 @@ def _phoonnx_phonemes_decoded(voice, text):
 def _assert_gruut_ids_match(voice, text, lang):
     # gruut is the original phonemizer; the model's vocab (with its multi-phoneme
     # clusters) is the original id map. phoonnx must agree on both.
-    ref = _greedy_vocab_phonemes(_gruut_stream(text, lang), voice.config.tokenizer.vocabulary.char2idx)
+    vocab = voice.config.tokenizer.vocabulary.char2idx
+    # both sides read the voice's vocabulary, so an empty one would make them agree on []
+    assert vocab, "the voice has an empty phoneme_id_map"
+    ref = _greedy_vocab_phonemes(_gruut_stream(text, lang), vocab)
+    assert ref, f"no gruut phoneme of {text!r} is in the vocabulary"
     assert _phoonnx_phonemes_decoded(voice, text) == ref
 
 
@@ -161,9 +165,30 @@ def test_tokenization_larynx_gruut_ids():
 
 
 def test_tokenization_mimic3_gruut_ids():
-    m = _manager()
-    vid = _pick(m, lambda k: k.startswith("mimic3/en_"), "no en mimic3 voice in index")
-    _assert_gruut_ids_match(_load_voice(m.voices[vid]), "hello my joyful child now", "en-us")
+    """A native Mimic 3 config gives the upstream ids, blanks and word blanks included.
+
+    The fixture holds the native config of the en_US vctk voice and the ids that
+    upstream Mimic 3 gives for each sentence (see its "source"). The sentences
+    end in a full stop, so Mimic 3's auto_append_text adds nothing, and one
+    sentence has a comma, so the break ids are compared too.
+    """
+    import json
+    import os
+    from phoonnx.config import SynthesisConfig, VoiceConfig
+    from phoonnx.engines import get_adapter
+    from phoonnx.voice import TTSVoice
+
+    path = os.path.join(os.path.dirname(__file__), "fixtures", "mimic3_en_us_vctk_low.json")
+    with open(path, encoding="utf-8") as f:
+        fixture = json.load(f)
+    voice = TTSVoice(config=VoiceConfig.from_dict(fixture["config"]), session=None,
+                     adapter=get_adapter("vits"))
+    assert voice.config.tokenizer.vocabulary.char2idx, "the voice has an empty phoneme_id_map"
+    for text, upstream in fixture["upstream"].items():
+        calls = list(voice.prepare(text, SynthesisConfig(enable_phonetic_spellings=False)))
+        assert [list(u.ids) for u in calls] == [upstream["ids"]], (
+            text, ["".join(u.symbols) for u in calls], upstream["phonemes"])
+    assert not voice.config.tokenizer.not_found_characters
 
 
 # --- coqui: coqui-tts won't install in a transformers>=5 env, so we assert the

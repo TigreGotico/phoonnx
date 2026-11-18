@@ -8,7 +8,7 @@ Each TTS architecture (VITS, OptiSpeech, Matcha-TTS, etc.) has different:
   - Config/metadata formats
 
 An OnnxAdapter encapsulates these differences behind a single interface
-so that TTSVoice.phoneme_ids_to_audio works identically for any engine.
+so that TTSVoice.render works identically for any engine.
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -17,6 +17,10 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import onnxruntime
 from scriptconv.frontend import Stages
+
+
+#: The request fields that hold one value per phoneme id, as a phonemizer's side streams fill them.
+SIDE_STREAMS = ("language_ids", "stress")
 
 
 @dataclass
@@ -43,6 +47,9 @@ class AdapterSynthesisRequest:
     # Engine-specific key→value (noise_scale, d_factor, …).
     # Populated from SynthesisConfig + VoiceConfig defaults.
     params: Dict[str, Any] = field(default_factory=dict)
+
+    text: Optional[str] = None
+    """The chunk's text, per ``Utterance.text``."""
 
 
 @dataclass
@@ -179,7 +186,7 @@ class BaseOnnxAdapter(ABC):
         text directly. ``voice`` exposes the frontend / tokenizer.
         """
         stages = Stages(normalize=False, diacritize=False)
-        return [voice.phonemes_to_ids(p) for p in voice.frontend.phonemize(text, stages) if p]
+        return [voice.tokenizer.tokenize(p) for p in voice.frontend.phonemize(text, stages) if p]
 
     def synthesize(
         self,
@@ -305,7 +312,7 @@ class BaseOnnxAdapter(ABC):
 
         Returns the raw tensor (still in the model's native unit — mel
         frames for two-stage engines, audio-decoder frames for single-stage
-        ones; converted to samples uniformly in ``TTSVoice.phoneme_ids_to_audio``
+        ones; converted to samples uniformly in ``TTSVoice.render``
         via ``VoiceConfig.hop_length``), or ``None`` if this particular
         export doesn't expose one. Never raises — callers degrade to "no
         alignment available" when this returns ``None``.

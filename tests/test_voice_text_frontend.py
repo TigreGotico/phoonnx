@@ -2,8 +2,8 @@
 
 The contract (``speech-stack-contract.md``, section phoonnx) says: "``TTSVoice``
 builds one ``TextFrontend`` at load, and maps ``SynthesisConfig`` overrides to
-``Stages`` for each call." The frontend runs inline blocks, sentences,
-normalisation, diacritization and the backend, in that order.
+``Stages`` for each call." The frontend runs inline blocks, normalisation of the
+whole text, sentences, diacritization and the backend, in that order.
 
 The diacritizer is replaced with a recorder, so no model is needed. Every
 expected value comes from a function outside the voice text path: phoonnx's own
@@ -12,8 +12,10 @@ normaliser, a backend called alone, or hand-written symbols.
 import json
 import os
 import tempfile
+import types
 import unittest
 import warnings
+from dataclasses import replace
 from unittest.mock import MagicMock, patch
 
 import scriptconv.diacritics as scd
@@ -54,13 +56,18 @@ def _voice(lang, phoneme_type=PhonemeType.UNICODE, alphabet=Alphabet.UNICODE,
                          phonemizer_model=None, add_diacritics=add_diacritics,
                          keep_punctuation=keep_punctuation, diacritizer_model=diacritizer_model)
     voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
-    voice.phonemes_to_ids = lambda phonemes: list(range(len(phonemes)))
+    voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: list(range(len(phonemes))))
     return voice
 
 
+def _prepared(voice, text, syn_config=None):
+    """The utterances of one synthesis call, before the user's phonetic spellings."""
+    return list(voice.prepare(text, replace(syn_config or SynthesisConfig(), enable_phonetic_spellings=False)))
+
+
 def _synthesis_phonemes(voice, text, syn_config=None):
-    return [phonemes for phonemes, _, _ in voice._iter_synthesis_ids(
-        text, syn_config or SynthesisConfig(), Alphabet.GRAPHEMES, voice.config.alphabet)]
+    return [None if utterance.symbols is None else list(utterance.symbols)
+            for utterance in _prepared(voice, text, syn_config)]
 
 
 class TestStageOrder(unittest.TestCase):
@@ -114,8 +121,7 @@ def _spy_on_hook(voice):
 
 def _encoded_text(voice, text, syn_config=None):
     """The text that a text-token engine receives from one synthesis call."""
-    list(voice._iter_synthesis_ids(text, syn_config or SynthesisConfig(),
-                                   Alphabet.GRAPHEMES, Alphabet.GRAPHEMES))
+    _prepared(voice, text, syn_config)
     voice.adapter.encode_text.assert_called_once()
     return voice.adapter.encode_text.call_args[0][0]
 
@@ -163,7 +169,7 @@ class TestGraphemeVoices(unittest.TestCase):
         voice = _voice("ar", PhonemeType.GRAPHEMES, Alphabet.GRAPHEMES, add_diacritics=True)
         voice.adapter = get_adapter("vits")
         phonemes = []
-        voice.phonemes_to_ids = lambda symbols: phonemes.append(symbols) or [0]
+        voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda symbols: phonemes.append(symbols) or [0])
         text = "عندي 3 قطط"
         diacritized = []
         spy = _spy_on_hook(voice)
@@ -209,12 +215,12 @@ class TestNormaliser(unittest.TestCase):
         expected = EspeakPhonemizer().phonemize(normalize(text, "en-US", expand_contractions=False), "en-US")
         self.assertEqual(_synthesis_phonemes(voice, text), expected)
 
-    def test_the_normaliser_runs_once_per_sentence(self):
+    def test_the_normaliser_reads_the_whole_text_before_the_sentence_split(self):
         voice = _voice("en")
         seen = []
         voice.phonemizer.normalizer = lambda text, lang: seen.append(text) or text
         self.assertEqual(_synthesis_phonemes(voice, "ab. cd."), [list("ab"), list("cd")])
-        self.assertEqual(seen, ["ab.", "cd."])
+        self.assertEqual(seen, ["ab. cd."])
 
     def test_a_shami_voice_runs_the_hook(self):
         voice = _voice("ar", PhonemeType.SHAMI, Alphabet.IPA)
@@ -335,9 +341,8 @@ class TestOldConfigs(unittest.TestCase):
                                         "alphabet": "unicode",
                                         "phoneme_id_map": {"_": [0], "a": [1], "b": [2]}})
         voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
-        self.assertEqual([ids for _, ids, _ in voice._iter_synthesis_ids(
-            "ab", SynthesisConfig(), Alphabet.GRAPHEMES, Alphabet.UNICODE)],
-            [voice.phonemes_to_ids(["a", "b"])])
+        self.assertEqual([list(utterance.ids) for utterance in _prepared(voice, "ab")],
+                         [voice.tokenizer.tokenize(["a", "b"])])
 
     def test_a_mimic3_config_with_a_string_phonemizer_loads(self):
         with tempfile.TemporaryDirectory() as tmp:

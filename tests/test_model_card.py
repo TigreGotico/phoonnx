@@ -357,6 +357,14 @@ def test_a_licence_comment_stays_out_of_the_row():
     assert row(rendered(phoonnx_config(keep_punctuation=True), card_text=card), "Licence") == "CC BY-NC-ND 4.0"
 
 
+def failed_graph_read(repo, name):
+    """onnx_io when the Hub refuses the range request, as it does past the rate limit."""
+    import requests
+    response = requests.Response()
+    response.status_code = 429
+    raise requests.HTTPError("429 Client Error: Too Many Requests", response=response)
+
+
 def test_one_failing_repo_does_not_stop_the_batch(tmp_path, monkeypatch):
     import huggingface_hub
     from click.testing import CliRunner
@@ -388,6 +396,7 @@ def test_one_failing_repo_does_not_stop_the_batch(tmp_path, monkeypatch):
     monkeypatch.setattr(huggingface_hub, "HfApi", FakeApi)
     monkeypatch.setattr(huggingface_hub, "hf_hub_download", download)
     monkeypatch.setattr(model_card, "load_voice_index", dict)
+    monkeypatch.setattr(model_card, "onnx_io", failed_graph_read)
     result = CliRunner().invoke(model_card.main, [*hub, "--out", str(tmp_path / "out")])
     assert result.exit_code == 1
     assert "repos 3 rendered 2 refused 1" in result.output
@@ -444,6 +453,111 @@ def test_a_voice_outside_the_index_is_loaded_from_its_files():
     assert "ovos-tts-plugin-phoonnx" not in text
 
 
+def example_repo(config):
+    card = LIVE_CARD.replace("# phoonnx_pt-PT_miro_unicode", "# not_indexed_voice")
+    files = {"voice.json": json.dumps(config), "README.md": card, "voice.onnx": ""}
+    io = {"inputs": {"input": 2, "input_lengths": 1, "scales": 1}, "outputs": {"output": 3}}
+    return render_repo("Phoonnx/not_indexed_voice", list(files), files.__getitem__, lambda repo, kind: True,
+                       index={}, graph_io=lambda name: io)
+
+
+def test_a_card_shows_the_standalone_example_that_compiles():
+    config = phoonnx_config(keep_punctuation=False, phoneme_id_map={"_": 0, "^": 1, "$": 2, " ": 3, "b": 4,
+                                                                    "o": 5, "m": 6, "d": 7, "i": 8, "a": 9})
+    text = usage(example_repo(config))
+    assert "### Without phoonnx" in text
+    code = text.split("### Without phoonnx", 1)[1].split("```python\n", 1)[1].split("\n```", 1)[0]
+    compile(code, "example", "exec")
+    assert 'repo = "Phoonnx/not_indexed_voice"' in code
+    assert 'hf_hub_download(repo, "voice.onnx")' in code
+    assert 'text = "Bom dia."' in code
+    assert parse_card(example_repo(config)).sections["How to use"] == text
+
+
+def without_phoonnx_text():
+    """The prose of the card's "Without phoonnx" section, above its code."""
+    config = phoonnx_config(keep_punctuation=False, phoneme_id_map={"_": 0, "^": 1, "$": 2, " ": 3, "b": 4})
+    return usage(example_repo(config)).split("### Without phoonnx", 1)[1].split("```python", 1)[0]
+
+
+@pytest.mark.parametrize("phoneme_type, lang, text, named", [
+    ("unicode", "pt", "O Dr. Silva chegou.", '"Dr."'),
+    ("graphemes", "en", "Mr. Brown won't come.", '"Dr."'),
+    ("espeak", "en", "I have 3 cats.", "numbers"),
+    ("espeak", "en", "It weighs 10kg.", "units"),
+    ("espeak", "pt", "Chego às 10h30.", "times"),
+    ("espeak", "en-US", "The date is 08/03/2025.", "dates"),
+])
+def test_the_card_names_each_change_the_phoonnx_normaliser_makes(phoneme_type, lang, text, named):
+    from phoonnx.config import _voice_phonemizer
+    assert _voice_phonemizer(phoneme_type).normalizer(text, lang) != text
+    assert named in without_phoonnx_text()
+
+
+@pytest.mark.parametrize("phoneme_type, text", [
+    ("espeak", "We can't go."),
+    ("graphemes", "We can't go."),
+    ("graphemes", "It’s fine."),
+    ("espeak", "Line one\nline two"),
+    ("espeak", "Line  one"),
+])
+def test_the_card_names_what_the_normaliser_leaves_as_written(phoneme_type, text):
+    from phoonnx.config import _voice_phonemizer
+    assert _voice_phonemizer(phoneme_type).normalizer(text, "en") == text
+    assert ("It leaves contractions such as \"can't\", the typographic apostrophe (’), line breaks and runs of "
+            "spaces as written.") in " ".join(without_phoonnx_text().split())
+
+
+def test_the_card_says_that_phoonnx_reads_each_sentence_on_its_own():
+    from phoonnx.config import VoiceConfig
+    from phoonnx.voice import TTSVoice
+    config = phoonnx_config(keep_punctuation=False, phoneme_type="graphemes", alphabet="unicode", lang_code="pt",
+                            phoneme_id_map={"_": 0, "^": 1, "$": 2, " ": 3, "a": 4, "b": 5})
+    voice = TTSVoice(session=None, config=VoiceConfig.from_dict(config))
+    assert len(voice.phonemize("Ab ba. Ba ab.")) == 2
+    text = without_phoonnx_text()
+    assert "reads the whole text as one piece" in text
+    assert "phoonnx splits the text into sentences" in text
+
+
+def test_a_voice_no_template_covers_gets_no_standalone_example():
+    text = usage(example_repo(phoonnx_config(keep_punctuation=False)))  # no phoneme_id_map
+    assert "Without phoonnx" not in text
+    assert 'voice.synthesize_wav("Bom dia.", wav_file)' in text
+
+
+@pytest.mark.parametrize("config", [
+    phoonnx_config(keep_punctuation=False, phoneme_id_map={"_": 0, "^": 1, "$": 2, " ": 3, "b": 4, "o": 5, "m": 6}),
+    phoonnx_config(keep_punctuation=False),  # no template covers it
+])
+def test_a_graph_that_does_not_read_leaves_out_only_the_example(config, capsys):
+    card = LIVE_CARD.replace("# phoonnx_pt-PT_miro_unicode", "# not_indexed_voice")
+    files = {"voice.json": json.dumps(config), "README.md": card, "voice.onnx": ""}
+    args = ("Phoonnx/not_indexed_voice", list(files), files.__getitem__, lambda repo, kind: True)
+    without = render_repo(*args, index={})
+    assert render_repo(*args, index={}, graph_io=lambda name: failed_graph_read("Phoonnx/not_indexed_voice", name)) \
+        == without
+    assert "Without phoonnx" not in without
+    assert "no standalone example" in capsys.readouterr().err
+
+
+def test_an_upstream_piper_voice_keeps_its_punctuation_under_an_index_alphabet():
+    # the voice index sets "alphabet" on espeak Piper voices; phoonnx reads the config without it
+    config = piper_config(lang_code="en-US", phoneme_id_map={"_": [0], "^": [1], "$": [2], " ": [3], "a": [4]})
+    del config["keep_punctuation"]
+    card = LIVE_CARD.replace("# phoonnx_pt-PT_miro_unicode", "# v")
+    files = {"voice.onnx.json": json.dumps(config), "voice.onnx": "", "README.md": card}
+    index = {"OpenVoiceOS/v": {"model_url": "https://huggingface.co/Phoonnx/v/resolve/main/voice.onnx",
+                               "alphabet": "ipa", "lang": "en-US"}}
+    io = {"inputs": {"input": 2, "input_lengths": 1, "scales": 1}, "outputs": {"output": 3}}
+    text = usage(render_repo("Phoonnx/v", list(files), files.__getitem__, lambda repo, kind: True,
+                             {"punctuation_note": "Piper trains with clause punctuation."}, index=index,
+                             graph_io=lambda name: io))
+    from phoonnx.config import VoiceConfig
+    assert VoiceConfig.from_dict(json.loads(files["voice.onnx.json"]), alphabet="ipa").keep_punctuation
+    assert 'get_phonemizer("espeak", "ipa", keep_punctuation=True)' in text
+
+
 def test_the_index_entry_is_found_by_the_model_url_not_the_voice_id():
     card = LIVE_CARD.replace("# phoonnx_pt-PT_miro_unicode", "# v")
     files = {"m.onnx.json": json.dumps(phoonnx_config(keep_punctuation=True)), "other.json": "{}",
@@ -453,6 +567,17 @@ def test_the_index_entry_is_found_by_the_model_url_not_the_voice_id():
     text = render_repo("Phoonnx/v", list(files), files.__getitem__, lambda repo, kind: True, index=index)
     assert row(text, "Voice id") == "`OpenVoiceOS/v`"
     assert row(text, "Repository") == "`Phoonnx/v`"
+
+
+def test_the_index_entry_is_found_at_a_pinned_revision():
+    sha = "0123456789abcdef0123456789abcdef01234567"
+    card = LIVE_CARD.replace("# phoonnx_pt-PT_miro_unicode", "# v")
+    files = {"m.onnx.json": json.dumps(phoonnx_config(keep_punctuation=True)), "other.json": "{}",
+             "m.onnx": "", "README.md": card}
+    index = {"OpenVoiceOS/v": {"model_url": f"https://huggingface.co/Phoonnx/v/resolve/{sha}/m.onnx",
+                               "config_url": f"https://huggingface.co/Phoonnx/v/resolve/{sha}/m.onnx.json"}}
+    text = render_repo("Phoonnx/v", list(files), files.__getitem__, lambda repo, kind: True, index=index)
+    assert row(text, "Voice id") == "`OpenVoiceOS/v`"
 
 
 def test_two_index_voices_in_one_repo_are_refused():
@@ -579,6 +704,7 @@ def test_the_batch_renders_with_the_voice_index_it_loads(tmp_path, monkeypatch):
     monkeypatch.setattr(huggingface_hub, "hf_hub_download", download)
     monkeypatch.setattr(model_card, "load_voice_index", lambda: {
         "OpenVoiceOS/v": {"model_url": "https://huggingface.co/Phoonnx/v/resolve/main/voice.onnx"}})
+    monkeypatch.setattr(model_card, "onnx_io", failed_graph_read)
     result = CliRunner().invoke(model_card.main, ["Phoonnx/v", "--out", str(tmp_path / "out")])
     assert result.exit_code == 0, result.output
     assert row((tmp_path / "out" / "v" / "README.md").read_text(), "Voice id") == "`OpenVoiceOS/v`"

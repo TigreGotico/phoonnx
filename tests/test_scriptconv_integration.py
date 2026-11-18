@@ -132,12 +132,11 @@ def test_phoneme_type_is_scriptconv_phonemizer_enum():
 
 
 def test_get_phonemizer_injects_normalizer():
+    import text2spoken
     from phoonnx.config import PhonemeType, get_phonemizer
-    from phoonnx.util import normalize
     with pytest.warns(DeprecationWarning, match="get_phonemizer"):
         p = get_phonemizer(PhonemeType.GRAPHEMES)
-    assert p.normalizer("I'm 2", "en") == normalize("I'm 2", "en") == "I am two"
-    # normalization behavior preserved: digits expand as before the migration
+    assert p.normalizer is text2spoken.normalize
     out = "".join(p.phonemize("2 cats", "en")[0])
     assert "2" not in out
 
@@ -220,8 +219,8 @@ def _diacritizing_voice(lang, model):
                                          add_diacritics=True, diacritizer_model=model,
                                          sample_rate=22050)
     voice.adapter = MagicMock()
-    voice.phonemes_to_ids = lambda p: [1] * len(p)
-    voice.phoneme_ids_to_audio = lambda ids, syn_config=None, include_alignments=False, streams=None: np.zeros(4, dtype=np.float32)
+    voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda p: [1] * len(p))
+    voice._infer = lambda ids, syn_config, include_alignments=False, streams=None, text=None: (np.zeros(4, dtype=np.float32), None)
     return voice
 
 
@@ -274,9 +273,10 @@ def _phonemic_voice(model_alphabet):
     from phoonnx.config import Alphabet
     voice = TTSVoice.__new__(TTSVoice)
     voice.phonemizer = None
+    voice.phonetic_spellings = None
     voice.config = types.SimpleNamespace(lang_code="en", alphabet=model_alphabet,
                                          add_diacritics=False, diacritizer_model=None)
-    voice.phonemes_to_ids = lambda p: list(range(len(p)))
+    voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda p: list(range(len(p))))
     return voice
 
 
@@ -287,18 +287,16 @@ def test_phonemic_input_transcodes_to_model_alphabet_via_scriptconv():
     with the deleted phoonnx-side conversion module."""
     from phoonnx.config import Alphabet, SynthesisConfig
     voice = _phonemic_voice(Alphabet.ARPA)
-    out = list(voice._iter_synthesis_ids(
-        "S@", SynthesisConfig(alphabet=Alphabet.XSAMPA), Alphabet.XSAMPA, Alphabet.ARPA))
-    assert [p for p, _, _ in out] == [["SH", "AX"]]
+    out = list(voice.prepare("S@", SynthesisConfig(alphabet=Alphabet.XSAMPA)))
+    assert [list(utterance.symbols) for utterance in out] == [["SH", "AX"]]
 
 
 def test_phonemic_input_same_alphabet_passes_through_unchanged():
     """src == tgt is a no-op route: the text reaches _phonemic_chunks untouched."""
     from phoonnx.config import Alphabet, SynthesisConfig
     voice = _phonemic_voice(Alphabet.ARPA)
-    out = list(voice._iter_synthesis_ids(
-        "SH AX", SynthesisConfig(alphabet=Alphabet.ARPA), Alphabet.ARPA, Alphabet.ARPA))
-    assert [p for p, _, _ in out] == [["SH", "AX"]]
+    out = list(voice.prepare("SH AX", SynthesisConfig(alphabet=Alphabet.ARPA)))
+    assert [list(utterance.symbols) for utterance in out] == [["SH", "AX"]]
 
 
 def test_unroutable_phonemic_pair_passes_text_through():
@@ -306,9 +304,8 @@ def test_unroutable_phonemic_pair_passes_text_through():
     through unchanged rather than raising (best-effort, matching the old BFS)."""
     from phoonnx.config import Alphabet, SynthesisConfig
     voice = _phonemic_voice(Alphabet.ARPA)
-    out = list(voice._iter_synthesis_ids(
-        "abc", SynthesisConfig(alphabet=Alphabet.HANGUL), Alphabet.HANGUL, Alphabet.ARPA))
-    assert [p for p, _, _ in out] == [["abc"]]
+    out = list(voice.prepare("abc", SynthesisConfig(alphabet=Alphabet.HANGUL)))
+    assert [list(utterance.symbols) for utterance in out] == [["abc"]]
 
 
 def test_hebrew_diacritizer_model_carries_the_phonikud_path():

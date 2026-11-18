@@ -53,3 +53,11 @@ class TestNoPyarabicAnywhere(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLongDigitRun(unittest.TestCase):
+    def test_a_run_past_the_int_conversion_limit_reads_as_words(self):
+        """20,000 digits pass Python's 4,300-digit limit for a str to int conversion."""
+        out = num2words("7" * 20000)
+        self.assertNotRegex(out, r"\d")
+        self.assertGreater(len(out), 20000)

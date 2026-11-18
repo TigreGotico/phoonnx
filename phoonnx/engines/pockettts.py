@@ -62,6 +62,7 @@ import numpy as np
 import onnxruntime
 
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
+from phoonnx.engines.speaker_encoders.base import BaseSpeakerEncoder
 from phoonnx.providers import make_session
 
 # Languages Pocket TTS was trained on, as ISO-639-1 codes.
@@ -335,6 +336,25 @@ class PocketTTSAdapter(BaseOnnxAdapter):
             state[entry["input_name"]] = self._adapt_state_tensor(tensor, entry)
         return state
 
+    def _reference_audio(self, reference: Any) -> np.ndarray:
+        """Normalise a cloning reference to mono float32 at the model's sample rate.
+
+        The reference arrives as an ``(audio, sample_rate)`` tuple from
+        ``load_reference_audio``; the clip is resampled to the 24 kHz the model
+        expects. A bare array is taken as already at the model rate, as before.
+        """
+        if isinstance(reference, tuple) and len(reference) == 2:
+            audio, sample_rate = reference
+            audio = np.asarray(audio, dtype=np.float32)
+            if audio.ndim > 1:
+                audio = audio.mean(axis=1)
+            audio = audio.reshape(-1)
+            if int(sample_rate) != self.sample_rate:
+                audio = BaseSpeakerEncoder.resample(
+                    audio, int(sample_rate), self.sample_rate)
+            return audio
+        return np.asarray(reference, dtype=np.float32).reshape(-1)
+
     def encode_reference(self, audio: np.ndarray) -> np.ndarray:
         """Turn a mono 24 kHz reference clip into Mimi latent frames for cloning."""
         if self.mimi_encoder is None:
@@ -415,8 +435,12 @@ class PocketTTSAdapter(BaseOnnxAdapter):
         own SentencePiece model. One list of token ids per chunk."""
         if self.tokenizer is None:
             raise RuntimeError("Pocket TTS voice missing tokenizer_path in engine_params")
+        if not text.strip():  # split_into_chunks runs prepare_text, which rejects empty text
+            return []
         ids = []
         for chunk in self.split_into_chunks(text):
+            if not chunk.strip():
+                continue
             prepared, _ = prepare_text(chunk, self.remove_semicolons,
                                        self.pad_with_spaces_for_short_inputs)
             ids.append(list(self.tokenizer.Encode(prepared)))
@@ -544,7 +568,7 @@ class PocketTTSAdapter(BaseOnnxAdapter):
 
         reference = p.get("reference_audio")
         if reference is not None:
-            voice_state = self.state_from_reference(reference, session)
+            voice_state = self.state_from_reference(self._reference_audio(reference), session)
         elif self.voice_state is not None:
             voice_state = self.voice_state
         else:

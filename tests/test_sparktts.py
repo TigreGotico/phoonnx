@@ -327,7 +327,7 @@ def test_voice_index_entries():
                             "semantic_tokenizer_path", "bpe_tokenizer_path",
                             "speaker_tokens_path"}
         for url in list(aux.values()) + [entry["model_url"]]:
-            assert url.startswith("https://huggingface.co/Phoonnx/phoonnx-spark-tts/")
+            assert url.startswith("https://huggingface.co/Phoonnx/sparktts-multi-0.5b-unicode/")
         # each voice must point at its own speaker asset, not a shared one
         gender, short = vid.split("/")[1:]
         assert aux["speaker_tokens_path"].endswith(f"/voices/{gender}_{short}.json")

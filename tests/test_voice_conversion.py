@@ -17,7 +17,7 @@ import numpy as np
 
 from phoonnx.config import SynthesisConfig
 from phoonnx.reference_audio import load_reference_audio
-from phoonnx.voice import TTSVoice, _VoiceConversion, _write_wav
+from phoonnx.voice import TTSVoice, Utterance, _VoiceConversion, _write_wav
 
 
 def _vc(cloner, ref_path):
@@ -354,9 +354,9 @@ class TestSynthesisPipelineWiring(unittest.TestCase):
     def _run(self, cfg):
         v = self._voice()
         audio = np.linspace(-0.5, 0.5, 22050, dtype=np.float32)
-        with patch.object(TTSVoice, "_iter_synthesis_ids",
-                          return_value=iter([(["a"], [1, 2, 3], {})])), \
-                patch.object(TTSVoice, "phoneme_ids_to_audio", return_value=audio):
+        with patch.object(TTSVoice, "prepare",
+                          return_value=iter([Utterance("hello", ("a",), (1, 2, 3))])), \
+                patch.object(TTSVoice, "_infer", return_value=(audio, None)):
             return list(TTSVoice.synthesize(v, "hello", syn_config=cfg))
 
     def test_unset_is_byte_identical_to_the_native_path(self):
@@ -416,10 +416,11 @@ class TestSynthesisPipelineWiring(unittest.TestCase):
         v = self._voice()
         audio = np.linspace(-0.5, 0.5, 22050, dtype=np.float32)
         with tempfile.TemporaryDirectory() as d, \
-                patch.object(TTSVoice, "_iter_synthesis_ids",
-                             return_value=iter([(["a"], [1], {}), (["b"], [2], {}),
-                                                (["c"], [3], {})])), \
-                patch.object(TTSVoice, "phoneme_ids_to_audio", return_value=audio):
+                patch.object(TTSVoice, "prepare",
+                             return_value=iter([Utterance("one.", ("a",), (1,)),
+                                                Utterance("two.", ("b",), (2,)),
+                                                Utterance("three.", ("c",), (3,))])), \
+                patch.object(TTSVoice, "_infer", return_value=(audio, None)):
             mine = _ref_wav(d)
             theirs = _write_wav(os.path.join(d, "theirs.wav"),
                                 np.full(16000, 0.3, dtype=np.float32), 16000)

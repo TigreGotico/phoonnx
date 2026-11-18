@@ -1,24 +1,32 @@
+import contextlib
+import contextvars
+import functools
 import hashlib
 import json
 import os
+import posixpath
 import re
 import tempfile
 import threading
-from dataclasses import asdict, dataclass, field
+import warnings
+from dataclasses import asdict, dataclass, field, fields, replace
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, List, Any, Sequence
+from typing import Optional, Dict, Iterator, List, Any, Callable, Sequence, Set, Tuple
+from urllib.parse import quote, unquote
 import requests
-from huggingface_hub import hf_hub_download
+from huggingface_hub import constants as hub_constants, hf_hub_download
 from huggingface_hub.constants import HF_HUB_CACHE
 from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
                                     OfflineModeIsEnabled)
 from json_database import JsonStorageXDG, JsonStorage, load_commented_json
 
-from phoonnx.config import PhonemeType, _voice_phonemizer, VoiceConfig, Engine, Alphabet, check_lang_supported
+from phoonnx.config import (PhonemeType, _removal_version, _voice_phonemizer, VoiceConfig, Engine,
+                            Alphabet, check_lang_supported)
 from phoonnx.util import match_lang, normalize_lang, LOG
-from phoonnx.providers import ProviderSpec, make_session, resolve_providers
+from phoonnx.providers import ProviderSpec, make_session, resolve_providers, uses_gpu
 from phoonnx.voice import TTSVoice
+from phoonnx._onnx_external import external_data_locations
 
 
 def _tmp_path(dest: Path) -> Path:
@@ -87,6 +95,39 @@ def _sidecar_url(url: str) -> str:
     """
     head, sep, tail = url.partition("?")
     return f"{head}_data{sep}{tail}"
+
+
+def _sidecar_urls(url: str, graph: Optional[Path]) -> List[str]:
+    """The URLs of the external-data files that the graph at ``graph`` names.
+
+    onnxruntime reads each file from the folder of the graph, by the name the
+    graph gives it, so the files come from the folder of ``url``. Exporters do
+    not agree on the names: ``model.onnx_data``, a series ``model.onnx_data_1``
+    to ``_6``, ``model_int8.onnx.data`` from onnxruntime quantization. Only a
+    graph that cannot be read falls back to the ``<graph>_data`` guess.
+
+    Raises:
+        ValueError: the graph names a file outside its own folder.
+    """
+    if graph is None:
+        return [_sidecar_url(url)]
+    try:
+        locations = external_data_locations(graph)
+    except (OSError, ValueError) as e:
+        LOG.debug(f"cannot read the external-data names of '{url}', "
+                  f"guessing '<graph>_data': {e}")
+        return [_sidecar_url(url)]
+    head, sep, tail = url.partition("?")
+    folder = head.rsplit("/", 1)[0]
+    for location in locations:
+        parts = location.replace("\\", "/").split("/")
+        if parts[0] == "" or ":" in parts[0] or ".." in parts:
+            raise ValueError(f"'{url}' names external data outside its folder: "
+                             f"{location!r}")
+    if not _HF_URL.match(head):
+        # a location is a literal file name, and a URL reads %, # and ? as syntax
+        locations = [quote(location, safe="/") for location in locations]
+    return [f"{folder}/{location}{sep}{tail}" for location in locations]
 
 
 def _expected_size(response) -> Optional[int]:
@@ -168,7 +209,20 @@ def _direct_dir(url: str) -> Path:
     return Path(HF_HUB_CACHE) / "phoonnx-direct" / digest
 
 
-def _resolve(url: str, timeout: int = 120) -> Path:
+def _direct_path(url: str, graph_url: Optional[str] = None) -> Path:
+    """Where the file at a URL the hub cannot serve is kept.
+
+    The external data of a graph keeps its place relative to the graph, also in a
+    subfolder, because onnxruntime reads it there. ``graph_url`` names that graph.
+    """
+    head = url.split("?")[0]
+    if graph_url is None:
+        return _direct_dir(url) / (head.rsplit("/", 1)[-1] or "artifact")
+    folder = graph_url.split("?")[0].rsplit("/", 1)[0]
+    return _direct_dir(graph_url) / unquote(head[len(folder) + 1:])
+
+
+def _resolve(url: str, timeout: int = 120, graph_url: Optional[str] = None) -> Path:
     """Give the local path of ``url``, downloading it once.
 
     Hub files are fetched with the hub client and used exactly where it puts
@@ -180,7 +234,8 @@ def _resolve(url: str, timeout: int = 120) -> Path:
 
     A URL the hub cannot serve is streamed into :func:`_direct_dir` instead,
     with a warning, because breaking self-hosted voices costs more than the
-    duplicate copy they keep.
+    duplicate copy they keep. ``graph_url`` names the graph whose external data
+    ``url`` is, so the file lands beside it (:func:`_direct_path`).
 
     Raises:
         huggingface_hub.errors.EntryNotFoundError: no such file on the hub.
@@ -190,7 +245,7 @@ def _resolve(url: str, timeout: int = 120) -> Path:
     if cached is not None:
         return cached
     _warn_offhub(url)
-    dest = _direct_dir(url) / (url.split("?")[0].rsplit("/", 1)[-1] or "artifact")
+    dest = _direct_path(url, graph_url)
     if _is_cached(dest):
         return dest
     return _direct_stream(url, dest, timeout)
@@ -213,14 +268,157 @@ _NO_SUCH_FILE = (EntryNotFoundError, OfflineModeIsEnabled, LocalEntryNotFoundErr
 # tool fetched under the new id does not cut the voice off from its cache. Drop this once
 # a stable release has shipped the Phoonnx URLs for a full release cycle.
 _MOVED_FROM = {"Phoonnx": "OpenVoiceOS"}
+# Repos that also changed name: current id -> the ids it had before, newest first.
+_RENAMED_FROM: Dict[str, List[str]] = json.loads(
+    (Path(__file__).parent / "moved_repos.json").read_text(encoding="utf-8"))
+
+
+def _earlier_ids(repo_id: str) -> List[str]:
+    """Every id the repo had before, newest first."""
+    if repo_id in _RENAMED_FROM:
+        return _RENAMED_FROM[repo_id]
+    org, name = repo_id.split("/", 1)
+    return [f"{_MOVED_FROM[org]}/{name}"] if org in _MOVED_FROM else []
 
 
 def _repo_cached_before_move(repo_id: str) -> Optional[str]:
-    """The old repo id when the cache holds the repo under that id. Reads no network."""
-    org, name = repo_id.split("/", 1)
-    if org not in _MOVED_FROM:
+    """The newest old repo id that the cache holds the repo under. Reads no network."""
+    return next((old for old in _earlier_ids(repo_id)
+                 if (Path(HF_HUB_CACHE) / f"models--{old.replace('/', '--')}").is_dir()), None)
+
+
+# The snapshot an offline load reads in place of a pinned commit the cache does not hold. The
+# index pins every file, so a device that cached a voice at an older commit would lose it
+# offline after a pin bump; it keeps the voice it has instead. A voice load chooses one
+# snapshot per repo and commit that holds every file the voice names there
+# (_VOICE_SNAPSHOTS), so a graph and the voice state in another folder of the same repo come
+# from the same commit, and two voices cached at different commits each keep their own. A
+# file fetched outside a voice load gets one choice per cache folder, pinned commit and
+# folder inside the repo (_OFFLINE_SNAPSHOTS), never per file, so a graph and every data
+# file it names still come from the same commit.
+_VOICE_SNAPSHOTS: Dict[Tuple[Path, str, frozenset], Path] = {}
+_OFFLINE_SNAPSHOTS: Dict[Tuple[Path, str, str], Path] = {}
+
+
+# The hub files of the voice being loaded, by (repo id, pinned commit).
+_VOICE_FILES: contextvars.ContextVar[Optional[Dict[Tuple[str, str], Set[str]]]] = \
+    contextvars.ContextVar("phoonnx_voice_files", default=None)
+
+
+@contextlib.contextmanager
+def _voice_scope(info: "TTSModelInfo") -> Iterator[None]:
+    """Fetch the files of ``info`` so that an offline fallback reads them all from one commit."""
+    files: Dict[Tuple[str, str], Set[str]] = {}
+    # the vosk dictionary is optional: a load goes on without it, so it does not bind the choice
+    urls = [getattr(info, f.name) for f in fields(info)
+            if f.name.endswith("_url") and f.name != "dictionary_url"]
+    urls += list((info.aux_model_urls or {}).values())
+    for url in urls:
+        match = _HF_URL.match(url.split("?")[0]) if isinstance(url, str) else None
+        if match:
+            repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
+            files.setdefault((repo_id, match["rev"]), set()).add(match["path"])
+    token = _VOICE_FILES.set(files)
+    try:
+        yield
+    finally:
+        _VOICE_FILES.reset(token)
+
+
+def _in_voice_scope(method: Callable) -> Callable:
+    """Run a :class:`TTSModelInfo` method inside :func:`_voice_scope` of its voice."""
+    @functools.wraps(method)
+    def scoped(self, *args, **kwargs):
+        with _voice_scope(self):
+            return method(self, *args, **kwargs)
+    return scoped
+
+
+def _voice_key(repo_id: str, revision: str, filename: str) -> Optional[Tuple[Path, str, frozenset]]:
+    """The :data:`_VOICE_SNAPSHOTS` key of the voice being loaded, if it names files in ``repo_id``
+    at ``revision``.
+
+    A file the voice does not name there, such as the external data of its graph, follows the
+    same key, so it comes from the snapshot of the files beside it.
+    """
+    files = _VOICE_FILES.get()
+    wanted = files.get((repo_id, revision)) if files is not None else None
+    if not wanted:
         return None
-    return f"{_MOVED_FROM[org]}/{name}" if (Path(HF_HUB_CACHE) / f"models--{_MOVED_FROM[org]}--{name}").is_dir() else None
+    return Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}", revision, frozenset(wanted)
+
+
+def _voice_snapshot(repo_id: str, revision: str, filename: str,
+                    record: bool) -> Tuple[bool, Optional[Path]]:
+    """The fallback for ``filename`` chosen for the voice being loaded.
+
+    Returns ``(False, None)`` when no voice is being loaded or the voice names no file in
+    ``repo_id`` at ``revision``, so the folder rule decides. Otherwise the newest snapshot that
+    holds ``filename`` and every file the voice names there is chosen, and none when the
+    pinned snapshot holds one of them already, as after an interrupted download.
+    """
+    key = _voice_key(repo_id, revision, filename)
+    if key is None:
+        return False, None
+    repo_dir, _, wanted = key
+    needed = wanted | {filename}
+    if any((repo_dir / "snapshots" / revision / name).exists() for name in needed):
+        return True, None
+    chosen = _VOICE_SNAPSHOTS.get(key)
+    if chosen is None or not chosen.is_dir():
+        holding = [snapshot for snapshot in (repo_dir / "snapshots").glob("*")
+                   if snapshot.name != revision
+                   and all((snapshot / name).exists() for name in needed)]
+        if not holding:
+            return True, None
+        chosen = max(holding, key=lambda snapshot: snapshot.stat().st_mtime)
+        if not record:
+            path = chosen / filename
+            return True, path if path.exists() else None
+        _VOICE_SNAPSHOTS[key] = chosen
+        LOG.warning(f"{repo_id} is not cached at the pinned commit {revision} and the hub cannot "
+                    f"be reached; loading the cached snapshot {chosen.name} instead")
+    path = chosen / filename
+    return True, path if path.exists() else None
+
+
+def _offline_snapshot(repo_id: str, revision: str, filename: str,
+                      record: bool = True) -> Optional[Path]:
+    """The cached ``filename`` from another snapshot of ``repo_id``, for when ``revision`` is not cached.
+
+    The newest snapshot by modification time that holds ``filename`` is chosen, never the one
+    ``refs/main`` names: a fetch at a commit writes no ref, so ``refs/main`` stays at the last
+    commit an unpinned install fetched. Later files of the same folder come from the same
+    snapshot or not at all. A folder that the pinned snapshot holds in part, as after an
+    interrupted download, never falls back, so its files cannot mix two commits. Reads no
+    network. Inside a voice load, :func:`_voice_snapshot` chooses instead.
+
+    ``record`` is False when the caller only measures: the chosen snapshot is then not
+    remembered, so a size question cannot make a voice look like it loaded from a fallback
+    it never took.
+    """
+    scoped, path = _voice_snapshot(repo_id, revision, filename, record)
+    if scoped:
+        return path
+    repo_dir = Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
+    folder = posixpath.dirname(filename)
+    pinned_folder = repo_dir / "snapshots" / revision / folder
+    if pinned_folder.is_dir() and any(entry.is_file() for entry in pinned_folder.iterdir()):
+        return None
+    key = (repo_dir, revision, folder)
+    chosen = _OFFLINE_SNAPSHOTS.get(key)
+    if chosen is None or not chosen.is_dir():
+        holding = [snapshot for snapshot in (repo_dir / "snapshots").glob("*")
+                   if snapshot.name != revision and (snapshot / filename).exists()]
+        if not holding:
+            return None
+        chosen = max(holding, key=lambda snapshot: snapshot.stat().st_mtime)
+        if record:
+            _OFFLINE_SNAPSHOTS[key] = chosen
+            LOG.warning(f"{repo_id} is not cached at the pinned commit {revision} and the hub cannot "
+                        f"be reached; loading the cached snapshot {chosen.name} instead")
+    path = chosen / filename
+    return path if path.exists() else None
 
 
 def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
@@ -237,10 +435,18 @@ def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
     match = _HF_URL.match(url.split("?")[0])
     if not match:
         return None
-    return Path(hf_hub_download(repo_id=_repo_cached_before_move(match["repo"]) or match["repo"],
-                                filename=match["path"],
-                                revision=match["rev"],
-                                etag_timeout=min(timeout, _ETAG_TIMEOUT)))
+    repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
+    try:
+        return Path(hf_hub_download(repo_id=repo_id,
+                                    filename=match["path"],
+                                    revision=match["rev"],
+                                    etag_timeout=min(timeout, _ETAG_TIMEOUT)))
+    except (LocalEntryNotFoundError, OfflineModeIsEnabled):
+        # offline, or the hub did not answer, and the cache lacks this commit
+        fallback = _offline_snapshot(repo_id, match["rev"], match["path"])
+        if fallback is None:
+            raise
+        return fallback
 
 
 def _warn_offhub(url: str) -> None:
@@ -248,7 +454,7 @@ def _warn_offhub(url: str) -> None:
                 f"that no other voice or program can share: {url}")
 
 
-def _cached_path(url: str) -> Optional[Path]:
+def _cached_path(url: str, graph_url: Optional[str] = None) -> Optional[Path]:
     """Local path of ``url`` if it is already downloaded, else None.
 
     Never touches the network: this answers "how big is what we already
@@ -259,26 +465,59 @@ def _cached_path(url: str) -> Optional[Path]:
         return None
     match = _HF_URL.match(url.split("?")[0])
     if match:
+        repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
         try:
-            return Path(hf_hub_download(repo_id=_repo_cached_before_move(match["repo"]) or match["repo"],
+            return Path(hf_hub_download(repo_id=repo_id,
                                         filename=match["path"],
                                         revision=match["rev"],
                                         local_files_only=True))
         except Exception:
+            pass
+        # A fallback that _hf_fetch took is what loaded, also when HF_HUB_OFFLINE is
+        # unset and the hub was unreachable, so its file is the one to measure.
+        repo_dir = Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
+        key = _voice_key(repo_id, match["rev"], match["path"])
+        chosen = _VOICE_SNAPSHOTS.get(key) if key is not None else None
+        if chosen is None:
+            chosen = _OFFLINE_SNAPSHOTS.get((repo_dir, match["rev"], posixpath.dirname(match["path"])))
+        if chosen is not None:
+            path = chosen / match["path"]
+            if path.exists():
+                return path
+        if not hub_constants.HF_HUB_OFFLINE:
             return None
-    dest = _direct_dir(url) / (url.split("?")[0].rsplit("/", 1)[-1] or "artifact")
+        try:
+            return _offline_snapshot(repo_id, match["rev"], match["path"], record=False)
+        except OSError:
+            return None
+    dest = _direct_path(url, graph_url)
     return dest if _is_cached(dest) else None
 
 
-def _file_bytes(url: str) -> int:
-    """On-disk size of ``url``'s cached copy, plus its weights sidecar."""
-    total = 0
-    for candidate in (url, _sidecar_url(url)):
-        path = _cached_path(candidate)
-        if path is None:
+def _file_bytes(*urls: str) -> int:
+    """On-disk size of the cached copies of ``urls`` and of their external data.
+
+    A file counts once, also when two URLs name it, or a URL and a graph that
+    keeps its weights in it.
+    """
+    files = set()
+    for url in urls:
+        graph = _cached_path(url)
+        if graph is None:
             continue
+        sidecars = []
+        if url.split("?")[0].endswith(".onnx"):  # only a graph has external data
+            try:
+                sidecars = _sidecar_urls(url, graph)
+            except ValueError:
+                pass
+        for path in [graph, *(_cached_path(sidecar, graph_url=url) for sidecar in sidecars)]:
+            if path is not None:
+                files.add(os.path.realpath(path))
+    total = 0
+    for path in files:
         try:
-            total += path.stat().st_size
+            total += os.stat(path).st_size
         except OSError:
             continue
     return total
@@ -293,6 +532,106 @@ def _read_json(path: Path) -> Any:
 def _hub_json(url: str) -> Any:
     """Give the parsed JSON at ``url``, from the shared cache."""
     return _read_json(_resolve(url))
+
+
+#: The values of the ``precision`` setting. ``int8`` and ``full`` name the
+#: files to load; ``auto`` lets :func:`choose_precision` pick one of them.
+PRECISIONS = ("int8", "full", "auto")
+DEFAULT_PRECISION = "auto"
+#: Environment variable that sets the precision when no argument and no
+#: plugin key sets it.
+PRECISION_ENV_VAR = "PHOONNX_PRECISION"
+
+
+class PrecisionUnavailable(ValueError):
+    """Raised when a voice has no files for the precision a caller asked for."""
+
+    def __init__(self, voice_id: str, precision: str):
+        self.voice_id = voice_id
+        self.precision = precision
+        other = "full" if precision == "int8" else "int8"
+        super().__init__(
+            f"voice {voice_id!r} has no {precision} files; precision 'auto' "
+            f"or {other!r} loads it")
+
+
+def resolve_precision(precision: Optional[str] = None) -> str:
+    """The precision setting in force: the argument, else the env var, else ``auto``.
+
+    The argument is the load kwarg or the plugin key ``precision``; the plugin
+    passes its key as the argument, so a kwarg and a plugin key never meet.
+    ``None`` and an empty string count as unset. Case and surrounding spaces
+    are ignored.
+
+    Raises:
+        ValueError: the value is not a string, or not one of :data:`PRECISIONS`.
+    """
+    if precision is not None and not isinstance(precision, str):
+        raise ValueError(f"precision must be one of {', '.join(PRECISIONS)}, not {precision!r}")
+    value = (precision or "").strip() or os.environ.get(PRECISION_ENV_VAR, "").strip()
+    value = value.lower() or DEFAULT_PRECISION
+    if value not in PRECISIONS:
+        raise ValueError(f"precision must be one of {', '.join(PRECISIONS)}, not {value!r}")
+    return value
+
+
+def choose_precision(info: "TTSModelInfo", precision: str,
+                     providers: Optional[Sequence[ProviderSpec]] = None) -> str:
+    """Which files of ``info`` load under ``precision``: ``int8`` or ``full``.
+
+    ``int8`` and ``full`` raise :class:`PrecisionUnavailable` when the entry has
+    no such files. ``auto`` picks int8 only for an int8 variant marked
+    ``"auto": true`` while no GPU provider is in the resolved providers; an
+    entry that has only int8 files loads them. In every other case ``auto``
+    picks full.
+    """
+    int8_only = info.precision == "int8"
+    variant = (info.variants or {}).get("int8")
+    if precision == "int8":
+        if int8_only or variant:
+            return "int8"
+        raise PrecisionUnavailable(info.voice_id, "int8")
+    if precision == "full":
+        if int8_only:
+            raise PrecisionUnavailable(info.voice_id, "full")
+        return "full"
+    if int8_only:
+        return "int8"
+    if variant and variant.get("auto") is True and not uses_gpu(resolve_providers(providers)):
+        return "int8"
+    return "full"
+
+
+#: Voice ids folded into another voice as one of its precisions:
+#: old id -> (voice id, precision).
+_PRECISION_ALIASES = {
+    "edwixx/pt-BR-rapido-int8": ("edwixx/pt-BR-rapido", "int8"),
+}
+# Aliases already named in the log. A plugin looks a voice up for every
+# sentence, and one log line per process is enough.
+_LOGGED_ALIASES: set = set()
+# Index keys this release does not know, already named in the log.
+_LOGGED_UNKNOWN_KEYS: set = set()
+
+
+def _alias_info(voice_id: str, lookup: Callable[[str], Optional["TTSModelInfo"]]
+                ) -> Optional["TTSModelInfo"]:
+    """The entry an old precision id names, with a deprecation warning.
+
+    The entry keeps the old id, so a caller that looks the voice up again by
+    the id it got back finds the same files.
+    """
+    target, precision = _PRECISION_ALIASES[voice_id]
+    info = lookup(target)
+    if info is None:
+        return None
+    message = (f"voice id {voice_id!r} is deprecated and will be removed in phoonnx "
+               f"{_removal_version()}; use {target!r} with precision {precision!r}")
+    warnings.warn(message, DeprecationWarning, stacklevel=3)
+    if voice_id not in _LOGGED_ALIASES:
+        _LOGGED_ALIASES.add(voice_id)
+        LOG.warning(message)
+    return replace(info.with_precision(precision), voice_id=voice_id)
 
 
 @dataclass
@@ -374,6 +713,14 @@ class TTSModelInfo:
     # (e.g. Portuguese espeak). When set, this field — not ``lang`` — becomes
     # the lang_code override passed into VoiceConfig.from_dict.
     phonemizer_lang: Optional[str] = None
+
+    # The precision of the files this entry names: "int8" for an entry that has
+    # only int8 files, unset for full files.
+    precision: Optional[str] = None
+    # Other precisions of the same voice. ``{"int8": {...}}`` holds only the URL
+    # fields that differ from this entry, and ``"auto": true`` when the
+    # ``auto`` precision may pick it. See :meth:`with_precision`.
+    variants: Optional[Dict[str, Dict[str, Any]]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -510,6 +857,28 @@ class TTSModelInfo:
             except (AttributeError, KeyError):
                 LOG.warning(f"Could not format display_name for {self.voice_id}.")
 
+    def with_precision(self, precision: Optional[str] = None,
+                       providers: Optional[Sequence[ProviderSpec]] = None) -> "TTSModelInfo":
+        """This entry as it loads under ``precision``.
+
+        ``precision`` is ``int8``, ``full`` or ``auto``; unset, it comes from
+        ``PHOONNX_PRECISION``, else ``auto``. ``providers`` matter only to
+        ``auto``. When the int8 variant is chosen, the result is a new entry
+        with the variant's URLs over this entry's, ``aux_model_urls`` merged
+        key by key. Otherwise the result is this entry.
+
+        Raises:
+            ValueError: ``precision`` is not a known value.
+            PrecisionUnavailable: the entry has no files for ``precision``.
+        """
+        chosen = choose_precision(self, resolve_precision(precision), providers)
+        if chosen == "full" or self.precision == "int8":
+            return self
+        urls = {k: v for k, v in self.variants["int8"].items() if k in VARIANT_FIELDS}
+        if "aux_model_urls" in urls:
+            urls["aux_model_urls"] = {**(self.aux_model_urls or {}), **urls["aux_model_urls"]}
+        return replace(self, **urls, precision="int8", variants=None)
+
     def hub_path(self, url: Optional[str]) -> Optional[Path]:
         """Give the local path of ``url``, downloading it if needed.
 
@@ -576,13 +945,15 @@ class TTSModelInfo:
             return None
 
     def _fetch_onnx(self, url: str) -> Path:
-        """Give the local path of an ONNX graph, with its sidecar alongside.
+        """Give the local path of an ONNX graph, with its sidecars alongside.
 
-        A graph with external weights names its sidecar by filename and
+        A graph with external weights names each sidecar by filename and
         onnxruntime resolves that name against the directory the graph itself
-        resolves to, so the two must share a directory. Fetching the sidecar
-        from the same source puts it there, and the graph loads where it lies.
-        Single-file graphs (piper/vits exports) simply have no sidecar.
+        resolves to, so they must share a directory. Fetching every sidecar
+        the graph names from the same source puts it there, and the graph
+        loads where it lies. Single-file graphs (piper/vits exports) simply
+        have no sidecar. A graph that names a file outside its own folder
+        raises ``ValueError``, and that file is not fetched.
 
         "No sidecar" and "the sidecar failed to arrive" are not the same
         answer. The sidecar carries the weights, so a failure that is mistaken
@@ -590,23 +961,24 @@ class TTSModelInfo:
         Only a 404, and being offline with nothing cached, count as absence.
         """
         path = _resolve(url)
-        try:
-            _resolve(_sidecar_url(url))
-        except _NO_SUCH_FILE as e:
-            # There is no sidecar at that URL, or we are offline and have never
-            # seen one; a single-file graph loads fine either way.
-            LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
-        except (requests.exceptions.ConnectionError,
-                requests.exceptions.Timeout) as e:
-            # Offline/DNS/timeout on the direct (non-hub) path.
-            LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
-        except requests.exceptions.HTTPError as e:
-            # Only a 404 means "no sidecar here". Anything else — a 500, a 403,
-            # a status we cannot read — is a real failure and must not be
-            # swallowed.
-            if getattr(getattr(e, "response", None), "status_code", None) != 404:
-                raise
-            LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
+        for sidecar in _sidecar_urls(url, path):
+            try:
+                _resolve(sidecar, graph_url=url)
+            except _NO_SUCH_FILE as e:
+                # There is no sidecar at that URL, or we are offline and have
+                # never seen one; a single-file graph loads fine either way.
+                LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
+            except (requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout) as e:
+                # Offline/DNS/timeout on the direct (non-hub) path.
+                LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
+            except requests.exceptions.HTTPError as e:
+                # Only a 404 means "no sidecar here". Anything else — a 500, a
+                # 403, a status we cannot read — is a real failure and must not
+                # be swallowed.
+                if getattr(getattr(e, "response", None), "status_code", None) != 404:
+                    raise
+                LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
         return path
 
     def download_model(self) -> Path:
@@ -682,7 +1054,9 @@ class TTSModelInfo:
                 params[key] = str(self._fetch_onnx(url))
         return params
 
-    def download_all(self) -> Path:
+    @_in_voice_scope
+    def download_all(self, precision: Optional[str] = None,
+                     providers: Optional[Sequence[ProviderSpec]] = None) -> Path:
         """Download everything this voice needs to load offline.
 
         The primary graph, the config JSON, whichever tokenizer artifact the
@@ -693,9 +1067,14 @@ class TTSModelInfo:
         This is the single definition of "fully downloaded" shared by the CLI
         and :meth:`TTSModelManager.download_voice_by_id`.
 
+        ``precision`` and ``providers`` pick the files as :meth:`load` does.
+
         Returns:
             Path: local path of the primary ONNX model.
         """
+        info = self.with_precision(precision, providers)
+        if info is not self:
+            return info.download_all(precision="int8")
         model_path = self.download_model()
 
         cfg: Dict[str, Any] = self.download_config() if self.config_url else {}
@@ -744,6 +1123,7 @@ class TTSModelInfo:
         """
         return "|".join(self.artifact_urls())
 
+    @_in_voice_scope
     def disk_size(self) -> int:
         """Total on-disk size, in bytes, of this voice's downloaded artifacts.
 
@@ -771,9 +1151,11 @@ class TTSModelInfo:
         """
         # One file may be named by several fields (and several voices); count
         # each distinct file once.
-        return sum(_file_bytes(u) for u in self.artifact_urls())
+        return _file_bytes(*self.artifact_urls())
 
-    def load(self, providers: Optional[Sequence[ProviderSpec]] = None) -> TTSVoice:
+    @_in_voice_scope
+    def load(self, providers: Optional[Sequence[ProviderSpec]] = None,
+             precision: Optional[str] = None) -> TTSVoice:
         """
         Load and return a TTSVoice for this model, ensuring the ONNX model is downloaded and the voice configuration is applied.
 
@@ -781,12 +1163,20 @@ class TTSModelInfo:
             providers (Sequence, optional): Ordered ONNX Runtime execution providers,
                 e.g. ``["ROCMExecutionProvider", "CPUExecutionProvider"]``. When omitted the
                 providers are resolved from the environment / auto-detection.
-        
+            precision (str, optional): ``int8``, ``full`` or ``auto``. When omitted it comes
+                from ``PHOONNX_PRECISION``, else ``auto``. See :meth:`with_precision`.
+
         Loads a TTSVoice from the cached model and config files (and tokens file if available). If this TTSModelInfo specifies a different phoneme type or alphabet than the loaded voice, updates the loaded voice's phoneme_type and alphabet and rebuilds its phonemizer accordingly.
-        
+
         Returns:
             TTSVoice: The configured TTSVoice instance ready for synthesis.
+
+        Raises:
+            PrecisionUnavailable: the voice has no files for ``precision``.
         """
+        info = self.with_precision(precision, providers)
+        if info is not self:
+            return info.load(providers=providers, precision="int8")
         # self.config resolves the final phoneme_type/lang_code (index override
         # applied) from the small config.json, if any -- cheap next to
         # download_model()'s multi-MB model weights, so the language check
@@ -851,6 +1241,27 @@ class TTSModelInfo:
         return voice
 
 
+_INDEX_FIELDS = frozenset(f.name for f in fields(TTSModelInfo))
+#: Fields a precision variant may replace: the files of the voice.
+VARIANT_FIELDS = frozenset(name for name in _INDEX_FIELDS
+                           if name.endswith("_url") or name == "aux_model_urls")
+
+
+def _known_fields(entry: Dict[str, Any]) -> Dict[str, Any]:
+    """An index or cache record without the keys this release does not know.
+
+    Each unknown key is logged once as a warning, so a typo in a hand-written
+    entry is seen, and a field that a newer index adds cannot stop the voice
+    from loading.
+    """
+    for key in sorted(entry.keys() - _INDEX_FIELDS):
+        if key not in _LOGGED_UNKNOWN_KEYS:
+            _LOGGED_UNKNOWN_KEYS.add(key)
+            LOG.warning(f"ignoring key {key!r} of voice {entry.get('voice_id')!r}: "
+                        f"this phoonnx release does not know it")
+    return {k: v for k, v in entry.items() if k in _INDEX_FIELDS}
+
+
 class TTSModelManager:
     # Explicit merge order for the bundled indexes: later files win when two
     # sources publish the same voice_id. Any index file not listed here is
@@ -869,8 +1280,8 @@ class TTSModelManager:
         # last touched; indic_parler.json, llasa.json, orpheus.json and
         # mosstts.json are new to this change.
         "outetts.json", "arktts.json", "omnivoice.json", "indic_parler.json",
-        "llasa.json", "orpheus.json", "mosstts.json", "vosk.json",
-        "ghananlp.json",
+        "parlertts.json", "llasa.json", "orpheus.json", "mosstts.json", "vosk.json",
+        "ghananlp.json", "rapido.json",
     )
 
     @classmethod
@@ -908,6 +1319,8 @@ class TTSModelManager:
         # Every rebuild therefore happens in a local dict and is published by a
         # single assignment, under this lock so two rebuilds cannot interleave.
         self._registry_lock = threading.RLock()
+        # bundled entries an alias read, so a lookup per sentence reads the index once
+        self._alias_fallbacks: Dict[str, Optional[TTSModelInfo]] = {}
         if cache_path:
             self.cache = JsonStorage(cache_path)
         else:
@@ -947,8 +1360,13 @@ class TTSModelManager:
 
         The lookup readers should use: it sees the registry either as it was
         before a concurrent rebuild or as it is after, never mid-rebuild.
+
+        An old id that now names one precision of another voice gives that
+        voice at that precision, with a deprecation warning.
         """
         with self._registry_lock:
+            if voice_id in _PRECISION_ALIASES:
+                return _alias_info(voice_id, self._alias_target)
             return self.voices.get(voice_id)
 
     def load(self):
@@ -1022,8 +1440,11 @@ class TTSModelManager:
         """
         voices: Dict[str, TTSModelInfo] = {}
         for voice_id, voice_dict in self.cache.items():
+            if voice_id in _PRECISION_ALIASES:
+                # Left in a cache saved before the id became an alias.
+                continue
             try:
-                voices[voice_id] = TTSModelInfo(**voice_dict)
+                voices[voice_id] = TTSModelInfo(**_known_fields(voice_dict))
             except Exception as e:
                 LOG.error(f"Failed to load '{voice_id}': ({e})")
         return voices
@@ -1048,7 +1469,30 @@ class TTSModelManager:
             result[path.stem.lower()] = sorted(data.keys())
         return result
 
-    def download_voice_by_id(self, voice_id: str) -> bool:
+    def _bundled_voice(self, voice_id: str) -> Optional[TTSModelInfo]:
+        """The entry for ``voice_id`` read from the bundled indexes, or None."""
+        for path in self.voice_index_files():
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if voice_id in data:
+                return TTSModelInfo(**_known_fields(data[voice_id]))
+        return None
+
+    def _alias_target(self, voice_id: str) -> Optional[TTSModelInfo]:
+        """The registry entry an alias points at, for :func:`_alias_info`.
+
+        A cache written before the alias existed holds the target without its
+        variants. The alias then reads the bundled entry, so it still finds its
+        files, and the registry keeps the entry it holds.
+        """
+        info = self.voices.get(voice_id)
+        if info is not None and not info.variants and info.precision is None:
+            if voice_id not in self._alias_fallbacks:
+                self._alias_fallbacks[voice_id] = self._bundled_voice(voice_id)
+            info = self._alias_fallbacks[voice_id] or info
+        return info
+
+    def download_voice_by_id(self, voice_id: str, precision: Optional[str] = None) -> bool:
         """
         Download everything a voice needs to load offline, by its ID.
 
@@ -1059,26 +1503,25 @@ class TTSModelManager:
 
         Fetches the full set of artifacts via ``TTSModelInfo.download_all``:
         the ONNX graph, the config JSON, the tokenizer artifacts and any
-        vocoder / style / speaker-encoder / auxiliary graphs.
+        vocoder / style / speaker-encoder / auxiliary graphs. ``precision``
+        picks the files as ``TTSModelInfo.load`` does.
 
         Returns:
             bool: True if the voice was found and its download was attempted,
             False if the voice ID could not be resolved.
         """
-        voice_info = self.voices.get(voice_id)
+        voice_info = self.get_voice(voice_id)
         if not voice_info:
-            for path in self.voice_index_files():
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                if voice_id in data:
-                    voice_info = TTSModelInfo(**data[voice_id])
-                    break
+            if voice_id in _PRECISION_ALIASES:
+                voice_info = _alias_info(voice_id, self._bundled_voice)
+            else:
+                voice_info = self._bundled_voice(voice_id)
 
         if not voice_info:
             LOG.error(f"Cannot find voice information for ID: {voice_id}")
             return False
 
-        voice_info.download_all()
+        voice_info.download_all(precision=precision)
         return True
 
 

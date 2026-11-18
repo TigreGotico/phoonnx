@@ -46,8 +46,8 @@ def piper_config(**extra):
 def synthesis_ids(config: dict, text: str):
     voice_config = VoiceConfig.from_dict(json.loads(json.dumps(config)))
     voice = TTSVoice(session=MagicMock(), config=voice_config, adapter=MagicMock())
-    return voice_config, [ids for _, ids, _ in voice._iter_synthesis_ids(
-        text, SynthesisConfig(), Alphabet.GRAPHEMES, voice_config.alphabet)]
+    return voice_config, [list(utterance.ids) for utterance in voice.prepare(
+        text, SynthesisConfig(enable_phonetic_spellings=False))]
 
 
 def flat(sentences):
@@ -64,7 +64,7 @@ class TestSynthesis:
         # the ids a published voice receives are those of scriptconv's default
         # sentence phonemization, tokenized; nothing is added
         from scriptconv.phonemizers import get_phonemizer
-        from phoonnx.util import normalize
+        from text2spoken import normalize
         voice_config, ids = synthesis_ids(phoonnx_config(), QUESTION)
         phonemizer = get_phonemizer("espeak", normalizer=normalize)
         expected = [voice_config.tokenizer.tokenize(p)
@@ -170,7 +170,7 @@ class TestPreprocess:
             for text, row in rows.items():
                 voice_config = VoiceConfig.from_dict(json.loads(json.dumps(config)))
                 voice = TTSVoice(session=MagicMock(), config=voice_config, adapter=MagicMock())
-                synth = [p for s, _ in voice._iter_phonemes(
+                synth = [p for s, _, _ in voice._iter_phonemes(
                     text, Alphabet.GRAPHEMES, voice_config.alphabet,
                     voice._stages(SynthesisConfig())) for p in s]
                 assert row["phonemes"] == synth, text

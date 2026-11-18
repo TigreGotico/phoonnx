@@ -1,206 +1,340 @@
 {
     "f5tts/v1-base": {
         "voice_id": "f5tts/v1-base",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/f5tts-v1-base/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/f5tts-v1-base/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-multi-base-v1-graphemes/resolve/d8e728c077792b368020a1c12415d87475dec220/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-multi-base-v1-graphemes/resolve/d8e728c077792b368020a1c12415d87475dec220/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
         "phoneme_map_url": null,
-        "phoneme_type": "graphemes",
+        "phoneme_type": "f5tts_pinyin",
         "alphabet": "unicode",
         "engine": "f5tts",
         "lang": "mul",
         "aux_model_urls": {
-            "preprocess_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/f5tts-v1-base/F5_Preprocess.onnx",
-            "decode_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/f5tts-v1-base/F5_Decode.onnx"
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-multi-base-v1-graphemes/resolve/d8e728c077792b368020a1c12415d87475dec220/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-multi-base-v1-graphemes/resolve/d8e728c077792b368020a1c12415d87475dec220/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-multi-base-v1-graphemes/resolve/d8e728c077792b368020a1c12415d87475dec220/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-multi-base-v1-graphemes/resolve/d8e728c077792b368020a1c12415d87475dec220/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-multi-base-v1-graphemes/resolve/d8e728c077792b368020a1c12415d87475dec220/F5_Decode_int8.onnx"
+                }
+            }
         }
     },
     "habibi/ar-unified": {
         "voice_id": "habibi/ar-unified",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-unified/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-unified/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-ar-habibi_unified-graphemes/resolve/ef6732b37313680e6259865b20687e0e0659c4ec/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-ar-habibi_unified-graphemes/resolve/ef6732b37313680e6259865b20687e0e0659c4ec/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
         "phoneme_map_url": null,
-        "phoneme_type": "graphemes",
+        "phoneme_type": "f5tts_char",
         "alphabet": "unicode",
         "engine": "f5tts",
         "lang": "ar",
         "aux_model_urls": {
-            "preprocess_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-unified/F5_Preprocess.onnx",
-            "decode_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-unified/F5_Decode.onnx"
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar-habibi_unified-graphemes/resolve/ef6732b37313680e6259865b20687e0e0659c4ec/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar-habibi_unified-graphemes/resolve/ef6732b37313680e6259865b20687e0e0659c4ec/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-ar-habibi_unified-graphemes/resolve/ef6732b37313680e6259865b20687e0e0659c4ec/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar-habibi_unified-graphemes/resolve/ef6732b37313680e6259865b20687e0e0659c4ec/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar-habibi_unified-graphemes/resolve/ef6732b37313680e6259865b20687e0e0659c4ec/F5_Decode_int8.onnx"
+                }
+            }
         }
     },
     "habibi/ar-alg": {
         "voice_id": "habibi/ar-alg",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-alg/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-alg/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-ar_dz-habibi_alg-graphemes/resolve/9f91973a29d8c9f2dfb7ad94df10891de434e8cb/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-ar_dz-habibi_alg-graphemes/resolve/9f91973a29d8c9f2dfb7ad94df10891de434e8cb/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
         "phoneme_map_url": null,
-        "phoneme_type": "graphemes",
+        "phoneme_type": "f5tts_char",
         "alphabet": "unicode",
         "engine": "f5tts",
         "lang": "ar-DZ",
         "aux_model_urls": {
-            "preprocess_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-alg/F5_Preprocess.onnx",
-            "decode_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-alg/F5_Decode.onnx"
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar_dz-habibi_alg-graphemes/resolve/9f91973a29d8c9f2dfb7ad94df10891de434e8cb/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar_dz-habibi_alg-graphemes/resolve/9f91973a29d8c9f2dfb7ad94df10891de434e8cb/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-ar_dz-habibi_alg-graphemes/resolve/9f91973a29d8c9f2dfb7ad94df10891de434e8cb/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar_dz-habibi_alg-graphemes/resolve/9f91973a29d8c9f2dfb7ad94df10891de434e8cb/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar_dz-habibi_alg-graphemes/resolve/9f91973a29d8c9f2dfb7ad94df10891de434e8cb/F5_Decode_int8.onnx"
+                }
+            }
         }
     },
     "habibi/ar-egy": {
         "voice_id": "habibi/ar-egy",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-egy/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-egy/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-ar_eg-habibi_egy-graphemes/resolve/6933deefe1ccde92be4516f752d17ce8fe072816/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-ar_eg-habibi_egy-graphemes/resolve/6933deefe1ccde92be4516f752d17ce8fe072816/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
         "phoneme_map_url": null,
-        "phoneme_type": "graphemes",
+        "phoneme_type": "f5tts_char",
         "alphabet": "unicode",
         "engine": "f5tts",
         "lang": "ar-EG",
         "aux_model_urls": {
-            "preprocess_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-egy/F5_Preprocess.onnx",
-            "decode_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-egy/F5_Decode.onnx"
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar_eg-habibi_egy-graphemes/resolve/6933deefe1ccde92be4516f752d17ce8fe072816/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar_eg-habibi_egy-graphemes/resolve/6933deefe1ccde92be4516f752d17ce8fe072816/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-ar_eg-habibi_egy-graphemes/resolve/6933deefe1ccde92be4516f752d17ce8fe072816/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar_eg-habibi_egy-graphemes/resolve/6933deefe1ccde92be4516f752d17ce8fe072816/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar_eg-habibi_egy-graphemes/resolve/6933deefe1ccde92be4516f752d17ce8fe072816/F5_Decode_int8.onnx"
+                }
+            }
         }
     },
     "habibi/ar-irq": {
         "voice_id": "habibi/ar-irq",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-irq/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-irq/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-ar_iq-habibi_irq-graphemes/resolve/e59814c4b237fd5861ddb684837e8fb68ea0d161/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-ar_iq-habibi_irq-graphemes/resolve/e59814c4b237fd5861ddb684837e8fb68ea0d161/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
         "phoneme_map_url": null,
-        "phoneme_type": "graphemes",
+        "phoneme_type": "f5tts_char",
         "alphabet": "unicode",
         "engine": "f5tts",
         "lang": "ar-IQ",
         "aux_model_urls": {
-            "preprocess_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-irq/F5_Preprocess.onnx",
-            "decode_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-irq/F5_Decode.onnx"
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar_iq-habibi_irq-graphemes/resolve/e59814c4b237fd5861ddb684837e8fb68ea0d161/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar_iq-habibi_irq-graphemes/resolve/e59814c4b237fd5861ddb684837e8fb68ea0d161/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-ar_iq-habibi_irq-graphemes/resolve/e59814c4b237fd5861ddb684837e8fb68ea0d161/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar_iq-habibi_irq-graphemes/resolve/e59814c4b237fd5861ddb684837e8fb68ea0d161/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar_iq-habibi_irq-graphemes/resolve/e59814c4b237fd5861ddb684837e8fb68ea0d161/F5_Decode_int8.onnx"
+                }
+            }
         }
     },
     "habibi/ar-mar": {
         "voice_id": "habibi/ar-mar",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-mar/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-mar/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-ar_ma-habibi_mar-graphemes/resolve/bfc4259e14f87f1d4ef9a2f5f9739f03ccac817d/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-ar_ma-habibi_mar-graphemes/resolve/bfc4259e14f87f1d4ef9a2f5f9739f03ccac817d/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
         "phoneme_map_url": null,
-        "phoneme_type": "graphemes",
+        "phoneme_type": "f5tts_char",
         "alphabet": "unicode",
         "engine": "f5tts",
         "lang": "ar-MA",
         "aux_model_urls": {
-            "preprocess_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-mar/F5_Preprocess.onnx",
-            "decode_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-mar/F5_Decode.onnx"
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar_ma-habibi_mar-graphemes/resolve/bfc4259e14f87f1d4ef9a2f5f9739f03ccac817d/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar_ma-habibi_mar-graphemes/resolve/bfc4259e14f87f1d4ef9a2f5f9739f03ccac817d/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-ar_ma-habibi_mar-graphemes/resolve/bfc4259e14f87f1d4ef9a2f5f9739f03ccac817d/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar_ma-habibi_mar-graphemes/resolve/bfc4259e14f87f1d4ef9a2f5f9739f03ccac817d/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar_ma-habibi_mar-graphemes/resolve/bfc4259e14f87f1d4ef9a2f5f9739f03ccac817d/F5_Decode_int8.onnx"
+                }
+            }
         }
     },
     "habibi/ar-msa": {
         "voice_id": "habibi/ar-msa",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-msa/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-msa/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-ar-habibi_msa-graphemes/resolve/0f7630995456bbdede54b539778c1a80e4110e05/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-ar-habibi_msa-graphemes/resolve/0f7630995456bbdede54b539778c1a80e4110e05/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
         "phoneme_map_url": null,
-        "phoneme_type": "graphemes",
+        "phoneme_type": "f5tts_char",
         "alphabet": "unicode",
         "engine": "f5tts",
         "lang": "ar",
         "aux_model_urls": {
-            "preprocess_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-msa/F5_Preprocess.onnx",
-            "decode_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-msa/F5_Decode.onnx"
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar-habibi_msa-graphemes/resolve/0f7630995456bbdede54b539778c1a80e4110e05/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar-habibi_msa-graphemes/resolve/0f7630995456bbdede54b539778c1a80e4110e05/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-ar-habibi_msa-graphemes/resolve/0f7630995456bbdede54b539778c1a80e4110e05/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar-habibi_msa-graphemes/resolve/0f7630995456bbdede54b539778c1a80e4110e05/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar-habibi_msa-graphemes/resolve/0f7630995456bbdede54b539778c1a80e4110e05/F5_Decode_int8.onnx"
+                }
+            }
         }
     },
     "habibi/ar-sau": {
         "voice_id": "habibi/ar-sau",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-sau/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-sau/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-ar_sa-habibi_sau-graphemes/resolve/f5c5d7851a431875a3fc311efecb17c2ef34468c/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-ar_sa-habibi_sau-graphemes/resolve/f5c5d7851a431875a3fc311efecb17c2ef34468c/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
         "phoneme_map_url": null,
-        "phoneme_type": "graphemes",
+        "phoneme_type": "f5tts_char",
         "alphabet": "unicode",
         "engine": "f5tts",
         "lang": "ar-SA",
         "aux_model_urls": {
-            "preprocess_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-sau/F5_Preprocess.onnx",
-            "decode_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-sau/F5_Decode.onnx"
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar_sa-habibi_sau-graphemes/resolve/f5c5d7851a431875a3fc311efecb17c2ef34468c/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar_sa-habibi_sau-graphemes/resolve/f5c5d7851a431875a3fc311efecb17c2ef34468c/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-ar_sa-habibi_sau-graphemes/resolve/f5c5d7851a431875a3fc311efecb17c2ef34468c/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar_sa-habibi_sau-graphemes/resolve/f5c5d7851a431875a3fc311efecb17c2ef34468c/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar_sa-habibi_sau-graphemes/resolve/f5c5d7851a431875a3fc311efecb17c2ef34468c/F5_Decode_int8.onnx"
+                }
+            }
         }
     },
     "habibi/ar-uae": {
         "voice_id": "habibi/ar-uae",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-uae/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-uae/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-ar_ae-habibi_uae-graphemes/resolve/064d46ece0affd4669ef9b3bd618f7bd618b67a2/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-ar_ae-habibi_uae-graphemes/resolve/064d46ece0affd4669ef9b3bd618f7bd618b67a2/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
         "phoneme_map_url": null,
-        "phoneme_type": "graphemes",
+        "phoneme_type": "f5tts_char",
         "alphabet": "unicode",
         "engine": "f5tts",
         "lang": "ar-AE",
         "aux_model_urls": {
-            "preprocess_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-uae/F5_Preprocess.onnx",
-            "decode_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/habibi-tts-uae/F5_Decode.onnx"
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar_ae-habibi_uae-graphemes/resolve/064d46ece0affd4669ef9b3bd618f7bd618b67a2/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar_ae-habibi_uae-graphemes/resolve/064d46ece0affd4669ef9b3bd618f7bd618b67a2/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-ar_ae-habibi_uae-graphemes/resolve/064d46ece0affd4669ef9b3bd618f7bd618b67a2/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar_ae-habibi_uae-graphemes/resolve/064d46ece0affd4669ef9b3bd618f7bd618b67a2/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar_ae-habibi_uae-graphemes/resolve/064d46ece0affd4669ef9b3bd618f7bd618b67a2/F5_Decode_int8.onnx"
+                }
+            }
         }
     },
     "namaa/ar-sa-v2": {
         "voice_id": "namaa/ar-sa-v2",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/namaa-saudi-tts-v2/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/namaa-saudi-tts-v2/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-ar_sa-namaa_space-v2-graphemes/resolve/1091c758d7a934572947eab120fd3b1fd5f1f47a/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-ar_sa-namaa_space-v2-graphemes/resolve/1091c758d7a934572947eab120fd3b1fd5f1f47a/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
         "phoneme_map_url": null,
-        "phoneme_type": "graphemes",
+        "phoneme_type": "f5tts_char",
         "alphabet": "unicode",
         "engine": "f5tts",
         "lang": "ar-SA",
         "aux_model_urls": {
-            "preprocess_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/namaa-saudi-tts-v2/F5_Preprocess.onnx",
-            "decode_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/namaa-saudi-tts-v2/F5_Decode.onnx"
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar_sa-namaa_space-v2-graphemes/resolve/1091c758d7a934572947eab120fd3b1fd5f1f47a/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar_sa-namaa_space-v2-graphemes/resolve/1091c758d7a934572947eab120fd3b1fd5f1f47a/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-ar_sa-namaa_space-v2-graphemes/resolve/1091c758d7a934572947eab120fd3b1fd5f1f47a/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ar_sa-namaa_space-v2-graphemes/resolve/1091c758d7a934572947eab120fd3b1fd5f1f47a/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-ar_sa-namaa_space-v2-graphemes/resolve/1091c758d7a934572947eab120fd3b1fd5f1f47a/F5_Decode_int8.onnx"
+                }
+            }
         }
     },
     "silma/v1": {
         "voice_id": "silma/v1",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/silma-tts-v1/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/silma-tts-v1/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/resolve/0595acde61cf1a0a6f2445bba5a5ecc29fe9d552/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/resolve/0595acde61cf1a0a6f2445bba5a5ecc29fe9d552/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
         "phoneme_map_url": null,
-        "phoneme_type": "graphemes",
+        "phoneme_type": "f5tts_char",
         "alphabet": "unicode",
         "engine": "f5tts",
         "lang": "ar",
         "aux_model_urls": {
-            "preprocess_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/silma-tts-v1/F5_Preprocess.onnx",
-            "decode_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/silma-tts-v1/F5_Decode.onnx"
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/resolve/0595acde61cf1a0a6f2445bba5a5ecc29fe9d552/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/resolve/0595acde61cf1a0a6f2445bba5a5ecc29fe9d552/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/resolve/0595acde61cf1a0a6f2445bba5a5ecc29fe9d552/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/resolve/0595acde61cf1a0a6f2445bba5a5ecc29fe9d552/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/resolve/0595acde61cf1a0a6f2445bba5a5ecc29fe9d552/F5_Decode_int8.onnx"
+                }
+            }
         }
     },
     "silma/v1-en": {
         "voice_id": "silma/v1-en",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/silma-tts-v1/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/silma-tts-v1/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/resolve/0595acde61cf1a0a6f2445bba5a5ecc29fe9d552/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/resolve/0595acde61cf1a0a6f2445bba5a5ecc29fe9d552/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
         "phoneme_map_url": null,
-        "phoneme_type": "graphemes",
+        "phoneme_type": "f5tts_char",
         "alphabet": "unicode",
         "engine": "f5tts",
         "lang": "en",
         "aux_model_urls": {
-            "preprocess_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/silma-tts-v1/F5_Preprocess.onnx",
-            "decode_path": "https://huggingface.co/Phoonnx/phoonnx-f5tts/resolve/main/silma-tts-v1/F5_Decode.onnx"
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/resolve/0595acde61cf1a0a6f2445bba5a5ecc29fe9d552/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/resolve/0595acde61cf1a0a6f2445bba5a5ecc29fe9d552/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/resolve/0595acde61cf1a0a6f2445bba5a5ecc29fe9d552/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/resolve/0595acde61cf1a0a6f2445bba5a5ecc29fe9d552/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-multi-silma_ai-v1-graphemes/resolve/0595acde61cf1a0a6f2445bba5a5ecc29fe9d552/F5_Decode_int8.onnx"
+                }
+            }
+        }
+    },
+    "openbible/tw-asante": {
+        "voice_id": "openbible/tw-asante",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-tw-asante_openbible-graphemes/resolve/33d0964109c3697dfc839c5aff438fffeb2cedfd/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-tw-asante_openbible-graphemes/resolve/33d0964109c3697dfc839c5aff438fffeb2cedfd/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "f5tts_pinyin",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "tw",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-tw-asante_openbible-graphemes/resolve/33d0964109c3697dfc839c5aff438fffeb2cedfd/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-tw-asante_openbible-graphemes/resolve/33d0964109c3697dfc839c5aff438fffeb2cedfd/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-tw-asante_openbible-graphemes/resolve/33d0964109c3697dfc839c5aff438fffeb2cedfd/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-tw-asante_openbible-graphemes/resolve/33d0964109c3697dfc839c5aff438fffeb2cedfd/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-tw-asante_openbible-graphemes/resolve/33d0964109c3697dfc839c5aff438fffeb2cedfd/F5_Decode_int8.onnx"
+                }
+            }
         }
     }
 }

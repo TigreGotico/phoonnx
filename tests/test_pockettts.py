@@ -8,6 +8,7 @@ from phoonnx.engines.pockettts import (
     AVAILABLE_LANGS, DEFAULT_EOS_THRESHOLD, PocketTTSAdapter,
     find_boundary_indices, prepare_text,
 )
+from phoonnx.engines.speaker_encoders.base import BaseSpeakerEncoder
 
 LATENT_DIM = 4
 COND_DIM = 8
@@ -168,6 +169,18 @@ class _EncoderSession:
         return [np.ones((1, max(samples // 8, 1), COND_DIM), np.float32)]
 
 
+class _CaptureEncoderSession:
+    """Stand-in for mimi_encoder that records the audio it is fed."""
+
+    def __init__(self):
+        self.audio_feeds = []
+
+    def run(self, output_names, feed):
+        self.audio_feeds.append(feed["audio"])
+        samples = feed["audio"].shape[-1]
+        return [np.ones((1, max(samples // 8, 1), COND_DIM), np.float32)]
+
+
 def _adapter(**overrides):
     a = PocketTTSAdapter(**overrides)
     a._apply_metadata(_bundle())
@@ -321,6 +334,21 @@ def test_encode_text_without_tokenizer_is_an_error():
     a.tokenizer = None
     with pytest.raises(RuntimeError, match="tokenizer_path"):
         a.encode_text("Hello.", None, None)
+
+
+def test_encode_text_empty_and_whitespace_return_no_ids():
+    a = _adapter()
+    assert a.encode_text("", None, None) == []
+    assert a.encode_text("   ", None, None) == []
+    assert a.encode_text("\n", None, None) == []
+
+
+def test_encode_text_skips_empty_chunks_between_real_ones(monkeypatch):
+    a = _adapter()
+    monkeypatch.setattr(a, "split_into_chunks",
+                        lambda text: ["One two.", "", "   ", "Three four."])
+    ids = a.encode_text("One two.   Three four.", None, None)
+    assert ids == [list(a.tokenizer.Encode(prepare_text(chunk)[0])) for chunk in ("One two.", "Three four.")]
 
 
 # ---------------------------------------------------------------------------
@@ -661,6 +689,38 @@ def test_synthesize_with_a_reference_clone_uses_the_cloned_state():
     a.voice_state = None
     result = a.synthesize(_req(reference_audio=np.zeros(160, np.float32)), _FlowLMSession())
     assert result.audio.size > 0
+
+
+def test_reference_tuple_at_model_rate_reaches_the_encoder_unchanged():
+    a = _adapter()
+    a.mimi_encoder = _CaptureEncoderSession()
+    a.voice_state = None
+    audio = np.arange(96, dtype=np.float32) / 96.0
+    a.synthesize(_req(reference_audio=(audio, 24000)), _FlowLMSession())
+    fed = a.mimi_encoder.audio_feeds[-1]
+    assert fed.shape == (1, 1, 96)
+    assert np.array_equal(fed.reshape(-1), audio)
+
+
+def test_reference_tuple_resamples_to_the_model_rate():
+    a = _adapter()
+    a.mimi_encoder = _CaptureEncoderSession()
+    a.voice_state = None
+    audio = np.arange(64, dtype=np.float32) / 64.0
+    a.synthesize(_req(reference_audio=(audio, 16000)), _FlowLMSession())
+    fed = a.mimi_encoder.audio_feeds[-1]
+    assert fed.shape[-1] == round(len(audio) * 24000 / 16000)
+    assert np.allclose(fed.reshape(-1), BaseSpeakerEncoder.resample(audio, 16000, 24000))
+
+
+def test_reference_bare_array_is_taken_at_the_model_rate():
+    a = _adapter()
+    a.mimi_encoder = _CaptureEncoderSession()
+    a.voice_state = None
+    audio = np.arange(96, dtype=np.float32) / 96.0
+    a.synthesize(_req(reference_audio=audio), _FlowLMSession())
+    fed = a.mimi_encoder.audio_feeds[-1]
+    assert np.array_equal(fed.reshape(-1), audio)
 
 
 # ---------------------------------------------------------------------------

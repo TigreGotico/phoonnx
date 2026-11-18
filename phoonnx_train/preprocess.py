@@ -19,7 +19,7 @@ from scriptconv.diacritics import diacritize
 from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, \
     phoneme_map_seed, untrained_map_symbols, \
     DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN
-from phoonnx.util import normalize
+from text2spoken import normalize
 from phoonnx.version import VERSION_STR
 from phoonnx_train.dataset_loaders import (PreprocessorConfig, Utterance,
                                            ensure_audio_path, get_text_casing,
@@ -69,7 +69,8 @@ def phonemizer_identity(phonemizer: Any, lang: str) -> Dict[str, Optional[str]]:
 
     The keys are ``backend``, ``distribution``, ``version`` (for espeak-ng, the
     version of the binary), ``lang`` (the resolved lect) and ``revision`` (the
-    orthography2ipa spec revision, or None). Unlike :func:`phonemizer_registry`,
+    orthography2ipa spec revision, or None) and ``frontend`` (None, because the
+    backend is called directly). Unlike :func:`phonemizer_registry`,
     this names the grapheme-to-phoneme engine itself.
     """
     return dataclasses.asdict(phonemizer.identity(lang))
