@@ -73,7 +73,7 @@ import onnxruntime
 from quebra_frases import sentence_tokenize
 
 from phoonnx.engines._sampling import apply_repetition_penalty
-from phoonnx.engines._sampling import softmax
+from phoonnx.engines._sampling import ranked, softmax
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.util import LOG
@@ -206,7 +206,7 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
         threshold = float(np.partition(s, -top_k)[-top_k])
         s = np.where(s < threshold, -np.inf, s)
     if 0 < top_p < 1:
-        order = np.argsort(s)[::-1]
+        order = ranked(s, top_k)
         cumulative = np.cumsum(softmax(s[order]))
         keep = np.ones(order.shape[0], bool)
         # keep every token up to and including the one that crosses top_p

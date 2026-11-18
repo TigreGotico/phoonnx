@@ -73,7 +73,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import onnxruntime
 
-from phoonnx.engines._sampling import softmax
+from phoonnx.engines._sampling import ranked, softmax
 from phoonnx.audio_fx import normalize_loudness
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
@@ -265,7 +265,7 @@ def _apply_repetition_penalty(scores: np.ndarray, seen: np.ndarray,
     if penalty == 1.0 or seen.size == 0:
         return scores
     out = scores.copy()
-    idx = np.unique(seen[(seen >= 0) & (seen < out.shape[0])])
+    idx = seen[(seen >= 0) & (seen < out.shape[0])]
     if idx.size:
         s = out[idx]
         out[idx] = np.where(s <= 0, s * penalty, s / penalty)
@@ -291,7 +291,7 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
         threshold = float(np.partition(s, -top_k)[-top_k])
         s = np.where(s < threshold, -np.inf, s)
     if 0 < top_p < 1:
-        order = np.argsort(s)[::-1]
+        order = ranked(s, top_k)
         cumulative = np.cumsum(softmax(s[order]))
         keep = np.ones(order.shape[0], bool)
         # keep every token up to and including the one that crosses top_p

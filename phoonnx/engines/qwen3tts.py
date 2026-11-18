@@ -198,7 +198,7 @@ def apply_logits_processors(logits: np.ndarray, generated: List[int],
     """
     x = np.asarray(logits, np.float64).reshape(-1).copy()
     if repetition_penalty != 1.0 and generated:
-        seen = np.unique(np.asarray(generated, np.int64))
+        seen = np.asarray(generated, np.int64)
         scores = x[seen]
         x[seen] = np.where(scores < 0, scores * repetition_penalty,
                            scores / repetition_penalty)
