@@ -415,8 +415,12 @@ class PocketTTSAdapter(BaseOnnxAdapter):
         own SentencePiece model. One list of token ids per chunk."""
         if self.tokenizer is None:
             raise RuntimeError("Pocket TTS voice missing tokenizer_path in engine_params")
+        if not text.strip():  # split_into_chunks runs prepare_text, which rejects empty text
+            return []
         ids = []
         for chunk in self.split_into_chunks(text):
+            if not chunk.strip():
+                continue
             prepared, _ = prepare_text(chunk, self.remove_semicolons,
                                        self.pad_with_spaces_for_short_inputs)
             ids.append(list(self.tokenizer.Encode(prepared)))

@@ -323,6 +323,21 @@ def test_encode_text_without_tokenizer_is_an_error():
         a.encode_text("Hello.", None, None)
 
 
+def test_encode_text_empty_and_whitespace_return_no_ids():
+    a = _adapter()
+    assert a.encode_text("", None, None) == []
+    assert a.encode_text("   ", None, None) == []
+    assert a.encode_text("\n", None, None) == []
+
+
+def test_encode_text_skips_empty_chunks_between_real_ones(monkeypatch):
+    a = _adapter()
+    monkeypatch.setattr(a, "split_into_chunks",
+                        lambda text: ["One two.", "", "   ", "Three four."])
+    ids = a.encode_text("One two.   Three four.", None, None)
+    assert ids == [list(a.tokenizer.Encode(prepare_text(chunk)[0])) for chunk in ("One two.", "Three four.")]
+
+
 # ---------------------------------------------------------------------------
 # stream state
 # ---------------------------------------------------------------------------
