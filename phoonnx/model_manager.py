@@ -1,3 +1,6 @@
+import contextlib
+import contextvars
+import functools
 import hashlib
 import json
 import os
@@ -9,7 +12,7 @@ import warnings
 from dataclasses import asdict, dataclass, field, fields, replace
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, List, Any, Callable, Sequence, Tuple
+from typing import Optional, Dict, Iterator, List, Any, Callable, Sequence, Set, Tuple
 import requests
 from huggingface_hub import constants as hub_constants, hf_hub_download
 from huggingface_hub.constants import HF_HUB_CACHE
@@ -266,13 +269,99 @@ def _repo_cached_before_move(repo_id: str) -> Optional[str]:
                  if (Path(HF_HUB_CACHE) / f"models--{old.replace('/', '--')}").is_dir()), None)
 
 
-# The snapshot an offline load reads in place of a pinned commit the cache does not hold: one
-# per cache folder, pinned commit and folder inside the repo. The index pins every file, so a
-# device that cached a voice at an older commit would lose it offline after a pin bump; it
-# keeps the voice it has instead. One choice per folder, never per file, so a graph and every
-# data file it names come from the same commit. A mirror repo holds one voice per folder, so
-# two voices cached at different commits each keep their own snapshot.
+# The snapshot an offline load reads in place of a pinned commit the cache does not hold. The
+# index pins every file, so a device that cached a voice at an older commit would lose it
+# offline after a pin bump; it keeps the voice it has instead. A voice load chooses one
+# snapshot per repo and commit that holds every file the voice names there
+# (_VOICE_SNAPSHOTS), so a graph and the voice state in another folder of the same repo come
+# from the same commit, and two voices cached at different commits each keep their own. A
+# file fetched outside a voice load gets one choice per cache folder, pinned commit and
+# folder inside the repo (_OFFLINE_SNAPSHOTS), never per file, so a graph and every data
+# file it names still come from the same commit.
+_VOICE_SNAPSHOTS: Dict[Tuple[Path, str, frozenset], Path] = {}
 _OFFLINE_SNAPSHOTS: Dict[Tuple[Path, str, str], Path] = {}
+
+
+# The hub files of the voice being loaded, by (repo id, pinned commit).
+_VOICE_FILES: contextvars.ContextVar[Optional[Dict[Tuple[str, str], Set[str]]]] = \
+    contextvars.ContextVar("phoonnx_voice_files", default=None)
+
+
+@contextlib.contextmanager
+def _voice_scope(info: "TTSModelInfo") -> Iterator[None]:
+    """Fetch the files of ``info`` so that an offline fallback reads them all from one commit."""
+    files: Dict[Tuple[str, str], Set[str]] = {}
+    # the vosk dictionary is optional: a load goes on without it, so it does not bind the choice
+    urls = [getattr(info, f.name) for f in fields(info)
+            if f.name.endswith("_url") and f.name != "dictionary_url"]
+    urls += list((info.aux_model_urls or {}).values())
+    for url in urls:
+        match = _HF_URL.match(url.split("?")[0]) if isinstance(url, str) else None
+        if match:
+            repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
+            files.setdefault((repo_id, match["rev"]), set()).add(match["path"])
+    token = _VOICE_FILES.set(files)
+    try:
+        yield
+    finally:
+        _VOICE_FILES.reset(token)
+
+
+def _in_voice_scope(method: Callable) -> Callable:
+    """Run a :class:`TTSModelInfo` method inside :func:`_voice_scope` of its voice."""
+    @functools.wraps(method)
+    def scoped(self, *args, **kwargs):
+        with _voice_scope(self):
+            return method(self, *args, **kwargs)
+    return scoped
+
+
+def _voice_key(repo_id: str, revision: str, filename: str) -> Optional[Tuple[Path, str, frozenset]]:
+    """The :data:`_VOICE_SNAPSHOTS` key of the voice being loaded, if it names files in ``repo_id``
+    at ``revision``.
+
+    A file the voice does not name there, such as the external data of its graph, follows the
+    same key, so it comes from the snapshot of the files beside it.
+    """
+    files = _VOICE_FILES.get()
+    wanted = files.get((repo_id, revision)) if files is not None else None
+    if not wanted:
+        return None
+    return Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}", revision, frozenset(wanted)
+
+
+def _voice_snapshot(repo_id: str, revision: str, filename: str,
+                    record: bool) -> Tuple[bool, Optional[Path]]:
+    """The fallback for ``filename`` chosen for the voice being loaded.
+
+    Returns ``(False, None)`` when no voice is being loaded or the voice names no file in
+    ``repo_id`` at ``revision``, so the folder rule decides. Otherwise the newest snapshot that
+    holds ``filename`` and every file the voice names there is chosen, and none when the
+    pinned snapshot holds one of them already, as after an interrupted download.
+    """
+    key = _voice_key(repo_id, revision, filename)
+    if key is None:
+        return False, None
+    repo_dir, _, wanted = key
+    needed = wanted | {filename}
+    if any((repo_dir / "snapshots" / revision / name).exists() for name in needed):
+        return True, None
+    chosen = _VOICE_SNAPSHOTS.get(key)
+    if chosen is None or not chosen.is_dir():
+        holding = [snapshot for snapshot in (repo_dir / "snapshots").glob("*")
+                   if snapshot.name != revision
+                   and all((snapshot / name).exists() for name in needed)]
+        if not holding:
+            return True, None
+        chosen = max(holding, key=lambda snapshot: snapshot.stat().st_mtime)
+        if not record:
+            path = chosen / filename
+            return True, path if path.exists() else None
+        _VOICE_SNAPSHOTS[key] = chosen
+        LOG.warning(f"{repo_id} is not cached at the pinned commit {revision} and the hub cannot "
+                    f"be reached; loading the cached snapshot {chosen.name} instead")
+    path = chosen / filename
+    return True, path if path.exists() else None
 
 
 def _offline_snapshot(repo_id: str, revision: str, filename: str,
@@ -284,12 +373,15 @@ def _offline_snapshot(repo_id: str, revision: str, filename: str,
     commit an unpinned install fetched. Later files of the same folder come from the same
     snapshot or not at all. A folder that the pinned snapshot holds in part, as after an
     interrupted download, never falls back, so its files cannot mix two commits. Reads no
-    network.
+    network. Inside a voice load, :func:`_voice_snapshot` chooses instead.
 
     ``record`` is False when the caller only measures: the chosen snapshot is then not
-    remembered in :data:`_OFFLINE_SNAPSHOTS`, so a size question cannot make a voice look like
-    it loaded from a fallback it never took.
+    remembered, so a size question cannot make a voice look like it loaded from a fallback
+    it never took.
     """
+    scoped, path = _voice_snapshot(repo_id, revision, filename, record)
+    if scoped:
+        return path
     repo_dir = Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
     folder = posixpath.dirname(filename)
     pinned_folder = repo_dir / "snapshots" / revision / folder
@@ -366,8 +458,10 @@ def _cached_path(url: str) -> Optional[Path]:
         # A fallback that _hf_fetch took is what loaded, also when HF_HUB_OFFLINE is
         # unset and the hub was unreachable, so its file is the one to measure.
         repo_dir = Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
-        folder = posixpath.dirname(match["path"])
-        chosen = _OFFLINE_SNAPSHOTS.get((repo_dir, match["rev"], folder))
+        key = _voice_key(repo_id, match["rev"], match["path"])
+        chosen = _VOICE_SNAPSHOTS.get(key) if key is not None else None
+        if chosen is None:
+            chosen = _OFFLINE_SNAPSHOTS.get((repo_dir, match["rev"], posixpath.dirname(match["path"])))
         if chosen is not None:
             path = chosen / match["path"]
             if path.exists():
@@ -940,6 +1034,7 @@ class TTSModelInfo:
                 params[key] = str(self._fetch_onnx(url))
         return params
 
+    @_in_voice_scope
     def download_all(self, precision: Optional[str] = None,
                      providers: Optional[Sequence[ProviderSpec]] = None) -> Path:
         """Download everything this voice needs to load offline.
@@ -1008,6 +1103,7 @@ class TTSModelInfo:
         """
         return "|".join(self.artifact_urls())
 
+    @_in_voice_scope
     def disk_size(self) -> int:
         """Total on-disk size, in bytes, of this voice's downloaded artifacts.
 
@@ -1037,6 +1133,7 @@ class TTSModelInfo:
         # each distinct file once.
         return _file_bytes(*self.artifact_urls())
 
+    @_in_voice_scope
     def load(self, providers: Optional[Sequence[ProviderSpec]] = None,
              precision: Optional[str] = None) -> TTSVoice:
         """
