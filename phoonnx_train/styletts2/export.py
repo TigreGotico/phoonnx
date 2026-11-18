@@ -24,6 +24,8 @@ from typing import Any, Dict, Optional
 import numpy as np
 import torch
 
+from phoonnx_train.engines.vits import write_sidecars
+
 _LOG = logging.getLogger(__name__)
 
 OPSET_VERSION = 17
@@ -264,16 +266,18 @@ def export_styletts2_onnx(
     _fix_negative_transpose_perms(model_path)
     _fix_negative_transpose_perms(enc_path)
 
+    training_config = cfg_raw if config_path.suffix == ".json" else {}
     out_cfg: Dict[str, Any] = {
+        **training_config,
         "engine": "styletts2",
+        "audio": {**training_config.get("audio", {}), "sample_rate": sample_rate},
         "sample_rate": sample_rate,
         "style_dim": int(mp.style_dim),
         "num_symbols": int(mp.n_token),
     }
     if phoneme_id_map:
         out_cfg["phoneme_id_map"] = phoneme_id_map
-    (output_dir / "config.json").write_text(
-        json.dumps(out_cfg, ensure_ascii=False, indent=2))
+    write_sidecars(out_cfg, output_dir, "config")
 
     _LOG.info("StyleTTS2 exported to %s", model_path)
     return model_path
