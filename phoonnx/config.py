@@ -6,6 +6,7 @@ from typing import Any, Mapping, Optional, Union, Dict
 import text2spoken
 
 from phoonnx.util import LOG, is_arabic, normalize_lang
+from phoonnx.errors import UnsupportedVoiceLanguage
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
@@ -578,25 +579,6 @@ class SynthesisConfig:
             except ValueError:
                 raise ValueError(f"chunk must be one of {[c.value for c in Chunk]} or None, "
                                  f"not {self.chunk!r}") from None
-
-
-class UnsupportedVoiceLanguage(ValueError):
-    """Raised at voice load when no phonemizer backend serves the voice's language.
-
-    Surfacing this eagerly (instead of letting scriptconv's ``ValueError:
-    unsupported language code`` bubble up mid-synthesis, after the user has
-    already picked the voice and sent text) turns an opaque runtime crash
-    into an actionable, typed failure at load time.
-    """
-
-    def __init__(self, voice: str, lang_code: str, phoneme_type: "PhonemeType"):
-        self.voice = voice
-        self.lang_code = lang_code
-        self.phoneme_type = phoneme_type
-        super().__init__(
-            f"voice {voice!r}: no phonemizer backend supports lang "
-            f"{lang_code!r} for phoneme_type {phoneme_type.value!r}"
-        )
 
 
 def check_lang_supported(voice: str, lang_code: Optional[str],
