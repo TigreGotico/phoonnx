@@ -219,7 +219,7 @@ class SuperTonicAdapter(BaseOnnxAdapter):
         """Load the three auxiliary graphs, the tts.json config, the unicode indexer
         (converted into a standard ``Vocabulary``/``TTSTokenizer``) and the voice's style
         from ``engine_params``; the vector_estimator is the voice's own primary session."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         sess = lambda p: make_session(p, providers=ep.get("providers"))
         if self.duration_predictor is None and ep.get("duration_predictor_path"):
             self.duration_predictor = sess(ep["duration_predictor_path"])
@@ -321,8 +321,8 @@ class SuperTonicAdapter(BaseOnnxAdapter):
                         session: onnxruntime.InferenceSession) -> Dict[str, np.ndarray]:
         raise NotImplementedError("SuperTonic is multi-graph — use synthesize()")
 
-    def parse_outputs(self, outputs: List[np.ndarray],
-                      request: AdapterSynthesisRequest) -> AdapterSynthesisResult:
+    def parse_outputs(self, outputs: List[np.ndarray], request: AdapterSynthesisRequest,
+                      output_names: Optional[List[str]] = None) -> AdapterSynthesisResult:
         raise NotImplementedError("SuperTonic is multi-graph — use synthesize()")
 
     @staticmethod

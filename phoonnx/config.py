@@ -1,4 +1,3 @@
-import json
 import warnings
 from dataclasses import dataclass, field
 from enum import Enum
@@ -762,41 +761,3 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     graph.register(Edge("text", DIACRITIZED, _vocalize))
     graph.register(Edge(DIACRITIZED, alpha, phonemize))
     return graph, _vocalize
-
-
-
-
-if __name__ == "__main__":  # pragma: no cover
-    config_files = [
-        "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia_vits.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_gruut.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_espeak.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_epitran.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_symbols.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/piper_espeak.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/vits-coqui-pt-cv/config.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/phonikud/model.config.json"
-    ]
-    phoneme_txts = [
-        None,
-        None,
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
-        None,
-        None,
-        None
-    ]
-    print("Testing model config file parsing\n###############")
-    for idx, cfile in enumerate(config_files):
-        print(f"\nConfig file: {cfile}")
-        with open(cfile) as f:
-            config = json.load(f)
-        print("Mimic3:", VoiceConfig.is_mimic3(config))
-        print("Piper:", VoiceConfig.is_piper(config))
-        print("Coqui:", VoiceConfig.is_coqui_vits(config))
-        print("Phoonx:", VoiceConfig.is_phoonnx(config))
-        cfg = VoiceConfig.from_dict(config, phoneme_txts[idx])
-        print(cfg)

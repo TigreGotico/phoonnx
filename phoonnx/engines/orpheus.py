@@ -196,7 +196,7 @@ class OrpheusAdapter(BaseOnnxAdapter):
     def configure(self, voice_config: Any) -> None:
         """Load the SNAC decoder, the checkpoint's BPE and the voice list from
         ``engine_params``."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         if self.snac is None and ep.get("snac_decoder_path"):
             self.snac_path = ep["snac_decoder_path"]
             self.snac_providers = ep.get("providers")

@@ -181,7 +181,7 @@ class IndicParlerAdapter(BaseOnnxAdapter):
         index entry, taken verbatim from AI4Bharat's own recommended-speaker list, so a
         voice id resolves to exactly the wording the model was trained to answer to.
         """
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         providers = ep.get("providers")
         if self.text_encoder is None and ep.get("text_encoder_path"):
             self.text_encoder = make_session(ep["text_encoder_path"], providers=providers)

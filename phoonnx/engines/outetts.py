@@ -372,7 +372,7 @@ class OuteTTSAdapter(BaseOnnxAdapter):
 
     def configure(self, voice_config: Any) -> None:
         """Load the DAC decoder, the checkpoint's tokenizer and the speaker profiles."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         if self.codec is None and ep.get("codec_decoder_path"):
             self.codec = make_session(ep["codec_decoder_path"], providers=ep.get("providers"))
         if self.tokenizer is None and ep.get("tokenizer_path"):

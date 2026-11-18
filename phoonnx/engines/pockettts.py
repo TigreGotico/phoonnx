@@ -196,7 +196,7 @@ class PocketTTSAdapter(BaseOnnxAdapter):
         """Load the bundle metadata, the four auxiliary graphs, the SentencePiece
         tokenizer, the BOS embedding and the speaker state from ``engine_params``.
         ``flow_lm_main`` is the voice's own primary session."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
 
         if ep.get("bundle_path") and not self.metadata:
             with open(ep["bundle_path"], "r", encoding="utf-8") as f:

@@ -66,7 +66,7 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
         tokenizer = voice_config.tokenizer
         if tokenizer is not None and tokenizer.pad_id is not None:
             self._pad_id = int(tokenizer.pad_id)
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         style_path = ep.get("style_path")
         if self.style_pack is None and style_path:
             self.style_pack = np.fromfile(style_path, dtype=np.float32).reshape(-1, 256)

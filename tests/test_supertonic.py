@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 import json
 
 import numpy as np
@@ -467,5 +468,5 @@ def test_configure_overrides_control_params():
 
 def test_configure_noop_without_engine_params():
     ad = SuperTonicAdapter()
-    ad.configure(None)   # no engine_params attribute at all
+    ad.configure(SimpleNamespace(engine_params={}))
     assert ad.duration_predictor is None
