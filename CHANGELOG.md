@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.113.6a1](https://github.com/TigreGotico/phoonnx/tree/1.113.6a1) (2026-11-18)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.5a2...1.113.6a1)
+
+**Merged pull requests:**
+
+- fix: a falsy non-dict phonemizer\_identity block warns; cover the provenance gaps [\#703](https://github.com/TigreGotico/phoonnx/pull/703) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.113.5a2](https://github.com/TigreGotico/phoonnx/tree/1.113.5a2) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.5a1...1.113.5a2)
@@ -376,10 +384,6 @@
 ## [1.98.0a1](https://github.com/TigreGotico/phoonnx/tree/1.98.0a1) (2026-11-14)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.97.1a2...1.98.0a1)
-
-**Merged pull requests:**
-
-- feat\(train\): record the phonemizer engine and its version in config.json [\#575](https://github.com/TigreGotico/phoonnx/pull/575) ([JarbasAl](https://github.com/JarbasAl))
 
 ## [1.97.1a2](https://github.com/TigreGotico/phoonnx/tree/1.97.1a2) (2026-11-14)
 
