@@ -69,7 +69,7 @@ The noise scales and the length scale default to the values in `runtime.json`, n
 Put asterisks around a word, or around several words, in the text: `You *want* the shark?`. Each marked word is stressed.
 When a text has marks, only the marked words are stressed. A text with no marks lets the prominence model pick.
 
-The marks reach the model as the word of each token. phoonnx reads the unmarked text once to make the ids. It finds the word of each phoneme by aligning that reading with the phonemes of each word alone, so a merged word such as `ɪnðə` ("in the") still gives its phonemes back to its two words. Every token has a word, and a mark cannot be lost to a mismatch.
+The marks reach the model as the word of each token. phoonnx reads the unmarked text once to make the ids. It finds the word of each phoneme by aligning that reading with the phonemes of each word alone, so a merged word such as `ɪnðə` ("in the") still gives its phonemes back to its two words. A mark follows its word only while the normaliser keeps that word in place. When the normaliser moves a word, the mark can be lost or land on another word: `a £3 *billion* deal.` is read "a three billion pounds deal", and with espeak the mark then reaches no token. Put the mark on a word the normaliser leaves alone, or write the amount in words.
 
 SSML `<emphasis>` does not reach the model. `parse_ssml` turns an emphasised span into a separate piece with its own rate and volume, and each piece is a separate engine call, so the span loses its sentence. SSML support needs the reader to keep the span inside its sentence as a mark when the voice reads marks, and to skip the piece-level rate and volume change for it.
 

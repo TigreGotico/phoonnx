@@ -202,8 +202,9 @@ def test_synthesize_runs_the_graphs_with_the_durations_noise_and_style_of_the_re
 
 def test_length_scale_of_the_request_replaces_the_default():
     adapter = _adapter(_constant({0: [0.0] * 4}), [math.log(2.0)] * 3)
-    adapter.synthesize(_request(length_scale=1.2), _encoder())
-    assert adapter.acoustic.feeds[0]["w_ceil"].tolist() == [[[3.0, 3.0, 3.0]]]  # ceil(2 * 1.2)
+    adapter.synthesize(_request(length_scale=2.4), _encoder())
+    # ceil(2 * 2.4); the runtime default 1.5 would give ceil(2 * 1.5) = 3
+    assert adapter.acoustic.feeds[0]["w_ceil"].tolist() == [[[5.0, 5.0, 5.0]]]
 
 
 def test_default_style_row_of_the_durations_is_the_unconditioned_row_without_a_style():
