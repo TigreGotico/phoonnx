@@ -20,6 +20,7 @@ NO_INDEX_VOICE = {
     "yourtts": "the Phoonnx/yourtts-multi-graphemes configs wait for an ASR round trip",
     "zipvoice": "clones per request; no converted model in the Phoonnx organisation",
     "tinyvoca": "the Phoonnx/tinyvoca-en_us mirror is not public",
+    "xvits": "the fdemelo/x-vits weights are not mirrored yet",
 }
 
 

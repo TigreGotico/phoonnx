@@ -55,6 +55,7 @@ class TinyVocaAdapter(BaseOnnxAdapter):
     """Adapter for tiny-voca ONNX models."""
 
     DURATION_OUTPUT_NAMES = ["durations"]
+    takes_symbols = False
 
     def configure(self, voice_config: Any) -> None:
         vocab = voice_config.tokenizer.vocabulary.char2idx

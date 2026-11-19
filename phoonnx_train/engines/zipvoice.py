@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 from phoonnx_train.engines.base import BaseTrainingEngine, TrainingEngineConfig
+from phoonnx_train.engines.vits import write_sidecars
 
 if TYPE_CHECKING:  # heavy import — only needed for type annotations
     import pytorch_lightning as pl
@@ -212,12 +213,14 @@ class ZipVoiceTrainingEngine(BaseTrainingEngine):
         if Path(config_path).is_file():
             with open(config_path, "r", encoding="utf-8") as fh:
                 dataset_config = json.load(fh)
-            (output_dir / "config.json").write_text(json.dumps({
+            write_sidecars({
+                **dataset_config,
                 "engine": "zipvoice",
+                "audio": {**dataset_config.get("audio", {}), "sample_rate": 24000},
                 "sample_rate": 24000,
                 "num_mels": 100,
                 "phoneme_id_map": dataset_config.get("phoneme_id_map", {}),
-            }, ensure_ascii=False))
+            }, output_dir, "config")
         return fm_path
 
     def quality_presets(self) -> Dict[str, Dict[str, Any]]:
