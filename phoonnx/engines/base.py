@@ -10,18 +10,18 @@ Each TTS architecture (VITS, OptiSpeech, Matcha-TTS, etc.) has different:
 An OnnxAdapter encapsulates these differences behind a single interface
 so that TTSVoice.render works identically for any engine.
 """
+import re
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import Any, Dict, Iterator, List, Optional
 
 import numpy as np
 import onnxruntime
-from scriptconv.frontend import Stages
+from scriptconv.frontend import Stages, TextFrontend
 
-
-#: The request fields that hold one value per phoneme id, as a phonemizer's side streams fill them.
-SIDE_STREAMS = ("language_ids", "stress")
+from phoonnx.encoders import SIDE_STREAMS, Encoder, SymbolEncoder, TextEncoder
 
 
 def _warn_removed_hook(name: str, replacement: str) -> None:
@@ -29,6 +29,9 @@ def _warn_removed_hook(name: str, replacement: str) -> None:
     warnings.warn(f"BaseOnnxAdapter.{name} is deprecated and will be removed in phoonnx "
                   f"{_removal_version()}. Use {replacement}.",
                   DeprecationWarning, stacklevel=3)
+
+INLINE_BLOCK = re.compile(r"\[\[(.*?)\]\]")
+"""An inline phoneme block: the shortest ``[[...]]`` on one line, as scriptconv's frontend reads it."""
 
 
 @dataclass
@@ -200,6 +203,20 @@ class BaseOnnxAdapter(ABC):
         stages = Stages(normalize=False, diacritize=False)
         return [voice.tokenizer.tokenize(p) for p in voice.frontend.phonemize(text, stages) if p]
 
+    def make_encoder(self, voice_config: Any, frontend: TextFrontend, tokenizer: Any) -> Encoder:
+        """The encoder that turns text into this engine's ids.
+
+        The default reads the symbols of the frontend. An adapter that overrides
+        :meth:`encode_text` gets a :class:`TextEncoder` that hands the whole prepared text to
+        ``encode_text``, which cuts it itself. An engine that tokenizes each chunk itself returns
+        a ``TextEncoder`` of its own.
+        """
+        if type(self).encode_text is BaseOnnxAdapter.encode_text:
+            return SymbolEncoder(frontend, tokenizer)
+        voice = SimpleNamespace(config=voice_config, frontend=frontend, tokenizer=tokenizer)
+        return TextEncoder(frontend, lambda text, config: self.encode_text(text, voice, config),
+                           whole_text=True)
+
     def read_text(self, text: str, voice: Any, config: Any, stages: Any) -> Iterator[Any]:
         """Yield the :class:`~phoonnx.voice.Utterance` objects of *text*, one per engine call.
 
@@ -227,6 +244,18 @@ class BaseOnnxAdapter(ABC):
         feed = self.build_feed_dict(request, session)
         outputs = session.run(None, feed)
         return self.parse_outputs(outputs, request, output_names=self._safe_output_names(session))
+
+    def synthesize_stream(
+        self,
+        request: AdapterSynthesisRequest,
+        session: onnxruntime.InferenceSession,
+    ) -> Iterator[AdapterSynthesisResult]:
+        """Yield the audio of one request in parts; joined, they are :meth:`synthesize`'s audio.
+
+        An engine that makes audio in steps yields each part once it exists. The
+        default yields the one result of :meth:`synthesize`.
+        """
+        yield self.synthesize(request, session)
 
     @staticmethod
     def detect(

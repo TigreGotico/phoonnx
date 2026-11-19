@@ -712,7 +712,7 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     and lives entirely behind these two values.
     """
     _deprecated("get_conversion", "TTSVoice.frontend")
-    from phoonnx.engines.base import SIDE_STREAMS
+    from phoonnx.encoders import SIDE_STREAMS
     from scriptconv.graph import ConversionGraph, Edge
     from scriptconv.diacritics import DIACRITIZED, diacritize
 
