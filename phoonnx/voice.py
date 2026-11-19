@@ -68,19 +68,18 @@ def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunk
     return [[c for c in chunk] for chunk, _, _ in chunks if chunk]
 
 
-_SKIPPED_BLOCKS = re.compile(r"(\s*)(?:\[\[.*?\]\](\s*))+")
+_SKIPPED_BLOCKS = re.compile(r"\s*(?:\[\[.*?\]\]\s*)+")
 
 
 def _gap(match: "re.Match[str]") -> str:
-    """What stands where a skipped block was: the whitespace before it if that has a line break,
-    else nothing when a mark follows the block directly, else one space."""
-    before, after = match[1], match[2]
-    if "\n" in before:
-        return before
-    if "\n" in after:
-        return after
+    """What stands where a run of skipped blocks was: the whitespace around or between them with
+    the most line breaks, else nothing when a mark follows the last block directly, else one space."""
+    spaces = INLINE_BLOCK.split(match[0])[::2]
+    widest = max(spaces, key=lambda space: space.count("\n"))
+    if "\n" in widest:
+        return widest
     following = match.string[match.end():match.end() + 1]
-    return "" if not after and not following.isalnum() else " "
+    return "" if not spaces[-1] and not following.isalnum() else " "
 
 
 def _write_wav(path: str, audio: np.ndarray, sample_rate: int) -> str:

@@ -63,6 +63,11 @@ def test_a_skipped_block_keeps_a_paragraph_break():
     assert _read("para one. [[x]] para two.", by_paragraph) == ["para one. para two."]
 
 
+def test_a_line_break_between_skipped_blocks_stays():
+    assert _read("a [[x]]\n[[y]] b") == ["a\nb"]
+    assert _read("a\n[[x]]\n\n[[y]] b", SynthesisConfig(chunk="paragraph")) == ["a", "b"]
+
+
 def test_ssml_phoneme_on_a_voice_with_no_symbols_reads_its_word(monkeypatch):
     warnings = _warnings(monkeypatch, "phoonnx.ssml")
     ssml = 'I like <phoneme alphabet="ipa" ph="təˈmeɪtoʊ">tomato</phoneme> soup.'
