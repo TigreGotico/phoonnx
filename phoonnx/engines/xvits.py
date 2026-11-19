@@ -268,11 +268,6 @@ class XVitsAdapter(BaseOnnxAdapter):
                 "steps": defaults.get("pp_steps", 16),
                 "emphasis_scale": defaults.get("template_scale", 1.5)}
 
-    def param_labels(self) -> Dict[str, str]:
-        return {"noise_scale": "Noise Scale", "noise_w_scale": "Duration Noise",
-                "length_scale": "Length Scale", "steps": "Prosody Steps",
-                "emphasis_scale": "Emphasis Scale"}
-
     # ------------------------------------------------------------------
     # Text
     # ------------------------------------------------------------------

@@ -189,11 +189,6 @@ class PocketTTSAdapter(BaseOnnxAdapter):
                 "lsd_steps": float(self.lsd_steps),
                 "eos_threshold": self.eos_threshold}
 
-    def param_labels(self) -> Dict[str, str]:
-        return {"temperature": "Sampling temperature",
-                "lsd_steps": "Flow integration steps",
-                "eos_threshold": "End-of-speech threshold"}
-
     # ------------------------------------------------------------------
     # Setup
     # ------------------------------------------------------------------

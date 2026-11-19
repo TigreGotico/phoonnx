@@ -21,6 +21,9 @@ class Engine(str, Enum):
     """voices trained with these frameworks are explicitly supported.
     This mainly affects the format of .json file and possibly tokenization"""
     PHOONNX = "phoonnx"
+    VITS = "vits"  # single-graph VITS, the adapter the format names below fall back to
+    VITS_STREAMING = "vits_streaming"  # VITS split at the flow/HiFiGAN boundary
+    VITS_PRIOR_SPLIT = "vits_prior_split"  # VITS split at the prior boundary
     PIPER = "piper"
     MIMIC3 = "mimic3"
     COQUI = "coqui"
