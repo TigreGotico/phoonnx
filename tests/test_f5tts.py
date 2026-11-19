@@ -549,7 +549,8 @@ def _f5_voice(phoneme_type, phoneme_id_map, lang):
         "phoonnx_version": "1.0", "engine": "f5tts", "phoneme_type": phoneme_type, "alphabet": "unicode",
         "lang_code": lang, "audio": {"sample_rate": 24000}, "phoneme_id_map": phoneme_id_map,
         "add_blank_char": False, "blank_at_start": False, "blank_at_end": False, "use_eos_bos": False,
-        "fold_compounds": False, "engine_params": {"nfe": 2}})
+        "fold_compounds": False, "engine_params": {"nfe": 2},
+        "inference": {"add_diacritics": False}})  # as the shipped Arabic F5 configs
     voice = TTSVoice(session=_FakeTransformer(), config=config, adapter=F5TTSAdapter())
     voice.adapter.preprocess, voice.adapter.decode = _RecordingPreprocess(), _FakeDecode()
     return voice
