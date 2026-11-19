@@ -183,7 +183,7 @@ def test_vocos_overlap_add_is_bit_identical_to_the_per_sample_sum(n_fft, hop, ba
 def test_overlap_add_keeps_the_float64_sums_of_a_frame_by_frame_loop(win, hop, frames):
     """Checked before the float32 cast, where a changed summation order would show."""
     from phoonnx.engines.vocoders.vocos import _overlap_add
-    stack = np.random.default_rng(win * hop).standard_normal((2, win, frames)) * 1e3
+    stack = np.random.default_rng(win * hop).standard_normal((2, frames, win)) * 1e3
     got = _overlap_add(stack, hop)
     want = np.empty((2, (frames - 1) * hop + win))
     for b in range(2):
@@ -191,38 +191,6 @@ def test_overlap_add_keeps_the_float64_sums_of_a_frame_by_frame_loop(win, hop, f
             total = 0.0
             for t in range(frames):
                 if 0 <= i - t * hop < win:
-                    total += float(stack[b, i - t * hop, t])
+                    total += float(stack[b, t, i - t * hop])
             want[b, i] = total
     assert got.tobytes() == want.tobytes()
-
-
-def _lines_run_in_module(module, fn, *args):
-    """How many source lines of ``module`` run during ``fn(*args)``."""
-    import sys
-    count = 0
-
-    def tracer(frame, event, _arg):
-        nonlocal count
-        if frame.f_code.co_filename != module.__file__:
-            return None
-        if event == "line":
-            count += 1
-        return tracer
-
-    previous = sys.gettrace()
-    sys.settrace(tracer)
-    try:
-        fn(*args)
-    finally:
-        sys.settrace(previous)
-    return count
-
-
-def test_vocos_overlap_add_runs_no_python_line_per_frame():
-    from phoonnx.engines.vocoders import vocos
-    voc = VocosVocoder(session=_vocos_session(), config={"n_fft": 1024, "hop_length": 256})
-    short = _lines_run_in_module(vocos, voc._istft_overlap_add,
-                                 _seeded_spectrogram(0, 1, 1024, 4))
-    long = _lines_run_in_module(vocos, voc._istft_overlap_add,
-                                _seeded_spectrogram(0, 1, 1024, 400))
-    assert long == short

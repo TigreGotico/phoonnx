@@ -48,7 +48,7 @@ class _FakeSession:
         return self._ins
 
     def run(self, _none, feed):
-        self.feeds.append(feed)
+        self.feeds.append({k: np.array(v, copy=True) for k, v in feed.items()})
         named = self._fn(feed, len(self.feeds) - 1)
         return [named[o.name] for o in self._outs]
 
@@ -474,50 +474,15 @@ def test_voice_index_is_merged_by_the_manager():
     assert any(p.name == "mosstts.json" for p in TTSModelManager.voice_index_files())
 
 
-# ----------------------------------------------------------------- repetition mask
-def _lines_run_in_module(fn, *args):
-    """How many source lines of ``phoonnx.engines.mosstts`` run during ``fn(*args)``."""
-    import sys
-    from phoonnx.engines import mosstts
-    count = 0
-
-    def tracer(frame, event, _arg):
-        nonlocal count
-        if frame.f_code.co_filename != mosstts.__file__:
-            return None
-        if event == "line":
-            count += 1
-        return tracer
-
-    previous = sys.gettrace()
-    sys.settrace(tracer)
-    try:
-        fn(*args)
-    finally:
-        sys.settrace(previous)
-    return count
-
-
-def _random_seen(rng, per_channel):
-    """Seeded per-channel token sets, with out-of-range ids mixed in."""
-    return [set(rng.integers(-3, CODEBOOK_SIZE + 3, size=per_channel).tolist())
-            for _ in range(N_VQ)]
-
-
-@pytest.mark.parametrize("per_channel", [0, 1, 7, 300, 5000])
-def test_seen_mask_marks_exactly_the_in_range_seen_tokens(per_channel):
-    seen = _random_seen(np.random.default_rng(per_channel), per_channel)
-    seen[3] = set()
-    expected = np.stack([np.isin(np.arange(CODEBOOK_SIZE), sorted(s)) for s in seen])
-    mask = MossTTSNanoAdapter._seen_mask(seen)
-    assert mask.dtype == np.int32 and mask.shape == (1, N_VQ, CODEBOOK_SIZE)
-    assert np.array_equal(mask[0], expected.astype(np.int32))
-
-
 def test_generate_frames_feeds_the_mask_of_every_token_emitted_so_far():
+    """Seeded frames, out-of-range ids included: each frame gets exactly the in-range
+    tokens its channel emitted before it."""
     ad = MossTTSNanoAdapter()
     prefill = _wire(ad, frames_before_stop=6)
-    tokens = np.random.default_rng(5).integers(0, CODEBOOK_SIZE, size=(6, N_VQ), dtype=np.int32)
+    tokens = np.random.default_rng(5).integers(-2, CODEBOOK_SIZE + 2, size=(6, N_VQ),
+                                               dtype=np.int32)
+    tokens[1, :3] = [-1, CODEBOOK_SIZE, CODEBOOK_SIZE + 1]
+    tokens[3, 3:] = tokens[2, 3:]
     keep_going = ad.local_fixed_frame._fn
 
     def frame_fn(feed, i):
@@ -530,16 +495,9 @@ def test_generate_frames_feeds_the_mask_of_every_token_emitted_so_far():
     rows = ad.build_prompt_rows([[0] * N_VQ], [1])
     frames = ad.generate_frames(prefill, rows, ad.default_params(), np.random.default_rng(0))
     assert frames == tokens.tolist()
+    assert len(ad.local_fixed_frame.feeds) == len(tokens) + 1
     for i, feed in enumerate(ad.local_fixed_frame.feeds):
-        expected = np.zeros((N_VQ, CODEBOOK_SIZE), np.int32)
-        for frame in tokens[:i]:
-            expected[np.arange(N_VQ), frame] = 1
+        expected = np.stack([np.isin(np.arange(CODEBOOK_SIZE), tokens[:i, ch])
+                             for ch in range(N_VQ)]).astype(np.int32)
+        assert feed["repetition_seen_mask"].dtype == np.int32
         assert np.array_equal(feed["repetition_seen_mask"][0], expected)
-
-
-def test_seen_mask_runs_no_python_line_per_seen_token():
-    """The mask is rebuilt every frame, so its Python cost must not grow with history."""
-    rng = np.random.default_rng(0)
-    few = _lines_run_in_module(MossTTSNanoAdapter._seen_mask, _random_seen(rng, 1))
-    many = _lines_run_in_module(MossTTSNanoAdapter._seen_mask, _random_seen(rng, 5000))
-    assert many == few

@@ -702,3 +702,15 @@ def test_cached_description_feeds_the_prefill_what_a_fresh_encoder_gives():
             assert np.array_equal(on_shared.last_feed[key], on_fresh.last_feed[key])
         assert np.array_equal(got.extras["codes"], want.extras["codes"])
         assert np.array_equal(got.audio, want.audio)
+
+
+def test_cached_description_arrays_are_read_only():
+    """A caller writing into the shared arrays would change the next request's voice."""
+    ad = _seeded()
+    hidden, mask = ad.encode_description("Divya speaks fast.")
+    with pytest.raises(ValueError):
+        hidden += 1.0
+    with pytest.raises(ValueError):
+        mask[0, 0] = 0
+    again, _ = ad.encode_description("Divya speaks fast.")
+    assert np.array_equal(again, _seeded().encode_description("Divya speaks fast.")[0])

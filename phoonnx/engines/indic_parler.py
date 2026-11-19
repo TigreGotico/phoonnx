@@ -239,7 +239,8 @@ class IndicParlerAdapter(BaseOnnxAdapter):
 
         Returns ``(encoder_hidden_states, encoder_attention_mask)``. The mask is applied
         to the hidden states inside the exported graph, exactly as upstream does before
-        handing them to the decoder. The result for the last description is kept.
+        handing them to the decoder. The arrays for the last description are kept and
+        are read-only.
         """
         if self.text_encoder is None or self.description_tokenizer is None:
             raise RuntimeError("Indic Parler voice missing text_encoder_path / "
@@ -252,9 +253,11 @@ class IndicParlerAdapter(BaseOnnxAdapter):
         attention_mask = np.ones_like(input_ids, np.int64)
         hidden = self.text_encoder.run(None, {"input_ids": input_ids,
                                               "attention_mask": attention_mask})[0]
-        encoded = (np.asarray(hidden, np.float32), attention_mask)
-        self._description_cache = (description, encoded)
-        return encoded
+        hidden = np.asarray(hidden, np.float32)
+        hidden.flags.writeable = False
+        attention_mask.flags.writeable = False
+        self._description_cache = (description, (hidden, attention_mask))
+        return hidden, attention_mask
 
     @staticmethod
     def _eos_delay_constraint(logits: np.ndarray, raw_ids: np.ndarray,
