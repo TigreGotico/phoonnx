@@ -39,6 +39,7 @@ from phoonnx.engines.base import (
     AdapterSynthesisRequest,
     AdapterSynthesisResult,
     BaseOnnxAdapter,
+    INLINE_BLOCK,
 )
 from scriptconv.phonemizers.base import BasePhonemizer, PhonemizerIdentity
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
@@ -46,6 +47,8 @@ from phoonnx.reference_audio import load_reference_audio
 from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
 from scriptconv.phonemizers.base import PhonemizedChunks
+from phoonnx.errors import VoiceLoadError
+from phoonnx.engines.vits import VitsAdapter
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
@@ -66,8 +69,19 @@ def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunk
     return [[c for c in chunk] for chunk, _, _ in chunks if chunk]
 
 
-_BLOCK = re.compile(r"\[\[(.*?)\]\]")
-"""An inline phoneme block: the shortest ``[[...]]`` on one line, as scriptconv's frontend reads it."""
+_SKIPPED_BLOCKS = re.compile(r"(\s*)(?:\[\[.*?\]\](\s*))+")
+
+
+def _gap(match: "re.Match[str]") -> str:
+    """What stands where a skipped block was: the whitespace before it if that has a line break,
+    else nothing when a mark follows the block directly, else one space."""
+    before, after = match[1], match[2]
+    if "\n" in before:
+        return before
+    if "\n" in after:
+        return after
+    following = match.string[match.end():match.end() + 1]
+    return "" if not after and not following.isalnum() else " "
 
 
 def _write_wav(path: str, audio: np.ndarray, sample_rate: int) -> str:
@@ -499,6 +513,7 @@ class TTSVoice:
         Parameters:
             model_path (str | Path): Path to the ONNX voice model file.
             config_path (str | Path, optional): Path to the JSON voice configuration. If omitted, defaults to model_path + ".json".
+                A voice with no config file raises :class:`~phoonnx.errors.VoiceLoadError`.
             phonemes_txt (str, optional): Optional phonemes definition or file content to override the config's phoneme list.
             phoneme_map (str, optional): Optional phoneme mapping specification or file path used to map phonemes (may be None).
             lang_code (str, optional): Language code to override or set in the loaded voice configuration.
@@ -521,11 +536,10 @@ class TTSVoice:
         if config_path is None:
             config_path = f"{model_path}.json"
 
-        if os.path.isfile(config_path):
-            with open(config_path, "r", encoding="utf-8") as config_file:
-                config_dict = json.load(config_file)
-        else:
-            config_dict = {"phoneme_type": "unicode", "alphabet": "unicode"}
+        if not os.path.isfile(config_path):
+            raise VoiceLoadError(f"No voice config at {config_path}; pass config_path to TTSVoice.load")
+        with open(config_path, "r", encoding="utf-8") as config_file:
+            config_dict = json.load(config_file)
 
         vocab_dict = {}
         tokenizer_dict = {}
@@ -579,6 +593,16 @@ class TTSVoice:
             phoneme_type=phoneme_type_str,
             engine_params=engine_params,
         )
+
+        # num_symbols sizes the embedding of a VITS graph only; other engines
+        # carry the field without using it.
+        if isinstance(adapter, VitsAdapter) and "num_symbols" in config_dict \
+                and isinstance(voice_config.tokenizer, TTSTokenizer):
+            ids = [i for value in voice_config.tokenizer.vocabulary.char2idx.values()
+                   for i in (value if isinstance(value, list) else [value])]
+            if ids and max(ids) >= voice_config.num_symbols:
+                raise VoiceLoadError(f"{config_path}: the vocabulary uses id {max(ids)}, but the model "
+                                     f"has num_symbols={voice_config.num_symbols}")
 
         voice = TTSVoice(
             config=voice_config,
@@ -714,6 +738,10 @@ class TTSVoice:
             yield list(segment.phonemes), {name: list(values) for name, values in segment.streams.items()
                                            if name in SIDE_STREAMS}, segment.text
 
+    @property
+    def _voice_name(self) -> str:
+        return Path(self.model_path).stem if self.model_path else "<voice>"
+
     def _inline_blocks(self, text: str, alphabet: Optional[Alphabet]) -> str:
         """*text* with each ``[[...]]`` block in the voice's *alphabet*, or with the blocks left out.
 
@@ -723,14 +751,13 @@ class TTSVoice:
         written where it has none. ARPA symbols have more than one character, and the
         frontend adds a block one character at a time, so an ARPA voice keeps the IPA.
         """
-        blocks = _BLOCK.findall(text)
+        blocks = INLINE_BLOCK.findall(text)
         if not blocks:
             return text
         if not self.adapter.takes_symbols:
-            name = Path(self.model_path).stem if self.model_path else "<voice>"
-            LOG.warning("Voice %s takes no symbol input: skipping the inline blocks %s", name,
+            LOG.warning("Voice %s takes no symbol input: skipping the inline blocks %s", self._voice_name,
                         ["[[%s]]" % block for block in blocks])
-            return re.sub(r"\s*\[\[.*?\]\]", "", text).strip()
+            return _SKIPPED_BLOCKS.sub(_gap, text).strip()
         if alphabet in (None, Alphabet.IPA, Alphabet.ARPA):
             return text
 
@@ -742,7 +769,7 @@ class TTSVoice:
                 return block[0]
             return f"[[{symbols}]]"
 
-        return _BLOCK.sub(convert, text)
+        return INLINE_BLOCK.sub(convert, text)
 
     def prepare(self, text: str, config: Optional[SynthesisConfig] = None) -> Iterator[Utterance]:
         """Turn *text* into model input: one :class:`Utterance` per engine call.
@@ -776,6 +803,9 @@ class TTSVoice:
                 yield from self.encoder.encode(spoken, config)
             return
 
+        if not self.adapter.takes_symbols:
+            LOG.warning("Voice %s takes no symbol input: phonetic input in %s is not supported",
+                        self._voice_name, src_alphabet.value)
         for symbols, _, _ in self._iter_phonemes(spoken, src_alphabet, self.config.alphabet,
                                                  stages_of(config)):
             if symbols:
@@ -1259,7 +1289,7 @@ class TTSVoice:
                 kind, ms, volume = piece.sound
                 yield passed(tone(kind, ms, volume, at_rate))
 
-        for piece in parse_ssml(ssml, voice_lang, self.frontend):
+        for piece in parse_ssml(ssml, voice_lang, self.frontend, self.adapter.takes_symbols):
             if piece.sound is not None or not piece.text:
                 if rate is None:
                     waiting.append(piece)
