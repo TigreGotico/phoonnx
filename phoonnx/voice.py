@@ -72,9 +72,14 @@ _SKIPPED_BLOCKS = re.compile(r"(\s*)(?:\[\[.*?\]\](\s*))+")
 
 def _gap(match: "re.Match[str]") -> str:
     """What stands where a skipped block was: the whitespace before it if that has a line break,
-    else the whitespace after it if that has one, else one space."""
+    else nothing when a mark follows the block directly, else one space."""
     before, after = match[1], match[2]
-    return before if "\n" in before else after if "\n" in after else " "
+    if "\n" in before:
+        return before
+    if "\n" in after:
+        return after
+    following = match.string[match.end():match.end() + 1]
+    return "" if not after and not following.isalnum() else " "
 
 
 def _write_wav(path: str, audio: np.ndarray, sample_rate: int) -> str:

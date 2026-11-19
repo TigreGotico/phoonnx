@@ -49,6 +49,12 @@ def test_a_skipped_block_leaves_one_space():
     assert _read("a [[x]] [[y]] b") == ["a b"]
 
 
+def test_a_skipped_block_before_a_mark_leaves_no_space():
+    assert _read("hello [[x]].") == ["hello."]
+    assert _read("hello [[x]], world") == ["hello, world"]
+    assert _read("hello [[x]] world") == ["hello world"]
+
+
 def test_a_skipped_block_keeps_a_paragraph_break():
     # a paragraph chunk ends only at a blank line, so a space in its place gives one chunk
     by_paragraph = SynthesisConfig(chunk="paragraph")
