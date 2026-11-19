@@ -349,15 +349,6 @@ class F5TTSAdapter(BaseOnnxAdapter):
                 return True
         return False
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "nfe": "NFE Steps",
-            "cfg_strength": "CFG Strength",
-            "sway_coefficient": "Sway Coefficient",
-            "target_rms": "Target RMS",
-            "speed": "Speed",
-        }
-
     def _reference_ids(self, ref_text_tokens: Any, reference_text: Optional[str],
                        gen_text_ids: List[int]) -> np.ndarray:
         """The ids of the reference text, with the end that the upstream code gives it.

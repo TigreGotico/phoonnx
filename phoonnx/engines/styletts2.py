@@ -147,6 +147,3 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
         session: Optional[onnxruntime.InferenceSession] = None,
     ) -> bool:
         return bool(config and config.get("engine") in ("styletts2", "kokoro"))
-
-    def param_labels(self) -> Dict[str, str]:
-        return {"speed": "Speed"}

@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import tempfile
 import unittest
 from unittest import mock
@@ -349,6 +350,73 @@ class TestCompoundPhonemeEncoding(unittest.TestCase):
         tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
                             use_eos_bos=False, blank_at_start=False, blank_at_end=False)
         self.assertEqual(tok.encode("azb"), [0])
+
+    # Compounds that overlap and prefix each other, in three lengths.
+    OVERLAPPING = {"a": 0, "b": 1, "c": 2, "ab": 3, "abc": 4, "bc": 5, "ca": 6,
+                   "aab": 7, "cc": 8, "abca": 9}
+
+    @staticmethod
+    def _longest_first(char2idx, text):
+        """The fold spelled out: at each position the longest key that the
+        next symbols join into, else the symbol itself; unknown symbols drop."""
+        compounds = sorted((k for k in char2idx if len(k) > 1), key=len, reverse=True)
+        ids, covered = [], set()
+        for i, symbol in enumerate(text):
+            if i in covered:
+                continue
+            idx = char2idx.get(symbol)
+            for compound in compounds:
+                if "".join(text[i:i + len(compound)]) == compound:
+                    idx = char2idx[compound]
+                    covered.update(range(i, i + len(compound)))
+                    break
+            if idx is not None:
+                ids.append(idx)
+        return ids
+
+    def _overlapping_tokenizer(self):
+        voc = Vocabulary(char2idx=dict(self.OVERLAPPING), blank=None)
+        return TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+
+    def test_the_longest_overlapping_compound_wins(self):
+        tok = self._overlapping_tokenizer()
+        rng = random.Random(20261118)
+        texts = ["", "abca", "aabc", "abcabc", "cca", "bcab", "dabcd"]
+        texts += ["".join(rng.choice("abcd") for _ in range(rng.randint(0, 30)))
+                  for _ in range(500)]
+        for text in texts:
+            self.assertEqual(tok.encode(text), self._longest_first(self.OVERLAPPING, text),
+                             f"fold disagrees on {text!r}")
+
+    def test_list_input_joins_symbols_before_matching(self):
+        """A symbol list can hold multi-character and empty symbols; the
+        compound is matched on what they join into."""
+        tok = self._overlapping_tokenizer()
+        rng = random.Random(7)
+        symbols = ["a", "b", "c", "ab", "bc", "", "d"]
+        for _ in range(500):
+            text = [rng.choice(symbols) for _ in range(rng.randint(0, 20))]
+            self.assertEqual(tok.encode(text), self._longest_first(self.OVERLAPPING, text),
+                             f"fold disagrees on {text!r}")
+
+    def test_the_compounds_are_grouped_once_per_tokenizer(self):
+        """Sorting the vocabulary on every call costs each sentence a sort."""
+        tok = self._overlapping_tokenizer()
+        self.assertEqual(tok.encode("abcab"), [9, 1])
+        compounds = tok._compounds
+        self.assertEqual(compounds, [(4, {"abca"}), (3, {"abc", "aab"}),
+                                     (2, {"ab", "bc", "ca", "cc"})])
+        self.assertEqual(tok.encode("abcab"), [9, 1])
+        self.assertIs(tok._compounds, compounds)
+
+    def test_fold_compounds_off_never_folds(self):
+        voc = Vocabulary(char2idx=dict(self.OVERLAPPING), blank=None)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                           use_eos_bos=False, blank_at_start=False, blank_at_end=False,
+                           fold_compounds=False)
+        self.assertEqual(tok.encode("abca"), [0, 1, 2, 0])
+        self.assertEqual(tok.encode(["ab", "c"]), [3, 2])
 
 
 class TestUppercaseFallback(unittest.TestCase):

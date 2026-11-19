@@ -1300,6 +1300,7 @@ class TTSModelManager:
         Parameters:
             cache_path (Optional[str]): Filesystem path for the cache file. If omitted, uses the user's XDG cache directory under "phoonnx/voices".
         """
+        # Replaced, never edited in place: get_lang_voices keys its answers on it.
         self.voices: Dict[str, TTSModelInfo] = {}
         # The registry is rebuilt wholesale by ``load``/``merge_default_voices``
         # while other threads are looking voices up in it. Rebuilding in place
@@ -1310,6 +1311,8 @@ class TTSModelManager:
         self._registry_lock = threading.RLock()
         # bundled entries an alias read, so a lookup per sentence reads the index once
         self._alias_fallbacks: Dict[str, Optional[TTSModelInfo]] = {}
+        # get_lang_voices answers as (registry, {lang: voices}), replaced whole
+        self._lang_voices_memo: Tuple[Optional[dict], dict] = (None, {})
         if cache_path:
             self.cache = JsonStorage(cache_path)
         else:
@@ -1393,16 +1396,25 @@ class TTSModelManager:
             voice_info (TTSModelInfo): The voice metadata to add or update.
         """
         with self._registry_lock:
-            self.voices[voice_info.voice_id] = voice_info
+            self.voices = {**self.voices, voice_info.voice_id: voice_info}
             self.cache[voice_info.voice_id] = voice_info.to_dict()
 
     def get_lang_voices(self, lang: str) -> List[TTSModelInfo]:
-        voices = sorted(
-            [
-                (voice_info, match_lang(voice_info.lang, lang)[-1])
-                for voice_info in self.voices.values()
-            ], key=lambda k: k[1])
-        return [v[0] for v in voices if v[1] < 10]
+        """The voices that speak ``lang``, nearest first, kept until ``voices`` is replaced."""
+        registry, answers = self._lang_voices_memo
+        if registry is not self.voices:
+            registry, answers = self.voices, {}
+            self._lang_voices_memo = (registry, answers)
+        voices = answers.get(lang)
+        if voices is None:
+            # checked before the scan: a voice gets its lang when its config loads
+            complete = all(voice_info.lang for voice_info in registry.values())
+            ranked = sorted(((voice_info, match_lang(voice_info.lang, lang)[-1])
+                             for voice_info in registry.values()), key=lambda k: k[1])
+            voices = [v[0] for v in ranked if v[1] < 10]
+            if complete:
+                answers[lang] = voices
+        return list(voices)
 
     def merge_default_voices(self, store=False):
         """

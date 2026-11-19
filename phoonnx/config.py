@@ -22,6 +22,9 @@ class Engine(str, Enum):
     """voices trained with these frameworks are explicitly supported.
     This mainly affects the format of .json file and possibly tokenization"""
     PHOONNX = "phoonnx"
+    VITS = "vits"  # single-graph VITS, the adapter the format names below fall back to
+    VITS_STREAMING = "vits_streaming"  # VITS split at the flow/HiFiGAN boundary
+    VITS_PRIOR_SPLIT = "vits_prior_split"  # VITS split at the prior boundary
     PIPER = "piper"
     MIMIC3 = "mimic3"
     COQUI = "coqui"
@@ -330,6 +333,8 @@ class VoiceConfig:
             flags = dict.fromkeys(("add_blank_char", "add_blank_word", "use_eos_bos", "blank_at_start",
                                    "blank_at_end"), False)
             flags["fold_compounds"] = True
+        # an unset scale stays out of the file, so a reader uses the engine default
+        scales = {"noise_scale": self.noise_scale, "length_scale": self.length_scale, "noise_w": self.noise_w_scale}
         native = {
             "phoonnx_version": VERSION_STR,
             "engine": self.engine.value,
@@ -347,9 +352,7 @@ class VoiceConfig:
             "phonemizer_model": self.phonemizer_model,
             "keep_punctuation": self.keep_punctuation,
             "inference": {
-                "noise_scale": self.noise_scale,
-                "length_scale": self.length_scale,
-                "noise_w": self.noise_w_scale,
+                **{key: value for key, value in scales.items() if value is not None},
                 "add_diacritics": self.add_diacritics,
                 "diacritizer_model": self.diacritizer_model,
             },
@@ -655,7 +658,7 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     and lives entirely behind these two values.
     """
     _warn_moved("phoonnx.config.get_conversion", "TTSVoice.frontend")
-    from phoonnx.engines.base import SIDE_STREAMS
+    from phoonnx.encoders import SIDE_STREAMS
     from scriptconv.graph import ConversionGraph, Edge
     from scriptconv.diacritics import DIACRITIZED, diacritize
 

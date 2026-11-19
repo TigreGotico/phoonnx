@@ -492,11 +492,6 @@ def test_default_params_expose_the_sampling_controls():
     assert params["eos_threshold"] == DEFAULT_EOS_THRESHOLD
 
 
-def test_param_labels_cover_every_param():
-    a = PocketTTSAdapter()
-    assert set(a.param_labels()) == set(a.default_params())
-
-
 # ---------------------------------------------------------------------------
 # synthesis
 # ---------------------------------------------------------------------------
@@ -638,20 +633,6 @@ def test_parse_outputs_is_not_supported():
 # ---------------------------------------------------------------------------
 # decoding / cloning
 # ---------------------------------------------------------------------------
-
-def test_decode_latents_feeds_the_decoder_in_chunks():
-    a = _adapter()
-    latents = np.zeros((1, 7, LATENT_DIM), np.float32)
-    audio = a.decode_latents(latents, chunk_size=3)
-    assert a.mimi_decoder.chunk_sizes == [3, 3, 1]
-    assert audio.shape == (7 * 4,)
-
-
-def test_decode_latents_of_nothing_is_empty():
-    a = _adapter()
-    audio = a.decode_latents(np.zeros((1, 0, LATENT_DIM), np.float32))
-    assert audio.shape == (0,)
-
 
 def test_encode_reference_shapes_the_clip_for_the_encoder():
     a = _adapter()

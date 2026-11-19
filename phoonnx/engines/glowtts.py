@@ -199,6 +199,3 @@ class GlowTTSAdapter(BaseOnnxAdapter):
             if {"input", "input_lengths", "scales"}.issubset(inputs) and mel_out:
                 return True
         return False
-
-    def param_labels(self) -> Dict[str, str]:
-        return {"noise_scale": "Noise", "length_scale": "Length Scale"}

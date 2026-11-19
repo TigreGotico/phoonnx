@@ -78,11 +78,6 @@ def test_default_params_follow_the_model_cards():
     assert defaults["max_new_tokens"] == MAX_NEW_TOKENS
 
 
-def test_param_labels_cover_every_default():
-    adapter = ArkTTSAdapter()
-    assert set(adapter.param_labels()) == set(adapter.default_params())
-
-
 def test_frame_geometry_matches_the_codec():
     # 44.1 kHz at 2048 samples per frame is the ~21.5 Hz the model cards quote.
     assert SAMPLE_RATE / FRAME_SIZE == pytest.approx(21.53, abs=0.01)

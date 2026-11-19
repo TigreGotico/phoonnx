@@ -151,6 +151,16 @@ def test_to_dict_validates_against_the_schema(config, companions):
     jsonschema.validate(load(config, **companions).to_dict(), SCHEMA)
 
 
+def test_unset_scales_stay_out_of_the_inference_block():
+    voice = load(PIPER)
+    voice.noise_scale = voice.noise_w_scale = None
+    voice.length_scale = 1.2
+    native = voice.to_dict()
+    assert native["inference"] == {"length_scale": 1.2, "add_diacritics": voice.add_diacritics,
+                                   "diacritizer_model": voice.diacritizer_model}
+    jsonschema.validate(native, SCHEMA)
+
+
 def test_schema_enums_list_every_engine_phonemizer_and_alphabet():
     properties = SCHEMA["properties"]
     assert properties["engine"]["enum"] == [e.value for e in Engine]

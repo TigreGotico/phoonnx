@@ -417,8 +417,8 @@ class RawTextLoader(ConfigLoader):
 
     The adapter owns the whole text -> id path (prompt assembly plus the
     checkpoint's own subword tokenizer, loaded from ``engine_params``), so no
-    phoneme vocabulary is built here and ``Alphabet.GRAPHEMES`` routes
-    ``TTSVoice.synthesize()`` through ``adapter.encode_text()``.  Subclasses
+    phoneme vocabulary is built here and ``adapter.make_encoder()`` returns an
+    encoder that reads text.  Subclasses
     supply only the engine, its codec's sample rate, and — where the adapter
     wants codepoints rather than words — a different alphabet.
 
