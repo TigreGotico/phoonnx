@@ -448,13 +448,13 @@ class PhoonnxTTSPlugin(TTS):
                     voice_info.config.add_diacritics,  # arabic and hebrew only
                     "add_diacritics"),
                 noise_scale=float(noise_scale) if noise_scale is not None else self._cfg_opt(
-                    voice_info.config.noise_scale,  # generator noise
+                    None,  # unset: the loaded voice's own default
                     "noise_scale", "noise-scale"),
                 length_scale=float(length_scale) if length_scale is not None else self._cfg_opt(
-                    voice_info.config.length_scale,  # phoneme length
+                    None,  # unset: the loaded voice's own default
                     "length_scale", "length-scale"),
                 noise_w_scale=float(noise_w_scale) if noise_w_scale is not None else self._cfg_opt(
-                    voice_info.config.noise_w_scale,  # phoneme width noise
+                    None,  # unset: the loaded voice's own default
                     "noise_w_scale", "noise_w", "noise-w"),
                 # zero-shot voice cloning. A path to a reference wav; cloning engines turn
                 # it into the conditioning signal. In-context engines (ZipVoice) also need

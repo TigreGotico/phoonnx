@@ -56,7 +56,9 @@ def _voice(lang, phoneme_type=PhonemeType.UNICODE, alphabet=Alphabet.UNICODE,
                          phonemizer_model=None, add_diacritics=add_diacritics,
                          keep_punctuation=keep_punctuation, diacritizer_model=diacritizer_model)
     voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
-    voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: list(range(len(phonemes))))
+    voice.config.tokenizer = types.SimpleNamespace(
+        tokenize=lambda phonemes: list(range(len(phonemes))),
+        tokenize_with_streams=lambda phonemes, streams: (list(range(len(phonemes))), streams))
     return voice
 
 

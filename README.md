@@ -65,7 +65,7 @@ golden path in [docs/training/quickstart.md](docs/training/quickstart.md).
 
 The docs are organized around three reader paths — see the [documentation index](docs/README.md):
 
-- **Use a voice** — [Installation](docs/installation.md) → [Quickstart](docs/quickstart.md) → [Usage](docs/usage.md)
+- **Use a voice** — [Installation](docs/installation.md) → [Quickstart](docs/quickstart.md) → [Usage](docs/usage.md) → [Python API](docs/api.md)
 - **Train a voice** — [Training quickstart](docs/training/quickstart.md) → [Datasets](docs/training/datasets.md) → [Export](docs/training/export.md)
 - **Understand the internals** — [Architecture](docs/architecture.md) → [Phonemizers](docs/phonemizers.md) → [Engines](docs/engines.md)
 

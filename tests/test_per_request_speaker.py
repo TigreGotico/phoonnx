@@ -76,10 +76,15 @@ class TestTheRequestReachesTheEngine(unittest.TestCase):
         self.assertEqual((got["length_scale"], got["noise_scale"],
                           got["noise_w_scale"]), (1.3, 0.4, 0.9))
 
-    def test_unsent_scales_keep_the_voice_defaults(self):
+    def test_unsent_scales_are_left_to_the_loaded_voice(self):
         got = _sent_config(self, _plugin(self))
         self.assertEqual((got["length_scale"], got["noise_scale"],
-                          got["noise_w_scale"]), (1.0, 0.667, 0.8))
+                          got["noise_w_scale"]), (None, None, None))
+
+    def test_configured_scales_apply_when_none_is_sent(self):
+        got = _sent_config(self, _plugin(self, length_scale=1.2, noise_scale=0.3, noise_w=0.5))
+        self.assertEqual((got["length_scale"], got["noise_scale"],
+                          got["noise_w_scale"]), (1.2, 0.3, 0.5))
 
 
 class TestEachVariantHasItsOwnCacheEntry(unittest.TestCase):

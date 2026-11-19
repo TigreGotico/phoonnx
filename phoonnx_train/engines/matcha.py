@@ -5,6 +5,7 @@ Uses the vendored ``phoonnx_train.matcha`` package (upstream Matcha-TTS
 model code, MIT) so training runs on the same pytorch_lightning stack,
 dataset format and CLI as every other phoonnx engine.
 """
+import json
 import logging
 from dataclasses import dataclass, fields
 from pathlib import Path
@@ -17,6 +18,7 @@ if TYPE_CHECKING:  # heavy imports — only needed for type annotations
     import pytorch_lightning as pl
 
 from phoonnx_train.engines.base import BaseTrainingEngine, TrainingEngineConfig
+from phoonnx_train.engines.vits import write_sidecars
 
 _LOG = logging.getLogger(__name__)
 
@@ -276,6 +278,9 @@ class MatchaTrainingEngine(BaseTrainingEngine):
 
         from phoonnx_train.matcha import MatchaTTS
 
+        with open(config_path, "r", encoding="utf-8") as f:
+            model_config: Dict[str, Any] = json.load(f)
+
         n_timesteps = kwargs.get("n_timesteps", 5)
 
         from phoonnx_train.torch_compat import trusting_torch_load
@@ -343,6 +348,10 @@ class MatchaTrainingEngine(BaseTrainingEngine):
             do_constant_folding=True,
             **onnx_export_kwargs(),
         )
+        write_sidecars(model_config, output_dir, output_path.stem,
+                       generate_tokens=kwargs.get("generate_tokens", False),
+                       piper=kwargs.get("piper", False))
+
         _LOG.info("ONNX model exported to %s", output_path)
         return output_path
 
