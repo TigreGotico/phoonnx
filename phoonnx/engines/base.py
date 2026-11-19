@@ -10,6 +10,7 @@ Each TTS architecture (VITS, OptiSpeech, Matcha-TTS, etc.) has different:
 An OnnxAdapter encapsulates these differences behind a single interface
 so that TTSVoice.render works identically for any engine.
 """
+import re
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -28,6 +29,9 @@ def _warn_removed_hook(name: str, replacement: str) -> None:
     warnings.warn(f"BaseOnnxAdapter.{name} is deprecated and will be removed in phoonnx "
                   f"{_removal_version()}. Use {replacement}.",
                   DeprecationWarning, stacklevel=3)
+
+INLINE_BLOCK = re.compile(r"\[\[(.*?)\]\]")
+"""An inline phoneme block: the shortest ``[[...]]`` on one line, as scriptconv's frontend reads it."""
 
 
 @dataclass
@@ -240,6 +244,18 @@ class BaseOnnxAdapter(ABC):
         feed = self.build_feed_dict(request, session)
         outputs = session.run(None, feed)
         return self.parse_outputs(outputs, request, output_names=self._safe_output_names(session))
+
+    def synthesize_stream(
+        self,
+        request: AdapterSynthesisRequest,
+        session: onnxruntime.InferenceSession,
+    ) -> Iterator[AdapterSynthesisResult]:
+        """Yield the audio of one request in parts; joined, they are :meth:`synthesize`'s audio.
+
+        An engine that makes audio in steps yields each part once it exists. The
+        default yields the one result of :meth:`synthesize`.
+        """
+        yield self.synthesize(request, session)
 
     @staticmethod
     def detect(

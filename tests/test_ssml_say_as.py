@@ -122,7 +122,7 @@ def test_the_say_as_goes_to_the_voice_hook_with_its_attributes():
 def test_synthesize_ssml_passes_the_voice_frontend(monkeypatch):
     voice = _voice()
     seen = []
-    monkeypatch.setattr(phoonnx.voice, "parse_ssml", lambda ssml, lang, frontend: seen.append(frontend) or [])
+    monkeypatch.setattr(phoonnx.voice, "parse_ssml", lambda ssml, lang, frontend, symbols: seen.append(frontend) or [])
     list(voice.synthesize_ssml("<speak>hi</speak>"))
     assert seen == [voice.frontend]
 
