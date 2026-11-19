@@ -9,6 +9,8 @@ import pytest
 
 from phoonnx.config import SynthesisConfig
 from phoonnx.ssml import SUPPORTED_TAGS, Piece, looks_like_ssml, parse_ssml, strip_ssml
+from unittest.mock import MagicMock
+
 from phoonnx.voice import AudioChunk, TTSVoice
 
 # -- reading the markup -------------------------------------------------------------------
@@ -123,6 +125,7 @@ class RecordingVoice(TTSVoice):
     """A voice whose synthesize() records the text and settings instead of running a model."""
 
     frontend = None  # no phonemizer: these documents hold no say-as
+    adapter = MagicMock()
 
     def __init__(self, lang_id_map=None):  # no model: skip TTSVoice.__init__
         self.config = SimpleNamespace(sample_rate=22050, length_scale=1.0, lang_code="en-US",
@@ -203,6 +206,7 @@ def test_silence_before_speech_uses_the_speech_rate():
 
     class _Voice(TTSVoice):
         frontend = None  # no phonemizer: the document holds no say-as
+        adapter = MagicMock()
 
     voice = _Voice.__new__(_Voice)
 

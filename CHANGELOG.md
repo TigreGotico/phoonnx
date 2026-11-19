@@ -1,5 +1,58 @@
 # Changelog
 
+## [1.116.1a1](https://github.com/TigreGotico/phoonnx/tree/1.116.1a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.116.0a1...1.116.1a1)
+
+## [1.116.0a1](https://github.com/TigreGotico/phoonnx/tree/1.116.0a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.115.4a1...1.116.0a1)
+
+## [1.115.4a1](https://github.com/TigreGotico/phoonnx/tree/1.115.4a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.115.3a1...1.115.4a1)
+
+## [1.115.3a1](https://github.com/TigreGotico/phoonnx/tree/1.115.3a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.115.2a3...1.115.3a1)
+
+## [1.115.2a3](https://github.com/TigreGotico/phoonnx/tree/1.115.2a3) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.115.2a2...1.115.2a3)
+
+## [1.115.2a2](https://github.com/TigreGotico/phoonnx/tree/1.115.2a2) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.115.2a1...1.115.2a2)
+
+## [1.115.2a1](https://github.com/TigreGotico/phoonnx/tree/1.115.2a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.115.1a1...1.115.2a1)
+
+## [1.115.1a1](https://github.com/TigreGotico/phoonnx/tree/1.115.1a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.115.0a2...1.115.1a1)
+
+## [1.115.0a2](https://github.com/TigreGotico/phoonnx/tree/1.115.0a2) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.115.0a1...1.115.0a2)
+
+## [1.115.0a1](https://github.com/TigreGotico/phoonnx/tree/1.115.0a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.114.2a1...1.115.0a1)
+
+**Merged pull requests:**
+
+- fix: hold the cloned-voice cache key and value in one attribute [\#759](https://github.com/TigreGotico/phoonnx/pull/759) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- feat: add the xvits engine [\#754](https://github.com/TigreGotico/phoonnx/pull/754) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: convert inline blocks to the voice alphabet and skip them on text-only voices [\#747](https://github.com/TigreGotico/phoonnx/pull/747) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: write the native config beside every exported model [\#746](https://github.com/TigreGotico/phoonnx/pull/746) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- test: shared token-id fixture set for phoonnx.js parity [\#745](https://github.com/TigreGotico/phoonnx/pull/745) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: side streams survive blanks and BOS/EOS [\#743](https://github.com/TigreGotico/phoonnx/pull/743) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- docs: add the Python API reference and the 2.0 target API [\#742](https://github.com/TigreGotico/phoonnx/pull/742) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- test: each raw-text engine reads the text2spoken reading of digits [\#741](https://github.com/TigreGotico/phoonnx/pull/741) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix\(train\): a preprocessing worker that cannot start stops the run [\#738](https://github.com/TigreGotico/phoonnx/pull/738) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- feat: package root exports and the PhoonnxError hierarchy [\#724](https://github.com/TigreGotico/phoonnx/pull/724) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.114.2a1](https://github.com/TigreGotico/phoonnx/tree/1.114.2a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.114.1a1...1.114.2a1)
@@ -231,49 +284,25 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.110.0a1...1.111.0a1)
 
-**Merged pull requests:**
-
-- feat: pin every voice-index file to a Hub commit [\#656](https://github.com/TigreGotico/phoonnx/pull/656) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.110.0a1](https://github.com/TigreGotico/phoonnx/tree/1.110.0a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.109.4a1...1.110.0a1)
-
-**Merged pull requests:**
-
-- feat: split synthesis into prepare and render [\#659](https://github.com/TigreGotico/phoonnx/pull/659) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.109.4a1](https://github.com/TigreGotico/phoonnx/tree/1.109.4a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.109.3a1...1.109.4a1)
 
-**Merged pull requests:**
-
-- fix: load five voices with the text path of their config [\#660](https://github.com/TigreGotico/phoonnx/pull/660) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.109.3a1](https://github.com/TigreGotico/phoonnx/tree/1.109.3a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.109.2a1...1.109.3a1)
-
-**Merged pull requests:**
-
-- fix: F5-TTS index entries select the upstream text function [\#637](https://github.com/TigreGotico/phoonnx/pull/637) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.109.2a1](https://github.com/TigreGotico/phoonnx/tree/1.109.2a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.109.1a1...1.109.2a1)
 
-**Merged pull requests:**
-
-- fix: point the single-model voices at their renamed Hub repos [\#639](https://github.com/TigreGotico/phoonnx/pull/639) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.109.1a1](https://github.com/TigreGotico/phoonnx/tree/1.109.1a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.109.0a1...1.109.1a1)
-
-**Merged pull requests:**
-
-- fix: fetch every external-data file an ONNX graph names [\#636](https://github.com/TigreGotico/phoonnx/pull/636) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.109.0a1](https://github.com/TigreGotico/phoonnx/tree/1.109.0a1) (2026-11-17)
 
@@ -306,10 +335,6 @@
 ## [1.104.1a1](https://github.com/TigreGotico/phoonnx/tree/1.104.1a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.104.0a1...1.104.1a1)
-
-**Merged pull requests:**
-
-- fix: gruut tests mock the TextProcessor that scriptconv calls [\#633](https://github.com/TigreGotico/phoonnx/pull/633) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.104.0a1](https://github.com/TigreGotico/phoonnx/tree/1.104.0a1) (2026-11-17)
 
