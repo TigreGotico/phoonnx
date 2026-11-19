@@ -24,9 +24,9 @@ from phoonnx.config import VoiceConfig
 | `phoneme_type` | `PhonemeType` | — | Phonemizer backend |
 | `alphabet` | `Alphabet` | — | Phoneme representation |
 | `engine` | `Engine` | `PHOONNX` | Training framework the model was built with |
-| `noise_scale` | `float` | `0.667` | Default generator noise scale |
-| `length_scale` | `float` | `1.0` | Default phoneme length scale |
-| `noise_w_scale` | `float` | `0.8` | Default phoneme width noise scale |
+| `noise_scale` | `float` \| `None` | `None` | Generator noise scale from `inference.noise_scale`. `None` gives the engine's default |
+| `length_scale` | `float` \| `None` | `None` | Phoneme length scale from `inference.length_scale`. `None` gives the engine's default |
+| `noise_w_scale` | `float` \| `None` | `None` | Phoneme width noise scale from `inference.noise_w`. `None` gives the engine's default |
 | `hop_length` | `int` | `256` | Model frames → audio samples factor for [phoneme alignment](alignment.md) |
 | `add_diacritics` | `bool` | `False` | Auto-add diacritics (Arabic/Hebrew) |
 | `diacritizer_model` | `str` | `rawi-ensemble` | Diacritizer model name (Arabic `text2tashkeel`); round-tripped through the config's `inference` block |
@@ -117,6 +117,8 @@ syn_config = SynthesisConfig(
 | `vc_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Target-speaker clip for post-synthesis [voice conversion](voice_conversion.md); works with every engine |
 | `vc_engine` | `str` \| `None` | `None` | voiceclonnx engine for `vc_reference`; `None` selects `"openvoice"` |
 | `extra_params` | `dict` | `{}` | Engine-specific per-call parameters (e.g. `d_factor`, `p_factor`, `e_factor`) |
+
+A scale comes from the first of these that sets it: the call's `SynthesisConfig`, the `inference` block of the voice's `config.json`, the engine's `default_params()`.
 
 ## model.json Format
 

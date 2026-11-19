@@ -11,9 +11,6 @@ from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
 
-DEFAULT_NOISE_SCALE = 0.667
-DEFAULT_LENGTH_SCALE = 1.0
-DEFAULT_NOISE_W_SCALE = 0.8
 DEFAULT_HOP_LENGTH = 256
 
 
@@ -161,10 +158,11 @@ class VoiceConfig:
     # Info about what framework was used to train the model
     engine: Engine = Engine.PHOONNX
 
-    # Inference settings
-    length_scale: float = DEFAULT_LENGTH_SCALE
-    noise_scale: float = DEFAULT_NOISE_SCALE
-    noise_w_scale: float = DEFAULT_NOISE_W_SCALE
+    # Inference scales from the config's ``inference`` block; None lets the engine's
+    # ``default_params()`` decide.
+    length_scale: Optional[float] = None
+    noise_scale: Optional[float] = None
+    noise_w_scale: Optional[float] = None
     add_diacritics: bool = None # arabic and hebrew
     # diacritizer model for languages that need one; scriptconv routes it to the
     # right backend: Arabic text2tashkeel model name (e.g. "rawi-ensemble"),
@@ -345,9 +343,9 @@ class VoiceConfig:
             num_symbols=config.get("num_symbols", 256),
             num_speakers=config.get("num_speakers", 1),
             sample_rate=config.get("audio", {}).get("sample_rate", 16000),
-            noise_scale=inference.get("noise_scale", DEFAULT_NOISE_SCALE),
-            length_scale=inference.get("length_scale", DEFAULT_LENGTH_SCALE),
-            noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
+            noise_scale=inference.get("noise_scale"),
+            length_scale=inference.get("length_scale"),
+            noise_w_scale=inference.get("noise_w"),
             add_diacritics=loaded.add_diacritics,
             diacritizer_model=loaded.diacritizer_model,
             hop_length=config.get("hop_length", DEFAULT_HOP_LENGTH),
@@ -392,6 +390,8 @@ class VoiceConfig:
 
         tok = self.tokenizer
         voc = tok.vocabulary
+        # an unset scale stays out of the file, so a reader uses the engine default
+        scales = {"noise_scale": self.noise_scale, "length_scale": self.length_scale, "noise_w": self.noise_w_scale}
         return {
             "phoonnx_version": version,
             "engine": self.engine.value if self.engine else "phoonnx",
@@ -409,9 +409,7 @@ class VoiceConfig:
             "phonemizer_model": self.phonemizer_model,
             "keep_punctuation": self.keep_punctuation,
             "inference": {
-                "noise_scale": self.noise_scale,
-                "length_scale": self.length_scale,
-                "noise_w": self.noise_w_scale,
+                **{key: value for key, value in scales.items() if value is not None},
                 "add_diacritics": self.add_diacritics,
                 "diacritizer_model": self.diacritizer_model,
             },
