@@ -6,8 +6,8 @@ text keys of :meth:`phoonnx.config.VoiceConfig.to_dict`. A voice can arrive in a
 of a dozen other shapes: a piper or mimic3 or Coqui checkpoint, a bare transformers
 vocabulary, a sherpa ``tokens.txt``, or one of the codec-LM engines that ship no
 phoneme vocabulary at all. :func:`convert_config` turns each of them into a native
-config once, and :func:`~phoonnx.config.VoiceConfig.from_dict` converts through it,
-with a ``DeprecationWarning``, when a voice still ships a third-party config.
+config once. :func:`~phoonnx.config.VoiceConfig.from_dict` still loads a third-party config
+through these loaders, with a ``DeprecationWarning``.
 
 Each shape is handled by a loader that knows how to recognise it
 (:meth:`ConfigLoader.detect`) and how to turn it into the handful of fields that
@@ -992,10 +992,10 @@ def convert_config(path_or_dict: Union[str, Path, Dict[str, Any]], *,
                    **overrides: Any) -> Dict[str, Any]:
     """Turn a voice config of any format into a native phoonnx ``config.json`` dict.
 
-    The result is what :meth:`phoonnx.config.VoiceConfig.to_dict` writes: it loads
-    through :meth:`~phoonnx.config.VoiceConfig.from_dict` with no companion file
-    and no override, and gives the same token ids as the original config does with
-    them. A native config comes back in normal form.
+    The result is what :meth:`phoonnx.config.VoiceConfig.to_dict` writes. It loads through
+    :meth:`~phoonnx.config.VoiceConfig.from_dict` with no companion file and no override, and
+    gives the same token ids as the original config does with them. A Chatterbox config
+    still needs ``bpe_tokenizer_json`` at load. A native config comes back in normal form.
 
     Parameters:
         path_or_dict: The config, as a dict or the path of a JSON file.

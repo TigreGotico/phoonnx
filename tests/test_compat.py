@@ -8,37 +8,15 @@ import pytest
 from phoonnx import compat
 from phoonnx.config import Alphabet, Engine, PhonemeType, VoiceConfig
 from phoonnx.tokenizer import TTSTokenizer, Vocabulary
+from tests.config_fixtures import (CANONICAL, COQUI, PIPER, TRANSFORMERS, VOSK, assert_same_voice,
+                                   piper_ids)
 
 
-def piper_ids(id_map, phonemes):
-    """Piper's own id stream: BOS, PAD, then each phoneme followed by PAD, then EOS."""
-    ids = [*id_map["^"], *id_map["_"]]
-    for phoneme in phonemes:
-        ids += [*id_map[phoneme], *id_map["_"]]
-    return ids + id_map["$"]
-
-
-PIPER = {
-    "piper_version": "1.0.0", "phoneme_type": "espeak",
-    "phoneme_id_map": {"_": [0], "^": [1], "$": [2], "a": [3], "b": [4], "!": [5], " ": [6]},
-    "num_symbols": 7, "num_speakers": 1, "audio": {"sample_rate": 22050},
-    "espeak": {"voice": "en-us"},
-    "inference": {"noise_scale": 0.667, "length_scale": 1.0, "noise_w": 0.8},
-}
-VOSK = {"espeak": {"voice": "ru"},
-        "phoneme_id_map": {"_": [0], "^": [1], "$": [2], "a0": [10], "sch": [20]}}
 MIMIC3 = {"text_language": "en", "phonemizer": "gruut", "audio": {"sample_rate": 22050},
           "phonemes": {"pad": "_", "bos": "^", "eos": "$", "blank": "_", "blank_word": "#",
                        "blank_between": "tokens_and_words"}}
-COQUI = {"audio": {"sample_rate": 22050}, "add_blank": True, "enable_eos_bos_chars": False,
-         "characters": {"characters_class": "TTS.tts.models.vits.VitsCharacters", "pad": "<PAD>",
-                        "punctuations": "!,", "characters": "ab", "blank": "<BLNK>"},
-         "datasets": [{"language": "en"}]}
-CANONICAL = {"engine": "coqui", "phoneme_type": "espeak", "alphabet": "ipa", "lang_code": "ca-ES",
-             "num_symbols": 4, "audio": {"sample_rate": 22050},
-             "phoneme_id_map": {"_": 0, " ": 1, "a": 2, "b": 3}, "pad": "_", "blank": "_"}
-TRANSFORMERS_VOCAB = {"_": 0, "a": 1, "b": 2, " ": 3}
-TRANSFORMERS_TOKENIZER = {"add_blank": True, "language": "en", "pad_token": "_"}
+TRANSFORMERS_VOCAB = TRANSFORMERS["vocab"]
+TRANSFORMERS_TOKENIZER = TRANSFORMERS["tokenizer_config"]
 TOKENS_TXT = "_ 0\n^ 1\n$ 2\na 3\nb 4\n"
 
 
@@ -55,13 +33,6 @@ def native_read_back(native, tmp_path):
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         return VoiceConfig.from_dict(json.loads(path.read_text(encoding="utf-8")))
-
-
-def assert_same_voice(old, new, sentences):
-    for sentence in sentences:
-        assert new.tokenizer.tokenize(sentence) == old.tokenizer.tokenize(sentence)
-    assert new.frontend == old.frontend
-    assert (new.engine, new.sample_rate, new.num_symbols) == (old.engine, old.sample_rate, old.num_symbols)
 
 
 def test_piper_ids_equal_the_loader_and_piper_itself(tmp_path):
@@ -155,10 +126,14 @@ def test_engine_override_names_a_raw_text_voice_without_a_config_key(tmp_path):
     assert native["engine"] == "supertonic" and native["audio"]["sample_rate"] == 44100
 
 
-def test_native_config_round_trips_byte_equal(tmp_path):
-    native = compat.convert_config(PIPER, lang_code="en-us")
-    again = native_read_back(native, tmp_path).to_dict()
-    assert json.dumps(again, ensure_ascii=False) == json.dumps(native, ensure_ascii=False)
+def test_converted_native_config_round_trips_byte_equal(tmp_path):
+    tokens = tmp_path / "tokens.txt"
+    tokens.write_text(TOKENS_TXT, encoding="utf-8")
+    for config, companions in [(PIPER, dict(lang_code="en-us")), ({}, TRANSFORMERS),
+                               ({"pad": "_"}, dict(tokens=tokens))]:
+        native = compat.convert_config(config, **companions)
+        again = native_read_back(native, tmp_path).to_dict()
+        assert json.dumps(again, ensure_ascii=False) == json.dumps(native, ensure_ascii=False)
 
 
 def test_native_config_loads_without_a_warning(tmp_path):

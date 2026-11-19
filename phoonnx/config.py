@@ -9,7 +9,7 @@ from phoonnx.util import LOG, is_arabic, normalize_lang
 from phoonnx.version import VERSION_STR
 from phoonnx.errors import UnsupportedVoiceLanguage
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
-                                 DEFAULT_BLANK_WORD_TOKEN,
+                                 DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
 
 DEFAULT_NOISE_SCALE = 0.667
@@ -289,30 +289,16 @@ class VoiceConfig:
                               keep_punctuation=self.keep_punctuation)
 
     @staticmethod
-    def from_dict(config: dict[str, Any],
-                  vocab: Optional[Dict[str, Any]] = None,  # transformers
-                  tokenizer_config: Optional[Dict[str, Any]] = None,  # transformers
-                  tokens_txt: Optional[str] = None,  # sherpa/mimic3
-                  lang_code: Optional[str] = None,
-                  phoneme_type: Optional[Union[str, PhonemeType]] = None,
-                  alphabet: Optional[Union[str, Alphabet]] = None,
-                  engine: Optional[Union[str, Engine]] = None,
-                  engine_params: Optional[Dict[str, Any]] = None,
-                  bpe_tokenizer_json: Optional[str] = None,
-                  lang_tokens: Optional[Dict[str, str]] = None) -> "VoiceConfig":
-        """
-        Build a VoiceConfig from a model configuration dictionary and its optional
-        companion files.
+    def from_dict(config: dict[str, Any], **options: Any) -> "VoiceConfig":
+        """Build a VoiceConfig from a config dict and its companion files.
 
-        A config with a ``phoonnx_version`` key is in the native format. Any other
-        config is a third-party format, which :mod:`phoonnx.compat` converts at load
-        with a ``DeprecationWarning``; :func:`phoonnx.compat.convert_config` writes
-        the native config once. The parameters are those of
-        :func:`phoonnx.compat.build_voice_config`.
+        A config with a ``phoonnx_version`` key is native. Any other config is a third-party
+        format: it still loads, with a ``DeprecationWarning``, and
+        :func:`phoonnx.compat.convert_config` writes the native config once. ``options`` are the
+        keyword parameters of :func:`phoonnx.compat.build_voice_config`.
 
         Raises:
-            ValueError: If the detected format needs a companion file that was
-                not provided.
+            ValueError: If the format needs a companion file that was not given.
         """
         from phoonnx.compat import build_voice_config
 
@@ -320,10 +306,7 @@ class VoiceConfig:
             warnings.warn("The config is not in the native phoonnx format. phoonnx "
                           f"{_removal_version()} reads only the native format. Convert it once with "
                           "phoonnx.compat.convert_config.", DeprecationWarning, stacklevel=2)
-        return build_voice_config(config, vocab=vocab, tokenizer_config=tokenizer_config,
-                                  tokens_txt=tokens_txt, lang_code=lang_code, phoneme_type=phoneme_type,
-                                  alphabet=alphabet, engine=engine, engine_params=engine_params,
-                                  bpe_tokenizer_json=bpe_tokenizer_json, lang_tokens=lang_tokens)
+        return build_voice_config(config, **options)
 
     def to_dict(self) -> Dict[str, Any]:
         """The native ``config.json`` dict, which :meth:`from_dict` reads back with no warning.
