@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.123.4a1](https://github.com/TigreGotico/phoonnx/tree/1.123.4a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.3a1...1.123.4a1)
+
+**Merged pull requests:**
+
+- fix: keep a line break between skipped inline blocks [\#831](https://github.com/TigreGotico/phoonnx/pull/831) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.123.3a1](https://github.com/TigreGotico/phoonnx/tree/1.123.3a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.2a1...1.123.3a1)
@@ -279,17 +287,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.15a1...1.113.15a2)
 
-**Merged pull requests:**
-
-- test: gruut fakes end with the pause word; assert the whole string [\#721](https://github.com/TigreGotico/phoonnx/pull/721) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.113.15a1](https://github.com/TigreGotico/phoonnx/tree/1.113.15a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.14a1...1.113.15a1)
-
-**Merged pull requests:**
-
-- fix: chunk setting follow-ups: early error, OVOS plugin key, docs [\#722](https://github.com/TigreGotico/phoonnx/pull/722) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.113.14a1](https://github.com/TigreGotico/phoonnx/tree/1.113.14a1) (2026-11-18)
 
