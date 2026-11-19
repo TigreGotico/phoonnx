@@ -161,6 +161,7 @@ These keys of the native format control how the phonemes become ids.
 | Key | Default | Effect |
 |-----|---------|--------|
 | `phoneme_id_map` | — | Symbol to id. A value is an id or a list of ids. A list of one id is that id. A longer list gives each id in turn, and an empty list gives no id. |
+| `pad` | `_` | The padding symbol. `null` gives a vocabulary with no padding symbol. |
 | `add_blank_char` | `true` | Put the `blank` symbol between all ids, and at the start and end as `blank_at_start` and `blank_at_end` say. |
 | `add_blank_word` | `false` | Put the `blank_word` symbol after each word that gives an id. With `blank_at_end`, the last word gets one too. |
 | `blank_word` | none | The symbol that `add_blank_word` puts between words. Without it, a space gives no id. |

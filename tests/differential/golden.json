@@ -11779,7 +11779,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -11837,7 +11848,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -11895,7 +11917,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -11953,7 +11986,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12011,7 +12055,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12069,7 +12124,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12131,7 +12197,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12189,7 +12266,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12247,7 +12335,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12305,7 +12404,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12363,7 +12473,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12421,7 +12542,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12479,7 +12611,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12541,7 +12684,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12599,7 +12753,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12657,7 +12822,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12715,7 +12891,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12773,7 +12960,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12831,7 +13029,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12889,7 +13098,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -12951,7 +13171,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -13009,7 +13240,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -13067,7 +13309,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -13125,7 +13378,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -13183,7 +13447,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -13241,7 +13516,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -13299,7 +13585,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -13361,7 +13658,18 @@
     "blank_at_end": true,
     "blank_at_start": true,
     "bos": null,
-    "char2idx": {},
+    "char2idx": {
+     " ": 9,
+     "_": 8,
+     "a": 0,
+     "b": 1,
+     "c": 2,
+     "d": 3,
+     "e": 4,
+     "f": 5,
+     "g": 6,
+     "h": 7
+    },
     "eos": null,
     "pad": " ",
     "use_eos_bos": true
@@ -13632,7 +13940,7 @@
     "add_diacritics": null
    },
    "lang_code": null,
-   "pad": "_",
+   "pad": null,
    "phoneme_id_map": {
     "_": 0,
     "a": 1
@@ -13663,7 +13971,7 @@
    "num_langs": 1,
    "num_speakers": 1,
    "num_symbols": 256,
-   "pad_token": "_",
+   "pad_token": null,
    "phoneme_type": "graphemes",
    "phonemizer_identity": null,
    "phonemizer_model": null,
@@ -13681,7 +13989,7 @@
      "a": 1
     },
     "eos": "$",
-    "pad": "_",
+    "pad": null,
     "use_eos_bos": true
    },
    "word_sep_token": " "
@@ -13717,7 +14025,7 @@
     "add_diacritics": null
    },
    "lang_code": null,
-   "pad": "_",
+   "pad": null,
    "phoneme_id_map": {
     "_": 0,
     "a": 1
@@ -13748,7 +14056,7 @@
    "num_langs": 1,
    "num_speakers": 1,
    "num_symbols": 256,
-   "pad_token": "_",
+   "pad_token": null,
    "phoneme_type": "espeak",
    "phonemizer_identity": null,
    "phonemizer_model": null,
@@ -13766,7 +14074,7 @@
      "a": 1
     },
     "eos": "$",
-    "pad": "_",
+    "pad": null,
     "use_eos_bos": true
    },
    "word_sep_token": " "

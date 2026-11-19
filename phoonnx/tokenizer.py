@@ -243,6 +243,7 @@ class Vocabulary:
             cfg (Dict[str, Any]): Configuration mapping expected to contain "phoneme_id_map"
                 (mapping phoneme strings to integer IDs). Optional keys "pad", "eos", "bos",
                 and "blank" override the corresponding special token names; defaults are used when absent.
+                A null "pad" means no pad.
                 The optional "blank_word" names the symbol put between words when
                 "add_blank_word" is true, as in the Mimic 3 "phonemes" section.
 
@@ -256,7 +257,7 @@ class Vocabulary:
             char: (idx[0] if len(idx) == 1 else list(idx)) if isinstance(idx, (list, tuple)) else idx
             for char, idx in cfg.get("phoneme_id_map", {}).items()
         }
-        pad: Optional[str] = cfg.get("pad") or DEFAULT_PAD_TOKEN
+        pad: Optional[str] = cfg.get("pad", DEFAULT_PAD_TOKEN)
         eos: Optional[str] = cfg.get("eos") or DEFAULT_EOS_TOKEN
         bos: Optional[str] = cfg.get("bos") or DEFAULT_BOS_TOKEN
         blank: Optional[str] = cfg.get("blank") or DEFAULT_BLANK_TOKEN
