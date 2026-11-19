@@ -105,6 +105,8 @@ adds an **`exaggeration`** control (0.0–1.0) for expressiveness:
 voice.synthesize("...", SynthesisConfig(speaker_reference="ref.wav", exaggeration=0.6))
 ```
 
+The speech tokens are sampled. `extra_params={"seed": 0}` makes a run reproducible.
+
 ## Preset engine (NeuTTS / Akiti-TTS)
 
 [NeuTTS](engines.md) clones in-context, but the reference is **encoded once, offline**, and

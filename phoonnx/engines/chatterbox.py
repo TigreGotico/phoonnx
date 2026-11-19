@@ -14,7 +14,8 @@ Four ONNX graphs (HF: ``onnx-community/chatterbox-ONNX``):
 Cloning is d-vector style (a reference wav, **no transcription**), so it uses the
 ``speaker_reference`` API and not ``speaker_reference_text``. Text is tokenized with the
 model's own BPE (``phoonnx.tokenizer.BPETokenizer`` + the UNICODE phonemizer), so
-``request.phoneme_ids`` already carries the subword ids.
+``request.phoneme_ids`` already carries the subword ids. The ``seed`` request param fixes
+the sampling of the speech tokens.
 """
 from typing import Any, Dict, List, Optional
 
@@ -153,7 +154,7 @@ class ChatterboxAdapter(BaseOnnxAdapter):
         exaggeration = np.array([float(request.params.get("exaggeration", 0.5))], np.float32)
         temperature = float(request.params.get("temperature", 0.8))
         top_p = float(request.params.get("top_p", 0.95))
-        rng = np.random.default_rng()
+        rng = np.random.default_rng(request.params.get("seed"))
         embed_pos = np.where(input_ids >= START_SPEECH_TOKEN, 0,
                              np.arange(input_ids.shape[1])[None, :] - 1).astype(np.int64)
 

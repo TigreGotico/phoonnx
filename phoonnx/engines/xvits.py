@@ -47,41 +47,14 @@ _OBSTRUENT_DURATION = 0.3
 def parse_marked(text: str) -> Tuple[str, List[bool]]:
     """``'You *want* the shark?'`` -> ``('You want the shark?', [False, True, False, False])``.
 
-    A marked span may cover several words; each of them is flagged.
+    Only the marks leave the text, so its whitespace and paragraph breaks stay. Each word with a
+    marked letter is flagged, so a span of several words flags each of them.
     """
-    plain: List[str] = []
-    flags: List[bool] = []
-    position = 0
-    for match in _MARK.finditer(text):
-        before = text[position:match.start()].split()
-        plain += before
-        flags += [False] * len(before)
-        inside = match.group(1).split()
-        plain += inside
-        flags += [True] * len(inside)
-        position = match.end()
-    rest = text[position:].split()
-    plain += rest
-    flags += [False] * len(rest)
-    joined = re.sub(r"\s+([,.;:!?])", r"\1", " ".join(plain))
-    return joined, _flags_for(joined, plain, flags)
-
-
-def _flags_for(joined: str, items: Sequence[str], flags: Sequence[bool]) -> List[bool]:
-    """The flag of each word of *joined*, where punctuation-only items merged into the word before."""
-    words = joined.split()
-    if len(words) == len(items):
-        return list(flags)
-    merged: List[bool] = []
-    index = 0
-    for word in words:
-        flagged, accumulated = False, ""
-        while index < len(items) and accumulated != word:
-            accumulated = re.sub(r"\s+([,.;:!?])", r"\1", f"{accumulated} {items[index]}".strip())
-            flagged = flagged or flags[index]
-            index += 1
-        merged.append(flagged)
-    return merged
+    # the bounds of each span in the plain text: every span before it lost its two marks
+    spans = [(match.start() - 2 * k, match.end() - 2 * k - 2) for k, match in enumerate(_MARK.finditer(text))]
+    plain = _MARK.sub(r"\1", text)
+    return plain, [any(start < word.end() and word.start() < end for start, end in spans)
+                   for word in re.finditer(r"\S+", plain)]
 
 
 def align_words(symbols: Sequence[str], words: Sequence[Sequence[str]]) -> List[int]:
@@ -102,14 +75,25 @@ def align_words(symbols: Sequence[str], words: Sequence[Sequence[str]]) -> List[
     kept = [i for i, symbol in enumerate(symbols) if symbol not in _IGNORED]
     hypothesis = [symbols[i] for i in kept]
     word_of = [-1] * len(symbols)
-    matcher = difflib.SequenceMatcher(a=reference, b=hypothesis, autojunk=False)
-    for _, a1, a2, b1, b2 in matcher.get_opcodes():
+    opcodes = difflib.SequenceMatcher(a=reference, b=hypothesis, autojunk=False).get_opcodes()
+    for _, a1, a2, b1, b2 in opcodes:
         for k in range(b2 - b1):
             if a2 > a1:
                 source = a1 + min(a2 - a1 - 1, (k * (a2 - a1)) // max(1, b2 - b1))
                 word_of[kept[b1 + k]] = reference_word[source]
             elif a1 > 0:
                 word_of[kept[b1 + k]] = reference_word[a1 - 1]
+    # The normaliser can move a word: "£3 billion" reads "three billion pounds". The symbols that
+    # no equal block took are matched once more, so a moved run keeps its word. A run of one
+    # symbol is too common to show a move.
+    free_a = [i for tag, a1, a2, _, _ in opcodes if tag != "equal" for i in range(a1, a2)]
+    free_b = [j for tag, _, _, b1, b2 in opcodes if tag != "equal" for j in range(b1, b2)]
+    moved = difflib.SequenceMatcher(a=[reference[i] for i in free_a], b=[hypothesis[j] for j in free_b],
+                                    autojunk=False)
+    for a, b, size in moved.get_matching_blocks():
+        if size > 1:
+            for k in range(size):
+                word_of[kept[free_b[b + k]]] = reference_word[free_a[a + k]]
     # a stress mark takes the word of the symbol after it
     for i in range(len(symbols) - 2, -1, -1):
         if symbols[i] in _STRESS and word_of[i] < 0:
