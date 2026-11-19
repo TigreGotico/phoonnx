@@ -1,7 +1,8 @@
 # Installation
 
-This page is for anyone setting up phoonnx. It covers the base install, exactly what each
-optional extra unlocks, the GPU runtime packages, and the system dependencies you may need.
+This page is for anyone setting up phoonnx. It covers the base install, what each optional
+extra adds, the GPU runtime packages, the system dependencies you may need, and the errors a
+missing piece gives.
 
 ## Requirements
 
@@ -11,43 +12,110 @@ optional extra unlocks, the GPU runtime packages, and the system dependencies yo
 ## Base install
 
 ```bash
-pip install phoonnx
+pip install --pre phoonnx
 ```
 
-The base package depends only on `numpy`, `onnxruntime`, `quebra-frases`, `langcodes`,
-`text2spoken`, `ovos-number-parser`, `ovos-date-parser`, `scriptconv`, `click`, `requests` and
-`json_database`. With nothing else installed you can:
+With uv:
+
+```bash
+uv pip install --prerelease=allow phoonnx
+```
+
+The base install pulls in the CPU `onnxruntime` wheel, the text frontend (`scriptconv`,
+`text2spoken`, `quebra-frases`, the OVOS number and date parsers), `huggingface_hub` for voice
+downloads and `ovos-plugin-manager` for the OVOS plugin. With nothing else installed you can:
 
 - run ONNX voices that tokenize with **graphemes** or **unicode** codepoints,
-- use the full `phoonnx-voices` CLI (`update-cache`, `list-langs`, `list-voices`,
-  `list-available`, `download`).
+- use the `phoonnx-voices` CLI (`update-cache`, `list-langs`, `list-voices`,
+  `list-available`, `download`). `add-alignment` also needs the `streaming` extra.
 
-It does **not** include the language-specific phonemizers, voice cloning, streaming
-auto-split, or the training pipeline — those come from the extras below.
+The base install does **not** include the language-specific phonemizers, voice cloning,
+streaming auto-split, or the training pipeline. Those come from the extras below.
+
+## Which version to install
+
+phoonnx ships as alpha releases, and these pages describe the alpha line. PyPI also holds an
+old stable release, `1.3.3`. A plain `pip install phoonnx` picks that release, and its
+`update-cache` command fails:
+
+```
+$ phoonnx-voices update-cache
+Clearing local voice cache...
+Fetching voice lists from upstream sources (this requires an internet connection)...
+An unexpected error occurred while fetching voice lists: 'TTSModelManager' object has no attribute 'get_ovos_voice_list'
+```
+
+Always install with `--pre` (pip) or `--prerelease=allow` (uv). To see which version you
+have:
+
+```
+$ python -c "from phoonnx.version import VERSION_STR; print(VERSION_STR)"
+1.123.1a1
+```
+
+An alpha version ends in `a` and a number. If you see `1.3.3`, upgrade. A second install
+with `--pre` alone does not replace an installed release, so add `-U`:
+
+```bash
+pip install --pre -U phoonnx
+# or, with uv:
+uv pip install --prerelease=allow -U phoonnx
+```
 
 ## Extras matrix
 
-Install extras with `pip install "phoonnx[<name>]"`. Combine them with commas, e.g.
-`pip install "phoonnx[en,cloning]"`.
+Install extras with `pip install --pre "phoonnx[<name>]"`. Combine them with commas, for
+example `pip install --pre "phoonnx[en,cloning]"`.
+
+### Which extra a voice needs
+
+The phonemizer of a voice decides which extra it needs. `phoonnx-voices list-voices --verbose`
+prints it on the `Phoneme Type` line of each voice:
+
+```
+$ phoonnx-voices list-voices --verbose | grep -A4 'ID:          OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone'
+  ID:          OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone
+  Language:    pt-PT
+  Engine:      phoonnx
+  Phoneme Type: Phonemizer.TUGAPHONE
+  Model URL:   https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_tugaphone/resolve/b081738cde545e32a8c27fd780c5a2d948f1fb1f/miro_pt-PT.onnx
+```
+
+| Phoneme Type | Extra |
+|---|---|
+| `UNICODE`, `GRAPHEMES` | none, the base install runs it |
+| `ESPEAK` (most Piper voices) | `espeak` |
+| `TUGAPHONE` | `pt` |
+| `GRUUT`, `EPITRAN` | the language extra, for example `de` |
+| `MISAKI_EN`, `MISAKI_ZH`, `MISAKI_JA` | `en`, `zh`, `ja` |
+| `COTOVIA` | `gl` |
+| `AHOTTS` | `eu` |
+
+A voice that shows `None` names its phonemizer in its own config file. If that phonemizer is
+missing, the voice load stops with an `ImportError` that names the package (see
+[Errors you may see](#errors-you-may-see)).
 
 ### Feature extras
 
-| Extra | Unlocks | Pulls in |
+| Extra | Adds | Pulls in |
 |---|---|---|
-| `espeak` | The eSpeak phonemizer, which every eSpeak voice needs | `scriptconv[espeak]`, which gives the eSpeak wrapper in `scriptconv-copyleft`, and `espyak` (a pure-Python port of the eSpeak phonemizer, byte-for-byte parity) |
+| `espeak` | The eSpeak phonemizer, which every eSpeak voice needs | `scriptconv[espeak]`, which gives the eSpeak wrapper in `scriptconv-copyleft`, and `espyak` (a pure-Python port of the eSpeak phonemizer) |
 | `cloning` | Loading non-WAV reference clips for [voice cloning](cloning.md) | `soundfile`, `scipy` |
-| `streaming` | Auto-splitting a monolithic VITS voice into a [streaming](streaming.md) encoder/decoder pair | `onnx` (graph surgery) |
+| `streaming` | Auto-splitting a monolithic VITS voice into a [streaming](streaming.md) encoder/decoder pair, `phoonnx-voices add-alignment`, and alignment on demand | `onnx` (graph surgery) |
 | `matcha` | Matcha two-stage synthesis helpers | `scipy` |
+| `pockettts` | Pocket TTS voice states | `safetensors` |
+| `omnivoice` | Faster silence trimming for OmniVoice (a pure-numpy fallback runs without it) | `pydub` |
+| `indic-parler` | The Indic Parler tokenizers | `tokenizers` |
 | `chatterbox-multilingual` | Chatterbox per-language script transforms (ja/zh) | `pykakasi`, `spacy-pkuseg` |
 | `cjk` | Same CJK script-transform deps as `chatterbox-multilingual`, under a shorter name | `pykakasi`, `spacy-pkuseg` |
-| `o2i` | The multilingual data-driven IPA backend | `orthography2ipa` |
+| `o2i` | The multilingual data-driven IPA backend | `orthography2ipa`, `o2i-lexicons` |
 | `audiosr` | Optional 48 kHz [audio super-resolution](ovos_plugin.md#audio-super-resolution) over synthesized audio | `audiosronnx` |
-| `all` | Every language phonemizer + cloning (used by the Docker image) | see below |
+| `vc` | Optional [voice conversion](voice_conversion.md) of the output to a target speaker | `voiceclonnx` |
+| `all` | Every language phonemizer, cloning, super-resolution and voice conversion (used by the Docker image) | see `pyproject.toml` |
 
 ### Language extras
 
-Each language extra installs the phonemizer backends for that language. Most pull `epitran`;
-several add higher-quality engines.
+Each language extra installs the phonemizer backends for that language.
 
 Some wrappers are not in the Apache-2.0 `scriptconv` wheel. The eSpeak, Cotovia, AhoTTS,
 Persian, Korean, pykakasi and misaki wrappers are in `scriptconv-copyleft`. The mantoq, Halabi,
@@ -56,32 +124,36 @@ The extras that use these wrappers install the package that holds them.
 
 | Extra | Language | Notable backends |
 |---|---|---|
-| `ar` | Arabic | `epitran`, `scriptconv[ar-phonemizers]` (`arbtok`, `scriptconv-nonfree`), `text2tashkeel` |
-| `ca` | Catalan | `epitran` |
-| `cs` | Czech | `epitran` |
+| `ar` | Arabic | `epitran`, `gruut[ar]`, `scriptconv[ar-phonemizers]`, `arbtok`, `scriptconv-nonfree` (mantoq), `text2tashkeel` |
+| `ca` | Catalan | `epitran`, `gruut[ca]` |
+| `cs` | Czech | `epitran`, `gruut[cs]` |
 | `de` | German | `epitran`, `gruut[de]` |
 | `en` | English | `epitran`, `gruut[en]`, `misaki[en]`, `scriptconv-copyleft`, `spacy` |
-| `es` | Spanish | `epitran` |
-| `eu` | Basque | `scriptconv[eu]`, `ahotts-g2p`, `euskaphone` |
+| `es` | Spanish | `epitran`, `gruut[es]` |
+| `eu` | Basque | `scriptconv[eu]`, `ahotts-g2p`, `euskaphone`, `epitran` |
 | `fa` | Persian | `epitran`, `scriptconv[fa]` (installs `scriptconv-copyleft[fa]`) |
-| `fr` | French | `epitran` |
-| `gl` | Galician | `scriptconv[gl]`, `pycotovia` (see [Galician](galician.md)) |
-| `he` | Hebrew | `epitran` |
-| `it` | Italian | `epitran` |
-| `ja` | Japanese | `epitran`, `gruut[ja]`, `scriptconv[ja-phonemizers]`, `misaki[ja]`, `spacy` |
+| `fr` | French | `epitran`, `gruut[fr]` |
+| `gl` | Galician | `scriptconv[gl]`, `pycotovia`, `epitran` (see [Galician](galician.md)) |
+| `he` | Hebrew | `epitran`, `phonikud_onnx`, `phonikud` |
+| `it` | Italian | `epitran`, `gruut[it]` |
+| `ja` | Japanese | `epitran`, `gruut[ja]`, `scriptconv[ja-phonemizers]`, `misaki`, `pyopenjtalk-plus`, `fugashi`, `cutlet`, `unidic-lite`, `pykakasi`, `spacy` |
 | `ko` | Korean | `epitran`, `scriptconv[ko]`, `g2pk`, `misaki[ko]` |
+| `lb`, `nl` | Luxembourgish, Dutch | `gruut[<lang>]` |
 | `mwl` | Mirandese | `scriptconv[mwl]`, which gives the orthography2ipa Mirandese specs |
-| `pt` | Portuguese | `epitran`, `scriptconv[o2i]`, which gives the orthography2ipa Barranquenho spec |
-| `ru` | Russian | `epitran` |
-| `sv` | Swedish | `epitran` |
-| `sw` | Swahili | `epitran` |
-| `vi` | Vietnamese | `epitran`, `gruut[vi]`, `scriptconv[vi]`, `misaki[vi]`, `scriptconv-copyleft`, `spacy` |
-| `zh` | Chinese | `epitran`, `gruut[zh]`, `misaki[zh]`, `scriptconv-copyleft`, `spacy` |
+| `pt` | Portuguese | `epitran`, `scriptconv[o2i]`, `tugaphone`, `gruut[pt]` |
+| `ru` | Russian | `epitran`, `gruut[ru]` |
+| `sv` | Swedish | `epitran`, `gruut[sv]` |
+| `sw` | Swahili | `epitran`, `gruut[sw]` |
+| `vi` | Vietnamese | `epitran`, `gruut[vi]`, `scriptconv[vi]`, `misaki[vi]`, `scriptconv-copyleft`, `viphoneme`, `underthesea`, `spacy` |
+| `zh` | Chinese | `scriptconv[zh-phonemizers]`, `epitran`, `gruut[zh]`, `misaki[zh]`, `scriptconv-copyleft`, `g2pM`, `pypinyin`, `jieba`, `spacy` |
 
-> **Arabic note.** The `ar` extra installs `epitran`, `arbtok` and `text2tashkeel`, **not**
-> `mantoq`. The `mantoq` phonemizer has no extra of its own — install it separately if a voice
-> requires it. Arabic diacritization is provided by `text2tashkeel`; without the `ar` extra it
-> raises a clear `ImportError` when a voice needs diacritics.
+Many more languages have an extra that installs `epitran` only. Its name is the language
+code, for example `fi`, `hi`, `pl`, `tr` or `uk`. The full list is in `pyproject.toml`.
+
+> **Arabic note.** The `ar` extra installs `scriptconv-nonfree`, which holds the mantoq
+> phonemizer under a non-commercial licence. Arabic diacritization comes from `text2tashkeel`.
+> When diacritization fails or its backend is missing, phoonnx logs a warning and speaks the
+> text without diacritics (see [Deployment](deployment.md#prosody-enrichment-degrades-instead-of-failing)).
 
 ### Training extras
 
@@ -96,13 +168,14 @@ The extras that use these wrappers install the package that holds them.
 | `train-resample` | Resampling for engines defined at a fixed sample rate (e.g. ZipVoice 24 kHz) |
 | `train-data` | Multi-format dataset loading for preprocessing (jsonl/parquet/HF repos with embedded audio bytes) |
 | `train-optispeech` | The OptiSpeech training engine |
+| `train-mosstts` | The MOSS-TTS-Nano training pipeline |
 
 See the [Training quickstart](training/quickstart.md) for how these fit together.
 
 ## GPU inference
 
 Which execution providers exist depends on the installed ONNX Runtime build, not on phoonnx.
-The default `onnxruntime` wheel is CPU-only; only one GPU build can be installed at a time:
+The default `onnxruntime` wheel is CPU-only. Only one GPU build can be installed at a time:
 
 | Hardware | Package | Providers |
 |---|---|---|
@@ -112,21 +185,35 @@ The default `onnxruntime` wheel is CPU-only; only one GPU build can be installed
 | Intel | `onnxruntime-openvino` | `OpenVINOExecutionProvider` |
 | Apple | `onnxruntime` | `CoreMLExecutionProvider` |
 
-Select providers explicitly when loading a voice:
+Select providers explicitly when you load a voice:
 
 ```python
-voice = TTSVoice.load(
-    "model.onnx", "model.json",
+from phoonnx.model_manager import TTSModelManager
+
+manager = TTSModelManager()
+manager.load()
+manager.merge_default_voices()
+
+voice = manager.voices["OpenVoiceOS/phoonnx_pt-PT_miro_unicode"].load(
     providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
 )
+print(voice.session.get_providers())
 ```
 
-or set `PHOONNX_ONNX_PROVIDERS` once for the process. `CPUExecutionProvider` is always
-appended so synthesis keeps working. Full details in the
+On a machine with the CPU-only wheel, phoonnx skips the GPU provider with a warning, and the
+voice runs on the CPU:
+
+```
+WARNING - 'CUDAExecutionProvider' is not available in this onnxruntime build (available: ['AzureExecutionProvider', 'CPUExecutionProvider']), skipping it. Install the matching onnxruntime package to enable it.
+['CPUExecutionProvider']
+```
+
+You can also set `PHOONNX_ONNX_PROVIDERS` once for the process. phoonnx always appends
+`CPUExecutionProvider`, so synthesis keeps working. Full details are in the
 [Configuration reference](configuration.md#execution-providers).
 
 Set `PHOONNX_ORT_CACHE_DIR` to cache the optimized ONNX Runtime graph across process
-restarts and reduce cold-start session-creation time.
+restarts. This makes the session start faster after the first run.
 
 ## System dependency: espeak-ng
 
@@ -140,15 +227,14 @@ sudo pacman -S espeak-ng          # Arch Linux
 brew install espeak-ng            # macOS
 ```
 
-The `phoonnx[espeak]` extra provides a pure-Python port of the eSpeak phonemizer (byte-for-byte
-parity with the binary) and needs no system package.
+The `phoonnx[espeak]` extra gives a pure-Python port of the eSpeak phonemizer and needs no
+system package.
 
 ## System dependency: ffmpeg
 
-phoonnx synthesises WAV and needs nothing extra to do it. A server that offers other
-containers — mp3, ogg, flac — encodes them with `pydub`, which shells out to `ffmpeg`.
-Without `ffmpeg` those requests fall back to WAV rather than failing, so the symptom is a
-response in the wrong format rather than an error.
+phoonnx writes WAV and needs nothing extra for it. A server that offers other formats (mp3,
+ogg, flac) encodes them with `pydub`, which runs `ffmpeg`. Without `ffmpeg` those requests
+fall back to WAV. The symptom is a response in the wrong format, not an error.
 
 ```bash
 sudo apt-get install ffmpeg   # Debian/Ubuntu
@@ -168,7 +254,67 @@ The published Docker image installs `phoonnx[all]` and runs a TTS server. See
 ```bash
 git clone https://github.com/TigreGotico/phoonnx
 cd phoonnx
-pip install -e .
+pip install --pre -e .
 # or with training extras:
-pip install -e ".[train]"
+pip install --pre -e ".[train]"
 ```
+
+## Errors you may see
+
+Each error below is the last line that Python prints. The fix follows each one.
+
+**A missing extra.** The voice needs a phonemizer that the install does not have, so the
+voice load stops.
+
+```
+ImportError: tugaphone is required for the Tugaphone phonemizer. Install it with 'pip install tugaphone' (or 'pip install scriptconv[pt-phonemizers]').
+```
+
+Fix: `pip install --pre "phoonnx[pt]"`.
+
+```
+ImportError: phonemizer 'espeak' needs a missing backing package — install with `pip install scriptconv[espeak]`
+```
+
+Fix: `pip install --pre "phoonnx[espeak]"`.
+
+**An unknown voice id.** The id is not in the catalog. Python raises a `KeyError` that names
+the id:
+
+```
+KeyError: 'OpenVoiceOS/phoonnx_pt-PT_miro'
+```
+
+The OVOS plugin stops at start with:
+
+```
+Exception: Unknown voice: OpenVoiceOS/phoonnx_pt-PT_miro
+```
+
+Fix: copy the exact id from `phoonnx-voices list-available`.
+
+**A language with no voice.** The OVOS plugin stops at start when no voice in the catalog
+serves the configured `lang`:
+
+```
+ValueError: No voices available for language: xx-YY
+```
+
+`TTSVoice.load(model_path, config_path, lang_code=...)` takes a language that overrides the config. When its phonemizer cannot read that language, the load stops. `manager.voices[id].load()` takes no `lang_code`; it uses the language of the index entry.
+
+```
+phoonnx.errors.UnsupportedVoiceLanguage: voice 'dii_es-ES': no phonemizer backend supports lang 'xx-YY' for phoneme_type 'espeak'
+```
+
+Fix: use a language tag from `phoonnx-voices list-langs`, or a voice for that language.
+
+**A voice that is not downloaded, on a machine with no network.** With `HF_HUB_OFFLINE=1`,
+or with no connection to the Hugging Face Hub, a voice that is not in the local cache cannot
+load:
+
+```
+huggingface_hub.errors.LocalEntryNotFoundError: An error happened while trying to locate the file on the Hub and we cannot find the requested files in the local cache. Please check your connection and try again or make sure your Internet connection is on.
+```
+
+Fix: run `phoonnx-voices download <voice_id>` while the machine is online. After that, the
+voice loads offline.

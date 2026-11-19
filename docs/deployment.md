@@ -32,20 +32,20 @@ docker compose exec phoonnx-tts phoonnx-voices update-cache
 
 ## A cold cache is slow, not broken
 
-`phoonnx-voices update-cache` — baked into the image at build time — only fills the
+The image runs `phoonnx-voices update-cache` at build time. That command fills only the
 voice **index**: the catalog of known voice ids, languages and download URLs. It does
-not fetch any ONNX weights. A voice's actual model file downloads on first use, the
-first time a synth request asks for that voice.
+not fetch any ONNX weights. The model file of a voice downloads the first time a synthesis
+request asks for that voice.
 
 On a public server this looks like a hang: the first caller for a given voice waits on
-a real network download before hearing anything back. It is not a fault — the fix is to
-download the voices you plan to serve before routing traffic to the instance.
+a real network download before hearing anything back. It is not a fault. Download the
+voices you plan to serve before you route traffic to the instance.
 
 ## Prefetch voices before serving traffic
 
-Set `PHOONNX_PREFETCH_VOICES` to a comma-separated list of voice ids. The container
-entrypoint downloads each one — the same weights `phoonnx-voices download
-<voice_id>` fetches — before starting the TTS server:
+Set `PHOONNX_PREFETCH_VOICES` to a comma-separated list of voice ids. Before it starts the
+TTS server, the container entrypoint downloads each one, the same weights that
+`phoonnx-voices download <voice_id>` fetches:
 
 ```yaml
 services:
@@ -71,8 +71,7 @@ in that list still download lazily on its first request.
 ## Health checks
 
 `/status` answers without touching a voice model, so it is the right endpoint for a
-container health check or a load balancer — it is what the bundled compose
-healthcheck uses:
+container health check or a load balancer. The bundled compose health check uses it:
 
 ```bash
 curl http://localhost:9666/status
@@ -89,16 +88,16 @@ on disk; the batteries-included image also carries the full phonemizer and cloni
 dependency set regardless of which voices you use. Disk needs one voice's weights per
 prefetched voice, on the same volume as the cache so a restart does not lose them.
 
-A catalog family sharing one underlying model — the `omnivoice` and `qwen3tts`
-entries, for example — is still one voice-config entry per model artifact: each
-cached voice id owns its own session, so loading several voices from the same
-family loads several sessions, not one shared one. Weight size, not entry count, is
-what dominates memory: a piper voice is on the order of tens of megabytes, an
-omnivoice voice on the order of gigabytes.
+Many catalog entries can name one model. The `omnivoice` and `qwen3tts` entries, for
+example, differ only in engine options. By default, voices that load the same graph with
+the same providers share one ONNX Runtime session, and the plugin's memory budget charges
+that model once. Set `PHOONNX_SHARE_ONNX_SESSIONS=0` to give each load its own session.
+Weight size, not entry count, decides memory use: a Piper voice takes tens of megabytes, an
+OmniVoice voice takes gigabytes.
 
 The shipped image runs `ovos-tts-server` as a single ASGI app instance passed
-directly to `uvicorn.run()`, with no `--workers` flag and no process manager — it is
-one process, one worker, no fan-out. Memory multiplies with worker count only for
+directly to `uvicorn.run()`, with no `--workers` flag and no process manager. It is
+one process with one worker. Memory multiplies with worker count only for
 an operator who fronts the plugin's ASGI app with their own multi-worker deployment
 (a `gunicorn`/`uvicorn` invocation using an import string, e.g.
 `uvicorn app:server --workers 4`) instead of the bundled entrypoint: each worker
@@ -110,9 +109,9 @@ multiply memory the same way.
 
 `max_loaded_bytes` (see [ovos_plugin.md](ovos_plugin.md#voice-caching)) bounds how
 much voice weight the plugin keeps resident, evicting the least-recently-used
-unpinned voice to make room for a new one. It is a soft, in-process limit — it has
-no visibility into the phonemizer, the ONNX Runtime arena, or per-request buffers,
-none of which it counts against the budget.
+unpinned voice to make room for a new one. It is a soft, in-process limit. It does not
+see the phonemizer, the ONNX Runtime arena, or per-request buffers, and it does not count
+them against the budget.
 
 The container's cgroup memory limit is the real backstop, and it is a hard kill, not
 an eviction. Set `max_loaded_bytes` well below that limit, leaving headroom for the
@@ -124,13 +123,12 @@ reloading from disk) for a server that never gets killed outright.
 
 ### Diagnosing OOM kills
 
-In the shipped image the server execs as PID 1 — no supervisor, no worker children —
-so an OOM kill terminates the container outright, and `docker inspect <container>
---format '{{.RestartCount}}'` under a `restart: unless-stopped` policy does
-increment and is a valid signal there. `RestartCount` only undercounts in a
-deployment where a supervisor or a multi-process server (see the multi-worker note
-above) respawns children *inside* the container without the container itself
-restarting — a kill there never touches `RestartCount`.
+In the shipped image the server runs as PID 1, with no supervisor and no worker children.
+An OOM kill stops the container, and under a `restart: unless-stopped` policy
+`docker inspect <container> --format '{{.RestartCount}}'` increments, so it is a valid
+signal there. `RestartCount` undercounts only in a deployment where a supervisor or a
+multi-process server (see the multi-worker note above) restarts children *inside* the
+container without a container restart. A kill there never touches `RestartCount`.
 
 Either way, the kernel log is what distinguishes an OOM kill from any other crash or
 exit code, and it works regardless of process model:
@@ -140,18 +138,17 @@ journalctl -k | grep -i "killed process"
 ```
 
 or, without `journalctl`, `dmesg | grep -i "killed process"`. The kernel logs the
-killed process by its `comm` — for the shipped image this is `python3.12` (the
-interpreter behind the `ovos-tts-server` console-script shebang), not `phoonnx` or
-`ovos-tts-server`, so name matching will not find it. Identify the victim by the
-`memcg`/cgroup path in the same OOM report instead — it contains the container id.
-Once confirmed, the fix is to lower `max_loaded_bytes`, raise the container's memory
-limit, or both.
+killed process by its `comm`. The entrypoint runs the `ovos-tts-server` console script, and
+the kernel names a script by its file name, so the line reads `ovos-tts-server`. The
+`memcg` (cgroup) path in the same OOM report holds the container id, which tells two
+containers apart. To fix it, lower `max_loaded_bytes`, raise the container's memory limit,
+or both.
 
 ## Prosody enrichment degrades instead of failing
 
-Voices that enrich text before synthesis — Arabic/Hebrew diacritization
-(`add_diacritics`, `diacritizer_model`) and per-language script transforms such as
-Russian stress marking (`stressonnx`) — never abort synthesis when that enrichment
+Some voices enrich text before synthesis: Arabic and Hebrew diacritization
+(`add_diacritics`, `diacritizer_model`), and per-language script transforms such as
+Russian stress marking (`stressonnx`). They never abort synthesis when that enrichment
 fails or its backend is missing. Each falls back to the plain, unenriched text and
 logs a warning:
 
@@ -168,7 +165,7 @@ quality regression is a synthesis failure.
 ## Language codes and enrichment backends
 
 A voice id carries a full regional code (`ru_RU`, `pt-PT`, ...), but the enrichment
-backends above key off the base language only — `ru`, not `ru_RU` or `ru-RU`. What
+backends above use the base language only: `ru`, not `ru_RU` or `ru-RU`. What
 determines whether a voice gets stress marking, script transforms, or diacritization
 is whether its base language has an entry, not the region. When configuring or
 auditing enrichment for a voice, check the base language rather than the full
@@ -177,8 +174,8 @@ regional code.
 ## Verify the configuration actually applied
 
 The plugin reads `tts.ovos-tts-plugin-phoonnx` from `mycroft.conf`. Configuration
-placed under any other key, or under the wrong module name, is silently ignored — the
-server runs on the default voice and appears configured:
+placed under any other key, or under the wrong module name, is silently ignored. The
+server then runs on the default voice and seems configured:
 
 ```json
 {
@@ -198,6 +195,6 @@ than trusting the mounted file:
 curl "http://localhost:9666/synthesize/hello%20world" --output hello.wav
 ```
 
-If the configured voice was never prefetched, this first call also pays the cold
-download cost described above — expected, and separate from whether the config
-applied.
+If the configured voice was not prefetched, this first call also waits for the cold
+download described above. That wait is expected, and it does not tell you whether the
+config applied.

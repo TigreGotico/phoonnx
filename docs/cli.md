@@ -122,8 +122,11 @@ is not cached and the machine is offline. Its last line on stderr names the erro
 **Example:**
 
 ```bash
-phoonnx-voices download OpenVoiceOS/pipertts_es-ES_dii
+phoonnx-voices download OpenVoiceOS/phoonnx_es-ES_dii_espeak
 ```
+
+This Spanish voice uses the eSpeak phonemizer. To speak with it, install the `espeak` extra:
+`pip install --pre "phoonnx[espeak]"`.
 
 Files are fetched with `huggingface_hub` straight into the shared HuggingFace
 cache (`~/.cache/huggingface/hub/` by default, or wherever `HF_HOME`/`HF_HUB_CACHE`
@@ -154,7 +157,7 @@ and which models can produce them.
 |------|-------------|
 | `--output`, `-o` | Write the patched model somewhere other than the default sibling path. |
 
-It needs the `onnx` package (`pip install phoonnx[streaming]`) and a model
+It needs the `onnx` package (`pip install --pre "phoonnx[streaming]"`) and a model
 whose graph has a locatable duration tensor; it says which of the two is
 missing and exits non-zero otherwise.
 
@@ -175,3 +178,6 @@ phoonnx-voices list-voices --lang pt-PT
 # 4. Download a specific voice
 phoonnx-voices download OpenVoiceOS/phoonnx_eu-ES_dii_espeak
 ```
+
+The Basque voice in step 4 uses the eSpeak phonemizer. Install the `espeak` extra before you
+load it: `pip install --pre "phoonnx[espeak]"`.
