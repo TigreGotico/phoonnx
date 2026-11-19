@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.118.8a1](https://github.com/TigreGotico/phoonnx/tree/1.118.8a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.7a1...1.118.8a1)
+
+## [1.118.7a1](https://github.com/TigreGotico/phoonnx/tree/1.118.7a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.6a1...1.118.7a1)
+
+## [1.118.6a1](https://github.com/TigreGotico/phoonnx/tree/1.118.6a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.5a1...1.118.6a1)
+
+## [1.118.5a1](https://github.com/TigreGotico/phoonnx/tree/1.118.5a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.4a2...1.118.5a1)
+
+## [1.118.4a2](https://github.com/TigreGotico/phoonnx/tree/1.118.4a2) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.4a1...1.118.4a2)
+
+**Merged pull requests:**
+
+- fix: the Mimic 3 loader reads its tokens file, and a null pad stays null [\#793](https://github.com/TigreGotico/phoonnx/pull/793) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: build training ids through the TextFrontend that inference uses [\#753](https://github.com/TigreGotico/phoonnx/pull/753) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.118.4a1](https://github.com/TigreGotico/phoonnx/tree/1.118.4a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.3a1...1.118.4a1)
@@ -238,10 +263,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.8a1...1.113.9a1)
 
-**Merged pull requests:**
-
-- fix: each Utterance carries its own chunk's text, and the adapter receives it [\#695](https://github.com/TigreGotico/phoonnx/pull/695) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.113.8a1](https://github.com/TigreGotico/phoonnx/tree/1.113.8a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.7a1...1.113.8a1)
@@ -287,10 +308,6 @@
 ## [1.113.3a2](https://github.com/TigreGotico/phoonnx/tree/1.113.3a2) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.3a1...1.113.3a2)
-
-**Merged pull requests:**
-
-- docs: point the F5-TTS page at the per-voice Hub repos [\#696](https://github.com/TigreGotico/phoonnx/pull/696) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.113.3a1](https://github.com/TigreGotico/phoonnx/tree/1.113.3a1) (2026-11-18)
 
