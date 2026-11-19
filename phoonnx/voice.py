@@ -983,6 +983,34 @@ class TTSVoice:
         for utterance in self.prepare(text, syn_config):
             yield self._render(utterance, syn_config, include_alignments, sr_engine, vc)
 
+    def stream(self, text: str, config: Optional[SynthesisConfig] = None) -> Iterator[AudioChunk]:
+        """Synthesize *text* and yield its audio as the engine makes it.
+
+        An engine with ``synthesize_stream`` yields parts of a sentence, and any other
+        engine one chunk per sentence. The parts join to the audio of :meth:`synthesize`.
+        Peak normalisation, a loudness target, voice conversion and super-resolution need
+        the whole sentence, so with any of them on each sentence is one chunk. The first
+        part of a sentence carries its phonemes and ids.
+        """
+        if config is None:
+            config = SynthesisConfig()
+        sr_engine = self._load_super_resolution(config)
+        vc = self._load_voice_conversion(config)
+        whole_sentence = (config.normalize_audio or config.target_loudness is not None
+                          or sr_engine is not None or vc is not None)
+        for utterance in self.prepare(text, config):
+            if whole_sentence:
+                yield self._render(utterance, config, False, sr_engine, vc)
+                continue
+            phonemes, ids = list(utterance.symbols or []), list(utterance.ids)
+            request = self._request(utterance.ids, self._with_params(config, utterance),
+                                    utterance.streams, utterance.text)
+            for part in self.adapter.synthesize_stream(request, self.session):
+                yield AudioChunk(sample_rate=self.config.sample_rate, sample_width=2,
+                                 sample_channels=1, audio_float_array=self._level(part.audio, config),
+                                 phonemes=phonemes, phoneme_ids=ids)
+                phonemes, ids = [], []
+
     def render(self, utterance: Utterance, config: Optional[SynthesisConfig] = None, *,
                alignments: bool = False) -> AudioChunk:
         """Turn one :class:`Utterance` into audio: the audio half of :meth:`synthesize`.
@@ -1025,18 +1053,12 @@ class TTSVoice:
                 # instead of raising, since alignment is an optional feature.
                 include_alignments = False
 
-        if utterance.params:
-            syn_config = replace(syn_config, extra_params={**syn_config.extra_params, **utterance.params})
+        syn_config = self._with_params(syn_config, utterance)
         audio, phoneme_id_samples = self._infer(
             utterance.ids, syn_config, include_alignments, utterance.streams,
             text=utterance.text)
 
-        audio = level_audio(audio, syn_config, self.config.sample_rate)
-
-        if syn_config.volume != 1.0:
-            audio = audio * syn_config.volume
-
-        audio = np.clip(audio, -1.0, 1.0).astype(np.float32)
+        audio = self._level(audio, syn_config)
 
         phoneme_alignments = self._reconstruct_alignments(
             list(utterance.ids), phoneme_id_samples,
@@ -1059,6 +1081,20 @@ class TTSVoice:
             phoneme_id_samples=phoneme_id_samples,
             phoneme_alignments=phoneme_alignments,
         )
+
+    @staticmethod
+    def _with_params(syn_config: SynthesisConfig, utterance: Utterance) -> SynthesisConfig:
+        """*syn_config* with the params of *utterance* joined to its ``extra_params``."""
+        if not utterance.params:
+            return syn_config
+        return replace(syn_config, extra_params={**syn_config.extra_params, **utterance.params})
+
+    def _level(self, audio: np.ndarray, syn_config: SynthesisConfig) -> np.ndarray:
+        """The engine's *audio* levelled, scaled by ``syn_config.volume`` and clipped to [-1, 1]."""
+        audio = level_audio(audio, syn_config, self.config.sample_rate)
+        if syn_config.volume != 1.0:
+            audio = audio * syn_config.volume
+        return np.clip(audio, -1.0, 1.0).astype(np.float32)
 
     def _alignment_model_path(self) -> Optional[Path]:
         """Where this voice's alignment-patched model is cached, if it has one."""
@@ -1336,32 +1372,13 @@ class TTSVoice:
                                                 include_alignments, streams)
         return (audio, phoneme_id_samples) if include_alignments else audio
 
-    def _infer(
+    def _request(
             self, phoneme_ids: Sequence[int], syn_config: SynthesisConfig,
-            include_alignments: bool = False,
             streams: Optional[Mapping[str, Sequence[int]]] = None,
             text: Optional[str] = None,
-    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
-        """
-        Run the engine on one id sequence: the engine step of :meth:`render`.
-
-        Delegates all ONNX I/O to ``self.adapter`` so the same code
-        path works for VITS or any future engine.
-
-        :param phoneme_ids: List of phoneme ids.
-        :param syn_config: Synthesis configuration.
-        :param include_alignments: When True, also return per-phoneme sample counts.
-        :param streams: Per-id side streams, keyed by ``AdapterSynthesisRequest``
-            field, e.g. ``{"language_ids": [...]}``; each holds one value per id.
-        :param text: The chunk's text, as ``Utterance.text`` gives it.
-        :return: ``(audio, phoneme_id_samples)``. The audio is a float numpy
-            array, not normalized. ``phoneme_id_samples`` is the per-id audio-sample
-            count (durations scaled from model frames via ``VoiceConfig.hop_length``),
-            or ``None`` when alignments are not requested or the model doesn't
-            expose a duration output. The audio is byte-for-byte identical either
-            way — the same inference runs.
-        """
-        # Build the architecture-agnostic request
+    ) -> AdapterSynthesisRequest:
+        """The engine request for one id sequence, with the parameters merged from the
+        adapter, the voice config and *syn_config*."""
         phoneme_ids_array = np.expand_dims(
             np.array(phoneme_ids, dtype=np.int64), 0
         )
@@ -1411,7 +1428,7 @@ class TTSVoice:
 
         side_streams = {name: np.array([values], dtype=np.int64) for name, values in (streams or {}).items()}
 
-        request = AdapterSynthesisRequest(
+        return AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,
             phoneme_lengths=phoneme_ids_lengths,
             speaker_id=syn_config.speaker_id,
@@ -1420,6 +1437,33 @@ class TTSVoice:
             text=text,
             **side_streams,
         )
+
+    def _infer(
+            self, phoneme_ids: Sequence[int], syn_config: SynthesisConfig,
+            include_alignments: bool = False,
+            streams: Optional[Mapping[str, Sequence[int]]] = None,
+            text: Optional[str] = None,
+    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+        """
+        Run the engine on one id sequence: the engine step of :meth:`render`.
+
+        Delegates all ONNX I/O to ``self.adapter`` so the same code
+        path works for VITS or any future engine.
+
+        :param phoneme_ids: List of phoneme ids.
+        :param syn_config: Synthesis configuration.
+        :param include_alignments: When True, also return per-phoneme sample counts.
+        :param streams: Per-id side streams, keyed by ``AdapterSynthesisRequest``
+            field, e.g. ``{"language_ids": [...]}``; each holds one value per id.
+        :param text: The chunk's text, as ``Utterance.text`` gives it.
+        :return: ``(audio, phoneme_id_samples)``. The audio is a float numpy
+            array, not normalized. ``phoneme_id_samples`` is the per-id audio-sample
+            count (durations scaled from model frames via ``VoiceConfig.hop_length``),
+            or ``None`` when alignments are not requested or the model doesn't
+            expose a duration output. The audio is byte-for-byte identical either
+            way — the same inference runs.
+        """
+        request = self._request(phoneme_ids, syn_config, streams, text)
 
         # Once a prior call already retrofitted a working alignment session
         # (see ``_ensure_alignment_session``), route straight to it instead
