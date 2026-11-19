@@ -783,7 +783,10 @@ class TTSVoice:
         for symbols, streams, chunk_text in self._iter_phonemes(spoken, src_alphabet, tgt_alphabet, stages):
             if not symbols:
                 continue
-            ids = self.tokenizer.tokenize(symbols)
+            if streams:
+                ids, streams = self.tokenizer.tokenize_with_streams(symbols, streams)
+            else:
+                ids = self.tokenizer.tokenize(symbols)
             if ids:
                 yield Utterance(text=chunk_text, symbols=tuple(symbols), ids=tuple(ids), streams=streams)
 
@@ -1412,16 +1415,7 @@ class TTSVoice:
         if syn_config.top_p is not None:
             params["top_p"] = syn_config.top_p
 
-        # A stream holds one value per phonemizer symbol. A tokenizer that adds
-        # blanks or BOS/EOS breaks that 1:1 match; the stream is then left out and
-        # the adapter applies its own default, as for a phonemizer with no stream.
-        side_streams = {}
-        for name, values in (streams or {}).items():
-            if len(values) == len(phoneme_ids):
-                side_streams[name] = np.array([values], dtype=np.int64)
-            else:
-                LOG.warning(f"{name} left out: {len(values)} values for "
-                            f"{len(phoneme_ids)} phoneme ids")
+        side_streams = {name: np.array([values], dtype=np.int64) for name, values in (streams or {}).items()}
 
         request = AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,
