@@ -875,6 +875,19 @@ def test_a_language_with_no_text2spoken_file_gets_a_request_for_one(reads_number
     assert ("leaves text in this language as it is written" in prose) == (not reads_numbers)
 
 
+def test_a_language_with_a_text2spoken_file_gets_no_request_for_one():
+    # a small file (only numbers, as ko and ja) is still a file
+    import card_examples
+    from importlib.resources import files
+    codes = sorted(f.name[:-3] for f in files("text2spoken").joinpath("lang").iterdir()
+                   if f.name.endswith(".py") and not f.name.startswith("_"))
+    assert codes
+    for code in codes:
+        text = card_examples.without_phoonnx({"engine": "f5tts", "lang": code, "voice_id": f"x/{code}"})
+        assert "normalize(text" in text, code
+        assert "no language file" not in text, code
+
+
 @pytest.mark.parametrize("phoneme_type, lang", [("tugaphone", "pt-PT"), ("arbtok", "ar")])
 def test_a_phonemizer_that_owns_the_diacritize_stage_gets_no_marks_step(phoneme_type, lang):
     import importlib
