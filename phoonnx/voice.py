@@ -1435,14 +1435,14 @@ class TTSVoice:
         if syn_config.speaker_reference is not None:
             params["reference_audio"] = load_reference_audio(syn_config.speaker_reference)
         if syn_config.speaker_reference_text:
-            params["prompt_tokens"] = self._prompt_token_ids(
-                syn_config.speaker_reference_text, syn_config.speaker_reference_lang)
-            # Raw string, for text-token adapters (OmniVoice, Spark-TTS) that tokenize
-            # the reference transcription themselves rather than through the shared
-            # phonemizer. Carried on the per-call request rather than adapter state so
-            # concurrent calls sharing one adapter instance never see each other's
-            # reference transcription.
-            params["speaker_reference_text"] = syn_config.speaker_reference_text
+            reference_text, reference_lang = syn_config.speaker_reference_text, syn_config.speaker_reference_lang
+            params["prompt_tokens"] = self._prompt_token_ids(reference_text, reference_lang)
+            # The text, for text-token adapters (OmniVoice, Spark-TTS) that tokenize the
+            # reference transcription themselves. It is normalised as the target text is,
+            # so the model reads both in one form. It goes on the per-call request, not on
+            # adapter state, so concurrent calls on one adapter never see each other's reference.
+            params["speaker_reference_text"] = self.frontend.prepare(
+                reference_text, Stages(diacritize=False, lang=reference_lang))
         if syn_config.exaggeration is not None:
             params["exaggeration"] = syn_config.exaggeration
         if syn_config.temperature is not None:
