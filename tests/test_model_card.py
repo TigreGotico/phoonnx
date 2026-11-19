@@ -852,20 +852,27 @@ def test_a_diacritized_arabic_voice_gets_text2tashkeel_with_the_rawi_model(lang)
     assert code.index('text = "Bom dia."') < code.index("diacritizer = Diacritizer(")
 
 
-@pytest.mark.parametrize("lang", ["bg-BG", "oc"])
-def test_a_language_with_no_text2spoken_file_gets_a_request_for_one(lang):
-    from text2spoken import Form, normalize, supports
-    support = supports(lang)
-    assert not support.forms - {Form.CARDINAL, Form.LEXICON}  # text2spoken reads no form of its own here
+def espeak_language_without_text2spoken_file(reads_numbers):
+    """An espeak language that has no file in the installed text2spoken, and whose numbers it reads or not."""
+    from scriptconv.phonemizers import get_phonemizer
+    from text2spoken import normalize, supports
+    from text2spoken.core.language import language_file
+    return next(lang for lang in sorted(get_phonemizer("espeak", "ipa").ESPEAK_LANGS)
+                if language_file(supports(lang).code) is None and (normalize("2", lang) != "2") == reads_numbers)
+
+
+@pytest.mark.parametrize("reads_numbers", [True, False], ids=["reads-numbers", "reads-nothing"])
+def test_a_language_with_no_text2spoken_file_gets_a_request_for_one(reads_numbers):
+    from text2spoken import supports
+    lang = espeak_language_without_text2spoken_file(reads_numbers)
     card = example_repo(espeak_voice(lang))
     assert "#### Prepare the text" in usage(card)
     prose = usage(card).split("#### Prepare the text", 1)[1]
-    assert f"text2spoken has no language file for `{support.tag}`" in prose
+    assert f"text2spoken has no language file for `{supports(lang).tag}`" in prose
     assert "https://github.com/TigreGotico/text2spoken/blob/dev/docs/adding-a-language.md" in prose
     assert "open a pull request" in prose
-    reads_cardinals = normalize("2", lang) != "2"
-    assert ("reads only cardinal numbers" in prose) == reads_cardinals
-    assert ("leaves text in this language as it is written" in prose) == (not reads_cardinals)
+    assert ("reads only numbers" in prose) == reads_numbers
+    assert ("leaves text in this language as it is written" in prose) == (not reads_numbers)
 
 
 @pytest.mark.parametrize("phoneme_type, lang", [("tugaphone", "pt-PT"), ("arbtok", "ar")])
@@ -874,13 +881,17 @@ def test_a_phonemizer_that_owns_the_diacritize_stage_gets_no_marks_step(phoneme_
     from scriptconv.phonemizers.enums import Phonemizer
     from scriptconv.phonemizers.registry import PHONEMIZER_REGISTRY
     module, name, _ = PHONEMIZER_REGISTRY[Phonemizer(phoneme_type)]
-    assert "diacritize" in getattr(importlib.import_module(module), name).owned_stages
+    owned = getattr(importlib.import_module(module), name).owned_stages
+    assert "diacritize" in owned
     card = example_repo(phoonnx_config(keep_punctuation=False, phoneme_type=phoneme_type, alphabet="ipa",
                                        lang_code=lang, phoneme_id_map={"_": 0, "^": 1, "$": 2, " ": 3, "a": 4}))
     section = usage(card).split("### Without phoonnx", 1)[1]
     assert "add_extra_diacritics" not in section and "Diacritizer" not in section
     assert f"The {phoneme_type} phonemizer of this voice" in section
-    assert "from text2spoken import normalize" in preparation(card)
+    # a backend that normalises the text itself gets no second normalisation
+    assert ("from text2spoken import normalize" in section) == ("normalize" not in owned)
+    assert (f"The {phoneme_type} phonemizer of this voice normalises the text itself" in section) == \
+        ("normalize" in owned)
 
 
 def test_the_text_is_prepared_in_the_language_of_the_voice_not_of_its_phonemizer():

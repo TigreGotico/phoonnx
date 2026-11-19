@@ -966,9 +966,12 @@ def test_a_brazilian_voice_needs_the_letters_of_its_own_marks():
 
 
 def test_a_phonemizer_that_owns_the_diacritize_stage_gets_no_bifonia_even_when_it_reads_the_marks(monkeypatch):
-    # tugaphone runs bifonia itself; a second run would mark the text twice
+    # tugaphone runs bifonia itself; a second run would mark the text twice. tugaphone also owns normalize,
+    # which drops the whole preparation, so the backend here owns only diacritize
     monkeypatch.setattr(card_examples, "READS_PT_MARKS", ("espeak", "tugaphone"))
+    monkeypatch.setattr(card_examples, "_owned_stages", lambda phoneme_type: frozenset({"diacritize"}))
     text = card_examples.without_phoonnx({**NATIVE, "phoneme_type": "tugaphone", "lang_code": "pt-PT"})
+    assert 'text = normalize(text, "pt-PT")' in text
     assert "add_extra_diacritics" not in text
     assert "The tugaphone phonemizer of this voice puts the accents on homographs itself" in text
 
@@ -1022,9 +1025,10 @@ def test_with_phoonnx_on_chatterbox_names_the_vowel_marks_only_for_arabic(lang, 
 
 
 def test_with_phoonnx_asks_for_a_language_file_that_text2spoken_lacks():
-    text = card_examples.with_phoonnx({**NATIVE, "lang_code": "it-IT"})
-    assert 'normalize(text, "it-IT")' in text
-    assert "text2spoken has no language file for `it-IT`" in text
+    # qaa is a private-use tag, so text2spoken never ships a file for it
+    text = card_examples.with_phoonnx({**NATIVE, "lang_code": "qaa"})
+    assert 'normalize(text, "qaa")' in text
+    assert "text2spoken has no language file for `qaa`, so it leaves text in this language as it is written" in text
     assert card_examples.ADDING_A_LANGUAGE in text
 
 

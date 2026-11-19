@@ -235,8 +235,8 @@ def _preparation(stack: _TextStack, *, with_phoonnx: bool) -> List[str]:
         steps = ['text = normalize(text, "en")  # the tag of the language of the text']
         prose.append("This voice does not name one language, so give text2spoken the tag of the language of "
                      "the text.")
-    elif not support.forms - {Form.CARDINAL, Form.LEXICON}:
-        reads = ("so it reads only cardinal numbers in this language" if Form.CARDINAL in support.forms
+    elif not support.forms - {Form.CARDINAL, Form.DECIMAL, Form.LEXICON}:  # what a language with no file reads
+        reads = ("so it reads only numbers in this language" if Form.CARDINAL in support.forms
                  else "so it leaves text in this language as it is written")
         prose.append(f"text2spoken has no language file for `{support.tag}`, {reads}. To add the language, follow "
                      f"[Adding a language]({ADDING_A_LANGUAGE}) and open a pull request.")
