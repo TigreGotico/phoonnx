@@ -725,7 +725,8 @@ def without_normalizer(phonemizer: 'Phonemizer') -> 'Phonemizer':
     return backend
 
 
-def voice_frontend(phonemizer: 'Phonemizer', lang: str, stages: Stages = Stages()) -> TextFrontend:
+def voice_frontend(phonemizer: 'Phonemizer', lang: str, stages: Stages = Stages(),
+                   strict: bool = False) -> TextFrontend:
     """The text frontend of a voice that reads *phonemizer*, in language *lang*.
 
     The phonemizer's ``normalizer`` becomes the frontend's normalisation hook
@@ -736,14 +737,15 @@ def voice_frontend(phonemizer: 'Phonemizer', lang: str, stages: Stages = Stages(
     :func:`scriptconv.frontend.spoken_normalizer`, which reads only a ``<say-as>``.
     Inference (:attr:`phoonnx.voice.TTSVoice.frontend`) and dataset building
     (``phoonnx_train.preprocess``) both build their frontend here, so a text
-    gives the same phonemes in both.
+    gives the same phonemes in both. With *strict*, a failed stage raises
+    instead of letting the text continue without it.
     """
     normalizer = phonemizer.normalizer
     if normalizer is None and "normalize" in phonemizer.owned_stages:
         normalizer = spoken_normalizer()
     return TextFrontend(
         FrontendConfig(lang=lang, normalizer=normalizer, keep_punctuation=phonemizer.keep_punctuation,
-                       stages=stages),
+                       stages=stages, strict=strict),
         backend=without_normalizer(phonemizer))
 
 
