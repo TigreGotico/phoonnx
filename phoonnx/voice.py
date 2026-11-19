@@ -47,7 +47,11 @@ from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
 from scriptconv.phonemizers.base import PhonemizedChunks
 from phoonnx.errors import NonFiniteAudioError, VoiceLoadError
+from phoonnx.engines.shami import ShamiAdapter
 from phoonnx.engines.vits import VitsAdapter
+from phoonnx.engines.vits_streaming import VitsStreamingAdapter
+from phoonnx.engines.xvits import XVitsAdapter
+from phoonnx.engines.yourtts import YourTTSAdapter
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
@@ -592,9 +596,10 @@ class TTSVoice:
             engine_params=engine_params,
         )
 
-        # num_symbols sizes the embedding of a VITS graph only; other engines
+        # num_symbols sizes the embedding of a VITS-family graph only; other engines
         # carry the field without using it.
-        if isinstance(adapter, VitsAdapter) and "num_symbols" in config_dict \
+        if isinstance(adapter, (VitsAdapter, VitsStreamingAdapter, YourTTSAdapter, ShamiAdapter, XVitsAdapter)) \
+                and "num_symbols" in config_dict \
                 and isinstance(voice_config.tokenizer, TTSTokenizer):
             ids = [i for value in voice_config.tokenizer.vocabulary.char2idx.values()
                    for i in (value if isinstance(value, list) else [value])]

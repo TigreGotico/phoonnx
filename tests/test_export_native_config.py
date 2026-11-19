@@ -137,6 +137,16 @@ def test_exported_voice_loads_with_its_own_adapter(engine_name, config_name, ada
     assert type(detect_engine(config=written)).__name__ == adapter_name
 
 
+def test_speedyspeech_export_names_one_engine(tmp_path):
+    import onnx
+
+    out = _export("speedyspeech", tmp_path, TRAINING_CONFIG)
+    metadata = {p.key: p.value for p in onnx.load(str(next(out.glob("*.onnx")))).metadata_props}
+    written = json.loads((out / "last.json").read_text(encoding="utf-8"))
+    assert metadata["model_type"] == "speedyspeech"
+    assert metadata["engine"] == written["engine"] == "fastpitch"
+
+
 def _optispeech_checkpoint(path: Path) -> None:
     import pytorch_lightning as pl
 

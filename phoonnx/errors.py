@@ -43,6 +43,7 @@ an import through one of those modules, such as
 ``phoonnx.config.UnsupportedVoiceLanguage``, gives the same class. This module
 imports nothing from phoonnx, so importing it stays cheap.
 """
+import copyreg
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -65,6 +66,10 @@ __all__ = [
 
 class PhoonnxError(Exception):
     """The base of the typed failures in this module."""
+
+    def __reduce__(self):
+        # Unpickling skips __init__: a subclass takes fields, not the message, as arguments.
+        return copyreg.__newobj__, (type(self), *self.args), self.__dict__
 
 
 class VoiceLoadError(PhoonnxError):
