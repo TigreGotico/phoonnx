@@ -202,6 +202,8 @@ _LOUDNESS_WARNED = False
 def level_audio(audio: np.ndarray, syn_config: "SynthesisConfig", sample_rate: int) -> np.ndarray:
     """Set a synthesized sentence's level: a loudness target if asked for, else the peak."""
     global _LOUDNESS_WARNED
+    if not audio.size:
+        return audio
     if syn_config.target_loudness is not None:
         try:
             from phoonnx.audio_fx import normalize_loudness
