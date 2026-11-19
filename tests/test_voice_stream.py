@@ -13,11 +13,11 @@ FRAMES = 2 * DECODE_CHUNK_FRAMES + 3
 RAW = SynthesisConfig(normalize_audio=False)
 
 
-def _pocket_voice(events=None):
-    """A Pocket TTS voice on stub graphs that makes FRAMES latent frames per sentence."""
+def _pocket_voice(events=None, frames=FRAMES):
+    """A Pocket TTS voice on stub graphs that makes *frames* latent frames per sentence."""
     events = [] if events is None else events
     config = VoiceConfig.from_dict(dict(CONFIG, phoneme_type="graphemes", alphabet="graphemes"))
-    adapter = _pocket_adapter(FRAMES, events)
+    adapter = _pocket_adapter(frames, events)
     adapter.seed = 5
     return TTSVoice(config=config, session=_RecordingFlowLM(events), adapter=adapter)
 
@@ -34,6 +34,14 @@ def test_pocket_stream_joins_to_the_synthesized_audio(config):
     assert np.array_equal(_joined(parts), _joined(whole))
     assert _joined(parts).dtype == _joined(whole).dtype
     assert [i for c in parts for i in c.phoneme_ids] == [i for c in whole for i in c.phoneme_ids]
+
+
+def test_a_sentence_with_no_frames_keeps_its_chunk_and_ids():
+    whole = list(_pocket_voice(frames=0).synthesize(TEXT, RAW))
+    parts = list(_pocket_voice(frames=0).stream(TEXT, RAW))
+    assert [i for c in parts for i in c.phoneme_ids] == [i for c in whole for i in c.phoneme_ids]
+    assert len(parts) == len(whole) == 2
+    assert np.array_equal(_joined(parts), _joined(whole))
 
 
 def test_pocket_stream_yields_slices_without_whole_sentence_steps():

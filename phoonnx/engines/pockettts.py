@@ -541,7 +541,7 @@ class PocketTTSAdapter(BaseOnnxAdapter):
         """Yield the audio of each ``DECODE_CHUNK_FRAMES`` latent frames once they exist.
 
         The Mimi decoder carries its state from one slice to the next, so the joins are
-        seamless. A chunk with no frames yields no part.
+        seamless. A chunk with no frames yields one empty part.
         """
         if self.text_conditioner is None or self.flow_lm_flow is None or self.mimi_decoder is None:
             raise RuntimeError("Pocket TTS voice missing text_conditioner_path / "
@@ -575,23 +575,26 @@ class PocketTTSAdapter(BaseOnnxAdapter):
         latents = self.iter_latents(token_ids, voice_state, session, temperature,
                                     lsd_steps, eos_threshold, rng)
         state = self.init_state(self.mimi_state_manifest)
-        while frames := list(islice(latents, DECODE_CHUNK_FRAMES)):
+        frames = list(islice(latents, DECODE_CHUNK_FRAMES))
+        if not frames:
+            yield AdapterSynthesisResult(audio=np.zeros((0,), dtype=np.float32), extras={"frames": 0})
+        while frames:
             outputs = self.mimi_decoder.run(
                 None, {"latent": np.concatenate(frames, axis=1), **state})
             self._update_state(state, outputs, self.mimi_state_manifest, output_offset=1)
             yield AdapterSynthesisResult(audio=np.asarray(outputs[0], np.float32).reshape(-1),
                                          extras={"frames": len(frames)})
+            frames = list(islice(latents, DECODE_CHUNK_FRAMES))
 
     def synthesize(self, request: AdapterSynthesisRequest,
                    session: onnxruntime.InferenceSession) -> AdapterSynthesisResult:
         parts = list(self.synthesize_stream(request, session))
-        audio = (np.concatenate([part.audio for part in parts]) if parts
-                 else np.zeros((0,), dtype=np.float32))
         return AdapterSynthesisResult(
-            audio=audio, extras={"frames": sum(part.extras["frames"] for part in parts)})
+            audio=np.concatenate([part.audio for part in parts]),
+            extras={"frames": sum(part.extras["frames"] for part in parts)})
 
-    # build_feed_dict / parse_outputs are required by the ABC but unused — synthesize()
-    # drives the multi-graph pipeline directly.
+    # build_feed_dict / parse_outputs are required by the ABC but unused:
+    # synthesize_stream runs the graphs.
     def build_feed_dict(self, request: AdapterSynthesisRequest,
                         session: onnxruntime.InferenceSession) -> Dict[str, np.ndarray]:
         raise NotImplementedError("Pocket TTS is multi-graph — use synthesize()")

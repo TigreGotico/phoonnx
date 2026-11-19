@@ -59,12 +59,11 @@ def test_joined_stream_is_the_synthesized_audio(frames):
     whole = _voice(frames, []).synthesize(_req(), _RecordingFlowLM([]))
     parts = list(_voice(frames, []).synthesize_stream(_req(), _RecordingFlowLM([])))
     assert whole.extras["frames"] == frames
-    joined = np.concatenate([p.audio for p in parts]) if parts else np.zeros((0,), np.float32)
-    assert np.array_equal(joined, whole.audio)
+    assert np.array_equal(np.concatenate([p.audio for p in parts]), whole.audio)
     assert all(p.audio.dtype == np.float32 for p in parts)
     assert [p.extras["frames"] for p in parts] == (
         [DECODE_CHUNK_FRAMES] * (frames // DECODE_CHUNK_FRAMES)
-        + ([frames % DECODE_CHUNK_FRAMES] if frames % DECODE_CHUNK_FRAMES else []))
+        + ([frames % DECODE_CHUNK_FRAMES] if frames % DECODE_CHUNK_FRAMES or not frames else []))
 
 
 def test_decoder_state_carries_across_slices():
