@@ -46,7 +46,7 @@ from phoonnx.reference_audio import load_reference_audio
 from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
 from scriptconv.phonemizers.base import PhonemizedChunks
-from phoonnx.errors import VoiceLoadError
+from phoonnx.errors import NonFiniteAudioError, VoiceLoadError
 from phoonnx.engines.vits import VitsAdapter
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
@@ -1108,7 +1108,13 @@ class TTSVoice:
         return replace(syn_config, extra_params={**syn_config.extra_params, **utterance.params})
 
     def _level(self, audio: np.ndarray, syn_config: SynthesisConfig) -> np.ndarray:
-        """The engine's *audio* levelled, scaled by ``syn_config.volume`` and clipped to [-1, 1]."""
+        """The engine's *audio* levelled, scaled by ``syn_config.volume`` and clipped to [-1, 1].
+
+        Raises :class:`NonFiniteAudioError` when the engine returned NaN or inf, which
+        the int16 cast would write as silence.
+        """
+        if not np.isfinite(audio).all():
+            raise NonFiniteAudioError(self.model_path or "<voice>")
         audio = level_audio(audio, syn_config, self.config.sample_rate)
         if syn_config.volume != 1.0:
             audio = audio * syn_config.volume
