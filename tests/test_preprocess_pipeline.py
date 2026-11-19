@@ -24,7 +24,7 @@ import numpy as np
 import soundfile as sf
 import torch
 
-from phoonnx.config import Alphabet, PhonemeType, voice_frontend
+from phoonnx.config import Alphabet, PhonemeType, get_phonemizer, voice_frontend
 from phoonnx_train import preprocess
 from phoonnx_train.dataset_loaders import PreprocessorConfig, Utterance
 import scriptconv.frontend as scriptconv_frontend
@@ -401,7 +401,10 @@ class TestPhonemizerProvenance(unittest.TestCase):
             self.assertEqual(config["phonemizer_identity"], {
                 "backend": "graphemes", "distribution": "scriptconv",
                 "version": importlib.metadata.version("scriptconv"),
-                "lang": "en", "revision": GraphemePhonemizer().identity("en").revision, "frontend": None})
+                "lang": "en", "frontend": None,
+                # preprocess keeps punctuation by default, and the revision covers that setting.
+                "revision": get_phonemizer(PhonemeType.GRAPHEMES, Alphabet.UNICODE, None,
+                                           keep_punctuation=True).identity("en").revision})
 
     def test_column_run_claims_no_producer(self):
         with TemporaryDirectory() as tmp:
@@ -665,7 +668,9 @@ class TestPhonemizerProvenance(unittest.TestCase):
         self.assertEqual(resumed["phonemizer_identity"], {
             "backend": "graphemes", "distribution": "scriptconv",
             "version": importlib.metadata.version("scriptconv"),
-            "lang": "en", "revision": GraphemePhonemizer().identity("en").revision, "frontend": None})
+            "lang": "en", "frontend": None,
+            "revision": get_phonemizer(PhonemeType.GRAPHEMES, Alphabet.IPA, None,
+                                       keep_punctuation=True).identity("en").revision})
         self.assertEqual((resumed["phonemes_phonemized"], resumed["phonemes_from_column"]), (1, 1))
 
     def test_a_column_only_resume_onto_a_config_without_an_engine_names_none(self):
