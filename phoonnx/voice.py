@@ -66,6 +66,10 @@ def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunk
     return [[c for c in chunk] for chunk, _, _ in chunks if chunk]
 
 
+_BLOCK = re.compile(r"\[\[(.*?)\]\]")
+"""An inline phoneme block: the shortest ``[[...]]`` on one line, as scriptconv's frontend reads it."""
+
+
 def _write_wav(path: str, audio: np.ndarray, sample_rate: int) -> str:
     """Write mono float32 ``audio`` to ``path`` as 16-bit PCM WAV.
 
@@ -287,6 +291,10 @@ class Utterance:
     streams: Mapping[str, Sequence[int]] = field(default_factory=dict)
     """Values a phonemizer gives beside its symbols, one per id, keyed by the
     ``AdapterSynthesisRequest`` field they fill, such as ``language_ids``."""
+
+    params: Mapping[str, Any] = field(default_factory=dict)
+    """Values the adapter's ``read_text`` learned about this utterance. They join the
+    request params of the engine call."""
 
 
 @dataclass
@@ -704,6 +712,36 @@ class TTSVoice:
             yield list(segment.phonemes), {name: list(values) for name, values in segment.streams.items()
                                            if name in SIDE_STREAMS}, segment.text
 
+    def _inline_blocks(self, text: str, alphabet: Optional[Alphabet]) -> str:
+        """*text* with each ``[[...]]`` block in the voice's *alphabet*, or with the blocks left out.
+
+        A block holds IPA. An adapter that takes no symbols has no input for it, so
+        the blocks are left out with one warning. For any other voice, a block is
+        converted from IPA to *alphabet* where scriptconv has a path, and kept as
+        written where it has none. ARPA symbols have more than one character, and the
+        frontend adds a block one character at a time, so an ARPA voice keeps the IPA.
+        """
+        blocks = _BLOCK.findall(text)
+        if not blocks:
+            return text
+        if not self.adapter.takes_symbols:
+            name = Path(self.model_path).stem if self.model_path else "<voice>"
+            LOG.warning("Voice %s takes no symbol input: skipping the inline blocks %s", name,
+                        ["[[%s]]" % block for block in blocks])
+            return re.sub(r"\s*\[\[.*?\]\]", "", text).strip()
+        if alphabet in (None, Alphabet.IPA, Alphabet.ARPA):
+            return text
+
+        def convert(block: "re.Match[str]") -> str:
+            try:
+                symbols = DEFAULT_GRAPH.convert(block[1], Alphabet.IPA.value, alphabet.value,
+                                                lang=self.config.lang_code)
+            except ValueError:
+                return block[0]
+            return f"[[{symbols}]]"
+
+        return _BLOCK.sub(convert, text)
+
     def prepare(self, text: str, config: Optional[SynthesisConfig] = None) -> Iterator[Utterance]:
         """Turn *text* into model input: one :class:`Utterance` per engine call.
 
@@ -734,6 +772,8 @@ class TTSVoice:
         src_alphabet = config.alphabet if config.alphabet is not None else Alphabet.GRAPHEMES
         tgt_alphabet = self.config.alphabet
         stages = self._stages(config)
+        if src_alphabet == Alphabet.GRAPHEMES:
+            spoken = self._inline_blocks(spoken, tgt_alphabet)
 
         if src_alphabet == tgt_alphabet == Alphabet.GRAPHEMES:
             prepared = self.frontend.prepare(spoken, stages)
@@ -744,10 +784,17 @@ class TTSVoice:
                     yield Utterance(text=chunk_text, symbols=None, ids=tuple(ids))
             return
 
+        if src_alphabet == Alphabet.GRAPHEMES and self.adapter.READS_TEXT is True:
+            yield from self.adapter.read_text(spoken, self, config, stages)
+            return
+
         for symbols, streams, chunk_text in self._iter_phonemes(spoken, src_alphabet, tgt_alphabet, stages):
             if not symbols:
                 continue
-            ids = self.tokenizer.tokenize(symbols)
+            if streams:
+                ids, streams = self.tokenizer.tokenize_with_streams(symbols, streams)
+            else:
+                ids = self.tokenizer.tokenize(symbols)
             if ids:
                 yield Utterance(text=chunk_text, symbols=tuple(symbols), ids=tuple(ids), streams=streams)
 
@@ -1021,6 +1068,8 @@ class TTSVoice:
                 # instead of raising, since alignment is an optional feature.
                 include_alignments = False
 
+        if utterance.params:
+            syn_config = replace(syn_config, extra_params={**syn_config.extra_params, **utterance.params})
         audio, phoneme_id_samples = self._infer(
             utterance.ids, syn_config, include_alignments, utterance.streams,
             text=utterance.text)
@@ -1386,16 +1435,7 @@ class TTSVoice:
         if syn_config.top_p is not None:
             params["top_p"] = syn_config.top_p
 
-        # A stream holds one value per phonemizer symbol. A tokenizer that adds
-        # blanks or BOS/EOS breaks that 1:1 match; the stream is then left out and
-        # the adapter applies its own default, as for a phonemizer with no stream.
-        side_streams = {}
-        for name, values in (streams or {}).items():
-            if len(values) == len(phoneme_ids):
-                side_streams[name] = np.array([values], dtype=np.int64)
-            else:
-                LOG.warning(f"{name} left out: {len(values)} values for "
-                            f"{len(phoneme_ids)} phoneme ids")
+        side_streams = {name: np.array([values], dtype=np.int64) for name, values in (streams or {}).items()}
 
         return AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,
