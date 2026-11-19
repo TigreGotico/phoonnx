@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.123.3a1](https://github.com/TigreGotico/phoonnx/tree/1.123.3a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.2a1...1.123.3a1)
+
+**Merged pull requests:**
+
+- fix: refuse a side stream whose length differs from the ids [\#823](https://github.com/TigreGotico/phoonnx/pull/823) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.123.2a1](https://github.com/TigreGotico/phoonnx/tree/1.123.2a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.1a2...1.123.2a1)
@@ -286,10 +294,6 @@
 ## [1.113.14a1](https://github.com/TigreGotico/phoonnx/tree/1.113.14a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.13a1...1.113.14a1)
-
-**Merged pull requests:**
-
-- fix: precision follow-ups: alias lookup keeps the user's entry, unknown keys warn, variants replace only files [\#719](https://github.com/TigreGotico/phoonnx/pull/719) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.113.13a1](https://github.com/TigreGotico/phoonnx/tree/1.113.13a1) (2026-11-18)
 
