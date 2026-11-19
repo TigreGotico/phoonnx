@@ -219,3 +219,21 @@ def test_synthesize_without_decoder_raises():
     a = VitsStreamingAdapter()
     with pytest.raises(RuntimeError):
         a.synthesize(_request(), FakeEncoder(T=300))
+
+
+def test_decoder_runs_on_the_voice_providers(monkeypatch):
+    seen = {}
+
+    class Session:
+        def __init__(self, path, sess_options=None, providers=None):
+            seen.update(path=path, providers=providers, threads=sess_options.intra_op_num_threads)
+
+        def get_providers(self):
+            return seen["providers"]
+
+    monkeypatch.setattr("onnxruntime.InferenceSession", Session)
+    monkeypatch.delenv("PHOONNX_ORT_CACHE_DIR", raising=False)
+    adapter = VitsStreamingAdapter()
+    adapter.configure_from_params({"decoder_path": "d.onnx", "intra_op_num_threads": 3,
+                                   "providers": ["CPUExecutionProvider"]})
+    assert seen == {"path": "d.onnx", "providers": ["CPUExecutionProvider"], "threads": 3}

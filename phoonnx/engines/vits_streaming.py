@@ -49,6 +49,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import onnxruntime
 
+from phoonnx.providers import make_session
 from phoonnx.engines.base import (
     AdapterSynthesisRequest,
     AdapterSynthesisResult,
@@ -110,17 +111,17 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
         threads = self._engine_params.get("intra_op_num_threads")
         decoder_path = self._engine_params.get("decoder_path")
         if self.decoder is None and decoder_path:
-            self.decoder = self._build_decoder(decoder_path, threads)
+            self.decoder = self._build_decoder(decoder_path, threads, self._engine_params.get("providers"))
 
     @staticmethod
-    def _build_decoder(path: str, threads: Optional[int]) -> onnxruntime.InferenceSession:
+    def _build_decoder(path: str, threads: Optional[int], providers=None) -> onnxruntime.InferenceSession:
         import os
         so = onnxruntime.SessionOptions()
         if threads is None:
             threads = max(1, (os.cpu_count() or 4) // 2)
         so.intra_op_num_threads = int(threads)
         so.inter_op_num_threads = 1
-        return onnxruntime.InferenceSession(path, so)
+        return make_session(path, providers=providers, sess_options=so)
 
 
     # ------------------------------------------------------------------
