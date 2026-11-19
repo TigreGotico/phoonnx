@@ -170,10 +170,6 @@ class IndicParlerAdapter(BaseOnnxAdapter):
         return {"temperature": self.temperature, "top_k": float(self.top_k),
                 "do_sample": float(self.do_sample), "max_new_tokens": float(self.max_new_tokens)}
 
-    def param_labels(self) -> Dict[str, str]:
-        return {"temperature": "Sampling temperature", "top_k": "Top-k cutoff (0 = off)",
-                "do_sample": "Sample (1) or greedy (0)", "max_new_tokens": "Max codec frames"}
-
     def configure(self, voice_config: Any) -> None:
         """Load the three auxiliary graphs, both tokenizers and the voice description.
 
@@ -181,7 +177,7 @@ class IndicParlerAdapter(BaseOnnxAdapter):
         index entry, taken verbatim from AI4Bharat's own recommended-speaker list, so a
         voice id resolves to exactly the wording the model was trained to answer to.
         """
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         providers = ep.get("providers")
         if self.text_encoder is None and ep.get("text_encoder_path"):
             self.text_encoder = make_session(ep["text_encoder_path"], providers=providers)

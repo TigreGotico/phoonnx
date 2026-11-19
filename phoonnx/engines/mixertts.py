@@ -52,7 +52,7 @@ class MixerTTSAdapter(BaseOnnxAdapter):
     # ------------------------------------------------------------------
 
     def configure(self, voice_config: Any) -> None:
-        self.configure_from_params(getattr(voice_config, "engine_params", None) or {})
+        self.configure_from_params(voice_config.engine_params)
 
     def configure_from_params(self, engine_params: Dict[str, Any]) -> None:
         self._engine_params = engine_params or {}
@@ -186,6 +186,3 @@ class MixerTTSAdapter(BaseOnnxAdapter):
             if "mel_spec" in outs and "token_ids" in inputs:
                 return True
         return False
-
-    def param_labels(self) -> Dict[str, str]:
-        return {"pace": "Pace", "pitch_mul": "Pitch ×", "pitch_add": "Pitch +"}

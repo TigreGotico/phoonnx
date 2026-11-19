@@ -154,6 +154,7 @@ def _register_builtins() -> None:
     from phoonnx.engines.mosstts import MossTTSNanoAdapter
     from phoonnx.engines.rapido import RapidoAdapter
     from phoonnx.engines.tinyvoca import TinyVocaAdapter
+    from phoonnx.engines.xvits import XVitsAdapter
 
     # OptiSpeech shares VITS-like x/x_lengths/scales inputs with Matcha, but has
     # a distinctive metadata + wav/durations output signature — check it first.
@@ -207,6 +208,9 @@ def _register_builtins() -> None:
     register_engine("mosstts", MossTTSNanoAdapter, detect_priority=20)
     # Rápido is authoritative-only too: detect() requires engine="rapido".
     register_engine("rapido", RapidoAdapter, detect_priority=37)
+    # x-vits is the only voice whose primary graph is an encoder taking ids + lengths and
+    # giving x + x_mask; its other four graphs load from engine_params.
+    register_engine("xvits", XVitsAdapter, detect_priority=38)
 
 
 _register_builtins()

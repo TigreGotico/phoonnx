@@ -269,13 +269,6 @@ class Qwen3TTSAdapter(BaseOnnxAdapter):
                 "repetition_penalty": 1.05, "subtalker_temperature": 0.9,
                 "subtalker_top_k": 50.0, "subtalker_top_p": 1.0}
 
-    def param_labels(self) -> Dict[str, str]:
-        return {"temperature": "Sampling temperature", "top_k": "Top-k",
-                "top_p": "Nucleus (top-p)", "repetition_penalty": "Repetition penalty",
-                "subtalker_temperature": "Code-predictor temperature",
-                "subtalker_top_k": "Code-predictor top-k",
-                "subtalker_top_p": "Code-predictor nucleus (top-p)"}
-
     # ------------------------------------------------------------------
     # Setup
     # ------------------------------------------------------------------
@@ -287,7 +280,7 @@ class Qwen3TTSAdapter(BaseOnnxAdapter):
         has nine trained timbres and no speaker encoder. The language comes from the
         voice's ``lang_code`` unless ``engine_params`` names one explicitly.
         """
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         self._params = dict(ep)
         providers = ep.get("providers")
 

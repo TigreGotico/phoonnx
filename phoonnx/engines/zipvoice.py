@@ -51,7 +51,7 @@ class ZipVoiceAdapter(BaseOnnxAdapter):
     def configure(self, voice_config: Any) -> None:
         """Load the auxiliary graphs (mel front end, text encoder) and the Vocos
         vocoder from ``engine_params``; the fm_decoder is the voice's own session."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         sess = lambda p: make_session(p, providers=ep.get("providers"))
         if self.text_encoder is None and ep.get("text_encoder_path"):
             self.text_encoder = sess(ep["text_encoder_path"])
@@ -127,8 +127,8 @@ class ZipVoiceAdapter(BaseOnnxAdapter):
                         session: onnxruntime.InferenceSession) -> Dict[str, np.ndarray]:
         raise NotImplementedError("ZipVoice is iterative — use synthesize()")
 
-    def parse_outputs(self, outputs: List[np.ndarray],
-                      request: AdapterSynthesisRequest) -> AdapterSynthesisResult:
+    def parse_outputs(self, outputs: List[np.ndarray], request: AdapterSynthesisRequest,
+                      output_names: Optional[List[str]] = None) -> AdapterSynthesisResult:
         raise NotImplementedError("ZipVoice is iterative — use synthesize()")
 
     @staticmethod

@@ -55,6 +55,7 @@ class TinyVocaAdapter(BaseOnnxAdapter):
     """Adapter for tiny-voca ONNX models."""
 
     DURATION_OUTPUT_NAMES = ["durations"]
+    takes_symbols = False
 
     def configure(self, voice_config: Any) -> None:
         vocab = voice_config.tokenizer.vocabulary.char2idx
@@ -164,11 +165,6 @@ class TinyVocaAdapter(BaseOnnxAdapter):
 
     def default_params(self) -> Dict[str, float]:
         return {"length_scale": 1.0, "pitch_shift": 0.0, "pitch_range": 1.0}
-
-    def param_labels(self) -> Dict[str, str]:
-        return {"length_scale": "Length (1 / speed)",
-                "pitch_shift": "Pitch shift (log F0)",
-                "pitch_range": "Pitch range"}
 
     @staticmethod
     def detect(

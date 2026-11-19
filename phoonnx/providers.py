@@ -289,15 +289,15 @@ def session_key(model_path: Any,
                 cache_dir: Optional[Union[str, Path]]) -> tuple:
     """Identity of a session: two calls with the same key are interchangeable.
 
-    The model file is identified by its resolved real path plus its size and
-    modification time, so a voice that reaches the same cached artifact
+    The model file is identified by its resolved real path plus its size,
+    modification time and inode, so a voice that reaches the same cached artifact
     through a different symlink or a non-normalized path shares one session,
     while a file that was replaced on disk gets a new one rather than a stale
     session over weights that are no longer there. A graph with external
-    weights keeps those weights in sidecar files that the graph's own size and
-    mtime do not track, so each sidecar's name, size and mtime are folded in
-    too: a stable stub graph pointing at swapped-out weights would otherwise
-    keep serving the old session.
+    weights keeps those weights in sidecar files that the graph's own stat does
+    not track, so each sidecar's name, size, mtime and inode are folded in too:
+    a stable stub graph pointing at swapped-out weights would otherwise keep
+    serving the old session.
     """
     try:
         resolved_path = os.path.realpath(str(model_path))
@@ -305,7 +305,7 @@ def session_key(model_path: Any,
         resolved_path = str(model_path)
     try:
         stat = os.stat(resolved_path)
-        version = (stat.st_size, stat.st_mtime_ns)
+        version = (stat.st_size, stat.st_mtime_ns, stat.st_ino)
     except OSError:
         version = ()
     for sidecar in _external_data_paths(str(model_path), resolved_path):
@@ -314,7 +314,7 @@ def session_key(model_path: Any,
         except OSError:
             continue
         version = version + (os.path.basename(sidecar), sidecar_stat.st_size,
-                             sidecar_stat.st_mtime_ns)
+                             sidecar_stat.st_mtime_ns, sidecar_stat.st_ino)
     return (resolved_path, version, repr(list(resolved)), str(cache_dir or ""))
 
 
