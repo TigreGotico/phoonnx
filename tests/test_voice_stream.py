@@ -3,9 +3,10 @@ import numpy as np
 import pytest
 
 from phoonnx.config import SynthesisConfig, VoiceConfig
-from phoonnx.voice import TTSVoice
+from phoonnx.engines.vits import VitsAdapter
+from phoonnx.voice import TTSVoice, Utterance
 from tests.test_pockettts_stream import DECODE_CHUNK_FRAMES, _RecordingFlowLM, _voice as _pocket_adapter
-from tests.test_prepare_render import CONFIG, _text_voice
+from tests.test_prepare_render import CONFIG, _session, _text_voice
 
 TEXT = "Hi there, my friend. Who is it at the door?"
 FRAMES = 2 * DECODE_CHUNK_FRAMES + 3
@@ -82,3 +83,29 @@ def test_an_engine_without_the_hook_gives_the_synthesize_chunks():
         assert part.audio_float_array.dtype == chunk.audio_float_array.dtype
         assert (part.phonemes, part.phoneme_ids, part.sample_rate) == (
             chunk.phonemes, chunk.phoneme_ids, chunk.sample_rate)
+
+
+class _GainReader(VitsAdapter):
+    """An engine that reads text and puts a per-sentence gain in ``Utterance.params``."""
+
+    READS_TEXT = True
+
+    def read_text(self, text, voice, config, stages):
+        for gain, sentence in enumerate(text.split(". "), start=2):
+            yield Utterance(text=sentence, symbols=None, ids=tuple(ord(c) % 60 + 3 for c in sentence),
+                            params={"gain": 0.25 * gain})
+
+    def synthesize(self, request, session):
+        result = super().synthesize(request, session)
+        result.audio = result.audio * request.params.get("gain", 1.0)
+        return result
+
+
+def test_utterance_params_reach_the_engine_in_stream():
+    config = VoiceConfig.from_dict(dict(CONFIG))
+    whole = list(TTSVoice(config=config, session=_session(), adapter=_GainReader())
+                 .synthesize("Hi there. Who is it?", RAW))
+    parts = list(TTSVoice(config=config, session=_session(), adapter=_GainReader())
+                 .stream("Hi there. Who is it?", RAW))
+    assert len(parts) == len(whole) == 2
+    assert np.array_equal(_joined(parts), _joined(whole))

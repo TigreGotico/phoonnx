@@ -18,9 +18,11 @@ class _StatefulDecoder:
 
     def __init__(self, events):
         self.events = events
+        self.latents = []
 
     def run(self, output_names, feed):
         self.events.append("decode")
+        self.latents.append(feed["latent"])
         latent, previous = feed["latent"], feed["state_1"]
         audio = np.repeat(latent.mean(axis=2), 4, axis=1) + previous.sum()
         return [audio.reshape(1, 1, -1).astype(np.float32),
@@ -57,11 +59,27 @@ def test_joined_stream_is_the_synthesized_audio(frames):
     whole = _voice(frames, []).synthesize(_req(), _RecordingFlowLM([]))
     parts = list(_voice(frames, []).synthesize_stream(_req(), _RecordingFlowLM([])))
     assert whole.extras["frames"] == frames
-    assert np.array_equal(np.concatenate([p.audio for p in parts]), whole.audio)
+    joined = np.concatenate([p.audio for p in parts]) if parts else np.zeros((0,), np.float32)
+    assert np.array_equal(joined, whole.audio)
     assert all(p.audio.dtype == np.float32 for p in parts)
     assert [p.extras["frames"] for p in parts] == (
         [DECODE_CHUNK_FRAMES] * (frames // DECODE_CHUNK_FRAMES)
-        + ([frames % DECODE_CHUNK_FRAMES] if frames % DECODE_CHUNK_FRAMES or not frames else []))
+        + ([frames % DECODE_CHUNK_FRAMES] if frames % DECODE_CHUNK_FRAMES else []))
+
+
+def test_decoder_state_carries_across_slices():
+    adapter = _voice(2 * DECODE_CHUNK_FRAMES + 3, [])
+    parts = list(adapter.synthesize_stream(_req(), _RecordingFlowLM([])))
+    # the stub's own arithmetic, slice by slice, with its state carried from the start
+    latents = np.concatenate(adapter.mimi_decoder.latents, axis=1)
+    previous, expected = np.zeros((1, 2, 3), np.float32), []
+    for start in range(0, latents.shape[1], DECODE_CHUNK_FRAMES):
+        piece = latents[:, start:start + DECODE_CHUNK_FRAMES]
+        expected.append((np.repeat(piece.mean(axis=2), 4, axis=1) + previous.sum()).reshape(-1))
+        previous = previous + piece.sum()
+    assert [p.extras["frames"] for p in parts] == [15, 15, 3]
+    assert np.array_equal(np.concatenate([p.audio for p in parts]),
+                          np.concatenate(expected).astype(np.float32))
 
 
 def test_first_part_comes_before_the_last_latent_step():

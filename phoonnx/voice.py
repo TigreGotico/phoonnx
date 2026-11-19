@@ -1019,7 +1019,8 @@ class TTSVoice:
                 yield self._render(utterance, config, False, sr_engine, vc)
                 continue
             phonemes, ids = list(utterance.symbols or []), list(utterance.ids)
-            request = self._request(utterance.ids, config, utterance.streams, utterance.text)
+            request = self._request(utterance.ids, self._with_params(config, utterance),
+                                    utterance.streams, utterance.text)
             for part in self.adapter.synthesize_stream(request, self.session):
                 yield AudioChunk(sample_rate=self.config.sample_rate, sample_width=2,
                                  sample_channels=1, audio_float_array=self._level(part.audio, config),
@@ -1068,8 +1069,7 @@ class TTSVoice:
                 # instead of raising, since alignment is an optional feature.
                 include_alignments = False
 
-        if utterance.params:
-            syn_config = replace(syn_config, extra_params={**syn_config.extra_params, **utterance.params})
+        syn_config = self._with_params(syn_config, utterance)
         audio, phoneme_id_samples = self._infer(
             utterance.ids, syn_config, include_alignments, utterance.streams,
             text=utterance.text)
@@ -1097,6 +1097,13 @@ class TTSVoice:
             phoneme_id_samples=phoneme_id_samples,
             phoneme_alignments=phoneme_alignments,
         )
+
+    @staticmethod
+    def _with_params(syn_config: SynthesisConfig, utterance: Utterance) -> SynthesisConfig:
+        """*syn_config* with the params of *utterance* joined to its ``extra_params``."""
+        if not utterance.params:
+            return syn_config
+        return replace(syn_config, extra_params={**syn_config.extra_params, **utterance.params})
 
     def _level(self, audio: np.ndarray, syn_config: SynthesisConfig) -> np.ndarray:
         """The engine's *audio* levelled, scaled by ``syn_config.volume`` and clipped to [-1, 1]."""
