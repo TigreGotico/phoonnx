@@ -773,10 +773,13 @@ class TransformersLoader(ConfigLoader):
             if tok_cfg.get("language"):
                 lang_code = tok_cfg["language"]
                 pinned = {"lang_code"}
-            config["blank"] = tok_cfg.get("pad_token", config.get("blank", DEFAULT_BLANK_TOKEN))
+        # transformers' VitsTokenizer inserts token id 0 between tokens, whatever
+        # its pad_token is; a <pad> with another id is outside what the model saw.
+        config["blank"] = next((token for token, idx in request.vocab.items() if idx == 0),
+                               config.get("blank", DEFAULT_BLANK_TOKEN))
 
         tokenizer = TTSTokenizer(
-            Vocabulary(char2idx=request.vocab, blank=config.get("blank", DEFAULT_BLANK_TOKEN)),
+            Vocabulary(char2idx=request.vocab, blank=config["blank"]),
             add_blank_char=add_blank,
             add_blank_word=False,
             use_eos_bos=False,
@@ -961,6 +964,7 @@ def build_voice_config(config: Dict[str, Any],
         engine=loaded.engine,
         phonemizer_model=config.get("phonemizer_model"),
         keep_punctuation=bool(config.get("keep_punctuation", loaded.keep_punctuation)),
+        text_casing=config.get("text_casing", "ignore"),
         phonemizer_identity=config.get("phonemizer_identity"),
         phoneme_type=loaded.phoneme_type,
         speaker_id_map=config.get("speaker_id_map", {}),

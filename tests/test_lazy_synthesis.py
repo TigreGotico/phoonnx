@@ -101,6 +101,7 @@ def _make_lazy_voice(events, alphabet=Alphabet.IPA):
     voice.phonemizer = _RecordingPhonemizer(events)
 
     config = types.SimpleNamespace(
+        text_casing="ignore",
         phoneme_type=PhonemeType.UNICODE,
         alphabet=alphabet,
         lang_code="en",

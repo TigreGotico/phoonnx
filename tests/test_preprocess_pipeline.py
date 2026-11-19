@@ -24,7 +24,7 @@ import numpy as np
 import soundfile as sf
 import torch
 
-from phoonnx.config import Alphabet, PhonemeType, voice_frontend
+from phoonnx.config import Alphabet, PhonemeType, get_phonemizer, voice_frontend
 from phoonnx_train import preprocess
 from phoonnx_train.dataset_loaders import PreprocessorConfig, Utterance
 import scriptconv.frontend as scriptconv_frontend
@@ -364,6 +364,26 @@ class TestFinetunePhonemeMap(unittest.TestCase):
             self.assertIn("absent from the final phoneme map", str(ctx.exception))
 
 
+class TestTextCasingIsRecorded(unittest.TestCase):
+    """config.json says which casing the training text went through."""
+
+    def _written_config(self, *extra):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "Hi", "audio": "a.wav"}])
+            args = ["-i", str(src), "-o", str(tmp / "out"), "-l", "en", "--skip-audio", *extra]
+            result = _invoke(args, catch_exceptions=False)
+            self.assertEqual(result.exit_code, 0, result.output)
+            return json.loads((tmp / "out" / "config.json").read_text())
+
+    def test_the_chosen_casing_is_written(self):
+        self.assertEqual(self._written_config("--text-casing", "lower")["text_casing"], "lower")
+
+    def test_no_casing_is_written_as_ignore(self):
+        self.assertEqual(self._written_config()["text_casing"], "ignore")
+
+
 class TestPhonemizerProvenance(unittest.TestCase):
     """config.json must say whether these phonemes were produced here at all.
 
@@ -401,7 +421,10 @@ class TestPhonemizerProvenance(unittest.TestCase):
             self.assertEqual(config["phonemizer_identity"], {
                 "backend": "graphemes", "distribution": "scriptconv",
                 "version": importlib.metadata.version("scriptconv"),
-                "lang": "en", "revision": GraphemePhonemizer().identity("en").revision, "frontend": None})
+                "lang": "en", "frontend": None,
+                # preprocess keeps punctuation by default, and the revision covers that setting.
+                "revision": get_phonemizer(PhonemeType.GRAPHEMES, Alphabet.UNICODE, None,
+                                           keep_punctuation=True).identity("en").revision})
 
     def test_column_run_claims_no_producer(self):
         with TemporaryDirectory() as tmp:
@@ -665,7 +688,9 @@ class TestPhonemizerProvenance(unittest.TestCase):
         self.assertEqual(resumed["phonemizer_identity"], {
             "backend": "graphemes", "distribution": "scriptconv",
             "version": importlib.metadata.version("scriptconv"),
-            "lang": "en", "revision": GraphemePhonemizer().identity("en").revision, "frontend": None})
+            "lang": "en", "frontend": None,
+            "revision": get_phonemizer(PhonemeType.GRAPHEMES, Alphabet.IPA, None,
+                                       keep_punctuation=True).identity("en").revision})
         self.assertEqual((resumed["phonemes_phonemized"], resumed["phonemes_from_column"]), (1, 1))
 
     def test_a_column_only_resume_onto_a_config_without_an_engine_names_none(self):

@@ -36,6 +36,7 @@ def _make_voice(phonemizer):
     voice.phonetic_spellings = None
     voice.phonemizer = phonemizer
     voice.config = types.SimpleNamespace(
+        text_casing="ignore",
         phoneme_type=PhonemeType.UNICODE,
         alphabet=Alphabet.IPA,
         lang_code="en",

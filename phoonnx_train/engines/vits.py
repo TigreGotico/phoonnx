@@ -428,6 +428,7 @@ def _write_piper_json(model_config: Dict[str, Any], path: Path) -> None:
         # piper ignores the key; phoonnx reads a piper config as trained with
         # punctuation unless told otherwise
         "keep_punctuation": bool(model_config.get("keep_punctuation", False)),
+        "text_casing": model_config.get("text_casing"),
     }
     piper_cfg = {k: v for k, v in piper_cfg.items() if v is not None}
     with open(path, "w", encoding="utf-8") as f:
