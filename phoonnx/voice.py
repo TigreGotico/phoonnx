@@ -308,12 +308,12 @@ class TTSVoice:
     _sr_engine: Any = field(default=None, init=False, repr=False)
     _sr_loaded: bool = field(default=False, init=False, repr=False)
     # Post-synthesis voice-conversion state (``SynthesisConfig.vc_reference``).
-    # ``_vc_key`` is the (engine, reference content) the cached ``_VoiceConversion``
-    # was built for, so a later call naming a different engine or target speaker —
-    # or the same path holding a different recording — rebuilds instead of silently
-    # reusing the wrong voice.
-    _vc: Optional[_VoiceConversion] = field(default=None, init=False, repr=False)
-    _vc_key: Any = field(default=None, init=False, repr=False)
+    # ``(key, conversion)`` in one attribute, where ``key`` is the (engine,
+    # reference content) the ``_VoiceConversion`` was built for. A later call naming
+    # a different engine or target speaker, or the same path holding a different
+    # recording, rebuilds instead of silently reusing the wrong voice. One attribute
+    # means a reader never sees one request's key next to another request's conversion.
+    _vc: Optional[Tuple[tuple, _VoiceConversion]] = field(default=None, init=False, repr=False)
     # Path to the ONNX model file backing ``session``, kept so a later
     # ``include_alignments=True`` call can locate-and-patch a model that was
     # exported without the alignment output (see ``_ensure_alignment_session``).
@@ -898,8 +898,9 @@ class TTSVoice:
 
         audio, sr = load_reference_audio(ref)
         key = (engine, hashlib.sha1(audio.tobytes()).hexdigest(), int(sr))
-        if self._vc is not None and self._vc_key == key:
-            return self._vc
+        cached = self._vc
+        if cached is not None and cached[0] == key:
+            return cached[1]
 
         try:
             from voiceclonnx import VoiceCloner
@@ -918,11 +919,11 @@ class TTSVoice:
             _unlink(ref_path)
             raise
 
-        self._vc = _VoiceConversion(cloner, ref_path)
-        self._vc_key = key
+        conversion = _VoiceConversion(cloner, ref_path)
+        self._vc = (key, conversion)
         LOG.info(f"Voice conversion enabled (engine={engine}); output will be "
                  f"converted to the reference speaker at {cloner.sample_rate} Hz")
-        return self._vc
+        return conversion
 
     @staticmethod
     def _maybe_convert(audio: np.ndarray, vc: Optional[_VoiceConversion],
