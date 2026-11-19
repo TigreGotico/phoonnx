@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from card_examples import UnsupportedExample, index_files, standalone_example  # noqa: E402
 from phoonnx.engines import neutts as neutts_engine  # noqa: E402
+from phoonnx.engines._sampling import apply_repetition_penalty  # noqa: E402
 from phoonnx.engines.neutts import NeuTTSAdapter  # noqa: E402
 
 
@@ -114,7 +115,7 @@ def test_loop_samples_as_phoonnx(temperature):
     defaults = neutts_engine.NeuTTSAdapter().default_params()
     expected, history, rng = [], list(ids), np.random.default_rng(0)
     for row in logits:
-        scores = neutts_engine._apply_repetition_penalty(row, np.asarray(history[-64:]), defaults["repetition_penalty"])
+        scores = apply_repetition_penalty(row, np.asarray(history[-64:]), defaults["repetition_penalty"])
         token = neutts_engine._sample(scores, temperature, int(defaults["top_k"]), defaults["top_p"], rng)
         if token in (2, 3):
             break

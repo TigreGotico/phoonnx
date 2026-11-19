@@ -15,6 +15,7 @@ from phoonnx_train.dataset_loaders import (PreprocessorConfig, Utterance,
                                            jsonl_loader, known_loaders,
                                            load_source, parquet_loader)
 from phoonnx.config import Alphabet, PhonemeType
+from scriptconv.phonemizers.base import GraphemePhonemizer
 
 
 def _wav_bytes(seconds: float = 0.2, sr: int = 16000) -> bytes:
@@ -344,11 +345,9 @@ class TestPreprocessIntegration(unittest.TestCase):
     """End-to-end cli over jsonl sources with precomputed phonemes + skip_audio,
     covering multi-source speaker namespacing and --resume."""
 
-    class _DummyPhonemizer:
-        alphabet = Alphabet.IPA
-
-        def phonemize_to_list(self, text, lang):
-            return list(text.replace(" ", ""))
+    class _DummyPhonemizer(GraphemePhonemizer):
+        def __init__(self):
+            super().__init__(Alphabet.IPA)
 
         def identity(self, lang):
             from scriptconv.phonemizers.base import PhonemizerIdentity

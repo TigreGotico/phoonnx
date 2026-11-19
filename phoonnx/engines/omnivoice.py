@@ -118,7 +118,7 @@ class OmniVoiceAdapter(BaseOnnxAdapter):
         # A one-entry cache keyed on the request's own clip: a request whose
         # clip differs recomputes rather than reading the previous caller's
         # codes, and one that repeats it skips the encoders.
-        "encode_reference": frozenset({"_ref_cache", "_ref_cache_key"}),
+        "encode_reference": frozenset({"_ref_cache"}),
     }
 
     NUM_STEP = 32
@@ -136,8 +136,9 @@ class OmniVoiceAdapter(BaseOnnxAdapter):
         self.tokenizer = None
         self._params: Dict[str, Any] = {}
         self._estimator = RuleDurationEstimator()
-        self._ref_cache_key: Optional[tuple] = None
-        self._ref_cache: Tuple[Optional[np.ndarray], Optional[float]] = (None, None)
+        # (key, (codes, rms)) in one attribute: a reader never sees one request's
+        # key next to another request's codes.
+        self._ref_cache: Optional[Tuple[tuple, Tuple[np.ndarray, float]]] = None
 
     # ------------------------------------------------------------------
     # Setup
@@ -154,24 +155,13 @@ class OmniVoiceAdapter(BaseOnnxAdapter):
             "length_scale": 1.0,
         }
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "num_step": "Unmasking steps",
-            "guidance_scale": "Classifier-free guidance",
-            "t_shift": "Time-step shift",
-            "layer_penalty_factor": "Codebook-order penalty",
-            "position_temperature": "Position-choice temperature",
-            "class_temperature": "Token-sampling temperature (0 = greedy)",
-            "length_scale": "Speech duration (>1 slower)",
-        }
-
     def configure(self, voice_config: Any) -> None:
         """Load the codec graphs and the model's own BPE from ``engine_params``.
 
         The three encoder graphs are only needed to clone, and the semantic encoder alone
         is several hundred megabytes, so they open on first use rather than at load.
         """
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         self._params = dict(ep)
         if self.decoder is None and ep.get("decoder_path"):
             self.decoder = make_session(ep["decoder_path"], providers=ep.get("providers"))
@@ -251,8 +241,9 @@ class OmniVoiceAdapter(BaseOnnxAdapter):
     def encode_reference(self, audio: np.ndarray, sr: int) -> Tuple[np.ndarray, float]:
         """Reference clip -> ``(codes[8, T], original_rms)``, cached across chunks."""
         key = (hash(np.asarray(audio, np.float32).tobytes()), int(sr))
-        if key == self._ref_cache_key:
-            return self._ref_cache
+        cached = self._ref_cache
+        if cached is not None and cached[0] == key:
+            return cached[1]
         wav, rms = self._preprocess_reference(audio, sr)
         if wav.size == 0:
             raise RuntimeError("OmniVoice reference clip is empty")
@@ -269,7 +260,7 @@ class OmniVoiceAdapter(BaseOnnxAdapter):
             ["codes"], {"acoustic_features": acoustic[:, :, :frames],
                         "semantic_features": semantic[:, :, :frames]})[0]
         result = (np.asarray(codes).reshape(NUM_CODEBOOKS, -1).astype(np.int64), rms)
-        self._ref_cache_key, self._ref_cache = key, result
+        self._ref_cache = (key, result)
         return result
 
     # ------------------------------------------------------------------

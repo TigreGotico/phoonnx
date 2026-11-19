@@ -8,11 +8,12 @@ sessions here are fakes that record their feeds.
 import numpy as np
 import pytest
 
+from phoonnx.engines._sampling import apply_repetition_penalty
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.orpheus import (
     AUDIO_TOKEN_BASE, AUDIO_TOKEN_LAST, BOS, CODEBOOK_SIZE, END_OF_HUMAN, END_OF_SPEECH,
     EOT, START_OF_AI, START_OF_HUMAN, START_OF_SPEECH, TOKENS_PER_FRAME, OrpheusAdapter,
-    _apply_repetition_penalty, _sample,
+    _sample,
 )
 
 LAYERS = 2
@@ -226,19 +227,19 @@ def test_top_p_truncates_over_the_tempered_distribution():
 def test_repetition_penalty_spans_prompt_and_generation():
     """vLLM penalises prompt tokens too — not a window, and not generation-only."""
     scores = np.array([5.0, 5.0, 5.0], np.float32)
-    out = _apply_repetition_penalty(scores, np.array([0], np.int64), 2.0)
+    out = apply_repetition_penalty(scores, np.array([0], np.int64), 2.0)
     assert out[0] == pytest.approx(2.5)
     assert out[1] == 5.0
 
 
 def test_repetition_penalty_multiplies_negative_scores():
-    out = _apply_repetition_penalty(np.array([-4.0], np.float32), np.array([0], np.int64), 2.0)
+    out = apply_repetition_penalty(np.array([-4.0], np.float32), np.array([0], np.int64), 2.0)
     assert out[0] == pytest.approx(-8.0)
 
 
 def test_repetition_penalty_of_one_is_a_noop():
     scores = np.array([1.0, 2.0], np.float32)
-    assert np.array_equal(_apply_repetition_penalty(scores, np.array([0, 1]), 1.0), scores)
+    assert np.array_equal(apply_repetition_penalty(scores, np.array([0, 1]), 1.0), scores)
 
 
 # ----------------------------------------------------------------------

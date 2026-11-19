@@ -7,6 +7,7 @@ invisible to all of them and only shows up once someone installs a wheel.
 import shutil
 import subprocess
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -22,6 +23,22 @@ _IGNORED = shutil.ignore_patterns(".git", "build", "dist", "*.egg-info",
                                   "__pycache__", ".venv", ".pytest_cache")
 
 
+def copy_checkout(root: Path, dest: Path) -> None:
+    """Copy ``root`` to ``dest``, leaving out scratch trees.
+
+    The temporary folder and ``dest`` are left out too. A ``TMPDIR`` inside the
+    checkout puts both inside ``root``, and the copy would then copy itself
+    until the path is too long.
+    """
+    skip = {dest.resolve(), Path(tempfile.gettempdir()).resolve()}
+
+    def ignore(folder: str, names: list[str]) -> set[str]:
+        own = {name for name in names if Path(folder, name).resolve() in skip}
+        return set(_IGNORED(folder, names)) | own
+
+    shutil.copytree(root, dest, ignore=ignore)
+
+
 @pytest.fixture(scope="module")
 def wheel_contents(tmp_path_factory):
     """Names inside a wheel built from a pristine copy of the checkout.
@@ -32,7 +49,7 @@ def wheel_contents(tmp_path_factory):
     """
     tmp = tmp_path_factory.mktemp("packaging")
     src = tmp / "src"
-    shutil.copytree(REPO_ROOT, src, ignore=_IGNORED)
+    copy_checkout(REPO_ROOT, src)
     subprocess.run(
         [sys.executable, "-m", "build", "--wheel", "--no-isolation",
          "--outdir", str(tmp / "dist")],
@@ -52,3 +69,36 @@ def test_runtime_data_files_exist_in_checkout():
     """Guards the list above against naming a file that has moved or gone."""
     for relpath in RUNTIME_DATA_FILES:
         assert (REPO_ROOT / relpath).is_file(), relpath
+
+
+def checkout(tmp_path: Path) -> Path:
+    root = tmp_path / "checkout"
+    (root / "phoonnx").mkdir(parents=True)
+    (root / "phoonnx" / "voice.py").write_text("")
+    return root
+
+
+def copied(dest: Path) -> list[str]:
+    return sorted(p.relative_to(dest).as_posix() for p in dest.rglob("*"))
+
+
+def test_the_checkout_copy_leaves_out_a_tmpdir_inside_the_checkout(tmp_path, monkeypatch):
+    root = checkout(tmp_path)
+    (root / ".tmp" / "other-test").mkdir(parents=True)
+    monkeypatch.setattr(tempfile, "tempdir", str(root / ".tmp"))
+    dest = root / ".tmp" / "pytest" / "src"
+    dest.parent.mkdir()
+
+    copy_checkout(root, dest)
+
+    assert copied(dest) == ["phoonnx", "phoonnx/voice.py"]
+
+
+def test_the_checkout_copy_leaves_out_its_own_destination(tmp_path):
+    root = checkout(tmp_path)
+    dest = root / "scratch" / "src"
+    dest.parent.mkdir()
+
+    copy_checkout(root, dest)
+
+    assert copied(dest) == ["phoonnx", "phoonnx/voice.py", "scratch"]

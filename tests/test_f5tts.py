@@ -5,6 +5,7 @@ import types
 import numpy as np
 import pytest
 
+from phoonnx.audio_fx import resample_rate
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.f5tts import F5TTSAdapter
 from tests.conftest import retry_download
@@ -169,12 +170,9 @@ def test_f5tts_requires_decode_or_vocoder():
         )
 
 
-def test_f5tts_param_labels_and_defaults():
-    ad = F5TTSAdapter()
-    labels = ad.param_labels()
-    defaults = ad.default_params()
+def test_f5tts_defaults():
+    defaults = F5TTSAdapter().default_params()
     for key in ("nfe", "cfg_strength", "sway_coefficient", "target_rms", "speed"):
-        assert key in labels
         assert key in defaults
 
 
@@ -336,8 +334,8 @@ def test_aux_model_urls_resolved_in_engine_params(tmp_path, monkeypatch):
 
 def test_f5tts_resample():
     a = np.zeros(1000, np.float32)
-    assert F5TTSAdapter._resample(a, 24000, 24000) is a  # no-op
-    out = F5TTSAdapter._resample(a, 22050, 24000)
+    assert resample_rate(a, 24000, 24000) is a  # no-op
+    out = resample_rate(a, 22050, 24000)
     assert abs(len(out) - 1000 * 24000 / 22050) <= 2
 
 

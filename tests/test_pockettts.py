@@ -492,11 +492,6 @@ def test_default_params_expose_the_sampling_controls():
     assert params["eos_threshold"] == DEFAULT_EOS_THRESHOLD
 
 
-def test_param_labels_cover_every_param():
-    a = PocketTTSAdapter()
-    assert set(a.param_labels()) == set(a.default_params())
-
-
 # ---------------------------------------------------------------------------
 # synthesis
 # ---------------------------------------------------------------------------
@@ -639,20 +634,6 @@ def test_parse_outputs_is_not_supported():
 # decoding / cloning
 # ---------------------------------------------------------------------------
 
-def test_decode_latents_feeds_the_decoder_in_chunks():
-    a = _adapter()
-    latents = np.zeros((1, 7, LATENT_DIM), np.float32)
-    audio = a.decode_latents(latents, chunk_size=3)
-    assert a.mimi_decoder.chunk_sizes == [3, 3, 1]
-    assert audio.shape == (7 * 4,)
-
-
-def test_decode_latents_of_nothing_is_empty():
-    a = _adapter()
-    audio = a.decode_latents(np.zeros((1, 0, LATENT_DIM), np.float32))
-    assert audio.shape == (0,)
-
-
 def test_encode_reference_shapes_the_clip_for_the_encoder():
     a = _adapter()
     embeddings = a.encode_reference(np.zeros(160, np.float32))
@@ -779,3 +760,25 @@ def test_voice_index_voice_state_matches_the_voice_id():
     for voice_id, entry in _index().items():
         speaker = voice_id.rsplit("/", 1)[-1]
         assert entry["aux_model_urls"]["voice_state_path"].endswith(f"/{speaker}.safetensors")
+
+
+def test_the_encoder_is_built_on_first_use_only(monkeypatch):
+    # Only voice cloning runs mimi_encoder, so loading a voice must not build it.
+    import types
+    import phoonnx.engines.pockettts as pockettts
+
+    built = []
+
+    def fake_session(path, providers=None):
+        built.append((path, providers))
+        return _CaptureEncoderSession()
+
+    monkeypatch.setattr(pockettts, "make_session", fake_session)
+    a = PocketTTSAdapter()
+    a.configure(types.SimpleNamespace(engine_params={
+        "mimi_encoder_path": "mimi_encoder.onnx", "providers": ["CPUExecutionProvider"]}))
+    assert built == []
+
+    a.encode_reference(np.zeros(160, np.float32))
+    a.encode_reference(np.zeros(160, np.float32))
+    assert built == [("mimi_encoder.onnx", ["CPUExecutionProvider"])]

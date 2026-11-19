@@ -33,6 +33,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import onnxruntime
 
+from phoonnx._onnx_external import external_data_locations
 from phoonnx.util import LOG
 
 #: A provider is either a name or a ``(name, options)`` pair.
@@ -259,17 +260,27 @@ def _external_data_paths(*model_paths: str) -> List[str]:
     sidecars sit alongside *it*, resolving to ``blobs/<sha>`` with nothing
     beside the blob. The first location that has any sidecar is the one
     onnxruntime reads, so its sidecars are the ones returned.
+
+    The file names the graph itself gives in its ``external_data`` entries
+    count too, so a graph that names another file (``moss_encode.data``) is
+    keyed on that file.
     """
+    try:
+        named = external_data_locations(model_paths[0]) if model_paths else []
+    except (OSError, ValueError):
+        named = []
     for model_path in model_paths:
+        folder = os.path.dirname(model_path)
         found = [candidate
-                 for candidate in (f"{model_path}_data", f"{model_path}.data")
+                 for candidate in (f"{model_path}_data", f"{model_path}.data",
+                                   *(os.path.join(folder, name) for name in named))
                  if os.path.isfile(candidate)]
         number = 1
         while os.path.isfile(f"{model_path}_data_{number}"):
             found.append(f"{model_path}_data_{number}")
             number += 1
         if found:
-            return sorted(found)
+            return sorted(set(found))
     return []
 
 
@@ -278,15 +289,15 @@ def session_key(model_path: Any,
                 cache_dir: Optional[Union[str, Path]]) -> tuple:
     """Identity of a session: two calls with the same key are interchangeable.
 
-    The model file is identified by its resolved real path plus its size and
-    modification time, so a voice that reaches the same cached artifact
+    The model file is identified by its resolved real path plus its size,
+    modification time and inode, so a voice that reaches the same cached artifact
     through a different symlink or a non-normalized path shares one session,
     while a file that was replaced on disk gets a new one rather than a stale
     session over weights that are no longer there. A graph with external
-    weights keeps those weights in sidecar files that the graph's own size and
-    mtime do not track, so each sidecar's name, size and mtime are folded in
-    too: a stable stub graph pointing at swapped-out weights would otherwise
-    keep serving the old session.
+    weights keeps those weights in sidecar files that the graph's own stat does
+    not track, so each sidecar's name, size, mtime and inode are folded in too:
+    a stable stub graph pointing at swapped-out weights would otherwise keep
+    serving the old session.
     """
     try:
         resolved_path = os.path.realpath(str(model_path))
@@ -294,7 +305,7 @@ def session_key(model_path: Any,
         resolved_path = str(model_path)
     try:
         stat = os.stat(resolved_path)
-        version = (stat.st_size, stat.st_mtime_ns)
+        version = (stat.st_size, stat.st_mtime_ns, stat.st_ino)
     except OSError:
         version = ()
     for sidecar in _external_data_paths(str(model_path), resolved_path):
@@ -303,7 +314,7 @@ def session_key(model_path: Any,
         except OSError:
             continue
         version = version + (os.path.basename(sidecar), sidecar_stat.st_size,
-                             sidecar_stat.st_mtime_ns)
+                             sidecar_stat.st_mtime_ns, sidecar_stat.st_ino)
     return (resolved_path, version, repr(list(resolved)), str(cache_dir or ""))
 
 

@@ -66,7 +66,6 @@ windowed repetition penalty, then temperature, then top-k, top-p and min-p over 
 """
 import copy
 import json
-import math
 import re
 import unicodedata
 from typing import Any, Dict, List, Optional, Tuple
@@ -74,6 +73,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import onnxruntime
 
+from phoonnx.engines._sampling import ranked, softmax
+from phoonnx.audio_fx import normalize_loudness
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.util import LOG
@@ -252,11 +253,6 @@ def chunk_text(text: str, min_words: int = CHUNK_MIN_WORDS,
 # ----------------------------------------------------------------------------------
 # sampling — HuggingFace order (upstream's default backend)
 # ----------------------------------------------------------------------------------
-def _softmax(x: np.ndarray) -> np.ndarray:
-    z = np.asarray(x, np.float64)
-    z = z - z.max()
-    e = np.exp(z)
-    return e / e.sum()
 
 
 def _apply_repetition_penalty(scores: np.ndarray, seen: np.ndarray,
@@ -269,7 +265,7 @@ def _apply_repetition_penalty(scores: np.ndarray, seen: np.ndarray,
     if penalty == 1.0 or seen.size == 0:
         return scores
     out = scores.copy()
-    idx = np.unique(seen[(seen >= 0) & (seen < out.shape[0])])
+    idx = seen[(seen >= 0) & (seen < out.shape[0])]
     if idx.size:
         s = out[idx]
         out[idx] = np.where(s <= 0, s * penalty, s / penalty)
@@ -295,8 +291,8 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
         threshold = float(np.partition(s, -top_k)[-top_k])
         s = np.where(s < threshold, -np.inf, s)
     if 0 < top_p < 1:
-        order = np.argsort(s)[::-1]
-        cumulative = np.cumsum(_softmax(s[order]))
+        order = ranked(s, top_k)
+        cumulative = np.cumsum(softmax(s[order]))
         keep = np.ones(order.shape[0], bool)
         # keep every token up to and including the one that crosses top_p
         keep[1:] = cumulative[:-1] < top_p
@@ -304,101 +300,14 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
         masked[order[keep]] = s[order[keep]]
         s = masked
     if 0 < min_p < 1:
-        probs = _softmax(s)
+        probs = softmax(s)
         s = np.where(probs < min_p * probs.max(), -np.inf, s)
-    return int(rng.choice(s.shape[0], p=_softmax(s)))
+    return int(rng.choice(s.shape[0], p=softmax(s)))
 
 
 # ----------------------------------------------------------------------------------
 # loudness — ITU-R BS.1770-4, as pyloudnorm implements it
 # ----------------------------------------------------------------------------------
-def _biquad(kind: str, rate: int) -> Tuple[np.ndarray, np.ndarray]:
-    """K-weighting stage coefficients, ``pyloudnorm.IIRfilter`` designs them per rate."""
-    if kind == "high_shelf":
-        gain, q, fc = 4.0, 0.7071752369554196, 1681.9744509555319
-    else:
-        gain, q, fc = 0.0, 0.5003270373238773, 38.13547087602444
-    a = 10 ** (gain / 40.0)
-    w0 = 2.0 * math.pi * (fc / rate)
-    alpha = math.sin(w0) / (2.0 * q)
-    cos = math.cos(w0)
-    if kind == "high_shelf":
-        root = math.sqrt(a)
-        b = np.array([a * ((a + 1) + (a - 1) * cos + 2 * root * alpha),
-                      -2 * a * ((a - 1) + (a + 1) * cos),
-                      a * ((a + 1) + (a - 1) * cos - 2 * root * alpha)])
-        den = np.array([(a + 1) - (a - 1) * cos + 2 * root * alpha,
-                        2 * ((a - 1) - (a + 1) * cos),
-                        (a + 1) - (a - 1) * cos - 2 * root * alpha])
-    else:
-        b = np.array([(1 + cos) / 2, -(1 + cos), (1 + cos) / 2])
-        den = np.array([1 + alpha, -2 * cos, 1 - alpha])
-    return b / den[0], den / den[0]
-
-
-def integrated_loudness(audio: np.ndarray, rate: int = SAMPLE_RATE,
-                        block_size: float = 0.400) -> float:
-    """Gated integrated loudness of mono *audio* in LUFS (ITU-R BS.1770-4).
-
-    Reimplemented in numpy/scipy rather than pulled in as a dependency: it is two
-    biquads and a two-stage gate, and ``pyloudnorm`` would be a new hard requirement
-    for every phoonnx install. Returns ``-inf`` for silence, which
-    :func:`normalize_loudness` passes through unchanged.
-    """
-    from scipy.signal import lfilter
-    x = np.asarray(audio, np.float64).reshape(-1)
-    for kind in ("high_shelf", "high_pass"):
-        b, a = _biquad(kind, rate)
-        x = lfilter(b, a, x)
-
-    step = 0.25  # 75 % overlap
-    duration = x.shape[0] / rate
-    num_blocks = int(round((duration - block_size) / (block_size * step)) + 1)
-    if num_blocks < 1:
-        return -np.inf
-    z = np.empty(num_blocks)
-    for j in range(num_blocks):
-        lo = int(block_size * (j * step) * rate)
-        hi = int(block_size * (j * step + 1) * rate)
-        z[j] = np.sum(np.square(x[lo:hi])) / (block_size * rate)
-    with np.errstate(divide="ignore"):
-        loudness = -0.691 + 10.0 * np.log10(z)
-
-    gated = z[loudness > -70.0]
-    if gated.size == 0:
-        return -np.inf
-    with np.errstate(divide="ignore"):
-        relative = -0.691 + 10.0 * np.log10(gated.mean()) - 10.0
-    gated = z[(loudness > -70.0) & (loudness > relative)]
-    if gated.size == 0:
-        return -np.inf
-    return float(-0.691 + 10.0 * np.log10(gated.mean()))
-
-
-def normalize_loudness(audio: np.ndarray, target: float = -18.0,
-                       peak_limit: float = -1.0, rate: int = SAMPLE_RATE,
-                       block_size: float = 0.400) -> np.ndarray:
-    """Upstream's ``process_audio_tensor``: loudness-normalize, then peak-limit.
-
-    Every OuteTTS waveform goes through this on the way out of the codec, so it is part
-    of the model's output level, not a phoonnx-side taste decision. Clips shorter than
-    one gating block are zero-padded for the measurement and trimmed back after, as
-    upstream does.
-    """
-    x = np.asarray(audio, np.float64).reshape(-1)
-    original = x.shape[0]
-    if original == 0:
-        return np.zeros(0, np.float32)
-    minimum = int(block_size * rate)
-    measured = integrated_loudness(
-        np.pad(x, (0, max(0, minimum - original))), rate, block_size)
-    if np.isfinite(measured):
-        x = x * (10 ** ((target - measured) / 20.0))
-    peak = float(np.max(np.abs(x)))
-    threshold = 10 ** (peak_limit / 20.0)
-    if peak > threshold:
-        x = x * threshold / peak
-    return np.asarray(x[:original], np.float32)
 
 
 class OuteTTSAdapter(BaseOnnxAdapter):
@@ -449,21 +358,9 @@ class OuteTTSAdapter(BaseOnnxAdapter):
             "max_chunk_words": float(CHUNK_MAX_WORDS),
         }
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "temperature": "sampling temperature",
-            "top_p": "top-p (nucleus)",
-            "top_k": "top-k",
-            "min_p": "min-p (relative probability floor)",
-            "repetition_penalty": "repetition penalty (64-token window)",
-            "max_new_tokens": "max codec tokens (~94/s)",
-            "max_chunk_words": "target words per model call",
-            "voice": "speaker profile name",
-        }
-
     def configure(self, voice_config: Any) -> None:
         """Load the DAC decoder, the checkpoint's tokenizer and the speaker profiles."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         if self.codec is None and ep.get("codec_decoder_path"):
             self.codec = make_session(ep["codec_decoder_path"], providers=ep.get("providers"))
         if self.tokenizer is None and ep.get("tokenizer_path"):
@@ -644,7 +541,7 @@ class OuteTTSAdapter(BaseOnnxAdapter):
             chunk = arr[..., start:start + self.DECODE_CHUNK]
             audio = self.codec.run(None, {name: chunk})[0]
             pieces.append(self._fade(np.asarray(audio, np.float32).reshape(-1)))
-        return normalize_loudness(np.concatenate(pieces))
+        return normalize_loudness(np.concatenate(pieces), rate=SAMPLE_RATE)
 
     # ------------------------------------------------------------------
     # autoregressive loop
