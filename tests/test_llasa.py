@@ -180,7 +180,6 @@ def test_default_params_match_the_model_card():
     p = LlasaAdapter().default_params()
     assert p["temperature"] == 0.9
     assert p["top_p"] == 0.95
-    assert set(LlasaAdapter().param_labels()) >= set(p)
 
 
 # ------------------------------------------------------------------ prompt

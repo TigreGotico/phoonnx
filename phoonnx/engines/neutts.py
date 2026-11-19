@@ -267,17 +267,6 @@ class NeuTTSAdapter(BaseOnnxAdapter):
             "max_chunk_chars": float(self.MAX_CHUNK_CHARS),
         }
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "temperature": "sampling temperature",
-            "top_p": "top-p (nucleus)",
-            "top_k": "top-k",
-            "repetition_penalty": "repetition penalty",
-            "max_new_tokens": "max codec tokens (50/s)",
-            "max_chunk_chars": "target characters per model call",
-            "voice": "voice preset name",
-        }
-
     def configure(self, voice_config: Any) -> None:
         """Load the NeuCodec decoder, the checkpoint's BPE, the voice presets and the
         checkpoint's text front end from ``engine_params``."""

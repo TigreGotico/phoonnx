@@ -560,11 +560,10 @@ def test_build_feed_dict_and_parse_outputs_refuse():
 # configure / params
 # ---------------------------------------------------------------------------
 
-def test_default_params_and_labels():
+def test_default_params():
     ad = IndicParlerAdapter(temperature=0.8, top_k=50, do_sample=True, max_new_tokens=900)
     assert ad.default_params() == {"temperature": 0.8, "top_k": 50.0,
                                    "do_sample": 1.0, "max_new_tokens": 900.0}
-    assert set(ad.param_labels()) == set(ad.default_params())
 
 
 def test_configure_reads_engine_options(tmp_path):

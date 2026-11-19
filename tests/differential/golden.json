@@ -14323,7 +14323,53 @@
    "phoneme_type": "espeak",
    "phoonnx_version": "1.0"
   },
-  "raised": "ValueError: 'vits' is not a valid Engine"
+  "voice_config": {
+   "add_diacritics": true,
+   "alphabet": "ipa",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": "rawi",
+   "engine": "vits",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "keep_punctuation": false,
+   "lang_code": "pt",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": null,
+   "noise_scale": null,
+   "noise_w_scale": null,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "espeak",
+   "phonemizer_identity": null,
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a": 1,
+     "b": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
  },
  "native|1": {
   "config_after": {
@@ -14349,7 +14395,53 @@
    "phoneme_type": "espeak",
    "phoonnx_version": "1.0"
   },
-  "raised": "ValueError: 'vits' is not a valid Engine"
+  "voice_config": {
+   "add_diacritics": true,
+   "alphabet": "ipa",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": "rawi",
+   "engine": "vits",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "keep_punctuation": false,
+   "lang_code": "xx",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": null,
+   "noise_scale": null,
+   "noise_w_scale": null,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "espeak",
+   "phonemizer_identity": null,
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a": 1,
+     "b": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
  },
  "native|2": {
   "config_after": {
@@ -14375,7 +14467,53 @@
    "phoneme_type": "espeak",
    "phoonnx_version": "1.0"
   },
-  "raised": "ValueError: 'vits' is not a valid Engine"
+  "voice_config": {
+   "add_diacritics": true,
+   "alphabet": "ipa",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": "rawi",
+   "engine": "vits",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "keep_punctuation": false,
+   "lang_code": "pt",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": null,
+   "noise_scale": null,
+   "noise_w_scale": null,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "gruut",
+   "phonemizer_identity": null,
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a": 1,
+     "b": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
  },
  "native|3": {
   "config_after": {
@@ -14401,7 +14539,53 @@
    "phoneme_type": "espeak",
    "phoonnx_version": "1.0"
   },
-  "raised": "ValueError: 'vits' is not a valid Engine"
+  "voice_config": {
+   "add_diacritics": true,
+   "alphabet": "arpa",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": "rawi",
+   "engine": "vits",
+   "engine_params": {},
+   "eos_token": "$",
+   "hop_length": 256,
+   "keep_punctuation": false,
+   "lang_code": "pt",
+   "lang_id_map": {},
+   "lang_tokens": {},
+   "length_scale": null,
+   "noise_scale": null,
+   "noise_w_scale": null,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "espeak",
+   "phonemizer_identity": null,
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a": 1,
+     "b": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
  },
  "native|4": {
   "config_after": {
@@ -14571,7 +14755,57 @@
    "phoneme_type": "espeak",
    "phoonnx_version": "1.0"
   },
-  "raised": "ValueError: 'vits' is not a valid Engine"
+  "voice_config": {
+   "add_diacritics": true,
+   "alphabet": "ipa",
+   "blank_at_end": true,
+   "blank_at_start": true,
+   "blank_between": "tokens_and_words",
+   "blank_token": "_",
+   "bos_token": "^",
+   "diacritizer_model": "rawi",
+   "engine": "vits",
+   "engine_params": {
+    "x": 1
+   },
+   "eos_token": "$",
+   "hop_length": 256,
+   "keep_punctuation": false,
+   "lang_code": "pt",
+   "lang_id_map": {},
+   "lang_tokens": {
+    "pt": "<pt>"
+   },
+   "length_scale": null,
+   "noise_scale": null,
+   "noise_w_scale": null,
+   "num_langs": 1,
+   "num_speakers": 1,
+   "num_symbols": 256,
+   "pad_token": "_",
+   "phoneme_type": "espeak",
+   "phonemizer_identity": null,
+   "phonemizer_model": null,
+   "sample_rate": 22050,
+   "speaker_id_map": {},
+   "tokenizer": {
+    "add_blank_char": true,
+    "add_blank_word": false,
+    "blank": "_",
+    "blank_at_end": true,
+    "blank_at_start": true,
+    "bos": "^",
+    "char2idx": {
+     "_": 0,
+     "a": 1,
+     "b": 2
+    },
+    "eos": "$",
+    "pad": "_",
+    "use_eos_bos": true
+   },
+   "word_sep_token": " "
+  }
  },
  "piper:bogus|0": {
   "config_after": {

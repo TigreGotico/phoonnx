@@ -186,6 +186,3 @@ class MixerTTSAdapter(BaseOnnxAdapter):
             if "mel_spec" in outs and "token_ids" in inputs:
                 return True
         return False
-
-    def param_labels(self) -> Dict[str, str]:
-        return {"pace": "Pace", "pitch_mul": "Pitch ×", "pitch_add": "Pitch +"}

@@ -15,7 +15,9 @@ subgraphs, and the tensor attributes of every node, also in model functions.
 
 The field numbers come from ``onnx.proto``.
 """
+import functools
 import mmap
+import os
 from pathlib import Path
 from typing import Iterator, List, Optional, Tuple, Union
 
@@ -100,17 +102,26 @@ def _graph_locations(buf, start: int, end: int, node: int,
             yield from _node_locations(buf, s, e)
 
 
-def external_data_locations(path: Union[str, Path]) -> List[str]:
+def external_data_locations(path: Union[str, Path]) -> Tuple[str, ...]:
     """The external-data file names the ONNX graph at ``path`` refers to.
 
     Each name comes once, in the order of the first tensor that names it. A
-    graph that keeps all its weights inside gives an empty list. The names are
-    given as written in the graph: this function does not check them.
+    graph that keeps all its weights inside gives an empty tuple. The names are
+    given as written in the graph: this function does not check them. The
+    answer is kept per file version.
 
     Raises:
         OSError: the file cannot be read.
         ValueError: the file is not an ONNX model.
     """
+    real_path = os.path.realpath(path)
+    stat = os.stat(real_path)
+    return _read_locations(real_path, stat.st_size, stat.st_mtime_ns, stat.st_ino)
+
+
+@functools.lru_cache(maxsize=1024)
+def _read_locations(path: str, size: int, mtime_ns: int, inode: int) -> Tuple[str, ...]:
+    """``size``, ``mtime_ns`` and ``inode`` only key the cache."""
     with open(path, "rb") as handle, \
             mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as buf:
         locations: List[str] = []
@@ -129,4 +140,4 @@ def external_data_locations(path: Union[str, Path]) -> List[str]:
             raise ValueError(f"'{path}' nests graphs too deeply") from exc
     if not has_graph:
         raise ValueError(f"'{path}' is not an ONNX model: it has no graph")
-    return list(dict.fromkeys(locations))
+    return tuple(dict.fromkeys(locations))

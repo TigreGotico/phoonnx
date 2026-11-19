@@ -28,6 +28,3 @@ class FastPitchAdapter(MixerTTSAdapter):
         # FastPitch and Mixer-TTS have the same ONNX I/O, so route by the config
         # engine field only (the native config disambiguates).
         return bool(config and config.get("engine") in ("fastpitch", "fast_pitch"))
-
-    def param_labels(self) -> Dict[str, str]:
-        return {"pace": "Pace", "pitch_mul": "Pitch ×", "pitch_add": "Pitch +"}
