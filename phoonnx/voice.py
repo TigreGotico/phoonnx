@@ -30,7 +30,7 @@ from scriptconv.frontend import Stages, TextFrontend
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
 from phoonnx.config import VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
-    _removal_version, check_lang_supported, voice_frontend, without_normalizer
+    _removal_version, check_lang_supported, get_text_casing, voice_frontend, without_normalizer
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.encoders import SIDE_STREAMS, Encoder, SymbolEncoder, Utterance, stages_of
@@ -628,14 +628,16 @@ class TTSVoice:
         Assigning another phonemizer to :attr:`phonemizer`, as the Vosk voices
         do once their dictionary is known, reaches the frontend through
         :meth:`TextFrontend.with_backend`. A change to the phoneme type, the
-        language, or the phonemizer's ``keep_punctuation`` or ``normalizer``
-        builds a new frontend.
+        language, the text casing, or the phonemizer's ``keep_punctuation`` or
+        ``normalizer`` builds a new frontend. The frontend applies the voice's
+        ``text_casing`` after normalisation, as training did.
         """
         phonemizer = self.phonemizer
-        key = (self.config.phoneme_type, self.config.lang_code,
+        key = (self.config.phoneme_type, self.config.lang_code, self.config.text_casing,
                phonemizer.keep_punctuation, phonemizer.normalizer)
         if self._frontend is None or key != self._frontend_key:
-            self._frontend = voice_frontend(phonemizer, self.config.lang_code)
+            casing = None if self.config.text_casing == "ignore" else get_text_casing(self.config.text_casing)
+            self._frontend = voice_frontend(phonemizer, self.config.lang_code, Stages(casing=casing))
             self._frontend_key = key
         elif phonemizer is not self._frontend_phonemizer:
             self._frontend = self._frontend.with_backend(without_normalizer(phonemizer))

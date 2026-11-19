@@ -40,6 +40,7 @@ def _make_voice(model_alphabet, seen):
     voice.phonetic_spellings = None
     voice.phonemizer = _RecordingPhonemizer(seen)
     voice.config = types.SimpleNamespace(
+        text_casing="ignore",
         phoneme_type=PhonemeType.UNICODE,
         alphabet=model_alphabet,
         lang_code="ar",
