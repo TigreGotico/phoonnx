@@ -55,6 +55,7 @@ __all__ = [
     "NonFiniteAudioError",
     "PhoonnxError",
     "PrecisionUnavailable",
+    "UnknownVoice",
     "UnsupportedConfigError",
     "UnsupportedSentencePieceModel",
     "UnsupportedTokenizer",
@@ -96,6 +97,19 @@ class PrecisionUnavailable(VoiceLoadError, ValueError):
         super().__init__(
             f"voice {voice_id!r} has no {precision} files; precision 'auto' "
             f"or {other!r} loads it")
+
+
+class UnknownVoice(PhoonnxError, KeyError):
+    """A voice id names no voice in the catalogue."""
+
+    def __init__(self, voice_id: str):
+        self.voice_id = voice_id
+        super().__init__(
+            f"unknown voice {voice_id!r}; run 'phoonnx-voices list-voices' "
+            f"to see the voice ids")
+
+    def __str__(self) -> str:
+        return self.args[0]
 
 
 class ExportNotSupported(PhoonnxError):

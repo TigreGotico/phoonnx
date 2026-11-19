@@ -27,7 +27,7 @@ from phoonnx.util import match_lang, normalize_lang, LOG
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers, uses_gpu
 from phoonnx.voice import TTSVoice
 from phoonnx._onnx_external import external_data_locations
-from phoonnx.errors import PrecisionUnavailable
+from phoonnx.errors import PrecisionUnavailable, UnknownVoice
 
 
 def _tmp_path(dest: Path) -> Path:
@@ -1251,6 +1251,13 @@ def _known_fields(entry: Dict[str, Any]) -> Dict[str, Any]:
     return {k: v for k, v in entry.items() if k in _INDEX_FIELDS}
 
 
+class _VoiceRegistry(dict):
+    """The voices by id; indexing an unknown id raises :class:`UnknownVoice`."""
+
+    def __missing__(self, voice_id):
+        raise UnknownVoice(voice_id)
+
+
 class TTSModelManager:
     # Explicit merge order for the bundled indexes: later files win when two
     # sources publish the same voice_id. Any index file not listed here is
@@ -1327,6 +1334,14 @@ class TTSModelManager:
             LOG.error(f"voice index at {self.cache.path} could not be read and "
                       f"is being ignored; the catalog will look empty until it "
                       f"is rebuilt with 'phoonnx-voices update-cache'")
+
+    @property
+    def voices(self) -> Dict[str, TTSModelInfo]:
+        return self._voices
+
+    @voices.setter
+    def voices(self, voices: Dict[str, TTSModelInfo]) -> None:
+        self._voices = voices if isinstance(voices, _VoiceRegistry) else _VoiceRegistry(voices)
 
     @property
     def all_voices(self) -> List[TTSModelInfo]:
