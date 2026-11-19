@@ -1,13 +1,16 @@
-"""The engines that read raw text get the text2spoken reading of a sentence with digits.
+"""The engines that read raw text get the text2spoken reading of a text with digits.
 
 ``TTSVoice.prepare`` reads the text through the frontend, which normalises it, and then
 calls the adapter's ``encode_text``. Each adapter here gets a tokenizer that writes one id
 per character, so the ids of the model input decode back to the text the model reads.
-The expected reading comes from ``text2spoken.normalize`` called alone. The comparison is
-on lower-cased words, because each adapter keeps its own model-side rules (supertonic's
-``<lang>`` wrap, pockettts capitalisation, outetts quote folding and lower-casing). A
-prompt template may hold digits of its own, so the digits of the model input must equal
-those of the input for a sentence with none.
+The expected reading comes from ``text2spoken.normalize`` called alone, and the model input
+must hold it as written, in NFC because supertonic decomposes the text (NFKD). The other
+model-side rules (supertonic's ``<lang>`` wrap, pockettts capitalisation, outetts quote
+folding) do not change these texts: each starts with a capital and holds no quotes.
+``prepare`` leaves an inline ``[[...]]`` block out for an engine that takes no symbols,
+so the model input must hold the reading on each side of the block. A prompt template
+may hold digits of its own, so the digits of the model input must equal those of the
+input for a text with none.
 """
 import re
 import types
@@ -33,12 +36,18 @@ from phoonnx.engines.sparktts import SparkTTSAdapter
 from phoonnx.engines.supertonic import SuperTonicAdapter
 from phoonnx.voice import TTSVoice
 
-SENTENCES = {
-    "en": "I have 23 apples.",
-    "es": "Tengo 23 manzanas.",
-    "de": "Ich habe 23 Äpfel.",
-    "hi": "मेरे पास 23 सेब हैं।",
-    "eu": "Kaixo, 23 lagun daude.",
+# one sentence, two sentences, and an inline block between two numbers
+TEXTS = {
+    "en": ("I have 23 apples.", "I have 23 apples. She has 4 pears.",
+           "I have 23 [[ˈæpəlz]] and 4 pears."),
+    "es": ("Tengo 23 manzanas.", "Tengo 23 manzanas. Ella tiene 4 peras.",
+           "Tengo 23 [[manˈθanas]] y 4 peras."),
+    "de": ("Ich habe 23 Äpfel.", "Ich habe 23 Äpfel. Sie hat 4 Birnen.",
+           "Ich habe 23 [[ˈʔɛpfl̩]] und 4 Birnen."),
+    "hi": ("मेरे पास 23 सेब हैं।", "मेरे पास 23 सेब हैं। उसके पास 4 नाशपाती हैं।",
+           "मेरे पास 23 [[seːb]] और 4 नाशपाती हैं।"),
+    "eu": ("Kaixo, 23 lagun daude.", "Kaixo, 23 lagun daude. Gaur 4 etorri dira.",
+           "Kaixo, 23 [[laɣun]] eta 4 etorri dira."),
 }
 
 
@@ -65,8 +74,10 @@ class CharTokenizer:
 
 
 class CharSentencePiece:
+    """SentencePiece's dummy prefix starts each encoded sentence with a word boundary."""
+
     def encode(self, text, out_type=int):
-        return [ord(c) for c in text]
+        return [ord(c) for c in " " + text]
 
 
 def _arktts(a):
@@ -138,7 +149,8 @@ ENGINES = {
     "indic_parler": (IndicParlerAdapter, _indic_parler, ("hi",)),
     "omnivoice": (OmniVoiceAdapter, _omnivoice, ("en", "hi")),
 }
-CASES = [(engine, lang) for engine, (_, _, langs) in ENGINES.items() for lang in langs]
+ENGINE_LANGS = [(engine, lang) for engine, (_, _, langs) in ENGINES.items() for lang in langs]
+CASES = [(engine, lang, text) for engine, lang in ENGINE_LANGS for text in TEXTS[lang]]
 
 
 def _voice(engine, lang):
@@ -157,38 +169,32 @@ def _model_input(voice, text):
     return " ".join("".join(chr(i) for i in utterance.ids) for utterance in voice.prepare(text, syn_config))
 
 
-def _words(text):
-    """Lower-cased words without accents, because supertonic decomposes them (NFKD)."""
-    decomposed = unicodedata.normalize("NFKD", text.lower())
-    return re.findall(r"\w+", "".join(c for c in decomposed if not unicodedata.combining(c)))
+def _nfc(text):
+    return unicodedata.normalize("NFC", text)
 
 
 def _digits(text):
     return [c for c in text if c.isdigit()]
 
 
-def _contains(haystack, needle):
-    return any(haystack[i:i + len(needle)] == needle for i in range(len(haystack) - len(needle) + 1))
-
-
-@pytest.mark.parametrize("engine,lang", CASES)
-def test_model_input_holds_the_text2spoken_reading(engine, lang):
-    sentence = SENTENCES[lang]
-    reading = normalize(sentence, lang)
+@pytest.mark.parametrize("engine,lang,text", CASES)
+def test_model_input_holds_the_text2spoken_reading(engine, lang, text):
+    reading = normalize(text, lang)
     assert not any(c.isdigit() for c in reading)
 
     voice = _voice(engine, lang)
-    model_input = _model_input(voice, sentence)
+    model_input = _nfc(_model_input(voice, text))
 
-    assert _contains(_words(model_input), _words(reading)), model_input
+    for part in re.split(r"\s*\[\[.*?\]\]\s*", reading):
+        assert _nfc(part) in model_input, model_input
     assert _digits(model_input) == _digits(_model_input(voice, "Hello."))
 
 
-@pytest.mark.parametrize("engine,lang", CASES)
+@pytest.mark.parametrize("engine,lang", ENGINE_LANGS)
 def test_the_check_sees_digits_when_the_frontend_does_not_normalise(engine, lang):
     voice = _voice(engine, lang)
     voice.phonemizer.normalizer = lambda text, lang: text
 
-    model_input = _model_input(voice, SENTENCES[lang])
+    model_input = _model_input(voice, TEXTS[lang][0])
 
     assert "23" in model_input
