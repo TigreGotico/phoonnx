@@ -55,6 +55,15 @@ matching [install extra](installation.md#language-extras).
 | `euskaphone` | Dialect-aware Basque (o2i lattice) | Basque |
 | `barranquenho` | Barranquenho contact variety, through scriptconv on the orthography2ipa spec `ext-PT-x-barranco` | Barranquenho |
 | `orthography2ipa` | Multilingual data-driven IPA (o2i lattice) | Multilingual |
+| `phonetisaurus` | Phonetisaurus WFST G2P. The model sets the language and the symbols | Any, per model |
+| `g2pw` | g2pW polyphone model: pinyin initials, finals and tones | Chinese |
+| `f5tts_char` | The text as written, one token per character (Habibi-TTS, SILMA TTS) | Any |
+| `f5tts_pinyin` | F5-TTS `convert_char_to_pinyin`: hanzi as pinyin syllables, other characters as written | Chinese |
+| `halabi` | Halabi Arabic-Phonetiser, with no diacritizer: the input must have its vowels | Arabic |
+| `iqra` | Halabi Arabic-Phonetiser output in the IqraEval `phoneme_ref` convention | Arabic |
+| `africa_g2p` | africa-g2p rules: native-orthography units or IPA | 400+ African languages |
+| `ghana_g2p` | africa-g2p rules, patched for Ghanaian languages: native units or IPA | 42 Ghanaian languages |
+| `matoub_kab` | The Kabyle rule set that the Matoub-82M voice was trained on | Kabyle |
 
 ## Alphabet Reference
 
@@ -83,6 +92,8 @@ The `Alphabet` enum controls the output representation of the phonemizer:
 | `graphemes` | Raw text characters |
 | `vosk` | vosk-tts phoneme inventory (Russian) |
 | `cangjie` | Cangjie input-method decomposition (Chinese) |
+| `halabi` | Halabi Arabic-Phonetiser phoneme notation (Arabic) |
+| `africa_g2p` | africa-g2p native-orthography phoneme units (African languages) |
 
 ## Selecting a Phonemizer
 

@@ -53,11 +53,11 @@ d-vector engines ignore the two `_text`/`_lang` fields; in-context engines requi
 
 ### Reference audio formats
 
-A WAV reference always works — it is read with the standard-library `wave` module. Any
-**other** format (FLAC, OGG, MP3, …) is read with `soundfile`, which is only installed
-with the `phoonnx[cloning]` extra (it pulls in `soundfile` + `scipy`). Without that
-extra, a non-WAV reference falls through to `wave.open`, which cannot parse it and
-raises. Install the extra for non-WAV references:
+When `soundfile` is installed, phoonnx reads every reference with it, WAV included, so
+FLAC, OGG and MP3 references work too. `soundfile` comes with the `phoonnx[cloning]`
+extra (it pulls in `soundfile` + `scipy`). Without it, phoonnx reads the reference with
+the standard-library `wave` module, which reads 16-bit PCM WAV only. Any other format
+raises `wave.Error`. Install the extra for non-WAV references:
 
 ```bash
 pip install phoonnx[cloning]

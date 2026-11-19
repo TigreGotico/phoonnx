@@ -134,6 +134,7 @@ Nearest-style accuracy: 27/30 clips (90 %).
   it, so treat the Spanish speakers as usable but not clean.
 - The Catalan weights are **GPL-3.0** upstream. That governs the weights, not `phoonnx`
   (Apache-2.0), which only loads them. Account for it in your own deployment.
-- The model cache is keyed by voice ID, so each named speaker keeps its own copy of the
-  same 545 MB graph. Use one speaker per language unless you need more. This applies to
-  every shared-checkpoint voice family (the HiTZ Basque speakers behave the same way).
+- The files are stored once per URL and revision, in the Hugging Face hub cache. Thus the
+  named speakers of one language share one copy of the 545 MB graph on disk, and each
+  speaker adds only its style blob. This applies to every shared-checkpoint voice family,
+  such as the HiTZ Basque speakers.
