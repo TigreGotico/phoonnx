@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.123.0a1](https://github.com/TigreGotico/phoonnx/tree/1.123.0a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.122.0a1...1.123.0a1)
+
+## [1.122.0a1](https://github.com/TigreGotico/phoonnx/tree/1.122.0a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.121.0a1...1.122.0a1)
+
+## [1.121.0a1](https://github.com/TigreGotico/phoonnx/tree/1.121.0a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.120.2a1...1.121.0a1)
+
+## [1.120.2a1](https://github.com/TigreGotico/phoonnx/tree/1.120.2a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.120.1a1...1.120.2a1)
+
+**Merged pull requests:**
+
+- feat: VoiceConfig.to\_dict writes the native config.json, with a JSON Schema and a frontend [\#766](https://github.com/TigreGotico/phoonnx/pull/766) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- Update dependency librosa to v1 [\#740](https://github.com/TigreGotico/phoonnx/pull/740) ([renovate[bot]](https://github.com/apps/renovate))
+
 ## [1.120.1a1](https://github.com/TigreGotico/phoonnx/tree/1.120.1a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.120.0a1...1.120.1a1)
@@ -292,11 +313,6 @@
 ## [1.113.7a1](https://github.com/TigreGotico/phoonnx/tree/1.113.7a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.6a1...1.113.7a1)
-
-**Merged pull requests:**
-
-- fix: measure a voice that loaded from the offline fallback with the hub down [\#707](https://github.com/TigreGotico/phoonnx/pull/707) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: run the provenance check off the voice load path [\#706](https://github.com/TigreGotico/phoonnx/pull/706) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.113.6a1](https://github.com/TigreGotico/phoonnx/tree/1.113.6a1) (2026-11-18)
 
