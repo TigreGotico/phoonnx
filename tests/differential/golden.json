@@ -18419,7 +18419,7 @@
  },
  "transformers-tokcfg|0": {
   "config_after": {
-   "blank": "<pad>",
+   "blank": "_",
    "num_symbols": 5
   },
   "voice_config": {
@@ -18428,7 +18428,7 @@
    "blank_at_end": true,
    "blank_at_start": true,
    "blank_between": "tokens_and_words",
-   "blank_token": "<pad>",
+   "blank_token": "_",
    "bos_token": null,
    "diacritizer_model": null,
    "engine": "phoonnx",
@@ -18455,7 +18455,7 @@
    "tokenizer": {
     "add_blank_char": false,
     "add_blank_word": false,
-    "blank": "<pad>",
+    "blank": "_",
     "blank_at_end": false,
     "blank_at_start": false,
     "bos": null,
@@ -18472,7 +18472,7 @@
  },
  "transformers-tokcfg|1": {
   "config_after": {
-   "blank": "<pad>",
+   "blank": "_",
    "num_symbols": 5
   },
   "voice_config": {
@@ -18481,7 +18481,7 @@
    "blank_at_end": true,
    "blank_at_start": true,
    "blank_between": "tokens_and_words",
-   "blank_token": "<pad>",
+   "blank_token": "_",
    "bos_token": null,
    "diacritizer_model": null,
    "engine": "phoonnx",
@@ -18508,7 +18508,7 @@
    "tokenizer": {
     "add_blank_char": false,
     "add_blank_word": false,
-    "blank": "<pad>",
+    "blank": "_",
     "blank_at_end": false,
     "blank_at_start": false,
     "bos": null,
@@ -18525,7 +18525,7 @@
  },
  "transformers-tokcfg|2": {
   "config_after": {
-   "blank": "<pad>",
+   "blank": "_",
    "num_symbols": 5
   },
   "voice_config": {
@@ -18534,7 +18534,7 @@
    "blank_at_end": true,
    "blank_at_start": true,
    "blank_between": "tokens_and_words",
-   "blank_token": "<pad>",
+   "blank_token": "_",
    "bos_token": null,
    "diacritizer_model": null,
    "engine": "phoonnx",
@@ -18561,7 +18561,7 @@
    "tokenizer": {
     "add_blank_char": false,
     "add_blank_word": false,
-    "blank": "<pad>",
+    "blank": "_",
     "blank_at_end": false,
     "blank_at_start": false,
     "bos": null,
@@ -18578,7 +18578,7 @@
  },
  "transformers-tokcfg|3": {
   "config_after": {
-   "blank": "<pad>",
+   "blank": "_",
    "num_symbols": 5
   },
   "voice_config": {
@@ -18587,7 +18587,7 @@
    "blank_at_end": true,
    "blank_at_start": true,
    "blank_between": "tokens_and_words",
-   "blank_token": "<pad>",
+   "blank_token": "_",
    "bos_token": null,
    "diacritizer_model": null,
    "engine": "phoonnx",
@@ -18614,7 +18614,7 @@
    "tokenizer": {
     "add_blank_char": false,
     "add_blank_word": false,
-    "blank": "<pad>",
+    "blank": "_",
     "blank_at_end": false,
     "blank_at_start": false,
     "bos": null,
@@ -18631,7 +18631,7 @@
  },
  "transformers-tokcfg|4": {
   "config_after": {
-   "blank": "<pad>",
+   "blank": "_",
    "num_symbols": 5
   },
   "voice_config": {
@@ -18640,7 +18640,7 @@
    "blank_at_end": true,
    "blank_at_start": true,
    "blank_between": "tokens_and_words",
-   "blank_token": "<pad>",
+   "blank_token": "_",
    "bos_token": null,
    "diacritizer_model": null,
    "engine": "coqui",
@@ -18667,7 +18667,7 @@
    "tokenizer": {
     "add_blank_char": false,
     "add_blank_word": false,
-    "blank": "<pad>",
+    "blank": "_",
     "blank_at_end": false,
     "blank_at_start": false,
     "bos": null,
@@ -18684,7 +18684,7 @@
  },
  "transformers-tokcfg|5": {
   "config_after": {
-   "blank": "<pad>",
+   "blank": "_",
    "num_symbols": 5
   },
   "voice_config": {
@@ -18693,7 +18693,7 @@
    "blank_at_end": true,
    "blank_at_start": true,
    "blank_between": "tokens_and_words",
-   "blank_token": "<pad>",
+   "blank_token": "_",
    "bos_token": null,
    "diacritizer_model": null,
    "engine": "matcha",
@@ -18720,7 +18720,7 @@
    "tokenizer": {
     "add_blank_char": false,
     "add_blank_word": false,
-    "blank": "<pad>",
+    "blank": "_",
     "blank_at_end": false,
     "blank_at_start": false,
     "bos": null,
@@ -18737,7 +18737,7 @@
  },
  "transformers-tokcfg|6": {
   "config_after": {
-   "blank": "<pad>",
+   "blank": "_",
    "num_symbols": 5
   },
   "voice_config": {
@@ -18746,7 +18746,7 @@
    "blank_at_end": true,
    "blank_at_start": true,
    "blank_between": "tokens_and_words",
-   "blank_token": "<pad>",
+   "blank_token": "_",
    "bos_token": null,
    "diacritizer_model": null,
    "engine": "phoonnx",
@@ -18777,7 +18777,7 @@
    "tokenizer": {
     "add_blank_char": false,
     "add_blank_word": false,
-    "blank": "<pad>",
+    "blank": "_",
     "blank_at_end": false,
     "blank_at_start": false,
     "bos": null,
@@ -18794,6 +18794,7 @@
  },
  "transformers|0": {
   "config_after": {
+   "blank": "_",
    "num_symbols": 5
   },
   "voice_config": {
@@ -18802,7 +18803,7 @@
    "blank_at_end": true,
    "blank_at_start": true,
    "blank_between": "tokens_and_words",
-   "blank_token": null,
+   "blank_token": "_",
    "bos_token": null,
    "diacritizer_model": null,
    "engine": "phoonnx",
@@ -18847,6 +18848,7 @@
  },
  "transformers|1": {
   "config_after": {
+   "blank": "_",
    "num_symbols": 5
   },
   "voice_config": {
@@ -18855,7 +18857,7 @@
    "blank_at_end": true,
    "blank_at_start": true,
    "blank_between": "tokens_and_words",
-   "blank_token": null,
+   "blank_token": "_",
    "bos_token": null,
    "diacritizer_model": null,
    "engine": "phoonnx",
@@ -18900,6 +18902,7 @@
  },
  "transformers|2": {
   "config_after": {
+   "blank": "_",
    "num_symbols": 5
   },
   "voice_config": {
@@ -18908,7 +18911,7 @@
    "blank_at_end": true,
    "blank_at_start": true,
    "blank_between": "tokens_and_words",
-   "blank_token": null,
+   "blank_token": "_",
    "bos_token": null,
    "diacritizer_model": null,
    "engine": "phoonnx",
@@ -18953,6 +18956,7 @@
  },
  "transformers|3": {
   "config_after": {
+   "blank": "_",
    "num_symbols": 5
   },
   "voice_config": {
@@ -18961,7 +18965,7 @@
    "blank_at_end": true,
    "blank_at_start": true,
    "blank_between": "tokens_and_words",
-   "blank_token": null,
+   "blank_token": "_",
    "bos_token": null,
    "diacritizer_model": null,
    "engine": "phoonnx",
@@ -19006,6 +19010,7 @@
  },
  "transformers|4": {
   "config_after": {
+   "blank": "_",
    "num_symbols": 5
   },
   "voice_config": {
@@ -19014,7 +19019,7 @@
    "blank_at_end": true,
    "blank_at_start": true,
    "blank_between": "tokens_and_words",
-   "blank_token": null,
+   "blank_token": "_",
    "bos_token": null,
    "diacritizer_model": null,
    "engine": "coqui",
@@ -19059,6 +19064,7 @@
  },
  "transformers|5": {
   "config_after": {
+   "blank": "_",
    "num_symbols": 5
   },
   "voice_config": {
@@ -19067,7 +19073,7 @@
    "blank_at_end": true,
    "blank_at_start": true,
    "blank_between": "tokens_and_words",
-   "blank_token": null,
+   "blank_token": "_",
    "bos_token": null,
    "diacritizer_model": null,
    "engine": "matcha",
@@ -19112,6 +19118,7 @@
  },
  "transformers|6": {
   "config_after": {
+   "blank": "_",
    "num_symbols": 5
   },
   "voice_config": {
@@ -19120,7 +19127,7 @@
    "blank_at_end": true,
    "blank_at_start": true,
    "blank_between": "tokens_and_words",
-   "blank_token": null,
+   "blank_token": "_",
    "bos_token": null,
    "diacritizer_model": null,
    "engine": "phoonnx",
