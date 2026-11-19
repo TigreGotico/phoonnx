@@ -669,6 +669,9 @@ def check_lang_supported(voice: str, lang_code: Optional[str],
     get_lang = getattr(phonemizer_cls, "get_lang", None)
     if get_lang is None:
         return
+    # "und" names no language; a fuzzy matcher can still map it to some spec
+    if lang_code.split("-")[0].lower() == "und":
+        raise UnsupportedVoiceLanguage(voice, lang_code, phoneme_type)
     try:
         get_lang(lang_code)
     except ImportError:
