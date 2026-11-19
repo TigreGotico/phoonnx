@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -5,6 +7,7 @@ import requests
 from click.testing import CliRunner
 
 from phoonnx.cli import cli, print_voice_info
+from phoonnx.model_manager import TTSModelInfo, TTSModelManager
 
 
 def make_voice(voice_id="test/voice", lang="en-US", display_name=None):
@@ -181,6 +184,34 @@ class TestListAvailable(unittest.TestCase):
         self.assertIn("Total available voices found (bundled indexes): 0", result.output)
 
 
+class TestListVoicesLangFilter(unittest.TestCase):
+    LANGS = ("pt-PT", "pt-BR", "pt", "pt-PT-x-lisbon", "en-US")
+
+    def _list(self, lang):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with patch("phoonnx.model_manager.os.path.expanduser", return_value=tmp.name):
+            manager = TTSModelManager(cache_path=os.path.join(tmp.name, "cache.json"))
+        manager.load = lambda: None
+        manager.voices = {f"v/{l}": TTSModelInfo(voice_id=f"v/{l}", lang=l,
+                                                  model_url=f"https://example.com/{l}.onnx")
+                          for l in self.LANGS}
+        with patch("phoonnx.cli.TTSModelManager", return_value=manager):
+            result = CliRunner().invoke(cli, ["list-voices", "--lang", lang])
+        self.assertEqual(result.exit_code, 0)
+        return sorted(line.split("(")[-1].rstrip(")") for line in result.output.splitlines()
+                      if line.startswith("* "))
+
+    def test_region_tag_lists_only_that_region(self):
+        self.assertEqual(self._list("pt-PT"), ["pt", "pt-PT", "pt-PT-x-lisbon"])
+
+    def test_tag_spelling_does_not_matter(self):
+        self.assertEqual(self._list("PT_pt"), self._list("pt-PT"))
+
+    def test_bare_tag_lists_every_region(self):
+        self.assertEqual(self._list("pt"), ["pt", "pt-BR", "pt-PT", "pt-PT-x-lisbon"])
+
+
 class TestDownloadVoice(unittest.TestCase):
     @patch("phoonnx.cli.TTSModelManager")
     def test_downloads_cached_voice(self, mock_manager_cls):
@@ -200,7 +231,7 @@ class TestDownloadVoice(unittest.TestCase):
         manager.download_voice_by_id.return_value = False
         runner = CliRunner()
         result = runner.invoke(cli, ["download", "no/such-voice"])
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 1)
         self.assertIn("Error: Voice ID 'no/such-voice' not found.", result.output)
         self.assertIn("list-available", result.output)
         self.assertNotIn("Traceback", result.output)
@@ -223,7 +254,7 @@ class TestDownloadVoice(unittest.TestCase):
         manager.get_voice.side_effect = {"piper/foo": voice}.get
         runner = CliRunner()
         result = runner.invoke(cli, ["download", "piper/foo"])
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 1)
         self.assertIn("Download failed due to network error", result.output)
         self.assertNotIn("Traceback", result.output)
 
@@ -235,9 +266,41 @@ class TestDownloadVoice(unittest.TestCase):
         manager.get_voice.side_effect = {"piper/foo": voice}.get
         runner = CliRunner()
         result = runner.invoke(cli, ["download", "piper/foo"])
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 1)
         self.assertIn("An unexpected error occurred during download: bad data", result.output)
         self.assertNotIn("Traceback", result.output)
+
+
+class TestDownloadFailureExitsNonZero(unittest.TestCase):
+    """Each failure leaves a non-zero exit status and a message on stderr."""
+
+    def _run(self, voice_id, **manager_attrs):
+        with patch("phoonnx.cli.TTSModelManager") as manager_cls:
+            manager = manager_cls.return_value
+            manager.get_voice.return_value = None
+            for name, value in manager_attrs.items():
+                setattr(manager, name, value)
+            return CliRunner().invoke(cli, ["download", voice_id])
+
+    def test_unknown_id(self):
+        result = self._run("no/such-voice", download_voice_by_id=MagicMock(return_value=False))
+        self.assertEqual(result.exit_code, 1)
+        self.assertEqual(len(result.stderr.strip().splitlines()), 1)
+        self.assertIn("no/such-voice", result.stderr)
+
+    def test_network_failure_on_bundled_voice(self):
+        down = MagicMock(side_effect=requests.exceptions.ConnectionError("network down"))
+        result = self._run("piper/foo", download_voice_by_id=down)
+        self.assertEqual(result.exit_code, 1)
+        self.assertEqual(result.stderr.strip().splitlines(),
+                         ["Download failed due to network error: network down"])
+
+    def test_offline_voice_not_cached(self):
+        from huggingface_hub.errors import LocalEntryNotFoundError
+        down = MagicMock(side_effect=LocalEntryNotFoundError("offline and not cached"))
+        result = self._run("piper/foo", download_voice_by_id=down)
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("offline and not cached", result.stderr)
 
 
 class TestAddAlignment(unittest.TestCase):

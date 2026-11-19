@@ -1,5 +1,6 @@
 import click
 from phoonnx.model_manager import PRECISIONS, TTSModelManager, TTSModelInfo
+from phoonnx.util import normalize_lang
 import requests
 from huggingface_hub.errors import HfHubHTTPError
 
@@ -18,6 +19,19 @@ def print_voice_info(voice: TTSModelInfo):
     if voice.requires_reference:
         click.echo(f"  Requires reference: yes (needs speaker_reference / a style path)")
     click.echo("-" * 40)
+
+
+def voices_for_lang(manager: TTSModelManager, lang: str) -> list:
+    """The voices ``get_lang_voices`` ranks for ``lang``. A tag with a region
+    (``pt-PT``) keeps only the voices of that region; a bare tag (``pt``)
+    keeps every region, nearest first."""
+    voices = manager.get_lang_voices(lang)
+    if "-" not in normalize_lang(lang, default_region=False):
+        return voices
+    wanted = normalize_lang(lang)
+    return [v for v in voices
+            if normalize_lang(v.lang) == wanted
+            or normalize_lang(v.lang).startswith(wanted + "-")]
 
 
 # --- CLI Group ---
@@ -85,7 +99,7 @@ def list_voices(lang, verbose):
         return
 
     if lang:
-        voices = manager.get_lang_voices(lang)
+        voices = voices_for_lang(manager, lang)
         click.echo(f"\nFound {len(voices)} voices for language '{lang}':")
     else:
         voices = manager.all_voices
@@ -153,18 +167,20 @@ def download_voice(voice_id, precision):
         else:
             click.echo(f"Voice ID '{voice_id}' not found in local cache, looking it up in bundled indexes...")
             if not manager.download_voice_by_id(voice_id, precision=precision):
-                click.echo(f"Error: Voice ID '{voice_id}' not found.", err=True)
-                click.echo("Hint: Run 'phoonnx-voices list-available' to see available voice IDs.", err=True)
-                return
+                click.echo(f"Error: Voice ID '{voice_id}' not found. "
+                           "Run 'phoonnx-voices list-available' to see the voice IDs.", err=True)
+                raise SystemExit(1)
             click.echo(f"\nDownload complete.")
 
     except (HfHubHTTPError, requests.exceptions.RequestException) as e:
         # Voice files come from the HuggingFace hub, so a network failure now
         # surfaces as a hub error; a self-hosted voice still raises the
         # requests error from the direct download path.
-        click.echo(f"\nDownload failed due to network error: {e}", err=True)
+        click.echo(f"Download failed due to network error: {e}", err=True)
+        raise SystemExit(1)
     except Exception as e:
-        click.echo(f"\nAn unexpected error occurred during download: {e}", err=True)
+        click.echo(f"An unexpected error occurred during download: {e}", err=True)
+        raise SystemExit(1)
 
 
 @cli.command(name="add-alignment")
