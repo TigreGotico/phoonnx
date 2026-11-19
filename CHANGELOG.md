@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.120.1a1](https://github.com/TigreGotico/phoonnx/tree/1.120.1a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.120.0a1...1.120.1a1)
+
+## [1.120.0a1](https://github.com/TigreGotico/phoonnx/tree/1.120.0a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.119.0a1...1.120.0a1)
+
+**Merged pull requests:**
+
+- test: expect the grapheme revision preprocess records [\#814](https://github.com/TigreGotico/phoonnx/pull/814) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- feat: record the training text casing and apply it at inference [\#756](https://github.com/TigreGotico/phoonnx/pull/756) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: a transformers VITS vocabulary blanks with token id 0 [\#732](https://github.com/TigreGotico/phoonnx/pull/732) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.119.0a1](https://github.com/TigreGotico/phoonnx/tree/1.119.0a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.8a1...1.119.0a1)
@@ -288,17 +302,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.5a2...1.113.6a1)
 
-**Merged pull requests:**
-
-- fix: a falsy non-dict phonemizer\_identity block warns; cover the provenance gaps [\#703](https://github.com/TigreGotico/phoonnx/pull/703) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.113.5a2](https://github.com/TigreGotico/phoonnx/tree/1.113.5a2) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.5a1...1.113.5a2)
-
-**Merged pull requests:**
-
-- test: download the pinned F5 configs once, through retry\_download [\#702](https://github.com/TigreGotico/phoonnx/pull/702) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.113.5a1](https://github.com/TigreGotico/phoonnx/tree/1.113.5a1) (2026-11-18)
 
