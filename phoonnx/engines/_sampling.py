@@ -4,35 +4,34 @@ The samplers themselves stay in each engine: each one reproduces the order of it
 upstream runtime (llama.cpp, vLLM, HuggingFace), and those orders select different
 candidates.
 """
-from typing import Optional
-
 import numpy as np
 
 #: Candidates sorted first when no top-k bounds the nucleus.
 NUCLEUS_HEAD = 2048
 
 
-def ranked(key: np.ndarray, size: int, reach: Optional[float] = None) -> np.ndarray:
+def ranked(key: np.ndarray, size: int, reach: float | None = None) -> np.ndarray:
     """``np.argsort(key)[::-1]``, with only the ``size`` largest keys in order.
 
-    The other indices follow unsorted. A full sort may put equal keys in either order,
-    so the whole row is sorted when the keys a caller reads tie: the ``size`` largest,
-    or with ``reach`` those up to the first whose running sum reaches ``reach``, plus
-    the next. It is also sorted when the sum never gets there.
+    The other indices follow unsorted. Falls back to the full sort on a tie among the
+    keys a caller reads, or when the running sum of the head never reaches ``reach``.
+    A caller reads the ``size`` largest keys, or with ``reach`` those up to the first
+    whose running sum reaches it, plus the next.
     """
-    if not 0 < size < key.shape[0]:
-        return np.argsort(key)[::-1]
-    # a row filled with one low value (-inf, 0.0) is slow to partition, so leave it out
-    above = key[key > key.min()]
-    if size <= above.size:
-        top = key >= np.partition(above, -size)[-size]
-        head = np.flatnonzero(top)
-        head = head[np.argsort(key[head])[::-1]]
-        # cumsum, not sum: callers cut on np.cumsum's rounding
-        cut = head.size - 1 if reach is None else int(np.searchsorted(np.cumsum(key[head]), reach))
-        read = key[head[:cut + 2]]
-        if cut < head.size and np.all(read[:-1] > read[1:]):
-            return np.concatenate([head, np.flatnonzero(~top)])
+    if 0 < size < key.shape[0]:
+        # a row filled with one low value (-inf, 0.0) is slow to partition, so leave it out
+        above = key[key > key.min()]
+        if size <= above.size:
+            top = key >= np.partition(above, -size)[-size]
+            head = np.flatnonzero(top)
+            best = key[head]
+            order = np.argsort(best)[::-1]
+            head, best = head[order], best[order]
+            # cumsum, not sum: callers cut on np.cumsum's rounding
+            cut = best.size - 1 if reach is None else int(np.searchsorted(np.cumsum(best), reach))
+            read = best[:cut + 2]
+            if cut < best.size and np.all(read[:-1] > read[1:]):
+                return np.concatenate([head, np.flatnonzero(~top)])
     return np.argsort(key)[::-1]
 
 
