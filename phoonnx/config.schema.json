@@ -20,8 +20,8 @@
       "description": "The phoonnx release that wrote the file."
     },
     "engine": {
-      "enum": ["phoonnx", "piper", "mimic3", "coqui", "transformers", "matcha", "optispeech", "glowtts", "mixertts", "fastpitch", "styletts2", "yourtts", "zipvoice", "shami", "f5tts", "chatterbox", "supertonic", "neutts", "pockettts", "sparktts", "qwen3tts", "outetts", "arktts", "omnivoice", "indic_parler", "llasa", "orpheus", "magpie", "mosstts", "vosk", "rapido", "tinyvoca"],
-      "description": "The architecture that runs the voice."
+      "enum": ["phoonnx", "piper", "mimic3", "coqui", "transformers", "matcha", "optispeech", "glowtts", "mixertts", "fastpitch", "styletts2", "yourtts", "zipvoice", "shami", "f5tts", "chatterbox", "supertonic", "neutts", "pockettts", "sparktts", "qwen3tts", "outetts", "arktts", "omnivoice", "indic_parler", "llasa", "orpheus", "magpie", "mosstts", "vosk", "rapido", "tinyvoca", "xvits"],
+      "description": "The architecture or the config format of the voice."
     },
     "phoneme_type": {
       "enum": ["unicode", "graphemes", "misaki", "misaki_en", "misaki_ja", "misaki_zh", "misaki_ko", "misaki_vi", "espeak", "gruut", "goruut", "epitran", "byt5", "charsiu", "transphone", "phonetisaurus", "mwl_phonemizer", "deepphonemizer", "openphonemizer", "g2pen", "dizione", "tugaphone", "g2pfa", "openjtalk", "cutlet", "pykakasi", "cotovia", "ahotts", "phonikud", "mantoq", "halabi", "iqra", "viphoneme", "g2pk", "kog2p", "g2pc", "g2pm", "g2pw", "pypinyin", "xpinyin", "jieba", "f5tts_char", "f5tts_pinyin", "vosk", "shami", "arbtok", "euskaphone", "barranquenho", "orthography2ipa", "africa_g2p", "ghana_g2p", "matoub_kab"],

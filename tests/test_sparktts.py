@@ -656,3 +656,38 @@ def test_synthesize_returns_silence_when_nothing_survives_the_filter_and_skips_t
     assert result.audio.shape == (0,)
     assert result.audio.dtype == np.float32
     assert ad.vocoder.calls == []  # vocoder must never be called with an empty token list
+
+
+def test_reference_cache_never_pairs_one_clips_key_with_anothers_tokens():
+    """A request for clip B that lands right after the cache took clip A's tokens must
+    get B's tokens, not A's."""
+    class _Probe(SparkTTSAdapter):
+        on_store = None
+
+        @property
+        def _reference_cache(self):
+            return self.__dict__.get("_rc")
+
+        @_reference_cache.setter
+        def _reference_cache(self, value):
+            self.__dict__["_rc"] = value
+            hook, self.on_store = self.on_store, None
+            if hook:
+                hook()
+
+    ad = _Probe()
+    ad.special = dict(SPECIAL)
+    tokens = {1.0: np.full(N_GLOBAL_TOKENS, 11, np.int64),
+              2.0: np.full(N_GLOBAL_TOKENS, 22, np.int64)}
+    ad.tokenize_reference = lambda audio, sr, with_semantic=False: (tokens[float(audio[0])], None)
+
+    def req(clip_id):
+        return _req(reference_audio=(np.full(16000, clip_id, np.float32), 16000))
+
+    assert ad._resolve_speaker(req(2.0), None)[0][0] == 22    # cache now holds clip 2
+    seen = []
+    ad.on_store = lambda: seen.append(ad._resolve_speaker(req(2.0), None)[0][0])
+    assert ad._resolve_speaker(req(1.0), None)[0][0] == 11    # clip 1 stores, clip 2 asks
+    assert seen == [22]
+    assert ad._resolve_speaker(req(1.0), None)[0][0] == 11
+    assert ad._resolve_speaker(req(2.0), None)[0][0] == 22
