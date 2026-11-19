@@ -22,7 +22,7 @@ class TestErrorTaxonomy(unittest.TestCase):
             {"PhoonnxError", "VoiceLoadError", "FrontendMismatchError",
              "UnsupportedConfigError", "ExportNotSupported", "PrecisionUnavailable",
              "UnsupportedVoiceLanguage", "VoiceExceedsMemoryBudget",
-             "UnsupportedTokenizer", "UnsupportedSentencePieceModel"},
+             "UnsupportedTokenizer", "UnsupportedSentencePieceModel", "NonFiniteAudioError"},
         )
 
     def test_resource_refusal_is_distinguishable_from_a_config_defect(self):
