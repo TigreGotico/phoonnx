@@ -12,8 +12,9 @@ For anyone who wants speech out of an existing voice.
 1. [Installation](installation.md) — pip, the extras matrix, GPU runtimes
 2. [Quickstart](quickstart.md) — download a voice and synthesize a WAV, CLI and Python
 3. [Usage](usage.md) — the `TTSVoice` / `SynthesisConfig` Python API
-4. [Voice manager](voice_manager.md) — finding, downloading and caching voices
-5. [CLI reference](cli.md) — every `phoonnx-voices` subcommand
+4. [Python API](api.md) — the objects of the library: what exists in 1.x and the 2.0 target
+5. [Voice manager](voice_manager.md) — finding, downloading and caching voices
+6. [CLI reference](cli.md) — every `phoonnx-voices` subcommand
 
 ### Train a voice (the golden path)
 For anyone with a dataset who wants a new voice.

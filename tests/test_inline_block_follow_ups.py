@@ -23,7 +23,7 @@ def _voice(adapter, sent):
     voice.model_path = "/voices/test-voice.onnx"
     voice.adapter = adapter
     voice.config = types.SimpleNamespace(
-        phoneme_type=PhonemeType.UNICODE, alphabet=Alphabet.GRAPHEMES, lang_code="en",
+        phoneme_type=PhonemeType.UNICODE, alphabet=Alphabet.GRAPHEMES, lang_code="en", lang_tokens={},
         add_diacritics=False, diacritizer_model=None, sample_rate=22050,
         tokenizer=types.SimpleNamespace(tokenize=lambda text, **_: sent.append(text) or [1]))
     return voice
@@ -50,7 +50,10 @@ def test_a_skipped_block_leaves_one_space():
 
 
 def test_a_skipped_block_keeps_a_paragraph_break():
-    assert _read("para one.\n\n[[x]] para two.") == ["para one.\n\npara two."]
+    # a paragraph chunk ends only at a blank line, so a space in its place gives one chunk
+    by_paragraph = SynthesisConfig(chunk="paragraph")
+    assert _read("para one.\n\n[[x]] para two.", by_paragraph) == ["para one.", "para two."]
+    assert _read("para one. [[x]] para two.", by_paragraph) == ["para one. para two."]
 
 
 def test_ssml_phoneme_on_a_voice_with_no_symbols_reads_its_word(monkeypatch):
@@ -76,7 +79,7 @@ def test_phonetic_input_on_a_voice_with_no_symbols_warns_once(monkeypatch):
     warnings = _warnings(monkeypatch)
     sent = []
     voice = _voice(ChatterboxAdapter(), sent)
-    voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda symbols: [1] * len(symbols))
+    voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda symbols, **_: [1] * len(symbols))
     list(voice.prepare("ʃə", SynthesisConfig(alphabet=Alphabet.IPA)))
     assert len(warnings) == 1
     assert "test-voice" in warnings[0] and "phonetic input" in warnings[0]

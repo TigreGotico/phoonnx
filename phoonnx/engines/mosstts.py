@@ -202,24 +202,10 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
             **FIXED_SAMPLING,
         }
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "sample_mode": "sampling mode (fixed/full/greedy)",
-            "max_new_frames": "max generated frames (12.5/s)",
-            "max_text_tokens": "text tokens per model call",
-            "text_temperature": "temperature (frame-continue decision)",
-            "text_top_p": "top-p (frame-continue decision)",
-            "text_top_k": "top-k (frame-continue decision)",
-            "audio_temperature": "temperature (codebook tokens)",
-            "audio_top_p": "top-p (codebook tokens)",
-            "audio_top_k": "top-k (codebook tokens)",
-            "audio_repetition_penalty": "repetition penalty (codebook tokens)",
-        }
-
     def configure(self, voice_config: Any) -> None:
         """Load the five auxiliary graphs and the SentencePiece model from
         ``engine_params`` (the prefill graph is the voice's own session)."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         providers = ep.get("providers")
 
         def sess(key):

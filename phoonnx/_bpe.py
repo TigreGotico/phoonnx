@@ -20,9 +20,7 @@ import unicodedata
 from functools import lru_cache
 from typing import Dict, List, Optional, Tuple
 
-
-class UnsupportedTokenizer(Exception):
-    """The tokenizer.json declares a component this reader does not implement."""
+from phoonnx.errors import UnsupportedTokenizer
 
 
 @lru_cache(maxsize=1)
