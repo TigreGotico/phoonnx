@@ -7,7 +7,7 @@ it as a second base: ``except ValueError`` catches
 :class:`VoiceExceedsMemoryBudget`.
 
 Callers that want to react to a failure rather than just report it need to tell
-four situations apart, and each has its own exception here.
+five situations apart, and each has its own exception here.
 
 A *missing language* is a request phoonnx cannot serve because no voice covers
 the language at all; the voice manager signals that with a plain ``ValueError``
@@ -29,6 +29,10 @@ exceed the cache's memory budget, because loading it is a guaranteed OOM kill
 rather than a slow path. The refusal is the useful outcome — one failed
 request instead of a restart loop.
 
+A *bad synthesis* is a model that ran but returned NaN or infinite samples:
+:class:`NonFiniteAudioError`. Written as int16 they become silence, so phoonnx
+raises instead of returning audio that only looks like a result.
+
 A voice that cannot load is a :class:`VoiceLoadError`; a frontend that does
 not fit the voice and a config in a format phoonnx does not read are its two
 named cases. A voice that an export target cannot hold is
@@ -47,6 +51,7 @@ if TYPE_CHECKING:
 __all__ = [
     "ExportNotSupported",
     "FrontendMismatchError",
+    "NonFiniteAudioError",
     "PhoonnxError",
     "PrecisionUnavailable",
     "UnsupportedConfigError",
@@ -91,6 +96,14 @@ class PrecisionUnavailable(VoiceLoadError, ValueError):
 class ExportNotSupported(PhoonnxError):
     """The export target cannot hold this voice, for example a phonemizer or
     an engine the target lacks."""
+
+
+class NonFiniteAudioError(PhoonnxError, RuntimeError):
+    """A model returned NaN or infinite audio samples."""
+
+    def __init__(self, voice: str):
+        self.voice = voice
+        super().__init__(f"voice {voice!r}: the model returned non-finite audio samples (NaN or inf)")
 
 
 class UnsupportedTokenizer(PhoonnxError):
