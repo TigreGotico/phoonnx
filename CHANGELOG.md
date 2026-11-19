@@ -295,10 +295,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.106.0a1...1.107.0a1)
 
-**Merged pull requests:**
-
-- feat: choose int8 or full voice files with one precision setting [\#631](https://github.com/TigreGotico/phoonnx/pull/631) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.106.0a1](https://github.com/TigreGotico/phoonnx/tree/1.106.0a1) (2026-11-17)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.105.0a1...1.106.0a1)
