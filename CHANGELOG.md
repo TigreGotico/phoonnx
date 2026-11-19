@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.123.6a1](https://github.com/TigreGotico/phoonnx/tree/1.123.6a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.5a1...1.123.6a1)
+
+## [1.123.5a1](https://github.com/TigreGotico/phoonnx/tree/1.123.5a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.4a1...1.123.5a1)
+
+**Merged pull requests:**
+
+- fix: the streaming decoder runs on the voice's execution providers [\#832](https://github.com/TigreGotico/phoonnx/pull/832) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: check num\_symbols for every VITS graph, name one engine in SpeedySpeech exports, pickle typed errors [\#829](https://github.com/TigreGotico/phoonnx/pull/829) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.123.4a1](https://github.com/TigreGotico/phoonnx/tree/1.123.4a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.3a1...1.123.4a1)
@@ -227,7 +240,6 @@
 - docs: add the Python API reference and the 2.0 target API [\#742](https://github.com/TigreGotico/phoonnx/pull/742) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - test: each raw-text engine reads the text2spoken reading of digits [\#741](https://github.com/TigreGotico/phoonnx/pull/741) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - fix\(train\): a preprocessing worker that cannot start stops the run [\#738](https://github.com/TigreGotico/phoonnx/pull/738) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- feat: package root exports and the PhoonnxError hierarchy [\#724](https://github.com/TigreGotico/phoonnx/pull/724) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.114.2a1](https://github.com/TigreGotico/phoonnx/tree/1.114.2a1) (2026-11-18)
 
@@ -248,10 +260,6 @@
 ## [1.113.19a1](https://github.com/TigreGotico/phoonnx/tree/1.113.19a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.18a3...1.113.19a1)
-
-**Merged pull requests:**
-
-- fix: remove hidden failures \(TypeError retry, always-true hasattr, developer main blocks\) [\#726](https://github.com/TigreGotico/phoonnx/pull/726) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.113.18a3](https://github.com/TigreGotico/phoonnx/tree/1.113.18a3) (2026-11-18)
 
