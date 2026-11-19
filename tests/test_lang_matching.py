@@ -40,8 +40,8 @@ class TestNormalizeLangDefaultRegion(unittest.TestCase):
                 self.assertEqual(normalize_lang(lang), f"{lang}-{default_region(lang)}")
 
     def test_language_with_no_default_region_stays_bare(self):
-        # Tags with no country: uncoded, no linguistic content, constructed.
-        for lang in ("mis", "zxx", "tlh"):
+        # Tags with no country: uncoded, no linguistic content, private use.
+        for lang in ("mis", "zxx", "qaa"):
             with self.subTest(lang=lang):
                 self.assertIsNone(default_region(lang))
                 self.assertEqual(normalize_lang(lang), lang)
