@@ -137,7 +137,9 @@ print(voice.frontend.phonemize("hello world"))
 [['h', 'ə', 'l', 'ˈ', 'ə', 'ʊ', ' ', 'w', 'ˈ', 'ɜ', 'ː', 'l', 'd']]
 ```
 
-This example needs the `espeak` extra and the `espeak-ng` program.
+This example needs the `espeak` extra only. When the `espeak-ng` program is not on
+`PATH`, scriptconv uses espyak, a Python port of espeak-ng from the same extra, and
+the output is the same.
 
 ## CJK extras
 

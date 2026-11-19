@@ -28,7 +28,7 @@ from phoonnx.config import VoiceConfig
 | `length_scale` | `float` \| `None` | `None` | Phoneme length scale from `inference.length_scale`. `None` gives the engine's default |
 | `noise_w_scale` | `float` \| `None` | `None` | Phoneme width noise scale from `inference.noise_w`. `None` gives the engine's default |
 | `hop_length` | `int` | `256` | Model frames → audio samples factor for [phoneme alignment](alignment.md) |
-| `add_diacritics` | `bool` | `True` for an Arabic `lang_code`, else `False` | Add diacritics before phonemization. A native config sets it in `inference.add_diacritics`. Without the key, and for every Piper config, the language decides |
+| `add_diacritics` | `bool` | Depends on the config format, see the description | Add diacritics before phonemization. A native config reads it from `inference.add_diacritics`. Without the key, an Arabic `lang_code` gives `True`. A Piper config ignores the key, and an Arabic `lang_code` gives `True`. A Chatterbox config gives `True` for Arabic and Hebrew. A config with no format marker reads the key and defaults to `False`. Every other format gives `False` |
 | `diacritizer_model` | `str` \| `None` | `None` | Diacritizer model name, read from the config's `inference` block. `None` lets scriptconv pick the default of each backend, `rawi-ensemble` for Arabic |
 | `phonemizer_model` | `str` \| `None` | `None` | Model path/id or variant selector for phonemizers that take one (ByT5, AhoTTS, Cotovia, arbtok) |
 | `keep_punctuation` | `bool` | `False` (`True` for Piper configs) | The model was trained with clause punctuation (`, . ? ! : ;`), so synthesis keeps it. A phoonnx config without the key, or a Piper side-car phoonnx exported (`piper_version` starting with `phoonnx`, or an `alphabet` key), was trained without it |
@@ -322,8 +322,12 @@ The adapter registry itself is described in [Engines](engines.md).
 ## Execution Providers
 
 Every ONNX session phoonnx creates — the voice model and the auxiliary graphs an
-engine loads (vocoders, speaker encoders, text encoders, the streaming decoder,
-diacritizers) — runs on a resolved, ordered list of ONNX Runtime execution providers.
+engine loads (vocoders, speaker encoders, text encoders, diacritizers) — runs on a
+resolved, ordered list of ONNX Runtime execution providers.
+
+The decoder of a [streaming VITS voice](streaming.md) is the exception. phoonnx
+creates its session with no provider list, so it runs on the default providers of
+ONNX Runtime.
 
 Pass the list explicitly:
 

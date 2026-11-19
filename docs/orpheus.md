@@ -8,9 +8,12 @@ turns into 2048 samples at 24 kHz.
 
 ## Read this first: Orpheus is a GPU engine
 
-A 3B backbone costs about **0.37 s per decode step** on 12 CPU cores, and SNAC needs
-~82 tokens for every second of audio. Measured end to end, that is **37-46x slower
-than real time**. Upstream serves it through vLLM on a GPU.
+SNAC needs about 82 tokens for every second of audio, and the 3B backbone makes one
+token per step. On a 12-core CPU in fp32, the backbone took 0.43 to 0.56 s per token,
+so it ran **36-46x slower than real time**: mean 38.7x over 7 sentences, backbone time
+only ([measurement](../scripts/conversion/orpheus/evidence/README.md)).
+
+Upstream serves Orpheus through vLLM on a GPU.
 
 Canopy Labs announced 1B, 400M and 150M tiers, but **never released them**. Their own
 loader still refuses those names with `"not supported ... will be released very soon"`,

@@ -56,8 +56,10 @@ d-vector engines ignore the two `_text`/`_lang` fields; in-context engines requi
 When `soundfile` is installed, phoonnx reads every reference with it, WAV included, so
 FLAC, OGG and MP3 references work too. `soundfile` comes with the `phoonnx[cloning]`
 extra (it pulls in `soundfile` + `scipy`). Without it, phoonnx reads the reference with
-the standard-library `wave` module, which reads 16-bit PCM WAV only. Any other format
-raises `wave.Error`. Install the extra for non-WAV references:
+the standard-library `wave` module and reads every sample as 16-bit PCM. A FLAC, OGG or
+MP3 file, or a float WAV, raises `wave.Error`. A PCM WAV of 8, 24 or 32 bits gives no
+`wave.Error`: it raises `ValueError`, or it loads as wrong audio with no error. Install
+the extra for any reference that is not a 16-bit PCM WAV:
 
 ```bash
 pip install phoonnx[cloning]

@@ -49,8 +49,9 @@ first sentence becomes audio before the second sentence is phonemized. Step by s
    a phoneme or grapheme engine it is a `SymbolEncoder`: the `TTSTokenizer` maps
    phonemes/characters to IDs using the voice's `phoneme_id_map`, inserting
    blank/pad/bos/eos tokens per the voice config. For a text-token engine (Chatterbox) it
-   is a `TextEncoder`: the adapter's `encode_text` BPE-tokenizes the normalized text
-   instead.
+   is a `TextEncoder`: Chatterbox overrides `make_encoder`, and its BPE tokenizer
+   tokenizes each normalized frontend chunk. Chatterbox does not call its `encode_text`
+   on this path.
 4. **Adapter synthesize** — `render` merges the parameters (adapter defaults → the
    `inference` scales of the voice config → the voice's `engine_params` → the scales of
    the per-call `SynthesisConfig` → its `extra_params`, where a later one wins), builds an
