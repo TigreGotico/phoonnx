@@ -101,9 +101,9 @@ class ExportNotSupported(PhoonnxError):
 class NonFiniteAudioError(PhoonnxError, RuntimeError):
     """A model returned NaN or infinite audio samples."""
 
-    def __init__(self, voice: str):
-        self.voice = voice
-        super().__init__(f"voice {voice!r}: the model returned non-finite audio samples (NaN or inf)")
+    def __init__(self, model_path: str):
+        self.model_path = model_path
+        super().__init__(f"model {model_path!r} returned non-finite audio samples (NaN or inf)")
 
 
 class UnsupportedTokenizer(PhoonnxError):

@@ -65,13 +65,16 @@ class TestNonFiniteAudioRaises(unittest.TestCase):
         with self.assertRaises(NonFiniteAudioError):
             voice.render(utterance)
 
-    def test_the_error_names_the_voice_and_is_a_runtime_error(self):
+    def test_the_error_names_the_model_file_and_is_a_runtime_error(self):
+        # every kokoro/* voice loads the same model.onnx, so the stem alone names nothing
+        path = "/cache/models--Phoonnx--phoonnx-styletts2/snapshots/a6aca46/kokoro-82m/model.onnx"
         voice = _voice(np.nan)
-        voice.model_path = "/models/kokoro-82m/af_heart.onnx"
+        voice.model_path = path
         with self.assertRaises(RuntimeError) as caught:
             list(voice.synthesize(TEXT))
         self.assertIsInstance(caught.exception, PhoonnxError)
-        self.assertIn("'af_heart'", str(caught.exception))
+        self.assertIn(repr(path), str(caught.exception))
+        self.assertEqual(caught.exception.model_path, path)
 
 
 class TestFiniteAudioStillWorks(unittest.TestCase):

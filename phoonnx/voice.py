@@ -1112,7 +1112,7 @@ class TTSVoice:
         the int16 cast would write as silence.
         """
         if not np.isfinite(audio).all():
-            raise NonFiniteAudioError(self._voice_name)
+            raise NonFiniteAudioError(self.model_path or "<voice>")
         audio = level_audio(audio, syn_config, self.config.sample_rate)
         if syn_config.volume != 1.0:
             audio = audio * syn_config.volume
