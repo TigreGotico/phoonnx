@@ -219,3 +219,30 @@ def test_synthesize_without_decoder_raises():
     a = VitsStreamingAdapter()
     with pytest.raises(RuntimeError):
         a.synthesize(_request(), FakeEncoder(T=300))
+
+
+def test_stream_yields_each_window_and_joins_to_synthesize():
+    hop, T = 256, 500
+    a, enc = _adapter(hop, T)
+    parts = list(a.synthesize_stream(_request(), enc))
+    assert len(parts) > 1
+    whole = a.synthesize(_request(), enc).audio
+    assert np.array_equal(np.concatenate([p.audio for p in parts]), whole)
+
+
+def test_stream_yields_the_first_window_before_the_last_is_decoded():
+    hop, T = 256, 500
+    a, enc = _adapter(hop, T)
+    stream = a.synthesize_stream(_request(), enc)
+    next(stream)
+    calls_at_first_part = a.decoder.calls
+    list(stream)
+    assert calls_at_first_part == 1
+    assert a.decoder.calls > calls_at_first_part
+
+
+def test_stream_short_sentence_is_one_part():
+    a, enc = _adapter(256, _DEFAULT_STREAMING["fallback_frames"])
+    parts = list(a.synthesize_stream(_request(), enc))
+    assert len(parts) == 1
+    assert a.decoder.calls == 1
