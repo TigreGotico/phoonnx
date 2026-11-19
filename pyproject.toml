@@ -209,9 +209,8 @@ train = [
     "diffusers>=0.43,<0.44",
     "einops",
     "huggingface_hub",
-    # librosa 1.0 is not yet checked against the pyin, griffinlim, mel and
-    # resample calls phoonnx makes.
-    "librosa>=0.9.2,<1",
+    # librosa 1.2 removes griffinlim(random_state=), used by engines/matcha.py.
+    "librosa>=0.9.2,<1.2",
     # pyarrow 26 (train-data) needs NumPy 2 at import, and it does not declare
     # numpy as a dependency, so the resolver cannot find this by itself
     "numpy>=2; python_version<'3.13'",
@@ -510,9 +509,8 @@ all = [
     # Pocket TTS voice state loading (phoonnx/engines/pockettts.py).
     "safetensors",
     # Griffin-Lim vocoder fallback (phoonnx/engines/vocoders/griffinlim.py).
-    # librosa 1.0 is not yet checked against the pyin, griffinlim, mel and
-    # resample calls phoonnx makes.
-    "librosa>=0.9.2,<1",
+    # librosa 1.2 removes griffinlim(random_state=), used by engines/matcha.py.
+    "librosa>=0.9.2,<1.2",
     # streaming VITS model splitting (phoonnx/onnx_surgery.py).
     "onnx",
     # optional post-synthesis audio super-resolution (phoonnx/voice.py).
