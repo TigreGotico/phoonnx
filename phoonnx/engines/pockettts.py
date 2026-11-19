@@ -56,12 +56,14 @@ runtime contract published with the exported graphs.
 """
 import json
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from itertools import islice
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
 import onnxruntime
 
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
+from phoonnx.engines.speaker_encoders.base import BaseSpeakerEncoder
 from phoonnx.providers import make_session
 
 # Languages Pocket TTS was trained on, as ISO-639-1 codes.
@@ -76,6 +78,9 @@ DEFAULT_EOS_THRESHOLD = -4.0
 # three text tokens per second of speech, plus a two-second allowance.
 TOKENS_PER_SECOND_ESTIMATE = 3.0
 GEN_SECONDS_PADDING = 2.0
+
+# Latent frames the Mimi decoder reads per call.
+DECODE_CHUNK_FRAMES = 15
 
 _NUMPY_DTYPES = {
     "float32": np.float32,
@@ -140,6 +145,9 @@ class PocketTTSAdapter(BaseOnnxAdapter):
             "max_token_per_chunk", "model_recommended_frames_after_eos",
             "insert_bos_before_voice", "pad_with_spaces_for_short_inputs",
             "remove_semicolons", "mimi_state_manifest", "flow_state_manifest"}),
+        # The encoder session is built on first use from the voice config's
+        # path, so every request gets the same one.
+        "encode_reference": frozenset({"mimi_encoder"}),
     }
 
     def __init__(self, temperature: float = DEFAULT_TEMPERATURE,
@@ -150,6 +158,9 @@ class PocketTTSAdapter(BaseOnnxAdapter):
         self.flow_lm_flow: Optional[onnxruntime.InferenceSession] = None
         self.mimi_decoder: Optional[onnxruntime.InferenceSession] = None
         self.mimi_encoder: Optional[onnxruntime.InferenceSession] = None
+        # Only voice cloning runs the encoder, so it is built on first use.
+        self._mimi_encoder_path: Optional[str] = None
+        self._providers: Any = None
         self.tokenizer = None
         self.metadata: Dict[str, Any] = {}
         self.bos_before_voice: Optional[np.ndarray] = None
@@ -182,11 +193,6 @@ class PocketTTSAdapter(BaseOnnxAdapter):
                 "lsd_steps": float(self.lsd_steps),
                 "eos_threshold": self.eos_threshold}
 
-    def param_labels(self) -> Dict[str, str]:
-        return {"temperature": "Sampling temperature",
-                "lsd_steps": "Flow integration steps",
-                "eos_threshold": "End-of-speech threshold"}
-
     # ------------------------------------------------------------------
     # Setup
     # ------------------------------------------------------------------
@@ -195,7 +201,7 @@ class PocketTTSAdapter(BaseOnnxAdapter):
         """Load the bundle metadata, the four auxiliary graphs, the SentencePiece
         tokenizer, the BOS embedding and the speaker state from ``engine_params``.
         ``flow_lm_main`` is the voice's own primary session."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
 
         if ep.get("bundle_path") and not self.metadata:
             with open(ep["bundle_path"], "r", encoding="utf-8") as f:
@@ -211,8 +217,9 @@ class PocketTTSAdapter(BaseOnnxAdapter):
             self.flow_lm_flow = sess(ep["flow_lm_flow_path"])
         if self.mimi_decoder is None and ep.get("mimi_decoder_path"):
             self.mimi_decoder = sess(ep["mimi_decoder_path"])
-        if self.mimi_encoder is None and ep.get("mimi_encoder_path"):
-            self.mimi_encoder = sess(ep["mimi_encoder_path"])
+        if ep.get("mimi_encoder_path"):
+            self._mimi_encoder_path = ep["mimi_encoder_path"]
+            self._providers = ep.get("providers")
 
         if self.tokenizer is None and ep.get("tokenizer_path"):
             from phoonnx._sentencepiece import SentencePieceProcessor
@@ -335,10 +342,31 @@ class PocketTTSAdapter(BaseOnnxAdapter):
             state[entry["input_name"]] = self._adapt_state_tensor(tensor, entry)
         return state
 
+    def _reference_audio(self, reference: Any) -> np.ndarray:
+        """Normalise a cloning reference to mono float32 at the model's sample rate.
+
+        The reference arrives as an ``(audio, sample_rate)`` tuple from
+        ``load_reference_audio``; the clip is resampled to the 24 kHz the model
+        expects. A bare array is taken as already at the model rate, as before.
+        """
+        if isinstance(reference, tuple) and len(reference) == 2:
+            audio, sample_rate = reference
+            audio = np.asarray(audio, dtype=np.float32)
+            if audio.ndim > 1:
+                audio = audio.mean(axis=1)
+            audio = audio.reshape(-1)
+            if int(sample_rate) != self.sample_rate:
+                audio = BaseSpeakerEncoder.resample(
+                    audio, int(sample_rate), self.sample_rate)
+            return audio
+        return np.asarray(reference, dtype=np.float32).reshape(-1)
+
     def encode_reference(self, audio: np.ndarray) -> np.ndarray:
         """Turn a mono 24 kHz reference clip into Mimi latent frames for cloning."""
         if self.mimi_encoder is None:
-            raise RuntimeError("Pocket TTS voice missing mimi_encoder_path in engine_params")
+            if self._mimi_encoder_path is None:
+                raise RuntimeError("Pocket TTS voice missing mimi_encoder_path in engine_params")
+            self.mimi_encoder = make_session(self._mimi_encoder_path, providers=self._providers)
         audio = np.asarray(audio, dtype=np.float32).reshape(1, 1, -1)
         embeddings = self.mimi_encoder.run(None, {"audio": audio})[0]
         while embeddings.ndim > 3:
@@ -415,8 +443,12 @@ class PocketTTSAdapter(BaseOnnxAdapter):
         own SentencePiece model. One list of token ids per chunk."""
         if self.tokenizer is None:
             raise RuntimeError("Pocket TTS voice missing tokenizer_path in engine_params")
+        if not text.strip():  # split_into_chunks runs prepare_text, which rejects empty text
+            return []
         ids = []
         for chunk in self.split_into_chunks(text):
+            if not chunk.strip():
+                continue
             prepared, _ = prepare_text(chunk, self.remove_semicolons,
                                        self.pad_with_spaces_for_short_inputs)
             ids.append(list(self.tokenizer.Encode(prepared)))
@@ -443,11 +475,11 @@ class PocketTTSAdapter(BaseOnnxAdapter):
         seconds = token_count / TOKENS_PER_SECOND_ESTIMATE + GEN_SECONDS_PADDING
         return int(math.ceil(seconds * self.frame_rate))
 
-    def generate_latents(self, token_ids: np.ndarray, voice_state: Dict[str, np.ndarray],
-                         session: onnxruntime.InferenceSession, temperature: float,
-                         lsd_steps: int, eos_threshold: float,
-                         rng: np.random.Generator) -> np.ndarray:
-        """Run the autoregressive loop for one chunk and return its latent frames.
+    def iter_latents(self, token_ids: np.ndarray, voice_state: Dict[str, np.ndarray],
+                     session: onnxruntime.InferenceSession, temperature: float,
+                     lsd_steps: int, eos_threshold: float,
+                     rng: np.random.Generator) -> Iterator[np.ndarray]:
+        """Run the autoregressive loop for one chunk and yield each latent frame when it exists.
 
         Each step asks ``flow_lm_main`` for a conditioning vector and an end-of-speech
         logit, then integrates ``flow_lm_flow`` from a Gaussian sample to the next latent
@@ -474,7 +506,6 @@ class PocketTTSAdapter(BaseOnnxAdapter):
                       for j in range(lsd_steps)]
 
         curr = np.full((1, 1, self.latent_dim), np.nan, dtype=np.float32)
-        latents: List[np.ndarray] = []
         eos_step: Optional[int] = None
 
         for step in range(frame_limit):
@@ -498,31 +529,15 @@ class PocketTTSAdapter(BaseOnnxAdapter):
                     None, {"c": conditioning, "s": s_arr, "t": t_arr, "x": x})[0] * dt
 
             curr = x.reshape(1, 1, self.latent_dim)
-            latents.append(curr)
+            yield curr
 
-        if not latents:
-            return np.zeros((1, 0, self.latent_dim), dtype=np.float32)
-        return np.concatenate(latents, axis=1)
+    def synthesize_stream(self, request: AdapterSynthesisRequest,
+                          session: onnxruntime.InferenceSession) -> Iterator[AdapterSynthesisResult]:
+        """Yield the audio of each ``DECODE_CHUNK_FRAMES`` latent frames once they exist.
 
-    def decode_latents(self, latents: np.ndarray, chunk_size: int = 15) -> np.ndarray:
-        """Turn latent frames into audio, feeding the decoder in small chunks and
-        carrying its state forward so the joins are seamless within this call's
-        latents. Each call to synthesize() starts flow_lm_main from the voice's
-        saved state again, so this continuity does not carry across sentence-level
-        text chunks — the flow-LM state resets there by design."""
-        state = self.init_state(self.mimi_state_manifest)
-        audio: List[np.ndarray] = []
-        for index in range(0, latents.shape[1], chunk_size):
-            outputs = self.mimi_decoder.run(
-                None, {"latent": latents[:, index:index + chunk_size, :], **state})
-            audio.append(np.asarray(outputs[0], np.float32).reshape(-1))
-            self._update_state(state, outputs, self.mimi_state_manifest, output_offset=1)
-        if not audio:
-            return np.zeros((0,), dtype=np.float32)
-        return np.concatenate(audio)
-
-    def synthesize(self, request: AdapterSynthesisRequest,
-                   session: onnxruntime.InferenceSession) -> AdapterSynthesisResult:
+        The Mimi decoder carries its state from one slice to the next, so the joins are
+        seamless. A chunk with no frames yields one empty part.
+        """
         if self.text_conditioner is None or self.flow_lm_flow is None or self.mimi_decoder is None:
             raise RuntimeError("Pocket TTS voice missing text_conditioner_path / "
                                "flow_lm_flow_path / mimi_decoder_path in engine_params")
@@ -544,7 +559,7 @@ class PocketTTSAdapter(BaseOnnxAdapter):
 
         reference = p.get("reference_audio")
         if reference is not None:
-            voice_state = self.state_from_reference(reference, session)
+            voice_state = self.state_from_reference(self._reference_audio(reference), session)
         elif self.voice_state is not None:
             voice_state = self.voice_state
         else:
@@ -552,14 +567,29 @@ class PocketTTSAdapter(BaseOnnxAdapter):
                                "and no speaker_reference was given")
 
         token_ids = np.asarray(request.phoneme_ids, np.int64).reshape(1, -1)
-        latents = self.generate_latents(token_ids, voice_state, session, temperature,
-                                        lsd_steps, eos_threshold, rng)
-        audio = self.decode_latents(latents)
-        return AdapterSynthesisResult(
-            audio=audio, extras={"frames": int(latents.shape[1])})
+        latents = self.iter_latents(token_ids, voice_state, session, temperature,
+                                    lsd_steps, eos_threshold, rng)
+        state = self.init_state(self.mimi_state_manifest)
+        frames = list(islice(latents, DECODE_CHUNK_FRAMES))
+        if not frames:
+            yield AdapterSynthesisResult(audio=np.zeros((0,), dtype=np.float32), extras={"frames": 0})
+        while frames:
+            outputs = self.mimi_decoder.run(
+                None, {"latent": np.concatenate(frames, axis=1), **state})
+            self._update_state(state, outputs, self.mimi_state_manifest, output_offset=1)
+            yield AdapterSynthesisResult(audio=np.asarray(outputs[0], np.float32).reshape(-1),
+                                         extras={"frames": len(frames)})
+            frames = list(islice(latents, DECODE_CHUNK_FRAMES))
 
-    # build_feed_dict / parse_outputs are required by the ABC but unused — synthesize()
-    # drives the multi-graph pipeline directly.
+    def synthesize(self, request: AdapterSynthesisRequest,
+                   session: onnxruntime.InferenceSession) -> AdapterSynthesisResult:
+        parts = list(self.synthesize_stream(request, session))
+        return AdapterSynthesisResult(
+            audio=np.concatenate([part.audio for part in parts]),
+            extras={"frames": sum(part.extras["frames"] for part in parts)})
+
+    # build_feed_dict / parse_outputs are required by the ABC but unused:
+    # synthesize_stream runs the graphs.
     def build_feed_dict(self, request: AdapterSynthesisRequest,
                         session: onnxruntime.InferenceSession) -> Dict[str, np.ndarray]:
         raise NotImplementedError("Pocket TTS is multi-graph — use synthesize()")

@@ -96,7 +96,7 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
 
     def configure(self, voice_config: Any) -> None:
         """Load the decoder graph and streaming parameters from the voice config."""
-        engine_params = getattr(voice_config, "engine_params", None) or {}
+        engine_params = voice_config.engine_params
         self.configure_from_params(engine_params)
         hop = getattr(voice_config, "hop_length", None)
         if hop:
@@ -129,20 +129,6 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
 
     def default_params(self) -> Dict[str, float]:
         return {"noise_scale": 0.667, "length_scale": 1.0, "noise_w_scale": 0.8}
-
-    def parse_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        inference = config.get("inference", {})
-        defaults = self.default_params()
-        return {
-            "noise_scale": inference.get("noise_scale", defaults["noise_scale"]),
-            "length_scale": inference.get("length_scale", defaults["length_scale"]),
-            "noise_w_scale": inference.get("noise_w", defaults["noise_w_scale"]),
-        }
-
-    def param_labels(self) -> Dict[str, str]:
-        return {"noise_scale": "Noise scale",
-                "length_scale": "Length scale",
-                "noise_w_scale": "Noise W"}
 
     @staticmethod
     def detect(config: Optional[Dict[str, Any]] = None,
@@ -180,8 +166,8 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
         args["sid"] = np.array([request.speaker_id or 0], dtype=np.int64)
         return self._filter_inputs(args, session)
 
-    def parse_outputs(self, outputs: List[np.ndarray],
-                      request: AdapterSynthesisRequest) -> AdapterSynthesisResult:
+    def parse_outputs(self, outputs: List[np.ndarray], request: AdapterSynthesisRequest,
+                      output_names: Optional[List[str]] = None) -> AdapterSynthesisResult:
         """Required by the base interface. Streaming synthesis is driven by
         ``synthesize`` (which loops over the decoder), so this is only used if a
         caller runs the encoder graph directly: it wraps the first output as audio."""

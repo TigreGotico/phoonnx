@@ -126,6 +126,11 @@ class TestPinnedFormats(unittest.TestCase):
         voice = VoiceConfig.from_dict(cfg, tokens_txt=_tokens_txt(), lang_code="pt")
         self.assertEqual(voice.lang_code, normalize_lang("de", default_region=False))
 
+    def test_mimic3_reads_its_tokens_file(self):
+        cfg = {"phonemizer": "gruut", "phonemes": {}, "text_language": "de"}
+        voice = VoiceConfig.from_dict(cfg, tokens_txt=_tokens_txt())
+        self.assertEqual(voice.tokenizer.vocabulary.char2idx, {c: i for i, c in enumerate("abcdef_ ")})
+
     def test_mimic3_symbols_models_pin_their_grapheme_alphabet(self):
         cfg = {"phonemizer": "symbols", "phonemes": {}, "text_language": "de"}
         voice = VoiceConfig.from_dict(cfg, tokens_txt=_tokens_txt(), alphabet=Alphabet.ARPA)

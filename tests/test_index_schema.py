@@ -145,6 +145,41 @@ class TestFutureFieldTypes(unittest.TestCase):
                 _describes(object(), annotation)
 
 
+class TestHubRevisions(unittest.TestCase):
+    """Every Hub URL of an entry names a commit, wherever it sits in the entry."""
+
+    SHA = "0123456789abcdef0123456789abcdef01234567"
+
+    def _problems(self, **fields):
+        entry = {"voice_id": "org/voice", "lang": "pt-PT",
+                 "model_url": f"https://huggingface.co/org/repo/resolve/{self.SHA}/model.onnx", **fields}
+        return validate_entry("org/voice", entry)
+
+    def test_a_commit_revision_is_valid(self):
+        self.assertEqual(self._problems(config_url=f"https://huggingface.co/org/repo/resolve/{self.SHA}/c.json"), [])
+
+    def test_a_branch_revision_is_rejected(self):
+        url = "https://huggingface.co/org/repo/resolve/main/config.json"
+        self.assertEqual(self._problems(config_url=url),
+                         [f"org/voice: {url} names revision 'main', expected a 40-hex commit sha"])
+
+    def test_a_short_or_uppercase_sha_is_rejected(self):
+        for rev in (self.SHA[:7], self.SHA.upper(), self.SHA + "0"):
+            with self.subTest(rev=rev):
+                self.assertEqual(len(self._problems(config_url=f"https://huggingface.co/o/r/resolve/{rev}/c.json")), 1)
+
+    def test_nested_urls_are_checked(self):
+        main = "https://huggingface.co/org/repo/resolve/main/x.onnx"
+        self.assertEqual(len(self._problems(aux_model_urls={"decoder": main})), 1)
+        self.assertEqual(len(self._problems(variants={"int8": {"model_url": main}})), 1)
+
+    def test_a_raw_url_is_checked(self):
+        self.assertEqual(len(self._problems(config_url="https://huggingface.co/org/repo/raw/v1.0/c.json")), 1)
+
+    def test_a_url_off_the_hub_is_not_a_revision_question(self):
+        self.assertEqual(self._problems(config_url="https://example.invalid/main/c.json"), [])
+
+
 class TestValidateIndexFile(unittest.TestCase):
 
     def test_a_typo_in_a_scratch_index_is_caught(self):

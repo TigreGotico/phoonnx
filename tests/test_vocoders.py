@@ -134,3 +134,63 @@ def test_vocos_nested_config_layout():
     )
     params = voc._stft_params()
     assert params == {"n_fft": N_FFT, "hop_length": HOP}
+
+
+def _seeded_spectrogram(seed, batch, n_fft, frames):
+    """mag * (x + 1j*y) from float32 tensors, the way ``mel_to_audio`` builds it."""
+    rng = np.random.default_rng(seed)
+    mag, x, y = (rng.standard_normal((batch, n_fft // 2 + 1, frames)).astype(np.float32)
+                 for _ in range(3))
+    return mag * (x + 1j * y)
+
+
+@pytest.mark.parametrize("n_fft,hop,batch,frames", [
+    (16, 4, 1, 5),
+    (1024, 256, 2, 7),     # the shipped Vocos geometry
+    (16, 5, 1, 6),         # hop does not divide n_fft
+    (12, 12, 1, 3),        # no overlap
+    (8, 3, 2, 1),          # a single frame
+    (10, 16, 1, 4),        # hop longer than the window leaves gaps
+])
+def test_vocos_overlap_add_is_bit_identical_to_the_per_sample_sum(n_fft, hop, batch, frames):
+    voc = VocosVocoder(session=_vocos_session(), config={"n_fft": n_fft, "hop_length": hop})
+    spectrogram = _seeded_spectrogram(n_fft + hop + frames, batch, n_fft, frames)
+    got = voc._istft_overlap_add(spectrogram)
+
+    # windowed inverse FFT, then each sample summed in Python floats in frame order
+    window = 0.5 - 0.5 * np.cos(2.0 * np.pi * np.arange(n_fft) / n_fft)
+    ifft = np.fft.irfft(spectrogram, n=n_fft, axis=1) * window[None, :, None]
+    want = np.empty((batch, (frames - 1) * hop + n_fft))
+    for b in range(batch):
+        for i in range(want.shape[1]):
+            total, envelope = 0.0, 0.0
+            for t in range(frames):
+                k = i - t * hop
+                if 0 <= k < n_fft:
+                    total += float(ifft[b, k, t])
+                    envelope += float(window[k]) * float(window[k])
+            want[b, i] = total / max(envelope, 1e-11)
+    pad = n_fft // 2
+    if want.shape[1] > 2 * pad:
+        want = want[:, pad:-pad]
+    want = want.astype(np.float32)
+    assert got.dtype == np.float32 and got.shape == want.shape
+    assert np.array_equal(got, want)
+    assert got.tobytes() == want.tobytes()
+
+
+@pytest.mark.parametrize("win,hop,frames", [(1024, 256, 9), (16, 5, 6), (10, 16, 4)])
+def test_overlap_add_keeps_the_float64_sums_of_a_frame_by_frame_loop(win, hop, frames):
+    """Checked before the float32 cast, where a changed summation order would show."""
+    from phoonnx.engines.vocoders.vocos import _overlap_add
+    stack = np.random.default_rng(win * hop).standard_normal((2, frames, win)) * 1e3
+    got = _overlap_add(stack, hop)
+    want = np.empty((2, (frames - 1) * hop + win))
+    for b in range(2):
+        for i in range(want.shape[1]):
+            total = 0.0
+            for t in range(frames):
+                if 0 <= i - t * hop < win:
+                    total += float(stack[b, t, i - t * hop])
+            want[b, i] = total
+    assert got.tobytes() == want.tobytes()

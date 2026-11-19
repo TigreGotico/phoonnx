@@ -18,7 +18,7 @@ drives the overridable ``BaseOnnxAdapter.synthesize`` rather than the single-gra
 ``build_feed_dict`` path, like its siblings :mod:`phoonnx.engines.qwen3tts` and
 :mod:`phoonnx.engines.sparktts`.
 
-Three ONNX graphs (HF: ``Phoonnx/phoonnx-zortzi-tts``, ``Phoonnx/phoonnx-audio8-tts``)::
+Three ONNX graphs (HF: ``Phoonnx/arktts-eu_es-zortzi-unicode``, ``Phoonnx/arktts-multi-audio8_preview-0.6b-unicode``)::
 
     slow_ar.onnx        24-layer KV-cached backbone step (= the voice's ``session``)
     fast_ar.onnx        4-layer depth transformer over the ten codebooks
@@ -218,17 +218,13 @@ class ArkTTSAdapter(BaseOnnxAdapter):
         return {"temperature": 0.8, "top_k": 50.0, "top_p": 0.95,
                 "max_new_tokens": float(MAX_NEW_TOKENS)}
 
-    def param_labels(self) -> Dict[str, str]:
-        return {"temperature": "Sampling temperature", "top_k": "Top-k",
-                "top_p": "Nucleus (top-p)", "max_new_tokens": "Frame budget per chunk"}
-
     # ------------------------------------------------------------------
     # Setup
     # ------------------------------------------------------------------
 
     def configure(self, voice_config: Any) -> None:
         """Open the two side graphs, the model's subword BPE, and the voice's codes."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         self._params = dict(ep)
         providers = ep.get("providers")
 

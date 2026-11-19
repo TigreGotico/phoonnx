@@ -125,6 +125,10 @@ small CPU. The mirror also holds full-precision graphs under the same names with
 `_int8` suffix. Point `model_url` and the auxiliary URLs at those to trade speed for the
 reference numerics.
 
+The Italian voices are different. Their 8-bit graphs repeat words on some sentences, so
+the Italian entries load the full-precision graphs. Load an Italian voice with
+`precision="int8"` to get the 8-bit graphs.
+
 ## Licensing
 
 The weights are Kyutai's, under Creative Commons Attribution 4.0. Credit Kyutai when you

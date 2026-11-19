@@ -168,11 +168,9 @@ def test_detect_session_scales():
     assert VitsAdapter.detect(session=DummySession(["mels"])) is False
 
 
-def test_default_params_and_parse_config():
+def test_default_params():
     a = VitsAdapter()
     assert a.default_params() == {"noise_scale": 0.667, "length_scale": 1.0, "noise_w_scale": 0.8}
-    p = a.parse_config({"inference": {"noise_scale": 0.4, "length_scale": 1.5, "noise_w": 0.7}})
-    assert p == {"noise_scale": 0.4, "length_scale": 1.5, "noise_w_scale": 0.7}
 
 
 def test_full_synth_delegation():

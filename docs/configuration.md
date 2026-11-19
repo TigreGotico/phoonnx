@@ -24,14 +24,15 @@ from phoonnx.config import VoiceConfig
 | `phoneme_type` | `PhonemeType` | — | Phonemizer backend |
 | `alphabet` | `Alphabet` | — | Phoneme representation |
 | `engine` | `Engine` | `PHOONNX` | Training framework the model was built with |
-| `noise_scale` | `float` | `0.667` | Default generator noise scale |
-| `length_scale` | `float` | `1.0` | Default phoneme length scale |
-| `noise_w_scale` | `float` | `0.8` | Default phoneme width noise scale |
+| `noise_scale` | `float` \| `None` | `None` | Generator noise scale from `inference.noise_scale`. `None` gives the engine's default |
+| `length_scale` | `float` \| `None` | `None` | Phoneme length scale from `inference.length_scale`. `None` gives the engine's default |
+| `noise_w_scale` | `float` \| `None` | `None` | Phoneme width noise scale from `inference.noise_w`. `None` gives the engine's default |
 | `hop_length` | `int` | `256` | Model frames → audio samples factor for [phoneme alignment](alignment.md) |
 | `add_diacritics` | `bool` | `False` | Auto-add diacritics (Arabic/Hebrew) |
 | `diacritizer_model` | `str` | `rawi-ensemble` | Diacritizer model name (Arabic `text2tashkeel`); round-tripped through the config's `inference` block |
 | `phonemizer_model` | `str` \| `None` | `None` | Model path/id or variant selector for phonemizers that take one (ByT5, AhoTTS, Cotovia, arbtok) |
 | `keep_punctuation` | `bool` | `False` (`True` for Piper configs) | The model was trained with clause punctuation (`, . ? ! : ;`), so synthesis keeps it. A phoonnx config without the key, or a Piper side-car phoonnx exported (`piper_version` starting with `phoonnx`, or an `alphabet` key), was trained without it |
+| `phonemizer_identity` | `dict` \| `None` | `None` | The phonemizer that made the training phonemes. See [Phonemizer provenance](#phonemizer-provenance) |
 | `speaker_id_map` | `dict` | `{}` | Maps speaker names to integer IDs |
 | `lang_id_map` | `dict` | `{}` | Maps language codes to integer IDs (multi-lang voices) |
 | `lang_tokens` | `dict` | `{}` | Optional BCP-47 → model language-token override (dialect models) |
@@ -106,6 +107,7 @@ syn_config = SynthesisConfig(
 | `enable_phonetic_spellings` | `bool` | `True` | Apply word-level pronunciation overrides |
 | `add_diacritics` | `bool` \| `None` | `None` | Add vowel diacritics before phonemization; `None` defers to the voice config |
 | `diacritizer_model` | `str` \| `None` | `None` | Override the diacritizer model for this call; `None` inherits the voice config's `diacritizer_model` |
+| `chunk` | `str` \| `None` | `None` | How much text one engine call reads: `sentence`, `clause`, `paragraph` (the text between blank lines) or `none` (the whole text). `None` reads one sentence per call. The text is read whole before it is cut. An engine that reads text, not phonemes, gets the whole text. Phonemic input (`alphabet` set) is cut per sentence whatever the value. Any other value raises `ValueError` when the config is built |
 | `speaker_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Reference clip for zero-shot [voice cloning](cloning.md) |
 | `speaker_reference_text` | `str` \| `None` | `None` | Reference transcription, required by in-context cloning engines (ZipVoice) |
 | `speaker_reference_lang` | `str` \| `None` | `None` | Language of the transcription, for cross-lingual cloning (defaults to the voice's `lang_code`) |
@@ -115,6 +117,8 @@ syn_config = SynthesisConfig(
 | `vc_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Target-speaker clip for post-synthesis [voice conversion](voice_conversion.md); works with every engine |
 | `vc_engine` | `str` \| `None` | `None` | voiceclonnx engine for `vc_reference`; `None` selects `"openvoice"` |
 | `extra_params` | `dict` | `{}` | Engine-specific per-call parameters (e.g. `d_factor`, `p_factor`, `e_factor`) |
+
+A scale comes from the first of these that sets it: the call's `SynthesisConfig`, the `inference` block of the voice's `config.json`, the engine's `default_params()`.
 
 ## model.json Format
 
@@ -157,6 +161,7 @@ These keys of the native format control how the phonemes become ids.
 | Key | Default | Effect |
 |-----|---------|--------|
 | `phoneme_id_map` | — | Symbol to id. A value is an id or a list of ids. A list of one id is that id. A longer list gives each id in turn, and an empty list gives no id. |
+| `pad` | `_` | The padding symbol. `null` gives a vocabulary with no padding symbol. |
 | `add_blank_char` | `true` | Put the `blank` symbol between all ids, and at the start and end as `blank_at_start` and `blank_at_end` say. |
 | `add_blank_word` | `false` | Put the `blank_word` symbol after each word that gives an id. With `blank_at_end`, the last word gets one too. |
 | `blank_word` | none | The symbol that `add_blank_word` puts between words. Without it, a space gives no id. |
@@ -193,6 +198,61 @@ them. Mimic 3 adds `auto_append_text` (usually `.`) to the end of the text when
 the text does not end with it. With `minor_break_ms` set, Mimic 3 also sends
 each clause to the model in a separate call. phoonnx sends one call for each
 sentence.
+
+## Phonemizer provenance
+
+A voice learns the phonemes of one phonemizer. When a later release of that
+phonemizer gives other phonemes for the same text, the voice can mispronounce
+words. The `phonemizer_identity` block records the phonemizer that made the
+training phonemes, so that phoonnx can tell you when the phonemizer changed.
+
+Preprocessing (`phoonnx_train/preprocess.py`, see the
+[preprocess reference](training/preprocess.md)) writes the block into the
+`config.json` of the dataset:
+
+```json
+{
+  "phoneme_type": "orthography2ipa",
+  "lang_code": "pt-PT",
+  "phonemizer_identity": {
+    "backend": "orthography2ipa",
+    "distribution": "orthography2ipa",
+    "version": "7.123.11a2",
+    "lang": "pt-PT",
+    "revision": "sha256:7188b00e1bd7f3f8400628ce46e037ea038a5ad8312f74fa45d69c2f728ef1c3",
+    "frontend": null
+  }
+}
+```
+
+When `TTSVoice` loads a voice, it compares the block with the phonemizer that
+runs. When a field is different, it logs one warning. The warning names the
+voice, each field that is different, and the trained and the running value.
+The voice loads and speaks as usual. This example is a voice that was trained
+on another orthography2ipa spec revision:
+
+```text
+WARNING - Voice pt_PT-tugão was trained with another phonemizer: revision: trained 'sha256:0000000000000000000000000000000000000000000000000000000000000000', running 'sha256:7188b00e1bd7f3f8400628ce46e037ea038a5ad8312f74fa45d69c2f728ef1c3'. The voice loads, but its pronunciation can differ from training.
+```
+
+The comparison follows these rules:
+
+- `revision` is the orthography2ipa spec revision. When the two revisions are
+  equal, a different `version` gives no warning, because the spec that makes
+  the phonemes did not change.
+- `lang` is the lect that the phonemizer resolved. A voice trained on `es-ES`
+  that runs on `pt-PT` gives a warning.
+- `frontend` is `null` when preprocess called the backend directly. A `null`
+  value is not compared.
+- A voice without the block, or with an empty block, gives no warning.
+- A block that phoonnx cannot read, such as a string or a block without
+  `lang`, gives one warning. A phonemizer that cannot report its identity also
+  gives one warning. In both cases the voice loads without the check.
+- An engine that reads text and not phonemes (`"alphabet": "graphemes"`) is not
+  checked.
+
+To clear the warning, install the phonemizer release in the trained block, or
+train the voice again with the running phonemizer.
 
 ## Engine Enum
 
@@ -333,7 +393,8 @@ value that loads it.
    `DmlExecutionProvider` and `CoreMLExecutionProvider`.
 
 In every other case `auto` loads the full files. A voice that has only int8
-files, such as each Pocket TTS voice, loads its int8 files under `auto`.
+files, such as a Pocket TTS voice in any language but Italian, loads its int8
+files under `auto`.
 
 ### Precision in the voice index
 
@@ -344,16 +405,16 @@ optional `variants` field, which holds only the URL fields that differ.
 
 ```json
 {
-  "model_url": "https://huggingface.co/Phoonnx/demo/resolve/main/model.onnx",
+  "model_url": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/model.onnx",
   "aux_model_urls": {
-    "text_encoder_path": "https://huggingface.co/Phoonnx/demo/resolve/main/text_encoder.onnx",
-    "flow_path": "https://huggingface.co/Phoonnx/demo/resolve/main/flow.onnx"
+    "text_encoder_path": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/text_encoder.onnx",
+    "flow_path": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/flow.onnx"
   },
   "variants": {
     "int8": {
-      "model_url": "https://huggingface.co/Phoonnx/demo/resolve/main/model_int8.onnx",
+      "model_url": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/model_int8.onnx",
       "aux_model_urls": {
-        "flow_path": "https://huggingface.co/Phoonnx/demo/resolve/main/flow_int8.onnx"
+        "flow_path": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/flow_int8.onnx"
       },
       "auto": true
     }

@@ -10,17 +10,22 @@ The schema here is read off the ``TTSModelInfo`` dataclass at import time
 rather than restated, so it cannot describe a field the loader does not accept
 or miss one the loader gained. Adding a field to the dataclass is all that is
 needed for the index files to be allowed to carry it.
+
+Every Hugging Face URL in an entry names a commit, never a branch: a release
+then loads the files it was tested with, and an upload to the repo reaches
+users only through an index change.
 """
 
 import json
+import re
 from dataclasses import MISSING, fields
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Union, get_args, get_origin
+from typing import Any, Dict, Iterator, List, Union, get_args, get_origin
 
 from langcodes import Language
 
-from phoonnx.model_manager import TTSModelInfo
+from phoonnx.model_manager import _HF_URL, VARIANT_FIELDS, TTSModelInfo
 
 _FIELD_TYPES: Dict[str, Any] = {f.name: f.type for f in fields(TTSModelInfo)}
 
@@ -73,9 +78,32 @@ def _describes(value: Any, annotation: Any) -> bool:
     raise TypeError(f"index_schema cannot describe {annotation!r}")
 
 
-#: Fields a precision variant may replace: the files of the voice.
-VARIANT_FIELDS = frozenset(name for name in _FIELD_TYPES
-                           if name.endswith("_url") or name == "aux_model_urls")
+#: A Hub revision an index URL may name: a full commit sha, so that a later
+#: upload to the repo changes nothing a released index loads.
+COMMIT_REVISION = re.compile(r"[0-9a-f]{40}")
+
+
+def _strings(value: Any) -> Iterator[str]:
+    """Every string inside ``value``, at any depth."""
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from _strings(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _strings(item)
+
+
+def _revision_problems(voice_id: str, entry: Dict[str, Any]) -> List[str]:
+    """Each Hub URL of ``entry`` that names a branch or tag instead of a commit."""
+    problems = []
+    for value in _strings(entry):
+        match = _HF_URL.match(value.split("?")[0])
+        if match and not COMMIT_REVISION.fullmatch(match["rev"]):
+            problems.append(f"{voice_id}: {value} names revision {match['rev']!r}, "
+                            f"expected a 40-hex commit sha")
+    return problems
 
 
 def _precision_problems(voice_id: str, entry: Dict[str, Any]) -> List[str]:
@@ -135,6 +163,7 @@ def validate_entry(voice_id: str, entry: Dict[str, Any]) -> List[str]:
         )
 
     problems += _precision_problems(voice_id, entry)
+    problems += _revision_problems(voice_id, entry)
 
     for name in ("lang", "phonemizer_lang"):
         tag = entry.get(name)

@@ -6,7 +6,7 @@ from unittest import mock
 import numpy as np
 
 from phoonnx.config import SynthesisConfig
-from phoonnx.engines.outetts import integrated_loudness
+from phoonnx.audio_fx import integrated_loudness
 from phoonnx.voice import level_audio
 
 RATE = 22050
@@ -34,6 +34,10 @@ class TestPeakNormalizationIsTheDefault(unittest.TestCase):
         audio = speechlike(0.2)
         out = level_audio(audio, SynthesisConfig(normalize_audio=False), RATE)
         np.testing.assert_array_equal(out, audio)
+
+    def test_empty_audio_comes_back_empty(self):
+        out = level_audio(np.zeros(0, np.float32), SynthesisConfig(), RATE)
+        self.assertEqual(out.shape, (0,))
 
 
 class TestTargetLoudness(unittest.TestCase):

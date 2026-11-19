@@ -24,7 +24,7 @@ The sweep runs in an environment that has phoonnx with the language extras of th
 ```bash
 uv venv --python 3.11 .venv-sweep
 VIRTUAL_ENV=.venv-sweep uv pip install --prerelease=allow -e ".[espeak,ar,en,es,pt,ru,he,omnivoice,pockettts,cloning]" \
-    onnx-asr "text2spoken[ru]" soundfile scipy pyarrow
+    onnx-asr soundfile scipy pyarrow
 ```
 
 A voice whose phonemizer is not installed fails to load, and the sweep records the error.

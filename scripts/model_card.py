@@ -526,9 +526,8 @@ def load_voice_index() -> Dict[str, Dict[str, Any]]:
 
 def _index_entry(repo_id: str, index: Dict[str, Dict[str, Any]]) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
     """The voice id and entry whose model file lives in ``repo_id``; the id and the repo can differ."""
-    prefix = f"https://huggingface.co/{repo_id}/resolve/main/"
     matches = [(voice_id, entry) for voice_id, entry in index.items()
-               if (entry.get("model_url") or "").startswith(prefix)]
+               if _repo_file(repo_id, entry.get("model_url") or "") is not None]
     if len(matches) > 1:
         raise CardError(f"{repo_id}: the voice index lists more than one voice in this repo")
     org, name = repo_id.split("/", 1)
@@ -541,8 +540,10 @@ def _index_entry(repo_id: str, index: Dict[str, Dict[str, Any]]) -> Tuple[Option
     return matches[0] if matches else (None, None)
 
 
-def _repo_file(repo_id: str, url: str) -> str:
-    return url.split(f"https://huggingface.co/{repo_id}/resolve/main/", 1)[1]
+def _repo_file(repo_id: str, url: str) -> Optional[str]:
+    """The path inside ``repo_id`` that ``url`` names, at any revision; None for a file elsewhere."""
+    match = re.fullmatch(rf"https://huggingface\.co/{re.escape(repo_id)}/resolve/[^/]+/(.+)", url)
+    return match[1] if match else None
 
 
 def _single_config(repo_id: str, files: List[str]) -> str:

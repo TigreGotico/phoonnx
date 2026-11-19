@@ -15,7 +15,7 @@ pip install phoonnx
 ```
 
 The base package depends only on `numpy`, `onnxruntime`, `quebra-frases`, `langcodes`,
-`ovos-number-parser`, `ovos-date-parser`, `scriptconv`, `click`, `requests` and
+`text2spoken`, `ovos-number-parser`, `ovos-date-parser`, `scriptconv`, `click`, `requests` and
 `json_database`. With nothing else installed you can:
 
 - run ONNX voices that tokenize with **graphemes** or **unicode** codepoints,

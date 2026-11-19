@@ -18,11 +18,10 @@ import sys
 import re
 import unicodedata
 from functools import lru_cache
-from typing import Dict, List, Optional, Tuple
+from itertools import groupby
+from typing import Dict, List, Optional, Set, Tuple
 
-
-class UnsupportedTokenizer(Exception):
-    """The tokenizer.json declares a component this reader does not implement."""
+from phoonnx.errors import UnsupportedTokenizer
 
 
 @lru_cache(maxsize=1)
@@ -51,6 +50,19 @@ def _unicode_to_byte() -> Dict[str, int]:
     return {char: byte for byte, char in _byte_to_unicode().items()}
 
 
+@lru_cache(maxsize=1)
+def _category_runs() -> List[Tuple[str, int, int]]:
+    """The code space as ``(category, low, high)`` runs, read once for all properties."""
+    runs: List[Tuple[str, int, int]] = []
+    low = 0
+    categories = map(unicodedata.category, map(chr, range(sys.maxunicode + 1)))
+    for category, run in groupby(categories):
+        high = low + sum(1 for _ in run) - 1
+        runs.append((category, low, high))
+        low = high + 1
+    return runs
+
+
 @lru_cache(maxsize=None)
 def _category_ranges(prop: str) -> str:
     """Character ranges for a Unicode property, as class body text.
@@ -58,20 +70,13 @@ def _category_ranges(prop: str) -> str:
     ``re`` has no ``\\p{L}``, so the property is expanded into explicit ranges
     built from :mod:`unicodedata`. The result goes inside a character class.
     """
-    pieces: List[str] = []
-    start = None
-    previous = None
-    for code in range(sys.maxunicode + 1):
-        category = unicodedata.category(chr(code))
+    pieces: List[Tuple[int, int]] = []
+    for category, low, high in _category_runs():
         if category.startswith(prop) if len(prop) == 1 else category == prop:
-            if start is None:
-                start = code
-            previous = code
-        elif start is not None:
-            pieces.append((start, previous))
-            start = None
-    if start is not None:
-        pieces.append((start, previous))
+            if pieces and pieces[-1][1] == low - 1:
+                pieces[-1] = (pieces[-1][0], high)
+            else:
+                pieces.append((low, high))
     out = []
     for low, high in pieces:
         if low == high:
@@ -606,10 +611,16 @@ class Tokenizer:
                          bool(model.get("ignore_merges")))
         self._post = spec.get("post_processor")
         # Added tokens are matched before anything else touches the text, so a
-        # special token is never split by the pre-tokenizer.
-        self._added_re = (re.compile("(" + "|".join(
-            sorted((re.escape(t) for t in self._added), key=len, reverse=True)) + ")")
-            if self._added else None)
+        # special token is never split by the pre-tokenizer. A vocab can hold
+        # 65k of them: look them up by first character and length.
+        lengths: Dict[str, Set[int]] = {}
+        for token in self._added:
+            if token:
+                lengths.setdefault(token[0], set()).add(len(token))
+        self._added_lengths = {first: sorted(found, reverse=True)
+                               for first, found in lengths.items()}
+        self._added_start = (re.compile("[" + "".join(map(re.escape, lengths)) + "]")
+                             if lengths else None)
 
     @classmethod
     def from_file(cls, path: str) -> "Tokenizer":
@@ -661,7 +672,7 @@ class Tokenizer:
     def encode(self, text: str, add_special_tokens: bool = True) -> Encoding:
         ids: List[int] = []
         tokens: List[str] = []
-        for chunk in (self._added_re.split(text) if self._added_re else [text]):
+        for chunk in self._split_added(text):
             if not chunk:
                 continue
             if chunk in self._added:
@@ -672,8 +683,7 @@ class Tokenizer:
             # Match added tokens again: a normalizer that rewrites spaces to
             # "[SPACE]" creates them, and the pre-tokenizer would otherwise
             # split that into "[", "SPACE", "]".
-            for part in (self._added_re.split(normalized)
-                         if self._added_re else [normalized]):
+            for part in self._split_added(normalized):
                 if not part:
                     continue
                 if part in self._added:
@@ -693,6 +703,28 @@ class Tokenizer:
         if not add_special_tokens:
             return Encoding(ids, tokens)
         return self._apply_post(ids, tokens)
+
+    def _split_added(self, text: str) -> List[str]:
+        """Cut text into text, token, text, ..., text; leftmost, then longest token wins."""
+        if self._added_start is None:
+            return [text]
+        pieces: List[str] = []
+        cursor = 0
+        match = self._added_start.search(text)
+        while match:
+            start = match.start()
+            for length in self._added_lengths[text[start]]:
+                token = text[start:start + length]
+                if token in self._added:
+                    break
+            else:
+                match = self._added_start.search(text, start + 1)
+                continue
+            pieces += [text[cursor:start], token]
+            cursor = start + len(token)
+            match = self._added_start.search(text, cursor)
+        pieces.append(text[cursor:])
+        return pieces
 
     def _apply_post(self, ids: List[int], tokens: List[str]) -> Encoding:
         """Wrap the sequence in whatever special tokens the post-processor adds."""

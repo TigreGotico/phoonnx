@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from phoonnx_train.engines.base import TrainingEngineConfig
+from phoonnx_train.engines.vits import write_sidecars
 from phoonnx_train.engines.fastpitch import ForwardTTSTrainingEngine
 
 if TYPE_CHECKING:  # heavy import — only needed for type annotations
@@ -232,6 +233,10 @@ class MixerTTSTrainingEngine(ForwardTTSTrainingEngine):
             _onnx.save(onnx_model, str(output_path))
         except ImportError:
             _LOG.warning("onnx package not installed — skipping metadata")
+
+        write_sidecars({**model_config, "engine": "mixertts"}, output_dir, output_path.stem,
+                       generate_tokens=kwargs.get("generate_tokens", False),
+                       piper=kwargs.get("piper", False))
 
         _LOG.info("Exported Mixer-TTS ONNX model to %s", output_path)
         return output_path
