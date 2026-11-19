@@ -7,14 +7,13 @@ input, so a request without them speaks code-switched text with the pad tag on
 every symbol.
 """
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 from scriptconv.phonemizers.shami import ShamiPhonemizer
 
 from phoonnx.config import SynthesisConfig, VoiceConfig
 from phoonnx.engines.base import AdapterSynthesisResult
-from phoonnx.util import LOG
 from phoonnx.voice import TTSVoice
 
 TEXT = "مرحبا كيفك؟ I am fine, شكرا."
@@ -58,14 +57,25 @@ def test_shami_language_ids_reach_the_request():
     assert {1, 2} <= tags, "the Arabic and the English words carry their own tags"
 
 
-def test_stream_out_of_step_with_the_ids_is_left_out():
-    """A tokenizer with blanks or BOS/EOS gives more ids than symbols; the
-    stream is then dropped with a warning, and synthesis goes on."""
-    voice, _, _ = _shami_voice()
-    with patch.object(LOG, "warning") as warn:
-        voice.phoneme_ids_to_audio([1, 4, 2], SynthesisConfig(), streams={"language_ids": [0, 1]})
-    assert voice.adapter.synthesize.call_args.args[0].language_ids is None
-    assert "language_ids" in warn.call_args.args[0]
+def test_ids_added_by_the_tokenizer_get_the_neutral_value():
+    """With blanks and BOS/EOS the ids are more than the symbols; every added id
+    carries 0 and each symbol's id keeps its own tag."""
+    voice, sentences, id_map = _shami_voice()
+    tokenizer = voice.tokenizer
+    tokenizer.add_blank_char = tokenizer.blank_at_start = tokenizer.blank_at_end = tokenizer.use_eos_bos = True
+    utterances = list(voice.prepare(TEXT))
+    assert len(utterances) == len(sentences)
+    for utterance, (phonemes, language_ids) in zip(utterances, sentences):
+        # the blank is <pad>, id 0: blank, s1, blank, s2, ..., blank, then BOS and EOS around
+        expected_ids = [id_map["<bos>"], 0]
+        expected_tags = [0, 0]
+        for symbol, tag in zip(phonemes, language_ids):
+            expected_ids += [id_map[symbol], 0]
+            expected_tags += [tag, 0]
+        expected_ids.append(id_map["<eos>"])
+        expected_tags.append(0)
+        assert list(utterance.ids) == expected_ids
+        assert list(utterance.streams["language_ids"]) == expected_tags
 
 
 def test_aligned_stream_is_kept():
