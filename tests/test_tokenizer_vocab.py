@@ -400,13 +400,15 @@ class TestCompoundPhonemeEncoding(unittest.TestCase):
             self.assertEqual(tok.encode(text), self._longest_first(self.OVERLAPPING, text),
                              f"fold disagrees on {text!r}")
 
-    def test_the_compound_list_is_sorted_once_per_tokenizer(self):
+    def test_the_compounds_are_grouped_once_per_tokenizer(self):
         """Sorting the vocabulary on every call costs each sentence a sort."""
         tok = self._overlapping_tokenizer()
-        with mock.patch("phoonnx.tokenizer.sorted", wraps=sorted, create=True) as counted:
-            for _ in range(5):
-                self.assertEqual(tok.encode("abcab"), [9, 1])
-        self.assertLessEqual(counted.call_count, 1)
+        self.assertEqual(tok.encode("abcab"), [9, 1])
+        compounds = tok._compounds
+        self.assertEqual(compounds, [(4, {"abca"}), (3, {"abc", "aab"}),
+                                     (2, {"ab", "bc", "ca", "cc"})])
+        self.assertEqual(tok.encode("abcab"), [9, 1])
+        self.assertIs(tok._compounds, compounds)
 
     def test_fold_compounds_off_never_folds(self):
         voc = Vocabulary(char2idx=dict(self.OVERLAPPING), blank=None)

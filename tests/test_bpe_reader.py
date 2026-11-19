@@ -14,7 +14,6 @@ import tempfile
 import time
 import unicodedata
 import unittest
-from unittest import mock
 
 from phoonnx import _bpe
 from phoonnx._bpe import Tokenizer, UnsupportedTokenizer
@@ -451,6 +450,15 @@ class TestAddedTokens(unittest.TestCase):
             self.assertEqual(mine._split_added(text), _regex_split(added, text),
                              f"cut disagrees on {text!r}")
 
+    def test_an_empty_added_token_is_ignored(self):
+        """`tokenizers` ignores an added token with no content."""
+        path = os.path.join(FIXTURES, "tokenizer_bpe_whitespace.json")
+        plain = _with_added(path, [])
+        expected = [6563, 255, 62, 84, 28, 2, 179, 79, 0, 6561, 6561]
+        self.assertEqual(Tokenizer(plain).encode("hello world").ids, expected)
+        self.assertEqual(Tokenizer(_with_added(path, [""])).encode("hello world").ids,
+                         expected)
+
     def test_a_vocab_without_added_tokens_keeps_the_text_whole(self):
         spec = self._spec()
         spec["added_tokens"] = []
@@ -501,33 +509,35 @@ class TestUnicodeProperties(unittest.TestCase):
         for char in cls.everything:
             cls.by_category.setdefault(unicodedata.category(char), []).append(char)
 
-    def test_each_property_matches_exactly_its_code_points(self):
+    def test_each_property_is_its_code_points_written_as_ranges(self):
+        """The class text is the property's code points, consecutive ones
+        merged into a range: the text a scan of every code point writes."""
         majors = sorted({category[0] for category in self.by_category})
         for prop in majors + sorted(self.by_category):
+            ranges = []
+            for category, chars in self.by_category.items():
+                if category.startswith(prop) if len(prop) == 1 else category == prop:
+                    ranges += [[ord(char), ord(char)] for char in chars]
+            merged = []
+            for low, high in sorted(ranges):
+                if merged and merged[-1][1] == low - 1:
+                    merged[-1][1] = high
+                else:
+                    merged.append([low, high])
+            expected = "".join(
+                re.escape(chr(low)) if low == high
+                else f"{re.escape(chr(low))}-{re.escape(chr(high))}"
+                for low, high in merged)
             with self.subTest(prop=prop):
-                members = [chars for category, chars in self.by_category.items()
-                           if (category.startswith(prop) if len(prop) == 1
-                               else category == prop)]
-                expected = "".join(sorted(char for chars in members for char in chars))
-                found = re.findall("[" + _bpe._category_ranges(prop) + "]",
-                                   self.everything)
-                self.assertEqual("".join(found), expected)
+                self.assertEqual(_bpe._category_ranges(prop), expected)
 
-    def test_the_code_space_is_read_once_for_every_property(self):
-        """Each property used to read the category of all 1.1 million code
-        points again; a GPT-4 style split asks for several."""
-        for value in vars(_bpe).values():
-            if hasattr(value, "cache_clear"):
-                value.cache_clear()
-        calls = 0
-        real = unicodedata.category
-
-        def counted(char):
-            nonlocal calls
-            calls += 1
-            return real(char)
-
-        with mock.patch.object(unicodedata, "category", counted):
-            for prop in ("L", "N", "Lu", "M"):
-                _bpe._category_ranges(prop)
-        self.assertEqual(calls, sys.maxunicode + 1)
+    def test_one_table_of_category_runs_serves_every_property(self):
+        runs = _bpe._category_runs()
+        self.assertIs(_bpe._category_runs(), runs)
+        self.assertEqual((runs[0][1], runs[-1][2]), (0, sys.maxunicode))
+        for (category, low, high), (following, next_low, _) in zip(runs, runs[1:]):
+            self.assertEqual(next_low, high + 1)
+            self.assertNotEqual(category, following)
+        for category, low, high in runs:
+            self.assertEqual(unicodedata.category(chr(low)), category)
+            self.assertEqual(unicodedata.category(chr(high)), category)

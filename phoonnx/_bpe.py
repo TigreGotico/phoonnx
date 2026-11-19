@@ -57,7 +57,7 @@ def _category_runs() -> List[Tuple[str, int, int]]:
     low = 0
     categories = map(unicodedata.category, map(chr, range(sys.maxunicode + 1)))
     for category, run in groupby(categories):
-        high = low + len(list(run)) - 1
+        high = low + sum(1 for _ in run) - 1
         runs.append((category, low, high))
         low = high + 1
     return runs
@@ -713,10 +713,11 @@ class Tokenizer:
         match = self._added_start.search(text)
         while match:
             start = match.start()
-            token = next((text[start:start + length]
-                          for length in self._added_lengths[text[start]]
-                          if text[start:start + length] in self._added), None)
-            if token is None:
+            for length in self._added_lengths[text[start]]:
+                token = text[start:start + length]
+                if token in self._added:
+                    break
+            else:
                 match = self._added_start.search(text, start + 1)
                 continue
             pieces += [text[cursor:start], token]
