@@ -10,17 +10,24 @@ Each TTS architecture (VITS, OptiSpeech, Matcha-TTS, etc.) has different:
 An OnnxAdapter encapsulates these differences behind a single interface
 so that TTSVoice.render works identically for any engine.
 """
+import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import Any, Dict, Iterator, List, Optional
 
 import numpy as np
 import onnxruntime
-from scriptconv.frontend import Stages
+from scriptconv.frontend import Stages, TextFrontend
+
+from phoonnx.encoders import SIDE_STREAMS, Encoder, SymbolEncoder, TextEncoder
 
 
-#: The request fields that hold one value per phoneme id, as a phonemizer's side streams fill them.
-SIDE_STREAMS = ("language_ids", "stress")
+def _warn_removed_hook(name: str, replacement: str) -> None:
+    from phoonnx.config import _removal_version
+    warnings.warn(f"BaseOnnxAdapter.{name} is deprecated and will be removed in phoonnx "
+                  f"{_removal_version()}. Use {replacement}.",
+                  DeprecationWarning, stacklevel=3)
 
 
 @dataclass
@@ -78,9 +85,7 @@ class BaseOnnxAdapter(ABC):
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     - ``detect``           — auto-detect whether a config/session belongs
                              to this engine
-    - ``parse_config``     — pull engine-specific fields from JSON config
     - ``parse_onnx_meta``  — pull engine-specific fields from ONNX metadata
-    - ``param_labels``     — human-readable names for UI sliders
     - ``DURATION_OUTPUT_NAMES`` — candidate ONNX output names that carry a
                              per-phoneme duration/frame-count tensor, used by
                              :meth:`_find_duration_output` for the alignment
@@ -95,21 +100,15 @@ class BaseOnnxAdapter(ABC):
     the :class:`AdapterSynthesisResult`; writing it to ``self`` hands one
     caller's voice to the next caller.
 
-    What may live on the instance is setup: what ``SETUP_METHODS`` derive from
-    the voice's config, plus the individual values a request-path helper is
+    What may live on the instance is setup: what ``__init__``, ``configure``,
+    ``configure_from_params``, ``parse_onnx_meta`` and ``load_voice`` derive
+    from the voice's config, plus the individual values a request-path helper is
     allowed to memoize, named one by one in ``MEMOIZED_WRITES``. A memoized
     value must be safe to serve to the next request — a lazily opened
     auxiliary session, a KV-cache shape read off the model, a cache keyed on
     the input it was derived from. ``tests/test_adapter_statelessness.py``
     holds every adapter to this.
     """
-
-    # Methods that may assign anything to ``self``: the ones that run once,
-    # from the voice's config, before any request is served.
-    SETUP_METHODS: frozenset = frozenset({
-        "__init__", "configure", "configure_from_params",
-        "parse_config", "parse_onnx_meta", "load_voice",
-    })
 
     # ``{method: {attribute}}`` — the exact writes a request-path method may
     # make, each one a claim that the value is either a property of the model
@@ -200,6 +199,20 @@ class BaseOnnxAdapter(ABC):
         stages = Stages(normalize=False, diacritize=False)
         return [voice.tokenizer.tokenize(p) for p in voice.frontend.phonemize(text, stages) if p]
 
+    def make_encoder(self, voice_config: Any, frontend: TextFrontend, tokenizer: Any) -> Encoder:
+        """The encoder that turns text into this engine's ids.
+
+        The default reads the symbols of the frontend. An adapter that overrides
+        :meth:`encode_text` gets a :class:`TextEncoder` that hands the whole prepared text to
+        ``encode_text``, which cuts it itself. An engine that tokenizes each chunk itself returns
+        a ``TextEncoder`` of its own.
+        """
+        if type(self).encode_text is BaseOnnxAdapter.encode_text:
+            return SymbolEncoder(frontend, tokenizer)
+        voice = SimpleNamespace(config=voice_config, frontend=frontend, tokenizer=tokenizer)
+        return TextEncoder(frontend, lambda text, config: self.encode_text(text, voice, config),
+                           whole_text=True)
+
     def read_text(self, text: str, voice: Any, config: Any, stages: Any) -> Iterator[Any]:
         """Yield the :class:`~phoonnx.voice.Utterance` objects of *text*, one per engine call.
 
@@ -237,12 +250,8 @@ class BaseOnnxAdapter(ABC):
         return False
 
     def parse_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Extract engine-specific parameters from a JSON config dict.
-
-        Returned dict is stored on VoiceConfig and forwarded as
-        ``request.params`` at synthesis time.
-        """
+        """Deprecated: nothing calls it. Engine settings come from ``default_params``."""
+        _warn_removed_hook("parse_config", "default_params")
         return {}
 
     def parse_onnx_meta(
@@ -254,7 +263,8 @@ class BaseOnnxAdapter(ABC):
         return {}
 
     def param_labels(self) -> Dict[str, str]:
-        """Human-readable labels for each scale param (for UIs)."""
+        """Deprecated: nothing calls it. The labels are the ``default_params`` keys."""
+        _warn_removed_hook("param_labels", "default_params")
         return {k: k for k in self.default_params()}
 
     def configure(self, voice_config: Any) -> None:

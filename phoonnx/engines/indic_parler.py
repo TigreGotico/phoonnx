@@ -170,10 +170,6 @@ class IndicParlerAdapter(BaseOnnxAdapter):
         return {"temperature": self.temperature, "top_k": float(self.top_k),
                 "do_sample": float(self.do_sample), "max_new_tokens": float(self.max_new_tokens)}
 
-    def param_labels(self) -> Dict[str, str]:
-        return {"temperature": "Sampling temperature", "top_k": "Top-k cutoff (0 = off)",
-                "do_sample": "Sample (1) or greedy (0)", "max_new_tokens": "Max codec frames"}
-
     def configure(self, voice_config: Any) -> None:
         """Load the three auxiliary graphs, both tokenizers and the voice description.
 

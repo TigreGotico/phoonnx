@@ -189,7 +189,6 @@ def test_default_params_match_upstream_cli_defaults():
     assert p["temperature"] == 0.4
     assert p["top_p"] == 0.8
     assert p["repetition_penalty"] == 1.3
-    assert set(NeuTTSAdapter().param_labels()) >= set(p)
 
 
 # ------------------------------------------------------------------ phonemization

@@ -492,11 +492,6 @@ def test_default_params_expose_the_sampling_controls():
     assert params["eos_threshold"] == DEFAULT_EOS_THRESHOLD
 
 
-def test_param_labels_cover_every_param():
-    a = PocketTTSAdapter()
-    assert set(a.param_labels()) == set(a.default_params())
-
-
 # ---------------------------------------------------------------------------
 # synthesis
 # ---------------------------------------------------------------------------

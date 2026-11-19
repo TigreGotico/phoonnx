@@ -33,11 +33,11 @@ from phoonnx.config import VoiceConfig, SynthesisConfig, Alphabet, _voice_phonem
     _removal_version, check_lang_supported, voice_frontend, without_normalizer
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
+from phoonnx.encoders import SIDE_STREAMS, Encoder, SymbolEncoder, Utterance, stages_of
 from phoonnx.engines.base import (
     AdapterSynthesisRequest,
     AdapterSynthesisResult,
     BaseOnnxAdapter,
-    SIDE_STREAMS,
 )
 from scriptconv.phonemizers.base import BasePhonemizer, PhonemizerIdentity
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
@@ -271,31 +271,6 @@ class AudioChunk:
         return self.audio_int16_array.tobytes()
 
 
-@dataclass(frozen=True)
-class Utterance:
-    """The model input for one engine call, from :meth:`TTSVoice.prepare`."""
-
-    text: Optional[str]
-    """The text of this engine call's chunk, from ``Segment.text``. ``""`` when
-    the previous utterance's text covers this chunk, and None when it is
-    unknown."""
-
-    symbols: Optional[Tuple[str, ...]]
-    """The phonemes or characters that the tokenizer read. None for an engine
-    that reads text, whose adapter turns the text into ids itself."""
-
-    ids: Tuple[int, ...]
-    """The token ids that the engine reads."""
-
-    streams: Mapping[str, Sequence[int]] = field(default_factory=dict)
-    """Values a phonemizer gives beside its symbols, one per id, keyed by the
-    ``AdapterSynthesisRequest`` field they fill, such as ``language_ids``."""
-
-    params: Mapping[str, Any] = field(default_factory=dict)
-    """Values the adapter's ``read_text`` learned about this utterance. They join the
-    request params of the engine call."""
-
-
 @dataclass
 class TTSVoice:
     session: onnxruntime.InferenceSession
@@ -307,12 +282,12 @@ class TTSVoice:
     _sr_engine: Any = field(default=None, init=False, repr=False)
     _sr_loaded: bool = field(default=False, init=False, repr=False)
     # Post-synthesis voice-conversion state (``SynthesisConfig.vc_reference``).
-    # ``_vc_key`` is the (engine, reference content) the cached ``_VoiceConversion``
-    # was built for, so a later call naming a different engine or target speaker —
-    # or the same path holding a different recording — rebuilds instead of silently
-    # reusing the wrong voice.
-    _vc: Optional[_VoiceConversion] = field(default=None, init=False, repr=False)
-    _vc_key: Any = field(default=None, init=False, repr=False)
+    # ``(key, conversion)`` in one attribute, where ``key`` is the (engine,
+    # reference content) the ``_VoiceConversion`` was built for. A later call naming
+    # a different engine or target speaker, or the same path holding a different
+    # recording, rebuilds instead of silently reusing the wrong voice. One attribute
+    # means a reader never sees one request's key next to another request's conversion.
+    _vc: Optional[Tuple[tuple, _VoiceConversion]] = field(default=None, init=False, repr=False)
     # Path to the ONNX model file backing ``session``, kept so a later
     # ``include_alignments=True`` call can locate-and-patch a model that was
     # exported without the alignment output (see ``_ensure_alignment_session``).
@@ -332,6 +307,9 @@ class TTSVoice:
     _frontend_phonemizer: Optional[BasePhonemizer] = field(default=None, init=False, repr=False,
                                                            compare=False)
     _frontend_key: Any = field(default=None, init=False, repr=False, compare=False)
+    # The encoder, with the frontend, tokenizer and adapter it was built from.
+    _encoder: Optional[Encoder] = field(default=None, init=False, repr=False, compare=False)
+    _encoder_parts: Tuple[Any, ...] = field(default=(), init=False, repr=False, compare=False)
     # The thread of the provenance check; None when the voice has nothing to check.
     _provenance_thread: Optional[threading.Thread] = field(default=None, init=False, repr=False,
                                                            compare=False)
@@ -638,14 +616,36 @@ class TTSVoice:
         self._frontend_phonemizer = phonemizer
         return self._frontend
 
-    def _stages(self, syn_config: SynthesisConfig) -> Stages:
-        """The text stages of one synthesis call: an explicit setting wins, then the voice's own."""
+    @property
+    def encoder(self) -> Encoder:
+        """The encoder that turns text into the ids this voice's engine reads.
+
+        The adapter builds it with :meth:`BaseOnnxAdapter.make_encoder`. An object that is
+        not a ``BaseOnnxAdapter`` gets a :class:`SymbolEncoder`. The encoder is built once and
+        rebuilt when :attr:`frontend`, the tokenizer or the adapter is another object, so
+        assigning another phonemizer, as the Vosk voices do, reaches it.
+        """
+        parts = (self.frontend, self.tokenizer, self.adapter)
+        if self._encoder is None or any(new is not old for new, old in zip(parts, self._encoder_parts)):
+            frontend, tokenizer, adapter = parts
+            if isinstance(adapter, BaseOnnxAdapter):
+                self._encoder = adapter.make_encoder(self.config, frontend, tokenizer)
+            else:
+                self._encoder = SymbolEncoder(frontend, tokenizer)
+            self._encoder_parts = parts
+        return self._encoder
+
+    def _with_voice_defaults(self, syn_config: SynthesisConfig) -> SynthesisConfig:
+        """*syn_config* with the voice's own text settings where it sets none."""
         diacritize = syn_config.add_diacritics
         if diacritize is None:
             diacritize = self.config.add_diacritics
-        return Stages(diacritize=diacritize,
-                      diacritizer_model=syn_config.diacritizer_model or self.config.diacritizer_model,
-                      chunk=syn_config.chunk)
+        return replace(syn_config, add_diacritics=diacritize,
+                       diacritizer_model=syn_config.diacritizer_model or self.config.diacritizer_model)
+
+    def _stages(self, syn_config: SynthesisConfig) -> Stages:
+        """The text stages of one synthesis call: an explicit setting wins, then the voice's own."""
+        return stages_of(self._with_voice_defaults(syn_config))
 
     def phonemize(self, text: str, lang: Optional[str] = None) -> PhonemizedChunks:
         """
@@ -731,13 +731,10 @@ class TTSVoice:
 
         This is the text half of :meth:`synthesize`. It applies the phonetic
         spellings and reads the text through :attr:`frontend` with the stages of
-        *config*. A voice that reads symbols gets them from the frontend one
-        chunk at a time, a sentence unless ``config.chunk`` names another size,
-        and :attr:`tokenizer` turns each chunk into ids.
-        An engine that reads text gets it from ``frontend.prepare``, and its
-        adapter's ``encode_text`` turns the text into ids. Input in a phonemic
-        alphabet (``config.alphabet``) is converted to the voice's alphabet and
-        is not phonemized.
+        *config*. :attr:`encoder` turns each chunk into ids, a sentence unless
+        ``config.chunk`` names another size. Input in a phonemic alphabet
+        (``config.alphabet``) is converted to the voice's alphabet, is not
+        phonemized, and goes to ``encoder.encode_symbols``.
 
         The method is a generator, so the second chunk is read only after
         the caller has rendered the first. An utterance with no ids is not
@@ -746,41 +743,27 @@ class TTSVoice:
         :param text: The text to read.
         :param config: The synthesis settings. Only the text settings apply.
         """
-        if config is None:
-            config = SynthesisConfig()
+        config = self._with_voice_defaults(config or SynthesisConfig())
         LOG.debug("text=%s", text)
         spoken = text
         if self.phonetic_spellings and config.enable_phonetic_spellings:
             spoken = self.phonetic_spellings.apply(spoken)
 
         src_alphabet = config.alphabet if config.alphabet is not None else Alphabet.GRAPHEMES
-        tgt_alphabet = self.config.alphabet
-        stages = self._stages(config)
         if src_alphabet == Alphabet.GRAPHEMES:
-            spoken = self._inline_blocks(spoken, tgt_alphabet)
-
-        if src_alphabet == tgt_alphabet == Alphabet.GRAPHEMES:
-            prepared = self.frontend.prepare(spoken, stages)
-            id_lists = self.adapter.encode_text(prepared, self, config)
-            chunk_text = prepared if len(id_lists) == 1 else None
-            for ids in id_lists:
-                if ids:
-                    yield Utterance(text=chunk_text, symbols=None, ids=tuple(ids))
-            return
-
-        if src_alphabet == Alphabet.GRAPHEMES and self.adapter.READS_TEXT is True:
-            yield from self.adapter.read_text(spoken, self, config, stages)
-            return
-
-        for symbols, streams, chunk_text in self._iter_phonemes(spoken, src_alphabet, tgt_alphabet, stages):
-            if not symbols:
-                continue
-            if streams:
-                ids, streams = self.tokenizer.tokenize_with_streams(symbols, streams)
+            spoken = self._inline_blocks(spoken, self.config.alphabet)
+            if self.adapter.READS_TEXT is True:
+                yield from self.adapter.read_text(spoken, self, config, stages_of(config))
             else:
-                ids = self.tokenizer.tokenize(symbols)
-            if ids:
-                yield Utterance(text=chunk_text, symbols=tuple(symbols), ids=tuple(ids), streams=streams)
+                yield from self.encoder.encode(spoken, config)
+            return
+
+        for symbols, _, _ in self._iter_phonemes(spoken, src_alphabet, self.config.alphabet,
+                                                 stages_of(config)):
+            if symbols:
+                utterance = self.encoder.encode_symbols(symbols, config)
+                if utterance.ids:
+                    yield utterance
 
     def _load_super_resolution(self, syn_config: SynthesisConfig):
         """
@@ -882,8 +865,9 @@ class TTSVoice:
 
         audio, sr = load_reference_audio(ref)
         key = (engine, hashlib.sha1(audio.tobytes()).hexdigest(), int(sr))
-        if self._vc is not None and self._vc_key == key:
-            return self._vc
+        cached = self._vc
+        if cached is not None and cached[0] == key:
+            return cached[1]
 
         try:
             from voiceclonnx import VoiceCloner
@@ -902,11 +886,11 @@ class TTSVoice:
             _unlink(ref_path)
             raise
 
-        self._vc = _VoiceConversion(cloner, ref_path)
-        self._vc_key = key
+        conversion = _VoiceConversion(cloner, ref_path)
+        self._vc = (key, conversion)
         LOG.info(f"Voice conversion enabled (engine={engine}); output will be "
                  f"converted to the reference speaker at {cloner.sample_rate} Hz")
-        return self._vc
+        return conversion
 
     @staticmethod
     def _maybe_convert(audio: np.ndarray, vc: Optional[_VoiceConversion],

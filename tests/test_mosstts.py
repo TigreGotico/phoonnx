@@ -144,7 +144,6 @@ def test_default_params_match_the_baked_in_graph_constants():
     for k, v in FIXED_SAMPLING.items():
         assert p[k] == v
     assert p["sample_mode"] == "fixed"
-    assert set(MossTTSNanoAdapter().param_labels()) >= set(FIXED_SAMPLING)
 
 
 # ------------------------------------------------------------------ prompt rows

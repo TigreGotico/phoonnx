@@ -22,6 +22,7 @@ import numpy as np
 import onnxruntime
 
 from phoonnx.audio_fx import resample_rate
+from phoonnx.encoders import Encoder, TextEncoder
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 
@@ -93,6 +94,14 @@ class ChatterboxAdapter(BaseOnnxAdapter):
             return [voice.tokenizer.tokenize(text, language=lang, lang_tokens=lang_tokens)]
         except TypeError:        # tokenizer without a language-aware signature
             return [voice.tokenizer.tokenize(text)]
+
+    def make_encoder(self, voice_config: Any, frontend: Any, tokenizer: Any) -> Encoder:
+        """Tokenize the staged text of each frontend chunk, so every call starts with the ``[lang]`` token."""
+        def tokenize(text: str, config: Any) -> List[List[int]]:
+            return [tokenizer.tokenize(text, language=voice_config.lang_code,
+                                       lang_tokens=voice_config.lang_tokens)]
+
+        return TextEncoder(frontend, tokenize)
 
     def configure(self, voice_config: Any) -> None:
         """Load the auxiliary graphs from ``engine_params`` and read the LM's KV-cache
