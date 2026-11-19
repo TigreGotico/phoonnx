@@ -20,7 +20,7 @@
       "description": "The phoonnx release that wrote the file."
     },
     "engine": {
-      "enum": ["phoonnx", "piper", "mimic3", "coqui", "transformers", "matcha", "optispeech", "glowtts", "mixertts", "fastpitch", "styletts2", "yourtts", "zipvoice", "shami", "f5tts", "chatterbox", "supertonic", "neutts", "pockettts", "sparktts", "qwen3tts", "outetts", "arktts", "omnivoice", "indic_parler", "llasa", "orpheus", "magpie", "mosstts", "vosk", "rapido", "tinyvoca"],
+      "enum": ["phoonnx", "piper", "mimic3", "coqui", "transformers", "matcha", "optispeech", "glowtts", "mixertts", "fastpitch", "styletts2", "yourtts", "zipvoice", "shami", "f5tts", "chatterbox", "supertonic", "neutts", "pockettts", "sparktts", "qwen3tts", "outetts", "arktts", "omnivoice", "indic_parler", "llasa", "orpheus", "magpie", "mosstts", "vosk", "rapido", "tinyvoca", "xvits"],
       "description": "The architecture or the config format of the voice."
     },
     "phoneme_type": {

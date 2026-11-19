@@ -44,7 +44,9 @@ def _shami_voice():
                          lang_code="ar", phoneme_type=PhonemeType.SHAMI, alphabet=Alphabet.IPA,
                          phonemizer_model=None, add_diacritics=False, keep_punctuation=False)
     voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
-    voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: list(range(len(phonemes))))
+    voice.config.tokenizer = types.SimpleNamespace(
+        tokenize=lambda phonemes: list(range(len(phonemes))),
+        tokenize_with_streams=lambda phonemes, streams: (list(range(len(phonemes))), streams))
     return voice
 
 
