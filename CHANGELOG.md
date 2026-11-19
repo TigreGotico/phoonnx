@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.122.0a1](https://github.com/TigreGotico/phoonnx/tree/1.122.0a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.121.0a1...1.122.0a1)
+
 ## [1.121.0a1](https://github.com/TigreGotico/phoonnx/tree/1.121.0a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.120.2a1...1.121.0a1)
