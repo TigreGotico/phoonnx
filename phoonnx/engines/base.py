@@ -175,6 +175,15 @@ class BaseOnnxAdapter(ABC):
     # Optional
     # ------------------------------------------------------------------
 
+    @property
+    def takes_symbols(self) -> bool:
+        """Whether the model reads phoneme symbols, so an inline ``[[...]]`` block can reach it.
+
+        An adapter that overrides :meth:`encode_text` reads text, and one that
+        sets this to False has no symbol input at all.
+        """
+        return type(self).encode_text is BaseOnnxAdapter.encode_text
+
     def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
         """Turn text into the model's input token-id sequences, one per sentence.
 
