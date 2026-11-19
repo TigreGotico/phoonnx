@@ -48,7 +48,7 @@ class _FakeSession:
         return self._ins
 
     def run(self, _none, feed):
-        self.feeds.append(feed)
+        self.feeds.append({k: np.array(v, copy=True) for k, v in feed.items()})
         named = self._fn(feed, len(self.feeds) - 1)
         return [named[o.name] for o in self._outs]
 
@@ -144,7 +144,6 @@ def test_default_params_match_the_baked_in_graph_constants():
     for k, v in FIXED_SAMPLING.items():
         assert p[k] == v
     assert p["sample_mode"] == "fixed"
-    assert set(MossTTSNanoAdapter().param_labels()) >= set(FIXED_SAMPLING)
 
 
 # ------------------------------------------------------------------ prompt rows
@@ -472,3 +471,32 @@ def test_voice_index_is_merged_by_the_manager():
     from phoonnx.model_manager import TTSModelManager
     assert "mosstts.json" in TTSModelManager._VOICE_INDEX_ORDER
     assert any(p.name == "mosstts.json" for p in TTSModelManager.voice_index_files())
+
+
+def test_generate_frames_feeds_the_mask_of_every_token_emitted_so_far():
+    """Seeded frames, out-of-range ids included: each frame gets exactly the in-range
+    tokens its channel emitted before it."""
+    ad = MossTTSNanoAdapter()
+    prefill = _wire(ad, frames_before_stop=6)
+    tokens = np.random.default_rng(5).integers(-2, CODEBOOK_SIZE + 2, size=(6, N_VQ),
+                                               dtype=np.int32)
+    tokens[1, :3] = [-1, CODEBOOK_SIZE, CODEBOOK_SIZE + 1]
+    tokens[3, 3:] = tokens[2, 3:]
+    keep_going = ad.local_fixed_frame._fn
+
+    def frame_fn(feed, i):
+        out = keep_going(feed, i)
+        if i < len(tokens):
+            out["frame_token_ids"] = tokens[i].reshape(1, N_VQ)
+        return out
+
+    ad.local_fixed_frame._fn = frame_fn
+    rows = ad.build_prompt_rows([[0] * N_VQ], [1])
+    frames = ad.generate_frames(prefill, rows, ad.default_params(), np.random.default_rng(0))
+    assert frames == tokens.tolist()
+    assert len(ad.local_fixed_frame.feeds) == len(tokens) + 1
+    for i, feed in enumerate(ad.local_fixed_frame.feeds):
+        expected = np.stack([np.isin(np.arange(CODEBOOK_SIZE), tokens[:i, ch])
+                             for ch in range(N_VQ)]).astype(np.int32)
+        assert feed["repetition_seen_mask"].dtype == np.int32
+        assert np.array_equal(feed["repetition_seen_mask"][0], expected)

@@ -278,8 +278,10 @@ class MatchaTrainingEngine(BaseTrainingEngine):
 
         from phoonnx_train.matcha import MatchaTTS
 
-        with open(config_path, "r", encoding="utf-8") as f:
-            model_config: Dict[str, Any] = json.load(f)
+        model_config: Optional[Dict[str, Any]] = None
+        if config_path is not None:
+            with open(config_path, "r", encoding="utf-8") as f:
+                model_config = json.load(f)
 
         n_timesteps = kwargs.get("n_timesteps", 5)
 
@@ -348,9 +350,12 @@ class MatchaTrainingEngine(BaseTrainingEngine):
             do_constant_folding=True,
             **onnx_export_kwargs(),
         )
-        write_sidecars(model_config, output_dir, output_path.stem,
-                       generate_tokens=kwargs.get("generate_tokens", False),
-                       piper=kwargs.get("piper", False))
+        if model_config is None:
+            _LOG.warning("No training config was given, so no config was written beside %s", output_path)
+        else:
+            write_sidecars({**model_config, "engine": "matcha"}, output_dir, output_path.stem,
+                           generate_tokens=kwargs.get("generate_tokens", False),
+                           piper=kwargs.get("piper", False))
 
         _LOG.info("ONNX model exported to %s", output_path)
         return output_path

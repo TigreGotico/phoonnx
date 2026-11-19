@@ -241,10 +241,6 @@ class SparkTTSAdapter(BaseOnnxAdapter):
     def default_params(self) -> Dict[str, float]:
         return {"temperature": 0.8, "top_k": 50.0, "top_p": 0.95}
 
-    def param_labels(self) -> Dict[str, str]:
-        return {"temperature": "Sampling temperature", "top_k": "Top-k",
-                "top_p": "Nucleus (top-p)"}
-
     # ------------------------------------------------------------------
     # Setup
     # ------------------------------------------------------------------

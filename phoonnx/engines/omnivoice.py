@@ -155,17 +155,6 @@ class OmniVoiceAdapter(BaseOnnxAdapter):
             "length_scale": 1.0,
         }
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "num_step": "Unmasking steps",
-            "guidance_scale": "Classifier-free guidance",
-            "t_shift": "Time-step shift",
-            "layer_penalty_factor": "Codebook-order penalty",
-            "position_temperature": "Position-choice temperature",
-            "class_temperature": "Token-sampling temperature (0 = greedy)",
-            "length_scale": "Speech duration (>1 slower)",
-        }
-
     def configure(self, voice_config: Any) -> None:
         """Load the codec graphs and the model's own BPE from ``engine_params``.
 

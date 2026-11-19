@@ -21,7 +21,7 @@ unmapped codepoints — turned into a standard :class:`phoonnx.tokenizer.Vocabul
 
 This is a **grapheme/text-token engine** in the same family as
 :class:`phoonnx.engines.chatterbox.ChatterboxAdapter`: it owns text -> id conversion via
-``encode_text`` (``BaseOnnxAdapter``'s ``Alphabet.GRAPHEMES`` bypass), rather than going
+``encode_text`` (``BaseOnnxAdapter.make_encoder`` wraps it in a ``TextEncoder``), rather than going
 through the shared phonemizer dispatch (``Alphabet.UNICODE`` +
 ``UnicodeCodepointPhonemizer``). That dispatch does sentence-level chunking generically
 (``BasePhonemizer.chunk_text``/``phonemize_lazy``), which would be a good fit on its own,

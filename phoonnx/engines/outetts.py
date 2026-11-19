@@ -358,18 +358,6 @@ class OuteTTSAdapter(BaseOnnxAdapter):
             "max_chunk_words": float(CHUNK_MAX_WORDS),
         }
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "temperature": "sampling temperature",
-            "top_p": "top-p (nucleus)",
-            "top_k": "top-k",
-            "min_p": "min-p (relative probability floor)",
-            "repetition_penalty": "repetition penalty (64-token window)",
-            "max_new_tokens": "max codec tokens (~94/s)",
-            "max_chunk_words": "target words per model call",
-            "voice": "speaker profile name",
-        }
-
     def configure(self, voice_config: Any) -> None:
         """Load the DAC decoder, the checkpoint's tokenizer and the speaker profiles."""
         ep = voice_config.engine_params

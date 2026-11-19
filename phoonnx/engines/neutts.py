@@ -74,7 +74,7 @@ from quebra_frases import sentence_tokenize
 
 from phoonnx.engines._sampling import apply_repetition_penalty
 from phoonnx.engines._sampling import ranked, softmax
-from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
+from phoonnx.engines.base import INLINE_BLOCK, AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.util import LOG
 
@@ -221,6 +221,8 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
 class NeuTTSAdapter(BaseOnnxAdapter):
     """Adapter for the NeuTTS Air family (Qwen3 codec-LM + NeuCodec decoder)."""
 
+    takes_symbols = True
+
     MEMOIZED_WRITES = {
         # KV-cache geometry, read off the model's own input shapes.
         "_read_kv_shape": frozenset({"num_layers", "num_kv_heads", "head_dim"}),
@@ -267,17 +269,6 @@ class NeuTTSAdapter(BaseOnnxAdapter):
             "max_chunk_chars": float(self.MAX_CHUNK_CHARS),
         }
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "temperature": "sampling temperature",
-            "top_p": "top-p (nucleus)",
-            "top_k": "top-k",
-            "repetition_penalty": "repetition penalty",
-            "max_new_tokens": "max codec tokens (50/s)",
-            "max_chunk_chars": "target characters per model call",
-            "voice": "voice preset name",
-        }
-
     def configure(self, voice_config: Any) -> None:
         """Load the NeuCodec decoder, the checkpoint's BPE, the voice presets and the
         checkpoint's text front end from ``engine_params``."""
@@ -316,6 +307,17 @@ class NeuTTSAdapter(BaseOnnxAdapter):
     # text
     # ------------------------------------------------------------------
     def _espeak(self, text: str) -> str:
+        """The phones of *text*, with each inline ``[[...]]`` block as its IPA written.
+
+        The model reads espeak IPA, so a block's symbols go into the phone string
+        as they stand, and :meth:`_phones` reads the text between the blocks.
+        """
+        parts = INLINE_BLOCK.split(text)
+        phones = [self._phones(part) if index % 2 == 0 else part.strip()
+                  for index, part in enumerate(parts)]
+        return " ".join(filter(None, phones))
+
+    def _phones(self, text: str) -> str:
         """Phonemize with espeak-ng at the voice the checkpoint was trained with.
 
         Deliberately *not* the phoonnx voice's own phonemizer: a NeuTTS voice is
