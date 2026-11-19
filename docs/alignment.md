@@ -18,7 +18,7 @@ Pass `include_alignments=True` to `TTSVoice.synthesize()`:
 ```python
 from phoonnx.voice import TTSVoice
 
-voice = TTSVoice.load("model-aligned.onnx")
+voice = TTSVoice.load("model-aligned.onnx", "config.json")
 
 for chunk in voice.synthesize("Hello world.", include_alignments=True):
     print(f"phonemes : {chunk.phonemes}")
@@ -215,7 +215,7 @@ zero-cost no-op it always was.
 from phoonnx.voice import TTSVoice
 
 # model.onnx was exported without --add-phoneme-alignment
-voice = TTSVoice.load("model.onnx")
+voice = TTSVoice.load("model.onnx", "config.json")
 
 for chunk in voice.synthesize("Hello world.", include_alignments=True):
     # first call: locates the duration tensor, writes model.alignment.onnx
