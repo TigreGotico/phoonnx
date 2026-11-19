@@ -59,7 +59,7 @@ class TestChunkSize:
 
     # quebra_frases reads a word with no vowel before a period as an
     # abbreviation ("Dr.") and does not end the sentence there
-    TEXT = "One, two. Three.\n\nFour."
+    TEXT = "One, two. Three\n\nFour."
 
     @pytest.mark.parametrize("chunk, expected", [
         (None, ["One two", "Three", "Four"]),
