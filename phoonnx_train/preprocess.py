@@ -5,6 +5,7 @@ import itertools
 import json
 import logging
 import os
+import queue
 from collections import Counter
 from importlib.metadata import PackageNotFoundError, packages_distributions, version
 from multiprocessing import JoinableQueue, Process, Queue
@@ -173,6 +174,31 @@ def phonemize_worker(
 
     except Exception:
         _LOGGER.exception("Worker process failed")
+        # A non-zero exit code is how the parent learns the worker is gone.
+        raise SystemExit(1)
+
+
+def next_result(result_queue: Queue, task_queue: JoinableQueue,
+                processes: List[Process]) -> Tuple[Optional[Utterance], Set[str]]:
+    """Wait for the next worker result; stop every worker when one has failed.
+
+    A worker that dies sends no result for the batch it held, and its stop
+    signal stays in the task queue, so waiting longer would never end. The
+    batches nobody will read stay in the pipe, so the queues' feeder threads
+    are not joined at exit.
+    """
+    while True:
+        try:
+            return result_queue.get(timeout=1.0)
+        except queue.Empty:
+            failed = [proc for proc in processes if proc.exitcode not in (None, 0)]
+            if failed:
+                for proc in processes:
+                    proc.terminate()
+                task_queue.cancel_join_thread()
+                result_queue.cancel_join_thread()
+                raise RuntimeError(f"{len(failed)} preprocessing worker(s) stopped, the first with "
+                                   f"exit code {failed[0].exitcode}; see the worker log above")
 
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
@@ -779,7 +805,7 @@ def cli(
     num_from_column: int = 0
     num_phonemized: int = 0
     for _ in tqdm(range(task_count), desc="Processing utterances"):
-        result: Tuple[Optional[Utterance], Set[str]] = result_queue.get()
+        result: Tuple[Optional[Utterance], Set[str]] = next_result(result_queue, task_queue, processes)
         utt, unique_phonemes = result
         if utt is not None:
             processed_utterances.append(utt)

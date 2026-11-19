@@ -21,9 +21,7 @@ from functools import lru_cache
 from itertools import groupby
 from typing import Dict, List, Optional, Set, Tuple
 
-
-class UnsupportedTokenizer(Exception):
-    """The tokenizer.json declares a component this reader does not implement."""
+from phoonnx.errors import UnsupportedTokenizer
 
 
 @lru_cache(maxsize=1)
