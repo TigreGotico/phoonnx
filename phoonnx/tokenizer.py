@@ -1,7 +1,7 @@
 import unicodedata
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Mapping, List, Dict, Optional, Any, Set, Union
+from typing import Mapping, List, Dict, Optional, Any, Sequence, Set, Tuple, Union
 
 from phoonnx.util import LOG
 
@@ -243,6 +243,7 @@ class Vocabulary:
             cfg (Dict[str, Any]): Configuration mapping expected to contain "phoneme_id_map"
                 (mapping phoneme strings to integer IDs). Optional keys "pad", "eos", "bos",
                 and "blank" override the corresponding special token names; defaults are used when absent.
+                A null "pad" means no pad.
                 The optional "blank_word" names the symbol put between words when
                 "add_blank_word" is true, as in the Mimic 3 "phonemes" section.
 
@@ -256,7 +257,7 @@ class Vocabulary:
             char: (idx[0] if len(idx) == 1 else list(idx)) if isinstance(idx, (list, tuple)) else idx
             for char, idx in cfg.get("phoneme_id_map", {}).items()
         }
-        pad: Optional[str] = cfg.get("pad") or DEFAULT_PAD_TOKEN
+        pad: Optional[str] = cfg.get("pad", DEFAULT_PAD_TOKEN)
         eos: Optional[str] = cfg.get("eos") or DEFAULT_EOS_TOKEN
         bos: Optional[str] = cfg.get("bos") or DEFAULT_BOS_TOKEN
         blank: Optional[str] = cfg.get("blank") or DEFAULT_BLANK_TOKEN
@@ -514,6 +515,9 @@ class TTSTokenizer:
     fallbacks, because the model reads that id where its own inference code
     puts it."""
     not_found_characters: Set[str] = field(default_factory=set)
+    # multi-character keys by length, longest first; built at the first encode
+    _compounds: Optional[List[Tuple[int, Set[str]]]] = field(
+        default=None, init=False, repr=False, compare=False)
 
     @property
     def pad_id(self) -> Optional[int]:
@@ -557,14 +561,23 @@ class TTSTokenizer:
         Returns:
             List[int]: Sequence of token IDs corresponding to the input characters.
         """
-        # first pre-process phoneme_map to check for dipthongs having their own phoneme_id
-        # common in mimic3 models
-        compound_toks = sorted((k for k in self.vocabulary.char2idx
-                                if len(k) > 1), key=len, reverse=True) if self.fold_compounds else []
+        return self._encode(text)[0]
+
+    def _encode(self, text: Union[str, List[str]]) -> Tuple[List[int], List[Optional[int]]]:
+        """Like :meth:`encode`, with the index in *text* of the symbol that gave each id.
+        An id that no symbol gave, such as the trailing word blank, has source ``None``."""
+        if self._compounds is None:
+            groups: Dict[int, Set[str]] = {}
+            if self.fold_compounds:
+                for key in self.vocabulary.char2idx:
+                    if len(key) > 1:
+                        groups.setdefault(len(key), set()).add(key)
+            self._compounds = sorted(groups.items(), reverse=True)
 
         token_ids: List[Optional[int]] = []
+        sources: List[Optional[int]] = []
 
-        compound_idxs: List[int] = []
+        compound_idxs: Set[int] = set()
 
         for i, char in enumerate(text):
             if i in compound_idxs:
@@ -574,13 +587,13 @@ class TTSTokenizer:
             else:
                 idx = self.vocabulary.char2idx.get(char)
 
-                # Try to match compound phonemes starting at index i
-                for compound in compound_toks:
-                    n = len(compound)
+                # Try to match compound phonemes starting at index i, such as
+                # the diphthongs with their own id in mimic3 vocabularies
+                for n, compounds in self._compounds:
                     joined = ''.join(text[i:i + n])
-                    if joined == compound:
-                        idx = self.vocabulary.char2idx[compound]
-                        compound_idxs += [i for i in range(i, i+n)]
+                    if joined in compounds:
+                        idx = self.vocabulary.char2idx[joined]
+                        compound_idxs.update(range(i, i + n))
                         break
 
                 if idx is None and self.unknown_id is not None:
@@ -616,17 +629,21 @@ class TTSTokenizer:
                         and not self._ends_word(token_ids)):
                     idx = idx[1:]
                 token_ids.extend(idx)
+                sources.extend([i] * len(idx))
             else:
                 token_ids.append(idx)
+                sources.append(i)
 
         # NOTE: mimic3 adds an extra word_blank at end, so we match that behaviour here
         #  instead of ending [..., BLANK, EOS] it ends with [..., BLANK, BLANK_WORD, BLANK, EOS]
         if (self.add_blank_word and self.blank_at_end and self.blank_word_id is not None
                 and self._ends_word(token_ids)):
             token_ids.append(self.blank_word_id)
+            sources.append(None)
 
         # Filter out None values (out-of-vocabulary characters)
-        return [t for t in token_ids if t is not None]
+        kept = [(t, src) for t, src in zip(token_ids, sources) if t is not None]
+        return [t for t, _ in kept], [src for _, src in kept]
 
     def _warn_unknown(self, char: str) -> None:
         """Log the first time that the vocabulary lacks *char*, with what the tokenizer does instead."""
@@ -660,19 +677,43 @@ class TTSTokenizer:
         Returns:
             List[int]: Sequence of token IDs after applying the configured transformations.
         """
-        token_ids: List[int] = self.encode(text)
+        return self._tokenize(text)[0]
+
+    def tokenize_with_streams(self, text: Union[str, List[str]],
+                              streams: Mapping[str, Sequence[int]]) -> Tuple[List[int], Dict[str, List[int]]]:
+        """
+        Tokenize *text* with the side streams that a phonemizer gives beside its symbols.
+
+        Each stream holds one value per symbol of *text*. Each id keeps the value
+        of the symbol that gave it, and an id that the tokenizer adds (a blank,
+        BOS or EOS) gets the neutral value 0. So every returned stream is as long
+        as the ids and in step with them.
+
+        Returns:
+            Tuple[List[int], Dict[str, List[int]]]: The token IDs and the streams.
+        """
+        token_ids, sources = self._tokenize(text)
+        return token_ids, {name: [0 if src is None else values[src] for src in sources]
+                           for name, values in streams.items()}
+
+    def _tokenize(self, text: Union[str, List[str]]) -> Tuple[List[int], List[Optional[int]]]:
+        """The ids of :meth:`tokenize`, with the index in *text* of the symbol behind each (``None`` for an added id)."""
+        token_ids, sources = self._encode(text)
 
         # 2. Inter-character Blank Insertion
         if self.add_blank_char and self.blank_id is not None:
             token_ids = self.intersperse_blank_char(token_ids)
+            sources = self._intersperse(sources, None)
         # 3. Start Blank Insertion (only if intersperse wasn't done, as intersperse already handles start/end)
         elif self.blank_at_start and self.blank_id is not None:
             token_ids.insert(0, self.blank_id)
+            sources.insert(0, None)
 
         # 4. BOS/EOS Padding
         if self.use_eos_bos and self.vocabulary.bos_id is not None and self.vocabulary.eos_id is not None:
             token_ids = self.pad_with_bos_eos(token_ids)
-        return token_ids
+            sources = [None] + sources + [None]
+        return token_ids, sources
 
     def pad_with_bos_eos(self, token_sequence: List[int]) -> List[int]:
         """
@@ -712,8 +753,11 @@ class TTSTokenizer:
         blank_id = self.vocabulary.blank_id
         if blank_id is None:
             return token_sequence
+        return self._intersperse(token_sequence, blank_id)
 
-        result: List[int] = [blank_id] * (len(token_sequence) * 2 + 1)
+    def _intersperse(self, token_sequence: List[Optional[int]], blank: Optional[int]) -> List[Optional[int]]:
+        """:meth:`intersperse_blank_char` with *blank* as the value of each blank."""
+        result: List[Optional[int]] = [blank] * (len(token_sequence) * 2 + 1)
         result[1::2] = token_sequence
 
         # Remove starting/ending blank if configured not to be present
@@ -721,10 +765,6 @@ class TTSTokenizer:
             result = result[1:]
         if not self.blank_at_end and result:
             result = result[:-1]
-
-        # Ensure a final blank is present if blank_at_end is True (mimic3 compatibility)
-        if self.blank_at_end and result and result[-1] != blank_id:
-            result.append(blank_id)
 
         return result
 

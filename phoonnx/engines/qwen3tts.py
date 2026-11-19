@@ -198,7 +198,7 @@ def apply_logits_processors(logits: np.ndarray, generated: List[int],
     """
     x = np.asarray(logits, np.float64).reshape(-1).copy()
     if repetition_penalty != 1.0 and generated:
-        seen = np.unique(np.asarray(generated, np.int64))
+        seen = np.asarray(generated, np.int64)
         scores = x[seen]
         x[seen] = np.where(scores < 0, scores * repetition_penalty,
                            scores / repetition_penalty)
@@ -268,13 +268,6 @@ class Qwen3TTSAdapter(BaseOnnxAdapter):
         return {"temperature": 0.9, "top_k": 50.0, "top_p": 1.0,
                 "repetition_penalty": 1.05, "subtalker_temperature": 0.9,
                 "subtalker_top_k": 50.0, "subtalker_top_p": 1.0}
-
-    def param_labels(self) -> Dict[str, str]:
-        return {"temperature": "Sampling temperature", "top_k": "Top-k",
-                "top_p": "Nucleus (top-p)", "repetition_penalty": "Repetition penalty",
-                "subtalker_temperature": "Code-predictor temperature",
-                "subtalker_top_k": "Code-predictor top-k",
-                "subtalker_top_p": "Code-predictor nucleus (top-p)"}
 
     # ------------------------------------------------------------------
     # Setup

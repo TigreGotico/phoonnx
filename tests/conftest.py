@@ -43,3 +43,9 @@ def retry_download(func, *args, attempts=3, base_delay=1.0, **kwargs):
                 raise
             time.sleep(base_delay * (2 ** attempt))
     raise last_exc  # pragma: no cover - unreachable, satisfies linters
+
+
+def count_walks(fields) -> int:
+    """Top-level external-data walks seen by a mock of ``_onnx_external._fields``:
+    a walk starts at offset 0 of the file."""
+    return sum(1 for call in fields.call_args_list if call.args[1] == 0)

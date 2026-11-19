@@ -68,7 +68,7 @@ import numpy as np
 import onnxruntime
 from quebra_frases import sentence_tokenize
 
-from phoonnx.engines._sampling import softmax
+from phoonnx.engines._sampling import NUCLEUS_HEAD, ranked, softmax
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.util import LOG
@@ -117,7 +117,7 @@ def _sample(scores: np.ndarray, temperature: float, top_p: float,
         return int(np.argmax(s))
     probs = softmax(s / float(temperature))
     if 0 < top_p < 1:
-        order = np.argsort(probs)[::-1]
+        order = ranked(probs, NUCLEUS_HEAD, top_p)
         cumulative = np.cumsum(probs[order])
         keep = np.ones(order.shape[0], bool)
         # keep every token up to and including the one that crosses top_p
@@ -177,15 +177,6 @@ class LlasaAdapter(BaseOnnxAdapter):
             "top_p": 0.95,
             "max_new_tokens": float(self.MAX_NEW_TOKENS),
             "max_chunk_chars": float(self.MAX_CHUNK_CHARS),
-        }
-
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "temperature": "sampling temperature",
-            "top_p": "top-p (nucleus)",
-            "max_new_tokens": "max codec tokens (50/s)",
-            "max_chunk_chars": "target characters per model call",
-            "voice": "voice preset name",
         }
 
     def configure(self, voice_config: Any) -> None:

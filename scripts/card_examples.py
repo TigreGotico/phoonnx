@@ -31,6 +31,7 @@ import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from phoonnx.engines import get_adapter
 from scriptconv.phonemizers.enums import Phonemizer
 from scriptconv.phonemizers.registry import PHONEMIZER_REGISTRY
 
@@ -380,14 +381,9 @@ def _check(inputs: Dict[str, int], known: Tuple[str, ...], engine: str) -> None:
 def _params(config: Dict[str, Any], defaults: Dict[str, Any]) -> Dict[str, Any]:
     """The synthesis parameters phoonnx gives an engine: its *defaults*, the config's scales, then ``engine_params``."""
     inference = config.get("inference") or {}
-    scales = {"noise_scale": inference.get("noise_scale", 0.667), "length_scale": inference.get("length_scale", 1.0),
-              "noise_w_scale": inference.get("noise_w", 0.8)}
+    scales = {"noise_scale": inference.get("noise_scale"), "length_scale": inference.get("length_scale"),
+              "noise_w_scale": inference.get("noise_w")}
     return {**defaults, **{k: v for k, v in scales.items() if v is not None}, **(config.get("engine_params") or {})}
-
-
-def _scales(config: Dict[str, Any]) -> Tuple[float, float, float]:
-    params = _params(config, {})
-    return params["noise_scale"], params["length_scale"], params["noise_w_scale"]
 
 
 def _session(name: str, file: str, repo: Optional[str] = None) -> str:
@@ -438,7 +434,8 @@ def _run(engine: str, config: Dict[str, Any], files: Dict[str, Any], pad: Option
 def _vits(config: Dict[str, Any], model: str, inputs: Dict[str, int], engine: str) -> str:
     _check(inputs, ("input", "input_lengths", "scales", "sid", "langid", "x", "x_length", "noise_scale",
                     "length_scale", "noise_scale_w", "input_ids", "attention_mask"), engine)
-    noise, length, noise_w = _scales(config)
+    params = _params(config, get_adapter("vits").default_params())
+    noise, length, noise_w = params["noise_scale"], params["length_scale"], params["noise_w_scale"]
     lines = [_session("session", model)]
     if "scales" in inputs or "noise_scale" in inputs:
         lines.append(f'noise_scale, length_scale, noise_w = {noise}, {length}, {noise_w}  # config.json "inference"')
@@ -469,7 +466,8 @@ def _vits(config: Dict[str, Any], model: str, inputs: Dict[str, int], engine: st
 
 
 def _vits_prior_split(config: Dict[str, Any], files: Dict[str, Any]) -> str:
-    noise, length, _ = _scales(config)
+    params = _params(config, get_adapter("vits_prior_split").default_params())
+    noise, length = params["noise_scale"], params["length_scale"]
     return "\n".join([
         _session("duration", files.get("model", "duration.onnx")),
         _session("decode", files["decode"]),
@@ -516,7 +514,8 @@ def _styletts2(config: Dict[str, Any], files: Dict[str, Any], model: str, inputs
 
 def _glowtts(config: Dict[str, Any], model: str, inputs: Dict[str, int]) -> str:
     _check(inputs, ("input", "input_lengths", "scales", "sid"), "glowtts")
-    noise, length, _ = _scales(config)
+    params = _params(config, get_adapter("glowtts").default_params())
+    noise, length = params["noise_scale"], params["length_scale"]
     lines = [_session("session", model), f"noise_scale, length_scale = {noise}, {length}",
              "mel = session.run(None, {", _feed("input", "np.array([ids], dtype=np.int64)"),
              _feed("input_lengths", "np.array([len(ids)], dtype=np.int64)"),

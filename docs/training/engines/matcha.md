@@ -50,7 +50,8 @@ End-to-end (single ONNX, no vocoder):
 ```python
 from phoonnx.voice import TTSVoice
 
-voice = TTSVoice.load(model_path="matxa_v2_graphemes_10_steps_wavenext.onnx")
+voice = TTSVoice.load(model_path="matxa_v2_graphemes_10_steps_wavenext.onnx",
+                      config_path="config.json")
 ```
 
 Two-stage (acoustic mel model + separate vocoder), via the JSON config:

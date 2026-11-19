@@ -206,8 +206,10 @@ def _tract_semitones(value: str | None) -> float:
 class _Reader:
     """Walks the tree once, gathering text into pieces."""
 
-    def __init__(self, lang: str | None, frontend: TextFrontend | None = None) -> None:
+    def __init__(self, lang: str | None, frontend: TextFrontend | None = None,
+                 symbols: bool = True) -> None:
         self.frontend = frontend
+        self.symbols = symbols
         self.pieces: list[Piece] = []
         self.text: list[str] = []
         self.style = Piece("", lang)
@@ -312,7 +314,11 @@ class _Reader:
             ph = element.get("ph")
             alphabet = (element.get("alphabet") or "ipa").lower()
             written = "".join(element.itertext())
-            if ph and alphabet == "ipa":
+            if ph and not self.symbols:
+                LOG.warning("ssml: <phoneme ph=%r> needs a voice that takes symbol input; "
+                            "reading %.60r as written", ph, written)
+                self.text.append(written)
+            elif ph and alphabet == "ipa":
                 self.text.append(f"[[ {ph} ]]")
             elif ph and alphabet in ("x-sampa", "xsampa", "sampa"):
                 self.text.append(f"[[ {xsampa_to_ipa(ph)} ]]")
@@ -356,11 +362,12 @@ class _Reader:
 
 
 def parse_ssml(ssml: str, lang: str | None = None,
-               frontend: TextFrontend | None = None) -> list[Piece]:
+               frontend: TextFrontend | None = None, symbols: bool = True) -> list[Piece]:
     """Read `ssml` into pieces to synthesise one after another.
 
     `frontend` reads each ``<say-as>`` with :meth:`scriptconv.frontend.TextFrontend.say_as`, in
     the language in force at the element. Without a frontend, a ``<say-as>`` reads as written.
+    A voice with no symbol input sets `symbols` to False, and a ``<phoneme>`` then reads its written word.
 
     Silence after the last piece is dropped, and so is the pause an opening
     <p> or <s> implies. A <break> before the first words is kept: a story
@@ -380,7 +387,7 @@ def parse_ssml(ssml: str, lang: str | None = None,
         LOG.info("ssml: not well-formed (%s); reading the text without it", error)
         text = strip_ssml(ssml)
         return [Piece(text, lang)] if text else []
-    reader = _Reader(lang, frontend)
+    reader = _Reader(lang, frontend, symbols)
     try:
         reader.read(root)
         reader.flush()

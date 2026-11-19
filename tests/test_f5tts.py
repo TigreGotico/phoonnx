@@ -170,12 +170,9 @@ def test_f5tts_requires_decode_or_vocoder():
         )
 
 
-def test_f5tts_param_labels_and_defaults():
-    ad = F5TTSAdapter()
-    labels = ad.param_labels()
-    defaults = ad.default_params()
+def test_f5tts_defaults():
+    defaults = F5TTSAdapter().default_params()
     for key in ("nfe", "cfg_strength", "sway_coefficient", "target_rms", "speed"):
-        assert key in labels
         assert key in defaults
 
 
