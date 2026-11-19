@@ -406,6 +406,8 @@ class VoiceConfig:
             flags = dict.fromkeys(("add_blank_char", "add_blank_word", "use_eos_bos", "blank_at_start",
                                    "blank_at_end"), False)
             flags["fold_compounds"] = True
+        # an unset scale stays out of the file, so a reader uses the engine default
+        scales = {"noise_scale": self.noise_scale, "length_scale": self.length_scale, "noise_w": self.noise_w_scale}
         native = {
             "phoonnx_version": VERSION_STR,
             "engine": self.engine.value,
@@ -423,9 +425,7 @@ class VoiceConfig:
             "phonemizer_model": self.phonemizer_model,
             "keep_punctuation": self.keep_punctuation,
             "inference": {
-                "noise_scale": self.noise_scale,
-                "length_scale": self.length_scale,
-                "noise_w": self.noise_w_scale,
+                **{key: value for key, value in scales.items() if value is not None},
                 "add_diacritics": self.add_diacritics,
                 "diacritizer_model": self.diacritizer_model,
             },
