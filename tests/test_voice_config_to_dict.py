@@ -13,37 +13,10 @@ from phoonnx.engines.glowtts_config import voice_config_from_larynx
 from phoonnx.engines.mixertts_config import voice_config_from_mixer
 from phoonnx.engines.optispeech_config import voice_config_from_optispeech_meta
 from phoonnx.version import __version__
+from tests.config_fixtures import (CANONICAL, COQUI, PIPER, TRANSFORMERS, VOSK, assert_same_voice,
+                                   piper_ids)
 
 SCHEMA = json.loads((Path(phoonnx.__file__).parent / "config.schema.json").read_text(encoding="utf-8"))
-
-
-def piper_ids(id_map, phonemes):
-    """Piper's own id stream: BOS, PAD, then each phoneme followed by PAD, then EOS."""
-    ids = [*id_map["^"], *id_map["_"]]
-    for phoneme in phonemes:
-        ids += [*id_map[phoneme], *id_map["_"]]
-    return ids + id_map["$"]
-
-
-PIPER = {
-    "piper_version": "1.0.0", "phoneme_type": "espeak",
-    "phoneme_id_map": {"_": [0], "^": [1], "$": [2], "a": [3], "b": [4], "!": [5], " ": [6]},
-    "num_symbols": 7, "num_speakers": 1, "audio": {"sample_rate": 22050},
-    "espeak": {"voice": "en-us"},
-    "inference": {"noise_scale": 0.667, "length_scale": 1.0, "noise_w": 0.8},
-}
-VOSK = {"espeak": {"voice": "ru"},
-        "phoneme_id_map": {"_": [0], "^": [1], "$": [2], "a0": [10], "sch": [20]}}
-COQUI = {"audio": {"sample_rate": 22050}, "add_blank": True, "enable_eos_bos_chars": False,
-         "characters": {"characters_class": "TTS.tts.models.vits.VitsCharacters", "pad": "<PAD>",
-                        "punctuations": "!,", "characters": "ab", "blank": "<BLNK>"},
-         "datasets": [{"language": "en"}]}
-CANONICAL = {"engine": "coqui", "phoneme_type": "espeak", "alphabet": "ipa", "lang_code": "ca-ES",
-             "num_symbols": 4, "audio": {"sample_rate": 22050},
-             "phoneme_id_map": {"_": 0, " ": 1, "a": 2, "b": 3}, "pad": "_", "blank": "_"}
-TRANSFORMERS = dict(vocab={"_": 0, "a": 1, "b": 2, " ": 3},
-                    tokenizer_config={"add_blank": True, "language": "en", "pad_token": "_"},
-                    phoneme_type="graphemes", alphabet="unicode", lang_code="en")
 
 
 def load(config, **companions):
@@ -54,13 +27,6 @@ def read_back(voice, tmp_path):
     path = tmp_path / "config.json"
     path.write_text(json.dumps(voice.to_dict(), ensure_ascii=False), encoding="utf-8")
     return VoiceConfig.from_dict(json.loads(path.read_text(encoding="utf-8")))
-
-
-def assert_same_voice(old, new, sentences):
-    for sentence in sentences:
-        assert new.tokenizer.tokenize(sentence) == old.tokenizer.tokenize(sentence)
-    assert new.frontend == old.frontend
-    assert (new.engine, new.sample_rate, new.num_symbols) == (old.engine, old.sample_rate, old.num_symbols)
 
 
 def test_piper_ids_equal_the_loader_and_piper_itself(tmp_path):
@@ -214,3 +180,21 @@ def test_to_native_dict_keeps_a_shim():
     voice = load(PIPER)
     with pytest.warns(DeprecationWarning, match=r"VoiceConfig\.to_native_dict.*VoiceConfig\.to_dict"):
         assert voice.to_native_dict() == voice.to_dict()
+
+
+@pytest.mark.parametrize("config, companions", [
+    (PIPER, {}), (COQUI, {}), ({}, TRANSFORMERS), ({"engine": "omnivoice"}, {}),
+])
+def test_native_config_is_a_fixed_point_of_from_dict_and_to_dict(config, companions):
+    first = load(config, **companions).to_dict()
+    second = VoiceConfig.from_dict(copy.deepcopy(first)).to_dict()
+    assert json.dumps(second, ensure_ascii=False) == json.dumps(first, ensure_ascii=False)
+
+
+def test_tokens_file_native_config_is_a_fixed_point(tmp_path):
+    tokens = tmp_path / "tokens.txt"
+    tokens.write_text("_ 0\n^ 1\n$ 2\na 3\nb 4\n", encoding="utf-8")
+    first = load({"pad": "_"}, tokens_txt=str(tokens)).to_dict()
+    assert first["bos"] == "^" and first["use_eos_bos"] is False
+    second = VoiceConfig.from_dict(copy.deepcopy(first)).to_dict()
+    assert json.dumps(second, ensure_ascii=False) == json.dumps(first, ensure_ascii=False)

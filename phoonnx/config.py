@@ -382,28 +382,39 @@ class VoiceConfig:
     def to_dict(self) -> Dict[str, Any]:
         """The native ``config.json`` dict, which :meth:`from_dict` reads back.
 
-        A raw-text tokenizer (Chatterbox) has no symbol table, so its vocabulary is empty.
-        A special token that the vocabulary lacks reads back as the phoonnx default, so the
-        flags that need it are written off and the ids stay the same.
+        A raw-text tokenizer (Chatterbox) has no symbol table, so its vocabulary is empty;
+        the voice still needs ``bpe_tokenizer_json`` at load. A special token that the
+        vocabulary lacks is written as the phoonnx default, which is what a read gives, and
+        the flags that need that token are written off, so the ids stay the same.
         """
-        tok = self.tokenizer if isinstance(self.tokenizer, TTSTokenizer) else TTSTokenizer(
-            Vocabulary(char2idx={}), add_blank_char=False, add_blank_word=False, use_eos_bos=False,
-            blank_at_end=False, blank_at_start=False)
-        voc = tok.vocabulary
+        tok = self.tokenizer
+        if isinstance(tok, TTSTokenizer):
+            voc = tok.vocabulary
+            flags = {"add_blank_char": tok.add_blank_char and voc.blank_id is not None,
+                     "add_blank_word": tok.add_blank_word,
+                     "use_eos_bos": tok.use_eos_bos and voc.bos_id is not None and voc.eos_id is not None,
+                     "blank_at_start": tok.blank_at_start and voc.blank_id is not None,
+                     "blank_at_end": tok.blank_at_end,
+                     "fold_compounds": tok.fold_compounds}
+        else:
+            voc = Vocabulary(char2idx={})
+            flags = dict.fromkeys(("add_blank_char", "add_blank_word", "use_eos_bos", "blank_at_start",
+                                   "blank_at_end"), False)
+            flags["fold_compounds"] = True
         native = {
             "phoonnx_version": VERSION_STR,
-            "engine": self.engine.value if self.engine else "phoonnx",
+            "engine": self.engine.value,
             "phoneme_type": self.phoneme_type.value,
-            "alphabet": self.alphabet.value if self.alphabet else "unicode",
+            "alphabet": self.alphabet.value,
             "lang_code": self.lang_code,
             "audio": {"sample_rate": self.sample_rate},
             "hop_length": self.hop_length,
             "num_symbols": self.num_symbols,
             "num_speakers": self.num_speakers,
             "num_langs": self.num_langs,
-            "speaker_id_map": dict(self.speaker_id_map or {}),
-            "lang_id_map": dict(self.lang_id_map or {}),
-            "lang_tokens": dict(self.lang_tokens or {}),
+            "speaker_id_map": dict(self.speaker_id_map),
+            "lang_id_map": dict(self.lang_id_map),
+            "lang_tokens": dict(self.lang_tokens),
             "phonemizer_model": self.phonemizer_model,
             "keep_punctuation": self.keep_punctuation,
             "inference": {
@@ -414,17 +425,13 @@ class VoiceConfig:
                 "diacritizer_model": self.diacritizer_model,
             },
             "phoneme_id_map": dict(voc.char2idx),
-            "pad": voc.pad, "blank": voc.blank, "bos": voc.bos, "eos": voc.eos,
+            "pad": voc.pad or DEFAULT_PAD_TOKEN, "blank": voc.blank or DEFAULT_BLANK_TOKEN,
+            "bos": voc.bos or DEFAULT_BOS_TOKEN, "eos": voc.eos or DEFAULT_EOS_TOKEN,
             "blank_word": voc.blank_word,
-            "add_blank_char": tok.add_blank_char and tok.blank_id is not None,
-            "add_blank_word": tok.add_blank_word,
-            "use_eos_bos": tok.use_eos_bos and voc.bos_id is not None and voc.eos_id is not None,
-            "blank_at_start": tok.blank_at_start and tok.blank_id is not None,
-            "blank_at_end": tok.blank_at_end,
-            "fold_compounds": tok.fold_compounds,
+            **flags,
             "word_sep_token": self.word_sep_token,
-            "blank_between": self.blank_between.value if self.blank_between else "tokens_and_words",
-            "engine_params": {k: v for k, v in (self.engine_params or {}).items() if k != "providers"},
+            "blank_between": self.blank_between.value,
+            "engine_params": {k: v for k, v in self.engine_params.items() if k != "providers"},
         }
         if self.phonemizer_identity is not None:
             native["phonemizer_identity"] = dict(self.phonemizer_identity)
@@ -656,15 +663,9 @@ def _removal_version() -> str:
     return f"{VERSION_MAJOR + 1}.0.0"
 
 
-def _warn_moved(old: str, new: str, stacklevel: int = 3) -> None:
+def _warn_moved(old: str, new: str) -> None:
     warnings.warn(f"{old} is deprecated and will be removed in phoonnx {_removal_version()}. "
-                  f"Use {new}.", DeprecationWarning, stacklevel=stacklevel)
-
-
-def _deprecated(name: str, replacement: str) -> None:
-    warnings.warn(f"phoonnx.config.{name} is deprecated and will be removed in phoonnx "
-                  f"{_removal_version()}. Use {replacement}.",
-                  DeprecationWarning, stacklevel=3)
+                  f"Use {new}.", DeprecationWarning, stacklevel=3)
 
 
 def _voice_phonemizer(phoneme_type: PhonemeType,
@@ -712,7 +713,7 @@ def get_phonemizer(phoneme_type: PhonemeType,
     Raises:
         ValueError: If the provided `phoneme_type` is not supported.
     """
-    _deprecated("get_phonemizer", "TTSVoice.frontend or scriptconv.frontend.TextFrontend")
+    _warn_moved("phoonnx.config.get_phonemizer", "TTSVoice.frontend or scriptconv.frontend.TextFrontend")
     return _voice_phonemizer(phoneme_type, alphabet, model, keep_punctuation)
 
 
@@ -743,7 +744,7 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     before G2P or the pronunciation is ambiguous; that restoration is scriptconv's
     and lives entirely behind these two values.
     """
-    _deprecated("get_conversion", "TTSVoice.frontend")
+    _warn_moved("phoonnx.config.get_conversion", "TTSVoice.frontend")
     from phoonnx.engines.base import SIDE_STREAMS
     from scriptconv.graph import ConversionGraph, Edge
     from scriptconv.diacritics import DIACRITIZED, diacritize
