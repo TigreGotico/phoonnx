@@ -340,22 +340,13 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
     # ------------------------------------------------------------------
     # local decoder (one frame of 16 codebook tokens)
     # ------------------------------------------------------------------
-    @staticmethod
-    def _seen_mask(seen_by_channel: List[set]) -> np.ndarray:
-        mask = np.zeros((1, N_VQ, CODEBOOK_SIZE), np.int32)
-        for ch, seen in enumerate(seen_by_channel):
-            for token in seen:
-                if 0 <= token < CODEBOOK_SIZE:
-                    mask[0, ch, token] = 1
-        return mask
-
-    def _fixed_frame(self, global_hidden: np.ndarray, seen_by_channel: List[set],
+    def _fixed_frame(self, global_hidden: np.ndarray, seen_mask: np.ndarray,
                      rng: np.random.Generator) -> Tuple[bool, List[int]]:
         """In-graph sampled frame. The graph consumes uniform randoms so the host still
         owns the RNG (and therefore reproducibility) despite the baked-in parameters."""
         out = self.local_fixed_frame.run(None, {
             "global_hidden": global_hidden.astype(np.float32, copy=False),
-            "repetition_seen_mask": self._seen_mask(seen_by_channel),
+            "repetition_seen_mask": seen_mask,
             "assistant_random_u": np.asarray([min(0.99999994, float(rng.random()))], np.float32),
             "audio_random_u": np.asarray(
                 [[min(0.99999994, float(rng.random())) for _ in range(N_VQ)]], np.float32),
@@ -460,10 +451,11 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
 
         frames: List[List[int]] = []
         seen_by_channel = [set() for _ in range(N_VQ)]
+        seen_mask = np.zeros((1, N_VQ, CODEBOOK_SIZE), np.int32)
         max_frames = int(p.get("max_new_frames", self.MAX_NEW_FRAMES))
         for _ in range(max(1, max_frames)):
             if mode == SAMPLE_MODE_FIXED:
-                keep_going, frame = self._fixed_frame(global_hidden, seen_by_channel, rng)
+                keep_going, frame = self._fixed_frame(global_hidden, seen_mask, rng)
             else:
                 keep_going, frame = self._hosted_frame(
                     global_hidden, seen_by_channel, p, mode != SAMPLE_MODE_GREEDY, rng)
@@ -471,6 +463,8 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
                 break
             for channel, token in enumerate(frame):
                 seen_by_channel[channel].add(int(token))
+                if 0 <= token < CODEBOOK_SIZE:
+                    seen_mask[0, channel, token] = 1
             frames.append(frame)
 
             row = np.full((1, 1, ROW_WIDTH), AUDIO_PAD_TOKEN_ID, np.int32)
