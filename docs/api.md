@@ -93,7 +93,7 @@ With a loaded voice, the same call is `write_wav(voice.synthesize("Hello"), wav_
 
 ### 4. Change one call
 
-`SynthesisConfig` holds the settings of one call. Each engine setting is `None` until you set it. `None` means that the voice's own value applies.
+`SynthesisConfig` holds the settings of one call. Each engine setting is `None` until you set it. A `None` scale takes the value of the `inference` block in the voice's `config.json`, and then the engine's default.
 
 ```python
 from phoonnx.config import SynthesisConfig

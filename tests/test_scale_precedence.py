@@ -60,6 +60,17 @@ def test_every_engine_gets_its_own_defaults_untouched(name):
     assert _sent_params(get_adapter(name), {}) == get_adapter(name).default_params()
 
 
+@pytest.mark.parametrize("inference, sent", [
+    ({}, {"noise_scale": 0.3, "length_scale": 1.25, "noise_w_scale": 0.5}),
+    ({"noise_scale": 0.4, "length_scale": 1.1, "noise_w": 0.6},
+     {"noise_scale": 0.4, "length_scale": 1.1, "noise_w_scale": 0.6}),
+])
+def test_the_native_config_writes_only_the_scales_it_read(inference, sent):
+    written = _config(inference).to_native_dict()["inference"]
+    assert {k: written[k] for k in ("noise_scale", "length_scale", "noise_w") if k in written} == inference
+    assert _sent_params(_Engine(), written) == sent
+
+
 def test_the_scales_a_config_sets_win_over_the_engine():
     assert _sent_params(_Engine(), {"length_scale": 1.1}) == {
         "noise_scale": 0.3, "length_scale": 1.1, "noise_w_scale": 0.5}

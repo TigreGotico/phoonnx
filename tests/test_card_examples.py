@@ -869,3 +869,10 @@ def test_index_files_names_each_file_of_the_entry_in_the_repo_that_holds_it():
     assert files == {"model": {"repo": "Phoonnx/new-name", "file": "lm/model.onnx"},
                      "tokenizer_config": {"repo": "Phoonnx/new-name", "file": "lm/tokenizer.json"},
                      "codec_decoder_path": {"repo": "Phoonnx/codec", "file": "decoder.onnx"}}
+
+
+@pytest.mark.parametrize("inference", [{}, {"noise_scale": None, "length_scale": None, "noise_w": None}])
+def test_an_unset_scale_in_the_example_is_the_engine_default(inference):
+    # VitsAdapter.default_params(): noise 0.667, length 1.0, noise_w 0.8
+    code = example({**NATIVE, "inference": inference}, VITS_FILES)
+    assert "noise_scale, length_scale, noise_w = 0.667, 1.0, 0.8" in code
