@@ -92,9 +92,10 @@ def test_inline_override_carries_no_stream():
     assert requests and all(r.language_ids is None for r in requests)
 
 
-def test_stream_of_the_wrong_length_raises():
+@pytest.mark.parametrize("values", [(0, 1), (0, 1, 0, 1)], ids=["short", "long"])
+def test_stream_of_the_wrong_length_raises(values):
     voice, _, _ = _shami_voice()
-    utterance = Utterance(text=None, symbols=None, ids=(1, 4, 2), streams={"language_ids": (0, 1)})
-    with pytest.raises(ValueError, match=r"'language_ids' has 2 values for 3 phoneme ids"):
+    utterance = Utterance(text=None, symbols=None, ids=(1, 4, 2), streams={"language_ids": values})
+    with pytest.raises(ValueError, match=rf"'language_ids' has {len(values)} values for 3 phoneme ids"):
         voice.render(utterance)
     voice.adapter.synthesize.assert_not_called()
