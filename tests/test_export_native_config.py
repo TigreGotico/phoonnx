@@ -115,6 +115,12 @@ def test_styletts2_exported_config_loads_with_training_facts(tmp_path):
     _assert_loads_with_training_facts(tmp_path / "out" / "config.json")
 
 
+def test_styletts2_export_leaves_gradients_on(tmp_path):
+    import torch
+    test_styletts2_exported_config_loads_with_training_facts(tmp_path)
+    assert torch.is_grad_enabled()
+
+
 @pytest.mark.parametrize("engine_name, config_name, adapter_name", [
     ("glowtts", "last.json", "GlowTTSAdapter"),
     ("fastpitch", "last.json", "FastPitchAdapter"),

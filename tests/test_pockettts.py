@@ -492,11 +492,6 @@ def test_default_params_expose_the_sampling_controls():
     assert params["eos_threshold"] == DEFAULT_EOS_THRESHOLD
 
 
-def test_param_labels_cover_every_param():
-    a = PocketTTSAdapter()
-    assert set(a.param_labels()) == set(a.default_params())
-
-
 # ---------------------------------------------------------------------------
 # synthesis
 # ---------------------------------------------------------------------------
@@ -779,3 +774,25 @@ def test_voice_index_voice_state_matches_the_voice_id():
     for voice_id, entry in _index().items():
         speaker = voice_id.rsplit("/", 1)[-1]
         assert entry["aux_model_urls"]["voice_state_path"].endswith(f"/{speaker}.safetensors")
+
+
+def test_the_encoder_is_built_on_first_use_only(monkeypatch):
+    # Only voice cloning runs mimi_encoder, so loading a voice must not build it.
+    import types
+    import phoonnx.engines.pockettts as pockettts
+
+    built = []
+
+    def fake_session(path, providers=None):
+        built.append((path, providers))
+        return _CaptureEncoderSession()
+
+    monkeypatch.setattr(pockettts, "make_session", fake_session)
+    a = PocketTTSAdapter()
+    a.configure(types.SimpleNamespace(engine_params={
+        "mimi_encoder_path": "mimi_encoder.onnx", "providers": ["CPUExecutionProvider"]}))
+    assert built == []
+
+    a.encode_reference(np.zeros(160, np.float32))
+    a.encode_reference(np.zeros(160, np.float32))
+    assert built == [("mimi_encoder.onnx", ["CPUExecutionProvider"])]

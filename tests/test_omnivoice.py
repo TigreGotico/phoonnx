@@ -141,11 +141,6 @@ def test_default_params_match_upstream_generation_config():
     assert p["class_temperature"] == 0.0
 
 
-def test_every_param_has_a_label():
-    ad = OmniVoiceAdapter()
-    assert set(ad.param_labels()) == set(ad.default_params())
-
-
 def test_codec_constants_match_the_checkpoint():
     assert (NUM_CODEBOOKS, AUDIO_VOCAB_SIZE, AUDIO_MASK_ID) == (8, 1025, 1024)
     assert SAMPLE_RATE // HOP_LENGTH == FRAME_RATE == 25
@@ -697,3 +692,95 @@ def test_voice_index_entries_are_well_formed():
             "acoustic_encoder_path", "semantic_encoder_path",
             "quantizer_encoder_path", "decoder_path", "bpe_tokenizer_path"}
     assert "omnivoice/en" in index and "omnivoice/zh" in index
+
+
+def test_reference_cache_never_pairs_one_clips_key_with_anothers_codes():
+    """A request that lands while the cache is being updated for another clip must get
+    its own clip's codes."""
+    class _Probe(OmniVoiceAdapter):
+        on_store = None
+
+        def _fire(self):
+            hook, self.on_store = self.on_store, None
+            if hook:
+                hook()
+
+        @property
+        def _ref_cache(self):
+            return self.__dict__.get("_rc")
+
+        @_ref_cache.setter
+        def _ref_cache(self, value):
+            self.__dict__["_rc"] = value
+            self._fire()
+
+        @property
+        def _ref_cache_key(self):
+            return self.__dict__.get("_rk")
+
+        @_ref_cache_key.setter
+        def _ref_cache_key(self, value):
+            self.__dict__["_rk"] = value
+            self._fire()
+
+    class _Sess:
+        def __init__(self, fn):
+            self.fn = fn
+
+        def run(self, _names, feed):
+            return [self.fn(feed)]
+
+    sessions = {
+        "acoustic_encoder": _Sess(lambda f: np.full((1, 1, 4), f["waveform_24k"][0, 0, 0], np.float32)),
+        "semantic_encoder": _Sess(lambda f: np.zeros((1, 1, 4), np.float32)),
+        "quantizer_encoder": _Sess(lambda f: np.full(
+            (1, NUM_CODEBOOKS, 4), f["acoustic_features"][0, 0, 0], np.float32)),
+    }
+    ad = _Probe()
+    ad._cloning_session = lambda attr, _path: sessions[attr]
+    ad._preprocess_reference = lambda audio, sr: (audio.reshape(-1), 0.1)
+
+    def clip(clip_id):
+        return np.full(2400, clip_id, np.float32)
+
+    assert ad.encode_reference(clip(2.0), 24000)[0][0, 0] == 2     # cache now holds clip 2
+    seen = []
+    ad.on_store = lambda: seen.append(ad.encode_reference(clip(1.0), 24000)[0][0, 0])
+    assert ad.encode_reference(clip(1.0), 24000)[0][0, 0] == 1
+    assert seen == [1]
+    assert ad.encode_reference(clip(2.0), 24000)[0][0, 0] == 2
+
+
+def test_reference_encoders_run_once_per_distinct_clip():
+    """The same clip twice runs each encoder once; a different clip runs them again."""
+    class _Counting:
+        def __init__(self, fn):
+            self.fn = fn
+            self.runs = 0
+
+        def run(self, _names, feed):
+            self.runs += 1
+            return [self.fn(feed)]
+
+    sessions = {
+        "acoustic_encoder": _Counting(lambda f: np.full((1, 1, 4), f["waveform_24k"][0, 0, 0], np.float32)),
+        "semantic_encoder": _Counting(lambda f: np.zeros((1, 1, 4), np.float32)),
+        "quantizer_encoder": _Counting(lambda f: np.full(
+            (1, NUM_CODEBOOKS, 4), f["acoustic_features"][0, 0, 0], np.float32)),
+    }
+    ad = OmniVoiceAdapter()
+    ad._cloning_session = lambda attr, _path: sessions[attr]
+    ad._preprocess_reference = lambda audio, sr: (audio.reshape(-1), 0.1)
+
+    def clip(clip_id):
+        return np.full(2400, clip_id, np.float32)
+
+    def runs():
+        return [s.runs for s in sessions.values()]
+
+    assert ad.encode_reference(clip(1.0), 24000)[0][0, 0] == 1
+    assert runs() == [1, 1, 1]
+    assert ad.encode_reference(clip(1.0), 24000)[0][0, 0] == 1     # same clip, cache hit
+    assert runs() == [1, 1, 1]
+    assert ad.encode_reference(clip(2.0), 24000)[0][0, 0] == 2     # different clip
+    assert runs() == [2, 2, 2]
