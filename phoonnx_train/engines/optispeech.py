@@ -35,6 +35,7 @@ if TYPE_CHECKING:  # heavy imports — only needed for type annotations
     import pytorch_lightning as pl
 
 from phoonnx_train.engines.base import BaseTrainingEngine, TrainingEngineConfig
+from phoonnx_train.engines.vits import write_sidecars
 
 _LOG = logging.getLogger(__name__)
 
@@ -740,6 +741,9 @@ class OptiSpeechTrainingEngine(BaseTrainingEngine):
         """
         import torch
 
+        with open(config_path, "r", encoding="utf-8") as f:
+            model_config: Dict[str, Any] = json.load(f)
+
         model = self.load_lightning_module(checkpoint_path)
         model.eval()
 
@@ -808,6 +812,9 @@ class OptiSpeechTrainingEngine(BaseTrainingEngine):
         )
 
         self._embed_metadata(output_path, model)
+        write_sidecars(model_config, output_dir, output_path.stem,
+                       generate_tokens=kwargs.get("generate_tokens", False),
+                       piper=kwargs.get("piper", False))
         _LOG.info("ONNX model exported to %s", output_path)
         return output_path
 
