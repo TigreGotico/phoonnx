@@ -52,6 +52,7 @@ class Engine(str, Enum):
     VOSK = "vosk"  # alphacep vosk-tts: VITS + dictionary/rule Russian g2p
     RAPIDO = "rapido"  # Rápido: flow-matching DiT over VoxCPM2 AudioVAE latents @48kHz
     TINYVOCA = "tinyvoca"  # tiny-voca: dizione tokens + stress, source-filter waveform head
+    XVITS = "xvits"  # x-vits: Piper/VITS with flow-matching prosody and word emphasis (5 graphs)
 
     @classmethod
     def _missing_(cls, value: object) -> Optional["Engine"]:

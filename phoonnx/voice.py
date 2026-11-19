@@ -292,6 +292,10 @@ class Utterance:
     """Values a phonemizer gives beside its symbols, one per id, keyed by the
     ``AdapterSynthesisRequest`` field they fill, such as ``language_ids``."""
 
+    params: Mapping[str, Any] = field(default_factory=dict)
+    """Values the adapter's ``read_text`` learned about this utterance. They join the
+    request params of the engine call."""
+
 
 @dataclass
 class TTSVoice:
@@ -780,6 +784,10 @@ class TTSVoice:
                     yield Utterance(text=chunk_text, symbols=None, ids=tuple(ids))
             return
 
+        if src_alphabet == Alphabet.GRAPHEMES and self.adapter.READS_TEXT is True:
+            yield from self.adapter.read_text(spoken, self, config, stages)
+            return
+
         for symbols, streams, chunk_text in self._iter_phonemes(spoken, src_alphabet, tgt_alphabet, stages):
             if not symbols:
                 continue
@@ -1033,6 +1041,8 @@ class TTSVoice:
                 # instead of raising, since alignment is an optional feature.
                 include_alignments = False
 
+        if utterance.params:
+            syn_config = replace(syn_config, extra_params={**syn_config.extra_params, **utterance.params})
         audio, phoneme_id_samples = self._infer(
             utterance.ids, syn_config, include_alignments, utterance.streams,
             text=utterance.text)
