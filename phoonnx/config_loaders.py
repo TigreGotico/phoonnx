@@ -261,6 +261,7 @@ class PhoonnxLoader(ConfigLoader):
             alphabet=alphabet,
             add_diacritics=inference.get("add_diacritics"),
             diacritizer_model=inference.get("diacritizer_model", None),
+            blank_between=config.get("blank_between", BlankBetween.TOKENS_AND_WORDS),
         )
 
 

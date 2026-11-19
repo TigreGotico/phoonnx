@@ -161,7 +161,7 @@ def export_rapido(model: RapidoModel, voice_config: Dict[str, Any], output_dir: 
             "seed": DEFAULT_SEED,
         },
     }
-    config = VoiceConfig.from_dict(native).to_native_dict()
+    config = VoiceConfig.from_dict(native).to_dict()
     config_path = output_dir / "config.json"
     config_path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
     _LOGGER.info("Rápido voice written to %s", output_dir)
