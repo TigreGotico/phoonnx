@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.124.1a1](https://github.com/TigreGotico/phoonnx/tree/1.124.1a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.0a1...1.124.1a1)
+
+**Merged pull requests:**
+
+- fix: kokoro-82m voices load the full-precision graph [\#817](https://github.com/TigreGotico/phoonnx/pull/817) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.124.0a1](https://github.com/TigreGotico/phoonnx/tree/1.124.0a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.8a1...1.124.0a1)
@@ -302,7 +310,6 @@
 - feat\(index\): every adapter has an index voice or a documented reason [\#737](https://github.com/TigreGotico/phoonnx/pull/737) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - fix\(tests\): the packaging test no longer copies its own scratch folder [\#736](https://github.com/TigreGotico/phoonnx/pull/736) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - chore\(deps\): floors instead of pins, and a reason for each upper bound [\#735](https://github.com/TigreGotico/phoonnx/pull/735) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- refactor: one definition for the copied sampling and audio helpers [\#734](https://github.com/TigreGotico/phoonnx/pull/734) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.113.15a2](https://github.com/TigreGotico/phoonnx/tree/1.113.15a2) (2026-11-18)
 
