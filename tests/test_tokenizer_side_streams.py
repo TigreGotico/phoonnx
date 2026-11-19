@@ -60,3 +60,24 @@ def test_two_streams_and_no_symbols():
 def test_ids_match_tokenize(flags):
     tokenizer = _tokenizer(**flags)
     assert tokenizer.tokenize_with_streams(["a", "b", "c"], {})[0] == tokenizer.tokenize(["a", "b", "c"])
+
+
+def test_word_blanks():
+    vocabulary = Vocabulary(char2idx={**ID_MAP, "#": 6}, pad="_", blank="_", bos="^", eos="$", blank_word="#")
+    tokenizer = TTSTokenizer(vocabulary, add_blank_char=True, add_blank_word=True, use_eos_bos=True,
+                             blank_at_start=True, blank_at_end=True)
+    # the second space follows a word blank, so it gives no id and its value 4 goes
+    ids, streams = tokenizer.tokenize_with_streams(["a", " ", " ", "b"], {"language_ids": [1, 3, 4, 2]})
+    #        ^  _  a  _  #  _  b  _  #  _  $
+    assert ids == [1, 0, 3, 0, 6, 0, 4, 0, 6, 0, 2]
+    assert streams == {"language_ids": [0, 0, 1, 0, 3, 0, 2, 0, 0, 0, 0]}
+
+
+def test_folded_compound():
+    vocabulary = Vocabulary(char2idx={**ID_MAP, "ab": 6}, pad="_", blank="_", bos="^", eos="$")
+    tokenizer = TTSTokenizer(vocabulary, add_blank_char=True, add_blank_word=False, use_eos_bos=True,
+                             blank_at_start=True, blank_at_end=True, fold_compounds=True)
+    ids, streams = tokenizer.tokenize_with_streams(["a", "b", "c"], {"stress": [7, 8, 9]})
+    #        ^  _ ab  _  c  _  $
+    assert ids == [1, 0, 6, 0, 5, 0, 2]
+    assert streams == {"stress": [0, 0, 7, 0, 9, 0, 0]}

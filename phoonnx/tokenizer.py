@@ -686,8 +686,9 @@ class TTSTokenizer:
 
         Each stream holds one value per symbol of *text*. Each id keeps the value
         of the symbol that gave it, and an id that the tokenizer adds (a blank,
-        BOS or EOS) gets the neutral value 0. So every returned stream is as long
-        as the ids and in step with them.
+        BOS or EOS) gets the neutral value 0. A word blank keeps the value of its
+        space, and a folded compound the value of its first symbol. So every
+        returned stream is as long as the ids and in step with them.
 
         Returns:
             Tuple[List[int], Dict[str, List[int]]]: The token IDs and the streams.
