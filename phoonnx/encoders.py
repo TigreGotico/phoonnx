@@ -41,6 +41,10 @@ class Utterance:
     """Values a phonemizer gives beside its symbols, one per id, keyed by the
     ``AdapterSynthesisRequest`` field they fill, such as ``language_ids``."""
 
+    params: Mapping[str, Any] = field(default_factory=dict)
+    """Values the adapter's ``read_text`` learned about this utterance. They join the
+    request params of the engine call."""
+
 
 class Encoder(Protocol):
     def encode(self, text: str, config: SynthesisConfig) -> Iterator[Utterance]:
@@ -67,10 +71,13 @@ class SymbolEncoder:
         for segment in self.frontend.segments(text, stages_of(config)):
             if not segment.phonemes:
                 continue
-            ids = self.tokenizer.tokenize(list(segment.phonemes))
+            streams = {name: list(values) for name, values in segment.streams.items()
+                       if name in SIDE_STREAMS}
+            if streams:
+                ids, streams = self.tokenizer.tokenize_with_streams(list(segment.phonemes), streams)
+            else:
+                ids = self.tokenizer.tokenize(list(segment.phonemes))
             if ids:
-                streams = {name: list(values) for name, values in segment.streams.items()
-                           if name in SIDE_STREAMS}
                 yield Utterance(text=segment.text, symbols=tuple(segment.phonemes), ids=tuple(ids),
                                 streams=streams)
 

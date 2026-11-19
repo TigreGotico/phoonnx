@@ -66,3 +66,10 @@ def test_each_sentence_is_one_engine_call_with_its_own_language_token(tmp_path):
     assert [chunk[0] for chunk in ids] == [VOCAB["[pt]"], VOCAB["[pt]"]]
     assert [[i for i in chunk if i in letters] for chunk in ids] == [
         [VOCAB["h"], VOCAB["i"]], [VOCAB["o"], VOCAB["l"], VOCAB["a"]]]
+
+
+def test_an_inline_phoneme_block_does_not_reach_the_tokenizer(tmp_path):
+    voice = _voice(tmp_path, {"engine": "chatterbox", "lang_code": "pt-PT", "alphabet": "unicode"})
+    ids = [list(u.ids) for u in voice.prepare("hi [[ola]] hi")]
+    h, i, space, pt = VOCAB["h"], VOCAB["i"], VOCAB["[SPACE]"], VOCAB["[pt]"]
+    assert ids == [[pt, h, i, space, h, i]]

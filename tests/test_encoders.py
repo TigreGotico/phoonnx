@@ -35,21 +35,29 @@ def _vits_voice(adapter=None, **extra):
                     adapter=adapter or get_adapter("vits"))
 
 
+def _tokenizer():
+    """One id per symbol, and a blank id 0 after each: the stream of a symbol repeats on its id, 0 on the blank."""
+    def tokenize_with_streams(symbols, streams):
+        ids = [x for s in symbols for x in (ord(s), 0)]
+        return ids, {name: [v for value in values for v in (value, 0)] for name, values in streams.items()}
+
+    return types.SimpleNamespace(
+        tokenize=lambda symbols: [ord(s) for s in symbols], tokenize_with_streams=tokenize_with_streams)
+
+
 def test_symbol_encoder_tokenizes_each_chunk_and_keeps_side_streams():
-    tokenizer = types.SimpleNamespace(tokenize=lambda symbols: [ord(s) for s in symbols])
-    frontend = _frontend([_segment("ab.", "ab", {"language_ids": (0, 1), "other": (5, 5)}),
+    frontend = _frontend([_segment("ab.", "ab", {"language_ids": (3, 4), "other": (5, 5)}),
                           _segment("", ()),
                           _segment("c.", "c")])
-    utterances = list(SymbolEncoder(frontend, tokenizer).encode("ab. c.", SynthesisConfig()))
+    utterances = list(SymbolEncoder(frontend, _tokenizer()).encode("ab. c.", SynthesisConfig()))
     assert utterances == [
-        Utterance(text="ab.", symbols=("a", "b"), ids=(97, 98), streams={"language_ids": [0, 1]}),
+        Utterance(text="ab.", symbols=("a", "b"), ids=(97, 0, 98, 0), streams={"language_ids": [3, 0, 4, 0]}),
         Utterance(text="c.", symbols=("c",), ids=(99,)),
     ]
 
 
 def test_symbol_encoder_symbols_are_one_utterance():
-    tokenizer = types.SimpleNamespace(tokenize=lambda symbols: [ord(s) for s in symbols])
-    utterance = SymbolEncoder(_frontend([]), tokenizer).encode_symbols(["x", "y"], SynthesisConfig())
+    utterance = SymbolEncoder(_frontend([]), _tokenizer()).encode_symbols(["x", "y"], SynthesisConfig())
     assert utterance == Utterance(text=None, symbols=("x", "y"), ids=(120, 121))
 
 

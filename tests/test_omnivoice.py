@@ -697,3 +697,60 @@ def test_voice_index_entries_are_well_formed():
             "acoustic_encoder_path", "semantic_encoder_path",
             "quantizer_encoder_path", "decoder_path", "bpe_tokenizer_path"}
     assert "omnivoice/en" in index and "omnivoice/zh" in index
+
+
+def test_reference_cache_never_pairs_one_clips_key_with_anothers_codes():
+    """A request that lands while the cache is being updated for another clip must get
+    its own clip's codes."""
+    class _Probe(OmniVoiceAdapter):
+        on_store = None
+
+        def _fire(self):
+            hook, self.on_store = self.on_store, None
+            if hook:
+                hook()
+
+        @property
+        def _ref_cache(self):
+            return self.__dict__.get("_rc")
+
+        @_ref_cache.setter
+        def _ref_cache(self, value):
+            self.__dict__["_rc"] = value
+            self._fire()
+
+        @property
+        def _ref_cache_key(self):
+            return self.__dict__.get("_rk")
+
+        @_ref_cache_key.setter
+        def _ref_cache_key(self, value):
+            self.__dict__["_rk"] = value
+            self._fire()
+
+    class _Sess:
+        def __init__(self, fn):
+            self.fn = fn
+
+        def run(self, _names, feed):
+            return [self.fn(feed)]
+
+    sessions = {
+        "acoustic_encoder": _Sess(lambda f: np.full((1, 1, 4), f["waveform_24k"][0, 0, 0], np.float32)),
+        "semantic_encoder": _Sess(lambda f: np.zeros((1, 1, 4), np.float32)),
+        "quantizer_encoder": _Sess(lambda f: np.full(
+            (1, NUM_CODEBOOKS, 4), f["acoustic_features"][0, 0, 0], np.float32)),
+    }
+    ad = _Probe()
+    ad._cloning_session = lambda attr, _path: sessions[attr]
+    ad._preprocess_reference = lambda audio, sr: (audio.reshape(-1), 0.1)
+
+    def clip(clip_id):
+        return np.full(2400, clip_id, np.float32)
+
+    assert ad.encode_reference(clip(2.0), 24000)[0][0, 0] == 2     # cache now holds clip 2
+    seen = []
+    ad.on_store = lambda: seen.append(ad.encode_reference(clip(1.0), 24000)[0][0, 0])
+    assert ad.encode_reference(clip(1.0), 24000)[0][0, 0] == 1
+    assert seen == [1]
+    assert ad.encode_reference(clip(2.0), 24000)[0][0, 0] == 2

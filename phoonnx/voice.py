@@ -66,6 +66,10 @@ def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunk
     return [[c for c in chunk] for chunk, _, _ in chunks if chunk]
 
 
+_BLOCK = re.compile(r"\[\[(.*?)\]\]")
+"""An inline phoneme block: the shortest ``[[...]]`` on one line, as scriptconv's frontend reads it."""
+
+
 def _write_wav(path: str, audio: np.ndarray, sample_rate: int) -> str:
     """Write mono float32 ``audio`` to ``path`` as 16-bit PCM WAV.
 
@@ -708,6 +712,36 @@ class TTSVoice:
             yield list(segment.phonemes), {name: list(values) for name, values in segment.streams.items()
                                            if name in SIDE_STREAMS}, segment.text
 
+    def _inline_blocks(self, text: str, alphabet: Optional[Alphabet]) -> str:
+        """*text* with each ``[[...]]`` block in the voice's *alphabet*, or with the blocks left out.
+
+        A block holds IPA. An adapter that takes no symbols has no input for it, so
+        the blocks are left out with one warning. For any other voice, a block is
+        converted from IPA to *alphabet* where scriptconv has a path, and kept as
+        written where it has none. ARPA symbols have more than one character, and the
+        frontend adds a block one character at a time, so an ARPA voice keeps the IPA.
+        """
+        blocks = _BLOCK.findall(text)
+        if not blocks:
+            return text
+        if not self.adapter.takes_symbols:
+            name = Path(self.model_path).stem if self.model_path else "<voice>"
+            LOG.warning("Voice %s takes no symbol input: skipping the inline blocks %s", name,
+                        ["[[%s]]" % block for block in blocks])
+            return re.sub(r"\s*\[\[.*?\]\]", "", text).strip()
+        if alphabet in (None, Alphabet.IPA, Alphabet.ARPA):
+            return text
+
+        def convert(block: "re.Match[str]") -> str:
+            try:
+                symbols = DEFAULT_GRAPH.convert(block[1], Alphabet.IPA.value, alphabet.value,
+                                                lang=self.config.lang_code)
+            except ValueError:
+                return block[0]
+            return f"[[{symbols}]]"
+
+        return _BLOCK.sub(convert, text)
+
     def prepare(self, text: str, config: Optional[SynthesisConfig] = None) -> Iterator[Utterance]:
         """Turn *text* into model input: one :class:`Utterance` per engine call.
 
@@ -733,7 +767,11 @@ class TTSVoice:
 
         src_alphabet = config.alphabet if config.alphabet is not None else Alphabet.GRAPHEMES
         if src_alphabet == Alphabet.GRAPHEMES:
-            yield from self.encoder.encode(spoken, config)
+            spoken = self._inline_blocks(spoken, self.config.alphabet)
+            if self.adapter.READS_TEXT is True:
+                yield from self.adapter.read_text(spoken, self, config, stages_of(config))
+            else:
+                yield from self.encoder.encode(spoken, config)
             return
 
         for symbols, _, _ in self._iter_phonemes(spoken, src_alphabet, self.config.alphabet,
@@ -986,6 +1024,8 @@ class TTSVoice:
                 # instead of raising, since alignment is an optional feature.
                 include_alignments = False
 
+        if utterance.params:
+            syn_config = replace(syn_config, extra_params={**syn_config.extra_params, **utterance.params})
         audio, phoneme_id_samples = self._infer(
             utterance.ids, syn_config, include_alignments, utterance.streams,
             text=utterance.text)
@@ -1368,16 +1408,7 @@ class TTSVoice:
         if syn_config.top_p is not None:
             params["top_p"] = syn_config.top_p
 
-        # A stream holds one value per phonemizer symbol. A tokenizer that adds
-        # blanks or BOS/EOS breaks that 1:1 match; the stream is then left out and
-        # the adapter applies its own default, as for a phonemizer with no stream.
-        side_streams = {}
-        for name, values in (streams or {}).items():
-            if len(values) == len(phoneme_ids):
-                side_streams[name] = np.array([values], dtype=np.int64)
-            else:
-                LOG.warning(f"{name} left out: {len(values)} values for "
-                            f"{len(phoneme_ids)} phoneme ids")
+        side_streams = {name: np.array([values], dtype=np.int64) for name, values in (streams or {}).items()}
 
         request = AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,

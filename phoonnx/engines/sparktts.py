@@ -218,8 +218,7 @@ class SparkTTSAdapter(BaseOnnxAdapter):
         # A one-entry cache keyed on the request's own clip: a request whose
         # clip differs recomputes rather than reading the previous caller's
         # tokens, and one that repeats it skips the encoders.
-        "_resolve_speaker": frozenset({"_reference_cache",
-                                       "_reference_cache_key"}),
+        "_resolve_speaker": frozenset({"_reference_cache"}),
     }
 
     def __init__(self):
@@ -231,8 +230,9 @@ class SparkTTSAdapter(BaseOnnxAdapter):
         self.preset_global_tokens: Optional[np.ndarray] = None
         self.special: Dict[str, int] = {}
         self._params: Dict[str, Any] = {}
-        self._reference_cache_key: Optional[tuple] = None
-        self._reference_cache: Tuple[np.ndarray, Optional[np.ndarray]] = (None, None)
+        # (key, tokens) in one attribute: a reader never sees one request's key
+        # next to another request's tokens.
+        self._reference_cache: Optional[Tuple[tuple, Tuple[np.ndarray, Optional[np.ndarray]]]] = None
         self.past_names: List[str] = []
         self.num_kv_heads = 0
         self.head_dim = 0
@@ -372,11 +372,13 @@ class SparkTTSAdapter(BaseOnnxAdapter):
         if ref is not None:
             audio = np.asarray(ref[0], np.float32).reshape(-1)
             key = (hash(audio.tobytes()), int(ref[1]), bool(prompt_text_ids))
-            if self._reference_cache_key != key:
-                self._reference_cache = self.tokenize_reference(
-                    audio, int(ref[1]), with_semantic=bool(prompt_text_ids))
-                self._reference_cache_key = key
-            return self._reference_cache
+            cached = self._reference_cache
+            if cached is not None and cached[0] == key:
+                return cached[1]
+            tokens = self.tokenize_reference(
+                audio, int(ref[1]), with_semantic=bool(prompt_text_ids))
+            self._reference_cache = (key, tokens)
+            return tokens
         if self.preset_global_tokens is None:
             raise RuntimeError("Spark-TTS voice has neither a speaker_tokens_path preset "
                                "nor a speaker_reference clip to clone from")
