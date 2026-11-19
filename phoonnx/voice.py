@@ -72,14 +72,14 @@ _SKIPPED_BLOCKS = re.compile(r"\s*(?:\[\[.*?\]\]\s*)+")
 
 
 def _gap(match: "re.Match[str]") -> str:
-    """What stands where a run of skipped blocks was: the whitespace around or between them with
-    the most line breaks, else nothing when a mark follows the last block directly, else one space."""
+    """What stands where a run of skipped blocks was: nothing when a mark follows the last block
+    directly, else the whitespace around or between them with the most line breaks, else one space."""
     spaces = INLINE_BLOCK.split(match[0])[::2]
-    widest = max(spaces, key=lambda space: space.count("\n"))
-    if "\n" in widest:
-        return widest
     following = match.string[match.end():match.end() + 1]
-    return "" if not spaces[-1] and not following.isalnum() else " "
+    if not spaces[-1] and not following.isalnum():
+        return ""
+    widest = max(spaces, key=lambda space: space.count("\n"))
+    return widest if "\n" in widest else " "
 
 
 def _write_wav(path: str, audio: np.ndarray, sample_rate: int) -> str:
