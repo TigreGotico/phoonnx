@@ -37,6 +37,8 @@ List the voices for a language. The list starts like this:
 
 ```
 $ phoonnx-voices list-voices --lang pt-PT
+
+Found 51 voices for language 'pt-PT':
 * OpenVoiceOS/phoonnx_pt-PT_miro_unicode (pt-PT)
 * OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone (pt-PT)
 * OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone (pt-PT)

@@ -300,7 +300,7 @@ serves the configured `lang`:
 ValueError: No voices available for language: xx-YY
 ```
 
-When you load a voice with a `lang_code` that its phonemizer cannot read, the load stops:
+`TTSVoice.load(model_path, config_path, lang_code=...)` takes a language that overrides the config. When its phonemizer cannot read that language, the load stops. `manager.voices[id].load()` takes no `lang_code`; it uses the language of the index entry.
 
 ```
 phoonnx.errors.UnsupportedVoiceLanguage: voice 'dii_es-ES': no phonemizer backend supports lang 'xx-YY' for phoneme_type 'espeak'

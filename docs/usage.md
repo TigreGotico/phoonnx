@@ -104,14 +104,14 @@ with wave.open("output.wav", "wb") as wav_file:
 
 ### Streaming Audio Chunks
 
-`synthesize()` is a generator that yields one `AudioChunk` per sentence. This enables low-latency streaming. `SynthesisConfig(chunk=...)` changes the size of a chunk: `clause` gives the first audio sooner on a long sentence, and `paragraph` or `none` gives fewer false sentence ends.
+`synthesize()` is a generator that yields one `AudioChunk` per sentence, as the sentence splitter cuts the text. This enables low-latency streaming. A short exclamation can stay in one chunk with the sentence after it: "Hello! How are you today?" gives one chunk, and "Hello world. How are you today?" gives two. `SynthesisConfig(chunk=...)` changes the size of a chunk: `clause` gives the first audio sooner on a long sentence, and `paragraph` or `none` gives fewer false sentence ends.
 
 ```python
 from phoonnx.config import SynthesisConfig
 
 syn_config = SynthesisConfig(length_scale=1.2)  # slightly slower speech
 
-for chunk in voice.synthesize("Hello! How are you today?", syn_config=syn_config):
+for chunk in voice.synthesize("Hello world. How are you today?", syn_config=syn_config):
     print(f"Sample rate: {chunk.sample_rate}")
     print(f"Audio shape: {chunk.audio_float_array.shape}")
     # chunk.audio_int16_bytes — raw PCM bytes for playback
@@ -216,7 +216,7 @@ $ PHOONNX_PHONETIC_SPELLINGS_DIR=~/.config/phoonnx/spellings python my_app.py
 
 A file is named by primary language (`fr.txt`) and/or full tag (`fr-CA.txt`); they are applied
 over the packaged file, the full tag over the primary language. The directory can also be passed
-to `PhoneticSpellings.from_lang(lang, user_dir=...)`.
+to `PhoneticSpellings.from_lang(lang, user_dir=...)` (`from phoonnx.voice import PhoneticSpellings`).
 
 ```python
 voice.phonetic_spellings  # PhoneticSpellings (.replacements dict, .apply(text)), or None
