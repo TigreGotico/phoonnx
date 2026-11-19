@@ -200,23 +200,3 @@ class MatchaAdapter(BaseOnnxAdapter):
             if {"x", "x_lengths", "scales"}.issubset(inputs):
                 return True
         return False
-
-    def parse_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract Matcha per-call params and remember engine_params."""
-        params: Dict[str, Any] = {}
-        inference = config.get("inference", {})
-        params["temperature"] = inference.get("temperature", 0.667)
-        params["length_scale"] = inference.get("length_scale", 1.0)
-        params["denoise"] = inference.get("denoise", True)
-
-        engine_params = config.get("engine_params", {})
-        if engine_params:
-            self.configure_from_params(engine_params)
-        params["spk_id"] = engine_params.get("spk_id")
-        return params
-
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "temperature": "Temperature",
-            "length_scale": "Length Scale",
-        }

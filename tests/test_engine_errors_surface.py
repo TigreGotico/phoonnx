@@ -25,6 +25,12 @@ class _BrokenParser(BaseOnnxAdapter):
         raise TypeError("a bug inside the engine")
 
 
+class _BrokenFeed(_BrokenParser):
+    def build_feed_dict(self, request, session):
+        self.calls += 1
+        raise TypeError("a bug while building the feed")
+
+
 class TestEngineErrors(unittest.TestCase):
     def test_a_type_error_in_parse_outputs_reaches_the_caller_once(self):
         adapter = _BrokenParser()
@@ -34,6 +40,14 @@ class TestEngineErrors(unittest.TestCase):
                                           phoneme_lengths=np.array([3], dtype=np.int64))
         with self.assertRaisesRegex(TypeError, "a bug inside the engine"):
             adapter.synthesize(request, session)
+        self.assertEqual(adapter.calls, 1)
+
+    def test_a_type_error_in_build_feed_dict_reaches_the_caller_once(self):
+        adapter = _BrokenFeed()
+        request = AdapterSynthesisRequest(phoneme_ids=np.zeros((1, 3), dtype=np.int64),
+                                          phoneme_lengths=np.array([3], dtype=np.int64))
+        with self.assertRaisesRegex(TypeError, "a bug while building the feed"):
+            adapter.synthesize(request, MagicMock())
         self.assertEqual(adapter.calls, 1)
 
     def test_every_engine_takes_output_names(self):
