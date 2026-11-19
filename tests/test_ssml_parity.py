@@ -9,6 +9,8 @@ import pytest
 
 from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
+from unittest.mock import MagicMock
+
 from phoonnx.voice import AudioChunk, TTSVoice
 from phoonnx.xsampa import xsampa_to_ipa
 
@@ -123,6 +125,7 @@ class _Config:
 
 class _Voice(TTSVoice):
     frontend = None  # no phonemizer: these documents hold no say-as but an expletive
+    adapter = MagicMock()
 
 
 def _voice():

@@ -247,7 +247,8 @@ class PhoonnxLoader(ConfigLoader):
 
         # Preserve the model's own special tokens when present (a native
         # config may use any pad/blank/bos/eos); fall back to phoonnx defaults.
-        config["pad"] = config.get("pad") or DEFAULT_PAD_TOKEN
+        # "pad": null is a vocabulary with no pad.
+        config.setdefault("pad", DEFAULT_PAD_TOKEN)
         config["blank"] = config.get("blank") or DEFAULT_BLANK_TOKEN
         config["bos"] = config.get("bos") or DEFAULT_BOS_TOKEN
         config["eos"] = config.get("eos") or DEFAULT_EOS_TOKEN
@@ -442,6 +443,8 @@ class Mimic3Loader(ConfigLoader):
         config = request.config
         if not request.tokens_txt:
             raise ValueError("mimic3 models require an external phonemes.txt file in addition to the config")
+        with open(request.tokens_txt, encoding="utf-8") as tokens_file:
+            tokens_txt = tokens_file.read()
 
         phoneme_type = request.phoneme_type or config.get("phonemizer", PhonemeType.GRUUT)
         phoneme_cfg = config.get("phonemes", {})
@@ -456,7 +459,7 @@ class Mimic3Loader(ConfigLoader):
             alphabet = request.alphabet or Alphabet.IPA
 
         return LoadedFields(
-            tokenizer=TTSTokenizer.from_mimic3_config(config, request.tokens_txt),
+            tokenizer=TTSTokenizer.from_mimic3_config(config, tokens_txt),
             engine=Engine.MIMIC3,
             lang_code=config.get("text_language"),
             phoneme_type=phoneme_type,

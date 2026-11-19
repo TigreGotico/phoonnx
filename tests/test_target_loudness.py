@@ -35,6 +35,10 @@ class TestPeakNormalizationIsTheDefault(unittest.TestCase):
         out = level_audio(audio, SynthesisConfig(normalize_audio=False), RATE)
         np.testing.assert_array_equal(out, audio)
 
+    def test_empty_audio_comes_back_empty(self):
+        out = level_audio(np.zeros(0, np.float32), SynthesisConfig(), RATE)
+        self.assertEqual(out.shape, (0,))
+
 
 class TestTargetLoudness(unittest.TestCase):
 

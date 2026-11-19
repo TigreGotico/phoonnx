@@ -70,6 +70,7 @@ with wave.open("hello.wav", "wb") as wav_file:
 > `model.onnx` + `model.json` side by side, so if you load straight from a cache
 > directory (instead of via `manager.voices[voice_id].load()`, which resolves this
 > for you) pass `config_path` explicitly: `TTSVoice.load(cache_dir / "model.onnx", cache_dir / "model.json")`.
+> When no config file exists at that path, `TTSVoice.load` raises `phoonnx.errors.VoiceLoadError`.
 
 ## 4. Tune the output
 

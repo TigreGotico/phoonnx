@@ -11,6 +11,7 @@ optionally adds
 speaker similarity against a reference-speaker centroid, and returns a structured
 :class:`EvalRow`.
 """
+import copy
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -145,10 +146,11 @@ def speaker_similarity(emb, ref, wav: np.ndarray, sr: int) -> float:
 # Text encoding (matches preprocess/train exactly)
 # ---------------------------------------------------------------------------
 def build_encoder(config: Dict, noise_scale=None, length_scale=None, noise_w=None):
-    """Return ``(phonemizer, tokenizer, lang, sample_rate, scales)`` matching
+    """Return ``(frontend, tokenizer, lang, sample_rate, scales)`` matching
     preprocess/train exactly."""
-    from phoonnx.config import Alphabet, PhonemeType, get_phonemizer
+    from phoonnx.config import Alphabet, PhonemeType, VoiceConfig, get_phonemizer, voice_frontend
     from phoonnx.tokenizer import TTSTokenizer
+    from scriptconv.frontend import Stages
 
     phoneme_type = PhonemeType(config["phoneme_type"])
     alphabet = Alphabet(config.get("alphabet") or "ipa")
@@ -156,6 +158,11 @@ def build_encoder(config: Dict, noise_scale=None, length_scale=None, noise_w=Non
                         keep_punctuation=bool(config.get("keep_punctuation", False)))
     tokenizer = TTSTokenizer.from_phoonnx_config(config)
     lang = config.get("lang_code", "")
+    # Read the text settings the way synthesis reads them.
+    voice_config = VoiceConfig.from_dict(copy.deepcopy(config))
+    stages = Stages(diacritize=bool(voice_config.add_diacritics),
+                    diacritizer_model=voice_config.diacritizer_model)
+    frontend = voice_frontend(ph, lang, stages)
     sample_rate = int(config.get("audio", {}).get("sample_rate", 22050))
     inf = config.get("inference", {})
     scales = [
@@ -163,16 +170,15 @@ def build_encoder(config: Dict, noise_scale=None, length_scale=None, noise_w=Non
         length_scale if length_scale is not None else float(inf.get("length_scale", 1.0)),
         noise_w if noise_w is not None else float(inf.get("noise_w", 0.8)),
     ]
-    return ph, tokenizer, lang, sample_rate, scales
+    return frontend, tokenizer, lang, sample_rate, scales
 
 
-def text_to_ids(text: str, ph, tokenizer, lang):
-    """Replicate preprocess.py: normalize -> phonemize_to_list
+def text_to_ids(text: str, frontend, tokenizer, lang):
+    """Replicate preprocess.py: ``frontend.phonemize_flat``
     -> tokenizer.tokenize (intersperse pad + BOS/EOS)."""
-    from text2spoken import normalize
+    from scriptconv.frontend import Stages
 
-    utt = normalize(text, lang)
-    phonemes = ph.phonemize_to_list(utt, lang)
+    phonemes = frontend.phonemize_flat(text, Stages(lang=lang))
     return phonemes, tokenizer.tokenize(phonemes)
 
 

@@ -36,12 +36,13 @@ def test_pocket_stream_joins_to_the_synthesized_audio(config):
     assert [i for c in parts for i in c.phoneme_ids] == [i for c in whole for i in c.phoneme_ids]
 
 
-def test_a_sentence_with_no_frames_keeps_its_chunk_and_ids():
-    whole = list(_pocket_voice(frames=0).synthesize(TEXT, RAW))
-    parts = list(_pocket_voice(frames=0).stream(TEXT, RAW))
+@pytest.mark.parametrize("config", [RAW, SynthesisConfig(), SynthesisConfig(normalize_audio=False, target_loudness=-20.0)])
+def test_a_sentence_with_no_frames_keeps_its_chunk_and_ids(config):
+    whole = list(_pocket_voice(frames=0).synthesize(TEXT, config))
+    parts = list(_pocket_voice(frames=0).stream(TEXT, config))
     assert [i for c in parts for i in c.phoneme_ids] == [i for c in whole for i in c.phoneme_ids]
     assert len(parts) == len(whole) == 2
-    assert np.array_equal(_joined(parts), _joined(whole))
+    assert [c.audio_float_array.size for c in parts + whole] == [0] * 4
 
 
 def test_pocket_stream_yields_slices_without_whole_sentence_steps():
