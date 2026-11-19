@@ -185,7 +185,18 @@ class TestListAvailable(unittest.TestCase):
 
 
 class TestListVoicesLangFilter(unittest.TestCase):
-    LANGS = ("pt-PT", "pt-BR", "pt", "pt-PT-x-lisbon", "en-US")
+    LANGS = ("pt-PT", "pt-BR", "pt", "pt-PT-x-lisbon", "en-US", "zh", "zh-CN", "zh-TW")  # zh tags as the index has them
+
+    def _ranked(self, lang):
+        """What the manager itself ranks for ``lang``, without the CLI filter."""
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with patch("phoonnx.model_manager.os.path.expanduser", return_value=tmp.name):
+            manager = TTSModelManager(cache_path=os.path.join(tmp.name, "cache.json"))
+        manager.voices = {f"v/{l}": TTSModelInfo(voice_id=f"v/{l}", lang=l,
+                                                  model_url=f"https://example.com/{l}.onnx")
+                          for l in self.LANGS}
+        return sorted(v.lang for v in manager.get_lang_voices(lang))
 
     def _list(self, lang):
         tmp = tempfile.TemporaryDirectory()
@@ -210,6 +221,14 @@ class TestListVoicesLangFilter(unittest.TestCase):
 
     def test_bare_tag_lists_every_region(self):
         self.assertEqual(self._list("pt"), ["pt", "pt-BR", "pt-PT", "pt-PT-x-lisbon"])
+
+    def test_script_tag_without_region_keeps_every_voice(self):
+        self.assertTrue(self._ranked("zh-Hans"))
+        self.assertEqual(self._list("zh-Hans"), self._ranked("zh-Hans"))
+
+    def test_region_with_no_voice_lists_the_nearest_voices(self):
+        self.assertTrue(self._ranked("en-AU"))
+        self.assertEqual(self._list("en-AU"), self._ranked("en-AU"))
 
 
 class TestDownloadVoice(unittest.TestCase):

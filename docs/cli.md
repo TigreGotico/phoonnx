@@ -66,7 +66,7 @@ phoonnx-voices list-voices [--lang LANG] [--verbose]
 
 | Flag | Description |
 |------|-------------|
-| `--lang LANG` | Filter by language code. A tag with a region (`pt-PT`) lists voices of that region only. A bare tag (`pt`) lists every region, nearest first. |
+| `--lang LANG` | Filter by language code. A tag with a region (`pt-PT`) lists the voices of that region. A tag with no region (`pt`, `zh-Hans`), or a region with no voice (`en-AU`), lists the nearest voices first, as the plugin picks them. |
 | `-v`, `--verbose` | Show full details for each voice |
 
 **Examples:**
@@ -116,8 +116,8 @@ The voice is looked up in the local cache first; if it is not cached, the downlo
 falls back to the bundled indexes, so a single voice can be fetched without running
 `update-cache` first.
 
-The command exits with status 1 and prints one line on stderr when the id is unknown,
-the network fails, or the voice is not cached and the machine is offline.
+The command exits with status 1 when the id is unknown, the network fails, or the voice
+is not cached and the machine is offline. Its last line on stderr names the error.
 
 **Example:**
 

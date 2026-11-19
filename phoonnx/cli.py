@@ -1,4 +1,5 @@
 import click
+from langcodes import Language
 from phoonnx.model_manager import PRECISIONS, TTSModelManager, TTSModelInfo
 from phoonnx.util import normalize_lang
 import requests
@@ -21,17 +22,21 @@ def print_voice_info(voice: TTSModelInfo):
     click.echo("-" * 40)
 
 
+def _region(tag: str) -> tuple:
+    tag = Language.get(normalize_lang(tag))
+    return tag.language, tag.territory
+
+
 def voices_for_lang(manager: TTSModelManager, lang: str) -> list:
     """The voices ``get_lang_voices`` ranks for ``lang``. A tag with a region
-    (``pt-PT``) keeps only the voices of that region; a bare tag (``pt``)
-    keeps every region, nearest first."""
+    (``pt-PT``) keeps the voices of that region, or every voice nearest first
+    when the region has none, as the plugin does; a tag with no region (``pt``,
+    ``zh-Hans``) keeps every voice, nearest first."""
     voices = manager.get_lang_voices(lang)
-    if "-" not in normalize_lang(lang, default_region=False):
+    if not Language.get(normalize_lang(lang, default_region=False)).territory:
         return voices
-    wanted = normalize_lang(lang)
-    return [v for v in voices
-            if normalize_lang(v.lang) == wanted
-            or normalize_lang(v.lang).startswith(wanted + "-")]
+    wanted = _region(lang)
+    return [v for v in voices if _region(v.lang) == wanted] or voices
 
 
 # --- CLI Group ---
