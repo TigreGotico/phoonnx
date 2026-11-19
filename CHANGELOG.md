@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.124.0a1](https://github.com/TigreGotico/phoonnx/tree/1.124.0a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.8a1...1.124.0a1)
+
+## [1.123.8a1](https://github.com/TigreGotico/phoonnx/tree/1.123.8a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.7a1...1.123.8a1)
+
+**Merged pull requests:**
+
+- fix: the voice CLI exits non-zero on failure and filters by the full language tag [\#833](https://github.com/TigreGotico/phoonnx/pull/833) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- feat: phoonnx.compat converts third-party configs to the native config.json [\#767](https://github.com/TigreGotico/phoonnx/pull/767) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.123.7a1](https://github.com/TigreGotico/phoonnx/tree/1.123.7a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.6a1...1.123.7a1)
@@ -95,7 +108,6 @@
 
 - test: expect the grapheme revision preprocess records [\#814](https://github.com/TigreGotico/phoonnx/pull/814) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - feat: record the training text casing and apply it at inference [\#756](https://github.com/TigreGotico/phoonnx/pull/756) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: a transformers VITS vocabulary blanks with token id 0 [\#732](https://github.com/TigreGotico/phoonnx/pull/732) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.119.0a1](https://github.com/TigreGotico/phoonnx/tree/1.119.0a1) (2026-11-19)
 
@@ -256,10 +268,6 @@
 ## [1.114.1a1](https://github.com/TigreGotico/phoonnx/tree/1.114.1a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.114.0a1...1.114.1a1)
-
-**Merged pull requests:**
-
-- fix\(pockettts\): build the mimi\_encoder session on first use [\#730](https://github.com/TigreGotico/phoonnx/pull/730) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.114.0a1](https://github.com/TigreGotico/phoonnx/tree/1.114.0a1) (2026-11-18)
 
