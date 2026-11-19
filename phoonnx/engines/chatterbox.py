@@ -15,7 +15,7 @@ Cloning is d-vector style (a reference wav, **no transcription**), so it uses th
 ``speaker_reference`` API and not ``speaker_reference_text``. Text is tokenized with the
 model's own BPE (``phoonnx.tokenizer.BPETokenizer`` + the UNICODE phonemizer), so
 ``request.phoneme_ids`` already carries the subword ids. The ``seed`` request param fixes
-the sampling of the speech tokens.
+the sampling of the speech tokens; the conditional decoder's noise nodes stay unseeded.
 """
 from typing import Any, Dict, List, Optional
 
