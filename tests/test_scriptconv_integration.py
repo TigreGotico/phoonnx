@@ -214,7 +214,7 @@ def _diacritizing_voice(lang, model):
     voice = TTSVoice.__new__(TTSVoice)
     voice.phonetic_spellings = None
     voice.phonemizer = _RecordingPhonemizer()
-    voice.config = types.SimpleNamespace(phoneme_type=PhonemeType.UNICODE,
+    voice.config = types.SimpleNamespace(text_casing="ignore", phoneme_type=PhonemeType.UNICODE,
                                          alphabet=Alphabet.IPA, lang_code=lang,
                                          add_diacritics=True, diacritizer_model=model,
                                          sample_rate=22050)
@@ -277,7 +277,7 @@ def _phonemic_voice(model_alphabet):
     voice.phonemizer = GraphemePhonemizer()
     voice.phonetic_spellings = None
     voice.adapter = MagicMock()
-    voice.config = types.SimpleNamespace(lang_code="en", alphabet=model_alphabet,
+    voice.config = types.SimpleNamespace(text_casing="ignore", lang_code="en", alphabet=model_alphabet,
                                          phoneme_type=PhonemeType.UNICODE,
                                          add_diacritics=False, diacritizer_model=None)
     voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda p: list(range(len(p))))
