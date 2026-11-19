@@ -33,6 +33,7 @@ def _make_voice():
     voice.phonetic_spellings = None
     voice.phonemizer = _RecordingPhonemizer()
     voice.config = types.SimpleNamespace(
+        text_casing="ignore",
         phoneme_type=PhonemeType.UNICODE,
         alphabet=Alphabet.IPA,
         lang_code="ru-RU",

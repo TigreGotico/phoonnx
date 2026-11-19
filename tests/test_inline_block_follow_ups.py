@@ -23,6 +23,7 @@ def _voice(adapter, sent):
     voice.model_path = "/voices/test-voice.onnx"
     voice.adapter = adapter
     voice.config = types.SimpleNamespace(
+        text_casing="ignore",
         phoneme_type=PhonemeType.UNICODE, alphabet=Alphabet.GRAPHEMES, lang_code="en", lang_tokens={},
         add_diacritics=False, diacritizer_model=None, sample_rate=22050,
         tokenizer=types.SimpleNamespace(tokenize=lambda text, **_: sent.append(text) or [1]))

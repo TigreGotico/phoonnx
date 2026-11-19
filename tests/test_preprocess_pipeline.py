@@ -364,6 +364,26 @@ class TestFinetunePhonemeMap(unittest.TestCase):
             self.assertIn("absent from the final phoneme map", str(ctx.exception))
 
 
+class TestTextCasingIsRecorded(unittest.TestCase):
+    """config.json says which casing the training text went through."""
+
+    def _written_config(self, *extra):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "Hi", "audio": "a.wav"}])
+            args = ["-i", str(src), "-o", str(tmp / "out"), "-l", "en", "--skip-audio", *extra]
+            result = _invoke(args, catch_exceptions=False)
+            self.assertEqual(result.exit_code, 0, result.output)
+            return json.loads((tmp / "out" / "config.json").read_text())
+
+    def test_the_chosen_casing_is_written(self):
+        self.assertEqual(self._written_config("--text-casing", "lower")["text_casing"], "lower")
+
+    def test_no_casing_is_written_as_ignore(self):
+        self.assertEqual(self._written_config()["text_casing"], "ignore")
+
+
 class TestPhonemizerProvenance(unittest.TestCase):
     """config.json must say whether these phonemes were produced here at all.
 

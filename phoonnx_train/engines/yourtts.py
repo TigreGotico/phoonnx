@@ -431,6 +431,7 @@ def _yourtts_voice_json(
         "phonemizer_model": model_config.get("phonemizer_model", ""),
         "alphabet": model_config.get("alphabet", ""),
         "keep_punctuation": bool(model_config.get("keep_punctuation", False)),
+        "text_casing": model_config.get("text_casing"),
         "engine_params": {
             "langid": model_config.get("language_id", 0),
             "speaker_encoder_type": "coqui_resnet",

@@ -2,11 +2,12 @@ import copy
 import warnings
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Mapping, Optional, Union, Dict
+from typing import Any, Callable, Mapping, Optional, Union, Dict
 
 import text2spoken
 
 from phoonnx.util import LOG, is_arabic, normalize_lang
+from phoonnx.version import VERSION_STR
 from phoonnx.errors import UnsupportedVoiceLanguage
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
@@ -84,6 +85,25 @@ ENGINE_ALIASES = {"kokoro": Engine.STYLETTS2.value}
 # pickles resolve to the same class everywhere.
 from scriptconv.phonemizers.enums import Alphabet, Phonemizer as PhonemeType
 from scriptconv.frontend import Chunk, FrontendConfig, Stages, TextFrontend, spoken_normalizer
+
+def get_text_casing(casing: str) -> Callable[[str], str]:
+    """
+    Returns a function to apply text casing based on a string name.
+
+    Args:
+        casing: The name of the casing function ('lower', 'upper', 'casefold', or 'ignore').
+
+    Returns:
+        A callable function (str) -> str.
+    """
+    if casing == "lower":
+        return str.lower
+    if casing == "upper":
+        return str.upper
+    if casing == "casefold":
+        return str.casefold
+    return lambda s: s
+
 
 @dataclass
 class VoiceConfig:
@@ -213,6 +233,14 @@ class VoiceConfig:
     config without the key was trained without it.
     """
 
+    text_casing: str = "ignore"
+    """The casing training applied to the text before phonemization: ``lower``,
+    ``upper``, ``casefold`` or ``ignore``. Synthesis applies the same casing,
+    after normalisation, so the model reads the text as it learned it.
+    phoonnx datasets record it in ``config.json`` from preprocessing; a config
+    without the key applies none.
+    """
+
     def __post_init__(self):
         """
         Finalize dataclass defaults after initialization.
@@ -279,6 +307,15 @@ class VoiceConfig:
         """Whether *config* is a native phoonnx voice."""
         from phoonnx.config_loaders import LoadRequest, PhoonnxLoader
         return PhoonnxLoader.detect(LoadRequest(config=config))
+
+    @property
+    def frontend(self) -> FrontendConfig:
+        """What the text frontend is built from. The voice adds the normaliser, a callable."""
+        return FrontendConfig(lang=self.lang_code, phonemizer=self.phoneme_type, alphabet=self.alphabet,
+                              model=self.phonemizer_model,
+                              stages=Stages(diacritize=self.add_diacritics,
+                                            diacritizer_model=self.diacritizer_model),
+                              keep_punctuation=self.keep_punctuation)
 
     @staticmethod
     def from_dict(config: dict[str, Any],  # phoonnx/piper/coqui/mimic3
@@ -355,6 +392,7 @@ class VoiceConfig:
             engine=loaded.engine,
             phonemizer_model=config.get("phonemizer_model"),
             keep_punctuation=bool(config.get("keep_punctuation", loaded.keep_punctuation)),
+            text_casing=config.get("text_casing", "ignore"),
             phonemizer_identity=config.get("phonemizer_identity"),
             phoneme_type=loaded.phoneme_type,
             speaker_id_map=config.get("speaker_id_map", {}),
@@ -373,60 +411,70 @@ class VoiceConfig:
             lang_id_map=config.get("lang_id_map", {}),
         )
 
-    def to_native_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this config to a **native phoonnx** ``config.json`` dict.
+    def to_dict(self) -> Dict[str, Any]:
+        """The native ``config.json`` dict, which :meth:`from_dict` reads back.
 
-        The result loads back through the ``is_phoonnx`` path in
-        :meth:`from_dict` (it carries ``phoonnx_version``), folding the
-        tokenizer vocabulary into ``phoneme_id_map`` and recording the
-        tokenizer flags + special tokens explicitly, so any model round-trips
-        without relying on the foreign-config detection heuristics.
+        A raw-text tokenizer (Chatterbox) has no symbol table, so its vocabulary is empty;
+        the voice still needs ``bpe_tokenizer_json`` at load. A missing pad is written as null,
+        which reads back as no pad. Another special token that the vocabulary lacks is written
+        as the phoonnx default, which is what a read gives, and the flags that need that token
+        are written off, so the ids stay the same.
         """
-        try:
-            from phoonnx.version import VERSION as _v
-            version = ".".join(str(p) for p in _v) if isinstance(_v, (tuple, list)) else str(_v)
-        except Exception:
-            version = "1.0"
-
         tok = self.tokenizer
-        voc = tok.vocabulary
+        if isinstance(tok, TTSTokenizer):
+            voc = tok.vocabulary
+            flags = {"add_blank_char": tok.add_blank_char and voc.blank_id is not None,
+                     "add_blank_word": tok.add_blank_word,
+                     "use_eos_bos": tok.use_eos_bos and voc.bos_id is not None and voc.eos_id is not None,
+                     "blank_at_start": tok.blank_at_start and voc.blank_id is not None,
+                     "blank_at_end": tok.blank_at_end,
+                     "fold_compounds": tok.fold_compounds}
+        else:
+            voc = Vocabulary(char2idx={})
+            flags = dict.fromkeys(("add_blank_char", "add_blank_word", "use_eos_bos", "blank_at_start",
+                                   "blank_at_end"), False)
+            flags["fold_compounds"] = True
         # an unset scale stays out of the file, so a reader uses the engine default
         scales = {"noise_scale": self.noise_scale, "length_scale": self.length_scale, "noise_w": self.noise_w_scale}
-        return {
-            "phoonnx_version": version,
-            "engine": self.engine.value if self.engine else "phoonnx",
+        native = {
+            "phoonnx_version": VERSION_STR,
+            "engine": self.engine.value,
             "phoneme_type": self.phoneme_type.value,
-            "alphabet": self.alphabet.value if self.alphabet else "unicode",
+            "alphabet": self.alphabet.value,
             "lang_code": self.lang_code,
             "audio": {"sample_rate": self.sample_rate},
             "hop_length": self.hop_length,
             "num_symbols": self.num_symbols,
             "num_speakers": self.num_speakers,
             "num_langs": self.num_langs,
-            "speaker_id_map": dict(self.speaker_id_map or {}),
-            "lang_id_map": dict(self.lang_id_map or {}),
-            "lang_tokens": dict(self.lang_tokens or {}),
+            "speaker_id_map": dict(self.speaker_id_map),
+            "lang_id_map": dict(self.lang_id_map),
+            "lang_tokens": dict(self.lang_tokens),
             "phonemizer_model": self.phonemizer_model,
             "keep_punctuation": self.keep_punctuation,
+            "text_casing": self.text_casing,
             "inference": {
                 **{key: value for key, value in scales.items() if value is not None},
                 "add_diacritics": self.add_diacritics,
                 "diacritizer_model": self.diacritizer_model,
             },
             "phoneme_id_map": dict(voc.char2idx),
-            "pad": voc.pad, "blank": voc.blank, "bos": voc.bos, "eos": voc.eos,
+            "pad": voc.pad, "blank": voc.blank or DEFAULT_BLANK_TOKEN,
+            "bos": voc.bos or DEFAULT_BOS_TOKEN, "eos": voc.eos or DEFAULT_EOS_TOKEN,
             "blank_word": voc.blank_word,
-            "add_blank_char": tok.add_blank_char,
-            "add_blank_word": tok.add_blank_word,
-            "use_eos_bos": tok.use_eos_bos,
-            "blank_at_start": tok.blank_at_start,
-            "blank_at_end": tok.blank_at_end,
-            "fold_compounds": tok.fold_compounds,
+            **flags,
             "word_sep_token": self.word_sep_token,
-            "blank_between": self.blank_between.value if self.blank_between else "tokens_and_words",
-            "engine_params": dict(self.engine_params or {}),
+            "blank_between": self.blank_between.value,
+            "engine_params": {k: v for k, v in self.engine_params.items() if k != "providers"},
         }
+        if self.phonemizer_identity is not None:
+            native["phonemizer_identity"] = dict(self.phonemizer_identity)
+        return native
+
+    def to_native_dict(self) -> Dict[str, Any]:
+        """Deprecated. Use :meth:`to_dict`."""
+        _warn_moved("VoiceConfig.to_native_dict", "VoiceConfig.to_dict")
+        return self.to_dict()
 
 
 @dataclass
@@ -616,6 +664,9 @@ def check_lang_supported(voice: str, lang_code: Optional[str],
     get_lang = getattr(phonemizer_cls, "get_lang", None)
     if get_lang is None:
         return
+    # "und" names no language; a fuzzy matcher can still map it to some spec
+    if lang_code.split("-")[0].lower() == "und":
+        raise UnsupportedVoiceLanguage(voice, lang_code, phoneme_type)
     try:
         get_lang(lang_code)
     except ImportError:
@@ -630,10 +681,9 @@ def _removal_version() -> str:
     return f"{VERSION_MAJOR + 1}.0.0"
 
 
-def _deprecated(name: str, replacement: str) -> None:
-    warnings.warn(f"phoonnx.config.{name} is deprecated and will be removed in phoonnx "
-                  f"{_removal_version()}. Use {replacement}.",
-                  DeprecationWarning, stacklevel=3)
+def _warn_moved(old: str, new: str) -> None:
+    warnings.warn(f"{old} is deprecated and will be removed in phoonnx {_removal_version()}. "
+                  f"Use {new}.", DeprecationWarning, stacklevel=3)
 
 
 def _voice_phonemizer(phoneme_type: PhonemeType,
@@ -712,7 +762,7 @@ def get_phonemizer(phoneme_type: PhonemeType,
     Raises:
         ValueError: If the provided `phoneme_type` is not supported.
     """
-    _deprecated("get_phonemizer", "TTSVoice.frontend or scriptconv.frontend.TextFrontend")
+    _warn_moved("phoonnx.config.get_phonemizer", "TTSVoice.frontend or scriptconv.frontend.TextFrontend")
     return _voice_phonemizer(phoneme_type, alphabet, model, keep_punctuation)
 
 
@@ -743,7 +793,7 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     before G2P or the pronunciation is ambiguous; that restoration is scriptconv's
     and lives entirely behind these two values.
     """
-    _deprecated("get_conversion", "TTSVoice.frontend")
+    _warn_moved("phoonnx.config.get_conversion", "TTSVoice.frontend")
     from phoonnx.encoders import SIDE_STREAMS
     from scriptconv.graph import ConversionGraph, Edge
     from scriptconv.diacritics import DIACRITIZED, diacritize

@@ -158,3 +158,15 @@ def test_native_config_without_a_pad_key_pads_with_the_default():
     vc = VoiceConfig.from_dict({"phoonnx_version": "1.0", "phoneme_id_map": {"a": 0, "b": 1, "_": 2}})
     assert vc.tokenizer.vocabulary.pad == "_"
     assert vc.tokenizer.pad_id == 2
+
+
+def test_the_transformers_blank_is_token_id_zero_not_the_pad_token():
+    # transformers' VitsTokenizer inserts token id 0 between tokens. In
+    # joefox/tts_vits_ru_hf, id 0 is " " and <pad> is 42, the last row of the
+    # embedding table; upstream feeds [0, 19, 0, 20, 0] for "пр".
+    vocab = {" ": 0, "_": 1, "п": 19, "р": 20, "<unk>": 41, "<pad>": 42}
+    vc = VoiceConfig.from_dict({}, vocab=vocab,
+                               tokenizer_config={"add_blank": True, "language": "ru",
+                                                 "pad_token": "<pad>"},
+                               phoneme_type="graphemes", alphabet="unicode")
+    assert vc.tokenizer.tokenize(["п", "р"]) == [0, 19, 0, 20, 0]

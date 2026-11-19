@@ -90,25 +90,6 @@ class Utterance:
         return data
 
 
-def get_text_casing(casing: str) -> Callable[[str], str]:
-    """
-    Returns a function to apply text casing based on a string name.
-
-    Args:
-        casing: The name of the casing function ('lower', 'upper', 'casefold', or 'ignore').
-
-    Returns:
-        A callable function (str) -> str.
-    """
-    if casing == "lower":
-        return str.lower
-    if casing == "upper":
-        return str.upper
-    if casing == "casefold":
-        return str.casefold
-    return lambda s: s
-
-
 @dataclass
 class PreprocessorConfig:
     """Dataclass to hold all runtime configuration, mimicking argparse.Namespace."""

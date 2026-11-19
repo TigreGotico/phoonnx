@@ -261,6 +261,7 @@ class PhoonnxLoader(ConfigLoader):
             alphabet=alphabet,
             add_diacritics=inference.get("add_diacritics"),
             diacritizer_model=inference.get("diacritizer_model", None),
+            blank_between=config.get("blank_between", BlankBetween.TOKENS_AND_WORDS),
         )
 
 
@@ -520,10 +521,13 @@ class TransformersLoader(ConfigLoader):
             if tok_cfg.get("language"):
                 lang_code = tok_cfg["language"]
                 pinned = {"lang_code"}
-            config["blank"] = tok_cfg.get("pad_token", config.get("blank", DEFAULT_BLANK_TOKEN))
+        # transformers' VitsTokenizer inserts token id 0 between tokens, whatever
+        # its pad_token is; a <pad> with another id is outside what the model saw.
+        config["blank"] = next((token for token, idx in request.vocab.items() if idx == 0),
+                               config.get("blank", DEFAULT_BLANK_TOKEN))
 
         tokenizer = TTSTokenizer(
-            Vocabulary(char2idx=request.vocab, blank=config.get("blank", DEFAULT_BLANK_TOKEN)),
+            Vocabulary(char2idx=request.vocab, blank=config["blank"]),
             add_blank_char=add_blank,
             add_blank_word=False,
             use_eos_bos=False,

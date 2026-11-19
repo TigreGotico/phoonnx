@@ -60,6 +60,7 @@ Homepage = "https://github.com/TigreGotico/phoonnx"
 [project.optional-dependencies]
 test = [
     "pytest",
+    "jsonschema",
     # tests/test_packaging_data.py builds a wheel to check that the
     # training data files reach an installed distribution. It builds with
     # --no-isolation, so the build backend must be present in this
@@ -87,6 +88,11 @@ test = [
     "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a123",
     # >=0.2.1a1: mantoq reads a very long digit run digit by digit, not as one int
     "scriptconv-nonfree>=0.2.1a1",
+    # the model card tests render the text stack that the cards recommend, from
+    # these libraries' own language list, call names and default model
+    "text2spoken>=0.0.2a58",
+    "bifonia>=0.5.0",
+    "text2tashkeel>=0.3.1a3",
     "espyak>=0.0.3a1",
     # the voice-conversion post-stage's end-to-end test runs the real engine;
     # pure-ONNX with no torch of its own, so it is cheap to have here.
@@ -209,9 +215,8 @@ train = [
     "diffusers>=0.43,<0.44",
     "einops",
     "huggingface_hub",
-    # librosa 1.0 is not yet checked against the pyin, griffinlim, mel and
-    # resample calls phoonnx makes.
-    "librosa>=0.9.2,<1",
+    # librosa 1.2 removes griffinlim(random_state=), used by engines/matcha.py.
+    "librosa>=0.9.2,<1.2",
     # pyarrow 26 (train-data) needs NumPy 2 at import, and it does not declare
     # numpy as a dependency, so the resolver cannot find this by itself
     "numpy>=2; python_version<'3.13'",
@@ -510,9 +515,8 @@ all = [
     # Pocket TTS voice state loading (phoonnx/engines/pockettts.py).
     "safetensors",
     # Griffin-Lim vocoder fallback (phoonnx/engines/vocoders/griffinlim.py).
-    # librosa 1.0 is not yet checked against the pyin, griffinlim, mel and
-    # resample calls phoonnx makes.
-    "librosa>=0.9.2,<1",
+    # librosa 1.2 removes griffinlim(random_state=), used by engines/matcha.py.
+    "librosa>=0.9.2,<1.2",
     # streaming VITS model splitting (phoonnx/onnx_surgery.py).
     "onnx",
     # optional post-synthesis audio super-resolution (phoonnx/voice.py).

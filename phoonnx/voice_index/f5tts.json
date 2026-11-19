@@ -336,5 +336,83 @@
                 }
             }
         }
+    },
+    "f5tts/sema-afro": {
+        "voice_id": "f5tts/sema-afro",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-multi-sema_afro-unicode/resolve/0dddf206073daea8d4fe4327eb57de1977d8af08/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-multi-sema_afro-unicode/resolve/0dddf206073daea8d4fe4327eb57de1977d8af08/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "f5tts_pinyin",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "mul",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-multi-sema_afro-unicode/resolve/0dddf206073daea8d4fe4327eb57de1977d8af08/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-multi-sema_afro-unicode/resolve/0dddf206073daea8d4fe4327eb57de1977d8af08/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-multi-sema_afro-unicode/resolve/0dddf206073daea8d4fe4327eb57de1977d8af08/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-multi-sema_afro-unicode/resolve/0dddf206073daea8d4fe4327eb57de1977d8af08/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-multi-sema_afro-unicode/resolve/0dddf206073daea8d4fe4327eb57de1977d8af08/F5_Decode_int8.onnx"
+                }
+            }
+        }
+    },
+    "f5tts/spring": {
+        "voice_id": "f5tts/spring",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-multi-spring-unicode/resolve/b48ac30fb296d5da4195b1925f4117bf3fdacfa7/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-multi-spring-unicode/resolve/b48ac30fb296d5da4195b1925f4117bf3fdacfa7/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "f5tts_pinyin",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "mul",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-multi-spring-unicode/resolve/b48ac30fb296d5da4195b1925f4117bf3fdacfa7/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-multi-spring-unicode/resolve/b48ac30fb296d5da4195b1925f4117bf3fdacfa7/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-multi-spring-unicode/resolve/b48ac30fb296d5da4195b1925f4117bf3fdacfa7/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-multi-spring-unicode/resolve/b48ac30fb296d5da4195b1925f4117bf3fdacfa7/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-multi-spring-unicode/resolve/b48ac30fb296d5da4195b1925f4117bf3fdacfa7/F5_Decode_int8.onnx"
+                }
+            }
+        }
+    },
+    "openbible/ckb": {
+        "voice_id": "openbible/ckb",
+        "model_url": "https://huggingface.co/Phoonnx/f5tts-ckb-openbible-graphemes/resolve/620616a34eb8ee3e07aa78fcb3e5a60830a4d6c3/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/f5tts-ckb-openbible-graphemes/resolve/620616a34eb8ee3e07aa78fcb3e5a60830a4d6c3/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "f5tts_pinyin",
+        "alphabet": "unicode",
+        "engine": "f5tts",
+        "lang": "ckb",
+        "aux_model_urls": {
+            "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ckb-openbible-graphemes/resolve/620616a34eb8ee3e07aa78fcb3e5a60830a4d6c3/F5_Preprocess.onnx",
+            "decode_path": "https://huggingface.co/Phoonnx/f5tts-ckb-openbible-graphemes/resolve/620616a34eb8ee3e07aa78fcb3e5a60830a4d6c3/F5_Decode.onnx"
+        },
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/f5tts-ckb-openbible-graphemes/resolve/620616a34eb8ee3e07aa78fcb3e5a60830a4d6c3/model_int8.onnx",
+                "aux_model_urls": {
+                    "preprocess_path": "https://huggingface.co/Phoonnx/f5tts-ckb-openbible-graphemes/resolve/620616a34eb8ee3e07aa78fcb3e5a60830a4d6c3/F5_Preprocess_int8.onnx",
+                    "decode_path": "https://huggingface.co/Phoonnx/f5tts-ckb-openbible-graphemes/resolve/620616a34eb8ee3e07aa78fcb3e5a60830a4d6c3/F5_Decode_int8.onnx"
+                }
+            }
+        }
     }
 }

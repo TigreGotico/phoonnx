@@ -30,7 +30,7 @@ from scriptconv.frontend import Stages, TextFrontend
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
 from phoonnx.config import VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
-    _removal_version, check_lang_supported, voice_frontend, without_normalizer
+    _removal_version, check_lang_supported, get_text_casing, voice_frontend, without_normalizer
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.encoders import SIDE_STREAMS, Encoder, SymbolEncoder, Utterance, stages_of
@@ -46,7 +46,7 @@ from phoonnx.reference_audio import load_reference_audio
 from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
 from scriptconv.phonemizers.base import PhonemizedChunks
-from phoonnx.errors import VoiceLoadError
+from phoonnx.errors import NonFiniteAudioError, VoiceLoadError
 from phoonnx.engines.vits import VitsAdapter
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
@@ -628,14 +628,16 @@ class TTSVoice:
         Assigning another phonemizer to :attr:`phonemizer`, as the Vosk voices
         do once their dictionary is known, reaches the frontend through
         :meth:`TextFrontend.with_backend`. A change to the phoneme type, the
-        language, or the phonemizer's ``keep_punctuation`` or ``normalizer``
-        builds a new frontend.
+        language, the text casing, or the phonemizer's ``keep_punctuation`` or
+        ``normalizer`` builds a new frontend. The frontend applies the voice's
+        ``text_casing`` after normalisation, as training did.
         """
         phonemizer = self.phonemizer
-        key = (self.config.phoneme_type, self.config.lang_code,
+        key = (self.config.phoneme_type, self.config.lang_code, self.config.text_casing,
                phonemizer.keep_punctuation, phonemizer.normalizer)
         if self._frontend is None or key != self._frontend_key:
-            self._frontend = voice_frontend(phonemizer, self.config.lang_code)
+            casing = None if self.config.text_casing == "ignore" else get_text_casing(self.config.text_casing)
+            self._frontend = voice_frontend(phonemizer, self.config.lang_code, Stages(casing=casing))
             self._frontend_key = key
         elif phonemizer is not self._frontend_phonemizer:
             self._frontend = self._frontend.with_backend(without_normalizer(phonemizer))
@@ -1106,7 +1108,13 @@ class TTSVoice:
         return replace(syn_config, extra_params={**syn_config.extra_params, **utterance.params})
 
     def _level(self, audio: np.ndarray, syn_config: SynthesisConfig) -> np.ndarray:
-        """The engine's *audio* levelled, scaled by ``syn_config.volume`` and clipped to [-1, 1]."""
+        """The engine's *audio* levelled, scaled by ``syn_config.volume`` and clipped to [-1, 1].
+
+        Raises :class:`NonFiniteAudioError` when the engine returned NaN or inf, which
+        the int16 cast would write as silence.
+        """
+        if not np.isfinite(audio).all():
+            raise NonFiniteAudioError(self.model_path or "<voice>")
         audio = level_audio(audio, syn_config, self.config.sample_rate)
         if syn_config.volume != 1.0:
             audio = audio * syn_config.volume
