@@ -779,6 +779,7 @@ def test_entry_language_matches_the_source_and_reaches_the_front_end(voice_id):
 # read the text one character per token (NAMAA v2 runs the Habibi-TTS code).
 _UPSTREAM_TEXT_FUNCTION = {
     "f5tts/v1-base": "f5tts_pinyin", "openbible/tw-asante": "f5tts_pinyin",
+    "f5tts/spring": "f5tts_pinyin", "f5tts/sema-afro": "f5tts_pinyin", "openbible/ckb": "f5tts_pinyin",
     **{f"habibi/ar-{d}": "f5tts_char" for d in ("unified", "alg", "egy", "irq", "mar", "msa", "sau", "uae")},
     "namaa/ar-sa-v2": "f5tts_char", "silma/v1": "f5tts_char", "silma/v1-en": "f5tts_char",
 }
