@@ -412,7 +412,7 @@ def _build_session(
 
     if cache_path.is_file():
         try:
-            cached_options = onnxruntime.SessionOptions()
+            cached_options = sess_options or onnxruntime.SessionOptions()
             cached_options.graph_optimization_level = (
                 onnxruntime.GraphOptimizationLevel.ORT_DISABLE_ALL
             )

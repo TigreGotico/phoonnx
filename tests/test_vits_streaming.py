@@ -232,8 +232,28 @@ def test_decoder_runs_on_the_voice_providers(monkeypatch):
             return seen["providers"]
 
     monkeypatch.setattr("onnxruntime.InferenceSession", Session)
+    monkeypatch.setattr("phoonnx.providers.available_providers",
+                        lambda: ["CUDAExecutionProvider", "CPUExecutionProvider"])
     monkeypatch.delenv("PHOONNX_ORT_CACHE_DIR", raising=False)
     adapter = VitsStreamingAdapter()
     adapter.configure_from_params({"decoder_path": "d.onnx", "intra_op_num_threads": 3,
                                    "providers": ["CPUExecutionProvider"]})
     assert seen == {"path": "d.onnx", "providers": ["CPUExecutionProvider"], "threads": 3}
+
+
+def test_decoder_keeps_its_threads_when_loaded_from_the_ort_cache(tmp_path, monkeypatch):
+    onnx = pytest.importorskip("onnx")
+    from onnx import TensorProto, helper
+    graph = helper.make_graph(
+        [helper.make_node("Identity", ["x"], ["y"])], "g",
+        [helper.make_tensor_value_info("x", TensorProto.FLOAT, [1])],
+        [helper.make_tensor_value_info("y", TensorProto.FLOAT, [1])])
+    path = tmp_path / "decoder.onnx"
+    onnx.save(helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)]), path)
+    monkeypatch.setenv("PHOONNX_ORT_CACHE_DIR", str(tmp_path / "cache"))
+    params = {"decoder_path": str(path), "intra_op_num_threads": 3, "providers": ["CPUExecutionProvider"]}
+    for _ in range(2):  # the first load writes the cached graph, the second reads it
+        adapter = VitsStreamingAdapter()
+        adapter.configure_from_params(params)
+        options = adapter.decoder.get_session_options()
+        assert (options.intra_op_num_threads, options.inter_op_num_threads) == (3, 1)
