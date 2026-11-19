@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.123.1a1](https://github.com/TigreGotico/phoonnx/tree/1.123.1a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.0a1...1.123.1a1)
+
+**Merged pull requests:**
+
+- fix: raise when a model returns non-finite audio [\#816](https://github.com/TigreGotico/phoonnx/pull/816) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.123.0a1](https://github.com/TigreGotico/phoonnx/tree/1.123.0a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.122.0a1...1.123.0a1)
@@ -286,10 +294,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.10a2...1.113.11a1)
 
-**Merged pull requests:**
-
-- fix: an offline voice load reads all its files from one snapshot [\#713](https://github.com/TigreGotico/phoonnx/pull/713) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.113.10a2](https://github.com/TigreGotico/phoonnx/tree/1.113.10a2) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.10a1...1.113.10a2)
@@ -297,10 +301,6 @@
 ## [1.113.10a1](https://github.com/TigreGotico/phoonnx/tree/1.113.10a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.9a1...1.113.10a1)
-
-**Merged pull requests:**
-
-- fix: the session key covers every external-data file beside a graph [\#711](https://github.com/TigreGotico/phoonnx/pull/711) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.113.9a1](https://github.com/TigreGotico/phoonnx/tree/1.113.9a1) (2026-11-18)
 
