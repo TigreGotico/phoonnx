@@ -341,6 +341,12 @@ class PiperLoader(ConfigLoader):
     models were trained by phoonnx, without punctuation unless the config says
     otherwise. They are recognised by a ``piper_version`` starting with
     ``phoonnx`` or by an ``alphabet`` key, which Piper never writes.
+
+    Piper phonemizes with the espeak-ng voice that ``espeak.voice`` names
+    (``es-419`` for an ``es_MX`` voice), and it reads the phonemes decomposed
+    (NFD). The ``vowel_clusters`` of a Piper 1.5 config, such as ``a`` + ``ɪ``,
+    each have their own key in ``phoneme_id_map``, and the tokenizer's compound
+    folding gives such a key its own id.
     """
 
     @classmethod
@@ -381,9 +387,10 @@ class PiperLoader(ConfigLoader):
     def load(cls, request: LoadRequest) -> LoadedFields:
         config = request.config
 
-        lang_code = request.lang_code or (config.get("language", {}).get("code") or
-                                          config.get("espeak", {}).get("voice"))
         phoneme_type = request.phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK)
+        espeak_voice = config.get("espeak", {}).get("voice")
+        lang_code = (request.lang_code or (espeak_voice if phoneme_type == PhonemeType.ESPEAK else None)
+                     or config.get("language", {}).get("code") or espeak_voice)
         alphabet = request.alphabet
         pinned = set()
         if phoneme_type == "text":
@@ -404,7 +411,7 @@ class PiperLoader(ConfigLoader):
         config["eos"] = DEFAULT_EOS_TOKEN
 
         return LoadedFields(
-            tokenizer=TTSTokenizer.from_piper_config(config),
+            tokenizer=TTSTokenizer.from_piper_config(config, decompose=not cls.made_by_phoonnx(config)),
             engine=Engine.PIPER,
             lang_code=lang_code,
             phoneme_type=phoneme_type,

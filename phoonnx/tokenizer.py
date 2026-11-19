@@ -265,7 +265,7 @@ class Vocabulary:
                           blank_word=cfg.get("blank_word"))
 
     @staticmethod
-    def from_piper_config(cfg: Dict[str, Any]) -> 'Vocabulary':
+    def from_piper_config(cfg: Dict[str, Any], decompose: bool = False) -> 'Vocabulary':
         """
         Creates a Vocabulary instance from a Piper configuration dictionary.
 
@@ -273,12 +273,24 @@ class Vocabulary:
 
         Parameters:
             cfg: The Piper configuration dictionary.
+            decompose: Give a precomposed symbol the ids of its canonical
+                decomposition (NFD), as Piper does for the models it trains.
 
         Returns:
             A Vocabulary instance.
         """
         # Piper format has value as list of [id, ...]
-        char2idx: Dict[str, int] = {char: idx[0] for char, idx in cfg.get("phoneme_id_map", {}).items()}
+        char2idx: Dict[str, Union[int, List[int]]] = {
+            char: idx[0] for char, idx in cfg.get("phoneme_id_map", {}).items()}
+        if decompose:
+            # Piper decomposes the espeak-ng phonemes (NFD) before the id lookup, so
+            # "ç" reaches the model as "c" and U+0327 and its own id is never trained
+            # (piper1-gpl src/piper/phonemize_espeak.py at v1.5.0, and
+            # src/phonemize.cpp of rhasspy/piper-phonemize for the older voices).
+            for char in list(char2idx):
+                parts = unicodedata.normalize("NFD", char)
+                if parts != char:
+                    char2idx[char] = [char2idx[part] for part in parts if part in char2idx]
         pad: Optional[str] = cfg.get("pad") or DEFAULT_PAD_TOKEN
         eos: Optional[str] = cfg.get("eos") or DEFAULT_EOS_TOKEN
         bos: Optional[str] = cfg.get("bos") or DEFAULT_BOS_TOKEN
@@ -801,17 +813,18 @@ class TTSTokenizer:
                             unknown_id=unknown_id)
 
     @staticmethod
-    def from_piper_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':
+    def from_piper_config(cfg: Dict[str, Any], decompose: bool = False) -> 'TTSTokenizer':
         """
         Create a TTSTokenizer configured from a Piper configuration.
         
         Parameters:
             cfg (Dict[str, Any]): Piper configuration dictionary containing phoneme/token mappings and optional special token names.
+            decompose (bool): See :meth:`Vocabulary.from_piper_config`.
         
         Returns:
             TTSTokenizer: Tokenizer configured with the Vocabulary derived from `cfg` and Piper-oriented defaults for blank and BOS/EOS handling.
         """
-        voc: Vocabulary = Vocabulary.from_piper_config(cfg)
+        voc: Vocabulary = Vocabulary.from_piper_config(cfg, decompose)
         # Default settings for Piper
         add_blank: bool = True
         blank_at_end: bool = True

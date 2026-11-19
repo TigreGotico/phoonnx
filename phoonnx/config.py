@@ -173,6 +173,9 @@ class VoiceConfig:
     speaker_id_map: Mapping[str, int] = field(default_factory=dict)
     """Speaker -> id"""
 
+    default_speaker_id: Optional[int] = None
+    """The speaker of a multi-speaker voice when the call names none. ``None`` is speaker 0."""
+
     lang_id_map: Mapping[str, int] = field(default_factory=dict)
     """lang-code -> id"""
 
@@ -396,6 +399,7 @@ class VoiceConfig:
             phonemizer_identity=config.get("phonemizer_identity"),
             phoneme_type=loaded.phoneme_type,
             speaker_id_map=config.get("speaker_id_map", {}),
+            default_speaker_id=config.get("default_speaker_id"),
             blank_between=BlankBetween(loaded.blank_between),
             blank_at_start=config.get("blank_at_start", True),
             blank_at_end=config.get("blank_at_end", True),
@@ -448,6 +452,7 @@ class VoiceConfig:
             "num_speakers": self.num_speakers,
             "num_langs": self.num_langs,
             "speaker_id_map": dict(self.speaker_id_map),
+            "default_speaker_id": self.default_speaker_id,
             "lang_id_map": dict(self.lang_id_map),
             "lang_tokens": dict(self.lang_tokens),
             "phonemizer_model": self.phonemizer_model,
