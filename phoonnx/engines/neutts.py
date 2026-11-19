@@ -227,7 +227,7 @@ class NeuTTSAdapter(BaseOnnxAdapter):
         # KV-cache geometry, read off the model's own input shapes.
         "_read_kv_shape": frozenset({"num_layers", "num_kv_heads", "head_dim"}),
         # The espeak backend the checkpoint was trained with, opened once.
-        "_espeak": frozenset({"_phonemizer"}),
+        "_phones": frozenset({"_phonemizer"}),
         # Each preset's reference transcript phonemized once; presets are
         # part of the voice, not of a request.
         "reference_phones": frozenset({"_ref_phones"}),
