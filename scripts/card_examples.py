@@ -31,6 +31,7 @@ import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from phoonnx.engines import get_adapter
 from scriptconv.phonemizers.enums import Phonemizer
 from scriptconv.phonemizers.registry import PHONEMIZER_REGISTRY
 
@@ -45,10 +46,10 @@ WITHOUT_PHOONNX = """### Without phoonnx
 
 This code runs the voice without phoonnx. Its first line names the packages it needs.
 
-phoonnx normalises the text before the model reads it, and this code does not. In the languages that it has rules
-for, the phoonnx normaliser writes numbers, dates, times and units as words, and it expands titles such as "Dr.".
-For a voice that does not use espeak, it also expands English contractions such as "can't". It changes the
-typographic apostrophe (’) to a plain one ('), and it changes line breaks and runs of spaces to one space.
+phoonnx normalises the text with text2spoken before the model reads it, and this code does not. In the languages
+that it has rules for, text2spoken writes numbers, dates, times and units as words, and it expands titles such as
+"Dr.". It leaves contractions such as "can't", the typographic apostrophe (’), line breaks and runs of spaces as
+written.
 
 This code also reads the whole text as one piece, in one run of the model. phoonnx splits the text into sentences
 or chunks and runs the model once for each piece. Give this code one sentence of normalised text, and it builds the
@@ -380,14 +381,9 @@ def _check(inputs: Dict[str, int], known: Tuple[str, ...], engine: str) -> None:
 def _params(config: Dict[str, Any], defaults: Dict[str, Any]) -> Dict[str, Any]:
     """The synthesis parameters phoonnx gives an engine: its *defaults*, the config's scales, then ``engine_params``."""
     inference = config.get("inference") or {}
-    scales = {"noise_scale": inference.get("noise_scale", 0.667), "length_scale": inference.get("length_scale", 1.0),
-              "noise_w_scale": inference.get("noise_w", 0.8)}
+    scales = {"noise_scale": inference.get("noise_scale"), "length_scale": inference.get("length_scale"),
+              "noise_w_scale": inference.get("noise_w")}
     return {**defaults, **{k: v for k, v in scales.items() if v is not None}, **(config.get("engine_params") or {})}
-
-
-def _scales(config: Dict[str, Any]) -> Tuple[float, float, float]:
-    params = _params(config, {})
-    return params["noise_scale"], params["length_scale"], params["noise_w_scale"]
 
 
 def _session(name: str, file: str, repo: Optional[str] = None) -> str:
@@ -438,7 +434,8 @@ def _run(engine: str, config: Dict[str, Any], files: Dict[str, Any], pad: Option
 def _vits(config: Dict[str, Any], model: str, inputs: Dict[str, int], engine: str) -> str:
     _check(inputs, ("input", "input_lengths", "scales", "sid", "langid", "x", "x_length", "noise_scale",
                     "length_scale", "noise_scale_w", "input_ids", "attention_mask"), engine)
-    noise, length, noise_w = _scales(config)
+    params = _params(config, get_adapter("vits").default_params())
+    noise, length, noise_w = params["noise_scale"], params["length_scale"], params["noise_w_scale"]
     lines = [_session("session", model)]
     if "scales" in inputs or "noise_scale" in inputs:
         lines.append(f'noise_scale, length_scale, noise_w = {noise}, {length}, {noise_w}  # config.json "inference"')
@@ -469,7 +466,8 @@ def _vits(config: Dict[str, Any], model: str, inputs: Dict[str, int], engine: st
 
 
 def _vits_prior_split(config: Dict[str, Any], files: Dict[str, Any]) -> str:
-    noise, length, _ = _scales(config)
+    params = _params(config, get_adapter("vits_prior_split").default_params())
+    noise, length = params["noise_scale"], params["length_scale"]
     return "\n".join([
         _session("duration", files.get("model", "duration.onnx")),
         _session("decode", files["decode"]),
@@ -516,7 +514,8 @@ def _styletts2(config: Dict[str, Any], files: Dict[str, Any], model: str, inputs
 
 def _glowtts(config: Dict[str, Any], model: str, inputs: Dict[str, int]) -> str:
     _check(inputs, ("input", "input_lengths", "scales", "sid"), "glowtts")
-    noise, length, _ = _scales(config)
+    params = _params(config, get_adapter("glowtts").default_params())
+    noise, length = params["noise_scale"], params["length_scale"]
     lines = [_session("session", model), f"noise_scale, length_scale = {noise}, {length}",
              "mel = session.run(None, {", _feed("input", "np.array([ids], dtype=np.int64)"),
              _feed("input_lengths", "np.array([len(ids)], dtype=np.int64)"),
@@ -830,12 +829,20 @@ def _f5tts(config: Dict[str, Any], files: Dict[str, Any], *, repo_id: str, text:
         "",
         "",
         "reference_ids, text_ids = to_ids(reference_text), to_ids(text)",
+        "# the F5-TTS code ends the reference text in \". \" and one more space, or in \"。\"",
+        'if reference_text.rstrip().endswith("。"):',
+        '    end = ""',
+        'elif reference_text.rstrip().endswith("."):',
+        '    end = "  "',
+        "else:",
+        '    end = ".  "',
+        "reference_ids += [id_map.get(c, 0) for c in end]",
+        "ids = reference_ids + text_ids",
         'params = config.get("engine_params") or {}',
-        'dialect = params.get("dialect")  # Habibi Unified reads a dialect tag',
+        'dialect = params.get("dialect")  # Habibi Unified reads a dialect tag around the reference and the text',
         "if dialect:",
         '    tag = "⓪①②③④⑤⑥⑦"["UNK MSA SAU UAE ALG IRQ EGY MAR".split().index(dialect)]',
-        '    text_ids = [id_map[tag], id_map["〈"]] + text_ids + [id_map["〉"]]',
-        "ids = reference_ids + text_ids",
+        '    ids = [id_map[tag], id_map["〈"]] + ids + [id_map["〉"]]',
         "",
         "# the length to generate: the reference's frames, and as many again per character as the reference took",
         "frames = len(reference) // 256 + 1  # 256 samples per frame",

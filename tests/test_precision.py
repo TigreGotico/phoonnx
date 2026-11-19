@@ -24,7 +24,7 @@ from phoonnx.index_schema import validate_entry
 from phoonnx.model_manager import TTSModelInfo, TTSModelManager
 from phoonnx.version import VERSION_MAJOR
 
-BASE = "https://huggingface.co/Phoonnx/demo/resolve/main"
+BASE = "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567"
 CPU = ["CPUExecutionProvider"]
 GPUS = ["CUDAExecutionProvider", "ROCMExecutionProvider", "MIGraphXExecutionProvider",
         "DmlExecutionProvider", "CoreMLExecutionProvider"]
@@ -292,6 +292,37 @@ class TestACacheFromAnEarlierRelease(unittest.TestCase):
             info = manager.get_voice("edwixx/pt-BR-rapido-int8")
         self.assertTrue(info.model_url.endswith("/edwixx__rapido-tts-int8/model.onnx"))
 
+    def test_an_alias_lookup_keeps_the_entry_the_registry_holds(self):
+        manager = TTSModelManager(cache_path=str(self.path))
+        manager.load()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            manager.get_voice("edwixx/pt-BR-rapido-int8")
+        kept = manager.voices["edwixx/pt-BR-rapido"]
+        self.assertEqual(kept.model_url, _OLD_RAPIDO["model_url"])
+        self.assertFalse(kept.variants)
+
+    def test_repeated_alias_lookups_read_the_bundled_index_once(self):
+        manager = TTSModelManager(cache_path=str(self.path))
+        manager.load()
+        with patch.object(manager, "_bundled_voice", wraps=manager._bundled_voice) as bundled, \
+                warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            for _ in range(3):
+                info = manager.get_voice("edwixx/pt-BR-rapido-int8")
+        self.assertEqual(bundled.call_count, 1)
+        self.assertTrue(info.model_url.endswith("/edwixx__rapido-tts-int8/model.onnx"))
+
+    def test_the_cli_precision_option_ignores_case(self):
+        empty = str(Path(self.tmp.name) / "empty.json")
+        with patch("phoonnx.cli.TTSModelManager",
+                   side_effect=lambda: TTSModelManager(cache_path=empty)), \
+                _recording_downloads() as downloaded:
+            result = CliRunner().invoke(cli, ["download", "edwixx/pt-BR-rapido", "--precision", "INT8"])
+        self.assertIsNone(result.exception, result.output)
+        self.assertEqual(len(downloaded), 1, result.output)
+        self.assertTrue(downloaded[0].endswith("/edwixx__rapido-tts-int8/model.onnx"), downloaded)
+
     def test_the_cli_downloads_the_old_id(self):
         with patch("phoonnx.cli.TTSModelManager",
                    side_effect=lambda: TTSModelManager(cache_path=str(self.path))), \
@@ -451,7 +482,7 @@ class TestCacheKeys(unittest.TestCase):
 
 class TestUnknownIndexKeys(unittest.TestCase):
 
-    def test_an_unknown_key_is_ignored_with_one_debug_line(self):
+    def test_an_unknown_key_is_ignored_with_one_warning(self):
         model_manager._LOGGED_UNKNOWN_KEYS.clear()
         entry = {"voice_id": "demo/voice", "lang": "pt-BR", "model_url": f"{BASE}/model.onnx",
                  "a_future_field": {"x": 1}}
@@ -459,8 +490,9 @@ class TestUnknownIndexKeys(unittest.TestCase):
             first = TTSModelInfo(**model_manager._known_fields(entry))
             TTSModelInfo(**model_manager._known_fields(entry))
         self.assertEqual(first.model_url, f"{BASE}/model.onnx")
-        self.assertEqual(len(log.debug.call_args_list), 1)
-        self.assertIn("a_future_field", log.debug.call_args.args[0])
+        self.assertEqual(len(log.warning.call_args_list), 1)
+        self.assertIn("a_future_field", log.warning.call_args.args[0])
+        self.assertIn("demo/voice", log.warning.call_args.args[0])
 
     def test_a_cached_entry_with_an_unknown_key_is_listed(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -471,6 +503,12 @@ class TestUnknownIndexKeys(unittest.TestCase):
             manager = TTSModelManager(cache_path=str(path))
             manager.load()
         self.assertEqual(manager.get_voice("demo/voice").model_url, f"{BASE}/model.onnx")
+
+    def test_a_variant_replaces_only_the_files(self):
+        info = _entry({**INT8, "lang": "en-US", "precision": "full"}).with_precision("int8")
+        self.assertEqual(info.model_url, f"{BASE}/model_int8.onnx")
+        self.assertEqual(info.lang, "pt-BR")
+        self.assertEqual(info.precision, "int8")
 
     def test_an_unknown_variant_key_is_ignored(self):
         info = _entry({**INT8, "rtf": 0.2}).with_precision("int8")
@@ -525,8 +563,39 @@ class TestTheBundledIndex(unittest.TestCase):
         int8_only = [voice_id for path in TTSModelManager.voice_index_files()
                      for voice_id, entry in json.loads(path.read_text(encoding="utf-8")).items()
                      if entry.get("precision") == "int8"]
-        self.assertEqual(len(int8_only), 156)
+        self.assertEqual(len(int8_only), 130)
         self.assertTrue(all(v.startswith("pockettts/") for v in int8_only))
+
+    def test_italian_pocket_tts_defaults_to_full_and_other_languages_to_int8(self):
+        # The int8 Italian graphs repeat words on long sentences, so the
+        # Italian voices load the full graphs of the same folder and commit
+        # unless int8 is asked for. Every other language has only int8 files.
+        path = next(p for p in TTSModelManager.voice_index_files() if p.name == "pockettts.json")
+        entries = json.loads(path.read_text(encoding="utf-8"))
+        langs = {entry["lang"].split("-")[0] for entry in entries.values()}
+        self.assertEqual(langs, {"en", "fr", "de", "it", "pt", "es"})
+        for voice_id, entry in entries.items():
+            with self.subTest(voice_id):
+                info = TTSModelInfo(**entry)
+                graphs = [info.model_url, info.aux_model_urls["flow_lm_flow_path"],
+                          info.aux_model_urls["mimi_decoder_path"]]
+                if info.lang != "it":
+                    self.assertEqual(info.precision, "int8")
+                    self.assertIsNone(info.variants)
+                    self.assertTrue(all(url.endswith("_int8.onnx") for url in graphs))
+                    continue
+                self.assertIsNone(info.precision)
+                self.assertEqual([url.rsplit("/", 1)[1] for url in graphs],
+                                 ["flow_lm_main.onnx", "flow_lm_flow.onnx", "mimi_decoder.onnx"])
+                self.assertEqual(_url_fields(info.with_precision("auto", CPU)), _url_fields(info))
+                int8 = info.with_precision("int8")
+                self.assertEqual(int8.precision, "int8")
+                self.assertEqual(int8.model_url, info.model_url.replace(".onnx", "_int8.onnx"))
+                for key in ("flow_lm_flow_path", "mimi_decoder_path"):
+                    self.assertEqual(int8.aux_model_urls[key],
+                                     info.aux_model_urls[key].replace(".onnx", "_int8.onnx"))
+                for key in set(info.aux_model_urls) - {"flow_lm_flow_path", "mimi_decoder_path"}:
+                    self.assertEqual(int8.aux_model_urls[key], info.aux_model_urls[key])
 
 
 def _plugin(*infos, **config):

@@ -483,10 +483,6 @@ def without_phoonnx_text():
 @pytest.mark.parametrize("phoneme_type, lang, text, named", [
     ("unicode", "pt", "O Dr. Silva chegou.", '"Dr."'),
     ("graphemes", "en", "Mr. Brown won't come.", '"Dr."'),
-    ("graphemes", "en", "We can't go.", "English contractions"),
-    ("graphemes", "en", "It’s fine.", "typographic apostrophe"),
-    ("espeak", "en", "Line one\nline two", "line breaks"),
-    ("espeak", "en", "Line  one", "runs of spaces"),
     ("espeak", "en", "I have 3 cats.", "numbers"),
     ("espeak", "en", "It weighs 10kg.", "units"),
     ("espeak", "pt", "Chego às 10h30.", "times"),
@@ -498,11 +494,18 @@ def test_the_card_names_each_change_the_phoonnx_normaliser_makes(phoneme_type, l
     assert named in without_phoonnx_text()
 
 
-def test_the_card_says_that_an_espeak_voice_keeps_english_contractions():
+@pytest.mark.parametrize("phoneme_type, text", [
+    ("espeak", "We can't go."),
+    ("graphemes", "We can't go."),
+    ("graphemes", "It’s fine."),
+    ("espeak", "Line one\nline two"),
+    ("espeak", "Line  one"),
+])
+def test_the_card_names_what_the_normaliser_leaves_as_written(phoneme_type, text):
     from phoonnx.config import _voice_phonemizer
-    assert _voice_phonemizer("espeak").normalizer("We can't go.", "en") == "We can't go."
-    assert _voice_phonemizer("graphemes").normalizer("We can't go.", "en") != "We can't go."
-    assert "For a voice that does not use espeak, it also expands English contractions" in without_phoonnx_text()
+    assert _voice_phonemizer(phoneme_type).normalizer(text, "en") == text
+    assert ("It leaves contractions such as \"can't\", the typographic apostrophe (’), line breaks and runs of "
+            "spaces as written.") in " ".join(without_phoonnx_text().split())
 
 
 def test_the_card_says_that_phoonnx_reads_each_sentence_on_its_own():
@@ -564,6 +567,17 @@ def test_the_index_entry_is_found_by_the_model_url_not_the_voice_id():
     text = render_repo("Phoonnx/v", list(files), files.__getitem__, lambda repo, kind: True, index=index)
     assert row(text, "Voice id") == "`OpenVoiceOS/v`"
     assert row(text, "Repository") == "`Phoonnx/v`"
+
+
+def test_the_index_entry_is_found_at_a_pinned_revision():
+    sha = "0123456789abcdef0123456789abcdef01234567"
+    card = LIVE_CARD.replace("# phoonnx_pt-PT_miro_unicode", "# v")
+    files = {"m.onnx.json": json.dumps(phoonnx_config(keep_punctuation=True)), "other.json": "{}",
+             "m.onnx": "", "README.md": card}
+    index = {"OpenVoiceOS/v": {"model_url": f"https://huggingface.co/Phoonnx/v/resolve/{sha}/m.onnx",
+                               "config_url": f"https://huggingface.co/Phoonnx/v/resolve/{sha}/m.onnx.json"}}
+    text = render_repo("Phoonnx/v", list(files), files.__getitem__, lambda repo, kind: True, index=index)
+    assert row(text, "Voice id") == "`OpenVoiceOS/v`"
 
 
 def test_two_index_voices_in_one_repo_are_refused():

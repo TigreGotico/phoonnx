@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -302,6 +303,48 @@ class TestNonHubVoices(HubTestCase):
         self.assertFalse((_direct_dir(self.URL) / "model.onnx").exists())
 
 
+class TestNonHubExternalData(HubTestCase):
+    """A self-hosted graph reads its external data from beside it, by the literal name."""
+
+    URL = "https://mirror.example.org/v/model.onnx"
+
+    def _load(self, locations, served):
+        """Serve the graph and each named file at ``served[location]``, load and run it."""
+        import numpy as np
+        graph, files, expected = _external_data_graph(locations)
+        bodies = {"/v/model.onnx": _mock_response(200, content=graph)}
+        for location, data in files.items():
+            bodies[served[location]] = _mock_response(200, content=data)
+        requested = []
+        with self.stream(bodies) as mock_get:
+            path = self.make_info(model_url=self.URL).download_model()
+            requested = [call.args[0] for call in mock_get.call_args_list]
+        session = onnxruntime.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+        got = session.run(None, {"X": np.zeros(4, dtype=np.float32)})[0]
+        self.assertEqual(got.tolist(), expected.tolist())
+        return path, requested
+
+    def test_a_data_file_in_a_subfolder_lands_beside_the_graph(self):
+        path, _ = self._load(["weights/w.bin", "./x.bin"],
+                             {"weights/w.bin": "/v/weights/w.bin", "./x.bin": "/v/./x.bin"})
+        self.assertTrue((path.parent / "weights" / "w.bin").is_file())
+
+    def test_disk_size_counts_the_data_files_in_their_subfolder(self):
+        path, _ = self._load(["weights/w.bin", "w%41.bin"],
+                             {"weights/w.bin": "/v/weights/w.bin", "w%41.bin": "/v/w%2541.bin"})
+        expected = sum(f.stat().st_size for f in path.parent.rglob("*") if f.is_file())
+        self.assertEqual(self.make_info(model_url=self.URL).disk_size(), expected)
+
+    def test_a_name_with_url_syntax_is_requested_by_its_literal_name(self):
+        path, requested = self._load(
+            ["w%41.bin", "w#1.bin", "%2e%2e/x.bin"],
+            {"w%41.bin": "/v/w%2541.bin", "w#1.bin": "/v/w%231.bin",
+             "%2e%2e/x.bin": "/v/%252e%252e/x.bin"})
+        self.assertIn("https://mirror.example.org/v/%252e%252e/x.bin", requested)
+        self.assertTrue((path.parent / "w%41.bin").is_file())
+        self.assertTrue((path.parent / "%2e%2e" / "x.bin").is_file())
+
+
 class TestMetadataTimeout(unittest.TestCase):
     """The metadata lookup must give up long before the body budget.
 
@@ -510,6 +553,148 @@ class TestExternalDataGraphLoads(HubTestCase):
             info.load()
         session = voice_cls.call_args.kwargs["session"]
         self.assertEqual([i.name for i in session.get_inputs()], ["X"])
+
+
+def _external_data_graph(locations):
+    """A graph ``Y = X + W0 + W1 + ...`` whose initializer ``Wi`` lives in the
+    file ``locations[i]``, or inside the graph when that is None.
+
+    Returns the graph bytes and ``{location: bytes}`` of the files it names,
+    and the expected output for ``X = 0``.
+    """
+    import numpy as np
+    import onnx
+    from onnx import helper, numpy_helper, TensorProto
+    from onnx.external_data_helper import set_external_data
+
+    files, initializers, nodes, last = {}, [], [], "X"
+    for i, location in enumerate(locations):
+        tensor = numpy_helper.from_array(np.full(4, i + 1, dtype=np.float32), name=f"W{i}")
+        if location is not None:
+            offset = len(files.get(location, b""))
+            files[location] = files.get(location, b"") + tensor.raw_data
+            set_external_data(tensor, location, offset=offset, length=len(tensor.raw_data))
+            tensor.ClearField("raw_data")
+        initializers.append(tensor)
+        out = f"S{i}" if i < len(locations) - 1 else "Y"
+        nodes.append(helper.make_node("Add", [last, f"W{i}"], [out]))
+        last = out
+    graph = helper.make_graph(
+        nodes, "g", [helper.make_tensor_value_info("X", TensorProto.FLOAT, [4])],
+        [helper.make_tensor_value_info("Y", TensorProto.FLOAT, [4])], initializers)
+    model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)])
+    model.ir_version = 10
+    expected = np.full(4, sum(range(1, len(locations) + 1)), dtype=np.float32)
+    return model.SerializeToString(), files, expected
+
+
+class TestExternalDataNames(HubTestCase):
+    """Every file a graph names as external data is fetched beside it.
+
+    Exporters do not agree on the names. A graph whose files are fetched only
+    by the ``<graph>_data`` guess fails in onnxruntime with "External data path
+    escapes model directory", which hides the real cause: a missing file.
+    """
+
+    def _stage(self, graph_name, locations):
+        graph, files, expected = _external_data_graph(locations)
+        self.hub.stage(f"{HUB}/{graph_name}", graph)
+        for location, data in files.items():
+            self.hub.stage(f"{HUB}/{location}", data)
+        return expected
+
+    def _fetched(self):
+        return sorted(filename for _, filename, _ in self.hub.unique_downloads)
+
+    def _run(self, path):
+        import numpy as np
+        session = onnxruntime.InferenceSession(
+            str(path), providers=["CPUExecutionProvider"])
+        return session.run(None, {"X": np.zeros(4, dtype=np.float32)})[0]
+
+    def test_a_series_of_data_files_is_fetched(self):
+        locations = ["model.onnx_data", "model.onnx_data_1", "model.onnx_data_2",
+                     "model.onnx_data_1"]
+        expected = self._stage("model.onnx", locations)
+        path = self.make_info().download_model()
+        self.assertEqual(self._fetched(),
+                         ["model.onnx", "model.onnx_data", "model.onnx_data_1",
+                          "model.onnx_data_2"])
+        self.assertEqual(self._run(path).tolist(), expected.tolist())
+
+    def test_a_hub_data_file_name_is_passed_to_the_hub_literally(self):
+        expected = self._stage("model.onnx", ["w 1.bin"])
+        path = self.make_info().download_model()
+        self.assertEqual(self._fetched(), ["model.onnx", "w 1.bin"])
+        self.assertEqual(self._run(path).tolist(), expected.tolist())
+
+    def test_the_file_onnxruntime_quantization_writes_is_fetched(self):
+        import numpy as np
+        import onnx
+        from onnx import helper, numpy_helper, TensorProto
+
+        build = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(build, ignore_errors=True))
+        weight = np.random.default_rng(0).integers(-100, 100, (64, 64)).astype(np.int8)
+        graph = helper.make_graph(
+            [helper.make_node("Cast", ["W"], ["Wf"], to=TensorProto.FLOAT),
+             helper.make_node("MatMul", ["X", "Wf"], ["Y"])], "g",
+            [helper.make_tensor_value_info("X", TensorProto.FLOAT, [1, 64])],
+            [helper.make_tensor_value_info("Y", TensorProto.FLOAT, [1, 64])],
+            [numpy_helper.from_array(weight, name="W")])
+        model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)])
+        model.ir_version = 10
+        # the layout quantize_dynamic(use_external_data_format=True) writes
+        onnx.save_model(model, str(build / "model_int8.onnx"),
+                        save_as_external_data=True, all_tensors_to_one_file=True,
+                        location="model_int8.onnx.data", size_threshold=0)
+        self.assertEqual(sorted(p.name for p in build.iterdir()),
+                         ["model_int8.onnx", "model_int8.onnx.data"])
+        for name in ("model_int8.onnx", "model_int8.onnx.data"):
+            self.hub.stage(f"{HUB}/{name}", (build / name).read_bytes())
+
+        path = self.make_info(model_url=f"{HUB}/model_int8.onnx").download_model()
+        self.assertEqual(self._fetched(),
+                         ["model_int8.onnx", "model_int8.onnx.data"])
+        x = np.random.default_rng(1).standard_normal((1, 64)).astype(np.float32)
+        expected = onnxruntime.InferenceSession(
+            str(build / "model_int8.onnx"), providers=["CPUExecutionProvider"]).run(None, {"X": x})[0]
+        session = onnxruntime.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+        np.testing.assert_array_equal(session.run(None, {"X": x})[0], expected)
+        np.testing.assert_allclose(expected, x @ weight.astype(np.float32), rtol=1e-4, atol=1e-3)
+
+    def test_a_file_outside_the_folder_is_refused(self):
+        for i, location in enumerate(("../weights.bin", "sub/../../weights.bin",
+                                      "/etc/weights.bin", "..\\weights.bin",
+                                      "C:/weights.bin")):
+            with self.subTest(location=location):
+                self.hub.downloads.clear()
+                graph = f"model{i}.onnx"
+                self.hub.stage(f"{HUB}/{graph}", _external_data_graph([location])[0])
+                with self.assertRaisesRegex(ValueError, "outside its folder"):
+                    self.make_info(model_url=f"{HUB}/{graph}").download_model()
+                self.assertEqual(self._fetched(), [graph])
+
+    def test_a_graph_without_external_data_fetches_nothing_else(self):
+        expected = self._stage("model.onnx", [None, None])
+        path = self.make_info().download_model()
+        self.assertEqual(self._fetched(), ["model.onnx"])
+        self.assertEqual(self._run(path).tolist(), expected.tolist())
+
+    def test_the_graph_data_name_still_loads(self):
+        expected = self._stage("model.onnx", ["model.onnx_data", "model.onnx_data"])
+        path = self.make_info().download_model()
+        self.assertEqual(self._fetched(), ["model.onnx", "model.onnx_data"])
+        self.assertEqual(self._run(path).tolist(), expected.tolist())
+
+    def test_a_named_file_comes_from_a_self_hosted_folder_too(self):
+        graph, files, expected = _external_data_graph(["model.onnx.data"])
+        url = "https://mirror.example.org/v/model.onnx?download=true"
+        with self.stream({"model.onnx.data?download=true":
+                              _mock_response(200, content=files["model.onnx.data"]),
+                          "model.onnx?download=true": _mock_response(200, content=graph)}):
+            path = self.make_info(model_url=url).download_model()
+        self.assertEqual(self._run(path).tolist(), expected.tolist())
 
 
 class TestLoad(HubTestCase):
@@ -901,6 +1086,170 @@ class TestManagerRegistry(ManagerTestCase):
         self.assertEqual(result, [])
 
 
+def _scan(voices, lang):
+    """The lookup with nothing kept: every voice's distance, every time."""
+    from phoonnx.util import match_lang
+    ranked = sorted(((v, match_lang(v.lang, lang)[-1]) for v in voices.values()),
+                    key=lambda k: k[1])
+    return [v.voice_id for v, distance in ranked if distance < 10]
+
+
+class TestLangVoicesAreKeptPerLanguage(ManagerTestCase):
+    """Kept answers must equal a full scan, per language."""
+
+    def _manager(self, *langs):
+        manager = TTSModelManager(cache_path=self.cache_path)
+        manager.voices = {f"v/{lang}": TTSModelInfo(voice_id=f"v/{lang}", lang=lang,
+                                                    model_url=f"https://example.com/{lang}.onnx")
+                          for lang in langs}
+        return manager
+
+    def _counting(self):
+        from phoonnx.util import match_lang
+        return patch("phoonnx.model_manager.match_lang", side_effect=match_lang)
+
+    def test_the_bundled_index_gives_the_answers_of_a_full_scan(self):
+        manager = TTSModelManager(cache_path=self.cache_path)
+        manager.merge_default_voices()
+        langs = ["en", "en-US", "en-GB", "pt", "pt-BR", "gl", "apc-LB", "zz-ZZ"]
+        expected = {lang: _scan(manager.voices, lang) for lang in langs}
+        self.assertTrue(expected["pt-BR"])
+        self.assertEqual(expected["zz-ZZ"], [], "an unknown language has no voice")
+        # Asked in another order first, so each answer is read back from what
+        # the other languages left behind.
+        for lang in reversed(langs):
+            manager.get_lang_voices(lang)
+        for lang in langs:
+            with self.subTest(lang=lang):
+                self.assertEqual([v.voice_id for v in manager.get_lang_voices(lang)],
+                                 expected[lang])
+
+    def test_the_distances_are_measured_once_per_language(self):
+        manager = self._manager("en-US", "en-GB", "pt-PT")
+        with self._counting() as distance:
+            for _ in range(5):
+                manager.get_lang_voices("en-US")
+                manager.get_lang_voices("pt-PT")
+        self.assertEqual(distance.call_count, 2 * 3,
+                         "one scan of the three voices per language, not per sentence")
+
+    def test_a_new_voice_is_seen(self):
+        manager = self._manager("en-US")
+        self.assertEqual(manager.get_lang_voices("pt-PT"), [])
+        manager.add_voice(TTSModelInfo(voice_id="v/pt-PT", lang="pt-PT",
+                                       model_url="https://example.com/pt.onnx"))
+        with self._counting() as distance:
+            for _ in range(3):
+                self.assertEqual([v.voice_id for v in manager.get_lang_voices("pt-PT")],
+                                 ["v/pt-PT"])
+        self.assertEqual(distance.call_count, 2, "one new scan of the two voices")
+
+    def test_a_new_registry_is_seen(self):
+        manager = self._manager("en-US")
+        self.assertEqual(manager.get_lang_voices("pt-PT"), [])
+        manager.voices = self._manager("pt-PT").voices
+        with self._counting() as distance:
+            for _ in range(3):
+                self.assertEqual([v.voice_id for v in manager.get_lang_voices("pt-PT")],
+                                 ["v/pt-PT"])
+        self.assertEqual(distance.call_count, 1, "one new scan of the one voice")
+
+    def test_a_voice_without_a_language_is_never_kept_out(self):
+        # A voice takes its language when its config loads. Until then it is
+        # out of every answer, and an answer kept from then would leave it out.
+        manager = self._manager("en-GB")
+        bare = TTSModelInfo(voice_id="v/bare", lang="", model_url="https://example.com/bare.onnx")
+        manager.add_voice(bare)
+        self.assertEqual([v.voice_id for v in manager.get_lang_voices("en-US")], ["v/en-GB"])
+        bare.lang = "en-US"
+        self.assertEqual([v.voice_id for v in manager.get_lang_voices("en-US")],
+                         ["v/bare", "v/en-GB"])
+
+    def test_a_voice_that_gets_its_language_during_a_scan_is_not_left_out(self):
+        bare = TTSModelInfo(voice_id="v/bare", lang="", model_url="https://example.com/bare.onnx")
+        manager = self._manager("en-GB")
+        manager.voices = {"v/bare": bare, **manager.voices}
+        # The scan has passed the bare voice when its config load fills its lang.
+        release, worker, racing = self._paused_scan(manager, "en-US", at="en-GB")
+        bare.lang = "en-US"
+        release.set()
+        worker.join(10)
+        self.assertFalse(worker.is_alive())
+
+        self.assertEqual(racing, [["v/en-GB"]])
+        self.assertEqual([v.voice_id for v in manager.get_lang_voices("en-US")],
+                         ["v/bare", "v/en-GB"])
+
+    def test_add_voice_replaces_the_registry(self):
+        manager = self._manager("en-US")
+        before = manager.voices
+        manager.add_voice(TTSModelInfo(voice_id="v/pt-PT", lang="pt-PT",
+                                       model_url="https://example.com/pt.onnx"))
+        self.assertIsNot(manager.voices, before)
+        self.assertEqual(list(before), ["v/en-US"])
+        self.assertEqual(list(manager.voices), ["v/en-US", "v/pt-PT"])
+
+    def test_a_caller_cannot_change_the_answer_of_the_next(self):
+        manager = self._manager("en-US")
+        manager.get_lang_voices("en-US").clear()
+        self.assertEqual([v.voice_id for v in manager.get_lang_voices("en-US")], ["v/en-US"])
+
+    def _paused_scan(self, manager, lang, at=None):
+        """Start a lookup of ``lang`` in a thread, paused inside its scan
+        (at the voice whose lang is ``at``, else at the first voice)."""
+        from phoonnx.util import match_lang
+        inside, release, answer = threading.Event(), threading.Event(), []
+
+        def distance(voice_lang, target):
+            if (target == lang and threading.current_thread() is worker
+                    and at in (None, voice_lang)):
+                inside.set()
+                self.assertTrue(release.wait(10), "the paused scan was never released")
+            return match_lang(voice_lang, target)
+
+        worker = threading.Thread(
+            target=lambda: answer.append([v.voice_id for v in manager.get_lang_voices(lang)]))
+        distance_patch = patch("phoonnx.model_manager.match_lang", side_effect=distance)
+        distance_patch.start()
+        self.addCleanup(distance_patch.stop)
+        worker.start()
+        self.assertTrue(inside.wait(10), "the lookup never reached its scan")
+        return release, worker, answer
+
+    def test_two_languages_at_once_keep_their_own_answers(self):
+        manager = self._manager("en-US", "en-GB", "pt-PT", "pt-BR")
+        expected = {lang: _scan(manager.voices, lang) for lang in ("en-US", "pt-PT")}
+        self.assertNotEqual(expected["en-US"], expected["pt-PT"])
+
+        # The English lookup stops inside its scan; the Portuguese one runs
+        # from start to end meanwhile, over the same registry.
+        release, worker, english = self._paused_scan(manager, "en-US")
+        portuguese = [v.voice_id for v in manager.get_lang_voices("pt-PT")]
+        release.set()
+        worker.join(10)
+        self.assertFalse(worker.is_alive())
+
+        self.assertEqual(english, [expected["en-US"]])
+        self.assertEqual(portuguese, expected["pt-PT"])
+        with self._counting() as distance:
+            for lang in ("en-US", "pt-PT"):
+                self.assertEqual([v.voice_id for v in manager.get_lang_voices(lang)],
+                                 expected[lang])
+        self.assertEqual(distance.call_count, 0, "both answers were kept")
+
+    def test_a_scan_of_a_replaced_registry_is_not_kept(self):
+        manager = self._manager("en-US")
+        release, worker, old_answer = self._paused_scan(manager, "en-US")
+        # The registry is rebuilt while the scan of the old one is paused.
+        manager.voices = self._manager("en-GB").voices
+        release.set()
+        worker.join(10)
+        self.assertFalse(worker.is_alive())
+
+        self.assertEqual(old_answer, [["v/en-US"]])
+        self.assertEqual([v.voice_id for v in manager.get_lang_voices("en-US")], ["v/en-GB"])
+
+
 class TestGetAvailableVoiceIdsBySource(ManagerTestCase):
     def test_groups_by_source(self):
         manager = TTSModelManager(cache_path=self.cache_path)
@@ -1219,6 +1568,15 @@ class TestDiskSize(unittest.TestCase):
         self.add("model.onnx_data", 5000)
         self.assertEqual(_file_bytes(f"{self.URL}model.onnx"), 6000)
 
+    def test_only_a_graph_is_read_for_external_data_names(self):
+        from phoonnx.model_manager import _file_bytes
+        self.add("voice.bin", 300)
+        self.add("model.onnx", 1000)
+        with patch("phoonnx.model_manager.external_data_locations",
+                   return_value=[]) as read:
+            self.assertEqual(_file_bytes(f"{self.URL}voice.bin", f"{self.URL}model.onnx"), 1300)
+        self.assertEqual([Path(call.args[0]).name for call in read.call_args_list], ["model.onnx"])
+
     def test_a_graph_without_a_sidecar_is_just_the_graph(self):
         from phoonnx.model_manager import _file_bytes
         self.add("vocoder.onnx", 2000)
@@ -1270,6 +1628,32 @@ class TestDiskSize(unittest.TestCase):
         info = TTSModelInfo(voice_id="v", lang="en-US",
                             model_url=f"{self.URL}cold.onnx")
         self.assertEqual(info.disk_size(), 0)
+
+    def test_every_data_file_a_graph_names_is_counted_once(self):
+        graph, _, _ = _external_data_graph(["model.onnx_data", "model.onnx_data_1"])
+        blob = self.root / "blobs" / "graph-sha"
+        blob.write_bytes(graph)
+        (self.snapshot / "model.onnx").symlink_to(blob)
+        self.add("model.onnx_data", 5000)
+        self.add("model.onnx_data_1", 3000)
+        # the index entry also names a data file, as the Orpheus entries do
+        info = TTSModelInfo(voice_id="v", lang="en-US",
+                            model_url=f"{self.URL}model.onnx",
+                            aux_model_urls={"lm_weights_path": f"{self.URL}model.onnx_data"})
+        self.assertEqual(info.disk_size(), len(graph) + 5000 + 3000)
+
+    def test_two_names_of_one_blob_are_counted_once(self):
+        # the hub stores identical files once, as in the magpie voices
+        graph, _, _ = _external_data_graph(["audio_embed.onnx_data", "lt_embed.onnx_data"])
+        blob = self.root / "blobs" / "graph-sha"
+        blob.write_bytes(graph)
+        (self.snapshot / "model.onnx").symlink_to(blob)
+        shared = self.root / "blobs" / "shared-sha"
+        shared.write_bytes(b"x" * 5000)
+        for name in ("audio_embed.onnx_data", "lt_embed.onnx_data"):
+            (self.snapshot / name).symlink_to(shared)
+        info = TTSModelInfo(voice_id="v", lang="en-US", model_url=f"{self.URL}model.onnx")
+        self.assertEqual(info.disk_size(), len(graph) + 5000)
 
     def test_a_voice_hosted_outside_the_hub_is_measured_too(self):
         from phoonnx.model_manager import _file_bytes

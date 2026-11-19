@@ -68,6 +68,7 @@ import numpy as np
 import onnxruntime
 from quebra_frases import sentence_tokenize
 
+from phoonnx.engines._sampling import NUCLEUS_HEAD, ranked, softmax
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.util import LOG
@@ -102,13 +103,6 @@ SPEECH_TOKEN_ZERO = "<|s_0|>"
 MAX_REFERENCE_CODES = 500
 
 
-def _softmax(x: np.ndarray) -> np.ndarray:
-    z = np.asarray(x, np.float64)
-    z = z - z.max()
-    e = np.exp(z)
-    return e / e.sum()
-
-
 def _sample(scores: np.ndarray, temperature: float, top_p: float,
             rng: np.random.Generator) -> int:
     """Temperature, then nucleus — HuggingFace's warper order (argmax if temp<=0).
@@ -121,9 +115,9 @@ def _sample(scores: np.ndarray, temperature: float, top_p: float,
     s = np.asarray(scores, np.float64)
     if temperature <= 0:
         return int(np.argmax(s))
-    probs = _softmax(s / float(temperature))
+    probs = softmax(s / float(temperature))
     if 0 < top_p < 1:
-        order = np.argsort(probs)[::-1]
+        order = ranked(probs, NUCLEUS_HEAD, top_p)
         cumulative = np.cumsum(probs[order])
         keep = np.ones(order.shape[0], bool)
         # keep every token up to and including the one that crosses top_p
@@ -185,18 +179,9 @@ class LlasaAdapter(BaseOnnxAdapter):
             "max_chunk_chars": float(self.MAX_CHUNK_CHARS),
         }
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "temperature": "sampling temperature",
-            "top_p": "top-p (nucleus)",
-            "max_new_tokens": "max codec tokens (50/s)",
-            "max_chunk_chars": "target characters per model call",
-            "voice": "voice preset name",
-        }
-
     def configure(self, voice_config: Any) -> None:
         """Load the XCodec2 decoder, the checkpoint's BPE and the presets."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         if self.codec is None and ep.get("codec_decoder_path"):
             self.codec = make_session(ep["codec_decoder_path"], providers=ep.get("providers"))
         if self.tokenizer is None and ep.get("tokenizer_path"):

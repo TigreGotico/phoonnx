@@ -41,8 +41,8 @@ def _make_voice():
         sample_rate=22050,
     )
     voice.adapter = MagicMock()
-    voice.phonemes_to_ids = lambda phonemes: [1] * len(phonemes)
-    voice.phoneme_ids_to_audio = lambda phoneme_ids, syn_config=None, include_alignments=False, streams=None: np.zeros(4, dtype=np.float32)
+    voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: [1] * len(phonemes))
+    voice._infer = lambda phoneme_ids, syn_config, include_alignments=False, streams=None, text=None: (np.zeros(4, dtype=np.float32), None)
     return voice
 
 

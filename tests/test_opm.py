@@ -195,15 +195,16 @@ class TestGetTts(unittest.TestCase):
             out = plugin.get_tts("hello world", "/tmp/out.wav")
         self.assertEqual(out, ("/tmp/out.wav", None))
 
-    def test_get_tts_uses_voice_config_defaults(self):
+    def test_get_tts_leaves_unset_scales_to_the_loaded_voice(self):
+        # The index entry's scales can differ from the loaded voice's (x-vits takes
+        # its scales from runtime.json at load), so the plugin passes none of them.
         v = _FakeVoiceInfo("OpenVoiceOS/v")
+        v.config.length_scale, v.config.noise_scale, v.config.noise_w_scale = 9.0, 9.0, 9.0
         plugin, _ = _make_plugin(voices=[v])
         with patch.object(opm, "wave"):
             plugin.get_tts("hi", "/tmp/out.wav")
         cfg = self._synth_config_from_call(v.tts_voice)
-        self.assertAlmostEqual(cfg.noise_scale, 0.667)
-        self.assertAlmostEqual(cfg.length_scale, 1.0)
-        self.assertAlmostEqual(cfg.noise_w_scale, 0.8)
+        self.assertEqual((cfg.noise_scale, cfg.length_scale, cfg.noise_w_scale), (None, None, None))
 
     def test_documented_underscore_config_keys_are_honoured(self):
         """Regression: documented keys (noise_scale, length_scale, noise_w,
@@ -337,6 +338,12 @@ class TestSuperResolutionConfigThreading(unittest.TestCase):
         cfg = self._synthesize({"super_resolution": True})
         self.assertIs(cfg.super_resolution, True)
         self.assertIsNone(cfg.super_resolution_model)
+
+    def test_the_chunk_key_reaches_synthesis_config(self):
+        self.assertEqual(self._synthesize({"chunk": "clause"}).chunk, "clause")
+
+    def test_no_chunk_key_reads_one_sentence_per_call(self):
+        self.assertIsNone(self._synthesize().chunk)
 
 
 if __name__ == "__main__":

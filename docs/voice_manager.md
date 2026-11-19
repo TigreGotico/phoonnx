@@ -190,6 +190,25 @@ relevant to specific engine families (see [engines.md](engines.md), [cloning.md]
 | `precision` | `str` \| `None` | `int8` for an entry that has only int8 files, unset for full files |
 | `variants` | `dict` \| `None` | `{"int8": {...}}`: the URL fields of the int8 files that differ, and `"auto": true` when `auto` may pick them |
 
+### Hub revisions in the bundled index
+
+Each Hugging Face URL in a bundled index file names a commit sha, never `main`:
+`https://huggingface.co/<repo>/resolve/<40-hex sha>/<path>`. An installed phoonnx then
+loads the files it was released with, and an upload to a voice repo reaches users only
+through a new index. The index schema check rejects a Hub URL that names a branch or a tag.
+
+A hub cache keeps one snapshot folder per commit. Online, phoonnx fetches the pinned
+commit: the client downloads only the files that changed and reuses the others. Offline, or
+when the hub does not answer, a voice that is not cached at the pinned commit loads from
+another cached snapshot of the same repo: the newest one that holds the file. phoonnx does not
+read `refs/main` for this, because a fetch at a commit does not move it.
+
+phoonnx logs one warning with the repo, the pinned commit and the snapshot it reads. The files
+that one folder of the repo gives through this fallback all come from one snapshot, so a graph
+and its external-data files match. When the pinned commit holds some files of a folder but not
+all of them, as after an interrupted download, the missing files do not fall back: the load
+fails, so that a graph and its config never come from two commits.
+
 Key methods and properties: `config` (lazy `VoiceConfig`), `voice_path`,
 `download_model()`, `download_all()` (model + config + tokenizer + vocoder/style/
 speaker-encoder/aux graphs), `download_vocoder()`, `load(providers=None, precision=None)`,

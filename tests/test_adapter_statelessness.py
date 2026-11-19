@@ -6,8 +6,8 @@ or seed on ``self`` hands it to the next caller — the wrong voice, delivered
 as a perfectly good WAV, and nothing about it looks like a failure.
 
 The check is on the source: every write to ``self`` in a registered adapter
-must either live in a setup method (``BaseOnnxAdapter.SETUP_METHODS``, which
-run once from the voice config) or be named attribute by attribute in that
+must either live in a setup method (``SETUP_METHODS`` below, which run
+once from the voice config) or be named attribute by attribute in that
 adapter's ``MEMOIZED_WRITES``. Naming it there is a claim that the value is
 safe to serve to the next request — a property of the model, or a cache keyed
 on what produced it.
@@ -20,6 +20,12 @@ from typing import Dict, Optional, Set
 from phoonnx.engines import _REGISTRY
 from phoonnx.engines.base import BaseOnnxAdapter
 
+
+# Methods that may assign anything to ``self``: the ones that run once, from the
+# voice's config, before any request is served.
+SETUP_METHODS = frozenset({
+    "__init__", "configure", "configure_from_params", "parse_onnx_meta", "load_voice",
+})
 
 # Container methods that mutate in place. ``self.x = self.x + [y]`` rebinds
 # and is caught as an assignment; ``self.x.append(y)`` is not.
@@ -128,7 +134,7 @@ class TestAdaptersAreStatelessBetweenRequests(unittest.TestCase):
         offenders = []
         for name, klass in _adapter_classes().items():
             for method, attrs in _self_writes(klass).items():
-                if method in klass.SETUP_METHODS:
+                if method in SETUP_METHODS:
                     continue
                 allowed = klass.MEMOIZED_WRITES.get(method, frozenset())
                 for attr in sorted(attrs - set(allowed)):

@@ -231,6 +231,7 @@ underscore name plus legacy aliases (resolved by `_cfg_opt` in `phoonnx/opm.py`)
 | Precision | `precision` | `auto`, `int8` or `full` (see above) |
 | Super-resolution | `super_resolution` | Enable 48 kHz upscaling (bool, off by default) |
 | Super-resolution model | `super_resolution_model` | `audiosronnx` engine name (default `novasr`) |
+| Chunk | `chunk` | Text per engine call: `sentence` (default), `clause`, `paragraph` or `none` |
 
 See [cloning.md](cloning.md) for the cloning keys in detail.
 

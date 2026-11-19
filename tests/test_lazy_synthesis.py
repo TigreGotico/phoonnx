@@ -111,13 +111,13 @@ def _make_lazy_voice(events, alphabet=Alphabet.IPA):
     voice.config = config
     voice.adapter = MagicMock()
 
-    voice.phonemes_to_ids = lambda phonemes: [1] * len(phonemes)
+    config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: [1] * len(phonemes))
 
-    def _synth(phoneme_ids, syn_config=None, include_alignments=False, streams=None):
+    def _synth(phoneme_ids, syn_config, include_alignments=False, streams=None, text=None):
         events.append(("run", tuple(phoneme_ids)))
-        return np.zeros(4, dtype=np.float32)
+        return np.zeros(4, dtype=np.float32), None
 
-    voice.phoneme_ids_to_audio = _synth
+    voice._infer = _synth
     return voice
 
 

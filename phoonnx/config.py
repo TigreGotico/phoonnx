@@ -1,16 +1,17 @@
-import json
+import copy
 import warnings
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Mapping, Optional, Union, Dict
+from typing import Any, Mapping, Optional, Union, Dict
+
+import text2spoken
+
 from phoonnx.util import LOG, is_arabic, normalize_lang
+from phoonnx.errors import UnsupportedVoiceLanguage
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
 
-DEFAULT_NOISE_SCALE = 0.667
-DEFAULT_LENGTH_SCALE = 1.0
-DEFAULT_NOISE_W_SCALE = 0.8
 DEFAULT_HOP_LENGTH = 256
 
 
@@ -18,6 +19,9 @@ class Engine(str, Enum):
     """voices trained with these frameworks are explicitly supported.
     This mainly affects the format of .json file and possibly tokenization"""
     PHOONNX = "phoonnx"
+    VITS = "vits"  # single-graph VITS, the adapter the format names below fall back to
+    VITS_STREAMING = "vits_streaming"  # VITS split at the flow/HiFiGAN boundary
+    VITS_PRIOR_SPLIT = "vits_prior_split"  # VITS split at the prior boundary
     PIPER = "piper"
     MIMIC3 = "mimic3"
     COQUI = "coqui"
@@ -49,6 +53,7 @@ class Engine(str, Enum):
     VOSK = "vosk"  # alphacep vosk-tts: VITS + dictionary/rule Russian g2p
     RAPIDO = "rapido"  # Rápido: flow-matching DiT over VoxCPM2 AudioVAE latents @48kHz
     TINYVOCA = "tinyvoca"  # tiny-voca: dizione tokens + stress, source-filter waveform head
+    XVITS = "xvits"  # x-vits: Piper/VITS with flow-matching prosody and word emphasis (5 graphs)
 
     @classmethod
     def _missing_(cls, value: object) -> Optional["Engine"]:
@@ -78,6 +83,7 @@ ENGINE_ALIASES = {"kokoro": Engine.STYLETTS2.value}
 # (not redefinition) keeps enum identity: values stored in voice configs and
 # pickles resolve to the same class everywhere.
 from scriptconv.phonemizers.enums import Alphabet, Phonemizer as PhonemeType
+from scriptconv.frontend import Chunk, FrontendConfig, Stages, TextFrontend, spoken_normalizer
 
 @dataclass
 class VoiceConfig:
@@ -153,10 +159,11 @@ class VoiceConfig:
     # Info about what framework was used to train the model
     engine: Engine = Engine.PHOONNX
 
-    # Inference settings
-    length_scale: float = DEFAULT_LENGTH_SCALE
-    noise_scale: float = DEFAULT_NOISE_SCALE
-    noise_w_scale: float = DEFAULT_NOISE_W_SCALE
+    # Inference scales from the config's ``inference`` block; None lets the engine's
+    # ``default_params()`` decide.
+    length_scale: Optional[float] = None
+    noise_scale: Optional[float] = None
+    noise_w_scale: Optional[float] = None
     add_diacritics: bool = None # arabic and hebrew
     # diacritizer model for languages that need one; scriptconv routes it to the
     # right backend: Arabic text2tashkeel model name (e.g. "rawi-ensemble"),
@@ -188,6 +195,14 @@ class VoiceConfig:
     # its lang_code becomes the model's language token (e.g. dialect models that repurpose
     # the base tokens with a literal token string). Empty -> derive the token from lang_code.
     lang_tokens: Dict[str, str] = field(default_factory=dict)
+
+    phonemizer_identity: Optional[Dict[str, Any]] = None
+    """The phonemizer that made the training phonemes, as preprocessing records it.
+
+    The keys are those of :class:`scriptconv.phonemizers.base.PhonemizerIdentity`.
+    :class:`phoonnx.voice.TTSVoice` compares it with the running phonemizer at
+    load and warns on a difference. ``None`` for a voice that records none.
+    """
 
     keep_punctuation: bool = False
     """Whether the model was trained with clause punctuation (``, . ? ! : ;``).
@@ -329,9 +344,9 @@ class VoiceConfig:
             num_symbols=config.get("num_symbols", 256),
             num_speakers=config.get("num_speakers", 1),
             sample_rate=config.get("audio", {}).get("sample_rate", 16000),
-            noise_scale=inference.get("noise_scale", DEFAULT_NOISE_SCALE),
-            length_scale=inference.get("length_scale", DEFAULT_LENGTH_SCALE),
-            noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
+            noise_scale=inference.get("noise_scale"),
+            length_scale=inference.get("length_scale"),
+            noise_w_scale=inference.get("noise_w"),
             add_diacritics=loaded.add_diacritics,
             diacritizer_model=loaded.diacritizer_model,
             hop_length=config.get("hop_length", DEFAULT_HOP_LENGTH),
@@ -340,6 +355,7 @@ class VoiceConfig:
             engine=loaded.engine,
             phonemizer_model=config.get("phonemizer_model"),
             keep_punctuation=bool(config.get("keep_punctuation", loaded.keep_punctuation)),
+            phonemizer_identity=config.get("phonemizer_identity"),
             phoneme_type=loaded.phoneme_type,
             speaker_id_map=config.get("speaker_id_map", {}),
             blank_between=BlankBetween(loaded.blank_between),
@@ -375,6 +391,8 @@ class VoiceConfig:
 
         tok = self.tokenizer
         voc = tok.vocabulary
+        # an unset scale stays out of the file, so a reader uses the engine default
+        scales = {"noise_scale": self.noise_scale, "length_scale": self.length_scale, "noise_w": self.noise_w_scale}
         return {
             "phoonnx_version": version,
             "engine": self.engine.value if self.engine else "phoonnx",
@@ -392,9 +410,7 @@ class VoiceConfig:
             "phonemizer_model": self.phonemizer_model,
             "keep_punctuation": self.keep_punctuation,
             "inference": {
-                "noise_scale": self.noise_scale,
-                "length_scale": self.length_scale,
-                "noise_w": self.noise_w_scale,
+                **{key: value for key, value in scales.items() if value is not None},
                 "add_diacritics": self.add_diacritics,
                 "diacritizer_model": self.diacritizer_model,
             },
@@ -513,6 +529,15 @@ class SynthesisConfig:
     # own ``diacritizer_model`` choice; an explicit value here overrides it.
     diacritizer_model: Optional[str] = None
 
+    chunk: Optional[Union[str, Chunk]] = None
+    """How much text one engine call reads: a :class:`scriptconv.frontend.Chunk`
+    or its value, ``"sentence"``, ``"clause"``, ``"paragraph"`` or ``"none"``
+    (the whole text). ``None`` (the default) reads one sentence per call. The
+    size moves only the cuts: the text is read whole before it is cut. An
+    engine that reads text, not symbols, gets the whole text and cuts it
+    itself. Phonemic input (``alphabet`` set) is cut per sentence whatever
+    the value."""
+
     # post-synthesis audio super-resolution via ``audiosronnx`` (pure-ONNX). Off by
     # default; when ``True`` each synthesized chunk is upscaled to 48 kHz before being
     # yielded and the chunk's ``sample_rate`` reports the upscaled rate. ``audiosronnx``
@@ -550,24 +575,13 @@ class SynthesisConfig:
     # Engine-specific per-call params (d_factor, p_factor, e_factor, …)
     extra_params: Dict[str, Any] = field(default_factory=dict)
 
-
-class UnsupportedVoiceLanguage(ValueError):
-    """Raised at voice load when no phonemizer backend serves the voice's language.
-
-    Surfacing this eagerly (instead of letting scriptconv's ``ValueError:
-    unsupported language code`` bubble up mid-synthesis, after the user has
-    already picked the voice and sent text) turns an opaque runtime crash
-    into an actionable, typed failure at load time.
-    """
-
-    def __init__(self, voice: str, lang_code: str, phoneme_type: "PhonemeType"):
-        self.voice = voice
-        self.lang_code = lang_code
-        self.phoneme_type = phoneme_type
-        super().__init__(
-            f"voice {voice!r}: no phonemizer backend supports lang "
-            f"{lang_code!r} for phoneme_type {phoneme_type.value!r}"
-        )
+    def __post_init__(self):
+        if self.chunk is not None and not isinstance(self.chunk, Chunk):
+            try:
+                Chunk(self.chunk)
+            except ValueError:
+                raise ValueError(f"chunk must be one of {[c.value for c in Chunk]} or None, "
+                                 f"not {self.chunk!r}") from None
 
 
 def check_lang_supported(voice: str, lang_code: Optional[str],
@@ -622,24 +636,11 @@ def _deprecated(name: str, replacement: str) -> None:
                   DeprecationWarning, stacklevel=3)
 
 
-# espeak-ng reads a contraction the way people say it ("don't" -> dˈoʊnt). Expanding it
-# first ("do not") makes every English sentence sound like a form letter, and the table
-# is a guess for "he's" and "I'd". Numbers, dates, units and titles are still normalized.
-def _espeak_normalize(text: str, lang: str) -> str:
-    from phoonnx.util import normalize
-    return normalize(text, lang, expand_contractions=False)
-
-
-def _normalize(text: str, lang: str) -> str:
-    from phoonnx.util import normalize
-    return normalize(text, lang)
-
-
 def _voice_phonemizer(phoneme_type: PhonemeType,
                       alphabet: Alphabet = Alphabet.IPA,
                       model: Optional[str] = None,
                       keep_punctuation: bool = False) -> 'Phonemizer':
-    """The phonemizer of a voice, with phoonnx's text normalizer as its ``normalizer``.
+    """The phonemizer of a voice, with :func:`text2spoken.normalize` as its ``normalizer``.
 
     The backend comes from scriptconv's registry, which also holds the
     license-quarantined mantoq and KoG2P and provisions the Hebrew phonikud
@@ -655,22 +656,55 @@ def _voice_phonemizer(phoneme_type: PhonemeType,
     phoneme_type = PhonemeType(phoneme_type)
 
     from scriptconv.phonemizers import get_phonemizer as _sc_get
+    # dizione gives the voice its own tokens, with the ids and stress of each segment
+    options = {"tokens": True} if phoneme_type == PhonemeType.DIZIONE else {}
     try:
-        phonemizer = _sc_get(phoneme_type, alphabet=alphabet, model=model)
+        phonemizer = _sc_get(phoneme_type, alphabet=alphabet, model=model, **options)
     except KeyError:
         raise ValueError(f"unsupported phoneme_type: {phoneme_type}")
 
     if "normalize" not in phonemizer.owned_stages:  # dizione normalises raw text itself
-        phonemizer.normalizer = _espeak_normalize if phoneme_type == PhonemeType.ESPEAK else _normalize
+        phonemizer.normalizer = text2spoken.normalize
     phonemizer.keep_punctuation = keep_punctuation
     return phonemizer
+
+
+def without_normalizer(phonemizer: 'Phonemizer') -> 'Phonemizer':
+    """*phonemizer*, or a shallow copy of it with no ``normalizer``."""
+    if phonemizer.normalizer is None:
+        return phonemizer
+    backend = copy.copy(phonemizer)
+    backend.normalizer = None
+    return backend
+
+
+def voice_frontend(phonemizer: 'Phonemizer', lang: str, stages: Stages = Stages()) -> TextFrontend:
+    """The text frontend of a voice that reads *phonemizer*, in language *lang*.
+
+    The phonemizer's ``normalizer`` becomes the frontend's normalisation hook
+    and the frontend reads a copy of the phonemizer without it. The frontend
+    skips the hook for a backend that names ``normalize`` in its
+    ``owned_stages``, because that backend normalises the text itself. Such a
+    phonemizer has no ``normalizer``, so its frontend gets
+    :func:`scriptconv.frontend.spoken_normalizer`, which reads only a ``<say-as>``.
+    Inference (:attr:`phoonnx.voice.TTSVoice.frontend`) and dataset building
+    (``phoonnx_train.preprocess``) both build their frontend here, so a text
+    gives the same phonemes in both.
+    """
+    normalizer = phonemizer.normalizer
+    if normalizer is None and "normalize" in phonemizer.owned_stages:
+        normalizer = spoken_normalizer()
+    return TextFrontend(
+        FrontendConfig(lang=lang, normalizer=normalizer, keep_punctuation=phonemizer.keep_punctuation,
+                       stages=stages),
+        backend=without_normalizer(phonemizer))
 
 
 def get_phonemizer(phoneme_type: PhonemeType,
                    alphabet: Alphabet = Alphabet.IPA,
                    model: Optional[str] = None,
                    keep_punctuation: bool = False) -> 'Phonemizer':
-    """Deprecated. A phonemizer whose own ``normalizer`` runs phoonnx's text normalizer.
+    """Deprecated. A phonemizer whose own ``normalizer`` is :func:`text2spoken.normalize`.
 
     Use :attr:`phoonnx.voice.TTSVoice.frontend`, or build a
     :class:`scriptconv.frontend.TextFrontend`.
@@ -680,35 +714,6 @@ def get_phonemizer(phoneme_type: PhonemeType,
     """
     _deprecated("get_phonemizer", "TTSVoice.frontend or scriptconv.frontend.TextFrontend")
     return _voice_phonemizer(phoneme_type, alphabet, model, keep_punctuation)
-
-
-def _side_stream_reader(phonemizer) -> Optional[Callable]:
-    """A ``(text, lang) -> (phonemes, streams)`` reader for a phonemizer that tags its symbols.
-
-    ``streams`` maps an ``AdapterSynthesisRequest`` field name to one value per
-    symbol. Shami tags each symbol with its language, for engines with a
-    ``language_ids`` input. dizione gives its own tokens with a stress value
-    each, for engines with a ``stress`` input (tiny-voca); its ValueError means
-    the text has nothing to pronounce. ByT5 holds a dict named ``tokens``, so
-    only a callable counts. Any other phonemizer gives ``None``.
-    """
-    with_language_ids = getattr(phonemizer, "phonemize_with_language_ids_lazy", None)
-    if with_language_ids is not None:
-        def read(text, lang):
-            for phonemes, language_ids in with_language_ids(text, lang):
-                yield phonemes, {"language_ids": language_ids}
-        return read
-    with_stress = getattr(phonemizer, "tokens", None)
-    if callable(with_stress):
-        def read(text, lang):
-            try:
-                tokens = with_stress(text)
-            except ValueError as e:
-                LOG.warning(f"skipping {text!r}: {e}")
-                return
-            yield list(tokens.symbols), {"stress": list(tokens.stress)}
-        return read
-    return None
 
 
 def get_conversion(phonemizer, voice_config: "VoiceConfig",
@@ -722,7 +727,7 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
 
     * ``graph`` — a scriptconv ``ConversionGraph`` whose phoneme edge is the
       voice's own (lazy) phonemizer. The edge yields ``(phonemes, streams)`` per
-      sentence: ``streams`` maps an ``AdapterSynthesisRequest`` field name to one
+      segment of ``phonemize_segments``: ``streams`` maps an ``AdapterSynthesisRequest`` field name to one
       value per symbol, and is empty unless the phonemizer tags its symbols.
       When the voice vocalizes, scriptconv's ``text -> text-diacritized`` edge is added and the direct edge omitted, so
       routing is forced through the vocalizer by *topology* rather than a runtime
@@ -739,6 +744,7 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     and lives entirely behind these two values.
     """
     _deprecated("get_conversion", "TTSVoice.frontend")
+    from phoonnx.encoders import SIDE_STREAMS
     from scriptconv.graph import ConversionGraph, Edge
     from scriptconv.diacritics import DIACRITIZED, diacritize
 
@@ -749,16 +755,12 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     model = syn_config.diacritizer_model or voice_config.diacritizer_model
     lang, alpha = voice_config.lang_code, tgt_alphabet.value
 
-    read_streams = _side_stream_reader(phonemizer)
-
     def phonemize(text, **_):
-        if read_streams is not None:
-            yield from read_streams(text, lang)
-        else:
-            # phonemize_lazy is a BasePhonemizer method, so every phonemizer has it: a
-            # per-sentence generator, keeping sentence N+1 off the critical path of N.
-            for phonemes in phonemizer.phonemize_lazy(text, lang):
-                yield phonemes, {}
+        # phonemize_segments is a BasePhonemizer method, so every phonemizer has it:
+        # lazy, so segment N+1 stays off the critical path of N.
+        for segment in phonemizer.phonemize_segments(text, lang):
+            yield list(segment.phonemes), {name: list(values) for name, values in segment.streams.items()
+                                           if name in SIDE_STREAMS}
 
     graph = ConversionGraph()
     if not enabled:
@@ -775,41 +777,3 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     graph.register(Edge("text", DIACRITIZED, _vocalize))
     graph.register(Edge(DIACRITIZED, alpha, phonemize))
     return graph, _vocalize
-
-
-
-
-if __name__ == "__main__":  # pragma: no cover
-    config_files = [
-        "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia_vits.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_gruut.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_espeak.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_epitran.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_symbols.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/piper_espeak.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/vits-coqui-pt-cv/config.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/phonikud/model.config.json"
-    ]
-    phoneme_txts = [
-        None,
-        None,
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
-        None,
-        None,
-        None
-    ]
-    print("Testing model config file parsing\n###############")
-    for idx, cfile in enumerate(config_files):
-        print(f"\nConfig file: {cfile}")
-        with open(cfile) as f:
-            config = json.load(f)
-        print("Mimic3:", VoiceConfig.is_mimic3(config))
-        print("Piper:", VoiceConfig.is_piper(config))
-        print("Coqui:", VoiceConfig.is_coqui_vits(config))
-        print("Phoonx:", VoiceConfig.is_phoonnx(config))
-        cfg = VoiceConfig.from_dict(config, phoneme_txts[idx])
-        print(cfg)

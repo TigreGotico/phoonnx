@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from card_examples import UnsupportedExample, graph_io, standalone_example  # noqa: E402
 import card_examples  # noqa: E402
 
-from phoonnx.config import Alphabet, SynthesisConfig, VoiceConfig  # noqa: E402
+from phoonnx.config import SynthesisConfig, VoiceConfig  # noqa: E402
 from phoonnx.engines.matcha import MatchaAdapter  # noqa: E402
 from phoonnx.engines.styletts2 import StyleTTS2Adapter  # noqa: E402
 from phoonnx.engines.vocoders.raw import HiFiGANVocoder  # noqa: E402
@@ -28,6 +28,9 @@ from phoonnx.voice import TTSVoice  # noqa: E402
 from scriptconv.phonemizers import get_phonemizer  # noqa: E402
 from scriptconv.phonemizers.enums import Phonemizer  # noqa: E402
 from scriptconv.phonemizers.registry import PHONEMIZER_REGISTRY  # noqa: E402
+
+# The model input that synthesis gives, before the user's phonetic spellings.
+NO_SPELLINGS = SynthesisConfig(enable_phonetic_spellings=False)
 
 PIPER = {"piper_version": "1.0.0", "phoneme_type": "espeak", "audio": {"sample_rate": 22050},
          "espeak": {"voice": "en-us"}, "num_speakers": 1, "lang_code": "en-US",
@@ -417,8 +420,7 @@ def test_vowel_marks_are_added_as_phoonnx_adds_them(config, monkeypatch):
     phoonnx_calls, example_calls = [], []
     monkeypatch.setattr(scriptconv.frontend, "diacritize", recording(phoonnx_calls))
     voice = voice_of(config)
-    expected = [i for _, ids, _ in voice._iter_synthesis_ids(ARABIC_TEXT, SynthesisConfig(), Alphabet.GRAPHEMES,
-                                                             voice.config.alphabet) for i in ids]
+    expected = [i for u in voice.prepare(ARABIC_TEXT, NO_SPELLINGS) for i in u.ids]
     monkeypatch.setattr(scriptconv.diacritics, "diacritize", recording(example_calls))
     assert example_text_ids(config, ARABIC_TEXT) == expected
     assert example_calls == phoonnx_calls  # the same language and model, once for the one sentence
@@ -432,7 +434,7 @@ def test_the_vowel_marks_go_to_each_sentence_on_its_own_as_phoonnx_gives_them(mo
     phoonnx_calls, example_calls = [], []
     monkeypatch.setattr(scriptconv.frontend, "diacritize", recording(phoonnx_calls))
     voice = voice_of(ARABIC)
-    list(voice._iter_synthesis_ids(text, SynthesisConfig(), Alphabet.GRAPHEMES, voice.config.alphabet))
+    list(voice.prepare(text, NO_SPELLINGS))
     monkeypatch.setattr(scriptconv.diacritics, "diacritize", recording(example_calls))
     example_text_ids(ARABIC, text)
     assert len(phoonnx_calls) == 2  # quebra-frases does not cut at the Arabic question mark
@@ -486,8 +488,7 @@ def test_a_backend_that_owns_the_diacritize_stage_gets_the_text_as_phoonnx_gives
     phoonnx_calls, example_calls = [], []
     monkeypatch.setattr(scriptconv.frontend, "diacritize", recording(phoonnx_calls))
     voice = voice_of(OWNERS[owner])
-    expected = [i for _, ids, _ in voice._iter_synthesis_ids(text, SynthesisConfig(), Alphabet.GRAPHEMES,
-                                                             voice.config.alphabet) for i in ids]
+    expected = [i for u in voice.prepare(text, NO_SPELLINGS) for i in u.ids]
     monkeypatch.setattr(scriptconv.diacritics, "diacritize", recording(example_calls))
     assert example_text_ids(OWNERS[owner], text) == expected
     assert example_calls == phoonnx_calls == []
@@ -506,8 +507,7 @@ def index_route_ids(config, entry, text, dictionary=None):
     info.download_config = lambda: copy.deepcopy(config)
     info.download_dictionary = lambda: dictionary
     voice = TTSVoice(session=None, config=info.config)
-    return [i for _, ids, _ in voice._iter_synthesis_ids(text, SynthesisConfig(), Alphabet.GRAPHEMES,
-                                                         voice.config.alphabet) for i in ids]
+    return [i for u in voice.prepare(text, NO_SPELLINGS) for i in u.ids]
 
 
 def card_example_ids(config, entry, text):
@@ -636,15 +636,15 @@ def test_shami_example_reads_every_sentence_and_its_language_as_phoonnx(monkeypa
     monkeypatch.setattr(scriptconv.frontend, "diacritize", recording(phoonnx_calls))
     config = shami_voice()
     voice = voice_of(config)
-    sentences = list(voice._iter_synthesis_ids(SHAMI_TEXT, SynthesisConfig(), Alphabet.GRAPHEMES, voice.config.alphabet))
+    sentences = list(voice.prepare(SHAMI_TEXT, NO_SPELLINGS))
     assert len(sentences) == 2
     phoonnx_langs, langs[:] = list(langs), []
     monkeypatch.setattr(scriptconv.diacritics, "diacritize", recording(example_calls))
     code = example(config, {"inputs": {"phoneme_ids": 2, "phoneme_lengths": 1, "language_ids": 2}}, text=SHAMI_TEXT)
     names = {"config": copy.deepcopy(config)}
     run_lines(code, "text = ", names)
-    assert names["ids"] == [i for _, ids, _ in sentences for i in ids]
-    assert names["language_ids"] == [i for _, _, streams in sentences for i in streams["language_ids"]]
+    assert names["ids"] == [i for u in sentences for i in u.ids]
+    assert names["language_ids"] == [i for u in sentences for i in u.streams["language_ids"]]
     assert set(langs) == set(phoonnx_langs) == {"ar"}
     assert example_calls == phoonnx_calls  # the vowel marks of each sentence, on its own
 
@@ -869,3 +869,10 @@ def test_index_files_names_each_file_of_the_entry_in_the_repo_that_holds_it():
     assert files == {"model": {"repo": "Phoonnx/new-name", "file": "lm/model.onnx"},
                      "tokenizer_config": {"repo": "Phoonnx/new-name", "file": "lm/tokenizer.json"},
                      "codec_decoder_path": {"repo": "Phoonnx/codec", "file": "decoder.onnx"}}
+
+
+@pytest.mark.parametrize("inference", [{}, {"noise_scale": None, "length_scale": None, "noise_w": None}])
+def test_an_unset_scale_in_the_example_is_the_engine_default(inference):
+    # VitsAdapter.default_params(): noise 0.667, length 1.0, noise_w 0.8
+    code = example({**NATIVE, "inference": inference}, VITS_FILES)
+    assert "noise_scale, length_scale, noise_w = 0.667, 1.0, 0.8" in code

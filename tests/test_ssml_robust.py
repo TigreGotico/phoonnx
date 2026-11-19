@@ -5,12 +5,17 @@ import random
 import string
 import time
 
+import types
+import warnings
+from unittest.mock import MagicMock
+
 import numpy as np
 import pytest
 
 from phoonnx import audio_fx
+from phoonnx.config import Alphabet, PhonemeType, VoiceConfig
 from phoonnx.ssml import Piece, looks_like_ssml, parse_ssml, strip_ssml
-from phoonnx.ssml_say_as import say_as_text
+from phoonnx.voice import TTSVoice
 
 KINDS = ["cardinal", "ordinal", "fraction", "unit", "date", "time", "currency", "address",
          "telephone", "characters", "digits", "expletive", "interjection", "nonsense", ""]
@@ -26,19 +31,37 @@ def _text(rng, n):
     return "".join(rng.choice(alphabet) for _ in range(n))
 
 
+def _frontend():
+    """The text frontend of a voice that normalises with text2spoken."""
+    config = VoiceConfig(num_symbols=1, num_speakers=1, num_langs=1, sample_rate=22050,
+                         lang_code="en", phoneme_type=PhonemeType.UNICODE, alphabet=Alphabet.UNICODE,
+                         phonemizer_model=None, add_diacritics=False, keep_punctuation=False)
+    voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
+    voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: list(range(len(phonemes))))
+    return voice.frontend
+
+
 def test_say_as_never_raises_on_random_text():
     rng = random.Random(1)
-    for _ in range(1500):
-        text, kind, lang = _text(rng, rng.randint(0, 24)), rng.choice(KINDS), rng.choice(LANGS)
-        result = say_as_text(text, kind, lang, rng.choice([None, "mdy", "dmy", "ymd", "hms24", "zz"]))
-        assert isinstance(result, str)
+    frontend = _frontend()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for _ in range(1500):
+            text, kind, lang = _text(rng, rng.randint(0, 24)), rng.choice(KINDS), rng.choice(LANGS)
+            fmt = rng.choice([None, "mdy", "dmy", "ymd", "hms24", "zz"])
+            assert isinstance(frontend.say_as(text, kind, fmt, None, lang or None), str)
 
 
 @pytest.mark.parametrize("value", ["9" * 400, "1" * 5000, "0" * 5000, "-" * 50, "1e999", "1/" + "0" * 50,
                                    "99999999999999999999999999.99", "٣٤", "1,2,3,4,5,6,7,8,9"])
 def test_say_as_survives_absurd_numbers(value):
-    for kind in ("cardinal", "ordinal", "fraction", "currency", "unit", "time", "date"):
-        assert isinstance(say_as_text(value, kind, "en"), str)
+    frontend = _frontend()
+    started = time.perf_counter()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for kind in ("cardinal", "ordinal", "fraction", "currency", "unit", "time", "date"):
+            assert isinstance(frontend.say_as(value, kind, lang="en"), str)
+    assert time.perf_counter() - started < 10
 
 
 def test_parse_never_raises_on_mutated_documents():

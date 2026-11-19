@@ -22,7 +22,11 @@ flowchart TD
     N --> C[AudioChunk per sentence]
 ```
 
-Step by step, as implemented in `TTSVoice.synthesize`:
+`TTSVoice.synthesize` is two public steps. `TTSVoice.prepare` does steps 1 to 3 and yields
+one `Utterance` (text, symbols, token IDs, side streams) for each engine call.
+`TTSVoice.render` does steps 4 and 5 for one `Utterance` and returns one `AudioChunk`.
+`synthesize` calls `render` on each utterance that `prepare` yields, one at a time. Thus the
+first sentence becomes audio before the second sentence is phonemized. Step by step:
 
 1. **Phonetic spellings** — when `enable_phonetic_spellings` is set, word-level
    replacements loaded from the voice's `locale/<lang>/phonetic_spellings.txt` are applied
@@ -30,32 +34,31 @@ Step by step, as implemented in `TTSVoice.synthesize`:
 2. **Text frontend** — `TTSVoice.frontend` is a scriptconv `TextFrontend` over the voice's
    [phonemizer](phonemizers.md). It runs a fixed order: it splits out inline `[[...]]`
    blocks, normalizes the whole text, splits it into sentences, adds diacritics when
-   the voice or the call asks for them, and then runs the phonemizer. The side-stream
-   path below still splits the raw text into sentences before it normalizes each one. The symbols of a block
+   the voice or the call asks for them, and then runs the phonemizer. The symbols of a block
    go into the output as written. A per-call `SynthesisConfig.add_diacritics` wins; when it
    is unset, the voice config decides, so an undiacritized model is never force-diacritized.
    An engine that reads text instead of phonemes gets the text from `TextFrontend.prepare`,
    after the same normalization and diacritics as a phoneme voice.
-   Some phonemizers give a value per symbol beside the symbols: Shami a language ID
-   (`phonemize_with_language_ids_lazy`), dizione a stress value (`tokens`). Each reaches the
+   Some phonemizers give a value per symbol beside the symbols, in the `streams` of each
+   segment from `phonemize_segments`: Shami a language ID, dizione a stress value. Each reaches the
    engine as the request field of the same name (`language_ids`, `stress`), one value per
    phoneme ID.
 3. **Tokenize** — the `TTSTokenizer` maps phonemes/characters to integer IDs using the
    voice's `phoneme_id_map`, inserting blank/pad/bos/eos tokens per the voice config. For
    text-token engines (Chatterbox) the adapter's `encode_text` BPE-tokenizes the raw text
    instead.
-4. **Adapter synthesize** — `phoneme_ids_to_audio` merges scale parameters (adapter defaults
+4. **Adapter synthesize** — `render` merges scale parameters (adapter defaults
    → voice config → per-call `SynthesisConfig` → engine extras), builds an
    `AdapterSynthesisRequest`, and hands it to the engine adapter, which runs the ONNX
    session(s) and returns a float32 waveform.
 5. **Post-process** — the waveform is optionally peak-normalized, volume-scaled, and clipped
-   to `[-1, 1]`, then yielded as one `AudioChunk` per sentence.
+   to `[-1, 1]`. Voice conversion and super-resolution run last when the call asks for
+   them. The result is one `AudioChunk` per utterance. `phoonnx.audio.write_wav` writes a
+   stream of chunks to a WAV file. `synthesize_wav` and `synthesize_ssml_wav` use it.
 
-Text normalization of numbers, dates and units (via `ovos-number-parser` /
-`ovos-date-parser`) runs in the text frontend and during dataset
-[preprocessing](training/preprocess.md), before diacritization in both, so training text
-matches inference. An espeak voice keeps contractions, because espeak-ng reads them as people
-say them. Every voice runs the step, text-token and grapheme engines included. The step is
+Text normalization of numbers, dates and units (`text2spoken.normalize`) runs in the text
+frontend and during dataset [preprocessing](training/preprocess.md), before diacritization in
+both, so training text matches inference. Contractions stay as written. Every voice runs the step, text-token and grapheme engines included. The step is
 skipped only for a phonemizer that names `normalize` in its `owned_stages`, because that
 phonemizer normalizes its own input. Individual phonemizer backends may also clean their own input.
 

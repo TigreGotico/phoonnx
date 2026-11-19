@@ -448,13 +448,13 @@ class PhoonnxTTSPlugin(TTS):
                     voice_info.config.add_diacritics,  # arabic and hebrew only
                     "add_diacritics"),
                 noise_scale=float(noise_scale) if noise_scale is not None else self._cfg_opt(
-                    voice_info.config.noise_scale,  # generator noise
+                    None,  # unset: the loaded voice's own default
                     "noise_scale", "noise-scale"),
                 length_scale=float(length_scale) if length_scale is not None else self._cfg_opt(
-                    voice_info.config.length_scale,  # phoneme length
+                    None,  # unset: the loaded voice's own default
                     "length_scale", "length-scale"),
                 noise_w_scale=float(noise_w_scale) if noise_w_scale is not None else self._cfg_opt(
-                    voice_info.config.noise_w_scale,  # phoneme width noise
+                    None,  # unset: the loaded voice's own default
                     "noise_w_scale", "noise_w", "noise-w"),
                 # zero-shot voice cloning. A path to a reference wav; cloning engines turn
                 # it into the conditioning signal. In-context engines (ZipVoice) also need
@@ -473,6 +473,7 @@ class PhoonnxTTSPlugin(TTS):
                 # chunk, so the WAV header follows.
                 super_resolution=bool(self._cfg_opt(False, "super_resolution")),
                 super_resolution_model=self._cfg_opt(None, "super_resolution_model"),
+                chunk=self._cfg_opt(None, "chunk"),
             )
             # Written beside the target and moved into place only once the
             # synthesis has finished. Opening the target directly creates it
@@ -520,18 +521,3 @@ class PhoonnxTTSPlugin(TTS):
                 raise
 
         return wav_file, None
-
-
-if __name__ == "__main__":
-    utterance = "Guimarães é uma das mais importantes cidades históricas do país, estando o seu centro histórico inscrito na lista de Património Mundial da UNESCO desde 2001, o que a torna definitivamente num dos maiores centros turísticos da região. As suas ruas e monumentos respiram história e encantam quem a visita."
-    #utterance = "Um arco-íris, também popularmente denominado arco-da-velha, é um fenômeno óptico e meteorológico que separa a luz do sol em seu espectro contínuo quando o sol brilha sobre gotículas de água suspensas no ar."
-
-    tts = PhoonnxTTSPlugin()
-    tts.get_tts(utterance, "tmiro-pt-PT.wav",
-                voice="OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone")
-    tts.get_tts(utterance, "tdii-pt-PT.wav",
-                voice="OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone")
-    tts.get_tts(utterance, "miro-pt-PT.wav",
-                voice="OpenVoiceOS/pipertts_pt-PT_miro")
-    tts.get_tts(utterance, "dii-pt-PT.wav",
-                voice="OpenVoiceOS/pipertts_pt-PT_dii")

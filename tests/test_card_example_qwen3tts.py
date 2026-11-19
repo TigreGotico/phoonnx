@@ -13,7 +13,7 @@ from card_examples import UnsupportedExample, index_files, standalone_example  #
 
 from phoonnx.engines import qwen3tts  # noqa: E402
 
-REPO = "Phoonnx/phoonnx-qwen3-tts"
+REPO = "Phoonnx/qwen3tts-multi-customvoice-0.6b-unicode"
 ENTRIES = [e for e in json.loads((ROOT / "phoonnx/voice_index/qwen3tts.json").read_text()).values()
            if isinstance(e, dict)]
 

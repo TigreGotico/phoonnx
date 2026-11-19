@@ -24,6 +24,19 @@ def _periodic_hann(n: int) -> np.ndarray:
     return 0.5 - 0.5 * np.cos(2.0 * np.pi * np.arange(n) / n)
 
 
+def _overlap_add(frames: np.ndarray, hop_length: int) -> np.ndarray:
+    """Overlap-add ``[B, T, win]`` frames; blocks run last to first to keep the loop's sum order."""
+    B, T, win_length = frames.shape
+    n_blocks = -(-win_length // hop_length)
+    out = np.zeros((B, (T + n_blocks - 1) * hop_length))
+    for j in reversed(range(n_blocks)):
+        start = j * hop_length
+        width = min(hop_length, win_length - start)
+        out[:, start:start + T * hop_length].reshape(B, T, hop_length)[:, :, :width] += \
+            frames[:, :, start:start + width]
+    return out[:, :(T - 1) * hop_length + win_length]
+
+
 class VocosVocoder(BaseVocoder):
     """ISTFT-based vocoder emitting STFT coefficients (Vocos / alVoCat)."""
 
@@ -81,20 +94,14 @@ class VocosVocoder(BaseVocoder):
 
         window = _periodic_hann(win_length)
 
-        B, _, T = spectrogram.shape
+        T = spectrogram.shape[-1]
 
-        # Inverse FFT per frame, windowed: [B, win_length, T]
-        ifft = np.fft.irfft(spectrogram, n=n_fft, axis=1) * window[None, :, None]
+        # Inverse FFT per frame, windowed: [B, T, win_length]
+        ifft = np.fft.irfft(spectrogram.transpose(0, 2, 1), n=n_fft, axis=-1) * window
 
-        output_size = (T - 1) * hop_length + win_length
-        y = np.zeros((B, output_size), dtype=np.float64)
-        window_envelope = np.zeros((B, output_size), dtype=np.float64)
-        window_sq = window ** 2
-
-        for t in range(T):
-            start = t * hop_length
-            y[:, start:start + win_length] += ifft[:, :, t]
-            window_envelope[:, start:start + win_length] += window_sq[None, :]
+        y = _overlap_add(ifft, hop_length)
+        window_envelope = _overlap_add(
+            np.broadcast_to(window ** 2, (1, T, win_length)), hop_length)
 
         y /= np.maximum(window_envelope, 1e-11)
         # Vocos STFT uses center=True (signal padded by n_fft//2 each side); trim

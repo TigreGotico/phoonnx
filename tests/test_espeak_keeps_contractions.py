@@ -1,43 +1,13 @@
 """An espeak-ng voice is given English contractions as written, not expanded.
 
-phoonnx's normalizer expands every English contraction before the text reaches
-the phonemizer ("don't" -> "do not", "it's" -> "it is", 166 of them). espeak-ng
-says a contraction the way people do, so the expansion only made sentences sound
-like a form letter, and the table is a guess for "he's" and "I'd". Numbers, dates,
-units and titles are still normalized, and phonemizers other than espeak keep the
-expansion.
+espeak-ng says a contraction the way people do, so expanding it ("don't" -> "do not")
+only makes a sentence sound like a form letter. text2spoken leaves contractions as
+written for every phonemizer, and still reads numbers, dates and units.
 """
 import shutil
 import unittest
 
 from phoonnx.config import PhonemeType, get_phonemizer
-from phoonnx.normalization.text import normalize
-
-
-class TestNormalizeContractions(unittest.TestCase):
-
-    def test_contractions_expand_by_default(self):
-        """The default normalizer still expands contractions."""
-        self.assertEqual(normalize("I don't know what it's called", "en-US"),
-                         "I do not know what it is called")
-
-    def test_contractions_can_be_kept(self):
-        """With expand_contractions=False they are left as written."""
-        self.assertEqual(
-            normalize("I don't know what it's called", "en-US", expand_contractions=False),
-            "I don't know what it's called")
-
-    def test_numbers_and_units_still_change_when_contractions_are_kept(self):
-        """Keeping contractions does not stop numbers and units being spoken."""
-        text = normalize("It's 12 o'clock, don't wait", "en-US", expand_contractions=False)
-        self.assertIn("It's", text)
-        self.assertIn("don't", text)
-        self.assertNotIn("12", text)
-
-    def test_typographic_apostrophes_are_kept_as_a_plain_apostrophe(self):
-        """A typographic apostrophe is read as a plain one."""
-        self.assertEqual(normalize("Don’t stop", "en-US", expand_contractions=False),
-                         "Don't stop")
 
 
 class TestEspeakPhonemizerKeepsContractions(unittest.TestCase):
@@ -48,10 +18,10 @@ class TestEspeakPhonemizerKeepsContractions(unittest.TestCase):
         self.assertEqual(phonemizer.normalizer("I don't know", "en-US"), "I don't know")
         self.assertNotIn("12", phonemizer.normalizer("It's 12 o'clock", "en-US"))
 
-    def test_another_phonemizer_still_expands_them(self):
-        """Any other phonemizer's normalizer still expands them."""
+    def test_another_phonemizer_keeps_them_too(self):
+        """Any other phonemizer's normalizer keeps them as well."""
         phonemizer = get_phonemizer(PhonemeType.GRUUT)
-        self.assertEqual(phonemizer.normalizer("I don't know", "en-US"), "I do not know")
+        self.assertEqual(phonemizer.normalizer("I don't know", "en-US"), "I don't know")
 
     @unittest.skipUnless(shutil.which("espeak-ng"), "needs the espeak-ng binary")
     def test_espeak_says_dont_as_one_word(self):
