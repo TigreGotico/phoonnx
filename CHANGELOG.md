@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.123.1a2](https://github.com/TigreGotico/phoonnx/tree/1.123.1a2) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.1a1...1.123.1a2)
+
+**Merged pull requests:**
+
+- fix: CI passes on quebra-frases 0.3.8a2 and linguatag 0.4.0a1 [\#828](https://github.com/TigreGotico/phoonnx/pull/828) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- test: raw-text normalisation and text casing test gaps [\#824](https://github.com/TigreGotico/phoonnx/pull/824) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.123.1a1](https://github.com/TigreGotico/phoonnx/tree/1.123.1a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.0a1...1.123.1a1)
