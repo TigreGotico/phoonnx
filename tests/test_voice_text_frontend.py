@@ -56,7 +56,9 @@ def _voice(lang, phoneme_type=PhonemeType.UNICODE, alphabet=Alphabet.UNICODE,
                          phonemizer_model=None, add_diacritics=add_diacritics,
                          keep_punctuation=keep_punctuation, diacritizer_model=diacritizer_model)
     voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
-    voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: list(range(len(phonemes))))
+    voice.config.tokenizer = types.SimpleNamespace(
+        tokenize=lambda phonemes: list(range(len(phonemes))),
+        tokenize_with_streams=lambda phonemes, streams: (list(range(len(phonemes))), streams))
     return voice
 
 
@@ -119,11 +121,24 @@ def _spy_on_hook(voice):
     return spy
 
 
+class _TextAdapter(type(get_adapter("vits"))):
+    """An engine that reads text: it records what ``encode_text`` receives."""
+
+    def __init__(self):
+        super().__init__()
+        self.texts = []
+
+    def encode_text(self, text, voice, syn_config):
+        self.texts.append(text)
+        return [[1]]
+
+
 def _encoded_text(voice, text, syn_config=None):
     """The text that a text-token engine receives from one synthesis call."""
+    voice.adapter = _TextAdapter()
     _prepared(voice, text, syn_config)
-    voice.adapter.encode_text.assert_called_once()
-    return voice.adapter.encode_text.call_args[0][0]
+    assert len(voice.adapter.texts) == 1
+    return voice.adapter.texts[0]
 
 
 class TestTextTokenEngines(unittest.TestCase):

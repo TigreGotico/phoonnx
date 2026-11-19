@@ -161,24 +161,6 @@ class VitsAdapter(BaseOnnxAdapter):
 
         return False
 
-    def parse_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract VITS inference parameters from a JSON config dict."""
-        inference = config.get("inference", {})
-        defaults = self.default_params()
-        return {
-            "noise_scale": inference.get("noise_scale", defaults["noise_scale"]),
-            "length_scale": inference.get("length_scale", defaults["length_scale"]),
-            "noise_w_scale": inference.get("noise_w", defaults["noise_w_scale"]),
-        }
-
-    def param_labels(self) -> Dict[str, str]:
-        """Human-readable labels for VITS synthesis parameters."""
-        return {
-            "noise_scale": "Noise",
-            "length_scale": "Speed",
-            "noise_w_scale": "Noise W",
-        }
-
 
 class VitsPriorSplitAdapter(VitsAdapter):
     """VITS split at the **prior** boundary (before the flow), rather than at
@@ -225,11 +207,6 @@ class VitsPriorSplitAdapter(VitsAdapter):
         defaults = dict(super().default_params())
         defaults["seed"] = 0.0
         return defaults
-
-    def param_labels(self) -> Dict[str, str]:
-        labels = dict(super().param_labels())
-        labels["seed"] = "Seed"
-        return labels
 
     def synthesize(
         self,

@@ -845,11 +845,6 @@ def test_default_params_match_the_published_generation_config():
     assert p["repetition_penalty"] == 1.1
 
 
-def test_every_default_param_has_a_label():
-    a = OuteTTSAdapter()
-    assert set(a.default_params()) <= set(a.param_labels())
-
-
 def test_the_abc_hooks_refuse_the_feed_dict_path():
     a = OuteTTSAdapter()
     with pytest.raises(NotImplementedError):

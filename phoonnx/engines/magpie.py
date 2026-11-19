@@ -249,10 +249,6 @@ class MagpieAdapter(BaseOnnxAdapter):
     def default_params(self) -> Dict[str, float]:
         return {"temperature": 0.6, "top_k": 80.0, "cfg_scale": 2.5}
 
-    def param_labels(self) -> Dict[str, str]:
-        return {"temperature": "Sampling temperature", "top_k": "Top-k",
-                "cfg_scale": "Classifier-free guidance scale"}
-
     def configure(self, voice_config: Any) -> None:
         """Open the six auxiliary graphs and read the static assets.
 

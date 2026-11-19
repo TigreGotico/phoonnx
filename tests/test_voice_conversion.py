@@ -29,7 +29,6 @@ def _bare_voice(testcase=None):
     """A TTSVoice instance with only the VC-cache fields set (no ONNX session)."""
     v = TTSVoice.__new__(TTSVoice)
     v._vc = None
-    v._vc_key = None
     return v
 
 
@@ -192,6 +191,40 @@ class TestLoadVoiceConversion(unittest.TestCase):
         v._load_voice_conversion(SynthesisConfig(vc_reference=(audio * -1, 16000)))
         self.assertEqual(module.VoiceCloner.call_count, 2)
 
+    def test_cache_never_pairs_one_references_key_with_anothers_conversion(self):
+        """A request that lands while the cache is being updated for another
+        reference must get its own reference's conversion."""
+        class _Probe(TTSVoice):
+            on_store = None
+
+            @property
+            def _vc(self):
+                return self.__dict__.get("_vc_pair")
+
+            @_vc.setter
+            def _vc(self, value):
+                self.__dict__["_vc_pair"] = value
+                hook, self.on_store = self.on_store, None
+                if hook:
+                    hook()
+
+        _fake_voiceclonnx(self)
+        v = _Probe.__new__(_Probe)
+        v._vc = None
+
+        def cfg(level):
+            return SynthesisConfig(vc_reference=(np.full(16000, level, np.float32), 16000))
+
+        def level_of(conversion):
+            return round(float(load_reference_audio(conversion.ref_path)[0][0]), 1)
+
+        self.assertEqual(level_of(v._load_voice_conversion(cfg(0.2))), 0.2)
+        seen = []
+        v.on_store = lambda: seen.append(level_of(v._load_voice_conversion(cfg(0.2))))
+        self.assertEqual(level_of(v._load_voice_conversion(cfg(0.4))), 0.4)
+        self.assertEqual(seen, [0.2])
+        self.assertEqual(level_of(v._load_voice_conversion(cfg(0.2))), 0.2)
+
     def test_url_reference_goes_through_the_guarded_fetcher(self):
         """A remote reference must be fetched by phoonnx.reference_audio, whose
         address and size limits are the only thing standing between a caller's
@@ -348,7 +381,6 @@ class TestSynthesisPipelineWiring(unittest.TestCase):
         v._sr_engine = None
         v._sr_loaded = False
         v._vc = None
-        v._vc_key = None
         return v
 
     def _run(self, cfg):

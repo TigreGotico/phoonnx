@@ -162,6 +162,11 @@ for chunk in voice.synthesize(text):
     ...
 ```
 
+A block holds IPA. A voice that reads another alphabet, such as X-SAMPA, gets the block converted
+to that alphabet. A voice that takes no symbol input, tiny-voca or an engine that reads raw text,
+logs one warning that names the voice and the block, and leaves the block out. ARPA voices read
+the block as IPA, because the frontend adds block symbols one character at a time.
+
 ## Phonetic Spellings
 
 Word-level respellings are applied to the text before phonemization (`enable_phonetic_spellings`,
