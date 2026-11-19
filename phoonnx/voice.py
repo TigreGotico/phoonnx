@@ -1444,7 +1444,11 @@ class TTSVoice:
         if syn_config.top_p is not None:
             params["top_p"] = syn_config.top_p
 
-        side_streams = {name: np.array([values], dtype=np.int64) for name, values in (streams or {}).items()}
+        side_streams = {}
+        for name, values in (streams or {}).items():
+            if len(values) != len(phoneme_ids):
+                raise ValueError(f"side stream {name!r} has {len(values)} values for {len(phoneme_ids)} phoneme ids")
+            side_streams[name] = np.array([values], dtype=np.int64)
 
         return AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,
