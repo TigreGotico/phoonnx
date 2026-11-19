@@ -81,7 +81,7 @@ import onnxruntime
 from quebra_frases import sentence_tokenize
 
 from phoonnx.engines._sampling import apply_repetition_penalty
-from phoonnx.engines._sampling import softmax
+from phoonnx.engines._sampling import NUCLEUS_HEAD, ranked, softmax
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.util import LOG
@@ -128,7 +128,7 @@ def _sample(scores: np.ndarray, temperature: float, top_p: float,
         return int(np.argmax(s))
     probs = softmax(s / float(temperature))
     if 0 < top_p < 1:
-        order = np.argsort(probs)[::-1]
+        order = ranked(probs, NUCLEUS_HEAD, top_p)
         cumulative = np.cumsum(probs[order])
         # keep every token up to and including the one that crosses top_p
         keep = order[:max(1, int(np.searchsorted(cumulative, top_p)) + 1)]
@@ -183,20 +183,10 @@ class OrpheusAdapter(BaseOnnxAdapter):
             "max_chunk_chars": float(self.MAX_CHUNK_CHARS),
         }
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "temperature": "sampling temperature",
-            "top_p": "top-p (nucleus)",
-            "repetition_penalty": "repetition penalty",
-            "max_new_tokens": "max audio tokens (~82/s)",
-            "max_chunk_chars": "target characters per model call",
-            "voice": "voice name written into the prompt",
-        }
-
     def configure(self, voice_config: Any) -> None:
         """Load the SNAC decoder, the checkpoint's BPE and the voice list from
         ``engine_params``."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         if self.snac is None and ep.get("snac_decoder_path"):
             self.snac_path = ep["snac_decoder_path"]
             self.snac_providers = ep.get("providers")

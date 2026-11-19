@@ -162,6 +162,13 @@ for chunk in voice.synthesize(text):
     ...
 ```
 
+A block holds IPA. A voice that reads another alphabet, such as X-SAMPA, gets the block converted
+to that alphabet. A voice that takes no symbol input, tiny-voca or an engine that reads raw text,
+logs one warning that names the voice and the block, and leaves the block out. An ARPA voice gets the
+block as IPA, which its vocabulary does not hold, so the tokenizer drops the block with an
+out-of-vocabulary warning. A skipped block leaves one space between the words around it. An SSML
+`<phoneme>` on such a voice reads its written word.
+
 ## Phonetic Spellings
 
 Word-level respellings are applied to the text before phonemization (`enable_phonetic_spellings`,

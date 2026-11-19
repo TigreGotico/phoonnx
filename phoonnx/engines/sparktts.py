@@ -51,6 +51,7 @@ import numpy as np
 import onnxruntime
 from quebra_frases import sentence_tokenize
 
+from phoonnx.engines._sampling import ranked
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.tokenizer import BPETokenizer
@@ -172,7 +173,7 @@ def sample_token(logits: np.ndarray, temperature: float, top_k: int,
     x = x - x.max()
     probs = np.exp(x)
     probs /= probs.sum()
-    order = np.argsort(probs)[::-1]
+    order = ranked(probs, top_k, top_p)
     cutoff = int(np.searchsorted(np.cumsum(probs[order]), top_p)) + 1
     keep = order[:max(1, cutoff)]
     p = probs[keep] / probs[keep].sum()
@@ -218,8 +219,7 @@ class SparkTTSAdapter(BaseOnnxAdapter):
         # A one-entry cache keyed on the request's own clip: a request whose
         # clip differs recomputes rather than reading the previous caller's
         # tokens, and one that repeats it skips the encoders.
-        "_resolve_speaker": frozenset({"_reference_cache",
-                                       "_reference_cache_key"}),
+        "_resolve_speaker": frozenset({"_reference_cache"}),
     }
 
     def __init__(self):
@@ -231,18 +231,15 @@ class SparkTTSAdapter(BaseOnnxAdapter):
         self.preset_global_tokens: Optional[np.ndarray] = None
         self.special: Dict[str, int] = {}
         self._params: Dict[str, Any] = {}
-        self._reference_cache_key: Optional[tuple] = None
-        self._reference_cache: Tuple[np.ndarray, Optional[np.ndarray]] = (None, None)
+        # (key, tokens) in one attribute: a reader never sees one request's key
+        # next to another request's tokens.
+        self._reference_cache: Optional[Tuple[tuple, Tuple[np.ndarray, Optional[np.ndarray]]]] = None
         self.past_names: List[str] = []
         self.num_kv_heads = 0
         self.head_dim = 0
 
     def default_params(self) -> Dict[str, float]:
         return {"temperature": 0.8, "top_k": 50.0, "top_p": 0.95}
-
-    def param_labels(self) -> Dict[str, str]:
-        return {"temperature": "Sampling temperature", "top_k": "Top-k",
-                "top_p": "Nucleus (top-p)"}
 
     # ------------------------------------------------------------------
     # Setup
@@ -255,7 +252,7 @@ class SparkTTSAdapter(BaseOnnxAdapter):
         preset voice never touches them, and the wav2vec2 front end alone costs about a
         gigabyte of memory to hold open.
         """
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         self._params = dict(ep)
 
         if self.vocoder is None and ep.get("vocoder_path"):
@@ -372,11 +369,13 @@ class SparkTTSAdapter(BaseOnnxAdapter):
         if ref is not None:
             audio = np.asarray(ref[0], np.float32).reshape(-1)
             key = (hash(audio.tobytes()), int(ref[1]), bool(prompt_text_ids))
-            if self._reference_cache_key != key:
-                self._reference_cache = self.tokenize_reference(
-                    audio, int(ref[1]), with_semantic=bool(prompt_text_ids))
-                self._reference_cache_key = key
-            return self._reference_cache
+            cached = self._reference_cache
+            if cached is not None and cached[0] == key:
+                return cached[1]
+            tokens = self.tokenize_reference(
+                audio, int(ref[1]), with_semantic=bool(prompt_text_ids))
+            self._reference_cache = (key, tokens)
+            return tokens
         if self.preset_global_tokens is None:
             raise RuntimeError("Spark-TTS voice has neither a speaker_tokens_path preset "
                                "nor a speaker_reference clip to clone from")

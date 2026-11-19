@@ -88,11 +88,11 @@ Lower `detect_priority` values are probed first during auto-detection.
 | [ZipVoice](training/engines/zipvoice.md) | `phoonnx/engines/zipvoice.py` | `engine == "zipvoice"` — first **iterative** engine (flow-matching ODE loop), in-context [cloning](cloning.md) |
 | [F5-TTS](training/engines/f5tts.md) | `phoonnx/engines/f5tts.py` | `engine == "f5tts"` — multi-graph engine (auxiliary ONNX graphs via `aux_model_urls`) |
 | Shami / HamsVITS | `phoonnx/engines/shami.py` | `engine in ("shami", "hams")` — VITS variant with per-phoneme `language_ids` for Levantine Arabic / English code-switching |
-| tiny-voca | `phoonnx/engines/tinyvoca.py` | `engine == "tinyvoca"`, or a graph with `tokens`, `stress`, `voice` and `pitch_range` inputs — 4.5M-parameter American English model with a source-filter waveform head; reads dizione tokens with a stress value each, one engine call per sentence as dizione cuts the text, two voices (F2, M2), 24 kHz. The adapter adds a full stop to a sentence that ends without a mark, cuts a sentence over 500 tokens after a clause mark or between words, and scales the audio to a peak of 0.99. It reads plain text only: inline `[[...]]` blocks and phonetic input reach it as single characters without stress, so they are not supported |
+| tiny-voca | `phoonnx/engines/tinyvoca.py` | `engine == "tinyvoca"`, or a graph with `tokens`, `stress`, `voice` and `pitch_range` inputs — 4.5M-parameter American English model with a source-filter waveform head; reads dizione tokens with a stress value each, one engine call per sentence as dizione cuts the text, two voices (F2, M2), 24 kHz. The adapter adds a full stop to a sentence that ends without a mark, cuts a sentence over 500 tokens after a clause mark or between words, and scales the audio to a peak of 0.99. It reads plain text only. An inline `[[...]]` block gets one warning that names the voice and the block, and the voice leaves the block out of the text it reads. Phonetic input (`SynthesisConfig.alphabet`) is not supported: the voice logs one warning, and the tokenizer drops the characters that have no id |
 | [Chatterbox](training/engines/chatterbox.md) | `phoonnx/engines/chatterbox.py` | `engine == "chatterbox"` — first **autoregressive** engine (codec-LM), d-vector [cloning](cloning.md) + exaggeration |
 | Vosk | `phoonnx/engines/vits.py` (shared) | `engine == "vosk"` — alphacep vosk-tts Russian voices: plain VITS exports whose front-end is scriptconv's dictionary/rule `VoskPhonemizer` |
 | SuperTonic | `phoonnx/engines/supertonic.py` | `engine == "supertonic"` — multi-graph flow-matching engine (4 ONNX graphs via `aux_model_urls`), raw-text (no phonemizer), fixed per-speaker style instead of cloning |
-| NeuTTS (NeuTTS Air / VieNeu / Akiti) | `phoonnx/engines/neutts.py` | `engine == "neutts"` — autoregressive single-codebook codec-LM (Qwen3 or Llama backbone + NeuCodec decoder), raw text phonemized with espeak-ng in the checkpoint's language ([front-end keys](#neutts-front-end)), in-context [cloning](cloning.md) from pre-encoded voice presets, 24 kHz |
+| NeuTTS (NeuTTS Air / VieNeu / Akiti) | `phoonnx/engines/neutts.py` | `engine == "neutts"` — autoregressive single-codebook codec-LM (Qwen3 or Llama backbone + NeuCodec decoder), raw text phonemized with espeak-ng in the checkpoint's language ([front-end keys](#neutts-front-end)), an inline `[[...]]` block going into the phone string as its IPA written, in-context [cloning](cloning.md) from pre-encoded voice presets, 24 kHz |
 | [Pocket TTS](pockettts.md) | `phoonnx/engines/pockettts.py` | `engine == "pockettts"` — 5-graph flow-matching codec LM with explicit stream state, raw-text (no phonemizer), state-based voices and reference [cloning](cloning.md) |
 | [Spark-TTS](training/engines/sparktts.md) | `phoonnx/engines/sparktts.py` | `engine == "sparktts"` — autoregressive codec-LM (Qwen2 + BiCodec), raw-text, en/zh; preset 32-token speakers or zero-shot [cloning](cloning.md) |
 | [Qwen3-TTS](training/engines/qwen3tts.md) | `phoonnx/engines/qwen3tts.py` | `engine == "qwen3tts"` — two autoregressive stages (28-layer talker + 5-layer code predictor) writing 16 code groups per 12.5 Hz frame, raw-text, 10 languages, nine fixed timbres, 24 kHz |
@@ -104,13 +104,14 @@ Lower `detect_priority` values are probed first during auto-detection.
 | [Orpheus](orpheus.md) | `phoonnx/engines/orpheus.py` | `engine == "orpheus"` — autoregressive codec-LM (Llama-3.2-3B backbone + SNAC decoder), raw text with emotive tags, eight named English voices, 24 kHz. **GPU engine**: ~37x realtime on 12 CPU cores |
 | Magpie-TTS | `phoonnx/engines/magpie.py` | `engine == "magpie"` — encoder-decoder codec-LM (6-layer causal text encoder, 12-layer causal decoder + 2-layer local transformer refiner, NanoCodec decoder), 8 codebooks over 2 stacked frames per step, attention-prior alignment (no learned monotonic alignment), five fixed baked-context voices (no cloning), byte (ByT5) and character sub-tokenizers encoded as NeMo encodes them, picked by language or by the voice ([sub-tokenizer keys](#magpie-sub-tokenizers)); the G2P sub-tokenizers (en/de/es/pt/hi/zh/ja) need scriptconv IPA and are refused with `NotImplementedError`, 22.05 kHz |
 | MOSS-TTS-Nano | `phoonnx/engines/mosstts.py` | `engine == "mosstts"` — autoregressive RVQ-16 codec-LM (6 ONNX graphs via `aux_model_urls`), raw text via SentencePiece, in-context [cloning](cloning.md) from a reference clip alone, native 48 kHz |
+| [x-vits](training/engines/xvits.md) | `phoonnx/engines/xvits.py` | `engine == "xvits"` — Piper/VITS with a flow-matching prosody model: 5 ONNX graphs (encoder, prosody predictor, duration, acoustic, prominence; the encoder is the voice's own graph, the others load from `aux_model_urls`), six styles, `*word*` emphasis, espeak ids from the voice pipeline, 22.05 kHz |
 | Rápido | `phoonnx/engines/rapido.py` | `engine == "rapido"` — flow-matching DiT (4 ONNX graphs: text encoder, aligner, velocity model, VoxCPM2 AudioVAE decoder), token ids from the voice pipeline with no text path of its own, midpoint ODE with classifier-free guidance, 42 preset speakers, 48 kHz. Export with `python -m phoonnx_train.rapido.export_onnx --output-dir <dir>` |
 
 #### Engines with no index voice
 
 Each other registered adapter is reached by at least one voice in `phoonnx/voice_index/`.
 The voices in the `phoonnx`, `piper`, `mimic3`, `coqui` and `transformers` formats reach
-the VITS adapter, and the Inflect entries reach the prior-split VITS adapter. Four
+the VITS adapter, and the Inflect entries reach the prior-split VITS adapter. Five
 adapters have no voice of their own:
 
 | Adapter | Why no index voice |
@@ -119,6 +120,7 @@ adapters have no voice of their own:
 | `yourtts` | `Phoonnx/yourtts-multi-graphemes` holds the model and six fixed-speaker configs (English and Portuguese). They join the index after an ASR round trip. |
 | `zipvoice` | It clones from a reference clip and its transcript on each request, and the Phoonnx organisation has no converted ZipVoice model. |
 | `tinyvoca` | The mirror `Phoonnx/tinyvoca-en_us` is not public. The index entry joins with it. |
+| `xvits` | The weights of `fdemelo/x-vits` are CC BY-NC 4.0. The index entry joins with the mirror, after a listening check. |
 
 `tests/test_engine_coverage.py` fails when an adapter has no voice and is not in this table.
 

@@ -73,8 +73,8 @@ import onnxruntime
 from quebra_frases import sentence_tokenize
 
 from phoonnx.engines._sampling import apply_repetition_penalty
-from phoonnx.engines._sampling import softmax
-from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
+from phoonnx.engines._sampling import ranked, softmax
+from phoonnx.engines.base import INLINE_BLOCK, AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.util import LOG
 
@@ -206,7 +206,7 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
         threshold = float(np.partition(s, -top_k)[-top_k])
         s = np.where(s < threshold, -np.inf, s)
     if 0 < top_p < 1:
-        order = np.argsort(s)[::-1]
+        order = ranked(s, top_k)
         cumulative = np.cumsum(softmax(s[order]))
         keep = np.ones(order.shape[0], bool)
         # keep every token up to and including the one that crosses top_p
@@ -221,11 +221,13 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
 class NeuTTSAdapter(BaseOnnxAdapter):
     """Adapter for the NeuTTS Air family (Qwen3 codec-LM + NeuCodec decoder)."""
 
+    takes_symbols = True
+
     MEMOIZED_WRITES = {
         # KV-cache geometry, read off the model's own input shapes.
         "_read_kv_shape": frozenset({"num_layers", "num_kv_heads", "head_dim"}),
         # The espeak backend the checkpoint was trained with, opened once.
-        "_espeak": frozenset({"_phonemizer"}),
+        "_phones": frozenset({"_phonemizer"}),
         # Each preset's reference transcript phonemized once; presets are
         # part of the voice, not of a request.
         "reference_phones": frozenset({"_ref_phones"}),
@@ -267,21 +269,10 @@ class NeuTTSAdapter(BaseOnnxAdapter):
             "max_chunk_chars": float(self.MAX_CHUNK_CHARS),
         }
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "temperature": "sampling temperature",
-            "top_p": "top-p (nucleus)",
-            "top_k": "top-k",
-            "repetition_penalty": "repetition penalty",
-            "max_new_tokens": "max codec tokens (50/s)",
-            "max_chunk_chars": "target characters per model call",
-            "voice": "voice preset name",
-        }
-
     def configure(self, voice_config: Any) -> None:
         """Load the NeuCodec decoder, the checkpoint's BPE, the voice presets and the
         checkpoint's text front end from ``engine_params``."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         self.espeak_voice = ep.get("espeak_voice") or ESPEAK_VOICE
         template = ep.get("prompt_template") or DEFAULT_PROMPT_TEMPLATE
         if template not in PROMPT_TEMPLATES:
@@ -316,6 +307,17 @@ class NeuTTSAdapter(BaseOnnxAdapter):
     # text
     # ------------------------------------------------------------------
     def _espeak(self, text: str) -> str:
+        """The phones of *text*, with each inline ``[[...]]`` block as its IPA written.
+
+        The model reads espeak IPA, so a block's symbols go into the phone string
+        as they stand, and :meth:`_phones` reads the text between the blocks.
+        """
+        parts = INLINE_BLOCK.split(text)
+        phones = [self._phones(part) if index % 2 == 0 else part.strip()
+                  for index, part in enumerate(parts)]
+        return " ".join(filter(None, phones))
+
+    def _phones(self, text: str) -> str:
         """Phonemize with espeak-ng at the voice the checkpoint was trained with.
 
         Deliberately *not* the phoonnx voice's own phonemizer: a NeuTTS voice is

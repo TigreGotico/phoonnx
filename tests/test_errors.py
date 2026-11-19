@@ -19,7 +19,9 @@ class TestErrorTaxonomy(unittest.TestCase):
     def test_all_lists_every_collected_error(self):
         self.assertEqual(
             set(errors.__all__),
-            {"UnsupportedVoiceLanguage", "VoiceExceedsMemoryBudget",
+            {"PhoonnxError", "VoiceLoadError", "FrontendMismatchError",
+             "UnsupportedConfigError", "ExportNotSupported", "PrecisionUnavailable",
+             "UnsupportedVoiceLanguage", "VoiceExceedsMemoryBudget",
              "UnsupportedTokenizer", "UnsupportedSentencePieceModel"},
         )
 

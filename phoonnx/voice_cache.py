@@ -39,19 +39,7 @@ from ovos_utils.log import LOG
 
 from phoonnx.model_manager import TTSModelInfo
 from phoonnx.voice import TTSVoice
-
-
-class VoiceExceedsMemoryBudget(RuntimeError):
-    """A voice's on-disk size alone is larger than ``max_loaded_bytes``.
-
-    Loading it is not a degraded path, it is a guaranteed OOM kill: a 15.4 GB
-    voice against a 5 GB budget in an 8 GiB cgroup killed the process, and the
-    container restarted straight back into the same load, over and over. The
-    size is known before the load is attempted whenever the voice was already
-    on disk from an earlier attempt (its own weights survive the restart even
-    though the process does not), which is exactly the case that used to
-    loop. Refusing here turns that loop into one failed request.
-    """
+from phoonnx.errors import VoiceExceedsMemoryBudget
 
 
 @dataclass
