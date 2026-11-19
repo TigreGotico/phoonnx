@@ -320,7 +320,7 @@ train-optispeech = [
 # needed because pyworld imports pkg_resources at runtime.
 train-pyworld = [
     "pyworld>=0.3.2",
-    "setuptools<81",
+    "setuptools<85",
 ]
 # scriptconv[ar-phonemizers] installs arbtok and scriptconv-nonfree, which holds
 # the mantoq, Halabi and Iqra wrappers (CC BY-NC 4.0).
