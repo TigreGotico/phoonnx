@@ -1165,18 +1165,44 @@ class TestLangVoicesAreKeptPerLanguage(ManagerTestCase):
         self.assertEqual([v.voice_id for v in manager.get_lang_voices("en-US")],
                          ["v/bare", "v/en-GB"])
 
+    def test_a_voice_that_gets_its_language_during_a_scan_is_not_left_out(self):
+        bare = TTSModelInfo(voice_id="v/bare", lang="", model_url="https://example.com/bare.onnx")
+        manager = self._manager("en-GB")
+        manager.voices = {"v/bare": bare, **manager.voices}
+        # The scan has passed the bare voice when its config load fills its lang.
+        release, worker, racing = self._paused_scan(manager, "en-US", at="en-GB")
+        bare.lang = "en-US"
+        release.set()
+        worker.join(10)
+        self.assertFalse(worker.is_alive())
+
+        self.assertEqual(racing, [["v/en-GB"]])
+        self.assertEqual([v.voice_id for v in manager.get_lang_voices("en-US")],
+                         ["v/bare", "v/en-GB"])
+
+    def test_add_voice_replaces_the_registry(self):
+        manager = self._manager("en-US")
+        before = manager.voices
+        manager.add_voice(TTSModelInfo(voice_id="v/pt-PT", lang="pt-PT",
+                                       model_url="https://example.com/pt.onnx"))
+        self.assertIsNot(manager.voices, before)
+        self.assertEqual(list(before), ["v/en-US"])
+        self.assertEqual(list(manager.voices), ["v/en-US", "v/pt-PT"])
+
     def test_a_caller_cannot_change_the_answer_of_the_next(self):
         manager = self._manager("en-US")
         manager.get_lang_voices("en-US").clear()
         self.assertEqual([v.voice_id for v in manager.get_lang_voices("en-US")], ["v/en-US"])
 
-    def _paused_scan(self, manager, lang):
-        """Start a lookup of ``lang`` in a thread, paused inside its scan."""
+    def _paused_scan(self, manager, lang, at=None):
+        """Start a lookup of ``lang`` in a thread, paused inside its scan
+        (at the voice whose lang is ``at``, else at the first voice)."""
         from phoonnx.util import match_lang
         inside, release, answer = threading.Event(), threading.Event(), []
 
         def distance(voice_lang, target):
-            if target == lang and threading.current_thread() is worker:
+            if (target == lang and threading.current_thread() is worker
+                    and at in (None, voice_lang)):
                 inside.set()
                 self.assertTrue(release.wait(10), "the paused scan was never released")
             return match_lang(voice_lang, target)

@@ -1311,6 +1311,7 @@ class TTSModelManager:
         Parameters:
             cache_path (Optional[str]): Filesystem path for the cache file. If omitted, uses the user's XDG cache directory under "phoonnx/voices".
         """
+        # Replaced, never edited in place: get_lang_voices keys its answers on it.
         self.voices: Dict[str, TTSModelInfo] = {}
         # The registry is rebuilt wholesale by ``load``/``merge_default_voices``
         # while other threads are looking voices up in it. Rebuilding in place
@@ -1406,30 +1407,23 @@ class TTSModelManager:
             voice_info (TTSModelInfo): The voice metadata to add or update.
         """
         with self._registry_lock:
-            self.voices[voice_info.voice_id] = voice_info
+            self.voices = {**self.voices, voice_info.voice_id: voice_info}
             self.cache[voice_info.voice_id] = voice_info.to_dict()
-            # after the change, or a reader could keep an answer without the new voice
-            self._lang_voices_memo = (None, {})
 
     def get_lang_voices(self, lang: str) -> List[TTSModelInfo]:
-        """The voices that speak ``lang``, nearest language first.
-
-        Kept per language until the registry changes. A voice with no ``lang``
-        gets one when its config loads, so such a registry is never kept.
-        """
+        """The voices that speak ``lang``, nearest first, kept until ``voices`` is replaced."""
         registry, answers = self._lang_voices_memo
         if registry is not self.voices:
             registry, answers = self.voices, {}
             self._lang_voices_memo = (registry, answers)
         voices = answers.get(lang)
         if voices is None:
-            ranked = sorted(
-                [
-                    (voice_info, match_lang(voice_info.lang, lang)[-1])
-                    for voice_info in registry.values()
-                ], key=lambda k: k[1])
+            # checked before the scan: a voice gets its lang when its config loads
+            complete = all(voice_info.lang for voice_info in registry.values())
+            ranked = sorted(((voice_info, match_lang(voice_info.lang, lang)[-1])
+                             for voice_info in registry.values()), key=lambda k: k[1])
             voices = [v[0] for v in ranked if v[1] < 10]
-            if all(voice_info.lang for voice_info in registry.values()):
+            if complete:
                 answers[lang] = voices
         return list(voices)
 
