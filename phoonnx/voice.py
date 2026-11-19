@@ -6,7 +6,6 @@ all ONNX-specific I/O to an engine adapter (``phoonnx.engines``),
 which means the same TTSVoice class works for VITS or
 any future architecture without code changes here.
 """
-import copy
 import hashlib
 import json
 import os.path
@@ -26,12 +25,12 @@ from typing import (Any, Callable, Iterable, Iterator, List, Mapping, Optional, 
 import numpy as np
 import onnxruntime
 from linguatag import closest_lang
-from scriptconv.frontend import FrontendConfig, Stages, TextFrontend, spoken_normalizer
+from scriptconv.frontend import Stages, TextFrontend
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
 from phoonnx.config import VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
-    _removal_version, check_lang_supported
+    _removal_version, check_lang_supported, voice_frontend, without_normalizer
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
 from phoonnx.encoders import SIDE_STREAMS, Encoder, SymbolEncoder, Utterance, stages_of
@@ -39,6 +38,7 @@ from phoonnx.engines.base import (
     AdapterSynthesisRequest,
     AdapterSynthesisResult,
     BaseOnnxAdapter,
+    INLINE_BLOCK,
 )
 from scriptconv.phonemizers.base import BasePhonemizer, PhonemizerIdentity
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
@@ -46,6 +46,8 @@ from phoonnx.reference_audio import load_reference_audio
 from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
 from scriptconv.phonemizers.base import PhonemizedChunks
+from phoonnx.errors import VoiceLoadError
+from phoonnx.engines.vits import VitsAdapter
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
@@ -66,8 +68,19 @@ def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunk
     return [[c for c in chunk] for chunk, _, _ in chunks if chunk]
 
 
-_BLOCK = re.compile(r"\[\[(.*?)\]\]")
-"""An inline phoneme block: the shortest ``[[...]]`` on one line, as scriptconv's frontend reads it."""
+_SKIPPED_BLOCKS = re.compile(r"(\s*)(?:\[\[.*?\]\](\s*))+")
+
+
+def _gap(match: "re.Match[str]") -> str:
+    """What stands where a skipped block was: the whitespace before it if that has a line break,
+    else nothing when a mark follows the block directly, else one space."""
+    before, after = match[1], match[2]
+    if "\n" in before:
+        return before
+    if "\n" in after:
+        return after
+    following = match.string[match.end():match.end() + 1]
+    return "" if not after and not following.isalnum() else " "
 
 
 def _write_wav(path: str, audio: np.ndarray, sample_rate: int) -> str:
@@ -188,6 +201,8 @@ _LOUDNESS_WARNED = False
 def level_audio(audio: np.ndarray, syn_config: "SynthesisConfig", sample_rate: int) -> np.ndarray:
     """Set a synthesized sentence's level: a loudness target if asked for, else the peak."""
     global _LOUDNESS_WARNED
+    if not audio.size:
+        return audio
     if syn_config.target_loudness is not None:
         try:
             from phoonnx.audio_fx import normalize_loudness
@@ -497,7 +512,8 @@ class TTSVoice:
         Parameters:
             model_path (str | Path): Path to the ONNX voice model file.
             config_path (str | Path, optional): Path to the JSON voice configuration. If omitted, defaults to model_path + ".json".
-            phonemes_txt (str, optional): Optional phonemes definition or file content to override the config's phoneme list.
+                A voice with no config file raises :class:`~phoonnx.errors.VoiceLoadError`.
+            phonemes_txt (str, optional): Path to a tokens file (``.txt`` or ``.json``) to override the config's phoneme list.
             phoneme_map (str, optional): Optional phoneme mapping specification or file path used to map phonemes (may be None).
             lang_code (str, optional): Language code to override or set in the loaded voice configuration.
             phoneme_type_str (str, optional): Phoneme type identifier to override the configuration (for example, "arpabet" or "ipa").
@@ -519,11 +535,10 @@ class TTSVoice:
         if config_path is None:
             config_path = f"{model_path}.json"
 
-        if os.path.isfile(config_path):
-            with open(config_path, "r", encoding="utf-8") as config_file:
-                config_dict = json.load(config_file)
-        else:
-            config_dict = {"phoneme_type": "unicode", "alphabet": "unicode"}
+        if not os.path.isfile(config_path):
+            raise VoiceLoadError(f"No voice config at {config_path}; pass config_path to TTSVoice.load")
+        with open(config_path, "r", encoding="utf-8") as config_file:
+            config_dict = json.load(config_file)
 
         vocab_dict = {}
         tokenizer_dict = {}
@@ -578,6 +593,16 @@ class TTSVoice:
             engine_params=engine_params,
         )
 
+        # num_symbols sizes the embedding of a VITS graph only; other engines
+        # carry the field without using it.
+        if isinstance(adapter, VitsAdapter) and "num_symbols" in config_dict \
+                and isinstance(voice_config.tokenizer, TTSTokenizer):
+            ids = [i for value in voice_config.tokenizer.vocabulary.char2idx.values()
+                   for i in (value if isinstance(value, list) else [value])]
+            if ids and max(ids) >= voice_config.num_symbols:
+                raise VoiceLoadError(f"{config_path}: the vocabulary uses id {max(ids)}, but the model "
+                                     f"has num_symbols={voice_config.num_symbols}")
+
         voice = TTSVoice(
             config=voice_config,
             session=session,
@@ -610,16 +635,10 @@ class TTSVoice:
         key = (self.config.phoneme_type, self.config.lang_code,
                phonemizer.keep_punctuation, phonemizer.normalizer)
         if self._frontend is None or key != self._frontend_key:
-            normalizer = phonemizer.normalizer
-            if normalizer is None and "normalize" in phonemizer.owned_stages:
-                normalizer = spoken_normalizer()
-            self._frontend = TextFrontend(
-                FrontendConfig(lang=self.config.lang_code, normalizer=normalizer,
-                               keep_punctuation=phonemizer.keep_punctuation),
-                backend=self._without_normalizer(phonemizer))
+            self._frontend = voice_frontend(phonemizer, self.config.lang_code)
             self._frontend_key = key
         elif phonemizer is not self._frontend_phonemizer:
-            self._frontend = self._frontend.with_backend(self._without_normalizer(phonemizer))
+            self._frontend = self._frontend.with_backend(without_normalizer(phonemizer))
         self._frontend_phonemizer = phonemizer
         return self._frontend
 
@@ -641,15 +660,6 @@ class TTSVoice:
                 self._encoder = SymbolEncoder(frontend, tokenizer)
             self._encoder_parts = parts
         return self._encoder
-
-    @staticmethod
-    def _without_normalizer(phonemizer: BasePhonemizer) -> BasePhonemizer:
-        """*phonemizer*, or a shallow copy of it with no ``normalizer``."""
-        if phonemizer.normalizer is None:
-            return phonemizer
-        backend = copy.copy(phonemizer)
-        backend.normalizer = None
-        return backend
 
     def _with_voice_defaults(self, syn_config: SynthesisConfig) -> SynthesisConfig:
         """*syn_config* with the voice's own text settings where it sets none."""
@@ -712,6 +722,10 @@ class TTSVoice:
             yield list(segment.phonemes), {name: list(values) for name, values in segment.streams.items()
                                            if name in SIDE_STREAMS}, segment.text
 
+    @property
+    def _voice_name(self) -> str:
+        return Path(self.model_path).stem if self.model_path else "<voice>"
+
     def _inline_blocks(self, text: str, alphabet: Optional[Alphabet]) -> str:
         """*text* with each ``[[...]]`` block in the voice's *alphabet*, or with the blocks left out.
 
@@ -721,14 +735,13 @@ class TTSVoice:
         written where it has none. ARPA symbols have more than one character, and the
         frontend adds a block one character at a time, so an ARPA voice keeps the IPA.
         """
-        blocks = _BLOCK.findall(text)
+        blocks = INLINE_BLOCK.findall(text)
         if not blocks:
             return text
         if not self.adapter.takes_symbols:
-            name = Path(self.model_path).stem if self.model_path else "<voice>"
-            LOG.warning("Voice %s takes no symbol input: skipping the inline blocks %s", name,
+            LOG.warning("Voice %s takes no symbol input: skipping the inline blocks %s", self._voice_name,
                         ["[[%s]]" % block for block in blocks])
-            return re.sub(r"\s*\[\[.*?\]\]", "", text).strip()
+            return _SKIPPED_BLOCKS.sub(_gap, text).strip()
         if alphabet in (None, Alphabet.IPA, Alphabet.ARPA):
             return text
 
@@ -740,7 +753,7 @@ class TTSVoice:
                 return block[0]
             return f"[[{symbols}]]"
 
-        return _BLOCK.sub(convert, text)
+        return INLINE_BLOCK.sub(convert, text)
 
     def prepare(self, text: str, config: Optional[SynthesisConfig] = None) -> Iterator[Utterance]:
         """Turn *text* into model input: one :class:`Utterance` per engine call.
@@ -774,6 +787,9 @@ class TTSVoice:
                 yield from self.encoder.encode(spoken, config)
             return
 
+        if not self.adapter.takes_symbols:
+            LOG.warning("Voice %s takes no symbol input: phonetic input in %s is not supported",
+                        self._voice_name, src_alphabet.value)
         for symbols, _, _ in self._iter_phonemes(spoken, src_alphabet, self.config.alphabet,
                                                  stages_of(config)):
             if symbols:
@@ -1223,7 +1239,7 @@ class TTSVoice:
         if base_length is None:
             base_length = self.config.length_scale
         if base_length is None:
-            base_length = 1.0
+            base_length = self.adapter.default_params().get("length_scale", 1.0)
         voice_lang = lang or self.config.lang_code
         # Set by the first speech chunk: voice conversion and super-resolution can move it off
         # the model's own rate, and every chunk of one stream must share it.
@@ -1257,7 +1273,7 @@ class TTSVoice:
                 kind, ms, volume = piece.sound
                 yield passed(tone(kind, ms, volume, at_rate))
 
-        for piece in parse_ssml(ssml, voice_lang, self.frontend):
+        for piece in parse_ssml(ssml, voice_lang, self.frontend, self.adapter.takes_symbols):
             if piece.sound is not None or not piece.text:
                 if rate is None:
                     waiting.append(piece)

@@ -741,8 +741,10 @@ class OptiSpeechTrainingEngine(BaseTrainingEngine):
         """
         import torch
 
-        with open(config_path, "r", encoding="utf-8") as f:
-            model_config: Dict[str, Any] = json.load(f)
+        model_config: Optional[Dict[str, Any]] = None
+        if config_path is not None:
+            with open(config_path, "r", encoding="utf-8") as f:
+                model_config = json.load(f)
 
         model = self.load_lightning_module(checkpoint_path)
         model.eval()
@@ -812,9 +814,12 @@ class OptiSpeechTrainingEngine(BaseTrainingEngine):
         )
 
         self._embed_metadata(output_path, model)
-        write_sidecars(model_config, output_dir, output_path.stem,
-                       generate_tokens=kwargs.get("generate_tokens", False),
-                       piper=kwargs.get("piper", False))
+        if model_config is None:
+            _LOG.warning("No training config was given, so no config was written beside %s", output_path)
+        else:
+            write_sidecars({**model_config, "engine": "optispeech"}, output_dir, output_path.stem,
+                           generate_tokens=kwargs.get("generate_tokens", False),
+                           piper=kwargs.get("piper", False))
         _LOG.info("ONNX model exported to %s", output_path)
         return output_path
 

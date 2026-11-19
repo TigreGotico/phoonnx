@@ -51,6 +51,7 @@ import numpy as np
 import onnxruntime
 from quebra_frases import sentence_tokenize
 
+from phoonnx.engines._sampling import ranked
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.tokenizer import BPETokenizer
@@ -172,7 +173,7 @@ def sample_token(logits: np.ndarray, temperature: float, top_k: int,
     x = x - x.max()
     probs = np.exp(x)
     probs /= probs.sum()
-    order = np.argsort(probs)[::-1]
+    order = ranked(probs, top_k, top_p)
     cutoff = int(np.searchsorted(np.cumsum(probs[order]), top_p)) + 1
     keep = order[:max(1, cutoff)]
     p = probs[keep] / probs[keep].sum()

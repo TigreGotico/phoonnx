@@ -10,9 +10,10 @@ Each TTS architecture (VITS, OptiSpeech, Matcha-TTS, etc.) has different:
 An OnnxAdapter encapsulates these differences behind a single interface
 so that TTSVoice.render works identically for any engine.
 """
+import re
 import warnings
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from types import SimpleNamespace
 from typing import Any, Dict, Iterator, List, Optional
 
@@ -28,6 +29,9 @@ def _warn_removed_hook(name: str, replacement: str) -> None:
     warnings.warn(f"BaseOnnxAdapter.{name} is deprecated and will be removed in phoonnx "
                   f"{_removal_version()}. Use {replacement}.",
                   DeprecationWarning, stacklevel=3)
+
+INLINE_BLOCK = re.compile(r"\[\[(.*?)\]\]")
+"""An inline phoneme block: the shortest ``[[...]]`` on one line, as scriptconv's frontend reads it."""
 
 
 @dataclass
@@ -86,6 +90,8 @@ class BaseOnnxAdapter(ABC):
     - ``detect``           — auto-detect whether a config/session belongs
                              to this engine
     - ``parse_onnx_meta``  — pull engine-specific fields from ONNX metadata
+    - ``max_input_tokens`` — the most ids one model call reads; a longer
+                             request is cut (see :meth:`_cut`)
     - ``DURATION_OUTPUT_NAMES`` — candidate ONNX output names that carry a
                              per-phoneme duration/frame-count tensor, used by
                              :meth:`_find_duration_output` for the alignment
@@ -126,6 +132,15 @@ class BaseOnnxAdapter(ABC):
 
     # True for an adapter that reads the text of a phonemizing voice itself, in ``read_text``.
     READS_TEXT: bool = False
+
+    # The most ids one model call reads. ``None`` means the engine is never cut.
+    # An engine that sets it also sets ``bos``, ``eos``, ``word_gap`` and
+    # ``clause_marks`` (a set of ids) in ``configure``; :meth:`_cut` reads them.
+    max_input_tokens: Optional[int] = None
+    bos: int
+    eos: int
+    word_gap: int
+    clause_marks: set
 
     # ------------------------------------------------------------------
     # Required
@@ -235,11 +250,18 @@ class BaseOnnxAdapter(ABC):
         (e.g. flow-matching, where ``session`` is one of several graphs and the
         output is produced by a sampling loop) override this to run their own
         pipeline. ``session`` is the voice's primary model; any auxiliary graphs
-        are loaded in :meth:`configure` from ``engine_params``.
+        are loaded in :meth:`configure` from ``engine_params``. A request longer
+        than ``max_input_tokens`` runs as several pieces whose audio is joined;
+        a cut request returns no extras.
         """
-        feed = self.build_feed_dict(request, session)
-        outputs = session.run(None, feed)
-        return self.parse_outputs(outputs, request, output_names=self._safe_output_names(session))
+        results = []
+        for piece in self._cut(request):
+            feed = self.build_feed_dict(piece, session)
+            outputs = session.run(None, feed)
+            results.append(self.parse_outputs(outputs, piece, output_names=self._safe_output_names(session)))
+        if len(results) == 1:
+            return results[0]
+        return AdapterSynthesisResult(audio=np.concatenate([r.audio for r in results]))
 
     def synthesize_stream(
         self,
@@ -293,6 +315,52 @@ class BaseOnnxAdapter(ABC):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _cut(self, request: AdapterSynthesisRequest) -> List[AdapterSynthesisRequest]:
+        """*request* cut into pieces of at most ``max_input_tokens`` ids.
+
+        The request's ids run from ``bos`` to ``eos``. A piece ends after the
+        last clause mark that fits, else before the last word gap that fits; the
+        word gap at the cut is dropped. Every piece gets ``bos`` and ``eos``
+        again, and each side stream is cut at the same places. The request's own
+        ``bos`` and ``eos`` keep their stream values; every ``bos`` and ``eos``
+        the cut adds gets the neutral value 0.
+        """
+        limit = self.max_input_tokens
+        if limit is None or request.phoneme_ids.shape[1] <= limit:
+            return [request]
+        body = request.phoneme_ids[0].tolist()[1:-1]
+        room = limit - 2
+        spans = []
+        start = 0
+        while len(body) - start > room:
+            window = range(start + room - 1, start, -1)
+            cut = next((i + 1 for i in window if body[i] in self.clause_marks), None)
+            if cut is not None:
+                end, resume = cut, cut + (body[cut] == self.word_gap)
+            else:
+                gap = next((i for i in range(start + room, start, -1) if body[i] == self.word_gap), None)
+                if gap is None:
+                    raise ValueError(f"one word is longer than {limit} tokens")
+                end, resume = gap, gap + 1
+            spans.append((start, end))
+            start = resume
+        spans.append((start, len(body)))
+        streams = {name: getattr(request, name)[0].tolist()
+                   for name in SIDE_STREAMS if getattr(request, name) is not None}
+        pieces = []
+        last = len(spans) - 1
+        for index, (start, end) in enumerate(spans):
+            piece_ids = [self.bos] + body[start:end] + [self.eos]
+            fields = {name: np.array([[values[0] if index == 0 else 0]
+                                      + values[1:-1][start:end]
+                                      + [values[-1] if index == last else 0]], dtype=np.int64)
+                      for name, values in streams.items()}
+            pieces.append(replace(request,
+                                  phoneme_ids=np.array([piece_ids], dtype=np.int64),
+                                  phoneme_lengths=np.array([len(piece_ids)], dtype=np.int64),
+                                  **fields))
+        return pieces
 
     @staticmethod
     def _expected_inputs(session: onnxruntime.InferenceSession) -> set:

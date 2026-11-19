@@ -1,3 +1,4 @@
+import copy
 import warnings
 from dataclasses import dataclass, field
 from enum import Enum
@@ -12,9 +13,6 @@ from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
 
-DEFAULT_NOISE_SCALE = 0.667
-DEFAULT_LENGTH_SCALE = 1.0
-DEFAULT_NOISE_W_SCALE = 0.8
 DEFAULT_HOP_LENGTH = 256
 
 
@@ -86,7 +84,7 @@ ENGINE_ALIASES = {"kokoro": Engine.STYLETTS2.value}
 # (not redefinition) keeps enum identity: values stored in voice configs and
 # pickles resolve to the same class everywhere.
 from scriptconv.phonemizers.enums import Alphabet, Phonemizer as PhonemeType
-from scriptconv.frontend import Chunk, FrontendConfig, Stages
+from scriptconv.frontend import Chunk, FrontendConfig, Stages, TextFrontend, spoken_normalizer
 
 @dataclass
 class VoiceConfig:
@@ -162,10 +160,11 @@ class VoiceConfig:
     # Info about what framework was used to train the model
     engine: Engine = Engine.PHOONNX
 
-    # Inference settings
-    length_scale: float = DEFAULT_LENGTH_SCALE
-    noise_scale: float = DEFAULT_NOISE_SCALE
-    noise_w_scale: float = DEFAULT_NOISE_W_SCALE
+    # Inference scales from the config's ``inference`` block; None lets the engine's
+    # ``default_params()`` decide.
+    length_scale: Optional[float] = None
+    noise_scale: Optional[float] = None
+    noise_w_scale: Optional[float] = None
     add_diacritics: bool = None # arabic and hebrew
     # diacritizer model for languages that need one; scriptconv routes it to the
     # right backend: Arabic text2tashkeel model name (e.g. "rawi-ensemble"),
@@ -315,9 +314,10 @@ class VoiceConfig:
         """The native ``config.json`` dict, which :meth:`from_dict` reads back with no warning.
 
         A raw-text tokenizer (Chatterbox) has no symbol table, so its vocabulary is empty;
-        the voice still needs ``bpe_tokenizer_json`` at load. A special token that the
-        vocabulary lacks is written as the phoonnx default, which is what a read gives, and
-        the flags that need that token are written off, so the ids stay the same.
+        the voice still needs ``bpe_tokenizer_json`` at load. A missing pad is written as null,
+        which reads back as no pad. Another special token that the vocabulary lacks is written
+        as the phoonnx default, which is what a read gives, and the flags that need that token
+        are written off, so the ids stay the same.
         """
         tok = self.tokenizer
         if isinstance(tok, TTSTokenizer):
@@ -357,7 +357,7 @@ class VoiceConfig:
                 "diacritizer_model": self.diacritizer_model,
             },
             "phoneme_id_map": dict(voc.char2idx),
-            "pad": voc.pad or DEFAULT_PAD_TOKEN, "blank": voc.blank or DEFAULT_BLANK_TOKEN,
+            "pad": voc.pad, "blank": voc.blank or DEFAULT_BLANK_TOKEN,
             "bos": voc.bos or DEFAULT_BOS_TOKEN, "eos": voc.eos or DEFAULT_EOS_TOKEN,
             "blank_word": voc.blank_word,
             **flags,
@@ -612,6 +612,37 @@ def _voice_phonemizer(phoneme_type: PhonemeType,
         phonemizer.normalizer = text2spoken.normalize
     phonemizer.keep_punctuation = keep_punctuation
     return phonemizer
+
+
+def without_normalizer(phonemizer: 'Phonemizer') -> 'Phonemizer':
+    """*phonemizer*, or a shallow copy of it with no ``normalizer``."""
+    if phonemizer.normalizer is None:
+        return phonemizer
+    backend = copy.copy(phonemizer)
+    backend.normalizer = None
+    return backend
+
+
+def voice_frontend(phonemizer: 'Phonemizer', lang: str, stages: Stages = Stages()) -> TextFrontend:
+    """The text frontend of a voice that reads *phonemizer*, in language *lang*.
+
+    The phonemizer's ``normalizer`` becomes the frontend's normalisation hook
+    and the frontend reads a copy of the phonemizer without it. The frontend
+    skips the hook for a backend that names ``normalize`` in its
+    ``owned_stages``, because that backend normalises the text itself. Such a
+    phonemizer has no ``normalizer``, so its frontend gets
+    :func:`scriptconv.frontend.spoken_normalizer`, which reads only a ``<say-as>``.
+    Inference (:attr:`phoonnx.voice.TTSVoice.frontend`) and dataset building
+    (``phoonnx_train.preprocess``) both build their frontend here, so a text
+    gives the same phonemes in both.
+    """
+    normalizer = phonemizer.normalizer
+    if normalizer is None and "normalize" in phonemizer.owned_stages:
+        normalizer = spoken_normalizer()
+    return TextFrontend(
+        FrontendConfig(lang=lang, normalizer=normalizer, keep_punctuation=phonemizer.keep_punctuation,
+                       stages=stages),
+        backend=without_normalizer(phonemizer))
 
 
 def get_phonemizer(phoneme_type: PhonemeType,
