@@ -4,6 +4,7 @@ The ids come from tests/fixtures/tinyvoca_config.json, the vocabulary of
 n4ze3m/tiny-voca: <bos> 1, <eos> 2, <sp> 3, "," 5, "." 6, "!" 8, '"' 11, "k" 21, "ə" 43.
 """
 import json
+import random
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -15,11 +16,12 @@ from scriptconv.phonemizers.dizione import DizionePhonemizer
 from phoonnx.config import SynthesisConfig, VoiceConfig
 from phoonnx.engines import detect_engine
 from phoonnx.engines.base import AdapterSynthesisRequest
-from phoonnx.engines.tinyvoca import MAX_TOKENS, TinyVocaAdapter
+from phoonnx.engines.tinyvoca import TinyVocaAdapter
 from phoonnx.voice import TTSVoice
 
 CONFIG = json.loads((Path(__file__).parent / "fixtures" / "tinyvoca_config.json").read_text())
 BOS, EOS, GAP, COMMA, STOP, BANG, QUOTE, K, SCHWA = 1, 2, 3, 5, 6, 8, 11, 21, 43
+MAX_TOKENS = TinyVocaAdapter.max_input_tokens
 INPUTS = ("tokens", "stress", "voice", "speed", "pitch_shift", "pitch_range")
 
 
@@ -137,6 +139,53 @@ class TestLongSentence:
     def test_one_long_word_raises(self):
         with pytest.raises(ValueError, match="one word"):
             _adapter().synthesize(_request([BOS] + [K] * MAX_TOKENS + [STOP, EOS]), _session())
+
+
+def _dev_pieces(ids, stress):
+    """The cutter tiny-voca had before the base class took it over, copied unchanged."""
+    if len(ids) <= MAX_TOKENS:
+        return [(ids, stress)]
+    clause_marks = {COMMA, 9, 10, 15}
+    body, body_stress = ids[1:-1], stress[1:-1]
+    room = MAX_TOKENS - 2
+    pieces = []
+    start = 0
+    while len(body) - start > room:
+        window = range(start + room - 1, start, -1)
+        cut = next((i + 1 for i in window if body[i] in clause_marks), None)
+        if cut is not None:
+            end, resume = cut, cut + (body[cut] == GAP)
+        else:
+            gap = next((i for i in range(start + room, start, -1) if body[i] == GAP), None)
+            if gap is None:
+                raise ValueError(f"one word is longer than {MAX_TOKENS} tokens")
+            end, resume = gap, gap + 1
+        pieces.append(([BOS] + body[start:end] + [EOS], [0] + body_stress[start:end] + [0]))
+        start = resume
+    pieces.append(([BOS] + body[start:] + [EOS], [0] + body_stress[start:] + [0]))
+    return pieces
+
+
+class TestCutterUnchanged:
+    def test_clause_mark_ids_are_the_vocabulary_ones(self):
+        vocab = _config().tokenizer.vocabulary.char2idx
+        assert {vocab[m] for m in (",", ";", ":", "—")} == {COMMA, 9, 10, 15}
+
+    @pytest.mark.parametrize("seed", range(40))
+    def test_pieces_equal_the_earlier_cutter(self, seed):
+        rng = random.Random(seed)
+        words = [[rng.choice([K, SCHWA]) for _ in range(rng.randint(1, 12))] for _ in range(rng.randint(120, 300))]
+        body, body_stress = [], []
+        for word in words:
+            body += word + [rng.choice([COMMA, 9, 10, 15, GAP, GAP, GAP])] * (rng.random() < 0.3) + [GAP]
+        body = body[:-1] + [STOP]
+        body_stress = [rng.randint(0, 2) for _ in body]
+        ids, stress = [BOS] + body + [EOS], [0] + body_stress + [0]
+        assert len(ids) > MAX_TOKENS
+        session = _session()
+        _adapter().synthesize(_request(ids, stress), session)
+        fed = [(f["tokens"][0].tolist(), f["stress"][0].tolist()) for f in _fed(session)]
+        assert fed == _dev_pieces(ids, stress)
 
 
 class TestOutput:
