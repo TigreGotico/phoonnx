@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.123.2a1](https://github.com/TigreGotico/phoonnx/tree/1.123.2a1) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.1a2...1.123.2a1)
+
+**Merged pull requests:**
+
+- fix: normalise the reference text, keep x-vits marks, seed Chatterbox [\#825](https://github.com/TigreGotico/phoonnx/pull/825) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.123.1a2](https://github.com/TigreGotico/phoonnx/tree/1.123.1a2) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.1a1...1.123.1a2)
@@ -287,17 +295,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.12a1...1.113.13a1)
 
-**Merged pull requests:**
-
-- fix: raise the scriptconv floors past the long-run crashes in dizione and mantoq [\#717](https://github.com/TigreGotico/phoonnx/pull/717) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.113.12a1](https://github.com/TigreGotico/phoonnx/tree/1.113.12a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.11a1...1.113.12a1)
-
-**Merged pull requests:**
-
-- fix: self-hosted external data by its literal name and folder; read data names only from graphs [\#716](https://github.com/TigreGotico/phoonnx/pull/716) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.113.11a1](https://github.com/TigreGotico/phoonnx/tree/1.113.11a1) (2026-11-18)
 
