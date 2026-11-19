@@ -16,12 +16,12 @@ import click
 import torch
 from tqdm import tqdm
 
-from phoonnx.config import PhonemeType, get_phonemizer, Alphabet
+from phoonnx.config import PhonemeType, get_phonemizer, Alphabet, voice_frontend
 from scriptconv.diacritics import diacritize
+from scriptconv.frontend import Stages, TextFrontend
 from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, \
     phoneme_map_seed, untrained_map_symbols, \
     DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN
-from text2spoken import normalize
 from phoonnx.version import VERSION_STR
 from phoonnx_train.dataset_loaders import (PreprocessorConfig, Utterance,
                                            ensure_audio_path, get_text_casing,
@@ -96,17 +96,21 @@ class PathEncoder(json.JSONEncoder):
         return super().default(o)
 
 
-def build_phonemizer(phoneme_type: PhonemeType, alphabet: Alphabet,
-                     model: Optional[str], keep_punctuation: bool) -> Any:
-    """Build the phonemizer a worker uses. Module level, so a partial of it pickles."""
-    return get_phonemizer(phoneme_type, alphabet, model, keep_punctuation=keep_punctuation)
+def build_frontend(phoneme_type: PhonemeType, alphabet: Alphabet, model: Optional[str],
+                   keep_punctuation: bool, language: str) -> TextFrontend:
+    """Build the text frontend a worker uses, the one a voice builds at inference.
+
+    Module level, so a partial of it pickles.
+    """
+    phonemizer = get_phonemizer(phoneme_type, alphabet, model, keep_punctuation=keep_punctuation)
+    return voice_frontend(phonemizer, language)
 
 
 def phonemize_worker(
         config: PreprocessorConfig,
         task_queue: JoinableQueue,
         result_queue: Queue,
-        make_phonemizer: Callable[[], Any],
+        make_frontend: Callable[[], TextFrontend],
 ) -> None:
     """
     Worker process for phonemization and audio processing.
@@ -115,13 +119,15 @@ def phonemize_worker(
         config: The configuration object containing runtime parameters.
         task_queue: Queue for receiving batches of Utterance objects.
         result_queue: Queue for sending processed results (Utterance, set of phonemes).
-        make_phonemizer: Builds this worker's phonemizer. The worker builds its
+        make_frontend: Builds this worker's text frontend. The worker builds its
             own because a loaded phonemizer may hold native handles that do not
             pickle, and the ``spawn`` and ``forkserver`` start methods pickle
             every argument. ``forkserver`` is the Linux default from Python 3.14.
     """
     try:
-        phonemizer = make_phonemizer()
+        # Built on the first row that needs it: a run of precomputed phonemes
+        # never reads text, so a backend that rejects the language must not stop it.
+        frontend: Optional[TextFrontend] = None
         casing: Callable[[str], str] = get_text_casing(config.text_casing)
         silence_detector = make_silence_detector()
 
@@ -141,17 +147,13 @@ def phonemize_worker(
                         if not utt.phonemes:
                             raise RuntimeError("empty precomputed phonemes")
                     else:
-                        # Normalize text (case, numbers, etc.)
-                        utterance: str = casing(normalize(utt.text, config.language))
-
-                        # Add diacritics
-                        if config.add_diacritics:
-                            utterance = diacritize(utterance, config.language)
-
-                        # Phonemize the text
-                        utt.phonemes = phonemizer.phonemize_to_list(utterance, config.language)
+                        if frontend is None:
+                            frontend = make_frontend()
+                        # Normalize, case, diacritize and phonemize as synthesis does
+                        utt.phonemes = frontend.phonemize_flat(
+                            utt.text, Stages(diacritize=config.add_diacritics, casing=casing))
                         if not utt.phonemes:
-                            raise RuntimeError(f"Phonemes not found for '{utterance}'")
+                            raise RuntimeError(f"Phonemes not found for '{utt.text}'")
 
                     # Process audio if not skipping
                     if not config.skip_audio:
@@ -754,13 +756,19 @@ def cli(
                             resumed_punctuation)
         keep_punctuation = resumed_punctuation
 
-    make_phonemizer = functools.partial(build_phonemizer, config.phoneme_type, config.alphabet,
-                                        config.phonemizer_model, keep_punctuation)
+    make_frontend = functools.partial(build_frontend, config.phoneme_type, config.alphabet,
+                                      config.phonemizer_model, keep_punctuation, config.language)
     # The parent keeps its own phonemizer for the alphabet and the provenance record.
     phonemizer = get_phonemizer(config.phoneme_type,
                                 config.alphabet,
                                 config.phonemizer_model,
                                 keep_punctuation=keep_punctuation)
+
+    if any(not utt.phonemes_precomputed for utt in utterances):
+        # A worker that cannot build its frontend (an unsupported language, a
+        # missing backend) dies before it reads a task, and the run would wait
+        # for its results forever.
+        make_frontend()
 
     if config.add_diacritics and any(not utt.phonemes_precomputed for utt in utterances):
         # In a worker this failure is per utterance, so a missing backend would
@@ -777,7 +785,7 @@ def cli(
     processes: List[Process] = [
         Process(
             target=phonemize_worker,
-            args=(config, task_queue, result_queue, make_phonemizer)
+            args=(config, task_queue, result_queue, make_frontend)
         )
         for _ in range(config.max_workers)
     ]
