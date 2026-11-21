@@ -15,14 +15,21 @@ then loaded again — three loads of one file, and four kernel OOM kills.
 These tests pin the two halves of the fix: sessions are shared between voices
 that name the same artifacts, and the cache charges the memory once.
 """
+import json
 import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from phoonnx import providers
+import numpy as np
+import onnx
+from onnx import TensorProto, helper, numpy_helper
+
+from phoonnx import _onnx_external, providers
+from phoonnx.model_manager import _sidecar_urls
 from phoonnx.providers import CPU_PROVIDER, SHARE_SESSIONS_ENV_VAR, make_session
+from tests.conftest import count_walks
 
 MB = 10 ** 6
 GB = 10 ** 9
@@ -30,9 +37,6 @@ GB = 10 ** 9
 
 def _build_tiny_onnx_model(path: Path) -> None:
     """Write a minimal but real single-node ONNX model to *path*."""
-    import onnx
-    from onnx import TensorProto, helper
-
     x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 4])
     y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 4])
     node = helper.make_node("Identity", ["x"], ["y"])
@@ -51,6 +55,7 @@ class TestOneModelOneSession(unittest.TestCase):
         self.addCleanup(self.tmpdir.cleanup)
         self.model_path = Path(self.tmpdir.name) / "backbone.onnx"
         _build_tiny_onnx_model(self.model_path)
+        Path(f"{self.model_path}.json").write_text(json.dumps({"phoneme_type": "unicode", "alphabet": "unicode"}))
         env = patch.dict(os.environ, {}, clear=False)
         env.start()
         self.addCleanup(env.stop)
@@ -175,11 +180,130 @@ class TestOneModelOneSession(unittest.TestCase):
                             "the sidecar beside a hub-cache symlink must be "
                             "found, not only one beside the resolved blob")
 
+    def test_a_second_numbered_sidecar_is_part_of_the_key(self):
+        # Orpheus names its weights model.onnx_data_1 to _6, and any one of
+        # them can be replaced under a graph that keeps its own bytes: every
+        # sidecar of the series belongs in the key, not only the first.
+        one = Path(str(self.model_path) + "_data_1")
+        two = Path(str(self.model_path) + "_data_2")
+        one.write_bytes(b"weights-1")
+        two.write_bytes(b"weights-2")
+        stamp = 1_600_000_000_000_000_000
+        for path in (self.model_path, one, two):
+            os.utime(path, ns=(stamp, stamp))
+
+        first = providers.session_key(self.model_path, [CPU_PROVIDER], None)
+        two.write_bytes(b"weights-2-longer")
+        os.utime(two, ns=(stamp, stamp))
+        second = providers.session_key(self.model_path, [CPU_PROVIDER], None)
+
+        self.assertNotEqual(first, second,
+                            "a replaced _data_2 must change the session key")
+
+    def test_every_numbered_sidecar_beside_a_hub_symlink_is_in_the_key(self):
+        blobs = Path(self.tmpdir.name) / "blobs"
+        snapshots = Path(self.tmpdir.name) / "snapshots" / "rev1"
+        blobs.mkdir()
+        snapshots.mkdir(parents=True)
+        blob = blobs / "deadbeef"
+        _build_tiny_onnx_model(blob)
+        stub = snapshots / "model.onnx"
+        stub.symlink_to(blob)
+        one = snapshots / "model.onnx_data_1"
+        two = snapshots / "model.onnx_data_2"
+        one.write_bytes(b"weights-1")
+        two.write_bytes(b"weights-2")
+        stamp = 1_600_000_000_000_000_000
+        for path in (blob, one, two):
+            os.utime(path, ns=(stamp, stamp))
+
+        baseline = providers.session_key(stub, [CPU_PROVIDER], None)
+        one.write_bytes(b"weights-1-longer")
+        os.utime(one, ns=(stamp, stamp))
+        after_data_1 = providers.session_key(stub, [CPU_PROVIDER], None)
+        one.write_bytes(b"weights-1")
+        os.utime(one, ns=(stamp, stamp))
+        self.assertEqual(baseline, providers.session_key(stub, [CPU_PROVIDER],
+                                                        None),
+                         "the same files must key the same")
+        two.write_bytes(b"weights-2-longer")
+        os.utime(two, ns=(stamp, stamp))
+        after_data_2 = providers.session_key(stub, [CPU_PROVIDER], None)
+
+        self.assertNotEqual(baseline, after_data_1,
+                            "a replaced _data_1 must change the key")
+        self.assertNotEqual(baseline, after_data_2,
+                            "a replaced _data_2 must change the key")
+
+    def test_sidecar_discovery_names_every_data_file(self):
+        for suffix in ("_data", ".data", "_data_1", "_data_2"):
+            Path(str(self.model_path) + suffix).write_bytes(b"w")
+        found = providers._external_data_paths(str(self.model_path))
+        self.assertEqual([Path(p).name for p in found],
+                         ["backbone.onnx.data", "backbone.onnx_data",
+                          "backbone.onnx_data_1", "backbone.onnx_data_2"])
+
+    def test_the_first_location_with_a_sidecar_wins(self):
+        # The hub lays a voice out as a symlink whose sidecars sit beside it,
+        # so that location is asked first and its sidecars are the ones keyed.
+        blobs = Path(self.tmpdir.name) / "blobs"
+        snapshots = Path(self.tmpdir.name) / "snapshots" / "rev1"
+        blobs.mkdir()
+        snapshots.mkdir(parents=True)
+        blob = blobs / "deadbeef"
+        _build_tiny_onnx_model(blob)
+        (blobs / "deadbeef.data").write_bytes(b"real-path-weights")
+        stub = snapshots / "model.onnx"
+        stub.symlink_to(blob)
+        beside = snapshots / "model.onnx_data"
+        beside.write_bytes(b"snapshot-weights")
+
+        found = providers._external_data_paths(str(stub), str(blob))
+
+        self.assertEqual(found, [str(beside)])
+
+    def test_a_data_file_the_graph_names_is_keyed(self):
+        # A graph may name any file for its weights. Two snapshots can link one
+        # graph blob and keep different weights beside it; replacing that file
+        # must not reuse the session over the old weights.
+        folder = Path(self.tmpdir.name) / "named"
+        folder.mkdir()
+        w = numpy_helper.from_array(np.ones((1, 4), dtype=np.float32), "w")
+        x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 4])
+        y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 4])
+        graph = helper.make_graph([helper.make_node("Mul", ["x", "w"], ["y"])],
+                                  "named", [x], [y], [w])
+        model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)])
+        model.ir_version = 8
+        path = folder / "moss.onnx"
+        onnx.save(model, str(path), save_as_external_data=True,
+                  location="moss_encode.data", size_threshold=0)
+        data = folder / "moss_encode.data"
+        self.assertTrue(data.is_file())
+
+        self.assertEqual(providers._external_data_paths(str(path)), [str(data)])
+        before = providers.session_key(path, [CPU_PROVIDER], None)
+        data.write_bytes(data.read_bytes() * 2)
+        after = providers.session_key(path, [CPU_PROVIDER], None)
+        self.assertNotEqual(before, after)
+
     def test_no_sidecar_is_unaffected(self):
         # A single-file graph (no external-data sidecar) must key exactly as
         # it did before: this only changes behaviour for models that have one.
+        self.assertEqual(providers._external_data_paths(str(self.model_path)), [])
         key = providers.session_key(self.model_path, [CPU_PROVIDER], None)
         self.assertEqual(len(key), 4)
+
+    def test_a_replaced_graph_with_the_same_size_and_time_gets_a_new_key(self):
+        # An extracted archive or ``cp -p`` keeps the modification time.
+        stat = self.model_path.stat()
+        before = providers.session_key(self.model_path, [CPU_PROVIDER], None)
+        copy = self.model_path.with_name("copy.onnx")
+        copy.write_bytes(self.model_path.read_bytes())
+        os.utime(copy, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+        os.replace(copy, self.model_path)
+        after = providers.session_key(self.model_path, [CPU_PROVIDER], None)
+        self.assertNotEqual(before, after)
 
     def test_a_session_nobody_uses_is_not_kept_alive(self):
         import gc
@@ -199,6 +323,7 @@ class TestBuildLocksDoNotGrowForever(unittest.TestCase):
         self.addCleanup(self.tmpdir.cleanup)
         self.model_path = Path(self.tmpdir.name) / "backbone.onnx"
         _build_tiny_onnx_model(self.model_path)
+        Path(f"{self.model_path}.json").write_text(json.dumps({"phoneme_type": "unicode", "alphabet": "unicode"}))
         env = patch.dict(os.environ, {}, clear=False)
         env.start()
         self.addCleanup(env.stop)
@@ -212,6 +337,48 @@ class TestBuildLocksDoNotGrowForever(unittest.TestCase):
             "a per-key build lock is only needed while the session it "
             "guards is being built; keeping it after only grows the dict "
             "by one entry per model ever seen")
+
+
+class TestALoadReadsTheGraphOnce(unittest.TestCase):
+    """A load walks its graph once: the sidecar fetch and the session key
+    share the walk, and a session hit walks nothing."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+        env = patch.dict(os.environ, {}, clear=False)
+        env.start()
+        self.addCleanup(env.stop)
+        os.environ.pop(SHARE_SESSIONS_ENV_VAR, None)
+
+        w = numpy_helper.from_array(np.ones((1, 4), dtype=np.float32), "w")
+        x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 4])
+        y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 4])
+        graph = helper.make_graph([helper.make_node("Mul", ["x", "w"], ["y"])],
+                                  "g", [x], [y], [w])
+        model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)])
+        model.ir_version = 8
+        self.model_path = Path(self.tmpdir.name) / "model.onnx"
+        onnx.save(model, str(self.model_path), save_as_external_data=True,
+                  location="model.onnx_data", size_threshold=0)
+
+        walk = patch.object(_onnx_external, "_fields", wraps=_onnx_external._fields)
+        self.fields = walk.start()
+        self.addCleanup(walk.stop)
+
+    def load(self):
+        """The two reads a voice load makes of its graph."""
+        url = "https://huggingface.co/org/repo/resolve/main/model.onnx"
+        self.assertEqual(_sidecar_urls(url, self.model_path),
+                         ["https://huggingface.co/org/repo/resolve/main/model.onnx_data"])
+        return make_session(self.model_path, providers=[CPU_PROVIDER])
+
+    def test_one_walk_per_load_and_none_on_a_session_hit(self):
+        first = self.load()
+        self.assertEqual(count_walks(self.fields), 1, "one load walks the graph once")
+        second = self.load()
+        self.assertIs(second, first, "the second voice reuses the session")
+        self.assertEqual(count_walks(self.fields), 1, "a session hit walks nothing")
 
 
 class TestArtifactKey(unittest.TestCase):

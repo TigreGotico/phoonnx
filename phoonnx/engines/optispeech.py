@@ -75,13 +75,9 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
             "scales": np.array([d_factor, p_factor, e_factor], dtype=np.float32),
         }
 
-        # Multi-speaker
-        if request.speaker_id is not None:
-            args["sids"] = np.array([request.speaker_id], dtype=np.int64)
-
-        # Multi-language
-        if request.language_id is not None:
-            args["lids"] = np.array([request.language_id], dtype=np.int64)
+        # Multi-speaker and multi-language graphs; 0 when the request names none.
+        args["sids"] = np.array([request.speaker_id or 0], dtype=np.int64)
+        args["lids"] = np.array([request.language_id or 0], dtype=np.int64)
 
         return self._filter_inputs(args, session)
 
@@ -94,7 +90,7 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
         # OptiSpeech returns [wav, wav_lengths, durations]. ``durations`` is a
         # per-phoneme frame count from the internal duration predictor (like
         # VITS's w_ceil) — exposed as ``phoneme_id_samples`` so
-        # ``TTSVoice.phoneme_ids_to_audio`` picks it up uniformly and scales
+        # ``TTSVoice.render`` picks it up uniformly and scales
         # it to samples via ``VoiceConfig.hop_length``.
         audio = outputs[0].squeeze()
 
@@ -108,7 +104,7 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
         if durations is not None:
             # Keep the historical "durations" key for back-compat, and also
             # expose the value as "phoneme_id_samples" — the name
-            # TTSVoice.phoneme_ids_to_audio looks for uniformly across engines.
+            # TTSVoice.render looks for uniformly across engines.
             extras["durations"] = durations
             extras["phoneme_id_samples"] = np.asarray(durations).squeeze()
 
@@ -165,15 +161,6 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
 
         return False
 
-    def parse_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract default d/p/e factors from config if present."""
-        inference_args = config.get("inference_args", {})
-        return {
-            "d_factor": inference_args.get("d_factor", 1.0),
-            "p_factor": inference_args.get("p_factor", 1.0),
-            "e_factor": inference_args.get("e_factor", 1.0),
-        }
-
     def configure_tokenizer(self, tokenizer):
         """
         OptiSpeech models embed ``text_processor`` config in ONNX metadata
@@ -210,10 +197,3 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
         except Exception:
             LOG.debug("Failed to parse OptiSpeech ONNX metadata", exc_info=True)
         return {}
-
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "d_factor": "Speed",
-            "p_factor": "Pitch",
-            "e_factor": "Energy",
-        }

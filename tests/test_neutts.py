@@ -10,10 +10,11 @@ import json
 import numpy as np
 import pytest
 
+from phoonnx.engines._sampling import apply_repetition_penalty
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.neutts import (
     ESPEAK_VOICE, MAX_REFERENCE_CODES, SPEECH_GENERATION_START, SPEECH_TOKEN_TEMPLATE,
-    TEXT_PROMPT_END, TEXT_PROMPT_START, NeuTTSAdapter, _apply_repetition_penalty,
+    TEXT_PROMPT_END, TEXT_PROMPT_START, NeuTTSAdapter,
     _sample, preserve_punctuation_phonemize,
 )
 
@@ -188,7 +189,6 @@ def test_default_params_match_upstream_cli_defaults():
     assert p["temperature"] == 0.4
     assert p["top_p"] == 0.8
     assert p["repetition_penalty"] == 1.3
-    assert set(NeuTTSAdapter().param_labels()) >= set(p)
 
 
 # ------------------------------------------------------------------ phonemization
@@ -285,6 +285,159 @@ def test_encode_text_without_a_tokenizer_is_an_error(adapter):
         adapter.encode_text("hello", None, None)
 
 
+# ------------------------------------------------- the checkpoint's own front end
+FIXTURES = __import__("pathlib").Path(__file__).parent / "fixtures"
+
+
+def _upstream_polish():
+    """Prompt ids that upstream ``neutts`` 1.4.1 builds for shefowl/neutts-nano-polish.
+
+    Made in a separate venv by ``NeuTTS._apply_chat_template`` with the checkpoint's
+    tokenizer.json, espeak-ng 1.52.0.1 at ``pl`` and the repository's own
+    ``polish_phonemes.split_phonemes`` cleanup. ``parts`` is that espeak's output for each
+    punctuation-free run of words. The tokenizer fixture is the checkpoint's tokenizer.json
+    cut down to the merges these prompts reach, ids unchanged.
+    """
+    return json.loads((FIXTURES / "neutts_nano_polish_upstream.json").read_text("utf-8"))
+
+
+POLISH_PARAMS = {
+    "espeak_voice": "pl",
+    "prompt_template": "neuphonic",
+    "phoneme_substitutions": [["([a-zA-Z0-9])", " \\1"]],
+}
+
+
+@pytest.fixture
+def polish(tmp_path):
+    from phoonnx.tokenizer import load_hf_tokenizer
+    up = _upstream_polish()
+    voices = tmp_path / "voices.json"
+    voices.write_text(json.dumps({"default_voice": "ref", "presets": {
+        "ref": {"text": up["ref_text"], "codes": up["ref_codes"]}}}))
+
+    class VC:
+        engine_params = {**POLISH_PARAMS, "voices_path": str(voices),
+                         "tokenizer_path": str(FIXTURES / "neutts_nano_polish_tokenizer.json")}
+
+    ad = NeuTTSAdapter()
+    ad.configure(VC())
+    # espeak at the voice the call names; any other voice reads the text differently
+    ad._phonemizer = type("P", (), {"phonemize_string": staticmethod(
+        lambda t, lang: up["parts"][t] if lang == "pl" else f"<{lang}:{t}>")})()
+    return ad, up
+
+
+def test_neuphonic_fine_tune_prompts_match_upstream_ids(polish):
+    adapter, up = polish
+    for row in up["rows"]:
+        assert adapter.encode_text(row["text"], None, None) == [row["ids"]], row["text"]
+
+
+def test_neuphonic_fine_tune_phones_match_upstream(polish):
+    adapter, up = polish
+    assert adapter._espeak(up["ref_text"]) == up["ref_phones"]
+    for row in up["rows"]:
+        assert adapter._espeak(row["text"]) == row["phones"]
+
+
+def test_the_chat_prompt_starts_with_the_tokenizers_bos(polish):
+    adapter, up = polish
+    ids = adapter.encode_text(up["rows"][0]["text"], None, None)[0]
+    assert ids[0] == adapter.tokenizer.token_to_id("<|begin_of_text|>")
+
+
+def test_the_neuphonic_template_wraps_the_parts_in_a_chat_turn(tmp_path):
+    ad = NeuTTSAdapter()
+
+    class VC:
+        engine_params = {"prompt_template": "neuphonic"}
+
+    ad.configure(VC())
+    assert ad.build_prompt("TGT", "REF", [1]) == (
+        f"user: Convert the text to speech:{TEXT_PROMPT_START}REF TGT{TEXT_PROMPT_END}"
+        f"\nassistant:{SPEECH_GENERATION_START}<|speech_1|>")
+
+
+def test_the_neuphonic_template_keeps_every_reference_code():
+    class VC:
+        engine_params = {"prompt_template": "neuphonic"}
+
+    ad = NeuTTSAdapter()
+    ad.configure(VC())
+    assert ad.build_prompt("T", "R", list(range(500))).count("<|speech_") == 500
+
+
+def test_an_unknown_prompt_template_is_rejected():
+    class VC:
+        engine_params = {"prompt_template": "llama"}
+
+    with pytest.raises(ValueError, match="unknown NeuTTS prompt_template"):
+        NeuTTSAdapter().configure(VC())
+
+
+def test_a_voice_without_front_end_params_keeps_the_akiti_front_end(adapter):
+    assert adapter.espeak_voice == ESPEAK_VOICE
+    assert adapter.phoneme_substitutions == []
+    assert adapter.build_prompt("T") == f"{TEXT_PROMPT_START}T{TEXT_PROMPT_END}{SPEECH_GENERATION_START}"
+
+
+def test_substitutions_run_in_order_before_whitespace_collapses(adapter):
+    import re
+    adapter.phoneme_substitutions = [(re.compile("a"), "b"), (re.compile("b"), "x y")]
+    adapter._phonemizer = type("P", (), {
+        "phonemize_string": staticmethod(lambda t, lang: "ab  ˈa")})()
+    # a->b first: "bb  ˈb" -> "x yx y  ˈx y"; the reverse order would give "bx y ˈb"
+    assert adapter._espeak("x") == "x yx y ˈx y"
+
+
+def test_a_voice_without_substitutions_reads_an_espeak_clause_break_as_a_space(adapter):
+    # espeak-ng writes "\n" at a clause break (an en dash); the phonemizer package that
+    # Akiti-TTS trained with joins clauses with a space: "ˈama nˈe kwˈame kˈoo fˈie."
+    assert adapter.phoneme_substitutions == []
+    adapter._phonemizer = type("P", (), {
+        "phonemize_string": staticmethod(lambda t, lang: "ˈama\nnˈe kwˈame\nkˈoo fˈie")})()
+    assert adapter._espeak("Ama – ne Kwame – kɔɔ fie") == "ˈama nˈe kwˈame kˈoo fˈie"
+
+
+def _configure_substitutions(rules):
+    class VC:
+        engine_params = {"phoneme_substitutions": rules}
+
+    adapter = NeuTTSAdapter()
+    adapter.configure(VC())
+    return adapter
+
+
+@pytest.mark.parametrize("rules, type_name", [({"ɐ̃": "ã"}, "dict"), ({}, "dict"), ("ab", "str")])
+def test_substitutions_given_as_a_json_object_are_refused(rules, type_name):
+    # the key "ɐ̃" is two code points; iterating the object would make it the rule ɐ -> ̃
+    with pytest.raises(ValueError, match=f"list of \\[pattern, replacement\\] pairs, not {type_name}"):
+        _configure_substitutions(rules)
+
+
+@pytest.mark.parametrize("rule", ["ab", ["a"], ["a", "b", "c"], ["a", 1], [None, "b"]])
+def test_a_substitution_rule_that_is_not_a_pair_of_strings_is_refused(rule):
+    with pytest.raises(ValueError, match="pair of strings"):
+        _configure_substitutions([rule])
+
+
+@pytest.mark.parametrize("rule, reason", [
+    (["([a-z])", " \\2"], "invalid group reference 2"),
+    (["([a-z])", "\\g<name>"], "unknown group name"),
+    (["(", "x"], "missing \\)"),
+])
+def test_a_substitution_rule_that_cannot_run_fails_when_the_voice_loads(rule, reason):
+    with pytest.raises(ValueError, match=reason):
+        _configure_substitutions([rule])
+
+
+def test_valid_substitutions_compile_in_their_order():
+    adapter = _configure_substitutions([["([a-zA-Z0-9])", " \\1"], ("ɐ̃", "ã")])
+    assert [(p.pattern, r) for p, r in adapter.phoneme_substitutions] == [
+        ("([a-zA-Z0-9])", " \\1"), ("ɐ̃", "ã")]
+
+
 # --------------------------------------------------------------------- chunking
 def test_short_text_is_one_chunk(adapter):
     assert adapter.chunk_text("Meda wo ase.", 200) == ["Meda wo ase."]
@@ -322,24 +475,24 @@ def test_top_k_of_one_is_deterministic():
 
 def test_repetition_penalty_lowers_seen_positive_scores():
     scores = np.array([2.0, 2.0], np.float32)
-    out = _apply_repetition_penalty(scores, np.array([0]), 2.0)
+    out = apply_repetition_penalty(scores, np.array([0]), 2.0)
     assert out[0] == pytest.approx(1.0)
     assert out[1] == 2.0
 
 
 def test_repetition_penalty_raises_the_magnitude_of_negative_scores():
-    out = _apply_repetition_penalty(np.array([-2.0], np.float32), np.array([0]), 2.0)
+    out = apply_repetition_penalty(np.array([-2.0], np.float32), np.array([0]), 2.0)
     assert out[0] == pytest.approx(-4.0)
 
 
 def test_repetition_penalty_of_one_is_a_no_op():
     scores = np.array([2.0, -2.0], np.float32)
-    assert np.array_equal(_apply_repetition_penalty(scores, np.array([0, 1]), 1.0), scores)
+    assert np.array_equal(apply_repetition_penalty(scores, np.array([0, 1]), 1.0), scores)
 
 
 def test_repetition_penalty_ignores_out_of_range_tokens():
     scores = np.array([2.0], np.float32)
-    assert np.array_equal(_apply_repetition_penalty(scores, np.array([9]), 2.0), scores)
+    assert np.array_equal(apply_repetition_penalty(scores, np.array([9]), 2.0), scores)
 
 
 # --------------------------------------------------------------- decode loop

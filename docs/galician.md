@@ -4,7 +4,7 @@ This language note is for anyone working with Galician voices. After reading it 
 how the Cotovia phonemizer emits IPA or native Cotovia notation and how to select the
 stress-marked variant. It is part of the [phonemizer catalog](phonemizers.md).
 
-The `CotoviaPhonemizer` class in `scriptconv.phonemizers.gl` produces Galician
+The `CotoviaPhonemizer` class in `scriptconv_copyleft.phonemizers.gl` produces Galician
 phonemes using [pycotovia](https://github.com/TigreGotico/pycotovia), a pure-Python
 port of the [Cotovia](http://webs.uvigo.es/gtm_voz) G2P engine.
 
@@ -24,13 +24,13 @@ binary-parity-tested against it (see `pycotovia/docs/parity.md`).
 ```bash
 pip install phoonnx[gl]
 # or directly:
-pip install pycotovia
+pip install "scriptconv[gl]"
 ```
 
 ## Usage
 
 ```python
-from scriptconv.phonemizers.gl import CotoviaPhonemizer
+from scriptconv_copyleft.phonemizers.gl import CotoviaPhonemizer
 from phoonnx.config import Alphabet
 
 p_ipa = CotoviaPhonemizer(alphabet=Alphabet.IPA)
@@ -57,12 +57,25 @@ stressless. The voice manager passes this through from the voice's `phonemizer_m
 p_stress = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA, model="stress")
 ```
 
-## Factory dispatch
+## Building it from a config
+
+A `scriptconv` `TextFrontend` builds the phonemizer that its `FrontendConfig` names:
 
 ```python
-from phoonnx.config import PhonemeType, Alphabet, get_phonemizer
-p = get_phonemizer(PhonemeType.COTOVIA, alphabet=Alphabet.IPA, model="stress")
+from phoonnx.config import Alphabet, PhonemeType
+from scriptconv.frontend import FrontendConfig, TextFrontend
+
+frontend = TextFrontend(FrontendConfig(lang="gl", phonemizer=PhonemeType.COTOVIA,
+                                       alphabet=Alphabet.IPA, model="stress"))
+print(type(frontend.backend).__name__)
 ```
+
+```text
+CotoviaPhonemizer
+```
+
+`phoonnx.config.get_phonemizer` still works, but it is deprecated and warns with the
+release that removes it.
 
 ## Galician StyleTTS2 voices (ProxectoNos Celtia and Brais)
 
@@ -77,7 +90,7 @@ They come from the Apache-2.0 checkpoints of
 [Proxecto Nós](https://nos.gal/gl/proxecto-nos) (`proxectonos/Nos_StyleTTS2-Celtia-GL`
 and `proxectonos/Nos_StyleTTS2-Brais-GL`), converted to ONNX by
 `scripts/conversion/styletts2/export_proxectonos_gl.py` and mirrored to
-[`OpenVoiceOS/phoonnx-styletts2`](https://huggingface.co/OpenVoiceOS/phoonnx-styletts2).
+[`Phoonnx/phoonnx-styletts2`](https://huggingface.co/Phoonnx/phoonnx-styletts2).
 
 Each voice renders with its own speaker style out of the box. It also accepts a
 reference clip, because the export ships a `styletts2_style` speaker encoder —
@@ -89,7 +102,8 @@ from phoonnx.model_manager import TTSModelManager
 
 manager = TTSModelManager()
 manager.load()
-voice = manager.voices["proxectonos/celtia-styletts2"].load()
+manager.merge_default_voices()
+voice = manager.get_voice("proxectonos/celtia-styletts2").load()
 for chunk in voice.synthesize("Bo día, como estás?", SynthesisConfig()):
     ...
 ```

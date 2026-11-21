@@ -12,40 +12,50 @@ import os.path
 import re
 import shutil
 import tempfile
+import threading
 import wave
+import warnings
 import weakref
 from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union, Dict
+from typing import (Any, Callable, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
+                    Union, Dict)
 
 import numpy as np
 import onnxruntime
 from linguatag import closest_lang
-from quebra_frases import sentence_tokenize
+from scriptconv.frontend import Stages, TextFrontend
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
-from phoonnx.config import PhonemeType, VoiceConfig, SynthesisConfig, Alphabet, get_phonemizer, get_conversion, \
-    check_lang_supported
+from phoonnx.audio import write_wav
+from phoonnx.config import VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
+    _removal_version, check_lang_supported, get_text_casing, voice_frontend, without_normalizer
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
+from phoonnx.encoders import SIDE_STREAMS, Encoder, SymbolEncoder, Utterance, stages_of
 from phoonnx.engines.base import (
     AdapterSynthesisRequest,
     AdapterSynthesisResult,
     BaseOnnxAdapter,
+    INLINE_BLOCK,
 )
-from scriptconv.phonemizers.base import BasePhonemizer
+from scriptconv.phonemizers.base import BasePhonemizer, PhonemizerIdentity
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers
 from phoonnx.reference_audio import load_reference_audio
 from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
 from scriptconv.phonemizers.base import PhonemizedChunks
+from phoonnx.errors import NonFiniteAudioError, VoiceLoadError
+from phoonnx.engines.shami import ShamiAdapter
+from phoonnx.engines.vits import VitsAdapter
+from phoonnx.engines.vits_streaming import VitsStreamingAdapter
+from phoonnx.engines.xvits import XVitsAdapter
+from phoonnx.engines.yourtts import YourTTSAdapter
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
-
-_PHONEME_BLOCK_PATTERN = re.compile(r"(\[\[.*?\]\])")
 
 # Alias kept for callers that imported the sentinel from here before it moved.
 _UNSET = UNSET
@@ -61,6 +71,20 @@ def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunk
     if alphabet == Alphabet.ARPA:
         return [chunk.split() for chunk, _, _ in chunks if chunk.strip()]
     return [[c for c in chunk] for chunk, _, _ in chunks if chunk]
+
+
+_SKIPPED_BLOCKS = re.compile(r"\s*(?:\[\[.*?\]\]\s*)+")
+
+
+def _gap(match: "re.Match[str]") -> str:
+    """What stands where a run of skipped blocks was: nothing when a mark follows the last block
+    directly, else the whitespace around or between them with the most line breaks, else one space."""
+    spaces = INLINE_BLOCK.split(match[0])[::2]
+    following = match.string[match.end():match.end() + 1]
+    if not spaces[-1] and not following.isalnum():
+        return ""
+    widest = max(spaces, key=lambda space: space.count("\n"))
+    return widest if "\n" in widest else " "
 
 
 def _write_wav(path: str, audio: np.ndarray, sample_rate: int) -> str:
@@ -181,9 +205,11 @@ _LOUDNESS_WARNED = False
 def level_audio(audio: np.ndarray, syn_config: "SynthesisConfig", sample_rate: int) -> np.ndarray:
     """Set a synthesized sentence's level: a loudness target if asked for, else the peak."""
     global _LOUDNESS_WARNED
+    if not audio.size:
+        return audio
     if syn_config.target_loudness is not None:
         try:
-            from phoonnx.engines.outetts import normalize_loudness
+            from phoonnx.audio_fx import normalize_loudness
             return normalize_loudness(audio, float(syn_config.target_loudness), rate=sample_rate)
         except ImportError:
             if not _LOUDNESS_WARNED:
@@ -276,12 +302,12 @@ class TTSVoice:
     _sr_engine: Any = field(default=None, init=False, repr=False)
     _sr_loaded: bool = field(default=False, init=False, repr=False)
     # Post-synthesis voice-conversion state (``SynthesisConfig.vc_reference``).
-    # ``_vc_key`` is the (engine, reference content) the cached ``_VoiceConversion``
-    # was built for, so a later call naming a different engine or target speaker —
-    # or the same path holding a different recording — rebuilds instead of silently
-    # reusing the wrong voice.
-    _vc: Optional[_VoiceConversion] = field(default=None, init=False, repr=False)
-    _vc_key: Any = field(default=None, init=False, repr=False)
+    # ``(key, conversion)`` in one attribute, where ``key`` is the (engine,
+    # reference content) the ``_VoiceConversion`` was built for. A later call naming
+    # a different engine or target speaker, or the same path holding a different
+    # recording, rebuilds instead of silently reusing the wrong voice. One attribute
+    # means a reader never sees one request's key next to another request's conversion.
+    _vc: Optional[Tuple[tuple, _VoiceConversion]] = field(default=None, init=False, repr=False)
     # Path to the ONNX model file backing ``session``, kept so a later
     # ``include_alignments=True`` call can locate-and-patch a model that was
     # exported without the alignment output (see ``_ensure_alignment_session``).
@@ -295,6 +321,18 @@ class TTSVoice:
     # ``onnx``. Set to an ``onnxruntime.InferenceSession`` on success, or
     # ``None`` on a cached negative result (tried once, no dice).
     _alignment_session: Any = field(default=UNSET, repr=False, compare=False)
+    # The text frontend, the phonemizer it was built for, and the values it was
+    # built from. ``frontend`` rebuilds it when one of them changes.
+    _frontend: Optional[TextFrontend] = field(default=None, init=False, repr=False, compare=False)
+    _frontend_phonemizer: Optional[BasePhonemizer] = field(default=None, init=False, repr=False,
+                                                           compare=False)
+    _frontend_key: Any = field(default=None, init=False, repr=False, compare=False)
+    # The encoder, with the frontend, tokenizer and adapter it was built from.
+    _encoder: Optional[Encoder] = field(default=None, init=False, repr=False, compare=False)
+    _encoder_parts: Tuple[Any, ...] = field(default=(), init=False, repr=False, compare=False)
+    # The thread of the provenance check; None when the voice has nothing to check.
+    _provenance_thread: Optional[threading.Thread] = field(default=None, init=False, repr=False,
+                                                           compare=False)
 
     def __post_init__(self):
         """
@@ -310,21 +348,22 @@ class TTSVoice:
         except FileNotFoundError:
             pass
 
+        # Name the voice by its model filename (e.g. "tdt-TL_joao"), not the
+        # full HF snapshot path -- ``model_path`` is a cache path, not a
+        # human-facing identifier.
+        voice_name = Path(self.model_path).stem if self.model_path else "<voice>"
+
         # Phonemizer
         if self.phonemizer is None:
             # Fail fast (typed) if no scriptconv backend serves this voice's
             # language, instead of the voice loading fine and crashing mid
-            # synthesis with an opaque ValueError once text is sent. Name the
-            # voice by its model filename (e.g. "tdt-TL_joao"), not the full
-            # HF snapshot path -- ``model_path`` is a cache path, not a
-            # human-facing identifier.
-            voice_name = Path(self.model_path).stem if self.model_path else "<voice>"
+            # synthesis with an opaque ValueError once text is sent.
             check_lang_supported(
                 voice_name,
                 self.config.lang_code,
                 self.config.phoneme_type,
             )
-            self.phonemizer = get_phonemizer(
+            self.phonemizer = _voice_phonemizer(
                 self.config.phoneme_type,
                 self.config.alphabet,
                 self.config.phonemizer_model,
@@ -351,6 +390,71 @@ class TTSVoice:
         # Let the adapter set up engine-specific runtime state (e.g. Matcha
         # building its vocoder from config.engine_params).
         self.adapter.configure(self.config)
+        self._provenance_thread = self._start_provenance_check(voice_name)
+
+    def _start_provenance_check(self, voice_name: str) -> Optional[threading.Thread]:
+        """Start :meth:`_check_provenance` in a daemon thread, or return None when there is nothing to check.
+
+        The frontend is built here, on the load path as before. Only its
+        ``identity()``, which can take seconds, runs in the thread, so the
+        thread and a first synthesis never build the frontend twice. A frontend
+        that fails to build is built again in the thread, which reports it.
+        """
+        if not self._has_provenance_block():
+            return None
+        try:
+            frontend = self.frontend
+        except Exception:
+            frontend = None
+        thread = threading.Thread(target=self._check_provenance, args=(voice_name, frontend),
+                                  name=f"phoonnx-provenance-{voice_name}", daemon=True)
+        thread.start()
+        return thread
+
+    def _has_provenance_block(self) -> bool:
+        recorded = self.config.phonemizer_identity
+        return not (recorded is None or recorded == {} or self.config.alphabet == Alphabet.GRAPHEMES)
+
+    def _check_provenance(self, voice_name: str, frontend: Optional[TextFrontend] = None) -> None:
+        """Warn when the running phonemizer differs from the one the voice was trained with.
+
+        A load runs it in a background thread (:meth:`_start_provenance_check`)
+        and never waits for it, so the warning comes when the thread ends. The config's
+        ``phonemizer_identity`` names the phonemizer of training. A field that
+        differs from the running identity, by
+        :meth:`PhonemizerIdentity.differs_from`, gives one warning. A block that
+        cannot be read, or a running phonemizer that cannot name itself, gives
+        one warning too. The voice loads in every case. A voice with no block
+        (``phonemizer_identity`` ``None`` or ``{}``), or one whose engine reads
+        text, is not checked.
+
+        A block with no ``frontend`` was trained through the backend alone, so
+        it is compared with the backend's identity. A block with a ``frontend``
+        is compared with :meth:`TextFrontend.identity`.
+        """
+        if not self._has_provenance_block():
+            return
+        recorded = self.config.phonemizer_identity
+        try:
+            trained = PhonemizerIdentity(**recorded)
+            if frontend is None:
+                frontend = self.frontend
+            # identity() leaves the backend's engine cache alone, and its revision
+            # probes run in a subprocess, so it needs no lock against a synthesis.
+            running = frontend.identity()
+            if trained.frontend is None:
+                # Preprocessing calls the backend directly and records no frontend version.
+                running = frontend.backend.identity(running.lang)
+        except Exception as err:
+            LOG.warning(f"Voice {voice_name}: cannot compare phonemizer_identity {recorded!r} "
+                        f"with the running phonemizer ({err}). The voice loads without the check.")
+            return
+        differing = "; ".join(
+            f"{name}: trained {getattr(trained, name)!r}, running {getattr(running, name)!r}"
+            for name in trained.differs_from(running))
+        if differing:
+            LOG.warning(f"Voice {voice_name} was trained with another phonemizer: {differing}. "
+                        "The voice loads, but its pronunciation can differ from training.")
 
     def warmup(self) -> None:
         """
@@ -412,7 +516,8 @@ class TTSVoice:
         Parameters:
             model_path (str | Path): Path to the ONNX voice model file.
             config_path (str | Path, optional): Path to the JSON voice configuration. If omitted, defaults to model_path + ".json".
-            phonemes_txt (str, optional): Optional phonemes definition or file content to override the config's phoneme list.
+                A voice with no config file raises :class:`~phoonnx.errors.VoiceLoadError`.
+            phonemes_txt (str, optional): Path to a tokens file (``.txt`` or ``.json``) to override the config's phoneme list.
             phoneme_map (str, optional): Optional phoneme mapping specification or file path used to map phonemes (may be None).
             lang_code (str, optional): Language code to override or set in the loaded voice configuration.
             phoneme_type_str (str, optional): Phoneme type identifier to override the configuration (for example, "arpabet" or "ipa").
@@ -434,11 +539,10 @@ class TTSVoice:
         if config_path is None:
             config_path = f"{model_path}.json"
 
-        if os.path.isfile(config_path):
-            with open(config_path, "r", encoding="utf-8") as config_file:
-                config_dict = json.load(config_file)
-        else:
-            config_dict = {"phoneme_type": "unicode", "alphabet": "unicode"}
+        if not os.path.isfile(config_path):
+            raise VoiceLoadError(f"No voice config at {config_path}; pass config_path to TTSVoice.load")
+        with open(config_path, "r", encoding="utf-8") as config_file:
+            config_dict = json.load(config_file)
 
         vocab_dict = {}
         tokenizer_dict = {}
@@ -493,6 +597,17 @@ class TTSVoice:
             engine_params=engine_params,
         )
 
+        # num_symbols sizes the embedding of a VITS-family graph only; other engines
+        # carry the field without using it.
+        if isinstance(adapter, (VitsAdapter, VitsStreamingAdapter, YourTTSAdapter, ShamiAdapter, XVitsAdapter)) \
+                and "num_symbols" in config_dict \
+                and isinstance(voice_config.tokenizer, TTSTokenizer):
+            ids = [i for value in voice_config.tokenizer.vocabulary.char2idx.values()
+                   for i in (value if isinstance(value, list) else [value])]
+            if ids and max(ids) >= voice_config.num_symbols:
+                raise VoiceLoadError(f"{config_path}: the vocabulary uses id {max(ids)}, but the model "
+                                     f"has num_symbols={voice_config.num_symbols}")
+
         voice = TTSVoice(
             config=voice_config,
             session=session,
@@ -503,9 +618,73 @@ class TTSVoice:
             voice.warmup()
         return voice
 
+    @property
+    def frontend(self) -> TextFrontend:
+        """The text frontend that takes this voice's text to phonemes.
+
+        It reads :attr:`phonemizer`. The phonemizer's ``normalizer`` becomes the
+        frontend's normalisation hook, so it runs before diacritization, and the
+        frontend reads a copy of the phonemizer without it. Every voice runs the
+        hook. The frontend skips it for a backend that names ``normalize`` in its
+        ``owned_stages``, because that backend normalises the text itself. Such a
+        phonemizer has no ``normalizer``, so its frontend gets
+        :func:`scriptconv.frontend.spoken_normalizer`, which reads only a ``<say-as>``.
+
+        Assigning another phonemizer to :attr:`phonemizer`, as the Vosk voices
+        do once their dictionary is known, reaches the frontend through
+        :meth:`TextFrontend.with_backend`. A change to the phoneme type, the
+        language, the text casing, or the phonemizer's ``keep_punctuation`` or
+        ``normalizer`` builds a new frontend. The frontend applies the voice's
+        ``text_casing`` after normalisation, as training did.
+        """
+        phonemizer = self.phonemizer
+        key = (self.config.phoneme_type, self.config.lang_code, self.config.text_casing,
+               phonemizer.keep_punctuation, phonemizer.normalizer)
+        if self._frontend is None or key != self._frontend_key:
+            casing = None if self.config.text_casing == "ignore" else get_text_casing(self.config.text_casing)
+            self._frontend = voice_frontend(phonemizer, self.config.lang_code, Stages(casing=casing))
+            self._frontend_key = key
+        elif phonemizer is not self._frontend_phonemizer:
+            self._frontend = self._frontend.with_backend(without_normalizer(phonemizer))
+        self._frontend_phonemizer = phonemizer
+        return self._frontend
+
+    @property
+    def encoder(self) -> Encoder:
+        """The encoder that turns text into the ids this voice's engine reads.
+
+        The adapter builds it with :meth:`BaseOnnxAdapter.make_encoder`. An object that is
+        not a ``BaseOnnxAdapter`` gets a :class:`SymbolEncoder`. The encoder is built once and
+        rebuilt when :attr:`frontend`, the tokenizer or the adapter is another object, so
+        assigning another phonemizer, as the Vosk voices do, reaches it.
+        """
+        parts = (self.frontend, self.tokenizer, self.adapter)
+        if self._encoder is None or any(new is not old for new, old in zip(parts, self._encoder_parts)):
+            frontend, tokenizer, adapter = parts
+            if isinstance(adapter, BaseOnnxAdapter):
+                self._encoder = adapter.make_encoder(self.config, frontend, tokenizer)
+            else:
+                self._encoder = SymbolEncoder(frontend, tokenizer)
+            self._encoder_parts = parts
+        return self._encoder
+
+    def _with_voice_defaults(self, syn_config: SynthesisConfig) -> SynthesisConfig:
+        """*syn_config* with the voice's own text settings where it sets none."""
+        diacritize = syn_config.add_diacritics
+        if diacritize is None:
+            diacritize = self.config.add_diacritics
+        return replace(syn_config, add_diacritics=diacritize,
+                       diacritizer_model=syn_config.diacritizer_model or self.config.diacritizer_model)
+
+    def _stages(self, syn_config: SynthesisConfig) -> Stages:
+        """The text stages of one synthesis call: an explicit setting wins, then the voice's own."""
+        return stages_of(self._with_voice_defaults(syn_config))
+
     def phonemize(self, text: str, lang: Optional[str] = None) -> PhonemizedChunks:
         """
-        Text to phonemes grouped by sentence.
+        Text to phonemes grouped by sentence, with no diacritizer.
+
+        Inline ``[[phoneme]]`` blocks reach the output as written.
 
         :param text: Text to phonemize.
         :param lang: Language code to phonemize in; defaults to the voice's own
@@ -513,69 +692,26 @@ class TTSVoice:
             *its* language (which may differ from the target's).
         :return: List of phonemes for each sentence.
         """
-        lang = lang or self.config.lang_code
-        phonemes: list[list[str]] = []
-
-        text_parts = _PHONEME_BLOCK_PATTERN.split(text)
-
-        for i, text_part in enumerate(text_parts):
-            if text_part.startswith("[["):
-                # Phonemes
-                if not phonemes:
-                    # Start new sentence
-                    phonemes.append([])
-                # the preceding text chunk may have come back as an immutable
-                # sequence; ensure the current sentence is a mutable list before
-                # appending the inline phonemes to it
-                if not isinstance(phonemes[-1], list):
-                    phonemes[-1] = list(phonemes[-1])
-
-                if (i > 0) and (text_parts[i - 1].endswith(" ")):
-                    phonemes[-1].append(" ")
-
-                phonemes[-1].extend(list(text_part[2:-2].strip()))  # Ensure characters are split
-
-                if (i < (len(text_parts)) - 1) and (text_parts[i + 1].startswith(" ")):
-                    phonemes[-1].append(" ")
-
-                continue
-
-            if not text_part:
-                continue
-            phonemes.extend(list(chunk) for chunk in self.phonemizer.phonemize(text_part, lang))
-
-        if phonemes and (not phonemes[-1]):
-            # Remove empty phonemes
-            phonemes.pop()
-
-        return phonemes
+        return self.frontend.phonemize(text, Stages(diacritize=False, lang=lang))
 
     def phonemes_to_ids(self, phonemes: list[str]) -> list[int]:
-        """
-        Convert a sequence of phoneme tokens (or characters for grapheme models) into token IDs.
-        
-        Parameters:
-            phonemes (list[str]): Sequence of phoneme strings or individual characters to be tokenized.
-        
-        Returns:
-            list[int]: Token IDs corresponding to each input phoneme or character.
-        """
-        token_ids =  self.tokenizer.tokenize(phonemes)
-        return token_ids
-
-    def _text_parts(self, text: str) -> Iterable[str]:
-        """Split into sentences — always, as a time-to-first-audio measure (keep
-        sentence N+1 off the critical path of sentence N's audio)."""
-        for sentence in sentence_tokenize(text):
-            if sentence.strip():
-                yield sentence
+        """Deprecated: use ``voice.tokenizer.tokenize``, or :meth:`prepare` for text."""
+        warnings.warn("TTSVoice.phonemes_to_ids is deprecated and will be removed in phoonnx "
+                      f"{_removal_version()}. Use TTSVoice.tokenizer.tokenize, or "
+                      "TTSVoice.prepare for text.", DeprecationWarning, stacklevel=2)
+        return self.tokenizer.tokenize(phonemes)
 
     def _iter_phonemes(
-            self, text: str, src_alphabet: Alphabet, tgt_alphabet: Alphabet,
-            route, prepare_text,
-    ) -> Iterable[List[str]]:
-        """Yield per-sentence phoneme lists for *text*, by whichever conversion
-        its alphabet calls for. One job: getting phonemes."""
+            self, text: str, src_alphabet: Alphabet, tgt_alphabet: Alphabet, stages: Stages,
+    ) -> Iterable[Tuple[List[str], Dict[str, List[int]], Optional[str]]]:
+        """Yield ``(phonemes, streams, text)`` per chunk of *text*, by whichever
+        conversion its alphabet calls for. One job: getting phonemes.
+
+        ``streams`` holds the per-symbol values a phonemizer gives beside its
+        symbols, keyed by ``AdapterSynthesisRequest`` field, such as Shami's
+        ``language_ids`` and dizione's ``stress``. Phonemic input carries none.
+        The third element is the chunk's staged source text from
+        ``Segment.text``; phonemic input has none, so it is None."""
         # Already-phonemic input: transcode to the model's alphabet through
         # scriptconv's graph (a no-op when src == tgt), then split.
         if src_alphabet != Alphabet.GRAPHEMES:
@@ -584,37 +720,89 @@ class TTSVoice:
                                              lang=self.config.lang_code)
             except ValueError:
                 LOG.debug("no conversion path %s -> %s; passing through", src_alphabet, tgt_alphabet)
-            yield from _phonemic_chunks(text, tgt_alphabet)
+            for phonemes in _phonemic_chunks(text, tgt_alphabet):
+                yield phonemes, {}, None
             return
 
-        # Inline [[phoneme]] overrides bypass the phonemizer and merge across the
-        # whole text, so they stay whole-text rather than per sentence.
-        if _PHONEME_BLOCK_PATTERN.search(text):
-            yield from self.phonemize(prepare_text(text))
+        # Graphemes: the text frontend reads the whole text, then yields one chunk at a time.
+        for segment in self.frontend.segments(text, stages):
+            yield list(segment.phonemes), {name: list(values) for name, values in segment.streams.items()
+                                           if name in SIDE_STREAMS}, segment.text
+
+    @property
+    def _voice_name(self) -> str:
+        return Path(self.model_path).stem if self.model_path else "<voice>"
+
+    def _inline_blocks(self, text: str, alphabet: Optional[Alphabet]) -> str:
+        """*text* with each ``[[...]]`` block in the voice's *alphabet*, or with the blocks left out.
+
+        A block holds IPA. An adapter that takes no symbols has no input for it, so
+        the blocks are left out with one warning. For any other voice, a block is
+        converted from IPA to *alphabet* where scriptconv has a path, and kept as
+        written where it has none. ARPA symbols have more than one character, and the
+        frontend adds a block one character at a time, so an ARPA voice keeps the IPA.
+        """
+        blocks = INLINE_BLOCK.findall(text)
+        if not blocks:
+            return text
+        if not self.adapter.takes_symbols:
+            LOG.warning("Voice %s takes no symbol input: skipping the inline blocks %s", self._voice_name,
+                        ["[[%s]]" % block for block in blocks])
+            return _SKIPPED_BLOCKS.sub(_gap, text).strip()
+        if alphabet in (None, Alphabet.IPA, Alphabet.ARPA):
+            return text
+
+        def convert(block: "re.Match[str]") -> str:
+            try:
+                symbols = DEFAULT_GRAPH.convert(block[1], Alphabet.IPA.value, alphabet.value,
+                                                lang=self.config.lang_code)
+            except ValueError:
+                return block[0]
+            return f"[[{symbols}]]"
+
+        return INLINE_BLOCK.sub(convert, text)
+
+    def prepare(self, text: str, config: Optional[SynthesisConfig] = None) -> Iterator[Utterance]:
+        """Turn *text* into model input: one :class:`Utterance` per engine call.
+
+        This is the text half of :meth:`synthesize`. It applies the phonetic
+        spellings and reads the text through :attr:`frontend` with the stages of
+        *config*. :attr:`encoder` turns each chunk into ids, a sentence unless
+        ``config.chunk`` names another size. Input in a phonemic alphabet
+        (``config.alphabet``) is converted to the voice's alphabet, is not
+        phonemized, and goes to ``encoder.encode_symbols``.
+
+        The method is a generator, so the second chunk is read only after
+        the caller has rendered the first. An utterance with no ids is not
+        yielded.
+
+        :param text: The text to read.
+        :param config: The synthesis settings. Only the text settings apply.
+        """
+        config = self._with_voice_defaults(config or SynthesisConfig())
+        LOG.debug("text=%s", text)
+        spoken = text
+        if self.phonetic_spellings and config.enable_phonetic_spellings:
+            spoken = self.phonetic_spellings.apply(spoken)
+
+        src_alphabet = config.alphabet if config.alphabet is not None else Alphabet.GRAPHEMES
+        if src_alphabet == Alphabet.GRAPHEMES:
+            spoken = self._inline_blocks(spoken, self.config.alphabet)
+            if self.adapter.READS_TEXT is True:
+                yield from self.adapter.read_text(spoken, self, config, stages_of(config))
+            else:
+                yield from self.encoder.encode(spoken, config)
             return
 
-        # Graphemes: the voice's conversion route, one sentence at a time.
-        for sentence in self._text_parts(text):
-            yield from route.convert(sentence, "text", tgt_alphabet.value)
-
-    def _iter_synthesis_ids(
-            self, text, syn_config,
-            src_alphabet: Alphabet, tgt_alphabet: Alphabet,
-    ) -> Iterable[tuple]:
-        """Lazily yield ``(phonemes, phoneme_ids)`` per sentence — ``phonemes`` is
-        ``None`` for text-token models, whose adapter owns text→ids outright."""
-        route, prepare_text = get_conversion(
-            self.phonemizer, self.config, syn_config, tgt_alphabet)
-
-        if src_alphabet == tgt_alphabet == Alphabet.GRAPHEMES:
-            for ids in self.adapter.encode_text(prepare_text(text), self, syn_config):
-                yield None, ids
-            return
-
-        for phonemes in self._iter_phonemes(text, src_alphabet, tgt_alphabet,
-                                            route, prepare_text):
-            if phonemes:
-                yield phonemes, self.phonemes_to_ids(phonemes)
+        if not self.adapter.takes_symbols:
+            LOG.warning("Voice %s takes no symbol input: phonetic input in %s is not supported",
+                        self._voice_name, src_alphabet.value)
+        for symbols, _, _ in self._iter_phonemes(spoken, src_alphabet, self.config.alphabet,
+                                                 stages_of(config)):
+            if symbols:
+                utterance = self.encoder.encode_symbols(symbols, config)
+                if utterance.ids:
+                    yield utterance
 
     def _load_super_resolution(self, syn_config: SynthesisConfig):
         """
@@ -716,8 +904,9 @@ class TTSVoice:
 
         audio, sr = load_reference_audio(ref)
         key = (engine, hashlib.sha1(audio.tobytes()).hexdigest(), int(sr))
-        if self._vc is not None and self._vc_key == key:
-            return self._vc
+        cached = self._vc
+        if cached is not None and cached[0] == key:
+            return cached[1]
 
         try:
             from voiceclonnx import VoiceCloner
@@ -736,11 +925,11 @@ class TTSVoice:
             _unlink(ref_path)
             raise
 
-        self._vc = _VoiceConversion(cloner, ref_path)
-        self._vc_key = key
+        conversion = _VoiceConversion(cloner, ref_path)
+        self._vc = (key, conversion)
         LOG.info(f"Voice conversion enabled (engine={engine}); output will be "
                  f"converted to the reference speaker at {cloner.sample_rate} Hz")
-        return self._vc
+        return conversion
 
     @staticmethod
     def _maybe_convert(audio: np.ndarray, vc: Optional[_VoiceConversion],
@@ -790,7 +979,9 @@ class TTSVoice:
         """
         Synthesize speech from input text, yielding one AudioChunk per sentence.
 
-        Generates sentence-level audio by phonemizing the input text and synthesizing each sentence into a float32 PCM audio array in the range [-1.0, 1.0]. If enabled in the synthesis configuration, user-provided phonetic spellings and diacritic augmentation are applied before phonemization. Output audio may be normalized and volume-scaled according to the configuration; samples are clipped to [-1.0, 1.0].
+        This is :meth:`render` over :meth:`prepare`: each utterance that
+        ``prepare`` yields becomes one chunk. The voice conversion and
+        super-resolution stages of ``syn_config`` load once for the whole call.
 
         Parameters:
             text (str): The input text to synthesize.
@@ -809,48 +1000,65 @@ class TTSVoice:
         """
         if syn_config is None:
             syn_config = SynthesisConfig()
-
-        LOG.debug("text=%s", text)
-
-        # optional post-synthesis super-resolution; disabled (the default) means the
-        # loop below is bit-for-bit the native path and audiosronnx is not imported
+        # Loaded before the text is read, so a missing extra or reference fails first.
         sr_engine = self._load_super_resolution(syn_config)
-
-        # optional post-synthesis voice conversion; disabled (the default) means the
-        # loop below is bit-for-bit the native path and voiceclonnx is not imported.
-        # VC runs before SR so the upscaler sees the final timbre and the 48 kHz rate
-        # is what actually reaches the caller.
         vc = self._load_voice_conversion(syn_config)
+        for utterance in self.prepare(text, syn_config):
+            yield self._render(utterance, syn_config, include_alignments, sr_engine, vc)
 
-        # Text preprocessing — engine-agnostic, applied to the whole text before
-        # any conversion: user pronunciation overrides.
-        if self.phonetic_spellings and syn_config.enable_phonetic_spellings:
-            text = self.phonetic_spellings.apply(text)
+    def stream(self, text: str, config: Optional[SynthesisConfig] = None) -> Iterator[AudioChunk]:
+        """Synthesize *text* and yield its audio as the engine makes it.
 
-        # Alphabet dispatch (unified model + language-aware phonemizers):
-        #   src == tgt          -> grapheme/text-token models use the adapter;
-        #                          already-phonemic input in the model's own
-        #                          alphabet passes straight through (no re-phonemize).
-        #   src == GRAPHEMES    -> phonemize with the model's phonemizer, keeping the
-        #                          per-phoneme language IDs that language-aware
-        #                          phonemizers (e.g. Shami) provide.
-        #   otherwise           -> already-phonemic input in a different alphabet is
-        #                          transcoded to the model's alphabet through the
-        #                          conversion graph (scriptconv notation edges).
-        src_alphabet = (syn_config.alphabet
-                        if syn_config.alphabet is not None
-                        else Alphabet.GRAPHEMES)
-        tgt_alphabet = self.config.alphabet
+        An engine with ``synthesize_stream`` yields parts of a sentence, and any other
+        engine one chunk per sentence. The parts join to the audio of :meth:`synthesize`.
+        Peak normalisation, a loudness target, voice conversion and super-resolution need
+        the whole sentence, so with any of them on each sentence is one chunk. The first
+        part of a sentence carries its phonemes and ids.
+        """
+        if config is None:
+            config = SynthesisConfig()
+        sr_engine = self._load_super_resolution(config)
+        vc = self._load_voice_conversion(config)
+        whole_sentence = (config.normalize_audio or config.target_loudness is not None
+                          or sr_engine is not None or vc is not None)
+        for utterance in self.prepare(text, config):
+            if whole_sentence:
+                yield self._render(utterance, config, False, sr_engine, vc)
+                continue
+            phonemes, ids = list(utterance.symbols or []), list(utterance.ids)
+            request = self._request(utterance.ids, self._with_params(config, utterance),
+                                    utterance.streams, utterance.text)
+            for part in self.adapter.synthesize_stream(request, self.session):
+                yield AudioChunk(sample_rate=self.config.sample_rate, sample_width=2,
+                                 sample_channels=1, audio_float_array=self._level(part.audio, config),
+                                 phonemes=phonemes, phoneme_ids=ids)
+                phonemes, ids = [], []
 
-        # Per-sentence phonemize -> tokenize is done lazily so the first sentence
-        # reaches session.run before later sentences are converted,
-        # cutting time-to-first-audio on multi-sentence input.
-        id_stream = self._iter_synthesis_ids(
-            text, syn_config, src_alphabet, tgt_alphabet,
-        )
+    def render(self, utterance: Utterance, config: Optional[SynthesisConfig] = None, *,
+               alignments: bool = False) -> AudioChunk:
+        """Turn one :class:`Utterance` into audio: the audio half of :meth:`synthesize`.
 
-        # Special-token ids for alignment reconstruction — read once, only when
-        # alignments are requested (keeps the default path free of this work).
+        The engine reads the ids and streams of *utterance* with the engine
+        settings of *config*. The audio is then levelled, scaled by
+        ``config.volume`` and clipped to [-1, 1]. Voice conversion and
+        super-resolution run last, when *config* asks for them, and the chunk
+        reports the sample rate that they give.
+
+        :param utterance: An utterance from :meth:`prepare`, or one built by the
+            caller with ids for this voice.
+        :param config: The synthesis settings. The text settings do not apply.
+        :param alignments: As ``include_alignments`` in :meth:`synthesize`.
+        :return: One chunk, also when the model gives no durations.
+        """
+        if config is None:
+            config = SynthesisConfig()
+        return self._render(utterance, config, alignments,
+                            self._load_super_resolution(config), self._load_voice_conversion(config))
+
+    def _render(self, utterance: Utterance, syn_config: SynthesisConfig, include_alignments: bool,
+                sr_engine, vc: Optional[_VoiceConversion]) -> AudioChunk:
+        """:meth:`render` with the super-resolution engine and the voice conversion already loaded."""
+        # Special-token ids for alignment reconstruction, read only when alignments are requested.
         _idx2char: dict = {}
         _blank_id = _bos_id = _eos_id = None
         if include_alignments:
@@ -868,47 +1076,54 @@ class TTSVoice:
                 # instead of raising, since alignment is an optional feature.
                 include_alignments = False
 
-        for phonemes, phoneme_ids in id_stream:
-            if not phoneme_ids:
-                continue
+        syn_config = self._with_params(syn_config, utterance)
+        audio, phoneme_id_samples = self._infer(
+            utterance.ids, syn_config, include_alignments, utterance.streams,
+            text=utterance.text)
 
-            phoneme_id_samples: Optional[np.ndarray] = None
-            audio_result = self.phoneme_ids_to_audio(
-                phoneme_ids, syn_config, include_alignments=include_alignments,
-            )
-            if isinstance(audio_result, tuple):
-                audio, phoneme_id_samples = audio_result
-            else:
-                audio = audio_result
+        audio = self._level(audio, syn_config)
 
-            audio = level_audio(audio, syn_config, self.config.sample_rate)
+        phoneme_alignments = self._reconstruct_alignments(
+            list(utterance.ids), phoneme_id_samples,
+            _idx2char, _blank_id, _bos_id, _eos_id,
+        ) if phoneme_id_samples is not None else None
 
-            if syn_config.volume != 1.0:
-                audio = audio * syn_config.volume
+        # VC and SR each change the rate of the samples, so the chunk must
+        # report the rate that came back with them, not the voice's native one
+        audio, chunk_sr = self._maybe_convert(
+            audio, vc, self.config.sample_rate)
+        audio, chunk_sr = self._maybe_upscale(audio, sr_engine, chunk_sr)
 
-            audio = np.clip(audio, -1.0, 1.0).astype(np.float32)
+        return AudioChunk(
+            sample_rate=chunk_sr,
+            sample_width=2,
+            sample_channels=1,
+            audio_float_array=audio,
+            phonemes=list(utterance.symbols or []),
+            phoneme_ids=list(utterance.ids),
+            phoneme_id_samples=phoneme_id_samples,
+            phoneme_alignments=phoneme_alignments,
+        )
 
-            phoneme_alignments = self._reconstruct_alignments(
-                phoneme_ids, phoneme_id_samples,
-                _idx2char, _blank_id, _bos_id, _eos_id,
-            ) if phoneme_id_samples is not None else None
+    @staticmethod
+    def _with_params(syn_config: SynthesisConfig, utterance: Utterance) -> SynthesisConfig:
+        """*syn_config* with the params of *utterance* joined to its ``extra_params``."""
+        if not utterance.params:
+            return syn_config
+        return replace(syn_config, extra_params={**syn_config.extra_params, **utterance.params})
 
-            # VC and SR each change the rate of the samples, so the chunk must
-            # report the rate that came back with them, not the voice's native one
-            audio, chunk_sr = self._maybe_convert(
-                audio, vc, self.config.sample_rate)
-            audio, chunk_sr = self._maybe_upscale(audio, sr_engine, chunk_sr)
+    def _level(self, audio: np.ndarray, syn_config: SynthesisConfig) -> np.ndarray:
+        """The engine's *audio* levelled, scaled by ``syn_config.volume`` and clipped to [-1, 1].
 
-            yield AudioChunk(
-                sample_rate=chunk_sr,
-                sample_width=2,
-                sample_channels=1,
-                audio_float_array=audio,
-                phonemes=list(phonemes) if phonemes else [],
-                phoneme_ids=list(phoneme_ids),
-                phoneme_id_samples=phoneme_id_samples,
-                phoneme_alignments=phoneme_alignments,
-            )
+        Raises :class:`NonFiniteAudioError` when the engine returned NaN or inf, which
+        the int16 cast would write as silence.
+        """
+        if not np.isfinite(audio).all():
+            raise NonFiniteAudioError(self.model_path or "<voice>")
+        audio = level_audio(audio, syn_config, self.config.sample_rate)
+        if syn_config.volume != 1.0:
+            audio = audio * syn_config.volume
+        return np.clip(audio, -1.0, 1.0).astype(np.float32)
 
     def _alignment_model_path(self) -> Optional[Path]:
         """Where this voice's alignment-patched model is cached, if it has one."""
@@ -999,37 +1214,9 @@ class TTSVoice:
         :param set_wav_format: True if the WAV format should be set automatically.
         """
 
-        # 16-bit samples for silence
-        sentence_silence = 0.0  # Seconds of silence after each sentence
-        silence_int16_bytes = bytes(
-            int(self.config.sample_rate * sentence_silence * 2)
-        )
-        if set_wav_format:
-            # Set the format up front, from the voice: text that produces no
-            # audio at all (an empty or punctuation-only utterance) must still
-            # leave a valid, empty WAV behind. Waiting for the first chunk left
-            # the writer unconfigured, so closing it raised
-            # "wave.Error: # channels not specified" instead.
-            wav_file.setframerate(self.config.sample_rate)
-            wav_file.setsampwidth(2)
-            wav_file.setnchannels(1)
-
-        first_chunk = True
-        for audio_chunk in self.synthesize(text, syn_config=syn_config):
-            if not first_chunk:
-                wav_file.writeframes(silence_int16_bytes)
-
-            if first_chunk:
-                if set_wav_format:
-                    # the chunk is authoritative once we have one
-                    wav_file.setframerate(audio_chunk.sample_rate)
-                    wav_file.setsampwidth(audio_chunk.sample_width)
-                    wav_file.setnchannels(audio_chunk.sample_channels)
-
-                first_chunk = False
-
-            wav_file.writeframes(audio_chunk.audio_int16_bytes)
-
+        # The voice's rate is set first, so text that gives no audio still leaves a valid WAV.
+        write_wav(self.synthesize(text, syn_config=syn_config), wav_file,
+                  sample_rate=self.config.sample_rate, set_wav_format=set_wav_format)
 
     def synthesize_ssml(
             self,
@@ -1049,7 +1236,8 @@ class TTSVoice:
         ``<prosody duration>`` and ``amazon:max-duration`` stretch the speech to the time asked
         for (within a factor of two); ``<lang>`` (or ``xml:lang`` on any element) picks the language
         id of a multilingual voice when it has one (a monolingual voice says the words in its own
-        language); ``<say-as>``, ``<sub>`` and ``<phoneme>`` are read as words and phonemes;
+        language); :meth:`scriptconv.frontend.TextFrontend.say_as` of :attr:`frontend` reads
+        ``<say-as>``; ``<sub>`` and ``<phoneme>`` are read as words and phonemes;
         ``<amazon:effect>`` whispers, softens or compresses the audio; ``<amazon:auto-breaths>`` and
         ``<amazon:breath>`` add breaths; an expletive is a bleep. A text that is not SSML is
         synthesized as it is.
@@ -1073,7 +1261,7 @@ class TTSVoice:
         if base_length is None:
             base_length = self.config.length_scale
         if base_length is None:
-            base_length = 1.0
+            base_length = self.adapter.default_params().get("length_scale", 1.0)
         voice_lang = lang or self.config.lang_code
         # Set by the first speech chunk: voice conversion and super-resolution can move it off
         # the model's own rate, and every chunk of one stream must share it.
@@ -1131,7 +1319,7 @@ class TTSVoice:
                 kind, ms, volume = piece.sound
                 yield passed(tone(kind, ms, volume, at_rate))
 
-        for piece in parse_ssml(ssml, voice_lang):
+        for piece in parse_ssml(ssml, voice_lang, self.frontend, self.adapter.takes_symbols):
             if piece.sound is not None or not piece.text:
                 if rate is None:
                     waiting.append(piece)
@@ -1247,19 +1435,9 @@ class TTSVoice:
             seed: Optional[int] = None,
     ) -> None:
         """Synthesize SSML and write it as WAV audio (see :meth:`synthesize_ssml`)."""
-        if set_wav_format:
-            wav_file.setframerate(self.config.sample_rate)
-            wav_file.setsampwidth(2)
-            wav_file.setnchannels(1)
-        first = True
-        for chunk in self.synthesize_ssml(ssml, syn_config=syn_config, lang=lang, on_mark=on_mark,
-                                          seed=seed):
-            if first and set_wav_format:
-                wav_file.setframerate(chunk.sample_rate)
-                wav_file.setsampwidth(chunk.sample_width)
-                wav_file.setnchannels(chunk.sample_channels)
-            first = False
-            wav_file.writeframes(chunk.audio_int16_bytes)
+        write_wav(self.synthesize_ssml(ssml, syn_config=syn_config, lang=lang, on_mark=on_mark,
+                                       seed=seed),
+                  wav_file, sample_rate=self.config.sample_rate, set_wav_format=set_wav_format)
 
     def _prompt_token_ids(self, text: str, lang: Optional[str] = None) -> list[int]:
         """Tokenize a cloning reference transcription into prompt token ids, reusing
@@ -1271,34 +1449,33 @@ class TTSVoice:
         ids: list[int] = []
         for phonemes in self.phonemize(text, lang):
             if phonemes:
-                ids.extend(self.phonemes_to_ids(phonemes))
+                ids.extend(self.tokenizer.tokenize(phonemes))
         return ids
 
     def phoneme_ids_to_audio(
             self, phoneme_ids: list[int], syn_config: Optional[SynthesisConfig] = None,
             include_alignments: bool = False,
+            streams: Optional[Dict[str, List[int]]] = None,
     ) -> Union[np.ndarray, Tuple[np.ndarray, Optional[np.ndarray]]]:
+        """Deprecated: use :meth:`render`, which always returns an :class:`AudioChunk`.
+
+        This returns the engine's audio before :meth:`render` levels, scales and
+        clips it: an array, or ``(audio, phoneme_id_samples)`` when
+        ``include_alignments`` is True.
         """
-        Synthesize raw audio from phoneme ids.
+        warnings.warn("TTSVoice.phoneme_ids_to_audio is deprecated and will be removed in phoonnx "
+                      f"{_removal_version()}. Use TTSVoice.render.", DeprecationWarning, stacklevel=2)
+        audio, phoneme_id_samples = self._infer(phoneme_ids, syn_config or SynthesisConfig(),
+                                                include_alignments, streams)
+        return (audio, phoneme_id_samples) if include_alignments else audio
 
-        Delegates all ONNX I/O to ``self.adapter`` so the same code
-        path works for VITS or any future engine.
-
-        :param phoneme_ids: List of phoneme ids.
-        :param syn_config: Synthesis configuration.
-        :param include_alignments: When True, also return per-phoneme sample counts.
-        :return: Audio float numpy array (unnormalized, in range [-1, 1]).
-
-        When ``include_alignments`` is True the return value is instead a
-        ``(audio, phoneme_id_samples)`` tuple, where ``phoneme_id_samples`` is
-        the per-id audio-sample count (durations scaled from model frames via
-        ``VoiceConfig.hop_length``), or ``None`` when this model doesn't expose
-        a duration output. The audio itself is byte-for-byte identical to the
-        no-alignment call — the same inference runs either way.
-        """
-        syn_config = syn_config or SynthesisConfig()
-
-        # Build the architecture-agnostic request
+    def _request(
+            self, phoneme_ids: Sequence[int], syn_config: SynthesisConfig,
+            streams: Optional[Mapping[str, Sequence[int]]] = None,
+            text: Optional[str] = None,
+    ) -> AdapterSynthesisRequest:
+        """The engine request for one id sequence, with the parameters merged from the
+        adapter, the voice config and *syn_config*."""
         phoneme_ids_array = np.expand_dims(
             np.array(phoneme_ids, dtype=np.int64), 0
         )
@@ -1316,8 +1493,7 @@ class TTSVoice:
             }.items() if v is not None
         })
         # Override with any engine-specific extras from voice config
-        if hasattr(self.config, 'engine_params'):
-            params.update(self.config.engine_params)
+        params.update(self.config.engine_params)
         # Override with per-call SynthesisConfig
         if syn_config.noise_scale is not None:
             params["noise_scale"] = syn_config.noise_scale
@@ -1332,14 +1508,14 @@ class TTSVoice:
         if syn_config.speaker_reference is not None:
             params["reference_audio"] = load_reference_audio(syn_config.speaker_reference)
         if syn_config.speaker_reference_text:
-            params["prompt_tokens"] = self._prompt_token_ids(
-                syn_config.speaker_reference_text, syn_config.speaker_reference_lang)
-            # Raw string, for text-token adapters (OmniVoice, Spark-TTS) that tokenize
-            # the reference transcription themselves rather than through the shared
-            # phonemizer. Carried on the per-call request rather than adapter state so
-            # concurrent calls sharing one adapter instance never see each other's
-            # reference transcription.
-            params["speaker_reference_text"] = syn_config.speaker_reference_text
+            reference_text, reference_lang = syn_config.speaker_reference_text, syn_config.speaker_reference_lang
+            params["prompt_tokens"] = self._prompt_token_ids(reference_text, reference_lang)
+            # The text, for text-token adapters (OmniVoice, Spark-TTS) that tokenize the
+            # reference transcription themselves. It is normalised as the target text is,
+            # so the model reads both in one form. It goes on the per-call request, not on
+            # adapter state, so concurrent calls on one adapter never see each other's reference.
+            params["speaker_reference_text"] = self.frontend.prepare(
+                reference_text, Stages(diacritize=False, lang=reference_lang))
         if syn_config.exaggeration is not None:
             params["exaggeration"] = syn_config.exaggeration
         if syn_config.temperature is not None:
@@ -1347,13 +1523,52 @@ class TTSVoice:
         if syn_config.top_p is not None:
             params["top_p"] = syn_config.top_p
 
-        request = AdapterSynthesisRequest(
+        side_streams = {}
+        for name, values in (streams or {}).items():
+            if len(values) != len(phoneme_ids):
+                raise ValueError(f"side stream {name!r} has {len(values)} values for {len(phoneme_ids)} phoneme ids")
+            side_streams[name] = np.array([values], dtype=np.int64)
+
+        speaker_id = syn_config.speaker_id
+        if speaker_id is None and self.config.num_speakers > 1:
+            speaker_id = self.config.default_speaker_id
+
+        return AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,
             phoneme_lengths=phoneme_ids_lengths,
-            speaker_id=syn_config.speaker_id or 0,
-            language_id=syn_config.lang_id or 0,
+            speaker_id=speaker_id,
+            language_id=syn_config.lang_id,
             params=params,
+            text=text,
+            **side_streams,
         )
+
+    def _infer(
+            self, phoneme_ids: Sequence[int], syn_config: SynthesisConfig,
+            include_alignments: bool = False,
+            streams: Optional[Mapping[str, Sequence[int]]] = None,
+            text: Optional[str] = None,
+    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+        """
+        Run the engine on one id sequence: the engine step of :meth:`render`.
+
+        Delegates all ONNX I/O to ``self.adapter`` so the same code
+        path works for VITS or any future engine.
+
+        :param phoneme_ids: List of phoneme ids.
+        :param syn_config: Synthesis configuration.
+        :param include_alignments: When True, also return per-phoneme sample counts.
+        :param streams: Per-id side streams, keyed by ``AdapterSynthesisRequest``
+            field, e.g. ``{"language_ids": [...]}``; each holds one value per id.
+        :param text: The chunk's text, as ``Utterance.text`` gives it.
+        :return: ``(audio, phoneme_id_samples)``. The audio is a float numpy
+            array, not normalized. ``phoneme_id_samples`` is the per-id audio-sample
+            count (durations scaled from model frames via ``VoiceConfig.hop_length``),
+            or ``None`` when alignments are not requested or the model doesn't
+            expose a duration output. The audio is byte-for-byte identical either
+            way — the same inference runs.
+        """
+        request = self._request(phoneme_ids, syn_config, streams, text)
 
         # Once a prior call already retrofitted a working alignment session
         # (see ``_ensure_alignment_session``), route straight to it instead
@@ -1371,7 +1586,7 @@ class TTSVoice:
         result = self.adapter.synthesize(request, session_to_use)
 
         if not include_alignments:
-            return result.audio
+            return result.audio, None
 
         phoneme_id_samples = result.extras.get("phoneme_id_samples")
         if phoneme_id_samples is None and session_to_use is self.session:
@@ -1400,132 +1615,3 @@ class TTSVoice:
         ).astype(np.int64)
 
         return result.audio, phoneme_id_samples
-
-if __name__ == "__main__":
-    from scriptconv.phonemizers.gl import CotoviaPhonemizer
-    from scriptconv.phonemizers.he import PhonikudPhonemizer
-    from scriptconv.phonemizers.mul import (EspeakPhonemizer, EpitranPhonemizer, GruutPhonemizer, ByT5Phonemizer)
-
-    syn_config = SynthesisConfig(enable_phonetic_spellings=True)
-
-    # test hebrew piper
-    model = "/home/miro/PycharmProjects/phoonnx_tts/phonikud/model.onnx"
-    config = "/home/miro/PycharmProjects/phoonnx_tts/phonikud/model.config.json"
-
-    voice = TTSVoice.load(model_path=model, config_path=config, use_cuda=False)
-
-    print("\n################")
-    # hebrew phonemes (raw input model)
-    pho = PhonikudPhonemizer(diacritics=True)
-    sentence = "הכוח לשנות מתחיל ברגע שבו אתה מאמין שזה אפשרי!"
-    sentence = pho.phonemize_string(sentence, "he")
-
-    print("## piper hebrew (raw)")
-    print("-", voice.config.phoneme_type)
-    slug = f"piper_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
-    with wave.open(f"{slug}.wav", "wb") as wav_file:
-        voice.synthesize_wav(sentence, wav_file, syn_config)
-
-    print("\n################")
-    sentence = "הכוח לשנות מתחיל ברגע שבו אתה מאמין שזה אפשרי!"
-    voice.config.phoneme_type = PhonemeType.PHONIKUD
-    voice.phonemizer = pho
-
-    print("## piper hebrew (phonikud)")
-    print("-", voice.config.phoneme_type)
-    slug = f"piper_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
-    with wave.open(f"{slug}.wav", "wb") as wav_file:
-        voice.synthesize_wav(sentence, wav_file, syn_config)
-
-    exit()
-    # test piper
-    model = "/home/miro/PycharmProjects/phoonnx_tts/miro_en-GB.onnx"
-    config = "/home/miro/PycharmProjects/phoonnx_tts/piper_espeak.json"
-
-    voice = TTSVoice.load(model_path=model, config_path=config, use_cuda=False)
-    byt5_phonemizer = ByT5Phonemizer()
-    gruut_phonemizer = GruutPhonemizer()
-    espeak_phonemizer = EspeakPhonemizer()
-    epitran_phonemizer = EpitranPhonemizer()
-    cotovia_phonemizer = CotoviaPhonemizer()
-
-    sentence = "A rainbow is a meteorological phenomenon that is caused by reflection, refraction and dispersion of light in water droplets resulting in a spectrum of light appearing in the sky. It takes the form of a multi-colored circular arc. Rainbows caused by sunlight always appear in the section of sky directly opposite the Sun."
-
-    print("\n################")
-    print("## piper")
-    for phonemizer_type, phonemizer in [
-        (PhonemeType.ESPEAK, espeak_phonemizer),
-        (PhonemeType.BYT5, byt5_phonemizer),
-        (PhonemeType.GRUUT, gruut_phonemizer),
-        (PhonemeType.EPITRAN, epitran_phonemizer)
-    ]:
-        voice.config.phoneme_type = phonemizer_type
-        voice.phonemizer = phonemizer
-        print("-", phonemizer_type)
-
-        slug = f"piper_{phonemizer_type.value}_{voice.config.lang_code}"
-        with wave.open(f"{slug}.wav", "wb") as wav_file:
-            voice.synthesize_wav(sentence, wav_file, syn_config)
-
-    print("\n################")
-    print("## mimic3")
-    model = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/generator.onnx"
-    config = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/config.json"
-    phonemes_txt = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt"
-    phoneme_map = "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phoneme_map.txt"
-
-    voice = TTSVoice.load(model_path=model, config_path=config,
-                          phonemes_txt=phonemes_txt, phoneme_map=phoneme_map,
-                          use_cuda=False)
-    for phonemizer_type, phonemizer in [
-        (PhonemeType.ESPEAK, espeak_phonemizer),
-        (PhonemeType.BYT5, byt5_phonemizer),
-        (PhonemeType.GRUUT, gruut_phonemizer),
-        (PhonemeType.EPITRAN, epitran_phonemizer)
-    ]:
-        voice.config.phoneme_type = phonemizer_type
-        voice.phonemizer = phonemizer
-        print("-", phonemizer_type)
-        slug = f"mimic3_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
-        with wave.open(f"{slug}.wav", "wb") as wav_file:
-            voice.synthesize_wav(sentence, wav_file, syn_config)
-
-    # Test grapheme model directly
-    print("\n################")
-    print("## coqui vits")
-    model = "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits/model.onnx"
-    config = "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits/config.json"
-
-    sentence = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
-
-    voice = TTSVoice.load(model_path=model, config_path=config,
-                          use_cuda=False, lang_code="gl-ES")
-    print("-", voice.config.phoneme_type)
-    print(voice.config)
-    phones = voice.phonemize(sentence)
-    print(phones)
-    print(voice.phonemes_to_ids(phones[0]))
-
-    slug = f"vits_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
-    with wave.open(f"{slug}.wav", "wb") as wav_file:
-        voice.synthesize_wav(sentence, wav_file, syn_config)
-
-    # Test cotovia phonemizer
-    print("\n################")
-    print("## cotovia coqui vits")
-    model = "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia/model.onnx"
-    config = "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia/config.json"
-
-    sentence = "Este é un sistema de conversión de texto a voz en lingua galega baseado en redes neuronais artificiais. Ten en conta que as funcionalidades incluídas nesta páxina ofrécense unicamente con fins de demostración. Se tes algún comentario, suxestión ou detectas algún problema durante a demostración, ponte en contacto connosco."
-
-    voice = TTSVoice.load(model_path=model, config_path=config,
-                          use_cuda=False, lang_code="gl-ES")
-    print("-", voice.config.phoneme_type)
-    print(voice.config)
-    phones = voice.phonemize(sentence)
-    print(phones)
-    print(voice.phonemes_to_ids(phones[0]))
-
-    slug = f"vits_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
-    with wave.open(f"{slug}.wav", "wb") as wav_file:
-        voice.synthesize_wav(sentence, wav_file, syn_config)

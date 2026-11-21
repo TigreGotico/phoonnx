@@ -141,11 +141,6 @@ def test_default_params_match_upstream_generation_config():
     assert p["class_temperature"] == 0.0
 
 
-def test_every_param_has_a_label():
-    ad = OmniVoiceAdapter()
-    assert set(ad.param_labels()) == set(ad.default_params())
-
-
 def test_codec_constants_match_the_checkpoint():
     assert (NUM_CODEBOOKS, AUDIO_VOCAB_SIZE, AUDIO_MASK_ID) == (8, 1025, 1024)
     assert SAMPLE_RATE // HOP_LENGTH == FRAME_RATE == 25
@@ -501,20 +496,17 @@ def _silence_padded_tone(sr=16000, lead_ms=300, tone_ms=500, trail_ms=300, freq=
 
 
 def test_remove_silence_pydub_path_trims_the_padded_edges():
-    """Locks the upstream pydub branch: silent lead/trail shrink, the tone stays."""
-    audio, sr, voice_start, voice_end = _silence_padded_tone()
-    out = remove_silence(audio, sr, mid_sil=300, lead_sil=50, trail_sil=50,
-                         silence_threshold=-50.0)
+    """Locks the upstream pydub branch. It is called directly, because
+    ``remove_silence`` falls back to numpy when pydub cannot import. The 300 ms
+    edges shrink to the 50 ms kept, so 50 + 500 + 50 ms at 16 kHz remain."""
+    from phoonnx.thirdparty.omnivoice.audio import _remove_silence_pydub
+    audio, sr, voice_start, _ = _silence_padded_tone()
+    out = _remove_silence_pydub(audio, sr, mid_sil=300, lead_sil=50, trail_sil=50,
+                                silence_threshold=-50.0)
 
-    assert out.shape[0] == 1
-    # most of the padding got cut, but the tone (200ms in) must survive
-    assert out.shape[-1] < audio.shape[-1]
-    assert out.shape[-1] > voice_end - voice_start
-    # the loud tone is still present somewhere in the trimmed output
-    assert np.abs(out).max() == pytest.approx(1.0, abs=0.05)
-    # a contiguous loud region close to the tone's own length remains
-    loud = np.abs(out[0]) > 0.1
-    assert loud.sum() >= (voice_end - voice_start) * 0.9
+    assert out.shape == (1, 9600)
+    kept_lead = voice_start - sr * 50 // 1000
+    np.testing.assert_allclose(out[0], audio[0, kept_lead:kept_lead + 9600], atol=1 / 32768)
 
 
 def test_remove_silence_falls_back_to_numpy_when_pydub_is_unavailable(monkeypatch):
@@ -550,6 +542,34 @@ def test_remove_silence_falls_back_to_numpy_when_pydub_is_unavailable(monkeypatc
     assert np.abs(fallback).max() == pytest.approx(1.0, abs=0.05)
     loud = np.abs(fallback[0]) > 0.1
     assert loud.sum() >= (voice_end - voice_start) * 0.9
+
+
+def test_remove_silence_warns_naming_the_module_it_could_not_import(monkeypatch):
+    """Python 3.13 removed the stdlib ``audioop`` that pydub imports; pydub then tries
+    ``pyaudioop`` from audioop-lts. With neither, the trim leaves pydub for the numpy
+    fallback, and the log must name the module it could not import."""
+    from phoonnx.thirdparty.omnivoice import audio as audio_module
+
+    class _Log:
+        warnings = []
+
+        @classmethod
+        def warning(cls, msg, *args):
+            cls.warnings.append(msg % args)
+
+    monkeypatch.setattr(audio_module, "LOG", _Log, raising=False)
+    monkeypatch.setattr(audio_module, "_WARNED_MISSING", set(), raising=False)
+    for name in [m for m in sys.modules if m == "pydub" or m.startswith("pydub.")]:
+        monkeypatch.delitem(sys.modules, name)
+    monkeypatch.setitem(sys.modules, "audioop", None)
+    monkeypatch.setitem(sys.modules, "pyaudioop", None)
+    audio, sr, _, _ = _silence_padded_tone()
+
+    remove_silence(audio, sr)
+    remove_silence(audio, sr)
+
+    assert len(_Log.warnings) == 1, "one warning per process, not one per synthesis"
+    assert "'pyaudioop'" in _Log.warnings[0]
 
 
 # ---------------------------------------------------------------------------
@@ -672,3 +692,95 @@ def test_voice_index_entries_are_well_formed():
             "acoustic_encoder_path", "semantic_encoder_path",
             "quantizer_encoder_path", "decoder_path", "bpe_tokenizer_path"}
     assert "omnivoice/en" in index and "omnivoice/zh" in index
+
+
+def test_reference_cache_never_pairs_one_clips_key_with_anothers_codes():
+    """A request that lands while the cache is being updated for another clip must get
+    its own clip's codes."""
+    class _Probe(OmniVoiceAdapter):
+        on_store = None
+
+        def _fire(self):
+            hook, self.on_store = self.on_store, None
+            if hook:
+                hook()
+
+        @property
+        def _ref_cache(self):
+            return self.__dict__.get("_rc")
+
+        @_ref_cache.setter
+        def _ref_cache(self, value):
+            self.__dict__["_rc"] = value
+            self._fire()
+
+        @property
+        def _ref_cache_key(self):
+            return self.__dict__.get("_rk")
+
+        @_ref_cache_key.setter
+        def _ref_cache_key(self, value):
+            self.__dict__["_rk"] = value
+            self._fire()
+
+    class _Sess:
+        def __init__(self, fn):
+            self.fn = fn
+
+        def run(self, _names, feed):
+            return [self.fn(feed)]
+
+    sessions = {
+        "acoustic_encoder": _Sess(lambda f: np.full((1, 1, 4), f["waveform_24k"][0, 0, 0], np.float32)),
+        "semantic_encoder": _Sess(lambda f: np.zeros((1, 1, 4), np.float32)),
+        "quantizer_encoder": _Sess(lambda f: np.full(
+            (1, NUM_CODEBOOKS, 4), f["acoustic_features"][0, 0, 0], np.float32)),
+    }
+    ad = _Probe()
+    ad._cloning_session = lambda attr, _path: sessions[attr]
+    ad._preprocess_reference = lambda audio, sr: (audio.reshape(-1), 0.1)
+
+    def clip(clip_id):
+        return np.full(2400, clip_id, np.float32)
+
+    assert ad.encode_reference(clip(2.0), 24000)[0][0, 0] == 2     # cache now holds clip 2
+    seen = []
+    ad.on_store = lambda: seen.append(ad.encode_reference(clip(1.0), 24000)[0][0, 0])
+    assert ad.encode_reference(clip(1.0), 24000)[0][0, 0] == 1
+    assert seen == [1]
+    assert ad.encode_reference(clip(2.0), 24000)[0][0, 0] == 2
+
+
+def test_reference_encoders_run_once_per_distinct_clip():
+    """The same clip twice runs each encoder once; a different clip runs them again."""
+    class _Counting:
+        def __init__(self, fn):
+            self.fn = fn
+            self.runs = 0
+
+        def run(self, _names, feed):
+            self.runs += 1
+            return [self.fn(feed)]
+
+    sessions = {
+        "acoustic_encoder": _Counting(lambda f: np.full((1, 1, 4), f["waveform_24k"][0, 0, 0], np.float32)),
+        "semantic_encoder": _Counting(lambda f: np.zeros((1, 1, 4), np.float32)),
+        "quantizer_encoder": _Counting(lambda f: np.full(
+            (1, NUM_CODEBOOKS, 4), f["acoustic_features"][0, 0, 0], np.float32)),
+    }
+    ad = OmniVoiceAdapter()
+    ad._cloning_session = lambda attr, _path: sessions[attr]
+    ad._preprocess_reference = lambda audio, sr: (audio.reshape(-1), 0.1)
+
+    def clip(clip_id):
+        return np.full(2400, clip_id, np.float32)
+
+    def runs():
+        return [s.runs for s in sessions.values()]
+
+    assert ad.encode_reference(clip(1.0), 24000)[0][0, 0] == 1
+    assert runs() == [1, 1, 1]
+    assert ad.encode_reference(clip(1.0), 24000)[0][0, 0] == 1     # same clip, cache hit
+    assert runs() == [1, 1, 1]
+    assert ad.encode_reference(clip(2.0), 24000)[0][0, 0] == 2     # different clip
+    assert runs() == [2, 2, 2]

@@ -1,24 +1,33 @@
+import contextlib
+import contextvars
+import functools
 import hashlib
 import json
 import os
+import posixpath
 import re
 import tempfile
 import threading
-from dataclasses import asdict, dataclass, field
+import warnings
+from dataclasses import asdict, dataclass, field, fields, replace
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, List, Any, Sequence
+from typing import Optional, Dict, Iterator, List, Any, Callable, Sequence, Set, Tuple
+from urllib.parse import quote, unquote
 import requests
-from huggingface_hub import hf_hub_download
+from huggingface_hub import constants as hub_constants, hf_hub_download
 from huggingface_hub.constants import HF_HUB_CACHE
 from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
                                     OfflineModeIsEnabled)
 from json_database import JsonStorageXDG, JsonStorage, load_commented_json
 
-from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet, check_lang_supported
+from phoonnx.config import (PhonemeType, _removal_version, _voice_phonemizer, VoiceConfig, Engine,
+                            Alphabet, check_lang_supported)
 from phoonnx.util import match_lang, normalize_lang, LOG
-from phoonnx.providers import ProviderSpec, make_session, resolve_providers
+from phoonnx.providers import ProviderSpec, make_session, resolve_providers, uses_gpu
 from phoonnx.voice import TTSVoice
+from phoonnx._onnx_external import external_data_locations
+from phoonnx.errors import PrecisionUnavailable, UnknownVoice
 
 
 def _tmp_path(dest: Path) -> Path:
@@ -87,6 +96,39 @@ def _sidecar_url(url: str) -> str:
     """
     head, sep, tail = url.partition("?")
     return f"{head}_data{sep}{tail}"
+
+
+def _sidecar_urls(url: str, graph: Optional[Path]) -> List[str]:
+    """The URLs of the external-data files that the graph at ``graph`` names.
+
+    onnxruntime reads each file from the folder of the graph, by the name the
+    graph gives it, so the files come from the folder of ``url``. Exporters do
+    not agree on the names: ``model.onnx_data``, a series ``model.onnx_data_1``
+    to ``_6``, ``model_int8.onnx.data`` from onnxruntime quantization. Only a
+    graph that cannot be read falls back to the ``<graph>_data`` guess.
+
+    Raises:
+        ValueError: the graph names a file outside its own folder.
+    """
+    if graph is None:
+        return [_sidecar_url(url)]
+    try:
+        locations = external_data_locations(graph)
+    except (OSError, ValueError) as e:
+        LOG.debug(f"cannot read the external-data names of '{url}', "
+                  f"guessing '<graph>_data': {e}")
+        return [_sidecar_url(url)]
+    head, sep, tail = url.partition("?")
+    folder = head.rsplit("/", 1)[0]
+    for location in locations:
+        parts = location.replace("\\", "/").split("/")
+        if parts[0] == "" or ":" in parts[0] or ".." in parts:
+            raise ValueError(f"'{url}' names external data outside its folder: "
+                             f"{location!r}")
+    if not _HF_URL.match(head):
+        # a location is a literal file name, and a URL reads %, # and ? as syntax
+        locations = [quote(location, safe="/") for location in locations]
+    return [f"{folder}/{location}{sep}{tail}" for location in locations]
 
 
 def _expected_size(response) -> Optional[int]:
@@ -168,7 +210,20 @@ def _direct_dir(url: str) -> Path:
     return Path(HF_HUB_CACHE) / "phoonnx-direct" / digest
 
 
-def _resolve(url: str, timeout: int = 120) -> Path:
+def _direct_path(url: str, graph_url: Optional[str] = None) -> Path:
+    """Where the file at a URL the hub cannot serve is kept.
+
+    The external data of a graph keeps its place relative to the graph, also in a
+    subfolder, because onnxruntime reads it there. ``graph_url`` names that graph.
+    """
+    head = url.split("?")[0]
+    if graph_url is None:
+        return _direct_dir(url) / (head.rsplit("/", 1)[-1] or "artifact")
+    folder = graph_url.split("?")[0].rsplit("/", 1)[0]
+    return _direct_dir(graph_url) / unquote(head[len(folder) + 1:])
+
+
+def _resolve(url: str, timeout: int = 120, graph_url: Optional[str] = None) -> Path:
     """Give the local path of ``url``, downloading it once.
 
     Hub files are fetched with the hub client and used exactly where it puts
@@ -180,7 +235,8 @@ def _resolve(url: str, timeout: int = 120) -> Path:
 
     A URL the hub cannot serve is streamed into :func:`_direct_dir` instead,
     with a warning, because breaking self-hosted voices costs more than the
-    duplicate copy they keep.
+    duplicate copy they keep. ``graph_url`` names the graph whose external data
+    ``url`` is, so the file lands beside it (:func:`_direct_path`).
 
     Raises:
         huggingface_hub.errors.EntryNotFoundError: no such file on the hub.
@@ -190,7 +246,7 @@ def _resolve(url: str, timeout: int = 120) -> Path:
     if cached is not None:
         return cached
     _warn_offhub(url)
-    dest = _direct_dir(url) / (url.split("?")[0].rsplit("/", 1)[-1] or "artifact")
+    dest = _direct_path(url, graph_url)
     if _is_cached(dest):
         return dest
     return _direct_stream(url, dest, timeout)
@@ -202,6 +258,168 @@ _HF_URL = re.compile(
 # Raised by the hub client when the file, not the network, is the problem, and
 # when the client is offline with nothing cached. Both mean "no file here".
 _NO_SUCH_FILE = (EntryNotFoundError, OfflineModeIsEnabled, LocalEntryNotFoundError)
+
+
+# The Phoonnx repos lived in OpenVoiceOS under the same names, so a voice fetched before the
+# move sits in the cache under the old repo id. While the cache holds the repo under that id,
+# every file of the repo is fetched through it: offline it loads from that cache, online the
+# Hub redirect serves the current Phoonnx file into the same folder, as before the move. The
+# choice is per repo, never per file, so a graph and its weights files share one folder, a
+# commit to the moved repo does not make the cached files look missing, and a file another
+# tool fetched under the new id does not cut the voice off from its cache. Drop this once
+# a stable release has shipped the Phoonnx URLs for a full release cycle.
+_MOVED_FROM = {"Phoonnx": "OpenVoiceOS"}
+# Repos that also changed name: current id -> the ids it had before, newest first.
+_RENAMED_FROM: Dict[str, List[str]] = json.loads(
+    (Path(__file__).parent / "moved_repos.json").read_text(encoding="utf-8"))
+
+
+def _earlier_ids(repo_id: str) -> List[str]:
+    """Every id the repo had before, newest first."""
+    if repo_id in _RENAMED_FROM:
+        return _RENAMED_FROM[repo_id]
+    org, name = repo_id.split("/", 1)
+    return [f"{_MOVED_FROM[org]}/{name}"] if org in _MOVED_FROM else []
+
+
+def _repo_cached_before_move(repo_id: str) -> Optional[str]:
+    """The newest old repo id that the cache holds the repo under. Reads no network."""
+    return next((old for old in _earlier_ids(repo_id)
+                 if (Path(HF_HUB_CACHE) / f"models--{old.replace('/', '--')}").is_dir()), None)
+
+
+# The snapshot an offline load reads in place of a pinned commit the cache does not hold. The
+# index pins every file, so a device that cached a voice at an older commit would lose it
+# offline after a pin bump; it keeps the voice it has instead. A voice load chooses one
+# snapshot per repo and commit that holds every file the voice names there
+# (_VOICE_SNAPSHOTS), so a graph and the voice state in another folder of the same repo come
+# from the same commit, and two voices cached at different commits each keep their own. A
+# file fetched outside a voice load gets one choice per cache folder, pinned commit and
+# folder inside the repo (_OFFLINE_SNAPSHOTS), never per file, so a graph and every data
+# file it names still come from the same commit.
+_VOICE_SNAPSHOTS: Dict[Tuple[Path, str, frozenset], Path] = {}
+_OFFLINE_SNAPSHOTS: Dict[Tuple[Path, str, str], Path] = {}
+
+
+# The hub files of the voice being loaded, by (repo id, pinned commit).
+_VOICE_FILES: contextvars.ContextVar[Optional[Dict[Tuple[str, str], Set[str]]]] = \
+    contextvars.ContextVar("phoonnx_voice_files", default=None)
+
+
+@contextlib.contextmanager
+def _voice_scope(info: "TTSModelInfo") -> Iterator[None]:
+    """Fetch the files of ``info`` so that an offline fallback reads them all from one commit."""
+    files: Dict[Tuple[str, str], Set[str]] = {}
+    # the vosk dictionary is optional: a load goes on without it, so it does not bind the choice
+    urls = [getattr(info, f.name) for f in fields(info)
+            if f.name.endswith("_url") and f.name != "dictionary_url"]
+    urls += list((info.aux_model_urls or {}).values())
+    for url in urls:
+        match = _HF_URL.match(url.split("?")[0]) if isinstance(url, str) else None
+        if match:
+            repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
+            files.setdefault((repo_id, match["rev"]), set()).add(match["path"])
+    token = _VOICE_FILES.set(files)
+    try:
+        yield
+    finally:
+        _VOICE_FILES.reset(token)
+
+
+def _in_voice_scope(method: Callable) -> Callable:
+    """Run a :class:`TTSModelInfo` method inside :func:`_voice_scope` of its voice."""
+    @functools.wraps(method)
+    def scoped(self, *args, **kwargs):
+        with _voice_scope(self):
+            return method(self, *args, **kwargs)
+    return scoped
+
+
+def _voice_key(repo_id: str, revision: str, filename: str) -> Optional[Tuple[Path, str, frozenset]]:
+    """The :data:`_VOICE_SNAPSHOTS` key of the voice being loaded, if it names files in ``repo_id``
+    at ``revision``.
+
+    A file the voice does not name there, such as the external data of its graph, follows the
+    same key, so it comes from the snapshot of the files beside it.
+    """
+    files = _VOICE_FILES.get()
+    wanted = files.get((repo_id, revision)) if files is not None else None
+    if not wanted:
+        return None
+    return Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}", revision, frozenset(wanted)
+
+
+def _voice_snapshot(repo_id: str, revision: str, filename: str,
+                    record: bool) -> Tuple[bool, Optional[Path]]:
+    """The fallback for ``filename`` chosen for the voice being loaded.
+
+    Returns ``(False, None)`` when no voice is being loaded or the voice names no file in
+    ``repo_id`` at ``revision``, so the folder rule decides. Otherwise the newest snapshot that
+    holds ``filename`` and every file the voice names there is chosen, and none when the
+    pinned snapshot holds one of them already, as after an interrupted download.
+    """
+    key = _voice_key(repo_id, revision, filename)
+    if key is None:
+        return False, None
+    repo_dir, _, wanted = key
+    needed = wanted | {filename}
+    if any((repo_dir / "snapshots" / revision / name).exists() for name in needed):
+        return True, None
+    chosen = _VOICE_SNAPSHOTS.get(key)
+    if chosen is None or not chosen.is_dir():
+        holding = [snapshot for snapshot in (repo_dir / "snapshots").glob("*")
+                   if snapshot.name != revision
+                   and all((snapshot / name).exists() for name in needed)]
+        if not holding:
+            return True, None
+        chosen = max(holding, key=lambda snapshot: snapshot.stat().st_mtime)
+        if not record:
+            path = chosen / filename
+            return True, path if path.exists() else None
+        _VOICE_SNAPSHOTS[key] = chosen
+        LOG.warning(f"{repo_id} is not cached at the pinned commit {revision} and the hub cannot "
+                    f"be reached; loading the cached snapshot {chosen.name} instead")
+    path = chosen / filename
+    return True, path if path.exists() else None
+
+
+def _offline_snapshot(repo_id: str, revision: str, filename: str,
+                      record: bool = True) -> Optional[Path]:
+    """The cached ``filename`` from another snapshot of ``repo_id``, for when ``revision`` is not cached.
+
+    The newest snapshot by modification time that holds ``filename`` is chosen, never the one
+    ``refs/main`` names: a fetch at a commit writes no ref, so ``refs/main`` stays at the last
+    commit an unpinned install fetched. Later files of the same folder come from the same
+    snapshot or not at all. A folder that the pinned snapshot holds in part, as after an
+    interrupted download, never falls back, so its files cannot mix two commits. Reads no
+    network. Inside a voice load, :func:`_voice_snapshot` chooses instead.
+
+    ``record`` is False when the caller only measures: the chosen snapshot is then not
+    remembered, so a size question cannot make a voice look like it loaded from a fallback
+    it never took.
+    """
+    scoped, path = _voice_snapshot(repo_id, revision, filename, record)
+    if scoped:
+        return path
+    repo_dir = Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
+    folder = posixpath.dirname(filename)
+    pinned_folder = repo_dir / "snapshots" / revision / folder
+    if pinned_folder.is_dir() and any(entry.is_file() for entry in pinned_folder.iterdir()):
+        return None
+    key = (repo_dir, revision, folder)
+    chosen = _OFFLINE_SNAPSHOTS.get(key)
+    if chosen is None or not chosen.is_dir():
+        holding = [snapshot for snapshot in (repo_dir / "snapshots").glob("*")
+                   if snapshot.name != revision and (snapshot / filename).exists()]
+        if not holding:
+            return None
+        chosen = max(holding, key=lambda snapshot: snapshot.stat().st_mtime)
+        if record:
+            _OFFLINE_SNAPSHOTS[key] = chosen
+            LOG.warning(f"{repo_id} is not cached at the pinned commit {revision} and the hub cannot "
+                        f"be reached; loading the cached snapshot {chosen.name} instead")
+    path = chosen / filename
+    return path if path.exists() else None
 
 
 def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
@@ -218,10 +436,18 @@ def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
     match = _HF_URL.match(url.split("?")[0])
     if not match:
         return None
-    return Path(hf_hub_download(repo_id=match["repo"],
-                                filename=match["path"],
-                                revision=match["rev"],
-                                etag_timeout=min(timeout, _ETAG_TIMEOUT)))
+    repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
+    try:
+        return Path(hf_hub_download(repo_id=repo_id,
+                                    filename=match["path"],
+                                    revision=match["rev"],
+                                    etag_timeout=min(timeout, _ETAG_TIMEOUT)))
+    except (LocalEntryNotFoundError, OfflineModeIsEnabled):
+        # offline, or the hub did not answer, and the cache lacks this commit
+        fallback = _offline_snapshot(repo_id, match["rev"], match["path"])
+        if fallback is None:
+            raise
+        return fallback
 
 
 def _warn_offhub(url: str) -> None:
@@ -229,7 +455,7 @@ def _warn_offhub(url: str) -> None:
                 f"that no other voice or program can share: {url}")
 
 
-def _cached_path(url: str) -> Optional[Path]:
+def _cached_path(url: str, graph_url: Optional[str] = None) -> Optional[Path]:
     """Local path of ``url`` if it is already downloaded, else None.
 
     Never touches the network: this answers "how big is what we already
@@ -240,26 +466,59 @@ def _cached_path(url: str) -> Optional[Path]:
         return None
     match = _HF_URL.match(url.split("?")[0])
     if match:
+        repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
         try:
-            return Path(hf_hub_download(repo_id=match["repo"],
+            return Path(hf_hub_download(repo_id=repo_id,
                                         filename=match["path"],
                                         revision=match["rev"],
                                         local_files_only=True))
         except Exception:
+            pass
+        # A fallback that _hf_fetch took is what loaded, also when HF_HUB_OFFLINE is
+        # unset and the hub was unreachable, so its file is the one to measure.
+        repo_dir = Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
+        key = _voice_key(repo_id, match["rev"], match["path"])
+        chosen = _VOICE_SNAPSHOTS.get(key) if key is not None else None
+        if chosen is None:
+            chosen = _OFFLINE_SNAPSHOTS.get((repo_dir, match["rev"], posixpath.dirname(match["path"])))
+        if chosen is not None:
+            path = chosen / match["path"]
+            if path.exists():
+                return path
+        if not hub_constants.HF_HUB_OFFLINE:
             return None
-    dest = _direct_dir(url) / (url.split("?")[0].rsplit("/", 1)[-1] or "artifact")
+        try:
+            return _offline_snapshot(repo_id, match["rev"], match["path"], record=False)
+        except OSError:
+            return None
+    dest = _direct_path(url, graph_url)
     return dest if _is_cached(dest) else None
 
 
-def _file_bytes(url: str) -> int:
-    """On-disk size of ``url``'s cached copy, plus its weights sidecar."""
-    total = 0
-    for candidate in (url, _sidecar_url(url)):
-        path = _cached_path(candidate)
-        if path is None:
+def _file_bytes(*urls: str) -> int:
+    """On-disk size of the cached copies of ``urls`` and of their external data.
+
+    A file counts once, also when two URLs name it, or a URL and a graph that
+    keeps its weights in it.
+    """
+    files = set()
+    for url in urls:
+        graph = _cached_path(url)
+        if graph is None:
             continue
+        sidecars = []
+        if url.split("?")[0].endswith(".onnx"):  # only a graph has external data
+            try:
+                sidecars = _sidecar_urls(url, graph)
+            except ValueError:
+                pass
+        for path in [graph, *(_cached_path(sidecar, graph_url=url) for sidecar in sidecars)]:
+            if path is not None:
+                files.add(os.path.realpath(path))
+    total = 0
+    for path in files:
         try:
-            total += path.stat().st_size
+            total += os.stat(path).st_size
         except OSError:
             continue
     return total
@@ -274,6 +533,94 @@ def _read_json(path: Path) -> Any:
 def _hub_json(url: str) -> Any:
     """Give the parsed JSON at ``url``, from the shared cache."""
     return _read_json(_resolve(url))
+
+
+#: The values of the ``precision`` setting. ``int8`` and ``full`` name the
+#: files to load; ``auto`` lets :func:`choose_precision` pick one of them.
+PRECISIONS = ("int8", "full", "auto")
+DEFAULT_PRECISION = "auto"
+#: Environment variable that sets the precision when no argument and no
+#: plugin key sets it.
+PRECISION_ENV_VAR = "PHOONNX_PRECISION"
+
+
+def resolve_precision(precision: Optional[str] = None) -> str:
+    """The precision setting in force: the argument, else the env var, else ``auto``.
+
+    The argument is the load kwarg or the plugin key ``precision``; the plugin
+    passes its key as the argument, so a kwarg and a plugin key never meet.
+    ``None`` and an empty string count as unset. Case and surrounding spaces
+    are ignored.
+
+    Raises:
+        ValueError: the value is not a string, or not one of :data:`PRECISIONS`.
+    """
+    if precision is not None and not isinstance(precision, str):
+        raise ValueError(f"precision must be one of {', '.join(PRECISIONS)}, not {precision!r}")
+    value = (precision or "").strip() or os.environ.get(PRECISION_ENV_VAR, "").strip()
+    value = value.lower() or DEFAULT_PRECISION
+    if value not in PRECISIONS:
+        raise ValueError(f"precision must be one of {', '.join(PRECISIONS)}, not {value!r}")
+    return value
+
+
+def choose_precision(info: "TTSModelInfo", precision: str,
+                     providers: Optional[Sequence[ProviderSpec]] = None) -> str:
+    """Which files of ``info`` load under ``precision``: ``int8`` or ``full``.
+
+    ``int8`` and ``full`` raise :class:`PrecisionUnavailable` when the entry has
+    no such files. ``auto`` picks int8 only for an int8 variant marked
+    ``"auto": true`` while no GPU provider is in the resolved providers; an
+    entry that has only int8 files loads them. In every other case ``auto``
+    picks full.
+    """
+    int8_only = info.precision == "int8"
+    variant = (info.variants or {}).get("int8")
+    if precision == "int8":
+        if int8_only or variant:
+            return "int8"
+        raise PrecisionUnavailable(info.voice_id, "int8")
+    if precision == "full":
+        if int8_only:
+            raise PrecisionUnavailable(info.voice_id, "full")
+        return "full"
+    if int8_only:
+        return "int8"
+    if variant and variant.get("auto") is True and not uses_gpu(resolve_providers(providers)):
+        return "int8"
+    return "full"
+
+
+#: Voice ids folded into another voice as one of its precisions:
+#: old id -> (voice id, precision).
+_PRECISION_ALIASES = {
+    "edwixx/pt-BR-rapido-int8": ("edwixx/pt-BR-rapido", "int8"),
+}
+# Aliases already named in the log. A plugin looks a voice up for every
+# sentence, and one log line per process is enough.
+_LOGGED_ALIASES: set = set()
+# Index keys this release does not know, already named in the log.
+_LOGGED_UNKNOWN_KEYS: set = set()
+
+
+def _alias_info(voice_id: str, lookup: Callable[[str], Optional["TTSModelInfo"]]
+                ) -> Optional["TTSModelInfo"]:
+    """The entry an old precision id names, with a deprecation warning.
+
+    The entry keeps the old id, so a caller that looks the voice up again by
+    the id it got back finds the same files.
+    """
+    target, precision = _PRECISION_ALIASES[voice_id]
+    info = lookup(target)
+    if info is None:
+        return None
+    message = (f"voice id {voice_id!r} is deprecated and will be removed in phoonnx "
+               f"{_removal_version()}; use {target!r} with precision {precision!r}")
+    warnings.warn(message, DeprecationWarning, stacklevel=3)
+    if voice_id not in _LOGGED_ALIASES:
+        _LOGGED_ALIASES.add(voice_id)
+        LOG.warning(message)
+    return replace(info.with_precision(precision), voice_id=voice_id)
 
 
 @dataclass
@@ -356,6 +703,14 @@ class TTSModelInfo:
     # the lang_code override passed into VoiceConfig.from_dict.
     phonemizer_lang: Optional[str] = None
 
+    # The precision of the files this entry names: "int8" for an entry that has
+    # only int8 files, unset for full files.
+    precision: Optional[str] = None
+    # Other precisions of the same voice. ``{"int8": {...}}`` holds only the URL
+    # fields that differ from this entry, and ``"auto": true`` when the
+    # ``auto`` precision may pick it. See :meth:`with_precision`.
+    variants: Optional[Dict[str, Dict[str, Any]]] = None
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize every field to a JSON-safe dict, matching the format used by the
@@ -400,7 +755,7 @@ class TTSModelInfo:
                 config["phonemizer_model"] = self.phonemizer_model
 
             override_lang = self.phonemizer_lang or self.lang
-            lang_code = normalize_lang(override_lang) if override_lang else None
+            lang_code = normalize_lang(override_lang, default_region=False) if override_lang else None
             alphabet = self.alphabet if self.alphabet else None
             phoneme_type = self.phoneme_type if self.phoneme_type else None
             engine = self.engine if self.engine else None
@@ -450,8 +805,13 @@ class TTSModelInfo:
                                                      engine=engine,
                                                      lang_code=lang_code)
 
-            # populate any missing properties
-            self.lang = self.lang or normalize_lang(self._config.lang_code)
+            # populate any missing properties. The catalogue lang takes the
+            # default region and the phonemizer lang_code does not, so a voice
+            # whose lang comes from its config also records its phonemizer
+            # language: a saved voice then reloads with the phonemes it had.
+            if not self.lang:
+                self.lang = normalize_lang(self._config.lang_code)
+                self.phonemizer_lang = self.phonemizer_lang or self._config.lang_code
             self.alphabet = self.alphabet or self._config.alphabet
             self.phoneme_type = self.phoneme_type or self._config.phoneme_type
             self.engine = self.engine or self._config.engine
@@ -485,6 +845,28 @@ class TTSModelInfo:
                 )
             except (AttributeError, KeyError):
                 LOG.warning(f"Could not format display_name for {self.voice_id}.")
+
+    def with_precision(self, precision: Optional[str] = None,
+                       providers: Optional[Sequence[ProviderSpec]] = None) -> "TTSModelInfo":
+        """This entry as it loads under ``precision``.
+
+        ``precision`` is ``int8``, ``full`` or ``auto``; unset, it comes from
+        ``PHOONNX_PRECISION``, else ``auto``. ``providers`` matter only to
+        ``auto``. When the int8 variant is chosen, the result is a new entry
+        with the variant's URLs over this entry's, ``aux_model_urls`` merged
+        key by key. Otherwise the result is this entry.
+
+        Raises:
+            ValueError: ``precision`` is not a known value.
+            PrecisionUnavailable: the entry has no files for ``precision``.
+        """
+        chosen = choose_precision(self, resolve_precision(precision), providers)
+        if chosen == "full" or self.precision == "int8":
+            return self
+        urls = {k: v for k, v in self.variants["int8"].items() if k in VARIANT_FIELDS}
+        if "aux_model_urls" in urls:
+            urls["aux_model_urls"] = {**(self.aux_model_urls or {}), **urls["aux_model_urls"]}
+        return replace(self, **urls, precision="int8", variants=None)
 
     def hub_path(self, url: Optional[str]) -> Optional[Path]:
         """Give the local path of ``url``, downloading it if needed.
@@ -552,13 +934,15 @@ class TTSModelInfo:
             return None
 
     def _fetch_onnx(self, url: str) -> Path:
-        """Give the local path of an ONNX graph, with its sidecar alongside.
+        """Give the local path of an ONNX graph, with its sidecars alongside.
 
-        A graph with external weights names its sidecar by filename and
+        A graph with external weights names each sidecar by filename and
         onnxruntime resolves that name against the directory the graph itself
-        resolves to, so the two must share a directory. Fetching the sidecar
-        from the same source puts it there, and the graph loads where it lies.
-        Single-file graphs (piper/vits exports) simply have no sidecar.
+        resolves to, so they must share a directory. Fetching every sidecar
+        the graph names from the same source puts it there, and the graph
+        loads where it lies. Single-file graphs (piper/vits exports) simply
+        have no sidecar. A graph that names a file outside its own folder
+        raises ``ValueError``, and that file is not fetched.
 
         "No sidecar" and "the sidecar failed to arrive" are not the same
         answer. The sidecar carries the weights, so a failure that is mistaken
@@ -566,23 +950,24 @@ class TTSModelInfo:
         Only a 404, and being offline with nothing cached, count as absence.
         """
         path = _resolve(url)
-        try:
-            _resolve(_sidecar_url(url))
-        except _NO_SUCH_FILE as e:
-            # There is no sidecar at that URL, or we are offline and have never
-            # seen one; a single-file graph loads fine either way.
-            LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
-        except (requests.exceptions.ConnectionError,
-                requests.exceptions.Timeout) as e:
-            # Offline/DNS/timeout on the direct (non-hub) path.
-            LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
-        except requests.exceptions.HTTPError as e:
-            # Only a 404 means "no sidecar here". Anything else — a 500, a 403,
-            # a status we cannot read — is a real failure and must not be
-            # swallowed.
-            if getattr(getattr(e, "response", None), "status_code", None) != 404:
-                raise
-            LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
+        for sidecar in _sidecar_urls(url, path):
+            try:
+                _resolve(sidecar, graph_url=url)
+            except _NO_SUCH_FILE as e:
+                # There is no sidecar at that URL, or we are offline and have
+                # never seen one; a single-file graph loads fine either way.
+                LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
+            except (requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout) as e:
+                # Offline/DNS/timeout on the direct (non-hub) path.
+                LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
+            except requests.exceptions.HTTPError as e:
+                # Only a 404 means "no sidecar here". Anything else — a 500, a
+                # 403, a status we cannot read — is a real failure and must not
+                # be swallowed.
+                if getattr(getattr(e, "response", None), "status_code", None) != 404:
+                    raise
+                LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
         return path
 
     def download_model(self) -> Path:
@@ -658,7 +1043,9 @@ class TTSModelInfo:
                 params[key] = str(self._fetch_onnx(url))
         return params
 
-    def download_all(self) -> Path:
+    @_in_voice_scope
+    def download_all(self, precision: Optional[str] = None,
+                     providers: Optional[Sequence[ProviderSpec]] = None) -> Path:
         """Download everything this voice needs to load offline.
 
         The primary graph, the config JSON, whichever tokenizer artifact the
@@ -669,9 +1056,14 @@ class TTSModelInfo:
         This is the single definition of "fully downloaded" shared by the CLI
         and :meth:`TTSModelManager.download_voice_by_id`.
 
+        ``precision`` and ``providers`` pick the files as :meth:`load` does.
+
         Returns:
             Path: local path of the primary ONNX model.
         """
+        info = self.with_precision(precision, providers)
+        if info is not self:
+            return info.download_all(precision="int8")
         model_path = self.download_model()
 
         cfg: Dict[str, Any] = self.download_config() if self.config_url else {}
@@ -720,6 +1112,7 @@ class TTSModelInfo:
         """
         return "|".join(self.artifact_urls())
 
+    @_in_voice_scope
     def disk_size(self) -> int:
         """Total on-disk size, in bytes, of this voice's downloaded artifacts.
 
@@ -747,9 +1140,11 @@ class TTSModelInfo:
         """
         # One file may be named by several fields (and several voices); count
         # each distinct file once.
-        return sum(_file_bytes(u) for u in self.artifact_urls())
+        return _file_bytes(*self.artifact_urls())
 
-    def load(self, providers: Optional[Sequence[ProviderSpec]] = None) -> TTSVoice:
+    @_in_voice_scope
+    def load(self, providers: Optional[Sequence[ProviderSpec]] = None,
+             precision: Optional[str] = None) -> TTSVoice:
         """
         Load and return a TTSVoice for this model, ensuring the ONNX model is downloaded and the voice configuration is applied.
 
@@ -757,12 +1152,20 @@ class TTSModelInfo:
             providers (Sequence, optional): Ordered ONNX Runtime execution providers,
                 e.g. ``["ROCMExecutionProvider", "CPUExecutionProvider"]``. When omitted the
                 providers are resolved from the environment / auto-detection.
-        
+            precision (str, optional): ``int8``, ``full`` or ``auto``. When omitted it comes
+                from ``PHOONNX_PRECISION``, else ``auto``. See :meth:`with_precision`.
+
         Loads a TTSVoice from the cached model and config files (and tokens file if available). If this TTSModelInfo specifies a different phoneme type or alphabet than the loaded voice, updates the loaded voice's phoneme_type and alphabet and rebuilds its phonemizer accordingly.
-        
+
         Returns:
             TTSVoice: The configured TTSVoice instance ready for synthesis.
+
+        Raises:
+            PrecisionUnavailable: the voice has no files for ``precision``.
         """
+        info = self.with_precision(precision, providers)
+        if info is not self:
+            return info.load(providers=providers, precision="int8")
         # self.config resolves the final phoneme_type/lang_code (index override
         # applied) from the small config.json, if any -- cheap next to
         # download_model()'s multi-MB model weights, so the language check
@@ -805,12 +1208,13 @@ class TTSModelInfo:
         # A phonemizer_model resolved from the index (the vosk pronunciation
         # dictionary) is an index-level artifact: the published config.json never
         # references it, so the config loaded from disk cannot carry it.
+        # TTSVoice.frontend reads the phonemizer assigned here, also after a first synthesis.
         if self.phonemizer_model and not voice.config.phonemizer_model:
             voice.config.phonemizer_model = self.phonemizer_model
-            voice.phonemizer = get_phonemizer(voice.config.phoneme_type,
-                                              alphabet=voice.config.alphabet,
-                                              model=self.phonemizer_model,
-                                              keep_punctuation=voice.config.keep_punctuation)
+            voice.phonemizer = _voice_phonemizer(voice.config.phoneme_type,
+                                                 alphabet=voice.config.alphabet,
+                                                 model=self.phonemizer_model,
+                                                 keep_punctuation=voice.config.keep_punctuation)
         # override phoneme_type, if config.json is wrong
         if self.phoneme_type != voice.config.phoneme_type or self.alphabet != voice.config.alphabet:
             voice.config.phoneme_type = self.phoneme_type
@@ -819,11 +1223,39 @@ class TTSModelInfo:
             # can differ from the pre-download self.config.lang_code above, so
             # this re-checks against the phoneme_type actually being installed.
             check_lang_supported(self.voice_id, voice.config.lang_code, self.phoneme_type)
-            voice.phonemizer = get_phonemizer(self.phoneme_type,
-                                              alphabet=self.alphabet,
-                                              model=voice.config.phonemizer_model,
-                                              keep_punctuation=voice.config.keep_punctuation)
+            voice.phonemizer = _voice_phonemizer(self.phoneme_type,
+                                                 alphabet=self.alphabet,
+                                                 model=voice.config.phonemizer_model,
+                                                 keep_punctuation=voice.config.keep_punctuation)
         return voice
+
+
+_INDEX_FIELDS = frozenset(f.name for f in fields(TTSModelInfo))
+#: Fields a precision variant may replace: the files of the voice.
+VARIANT_FIELDS = frozenset(name for name in _INDEX_FIELDS
+                           if name.endswith("_url") or name == "aux_model_urls")
+
+
+def _known_fields(entry: Dict[str, Any]) -> Dict[str, Any]:
+    """An index or cache record without the keys this release does not know.
+
+    Each unknown key is logged once as a warning, so a typo in a hand-written
+    entry is seen, and a field that a newer index adds cannot stop the voice
+    from loading.
+    """
+    for key in sorted(entry.keys() - _INDEX_FIELDS):
+        if key not in _LOGGED_UNKNOWN_KEYS:
+            _LOGGED_UNKNOWN_KEYS.add(key)
+            LOG.warning(f"ignoring key {key!r} of voice {entry.get('voice_id')!r}: "
+                        f"this phoonnx release does not know it")
+    return {k: v for k, v in entry.items() if k in _INDEX_FIELDS}
+
+
+class _VoiceRegistry(dict):
+    """The voices by id; indexing an unknown id raises :class:`UnknownVoice`."""
+
+    def __missing__(self, voice_id):
+        raise UnknownVoice(voice_id)
 
 
 class TTSModelManager:
@@ -844,8 +1276,8 @@ class TTSModelManager:
         # last touched; indic_parler.json, llasa.json, orpheus.json and
         # mosstts.json are new to this change.
         "outetts.json", "arktts.json", "omnivoice.json", "indic_parler.json",
-        "llasa.json", "orpheus.json", "mosstts.json", "vosk.json",
-        "ghananlp.json",
+        "parlertts.json", "llasa.json", "orpheus.json", "mosstts.json", "vosk.json",
+        "ghananlp.json", "rapido.json",
     )
 
     @classmethod
@@ -875,6 +1307,7 @@ class TTSModelManager:
         Parameters:
             cache_path (Optional[str]): Filesystem path for the cache file. If omitted, uses the user's XDG cache directory under "phoonnx/voices".
         """
+        # Replaced, never edited in place: get_lang_voices keys its answers on it.
         self.voices: Dict[str, TTSModelInfo] = {}
         # The registry is rebuilt wholesale by ``load``/``merge_default_voices``
         # while other threads are looking voices up in it. Rebuilding in place
@@ -883,6 +1316,10 @@ class TTSModelManager:
         # Every rebuild therefore happens in a local dict and is published by a
         # single assignment, under this lock so two rebuilds cannot interleave.
         self._registry_lock = threading.RLock()
+        # bundled entries an alias read, so a lookup per sentence reads the index once
+        self._alias_fallbacks: Dict[str, Optional[TTSModelInfo]] = {}
+        # get_lang_voices answers as (registry, {lang: voices}), replaced whole
+        self._lang_voices_memo: Tuple[Optional[dict], dict] = (None, {})
         if cache_path:
             self.cache = JsonStorage(cache_path)
         else:
@@ -897,6 +1334,14 @@ class TTSModelManager:
             LOG.error(f"voice index at {self.cache.path} could not be read and "
                       f"is being ignored; the catalog will look empty until it "
                       f"is rebuilt with 'phoonnx-voices update-cache'")
+
+    @property
+    def voices(self) -> Dict[str, TTSModelInfo]:
+        return self._voices
+
+    @voices.setter
+    def voices(self, voices: Dict[str, TTSModelInfo]) -> None:
+        self._voices = voices if isinstance(voices, _VoiceRegistry) else _VoiceRegistry(voices)
 
     @property
     def all_voices(self) -> List[TTSModelInfo]:
@@ -922,8 +1367,13 @@ class TTSModelManager:
 
         The lookup readers should use: it sees the registry either as it was
         before a concurrent rebuild or as it is after, never mid-rebuild.
+
+        An old id that now names one precision of another voice gives that
+        voice at that precision, with a deprecation warning.
         """
         with self._registry_lock:
+            if voice_id in _PRECISION_ALIASES:
+                return _alias_info(voice_id, self._alias_target)
             return self.voices.get(voice_id)
 
     def load(self):
@@ -961,16 +1411,25 @@ class TTSModelManager:
             voice_info (TTSModelInfo): The voice metadata to add or update.
         """
         with self._registry_lock:
-            self.voices[voice_info.voice_id] = voice_info
+            self.voices = {**self.voices, voice_info.voice_id: voice_info}
             self.cache[voice_info.voice_id] = voice_info.to_dict()
 
     def get_lang_voices(self, lang: str) -> List[TTSModelInfo]:
-        voices = sorted(
-            [
-                (voice_info, match_lang(voice_info.lang, lang)[-1])
-                for voice_info in self.voices.values()
-            ], key=lambda k: k[1])
-        return [v[0] for v in voices if v[1] < 10]
+        """The voices that speak ``lang``, nearest first, kept until ``voices`` is replaced."""
+        registry, answers = self._lang_voices_memo
+        if registry is not self.voices:
+            registry, answers = self.voices, {}
+            self._lang_voices_memo = (registry, answers)
+        voices = answers.get(lang)
+        if voices is None:
+            # checked before the scan: a voice gets its lang when its config loads
+            complete = all(voice_info.lang for voice_info in registry.values())
+            ranked = sorted(((voice_info, match_lang(voice_info.lang, lang)[-1])
+                             for voice_info in registry.values()), key=lambda k: k[1])
+            voices = [v[0] for v in ranked if v[1] < 10]
+            if complete:
+                answers[lang] = voices
+        return list(voices)
 
     def merge_default_voices(self, store=False):
         """
@@ -997,8 +1456,11 @@ class TTSModelManager:
         """
         voices: Dict[str, TTSModelInfo] = {}
         for voice_id, voice_dict in self.cache.items():
+            if voice_id in _PRECISION_ALIASES:
+                # Left in a cache saved before the id became an alias.
+                continue
             try:
-                voices[voice_id] = TTSModelInfo(**voice_dict)
+                voices[voice_id] = TTSModelInfo(**_known_fields(voice_dict))
             except Exception as e:
                 LOG.error(f"Failed to load '{voice_id}': ({e})")
         return voices
@@ -1023,7 +1485,30 @@ class TTSModelManager:
             result[path.stem.lower()] = sorted(data.keys())
         return result
 
-    def download_voice_by_id(self, voice_id: str) -> bool:
+    def _bundled_voice(self, voice_id: str) -> Optional[TTSModelInfo]:
+        """The entry for ``voice_id`` read from the bundled indexes, or None."""
+        for path in self.voice_index_files():
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if voice_id in data:
+                return TTSModelInfo(**_known_fields(data[voice_id]))
+        return None
+
+    def _alias_target(self, voice_id: str) -> Optional[TTSModelInfo]:
+        """The registry entry an alias points at, for :func:`_alias_info`.
+
+        A cache written before the alias existed holds the target without its
+        variants. The alias then reads the bundled entry, so it still finds its
+        files, and the registry keeps the entry it holds.
+        """
+        info = self.voices.get(voice_id)
+        if info is not None and not info.variants and info.precision is None:
+            if voice_id not in self._alias_fallbacks:
+                self._alias_fallbacks[voice_id] = self._bundled_voice(voice_id)
+            info = self._alias_fallbacks[voice_id] or info
+        return info
+
+    def download_voice_by_id(self, voice_id: str, precision: Optional[str] = None) -> bool:
         """
         Download everything a voice needs to load offline, by its ID.
 
@@ -1034,194 +1519,23 @@ class TTSModelManager:
 
         Fetches the full set of artifacts via ``TTSModelInfo.download_all``:
         the ONNX graph, the config JSON, the tokenizer artifacts and any
-        vocoder / style / speaker-encoder / auxiliary graphs.
+        vocoder / style / speaker-encoder / auxiliary graphs. ``precision``
+        picks the files as ``TTSModelInfo.load`` does.
 
         Returns:
             bool: True if the voice was found and its download was attempted,
             False if the voice ID could not be resolved.
         """
-        voice_info = self.voices.get(voice_id)
+        voice_info = self.get_voice(voice_id)
         if not voice_info:
-            for path in self.voice_index_files():
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                if voice_id in data:
-                    voice_info = TTSModelInfo(**data[voice_id])
-                    break
+            if voice_id in _PRECISION_ALIASES:
+                voice_info = _alias_info(voice_id, self._bundled_voice)
+            else:
+                voice_info = self._bundled_voice(voice_id)
 
         if not voice_info:
             LOG.error(f"Cannot find voice information for ID: {voice_id}")
             return False
 
-        voice_info.download_all()
+        voice_info.download_all(precision=precision)
         return True
-
-
-
-if __name__ == "__main__":
-    manager = TTSModelManager()
-    manager.cache.clear()
-    manager.merge_default_voices(store=True)  # load and cache known voice models
-
-    print(f"Total voices: {len(manager.all_voices)}")
-    print(f"Total langs: {len(manager.supported_langs)}")
-
-    # Total voices: 1462
-    # Total langs: 1205
-
-    for voice in manager.get_lang_voices("gl"):
-        print(voice)
-        # TTSModelInfo(voice_id='proxectonos/brais', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-graphemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-graphemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='graphemes', alphabet='unicode', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '!': 1, '¡': 2, "'": 3, '(': 4, ')': 5, ',': 6, '-': 7, '.': 8, ':': 9, ';': 10, '¿': 11, '?': 12, ' ': 13, '"': 14, '\n': 15, 'A': 16, 'B': 17, 'C': 18, 'D': 19, 'E': 20, 'F': 21, 'G': 22, 'H': 23, 'I': 24, 'J': 25, 'K': 26, 'L': 27, 'M': 28, 'N': 29, 'O': 30, 'P': 31, 'Q': 32, 'R': 33, 'S': 34, 'T': 35, 'U': 36, 'V': 37, 'W': 38, 'X': 39, 'Y': 40, 'Z': 41, 'Ç': 42, 'Á': 43, 'É': 44, 'Í': 45, 'Ï': 46, 'Ó': 47, 'Ú': 48, 'Ü': 49, 'a': 50, 'b': 51, 'c': 52, 'd': 53, 'e': 54, 'f': 55, 'g': 56, 'h': 57, 'i': 58, 'j': 59, 'k': 60, 'l': 61, 'm': 62, 'n': 63, 'o': 64, 'p': 65, 'q': 66, 'r': 67, 's': 68, 't': 69, 'u': 70, 'v': 71, 'w': 72, 'x': 73, 'y': 74, 'z': 75, 'ñ': 76, 'á': 77, 'é': 78, 'í': 79, 'ï': 80, 'ó': 81, 'ú': 82, 'ü': 83, '<BLNK>': 84}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.GRAPHEMES: 'graphemes'>, alphabet=<Alphabet.UNICODE: 'unicode'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-        # TTSModelInfo(voice_id='proxectonos/celtia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='graphemes', alphabet='unicode', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'_': 0, '!': 1, '"': 2, '(': 3, ')': 4, ',': 5, '-': 6, '.': 7, ':': 8, ';': 9, '?': 10, '¡': 11, '¿': 12, ' ': 13, 'A': 14, 'B': 15, 'C': 16, 'D': 17, 'E': 18, 'F': 19, 'G': 20, 'H': 21, 'I': 22, 'J': 23, 'K': 24, 'L': 25, 'M': 26, 'N': 27, 'O': 28, 'P': 29, 'Q': 30, 'R': 31, 'S': 32, 'T': 33, 'U': 34, 'V': 35, 'X': 36, 'Y': 37, 'Z': 38, 'a': 39, 'b': 40, 'c': 41, 'd': 42, 'e': 43, 'f': 44, 'g': 45, 'h': 46, 'i': 47, 'j': 48, 'k': 49, 'l': 50, 'm': 51, 'n': 52, 'o': 53, 'p': 54, 'q': 55, 'r': 56, 's': 57, 't': 58, 'u': 59, 'v': 60, 'w': 61, 'x': 62, 'y': 63, 'z': 64, 'Á': 65, 'É': 66, 'Í': 67, 'Ó': 68, 'Ú': 69, 'á': 70, 'é': 71, 'í': 72, 'ñ': 73, 'ó': 74, 'ú': 75, 'ü': 76, '<BLNK>': 77}, pad='_', eos='*', bos='^', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.GRAPHEMES: 'graphemes'>, alphabet=<Alphabet.UNICODE: 'unicode'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-        # TTSModelInfo(voice_id='proxectonos/brais-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '!': 1, '¡': 2, "'": 3, '(': 4, ')': 5, ',': 6, '-': 7, '.': 8, ':': 9, ';': 10, '¿': 11, '?': 12, ' ': 13, '"': 14, '\n': 15, 'A': 16, 'B': 17, 'C': 18, 'D': 19, 'E': 20, 'F': 21, 'G': 22, 'H': 23, 'I': 24, 'J': 25, 'K': 26, 'L': 27, 'M': 28, 'N': 29, 'O': 30, 'P': 31, 'Q': 32, 'R': 33, 'S': 34, 'T': 35, 'U': 36, 'V': 37, 'W': 38, 'X': 39, 'Y': 40, 'Z': 41, 'Ç': 42, 'Á': 43, 'É': 44, 'Í': 45, 'Ó': 46, 'Ú': 47, 'Ü': 48, 'a': 49, 'b': 50, 'c': 51, 'd': 52, 'e': 53, 'f': 54, 'g': 55, 'h': 56, 'i': 57, 'j': 58, 'k': 59, 'l': 60, 'm': 61, 'n': 62, 'o': 63, 'p': 64, 'q': 65, 'r': 66, 's': 67, 't': 68, 'u': 69, 'v': 70, 'w': 71, 'x': 72, 'y': 73, 'z': 74, 'ñ': 75, 'á': 76, 'é': 77, 'í': 78, 'ó': 79, 'ú': 80, 'ü': 81, '<BLNK>': 82}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-        # TTSModelInfo(voice_id='proxectonos/celtia-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '!': 1, '¡': 2, "'": 3, '(': 4, ')': 5, ',': 6, '-': 7, '.': 8, ':': 9, ';': 10, '¿': 11, '?': 12, ' ': 13, '"': 14, '\n': 15, 'A': 16, 'B': 17, 'C': 18, 'D': 19, 'E': 20, 'F': 21, 'G': 22, 'H': 23, 'I': 24, 'J': 25, 'K': 26, 'L': 27, 'M': 28, 'N': 29, 'O': 30, 'P': 31, 'Q': 32, 'R': 33, 'S': 34, 'T': 35, 'U': 36, 'V': 37, 'W': 38, 'X': 39, 'Y': 40, 'Z': 41, 'Ç': 42, 'Á': 43, 'É': 44, 'Í': 45, 'Ó': 46, 'Ú': 47, 'Ü': 48, 'a': 49, 'b': 50, 'c': 51, 'd': 52, 'e': 53, 'f': 54, 'g': 55, 'h': 56, 'i': 57, 'j': 58, 'k': 59, 'l': 60, 'm': 61, 'n': 62, 'o': 63, 'p': 64, 'q': 65, 'r': 66, 's': 67, 't': 68, 'u': 69, 'v': 70, 'w': 71, 'x': 72, 'y': 73, 'z': 74, 'ñ': 75, 'á': 76, 'é': 77, 'í': 78, 'ó': 79, 'ú': 80, 'ü': 81, '<BLNK>': 82}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-        # TTSModelInfo(voice_id='proxectonos/sabela-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '!': 1, '¡': 2, "'": 3, '(': 4, ')': 5, ',': 6, '-': 7, '.': 8, ':': 9, ';': 10, '¿': 11, '?': 12, ' ': 13, '"': 14, '\n': 15, 'A': 16, 'B': 17, 'C': 18, 'D': 19, 'E': 20, 'F': 21, 'G': 22, 'H': 23, 'I': 24, 'J': 25, 'K': 26, 'L': 27, 'M': 28, 'N': 29, 'O': 30, 'P': 31, 'Q': 32, 'R': 33, 'S': 34, 'T': 35, 'U': 36, 'V': 37, 'W': 38, 'X': 39, 'Y': 40, 'Z': 41, 'Ç': 42, 'Á': 43, 'É': 44, 'Í': 45, 'Ó': 46, 'Ú': 47, 'Ü': 48, 'a': 49, 'b': 50, 'c': 51, 'd': 52, 'e': 53, 'f': 54, 'g': 55, 'h': 56, 'i': 57, 'j': 58, 'k': 59, 'l': 60, 'm': 61, 'n': 62, 'o': 63, 'p': 64, 'q': 65, 'r': 66, 's': 67, 't': 68, 'u': 69, 'v': 70, 'w': 71, 'x': 72, 'y': 73, 'z': 74, 'ñ': 75, 'á': 76, 'é': 77, 'í': 78, 'ó': 79, 'ú': 80, 'ü': 81, '<BLNK>': 82}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-        # TTSModelInfo(voice_id='proxectonos/icia-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '<EOS>': 1, '<BOS>': 2, '<BLNK>': 3, '\n': 4, '"': 5, 'A': 6, 'B': 7, 'C': 8, 'D': 9, 'E': 10, 'F': 11, 'G': 12, 'H': 13, 'I': 14, 'J': 15, 'K': 16, 'L': 17, 'M': 18, 'N': 19, 'O': 20, 'P': 21, 'Q': 22, 'R': 23, 'S': 24, 'T': 25, 'U': 26, 'V': 27, 'W': 28, 'X': 29, 'Y': 30, 'Z': 31, 'a': 32, 'b': 33, 'c': 34, 'd': 35, 'e': 36, 'f': 37, 'g': 38, 'h': 39, 'i': 40, 'j': 41, 'k': 42, 'l': 43, 'm': 44, 'n': 45, 'o': 46, 'p': 47, 'q': 48, 'r': 49, 's': 50, 't': 51, 'u': 52, 'v': 53, 'w': 54, 'x': 55, 'y': 56, 'z': 57, 'Á': 58, 'Ç': 59, 'É': 60, 'Í': 61, 'Ó': 62, 'Ú': 63, 'Ü': 64, 'á': 65, 'é': 66, 'í': 67, 'ñ': 68, 'ó': 69, 'ú': 70, 'ü': 71, '!': 72, '¡': 73, "'": 74, '(': 75, ')': 76, ',': 77, '-': 78, '.': 79, ':': 80, ';': 81, '¿': 82, '?': 83, ' ': 84}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-        # TTSModelInfo(voice_id='proxectonos/paulo-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-paulo-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-paulo-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '<EOS>': 1, '<BOS>': 2, '<BLNK>': 3, 'A': 4, 'B': 5, 'C': 6, 'D': 7, 'E': 8, 'F': 9, 'G': 10, 'H': 11, 'I': 12, 'J': 13, 'K': 14, 'L': 15, 'M': 16, 'N': 17, 'O': 18, 'P': 19, 'Q': 20, 'R': 21, 'S': 22, 'T': 23, 'U': 24, 'V': 25, 'W': 26, 'X': 27, 'Y': 28, 'Z': 29, 'a': 30, 'b': 31, 'c': 32, 'd': 33, 'e': 34, 'f': 35, 'g': 36, 'h': 37, 'i': 38, 'j': 39, 'k': 40, 'l': 41, 'm': 42, 'n': 43, 'o': 44, 'p': 45, 'q': 46, 'r': 47, 's': 48, 't': 49, 'u': 50, 'v': 51, 'w': 52, 'x': 53, 'y': 54, 'z': 55, 'Á': 56, 'Ç': 57, 'É': 58, 'Í': 59, 'Ó': 60, 'Ú': 61, 'Ü': 62, 'á': 63, 'é': 64, 'í': 65, 'ñ': 66, 'ó': 67, 'ú': 68, 'ü': 69, '!': 70, '¡': 71, "'": 72, '(': 73, ')': 74, ',': 75, '-': 76, '.': 77, ':': 78, ';': 79, '¿': 80, '?': 81, ' ': 82, '"': 83, '\n': 84}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-        # TTSModelInfo(voice_id='proxectonos/iago-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-iago-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-iago-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '<EOS>': 1, '<BOS>': 2, '<BLNK>': 3, 'A': 4, 'B': 5, 'C': 6, 'D': 7, 'E': 8, 'F': 9, 'G': 10, 'H': 11, 'I': 12, 'J': 13, 'K': 14, 'L': 15, 'M': 16, 'N': 17, 'O': 18, 'P': 19, 'Q': 20, 'R': 21, 'S': 22, 'T': 23, 'U': 24, 'V': 25, 'W': 26, 'X': 27, 'Y': 28, 'Z': 29, 'a': 30, 'b': 31, 'c': 32, 'd': 33, 'e': 34, 'f': 35, 'g': 36, 'h': 37, 'i': 38, 'j': 39, 'k': 40, 'l': 41, 'm': 42, 'n': 43, 'o': 44, 'p': 45, 'q': 46, 'r': 47, 's': 48, 't': 49, 'u': 50, 'v': 51, 'w': 52, 'x': 53, 'y': 54, 'z': 55, 'Á': 56, 'Ç': 57, 'É': 58, 'Í': 59, 'Ó': 60, 'Ú': 61, 'Ü': 62, 'á': 63, 'é': 64, 'í': 65, 'ñ': 66, 'ó': 67, 'ú': 68, 'ü': 69, '!': 70, '¡': 71, "'": 72, '(': 73, ')': 74, ',': 75, '-': 76, '.': 77, ':': 78, ';': 79, '¿': 80, '?': 81, ' ': 82, '"': 83, '\n': 84}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-
-    print(manager.supported_langs)
-    # ['abi', 'abp', 'aca', 'acd', 'ace', 'acf', 'ach', 'acn', 'acr', 'acu', 'ade', 'adh', 'adj', 'adx', 'aeu',
-    # 'af-ZA', 'agd', 'agg', 'agn', 'agr', 'agu', 'agx', 'aha', 'ahk', 'aia', 'aka', 'akb', 'ake', 'akp', 'alj',
-    # 'alp', 'alt', 'alz', 'ame', 'amf', 'amh', 'ami', 'amk', 'ann', 'any', 'aoz', 'apb', 'apr', 'ar', 'ar-JO',
-    # 'ar-SA', 'ara', 'arl', 'asa', 'asg', 'asm', 'ata', 'atb', 'atg', 'ati', 'atq', 'ava', 'avn', 'avu', 'awa', 'awb',
-    # 'ayo', 'ayr', 'ayz', 'azb', 'azg', 'azj-script_cyrillic', 'azj-script_latin', 'azz', 'bak', 'bam', 'ban', 'bao',
-    # 'bav', 'bba', 'bbb', 'bbc', 'bbo', 'bcc-script_arabic', 'bcc-script_latin', 'bcl', 'bcw', 'bdg', 'bdh', 'bdq',
-    # 'bdu', 'bdv', 'beh', 'bem', 'ben', 'bep', 'bex', 'bfa', 'bfo', 'bfy', 'bfz', 'bg-BG', 'bgc', 'bgq', 'bgr', 'bgt',
-    # 'bgw', 'bha', 'bht', 'bhz', 'bib', 'bim', 'bis', 'biv', 'bjr', 'bjv', 'bjw', 'bjz', 'bkd', 'bkv', 'blh', 'blt',
-    # 'blx', 'blz', 'bmq', 'bmr', 'bmu', 'bmv', 'bn', 'bng', 'bno', 'bnp', 'boa', 'bod', 'boj', 'bom', 'bor', 'bov',
-    # 'box', 'bpr', 'bps', 'bqc', 'bqi', 'bqj', 'bqp', 'bru', 'bsc', 'bsq', 'bss', 'btd', 'bts', 'btt', 'btx', 'bud',
-    # 'bul', 'bus', 'bvc', 'bvz', 'bwq', 'bwu', 'byr', 'bzh', 'bzi', 'bzj', 'ca-ES', 'caa', 'cab',
-    # 'cak-dialect_central', 'cak-dialect_santodomingoxenacoj', 'cak-dialect_southcentral', 'cak-dialect_western',
-    # 'cak-dialect_yepocapa', 'cap', 'car', 'cas', 'cat', 'cax', 'cbc', 'cbi', 'cbr', 'cbs', 'cbt', 'cbu', 'cbv', 'cce',
-    # 'cco', 'cdj', 'ceb', 'ceg', 'cek', 'cfm', 'cgc', 'che', 'chf', 'chv', 'chz', 'cjo', 'cjp', 'cjs', 'cko', 'ckt',
-    # 'cla', 'cle', 'cly', 'cme', 'cmo-script_khmer', 'cmo-script_latin', 'cmr', 'cnh', 'cni', 'cnl', 'cnt', 'coe',
-    # 'cof', 'cok', 'con', 'cot', 'cou', 'cpa', 'cpb', 'cpu', 'crh', 'crk-script_latin', 'crk-script_syllabics', 'crn',
-    # 'crq', 'crs', 'crt', 'cs-CZ', 'csk', 'cso', 'ctd', 'ctg', 'cto', 'ctu', 'cuc', 'cui', 'cuk', 'cul', 'cwa', 'cwe',
-    # 'cwt', 'cy-GB', 'cya', 'cym', 'da-DK', 'daa', 'dah', 'dar', 'dbj', 'dbq', 'ddn', 'de-DE', 'ded', 'des', 'deu',
-    # 'dga', 'dgi', 'dgk', 'dgo', 'dgr', 'dhi', 'did', 'dig', 'dik', 'dip', 'div', 'djk', 'dnj-dialect_blowowest',
-    # 'dnj-dialect_gweetaawueast', 'dnt', 'dnw', 'dop', 'dos', 'dsh', 'dso', 'dtp', 'dts', 'dug', 'dwr', 'dyi', 'dyo',
-    # 'dyu', 'dzo', 'eip', 'eka', 'el-GR', 'ell', 'emp', 'en', 'en-GB', 'en-IE', 'en-US', 'en-cy', 'enb', 'eng', 'enx',
-    # 'es-AR', 'es-CL', 'es-CO', 'es-ES', 'es-MX', 'ese', 'ess', 'eu-ES', 'eus', 'evn', 'ewe', 'eza', 'fa', 'fa-IR',
-    # 'fal', 'fao', 'far', 'fas', 'fi-FI', 'fij', 'fin', 'flr', 'fmu', 'fon', 'fr-FR', 'fra', 'frd', 'ful',
-    # 'gag-script_cyrillic', 'gag-script_latin', 'gai', 'gam', 'gau', 'gbi', 'gbk', 'gbm', 'gbo', 'gde', 'geb', 'gej',
-    # 'gil', 'gjn', 'gkn', 'gl-ES', 'gld', 'glk', 'gmv', 'gna', 'gnd', 'gng', 'gof-script_latin', 'gog', 'gor', 'gqr',
-    # 'grc', 'gri', 'grn', 'grt', 'gso', 'gu-IN', 'gub', 'guc', 'gud', 'guh', 'guj', 'guk', 'gum', 'guo', 'guq', 'guu',
-    # 'gux', 'gvc', 'gvl', 'gwi', 'gwr', 'gym', 'gyr', 'ha-NE', 'had', 'hag', 'hak', 'hap', 'hat', 'hau', 'hay', 'he',
-    # 'heb', 'heh', 'hi-IN', 'hif', 'hig', 'hil', 'hin', 'hlb', 'hlt', 'hne', 'hnn', 'hns', 'hoc', 'hoy', 'hto', 'hu-HU',
-    # 'hub', 'hui', 'hun', 'hus-dialect_centralveracruz', 'hus-dialect_westernpotosino', 'huu', 'huv', 'hvn', 'hwc',
-    # 'hy-AM', 'hyw', 'iba', 'icr', 'id-ID', 'idd', 'ifa', 'ifb', 'ife', 'ifk', 'ifu', 'ify', 'ign', 'ikk', 'ilb', 'ilo',
-    # 'imo', 'inb', 'ind', 'iou', 'ipi', 'iqw', 'iri', 'irk', 'is-IS', 'isl', 'it-IT', 'itl', 'itv',
-    # 'ixl-dialect_sangasparchajul', 'ixl-dialect_sanjuancotzal', 'ixl-dialect_santamarianebaj', 'izr', 'izz', 'jac',
-    # 'jam', 'jav', 'jbu', 'jen', 'jic', 'jiv', 'jmc', 'jmd', 'jun', 'juy', 'jv-ID', 'jvn', 'ka-GE', 'kaa', 'kab',
-    # 'kac', 'kak', 'kan', 'kao', 'kaq', 'kay', 'kaz', 'kbo', 'kbp', 'kbq', 'kbr', 'kby', 'kca', 'kcg', 'kdc', 'kde',
-    # 'kdh', 'kdi', 'kdj', 'kdl', 'kdn', 'kdt', 'kek', 'ken', 'keo', 'ker', 'key', 'kez', 'kfb', 'kff-script_telugu',
-    # 'kfw', 'kfx', 'khg', 'khm', 'khq', 'kia', 'kij', 'kik', 'kin', 'kir', 'kjb', 'kje', 'kjg', 'kjh', 'kk-KZ', 'kki',
-    # 'kkj', 'kle', 'klu', 'klv', 'klw', 'kma', 'kmd', 'kml', 'kmr-script_arabic', 'kmr-script_cyrillic',
-    # 'kmr-script_latin', 'kmu', 'knb', 'kne', 'knf', 'knj', 'knk', 'kno', 'ko-KR', 'kog', 'kor', 'kpq', 'kps', 'kpv',
-    # 'kpy', 'kpz', 'kqe', 'kqp', 'kqr', 'kqy', 'krc', 'kri', 'krj', 'krl', 'krr', 'krs', 'kru', 'ksb', 'ksr', 'kss',
-    # 'ktb', 'ktj', 'kub', 'kue', 'kum', 'kus', 'kvn', 'kvw', 'kwd', 'kwf', 'kwi', 'kxc', 'kxf', 'kxm', 'kxv', 'kyb',
-    # 'kyc', 'kyf', 'kyg', 'kyo', 'kyq', 'kyu', 'kyz', 'kzf', 'lac', 'laj', 'lam', 'lao', 'las', 'lat', 'lav', 'law',
-    # 'lb-LU', 'lbj', 'lbw', 'lcp', 'lee', 'lef', 'lem', 'lew', 'lex', 'lgg', 'lgl', 'lhu', 'lia', 'lid', 'lif', 'lip',
-    # 'lis', 'lje', 'ljp', 'llg', 'lln', 'lme', 'lnd', 'lns', 'lob', 'lok', 'lom', 'lon', 'loq', 'lsi', 'lsm', 'luc',
-    # 'lug', 'lv-LV', 'lwo', 'lww', 'lzz', 'maa-dialect_sanantonio', 'mad', 'mag', 'mah', 'mai', 'maj', 'mak', 'mal',
-    # 'mam-dialect_central', 'mam-dialect_northern', 'mam-dialect_southern', 'mam-dialect_western', 'maq', 'mar', 'maw',
-    # 'maz', 'mbb', 'mbc', 'mbh', 'mbj', 'mbt', 'mbu', 'mbz', 'mca', 'mcb', 'mcd', 'mco', 'mcp', 'mcq', 'mcu', 'mda',
-    # 'mdv', 'mdy', 'med', 'mee', 'mej', 'men', 'meq', 'met', 'mev', 'mfe', 'mfh', 'mfi', 'mfk', 'mfq', 'mfy', 'mfz',
-    # 'mgd', 'mge', 'mgh', 'mgo', 'mhi', 'mhr', 'mhu', 'mhx', 'mhy', 'mib', 'mie', 'mif', 'mih', 'mil', 'mim', 'min',
-    # 'mio', 'mip', 'miq', 'mit', 'miy', 'miz', 'mjl', 'mjv', 'mkl', 'mkn', 'ml-IN', 'mlg', 'mmg', 'mnb', 'mnf', 'mnk',
-    # 'mnw', 'mnx', 'moa', 'mog', 'mon', 'mop', 'mor', 'mos', 'mox', 'moz', 'mpg', 'mpm', 'mpp', 'mpx', 'mqb', 'mqf',
-    # 'mqj', 'mqn', 'mrw', 'msy', 'mtd', 'mtj', 'mto', 'muh', 'mup', 'mur', 'muv', 'muy', 'mvp', 'mwq', 'mwv', 'mxb',
-    # 'mxq', 'mxt', 'mxv', 'mya', 'myb', 'myk', 'myl', 'myv', 'myx', 'myy', 'mza', 'mzi', 'mzj', 'mzk', 'mzm', 'mzw',
-    # 'nab', 'nag', 'nan', 'nas', 'naw', 'nca', 'nch', 'ncj', 'ncl', 'ncu', 'ndj', 'ndp', 'ndv', 'ndy', 'ndz', 'ne-NP',
-    # 'neb', 'new', 'nfa', 'nfr', 'nga', 'ngl', 'ngp', 'ngu', 'nhe', 'nhi', 'nhu', 'nhw', 'nhx', 'nhy', 'nia', 'nij',
-    # 'nim', 'nin', 'nko', 'nl', 'nl-BE', 'nl-NL', 'nlc', 'nld', 'nlg', 'nlk', 'nmz', 'nnb', 'nnq', 'nnw', 'no-NO',
-    # 'noa', 'nod', 'nog', 'not', 'npl', 'npy', 'nst', 'nsu', 'ntm', 'ntr', 'nuj', 'nus', 'nuz', 'nwb', 'nxq', 'nya',
-    # 'nyf', 'nyn', 'nyo', 'nyy', 'nzi', 'obo', 'ojb-script_latin', 'ojb-script_syllabics', 'oku', 'old', 'omw', 'onb',
-    # 'ood', 'orm', 'ory', 'oss', 'ote', 'otq', 'ozm', 'pab', 'pad', 'pag', 'pam', 'pan', 'pao', 'pap', 'pau', 'pbb',
-    # 'pbc', 'pbi', 'pce', 'pcm', 'peg', 'pez', 'pib', 'pil', 'pir', 'pis', 'pjt', 'pkb', 'pl-PL', 'pls', 'plw', 'pmf',
-    # 'pny', 'poh-dialect_eastern', 'poh-dialect_western', 'poi', 'pol', 'por', 'poy', 'ppk', 'pps', 'prf', 'prk', 'prt',
-    # 'pse', 'pss', 'pt-BR', 'pt-PT', 'ptu', 'pui', 'pwg', 'pww', 'pxm', 'qub', 'quc-dialect_central', 'quc-dialect_east',
-    # 'quc-dialect_north', 'quf', 'quh', 'qul', 'quw', 'quy', 'quz', 'qvc', 'qve', 'qvh', 'qvm', 'qvn', 'qvo', 'qvs',
-    # 'qvw', 'qvz', 'qwh', 'qxh', 'qxl', 'qxn', 'qxo', 'qxr', 'rah', 'rai', 'rap', 'rav', 'raw', 'rej', 'rel', 'rgu',
-    # 'rhg', 'rif-script_arabic', 'rif-script_latin', 'ril', 'rim', 'rjs', 'rkt', 'rmc-script_cyrillic',
-    # 'rmc-script_latin', 'rmo', 'rmy-script_cyrillic', 'rmy-script_latin', 'rng', 'rnl', 'ro-RO', 'rol', 'ron', 'rop',
-    # 'rro', 'ru-RU', 'rub', 'ruf', 'rug', 'run', 'rus', 'sab', 'sag', 'sah', 'saj', 'saq', 'sas', 'sba', 'sbd', 'sbl',
-    # 'sbp', 'sch', 'sck', 'sda', 'sea', 'seh', 'ses', 'sey', 'sgb', 'sgj', 'sgw', 'shi', 'shk', 'shn', 'sho', 'shp',
-    # 'sid', 'sig', 'sil', 'sja', 'sjm', 'sk-SK', 'sl-SI', 'sld', 'slu', 'sml', 'smo', 'sna', 'sne', 'snn', 'snp',
-    # 'snw', 'som', 'soy', 'spa', 'spp', 'spy', 'sqi', 'sr-RS', 'sri', 'srm', 'srn', 'srx', 'stn', 'stp', 'suc', 'suk',
-    # 'sun', 'sur', 'sus', 'suv', 'suz', 'sv-SE', 'sw', 'sw-CD', 'swe', 'swh', 'sxb', 'sxn', 'sya', 'syl', 'sza', 'tac',
-    # 'taj', 'tam', 'tao', 'tap', 'taq', 'tat', 'tav', 'tbc', 'tbg', 'tbk', 'tbl', 'tby', 'tbz', 'tca', 'tcc', 'tcs',
-    # 'tcz', 'tdj', 'tdt-TL', 'te-IN', 'ted', 'tee', 'tel', 'tem', 'teo', 'ter', 'tes', 'tew', 'tex', 'tfr', 'tgj',
-    # 'tgk', 'tgl', 'tgo', 'tgp', 'tha', 'thk', 'thl', 'tih', 'tik', 'tir', 'tkr', 'tlb', 'tlj', 'tly', 'tmc', 'tmf',
-    # 'tn-ZA', 'tna', 'tng', 'tnk', 'tnn', 'tnp', 'tnr', 'tnt', 'tob', 'toc', 'toh', 'tom', 'tos', 'tpi', 'tpm', 'tpp',
-    # 'tpt', 'tr-TR', 'trc', 'tri', 'trn', 'trs', 'tso', 'tsz', 'ttc', 'tte', 'ttq-script_tifinagh', 'tue', 'tuf',
-    # 'tuk-script_arabic', 'tuk-script_latin', 'tuo', 'tur', 'tvw', 'twb', 'twe', 'twu', 'txa', 'txq', 'txu', 'tye',
-    # 'tzh-dialect_tenejapa', 'tzj-dialect_eastern', 'tzj-dialect_western', 'tzo-dialect_chamula', 'udm', 'udu',
-    # 'uig-script_arabic', 'uig-script_cyrillic', 'uk-GB', 'uk-UA', 'ukr', 'unr', 'upv', 'ura', 'urb',
-    # 'urd-script_arabic', 'urd-script_devanagari', 'urd-script_latin', 'urk', 'urt', 'ury', 'usp',
-    # 'uzb-script_cyrillic', 'vag', 'vi-VN', 'vid', 'vie', 'vif', 'vmw', 'vmy', 'vun', 'vut', 'wal-script_ethiopic',
-    # 'wal-script_latin', 'wap', 'war', 'waw', 'way', 'wba', 'wlo', 'wlx', 'wmw', 'wob', 'wsg', 'wwa', 'xal', 'xdy',
-    # 'xed', 'xer', 'xmm', 'xnj', 'xnr', 'xog', 'xon', 'xrb', 'xsb', 'xsm', 'xsr', 'xsu', 'xta', 'xtd', 'xte', 'xtm',
-    # 'xtn', 'xua', 'xuo', 'yaa', 'yad', 'yal', 'yam', 'yao', 'yas', 'yat', 'yaz', 'yba', 'ybb', 'ycl', 'ycn', 'yea',
-    # 'yka', 'yli', 'yo', 'yor', 'yre', 'yua', 'yuz', 'yva', 'zaa', 'zab', 'zac', 'zad', 'zae', 'zai', 'zam', 'zao',
-    # 'zaq', 'zar', 'zas', 'zav', 'zaw', 'zca', 'zga', 'zh-CN', 'zh-TW', 'zim', 'ziw', 'zlm', 'zmz', 'zne', 'zos',
-    # 'zpc', 'zpg', 'zpi', 'zpl', 'zpm', 'zpo', 'zpt', 'zpu', 'zpz', 'ztq', 'zty', 'zyb', 'zyp', 'zza']
-
-
-    def generate_voices_markdown(manager: TTSModelManager, output_file: str = "../VOICES.md"):
-        """
-        Generate a Markdown table listing all registered voices and save it to a file.
-        
-        Creates a sorted table of all voices (by language code then voice ID) including voice ID, language code, engine, and phoneme type, writes the table to output_file, and prints a success message. If writing the file fails due to an I/O error, prints the error and emits the generated Markdown to stdout.
-        
-        Parameters:
-            manager (TTSModelManager): Manager containing the loaded voices to document.
-            output_file (str): Path to the file where the Markdown table will be written.
-        """
-
-        # Sort voices by language code (lang) then by voice ID
-        sorted_voices = sorted(
-            manager.all_voices,
-            key=lambda v: (v.lang.lower(), v.voice_id.lower())
-        )
-
-        markdown_output = [
-            "## Supported Voices",
-            "",
-            f"**Total Voices:** {len(sorted_voices)}",
-            f"**Total Languages:** {len(manager.supported_langs)}",
-            "",
-            "> ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)",
-            "",
-            "> ⚠️ some models are duplicated, piper is known to mirror community voices and those will often show up twice (under piper and under original author)",
-            "",
-            "| Voice ID | Language Code | Engine | Phoneme Type |",
-            "| :--- | :--- | :--- | :--- |"
-        ]
-
-        for voice in sorted_voices:
-            # Get the value from the Enum object, handling None/string if post_init didn't run
-            engine = voice.engine.value if hasattr(voice.engine, 'value') else str(voice.engine)
-            phoneme_type = voice.phoneme_type.value if hasattr(voice.phoneme_type, 'value') else str(voice.phoneme_type)
-
-            # Format the row for the markdown table
-            row = (
-                f"| `{voice.voice_id}` | `{voice.lang}` | "
-                f"`{engine}` | `{phoneme_type}` |"
-            )
-            markdown_output.append(row)
-
-        # Write the output to the specified file
-        try:
-            with open(output_file, "w", encoding="utf-8") as f:
-                f.write("\n".join(markdown_output))
-            print(f"\n✅ Successfully generated and saved voice table to: **{output_file}**")
-        except IOError as e:
-            print(f"\n❌ Error writing to file {output_file}: {e}")
-            print("\n--- Start of Markdown Output ---")
-            print("\n".join(markdown_output))
-            print("--- End of Markdown Output ---")
-
-
-    generate_voices_markdown(manager, output_file="../VOICES.md")

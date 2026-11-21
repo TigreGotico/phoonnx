@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -30,6 +31,24 @@ def _build_extra(quality_kwargs: dict, engine_params: dict, **cli_values) -> dic
     return extra
 
 _LOGGER = logging.getLogger(__package__)
+
+
+def _resumes_training_state(path: str) -> bool:
+    """Whether Lightning can resume a training state from ``path``.
+
+    Only a local file is read: it resumes when Lightning wrote it. A URL or a
+    remote path goes to Lightning as given, which reads it.
+    """
+    from phoonnx_train.torch_compat import trusting_torch_load
+
+    if not os.path.isfile(path):
+        return True
+    with trusting_torch_load():
+        try:
+            checkpoint = torch.load(path, map_location="cpu", mmap=True)
+        except RuntimeError:  # mmap needs the zip format, the torch.save default since 1.6
+            checkpoint = torch.load(path, map_location="cpu")
+    return "pytorch-lightning_version" in checkpoint
 
 
 def _validate_engine(ctx, param, value):
@@ -199,12 +218,19 @@ def main(
     # Trainer.fit(ckpt_path=...); a manual state_dict load copies weights only.
     # The --discard-encoder and single-speaker paths intentionally change the
     # architecture, so they stay weight-only warm starts (fit_ckpt_path=None).
+    # So does a local file that Lightning did not write (e.g. an upstream
+    # release): it holds weights and no training state to resume.
     fit_ckpt_path: Optional[str] = None
-    if resume_from_checkpoint and not discard_encoder:
+    if resume_from_checkpoint and not discard_encoder \
+            and _resumes_training_state(resume_from_checkpoint):
         fit_ckpt_path = resume_from_checkpoint
         _LOGGER.info("Resuming full training state from checkpoint: %s",
                      resume_from_checkpoint)
     elif resume_from_checkpoint:
+        if not discard_encoder:
+            _LOGGER.warning("%s is not a Lightning checkpoint: loading its weights only, so "
+                            "the optimizer state and the step count start again",
+                            resume_from_checkpoint)
         training_engine.load_checkpoint(
             model,
             Path(resume_from_checkpoint),
@@ -314,6 +340,11 @@ def main(
                 # data-dependent control flow cannot be traced by dynamo. Only
                 # once compile succeeded; export paths never see the wrapper.
                 disable_compile_on_transforms()
+            elif engine == "rapido":
+                # the Rápido loop calls the text, condition and velocity stages and
+                # never model.forward, so a compiled wrapper would only rename every
+                # checkpoint key to model._orig_mod.* and break the export
+                _LOGGER.warning("compile not supported for engine %r — running uncompiled", engine)
             elif hasattr(model, "model") and isinstance(getattr(model, "model"), torch.nn.Module):
                 _LOGGER.info("Compiling model with torch.compile (mode=%s)", compile_mode)
                 model.model = torch.compile(model.model, mode=compile_mode)

@@ -3,6 +3,7 @@ unconditional top-level import in the listed modules must resolve to
 stdlib, phoonnx_train.torch_compat, or a dependency declared in one of
 the module's expected pyproject.toml extras."""
 import ast
+import sys
 import tomllib
 import unittest
 from pathlib import Path
@@ -11,15 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 PYPROJECT = REPO_ROOT / "pyproject.toml"
 TRAIN_DIR = REPO_ROOT / "phoonnx_train"
 
-STDLIB_MODULES = {
-    "os", "sys", "re", "json", "wave", "string", "logging", "typing",
-    "dataclasses", "pathlib", "enum", "collections", "datetime",
-    "unicodedata", "__future__", "abc", "subprocess", "hashlib", "base64",
-    "csv", "math", "optparse", "functools", "shutil", "io", "itertools",
-    "tempfile", "warnings", "copy", "random", "argparse", "time",
-    "importlib", "shlex", "glob", "struct", "textwrap", "uuid", "inspect",
-    "multiprocessing",
-}
+STDLIB_MODULES = set(sys.stdlib_module_names)
 
 DIST_TO_IMPORT = {
     "pytorch-lightning": "pytorch_lightning",
@@ -88,7 +81,7 @@ class TestTrainBaseDependencies(unittest.TestCase):
             allowed = (
                 STDLIB_MODULES
                 | train_deps
-                | {"torch", "phoonnx_train", "phoonnx", "scriptconv", "click"}
+                | {"torch", "phoonnx_train", "phoonnx", "scriptconv", "text2spoken", "click"}
             )
             for extra_name in extra_names:
                 allowed |= _dist_names_to_import_names(extras[extra_name])

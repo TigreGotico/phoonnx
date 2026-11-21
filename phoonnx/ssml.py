@@ -2,8 +2,8 @@
 
 Supported: pauses (``<break>``, ``<p>``, ``<s>``); pace, level and pitch (``<prosody rate volume
 pitch>``, ``<emphasis>``); another language (``<lang>``); how to read a run of text
-(``<say-as interpret-as=...>`` for cardinal, ordinal, digits, fraction, unit, date, time, currency,
-address, telephone, characters, expletive), ``<sub>`` and phonemes (``<phoneme>`` in IPA or X-SAMPA,
+(``<say-as interpret-as=...>``, which the voice's text frontend reads, and ``expletive``, a
+bleep), ``<sub>`` and phonemes (``<phoneme>`` in IPA or X-SAMPA,
 which phoonnx reads as ``[[ ... ]]``); ``<mark>`` events; and Amazon's extensions
 (``<amazon:effect name="whispered|drc">``, ``phonation="soft"``, ``vocal-tract-length``,
 ``<amazon:auto-breaths>``, ``<amazon:breath>``). Each piece is some text, the language to say it
@@ -28,7 +28,8 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, replace
 from xml.parsers import expat
 
-from phoonnx.ssml_say_as import say_as_text
+from scriptconv.frontend import TextFrontend
+
 from phoonnx.xsampa import xsampa_to_ipa
 
 LOG = logging.getLogger("phoonnx.ssml")
@@ -389,7 +390,10 @@ def _language(element: ET.Element) -> str | None:
 class _Reader:
     """Walks the tree once, gathering text into pieces."""
 
-    def __init__(self, lang: str | None) -> None:
+    def __init__(self, lang: str | None, frontend: TextFrontend | None = None,
+                 symbols: bool = True) -> None:
+        self.frontend = frontend
+        self.symbols = symbols
         self.pieces: list[Piece] = []
         self.text: list[str] = []
         self.style = Piece("", lang)
@@ -529,9 +533,12 @@ class _Reader:
             written = "".join(element.itertext())
             if kind == "expletive":
                 self.sound("beep", 350)
+            elif self.frontend is None:
+                LOG.warning("ssml: say-as %r needs a text frontend; reading %.60r as written", kind, written)
+                self.text.append(written)
             else:
-                self.text.append(say_as_text(written, kind, self.style.lang,
-                                             element.get("format"), element.get("detail")))
+                self.text.append(self.frontend.say_as(written, kind, element.get("format"),
+                                                      element.get("detail"), self.style.lang))
         elif tag == "sub":
             alias = element.get("alias")
             self.text.append(alias if alias is not None else "".join(element.itertext()))
@@ -541,7 +548,11 @@ class _Reader:
             ph = re.sub(r"[\[\]]", "", element.get("ph") or "").strip()
             alphabet = (element.get("alphabet") or "ipa").lower()
             written = "".join(element.itertext())
-            if ph and alphabet == "ipa":
+            if ph and not self.symbols:
+                LOG.warning("ssml: <phoneme ph=%r> needs a voice that takes symbol input; "
+                            "reading %.60r as written", ph, written)
+                self.text.append(written)
+            elif ph and alphabet == "ipa":
                 self.text.append(f"[[ {ph} ]]")
             elif ph and alphabet in ("x-sampa", "xsampa", "sampa"):
                 self.text.append(f"[[ {xsampa_to_ipa(ph)} ]]")
@@ -611,8 +622,13 @@ def _plain(ssml: str, lang: str | None) -> list[Piece]:
     return [Piece(text, lang)] if text else []
 
 
-def parse_ssml(ssml: str, lang: str | None = None) -> list[Piece]:
+def parse_ssml(ssml: str, lang: str | None = None,
+               frontend: TextFrontend | None = None, symbols: bool = True) -> list[Piece]:
     """Read `ssml` into pieces to synthesise one after another.
+
+    `frontend` reads each ``<say-as>`` with :meth:`scriptconv.frontend.TextFrontend.say_as`, in
+    the language in force at the element. Without a frontend, a ``<say-as>`` reads as written.
+    A voice with no symbol input sets `symbols` to False, and a ``<phoneme>`` then reads its written word.
 
     Silence after the last piece is dropped, and so is the pause an opening
     <p> or <s> implies. A <break> before the first words is kept: a story
@@ -629,7 +645,7 @@ def parse_ssml(ssml: str, lang: str | None = None) -> list[Piece]:
     except (expat.ExpatError, ET.ParseError, ValueError) as error:
         LOG.info("ssml: not well-formed (%s); reading the text without it", error)
         return _plain(ssml, lang)
-    reader = _Reader(lang)
+    reader = _Reader(lang, frontend, symbols)
     try:
         reader.visit(root)
         reader.flush()

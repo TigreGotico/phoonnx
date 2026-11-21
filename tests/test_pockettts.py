@@ -8,6 +8,7 @@ from phoonnx.engines.pockettts import (
     AVAILABLE_LANGS, DEFAULT_EOS_THRESHOLD, PocketTTSAdapter,
     find_boundary_indices, prepare_text,
 )
+from phoonnx.engines.speaker_encoders.base import BaseSpeakerEncoder
 
 LATENT_DIM = 4
 COND_DIM = 8
@@ -168,6 +169,18 @@ class _EncoderSession:
         return [np.ones((1, max(samples // 8, 1), COND_DIM), np.float32)]
 
 
+class _CaptureEncoderSession:
+    """Stand-in for mimi_encoder that records the audio it is fed."""
+
+    def __init__(self):
+        self.audio_feeds = []
+
+    def run(self, output_names, feed):
+        self.audio_feeds.append(feed["audio"])
+        samples = feed["audio"].shape[-1]
+        return [np.ones((1, max(samples // 8, 1), COND_DIM), np.float32)]
+
+
 def _adapter(**overrides):
     a = PocketTTSAdapter(**overrides)
     a._apply_metadata(_bundle())
@@ -323,6 +336,21 @@ def test_encode_text_without_tokenizer_is_an_error():
         a.encode_text("Hello.", None, None)
 
 
+def test_encode_text_empty_and_whitespace_return_no_ids():
+    a = _adapter()
+    assert a.encode_text("", None, None) == []
+    assert a.encode_text("   ", None, None) == []
+    assert a.encode_text("\n", None, None) == []
+
+
+def test_encode_text_skips_empty_chunks_between_real_ones(monkeypatch):
+    a = _adapter()
+    monkeypatch.setattr(a, "split_into_chunks",
+                        lambda text: ["One two.", "", "   ", "Three four."])
+    ids = a.encode_text("One two.   Three four.", None, None)
+    assert ids == [list(a.tokenizer.Encode(prepare_text(chunk)[0])) for chunk in ("One two.", "Three four.")]
+
+
 # ---------------------------------------------------------------------------
 # stream state
 # ---------------------------------------------------------------------------
@@ -462,11 +490,6 @@ def test_default_params_expose_the_sampling_controls():
     params = PocketTTSAdapter().default_params()
     assert set(params) == {"temperature", "lsd_steps", "eos_threshold"}
     assert params["eos_threshold"] == DEFAULT_EOS_THRESHOLD
-
-
-def test_param_labels_cover_every_param():
-    a = PocketTTSAdapter()
-    assert set(a.param_labels()) == set(a.default_params())
 
 
 # ---------------------------------------------------------------------------
@@ -611,20 +634,6 @@ def test_parse_outputs_is_not_supported():
 # decoding / cloning
 # ---------------------------------------------------------------------------
 
-def test_decode_latents_feeds_the_decoder_in_chunks():
-    a = _adapter()
-    latents = np.zeros((1, 7, LATENT_DIM), np.float32)
-    audio = a.decode_latents(latents, chunk_size=3)
-    assert a.mimi_decoder.chunk_sizes == [3, 3, 1]
-    assert audio.shape == (7 * 4,)
-
-
-def test_decode_latents_of_nothing_is_empty():
-    a = _adapter()
-    audio = a.decode_latents(np.zeros((1, 0, LATENT_DIM), np.float32))
-    assert audio.shape == (0,)
-
-
 def test_encode_reference_shapes_the_clip_for_the_encoder():
     a = _adapter()
     embeddings = a.encode_reference(np.zeros(160, np.float32))
@@ -661,6 +670,38 @@ def test_synthesize_with_a_reference_clone_uses_the_cloned_state():
     a.voice_state = None
     result = a.synthesize(_req(reference_audio=np.zeros(160, np.float32)), _FlowLMSession())
     assert result.audio.size > 0
+
+
+def test_reference_tuple_at_model_rate_reaches_the_encoder_unchanged():
+    a = _adapter()
+    a.mimi_encoder = _CaptureEncoderSession()
+    a.voice_state = None
+    audio = np.arange(96, dtype=np.float32) / 96.0
+    a.synthesize(_req(reference_audio=(audio, 24000)), _FlowLMSession())
+    fed = a.mimi_encoder.audio_feeds[-1]
+    assert fed.shape == (1, 1, 96)
+    assert np.array_equal(fed.reshape(-1), audio)
+
+
+def test_reference_tuple_resamples_to_the_model_rate():
+    a = _adapter()
+    a.mimi_encoder = _CaptureEncoderSession()
+    a.voice_state = None
+    audio = np.arange(64, dtype=np.float32) / 64.0
+    a.synthesize(_req(reference_audio=(audio, 16000)), _FlowLMSession())
+    fed = a.mimi_encoder.audio_feeds[-1]
+    assert fed.shape[-1] == round(len(audio) * 24000 / 16000)
+    assert np.allclose(fed.reshape(-1), BaseSpeakerEncoder.resample(audio, 16000, 24000))
+
+
+def test_reference_bare_array_is_taken_at_the_model_rate():
+    a = _adapter()
+    a.mimi_encoder = _CaptureEncoderSession()
+    a.voice_state = None
+    audio = np.arange(96, dtype=np.float32) / 96.0
+    a.synthesize(_req(reference_audio=audio), _FlowLMSession())
+    fed = a.mimi_encoder.audio_feeds[-1]
+    assert np.array_equal(fed.reshape(-1), audio)
 
 
 # ---------------------------------------------------------------------------
@@ -705,7 +746,7 @@ def test_voice_index_entries_carry_every_auxiliary_graph():
 def test_voice_index_urls_point_at_the_mirror():
     for entry in _index().values():
         urls = [entry["model_url"], *entry["aux_model_urls"].values()]
-        assert all(u.startswith("https://huggingface.co/OpenVoiceOS/phoonnx-pocket-tts/")
+        assert all(u.startswith("https://huggingface.co/Phoonnx/phoonnx-pocket-tts/")
                    for u in urls)
 
 
@@ -719,3 +760,25 @@ def test_voice_index_voice_state_matches_the_voice_id():
     for voice_id, entry in _index().items():
         speaker = voice_id.rsplit("/", 1)[-1]
         assert entry["aux_model_urls"]["voice_state_path"].endswith(f"/{speaker}.safetensors")
+
+
+def test_the_encoder_is_built_on_first_use_only(monkeypatch):
+    # Only voice cloning runs mimi_encoder, so loading a voice must not build it.
+    import types
+    import phoonnx.engines.pockettts as pockettts
+
+    built = []
+
+    def fake_session(path, providers=None):
+        built.append((path, providers))
+        return _CaptureEncoderSession()
+
+    monkeypatch.setattr(pockettts, "make_session", fake_session)
+    a = PocketTTSAdapter()
+    a.configure(types.SimpleNamespace(engine_params={
+        "mimi_encoder_path": "mimi_encoder.onnx", "providers": ["CPUExecutionProvider"]}))
+    assert built == []
+
+    a.encode_reference(np.zeros(160, np.float32))
+    a.encode_reference(np.zeros(160, np.float32))
+    assert built == [("mimi_encoder.onnx", ["CPUExecutionProvider"])]

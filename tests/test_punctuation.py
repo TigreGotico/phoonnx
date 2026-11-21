@@ -46,8 +46,8 @@ def piper_config(**extra):
 def synthesis_ids(config: dict, text: str):
     voice_config = VoiceConfig.from_dict(json.loads(json.dumps(config)))
     voice = TTSVoice(session=MagicMock(), config=voice_config, adapter=MagicMock())
-    return voice_config, [ids for _, ids in voice._iter_synthesis_ids(
-        text, SynthesisConfig(), Alphabet.GRAPHEMES, voice_config.alphabet)]
+    return voice_config, [list(utterance.ids) for utterance in voice.prepare(
+        text, SynthesisConfig(enable_phonetic_spellings=False))]
 
 
 def flat(sentences):
@@ -64,7 +64,7 @@ class TestSynthesis:
         # the ids a published voice receives are those of scriptconv's default
         # sentence phonemization, tokenized; nothing is added
         from scriptconv.phonemizers import get_phonemizer
-        from phoonnx.util import normalize
+        from text2spoken import normalize
         voice_config, ids = synthesis_ids(phoonnx_config(), QUESTION)
         phonemizer = get_phonemizer("espeak", normalizer=normalize)
         expected = [voice_config.tokenizer.tokenize(p)
@@ -170,9 +170,9 @@ class TestPreprocess:
             for text, row in rows.items():
                 voice_config = VoiceConfig.from_dict(json.loads(json.dumps(config)))
                 voice = TTSVoice(session=MagicMock(), config=voice_config, adapter=MagicMock())
-                synth = [p for s in voice._iter_phonemes(
+                synth = [p for s, _, _ in voice._iter_phonemes(
                     text, Alphabet.GRAPHEMES, voice_config.alphabet,
-                    *_route(voice, voice_config)) for p in s]
+                    voice._stages(SynthesisConfig())) for p in s]
                 assert row["phonemes"] == synth, text
 
     def test_opt_out_writes_no_punctuation(self):
@@ -201,11 +201,6 @@ class TestPreprocess:
             config, rows = _preprocess(tmp / "src", tmp / "out", "--resume", rows=2)
             assert config["keep_punctuation"] is False
             assert not set(",.?!:;") & set(rows[QUESTION]["phonemes"])
-
-
-def _route(voice, voice_config):
-    from phoonnx.config import get_conversion
-    return get_conversion(voice.phonemizer, voice_config, SynthesisConfig(), voice_config.alphabet)
 
 
 SIDE_CAR = Path(__file__).parent / "fixtures" / "miro_sv-SE.piper.json"

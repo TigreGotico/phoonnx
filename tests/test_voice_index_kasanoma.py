@@ -5,13 +5,14 @@ null in all three, and ``espeak.voice`` is ``lfn``. So the language a caller
 asks for comes from the index or from nowhere, and ``lang`` here is the only
 record of which voice speaks Twi, Chichewa or Makhuwa.
 
-The model files come from ``OpenVoiceOS/phoonnx-vits``, the architecture
+The model files come from ``Phoonnx/phoonnx-vits``, the architecture
 repository that holds every VITS voice phoonnx loads, one folder per voice.
 Upstream publishes two of the three as a zip on a GitHub release only, which
 phoonnx cannot read, and the third from an account that carries no licence
 file. That mirror is the one stable url for all three.
 """
 import json
+import re
 import unittest
 
 from phoonnx.index_schema import validate_index_file
@@ -19,7 +20,7 @@ from phoonnx.model_manager import TTSModelManager
 
 INDEX = "piper_community.json"
 
-ARCHITECTURE_REPO = "https://huggingface.co/OpenVoiceOS/phoonnx-vits/resolve/main"
+ARCHITECTURE_REPO = r"https://huggingface\.co/Phoonnx/phoonnx-vits/resolve/[0-9a-f]{40}"
 
 # voice id -> the language tag, and the folder inside the architecture repository
 EXPECTED = {
@@ -66,12 +67,12 @@ class TestKasanomaIndex(unittest.TestCase):
                 self.assertEqual(entry["engine"], "piper")
 
     def test_each_one_reads_from_its_folder_in_the_architecture_repository(self):
-        # A VITS voice resolves out of OpenVoiceOS/phoonnx-vits and never out
+        # A VITS voice resolves out of Phoonnx/phoonnx-vits and never out
         # of a repository of its own.
         entries = _entries()
         for voice_id, (_, folder) in EXPECTED.items():
             with self.subTest(voice_id):
                 entry = entries[voice_id]
-                base = f"{ARCHITECTURE_REPO}/{folder}/"
-                self.assertEqual(entry["model_url"], base + "model.onnx")
-                self.assertEqual(entry["config_url"], base + "model.onnx.json")
+                base = f"{ARCHITECTURE_REPO}/{re.escape(folder)}/"
+                self.assertRegex(entry["model_url"], f"^{base}model\\.onnx$")
+                self.assertRegex(entry["config_url"], f"^{base}model\\.onnx\\.json$")

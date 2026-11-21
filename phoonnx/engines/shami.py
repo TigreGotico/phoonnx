@@ -60,6 +60,7 @@ class ShamiAdapter(BaseOnnxAdapter):
         self,
         outputs: List[np.ndarray],
         request: AdapterSynthesisRequest,
+        output_names: Optional[List[str]] = None,
     ) -> AdapterSynthesisResult:
         audio = outputs[0].squeeze()
         return AdapterSynthesisResult(audio=audio)
@@ -89,14 +90,3 @@ class ShamiAdapter(BaseOnnxAdapter):
                 return True
 
         return False
-
-    def parse_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        # No runtime scales for ShamiVITS; return empty so the baked-in defaults win.
-        return {}
-
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "noise_scale": "Noise (baked-in)",
-            "length_scale": "Speed (baked-in)",
-            "noise_w_scale": "Noise W (baked-in)",
-        }

@@ -1,7 +1,13 @@
 """The typed failures phoonnx raises, in one place.
 
+Every class here derives from :class:`PhoonnxError`, so one
+``except PhoonnxError`` catches each of them. A class with a builtin base has
+it as a second base: ``except ValueError`` catches
+:class:`UnsupportedVoiceLanguage` and ``except RuntimeError`` catches
+:class:`VoiceExceedsMemoryBudget`.
+
 Callers that want to react to a failure rather than just report it need to tell
-four situations apart, and each has its own exception here.
+five situations apart, and each has its own exception here.
 
 A *missing language* is a request phoonnx cannot serve because no voice covers
 the language at all; the voice manager signals that with a plain ``ValueError``
@@ -23,19 +29,137 @@ exceed the cache's memory budget, because loading it is a guaranteed OOM kill
 rather than a slow path. The refusal is the useful outcome — one failed
 request instead of a restart loop.
 
-These classes are defined next to the code that raises them and re-exported
-here; both import paths resolve to the same class, so ``except`` clauses
-written against either one catch the same failures.
-"""
+A *bad synthesis* is a model that ran but returned NaN or infinite samples:
+:class:`NonFiniteAudioError`. Written as int16 they become silence, so phoonnx
+raises instead of returning audio that only looks like a result.
 
-from phoonnx._bpe import UnsupportedTokenizer
-from phoonnx._sentencepiece import UnsupportedSentencePieceModel
-from phoonnx.config import UnsupportedVoiceLanguage
-from phoonnx.voice_cache import VoiceExceedsMemoryBudget
+A voice that cannot load is a :class:`VoiceLoadError`; a frontend that does
+not fit the voice and a config in a format phoonnx does not read are its two
+named cases. A voice that an export target cannot hold is
+:class:`ExportNotSupported`.
+
+The classes are defined here and imported by the modules that raise them, so
+an import through one of those modules, such as
+``phoonnx.config.UnsupportedVoiceLanguage``, gives the same class. This module
+imports nothing from phoonnx, so importing it stays cheap.
+"""
+import copyreg
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from scriptconv.phonemizers.enums import Phonemizer as PhonemeType
 
 __all__ = [
+    "ExportNotSupported",
+    "FrontendMismatchError",
+    "NonFiniteAudioError",
+    "PhoonnxError",
+    "PrecisionUnavailable",
+    "UnknownVoice",
+    "UnsupportedConfigError",
     "UnsupportedSentencePieceModel",
     "UnsupportedTokenizer",
     "UnsupportedVoiceLanguage",
     "VoiceExceedsMemoryBudget",
+    "VoiceLoadError",
 ]
+
+
+class PhoonnxError(Exception):
+    """The base of the typed failures in this module."""
+
+    def __reduce__(self):
+        # Unpickling skips __init__: a subclass takes fields, not the message, as arguments.
+        return copyreg.__newobj__, (type(self), *self.args), self.__dict__
+
+
+class VoiceLoadError(PhoonnxError):
+    """A voice cannot load: it has no config, or the model's ``num_symbols``
+    differs from the config's symbol table."""
+
+
+class FrontendMismatchError(VoiceLoadError):
+    """A frontend does not fit the voice: its alphabet or punctuation differs,
+    or it writes a symbol the voice's vocabulary lacks."""
+
+
+class UnsupportedConfigError(VoiceLoadError):
+    """A ``config.json`` is in a format phoonnx does not read."""
+
+
+class PrecisionUnavailable(VoiceLoadError, ValueError):
+    """A voice has no files for the precision a caller asked for."""
+
+    def __init__(self, voice_id: str, precision: str):
+        self.voice_id = voice_id
+        self.precision = precision
+        other = "full" if precision == "int8" else "int8"
+        super().__init__(
+            f"voice {voice_id!r} has no {precision} files; precision 'auto' "
+            f"or {other!r} loads it")
+
+
+class UnknownVoice(PhoonnxError, KeyError):
+    """A voice id names no voice in the catalogue."""
+
+    def __init__(self, voice_id: str):
+        self.voice_id = voice_id
+        super().__init__(
+            f"unknown voice {voice_id!r}; run 'phoonnx-voices list-voices' "
+            f"to see the voice ids")
+
+    def __str__(self) -> str:
+        return self.args[0]
+
+
+class ExportNotSupported(PhoonnxError):
+    """The export target cannot hold this voice, for example a phonemizer or
+    an engine the target lacks."""
+
+
+class NonFiniteAudioError(PhoonnxError, RuntimeError):
+    """A model returned NaN or infinite audio samples."""
+
+    def __init__(self, model_path: str):
+        self.model_path = model_path
+        super().__init__(f"model {model_path!r} returned non-finite audio samples (NaN or inf)")
+
+
+class UnsupportedTokenizer(PhoonnxError):
+    """The tokenizer.json declares a component this reader does not implement."""
+
+
+class UnsupportedSentencePieceModel(PhoonnxError):
+    """The .model declares a feature this reader does not implement."""
+
+
+class UnsupportedVoiceLanguage(PhoonnxError, ValueError):
+    """Raised at voice load when no phonemizer backend serves the voice's language.
+
+    Surfacing this eagerly (instead of letting scriptconv's ``ValueError:
+    unsupported language code`` bubble up mid-synthesis, after the user has
+    already picked the voice and sent text) turns an opaque runtime crash
+    into an actionable, typed failure at load time.
+    """
+
+    def __init__(self, voice: str, lang_code: str, phoneme_type: "PhonemeType"):
+        self.voice = voice
+        self.lang_code = lang_code
+        self.phoneme_type = phoneme_type
+        super().__init__(
+            f"voice {voice!r}: no phonemizer backend supports lang "
+            f"{lang_code!r} for phoneme_type {phoneme_type.value!r}"
+        )
+
+
+class VoiceExceedsMemoryBudget(PhoonnxError, RuntimeError):
+    """A voice's on-disk size alone is larger than ``max_loaded_bytes``.
+
+    Loading it is not a degraded path, it is a guaranteed OOM kill: a 15.4 GB
+    voice against a 5 GB budget in an 8 GiB cgroup killed the process, and the
+    container restarted straight back into the same load, over and over. The
+    size is known before the load is attempted whenever the voice was already
+    on disk from an earlier attempt (its own weights survive the restart even
+    though the process does not), which is exactly the case that used to
+    loop. Refusing here turns that loop into one failed request.
+    """

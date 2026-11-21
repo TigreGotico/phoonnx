@@ -19,7 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 PYPROJECT = REPO_ROOT / "pyproject.toml"
 SCAN_DIRS = [REPO_ROOT / "phoonnx", REPO_ROOT / "phoonnx_train", REPO_ROOT / "tests"]
 
-# Match module ROOTS exactly (never as substrings): ``mwl_phonemizer`` is an
+# Match module ROOTS exactly (never as substrings): ``persian_phonemizer`` is an
 # unrelated, allowed package that merely contains the string "phonemizer".
 FORBIDDEN_MODULE_ROOTS = {"piper_phonemize", "phonemizer", "espeakng_loader"}
 # Distribution (PyPI) spellings of the same, for the pyproject scan.

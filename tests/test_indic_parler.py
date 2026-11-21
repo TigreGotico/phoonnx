@@ -560,11 +560,10 @@ def test_build_feed_dict_and_parse_outputs_refuse():
 # configure / params
 # ---------------------------------------------------------------------------
 
-def test_default_params_and_labels():
+def test_default_params():
     ad = IndicParlerAdapter(temperature=0.8, top_k=50, do_sample=True, max_new_tokens=900)
     assert ad.default_params() == {"temperature": 0.8, "top_k": 50.0,
                                    "do_sample": 1.0, "max_new_tokens": 900.0}
-    assert set(ad.param_labels()) == set(ad.default_params())
 
 
 def test_configure_reads_engine_options(tmp_path):
@@ -585,13 +584,9 @@ def test_configure_reads_engine_options(tmp_path):
 
 
 def test_available_langs_cover_the_indexed_voices():
-    from phoonnx.model_manager import TTSModelManager
-    m = TTSModelManager()
-    m.merge_default_voices()
     # the card lists languages without regions; the English voices are
     # tagged en-IN because the card names their accent as Indian English
-    langs = {v.lang.split("-")[0] for v in m.voices.values()
-             if v.engine and v.engine.value == "indic_parler"}
+    langs = {v.lang.split("-")[0] for v in _indexed()}
     assert langs
     # every indexed voice's language is one the model card claims support for,
     # except Chhattisgarhi (hne) which the card lists as a supported *speaker* language
@@ -602,11 +597,21 @@ def test_available_langs_cover_the_indexed_voices():
 # voice index
 # ---------------------------------------------------------------------------
 
-def _indexed():
+INDIC_PARLER_REPO = "https://huggingface.co/Phoonnx/parlertts-multi-indic-unicode/"
+AUX_GRAPHS = {"text_encoder_path", "decoder_decode_path", "dac_decoder_path", "prompt_tokenizer_path",
+              "description_tokenizer_path", "model_config_path"}
+
+
+def _engine_voices():
     from phoonnx.model_manager import TTSModelManager
     m = TTSModelManager()
     m.merge_default_voices()
     return [v for v in m.voices.values() if v.engine and v.engine.value == "indic_parler"]
+
+
+def _indexed():
+    """The voices of the Indic Parler-TTS checkpoint. The engine also runs other Parler-TTS checkpoints."""
+    return [v for v in _engine_voices() if v.model_url.startswith(INDIC_PARLER_REPO)]
 
 
 def test_index_has_every_recommended_speaker():
@@ -621,9 +626,7 @@ def test_every_voice_carries_a_description_and_all_four_graphs():
         desc = v.engine_options["description"]
         assert v.engine_options["speaker"] in desc
         assert desc.endswith(".")
-        assert set(v.aux_model_urls) == {"text_encoder_path", "decoder_decode_path",
-                                          "dac_decoder_path", "prompt_tokenizer_path",
-                                          "description_tokenizer_path", "model_config_path"}
+        assert set(v.aux_model_urls) == AUX_GRAPHS
         assert v.model_url.endswith("decoder_prefill.onnx")
 
 
@@ -631,3 +634,82 @@ def test_voice_ids_are_unique_and_namespaced():
     ids = [v.voice_id for v in _indexed()]
     assert len(ids) == len(set(ids))
     assert all(i.startswith("indic_parler/") for i in ids)
+
+
+def test_other_parler_checkpoints_live_in_their_own_index_and_namespace():
+    from phoonnx.model_manager import TTSModelManager
+    others = [v for v in _engine_voices() if not v.model_url.startswith(INDIC_PARLER_REPO)]
+    assert {v.voice_id for v in others} >= {"parlertts/adia/wo"}
+    path = TTSModelManager.voice_index_path() / "parlertts.json"
+    assert {v.voice_id for v in others} == set(json.loads(path.read_text(encoding="utf-8")))
+    for v in others:
+        assert v.voice_id.startswith("parlertts/")
+        repo = v.model_url.split("/resolve/")[0]
+        assert v.model_url.endswith("decoder_prefill.onnx")
+        assert set(v.aux_model_urls) == AUX_GRAPHS
+        assert all(url.startswith(repo + "/resolve/") for url in v.aux_model_urls.values())
+        assert v.engine_options["description"]
+
+
+# ---------------------------------------------------------------------------
+# the description encoder runs once per description, not once per sentence
+# ---------------------------------------------------------------------------
+
+class _SeededEncoder:
+    """Encoder stand-in whose hidden states are a fixed function of the input ids."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def run(self, _names, feed):
+        self.calls += 1
+        ids = feed["input_ids"]
+        rng = np.random.default_rng(ids.reshape(-1).tolist())
+        return [rng.standard_normal((1, ids.shape[-1], 8)).astype(np.float32)]
+
+
+def _seeded(description="Rohit's voice is clear."):
+    ad = _wired(eos_after=4, description=description)
+    ad.text_encoder = _SeededEncoder()
+    return ad
+
+
+def test_one_description_runs_the_encoder_once_for_three_sentences():
+    ad = _seeded()
+    for ids in ((5, 6, 7), (8, 9), (10, 11, 12, 13)):
+        ad.synthesize(_req(ids), _FakePrefill())
+    assert ad.text_encoder.calls == 1
+
+
+def test_two_descriptions_run_the_encoder_twice():
+    ad = _seeded()
+    for description in ("Divya speaks fast.", "Divya speaks fast.",
+                        "Rohit speaks slowly.", "Rohit speaks slowly."):
+        ad.synthesize(_req(description=description), _FakePrefill())
+    assert ad.text_encoder.calls == 2
+
+
+def test_cached_description_feeds_the_prefill_what_a_fresh_encoder_gives():
+    """Each request, on one adapter, gets the encoder output a new adapter computes."""
+    shared = _seeded()
+    for description in ("Divya speaks fast.", "Divya speaks fast.",
+                        "Rohit speaks slowly.", "Divya speaks fast."):
+        on_shared, on_fresh = _FakePrefill(), _FakePrefill()
+        got = shared.synthesize(_req(do_sample=1, seed=3, description=description), on_shared)
+        want = _seeded().synthesize(_req(do_sample=1, seed=3, description=description), on_fresh)
+        for key in ("encoder_hidden_states", "encoder_attention_mask"):
+            assert np.array_equal(on_shared.last_feed[key], on_fresh.last_feed[key])
+        assert np.array_equal(got.extras["codes"], want.extras["codes"])
+        assert np.array_equal(got.audio, want.audio)
+
+
+def test_cached_description_arrays_are_read_only():
+    """A caller writing into the shared arrays would change the next request's voice."""
+    ad = _seeded()
+    hidden, mask = ad.encode_description("Divya speaks fast.")
+    with pytest.raises(ValueError):
+        hidden += 1.0
+    with pytest.raises(ValueError):
+        mask[0, 0] = 0
+    again, _ = ad.encode_description("Divya speaks fast.")
+    assert np.array_equal(again, _seeded().encode_description("Divya speaks fast.")[0])

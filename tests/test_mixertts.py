@@ -181,9 +181,9 @@ def test_tokenization_arabic_mantoq_pinned_buckwalter_ids():
     # tts_arabic is not published on PyPI (git-only, no installable wheel),
     # so this pins the vendored mantoq g2p's own buckwalter token sequence
     # as a regression golden instead of cross-validating against it live.
-    # Any change to scriptconv's vendored mantoq's output for this sentence
+    # Any change to scriptconv-nonfree's vendored mantoq's output for this sentence
     # must be a deliberate, reviewed change to this fixture.
-    from scriptconv.phonemizers.ar import MantoqPhonemizer
+    from scriptconv_nonfree.phonemizers.ar import MantoqPhonemizer
     text = "السَّلامُ عَلَيكُم"
     mantoq = MantoqPhonemizer()
     phonemes = [p for chunk in [mantoq.phonemize(text, "ar")] for w in chunk for p in w]

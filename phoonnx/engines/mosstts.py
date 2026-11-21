@@ -15,7 +15,7 @@ loop is two-level: global step -> local frame -> feed the frame back as the next
 input row.
 
 Weights are mirrored in the OVOS HuggingFace org, under
-``OpenVoiceOS/phoonnx-moss`` (``tts-nano-100m-onnx/`` and
+``Phoonnx/phoonnx-moss`` (``tts-nano-100m-onnx/`` and
 ``audio-tokenizer-nano-onnx/`` subfolders), crediting upstream OpenMOSS
 (Apache-2.0).
 
@@ -77,6 +77,8 @@ import numpy as np
 import onnxruntime
 from quebra_frases import sentence_tokenize
 
+from phoonnx.audio_fx import resample_rate
+from phoonnx.engines._sampling import softmax
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.util import LOG
@@ -129,26 +131,6 @@ SAMPLE_MODE_FULL = "full"        # host sampling via local_cached_step (tunable)
 SAMPLE_MODE_GREEDY = "greedy"    # host argmax via local_cached_step
 
 
-def _resample(audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
-    if sr == target_sr:
-        return audio
-    try:
-        from scipy.signal import resample_poly
-        from math import gcd
-        g = gcd(sr, target_sr)
-        return resample_poly(audio, target_sr // g, sr // g).astype(np.float32)
-    except Exception:
-        n = int(round(len(audio) * target_sr / sr))
-        return np.interp(np.linspace(0, len(audio) - 1, n), np.arange(len(audio)), audio).astype(np.float32)
-
-
-def _softmax(x: np.ndarray) -> np.ndarray:
-    z = np.asarray(x, np.float64)
-    z = z - z.max()
-    e = np.exp(z)
-    return e / e.sum()
-
-
 def _apply_repetition_penalty(scores: np.ndarray, seen: set, penalty: float) -> np.ndarray:
     """Divide the score of already-emitted tokens by ``penalty`` (multiply when negative).
 
@@ -179,13 +161,13 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
         s = np.where(s < threshold, -np.inf, s)
     if 0 < top_p < 1:
         order = np.argsort(s)[::-1]
-        cumulative = np.cumsum(_softmax(s[order]))
+        cumulative = np.cumsum(softmax(s[order]))
         # keep every token up to and including the one that crosses top_p
         keep = np.ones(order.shape[0], bool)
         keep[1:] = cumulative[:-1] <= top_p
         s = np.full_like(s, -np.inf)
         s[order[keep]] = np.asarray(scores, np.float32)[order[keep]] / float(temperature)
-    probs = _softmax(s)
+    probs = softmax(s)
     return int(rng.choice(probs.shape[0], p=probs))
 
 
@@ -220,24 +202,10 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
             **FIXED_SAMPLING,
         }
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "sample_mode": "sampling mode (fixed/full/greedy)",
-            "max_new_frames": "max generated frames (12.5/s)",
-            "max_text_tokens": "text tokens per model call",
-            "text_temperature": "temperature (frame-continue decision)",
-            "text_top_p": "top-p (frame-continue decision)",
-            "text_top_k": "top-k (frame-continue decision)",
-            "audio_temperature": "temperature (codebook tokens)",
-            "audio_top_p": "top-p (codebook tokens)",
-            "audio_top_k": "top-k (codebook tokens)",
-            "audio_repetition_penalty": "repetition penalty (codebook tokens)",
-        }
-
     def configure(self, voice_config: Any) -> None:
         """Load the five auxiliary graphs and the SentencePiece model from
         ``engine_params`` (the prefill graph is the voice's own session)."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         providers = ep.get("providers")
 
         def sess(key):
@@ -348,7 +316,7 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
     def encode_reference(self, audio: np.ndarray, sr: int) -> List[List[int]]:
         """Reference clip -> RVQ-16 prompt codes. Mono is duplicated to stereo, since
         the tokenizer was trained on 2-channel 48 kHz audio."""
-        wav = _resample(np.asarray(audio, np.float32).reshape(-1), int(sr), SAMPLE_RATE)
+        wav = resample_rate(np.asarray(audio, np.float32).reshape(-1), int(sr), SAMPLE_RATE)
         stereo = np.repeat(wav[None, None, :], CHANNELS, axis=1).astype(np.float32)
         codes, lengths = self.codec_encode.run(None, {
             "waveform": stereo,
@@ -372,22 +340,13 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
     # ------------------------------------------------------------------
     # local decoder (one frame of 16 codebook tokens)
     # ------------------------------------------------------------------
-    @staticmethod
-    def _seen_mask(seen_by_channel: List[set]) -> np.ndarray:
-        mask = np.zeros((1, N_VQ, CODEBOOK_SIZE), np.int32)
-        for ch, seen in enumerate(seen_by_channel):
-            for token in seen:
-                if 0 <= token < CODEBOOK_SIZE:
-                    mask[0, ch, token] = 1
-        return mask
-
-    def _fixed_frame(self, global_hidden: np.ndarray, seen_by_channel: List[set],
+    def _fixed_frame(self, global_hidden: np.ndarray, seen_mask: np.ndarray,
                      rng: np.random.Generator) -> Tuple[bool, List[int]]:
         """In-graph sampled frame. The graph consumes uniform randoms so the host still
         owns the RNG (and therefore reproducibility) despite the baked-in parameters."""
         out = self.local_fixed_frame.run(None, {
             "global_hidden": global_hidden.astype(np.float32, copy=False),
-            "repetition_seen_mask": self._seen_mask(seen_by_channel),
+            "repetition_seen_mask": seen_mask,
             "assistant_random_u": np.asarray([min(0.99999994, float(rng.random()))], np.float32),
             "audio_random_u": np.asarray(
                 [[min(0.99999994, float(rng.random())) for _ in range(N_VQ)]], np.float32),
@@ -492,10 +451,11 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
 
         frames: List[List[int]] = []
         seen_by_channel = [set() for _ in range(N_VQ)]
+        seen_mask = np.zeros((1, N_VQ, CODEBOOK_SIZE), np.int32)
         max_frames = int(p.get("max_new_frames", self.MAX_NEW_FRAMES))
         for _ in range(max(1, max_frames)):
             if mode == SAMPLE_MODE_FIXED:
-                keep_going, frame = self._fixed_frame(global_hidden, seen_by_channel, rng)
+                keep_going, frame = self._fixed_frame(global_hidden, seen_mask, rng)
             else:
                 keep_going, frame = self._hosted_frame(
                     global_hidden, seen_by_channel, p, mode != SAMPLE_MODE_GREEDY, rng)
@@ -503,6 +463,8 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
                 break
             for channel, token in enumerate(frame):
                 seen_by_channel[channel].add(int(token))
+                if 0 <= token < CODEBOOK_SIZE:
+                    seen_mask[0, channel, token] = 1
             frames.append(frame)
 
             row = np.full((1, 1, ROW_WIDTH), AUDIO_PAD_TOKEN_ID, np.int32)

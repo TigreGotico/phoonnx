@@ -15,6 +15,26 @@ The ONNX export (e.g. `DakeQQ/F5-TTS-ONNX
   decode     : denoised, ref_signal_len
                → waveform                      (Vocos + ISTFT baked in)
 
+The exporter's later runtime contract (``Inference_F5_TTS_ONNX.py``) changes the
+graph signatures and binds the tensors by name::
+
+  preprocess : audio, text_ids, max_duration
+               → noise, rope_cos, rope_sin, cat_mel_text, cat_mel_text_drop,
+                 ref_signal_len, rms_scale, ref_mel_tail
+  transformer: noise, rope_cos, rope_sin, cat_mel_text, cat_mel_text_drop, time_step
+               → denoised                      (time_step = 0 .. NFE-1, fed by the caller)
+  decode     : denoised, ref_signal_len, rms_scale, ref_mel_tail
+               → output_audio
+
+A transformer with six inputs selects this contract.
+
+The step count is fixed at export time on both contracts. The name-bound export
+stores it in its metadata as ``nfe_step``: the adapter then runs exactly that many
+steps and logs a warning when a call asks for another ``nfe``. On a graph without
+that key, and on the older contract, ``nfe`` comes from ``engine_params`` or from
+``SynthesisConfig.extra_params`` (default 32) and must equal the export's value.
+The voice config's ``inference`` section does not set it.
+
 This adapter overrides :meth:`synthesize` to drive the iterative ODE loop
 across the three graphs.  The voice's primary model is the ``transformer``;
 the ``preprocess`` and ``decode`` graphs, plus an optional standalone Vocos
@@ -39,17 +59,21 @@ vocoder, are loaded in :meth:`configure` from ``engine_params``.
 The adapter also works for **Habibi-TTS** and any other model built on the
 F5-TTS architecture (same ONNX layout, different weights).
 """
-from typing import Any, Dict, List, Optional
+import logging
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import onnxruntime
 
+from phoonnx.audio_fx import resample_rate
 from phoonnx.engines.base import (
     AdapterSynthesisRequest,
     AdapterSynthesisResult,
     BaseOnnxAdapter,
 )
 from phoonnx.providers import make_session
+
+LOG = logging.getLogger(__name__)
 
 
 # Habibi-TTS dialect control tokens (Unified model only). Upstream wraps the
@@ -82,6 +106,8 @@ class F5TTSAdapter(BaseOnnxAdapter):
         self._speed: float = 1.0
         self._dialect: Optional[str] = None
         self._char2idx: Dict[str, int] = {}
+        self._idx2char: Dict[int, str] = {}
+        self._text_tokens: Optional[Callable[[str], List[str]]] = None
 
     def default_params(self) -> Dict[str, float]:
         return {
@@ -94,7 +120,7 @@ class F5TTSAdapter(BaseOnnxAdapter):
 
     def configure(self, voice_config: Any) -> None:
         """Load auxiliary ONNX graphs and optional vocoder from engine_params."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         sess = lambda p: make_session(p, providers=ep.get("providers"))
 
         if self.preprocess is None and ep.get("preprocess_path"):
@@ -129,6 +155,15 @@ class F5TTSAdapter(BaseOnnxAdapter):
         tokenizer = getattr(voice_config, "tokenizer", None)
         vocabulary = getattr(tokenizer, "vocabulary", None)
         self._char2idx = dict(getattr(vocabulary, "char2idx", None) or {})
+        self._idx2char = {i: c for c, i in self._char2idx.items()}
+
+        # The pinyin text function adds a space between the reference and the
+        # generation text in some cases (see _join_space).
+        phoneme_type = getattr(voice_config, "phoneme_type", None)
+        self._text_tokens = None
+        if getattr(phoneme_type, "value", phoneme_type) == "f5tts_pinyin":
+            from scriptconv.phonemizers.f5tts import F5TTSPinyinPhonemizer
+            self._text_tokens = F5TTSPinyinPhonemizer().text_tokens
 
     def synthesize(
         self,
@@ -164,15 +199,15 @@ class F5TTSAdapter(BaseOnnxAdapter):
         ref_audio_arr = np.asarray(ref_audio[0], np.float32).reshape(1, 1, -1)
         if ref_audio[1] != self.SAMPLE_RATE:
             ref_audio_arr = np.asarray(
-                self._resample(ref_audio_arr.reshape(-1), ref_audio[1], self.SAMPLE_RATE),
+                resample_rate(ref_audio_arr.reshape(-1), ref_audio[1], self.SAMPLE_RATE),
                 np.float32,
             ).reshape(1, 1, -1)
 
-        # Combine ref_text + gen_text token IDs
-        ref_text_ids = np.asarray(ref_text_tokens, np.int32).reshape(1, -1)
         gen_text_ids = request.phoneme_ids.astype(np.int32).reshape(1, -1)
-        gen_text_ids = self._wrap_dialect(gen_text_ids, p.get("dialect", self._dialect))
-        text_ids = np.concatenate([ref_text_ids, gen_text_ids], axis=1)
+        ref_text_ids = self._reference_ids(ref_text_tokens, p.get("speaker_reference_text"),
+                                           gen_text_ids[0].tolist())
+        text_ids = self._wrap_dialect(np.concatenate([ref_text_ids, gen_text_ids], axis=1),
+                                      p.get("dialect", self._dialect))
 
         # max_duration: estimated from ref audio length and text length ratio
         ref_audio_len = ref_audio_arr.shape[-1]
@@ -201,6 +236,9 @@ class F5TTSAdapter(BaseOnnxAdapter):
         })
         # outputs: noise, rope_cos_q, rope_sin_q, rope_cos_k, rope_sin_k,
         #          cat_mel_text, cat_mel_text_drop, ref_signal_len
+        transformer_inputs = [inp.name for inp in session.get_inputs()]
+        if len(transformer_inputs) == len(self._BY_NAME_TRANSFORMER_INPUTS):
+            return self._synthesize_by_name(session, pre_out, transformer_inputs, nfe)
         noise = pre_out[0]
         rope_cos_q = pre_out[1]
         rope_sin_q = pre_out[2]
@@ -220,7 +258,6 @@ class F5TTSAdapter(BaseOnnxAdapter):
         # (e.g. "time_step" -> "time_step.1") — feed by declared input order rather
         # than by hardcoded name so the adapter survives that renaming across
         # export runs / PyTorch versions.
-        transformer_inputs = [inp.name for inp in session.get_inputs()]
         time_step = np.array([0], dtype=np.int32)
         for _ in range(max(nfe - 1, 0)):
             values = [noise, rope_cos_q, rope_sin_q, rope_cos_k, rope_sin_k,
@@ -249,12 +286,50 @@ class F5TTSAdapter(BaseOnnxAdapter):
 
         return AdapterSynthesisResult(audio=audio)
 
+    #: transformer inputs of the name-bound contract; the state is the first one
+    _BY_NAME_TRANSFORMER_INPUTS = ("noise", "rope_cos", "rope_sin", "cat_mel_text",
+                                   "cat_mel_text_drop", "time_step")
+
+    def _synthesize_by_name(self, session: onnxruntime.InferenceSession,
+                            pre_out: List[np.ndarray], transformer_inputs: List[str],
+                            nfe: int) -> AdapterSynthesisResult:
+        """ODE loop and decode for the name-bound export contract.
+
+        As in the exporter's own runner, every transformer and decode input that the
+        preprocess graph outputs is fed under its name, the one transformer input it
+        does not output is the step index (0 .. nfe-1), and the denoised state goes
+        back into the transformer's first input and, at the end, into the one decode
+        input that preprocess does not output.
+        """
+        if self.decode is None:
+            raise RuntimeError("F5-TTS requires 'decode_path' in engine_params")
+        export_nfe = session.get_modelmeta().custom_metadata_map.get("nfe_step")
+        if export_nfe is not None:
+            if int(export_nfe) != nfe:
+                LOG.warning("F5-TTS export runs a fixed %s steps; ignoring nfe=%s",
+                            export_nfe, nfe)
+            nfe = int(export_nfe)
+        pre = dict(zip((o.name for o in self.preprocess.get_outputs()), pre_out))
+        step_input, = (i for i in session.get_inputs() if i.name not in pre)
+        step_dtype = np.int64 if "int64" in step_input.type else np.int32
+        state_name = transformer_inputs[0]
+        feed = {name: pre[name] for name in transformer_inputs if name != step_input.name}
+        for step in range(nfe):
+            feed[step_input.name] = np.array([step], dtype=step_dtype)
+            feed[state_name] = session.run(None, feed)[0]
+        decode_feed = {i.name: pre.get(i.name, feed[state_name])
+                       for i in self.decode.get_inputs()}
+        audio = np.asarray(self.decode.run(None, decode_feed)[0])
+        if audio.dtype == np.int16:
+            audio = audio.astype(np.float32) / 32768.0
+        return AdapterSynthesisResult(audio=audio.astype(np.float32).reshape(-1))
+
     # --- ABC stubs (unused — synthesize() drives the loop) ---
 
     def build_feed_dict(self, request, session):
         raise NotImplementedError("F5-TTS is iterative — use synthesize()")
 
-    def parse_outputs(self, outputs, request):
+    def parse_outputs(self, outputs, request, output_names=None):
         raise NotImplementedError("F5-TTS is iterative — use synthesize()")
 
     @staticmethod
@@ -274,19 +349,72 @@ class F5TTSAdapter(BaseOnnxAdapter):
                 return True
         return False
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "nfe": "NFE Steps",
-            "cfg_strength": "CFG Strength",
-            "sway_coefficient": "Sway Coefficient",
-            "target_rms": "Target RMS",
-            "speed": "Speed",
-        }
+    def _reference_ids(self, ref_text_tokens: Any, reference_text: Optional[str],
+                       gen_text_ids: List[int]) -> np.ndarray:
+        """The ids of the reference text, with the end that the upstream code gives it.
 
-    def _wrap_dialect(self, gen_text_ids: np.ndarray,
+        Upstream, ``preprocess_ref_audio_text`` ends the reference text in
+        ``". "`` unless it ends in ``". "`` or ``"。"``, and
+        ``infer_batch_process`` adds one more space when its last character is
+        one byte (``src/f5_tts/infer/utils_infer.py``, SWivid/F5-TTS 600e5fd;
+        Habibi-TTS and SILMA TTS do the same). The model then reads the
+        reference text and the generation text as one string. The end is
+        computed on *reference_text* without the whitespace at its end. The
+        frontend keeps some of that whitespace as ids (a space, or a tab in
+        the vocabularies that hold one) and drops the rest, so the whitespace
+        ids at the end of the ids go first: the result is
+        the same for a reference text with or without whitespace at its end.
+        With no *reference_text*, the ids stay as given.
+        """
+        ids = list(ref_text_tokens)
+        if reference_text:
+            text = reference_text.rstrip()
+            trailing = len(reference_text) - len(text)
+            while trailing and ids and self._idx2char.get(ids[-1], "").isspace():
+                ids.pop()
+                trailing -= 1
+            if text.endswith("。"):
+                end = self._join_space(gen_text_ids)
+            elif text.endswith("."):
+                end = "  "
+            else:
+                end = ".  "
+            ids += [self._char2idx.get(char, 0) for char in end]
+        return np.asarray(ids, np.int32).reshape(1, -1)
+
+    def _join_space(self, gen_text_ids: List[int]) -> str:
+        """The space that the pinyin text function puts between a reference text that ends in ``"。"`` and the generation text.
+
+        Upstream runs ``convert_char_to_pinyin`` on ``ref_text + gen_text``. A
+        segment of two or more ASCII characters there follows a space unless
+        the token before it is a space, ``:``, ``'`` or ``"``. Every other
+        reference end is a space, so only a ``"。"`` end and an ASCII word at
+        the start of the generation text give this space. The ASCII
+        characters at the start of the generation text are read back from
+        its ids, and the voice's own text function runs on ``"。"`` and those
+        characters. The voices that read each character as one token get no
+        space. The ids hold no hanzi, so a jieba dictionary word that joins
+        those characters to the hanzi after them, such as ``IC卡``, still
+        gets the space here, and upstream gives none.
+        """
+        if self._text_tokens is None:
+            return ""
+        start = ""
+        for token_id in gen_text_ids:
+            char = self._idx2char.get(token_id, "")
+            if len(char) != 1 or not char.isascii() or char.isspace():
+                break
+            start += char
+        joined = self._text_tokens("。" + start)
+        return "".join(joined[1:len(joined) - len(self._text_tokens(start))])
+
+    def _wrap_dialect(self, text_ids: np.ndarray,
                       dialect: Optional[str]) -> np.ndarray:
-        """Wrap the generation-text token IDs with the Habibi dialect control
-        tokens: ``{dialect_char}〈 ... 〉`` (Unified model only).
+        """Wrap the text ids of one call, reference and generation text, in the
+        Habibi dialect control tokens: ``{dialect_char}〈 ... 〉`` (Unified
+        model only). Upstream wraps the whole ``ref_text + gen_text`` string
+        (``text_list_formatter`` in ``src/habibi_tts/model/utils.py``,
+        SWivid/Habibi-TTS 9274498).
 
         No-op when *dialect* is unset. Raises ``ValueError`` for an unknown
         dialect name. If the voice's vocab lacks the control tokens (the
@@ -294,7 +422,7 @@ class F5TTSAdapter(BaseOnnxAdapter):
         a warning — those models were trained on untagged text.
         """
         if not dialect:
-            return gen_text_ids
+            return text_ids
         name = str(dialect).upper()
         if name not in HABIBI_DIALECT_MAP:
             raise ValueError(
@@ -308,25 +436,9 @@ class F5TTSAdapter(BaseOnnxAdapter):
                 "Voice vocab lacks the Habibi dialect control tokens "
                 "(%s) — 'dialect' only applies to the Unified model; "
                 "synthesizing untagged text.", "".join(chars))
-            return gen_text_ids
+            return text_ids
         prefix = np.array([[self._char2idx[chars[0]], self._char2idx[chars[1]]]],
-                          dtype=gen_text_ids.dtype)
-        suffix = np.array([[self._char2idx[chars[2]]]], dtype=gen_text_ids.dtype)
-        return np.concatenate([prefix, gen_text_ids, suffix], axis=1)
+                          dtype=text_ids.dtype)
+        suffix = np.array([[self._char2idx[chars[2]]]], dtype=text_ids.dtype)
+        return np.concatenate([prefix, text_ids, suffix], axis=1)
 
-    @staticmethod
-    def _resample(audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
-        if sr == target_sr:
-            return audio
-        try:
-            from scipy.signal import resample_poly
-            from math import gcd
-            g = gcd(sr, target_sr)
-            return resample_poly(audio, target_sr // g, sr // g).astype(np.float32)
-        except Exception:
-            n = int(round(len(audio) * target_sr / sr))
-            return np.interp(
-                np.linspace(0, len(audio) - 1, n),
-                np.arange(len(audio)),
-                audio,
-            ).astype(np.float32)

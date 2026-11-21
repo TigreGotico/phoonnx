@@ -8,14 +8,30 @@ Each TTS architecture (VITS, OptiSpeech, Matcha-TTS, etc.) has different:
   - Config/metadata formats
 
 An OnnxAdapter encapsulates these differences behind a single interface
-so that TTSVoice.phoneme_ids_to_audio works identically for any engine.
+so that TTSVoice.render works identically for any engine.
 """
+import re
+import warnings
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field, replace
+from types import SimpleNamespace
+from typing import Any, Dict, Iterator, List, Optional
 
 import numpy as np
 import onnxruntime
+from scriptconv.frontend import Stages, TextFrontend
+
+from phoonnx.encoders import SIDE_STREAMS, Encoder, SymbolEncoder, TextEncoder
+
+
+def _warn_removed_hook(name: str, replacement: str) -> None:
+    from phoonnx.config import _removal_version
+    warnings.warn(f"BaseOnnxAdapter.{name} is deprecated and will be removed in phoonnx "
+                  f"{_removal_version()}. Use {replacement}.",
+                  DeprecationWarning, stacklevel=3)
+
+INLINE_BLOCK = re.compile(r"\[\[(.*?)\]\]")
+"""An inline phoneme block: the shortest ``[[...]]`` on one line, as scriptconv's frontend reads it."""
 
 
 @dataclass
@@ -35,9 +51,16 @@ class AdapterSynthesisRequest:
     # (e.g. ShamiVITS).  Shape (1, T), dtype int64, when provided.
     language_ids: Optional[np.ndarray] = None
 
+    # Per-phoneme stress (0 none, 1 primary, 2 secondary) for models with a stress
+    # input (e.g. tiny-voca).  Shape (1, T), dtype int64, when provided.
+    stress: Optional[np.ndarray] = None
+
     # Engine-specific key→value (noise_scale, d_factor, …).
     # Populated from SynthesisConfig + VoiceConfig defaults.
     params: Dict[str, Any] = field(default_factory=dict)
+
+    text: Optional[str] = None
+    """The chunk's text, per ``Utterance.text``."""
 
 
 @dataclass
@@ -66,9 +89,9 @@ class BaseOnnxAdapter(ABC):
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     - ``detect``           — auto-detect whether a config/session belongs
                              to this engine
-    - ``parse_config``     — pull engine-specific fields from JSON config
     - ``parse_onnx_meta``  — pull engine-specific fields from ONNX metadata
-    - ``param_labels``     — human-readable names for UI sliders
+    - ``max_input_tokens`` — the most ids one model call reads; a longer
+                             request is cut (see :meth:`_cut`)
     - ``DURATION_OUTPUT_NAMES`` — candidate ONNX output names that carry a
                              per-phoneme duration/frame-count tensor, used by
                              :meth:`_find_duration_output` for the alignment
@@ -83,21 +106,15 @@ class BaseOnnxAdapter(ABC):
     the :class:`AdapterSynthesisResult`; writing it to ``self`` hands one
     caller's voice to the next caller.
 
-    What may live on the instance is setup: what ``SETUP_METHODS`` derive from
-    the voice's config, plus the individual values a request-path helper is
+    What may live on the instance is setup: what ``__init__``, ``configure``,
+    ``configure_from_params``, ``parse_onnx_meta`` and ``load_voice`` derive
+    from the voice's config, plus the individual values a request-path helper is
     allowed to memoize, named one by one in ``MEMOIZED_WRITES``. A memoized
     value must be safe to serve to the next request — a lazily opened
     auxiliary session, a KV-cache shape read off the model, a cache keyed on
     the input it was derived from. ``tests/test_adapter_statelessness.py``
     holds every adapter to this.
     """
-
-    # Methods that may assign anything to ``self``: the ones that run once,
-    # from the voice's config, before any request is served.
-    SETUP_METHODS: frozenset = frozenset({
-        "__init__", "configure", "configure_from_params",
-        "parse_config", "parse_onnx_meta", "load_voice",
-    })
 
     # ``{method: {attribute}}`` — the exact writes a request-path method may
     # make, each one a claim that the value is either a property of the model
@@ -112,6 +129,18 @@ class BaseOnnxAdapter(ABC):
     # NOT guarantee a given checkpoint's export has it — real exports vary;
     # this only makes detection automatic once a model *does* expose one.
     DURATION_OUTPUT_NAMES: List[str] = []
+
+    # True for an adapter that reads the text of a phonemizing voice itself, in ``read_text``.
+    READS_TEXT: bool = False
+
+    # The most ids one model call reads. ``None`` means the engine is never cut.
+    # An engine that sets it also sets ``bos``, ``eos``, ``word_gap`` and
+    # ``clause_marks`` (a set of ids) in ``configure``; :meth:`_cut` reads them.
+    max_input_tokens: Optional[int] = None
+    bos: int
+    eos: int
+    word_gap: int
+    clause_marks: set
 
     # ------------------------------------------------------------------
     # Required
@@ -163,16 +192,51 @@ class BaseOnnxAdapter(ABC):
     # Optional
     # ------------------------------------------------------------------
 
-    def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
-        """Turn (already-preprocessed) text into the model's input token-id sequences,
-        one per sentence.
+    @property
+    def takes_symbols(self) -> bool:
+        """Whether the model reads phoneme symbols, so an inline ``[[...]]`` block can reach it.
 
-        Every engine receives text and produces the ids its model consumes. The default
-        is the phoneme pipeline — phonemize, then vocab-tokenize. Text-token engines
-        (e.g. Chatterbox, whose subword BPE does its own normalization) override this to
-        BPE the raw text directly. ``voice`` exposes the phonemizer / tokenizer.
+        An adapter that overrides :meth:`encode_text` reads text, and one that
+        sets this to False has no symbol input at all.
         """
-        return [voice.phonemes_to_ids(p) for p in voice.phonemize(text) if p]
+        return type(self).encode_text is BaseOnnxAdapter.encode_text
+
+    def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
+        """Turn text into the model's input token-id sequences, one per sentence.
+
+        *text* comes from ``voice.frontend.prepare``, so it is normalised and
+        diacritized already. Every engine receives text and produces the ids its
+        model consumes. The default is the phoneme pipeline — phonemize with no
+        text stage, then vocab-tokenize. Text-token engines (e.g. Chatterbox,
+        whose subword BPE does its own normalization) override this to BPE the
+        text directly. ``voice`` exposes the frontend / tokenizer.
+        """
+        stages = Stages(normalize=False, diacritize=False)
+        return [voice.tokenizer.tokenize(p) for p in voice.frontend.phonemize(text, stages) if p]
+
+    def make_encoder(self, voice_config: Any, frontend: TextFrontend, tokenizer: Any) -> Encoder:
+        """The encoder that turns text into this engine's ids.
+
+        The default reads the symbols of the frontend. An adapter that overrides
+        :meth:`encode_text` gets a :class:`TextEncoder` that hands the whole prepared text to
+        ``encode_text``, which cuts it itself. An engine that tokenizes each chunk itself returns
+        a ``TextEncoder`` of its own.
+        """
+        if type(self).encode_text is BaseOnnxAdapter.encode_text:
+            return SymbolEncoder(frontend, tokenizer)
+        voice = SimpleNamespace(config=voice_config, frontend=frontend, tokenizer=tokenizer)
+        return TextEncoder(frontend, lambda text, config: self.encode_text(text, voice, config),
+                           whole_text=True)
+
+    def read_text(self, text: str, voice: Any, config: Any, stages: Any) -> Iterator[Any]:
+        """Yield the :class:`~phoonnx.voice.Utterance` objects of *text*, one per engine call.
+
+        Only an adapter with ``READS_TEXT`` is asked. An engine that needs more than ids from
+        the text, such as the word each token belongs to, reads it here, through
+        ``voice.frontend`` and ``voice.tokenizer``, and puts what it learned in
+        ``Utterance.params``. Those values join the request params of that utterance.
+        """
+        raise NotImplementedError
 
     def synthesize(
         self,
@@ -186,19 +250,30 @@ class BaseOnnxAdapter(ABC):
         (e.g. flow-matching, where ``session`` is one of several graphs and the
         output is produced by a sampling loop) override this to run their own
         pipeline. ``session`` is the voice's primary model; any auxiliary graphs
-        are loaded in :meth:`configure` from ``engine_params``.
+        are loaded in :meth:`configure` from ``engine_params``. A request longer
+        than ``max_input_tokens`` runs as several pieces whose audio is joined;
+        a cut request returns no extras.
         """
-        feed = self.build_feed_dict(request, session)
-        outputs = session.run(None, feed)
-        try:
-            return self.parse_outputs(
-                outputs, request, output_names=self._safe_output_names(session)
-            )
-        except TypeError:
-            # Third-party / test subclasses that predate the ``output_names``
-            # parameter and don't accept **kwargs — fall back to the
-            # original two-argument call so they keep working unmodified.
-            return self.parse_outputs(outputs, request)
+        results = []
+        for piece in self._cut(request):
+            feed = self.build_feed_dict(piece, session)
+            outputs = session.run(None, feed)
+            results.append(self.parse_outputs(outputs, piece, output_names=self._safe_output_names(session)))
+        if len(results) == 1:
+            return results[0]
+        return AdapterSynthesisResult(audio=np.concatenate([r.audio for r in results]))
+
+    def synthesize_stream(
+        self,
+        request: AdapterSynthesisRequest,
+        session: onnxruntime.InferenceSession,
+    ) -> Iterator[AdapterSynthesisResult]:
+        """Yield the audio of one request in parts; joined, they are :meth:`synthesize`'s audio.
+
+        An engine that makes audio in steps yields each part once it exists. The
+        default yields the one result of :meth:`synthesize`.
+        """
+        yield self.synthesize(request, session)
 
     @staticmethod
     def detect(
@@ -209,12 +284,8 @@ class BaseOnnxAdapter(ABC):
         return False
 
     def parse_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Extract engine-specific parameters from a JSON config dict.
-
-        Returned dict is stored on VoiceConfig and forwarded as
-        ``request.params`` at synthesis time.
-        """
+        """Deprecated: nothing calls it. Engine settings come from ``default_params``."""
+        _warn_removed_hook("parse_config", "default_params")
         return {}
 
     def parse_onnx_meta(
@@ -226,7 +297,8 @@ class BaseOnnxAdapter(ABC):
         return {}
 
     def param_labels(self) -> Dict[str, str]:
-        """Human-readable labels for each scale param (for UIs)."""
+        """Deprecated: nothing calls it. The labels are the ``default_params`` keys."""
+        _warn_removed_hook("param_labels", "default_params")
         return {k: k for k in self.default_params()}
 
     def configure(self, voice_config: Any) -> None:
@@ -243,6 +315,52 @@ class BaseOnnxAdapter(ABC):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _cut(self, request: AdapterSynthesisRequest) -> List[AdapterSynthesisRequest]:
+        """*request* cut into pieces of at most ``max_input_tokens`` ids.
+
+        The request's ids run from ``bos`` to ``eos``. A piece ends after the
+        last clause mark that fits, else before the last word gap that fits; the
+        word gap at the cut is dropped. Every piece gets ``bos`` and ``eos``
+        again, and each side stream is cut at the same places. The request's own
+        ``bos`` and ``eos`` keep their stream values; every ``bos`` and ``eos``
+        the cut adds gets the neutral value 0.
+        """
+        limit = self.max_input_tokens
+        if limit is None or request.phoneme_ids.shape[1] <= limit:
+            return [request]
+        body = request.phoneme_ids[0].tolist()[1:-1]
+        room = limit - 2
+        spans = []
+        start = 0
+        while len(body) - start > room:
+            window = range(start + room - 1, start, -1)
+            cut = next((i + 1 for i in window if body[i] in self.clause_marks), None)
+            if cut is not None:
+                end, resume = cut, cut + (body[cut] == self.word_gap)
+            else:
+                gap = next((i for i in range(start + room, start, -1) if body[i] == self.word_gap), None)
+                if gap is None:
+                    raise ValueError(f"one word is longer than {limit} tokens")
+                end, resume = gap, gap + 1
+            spans.append((start, end))
+            start = resume
+        spans.append((start, len(body)))
+        streams = {name: getattr(request, name)[0].tolist()
+                   for name in SIDE_STREAMS if getattr(request, name) is not None}
+        pieces = []
+        last = len(spans) - 1
+        for index, (start, end) in enumerate(spans):
+            piece_ids = [self.bos] + body[start:end] + [self.eos]
+            fields = {name: np.array([[values[0] if index == 0 else 0]
+                                      + values[1:-1][start:end]
+                                      + [values[-1] if index == last else 0]], dtype=np.int64)
+                      for name, values in streams.items()}
+            pieces.append(replace(request,
+                                  phoneme_ids=np.array([piece_ids], dtype=np.int64),
+                                  phoneme_lengths=np.array([len(piece_ids)], dtype=np.int64),
+                                  **fields))
+        return pieces
 
     @staticmethod
     def _expected_inputs(session: onnxruntime.InferenceSession) -> set:
@@ -298,7 +416,7 @@ class BaseOnnxAdapter(ABC):
 
         Returns the raw tensor (still in the model's native unit — mel
         frames for two-stage engines, audio-decoder frames for single-stage
-        ones; converted to samples uniformly in ``TTSVoice.phoneme_ids_to_audio``
+        ones; converted to samples uniformly in ``TTSVoice.render``
         via ``VoiceConfig.hop_length``), or ``None`` if this particular
         export doesn't expose one. Never raises — callers degrade to "no
         alignment available" when this returns ``None``.

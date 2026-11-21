@@ -1,7 +1,7 @@
 # Configuration Reference
 
 This page is the exhaustive reference for advanced users: every `VoiceConfig` and
-`SynthesisConfig` field, the `model.json` schema, engine detection, and execution providers.
+`SynthesisConfig` field, the `model.json` schema, engine detection, execution providers and precision.
 For a task-oriented walkthrough see [Usage](usage.md) instead.
 
 ## VoiceConfig
@@ -16,22 +16,24 @@ from phoonnx.config import VoiceConfig
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `num_symbols` | `int` | — | Number of phoneme/token IDs in the vocabulary |
-| `num_speakers` | `int` | — | Number of speakers (1 for single-speaker) |
-| `num_langs` | `int` | — | Number of languages (1 for monolingual) |
+| `num_symbols` | `int` | `256` | Number of phoneme/token IDs in the vocabulary |
+| `num_speakers` | `int` | `1` | Number of speakers (1 for single-speaker) |
+| `num_langs` | `int` | `1` | Number of languages (1 for monolingual) |
 | `sample_rate` | `int` | `16000` | Output audio sample rate in Hz |
 | `lang_code` | `str` \| `None` | `"und"` | BCP-47 language code (e.g. `"en-US"`) |
 | `phoneme_type` | `PhonemeType` | — | Phonemizer backend |
 | `alphabet` | `Alphabet` | — | Phoneme representation |
 | `engine` | `Engine` | `PHOONNX` | Training framework the model was built with |
-| `noise_scale` | `float` | `0.667` | Default generator noise scale |
-| `length_scale` | `float` | `1.0` | Default phoneme length scale |
-| `noise_w_scale` | `float` | `0.8` | Default phoneme width noise scale |
+| `noise_scale` | `float` \| `None` | `None` | Generator noise scale from `inference.noise_scale`. `None` gives the engine's default |
+| `length_scale` | `float` \| `None` | `None` | Phoneme length scale from `inference.length_scale`. `None` gives the engine's default |
+| `noise_w_scale` | `float` \| `None` | `None` | Phoneme width noise scale from `inference.noise_w`. `None` gives the engine's default |
 | `hop_length` | `int` | `256` | Model frames → audio samples factor for [phoneme alignment](alignment.md) |
-| `add_diacritics` | `bool` | `False` | Auto-add diacritics (Arabic/Hebrew) |
-| `diacritizer_model` | `str` | `rawi-ensemble` | Diacritizer model name (Arabic `text2tashkeel`); round-tripped through the config's `inference` block |
+| `add_diacritics` | `bool` | Depends on the config format, see the description | Add diacritics before phonemization. A native config reads it from `inference.add_diacritics`. Without the key, an Arabic `lang_code` gives `True`. A Piper config ignores the key, and an Arabic `lang_code` gives `True`. A Chatterbox config gives `True` for Arabic and Hebrew. A config with no format marker reads the key and defaults to `False`. Every other format gives `False` |
+| `diacritizer_model` | `str` \| `None` | `None` | Diacritizer model name, read from the config's `inference` block. `None` lets scriptconv pick the default of each backend, `rawi-ensemble` for Arabic |
 | `phonemizer_model` | `str` \| `None` | `None` | Model path/id or variant selector for phonemizers that take one (ByT5, AhoTTS, Cotovia, arbtok) |
 | `keep_punctuation` | `bool` | `False` (`True` for Piper configs) | The model was trained with clause punctuation (`, . ? ! : ;`), so synthesis keeps it. A phoonnx config without the key, or a Piper side-car phoonnx exported (`piper_version` starting with `phoonnx`, or an `alphabet` key), was trained without it |
+| `text_casing` | `str` | `"ignore"` | The casing training applied to the text: `lower`, `upper`, `casefold` or `ignore`. Synthesis applies the same casing after normalisation. A backend that normalises its own text (tugaphone, dizione) receives the cased text before that step. A config without the key keeps the text as written |
+| `phonemizer_identity` | `dict` \| `None` | `None` | The phonemizer that made the training phonemes. See [Phonemizer provenance](#phonemizer-provenance) |
 | `speaker_id_map` | `dict` | `{}` | Maps speaker names to integer IDs |
 | `lang_id_map` | `dict` | `{}` | Maps language codes to integer IDs (multi-lang voices) |
 | `lang_tokens` | `dict` | `{}` | Optional BCP-47 → model language-token override (dialect models) |
@@ -39,10 +41,10 @@ from phoonnx.config import VoiceConfig
 | `tokenizer` | `TTSTokenizer` | — | Tokenizer instance |
 | `blank_at_start` | `bool` | `True` | Insert a blank token before the sequence |
 | `blank_at_end` | `bool` | `True` | Insert a blank token after the sequence |
-| `pad_token` | `str` \| `None` | `<pad>` default | Padding token |
-| `blank_token` | `str` \| `None` | pad default | Blank token inserted between tokens |
-| `bos_token` | `str` \| `None` | `<bos>` default | Beginning-of-sequence token |
-| `eos_token` | `str` \| `None` | `<eos>` default | End-of-sequence token |
+| `pad_token` | `str` \| `None` | `_` | Padding token |
+| `blank_token` | `str` \| `None` | `_` | Blank token inserted between tokens |
+| `bos_token` | `str` \| `None` | `^` | Beginning-of-sequence token |
+| `eos_token` | `str` \| `None` | `$` | End-of-sequence token |
 | `word_sep_token` | `str` \| `None` | word-blank default | Token inserted between words |
 | `blank_between` | `BlankBetween` | `TOKENS_AND_WORDS` | Where blank tokens are inserted |
 
@@ -53,6 +55,8 @@ from phoonnx.config import VoiceConfig
 ```python
 config = VoiceConfig.from_dict(my_config_dict)
 ```
+
+`TTSVoice.load()` raises `phoonnx.errors.VoiceLoadError` when the config file does not exist. It raises the same error for a VITS graph whose vocabulary uses an id that is not below `num_symbols`.
 
 ### Engine Auto-Detection
 
@@ -96,16 +100,19 @@ syn_config = SynthesisConfig(
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
+| `alphabet` | `Alphabet` \| `None` | `None` | The alphabet of the input text. `None` means plain text. Set it to pass text that is already phonemic, such as IPA, so that scriptconv converts it and does not phonemize it |
 | `speaker_id` | `int` \| `None` | `None` | Speaker index for multi-speaker models |
 | `lang_id` | `int` \| `None` | `None` | Language index for multi-language models |
 | `length_scale` | `float` \| `None` | `None` | Speed control: < 1 faster, > 1 slower |
 | `noise_scale` | `float` \| `None` | `None` | Generator noise: affects naturalness |
 | `noise_w_scale` | `float` \| `None` | `None` | Phoneme duration noise |
 | `normalize_audio` | `bool` | `True` | Scale audio to full amplitude range |
+| `target_loudness` | `float` \| `None` | `None` | Bring each sentence to this integrated loudness in LUFS, such as `-16.0`, with peaks limited to -1 dBFS. `None` keeps the peak normalisation. Needs `scipy`. Without it, phoonnx logs one warning and uses peak normalisation |
 | `volume` | `float` | `1.0` | Volume multiplier |
 | `enable_phonetic_spellings` | `bool` | `True` | Apply word-level pronunciation overrides |
 | `add_diacritics` | `bool` \| `None` | `None` | Add vowel diacritics before phonemization; `None` defers to the voice config |
 | `diacritizer_model` | `str` \| `None` | `None` | Override the diacritizer model for this call; `None` inherits the voice config's `diacritizer_model` |
+| `chunk` | `str` \| `None` | `None` | How much text one engine call reads: `sentence`, `clause`, `paragraph` (the text between blank lines) or `none` (the whole text). `None` reads one sentence per call. The text is read whole before it is cut. An engine that reads text, not phonemes, gets the whole text. Phonemic input (`alphabet` set) is cut per sentence whatever the value. Any other value raises `ValueError` when the config is built |
 | `speaker_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Reference clip for zero-shot [voice cloning](cloning.md) |
 | `speaker_reference_text` | `str` \| `None` | `None` | Reference transcription, required by in-context cloning engines (ZipVoice) |
 | `speaker_reference_lang` | `str` \| `None` | `None` | Language of the transcription, for cross-lingual cloning (defaults to the voice's `lang_code`) |
@@ -114,7 +121,11 @@ syn_config = SynthesisConfig(
 | `top_p` | `float` \| `None` | `None` | Nucleus sampling cutoff for autoregressive engines (Chatterbox, ~0.95) |
 | `vc_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Target-speaker clip for post-synthesis [voice conversion](voice_conversion.md); works with every engine |
 | `vc_engine` | `str` \| `None` | `None` | voiceclonnx engine for `vc_reference`; `None` selects `"openvoice"` |
+| `super_resolution` | `bool` | `False` | Upscale each chunk to 48 kHz with `audiosronnx` (the `audiosr` extra). The chunk reports the upscaled sample rate |
+| `super_resolution_model` | `str` \| `None` | `None` | The `audiosronnx` engine, such as `"novasr"` or `"lavasr"`. `None` selects `"novasr"`. Ignored unless `super_resolution` is `True` |
 | `extra_params` | `dict` | `{}` | Engine-specific per-call parameters (e.g. `d_factor`, `p_factor`, `e_factor`) |
+
+A scale comes from the first of these that sets it: the call's `SynthesisConfig`, the voice's `engine_params`, the `inference` block of the voice's `config.json`, the engine's `default_params()`. The keys of `extra_params` are applied last and win over all four.
 
 ## model.json Format
 
@@ -122,47 +133,163 @@ phoonnx supports multiple JSON config schemas. The native phoonnx format looks l
 
 ```json
 {
+  "phoonnx_version": "1.0",
+  "engine": "phoonnx",
   "phoneme_type": "espeak",
   "alphabet": "ipa",
+  "lang_code": "en-US",
   "num_symbols": 256,
   "num_speakers": 1,
   "num_langs": 1,
-  "phoneme_id_map": { "a": [1], "b": [2], ... },
-  "audio": { "sample_rate": 22050 },
+  "phoneme_id_map": {"_": [0], "^": [1], "$": [2], " ": [3], "a": [4], "b": [5]},
+  "audio": {"sample_rate": 22050},
   "inference": {
     "noise_scale": 0.667,
     "length_scale": 1.0,
     "noise_w": 0.8,
     "add_diacritics": false,
-    "diacritizer_model": "rawi-ensemble"
+    "diacritizer_model": null
   },
   "blank": "_",
-  "pad": "<pad>",
-  "bos": "<bos>",
-  "eos": "<eos>",
+  "pad": "_",
+  "bos": "^",
+  "eos": "$",
   "blank_at_start": true,
   "blank_at_end": true,
-  "add_blank": true,
-  "speaker_id_map": {},
-  "lang_code": "en-US"
+  "add_blank_char": true,
+  "speaker_id_map": {}
 }
 ```
 
+The wheel ships a JSON Schema of the native format as `phoonnx/config.schema.json`. `VoiceConfig.to_dict()` writes a config that the schema accepts. See [Writing the native config](api.md#writing-the-native-config).
+
 Piper, Mimic3, and Coqui config formats are also parsed automatically.
+
+### Tokenizer keys
+
+These keys of the native format control how the phonemes become ids.
+
+| Key | Default | Effect |
+|-----|---------|--------|
+| `phoneme_id_map` | — | Symbol to id. A value is an id or a list of ids. A list of one id is that id. A longer list gives each id in turn, and an empty list gives no id. |
+| `pad` | `_` | The padding symbol. `null` gives a vocabulary with no padding symbol. |
+| `add_blank_char` | `true` | Put the `blank` symbol between all ids, and at the start and end as `blank_at_start` and `blank_at_end` say. |
+| `add_blank_word` | `false` | Put the `blank_word` symbol after each word that gives an id. With `blank_at_end`, the last word gets one too. |
+| `blank_word` | none | The symbol that `add_blank_word` puts between words. Without it, a space gives no id. |
+| `use_eos_bos` | `true` | Put `bos` before the ids and `eos` after them. |
+| `fold_compounds` | `true` | Read the longest map key that starts at each symbol, so that `t͡ʃ` gives one id. |
+| `keep_punctuation` | `false` | Keep the clause punctuation `, . ? ! : ;` for the map to read. |
+
+A Mimic 3 voice has its tokenizer rules in a `phonemes` section and in a
+`phoneme_map.txt` file. Its native config has the same rules in the keys above:
+
+- `"add_blank_word": true` and `"blank_word": "#"` put `#` between words.
+- Each `phoneme_map.txt` line becomes a list value. The line `‖ · ·` gives `"‖": [3, 3]`.
+- `"keep_punctuation": true` keeps the punctuation, and the map gives its ids.
+  A gruut voice writes a break as a word of its own, so its entry starts with
+  the `#` id: `".": [4, 3, 3]`.
+
+```json
+{
+  "phoonnx_version": "1.0",
+  "phoneme_type": "gruut",
+  "alphabet": "ipa",
+  "lang_code": "en-US",
+  "phoneme_id_map": {"_": 0, "^": 1, "$": 2, "·": 3, "#": 4, "ˈ": 5, "‖": [3, 3], ".": [4, 3, 3], ",": [4, 3]},
+  "pad": "_", "blank": "_", "bos": "^", "eos": "$",
+  "add_blank_char": true,
+  "add_blank_word": true,
+  "blank_word": "#",
+  "keep_punctuation": true
+}
+```
+
+Two Mimic 3 steps are not tokenizer rules, and a native config does not hold
+them. Mimic 3 adds `auto_append_text` (usually `.`) to the end of the text when
+the text does not end with it. With `minor_break_ms` set, Mimic 3 also sends
+each clause to the model in a separate call. phoonnx sends one call for each
+sentence.
+
+## Phonemizer provenance
+
+A voice learns the phonemes of one phonemizer. When a later release of that
+phonemizer gives other phonemes for the same text, the voice can mispronounce
+words. The `phonemizer_identity` block records the phonemizer that made the
+training phonemes, so that phoonnx can tell you when the phonemizer changed.
+
+Preprocessing (`phoonnx_train/preprocess.py`, see the
+[preprocess reference](training/preprocess.md)) writes the block into the
+`config.json` of the dataset:
+
+```json
+{
+  "phoneme_type": "orthography2ipa",
+  "lang_code": "pt-PT",
+  "phonemizer_identity": {
+    "backend": "orthography2ipa",
+    "distribution": "orthography2ipa",
+    "version": "7.123.11a2",
+    "lang": "pt-PT",
+    "revision": "sha256:7188b00e1bd7f3f8400628ce46e037ea038a5ad8312f74fa45d69c2f728ef1c3",
+    "frontend": null
+  }
+}
+```
+
+When `TTSVoice` loads a voice, it starts the comparison of the block with the
+phonemizer that runs. The comparison runs in a background thread, and the load
+does not wait for it. Thus the warning can come after `load` returns.
+
+When a field is different, phoonnx logs one warning. The warning names the
+voice, each field that is different, and the trained and the running value.
+The voice loads and speaks as usual. This example is a voice that was trained
+on another orthography2ipa spec revision:
+
+```text
+WARNING - Voice pt_PT-tugão was trained with another phonemizer: revision: trained 'sha256:0000000000000000000000000000000000000000000000000000000000000000', running 'sha256:7188b00e1bd7f3f8400628ce46e037ea038a5ad8312f74fa45d69c2f728ef1c3'. The voice loads, but its pronunciation can differ from training.
+```
+
+The comparison follows these rules:
+
+- `revision` is the orthography2ipa spec revision. When the two revisions are
+  equal, a different `version` gives no warning, because the spec that makes
+  the phonemes did not change.
+- `lang` is the lect that the phonemizer resolved. A voice trained on `es-ES`
+  that runs on `pt-PT` gives a warning.
+- `frontend` is `null` when preprocess called the backend directly. A `null`
+  value is not compared.
+- A voice without the block, or with an empty block, gives no warning.
+- A block that phoonnx cannot read, such as a string or a block without
+  `lang`, gives one warning. A phonemizer that cannot report its identity also
+  gives one warning. In both cases the voice loads without the check.
+- An engine that reads text and not phonemes (`"alphabet": "graphemes"`) is not
+  checked.
+
+To clear the warning, install the phonemizer release in the trained block, or
+train the voice again with the running phonemizer.
 
 ## Engine Enum
 
-`Engine` (in `phoonnx.config`) records which framework a voice was built with. It has 17
-members. `piper`, `mimic3` and `coqui` all run through the single VITS adapter; the rest map
-to a dedicated adapter. The adapter registry itself is described in [Engines](engines.md).
+`Engine` (in `phoonnx.config`) records which framework a voice was built with. The table
+below lists every member. `phoonnx`, `piper`, `mimic3`, `coqui` and `transformers` name a
+file format, and they all run through the single VITS adapter, `vits`. Each other member
+names an adapter.
+
+The adapter registry itself is described in [Engines](engines.md).
+
+`Engine("kokoro")` gives `Engine.STYLETTS2`, because sherpa-onnx and kokoro-onnx write
+`kokoro` for the StyleTTS2 graph.
 
 | `Engine` value | Kind | Per-engine guide |
 |---|---|---|
-| `phoonnx` | Native VITS | [Engines](engines.md) |
+| `phoonnx` | VITS (shared adapter), native config | [Engines](engines.md) |
+| `vits` | Single-graph VITS: the shared adapter | [Engines](engines.md) |
+| `vits_streaming` | VITS split at the flow/HiFi-GAN boundary | [Streaming](streaming.md) |
+| `vits_prior_split` | VITS split at the prior boundary | [Engines](engines.md) |
 | `piper` | VITS (shared adapter) | [Engines](engines.md) |
 | `mimic3` | VITS (shared adapter) | [Engines](engines.md) |
 | `coqui` | VITS (shared adapter) | [Engines](engines.md) |
-| `transformers` | HuggingFace VITS/MMS | [Engines](engines.md) |
+| `transformers` | HuggingFace VITS/MMS (shared adapter) | [Engines](engines.md) |
 | `matcha` | Two-stage flow-matching mel | [Matcha](training/engines/matcha.md) |
 | `optispeech` | FastSpeech2-style + GAN vocoder | [OptiSpeech](training/engines/optispeech.md) |
 | `glowtts` | Flow-based mel + vocoder | [GlowTTS](training/engines/glowtts.md) |
@@ -172,9 +299,10 @@ to a dedicated adapter. The adapter registry itself is described in [Engines](en
 | `yourtts` | Multilingual VITS + d-vector cloning | [Cloning](cloning.md) |
 | `zipvoice` | Flow-matching in-context cloning | [ZipVoice](training/engines/zipvoice.md) |
 | `shami` | Levantine Arabic / English (HamsVITS) | [Shami](training/engines/shami.md) |
+| `tinyvoca` | Source-filter acoustic model on dizione tokens and stress | [Engines](engines.md) |
 | `f5tts` | DiT flow-matching (F5-TTS / Habibi) | [F5-TTS](training/engines/f5tts.md) |
 | `chatterbox` | Autoregressive codec-LM cloning | [Chatterbox](training/engines/chatterbox.md) |
-| `vosk` | VITS (shared adapter), vosk-tts Russian front-end | [Engines](engines.md) |
+| `vosk` | VITS adapter, vosk-tts Russian front-end | [Engines](engines.md) |
 | `supertonic` | Flow-matching, fixed per-speaker style | [Engines](engines.md) |
 | `neutts` | Autoregressive NeuCodec LM, preset cloning @24 kHz | [Cloning](cloning.md) |
 | `pockettts` | Flow-matching codec LM with explicit stream state, raw-text (no phonemizer) | [Pocket TTS](pockettts.md) |
@@ -186,12 +314,17 @@ to a dedicated adapter. The adapter registry itself is described in [Engines](en
 | `omnivoice` | Masked-diffusion codec LM (Qwen3 + Higgs Audio V2), raw-text, 600+ languages, 24 kHz | [OmniVoice](training/engines/omnivoice.md) |
 | `indic_parler` | Encoder-decoder codec LM (Flan-T5 + AR DAC decoder), description-controlled voices, 20 Indic languages + English, 44.1 kHz | [Indic Parler-TTS](training/engines/indic_parler.md) |
 | `mosstts` | Autoregressive RVQ-16 codec-LM, zero-shot cloning @48 kHz | [Cloning](cloning.md) |
+| `orpheus` | Llama codec-LM + SNAC decoder, emotive tags | [Orpheus](orpheus.md) |
+| `magpie` | Encoder-decoder codec LM (NVIDIA Magpie-TTS), 8 codebooks | [Engines](engines.md) |
+| `rapido` | Flow-matching DiT over VoxCPM2 AudioVAE latents @48 kHz | [Rápido](training/engines/rapido.md) |
+| `xvits` | Piper/VITS with flow-matching prosody and word emphasis, 5 graphs | [x-vits](training/engines/xvits.md) |
 
 ## Execution Providers
 
 Every ONNX session phoonnx creates — the voice model and the auxiliary graphs an
 engine loads (vocoders, speaker encoders, text encoders, diacritizers) — runs on a
-resolved, ordered list of ONNX Runtime execution providers.
+resolved, ordered list of ONNX Runtime execution providers. The decoder of a
+[streaming VITS voice](streaming.md) uses the same list as its encoder.
 
 Pass the list explicitly:
 
@@ -245,3 +378,80 @@ Check what a machine actually offers:
 import onnxruntime
 print(onnxruntime.get_available_providers())
 ```
+
+## Precision
+
+Some voices have two sets of files: full files and smaller int8 files. The
+`precision` setting picks the set that loads. It has three values:
+
+| Value | Files that load |
+|---|---|
+| `auto` | The default. Full files, except where the int8 files are marked for `auto` and no GPU provider runs the voice. |
+| `int8` | The int8 files. A voice that has no int8 files raises `PrecisionUnavailable`. |
+| `full` | The full files. A voice that has only int8 files raises `PrecisionUnavailable`. |
+
+Pass it to a load:
+
+```python
+voice = manager.get_voice("edwixx/pt-BR-rapido").load(precision="int8")
+```
+
+Or set it once for the process:
+
+```bash
+export PHOONNX_PRECISION=int8
+```
+
+The load argument wins over the environment variable. In the OVOS plugin, the
+`precision` key wins over the environment variable. An argument or key that is
+`None`, `null` or an empty string counts as unset, so the environment variable
+applies. With nothing set, the value is `auto`. Case and surrounding spaces do
+not matter. A value that is not a string, or not one of the three values,
+raises `ValueError`.
+
+`PrecisionUnavailable` is a `ValueError` and a `phoonnx.errors.VoiceLoadError`.
+Its message names the voice and the value that loads it.
+
+`auto` picks the int8 files only when both of these are true:
+
+1. The index marks the int8 files with `"auto": true`. The mark goes on a voice
+   whose int8 files pass the quality check and run faster than its full files.
+2. No GPU provider is in the resolved providers. The GPU providers are
+   `CUDAExecutionProvider`, `ROCMExecutionProvider`, `MIGraphXExecutionProvider`,
+   `DmlExecutionProvider` and `CoreMLExecutionProvider`.
+
+In every other case `auto` loads the full files. A voice that has only int8
+files, such as a Pocket TTS voice in any language but Italian, loads its int8
+files under `auto`.
+
+### Precision in the voice index
+
+An index entry names the full files of a voice. The int8 files go in the
+optional `variants` field, which holds only the URL fields that differ.
+`aux_model_urls` merges key by key, so the int8 entry below loads
+`flow_int8.onnx` and the full `text_encoder.onnx`:
+
+```json
+{
+  "model_url": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/model.onnx",
+  "aux_model_urls": {
+    "text_encoder_path": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/text_encoder.onnx",
+    "flow_path": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/flow.onnx"
+  },
+  "variants": {
+    "int8": {
+      "model_url": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/model_int8.onnx",
+      "aux_model_urls": {
+        "flow_path": "https://huggingface.co/Phoonnx/demo/resolve/0123456789abcdef0123456789abcdef01234567/flow_int8.onnx"
+      },
+      "auto": true
+    }
+  }
+}
+```
+
+An entry that has only int8 files carries `"precision": "int8"` and no variant.
+
+The voice id `edwixx/pt-BR-rapido-int8` is deprecated. It loads the int8 files
+of `edwixx/pt-BR-rapido` and logs a warning that names the release that removes
+it. Use `edwixx/pt-BR-rapido` with `precision="int8"`.

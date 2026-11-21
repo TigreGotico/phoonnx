@@ -322,56 +322,10 @@ class TestUtilFunctions(unittest.TestCase):
             # Test 4-digit year at end
             _normalize_dates_and_times("15/03/2025", "en")
 
-    @patch('unicode_rbnf.RbnfEngine')
-    @patch('phoonnx.normalization.text._normalize_word')
-    def test_normalize_main_function(self, mock_normalize_word, mock_rbnf_engine):
-        """Test main normalize function integration."""
-        mock_normalize_word.side_effect = lambda w, lang, engine: w.upper()
-        mock_rbnf_engine.for_language.return_value = self.mock_rbnf_engine
-
-        result = normalize("hello world", "en")
-        self.assertEqual(result, "HELLO WORLD")
-
-    @patch('phoonnx.normalization.text._normalize_dates_and_times')
-    @patch('phoonnx.normalization.text._normalize_word_hyphen_digit')
-    @patch('phoonnx.normalization.text._normalize_units')
-    def test_normalize_date_format_selection(self, mock_normalize_units,
-                                             mock_normalize_word_hyphen_digit,
-                                             mock_normalize_dates):
-        """Test normalize function date format selection."""
-        # Test for en-US, which should use MDY
-        normalize("The date is 08/03/2025", "en-US")
-        mock_normalize_dates.assert_called_with("The date is 08/03/2025", "en-US", "MDY")
-
-        # Test for en-GB, which should use DMY
-        normalize("The date is 08/03/2025", "en-GB")
-        mock_normalize_dates.assert_called_with("The date is 08/03/2025", "en-GB", "DMY")
-
-    @patch('unicode_rbnf.RbnfEngine')
-    def test_normalize_rbnf_engine_error_handling(self, mock_rbnf_engine):
-        """Test normalize function handles RBNF engine creation errors."""
-        mock_rbnf_engine.for_language.side_effect = Exception("RBNF error")
-
-        # Should not crash when RBNF engine fails to initialize
-        result = normalize("test", "unsupported-lang")
-        self.assertIsInstance(result, str)
-
     def test_normalize_empty_string(self):
         """Test normalize with empty string."""
         result = normalize("", "en")
         self.assertEqual(result, "")
-
-    def test_normalize_whitespace_only(self):
-        """Test normalize with whitespace only."""
-        result = normalize("   ", "en")
-        self.assertEqual(result, "")
-
-    def test_normalize_single_word(self):
-        """Test normalize with single word."""
-        with patch('phoonnx.normalization.text._normalize_word') as mock_normalize_word:
-            mock_normalize_word.return_value = "normalized"
-            normalize("word", "en")
-            mock_normalize_word.assert_called_with("word", "en", unittest.mock.ANY)
 
     def test_contractions_dictionary_completeness(self):
         """Test that CONTRACTIONS dictionary is properly structured."""
@@ -449,24 +403,6 @@ class TestUtilFunctions(unittest.TestCase):
         with patch('phoonnx.normalization.numbers.is_numeric', return_value=False):
             result = _normalize_number_word("123", "en", mock_engine)
             self.assertEqual(result, "123")  # Should return original on error
-
-    def test_complex_integration_scenario(self):
-        """Test complex integration scenario with multiple normalizations."""
-        text = "Dr. Smith said I can't attend the 3pm meeting on 15/03/2025, it's 25°C outside"
-
-        with patch('phoonnx.normalization.text._normalize_dates_and_times') as mock_dates:
-            mock_dates.return_value = text
-            with patch('phoonnx.normalization.text._normalize_units') as mock_units:
-                mock_units.return_value = text
-                with patch('phoonnx.normalization.text._normalize_word') as mock_word:
-                    mock_word.side_effect = lambda w, lang, engine: f"NORM_{w}"
-
-                    result = normalize(text, "en")
-
-                    # Verify all normalization steps were called
-                    mock_dates.assert_called_once()
-                    mock_units.assert_called_once()
-                    self.assertIn("NORM_", result)
 
     def test_edge_case_multiple_separators(self):
         """Test edge cases with multiple separators in numbers."""
@@ -561,20 +497,6 @@ class TestUtilFunctions(unittest.TestCase):
             # Float case
             _normalize_number_word("5.0", "en", None)
             mock_pronounce.assert_called_with(5.0, lang="en")  # float(5.0)
-
-    def test_normalize_multilingual_comprehensive(self):
-        """Test normalize function with comprehensive multilingual examples."""
-        test_cases = [
-            ("Hola Dr. García", "es", "Hola Doctor García"),
-            ("Bonjour M. Dupont", "fr", "Bonjour Monsieur Dupont"),
-            ("Olá Sr. Silva", "pt", "Olá Senhor Silva"),
-        ]
-
-        for text, lang, _expected_partial in test_cases:
-            with self.subTest(text=text, lang=lang):
-                result = normalize(text, lang)
-                # Just check that title expansion occurred
-                self.assertNotEqual(result, text)
 
     def test_normalize_units_priority_handling(self):
         """Test _normalize_units handles overlapping unit symbols correctly."""

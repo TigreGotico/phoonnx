@@ -13,8 +13,7 @@ serves a single-graph VITS voice and a multi-graph flow-matching voice without c
 ```mermaid
 flowchart TD
     T[Input text] --> PS[Phonetic spellings<br/>word-level overrides]
-    PS --> D{add_diacritics?<br/>Arabic / Hebrew}
-    D --> P[Phonemizer front-end<br/>sentence chunking + G2P]
+    PS --> P[scriptconv TextFrontend<br/>blocks, normalize, sentences,<br/>diacritize, phonemizer]
     P --> TK[Tokenizer<br/>phonemes / graphemes to IDs]
     TK --> A[Engine adapter<br/>build feed dict]
     A --> S[(ONNX Runtime session<br/>+ auxiliary graphs)]
@@ -23,40 +22,58 @@ flowchart TD
     N --> C[AudioChunk per sentence]
 ```
 
-Step by step, as implemented in `TTSVoice.synthesize`:
+`TTSVoice.synthesize` is two public steps. `TTSVoice.prepare` does steps 1 to 3 and yields
+one `Utterance` (text, symbols, token IDs, side streams, params) for each engine call.
+`TTSVoice.render` does steps 4 and 5 for one `Utterance` and returns one `AudioChunk`.
+`synthesize` calls `render` on each utterance that `prepare` yields, one at a time. Thus the
+first sentence becomes audio before the second sentence is phonemized. Step by step:
 
 1. **Phonetic spellings** — when `enable_phonetic_spellings` is set, word-level
    replacements loaded from the voice's `locale/<lang>/phonetic_spellings.txt` are applied
-   to the raw text.
-2. **Diacritics** — for Arabic/Hebrew voices, `add_diacritics` runs scriptconv's
-   diacritization pass before G2P. A per-call `SynthesisConfig.add_diacritics` wins; when
-   unset it defers to the voice config so an undiacritized model is never force-diacritized.
-3. **Phonemize** — the selected [phonemizer](phonemizers.md) splits the text into sentences
-   and converts each to a list of phoneme (or grapheme) strings. Inline `[[...]]` blocks
-   bypass the phonemizer and are inserted verbatim. Language-aware phonemizers (Shami) emit
-   per-phoneme language IDs through a `phonemize_with_language_ids` hook so the two streams
-   stay aligned.
-4. **Tokenize** — the `TTSTokenizer` maps phonemes/characters to integer IDs using the
-   voice's `phoneme_id_map`, inserting blank/pad/bos/eos tokens per the voice config. For
-   text-token engines (Chatterbox) the adapter's `encode_text` BPE-tokenizes the raw text
-   instead.
-5. **Adapter synthesize** — `phoneme_ids_to_audio` merges scale parameters (adapter defaults
-   → voice config → per-call `SynthesisConfig` → engine extras), builds an
+   to the raw text. A `<lang>.txt` file in `$PHOONNX_PHONETIC_SPELLINGS_DIR` adds to them
+   and wins over them.
+2. **Text frontend** — `TTSVoice.frontend` is a scriptconv `TextFrontend` over the voice's
+   [phonemizer](phonemizers.md). It runs a fixed order: it splits out inline `[[...]]`
+   blocks, normalizes the whole text, splits it into sentences, adds diacritics when
+   the voice or the call asks for them, and then runs the phonemizer. The symbols of a block
+   go into the output as written. A per-call `SynthesisConfig.add_diacritics` wins; when it
+   is unset, the voice config decides, so an undiacritized model is never force-diacritized.
+   An engine that reads text instead of phonemes gets the text from `TextFrontend.prepare`,
+   after the same normalization and diacritics as a phoneme voice.
+   Some phonemizers give a value per symbol beside the symbols, in the `streams` of each
+   segment from `phonemize_segments`: Shami a language ID, dizione a stress value. Each reaches the
+   engine as the request field of the same name (`language_ids`, `stress`), one value per
+   phoneme ID.
+3. **Encode** — the voice's encoder (`TTSVoice.encoder`, from `phoonnx/encoders.py`)
+   turns the frontend output into integer IDs. The adapter builds it in `make_encoder`. For
+   a phoneme or grapheme engine it is a `SymbolEncoder`: the `TTSTokenizer` maps
+   phonemes/characters to IDs using the voice's `phoneme_id_map`, inserting
+   blank/pad/bos/eos tokens per the voice config. For a text-token engine (Chatterbox) it
+   is a `TextEncoder`: Chatterbox overrides `make_encoder`, and its BPE tokenizer
+   tokenizes each normalized frontend chunk. Chatterbox does not call its `encode_text`
+   on this path.
+4. **Adapter synthesize** — `render` merges the parameters (adapter defaults → the
+   `inference` scales of the voice config → the voice's `engine_params` → the scales of
+   the per-call `SynthesisConfig` → its `extra_params`, where a later one wins), builds an
    `AdapterSynthesisRequest`, and hands it to the engine adapter, which runs the ONNX
    session(s) and returns a float32 waveform.
-6. **Post-process** — the waveform is optionally peak-normalized, volume-scaled, and clipped
-   to `[-1, 1]`, then yielded as one `AudioChunk` per sentence.
+5. **Post-process** — a waveform that holds NaN or infinite samples raises
+   `NonFiniteAudioError`. Otherwise the waveform is optionally peak-normalized or brought
+   to the `target_loudness`, volume-scaled, and clipped to `[-1, 1]`. Voice conversion and super-resolution run last when the call asks for
+   them. The result is one `AudioChunk` per utterance. `phoonnx.audio.write_wav` writes a
+   stream of chunks to a WAV file. `synthesize_wav` and `synthesize_ssml_wav` use it.
 
-Text normalization of numbers, dates and units (via `ovos-number-parser` /
-`ovos-date-parser`) is applied during dataset [preprocessing](training/preprocess.md) so
-training text matches inference; individual phonemizer backends may additionally clean their
-own input.
+Text normalization of numbers, dates and units (`text2spoken.normalize`) runs in the text
+frontend and during dataset [preprocessing](training/preprocess.md), before diacritization in
+both, so training text matches inference. Contractions stay as written. Every voice runs the step, text-token and grapheme engines included. The step is
+skipped only for a phonemizer that names `normalize` in its `owned_stages`, because that
+phonemizer normalizes its own input. Individual phonemizer backends may also clean their own input.
 
 ## Where the extension points live
 
 | Concern | Owner | Registry / hook |
 |---|---|---|
-| Text → phonemes | `scriptconv.phonemizers` (delegated) | `get_phonemizer(phoneme_type, alphabet, model)` in `config.py` |
+| Text → phonemes | `scriptconv.frontend.TextFrontend` and `scriptconv.phonemizers` (delegated) | `TTSVoice.frontend`; the phonemizer comes from scriptconv's registry by `phoneme_type` |
 | Phonemes → IDs | `phoonnx/tokenizer.py` | `TTSTokenizer` built from the voice config |
 | IDs → audio (ONNX I/O) | `phoonnx/engines/` | `register_engine(name, adapter_cls, detect_priority=...)` |
 | Mel → waveform (two-stage) | `phoonnx/engines/vocoders/` | vocoder registry, selected by `vocoder_type` |
@@ -66,15 +83,15 @@ own input.
 
 At load time `TTSVoice` resolves an adapter in this order (`voice.py` + `engines/__init__.py`):
 
-1. If the voice config declares an `engine`, the named adapter is used directly. The
-   `piper`, `mimic3` and `coqui` engines all share the single **VITS** adapter.
+1. If the voice config declares an `engine`, the named adapter is used directly.
+   `phoonnx`, `piper`, `mimic3`, `coqui` and `transformers` share the **VITS** adapter.
 2. Otherwise `detect_engine()` probes registered adapters in ascending `detect_priority`
    (lower is checked first) and returns the first whose `detect()` matches the config and
    ONNX session.
 3. If nothing matches, it falls back to the VITS adapter.
 
-The 17 declared engine formats and the adapter registry are documented in
-[Engines](engines.md); voice-config detection of Piper/Mimic3/Coqui/Transformers shapes is
+The adapter registry is documented in [Engines](engines.md), and every member of the
+`Engine` enum is listed in the [Configuration reference](configuration.md#engine-enum); voice-config detection of Piper/Mimic3/Coqui/Transformers shapes is
 documented in the [Configuration reference](configuration.md).
 
 ## Two-stage engines and auxiliary graphs
