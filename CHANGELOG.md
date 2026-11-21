@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.124.2a2](https://github.com/TigreGotico/phoonnx/tree/1.124.2a2) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.2a1...1.124.2a2)
+
+**Merged pull requests:**
+
+- chore\(deps\): linguatag \>= 0.4.1a1 [\#851](https://github.com/TigreGotico/phoonnx/pull/851) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.124.2a1](https://github.com/TigreGotico/phoonnx/tree/1.124.2a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.1a2...1.124.2a1)
+
+**Merged pull requests:**
+
+- fix: a split VITS voice streams its decoder windows, and Orpheus says it does not clone [\#835](https://github.com/TigreGotico/phoonnx/pull/835) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.124.1a2](https://github.com/TigreGotico/phoonnx/tree/1.124.1a2) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.1a1...1.124.1a2)
+
+**Merged pull requests:**
+
+- docs: make the install and quickstart pages work as written [\#836](https://github.com/TigreGotico/phoonnx/pull/836) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.124.1a1](https://github.com/TigreGotico/phoonnx/tree/1.124.1a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.0a1...1.124.1a1)
@@ -102,7 +126,6 @@
 **Merged pull requests:**
 
 - feat: VoiceConfig.to\_dict writes the native config.json, with a JSON Schema and a frontend [\#766](https://github.com/TigreGotico/phoonnx/pull/766) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- Update dependency librosa to v1 [\#740](https://github.com/TigreGotico/phoonnx/pull/740) ([renovate[bot]](https://github.com/apps/renovate))
 
 ## [1.120.1a1](https://github.com/TigreGotico/phoonnx/tree/1.120.1a1) (2026-11-19)
 
@@ -266,8 +289,6 @@
 - test: shared token-id fixture set for phoonnx.js parity [\#745](https://github.com/TigreGotico/phoonnx/pull/745) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - fix: side streams survive blanks and BOS/EOS [\#743](https://github.com/TigreGotico/phoonnx/pull/743) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - docs: add the Python API reference and the 2.0 target API [\#742](https://github.com/TigreGotico/phoonnx/pull/742) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- test: each raw-text engine reads the text2spoken reading of digits [\#741](https://github.com/TigreGotico/phoonnx/pull/741) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix\(train\): a preprocessing worker that cannot start stops the run [\#738](https://github.com/TigreGotico/phoonnx/pull/738) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.114.2a1](https://github.com/TigreGotico/phoonnx/tree/1.114.2a1) (2026-11-18)
 
@@ -304,12 +325,6 @@
 ## [1.113.16a1](https://github.com/TigreGotico/phoonnx/tree/1.113.16a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.15a2...1.113.16a1)
-
-**Merged pull requests:**
-
-- feat\(index\): every adapter has an index voice or a documented reason [\#737](https://github.com/TigreGotico/phoonnx/pull/737) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix\(tests\): the packaging test no longer copies its own scratch folder [\#736](https://github.com/TigreGotico/phoonnx/pull/736) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- chore\(deps\): floors instead of pins, and a reason for each upper bound [\#735](https://github.com/TigreGotico/phoonnx/pull/735) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.113.15a2](https://github.com/TigreGotico/phoonnx/tree/1.113.15a2) (2026-11-18)
 

@@ -308,10 +308,14 @@ def test_piper_text_voice_ids_match_phoonnx(text):
 
 
 def test_a_side_car_with_no_lang_code_takes_the_language_as_phoonnx():
-    config = {**PIPER, "lang_code": None, "language": {"code": "pt"}}
-    code = example(config, VITS_FILES)
-    lang = code.split("phonemize_to_list(text, ", 1)[1].split(")", 1)[0].strip('"')
-    assert normalize_lang(lang, default_region=False) == VoiceConfig.from_dict(copy.deepcopy(config)).lang_code == "pt"
+    # an espeak model reads with espeak.voice, as Piper does; a text model reads language.code
+    for config, expected in (({**PIPER, "lang_code": None, "language": {"code": "pt"}}, "en-US"),
+                             ({**PIPER, "lang_code": None, "language": {"code": "pt"}, "espeak": {"voice": "pt"},
+                               "phoneme_type": "text"}, "pt")):
+        code = example(config, VITS_FILES)
+        lang = code.split("phonemize_to_list(text, ", 1)[1].split(")", 1)[0].strip('"')
+        assert normalize_lang(lang, default_region=False) == VoiceConfig.from_dict(copy.deepcopy(config)).lang_code
+        assert normalize_lang(lang, default_region=False) == expected
     for config in ({**PIPER, "lang_code": None},  # no language block: espeak.voice
                    {**raw_text_config("graphemes", False), "lang_code": None}):  # a voice that reads any text
         code = example(config, VITS_FILES)
