@@ -10,9 +10,11 @@ import json
 from unittest.mock import MagicMock
 
 import numpy as np
+import pytest
 from scriptconv.phonemizers.shami import ShamiPhonemizer
 
 from phoonnx.config import SynthesisConfig, VoiceConfig
+from phoonnx.encoders import Utterance
 from phoonnx.engines.base import AdapterSynthesisResult
 from phoonnx.voice import TTSVoice
 
@@ -88,3 +90,12 @@ def test_inline_override_carries_no_stream():
     voice, _, _ = _shami_voice()
     requests = _requests(voice, "[[m a]]")
     assert requests and all(r.language_ids is None for r in requests)
+
+
+@pytest.mark.parametrize("values", [(0, 1), (0, 1, 0, 1)], ids=["short", "long"])
+def test_stream_of_the_wrong_length_raises(values):
+    voice, _, _ = _shami_voice()
+    utterance = Utterance(text=None, symbols=None, ids=(1, 4, 2), streams={"language_ids": values})
+    with pytest.raises(ValueError, match=rf"'language_ids' has {len(values)} values for 3 phoneme ids"):
+        voice.render(utterance)
+    voice.adapter.synthesize.assert_not_called()

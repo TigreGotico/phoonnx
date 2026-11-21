@@ -48,7 +48,7 @@ def _voice(lang, add_diacritics=False):
 
 
 def _training_symbols(lang, texts, add_diacritics=False, text_casing="ignore"):
-    """The phonemes ``phonemize_worker`` writes for each text."""
+    """The phonemes ``phonemize_worker`` writes for each text, or None for a dropped row."""
     config = PreprocessorConfig(
         input_dir=Path("."), output_dir=Path("."), language=lang, sample_rate=16000,
         cache_dir=Path("."), max_workers=1, single_speaker=True, speaker_id=None,
@@ -59,13 +59,13 @@ def _training_symbols(lang, texts, add_diacritics=False, text_casing="ignore"):
     tasks.put([Utterance(text=text, audio_path=Path("a.wav")) for text in texts])
     tasks.put(None)
     make_frontend = partial(preprocess.build_frontend, config.phoneme_type, config.alphabet,
-                            None, False, lang)
+                            None, False, lang, add_diacritics)
     with patch.object(preprocess, "make_silence_detector", return_value=MagicMock()):
         preprocess.phonemize_worker(config, tasks, results, make_frontend)
     rows = []
     while not results.empty():
         utt, _ = results.get()
-        rows.append(utt.phonemes)
+        rows.append(utt.phonemes if utt else None)
     return rows
 
 
@@ -102,6 +102,26 @@ class TestTrainingIdsEqualSynthesisIds(unittest.TestCase):
             expected = _synthesis_ids(voice, text, chunk="none")
         self.assertEqual([_tokenizer().tokenize(row)], expected)
         self.assertEqual(row.count("َ"), 2)
+
+    def test_a_row_whose_diacritization_fails_is_dropped(self):
+        class _FailsOnCats(_Fatha):
+            def diacritize(self, text):
+                if "قطط" in text:
+                    raise RuntimeError("diacritizer failed")
+                return super().diacritize(text)
+
+        with patch.object(scd, "_tashkeel", lambda *_, **__: _FailsOnCats()):
+            rows = _training_symbols("ar", ["هذا بيت.", "عندي قطط."], add_diacritics=True)
+        self.assertEqual([row is None for row in rows], [False, True])
+
+    def test_a_row_is_normalised_and_cased_to_a_known_text(self):
+        # The readings are written by hand: the unicode backend gives one symbol per character.
+        cases = [("en", "ignore", "Dr. Smith paid 3 dollars.", "Doctor Smith paid three dollars"),
+                 ("en", "lower", "Dr. Smith paid 3 dollars.", "doctor smith paid three dollars"),
+                 ("pt", "ignore", "O Dr. Silva tem 21 anos.", "O Doutor Silva tem vinte e um anos")]
+        for lang, casing, text, reading in cases:
+            with self.subTest(lang=lang, casing=casing):
+                self.assertEqual(_training_symbols(lang, [text], text_casing=casing), [list(reading)])
 
     def test_the_scorer_reads_text_as_the_dataset_does(self):
         from phoonnx.config import get_phonemizer, voice_frontend

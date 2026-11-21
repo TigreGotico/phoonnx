@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from phoonnx.config import VoiceConfig, get_text_casing
+from phoonnx.config import VoiceConfig, get_text_casing, voice_frontend
 from phoonnx.engines.vits import VitsAdapter
 from phoonnx.voice import TTSVoice
 
@@ -51,6 +51,20 @@ def test_a_voice_trained_with_upper_reads_hello_in_capitals():
     voice = _voice(text_casing="upper")
     upper_hello = [1, 0, 7, 0, 8, 0, 9, 0, 9, 0, 10, 0, 2]
     assert _ids(voice, "hello") == [upper_hello]
+
+
+def test_a_casing_change_after_the_first_synthesis_reaches_the_ids():
+    voice = _voice()
+    assert _ids(voice, "Hello") == [CAPITAL_HELLO]
+    voice.config.text_casing = "lower"
+    assert _ids(voice, "Hello") == [LOWER_HELLO]
+
+
+def test_ignore_keeps_the_frontend_revision_of_a_frontend_without_casing():
+    voice = _voice(text_casing="ignore")
+    without_casing = voice_frontend(voice.phonemizer, "en-US").identity().revision
+    assert without_casing is not None
+    assert voice.frontend.identity().revision == without_casing
 
 
 def test_the_casing_survives_the_native_config_round_trip():

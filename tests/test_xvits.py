@@ -348,6 +348,18 @@ def test_parse_marked_flags_each_word_of_a_span_and_keeps_punctuation_attached()
     assert parse_marked("no marks here") == ("no marks here", [False, False, False])
 
 
+def test_parse_marked_keeps_the_whitespace_and_flags_a_word_marked_inside():
+    assert parse_marked("one *two*\n\nthree four.") == ("one two\n\nthree four.", [False, True, False, False])
+    assert parse_marked("un*believ*able news") == ("unbelievable news", [True, False])
+
+
+def test_align_words_gives_a_moved_word_its_symbols():
+    # "£3 billion" reads "three billion pounds": "pounds" of "£3" moves after "billion"
+    alone = [list("θɹipaʊndz"), list("bɪljən")]
+    sentence = list("θɹi") + [" "] + list("bɪljən") + [" "] + list("paʊndz")
+    assert align_words(sentence, alone) == [0] * 3 + [-1] + [1] * 6 + [-1] + [0] * 6
+
+
 def test_align_words_follows_merged_and_reduced_words():
     # "in the house": the phonemizer merges "in" and "the" and reduces the vowel of "the"
     alone = [["ɪ", "n"], ["ð", "i"], ["h", "ˈ", "a", "ʊ", "s"]]
@@ -415,6 +427,32 @@ def test_marks_reach_the_tokens_of_the_marked_word_from_the_pass_that_made_the_i
         == [ids[" "]] * 3
     # the second sentence continues the word numbering: go = 4, now = 5
     assert {w for w in second.params["token_words"] if w >= 0} == {4, 5}
+
+
+def _spelled(voice, utterance):
+    """The letters of each word of *utterance*, keyed by word. This voice reads no punctuation."""
+    letters = voice.config.tokenizer.vocabulary.idx2char
+    words = {}
+    for token, word in zip(utterance.ids, utterance.params["token_words"]):
+        if word >= 0 and letters[token] != "_":
+            words[word] = words.get(word, "") + letters[token]
+    return words
+
+
+def test_a_mark_follows_its_word_when_the_normaliser_moves_it():
+    voice, _ = _voice()
+    (utterance,) = voice.prepare("a £3 *billion* deal.", SynthesisConfig(extra_params={"emphasis": "marked"}))
+    assert utterance.text == "a three billion pounds deal."
+    assert utterance.params["word_flags"] == [False, False, True, False]
+    assert _spelled(voice, utterance) == {0: "a", 1: "threepounds", 2: "billion", 3: "deal"}
+
+
+def test_a_mark_keeps_the_paragraph_breaks():
+    voice, _ = _voice()
+    utterances = list(voice.prepare("one *two*\n\nthree four.", SynthesisConfig()))
+    assert [u.text for u in utterances] == ["one two", "three four."]
+    assert [_spelled(voice, u) for u in utterances] == [{0: "one", 1: "two"}, {2: "three", 3: "four"}]
+    assert utterances[0].params["word_flags"] == [False, True, False, False]
 
 
 def test_text_without_marks_still_gets_a_word_for_each_token_and_no_flags():

@@ -47,7 +47,11 @@ from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
 from scriptconv.phonemizers.base import PhonemizedChunks
 from phoonnx.errors import NonFiniteAudioError, VoiceLoadError
+from phoonnx.engines.shami import ShamiAdapter
 from phoonnx.engines.vits import VitsAdapter
+from phoonnx.engines.vits_streaming import VitsStreamingAdapter
+from phoonnx.engines.xvits import XVitsAdapter
+from phoonnx.engines.yourtts import YourTTSAdapter
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
@@ -68,19 +72,18 @@ def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunk
     return [[c for c in chunk] for chunk, _, _ in chunks if chunk]
 
 
-_SKIPPED_BLOCKS = re.compile(r"(\s*)(?:\[\[.*?\]\](\s*))+")
+_SKIPPED_BLOCKS = re.compile(r"\s*(?:\[\[.*?\]\]\s*)+")
 
 
 def _gap(match: "re.Match[str]") -> str:
-    """What stands where a skipped block was: the whitespace before it if that has a line break,
-    else nothing when a mark follows the block directly, else one space."""
-    before, after = match[1], match[2]
-    if "\n" in before:
-        return before
-    if "\n" in after:
-        return after
+    """What stands where a run of skipped blocks was: nothing when a mark follows the last block
+    directly, else the whitespace around or between them with the most line breaks, else one space."""
+    spaces = INLINE_BLOCK.split(match[0])[::2]
     following = match.string[match.end():match.end() + 1]
-    return "" if not after and not following.isalnum() else " "
+    if not spaces[-1] and not following.isalnum():
+        return ""
+    widest = max(spaces, key=lambda space: space.count("\n"))
+    return widest if "\n" in widest else " "
 
 
 def _write_wav(path: str, audio: np.ndarray, sample_rate: int) -> str:
@@ -593,9 +596,10 @@ class TTSVoice:
             engine_params=engine_params,
         )
 
-        # num_symbols sizes the embedding of a VITS graph only; other engines
+        # num_symbols sizes the embedding of a VITS-family graph only; other engines
         # carry the field without using it.
-        if isinstance(adapter, VitsAdapter) and "num_symbols" in config_dict \
+        if isinstance(adapter, (VitsAdapter, VitsStreamingAdapter, YourTTSAdapter, ShamiAdapter, XVitsAdapter)) \
+                and "num_symbols" in config_dict \
                 and isinstance(voice_config.tokenizer, TTSTokenizer):
             ids = [i for value in voice_config.tokenizer.vocabulary.char2idx.values()
                    for i in (value if isinstance(value, list) else [value])]
@@ -1435,14 +1439,14 @@ class TTSVoice:
         if syn_config.speaker_reference is not None:
             params["reference_audio"] = load_reference_audio(syn_config.speaker_reference)
         if syn_config.speaker_reference_text:
-            params["prompt_tokens"] = self._prompt_token_ids(
-                syn_config.speaker_reference_text, syn_config.speaker_reference_lang)
-            # Raw string, for text-token adapters (OmniVoice, Spark-TTS) that tokenize
-            # the reference transcription themselves rather than through the shared
-            # phonemizer. Carried on the per-call request rather than adapter state so
-            # concurrent calls sharing one adapter instance never see each other's
-            # reference transcription.
-            params["speaker_reference_text"] = syn_config.speaker_reference_text
+            reference_text, reference_lang = syn_config.speaker_reference_text, syn_config.speaker_reference_lang
+            params["prompt_tokens"] = self._prompt_token_ids(reference_text, reference_lang)
+            # The text, for text-token adapters (OmniVoice, Spark-TTS) that tokenize the
+            # reference transcription themselves. It is normalised as the target text is,
+            # so the model reads both in one form. It goes on the per-call request, not on
+            # adapter state, so concurrent calls on one adapter never see each other's reference.
+            params["speaker_reference_text"] = self.frontend.prepare(
+                reference_text, Stages(diacritize=False, lang=reference_lang))
         if syn_config.exaggeration is not None:
             params["exaggeration"] = syn_config.exaggeration
         if syn_config.temperature is not None:
@@ -1450,7 +1454,11 @@ class TTSVoice:
         if syn_config.top_p is not None:
             params["top_p"] = syn_config.top_p
 
-        side_streams = {name: np.array([values], dtype=np.int64) for name, values in (streams or {}).items()}
+        side_streams = {}
+        for name, values in (streams or {}).items():
+            if len(values) != len(phoneme_ids):
+                raise ValueError(f"side stream {name!r} has {len(values)} values for {len(phoneme_ids)} phoneme ids")
+            side_streams[name] = np.array([values], dtype=np.int64)
 
         return AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,

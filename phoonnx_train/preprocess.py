@@ -97,13 +97,15 @@ class PathEncoder(json.JSONEncoder):
 
 
 def build_frontend(phoneme_type: PhonemeType, alphabet: Alphabet, model: Optional[str],
-                   keep_punctuation: bool, language: str) -> TextFrontend:
+                   keep_punctuation: bool, language: str, add_diacritics: bool) -> TextFrontend:
     """Build the text frontend a worker uses, the one a voice builds at inference.
 
-    Module level, so a partial of it pickles.
+    It is strict, so a row whose diacritizer or normaliser fails is dropped
+    rather than trained on text without that stage. Module level, so a partial
+    of it pickles.
     """
     phonemizer = get_phonemizer(phoneme_type, alphabet, model, keep_punctuation=keep_punctuation)
-    return voice_frontend(phonemizer, language)
+    return voice_frontend(phonemizer, language, Stages(diacritize=add_diacritics), strict=True)
 
 
 def phonemize_worker(
@@ -746,7 +748,9 @@ def cli(
     _LOGGER.info("Starting single pass processing with %d workers...", config.max_workers)
 
     # A resumed manifest must not mix rows phonemized with and without
-    # punctuation; a config written before the key existed was without it.
+    # punctuation, or in two casings. A config written before keep_punctuation
+    # existed was without it; one written before text_casing existed does not
+    # say, so the command line stands.
     existing_config_path = config.output_dir / "config.json"
     if resume_rows and existing_config_path.is_file():
         existing = json.loads(existing_config_path.read_text(encoding="utf-8"))
@@ -755,9 +759,15 @@ def cli(
             _LOGGER.warning("Resume: keeping keep_punctuation=%s from the existing config.json",
                             resumed_punctuation)
         keep_punctuation = resumed_punctuation
+        resumed_casing = existing.get("text_casing", config.text_casing)
+        if resumed_casing != config.text_casing:
+            _LOGGER.warning("Resume: keeping text_casing=%s from the existing config.json",
+                            resumed_casing)
+        config.text_casing = resumed_casing
 
     make_frontend = functools.partial(build_frontend, config.phoneme_type, config.alphabet,
-                                      config.phonemizer_model, keep_punctuation, config.language)
+                                      config.phonemizer_model, keep_punctuation, config.language,
+                                      config.add_diacritics)
     # The parent keeps its own phonemizer for the alphabet and the provenance record.
     phonemizer = get_phonemizer(config.phoneme_type,
                                 config.alphabet,

@@ -220,6 +220,17 @@ PUNCTUATION_MAP: Mapping[str, str] = {";": ",", ":": ",", "?": ".", "!": "."}
 """Default punctuation simplification into short (,) and long (.) pauses"""
 
 
+def _moved_to_compat(old: str, new: str):
+    """A static method that calls ``phoonnx.compat.<new>`` and warns that the name moved."""
+    def forward(*args, **kwargs):
+        from phoonnx import compat
+        from phoonnx.config import _warn_moved
+        _warn_moved(old, f"phoonnx.compat.{new}")
+        return getattr(compat, new)(*args, **kwargs)
+    forward.__doc__ = f"Deprecated. Use :func:`phoonnx.compat.{new}`."
+    return staticmethod(forward)
+
+
 @dataclass
 class Vocabulary:
     """
@@ -264,46 +275,8 @@ class Vocabulary:
         return Vocabulary(char2idx=char2idx, pad=pad, eos=eos, bos=bos, blank=blank,
                           blank_word=cfg.get("blank_word"))
 
-    @staticmethod
-    def from_piper_config(cfg: Dict[str, Any]) -> 'Vocabulary':
-        """
-        Creates a Vocabulary instance from a Piper configuration dictionary.
-
-        The Piper config format assumes `phoneme_id_map` values are lists where the ID is the first element.
-
-        Parameters:
-            cfg: The Piper configuration dictionary.
-
-        Returns:
-            A Vocabulary instance.
-        """
-        # Piper format has value as list of [id, ...]
-        char2idx: Dict[str, int] = {char: idx[0] for char, idx in cfg.get("phoneme_id_map", {}).items()}
-        pad: Optional[str] = cfg.get("pad") or DEFAULT_PAD_TOKEN
-        eos: Optional[str] = cfg.get("eos") or DEFAULT_EOS_TOKEN
-        bos: Optional[str] = cfg.get("bos") or DEFAULT_BOS_TOKEN
-        blank: Optional[str] = cfg.get("blank") or DEFAULT_BLANK_TOKEN
-        return Vocabulary(char2idx=char2idx, pad=pad, eos=eos, bos=bos, blank=blank)
-
-    @staticmethod
-    def from_mimic3_config(cfg: Dict[str, Any], tokens_txt: str) -> 'Vocabulary':
-        """
-        Build a Vocabulary from a Mimic3 configuration dictionary and the contents of a tokens.txt file.
-        
-        Parameters:
-            cfg (Dict[str, Any]): Mimic3 configuration dict; special token names are read from the "phonemes" section.
-            tokens_txt (str): Raw text of a tokens.txt file that maps token strings to numeric IDs.
-        
-        Returns:
-            Vocabulary: A Vocabulary populated from the tokens file with special tokens (pad, bos, eos, blank, blank_word) set from the configuration when present.
-        """
-        voc: 'Vocabulary' = Vocabulary.from_tokens_txt(tokens_txt, id_first=True)
-        voc.pad = cfg.get("phonemes", {}).get("pad") or cfg.get("phonemes", {}).get("phoneme_separator")
-        voc.eos = cfg.get("phonemes", {}).get("eos")
-        voc.bos = cfg.get("phonemes", {}).get("bos")
-        voc.blank = cfg.get("phonemes", {}).get("blank")
-        voc.blank_word = cfg.get("phonemes", {}).get("blank_word") or cfg.get("phonemes", {}).get("word_separator")
-        return voc
+    from_piper_config = _moved_to_compat("Vocabulary.from_piper_config", "vocabulary_from_piper_config")
+    from_mimic3_config = _moved_to_compat("Vocabulary.from_mimic3_config", "vocabulary_from_mimic3_config")
 
     @staticmethod
     def from_supertonic_indexer(indexer: List[int]) -> 'Vocabulary':
@@ -331,94 +304,8 @@ class Vocabulary:
         }
         return Vocabulary(char2idx=char2idx)
 
-    @staticmethod
-    def from_tokens_txt(tokens_txt: str, id_first: bool = False) -> 'Vocabulary':
-        """
-        Creates a Vocabulary instance by parsing a tokens.txt style string (ID token per line).
-
-        Parameters:
-            tokens_txt: A string where each line is formatted as "ID token" (e.g., "0 <pad>").
-
-        Returns:
-            A Vocabulary instance with character-to-index mapping.
-        """
-        char2idx: Dict[str, int] = {}
-        blank_tok = None
-        for line in tokens_txt.split("\n"):
-            try:
-                if id_first:
-                    idx_str, token = line.split(" ", 1)
-                else:
-                    token, idx_str = line.split(" ", 1)
-                char2idx[token] = int(idx_str)
-                if int(idx_str) == 0:
-                    blank_tok = token
-            except ValueError:
-                # Skip empty lines or malformed lines
-                pass
-
-        return Vocabulary(char2idx=char2idx, blank=blank_tok)
-
-    @staticmethod
-    def from_coqui_config(cfg: Dict[str, Any]) -> 'Vocabulary':
-        """
-        Build a Vocabulary from a Coqui TTS configuration dictionary.
-        
-        Supports Coqui character classes `TTS.tts.models.vits.VitsCharacters` and
-        `TTS.tts.utils.text.characters.Graphemes`; maps configured characters, punctuations,
-        and special tokens (pad, bos, eos, blank) to integer IDs according to Coqui's settings.
-        
-        Parameters:
-            cfg (Dict[str, Any]): Coqui TTS configuration dictionary containing a "characters" section.
-        
-        Returns:
-            Vocabulary: A Vocabulary whose char2idx maps each token to its index and whose
-            special-token fields (pad, eos, bos, blank) are set from the configuration.
-        
-        Raises:
-            ValueError: If the configuration specifies an unsupported Coqui tokenizer class.
-        """
-        characters_cfg: Dict[str, Any] = cfg.get("characters", {})
-        pad: Optional[str] = characters_cfg.get("pad")
-        eos: Optional[str] = characters_cfg.get("eos")
-        bos: Optional[str] = characters_cfg.get("bos")
-        blank: Optional[str] = characters_cfg.get("blank")
-        punctuations: Optional[str] = characters_cfg.get("punctuations")
-        characters: Optional[str] = characters_cfg.get("characters")
-        clazz: str = characters_cfg.get("characters_class", "N/A")
-        sort: bool = characters_cfg.get("is_sorted", False)
-        unique: bool = characters_cfg.get("is_unique", False)
-        vocab: List[str]
-
-        if clazz == "TTS.tts.models.vits.VitsCharacters":
-            vocab = list(punctuations) + list(characters)
-            if pad:
-                vocab.insert(0, pad)
-            if cfg.get("add_blank"):
-                blank = blank or "<BLNK>"
-            if blank:
-                vocab.append(blank)
-        elif clazz == "TTS.tts.utils.text.characters.Graphemes":
-            vocab = list(characters)
-            if unique:
-                # NOTE: deduplication in coqui does not preserve order
-                # MUST be used together with is_sorted
-                vocab = list(set(vocab))
-            if sort:
-                vocab = sorted(vocab)
-            vocab = [blank, *vocab] if blank is not None and len(blank) > 0 else vocab
-            vocab = [bos, *vocab] if bos is not None and len(bos) > 0 else vocab
-            vocab = [eos, *vocab] if eos is not None and len(eos) > 0 else vocab
-            vocab = [pad, *vocab] if pad is not None and len(pad) > 0 else vocab
-            vocab = vocab + list(punctuations)
-        else:
-            raise ValueError(f"unsupported coqui tokenizer: {clazz}")
-
-        return Vocabulary(char2idx={char: idx for idx, char in enumerate(vocab)},
-                          pad=pad,
-                          eos=eos,
-                          bos=bos,
-                          blank=blank)
+    from_tokens_txt = _moved_to_compat("Vocabulary.from_tokens_txt", "vocabulary_from_tokens_txt")
+    from_coqui_config = _moved_to_compat("Vocabulary.from_coqui_config", "vocabulary_from_coqui_config")
 
     @property
     def idx2char(self) -> Dict[int, str]:
@@ -686,8 +573,9 @@ class TTSTokenizer:
 
         Each stream holds one value per symbol of *text*. Each id keeps the value
         of the symbol that gave it, and an id that the tokenizer adds (a blank,
-        BOS or EOS) gets the neutral value 0. So every returned stream is as long
-        as the ids and in step with them.
+        BOS or EOS) gets the neutral value 0. A word blank keeps the value of its
+        space, and a folded compound the value of its first symbol. So every
+        returned stream is as long as the ids and in step with them.
 
         Returns:
             Tuple[List[int], Dict[str, List[int]]]: The token IDs and the streams.
@@ -800,119 +688,11 @@ class TTSTokenizer:
                             use_eos_bos=use_eos_bos, fold_compounds=fold_compounds,
                             unknown_id=unknown_id)
 
-    @staticmethod
-    def from_piper_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':
-        """
-        Create a TTSTokenizer configured from a Piper configuration.
-        
-        Parameters:
-            cfg (Dict[str, Any]): Piper configuration dictionary containing phoneme/token mappings and optional special token names.
-        
-        Returns:
-            TTSTokenizer: Tokenizer configured with the Vocabulary derived from `cfg` and Piper-oriented defaults for blank and BOS/EOS handling.
-        """
-        voc: Vocabulary = Vocabulary.from_piper_config(cfg)
-        # Default settings for Piper
-        add_blank: bool = True
-        blank_at_end: bool = True
-        blank_at_start: bool = True
-        use_eos_bos: bool = True
-        add_blank_word: bool = False
-        return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
-                            blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                            use_eos_bos=use_eos_bos)
-
-    @staticmethod
-    def from_vosk_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':
-        """
-        Create a TTSTokenizer for an alphacep vosk-tts voice.
-
-        Tokenization matches piper (blank id 0 interspersed between every token
-        with leading/trailing blanks, BOS/EOS wrapping) — which reproduces
-        vosk_tts's own ``^ 0 p 0 p … 0 $`` id stream exactly. Compound folding
-        is disabled because the phonemizer already emits complete phoneme
-        tokens, so merging neighbours (``s`` + ``h`` -> ``sh``) would be wrong.
-        """
-        voc: Vocabulary = Vocabulary.from_piper_config(cfg)
-        return TTSTokenizer(voc, add_blank_char=True, add_blank_word=False,
-                            blank_at_end=True, blank_at_start=True,
-                            use_eos_bos=True, fold_compounds=False)
-
-    @staticmethod
-    def from_mimic3_config(cfg: Dict[str, Any], tokens_txt: str) -> 'TTSTokenizer':
-        """
-        Factory method to create a TTSTokenizer from a Mimic3 configuration and tokens file.
-
-        Parameters:
-            cfg: The Mimic3 configuration dictionary.
-            tokens_txt: The content of the tokens.txt file.
-
-        Returns:
-            A configured TTSTokenizer instance.
-        """
-        voc: Vocabulary = Vocabulary.from_mimic3_config(cfg, tokens_txt)
-        phonemes_cfg: Dict[str, Any] = cfg.get("phonemes", {})
-        blank_between: str = phonemes_cfg.get("blank_between", BlankBetween.TOKENS_AND_WORDS)
-        blank_at_end: bool = phonemes_cfg.get("blank_at_end", True)
-        blank_at_start: bool = phonemes_cfg.get("blank_at_start", True)
-        use_eos_bos: bool = phonemes_cfg.get("auto_bos_eos", True)
-
-        add_blank: bool = blank_between != BlankBetween.WORDS  # intersperse blank char
-        add_blank_word: bool = blank_between != BlankBetween.TOKENS
-
-        return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
-                            blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                            use_eos_bos=use_eos_bos)
-
-    @staticmethod
-    def from_tokens_txt(tokens_txt: str, id_first=False) -> 'TTSTokenizer':
-        """
-        Create a TTSTokenizer from the contents of a tokens.txt file using conservative defaults.
-        
-        Parameters:
-            tokens_txt (str): Contents of a tokens.txt file that maps token strings to IDs.
-        
-        Returns:
-            TTSTokenizer: A tokenizer built from the parsed vocabulary configured with
-            add_blank_char=True, add_blank_word=True, blank_at_end=True, blank_at_start=True,
-            and use_eos_bos=True.
-        """
-        voc: Vocabulary = Vocabulary.from_tokens_txt(tokens_txt, id_first)
-        add_blank_word: bool = False
-        add_blank: bool = True
-        blank_at_end: bool = True
-        blank_at_start: bool = True
-        use_eos_bos: bool = False
-        return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
-                            blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                            use_eos_bos=use_eos_bos)
-
-    @staticmethod
-    def from_coqui_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':
-        """
-        Create a TTSTokenizer configured from a Coqui TTS configuration.
-        
-        Interprets the following Coqui config keys:
-        - "add_blank": enable inter-character blank insertion and control blank placement at start/end.
-        - "enable_eos_bos_chars": enable wrapping token sequences with BOS/EOS.
-        This factory does not enable word-level blank mapping (blank_word is False).
-        
-        Parameters:
-            cfg (Dict[str, Any]): Coqui configuration dictionary.
-        
-        Returns:
-            TTSTokenizer: Tokenizer instance configured according to the provided Coqui config.
-        """
-        voc: Vocabulary = Vocabulary.from_coqui_config(cfg)
-        add_blank_word: bool = False
-        # Coqui typically controls blank insertion via 'add_blank' flag
-        add_blank: bool = cfg.get("add_blank", False)
-        blank_at_end: bool = cfg.get("add_blank", False)
-        blank_at_start: bool = cfg.get("add_blank", False)
-        use_eos_bos: bool = cfg.get("enable_eos_bos_chars", False)
-        return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
-                            blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                            use_eos_bos=use_eos_bos)
+    from_piper_config = _moved_to_compat("TTSTokenizer.from_piper_config", "from_piper_config")
+    from_vosk_config = _moved_to_compat("TTSTokenizer.from_vosk_config", "from_vosk_config")
+    from_mimic3_config = _moved_to_compat("TTSTokenizer.from_mimic3_config", "from_mimic3_config")
+    from_tokens_txt = _moved_to_compat("TTSTokenizer.from_tokens_txt", "from_tokens_txt")
+    from_coqui_config = _moved_to_compat("TTSTokenizer.from_coqui_config", "from_coqui_config")
 
 
 def load_tokenizers_package(tokenizer_json: str):

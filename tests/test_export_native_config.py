@@ -115,6 +115,34 @@ def test_styletts2_exported_config_loads_with_training_facts(tmp_path):
     _assert_loads_with_training_facts(tmp_path / "out" / "config.json")
 
 
+# The classes' own forwards, which the exporter replaces only while it traces.
+ORIGINAL_FORWARDS = ["_InstanceNorm.forward", "_InstanceNorm.forward",
+                     "TextEncoder.forward", "DurationEncoder.forward"]
+
+
+def _styletts2_forwards():
+    from phoonnx_train.styletts2 import models
+    return [cls.forward.__qualname__ for cls in (torch.nn.InstanceNorm1d, torch.nn.InstanceNorm2d,
+                                                 models.TextEncoder, models.DurationEncoder)]
+
+
+def test_styletts2_export_restores_the_forwards_it_patches(tmp_path):
+    test_styletts2_exported_config_loads_with_training_facts(tmp_path)
+    assert _styletts2_forwards() == ORIGINAL_FORWARDS
+
+
+def test_a_failed_styletts2_export_restores_the_forwards_it_patches(tmp_path):
+    from unittest.mock import patch
+    from phoonnx_train.styletts2.export import export_styletts2_onnx
+
+    config_path = tmp_path / "training.json"
+    config_path.write_text(json.dumps(TRAINING_CONFIG), encoding="utf-8")
+    with patch("phoonnx_train.engines.styletts2._build_text_aligner", side_effect=RuntimeError("stop")):
+        with pytest.raises(RuntimeError, match="stop"):
+            export_styletts2_onnx(tmp_path / "missing.pth", config_path, tmp_path / "out")
+    assert _styletts2_forwards() == ORIGINAL_FORWARDS
+
+
 def test_styletts2_export_leaves_gradients_on(tmp_path):
     import torch
     test_styletts2_exported_config_loads_with_training_facts(tmp_path)
@@ -135,6 +163,16 @@ def test_exported_voice_loads_with_its_own_adapter(engine_name, config_name, ada
     # the config alone names the engine, with no ONNX graph to probe
     written = json.loads((out / config_name).read_text(encoding="utf-8"))
     assert type(detect_engine(config=written)).__name__ == adapter_name
+
+
+def test_speedyspeech_export_names_one_engine(tmp_path):
+    import onnx
+
+    out = _export("speedyspeech", tmp_path, TRAINING_CONFIG)
+    metadata = {p.key: p.value for p in onnx.load(str(next(out.glob("*.onnx")))).metadata_props}
+    written = json.loads((out / "last.json").read_text(encoding="utf-8"))
+    assert metadata["model_type"] == "speedyspeech"
+    assert metadata["engine"] == written["engine"] == "fastpitch"
 
 
 def _optispeech_checkpoint(path: Path) -> None:

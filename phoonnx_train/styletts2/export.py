@@ -18,8 +18,10 @@ The exportability rewrites (all faithful for batch=1):
 """
 import json
 import logging
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterator, Optional
+from unittest.mock import patch
 
 import numpy as np
 import torch
@@ -76,12 +78,15 @@ def _duration_encoder_forward(self, x, style, text_lengths, m):
     return x.transpose(-1, -2)
 
 
-def _apply_export_patches() -> None:
+@contextmanager
+def _export_patches() -> Iterator[None]:
+    """The exportable forwards, in place only while the graphs are traced."""
     from phoonnx_train.styletts2 import models as _M
-    torch.nn.InstanceNorm1d.forward = _instance_norm_forward
-    torch.nn.InstanceNorm2d.forward = _instance_norm_forward
-    _M.TextEncoder.forward = _text_encoder_forward
-    _M.DurationEncoder.forward = _duration_encoder_forward
+    with (patch.object(torch.nn.InstanceNorm1d, "forward", _instance_norm_forward),
+          patch.object(torch.nn.InstanceNorm2d, "forward", _instance_norm_forward),
+          patch.object(_M.TextEncoder, "forward", _text_encoder_forward),
+          patch.object(_M.DurationEncoder, "forward", _duration_encoder_forward)):
+        yield
 
 
 class Synth(torch.nn.Module):
@@ -194,8 +199,6 @@ def export_styletts2_onnx(
     scfg = StyleTTS2Config(**{k: v for k, v in cfg_raw.get("styletts2", cfg_raw).items()
                               if k in StyleTTS2Config.__dataclass_fields__})
 
-    _apply_export_patches()
-
     from munch import munchify
 
     from phoonnx_train.styletts2.models import build_model
@@ -239,13 +242,6 @@ def export_styletts2_onnx(
 
     from phoonnx_train.torch_compat import onnx_export_kwargs
 
-    model_path = output_dir / "model.onnx"
-    torch.onnx.export(synth, (tokens, style, speed), str(model_path),
-                      input_names=["tokens", "style", "speed"],
-                      output_names=["waveform"],
-                      dynamic_axes={"tokens": {1: "n"}, "waveform": {0: "s"}},
-                      opset_version=OPSET_VERSION, **onnx_export_kwargs())
-
     class Enc(torch.nn.Module):
         def __init__(self):
             super().__init__()
@@ -257,11 +253,18 @@ def export_styletts2_onnx(
             mm = self.mel(wav)
             return self.style(mm), self.pred(mm)
 
+    model_path = output_dir / "model.onnx"
     enc_path = output_dir / "style_encoder.onnx"
-    torch.onnx.export(Enc().eval(), torch.randn(1, sample_rate * 2), str(enc_path),
-                      input_names=["waveform"], output_names=["ref_p", "ref_s"],
-                      dynamic_axes={"waveform": {1: "s"}},
-                      opset_version=OPSET_VERSION, **onnx_export_kwargs())
+    with _export_patches():
+        torch.onnx.export(synth, (tokens, style, speed), str(model_path),
+                          input_names=["tokens", "style", "speed"],
+                          output_names=["waveform"],
+                          dynamic_axes={"tokens": {1: "n"}, "waveform": {0: "s"}},
+                          opset_version=OPSET_VERSION, **onnx_export_kwargs())
+        torch.onnx.export(Enc().eval(), torch.randn(1, sample_rate * 2), str(enc_path),
+                          input_names=["waveform"], output_names=["ref_p", "ref_s"],
+                          dynamic_axes={"waveform": {1: "s"}},
+                          opset_version=OPSET_VERSION, **onnx_export_kwargs())
 
     _fix_negative_transpose_perms(model_path)
     _fix_negative_transpose_perms(enc_path)
