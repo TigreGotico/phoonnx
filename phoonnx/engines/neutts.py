@@ -70,7 +70,7 @@ from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 
 import numpy as np
 import onnxruntime
-from quebra_frases import sentence_tokenize
+from quebra_frases import span_indexed_sentence_tokenize
 
 from phoonnx.engines._sampling import apply_repetition_penalty
 from phoonnx.engines._sampling import ranked, softmax
@@ -376,10 +376,14 @@ class NeuTTSAdapter(BaseOnnxAdapter):
             return [text]
         chunks: List[str] = []
         current = ""
-        for sentence in sentence_tokenize(text) or [text]:
-            sentence = sentence.strip()
+        previous_end = None
+        for start, end, _ in span_indexed_sentence_tokenize(text) or [(0, len(text), text)]:
+            sentence = text[start:end].strip()
             if not sentence:
                 continue
+            # no space between sentences where the text has none (Chinese, Japanese)
+            joint = "" if start == previous_end else " "
+            previous_end = end
             pieces = [sentence]
             if len(sentence) > max_chars:
                 pieces, word_chunk = [], ""
@@ -391,11 +395,13 @@ class NeuTTSAdapter(BaseOnnxAdapter):
                         word_chunk = f"{word_chunk} {word}".strip()
                 if word_chunk:
                     pieces.append(word_chunk)
-            for piece in pieces:
+            for index, piece in enumerate(pieces):
                 if current and len(current) + 1 + len(piece) > max_chars:
                     chunks.append(current)
                     current = ""
-                current = f"{current} {piece}".strip()
+                if current:
+                    current += joint if index == 0 else " "
+                current += piece
         if current:
             chunks.append(current)
         return chunks

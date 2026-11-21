@@ -49,10 +49,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import onnxruntime
-from quebra_frases import sentence_tokenize
 
 from phoonnx.engines._sampling import ranked
-from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
+from phoonnx.engines.base import (
+    AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter, pack_sentences,
+)
 from phoonnx.providers import make_session
 from phoonnx.tokenizer import BPETokenizer
 from phoonnx.util import LOG
@@ -184,22 +185,13 @@ def chunk_text(text: str, max_len: int = MAX_CHUNK_CHARS) -> List[str]:
     """Pack whole sentences into chunks of at most ``max_len`` characters.
 
     One chunk is one autoregressive pass. Sentence boundaries come from
-    ``quebra_frases.sentence_tokenize``, the splitter the rest of phoonnx uses.
+    ``quebra_frases``, the splitter the rest of phoonnx uses.
     """
     chunks: List[str] = []
     for paragraph in (p.strip() for p in re.split(r"\n\s*\n+", text.strip())):
         if not paragraph:
             continue
-        current = ""
-        for sentence in sentence_tokenize(paragraph):
-            if len(current) + len(sentence) + 1 <= max_len:
-                current += (" " if current else "") + sentence
-            else:
-                if current:
-                    chunks.append(current.strip())
-                current = sentence
-        if current:
-            chunks.append(current.strip())
+        chunks.extend(pack_sentences(paragraph, max_len))
     return chunks or ([text.strip()] if text.strip() else [])
 
 
