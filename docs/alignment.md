@@ -1,13 +1,22 @@
 # Phoneme Alignment
 
-Phoneme alignment gives you per-phoneme timing: how many audio samples each phoneme
-occupies in the synthesized output. This is the foundation for visemes (lip-sync),
-karaoke-style word highlighting, and subtitle generation.
+<!-- agent-hint
+covers: how to get per-phoneme timing from synthesis, at runtime or from an exported model
+source: phoonnx/voice.py:TTSVoice.synthesize, phoonnx/voice.py:TTSVoice.render, phoonnx/alignment.py, phoonnx/onnx_surgery.py:add_phoneme_alignment_output, phoonnx/cli.py:add_alignment
+generated: no
+verify: pytest tests/test_alignment.py tests/test_runtime_alignment.py, plus the runtime alignment and add-alignment examples on the page
+see: streaming.md, cli.md, training/export.md
+-->
+
+This page shows how to get the timing of each phoneme in synthesized audio, for developers who build lip-sync, karaoke highlighting or subtitles.
+
+Phoneme alignment tells you how many audio samples each phoneme takes in the output.
 
 > **Model support required.** Alignment is an optional second output of the ONNX
-> model. Standard exported models do **not** include it. See
-> [Exporting a model with alignment support](#exporting-a-model-with-alignment-support)
-> below.
+> model. Standard exported models do **not** include it. For a VITS-family model,
+> phoonnx adds that output at runtime when the `onnx` package is installed. See
+> [Runtime alignment](#runtime-alignment-for-models-exported-without-the-flag) and
+> [Exporting a model with alignment support](#exporting-a-model-with-alignment-support).
 
 ---
 
@@ -18,9 +27,9 @@ Pass `include_alignments=True` to `TTSVoice.synthesize()`:
 ```python
 from phoonnx.voice import TTSVoice
 
-voice = TTSVoice.load("model-aligned.onnx", "config.json")
+voice = TTSVoice.load("model.onnx", "config.json")
 
-for chunk in voice.synthesize("Hello world.", include_alignments=True):
+for chunk in voice.synthesize("Olá mundo.", include_alignments=True):
     print(f"phonemes : {chunk.phonemes}")
     print(f"phoneme ids: {chunk.phoneme_ids}")
 
@@ -32,6 +41,29 @@ for chunk in voice.synthesize("Hello world.", include_alignments=True):
         # Model does not expose alignment output, or reconstruction failed
         print("  (no alignment available)")
 ```
+
+With the files of `OpenVoiceOS/phoonnx_pt-PT_miro_unicode` and the `streaming` extra
+(which installs `onnx`), the output is:
+
+```text
+phonemes : ['O', 'l', 'a', '́', ' ', 'm', 'u', 'n', 'd', 'o', '.']
+phoneme ids: [1, 0, 26, 0, 23, 0, 12, 0, 41, 0, 3, 0, 24, 0, 32, 0, 25, 0, 15, 0, 26, 0, 8, 0, 2]
+  'o'      104.5 ms
+  'l'       46.4 ms
+  'a'       58.0 ms
+  '́'       34.8 ms
+  ' '       34.8 ms
+  'm'       46.4 ms
+  'u'       69.7 ms
+  'n'       81.3 ms
+  'd'       69.7 ms
+  'o'       46.4 ms
+  '.'      534.1 ms
+```
+
+The alignment shows `o` where `phonemes` shows `O`. The vocabulary of this voice holds no
+`O`, so the tokenizer gives the id of `o`, and the alignment reads each symbol back from
+the vocabulary. The first call also writes `model.alignment.onnx` next to `model.onnx`.
 
 ### `AudioChunk` alignment fields
 
@@ -112,30 +144,27 @@ duration-predictor's frame rate, matching the decoder's implicit hop) and for
 two-stage engines (the "frames" are literal mel frames, and `hop_length` is
 the mel→waveform vocoder's hop size).
 
-| Engine family | Native durations today? | Units | Conversion rule |
+| Engine family | Native durations? | Units | Conversion rule |
 |---|---|---|---|
 | VITS (piper/mimic3/coqui/phoonnx) | Yes, in phoonnx's own `--add-phoneme-alignment` exports (`phoneme_id_samples`) | duration-predictor frames | `samples = frames * hop_length` |
 | YourTTS | Same VITS-family contract; yes if the export adds a second output | duration-predictor frames | `samples = frames * hop_length` |
 | OptiSpeech | Yes — `durations` is a standard third output (`[wav, wav_lengths, durations]`) | duration-predictor frames | `samples = frames * hop_length` |
-| FastPitch / Mixer-TTS | No — standard exports emit only `mel_spec` | mel frames (if a future export adds one) | `samples = frames * hop_length` |
-| GlowTTS (Larynx/Coqui) | No — standard exports emit only the mel tensor(s) | mel frames (if a future export adds one) | `samples = frames * hop_length` |
-| Matcha-TTS | No — standard two-stage exports emit `[mel, mel_lengths]`; end-to-end fused exports have no separate mel/durations at all | mel frames (if a future export adds one) | `samples = frames * hop_length` |
-| StyleTTS2 / Kokoro | No — standard exports emit only the waveform | model frames (if a future export adds one) | `samples = frames * hop_length` |
+| FastPitch / Mixer-TTS | No — standard exports emit only `mel_spec` | mel frames (for an export that adds one) | `samples = frames * hop_length` |
+| GlowTTS (Larynx/Coqui) | No — standard exports emit only the mel tensor(s) | mel frames (for an export that adds one) | `samples = frames * hop_length` |
+| Matcha-TTS | No — standard two-stage exports emit `[mel, mel_lengths]`; end-to-end fused exports have no separate mel/durations at all | mel frames (for an export that adds one) | `samples = frames * hop_length` |
+| StyleTTS2 / Kokoro | No — standard exports emit only the waveform | model frames (for an export that adds one) | `samples = frames * hop_length` |
 | ZipVoice | **Not supported.** In-context flow-matching with no discrete duration predictor — there is nothing to align to a token. `synthesize()` never populates `phoneme_id_samples`. | — | — |
 
 For the "No" rows, the adapter still implements name-based detection
 (`DURATION_OUTPUT_NAMES` lists plausible output names such as `durations`,
 `dur`, `w_ceil`, `logw`, `pred_dur`) so a model re-exported with that tensor
-exposed lights up alignment automatically, with no adapter code changes. Until
-then, `include_alignments=True` degrades gracefully: `phoneme_id_samples` and
-`phoneme_alignments` come back `None`, exactly like an unpatched VITS model —
-synthesis itself is never affected.
+exposed gives alignments with no change to the adapter code. For a model without
+that tensor, `include_alignments=True` gives `None` for `phoneme_id_samples` and
+`phoneme_alignments`, as for an unpatched VITS model. Synthesis itself does not change.
 
-**Future work — forced alignment.** ZipVoice and any other in-context /
-autoregressive engine without a discrete duration predictor cannot expose
-native alignment this way. A forced-alignment fallback (e.g. running a
-phoneme-to-audio aligner such as CTC-segmentation or MFA over the generated
-audio) would be needed to support those engines; it is not implemented here.
+ZipVoice and the other in-context or autoregressive engines have no discrete duration
+predictor, so they cannot give native alignment this way. phoonnx has no forced
+aligner for their audio.
 
 ---
 
@@ -148,9 +177,9 @@ tensor as a second output, use the `--add-phoneme-alignment` flag when exporting
 python -m phoonnx_train.export_onnx checkpoint.ckpt -c config.json --add-phoneme-alignment
 ```
 
-This modifies the exported `.onnx` graph to surface the `Ceil` node output (phoneme
-durations) as a named model output. The modification is done by
-`add_phoneme_alignment_output()` in `phoonnx_train/export_onnx.py`.
+This changes the exported `.onnx` graph so that the `Ceil` node output (the phoneme
+durations) is a named model output. `add_phoneme_alignment_output()` in
+`phoonnx/onnx_surgery.py` makes the change.
 
 You can also apply it post-hoc to a model you already have, without the
 training package installed:
@@ -159,11 +188,14 @@ training package installed:
 phoonnx-voices add-alignment model.onnx
 ```
 
-That writes `model.alignment.onnx` next to the original — the same name the
-runtime path looks for — so every later load finds it and no request pays for
-the surgery. Pass `-o` to write somewhere else. It fails loudly, naming the
-reason, when the model has no unique duration tensor or `onnx` is not
-installed.
+```text
+Wrote alignment-capable model to: model.alignment.onnx
+```
+
+The command writes `model.alignment.onnx` next to the original. The runtime path looks for
+that name, so every later load finds it and no request pays for the surgery. Pass `-o`
+to write somewhere else. The command fails with an error that names the reason when the
+model has no unique duration tensor or `onnx` is not installed.
 
 The same thing from Python:
 
@@ -208,8 +240,7 @@ or go straight back to `None` without retrying. Across process restarts, the
 `<model>.alignment.onnx` file itself is the cache: if it already exists and is
 newer than the model, it's reused as-is, no surgery repeated.
 
-`include_alignments=False` never touches any of this — it is the exact same
-zero-cost no-op it always was.
+`include_alignments=False` never runs any of this and costs nothing.
 
 ```python
 from phoonnx.voice import TTSVoice
@@ -250,5 +281,9 @@ for align in chunk.phoneme_alignments or []:
 
 ### Karaoke / subtitle highlighting
 
-Accumulate sample offsets to get word-start timestamps, then use them to
-synchronise text highlights with audio playback.
+Add up the sample offsets to get the start time of each word. Use these times to move
+the text highlight with the audio.
+
+---
+
+[Docs index](index.md) · Previous: [Streaming](streaming.md) · Next: [Configuration reference](configuration.md)

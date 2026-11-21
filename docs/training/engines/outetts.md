@@ -1,8 +1,14 @@
 # OuteTTS Engine
 
-This page is for integrators who want OuteTTS voices in phoonnx. After reading it you can
-pick a language, understand what the two ONNX graphs do, and know why phoonnx ships the
-0.6B model and not the 1B.
+<!-- agent-hint
+covers: which OuteTTS languages and speakers exist, what the two graphs do and the decoding defaults
+source: phoonnx/engines/outetts.py, phoonnx/voice_index/outetts.json
+generated: no
+verify: pytest tests/test_outetts.py tests/test_card_example_outetts.py; the decoding-defaults table: none, checked by reading phoonnx/engines/outetts.py:OuteTTSAdapter.default_params
+see: sparktts.md, ../../cloning.md, ../../engines.md
+-->
+
+This page explains the OuteTTS engine, its languages and its speakers, for integrators who want OuteTTS voices in phoonnx.
 
 > Related: [adapter architecture](../../engines.md) ·
 > [configuration](../../configuration.md) · [voice cloning](../../cloning.md) ·
@@ -134,10 +140,9 @@ Sampling can occasionally make the model repeat or loop part of the sentence. Th
 been observed in Ukrainian. Greedy decoding (`temperature=0`) does not loop, but it is
 not the default.
 
-ASR coverage used to check word error rate during integration was limited for several
-languages: Arabic, Belarusian, Bengali, Persian, Swahili and Tamil had no capable
-`onnx-asr` model to check against, and Georgian had none at all. Those voices are
-therefore less verified than the European ones.
+Some languages have no word error rate check. Arabic, Belarusian, Bengali, Persian, Swahili
+and Tamil have no capable `onnx-asr` model to check against, and Georgian has none at all.
+These voices are less verified than the European ones.
 
 ## Decoding parameters
 
@@ -196,3 +201,7 @@ Licenses differ per artifact:
 
 Model authorship and research credit belong to OuteAI. Do not clone a voice without the
 speaker's permission.
+
+---
+
+[Docs index](../../index.md) · Previous: [Shami](shami.md) · Next: [OmniVoice](omnivoice.md)

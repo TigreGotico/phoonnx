@@ -1,9 +1,14 @@
 # GlowTTS Engine (Larynx)
 
-This page is for voice builders and integrators working with GlowTTS / Larynx
-voices in phoonnx. After reading it you can load a GlowTTS voice with its
-vocoder, convert a Larynx or Coqui voice, and train and export your own mel
-model.
+<!-- agent-hint
+covers: how to load a GlowTTS voice with its vocoder, convert a Larynx or Coqui voice and train a mel model
+source: phoonnx/engines/glowtts.py, phoonnx/engines/glowtts_config.py, phoonnx_train/engines/glowtts.py, phoonnx/voice_index/glowtts.json
+generated: no
+verify: pytest tests/test_glowtts.py tests/test_glowtts_training.py; the preset table: none, checked by reading phoonnx_train/engines/glowtts.py:_QUALITY_PRESETS
+see: matcha.md, ../training.md, ../../vocoders.md
+-->
+
+This page explains how to load, convert and train GlowTTS voices, for voice builders and integrators.
 
 > Related: [training reference](../training.md) ·
 > [adapter architecture](../../engines.md) ·
@@ -28,7 +33,7 @@ neural vocoder or a universal Griffin-Lim fallback.
 ## Extras needed
 
 Inference: phonemization uses **gruut** (`pip install gruut`, or the relevant
-language extra). Training uses the `train` extra: `pip install phoonnx[train]`.
+language extra). Training uses the `train` extra: `pip install --pre "phoonnx[train]"`.
 
 ## Inference contract
 
@@ -115,33 +120,37 @@ extraction, shared with VITS) and a self-contained, pure-torch GlowTTS
 implementation vendored under `phoonnx_train/glowtts/` — no `coqui-tts` / `TTS`
 dependency. See `phoonnx_train/glowtts/__init__.py` for the full provenance
 note: a reimplementation from the published GlowTTS paper architecture (Kim et
-al. 2020), with the training math audited against the original reference
+al. 2020), with the training math checked against the original reference
 implementation (jaywalnut310/glow-tts, MIT). The mel basis is pinned to fmin 0 /
 fmax 8000 Hz (matching the HiFi-GAN-family vocoder configs) and recorded in the
 exported ONNX metadata.
 
 ```bash
 # 1. preprocess an LJSpeech-style dataset (shared with VITS)
-python phoonnx_train/preprocess.py \
+python -m phoonnx_train.preprocess \
   --input-dir /data/my-dataset \
   --output-dir /data/preprocessed \
   --language en-us
 
 # 2. train
-python phoonnx_train/train.py \
+python -m phoonnx_train.train \
   --dataset-dir /data/preprocessed \
   --engine glowtts \
   --quality medium \
   --batch-size 16 \
-  --max-epochs 1000
+  --max-epochs 1000 \
+  --default-root-dir /data/preprocessed
 
 # 3. export the mel model to ONNX
-python phoonnx_train/export_onnx.py \
+python -m phoonnx_train.export_onnx \
+  /data/preprocessed/lightning_logs/version_0/checkpoints/epoch=999-step=250000.ckpt \
   --engine glowtts \
   --config /data/preprocessed/config.json \
-  --output-dir ./onnx \
-  /data/preprocessed/lightning_logs/version_0/checkpoints/last.ckpt
+  --output-dir ./onnx
 ```
+
+Without `--default-root-dir`, PyTorch Lightning writes `lightning_logs/` in the current
+folder. The trainer keeps every epoch checkpoint and writes no `last.ckpt`.
 
 `export_onnx` produces **only the mel model** (`<checkpoint-stem>.onnx`), with
 the exact input/output contract above (`input` / `input_lengths` / `scales` →
@@ -227,3 +236,7 @@ GlowTTS is two-stage, so each indexed voice links a vocoder (see
 ## References
 
 - [Larynx](https://github.com/rhasspy/larynx) · [GlowTTS paper](https://arxiv.org/abs/2005.11129)
+
+---
+
+[Docs index](../../index.md) · Previous: [Matcha-TTS](matcha.md) · Next: [Mixer-TTS](mixertts.md)

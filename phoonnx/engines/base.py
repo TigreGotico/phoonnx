@@ -192,6 +192,16 @@ class BaseOnnxAdapter(ABC):
     # Optional
     # ------------------------------------------------------------------
 
+    def length_scale_params(self, length_scale: float) -> Dict[str, float]:
+        """The engine's own speed parameters for a VITS-style ``length_scale``.
+
+        A length scale above 1 makes the speech slower. An engine that reads
+        ``length_scale`` itself keeps this default, which returns nothing. An
+        engine with a speed key of its own returns that key, scaled the way the
+        engine reads it.
+        """
+        return {}
+
     @property
     def takes_symbols(self) -> bool:
         """Whether the model reads phoneme symbols, so an inline ``[[...]]`` block can reach it.

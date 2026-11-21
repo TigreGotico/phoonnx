@@ -1,8 +1,14 @@
 # FastPitch Engine
 
-This page is for voice builders and integrators working with FastPitch voices in
-phoonnx. After reading it you can load a FastPitch voice with its vocoder,
-convert a Coqui FastPitch model to ONNX, and train and export your own.
+<!-- agent-hint
+covers: how to load a FastPitch voice with its vocoder, convert a Coqui FastPitch model and train one
+source: phoonnx/engines/fastpitch.py, phoonnx_train/engines/fastpitch.py, phoonnx/voice_index/fastpitch.json, scripts/conversion/coqui_fastpitch_export/
+generated: no
+verify: pytest tests/test_fastpitch.py tests/test_fastpitch_training.py; the preset table: none, checked by reading phoonnx_train/engines/fastpitch.py:_QUALITY_PRESETS
+see: mixertts.md, ../training.md, ../../vocoders.md
+-->
+
+This page explains how to load, convert and train FastPitch voices, for voice builders and integrators.
 
 > Related: [training reference](../training.md) ·
 > [adapter architecture](../../engines.md) ·
@@ -29,9 +35,10 @@ control. Its shared Mixer-TTS contract means the same vocoders apply.
 ## Extras needed
 
 Inference needs a phonemizer (gruut/espeak for English, `mantoq` for Arabic) and
-no engine-specific extra. Training needs `train` + `train-fastpitch`:
-`pip install phoonnx[train,train-fastpitch]` (`pyworld` for F0 extraction on top
-of the `train` deps).
+no engine-specific extra. Training needs `pip install --pre "phoonnx[train]"`. The default F0
+extractor, `librosa.pyin`, comes with `[train]`. The `train-fastpitch` extra exists but adds
+no package. For the faster WORLD extractors, preprocess with `--f0-method dio` or
+`--f0-method harvest` and install `phoonnx[train,train-pyworld]`.
 
 ## Obtaining / training
 
@@ -71,15 +78,17 @@ unchanged):
 
 Then `torch.onnx.export(..., dynamo=False, opset=14)` gives a dynamic graph.
 en/ljspeech is mirrored as `coqui/en-ljspeech-fast_pitch` (gruut, matched
-`coqui-ljspeech-hifigan-v2`). Exporter: `ml/tts/_exporters/coqui_fastpitch`.
+`coqui-ljspeech-hifigan-v2`). The index also holds `coqui/en-vctk-fast_pitch` and
+`coqui/en-ljspeech-speedy-speech`. The exporter is in `scripts/conversion/coqui_fastpitch_export/`.
 
 ### Training
 
 Trainable with `--engine fastpitch` (the `ForwardTTSTrainingEngine`). The same
 `ForwardTTS` engine is also registered as `--engine speedyspeech` (a subclass
 defaulting to the SpeedySpeech variant — residual conv-BN encoder/decoder, no
-pitch predictor). Training shares the standard phoonnx pipeline and reuses the F0
-pitch sidecars from `train-fastpitch`.
+pitch predictor). Training shares the standard phoonnx pipeline. FastPitch reads the F0
+sidecars that preprocess writes with `--engine fastpitch` (see
+[FastPitch / SpeedySpeech](../training.md#fastpitch--speedyspeech---engine-fastpitch----engine-speedyspeech)).
 
 ## Synthesis example
 
@@ -106,3 +115,7 @@ exactly as documented for [Mixer-TTS](mixertts.md).
 ## References
 
 - [FastPitch paper](https://arxiv.org/abs/2006.06873) · [tts_arabic](https://github.com/nipponjo/tts_arabic)
+
+---
+
+[Docs index](../../index.md) · Previous: [OptiSpeech](optispeech.md) · Next: [x-vits](xvits.md)

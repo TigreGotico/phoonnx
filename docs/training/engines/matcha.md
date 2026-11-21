@@ -1,8 +1,14 @@
 # Matcha-TTS Engine
 
-This page is for voice builders and integrators who want to run or train a
-Matcha-TTS voice in phoonnx. After reading it you can load a Matcha voice, pair
-it with the right vocoder, and train and export your own.
+<!-- agent-hint
+covers: how to load a Matcha voice, pair it with a vocoder, and train and export one
+source: phoonnx/engines/matcha.py, phoonnx_train/engines/matcha.py, phoonnx/voice_index/BSC.json
+generated: no
+verify: pytest tests/test_matcha_adapter.py tests/test_matcha_training_preflight.py; the mel statistics cache: none, checked by reading phoonnx_train/matcha/dataset.py:load_or_compute_statistics
+see: ../training.md, ../../vocoders.md, glowtts.md
+-->
+
+This page explains how to run and train a Matcha-TTS voice, for voice builders and integrators.
 
 > Related: [training reference](../training.md) ·
 > [adapter architecture](../../engines.md) ·
@@ -34,9 +40,9 @@ vocoder, when you need a commercial-safe pipeline.
 
 ## Extras needed
 
-Matcha-TTS inference requires `scipy`: `pip install phoonnx[matcha]`. Training
+Matcha-TTS inference requires `scipy`: `pip install --pre "phoonnx[matcha]"`. Training
 uses the vendored `phoonnx_train.matcha` package and needs only the `train`
-extra: `pip install phoonnx[train]`.
+extra: `pip install --pre "phoonnx[train]"`.
 
 ## Obtaining / training
 
@@ -95,7 +101,7 @@ dataset.
 python -m phoonnx_train.train \
     --engine matcha \
     --dataset-dir ./dataset \
-    --output-dir ./checkpoints
+    --default-root-dir ./checkpoints
 ```
 
 Quality presets:
@@ -106,7 +112,7 @@ Quality presets:
 | `medium` | 192 | [256, 256] | 2 heads / 6 layers |
 | `high` | 256 | [384, 384] | 4 heads / 8 layers |
 
-Use `--quality <preset>` or set `quality` in `extra` config.
+Use `--quality <preset>`. A key in `engine_params` overrides the same key of the preset.
 
 Architecture: a Transformer text encoder with RoPE positional embeddings,
 ConvReluNorm prenet and duration predictor; a conditional flow-matching decoder
@@ -117,26 +123,22 @@ Export the mel model to ONNX:
 
 ```bash
 python -m phoonnx_train.export_onnx \
+    ./checkpoints/lightning_logs/version_0/checkpoints/epoch=999-step=250000.ckpt \
+    --config ./dataset/config.json \
     --engine matcha \
-    --checkpoint matcha.ckpt \
     --output-dir ./onnx
 ```
 
 The exported ONNX file is the **mel model only** — you still need a separate
 vocoder ONNX for full synthesis; the adapter chains both automatically.
 
-Matcha normalizes mels using dataset statistics. Compute them beforehand:
-
-```bash
-python -m matcha.utils.generate_data_statistics \
-    --config configs/data/your_dataset.yaml
-```
-
-Then pass `mel_mean` / `mel_std` via engine config `extra`:
+Matcha normalizes mels with dataset statistics. When `mel_mean` and `mel_std` are not set,
+the engine computes them from the dataset and caches them in `matcha_stats.json`. To set
+them yourself, put them in the `engine_params` of the dataset's `config.json`:
 
 ```json
 {
-    "extra": { "mel_mean": -5.536622, "mel_std": 2.116101 }
+    "engine_params": { "mel_mean": -5.536622, "mel_std": 2.116101 }
 }
 ```
 
@@ -203,3 +205,7 @@ Tested vocoders for the Catalan Matxa models (all 22.05 kHz, 80-bin mel):
 
 - [Matcha-TTS paper (ICASSP 2024)](https://arxiv.org/abs/2309.03199)
 - [Upstream repository](https://github.com/shivammehta25/Matcha-TTS)
+
+---
+
+[Docs index](../../index.md) · Previous: [Export to ONNX](../export.md) · Next: [GlowTTS](glowtts.md)

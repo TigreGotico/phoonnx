@@ -1,10 +1,18 @@
 # Deployment
 
-This page is for operators running the phoonnx TTS server as a public or long-lived
-service. It covers persisting the voice cache, prefetching voice weights before serving
-traffic, health checks, resource sizing and memory budgeting, diagnosing OOM kills,
-prosody enrichment behavior, and verifying that `mycroft.conf` actually applied. For
-the image itself and its quick start, see [docker.md](docker.md).
+<!-- agent-hint
+covers: how to run the phoonnx TTS server as a long-lived service: cache volume, prefetch, health checks, sizing, memory budget, OOM diagnosis, and config checks
+source: docker-entrypoint.sh, docker-compose.yml, phoonnx/voice_cache.py:VoiceCache, phoonnx/providers.py:SHARE_SESSIONS_ENV_VAR, phoonnx/config.py, phoonnx/lang_preprocess.py
+generated: no
+verify: python -m pytest tests/test_voice_cache_budget.py; the prefetch step: none, checked by reading docker-entrypoint.sh (PHOONNX_PREFETCH_VOICES)
+see: docker.md, ovos_plugin.md, offline.md
+-->
+
+This page shows how to run the phoonnx TTS server as a public or long-lived service. It is for operators who keep the server up for real traffic.
+
+It covers the voice cache, prefetching voices, health checks, sizing and memory, OOM kills,
+prosody enrichment, and how to check that `mycroft.conf` applied. For the image and its quick
+start, see [Docker TTS server](docker.md).
 
 ## Persist the cache volume
 
@@ -108,8 +116,8 @@ multiply memory the same way.
 ## Memory budgeting
 
 `max_loaded_bytes` (see [ovos_plugin.md](ovos_plugin.md#voice-caching)) bounds how
-much voice weight the plugin keeps resident, evicting the least-recently-used
-unpinned voice to make room for a new one. It is a soft, in-process limit. It does not
+much voice weight the plugin keeps resident. To make room for another voice, it evicts the
+unpinned voice that was used longest ago. It is a soft, in-process limit. It does not
 see the phonemizer, the ONNX Runtime arena, or per-request buffers, and it does not count
 them against the budget.
 
@@ -168,7 +176,7 @@ A voice id carries a full regional code (`ru_RU`, `pt-PT`, ...), but the enrichm
 backends above use the base language only: `ru`, not `ru_RU` or `ru-RU`. What
 determines whether a voice gets stress marking, script transforms, or diacritization
 is whether its base language has an entry, not the region. When configuring or
-auditing enrichment for a voice, check the base language rather than the full
+checking enrichment for a voice, look at the base language rather than the full
 regional code.
 
 ## Verify the configuration actually applied
@@ -198,3 +206,7 @@ curl "http://localhost:9666/synthesize/hello%20world" --output hello.wav
 If the configured voice was not prefetched, this first call also waits for the cold
 download described above. That wait is expected, and it does not tell you whether the
 config applied.
+
+---
+
+[Docs index](index.md) · Previous: [Docker TTS server](docker.md) · Next: [Benchmarking](benchmarking.md)

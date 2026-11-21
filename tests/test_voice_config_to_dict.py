@@ -175,6 +175,21 @@ def test_schema_refuses_a_config_without_a_symbol_table():
         jsonschema.validate(native, SCHEMA)
 
 
+@pytest.mark.parametrize("casing", ["ignore", "lower", "upper", "casefold"])
+def test_schema_takes_every_text_casing(casing):
+    native = load(PIPER).to_dict()
+    native["text_casing"] = casing
+    jsonschema.validate(native, SCHEMA)
+
+
+def test_schema_refuses_an_unknown_text_casing():
+    # get_text_casing reads an unknown name as "ignore", so the voice would keep its case unnoticed
+    native = load(PIPER).to_dict()
+    native["text_casing"] = "title"
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(native, SCHEMA)
+
+
 def test_frontend_is_built_from_the_native_keys():
     native = load(PIPER, lang_code="en-us").to_dict()
     native["phonemizer_model"] = "model.onnx"

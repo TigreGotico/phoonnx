@@ -10,6 +10,10 @@ import pytest
 from phoonnx.config import SynthesisConfig, VoiceConfig
 from phoonnx.engines import get_adapter, list_engines
 from phoonnx.engines.base import AdapterSynthesisResult
+from phoonnx.engines.fastpitch import FastPitchAdapter
+from phoonnx.engines.mixertts import MixerTTSAdapter
+from phoonnx.engines.optispeech import OptiSpeechAdapter
+from phoonnx.engines.styletts2 import StyleTTS2Adapter
 from phoonnx.engines.vits import VitsAdapter
 from phoonnx.voice import AudioChunk, TTSVoice
 
@@ -80,6 +84,38 @@ def test_a_call_scale_wins_over_the_config_and_the_engine():
     params = _sent_params(_Engine(), {"noise_scale": 0.4, "length_scale": 1.1},
                           SynthesisConfig(length_scale=0.9))
     assert params == {"noise_scale": 0.4, "length_scale": 0.9, "noise_w_scale": 0.5}
+
+
+# The engines with a speed key of their own, and that key for length_scale 2.0:
+# MixerTTS, FastPitch and StyleTTS2 read a rate, so twice as slow is 1 / 2, and
+# OptiSpeech reads a duration scale, so twice as slow is 2.
+OWN_SPEED_KEY = [
+    (MixerTTSAdapter, "pace", 0.5),
+    (FastPitchAdapter, "pace", 0.5),
+    (StyleTTS2Adapter, "speed", 0.5),
+    (OptiSpeechAdapter, "d_factor", 2.0),
+]
+
+
+@pytest.mark.parametrize("adapter, key, expected", OWN_SPEED_KEY)
+def test_a_call_length_scale_reaches_the_engines_own_speed_key(adapter, key, expected):
+    assert _sent_params(adapter(), {}, SynthesisConfig(length_scale=2.0))[key] == expected
+
+
+@pytest.mark.parametrize("adapter, key, expected", OWN_SPEED_KEY)
+def test_a_config_length_scale_reaches_the_engines_own_speed_key(adapter, key, expected):
+    assert _sent_params(adapter(), {"length_scale": 2.0})[key] == expected
+
+
+@pytest.mark.parametrize("adapter, key, expected", OWN_SPEED_KEY)
+def test_a_speed_key_the_call_names_wins_over_length_scale(adapter, key, expected):
+    call = SynthesisConfig(length_scale=2.0, extra_params={key: 0.7})
+    assert _sent_params(adapter(), {}, call)[key] == 0.7
+
+
+@pytest.mark.parametrize("adapter, key, expected", OWN_SPEED_KEY)
+def test_no_length_scale_leaves_the_engines_own_speed_default(adapter, key, expected):
+    assert _sent_params(adapter(), {})[key] == adapter().default_params()[key]
 
 
 class _RecordingVoice(TTSVoice):

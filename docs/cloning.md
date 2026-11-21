@@ -1,11 +1,18 @@
 # Voice Cloning
 
-This page is for developers cloning voices with phoonnx, both from Python and through
-the OVOS plugin. It covers the reference-audio API, the two cloning paradigms, and how
-to fine-tune a cloning voice.
+<!-- agent-hint
+covers: how to clone a voice from a reference clip in Python or the OVOS plugin, and how to fine-tune a YourTTS voice
+source: phoonnx/config.py:SynthesisConfig, phoonnx/reference_audio.py, phoonnx/engines/speaker_encoders/, phoonnx/opm.py, phoonnx_train/engines/yourtts.py, phoonnx_train/preprocess.py
+generated: no
+verify: pytest tests/test_per_request_cloning.py
+see: voice_conversion.md, training/engines/chatterbox.md, ovos_plugin.md
+-->
 
-phoonnx supports **zero-shot voice cloning** — synthesizing speech in a target
-speaker's voice from a short reference clip, without any per-speaker training.
+This page shows how to clone a voice from a reference clip, for developers who use phoonnx from Python or through the OVOS plugin.
+
+Zero-shot cloning speaks in the voice of a short reference clip, with no training for that
+speaker. The page covers the reference-audio API, the cloning families, and how to
+fine-tune a cloning voice.
 
 ```python
 from phoonnx.voice import TTSVoice, SynthesisConfig
@@ -19,7 +26,7 @@ for chunk in voice.synthesize(
 ```
 
 Cloning happens **during** generation. If your voice is not a cloning engine, see
-[Voice conversion](voice_conversion.md) — it converts the waveform **after**
+[Voice conversion](voice_conversion.md). Voice conversion changes the waveform **after**
 generation and works with every engine.
 
 ## Two cloning paradigms
@@ -62,7 +69,7 @@ or MP3 file raise `ValueError`. The message names the file and the supported for
 Install the extra for any reference that is not a PCM WAV of those widths:
 
 ```bash
-pip install phoonnx[cloning]
+pip install --pre "phoonnx[cloning]"
 ```
 
 ## d-vector engines (YourTTS, StyleTTS2)
@@ -104,7 +111,7 @@ you pass one (see [Galician](galician.md)).
 adds an **`exaggeration`** control (0.0–1.0) for expressiveness:
 
 ```python
-voice.synthesize("...", SynthesisConfig(speaker_reference="ref.wav", exaggeration=0.6))
+chunks = list(voice.synthesize("...", SynthesisConfig(speaker_reference="ref.wav", exaggeration=0.6)))
 ```
 
 The speech tokens are sampled. `extra_params={"seed": 0}` fixes the speech tokens. The decoder adds its own random noise, so two runs with one seed still give slightly different audio.
@@ -118,7 +125,7 @@ continues the voice. Each bundled voice pins one preset, so no cloning arguments
 needed:
 
 ```python
-voice.synthesize("Meda wo ase paa.")
+chunks = list(voice.synthesize("Meda wo ase paa."))
 ```
 
 Switch presets per call through `extra_params`:
@@ -147,7 +154,7 @@ Every bundled preset is therefore machine-generated and disclosed as such
 (`"synthetic": true` in `voices.json`); none is a recording of a person.
 
 ```python
-voice.synthesize("Dealing with family secrets is never easy.")
+chunks = list(voice.synthesize("Dealing with family secrets is never easy."))
 SynthesisConfig(extra_params={"voice": "zh_male_a", "temperature": 0.9, "seed": 0})
 ```
 
@@ -165,16 +172,16 @@ opposite order for the same reason.
 
 MOSS-TTS-Nano clones zero-shot from a reference clip alone — no transcription and no
 speaker encoder. The clip is encoded to RVQ-16 audio tokens by the model's own audio
-tokenizer and prepended to the prompt, so cloning works across languages out of the box:
+tokenizer and put before the prompt, so cloning works across languages:
 
 ```python
-voice.synthesize("...", SynthesisConfig(speaker_reference="alice.wav"))
+chunks = list(voice.synthesize("...", SynthesisConfig(speaker_reference="alice.wav")))
 ```
 
 Sampling is tunable through `extra_params`. By default the engine uses the graph that
 has upstream's sampling constants compiled in (fastest); changing any of
 `audio_temperature` / `audio_top_p` / `audio_top_k` / `audio_repetition_penalty`
-transparently switches to host-side sampling, and `sample_mode="greedy"` is deterministic:
+switches to host-side sampling, and `sample_mode="greedy"` is deterministic:
 
 ```python
 SynthesisConfig(speaker_reference="alice.wav",
@@ -242,13 +249,18 @@ or the explicit `speaker_reference`) sets the reference clip, `ref_text` sets
 ## Fine-tuning your own cloning voice (YourTTS)
 
 The `yourtts` training engine (`phoonnx_train/engines/yourtts.py`) fine-tunes a
-zero-shot cloning voice on your own multi-speaker data. It reuses the VITS training
-pipeline end to end (`phoonnx_train/vits/`) — the only difference from plain VITS is
-*what conditions the decoder*: instead of a learned per-speaker-id embedding table,
-each utterance is conditioned on an external 512-d **d-vector** computed with the same
-Coqui ResNet speaker encoder used at inference (`phoonnx.engines.speaker_encoders
-.coqui_resnet`), so train and inference embeddings match exactly. An optional additive
-language embedding (`--n-langs`) supports multilingual training.
+zero-shot cloning voice on your own multi-speaker data. It uses the VITS training
+pipeline (`phoonnx_train/vits/`). The difference from plain VITS is what conditions the
+decoder. Plain VITS learns an embedding table with one row per speaker id. YourTTS
+conditions each utterance on a 512-d **d-vector** from the Coqui ResNet speaker encoder
+that inference also uses (`phoonnx.engines.speaker_encoders.coqui_resnet`), so the
+training and inference embeddings match.
+
+An optional additive language embedding supports multilingual training. The engine reads
+its size from an `n_langs` key in the `config.json` of the preprocessed dataset.
+`preprocess.py` does not write that key, so add it by hand for a multilingual run. The
+engine also declares a `--n-langs` option, but `train.py` does not add it to its
+command line.
 
 ### 1. Preprocess
 
@@ -271,7 +283,7 @@ d-vectors are cached as `<cache_dir>/dvec/<hash>.pt`, next to the mel/audio cach
 re-running preprocessing is a no-op cache hit. The resulting `dataset.jsonl` lines each
 carry `d_vector_path` (and `language_id` for multilingual runs) alongside the usual
 `phoneme_ids` / `audio_norm_path` / `audio_spec_path` fields — the shared
-`phoonnx_train.vits.dataset.PhoonnxDataset` loads them transparently (they are optional
+`phoonnx_train.vits.dataset.PhoonnxDataset` loads them (they are optional
 fields; a plain-VITS `dataset.jsonl` without them is unaffected).
 
 ### Speaker-consistency loss
@@ -287,7 +299,7 @@ to d-vector-conditioned VITS.
 ### 2. Train
 
 ```bash
-python phoonnx_train/train.py \
+python -m phoonnx_train.train \
   --dataset-dir /data/preprocessed \
   --engine yourtts \
   --quality medium \
@@ -306,7 +318,7 @@ the tier by the same size/quality trade-off as any other phoonnx_train run. Inte
 ### 3. Export
 
 ```bash
-python phoonnx_train/export_onnx.py \
+python -m phoonnx_train.export_onnx \
   /path/to/checkpoint.ckpt \
   --config /path/to/config.json \
   --engine yourtts \
@@ -319,25 +331,17 @@ adds `d_vector` and `langid` inputs, matching what `phoonnx.engines.yourtts
 file sets `"engine": "yourtts"` and packages a **default speaker** in `engine_params
 ["d_vector"]` — the mean embedding across the training set — so the voice synthesizes
 with no reference clip; a reference clip or an explicit `d_vector` at synthesis time
-still overrides it, exactly like any other bundled cloning voice (see "Two cloning
+still overrides it, as for any other bundled cloning voice (see "Two cloning
 paradigms" above).
 
-### Downstream OVOS plugin config
+### Use the fine-tuned voice
 
-No plugin-side changes are needed beyond the usual cloning setup — a fine-tuned
-YourTTS voice is used exactly like the stock one:
+Load the exported voice from Python with `TTSVoice.load`, as in the first example on this
+page. Leave out `speaker_reference` to use the packaged default speaker.
 
-```json
-{
-  "module": "ovos-tts-plugin-phoonnx",
-  "ovos-tts-plugin-phoonnx": {
-    "model": "/path/to/output/checkpoint.ckpt.onnx",
-    "ref_wav": "/home/user/me.wav"
-  }
-}
-```
-
-Omit `ref_wav` to always use the voice's packaged default speaker.
+The OVOS plugin loads a voice by its catalog id, so its `voice` setting does not accept a
+path to an `.onnx` file. The `ref_wav`, `ref_text` and `ref_lang` settings work for any
+catalog voice that clones.
 
 ## Adding a cloning model
 
@@ -349,6 +353,10 @@ Conversion/export scripts live under `scripts/conversion/`:
 | StyleTTS2 | `scripts/conversion/styletts2/export_style_encoder.py` | the `styletts2_style` encoder ONNX |
 | ZipVoice | `scripts/conversion/zipvoice/export_mel.py` + `infer_zipvoice_onnx.py` | the no-torch mel ONNX + a reference runner |
 
-See [`engines.md`](engines.md) for how the adapters are structured (d-vector engines are
-single-graph; ZipVoice is the first **iterative** engine — a flow-matching ODE loop
-over multiple ONNX graphs via the overridable `BaseOnnxAdapter.synthesize()`).
+See [Engines](engines.md) for the structure of the adapters. The d-vector engines use one
+graph. ZipVoice is an **iterative** engine: it runs a flow-matching ODE loop over several
+ONNX graphs through the overridable `BaseOnnxAdapter.synthesize()`.
+
+---
+
+[Docs index](index.md) · Previous: [Usage guide](usage.md) · Next: [Voice conversion](voice_conversion.md)

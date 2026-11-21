@@ -1,5 +1,13 @@
 # Alphabet conversion model
 
+<!-- agent-hint
+covers: how VoiceConfig.alphabet, VoiceConfig.phoneme_type and SynthesisConfig.alphabet select a conversion route through the scriptconv graph, and how synthesis dispatches on the result
+source: phoonnx/config.py:VoiceConfig, phoonnx/config.py:SynthesisConfig, phoonnx/voice.py:TTSVoice, scriptconv.graph:DEFAULT_GRAPH, scriptconv.frontend:TextFrontend
+generated: no
+verify: pytest tests/test_inline_phoneme_blocks_dispatch.py tests/test_phoneme_type_default.py tests/test_phoneme_map.py; the conversion routes: none, checked by reading scriptconv.graph:DEFAULT_GRAPH and phoonnx/voice.py:TTSVoice
+see: phonemizers.md, architecture.md, configuration.md
+-->
+
 phoonnx uses a single, unified mechanism to transform every piece of text into
 the token sequence a model expects: **alphabet conversion**.
 
@@ -16,6 +24,14 @@ Every voice has two alphabet fields:
 `SynthesisConfig.alphabet` defaults to `None`, which is treated as
 `Alphabet.GRAPHEMES` — ordinary transcription text.  Set it only when passing
 pre-converted content (e.g. an IPA string or Hangul text).
+
+ARPABET text on an IPA voice can name an r-coloured vowel that the voice's phoneme
+map lacks. The voice then speaks the first spelling in the list below that its map
+holds: `ɝ` as `ɜɹ`, `ɚ` or `əɹ`, and `ɚ` as `əɹ`. For a voice with
+`phoneme_type: espeak`, `ɝ` becomes `ɜː` first, because espeak-ng writes the stressed
+r-coloured vowel that way. A voice that holds the symbol keeps it. With no such
+spelling, the tokenizer drops the symbol with a warning. Text with no
+`SynthesisConfig.alphabet` is not respelled.
 
 ## Conversion is scriptconv's job
 
@@ -171,3 +187,7 @@ default graphemes):
 The rule of thumb is the same one that separates the two layers: anything that
 needs the language is phonemization and stays in phoonnx; the `lang`-free
 phoneme↔phoneme hops are scriptconv edges.
+
+---
+
+[Docs index](index.md) · Previous: [Phonemizers](phonemizers.md) · Next: [OVOS plugin](ovos_plugin.md)

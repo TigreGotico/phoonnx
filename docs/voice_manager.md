@@ -1,8 +1,16 @@
-# Voice Manager
+# Voice manager
 
-This page is for developers using `phoonnx` from Python to discover, download, and load TTS voices. It documents the `TTSModelManager` and `TTSModelInfo` API in `phoonnx/model_manager.py`.
+<!-- agent-hint
+covers: how to list, look up, download and load voices from Python with TTSModelManager and TTSModelInfo
+source: phoonnx/model_manager.py:TTSModelManager, TTSModelInfo; phoonnx/voice_index/*.json
+generated: no
+verify: python -m pytest tests/test_model_manager.py; the examples below, run with the espeak extra
+see: choose_voice.md, precision.md, offline.md, cli.md
+-->
 
-`TTSModelManager` handles discovery, caching, downloading, and loading of TTS voice models. Its catalog is assembled from bundled voice-index files that ship inside the package, so no network access is needed just to enumerate what is available.
+This page shows how to find, download and load voices from Python. It is for developers who use phoonnx as a library.
+
+`TTSModelManager` holds the voice catalog. The catalog comes from voice index files inside the package, so listing the voices needs no network.
 
 ## Where voices come from
 
@@ -36,16 +44,19 @@ cache is a `JsonStorageXDG` under `phoonnx/voices` in the XDG cache directory.
 ### Listing Available Voices
 
 ```python
-# All voices currently in memory
+# All voices in memory
 for voice in manager.all_voices:
     print(voice.voice_id, voice.lang)
 
-# Voices for a specific language (fuzzy language match)
+# Voices for a language, nearest first
 pt_voices = manager.get_lang_voices("pt-PT")
 
 # All language codes present in the loaded catalog
 print(manager.supported_langs)
 ```
+
+`get_lang_voices("pt-PT")` gives 64 voices: every Portuguese voice, `pt-PT` first. The
+`phoonnx-voices list-voices --lang pt-PT` command keeps only the 51 `pt-PT` voices.
 
 ### Listing without downloading
 
@@ -97,8 +108,7 @@ tts_voice = manager.voices["pockettts/it/alba"].load(precision="int8")
 ```
 
 `precision` is `auto` (the default), `int8` or `full`. A voice with no int8 files raises
-`PrecisionUnavailable` for `precision="int8"`. See
-[configuration.md](configuration.md#precision).
+`PrecisionUnavailable` for `precision="int8"`. See [Precision variants](precision.md).
 
 ## Updating the Cache
 
@@ -133,10 +143,8 @@ cache instead. That copy is not shared with other programs.
 the hub snapshot directory, or the private-copy directory for a non-hub URL. The file names
 in it change from voice to voice, so load a voice with `load()`, not by file name.
 
-If you upgraded from an older phoonnx, voices already downloaded under the old
-`~/.cache/phoonnx/voices/<voice_id>/` layout are not reused. Each voice is fetched
-once more into the hub cache. That old directory is safe to delete if you want the
-space back.
+phoonnx does not read voice files from `~/.cache/phoonnx/voices/`. If that folder exists on a
+machine, you can delete it.
 
 The voice catalog cache is a separate thing from these model files: it is a
 `JsonStorageXDG` under `phoonnx/voices` in the XDG cache directory (see
@@ -148,32 +156,36 @@ downloaded model.
 Each voice in the catalog is a `TTSModelInfo` dataclass. It carries the URLs and
 metadata for one voice and lazily resolves its `VoiceConfig` on first access.
 
+A `TTSModelInfo` can also describe a voice that is not in the index. This one points at the
+files of an index voice:
+
 ```python
 from phoonnx.model_manager import TTSModelInfo
 
+base = "https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_unicode/resolve/eb9a020da900534d7232f11a6cf5d1ae1c545219"
 info = TTSModelInfo(
-    voice_id="my-custom-voice",
-    lang="en-US",
-    model_url="https://example.com/model.onnx",
-    config_url="https://example.com/model.json",
-    phoneme_type="espeak",       # optional override
-    alphabet="ipa",              # optional override
-    engine="piper",              # optional override
+    voice_id="my-copy-of-miro",
+    lang="pt-PT",
+    model_url=f"{base}/miro_pt-PT.onnx",
+    config_url=f"{base}/miro_pt-PT.json",
+    engine="phoonnx",  # optional override
 )
 
-# Access the (lazily loaded) VoiceConfig
-print(info.config.sample_rate)
+print(info.config.sample_rate)   # the VoiceConfig, read on first access
+print(info.download_model().name)
+voice = info.load()
+print(type(voice).__name__)
+```
 
-# Fetch just the primary ONNX graph, everything needed to run offline,
-# or load a full TTSVoice
-info.download_model()
-info.download_all()
-voice = info.load(providers=None)
+```
+22050
+miro_pt-PT.onnx
+TTSVoice
 ```
 
 ### Fields
 
-`TTSModelInfo` has about thirty fields. The important ones are below. Many are only
+`TTSModelInfo` has 31 fields. The important ones are below. Many are only
 relevant to specific engine families (see [engines.md](engines.md), [cloning.md](cloning.md),
 [vocoders.md](vocoders.md)).
 
@@ -204,24 +216,17 @@ relevant to specific engine families (see [engines.md](engines.md), [cloning.md]
 
 ### Hub revisions in the bundled index
 
-Each Hugging Face URL in a bundled index file names a commit sha, never `main`:
-`https://huggingface.co/<repo>/resolve/<40-hex sha>/<path>`. An installed phoonnx then
-loads the files it was released with, and an upload to a voice repo reaches users only
-through a new index. The index schema check rejects a Hub URL that names a branch or a tag.
-
-A hub cache keeps one snapshot folder per commit. Online, phoonnx fetches the pinned
-commit: the client downloads only the files that changed and reuses the others. Offline, or
-when the hub does not answer, a voice that is not cached at the pinned commit loads from
-another cached snapshot of the same repo: the newest one that holds the file. phoonnx does not
-read `refs/main` for this, because a fetch at a commit does not move it.
-
-phoonnx logs one warning with the repo, the pinned commit and the snapshot it reads. The files
-that one folder of the repo gives through this fallback all come from one snapshot, so a graph
-and its external-data files match. When the pinned commit holds some files of a folder but not
-all of them, as after an interrupted download, the missing files do not fall back: the load
-fails, so that a graph and its config never come from two commits.
+Each Hugging Face URL in a bundled index file names a commit sha, never a branch:
+`https://huggingface.co/<repo>/resolve/<40-hex sha>/<path>`. An installed phoonnx loads the
+files of that commit. The index schema check rejects a Hub URL that names a branch or a tag.
+[Use phoonnx offline](offline.md#why-a-cached-voice-keeps-working-after-an-upgrade) shows what
+happens when the cache holds another commit of the voice.
 
 Key methods and properties: `config` (lazy `VoiceConfig`), `voice_path`,
 `download_model()`, `download_all()` (model + config + tokenizer + vocoder/style/
 speaker-encoder/aux graphs), `download_vocoder()`, `load(providers=None, precision=None)`,
 and `with_precision(precision)`, which gives the entry with the files that precision loads.
+
+---
+
+[Docs index](index.md) · Previous: [Choose a voice](choose_voice.md) · Next: [CLI reference](cli.md)

@@ -4,15 +4,24 @@
 
 # phoonnx
 
-Multilingual **phonemization** and **Text-to-Speech** using ONNX models. `phoonnx` loads
-and runs TTS voices from several ecosystems (native phoonnx, Piper, Mimic3, Coqui, MMS,
-Transformers) through one `onnxruntime`-based interface, and ships a training pipeline for
-building your own voices.
+<!-- agent-hint
+covers: what phoonnx is, how to install it and speak a first sentence, and where each part of the docs lives
+source: pyproject.toml, phoonnx/model_manager.py:TTSModelManager, phoonnx/voice.py:TTSVoice, phoonnx/opm.py, phoonnx/engines/__init__.py:list_engines, docker-compose.yml
+generated: no
+verify: the Python block under "Quickstart", run in a fresh venv after the two phoonnx-voices commands; python -c "import phoonnx.engines as e; print(len(e.list_engines()))" prints 31
+see: docs/index.md, docs/quickstart.md, AGENTS.md
+-->
 
-It reaches **1000+ languages and voices** across the bundled voice indexes. See the full
-list in [VOICES.md](./VOICES.md).
+phoonnx turns text into speech with ONNX voices. It loads voices from several ecosystems
+(native phoonnx, Piper, Mimic3, Coqui, MMS, Transformers and others) through one
+`onnxruntime` interface, and it ships a pipeline to train your own voices.
 
-## 30-second quickstart
+`phoonnx-voices update-cache` prints how many voices and language tags the bundled voice index holds.
+
+The [documentation index](docs/index.md) lists every page. To start, follow the
+[Quickstart](docs/quickstart.md).
+
+## Quickstart
 
 ```bash
 pip install --pre phoonnx
@@ -45,17 +54,16 @@ with wave.open("hello.wav", "wb") as wav_file:
 ```
 
 This voice runs on the base install. Many other voices need an extra for their phonemizer, for
-example `pip install --pre "phoonnx[pt]"` for the `tugaphone` voices. See
-[Installation](docs/installation.md#which-extra-a-voice-needs).
+example `pip install --pre "phoonnx[pt]"` for the `tugaphone` voices.
+[Choose a voice](docs/choose_voice.md) shows which extra each voice needs.
 
-New here? Start with the [Quickstart](docs/quickstart.md). It downloads a voice and speaks a
-sentence step by step, with the output you should see.
+The [Quickstart](docs/quickstart.md) gives the same steps with the output you should see.
 
-## Train your own voice in an afternoon
+## Train your own voice
 
-Record (or obtain) a single-speaker dataset, preprocess it, train a VITS model on one GPU,
-export to ONNX, and load it back, all with the bundled `phoonnx_train` toolkit. Follow the
-golden path in [docs/training/quickstart.md](docs/training/quickstart.md).
+Record or obtain a single-speaker dataset, preprocess it, train a VITS model on one GPU,
+export it to ONNX, and load it back. The bundled `phoonnx_train` toolkit does each step. The
+[Training quickstart](docs/training/quickstart.md) walks through them.
 
 ## Features
 
@@ -69,16 +77,16 @@ golden path in [docs/training/quickstart.md](docs/training/quickstart.md).
 | Low-latency streaming for VITS voices | [Streaming](docs/streaming.md) |
 | Optional 48 kHz audio super-resolution over synthesized audio | [OVOS plugin](docs/ovos_plugin.md#audio-super-resolution) |
 | Download and cache voices from HuggingFace and other sources | [Voice manager](docs/voice_manager.md) |
-| Train and fine-tune new voices | [Training](docs/training/quickstart.md) |
-| Drop-in OpenVoiceOS TTS plugin | [OVOS plugin](docs/ovos_plugin.md) |
+| Smaller int8 files for some large voices | [Precision variants](docs/precision.md) |
+| Speak with no network once the voices are downloaded | [Use phoonnx offline](docs/offline.md) |
+| Train and fine-tune voices | [Training](docs/training/quickstart.md) |
+| OpenVoiceOS TTS plugin | [OVOS plugin](docs/ovos_plugin.md) |
 
 ## Documentation
 
-The docs are organized around three reader paths. See the [documentation index](docs/README.md):
-
-- **Use a voice**: [Installation](docs/installation.md) → [Quickstart](docs/quickstart.md) → [Usage](docs/usage.md) → [Python API](docs/api.md)
-- **Train a voice**: [Training quickstart](docs/training/quickstart.md) → [Datasets](docs/training/datasets.md) → [Export](docs/training/export.md)
-- **Understand the internals**: [Architecture](docs/architecture.md) → [Phonemizers](docs/phonemizers.md) → [Engines](docs/engines.md)
+The [documentation index](docs/index.md) lists every page in reading order, grouped by task:
+start, voices, use, configure, deploy, train and reference. Coding agents that work on this
+repository read [AGENTS.md](AGENTS.md).
 
 ## OpenVoiceOS plugin
 
@@ -128,3 +136,7 @@ The SuperTonic inference code (`phoonnx/engines/supertonic.py`) is adapted from 
 Inc.'s MIT-licensed reference implementation. **SuperTonic model weights
 (`Supertone/supertonic-3`) are licensed OpenRAIL-M, not Apache-2.0**. Review the model's
 license before commercial use.
+
+---
+
+Next: [Docs index](docs/index.md)
