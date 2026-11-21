@@ -26,6 +26,9 @@ CUDA needs ``onnxruntime-gpu``.
 """
 import hashlib
 import os
+import platform
+import shutil
+import tempfile
 import threading
 import weakref
 from pathlib import Path
@@ -173,6 +176,30 @@ def uses_gpu(providers: Sequence[ProviderSpec]) -> bool:
     return any(_name(p) in GPU_PROVIDERS for p in providers)
 
 
+#: Where Linux lists the CPU feature flags.
+_CPUINFO = "/proc/cpuinfo"
+
+
+def _cpu_identity() -> str:
+    """Machine type and CPU feature flags, for the optimized-graph cache key.
+
+    onnxruntime may fuse operators for the instruction sets of the CPU that
+    optimized the graph, so a copy built on one machine must not be served to
+    another. Linux gives the flags in ``/proc/cpuinfo``; elsewhere the
+    processor name from ``platform`` stands in for them.
+    """
+    flags = ""
+    try:
+        with open(_CPUINFO, encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                if line.startswith(("flags", "Features")):
+                    flags = line.split(":", 1)[1].strip()
+                    break
+    except OSError:
+        pass
+    return f"{platform.machine()}|{flags or platform.processor()}"
+
+
 def _cache_key_path(
         model_path: Any,
         resolved_providers: Sequence[ProviderSpec],
@@ -180,15 +207,21 @@ def _cache_key_path(
 ) -> Path:
     """Deterministic cache-file path for a (model, provider list) pair.
 
-    The key is cheap to compute (path + size + mtime, no file hashing) but
-    changes whenever the model file, the onnxruntime build, or the provider
-    list changes, so a stale cache is never served silently.
+    The key is cheap to compute (path, size and mtime of the graph and of each
+    external-weights sidecar, no file hashing) but changes whenever one of
+    those files, the onnxruntime build, the provider list or the CPU changes,
+    so a stale cache is never served silently.
     """
     stat = os.stat(model_path)
     provider_key = ",".join(repr(p) for p in resolved_providers)
+    sidecars = []
+    for sidecar in _external_data_paths(str(model_path), os.path.realpath(str(model_path))):
+        sidecar_stat = os.stat(sidecar)
+        sidecars.append(
+            f"{os.path.basename(sidecar)}:{sidecar_stat.st_size}:{sidecar_stat.st_mtime_ns}")
     raw = (
         f"{os.path.abspath(str(model_path))}|{stat.st_size}|{stat.st_mtime_ns}|"
-        f"{onnxruntime.__version__}|{provider_key}"
+        f"{','.join(sidecars)}|{onnxruntime.__version__}|{provider_key}|{_cpu_identity()}"
     )
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
     return Path(cache_dir) / f"{digest}.ort_optimized.onnx"
@@ -431,10 +464,28 @@ def _build_session(
             except OSError:
                 pass
 
-    build_options = sess_options or onnxruntime.SessionOptions()
-    build_options.optimized_model_filepath = str(cache_path)
-    session = onnxruntime.InferenceSession(
-        str(model_path), sess_options=build_options, providers=resolved,
-    )
+    # onnxruntime writes the copy and its weights file into a private folder,
+    # and each is renamed into place once complete, the graph last: a reader
+    # sees the graph only when its weights are already there. The weights go
+    # to a file beside the copy, so the copy does not name the original's
+    # sidecars by a path relative to a folder they are not in.
+    staging = tempfile.mkdtemp(prefix=".staging-", dir=cache_dir)
+    try:
+        staged_graph = os.path.join(staging, cache_path.name)
+        staged_weights = f"{staged_graph}.data"
+        build_options = sess_options or onnxruntime.SessionOptions()
+        build_options.optimized_model_filepath = staged_graph
+        build_options.add_session_config_entry(
+            "session.optimized_model_external_initializers_file_name",
+            os.path.basename(staged_weights))
+        session = onnxruntime.InferenceSession(
+            str(model_path), sess_options=build_options, providers=resolved,
+        )
+        if os.path.isfile(staged_weights):
+            os.replace(staged_weights, f"{cache_path}.data")
+        if os.path.isfile(staged_graph):
+            os.replace(staged_graph, cache_path)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
     _warn_on_provider_fallback(resolved, session)
     return session
