@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TigreGotico/phoonnx/blob/dev/phoonnx/config.schema.json",
+  "title": "phoonnx voice config.json",
+  "description": "The native phoonnx config.json that VoiceConfig.to_dict writes and VoiceConfig.from_dict reads. Keys the file does not list are kept as they are and ignored.",
+  "type": "object",
+  "required": [
+    "phoonnx_version",
+    "engine",
+    "phoneme_type",
+    "alphabet",
+    "lang_code",
+    "audio",
+    "num_symbols",
+    "phoneme_id_map"
+  ],
+  "properties": {
+    "phoonnx_version": {
+      "type": "string",
+      "description": "The phoonnx release that wrote the file."
+    },
+    "engine": {
+      "enum": ["phoonnx", "vits", "vits_streaming", "vits_prior_split", "piper", "mimic3", "coqui", "transformers", "matcha", "optispeech", "glowtts", "mixertts", "fastpitch", "styletts2", "yourtts", "zipvoice", "shami", "f5tts", "chatterbox", "supertonic", "neutts", "pockettts", "sparktts", "qwen3tts", "outetts", "arktts", "omnivoice", "indic_parler", "llasa", "orpheus", "magpie", "mosstts", "vosk", "rapido", "tinyvoca", "xvits"],
+      "description": "The architecture or the config format of the voice."
+    },
+    "phoneme_type": {
+      "enum": ["unicode", "graphemes", "misaki", "misaki_en", "misaki_ja", "misaki_zh", "misaki_ko", "misaki_vi", "espeak", "gruut", "goruut", "epitran", "byt5", "charsiu", "transphone", "phonetisaurus", "mwl_phonemizer", "deepphonemizer", "openphonemizer", "g2pen", "dizione", "tugaphone", "g2pfa", "openjtalk", "cutlet", "pykakasi", "cotovia", "ahotts", "phonikud", "mantoq", "halabi", "iqra", "viphoneme", "g2pk", "kog2p", "g2pc", "g2pm", "g2pw", "pypinyin", "xpinyin", "jieba", "f5tts_char", "f5tts_pinyin", "vosk", "shami", "arbtok", "euskaphone", "barranquenho", "orthography2ipa", "africa_g2p", "ghana_g2p", "matoub_kab"],
+      "description": "The phonemizer backend, and the tokenisation recipe that matches it."
+    },
+    "alphabet": {
+      "enum": ["unicode", "ipa", "arpa", "sampa", "x-sampa", "rfe", "hangul", "kana", "hira", "hepburn", "kunrei", "nihon", "pinyin", "bopomofo", "eraab", "cotovia", "hanzi", "buckwalter", "halabi", "cangjie", "vosk", "graphemes", "africa_g2p"],
+      "description": "The alphabet of the model's token space."
+    },
+    "lang_code": {
+      "type": "string",
+      "description": "The language of the voice, as a BCP 47 tag."
+    },
+    "audio": {
+      "type": "object",
+      "required": [
+        "sample_rate"
+      ],
+      "properties": {
+        "sample_rate": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "hop_length": {
+      "type": "integer",
+      "exclusiveMinimum": 0
+    },
+    "num_symbols": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "num_speakers": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "num_langs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "speaker_id_map": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    },
+    "default_speaker_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "lang_id_map": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    },
+    "lang_tokens": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "phonemizer_model": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "phonemizer_identity": {
+      "type": "object",
+      "description": "The phonemizer that made the training phonemes."
+    },
+    "keep_punctuation": {
+      "type": "boolean"
+    },
+    "inference": {
+      "type": "object",
+      "properties": {
+        "noise_scale": {
+          "type": "number"
+        },
+        "length_scale": {
+          "type": "number"
+        },
+        "noise_w": {
+          "type": "number"
+        },
+        "add_diacritics": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "diacritizer_model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "phoneme_id_map": {
+      "type": "object",
+      "description": "Symbol to id. A list value is a symbol that gives several ids, or none.",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "pad": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "blank": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "bos": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "eos": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "blank_word": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "add_blank_char": {
+      "type": "boolean"
+    },
+    "add_blank_word": {
+      "type": "boolean"
+    },
+    "use_eos_bos": {
+      "type": "boolean"
+    },
+    "blank_at_start": {
+      "type": "boolean"
+    },
+    "blank_at_end": {
+      "type": "boolean"
+    },
+    "fold_compounds": {
+      "type": "boolean"
+    },
+    "word_sep_token": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "blank_between": {
+      "enum": ["tokens", "words", "tokens_and_words"]
+    },
+    "engine_params": {
+      "type": "object"
+    }
+  }
+}
