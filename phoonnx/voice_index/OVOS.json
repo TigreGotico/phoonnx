@@ -481,5 +481,31 @@
         "alphabet": "ipa",
         "engine": "phoonnx",
         "config_url": "https://huggingface.co/Phoonnx/phoonnx_es-CO_dii_espeak/resolve/d4747c60b2a989eee9950a1bfcc1897c8ceb40a9/dii_es-CO.json"
+    },
+    "OpenVoiceOS/phoonnx_kab-DZ_miro_o2i": {
+        "voice_id": "OpenVoiceOS/phoonnx_kab-DZ_miro_o2i",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_kab-DZ_miro_o2i/resolve/4f7e9d5cd2b30914bbe3ed3971e2b98f4b688ae5/miro_kab-DZ.onnx",
+        "phoneme_type": "orthography2ipa",
+        "lang": "kab-DZ",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "phoonnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_kab-DZ_miro_o2i/resolve/4f7e9d5cd2b30914bbe3ed3971e2b98f4b688ae5/miro_kab-DZ.json"
+    },
+    "OpenVoiceOS/phoonnx_kab-DZ_dii_o2i": {
+        "voice_id": "OpenVoiceOS/phoonnx_kab-DZ_dii_o2i",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_kab-DZ_dii_o2i/resolve/176804a1fb57c4b1bbf02b872440cfc9e757cb6b/dii_kab-DZ.onnx",
+        "phoneme_type": "orthography2ipa",
+        "lang": "kab-DZ",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "phoonnx",
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_kab-DZ_dii_o2i/resolve/176804a1fb57c4b1bbf02b872440cfc9e757cb6b/dii_kab-DZ.json"
     }
 }
