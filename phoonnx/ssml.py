@@ -199,7 +199,7 @@ def _rate(value: str | None, current: float) -> float:
         factor = 1 + number / 100 if value[0] in "+-" else number / 100
         return _clamp(current * factor, 0.5, 2.0)
     match = re.fullmatch(_NUMBER, value)
-    if match:  # a bare number is a multiplier on the default rate (SSML 1.1)
+    if match:  # a bare number multiplies the default rate: SSML 1.0, kept as an extension
         return _clamp(current * float(value), 0.5, 2.0)
     return current
 
@@ -217,7 +217,8 @@ def _volume(value: str | None, current: float) -> float:
         return _clamp(current * 10 ** (decibels / 20), 0.0, 2.0)
     match = re.fullmatch(rf"([+-]?{_NUMBER})%?", value)
     if match:
-        # "+20%" and "-10" are relative, "50%" and "50" a share of the full level (0 to 100).
+        # An extension: SSML 1.1 has only signed dB values and keywords. "+20%" and "-10" are
+        # relative, "50%" and "50" a share of the full level (0 to 100).
         number = float(match.group(1))
         factor = 1 + number / 100 if value[0] in "+-" else number / 100
         return _clamp(current * factor, 0.0, 2.0)

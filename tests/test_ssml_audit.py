@@ -1,8 +1,9 @@
 """An audit of phoonnx's SSML against W3C SSML 1.1 and the Amazon Polly / Alexa extensions.
 
 ``MATRIX`` is the support table of ``docs/ssml.md``: one row per element or attribute, with the
-status it has (``supported``, ``degraded`` -- read without its effect, never as tags -- or
-``unsupported`` -- ignored on purpose) and a check of what the reader makes of it in English and in
+status it has (``supported``, ``extension`` -- a form SSML 1.1 does not define, read as the row
+says --, ``degraded`` -- read without its effect, never as tags -- or ``unsupported`` -- ignored on
+purpose) and a check of what the reader makes of it in English and in
 French. ``test_the_docs_list_every_row`` keeps the page and the table the same.
 
 The voice's text frontend reads ``<say-as>`` (``TextFrontend.say_as``, and so text2spoken); phoonnx
@@ -20,7 +21,7 @@ import pytest
 
 from phoonnx.ssml import Piece, parse_ssml
 
-SUPPORTED, DEGRADED, UNSUPPORTED = "supported", "degraded", "unsupported"
+SUPPORTED, EXTENSION, DEGRADED, UNSUPPORTED = "supported", "extension", "degraded", "unsupported"
 WORDS = {"en": "Hello world", "fr": "Bonjour le monde"}
 
 
@@ -153,7 +154,7 @@ MATRIX: list[Row] = [
     Row("prosody rate keyword", SUPPORTED, '<speak><prosody rate="slow">{t}</prosody></speak>', field("rate", 0.8)),
     Row("prosody rate percent", SUPPORTED, '<speak><prosody rate="150%">{t}</prosody></speak>', field("rate", 1.5)),
     Row("prosody rate relative", SUPPORTED, '<speak><prosody rate="-20%">{t}</prosody></speak>', field("rate", 0.8)),
-    Row("prosody rate number", SUPPORTED, '<speak><prosody rate="1.5">{t}</prosody></speak>', field("rate", 1.5)),
+    Row("prosody rate number", EXTENSION, '<speak><prosody rate="1.5">{t}</prosody></speak>', field("rate", 1.5)),
     Row("prosody pitch semitones", SUPPORTED, '<speak><prosody pitch="+3st">{t}</prosody></speak>', field("pitch", 3.0)),
     Row("prosody pitch percent", SUPPORTED, '<speak><prosody pitch="+100%">{t}</prosody></speak>', field("pitch", 12.0)),
     Row("prosody pitch keyword", SUPPORTED, '<speak><prosody pitch="high">{t}</prosody></speak>', field("pitch", 3.0)),
@@ -164,7 +165,7 @@ MATRIX: list[Row] = [
     Row("prosody volume keyword", SUPPORTED, '<speak><prosody volume="soft">{t}</prosody></speak>', field("volume", 0.65)),
     Row("prosody volume dB", SUPPORTED, '<speak><prosody volume="-6dB">{t}</prosody></speak>',
         lambda ps, t, lang: abs(ps[0].volume - 10 ** (-6 / 20)) < 1e-9),
-    Row("prosody volume number", SUPPORTED, '<speak><prosody volume="50">{t}</prosody></speak>', field("volume", 0.5)),
+    Row("prosody volume number", EXTENSION, '<speak><prosody volume="50">{t}</prosody></speak>', field("volume", 0.5)),
     Row("prosody duration", SUPPORTED, '<speak><prosody duration="3s">{t}</prosody></speak>',
         lambda ps, t, lang: ps[0].duration_ms == 3000),
     Row("prosody amazon:max-duration", SUPPORTED, '<speak><prosody amazon:max-duration="2s">{t}</prosody></speak>',
@@ -227,8 +228,8 @@ def test_the_reader_does_what_the_table_says(row, lang):
     assert row.check(pieces, words, lang), (row.feature, pieces)
 
 
-def test_the_statuses_are_the_three_the_docs_use():
-    assert {row.status for row in MATRIX} <= {SUPPORTED, DEGRADED, UNSUPPORTED}
+def test_the_statuses_are_the_ones_the_docs_use():
+    assert {row.status for row in MATRIX} <= {SUPPORTED, EXTENSION, DEGRADED, UNSUPPORTED}
     assert len({row.feature for row in MATRIX}) == len(MATRIX), "a feature is listed twice"
 
 

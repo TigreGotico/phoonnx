@@ -11,6 +11,7 @@ The short version, with examples, is in [usage](usage.md#ssml).
 | Status | Meaning |
 | --- | --- |
 | supported | the markup changes what is heard, as the standard says |
+| extension | a form SSML 1.1 does not define (an SSML 1.0 or Polly form); the markup changes what is heard as the row says |
 | degraded | the element is read without its effect: its words are kept, nothing is read as a tag |
 | unsupported | the attribute is ignored on purpose (see the end of this page) |
 
@@ -75,7 +76,7 @@ The voice's text frontend reads `say-as` (see [usage](usage.md#ssml)), so a `say
 | prosody rate keyword | supported | words kept; rate x0.8 |
 | prosody rate percent | supported | words kept; rate x1.5 |
 | prosody rate relative | supported | words kept; rate x0.8 |
-| prosody rate number | supported | words kept; rate x1.5 |
+| prosody rate number | extension | words kept; rate x1.5 |
 | prosody pitch semitones | supported | words kept; pitch +3.0 st |
 | prosody pitch percent | supported | words kept; pitch +12.0 st |
 | prosody pitch keyword | supported | words kept; pitch +3.0 st |
@@ -84,7 +85,7 @@ The voice's text frontend reads `say-as` (see [usage](usage.md#ssml)), so a `say
 | prosody range | unsupported | words kept |
 | prosody volume keyword | supported | words kept; volume x0.65 |
 | prosody volume dB | supported | words kept; volume x0.50 |
-| prosody volume number | supported | words kept; volume x0.50 |
+| prosody volume number | extension | words kept; volume x0.50 |
 | prosody duration | supported | words kept; duration 3000 ms |
 | prosody amazon:max-duration | supported | words kept; max duration 2000 ms |
 | nested prosody | supported | words kept; rate x1.5625; pitch +2.0 st |
