@@ -1,9 +1,18 @@
 # Voice Conversion
 
-Voice conversion changes **who** the audio sounds like, after it has been
-synthesized. Because it runs on the waveform, it works with every phoonnx engine —
-including single-speaker models that have no cloning support of their own. One
-model therefore gives you an unlimited number of voices.
+<!-- agent-hint
+covers: how to convert the output of any voice to a target speaker with vc_reference
+source: phoonnx/config.py:SynthesisConfig.vc_reference, phoonnx/voice.py:TTSVoice._load_voice_conversion, scripts/vc_gate.py
+generated: no
+verify: python -I -c "from phoonnx.config import SynthesisConfig; print(SynthesisConfig().vc_engine)" (prints None), plus the vc_reference example on the page
+see: cloning.md, ovos_plugin.md
+-->
+
+This page shows how to convert the output of any voice to a target speaker, for developers who use phoonnx from Python.
+
+Voice conversion changes **who** the audio sounds like, after synthesis. It runs on the
+waveform, so it works with every phoonnx engine. This includes single-speaker models that
+cannot clone. One model can thus speak in the voice of any reference clip.
 
 ```python
 from phoonnx.voice import TTSVoice
@@ -14,14 +23,21 @@ for chunk in voice.synthesize(
     "This sentence comes out in the target speaker's voice.",
     SynthesisConfig(vc_reference="target_speaker.wav"),
 ):
-    ...  # chunk.audio_float_array — see Usage for the full AudioChunk API
+    print(chunk.sample_rate, len(chunk.audio_float_array) > 0)
 ```
 
-Conversion is powered by [voiceclonnx](https://github.com/TigreGotico/voiceclonnx),
-a pure-ONNX library. Install it with the extra:
+With a Portuguese unicode voice and a 6-second reference clip, the loop prints one line
+for the sentence. The audio comes back at the 22 050 Hz rate of the OpenVoice engine:
+
+```text
+22050 True
+```
+
+[voiceclonnx](https://github.com/TigreGotico/voiceclonnx), a pure-ONNX library, does the
+conversion. Install it with the extra:
 
 ```bash
-pip install phoonnx[vc]
+pip install --pre "phoonnx[vc]"
 ```
 
 ## Voice conversion or native cloning?
@@ -51,7 +67,7 @@ top only adds loss.
 | Field | Type | Default | Meaning |
 |---|---|---|---|
 | `vc_reference` | `str` path or URL, or `(audio, sample_rate)` | `None` | target-speaker clip; `None` disables the stage entirely |
-| `vc_engine` | `str` | `"openvoice"` | which voiceclonnx engine to use |
+| `vc_engine` | `str` | `None` | which voiceclonnx engine to use; `None` uses `"openvoice"` |
 
 `None` is a strict no-op: `voiceclonnx` is never imported and the audio is
 bit-for-bit the engine's own output.
@@ -63,7 +79,7 @@ subject to its address and size limits. Whatever you pass is decoded and written
 a temporary WAV, which is what voiceclonnx reads.
 
 The loaded engine is cached against the reference's **samples**, not against the
-path or URL you named, so rewriting a reference file in place gives you the new
+path or URL you named, so rewriting a reference file in place gives you the changed
 speaker rather than the previous one. The cost is that the reference is read —
 and, for a URL, fetched — once per `synthesize()` call. Pass an
 `(audio, sample_rate)` tuple if you want to do that reading yourself.
@@ -114,7 +130,8 @@ OpenVoice), and the `AudioChunk` reports that rate — not the voice's native on
 `synthesize_wav()` takes the header from the chunk, so files come out correct
 without any extra work on your side.
 
-When [super-resolution](usage.md) is also enabled, conversion runs **first**, so
+When super-resolution (`SynthesisConfig(super_resolution=True)`, see
+[Audio super-resolution](ovos_plugin.md#audio-super-resolution)) is also on, conversion runs **first**, so
 the upscaler works on the final timbre.
 
 ## Errors
@@ -125,12 +142,16 @@ so:
 
 * `vc_reference` set without `voiceclonnx` installed raises `ImportError` naming
   the `phoonnx[vc]` extra.
-* A reference path that is not a readable file raises `FileNotFoundError`.
+* A reference path that is not a readable file raises `FileNotFoundError`:
+  `vc_reference points at no readable file: 'missing.wav'`.
 * A conversion failure mid-stream propagates instead of yielding the source voice.
 
 ## Models
 
 voiceclonnx downloads its own weights from Hugging Face on first use
 (`TigreGotico/voiceclonnx-openvoice-v2` for the default engine) and caches them.
-phoonnx does not mirror or manage them — there is one mirror, owned by the project
-that runs the models.
+phoonnx does not mirror or manage them. The voiceclonnx project owns the one mirror.
+
+---
+
+[Docs index](index.md) · Previous: [Voice cloning](cloning.md) · Next: [Streaming](streaming.md)

@@ -1,8 +1,14 @@
 # Installation
 
-This page is for anyone setting up phoonnx. It covers the base install, what each optional
-extra adds, the GPU runtime packages, the system dependencies you may need, and the errors a
-missing piece gives.
+<!-- agent-hint
+covers: the base install, the version to install, every optional extra, GPU runtimes, system packages, and the errors a missing piece gives
+source: pyproject.toml [project.optional-dependencies], phoonnx/providers.py:resolve_providers, phoonnx/errors.py, phoonnx/model_manager.py:_VoiceRegistry
+generated: no
+verify: uv pip install --prerelease=allow -e '.[espeak]' in a fresh venv, then the GPU provider script below and python -c "from phoonnx.version import VERSION_STR; print(VERSION_STR)"
+see: quickstart.md, choose_voice.md, offline.md, docker.md
+-->
+
+This page shows how to install phoonnx and the extras that your voices need. It is for anyone who sets up phoonnx on a machine.
 
 ## Requirements
 
@@ -50,7 +56,7 @@ have:
 
 ```
 $ python -c "from phoonnx.version import VERSION_STR; print(VERSION_STR)"
-1.123.1a1
+1.124.4a1
 ```
 
 An alpha version ends in `a` and a number. If you see `1.3.3`, upgrade. A second install
@@ -81,15 +87,9 @@ $ phoonnx-voices list-voices --verbose | grep -A4 'ID:          OpenVoiceOS/phoo
   Model URL:   https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_tugaphone/resolve/b081738cde545e32a8c27fd780c5a2d948f1fb1f/miro_pt-PT.onnx
 ```
 
-| Phoneme Type | Extra |
-|---|---|
-| `UNICODE`, `GRAPHEMES` | none, the base install runs it |
-| `ESPEAK` (most Piper voices) | `espeak` |
-| `TUGAPHONE` | `pt` |
-| `GRUUT`, `EPITRAN` | the language extra, for example `de` |
-| `MISAKI_EN`, `MISAKI_ZH`, `MISAKI_JA` | `en`, `zh`, `ja` |
-| `COTOVIA` | `gl` |
-| `AHOTTS` | `eu` |
+[Choose a voice](choose_voice.md#2-read-what-the-voice-needs) maps each phoneme type to its extra.
+For example, `ESPEAK` needs `espeak` and `TUGAPHONE` needs `pt`. `UNICODE` and `GRAPHEMES` need no
+extra.
 
 A voice that shows `None` names its phonemizer in its own config file. If that phonemizer is
 missing, the voice load stops with an `ImportError` that names the package (see
@@ -278,11 +278,11 @@ ImportError: phonemizer 'espeak' needs a missing backing package — install wit
 
 Fix: `pip install --pre "phoonnx[espeak]"`.
 
-**An unknown voice id.** The id is not in the catalog. Python raises a `KeyError` that names
-the id:
+**An unknown voice id.** The id is not in the catalog. Python raises `UnknownVoice`, a
+`KeyError` that names the id:
 
 ```
-KeyError: 'OpenVoiceOS/phoonnx_pt-PT_miro'
+phoonnx.errors.UnknownVoice: "unknown voice 'OpenVoiceOS/phoonnx_pt-PT_miro'; run 'phoonnx-voices list-voices' to see the voice ids"
 ```
 
 The OVOS plugin stops at start with:
@@ -317,4 +317,8 @@ huggingface_hub.errors.LocalEntryNotFoundError: An error happened while trying t
 ```
 
 Fix: run `phoonnx-voices download <voice_id>` while the machine is online. After that, the
-voice loads offline.
+voice loads offline. See [Use phoonnx offline](offline.md).
+
+---
+
+[Docs index](index.md) · Previous: [Docs index](index.md) · Next: [Quickstart](quickstart.md)

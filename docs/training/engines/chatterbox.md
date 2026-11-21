@@ -1,8 +1,14 @@
 # Chatterbox Engine
 
-This page is for integrators cloning voices with Chatterbox in phoonnx. After
-reading it you can clone a voice from a reference clip (no transcription needed),
-control expressiveness, and wire up the multi-graph runtime.
+<!-- agent-hint
+covers: how to clone a voice with Chatterbox, its decoding parameters and its four-graph runtime
+source: phoonnx/engines/chatterbox.py, phoonnx/tokenizer.py:ChatterboxMTLTokenizer, phoonnx/lang_preprocess.py:SCRIPT_TRANSFORMS
+generated: no
+verify: grep -n "def default_params" -A1 phoonnx/engines/chatterbox.py
+see: ../../cloning.md, zipvoice.md, ../../engines.md
+-->
+
+This page explains how to clone a voice with Chatterbox and control its expressiveness, for integrators who use phoonnx.
 
 > Related: [adapter architecture](../../engines.md) ·
 > [configuration](../../configuration.md) · [voice cloning](../../cloning.md) ·
@@ -59,8 +65,8 @@ model config is hardcoded. The `language_model` is the voice's primary
 
 ### Decoding parameters and caps
 
-Defaults come from `SynthesisConfig` (`temperature=0.8`, `top_p=0.95`,
-`exaggeration=0.5`), read per call by the adapter:
+The adapter's `default_params()` gives the defaults (`temperature=0.8`, `top_p=0.95`,
+`exaggeration=0.5`). A `SynthesisConfig` field that is set overrides its default for one call:
 
 | Param | Default | Meaning |
 |---|---|---|
@@ -161,3 +167,7 @@ GPT-2 (positions fed to the LM).
 | ONNX | [`onnx-community/chatterbox-ONNX`](https://huggingface.co/onnx-community/chatterbox-ONNX) (4 graphs, external-data weights) |
 | Converter | [VladOS95-cyber/onnx_conversion_scripts](https://github.com/VladOS95-cyber/onnx_conversion_scripts) — the LM is built with [onnxruntime-genai's `builder.py`](https://github.com/microsoft/onnxruntime-genai) |
 | Variants | base, multilingual (Llama), turbo (GPT-2 + meanflow) — all supported by the I/O-driven adapter |
+
+---
+
+[Docs index](../../index.md) · Previous: [ZipVoice](zipvoice.md) · Next: [Spark-TTS](sparktts.md)

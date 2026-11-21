@@ -1,9 +1,14 @@
 # SuperTonic Engine (training)
 
-This page teaches, from zero, how to train a **SuperTonic** text-to-speech model
-in phoonnx: what each of its three stages is, how to prepare data, how to train
-and resume each stage, how to fine-tune from the released weights, and how to
-export the four ONNX graphs the phoonnx `supertonic` runtime consumes.
+<!-- agent-hint
+covers: how to train the three SuperTonic stages, fine-tune them and export the four ONNX graphs
+source: phoonnx_train/supertonic/lightning.py, phoonnx_train/supertonic/text.py, phoonnx_train/supertonic/export_onnx.py, phoonnx_train/supertonic/checkpointing.py
+generated: no
+verify: grep -n "^class \|^def export_from_checkpoints\|def build_from_texts\|def extend_with_texts" phoonnx_train/supertonic/lightning.py phoonnx_train/supertonic/text.py phoonnx_train/supertonic/export_onnx.py
+see: ../training.md, ../export.md, ../../engines.md
+-->
+
+This page shows how to train a SuperTonic model from zero, stage by stage, and export it for the phoonnx `supertonic` runtime.
 
 > Related: [training reference](../training.md) ·
 > [adapter architecture](../../engines.md) · [export](../export.md)
@@ -47,8 +52,7 @@ separate learned duration model instead of in-context infilling.
 ## Install
 
 ```bash
-pip install phoonnx[train]        # torch, pytorch-lightning, torchaudio
-pip install phoonnx[train-resample]  # only if your audio is not already at the model sample rate
+pip install --pre "phoonnx[train,train-resample]"   # torch, pytorch-lightning, torchaudio
 ```
 
 ## Prepare data
@@ -142,12 +146,12 @@ The encoder-side networks (speech encoder and the two style encoders) are absent
 from the public graphs, so they always start from a fresh initialization and must
 be trained.
 
-To fine-tune onto a new language whose script is missing from a pretrained
+To fine-tune onto a language whose script is missing from a pretrained
 tokenizer, grow the vocab **without disturbing existing rows** so the pretrained
 embedding stays aligned:
 
 ```python
-tok2 = tok.extend_with_texts(new_texts, new_langs)   # appends ids for new chars only
+tok2 = tok.extend_with_texts(new_texts, new_langs)   # appends ids only for chars the map lacks
 # then load the pretrained weights with checkpointing.load_state_dict_grow_vocab(...)
 ```
 
@@ -202,3 +206,7 @@ license.
 | Paper | *SupertonicTTS* — [arXiv:2503.23108](https://arxiv.org/abs/2503.23108) |
 | Weights | [`Supertone/supertonic-3`](https://huggingface.co/Supertone/supertonic-3) (OpenRAIL-M) |
 | Languages | 31 (`en`, `ko`, `ja`, `ar`, `bg`, `cs`, `da`, `de`, `el`, `es`, `et`, `fi`, `fr`, `hi`, `hr`, `hu`, `id`, `it`, `lt`, `lv`, `nl`, `pl`, `pt`, `ro`, `ru`, `sk`, `sl`, `sv`, `tr`, `uk`, `vi`) |
+
+---
+
+[Docs index](../../index.md) · Previous: [OmniVoice](omnivoice.md) · Next: [Rápido](rapido.md)

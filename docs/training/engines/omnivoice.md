@@ -1,5 +1,15 @@
 # OmniVoice
 
+<!-- agent-hint
+covers: how OmniVoice decodes, how to clone with it, its parameters and its cost
+source: phoonnx/engines/omnivoice.py, phoonnx/voice_index/omnivoice.json
+generated: no
+verify: grep -n "def default_params" -A9 phoonnx/engines/omnivoice.py
+see: ../../cloning.md, zipvoice.md, f5tts.md
+-->
+
+This page explains the OmniVoice engine and how to clone a voice with it, for integrators who use phoonnx.
+
 [OmniVoice](https://github.com/k2-fsa/OmniVoice) (k2-fsa) is a zero-shot text-to-speech
 model for 600+ languages. Set `engine: omnivoice`.
 
@@ -64,14 +74,18 @@ OmniVoice is an **in-context** cloner, like ZipVoice: it needs the reference cli
 its transcription. See [cloning.md](../../cloning.md).
 
 ```python
+from phoonnx.config import SynthesisConfig
 from phoonnx.model_manager import TTSModelManager
 
-voice = TTSModelManager().load_voice("omnivoice/en")
-audio = voice.synthesize(
-    "Machine learning models can now speak in hundreds of languages.",
+manager = TTSModelManager()
+manager.merge_default_voices()
+voice = manager.voices["omnivoice/en"].load()
+syn = SynthesisConfig(
     speaker_reference="reference.wav",
     speaker_reference_text="Transcription of the reference clip.",
 )
+for chunk in voice.synthesize("Speech models speak in hundreds of languages.", syn):
+    ...  # chunk.audio_float_array, 24 kHz
 ```
 
 A reference clip of 3–10 seconds works best. Longer clips make every step slower, because
@@ -95,8 +109,9 @@ Without a reference, the model picks a voice itself. `instruct` describes one in
 | `instruct` | none | Voice-design description. |
 | `seed` | none | Makes the stochastic path reproducible. |
 
-Setting both temperatures to 0 makes generation fully deterministic, which is what the
-parity checks below use.
+Setting both temperatures to 0 makes generation fully deterministic. The parity
+measurements in [A warning about the community export](#a-warning-about-the-community-export)
+use that setting.
 
 ## Classifier-free guidance
 
@@ -125,3 +140,7 @@ real-time factor is about **6–9** — that is, roughly seven seconds of comput
 of audio. The paper's 0.025 figure is a GPU number. The cost is `num_step × 2` full
 forwards over the whole prompt, so shorter reference clips and shorter text help
 directly, and `guidance_scale: 0` halves it at some quality cost.
+
+---
+
+[Docs index](../../index.md) · Previous: [OuteTTS](outetts.md) · Next: [SuperTonic](supertonic.md)
