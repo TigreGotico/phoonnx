@@ -1,5 +1,13 @@
 # Usage Guide
 
+<!-- agent-hint
+covers: loading a voice, synthesis to WAV or a stream, SynthesisConfig, inline phonemes, phonetic spellings, SSML, multi-speaker voices and the low-level phonemize, tokenize and vocode calls
+source: phoonnx/voice.py:TTSVoice, phoonnx/config.py:SynthesisConfig, phoonnx/ssml.py, phoonnx/providers.py, phoonnx/audio.py
+generated: no
+verify: pytest tests/test_voice_chunks.py tests/test_scale_precedence.py tests/test_synthesis_config_chunk.py tests/test_inline_phonemes.py tests/test_phonetic_spellings.py tests/test_ssml.py
+see: quickstart.md, configuration.md, streaming.md
+-->
+
 This guide is for Python developers driving phoonnx directly. After reading it you can load a
 voice, synthesize to a WAV or a stream, tune synthesis, and reach the low-level phonemize /
 tokenize / vocode calls.
@@ -335,3 +343,7 @@ language. `voice.tokenizer.tokenize(phonemes)` turns one such list into token ID
 `phonemes_to_ids()` and `phoneme_ids_to_audio()` are deprecated. Use `voice.tokenizer.tokenize`
 and `render()`. `phoneme_ids_to_audio()` returns the engine audio before the level, volume
 and clip steps.
+
+---
+
+[Docs index](index.md) · Previous: [BSC multispeaker StyleTTS2](bsc_multispeaker.md) · Next: [Voice cloning](cloning.md)

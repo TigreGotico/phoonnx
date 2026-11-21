@@ -4,7 +4,7 @@
 covers: how to use a Spark-TTS preset speaker or clone a voice, and what the five graphs do
 source: phoonnx/engines/sparktts.py, phoonnx/voice_index/sparktts.json
 generated: no
-verify: grep -n "def default_params" -A1 phoonnx/engines/sparktts.py
+verify: pytest tests/test_sparktts.py tests/test_card_example_sparktts.py (test_default_params_match_upstream checks the decoding defaults)
 see: chatterbox.md, ../../cloning.md, ../../engines.md
 -->
 

@@ -139,4 +139,4 @@ license before commercial use.
 
 ---
 
-[Docs index](docs/index.md) · Next: [Installation](docs/installation.md)
+Next: [Docs index](docs/index.md)

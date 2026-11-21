@@ -4,7 +4,7 @@
 covers: how to prepare data for, fine-tune, resume and export MOSS-TTS-Nano
 source: phoonnx_train/mosstts/prepare_data.py, phoonnx_train/mosstts/train.py, phoonnx_train/mosstts/warmstart.py, phoonnx_train/mosstts/export_onnx.py
 generated: no
-verify: grep -n "add_argument" phoonnx_train/mosstts/train.py
+verify: pytest tests/test_mosstts_training.py; the --help of phoonnx_train.mosstts.prepare_data, phoonnx_train.mosstts.train and phoonnx_train.mosstts.export_onnx lists each flag that the page uses
 see: ../training.md, ../../cloning.md
 -->
 

@@ -4,7 +4,7 @@
 covers: how to load an English or Arabic Mixer-TTS voice, pair it with a vocoder, and train one
 source: phoonnx/engines/mixertts.py, phoonnx/engines/mixertts_config.py, phoonnx_train/engines/mixer.py, phoonnx/voice_index/mixertts.json
 generated: no
-verify: grep -n "symbols_embedding_dim" phoonnx_train/engines/mixer.py
+verify: pytest tests/test_mixertts.py tests/test_mixertts_training.py; the preset table: none, checked by reading phoonnx_train/engines/mixer.py:_QUALITY_PRESETS
 see: fastpitch.md, ../training.md, ../../vocoders.md
 -->
 

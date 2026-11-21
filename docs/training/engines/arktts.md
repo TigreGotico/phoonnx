@@ -4,7 +4,7 @@
 covers: which ArkTTS checkpoints and voices exist, how the engine samples, and what it costs
 source: phoonnx/engines/arktts.py, phoonnx/voice_index/arktts.json
 generated: no
-verify: grep -n "def default_params" -A4 phoonnx/engines/arktts.py
+verify: pytest tests/test_arktts.py tests/test_card_example_arktts.py (test_default_params_follow_the_model_cards checks the decoding defaults)
 see: qwen3tts.md, sparktts.md, ../../engines.md
 -->
 
@@ -45,8 +45,8 @@ Both are Apache-2.0. Zortzi is a Basque fine-tune of Audio8 and speaks only Basq
 
 ## When to pick it
 
-Pick ArkTTS when you want a **Basque** codec-LM voice (no other phoonnx engine has one), or
-when you want 44.1 kHz output and can afford the cost.
+Pick ArkTTS when you want a **Basque** codec-LM voice, or when you want 44.1 kHz output and
+can afford the cost. OmniVoice also has a Basque voice, `omnivoice/eu`.
 
 Do not pick it when you need real-time synthesis. Two autoregressive stages at ten steps
 per frame are expensive: measured on twelve cores, one second of audio takes about eight

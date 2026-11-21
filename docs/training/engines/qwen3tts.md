@@ -4,7 +4,7 @@
 covers: which Qwen3-TTS timbres and languages exist, what the seven graphs do and the control parameters
 source: phoonnx/engines/qwen3tts.py, phoonnx/voice_index/qwen3tts.json
 generated: no
-verify: grep -n "def default_params" -A4 phoonnx/engines/qwen3tts.py
+verify: pytest tests/test_qwen3tts.py tests/test_card_example_qwen3tts.py (test_default_params_match_upstream_generation_config checks the decoding defaults)
 see: sparktts.md, arktts.md, ../../engines.md
 -->
 

@@ -4,7 +4,7 @@
 covers: how to load a Matcha voice, pair it with a vocoder, and train and export one
 source: phoonnx/engines/matcha.py, phoonnx_train/engines/matcha.py, phoonnx/voice_index/BSC.json
 generated: no
-verify: grep -n "mel_mean is None\|matcha_stats.json" phoonnx_train/engines/matcha.py phoonnx_train/matcha/dataset.py
+verify: pytest tests/test_matcha_adapter.py tests/test_matcha_training_preflight.py; the mel statistics cache: none, checked by reading phoonnx_train/matcha/dataset.py:load_or_compute_statistics
 see: ../training.md, ../../vocoders.md, glowtts.md
 -->
 

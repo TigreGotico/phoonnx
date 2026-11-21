@@ -4,7 +4,7 @@
 covers: every phoonnx_train.train flag, the training engines, their quality presets and the evaluation and vocoder tools
 source: phoonnx_train/train.py:main, phoonnx_train/engines/__init__.py:_register_builtins, phoonnx_train/engines/*.py:_QUALITY_PRESETS, phoonnx_train/eval_loop.py:main, phoonnx_train/train_vocos.py:main, phoonnx_train/export_vocos.py:main
 generated: no
-verify: grep -n "click.option" phoonnx_train/train.py phoonnx_train/eval_loop.py phoonnx_train/train_vocos.py phoonnx_train/export_vocos.py
+verify: the --help of phoonnx_train.train, phoonnx_train.eval_loop, phoonnx_train.train_vocos and phoonnx_train.export_vocos lists every flag in the page's tables; the preset tables: none, checked by reading phoonnx_train/engines/*.py:_QUALITY_PRESETS
 see: preprocess.md, export.md, engines/matcha.md, ../vocoders.md
 -->
 

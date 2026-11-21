@@ -4,7 +4,7 @@
 covers: how Indic Parler-TTS picks a voice from a text description, which voices exist and how intelligible they are
 source: phoonnx/engines/indic_parler.py, phoonnx/voice_index/indic_parler.json
 generated: no
-verify: grep -n "def default_params" -A2 phoonnx/engines/indic_parler.py
+verify: pytest tests/test_indic_parler.py tests/test_card_example_indic_parler.py (test_default_params checks the decoding defaults)
 see: ../../engines.md, ../../configuration.md
 -->
 

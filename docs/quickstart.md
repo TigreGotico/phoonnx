@@ -173,8 +173,10 @@ right files.
 
 ## Common problems
 
-- **`No voices found in cache. Run 'update-cache' first.`** Run `phoonnx-voices update-cache`
-  before `list-voices` or `download`, or call `manager.merge_default_voices()` in Python.
+- **`No voices found in cache. Run 'update-cache' first.`** `list-voices` prints this when the
+  cache is empty. Run `phoonnx-voices update-cache`, or call `manager.merge_default_voices()`
+  in Python. `download` does not print it: when the id is not
+  in the cache, `download` looks it up in the bundled index.
 - **`Voice ID '...' not found.`** Check the exact id with `phoonnx-voices list-available`
   (bundled ids grouped by source, no download).
 - **No sound or silence.** Make sure that the model downloaded fully. A partial `model.onnx`

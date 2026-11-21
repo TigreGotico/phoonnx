@@ -4,7 +4,7 @@
 covers: how to train, fine-tune and export a Rápido voice with --engine rapido
 source: phoonnx_train/engines/rapido.py, phoonnx_train/rapido/lightning.py, phoonnx_train/rapido/export_onnx.py
 generated: no
-verify: grep -n "learning_rate\|cond_drop\|mas_upsample\|freeze_backbone_steps\|text_only" phoonnx_train/rapido/lightning.py
+verify: pytest tests/test_rapido_training.py tests/test_rapido_export.py; the hyperparameter defaults: none, checked by reading phoonnx_train/rapido/lightning.py:RapidoModule
 see: ../training.md, ../export.md, ../../engines.md
 -->
 

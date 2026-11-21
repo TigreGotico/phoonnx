@@ -4,7 +4,7 @@
 covers: how to clone a voice with Chatterbox, its decoding parameters and its four-graph runtime
 source: phoonnx/engines/chatterbox.py, phoonnx/tokenizer.py:ChatterboxMTLTokenizer, phoonnx/lang_preprocess.py:SCRIPT_TRANSFORMS
 generated: no
-verify: grep -n "def default_params" -A1 phoonnx/engines/chatterbox.py
+verify: pytest tests/test_chatterbox.py tests/test_card_example_chatterbox.py; the sampling defaults: none, checked by reading phoonnx/engines/chatterbox.py:ChatterboxAdapter.default_params
 see: ../../cloning.md, zipvoice.md, ../../engines.md
 -->
 

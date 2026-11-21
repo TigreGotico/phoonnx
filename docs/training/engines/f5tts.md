@@ -4,7 +4,7 @@
 covers: how to load an F5-TTS, Habibi or SILMA voice, clone with a reference clip and its transcription, and set the dialect
 source: phoonnx/engines/f5tts.py, phoonnx/voice_index/f5tts.json
 generated: no
-verify: python3 -c "import json; print(list(json.load(open('phoonnx/voice_index/f5tts.json'))))"
+verify: pytest tests/test_f5tts.py tests/test_card_example_f5tts.py; the voice list: none, checked by reading the keys of phoonnx/voice_index/f5tts.json
 see: ../../cloning.md, zipvoice.md, ../../ovos_plugin.md
 -->
 

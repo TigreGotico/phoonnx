@@ -106,7 +106,7 @@ Lists the voices in the local catalog. When the catalog is empty, it prints `No 
 | Option | Effect |
 |---|---|
 | `--lang LANG` | List the voices for a language. A tag with a region (`pt-PT`) keeps the voices of that region. A tag with no region (`pt`), or a region with no voice (`en-AU`), lists the nearest voices first. [Choose a voice](choose_voice.md) shows the output of each case. |
-| `-v`, `--verbose` | Print the id, name, language, engine, phoneme type, model URL and config URL of each voice. A voice that needs a reference clip also gets the line `Requires reference: yes`. |
+| `-v`, `--verbose` | Print the id, name, language, engine, phoneme type, model URL and config URL of each voice. A voice that needs a reference clip also gets the line `Requires reference: yes (needs speaker_reference / a style path)`. |
 
 A voice with a display name shows that name in place of its id, for example `* Pocket TTS Alba (it)`. The index holds 1288 such voices. To get the id of one of them, use `--verbose` or `list-available`.
 

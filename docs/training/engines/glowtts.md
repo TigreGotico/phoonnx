@@ -4,7 +4,7 @@
 covers: how to load a GlowTTS voice with its vocoder, convert a Larynx or Coqui voice and train a mel model
 source: phoonnx/engines/glowtts.py, phoonnx/engines/glowtts_config.py, phoonnx_train/engines/glowtts.py, phoonnx/voice_index/glowtts.json
 generated: no
-verify: grep -n "_QUALITY_PRESETS" -A30 phoonnx_train/engines/glowtts.py
+verify: pytest tests/test_glowtts.py tests/test_glowtts_training.py; the preset table: none, checked by reading phoonnx_train/engines/glowtts.py:_QUALITY_PRESETS
 see: matcha.md, ../training.md, ../../vocoders.md
 -->
 

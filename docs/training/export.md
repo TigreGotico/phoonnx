@@ -4,7 +4,7 @@
 covers: how to convert a trained checkpoint to ONNX, which files each engine writes, and how to check the result
 source: phoonnx_train/export_onnx.py:cli, phoonnx_train/engines/*.py:export_onnx, phoonnx_train/engines/vits.py:write_sidecars, phoonnx_train/styletts2/export.py
 generated: no
-verify: grep -n "output_dir / " phoonnx_train/engines/*.py phoonnx_train/styletts2/export.py
+verify: python -m phoonnx_train.export_onnx --help lists each flag on the page; pytest tests/test_export_native_config.py; the files each engine writes: none, checked by reading phoonnx_train/engines/*.py:export_onnx
 see: ../usage.md, ../alignment.md, ../vocoders.md
 -->
 

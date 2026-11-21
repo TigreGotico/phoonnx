@@ -56,10 +56,11 @@ have:
 
 ```
 $ python -c "from phoonnx.version import VERSION_STR; print(VERSION_STR)"
-1.124.4a1
+<major>.<minor>.<patch>a<n>
 ```
 
-An alpha version ends in `a` and a number. If you see `1.3.3`, upgrade. A second install
+The command prints the installed version. An alpha version ends in `a` and a number, as in
+the placeholder above. If you see `1.3.3`, upgrade. A second install
 with `--pre` alone does not replace an installed release, so add `-U`:
 
 ```bash

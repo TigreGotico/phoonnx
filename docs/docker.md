@@ -4,7 +4,7 @@
 covers: how to run the published phoonnx image as an OVOS TTS server, what the image holds, and how to configure and build it
 source: Dockerfile, docker-compose.yml, docker-entrypoint.sh, .github/workflows/docker.yml
 generated: no
-verify: grep -n "FROM\|uv pip install\|update-cache\|EXPOSE" Dockerfile; grep -n "type=raw" .github/workflows/docker.yml
+verify: none; checked by reading Dockerfile and the type=raw tag lines of .github/workflows/docker.yml
 see: deployment.md, ovos_plugin.md, offline.md, installation.md
 -->
 

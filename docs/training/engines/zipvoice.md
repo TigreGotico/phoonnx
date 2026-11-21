@@ -4,7 +4,7 @@
 covers: how to clone a voice with ZipVoice, configure its graphs, and train and export a ZipVoice model
 source: phoonnx/engines/zipvoice.py, phoonnx_train/engines/zipvoice.py, phoonnx_train/zipvoice/lightning.py
 generated: no
-verify: grep -n "base_lr\|lr_batches\|lr_epochs\|condition_drop_ratio\|clipping_scale" phoonnx_train/zipvoice/lightning.py
+verify: pytest tests/test_zipvoice.py tests/test_zipvoice_training.py; the optimizer defaults: none, checked by reading phoonnx_train/zipvoice/lightning.py:ZipVoiceModule.__init__
 see: ../../cloning.md, f5tts.md, chatterbox.md, ../training.md
 -->
 

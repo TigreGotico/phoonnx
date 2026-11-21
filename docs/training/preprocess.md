@@ -4,7 +4,7 @@
 covers: every phoonnx_train.preprocess flag, the files it writes and the fine-tuning phoneme map
 source: phoonnx_train/preprocess.py:cli, phoonnx_train/dataset_loaders.py, phoonnx_train/quality_filter.py
 generated: no
-verify: grep -n "click.option" -A1 phoonnx_train/preprocess.py
+verify: python -m phoonnx_train.preprocess --help lists every flag in the page's tables
 see: datasets.md, training.md, ../phonemizers.md
 -->
 

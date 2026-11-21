@@ -4,7 +4,7 @@
 covers: how to load the x-vits voice, choose a style and mark a stressed word
 source: phoonnx/engines/xvits.py
 generated: no
-verify: grep -n "pp_steps\|template_scale" phoonnx/engines/xvits.py
+verify: pytest tests/test_xvits.py; the pp_steps and template_scale defaults: none, checked by reading phoonnx/engines/xvits.py:XVitsAdapter.default_params
 see: ../../engines.md, ../../configuration.md
 -->
 

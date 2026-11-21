@@ -4,7 +4,7 @@
 covers: which OuteTTS languages and speakers exist, what the two graphs do and the decoding defaults
 source: phoonnx/engines/outetts.py, phoonnx/voice_index/outetts.json
 generated: no
-verify: grep -n "def default_params" -A10 phoonnx/engines/outetts.py
+verify: pytest tests/test_outetts.py tests/test_card_example_outetts.py; the decoding-defaults table: none, checked by reading phoonnx/engines/outetts.py:OuteTTSAdapter.default_params
 see: sparktts.md, ../../cloning.md, ../../engines.md
 -->
 

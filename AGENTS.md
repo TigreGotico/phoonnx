@@ -31,11 +31,11 @@ uv pip install --python .venv/bin/python --prerelease=allow -e . pytest jsonsche
 .venv/bin/python -m pytest tests/test_cli.py
 ```
 
-Run one test file at a time. Many files need more than this base set:
+Some test files need more than this base set:
 
 - `tests/test_voice_config_to_dict.py` needs `jsonschema`.
 - `tests/test_card_examples.py` imports `text2tashkeel` and `onnx`.
-- 12 test files import `onnx`, and 20 import `torch`, mostly the training tests.
+- The training and export tests import `torch`. Some other tests import `onnx`.
 - The `test` extra installs all of these. CI installs `-e .[test,train,train-styletts2,train-eval,train-data,train-optispeech,train-pyworld]` on Python 3.11 to 3.14, with the `espeak-ng` system package.
 
 ## Rules the repository enforces
@@ -51,7 +51,7 @@ Run one test file at a time. Many files need more than this base set:
 
 ## Agent hints in the docs
 
-README.md and each page in `docs/` carry an HTML comment right after the H1, `<!-- agent-hint ... -->`. A rendered page does not show it. It names what the page covers, the source files that hold the truth for it, whether a script generates it, the command that checks it, and the related pages. When you change a file that a hint names as `source`, read that page and fix what is no longer true, the hint included. Each page ends with a footer that links the index and the previous and next page in the reading order of `docs/index.md`.
+README.md and each page in `docs/` carry an HTML comment right after the H1, `<!-- agent-hint ... -->`. A rendered page does not show it. It names what the page covers, the source files that hold the truth for it, whether a script generates it, the command that checks it, and the related pages. When you change a file that a hint names as `source`, read that page and correct each false claim, the hint included. Each page ends with a footer that links the index and the previous and next page in the reading order of `docs/index.md`.
 
 ## Before a push
 

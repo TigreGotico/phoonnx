@@ -4,7 +4,7 @@
 covers: how to load an OptiSpeech voice, control duration, pitch and energy, and train one
 source: phoonnx/engines/optispeech.py, phoonnx/engines/optispeech_config.py, phoonnx_train/engines/optispeech.py, phoonnx/voice_index/optispeech.json
 generated: no
-verify: grep -n "_QUALITY_PRESETS" -A30 phoonnx_train/engines/optispeech.py
+verify: pytest tests/test_optispeech.py tests/test_optispeech_training.py; the preset table: none, checked by reading phoonnx_train/engines/optispeech.py:_QUALITY_PRESETS
 see: ../training.md, ../export.md, ../../engines.md
 -->
 

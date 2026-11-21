@@ -4,7 +4,7 @@
 covers: how to load a FastPitch voice with its vocoder, convert a Coqui FastPitch model and train one
 source: phoonnx/engines/fastpitch.py, phoonnx_train/engines/fastpitch.py, phoonnx/voice_index/fastpitch.json, scripts/conversion/coqui_fastpitch_export/
 generated: no
-verify: grep -n "f0_method" phoonnx_train/engines/fastpitch.py
+verify: pytest tests/test_fastpitch.py tests/test_fastpitch_training.py; the preset table: none, checked by reading phoonnx_train/engines/fastpitch.py:_QUALITY_PRESETS
 see: mixertts.md, ../training.md, ../../vocoders.md
 -->
 

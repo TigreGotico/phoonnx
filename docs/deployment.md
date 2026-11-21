@@ -4,7 +4,7 @@
 covers: how to run the phoonnx TTS server as a long-lived service: cache volume, prefetch, health checks, sizing, memory budget, OOM diagnosis, and config checks
 source: docker-entrypoint.sh, docker-compose.yml, phoonnx/voice_cache.py:VoiceCache, phoonnx/providers.py:SHARE_SESSIONS_ENV_VAR, phoonnx/config.py, phoonnx/lang_preprocess.py
 generated: no
-verify: grep -n "PHOONNX_PREFETCH_VOICES\|FAILED" docker-entrypoint.sh; python -m pytest tests/test_voice_cache_budget.py
+verify: python -m pytest tests/test_voice_cache_budget.py; the prefetch step: none, checked by reading docker-entrypoint.sh (PHOONNX_PREFETCH_VOICES)
 see: docker.md, ovos_plugin.md, offline.md
 -->
 

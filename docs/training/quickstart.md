@@ -4,7 +4,7 @@
 covers: how to go from a folder of audio to a speaking ONNX voice, step by step
 source: phoonnx_train/preprocess.py:cli, phoonnx_train/train.py:main, phoonnx_train/export_onnx.py:cli, phoonnx_train/engines/vits.py:write_sidecars
 generated: no
-verify: grep -n "Preprocessing complete\|No valid utterances found" phoonnx_train/preprocess.py
+verify: the --help of phoonnx_train.preprocess, phoonnx_train.train and phoonnx_train.export_onnx lists each flag that the page uses; pytest tests/test_preprocess_pipeline.py checks the "No valid utterances found" exit
 see: datasets.md, training.md, export.md
 -->
 
