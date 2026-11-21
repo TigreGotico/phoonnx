@@ -4,6 +4,11 @@
 status it has (``supported``, ``degraded`` -- read without its effect, never as tags -- or
 ``unsupported`` -- ignored on purpose) and a check of what the reader makes of it in English and in
 French. ``test_the_docs_list_every_row`` keeps the page and the table the same.
+
+The voice's text frontend reads ``<say-as>`` (``TextFrontend.say_as``, and so text2spoken); phoonnx
+holds no reading rule. A say-as row checks what the reader hands to the frontend: the written value,
+``interpret-as``, ``format``, ``detail`` and the language in force. ``tests/test_ssml_say_as.py``
+checks the readings themselves.
 """
 from __future__ import annotations
 
@@ -43,18 +48,28 @@ def only(text: str) -> Callable:
     return lambda pieces, t, lang: spoken(pieces) == text.replace("{t}", t)
 
 
-def by_language(**texts: str) -> Callable:
-    return lambda pieces, t, lang: spoken(pieces) == texts[lang]
-
-
 def field(name: str, value) -> Callable:
     return lambda pieces, t, lang: bool(pieces) and getattr(pieces[0], name) == value and spoken(pieces) == t
 
 
-def say_as(kind: str, value: str, en: str, fr: str, status: str = SUPPORTED, extra: str = "") -> Row:
+class Frontend:
+    """A text frontend that says back what ``say_as`` received, instead of reading it."""
+
+    @staticmethod
+    def say_as(text, interpret_as, format=None, detail=None, lang=None) -> str:
+        return f"say_as({text!r}, {interpret_as!r}, {format!r}, {detail!r}, {lang!r})"
+
+
+def handed(text: str, kind: str, fmt: str | None = None, detail: str | None = None) -> Callable:
+    """The frontend got `text` and `kind` (with `fmt` and `detail`) in the language of the document."""
+    return lambda pieces, t, lang: spoken(pieces) == Frontend.say_as(text, kind, fmt, detail, lang)
+
+
+def say_as(kind: str, value: str, status: str = SUPPORTED, extra: str = "",
+           fmt: str | None = None, detail: str | None = None) -> Row:
     return Row(f"say-as interpret-as={kind}" + (f" {extra}" if extra else ""), status,
                f'<speak><say-as interpret-as="{kind}"{" " + extra if extra else ""}>{value}</say-as></speak>',
-               by_language(en=en, fr=fr))
+               handed(value, kind, fmt, detail))
 
 
 MATRIX: list[Row] = [
@@ -81,30 +96,28 @@ MATRIX: list[Row] = [
     Row("w, token", SUPPORTED, "<speak><w>{t}</w> <token>x</token></speak>", only("{t} x")),
     Row("w role", DEGRADED, '<speak><w role="amazon:VB">{t}</w></speak>', only("{t}")),
     # -- say-as ------------------------------------------------------------------------------
-    say_as("cardinal", "1234", "one thousand, two hundred and thirty four", "mille deux cent trente-quatre"),
-    say_as("number", "12", "twelve", "douze"),
-    say_as("ordinal", "3", "third", "troisième"),
-    say_as("digits", "123", "1 2 3", "1 2 3"),
-    say_as("fraction", "3/4", "three quarters", "trois quarts"),
-    say_as("unit", "5km", "five kilometers", "cinq kilomètres"),
-    say_as("date", "2026-11-09", "the ninth of november, twenty twenty six",
-           "le neuf novembre deux mille vingt-six"),
-    say_as("date", "1/2/2026", "the first of february, twenty twenty six",
-           "le premier février deux mille vingt-six", extra='format="dmy"'),
-    say_as("time", "14:30", "half past two P M", "quatorze heures trente"),
-    say_as("time", "7:30 pm", "half past seven P M", "sept heures et demie du soir", extra='format="hms12"'),
-    say_as("time", "9 pm", "nine P M", "neuf heures du soir", extra='detail="1"'),
-    say_as("date", "9 novembre 2026", "9 novembre 2026", "le neuf novembre deux mille vingt-six", extra='detail="written"'),
-    say_as("currency", "$12.50", "twelve dollars and fifty cents", "douze dollars et cinquante cents"),
-    say_as("address", "12 Rue de la Paix", "twelve Rue de la Paix", "douze Rue de la Paix"),
-    say_as("telephone", "555-0100", "5 5 5 0 1 0 0", "5 5 5 0 1 0 0"),
-    say_as("characters", "XK7", "X K 7", "X K 7"),
-    say_as("spell-out", "XK7", "X K 7", "X K 7"),
-    say_as("verbatim", "XK7", "X K 7", "X K 7"),
-    say_as("interjection", "wow", "wow", "wow"),
-    say_as("an unknown type", "abc", "abc", "abc", DEGRADED),
+    say_as("cardinal", "1234"),
+    say_as("number", "12"),
+    say_as("ordinal", "3"),
+    say_as("digits", "123"),
+    say_as("fraction", "3/4"),
+    say_as("unit", "5km"),
+    say_as("date", "2026-11-09"),
+    say_as("date", "1/2/2026", extra='format="dmy"', fmt="dmy"),
+    say_as("time", "14:30"),
+    say_as("time", "7:30 pm", extra='format="hms12"', fmt="hms12"),
+    say_as("time", "9 pm", extra='detail="1"', detail="1"),
+    say_as("date", "9 novembre 2026", extra='detail="written"', detail="written"),
+    say_as("currency", "$12.50"),
+    say_as("address", "12 Rue de la Paix"),
+    say_as("telephone", "555-0100"),
+    say_as("characters", "XK7"),
+    say_as("spell-out", "XK7"),
+    say_as("verbatim", "XK7"),
+    say_as("interjection", "wow"),
+    say_as("an unknown type", "abc", DEGRADED),
     Row("say-as detail", DEGRADED, '<speak><say-as interpret-as="digits" detail="2">12</say-as></speak>',
-        only("1 2")),
+        handed("12", "digits", detail="2")),
     Row("say-as expletive", SUPPORTED, "<speak>{t} <say-as interpret-as=\"expletive\">damn</say-as> {t}</speak>",
         lambda ps, t, lang: [(p.text, p.sound) for p in ps] == [(t, None), ("", ("beep", 350, 1.0)), (t, None)]),
     # -- pronunciation -----------------------------------------------------------------------
@@ -210,7 +223,7 @@ MATRIX: list[Row] = [
 @pytest.mark.parametrize("row", MATRIX, ids=lambda row: row.feature)
 def test_the_reader_does_what_the_table_says(row, lang):
     words = WORDS[lang]
-    pieces = parse_ssml(row.ssml.replace("{t}", words), lang)
+    pieces = parse_ssml(row.ssml.replace("{t}", words), lang, Frontend())
     assert row.check(pieces, words, lang), (row.feature, pieces)
 
 

@@ -18,6 +18,8 @@ The short version, with examples, is in [usage](usage.md#ssml).
 
 "words" is the text inside the element (`Hello world`, `Bonjour le monde`). A row says what comes out
 of `parse_ssml`: the text said, then the silence, pace, pitch, effects, marks and sounds that go with it.
+The voice's text frontend reads `say-as` (see [usage](usage.md#ssml)), so a `say-as` row says what
+`parse_ssml` hands to it.
 
 | Element or attribute | Status | What the reader does |
 | --- | --- | --- |
@@ -32,27 +34,27 @@ of `parse_ssml`: the text said, then the silence, pace, pitch, effects, marks an
 | s | supported | says "words then words"; pause 150 ms |
 | w, token | supported | says "words x" |
 | w role | degraded | words kept |
-| say-as interpret-as=cardinal | supported | says "one thousand, two hundred and thirty four" (en), "mille deux cent trente-quatre" (fr) |
-| say-as interpret-as=number | supported | says "twelve" (en), "douze" (fr) |
-| say-as interpret-as=ordinal | supported | says "third" (en), "troisième" (fr) |
-| say-as interpret-as=digits | supported | says "1 2 3" |
-| say-as interpret-as=fraction | supported | says "three quarters" (en), "trois quarts" (fr) |
-| say-as interpret-as=unit | supported | says "five kilometers" (en), "cinq kilomètres" (fr) |
-| say-as interpret-as=date | supported | says "monday, november ninth, twenty twenty six" (en), "lundi neuf novembre deux-mille-vingt-six" (fr) |
-| say-as interpret-as=date format="dmy" | supported | says "sunday, february first, twenty twenty six" (en), "dimanche premier février deux-mille-vingt-six" (fr) |
-| say-as interpret-as=time | supported | says "half past two P M" (en), "quatorze heures trente" (fr) |
-| say-as interpret-as=time format="hms12" | supported | says "half past seven P M" (en), "sept heures et demie du soir" (fr) |
-| say-as interpret-as=time detail="1" | supported | says "nine P M" (en), "neuf heures du soir" (fr) |
-| say-as interpret-as=date detail="written" | supported | says "9 novembre 2026" (en), "lundi neuf novembre deux-mille-vingt-six" (fr) |
-| say-as interpret-as=currency | supported | says "twelve dollars and fifty cents" (en), "douze dollars et cinquante cents" (fr) |
-| say-as interpret-as=address | supported | says "twelve Rue de la Paix" (en), "douze Rue de la Paix" (fr) |
-| say-as interpret-as=telephone | supported | says "5 5 5 0 1 0 0" |
-| say-as interpret-as=characters | supported | says "X K 7" |
-| say-as interpret-as=spell-out | supported | says "X K 7" |
-| say-as interpret-as=verbatim | supported | says "X K 7" |
-| say-as interpret-as=interjection | supported | says "wow" |
-| say-as interpret-as=an unknown type | degraded | says "abc" |
-| say-as detail | degraded | says "1 2" |
+| say-as interpret-as=cardinal | supported | the text frontend reads "1234" in the language in force |
+| say-as interpret-as=number | supported | the text frontend reads "12" in the language in force |
+| say-as interpret-as=ordinal | supported | the text frontend reads "3" in the language in force |
+| say-as interpret-as=digits | supported | the text frontend reads "123" in the language in force |
+| say-as interpret-as=fraction | supported | the text frontend reads "3/4" in the language in force |
+| say-as interpret-as=unit | supported | the text frontend reads "5km" in the language in force |
+| say-as interpret-as=date | supported | the text frontend reads "2026-11-09" in the language in force |
+| say-as interpret-as=date format="dmy" | supported | the text frontend reads "1/2/2026" with format dmy, in the language in force |
+| say-as interpret-as=time | supported | the text frontend reads "14:30" in the language in force |
+| say-as interpret-as=time format="hms12" | supported | the text frontend reads "7:30 pm" with format hms12, in the language in force |
+| say-as interpret-as=time detail="1" | supported | the text frontend reads "9 pm" with detail 1, in the language in force |
+| say-as interpret-as=date detail="written" | supported | the text frontend reads "9 novembre 2026" with detail written, in the language in force |
+| say-as interpret-as=currency | supported | the text frontend reads "$12.50" in the language in force |
+| say-as interpret-as=address | supported | the text frontend reads "12 Rue de la Paix" in the language in force |
+| say-as interpret-as=telephone | supported | the text frontend reads "555-0100" in the language in force |
+| say-as interpret-as=characters | supported | the text frontend reads "XK7" in the language in force |
+| say-as interpret-as=spell-out | supported | the text frontend reads "XK7" in the language in force |
+| say-as interpret-as=verbatim | supported | the text frontend reads "XK7" in the language in force |
+| say-as interpret-as=interjection | supported | the text frontend reads "wow" in the language in force |
+| say-as interpret-as=an unknown type | degraded | the text frontend reads "abc" in the language in force |
+| say-as detail | degraded | the text frontend gets "12" with detail 2 |
 | say-as expletive | supported | says "words then (a sound) then words"; beep 350 ms |
 | phoneme ipa | supported | says "[[ bɔ̃ʒuʁ ]]" |
 | phoneme x-sampa | supported | says "[[ həˈləʊ ]]" |
@@ -121,10 +123,8 @@ of `parse_ssml`: the text said, then the silence, pace, pitch, effects, marks an
 * An unknown element is its words. `desc`, `metadata`, `meta` and `lexicon` are about the document, not
   for the listener, and are not read.
 * `xml:lang` on any element sets the language of what is inside it (and of `say-as` in it).
-* `say-as` reads the quantities a text-generating skill writes in the notation of the language: `14 h 30`,
-  `7:30 pm` ("sept heures et demie"), `9 pm` ("nine P M": the letters, so a sentence ending there has one
-  full stop), `3,50 €`, `1 200`, `1.200,50 €`, `1,5 L`, `9 novembre 2026`, `1er`. A quantity is read
-  here, not by the unit normalizer, and the unit agrees with it (`1 kg` is "one kilogram").
+* `say-as` goes to `TextFrontend.say_as` of the voice with its written value, `interpret-as`, `format`,
+  `detail` and the language in force. phoonnx holds no reading rule; text2spoken reads the value.
 
 ## Time
 
@@ -152,7 +152,6 @@ of `parse_ssml`: the text said, then the silence, pace, pitch, effects, marks an
 | `<prosody duration>` | 600 s; the stretch itself stays within 0.5x and 2x |
 | rate | 0.5x to 2x; pitch +-12 semitones; volume 0 to 2x (`+-96 dB` is the most a dB value can ask) |
 | nesting | 100 levels; deeper is read as text |
-| `say-as` | 15 digits or 200 characters; beyond that it is read digit by digit or as written |
 
 A hundred thousand `<break>`s, marks, `<amazon:breath/>`s, unclosed tags, open CDATA sections or
 doctypes are each read in under a second.

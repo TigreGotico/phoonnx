@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import time
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
@@ -70,13 +71,14 @@ def test_a_namespace_prefix_works_declared_or_not(ssml):
     ('<speak>a<ssml:break time="1s"/>b</speak>', lambda ps: [(p.text, p.pause_ms) for p in ps] == [("a", 0), ("b", 1000)]),
     ('<speak><ssml:prosody rate="fast" pitch="+2st">a</ssml:prosody></speak>', lambda ps: (ps[0].rate, ps[0].pitch) == (1.25, 2.0)),
     ('<speak><ssml:emphasis level="strong">a</ssml:emphasis></speak>', lambda ps: ps[0].rate == 0.9),
-    ('<speak><ssml:say-as interpret-as="cardinal">12</ssml:say-as></speak>', lambda ps: ps[0].text == "twelve"),
+    ('<speak><ssml:say-as interpret-as="cardinal">12</ssml:say-as></speak>', lambda ps: ps[0].text == "cardinal 12 en"),
     ('<speak><ssml:phoneme alphabet="ipa" ph="a">b</ssml:phoneme></speak>', lambda ps: ps[0].text == "[[ a ]]"),
     ('<speak><ssml:sub alias="x">y</ssml:sub></speak>', lambda ps: ps[0].text == "x"),
     ('<ssml:speak><ssml:p>a</ssml:p><ssml:p>b</ssml:p></ssml:speak>', lambda ps: [p.pause_ms for p in ps] == [0, 750]),
 ])
 def test_the_ssml_prefix_works_without_being_declared(ssml, check):
-    assert check(parse_ssml(ssml, "en"))
+    frontend = SimpleNamespace(say_as=lambda text, kind, fmt=None, detail=None, lang=None: f"{kind} {text} {lang}")
+    assert check(parse_ssml(ssml, "en", frontend))
 
 
 def test_a_prefixed_attribute_does_not_cost_the_document_its_markup():
@@ -231,6 +233,9 @@ def burst(seconds: float, rate: int = SR, hz: float = 180.0, amplitude: float = 
 
 class FakeVoice(TTSVoice):
     """A voice with no model: each synthesize() call yields `sentences` bursts of `seconds`."""
+
+    frontend = None  # no phonemizer: these documents hold no say-as
+    adapter = MagicMock()
 
     def __init__(self, rate: int = SR, seconds: float = 1.0, sentences: int = 1, edge: bool = False):
         self.config = SimpleNamespace(sample_rate=rate, length_scale=1.0, lang_code="en", lang_id_map={})
