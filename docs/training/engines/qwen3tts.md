@@ -1,8 +1,14 @@
 # Qwen3-TTS Engine
 
-This page is for integrators who want Qwen3-TTS voices in phoonnx. After reading it you
-can pick a timbre and a language, and you know what each of the seven ONNX graphs does
-and what one second of audio costs.
+<!-- agent-hint
+covers: which Qwen3-TTS timbres and languages exist, what the seven graphs do and the control parameters
+source: phoonnx/engines/qwen3tts.py, phoonnx/voice_index/qwen3tts.json
+generated: no
+verify: pytest tests/test_qwen3tts.py tests/test_card_example_qwen3tts.py; the decoding defaults: none, checked by reading phoonnx/engines/qwen3tts.py:Qwen3TTSAdapter.default_params
+see: sparktts.md, arktts.md, ../../engines.md
+-->
+
+This page explains the Qwen3-TTS engine, its timbres and its languages, for integrators who want Qwen3-TTS voices in phoonnx.
 
 > Related: [adapter architecture](../../engines.md) ·
 > [configuration](../../configuration.md) ·
@@ -121,3 +127,7 @@ frames is 20 seconds of audio.
 Apache-2.0, the licence of the upstream model. The weights, the architecture and the nine
 timbres are the work of the Alibaba Qwen team; cite the Qwen3-TTS technical report
 (arXiv 2601.15621) when you use them.
+
+---
+
+[Docs index](../../index.md) · Previous: [Spark-TTS](sparktts.md) · Next: [ArkTTS](arktts.md)

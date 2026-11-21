@@ -1,6 +1,16 @@
 # Voice sweep
 
-`scripts/voice_sweep.py` loads every voice in the bundled index, makes it speak, and checks the audio. Use it to find index entries that do not load or do not speak, and to compare two commits.
+<!-- agent-hint
+covers: how to load and synthesise every index voice, check the audio and the ASR transcript, and compare two runs
+source: scripts/voice_sweep.py
+generated: no
+verify: python -I scripts/voice_sweep.py --help, and python -I scripts/voice_sweep.py run --help
+see: benchmarking.md, choose_voice.md
+-->
+
+This page shows how to check every voice in the bundled index with `scripts/voice_sweep.py`, for maintainers who change the index or the synthesis code.
+
+The script loads every voice, makes it speak, and checks the audio. Use it to find index entries that do not load or do not speak, and to compare two commits.
 
 A voice passes when it loads through the index path (`TTSModelInfo.load`) and `TTSVoice.synthesize` returns clean audio for every sentence. The tool checks each sentence's audio for these faults:
 
@@ -51,8 +61,8 @@ A separate `HF_HUB_CACHE` keeps the downloads of the sweep away from the cache t
 
 - `--sentences` is a TSV with the columns `lang`, `id`, `category`, `text` and `source`. Each voice gets the rows of its language whose `id` is in `--sentence-ids` (default `plain digits`). A row whose source starts with `script:` is a sentence for the script, not the language, so it gets no WER.
 - `--reference-dir` holds `<lang>.wav` and `<lang>.txt`, or `default.wav`, for voices with `requires_reference`.
-- Voices that share model files run together in one worker process, so the files download once. A group of more than `--group-size` voices (default 40) is split between the slots. With `--evict` a repo that the run downloaded leaves the Hugging Face cache when no pending voice downloads from it. A repo that was in the cache when the run started stays, under its `Phoonnx/` id or its old `OpenVoiceOS/` id. `--max-cache-gb` starts no new group while the cache holds more than that, and `--min-free-gb` waits while the cache disk has less free space than that.
-- `--timeout` is the limit per voice in seconds. A voice that runs out of time is recorded as `timeout`, with the sentences it spoke before. A worker that crashes or stops answering is replaced, and the voice it was on is recorded as `crash` or `timeout`. A worker that ends before it starts a voice is blamed on its next voice, so each new worker uses up one voice and the run always ends.
+- Voices that share model files run together in one worker process, so the files download once. A group of more than `--group-size` voices (default 40) is split between the slots. With `--evict` a repo that the run downloaded leaves the Hugging Face cache when no pending voice downloads from it. A repo that was in the cache when the run started stays, under its `Phoonnx/` id or its old `OpenVoiceOS/` id. `--max-cache-gb` starts no further group while the cache holds more than that, and `--min-free-gb` waits while the cache disk has less free space than that.
+- `--timeout` is the limit per voice in seconds. A voice that runs out of time is recorded as `timeout`, with the sentences it spoke before. A worker that crashes or stops answering is replaced, and the voice it was on is recorded as `crash` or `timeout`. A worker that ends before it starts a voice is blamed on its next voice, so each replacement worker uses up one voice and the run always ends.
 - The run checks its options before it starts a worker. A missing or unreadable sentence file, a sentence file with no row for `--sentence-ids`, an unreadable `--asr-floor` file, and a `--voices` id that is not in the index are errors, and the run stops with exit status 2.
 - `--max-wer` (default 0.5) and `--max-cer` (default 0.35, for scripts without spaces) are the limits for a voice's mean score. An ASR model passes `floor` at a WER of up to 0.30 on human speech, so the voice limit sits above that.
 - `--threads` caps the onnxruntime threads of every session. Without the cap onnxruntime starts one pinned thread per core, and `--cpus` has no effect.
@@ -77,3 +87,7 @@ python scripts/voice_sweep.py diff base.jsonl head.jsonl --wer-margin 0.15
 ```
 
 `diff` counts these as regressions: a voice whose status is worse in the second run (`ok`, then `partial`, then any failure), a voice that is missing from the second run, a voice that has a WER in the first run and none in the second although it spoke, and a WER that rose by more than the margin. A voice that the second run did not test (`no_sentences` or `needs_reference`) is listed but is not a regression. `diff` exits with status 1 when it finds a regression.
+
+---
+
+[Docs index](index.md) · Previous: [Benchmarking](benchmarking.md) · Next: [Training quickstart](training/quickstart.md)

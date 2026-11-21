@@ -1,8 +1,14 @@
 # OptiSpeech Engine
 
-This page is for integrators loading OptiSpeech voices in phoonnx. After reading
-it you can load an OptiSpeech voice, understand its single-file ONNX contract,
-and control duration / pitch / energy at synthesis time.
+<!-- agent-hint
+covers: how to load an OptiSpeech voice, control duration, pitch and energy, and train one
+source: phoonnx/engines/optispeech.py, phoonnx/engines/optispeech_config.py, phoonnx_train/engines/optispeech.py, phoonnx/voice_index/optispeech.json
+generated: no
+verify: pytest tests/test_optispeech.py tests/test_optispeech_training.py; the preset table: none, checked by reading phoonnx_train/engines/optispeech.py:_QUALITY_PRESETS
+see: ../training.md, ../export.md, ../../engines.md
+-->
+
+This page explains how to load and train OptiSpeech voices, for integrators and voice builders.
 
 > Related: [adapter architecture](../../engines.md) ·
 > [configuration](../../configuration.md) ·
@@ -136,7 +142,7 @@ in plain Python — a quality preset fully determines the model, no external
 config file is involved. Install the engine extra:
 
 ```bash
-pip install phoonnx[train,train-optispeech]
+pip install --pre "phoonnx[train,train-optispeech]"
 ```
 
 ```bash
@@ -156,8 +162,8 @@ depth and the WaveNeXt vocoder size):
 | `medium` | 256 | 4 / 4 | 384 / 8 |
 | `high` | 384 | 6 / 6 | 512 / 8 |
 
-Use `--quality <preset>` or set `quality` in the `extra` config; any preset
-field can be overridden individually through `extra` (e.g. `{"dim": 320}`).
+Use `--quality <preset>`. A key in the `engine_params` of the dataset's `config.json`
+overrides the same preset key, for example `{"engine_params": {"dim": 320}}`.
 
 Architecture: a ConvNeXt text encoder with scaled sinusoidal positional
 embeddings, FastSpeech2-style duration / pitch / energy variance predictors, a
@@ -169,12 +175,13 @@ feature-matching terms.
 
 Training uses manual optimization (two optimizers — generator and
 discriminator — each with a cosine-with-warmup schedule). Checkpoints carry the
-optimizer state, scheduler state and epoch, so a run is fully resumable:
+optimizer state, scheduler state and epoch, so a run is fully resumable. PyTorch Lightning
+writes the checkpoints under `<default-root-dir>/lightning_logs/version_<N>/checkpoints/`:
 
 ```bash
 python -m phoonnx_train.train --engine optispeech --dataset-dir ./dataset \
     --default-root-dir ./checkpoints \
-    --resume-from-checkpoint ./checkpoints/last.ckpt
+    --resume-from-checkpoint ./checkpoints/lightning_logs/version_0/checkpoints/epoch=99-step=25000.ckpt
 ```
 
 To fine-tune from an existing checkpoint whose vocabulary, speaker count or
@@ -185,8 +192,9 @@ Export a trained checkpoint to the single-file ONNX described above:
 
 ```bash
 python -m phoonnx_train.export_onnx \
+    ./checkpoints/lightning_logs/version_0/checkpoints/epoch=99-step=25000.ckpt \
+    --config ./dataset/config.json \
     --engine optispeech \
-    --checkpoint ./checkpoints/last.ckpt \
     --output-dir ./onnx
 ```
 
@@ -211,3 +219,7 @@ defaults, symbol table and text-processor flags — is embedded under the
 ## References
 
 - [OptiSpeech](https://github.com/mush42/optispeech)
+
+---
+
+[Docs index](../../index.md) · Previous: [Mixer-TTS](mixertts.md) · Next: [FastPitch](fastpitch.md)

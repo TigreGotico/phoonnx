@@ -1,5 +1,15 @@
 # MOSS-TTS-Nano — training and finetuning
 
+<!-- agent-hint
+covers: how to prepare data for, fine-tune, resume and export MOSS-TTS-Nano
+source: phoonnx_train/mosstts/prepare_data.py, phoonnx_train/mosstts/train.py, phoonnx_train/mosstts/warmstart.py, phoonnx_train/mosstts/export_onnx.py
+generated: no
+verify: ! comm -23 <(grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' docs/training/engines/mosstts.md | sort -u) <(for m in prepare_data train export_onnx; do python -m phoonnx_train.mosstts.$m --help; done | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | sort -u) | grep .
+see: ../training.md, ../../cloning.md
+-->
+
+This page shows how to fine-tune and export MOSS-TTS-Nano with its own pipeline, for anyone who trains a voice-cloning model.
+
 MOSS-TTS-Nano is a ~100M-parameter autoregressive **codec LM**: a 12-layer GPT-2-style
 backbone with RoPE predicts frames of RVQ-16 audio tokens, which the frozen
 MOSS-Audio-Tokenizer-Nano decodes to 48 kHz stereo audio. It clones a voice zero-shot from
@@ -152,7 +162,11 @@ The exported graphs are validated against the live PyTorch module in
 
 ## Licensing
 
-The upstream repository (github.com/OpenMOSS/MOSS-TTS-Nano) now carries an Apache-2.0
-`LICENSE` file at its root, matching the Hugging Face model cards. This pipeline is an
+The upstream repository (github.com/OpenMOSS/MOSS-TTS-Nano) has an Apache-2.0 `LICENSE`
+file at its root, which matches the Hugging Face model cards. This pipeline is an
 independent implementation guided by the published architecture and the upstream reference
 code; no upstream source file is copied.
+
+---
+
+[Docs index](../../index.md) · Previous: [F5-TTS](f5tts.md) · Next: [Shami](shami.md)

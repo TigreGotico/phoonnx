@@ -1,7 +1,14 @@
 # Rápido Engine (training)
 
-This page tells you how to train or fine-tune a Rápido voice with
-`--engine rapido`, and how to export it for the phoonnx runtime.
+<!-- agent-hint
+covers: how to train, fine-tune and export a Rápido voice with --engine rapido
+source: phoonnx_train/engines/rapido.py, phoonnx_train/rapido/lightning.py, phoonnx_train/rapido/export_onnx.py
+generated: no
+verify: pytest tests/test_rapido_training.py tests/test_rapido_export.py; the hyperparameter defaults: none, checked by reading phoonnx_train/rapido/lightning.py:RapidoModule
+see: ../training.md, ../export.md, ../../engines.md
+-->
+
+This page shows how to train or fine-tune a Rápido voice with `--engine rapido` and export it, for anyone with a prepared dataset.
 
 > Related: [training reference](../training.md) ·
 > [adapter architecture](../../engines.md) ·
@@ -24,9 +31,9 @@ The upstream release ships no training code. The training loop in
 ## Extras needed
 
 ```bash
-pip install phoonnx[train]
-pip install phoonnx[train-resample]   # resampling to the AudioVAE's 16 kHz input
-pip install phoonnx[pt]               # tugaphone, for Portuguese
+pip install --pre "phoonnx[train]"
+pip install --pre "phoonnx[train-resample]"   # resampling to the AudioVAE's 16 kHz input
+pip install --pre "phoonnx[pt]"               # tugaphone, for Portuguese
 ```
 
 ## Data and tokens
@@ -91,7 +98,8 @@ python -m phoonnx_train.preprocess -i <dataset> -o <out> \
 python -m phoonnx_train.train --dataset-dir <out> --engine rapido --quality base
 
 # 3. export the voice
-python -m phoonnx_train.export_onnx <run>/checkpoints/<last>.ckpt --engine rapido \
+python -m phoonnx_train.export_onnx \
+    lightning_logs/version_0/checkpoints/epoch=<E>-step=<S>.ckpt --engine rapido \
     --config <out>/config.json --output-dir <voice>
 ```
 
@@ -135,6 +143,10 @@ A warm start does not keep the released latent normalization: the engine
 replaces the mean and standard deviation of `rapido.pt` with the statistics of
 your training set.
 
-A two-phase recipe that is known to work for a new language: train with
+A two-phase recipe that works for a language the released model does not speak: train with
 `freeze_backbone_steps` set for the early steps, then continue with
 `text_only` to adapt the duration predictor and text encoder.
+
+---
+
+[Docs index](../../index.md) · Previous: [SuperTonic](supertonic.md) · Next: [Indic Parler-TTS](indic_parler.md)

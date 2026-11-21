@@ -1,5 +1,13 @@
 # SSML
 
+<!-- agent-hint
+covers: what each SSML 1.1, Polly and Alexa element and attribute does in phoonnx, its status, the time rules, the bounds and the cost
+source: phoonnx/ssml.py:parse_ssml, phoonnx/voice.py:TTSVoice.synthesize_ssml, phoonnx/audio_fx.py, tests/test_ssml_audit.py:MATRIX
+generated: no
+verify: pytest -q tests/test_ssml_audit.py
+see: usage.md, alignment.md
+-->
+
 `TTSVoice.synthesize_ssml()` and `synthesize_ssml_wav()` read SSML 1.1 and the Amazon Polly and
 Alexa extensions (`phoonnx.ssml.parse_ssml`, then `phoonnx.voice.TTSVoice.synthesize_ssml`). This
 page is what the reader was measured to do, in English and in French, by running it
@@ -193,3 +201,7 @@ Reading the markup takes about 20 ms for 40 kB (300 paragraphs with breaks, emph
   something this engine does; the words are read.
 * `<say-as detail>` and alphabets other than IPA and X-SAMPA for `<phoneme>`.
 * `<prosody volume="silent">` skips its words (they are not synthesized silently, so they take no time).
+
+---
+
+[Docs index](index.md) · Previous: [Usage guide](usage.md) · Next: [Voice cloning](cloning.md)
