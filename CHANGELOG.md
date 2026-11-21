@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.124.6a1](https://github.com/TigreGotico/phoonnx/tree/1.124.6a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.5a1...1.124.6a1)
+
+## [1.124.5a1](https://github.com/TigreGotico/phoonnx/tree/1.124.5a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.4a1...1.124.5a1)
+
+**Merged pull requests:**
+
+- fix: list text\_casing in the config schema [\#860](https://github.com/TigreGotico/phoonnx/pull/860) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: optimized-graph cache with sidecars, BPE added-token flags, length\_scale for four engines [\#856](https://github.com/TigreGotico/phoonnx/pull/856) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.124.4a1](https://github.com/TigreGotico/phoonnx/tree/1.124.4a1) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.3a2...1.124.4a1)
@@ -215,11 +228,6 @@
 ## [1.118.1a1](https://github.com/TigreGotico/phoonnx/tree/1.118.1a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.0a3...1.118.1a1)
-
-**Merged pull requests:**
-
-- fix: a voice with no config, or ids its VITS graph cannot embed, raises VoiceLoadError [\#750](https://github.com/TigreGotico/phoonnx/pull/750) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: name the engine in exported configs and allow a missing config path [\#749](https://github.com/TigreGotico/phoonnx/pull/749) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.118.0a3](https://github.com/TigreGotico/phoonnx/tree/1.118.0a3) (2026-11-19)
 
