@@ -88,7 +88,7 @@ The voice's text frontend reads `say-as` (see [usage](usage.md#ssml)), so a `say
 | prosody duration | supported | words kept; duration 3000 ms |
 | prosody amazon:max-duration | supported | words kept; max duration 2000 ms |
 | nested prosody | supported | words kept; rate x1.5625; pitch +2.0 st |
-| voice languages | supported | words kept; language de-DE |
+| voice languages | supported | words kept; voice language de-DE (the accent dropped); the language of the words stays as it was |
 | voice name, gender, age, variant, required, ordering | degraded | words kept |
 | audio src with fallback text | degraded | says "words after" |
 | audio src without fallback | degraded | words kept |
@@ -184,7 +184,8 @@ Reading the markup takes about 20 ms for 40 kB (300 paragraphs with breaks, emph
 * `<audio src>`: nothing is fetched or played; the fallback text inside it is read.
 * `<lexicon>` / `<lookup>`: pronunciation lexicons are not loaded; use `<phoneme>` or `<sub>`.
 * `<voice name>`, `gender`, `age`, `variant`: a voice object is one voice. `languages` picks the language
-  id of a multilingual voice.
+  id of a multilingual voice from its first language (an `:accent` is dropped). It does not change the
+  language of the words: `say-as` reads in the `xml:lang` in force, as SSML 1.1 section 3.2.1 asks.
 * `<par>` and `<media>` timing (`begin`, `end`, `repeatCount`, `soundLevel`, fades): read one after the other.
 * `<w role>`, `<amazon:domain>`, `<amazon:emotion>`, `<alexa:name>`: styles and parts of speech are not
   something this engine does; the words are read.

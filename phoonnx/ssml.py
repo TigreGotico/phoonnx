@@ -101,7 +101,9 @@ class Piece:
     is heard after); `sound` is ``("beep"|"breath", duration_ms, volume)`` for a piece that is only a
     sound (``text`` is then empty); `duration_ms` is the time ``<prosody duration>`` asks for this
     text and `max_duration_ms` the most ``amazon:max-duration`` allows (speech is stretched or
-    squeezed to fit, within a factor of two).
+    squeezed to fit, within a factor of two). `voice_lang` is the first language of ``<voice
+    languages>``, without its accent: it picks the voice (the language id of a multilingual one) and
+    leaves `lang`, the language of the text, alone.
     """
 
     text: str
@@ -117,6 +119,7 @@ class Piece:
     mark_pauses: tuple = ()
     duration_ms: int | None = None
     max_duration_ms: int | None = None
+    voice_lang: str | None = None
 
 
 def looks_like_ssml(text: str | None) -> bool:
@@ -377,14 +380,19 @@ def _build(source: str) -> ET.Element:
 
 
 def _language(element: ET.Element) -> str | None:
-    """The language an element says its content is in: ``xml:lang`` anywhere, ``lang`` on <lang>,
-    the first of ``languages`` on <voice>."""
+    """The language an element says its content is in: ``xml:lang`` anywhere, ``lang`` on <lang>."""
     value = element.get("xml:lang")
     if not value and element.tag == "lang":
         value = element.get("lang")
-    if not value and element.tag == "voice":
-        value = (element.get("languages") or "").split(" ")[0]
     return value.strip() or None if value else None
+
+
+def _voice_language(element: ET.Element) -> str | None:
+    """The first language of ``languages`` on <voice>, without its ``:accent``."""
+    if element.tag != "voice":
+        return None
+    first = (element.get("languages") or "").split()
+    return first[0].split(":")[0] or None if first else None
 
 
 class _Reader:
@@ -479,12 +487,18 @@ class _Reader:
                 self.pieces[i] = replace(self.pieces[i], **{key: max(1, share)})
 
     def visit(self, element) -> None:
+        changes = {}
         lang = _language(element)
-        if not lang or lang == self.style.lang:
+        if lang and lang != self.style.lang:
+            changes["lang"] = lang
+        voice_lang = _voice_language(element)
+        if voice_lang and voice_lang != self.style.voice_lang:
+            changes["voice_lang"] = voice_lang
+        if not changes:
             self.visit_tag(element)
             return
         self.flush()
-        before, self.style = self.style, replace(self.style, lang=lang)
+        before, self.style = self.style, replace(self.style, **changes)
         try:
             self.visit_tag(element)
             self.flush()

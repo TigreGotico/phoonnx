@@ -236,7 +236,7 @@ limits and the cost of each feature are in [SSML](ssml.md).
 | `<prosody rate= volume= pitch=>` | pace (the voice's length scale), loudness, and pitch (`+2st`, `-10%`, `high`; Hz is ignored) |
 | `<prosody duration=>`, `amazon:max-duration=` | the speech is stretched or squeezed (0.5x to 2x) to that time, or to at most that time |
 | `<emphasis level=>` | a little slower and louder (or softer for `reduced`) |
-| `<lang xml:lang=>`, `<voice>` | a multilingual voice uses that language's id for the piece; a monolingual voice says the words in its own language. `<say-as>` inside it also reads its value in that language |
+| `<lang xml:lang=>`, `<voice languages=>` | a multilingual voice uses that language's id for the piece; a monolingual voice says the words in its own language. `<say-as>` inside `xml:lang` also reads its value in that language; `<voice languages>` picks the voice only |
 | `<say-as interpret-as=...>` | `cardinal`, `number`, `ordinal`, `digits`, `fraction`, `unit`, `date` (+`format="mdy"`), `time`, `currency`, `telephone`, `characters`/`spell-out`/`letters`/`verbatim`, and `expletive` (a bleep) |
 | `<sub alias=>` | substituted text |
 | `<phoneme alphabet="ipa\|x-sampa" ph=>` | inline phonemes (X-SAMPA is converted to IPA) |

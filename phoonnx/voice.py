@@ -1341,7 +1341,7 @@ class TTSVoice:
                 settings["length_scale"] = base_length / piece.rate
             if piece.volume != 1.0:
                 settings["volume"] = base.volume * piece.volume
-            lang_id = self._lang_id_for(piece.lang)
+            lang_id = self._lang_id_for(piece.voice_lang or piece.lang)
             if lang_id is not None:
                 settings["lang_id"] = lang_id
             piece_config = replace(base, **settings) if settings else base

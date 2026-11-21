@@ -172,8 +172,8 @@ MATRIX: list[Row] = [
     Row("nested prosody", SUPPORTED, '<speak><prosody rate="fast" pitch="+2st"><prosody rate="fast">{t}</prosody></prosody></speak>',
         lambda ps, t, lang: (ps[0].rate, ps[0].pitch) == (1.5625, 2.0)),
     # -- voice -------------------------------------------------------------------------------
-    Row("voice languages", SUPPORTED, '<speak><voice languages="de-DE en-US">{t}</voice></speak>',
-        lambda ps, t, lang: ps[0].lang == "de-DE"),
+    Row("voice languages", SUPPORTED, '<speak><voice languages="de-DE:fr en-US">{t}</voice></speak>',
+        lambda ps, t, lang: (ps[0].voice_lang, ps[0].lang) == ("de-DE", lang) and spoken(ps) == t),
     Row("voice name, gender, age, variant, required, ordering", DEGRADED,
         '<speak><voice name="Celine" gender="female" age="30" variant="2" required="gender" ordering="gender">{t}</voice></speak>',
         only("{t}")),

@@ -439,3 +439,40 @@ def test_the_length_scale_for_a_rate_is_never_outside_the_clamp():
     run(voice, '<speak><prosody rate="99999%">a</prosody><prosody rate="0.0001%">b</prosody></speak>',
         syn_config=SynthesisConfig(length_scale=1.0))
     assert configs == [pytest.approx(0.5), pytest.approx(2.0)]
+
+
+# -- <voice languages> --------------------------------------------------------------------------
+
+
+def _recorded_say_as(text, kind, fmt=None, detail=None, lang=None):
+    return f"{kind} {text} {lang}"
+
+
+def test_voice_languages_chooses_the_voice_and_leaves_the_content_language_to_xml_lang():
+    """SSML 1.1 section 3.2.1: "author control over language support during voice selection is
+    independent of any value of xml:lang in the text"."""
+    frontend = SimpleNamespace(say_as=_recorded_say_as)
+    (piece,) = parse_ssml('<speak xml:lang="fr-FR"><voice languages="en-US">Il est '
+                          '<say-as interpret-as="cardinal">21</say-as></voice></speak>', None, frontend)
+    assert (piece.text, piece.lang, piece.voice_lang) == ("Il est cardinal 21 fr-FR", "fr-FR", "en-US")
+
+
+@pytest.mark.parametrize("languages,expected", [
+    ("fr:pt", "fr"), ("fr-CA:pt en", "fr-CA"), ("  de-DE  en-US", "de-DE"), ("", None), (":pt", None),
+])
+def test_voice_languages_takes_the_first_language_without_its_accent(languages, expected):
+    """SSML 1.1 section 3.2.1: "Each language/accent pair is of the form "language" or
+    "language:accent"."""
+    frontend = SimpleNamespace(say_as=_recorded_say_as)
+    (piece,) = parse_ssml(f'<speak><voice languages="{languages}">'
+                          f'<say-as interpret-as="cardinal">21</say-as></voice></speak>', "fr", frontend)
+    assert (piece.text, piece.lang, piece.voice_lang) == ("cardinal 21 fr", "fr", expected)
+
+
+def test_a_multilingual_voice_takes_its_language_id_from_voice_languages_with_an_accent():
+    voice = FakeVoice()
+    voice.config.lang_id_map = {"en": 0, "fr": 1}
+    settings = []
+    voice.synthesize = lambda text, syn_config=None, include_alignments=False: settings.append(syn_config) or iter(())
+    list(voice.synthesize_ssml('<speak>hello <voice languages="fr:pt">bonjour</voice></speak>'))
+    assert [getattr(c, "lang_id", None) for c in settings] == [0, 1]
