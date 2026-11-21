@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.124.1a2](https://github.com/TigreGotico/phoonnx/tree/1.124.1a2) (2026-11-19)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.1a1...1.124.1a2)
+
+**Merged pull requests:**
+
+- docs: make the install and quickstart pages work as written [\#836](https://github.com/TigreGotico/phoonnx/pull/836) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.124.1a1](https://github.com/TigreGotico/phoonnx/tree/1.124.1a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.0a1...1.124.1a1)
@@ -308,8 +316,6 @@
 **Merged pull requests:**
 
 - feat\(index\): every adapter has an index voice or a documented reason [\#737](https://github.com/TigreGotico/phoonnx/pull/737) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix\(tests\): the packaging test no longer copies its own scratch folder [\#736](https://github.com/TigreGotico/phoonnx/pull/736) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- chore\(deps\): floors instead of pins, and a reason for each upper bound [\#735](https://github.com/TigreGotico/phoonnx/pull/735) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.113.15a2](https://github.com/TigreGotico/phoonnx/tree/1.113.15a2) (2026-11-18)
 
