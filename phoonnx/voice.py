@@ -1434,6 +1434,13 @@ class TTSVoice:
             params["noise_w_scale"] = syn_config.noise_w_scale
         # Engine-specific extras from SynthesisConfig
         params.update(syn_config.extra_params)
+        # An engine with a speed key of its own gets it from the length scale,
+        # unless the voice config or the call names that key itself.
+        if "length_scale" in params:
+            named = {**self.config.engine_params, **syn_config.extra_params}
+            params.update({key: value for key, value
+                           in self.adapter.length_scale_params(params["length_scale"]).items()
+                           if key not in named})
         # Voice cloning: hand the cloning adapter the reference clip and — for
         # in-context engines (ZipVoice) — the prompt tokens of its transcription.
         if syn_config.speaker_reference is not None:
