@@ -552,12 +552,22 @@ def _check(inputs: Dict[str, int], known: Tuple[str, ...], engine: str) -> None:
         raise UnsupportedExample(f"{engine} graph inputs {unknown} have no template")
 
 
-def _params(config: Dict[str, Any], defaults: Dict[str, Any]) -> Dict[str, Any]:
-    """The synthesis parameters phoonnx gives an engine: its *defaults*, the config's scales, then ``engine_params``."""
+def _params(config: Dict[str, Any], defaults: Dict[str, Any], speed_key: str = "",
+            speed_is_rate: bool = False) -> Dict[str, Any]:
+    """The synthesis parameters phoonnx gives an engine: its *defaults*, the config's scales, then ``engine_params``.
+
+    An engine with a speed key of its own (``speed_key``) gets it from the config's ``length_scale``:
+    ``1 / length_scale`` when the engine reads a rate, else ``length_scale``. ``engine_params`` wins.
+    """
     inference = config.get("inference") or {}
+    engine_params = config.get("engine_params") or {}
     scales = {"noise_scale": inference.get("noise_scale"), "length_scale": inference.get("length_scale"),
               "noise_w_scale": inference.get("noise_w")}
-    return {**defaults, **{k: v for k, v in scales.items() if v is not None}, **(config.get("engine_params") or {})}
+    params = {**defaults, **{k: v for k, v in scales.items() if v is not None}, **engine_params}
+    length_scale = scales["length_scale"]
+    if speed_key and length_scale is not None and speed_key not in engine_params:
+        params[speed_key] = 1.0 / length_scale if speed_is_rate else length_scale
+    return params
 
 
 def _session(name: str, file: str, repo: Optional[str] = None) -> str:
@@ -584,7 +594,7 @@ def _run(engine: str, config: Dict[str, Any], files: Dict[str, Any], pad: Option
                           "audio = session.run(None, {", *feeds, "})[0].squeeze()"])
     if engine == "optispeech":
         _check(inputs, ("x", "x_lengths", "scales", "sids", "lids"), engine)
-        params = _params(config, {"d_factor": 1.0, "p_factor": 1.0, "e_factor": 1.0})
+        params = _params(config, {"d_factor": 1.0, "p_factor": 1.0, "e_factor": 1.0}, "d_factor")
         factors = [params[k] for k in ("d_factor", "p_factor", "e_factor")]
         feeds = [_feed("x", "np.array([ids], dtype=np.int64)"),
                  _feed("x_lengths", "np.array([len(ids)], dtype=np.int64)"),
@@ -681,7 +691,7 @@ def _styletts2(config: Dict[str, Any], files: Dict[str, Any], model: str, inputs
         lines.append(_feed("attention_mask", "np.ones((1, len(padded)), dtype=np.int32)"))
     if "style" in inputs:
         lines.append(_feed("style", "style_row"))
-    lines += [_feed("speed", f'np.array([{_params(config, {"speed": 1.0})["speed"]}], dtype=np.float32)'),
+    lines += [_feed("speed", f'np.array([{_params(config, {"speed": 1.0}, "speed", True)["speed"]}], dtype=np.float32)'),
               "})[0].squeeze()"]
     return "\n".join(lines)
 

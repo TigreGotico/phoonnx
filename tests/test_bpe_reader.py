@@ -499,14 +499,17 @@ class TestAddedTokens(unittest.TestCase):
             self.assertEqual(mine._split_added(text), _regex_split(added, text))
 
 
-FLAG_TOKENS = ["<mask>", "<MASK>", "[SP]", "a b", " y", "z ", "qx"]
-FLAG_ALPHABET = list("<mask>MASKab xyzq[]P-_1\t\u00a0\n")
+# Tokens that begin and end in a character that is not a word character, so no
+# two of them overlap in a text. `tokenizers` releases differ on how a token
+# that overlaps a neighbour is taken; they agree on this set.
+FLAG_TOKENS = ["<mask>", "[SP]", "<|a|>"]
+FLAG_ALPHABET = list("<mask>MASKab xyzq[]P-_1\t\u00a0\n|")
 
 
-def _flagged(path, flags, normalizer=None):
-    """A fixture spec whose added tokens (`FLAG_TOKENS`) all carry *flags*."""
-    spec = _with_added(path, FLAG_TOKENS)
-    for token in spec["added_tokens"][-len(FLAG_TOKENS):]:
+def _flagged(path, flags, normalizer=None, tokens=FLAG_TOKENS):
+    """A fixture spec whose added *tokens* all carry *flags*."""
+    spec = _with_added(path, tokens)
+    for token in spec["added_tokens"][-len(tokens):]:
         token.update(flags)
     if normalizer:
         spec["normalizer"] = normalizer
@@ -545,8 +548,9 @@ class TestAddedTokenFlags(unittest.TestCase):
     def test_a_token_without_normalized_is_not_matched_after_the_normalizer(self):
         path = os.path.join(FIXTURES, "tokenizer_bpe_qwen.json")
         lowercase = {"type": "Lowercase"}
-        raw = Tokenizer(_flagged(path, {"normalized": False}, lowercase))
-        normalized = Tokenizer(_flagged(path, {"normalized": True}, lowercase))
+        pair = ["<mask>", "<MASK>"]
+        raw = Tokenizer(_flagged(path, {"normalized": False}, lowercase, pair))
+        normalized = Tokenizer(_flagged(path, {"normalized": True}, lowercase, pair))
         token = raw.token_to_id("<mask>")
         self.assertNotIn(token, self._ids(raw, "<Mask>"))
         self.assertEqual(self._ids(normalized, "<Mask>"), [normalized.token_to_id("<MASK>")])

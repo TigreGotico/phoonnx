@@ -610,7 +610,7 @@ class _AddedTokens:
         if self._start is None:
             return [text]
         pieces: List[str] = []
-        cursor = previous_stop = 0
+        cursor = 0
         match = self._start.search(text)
         while match:
             start = match.start()
@@ -623,13 +623,9 @@ class _AddedTokens:
                 continue
             stop = start + len(token)
             flags = self.tokens[token]
-            word_before = start >= previous_stop and _WORD_BEFORE.search(text, cursor, start)
-            previous_stop = stop
-            if flags.get("single_word") and (word_before or _WORD_AFTER.match(text, stop)):
-                match = self._start.search(text, start + 1)
-                continue
             match = self._start.search(text, stop)
-            if start < cursor:  # inside the white space an `rstrip` token took
+            if flags.get("single_word") and (
+                    _WORD_BEFORE.search(text, 0, start) or _WORD_AFTER.match(text, stop)):
                 continue
             if flags.get("lstrip"):
                 start = max(_SPACE_BEFORE.search(text, 0, start).start(), cursor)
