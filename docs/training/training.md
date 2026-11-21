@@ -1,12 +1,18 @@
 # Training reference
 
-This is the full reference for `phoonnx_train.train` — every flag, the training engines, and
-the recipes for the multi-stage architectures. It is for anyone past the
-[training quickstart](quickstart.md) who needs the complete picture. Preprocessing is covered
-in the [preprocess reference](preprocess.md); ONNX conversion in [Export](export.md).
+<!-- agent-hint
+covers: every phoonnx_train.train flag, the training engines, their quality presets and the evaluation and vocoder tools
+source: phoonnx_train/train.py:main, phoonnx_train/engines/__init__.py:_register_builtins, phoonnx_train/engines/*.py:_QUALITY_PRESETS, phoonnx_train/eval_loop.py:main, phoonnx_train/train_vocos.py:main, phoonnx_train/export_vocos.py:main
+generated: no
+verify: grep -n "click.option" phoonnx_train/train.py phoonnx_train/eval_loop.py phoonnx_train/train_vocos.py phoonnx_train/export_vocos.py
+see: preprocess.md, export.md, engines/matcha.md, ../vocoders.md
+-->
 
-The pipeline is engine-agnostic: `--engine` selects an architecture, and the CLI delegates
-model creation, checkpoint loading, and export to that engine.
+This page lists every `phoonnx_train.train` flag, the training engines and the multi-stage recipes, for readers who finished the [training quickstart](quickstart.md).
+
+The [preprocess reference](preprocess.md) covers preprocessing, and [Export](export.md) covers
+the ONNX conversion. `--engine` selects an architecture. The command gives model creation,
+checkpoint loading and export to that engine.
 
 ```bash
 python -m phoonnx_train.train --dataset-dir DIR [options]
@@ -35,13 +41,21 @@ python -m phoonnx_train.train --dataset-dir DIR [options]
 | `--log-audio-samples / --no-log-audio-samples` | off | Log synthesized validation audio each epoch (needs a TensorBoard logger) |
 | `--compile` | off | Compile the model with `torch.compile` for faster training |
 | `--compile-mode {default,reduce-overhead,max-autotune,max-autotune-no-cudagraphs}` | `default` | `torch.compile` mode; only relevant with `--compile` |
+| `--eval-sentences FILE` | none | Held-out sentences that the in-training scoreboard speaks (see [In-training mode](#in-training-mode-early-stopping-callback)) |
+| `--eval-every INT` | `0` | Score a checkpoint every N epochs; `0` turns the scoreboard off |
+| `--early-stop-patience INT` | `0` | Stop after N scored epochs with no better score; `0` turns early stopping off |
+| `--eval-speaker-ref-dir DIR` | none | Reference recordings of the target speaker, for speaker similarity |
+| `--min-spk-sim FLOAT` | none | Lowest speaker similarity a best checkpoint must reach |
+| `--eval-speaker-id INT` | none | Speaker id that the scoreboard uses for a multi-speaker model |
+| `--eval-seed INT` | `1234` | Seed for the scoreboard synthesis |
 
 > There is **no `--learning-rate` flag.** The optimizer and schedule are owned by the engine
 > and its quality preset.
 
-**Outputs.** Checkpoints are written by PyTorch Lightning under
-`<default-root-dir>/lightning_logs/version_<N>/checkpoints/` as
-`epoch=<E>-step=<S>.ckpt`. TensorBoard logs live under the same `lightning_logs` tree:
+**Outputs.** PyTorch Lightning writes the checkpoints under
+`<default-root-dir>/lightning_logs/version_<N>/checkpoints/` as `epoch=<E>-step=<S>.ckpt`.
+It keeps every checkpoint and writes no `last.ckpt`. Without `--default-root-dir`, the run
+folder is the current folder. TensorBoard logs live under the same `lightning_logs` tree:
 
 ```bash
 tensorboard --logdir <default-root-dir>/lightning_logs
@@ -67,20 +81,31 @@ tensorboard --logdir <default-root-dir>/lightning_logs
 | `styletts2-aligner` | StyleTTS2 text aligner (ASRCNN) | Auxiliary model |
 | `styletts2-plbert` | StyleTTS2 prosodic text encoder (PL-BERT) | Auxiliary model |
 | `styletts2-pitch` | StyleTTS2 JDC pitch extractor | Auxiliary model |
+| `rapido` | Rapido | [guide](engines/rapido.md) |
 
-`--quality` selects a preset defined by each engine (commonly `x-low` / `medium` / `high`;
-some engines define their own, e.g. ZipVoice `base` / `low`).
+`--quality` selects a preset that each engine defines:
+
+| Presets | Engines |
+|---|---|
+| `x-low`, `medium`, `high` | `vits`, `glowtts`, `matcha`, `fastpitch`, `speedyspeech`, `mixer`, `optispeech`, `yourtts` |
+| `low`, `medium`, `high` | `styletts2` |
+| `base`, `low` | `zipvoice`, `supertonic`, `rapido` |
+| `low`, `medium` | `styletts2-aligner`, `styletts2-plbert` |
+| `medium` | `styletts2-pitch` |
+
+An unknown `--quality` value logs a warning. The run then uses `medium`, or the first preset
+when the engine has no `medium`.
 
 ## Resuming and fine-tuning
 
 Resume an interrupted run (restores optimizer, scheduler and epoch):
 
 ```bash
-python -m phoonnx_train.train --dataset-dir train_out \
+python -m phoonnx_train.train --dataset-dir train_out --default-root-dir train_out/runs \
   --resume-from-checkpoint train_out/runs/lightning_logs/version_0/checkpoints/epoch=50-step=12750.ckpt
 ```
 
-**Fine-tune onto a new speaker/dataset:** preprocess the new data with `--prev-config` pointing
+**Fine-tune onto another speaker or dataset:** preprocess that data with `--prev-config` pointing
 at the base voice's `config.json` so the phoneme-to-ID map is preserved (see the
 [fine-tuning options](preprocess.md#fine-tuning-phoneme-map)), then train with
 `--resume-from-checkpoint` on the base checkpoint.
@@ -111,9 +136,11 @@ engine; audio is resampled to 24 kHz internally and turned into 100-bin Vocos lo
   layout, so a released ZipVoice checkpoint can be a fine-tuning start point.
 
 ```bash
-python -m phoonnx_train.train --dataset-dir train_out --engine zipvoice --quality base
+python -m phoonnx_train.train --dataset-dir train_out --engine zipvoice --quality base \
+  --default-root-dir train_out/runs
 
-python -m phoonnx_train.export_onnx last.ckpt \
+python -m phoonnx_train.export_onnx \
+  train_out/runs/lightning_logs/version_0/checkpoints/epoch=99-step=25000.ckpt \
   --config train_out/config.json --engine zipvoice --output-dir ./exported
 # -> text_encoder.onnx + fm_decoder.onnx
 ```
@@ -152,9 +179,11 @@ waveform/vocoder training).
   the ONNX metadata.
 
 ```bash
-python -m phoonnx_train.train --dataset-dir train_out --engine glowtts
-python -m phoonnx_train.export_onnx last.ckpt --config train_out/config.json \
-  --engine glowtts --output-dir ./exported
+python -m phoonnx_train.train --dataset-dir train_out --engine glowtts \
+  --default-root-dir train_out/runs
+python -m phoonnx_train.export_onnx \
+  train_out/runs/lightning_logs/version_0/checkpoints/epoch=999-step=250000.ckpt \
+  --config train_out/config.json --engine glowtts --output-dir ./exported
 ```
 
 See the [GlowTTS guide](engines/glowtts.md).
@@ -179,11 +208,13 @@ Both are the same engine class (`ForwardTTSTrainingEngine`); the `--engine` name
 the default `variant`, which can also be set via the engine's `extra` config
 (`variant: speedyspeech`).
 
-**Pitch (F0).** FastPitch's pitch predictor needs a frame-level F0 target. The engine's
-`extra_preprocess` extracts F0 via `pyworld` (DIO + StoneMask) and caches it as
-`<utterance>.f0.npy`, frame-aligned with the mel. Install `phoonnx[train,train-fastpitch]`.
-Without `pyworld`/`librosa`, training still runs but the pitch predictor trains without its
-target loss (a warning is logged). SpeedySpeech uses no pitch.
+**Pitch (F0).** The FastPitch pitch predictor needs a frame-level F0 target. The engine's
+`extra_preprocess` extracts F0 and caches it, frame-aligned with the mel. The preprocess flag
+`--f0-method` selects the extractor. The default `pyin` uses `librosa.pyin`, which `[train]`
+installs. `dio` and `harvest` use WORLD through `pyworld`, from the `train-pyworld` extra, and
+they are about 50 times faster. When `pyworld` is missing for `dio` or `harvest`, preprocess
+logs a warning and skips F0 extraction. Training then runs, but the pitch predictor trains
+without its target loss. SpeedySpeech uses no pitch.
 
 `--quality` (`x-low` / `medium` / `high`) scales `hidden_channels`, `hidden_channels_ffn`, and
 the encoder/decoder layer count. FastPitch/SpeedySpeech are **two-stage** — a separate vocoder
@@ -192,8 +223,8 @@ is required at inference. See the [FastPitch guide](engines/fastpitch.md).
 ## StyleTTS2 engine (`--engine styletts2`)
 
 A full two-stage engine porting the yl4579/StyleTTS2 recipe onto the shared framework. It
-trains new models **from scratch in new languages** and fine-tunes existing checkpoints onto
-new speakers. The upstream model/loss/data code is vendored in `phoonnx_train/styletts2/`.
+trains models **from scratch in other languages** and fine-tunes existing checkpoints onto
+other speakers. The upstream model/loss/data code is vendored in `phoonnx_train/styletts2/`.
 Install `phoonnx[train,train-styletts2]`.
 
 **Stages** (select with `stage` in `engine_params` / `StyleTTS2Config`):
@@ -202,7 +233,7 @@ Install `phoonnx[train,train-styletts2]`.
 |---|---|
 | `first` | text aligner (TMA), text encoder, style encoder, decoder — mel reconstruction with ground-truth F0/energy; adversarial + WavLM feature-matching after `tma_epoch` |
 | `second` | PL-BERT + duration/prosody predictors, style diffusion (after `diff_epoch`), joint decoder + SLM adversarial (after `joint_epoch`); starts from the stage-1 checkpoint (`first_stage_path`) |
-| `finetune` | the `second` recipe with diffusion + joint enabled from epoch 0 — adapt a checkpoint to a new speaker/dataset |
+| `finetune` | the `second` recipe with diffusion + joint enabled from epoch 0 — adapt a checkpoint to another speaker or dataset |
 
 **Auxiliary models** (all configurable via `engine_params`):
 
@@ -234,9 +265,9 @@ consumes — `model.onnx` (tokens + style + speed → waveform) and `style_encod
 waveform → style) — plus `config.json`. StyleTTS2 exports are self-contained; no external
 vocoder is required.
 
-### Training every StyleTTS2 step for a new language
+### Training every StyleTTS2 step for another language
 
-A from-scratch model in a new language needs a language-specific text aligner and prosodic text
+A from-scratch model in another language needs a language-specific text aligner and prosodic text
 encoder trained first. `phoonnx_train` ships an engine for each:
 
 | Engine | Trains | Consumed via |
@@ -268,7 +299,7 @@ python -m phoonnx_train.export_onnx --engine styletts2 ...
 
 ## Evaluating checkpoints during training
 
-`phoonnx_train/eval_loop.py` watches the training directory for new Lightning checkpoints
+`phoonnx_train/eval_loop.py` watches the training directory for Lightning checkpoints it has not scored
 (`epoch=*.ckpt`) and scores each on a fixed set of held-out sentences, synthesized on CPU so
 training keeps the GPU. Results are appended to `metrics.csv` (one row per epoch), per-utterance
 scores are written for **every** epoch under `perutt/epoch<N>.csv` (columns `sentence`, `utmos`,
@@ -300,14 +331,14 @@ runs in two modes.
 
 ### Sidecar mode (out-of-process scoreboard)
 
-`phoonnx_train/eval_loop.py` is a thin CLI over the package — the flags above are unchanged.
-Each checkpoint is loaded through the training-engine registry (`--engine`, default `auto`:
-the `engine` key in `config.json` if present, else `vits`), synthesized on CPU with
-**per-utterance deterministic seeding** (`torch.manual_seed(seed + i)` immediately before
-utterance `i`, so the same checkpoint scored twice yields identical wavs and scores), and
-scored. New flags:
+`phoonnx_train/eval_loop.py` is a small command over the package, with the flags above.
+It loads each checkpoint through the training-engine registry. `--engine` defaults to `auto`:
+the `engine` key in `config.json` when it is present, else `vits`. It synthesizes on CPU with
+**per-utterance deterministic seeding**: `torch.manual_seed(seed + i)` runs just before
+utterance `i`, so the same checkpoint scored twice gives identical wavs and scores. These
+flags control the scoreboard:
 
-- `--early-stop-patience N` — after `N` scored epochs pass with no new best, write a
+- `--early-stop-patience N` — after `N` scored epochs pass with no better score, write a
   `stop.flag` into `--train-dir`.
 - `--min-spk-sim FLOAT` — the similarity gate floor (see below).
 - `--speaker-id INT` — speaker id for multi-speaker models (a warning is logged when
@@ -315,12 +346,14 @@ scored. New flags:
 - `--engine NAME` — engine override (default `auto`).
 - `--vocoder PATH` — passed through to the engine's synthesis (engine-dependent; ignored by
   the end-to-end VITS engine).
+- `--seed INT` — the base seed of the per-utterance seeding (default `1234`).
+- `--num-ref-wavs INT` — how many reference recordings make the speaker centroid (default `60`).
 
 ### In-training mode (early stopping callback)
 
-`train.py` gains opt-in flags: `--eval-sentences FILE`, `--eval-every N` (default `0` = off),
-`--early-stop-patience N`, `--eval-speaker-ref-dir DIR`, `--min-spk-sim FLOAT`, `--eval-seed`.
-When enabled, `EvalScoreboardCallback` runs the same `CheckpointScorer` in-process every `N`
+`train.py` has opt-in flags: `--eval-sentences FILE`, `--eval-every N` (default `0` = off),
+`--early-stop-patience N`, `--eval-speaker-ref-dir DIR`, `--min-spk-sim FLOAT`,
+`--eval-speaker-id INT` and `--eval-seed`. When they are set, `EvalScoreboardCallback` runs the same `CheckpointScorer` in-process every `N`
 epochs (after `ModelCheckpoint` saves), writes the same scoreboard under `<run-dir>/eval/`, and
 sets `trainer.should_stop` once patience is exhausted. **Scoring failures never crash training**
 — they are logged and swallowed.
@@ -341,8 +374,8 @@ dir / `speakeronnx` missing) selection falls back to UTMOS-only and logs a warni
 
 ### Artifacts and the stop.flag contract
 
-- `metrics.csv` — one row per scored epoch (superset of the legacy header; old scoreboards are
-  read and appended to compatibly).
+- `metrics.csv` — one row per scored epoch. A scoreboard with fewer columns is read and
+  appended to.
 - `best.json` — epoch, step, checkpoint path, and all scores of the current best.
 - `best.ckpt` — a **copy** (not a symlink) of the best checkpoint, so it survives checkpoint
   pruning.
@@ -361,12 +394,12 @@ vocoder. `phoonnx_train/train_vocos.py` trains a Vocos-style vocoder in-house so
 ship with a vocoder trained (or fine-tuned) on the same speaker's audio.
 
 **Data:** audio only, no transcripts — any directory tree of `.wav`/`.flac`/`.ogg`/`.mp3`
-(including a preprocess `cache/` folder). A few hours of clean speech suffices for fine-tuning;
-from scratch wants much more (or a `--warm-start`).
+(including a preprocess `cache/` folder). `--audio-dir` is repeatable. A few hours of clean
+speech is enough to fine-tune. Training from scratch needs much more audio, or a `--warm-start`.
 
 > **Mel settings are locked.** The vocoder is trained on the exact mel configuration phoonnx
 > acoustic models use (`n_fft=1024`, `hop=256`, `win=1024`, 80 mels, `fmax=8000`, log-mel). A
-> vocoder trained with different settings produces garbage for every phoonnx mel model.
+> vocoder trained with different settings gives noise for every phoonnx mel model.
 
 ```bash
 python -m phoonnx_train.train_vocos \
@@ -378,7 +411,9 @@ python -m phoonnx_train.train_vocos \
 
 `--warm-start` accepts a local `.ckpt`/`.bin` or a HuggingFace repo id with reference-Vocos
 weights; matching parameters are copied and the matched fraction logged.
-`--resume-from-checkpoint` continues an interrupted run.
+`--resume-from-checkpoint` continues an interrupted run. The command also takes the
+`train.py` flags `--checkpoint-epochs`, `--devices`, `--accelerator`, `--precision`,
+`--num-workers` and `--seed`, with the same defaults.
 
 **Export and wire up:**
 
@@ -389,7 +424,8 @@ python -m phoonnx_train.export_vocos \
 ```
 
 This writes `vocoder.onnx` (+ `vocoder.onnx.json` with the STFT parameters) in the layout the
-vocoder registry auto-detects as `vocos`. Point any mel-emitting voice at it via
+vocoder registry auto-detects as `vocos`. `--seconds` (default `2.0`) sets the length of the
+random mel that the export uses for its parity check. Point any mel-emitting voice at it via
 `engine_params={"vocoder_path": "vocoder.onnx"}`.
 
 ## config.json reference
@@ -413,9 +449,14 @@ Preprocess writes a `config.json` that both training and inference read. Key fie
 | `speaker_id_map` | Speaker label → id (multi-speaker) |
 | `phoonnx_version` | Version of the preprocessing pipeline |
 | `keep_punctuation` | The phonemes keep clause punctuation (`, . ? ! : ;`) |
+| `text_casing` | The casing applied to the text before phonemization (`ignore`, `lower`, `upper`, `casefold`, from `--text-casing`). Synthesis applies the same casing |
 | `phonemizer_registry` / `phonemizer_registry_version` | The distribution that resolved the phonemizer, and its version |
 | `phonemizer_identity` | The engine that phonemized the rows: `backend`, `distribution`, `version` (for espeak-ng, the binary), `lang` (the resolved lect), `revision` (the orthography2ipa spec revision) and `frontend` (null, because preprocess calls the backend directly and not through `TextFrontend`). Empty when every row came from a phonemes column |
 | `phonemes_phonemized` / `phonemes_from_column` | How many manifest rows were phonemized, and how many came from a phonemes column |
 
 The full loaded form (tokenizer flags, special tokens, `engine_params`) is documented in the
 [Configuration reference](../configuration.md).
+
+---
+
+[Docs index](../index.md) · Previous: [Preprocess reference](preprocess.md) · Next: [Export to ONNX](export.md)

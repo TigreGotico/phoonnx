@@ -1,8 +1,14 @@
 # Vocoders
 
-This page is for developers pairing two-stage (mel-producing) acoustic models with a
-vocoder in phoonnx, and for anyone adding a new vocoder. It documents the vocoder
-registry in `phoonnx/engines/vocoders/`.
+<!-- agent-hint
+covers: which vocoder types exist, how a voice selects one, and how to add a vocoder type
+source: phoonnx/engines/vocoders/__init__.py, phoonnx/engines/vocoders/base.py:BaseVocoder, phoonnx/model_manager.py:TTSModelInfo
+generated: no
+verify: pytest tests/test_vocoders.py
+see: engines.md, training/engines/glowtts.md, training/engines/matcha.md
+-->
+
+This page describes the vocoder registry in `phoonnx/engines/vocoders/`, for developers who pair a mel-producing acoustic model with a vocoder or add a vocoder type.
 
 Two-stage acoustic models — **GlowTTS**, **Matcha-TTS**, **OptiSpeech** (when it
 emits a mel) — produce a **mel spectrogram** and rely on a separate **vocoder** to
@@ -22,7 +28,7 @@ text ──[acoustic model]──▶ mel ──[vocoder]──▶ waveform
 | `hifigan` | `HiFiGANVocoder` | waveform (1) | GAN vocoder |
 | `melgan` | `HiFiGANVocoder` (alias) | waveform (1) | (multiband-)MelGAN — same 1-output mel→audio contract |
 | `raw` | `RawWaveformVocoder` | waveform (1) | generic single-output mel→audio |
-| `griffinlim` | `GriffinLimVocoder` | — (no model) | parametric, no ONNX; universal fallback (needs `librosa` — `pip install phoonnx[train]`) |
+| `griffinlim` | `GriffinLimVocoder` | — (no model) | parametric, no ONNX; works with any mel config; needs `librosa`, which the `train` and `all` extras install |
 
 All live in `phoonnx/engines/vocoders/`.
 
@@ -72,15 +78,15 @@ Example `vocoder.json` for a stats-normalized MelGAN:
   "mel_mean": [ ... 80 floats ... ], "mel_std": [ ... 80 floats ... ] }
 ```
 
-New steps are added the same way — a flag on the config + a branch in
-`_preprocess_mel` — so they ship with the data, not the code.
+Add a step the same way: a flag in the config and a branch in `_preprocess_mel`. The
+flag ships with the data, not the code.
 
 ## Using a vocoder directly
 
 ```python
 from phoonnx.engines.vocoders import build_vocoder, list_vocoders
 
-print(list_vocoders())                      # ['griffinlim','wavenext','hifigan','melgan','vocos','raw']
+print(list_vocoders())  # ['griffinlim', 'wavenext', 'hifigan', 'melgan', 'vocos', 'raw']
 
 voc = build_vocoder(model_path="hifigan.onnx", vocoder_type="hifigan")
 audio = voc.mel_to_audio(mel)               # mel [B, n_mels, T] -> waveform [N]
@@ -90,8 +96,9 @@ gl = build_vocoder(vocoder_type="griffinlim",
                    config={"sample_rate": 22050, "n_fft": 1024, "hop_length": 256, "num_mels": 80})
 ```
 
-`build_vocoder(vocoder_type=..., config=...)` uses the named vocoder; with no
-type it probes the ONNX and picks the match (falling back to Vocos).
+`build_vocoder(vocoder_type=..., config=...)` uses the named vocoder. With no type, it
+probes the ONNX and picks the first match. When nothing matches, it logs a warning and
+uses Vocos.
 
 ## Replacing / swapping a vocoder
 
@@ -101,14 +108,14 @@ touching the acoustic model:
 - **Point at a different ONNX** — change `vocoder_url` / `vocoder_type` to another
   vocoder trained on the **same mel config** (sr, fft, hop, n_mels, fmin/fmax). A
   mismatched mel config produces garbage; if the only gap is normalization, add a
-  `stats_norm` (or new) preprocessing flag.
+  `stats_norm` preprocessing flag, or an equivalent one.
 - **Fall back to Griffin-Lim** — drop `vocoder_url`, set `vocoder_type:
-  "griffinlim"`, and put the acoustic model's mel params in `vocoder_config`. No
-  neural vocoder needed; robotic but universal.
+  "griffinlim"`, and point `vocoder_config_url` at a `vocoder.json` with the mel
+  params of the acoustic model. It needs no neural vocoder. The audio sounds robotic.
 - **At runtime** — construct the adapter with an explicit vocoder instance:
   `GlowTTSAdapter(vocoder=build_vocoder(...))`.
 
-## Adding a new vocoder type
+## Adding a vocoder type
 
 Subclass `BaseVocoder`, implement `mel_to_audio`, and register it:
 
@@ -143,5 +150,6 @@ A vocoder only works with an acoustic model whose **mel features match** it
 (sample rate, FFT/hop, n_mels, fmin/fmax, and normalization). Where no matched
 neural vocoder exists, the voice uses Griffin-Lim.
 
-See also [engines.md](./engines.md), [glowtts.md](training/engines/glowtts.md),
-[matcha.md](training/engines/matcha.md).
+---
+
+[Docs index](index.md) · Previous: [Engine architecture](engines.md) · Next: [Python API](api.md)

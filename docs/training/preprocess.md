@@ -1,9 +1,17 @@
 # Preprocess reference
 
-This is the complete reference for `phoonnx_train.preprocess` — every flag, the files it
-writes, and the fine-tuning behavior. It is for anyone building a training set; for the guided
-path start with the [training quickstart](quickstart.md), and for dataset formatting see
-[Datasets](datasets.md).
+<!-- agent-hint
+covers: every phoonnx_train.preprocess flag, the files it writes and the fine-tuning phoneme map
+source: phoonnx_train/preprocess.py:cli, phoonnx_train/dataset_loaders.py, phoonnx_train/quality_filter.py
+generated: no
+verify: grep -n "click.option" -A1 phoonnx_train/preprocess.py
+see: datasets.md, training.md, ../phonemizers.md
+-->
+
+This page lists every `phoonnx_train.preprocess` flag, the files it writes and the fine-tuning behaviour, for anyone who builds a training set.
+
+For the guided path, start with the [training quickstart](quickstart.md). For dataset
+formatting, see [Datasets](datasets.md).
 
 ```bash
 python -m phoonnx_train.preprocess --input-dir SRC --output-dir DST --language LANG [options]
@@ -41,7 +49,7 @@ read the bytes explicitly and materialize audio on demand.
 
 | Option | Description |
 |---|---|
-| `--resume` | Skip rows already present in an existing output `dataset.jsonl` (by row id / audio path) and append only new rows; writes are atomic. **Incompatible with `--corpus-only-map`** (rejected with an error) |
+| `--resume` | Skip rows already present in an existing output `dataset.jsonl` (by row id / audio path) and append only the other rows; writes are atomic. **Incompatible with `--corpus-only-map`** (rejected with an error) |
 
 ## Phonemization
 
@@ -50,7 +58,7 @@ read the bytes explicitly and materialize audio on demand.
 | `--phoneme-type` | `espeak` | Phonemizer backend; one of the [`PhonemeType`](../phonemizers.md) values |
 | `--alphabet` | `ipa` | Output alphabet; one of the [`Alphabet`](../phonemizers.md#alphabet-reference) values |
 | `--phonemizer-model TEXT` | `""` | Model path/name or variant selector for backends that take one (ByT5, AhoTTS, Cotovia, arbtok) |
-| `--text-casing` | `ignore` | Casing applied before phonemization: `ignore`, `lower`, `upper`, `casefold` |
+| `--text-casing` | `ignore` | Casing applied before phonemization: `ignore`, `lower`, `upper`, `casefold`. It is recorded as `text_casing` in `config.json`, and synthesis applies the same casing. `--resume` keeps the value the existing `config.json` recorded |
 | `--add-diacritics` | off | Add diacritics through scriptconv before phonemization. The run stops if the extra for the language is missing |
 | `--keep-punctuation/--no-keep-punctuation` | on | Keep clause punctuation (`, . ? ! : ;`) in the phonemes, as Piper does, and record it as `keep_punctuation` in `config.json` so synthesis matches. `--resume` keeps the value the existing `config.json` recorded |
 
@@ -74,11 +82,11 @@ read the bytes explicitly and materialize audio on demand.
 | Option | Default | Description |
 |---|---|---|
 | `-c, --prev-config FILE` | none | Reuse the `phoneme_id_map` from a previous `config.json` so the vocabulary is preserved |
-| `--drop-extra-phonemes BOOL` | `True` | When the new data has symbols absent from the previous map, discard them (so fine-tuning can proceed). Set to `False` to instead raise on any new symbol |
+| `--drop-extra-phonemes BOOL` | `True` | When the data has symbols absent from the previous map, discard them (so fine-tuning can proceed). Set to `False` to instead raise on any such symbol |
 | `--corpus-only-map` | off | Build the phoneme map only from symbols the corpus actually contains, instead of seeding it with the full default IPA table. Symbols outside the map then fail at tokenization rather than mapping to untrained embeddings. Models built this way can only be fine-tuned from a compatible (subset) map |
 
-> `--drop-extra-phonemes` defaults to **`True`**. When fine-tuning with `--prev-config`, a new
-> symbol is dropped with a warning unless you pass `--drop-extra-phonemes False`, which turns
+> `--drop-extra-phonemes` defaults to **`True`**. When fine-tuning with `--prev-config`, a
+> symbol that the previous map does not have is dropped with a warning unless you pass `--drop-extra-phonemes False`, which turns
 > the mismatch into an error.
 
 ## Engine-specific preprocessing
@@ -93,6 +101,7 @@ model you later train.
 | `--engine NAME` | Run this engine's `extra_preprocess` per utterance (e.g. `yourtts` d-vectors, `fastpitch` F0) |
 | `--speaker-encoder-path PATH` | `[--engine yourtts]` Coqui ResNet ONNX speaker encoder used to compute d-vectors |
 | `--language-id INT` | `[--engine yourtts]` language id recorded on every utterance (multilingual training) |
+| `--f0-method {pyin,dio,harvest}` | F0 extractor for the engines that use pitch (default `pyin`, which uses `librosa.pyin`). `dio` and `harvest` use WORLD through `pyworld` from the `train-pyworld` extra, and they are about 50 times faster |
 
 ## Quality filters
 
@@ -134,5 +143,10 @@ Preprocess on one machine and train on another by rewriting the paths stored in
 Before phonemization, every utterance is normalized by `text2spoken.normalize` in the
 language of `--language`: numbers, dates, times, fractions, units and titles become spoken
 words, and contractions stay as written. For example, English
-`"I'm Dr. Smith, 3/4 of 10kg"` becomes `"I'm Doctor Smith, three-quarters of ten kilograms"`. This runs
-automatically inside preprocess so training text matches what the phonemizer sees at inference.
+`"I'm Dr. Smith, 3/4 of 10kg"` becomes `"I'm Doctor Smith, three-quarters of ten kilograms"`.
+Preprocess always runs this step, so the training text matches what the phonemizer gets at
+inference.
+
+---
+
+[Docs index](../index.md) · Previous: [Datasets](datasets.md) · Next: [Training reference](training.md)

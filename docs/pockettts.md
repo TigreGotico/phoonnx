@@ -1,5 +1,15 @@
 # Pocket TTS
 
+<!-- agent-hint
+covers: how to use the Pocket TTS voices, how the engine runs, and its controls and precision
+source: phoonnx/engines/pockettts.py:PocketTTSAdapter, phoonnx/voice_index/pockettts.json
+generated: no
+verify: pytest tests/test_pockettts.py, plus the pockettts/en/alba example on the page
+see: precision.md, cloning.md
+-->
+
+This page shows how to use the Pocket TTS voices and how the engine works, for developers who want a small multilingual model on CPU.
+
 Pocket TTS is a small text-to-speech model from [Kyutai](https://kyutai.org/tts/). It has
 100 million parameters and speaks faster than real time on two CPU cores. It covers six
 languages: English, French, German, Italian, Portuguese and Spanish.
@@ -19,8 +29,15 @@ manager.download_voice_by_id("pockettts/en/alba")
 
 voice = manager.voices["pockettts/en/alba"].load()
 for chunk in voice.synthesize("Hello world."):
-    ...  # chunk.audio_float_array, 24 kHz mono float32
+    print(chunk.sample_rate, chunk.audio_float_array.dtype, chunk.audio_float_array.ndim)
 ```
+
+```text
+24000 float32 1
+```
+
+The English bundle is about 160 MB. Install the `pockettts` extra first:
+`pip install --pre "phoonnx[pockettts]"`.
 
 Voice ids follow `pockettts/<language>/<speaker>`. The languages are `en`, `fr`, `de`,
 `it`, `pt` and `es`.
@@ -57,7 +74,7 @@ The model produces 12.5 latent frames per second. Each frame decodes to 1920 sam
 ### Stream the audio
 
 `TTSVoice.stream` yields the audio of each 15-frame sub-chunk when `mimi_decoder` has
-made it, so playback can start before the model has finished the sentence. Peak
+made it, so playback can start before the model finishes the sentence. Peak
 normalisation needs the whole sentence, so turn it off to get the sub-chunks:
 
 ```python
@@ -144,7 +161,12 @@ Set them per call through `SynthesisConfig.extra_params`, or per voice through
 
 ## Precision
 
-The voice index points at the 8-bit graphs, which is what makes the model real time on a small CPU. These entries carry `"precision": "int8"`, so a load with `precision="full"` raises `PrecisionUnavailable`. The mirror also holds full-precision graphs under the same names without the `_int8` suffix. To trade speed for the reference numerics, write your own index entry whose `model_url` and auxiliary URLs point at those graphs.
+The voice index points at the 8-bit graphs, which make the model real time on a small CPU. These entries carry `"precision": "int8"`, so a load with `precision="full"` raises `PrecisionUnavailable`:
+
+```text
+PrecisionUnavailable: voice 'pockettts/en/alba' has no full files; precision 'auto' or 'int8' loads it
+```
+ The mirror also holds full-precision graphs under the same names without the `_int8` suffix. To trade speed for the reference numerics, write your own index entry whose `model_url` and auxiliary URLs point at those graphs.
 
 The Italian voices are different. Their 8-bit graphs repeat words on some sentences, so
 the Italian entries load the full-precision graphs. Load an Italian voice with
@@ -155,3 +177,7 @@ the Italian entries load the full-precision graphs. Load an Italian voice with
 The weights are Kyutai's, under Creative Commons Attribution 4.0. Credit Kyutai when you
 use them. Kyutai asks that the model is not used for impersonation without consent, for
 deception, or for unlawful content.
+
+---
+
+[Docs index](index.md) · Previous: [Use phoonnx offline](offline.md) · Next: [Orpheus](orpheus.md)

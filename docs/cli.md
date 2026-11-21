@@ -1,183 +1,166 @@
-# CLI Reference
+# CLI reference
 
-This page is for anyone managing phoonnx voices from the shell. It documents the
-`phoonnx-voices` command (the `phoonnx.cli:cli` entry point declared in
-`pyproject.toml`).
+<!-- agent-hint
+covers: every phoonnx-voices subcommand, its options, its output and its exit status
+source: phoonnx/cli.py, pyproject.toml [project.scripts]
+generated: no
+verify: python -m pytest tests/test_cli.py; phoonnx-voices --help
+see: quickstart.md, choose_voice.md, voice_manager.md, offline.md
+-->
 
-## Usage
+This page shows how to manage voices from the shell with the `phoonnx-voices` command. It is for anyone who finds, downloads or prepares voices without writing Python.
 
-```bash
-phoonnx-voices <command> [options]
+## A first session
+
+Fill the local catalog from the index files that ship with phoonnx:
+
+```
+$ phoonnx-voices update-cache
+Clearing local voice cache...
+Loading bundled voice indexes...
+
+Cache updated successfully!
+Total voices available: 3189
+Total languages supported: 1816
 ```
 
----
+List the languages:
+
+```
+$ phoonnx-voices list-langs | head -5
+
+Supported Languages (1816):
+ - aae
+ - aal
+ - aao
+```
+
+Find the voices for a language:
+
+```
+$ phoonnx-voices list-voices --lang pt-PT | head -4
+
+Found 51 voices for language 'pt-PT':
+* OpenVoiceOS/phoonnx_pt-PT_miro_unicode (pt-PT)
+* OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone (pt-PT)
+```
+
+Download one voice:
+
+```
+$ phoonnx-voices download OpenVoiceOS/phoonnx_pt-PT_miro_unicode
+Attempting to download files for: OpenVoiceOS/phoonnx_pt-PT_miro_unicode (pt-PT)
+-> Downloading ONNX model and side files (this may take a while)...
+
+Download complete. Files saved to: ~/.cache/huggingface/hub/models--Phoonnx--phoonnx_pt-PT_miro_unicode/snapshots/eb9a020da900534d7232f11a6cf5d1ae1c545219
+```
+
+An id that is not in the catalog stops the command with exit status 1:
+
+```
+$ phoonnx-voices download no/such-voice
+Voice ID 'no/such-voice' not found in local cache, looking it up in bundled indexes...
+Error: Voice ID 'no/such-voice' not found. Run 'phoonnx-voices list-available' to see the voice IDs.
+$ echo $?
+1
+```
+
+The command also logs an `ERROR` line from the voice manager before the last line.
 
 ## Commands
 
+```
+$ phoonnx-voices --help
+Usage: phoonnx-voices [OPTIONS] COMMAND [ARGS]...
+
+  CLI to manage and download phoonnx TTS voice models.
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  add-alignment   Expose a model's per-phoneme duration tensor as a graph...
+  download        Downloads the model, config, and token files for a...
+  list-available  Lists all voice IDs bundled with phoonnx, grouped by...
+  list-langs      Lists all supported language codes available in the...
+  list-voices     Lists all available voice models.
+  update-cache    Clears the local voice cache, loads the bundled voice...
+```
+
 ### `update-cache`
 
-Merges the bundled voice indexes (Piper, Mimic3, OpenVoiceOS, and the rest — see
-[voice_manager.md](voice_manager.md#where-voices-come-from)) into the local cache and
-saves it. This reads packaged JSON index files, not live network endpoints.
+Clears the local catalog, merges the bundled voice index files into it, and saves it. It reads the index files of the package, not the network. See [Where voices come from](voice_manager.md#where-voices-come-from).
 
-```bash
-phoonnx-voices update-cache
-```
-
-**Options:**
-
-| Flag | Description |
-|------|-------------|
-| `--no-clear` | Do not wipe the existing cache before updating. Only adds new voices. |
-
-**Example:**
-
-```bash
-# Full refresh (default)
-phoonnx-voices update-cache
-
-# Incremental update — keep existing entries
-phoonnx-voices update-cache --no-clear
-```
-
----
+| Option | Effect |
+|---|---|
+| `--no-clear` | Keep the existing catalog and add the bundled voices to it. |
 
 ### `list-langs`
 
-Lists all language codes available in the local voice cache.
-
-```bash
-phoonnx-voices list-langs
-```
-
-Run `update-cache` first if no languages appear.
-
----
+Lists the language codes in the local catalog. When the catalog is empty, it prints `No languages found. Run 'update-cache' first.`
 
 ### `list-voices`
 
-Lists all available voice models, optionally filtered by language.
+Lists the voices in the local catalog. When the catalog is empty, it prints `No voices found in cache. Run 'update-cache' first.`
 
-```bash
-phoonnx-voices list-voices [--lang LANG] [--verbose]
-```
+| Option | Effect |
+|---|---|
+| `--lang LANG` | List the voices for a language. A tag with a region (`pt-PT`) keeps the voices of that region. A tag with no region (`pt`), or a region with no voice (`en-AU`), lists the nearest voices first. [Choose a voice](choose_voice.md) shows the output of each case. |
+| `-v`, `--verbose` | Print the id, name, language, engine, phoneme type, model URL and config URL of each voice. A voice that needs a reference clip also gets the line `Requires reference: yes`. |
 
-**Options:**
-
-| Flag | Description |
-|------|-------------|
-| `--lang LANG` | Filter by language code. A tag with a region (`pt-PT`) lists the voices of that region. A tag with no region (`pt`, `zh-Hans`), or a region with no voice (`en-AU`), lists the nearest voices first, as the plugin picks them. |
-| `-v`, `--verbose` | Show full details for each voice |
-
-**Examples:**
-
-```bash
-# All voices
-phoonnx-voices list-voices
-
-# Portuguese voices only
-phoonnx-voices list-voices --lang pt-PT
-
-# With detailed info
-phoonnx-voices list-voices --verbose
-```
-
----
+A voice with a display name shows that name in place of its id, for example `* Pocket TTS Alba (it)`. The index holds 1288 such voices. To get the id of one of them, use `--verbose` or `list-available`.
 
 ### `list-available`
 
-Lists every voice ID bundled with phoonnx, grouped by source (Piper, Mimic3, OVOS, …),
-by reading the packaged index files directly. It downloads nothing — no config or model
-files are fetched — so it works before `update-cache` has ever been run.
+Lists every voice id in the bundled index files, grouped by source. It reads the files directly, so it works before `update-cache` and downloads nothing.
 
-```bash
-phoonnx-voices list-available
 ```
+$ phoonnx-voices list-available | head -6
 
-Use `download <VOICE_ID>` to fetch a specific voice from this list on demand.
+Total available voices found (bundled indexes): 3189
 
----
+--- OVOS Voices (37) ---
+  OpenVoiceOS/phoonnx_an_dii_unicode
+  OpenVoiceOS/phoonnx_an_miro_unicode
+```
 
 ### `download`
 
-Downloads everything a voice needs to run offline: the ONNX model, the config,
-the tokenizer artifacts (`vocab.json`/`tokens.txt`/`tokenizer.json`) and any
-vocoder, style embedding, speaker encoder or auxiliary graph the voice uses.
+Downloads every file that a voice needs: the ONNX model, the config, the tokenizer files, and any vocoder, style, speaker encoder or other graph of the voice.
 
-```bash
-phoonnx-voices download VOICE_ID
-phoonnx-voices download VOICE_ID --precision int8
-```
+| Option | Effect |
+|---|---|
+| `--precision auto\|int8\|full` | Download the files that load with this precision. When unset, the value comes from `PHOONNX_PRECISION`, else `auto`. See [Precision variants](precision.md). |
 
-`--precision` takes `auto`, `int8` or `full` and downloads the files that load
-with that value. Unset, the value comes from `PHOONNX_PRECISION`, else `auto`.
+The command looks the id up in the local catalog first. When the id is not there, it reads the bundled index files, so you can download a voice without `update-cache`.
 
-The voice is looked up in the local cache first; if it is not cached, the download
-falls back to the bundled indexes, so a single voice can be fetched without running
-`update-cache` first.
+The files go into the Hugging Face hub cache, `~/.cache/huggingface/hub/` by default, or the folder that `HF_HOME` or `HF_HUB_CACHE` names. Other programs share this cache. A file that another voice or program already downloaded is not downloaded again.
 
-The command exits with status 1 when the id is unknown, the network fails, or the voice
-is not cached and the machine is offline. Its last line on stderr names the error.
-
-**Example:**
-
-```bash
-phoonnx-voices download OpenVoiceOS/phoonnx_es-ES_dii_espeak
-```
-
-This Spanish voice uses the eSpeak phonemizer. To speak with it, install the `espeak` extra:
-`pip install --pre "phoonnx[espeak]"`.
-
-Files are fetched with `huggingface_hub` straight into the shared HuggingFace
-cache (`~/.cache/huggingface/hub/` by default, or wherever `HF_HOME`/`HF_HUB_CACHE`
-points), the same place any other program on the machine keeps hub files. A model
-named by more than one voice, or already pulled by another tool, is stored once
-and reused, not downloaded again.
-
----
+The command exits with status 1 when the id is unknown, when the network fails, and when the machine is offline and the voice is not cached. The last line on stderr names the error. [Use phoonnx offline](offline.md) shows the offline case.
 
 ### `add-alignment`
 
-Exposes a voice model's per-phoneme duration tensor as a graph output, so
-`synthesize(include_alignments=True)` can report per-phoneme timings for it.
+Writes a copy of a model with its per-phoneme duration tensor exposed as a graph output. With that copy, `synthesize(include_alignments=True)` reports the timing of each phoneme. See [Phoneme alignment](alignment.md).
 
 ```bash
 phoonnx-voices add-alignment MODEL_PATH
 ```
 
-The patched copy is written to `<model>.alignment.onnx` next to the original,
-which is where phoonnx looks for it when a voice is asked for alignments.
-Running this once, offline, saves every later load from doing the same surgery
-on its first request. See [alignment.md](alignment.md) for what alignments are
-and which models can produce them.
+| Option | Effect |
+|---|---|
+| `--output`, `-o` | Write the copy to this path. |
 
-**Options:**
+Without `--output`, the copy goes to `<model>.alignment.onnx` next to the model, or into the folder that `PHOONNX_ORT_CACHE_DIR` names. phoonnx looks for the copy there when a voice is asked for alignments.
 
-| Flag | Description |
-|------|-------------|
-| `--output`, `-o` | Write the patched model somewhere other than the default sibling path. |
+The command needs the `onnx` package from the `streaming` extra. Without it, the command stops with exit status 1:
 
-It needs the `onnx` package (`pip install --pre "phoonnx[streaming]"`) and a model
-whose graph has a locatable duration tensor; it says which of the two is
-missing and exits non-zero otherwise.
+```
+$ phoonnx-voices add-alignment model.onnx
+Error: the 'onnx' package is required for graph surgery; install it with `pip install phoonnx[streaming]`.
+```
+
+It also exits with status 1 when the graph has no duration tensor that it can find.
 
 ---
 
-## Examples: Full Workflow
-
-```bash
-# 1. Fetch the voice catalog
-phoonnx-voices update-cache
-
-# 2. Browse available languages
-phoonnx-voices list-langs
-
-# 3. Find a voice for Portuguese
-phoonnx-voices list-voices --lang pt-PT
-
-# 4. Download a specific voice
-phoonnx-voices download OpenVoiceOS/phoonnx_eu-ES_dii_espeak
-```
-
-The Basque voice in step 4 uses the eSpeak phonemizer. Install the `espeak` extra before you
-load it: `pip install --pre "phoonnx[espeak]"`.
+[Docs index](index.md) · Previous: [Voice manager](voice_manager.md) · Next: [Precision variants](precision.md)

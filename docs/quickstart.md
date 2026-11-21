@@ -1,8 +1,14 @@
 # Quickstart
 
-This guide is for anyone who wants speech out of phoonnx as fast as possible. In about five
-minutes you will install phoonnx, download a ready-made voice, and synthesize a WAV from
-Python.
+<!-- agent-hint
+covers: install phoonnx, download one voice, speak a WAV from Python, tune it, and add an extra for a voice that needs one
+source: phoonnx/cli.py, phoonnx/model_manager.py:TTSModelManager, phoonnx/voice.py:TTSVoice.load, TTSVoice.synthesize_wav, phoonnx/config.py:SynthesisConfig
+generated: no
+verify: the hello.py script below, run in a fresh venv with HF_HOME set, then python -c "import wave; w = wave.open('hello.wav'); print(w.getframerate(), w.getnchannels(), w.getsampwidth())"
+see: installation.md, choose_voice.md, usage.md, offline.md
+-->
+
+This page takes you from an empty Python environment to a spoken WAV file in about five minutes. It is for anyone who wants speech out of phoonnx quickly.
 
 ## 1. Install
 
@@ -113,8 +119,9 @@ with wave.open("hello.wav", "wb") as wav_file:
     voice.synthesize_wav("Olá, isto é um teste.", wav_file, cfg)
 ```
 
-With `length_scale=1.1` the same sentence takes about 1.9 seconds instead of about 1.75. The
-length changes a little from run to run, because the voice adds random variation. Every
+With `length_scale=1.1` the same sentence is longer. In test runs it took 1.65 to 1.81
+seconds at the default scale, and 1.81 to 1.90 seconds at 1.1. The length changes from run to
+run, because the voice adds random variation. Every
 setting is described in [Usage](usage.md) and the [Configuration reference](configuration.md).
 
 ## 5. Use a voice that needs an extra
@@ -139,8 +146,7 @@ Then change the voice id in `hello.py` and run it again:
 voice = manager.voices["OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone"].load()
 ```
 
-To find the extra for another voice, see
-[Which extra a voice needs](installation.md#which-extra-a-voice-needs).
+To find the extra for another voice, see [Choose a voice](choose_voice.md#2-read-what-the-voice-needs).
 
 ## Load a voice you trained
 
@@ -174,11 +180,12 @@ right files.
 - **No sound or silence.** Make sure that the model downloaded fully. A partial `model.onnx`
   fails to load. Run `download` again.
 
+- **`LocalEntryNotFoundError` with no network.** The voice is not in the cache. Download it
+  while online. See [Use phoonnx offline](offline.md).
+
 [Errors you may see](installation.md#errors-you-may-see) lists the Python errors for a missing
 extra, an unknown voice id, a language with no voice, and a voice that is not downloaded.
 
-## Next steps
+---
 
-- Run the voice inside a voice assistant: [OVOS plugin](ovos_plugin.md).
-- Clone a voice from a reference clip: [Cloning](cloning.md).
-- Build your own voice: [Training quickstart](training/quickstart.md).
+[Docs index](index.md) · Previous: [Installation](installation.md) · Next: [Choose a voice](choose_voice.md)

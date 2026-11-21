@@ -1,8 +1,14 @@
 # ZipVoice Engine
 
-This page is for integrators and voice builders using ZipVoice in phoonnx. After
-reading it you can clone a voice from a short reference clip, configure the
-multi-graph runtime, and train and export your own ZipVoice model.
+<!-- agent-hint
+covers: how to clone a voice with ZipVoice, configure its graphs, and train and export a ZipVoice model
+source: phoonnx/engines/zipvoice.py, phoonnx_train/engines/zipvoice.py, phoonnx_train/zipvoice/lightning.py
+generated: no
+verify: grep -n "base_lr\|lr_batches\|lr_epochs\|condition_drop_ratio\|clipping_scale" phoonnx_train/zipvoice/lightning.py
+see: ../../cloning.md, f5tts.md, chatterbox.md, ../training.md
+-->
+
+This page explains how to clone a voice with ZipVoice and how to train and export one, for integrators and voice builders.
 
 > Related: [training reference](../training.md) ·
 > [adapter architecture](../../engines.md) ·
@@ -14,8 +20,8 @@ multi-graph runtime, and train and export your own ZipVoice model.
 **ZipVoice** is a compact (~123M parameter) **flow-matching**, zero-shot
 text-to-speech model from [k2-fsa](https://github.com/k2-fsa) (the team behind
 sherpa-onnx / icefall / next-gen Kaldi). It does **in-context voice cloning**:
-given a short reference clip *and its transcription*, it speaks new text in that
-voice with state-of-the-art speaker similarity. It is an **iterative** engine —
+given a short reference clip *and its transcription*, it speaks other text in that
+voice. Its paper reports high speaker similarity. It is an **iterative** engine —
 instead of a single `tokens → graph → audio` pass, it runs a short ODE sampling
 loop over a flow-matching vector field.
 
@@ -28,8 +34,8 @@ the autoregressive d-vector engine. See [Voice Cloning](../../cloning.md).
 
 ## Extras needed
 
-Cloning (reference loading + resampling) needs `pip install phoonnx[cloning]`
-(`soundfile`, `scipy`). Training uses `pip install phoonnx[train]`; add
+Cloning (reference loading + resampling) needs `pip install --pre "phoonnx[cloning]"`
+(`soundfile`, `scipy`). Training uses `pip install --pre "phoonnx[train]"`; add
 `train-resample` when the dataset was preprocessed at a sample rate other than
 ZipVoice's 24 kHz.
 
@@ -203,10 +209,8 @@ guidance folded into the graph) — the exact contract `ZipVoiceAdapter` consume
 matching upstream `onnx_export.py` (opset 13, scaled-module conversion applied
 before tracing).
 
-Nothing changes for downstream consumers: a ZipVoice voice — whether the stock
-HF checkpoint or a fine-tune — is configured exactly as in
-[The adapter](#the-adapter) and [Cloning](#cloning); training status has no
-bearing on the runtime `engine_params` shape.
+A trained ZipVoice voice loads like the released checkpoint: configure it as in
+[The adapter](#the-adapter) and [Cloning](#cloning), with the same `engine_params` keys.
 
 ## Gotchas / aliases
 
@@ -225,3 +229,7 @@ bearing on the runtime `engine_params` shape.
 | Dialogue variant | *ZipVoice-Dialog* — [arXiv:2507.09318](https://arxiv.org/abs/2507.09318) |
 | Languages | English, Chinese |
 | ONNX weights | [`k2-fsa/ZipVoice`](https://huggingface.co/k2-fsa/ZipVoice) (text encoder + flow decoder), Vocos vocoder on HF |
+
+---
+
+[Docs index](../../index.md) · Previous: [x-vits](xvits.md) · Next: [Chatterbox](chatterbox.md)

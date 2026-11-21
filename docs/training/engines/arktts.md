@@ -1,8 +1,14 @@
 # ArkTTS Engine (Zortzi + Audio8)
 
-This page is for integrators who want ArkTTS voices in phoonnx. After reading it you can
-pick a checkpoint and a voice, you know what each of the three ONNX graphs does, and you
-know what one second of audio costs.
+<!-- agent-hint
+covers: which ArkTTS checkpoints and voices exist, how the engine samples, and what it costs
+source: phoonnx/engines/arktts.py, phoonnx/voice_index/arktts.json
+generated: no
+verify: grep -n "def default_params" -A4 phoonnx/engines/arktts.py
+see: qwen3tts.md, sparktts.md, ../../engines.md
+-->
+
+This page explains the ArkTTS engine, its two checkpoints and its voices, for integrators who want ArkTTS voices in phoonnx.
 
 > Related: [adapter architecture](../../engines.md) ·
 > [configuration](../../configuration.md) ·
@@ -39,8 +45,8 @@ Both are Apache-2.0. Zortzi is a Basque fine-tune of Audio8 and speaks only Basq
 
 ## When to pick it
 
-Pick ArkTTS when you want **Basque**, where it is currently the only codec-LM voice
-phoonnx offers, or when you want 44.1 kHz output and can afford the cost.
+Pick ArkTTS when you want a **Basque** codec-LM voice (no other phoonnx engine has one), or
+when you want 44.1 kHz output and can afford the cost.
 
 Do not pick it when you need real-time synthesis. Two autoregressive stages at ten steps
 per frame are expensive: measured on twelve cores, one second of audio takes about eight
@@ -74,8 +80,9 @@ because an expressive reference bleeds its intonation into every later sentence.
 ## Sampling
 
 **ArkTTS must sample.** Both model cards state that greedy decoding runs into repetition
-loops that never reach the end-of-speech token, so this engine does not offer a greedy
-mode. The defaults are the ones both cards pin: temperature `0.8`, top-p `0.95`, top-k `50`.
+loops that never reach the end-of-speech token. Sampling is on by default. The parameter
+`do_sample` can turn it off, but do not do that. The defaults are the ones both cards pin:
+temperature `0.8`, top-p `0.95`, top-k `50`.
 
 The sampler reproduces upstream's own order, which is not the HuggingFace one: the semantic
 mask runs first, then top-k and top-p together against the softmax of the **unscaled**
@@ -87,7 +94,8 @@ already among the last ten emitted, it is discarded and redrawn under tighter se
 (top-p `0.9` at temperature `1.0`). That fallback is what stops the model looping, and it
 is why greedy decoding cannot terminate — with sampling off, both draws are the same argmax.
 
-Pass a `seed` in `engine_params` to make a call reproducible.
+Pass a `seed` in `engine_params`, or in `SynthesisConfig.extra_params`, to make a call
+reproducible.
 
 ## Graphs
 
@@ -100,7 +108,7 @@ Pass a `seed` in `engine_params` to make a call reproducible.
 | `voices/<name>.json` | one voice's reference codes and transcription |
 
 The KV cache is a fixed 2048-position window rather than a growing tensor: each graph writes
-its new keys and values at `input_pos` and attends over the whole window. The slow AR's
+its keys and values for the step at `input_pos` and attends over the whole window. The slow AR's
 logits are sliced to 4097 entries — the 4096 semantic logits followed by end-of-speech — so
 an index below 4096 is already codebook 0's value.
 
@@ -113,14 +121,15 @@ chunk does.
 
 ## Limitations
 
-These are upstream's, and they are not worked around in phoonnx:
+These limits come from the upstream models:
 
 * **Numbers are not spoken correctly.** Both cards report that digits come out in a mix of
-  languages even when expanded to words. Spell numbers out in the text.
-* **No text normalization.** Text is tokenized verbatim, so expand acronyms yourself —
-  upstream's own example is "TTS" written as "te te ese".
+  languages even when expanded to words. phoonnx expands numbers, dates and units to words
+  with text2spoken before tokenization, so listen to the result when the text has numbers.
+* **Acronyms stay as written.** The text normalization does not expand an acronym, so write
+  it as it is spoken. Upstream's own example is "TTS" written as "te te ese".
 * **Zortzi speaks only Basque**, with these two voices and no others.
-* **Cloning is offline.** phoonnx ships the codec decoder but not the encoder, so a new
+* **Cloning is offline.** phoonnx ships the codec decoder but not the encoder, so another
   reference clip becomes a voice through `mint_voice.py` rather than at synthesis time.
 
 ## Licence and attribution
@@ -130,3 +139,7 @@ Both checkpoints are Apache-2.0. The reference clips that carry the voices come 
 CC BY 4.0, so redistributing the voices or audio generated from them carries that
 attribution. The mirrors state it, and it is repeated here because it travels with the
 audio, not only with the files.
+
+---
+
+[Docs index](../../index.md) · Previous: [Qwen3-TTS](qwen3tts.md) · Next: [F5-TTS](f5tts.md)

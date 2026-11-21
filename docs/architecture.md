@@ -1,8 +1,17 @@
 # Architecture
 
-This page is for contributors and advanced users who want to understand how a string of
-text becomes audio inside phoonnx. After reading it you will know which component owns each
-step and where to plug in a new phonemizer, engine, or vocoder.
+<!-- agent-hint
+covers: how text becomes audio in phoonnx, which component owns each step, and where the extension points are
+source: phoonnx/voice.py:TTSVoice (prepare, render, synthesize), phoonnx/encoders.py, phoonnx/tokenizer.py:TTSTokenizer, phoonnx/engines/__init__.py:detect_engine, phoonnx/engines/vocoders/, phoonnx/model_manager.py, phoonnx/audio.py:write_wav
+generated: no
+verify: python -I -c "from phoonnx.engines import detect_engine; print([type(detect_engine(config={'engine': e})).__name__ for e in ('phoonnx', 'piper', 'transformers')])" (prints VitsAdapter three times)
+see: engines.md, phonemizers.md, vocoders.md, api.md
+-->
+
+This page explains how a string of text becomes audio inside phoonnx, for contributors and advanced users.
+
+It names the component that owns each step and the place to plug in a phonemizer, an
+engine or a vocoder.
 
 ## The synthesis pipeline
 
@@ -83,16 +92,19 @@ phonemizer normalizes its own input. Individual phonemizer backends may also cle
 
 At load time `TTSVoice` resolves an adapter in this order (`voice.py` + `engines/__init__.py`):
 
-1. If the voice config declares an `engine`, the named adapter is used directly.
-   `phoonnx`, `piper`, `mimic3`, `coqui` and `transformers` share the **VITS** adapter.
+1. If the voice config names a registered engine in `engine`, phoonnx uses that adapter.
+   The format names `phoonnx`, `piper`, `mimic3`, `coqui` and `transformers` are not
+   registered engines. Detection, or the fallback in step 3, gives these voices the **VITS**
+   adapter.
 2. Otherwise `detect_engine()` probes registered adapters in ascending `detect_priority`
    (lower is checked first) and returns the first whose `detect()` matches the config and
    ONNX session.
-3. If nothing matches, it falls back to the VITS adapter.
+3. If nothing matches, phoonnx logs a warning and uses the VITS adapter.
 
-The adapter registry is documented in [Engines](engines.md), and every member of the
-`Engine` enum is listed in the [Configuration reference](configuration.md#engine-enum); voice-config detection of Piper/Mimic3/Coqui/Transformers shapes is
-documented in the [Configuration reference](configuration.md).
+[Engines](engines.md) describes the adapter registry. The
+[Configuration reference](configuration.md#engine-enum) lists every member of the `Engine`
+enum, and it describes how phoonnx detects the Piper, Mimic3, Coqui and Transformers config
+shapes.
 
 ## Two-stage engines and auxiliary graphs
 
@@ -106,3 +118,7 @@ downloads these alongside the primary model and injects their local paths into
 `engine_params`; every auxiliary session runs on the same execution providers as the voice.
 See [Vocoders](vocoders.md) and the per-engine pages under
 [training/engines/](training/engines/matcha.md).
+
+---
+
+[Docs index](index.md) · Previous: [Indic Parler-TTS](training/engines/indic_parler.md) · Next: [Engine architecture](engines.md)

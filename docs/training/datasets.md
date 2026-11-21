@@ -1,9 +1,18 @@
 # Datasets
 
-This page is for anyone preparing training data. After reading it you will know every input
-format phoonnx accepts, the exact LJSpeech `metadata.csv` layout, how audio files are located
-and normalized, how speakers are assigned, and how to filter out bad clips before training. It
-backs the [training quickstart](quickstart.md).
+<!-- agent-hint
+covers: which training data preprocess reads, how it finds audio and speakers, and how to filter bad clips
+source: phoonnx_train/dataset_loaders.py, phoonnx_train/preprocess.py:preprocess, phoonnx_train/quality_filter.py
+generated: no
+verify: grep -n "DEFAULT_TEXT_COLUMNS\|DEFAULT_SPEAKER_COLUMNS\|register_scorer(" phoonnx_train/dataset_loaders.py phoonnx_train/quality_filter.py
+see: preprocess.md, quickstart.md
+-->
+
+This page describes the training data that preprocess accepts and how to filter out bad clips, for anyone who prepares a dataset.
+
+It covers every input format, the LJSpeech `metadata.csv` layout, how preprocess finds and
+normalizes audio, and how it assigns speakers. It supports the
+[training quickstart](quickstart.md).
 
 ## Input formats
 
@@ -135,10 +144,11 @@ fall back to normal phonemization.
 
 ## Quality filtering
 
-Bad clips (music, clipping, wrong transcript, off-speaker) degrade a voice. `preprocess.py`
+Bad clips (music, clipping, wrong transcript, a different speaker) make a voice worse. `preprocess.py`
 can drop them on the way in with repeatable `--filter COLUMN:MIN:MAX` options. A clip must pass
-**every** filter to be kept; `MIN` or `MAX` may be left empty for an unbounded side. Metrics
-are computed fresh per clip (not read from precomputed columns). Quality filtering needs
+**every** filter to be kept; `MIN` or `MAX` may be left empty for an unbounded side. Preprocess
+computes each metric per clip, unless `--filter-from-columns` gives it a stored value (see
+[Reusing metric values](#reusing-metric-values)). Quality filtering needs
 `phoonnx[train-eval]`.
 
 | Metric | What it measures | Notes |
@@ -184,7 +194,11 @@ Computing filters (especially `wer`) is expensive. You can cache and reuse the r
 ## Resuming an interrupted run
 
 `--resume` skips rows already written to an existing `dataset.jsonl` (matched by row id or audio
-path) and appends only new rows; writes are atomic (temp file + rename), so an interrupted run
-never leaves a half-written manifest. `--resume` is **incompatible with `--corpus-only-map`**
-(the corpus-only phoneme map cannot be reconstructed from already-written rows) and the two
-together are rejected with an error.
+path) and appends only the rows that are not there; writes are atomic (temp file + rename), so an interrupted run
+never leaves a half-written manifest. `--resume` is **incompatible with `--corpus-only-map`**,
+because the rows already written cannot rebuild the corpus-only phoneme map. Preprocess stops
+with an error when you give both.
+
+---
+
+[Docs index](../index.md) · Previous: [Training quickstart](quickstart.md) · Next: [Preprocess reference](preprocess.md)

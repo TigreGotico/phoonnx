@@ -1,8 +1,14 @@
 # Mixer-TTS Engine
 
-This page is for voice builders and integrators working with Mixer-TTS voices in
-phoonnx. After reading it you can load an English or Arabic Mixer-TTS voice, pair
-it with a vocoder, and train and export your own.
+<!-- agent-hint
+covers: how to load an English or Arabic Mixer-TTS voice, pair it with a vocoder, and train one
+source: phoonnx/engines/mixertts.py, phoonnx/engines/mixertts_config.py, phoonnx_train/engines/mixer.py, phoonnx/voice_index/mixertts.json
+generated: no
+verify: grep -n "symbols_embedding_dim" phoonnx_train/engines/mixer.py
+see: fastpitch.md, ../training.md, ../../vocoders.md
+-->
+
+This page explains how to load and train Mixer-TTS voices, for voice builders and integrators.
 
 > Related: [training reference](../training.md) ·
 > [adapter architecture](../../engines.md) ·
@@ -25,9 +31,10 @@ It shares its inference contract with [FastPitch](fastpitch.md).
 ## Extras needed
 
 Inference needs no engine-specific extra beyond a phonemizer (espeak for
-English, `mantoq` for Arabic). Training needs `train` + `train-mixer`:
-`pip install phoonnx[train,train-mixer]` (`pyworld` for F0 on top of the `train`
-deps).
+English, `mantoq` for Arabic). Training needs `pip install --pre "phoonnx[train]"`. The
+default F0 extractor, `librosa.pyin`, comes with `[train]`. The `train-mixer` extra exists but
+adds no package. The WORLD extractors (`--f0-method dio` or `harvest` at preprocess) need
+`phoonnx[train,train-pyworld]`.
 
 ## Inference contract
 
@@ -97,17 +104,19 @@ speaker/emotion/energy conditioning and optional LSGAN mel-patch refinement from
 nipponjo/tts-arabic-pytorch), wrapped by the Lightning module in
 `phoonnx_train/mixertts/lightning.py` — mel / duration / pitch / energy MSE +
 ForwardSum (CTC) aligner loss + delayed, ramped binarization loss, exactly the
-NeMo recipe (AdamW + Noam warmup). `extra["train_gan"] = True` enables the
-(non-NeMo) LSGAN `PatchDiscriminator` refinement.
+NeMo recipe (AdamW + Noam warmup). `"train_gan": true` in the `engine_params` of the
+dataset's `config.json` turns on the (non-NeMo) LSGAN `PatchDiscriminator` refinement.
 
-It shares the standard phoonnx pipeline and the FastPitch engine's F0 sidecars
-(pyworld DIO+StoneMask at the mel hop, on the same trimmed/normalized cached
-audio the mels come from):
+It shares the standard phoonnx pipeline and the FastPitch engine's F0 sidecars. Preprocess
+extracts F0 at the mel hop, from the same trimmed and normalized cached audio as the mels,
+with the `--f0-method` extractor (default `pyin`):
 
 ```bash
 python -m phoonnx_train.train --dataset-dir /path/to/prep \
     --engine mixer --quality medium     # x-low=80 / medium=128 / high=384 dims
-python -m phoonnx_train.export_onnx ckpt.ckpt -c config.json --engine mixer
+python -m phoonnx_train.export_onnx \
+    lightning_logs/version_0/checkpoints/epoch=999-step=250000.ckpt \
+    -c /path/to/prep/config.json --engine mixer
 ```
 
 Export produces the inference contract above (mel_fmin 0 / mel_fmax 8000
@@ -142,3 +151,7 @@ inverts the natural-log mel) as a no-model-file fallback. See
 ## References
 
 - [Mixer-TTS paper](https://arxiv.org/abs/2110.03584) · [nipponjo/mixer-tts-pytorch](https://github.com/nipponjo/mixer-tts-pytorch)
+
+---
+
+[Docs index](../../index.md) · Previous: [GlowTTS](glowtts.md) · Next: [OptiSpeech](optispeech.md)

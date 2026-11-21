@@ -1,5 +1,15 @@
 # x-vits Engine (inference)
 
+<!-- agent-hint
+covers: how to load the x-vits voice, choose a style and mark a stressed word
+source: phoonnx/engines/xvits.py
+generated: no
+verify: grep -n "pp_steps\|template_scale" phoonnx/engines/xvits.py
+see: ../../engines.md, ../../configuration.md
+-->
+
+This page shows how to run the x-vits voice, with its styles and its stressed words, for anyone who uses phoonnx from Python.
+
 x-vits is a Piper/VITS voice with a prosody model added. It speaks in six styles and stresses the words you mark.
 phoonnx runs it with the `xvits` adapter. There is no training engine for it in `phoonnx_train`.
 
@@ -58,7 +68,7 @@ Pass the options in `SynthesisConfig.extra_params`. `length_scale` is a normal `
 | `style` | `confused`, `default`, `enunciated`, `happy`, `laughing`, `sad`, or none | The speaking style. A name that is not in the list raises `ValueError`, and the message lists the valid names. With no style, the prosody model runs without a style and without guidance. |
 | `emphasis` | `auto`, `marked`, `none` | `auto` stresses the marked words, or the words the prominence model picks when the text has no marks. `marked` stresses only marked words. `none` turns emphasis off. |
 | `emphasis_scale` | a number | The size of the emphasis. The default is the `template_scale` of `runtime.json`. |
-| `steps` | an integer | The steps of the prosody ODE. The default is 16. Four steps is about 2.5 times faster on a CPU and moves the pitch by about 0.1 semitone on average. |
+| `steps` | an integer | The steps of the prosody ODE. The default is the `pp_steps` of `runtime.json`, which is 16 for `fdemelo/x-vits`. Four steps is about 2.5 times faster on a CPU and moves the pitch by about 0.1 semitone on average. |
 | `seed` | an integer | The seed of the random generator. The same seed, text and options give the same audio. |
 
 The noise scales and the length scale default to the values in `runtime.json`, not to the numbers in the Piper `config.json`.
@@ -118,3 +128,7 @@ An index entry names the encoder as the model and the other files as `aux_model_
 
 The adapter code is a port of the runtime of x-vits by Flavio De Melo (MIT, <https://github.com/femelo/x-vits>).
 The voice weights `fdemelo/x-vits` are CC BY-NC 4.0: you may not use them commercially. The voice was trained on speaker ex02 of the Expresso dataset.
+
+---
+
+[Docs index](../../index.md) · Previous: [FastPitch](fastpitch.md) · Next: [ZipVoice](zipvoice.md)

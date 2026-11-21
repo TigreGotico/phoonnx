@@ -1,6 +1,16 @@
 # Python API
 
-This page is for developers who use phoonnx as a library. Part 1 is a walk-through of the API that exists in the code. Part 2 lists each name with its module. Part 3 describes the target API for phoonnx 2.0. For every target object it names the 1.x name that it replaces.
+<!-- agent-hint
+covers: the Python API that the code exports, as a walk-through and as a name list, plus the design of a target API
+source: phoonnx/__init__.py, phoonnx/voice.py:TTSVoice, phoonnx/encoders.py, phoonnx/audio.py:write_wav, phoonnx/config.py, phoonnx/errors.py, phoonnx/engines/__init__.py, phoonnx/config.schema.json
+generated: no
+verify: run the python blocks of Parts 1 and 2 in order in one python -I session and compare each with the text block after it (8 of 8 match)
+see: usage.md, architecture.md, configuration.md, engines.md
+-->
+
+This page describes the Python API of phoonnx, for developers who use it as a library.
+
+Part 1 is a walk-through of the API that exists in the code. Part 2 lists each name with its module. Part 3 is a design for a target API. For every target object it names the existing name that it replaces.
 
 Every example in Parts 1 and 2 runs offline. None of them downloads a model. The output shown is the real output. Run the examples in order in one Python session.
 
@@ -36,7 +46,7 @@ Phonemizer.GRAPHEMES Alphabet.UNICODE
 [4, 5]
 ```
 
-`engine` names the file format here (`PHOONNX`), not the model architecture. See [Part 3](#part-3-the-target-api-for-phoonnx-20) for the planned change.
+`engine` names the file format here (`PHOONNX`), not the model architecture. [Part 3](#part-3-target-api-design) describes a design where `engine` names the architecture.
 
 ### 2. Turn text into model input
 
@@ -116,9 +126,9 @@ This config sets no scales and the call sets none, so the engine's own default a
 
 The keys of `SynthesisConfig.extra_params` come last and win over all four.
 
-## Part 2: What exists in 1.x
+## Part 2: Name list
 
-This part lists the names that exist in the 1.x code. The package root exports nine names, listed below. Import every other name from its own module.
+This part lists the names that exist in the code. The package root exports nine names, listed below. Import every other name from its own module.
 
 ### Voice and audio
 
@@ -139,7 +149,7 @@ This part lists the names that exist in the 1.x code. The package root exports n
 | `AudioChunk` | `phoonnx.voice` | Audio plus `phoneme_ids`, `phoneme_id_samples` and `phoneme_alignments`. |
 | `write_wav` | `phoonnx.audio` | Writes any chunk stream to a WAV writer. |
 
-`TTSVoice.phonemes_to_ids` and `TTSVoice.phoneme_ids_to_audio` still work. They are deprecated, and each warns with a removal version.
+`TTSVoice.phonemes_to_ids` and `TTSVoice.phoneme_ids_to_audio` work, but they are deprecated. Each warns with a removal version.
 
 ### Configuration
 
@@ -178,7 +188,7 @@ An adapter subclasses `BaseOnnxAdapter` in `phoonnx.engines.base`. It receives a
 
 `PrecisionUnavailable` and `UnsupportedVoiceLanguage` also subclass `ValueError`. `NonFiniteAudioError` and `VoiceExceedsMemoryBudget` also subclass `RuntimeError`.
 
-`TTSVoice.load` raises `VoiceLoadError` when the config file does not exist. It also raises it for a VITS graph whose vocabulary uses an id that is not below `num_symbols`. Synthesis raises `NonFiniteAudioError` when the model returns NaN or infinite samples, before the audio is levelled. Written as 16-bit samples, such audio would be silence. `FrontendMismatchError`, `UnsupportedConfigError` and `ExportNotSupported` have no raise site until the 2.0 steps in Part 3 land.
+`TTSVoice.load` raises `VoiceLoadError` when the config file does not exist. It also raises it for a VITS graph whose vocabulary uses an id that is not below `num_symbols`. Synthesis raises `NonFiniteAudioError` when the model returns NaN or infinite samples, before the audio is levelled. Written as 16-bit samples, such audio would be silence. Nothing in the code raises `FrontendMismatchError`, `UnsupportedConfigError` or `ExportNotSupported`. Part 3 describes where the design raises them.
 
 The root package exports `TTSVoice`, `AudioChunk`, `Utterance`, `VoiceConfig`, `SynthesisConfig`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. Each name loads on first access, so `import phoonnx` stays cheap.
 
@@ -248,9 +258,9 @@ Peak normalisation, a loudness target, voice conversion and super-resolution nee
 
 An adapter streams by overriding `BaseOnnxAdapter.synthesize_stream(request, session)`. The default yields the one result of `synthesize`.
 
-## Part 3: The target API for phoonnx 2.0
+## Part 3: Target API design
 
-The objects in this part are targets, except where a row says that a name exists in 1.x. Each object is the target of a task in the roadmap. The code examples in Parts 1 and 2 keep working through the 1.x shims until 2.0.
+This part is a design, not a description of the code. Its objects do not exist, except where a row says that a name exists in the code. The examples in Parts 1 and 2 describe the code.
 
 ### Design rules
 
@@ -258,12 +268,12 @@ The objects in this part are targets, except where a row says that a name exists
 2. Three objects have three lifetimes. `VoiceConfig` is what the model is: read once, frozen. `TextFrontend` is how text becomes symbols: built once from `VoiceConfig.frontend`. `SynthesisConfig` is what one call asks for: every field optional, `None` means the voice's value.
 3. Every config is plain data with `to_dict()` and `from_dict()`, and a JSON Schema ships in the wheel. A config holds no callable and no instance.
 4. One precedence rule: call, then voice injection, then `config.json`, then engine default.
-5. A loaded voice does not change. A different frontend makes a new voice that shares the ONNX session.
+5. A loaded voice does not change. A different frontend makes another voice that shares the ONNX session.
 6. The runtime reads one config format: the native `config.json`. Other formats are converted once, offline, by `phoonnx.compat`.
 
 ### Target objects and the names they replace
 
-| Target | Replaces in 1.x |
+| Target | Replaces in the code |
 | --- | --- |
 | `VoiceConfig` frozen, with `engine` as the architecture, `frontend`, `tokenizer`, `speakers`, `languages`, `defaults`, `assets` | Mutable `VoiceConfig`, where `engine` can mean a file format such as `piper` |
 | `VoiceConfig.frontend: FrontendConfig` | `lang_code`, `phoneme_type`, `alphabet`, `phonemizer_model`, `keep_punctuation`, `add_diacritics`, `diacritizer_model`, `lang_tokens` |
@@ -277,7 +287,7 @@ The objects in this part are targets, except where a row says that a name exists
 | `SynthesisConfig.extra` | `extra_params` |
 | `TTSVoice.load(model, config=None, *, frontend=None, providers=None, runtime=None, warmup=False)` | `TTSVoice.load(model_path, config_path, vocab_path, tokenizer_config_path, phonemes_txt, phoneme_map, lang_code, phoneme_type_str, alphabet_str, engine_params, providers, use_cuda, warmup)` |
 | `voice.with_frontend(frontend)` | Reassignment of `voice.phonemizer`, `phoneme_type` and `alphabet` after load, as the model manager does |
-| `voice.prepare`, `voice.render` | Exist in 1.x with this signature |
+| `voice.prepare`, `voice.render` | Exist in the code with this signature |
 | `voice.synthesize(text, config=None, *, alignments=False)` | `syn_config` and `include_alignments` |
 | `AudioChunk.durations` | `phoneme_id_samples`, kept as a property |
 | `EngineRequest`, `EngineResult` | `AdapterSynthesisRequest`, `AdapterSynthesisResult` |
@@ -287,11 +297,11 @@ The objects in this part are targets, except where a row says that a name exists
 | `phoonnx.compat.convert_config` | The loaders of `config_loaders.py` and the `from_piper_config`, `from_vosk_config`, `from_mimic3_config`, `from_coqui_config` and `from_tokens_txt` constructors |
 | `phoonnx.compat.export_piper`, `export_sherpa` | The writers in `phoonnx_train/engines/vits.py` |
 | `OPTION_ALIASES` in the OPM plugin | The per-key handling of `mycroft.conf` options |
-| Raise sites for `FrontendMismatchError`, `UnsupportedConfigError` and `ExportNotSupported` | The classes exist in 1.x. Nothing raises them |
+| Raise sites for `FrontendMismatchError`, `UnsupportedConfigError` and `ExportNotSupported` | The classes exist in the code. Nothing raises them |
 
 ### The three configs
 
-`VoiceConfig` holds `engine` (the architecture, such as `vits` or `matcha`), `sample_rate`, `num_symbols`, `frontend`, `tokenizer`, `speakers`, `languages`, `defaults`, `assets` and `phonemizer_identity`. Its `lang` property reads `frontend.lang`. The native `config.json` keeps its keys. `VoiceConfig.from_dict` builds `frontend` from `lang_code`, `phoneme_type`, `alphabet`, `phonemizer_model`, `keep_punctuation`, `inference.add_diacritics` and `inference.diacritizer_model`. It builds `tokenizer` from `phoneme_id_map` and the blank, pad, BOS and EOS keys. A new fact gets a new optional key. No existing key changes its meaning or place.
+`VoiceConfig` holds `engine` (the architecture, such as `vits` or `matcha`), `sample_rate`, `num_symbols`, `frontend`, `tokenizer`, `speakers`, `languages`, `defaults`, `assets` and `phonemizer_identity`. Its `lang` property reads `frontend.lang`. The native `config.json` keeps its keys. `VoiceConfig.from_dict` builds `frontend` from `lang_code`, `phoneme_type`, `alphabet`, `phonemizer_model`, `keep_punctuation`, `inference.add_diacritics` and `inference.diacritizer_model`. It builds `tokenizer` from `phoneme_id_map` and the blank, pad, BOS and EOS keys. A fact that the format lacks gets its own optional key. No existing key changes its meaning or place.
 
 `SynthesisConfig` is frozen. Its groups are:
 
@@ -299,21 +309,21 @@ The objects in this part are targets, except where a row says that a name exists
 - Flat engine fields: `speaker` (a name or an id), `language`, `length_scale`, `noise_scale`, `noise_w_scale`, `temperature`, `top_p`, `exaggeration`, `reference` and `extra`.
 - `audio`: `normalize`, `target_loudness`, `volume`, `super_resolution` and `voice_conversion`.
 
-`SynthesisConfig.from_dict` also reads the flat 1.x names, with a `DeprecationWarning`. The names are `add_diacritics`, `speaker_id`, `lang_id`, `normalize_audio`, `vc_reference`, `extra_params` and `alphabet`.
+`SynthesisConfig.from_dict` also reads the flat names of the code, with a `DeprecationWarning`. The names are `add_diacritics`, `speaker_id`, `lang_id`, `normalize_audio`, `vc_reference`, `extra_params` and `alphabet`.
 
 ### Voice steps
 
 The target form of the call sequence is:
 
 ```python
-# Target API. Not available in 1.x.
+# Target API design. This code does not run.
 voice = TTSVoice.load("model.onnx")
-other = voice.with_frontend(frontend)        # new voice, same ONNX session
+other = voice.with_frontend(frontend)        # another voice, same ONNX session
 for utterance in voice.prepare("Hello"):
     chunk = voice.render(utterance, SynthesisConfig(speaker="anna"))
 ```
 
-`with_frontend` checks `keep_punctuation` and the alphabet against the voice, and probes the backend symbols against the vocabulary. A mismatch raises `FrontendMismatchError`. `synthesize(text)` stays as `render` over `prepare`, and `synthesize_ssml` does the same for each SSML piece. `write_wav` already exists.
+`with_frontend` checks `keep_punctuation` and the alphabet against the voice, and probes the backend symbols against the vocabulary. A mismatch raises `FrontendMismatchError`. `synthesize(text)` stays as `render` over `prepare`, and `synthesize_ssml` does the same for each SSML piece. `write_wav` exists in the code.
 
 ### Foreign formats and export
 
@@ -327,9 +337,9 @@ An adapter must define `detect(session, config)` (static), `default_params()`, `
 
 ### Package root and errors
 
-The root already exports `TTSVoice`, `VoiceConfig`, `SynthesisConfig`, `Utterance`, `AudioChunk`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. The target adds `AudioPost`, `SpeakerReference` and `Runtime`.
+The root of the code exports `TTSVoice`, `VoiceConfig`, `SynthesisConfig`, `Utterance`, `AudioChunk`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. The target adds `AudioPost`, `SpeakerReference` and `Runtime`.
 
-The hierarchy of `phoonnx.errors` exists in 1.x, and `VoiceLoadError` already has its raise sites. The target is the other raise sites. `with_frontend` raises `FrontendMismatchError`. A foreign config raises `UnsupportedConfigError`. An export that the target cannot run raises `ExportNotSupported`.
+The hierarchy of `phoonnx.errors` exists in the code, and `VoiceLoadError` has its raise sites. The target is the other raise sites. `with_frontend` raises `FrontendMismatchError`. A foreign config raises `UnsupportedConfigError`. An export that the target cannot run raises `ExportNotSupported`.
 
 ### Model manager
 
@@ -338,3 +348,7 @@ The hierarchy of `phoonnx.errors` exists in 1.x, and `VoiceLoadError` already ha
 ### Training
 
 `phoonnx_train` builds its `TextFrontend` from the same `FrontendConfig` that `export_onnx` writes into `config.json` through `VoiceConfig.to_dict()`. That is the one writer of the format.
+
+---
+
+[Docs index](index.md) · Previous: [Vocoders](vocoders.md)
