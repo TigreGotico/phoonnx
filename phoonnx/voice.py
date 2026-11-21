@@ -1460,10 +1460,14 @@ class TTSVoice:
                 raise ValueError(f"side stream {name!r} has {len(values)} values for {len(phoneme_ids)} phoneme ids")
             side_streams[name] = np.array([values], dtype=np.int64)
 
+        speaker_id = syn_config.speaker_id
+        if speaker_id is None and self.config.num_speakers > 1:
+            speaker_id = self.config.default_speaker_id
+
         return AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,
             phoneme_lengths=phoneme_ids_lengths,
-            speaker_id=syn_config.speaker_id,
+            speaker_id=speaker_id,
             language_id=syn_config.lang_id,
             params=params,
             text=text,

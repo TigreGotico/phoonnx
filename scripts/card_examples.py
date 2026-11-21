@@ -364,10 +364,14 @@ def _lang(config: Dict[str, Any], lang: Optional[str]) -> Optional[str]:
     if lang or "phoonnx_version" in config:
         return lang
     language = config.get("language")
-    lang = language.get("code") if isinstance(language, dict) else None
-    if not lang and _is_piper(config):
-        lang = (config.get("espeak") or {}).get("voice")
-    return lang
+    code = language.get("code") if isinstance(language, dict) else None
+    if not _is_piper(config):
+        return code
+    # Piper phonemizes an espeak model with the espeak-ng voice in espeak.voice
+    espeak_voice = (config.get("espeak") or {}).get("voice")
+    if config.get("phoneme_type", "espeak") == "espeak":
+        return espeak_voice or code
+    return code or espeak_voice
 
 
 def _is_arabic(lang: Optional[str]) -> bool:

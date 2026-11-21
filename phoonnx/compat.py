@@ -41,6 +41,7 @@ loader returns.
 """
 import copy
 import json
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, FrozenSet, List, Optional, Type, Union
@@ -55,7 +56,7 @@ from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
 from phoonnx.util import LOG, is_arabic
 
 
-def vocabulary_from_piper_config(cfg: Dict[str, Any]) -> 'Vocabulary':
+def vocabulary_from_piper_config(cfg: Dict[str, Any], decompose: bool = False) -> 'Vocabulary':
     """
     Creates a Vocabulary instance from a Piper configuration dictionary.
 
@@ -63,12 +64,24 @@ def vocabulary_from_piper_config(cfg: Dict[str, Any]) -> 'Vocabulary':
 
     Parameters:
         cfg: The Piper configuration dictionary.
+        decompose: Give a precomposed symbol the ids of its canonical
+            decomposition (NFD), as Piper does for the models it trains.
 
     Returns:
         A Vocabulary instance.
     """
     # Piper format has value as list of [id, ...]
-    char2idx: Dict[str, int] = {char: idx[0] for char, idx in cfg.get("phoneme_id_map", {}).items()}
+    char2idx: Dict[str, Union[int, List[int]]] = {
+        char: idx[0] for char, idx in cfg.get("phoneme_id_map", {}).items()}
+    if decompose:
+        # Piper decomposes the espeak-ng phonemes (NFD) before the id lookup, so
+        # "ç" reaches the model as "c" and U+0327 and its own id is never trained
+        # (piper1-gpl src/piper/phonemize_espeak.py at v1.5.0, and
+        # src/phonemize.cpp of rhasspy/piper-phonemize for the older voices).
+        for char in list(char2idx):
+            parts = unicodedata.normalize("NFD", char)
+            if parts != char:
+                char2idx[char] = [char2idx[part] for part in parts if part in char2idx]
     pad: Optional[str] = cfg.get("pad") or DEFAULT_PAD_TOKEN
     eos: Optional[str] = cfg.get("eos") or DEFAULT_EOS_TOKEN
     bos: Optional[str] = cfg.get("bos") or DEFAULT_BOS_TOKEN
@@ -185,17 +198,18 @@ def vocabulary_from_coqui_config(cfg: Dict[str, Any]) -> 'Vocabulary':
                       blank=blank)
 
 
-def from_piper_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':
+def from_piper_config(cfg: Dict[str, Any], decompose: bool = False) -> 'TTSTokenizer':
     """
     Create a TTSTokenizer configured from a Piper configuration.
 
     Parameters:
         cfg (Dict[str, Any]): Piper configuration dictionary containing phoneme/token mappings and optional special token names.
+        decompose (bool): See :func:`vocabulary_from_piper_config`.
 
     Returns:
         TTSTokenizer: Tokenizer configured with the Vocabulary derived from `cfg` and Piper-oriented defaults for blank and BOS/EOS handling.
     """
-    voc: Vocabulary = vocabulary_from_piper_config(cfg)
+    voc: Vocabulary = vocabulary_from_piper_config(cfg, decompose)
     # Default settings for Piper
     add_blank: bool = True
     blank_at_end: bool = True
@@ -593,6 +607,12 @@ class PiperLoader(ConfigLoader):
     models were trained by phoonnx, without punctuation unless the config says
     otherwise. They are recognised by a ``piper_version`` starting with
     ``phoonnx`` or by an ``alphabet`` key, which Piper never writes.
+
+    Piper phonemizes with the espeak-ng voice that ``espeak.voice`` names
+    (``es-419`` for an ``es_MX`` voice), and it reads the phonemes decomposed
+    (NFD). The ``vowel_clusters`` of a Piper 1.5 config, such as ``a`` + ``ɪ``,
+    each have their own key in ``phoneme_id_map``, and the tokenizer's compound
+    folding gives such a key its own id.
     """
 
     @classmethod
@@ -633,9 +653,10 @@ class PiperLoader(ConfigLoader):
     def load(cls, request: LoadRequest) -> LoadedFields:
         config = request.config
 
-        lang_code = request.lang_code or (config.get("language", {}).get("code") or
-                                          config.get("espeak", {}).get("voice"))
         phoneme_type = request.phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK)
+        espeak_voice = config.get("espeak", {}).get("voice")
+        lang_code = (request.lang_code or (espeak_voice if phoneme_type == PhonemeType.ESPEAK else None)
+                     or config.get("language", {}).get("code") or espeak_voice)
         alphabet = request.alphabet
         pinned = set()
         if phoneme_type == "text":
@@ -656,7 +677,7 @@ class PiperLoader(ConfigLoader):
         config["eos"] = DEFAULT_EOS_TOKEN
 
         return LoadedFields(
-            tokenizer=from_piper_config(config),
+            tokenizer=from_piper_config(config, decompose=not cls.made_by_phoonnx(config)),
             engine=Engine.PIPER,
             lang_code=lang_code,
             phoneme_type=phoneme_type,
@@ -968,6 +989,7 @@ def build_voice_config(config: Dict[str, Any],
         phonemizer_identity=config.get("phonemizer_identity"),
         phoneme_type=loaded.phoneme_type,
         speaker_id_map=config.get("speaker_id_map", {}),
+        default_speaker_id=config.get("default_speaker_id"),
         blank_between=BlankBetween(loaded.blank_between),
         blank_at_start=config.get("blank_at_start", True),
         blank_at_end=config.get("blank_at_end", True),
