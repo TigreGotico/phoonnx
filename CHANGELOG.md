@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.124.2a1](https://github.com/TigreGotico/phoonnx/tree/1.124.2a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.1a2...1.124.2a1)
+
+**Merged pull requests:**
+
+- fix: a split VITS voice streams its decoder windows, and Orpheus says it does not clone [\#835](https://github.com/TigreGotico/phoonnx/pull/835) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.124.1a2](https://github.com/TigreGotico/phoonnx/tree/1.124.1a2) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.1a1...1.124.1a2)
@@ -275,7 +283,6 @@
 - fix: side streams survive blanks and BOS/EOS [\#743](https://github.com/TigreGotico/phoonnx/pull/743) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - docs: add the Python API reference and the 2.0 target API [\#742](https://github.com/TigreGotico/phoonnx/pull/742) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - test: each raw-text engine reads the text2spoken reading of digits [\#741](https://github.com/TigreGotico/phoonnx/pull/741) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix\(train\): a preprocessing worker that cannot start stops the run [\#738](https://github.com/TigreGotico/phoonnx/pull/738) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.114.2a1](https://github.com/TigreGotico/phoonnx/tree/1.114.2a1) (2026-11-18)
 
@@ -312,10 +319,6 @@
 ## [1.113.16a1](https://github.com/TigreGotico/phoonnx/tree/1.113.16a1) (2026-11-18)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.113.15a2...1.113.16a1)
-
-**Merged pull requests:**
-
-- feat\(index\): every adapter has an index voice or a documented reason [\#737](https://github.com/TigreGotico/phoonnx/pull/737) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.113.15a2](https://github.com/TigreGotico/phoonnx/tree/1.113.15a2) (2026-11-18)
 
