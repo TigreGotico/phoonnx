@@ -22,8 +22,8 @@ Clearing local voice cache...
 Loading bundled voice indexes...
 
 Cache updated successfully!
-Total voices available: 3189
-Total languages supported: 1816
+Total voices available: 3191
+Total languages supported: 1817
 $ phoonnx-voices list-voices --lang pt-PT
 
 Found 51 voices for language 'pt-PT':
@@ -40,8 +40,8 @@ The tag decides which voices you see:
 
 | Tag | Result |
 |---|---|
-| A tag with a region, `pt-PT` | The voices of that region only: 51 voices. |
-| A tag with no region, `pt` | The voices of every region, nearest first: 64 voices. |
+| A tag with a region, `pt-PT` | The voices of that region only. |
+| A tag with no region, `pt` | The voices of every region, nearest first. |
 | A region that has no voice, `en-AU` | The voices of the nearest regions, nearest first. |
 
 The `en-AU` list starts with British English, because the default region of English is `en-GB`:
@@ -97,7 +97,7 @@ Two voices show `None`. Each one names its phonemizer in its own config file.
 
 A voice that needs a missing extra stops at load with an `ImportError`. The message names the package. [Installation](installation.md#errors-you-may-see) shows these errors and the fix for each one.
 
-Some voices clone a speaker and need a reference clip. For those voices, `--verbose` adds the line `Requires reference: yes (needs speaker_reference / a style path)`. The index holds 44 such voices: 42 Chatterbox voices and 2 StyleTTS2 voices. See [Voice cloning](cloning.md).
+Some voices clone a speaker and need a reference clip. For those voices, `--verbose` adds the line `Requires reference: yes (needs speaker_reference / a style path)`. These are the Chatterbox voices and some StyleTTS2 voices. See [Voice cloning](cloning.md).
 
 ## 3. Check the download size
 

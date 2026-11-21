@@ -4,7 +4,7 @@
 covers: how to train the three SuperTonic stages, fine-tune them and export the four ONNX graphs
 source: phoonnx_train/supertonic/lightning.py, phoonnx_train/supertonic/text.py, phoonnx_train/supertonic/export_onnx.py, phoonnx_train/supertonic/checkpointing.py
 generated: no
-verify: pytest tests/test_supertonic.py tests/test_supertonic_training.py
+verify: pytest tests/test_supertonic.py tests/test_supertonic_training.py; the stages and files: none, checked by reading phoonnx_train/supertonic/lightning.py:AutoencoderModule, phoonnx_train/supertonic/text.py:CharTokenizer and phoonnx_train/supertonic/export_onnx.py:export_from_checkpoints
 see: ../training.md, ../export.md, ../../engines.md
 -->
 

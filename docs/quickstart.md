@@ -35,8 +35,8 @@ Clearing local voice cache...
 Loading bundled voice indexes...
 
 Cache updated successfully!
-Total voices available: 3189
-Total languages supported: 1816
+Total voices available: 3191
+Total languages supported: 1817
 ```
 
 List the voices for a language. The list starts like this:

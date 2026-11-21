@@ -35,7 +35,7 @@ Some test files need more than this base set:
 
 - `tests/test_voice_config_to_dict.py` needs `jsonschema`.
 - `tests/test_card_examples.py` imports `text2tashkeel` and `onnx`.
-- The training and export tests import `torch`. Some other tests import `onnx`.
+- Most training and export tests import `torch`. Some other tests import `onnx`.
 - The `test` extra installs all of these. CI installs `-e .[test,train,train-styletts2,train-eval,train-data,train-optispeech,train-pyworld]` on Python 3.11 to 3.14, with the `espeak-ng` system package.
 
 ## Rules the repository enforces

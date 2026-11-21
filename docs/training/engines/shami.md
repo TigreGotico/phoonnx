@@ -4,7 +4,7 @@
 covers: how to export, load and run Levantine-Arabic and English code-switched ShamiVITS voices
 source: phoonnx/engines/shami.py, scripts/conversion/shami_tts/export.py
 generated: no
-verify: pytest tests/test_shami.py; python scripts/conversion/shami_tts/export.py --help lists the --checkpoint-dir and --output-dir flags that the page uses
+verify: pytest tests/test_shami.py && ! comm -23 <(grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' docs/training/engines/shami.md | sort -u) <(python scripts/conversion/shami_tts/export.py --help | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | sort -u) | grep .
 see: ../training.md, ../../engines.md, ../../configuration.md
 -->
 

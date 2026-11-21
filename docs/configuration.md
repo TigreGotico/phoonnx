@@ -4,7 +4,7 @@
 covers: every VoiceConfig and SynthesisConfig field, the model.json schema, phonemizer provenance, the Engine enum, execution providers and precision
 source: phoonnx/config.py:VoiceConfig, phoonnx/config.py:SynthesisConfig, phoonnx/config.py:Engine, phoonnx/config_loaders.py, phoonnx/providers.py, phoonnx/model_manager.py:PRECISIONS
 generated: no
-verify: pytest tests/test_voice_config_to_dict.py tests/test_precision.py tests/test_providers.py tests/test_text_casing.py
+verify: pytest tests/test_voice_config_to_dict.py tests/test_precision.py tests/test_providers.py tests/test_text_casing.py; the fields and defaults: none, checked by reading phoonnx/config.py:VoiceConfig, phoonnx/config.py:SynthesisConfig and phoonnx/config.py:Engine
 see: usage.md, phonemizers.md, precision.md
 -->
 

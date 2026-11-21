@@ -4,7 +4,7 @@
 covers: how to go from a folder of audio to a speaking ONNX voice, step by step
 source: phoonnx_train/preprocess.py:cli, phoonnx_train/train.py:main, phoonnx_train/export_onnx.py:cli, phoonnx_train/engines/vits.py:write_sidecars
 generated: no
-verify: the --help of phoonnx_train.preprocess, phoonnx_train.train and phoonnx_train.export_onnx lists each flag that the page uses; pytest tests/test_preprocess_pipeline.py checks the "No valid utterances found" exit
+verify: ! comm -23 <(grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' docs/training/quickstart.md | grep -vxE -- '--(pre|logdir|learning-rate)' | sort -u) <(for m in preprocess train export_onnx; do python -m phoonnx_train.$m --help; done | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | sort -u) | grep .
 see: datasets.md, training.md, export.md
 -->
 

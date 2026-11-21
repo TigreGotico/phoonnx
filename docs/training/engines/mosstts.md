@@ -4,7 +4,7 @@
 covers: how to prepare data for, fine-tune, resume and export MOSS-TTS-Nano
 source: phoonnx_train/mosstts/prepare_data.py, phoonnx_train/mosstts/train.py, phoonnx_train/mosstts/warmstart.py, phoonnx_train/mosstts/export_onnx.py
 generated: no
-verify: pytest tests/test_mosstts_training.py; the --help of phoonnx_train.mosstts.prepare_data, phoonnx_train.mosstts.train and phoonnx_train.mosstts.export_onnx lists each flag that the page uses
+verify: ! comm -23 <(grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' docs/training/engines/mosstts.md | sort -u) <(for m in prepare_data train export_onnx; do python -m phoonnx_train.mosstts.$m --help; done | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | sort -u) | grep .
 see: ../training.md, ../../cloning.md
 -->
 

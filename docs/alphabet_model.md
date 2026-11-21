@@ -4,7 +4,7 @@
 covers: how VoiceConfig.alphabet, VoiceConfig.phoneme_type and SynthesisConfig.alphabet select a conversion route through the scriptconv graph, and how synthesis dispatches on the result
 source: phoonnx/config.py:VoiceConfig, phoonnx/config.py:SynthesisConfig, phoonnx/voice.py:TTSVoice, scriptconv.graph:DEFAULT_GRAPH, scriptconv.frontend:TextFrontend
 generated: no
-verify: pytest tests/test_inline_phoneme_blocks_dispatch.py tests/test_phoneme_type_default.py tests/test_phoneme_map.py (base install); tests/test_scriptconv_integration.py also covers the graph, but needs scriptconv-copyleft
+verify: pytest tests/test_inline_phoneme_blocks_dispatch.py tests/test_phoneme_type_default.py tests/test_phoneme_map.py; the conversion routes: none, checked by reading scriptconv.graph:DEFAULT_GRAPH and phoonnx/voice.py:TTSVoice
 see: phonemizers.md, architecture.md, configuration.md
 -->
 

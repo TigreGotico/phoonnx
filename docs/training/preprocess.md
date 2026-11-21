@@ -4,7 +4,7 @@
 covers: every phoonnx_train.preprocess flag, the files it writes and the fine-tuning phoneme map
 source: phoonnx_train/preprocess.py:cli, phoonnx_train/dataset_loaders.py, phoonnx_train/quality_filter.py
 generated: no
-verify: python -m phoonnx_train.preprocess --help lists every flag in the page's tables
+verify: ! comm -3 <(grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' docs/training/preprocess.md | sort -u) <(python -m phoonnx_train.preprocess --help | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | sort -u) | grep .
 see: datasets.md, training.md, ../phonemizers.md
 -->
 

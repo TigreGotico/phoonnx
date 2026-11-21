@@ -4,7 +4,7 @@
 covers: loading a voice, synthesis to WAV or a stream, SynthesisConfig, inline phonemes, phonetic spellings, SSML, multi-speaker voices and the low-level phonemize, tokenize and vocode calls
 source: phoonnx/voice.py:TTSVoice, phoonnx/config.py:SynthesisConfig, phoonnx/ssml.py, phoonnx/providers.py, phoonnx/audio.py
 generated: no
-verify: pytest tests/test_voice_chunks.py tests/test_scale_precedence.py tests/test_synthesis_config_chunk.py tests/test_inline_phonemes.py tests/test_phonetic_spellings.py tests/test_ssml.py
+verify: pytest tests/test_voice_chunks.py tests/test_scale_precedence.py tests/test_synthesis_config_chunk.py tests/test_inline_phonemes.py tests/test_phonetic_spellings.py tests/test_ssml.py; the calls and their output: none, checked by reading phoonnx/voice.py:TTSVoice and phoonnx/config.py:SynthesisConfig
 see: quickstart.md, configuration.md, streaming.md
 -->
 

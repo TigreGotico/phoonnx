@@ -4,7 +4,7 @@
 covers: how OmniVoice decodes, how to clone with it, its parameters and its cost
 source: phoonnx/engines/omnivoice.py, phoonnx/voice_index/omnivoice.json
 generated: no
-verify: pytest tests/test_omnivoice.py tests/test_card_example_omnivoice.py (test_default_params_match_upstream_generation_config checks the decoding defaults)
+verify: pytest tests/test_omnivoice.py tests/test_card_example_omnivoice.py; the decoding defaults: none, checked by reading phoonnx/engines/omnivoice.py:OmniVoiceAdapter.default_params
 see: ../../cloning.md, zipvoice.md, f5tts.md
 -->
 

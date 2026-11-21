@@ -20,8 +20,8 @@ Clearing local voice cache...
 Loading bundled voice indexes...
 
 Cache updated successfully!
-Total voices available: 3189
-Total languages supported: 1816
+Total voices available: 3191
+Total languages supported: 1817
 ```
 
 List the languages:
@@ -29,7 +29,7 @@ List the languages:
 ```
 $ phoonnx-voices list-langs | head -5
 
-Supported Languages (1816):
+Supported Languages (1817):
  - aae
  - aal
  - aao
@@ -108,7 +108,7 @@ Lists the voices in the local catalog. When the catalog is empty, it prints `No 
 | `--lang LANG` | List the voices for a language. A tag with a region (`pt-PT`) keeps the voices of that region. A tag with no region (`pt`), or a region with no voice (`en-AU`), lists the nearest voices first. [Choose a voice](choose_voice.md) shows the output of each case. |
 | `-v`, `--verbose` | Print the id, name, language, engine, phoneme type, model URL and config URL of each voice. A voice that needs a reference clip also gets the line `Requires reference: yes (needs speaker_reference / a style path)`. |
 
-A voice with a display name shows that name in place of its id, for example `* Pocket TTS Alba (it)`. The index holds 1288 such voices. To get the id of one of them, use `--verbose` or `list-available`.
+A voice with a display name shows that name in place of its id, for example `* Pocket TTS Alba (it)`. To get the id of one of them, use `--verbose` or `list-available`.
 
 ### `list-available`
 
@@ -117,9 +117,9 @@ Lists every voice id in the bundled index files, grouped by source. It reads the
 ```
 $ phoonnx-voices list-available | head -6
 
-Total available voices found (bundled indexes): 3189
+Total available voices found (bundled indexes): 3191
 
---- OVOS Voices (37) ---
+--- OVOS Voices (39) ---
   OpenVoiceOS/phoonnx_an_dii_unicode
   OpenVoiceOS/phoonnx_an_miro_unicode
 ```

@@ -4,7 +4,7 @@
 covers: which training data preprocess reads, how it finds audio and speakers, and how to filter bad clips
 source: phoonnx_train/dataset_loaders.py, phoonnx_train/preprocess.py:preprocess, phoonnx_train/quality_filter.py
 generated: no
-verify: pytest tests/test_dataset_loaders.py tests/test_quality_filter.py
+verify: python -I -c "import sys; from phoonnx_train.dataset_loaders import DEFAULT_TEXT_COLUMNS as T, DEFAULT_SPEAKER_COLUMNS as S; p = open('docs/training/datasets.md').read(); m = [c for c in (T, S) if ', '.join(chr(96) + x + chr(96) for x in c) + ' |' not in p]; print(m); sys.exit(bool(m))"; pytest tests/test_dataset_loaders.py tests/test_quality_filter.py, with the train-data and train-eval extras; the scorers: none, checked by reading phoonnx_train/quality_filter.py:register_scorer
 see: preprocess.md, quickstart.md
 -->
 

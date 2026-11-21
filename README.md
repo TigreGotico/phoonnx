@@ -16,7 +16,7 @@ phoonnx turns text into speech with ONNX voices. It loads voices from several ec
 (native phoonnx, Piper, Mimic3, Coqui, MMS, Transformers and others) through one
 `onnxruntime` interface, and it ships a pipeline to train your own voices.
 
-The bundled voice index holds 3189 voices for 1816 language tags.
+`phoonnx-voices update-cache` prints how many voices and language tags the bundled voice index holds.
 
 The [documentation index](docs/index.md) lists every page. To start, follow the
 [Quickstart](docs/quickstart.md).

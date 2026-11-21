@@ -4,7 +4,7 @@
 covers: which ArkTTS checkpoints and voices exist, how the engine samples, and what it costs
 source: phoonnx/engines/arktts.py, phoonnx/voice_index/arktts.json
 generated: no
-verify: pytest tests/test_arktts.py tests/test_card_example_arktts.py (test_default_params_follow_the_model_cards checks the decoding defaults)
+verify: pytest tests/test_arktts.py tests/test_card_example_arktts.py; the decoding defaults: none, checked by reading phoonnx/engines/arktts.py:ArkTTSAdapter.default_params
 see: qwen3tts.md, sparktts.md, ../../engines.md
 -->
 
