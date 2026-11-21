@@ -65,7 +65,7 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
         session: onnxruntime.InferenceSession,
     ) -> Dict[str, np.ndarray]:
         params = request.params
-        d_factor = np.float32(params.get("d_factor", params.get("length_scale", 1.0)))
+        d_factor = np.float32(params.get("d_factor", 1.0))
         p_factor = np.float32(params.get("p_factor", 1.0))
         e_factor = np.float32(params.get("e_factor", 1.0))
 
@@ -117,6 +117,9 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
             "e_factor": 1.0,
         }
 
+    def length_scale_params(self, length_scale: float) -> Dict[str, float]:
+        return {"d_factor": length_scale}
+
     # ------------------------------------------------------------------
     # Optional
     # ------------------------------------------------------------------
@@ -161,15 +164,6 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
 
         return False
 
-    def parse_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract default d/p/e factors from config if present."""
-        inference_args = config.get("inference_args", {})
-        return {
-            "d_factor": inference_args.get("d_factor", 1.0),
-            "p_factor": inference_args.get("p_factor", 1.0),
-            "e_factor": inference_args.get("e_factor", 1.0),
-        }
-
     def configure_tokenizer(self, tokenizer):
         """
         OptiSpeech models embed ``text_processor`` config in ONNX metadata
@@ -206,10 +200,3 @@ class OptiSpeechAdapter(BaseOnnxAdapter):
         except Exception:
             LOG.debug("Failed to parse OptiSpeech ONNX metadata", exc_info=True)
         return {}
-
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "d_factor": "Speed",
-            "p_factor": "Pitch",
-            "e_factor": "Energy",
-        }

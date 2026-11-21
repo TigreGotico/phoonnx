@@ -146,17 +146,24 @@ class TestFromDictChatterbox(unittest.TestCase):
 
 
 class TestFromDictMimic3PhonemeTypeBranches(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tokens = os.path.join(tmp.name, "phonemes.txt")
+        with open(self.tokens, "w", encoding="utf-8") as f:
+            f.write("0 _\n1 a\n2 b\n")
+
     def _mimic3_cfg(self, phonemizer):
         return {"phonemizer": phonemizer, "phonemes": {}, "text_language": "en"}
 
     def test_symbols_phonemizer_yields_graphemes_and_unicode_alphabet(self):
-        vc = VoiceConfig.from_dict(self._mimic3_cfg("symbols"), tokens_txt="0 _\n1 a\n2 b\n")
+        vc = VoiceConfig.from_dict(self._mimic3_cfg("symbols"), tokens_txt=self.tokens)
         self.assertEqual(vc.phoneme_type, PhonemeType.GRAPHEMES)
         self.assertEqual(vc.alphabet, Alphabet.UNICODE)
         self.assertEqual(vc.engine, Engine.MIMIC3)
 
     def test_gruut_phonemizer_yields_ipa_alphabet(self):
-        vc = VoiceConfig.from_dict(self._mimic3_cfg("gruut"), tokens_txt="0 _\n1 a\n2 b\n")
+        vc = VoiceConfig.from_dict(self._mimic3_cfg("gruut"), tokens_txt=self.tokens)
         self.assertEqual(vc.phoneme_type, PhonemeType.GRUUT)
         self.assertEqual(vc.alphabet, Alphabet.IPA)
 

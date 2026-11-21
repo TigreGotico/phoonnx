@@ -44,7 +44,9 @@ def _shami_voice():
                          lang_code="ar", phoneme_type=PhonemeType.SHAMI, alphabet=Alphabet.IPA,
                          phonemizer_model=None, add_diacritics=False, keep_punctuation=False)
     voice = TTSVoice(config=config, session=MagicMock(), adapter=MagicMock())
-    voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda phonemes: list(range(len(phonemes))))
+    voice.config.tokenizer = types.SimpleNamespace(
+        tokenize=lambda phonemes: list(range(len(phonemes))),
+        tokenize_with_streams=lambda phonemes, streams: (list(range(len(phonemes))), streams))
     return voice
 
 
@@ -55,14 +57,16 @@ def _utterances(voice, text, **settings):
 class TestChunkSize:
     """``SynthesisConfig.chunk`` reaches ``Stages(chunk=...)``: one utterance per chunk."""
 
-    TEXT = "Ab, cd. Ef.\n\nGh."
+    # quebra_frases reads a word with no vowel before a period as an
+    # abbreviation ("Dr.") and does not end the sentence there
+    TEXT = "One, two. Three\n\nFour."
 
     @pytest.mark.parametrize("chunk, expected", [
-        (None, ["Ab cd", "Ef", "Gh"]),
-        ("sentence", ["Ab cd", "Ef", "Gh"]),
-        ("clause", ["Ab", "cd", "Ef", "Gh"]),
-        ("paragraph", ["Ab cd Ef", "Gh"]),
-        ("none", ["Ab cd Ef Gh"]),
+        (None, ["One two", "Three", "Four"]),
+        ("sentence", ["One two", "Three", "Four"]),
+        ("clause", ["One", "two", "Three", "Four"]),
+        ("paragraph", ["One two Three", "Four"]),
+        ("none", ["One two Three Four"]),
     ])
     def test_one_utterance_per_chunk(self, chunk, expected):
         utterances = _utterances(_unicode_voice(), self.TEXT, chunk=chunk)

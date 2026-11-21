@@ -479,6 +479,7 @@ class TestTwoStageEngineAlignment(unittest.TestCase):
         cfg.length_scale = None
         cfg.noise_w_scale = None
         cfg.engine_params = {}
+        cfg.num_speakers = 1
 
         voice = TTSVoice.__new__(TTSVoice)
         voice.session = session
@@ -518,6 +519,7 @@ class TestTwoStageEngineAlignment(unittest.TestCase):
         cfg.length_scale = None
         cfg.noise_w_scale = None
         cfg.engine_params = {}
+        cfg.num_speakers = 1
 
         voice = TTSVoice.__new__(TTSVoice)
         voice.session = session
@@ -558,6 +560,7 @@ class TestSingleTokenZeroDimDuration(unittest.TestCase):
         cfg.length_scale = 1.0
         cfg.noise_w_scale = 0.8
         cfg.engine_params = {}
+        cfg.num_speakers = 1
 
         voice = TTSVoice.__new__(TTSVoice)
         voice.session = session

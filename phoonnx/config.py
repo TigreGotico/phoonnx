@@ -1,19 +1,18 @@
-import json
+import copy
 import warnings
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Mapping, Optional, Union, Dict
+from typing import Any, Callable, Mapping, Optional, Union, Dict
 
 import text2spoken
 
 from phoonnx.util import LOG, is_arabic, normalize_lang
+from phoonnx.version import VERSION_STR
+from phoonnx.errors import UnsupportedVoiceLanguage
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                  DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                  DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
 
-DEFAULT_NOISE_SCALE = 0.667
-DEFAULT_LENGTH_SCALE = 1.0
-DEFAULT_NOISE_W_SCALE = 0.8
 DEFAULT_HOP_LENGTH = 256
 
 
@@ -21,6 +20,9 @@ class Engine(str, Enum):
     """voices trained with these frameworks are explicitly supported.
     This mainly affects the format of .json file and possibly tokenization"""
     PHOONNX = "phoonnx"
+    VITS = "vits"  # single-graph VITS, the adapter the format names below fall back to
+    VITS_STREAMING = "vits_streaming"  # VITS split at the flow/HiFiGAN boundary
+    VITS_PRIOR_SPLIT = "vits_prior_split"  # VITS split at the prior boundary
     PIPER = "piper"
     MIMIC3 = "mimic3"
     COQUI = "coqui"
@@ -52,6 +54,7 @@ class Engine(str, Enum):
     VOSK = "vosk"  # alphacep vosk-tts: VITS + dictionary/rule Russian g2p
     RAPIDO = "rapido"  # Rápido: flow-matching DiT over VoxCPM2 AudioVAE latents @48kHz
     TINYVOCA = "tinyvoca"  # tiny-voca: dizione tokens + stress, source-filter waveform head
+    XVITS = "xvits"  # x-vits: Piper/VITS with flow-matching prosody and word emphasis (5 graphs)
 
     @classmethod
     def _missing_(cls, value: object) -> Optional["Engine"]:
@@ -81,7 +84,26 @@ ENGINE_ALIASES = {"kokoro": Engine.STYLETTS2.value}
 # (not redefinition) keeps enum identity: values stored in voice configs and
 # pickles resolve to the same class everywhere.
 from scriptconv.phonemizers.enums import Alphabet, Phonemizer as PhonemeType
-from scriptconv.frontend import Chunk
+from scriptconv.frontend import Chunk, FrontendConfig, Stages, TextFrontend, spoken_normalizer
+
+def get_text_casing(casing: str) -> Callable[[str], str]:
+    """
+    Returns a function to apply text casing based on a string name.
+
+    Args:
+        casing: The name of the casing function ('lower', 'upper', 'casefold', or 'ignore').
+
+    Returns:
+        A callable function (str) -> str.
+    """
+    if casing == "lower":
+        return str.lower
+    if casing == "upper":
+        return str.upper
+    if casing == "casefold":
+        return str.casefold
+    return lambda s: s
+
 
 @dataclass
 class VoiceConfig:
@@ -151,16 +173,20 @@ class VoiceConfig:
     speaker_id_map: Mapping[str, int] = field(default_factory=dict)
     """Speaker -> id"""
 
+    default_speaker_id: Optional[int] = None
+    """The speaker of a multi-speaker voice when the call names none. ``None`` is speaker 0."""
+
     lang_id_map: Mapping[str, int] = field(default_factory=dict)
     """lang-code -> id"""
 
     # Info about what framework was used to train the model
     engine: Engine = Engine.PHOONNX
 
-    # Inference settings
-    length_scale: float = DEFAULT_LENGTH_SCALE
-    noise_scale: float = DEFAULT_NOISE_SCALE
-    noise_w_scale: float = DEFAULT_NOISE_W_SCALE
+    # Inference scales from the config's ``inference`` block; None lets the engine's
+    # ``default_params()`` decide.
+    length_scale: Optional[float] = None
+    noise_scale: Optional[float] = None
+    noise_w_scale: Optional[float] = None
     add_diacritics: bool = None # arabic and hebrew
     # diacritizer model for languages that need one; scriptconv routes it to the
     # right backend: Arabic text2tashkeel model name (e.g. "rawi-ensemble"),
@@ -210,6 +236,14 @@ class VoiceConfig:
     config without the key was trained without it.
     """
 
+    text_casing: str = "ignore"
+    """The casing training applied to the text before phonemization: ``lower``,
+    ``upper``, ``casefold`` or ``ignore``. Synthesis applies the same casing,
+    after normalisation, so the model reads the text as it learned it.
+    phoonnx datasets record it in ``config.json`` from preprocessing; a config
+    without the key applies none.
+    """
+
     def __post_init__(self):
         """
         Finalize dataclass defaults after initialization.
@@ -250,180 +284,127 @@ class VoiceConfig:
     @staticmethod
     def is_mimic3(config: dict[str, Any]) -> bool:
         """Whether *config* is a mimic3 voice."""
-        from phoonnx.config_loaders import LoadRequest, Mimic3Loader
+        from phoonnx.compat import LoadRequest, Mimic3Loader
         return Mimic3Loader.detect(LoadRequest(config=config))
 
     @staticmethod
     def is_piper(config: dict[str, Any]) -> bool:
         """Whether *config* is a piper voice."""
-        from phoonnx.config_loaders import LoadRequest, PiperLoader
+        from phoonnx.compat import LoadRequest, PiperLoader
         return PiperLoader.detect(LoadRequest(config=config))
 
     @staticmethod
     def is_vosk(config: dict[str, Any]) -> bool:
         """Whether *config* is an alphacep vosk-tts voice."""
-        from phoonnx.config_loaders import LoadRequest, VoskLoader
+        from phoonnx.compat import LoadRequest, VoskLoader
         return VoskLoader.detect(LoadRequest(config=config))
 
     @staticmethod
     def is_coqui_vits(config: dict[str, Any]) -> bool:
         """Whether *config* is a Coqui VITS grapheme voice."""
-        from phoonnx.config_loaders import CoquiLoader, LoadRequest
+        from phoonnx.compat import CoquiLoader, LoadRequest
         return CoquiLoader.detect(LoadRequest(config=config))
 
     @staticmethod
     def is_phoonnx(config: dict[str, Any]) -> bool:
         """Whether *config* is a native phoonnx voice."""
-        from phoonnx.config_loaders import LoadRequest, PhoonnxLoader
+        from phoonnx.compat import LoadRequest, PhoonnxLoader
         return PhoonnxLoader.detect(LoadRequest(config=config))
 
+    @property
+    def frontend(self) -> FrontendConfig:
+        """What the text frontend is built from. The voice adds the normaliser, a callable."""
+        return FrontendConfig(lang=self.lang_code, phonemizer=self.phoneme_type, alphabet=self.alphabet,
+                              model=self.phonemizer_model,
+                              stages=Stages(diacritize=self.add_diacritics,
+                                            diacritizer_model=self.diacritizer_model),
+                              keep_punctuation=self.keep_punctuation)
+
     @staticmethod
-    def from_dict(config: dict[str, Any],  # phoonnx/piper/coqui/mimic3
-                  vocab: Optional[Dict[str, Any]] = None,  # transformers
-                  tokenizer_config: Optional[Dict[str, Any]] = None,  # transformers
-                  tokens_txt: Optional[str] = None,  # sherpa/mimic3
-                  lang_code: Optional[str] = None,
-                  phoneme_type: Optional[Union[str, PhonemeType]] = None,
-                  alphabet: Optional[Union[str, Alphabet]] = None,
-                  engine: Optional[Union[str, Engine]] = None,
-                   engine_params: Optional[Dict[str, Any]] = None,
-                   bpe_tokenizer_json: Optional[str] = None,
-                   lang_tokens: Optional[Dict[str, str]] = None) -> "VoiceConfig":
-        """
-        Build a VoiceConfig from a model configuration dictionary and its optional
-        companion files.
+    def from_dict(config: dict[str, Any], **options: Any) -> "VoiceConfig":
+        """Build a VoiceConfig from a config dict and its companion files.
 
-        The config's format is recognised by the loader registry in
-        :mod:`phoonnx.config_loaders`, which yields the fields that differ per
-        format (tokenizer, engine, phoneme type, alphabet, language, diacritics);
-        :func:`~phoonnx.config_loaders.resolve_overrides` then folds in the
-        caller's overrides, and everything format-independent — audio, inference
-        scales, speaker and language maps, special tokens — is read straight off
-        the config here.
-
-        Parameters:
-            config: Parsed model configuration dictionary. Loaders may normalise
-                it in place (special tokens, a defaulted sample rate).
-            vocab: Token vocabulary of a transformers export.
-            tokenizer_config: ``tokenizer_config.json`` of a transformers export.
-            tokens_txt: Path to an external tokens file (``.txt`` or ``.json``),
-                required by mimic3 voices and by sherpa-onnx style models.
-            bpe_tokenizer_json: Path to a ``tokenizer.json``, required by Chatterbox.
-            lang_code, phoneme_type, alphabet, engine: Overrides that win over the
-                config's own values, except where the format pins them.
-            engine_params: Locally-resolved adapter parameters; these win over the
-                config's own ``engine_params``.
-            lang_tokens: Overrides the config's BCP47 -> language-token map.
+        A config with a ``phoonnx_version`` key is native. Any other config is a third-party
+        format: it still loads, with a ``DeprecationWarning``, and
+        :func:`phoonnx.compat.convert_config` writes the native config once. ``options`` are the
+        keyword parameters of :func:`phoonnx.compat.build_voice_config`.
 
         Raises:
-            ValueError: If the detected format needs a companion file that was
-                not provided.
+            ValueError: If the format needs a companion file that was not given.
         """
-        from phoonnx.config_loaders import LoadRequest, load_voice_fields
+        from phoonnx.compat import build_voice_config
 
-        loaded = load_voice_fields(LoadRequest(
-            config=config,
-            vocab=vocab,
-            tokenizer_config=tokenizer_config,
-            tokens_txt=tokens_txt,
-            bpe_tokenizer_json=bpe_tokenizer_json,
-            lang_code=lang_code or config.get("lang_code"),
-            phoneme_type=phoneme_type or config.get("phoneme_type"),
-            alphabet=alphabet or config.get("alphabet"),
-            engine=engine,
-        ))
-        LOG.debug(f"phonemizer: {loaded.phoneme_type}")
+        if "phoonnx_version" not in config:
+            warnings.warn("The config is not in the native phoonnx format. phoonnx "
+                          f"{_removal_version()} reads only the native format. Convert it once with "
+                          "phoonnx.compat.convert_config.", DeprecationWarning, stacklevel=2)
+        return build_voice_config(config, **options)
 
-        inference = config.get("inference", {})
-        return VoiceConfig(
-            tokenizer=loaded.tokenizer,
-            num_langs=config.get("num_langs", 1),
-            num_symbols=config.get("num_symbols", 256),
-            num_speakers=config.get("num_speakers", 1),
-            sample_rate=config.get("audio", {}).get("sample_rate", 16000),
-            noise_scale=inference.get("noise_scale", DEFAULT_NOISE_SCALE),
-            length_scale=inference.get("length_scale", DEFAULT_LENGTH_SCALE),
-            noise_w_scale=inference.get("noise_w", DEFAULT_NOISE_W_SCALE),
-            add_diacritics=loaded.add_diacritics,
-            diacritizer_model=loaded.diacritizer_model,
-            hop_length=config.get("hop_length", DEFAULT_HOP_LENGTH),
-            lang_code=loaded.lang_code,
-            alphabet=loaded.alphabet,
-            engine=loaded.engine,
-            phonemizer_model=config.get("phonemizer_model"),
-            keep_punctuation=bool(config.get("keep_punctuation", loaded.keep_punctuation)),
-            phonemizer_identity=config.get("phonemizer_identity"),
-            phoneme_type=loaded.phoneme_type,
-            speaker_id_map=config.get("speaker_id_map", {}),
-            blank_between=BlankBetween(loaded.blank_between),
-            blank_at_start=config.get("blank_at_start", True),
-            blank_at_end=config.get("blank_at_end", True),
-            pad_token=config.get("pad"),
-            blank_token=config.get("blank"),
-            bos_token=config.get("bos"),
-            eos_token=config.get("eos"),
-            word_sep_token=config.get("word_sep_token") or config.get("blank_word", " "),
-            # config's own engine_params (e.g. a baked YourTTS d-vector) merged with
-            # any locally-resolved paths the manager passes in (the latter win).
-            engine_params={**(config.get("engine_params") or {}), **(engine_params or {})},
-            lang_tokens=lang_tokens or config.get("lang_tokens") or {},
-            lang_id_map=config.get("lang_id_map", {}),
-        )
+    def to_dict(self) -> Dict[str, Any]:
+        """The native ``config.json`` dict, which :meth:`from_dict` reads back with no warning.
 
-    def to_native_dict(self) -> Dict[str, Any]:
+        A raw-text tokenizer (Chatterbox) has no symbol table, so its vocabulary is empty;
+        the voice still needs ``bpe_tokenizer_json`` at load. A missing pad is written as null,
+        which reads back as no pad. Another special token that the vocabulary lacks is written
+        as the phoonnx default, which is what a read gives, and the flags that need that token
+        are written off, so the ids stay the same.
         """
-        Serialize this config to a **native phoonnx** ``config.json`` dict.
-
-        The result loads back through the ``is_phoonnx`` path in
-        :meth:`from_dict` (it carries ``phoonnx_version``), folding the
-        tokenizer vocabulary into ``phoneme_id_map`` and recording the
-        tokenizer flags + special tokens explicitly, so any model round-trips
-        without relying on the foreign-config detection heuristics.
-        """
-        try:
-            from phoonnx.version import VERSION as _v
-            version = ".".join(str(p) for p in _v) if isinstance(_v, (tuple, list)) else str(_v)
-        except Exception:
-            version = "1.0"
-
         tok = self.tokenizer
-        voc = tok.vocabulary
-        return {
-            "phoonnx_version": version,
-            "engine": self.engine.value if self.engine else "phoonnx",
+        if isinstance(tok, TTSTokenizer):
+            voc = tok.vocabulary
+            flags = {"add_blank_char": tok.add_blank_char and voc.blank_id is not None,
+                     "add_blank_word": tok.add_blank_word,
+                     "use_eos_bos": tok.use_eos_bos and voc.bos_id is not None and voc.eos_id is not None,
+                     "blank_at_start": tok.blank_at_start and voc.blank_id is not None,
+                     "blank_at_end": tok.blank_at_end,
+                     "fold_compounds": tok.fold_compounds}
+        else:
+            voc = Vocabulary(char2idx={})
+            flags = dict.fromkeys(("add_blank_char", "add_blank_word", "use_eos_bos", "blank_at_start",
+                                   "blank_at_end"), False)
+            flags["fold_compounds"] = True
+        # an unset scale stays out of the file, so a reader uses the engine default
+        scales = {"noise_scale": self.noise_scale, "length_scale": self.length_scale, "noise_w": self.noise_w_scale}
+        native = {
+            "phoonnx_version": VERSION_STR,
+            "engine": self.engine.value,
             "phoneme_type": self.phoneme_type.value,
-            "alphabet": self.alphabet.value if self.alphabet else "unicode",
+            "alphabet": self.alphabet.value,
             "lang_code": self.lang_code,
             "audio": {"sample_rate": self.sample_rate},
             "hop_length": self.hop_length,
             "num_symbols": self.num_symbols,
             "num_speakers": self.num_speakers,
             "num_langs": self.num_langs,
-            "speaker_id_map": dict(self.speaker_id_map or {}),
-            "lang_id_map": dict(self.lang_id_map or {}),
-            "lang_tokens": dict(self.lang_tokens or {}),
+            "speaker_id_map": dict(self.speaker_id_map),
+            "default_speaker_id": self.default_speaker_id,
+            "lang_id_map": dict(self.lang_id_map),
+            "lang_tokens": dict(self.lang_tokens),
             "phonemizer_model": self.phonemizer_model,
             "keep_punctuation": self.keep_punctuation,
+            "text_casing": self.text_casing,
             "inference": {
-                "noise_scale": self.noise_scale,
-                "length_scale": self.length_scale,
-                "noise_w": self.noise_w_scale,
+                **{key: value for key, value in scales.items() if value is not None},
                 "add_diacritics": self.add_diacritics,
                 "diacritizer_model": self.diacritizer_model,
             },
             "phoneme_id_map": dict(voc.char2idx),
-            "pad": voc.pad, "blank": voc.blank, "bos": voc.bos, "eos": voc.eos,
+            "pad": voc.pad, "blank": voc.blank or DEFAULT_BLANK_TOKEN,
+            "bos": voc.bos or DEFAULT_BOS_TOKEN, "eos": voc.eos or DEFAULT_EOS_TOKEN,
             "blank_word": voc.blank_word,
-            "add_blank_char": tok.add_blank_char,
-            "add_blank_word": tok.add_blank_word,
-            "use_eos_bos": tok.use_eos_bos,
-            "blank_at_start": tok.blank_at_start,
-            "blank_at_end": tok.blank_at_end,
-            "fold_compounds": tok.fold_compounds,
+            **flags,
             "word_sep_token": self.word_sep_token,
-            "blank_between": self.blank_between.value if self.blank_between else "tokens_and_words",
-            "engine_params": dict(self.engine_params or {}),
+            "blank_between": self.blank_between.value,
+            "engine_params": {k: v for k, v in self.engine_params.items() if k != "providers"},
         }
+        if self.phonemizer_identity is not None:
+            native["phonemizer_identity"] = dict(self.phonemizer_identity)
+        return native
+
+    def to_native_dict(self) -> Dict[str, Any]:
+        """Deprecated. Use :meth:`to_dict`."""
+        _warn_moved("VoiceConfig.to_native_dict", "VoiceConfig.to_dict")
+        return self.to_dict()
 
 
 @dataclass
@@ -532,7 +513,8 @@ class SynthesisConfig:
     (the whole text). ``None`` (the default) reads one sentence per call. The
     size moves only the cuts: the text is read whole before it is cut. An
     engine that reads text, not symbols, gets the whole text and cuts it
-    itself."""
+    itself. Phonemic input (``alphabet`` set) is cut per sentence whatever
+    the value."""
 
     # post-synthesis audio super-resolution via ``audiosronnx`` (pure-ONNX). Off by
     # default; when ``True`` each synthesized chunk is upscaled to 48 kHz before being
@@ -571,24 +553,13 @@ class SynthesisConfig:
     # Engine-specific per-call params (d_factor, p_factor, e_factor, …)
     extra_params: Dict[str, Any] = field(default_factory=dict)
 
-
-class UnsupportedVoiceLanguage(ValueError):
-    """Raised at voice load when no phonemizer backend serves the voice's language.
-
-    Surfacing this eagerly (instead of letting scriptconv's ``ValueError:
-    unsupported language code`` bubble up mid-synthesis, after the user has
-    already picked the voice and sent text) turns an opaque runtime crash
-    into an actionable, typed failure at load time.
-    """
-
-    def __init__(self, voice: str, lang_code: str, phoneme_type: "PhonemeType"):
-        self.voice = voice
-        self.lang_code = lang_code
-        self.phoneme_type = phoneme_type
-        super().__init__(
-            f"voice {voice!r}: no phonemizer backend supports lang "
-            f"{lang_code!r} for phoneme_type {phoneme_type.value!r}"
-        )
+    def __post_init__(self):
+        if self.chunk is not None and not isinstance(self.chunk, Chunk):
+            try:
+                Chunk(self.chunk)
+            except ValueError:
+                raise ValueError(f"chunk must be one of {[c.value for c in Chunk]} or None, "
+                                 f"not {self.chunk!r}") from None
 
 
 def check_lang_supported(voice: str, lang_code: Optional[str],
@@ -623,6 +594,9 @@ def check_lang_supported(voice: str, lang_code: Optional[str],
     get_lang = getattr(phonemizer_cls, "get_lang", None)
     if get_lang is None:
         return
+    # "und" names no language; a fuzzy matcher can still map it to some spec
+    if lang_code.split("-")[0].lower() == "und":
+        raise UnsupportedVoiceLanguage(voice, lang_code, phoneme_type)
     try:
         get_lang(lang_code)
     except ImportError:
@@ -637,10 +611,9 @@ def _removal_version() -> str:
     return f"{VERSION_MAJOR + 1}.0.0"
 
 
-def _deprecated(name: str, replacement: str) -> None:
-    warnings.warn(f"phoonnx.config.{name} is deprecated and will be removed in phoonnx "
-                  f"{_removal_version()}. Use {replacement}.",
-                  DeprecationWarning, stacklevel=3)
+def _warn_moved(old: str, new: str) -> None:
+    warnings.warn(f"{old} is deprecated and will be removed in phoonnx {_removal_version()}. "
+                  f"Use {new}.", DeprecationWarning, stacklevel=3)
 
 
 def _voice_phonemizer(phoneme_type: PhonemeType,
@@ -676,6 +649,39 @@ def _voice_phonemizer(phoneme_type: PhonemeType,
     return phonemizer
 
 
+def without_normalizer(phonemizer: 'Phonemizer') -> 'Phonemizer':
+    """*phonemizer*, or a shallow copy of it with no ``normalizer``."""
+    if phonemizer.normalizer is None:
+        return phonemizer
+    backend = copy.copy(phonemizer)
+    backend.normalizer = None
+    return backend
+
+
+def voice_frontend(phonemizer: 'Phonemizer', lang: str, stages: Stages = Stages(),
+                   strict: bool = False) -> TextFrontend:
+    """The text frontend of a voice that reads *phonemizer*, in language *lang*.
+
+    The phonemizer's ``normalizer`` becomes the frontend's normalisation hook
+    and the frontend reads a copy of the phonemizer without it. The frontend
+    skips the hook for a backend that names ``normalize`` in its
+    ``owned_stages``, because that backend normalises the text itself. Such a
+    phonemizer has no ``normalizer``, so its frontend gets
+    :func:`scriptconv.frontend.spoken_normalizer`, which reads only a ``<say-as>``.
+    Inference (:attr:`phoonnx.voice.TTSVoice.frontend`) and dataset building
+    (``phoonnx_train.preprocess``) both build their frontend here, so a text
+    gives the same phonemes in both. With *strict*, a failed stage raises
+    instead of letting the text continue without it.
+    """
+    normalizer = phonemizer.normalizer
+    if normalizer is None and "normalize" in phonemizer.owned_stages:
+        normalizer = spoken_normalizer()
+    return TextFrontend(
+        FrontendConfig(lang=lang, normalizer=normalizer, keep_punctuation=phonemizer.keep_punctuation,
+                       stages=stages, strict=strict),
+        backend=without_normalizer(phonemizer))
+
+
 def get_phonemizer(phoneme_type: PhonemeType,
                    alphabet: Alphabet = Alphabet.IPA,
                    model: Optional[str] = None,
@@ -688,7 +694,7 @@ def get_phonemizer(phoneme_type: PhonemeType,
     Raises:
         ValueError: If the provided `phoneme_type` is not supported.
     """
-    _deprecated("get_phonemizer", "TTSVoice.frontend or scriptconv.frontend.TextFrontend")
+    _warn_moved("phoonnx.config.get_phonemizer", "TTSVoice.frontend or scriptconv.frontend.TextFrontend")
     return _voice_phonemizer(phoneme_type, alphabet, model, keep_punctuation)
 
 
@@ -719,8 +725,8 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     before G2P or the pronunciation is ambiguous; that restoration is scriptconv's
     and lives entirely behind these two values.
     """
-    _deprecated("get_conversion", "TTSVoice.frontend")
-    from phoonnx.engines.base import SIDE_STREAMS
+    _warn_moved("phoonnx.config.get_conversion", "TTSVoice.frontend")
+    from phoonnx.encoders import SIDE_STREAMS
     from scriptconv.graph import ConversionGraph, Edge
     from scriptconv.diacritics import DIACRITIZED, diacritize
 
@@ -753,41 +759,3 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     graph.register(Edge("text", DIACRITIZED, _vocalize))
     graph.register(Edge(DIACRITIZED, alpha, phonemize))
     return graph, _vocalize
-
-
-
-
-if __name__ == "__main__":  # pragma: no cover
-    config_files = [
-        "/home/miro/PycharmProjects/phoonnx_tts/sabela_cotovia_vits.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/celtia_vits.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_gruut.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_espeak.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_epitran.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_symbols.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/piper_espeak.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/vits-coqui-pt-cv/config.json",
-        "/home/miro/PycharmProjects/phoonnx_tts/phonikud/model.config.json"
-    ]
-    phoneme_txts = [
-        None,
-        None,
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
-        "/home/miro/PycharmProjects/phoonnx_tts/mimic3_ap/phonemes.txt",
-        None,
-        None,
-        None
-    ]
-    print("Testing model config file parsing\n###############")
-    for idx, cfile in enumerate(config_files):
-        print(f"\nConfig file: {cfile}")
-        with open(cfile) as f:
-            config = json.load(f)
-        print("Mimic3:", VoiceConfig.is_mimic3(config))
-        print("Piper:", VoiceConfig.is_piper(config))
-        print("Coqui:", VoiceConfig.is_coqui_vits(config))
-        print("Phoonx:", VoiceConfig.is_phoonnx(config))
-        cfg = VoiceConfig.from_dict(config, phoneme_txts[idx])
-        print(cfg)

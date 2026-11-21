@@ -72,7 +72,9 @@ import numpy as np
 import onnxruntime
 from quebra_frases import sentence_tokenize
 
-from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
+from phoonnx.engines._sampling import apply_repetition_penalty
+from phoonnx.engines._sampling import ranked, softmax
+from phoonnx.engines.base import INLINE_BLOCK, AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.util import LOG
 
@@ -188,30 +190,6 @@ def _compile_substitutions(rules: Any) -> List[Tuple[re.Pattern, str]]:
     return compiled
 
 
-def _softmax(x: np.ndarray) -> np.ndarray:
-    z = np.asarray(x, np.float64)
-    z = z - z.max()
-    e = np.exp(z)
-    return e / e.sum()
-
-
-def _apply_repetition_penalty(scores: np.ndarray, seen: np.ndarray, penalty: float) -> np.ndarray:
-    """Divide the score of tokens in ``seen`` by ``penalty`` (multiply when negative).
-
-    >1 discourages repeats. ``seen`` is the recent-token *window* the caller chose, not
-    the whole history — see :data:`REPETITION_WINDOW`. NeuTTS needs a fairly strong
-    penalty (upstream default 1.3) or it stalls on runs of silence tokens.
-    """
-    if penalty == 1.0 or seen.size == 0:
-        return scores
-    out = scores.copy()
-    idx = np.unique(seen[(seen >= 0) & (seen < out.shape[0])])
-    if idx.size:
-        s = out[idx]
-        out[idx] = np.where(s < 0, s * penalty, s / penalty)
-    return out
-
-
 def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
             rng: np.random.Generator) -> int:
     """Top-k, then nucleus, then temperature — llama.cpp's sampler order (argmax if temp<=0).
@@ -228,26 +206,28 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
         threshold = float(np.partition(s, -top_k)[-top_k])
         s = np.where(s < threshold, -np.inf, s)
     if 0 < top_p < 1:
-        order = np.argsort(s)[::-1]
-        cumulative = np.cumsum(_softmax(s[order]))
+        order = ranked(s, top_k)
+        cumulative = np.cumsum(softmax(s[order]))
         keep = np.ones(order.shape[0], bool)
         # keep every token up to and including the one that crosses top_p
         keep[1:] = cumulative[:-1] < top_p
         masked = np.full_like(s, -np.inf)
         masked[order[keep]] = s[order[keep]]
         s = masked
-    probs = _softmax(s / float(temperature))
+    probs = softmax(s / float(temperature))
     return int(rng.choice(probs.shape[0], p=probs))
 
 
 class NeuTTSAdapter(BaseOnnxAdapter):
     """Adapter for the NeuTTS Air family (Qwen3 codec-LM + NeuCodec decoder)."""
 
+    takes_symbols = True
+
     MEMOIZED_WRITES = {
         # KV-cache geometry, read off the model's own input shapes.
         "_read_kv_shape": frozenset({"num_layers", "num_kv_heads", "head_dim"}),
         # The espeak backend the checkpoint was trained with, opened once.
-        "_espeak": frozenset({"_phonemizer"}),
+        "_phones": frozenset({"_phonemizer"}),
         # Each preset's reference transcript phonemized once; presets are
         # part of the voice, not of a request.
         "reference_phones": frozenset({"_ref_phones"}),
@@ -289,21 +269,10 @@ class NeuTTSAdapter(BaseOnnxAdapter):
             "max_chunk_chars": float(self.MAX_CHUNK_CHARS),
         }
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "temperature": "sampling temperature",
-            "top_p": "top-p (nucleus)",
-            "top_k": "top-k",
-            "repetition_penalty": "repetition penalty",
-            "max_new_tokens": "max codec tokens (50/s)",
-            "max_chunk_chars": "target characters per model call",
-            "voice": "voice preset name",
-        }
-
     def configure(self, voice_config: Any) -> None:
         """Load the NeuCodec decoder, the checkpoint's BPE, the voice presets and the
         checkpoint's text front end from ``engine_params``."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         self.espeak_voice = ep.get("espeak_voice") or ESPEAK_VOICE
         template = ep.get("prompt_template") or DEFAULT_PROMPT_TEMPLATE
         if template not in PROMPT_TEMPLATES:
@@ -338,6 +307,17 @@ class NeuTTSAdapter(BaseOnnxAdapter):
     # text
     # ------------------------------------------------------------------
     def _espeak(self, text: str) -> str:
+        """The phones of *text*, with each inline ``[[...]]`` block as its IPA written.
+
+        The model reads espeak IPA, so a block's symbols go into the phone string
+        as they stand, and :meth:`_phones` reads the text between the blocks.
+        """
+        parts = INLINE_BLOCK.split(text)
+        phones = [self._phones(part) if index % 2 == 0 else part.strip()
+                  for index, part in enumerate(parts)]
+        return " ".join(filter(None, phones))
+
+    def _phones(self, text: str) -> str:
         """Phonemize with espeak-ng at the voice the checkpoint was trained with.
 
         Deliberately *not* the phoonnx voice's own phonemizer: a NeuTTS voice is
@@ -511,7 +491,7 @@ class NeuTTSAdapter(BaseOnnxAdapter):
         history = list(prompt_ids)
         for step in range(max_new):
             logits = np.asarray(named["logits"], np.float32).reshape(-1)
-            logits = _apply_repetition_penalty(
+            logits = apply_repetition_penalty(
                 logits, np.asarray(history[-REPETITION_WINDOW:], np.int64), penalty)
             token = _sample(logits, temperature, top_k, top_p, rng)
             if token == self.speech_end_id or token == self.eos_id:

@@ -29,8 +29,10 @@ import importlib
 import json
 import re
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
 
+from phoonnx.engines import get_adapter
+from scriptconv.phonemizers import get_phonemizer
 from scriptconv.phonemizers.enums import Phonemizer
 from scriptconv.phonemizers.registry import PHONEMIZER_REGISTRY
 
@@ -40,21 +42,18 @@ VOCODER_TYPES = ("hifigan", "melgan", "wavenext", "raw", "vocos")
 INSTALL = "onnxruntime numpy huggingface_hub"
 # the keys of a voice index entry that phoonnx writes over the config's own when it loads the voice by its id
 INDEX_OVERRIDES = ("phoneme_type", "alphabet", "phonemizer_model")
-# the card text above a standalone example: what the example leaves out of phoonnx's path
-WITHOUT_PHOONNX = """### Without phoonnx
-
-This code runs the voice without phoonnx. Its first line names the packages it needs.
-
-phoonnx normalises the text with text2spoken before the model reads it, and this code does not. In the languages
-that it has rules for, text2spoken writes numbers, dates, times and units as words, and it expands titles such as
-"Dr.". It leaves contractions such as "can't", the typographic apostrophe (’), line breaks and runs of spaces as
-written.
-
-This code also reads the whole text as one piece, in one run of the model. phoonnx splits the text into sentences
-or chunks and runs the model once for each piece. Give this code one sentence of normalised text, and it builds the
-same model input as phoonnx.
-
-"""
+TEXT2SPOKEN = "https://github.com/TigreGotico/text2spoken"
+ADDING_A_LANGUAGE = TEXT2SPOKEN + "/blob/dev/docs/adding-a-language.md"
+BIFONIA = "https://github.com/TigreGotico/bifonia"
+TEXT2TASHKEEL = "https://github.com/TigreGotico/text2tashkeel"
+# text2tashkeel's default model, a rawi model, and the one scriptconv gives phoonnx when the config names none
+RAWI = "rawi-ensemble"
+# the accented letters that bifonia writes on a homograph in every lect; context_free_marks adds the lect's own
+BIFONIA_LETTERS = "áéêóô"
+# the tags of no single language: text2spoken takes the tag of the text's language instead
+UNNAMED_LANGUAGES = ("und", "mul", "mis", "zxx")
+# the phonemizers that read bifonia's acute and circumflex as the open and closed vowel, measured on each marked form
+READS_PT_MARKS = ("espeak",)
 
 
 class UnsupportedExample(ValueError):
@@ -115,13 +114,183 @@ def standalone_example(config: Dict[str, Any], files: Dict[str, Any], *, repo_id
     imports = ["import json", "import wave", "",
                "import numpy as np", "import onnxruntime", "from huggingface_hub import hf_hub_download"]
     if diacritize:
-        imports += ["from quebra_frases import sentence_tokenize", "from scriptconv.diacritics import diacritize"]
+        imports.append("from quebra_frases import sentence_tokenize")
     imports.append("from scriptconv.phonemizers import get_phonemizer")
+    if diacritize:
+        imports.append("from text2tashkeel import Diacritizer")
     lines = [install, *imports, "",
              f'repo = "{repo_id}"',
              f'config = json.load(open(hf_hub_download(repo, "{files.get("config", "config.json")}"), encoding="utf-8"))',
              "", f"text = {_text(text, config)}", *diacritize, phonemes, "", ids, "", run, "", _wav(config)]
     return "```python\n" + "\n".join(lines) + "\n```"
+
+
+def without_phoonnx(config: Dict[str, Any], *, lang: Optional[str] = None,
+                    overrides: Optional[Dict[str, str]] = None, voice_lang: Optional[str] = None) -> str:
+    """The card text above the example of :func:`standalone_example`, which takes the same arguments.
+
+    It names the packages of the example, gives the lines that prepare the text, and says what the
+    example leaves out of phoonnx's path. The text is normalised with text2spoken, in *voice_lang*:
+    the language of the voice index entry, which can differ from the language the phonemizer reads
+    (a Tetum voice on a Portuguese phonemizer). Without it, the phonemizer's language stands for it.
+    A language with no text2spoken file gets a request for one. A Portuguese voice whose input reads
+    bifonia's marks gets them after the normalisation, unless its phonemizer owns the ``diacritize``
+    stage. A voice that phoonnx diacritizes gets the vowel marks in the example itself.
+    """
+    stack = _text_stack(config, lang, overrides, voice_lang)
+    if stack.diacritized and stack.diacritizer is None and not stack.own_tokenizer:
+        raise UnsupportedExample(f"phoonnx diacritizes the {stack.phonemizer_lang} text before the phonemizer")
+    text = ["### Without phoonnx", "",
+            "This code runs the voice without phoonnx. Its first line names the packages it needs.", "",
+            "#### Prepare the text", ""]
+    if "normalize" in stack.owned:
+        text += [f"The {stack.voice['phoneme_type']} phonemizer of this voice normalises the text itself, as in "
+                 "phoonnx, so the code needs no step that prepares the text.", ""]
+    else:
+        text += _preparation(stack, with_phoonnx=False)
+    text += ["This code reads the whole text as one piece, in one run of the model. phoonnx splits the text into "
+             "sentences or chunks and runs the model once for each piece. Its sentence splitter also cuts the "
+             "text after some abbreviations, such as \"ul.\" in Polish, when normalisation keeps them. So give "
+             "this code one sentence at a time. For a sentence that phoonnx reads as one piece and does not "
+             "rewrite, this code builds the same model input as phoonnx.", "",
+             "This code takes plain text. phoonnx reads an inline `[[...]]` block as phonemes, but this code gives "
+             "the brackets and their contents to the phonemizer as text.", "", ""]
+    return "\n".join(text)
+
+
+def with_phoonnx(config: Dict[str, Any], *, lang: Optional[str] = None,
+                 overrides: Optional[Dict[str, str]] = None, voice_lang: Optional[str] = None) -> str:
+    """The card text beside the phoonnx usage of a voice that has no standalone example.
+
+    It takes the arguments of :func:`without_phoonnx` and recommends the same text stack, before the text
+    goes to phoonnx: text2spoken, the request for a language file, and bifonia. phoonnx runs its own
+    vowel-mark step, so the text names the text2tashkeel model of that step for an Arabic voice, and a
+    Portuguese voice that phoonnx diacritizes gets no bifonia step.
+    """
+    stack = _text_stack(config, lang, overrides, voice_lang)
+    text = ["### Prepare the text", ""]
+    if "normalize" in stack.owned:
+        text += [f"The {stack.voice['phoneme_type']} phonemizer of this voice normalises the text itself, so the "
+                 "text needs no step before phoonnx.", ""]
+    else:
+        text += _preparation(stack, with_phoonnx=True)
+    return "\n".join(text).rstrip("\n")
+
+
+class _TextStack(NamedTuple):
+    """What decides the text stack of a voice: the voice, the tags, the stages its backend owns, and phoonnx's
+    vowel-mark step (*diacritized*, with its text2tashkeel model for an Arabic voice)."""
+    voice: Dict[str, Any]
+    tag: Optional[str]
+    phonemizer_lang: Optional[str]
+    owned: frozenset
+    diacritized: bool
+    diacritizer: Optional[str]
+    own_tokenizer: bool
+
+
+def _text_stack(config: Dict[str, Any], lang: Optional[str], overrides: Optional[Dict[str, str]],
+                voice_lang: Optional[str]) -> _TextStack:
+    """The :class:`_TextStack` of a voice, from the arguments of :func:`without_phoonnx`.
+
+    An engine of :data:`INDEX_TEMPLATES` reads the text with its own tokenizer, and its config is the index
+    entry. Of those engines, phoonnx's loader turns the vowel-mark step on only for Chatterbox, in Arabic and
+    Hebrew.
+    """
+    engine = config.get("engine") or "piper"
+    if engine in INDEX_TEMPLATES:
+        tag = voice_lang or config.get("lang")
+        diacritized = engine == "chatterbox" and (_is_arabic(tag) or (tag or "").lower().startswith("he"))
+        diacritizer = _diacritizer_model(config, False) if diacritized and _is_arabic(tag) else None
+        return _TextStack(config, tag, tag, frozenset(), diacritized, diacritizer, True)
+    voice = {**config, **(overrides or {})}
+    phoneme_type = _phoneme_type(voice)
+    phonemizer_lang = _lang(config, lang) or ("und" if phoneme_type in RAW_TEXT else None)
+    owned = _owned_stages(phoneme_type)
+    piper = _is_piper(config)
+    diacritized = _phoonnx_diacritizes(config, phonemizer_lang, piper) and "diacritize" not in owned
+    diacritizer = _diacritizer_model(config, piper) if diacritized and _is_arabic(phonemizer_lang) else None
+    return _TextStack(voice, voice_lang or phonemizer_lang, phonemizer_lang, owned, diacritized, diacritizer, False)
+
+
+def _preparation(stack: _TextStack, *, with_phoonnx: bool) -> List[str]:
+    """The text and the lines that prepare the text: text2spoken, then bifonia when it applies.
+
+    *with_phoonnx* words the text for the phoonnx usage of the card, and otherwise for the standalone example,
+    whose own vowel-mark step uses the text2tashkeel model of *stack*.
+    """
+    from importlib.metadata import metadata
+
+    from text2spoken import Form, supports
+    from text2spoken.core.language import language_file
+
+    voice, owned = stack.voice, stack.owned
+    support = supports(stack.tag or "und")
+    extra = support.code if support.code in (metadata("text2spoken").get_all("Provides-Extra") or ()) else None
+    package = f'"text2spoken[{extra}]"' if extra else "text2spoken"
+    imports = ["from text2spoken import normalize"]
+    steps = [f'text = normalize(text, "{support.tag}")  # numbers, dates, money and abbreviations as words']
+    prose = [f"[text2spoken]({TEXT2SPOKEN}) writes numbers, dates, times, money, units and abbreviations as the "
+             "words that a speaker says."]
+    if support.code in UNNAMED_LANGUAGES:
+        steps = ['text = normalize(text, "en")  # the tag of the language of the text']
+        prose.append("This voice does not name one language, so give text2spoken the tag of the language of "
+                     "the text.")
+    elif language_file(support.code) is None:
+        reads = ("so it reads only numbers in this language" if Form.CARDINAL in support.forms
+                 else "so it leaves text in this language as it is written")
+        prose.append(f"text2spoken has no language file for `{support.tag}`, {reads}. To add the language, follow "
+                     f"[Adding a language]({ADDING_A_LANGUAGE}) and open a pull request.")
+    portuguese = support.tag.split("-")[0] == "pt"
+    if portuguese and not stack.diacritized and _bifonia(voice, support.tag, owned):
+        package += " bifonia"
+        imports.insert(0, "from bifonia import add_extra_diacritics")
+        steps.append(f'text = add_extra_diacritics(text, lang="{support.tag}")  # open and closed vowels of homographs')
+        prose.append(f"[bifonia]({BIFONIA}) then puts an accent on a word whose sound depends on its sense, such as "
+                     "\"sede\" (\"sêde\", thirst, or \"séde\", seat). This voice reads the accent as an open or a "
+                     "closed vowel.")
+        if not with_phoonnx:
+            prose.append("phoonnx does not run bifonia for this voice, so with this step some words sound "
+                         "different from phoonnx.")
+    elif portuguese and "diacritize" in owned:
+        prose.append(f"The {voice['phoneme_type']} phonemizer of this voice puts the accents on homographs itself, "
+                     "so the code has no bifonia step.")
+    elif portuguese and stack.diacritized:
+        prose.append("phoonnx runs its own vowel-mark step on the text of this voice, so the code has no bifonia "
+                     "step.")
+    if stack.diacritizer and (with_phoonnx or not stack.own_tokenizer):
+        prose.append(f"phoonnx then adds the Arabic vowel marks with [text2tashkeel]({TEXT2TASHKEEL}) and its "
+                     f"`{stack.diacritizer}` model." if with_phoonnx else
+                     f"The code then adds the Arabic vowel marks to each sentence with "
+                     f"[text2tashkeel]({TEXT2TASHKEEL}) and its `{stack.diacritizer}` model, as phoonnx does.")
+    elif _is_arabic(stack.tag) and "diacritize" in owned:
+        prose.append(f"The {voice['phoneme_type']} phonemizer of this voice adds the Arabic vowel marks itself.")
+    where = ("Run these lines on the text before it goes to `voice.synthesize_wav`:" if with_phoonnx else
+             "Put these lines into the code below, after the line that sets `text` to the sample sentence:")
+    return [where, "", "```python", f"# uv pip install --prerelease=allow {package}", *imports, "", *steps, "```", "",
+            " ".join(prose), ""]
+
+
+def _bifonia(voice: Dict[str, Any], tag: str, owned: frozenset) -> bool:
+    """True when the Portuguese voice reads bifonia's marks and runs no homograph stage of its own.
+
+    A voice that reads its text reads them when its phonemizer turns each accented letter that bifonia writes
+    for *tag* into symbols of the voice's map; a ``unicode`` voice reads a letter as its base and a combining
+    mark. A phonemizer reads them when it is in :data:`READS_PT_MARKS`. The voice of an engine with its own
+    text tokenizer has no vocabulary in the config, so it gets no marks.
+    """
+    if "diacritize" in owned or voice.get("engine") in INDEX_TEMPLATES:
+        return False
+    phoneme_type = _phoneme_type(voice)
+    if phoneme_type not in RAW_TEXT:
+        return phoneme_type in READS_PT_MARKS
+    from bifonia import context_free_marks
+
+    letters = set(BIFONIA_LETTERS) | {c for word, marked in context_free_marks(tag).items()
+                                      for c in marked if c not in word}
+    symbols = get_phonemizer(phoneme_type, "unicode").phonemize_to_list(" ".join(sorted(letters)), tag)
+    ids = voice.get("phoneme_id_map") or {}
+    return all(symbol in ids or symbol.lower() in ids for symbol in symbols if symbol != " ")
 
 
 def index_overrides(entry: Dict[str, Any]) -> Dict[str, str]:
@@ -195,10 +364,14 @@ def _lang(config: Dict[str, Any], lang: Optional[str]) -> Optional[str]:
     if lang or "phoonnx_version" in config:
         return lang
     language = config.get("language")
-    lang = language.get("code") if isinstance(language, dict) else None
-    if not lang and _is_piper(config):
-        lang = (config.get("espeak") or {}).get("voice")
-    return lang
+    code = language.get("code") if isinstance(language, dict) else None
+    if not _is_piper(config):
+        return code
+    # Piper phonemizes an espeak model with the espeak-ng voice in espeak.voice
+    espeak_voice = (config.get("espeak") or {}).get("voice")
+    if config.get("phoneme_type", "espeak") == "espeak":
+        return espeak_voice or code
+    return code or espeak_voice
 
 
 def _is_arabic(lang: Optional[str]) -> bool:
@@ -217,21 +390,27 @@ def _diacritize(config: Dict[str, Any], lang: Optional[str], piper: bool,
     frontend then skips the step when the backend of *phoneme_type* owns the
     ``diacritize`` stage, because that backend restores the vowel marks itself.
     """
-    inference = config.get("inference") or {}
-    if piper:
-        enabled = _is_arabic(lang)
-    else:
-        enabled = inference.get("add_diacritics", None if "phoonnx_version" in config else False)
-        enabled = _is_arabic(lang) if enabled is None else bool(enabled)
-    if not enabled or "diacritize" in _owned_stages(phoneme_type):
+    if not _phoonnx_diacritizes(config, lang, piper) or "diacritize" in _owned_stages(phoneme_type):
         return [], None
     if not _is_arabic(lang):
         raise UnsupportedExample(f"phoonnx diacritizes the {lang} text before the phonemizer")
-    model = None if piper else inference.get("diacritizer_model")
-    model = f', diacritizer_model="{model}"' if model else ""
     return ["# the vowel marks phoonnx adds before the phonemizer, to each sentence on its own",
-            f'text = " ".join(diacritize(sentence, "{lang}"{model}) for sentence in sentence_tokenize(text))'], \
+            f'diacritizer = Diacritizer("{_diacritizer_model(config, piper)}")',
+            'text = " ".join(diacritizer.diacritize(sentence) for sentence in sentence_tokenize(text))'], \
         "tashkeel,phonemizers"
+
+
+def _phoonnx_diacritizes(config: Dict[str, Any], lang: Optional[str], piper: bool) -> bool:
+    """True when phoonnx turns its vowel-mark step on for the voice, before a backend that owns it skips it."""
+    if piper:
+        return _is_arabic(lang)
+    enabled = (config.get("inference") or {}).get("add_diacritics", None if "phoonnx_version" in config else False)
+    return _is_arabic(lang) if enabled is None else bool(enabled)
+
+
+def _diacritizer_model(config: Dict[str, Any], piper: bool) -> str:
+    """The text2tashkeel model that phoonnx diacritizes with: the config's, or :data:`RAWI`; Piper configs name none."""
+    return (None if piper else (config.get("inference") or {}).get("diacritizer_model")) or RAWI
 
 
 def _backend(phoneme_type: str) -> Tuple[str, str, Optional[str]]:
@@ -377,17 +556,22 @@ def _check(inputs: Dict[str, int], known: Tuple[str, ...], engine: str) -> None:
         raise UnsupportedExample(f"{engine} graph inputs {unknown} have no template")
 
 
-def _params(config: Dict[str, Any], defaults: Dict[str, Any]) -> Dict[str, Any]:
-    """The synthesis parameters phoonnx gives an engine: its *defaults*, the config's scales, then ``engine_params``."""
+def _params(config: Dict[str, Any], defaults: Dict[str, Any], speed_key: str = "",
+            speed_is_rate: bool = False) -> Dict[str, Any]:
+    """The synthesis parameters phoonnx gives an engine: its *defaults*, the config's scales, then ``engine_params``.
+
+    An engine with a speed key of its own (``speed_key``) gets it from the config's ``length_scale``:
+    ``1 / length_scale`` when the engine reads a rate, else ``length_scale``. ``engine_params`` wins.
+    """
     inference = config.get("inference") or {}
-    scales = {"noise_scale": inference.get("noise_scale", 0.667), "length_scale": inference.get("length_scale", 1.0),
-              "noise_w_scale": inference.get("noise_w", 0.8)}
-    return {**defaults, **{k: v for k, v in scales.items() if v is not None}, **(config.get("engine_params") or {})}
-
-
-def _scales(config: Dict[str, Any]) -> Tuple[float, float, float]:
-    params = _params(config, {})
-    return params["noise_scale"], params["length_scale"], params["noise_w_scale"]
+    engine_params = config.get("engine_params") or {}
+    scales = {"noise_scale": inference.get("noise_scale"), "length_scale": inference.get("length_scale"),
+              "noise_w_scale": inference.get("noise_w")}
+    params = {**defaults, **{k: v for k, v in scales.items() if v is not None}, **engine_params}
+    length_scale = scales["length_scale"]
+    if speed_key and length_scale is not None and speed_key not in engine_params:
+        params[speed_key] = 1.0 / length_scale if speed_is_rate else length_scale
+    return params
 
 
 def _session(name: str, file: str, repo: Optional[str] = None) -> str:
@@ -414,7 +598,7 @@ def _run(engine: str, config: Dict[str, Any], files: Dict[str, Any], pad: Option
                           "audio = session.run(None, {", *feeds, "})[0].squeeze()"])
     if engine == "optispeech":
         _check(inputs, ("x", "x_lengths", "scales", "sids", "lids"), engine)
-        params = _params(config, {"d_factor": 1.0, "p_factor": 1.0, "e_factor": 1.0})
+        params = _params(config, {"d_factor": 1.0, "p_factor": 1.0, "e_factor": 1.0}, "d_factor")
         factors = [params[k] for k in ("d_factor", "p_factor", "e_factor")]
         feeds = [_feed("x", "np.array([ids], dtype=np.int64)"),
                  _feed("x_lengths", "np.array([len(ids)], dtype=np.int64)"),
@@ -438,7 +622,8 @@ def _run(engine: str, config: Dict[str, Any], files: Dict[str, Any], pad: Option
 def _vits(config: Dict[str, Any], model: str, inputs: Dict[str, int], engine: str) -> str:
     _check(inputs, ("input", "input_lengths", "scales", "sid", "langid", "x", "x_length", "noise_scale",
                     "length_scale", "noise_scale_w", "input_ids", "attention_mask"), engine)
-    noise, length, noise_w = _scales(config)
+    params = _params(config, get_adapter("vits").default_params())
+    noise, length, noise_w = params["noise_scale"], params["length_scale"], params["noise_w_scale"]
     lines = [_session("session", model)]
     if "scales" in inputs or "noise_scale" in inputs:
         lines.append(f'noise_scale, length_scale, noise_w = {noise}, {length}, {noise_w}  # config.json "inference"')
@@ -469,7 +654,8 @@ def _vits(config: Dict[str, Any], model: str, inputs: Dict[str, int], engine: st
 
 
 def _vits_prior_split(config: Dict[str, Any], files: Dict[str, Any]) -> str:
-    noise, length, _ = _scales(config)
+    params = _params(config, get_adapter("vits_prior_split").default_params())
+    noise, length = params["noise_scale"], params["length_scale"]
     return "\n".join([
         _session("duration", files.get("model", "duration.onnx")),
         _session("decode", files["decode"]),
@@ -509,14 +695,15 @@ def _styletts2(config: Dict[str, Any], files: Dict[str, Any], model: str, inputs
         lines.append(_feed("attention_mask", "np.ones((1, len(padded)), dtype=np.int32)"))
     if "style" in inputs:
         lines.append(_feed("style", "style_row"))
-    lines += [_feed("speed", f'np.array([{_params(config, {"speed": 1.0})["speed"]}], dtype=np.float32)'),
+    lines += [_feed("speed", f'np.array([{_params(config, {"speed": 1.0}, "speed", True)["speed"]}], dtype=np.float32)'),
               "})[0].squeeze()"]
     return "\n".join(lines)
 
 
 def _glowtts(config: Dict[str, Any], model: str, inputs: Dict[str, int]) -> str:
     _check(inputs, ("input", "input_lengths", "scales", "sid"), "glowtts")
-    noise, length, _ = _scales(config)
+    params = _params(config, get_adapter("glowtts").default_params())
+    noise, length = params["noise_scale"], params["length_scale"]
     lines = [_session("session", model), f"noise_scale, length_scale = {noise}, {length}",
              "mel = session.run(None, {", _feed("input", "np.array([ids], dtype=np.int64)"),
              _feed("input_lengths", "np.array([len(ids)], dtype=np.int64)"),

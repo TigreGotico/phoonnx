@@ -5,6 +5,7 @@ import types
 import numpy as np
 import pytest
 
+from phoonnx.audio_fx import resample_rate
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.f5tts import F5TTSAdapter
 from tests.conftest import retry_download
@@ -169,12 +170,9 @@ def test_f5tts_requires_decode_or_vocoder():
         )
 
 
-def test_f5tts_param_labels_and_defaults():
-    ad = F5TTSAdapter()
-    labels = ad.param_labels()
-    defaults = ad.default_params()
+def test_f5tts_defaults():
+    defaults = F5TTSAdapter().default_params()
     for key in ("nfe", "cfg_strength", "sway_coefficient", "target_rms", "speed"):
-        assert key in labels
         assert key in defaults
 
 
@@ -278,6 +276,9 @@ _F5_REPOS = {voice_id: f"https://huggingface.co/Phoonnx/f5tts-{name}/resolve/" f
     "silma/v1": "multi-silma_ai-v1-graphemes",
     "silma/v1-en": "multi-silma_ai-v1-graphemes",
     "openbible/tw-asante": "tw-asante_openbible-graphemes",
+    "openbible/ckb": "ckb-openbible-graphemes",
+    "f5tts/sema-afro": "multi-sema_afro-unicode",
+    "f5tts/spring": "multi-spring-unicode",
 }.items()}
 
 
@@ -336,8 +337,8 @@ def test_aux_model_urls_resolved_in_engine_params(tmp_path, monkeypatch):
 
 def test_f5tts_resample():
     a = np.zeros(1000, np.float32)
-    assert F5TTSAdapter._resample(a, 24000, 24000) is a  # no-op
-    out = F5TTSAdapter._resample(a, 22050, 24000)
+    assert resample_rate(a, 24000, 24000) is a  # no-op
+    out = resample_rate(a, 22050, 24000)
     assert abs(len(out) - 1000 * 24000 / 22050) <= 2
 
 
@@ -551,7 +552,8 @@ def _f5_voice(phoneme_type, phoneme_id_map, lang):
         "phoonnx_version": "1.0", "engine": "f5tts", "phoneme_type": phoneme_type, "alphabet": "unicode",
         "lang_code": lang, "audio": {"sample_rate": 24000}, "phoneme_id_map": phoneme_id_map,
         "add_blank_char": False, "blank_at_start": False, "blank_at_end": False, "use_eos_bos": False,
-        "fold_compounds": False, "engine_params": {"nfe": 2}})
+        "fold_compounds": False, "engine_params": {"nfe": 2},
+        "inference": {"add_diacritics": False}})  # as the shipped Arabic F5 configs
     voice = TTSVoice(session=_FakeTransformer(), config=config, adapter=F5TTSAdapter())
     voice.adapter.preprocess, voice.adapter.decode = _RecordingPreprocess(), _FakeDecode()
     return voice
@@ -778,6 +780,7 @@ def test_entry_language_matches_the_source_and_reaches_the_front_end(voice_id):
 # read the text one character per token (NAMAA v2 runs the Habibi-TTS code).
 _UPSTREAM_TEXT_FUNCTION = {
     "f5tts/v1-base": "f5tts_pinyin", "openbible/tw-asante": "f5tts_pinyin",
+    "f5tts/spring": "f5tts_pinyin", "f5tts/sema-afro": "f5tts_pinyin", "openbible/ckb": "f5tts_pinyin",
     **{f"habibi/ar-{d}": "f5tts_char" for d in ("unified", "alg", "egy", "irq", "mar", "msa", "sau", "uae")},
     "namaa/ar-sa-v2": "f5tts_char", "silma/v1": "f5tts_char", "silma/v1-en": "f5tts_char",
 }

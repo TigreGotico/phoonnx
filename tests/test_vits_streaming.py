@@ -219,3 +219,68 @@ def test_synthesize_without_decoder_raises():
     a = VitsStreamingAdapter()
     with pytest.raises(RuntimeError):
         a.synthesize(_request(), FakeEncoder(T=300))
+
+
+def test_stream_yields_each_window_and_joins_to_synthesize():
+    hop, T = 256, 500
+    a, enc = _adapter(hop, T)
+    parts = list(a.synthesize_stream(_request(), enc))
+    assert len(parts) > 1
+    whole = a.synthesize(_request(), enc).audio
+    assert np.array_equal(np.concatenate([p.audio for p in parts]), whole)
+
+
+def test_stream_yields_the_first_window_before_the_last_is_decoded():
+    hop, T = 256, 500
+    a, enc = _adapter(hop, T)
+    stream = a.synthesize_stream(_request(), enc)
+    next(stream)
+    calls_at_first_part = a.decoder.calls
+    list(stream)
+    assert calls_at_first_part == 1
+    assert a.decoder.calls > calls_at_first_part
+
+
+def test_stream_short_sentence_is_one_part():
+    a, enc = _adapter(256, _DEFAULT_STREAMING["fallback_frames"])
+    parts = list(a.synthesize_stream(_request(), enc))
+    assert len(parts) == 1
+    assert a.decoder.calls == 1
+
+
+def test_decoder_runs_on_the_voice_providers(monkeypatch):
+    seen = {}
+
+    class Session:
+        def __init__(self, path, sess_options=None, providers=None):
+            seen.update(path=path, providers=providers, threads=sess_options.intra_op_num_threads)
+
+        def get_providers(self):
+            return seen["providers"]
+
+    monkeypatch.setattr("onnxruntime.InferenceSession", Session)
+    monkeypatch.setattr("phoonnx.providers.available_providers",
+                        lambda: ["CUDAExecutionProvider", "CPUExecutionProvider"])
+    monkeypatch.delenv("PHOONNX_ORT_CACHE_DIR", raising=False)
+    adapter = VitsStreamingAdapter()
+    adapter.configure_from_params({"decoder_path": "d.onnx", "intra_op_num_threads": 3,
+                                   "providers": ["CPUExecutionProvider"]})
+    assert seen == {"path": "d.onnx", "providers": ["CPUExecutionProvider"], "threads": 3}
+
+
+def test_decoder_keeps_its_threads_when_loaded_from_the_ort_cache(tmp_path, monkeypatch):
+    onnx = pytest.importorskip("onnx")
+    from onnx import TensorProto, helper
+    graph = helper.make_graph(
+        [helper.make_node("Identity", ["x"], ["y"])], "g",
+        [helper.make_tensor_value_info("x", TensorProto.FLOAT, [1])],
+        [helper.make_tensor_value_info("y", TensorProto.FLOAT, [1])])
+    path = tmp_path / "decoder.onnx"
+    onnx.save(helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)]), path)
+    monkeypatch.setenv("PHOONNX_ORT_CACHE_DIR", str(tmp_path / "cache"))
+    params = {"decoder_path": str(path), "intra_op_num_threads": 3, "providers": ["CPUExecutionProvider"]}
+    for _ in range(2):  # the first load writes the cached graph, the second reads it
+        adapter = VitsStreamingAdapter()
+        adapter.configure_from_params(params)
+        options = adapter.decoder.get_session_options()
+        assert (options.intra_op_num_threads, options.inter_op_num_threads) == (3, 1)

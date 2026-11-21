@@ -14,13 +14,16 @@ Four ONNX graphs (HF: ``onnx-community/chatterbox-ONNX``):
 Cloning is d-vector style (a reference wav, **no transcription**), so it uses the
 ``speaker_reference`` API and not ``speaker_reference_text``. Text is tokenized with the
 model's own BPE (``phoonnx.tokenizer.BPETokenizer`` + the UNICODE phonemizer), so
-``request.phoneme_ids`` already carries the subword ids.
+``request.phoneme_ids`` already carries the subword ids. The ``seed`` request param fixes
+the sampling of the speech tokens; the conditional decoder's noise nodes stay unseeded.
 """
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 import onnxruntime
 
+from phoonnx.audio_fx import resample_rate
+from phoonnx.encoders import Encoder, TextEncoder
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 
@@ -28,19 +31,6 @@ S3GEN_SR = 24000
 START_SPEECH_TOKEN = 6561
 STOP_SPEECH_TOKEN = 6562
 SILENCE_TOKEN = 4299
-
-
-def _resample(audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
-    if sr == target_sr:
-        return audio
-    try:
-        from scipy.signal import resample_poly
-        from math import gcd
-        g = gcd(sr, target_sr)
-        return resample_poly(audio, target_sr // g, sr // g).astype(np.float32)
-    except Exception:
-        n = int(round(len(audio) * target_sr / sr))
-        return np.interp(np.linspace(0, len(audio) - 1, n), np.arange(len(audio)), audio).astype(np.float32)
 
 
 def _apply_repetition_penalty(prev_ids: np.ndarray, scores: np.ndarray, penalty: float) -> np.ndarray:
@@ -106,10 +96,18 @@ class ChatterboxAdapter(BaseOnnxAdapter):
         except TypeError:        # tokenizer without a language-aware signature
             return [voice.tokenizer.tokenize(text)]
 
+    def make_encoder(self, voice_config: Any, frontend: Any, tokenizer: Any) -> Encoder:
+        """Tokenize the staged text of each frontend chunk, so every call starts with the ``[lang]`` token."""
+        def tokenize(text: str, config: Any) -> List[List[int]]:
+            return [tokenizer.tokenize(text, language=voice_config.lang_code,
+                                       lang_tokens=voice_config.lang_tokens)]
+
+        return TextEncoder(frontend, tokenize)
+
     def configure(self, voice_config: Any) -> None:
         """Load the auxiliary graphs from ``engine_params`` and read the LM's KV-cache
         shape from its own input signature (no hardcoded layer counts)."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        ep = voice_config.engine_params
         # Routed through make_session, same as the main LM graph: these three
         # aux graphs are ~1.19GB per voice and identical across every voice
         # sharing a checkpoint, so building them with a bare InferenceSession
@@ -148,7 +146,7 @@ class ChatterboxAdapter(BaseOnnxAdapter):
             self._read_kv_shape(session)
 
         # speaker conditioning from the reference clip (no transcription needed)
-        audio = _resample(np.asarray(ref[0], np.float32).reshape(-1), int(ref[1]), S3GEN_SR)
+        audio = resample_rate(np.asarray(ref[0], np.float32).reshape(-1), int(ref[1]), S3GEN_SR)
         cond_emb, prompt_token, x_vector, prompt_feat = self.speech_encoder.run(
             None, {"audio_values": audio[None, :].astype(np.float32)})
 
@@ -156,7 +154,7 @@ class ChatterboxAdapter(BaseOnnxAdapter):
         exaggeration = np.array([float(request.params.get("exaggeration", 0.5))], np.float32)
         temperature = float(request.params.get("temperature", 0.8))
         top_p = float(request.params.get("top_p", 0.95))
-        rng = np.random.default_rng()
+        rng = np.random.default_rng(request.params.get("seed"))
         embed_pos = np.where(input_ids >= START_SPEECH_TOKEN, 0,
                              np.arange(input_ids.shape[1])[None, :] - 1).astype(np.int64)
 
@@ -214,7 +212,7 @@ class ChatterboxAdapter(BaseOnnxAdapter):
     def build_feed_dict(self, request, session):
         raise NotImplementedError("Chatterbox is autoregressive — use synthesize()")
 
-    def parse_outputs(self, outputs, request):
+    def parse_outputs(self, outputs, request, output_names=None):
         raise NotImplementedError("Chatterbox is autoregressive — use synthesize()")
 
     @staticmethod

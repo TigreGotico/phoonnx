@@ -72,11 +72,6 @@ def test_default_params_match_upstream_generation_config():
         "subtalker_temperature": 0.9, "subtalker_top_k": 50.0, "subtalker_top_p": 1.0}
 
 
-def test_param_labels_cover_every_default():
-    adapter = Qwen3TTSAdapter()
-    assert set(adapter.param_labels()) == set(adapter.default_params())
-
-
 def test_frame_geometry_matches_the_codec():
     # 12.5 Hz codec at 24 kHz: one frame is 1920 samples
     assert UPSAMPLE == SAMPLE_RATE // 12.5 == 1920

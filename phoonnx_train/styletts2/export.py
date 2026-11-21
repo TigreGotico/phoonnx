@@ -18,11 +18,15 @@ The exportability rewrites (all faithful for batch=1):
 """
 import json
 import logging
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterator, Optional
+from unittest.mock import patch
 
 import numpy as np
 import torch
+
+from phoonnx_train.engines.vits import write_sidecars
 
 _LOG = logging.getLogger(__name__)
 
@@ -74,12 +78,15 @@ def _duration_encoder_forward(self, x, style, text_lengths, m):
     return x.transpose(-1, -2)
 
 
-def _apply_export_patches() -> None:
+@contextmanager
+def _export_patches() -> Iterator[None]:
+    """The exportable forwards, in place only while the graphs are traced."""
     from phoonnx_train.styletts2 import models as _M
-    torch.nn.InstanceNorm1d.forward = _instance_norm_forward
-    torch.nn.InstanceNorm2d.forward = _instance_norm_forward
-    _M.TextEncoder.forward = _text_encoder_forward
-    _M.DurationEncoder.forward = _duration_encoder_forward
+    with (patch.object(torch.nn.InstanceNorm1d, "forward", _instance_norm_forward),
+          patch.object(torch.nn.InstanceNorm2d, "forward", _instance_norm_forward),
+          patch.object(_M.TextEncoder, "forward", _text_encoder_forward),
+          patch.object(_M.DurationEncoder, "forward", _duration_encoder_forward)):
+        yield
 
 
 class Synth(torch.nn.Module):
@@ -174,6 +181,7 @@ def _load_config(config_path: Path) -> Dict[str, Any]:
     return json.loads(text)
 
 
+@torch.no_grad()
 def export_styletts2_onnx(
     checkpoint_path: Path,
     config_path: Path,
@@ -190,8 +198,6 @@ def export_styletts2_onnx(
     cfg_raw = _load_config(config_path)
     scfg = StyleTTS2Config(**{k: v for k, v in cfg_raw.get("styletts2", cfg_raw).items()
                               if k in StyleTTS2Config.__dataclass_fields__})
-
-    _apply_export_patches()
 
     from munch import munchify
 
@@ -226,7 +232,6 @@ def export_styletts2_onnx(
         model[k].requires_grad_(False)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    torch.set_grad_enabled(False)
 
     synth = Synth(model, mp.style_dim,
                   hifigan_shift=(mp.decoder.type == "hifigan")).eval()
@@ -236,13 +241,6 @@ def export_styletts2_onnx(
     speed = torch.tensor([1.0])
 
     from phoonnx_train.torch_compat import onnx_export_kwargs
-
-    model_path = output_dir / "model.onnx"
-    torch.onnx.export(synth, (tokens, style, speed), str(model_path),
-                      input_names=["tokens", "style", "speed"],
-                      output_names=["waveform"],
-                      dynamic_axes={"tokens": {1: "n"}, "waveform": {0: "s"}},
-                      opset_version=OPSET_VERSION, **onnx_export_kwargs())
 
     class Enc(torch.nn.Module):
         def __init__(self):
@@ -255,25 +253,34 @@ def export_styletts2_onnx(
             mm = self.mel(wav)
             return self.style(mm), self.pred(mm)
 
+    model_path = output_dir / "model.onnx"
     enc_path = output_dir / "style_encoder.onnx"
-    torch.onnx.export(Enc().eval(), torch.randn(1, sample_rate * 2), str(enc_path),
-                      input_names=["waveform"], output_names=["ref_p", "ref_s"],
-                      dynamic_axes={"waveform": {1: "s"}},
-                      opset_version=OPSET_VERSION, **onnx_export_kwargs())
+    with _export_patches():
+        torch.onnx.export(synth, (tokens, style, speed), str(model_path),
+                          input_names=["tokens", "style", "speed"],
+                          output_names=["waveform"],
+                          dynamic_axes={"tokens": {1: "n"}, "waveform": {0: "s"}},
+                          opset_version=OPSET_VERSION, **onnx_export_kwargs())
+        torch.onnx.export(Enc().eval(), torch.randn(1, sample_rate * 2), str(enc_path),
+                          input_names=["waveform"], output_names=["ref_p", "ref_s"],
+                          dynamic_axes={"waveform": {1: "s"}},
+                          opset_version=OPSET_VERSION, **onnx_export_kwargs())
 
     _fix_negative_transpose_perms(model_path)
     _fix_negative_transpose_perms(enc_path)
 
+    training_config = cfg_raw if config_path.suffix == ".json" else {}
     out_cfg: Dict[str, Any] = {
+        **training_config,
         "engine": "styletts2",
+        "audio": {**training_config.get("audio", {}), "sample_rate": sample_rate},
         "sample_rate": sample_rate,
         "style_dim": int(mp.style_dim),
         "num_symbols": int(mp.n_token),
     }
     if phoneme_id_map:
         out_cfg["phoneme_id_map"] = phoneme_id_map
-    (output_dir / "config.json").write_text(
-        json.dumps(out_cfg, ensure_ascii=False, indent=2))
+    write_sidecars(out_cfg, output_dir, "config")
 
     _LOG.info("StyleTTS2 exported to %s", model_path)
     return model_path

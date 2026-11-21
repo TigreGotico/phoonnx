@@ -33,7 +33,7 @@ manager resolves it at load time and hands it to the adapter via `engine_params`
 
 ```json
 {
-  "voice_id": "coqui/tr-common-voice-glow-tts",
+  "voice_id": "coqui-tr-common-voice-glow-tts",
   "engine": "glowtts",
   "model_url": ".../model.onnx",
   "config_url": ".../config.json",

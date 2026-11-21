@@ -8,9 +8,14 @@ import glob
 import json
 import os
 import random
+import re
+import sys
+import tempfile
 import time
+import unicodedata
 import unittest
 
+from phoonnx import _bpe
 from phoonnx._bpe import Tokenizer, UnsupportedTokenizer
 from phoonnx.tokenizer import BPETokenizer, load_hf_tokenizer, load_tokenizers_package
 
@@ -379,3 +384,244 @@ class TestMergeLoopIsNotQuadratic(unittest.TestCase):
             text = (self.CHINESE * (length // len(self.CHINESE) + 1))[:length]
             with self.subTest(length=length):
                 self.assertEqual(mine.encode(text).ids, reference.encode(text).ids)
+
+
+# Added tokens that overlap, prefix each other, hold regex syntax, or sit
+# where a pre-tokenizer would cut them.
+OVERLAPPING_ADDED = [
+    "<|", "<|a|>", "<|a|>b", "<|speech_1|>", "<|speech_12|>", "<|speech_123|>",
+    "[S]", "[SPACE]", "[SPACE]x", "ab", "abc", "b c", "-", "^x", "]", "\\",
+    ".*", "世界", "界", "🌍x", " e",
+]
+
+ADDED_TEXTS = TEXTS + [
+    "<|", "<|a|", "<|a|>", "<|a|>b", "<|a|><|a|>b<|", "<|speech_1234|>",
+    "<|speech_12|>3", "[SPACE][SPACE]x[S]", "abcab cabc", "a b c", "世界界",
+    "🌍x🌍", "^x^", "\\]-.*", " e e", "<|<|<|a|>", "x<|endoftext|>y",
+]
+
+ADDED_ALPHABET = "<|>a_bcspeh123[SPACEx]^\\.*-世界🌍 "
+
+
+def _regex_split(added, text):
+    """The alternation the reader used to cut added tokens out of text."""
+    pattern = "(" + "|".join(sorted(map(re.escape, added), key=len, reverse=True)) + ")"
+    return re.split(pattern, text)
+
+
+def _with_added(path, contents, special=()):
+    """A fixture spec with *contents* appended as added tokens, numbered as
+    `tokenizers` numbers them: a token the model vocab holds keeps its id,
+    and a new one takes the next free id."""
+    with open(path, encoding="utf-8") as handle:
+        spec = json.load(handle)
+    vocab = spec["model"]["vocab"]
+    next_id = max(list(vocab.values()) + [t["id"] for t in spec["added_tokens"]]) + 1
+    for content in contents:
+        if content in vocab:
+            token_id = vocab[content]
+        else:
+            token_id, next_id = next_id, next_id + 1
+        spec["added_tokens"].append({
+            "id": token_id, "content": content, "single_word": False,
+            "lstrip": False, "rstrip": False, "normalized": False,
+            "special": content in special})
+    return spec
+
+
+class TestAddedTokens(unittest.TestCase):
+    """Added tokens are cut out of the text before anything else: leftmost
+    first, and the longest where several start at the same place."""
+
+    def _spec(self, contents=OVERLAPPING_ADDED, special=("<|a|>", "[S]")):
+        return _with_added(os.path.join(FIXTURES, "tokenizer_bpe_qwen.json"),
+                           contents, special)
+
+    def _fuzz(self, count=600):
+        rng = random.Random(20261118)
+        return ["".join(rng.choice(ADDED_ALPHABET) for _ in range(rng.randint(0, 40)))
+                for _ in range(count)]
+
+    def test_the_cut_equals_the_longest_first_alternation(self):
+        spec = self._spec()
+        mine = Tokenizer(spec)
+        added = [t["content"] for t in spec["added_tokens"]]
+        for text in ADDED_TEXTS + self._fuzz():
+            self.assertEqual(mine._split_added(text), _regex_split(added, text),
+                             f"cut disagrees on {text!r}")
+
+    def test_an_empty_added_token_is_ignored(self):
+        """`tokenizers` ignores an added token with no content."""
+        path = os.path.join(FIXTURES, "tokenizer_bpe_whitespace.json")
+        plain = _with_added(path, [])
+        expected = [6563, 255, 62, 84, 28, 2, 179, 79, 0, 6561, 6561]
+        self.assertEqual(Tokenizer(plain).encode("hello world").ids, expected)
+        self.assertEqual(Tokenizer(_with_added(path, [""])).encode("hello world").ids,
+                         expected)
+
+    def test_a_vocab_without_added_tokens_keeps_the_text_whole(self):
+        spec = self._spec()
+        spec["added_tokens"] = []
+        mine = Tokenizer(spec)
+        for text in ("", "<|a|>", "hello"):
+            self.assertEqual(mine._split_added(text), [text])
+
+    @unittest.skipIf(ReferenceTokenizer is None, "the `tokenizers` package is not installed")
+    def test_overlapping_added_tokens_encode_as_the_reference_does(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "tokenizer.json")
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump(self._spec(), handle)
+            mine, reference = Tokenizer.from_file(path), load_tokenizers_package(path)
+            for text in ADDED_TEXTS + self._fuzz(300):
+                for add_special in (True, False):
+                    self.assertEqual(
+                        mine.encode(text, add_special_tokens=add_special).ids,
+                        reference.encode(text, add_special_tokens=add_special).ids,
+                        f"disagrees on {text!r}, add_special_tokens={add_special}")
+                self.assertEqual(mine.decode(mine.encode(text).ids),
+                                 reference.decode(reference.encode(text).ids))
+
+    def test_65536_speech_tokens(self):
+        """The NeuTTS and Llasa shape: one added token per codec code. The
+        `tokenizers` 1.0 release candidates panic on this many, so the ids are
+        checked against the codes they encode."""
+        spec = self._spec([f"<|speech_{code}|>" for code in range(65536)])
+        first = spec["added_tokens"][-65536]["id"]
+        mine = Tokenizer(spec)
+        codes = random.Random(7).choices(range(65536), k=200)
+        prompt = "".join(f"<|speech_{code}|>" for code in codes)
+        self.assertEqual(mine.encode(prompt, add_special_tokens=False).ids,
+                         [first + code for code in codes])
+        added = [t["content"] for t in spec["added_tokens"]]
+        for text in ("user: hello<|speech_1|><|speech_65535|>world<|speech_",
+                     "<|speech_655360|><|speech_|><|speech_00|><|speech_6553|>5"):
+            self.assertEqual(mine._split_added(text), _regex_split(added, text))
+
+
+# Tokens that begin and end in a character that is not a word character, so no
+# two of them overlap in a text. `tokenizers` releases differ on how a token
+# that overlaps a neighbour is taken; they agree on this set.
+FLAG_TOKENS = ["<mask>", "[SP]", "<|a|>"]
+FLAG_ALPHABET = list("<mask>MASKab xyzq[]P-_1\t\u00a0\n|")
+
+
+def _flagged(path, flags, normalizer=None, tokens=FLAG_TOKENS):
+    """A fixture spec whose added *tokens* all carry *flags*."""
+    spec = _with_added(path, tokens)
+    for token in spec["added_tokens"][-len(tokens):]:
+        token.update(flags)
+    if normalizer:
+        spec["normalizer"] = normalizer
+    return spec
+
+
+class TestAddedTokenFlags(unittest.TestCase):
+    """``lstrip``, ``rstrip``, ``single_word`` and ``normalized`` of an added token."""
+
+    def _tokenizer(self, **flags):
+        path = os.path.join(FIXTURES, "tokenizer_bpe_qwen.json")
+        return Tokenizer(_flagged(path, flags))
+
+    def _ids(self, tokenizer, text):
+        return tokenizer.encode(text, add_special_tokens=False).ids
+
+    def test_lstrip_takes_the_white_space_before_the_token(self):
+        mine = self._tokenizer(lstrip=True)
+        token = mine.token_to_id("[SP]")
+        self.assertEqual(self._ids(mine, "a  \t[SP]b"), self._ids(mine, "a") + [token] + self._ids(mine, "b"))
+        self.assertEqual(self._ids(mine, "a [SP]"), self._ids(mine, "a") + [token])
+
+    def test_rstrip_takes_the_white_space_after_the_token(self):
+        mine = self._tokenizer(rstrip=True)
+        token = mine.token_to_id("[SP]")
+        self.assertEqual(self._ids(mine, "a[SP] \n b"), self._ids(mine, "a") + [token] + self._ids(mine, "b"))
+
+    def test_single_word_refuses_a_match_inside_a_word(self):
+        mine = self._tokenizer(single_word=True)
+        token = mine.token_to_id("[SP]")
+        self.assertNotIn(token, self._ids(mine, "a[SP]"))
+        self.assertNotIn(token, self._ids(mine, "[SP]a"))
+        self.assertEqual(self._ids(mine, "a [SP] b"),
+                         self._ids(mine, "a ") + [token] + self._ids(mine, " b"))
+
+    def test_a_token_without_normalized_is_not_matched_after_the_normalizer(self):
+        path = os.path.join(FIXTURES, "tokenizer_bpe_qwen.json")
+        lowercase = {"type": "Lowercase"}
+        pair = ["<mask>", "<MASK>"]
+        raw = Tokenizer(_flagged(path, {"normalized": False}, lowercase, pair))
+        normalized = Tokenizer(_flagged(path, {"normalized": True}, lowercase, pair))
+        token = raw.token_to_id("<mask>")
+        self.assertNotIn(token, self._ids(raw, "<Mask>"))
+        self.assertEqual(self._ids(normalized, "<Mask>"), [normalized.token_to_id("<MASK>")])
+
+    @unittest.skipIf(ReferenceTokenizer is None, "the `tokenizers` package is not installed")
+    def test_every_flag_encodes_as_the_reference_does(self):
+        rng = random.Random(777)
+        combos = [{"lstrip": True}, {"rstrip": True}, {"lstrip": True, "rstrip": True},
+                  {"single_word": True}, {"normalized": True},
+                  {"normalized": True, "single_word": True, "lstrip": True, "rstrip": True}]
+        bases = [("tokenizer_bpe_qwen.json", None),
+                 ("tokenizer_bpe_qwen.json", {"type": "Lowercase"}),
+                 ("tokenizer_bpe_whitespace.json", None)]
+        for name, normalizer in bases:
+            path = os.path.join(FIXTURES, name)
+            for flags in combos:
+                with tempfile.TemporaryDirectory() as folder:
+                    target = os.path.join(folder, "tokenizer.json")
+                    with open(target, "w", encoding="utf-8") as handle:
+                        json.dump(_flagged(path, flags, normalizer), handle)
+                    mine, reference = Tokenizer.from_file(target), load_tokenizers_package(target)
+                    for _ in range(120):
+                        pieces = [rng.choice(FLAG_ALPHABET) if rng.random() < .5 else rng.choice(FLAG_TOKENS)
+                                  for _ in range(rng.randint(0, 8))]
+                        text = "".join(pieces)
+                        for add_special in (True, False):
+                            self.assertEqual(
+                                mine.encode(text, add_special_tokens=add_special).ids,
+                                reference.encode(text, add_special_tokens=add_special).ids,
+                                f"{name} {normalizer} {flags} disagrees on {text!r}")
+
+
+class TestUnicodeProperties(unittest.TestCase):
+    """`re` has no \\p{..}, so the reader writes a property out as ranges."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.everything = "".join(map(chr, range(sys.maxunicode + 1)))
+        cls.by_category = {}
+        for char in cls.everything:
+            cls.by_category.setdefault(unicodedata.category(char), []).append(char)
+
+    def test_each_property_is_its_code_points_written_as_ranges(self):
+        """The class text is the property's code points, consecutive ones
+        merged into a range: the text a scan of every code point writes."""
+        majors = sorted({category[0] for category in self.by_category})
+        for prop in majors + sorted(self.by_category):
+            ranges = []
+            for category, chars in self.by_category.items():
+                if category.startswith(prop) if len(prop) == 1 else category == prop:
+                    ranges += [[ord(char), ord(char)] for char in chars]
+            merged = []
+            for low, high in sorted(ranges):
+                if merged and merged[-1][1] == low - 1:
+                    merged[-1][1] = high
+                else:
+                    merged.append([low, high])
+            expected = "".join(
+                re.escape(chr(low)) if low == high
+                else f"{re.escape(chr(low))}-{re.escape(chr(high))}"
+                for low, high in merged)
+            with self.subTest(prop=prop):
+                self.assertEqual(_bpe._category_ranges(prop), expected)
+
+    def test_one_table_of_category_runs_serves_every_property(self):
+        runs = _bpe._category_runs()
+        self.assertIs(_bpe._category_runs(), runs)
+        self.assertEqual((runs[0][1], runs[-1][2]), (0, sys.maxunicode))
+        for (category, low, high), (following, next_low, _) in zip(runs, runs[1:]):
+            self.assertEqual(next_low, high + 1)
+            self.assertNotEqual(category, following)
+        for category, low, high in runs:
+            self.assertEqual(unicodedata.category(chr(low)), category)
+            self.assertEqual(unicodedata.category(chr(high)), category)

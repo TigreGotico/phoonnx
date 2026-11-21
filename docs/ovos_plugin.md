@@ -9,61 +9,6 @@ For grapheme-to-phoneme (G2P) conversion without TTS, use
 [ovos-scriptconv-g2p-plugin](https://github.com/TigreGotico/ovos-scriptconv-g2p-plugin),
 a separate OPM plugin. See [G2P for OVOS](phonemizers.md#g2p-for-ovos).
 
-## Per-language default voices
-
-`voice` pins one voice for every request. To serve **many languages from one
-server**, leave it unset and map languages to voices instead — the plugin then
-picks the voice for each request's language, downloading and caching it on
-first use:
-
-```json
-{
-  "tts": {
-    "module": "ovos-tts-plugin-phoonnx",
-    "ovos-tts-plugin-phoonnx": {
-      "lang2voice": {
-        "gl": "proxectonos/celtia",
-        "ca": "OpenVoiceOS/matxa-cat-multispeaker-wavenext",
-        "pt-br": "<a brazilian voice>",
-        "pt": "<a european portuguese voice>"
-      }
-    }
-  }
-}
-```
-
-Keys are BCP-47 tags. A requested language is tried in three forms, in this
-order:
-
-1. Its standard form: a request for `pt-br` matches a `pt-BR` key.
-2. Its default region, which is the place where the language first appeared
-   and is still spoken: a bare `pt` matches a `pt-PT` key, and a bare `en`
-   matches an `en-GB` key.
-3. Its primary subtag: a request for `pt-BR` matches a `pt` key.
-
-A regional key therefore differs from the base language, and a bare key serves
-every region.
-
-The same mapping can come from the environment, which is usually easier for
-containers whose `mycroft.conf` carries no `lang2voice` entry for a given
-language — `PHOONNX_DEFAULT_VOICE_<LANG>`, with underscores standing in for
-dashes:
-
-```bash
-docker run -e PHOONNX_DEFAULT_VOICE_GL=proxectonos/celtia \
-           -e PHOONNX_DEFAULT_VOICE_PT_BR=<voice-id> \
-           -p 9666:9666 phoonnx
-```
-
-Resolution is table-major, not tag-major: every tag `lang2voice` might match
-(standard form, then default region, then primary subtag) is tried before the
-env table is looked at at all, so a `lang2voice` entry for the primary subtag (`pt`) still beats a more
-specific `PHOONNX_DEFAULT_VOICE_PT_BR` env var — the config wins outright for
-any language it names anything for, and the env vars only fill in languages
-the config leaves unconfigured. Below both, the voice index's own default for
-the language applies. Keys and tags are matched after normalisation, so
-`gl-ES`/`gl`, `pt-br`/`pt_BR` and similar spellings agree.
-
 ## Configuration
 
 In your OpenVoiceOS `mycroft.conf` or skills config, set:
@@ -81,18 +26,42 @@ In your OpenVoiceOS `mycroft.conf` or skills config, set:
 ```
 
 The module name and the config sub-key are both the entry-point name,
-`ovos-tts-plugin-phoonnx`.
+`ovos-tts-plugin-phoonnx`. This voice uses the eSpeak phonemizer, so the machine that runs
+the plugin needs the `espeak` extra:
+
+```bash
+pip install --pre "phoonnx[espeak]"
+```
 
 If `voice` is omitted or set to `"default"`, the plugin selects a default voice for the configured language.
 
+To check that the plugin speaks before you restart OVOS, run the plugin with the same
+settings from Python:
+
+```python
+from phoonnx.opm import PhoonnxTTSPlugin
+
+config = {"lang": "en-US", "voice": "OpenVoiceOS/pipertts_en-US_miro"}
+plugin = PhoonnxTTSPlugin(config=config)
+print(plugin.get_tts("Hello from phoonnx.", "check.wav", voice=config["voice"]))
+```
+
+```
+('check.wav', None)
+```
+
+The first call downloads the voice. Play `check.wav` to hear it. OVOS passes the configured
+`voice` to `get_tts`. A direct call must pass it too, because a call without `voice` uses
+the default voice of the language. If the plugin stops at start
+instead, see [Errors you may see](installation.md#errors-you-may-see).
+
 ### Multi-speaker voices
 
-Some models bundle several speakers in one voice (e.g. the Catalan multiaccent
-matxa model `OpenVoiceOS/matxa-cat-multiaccent-wavenext`, which carries the four
-dialects × two genders). Pick a speaker with `speaker_id` (an integer index) or
-`speaker` (a name resolved against the model's `speaker_id_map`, given bare or
-accent-qualified). `speaker_id` wins if both are set; single-speaker voices
-ignore both.
+Some models bundle several speakers in one voice. The Catalan multiaccent matxa model
+`OpenVoiceOS/matxa-cat-multiaccent-wavenext`, for example, holds four dialects with two
+speakers each. Pick a speaker with `speaker_id` (an integer index) or `speaker` (a name
+that the plugin looks up in the model's `speaker_id_map`, bare or accent-qualified).
+`speaker_id` wins if both are set. Single-speaker voices ignore both.
 
 ```json
 {
@@ -106,9 +75,11 @@ ignore both.
 }
 ```
 
-For the Catalan multiaccent model the indices are: `quim` 0 / `olga` 1 (balear),
-`grau` 2 / `elia` 3 (central), `pere` 4 / `emma` 5 (nord-occidental),
-`lluc` 6 / `gina` 7 (valencià).
+The config of the Catalan multiaccent model has no `speaker_id_map`, so pick its speaker
+with `speaker_id`. A `speaker` name logs a warning and falls back to the default speaker.
+The upstream model card (`projecte-aina/matxa-tts-cat-multiaccent`) gives the indices:
+`quim` 0 / `olga` 1 (balear), `grau` 2 / `elia` 3 (central), `pere` 4 / `emma` 5
+(nord-occidental), `lluc` 6 / `gina` 7 (valencià).
 
 ### Execution providers
 
@@ -189,7 +160,7 @@ Install the extra (pulls `audiosronnx`, which fetches its models from HuggingFac
 on first use):
 
 ```bash
-pip install phoonnx[audiosr]
+pip install --pre "phoonnx[audiosr]"
 ```
 
 Enabling `super_resolution` without that extra installed raises an `ImportError`
@@ -200,12 +171,20 @@ use — and, being a `SynthesisConfig` field, it can be switched on per call:
 
 ```python
 from phoonnx.config import SynthesisConfig
-from phoonnx.voice import TTSVoice
+from phoonnx.model_manager import TTSModelManager
 
-voice = TTSVoice.load("model.onnx", "model.json")
+manager = TTSModelManager()
+manager.load()
+manager.merge_default_voices()
+
+voice = manager.voices["OpenVoiceOS/pipertts_en-US_miro"].load()
 cfg = SynthesisConfig(super_resolution=True, super_resolution_model="novasr")
 for chunk in voice.synthesize("hello", cfg):
-    ...  # chunk.sample_rate is 48000
+    print(chunk.sample_rate)
+```
+
+```
+48000
 ```
 
 `synthesize_wav` takes its format from the first chunk, so the written WAV header
@@ -231,16 +210,77 @@ underscore name plus legacy aliases (resolved by `_cfg_opt` in `phoonnx/opm.py`)
 | Precision | `precision` | `auto`, `int8` or `full` (see above) |
 | Super-resolution | `super_resolution` | Enable 48 kHz upscaling (bool, off by default) |
 | Super-resolution model | `super_resolution_model` | `audiosronnx` engine name (default `novasr`) |
+| Chunk | `chunk` | Text per engine call: `sentence` (default), `clause`, `paragraph` or `none` |
 
 See [cloning.md](cloning.md) for the cloning keys in detail.
+
+## Per-language default voices
+
+`voice` pins one voice for every request. To serve **many languages from one
+server**, leave it unset and map languages to voices instead. The plugin then
+picks the voice for the language of each request, and downloads and caches it on
+first use:
+
+```json
+{
+  "tts": {
+    "module": "ovos-tts-plugin-phoonnx",
+    "ovos-tts-plugin-phoonnx": {
+      "lang2voice": {
+        "gl": "proxectonos/celtia",
+        "ca": "OpenVoiceOS/matxa-cat-multispeaker-wavenext",
+        "pt-br": "OpenVoiceOS/pipertts_pt-BR_miro",
+        "pt": "OpenVoiceOS/phoonnx_pt-PT_miro_unicode"
+      }
+    }
+  }
+}
+```
+
+Keys are BCP-47 tags. A requested language is tried in three forms, in this
+order:
+
+1. Its standard form: a request for `pt-br` matches a `pt-BR` key.
+2. Its default region, which is the place where the language first appeared
+   and is still spoken: a bare `pt` matches a `pt-PT` key, and a bare `en`
+   matches an `en-GB` key.
+3. Its primary subtag: a request for `pt-BR` matches a `pt` key.
+
+A regional key therefore differs from the base language, and a bare key serves
+every region.
+
+The same mapping can come from the environment, which is usually easier for
+containers whose `mycroft.conf` carries no `lang2voice` entry for a given
+language. Set `PHOONNX_DEFAULT_VOICE_<LANG>`, with underscores in place of
+dashes:
+
+```bash
+docker run -e PHOONNX_DEFAULT_VOICE_GL=proxectonos/celtia \
+           -e PHOONNX_DEFAULT_VOICE_PT_BR=OpenVoiceOS/pipertts_pt-BR_miro \
+           -p 9666:9666 ghcr.io/tigregotico/phoonnx:dev
+```
+
+The plugin tries the whole `lang2voice` table before it reads the environment.
+It tries the three forms of the tag (standard form, default region, primary subtag) against
+`lang2voice` first. So a `lang2voice` entry for `pt` wins over a more specific
+`PHOONNX_DEFAULT_VOICE_PT_BR` variable. The config wins for every language that it names,
+and the environment variables fill in only the languages that the config leaves out. Below
+both, the default of the voice index for the language applies. Keys and tags are compared
+after normalisation, so `gl-ES` and `gl`, or `pt-br` and `pt_BR`, agree.
 
 ## How It Works
 
 `PhoonnxTTSPlugin` extends the `ovos-plugin-manager` `TTS` base class. On initialization, it:
 
-1. Creates a `TTSModelManager` and loads the local voice cache
-2. Merges in default bundled voices
-3. Loads the configured voice (or the default voice for the language) into memory
+1. Creates a `TTSModelManager` and loads the local voice cache.
+2. Merges in the bundled voice indexes.
+3. Finds the configured voice, or the default voice for the language, in the catalog. It
+   does not load the voice. An unknown `voice` or a `lang` with no voice stops the plugin
+   here.
+4. Loads the voices in `pinned_voices`, if any.
+
+The first synthesis downloads and loads the voice. A missing extra or a missing download
+shows up at that point, not at start.
 
 ### Voice Caching
 
@@ -280,7 +320,7 @@ plugin = PhoonnxTTSPlugin(config={
 
 | Method | Description |
 |--------|-------------|
-| `get_tts(sentence, wav_file, lang=None, voice=None)` | Synthesize `sentence` and write to the WAV file path; `lang`/`voice` override the configured defaults per call |
+| `get_tts(sentence, wav_file, lang=None, voice=None, ...)` | Synthesize `sentence`, write it to the WAV file path, and return `(wav_file, None)`. `lang` and `voice` select the voice for one call. Without `voice`, the call uses the default voice of the language, not the configured `voice`. The other keyword arguments set cloning (`speaker_reference`, `ref_wav`, ...), the speaker (`speaker_id`, `speaker`) and the scales (`length_scale`, `noise_scale`, `noise_w_scale`) for one call |
 | `get_default_voice(lang)` | Returns the default `TTSModelInfo` for a language |
 | `refresh_voices(force=False)` | Refresh the voice catalog from the model manager |
 

@@ -52,7 +52,7 @@ class MixerTTSAdapter(BaseOnnxAdapter):
     # ------------------------------------------------------------------
 
     def configure(self, voice_config: Any) -> None:
-        self.configure_from_params(getattr(voice_config, "engine_params", None) or {})
+        self.configure_from_params(voice_config.engine_params)
 
     def configure_from_params(self, engine_params: Dict[str, Any]) -> None:
         self._engine_params = engine_params or {}
@@ -86,7 +86,7 @@ class MixerTTSAdapter(BaseOnnxAdapter):
         p = request.params
         args: Dict[str, np.ndarray] = {
             "token_ids": request.phoneme_ids.astype(np.int64),
-            "pace": np.array([float(p.get("pace", p.get("length_scale", 1.0)))], dtype=np.float32),
+            "pace": np.array([float(p.get("pace", 1.0))], dtype=np.float32),
             "speaker": np.array([int(request.speaker_id or 0)], dtype=np.int32),
             "emotion": np.array([int(p.get("emotion", 0))], dtype=np.int32),
             "pitch_mul": np.array([float(p.get("pitch_mul", 1.0))], dtype=np.float32),
@@ -166,6 +166,9 @@ class MixerTTSAdapter(BaseOnnxAdapter):
     def default_params(self) -> Dict[str, float]:
         return {"pace": 1.0, "pitch_mul": 1.0, "pitch_add": 0.0, "emotion": 0}
 
+    def length_scale_params(self, length_scale: float) -> Dict[str, float]:
+        return {"pace": 1.0 / length_scale}
+
     # ------------------------------------------------------------------
     # Optional
     # ------------------------------------------------------------------
@@ -186,6 +189,3 @@ class MixerTTSAdapter(BaseOnnxAdapter):
             if "mel_spec" in outs and "token_ids" in inputs:
                 return True
         return False
-
-    def param_labels(self) -> Dict[str, str]:
-        return {"pace": "Pace", "pitch_mul": "Pitch ×", "pitch_add": "Pitch +"}

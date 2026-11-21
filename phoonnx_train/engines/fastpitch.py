@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from phoonnx_train.engines.base import BaseTrainingEngine, TrainingEngineConfig
+from phoonnx_train.engines.vits import write_sidecars
 
 if TYPE_CHECKING:  # heavy import — only needed for type annotations
     import pytorch_lightning as pl
@@ -230,7 +231,7 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
             del onnx_model.metadata_props[:]
             for key, value in {
                 "model_type": module.hparams.variant,
-                "engine": module.hparams.variant,
+                "engine": "fastpitch",
                 "n_speakers": num_speakers,
                 "n_vocab": num_symbols,
                 "sample_rate": model_config.get("audio", {}).get("sample_rate", module.hparams.sample_rate),
@@ -249,6 +250,10 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
             _onnx.save(onnx_model, str(output_path))
         except ImportError:
             _LOG.warning("onnx package not installed — skipping metadata")
+
+        write_sidecars({**model_config, "engine": "fastpitch"}, output_dir, output_path.stem,
+                       generate_tokens=kwargs.get("generate_tokens", False),
+                       piper=kwargs.get("piper", False))
 
         _LOG.info("Exported ForwardTTS (%s) ONNX model to %s", module.hparams.variant, output_path)
         return output_path

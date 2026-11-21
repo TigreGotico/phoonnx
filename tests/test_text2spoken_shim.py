@@ -12,7 +12,6 @@ import unittest
 import warnings
 from importlib import import_module
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import text2spoken
 
@@ -102,16 +101,6 @@ class TestCallSitesUseText2spoken(unittest.TestCase):
                 self.assertIs(phonemizer.normalizer, text2spoken.normalize)
                 self.assertEqual(shim_warnings(caught), [])
 
-    def test_scorer_phonemizes_the_text2spoken_text_without_a_warning(self):
-        from phoonnx_train.evaluation.scorer import text_to_ids
-        phonemizer = MagicMock()
-        phonemizer.phonemize_to_list.return_value = [["a"]]
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            text_to_ids(CONTRACTED, phonemizer, MagicMock(), "en-US")
-        phonemizer.phonemize_to_list.assert_called_once_with(text2spoken.normalize(CONTRACTED, "en-US"), "en-US")
-        self.assertEqual(shim_warnings(caught), [])
-
     def test_importing_phoonnx_emits_no_shim_warning(self):
         """Run in a fresh interpreter, so that every module import happens inside the check."""
         code = (
@@ -121,14 +110,12 @@ class TestCallSitesUseText2spoken(unittest.TestCase):
             "    import text2spoken\n"
             "    import phoonnx.util, phoonnx.config, phoonnx.ssml\n"
             "    import phoonnx_train.preprocess, phoonnx_train.evaluation.scorer\n"
-            "print(json.dumps({\n"
-            "    'warnings': [str(w.message) for w in caught if 'phoonnx.normalization' in str(w.message)],\n"
-            "    'preprocess_uses_text2spoken': phoonnx_train.preprocess.normalize is text2spoken.normalize}))\n"
+            "print(json.dumps([str(w.message) for w in caught if 'phoonnx.normalization' in str(w.message)]))\n"
         )
         result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True,
                                 cwd=Path(__file__).resolve().parents[1])
         report = json.loads(result.stdout.strip().splitlines()[-1])
-        self.assertEqual(report, {"warnings": [], "preprocess_uses_text2spoken": True})
+        self.assertEqual(report, [])
 
 
 if __name__ == "__main__":
