@@ -44,7 +44,7 @@ ONNX interface (decoder = auxiliary graph):
       ``y_mask``        float32  [B, 1, T_slice]
   OUT ``output``        float32  [B, 1, N] or [N]   waveform samples
 """
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 import numpy as np
 import onnxruntime
@@ -238,14 +238,19 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
         out = self.decoder.run(None, feed)[0]
         return np.asarray(out).squeeze()
 
-    def synthesize(self, request: AdapterSynthesisRequest,
-                   session: onnxruntime.InferenceSession) -> AdapterSynthesisResult:
+    def synthesize_stream(self, request: AdapterSynthesisRequest,
+                          session: onnxruntime.InferenceSession) -> Iterator[AdapterSynthesisResult]:
+        """Yield each stitched decoder window as soon as it is decoded.
+
+        A sentence of at most ``fallback_frames`` frames is one part. The parts
+        join to the audio of :meth:`synthesize`.
+        """
         if self.decoder is None:
             raise RuntimeError(
                 "VitsStreamingAdapter has no decoder graph. Set "
                 "engine_params['decoder_path'] to the decoder .onnx.")
 
-        # 1) Encoder runs once, producing the full latent sequence.
+        # Encoder runs once, producing the full latent sequence.
         feed = self.build_feed_dict(request, session)
         z, y_mask = self._run_encoder(session, feed)
         sid = request.speaker_id or 0
@@ -256,15 +261,13 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
         nxt = self._streaming["next_chunk"]
         fallback = self._streaming["fallback_frames"]
 
-        # 2) Short sentence: one-shot decode (streaming overhead can't pay off).
+        # Short sentence: one-shot decode (streaming overhead can't pay off).
         if T <= fallback:
             audio = self._decode(z, y_mask, sid)
             self._resolve_hop(T, len(audio))
-            return AdapterSynthesisResult(audio=audio.astype(np.float32))
+            yield AdapterSynthesisResult(audio=audio.astype(np.float32))
+            return
 
-        # 3) Determine hop from a throwaway measure only if unknown. We avoid an
-        #    extra full decode: use the first chunk to establish hop.
-        segments: List[np.ndarray] = []
         start = 0
         is_first = True
         hop = self._hop_length or 256
@@ -276,13 +279,15 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
             ym_slice = y_mask[:, :, a:b] if y_mask is not None else None
             chunk_audio = self._decode(z[:, :, a:b], ym_slice, sid)
             if is_first and not self._hop_length:
-                # first full-context decode lets us pin hop precisely
+                # the first full-context decode pins hop
                 hop = self._resolve_hop(b - a, len(chunk_audio))
             lo = (start - a) * hop
             hi = min(lo + (end - start) * hop, len(chunk_audio))
-            segments.append(chunk_audio[lo:hi])
+            yield AdapterSynthesisResult(audio=chunk_audio[lo:hi].astype(np.float32))
             is_first = False
             start = end
 
-        audio = np.concatenate(segments).astype(np.float32)
-        return AdapterSynthesisResult(audio=audio)
+    def synthesize(self, request: AdapterSynthesisRequest,
+                   session: onnxruntime.InferenceSession) -> AdapterSynthesisResult:
+        parts = self.synthesize_stream(request, session)
+        return AdapterSynthesisResult(audio=np.concatenate([p.audio for p in parts]))

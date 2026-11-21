@@ -434,9 +434,8 @@ class OrpheusAdapter(BaseOnnxAdapter):
             raise RuntimeError("Orpheus voice missing tokenizer_path in engine_params")
         if request.params.get("reference_audio") is not None:
             raise RuntimeError(
-                "Orpheus clones in context from a transcribed reference, not from a bare "
-                "clip: pass speaker_reference_text alongside the audio, or select a named "
-                "voice with extra_params={'voice': ...}")
+                "Orpheus voices do not clone: a speaker reference is not supported. "
+                "Select a preset voice with extra_params={'voice': ...}")
 
         p = {**self.default_params(), **request.params}
         seed = p.get("seed")

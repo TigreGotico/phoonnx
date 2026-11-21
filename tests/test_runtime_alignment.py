@@ -85,6 +85,7 @@ def _make_voice(model_path):
     cfg.length_scale = None
     cfg.noise_w_scale = None
     cfg.engine_params = {}
+    cfg.num_speakers = 1
 
     voice = TTSVoice.__new__(TTSVoice)
     voice.session = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])

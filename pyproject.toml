@@ -20,7 +20,7 @@ dependencies = [
     "onnxruntime",
     "quebra-frases",
     "langcodes",
-    "linguatag>=0.1.5a1",
+    "linguatag>=0.4.1a1",
     # >=0.0.2a78: text2spoken.SayAs, which TextFrontend.say_as passes to the hook, and its
     # digits, telephone, characters, ordinal and date readings in every language with numbers
     "text2spoken>=0.0.2a78",

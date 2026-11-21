@@ -181,7 +181,7 @@ print(d["phoonnx_version"])
 ```
 
 ```text
-['add_blank_char', 'add_blank_word', 'alphabet', 'audio', 'blank', 'blank_at_end', 'blank_at_start', 'blank_between', 'blank_word', 'bos', 'engine', 'engine_params', 'eos', 'fold_compounds', 'hop_length', 'inference', 'keep_punctuation', 'lang_code', 'lang_id_map', 'lang_tokens', 'num_langs', 'num_speakers', 'num_symbols', 'pad', 'phoneme_id_map', 'phoneme_type', 'phonemizer_model', 'phoonnx_version', 'speaker_id_map', 'use_eos_bos', 'word_sep_token']
+['add_blank_char', 'add_blank_word', 'alphabet', 'audio', 'blank', 'blank_at_end', 'blank_at_start', 'blank_between', 'blank_word', 'bos', 'default_speaker_id', 'engine', 'engine_params', 'eos', 'fold_compounds', 'hop_length', 'inference', 'keep_punctuation', 'lang_code', 'lang_id_map', 'lang_tokens', 'num_langs', 'num_speakers', 'num_symbols', 'pad', 'phoneme_id_map', 'phoneme_type', 'phonemizer_model', 'phoonnx_version', 'speaker_id_map', 'use_eos_bos', 'word_sep_token']
 1.0
 ```
 
