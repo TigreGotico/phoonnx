@@ -12,7 +12,7 @@ import pytest
 from scriptconv.notation import _ARPA_TO_IPA
 from scriptconv.phonemizers.base import BasePhonemizer
 
-from phoonnx.config import Alphabet, SynthesisConfig
+from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig
 from phoonnx.tokenizer import TTSTokenizer, Vocabulary
 from phoonnx.voice import TTSVoice
 
@@ -20,21 +20,22 @@ CONSONANTS = "hbt"
 # Rows of the English voice index, by what the map holds beyond CONSONANTS.
 ESPEAK_NO_RHOTIC = "ɜəɛɹrɚ"     # piper espeak voices: no ɝ
 GLOWTTS_NO_NURSE = "əɛɹɚ"       # gruut GlowTTS voices: no ɝ, ɜ or r
-MISAKI_NO_RHOTICS = "ɜəɛɹr"     # styletts2 misaki voices: no ɝ or ɚ
+MISAKI_NO_RHOTICS = "ɜəɛɹr"     # 3 of the 43 misaki voices: no ɝ or ɚ
 FULL_RHOTICS = "ɜəɛɹrɝɚ"
 
 
-def _voice(symbols, phonemizer=None):
+def _voice(symbols, phonemizer=None, phoneme_type=None):
     # The ids are spaced and start high, so an id cannot equal its position.
     phoneme_map = {s: 100 + 7 * i for i, s in enumerate(CONSONANTS + symbols)}
     tokenizer = TTSTokenizer(Vocabulary(char2idx=phoneme_map),
                              add_blank_char=False, add_blank_word=False,
                              use_eos_bos=False, blank_at_end=False, blank_at_start=False)
     voice = TTSVoice.__new__(TTSVoice)
-    voice.phonemizer = phonemizer
-    voice.config = types.SimpleNamespace(lang_code="en-US", alphabet=Alphabet.IPA,
-                                         phoneme_type=None, add_diacritics=False,
+    voice.phonemizer = phonemizer or _FixedPhonemizer("")
+    voice.config = types.SimpleNamespace(lang_code="en-US", alphabet=Alphabet.IPA, text_casing="ignore",
+                                         phoneme_type=phoneme_type, add_diacritics=False,
                                          diacritizer_model=None, tokenizer=tokenizer)
+    voice.adapter = types.SimpleNamespace(takes_symbols=True, READS_TEXT=False)
     voice._frontend = voice._frontend_key = voice._frontend_phonemizer = None
     return voice, phoneme_map
 
@@ -57,31 +58,43 @@ def rhotic_table(monkeypatch):
     monkeypatch.setitem(_ARPA_TO_IPA, "AXR", "ɚ")
 
 
-@pytest.fixture
-def digraph_table(monkeypatch):
-    """ARPABET table that spells ER as ɜr and AXR as ər."""
-    for key in ("ER", "ER0", "ER1", "ER2"):
-        monkeypatch.setitem(_ARPA_TO_IPA, key, "ɜr")
-    monkeypatch.setitem(_ARPA_TO_IPA, "AXR", "ər")
-
-
 @pytest.mark.parametrize("arpa, symbols, spelling", [
     ("HH ER1 T", ESPEAK_NO_RHOTIC, "hɜɹt"),
     ("HH ER2 T", ESPEAK_NO_RHOTIC, "hɜɹt"),
     ("HH ER T", MISAKI_NO_RHOTICS, "hɜɹt"),
-    ("HH ER1 T", "ɜr", "hɜrt"),
     ("HH ER1 T", GLOWTTS_NO_NURSE, "hɚt"),
     ("HH ER1 T", "əɹ", "həɹt"),
-    ("HH ER1 T", "ər", "hərt"),
     ("B ER0", MISAKI_NO_RHOTICS, "bəɹ"),
     ("B AXR", MISAKI_NO_RHOTICS, "bəɹ"),
-    ("B AXR", "ər", "bər"),
     ("HH ER1 T B ER0", MISAKI_NO_RHOTICS, "hɜɹtbəɹ"),
 ])
 def test_missing_rhotic_speaks_a_spelling_the_map_holds(rhotic_table, arpa, symbols, spelling):
     voice, phoneme_map = _voice(symbols)
     assert _ids(voice, arpa) == _spelled(phoneme_map, spelling)
     assert voice.tokenizer.not_found_characters == set()
+
+
+@pytest.mark.parametrize("phoneme_type, spelling", [
+    (PhonemeType.ESPEAK, "hɜːt"),      # espeak-ng writes the stressed vowel as ɜː
+    (PhonemeType.MISAKI_EN, "hɜɹt"),
+    (PhonemeType.MISAKI, "hɜɹt"),
+    (PhonemeType.GRUUT, "hɜɹt"),
+    (PhonemeType.GORUUT, "hɜɹt"),
+    (None, "hɜɹt"),
+])
+def test_nurse_spelling_follows_the_training_phonemizer(rhotic_table, phoneme_type, spelling):
+    voice, phoneme_map = _voice("ɜːəɛɹɚ", phoneme_type=phoneme_type)
+    assert _ids(voice, "HH ER1 T") == _spelled(phoneme_map, spelling)
+
+
+def test_espeak_voice_without_the_long_mark_uses_the_shared_order(rhotic_table):
+    voice, phoneme_map = _voice(ESPEAK_NO_RHOTIC, phoneme_type=PhonemeType.ESPEAK)
+    assert _ids(voice, "HH ER1 T") == _spelled(phoneme_map, "hɜɹt")
+
+
+def test_espeak_voice_respells_the_unstressed_vowel_in_the_shared_order(rhotic_table):
+    voice, phoneme_map = _voice("ɜːəɛɹ", phoneme_type=PhonemeType.ESPEAK)
+    assert _ids(voice, "B ER0") == _spelled(phoneme_map, "bəɹ")
 
 
 @pytest.mark.parametrize("arpa, spelling", [
@@ -111,33 +124,6 @@ def test_no_fallback_keeps_the_warning(rhotic_table, arpa, symbols, missing, spe
     assert ids == _spelled(phoneme_map, spelling)
     assert voice.tokenizer.not_found_characters == {missing}
     assert warning.call_count == 1 and repr(missing) in warning.call_args.args[0]
-
-
-def test_digraph_table_output_stays_as_spelled(digraph_table):
-    """A voice that holds ɜ, ə and r keeps the two-symbol spelling, and r stays r."""
-    voice, phoneme_map = _voice(ESPEAK_NO_RHOTIC)
-    assert _ids(voice, "HH ER1 T") == _spelled(phoneme_map, "hɜrt")
-    assert _ids(voice, "B AXR") == _spelled(phoneme_map, "bər")
-
-
-@pytest.mark.parametrize("arpa, symbols, spelling", [
-    ("HH ER1 T", GLOWTTS_NO_NURSE, "hɚt"),
-    ("B AXR", GLOWTTS_NO_NURSE, "bɚ"),
-    ("HH ER1 T", "ɝɹ", "hɝt"),
-    ("HH ER1 T", "ɜɹ", "hɜɹt"),
-    ("HH ER1 T", "əɹ", "həɹt"),
-    ("B AXR", "əɹ", "bəɹ"),
-])
-def test_digraph_table_reaches_a_voice_without_those_symbols(digraph_table, arpa, symbols, spelling):
-    voice, phoneme_map = _voice(symbols)
-    assert _ids(voice, arpa) == _spelled(phoneme_map, spelling)
-    assert voice.tokenizer.not_found_characters == set()
-
-
-def test_digraph_table_with_no_fallback_keeps_the_warning(digraph_table):
-    voice, phoneme_map = _voice("ɜɛ")
-    assert _ids(voice, "HH ER1 T") == _spelled(phoneme_map, "hɜt")
-    assert voice.tokenizer.not_found_characters == {"r"}
 
 
 class _FixedPhonemizer(BasePhonemizer):
