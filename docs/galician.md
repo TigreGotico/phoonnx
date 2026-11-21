@@ -57,12 +57,25 @@ stressless. The voice manager passes this through from the voice's `phonemizer_m
 p_stress = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA, model="stress")
 ```
 
-## Factory dispatch
+## Building it from a config
+
+A `scriptconv` `TextFrontend` builds the phonemizer that its `FrontendConfig` names:
 
 ```python
-from phoonnx.config import PhonemeType, Alphabet, get_phonemizer
-p = get_phonemizer(PhonemeType.COTOVIA, alphabet=Alphabet.IPA, model="stress")
+from phoonnx.config import Alphabet, PhonemeType
+from scriptconv.frontend import FrontendConfig, TextFrontend
+
+frontend = TextFrontend(FrontendConfig(lang="gl", phonemizer=PhonemeType.COTOVIA,
+                                       alphabet=Alphabet.IPA, model="stress"))
+print(type(frontend.backend).__name__)
 ```
+
+```text
+CotoviaPhonemizer
+```
+
+`phoonnx.config.get_phonemizer` still works, but it is deprecated and warns with the
+release that removes it.
 
 ## Galician StyleTTS2 voices (ProxectoNos Celtia and Brais)
 
@@ -89,7 +102,8 @@ from phoonnx.model_manager import TTSModelManager
 
 manager = TTSModelManager()
 manager.load()
-voice = manager.voices["proxectonos/celtia-styletts2"].load()
+manager.merge_default_voices()
+voice = manager.get_voice("proxectonos/celtia-styletts2").load()
 for chunk in voice.synthesize("Bo día, como estás?", SynthesisConfig()):
     ...
 ```

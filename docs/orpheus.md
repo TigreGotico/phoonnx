@@ -8,9 +8,12 @@ turns into 2048 samples at 24 kHz.
 
 ## Read this first: Orpheus is a GPU engine
 
-A 3B backbone costs about **0.37 s per decode step** on 12 CPU cores, and SNAC needs
-~82 tokens for every second of audio. Measured end to end, that is **37-46x slower
-than real time**. Upstream serves it through vLLM on a GPU.
+SNAC needs about 82 tokens for every second of audio, and the 3B backbone makes one
+token per step. On a 12-core CPU in fp32, the backbone took 0.43 to 0.56 s per token,
+so it ran **36-46x slower than real time**: mean 38.7x over 7 sentences, backbone time
+only ([measurement](../scripts/conversion/orpheus/evidence/README.md)).
+
+Upstream serves Orpheus through vLLM on a GPU.
 
 Canopy Labs announced 1B, 400M and 150M tiers, but **never released them**. Their own
 loader still refuses those names with `"not supported ... will be released very soon"`,
@@ -27,14 +30,18 @@ conversational realism:
 
 `tara`, `leah`, `jess`, `leo`, `dan`, `mia`, `zac`, `zoe`
 
-Select one per call, or pin it on the voice:
+Each index entry pins one name in its `engine_options`, for example `{"voice": "leo"}`.
+To select another name for one call, pass it in `extra_params`:
 
 ```python
-voice.synthesize("Hello there.", extra_params={"voice": "leo"})
+from phoonnx.config import SynthesisConfig
+
+voice.synthesize("Hello there.", syn_config=SynthesisConfig(extra_params={"voice": "leo"}))
 ```
 
-A plain `speaker_id` also works: the index ships a `speaker_id_map`, and the adapter
-resolves the id back to the name before it reaches the model.
+A name that the checkpoint does not have raises `ValueError`, and the message lists the
+names it has. A plain `speaker_id` selects a name only when the voice config has a
+`speaker_id_map`. The index entries ship no voice config, so they have no map.
 
 ### Emotive tags
 
@@ -93,9 +100,8 @@ never appear mid-audio. It is dead code in their serving path; generation really
 
 ## Cloning
 
-Orpheus clones **in context**, from a transcribed reference — not from a bare clip.
-Passing `speaker_reference` alone raises. Use a named voice unless you also have the
-reference transcript.
+Orpheus does not clone. A call with a `speaker_reference` raises `RuntimeError`, also
+when `speaker_reference_text` is set. Use one of the named voices.
 
 ## Multilingual research releases
 
