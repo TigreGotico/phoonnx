@@ -342,8 +342,11 @@ def test_synthesize_rejects_a_bare_reference_clip():
     req = AdapterSynthesisRequest(phoneme_ids=np.asarray([[1]], np.int64),
                                   phoneme_lengths=np.asarray([1], np.int64),
                                   params={"reference_audio": (np.zeros(10), 24000)})
-    with pytest.raises(RuntimeError, match="speaker_reference_text"):
+    with pytest.raises(RuntimeError, match="do not clone") as err:
         a.synthesize(req, _FakeSession(_logits_emitting([END_OF_SPEECH])))
+    message = str(err.value)
+    assert "extra_params={'voice': ...}" in message
+    assert "speaker_reference" not in message.replace("a speaker reference", "")
 
 
 def test_synthesize_raises_when_no_complete_frame():
