@@ -2,9 +2,7 @@
 
 > This page targets developers who need to reason about synthesis latency —
 > where time goes inside a single `synthesize()` call, and how to compare
-> voices or execution providers. The docs tree is being restructured in a
-> parallel change; this page stays at `docs/benchmarking.md` regardless of
-> where the rest of the tree ends up.
+> voices or execution providers.
 
 ## Running the benchmark
 
@@ -32,8 +30,9 @@ library makes ONNX Runtime fall back to CPU silently, so always check the
 ## What the stages mean
 
 Each stage mirrors a step inside `TTSVoice.synthesize()` (see
-`phoonnx/voice.py`), timed with the same public methods synthesis itself
-calls — nothing is patched or mocked in the timed path:
+`phoonnx/voice.py`).
+
+The script times its own staged path: it runs each step over the whole text before the next step starts, through `phonemize` and the deprecated `phonemes_to_ids` and `phoneme_ids_to_audio`. Synthesis itself runs `prepare` and `render`, which take the text one sentence at a time. Thus the stage times show where the time goes, but their sum can differ from the time of one `synthesize()` call. Nothing is patched or mocked in the timed path:
 
 - **config_parse** / **session_create** — loading the voice: parsing its JSON
   config versus building the ONNX Runtime session. Reported once, cold, since
@@ -56,18 +55,18 @@ calls — nothing is patched or mocked in the timed path:
 ## TTFA vs RTF
 
 **Time-to-first-audio (TTFA)** is the wall-clock time from calling
-`synthesize()` to receiving the *first* `AudioChunk`. Because `synthesize()`
-phonemizes and tokenizes the whole input text before running inference on the
-first sentence, TTFA for a multi-sentence paragraph is not driven only by that
-first sentence's inference cost — it also carries the cost of phonemizing
-every sentence up front. This is the number that determines how long a user
-waits in a live conversation before hearing anything.
+`synthesize()` to receiving the *first* `AudioChunk`. `synthesize()` phonemizes,
+tokenizes and synthesizes one sentence before it reads the next. Thus TTFA for a
+multi-sentence paragraph carries the cost of the first sentence only, plus the
+normalisation of the whole text, which runs before the text is cut into
+sentences. This is the number that determines how long a user waits in a live
+conversation before hearing anything.
 
 **Real-time factor (RTF)** is total synthesis time divided by the seconds of
 audio produced. An RTF below 1.0 means synthesis runs faster than playback —
 the model can keep up with real-time streaming. RTF says nothing about how
 long the *first* chunk takes to arrive; a voice can have a low RTF and still
-feel slow to start if phonemization of a long text delays the first sentence.
+feel slow to start if its first sentence is long.
 
 Read them together: TTFA answers "how long until I hear anything," RTF
 answers "can this keep up once it starts."

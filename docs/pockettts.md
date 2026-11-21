@@ -50,9 +50,33 @@ Synthesis of one chunk runs like this:
 5. The loop stops a few frames after the end-of-speech logit crosses its threshold.
 6. `mimi_decoder` turns the latent frames into 24 kHz audio. It runs on small, fixed-size
    sub-chunks of 15 frames and carries its state forward between them, so the join inside
-   one text chunk's audio is seamless.
+   one text chunk's audio has no audible seam.
 
 The model produces 12.5 latent frames per second. Each frame decodes to 1920 samples.
+
+### Stream the audio
+
+`TTSVoice.stream` yields the audio of each 15-frame sub-chunk when `mimi_decoder` has
+made it, so playback can start before the model has finished the sentence. Peak
+normalisation needs the whole sentence, so turn it off to get the sub-chunks:
+
+```python
+from phoonnx.config import SynthesisConfig
+
+config = SynthesisConfig(normalize_audio=False, extra_params={"seed": 7})
+text = "Hello world. This is a longer second sentence that takes a while to say."
+for chunk in voice.stream(text, config):
+    print(len(chunk.audio_float_array))
+```
+
+```text
+28800
+28800
+28800
+5760
+```
+
+Each full part is 15 frames of 1920 samples. Joined, the parts give the same audio as `voice.synthesize(text, config)`. With the default config, `stream` yields one chunk for each text chunk, as `synthesize` does. See [Streaming the audio of a sentence](api.md#streaming-the-audio-of-a-sentence).
 
 Each synthesis call starts `flow_lm_main` from the voice's saved state, not from wherever
 the previous text chunk left off. So state only carries forward within a chunk's own
@@ -120,10 +144,7 @@ Set them per call through `SynthesisConfig.extra_params`, or per voice through
 
 ## Precision
 
-The voice index points at the 8-bit graphs, which is what makes the model real time on a
-small CPU. The mirror also holds full-precision graphs under the same names without the
-`_int8` suffix. Point `model_url` and the auxiliary URLs at those to trade speed for the
-reference numerics.
+The voice index points at the 8-bit graphs, which is what makes the model real time on a small CPU. These entries carry `"precision": "int8"`, so a load with `precision="full"` raises `PrecisionUnavailable`. The mirror also holds full-precision graphs under the same names without the `_int8` suffix. To trade speed for the reference numerics, write your own index entry whose `model_url` and auxiliary URLs point at those graphs.
 
 The Italian voices are different. Their 8-bit graphs repeat words on some sentences, so
 the Italian entries load the full-precision graphs. Load an Italian voice with

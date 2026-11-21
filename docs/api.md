@@ -40,7 +40,7 @@ Phonemizer.GRAPHEMES Alphabet.UNICODE
 
 ### 2. Turn text into model input
 
-`TTSVoice.prepare` is the text half of synthesis. It reads text and yields one `Utterance` for each engine call. An `Utterance` holds the text, the symbols that the tokenizer read, the token ids, and the side streams.
+`TTSVoice.prepare` is the text half of synthesis. It reads text and yields one `Utterance` for each engine call. An `Utterance` holds the text, the symbols that the tokenizer read, the token ids, the side streams, and the params that the adapter read from the text.
 
 A `TTSVoice` normally comes from `TTSVoice.load("model.onnx", "model.json")`, which also opens the ONNX session. `prepare` and `phonemize` use no session, so this example passes `session=None`.
 
@@ -55,7 +55,7 @@ for utterance in voice.prepare("hi hi"):
 
 ```text
 [['h', 'i']]
-Utterance(text='hi hi', symbols=('h', 'i', ' ', 'h', 'i'), ids=(1, 0, 4, 0, 5, 0, 3, 0, 4, 0, 5, 0, 2), streams={})
+Utterance(text='hi hi', symbols=('h', 'i', ' ', 'h', 'i'), ids=(1, 0, 4, 0, 5, 0, 3, 0, 4, 0, 5, 0, 2), streams={}, params={})
 ```
 
 The ids hold the blank id `0` between symbols and the start and end ids `1` and `2`. The tokenizer adds them.
@@ -93,7 +93,7 @@ With a loaded voice, the same call is `write_wav(voice.synthesize("Hello"), wav_
 
 ### 4. Change one call
 
-`SynthesisConfig` holds the settings of one call. Each engine setting is `None` until you set it. A `None` scale takes the value of the `inference` block in the voice's `config.json`, and then the engine's default.
+`SynthesisConfig` holds the settings of one call. Each engine setting is `None` until you set it. A `None` scale takes the value of the voice's `engine_params`, then of the `inference` block in the voice's `config.json`, and then the engine's default.
 
 ```python
 from phoonnx.config import SynthesisConfig
@@ -107,7 +107,14 @@ None None
 2
 ```
 
-This config sets no `inference` scales and the call sets none, so the engine's own default applies. A scale in the call wins over one in `config.json`, and that wins over the engine's default.
+This config sets no scales and the call sets none, so the engine's own default applies. The order of precedence is:
+
+1. A scale in the call.
+2. The same key in the voice's `engine_params`.
+3. The `inference` block of `config.json`.
+4. The engine's default.
+
+The keys of `SynthesisConfig.extra_params` come last and win over all four.
 
 ## Part 2: What exists in 1.x
 
@@ -122,11 +129,13 @@ This part lists the names that exist in the 1.x code. The package root exports n
 | `TTSVoice.prepare` | `phoonnx.voice` | Text to `Iterator[Utterance]`. |
 | `TTSVoice.render` | `phoonnx.voice` | One `Utterance` to one `AudioChunk`. |
 | `TTSVoice.synthesize` | `phoonnx.voice` | Text to `Iterable[AudioChunk]`. Argument `syn_config`, flag `include_alignments`. |
+| `TTSVoice.stream` | `phoonnx.voice` | Text to `Iterator[AudioChunk]`, yielded as the engine makes the audio. See [Streaming the audio of a sentence](#streaming-the-audio-of-a-sentence). |
 | `TTSVoice.synthesize_ssml` | `phoonnx.voice` | SSML to `Iterable[AudioChunk]`. Arguments `lang` and `on_mark`. |
 | `TTSVoice.synthesize_wav`, `synthesize_ssml_wav` | `phoonnx.voice` | Write a WAV file through `write_wav`. |
 | `TTSVoice.frontend` | `phoonnx.voice` | The scriptconv `TextFrontend` of the voice. |
 | `TTSVoice.phonemize` | `phoonnx.voice` | Text to phonemes. |
-| `Utterance` | `phoonnx.voice` | Frozen: `text`, `symbols`, `ids`, `streams`. |
+| `TTSVoice.encoder` | `phoonnx.voice` | The `Encoder` that turns text into the ids of the voice's engine. |
+| `Utterance` | `phoonnx.encoders` | Frozen: `text`, `symbols`, `ids`, `streams`, `params`. `phoonnx.voice` re-exports it. |
 | `AudioChunk` | `phoonnx.voice` | Audio plus `phoneme_ids`, `phoneme_id_samples` and `phoneme_alignments`. |
 | `write_wav` | `phoonnx.audio` | Writes any chunk stream to a WAV writer. |
 
@@ -136,16 +145,16 @@ This part lists the names that exist in the 1.x code. The package root exports n
 
 | Name | Module | Role |
 | --- | --- | --- |
-| `VoiceConfig` | `phoonnx.config` | What the model is. `from_dict` reads a config and `to_native_dict` writes the native format. |
+| `VoiceConfig` | `phoonnx.config` | What the model is. `from_dict` reads a config and `to_dict` writes the native format. |
 | `SynthesisConfig` | `phoonnx.config` | One call. A flat list of fields. |
-| `Engine` | `phoonnx.config` | 32 members. Names a file format or an architecture. |
+| `Engine` | `phoonnx.config` | Names a file format or an architecture. The alias `kokoro` gives `Engine.STYLETTS2`. |
 | `Alphabet`, `PhonemeType` | `phoonnx.config` | Re-exports of scriptconv enums. `PhonemeType` is scriptconv `Phonemizer`. |
 | `Chunk` | `phoonnx.config` | Re-export of the scriptconv enum behind `SynthesisConfig.chunk`. |
 | `TTSModelManager`, `TTSModelInfo` | `phoonnx.model_manager` | The voice index and the index entry. |
 
 ### Engines and errors
 
-The engine registry in `phoonnx.engines` holds 30 names, and `phoonnx.engines.list_engines()` returns them. The `Engine` enum has 32 members. The two lists differ by these names:
+The engine registry in `phoonnx.engines` holds the adapter names, and `phoonnx.engines.list_engines()` returns them. The `Engine` enum has more members than the registry, because it also names the file formats that load through the VITS adapter. This example prints the two counts and the names that are in only one of them:
 
 ```python
 from phoonnx.config import Engine
@@ -156,36 +165,88 @@ print(sorted(set(e.value for e in Engine) ^ set(list_engines())))
 ```
 
 ```text
-32 30
-['coqui', 'mimic3', 'phoonnx', 'piper', 'transformers', 'vits', 'vits_prior_split', 'vits_streaming']
+36 31
+['coqui', 'mimic3', 'phoonnx', 'piper', 'transformers']
 ```
 
 An adapter subclasses `BaseOnnxAdapter` in `phoonnx.engines.base`. It receives an `AdapterSynthesisRequest` and returns an `AdapterSynthesisResult`. `phoonnx.errors` defines `PhoonnxError` and the classes below it:
 
 - `VoiceLoadError`, with the subclasses `FrontendMismatchError`, `UnsupportedConfigError` and `PrecisionUnavailable`.
 - `ExportNotSupported`.
+- `NonFiniteAudioError`.
 - `UnsupportedTokenizer`, `UnsupportedSentencePieceModel`, `UnsupportedVoiceLanguage` and `VoiceExceedsMemoryBudget`.
 
-`PrecisionUnavailable` and `UnsupportedVoiceLanguage` also subclass `ValueError`. `VoiceExceedsMemoryBudget` also subclasses `RuntimeError`. Only `PrecisionUnavailable` and the four classes that predate the hierarchy are raised in 1.x. `VoiceLoadError`, `FrontendMismatchError`, `UnsupportedConfigError` and `ExportNotSupported` have no raise site until the 2.0 steps in Part 3 land.
+`PrecisionUnavailable` and `UnsupportedVoiceLanguage` also subclass `ValueError`. `NonFiniteAudioError` and `VoiceExceedsMemoryBudget` also subclass `RuntimeError`.
+
+`TTSVoice.load` raises `VoiceLoadError` when the config file does not exist. It also raises it for a VITS graph whose vocabulary uses an id that is not below `num_symbols`. Synthesis raises `NonFiniteAudioError` when the model returns NaN or infinite samples, before the audio is levelled. Written as 16-bit samples, such audio would be silence. `FrontendMismatchError`, `UnsupportedConfigError` and `ExportNotSupported` have no raise site until the 2.0 steps in Part 3 land.
 
 The root package exports `TTSVoice`, `AudioChunk`, `Utterance`, `VoiceConfig`, `SynthesisConfig`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. Each name loads on first access, so `import phoonnx` stays cheap.
 
 ### Writing the native config
 
-`VoiceConfig.to_native_dict()` writes the native format.
+`VoiceConfig.to_dict()` writes the native format, and `VoiceConfig.from_dict` reads it back. The `phoonnx_version` key holds the installed package version.
 
 ```python
-d = voice.config.to_native_dict()
+from phoonnx.version import VERSION_STR
+
+d = voice.config.to_dict()
 print(sorted(d))
-print(d["phoonnx_version"])
+print(d["phoonnx_version"] == VERSION_STR)
+print(VoiceConfig.from_dict(d).tokenizer.encode("hi"))
 ```
 
 ```text
-['add_blank_char', 'add_blank_word', 'alphabet', 'audio', 'blank', 'blank_at_end', 'blank_at_start', 'blank_between', 'blank_word', 'bos', 'engine', 'engine_params', 'eos', 'fold_compounds', 'hop_length', 'inference', 'keep_punctuation', 'lang_code', 'lang_id_map', 'lang_tokens', 'num_langs', 'num_speakers', 'num_symbols', 'pad', 'phoneme_id_map', 'phoneme_type', 'phonemizer_model', 'phoonnx_version', 'speaker_id_map', 'use_eos_bos', 'word_sep_token']
-1.0
+['add_blank_char', 'add_blank_word', 'alphabet', 'audio', 'blank', 'blank_at_end', 'blank_at_start', 'blank_between', 'blank_word', 'bos', 'engine', 'engine_params', 'eos', 'fold_compounds', 'hop_length', 'inference', 'keep_punctuation', 'lang_code', 'lang_id_map', 'lang_tokens', 'num_langs', 'num_speakers', 'num_symbols', 'pad', 'phoneme_id_map', 'phoneme_type', 'phonemizer_model', 'phoonnx_version', 'speaker_id_map', 'text_casing', 'use_eos_bos', 'word_sep_token']
+True
+[4, 5]
 ```
 
-The `phoonnx_version` value is a fixed string. It is not the installed package version. The 2.0 `to_dict()` writes the real version.
+`to_native_dict()` is the deprecated name. It warns and returns the same dict.
+
+The wheel ships a JSON Schema of this format as `phoonnx/config.schema.json`. A validator such as `jsonschema` can check a `config.json` against it.
+
+```python
+import json
+from importlib.resources import files
+
+schema = json.loads(files("phoonnx").joinpath("config.schema.json").read_text())
+print(schema["required"])
+```
+
+```text
+['phoonnx_version', 'engine', 'phoneme_type', 'alphabet', 'lang_code', 'audio', 'num_symbols', 'phoneme_id_map']
+```
+
+### The encoder
+
+The encoder is the step between the text frontend and the engine. It turns text into the ids that the model reads, and it runs no neural network. `TTSVoice.prepare` reads text through `TTSVoice.encoder`.
+
+```python
+from phoonnx.config import SynthesisConfig
+
+print(type(voice.encoder).__name__)
+print(next(voice.encoder.encode("hi", SynthesisConfig())).ids)
+```
+
+```text
+SymbolEncoder
+(1, 0, 4, 0, 5, 0, 2)
+```
+
+`phoonnx.encoders` holds the `Encoder` protocol and its two classes:
+
+- `SymbolEncoder` gives the symbols of the frontend to the voice's vocabulary tokenizer. Phoneme and grapheme engines use it.
+- `TextEncoder` gives the text of each chunk to the engine's own tokenizer, such as a BPE.
+
+The adapter builds the encoder of a voice in `BaseOnnxAdapter.make_encoder`. An adapter that overrides `encode_text` gets a `TextEncoder`, and every other adapter gets a `SymbolEncoder`.
+
+### Streaming the audio of a sentence
+
+`TTSVoice.stream(text, config)` yields the audio as the engine makes it. An engine that makes audio in steps, such as Pocket TTS, yields parts of a sentence. Every other engine yields one chunk for each sentence. Joined, the parts give the audio of `synthesize`. The first part of a sentence carries its phonemes and ids.
+
+Peak normalisation, a loudness target, voice conversion and super-resolution need the whole sentence. When one of them is on, each sentence is one chunk. Peak normalisation is on by default, so pass `SynthesisConfig(normalize_audio=False)` to get parts of a sentence.
+
+An adapter streams by overriding `BaseOnnxAdapter.synthesize_stream(request, session)`. The default yields the one result of `synthesize`.
 
 ## Part 3: The target API for phoonnx 2.0
 
@@ -210,7 +271,6 @@ The objects in this part are targets, except where a row says that a name exists
 | `VoiceConfig.speakers`, `languages` | `speaker_id_map`, `lang_id_map` |
 | `VoiceConfig.defaults` | `length_scale`, `noise_scale`, `noise_w_scale`, which are `None` when `config.json` omits them, so the engine's default applies |
 | `VoiceConfig.assets` | `engine_params`, without `providers` |
-| `VoiceConfig.to_dict()` and a JSON Schema | `to_native_dict()` |
 | `SynthesisConfig.stages: Stages` | `add_diacritics`, `diacritizer_model`, `chunk` |
 | `SynthesisConfig.speaker`, `language`, `reference` | `speaker_id`, `lang_id`, `speaker_reference`, `speaker_reference_text`, `speaker_reference_lang` |
 | `SynthesisConfig.audio: AudioPost` | `normalize_audio`, `target_loudness`, `volume`, `super_resolution`, `super_resolution_model`, `vc_reference`, `vc_engine` |
@@ -227,7 +287,7 @@ The objects in this part are targets, except where a row says that a name exists
 | `phoonnx.compat.convert_config` | The loaders of `config_loaders.py` and the `from_piper_config`, `from_vosk_config`, `from_mimic3_config`, `from_coqui_config` and `from_tokens_txt` constructors |
 | `phoonnx.compat.export_piper`, `export_sherpa` | The writers in `phoonnx_train/engines/vits.py` |
 | `OPTION_ALIASES` in the OPM plugin | The per-key handling of `mycroft.conf` options |
-| Raise sites for `VoiceLoadError`, `FrontendMismatchError`, `UnsupportedConfigError` and `ExportNotSupported` | The classes exist in 1.x. Nothing raises them |
+| Raise sites for `FrontendMismatchError`, `UnsupportedConfigError` and `ExportNotSupported` | The classes exist in 1.x. Nothing raises them |
 
 ### The three configs
 
@@ -269,7 +329,7 @@ An adapter must define `detect(session, config)` (static), `default_params()`, `
 
 The root already exports `TTSVoice`, `VoiceConfig`, `SynthesisConfig`, `Utterance`, `AudioChunk`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. The target adds `AudioPost`, `SpeakerReference` and `Runtime`.
 
-The hierarchy of `phoonnx.errors` exists in 1.x. The target is the raise sites. `VoiceLoadError` covers a missing config and a `num_symbols` mismatch. `with_frontend` raises `FrontendMismatchError`. A foreign config raises `UnsupportedConfigError`. An export that the target cannot run raises `ExportNotSupported`.
+The hierarchy of `phoonnx.errors` exists in 1.x, and `VoiceLoadError` already has its raise sites. The target is the other raise sites. `with_frontend` raises `FrontendMismatchError`. A foreign config raises `UnsupportedConfigError`. An export that the target cannot run raises `ExportNotSupported`.
 
 ### Model manager
 
