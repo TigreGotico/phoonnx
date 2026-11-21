@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.125.1a1](https://github.com/TigreGotico/phoonnx/tree/1.125.1a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.0a1...1.125.1a1)
+
+## [1.125.0a1](https://github.com/TigreGotico/phoonnx/tree/1.125.0a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.6a1...1.125.0a1)
+
+**Merged pull requests:**
+
+- feat: add the Kabyle voices phoonnx\_kab-DZ\_miro\_o2i and phoonnx\_kab-DZ\_dii\_o2i [\#862](https://github.com/TigreGotico/phoonnx/pull/862) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.124.6a1](https://github.com/TigreGotico/phoonnx/tree/1.124.6a1) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.5a1...1.124.6a1)
@@ -204,7 +216,6 @@
 **Merged pull requests:**
 
 - fix: the Mimic 3 loader reads its tokens file, and a null pad stays null [\#793](https://github.com/TigreGotico/phoonnx/pull/793) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: build training ids through the TextFrontend that inference uses [\#753](https://github.com/TigreGotico/phoonnx/pull/753) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.118.4a1](https://github.com/TigreGotico/phoonnx/tree/1.118.4a1) (2026-11-19)
 
@@ -310,7 +321,6 @@
 **Merged pull requests:**
 
 - fix: hold the cloned-voice cache key and value in one attribute [\#759](https://github.com/TigreGotico/phoonnx/pull/759) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- feat: add the xvits engine [\#754](https://github.com/TigreGotico/phoonnx/pull/754) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.114.2a1](https://github.com/TigreGotico/phoonnx/tree/1.114.2a1) (2026-11-18)
 
