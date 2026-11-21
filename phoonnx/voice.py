@@ -29,7 +29,7 @@ from scriptconv.frontend import Stages, TextFrontend
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
-from phoonnx.config import VoiceConfig, SynthesisConfig, Alphabet, _voice_phonemizer, \
+from phoonnx.config import VoiceConfig, SynthesisConfig, Alphabet, PhonemeType, _voice_phonemizer, \
     _removal_version, check_lang_supported, get_text_casing, voice_frontend, without_normalizer
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
@@ -58,6 +58,31 @@ from phoonnx.util import LOG
 
 # Alias kept for callers that imported the sentinel from here before it moved.
 _UNSET = UNSET
+
+# Spellings of the r-coloured vowels for a voice whose map lacks the first one,
+# best first. ɹ comes before r because English phonemizers write ɹ.
+_RHOTIC_FALLBACKS = {
+    "ɝ": ("ɜɹ", "ɚ", "əɹ"),
+    "ɚ": ("əɹ",),
+}
+# espeak-ng writes the stressed r-coloured vowel of en-us and en-gb as ɜː, never ɜɹ.
+_ESPEAK_NURSE = "ɜː"
+
+
+def _respell_rhotics(ipa: str, phoneme_map: Mapping[str, int],
+                     phoneme_type: Optional[PhonemeType] = None) -> str:
+    """Replace each r-coloured vowel that ``phoneme_map`` cannot encode with the
+    first fallback it can. For an espeak voice, ɝ becomes ɜː first. A vowel with no
+    such fallback stays in place, so the tokenizer warns about it."""
+    def held(spelling: str) -> bool:
+        return all(c in phoneme_map for c in spelling)
+
+    for vowel, fallbacks in _RHOTIC_FALLBACKS.items():
+        if vowel == "ɝ" and phoneme_type == PhonemeType.ESPEAK:
+            fallbacks = (_ESPEAK_NURSE, *fallbacks)
+        if not held(vowel):
+            ipa = ipa.replace(vowel, next(filter(held, fallbacks), vowel))
+    return ipa
 
 
 def _phonemic_chunks(text: str, alphabet: Optional[Alphabet]) -> PhonemizedChunks:
@@ -719,6 +744,10 @@ class TTSVoice:
                                              lang=self.config.lang_code)
             except ValueError:
                 LOG.debug("no conversion path %s -> %s; passing through", src_alphabet, tgt_alphabet)
+            if (src_alphabet == Alphabet.ARPA and tgt_alphabet == Alphabet.IPA
+                    and isinstance(self.tokenizer, TTSTokenizer)):
+                text = _respell_rhotics(text, self.tokenizer.vocabulary.char2idx,
+                                        self.config.phoneme_type)
             for phonemes in _phonemic_chunks(text, tgt_alphabet):
                 yield phonemes, {}, None
             return
