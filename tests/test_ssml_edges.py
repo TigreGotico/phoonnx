@@ -409,7 +409,7 @@ def test_a_piece_with_no_speech_still_pays_its_pause_and_marks():
             return iter(())
 
     chunks, marks = run(Silent(), '<speak>a<break time="1s"/><mark name="m"/>b</speak>')
-    assert marks == [("m", 0.0)] or [name for name, _ in marks] == ["m"]
+    assert marks == [("m", 1.0)]  # after the 1 s pause it was written after
     assert sum(len(c.audio_float_array) for c in chunks) == SR
 
 
@@ -419,12 +419,12 @@ def test_the_wav_writer_passes_the_seed_on():
 
     ssml = "<speak><amazon:breath/>a</speak>"
     outputs = []
-    for _ in range(2):
+    for seed in (3, 3, 4):
         buffer = io.BytesIO()
         with wave.open(buffer, "wb") as out:
-            FakeVoice(seconds=0.1).synthesize_ssml_wav(ssml, out, seed=3)
+            FakeVoice(seconds=0.1).synthesize_ssml_wav(ssml, out, seed=seed)
         outputs.append(buffer.getvalue())
-    assert outputs[0] == outputs[1]
+    assert outputs[0] == outputs[1] and outputs[0] != outputs[2]
 
 
 def test_the_length_scale_for_a_rate_is_never_outside_the_clamp():
