@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.125.1a2](https://github.com/TigreGotico/phoonnx/tree/1.125.1a2) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.1a1...1.125.1a2)
+
+**Merged pull requests:**
+
+- docs: README, docs index, navigation and agent hints [\#863](https://github.com/TigreGotico/phoonnx/pull/863) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.125.1a1](https://github.com/TigreGotico/phoonnx/tree/1.125.1a1) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.0a1...1.125.1a1)
@@ -187,7 +195,6 @@
 **Merged pull requests:**
 
 - test: expect the grapheme revision preprocess records [\#814](https://github.com/TigreGotico/phoonnx/pull/814) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- feat: record the training text casing and apply it at inference [\#756](https://github.com/TigreGotico/phoonnx/pull/756) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.119.0a1](https://github.com/TigreGotico/phoonnx/tree/1.119.0a1) (2026-11-19)
 
