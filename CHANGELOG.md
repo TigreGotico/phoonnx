@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.124.3a2](https://github.com/TigreGotico/phoonnx/tree/1.124.3a2) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.3a1...1.124.3a2)
+
+**Merged pull requests:**
+
+- docs: correct the reference pages against the code [\#834](https://github.com/TigreGotico/phoonnx/pull/834) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.124.3a1](https://github.com/TigreGotico/phoonnx/tree/1.124.3a1) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.2a2...1.124.3a1)
@@ -152,10 +160,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.8a1...1.119.0a1)
 
-**Merged pull requests:**
-
-- feat\(engines\): cut long requests in BaseOnnxAdapter behind max\_input\_tokens [\#744](https://github.com/TigreGotico/phoonnx/pull/744) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.118.8a1](https://github.com/TigreGotico/phoonnx/tree/1.118.8a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.7a1...1.118.8a1)
@@ -294,7 +298,6 @@
 - feat: add the xvits engine [\#754](https://github.com/TigreGotico/phoonnx/pull/754) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - fix: convert inline blocks to the voice alphabet and skip them on text-only voices [\#747](https://github.com/TigreGotico/phoonnx/pull/747) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - fix: write the native config beside every exported model [\#746](https://github.com/TigreGotico/phoonnx/pull/746) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- test: shared token-id fixture set for phoonnx.js parity [\#745](https://github.com/TigreGotico/phoonnx/pull/745) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.114.2a1](https://github.com/TigreGotico/phoonnx/tree/1.114.2a1) (2026-11-18)
 
