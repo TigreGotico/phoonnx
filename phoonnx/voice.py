@@ -233,6 +233,12 @@ class PhonemeAlignment:
     num_samples: int
 
 
+def _stretched_counts(counts: Sequence[int], ratio: float) -> np.ndarray:
+    """Sample counts scaled by `ratio`, rounded at the running total so they sum to the scaled total."""
+    edges = np.rint(np.cumsum(counts, dtype=np.float64) * ratio).astype(np.int64)
+    return np.diff(edges, prepend=0)
+
+
 @dataclass
 class AudioChunk:
     """Chunk of raw audio."""
@@ -1371,7 +1377,8 @@ class TTSVoice:
         """`chunks` stretched or squeezed together to the piece's ``duration`` (or under its maximum).
 
         The factor is the same for every chunk and stays within 0.5 to 2: past that the speech is
-        not speech any more, and the nearest the limit allows is as close as it gets.
+        not speech any more, and the nearest the limit allows is as close as it gets. The phoneme
+        samples and alignments of a chunk are stretched with its audio, so they still sum to it.
         """
         spoken = sum(len(c.audio_float_array) / c.sample_rate for c in chunks)
         if not chunks or spoken <= 0:
@@ -1382,9 +1389,21 @@ class TTSVoice:
         factor = min(2.0, max(0.5, target / spoken))
         if abs(factor - 1.0) < 0.02:
             return chunks
-        return [replace(c, audio_float_array=audio_fx.time_stretch(
-            np.asarray(c.audio_float_array, dtype=np.float32), factor, c.sample_rate),
-            _audio_int16_array=None, _audio_int16_bytes=None) for c in chunks]
+        fitted = []
+        for chunk in chunks:
+            audio = audio_fx.time_stretch(np.asarray(chunk.audio_float_array, dtype=np.float32),
+                                          factor, chunk.sample_rate)
+            ratio = len(audio) / max(1, len(chunk.audio_float_array))
+            samples, alignments = chunk.phoneme_id_samples, chunk.phoneme_alignments
+            if samples is not None:
+                samples = _stretched_counts(samples, ratio)
+            if alignments is not None:
+                counts = _stretched_counts([a.num_samples for a in alignments], ratio)
+                alignments = [PhonemeAlignment(a.phoneme, int(n)) for a, n in zip(alignments, counts)]
+            fitted.append(replace(chunk, audio_float_array=audio, phoneme_id_samples=samples,
+                                  phoneme_alignments=alignments,
+                                  _audio_int16_array=None, _audio_int16_bytes=None))
+        return fitted
 
     @staticmethod
     def _declicked(chunk: AudioChunk) -> AudioChunk:

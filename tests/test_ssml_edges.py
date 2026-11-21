@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -11,7 +12,7 @@ import pytest
 from phoonnx import audio_fx
 from phoonnx.config import SynthesisConfig
 from phoonnx.ssml import looks_like_ssml, parse_ssml, strip_ssml
-from phoonnx.voice import AudioChunk, TTSVoice
+from phoonnx.voice import AudioChunk, PhonemeAlignment, TTSVoice
 
 SR = 22050
 
@@ -476,3 +477,35 @@ def test_a_multilingual_voice_takes_its_language_id_from_voice_languages_with_an
     voice.synthesize = lambda text, syn_config=None, include_alignments=False: settings.append(syn_config) or iter(())
     list(voice.synthesize_ssml('<speak>hello <voice languages="fr:pt">bonjour</voice></speak>'))
     assert [getattr(c, "lang_id", None) for c in settings] == [0, 1]
+
+
+# -- alignments of fitted speech ----------------------------------------------------------------
+
+
+class AligningVoice(FakeVoice):
+    """A FakeVoice whose chunks carry alignments that sum to their audio, as a model's do."""
+
+    def synthesize(self, text, syn_config=None, include_alignments=False):
+        for chunk in super().synthesize(text, syn_config, include_alignments):
+            n = len(chunk.audio_float_array)
+            ids = np.array([n // 8, n // 4, n // 8, n - 2 * (n // 8) - n // 4], dtype=np.int64)
+            yield replace(chunk, phoneme_id_samples=ids,
+                          phoneme_alignments=[PhonemeAlignment("w", int(ids[0] + ids[1])),
+                                              PhonemeAlignment("ʌ", int(ids[2])),
+                                              PhonemeAlignment("n", int(ids[3]))])
+
+
+@pytest.mark.parametrize("ssml,factor", [
+    ('<speak><prosody duration="2s">one</prosody></speak>', 2.0),
+    ('<speak><prosody amazon:max-duration="300ms">one</prosody></speak>', 0.5),
+    ('<speak><prosody duration="1500ms">one</prosody></speak>', 1.5),
+])
+def test_fitted_speech_keeps_its_alignments_in_step_with_its_audio(ssml, factor):
+    chunks, _ = run(AligningVoice(seconds=1.0), ssml, include_alignments=True)
+    (speech,) = [c for c in chunks if c.phoneme_id_samples is not None]
+    length = len(speech.audio_float_array)
+    assert length == pytest.approx(SR * factor, rel=0.01)
+    assert int(np.sum(speech.phoneme_id_samples)) == length
+    assert sum(a.num_samples for a in speech.phoneme_alignments) == length
+    original = np.array([SR // 8, SR // 4, SR // 8, SR - 2 * (SR // 8) - SR // 4])
+    assert np.abs(speech.phoneme_id_samples - original * length / SR).max() <= 1

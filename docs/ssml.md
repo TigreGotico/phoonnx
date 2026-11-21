@@ -138,7 +138,8 @@ The voice's text frontend reads `say-as` (see [usage](usage.md#ssml)), so a `say
 * `<prosody duration>` and `amazon:max-duration` stretch or squeeze the speech with WSOLA
   (`audio_fx.time_stretch`) to the time asked for, within a factor of 0.5 to 2; the pauses and sounds inside
   the element are taken out of the time, and the rest is shared between the pieces by length. The innermost
-  `duration` wins. `max-duration` only ever shortens.
+  `duration` wins. `max-duration` only ever shortens. With `include_alignments=True`, the phoneme samples
+  and alignments of the speech are stretched with it and still sum to its length.
 * Speech that starts or stops on a loud sample (an effect cut it, or the model did) is faded over 4 ms
   (`audio_fx.declick`); a quiet edge, which is what a voice gives, is left as it is.
 * `seed=` on `synthesize_ssml` makes whispers and breaths repeat: the same markup and seed give the same samples.
