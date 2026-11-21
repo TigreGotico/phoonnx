@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.124.4a1](https://github.com/TigreGotico/phoonnx/tree/1.124.4a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.3a2...1.124.4a1)
+
+**Merged pull requests:**
+
+- fix: decode reference WAVs by sample width without soundfile [\#858](https://github.com/TigreGotico/phoonnx/pull/858) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.124.3a2](https://github.com/TigreGotico/phoonnx/tree/1.124.3a2) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.3a1...1.124.3a2)
@@ -212,7 +220,6 @@
 
 - fix: a voice with no config, or ids its VITS graph cannot embed, raises VoiceLoadError [\#750](https://github.com/TigreGotico/phoonnx/pull/750) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - fix: name the engine in exported configs and allow a missing config path [\#749](https://github.com/TigreGotico/phoonnx/pull/749) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: tighten inline block handling on voices with no symbol input [\#748](https://github.com/TigreGotico/phoonnx/pull/748) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.118.0a3](https://github.com/TigreGotico/phoonnx/tree/1.118.0a3) (2026-11-19)
 
@@ -296,8 +303,6 @@
 
 - fix: hold the cloned-voice cache key and value in one attribute [\#759](https://github.com/TigreGotico/phoonnx/pull/759) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - feat: add the xvits engine [\#754](https://github.com/TigreGotico/phoonnx/pull/754) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: convert inline blocks to the voice alphabet and skip them on text-only voices [\#747](https://github.com/TigreGotico/phoonnx/pull/747) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: write the native config beside every exported model [\#746](https://github.com/TigreGotico/phoonnx/pull/746) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.114.2a1](https://github.com/TigreGotico/phoonnx/tree/1.114.2a1) (2026-11-18)
 
