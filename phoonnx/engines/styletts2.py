@@ -55,6 +55,9 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
     def default_params(self) -> Dict[str, float]:
         return {"speed": 1.0}
 
+    def length_scale_params(self, length_scale: float) -> Dict[str, float]:
+        return {"speed": 1.0 / length_scale}
+
     def configure(self, voice_config: Any) -> None:
         """Load the per-voice style pack and (for cloning) the speaker encoder from
         ``voice_config.engine_params``.
@@ -92,8 +95,7 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
         # with a multi-row [N, 256] style pack.
         _trailing = 1 if (self.style_pack is not None and self.style_pack.shape[0] > 1) else 0
         ids = np.pad(ids, ((0, 0), (1, _trailing)), constant_values=self._pad_id)
-        speed = np.float32(request.params.get(
-            "speed", request.params.get("length_scale", self.default_params()["speed"])))
+        speed = np.float32(request.params.get("speed", self.default_params()["speed"]))
         args: Dict[str, np.ndarray] = {
             "input_ids": ids, "tokens": ids,                       # name aliases
             "attention_mask": np.ones_like(ids, dtype=np.int32),
