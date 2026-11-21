@@ -235,7 +235,8 @@ def breath(sample_rate: int, duration_ms: int = 350, volume: float = 1.0,
     white = rng.standard_normal(length).astype(np.float32)
     level = 10.0 ** (-34.0 / 20.0) * float(np.clip(volume, 0.0, 2.0))
     if length < 1024:
-        return (white / (np.sqrt(np.mean(white ** 2)) + _EPS) * level * np.hanning(length)).astype(np.float32)
+        shaped = white * np.hanning(length)
+        return (shaped / (np.sqrt(np.mean(shaped ** 2)) + _EPS) * level).astype(np.float32)
     size, hop = 512, 128
     spectrum = _stft(white, size, hop)
     freqs = np.fft.rfftfreq(size, 1.0 / sample_rate)[None, :]

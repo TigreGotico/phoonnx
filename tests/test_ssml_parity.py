@@ -179,6 +179,13 @@ def test_a_breath_of_any_duration_has_exactly_that_many_samples(sample_rate):
         assert float(np.max(np.abs(out))) <= 1.0
 
 
+@pytest.mark.parametrize("sample_rate,duration_ms", [(8000, 60), (8000, 100), (16000, 60), (22050, 40)])
+def test_a_short_breath_is_as_loud_as_a_long_one(sample_rate, duration_ms):
+    """Under 1024 samples a breath takes another path; its level is still about -34 dBFS RMS."""
+    out = audio_fx.breath(sample_rate, duration_ms, seed=3)
+    assert 20 * np.log10(np.sqrt(np.mean(out ** 2))) == pytest.approx(-34.0, abs=0.5)
+
+
 def test_synthesis_applies_pitch_and_breaths_between_sentences():
     voice, _ = _voice()
     chunks = list(voice.synthesize_ssml(
