@@ -1,98 +1,81 @@
-"""Regression test for phoonnx/voice.py:TTSVoice.render.
+"""The cloning reference transcription in the request of ``TTSVoice.render``.
 
-PR #404 moved a cloning reference's transcription off adapter instance state
-(shared across concurrent requests under the threaded ovos-tts-server) and onto
-the per-call ``AdapterSynthesisRequest.params`` dict instead, so OmniVoice/
-Spark-TTS's ``synthesize`` reads ``request.params["speaker_reference_text"]``
-rather than something stashed by a possibly-different, interleaved request's
-``encode_text``. This test locks down the other half of that fix: the line in
-``TTSVoice._infer``, the engine step of ``render``, that actually puts it there.
-
-Deleting that one line degrades silently -- ``request.params`` would just be
-missing the key, which the engines already treat as "no reference transcription
-was given" (their normal, warning-free no-cloning path) -- so nothing else in
-the non-training suite catches its absence. This test drives
-``render`` directly against a mocked adapter and asserts on the
-``AdapterSynthesisRequest`` the adapter actually received.
+The transcription goes on the per-call ``AdapterSynthesisRequest.params``, not
+on adapter state, because the threaded ovos-tts-server shares one adapter
+between concurrent requests. OmniVoice and Spark-TTS read it from
+``request.params["speaker_reference_text"]`` and tokenize it themselves, so it
+must be normalised as the target text is. The voice here reads letters, and the
+adapter only records its requests, so no model runs. The expected normalised
+forms are written by hand.
 """
-import types
 import unittest
-from unittest.mock import MagicMock
 
 import numpy as np
 
-from phoonnx.config import Alphabet, SynthesisConfig
+from phoonnx.config import SynthesisConfig, VoiceConfig
 from phoonnx.engines.base import AdapterSynthesisResult
+from phoonnx.engines.vits import VitsAdapter
 from phoonnx.voice import TTSVoice, Utterance
+from tests.test_prepare_render import CONFIG
 
 
-def _make_voice():
-    """A TTSVoice with a mocked adapter and no real ONNX/phonemizer work.
+class _Recorder(VitsAdapter):
+    def __init__(self):
+        super().__init__()
+        self.requests = []
 
-    ``config.alphabet`` doesn't matter here -- ``render`` builds
-    ``request.params`` before any alphabet dispatch, straight from
-    ``syn_config``, so a plain phoneme-model config exercises the same code.
-    """
-    voice = TTSVoice.__new__(TTSVoice)
-    voice.config = types.SimpleNamespace(
-        alphabet=Alphabet.IPA,
-        lang_code="en",
-        sample_rate=22050,
-        noise_scale=None,
-        length_scale=None,
-        noise_w_scale=None,
-        engine_params={},
-        hop_length=256,
-        # the reference transcription also feeds _prompt_token_ids (in-context
-        # engines' phoneme prompt) through the voice's own tokenizer
-        tokenizer=types.SimpleNamespace(tokenize=MagicMock(return_value=[1, 2, 3])),
-    )
-    voice.adapter = MagicMock()
-    voice.adapter.default_params.return_value = {}
-    voice.adapter.synthesize.return_value = AdapterSynthesisResult(
-        audio=np.zeros(4, dtype=np.float32))
-    voice._alignment_session = None
-    voice.session = MagicMock()
-    voice.phonemize = MagicMock(return_value=[["r", "e", "f"]])
-    return voice
+    def synthesize(self, request, session):
+        self.requests.append(request)
+        return AdapterSynthesisResult(audio=np.zeros(4, dtype=np.float32))
+
+
+def _voice():
+    return TTSVoice(config=VoiceConfig.from_dict(dict(CONFIG)), session=object(), adapter=_Recorder())
+
+
+def _reference_text(voice, syn_config):
+    voice.render(Utterance("", None, (1, 2, 3)), syn_config)
+    return voice.adapter.requests[-1].params.get("speaker_reference_text")
 
 
 class TestSpeakerReferenceTextReachesRequestParams(unittest.TestCase):
     def test_speaker_reference_text_lands_in_request_params(self):
-        voice = _make_voice()
+        voice = _voice()
         syn_config = SynthesisConfig(speaker_reference_text="A reference clip transcript")
-
-        voice.render(Utterance("", None, (1, 2, 3)), syn_config)
-
-        request = voice.adapter.synthesize.call_args[0][0]
-        self.assertEqual(request.params.get("speaker_reference_text"),
-                         "A reference clip transcript")
+        self.assertEqual(_reference_text(voice, syn_config), "A reference clip transcript")
 
     def test_absent_when_no_reference_text_was_given(self):
-        voice = _make_voice()
+        voice = _voice()
         voice.render(Utterance("", None, (1, 2, 3)), SynthesisConfig())
-
-        request = voice.adapter.synthesize.call_args[0][0]
-        self.assertNotIn("speaker_reference_text", request.params)
+        self.assertNotIn("speaker_reference_text", voice.adapter.requests[0].params)
 
     def test_each_chunk_of_a_multi_chunk_call_sees_its_own_fresh_params(self):
-        """render is called once per sentence/chunk by
-        TTSVoice.synthesize; params (including speaker_reference_text) are
-        rebuilt from syn_config on every call, not shared/mutated in place."""
-        voice = _make_voice()
+        """render is called once per chunk; the params are built again from syn_config each time."""
+        voice = _voice()
         syn_config = SynthesisConfig(speaker_reference_text="Shared reference text")
 
         voice.render(Utterance("", None, (1, 2)), syn_config)
         voice.render(Utterance("", None, (3, 4)), syn_config)
 
-        self.assertEqual(voice.adapter.synthesize.call_count, 2)
-        first_request = voice.adapter.synthesize.call_args_list[0][0][0]
-        second_request = voice.adapter.synthesize.call_args_list[1][0][0]
-        for request in (first_request, second_request):
-            self.assertEqual(request.params.get("speaker_reference_text"),
-                             "Shared reference text")
-        # each chunk got its own params dict -- mutating one must never affect the other
-        self.assertIsNot(first_request.params, second_request.params)
+        first, second = voice.adapter.requests
+        for request in (first, second):
+            self.assertEqual(request.params.get("speaker_reference_text"), "Shared reference text")
+        self.assertIsNot(first.params, second.params)
+
+
+class TestSpeakerReferenceTextIsNormalised(unittest.TestCase):
+    def test_digits_read_as_the_target_text_reads_them(self):
+        voice = _voice()
+        text = "I have 3 cats."
+        reference = _reference_text(voice, SynthesisConfig(speaker_reference_text=text))
+        self.assertEqual(reference, "I have three cats.")
+        (target,) = voice.prepare(text)
+        self.assertEqual(reference, target.text)
+
+    def test_the_reference_language_reads_the_reference(self):
+        voice = _voice()
+        syn_config = SynthesisConfig(speaker_reference_text="Tenho 3 gatos.", speaker_reference_lang="pt-PT")
+        self.assertEqual(_reference_text(voice, syn_config), "Tenho três gatos.")
 
 
 if __name__ == "__main__":

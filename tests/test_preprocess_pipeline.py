@@ -383,6 +383,28 @@ class TestTextCasingIsRecorded(unittest.TestCase):
     def test_no_casing_is_written_as_ignore(self):
         self.assertEqual(self._written_config()["text_casing"], "ignore")
 
+    def test_a_resume_keeps_the_recorded_casing(self):
+        import click.testing
+
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, out = tmp / "a.jsonl", tmp / "out"
+
+            def run(rows, *extra):
+                _jsonl(src, rows)
+                result = click.testing.CliRunner().invoke(preprocess.cli, [
+                    "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                    "--phoneme-type", "graphemes", "--alphabet", "ipa", "--max-workers", "1", *extra,
+                ], catch_exceptions=False)
+                self.assertEqual(result.exit_code, 0, result.output)
+
+            run([{"text": "Hi", "audio": "a.wav"}], "--text-casing", "lower")
+            run([{"text": "Hi", "audio": "a.wav"}, {"text": "Ho", "audio": "b.wav"}],
+                "--text-casing", "upper", "--resume")
+            self.assertEqual(json.loads((out / "config.json").read_text())["text_casing"], "lower")
+            rows = [json.loads(line) for line in (out / "dataset.jsonl").open()]
+            self.assertEqual([row["phonemes"] for row in rows], [["h", "i"], ["h", "o"]])
+
 
 class TestPhonemizerProvenance(unittest.TestCase):
     """config.json must say whether these phonemes were produced here at all.

@@ -43,6 +43,7 @@ an import through one of those modules, such as
 ``phoonnx.config.UnsupportedVoiceLanguage``, gives the same class. This module
 imports nothing from phoonnx, so importing it stays cheap.
 """
+import copyreg
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -54,6 +55,7 @@ __all__ = [
     "NonFiniteAudioError",
     "PhoonnxError",
     "PrecisionUnavailable",
+    "UnknownVoice",
     "UnsupportedConfigError",
     "UnsupportedSentencePieceModel",
     "UnsupportedTokenizer",
@@ -65,6 +67,10 @@ __all__ = [
 
 class PhoonnxError(Exception):
     """The base of the typed failures in this module."""
+
+    def __reduce__(self):
+        # Unpickling skips __init__: a subclass takes fields, not the message, as arguments.
+        return copyreg.__newobj__, (type(self), *self.args), self.__dict__
 
 
 class VoiceLoadError(PhoonnxError):
@@ -91,6 +97,19 @@ class PrecisionUnavailable(VoiceLoadError, ValueError):
         super().__init__(
             f"voice {voice_id!r} has no {precision} files; precision 'auto' "
             f"or {other!r} loads it")
+
+
+class UnknownVoice(PhoonnxError, KeyError):
+    """A voice id names no voice in the catalogue."""
+
+    def __init__(self, voice_id: str):
+        self.voice_id = voice_id
+        super().__init__(
+            f"unknown voice {voice_id!r}; run 'phoonnx-voices list-voices' "
+            f"to see the voice ids")
+
+    def __str__(self) -> str:
+        return self.args[0]
 
 
 class ExportNotSupported(PhoonnxError):

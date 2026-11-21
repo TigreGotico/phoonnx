@@ -4,6 +4,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from phoonnx.engines.shami import ShamiAdapter
+from phoonnx.engines.vits_streaming import VitsStreamingAdapter
+from phoonnx.engines.xvits import XVitsAdapter
+from phoonnx.engines.yourtts import YourTTSAdapter
 from phoonnx.errors import PhoonnxError, VoiceLoadError
 from phoonnx.voice import TTSVoice
 
@@ -62,6 +66,20 @@ def test_a_vits_vocabulary_id_the_embedding_cannot_hold_raises(tmp_path, fake_ru
 
 def test_a_vits_vocabulary_that_fits_loads(tmp_path, fake_runtime):
     assert _vits_voice(tmp_path, None, num_symbols=5).config.num_symbols == 5
+
+
+VITS_FAMILY = [VitsStreamingAdapter, YourTTSAdapter, ShamiAdapter, XVitsAdapter]
+
+
+@pytest.mark.parametrize("adapter_cls", VITS_FAMILY)
+def test_a_vits_family_vocabulary_id_the_embedding_cannot_hold_raises(adapter_cls, tmp_path, fake_runtime):
+    with pytest.raises(VoiceLoadError, match="id 4.*num_symbols=4"):
+        _vits_voice(tmp_path, adapter_cls, num_symbols=4)
+
+
+@pytest.mark.parametrize("adapter_cls", VITS_FAMILY)
+def test_a_vits_family_vocabulary_that_fits_loads(adapter_cls, tmp_path, fake_runtime):
+    assert _vits_voice(tmp_path, adapter_cls, num_symbols=5).config.num_symbols == 5
 
 
 def test_engines_whose_graph_ignores_num_symbols_are_not_checked(tmp_path, fake_runtime):

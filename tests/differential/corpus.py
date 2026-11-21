@@ -1,5 +1,5 @@
 """
-A corpus of voice configs covering every loader in :mod:`phoonnx.config_loaders`.
+A corpus of voice configs covering every loader in :mod:`phoonnx.compat`.
 
 Each case is a config dict plus the companion arguments that identify its
 format, and every case is run against :data:`KWARG_SETS` — so the corpus

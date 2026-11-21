@@ -4,7 +4,7 @@ import tempfile
 import unittest
 
 from phoonnx.config import Alphabet, Engine, PhonemeType, VoiceConfig
-from phoonnx.config_loaders import (LOADERS, CanonicalLoader, ChatterboxLoader, CoquiLoader,
+from phoonnx.compat import (LOADERS, CanonicalLoader, ChatterboxLoader, CoquiLoader,
                                     LoadedFields, LoadRequest, Mimic3Loader, PhoonnxLoader,
                                     PiperLoader, RawTextLoader, TokensTxtLoader,
                                     TransformersLoader, VoskLoader, resolve_overrides)
