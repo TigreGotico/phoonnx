@@ -83,7 +83,7 @@ def test_pitch_shift_moves_the_pitch_and_keeps_the_length(semitones):
 
 
 def test_whisper_is_quiet_and_has_nothing_below_the_voice():
-    """A whisper is quieter than speech (it was as loud, and growled) and has no rumble."""
+    """A whisper is quieter than speech and has no rumble."""
     x = _voiced()
     y = audio_fx.whisper(x, SR)
     assert len(y) == len(x) and not np.allclose(x, y)
@@ -124,9 +124,12 @@ def test_a_breath_is_quiet_has_the_asked_length_and_is_never_the_same_twice():
     level = 20 * np.log10(np.sqrt(np.mean(first ** 2)))
     assert level == pytest.approx(-34.0, abs=0.5) and np.max(np.abs(first)) < 0.15
     assert np.max(np.abs(audio_fx.breath(SR, 500, volume=1e9))) < 0.3          # volume is capped
-    # It swells and fades: the middle is louder than either end.
+    # It swells and fades: the middle is louder than either end, and it stops on silence (no click).
     third = len(first) // 3
-    assert np.sqrt(np.mean(first[third:2 * third] ** 2)) > 2 * np.sqrt(np.mean(first[:third // 4] ** 2))
+    middle = np.sqrt(np.mean(first[third:2 * third] ** 2))
+    assert middle > 2 * np.sqrt(np.mean(first[:third // 4] ** 2))
+    assert middle > 2 * np.sqrt(np.mean(first[-(third // 4):] ** 2))
+    assert np.max(np.abs(first[-int(SR * 0.005):])) < 0.02 * np.max(np.abs(first))
     assert len(audio_fx.beep(SR, 200)) == int(SR * 0.2) and np.max(np.abs(audio_fx.beep(SR, 200))) <= 0.3
 
 
@@ -170,7 +173,7 @@ def test_synthesis_reports_marks_in_time_and_adds_sounds():
 
 @pytest.mark.parametrize("sample_rate", [8000, 16000, 22050, 24000, 44100, 48000])
 def test_a_breath_of_any_duration_has_exactly_that_many_samples(sample_rate):
-    """The slow wobble is smoothed with a window the signal may be shorter than (CodeRabbit on #553)."""
+    """The slow wobble is smoothed with a window the signal may be shorter than."""
     for duration_ms in (0, 1, 5, 20, 47, 60, 83, 100, 200, 350):
         length = max(1, int(sample_rate * duration_ms / 1000))
         out = audio_fx.breath(sample_rate, duration_ms, seed=3)

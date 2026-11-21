@@ -168,8 +168,7 @@ def whisper(audio: np.ndarray, sample_rate: int, seed: int | None = 0,
     """Whispered speech: the words as breath, `level_db` below the input (a whisper is quiet).
 
     Shaped breath noise (see :func:`_breath_noise`): the vowels and consonants stay, the pitch and
-    everything below ~180 Hz go. An earlier version kept the loudness of the input and the rumble
-    below the voice, which came out as a loud, raspy growl rather than a whisper.
+    everything below ~180 Hz go.
     """
     audio = _as_float(audio)
     if audio.size < 512:
@@ -225,10 +224,8 @@ def breath(sample_rate: int, duration_ms: int = 350, volume: float = 1.0,
     """A quiet in-breath through the mouth, different every time (give `seed` to repeat one).
 
     Noise whose spectrum moves while it lasts (duller at the start, brighter at the end, as the
-    mouth opens), with a soft attack, a gently falling plateau and an uneven level, at about
-    -34 dBFS: a breath a person takes between phrases. An earlier version was a fixed band of noise
-    under a symmetric swell, the same every time and as loud as speech at full volume, which
-    sounded like a respirator.
+    mouth opens), with a soft attack, a gently falling plateau, a fade to silence at the end and an
+    uneven level. At `volume` 1 its level is about -34 dBFS RMS, whatever its length.
     """
     length = max(1, int(sample_rate * duration_ms / 1000))
     rng = np.random.default_rng(seed)
