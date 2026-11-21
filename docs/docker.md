@@ -1,7 +1,14 @@
-# Docker / OVOS TTS Server
+# Docker TTS server
 
-This page is for operators running phoonnx as a containerized TTS server. It covers the
-published image, its configuration, and how to build it locally.
+<!-- agent-hint
+covers: how to run the published phoonnx image as an OVOS TTS server, what the image holds, and how to configure and build it
+source: Dockerfile, docker-compose.yml, docker-entrypoint.sh, .github/workflows/docker.yml
+generated: no
+verify: none; checked by reading Dockerfile and the type=raw tag lines of .github/workflows/docker.yml
+see: deployment.md, ovos_plugin.md, offline.md, installation.md
+-->
+
+This page shows how to run phoonnx as a containerized text-to-speech server. It is for operators who serve speech over HTTP.
 
 phoonnx ships an image that runs it as an
 [`ovos-tts-server`](https://github.com/OpenVoiceOS/ovos-tts-server). The image holds **every
@@ -92,3 +99,7 @@ The [`docker` workflow](../.github/workflows/docker.yml) builds on every PR. It 
 to `ghcr.io/tigregotico/phoonnx` with the tag `dev` on a push to `dev`, `latest` on a push to
 `master`, and a version tag on a release tag. The pages use `:dev`, because the registry
 holds `latest` only after a push to `master`.
+
+---
+
+[Docs index](index.md) · Previous: [OVOS plugin](ovos_plugin.md) · Next: [Deployment](deployment.md)

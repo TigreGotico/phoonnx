@@ -1,5 +1,13 @@
 # Alphabet conversion model
 
+<!-- agent-hint
+covers: how VoiceConfig.alphabet, VoiceConfig.phoneme_type and SynthesisConfig.alphabet select a conversion route through the scriptconv graph, and how synthesis dispatches on the result
+source: phoonnx/config.py:VoiceConfig, phoonnx/config.py:SynthesisConfig, phoonnx/voice.py:TTSVoice, scriptconv.graph:DEFAULT_GRAPH, scriptconv.frontend:TextFrontend
+generated: no
+verify: pytest tests/test_inline_phoneme_blocks_dispatch.py tests/test_phoneme_type_default.py tests/test_phoneme_map.py; the conversion routes: none, checked by reading scriptconv.graph:DEFAULT_GRAPH and phoonnx/voice.py:TTSVoice
+see: phonemizers.md, architecture.md, configuration.md
+-->
+
 phoonnx uses a single, unified mechanism to transform every piece of text into
 the token sequence a model expects: **alphabet conversion**.
 
@@ -179,3 +187,7 @@ default graphemes):
 The rule of thumb is the same one that separates the two layers: anything that
 needs the language is phonemization and stays in phoonnx; the `lang`-free
 phoneme↔phoneme hops are scriptconv edges.
+
+---
+
+[Docs index](index.md) · Previous: [Phonemizers](phonemizers.md) · Next: [OVOS plugin](ovos_plugin.md)

@@ -1,8 +1,16 @@
 # Streaming VITS Engine
 
-This page is for developers using or producing streaming (split encoder/decoder) VITS
-voices in phoonnx. It explains when streaming applies, how the split works, and how to
-tune and verify it.
+<!-- agent-hint
+covers: how split encoder and decoder VITS voices stream, how phoonnx splits a model, and how to tune and check it
+source: phoonnx/engines/vits_streaming.py:VitsStreamingAdapter, phoonnx/engines/vits_split.py:ensure_split_vits, phoonnx/voice.py:TTSVoice.load
+generated: no
+verify: pytest tests/test_vits_streaming.py tests/test_vits_split.py, plus the auto-split and pre-split examples on the page
+see: engines.md, benchmarking.md, alignment.md
+-->
+
+This page explains how split encoder and decoder VITS voices stream, for developers who use or export such voices.
+
+It covers when streaming applies, how the split works, and how to tune and check it.
 
 Standard Piper/VITS voices synthesize a whole sentence in one ONNX call, so the
 first audio sample is only available once the entire sentence is decoded. The
@@ -33,7 +41,8 @@ There are three ways to get a split model:
    need a specially-exported voice. If a voice config just sets
    `"streaming": true` on an ordinary single-graph Piper/VITS model, phoonnx
    splits it into an encoder/decoder pair on first load and caches the two
-   graphs next to the model (`<model>.encoder.onnx` / `<model>.decoder.onnx`).
+   graphs next to the model. For `model.onnx`, the files are `model.encoder.onnx` and
+   `model.decoder.onnx`.
    See [Auto-split](#auto-split-no-re-export-needed). This is lossless by
    construction and sidesteps the re-export hazards below.
 
@@ -79,7 +88,7 @@ adapter matches these by name/shape, so pre-split `+RT` voices and auto-split
 voices both work through the same code path.
 
 Splitting needs the full `onnx` package (not just `onnxruntime`), which is an
-optional extra: `pip install phoonnx[streaming]`. It is only needed to *create*
+optional extra: `pip install --pre "phoonnx[streaming]"`. It is only needed to *create*
 a split — a pre-split `+RT` voice streams without it. If `onnx` is missing, or
 the model is not a splittable VITS, phoonnx logs a warning and loads the voice
 as a normal, non-streaming model.
@@ -130,8 +139,10 @@ adapter measures it from the first decode only when it runs without a voice conf
 
 ## Loading a streaming voice
 
-Point the config at the two graphs via `engine_params`. The primary model path
-is the **encoder**; the decoder is an auxiliary graph:
+Point the config at the two graphs through `engine_params`. The primary model path
+is the **encoder**. The decoder is an auxiliary graph. phoonnx opens `decoder_path` as
+written, so a relative path is relative to the working directory of the process, not to
+the config file. Use an absolute path when the process runs from another folder.
 
 ```json
 {
@@ -146,8 +157,17 @@ is the **encoder**; the decoder is an auxiliary graph:
 
 ```python
 from phoonnx.voice import TTSVoice
-voice = TTSVoice.load(model_path="encoder.onnx")  # config sits next to it
+
+voice = TTSVoice.load(model_path="encoder.onnx", config_path="voice.json")
+print(type(voice.adapter).__name__)
 ```
+
+```text
+VitsStreamingAdapter
+```
+
+Without `config_path`, `TTSVoice.load` reads `encoder.onnx.json`. A `+RT` archive names
+its config `<name>.json`, so pass that file as `config_path`.
 
 Detection is strict: the adapter claims a voice **only** when `"streaming": true`
 *and* `engine_params.decoder_path` are both present, so it never hijacks a normal
@@ -159,9 +179,9 @@ The decoder runs on the `providers` of the voice, the same list as the encoder. 
 ## Parameters
 
 The chunking parameters live under `engine_params.streaming`, and the decoder
-thread count is a key of `engine_params` itself. All of them have proven
-defaults — you only set them to tune. They were tuned empirically on high-tier
-voices (see [Tuning notes](#tuning-notes)).
+thread count is a key of `engine_params` itself. Each one has a default, so you set
+them only to tune. The defaults come from measurements on high-tier voices (see
+[Tuning notes](#tuning-notes)).
 
 ```json
 {
@@ -272,7 +292,6 @@ from the split encoder must match the original model's:
 assert T_split == T_orig    # a >1-2% difference means the export drifted (see ryan+RT)
 ```
 
-## See also
+---
 
-- [engines.md](./engines.md) — the adapter registry and auto-detection
-- [configuration.md](./configuration.md) — voice config schema
+[Docs index](index.md) · Previous: [Voice conversion](voice_conversion.md) · Next: [Phoneme alignment](alignment.md)

@@ -1,5 +1,15 @@
 # Indic Parler-TTS
 
+<!-- agent-hint
+covers: how Indic Parler-TTS picks a voice from a text description, which voices exist and how intelligible they are
+source: phoonnx/engines/indic_parler.py, phoonnx/voice_index/indic_parler.json
+generated: no
+verify: pytest tests/test_indic_parler.py tests/test_card_example_indic_parler.py; the decoding defaults: none, checked by reading phoonnx/engines/indic_parler.py:IndicParlerAdapter.default_params
+see: ../../engines.md, ../../configuration.md
+-->
+
+This page explains the Indic Parler-TTS engine and its voices, for anyone who wants an Indic-language voice in phoonnx.
+
 [Indic Parler-TTS](https://huggingface.co/ai4bharat/indic-parler-tts) (AI4Bharat) speaks
 21 Indic languages and English — 22 languages total (`AVAILABLE_LANGS` in
 `phoonnx/engines/indic_parler.py`). Set `engine: indic_parler`.
@@ -130,7 +140,7 @@ voices) are measured above. Six ship unmeasured:
 
 | Language | Voices | Why |
 |---|---|---|
-| Assamese (`as`) | 2 | `OpenVoiceOS/ai4bharat-indicconformer-as-onnx` is a README-only placeholder — no ONNX weights in the org yet |
+| Assamese (`as`) | 2 | `OpenVoiceOS/ai4bharat-indicconformer-as-onnx` holds a README and no ONNX weights |
 | Bodo (`brx`) | 2 | not in FLEURS |
 | Chhattisgarhi (`hne`) | 2 | not in FLEURS |
 | Dogri (`doi`) | 1 | not in FLEURS |
@@ -138,8 +148,8 @@ voices) are measured above. Six ship unmeasured:
 | Sanskrit (`sa`) | 1 | not in FLEURS |
 
 Parity vs. torch holds for all six by construction — it is the same four graphs the
-measured languages use — but there is no intelligibility number for them yet. Assamese
-becomes measurable as soon as the `as` IndicConformer export lands in the org.
+measured languages use — but there is no intelligibility number for them. Assamese
+becomes measurable when the `as` IndicConformer repository has ONNX weights.
 
 Urdu (`ur`), Sindhi (`sd`), Maithili (`mai`), Konkani (`kok`) and Santali (`sat`) are
 supported by the checkpoint but have no recommended speaker in AI4Bharat's table, so they
@@ -154,3 +164,7 @@ more than latency.
 
 Per-language samples and the intelligibility report live in the mirror under
 [`samples/`](https://huggingface.co/Phoonnx/parlertts-multi-indic-unicode/tree/main/samples).
+
+---
+
+[Docs index](../../index.md) · Previous: [Rápido](rapido.md) · Next: [Architecture](../../architecture.md)

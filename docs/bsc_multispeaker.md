@@ -1,8 +1,14 @@
 # BSC multispeaker StyleTTS2 (Spanish / Catalan)
 
-This page is for anyone selecting a Spanish or Catalan StyleTTS2 voice. After reading it
-you will know which named speakers exist, where their voices come from, and how good
-each one is.
+<!-- agent-hint
+covers: which BSC Spanish and Catalan StyleTTS2 speakers exist, how their styles are made, and how well each speaks
+source: phoonnx/voice_index/styletts2.json, phoonnx/engines/styletts2.py, scripts/conversion/styletts2/fetch_bsc_speaker_refs.py, scripts/conversion/styletts2/export_bsc_speakers.py
+generated: no
+verify: python -I -c "import json; print(sorted(k for k in json.load(open('phoonnx/voice_index/styletts2.json')) if k.startswith('bsc/')))"
+see: cloning.md, galician.md
+-->
+
+This page lists the Spanish and Catalan StyleTTS2 speakers, where their voices come from and how well each one speaks, for anyone who selects one of them.
 
 The Barcelona Supercomputing Center published two multispeaker StyleTTS2 checkpoints:
 
@@ -16,9 +22,9 @@ the **hifigan** decoder, so no iSTFT graph is involved.
 
 ## Zero-shot parent and named speakers
 
-Neither upstream repository ships reference audio, so `phoonnx` first wired both as
-zero-shot cloning voices — `bsc/es-styletts2` and `bsc/ca-styletts2` — which need a
-reference clip on every call (see [cloning](cloning.md)).
+Neither upstream repository ships reference audio. The voices `bsc/es-styletts2` and
+`bsc/ca-styletts2` therefore clone from a reference clip, and they need one on every call
+(see [cloning](cloning.md)).
 
 The **named speakers** remove that requirement. Each one is the *same* ONNX graph plus
 its own 256-value style blob:
@@ -41,9 +47,12 @@ from phoonnx.config import SynthesisConfig
 manager = TTSModelManager(); manager.load(); manager.merge_default_voices()
 
 voice = manager.voices["bsc/ca-ona"].load()
-voice.synthesize("Bon dia, com estàs?")                       # shipped style
-voice.synthesize("Bon dia.", SynthesisConfig(speaker_reference="ref.wav"))   # cloned
+shipped = list(voice.synthesize("Bon dia, com estàs?"))
+cloned = list(voice.synthesize("Bon dia.", SynthesisConfig(speaker_reference="ref.wav")))
 ```
+
+`synthesize` yields one `AudioChunk` per sentence, so the example collects them with
+`list`.
 
 ## How the style blobs are made
 
@@ -65,10 +74,10 @@ reach the adapter the same way: `style_url` in the voice index, downloaded to
 ## Measured quality
 
 Intelligibility is word error rate over five synthesized sentences per speaker. The
-**ASR floor** column is the same recognizer over that speaker's real reference clips, so a
-weak style vector is separable from recognition error on the language itself. Note the two
-sets use different text: the reference clips are 19th-century prose from the training
-corpora, the synthesized sentences are modern everyday ones.
+**ASR floor** column is the same recognizer over that speaker's real reference clips. It
+separates a weak style vector from recognition error on the language itself. The two sets
+use different text. The reference clips are 19th-century prose from the training corpora.
+The synthesized sentences are modern everyday ones.
 
 The recognizer is the **per-language conformer-CTC** export for that language:
 [`OpenVoiceOS/nvidia-ca-conformer-ctc-large-onnx`](https://huggingface.co/OpenVoiceOS/nvidia-ca-conformer-ctc-large-onnx)
@@ -80,7 +89,7 @@ mis-hear.
 
 Multilingual sequence-to-sequence recognizers can fail in a way that looks like a bad
 voice. `canary-1b-v2` carries a `<|ca|>` tag in its vocabulary but was never trained on
-Catalan; it silently translates Catalan into English and scores ~96 % WER on *real human*
+Catalan. It translates Catalan into English without a warning and scores ~96 % WER on *real human*
 Festcat audio. The floor column is what catches this. Floor-check every gate on real
 speech in the target language before you believe a WER.
 
@@ -129,8 +138,8 @@ Nearest-style accuracy: 27/30 clips (90 %).
 
 ## Limitations
 
-- The Spanish checkpoint saw only 7.9 hours of speech against the Catalan one's 14.8, and
-  it shows: 5.2 % WER against 0.3 %. Spanish sits at its own ASR floor rather than below
+- The Spanish checkpoint saw 7.9 hours of speech against the Catalan one's 14.8. The WER
+  shows it: 5.2 % against 0.3 %. Spanish sits at its own ASR floor rather than below
   it, so treat the Spanish speakers as usable but not clean.
 - The Catalan weights are **GPL-3.0** upstream. That governs the weights, not `phoonnx`
   (Apache-2.0), which only loads them. Account for it in your own deployment.
@@ -138,3 +147,7 @@ Nearest-style accuracy: 27/30 clips (90 %).
   named speakers of one language share one copy of the 545 MB graph on disk, and each
   speaker adds only its style blob. This applies to every shared-checkpoint voice family,
   such as the HiTZ Basque speakers.
+
+---
+
+[Docs index](index.md) · Previous: [Galician phonemizer](galician.md) · Next: [Usage guide](usage.md)

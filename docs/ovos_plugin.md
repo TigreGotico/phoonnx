@@ -1,8 +1,16 @@
-# OVOS Plugin
+# OVOS plugin
 
-This page is for OpenVoiceOS users and integrators configuring phoonnx as their TTS
-engine. phoonnx ships a TTS plugin for the [OpenVoiceOS](https://openvoiceos.com/)
-ecosystem via `PhoonnxTTSPlugin`, registered under the `opm.tts` entry point
+<!-- agent-hint
+covers: how to configure ovos-tts-plugin-phoonnx in mycroft.conf, every config key it reads, and how it picks, caches and loads voices
+source: phoonnx/opm.py:PhoonnxTTSPlugin, phoonnx/voice_cache.py:VoiceCache, pyproject.toml [project.entry-points."opm.tts"]
+generated: no
+verify: python -m pytest tests/test_opm.py; the plugin check script below, run with the espeak extra
+see: docker.md, deployment.md, precision.md, cloning.md
+-->
+
+This page shows how to use phoonnx as the text-to-speech engine of OpenVoiceOS. It is for OpenVoiceOS users and integrators who configure the `ovos-tts-plugin-phoonnx` plugin.
+
+phoonnx registers the plugin class `PhoonnxTTSPlugin` under the `opm.tts` entry point
 `ovos-tts-plugin-phoonnx`.
 
 For grapheme-to-phoneme (G2P) conversion without TTS, use
@@ -124,7 +132,7 @@ empty string, the value comes from the `PHOONNX_PRECISION` environment variable.
 A value that is not a string, or not one of the three, stops the plugin at start. A voice that
 has no files for the value raises `PrecisionUnavailable` at its first synthesis.
 Audio from int8 files is cached apart from audio of the full files. See
-[configuration.md](configuration.md#precision) for what `auto` picks.
+[Precision variants](precision.md) for what `auto` picks.
 
 ### Audio super-resolution
 
@@ -284,7 +292,7 @@ shows up at that point, not at start.
 
 ### Voice Caching
 
-Loaded voices are cached in memory (`plugin.voice_cache`) to avoid re-loading on every utterance. The first call for a new voice ID triggers a download if needed. Memory is charged per model rather than per voice: a family of catalog entries that name the same graph (for example the `omnivoice` or `qwen3tts` voice-config variants) shares one ONNX Runtime session and counts against the budget once, however many of its voices are loaded.
+Loaded voices are cached in memory (`plugin.voice_cache`) to avoid re-loading on every utterance. The first call for a voice that is not loaded downloads it when needed. Memory is charged per model rather than per voice: a family of catalog entries that name the same graph (for example the `omnivoice` or `qwen3tts` voice-config variants) shares one ONNX Runtime session and counts against the budget once, however many of its voices are loaded.
 
 Two config keys bound how much stays resident:
 
@@ -333,3 +341,7 @@ All voices available through `TTSModelManager` are accessible to the plugin. Use
 phoonnx-voices update-cache
 phoonnx-voices list-voices --lang en-US
 ```
+
+---
+
+[Docs index](index.md) · Previous: [Alphabet conversion model](alphabet_model.md) · Next: [Docker TTS server](docker.md)
