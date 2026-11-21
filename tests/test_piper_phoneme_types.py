@@ -48,6 +48,16 @@ def test_the_type_maps_to_its_scriptconv_backend(kind):
     assert loaded.tokenizer.fold_compounds is False
 
 
+@pytest.mark.parametrize("kind", TYPES)
+def test_the_voice_config_loads_with_the_installed_scriptconv(kind):
+    # The loader gives the backend as a name. VoiceConfig needs a Phonemizer
+    # member of that name, so this fails when scriptconv lacks the backend.
+    from phoonnx.config import VoiceConfig
+
+    config = VoiceConfig.from_dict(json.loads(json.dumps(FIXTURE[kind]["config"])))
+    assert (config.phoneme_type.value, config.alphabet.value) == BACKENDS[kind]
+
+
 def test_hebrew_voices_diacritize_with_nakdimon():
     loaded = load("hebrew")
     assert (loaded.add_diacritics, loaded.diacritizer_model) == (True, "nakdimon")

@@ -168,6 +168,7 @@ These keys of the native format control how the phonemes become ids.
 | `blank_word` | none | The symbol that `add_blank_word` puts between words. Without it, a space gives no id. |
 | `use_eos_bos` | `true` | Put `bos` before the ids and `eos` after them. |
 | `fold_compounds` | `true` | Read the longest map key that starts at each symbol, so that `t͡ʃ` gives one id. |
+| `blank_after` | `null` | A list of symbols. When it is set, the `blank` symbol follows only these symbols, and `add_blank_char`, `blank_at_start` and `blank_at_end` have no effect. Piper's pinyin voices (`zh_CN-chaowen-medium`, `zh_CN-xiao_ya-medium`) set it to the tone digits `1` to `5`, the pause marks and the space. |
 | `keep_punctuation` | `false` | Keep the clause punctuation `, . ? ! : ;` for the map to read. |
 
 A Mimic 3 voice has its tokenizer rules in a `phonemes` section and in a
