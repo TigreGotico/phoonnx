@@ -153,9 +153,8 @@ Detection is strict: the adapter claims a voice **only** when `"streaming": true
 *and* `engine_params.decoder_path` are both present, so it never hijacks a normal
 single-graph voice.
 
-phoonnx creates the decoder session with no provider list, so the decoder runs on the
-default providers of ONNX Runtime. The `providers` of the voice apply to the encoder
-only. See [Execution Providers](configuration.md#execution-providers).
+The decoder runs on the `providers` of the voice, the same list as the encoder. See
+[Execution Providers](configuration.md#execution-providers).
 
 ## Parameters
 

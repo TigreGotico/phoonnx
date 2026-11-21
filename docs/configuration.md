@@ -323,11 +323,8 @@ The adapter registry itself is described in [Engines](engines.md).
 
 Every ONNX session phoonnx creates — the voice model and the auxiliary graphs an
 engine loads (vocoders, speaker encoders, text encoders, diacritizers) — runs on a
-resolved, ordered list of ONNX Runtime execution providers.
-
-The decoder of a [streaming VITS voice](streaming.md) is the exception. phoonnx
-creates its session with no provider list, so it runs on the default providers of
-ONNX Runtime.
+resolved, ordered list of ONNX Runtime execution providers. The decoder of a
+[streaming VITS voice](streaming.md) uses the same list as its encoder.
 
 Pass the list explicitly:
 
