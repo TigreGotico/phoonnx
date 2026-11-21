@@ -231,7 +231,7 @@ class ForwardTTSTrainingEngine(BaseTrainingEngine):
             del onnx_model.metadata_props[:]
             for key, value in {
                 "model_type": module.hparams.variant,
-                "engine": module.hparams.variant,
+                "engine": "fastpitch",
                 "n_speakers": num_speakers,
                 "n_vocab": num_symbols,
                 "sample_rate": model_config.get("audio", {}).get("sample_rate", module.hparams.sample_rate),
