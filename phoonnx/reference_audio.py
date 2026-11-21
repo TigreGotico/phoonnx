@@ -120,6 +120,40 @@ def fetch_reference_audio(url: str, timeout: int = 10,
         return tmp.name
 
 
+def _read_pcm_wav(ref: Any) -> Tuple[np.ndarray, int]:
+    """Decode a PCM WAV with the standard library to ``(float32 audio, rate)``.
+
+    Samples are scaled to [-1, 1) and channels are averaged to mono.
+    """
+    try:
+        with wave.open(str(ref), "rb") as w:
+            sr, ch, width = w.getframerate(), w.getnchannels(), w.getsampwidth()
+            frames = w.readframes(w.getnframes())
+    except wave.Error as e:
+        raise ValueError(
+            f"reference audio {ref} is not a PCM WAV file ({e}); without "
+            f"soundfile only 8, 16, 24 and 32-bit PCM WAV is supported, "
+            f"install phoonnx[cloning] for other formats") from e
+    if width == 1:
+        audio = (np.frombuffer(frames, dtype=np.uint8).astype(np.float32) - 128.0) / 128.0
+    elif width == 2:
+        audio = np.frombuffer(frames, dtype="<i2").astype(np.float32) / 32768.0
+    elif width == 3:
+        b = np.frombuffer(frames, dtype=np.uint8).reshape(-1, 3).astype(np.int32)
+        ints = b[:, 0] | (b[:, 1] << 8) | (b[:, 2] << 16)
+        audio = ((ints ^ 0x800000) - 0x800000).astype(np.float32) / 8388608.0
+    elif width == 4:
+        audio = np.frombuffer(frames, dtype="<i4").astype(np.float32) / 2147483648.0
+    else:
+        raise ValueError(
+            f"reference audio {ref} has {width * 8}-bit samples; without "
+            f"soundfile only 8, 16, 24 and 32-bit PCM WAV is supported, "
+            f"install phoonnx[cloning] for other formats")
+    if ch > 1:
+        audio = audio.reshape(-1, ch).mean(axis=1)
+    return audio, sr
+
+
 def load_reference_audio(ref: Any) -> Tuple[np.ndarray, int]:
     """Normalise a cloning reference to ``(mono float32 audio, sample_rate)``.
 
@@ -143,11 +177,7 @@ def load_reference_audio(ref: Any) -> Tuple[np.ndarray, int]:
         import soundfile as sf
         audio, sr = sf.read(str(ref), dtype="float32")
     except ImportError:
-        with wave.open(str(ref), "rb") as w:
-            sr, ch = w.getframerate(), w.getnchannels()
-            audio = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype(np.float32) / 32768.0
-            if ch > 1:
-                audio = audio.reshape(-1, ch).mean(axis=1)
+        audio, sr = _read_pcm_wav(ref)
     if getattr(audio, "ndim", 1) > 1:
         audio = audio.mean(axis=1)
     return np.asarray(audio, dtype=np.float32).reshape(-1), int(sr)

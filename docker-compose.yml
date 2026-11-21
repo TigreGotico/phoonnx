@@ -1,6 +1,6 @@
 services:
   phoonnx-tts:
-    image: ghcr.io/tigregotico/phoonnx:latest
+    image: ghcr.io/tigregotico/phoonnx:dev
     # …or build from this checkout instead of pulling the published image:
     # build: .
     container_name: phoonnx-tts

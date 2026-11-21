@@ -8,6 +8,8 @@ mocked so the tests stay fast and hermetic.
 import unittest
 from unittest.mock import MagicMock, patch
 
+from linguatag import default_region
+
 import phoonnx.opm as opm
 from phoonnx.voice import SynthesisConfig
 
@@ -32,8 +34,10 @@ class _FakeVoiceInfo:
         self.config = _FakeVoiceConfig(speaker_id_map=speaker_id_map)
         self.tts_voice = MagicMock(name=f"TTSVoice[{voice_id}]")
         self.load_providers = "unset"
+        self.precision = None
+        self.variants = None
 
-    def load(self, providers=None):
+    def load(self, providers=None, precision=None):
         self.load_providers = providers
         return self.tts_voice
 
@@ -191,15 +195,16 @@ class TestGetTts(unittest.TestCase):
             out = plugin.get_tts("hello world", "/tmp/out.wav")
         self.assertEqual(out, ("/tmp/out.wav", None))
 
-    def test_get_tts_uses_voice_config_defaults(self):
+    def test_get_tts_leaves_unset_scales_to_the_loaded_voice(self):
+        # The index entry's scales can differ from the loaded voice's (x-vits takes
+        # its scales from runtime.json at load), so the plugin passes none of them.
         v = _FakeVoiceInfo("OpenVoiceOS/v")
+        v.config.length_scale, v.config.noise_scale, v.config.noise_w_scale = 9.0, 9.0, 9.0
         plugin, _ = _make_plugin(voices=[v])
         with patch.object(opm, "wave"):
             plugin.get_tts("hi", "/tmp/out.wav")
         cfg = self._synth_config_from_call(v.tts_voice)
-        self.assertAlmostEqual(cfg.noise_scale, 0.667)
-        self.assertAlmostEqual(cfg.length_scale, 1.0)
-        self.assertAlmostEqual(cfg.noise_w_scale, 0.8)
+        self.assertEqual((cfg.noise_scale, cfg.length_scale, cfg.noise_w_scale), (None, None, None))
 
     def test_documented_underscore_config_keys_are_honoured(self):
         """Regression: documented keys (noise_scale, length_scale, noise_w,
@@ -334,6 +339,12 @@ class TestSuperResolutionConfigThreading(unittest.TestCase):
         self.assertIs(cfg.super_resolution, True)
         self.assertIsNone(cfg.super_resolution_model)
 
+    def test_the_chunk_key_reaches_synthesis_config(self):
+        self.assertEqual(self._synthesize({"chunk": "clause"}).chunk, "clause")
+
+    def test_no_chunk_key_reads_one_sentence_per_call(self):
+        self.assertIsNone(self._synthesize().chunk)
+
 
 if __name__ == "__main__":
     unittest.main()
@@ -449,6 +460,29 @@ class TestLangDefaultVoiceOverrides(unittest.TestCase):
             voices=(other, chosen))
         self.assertEqual(plugin.get_default_voice("gl").voice_id,
                          "proxectonos/celtia")
+
+    def test_default_region_config_key_matches_a_bare_request(self):
+        # a bare request names the default region of its language, so a key
+        # written with that region is the configured voice for the bare tag
+        chosen = _FakeVoiceInfo("voice/gb", lang="en-GB")
+        other = _FakeVoiceInfo("some/other", lang="en-GB")
+        plugin, _ = _make_plugin(
+            config={"lang": "en-GB",
+                    "lang2voice": {f"en-{default_region('en')}": "voice/gb"}},
+            voices=(other, chosen))
+        self.assertEqual(plugin.get_default_voice("en").voice_id, "voice/gb")
+
+    def test_bare_config_key_serves_every_region(self):
+        # a bare key is the primary subtag that every region falls back to,
+        # including regions other than the language's default one
+        chosen = _FakeVoiceInfo("voice/en", lang="en-GB")
+        other = _FakeVoiceInfo("some/other", lang="en-US")
+        plugin, _ = _make_plugin(
+            config={"lang": "en-US", "lang2voice": {"en": "voice/en"}},
+            voices=(other, chosen))
+        for lang in ("en", "en-US", "en-AU", f"en-{default_region('en')}"):
+            with self.subTest(lang=lang):
+                self.assertEqual(plugin.get_default_voice(lang).voice_id, "voice/en")
 
     def test_underscore_config_key_matches_a_dashed_request(self):
         chosen = _FakeVoiceInfo("voice/br", lang="pt-BR")

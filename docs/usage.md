@@ -6,7 +6,61 @@ tokenize / vocode calls.
 
 ## Loading a Voice
 
-The main entry point is `TTSVoice.load()`. You need an ONNX model file and its accompanying JSON config:
+Load a voice from the catalog by its id. This English voice uses the eSpeak phonemizer, so
+install the `espeak` extra first:
+
+```bash
+pip install --pre "phoonnx[espeak]"
+```
+
+Then save this script as `speak.py` and run it:
+
+```python
+import wave
+from phoonnx.model_manager import TTSModelManager
+
+manager = TTSModelManager()
+manager.load()
+manager.merge_default_voices()
+
+voice = manager.voices["OpenVoiceOS/pipertts_en-US_miro"].load()
+
+with wave.open("output.wav", "wb") as wav_file:
+    voice.synthesize_wav("Hello, world!", wav_file)
+```
+
+The first `load()` downloads the voice, about 60 MB, into the Hugging Face cache. Later loads
+read it from the cache. The script writes `output.wav`:
+
+```
+$ python speak.py
+$ python -c "import wave; w = wave.open('output.wav'); print(w.getframerate(), w.getnchannels(), w.getsampwidth())"
+22050 1 2
+```
+
+The examples on the rest of this page continue this script and use its `voice`.
+
+### Choosing execution providers
+
+Pass an ordered list of ONNX Runtime execution providers to run on a GPU. The list also sets
+the providers of the auxiliary graphs that an engine loads (vocoders, speaker encoders):
+
+```python
+voice = manager.voices["OpenVoiceOS/pipertts_en-US_miro"].load(
+    providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
+)
+```
+
+When you omit `providers`, phoonnx reads the `PHOONNX_ONNX_PROVIDERS` environment variable,
+and then detects the providers that the installed ONNX Runtime has. See the
+[Configuration reference](configuration.md#execution-providers).
+
+Set `PHOONNX_ORT_CACHE_DIR` to a writable directory to cache the ONNX Runtime-optimized graph
+across process restarts. This cuts the start time after the first run.
+
+### Loading from files
+
+A voice you trained, or any `model.onnx` with its JSON config, loads with `TTSVoice.load()`:
 
 ```python
 from phoonnx.voice import TTSVoice
@@ -17,15 +71,11 @@ voice = TTSVoice.load(
 )
 ```
 
-> **Note:** the default (`<model_path>.json`, e.g. `model.onnx.json`) does **not**
-> match the voice manager's cache layout, which ships `model.onnx` + `model.json`
-> side by side. Loading straight out of a cache directory needs `config_path`
-> passed explicitly as above; `manager.voices[voice_id].load()` already does this
-> for you.
+Without `config_path`, `TTSVoice.load` looks for `<model_path>.json`, for example
+`model.onnx.json`. Use this for your own files only. In the Hugging Face cache, the file
+names change from voice to voice, and `manager.voices[voice_id].load()` finds them for you.
 
-### Loading with Overrides
-
-You can override the phonemizer and language at load time:
+`TTSVoice.load` also takes overrides for the phonemizer and the language:
 
 ```python
 voice = TTSVoice.load(
@@ -37,54 +87,31 @@ voice = TTSVoice.load(
 )
 ```
 
-### Choosing execution providers
-
-Pass an ordered list of ONNX Runtime execution providers to run on a GPU. The list also drives
-the auxiliary graphs an engine loads (vocoders, speaker encoders):
-
-```python
-voice = TTSVoice.load(
-    "model.onnx", "model.json",
-    providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
-)
-```
-
-When omitted, providers come from the `PHOONNX_ONNX_PROVIDERS` environment variable, then from
-auto-detection. `use_cuda=True` is a **deprecated** alias for
-`providers=["CUDAExecutionProvider"]`; prefer `providers`. See the
-[Configuration reference](configuration.md#execution-providers).
-
-Set `PHOONNX_ORT_CACHE_DIR` to a writable directory to cache the ONNX Runtime-optimized graph
-across process restarts, and pass `warmup=True` to `TTSVoice.load` to pay the first-inference
-kernel-selection cost during load instead of on the first `synthesize` call — both cut cold-start
-latency.
+Pass `warmup=True` to `TTSVoice.load` to pay the first-inference kernel-selection cost during
+the load instead of on the first `synthesize` call. `use_cuda=True` is a **deprecated** alias
+for `providers=["CUDAExecutionProvider"]`. Use `providers`.
 
 ## Synthesizing Speech
 
 ### To a WAV File
 
+`synthesize_wav()` writes the whole text to an open WAV file, as `speak.py` does above:
+
 ```python
-import wave
-from phoonnx.voice import TTSVoice
-
-voice = TTSVoice.load("model.onnx", "model.json")
-
 with wave.open("output.wav", "wb") as wav_file:
     voice.synthesize_wav("Hello, world!", wav_file)
 ```
 
 ### Streaming Audio Chunks
 
-`synthesize()` is a generator that yields one `AudioChunk` per sentence. This enables low-latency streaming:
+`synthesize()` is a generator that yields one `AudioChunk` per sentence, as the sentence splitter cuts the text. This enables low-latency streaming. A short exclamation can stay in one chunk with the sentence after it: "Hello! How are you today?" gives one chunk, and "Hello world. How are you today?" gives two. `SynthesisConfig(chunk=...)` changes the size of a chunk: `clause` gives the first audio sooner on a long sentence, and `paragraph` or `none` gives fewer false sentence ends.
 
 ```python
-from phoonnx.voice import TTSVoice
 from phoonnx.config import SynthesisConfig
 
-voice = TTSVoice.load("model.onnx", "model.json")
 syn_config = SynthesisConfig(length_scale=1.2)  # slightly slower speech
 
-for chunk in voice.synthesize("Hello! How are you today?", syn_config=syn_config):
+for chunk in voice.synthesize("Hello world. How are you today?", syn_config=syn_config):
     print(f"Sample rate: {chunk.sample_rate}")
     print(f"Audio shape: {chunk.audio_float_array.shape}")
     # chunk.audio_int16_bytes — raw PCM bytes for playback
@@ -92,12 +119,13 @@ for chunk in voice.synthesize("Hello! How are you today?", syn_config=syn_config
 
 ### From Phoneme IDs Directly
 
-If you have pre-computed phoneme IDs, you can synthesize raw audio directly:
+If you have token IDs for the voice already, put them in an `Utterance` and render it:
 
 ```python
-import numpy as np
-phoneme_ids = [1, 5, 23, 7, 2]  # example IDs
-audio: np.ndarray = voice.phoneme_ids_to_audio(phoneme_ids)
+from phoonnx.voice import Utterance
+
+chunk = voice.render(Utterance(text="", symbols=None, ids=(1, 5, 23, 7, 2)))
+audio = chunk.audio_float_array
 ```
 
 ### Phoneme Alignment
@@ -113,13 +141,14 @@ for chunk in voice.synthesize("Hello world.", include_alignments=True):
         print(f"{align.phoneme!r:6s} {ms:6.1f} ms")
 ```
 
-`include_alignments=False` (the default) is a strict no-op on the audio, and
-models without a duration output degrade gracefully — `phoneme_alignments`
-comes back `None`. If a model was exported without a duration output but has
-one to find, the first `include_alignments=True` call retrofits it on demand
-via load-time graph surgery (see [Phoneme alignment](alignment.md)'s
-"Runtime alignment for models exported without the flag"), so re-exporting
-is optional, not required. See [Phoneme alignment](alignment.md) for the full
+`include_alignments=False` (the default) does not change the audio. For a model
+with no duration output, `phoneme_alignments` comes back `None`. If a model was
+exported without a duration output but has one to find, the first
+`include_alignments=True` call adds it with graph surgery at load time (see
+[Phoneme alignment](alignment.md), "Runtime alignment for models exported
+without the flag"). This needs the `onnx` package from
+`pip install --pre "phoonnx[streaming]"`. Without it, phoonnx logs an INFO
+message and `phoneme_alignments` comes back `None`. See [Phoneme alignment](alignment.md) for the full
 guide, the engine support matrix, and how to export a VITS model with
 alignment.
 
@@ -161,6 +190,13 @@ for chunk in voice.synthesize(text):
     ...
 ```
 
+A block holds IPA. A voice that reads another alphabet, such as X-SAMPA, gets the block converted
+to that alphabet. A voice that takes no symbol input, tiny-voca or an engine that reads raw text,
+logs one warning that names the voice and the block, and leaves the block out. An ARPA voice gets the
+block as IPA, which its vocabulary does not hold, so the tokenizer drops the block with an
+out-of-vocabulary warning. A skipped block leaves one space between the words around it, or the
+line break next to it when there is one. An SSML `<phoneme>` on such a voice reads its written word.
+
 ## Phonetic Spellings
 
 Word-level respellings are applied to the text before phonemization (`enable_phonetic_spellings`,
@@ -180,7 +216,7 @@ $ PHOONNX_PHONETIC_SPELLINGS_DIR=~/.config/phoonnx/spellings python my_app.py
 
 A file is named by primary language (`fr.txt`) and/or full tag (`fr-CA.txt`); they are applied
 over the packaged file, the full tag over the primary language. The directory can also be passed
-to `PhoneticSpellings.from_lang(lang, user_dir=...)`.
+to `PhoneticSpellings.from_lang(lang, user_dir=...)` (`from phoonnx.voice import PhoneticSpellings`).
 
 ```python
 voice.phonetic_spellings  # PhoneticSpellings (.replacements dict, .apply(text)), or None
@@ -198,17 +234,23 @@ loudness, pitch, language and sound effects. Input that is not SSML is synthesiz
 | `<prosody rate= volume= pitch=>` | pace (the voice's length scale), loudness, and pitch (`+2st`, `-10%`, `high`; Hz is ignored) |
 | `<emphasis level=>` | a little slower and louder (or softer for `reduced`) |
 | `<lang xml:lang=>`, `<voice>` | a multilingual voice uses that language's id for the piece; a monolingual voice says the words in its own language. `<say-as>` inside it also reads its value in that language |
-| `<say-as interpret-as=...>` | `cardinal`, `ordinal`, `digits`, `fraction`, `unit`, `date` (+`format="mdy"`), `time`, `currency`, `address`, `telephone`, `characters`/`spell-out`, `expletive` (a bleep), `interjection` |
+| `<say-as interpret-as=...>` | `cardinal`, `number`, `ordinal`, `digits`, `fraction`, `unit`, `date` (+`format="mdy"`), `time`, `currency`, `telephone`, `characters`/`spell-out`/`letters`/`verbatim`, and `expletive` (a bleep) |
 | `<sub alias=>` | substituted text |
 | `<phoneme alphabet="ipa\|x-sampa" ph=>` | inline phonemes (X-SAMPA is converted to IPA) |
 | `<mark name=>` | `on_mark(name, seconds)` is called as the audio that follows is produced |
 | `<amazon:effect name="whispered\|drc">`, `phonation="soft"`, `vocal-tract-length="+10%"` | whisper, soft voice, dynamic range compression, a longer or shorter vocal tract |
 | `<amazon:auto-breaths>`, `<amazon:breath>` | breaths between sentences, or at a point |
 
-`say-as` reads numbers, dates, times and units with the same parsers as the text normalizer
-(`ovos-number-parser`, `ovos-date-parser`), in the language of the text, so `<lang>` changes how
-they are read. A value that cannot be read that way (`<say-as interpret-as="date">soon</say-as>`)
-is spoken as written.
+The voice's text frontend reads `say-as` with `TextFrontend.say_as` from scriptconv. That method
+calls text2spoken through the normalisation hook of the voice. So `say-as` reads with the
+settings of the voice, and in the language of the text: `<lang>` changes how a value is read.
+Each value text2spoken does not read, such as `address` or `interjection`, reads as plain text,
+with a warning. A text that does not hold the value (`<say-as interpret-as="date">soon</say-as>`)
+also reads as plain text, with a warning.
+
+```python
+voice.frontend.say_as("3", "ordinal", lang="en-US")  # 'third'
+```
 
 Pitch, whisper, soft, compression, breaths and bleeps are applied to the finished audio
 (`phoonnx.audio_fx`, numpy only), not by the model: pitch shifts move the formants with the pitch,
@@ -251,19 +293,44 @@ Each `AudioChunk` has the following attributes:
 
 ## Low-level API
 
-`synthesize()` is built from three composable steps you can call yourself:
+`synthesize()` has two steps that you can call yourself: `prepare()` turns text into model
+input, and `render()` turns model input into audio.
 
 ```python
-# text -> phonemes grouped by sentence (a list of lists of phoneme strings)
-chunks = voice.phonemize("Hello world", lang="en-US")
+from phoonnx.config import SynthesisConfig
 
-# phonemes -> integer token IDs
-ids = voice.phonemes_to_ids(chunks[0])
-
-# token IDs -> raw float32 audio (unnormalized)
-audio = voice.phoneme_ids_to_audio(ids)
+config = SynthesisConfig(length_scale=1.1)
+for utterance in voice.prepare("Hello world. How are you?", config):
+    print(utterance.symbols)  # the phonemes of one sentence, or None
+    print(utterance.ids)      # the token IDs that the engine reads
+    chunk = voice.render(utterance, config)
 ```
 
-`phonemize()` accepts an optional `lang` to phonemize in a language other than the voice's own
-(used for cross-lingual cloning references). `phoneme_ids_to_audio()` accepts a
-`SynthesisConfig` and optional per-phoneme `language_ids`.
+`prepare()` yields one `Utterance` for each engine call, usually one for each sentence. An
+`Utterance` cannot be changed after it is made. It has five fields:
+
+| Field | Value |
+|-------|-------|
+| `text` | The text of this engine call's chunk. `""` when the previous utterance's text covers this chunk, and `None` when it is unknown |
+| `symbols` | The phonemes or characters that the tokenizer read. `None` for an engine that reads text, such as Pocket TTS. Its adapter makes the IDs from the text |
+| `ids` | The token IDs |
+| `streams` | Values that some phonemizers give for each ID, such as `language_ids` from Shami |
+| `params` | Values that the engine adapter learned from the text of this utterance. They join the request parameters of the engine call |
+
+`render()` runs the engine and then does the same audio steps as `synthesize()`: level,
+volume, clip, voice conversion and super-resolution. It always returns one `AudioChunk`.
+Use `render(utterance, config, alignments=True)` to get the durations of the phonemes in the
+chunk.
+
+The two steps let you do work between them. For example, you can keep the utterances of a
+text and render them again with another speaker or another length scale.
+The text settings of `SynthesisConfig` (diacritics, phonetic spellings, input alphabet) apply
+in `prepare()`, and the engine and audio settings apply in `render()`.
+
+`phonemize()` gives the phonemes of a text with no diacritizer, one list for each sentence.
+It accepts an optional `lang`, so that a cloning reference can be phonemized in its own
+language. `voice.tokenizer.tokenize(phonemes)` turns one such list into token IDs.
+
+`phonemes_to_ids()` and `phoneme_ids_to_audio()` are deprecated. Use `voice.tokenizer.tokenize`
+and `render()`. `phoneme_ids_to_audio()` returns the engine audio before the level, volume
+and clip steps.

@@ -41,6 +41,19 @@ python parity.py "Some sentence." en kv     # KV-cache mode parity
 Each export script checks itself against the torch module it came from and prints the
 maximum absolute difference.
 
+To export a fine-tune, name its repository and checkpoint file:
+
+```bash
+export MAGPIE_REPO=infiniatechnologies/magpie-tts-13lang-357m
+export MAGPIE_CHECKPOINT=magpie_tts_13lang_357m.nemo
+```
+
+`dump_assets.py` writes `assets/tokenizer.json` with a `tokenizer_kinds` entry for each
+sub-tokenizer: `byt5`, `chars`, or the NeMo class name of one that phoonnx cannot encode.
+The engine encodes `byt5` and `chars` sub-tokenizers exactly as NeMo does. A voice names
+its sub-tokenizer with `engine_params["tokenizer_name"]` when the checkpoint has no
+language map.
+
 ## Architecture
 
 Text goes through a 6-layer causal encoder. A 12-layer causal decoder cross-attends to

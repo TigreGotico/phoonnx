@@ -365,6 +365,17 @@ def test_phonemize_corpus_list(tmp_path):
     assert lines[1].endswith("|1")
 
 
+def test_phonemize_corpus_list_default_espeak(tmp_path):
+    from phoonnx_train.styletts2.phonemize_corpus import phonemize_list_file
+    from scriptconv_copyleft.phonemizers.mul import EspeakPhonemizer
+    src = tmp_path / "raw_list.txt"
+    src.write_text("utt0.wav|hello world|3\n")
+    out = tmp_path / "train_list.txt"
+    phonemize_list_file(src, out, lang="en-us")
+    expected = EspeakPhonemizer().phonemize_string("hello world", "en-us")
+    assert out.read_text() == f"utt0.wav|{expected}|3\n"
+
+
 def test_phonemize_text_corpus(tmp_path):
     from phoonnx_train.styletts2.phonemize_corpus import phonemize_text_corpus
     corpus = tmp_path / "corpus.txt"

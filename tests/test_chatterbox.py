@@ -101,6 +101,45 @@ def test_repetition_penalty():
     assert out[0, 0] == pytest.approx(1.0)          # untouched
 
 
+class _Graph:
+    def __init__(self, run):
+        self.run = run
+
+
+def _sampling_adapter(steps):
+    """A Chatterbox adapter on stand-in graphs. The LM gives four tokens equal logits and the
+    stop token none, so it samples *steps* tokens, and the decoder returns the tokens as audio."""
+    from phoonnx.engines.chatterbox import STOP_SPEECH_TOKEN
+    adapter = ChatterboxAdapter()
+    adapter.MAX_NEW_TOKENS = steps
+    adapter.past_names, adapter.num_kv_heads, adapter.head_dim = ["past_key_values.0.key"], 1, 1
+    adapter.embed_inputs = {"input_ids"}
+    adapter.speech_encoder = _Graph(lambda _, feed: [np.zeros((1, 1, 2), np.float32), np.zeros((1, 1), np.int64),
+                                                     np.zeros((1, 2), np.float32), np.zeros((1, 1, 2), np.float32)])
+    adapter.embed_tokens = _Graph(lambda _, feed: [np.zeros((1, feed["input_ids"].shape[1], 2), np.float32)])
+    adapter.cond_decoder = _Graph(lambda _, feed: [feed["speech_tokens"].astype(np.float32)])
+    logits = np.full(STOP_SPEECH_TOKEN + 1, -1e9, np.float32)
+    logits[[10, 11, 12, 13]] = 0.0
+
+    def lm(_, feed):
+        seq = feed["attention_mask"].shape[1]
+        return [np.tile(logits, (1, feed["inputs_embeds"].shape[1], 1)), np.zeros((1, 1, seq, 1), np.float32)]
+
+    return adapter, _Graph(lm)
+
+
+def test_seed_repeats_the_sampled_speech_tokens():
+    reference = (np.zeros(2400, np.float32), 24000)
+    audio = {}
+    for run, seed in (("first", 7), ("again", 7), ("other", 8)):
+        adapter, lm = _sampling_adapter(40)
+        audio[run] = adapter.synthesize(_req(reference_audio=reference, seed=seed), lm).audio
+    tokens = audio["first"][1:-3]                # after the prompt token, before the silence
+    assert len(tokens) > 30 and set(tokens.tolist()) <= {10, 11, 12, 13}
+    np.testing.assert_array_equal(audio["first"], audio["again"])
+    assert not np.array_equal(audio["first"], audio["other"])
+
+
 def test_bpe_tokenizer_joins_units():
     from phoonnx.tokenizer import BPETokenizer
     bpe = BPETokenizer.__new__(BPETokenizer)        # bypass __init__ (no tokenizer.json on disk)
@@ -193,4 +232,4 @@ def test_lahgtna_voice_index_entries():
         for field in ("model_url", "speech_encoder_url", "embed_tokens_url",
                       "conditional_decoder_url", "tokenizer_config_url"):
             assert entry[field].startswith(
-                "https://huggingface.co/OpenVoiceOS/phoonnx-chatterbox-lahgtna/")
+                "https://huggingface.co/Phoonnx/chatterbox-ar-lahgtna-v1-unicode/")

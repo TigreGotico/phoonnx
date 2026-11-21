@@ -6,6 +6,7 @@ checkpoint save/load/resume (optimizer + scheduler + epoch round-trip),
 warm-starting from a partial checkpoint, and ONNX export that the phoonnx
 OptiSpeech inference adapter accepts.
 """
+import json
 import logging
 import tempfile
 import unittest
@@ -384,8 +385,30 @@ class ExportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             ckpt = Path(td) / "last.ckpt"
             trainer.save_checkpoint(str(ckpt))
-            onnx_path = eng.export_onnx(ckpt, None, Path(td) / "onnx")
+            training_config = {
+                "phoonnx_version": "1.0.0",
+                "lang_code": "en-US",
+                "phoneme_type": "gruut",
+                "alphabet": "ipa",
+                "keep_punctuation": True,
+                "phonemizer_identity": {"backend": "gruut", "distribution": "gruut", "version": "2.4.0",
+                                        "lang": "en-US", "revision": None, "frontend": None},
+                "phoneme_id_map": {"_": 0, "^": 1, "$": 2, " ": 3, "a": 4},
+                "num_symbols": 5,
+            }
+            config_path = Path(td) / "training.json"
+            config_path.write_text(json.dumps(training_config), encoding="utf-8")
+            onnx_path = eng.export_onnx(ckpt, config_path, Path(td) / "onnx")
             self.assertTrue(onnx_path.exists())
+
+            from phoonnx.config import VoiceConfig
+
+            written = json.loads((onnx_path.parent / "model.json").read_text(encoding="utf-8"))
+            loaded = VoiceConfig.from_dict(written)
+            self.assertEqual(loaded.phoneme_type.value, "gruut")
+            self.assertEqual(loaded.alphabet.value, "ipa")
+            self.assertIs(loaded.keep_punctuation, True)
+            self.assertEqual(loaded.phonemizer_identity, training_config["phonemizer_identity"])
 
             sess = ort.InferenceSession(str(onnx_path))
             input_names = {i.name for i in sess.get_inputs()}

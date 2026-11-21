@@ -89,6 +89,7 @@
 | `facebook/mms-tts-aoz-Uab Meto` | `aoz` | `transformers` | `graphemes` |
 | `facebook/mms-tts-apb-Sa’a` | `apb` | `transformers` | `graphemes` |
 | `omnivoice/apc` | `apc` | `omnivoice` | `unicode` |
+| `Tushe/shami-tts` | `apc` | `shami` | `shami` |
 | `omnivoice/apd` | `apd` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-apr-Arop-Lokep` | `apr` | `transformers` | `graphemes` |
 | `chatterbox/multilingual/ar` | `ar` | `chatterbox` | `unicode` |
@@ -130,7 +131,6 @@
 | `piper/ar_JO-kareem-low` | `ar-JO` | `piper` | `espeak` |
 | `piper/ar_JO-kareem-medium` | `ar-JO` | `piper` | `espeak` |
 | `chatterbox/lahgtna/lb` | `ar-LB` | `chatterbox` | `unicode` |
-| `Tushe/shami-tts` | `ar-LB` | `shami` | `shami` |
 | `chatterbox/lahgtna/ly` | `ar-LY` | `chatterbox` | `unicode` |
 | `chatterbox/lahgtna/mo` | `ar-MA` | `chatterbox` | `unicode` |
 | `habibi/ar-mar` | `ar-MA` | `f5tts` | `graphemes` |
@@ -215,7 +215,7 @@
 | `facebook/mms-tts-bdu-Oroko` | `bdu` | `transformers` | `graphemes` |
 | `facebook/mms-tts-bdv-Bodo Parja` | `bdv` | `transformers` | `graphemes` |
 | `omnivoice/be` | `be` | `omnivoice` | `unicode` |
-| `coqui-be-common-voice-glow-tts` | `be-BY` | `glowtts` | `graphemes` |
+| `coqui-be-common-voice-glow-tts` | `be-BY` | `glowtts` | `espeak` |
 | `outetts/1B/be` | `be-BY` | `outetts` | `unicode` |
 | `omnivoice/beb` | `beb` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-beh-Biali` | `beh` | `transformers` | `graphemes` |
@@ -987,7 +987,7 @@
 | `supertonic/M3/es` | `es` | `supertonic` | `unicode` |
 | `supertonic/M4/es` | `es` | `supertonic` | `unicode` |
 | `supertonic/M5/es` | `es` | `supertonic` | `unicode` |
-| `hf_community/HirCoir/piper-sorah-neuronal` | `es-419` | `transformers` | `graphemes` |
+| `hf_community/HirCoir/piper-sorah-neuronal` | `es-419` | `piper` | `espeak` |
 | `hf_community/ylacombe/mms-spa-finetuned-argentinian-monospeaker` | `es-AR` | `transformers` | `graphemes` |
 | `piper_community/larcanio/es-AR_daniela` | `es-AR` | `piper` | `espeak` |
 | `hf_community/ylacombe/mms-spa-finetuned-chilean-monospeaker` | `es-CL` | `transformers` | `graphemes` |
@@ -2844,7 +2844,7 @@
 | `supertonic/M3/uk` | `uk` | `supertonic` | `unicode` |
 | `supertonic/M4/uk` | `uk` | `supertonic` | `unicode` |
 | `supertonic/M5/uk` | `uk` | `supertonic` | `unicode` |
-| `mimic3/uk_UK/m-ailabs_low` | `uk-GB` | `mimic3` | `graphemes` |
+| `mimic3/uk_UK/m-ailabs_low` | `uk-UA` | `mimic3` | `graphemes` |
 | `coqui-uk-mai-glow-tts` | `uk-UA` | `glowtts` | `graphemes` |
 | `coqui/uk-mai-vits` | `uk-UA` | `coqui` | `graphemes` |
 | `facebook/mms-tts-ukr-Ukrainian` | `uk-UA` | `transformers` | `graphemes` |

@@ -66,7 +66,7 @@ phoonnx-voices list-voices [--lang LANG] [--verbose]
 
 | Flag | Description |
 |------|-------------|
-| `--lang LANG` | Filter by language code (e.g. `en-US`, `pt-PT`) |
+| `--lang LANG` | Filter by language code. A tag with a region (`pt-PT`) lists the voices of that region. A tag with no region (`pt`, `zh-Hans`), or a region with no voice (`en-AU`), lists the nearest voices first, as the plugin picks them. |
 | `-v`, `--verbose` | Show full details for each voice |
 
 **Examples:**
@@ -106,17 +106,27 @@ vocoder, style embedding, speaker encoder or auxiliary graph the voice uses.
 
 ```bash
 phoonnx-voices download VOICE_ID
+phoonnx-voices download VOICE_ID --precision int8
 ```
+
+`--precision` takes `auto`, `int8` or `full` and downloads the files that load
+with that value. Unset, the value comes from `PHOONNX_PRECISION`, else `auto`.
 
 The voice is looked up in the local cache first; if it is not cached, the download
 falls back to the bundled indexes, so a single voice can be fetched without running
 `update-cache` first.
 
+The command exits with status 1 when the id is unknown, the network fails, or the voice
+is not cached and the machine is offline. Its last line on stderr names the error.
+
 **Example:**
 
 ```bash
-phoonnx-voices download OpenVoiceOS/pipertts_es-ES_dii
+phoonnx-voices download OpenVoiceOS/phoonnx_es-ES_dii_espeak
 ```
+
+This Spanish voice uses the eSpeak phonemizer. To speak with it, install the `espeak` extra:
+`pip install --pre "phoonnx[espeak]"`.
 
 Files are fetched with `huggingface_hub` straight into the shared HuggingFace
 cache (`~/.cache/huggingface/hub/` by default, or wherever `HF_HOME`/`HF_HUB_CACHE`
@@ -147,7 +157,7 @@ and which models can produce them.
 |------|-------------|
 | `--output`, `-o` | Write the patched model somewhere other than the default sibling path. |
 
-It needs the `onnx` package (`pip install phoonnx[streaming]`) and a model
+It needs the `onnx` package (`pip install --pre "phoonnx[streaming]"`) and a model
 whose graph has a locatable duration tensor; it says which of the two is
 missing and exits non-zero otherwise.
 
@@ -168,3 +178,6 @@ phoonnx-voices list-voices --lang pt-PT
 # 4. Download a specific voice
 phoonnx-voices download OpenVoiceOS/phoonnx_eu-ES_dii_espeak
 ```
+
+The Basque voice in step 4 uses the eSpeak phonemizer. Install the `espeak` extra before you
+load it: `pip install --pre "phoonnx[espeak]"`.

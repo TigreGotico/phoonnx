@@ -11,8 +11,13 @@ A VITS voice has no pitch or phonation controls, so these work on the finished s
 * :func:`soft` is a quieter, breathier, duller voice (``phonation="soft"``).
 * :func:`compress` evens out the loudness (``<amazon:effect name="drc">``).
 * :func:`breath` and :func:`beep` make the short sounds between sentences and over an expletive.
+* :func:`normalize_loudness` sets the loudness in LUFS (ITU-R BS.1770-4) and limits the peak.
+* :func:`resample_rate` converts between sample rates.
 """
 from __future__ import annotations
+
+import math
+from typing import Tuple
 
 import numpy as np
 
@@ -266,3 +271,103 @@ def beep(sample_rate: int, duration_ms: int = 350, frequency: float = 1000.0) ->
         tone[:fade] *= ramp
         tone[-fade:] *= ramp[::-1]
     return tone.astype(np.float32)
+
+
+def resample_rate(audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
+    """Resample *audio* from *sr* to *target_sr* Hz (polyphase; linear without scipy)."""
+    if sr == target_sr:
+        return audio
+    try:
+        from scipy.signal import resample_poly
+        from math import gcd
+        g = gcd(sr, target_sr)
+        return resample_poly(audio, target_sr // g, sr // g).astype(np.float32)
+    except Exception:
+        n = int(round(len(audio) * target_sr / sr))
+        return np.interp(np.linspace(0, len(audio) - 1, n), np.arange(len(audio)), audio).astype(np.float32)
+
+
+def _biquad(kind: str, rate: int) -> Tuple[np.ndarray, np.ndarray]:
+    """K-weighting stage coefficients, ``pyloudnorm.IIRfilter`` designs them per rate."""
+    if kind == "high_shelf":
+        gain, q, fc = 4.0, 0.7071752369554196, 1681.9744509555319
+    else:
+        gain, q, fc = 0.0, 0.5003270373238773, 38.13547087602444
+    a = 10 ** (gain / 40.0)
+    w0 = 2.0 * math.pi * (fc / rate)
+    alpha = math.sin(w0) / (2.0 * q)
+    cos = math.cos(w0)
+    if kind == "high_shelf":
+        root = math.sqrt(a)
+        b = np.array([a * ((a + 1) + (a - 1) * cos + 2 * root * alpha),
+                      -2 * a * ((a - 1) + (a + 1) * cos),
+                      a * ((a + 1) + (a - 1) * cos - 2 * root * alpha)])
+        den = np.array([(a + 1) - (a - 1) * cos + 2 * root * alpha,
+                        2 * ((a - 1) - (a + 1) * cos),
+                        (a + 1) - (a - 1) * cos - 2 * root * alpha])
+    else:
+        b = np.array([(1 + cos) / 2, -(1 + cos), (1 + cos) / 2])
+        den = np.array([1 + alpha, -2 * cos, 1 - alpha])
+    return b / den[0], den / den[0]
+
+
+def integrated_loudness(audio: np.ndarray, rate: int, block_size: float = 0.400) -> float:
+    """Gated integrated loudness of mono *audio* in LUFS (ITU-R BS.1770-4).
+
+    Reimplemented in numpy/scipy rather than pulled in as a dependency: it is two
+    biquads and a two-stage gate, and ``pyloudnorm`` would be a new hard requirement
+    for every phoonnx install. Returns ``-inf`` for silence, which
+    :func:`normalize_loudness` passes through unchanged.
+    """
+    from scipy.signal import lfilter
+    x = np.asarray(audio, np.float64).reshape(-1)
+    for kind in ("high_shelf", "high_pass"):
+        b, a = _biquad(kind, rate)
+        x = lfilter(b, a, x)
+
+    step = 0.25  # 75 % overlap
+    duration = x.shape[0] / rate
+    num_blocks = int(round((duration - block_size) / (block_size * step)) + 1)
+    if num_blocks < 1:
+        return -np.inf
+    z = np.empty(num_blocks)
+    for j in range(num_blocks):
+        lo = int(block_size * (j * step) * rate)
+        hi = int(block_size * (j * step + 1) * rate)
+        z[j] = np.sum(np.square(x[lo:hi])) / (block_size * rate)
+    with np.errstate(divide="ignore"):
+        loudness = -0.691 + 10.0 * np.log10(z)
+
+    gated = z[loudness > -70.0]
+    if gated.size == 0:
+        return -np.inf
+    with np.errstate(divide="ignore"):
+        relative = -0.691 + 10.0 * np.log10(gated.mean()) - 10.0
+    gated = z[(loudness > -70.0) & (loudness > relative)]
+    if gated.size == 0:
+        return -np.inf
+    return float(-0.691 + 10.0 * np.log10(gated.mean()))
+
+
+def normalize_loudness(audio: np.ndarray, target: float = -18.0,
+                       peak_limit: float = -1.0, *, rate: int,
+                       block_size: float = 0.400) -> np.ndarray:
+    """Loudness-normalize *audio* to *target* LUFS, then peak-limit it to *peak_limit* dBFS.
+
+    This is OuteTTS's ``process_audio_tensor``. Clips shorter than one gating block are
+    zero-padded for the measurement and trimmed back after, as upstream does.
+    """
+    x = np.asarray(audio, np.float64).reshape(-1)
+    original = x.shape[0]
+    if original == 0:
+        return np.zeros(0, np.float32)
+    minimum = int(block_size * rate)
+    measured = integrated_loudness(
+        np.pad(x, (0, max(0, minimum - original))), rate, block_size)
+    if np.isfinite(measured):
+        x = x * (10 ** ((target - measured) / 20.0))
+    peak = float(np.max(np.abs(x)))
+    threshold = 10 ** (peak_limit / 20.0)
+    if peak > threshold:
+        x = x * threshold / peak
+    return np.asarray(x[:original], np.float32)

@@ -61,7 +61,7 @@ class MatchaAdapter(BaseOnnxAdapter):
 
     def configure(self, voice_config: Any) -> None:
         """Build the vocoder from ``voice_config.engine_params``."""
-        engine_params = getattr(voice_config, "engine_params", None) or {}
+        engine_params = voice_config.engine_params
         self.configure_from_params(engine_params)
 
     def configure_from_params(self, engine_params: Dict[str, Any]) -> None:
@@ -112,7 +112,7 @@ class MatchaAdapter(BaseOnnxAdapter):
             "scales": np.array([temperature, length_scale], dtype=np.float32),
         }
 
-        spk_id = params.get("spk_id", request.speaker_id)
+        spk_id = params.get("spk_id", request.speaker_id or 0)
         if spk_id is not None:
             args["spks"] = np.array([int(spk_id)], dtype=np.int64)
 
@@ -200,23 +200,3 @@ class MatchaAdapter(BaseOnnxAdapter):
             if {"x", "x_lengths", "scales"}.issubset(inputs):
                 return True
         return False
-
-    def parse_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract Matcha per-call params and remember engine_params."""
-        params: Dict[str, Any] = {}
-        inference = config.get("inference", {})
-        params["temperature"] = inference.get("temperature", 0.667)
-        params["length_scale"] = inference.get("length_scale", 1.0)
-        params["denoise"] = inference.get("denoise", True)
-
-        engine_params = config.get("engine_params", {})
-        if engine_params:
-            self.configure_from_params(engine_params)
-        params["spk_id"] = engine_params.get("spk_id")
-        return params
-
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "temperature": "Temperature",
-            "length_scale": "Length Scale",
-        }

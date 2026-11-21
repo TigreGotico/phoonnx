@@ -34,14 +34,29 @@ sibling checkpoint needs no code change. See
 
 Prompt format
 ~~~~~~~~~~~~~
-Reproduced from upstream's inference code, which is what the checkpoint was trained on::
+Reproduced from upstream's inference code, which is what the checkpoint was trained on.
+The VieNeu-TTS lineage (Akiti-TTS included) uses the bare layout::
 
     <|TEXT_PROMPT_START|>{reference phones} {target phones}<|TEXT_PROMPT_END|>
     <|SPEECH_GENERATION_START|>{<|speech_c|> for c in reference codes}
 
+Neuphonic's NeuTTS Air and Nano, and their fine-tunes, wrap the same parts in a chat
+turn (``neutts`` ``NeuTTS._apply_chat_template``)::
+
+    user: Convert the text to speech:<|TEXT_PROMPT_START|>...<|TEXT_PROMPT_END|>
+    assistant:<|SPEECH_GENERATION_START|>...
+
+The voice names its layout with ``engine_params["prompt_template"]``. The whole prompt is
+encoded in one pass with the tokenizer's own special tokens, as upstream's
+``tokenizer.encode(chat)`` does, so a Llama-based checkpoint gets its
+``<|begin_of_text|>``.
+
 Generation continues that speech-token run until ``<|SPEECH_GENERATION_END|>`` or EOS.
-Both phone strings come from espeak-ng, and the tokenizer is the checkpoint's own BPE, so
-text -> ids is byte-identical to training rather than re-derived here.
+Both phone strings come from espeak-ng in the language the checkpoint was trained on
+(``engine_params["espeak_voice"]``), cleaned with the checkpoint's own substitutions
+(``engine_params["phoneme_substitutions"]``) and whitespace-collapsed, as upstream's
+``_to_phones`` does. The tokenizer is the checkpoint's own BPE, so text -> ids is
+byte-identical to training rather than re-derived here.
 
 Cloning is **in-context and pre-encoded**: a voice preset is a reference transcript plus
 the NeuCodec codes of its recording (a ``voices.json``, spec ``vieneu.voice.presets``),
@@ -51,22 +66,24 @@ presets only, and ``speaker_reference`` is not supported.
 """
 import json
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 
 import numpy as np
 import onnxruntime
 from quebra_frases import sentence_tokenize
 
-from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
+from phoonnx.engines._sampling import apply_repetition_penalty
+from phoonnx.engines._sampling import ranked, softmax
+from phoonnx.engines.base import INLINE_BLOCK, AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.providers import make_session
 from phoonnx.util import LOG
 
 SAMPLE_RATE = 24000
 
-#: espeak-ng voice the family is phonemized with. Akiti-TTS phonemizes Asante Twi
+#: espeak-ng voice for a voice that names none. Akiti-TTS phonemizes Asante Twi
 #: through Lingua Franca Nova: espeak-ng has no Twi voice, and ``lfn``'s five-vowel,
-#: near-one-to-one orthography is the closest reader for Twi spelling. This is what the
-#: checkpoint was trained on, so it is a property of the model, not a fallback.
+#: near-one-to-one orthography is the closest reader for Twi spelling. Every other
+#: checkpoint names its own with ``engine_params["espeak_voice"]``.
 ESPEAK_VOICE = "lfn"
 
 # Special ids are read from the tokenizer, but the token *strings* are fixed by the
@@ -79,9 +96,26 @@ SPEECH_TOKEN_TEMPLATE = "<|speech_{}|>"
 
 _SPEECH_TOKEN_RE = re.compile(r"^<\|speech_(\d+)\|>$")
 
-#: Reference codes fed as the generation prefix. Upstream truncates at 200 (~4 s): the
+#: Reference codes fed as the generation prefix. VieNeu-TTS truncates at 200 (~4 s): the
 #: prompt has to leave room for the target inside the LM's context.
 MAX_REFERENCE_CODES = 200
+
+
+class PromptLayout(NamedTuple):
+    """One lineage's prompt: ``{text}`` is the marked phone string, ``{speech}`` the
+    speech-generation start and the reference codes, of which at most
+    ``max_reference_codes`` are kept (``None`` keeps them all)."""
+    template: str
+    max_reference_codes: Optional[int]
+
+
+PROMPT_TEMPLATES = {
+    # VieNeu-TTS truncates the reference to leave the target room in the context
+    "vieneu": PromptLayout("{text}{speech}", MAX_REFERENCE_CODES),
+    # neutts NeuTTS._apply_chat_template feeds every reference code
+    "neuphonic": PromptLayout("user: Convert the text to speech:{text}\nassistant:{speech}", None),
+}
+DEFAULT_PROMPT_TEMPLATE = "vieneu"
 
 #: Tokens the repetition penalty looks back over. Upstream runs the LM through
 #: llama.cpp, whose penalty is windowed (``last_n_tokens_size``, default 64) and spans
@@ -126,28 +160,34 @@ def preserve_punctuation_phonemize(text: str, phonemize) -> str:
     return joined
 
 
-def _softmax(x: np.ndarray) -> np.ndarray:
-    z = np.asarray(x, np.float64)
-    z = z - z.max()
-    e = np.exp(z)
-    return e / e.sum()
+def _compile_substitutions(rules: Any) -> List[Tuple[re.Pattern, str]]:
+    """Compile ``engine_params["phoneme_substitutions"]``: a list of
+    ``[pattern, replacement]`` pairs of strings.
 
-
-def _apply_repetition_penalty(scores: np.ndarray, seen: np.ndarray, penalty: float) -> np.ndarray:
-    """Divide the score of tokens in ``seen`` by ``penalty`` (multiply when negative).
-
-    >1 discourages repeats. ``seen`` is the recent-token *window* the caller chose, not
-    the whole history — see :data:`REPETITION_WINDOW`. NeuTTS needs a fairly strong
-    penalty (upstream default 1.3) or it stalls on runs of silence tokens.
+    A JSON object is refused, because its keys would unpack as pairs: the two-code-point
+    key ``"ɐ̃"`` would become the rule "``ɐ`` to a lone combining tilde". Each rule is tried once on
+    an empty string: ``re`` parses the replacement before it scans, so a group reference
+    the pattern has no group for fails at load, not at the first synthesis.
     """
-    if penalty == 1.0 or seen.size == 0:
-        return scores
-    out = scores.copy()
-    idx = np.unique(seen[(seen >= 0) & (seen < out.shape[0])])
-    if idx.size:
-        s = out[idx]
-        out[idx] = np.where(s < 0, s * penalty, s / penalty)
-    return out
+    if rules is None:
+        return []
+    if not isinstance(rules, (list, tuple)):
+        raise ValueError("NeuTTS phoneme_substitutions must be a list of "
+                         f"[pattern, replacement] pairs, not {type(rules).__name__}")
+    compiled = []
+    for rule in rules:
+        if not (isinstance(rule, (list, tuple)) and len(rule) == 2
+                and all(isinstance(part, str) for part in rule)):
+            raise ValueError("each NeuTTS phoneme_substitutions rule must be a "
+                             f"[pattern, replacement] pair of strings, not {rule!r}")
+        pattern, replacement = rule
+        try:
+            regex = re.compile(pattern)
+            regex.sub(replacement, "")
+        except (re.error, IndexError) as error:
+            raise ValueError(f"bad NeuTTS phoneme_substitutions rule {rule!r}: {error}") from error
+        compiled.append((regex, replacement))
+    return compiled
 
 
 def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
@@ -166,26 +206,28 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
         threshold = float(np.partition(s, -top_k)[-top_k])
         s = np.where(s < threshold, -np.inf, s)
     if 0 < top_p < 1:
-        order = np.argsort(s)[::-1]
-        cumulative = np.cumsum(_softmax(s[order]))
+        order = ranked(s, top_k)
+        cumulative = np.cumsum(softmax(s[order]))
         keep = np.ones(order.shape[0], bool)
         # keep every token up to and including the one that crosses top_p
         keep[1:] = cumulative[:-1] < top_p
         masked = np.full_like(s, -np.inf)
         masked[order[keep]] = s[order[keep]]
         s = masked
-    probs = _softmax(s / float(temperature))
+    probs = softmax(s / float(temperature))
     return int(rng.choice(probs.shape[0], p=probs))
 
 
 class NeuTTSAdapter(BaseOnnxAdapter):
     """Adapter for the NeuTTS Air family (Qwen3 codec-LM + NeuCodec decoder)."""
 
+    takes_symbols = True
+
     MEMOIZED_WRITES = {
         # KV-cache geometry, read off the model's own input shapes.
         "_read_kv_shape": frozenset({"num_layers", "num_kv_heads", "head_dim"}),
         # The espeak backend the checkpoint was trained with, opened once.
-        "_espeak": frozenset({"_phonemizer"}),
+        "_phones": frozenset({"_phonemizer"}),
         # Each preset's reference transcript phonemized once; presets are
         # part of the voice, not of a request.
         "reference_phones": frozenset({"_ref_phones"}),
@@ -209,6 +251,9 @@ class NeuTTSAdapter(BaseOnnxAdapter):
         self.head_dim = 0
         self._phonemizer = None
         self._ref_phones: Dict[str, str] = {}
+        self.espeak_voice = ESPEAK_VOICE
+        self.prompt_layout = PROMPT_TEMPLATES[DEFAULT_PROMPT_TEMPLATE]
+        self.phoneme_substitutions: List[Tuple[re.Pattern, str]] = []
 
     # ------------------------------------------------------------------
     # setup
@@ -224,21 +269,17 @@ class NeuTTSAdapter(BaseOnnxAdapter):
             "max_chunk_chars": float(self.MAX_CHUNK_CHARS),
         }
 
-    def param_labels(self) -> Dict[str, str]:
-        return {
-            "temperature": "sampling temperature",
-            "top_p": "top-p (nucleus)",
-            "top_k": "top-k",
-            "repetition_penalty": "repetition penalty",
-            "max_new_tokens": "max codec tokens (50/s)",
-            "max_chunk_chars": "target characters per model call",
-            "voice": "voice preset name",
-        }
-
     def configure(self, voice_config: Any) -> None:
-        """Load the NeuCodec decoder, the checkpoint's BPE and the voice presets from
-        ``engine_params``."""
-        ep = getattr(voice_config, "engine_params", None) or {}
+        """Load the NeuCodec decoder, the checkpoint's BPE, the voice presets and the
+        checkpoint's text front end from ``engine_params``."""
+        ep = voice_config.engine_params
+        self.espeak_voice = ep.get("espeak_voice") or ESPEAK_VOICE
+        template = ep.get("prompt_template") or DEFAULT_PROMPT_TEMPLATE
+        if template not in PROMPT_TEMPLATES:
+            raise ValueError(f"unknown NeuTTS prompt_template {template!r}; "
+                             f"available: {sorted(PROMPT_TEMPLATES)}")
+        self.prompt_layout = PROMPT_TEMPLATES[template]
+        self.phoneme_substitutions = _compile_substitutions(ep.get("phoneme_substitutions"))
         if self.codec is None and ep.get("codec_decoder_path"):
             self.codec = make_session(ep["codec_decoder_path"], providers=ep.get("providers"))
         if self.tokenizer is None and ep.get("tokenizer_path"):
@@ -266,18 +307,36 @@ class NeuTTSAdapter(BaseOnnxAdapter):
     # text
     # ------------------------------------------------------------------
     def _espeak(self, text: str) -> str:
+        """The phones of *text*, with each inline ``[[...]]`` block as its IPA written.
+
+        The model reads espeak IPA, so a block's symbols go into the phone string
+        as they stand, and :meth:`_phones` reads the text between the blocks.
+        """
+        parts = INLINE_BLOCK.split(text)
+        phones = [self._phones(part) if index % 2 == 0 else part.strip()
+                  for index, part in enumerate(parts)]
+        return " ".join(filter(None, phones))
+
+    def _phones(self, text: str) -> str:
         """Phonemize with espeak-ng at the voice the checkpoint was trained with.
 
         Deliberately *not* the phoonnx voice's own phonemizer: a NeuTTS voice is
         ``Alphabet.GRAPHEMES``, whose phonemizer passes text through unchanged. Which
         phonemes this model consumes is a property of the checkpoint, so espeak-ng is
-        addressed directly.
+        addressed directly. The checkpoint's substitutions run on the result, then
+        whitespace collapses to single spaces, for every voice. Upstream ``neutts``
+        ``_to_phones`` collapses it. The VieNeu and Akiti front end, the ``phonemizer``
+        package, joins espeak's clauses with a space, so the newline that espeak-ng
+        writes at a clause break, such as an en dash, also becomes a space.
         """
         if self._phonemizer is None:
-            from scriptconv.phonemizers.mul import EspeakPhonemizer
-            self._phonemizer = EspeakPhonemizer()
-        return preserve_punctuation_phonemize(
-            text, lambda part: self._phonemizer.phonemize_string(part, ESPEAK_VOICE).strip())
+            from scriptconv.phonemizers import Phonemizer, get_phonemizer
+            self._phonemizer = get_phonemizer(Phonemizer.ESPEAK)
+        phones = preserve_punctuation_phonemize(
+            text, lambda part: self._phonemizer.phonemize_string(part, self.espeak_voice).strip())
+        for pattern, replacement in self.phoneme_substitutions:
+            phones = pattern.sub(replacement, phones)
+        return " ".join(phones.split())
 
     def resolve_preset(self, voice: Any, syn_config: Any) -> Optional[Dict[str, Any]]:
         """Pick the voice preset: an explicit per-call ``voice``, else the one this
@@ -347,9 +406,10 @@ class NeuTTSAdapter(BaseOnnxAdapter):
         text = f"{reference_phones} {target_phones}".strip() if reference_phones \
             else target_phones.strip()
         codes = "".join(SPEECH_TOKEN_TEMPLATE.format(int(c))
-                        for c in (reference_codes or [])[:MAX_REFERENCE_CODES])
-        return (f"{TEXT_PROMPT_START}{text}{TEXT_PROMPT_END}"
-                f"{SPEECH_GENERATION_START}{codes}")
+                        for c in (reference_codes or [])[:self.prompt_layout.max_reference_codes])
+        return self.prompt_layout.template.format(
+            text=f"{TEXT_PROMPT_START}{text}{TEXT_PROMPT_END}",
+            speech=f"{SPEECH_GENERATION_START}{codes}")
 
     def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
         """Build one fully-formed prompt per model call and BPE-encode it.
@@ -372,7 +432,7 @@ class NeuTTSAdapter(BaseOnnxAdapter):
             ref_codes = preset.get("codes")
         prompts = [self.build_prompt(self._espeak(chunk).strip(), ref_phones, ref_codes)
                    for chunk in self.chunk_text(text, max(1, budget))]
-        return [list(self.tokenizer.encode(p, add_special_tokens=False).ids) for p in prompts]
+        return [list(self.tokenizer.encode(p).ids) for p in prompts]
 
     # ------------------------------------------------------------------
     # codec
@@ -431,7 +491,7 @@ class NeuTTSAdapter(BaseOnnxAdapter):
         history = list(prompt_ids)
         for step in range(max_new):
             logits = np.asarray(named["logits"], np.float32).reshape(-1)
-            logits = _apply_repetition_penalty(
+            logits = apply_repetition_penalty(
                 logits, np.asarray(history[-REPETITION_WINDOW:], np.int64), penalty)
             token = _sample(logits, temperature, top_k, top_p, rng)
             if token == self.speech_end_id or token == self.eos_id:

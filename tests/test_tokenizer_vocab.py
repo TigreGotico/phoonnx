@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import tempfile
 import unittest
 from unittest import mock
@@ -350,6 +351,73 @@ class TestCompoundPhonemeEncoding(unittest.TestCase):
                             use_eos_bos=False, blank_at_start=False, blank_at_end=False)
         self.assertEqual(tok.encode("azb"), [0])
 
+    # Compounds that overlap and prefix each other, in three lengths.
+    OVERLAPPING = {"a": 0, "b": 1, "c": 2, "ab": 3, "abc": 4, "bc": 5, "ca": 6,
+                   "aab": 7, "cc": 8, "abca": 9}
+
+    @staticmethod
+    def _longest_first(char2idx, text):
+        """The fold spelled out: at each position the longest key that the
+        next symbols join into, else the symbol itself; unknown symbols drop."""
+        compounds = sorted((k for k in char2idx if len(k) > 1), key=len, reverse=True)
+        ids, covered = [], set()
+        for i, symbol in enumerate(text):
+            if i in covered:
+                continue
+            idx = char2idx.get(symbol)
+            for compound in compounds:
+                if "".join(text[i:i + len(compound)]) == compound:
+                    idx = char2idx[compound]
+                    covered.update(range(i, i + len(compound)))
+                    break
+            if idx is not None:
+                ids.append(idx)
+        return ids
+
+    def _overlapping_tokenizer(self):
+        voc = Vocabulary(char2idx=dict(self.OVERLAPPING), blank=None)
+        return TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                            use_eos_bos=False, blank_at_start=False, blank_at_end=False)
+
+    def test_the_longest_overlapping_compound_wins(self):
+        tok = self._overlapping_tokenizer()
+        rng = random.Random(20261118)
+        texts = ["", "abca", "aabc", "abcabc", "cca", "bcab", "dabcd"]
+        texts += ["".join(rng.choice("abcd") for _ in range(rng.randint(0, 30)))
+                  for _ in range(500)]
+        for text in texts:
+            self.assertEqual(tok.encode(text), self._longest_first(self.OVERLAPPING, text),
+                             f"fold disagrees on {text!r}")
+
+    def test_list_input_joins_symbols_before_matching(self):
+        """A symbol list can hold multi-character and empty symbols; the
+        compound is matched on what they join into."""
+        tok = self._overlapping_tokenizer()
+        rng = random.Random(7)
+        symbols = ["a", "b", "c", "ab", "bc", "", "d"]
+        for _ in range(500):
+            text = [rng.choice(symbols) for _ in range(rng.randint(0, 20))]
+            self.assertEqual(tok.encode(text), self._longest_first(self.OVERLAPPING, text),
+                             f"fold disagrees on {text!r}")
+
+    def test_the_compounds_are_grouped_once_per_tokenizer(self):
+        """Sorting the vocabulary on every call costs each sentence a sort."""
+        tok = self._overlapping_tokenizer()
+        self.assertEqual(tok.encode("abcab"), [9, 1])
+        compounds = tok._compounds
+        self.assertEqual(compounds, [(4, {"abca"}), (3, {"abc", "aab"}),
+                                     (2, {"ab", "bc", "ca", "cc"})])
+        self.assertEqual(tok.encode("abcab"), [9, 1])
+        self.assertIs(tok._compounds, compounds)
+
+    def test_fold_compounds_off_never_folds(self):
+        voc = Vocabulary(char2idx=dict(self.OVERLAPPING), blank=None)
+        tok = TTSTokenizer(voc, add_blank_char=False, add_blank_word=False,
+                           use_eos_bos=False, blank_at_start=False, blank_at_end=False,
+                           fold_compounds=False)
+        self.assertEqual(tok.encode("abca"), [0, 1, 2, 0])
+        self.assertEqual(tok.encode(["ab", "c"]), [3, 2])
+
 
 class TestUppercaseFallback(unittest.TestCase):
     """A vocabulary built from lowercased training text holds no uppercase
@@ -463,18 +531,19 @@ class TestVocabularyAndTokenizerFromPhoonnxConfig(unittest.TestCase):
         # eu-antton-medium / eu-maider-medium (piper_community/itzune) carry
         # "phoonnx_version" but a Piper-style list-valued phoneme_id_map, e.g.
         # "a": [14]; those ids must be unwrapped to plain ints like from_piper_config.
+        # A list of several ids is one symbol that gives each id in turn.
         import numpy as np
 
-        cfg = {"phoneme_id_map": {"a": [14], "b": [5, 99]}}
+        cfg = {"phoneme_id_map": {"a": [14], "b": [5, 99]}, "add_blank_char": False,
+               "use_eos_bos": False, "blank_at_start": False, "blank_at_end": False}
         voc = Vocabulary.from_phoonnx_config(cfg)
-        self.assertEqual(voc.char2idx, {"a": 14, "b": 5})
-        self.assertTrue(all(isinstance(v, int) for v in voc.char2idx.values()))
+        self.assertEqual(voc.char2idx, {"a": 14, "b": [5, 99]})
 
         # unfixed: list values give a list-of-lists here, and np.expand_dims
         # turns that into rank-3 input that ONNX Runtime rejects (expects rank 2).
-        ids = np.array([voc.char2idx["a"], voc.char2idx["b"]], dtype=np.int64)
-        batched = np.expand_dims(ids, 0)
-        self.assertEqual(batched.ndim, 2)
+        ids = np.array(TTSTokenizer.from_phoonnx_config(cfg).tokenize("ab"), dtype=np.int64)
+        self.assertEqual(ids.tolist(), [14, 5, 99])
+        self.assertEqual(np.expand_dims(ids, 0).ndim, 2)
 
     def test_vocabulary_from_phoonnx_config_int_valued_ids_unchanged(self):
         cfg = {"phoneme_id_map": {"a": 0, "b": 1}}
@@ -491,6 +560,84 @@ class TestVocabularyAndTokenizerFromPhoonnxConfig(unittest.TestCase):
         self.assertFalse(tok.blank_at_start)
         self.assertFalse(tok.use_eos_bos)
         self.assertTrue(tok.add_blank_word)
+
+
+class TestNativeConfigMimic3Rules(unittest.TestCase):
+    """A native config carries the Mimic 3 word blank and phoneme_map.txt
+    entries in its existing keys. Each expected list is the output of
+    phonemes2ids 1.2.2 (the Mimic 3 tokenizer) for the same words, with
+    pad/bos/eos "_ ^ $", blank "_", blank_word "#" and
+    blank_between "tokens_and_words"."""
+
+    ID_MAP = {"_": [0], "^": [1], "$": [2], "·": [3], "#": [4], "a": [5], "b": [6], "c": [7]}
+    MIMIC3 = {"add_blank_word": True, "blank_word": "#"}
+
+    def tokenizer(self, **extra):
+        cfg = {"phoneme_id_map": dict(self.ID_MAP), **self.MIMIC3, **extra}
+        return TTSTokenizer.from_phoonnx_config(cfg)
+
+    def test_blank_word_goes_between_words_and_at_the_end(self):
+        # phonemes2ids([["a", "b"], ["c"]])
+        self.assertEqual(self.tokenizer().tokenize("ab c"),
+                         [1, 0, 5, 0, 6, 0, 4, 0, 7, 0, 4, 0, 2])
+
+    def test_a_list_value_gives_each_id(self):
+        # phonemes2ids([["a", "b"], ["c", "‖"]], phoneme_map={"‖": ["·", "·"]})
+        tok = self.tokenizer(phoneme_id_map={**self.ID_MAP, "‖": [3, 3]})
+        self.assertEqual(tok.tokenize("ab c‖"),
+                         [1, 0, 5, 0, 6, 0, 4, 0, 7, 0, 3, 0, 3, 0, 4, 0, 2])
+
+    def test_an_empty_list_gives_no_id_and_no_warning(self):
+        # phonemes2ids([["a", "x"], ["b"]], phoneme_map={"x": []})
+        tok = self.tokenizer(phoneme_id_map={**self.ID_MAP, "x": []})
+        self.assertEqual(tok.tokenize("ax b"), [1, 0, 5, 0, 4, 0, 6, 0, 4, 0, 2])
+        self.assertEqual(tok.not_found_characters, set())
+
+    def test_a_word_with_no_id_gets_no_word_blank(self):
+        # phonemes2ids([["a"], ["?"], ["b"]]): "?" has no id, so its word is empty
+        self.assertEqual(self.tokenizer().tokenize("a ? b"), [1, 0, 5, 0, 4, 0, 6, 0, 4, 0, 2])
+
+    def test_a_trailing_space_gives_no_second_word_blank(self):
+        # phonemes2ids([["a"], ["b"]]); scriptconv writes "; " at a sentence end
+        self.assertEqual(self.tokenizer().tokenize("a b "), [1, 0, 5, 0, 4, 0, 6, 0, 4, 0, 2])
+
+    def test_a_break_entry_after_a_space_or_at_the_start_gives_one_word_blank(self):
+        # phonemes2ids([["a"], ["|"], ["b"], ["‖"]]) and ([["|"], ["a"], ["‖"]]),
+        # phoneme_map={"|": ["·"], "‖": ["·", "·"]}: a gruut break is its own word
+        tok = self.tokenizer(phoneme_id_map={**self.ID_MAP, ",": [4, 3], ".": [4, 3, 3]})
+        a_b = [1, 0, 5, 0, 4, 0, 3, 0, 4, 0, 6, 0, 4, 0, 3, 0, 3, 0, 4, 0, 2]
+        self.assertEqual(tok.tokenize("a, b."), a_b)
+        self.assertEqual(tok.tokenize("a , b."), a_b)
+        self.assertEqual(tok.tokenize(", a."), [1, 0, 3, 0, 4, 0, 5, 0, 4, 0, 3, 0, 3, 0, 4, 0, 2])
+
+    def test_a_list_value_without_a_leading_word_blank_keeps_every_id(self):
+        # phonemes2ids([["a"], ["‖"]]) and ([["‖", "a"]]), phoneme_map={"‖": ["·", "·"]}
+        tok = self.tokenizer(phoneme_id_map={**self.ID_MAP, "‖": [3, 3]})
+        self.assertEqual(tok.tokenize("a ‖"), [1, 0, 5, 0, 4, 0, 3, 0, 3, 0, 4, 0, 2])
+        self.assertEqual(tok.tokenize("‖a"), [1, 0, 3, 0, 3, 0, 5, 0, 4, 0, 2])
+
+    def test_without_blank_word_a_space_still_gives_no_id(self):
+        # a config that names no blank_word keeps its ids: the space is dropped
+        tok = TTSTokenizer.from_phoonnx_config({"phoneme_id_map": dict(self.ID_MAP),
+                                                "add_blank_word": True})
+        self.assertEqual(tok.tokenize("ab c"), [1, 0, 5, 0, 6, 0, 7, 0, 2])
+
+    def test_idx2char_skips_list_values(self):
+        voc = Vocabulary.from_phoonnx_config({"phoneme_id_map": {"a": [5], "‖": [3, 3], "x": []}})
+        self.assertEqual(voc.idx2char, {5: "a"})
+
+    def test_native_dict_round_trip_keeps_blank_word_and_lists(self):
+        from phoonnx.config import VoiceConfig
+        cfg = {"phoonnx_version": "1.0", "phoneme_type": "gruut", "alphabet": "ipa",
+               "lang_code": "en-us", "phoneme_id_map": {**self.ID_MAP, "‖": [3, 3], "x": []},
+               **self.MIMIC3}
+        native = VoiceConfig.from_dict(json.loads(json.dumps(cfg))).to_native_dict()
+        self.assertEqual(native["blank_word"], "#")
+        self.assertEqual(native["phoneme_id_map"]["‖"], [3, 3])
+        self.assertEqual(native["phoneme_id_map"]["x"], [])
+        again = VoiceConfig.from_dict(json.loads(json.dumps(native)))
+        self.assertEqual(again.tokenizer.tokenize("ab c‖"),
+                         [1, 0, 5, 0, 6, 0, 4, 0, 7, 0, 3, 0, 3, 0, 4, 0, 2])
 
 
 class TestVocabularyProperties(unittest.TestCase):

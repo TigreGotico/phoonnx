@@ -9,6 +9,8 @@ import pytest
 
 from phoonnx.config import SynthesisConfig
 from phoonnx.ssml import SUPPORTED_TAGS, Piece, looks_like_ssml, parse_ssml, strip_ssml
+from unittest.mock import MagicMock
+
 from phoonnx.voice import AudioChunk, TTSVoice
 
 # -- reading the markup -------------------------------------------------------------------
@@ -55,11 +57,7 @@ def test_a_word_in_another_language_gets_that_language():
     assert [(p.text, p.lang) for p in got] == [("I say", "en-US"), ("bonjour", "fr-FR"), ("often.", "en-US")]
 
 
-def test_say_as_sub_and_phoneme_become_words_the_voice_can_read():
-    (piece,) = parse_ssml('<speak><say-as interpret-as="characters">XK7</say-as></speak>')
-    assert piece.text == "X K 7"
-    (piece,) = parse_ssml('<speak><say-as interpret-as="telephone">555-0199</say-as></speak>')
-    assert piece.text == "5 5 5 0 1 9 9"
+def test_sub_and_phoneme_become_words_the_voice_can_read():
     (piece,) = parse_ssml('<speak><sub alias="World Wide Web">WWW</sub></speak>')
     assert piece.text == "World Wide Web"
     (piece,) = parse_ssml('<speak><phoneme alphabet="ipa" ph="həˈloʊ">hello</phoneme></speak>')
@@ -125,6 +123,9 @@ def test_the_supported_tags_include_the_ones_the_reader_understands():
 
 class RecordingVoice(TTSVoice):
     """A voice whose synthesize() records the text and settings instead of running a model."""
+
+    frontend = None  # no phonemizer: these documents hold no say-as
+    adapter = MagicMock()
 
     def __init__(self, lang_id_map=None):  # no model: skip TTSVoice.__init__
         self.config = SimpleNamespace(sample_rate=22050, length_scale=1.0, lang_code="en-US",
@@ -203,7 +204,11 @@ def test_silence_before_speech_uses_the_speech_rate():
 
     from phoonnx.voice import AudioChunk, TTSVoice
 
-    voice = TTSVoice.__new__(TTSVoice)
+    class _Voice(TTSVoice):
+        frontend = None  # no phonemizer: the document holds no say-as
+        adapter = MagicMock()
+
+    voice = _Voice.__new__(_Voice)
 
     class _Config:
         sample_rate = 22050

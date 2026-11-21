@@ -8,11 +8,16 @@ import glob
 import json
 import os
 import random
+import re
+import sys
+import tempfile
 import time
+import unicodedata
 import unittest
 
+from phoonnx import _bpe
 from phoonnx._bpe import Tokenizer, UnsupportedTokenizer
-from phoonnx.tokenizer import load_hf_tokenizer
+from phoonnx.tokenizer import BPETokenizer, load_hf_tokenizer, load_tokenizers_package
 
 try:
     from tokenizers import Tokenizer as ReferenceTokenizer
@@ -99,7 +104,7 @@ class TestDifferentialAgainstTokenizers(unittest.TestCase):
     """Every id the reader produces must equal the reference id."""
 
     def _pair(self, path):
-        return Tokenizer.from_file(path), ReferenceTokenizer.from_file(path)
+        return Tokenizer.from_file(path), load_tokenizers_package(path)
 
     def _compare(self, path):
         mine, reference = self._pair(path)
@@ -199,7 +204,8 @@ class TestReaderWithoutReference(unittest.TestCase):
         path = fixture_files()[0]
         with mock.patch.object(bpe.Tokenizer, "from_file",
                                side_effect=UnsupportedTokenizer("pretend")):
-            self.assertIsInstance(load_hf_tokenizer(path), ReferenceTokenizer)
+            self.assertIsInstance(load_hf_tokenizer(path),
+                                  type(load_tokenizers_package(path)))
 
 
 if __name__ == "__main__":
@@ -227,7 +233,20 @@ class TestVocabulariesThatMustBeDeclined(unittest.TestCase):
     def test_a_declined_vocab_is_handed_to_tokenizers(self):
         for path in declined_fixture_files():
             with self.subTest(fixture=os.path.basename(path)):
-                self.assertIsInstance(load_hf_tokenizer(path), ReferenceTokenizer)
+                self.assertIsInstance(load_hf_tokenizer(path),
+                                      type(load_tokenizers_package(path)))
+
+    def test_a_declined_vocab_encodes_through_tokenizers(self):
+        """The fallback encodes and decodes on tokenizers 0.x and 1.x. Each
+        character of this text is outside the vocabulary, so it becomes its
+        UTF-8 bytes as ``<0xNN>`` tokens, whose ids start at 3, after ``<s>``
+        (id 20001). tokenizers 0.23.3 gives the same ids."""
+        path = os.path.join(FIXTURES, "declined_bpe_byte_fallback.json")
+        tokenizer = BPETokenizer(path)
+        ids = tokenizer.tokenize(list("Hello, World! ¾"))
+        self.assertEqual(ids, [20001] + [3 + byte for byte in
+                                         "▁Hello,▁World!▁¾".encode()])
+        self.assertEqual(tokenizer.decode(ids), "▁Hello,▁World!▁¾")
 
     def _bpe(self, **options):
         spec = {"model": dict({"type": "BPE", "vocab": {"a": 0}, "merges": []},
@@ -267,6 +286,50 @@ class TestVocabulariesThatMustBeDeclined(unittest.TestCase):
                 spec["pre_tokenizer"] = pre
                 with self.assertRaises(UnsupportedTokenizer):
                     Tokenizer(spec).encode("a b")
+
+
+class _Rc3Tokenizer:
+    """tokenizers 1.0.0rc3: the Tokenizer itself encodes; there is no compile()."""
+
+    @classmethod
+    def from_file(cls, path):
+        return cls()
+
+
+class _Rc4Tokenizer(_Rc3Tokenizer):
+    """tokenizers 1.0.0rc4: only what compile() returns encodes."""
+
+    def compile(self):
+        return "compiled"
+
+
+@unittest.skipIf(ReferenceTokenizer is None, "the `tokenizers` package is not installed")
+class TestTheLoaderFollowsTheApi(unittest.TestCase):
+    """The release candidates of tokenizers 1.0 share the major version and
+    differ in API, so a version check picks the wrong path on one of them."""
+
+    def _load(self, stub, version):
+        from unittest import mock
+
+        import tokenizers
+        with mock.patch.object(tokenizers, "Tokenizer", stub), \
+                mock.patch.object(tokenizers, "__version__", version):
+            return load_tokenizers_package("tokenizer.json")
+
+    def test_a_tokenizer_without_compile_is_used_as_it_is(self):
+        self.assertIsInstance(self._load(_Rc3Tokenizer, "1.0.0-rc.3"), _Rc3Tokenizer)
+
+    def test_a_tokenizer_with_compile_is_compiled(self):
+        self.assertEqual(self._load(_Rc4Tokenizer, "0.0.0"), "compiled")
+
+    def test_a_declined_vocab_reaches_the_loader(self):
+        """CI resolves a tokenizers 0.x, so this pins the 1.0 wiring there too."""
+        from unittest import mock
+
+        import tokenizers
+        path = os.path.join(FIXTURES, "declined_bpe_byte_fallback.json")
+        with mock.patch.object(tokenizers, "Tokenizer", _Rc4Tokenizer):
+            self.assertEqual(load_hf_tokenizer(path), "compiled")
 
 
 class TestMergeLoopIsNotQuadratic(unittest.TestCase):
@@ -316,8 +379,165 @@ class TestMergeLoopIsNotQuadratic(unittest.TestCase):
     def test_a_long_pre_token_still_agrees_with_the_reference(self):
         """Speed is worthless if it changed an id."""
         path = self._bytelevel_fixture()
-        mine, reference = Tokenizer.from_file(path), ReferenceTokenizer.from_file(path)
+        mine, reference = Tokenizer.from_file(path), load_tokenizers_package(path)
         for length in (200, 1000, 4000):
             text = (self.CHINESE * (length // len(self.CHINESE) + 1))[:length]
             with self.subTest(length=length):
                 self.assertEqual(mine.encode(text).ids, reference.encode(text).ids)
+
+
+# Added tokens that overlap, prefix each other, hold regex syntax, or sit
+# where a pre-tokenizer would cut them.
+OVERLAPPING_ADDED = [
+    "<|", "<|a|>", "<|a|>b", "<|speech_1|>", "<|speech_12|>", "<|speech_123|>",
+    "[S]", "[SPACE]", "[SPACE]x", "ab", "abc", "b c", "-", "^x", "]", "\\",
+    ".*", "世界", "界", "🌍x", " e",
+]
+
+ADDED_TEXTS = TEXTS + [
+    "<|", "<|a|", "<|a|>", "<|a|>b", "<|a|><|a|>b<|", "<|speech_1234|>",
+    "<|speech_12|>3", "[SPACE][SPACE]x[S]", "abcab cabc", "a b c", "世界界",
+    "🌍x🌍", "^x^", "\\]-.*", " e e", "<|<|<|a|>", "x<|endoftext|>y",
+]
+
+ADDED_ALPHABET = "<|>a_bcspeh123[SPACEx]^\\.*-世界🌍 "
+
+
+def _regex_split(added, text):
+    """The alternation the reader used to cut added tokens out of text."""
+    pattern = "(" + "|".join(sorted(map(re.escape, added), key=len, reverse=True)) + ")"
+    return re.split(pattern, text)
+
+
+def _with_added(path, contents, special=()):
+    """A fixture spec with *contents* appended as added tokens, numbered as
+    `tokenizers` numbers them: a token the model vocab holds keeps its id,
+    and a new one takes the next free id."""
+    with open(path, encoding="utf-8") as handle:
+        spec = json.load(handle)
+    vocab = spec["model"]["vocab"]
+    next_id = max(list(vocab.values()) + [t["id"] for t in spec["added_tokens"]]) + 1
+    for content in contents:
+        if content in vocab:
+            token_id = vocab[content]
+        else:
+            token_id, next_id = next_id, next_id + 1
+        spec["added_tokens"].append({
+            "id": token_id, "content": content, "single_word": False,
+            "lstrip": False, "rstrip": False, "normalized": False,
+            "special": content in special})
+    return spec
+
+
+class TestAddedTokens(unittest.TestCase):
+    """Added tokens are cut out of the text before anything else: leftmost
+    first, and the longest where several start at the same place."""
+
+    def _spec(self, contents=OVERLAPPING_ADDED, special=("<|a|>", "[S]")):
+        return _with_added(os.path.join(FIXTURES, "tokenizer_bpe_qwen.json"),
+                           contents, special)
+
+    def _fuzz(self, count=600):
+        rng = random.Random(20261118)
+        return ["".join(rng.choice(ADDED_ALPHABET) for _ in range(rng.randint(0, 40)))
+                for _ in range(count)]
+
+    def test_the_cut_equals_the_longest_first_alternation(self):
+        spec = self._spec()
+        mine = Tokenizer(spec)
+        added = [t["content"] for t in spec["added_tokens"]]
+        for text in ADDED_TEXTS + self._fuzz():
+            self.assertEqual(mine._split_added(text), _regex_split(added, text),
+                             f"cut disagrees on {text!r}")
+
+    def test_an_empty_added_token_is_ignored(self):
+        """`tokenizers` ignores an added token with no content."""
+        path = os.path.join(FIXTURES, "tokenizer_bpe_whitespace.json")
+        plain = _with_added(path, [])
+        expected = [6563, 255, 62, 84, 28, 2, 179, 79, 0, 6561, 6561]
+        self.assertEqual(Tokenizer(plain).encode("hello world").ids, expected)
+        self.assertEqual(Tokenizer(_with_added(path, [""])).encode("hello world").ids,
+                         expected)
+
+    def test_a_vocab_without_added_tokens_keeps_the_text_whole(self):
+        spec = self._spec()
+        spec["added_tokens"] = []
+        mine = Tokenizer(spec)
+        for text in ("", "<|a|>", "hello"):
+            self.assertEqual(mine._split_added(text), [text])
+
+    @unittest.skipIf(ReferenceTokenizer is None, "the `tokenizers` package is not installed")
+    def test_overlapping_added_tokens_encode_as_the_reference_does(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "tokenizer.json")
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump(self._spec(), handle)
+            mine, reference = Tokenizer.from_file(path), load_tokenizers_package(path)
+            for text in ADDED_TEXTS + self._fuzz(300):
+                for add_special in (True, False):
+                    self.assertEqual(
+                        mine.encode(text, add_special_tokens=add_special).ids,
+                        reference.encode(text, add_special_tokens=add_special).ids,
+                        f"disagrees on {text!r}, add_special_tokens={add_special}")
+                self.assertEqual(mine.decode(mine.encode(text).ids),
+                                 reference.decode(reference.encode(text).ids))
+
+    def test_65536_speech_tokens(self):
+        """The NeuTTS and Llasa shape: one added token per codec code. The
+        `tokenizers` 1.0 release candidates panic on this many, so the ids are
+        checked against the codes they encode."""
+        spec = self._spec([f"<|speech_{code}|>" for code in range(65536)])
+        first = spec["added_tokens"][-65536]["id"]
+        mine = Tokenizer(spec)
+        codes = random.Random(7).choices(range(65536), k=200)
+        prompt = "".join(f"<|speech_{code}|>" for code in codes)
+        self.assertEqual(mine.encode(prompt, add_special_tokens=False).ids,
+                         [first + code for code in codes])
+        added = [t["content"] for t in spec["added_tokens"]]
+        for text in ("user: hello<|speech_1|><|speech_65535|>world<|speech_",
+                     "<|speech_655360|><|speech_|><|speech_00|><|speech_6553|>5"):
+            self.assertEqual(mine._split_added(text), _regex_split(added, text))
+
+
+class TestUnicodeProperties(unittest.TestCase):
+    """`re` has no \\p{..}, so the reader writes a property out as ranges."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.everything = "".join(map(chr, range(sys.maxunicode + 1)))
+        cls.by_category = {}
+        for char in cls.everything:
+            cls.by_category.setdefault(unicodedata.category(char), []).append(char)
+
+    def test_each_property_is_its_code_points_written_as_ranges(self):
+        """The class text is the property's code points, consecutive ones
+        merged into a range: the text a scan of every code point writes."""
+        majors = sorted({category[0] for category in self.by_category})
+        for prop in majors + sorted(self.by_category):
+            ranges = []
+            for category, chars in self.by_category.items():
+                if category.startswith(prop) if len(prop) == 1 else category == prop:
+                    ranges += [[ord(char), ord(char)] for char in chars]
+            merged = []
+            for low, high in sorted(ranges):
+                if merged and merged[-1][1] == low - 1:
+                    merged[-1][1] = high
+                else:
+                    merged.append([low, high])
+            expected = "".join(
+                re.escape(chr(low)) if low == high
+                else f"{re.escape(chr(low))}-{re.escape(chr(high))}"
+                for low, high in merged)
+            with self.subTest(prop=prop):
+                self.assertEqual(_bpe._category_ranges(prop), expected)
+
+    def test_one_table_of_category_runs_serves_every_property(self):
+        runs = _bpe._category_runs()
+        self.assertIs(_bpe._category_runs(), runs)
+        self.assertEqual((runs[0][1], runs[-1][2]), (0, sys.maxunicode))
+        for (category, low, high), (following, next_low, _) in zip(runs, runs[1:]):
+            self.assertEqual(next_low, high + 1)
+            self.assertNotEqual(category, following)
+        for category, low, high in runs:
+            self.assertEqual(unicodedata.category(chr(low)), category)
+            self.assertEqual(unicodedata.category(chr(high)), category)

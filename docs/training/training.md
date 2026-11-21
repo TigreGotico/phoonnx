@@ -29,7 +29,7 @@ python -m phoonnx_train.train --dataset-dir DIR [options]
 | `--precision TEXT` | `32` | Precision: `16`, `32`, `bf16`, `16-mixed`, … (a string) |
 | `--default-root-dir DIR` | none | Root for logs and checkpoints |
 | `--seed INT` | `1234` | Random seed |
-| `--resume-from-checkpoint PATH` | none | Load a checkpoint and resume |
+| `--resume-from-checkpoint PATH` | none | Resume the run of a Lightning checkpoint, a URL or a remote path. The engine loads a local file that Lightning did not write as a weight-only warm start, and the log gives a warning. `vits` needs a Lightning checkpoint and stops with an error on any other file |
 | `--resume-from-single-speaker-checkpoint PATH` | none | Convert a single-speaker checkpoint to multi-speaker and resume |
 | `--discard-encoder` | off | Discard encoder weights from the base checkpoint (not supported by all engines) |
 | `--log-audio-samples / --no-log-audio-samples` | off | Log synthesized validation audio each epoch (needs a TensorBoard logger) |
@@ -412,6 +412,10 @@ Preprocess writes a `config.json` that both training and inference read. Key fie
 | `num_speakers` | Number of speakers (1 for single-speaker) |
 | `speaker_id_map` | Speaker label → id (multi-speaker) |
 | `phoonnx_version` | Version of the preprocessing pipeline |
+| `keep_punctuation` | The phonemes keep clause punctuation (`, . ? ! : ;`) |
+| `phonemizer_registry` / `phonemizer_registry_version` | The distribution that resolved the phonemizer, and its version |
+| `phonemizer_identity` | The engine that phonemized the rows: `backend`, `distribution`, `version` (for espeak-ng, the binary), `lang` (the resolved lect), `revision` (the orthography2ipa spec revision) and `frontend` (null, because preprocess calls the backend directly and not through `TextFrontend`). Empty when every row came from a phonemes column |
+| `phonemes_phonemized` / `phonemes_from_column` | How many manifest rows were phonemized, and how many came from a phonemes column |
 
 The full loaded form (tokenizer flags, special tokens, `engine_params`) is documented in the
 [Configuration reference](../configuration.md).

@@ -19,9 +19,10 @@ from collections import OrderedDict
 from threading import RLock
 from typing import Dict, List, Optional
 from ovos_utils.log import LOG
+from linguatag import standardize_lang
 from ovos_plugin_manager.templates.tts import TTS, TTSContext
 
-from phoonnx.model_manager import TTSModelManager, TTSModelInfo
+from phoonnx.model_manager import TTSModelManager, TTSModelInfo, choose_precision, resolve_precision
 from phoonnx.ssml import SUPPORTED_TAGS, looks_like_ssml
 from phoonnx.util import normalize_lang
 from phoonnx.voice import TTSVoice, SynthesisConfig
@@ -60,16 +61,19 @@ class PhoonnxTTSPlugin(TTS):
         # The env vars let a container image whose config carries no
         # lang2voice entry for a language be re-pointed per deployment without
         # editing mycroft.conf; they never override a language the config
-        # already names. Keys are normalised the same way the caller's ``lang``
-        # is, so "gl-ES"/"gl", "pt-br"/"pt_BR" and similar spellings agree.
+        # already names. Keys are kept in standard form with no region added,
+        # so that a bare key stays the primary subtag every region falls back
+        # to; "pt-br"/"pt_BR" and similar spellings agree.
         self.lang2voice: Dict[str, str] = {
-            normalize_lang(k).lower(): v
+            standardize_lang(k).lower(): v
             for k, v in (self.config.get("lang2voice") or {}).items()
         }
 
+        # The cache holds each voice with the files the precision setting
+        # loads, so its memory accounting measures those files.
         self.voice_cache = VoiceCache(
-            resolve=lambda voice_id: self.get_voice_info(voice_id),
-            load=lambda info: info.load(providers=self._providers()),
+            resolve=lambda voice_id: self._as_loaded(self.get_voice_info(voice_id)),
+            load=lambda info: info.load(providers=self._providers(), precision=self._precision()),
             max_loaded_voices=self.config.get("max_loaded_voices"),
             max_loaded_bytes=self.config.get("max_loaded_bytes"),
             pinned_voices=self.config.get("pinned_voices"),
@@ -83,6 +87,8 @@ class PhoonnxTTSPlugin(TTS):
         # raises here; an unset voice (or "default") resolves to the language's
         # default. Loading is deferred to the first synthesis so that fetching a
         # model is never what decides whether the TTS service can start.
+        # A bad precision key is a configuration error, raised before any load.
+        resolve_precision(self._precision())
         if self.voice and self.voice != "default":
             self.voice_info = self.get_voice_info(self.voice)
         else:
@@ -126,6 +132,24 @@ class PhoonnxTTSPlugin(TTS):
             return [providers]
         return list(providers) if providers else None
 
+    def _precision(self) -> Optional[str]:
+        """The ``precision`` plugin key: ``int8``, ``full`` or ``auto``.
+
+        Unset, the precision comes from ``PHOONNX_PRECISION``, else ``auto``.
+        """
+        return self.config.get("precision")
+
+    def _loads_int8_variant(self, info: TTSModelInfo) -> bool:
+        """Whether ``info`` loads its int8 variant instead of its own files."""
+        return info.precision != "int8" and choose_precision(
+            info, resolve_precision(self._precision()), self._providers()) == "int8"
+
+    def _as_loaded(self, info: TTSModelInfo) -> TTSModelInfo:
+        """``info`` with the files the precision setting loads."""
+        if self._loads_int8_variant(info):
+            return info.with_precision("int8")
+        return info
+
     def _resolve_speaker(self, voice_info, requested=None) -> Optional[int]:
         """
         Resolve the speaker index for multi-speaker voices from the request, or
@@ -139,7 +163,8 @@ class PhoonnxTTSPlugin(TTS):
 
         Returns:
             int | None: The speaker index, or None for single-speaker voices /
-            when nothing is configured (the engine then defaults to speaker 0).
+            when nothing is configured (the engine then uses the voice's own
+            speaker, or speaker 0 when the voice names none).
         """
         spk = requested if requested is not None else self._cfg_opt(
             None, "speaker_id", "speaker")
@@ -185,15 +210,15 @@ class PhoonnxTTSPlugin(TTS):
         The suffix is a lang tag with underscores in place of dashes, so
         ``PHOONNX_DEFAULT_VOICE_PT`` sets ``pt`` and
         ``PHOONNX_DEFAULT_VOICE_PT_BR`` sets ``pt-br``. The tag is normalised
-        the same way a caller's ``lang`` is, so it matches regardless of
-        region-tag casing.
+        to its standard form, as a ``lang2voice`` key is, so it matches
+        regardless of region-tag casing.
         """
         voices = {}
         for key, val in os.environ.items():
             if key.startswith(PhoonnxTTSPlugin.ENV_PREFIX) and val:
                 tag = key[len(PhoonnxTTSPlugin.ENV_PREFIX):].replace("_", "-").lower()
                 if tag:
-                    voices[normalize_lang(tag).lower()] = val
+                    voices[standardize_lang(tag).lower()] = val
         return voices
 
     def configured_voice_for_lang(self, lang: str) -> Optional[str]:
@@ -205,16 +230,16 @@ class PhoonnxTTSPlugin(TTS):
         BCP-47 tag before the primary subtag in each - so a primary-subtag
         entry in ``lang2voice`` still beats a full-tag entry in the env table,
         because the whole config table is tried before the env table is
-        looked at at all. ``lang`` is normalised (case, ``_``/``-``, a bare
-        subtag's default region) before matching, the same way the tables'
-        own keys are, so equivalent spellings agree. Returns None when
-        nothing is configured, leaving the voice index to pick the language
-        default.
+        looked at at all. ``lang`` is tried in standard form, then with its
+        default region (a bare ``en`` also matches an ``en-GB`` key), then as
+        its primary subtag. Returns None when nothing is configured, leaving
+        the voice index to pick the language default.
         """
-        full = normalize_lang(lang or "").lower()
-        primary = full.split("-")[0]
+        standard = standardize_lang(lang or "").lower()
+        regional = normalize_lang(lang or "").lower()
+        tags = dict.fromkeys((standard, regional, regional.split("-")[0]))
         for table in (self.lang2voice, self.env_lang_voices()):
-            for tag in (full, primary):
+            for tag in tags:
                 if tag in table:
                     return table[tag]
         return None
@@ -310,8 +335,16 @@ class PhoonnxTTSPlugin(TTS):
         audio of a sentence in the same way. Only the
         identity changes; ``synth_kwargs`` still carries the real voice id, so
         the model that gets loaded is unaffected.
+
+        A voice that loads its int8 variant gets ``#int8`` in its identity, so
+        its audio and the audio of its full files never share an entry. A voice
+        that loads its full files, or has int8 files only, keeps its identity.
         """
         ctxt = super()._get_ctxt(kwargs)
+        info = (self.get_voice_info(ctxt.voice) if ctxt.voice and ctxt.voice != "default"
+                else self.get_default_voice(ctxt.lang))
+        if self._loads_int8_variant(info):
+            ctxt.voice = f"{ctxt.voice}#int8"
         kwargs = kwargs or {}
         reference = tuple(
             kwargs.get(key) for key in
@@ -415,13 +448,13 @@ class PhoonnxTTSPlugin(TTS):
                     voice_info.config.add_diacritics,  # arabic and hebrew only
                     "add_diacritics"),
                 noise_scale=float(noise_scale) if noise_scale is not None else self._cfg_opt(
-                    voice_info.config.noise_scale,  # generator noise
+                    None,  # unset: the loaded voice's own default
                     "noise_scale", "noise-scale"),
                 length_scale=float(length_scale) if length_scale is not None else self._cfg_opt(
-                    voice_info.config.length_scale,  # phoneme length
+                    None,  # unset: the loaded voice's own default
                     "length_scale", "length-scale"),
                 noise_w_scale=float(noise_w_scale) if noise_w_scale is not None else self._cfg_opt(
-                    voice_info.config.noise_w_scale,  # phoneme width noise
+                    None,  # unset: the loaded voice's own default
                     "noise_w_scale", "noise_w", "noise-w"),
                 # zero-shot voice cloning. A path to a reference wav; cloning engines turn
                 # it into the conditioning signal. In-context engines (ZipVoice) also need
@@ -440,6 +473,7 @@ class PhoonnxTTSPlugin(TTS):
                 # chunk, so the WAV header follows.
                 super_resolution=bool(self._cfg_opt(False, "super_resolution")),
                 super_resolution_model=self._cfg_opt(None, "super_resolution_model"),
+                chunk=self._cfg_opt(None, "chunk"),
             )
             # Written beside the target and moved into place only once the
             # synthesis has finished. Opening the target directly creates it
@@ -487,18 +521,3 @@ class PhoonnxTTSPlugin(TTS):
                 raise
 
         return wav_file, None
-
-
-if __name__ == "__main__":
-    utterance = "Guimarães é uma das mais importantes cidades históricas do país, estando o seu centro histórico inscrito na lista de Património Mundial da UNESCO desde 2001, o que a torna definitivamente num dos maiores centros turísticos da região. As suas ruas e monumentos respiram história e encantam quem a visita."
-    #utterance = "Um arco-íris, também popularmente denominado arco-da-velha, é um fenômeno óptico e meteorológico que separa a luz do sol em seu espectro contínuo quando o sol brilha sobre gotículas de água suspensas no ar."
-
-    tts = PhoonnxTTSPlugin()
-    tts.get_tts(utterance, "tmiro-pt-PT.wav",
-                voice="OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone")
-    tts.get_tts(utterance, "tdii-pt-PT.wav",
-                voice="OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone")
-    tts.get_tts(utterance, "miro-pt-PT.wav",
-                voice="OpenVoiceOS/pipertts_pt-PT_miro")
-    tts.get_tts(utterance, "dii-pt-PT.wav",
-                voice="OpenVoiceOS/pipertts_pt-PT_dii")

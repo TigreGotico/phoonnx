@@ -131,8 +131,8 @@ Preprocess on one machine and train on another by rewriting the paths stored in
 
 ## Text normalization
 
-Before phonemization, every utterance is normalized: numbers, dates, times, fractions, units
-and contractions are expanded to spoken words (via `ovos-number-parser` / `ovos-date-parser`,
-with locale-aware separators keyed off `--language`). For example, English
-`"I'm Dr. 3/4 of 10kg"` becomes `"I am Doctor three quarters of ten kilograms"`. This runs
+Before phonemization, every utterance is normalized by `text2spoken.normalize` in the
+language of `--language`: numbers, dates, times, fractions, units and titles become spoken
+words, and contractions stay as written. For example, English
+`"I'm Dr. Smith, 3/4 of 10kg"` becomes `"I'm Doctor Smith, three-quarters of ten kilograms"`. This runs
 automatically inside preprocess so training text matches what the phonemizer sees at inference.

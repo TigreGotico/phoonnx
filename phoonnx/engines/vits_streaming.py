@@ -44,11 +44,12 @@ ONNX interface (decoder = auxiliary graph):
       ``y_mask``        float32  [B, 1, T_slice]
   OUT ``output``        float32  [B, 1, N] or [N]   waveform samples
 """
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 import numpy as np
 import onnxruntime
 
+from phoonnx.providers import make_session
 from phoonnx.engines.base import (
     AdapterSynthesisRequest,
     AdapterSynthesisResult,
@@ -96,7 +97,7 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
 
     def configure(self, voice_config: Any) -> None:
         """Load the decoder graph and streaming parameters from the voice config."""
-        engine_params = getattr(voice_config, "engine_params", None) or {}
+        engine_params = voice_config.engine_params
         self.configure_from_params(engine_params)
         hop = getattr(voice_config, "hop_length", None)
         if hop:
@@ -110,17 +111,17 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
         threads = self._engine_params.get("intra_op_num_threads")
         decoder_path = self._engine_params.get("decoder_path")
         if self.decoder is None and decoder_path:
-            self.decoder = self._build_decoder(decoder_path, threads)
+            self.decoder = self._build_decoder(decoder_path, threads, self._engine_params.get("providers"))
 
     @staticmethod
-    def _build_decoder(path: str, threads: Optional[int]) -> onnxruntime.InferenceSession:
+    def _build_decoder(path: str, threads: Optional[int], providers=None) -> onnxruntime.InferenceSession:
         import os
         so = onnxruntime.SessionOptions()
         if threads is None:
             threads = max(1, (os.cpu_count() or 4) // 2)
         so.intra_op_num_threads = int(threads)
         so.inter_op_num_threads = 1
-        return onnxruntime.InferenceSession(path, so)
+        return make_session(path, providers=providers, sess_options=so)
 
 
     # ------------------------------------------------------------------
@@ -129,20 +130,6 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
 
     def default_params(self) -> Dict[str, float]:
         return {"noise_scale": 0.667, "length_scale": 1.0, "noise_w_scale": 0.8}
-
-    def parse_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        inference = config.get("inference", {})
-        defaults = self.default_params()
-        return {
-            "noise_scale": inference.get("noise_scale", defaults["noise_scale"]),
-            "length_scale": inference.get("length_scale", defaults["length_scale"]),
-            "noise_w_scale": inference.get("noise_w", defaults["noise_w_scale"]),
-        }
-
-    def param_labels(self) -> Dict[str, str]:
-        return {"noise_scale": "Noise scale",
-                "length_scale": "Length scale",
-                "noise_w_scale": "Noise W"}
 
     @staticmethod
     def detect(config: Optional[Dict[str, Any]] = None,
@@ -177,12 +164,11 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
             "input_lengths": request.phoneme_lengths,
             "scales": scales,
         }
-        if request.speaker_id is not None:
-            args["sid"] = np.array([request.speaker_id], dtype=np.int64)
+        args["sid"] = np.array([request.speaker_id or 0], dtype=np.int64)
         return self._filter_inputs(args, session)
 
-    def parse_outputs(self, outputs: List[np.ndarray],
-                      request: AdapterSynthesisRequest) -> AdapterSynthesisResult:
+    def parse_outputs(self, outputs: List[np.ndarray], request: AdapterSynthesisRequest,
+                      output_names: Optional[List[str]] = None) -> AdapterSynthesisResult:
         """Required by the base interface. Streaming synthesis is driven by
         ``synthesize`` (which loops over the decoder), so this is only used if a
         caller runs the encoder graph directly: it wraps the first output as audio."""
@@ -252,17 +238,22 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
         out = self.decoder.run(None, feed)[0]
         return np.asarray(out).squeeze()
 
-    def synthesize(self, request: AdapterSynthesisRequest,
-                   session: onnxruntime.InferenceSession) -> AdapterSynthesisResult:
+    def synthesize_stream(self, request: AdapterSynthesisRequest,
+                          session: onnxruntime.InferenceSession) -> Iterator[AdapterSynthesisResult]:
+        """Yield each stitched decoder window as soon as it is decoded.
+
+        A sentence of at most ``fallback_frames`` frames is one part. The parts
+        join to the audio of :meth:`synthesize`.
+        """
         if self.decoder is None:
             raise RuntimeError(
                 "VitsStreamingAdapter has no decoder graph. Set "
                 "engine_params['decoder_path'] to the decoder .onnx.")
 
-        # 1) Encoder runs once, producing the full latent sequence.
+        # Encoder runs once, producing the full latent sequence.
         feed = self.build_feed_dict(request, session)
         z, y_mask = self._run_encoder(session, feed)
-        sid = request.speaker_id
+        sid = request.speaker_id or 0
         T = z.shape[2]
 
         M = self._streaming["context_margin"]
@@ -270,15 +261,13 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
         nxt = self._streaming["next_chunk"]
         fallback = self._streaming["fallback_frames"]
 
-        # 2) Short sentence: one-shot decode (streaming overhead can't pay off).
+        # Short sentence: one-shot decode (streaming overhead can't pay off).
         if T <= fallback:
             audio = self._decode(z, y_mask, sid)
             self._resolve_hop(T, len(audio))
-            return AdapterSynthesisResult(audio=audio.astype(np.float32))
+            yield AdapterSynthesisResult(audio=audio.astype(np.float32))
+            return
 
-        # 3) Determine hop from a throwaway measure only if unknown. We avoid an
-        #    extra full decode: use the first chunk to establish hop.
-        segments: List[np.ndarray] = []
         start = 0
         is_first = True
         hop = self._hop_length or 256
@@ -290,13 +279,15 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
             ym_slice = y_mask[:, :, a:b] if y_mask is not None else None
             chunk_audio = self._decode(z[:, :, a:b], ym_slice, sid)
             if is_first and not self._hop_length:
-                # first full-context decode lets us pin hop precisely
+                # the first full-context decode pins hop
                 hop = self._resolve_hop(b - a, len(chunk_audio))
             lo = (start - a) * hop
             hi = min(lo + (end - start) * hop, len(chunk_audio))
-            segments.append(chunk_audio[lo:hi])
+            yield AdapterSynthesisResult(audio=chunk_audio[lo:hi].astype(np.float32))
             is_first = False
             start = end
 
-        audio = np.concatenate(segments).astype(np.float32)
-        return AdapterSynthesisResult(audio=audio)
+    def synthesize(self, request: AdapterSynthesisRequest,
+                   session: onnxruntime.InferenceSession) -> AdapterSynthesisResult:
+        parts = self.synthesize_stream(request, session)
+        return AdapterSynthesisResult(audio=np.concatenate([p.audio for p in parts]))

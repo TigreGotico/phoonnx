@@ -1,5 +1,5 @@
 """
-A corpus of voice configs covering every loader in :mod:`phoonnx.config_loaders`.
+A corpus of voice configs covering every loader in :mod:`phoonnx.compat`.
 
 Each case is a config dict plus the companion arguments that identify its
 format, and every case is run against :data:`KWARG_SETS` — so the corpus
@@ -50,7 +50,8 @@ NATIVE = {"phoonnx_version": "1.0", "engine": "vits", "phoneme_type": "espeak",
           "phoneme_id_map": {"a": 1, "b": 2, "_": 0},
           "inference": {"add_diacritics": True, "diacritizer_model": "rawi"}}
 # a config whose keys are present but explicitly null: every fallback must be
-# `get(k) or default`, never `get(k, default)`
+# `get(k) or default`, never `get(k, default)`, except `pad`: a null pad is a
+# vocabulary with no pad
 NATIVE_NULLS = {"phoonnx_version": "1.0", "engine": None, "phoneme_type": None,
                 "alphabet": None, "lang_code": None, "pad": None, "blank": None,
                 "phoneme_id_map": {"a": 1, "_": 0}, "inference": {"add_diacritics": None}}

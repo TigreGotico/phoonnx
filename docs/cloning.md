@@ -53,11 +53,13 @@ d-vector engines ignore the two `_text`/`_lang` fields; in-context engines requi
 
 ### Reference audio formats
 
-A WAV reference always works — it is read with the standard-library `wave` module. Any
-**other** format (FLAC, OGG, MP3, …) is read with `soundfile`, which is only installed
-with the `phoonnx[cloning]` extra (it pulls in `soundfile` + `scipy`). Without that
-extra, a non-WAV reference falls through to `wave.open`, which cannot parse it and
-raises. Install the extra for non-WAV references:
+When `soundfile` is installed, phoonnx reads every reference with it, WAV included, so
+FLAC, OGG and MP3 references work too. `soundfile` comes with the `phoonnx[cloning]`
+extra (it pulls in `soundfile` + `scipy`). Without it, phoonnx reads the reference with
+the standard-library `wave` module. That path decodes 8, 16, 24 and 32-bit PCM WAV by
+the sample width in the file header. Any other sample width, a float WAV, and a FLAC, OGG
+or MP3 file raise `ValueError`. The message names the file and the supported formats.
+Install the extra for any reference that is not a PCM WAV of those widths:
 
 ```bash
 pip install phoonnx[cloning]
@@ -104,6 +106,8 @@ adds an **`exaggeration`** control (0.0–1.0) for expressiveness:
 ```python
 voice.synthesize("...", SynthesisConfig(speaker_reference="ref.wav", exaggeration=0.6))
 ```
+
+The speech tokens are sampled. `extra_params={"seed": 0}` fixes the speech tokens. The decoder adds its own random noise, so two runs with one seed still give slightly different audio.
 
 ## Preset engine (NeuTTS / Akiti-TTS)
 
