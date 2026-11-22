@@ -5,6 +5,7 @@ no symbol input, tiny-voca or a raw-text engine, gets one warning and no block: 
 input never holds the brackets.
 """
 import json
+import threading
 import types
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -41,10 +42,20 @@ def _voice(alphabet, adapter):
 
 
 def _warnings(monkeypatch):
-    """The warnings that ``phoonnx.voice`` logs, as one list of formatted messages."""
+    """The warnings that ``phoonnx.voice`` logs on this thread, as one list of formatted messages.
+
+    A voice built by an earlier test can still run its provenance check in a daemon
+    thread and log through the same ``LOG``, so warnings from other threads are left out.
+    """
     logged = []
+    test_thread = threading.current_thread()
+
+    def warning(message, *args):
+        if threading.current_thread() is test_thread:
+            logged.append(message % args)
+
     log = MagicMock()
-    log.warning.side_effect = lambda message, *args: logged.append(message % args)
+    log.warning.side_effect = warning
     monkeypatch.setattr("phoonnx.voice.LOG", log)
     return logged
 
@@ -64,6 +75,7 @@ def test_a_block_on_tinyvoca_warns_and_sends_no_brackets(monkeypatch):
     plain = [u.ids for u in voice.prepare("hello world", SynthesisConfig())]
     blocked = [u.ids for u in voice.prepare("hello [[wɜːld]] world", SynthesisConfig())]
     assert blocked == plain
+    assert len(warnings) == 1, warnings
     (warning,) = warnings
     assert "tiny-voca" in warning and "[[wɜːld]]" in warning
 
@@ -76,5 +88,6 @@ def test_a_block_on_a_raw_text_engine_warns_and_sends_no_brackets(monkeypatch):
         tokenize=lambda text, **_: sent.append(text) or [1])
     list(voice.prepare("hello [[wɜːld]] world.", SynthesisConfig()))
     assert sent == ["hello world."]
+    assert len(warnings) == 1, warnings
     (warning,) = warnings
     assert "test-voice" in warning and "[[wɜːld]]" in warning
