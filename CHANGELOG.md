@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.126.1a1](https://github.com/TigreGotico/phoonnx/tree/1.126.1a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.126.0a1...1.126.1a1)
+
+**Merged pull requests:**
+
+- fix: read Piper's default diphthongs as two ids when vowel\_clusters is absent [\#909](https://github.com/TigreGotico/phoonnx/pull/909) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.126.0a1](https://github.com/TigreGotico/phoonnx/tree/1.126.0a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.14a1...1.126.0a1)
