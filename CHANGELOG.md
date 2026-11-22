@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.130.5a1](https://github.com/TigreGotico/phoonnx/tree/1.130.5a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.4a1...1.130.5a1)
+
+## [1.130.4a1](https://github.com/TigreGotico/phoonnx/tree/1.130.4a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.3a1...1.130.4a1)
+
+**Merged pull requests:**
+
+- fix: a subtag after a private-use or extension singleton is not a region [\#950](https://github.com/TigreGotico/phoonnx/pull/950) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: raise the scriptconv floor to 0.0.4a148 for long digit runs in Shami [\#947](https://github.com/TigreGotico/phoonnx/pull/947) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.130.3a1](https://github.com/TigreGotico/phoonnx/tree/1.130.3a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.2a1...1.130.3a1)
@@ -366,10 +379,6 @@
 ## [1.124.2a2](https://github.com/TigreGotico/phoonnx/tree/1.124.2a2) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.2a1...1.124.2a2)
-
-**Merged pull requests:**
-
-- chore\(deps\): linguatag \>= 0.4.1a1 [\#851](https://github.com/TigreGotico/phoonnx/pull/851) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.124.2a1](https://github.com/TigreGotico/phoonnx/tree/1.124.2a1) (2026-11-21)
 
