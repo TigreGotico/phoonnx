@@ -4,7 +4,7 @@
 covers: every PhonemeType and Alphabet value, and how a voice selects and runs its phonemizer
 source: phoonnx/config.py:PhonemeType, phoonnx/config.py:Alphabet (re-exported from scriptconv.phonemizers), scriptconv.frontend:TextFrontend, scriptconv.diacritics, phoonnx/config.py:VoiceConfig.add_diacritics
 generated: no
-verify: python -I -c "from phoonnx.config import PhonemeType, Alphabet; print(len(PhonemeType), len(Alphabet))" (prints 52 23), plus the frontend examples on the page
+verify: python -I -c "from phoonnx.config import PhonemeType, Alphabet; print(len(PhonemeType), len(Alphabet))" (prints 54 23), plus the frontend examples on the page
 see: galician.md, architecture.md, installation.md
 -->
 

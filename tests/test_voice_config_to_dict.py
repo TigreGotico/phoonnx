@@ -183,7 +183,9 @@ def test_schema_enums_list_every_engine_phonemizer_and_alphabet():
 
 def test_the_phonemizer_docs_have_a_row_for_every_published_phonemizer():
     docs = (Path(phoonnx.__file__).parent.parent / "docs" / "phonemizers.md").read_text(encoding="utf-8")
-    rows = set(re.findall(r"^\| `([a-z0-9_]+)` \|", docs, flags=re.MULTILINE))
+    # the Alphabet table has rows of the same shape, and some names are in both tables
+    table = docs.split("## PhonemeType Reference", 1)[1].split("## Alphabet Reference", 1)[0]
+    rows = set(re.findall(r"^\| `([a-z0-9_]+)` \|", table, flags=re.MULTILINE))
     published = set(SCHEMA["properties"]["phoneme_type"]["enum"]) - SCRIPTCONV_PENDING
     assert sorted(published - rows) == []
 
