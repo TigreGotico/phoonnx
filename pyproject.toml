@@ -18,6 +18,8 @@ requires-python = ">=3.11"
 dependencies = [
     "numpy",
     "onnxruntime",
+    # >=0.3.8a5: a sentence ends after "!" and after the full stops of other scripts,
+    # and after Chinese and Japanese marks with no space
     "quebra-frases>=0.3.8a5",
     "langcodes",
     "linguatag>=0.4.1a1",
@@ -32,8 +34,10 @@ dependencies = [
     # phonemizer, TextFrontend skipping the hook for a backend that owns
     # normalisation, TextFrontend normalising the whole text before the
     # sentence split, TextFrontend.say_as for SSML <say-as>, Segment.text, and
-    # dizione reading a very long letter run in bounded pieces. Every extra relies
-    # on this floor.
+    # dizione reading a very long letter run in bounded pieces, sentences joined with
+    # the gap of the source, the Shami emphatics, and the espeak_lt_accent,
+    # hebrew_ipa, openjtalk_prosody and tltk phonemizers. Every extra relies on
+    # this floor.
     "scriptconv[phonemizers]>=0.0.4a142",
     # the F5-TTS pinyin text function (f5tts_pinyin) of F5-TTS v1 Base and Twi
     # Asante segments with rjieba and reads hanzi with pypinyin
