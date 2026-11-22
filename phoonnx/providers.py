@@ -181,38 +181,37 @@ def resolve_providers(
     return resolved
 
 
-def resolve_threads(threads: Optional[int] = None) -> Optional[int]:
+def resolve_threads(threads: Optional[Union[int, str]] = None) -> Optional[int]:
     """
     Resolve the intra-op thread count of a session.
 
     Parameters:
-        threads: Threads per graph operator. When omitted,
+        threads: Threads per graph operator, as a number or its digit string.
+            ``0`` asks for ONNX Runtime's default. When omitted,
             ``PHOONNX_ORT_THREADS`` is consulted.
 
     Returns:
-        The thread count, or ``None`` for ONNX Runtime's default of one thread
-        per core, which ``0`` also selects.
+        The thread count, ``0`` for ONNX Runtime's default of one thread per
+        core, or ``None`` when neither the argument nor the environment sets it.
 
     Raises:
-        ValueError: *threads* is negative. A ``PHOONNX_ORT_THREADS`` value that
-            is not a whole number of zero or more logs a warning and gives
-            ``None``.
+        ValueError: *threads* is not a whole number of zero or more. A
+            ``PHOONNX_ORT_THREADS`` value that is not one logs a warning and
+            gives ``None``.
     """
     if threads is None:
         raw = os.environ.get(THREADS_ENV_VAR, "").strip()
         if not raw:
             return None
         try:
-            threads = int(raw)
+            return resolve_threads(raw)
         except ValueError:
-            threads = -1
-        if threads < 0:
             LOG.warning(f"{THREADS_ENV_VAR}={raw!r} is not a whole number of zero or more; "
                         "ONNX Runtime uses one thread per core")
             return None
-    if threads < 0:
-        raise ValueError(f"threads must be zero or more, got {threads}")
-    return int(threads) or None
+    if isinstance(threads, bool) or not str(threads).strip().isdigit():
+        raise ValueError(f"threads must be a whole number of zero or more, got {threads!r}")
+    return int(threads)
 
 
 def uses_gpu(providers: Sequence[ProviderSpec]) -> bool:
@@ -444,7 +443,7 @@ def make_session(
     if sess_options is not None or not _sharing_enabled():
         return _build_session(model_path, resolved, sess_options or _thread_options(threads), cache_dir)
 
-    key = session_key(model_path, resolved, cache_dir, threads)
+    key = session_key(model_path, resolved, cache_dir, threads or None)
     with _SHARED_LOCK:
         session = _SHARED_SESSIONS.get(key)
         if session is not None:
@@ -476,7 +475,7 @@ def make_session(
 
 def _thread_options(threads: Optional[int]) -> Optional[onnxruntime.SessionOptions]:
     """Session options that run each operator on *threads* threads, or ``None`` for the defaults."""
-    if threads is None:
+    if not threads:
         return None
     options = onnxruntime.SessionOptions()
     options.intra_op_num_threads = threads

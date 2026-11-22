@@ -14,6 +14,9 @@ import pytest
 from onnx import TensorProto, helper
 
 from phoonnx import alignment, providers
+from phoonnx.engines.glowtts import GlowTTSAdapter
+from phoonnx.engines.matcha import MatchaAdapter
+from phoonnx.engines.mixertts import MixerTTSAdapter
 from phoonnx.engines.speaker_encoders.coqui_resnet import CoquiResNetSpeakerEncoder
 from phoonnx.engines.vocoders.vocos import VocosVocoder
 from phoonnx.providers import THREADS_ENV_VAR, make_session, resolve_threads
@@ -48,9 +51,10 @@ def no_thread_env(monkeypatch):
     (3, None, 3),
     (None, "4", 4),
     (3, "4", 3),  # the argument comes first
-    (0, "4", None),  # 0 is ONNX Runtime's default
-    (None, "0", None),
+    (0, "4", 0),  # 0 asks for ONNX Runtime's default, also over the environment
+    (None, "0", 0),
     (None, " 2 ", 2),
+    ("2", None, 2),  # a plugin config may hold a digit string
 ])
 def test_threads_come_from_the_argument_then_the_environment(monkeypatch, argument, env, expected):
     if env is not None:
@@ -66,9 +70,10 @@ def test_a_bad_environment_value_warns_and_keeps_the_default(monkeypatch, env):
     assert THREADS_ENV_VAR in log.warning.call_args.args[0]
 
 
-def test_a_negative_argument_raises():
+@pytest.mark.parametrize("threads", [-1, "two", "1.5", 1.5, True])
+def test_an_argument_that_is_not_a_whole_number_raises(threads):
     with pytest.raises(ValueError, match="zero or more"):
-        resolve_threads(-1)
+        resolve_threads(threads)
 
 
 def test_the_session_runs_on_the_requested_threads(tmp_path, monkeypatch):
@@ -150,3 +155,22 @@ def test_a_new_alignment_copy_runs_on_the_thread_count_of_the_voice(tmp_path, mo
     monkeypatch.setattr(alignment, "export_alignment_model", lambda source, destination: tiny_model(destination))
     assert not alignment.alignment_model_path(model).exists()
     assert threads_of(alignment.ensure_alignment_session(model, CPU, 2)) == 2
+
+
+def test_threads_zero_keeps_the_default_over_the_environment(tmp_path, monkeypatch):
+    monkeypatch.setenv(THREADS_ENV_VAR, "3")
+    path = tiny_model(tmp_path / "voice.onnx")
+    (tmp_path / "voice.onnx.json").write_text(json.dumps({"phoneme_type": "unicode", "alphabet": "unicode"}))
+    voice = TTSVoice.load(path, providers=CPU, threads=0)
+    assert threads_of(voice.session) == 0
+    # the auxiliary graphs read 0 too, not the environment
+    assert threads_of(make_session(tiny_model(tmp_path / "aux.onnx"), providers=CPU,
+                                   threads=voice.config.engine_params["threads"])) == 0
+
+
+@pytest.mark.parametrize("adapter", [GlowTTSAdapter, MatchaAdapter, MixerTTSAdapter])
+def test_a_mel_engine_builds_its_vocoder_on_the_threads_of_the_voice(tmp_path, adapter):
+    engine = adapter()
+    engine.configure_from_params({"vocoder_path": tiny_model(tmp_path / "vocoder.onnx"), "vocoder_type": "hifigan",
+                                  "vocoder_config": {}, "providers": CPU, "threads": 2})
+    assert threads_of(engine.vocoder.session) == 2

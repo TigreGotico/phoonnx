@@ -274,6 +274,7 @@ def test_decoder_runs_on_the_voice_providers(monkeypatch):
     ({"threads": 2}, None, 2),  # the thread count of the voice
     ({}, "5", 5),  # PHOONNX_ORT_THREADS
     ({"threads": 2, "intra_op_num_threads": 3}, "5", 3),  # the decoder key wins
+    ({"threads": 2, "intra_op_num_threads": 0}, None, 0),  # also when it asks for ONNX Runtime's default
     ({}, None, max(1, (os.cpu_count() or 4) // 2)),  # the decoder default
 ])
 def test_decoder_threads_follow_the_voice_unless_it_names_its_own(monkeypatch, params, env, expected):

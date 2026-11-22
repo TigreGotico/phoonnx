@@ -405,8 +405,9 @@ Or set it once for the process:
 export PHOONNX_ORT_THREADS=2
 ```
 
-The `threads` argument comes first, then `PHOONNX_ORT_THREADS`. With neither, or
-with `0`, ONNX Runtime keeps its default. `TTSModelInfo.load` takes the same
+The `threads` argument comes first, then `PHOONNX_ORT_THREADS`. With neither,
+ONNX Runtime keeps its default. `threads=0` asks for that default too, also when
+`PHOONNX_ORT_THREADS` is set. `TTSModelInfo.load` takes the same
 argument, and the OVOS plugin reads the `onnx_threads` key. A voice with a
 different thread count gets its own session, so voices share a session only when
 they ask for the same count. The decoder of a [streaming VITS voice](streaming.md)
