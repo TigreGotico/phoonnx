@@ -79,10 +79,11 @@ class TestVocabularyFromPiperConfig(unittest.TestCase):
         self.assertEqual(voc.eos, "$")
         self.assertEqual(voc.blank, "_")
 
-    def test_extracts_first_element_of_id_lists(self):
+    def test_keeps_every_id_of_a_list(self):
+        # piper.phoneme_ids.phonemes_to_ids extends the ids with the whole list
         cfg = {"phoneme_id_map": {"a": [4, 99], "b": [5]}}
         voc = Vocabulary.from_piper_config(cfg)
-        self.assertEqual(voc.char2idx, {"a": 4, "b": 5})
+        self.assertEqual(voc.char2idx, {"a": [4, 99], "b": 5})
 
     def test_explicit_special_tokens_override_defaults(self):
         cfg = {"phoneme_id_map": {}, "pad": "<P>", "bos": "<B>", "eos": "<E>", "blank": "<K>"}
