@@ -1,6 +1,8 @@
 """The voice index names one Hub repo per model, and a voice cached from the shared mirror repo still loads."""
 import json
+import posixpath
 import re
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -211,8 +213,6 @@ class TestAGraphWhoseWeightsWereCutOff(_Cache):
                                f"{self.folder}/model.onnx_data": self.data["model.onnx_data"]},
                       mtime=1000, repo=self.mirror)
         self.assertIsNone(model_manager._mirror_route(OUTETTS, {"model.onnx"}))
-        # outside a voice load the data file is routed alone, and must follow its graph
-        self.assertIsNone(model_manager._mirror_route(OUTETTS, {"model.onnx_data"}))
         with patch.object(model_manager, "hf_hub_download", side_effect=_gone) as download:
             _hf_fetch(index_url(OUTETTS, "model.onnx"))
         [call] = download.call_args_list
@@ -222,8 +222,29 @@ class TestAGraphWhoseWeightsWereCutOff(_Cache):
         files = {f"{self.folder}/model.onnx": self.graph,
                  f"{self.folder}/model.onnx_data": self.data["model.onnx_data"]}
         self.snapshot(SPLIT[OUTETTS]["rev"], files, mtime=2000, repo=self.mirror)
-        self.snapshot(PINNED, {**files, f"{self.folder}/config.json": b"{}"}, mtime=1000, repo=self.mirror)
-        self.assertIsNone(model_manager._mirror_route(OUTETTS, {"model.onnx", "config.json"}))
+        self.snapshot(PINNED, {**files, f"{self.folder}/tokenizer.json": b"{}"}, mtime=1000, repo=self.mirror)
+        self.assertIsNone(model_manager._mirror_route(OUTETTS, {"model.onnx", "tokenizer.json"}))
+
+    def test_download_model_fetches_the_graph_and_its_data_from_one_repo(self):
+        """Outside a load, the data file must not take the older snapshot's route while its graph does not."""
+        self.snapshot(SPLIT[OUTETTS]["rev"], {f"{self.folder}/model.onnx": self.graph}, mtime=2000, repo=self.mirror)
+        self.snapshot(PINNED, {f"{self.folder}/model.onnx": self.graph,
+                               f"{self.folder}/model.onnx_data": self.data["model.onnx_data"]},
+                      mtime=1000, repo=self.mirror)
+        served = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        (served / "model.onnx").write_bytes(self.graph)
+        (served / "model.onnx_data").write_bytes(self.data["model.onnx_data"])
+        repos = []
+
+        def download(repo_id, filename, **kwargs):
+            repos.append(repo_id)
+            return str(served / posixpath.basename(filename))
+
+        info = model_manager.TTSModelInfo(voice_id="outetts/0.6b", lang="en",
+                                          model_url=index_url(OUTETTS, "model.onnx"))
+        with patch.object(model_manager, "hf_hub_download", side_effect=download):
+            info.download_model()
+        self.assertEqual(repos, [OUTETTS, OUTETTS])
 
     def test_a_table_commit_snapshot_of_another_model_does_not_hide_an_older_full_one(self):
         self.snapshot(SPLIT[OUTETTS]["rev"], {"another-model/model.onnx": b"x"}, mtime=2000, repo=self.mirror)
@@ -232,6 +253,14 @@ class TestAGraphWhoseWeightsWereCutOff(_Cache):
                       mtime=1000, repo=self.mirror)
         self.assertEqual(model_manager._mirror_route(OUTETTS, {"model.onnx"})[:2],
                          (self.mirror, SPLIT[OUTETTS]["rev"]))
+
+    def test_a_download_inside_an_open_voice_scope_keeps_its_routes(self):
+        info = model_manager.TTSModelInfo(voice_id="outetts/0.6b", lang="en",
+                                          model_url=index_url(OUTETTS, "model.onnx"))
+        with model_manager._voice_scope(info), \
+                patch.object(model_manager, "_voice_scope", side_effect=AssertionError("second scope")), \
+                patch.object(model_manager.TTSModelInfo, "_fetch_onnx", return_value=Path("model.onnx")):
+            info.download_model()
 
 
 class TestTheIndexNamesTheModelRepos(unittest.TestCase):
