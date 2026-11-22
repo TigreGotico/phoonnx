@@ -15,6 +15,7 @@ if TYPE_CHECKING:  # heavy imports — only needed for type annotations
     import pytorch_lightning as pl
     import torch
 
+from phoonnx.compat import to_piper_config, to_sherpa_tokens
 from phoonnx_train.engines.base import BaseTrainingEngine, TrainingEngineConfig
 
 _LOG = logging.getLogger(__name__)
@@ -358,25 +359,14 @@ class VitsTrainingEngine(BaseTrainingEngine):
 # ------------------------------------------------------------------
 
 def _write_tokens_txt(phoneme_id_map: Dict[str, Any], path: Path) -> None:
-    """Write a sherpa-onnx style tokens.txt from a phoneme_id_map."""
-    if not phoneme_id_map:
-        path.write_text("", encoding="utf-8")
-        return
-    entries = []
-    max_id = -1
-    for phoneme, idx in phoneme_id_map.items():
-        if isinstance(idx, int):
-            entries.append((idx, phoneme))
-            max_id = max(max_id, idx)
-        elif isinstance(idx, list):
-            for i in idx:
-                if isinstance(i, int):
-                    entries.append((i, phoneme))
-                    max_id = max(max_id, i)
-    tokens = [f"<UNK_{i}>" for i in range(max_id + 1)]
-    for idx, phoneme in entries:
-        tokens[idx] = phoneme
-    path.write_text("\n".join(tokens) + "\n", encoding="utf-8")
+    """Write the sherpa-onnx ``tokens.txt`` of :func:`phoonnx.compat.to_sherpa_tokens`."""
+    path.write_text(to_sherpa_tokens(phoneme_id_map), encoding="utf-8")
+
+
+def _write_piper_json(model_config: Dict[str, Any], path: Path) -> None:
+    """Write the Piper-shaped config of :func:`phoonnx.compat.to_piper_config`."""
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(to_piper_config(model_config), f, indent=2, ensure_ascii=False)
 
 
 def write_sidecars(model_config: Dict[str, Any], output_dir: Path, stem: str,
@@ -385,8 +375,11 @@ def write_sidecars(model_config: Dict[str, Any], output_dir: Path, stem: str,
 
     ``<stem>.json`` is always written: the training config in phoonnx's own
     format, so the export folder loads on its own. ``--piper`` adds
-    ``<stem>.piper.json`` and ``--generate-tokens`` adds sherpa-onnx's
-    ``<stem>.tokens.txt``.
+    ``<stem>.piper.json`` (:func:`phoonnx.compat.to_piper_config`) and
+    ``--generate-tokens`` adds sherpa-onnx's ``<stem>.tokens.txt``
+    (:func:`phoonnx.compat.to_sherpa_tokens`). ``phoonnx-voices export`` turns the
+    folder into a Piper or sherpa-onnx voice, after it checks that the target gives
+    the ids of the voice.
     """
     native_path = output_dir / f"{stem}.json"
     with open(native_path, "w", encoding="utf-8") as f:
@@ -402,34 +395,3 @@ def write_sidecars(model_config: Dict[str, Any], output_dir: Path, stem: str,
         piper_path = output_dir / f"{stem}.piper.json"
         _write_piper_json(model_config, piper_path)
         _LOG.info("Generated piper JSON: %s", piper_path)
-
-
-def _write_piper_json(model_config: Dict[str, Any], path: Path) -> None:
-    """Emit a piper-compatible metadata JSON alongside the ONNX model.
-
-    phoonnx stores one id per phoneme and the language as ``lang_code``;
-    Piper wants a list of ids per phoneme and the language under
-    ``language.code`` and ``espeak.voice``.
-    """
-    lang_code = model_config.get("lang_code") or ""
-    piper_cfg = {
-        "audio": model_config.get("audio", {}),
-        "inference": model_config.get("inference", {}),
-        "num_symbols": model_config.get("num_symbols"),
-        "num_speakers": model_config.get("num_speakers"),
-        "phoneme_id_map": {p: i if isinstance(i, list) else [i]
-                           for p, i in model_config.get("phoneme_id_map", {}).items()},
-        "speaker_id_map": model_config.get("speaker_id_map", {}),
-        "language": model_config.get("language") or {"code": lang_code},
-        "espeak": model_config.get("espeak") or {"voice": lang_code},
-        "phoneme_type": model_config.get("phoneme_type", ""),
-        "phonemizer_model": model_config.get("phonemizer_model", ""),
-        "alphabet": model_config.get("alphabet", ""),
-        # piper ignores the key; phoonnx reads a piper config as trained with
-        # punctuation unless told otherwise
-        "keep_punctuation": bool(model_config.get("keep_punctuation", False)),
-        "text_casing": model_config.get("text_casing"),
-    }
-    piper_cfg = {k: v for k, v in piper_cfg.items() if v is not None}
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(piper_cfg, f, indent=2, ensure_ascii=False)

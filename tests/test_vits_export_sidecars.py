@@ -44,4 +44,20 @@ def test_piper_config_has_list_ids_and_the_language(tmp_path):
 
 def test_tokens_are_named_after_the_model(tmp_path):
     write_sidecars(dict(TRAIN_CONFIG), tmp_path, "voice", generate_tokens=True)
-    assert (tmp_path / "voice.tokens.txt").read_text(encoding="utf-8").splitlines() == ["_", "^", "$", " ", "a", "b"]
+    assert (tmp_path / "voice.tokens.txt").read_text(encoding="utf-8").splitlines() == [
+        "_ 0", "^ 1", "$ 2", "  3", "a 4", "b 5"]
+
+
+def test_piper_config_bytes_are_those_of_the_training_export(tmp_path):
+    # the bytes that write_sidecars wrote for TRAIN_CONFIG before the writer moved to phoonnx.compat
+    write_sidecars(dict(TRAIN_CONFIG), tmp_path, "voice", piper=True)
+    expected = {
+        "audio": {"sample_rate": 22050, "quality": "medium"},
+        "inference": {"noise_scale": 0.667, "length_scale": 1, "noise_w": 0.8, "add_diacritics": False},
+        "num_symbols": 6, "num_speakers": 1,
+        "phoneme_id_map": {"_": [0], "^": [1], "$": [2], " ": [3], "a": [4], "b": [5]},
+        "speaker_id_map": {}, "language": {"code": "an"}, "espeak": {"voice": "an"},
+        "phoneme_type": "espeak", "phonemizer_model": "", "alphabet": "ipa", "keep_punctuation": False,
+    }
+    assert (tmp_path / "voice.piper.json").read_text(encoding="utf-8") == json.dumps(
+        expected, indent=2, ensure_ascii=False)

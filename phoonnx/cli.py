@@ -218,5 +218,43 @@ def add_alignment(model_path, output):
     click.echo(f"Wrote alignment-capable model to: {dest}")
 
 
+@cli.command(name="export")
+@click.argument("model_path", type=click.Path(exists=True, dir_okay=False))
+@click.argument("dest", type=click.Path(file_okay=False))
+@click.option("--to", "target", type=click.Choice(["piper", "sherpa"]), required=True,
+              help="The runtime to export for.")
+@click.option("--config", "config_path", type=click.Path(exists=True, dir_okay=False),
+              help="The voice config. Defaults to '<model>.json'.")
+def export_voice(model_path, dest, target, config_path):
+    """
+    Write the voice of MODEL_PATH as a Piper or sherpa-onnx voice in the folder DEST.
+
+    The export copies the model and writes the config that the runtime reads.
+    The source model is not changed. A voice that the runtime cannot read
+    with the ids phoonnx gives it is refused, with the reason.
+    """
+    from phoonnx.compat import export_piper, export_sherpa
+    from phoonnx.errors import ExportNotSupported
+    from phoonnx.voice import TTSVoice
+
+    voice = TTSVoice.load(model_path, config_path)
+    try:
+        if target == "piper":
+            model = export_piper(voice, dest)
+            written = [model, f"{model}.json"]
+        else:
+            model = export_sherpa(voice, dest)
+            written = [model, model.parent / "tokens.txt"]
+    except ImportError:
+        click.echo("Error: the 'onnx' package is required to write the sherpa-onnx metadata; "
+                   "install it with `pip install phoonnx[streaming]`.", err=True)
+        raise SystemExit(1)
+    except (ExportNotSupported, ValueError) as e:
+        click.echo(f"Error: {e}", err=True)
+        raise SystemExit(1)
+    for path in written:
+        click.echo(f"Wrote {path}")
+
+
 if __name__ == "__main__":
     cli()

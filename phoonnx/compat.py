@@ -41,19 +41,24 @@ loader returns.
 """
 import copy
 import json
+import shutil
 import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, FrozenSet, List, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, FrozenSet, List, Optional, Tuple, Type, Union
 
 from scriptconv.phonemizers.enums import Alphabet, Phonemizer as PhonemeType
 
 from phoonnx.config import Engine
+from phoonnx.errors import ExportNotSupported
 
 from phoonnx.tokenizer import (TTSTokenizer, Vocabulary, BlankBetween,
                                DEFAULT_BLANK_WORD_TOKEN, DEFAULT_BLANK_TOKEN,
                                DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN)
 from phoonnx.util import LOG, is_arabic
+
+if TYPE_CHECKING:
+    from phoonnx.voice import TTSVoice
 
 
 def vocabulary_from_piper_config(cfg: Dict[str, Any], decompose: bool = False) -> 'Vocabulary':
@@ -1099,3 +1104,235 @@ def convert_config(path_or_dict: Union[str, Path, Dict[str, Any]], *,
         tokens_txt=str(tokens) if tokens else None,
         **overrides,
     ).to_dict()
+
+
+def to_piper_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """The Piper-shaped config that ``phoonnx_train.export_onnx --piper`` writes beside a model.
+
+    phoonnx stores one id per phoneme and the language as ``lang_code``; Piper wants a
+    list of ids per phoneme and the language under ``language.code`` and ``espeak.voice``.
+    The ``alphabet`` key, which Piper never writes, marks the file as a phoonnx export
+    for :class:`PiperLoader`. The ids are those of *config* unchanged: :func:`export_piper`
+    is the export that checks that Piper gives the same ids.
+    """
+    lang_code = config.get("lang_code") or ""
+    piper = {
+        "audio": config.get("audio", {}),
+        "inference": config.get("inference", {}),
+        "num_symbols": config.get("num_symbols"),
+        "num_speakers": config.get("num_speakers"),
+        "phoneme_id_map": {p: i if isinstance(i, list) else [i]
+                           for p, i in config.get("phoneme_id_map", {}).items()},
+        "speaker_id_map": config.get("speaker_id_map", {}),
+        "language": config.get("language") or {"code": lang_code},
+        "espeak": config.get("espeak") or {"voice": lang_code},
+        "phoneme_type": config.get("phoneme_type", ""),
+        "phonemizer_model": config.get("phonemizer_model", ""),
+        "alphabet": config.get("alphabet", ""),
+        # piper ignores the key; phoonnx reads a piper config as trained with
+        # punctuation unless told otherwise
+        "keep_punctuation": bool(config.get("keep_punctuation", False)),
+        "text_casing": config.get("text_casing"),
+    }
+    return {k: v for k, v in piper.items() if v is not None}
+
+
+def to_sherpa_tokens(phoneme_id_map: Dict[str, Any]) -> str:
+    """The ``tokens.txt`` of sherpa-onnx: ``<symbol> <id>`` on each line, ordered by id.
+
+    sherpa-onnx reads one code point per symbol and one symbol per line, and it stops
+    at a line that holds more code points or a symbol it has read before
+    (``ReadPiperTokens`` in sherpa-onnx/csrc/offline-tts-frontend.cc). A key of more
+    than one code point, a key with other than one id, and a white-space key other
+    than the space are left out. :func:`export_sherpa` checks that the voice needs none
+    of them.
+    """
+    tokens = []
+    for symbol, ids in phoneme_id_map.items():
+        ids = ids if isinstance(ids, list) else [ids]
+        if len(symbol) == 1 and len(ids) == 1 and (symbol == " " or not symbol.isspace()):
+            tokens.append((ids[0], symbol))
+    return "".join(f"{symbol} {idx}\n" for idx, symbol in sorted(tokens))
+
+
+# The ONNX inputs of a Piper VITS graph, in the order that Piper and sherpa-onnx feed
+# them: PiperVoice.phoneme_ids_to_audio (OHF-Voice/piper1-gpl v1.8.0) and
+# RunVitsPiperOrCoqui (sherpa-onnx/csrc/offline-tts-vits-model.cc v2.0.2). A graph
+# with more than one speaker also takes "sid".
+PIPER_GRAPH_INPUTS = ("input", "input_lengths", "scales")
+
+
+def _piper_phoneme_id_map(voice: "TTSVoice", target: str,
+                          clusters: bool) -> Tuple[Dict[str, List[int]], List[List[str]]]:
+    """The ``phoneme_id_map`` and ``vowel_clusters`` with which *target* gives the ids of *voice*.
+
+    Piper, and sherpa-onnx with its espeak-ng frontend, read the phonemes of espeak-ng
+    with the clause punctuation, decompose them (NFD), merge the clusters that the config
+    lists, drop a symbol that the map lacks, and put the blank after each id:
+    ``^ _ (p _)* $``. sherpa-onnx lists no clusters. A symbol that phoonnx reads as one id
+    and the target reads as its code points becomes a cluster, so the target merges the
+    code points back into that id. The map keeps phoonnx's own keys too, which the target
+    never reads, so phoonnx reads the export back with the same ids.
+
+    Raises:
+        ExportNotSupported: The first setting of *voice* that *target* cannot hold.
+    """
+    config = voice.config
+    inputs = tuple(node.name for node in voice.session.get_inputs())
+    with_sid = PIPER_GRAPH_INPUTS + ("sid",)
+    if inputs not in (PIPER_GRAPH_INPUTS, with_sid):
+        raise ExportNotSupported(f"{target} runs a VITS graph with the inputs {', '.join(with_sid)}; "
+                                 f"this graph takes {', '.join(inputs)}")
+    if (inputs == with_sid) != (config.num_speakers > 1):
+        raise ExportNotSupported(f"{target} feeds 'sid' only to a voice with more than one speaker; "
+                                 f"this voice has {config.num_speakers} and its graph inputs are "
+                                 f"{', '.join(inputs)}")
+    if config.phoneme_type != PhonemeType.ESPEAK or config.alphabet != Alphabet.IPA:
+        raise ExportNotSupported(f"{target} reads espeak-ng IPA; this voice uses the phonemizer "
+                                 f"{config.phoneme_type.value} with the alphabet {config.alphabet.value}")
+    if not config.keep_punctuation:
+        raise ExportNotSupported(f"{target} feeds the clause punctuation to the model, and this "
+                                 f"voice was trained without it (keep_punctuation is false)")
+    if config.text_casing != "ignore":
+        raise ExportNotSupported(f"{target} reads the text in its own case; this voice applies "
+                                 f"text_casing {config.text_casing!r}")
+    if config.add_diacritics:
+        raise ExportNotSupported(f"{target} adds no diacritics before espeak-ng; this voice does")
+
+    tokenizer = config.tokenizer
+    voc = tokenizer.vocabulary
+    if (voc.blank, voc.bos, voc.eos) != ("_", "^", "$"):
+        raise ExportNotSupported(f"{target} reads the blank '_', BOS '^' and EOS '$'; this voice "
+                                 f"uses {voc.blank!r}, {voc.bos!r} and {voc.eos!r}")
+    flags = {"add_blank_char": True, "blank_at_start": True, "blank_at_end": True,
+             "use_eos_bos": True, "add_blank_word": False, "blank_after": None, "unknown_id": None}
+    for name, value in flags.items():
+        if getattr(tokenizer, name) != value:
+            raise ExportNotSupported(f"{target} reads the ids as ^ _ (p _)* $; this voice sets "
+                                     f"{name} to {getattr(tokenizer, name)!r}")
+
+    char2idx = voc.char2idx
+    id_map: Dict[str, List[int]] = {}
+    merged: List[List[str]] = []
+    for key, value in char2idx.items():
+        ids = value if isinstance(value, list) else [value]
+        parts = unicodedata.normalize("NFD", key)
+        if len(key) == 1 and parts == key:
+            if len(ids) > 1:
+                raise ExportNotSupported(f"{target} puts a blank after each symbol, not between the "
+                                         f"ids of one; this voice reads {key!r} as the ids {ids}")
+            if ids:
+                id_map[key] = ids
+            continue
+        if len(key) > 1 and not tokenizer.fold_compounds:
+            # phoonnx reads such a key as its characters, and so does the target
+            continue
+        if len(key) == 1 and ids == [char2idx.get(part) for part in parts]:
+            # the target reads the code points of the key, with the ids phoonnx gives the key
+            id_map[key] = ids
+            continue
+        if not clusters:
+            raise ExportNotSupported(f"{target} reads one code point per symbol; this voice reads "
+                                     f"{key!r} ({len(parts)} code points) as the ids {ids}")
+        if len(ids) != 1 or (len(key) > 1 and parts != key):
+            raise ExportNotSupported(f"{target} merges a cluster of decomposed code points into one "
+                                     f"id; this voice reads {key!r} as the ids {ids}")
+        id_map[key] = ids
+        id_map[parts] = ids
+        merged.append(list(parts))
+    return id_map, sorted(merged)
+
+
+def _export_model_path(voice: "TTSVoice", dest: Path) -> Path:
+    """The path in *dest* of the model copy, which is never the source model."""
+    if voice.model_path is None:
+        raise ValueError("the voice has no model file to export")
+    model = dest / Path(voice.model_path).name
+    if model.resolve() == Path(voice.model_path).resolve():
+        raise ValueError(f"{dest} holds the source model; export to another folder")
+    return model
+
+
+def export_piper(voice: "TTSVoice", dest: Union[str, Path]) -> Path:
+    """Write *voice* as a Piper voice in the folder *dest*.
+
+    The folder gets a copy of the model and ``<model>.json`` beside it, which
+    ``piper.PiperVoice.load(model)`` reads. Piper gives the ids that phoonnx gives the
+    voice, for the same espeak-ng phonemes. The config is that of :func:`to_piper_config`,
+    with ``espeak.voice`` set to the espeak-ng voice that phoonnx uses and the
+    ``vowel_clusters`` that the voice needs.
+
+    Returns:
+        The path of the model copy.
+
+    Raises:
+        ExportNotSupported: Piper cannot give the ids of the voice: its graph, its
+            phonemizer, its tokenizer or a symbol of its map is not one Piper reads.
+        ValueError: The voice has no model file, or *dest* is the folder of the source model.
+    """
+    id_map, clusters = _piper_phoneme_id_map(voice, "Piper", clusters=True)
+    espeak_voice = voice.phonemizer.get_lang(voice.config.lang_code)
+    if espeak_voice == "ar":
+        raise ExportNotSupported("Piper adds Arabic diacritics with its own model before espeak-ng; "
+                                 "phoonnx does not for this voice")
+    config = to_piper_config(voice.config.to_dict())
+    config["phoneme_id_map"] = id_map
+    config["espeak"] = {"voice": espeak_voice}
+    if clusters:
+        config["vowel_clusters"] = clusters
+
+    dest = Path(dest)
+    model = _export_model_path(voice, dest)
+    dest.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(voice.model_path, model)
+    Path(f"{model}.json").write_text(json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8")
+    return model
+
+
+def export_sherpa(voice: "TTSVoice", dest: Union[str, Path]) -> Path:
+    """Write *voice* as a sherpa-onnx VITS voice in the folder *dest*.
+
+    The folder gets a copy of the model with the metadata that sherpa-onnx reads for a
+    Piper voice (scripts/piper/add_meta_data.py of sherpa-onnx v2.0.2), and
+    ``tokens.txt`` (:func:`to_sherpa_tokens`). The source model is not changed.
+    sherpa-onnx gives the ids that phoonnx gives the voice, for the same espeak-ng
+    phonemes decomposed (NFD). Up to sherpa-onnx 1.13, ``OfflineTtsVitsModelConfig``
+    phonemizes with the espeak-ng data in ``data_dir``. From 2.0 sherpa-onnx has no
+    espeak-ng, and the caller passes the phonemes as ``GenerationConfig.phoneme_codepoints``.
+    sherpa-onnx takes the scales from ``OfflineTtsVitsModelConfig``, not from the model.
+
+    Returns:
+        The path of the model copy.
+
+    Raises:
+        ExportNotSupported: sherpa-onnx cannot give the ids of the voice, for example a
+            voice that merges a vowel cluster into one id.
+        ImportError: The ``onnx`` package is not installed.
+        ValueError: The voice has no model file, or *dest* is the folder of the source model.
+    """
+    import onnx
+
+    id_map, _ = _piper_phoneme_id_map(voice, "sherpa-onnx", clusters=False)
+    config = voice.config
+    metadata = {
+        "model_type": "vits",
+        "comment": "piper",
+        "language": config.lang_code,
+        "voice": voice.phonemizer.get_lang(config.lang_code),
+        "version": 1,
+        "has_espeak": 1,
+        "has_g2pw": 0,
+        "n_speakers": config.num_speakers,
+        "sample_rate": config.sample_rate,
+    }
+
+    dest = Path(dest)
+    model_path = _export_model_path(voice, dest)
+    model = onnx.load(voice.model_path)
+    props = {prop.key: prop for prop in model.metadata_props}
+    for key, value in metadata.items():
+        (props.get(key) or model.metadata_props.add(key=key)).value = str(value)
+    dest.mkdir(parents=True, exist_ok=True)
+    onnx.save(model, str(model_path))
+    (dest / "tokens.txt").write_text(to_sherpa_tokens(id_map), encoding="utf-8")
+    return model_path
