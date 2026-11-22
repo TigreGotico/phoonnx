@@ -38,6 +38,19 @@
         "engine": "piper",
         "config_url": "https://huggingface.co/Phoonnx/vits-fa_ir-amir-espeak/resolve/a5f27e656f667584d02f81af3558ca67623cf461/config.json"
     },
+    "piper_community/SadeghK/amir-v2": {
+        "voice_id": "piper_community/SadeghK/amir-v2",
+        "model_url": "https://huggingface.co/Phoonnx/vits-fa_ir-amir-espeak-v2/resolve/fd64f8a6a0184edc8ce13548ea1bbb776b2ad678/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "fa-IR",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/Phoonnx/vits-fa_ir-amir-espeak-v2/resolve/fd64f8a6a0184edc8ce13548ea1bbb776b2ad678/config.json"
+    },
     "piper_community/SadeghK/ganji": {
         "voice_id": "piper_community/SadeghK/ganji",
         "model_url": "https://huggingface.co/Phoonnx/vits-fa_ir-ganji-espeak/resolve/b41ae8cd600fdf621808ad88a85c6e44c5831ca8/model.onnx",
@@ -247,6 +260,19 @@
         "engine": "piper",
         "config_url": "https://huggingface.co/Phoonnx/vits-vi_vn-vais1000-espeak/resolve/3261bce0ae755300281da30f0081117713657c08/config.json"
     },
+    "piper_community/phcatan9921/vi-VN_vais1000-v2": {
+        "voice_id": "piper_community/phcatan9921/vi-VN_vais1000-v2",
+        "model_url": "https://huggingface.co/Phoonnx/vits-vi_vn-vais1000-espeak-v2/resolve/bcdd99d69208616750077a2c2655900403864b2f/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "vi-VN",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/Phoonnx/vits-vi_vn-vais1000-espeak-v2/resolve/bcdd99d69208616750077a2c2655900403864b2f/config.json"
+    },
     "piper_community/phatjkk/vi-VN_InfoRe": {
         "voice_id": "piper_community/phatjkk/vi-VN_InfoRe",
         "model_url": "https://huggingface.co/Phoonnx/vits-vi_vn-infore-espeak/resolve/c0ecdac64554d6b2a8088ba4c374da8c4cec1cb2/model.onnx",
@@ -454,6 +480,19 @@
         "alphabet": "ipa",
         "engine": "piper",
         "config_url": "https://huggingface.co/Phoonnx/vits-it_it-paola-espeak/resolve/a03e6348e238a324a96b7b67b07d3416f2116411/config.json"
+    },
+    "piper_community/paolapersico1/it-IT_paola-v2": {
+        "voice_id": "piper_community/paolapersico1/it-IT_paola-v2",
+        "model_url": "https://huggingface.co/Phoonnx/vits-it_it-paola-espeak-v2/resolve/a17e4a752a5208fd8e09a83f62927365ac0e4590/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "it-IT",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/Phoonnx/vits-it_it-paola-espeak-v2/resolve/a17e4a752a5208fd8e09a83f62927365ac0e4590/config.json"
     },
     "piper_community/kirys79/it-IT_Aurora": {
         "voice_id": "piper_community/kirys79/it-IT_Aurora",
@@ -1066,6 +1105,19 @@
         "engine": "piper",
         "config_url": "https://huggingface.co/Phoonnx/vits-eu-maider-espeak/resolve/2d3da727a0b8adadc57b20d0e3f01dc0775542f3/config.json"
     },
+    "piper_community/itzune/eu-maider-medium-v2": {
+        "voice_id": "piper_community/itzune/eu-maider-medium-v2",
+        "model_url": "https://huggingface.co/Phoonnx/vits-eu-maider-espeak-v2/resolve/69d71bed9bbe0da737dc717aca42d65ab2aabfcb/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "eu",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/Phoonnx/vits-eu-maider-espeak-v2/resolve/69d71bed9bbe0da737dc717aca42d65ab2aabfcb/config.json"
+    },
     "piper_community/itzune/eu-antton-medium": {
         "voice_id": "piper_community/itzune/eu-antton-medium",
         "model_url": "https://huggingface.co/Phoonnx/vits-eu-antton-espeak/resolve/56d4d0f1f0220867d59ff4b054bd31b0bc6c7736/model.onnx",
@@ -1078,6 +1130,19 @@
         "alphabet": "ipa",
         "engine": "piper",
         "config_url": "https://huggingface.co/Phoonnx/vits-eu-antton-espeak/resolve/56d4d0f1f0220867d59ff4b054bd31b0bc6c7736/config.json"
+    },
+    "piper_community/itzune/eu-antton-medium-v2": {
+        "voice_id": "piper_community/itzune/eu-antton-medium-v2",
+        "model_url": "https://huggingface.co/Phoonnx/vits-eu-antton-espeak-v2/resolve/d60e40861fbfca310c9caff575f09b412895f045/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "eu",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/Phoonnx/vits-eu-antton-espeak-v2/resolve/d60e40861fbfca310c9caff575f09b412895f045/config.json"
     },
     "hitz/eu_antton-vits": {
         "voice_id": "hitz/eu_antton-vits",
@@ -1303,5 +1368,57 @@
         "engine": "piper",
         "lang": "si",
         "display_name": "Sinhala (chan4lk, {engine})"
+    },
+    "piper_community/jgkawell/en_GB-jarvis-high": {
+        "voice_id": "piper_community/jgkawell/en_GB-jarvis-high",
+        "model_url": "https://huggingface.co/Phoonnx/vits-en_gb-jarvis-high-espeak/resolve/fe577700822e5533a0c4b4b2bcdca3865f103c33/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "en-GB",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/Phoonnx/vits-en_gb-jarvis-high-espeak/resolve/fe577700822e5533a0c4b4b2bcdca3865f103c33/config.json"
+    },
+    "piper_community/jgkawell/en_GB-jarvis-medium": {
+        "voice_id": "piper_community/jgkawell/en_GB-jarvis-medium",
+        "model_url": "https://huggingface.co/Phoonnx/vits-en_gb-jarvis-medium-espeak/resolve/f8c982310d81508494bac50e1c91a7e5340c0187/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "en-GB",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/Phoonnx/vits-en_gb-jarvis-medium-espeak/resolve/f8c982310d81508494bac50e1c91a7e5340c0187/config.json"
+    },
+    "piper_community/ondrazarici/cs_CZ-kasandra_v3": {
+        "voice_id": "piper_community/ondrazarici/cs_CZ-kasandra_v3",
+        "model_url": "https://huggingface.co/Phoonnx/vits-cs_cz-kasandra_v3-medium-espeak/resolve/cf0c5974af0a8ddc99035915027645435309faee/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "cs-CZ",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/Phoonnx/vits-cs_cz-kasandra_v3-medium-espeak/resolve/cf0c5974af0a8ddc99035915027645435309faee/config.json"
+    },
+    "piper_community/Dave1475/af_heart": {
+        "voice_id": "piper_community/Dave1475/af_heart",
+        "model_url": "https://huggingface.co/Phoonnx/vits-en_us-af_heart-espeak/resolve/8352586a5f20917a1ca505148045f8ad59ed4014/model.onnx",
+        "phoneme_type": "espeak",
+        "lang": "en-US",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "ipa",
+        "engine": "piper",
+        "config_url": "https://huggingface.co/Phoonnx/vits-en_us-af_heart-espeak/resolve/8352586a5f20917a1ca505148045f8ad59ed4014/config.json"
     }
 }
