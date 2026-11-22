@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.129.4a1](https://github.com/TigreGotico/phoonnx/tree/1.129.4a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.3a1...1.129.4a1)
+
+**Merged pull requests:**
+
+- fix: build VOICES.md from the bundled index [\#923](https://github.com/TigreGotico/phoonnx/pull/923) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.129.3a1](https://github.com/TigreGotico/phoonnx/tree/1.129.3a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.2a1...1.129.3a1)
