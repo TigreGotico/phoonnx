@@ -140,9 +140,9 @@ adapter measures it from the first decode only when it runs without a voice conf
 ## Loading a streaming voice
 
 Point the config at the two graphs through `engine_params`. The primary model path
-is the **encoder**. The decoder is an auxiliary graph. phoonnx opens `decoder_path` as
-written, so a relative path is relative to the working directory of the process, not to
-the config file. Use an absolute path when the process runs from another folder.
+is the **encoder**. The decoder is an auxiliary graph. A relative `decoder_path` is relative
+to the folder of the voice config, so the voice loads from any working directory. A
+`decoder_path` that the caller passes in `engine_params` is used as written.
 
 ```json
 {

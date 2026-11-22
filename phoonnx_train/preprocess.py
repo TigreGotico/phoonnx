@@ -668,8 +668,7 @@ def cli(
                          ", ".join(f"{source_tag}:{s}" for s in sorted(source_speakers)))
 
     if not utterances:
-        _LOGGER.error("No valid utterances found in dataset.")
-        return
+        raise click.ClickException("No valid utterances found in dataset.")
 
     # Resume: skip rows already written to an existing dataset.jsonl.
     dataset_path = config.output_dir / "dataset.jsonl"

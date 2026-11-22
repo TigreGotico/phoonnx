@@ -239,6 +239,26 @@ class TestGetTts(unittest.TestCase):
         self.assertAlmostEqual(cfg.length_scale, 3.0)
         self.assertAlmostEqual(cfg.noise_w_scale, 0.4)
 
+    def test_get_tts_without_a_voice_speaks_the_configured_voice(self):
+        default = _FakeVoiceInfo("OpenVoiceOS/default")
+        configured = _FakeVoiceInfo("OpenVoiceOS/configured")
+        plugin, _ = _make_plugin(config={"voice": configured.voice_id}, voices=[default, configured])
+        with patch.object(opm, "wave"):
+            plugin.get_tts("hi", "/tmp/out.wav")
+            plugin.get_tts("hi", "/tmp/out.wav", lang="en-us")
+            plugin.get_tts("hi", "/tmp/out.wav", voice="default")
+        self.assertEqual(configured.tts_voice.synthesize_wav.call_count, 3)
+        self.assertFalse(default.tts_voice.synthesize_wav.called)
+
+    def test_get_tts_in_another_language_takes_that_language_default(self):
+        default = _FakeVoiceInfo("OpenVoiceOS/default", lang="pt-PT")
+        configured = _FakeVoiceInfo("OpenVoiceOS/configured")
+        plugin, _ = _make_plugin(config={"voice": configured.voice_id}, voices=[default, configured])
+        with patch.object(opm, "wave"):
+            plugin.get_tts("olá", "/tmp/out.wav", lang="pt-PT")
+        self.assertTrue(default.tts_voice.synthesize_wav.called)
+        self.assertFalse(configured.tts_voice.synthesize_wav.called)
+
     def test_explicit_voice_not_preloaded_no_keyerror(self):
         """Regression: a configured/explicit voice that needs a refresh used to
         KeyError because the model info was read before get_model refreshed."""

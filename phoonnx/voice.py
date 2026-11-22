@@ -591,6 +591,11 @@ class TTSVoice:
         # next to the model) so it can stream without a re-export. If the model
         # is not a splittable VITS, fall back to loading it as a normal voice.
         _cfg_ep = config_dict.get("engine_params") or {}
+        if _cfg_ep.get("decoder_path") and not os.path.isabs(_cfg_ep["decoder_path"]):
+            # a config names its decoder graph relative to its own folder
+            _cfg_ep = {**_cfg_ep, "decoder_path": os.path.join(
+                os.path.dirname(os.path.abspath(config_path)), _cfg_ep["decoder_path"])}
+            config_dict["engine_params"] = _cfg_ep
         _has_decoder = _cfg_ep.get("decoder_path") or (engine_params or {}).get("decoder_path")
         if config_dict.get("streaming") and not _has_decoder:
             try:

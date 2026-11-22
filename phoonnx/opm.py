@@ -424,6 +424,10 @@ class PhoonnxTTSPlugin(TTS):
         # The voice info is read from the manager only after the load, which
         # refreshes it: a configured voice that has never been fetched is not
         # in the catalog until then.
+        # the configured voice serves its own language when the call names no voice
+        if ((not voice or voice == "default") and self.voice and self.voice != "default"
+                and standardize_lang(lang or self.lang) == standardize_lang(self.lang)):
+            voice = self.voice
         voice_info = (None if voice and voice != "default"
                       else self.get_default_voice(lang or self.lang))
         voice_id = voice if voice_info is None else voice_info.voice_id

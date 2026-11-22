@@ -133,11 +133,12 @@ class TestListVoices(unittest.TestCase):
     @patch("phoonnx.cli.TTSModelManager")
     def test_lists_all_voices_default(self, mock_manager_cls):
         manager = mock_manager_cls.return_value
-        manager.all_voices = [make_voice(display_name="Voice A")]
+        manager.all_voices = [make_voice(voice_id="test/a", display_name="Voice A")]
         runner = CliRunner()
         result = runner.invoke(cli, ["list-voices"])
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("Voice A (en-US)", result.output)
+        # the id is what --voice takes; two languages can share a display name
+        self.assertIn("* test/a (en-US) - Voice A", result.output)
 
     @patch("phoonnx.cli.TTSModelManager")
     def test_lists_voice_id_when_no_display_name(self, mock_manager_cls):
