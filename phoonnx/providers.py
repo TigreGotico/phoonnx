@@ -23,6 +23,11 @@ GPU providers come from the ONNX Runtime build, not from phoonnx: the default
 ``onnxruntime`` wheel is CPU-only (plus a few platform providers), ``ROCm``
 needs ``onnxruntime-rocm``, ``DirectML`` needs ``onnxruntime-directml``, and
 CUDA needs ``onnxruntime-gpu``.
+
+The number of threads a session runs one operator with comes from a
+``threads`` argument, then the ``PHOONNX_ORT_THREADS`` environment variable.
+Unset, ONNX Runtime uses one thread per core. A voice passes its thread count
+to every auxiliary graph, as it does its providers.
 """
 import hashlib
 import os
@@ -60,6 +65,11 @@ CACHE_DIR_ENV_VAR = "PHOONNX_ORT_CACHE_DIR"
 #: not a model: 646 of the bundled omnivoice voices name the same 3 GB graph
 #: and differ only in the engine options applied at synthesis time.
 SHARE_SESSIONS_ENV_VAR = "PHOONNX_SHARE_ONNX_SESSIONS"
+
+#: Environment variable holding the number of threads a session runs one graph
+#: operator with (``intra_op_num_threads``). Unset or ``0``, ONNX Runtime uses
+#: one thread per core.
+THREADS_ENV_VAR = "PHOONNX_ORT_THREADS"
 
 #: Auto-detection preference order, best first. Only providers the installed
 #: runtime reports as available are kept.
@@ -169,6 +179,40 @@ def resolve_providers(
 
     LOG.debug(f"onnxruntime execution providers: {[_name(p) for p in resolved]}")
     return resolved
+
+
+def resolve_threads(threads: Optional[int] = None) -> Optional[int]:
+    """
+    Resolve the intra-op thread count of a session.
+
+    Parameters:
+        threads: Threads per graph operator. When omitted,
+            ``PHOONNX_ORT_THREADS`` is consulted.
+
+    Returns:
+        The thread count, or ``None`` for ONNX Runtime's default of one thread
+        per core, which ``0`` also selects.
+
+    Raises:
+        ValueError: *threads* is negative. A ``PHOONNX_ORT_THREADS`` value that
+            is not a whole number of zero or more logs a warning and gives
+            ``None``.
+    """
+    if threads is None:
+        raw = os.environ.get(THREADS_ENV_VAR, "").strip()
+        if not raw:
+            return None
+        try:
+            threads = int(raw)
+        except ValueError:
+            threads = -1
+        if threads < 0:
+            LOG.warning(f"{THREADS_ENV_VAR}={raw!r} is not a whole number of zero or more; "
+                        "ONNX Runtime uses one thread per core")
+            return None
+    if threads < 0:
+        raise ValueError(f"threads must be zero or more, got {threads}")
+    return int(threads) or None
 
 
 def uses_gpu(providers: Sequence[ProviderSpec]) -> bool:
@@ -319,7 +363,8 @@ def _external_data_paths(*model_paths: str) -> List[str]:
 
 def session_key(model_path: Any,
                 resolved: Sequence[ProviderSpec],
-                cache_dir: Optional[Union[str, Path]]) -> tuple:
+                cache_dir: Optional[Union[str, Path]],
+                threads: Optional[int] = None) -> tuple:
     """Identity of a session: two calls with the same key are interchangeable.
 
     The model file is identified by its resolved real path plus its size,
@@ -348,7 +393,7 @@ def session_key(model_path: Any,
             continue
         version = version + (os.path.basename(sidecar), sidecar_stat.st_size,
                              sidecar_stat.st_mtime_ns, sidecar_stat.st_ino)
-    return (resolved_path, version, repr(list(resolved)), str(cache_dir or ""))
+    return (resolved_path, version, repr(list(resolved)), str(cache_dir or ""), threads)
 
 
 def shared_sessions() -> Dict[tuple, onnxruntime.InferenceSession]:
@@ -363,6 +408,7 @@ def make_session(
         sess_options: Optional[onnxruntime.SessionOptions] = None,
         use_cuda: bool = False,
         cache_dir: Optional[Union[str, Path]] = None,
+        threads: Optional[int] = None,
 ) -> onnxruntime.InferenceSession:
     """
     Return an ``InferenceSession`` on the resolved execution providers,
@@ -374,9 +420,9 @@ def make_session(
     differs between them (the engine options, the language, the tokenizer)
     lives in the voice, not in the session. Sharing only ever happens between
     calls that would have produced identical sessions — same file, same
-    providers, same optimized-graph cache, and default session options. Pass
-    an explicit ``sess_options`` (or set ``PHOONNX_SHARE_ONNX_SESSIONS=0``) to
-    get a private session.
+    providers, same optimized-graph cache, same thread count, and default
+    session options. Pass an explicit ``sess_options`` (or set
+    ``PHOONNX_SHARE_ONNX_SESSIONS=0``) to get a private session.
 
     Parameters:
         cache_dir: Directory to cache the ORT-optimized graph in. When given
@@ -387,14 +433,18 @@ def make_session(
             skipping the optimization pass. A stale or corrupt cache file
             is deleted and the session falls back to a normal load. Default
             (no env var, no argument): unchanged behaviour.
+        threads: Threads per graph operator (``intra_op_num_threads``), as
+            :func:`resolve_threads` reads it. An explicit ``sess_options``
+            keeps its own thread settings.
     """
     resolved = resolve_providers(providers, use_cuda=use_cuda)
+    threads = resolve_threads(threads)
     cache_dir = cache_dir if cache_dir is not None else os.environ.get(CACHE_DIR_ENV_VAR)
 
     if sess_options is not None or not _sharing_enabled():
-        return _build_session(model_path, resolved, sess_options, cache_dir)
+        return _build_session(model_path, resolved, sess_options or _thread_options(threads), cache_dir)
 
-    key = session_key(model_path, resolved, cache_dir)
+    key = session_key(model_path, resolved, cache_dir, threads)
     with _SHARED_LOCK:
         session = _SHARED_SESSIONS.get(key)
         if session is not None:
@@ -410,7 +460,7 @@ def make_session(
             session = _SHARED_SESSIONS.get(key)
         if session is not None:
             return session
-        session = _build_session(model_path, resolved, sess_options, cache_dir)
+        session = _build_session(model_path, resolved, _thread_options(threads), cache_dir)
         with _SHARED_LOCK:
             _SHARED_SESSIONS[key] = session
             # The lock has done its job once the session it guarded is
@@ -422,6 +472,15 @@ def make_session(
             if _BUILD_LOCKS.get(key) is build_lock:
                 del _BUILD_LOCKS[key]
         return session
+
+
+def _thread_options(threads: Optional[int]) -> Optional[onnxruntime.SessionOptions]:
+    """Session options that run each operator on *threads* threads, or ``None`` for the defaults."""
+    if threads is None:
+        return None
+    options = onnxruntime.SessionOptions()
+    options.intra_op_num_threads = threads
+    return options
 
 
 def _build_session(

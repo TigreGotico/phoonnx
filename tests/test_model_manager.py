@@ -846,15 +846,39 @@ class TestLoadProviders(HubTestCase):
             mock_make_session.call_args_list,
             [
                 unittest.mock.call(info.voice_path / "model.onnx",
-                                   providers=first_resolved),
+                                   providers=first_resolved, threads=None),
                 unittest.mock.call(info.voice_path / "model.onnx",
-                                   providers=second_resolved),
+                                   providers=second_resolved, threads=None),
             ],
         )
         self.assertEqual(fake_config.engine_params["providers"],
                          second_resolved)
         self.assertEqual(first_result, fake_voice)
         self.assertEqual(second_result, fake_voice)
+
+    @patch("phoonnx.model_manager.VoiceConfig")
+    @patch("phoonnx.model_manager.make_session")
+    @patch("phoonnx.model_manager.TTSVoice")
+    @patch("phoonnx.model_manager.requests.get")
+    def test_load_engine_without_config_url_uses_requested_threads(
+            self, mock_get, mock_ttsvoice_cls, mock_make_session, mock_voiceconfig_cls):
+        info = self.make_info(engine=Engine.SUPERTONIC, model_url="https://example.com/model.onnx")
+
+        def side_effect(url, timeout=None, stream=None):
+            if stream:
+                cm = MagicMock()
+                cm.__enter__.return_value = _mock_response(200, content=b"data")
+                return cm
+            return _mock_response(200, content=b'{"vocab": {}}')
+
+        mock_get.side_effect = side_effect
+        fake_config = MagicMock()
+        fake_config.engine_params = {}
+        mock_voiceconfig_cls.from_dict.return_value = fake_config
+        info.load(providers=["CPUExecutionProvider"], threads=2)
+        self.assertEqual(mock_make_session.call_args.kwargs["threads"], 2)
+        # the auxiliary graphs of the engine read the same count
+        self.assertEqual(fake_config.engine_params["threads"], 2)
 
 
 class TestTTSModelInfoStringEnumCoercion(HubTestCase):

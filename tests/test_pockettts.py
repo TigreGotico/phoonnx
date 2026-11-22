@@ -769,7 +769,7 @@ def test_the_encoder_is_built_on_first_use_only(monkeypatch):
 
     built = []
 
-    def fake_session(path, providers=None):
+    def fake_session(path, providers=None, threads=None):
         built.append((path, providers))
         return _CaptureEncoderSession()
 

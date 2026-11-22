@@ -42,7 +42,7 @@ from phoonnx.engines.base import (
     INLINE_BLOCK,
 )
 from scriptconv.phonemizers.base import BasePhonemizer, PhonemizerIdentity
-from phoonnx.providers import ProviderSpec, make_session, resolve_providers
+from phoonnx.providers import ProviderSpec, make_session, resolve_providers, resolve_threads
 from phoonnx.reference_audio import load_reference_audio
 from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
@@ -540,6 +540,7 @@ class TTSVoice:
             providers: Optional[Sequence[ProviderSpec]] = None,
             use_cuda: bool = False,
             warmup: bool = False,
+            threads: Optional[int] = None,
     ) -> "TTSVoice":
         """
         Load a TTS voice ONNX model and its configuration into a TTSVoice instance.
@@ -563,6 +564,9 @@ class TTSVoice:
             warmup (bool): Run a throwaway inference (see :meth:`TTSVoice.warmup`)
                 before returning, so the first real ``synthesize`` call does not
                 pay ONNX Runtime's first-call kernel-selection cost.
+            threads (int, optional): Threads per graph operator in every session of the voice
+                (``intra_op_num_threads``). When omitted, the ``PHOONNX_ORT_THREADS`` environment
+                variable is used, falling back to ONNX Runtime's one thread per core.
 
         Returns:
             TTSVoice: A TTSVoice instance prepared with the loaded ONNX session and merged configuration.
@@ -584,6 +588,7 @@ class TTSVoice:
                 with open(tokenizer_config_path, "r", encoding="utf-8") as tokenizer_file:
                     tokenizer_dict = json.load(tokenizer_file)
         resolved_providers = resolve_providers(providers, use_cuda=use_cuda)
+        resolved_threads = resolve_threads(threads)
 
         # Auto-split: a voice may request streaming on a monolithic single-graph
         # VITS model. When it declares "streaming": true but ships no decoder
@@ -608,7 +613,7 @@ class TTSVoice:
                             f"'{model_path}' failed ({e}); loading as a normal "
                             f"single-graph voice.")
 
-        session = make_session(model_path, providers=resolved_providers)
+        session = make_session(model_path, providers=resolved_providers, threads=resolved_threads)
 
         # Auto-detect engine adapter from config + session
         adapter = detect_engine(config=config_dict, session=session)
@@ -618,9 +623,11 @@ class TTSVoice:
         # from the model's own config JSON.
         engine_params = engine_params or config_dict.get("engine_params") or {}
         # Engines load auxiliary graphs of their own (vocoders, speaker encoders,
-        # text encoders); they run on the same providers as the voice itself.
+        # text encoders); they run on the same providers and threads as the voice itself.
         engine_params = dict(engine_params)
         engine_params.setdefault("providers", resolved_providers)
+        if resolved_threads is not None:
+            engine_params.setdefault("threads", resolved_threads)
 
         voice_config = VoiceConfig.from_dict(
             config_dict,
@@ -1191,9 +1198,10 @@ class TTSVoice:
         else:
             try:
                 providers = self.session.get_providers()
+                threads = self.session.get_session_options().intra_op_num_threads or None
             except Exception:
-                providers = None
-            result = ensure_alignment_session(self.model_path, providers)
+                providers = threads = None
+            result = ensure_alignment_session(self.model_path, providers, threads)
 
         self._alignment_session = result
         return result

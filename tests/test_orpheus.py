@@ -529,7 +529,7 @@ def test_a_seeded_decode_holds_the_seed_lock_until_it_reseeds(monkeypatch):
             events.append(("run", orpheus._SEED_LOCK.locked()))
             return super().run(_none, feed)
 
-    def make_session(path, providers=None, sess_options=None):
+    def make_session(path, providers=None, sess_options=None, threads=None):
         events.append(("build", path, providers, sess_options is not None,
                        orpheus._SEED_LOCK.locked()))
         return _RecordingSnac()

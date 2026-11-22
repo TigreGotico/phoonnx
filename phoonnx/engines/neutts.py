@@ -281,7 +281,7 @@ class NeuTTSAdapter(BaseOnnxAdapter):
         self.prompt_layout = PROMPT_TEMPLATES[template]
         self.phoneme_substitutions = _compile_substitutions(ep.get("phoneme_substitutions"))
         if self.codec is None and ep.get("codec_decoder_path"):
-            self.codec = make_session(ep["codec_decoder_path"], providers=ep.get("providers"))
+            self.codec = make_session(ep["codec_decoder_path"], providers=ep.get("providers"), threads=ep.get("threads"))
         if self.tokenizer is None and ep.get("tokenizer_path"):
             from phoonnx.tokenizer import load_hf_tokenizer
             self.tokenizer = load_hf_tokenizer(ep["tokenizer_path"])

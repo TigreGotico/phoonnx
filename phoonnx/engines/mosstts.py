@@ -210,7 +210,7 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
 
         def sess(key):
             path = ep.get(key)
-            return make_session(path, providers=providers) if path else None
+            return make_session(path, providers=providers, threads=ep.get("threads")) if path else None
 
         if self.decode_step is None:
             self.decode_step = sess("decode_step_path")

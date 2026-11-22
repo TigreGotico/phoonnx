@@ -49,7 +49,7 @@ from typing import Any, Dict, Iterator, List, Optional
 import numpy as np
 import onnxruntime
 
-from phoonnx.providers import make_session
+from phoonnx.providers import make_session, resolve_threads
 from phoonnx.engines.base import (
     AdapterSynthesisRequest,
     AdapterSynthesisResult,
@@ -108,7 +108,7 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
         user_streaming = self._engine_params.get("streaming") or {}
         if isinstance(user_streaming, dict):
             self._streaming = {**_DEFAULT_STREAMING, **user_streaming}
-        threads = self._engine_params.get("intra_op_num_threads")
+        threads = self._engine_params.get("intra_op_num_threads") or resolve_threads(self._engine_params.get("threads"))
         decoder_path = self._engine_params.get("decoder_path")
         if self.decoder is None and decoder_path:
             self.decoder = self._build_decoder(decoder_path, threads, self._engine_params.get("providers"))

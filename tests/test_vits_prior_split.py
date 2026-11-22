@@ -107,7 +107,7 @@ def test_vits_prior_split_does_not_steal_plain_vits():
 def test_vits_prior_split_configure_loads_decode_graph(monkeypatch):
     calls = {}
 
-    def _fake_make_session(path, providers=None):
+    def _fake_make_session(path, providers=None, threads=None):
         calls["path"] = path
         calls["providers"] = providers
         return _FakeDecodeSession()

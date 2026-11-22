@@ -121,7 +121,7 @@ class F5TTSAdapter(BaseOnnxAdapter):
     def configure(self, voice_config: Any) -> None:
         """Load auxiliary ONNX graphs and optional vocoder from engine_params."""
         ep = voice_config.engine_params
-        sess = lambda p: make_session(p, providers=ep.get("providers"))
+        sess = lambda p: make_session(p, providers=ep.get("providers"), threads=ep.get("threads"))
 
         if self.preprocess is None and ep.get("preprocess_path"):
             self.preprocess = sess(ep["preprocess_path"])

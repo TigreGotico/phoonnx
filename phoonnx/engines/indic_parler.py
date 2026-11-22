@@ -185,13 +185,13 @@ class IndicParlerAdapter(BaseOnnxAdapter):
         ep = voice_config.engine_params
         providers = ep.get("providers")
         if self.text_encoder is None and ep.get("text_encoder_path"):
-            self.text_encoder = make_session(ep["text_encoder_path"], providers=providers)
+            self.text_encoder = make_session(ep["text_encoder_path"], providers=providers, threads=ep.get("threads"))
         if self.decode_session is None and ep.get("decoder_decode_path"):
-            self.decode_session = make_session(ep["decoder_decode_path"], providers=providers)
+            self.decode_session = make_session(ep["decoder_decode_path"], providers=providers, threads=ep.get("threads"))
             self._decode_inputs = {i.name for i in self.decode_session.get_inputs()}
             self._decode_outputs = [o.name for o in self.decode_session.get_outputs()]
         if self.dac_decoder is None and ep.get("dac_decoder_path"):
-            self.dac_decoder = make_session(ep["dac_decoder_path"], providers=providers)
+            self.dac_decoder = make_session(ep["dac_decoder_path"], providers=providers, threads=ep.get("threads"))
         if self.prompt_tokenizer is None and ep.get("prompt_tokenizer_path"):
             from phoonnx.tokenizer import load_hf_tokenizer
             self.prompt_tokenizer = load_hf_tokenizer(ep["prompt_tokenizer_path"])

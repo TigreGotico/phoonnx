@@ -211,7 +211,7 @@ class SuperTonicAdapter(BaseOnnxAdapter):
         (converted into a standard ``Vocabulary``/``TTSTokenizer``) and the voice's style
         from ``engine_params``; the vector_estimator is the voice's own primary session."""
         ep = voice_config.engine_params
-        sess = lambda p: make_session(p, providers=ep.get("providers"))
+        sess = lambda p: make_session(p, providers=ep.get("providers"), threads=ep.get("threads"))
         if self.duration_predictor is None and ep.get("duration_predictor_path"):
             self.duration_predictor = sess(ep["duration_predictor_path"])
         if self.text_encoder is None and ep.get("text_encoder_path"):
