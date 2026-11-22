@@ -528,6 +528,10 @@ def test_the_voice_seed_applies_when_the_request_has_none():
     assert not np.array_equal(_sampled(voice_seed=7), _sampled(voice_seed=8))
 
 
+def test_the_request_seed_wins_over_the_voice_seed():
+    assert np.array_equal(_sampled(voice_seed=8, seed=7), _sampled(seed=7))
+
+
 def test_missing_description_is_an_error():
     ad = _wired(description="")
     with pytest.raises(RuntimeError, match="description"):
