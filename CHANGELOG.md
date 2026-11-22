@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.129.5a1](https://github.com/TigreGotico/phoonnx/tree/1.129.5a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.4a1...1.129.5a1)
+
+**Merged pull requests:**
+
+- fix: YourTTS counts its languages and the unused CLI option hook goes [\#922](https://github.com/TigreGotico/phoonnx/pull/922) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.129.4a1](https://github.com/TigreGotico/phoonnx/tree/1.129.4a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.3a1...1.129.4a1)
