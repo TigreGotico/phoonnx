@@ -11,9 +11,14 @@ surfaces at load time instead -- and, for ``TTSModelInfo.load``, before the
 """
 import glob
 import json
+import tempfile
 import unittest
+from pathlib import Path
+from unittest import mock
 
 import onnxruntime
+
+import phoonnx.voice
 
 from phoonnx.config import (
     Alphabet,
@@ -23,6 +28,7 @@ from phoonnx.config import (
     VoiceConfig,
     check_lang_supported,
 )
+from phoonnx.model_manager import TTSModelInfo
 from phoonnx.util import normalize_lang
 from phoonnx.voice import TTSVoice
 
@@ -155,6 +161,48 @@ class TestTTSModelInfoLoadRejectsBeforeDownloadingTheModel(HubTestCase):
         downloaded_files = {filename for _, filename, _ in self.hub.downloads}
         self.assertNotIn("model.onnx", downloaded_files,
                          "model weights must not be fetched before the language check")
+
+
+class TestTheCheckReadsThePhonemizerLanguage(HubTestCase):
+    """A Twi voice phonemizes with espeak's lfn voice: espeak serves lfn and has no tw.
+    Each of the three checks must ask about the phonemizer language, not the text language."""
+
+    def twi_config(self, **fields):
+        return VoiceConfig(num_symbols=4, num_speakers=1, num_langs=1, sample_rate=16000,
+                           phoneme_type=PhonemeType.ESPEAK, alphabet=Alphabet.IPA, phonemizer_model=None,
+                           engine=Engine.PIPER, **fields)
+
+    def test_a_voice_is_checked_in_its_phonemizer_language(self):
+        TTSVoice(session=None, config=self.twi_config(lang_code="tw", phonemizer_lang="lfn"),
+                 model_path="/cache/kasanoma-twi.onnx")
+        with self.assertRaises(UnsupportedVoiceLanguage):
+            TTSVoice(session=None, config=self.twi_config(lang_code="tw"), model_path="/cache/kasanoma-twi.onnx")
+
+    def load(self, config_fields, **info_fields):
+        """``TTSModelInfo.load`` on a staged config, with no graph opened."""
+        config_path = Path(self.enterContext(tempfile.TemporaryDirectory())) / "config.json"
+        config_path.write_text(json.dumps(config_fields))
+        info = self.make_info(voice_id="piper_community/ghananlpcommunity/kasanoma-twi", lang="tw",
+                              config_url=f"{HUB}/config.json", **info_fields)
+        with mock.patch.object(TTSModelInfo, "hub_path", lambda self, url: config_path if url else None), \
+                mock.patch.object(TTSModelInfo, "download_model", lambda self: Path("graph-not-fetched.onnx")), \
+                mock.patch.object(phoonnx.voice, "make_session", lambda *args, **kwargs: None):
+            return info.load()
+
+    def test_the_load_checks_the_phonemizer_language_before_the_download(self):
+        voice = self.load({"phoneme_type": "espeak", "alphabet": "ipa", "lang_code": "lfn"},
+                          phonemizer_lang="lfn", phoneme_type=PhonemeType.ESPEAK)
+        self.assertEqual((voice.config.lang_code, voice.config.phonemizer_lang), ("tw", "lfn"))
+
+    def test_the_index_phoneme_type_is_checked_in_the_phonemizer_language(self):
+        # a loaded voice whose phoneme type the index overrides is checked again, for the index phonemizer
+        config = self.twi_config(lang_code="tw", phonemizer_lang="lfn")
+        config.phoneme_type, config.alphabet = PhonemeType.UNICODE, Alphabet.UNICODE
+        loaded = TTSVoice(session=None, config=config, model_path="/cache/kasanoma-twi.onnx")
+        with mock.patch.object(TTSVoice, "load", lambda **kwargs: loaded):
+            voice = self.load({"phoneme_type": "espeak", "alphabet": "ipa", "lang_code": "lfn"},
+                              phonemizer_lang="lfn", phoneme_type=PhonemeType.ESPEAK, alphabet=Alphabet.IPA)
+        self.assertEqual((voice.config.phoneme_type, voice.config.phonemizer_lang), (PhonemeType.ESPEAK, "lfn"))
 
 
 if __name__ == "__main__":

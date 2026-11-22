@@ -132,8 +132,8 @@ def without_phoonnx(config: Dict[str, Any], *, lang: Optional[str] = None,
     It names the packages of the example, gives the lines that prepare the text, and says what the
     example leaves out of phoonnx's path. The text is normalised with text2spoken, in *voice_lang*:
     the language of the voice index entry, which can differ from the language the phonemizer reads
-    (a Tetum voice on a Portuguese phonemizer). Without it, the phonemizer's language stands for it.
-    A language with no text2spoken file gets a request for one. A Portuguese voice whose input reads
+    (a Tetum voice on a Portuguese phonemizer). Without it, the language of the text in the config
+    stands for it. A language with no text2spoken file gets a request for one. A Portuguese voice whose input reads
     bifonia's marks gets them after the normalisation, unless its phonemizer owns the ``diacritize``
     stage. A voice that phoonnx diacritizes gets the vowel marks in the example itself.
     """
@@ -210,7 +210,8 @@ def _text_stack(config: Dict[str, Any], lang: Optional[str], overrides: Optional
     piper = _is_piper(config)
     diacritized = _phoonnx_diacritizes(config, phonemizer_lang, piper) and "diacritize" not in owned
     diacritizer = _diacritizer_model(config, piper) if diacritized and _is_arabic(phonemizer_lang) else None
-    return _TextStack(voice, voice_lang or phonemizer_lang, phonemizer_lang, owned, diacritized, diacritizer, False)
+    tag = voice_lang or lang or _text_lang(config) or phonemizer_lang
+    return _TextStack(voice, tag, phonemizer_lang, owned, diacritized, diacritizer, False)
 
 
 def _preparation(stack: _TextStack, *, with_phoonnx: bool) -> List[str]:
@@ -360,7 +361,7 @@ def _keeps_punctuation(config: Dict[str, Any], piper: bool) -> bool:
 
 def _lang(config: Dict[str, Any], lang: Optional[str]) -> Optional[str]:
     """The language phoonnx phonemizes in: the index language, then the config's, as its loaders read them."""
-    lang = lang or config.get("lang_code")
+    lang = lang or config.get("phonemizer_lang") or config.get("lang_code")
     if lang or "phoonnx_version" in config:
         return lang
     language = config.get("language")
@@ -372,6 +373,18 @@ def _lang(config: Dict[str, Any], lang: Optional[str]) -> Optional[str]:
     if config.get("phoneme_type", "espeak") == "espeak":
         return espeak_voice or code
     return code or espeak_voice
+
+
+def _text_lang(config: Dict[str, Any]) -> Optional[str]:
+    """The language of the text of a config, as phoonnx's loaders read it: Piper's language block before its
+    espeak-ng voice, which only the phonemizer reads."""
+    if config.get("lang_code") or "phoonnx_version" in config:
+        return config.get("lang_code")
+    language = config.get("language")
+    code = language.get("code") if isinstance(language, dict) else None
+    if not _is_piper(config):
+        return code
+    return code or (config.get("espeak") or {}).get("voice")
 
 
 def _is_arabic(lang: Optional[str]) -> bool:

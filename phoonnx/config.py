@@ -170,6 +170,11 @@ class VoiceConfig:
     phonemizer_model: Optional[str]
     """for phonemizers that allow changing base model """
 
+    phonemizer_lang: Optional[str] = None
+    """The language the phonemizer reads when it differs from ``lang_code``, the text
+    language: the eSpeak voice ``en`` of an en-US Piper voice. Normalisation keeps
+    ``lang_code``."""
+
     speaker_id_map: Mapping[str, int] = field(default_factory=dict)
     """Speaker -> id"""
 
@@ -315,7 +320,7 @@ class VoiceConfig:
     def frontend(self) -> FrontendConfig:
         """What the text frontend is built from. The voice adds the normaliser, a callable."""
         return FrontendConfig(lang=self.lang_code, phonemizer=self.phoneme_type, alphabet=self.alphabet,
-                              model=self.phonemizer_model,
+                              model=self.phonemizer_model, phonemizer_lang=self.phonemizer_lang,
                               stages=Stages(diacritize=self.add_diacritics,
                                             diacritizer_model=self.diacritizer_model),
                               keep_punctuation=self.keep_punctuation)
@@ -373,6 +378,7 @@ class VoiceConfig:
             "phoneme_type": self.phoneme_type.value,
             "alphabet": self.alphabet.value,
             "lang_code": self.lang_code,
+            **({"phonemizer_lang": self.phonemizer_lang} if self.phonemizer_lang else {}),
             "audio": {"sample_rate": self.sample_rate},
             "hop_length": self.hop_length,
             "num_symbols": self.num_symbols,
@@ -661,8 +667,10 @@ def without_normalizer(phonemizer: 'Phonemizer') -> 'Phonemizer':
 
 
 def voice_frontend(phonemizer: 'Phonemizer', lang: str, stages: Stages = Stages(),
-                   strict: bool = False) -> TextFrontend:
+                   strict: bool = False, phonemizer_lang: Optional[str] = None) -> TextFrontend:
     """The text frontend of a voice that reads *phonemizer*, in language *lang*.
+
+    *phonemizer_lang* is the language the backend reads when it differs from *lang*.
 
     The phonemizer's ``normalizer`` becomes the frontend's normalisation hook
     and the frontend reads a copy of the phonemizer without it. The frontend
@@ -680,7 +688,7 @@ def voice_frontend(phonemizer: 'Phonemizer', lang: str, stages: Stages = Stages(
         normalizer = spoken_normalizer()
     return TextFrontend(
         FrontendConfig(lang=lang, normalizer=normalizer, keep_punctuation=phonemizer.keep_punctuation,
-                       stages=stages, strict=strict),
+                       stages=stages, strict=strict, phonemizer_lang=phonemizer_lang),
         backend=without_normalizer(phonemizer))
 
 

@@ -338,6 +338,7 @@ class LoadRequest:
     tokens_txt: Optional[str] = None
     bpe_tokenizer_json: Optional[str] = None
     lang_code: Optional[str] = None
+    phonemizer_lang: Optional[str] = None
     phoneme_type: Optional[Union[str, PhonemeType]] = None
     alphabet: Optional[Union[str, Alphabet]] = None
     engine: Optional[Union[str, Any]] = None
@@ -355,6 +356,7 @@ class LoadedFields:
     tokenizer: Optional[TTSTokenizer] = None
     engine: Optional[Any] = None
     lang_code: Optional[str] = None
+    phonemizer_lang: Optional[str] = None
     phoneme_type: Optional[Union[str, PhonemeType]] = None
     alphabet: Optional[Union[str, Alphabet]] = None
     add_diacritics: Optional[bool] = False
@@ -385,6 +387,7 @@ def resolve_overrides(loaded: LoadedFields, request: LoadRequest) -> LoadedField
     """
     if "lang_code" not in loaded.pinned:
         loaded.lang_code = request.lang_code or loaded.lang_code
+    loaded.phonemizer_lang = request.phonemizer_lang or loaded.phonemizer_lang
     if "phoneme_type" not in loaded.pinned:
         loaded.phoneme_type = request.phoneme_type or loaded.phoneme_type
     if "alphabet" not in loaded.pinned:
@@ -700,9 +703,11 @@ class PiperLoader(ConfigLoader):
         config = request.config
 
         phoneme_type = request.phoneme_type or config.get("phoneme_type", PhonemeType.ESPEAK)
+        # The eSpeak voice is the phonemizer language and often drops the region
+        # (``en`` for an en_US voice), so the text language comes from language.code.
         espeak_voice = config.get("espeak", {}).get("voice")
-        lang_code = (request.lang_code or (espeak_voice if phoneme_type == PhonemeType.ESPEAK else None)
-                     or config.get("language", {}).get("code") or espeak_voice)
+        lang_code = request.lang_code or config.get("language", {}).get("code") or espeak_voice
+        phonemizer_lang = espeak_voice if phoneme_type == PhonemeType.ESPEAK else None
         alphabet = request.alphabet
         pinned = set()
         piper_type = None
@@ -740,6 +745,7 @@ class PiperLoader(ConfigLoader):
             tokenizer=tokenizer,
             engine=Engine.PIPER,
             lang_code=lang_code,
+            phonemizer_lang=phonemizer_lang,
             phoneme_type=phoneme_type,
             alphabet=alphabet,
             add_diacritics=add_diacritics,
@@ -1004,6 +1010,7 @@ def build_voice_config(config: Dict[str, Any],
                        alphabet: Optional[Union[str, Alphabet]] = None,
                        engine: Optional[Union[str, Engine]] = None,
                        engine_params: Optional[Dict[str, Any]] = None,
+                       phonemizer_lang: Optional[str] = None,
                        bpe_tokenizer_json: Optional[str] = None,
                        lang_tokens: Optional[Dict[str, str]] = None):
     """Build a :class:`~phoonnx.config.VoiceConfig` from a config of any format and its companion files.
@@ -1022,6 +1029,7 @@ def build_voice_config(config: Dict[str, Any],
         tokens_txt=tokens_txt,
         bpe_tokenizer_json=bpe_tokenizer_json,
         lang_code=lang_code or config.get("lang_code"),
+        phonemizer_lang=phonemizer_lang or config.get("phonemizer_lang"),
         phoneme_type=phoneme_type or config.get("phoneme_type"),
         alphabet=alphabet or config.get("alphabet"),
         engine=engine,
@@ -1042,6 +1050,7 @@ def build_voice_config(config: Dict[str, Any],
         diacritizer_model=loaded.diacritizer_model,
         hop_length=config.get("hop_length", DEFAULT_HOP_LENGTH),
         lang_code=loaded.lang_code,
+        phonemizer_lang=loaded.phonemizer_lang,
         alphabet=loaded.alphabet,
         engine=loaded.engine,
         phonemizer_model=config.get("phonemizer_model"),
@@ -1128,7 +1137,7 @@ def to_piper_config(config: Dict[str, Any]) -> Dict[str, Any]:
         "speaker_id_map": config.get("speaker_id_map", {}),
         "default_speaker_id": config.get("default_speaker_id"),
         "language": config.get("language") or {"code": lang_code},
-        "espeak": config.get("espeak") or {"voice": lang_code},
+        "espeak": config.get("espeak") or {"voice": config.get("phonemizer_lang") or lang_code},
         "phoneme_type": config.get("phoneme_type", ""),
         "phonemizer_model": config.get("phonemizer_model", ""),
         "alphabet": config.get("alphabet", ""),
@@ -1275,7 +1284,7 @@ def export_piper(voice: "TTSVoice", dest: Union[str, Path]) -> Path:
         ValueError: The voice has no model file, or *dest* is the folder of the source model.
     """
     id_map, clusters = _piper_phoneme_id_map(voice, "Piper", clusters=True)
-    espeak_voice = voice.phonemizer.get_lang(voice.config.lang_code)
+    espeak_voice = voice.phonemizer.get_lang(voice.config.phonemizer_lang or voice.config.lang_code)
     if espeak_voice == "ar":
         raise ExportNotSupported("Piper adds Arabic diacritics with its own model before espeak-ng; "
                                  "phoonnx does not for this voice")
@@ -1322,7 +1331,7 @@ def export_sherpa(voice: "TTSVoice", dest: Union[str, Path]) -> Path:
         "model_type": "vits",
         "comment": "piper",
         "language": config.lang_code,
-        "voice": voice.phonemizer.get_lang(config.lang_code),
+        "voice": voice.phonemizer.get_lang(config.phonemizer_lang or config.lang_code),
         "version": 1,
         "has_espeak": 1,
         "has_g2pw": 0,

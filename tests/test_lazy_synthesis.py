@@ -104,7 +104,7 @@ def _make_lazy_voice(events, alphabet=Alphabet.IPA):
         text_casing="ignore",
         phoneme_type=PhonemeType.UNICODE,
         alphabet=alphabet,
-        lang_code="en",
+        lang_code="en", phonemizer_lang=None,
         add_diacritics=False,
         diacritizer_model=None,
         sample_rate=22050,

@@ -39,7 +39,7 @@ def _make_voice(phonemizer):
         text_casing="ignore",
         phoneme_type=PhonemeType.UNICODE,
         alphabet=Alphabet.IPA,
-        lang_code="en",
+        lang_code="en", phonemizer_lang=None,
         add_diacritics=False,
         diacritizer_model=None,
         sample_rate=22050,

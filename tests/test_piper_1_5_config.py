@@ -9,6 +9,7 @@ import json
 import logging
 
 import pytest
+import text2spoken
 from scriptconv.phonemizers import GraphemePhonemizer
 
 from phoonnx.config import SynthesisConfig, VoiceConfig
@@ -114,11 +115,46 @@ def test_a_phoonnx_side_car_keeps_the_precomposed_id():
     assert load(side_car).tokenizer.tokenize("ç") == [1, 0, 40, 0, 2]
 
 
-@pytest.mark.parametrize("espeak_voice, code, lang", [("pt", "pt_PT", "pt"), ("es-419", "es_MX", "es-419"),
-                                                      ("nb", "no_NO", "nb")])
-def test_espeak_voice_is_the_phonemizer_language(espeak_voice, code, lang):
-    config = {**TUGAO, "espeak": {"voice": espeak_voice}, "language": {"code": code}}
-    assert load(config).lang_code == lang
+@pytest.mark.parametrize("espeak_voice, code, text_lang", [("pt", "pt_PT", "pt-PT"), ("es-419", "es_MX", "es-MX"),
+                                                           ("en", "en_US", "en-US")])
+def test_espeak_voice_is_the_phonemizer_language_and_the_code_the_text_language(espeak_voice, code, text_lang):
+    config = load({**TUGAO, "espeak": {"voice": espeak_voice}, "language": {"code": code}})
+    assert (config.lang_code, config.phonemizer_lang) == (text_lang, espeak_voice)
+
+
+class _RecordingPhonemizer(GraphemePhonemizer):
+    """A backend that records the language it reads, with the normaliser a voice gives its phonemizer."""
+
+    def __init__(self):
+        super().__init__()
+        self.normalizer = text2spoken.normalize
+        self.langs = []
+
+    def phonemize_segments(self, text, lang):
+        self.langs.append(lang)
+        return super().phonemize_segments(text, lang)
+
+
+def test_an_en_us_voice_with_the_espeak_voice_en_reads_dates_as_en_us():
+    backend = _RecordingPhonemizer()
+    voice = TTSVoice(session=None, config=load({**TUGAO, "espeak": {"voice": "en"}, "language": {"code": "en_US"}}),
+                     phonemizer=backend)
+    text = "12/11/2025"
+    assert text2spoken.normalize(text, "en-US") != text2spoken.normalize(text, "en")
+    assert voice.frontend.prepare(text) == text2spoken.normalize(text, "en-US")
+    voice.frontend.phonemize(text)
+    assert set(backend.langs) == {"en"}
+
+
+def test_a_config_without_a_language_code_reads_the_espeak_voice_for_both():
+    config = load({k: v for k, v in TUGAO.items() if k != "language"})
+    assert (config.lang_code, config.phonemizer_lang) == ("pt", "pt")
+
+
+def test_the_native_config_keeps_the_phonemizer_language():
+    config = load({**TUGAO, "espeak": {"voice": "en"}, "language": {"code": "en_US"}})
+    native = VoiceConfig.from_dict(json.loads(json.dumps(config.to_dict())))
+    assert (native.lang_code, native.phonemizer_lang) == ("en-US", "en")
 
 
 def test_a_text_model_keeps_the_language_code():
@@ -154,3 +190,9 @@ def test_the_native_config_keeps_the_ids_and_the_default_speaker():
     for phonemes in ("pˈaɪ mˈaʊ lˈeɪ vˈoʊ dˈɔɪ.", "ˈɪç"):
         assert native.tokenizer.tokenize(phonemes) == voice.tokenizer.tokenize(phonemes)
     assert native.default_speaker_id == 2
+
+
+def test_the_piper_export_writes_the_phonemizer_language_as_the_espeak_voice():
+    from phoonnx.compat import to_piper_config
+    piper = to_piper_config(load({**TUGAO, "espeak": {"voice": "en"}, "language": {"code": "en_US"}}).to_dict())
+    assert (piper["language"], piper["espeak"]) == ({"code": "en-US"}, {"voice": "en"})

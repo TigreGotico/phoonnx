@@ -307,6 +307,18 @@ def test_piper_text_voice_ids_match_phoonnx(text):
     assert example_text_ids(config, text) == phoonnx_text_ids(config, text)
 
 
+def phonemizer_lang_of(config):
+    """The language phoonnx phonemizes *config* in, normalised: the espeak-ng voice keeps its own spelling."""
+    loaded = VoiceConfig.from_dict(copy.deepcopy(config))
+    return normalize_lang(loaded.phonemizer_lang or loaded.lang_code, default_region=False)
+
+
+def normalised_tag_of(config):
+    """The language tag the card gives text2spoken for *config*."""
+    text = card_examples.without_phoonnx(config)
+    return text.split('normalize(text, "', 1)[1].split('"', 1)[0]
+
+
 def test_a_side_car_with_no_lang_code_takes_the_language_as_phoonnx():
     # an espeak model reads with espeak.voice, as Piper does; a text model reads language.code
     for config, expected in (({**PIPER, "lang_code": None, "language": {"code": "pt"}}, "en-US"),
@@ -314,13 +326,29 @@ def test_a_side_car_with_no_lang_code_takes_the_language_as_phoonnx():
                                "phoneme_type": "text"}, "pt")):
         code = example(config, VITS_FILES)
         lang = code.split("phonemize_to_list(text, ", 1)[1].split(")", 1)[0].strip('"')
-        assert normalize_lang(lang, default_region=False) == VoiceConfig.from_dict(copy.deepcopy(config)).lang_code
+        assert normalize_lang(lang, default_region=False) == phonemizer_lang_of(config)
         assert normalize_lang(lang, default_region=False) == expected
     for config in ({**PIPER, "lang_code": None},  # no language block: espeak.voice
                    {**raw_text_config("graphemes", False), "lang_code": None}):  # a voice that reads any text
         code = example(config, VITS_FILES)
         lang = code.split("phonemize_to_list(text, ", 1)[1].split(")", 1)[0].strip('"')
-        assert normalize_lang(lang, default_region=False) == VoiceConfig.from_dict(copy.deepcopy(config)).lang_code
+        assert normalize_lang(lang, default_region=False) == phonemizer_lang_of(config)
+
+
+def test_the_card_normalises_in_the_language_of_the_text_as_phoonnx():
+    # Piper's language block is the language of the text; its espeak-ng voice only phonemizes
+    config = {**PIPER, "lang_code": None, "language": {"code": "pt_PT"}}
+    loaded = VoiceConfig.from_dict(copy.deepcopy(config))
+    assert (loaded.lang_code, loaded.phonemizer_lang) == ("pt-PT", "en-us")
+    assert normalised_tag_of(config) == "pt-PT"
+
+
+def test_a_native_config_phonemizes_in_its_phonemizer_lang():
+    native = {**NATIVE, "lang_code": "es-MX", "phonemizer_lang": "es-419"}
+    code = example(native, VITS_FILES)
+    assert code.split("phonemize_to_list(text, ", 1)[1].split(")", 1)[0].strip('"') == "es-419"
+    assert phonemizer_lang_of(native) == "es-419"
+    assert normalised_tag_of(native) == "es-MX"
 
 
 @pytest.mark.parametrize("config", [

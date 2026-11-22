@@ -43,7 +43,7 @@ def _make_voice(model_alphabet, seen):
         text_casing="ignore",
         phoneme_type=PhonemeType.UNICODE,
         alphabet=model_alphabet,
-        lang_code="ar",
+        lang_code="ar", phonemizer_lang=None,
         add_diacritics=True,
         diacritizer_model=None,
         sample_rate=22050,
