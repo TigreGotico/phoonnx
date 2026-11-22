@@ -139,6 +139,17 @@ class TestGetLangVoicesDialects(_VoiceListCase):
         self.assertEqual(sorted(ids[:2]), ["arz-Arab-EG", "arz_EG"])
         self.assertEqual(sorted(ids[2:]), ["arz-Arab", "arz-x-cairo"])
 
+    def test_a_subtag_after_a_singleton_is_not_a_region(self):
+        self._voices("arz-x-eg", "arz-u-nu-arab", "arz-t-en", "arz-EG")
+        self.assertEqual(self._ids("ar-EG")[0], "arz-EG")
+        self.assertEqual(sorted(self._ids("ar-EG")[1:]), ["arz-t-en", "arz-u-nu-arab", "arz-x-eg"])
+
+    def test_a_lowercase_or_numeric_region_is_a_region(self):
+        for voice in ("arz-eg", "arz-818"):
+            with self.subTest(voice=voice):
+                self._voices("ar", voice)
+                self.assertEqual(self._ids("ar-EG")[0], voice)
+
     def test_each_habibi_region_finds_its_dialect(self):
         pairs = {"ar-DZ": "arq-DZ", "ar-EG": "arz-EG", "ar-IQ": "acm-IQ",
                  "ar-MA": "ary-MA", "ar-SA": "ars-SA", "ar-AE": "afb-AE"}
