@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.127.0a1](https://github.com/TigreGotico/phoonnx/tree/1.127.0a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.126.1a1...1.127.0a1)
+
+**Merged pull requests:**
+
+- feat: index 63 Piper VITS voices from rhasspy/piper-voices [\#910](https://github.com/TigreGotico/phoonnx/pull/910) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.126.1a1](https://github.com/TigreGotico/phoonnx/tree/1.126.1a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.126.0a1...1.126.1a1)
