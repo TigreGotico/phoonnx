@@ -29,8 +29,8 @@ dependencies = [
     "text2spoken>=0.0.2a97",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
-    # >=0.0.4a148: Shami reads a digit run of any length, in any decimal digit
-    # script, in bounded time, and gives espeak-ng a long text on stdin. Earlier
+    # >=0.0.4a148: Shami reads a run of more than 15 digits digit by digit, in any
+    # decimal digit script, and gives espeak-ng the text on stdin. Earlier
     # floors: a backend that owns normalisation gets no casing, every backend
     # records a revision, FrontendConfig.phonemizer_lang, a
     # phonemizer language apart from the text language, the leokani and kolokwa phonemizers that the config schema lists,
