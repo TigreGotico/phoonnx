@@ -359,4 +359,4 @@ ONNX graphs through the overridable `BaseOnnxAdapter.synthesize()`.
 
 ---
 
-[Docs index](index.md) · Previous: [Usage guide](usage.md) · Next: [Voice conversion](voice_conversion.md)
+[Docs index](index.md) · Previous: [SSML](ssml.md) · Next: [Voice conversion](voice_conversion.md)
