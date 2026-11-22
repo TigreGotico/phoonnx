@@ -120,6 +120,9 @@ def fetch_reference_audio(url: str, timeout: int = 10,
         return tmp.name
 
 
+WAVE_FORMAT_EXTENSIBLE = 0xFFFE
+
+
 def _read_pcm_wav(ref: Any) -> Tuple[np.ndarray, int]:
     """Decode a PCM WAV with the standard library to ``(float32 audio, rate)``.
 
@@ -129,11 +132,21 @@ def _read_pcm_wav(ref: Any) -> Tuple[np.ndarray, int]:
         with wave.open(str(ref), "rb") as w:
             sr, ch, width = w.getframerate(), w.getnchannels(), w.getsampwidth()
             frames = w.readframes(w.getnframes())
+    except EOFError as e:
+        raise ValueError(f"reference audio {ref} is empty or ends inside its WAV header") from e
     except wave.Error as e:
+        # Python 3.11's wave module reads no WAVE_FORMAT_EXTENSIBLE header; 3.12 reads its PCM form
+        if str(e) == f"unknown format: {WAVE_FORMAT_EXTENSIBLE}":
+            raise ValueError(
+                f"reference audio {ref} has a WAVE_FORMAT_EXTENSIBLE header, which the wave "
+                f"module of Python 3.11 cannot read; use Python 3.12 or later, or install "
+                f"phoonnx[cloning] to read it with soundfile") from e
         raise ValueError(
             f"reference audio {ref} is not a PCM WAV file ({e}); without "
             f"soundfile only 8, 16, 24 and 32-bit PCM WAV is supported, "
             f"install phoonnx[cloning] for other formats") from e
+    # a data chunk that ends inside a frame loses that frame, as with soundfile
+    frames = frames[:len(frames) - len(frames) % (width * ch)]
     if width == 1:
         audio = (np.frombuffer(frames, dtype=np.uint8).astype(np.float32) - 128.0) / 128.0
     elif width == 2:

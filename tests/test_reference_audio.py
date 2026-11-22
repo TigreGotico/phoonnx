@@ -258,6 +258,9 @@ class TestStdlibWavDecoding(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.dir = tmp.name
+        # the patch drops at stop every module first imported under it, and numpy loads once per process
+        import numpy  # noqa: F401
+        import phoonnx.reference_audio  # noqa: F401
         patcher = patch.dict("sys.modules", {"soundfile": None})
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -379,6 +382,62 @@ class TestStdlibWavDecoding(unittest.TestCase):
         with self.assertRaises(ValueError) as caught:
             load_reference_audio(path)
         self.assertIn(path, str(caught.exception))
+
+
+    def test_an_empty_or_cut_file_names_the_file(self):
+        import os
+        from phoonnx.reference_audio import load_reference_audio
+        for name, data in [("empty.wav", b""), ("riff.wav", b"RIFF"),
+                           ("header.wav", b"RIFF\x24\x00\x00\x00WAVE"),
+                           ("fmt.wav", b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00")]:
+            path = os.path.join(self.dir, name)
+            with open(path, "wb") as f:
+                f.write(data)
+            with self.subTest(name):
+                with self.assertRaises(ValueError) as caught:
+                    load_reference_audio(path)
+                self.assertIn(path, str(caught.exception))
+
+    def test_a_file_cut_inside_a_frame_keeps_its_whole_frames(self):
+        import os
+        import numpy as np
+        from phoonnx.reference_audio import load_reference_audio
+        path = self._write("cut.wav", 3, 100, channels=2)
+        # the header still claims 100 frames of 6 bytes; the data ends 4 bytes into frame 50
+        with open(path, "r+b") as f:
+            f.truncate(os.path.getsize(path) - 50 * 6 - 2)
+        audio, _ = load_reference_audio(path)
+        np.testing.assert_allclose(audio, self._sine(49), atol=0.01)
+
+    def test_an_extensible_pcm_header(self):
+        import os, sys
+        import numpy as np
+        from phoonnx.reference_audio import load_reference_audio
+        samples = np.round(self._sine(100) * 32767).astype("<i2")
+        pcm_guid = bytes.fromhex("0100000000001000800000aa00389b71")
+        fmt = ((0xFFFE).to_bytes(2, "little") + (1).to_bytes(2, "little")
+               + self.RATE.to_bytes(4, "little") + (self.RATE * 2).to_bytes(4, "little")
+               + (2).to_bytes(2, "little") + (16).to_bytes(2, "little")
+               + (22).to_bytes(2, "little") + (16).to_bytes(2, "little")
+               + (4).to_bytes(4, "little") + pcm_guid)
+        data = samples.tobytes()
+        body = (b"WAVE" + b"fmt " + len(fmt).to_bytes(4, "little") + fmt
+                + b"data" + len(data).to_bytes(4, "little") + data)
+        path = os.path.join(self.dir, "extensible.wav")
+        with open(path, "wb") as f:
+            f.write(b"RIFF" + len(body).to_bytes(4, "little") + body)
+        if sys.version_info >= (3, 12):
+            audio, sr = load_reference_audio(path)
+            self.assertEqual(sr, self.RATE)
+            np.testing.assert_array_equal(audio, samples.astype(np.float32) / 32768.0)
+        else:
+            with self.assertRaises(ValueError) as caught:
+                load_reference_audio(path)
+            message = str(caught.exception)
+            self.assertIn(path, message)
+            self.assertIn("WAVE_FORMAT_EXTENSIBLE", message)
+            self.assertIn("soundfile", message)
+            self.assertNotIn("is not a PCM WAV file", message)
 
 
 if __name__ == "__main__":
