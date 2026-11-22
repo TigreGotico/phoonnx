@@ -58,9 +58,9 @@ print(plugin.get_tts("Hello from phoonnx.", "check.wav", voice=config["voice"]))
 ('check.wav', None)
 ```
 
-The first call downloads the voice. Play `check.wav` to hear it. OVOS passes the configured
-`voice` to `get_tts`. A direct call must pass it too, because a call without `voice` uses
-the default voice of the language. If the plugin stops at start
+The first call downloads the voice. Play `check.wav` to hear it. A call without `voice`
+speaks the configured `voice` when its language is the plugin's language. A call in another
+language uses the default voice of that language. If the plugin stops at start
 instead, see [Errors you may see](installation.md#errors-you-may-see).
 
 ### Multi-speaker voices
@@ -328,7 +328,7 @@ plugin = PhoonnxTTSPlugin(config={
 
 | Method | Description |
 |--------|-------------|
-| `get_tts(sentence, wav_file, lang=None, voice=None, ...)` | Synthesize `sentence`, write it to the WAV file path, and return `(wav_file, None)`. `lang` and `voice` select the voice for one call. Without `voice`, the call uses the default voice of the language, not the configured `voice`. The other keyword arguments set cloning (`speaker_reference`, `ref_wav`, ...), the speaker (`speaker_id`, `speaker`) and the scales (`length_scale`, `noise_scale`, `noise_w_scale`) for one call |
+| `get_tts(sentence, wav_file, lang=None, voice=None, ...)` | Synthesize `sentence`, write it to the WAV file path, and return `(wav_file, None)`. `lang` and `voice` select the voice for one call. Without `voice`, a call in the plugin's language speaks the configured `voice`, and a call in another language uses the default voice of that language. The other keyword arguments set cloning (`speaker_reference`, `ref_wav`, ...), the speaker (`speaker_id`, `speaker`) and the scales (`length_scale`, `noise_scale`, `noise_w_scale`) for one call |
 | `get_default_voice(lang)` | Returns the default `TTSModelInfo` for a language |
 | `refresh_voices(force=False)` | Refresh the voice catalog from the model manager |
 

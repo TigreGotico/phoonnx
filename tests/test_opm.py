@@ -246,7 +246,8 @@ class TestGetTts(unittest.TestCase):
         with patch.object(opm, "wave"):
             plugin.get_tts("hi", "/tmp/out.wav")
             plugin.get_tts("hi", "/tmp/out.wav", lang="en-us")
-        self.assertEqual(configured.tts_voice.synthesize_wav.call_count, 2)
+            plugin.get_tts("hi", "/tmp/out.wav", voice="default")
+        self.assertEqual(configured.tts_voice.synthesize_wav.call_count, 3)
         self.assertFalse(default.tts_voice.synthesize_wav.called)
 
     def test_get_tts_in_another_language_takes_that_language_default(self):
