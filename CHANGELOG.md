@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.129.12a1](https://github.com/TigreGotico/phoonnx/tree/1.129.12a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.11a1...1.129.12a1)
+
+**Merged pull requests:**
+
+- fix\(config\): a phonemizer language apart from the text language [\#939](https://github.com/TigreGotico/phoonnx/pull/939) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.129.11a1](https://github.com/TigreGotico/phoonnx/tree/1.129.11a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.10a1...1.129.11a1)
@@ -339,17 +347,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.1a2...1.124.2a1)
 
-**Merged pull requests:**
-
-- fix: a split VITS voice streams its decoder windows, and Orpheus says it does not clone [\#835](https://github.com/TigreGotico/phoonnx/pull/835) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.124.1a2](https://github.com/TigreGotico/phoonnx/tree/1.124.1a2) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.1a1...1.124.1a2)
-
-**Merged pull requests:**
-
-- docs: make the install and quickstart pages work as written [\#836](https://github.com/TigreGotico/phoonnx/pull/836) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.124.1a1](https://github.com/TigreGotico/phoonnx/tree/1.124.1a1) (2026-11-19)
 
