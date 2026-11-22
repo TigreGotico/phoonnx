@@ -488,23 +488,24 @@ class TestVitsTrainingEngineRegistrationAndWiring(unittest.TestCase):
 
 
 class TestVitsSidecarExporters(unittest.TestCase):
-    def test_write_tokens_txt_orders_by_id(self):
+    def test_write_tokens_txt_writes_symbol_and_id_ordered_by_id(self):
         from phoonnx_train.engines.vits import _write_tokens_txt
 
         with TemporaryDirectory() as tmp:
             path = Path(tmp) / "tokens.txt"
-            _write_tokens_txt({"a": 0, "b": 2, "c": 1}, path)
+            _write_tokens_txt({"a": 0, "b": 2, "c": 1, " ": 3}, path)
             lines = path.read_text(encoding="utf-8").splitlines()
-        self.assertEqual(lines, ["a", "c", "b"])
+        self.assertEqual(lines, ["a 0", "c 1", "b 2", "  3"])
 
-    def test_write_tokens_txt_handles_list_ids_and_unknown_gaps(self):
+    def test_write_tokens_txt_leaves_out_what_sherpa_onnx_cannot_read(self):
         from phoonnx_train.engines.vits import _write_tokens_txt
 
         with TemporaryDirectory() as tmp:
             path = Path(tmp) / "tokens.txt"
-            _write_tokens_txt({"a": [0, 2]}, path)  # id 1 is an unfilled gap
+            # two ids for one symbol, two code points, and a tab: sherpa-onnx stops at each
+            _write_tokens_txt({"a": [0, 2], "aɪ": 5, "\t": 6, "b": [1]}, path)
             lines = path.read_text(encoding="utf-8").splitlines()
-        self.assertEqual(lines, ["a", "<UNK_1>", "a"])
+        self.assertEqual(lines, ["b 1"])
 
     def test_write_tokens_txt_empty_map_writes_empty_file(self):
         from phoonnx_train.engines.vits import _write_tokens_txt

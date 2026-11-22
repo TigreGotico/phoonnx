@@ -4,7 +4,7 @@
 covers: every phoonnx-voices subcommand, its options, its output and its exit status
 source: phoonnx/cli.py, pyproject.toml [project.scripts]
 generated: no
-verify: python -m pytest tests/test_cli.py; phoonnx-voices --help
+verify: python -m pytest tests/test_cli.py tests/test_export_piper_sherpa.py; phoonnx-voices --help
 see: quickstart.md, choose_voice.md, voice_manager.md, offline.md
 -->
 
@@ -81,6 +81,7 @@ Options:
 Commands:
   add-alignment   Expose a model's per-phoneme duration tensor as a graph...
   download        Downloads the model, config, and token files for a...
+  export          Write the voice of MODEL_PATH as a Piper or sherpa-onnx...
   list-available  Lists all voice IDs bundled with phoonnx, grouped by...
   list-langs      Lists all supported language codes available in the...
   list-voices     Lists all available voice models.
@@ -160,6 +161,29 @@ Error: the 'onnx' package is required for graph surgery; install it with `pip in
 ```
 
 It also exits with status 1 when the graph has no duration tensor that it can find.
+
+### `export`
+
+Writes a voice as a Piper voice or a sherpa-onnx voice in a new folder. The command copies the model and writes the config that the runtime reads. The source model does not change.
+
+```bash
+phoonnx-voices export MODEL_PATH DEST --to piper|sherpa [--config CONFIG]
+```
+
+| Option | Effect |
+|---|---|
+| `--to piper` | Write `<model>` and `<model>.json`, which `piper.PiperVoice.load` reads. |
+| `--to sherpa` | Write `<model>` with the sherpa-onnx metadata in it, and `tokens.txt`. This needs the `onnx` package from the `streaming` extra. |
+| `--config` | The voice config. Without it, the command reads `<model>.json`. |
+
+The command refuses a voice that the runtime cannot read with the ids that phoonnx gives it, and exits with status 1. The last line names the reason. For example, sherpa-onnx reads one code point per symbol, so it cannot read a Piper 1.5 voice that merges diphthongs into one id:
+
+```
+$ phoonnx-voices export de_DE-thorsten-medium/model.onnx thorsten-sherpa --to sherpa --config de_DE-thorsten-medium/config.json
+Error: sherpa-onnx reads one code point per symbol; this voice reads 'aɪ' (2 code points) as the ids [161]
+```
+
+[Run a voice in Piper or sherpa-onnx](training/export.md#run-a-voice-in-piper-or-sherpa-onnx) shows a full export and the runtime that reads it.
 
 ---
 

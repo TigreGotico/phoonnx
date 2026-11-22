@@ -188,7 +188,7 @@ An adapter subclasses `BaseOnnxAdapter` in `phoonnx.engines.base`. It receives a
 
 `PrecisionUnavailable` and `UnsupportedVoiceLanguage` also subclass `ValueError`. `NonFiniteAudioError` and `VoiceExceedsMemoryBudget` also subclass `RuntimeError`.
 
-`TTSVoice.load` raises `VoiceLoadError` when the config file does not exist. It also raises it for a VITS graph whose vocabulary uses an id that is not below `num_symbols`. Synthesis raises `NonFiniteAudioError` when the model returns NaN or infinite samples, before the audio is levelled. Written as 16-bit samples, such audio would be silence. Nothing in the code raises `FrontendMismatchError`, `UnsupportedConfigError` or `ExportNotSupported`. Part 3 describes where the design raises them.
+`TTSVoice.load` raises `VoiceLoadError` when the config file does not exist. It also raises it for a VITS graph whose vocabulary uses an id that is not below `num_symbols`. Synthesis raises `NonFiniteAudioError` when the model returns NaN or infinite samples, before the audio is levelled. Written as 16-bit samples, such audio would be silence. `phoonnx.compat.export_piper` and `export_sherpa` raise `ExportNotSupported` for a voice that Piper or sherpa-onnx cannot read with the ids that phoonnx gives it. Nothing in the code raises `FrontendMismatchError` or `UnsupportedConfigError`. Part 3 describes where the design raises them.
 
 The root package exports `TTSVoice`, `AudioChunk`, `Utterance`, `VoiceConfig`, `SynthesisConfig`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. Each name loads on first access, so `import phoonnx` stays cheap.
 
@@ -295,9 +295,9 @@ This part is a design, not a description of the code. Its objects do not exist, 
 | `Runtime(fetch, open_session)` | Private names that phoonnx.js patches: `_resolve`, `_fetch_onnx`, `make_session`, `detect_engine` |
 | `TTSModelInfo` as the index entry only | Index fields `phonemizer_lang`, `phoneme_type`, `phonemizer_model`, `alphabet`, `vocab_override`, the format-valued `engine`, `phoneme_map_url`, and the `info.config` property |
 | `phoonnx.compat.convert_config` | The loaders of `config_loaders.py` and the `from_piper_config`, `from_vosk_config`, `from_mimic3_config`, `from_coqui_config` and `from_tokens_txt` constructors |
-| `phoonnx.compat.export_piper`, `export_sherpa` | The writers in `phoonnx_train/engines/vits.py` |
+| `phoonnx.compat.export_piper`, `export_sherpa` | Exist in the code. The training side-cars use their writers, `to_piper_config` and `to_sherpa_tokens` |
 | `OPTION_ALIASES` in the OPM plugin | The per-key handling of `mycroft.conf` options |
-| Raise sites for `FrontendMismatchError`, `UnsupportedConfigError` and `ExportNotSupported` | The classes exist in the code. Nothing raises them |
+| Raise sites for `FrontendMismatchError` and `UnsupportedConfigError` | The classes exist in the code. Nothing raises them |
 
 ### The three configs
 
@@ -329,7 +329,7 @@ for utterance in voice.prepare("Hello"):
 
 At runtime `TTSVoice.load` reads only the native `config.json`. For any other format it raises `UnsupportedConfigError`, and the message names `phoonnx.compat.convert_config`. The runtime never imports `phoonnx.compat`. The command `phoonnx-voices convert-config` exposes the conversion.
 
-`phoonnx.compat` also writes. `export_piper(voice, dest)` and `export_sherpa(voice, dest)` write a Piper or sherpa-onnx voice from a loaded native voice. An export that the target cannot run raises `ExportNotSupported` with the reason.
+`phoonnx.compat` also writes. `export_piper(voice, dest)` and `export_sherpa(voice, dest)` write a Piper or sherpa-onnx voice from a loaded native voice. An export that the target cannot run raises `ExportNotSupported` with the reason. Both exist in the code, and the command `phoonnx-voices export` runs them.
 
 ### Engine adapters
 
@@ -339,7 +339,7 @@ An adapter must define `detect(session, config)` (static), `default_params()`, `
 
 The root of the code exports `TTSVoice`, `VoiceConfig`, `SynthesisConfig`, `Utterance`, `AudioChunk`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. The target adds `AudioPost`, `SpeakerReference` and `Runtime`.
 
-The hierarchy of `phoonnx.errors` exists in the code, and `VoiceLoadError` has its raise sites. The target is the other raise sites. `with_frontend` raises `FrontendMismatchError`. A foreign config raises `UnsupportedConfigError`. An export that the target cannot run raises `ExportNotSupported`.
+The hierarchy of `phoonnx.errors` exists in the code, and `VoiceLoadError` and `ExportNotSupported` have their raise sites. The target is the other raise sites. `with_frontend` raises `FrontendMismatchError`. A foreign config raises `UnsupportedConfigError`.
 
 ### Model manager
 
