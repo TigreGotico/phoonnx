@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.130.5a2](https://github.com/TigreGotico/phoonnx/tree/1.130.5a2) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.5a1...1.130.5a2)
+
+**Merged pull requests:**
+
+- test: count only the warnings that the test's own thread logs [\#956](https://github.com/TigreGotico/phoonnx/pull/956) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.130.5a1](https://github.com/TigreGotico/phoonnx/tree/1.130.5a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.4a1...1.130.5a1)
@@ -173,10 +181,6 @@
 ## [1.126.0a1](https://github.com/TigreGotico/phoonnx/tree/1.126.0a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.14a1...1.126.0a1)
-
-**Merged pull requests:**
-
-- feat: load Piper voices with the pinyin, hebrew, japanese, thai and lithuanian phoneme types [\#852](https://github.com/TigreGotico/phoonnx/pull/852) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.14a1](https://github.com/TigreGotico/phoonnx/tree/1.125.14a1) (2026-11-22)
 
