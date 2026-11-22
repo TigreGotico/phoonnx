@@ -167,7 +167,7 @@ def test_the_training_code_is_a_version_stamp():
      "espeak-ng 1.52.0, backend `espeak`, lect `pt`"),
     ({"phonemizer_identity": {"backend": "o2i", "distribution": "orthography2ipa", "version": "7.1.0",
                               "lang": "kab-DZ", "revision": "r42"}},
-     "orthography2ipa 7.1.0, backend `o2i`, lect `kab-DZ`, spec revision r42"),
+     "orthography2ipa 7.1.0, backend `o2i`, lect `kab-DZ`, revision r42"),
     ({"phonemizer_registry": "scriptconv", "phonemizer_registry_version": "0.0.4a70"},
      "through scriptconv 0.0.4a70; engine version not recorded"),
     ({"phoneme_type": "espeak", "alphabet": "ipa"}, "espeak-ng, version not recorded"),
