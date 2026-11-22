@@ -47,9 +47,8 @@ class TestRapidoIndex(unittest.TestCase):
                 self.assertTrue(url.startswith("https://huggingface.co/Phoonnx/"), (voice_id, url))
 
     def test_each_precision_names_the_three_graphs_from_its_own_folder(self):
-        # The int8 files share the fp32 text encoder, aligner and decoder by
-        # content, but each precision reads them from its own folder, so the
-        # two never depend on each other's layout.
+        # The int8 files share the fp32 text encoder, aligner and decoder: only
+        # the main graph differs (model_int8.onnx), and both sit in one repo commit.
         for voice_id, files in self._file_sets():
             folder = files["model_url"].rsplit("/", 1)[0]
             self.assertEqual(files["config_url"], f"{folder}/config.json")
@@ -61,7 +60,7 @@ class TestRapidoIndex(unittest.TestCase):
 
     def test_the_int8_files_are_a_variant_of_the_voice(self):
         variant = _entries()["edwixx/pt-BR-rapido"]["variants"]["int8"]
-        self.assertTrue(variant["model_url"].endswith("/edwixx__rapido-tts-int8/model.onnx"))
+        self.assertTrue(variant["model_url"].endswith("/model_int8.onnx"))
         # Not measured faster than full yet, so auto keeps the full files.
         self.assertNotIn("auto", variant)
 
