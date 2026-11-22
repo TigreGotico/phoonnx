@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.129.10a1](https://github.com/TigreGotico/phoonnx/tree/1.129.10a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.9a1...1.129.10a1)
+
+## [1.129.9a1](https://github.com/TigreGotico/phoonnx/tree/1.129.9a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.8a1...1.129.9a1)
+
+**Merged pull requests:**
+
+- fix\(fastpitch\): a pace input for the three Coqui ForwardTTS voices [\#934](https://github.com/TigreGotico/phoonnx/pull/934) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix\(voice\_index\): pin the 19 repos whose configs now state num\_symbols [\#932](https://github.com/TigreGotico/phoonnx/pull/932) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.129.8a1](https://github.com/TigreGotico/phoonnx/tree/1.129.8a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.7a1...1.129.8a1)
@@ -354,10 +367,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.6a1...1.123.7a1)
 
-**Merged pull requests:**
-
-- fix: drop failed training rows, keep resumed casing, undo StyleTTS2 export patches [\#830](https://github.com/TigreGotico/phoonnx/pull/830) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.123.6a1](https://github.com/TigreGotico/phoonnx/tree/1.123.6a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.5a1...1.123.6a1)
@@ -366,17 +375,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.4a1...1.123.5a1)
 
-**Merged pull requests:**
-
-- fix: the streaming decoder runs on the voice's execution providers [\#832](https://github.com/TigreGotico/phoonnx/pull/832) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.123.4a1](https://github.com/TigreGotico/phoonnx/tree/1.123.4a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.3a1...1.123.4a1)
-
-**Merged pull requests:**
-
-- fix: keep a line break between skipped inline blocks [\#831](https://github.com/TigreGotico/phoonnx/pull/831) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.123.3a1](https://github.com/TigreGotico/phoonnx/tree/1.123.3a1) (2026-11-19)
 
