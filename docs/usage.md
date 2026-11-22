@@ -234,14 +234,17 @@ voice.phonetic_spellings  # PhoneticSpellings (.replacements dict, .apply(text))
 
 `TTSVoice.synthesize_ssml()` and `synthesize_ssml_wav()` read SSML and turn it into silence, pace,
 loudness, pitch, language and sound effects. Input that is not SSML is synthesized as it is.
+The full support table (every W3C SSML 1.1, Polly and Alexa element, measured in English and French), the
+limits and the cost of each feature are in [SSML](ssml.md).
 
 | Tag | Effect |
 | --- | --- |
 | `<break time="500ms"/>`, `strength=` | silence of that length |
 | `<p>`, `<s>` | a pause at the paragraph / sentence edge |
 | `<prosody rate= volume= pitch=>` | pace (the voice's length scale), loudness, and pitch (`+2st`, `-10%`, `high`; Hz is ignored) |
+| `<prosody duration=>`, `amazon:max-duration=` | the speech is stretched or squeezed (0.5x to 2x) to that time, or to at most that time |
 | `<emphasis level=>` | a little slower and louder (or softer for `reduced`) |
-| `<lang xml:lang=>`, `<voice>` | a multilingual voice uses that language's id for the piece; a monolingual voice says the words in its own language. `<say-as>` inside it also reads its value in that language |
+| `<lang xml:lang=>`, `<voice languages=>` | a multilingual voice uses that language's id for the piece; a monolingual voice says the words in its own language. `<say-as>` inside `xml:lang` also reads its value in that language; `<voice languages>` picks the voice only |
 | `<say-as interpret-as=...>` | `cardinal`, `number`, `ordinal`, `digits`, `fraction`, `unit`, `date` (+`format="mdy"`), `time`, `currency`, `telephone`, `characters`/`spell-out`/`letters`/`verbatim`, and `expletive` (a bleep) |
 | `<sub alias=>` | substituted text |
 | `<phoneme alphabet="ipa\|x-sampa" ph=>` | inline phonemes (X-SAMPA is converted to IPA) |
@@ -262,8 +265,7 @@ voice.frontend.say_as("3", "ordinal", lang="en-US")  # 'third'
 
 Pitch, whisper, soft, compression, breaths and bleeps are applied to the finished audio
 (`phoonnx.audio_fx`, numpy only), not by the model: pitch shifts move the formants with the pitch,
-so keep them within a few semitones; whisper is an approximation that keeps the words and drops the
-voicing. Emotions and speaking styles are not something a VITS voice can do and are read as plain
+so keep them within a few semitones; whisper is breath shaped like the words (no pitch, nothing below about 180 Hz) and 8 dB quieter than the speech, set with `level_db` in `audio_fx.whisper`; a breath is quiet and different every time. Emotions and speaking styles are not something a VITS voice can do and are read as plain
 text. A document that does not parse is spoken as its text with the tags removed, and plain text
 containing a stray `<` is never mistaken for SSML (`phoonnx.ssml.looks_like_ssml`). The OVOS plugin
 (`phoonnx.opm`) routes SSML input here and advertises `ssml_tags`.
@@ -346,4 +348,4 @@ and clip steps.
 
 ---
 
-[Docs index](index.md) · Previous: [BSC multispeaker StyleTTS2](bsc_multispeaker.md) · Next: [Voice cloning](cloning.md)
+[Docs index](index.md) · Previous: [BSC multispeaker StyleTTS2](bsc_multispeaker.md) · Next: [SSML](ssml.md)

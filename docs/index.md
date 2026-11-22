@@ -32,6 +32,7 @@ phoonnx runs text-to-speech voices from many ecosystems through ONNX Runtime, an
 ## Use
 
 - [Usage guide](usage.md): load a voice, synthesize to a file or a stream, and tune each call from Python.
+- [SSML](ssml.md): what each SSML element and attribute does, measured, with the time rules, the bounds and the cost.
 - [Voice cloning](cloning.md): clone a speaker from a reference clip.
 - [Voice conversion](voice_conversion.md): convert the output of any voice to a target speaker.
 - [Streaming](streaming.md): low-latency streaming with split encoder and decoder VITS voices.
