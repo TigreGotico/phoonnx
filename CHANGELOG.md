@@ -1,5 +1,195 @@
 # Changelog
 
+## [1.125.12a2](https://github.com/TigreGotico/phoonnx/tree/1.125.12a2) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.12a1...1.125.12a2)
+
+**Merged pull requests:**
+
+- perf: read only the pages the external-data walk touches [\#902](https://github.com/TigreGotico/phoonnx/pull/902) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.12a1](https://github.com/TigreGotico/phoonnx/tree/1.125.12a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.11a1...1.125.12a1)
+
+**Merged pull requests:**
+
+- fix: an offline fallback skips a snapshot whose graph lacks its data [\#900](https://github.com/TigreGotico/phoonnx/pull/900) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.11a1](https://github.com/TigreGotico/phoonnx/tree/1.125.11a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.10a3...1.125.11a1)
+
+**Merged pull requests:**
+
+- fix: a partial mirror snapshot at the table commit routes the voice to its repo [\#888](https://github.com/TigreGotico/phoonnx/pull/888) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.10a3](https://github.com/TigreGotico/phoonnx/tree/1.125.10a3) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.10a2...1.125.10a3)
+
+**Merged pull requests:**
+
+- docs: SSML 1.0 and Polly forms are extensions, and the docs check finds extra rows [\#893](https://github.com/TigreGotico/phoonnx/pull/893) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.10a2](https://github.com/TigreGotico/phoonnx/tree/1.125.10a2) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.10a1...1.125.10a2)
+
+**Merged pull requests:**
+
+- test: the Indic Parler seed decides the sampled codes [\#891](https://github.com/TigreGotico/phoonnx/pull/891) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.10a1](https://github.com/TigreGotico/phoonnx/tree/1.125.10a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.9a4...1.125.10a1)
+
+## [1.125.9a4](https://github.com/TigreGotico/phoonnx/tree/1.125.9a4) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.9a3...1.125.9a4)
+
+**Merged pull requests:**
+
+- fix: llasa, neutts and orpheus count no space between touching sentences [\#892](https://github.com/TigreGotico/phoonnx/pull/892) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- docs: list the leokani and kolokwa phonemizers [\#890](https://github.com/TigreGotico/phoonnx/pull/890) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.9a3](https://github.com/TigreGotico/phoonnx/tree/1.125.9a3) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.9a2...1.125.9a3)
+
+**Merged pull requests:**
+
+- test: check the cache merge\_default\_voices stores, not a mocked update [\#886](https://github.com/TigreGotico/phoonnx/pull/886) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.9a2](https://github.com/TigreGotico/phoonnx/tree/1.125.9a2) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.9a1...1.125.9a2)
+
+**Merged pull requests:**
+
+- test: seed the Indic Parler tests that count decode steps [\#885](https://github.com/TigreGotico/phoonnx/pull/885) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.9a1](https://github.com/TigreGotico/phoonnx/tree/1.125.9a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.8a1...1.125.9a1)
+
+**Merged pull requests:**
+
+- fix: a mirror route needs the external data of each cached graph [\#884](https://github.com/TigreGotico/phoonnx/pull/884) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.8a1](https://github.com/TigreGotico/phoonnx/tree/1.125.8a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.7a1...1.125.8a1)
+
+**Merged pull requests:**
+
+- fix: point the voice index at one repo per model [\#881](https://github.com/TigreGotico/phoonnx/pull/881) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.7a1](https://github.com/TigreGotico/phoonnx/tree/1.125.7a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.6a1...1.125.7a1)
+
+**Merged pull requests:**
+
+- fix: encode each MOSS-TTS chunk from its source text [\#874](https://github.com/TigreGotico/phoonnx/pull/874) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.6a1](https://github.com/TigreGotico/phoonnx/tree/1.125.6a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.5a1...1.125.6a1)
+
+**Merged pull requests:**
+
+- fix\(ssml\): audit against SSML 1.1: namespaces, entities, durations, marks at their offsets, no clicks [\#876](https://github.com/TigreGotico/phoonnx/pull/876) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.5a1](https://github.com/TigreGotico/phoonnx/tree/1.125.5a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.4a1...1.125.5a1)
+
+**Merged pull requests:**
+
+- fix\(ssml\): a quiet breathy whisper, and a breath that is not a machine [\#875](https://github.com/TigreGotico/phoonnx/pull/875) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.4a1](https://github.com/TigreGotico/phoonnx/tree/1.125.4a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.3a1...1.125.4a1)
+
+**Merged pull requests:**
+
+- fix: list new scriptconv phonemizers in the config schema [\#877](https://github.com/TigreGotico/phoonnx/pull/877) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.3a1](https://github.com/TigreGotico/phoonnx/tree/1.125.3a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.2a1...1.125.3a1)
+
+**Merged pull requests:**
+
+- fix: keep the source gap between packed sentences [\#872](https://github.com/TigreGotico/phoonnx/pull/872) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.2a1](https://github.com/TigreGotico/phoonnx/tree/1.125.2a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.1a2...1.125.2a1)
+
+**Merged pull requests:**
+
+- fix: rank bundled voices in index order when a cache exists [\#870](https://github.com/TigreGotico/phoonnx/pull/870) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.1a2](https://github.com/TigreGotico/phoonnx/tree/1.125.1a2) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.1a1...1.125.1a2)
+
+**Merged pull requests:**
+
+- docs: README, docs index, navigation and agent hints [\#863](https://github.com/TigreGotico/phoonnx/pull/863) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.1a1](https://github.com/TigreGotico/phoonnx/tree/1.125.1a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.0a1...1.125.1a1)
+
+## [1.125.0a1](https://github.com/TigreGotico/phoonnx/tree/1.125.0a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.6a1...1.125.0a1)
+
+**Merged pull requests:**
+
+- feat: add the Kabyle voices phoonnx\_kab-DZ\_miro\_o2i and phoonnx\_kab-DZ\_dii\_o2i [\#862](https://github.com/TigreGotico/phoonnx/pull/862) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.124.6a1](https://github.com/TigreGotico/phoonnx/tree/1.124.6a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.5a1...1.124.6a1)
+
+## [1.124.5a1](https://github.com/TigreGotico/phoonnx/tree/1.124.5a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.4a1...1.124.5a1)
+
+**Merged pull requests:**
+
+- fix: list text\_casing in the config schema [\#860](https://github.com/TigreGotico/phoonnx/pull/860) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: optimized-graph cache with sidecars, BPE added-token flags, length\_scale for four engines [\#856](https://github.com/TigreGotico/phoonnx/pull/856) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.124.4a1](https://github.com/TigreGotico/phoonnx/tree/1.124.4a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.3a2...1.124.4a1)
+
+**Merged pull requests:**
+
+- fix: decode reference WAVs by sample width without soundfile [\#858](https://github.com/TigreGotico/phoonnx/pull/858) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.124.3a2](https://github.com/TigreGotico/phoonnx/tree/1.124.3a2) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.3a1...1.124.3a2)
+
+**Merged pull requests:**
+
+- docs: correct the reference pages against the code [\#834](https://github.com/TigreGotico/phoonnx/pull/834) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.124.3a1](https://github.com/TigreGotico/phoonnx/tree/1.124.3a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.2a2...1.124.3a1)
+
+**Merged pull requests:**
+
+- fix: Piper voice configs tokenize and phonemize as Piper 1.5 does [\#837](https://github.com/TigreGotico/phoonnx/pull/837) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.124.2a2](https://github.com/TigreGotico/phoonnx/tree/1.124.2a2) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.2a1...1.124.2a2)
@@ -43,7 +233,6 @@
 **Merged pull requests:**
 
 - fix: the voice CLI exits non-zero on failure and filters by the full language tag [\#833](https://github.com/TigreGotico/phoonnx/pull/833) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- feat: phoonnx.compat converts third-party configs to the native config.json [\#767](https://github.com/TigreGotico/phoonnx/pull/767) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.123.7a1](https://github.com/TigreGotico/phoonnx/tree/1.123.7a1) (2026-11-19)
 
@@ -123,10 +312,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.120.1a1...1.120.2a1)
 
-**Merged pull requests:**
-
-- feat: VoiceConfig.to\_dict writes the native config.json, with a JSON Schema and a frontend [\#766](https://github.com/TigreGotico/phoonnx/pull/766) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.120.1a1](https://github.com/TigreGotico/phoonnx/tree/1.120.1a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.120.0a1...1.120.1a1)
@@ -138,15 +323,10 @@
 **Merged pull requests:**
 
 - test: expect the grapheme revision preprocess records [\#814](https://github.com/TigreGotico/phoonnx/pull/814) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- feat: record the training text casing and apply it at inference [\#756](https://github.com/TigreGotico/phoonnx/pull/756) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.119.0a1](https://github.com/TigreGotico/phoonnx/tree/1.119.0a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.8a1...1.119.0a1)
-
-**Merged pull requests:**
-
-- feat\(engines\): cut long requests in BaseOnnxAdapter behind max\_input\_tokens [\#744](https://github.com/TigreGotico/phoonnx/pull/744) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.118.8a1](https://github.com/TigreGotico/phoonnx/tree/1.118.8a1) (2026-11-19)
 
@@ -168,21 +348,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.4a1...1.118.4a2)
 
-**Merged pull requests:**
-
-- fix: the Mimic 3 loader reads its tokens file, and a null pad stays null [\#793](https://github.com/TigreGotico/phoonnx/pull/793) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: build training ids through the TextFrontend that inference uses [\#753](https://github.com/TigreGotico/phoonnx/pull/753) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.118.4a1](https://github.com/TigreGotico/phoonnx/tree/1.118.4a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.3a1...1.118.4a1)
-
-**Merged pull requests:**
-
-- fix: restore green CI after linguatag 0.3.1a1 and \#748 [\#796](https://github.com/TigreGotico/phoonnx/pull/796) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: level\_audio returns an empty sentence as is [\#792](https://github.com/TigreGotico/phoonnx/pull/792) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- perf: samplers keep only the top candidates [\#776](https://github.com/TigreGotico/phoonnx/pull/776) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix\(config\): an unset inference scale leaves the engine default [\#775](https://github.com/TigreGotico/phoonnx/pull/775) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.118.3a1](https://github.com/TigreGotico/phoonnx/tree/1.118.3a1) (2026-11-19)
 
@@ -195,12 +363,6 @@
 ## [1.118.1a1](https://github.com/TigreGotico/phoonnx/tree/1.118.1a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.0a3...1.118.1a1)
-
-**Merged pull requests:**
-
-- fix: a voice with no config, or ids its VITS graph cannot embed, raises VoiceLoadError [\#750](https://github.com/TigreGotico/phoonnx/pull/750) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: name the engine in exported configs and allow a missing config path [\#749](https://github.com/TigreGotico/phoonnx/pull/749) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: tighten inline block handling on voices with no symbol input [\#748](https://github.com/TigreGotico/phoonnx/pull/748) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.118.0a3](https://github.com/TigreGotico/phoonnx/tree/1.118.0a3) (2026-11-19)
 
@@ -229,16 +391,6 @@
 ## [1.116.1a2](https://github.com/TigreGotico/phoonnx/tree/1.116.1a2) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.116.1a1...1.116.1a2)
-
-**Merged pull requests:**
-
-- fix: keep the voice-conversion cache key and value in one attribute [\#774](https://github.com/TigreGotico/phoonnx/pull/774) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- feat\(voice\): stream Pocket TTS audio as the decoder makes it [\#769](https://github.com/TigreGotico/phoonnx/pull/769) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- perf: faster pure-Python BPE and phoneme tokenizer [\#768](https://github.com/TigreGotico/phoonnx/pull/768) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- perf: cache the OPM default-voice lookup and graph metadata [\#764](https://github.com/TigreGotico/phoonnx/pull/764) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- perf: stop repeating per-call work in Indic Parler, MOSS and Vocos [\#763](https://github.com/TigreGotico/phoonnx/pull/763) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- feat: add the Encoder, the step from text to model ids [\#761](https://github.com/TigreGotico/phoonnx/pull/761) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- refactor: delete dead engine hooks and test that the Engine enum names the registry [\#757](https://github.com/TigreGotico/phoonnx/pull/757) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.116.1a1](https://github.com/TigreGotico/phoonnx/tree/1.116.1a1) (2026-11-19)
 
@@ -279,16 +431,6 @@
 ## [1.115.0a1](https://github.com/TigreGotico/phoonnx/tree/1.115.0a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.114.2a1...1.115.0a1)
-
-**Merged pull requests:**
-
-- fix: hold the cloned-voice cache key and value in one attribute [\#759](https://github.com/TigreGotico/phoonnx/pull/759) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- feat: add the xvits engine [\#754](https://github.com/TigreGotico/phoonnx/pull/754) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: convert inline blocks to the voice alphabet and skip them on text-only voices [\#747](https://github.com/TigreGotico/phoonnx/pull/747) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: write the native config beside every exported model [\#746](https://github.com/TigreGotico/phoonnx/pull/746) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- test: shared token-id fixture set for phoonnx.js parity [\#745](https://github.com/TigreGotico/phoonnx/pull/745) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: side streams survive blanks and BOS/EOS [\#743](https://github.com/TigreGotico/phoonnx/pull/743) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- docs: add the Python API reference and the 2.0 target API [\#742](https://github.com/TigreGotico/phoonnx/pull/742) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.114.2a1](https://github.com/TigreGotico/phoonnx/tree/1.114.2a1) (2026-11-18)
 

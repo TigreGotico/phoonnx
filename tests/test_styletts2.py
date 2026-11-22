@@ -53,20 +53,6 @@ def test_kokoro_style_pack_length_indexed():
     assert "attention_mask" not in feed   # filtered (not a model input)
 
 
-def test_length_scale_falls_back_to_speed():
-    # SynthesisConfig.length_scale is the canonical speed knob; honour it when
-    # the adapter's native "speed" key is not explicitly set.
-    sess = _Sess(["input_ids", "attention_mask", "speed"])
-    feed = StyleTTS2Adapter().build_feed_dict(_req(5, length_scale=1.3), sess)
-    assert feed["speed"][0] == pytest.approx(1.3)
-
-
-def test_speed_takes_precedence_over_length_scale():
-    sess = _Sess(["input_ids", "attention_mask", "speed"])
-    feed = StyleTTS2Adapter().build_feed_dict(_req(5, speed=0.7, length_scale=1.3), sess)
-    assert feed["speed"][0] == pytest.approx(0.7)
-
-
 def test_parse_outputs_picks_waveform():
     r = StyleTTS2Adapter().parse_outputs([np.zeros((1, 512, 8), np.float32), np.ones(20000, np.float32)], _req())
     assert r.audio.ndim == 1 and r.audio.size == 20000
@@ -180,11 +166,11 @@ def test_galician_index_entry_is_a_cloning_cotovia_voice(voice):
     # these checkpoints were trained on Cotovia notation, not espeak IPA
     assert e["phoneme_type"] == "cotovia" and e["alphabet"] == "cotovia"
     # single-speaker: a default style ships, and a reference clip can override it
-    assert e["style_url"].endswith(f"proxectonos-gl-{voice}/style.bin")
-    assert e["speaker_encoder_url"].endswith(f"proxectonos-gl-{voice}/style_encoder.onnx")
+    assert e["style_url"].endswith("/style.bin")
+    assert e["speaker_encoder_url"].endswith("/style_encoder.onnx")
     assert e["speaker_encoder_type"] == "styletts2_style"
     for url in (e["model_url"], e["config_url"], e["style_url"], e["speaker_encoder_url"]):
-        assert f"/proxectonos-gl-{voice}/" in url
+        assert f"/styletts2-gl_es-{voice}-cotovia/" in url
 
 
 def test_galician_voices_are_the_only_cotovia_styletts2_entries():
@@ -321,17 +307,17 @@ def test_bsc_speaker_entry_reuses_the_shared_checkpoint(lang, speaker, voice):
     A per-speaker model_url would mean 545 MB downloaded 17 times over.
     """
     e = _index()[voice]
-    d = f"bsc-{lang}-styletts2"
     assert e["voice_id"] == voice
     assert e["engine"] == "styletts2" and e["lang"] == lang
     # BSC trained on espeak IPA, same front-end as the zero-shot parent voice
     assert e["phoneme_type"] == "espeak" and e["alphabet"] == "ipa"
-    assert e["model_url"].endswith(f"{d}/model.onnx")
-    assert e["config_url"].endswith(f"{d}/config.json")
+    assert e["model_url"].endswith("/model.onnx")
+    assert e["config_url"].endswith("/config.json")
+    assert {v["model_url"] for k, v in _index().items() if k.startswith(f"bsc/{lang}-")} == {e["model_url"]}
     # the ONLY thing that differs between speakers
-    assert e["style_url"].endswith(f"{d}/{speaker}.bin")
+    assert e["style_url"].endswith(f"/{speaker}.bin")
     # the reference-clip path stays available, so a caller can still clone
-    assert e["speaker_encoder_url"].endswith(f"{d}/style_encoder.onnx")
+    assert e["speaker_encoder_url"].endswith("/style_encoder.onnx")
     assert e["speaker_encoder_type"] == "styletts2_style"
 
 

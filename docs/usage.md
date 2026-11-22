@@ -1,5 +1,13 @@
 # Usage Guide
 
+<!-- agent-hint
+covers: loading a voice, synthesis to WAV or a stream, SynthesisConfig, inline phonemes, phonetic spellings, SSML, multi-speaker voices and the low-level phonemize, tokenize and vocode calls
+source: phoonnx/voice.py:TTSVoice, phoonnx/config.py:SynthesisConfig, phoonnx/ssml.py, phoonnx/providers.py, phoonnx/audio.py
+generated: no
+verify: pytest tests/test_voice_chunks.py tests/test_scale_precedence.py tests/test_synthesis_config_chunk.py tests/test_inline_phonemes.py tests/test_phonetic_spellings.py tests/test_ssml.py; the calls and their output: none, checked by reading phoonnx/voice.py:TTSVoice and phoonnx/config.py:SynthesisConfig
+see: quickstart.md, configuration.md, streaming.md
+-->
+
 This guide is for Python developers driving phoonnx directly. After reading it you can load a
 voice, synthesize to a WAV or a stream, tune synthesis, and reach the low-level phonemize /
 tokenize / vocode calls.
@@ -226,14 +234,17 @@ voice.phonetic_spellings  # PhoneticSpellings (.replacements dict, .apply(text))
 
 `TTSVoice.synthesize_ssml()` and `synthesize_ssml_wav()` read SSML and turn it into silence, pace,
 loudness, pitch, language and sound effects. Input that is not SSML is synthesized as it is.
+The full support table (every W3C SSML 1.1, Polly and Alexa element, measured in English and French), the
+limits and the cost of each feature are in [SSML](ssml.md).
 
 | Tag | Effect |
 | --- | --- |
 | `<break time="500ms"/>`, `strength=` | silence of that length |
 | `<p>`, `<s>` | a pause at the paragraph / sentence edge |
 | `<prosody rate= volume= pitch=>` | pace (the voice's length scale), loudness, and pitch (`+2st`, `-10%`, `high`; Hz is ignored) |
+| `<prosody duration=>`, `amazon:max-duration=` | the speech is stretched or squeezed (0.5x to 2x) to that time, or to at most that time |
 | `<emphasis level=>` | a little slower and louder (or softer for `reduced`) |
-| `<lang xml:lang=>`, `<voice>` | a multilingual voice uses that language's id for the piece; a monolingual voice says the words in its own language. `<say-as>` inside it also reads its value in that language |
+| `<lang xml:lang=>`, `<voice languages=>` | a multilingual voice uses that language's id for the piece; a monolingual voice says the words in its own language. `<say-as>` inside `xml:lang` also reads its value in that language; `<voice languages>` picks the voice only |
 | `<say-as interpret-as=...>` | `cardinal`, `number`, `ordinal`, `digits`, `fraction`, `unit`, `date` (+`format="mdy"`), `time`, `currency`, `telephone`, `characters`/`spell-out`/`letters`/`verbatim`, and `expletive` (a bleep) |
 | `<sub alias=>` | substituted text |
 | `<phoneme alphabet="ipa\|x-sampa" ph=>` | inline phonemes (X-SAMPA is converted to IPA) |
@@ -254,8 +265,7 @@ voice.frontend.say_as("3", "ordinal", lang="en-US")  # 'third'
 
 Pitch, whisper, soft, compression, breaths and bleeps are applied to the finished audio
 (`phoonnx.audio_fx`, numpy only), not by the model: pitch shifts move the formants with the pitch,
-so keep them within a few semitones; whisper is an approximation that keeps the words and drops the
-voicing. Emotions and speaking styles are not something a VITS voice can do and are read as plain
+so keep them within a few semitones; whisper is breath shaped like the words (no pitch, nothing below about 180 Hz) and 8 dB quieter than the speech, set with `level_db` in `audio_fx.whisper`; a breath is quiet and different every time. Emotions and speaking styles are not something a VITS voice can do and are read as plain
 text. A document that does not parse is spoken as its text with the tags removed, and plain text
 containing a stray `<` is never mistaken for SSML (`phoonnx.ssml.looks_like_ssml`). The OVOS plugin
 (`phoonnx.opm`) routes SSML input here and advertises `ssml_tags`.
@@ -335,3 +345,7 @@ language. `voice.tokenizer.tokenize(phonemes)` turns one such list into token ID
 `phonemes_to_ids()` and `phoneme_ids_to_audio()` are deprecated. Use `voice.tokenizer.tokenize`
 and `render()`. `phoneme_ids_to_audio()` returns the engine audio before the level, volume
 and clip steps.
+
+---
+
+[Docs index](index.md) · Previous: [BSC multispeaker StyleTTS2](bsc_multispeaker.md) · Next: [SSML](ssml.md)

@@ -219,7 +219,7 @@ class TestTheRapidoAlias(unittest.TestCase):
             info = self.manager.get_voice("edwixx/pt-BR-rapido-int8")
         self.assertEqual(info.voice_id, "edwixx/pt-BR-rapido-int8")
         self.assertEqual(info.precision, "int8")
-        self.assertTrue(info.model_url.endswith("/edwixx__rapido-tts-int8/model.onnx"))
+        self.assertTrue(info.model_url.endswith(INT8_MODEL))
         removal = f"{VERSION_MAJOR + 1}.0.0"
         self.assertIn(removal, str(caught.warning))
         self.assertIn(removal, log.warning.call_args.args[0])
@@ -242,7 +242,8 @@ class TestTheRapidoAlias(unittest.TestCase):
             info = self.manager.get_voice("edwixx/pt-BR-rapido-int8")
         fetched = _load_and_record(info)
         self.assertTrue(fetched)
-        self.assertTrue(all("/edwixx__rapido-tts-int8/" in url for url in fetched), fetched)
+        self.assertTrue(any(url.endswith(INT8_MODEL) for url in fetched), fetched)
+        self.assertFalse(any(url.endswith("/model.onnx") for url in fetched), fetched)
 
     def test_the_old_id_with_full_names_the_old_id(self):
         with warnings.catch_warnings():
@@ -258,8 +259,11 @@ class TestTheRapidoAlias(unittest.TestCase):
             warnings.simplefilter("ignore", DeprecationWarning)
             self.assertTrue(empty.download_voice_by_id("edwixx/pt-BR-rapido-int8"))
         self.assertEqual(len(downloaded), 1)
-        self.assertTrue(downloaded[0].endswith("/edwixx__rapido-tts-int8/model.onnx"), downloaded)
+        self.assertTrue(downloaded[0].endswith(INT8_MODEL), downloaded)
 
+
+#: The int8 graph of the bundled Rápido voice.
+INT8_MODEL = "/rapido-pt_br-edwixx-graphemes/resolve/a8acd770982817a882462637af8e5183ff640d37/model_int8.onnx"
 
 #: The Rápido entry as releases before the variants field cached it.
 _OLD_RAPIDO = {
@@ -290,7 +294,7 @@ class TestACacheFromAnEarlierRelease(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", DeprecationWarning)
             info = manager.get_voice("edwixx/pt-BR-rapido-int8")
-        self.assertTrue(info.model_url.endswith("/edwixx__rapido-tts-int8/model.onnx"))
+        self.assertTrue(info.model_url.endswith(INT8_MODEL))
 
     def test_an_alias_lookup_keeps_the_entry_the_registry_holds(self):
         manager = TTSModelManager(cache_path=str(self.path))
@@ -311,7 +315,7 @@ class TestACacheFromAnEarlierRelease(unittest.TestCase):
             for _ in range(3):
                 info = manager.get_voice("edwixx/pt-BR-rapido-int8")
         self.assertEqual(bundled.call_count, 1)
-        self.assertTrue(info.model_url.endswith("/edwixx__rapido-tts-int8/model.onnx"))
+        self.assertTrue(info.model_url.endswith(INT8_MODEL))
 
     def test_the_cli_precision_option_ignores_case(self):
         empty = str(Path(self.tmp.name) / "empty.json")
@@ -321,7 +325,7 @@ class TestACacheFromAnEarlierRelease(unittest.TestCase):
             result = CliRunner().invoke(cli, ["download", "edwixx/pt-BR-rapido", "--precision", "INT8"])
         self.assertIsNone(result.exception, result.output)
         self.assertEqual(len(downloaded), 1, result.output)
-        self.assertTrue(downloaded[0].endswith("/edwixx__rapido-tts-int8/model.onnx"), downloaded)
+        self.assertTrue(downloaded[0].endswith(INT8_MODEL), downloaded)
 
     def test_the_cli_downloads_the_old_id(self):
         with patch("phoonnx.cli.TTSModelManager",
@@ -330,7 +334,7 @@ class TestACacheFromAnEarlierRelease(unittest.TestCase):
             result = CliRunner().invoke(cli, ["download", "edwixx/pt-BR-rapido-int8"])
         self.assertIsNone(result.exception, result.output)
         self.assertEqual(len(downloaded), 1, result.output)
-        self.assertTrue(downloaded[0].endswith("/edwixx__rapido-tts-int8/model.onnx"), downloaded)
+        self.assertTrue(downloaded[0].endswith(INT8_MODEL), downloaded)
 
 
 class TestTheOldIdInEachPluginSetting(unittest.TestCase):
@@ -364,7 +368,8 @@ class TestTheOldIdInEachPluginSetting(unittest.TestCase):
         cache_id, fetched = self._synthesize(config, env)
         self.assertEqual(cache_id, cache_voice)
         self.assertTrue(fetched)
-        self.assertTrue(all("/edwixx__rapido-tts-int8/" in url for url in fetched), fetched)
+        self.assertTrue(any(url.endswith(INT8_MODEL) for url in fetched), fetched)
+        self.assertFalse(any(url.endswith("/model.onnx") for url in fetched), fetched)
 
     def test_as_the_voice(self):
         self._check({"voice": self.OLD}, cache_voice=self.OLD)

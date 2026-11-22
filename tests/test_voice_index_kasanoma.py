@@ -5,11 +5,10 @@ null in all three, and ``espeak.voice`` is ``lfn``. So the language a caller
 asks for comes from the index or from nowhere, and ``lang`` here is the only
 record of which voice speaks Twi, Chichewa or Makhuwa.
 
-The model files come from ``Phoonnx/phoonnx-vits``, the architecture
-repository that holds every VITS voice phoonnx loads, one folder per voice.
+The model files come from one repository per voice under ``Phoonnx``.
 Upstream publishes two of the three as a zip on a GitHub release only, which
 phoonnx cannot read, and the third from an account that carries no licence
-file. That mirror is the one stable url for all three.
+file. Those repositories are the one stable url for all three.
 """
 import json
 import re
@@ -20,13 +19,11 @@ from phoonnx.model_manager import TTSModelManager
 
 INDEX = "piper_community.json"
 
-ARCHITECTURE_REPO = r"https://huggingface\.co/Phoonnx/phoonnx-vits/resolve/[0-9a-f]{40}"
-
-# voice id -> the language tag, and the folder inside the architecture repository
+# voice id -> the language tag, and the repository of the voice
 EXPECTED = {
-    "piper_community/ghananlpcommunity/kasanoma-twi": ("tw", "tw-kasanoma"),
-    "piper_community/michsethowusu/kasanoma-chichewa": ("ny", "ny-kasanoma"),
-    "piper_community/michsethowusu/kasanoma-makhuwa": ("vmw", "vmw-kasanoma"),
+    "piper_community/ghananlpcommunity/kasanoma-twi": ("tw", "vits-tw-kasanoma-espeak"),
+    "piper_community/michsethowusu/kasanoma-chichewa": ("ny", "vits-ny-kasanoma-espeak"),
+    "piper_community/michsethowusu/kasanoma-makhuwa": ("vmw", "vits-vmw-kasanoma-espeak"),
 }
 
 
@@ -66,13 +63,11 @@ class TestKasanomaIndex(unittest.TestCase):
                 self.assertEqual(entry["phoneme_type"], "espeak")
                 self.assertEqual(entry["engine"], "piper")
 
-    def test_each_one_reads_from_its_folder_in_the_architecture_repository(self):
-        # A VITS voice resolves out of Phoonnx/phoonnx-vits and never out
-        # of a repository of its own.
+    def test_each_one_reads_from_its_own_repository(self):
         entries = _entries()
-        for voice_id, (_, folder) in EXPECTED.items():
+        for voice_id, (_, repo) in EXPECTED.items():
             with self.subTest(voice_id):
                 entry = entries[voice_id]
-                base = f"{ARCHITECTURE_REPO}/{re.escape(folder)}/"
+                base = rf"https://huggingface\.co/Phoonnx/{re.escape(repo)}/resolve/[0-9a-f]{{40}}/"
                 self.assertRegex(entry["model_url"], f"^{base}model\\.onnx$")
                 self.assertRegex(entry["config_url"], f"^{base}model\\.onnx\\.json$")

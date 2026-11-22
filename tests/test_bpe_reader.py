@@ -499,6 +499,90 @@ class TestAddedTokens(unittest.TestCase):
             self.assertEqual(mine._split_added(text), _regex_split(added, text))
 
 
+# Tokens that begin and end in a character that is not a word character, so no
+# two of them overlap in a text. `tokenizers` releases differ on how a token
+# that overlaps a neighbour is taken; they agree on this set.
+FLAG_TOKENS = ["<mask>", "[SP]", "<|a|>"]
+FLAG_ALPHABET = list("<mask>MASKab xyzq[]P-_1\t\u00a0\n|")
+
+
+def _flagged(path, flags, normalizer=None, tokens=FLAG_TOKENS):
+    """A fixture spec whose added *tokens* all carry *flags*."""
+    spec = _with_added(path, tokens)
+    for token in spec["added_tokens"][-len(tokens):]:
+        token.update(flags)
+    if normalizer:
+        spec["normalizer"] = normalizer
+    return spec
+
+
+class TestAddedTokenFlags(unittest.TestCase):
+    """``lstrip``, ``rstrip``, ``single_word`` and ``normalized`` of an added token."""
+
+    def _tokenizer(self, **flags):
+        path = os.path.join(FIXTURES, "tokenizer_bpe_qwen.json")
+        return Tokenizer(_flagged(path, flags))
+
+    def _ids(self, tokenizer, text):
+        return tokenizer.encode(text, add_special_tokens=False).ids
+
+    def test_lstrip_takes_the_white_space_before_the_token(self):
+        mine = self._tokenizer(lstrip=True)
+        token = mine.token_to_id("[SP]")
+        self.assertEqual(self._ids(mine, "a  \t[SP]b"), self._ids(mine, "a") + [token] + self._ids(mine, "b"))
+        self.assertEqual(self._ids(mine, "a [SP]"), self._ids(mine, "a") + [token])
+
+    def test_rstrip_takes_the_white_space_after_the_token(self):
+        mine = self._tokenizer(rstrip=True)
+        token = mine.token_to_id("[SP]")
+        self.assertEqual(self._ids(mine, "a[SP] \n b"), self._ids(mine, "a") + [token] + self._ids(mine, "b"))
+
+    def test_single_word_refuses_a_match_inside_a_word(self):
+        mine = self._tokenizer(single_word=True)
+        token = mine.token_to_id("[SP]")
+        self.assertNotIn(token, self._ids(mine, "a[SP]"))
+        self.assertNotIn(token, self._ids(mine, "[SP]a"))
+        self.assertEqual(self._ids(mine, "a [SP] b"),
+                         self._ids(mine, "a ") + [token] + self._ids(mine, " b"))
+
+    def test_a_token_without_normalized_is_not_matched_after_the_normalizer(self):
+        path = os.path.join(FIXTURES, "tokenizer_bpe_qwen.json")
+        lowercase = {"type": "Lowercase"}
+        pair = ["<mask>", "<MASK>"]
+        raw = Tokenizer(_flagged(path, {"normalized": False}, lowercase, pair))
+        normalized = Tokenizer(_flagged(path, {"normalized": True}, lowercase, pair))
+        token = raw.token_to_id("<mask>")
+        self.assertNotIn(token, self._ids(raw, "<Mask>"))
+        self.assertEqual(self._ids(normalized, "<Mask>"), [normalized.token_to_id("<MASK>")])
+
+    @unittest.skipIf(ReferenceTokenizer is None, "the `tokenizers` package is not installed")
+    def test_every_flag_encodes_as_the_reference_does(self):
+        rng = random.Random(777)
+        combos = [{"lstrip": True}, {"rstrip": True}, {"lstrip": True, "rstrip": True},
+                  {"single_word": True}, {"normalized": True},
+                  {"normalized": True, "single_word": True, "lstrip": True, "rstrip": True}]
+        bases = [("tokenizer_bpe_qwen.json", None),
+                 ("tokenizer_bpe_qwen.json", {"type": "Lowercase"}),
+                 ("tokenizer_bpe_whitespace.json", None)]
+        for name, normalizer in bases:
+            path = os.path.join(FIXTURES, name)
+            for flags in combos:
+                with tempfile.TemporaryDirectory() as folder:
+                    target = os.path.join(folder, "tokenizer.json")
+                    with open(target, "w", encoding="utf-8") as handle:
+                        json.dump(_flagged(path, flags, normalizer), handle)
+                    mine, reference = Tokenizer.from_file(target), load_tokenizers_package(target)
+                    for _ in range(120):
+                        pieces = [rng.choice(FLAG_ALPHABET) if rng.random() < .5 else rng.choice(FLAG_TOKENS)
+                                  for _ in range(rng.randint(0, 8))]
+                        text = "".join(pieces)
+                        for add_special in (True, False):
+                            self.assertEqual(
+                                mine.encode(text, add_special_tokens=add_special).ids,
+                                reference.encode(text, add_special_tokens=add_special).ids,
+                                f"{name} {normalizer} {flags} disagrees on {text!r}")
+
+
 class TestUnicodeProperties(unittest.TestCase):
     """`re` has no \\p{..}, so the reader writes a property out as ranges."""
 

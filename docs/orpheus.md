@@ -1,5 +1,15 @@
 # Orpheus
 
+<!-- agent-hint
+covers: what the Orpheus engine is, its voices, parameters and limits
+source: phoonnx/engines/orpheus.py:OrpheusAdapter, phoonnx/voice_index/orpheus.json, scripts/conversion/orpheus/evidence/README.md
+generated: no
+verify: pytest tests/test_orpheus.py
+see: engines.md, benchmarking.md
+-->
+
+This page describes the Orpheus engine, its voices and its limits, for developers who consider a large codec language model voice.
+
 [Orpheus](https://github.com/canopyai/Orpheus-TTS) (Canopy Labs, Apache-2.0) is a
 Llama-3.2-3B causal language model whose vocabulary carries 28 672 audio tokens. It
 emits a flat token stream; every seven tokens form one
@@ -8,12 +18,15 @@ turns into 2048 samples at 24 kHz.
 
 ## Read this first: Orpheus is a GPU engine
 
-A 3B backbone costs about **0.37 s per decode step** on 12 CPU cores, and SNAC needs
-~82 tokens for every second of audio. Measured end to end, that is **37-46x slower
-than real time**. Upstream serves it through vLLM on a GPU.
+SNAC needs about 82 tokens for every second of audio, and the 3B backbone makes one
+token per step. On a 12-core CPU in fp32, the backbone took 0.43 to 0.56 s per token,
+so it ran **36-46x slower than real time**: mean 38.7x over 7 sentences, backbone time
+only ([measurement](../scripts/conversion/orpheus/evidence/README.md)).
 
-Canopy Labs announced 1B, 400M and 150M tiers, but **never released them**. Their own
-loader still refuses those names with `"not supported ... will be released very soon"`,
+Upstream serves Orpheus through vLLM on a GPU.
+
+Canopy Labs announced 1B, 400M and 150M tiers, but did not release them. Their own
+loader refuses those names with `"not supported ... will be released very soon"`,
 and the `canopylabs` org on Hugging Face holds only 3B checkpoints. There is no smaller
 Orpheus to fall back to.
 
@@ -27,14 +40,18 @@ conversational realism:
 
 `tara`, `leah`, `jess`, `leo`, `dan`, `mia`, `zac`, `zoe`
 
-Select one per call, or pin it on the voice:
+Each index entry pins one name in its `engine_options`, for example `{"voice": "leo"}`.
+To select another name for one call, pass it in `extra_params`:
 
 ```python
-voice.synthesize("Hello there.", extra_params={"voice": "leo"})
+from phoonnx.config import SynthesisConfig
+
+voice.synthesize("Hello there.", syn_config=SynthesisConfig(extra_params={"voice": "leo"}))
 ```
 
-A plain `speaker_id` also works: the index ships a `speaker_id_map`, and the adapter
-resolves the id back to the name before it reaches the model.
+A name that the checkpoint does not have raises `ValueError`, and the message lists the
+names it has. A plain `speaker_id` selects a name only when the voice config has a
+`speaker_id_map`. The index entries ship no voice config, so they have no map.
 
 ### Emotive tags
 
@@ -84,7 +101,7 @@ upstream source literally produces a prompt the model is never served:
 **The sampler order is vLLM's, not llama.cpp's.** vLLM applies the penalties, then the
 temperature, and truncates to the nucleus last — so `top_p` selects over the *tempered*
 distribution. llama.cpp does the reverse. The
-[NeuTTS](engines.md) adapter deliberately implements the other order, because that is
+[NeuTTS](engines.md) adapter implements the other order on purpose, because that is
 the stack *it* is served through.
 
 Upstream also passes `stop_token_ids=[49158]`, which is the text token `Ġrez` and can
@@ -93,14 +110,13 @@ never appear mid-audio. It is dead code in their serving path; generation really
 
 ## Cloning
 
-Orpheus clones **in context**, from a transcribed reference — not from a bare clip.
-Passing `speaker_reference` alone raises. Use a named voice unless you also have the
-reference transcript.
+Orpheus does not clone. A call with a `speaker_reference` raises `RuntimeError`, also
+when `speaker_reference_text` is set. Use one of the named voices.
 
 ## Multilingual research releases
 
-Canopy Labs also published seven 3B research checkpoints (2025-04-09). They are gated
-on Hugging Face, and their voices are:
+Canopy Labs also published seven 3B research checkpoints. They are gated on Hugging Face,
+and their voices are:
 
 | Language | Repo | Voices |
 |---|---|---|
@@ -113,5 +129,9 @@ on Hugging Face, and their voices are:
 | Hindi | `canopylabs/3b-hi-ft-research_release` | ऋतिका |
 
 Canopy Labs rate their own Spanish, Italian and Hindi fine-tunes as poor, and the
-others as fair. They are not mirrored or indexed yet: each is another 12.7 GB ONNX
+others as fair. phoonnx does not mirror or index them. Each is another 12.7 GB ONNX
 export, and all of them share the English checkpoint's CPU cost.
+
+---
+
+[Docs index](index.md) · Previous: [Pocket TTS](pockettts.md) · Next: [Galician phonemizer](galician.md)

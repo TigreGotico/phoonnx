@@ -1,6 +1,7 @@
 """VoiceConfig.to_dict writes the native config.json: it reads back to the same ids and fits the schema."""
 import copy
 import json
+import re
 from pathlib import Path
 
 import jsonschema
@@ -161,16 +162,52 @@ def test_unset_scales_stay_out_of_the_inference_block():
     jsonschema.validate(native, SCHEMA)
 
 
+# Phonemizers the schema lists before a scriptconv alpha publishes them. Remove a name
+# once the scriptconv floor in pyproject.toml includes it, and give it a row in
+# docs/phonemizers.md.
+SCRIPTCONV_PENDING: set = set()
+
+
 def test_schema_enums_list_every_engine_phonemizer_and_alphabet():
     properties = SCHEMA["properties"]
     assert properties["engine"]["enum"] == [e.value for e in Engine]
-    assert properties["phoneme_type"]["enum"] == [p.value for p in PhonemeType]
-    assert properties["alphabet"]["enum"] == [a.value for a in Alphabet]
+    # PhonemeType and Alphabet come from scriptconv, so the installed scriptconv may be
+    # older than the schema: a value the schema lists must be scriptconv's or pending
+    for key, enum, pending in (("phoneme_type", PhonemeType, SCRIPTCONV_PENDING), ("alphabet", Alphabet, set())):
+        values = {v.value for v in enum}
+        missing = [v for v in values if v not in properties[key]["enum"]]
+        assert missing == [], f"{key} enum lacks {missing}"
+        unknown = [v for v in properties[key]["enum"] if v not in values | pending]
+        assert unknown == [], f"{key} enum lists values scriptconv does not have: {unknown}"
+
+
+def test_the_phonemizer_docs_have_a_row_for_every_published_phonemizer():
+    docs = (Path(phoonnx.__file__).parent.parent / "docs" / "phonemizers.md").read_text(encoding="utf-8")
+    # the Alphabet table has rows of the same shape, and some names are in both tables
+    table = docs.split("## PhonemeType Reference", 1)[1].split("## Alphabet Reference", 1)[0]
+    rows = set(re.findall(r"^\| `([a-z0-9_]+)` \|", table, flags=re.MULTILINE))
+    published = set(SCHEMA["properties"]["phoneme_type"]["enum"]) - SCRIPTCONV_PENDING
+    assert sorted(published - rows) == []
 
 
 def test_schema_refuses_a_config_without_a_symbol_table():
     native = load(PIPER).to_dict()
     del native["phoneme_id_map"]
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(native, SCHEMA)
+
+
+@pytest.mark.parametrize("casing", ["ignore", "lower", "upper", "casefold"])
+def test_schema_takes_every_text_casing(casing):
+    native = load(PIPER).to_dict()
+    native["text_casing"] = casing
+    jsonschema.validate(native, SCHEMA)
+
+
+def test_schema_refuses_an_unknown_text_casing():
+    # get_text_casing reads an unknown name as "ignore", so the voice would keep its case unnoticed
+    native = load(PIPER).to_dict()
+    native["text_casing"] = "title"
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(native, SCHEMA)
 

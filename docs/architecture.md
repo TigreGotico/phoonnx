@@ -1,8 +1,17 @@
 # Architecture
 
-This page is for contributors and advanced users who want to understand how a string of
-text becomes audio inside phoonnx. After reading it you will know which component owns each
-step and where to plug in a new phonemizer, engine, or vocoder.
+<!-- agent-hint
+covers: how text becomes audio in phoonnx, which component owns each step, and where the extension points are
+source: phoonnx/voice.py:TTSVoice (prepare, render, synthesize), phoonnx/encoders.py, phoonnx/tokenizer.py:TTSTokenizer, phoonnx/engines/__init__.py:detect_engine, phoonnx/engines/vocoders/, phoonnx/model_manager.py, phoonnx/audio.py:write_wav
+generated: no
+verify: python -I -c "from phoonnx.engines import detect_engine; print([type(detect_engine(config={'engine': e})).__name__ for e in ('phoonnx', 'piper', 'transformers')])" (prints VitsAdapter three times)
+see: engines.md, phonemizers.md, vocoders.md, api.md
+-->
+
+This page explains how a string of text becomes audio inside phoonnx, for contributors and advanced users.
+
+It names the component that owns each step and the place to plug in a phonemizer, an
+engine or a vocoder.
 
 ## The synthesis pipeline
 
@@ -23,14 +32,15 @@ flowchart TD
 ```
 
 `TTSVoice.synthesize` is two public steps. `TTSVoice.prepare` does steps 1 to 3 and yields
-one `Utterance` (text, symbols, token IDs, side streams) for each engine call.
+one `Utterance` (text, symbols, token IDs, side streams, params) for each engine call.
 `TTSVoice.render` does steps 4 and 5 for one `Utterance` and returns one `AudioChunk`.
 `synthesize` calls `render` on each utterance that `prepare` yields, one at a time. Thus the
 first sentence becomes audio before the second sentence is phonemized. Step by step:
 
 1. **Phonetic spellings** — when `enable_phonetic_spellings` is set, word-level
    replacements loaded from the voice's `locale/<lang>/phonetic_spellings.txt` are applied
-   to the raw text.
+   to the raw text. A `<lang>.txt` file in `$PHOONNX_PHONETIC_SPELLINGS_DIR` adds to them
+   and wins over them.
 2. **Text frontend** — `TTSVoice.frontend` is a scriptconv `TextFrontend` over the voice's
    [phonemizer](phonemizers.md). It runs a fixed order: it splits out inline `[[...]]`
    blocks, normalizes the whole text, splits it into sentences, adds diacritics when
@@ -43,16 +53,22 @@ first sentence becomes audio before the second sentence is phonemized. Step by s
    segment from `phonemize_segments`: Shami a language ID, dizione a stress value. Each reaches the
    engine as the request field of the same name (`language_ids`, `stress`), one value per
    phoneme ID.
-3. **Tokenize** — the `TTSTokenizer` maps phonemes/characters to integer IDs using the
-   voice's `phoneme_id_map`, inserting blank/pad/bos/eos tokens per the voice config. For
-   text-token engines (Chatterbox) the adapter's `encode_text` BPE-tokenizes the raw text
-   instead.
-4. **Adapter synthesize** — `render` merges scale parameters (adapter defaults
-   → voice config → per-call `SynthesisConfig` → engine extras), builds an
+3. **Encode** — the voice's encoder (`TTSVoice.encoder`, from `phoonnx/encoders.py`)
+   turns the frontend output into integer IDs. The adapter builds it in `make_encoder`. For
+   a phoneme or grapheme engine it is a `SymbolEncoder`: the `TTSTokenizer` maps
+   phonemes/characters to IDs using the voice's `phoneme_id_map`, inserting
+   blank/pad/bos/eos tokens per the voice config. For a text-token engine (Chatterbox) it
+   is a `TextEncoder`: Chatterbox overrides `make_encoder`, and its BPE tokenizer
+   tokenizes each normalized frontend chunk. Chatterbox does not call its `encode_text`
+   on this path.
+4. **Adapter synthesize** — `render` merges the parameters (adapter defaults → the
+   `inference` scales of the voice config → the voice's `engine_params` → the scales of
+   the per-call `SynthesisConfig` → its `extra_params`, where a later one wins), builds an
    `AdapterSynthesisRequest`, and hands it to the engine adapter, which runs the ONNX
    session(s) and returns a float32 waveform.
-5. **Post-process** — the waveform is optionally peak-normalized, volume-scaled, and clipped
-   to `[-1, 1]`. Voice conversion and super-resolution run last when the call asks for
+5. **Post-process** — a waveform that holds NaN or infinite samples raises
+   `NonFiniteAudioError`. Otherwise the waveform is optionally peak-normalized or brought
+   to the `target_loudness`, volume-scaled, and clipped to `[-1, 1]`. Voice conversion and super-resolution run last when the call asks for
    them. The result is one `AudioChunk` per utterance. `phoonnx.audio.write_wav` writes a
    stream of chunks to a WAV file. `synthesize_wav` and `synthesize_ssml_wav` use it.
 
@@ -76,16 +92,19 @@ phonemizer normalizes its own input. Individual phonemizer backends may also cle
 
 At load time `TTSVoice` resolves an adapter in this order (`voice.py` + `engines/__init__.py`):
 
-1. If the voice config declares an `engine`, the named adapter is used directly. The
-   `piper`, `mimic3` and `coqui` engines all share the single **VITS** adapter.
+1. If the voice config names a registered engine in `engine`, phoonnx uses that adapter.
+   The format names `phoonnx`, `piper`, `mimic3`, `coqui` and `transformers` are not
+   registered engines. Detection, or the fallback in step 3, gives these voices the **VITS**
+   adapter.
 2. Otherwise `detect_engine()` probes registered adapters in ascending `detect_priority`
    (lower is checked first) and returns the first whose `detect()` matches the config and
    ONNX session.
-3. If nothing matches, it falls back to the VITS adapter.
+3. If nothing matches, phoonnx logs a warning and uses the VITS adapter.
 
-The 17 declared engine formats and the adapter registry are documented in
-[Engines](engines.md); voice-config detection of Piper/Mimic3/Coqui/Transformers shapes is
-documented in the [Configuration reference](configuration.md).
+[Engines](engines.md) describes the adapter registry. The
+[Configuration reference](configuration.md#engine-enum) lists every member of the `Engine`
+enum, and it describes how phoonnx detects the Piper, Mimic3, Coqui and Transformers config
+shapes.
 
 ## Two-stage engines and auxiliary graphs
 
@@ -99,3 +118,7 @@ downloads these alongside the primary model and injects their local paths into
 `engine_params`; every auxiliary session runs on the same execution providers as the voice.
 See [Vocoders](vocoders.md) and the per-engine pages under
 [training/engines/](training/engines/matcha.md).
+
+---
+
+[Docs index](index.md) · Previous: [Indic Parler-TTS](training/engines/indic_parler.md) · Next: [Engine architecture](engines.md)

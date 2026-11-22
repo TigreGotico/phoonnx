@@ -18,7 +18,8 @@ import requests
 from huggingface_hub import constants as hub_constants, hf_hub_download
 from huggingface_hub.constants import HF_HUB_CACHE
 from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
-                                    OfflineModeIsEnabled)
+                                    OfflineModeIsEnabled, RepositoryNotFoundError,
+                                    RevisionNotFoundError)
 from json_database import JsonStorageXDG, JsonStorage, load_commented_json
 
 from phoonnx.config import (PhonemeType, _removal_version, _voice_phonemizer, VoiceConfig, Engine,
@@ -272,6 +273,15 @@ _MOVED_FROM = {"Phoonnx": "OpenVoiceOS"}
 # Repos that also changed name: current id -> the ids it had before, newest first.
 _RENAMED_FROM: Dict[str, List[str]] = json.loads(
     (Path(__file__).parent / "moved_repos.json").read_text(encoding="utf-8"))
+# Each model of a Phoonnx mirror repo (Phoonnx/phoonnx-<family>) has a repo of its own, with the
+# model's folder at the repo root. The table maps such a repo to its mirror, the folder, the mirror
+# commit the index pinned (rev), and the files that keep their mirror path (kept: shared files from
+# outside the folder). "also" lists other mirror folders that served the same files, each with its
+# commit and its own repo path -> mirror path map. The mirrors are to be deleted, so a voice is
+# fetched through a mirror only while the cache holds every file the voice names there; a voice
+# the cache does not hold comes from its own repo.
+_SPLIT_FROM: Dict[str, Dict[str, Any]] = json.loads(
+    (Path(__file__).parent / "split_repos.json").read_text(encoding="utf-8"))
 
 
 def _earlier_ids(repo_id: str) -> List[str]:
@@ -286,6 +296,94 @@ def _repo_cached_before_move(repo_id: str) -> Optional[str]:
     """The newest old repo id that the cache holds the repo under. Reads no network."""
     return next((old for old in _earlier_ids(repo_id)
                  if (Path(HF_HUB_CACHE) / f"models--{old.replace('/', '--')}").is_dir()), None)
+
+
+_Route = Tuple[str, str, str, Dict[str, str]]
+
+
+def _mirror_route(repo_id: str, filenames: Set[str]) -> Optional[_Route]:
+    """The (mirror id, mirror commit, mirror folder, repo path -> mirror path) through which the
+    cache holds every one of ``filenames`` of the split repo ``repo_id``, in one snapshot.
+    Reads no network."""
+    split = _SPLIT_FROM.get(repo_id)
+    if not split:
+        return None
+    kept = split.get("kept", ())
+    main = {name: name if name in kept else f"{split['folder']}/{name}" for name in filenames}
+    ways = [(split["rev"], split["folder"], main)] + [
+        (other["rev"], posixpath.dirname(next(iter(other["paths"].values()))), other["paths"])
+        for other in split.get("also", ())]
+    for mirror in [split["from"], *_earlier_ids(split["from"])]:
+        snapshot_dir = Path(HF_HUB_CACHE) / f"models--{mirror.replace('/', '--')}" / "snapshots"
+        snapshots = list(snapshot_dir.glob("*"))
+        for rev, folder, paths in ways:
+            if not filenames <= paths.keys():
+                continue
+            wanted = [paths[name] for name in filenames]
+            # The download reads the snapshot at ``rev`` first, so a partial one there is the
+            # only one that counts, as in ``_voice_snapshot``.
+            pinned = snapshot_dir / rev
+            candidates = [pinned] if any((pinned / path).exists() for path in wanted) else snapshots
+            if any(_holds(snapshot, wanted) for snapshot in candidates):
+                return mirror, rev, folder, paths
+    return None
+
+
+def _holds(snapshot: Path, paths: List[str]) -> bool:
+    """Whether ``snapshot`` holds every one of ``paths`` and the external data each graph names.
+
+    A graph whose weights were cut off mid-download must not route through a mirror: once the
+    mirror is gone, the missing file would come from another repo's folder, where onnxruntime
+    does not look. A graph that cannot be read counts as holding its data.
+    """
+    for path in paths:
+        file = snapshot / path
+        if not file.exists():
+            return False
+        if path.endswith(".onnx"):
+            try:
+                locations = external_data_locations(file)
+            except (OSError, ValueError):
+                continue
+            if not all((file.parent / location).exists() for location in locations):
+                return False
+    return True
+
+
+# The voice whose scope is open.
+_VOICE_INFO: contextvars.ContextVar[Optional["TTSModelInfo"]] = \
+    contextvars.ContextVar("phoonnx_voice_info", default=None)
+
+# The mirror route of each split repo of the voice being loaded, by (repo id, pinned commit).
+_VOICE_ROUTES: contextvars.ContextVar[Optional[Dict[Tuple[str, str], Optional[_Route]]]] = \
+    contextvars.ContextVar("phoonnx_voice_routes", default=None)
+
+
+def _fetch_source(repo_id: str, revision: str, filename: str) -> Tuple[str, str, str]:
+    """The (repo id, commit, path) to fetch a hub file through. Reads no network.
+
+    A split repo goes through the mirror route that holds the voice's files (or this file,
+    outside a voice load); a file the route does not name, such as the external data of its
+    graph, follows the folder rule of the route. Any other repo goes through the newest earlier
+    id the cache holds, else its own.
+    """
+    if repo_id in _SPLIT_FROM:
+        routes = _VOICE_ROUTES.get()
+        if routes is not None and (repo_id, revision) in routes:
+            route = routes[(repo_id, revision)]
+        else:
+            route = _mirror_route(repo_id, {filename})
+        if route is None:
+            return repo_id, revision, filename
+        mirror, rev, folder, paths = route
+        if filename in paths:
+            return mirror, rev, paths[filename]
+        split = _SPLIT_FROM[repo_id]
+        if folder == split["folder"] and filename in split.get("kept", ()):
+            return mirror, rev, filename
+        return mirror, rev, f"{folder}/{filename}"
+    old = _repo_cached_before_move(repo_id)
+    return (old or repo_id), revision, filename
 
 
 # The snapshot an offline load reads in place of a pinned commit the cache does not hold. The
@@ -314,22 +412,39 @@ def _voice_scope(info: "TTSModelInfo") -> Iterator[None]:
     urls = [getattr(info, f.name) for f in fields(info)
             if f.name.endswith("_url") and f.name != "dictionary_url"]
     urls += list((info.aux_model_urls or {}).values())
+    named: Dict[Tuple[str, str], Set[str]] = {}
     for url in urls:
         match = _HF_URL.match(url.split("?")[0]) if isinstance(url, str) else None
         if match:
-            repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
-            files.setdefault((repo_id, match["rev"]), set()).add(match["path"])
-    token = _VOICE_FILES.set(files)
+            named.setdefault((match["repo"], match["rev"]), set()).add(match["path"])
+    routes = {key: _mirror_route(key[0], paths) for key, paths in named.items() if key[0] in _SPLIT_FROM}
+    route_token = _VOICE_ROUTES.set(routes)
+    info_token = _VOICE_INFO.set(info)
     try:
-        yield
+        for (repo, rev), paths in named.items():
+            for path in paths:
+                repo_id, revision, source_path = _fetch_source(repo, rev, path)
+                files.setdefault((repo_id, revision), set()).add(source_path)
+        files_token = _VOICE_FILES.set(files)
+        try:
+            yield
+        finally:
+            _VOICE_FILES.reset(files_token)
     finally:
-        _VOICE_FILES.reset(token)
+        _VOICE_ROUTES.reset(route_token)
+        _VOICE_INFO.reset(info_token)
 
 
 def _in_voice_scope(method: Callable) -> Callable:
-    """Run a :class:`TTSModelInfo` method inside :func:`_voice_scope` of its voice."""
+    """Run a :class:`TTSModelInfo` method inside :func:`_voice_scope` of its voice.
+
+    Inside a scope already open for the same voice, the routes chosen at its start stay: choosing
+    them again after some files are downloaded could send the rest of the voice elsewhere.
+    """
     @functools.wraps(method)
     def scoped(self, *args, **kwargs):
+        if _VOICE_INFO.get() is self:
+            return method(self, *args, **kwargs)
         with _voice_scope(self):
             return method(self, *args, **kwargs)
     return scoped
@@ -356,7 +471,8 @@ def _voice_snapshot(repo_id: str, revision: str, filename: str,
     Returns ``(False, None)`` when no voice is being loaded or the voice names no file in
     ``repo_id`` at ``revision``, so the folder rule decides. Otherwise the newest snapshot that
     holds ``filename`` and every file the voice names there is chosen, and none when the
-    pinned snapshot holds one of them already, as after an interrupted download.
+    pinned snapshot holds one of them already, as after an interrupted download. A snapshot
+    whose graph lacks the external data it names is passed over, as in :func:`_mirror_route`.
     """
     key = _voice_key(repo_id, revision, filename)
     if key is None:
@@ -368,8 +484,7 @@ def _voice_snapshot(repo_id: str, revision: str, filename: str,
     chosen = _VOICE_SNAPSHOTS.get(key)
     if chosen is None or not chosen.is_dir():
         holding = [snapshot for snapshot in (repo_dir / "snapshots").glob("*")
-                   if snapshot.name != revision
-                   and all((snapshot / name).exists() for name in needed)]
+                   if snapshot.name != revision and _holds(snapshot, list(needed))]
         if not holding:
             return True, None
         chosen = max(holding, key=lambda snapshot: snapshot.stat().st_mtime)
@@ -387,7 +502,8 @@ def _offline_snapshot(repo_id: str, revision: str, filename: str,
                       record: bool = True) -> Optional[Path]:
     """The cached ``filename`` from another snapshot of ``repo_id``, for when ``revision`` is not cached.
 
-    The newest snapshot by modification time that holds ``filename`` is chosen, never the one
+    The newest snapshot by modification time that holds ``filename``, and the external data
+    of ``filename`` when it is a graph, is chosen, never the one
     ``refs/main`` names: a fetch at a commit writes no ref, so ``refs/main`` stays at the last
     commit an unpinned install fetched. Later files of the same folder come from the same
     snapshot or not at all. A folder that the pinned snapshot holds in part, as after an
@@ -410,7 +526,7 @@ def _offline_snapshot(repo_id: str, revision: str, filename: str,
     chosen = _OFFLINE_SNAPSHOTS.get(key)
     if chosen is None or not chosen.is_dir():
         holding = [snapshot for snapshot in (repo_dir / "snapshots").glob("*")
-                   if snapshot.name != revision and (snapshot / filename).exists()]
+                   if snapshot.name != revision and _holds(snapshot, [filename])]
         if not holding:
             return None
         chosen = max(holding, key=lambda snapshot: snapshot.stat().st_mtime)
@@ -436,18 +552,29 @@ def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
     match = _HF_URL.match(url.split("?")[0])
     if not match:
         return None
-    repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
+    repo_id, revision, path = _fetch_source(match["repo"], match["rev"], match["path"])
     try:
         return Path(hf_hub_download(repo_id=repo_id,
-                                    filename=match["path"],
-                                    revision=match["rev"],
+                                    filename=path,
+                                    revision=revision,
                                     etag_timeout=min(timeout, _ETAG_TIMEOUT)))
     except (LocalEntryNotFoundError, OfflineModeIsEnabled):
         # offline, or the hub did not answer, and the cache lacks this commit
-        fallback = _offline_snapshot(repo_id, match["rev"], match["path"])
+        fallback = _offline_snapshot(repo_id, revision, path)
         if fallback is None:
             raise
         return fallback
+    except (RepositoryNotFoundError, RevisionNotFoundError, EntryNotFoundError):
+        if (repo_id, revision, path) == (match["repo"], match["rev"], match["path"]):
+            raise
+        # a deleted mirror: the cached copy, else the repo the index names
+        fallback = _offline_snapshot(repo_id, revision, path)
+        if fallback is not None:
+            return fallback
+        return Path(hf_hub_download(repo_id=match["repo"],
+                                    filename=match["path"],
+                                    revision=match["rev"],
+                                    etag_timeout=min(timeout, _ETAG_TIMEOUT)))
 
 
 def _warn_offhub(url: str) -> None:
@@ -466,29 +593,29 @@ def _cached_path(url: str, graph_url: Optional[str] = None) -> Optional[Path]:
         return None
     match = _HF_URL.match(url.split("?")[0])
     if match:
-        repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
+        repo_id, revision, path = _fetch_source(match["repo"], match["rev"], match["path"])
         try:
             return Path(hf_hub_download(repo_id=repo_id,
-                                        filename=match["path"],
-                                        revision=match["rev"],
+                                        filename=path,
+                                        revision=revision,
                                         local_files_only=True))
         except Exception:
             pass
         # A fallback that _hf_fetch took is what loaded, also when HF_HUB_OFFLINE is
         # unset and the hub was unreachable, so its file is the one to measure.
         repo_dir = Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
-        key = _voice_key(repo_id, match["rev"], match["path"])
+        key = _voice_key(repo_id, revision, path)
         chosen = _VOICE_SNAPSHOTS.get(key) if key is not None else None
         if chosen is None:
-            chosen = _OFFLINE_SNAPSHOTS.get((repo_dir, match["rev"], posixpath.dirname(match["path"])))
+            chosen = _OFFLINE_SNAPSHOTS.get((repo_dir, revision, posixpath.dirname(path)))
         if chosen is not None:
-            path = chosen / match["path"]
-            if path.exists():
-                return path
+            cached = chosen / path
+            if cached.exists():
+                return cached
         if not hub_constants.HF_HUB_OFFLINE:
             return None
         try:
-            return _offline_snapshot(repo_id, match["rev"], match["path"], record=False)
+            return _offline_snapshot(repo_id, revision, path, record=False)
         except OSError:
             return None
     dest = _direct_path(url, graph_url)
@@ -970,6 +1097,7 @@ class TTSModelInfo:
                 LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
         return path
 
+    @_in_voice_scope
     def download_model(self) -> Path:
         """Give the ONNX graph's path in the hub cache."""
         return self._fetch_onnx(self.model_url)
@@ -1436,14 +1564,21 @@ class TTSModelManager:
         Merge a set of predefined voice indexes into the manager's cache and rebuild the in-memory voice registry.
         
         Loads multiple JSON voice index files bundled with the package into the manager's cache, constructs TTSModelInfo objects for each entry, and logs (but skips) any entries that fail to load. If store is True, the updated cache is persisted to disk.
+
+        The cache is rebuilt, not updated in place: the bundled voices come first, in index order, and replace any cached copy; the voices only the cache holds follow, in their cached order. `get_lang_voices` breaks ties by this order, so a bundled voice wins a tie with a cached voice, and the order of an older cache does not change which bundled voice is the default.
         
         Parameters:
             store (bool): If True, persist the updated cache to disk after merging.
         """
-        indexes = [JsonStorage(str(f)) for f in self.voice_index_files()]
+        bundled = {}
+        for f in self.voice_index_files():
+            bundled.update(JsonStorage(str(f)))
         with self._registry_lock:
-            for index in indexes:
-                self.cache.update(index)
+            # bundled voices first, in index order: get_lang_voices breaks ties by this order
+            others = {k: v for k, v in self.cache.items() if k not in bundled}
+            self.cache.clear()
+            self.cache.update(bundled)
+            self.cache.update(others)
             self.voices = self._registry_from_cache()
             if store:
                 self.cache.store()

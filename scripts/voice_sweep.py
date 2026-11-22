@@ -535,9 +535,9 @@ def synthesise_voice(record: dict, entry: dict, sentences: list, args) -> None:
     model = HF_URL.match(entry["model_url"].split("?")[0])
     if model:
         from huggingface_hub import try_to_load_from_cache
-        from phoonnx.model_manager import _repo_cached_before_move
-        path = try_to_load_from_cache(_repo_cached_before_move(model["repo"]) or model["repo"], model["path"],
-                                      revision=model["rev"])
+        from phoonnx.model_manager import _fetch_source
+        repo_id, revision, filename = _fetch_source(model["repo"], model["rev"], model["path"])
+        path = try_to_load_from_cache(repo_id, filename, revision=revision)
         if isinstance(path, str) and "/snapshots/" in path:
             record["snapshot"] = path.split("/snapshots/")[1].split("/")[0]
     syn = SynthesisConfig()

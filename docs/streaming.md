@@ -1,13 +1,26 @@
 # Streaming VITS Engine
 
-This page is for developers using or producing streaming (split encoder/decoder) VITS
-voices in phoonnx. It explains when streaming applies, how the split works, and how to
-tune and verify it.
+<!-- agent-hint
+covers: how split encoder and decoder VITS voices stream, how phoonnx splits a model, and how to tune and check it
+source: phoonnx/engines/vits_streaming.py:VitsStreamingAdapter, phoonnx/engines/vits_split.py:ensure_split_vits, phoonnx/voice.py:TTSVoice.load
+generated: no
+verify: pytest tests/test_vits_streaming.py tests/test_vits_split.py, plus the auto-split and pre-split examples on the page
+see: engines.md, benchmarking.md, alignment.md
+-->
+
+This page explains how split encoder and decoder VITS voices stream, for developers who use or export such voices.
+
+It covers when streaming applies, how the split works, and how to tune and check it.
 
 Standard Piper/VITS voices synthesize a whole sentence in one ONNX call, so the
 first audio sample is only available once the entire sentence is decoded. The
-**streaming** engine lowers *time-to-first-audio* (TTFA) by decoding the
-sentence in chunks and emitting each chunk as soon as it is ready.
+**streaming** engine decodes the sentence in chunks, with a small first chunk, so
+the decoder makes the first audio of a long sentence sooner.
+
+The adapter joins the chunks into one result for each sentence. It does not
+implement `synthesize_stream`, so `TTSVoice.synthesize` and `TTSVoice.stream` both
+yield a sentence after its last chunk is decoded. The time-to-first-audio (TTFA)
+notes below describe the chunked decode itself.
 
 The `VitsStreamingAdapter` handles this. It is auto-selected for any voice whose
 config declares `"streaming": true` **and** ships a separate decoder graph.
@@ -28,7 +41,8 @@ There are three ways to get a split model:
    need a specially-exported voice. If a voice config just sets
    `"streaming": true` on an ordinary single-graph Piper/VITS model, phoonnx
    splits it into an encoder/decoder pair on first load and caches the two
-   graphs next to the model (`<model>.encoder.onnx` / `<model>.decoder.onnx`).
+   graphs next to the model. For `model.onnx`, the files are `model.encoder.onnx` and
+   `model.decoder.onnx`.
    See [Auto-split](#auto-split-no-re-export-needed). This is lossless by
    construction and sidesteps the re-export hazards below.
 
@@ -74,7 +88,7 @@ adapter matches these by name/shape, so pre-split `+RT` voices and auto-split
 voices both work through the same code path.
 
 Splitting needs the full `onnx` package (not just `onnxruntime`), which is an
-optional extra: `pip install phoonnx[streaming]`. It is only needed to *create*
+optional extra: `pip install --pre "phoonnx[streaming]"`. It is only needed to *create*
 a split — a pre-split `+RT` voice streams without it. If `onnx` is missing, or
 the model is not a splittable VITS, phoonnx logs a warning and loads the voice
 as a normal, non-streaming model.
@@ -119,13 +133,16 @@ decode this span --------^                ^------ discard both margins
 | `y_mask` | float32 | `[B, 1, T_slice]` | Matching mask slice |
 | → `output` | float32 | `[B, 1, N]` or `[N]` | Waveform samples |
 
-The **hop length** (decoder samples per latent frame, almost always 256) is read
-from the config if present, otherwise measured from the first decode.
+The **hop length** (decoder samples per latent frame, almost always 256) is the
+voice config's `hop_length`, which is 256 when the config does not set it. The
+adapter measures it from the first decode only when it runs without a voice config.
 
 ## Loading a streaming voice
 
-Point the config at the two graphs via `engine_params`. The primary model path
-is the **encoder**; the decoder is an auxiliary graph:
+Point the config at the two graphs through `engine_params`. The primary model path
+is the **encoder**. The decoder is an auxiliary graph. phoonnx opens `decoder_path` as
+written, so a relative path is relative to the working directory of the process, not to
+the config file. Use an absolute path when the process runs from another folder.
 
 ```json
 {
@@ -140,18 +157,41 @@ is the **encoder**; the decoder is an auxiliary graph:
 
 ```python
 from phoonnx.voice import TTSVoice
-voice = TTSVoice.load(model_path="encoder.onnx")  # config sits next to it
+
+voice = TTSVoice.load(model_path="encoder.onnx", config_path="voice.json")
+print(type(voice.adapter).__name__)
 ```
+
+```text
+VitsStreamingAdapter
+```
+
+Without `config_path`, `TTSVoice.load` reads `encoder.onnx.json`. A `+RT` archive names
+its config `<name>.json`, so pass that file as `config_path`.
 
 Detection is strict: the adapter claims a voice **only** when `"streaming": true`
 *and* `engine_params.decoder_path` are both present, so it never hijacks a normal
 single-graph voice.
 
+The decoder runs on the `providers` of the voice, the same list as the encoder. See
+[Execution Providers](configuration.md#execution-providers).
+
 ## Parameters
 
-All streaming parameters live under `engine_params.streaming` and have proven
-defaults — you only set them to tune. They were tuned empirically on high-tier
-voices (see [Tuning notes](#tuning-notes)).
+The chunking parameters live under `engine_params.streaming`, and the decoder
+thread count is a key of `engine_params` itself. Each one has a default, so you set
+them only to tune. The defaults come from measurements on high-tier voices (see
+[Tuning notes](#tuning-notes)).
+
+```json
+{
+    "engine_params": {
+        "decoder_path": "decoder.onnx",
+        "intra_op_num_threads": 4,
+        "streaming": {"context_margin": 32, "first_chunk": 8}
+    }
+}
+```
 
 | Param | Default | Description |
 |-------|---------|-------------|
@@ -159,7 +199,7 @@ voices (see [Tuning notes](#tuning-notes)).
 | `first_chunk` | 8 | Frames in the first chunk. Smaller → lower TTFA. |
 | `next_chunk` | 160 | Frames per subsequent chunk. Balances per-chunk overhead vs. throughput. |
 | `fallback_frames` | 128 | Sentences this short or shorter are decoded one-shot (streaming can't help). |
-| `intra_op_num_threads` | `cores / 2` | onnxruntime threads for the decoder. See below. |
+| `intra_op_num_threads` | `cores / 2` | onnxruntime threads for the decoder. Set it in `engine_params`, not in `engine_params.streaming`. See below. |
 
 ## Tuning notes
 
@@ -252,7 +292,6 @@ from the split encoder must match the original model's:
 assert T_split == T_orig    # a >1-2% difference means the export drifted (see ryan+RT)
 ```
 
-## See also
+---
 
-- [engines.md](./engines.md) — the adapter registry and auto-detection
-- [configuration.md](./configuration.md) — voice config schema
+[Docs index](index.md) · Previous: [Voice conversion](voice_conversion.md) · Next: [Phoneme alignment](alignment.md)

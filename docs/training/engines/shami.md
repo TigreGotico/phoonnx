@@ -1,9 +1,14 @@
 # Shami Engine
 
-This page is for integrators running Levantine-Arabic / English code-switched
-voices in phoonnx. After reading it you can export a ShamiVITS / HamsVITS
-checkpoint to ONNX, load it, and understand how per-phoneme language IDs flow
-through the pipeline.
+<!-- agent-hint
+covers: how to export, load and run Levantine-Arabic and English code-switched ShamiVITS voices
+source: phoonnx/engines/shami.py, scripts/conversion/shami_tts/export.py
+generated: no
+verify: pytest tests/test_shami.py && ! comm -23 <(grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' docs/training/engines/shami.md | sort -u) <(python scripts/conversion/shami_tts/export.py --help | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | sort -u) | grep .
+see: ../training.md, ../../engines.md, ../../configuration.md
+-->
+
+This page explains how to export, load and run ShamiVITS voices, which mix Levantine Arabic and English, for integrators who use phoonnx.
 
 > Related: [adapter architecture](../../engines.md) ·
 > [configuration](../../configuration.md) ·
@@ -110,3 +115,7 @@ for chunk in voice.synthesize("مَرحَبا، this is a test."):
 
 - [Tushe/shami-tts](https://huggingface.co/Tushe/shami-tts)
 - [Al-aminI/hams-levantine-tts](https://github.com/Al-aminI/hams-levantine-tts)
+
+---
+
+[Docs index](../../index.md) · Previous: [MOSS-TTS-Nano](mosstts.md) · Next: [OuteTTS](outetts.md)

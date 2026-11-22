@@ -1,5 +1,13 @@
 # Alphabet conversion model
 
+<!-- agent-hint
+covers: how VoiceConfig.alphabet, VoiceConfig.phoneme_type and SynthesisConfig.alphabet select a conversion route through the scriptconv graph, and how synthesis dispatches on the result
+source: phoonnx/config.py:VoiceConfig, phoonnx/config.py:SynthesisConfig, phoonnx/voice.py:TTSVoice, scriptconv.graph:DEFAULT_GRAPH, scriptconv.frontend:TextFrontend
+generated: no
+verify: pytest tests/test_inline_phoneme_blocks_dispatch.py tests/test_phoneme_type_default.py tests/test_phoneme_map.py; the conversion routes: none, checked by reading scriptconv.graph:DEFAULT_GRAPH and phoonnx/voice.py:TTSVoice
+see: phonemizers.md, architecture.md, configuration.md
+-->
+
 phoonnx uses a single, unified mechanism to transform every piece of text into
 the token sequence a model expects: **alphabet conversion**.
 
@@ -16,6 +24,14 @@ Every voice has two alphabet fields:
 `SynthesisConfig.alphabet` defaults to `None`, which is treated as
 `Alphabet.GRAPHEMES` — ordinary transcription text.  Set it only when passing
 pre-converted content (e.g. an IPA string or Hangul text).
+
+ARPABET text on an IPA voice can name an r-coloured vowel that the voice's phoneme
+map lacks. The voice then speaks the first spelling in the list below that its map
+holds: `ɝ` as `ɜɹ`, `ɚ` or `əɹ`, and `ɚ` as `əɹ`. For a voice with
+`phoneme_type: espeak`, `ɝ` becomes `ɜː` first, because espeak-ng writes the stressed
+r-coloured vowel that way. A voice that holds the symbol keeps it. With no such
+spelling, the tokenizer drops the symbol with a warning. Text with no
+`SynthesisConfig.alphabet` is not respelled.
 
 ## Conversion is scriptconv's job
 
@@ -47,58 +63,99 @@ voice's phonemizer, already-phonemic input is transcoded via
 
 ### Return type
 
-- **Graphemes → phoneme alphabet edges** return a `PhonemizedChunks`
-  (`list[list[str]]`) — the same shape that `TTSVoice.phonemize()` has always
-  returned, so the tokenisation contract with existing engines is unbroken.
-- **All other edges** return a plain `str`.
+`convert` returns a plain `str` for every edge, the phonemization edge included.
+`TTSVoice.phonemize()` returns `PhonemizedChunks` (`list[list[str]]`): one list of
+symbols for each sentence, which is the shape the tokenizer reads.
 
-## Conversion graph and chain support
+## Conversion graph and routing
 
-The registry `ALPHABET_CONVERTERS` maps `(src_alphabet, tgt_alphabet)` pairs to
-callable edges.  When there is no direct edge, `convert` does a **BFS** over the
-graph and composes a chain of edges automatically.
+`DEFAULT_GRAPH` is a `scriptconv.graph.ConversionGraph`. Its nodes are
+representations, such as `ipa`, `arpa`, `hira` and `hanzi`. Its edges are
+registered transforms from one node to another.
+
+`convert(text, src, dst, **context)` finds the cheapest path of edges and runs each edge in turn. A lossy edge costs
+more than a lossless one, so the router prefers lossless paths. `route(src, dst)`
+returns the path and does not run it.
+
+These are the edges of `DEFAULT_GRAPH.extend(phonemizers.register)`:
 
 ```
-GRAPHEMES ──espeak──► IPA
-GRAPHEMES ──────────► HANGUL
-GRAPHEMES ──pykakasi─► HIRA
-HANGUL ──────────────► HIRA   (Jamo decomposition)
-IPA ◄──scriptconv──► ARPA / X-SAMPA / RFE / COTOVIA   (phoneme-notation edges)
-HIRA ◄──scriptconv──► KANA
+text, text-diacritized ──phonemizer──► IPA          (phonemizers.register)
+IPA ◄──► ARPA / X-SAMPA / Kirshenbaum / Lexique / RFE / Cotovía
+HALABI ──► IPA
+arabic ◄──► buckwalter
+japanese ──► hira / kana                            (optional dictionary)
+hira ◄──► kana
+hangul ──► jamo
+hanzi ──► pinyin / bopomofo                         (optional dictionary)
+hanzi ──► cangjie
 ```
+
+An edge that needs an optional dictionary raises `ImportError` with an install
+hint when the dictionary is not installed.
 
 ### Phoneme-notation edges (scriptconv)
 
-The `IPA ↔ ARPA / X-SAMPA / RFE / Cotovía` and `Hiragana ↔ Katakana` edges are
+The notation edges, such as `IPA ↔ ARPA`, and the `Hiragana ↔ Katakana` edges are
 pure symbol transcodes — no language, no phonemization — and are delegated to
 [scriptconv](https://github.com/TigreGotico/scriptconv), the single source of
-truth for those tables. Because every notation converts to and from IPA, the BFS
-chains them automatically, e.g. `X-SAMPA → IPA → ARPA`.
+truth for those tables. Every notation converts to and from IPA, so the router
+chains two of them through IPA:
 
-Example multi-hop: `HANGUL → HIRA` uses `HANGUL → HIRA` directly, but if only
-`GRAPHEMES → HANGUL` and `HANGUL → HIRA` were registered the BFS would compose
-them automatically.
+```python
+print([(edge.src, edge.dst) for edge in DEFAULT_GRAPH.route("x-sampa", "arpa")])
 
-When no path is found, `convert` returns the input unchanged and logs a debug
-message — it never raises.
+try:
+    DEFAULT_GRAPH.convert("h ə l oʊ", "ipa", "hanzi")
+except ValueError as error:
+    print(error)
+```
+
+```text
+[('x-sampa', 'ipa'), ('ipa', 'arpa')]
+no conversion path 'ipa' -> 'hanzi'; reachable from 'ipa': arpa, cotovia, kirshenbaum, lexique, rfe, x-sampa
+```
+
+When no path is found, `convert` and `route` raise `ValueError`. The message
+names the nodes that the source reaches.
 
 ## Phonemization = the graphemes→phoneme converter family
 
-Phonemization is not a special case; it is the family of conversion edges with
-`src = Alphabet.GRAPHEMES` and `tgt` = a phoneme alphabet (IPA, ARPA, …).
+Phonemization is not a special case; it is the family of conversion edges from
+`text` to a phoneme alphabet.
 
-The `phoneme_type` parameter passed to `convert` selects which backend to use
-within that family.  This mirrors exactly what `VoiceConfig.phoneme_type` has
-always done: it chooses the backend (espeak, gruut, misaki, …) **and** the
-tokenisation recipe that goes with it.
+The `override=` context of `convert` selects the backend of the `text → ipa`
+edge. Without it, the default phonemizer of the language runs. A voice does the
+same with `VoiceConfig.phoneme_type`: it chooses the backend (espeak, gruut,
+misaki, …) **and** the tokenisation recipe that goes with it.
+
+A voice phonemizes through its `TextFrontend`, `TTSVoice.frontend`. The two calls
+below give the same symbols:
 
 ```python
-# These two calls are equivalent:
-voice.phonemize("hello")                       # old path
-convert("hello", "en", Alphabet.GRAPHEMES,
-        voice.config.alphabet,
-        phoneme_type=voice.config.phoneme_type) # new unified path
+from phoonnx.config import VoiceConfig
+from phoonnx.voice import TTSVoice
+
+config = VoiceConfig.from_dict({
+    "phoonnx_version": "1.0",
+    "lang_code": "en-GB",
+    "phoneme_type": "espeak",
+    "alphabet": "ipa",
+    "phoneme_id_map": {"_": [0], "^": [1], "$": [2]},
+})
+voice = TTSVoice(session=None, config=config)
+print(voice.phonemize("hello world"))
+print(voice.frontend.phonemize("hello world"))
 ```
+
+```text
+[['h', 'ə', 'l', 'ˈ', 'ə', 'ʊ', ' ', 'w', 'ˈ', 'ɜ', 'ː', 'l', 'd']]
+[['h', 'ə', 'l', 'ˈ', 'ə', 'ʊ', ' ', 'w', 'ˈ', 'ɜ', 'ː', 'l', 'd']]
+```
+
+This example needs the `espeak` extra only. When the `espeak-ng` program is not on
+`PATH`, scriptconv uses espyak, a Python port of espeak-ng from the same extra, and
+the output is the same.
 
 ## CJK extras
 
@@ -106,7 +163,7 @@ Script conversion edges for Japanese and Chinese require optional dependencies:
 
 ```
 pip install phoonnx[cjk]
-# installs: pykakasi==2.3.0, spacy-pkuseg
+# installs: pykakasi>=2.3.0, spacy-pkuseg
 ```
 
 These are also included in `phoonnx[all]`.
@@ -130,3 +187,7 @@ default graphemes):
 The rule of thumb is the same one that separates the two layers: anything that
 needs the language is phonemization and stays in phoonnx; the `lang`-free
 phoneme↔phoneme hops are scriptconv edges.
+
+---
+
+[Docs index](index.md) · Previous: [Phonemizers](phonemizers.md) · Next: [OVOS plugin](ovos_plugin.md)

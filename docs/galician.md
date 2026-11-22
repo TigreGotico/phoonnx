@@ -1,7 +1,16 @@
 # Galician phonemizer (pycotovia)
 
-This language note is for anyone working with Galician voices. After reading it you will know
-how the Cotovia phonemizer emits IPA or native Cotovia notation and how to select the
+<!-- agent-hint
+covers: how the Galician Cotovia phonemizer works and how the Galician StyleTTS2 voices use it
+source: scriptconv_copyleft.phonemizers.gl:CotoviaPhonemizer (scriptconv[gl] extra), phoonnx/voice_index/styletts2.json, scripts/conversion/styletts2/export_proxectonos_gl.py, scripts/conversion/styletts2/gl_vocab.py
+generated: no
+verify: pytest tests/test_pycotovia_gl.py tests/test_styletts2.py, plus the CotoviaPhonemizer examples on the page
+see: phonemizers.md, bsc_multispeaker.md, cloning.md
+-->
+
+This page describes the Galician Cotovia phonemizer and the Galician StyleTTS2 voices, for anyone who works with Galician voices.
+
+It shows how the phonemizer emits IPA or native Cotovia notation and how to select the
 stress-marked variant. It is part of the [phonemizer catalog](phonemizers.md).
 
 The `CotoviaPhonemizer` class in `scriptconv_copyleft.phonemizers.gl` produces Galician
@@ -13,7 +22,7 @@ port of the [Cotovia](http://webs.uvigo.es/gtm_voz) G2P engine.
 | `Alphabet` value | Output format | Use case |
 |---|---|---|
 | `Alphabet.IPA` | IPA string via `pycotovia.cotovia_to_ipa` | Most phonemizer pipelines |
-| `Alphabet.COTOVIA` | Raw Cotovia notation (e.g. `este e uN sistema`) | Voices trained on Cotovia alphabet output |
+| `Alphabet.COTOVIA` | Raw Cotovia notation (e.g. `este E uN sistema`) | Voices trained on Cotovia alphabet output |
 
 Voices trained on Cotovia-alphabet output (e.g. ProxectoNos, Sabela, Celtia)
 receive strings identical to the original Cotovia C binary's: pycotovia is
@@ -22,9 +31,9 @@ binary-parity-tested against it (see `pycotovia/docs/parity.md`).
 ## Installation
 
 ```bash
-pip install phoonnx[gl]
+pip install --pre "phoonnx[gl]"
 # or directly:
-pip install "scriptconv[gl]"
+pip install --pre "scriptconv[gl]"
 ```
 
 ## Usage
@@ -42,6 +51,11 @@ print(p_ipa.phonemize_string(text, "gl"))   # IPA
 print(p_cot.phonemize_string(text, "gl"))   # Cotovia notation
 ```
 
+```text
+este ɛ uŋ sistema ðe kombeɾsjon de teksto a βoθ eŋ liŋɡwa ɣaleɣa
+este E uN sistema De kombersjon de teksto a BoT eN liNgwa GaleGa
+```
+
 ## Accepted language codes
 
 `CotoviaPhonemizer` accepts any language tag that matches `gl-ES` within a
@@ -55,14 +69,32 @@ stressless. The voice manager passes this through from the voice's `phonemizer_m
 
 ```python
 p_stress = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA, model="stress")
+print(p_stress.phonemize_string(text, "gl"))
 ```
 
-## Factory dispatch
+```text
+e^ste E^ u^N siste^ma De^ kombersjo^n de^ te^ksto a^ Bo^T e^N li^Ngwa Gale^Ga
+```
+
+## Building it from a config
+
+A `scriptconv` `TextFrontend` builds the phonemizer that its `FrontendConfig` names:
 
 ```python
-from phoonnx.config import PhonemeType, Alphabet, get_phonemizer
-p = get_phonemizer(PhonemeType.COTOVIA, alphabet=Alphabet.IPA, model="stress")
+from phoonnx.config import Alphabet, PhonemeType
+from scriptconv.frontend import FrontendConfig, TextFrontend
+
+frontend = TextFrontend(FrontendConfig(lang="gl", phonemizer=PhonemeType.COTOVIA,
+                                       alphabet=Alphabet.IPA, model="stress"))
+print(type(frontend.backend).__name__)
 ```
+
+```text
+CotoviaPhonemizer
+```
+
+`phoonnx.config.get_phonemizer` works, but it is deprecated. It warns with the release
+that removes it.
 
 ## Galician StyleTTS2 voices (ProxectoNos Celtia and Brais)
 
@@ -79,7 +111,7 @@ and `proxectonos/Nos_StyleTTS2-Brais-GL`), converted to ONNX by
 `scripts/conversion/styletts2/export_proxectonos_gl.py` and mirrored to
 [`Phoonnx/phoonnx-styletts2`](https://huggingface.co/Phoonnx/phoonnx-styletts2).
 
-Each voice renders with its own speaker style out of the box. It also accepts a
+Each voice speaks with its own speaker style by default. It also accepts a
 reference clip, because the export ships a `styletts2_style` speaker encoder —
 see [voice cloning](cloning.md).
 
@@ -89,7 +121,8 @@ from phoonnx.model_manager import TTSModelManager
 
 manager = TTSModelManager()
 manager.load()
-voice = manager.voices["proxectonos/celtia-styletts2"].load()
+manager.merge_default_voices()
+voice = manager.get_voice("proxectonos/celtia-styletts2").load()
 for chunk in voice.synthesize("Bo día, como estás?", SynthesisConfig()):
     ...
 ```
@@ -151,8 +184,7 @@ voice speak an extra syllable at the start of every utterance. It costs Brais
 
 ### Known front-end gaps
 
-`pycotovia` does not yet reproduce the Cotovía binary's transcription in two
-places. Measured against the gold `phonetic_transcription` column of the
+`pycotovia` does not reproduce the Cotovía binary's transcription in two places. Measured against the gold `phonetic_transcription` column of the
 `proxectonos/Nos_Celtia-GL` test split (30 sentences):
 
 | Comparison | Word error |
@@ -164,14 +196,18 @@ places. Measured against the gold `phonetic_transcription` column of the
 The base transcription is correct. The remaining errors are that `pycotovia`
 never emits the open vowels `É` and `Ó`, and that it marks stress on unstressed
 function words that the binary leaves unmarked. Punctuation is also dropped,
-although the models accept it. Fixing these belongs in `pycotovia`; until then
-the voices are intelligible but their prosody is flatter than upstream's.
+although the models accept it. These gaps belong to `pycotovia`. With them, the voices
+are intelligible, but their prosody is flatter than upstream's.
 
 ### Training a Galician StyleTTS2 voice
 
 [`proxectonos/PL-ModernBERT-gl`](https://huggingface.co/proxectonos/PL-ModernBERT-gl)
 is the Galician phoneme-level BERT to use with the `styletts2-plbert` training
 engine, which supports ModernBERT backbones. It shares the same 69-symbol
-Cotovía vocabulary. Note that the two shipped voices do **not** embed it — their
-checkpoints carry an ALBERT-style PL-BERT — so it is a resource for new training
-runs, not a drop-in replacement.
+Cotovía vocabulary. The two shipped voices do **not** embed it, because their
+checkpoints carry an ALBERT-style PL-BERT. It is a resource for training runs, not a
+replacement part for the shipped voices.
+
+---
+
+[Docs index](index.md) · Previous: [Orpheus](orpheus.md) · Next: [BSC multispeaker StyleTTS2](bsc_multispeaker.md)

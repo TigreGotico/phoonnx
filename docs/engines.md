@@ -1,9 +1,16 @@
 # Engine Architecture
 
-This page is for developers adding or integrating TTS back-ends in phoonnx. It describes
-the inference adapter and training engine registries and the contract each must satisfy.
+<!-- agent-hint
+covers: how inference adapters and training engines register, detect and run, and how to add one
+source: phoonnx/engines/__init__.py, phoonnx/engines/base.py:BaseOnnxAdapter, phoonnx_train/engines/__init__.py, phoonnx_train/engines/base.py:BaseTrainingEngine, phoonnx_train/train.py, phoonnx_train/export_onnx.py
+generated: no
+verify: pytest tests/test_engine_coverage.py
+see: architecture.md, vocoders.md, streaming.md, training/training.md
+-->
 
-`phoonnx` supports multiple TTS back-ends through a small, engine-agnostic adapter framework.  Both **inference** (`phoonnx/engines/`) and **training** (`phoonnx_train/engines/`) are pluggable, so adding a new architecture (VITS, OptiSpeech, Matcha-TTS, …) only requires implementing a handful of methods.
+This page describes the inference adapter and training engine registries, for developers who add or integrate a TTS back end in phoonnx.
+
+phoonnx runs each TTS back end through a small adapter framework. Inference (`phoonnx/engines/`) and training (`phoonnx_train/engines/`) are both pluggable. To add an architecture, such as VITS, OptiSpeech or Matcha-TTS, you implement a few methods.
 
 ---
 
@@ -19,8 +26,12 @@ An inference adapter lives in `phoonnx/engines/` and implements `BaseOnnxAdapter
 
 ### Adapter Lifecycle
 
+In this sketch, `cfg` is the voice config dict, `sess` is the `onnxruntime.InferenceSession`
+of the voice, and `ids` and `lengths` are int64 arrays of shape `(1, T)` and `(1,)`.
+
 ```python
 from phoonnx.engines import detect_engine, get_adapter
+from phoonnx.engines.base import AdapterSynthesisRequest
 
 # 1. Auto-detect the right adapter from config + ONNX session
 adapter = detect_engine(config=cfg, session=sess)
@@ -34,8 +45,8 @@ request = AdapterSynthesisRequest(
     phoneme_lengths=lengths,
     params={"noise_scale": 0.667, "length_scale": 1.0}
 )
-feed = adapter.build_feed_dict(request, session)
-outputs = session.run(None, feed)
+feed = adapter.build_feed_dict(request, sess)
+outputs = sess.run(None, feed)
 
 # 4. Parse outputs back to audio
 result = adapter.parse_outputs(outputs, request)
@@ -43,7 +54,7 @@ result = adapter.parse_outputs(outputs, request)
 
 ### Registration
 
-Add a new adapter by subclassing `BaseOnnxAdapter` and calling `register_engine`:
+Add an adapter by subclassing `BaseOnnxAdapter` and calling `register_engine`:
 
 ```python
 # phoonnx/engines/my_engine.py
@@ -69,13 +80,28 @@ class MyEngineAdapter(BaseOnnxAdapter):
 register_engine("my_engine", MyEngineAdapter, detect_priority=50)
 ```
 
-Lower `detect_priority` values are probed first during auto-detection.
+Auto-detection probes the lower `detect_priority` values first. A voice config that names
+a registered engine in its `engine` key skips detection, and phoonnx uses that adapter. When
+no adapter matches, phoonnx logs a warning and uses the VITS adapter.
+
+### Optional adapter hooks
+
+The base class gives a default for each hook below. Override one only when the engine
+needs it.
+
+| Hook | Default | Override it when |
+|---|---|---|
+| `make_encoder(voice_config, frontend, tokenizer)` | A `SymbolEncoder` (frontend symbols through the voice's tokenizer). An adapter that overrides `encode_text` gets a `TextEncoder` that gives `encode_text` the whole prepared text. | The engine reads text through its own tokenizer, such as a BPE. See [The encoder](api.md#the-encoder). |
+| `max_input_tokens` | `None`: a request is never cut. | The model reads a limited number of ids. A longer request runs as several pieces whose audio is joined. A piece ends after the last clause mark that fits, else at the last word gap that fits. Each piece gets `bos` and `eos` again. A word longer than the limit raises `ValueError`. An adapter that sets `max_input_tokens` also sets `bos`, `eos`, `word_gap` and `clause_marks` in `configure`. |
+| `synthesize(request, session)` | `build_feed_dict`, `session.run`, `parse_outputs`, once for each piece of the request. | The engine runs more than one graph or a sampling loop. |
+| `synthesize_stream(request, session)` | Yields the one result of `synthesize`. | The engine makes audio in steps, and `TTSVoice.stream` should yield each part when it exists. Joined, the parts must give the audio of `synthesize`. |
+| `configure(voice_config)` | Does nothing. | The engine loads auxiliary graphs or reads `engine_params` once at load. |
 
 ### Existing Adapters
 
 | Adapter | File | Detection |
 |---|---|---|
-| VITS / Piper / Mimic3 / Coqui / VITS2 / YourTTS-VITS | `phoonnx/engines/vits.py` | `model_type == "vits"`, `"scales"` input, piper/mimic3 signatures |
+| VITS / Piper / Mimic3 / Coqui / VITS2 / YourTTS-VITS | `phoonnx/engines/vits.py` | `engine` in (`vits`, `piper`, `mimic3`, `coqui`, `phoonnx`), a Piper, phoonnx, Coqui or Mimic3 config shape, or a `scales` input |
 | [Streaming VITS](streaming.md) | `phoonnx/engines/vits_streaming.py` | `streaming: true` **and** a decoder graph (split encoder/decoder) |
 | Prior-split VITS (Inflect-v2 Micro/Nano) | `phoonnx/engines/vits.py` (`VitsPriorSplitAdapter`) | `engine_params.decode_path` **and** the duration graph's outputs ⊇ `{m_p_exp, logs_p_exp, y_mask}` — split at the flow **prior**, not the flow/HiFiGAN boundary Streaming VITS uses |
 | [Matcha](training/engines/matcha.md) | `phoonnx/engines/matcha.py` | `engine == "matcha"` (flow-matching mel + separate vocoder) |
@@ -85,11 +111,11 @@ Lower `detect_priority` values are probed first during auto-detection.
 | [FastPitch](training/engines/fastpitch.md) / SpeedySpeech | `phoonnx/engines/fastpitch.py` | `engine == "fastpitch"` |
 | StyleTTS2 / Kokoro | `phoonnx/engines/styletts2.py` | `engine in ("styletts2", "kokoro")` — supports d-vector [cloning](cloning.md); Galician voices in [galician.md](galician.md), BSC Spanish/Catalan speakers in [bsc_multispeaker.md](bsc_multispeaker.md) |
 | YourTTS | `phoonnx/engines/yourtts.py` | `engine == "yourtts"` — d-vector [cloning](cloning.md) |
-| [ZipVoice](training/engines/zipvoice.md) | `phoonnx/engines/zipvoice.py` | `engine == "zipvoice"` — first **iterative** engine (flow-matching ODE loop), in-context [cloning](cloning.md) |
+| [ZipVoice](training/engines/zipvoice.md) | `phoonnx/engines/zipvoice.py` | `engine == "zipvoice"` — **iterative** engine (flow-matching ODE loop), in-context [cloning](cloning.md) |
 | [F5-TTS](training/engines/f5tts.md) | `phoonnx/engines/f5tts.py` | `engine == "f5tts"` — multi-graph engine (auxiliary ONNX graphs via `aux_model_urls`) |
 | Shami / HamsVITS | `phoonnx/engines/shami.py` | `engine in ("shami", "hams")` — VITS variant with per-phoneme `language_ids` for Levantine Arabic / English code-switching |
 | tiny-voca | `phoonnx/engines/tinyvoca.py` | `engine == "tinyvoca"`, or a graph with `tokens`, `stress`, `voice` and `pitch_range` inputs — 4.5M-parameter American English model with a source-filter waveform head; reads dizione tokens with a stress value each, one engine call per sentence as dizione cuts the text, two voices (F2, M2), 24 kHz. The adapter adds a full stop to a sentence that ends without a mark, cuts a sentence over 500 tokens after a clause mark or between words, and scales the audio to a peak of 0.99. It reads plain text only. An inline `[[...]]` block gets one warning that names the voice and the block, and the voice leaves the block out of the text it reads. Phonetic input (`SynthesisConfig.alphabet`) is not supported: the voice logs one warning, and the tokenizer drops the characters that have no id |
-| [Chatterbox](training/engines/chatterbox.md) | `phoonnx/engines/chatterbox.py` | `engine == "chatterbox"` — first **autoregressive** engine (codec-LM), d-vector [cloning](cloning.md) + exaggeration |
+| [Chatterbox](training/engines/chatterbox.md) | `phoonnx/engines/chatterbox.py` | `engine == "chatterbox"` — **autoregressive** engine (codec-LM), d-vector [cloning](cloning.md) + exaggeration |
 | Vosk | `phoonnx/engines/vits.py` (shared) | `engine == "vosk"` — alphacep vosk-tts Russian voices: plain VITS exports whose front-end is scriptconv's dictionary/rule `VoskPhonemizer` |
 | SuperTonic | `phoonnx/engines/supertonic.py` | `engine == "supertonic"` — multi-graph flow-matching engine (4 ONNX graphs via `aux_model_urls`), raw-text (no phonemizer), fixed per-speaker style instead of cloning |
 | NeuTTS (NeuTTS Air / VieNeu / Akiti) | `phoonnx/engines/neutts.py` | `engine == "neutts"` — autoregressive single-codebook codec-LM (Qwen3 or Llama backbone + NeuCodec decoder), raw text phonemized with espeak-ng in the checkpoint's language ([front-end keys](#neutts-front-end)), an inline `[[...]]` block going into the phone string as its IPA written, in-context [cloning](cloning.md) from pre-encoded voice presets, 24 kHz |
@@ -99,9 +125,9 @@ Lower `detect_priority` values are probed first during auto-detection.
 | [OuteTTS](training/engines/outetts.md) | `phoonnx/engines/outetts.py` | `engine == "outetts"` — autoregressive two-codebook codec-LM (Qwen3 backbone + DAC.speech decoder), raw text in 23 languages, in-context [cloning](cloning.md) from pre-encoded speaker profiles, 24 kHz |
 | [ArkTTS (Zortzi + Audio8)](training/engines/arktts.md) | `phoonnx/engines/arktts.py` | `engine == "arktts"` — two autoregressive stages (24-layer slow AR + 4-layer fast AR) writing 10 codebooks per 21.5 Hz frame, raw-text, Basque or 11 languages, reference-clip voices, 44.1 kHz |
 | Llasa (Llasa-1B / XCodec2) | `phoonnx/engines/llasa.py` | `engine == "llasa"` — autoregressive single-codebook codec-LM (LLaMA-3.2 backbone + XCodec2 decoder), raw text through the LLaMA chat template, in-context [cloning](cloning.md) from pre-encoded voice presets, English and Mandarin, 16 kHz |
-| [OmniVoice](training/engines/omnivoice.md) | `phoonnx/engines/omnivoice.py` | `engine == "omnivoice"` — first **masked-diffusion** engine: a Qwen3 backbone unmasks 8 Higgs-codec streams over 32 bidirectional full-sequence steps, raw-text, 600+ languages, in-context [cloning](cloning.md), 24 kHz |
-| [Indic Parler-TTS](training/engines/indic_parler.md) | `phoonnx/engines/indic_parler.py` | `engine == "indic_parler"` — first **encoder-decoder** engine: a frozen Flan-T5 encoder turns a natural-language voice description into cross-attention states for a 24-layer AR decoder over 9 delayed DAC codebooks, raw-text, 20 Indic languages + English, 44.1 kHz |
-| [Orpheus](orpheus.md) | `phoonnx/engines/orpheus.py` | `engine == "orpheus"` — autoregressive codec-LM (Llama-3.2-3B backbone + SNAC decoder), raw text with emotive tags, eight named English voices, 24 kHz. **GPU engine**: ~37x realtime on 12 CPU cores |
+| [OmniVoice](training/engines/omnivoice.md) | `phoonnx/engines/omnivoice.py` | `engine == "omnivoice"` — **masked-diffusion** engine: a Qwen3 backbone unmasks 8 Higgs-codec streams over 32 bidirectional full-sequence steps, raw-text, 600+ languages, in-context [cloning](cloning.md), 24 kHz |
+| [Indic Parler-TTS](training/engines/indic_parler.md) | `phoonnx/engines/indic_parler.py` | `engine == "indic_parler"` — **encoder-decoder** engine: a frozen Flan-T5 encoder turns a natural-language voice description into cross-attention states for a 24-layer AR decoder over 9 delayed DAC codebooks, raw-text, 20 Indic languages + English, 44.1 kHz |
+| [Orpheus](orpheus.md) | `phoonnx/engines/orpheus.py` | `engine == "orpheus"` — autoregressive codec-LM (Llama-3.2-3B backbone + SNAC decoder), raw text with emotive tags, eight named English voices, 24 kHz. **GPU engine**: 36-46x slower than real time on a 12-core CPU in fp32 ([measurement](orpheus.md#read-this-first-orpheus-is-a-gpu-engine)) |
 | Magpie-TTS | `phoonnx/engines/magpie.py` | `engine == "magpie"` — encoder-decoder codec-LM (6-layer causal text encoder, 12-layer causal decoder + 2-layer local transformer refiner, NanoCodec decoder), 8 codebooks over 2 stacked frames per step, attention-prior alignment (no learned monotonic alignment), five fixed baked-context voices (no cloning), byte (ByT5) and character sub-tokenizers encoded as NeMo encodes them, picked by language or by the voice ([sub-tokenizer keys](#magpie-sub-tokenizers)); the G2P sub-tokenizers (en/de/es/pt/hi/zh/ja) need scriptconv IPA and are refused with `NotImplementedError`, 22.05 kHz |
 | MOSS-TTS-Nano | `phoonnx/engines/mosstts.py` | `engine == "mosstts"` — autoregressive RVQ-16 codec-LM (6 ONNX graphs via `aux_model_urls`), raw text via SentencePiece, in-context [cloning](cloning.md) from a reference clip alone, native 48 kHz |
 | [x-vits](training/engines/xvits.md) | `phoonnx/engines/xvits.py` | `engine == "xvits"` — Piper/VITS with a flow-matching prosody model: 5 ONNX graphs (encoder, prosody predictor, duration, acoustic, prominence; the encoder is the voice's own graph, the others load from `aux_model_urls`), six styles, `*word*` emphasis, espeak ids from the voice pipeline, 22.05 kHz |
@@ -117,10 +143,10 @@ adapters have no voice of their own:
 | Adapter | Why no index voice |
 | --- | --- |
 | `vits_streaming` | It is a mode of a VITS voice, not a voice. A config with `"streaming": true` selects it, and phoonnx splits the model on first load. See [streaming](streaming.md). |
-| `yourtts` | `Phoonnx/yourtts-multi-graphemes` holds the model and six fixed-speaker configs (English and Portuguese). They join the index after an ASR round trip. |
+| `yourtts` | `Phoonnx/yourtts-multi-graphemes` holds the model and six fixed-speaker configs (English and Portuguese). The index has no entry for them. |
 | `zipvoice` | It clones from a reference clip and its transcript on each request, and the Phoonnx organisation has no converted ZipVoice model. |
-| `tinyvoca` | The mirror `Phoonnx/tinyvoca-en_us` is not public. The index entry joins with it. |
-| `xvits` | The weights of `fdemelo/x-vits` are CC BY-NC 4.0. The index entry joins with the mirror, after a listening check. |
+| `tinyvoca` | The mirror `Phoonnx/tinyvoca-en_us` is not public. |
+| `xvits` | The weights of `fdemelo/x-vits` are CC BY-NC 4.0, and the Phoonnx organisation has no mirror of them. |
 
 `tests/test_engine_coverage.py` fails when an adapter has no voice and is not in this table.
 
@@ -138,7 +164,7 @@ A `tokenizer.json` with `tokenizer_kinds` encodes as NeMo's `AggregatedTTSTokeni
 does, and a voice can name any byte or character sub-tokenizer in it. A voice that names
 a sub-tokenizer the asset does not have, or a G2P one, does not load.
 
-A `tokenizer.json` without `tokenizer_kinds` keeps the older encoders: fr, it, vi and ko
+A `tokenizer.json` without `tokenizer_kinds` uses fixed encoders: fr, it, vi and ko
 as bytes with no `</s>`, and ar as every known character, with no space collapse and no
 space pad. It can only encode a language with a sub-tokenizer that the checkpoint maps to
 the same base language. A voice in `ar` can name `arabic_SA_chartokenizer`, but a voice in
@@ -166,6 +192,8 @@ A training engine lives in `phoonnx_train/engines/` and implements `BaseTraining
 ### Engine Lifecycle
 
 ```python
+from pathlib import Path
+
 from phoonnx_train.engines import get_engine
 from phoonnx_train.engines.base import TrainingEngineConfig
 
@@ -192,7 +220,7 @@ onnx_path = engine.export_onnx(
 
 ### Registration
 
-Add a new training engine by subclassing `BaseTrainingEngine` and calling `register_engine`:
+Add a training engine by subclassing `BaseTrainingEngine` and calling `register_engine`:
 
 ```python
 # phoonnx_train/engines/my_engine.py
@@ -226,13 +254,14 @@ register_engine("my_engine", MyTrainingEngine)
 | [OptiSpeech](training/engines/optispeech.md) | `phoonnx_train/engines/optispeech.py` | see page |
 | [FastPitch](training/engines/fastpitch.md) / `speedyspeech` | `phoonnx_train/engines/fastpitch.py` | see page |
 | [ZipVoice](training/engines/zipvoice.md) | `phoonnx_train/engines/zipvoice.py` | see page |
-| `mixer` / [MixerTTS](training/engines/mixertts.md) | `phoonnx_train/engines/mixer.py` | see page |
+| `mixer` or `mixertts` / [MixerTTS](training/engines/mixertts.md) | `phoonnx_train/engines/mixer.py` | see page |
 | StyleTTS2 (`styletts2`, `styletts2-aligner`, `styletts2-plbert`, `styletts2-pitch`) | `phoonnx_train/engines/styletts2*.py` | see page |
 | YourTTS | `phoonnx_train/engines/yourtts.py` | see page |
 | [Rápido](training/engines/rapido.md) | `phoonnx_train/engines/rapido.py` | `base`, `low` |
+| [SuperTonic](training/engines/supertonic.md) | `phoonnx_train/engines/supertonic.py` | see page |
 
-`Chatterbox`, `F5-TTS`, `SuperTonic` and `Pocket TTS` currently ship inference-only adapters
-(`phoonnx/engines/`) — there is no `phoonnx_train` training engine for them yet.
+`Chatterbox`, `F5-TTS` and `Pocket TTS` have inference adapters (`phoonnx/engines/`) and
+no `phoonnx_train` training engine.
 
 ---
 
@@ -250,11 +279,14 @@ python -m phoonnx_train.train \
   --max-epochs 1000
 ```
 
-`--quality` is validated lazily against the engine’s `quality_presets()` so custom engines can define their own tier names.
+`train.py` reads the `--quality` tier from the engine's `quality_presets()`, so each engine
+defines its own tier names. An unknown tier logs a warning, and training uses `medium` or,
+if the engine has no `medium`, its first tier.
 
 ### ONNX Export
 
-`export_onnx.py` accepts `--engine` and passes all CLI flags through to the engine’s `export_onnx()` method:
+`export_onnx.py` accepts `--engine`. It passes the checkpoint, `--config`, `--output-dir`,
+`--generate-tokens` and `--piper` to the engine's `export_onnx()` method:
 
 ```bash
 python -m phoonnx_train.export_onnx epoch=500.ckpt \
@@ -265,7 +297,9 @@ python -m phoonnx_train.export_onnx epoch=500.ckpt \
   --piper
 ```
 
-Engine-specific flags can be added by the engine via `extra_cli_options()`.
+`--add-phoneme-alignment` runs after the engine export and adds a phoneme-alignment output
+to the exported graph. `BaseTrainingEngine.extra_cli_options()` exists, but neither
+`train.py` nor `export_onnx.py` adds the options that it returns.
 
 ---
 
@@ -324,7 +358,7 @@ syn = SynthesisConfig(
 
 ---
 
-## Adding a New Engine (Checklist)
+## Adding an Engine (Checklist)
 
 1. **Inference**
    - Subclass `BaseOnnxAdapter`.
@@ -346,7 +380,7 @@ syn = SynthesisConfig(
 
 ## Testing
 
-The built-in test suite should already cover engine-agnostic paths.  When adding a new engine, verify:
+The test suite covers the engine-independent paths. For an added engine, check these:
 
 ```python
 from phoonnx.engines import detect_engine, get_adapter, list_engines
@@ -359,3 +393,7 @@ assert "your_engine" in list_train_engines()
 adapter = detect_engine(config={"model_type": "your_engine"})
 assert adapter.__class__.__name__ == "YourEngineAdapter"
 ```
+
+---
+
+[Docs index](index.md) · Previous: [Architecture](architecture.md) · Next: [Vocoders](vocoders.md)

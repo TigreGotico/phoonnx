@@ -1,8 +1,14 @@
 # Spark-TTS Engine
 
-This page is for integrators who want Spark-TTS voices in phoonnx. After reading it you
-can use a preset speaker, clone a voice from a reference clip, and understand what each
-of the five ONNX graphs does.
+<!-- agent-hint
+covers: how to use a Spark-TTS preset speaker or clone a voice, and what the five graphs do
+source: phoonnx/engines/sparktts.py, phoonnx/voice_index/sparktts.json
+generated: no
+verify: pytest tests/test_sparktts.py tests/test_card_example_sparktts.py; the decoding defaults: none, checked by reading phoonnx/engines/sparktts.py:SparkTTSAdapter.default_params
+see: chatterbox.md, ../../cloning.md, ../../engines.md
+-->
+
+This page explains how to use the Spark-TTS preset speakers and clone a voice, for integrators who want Spark-TTS voices in phoonnx.
 
 > Related: [adapter architecture](../../engines.md) ·
 > [configuration](../../configuration.md) · [voice cloning](../../cloning.md) ·
@@ -135,3 +141,7 @@ decoding, so they are not safe defaults.
 
 Spark-TTS 0.5B is released by SparkAudio under CC-BY-NC-SA-4.0; the upstream code is
 Apache-2.0. Check that licence before any commercial use.
+
+---
+
+[Docs index](../../index.md) · Previous: [Chatterbox](chatterbox.md) · Next: [Qwen3-TTS](qwen3tts.md)

@@ -1,9 +1,17 @@
 # Phonemizers
 
-This page is the phonemizer backend catalog for advanced users and voice authors. After
-reading it you will know every `PhonemeType`, the `Alphabet` values they emit, and how a voice
-selects one. The phonemizer is selected via the `PhonemeType` enum and configured through
-`Alphabet`; both live in `phoonnx.config`.
+<!-- agent-hint
+covers: every PhonemeType and Alphabet value, and how a voice selects and runs its phonemizer
+source: phoonnx/config.py:PhonemeType, phoonnx/config.py:Alphabet (re-exported from scriptconv.phonemizers), scriptconv.frontend:TextFrontend, scriptconv.diacritics, phoonnx/config.py:VoiceConfig.add_diacritics
+generated: no
+verify: python -I -c "from phoonnx.config import PhonemeType, Alphabet; print(len(PhonemeType), len(Alphabet))" (prints 58 23), plus the frontend examples on the page
+see: galician.md, architecture.md, installation.md
+-->
+
+This page lists every phonemizer backend and output alphabet, and shows how a voice selects one, for voice authors and advanced users.
+
+The `PhonemeType` enum selects the phonemizer, and the `Alphabet` enum sets its output.
+Both live in `phoonnx.config`.
 
 ## PhonemeType Reference
 
@@ -55,6 +63,21 @@ matching [install extra](installation.md#language-extras).
 | `euskaphone` | Dialect-aware Basque (o2i lattice) | Basque |
 | `barranquenho` | Barranquenho contact variety, through scriptconv on the orthography2ipa spec `ext-PT-x-barranco` | Barranquenho |
 | `orthography2ipa` | Multilingual data-driven IPA (o2i lattice) | Multilingual |
+| `phonetisaurus` | Phonetisaurus WFST G2P. The model sets the language and the symbols | Any, per model |
+| `g2pw` | g2pW polyphone model: pinyin initials, finals and tones | Chinese |
+| `f5tts_char` | The text as written, one token per character (Habibi-TTS, SILMA TTS) | Any |
+| `f5tts_pinyin` | F5-TTS `convert_char_to_pinyin`: hanzi as pinyin syllables, other characters as written | Chinese |
+| `halabi` | Halabi Arabic-Phonetiser, with no diacritizer: the input must have its vowels | Arabic |
+| `iqra` | Halabi Arabic-Phonetiser output in the IqraEval `phoneme_ref` convention | Arabic |
+| `africa_g2p` | africa-g2p rules: native-orthography units or IPA | 400+ African languages |
+| `ghana_g2p` | africa-g2p rules, patched for Ghanaian languages: native units or IPA | 42 Ghanaian languages |
+| `matoub_kab` | The Kabyle rule set that the Matoub-82M voice was trained on | Kabyle |
+| `leokani` | Leokani: lexicon, ONNX letter-to-sound and context models; emits the Kokoro (misaki) codes | en-US |
+| `kolokwa` | kolokwa-g2p model | Liberian English (lir) |
+| `espeak_lt_accent` | eSpeak IPA with the three Lithuanian pitch accents | Lithuanian |
+| `hebrew_ipa` | IPA with stress, from text that carries niqqud | Hebrew |
+| `openjtalk_prosody` | Open JTalk IPA with accent rise, fall and phrase marks | Japanese |
+| `tltk` | TLTK IPA with a tone digit after each syllable | Thai |
 
 ## Alphabet Reference
 
@@ -83,10 +106,12 @@ The `Alphabet` enum controls the output representation of the phonemizer:
 | `graphemes` | Raw text characters |
 | `vosk` | vosk-tts phoneme inventory (Russian) |
 | `cangjie` | Cangjie input-method decomposition (Chinese) |
+| `halabi` | Halabi Arabic-Phonetiser phoneme notation (Arabic) |
+| `africa_g2p` | africa-g2p native-orthography phoneme units (African languages) |
 
 ## Selecting a Phonemizer
 
-The phonemizer is typically declared in the model's `model.json` config and loaded automatically. You can override it at load time:
+The voice config declares the phonemizer, and phoonnx loads it with the voice. You can override it at load time:
 
 ```python
 from phoonnx.voice import TTSVoice
@@ -103,7 +128,14 @@ The voice reads text through `voice.frontend`, a scriptconv `TextFrontend` over 
 phonemizer. It gives the phonemes the voice synthesizes, one list per sentence:
 
 ```python
-voice.frontend.phonemize("Hello world. How are you?")
+print(voice.frontend.phonemize("Olá mundo. Como estás?"))
+```
+
+With the `OpenVoiceOS/phoonnx_pt-PT_miro_unicode` voice, which uses the `unicode`
+phonemizer, the output is:
+
+```text
+[['O', 'l', 'a', '́', ' ', 'm', 'u', 'n', 'd', 'o', '.'], ['C', 'o', 'm', 'o', ' ', 'e', 's', 't', 'a', '́', 's', '?']]
 ```
 
 To phonemize without a voice, build a `TextFrontend` directly:
@@ -113,7 +145,13 @@ from scriptconv.frontend import FrontendConfig, TextFrontend
 from scriptconv.phonemizers import Phonemizer
 
 frontend = TextFrontend(FrontendConfig("en-US", Phonemizer.ESPEAK))
-frontend.phonemize("Hello world")
+print(frontend.phonemize("Hello world"))
+```
+
+The eSpeak backend needs the `espeak` extra. The output is:
+
+```text
+[['h', 'ə', 'l', 'ˈ', 'o', 'ʊ', ' ', 'w', 'ˈ', 'ɜ', 'ː', 'l', 'd']]
 ```
 
 A voice's `phonemizer_model` selects a variant for the backends that support one, for
@@ -125,8 +163,17 @@ DeepPhonemizer). `FrontendConfig.model` takes the same value.
 `phoonnx.config.get_phonemizer` and `phoonnx.config.get_conversion` are deprecated. They
 warn, and the warning names the release that removes them.
 
-Beyond `phonemize()` (grouped by sentence), every backend exposes `phonemize_to_list(text,
+Besides `phonemize()`, which groups by sentence, every backend has `phonemize_to_list(text,
 lang)` for a flat phoneme list and `phonemize_string(text, lang)` for a single chunk.
+`frontend.backend` gives the backend of a `TextFrontend`:
+
+```python
+print(frontend.backend.phonemize_string("Hello world", "en-US"))
+```
+
+```text
+həlˈoʊ wˈɜːld
+```
 
 ## Special Language Notes
 
@@ -149,7 +196,7 @@ Arabic diacritization uses [`text2tashkeel`](https://pypi.org/project/text2tashk
 by the [`ar` extra](installation.md#language-extras). The diacritizer model defaults to
 `rawi-ensemble` (which also restores hamza and the dagger alef); override it with the
 `diacritizer_model` field on the voice config or per call on `SynthesisConfig`. Requesting
-Arabic diacritics without `text2tashkeel` installed raises a clear `ImportError`. Hebrew uses
+Arabic diacritics without `text2tashkeel` installed raises an `ImportError` that names the package. Hebrew uses
 Phonikud.
 
 ### Galician (Cotovia)
@@ -158,7 +205,7 @@ The `cotovia` phonemizer runs [pycotovia](https://github.com/TigreGotico/pycotov
 
 ### Chinese
 
-Multiple backends are available. `pypinyin` and `xpinyin` produce Pinyin output. `g2pc` and `g2pm` produce IPA. `jieba` is a word segmenter and not a true phonemizer on its own.
+Several backends cover Chinese. `pypinyin` and `xpinyin` produce Pinyin output. `g2pc` and `g2pm` produce IPA. `jieba` is a word segmenter and not a true phonemizer on its own.
 
 ## BasePhonemizer
 
@@ -169,7 +216,7 @@ All phonemizers inherit from `BasePhonemizer` which provides:
 - `chunk_text(text)` — splits text into sentence chunks with punctuation
 
 Diacritization (Arabic tashkeel, Hebrew niqqud, and the other scripts scriptconv
-supports) is not a phonemizer method — it is a separate step exposed as
+supports) is not a phonemizer method. It is a separate step,
 `scriptconv.diacritics.diacritize(text, lang)`, which phoonnx calls before
 phonemizing when a voice enables `add_diacritics`. scriptconv owns the
 diacritizer backends and auto-provisions the Hebrew phonikud model.
@@ -199,3 +246,7 @@ Multilingual and neural backends include eSpeak, [gruut](https://github.com/rhas
 [epitran](https://github.com/dmort27/epitran), [misaki](https://github.com/hexgrad/misaki),
 [transphone](https://github.com/xinjli/transphone),
 [Charsiu](https://github.com/lingjzhu/CharsiuG2P) and OpenVoiceOS ByT5 G2P models.
+
+---
+
+[Docs index](index.md) · Previous: [Configuration reference](configuration.md) · Next: [Alphabet conversion model](alphabet_model.md)

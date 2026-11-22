@@ -248,5 +248,138 @@ class TestRedirectedFetchClosesEveryResponse(unittest.TestCase):
         self.assertIn("http://example.com/b", checked)
 
 
+class TestStdlibWavDecoding(unittest.TestCase):
+    """Without soundfile, a WAV is decoded by its header's sample width."""
+
+    RATE = 16000
+
+    def setUp(self):
+        import tempfile
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.dir = tmp.name
+        patcher = patch.dict("sys.modules", {"soundfile": None})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _sine(self, n):
+        import numpy as np
+        t = np.arange(n) / self.RATE
+        return 0.5 * np.sin(2 * np.pi * 440 * t)
+
+    def _write(self, name, width, n, channels=1):
+        import os, wave
+        import numpy as np
+        x = self._sine(n)
+        if width == 1:
+            data = (np.round(x * 127) + 128).astype(np.uint8).tobytes()
+        elif width == 2:
+            data = np.round(x * 32767).astype("<i2").tobytes()
+        elif width == 3:
+            ints = np.round(x * 8388607).astype("<i4")
+            data = b"".join(int(v).to_bytes(3, "little", signed=True) for v in ints)
+        else:
+            data = np.round(x * 2147483647).astype("<i4").tobytes()
+        if channels == 2:
+            step = width
+            data = b"".join(data[i:i + step] * 2 for i in range(0, len(data), step))
+        path = os.path.join(self.dir, name)
+        with wave.open(path, "wb") as w:
+            w.setnchannels(channels)
+            w.setsampwidth(width)
+            w.setframerate(self.RATE)
+            w.writeframes(data)
+        return path
+
+    def _check_sine(self, width, n):
+        import numpy as np
+        from phoonnx.reference_audio import load_reference_audio
+        audio, sr = load_reference_audio(self._write(f"w{width}_{n}.wav", width, n))
+        self.assertEqual(sr, self.RATE)
+        self.assertEqual(len(audio), n)
+        self.assertAlmostEqual(float(np.abs(audio).max()), 0.5, delta=0.01)
+        np.testing.assert_allclose(audio, self._sine(n), atol=0.01)
+
+    def test_8_bit_sine(self):
+        self._check_sine(1, self.RATE)
+
+    def test_16_bit_sine(self):
+        self._check_sine(2, self.RATE)
+
+    def test_24_bit_sine(self):
+        self._check_sine(3, self.RATE)
+
+    def test_32_bit_sine(self):
+        self._check_sine(4, self.RATE)
+
+    def test_odd_length_8_bit_file_loads(self):
+        self._check_sine(1, 101)
+
+    def test_odd_length_24_bit_file_loads(self):
+        self._check_sine(3, 101)
+
+    def test_8_bit_silence_is_zero(self):
+        import numpy as np, os, wave
+        from phoonnx.reference_audio import load_reference_audio
+        path = os.path.join(self.dir, "silence.wav")
+        with wave.open(path, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(1)
+            w.setframerate(self.RATE)
+            w.writeframes(b"\x80" * 100)
+        audio, _ = load_reference_audio(path)
+        np.testing.assert_array_equal(audio, np.zeros(100, dtype=np.float32))
+
+    def test_16_bit_result_is_the_raw_samples_over_32768(self):
+        import numpy as np, wave
+        from phoonnx.reference_audio import load_reference_audio
+        path = self._write("p16.wav", 2, 1000)
+        with wave.open(path, "rb") as w:
+            raw = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2")
+        audio, _ = load_reference_audio(path)
+        self.assertEqual(audio.dtype, np.float32)
+        np.testing.assert_array_equal(audio, raw.astype(np.float32) / 32768.0)
+
+    def test_stereo_is_averaged_to_mono(self):
+        import numpy as np
+        from phoonnx.reference_audio import load_reference_audio
+        audio, _ = load_reference_audio(self._write("st.wav", 3, 500, channels=2))
+        self.assertEqual(len(audio), 500)
+        np.testing.assert_allclose(audio, self._sine(500), atol=0.01)
+
+    def test_unsupported_width_names_the_file(self):
+        import os
+        from phoonnx.reference_audio import load_reference_audio
+        path = self._write("wide.wav", 4, 100)
+        with open(path, "r+b") as f:
+            f.seek(34)
+            f.write((48).to_bytes(2, "little"))
+        with self.assertRaises(ValueError) as caught:
+            load_reference_audio(path)
+        self.assertIn(path, str(caught.exception))
+        self.assertIn("48-bit", str(caught.exception))
+        self.assertIn("32-bit PCM", str(caught.exception))
+
+    def test_float_wav_names_the_file(self):
+        from phoonnx.reference_audio import load_reference_audio
+        path = self._write("float.wav", 4, 100)
+        with open(path, "r+b") as f:
+            f.seek(20)
+            f.write((3).to_bytes(2, "little"))
+        with self.assertRaises(ValueError) as caught:
+            load_reference_audio(path)
+        self.assertIn(path, str(caught.exception))
+
+    def test_non_wav_file_names_the_file(self):
+        import os
+        from phoonnx.reference_audio import load_reference_audio
+        path = os.path.join(self.dir, "fake.flac")
+        with open(path, "wb") as f:
+            f.write(b"fLaC" + b"\x00" * 64)
+        with self.assertRaises(ValueError) as caught:
+            load_reference_audio(path)
+        self.assertIn(path, str(caught.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

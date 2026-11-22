@@ -10,6 +10,7 @@ from unittest.mock import patch, MagicMock
 import onnxruntime
 import requests
 
+from json_database import JsonStorage
 from huggingface_hub.errors import (EntryNotFoundError, HfHubHTTPError, RemoteEntryNotFoundError,
                                     LocalEntryNotFoundError)
 
@@ -1032,9 +1033,17 @@ class TestManagerLoadMalformed(ManagerTestCase):
 
     def test_merge_default_voices_skips_bad_entries_and_stores(self):
         manager = TTSModelManager(cache_path=self.cache_path)
-        with patch.object(manager.cache, "update") as mock_update:
-            manager.merge_default_voices(store=True)
-        self.assertTrue(mock_update.called)
+        manager.cache["user/voice"] = {"voice_id": "user/voice", "lang": "en-US",
+                                       "model_url": "https://example.com/u.onnx"}
+        manager.cache["user/bad"] = {"voice_id": "user/bad"}
+        manager.merge_default_voices(store=True)
+        bundled = {}
+        for index_file in manager.voice_index_files():
+            bundled.update(JsonStorage(str(index_file)))
+        stored = list(JsonStorage(self.cache_path))
+        self.assertEqual(stored, [*bundled, "user/voice", "user/bad"])
+        self.assertIn("user/voice", manager.voices)
+        self.assertNotIn("user/bad", manager.voices)
 
 
 class TestManagerRegistry(ManagerTestCase):

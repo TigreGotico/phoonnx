@@ -133,11 +133,16 @@ class _FakePrefill:
 
 
 class _FakeDecode:
-    """Decode stand-in: records every feed, emits EOS after ``eos_after`` steps."""
+    """Decode stand-in: records every feed, emits EOS after ``eos_after`` steps.
 
-    def __init__(self, eos_after=3, src_len=4):
+    With ``spread``, each step before EOS gives the codes 0 to ``spread - 1`` the same logit,
+    so every draw depends on the random generator.
+    """
+
+    def __init__(self, eos_after=3, src_len=4, spread=0):
         self.eos_after = eos_after
         self.src_len = src_len
+        self.spread = spread
         self.feeds = []
 
     def get_inputs(self):
@@ -157,8 +162,12 @@ class _FakeDecode:
         self.feeds.append({k: np.array(v, copy=True) for k, v in feed.items()})
         step = len(self.feeds)
         logits = np.full((NUM_CODEBOOKS, AUDIO_VOCAB_SIZE), -10.0, np.float32)
-        target = EOS_TOKEN_ID if step >= self.eos_after else 7
-        logits[:, target] = 10.0
+        if step >= self.eos_after:
+            logits[:, EOS_TOKEN_ID] = 10.0
+        elif self.spread:
+            logits[:, :self.spread] = 10.0
+        else:
+            logits[:, 7] = 10.0
         out = [logits]
         past = step + 1
         for i in range(N_LAYERS):
@@ -204,10 +213,10 @@ class _FakeTokenizer:
         return self._Enc([ord(c) % 100 + self.offset for c in text])
 
 
-def _wired(eos_after=3, src_len=4, description="Rohit's voice is clear."):
+def _wired(eos_after=3, src_len=4, description="Rohit's voice is clear.", spread=0):
     ad = IndicParlerAdapter()
     ad.text_encoder = _FakeEncoder(src_len)
-    ad.decode_session = _FakeDecode(eos_after, src_len)
+    ad.decode_session = _FakeDecode(eos_after, src_len, spread)
     ad._decode_inputs = {i.name for i in ad.decode_session.get_inputs()}
     ad._decode_outputs = [o.name for o in ad.decode_session.get_outputs()]
     ad.dac_decoder = _FakeDac()
@@ -467,7 +476,8 @@ def test_encoder_attention_mask_is_forwarded_to_the_decode_graph():
 
 def test_generation_stops_on_eos_and_reaches_the_dac():
     ad = _wired(eos_after=14)
-    res = ad.synthesize(_req(), _FakePrefill())
+    # sampling picks EOS with a probability just under 1, so an unseeded run can miss it once
+    res = ad.synthesize(_req(seed=0), _FakePrefill())
     # EOS may only move one codebook per step, so once the model first wants to stop
     # (step 14) the staircase still needs one step per remaining codebook to unwind.
     assert len(ad.decode_session.feeds) == 14 + NUM_CODEBOOKS - 1
@@ -481,7 +491,7 @@ def test_generation_stops_on_eos_and_reaches_the_dac():
 def test_an_immediate_stop_yields_no_frames_and_no_dac_call():
     """Nothing but end-of-speech means there is no complete frame to decode."""
     ad = _wired(eos_after=1)
-    res = ad.synthesize(_req(), _FakePrefill())
+    res = ad.synthesize(_req(seed=0), _FakePrefill())
     assert res.extras["codes"].shape[1] == 0
     assert ad.dac_decoder.last_codes is None
     assert res.audio.shape == (0,)
@@ -501,12 +511,25 @@ def test_greedy_is_deterministic():
     assert np.array_equal(ra.extras["codes"], rb.extras["codes"])
 
 
-def test_seeded_sampling_is_reproducible():
-    a = _wired(eos_after=6)
-    b = _wired(eos_after=6)
-    ra = a.synthesize(_req(do_sample=1, seed=7), _FakePrefill())
-    rb = b.synthesize(_req(do_sample=1, seed=7), _FakePrefill())
-    assert np.array_equal(ra.extras["codes"], rb.extras["codes"])
+def _sampled(**params):
+    ad = _wired(eos_after=14, spread=64)
+    ad.seed = params.pop("voice_seed", None)
+    return ad.synthesize(_req(do_sample=1, **params), _FakePrefill()).extras["codes"]
+
+
+def test_the_request_seed_decides_the_sampled_codes():
+    assert _sampled(seed=7).shape[1] > 0      # empty codes would compare equal for any seed
+    assert np.array_equal(_sampled(seed=7), _sampled(seed=7))
+    assert not np.array_equal(_sampled(seed=7), _sampled(seed=8))
+
+
+def test_the_voice_seed_applies_when_the_request_has_none():
+    assert np.array_equal(_sampled(voice_seed=7), _sampled(seed=7))
+    assert not np.array_equal(_sampled(voice_seed=7), _sampled(voice_seed=8))
+
+
+def test_the_request_seed_wins_over_the_voice_seed():
+    assert np.array_equal(_sampled(voice_seed=8, seed=7), _sampled(seed=7))
 
 
 def test_missing_description_is_an_error():
