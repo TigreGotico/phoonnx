@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.130.2a1](https://github.com/TigreGotico/phoonnx/tree/1.130.2a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.1a1...1.130.2a1)
+
+**Merged pull requests:**
+
+- fix: Arabic dialect voices carry their dialect tag and answer their region [\#945](https://github.com/TigreGotico/phoonnx/pull/945) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.130.1a1](https://github.com/TigreGotico/phoonnx/tree/1.130.1a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.0a1...1.130.1a1)
