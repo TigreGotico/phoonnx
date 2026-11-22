@@ -19,9 +19,31 @@ from typing import Any, Dict, Iterator, List, Optional
 
 import numpy as np
 import onnxruntime
+from quebra_frases import span_indexed_sentence_tokenize
 from scriptconv.frontend import Stages, TextFrontend
 
 from phoonnx.encoders import SIDE_STREAMS, Encoder, SymbolEncoder, TextEncoder
+
+
+def pack_sentences(paragraph: str, max_len: int) -> List[str]:
+    """Pack whole sentences of ``paragraph`` into chunks of at most ``max_len`` characters.
+
+    A chunk is a slice of ``paragraph``, so the gap between two sentences stays as the
+    text has it: none in Chinese or Japanese, a space in Latin script. A sentence longer
+    than ``max_len`` is a chunk of its own.
+    """
+    chunks: List[str] = []
+    start = end = None
+    for sentence_start, sentence_end, _ in span_indexed_sentence_tokenize(paragraph):
+        if start is not None and sentence_end - start > max_len:
+            chunks.append(paragraph[start:end].strip())
+            start = None
+        if start is None:
+            start = sentence_start
+        end = sentence_end
+    if start is not None:
+        chunks.append(paragraph[start:end].strip())
+    return chunks
 
 
 def _warn_removed_hook(name: str, replacement: str) -> None:

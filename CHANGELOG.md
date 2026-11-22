@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.125.3a1](https://github.com/TigreGotico/phoonnx/tree/1.125.3a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.2a1...1.125.3a1)
+
+**Merged pull requests:**
+
+- fix: keep the source gap between packed sentences [\#872](https://github.com/TigreGotico/phoonnx/pull/872) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.2a1](https://github.com/TigreGotico/phoonnx/tree/1.125.2a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.1a2...1.125.2a1)
+
+**Merged pull requests:**
+
+- fix: rank bundled voices in index order when a cache exists [\#870](https://github.com/TigreGotico/phoonnx/pull/870) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.1a2](https://github.com/TigreGotico/phoonnx/tree/1.125.1a2) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.1a1...1.125.1a2)
+
+**Merged pull requests:**
+
+- docs: README, docs index, navigation and agent hints [\#863](https://github.com/TigreGotico/phoonnx/pull/863) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.125.1a1](https://github.com/TigreGotico/phoonnx/tree/1.125.1a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.0a1...1.125.1a1)
+
+## [1.125.0a1](https://github.com/TigreGotico/phoonnx/tree/1.125.0a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.6a1...1.125.0a1)
+
+**Merged pull requests:**
+
+- feat: add the Kabyle voices phoonnx\_kab-DZ\_miro\_o2i and phoonnx\_kab-DZ\_dii\_o2i [\#862](https://github.com/TigreGotico/phoonnx/pull/862) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.124.6a1](https://github.com/TigreGotico/phoonnx/tree/1.124.6a1) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.5a1...1.124.6a1)
@@ -175,7 +211,6 @@
 **Merged pull requests:**
 
 - test: expect the grapheme revision preprocess records [\#814](https://github.com/TigreGotico/phoonnx/pull/814) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- feat: record the training text casing and apply it at inference [\#756](https://github.com/TigreGotico/phoonnx/pull/756) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.119.0a1](https://github.com/TigreGotico/phoonnx/tree/1.119.0a1) (2026-11-19)
 
@@ -204,7 +239,6 @@
 **Merged pull requests:**
 
 - fix: the Mimic 3 loader reads its tokens file, and a null pad stays null [\#793](https://github.com/TigreGotico/phoonnx/pull/793) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: build training ids through the TextFrontend that inference uses [\#753](https://github.com/TigreGotico/phoonnx/pull/753) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.118.4a1](https://github.com/TigreGotico/phoonnx/tree/1.118.4a1) (2026-11-19)
 
@@ -265,7 +299,6 @@
 - perf: cache the OPM default-voice lookup and graph metadata [\#764](https://github.com/TigreGotico/phoonnx/pull/764) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - perf: stop repeating per-call work in Indic Parler, MOSS and Vocos [\#763](https://github.com/TigreGotico/phoonnx/pull/763) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - feat: add the Encoder, the step from text to model ids [\#761](https://github.com/TigreGotico/phoonnx/pull/761) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- refactor: delete dead engine hooks and test that the Engine enum names the registry [\#757](https://github.com/TigreGotico/phoonnx/pull/757) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.116.1a1](https://github.com/TigreGotico/phoonnx/tree/1.116.1a1) (2026-11-19)
 
@@ -306,11 +339,6 @@
 ## [1.115.0a1](https://github.com/TigreGotico/phoonnx/tree/1.115.0a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.114.2a1...1.115.0a1)
-
-**Merged pull requests:**
-
-- fix: hold the cloned-voice cache key and value in one attribute [\#759](https://github.com/TigreGotico/phoonnx/pull/759) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- feat: add the xvits engine [\#754](https://github.com/TigreGotico/phoonnx/pull/754) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.114.2a1](https://github.com/TigreGotico/phoonnx/tree/1.114.2a1) (2026-11-18)
 
