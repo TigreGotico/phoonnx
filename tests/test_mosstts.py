@@ -197,6 +197,67 @@ def test_chunking_hard_splits_an_oversized_sentence():
     assert len(chunks) == 8 and all(len(c) == 25 for c in chunks)
 
 
+ZH = "我有三本书。你有几本？太好了！"
+ZH_SENTENCES = ["我有三本书。", "你有几本？", "太好了！"]
+
+
+@pytest.fixture(scope="module")
+def spm_adapter(tmp_path_factory):
+    """An adapter with a small SentencePiece model: add_dummy_prefix on, as the real one."""
+    spm = pytest.importorskip("sentencepiece")
+    tmp = tmp_path_factory.mktemp("spm")
+    corpus = tmp / "corpus.txt"
+    corpus.write_text("\n".join(
+        ZH_SENTENCES + ["我有三本书你有几本太好了", "我有书。", "你有三本。", "太好了。",
+                        "Hello there. How are you?", "One two three four five six.",
+                        "Fine thanks and you? Good morning to all."]) + "\n", encoding="utf-8")
+    spm.SentencePieceTrainer.train(
+        input=str(corpus), model_prefix=str(tmp / "m"), vocab_size=60, model_type="unigram",
+        add_dummy_prefix=True, hard_vocab_limit=False)
+    ad = MossTTSNanoAdapter()
+    ad.sp = spm.SentencePieceProcessor(model_file=str(tmp / "m.model"))
+    return ad
+
+
+def _space_id(ad):
+    return ad.sp.piece_to_id("\u2581")
+
+
+def test_chunking_chinese_has_no_space_token_between_sentences(spm_adapter):
+    chunks = spm_adapter._chunk(ZH, 1000)
+    assert chunks == [spm_adapter._encode(ZH)]
+    pieces = spm_adapter.sp.id_to_piece(chunks[0])
+    assert not any(p == "\u2581" for p in pieces[1:])
+    assert pieces[0].startswith("\u2581")
+
+
+def test_chunking_chinese_splits_only_at_sentence_ends(spm_adapter, monkeypatch):
+    # sentence ends at \u3002 \uff1f \uff01, found without quebra_frases
+    spans, start = [], 0
+    for i, ch in enumerate(ZH):
+        if ch in "\u3002\uff1f\uff01":
+            spans.append((start, i + 1, ZH[start:i + 1]))
+            start = i + 1
+    monkeypatch.setattr("phoonnx.engines.mosstts.span_indexed_sentence_tokenize",
+                        lambda _text: spans)
+    enc = spm_adapter._encode
+    budget = len(enc(ZH[:spans[1][1]]))
+    assert len(enc(ZH)) > budget
+    chunks = spm_adapter._chunk(ZH, budget)
+    assert chunks == [enc(ZH[:spans[1][1]]), enc(ZH[spans[2][0]:])]
+    assert all(len(c) <= budget for c in chunks)
+
+
+def test_chunking_latin_matches_per_sentence_encoding(spm_adapter):
+    text = "Hello there. How are you? Fine thanks and you?"
+    enc = spm_adapter._encode
+    sentences = ["Hello there.", "How are you?", "Fine thanks and you?"]
+    assert spm_adapter._chunk(text, 1000) == [sum((enc(s) for s in sentences), [])]
+    budget = len(enc(sentences[0])) + len(enc(sentences[1]))
+    assert spm_adapter._chunk(text, budget) == [
+        enc(sentences[0]) + enc(sentences[1]), enc(sentences[2])]
+
+
 def test_chunking_empty_text():
     ad = MossTTSNanoAdapter()
     ad.sp = _FakeSp()
