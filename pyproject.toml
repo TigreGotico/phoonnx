@@ -23,9 +23,9 @@ dependencies = [
     "quebra-frases>=0.3.8a5",
     "langcodes",
     "linguatag>=0.4.1a1",
-    # >=0.0.2a78: text2spoken.SayAs, which TextFrontend.say_as passes to the hook, and its
-    # digits, telephone, characters, ordinal and date readings in every language with numbers
-    "text2spoken>=0.0.2a78",
+    # >=0.0.2a88: a Korean or Chinese number before a counter reads (사과 3개, 3个),
+    # after text2spoken.SayAs and its digits, telephone, characters, ordinal and date readings
+    "text2spoken>=0.0.2a88",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
     # >=0.0.4a142: the leokani and kolokwa phonemizers that the config schema lists,
@@ -95,7 +95,7 @@ test = [
     "scriptconv-nonfree>=0.2.1a1",
     # the model card tests render the text stack that the cards recommend, from
     # these libraries' own language list, call names and default model
-    "text2spoken>=0.0.2a58",
+    "text2spoken>=0.0.2a88",
     "bifonia>=0.5.0",
     "text2tashkeel>=0.3.1a3",
     "espyak>=0.0.3a1",
