@@ -63,7 +63,8 @@ def build_config(tier: str) -> dict:
         "alphabet": "ipa",
         "lang_code": "en-US",
         "audio": {"sample_rate": 24000},
-        "num_symbols": len(phoneme_id_map),
+        # one embedding row per entry of the symbol list, which repeats some symbols
+        "num_symbols": len(list(_KITTENTTS_SYMBOLS)),
         "num_speakers": 1,
         "num_langs": 1,
         "speaker_id_map": {},
