@@ -2,6 +2,7 @@ import contextlib
 import contextvars
 import functools
 import hashlib
+import itertools
 import json
 import os
 import posixpath
@@ -1418,8 +1419,9 @@ def _lookup_distance(voice_lang: str, lang: str) -> int:
     if distance < 10:
         return distance
     if _is_arabic(lang) and lang_distance(voice_lang, lang) == 10:
-        subtags = voice_lang.replace("_", "-").split("-")[1:]
-        has_region = any(len(t) == 2 and t.isalpha() or len(t) == 3 and t.isdigit() for t in subtags)
+        # A one-letter subtag (x, u, t) starts private use or an extension
+        subtags = itertools.takewhile(lambda t: len(t) > 1, voice_lang.replace("_", "-").split("-")[1:])
+        has_region = any(len(t) == 2 or len(t) == 3 and t.isdigit() for t in subtags)
         return 0 if has_region else 10
     return 10000
 
