@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.125.6a1](https://github.com/TigreGotico/phoonnx/tree/1.125.6a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.5a1...1.125.6a1)
+
+**Merged pull requests:**
+
+- fix\(ssml\): audit against SSML 1.1: namespaces, entities, durations, marks at their offsets, no clicks [\#876](https://github.com/TigreGotico/phoonnx/pull/876) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.125.5a1](https://github.com/TigreGotico/phoonnx/tree/1.125.5a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.4a1...1.125.5a1)
@@ -211,10 +219,6 @@
 ## [1.120.2a1](https://github.com/TigreGotico/phoonnx/tree/1.120.2a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.120.1a1...1.120.2a1)
-
-**Merged pull requests:**
-
-- feat: VoiceConfig.to\_dict writes the native config.json, with a JSON Schema and a frontend [\#766](https://github.com/TigreGotico/phoonnx/pull/766) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.120.1a1](https://github.com/TigreGotico/phoonnx/tree/1.120.1a1) (2026-11-19)
 
