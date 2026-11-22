@@ -23,7 +23,7 @@ dependencies = [
     "quebra-frases>=0.3.8a5",
     "langcodes",
     "linguatag>=0.4.1a1",
-    # >=0.0.2a88: a Korean or Chinese number before a counter reads (사과 3개, 3个),
+    # >=0.0.2a88: a Korean number before a counter reads (사과 3개 as 사과 세 개),
     # after text2spoken.SayAs and its digits, telephone, characters, ordinal and date readings
     "text2spoken>=0.0.2a88",
     "ovos-number-parser>=0.24.44a1",
