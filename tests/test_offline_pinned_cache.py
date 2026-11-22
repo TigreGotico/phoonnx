@@ -19,6 +19,7 @@ from huggingface_hub.errors import EntryNotFoundError, LocalEntryNotFoundError
 
 from phoonnx import model_manager
 from phoonnx.model_manager import TTSModelInfo, _cached_path, _hf_fetch
+from tests.test_model_manager import _external_data_graph
 
 OLD = "1" * 40
 MID = "2" * 40
@@ -192,6 +193,55 @@ class TestOneSnapshotPerFolder(_Cache):
         self.snapshot(NEW, {"a/model.onnx": b"voice-a-new"}, mtime=2000)
         self.assertEqual(_hf_fetch(url("b/model.onnx")).read_bytes(), b"voice-b-old")
         self.assertEqual(_hf_fetch(url("config.json")).read_bytes(), b"root-old")
+
+
+class TestAGraphWithoutItsDataIsPassedOver(_Cache):
+    """A newer snapshot whose graph was cut off before its external data is not a fallback.
+
+    Two unpinned fetches at two commits, the second one interrupted between the graph and
+    its data, leave this state. The older snapshot holds both files and loads; the newer one
+    would give onnxruntime a graph with no weights beside it.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.graph, data, expected = _external_data_graph(["model.onnx_data"])
+        self.expected = expected.tolist()
+        self.snapshot(MID, {"model.onnx": self.graph, "model.onnx_data": data["model.onnx_data"]},
+                      mtime=1000)
+        self.snapshot(OLD, {"model.onnx": self.graph}, mtime=2000)
+
+    def run_graph(self, path):
+        import numpy as np
+        import onnxruntime
+        session = onnxruntime.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+        [output] = session.run(None, {"X": np.zeros(4, dtype=np.float32)})
+        return output.tolist()
+
+    def test_outside_a_voice_scope_the_graph_comes_from_the_snapshot_with_its_data(self):
+        graph = _hf_fetch(url("model.onnx"))
+        data = _hf_fetch(url("model.onnx_data"))
+        self.assertEqual(graph.parent.name, MID)
+        self.assertEqual(data.parent, graph.parent)
+        self.assertEqual(self.run_graph(graph), self.expected)
+
+    def test_a_voice_load_takes_the_snapshot_with_the_data(self):
+        info = TTSModelInfo(voice_id="v", lang="en-US", model_url=url("model.onnx"))
+        with model_manager._voice_scope(info):
+            graph = _hf_fetch(url("model.onnx"))
+            data = _hf_fetch(url("model.onnx_data"))
+        self.assertEqual(graph.parent.name, MID)
+        self.assertEqual(data.parent, graph.parent)
+
+    def test_download_model_gives_a_graph_that_runs(self):
+        info = TTSModelInfo(voice_id="v", lang="en-US", model_url=url("model.onnx"))
+        self.assertEqual(self.run_graph(info.download_model()), self.expected)
+
+    def test_with_no_snapshot_holding_the_data_the_graph_is_not_cached(self):
+        # no cached graph can run, so the fetch fails here and not later in onnxruntime
+        (self.cache / "models--Phoonnx--a-repo" / "snapshots" / MID / "model.onnx_data").unlink()
+        with self.assertRaises(LocalEntryNotFoundError):
+            _hf_fetch(url("model.onnx"))
 
 
 class TestOneSnapshotPerVoice(_Cache):

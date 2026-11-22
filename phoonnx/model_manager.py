@@ -471,7 +471,8 @@ def _voice_snapshot(repo_id: str, revision: str, filename: str,
     Returns ``(False, None)`` when no voice is being loaded or the voice names no file in
     ``repo_id`` at ``revision``, so the folder rule decides. Otherwise the newest snapshot that
     holds ``filename`` and every file the voice names there is chosen, and none when the
-    pinned snapshot holds one of them already, as after an interrupted download.
+    pinned snapshot holds one of them already, as after an interrupted download. A snapshot
+    whose graph lacks the external data it names is passed over, as in :func:`_mirror_route`.
     """
     key = _voice_key(repo_id, revision, filename)
     if key is None:
@@ -483,8 +484,7 @@ def _voice_snapshot(repo_id: str, revision: str, filename: str,
     chosen = _VOICE_SNAPSHOTS.get(key)
     if chosen is None or not chosen.is_dir():
         holding = [snapshot for snapshot in (repo_dir / "snapshots").glob("*")
-                   if snapshot.name != revision
-                   and all((snapshot / name).exists() for name in needed)]
+                   if snapshot.name != revision and _holds(snapshot, list(needed))]
         if not holding:
             return True, None
         chosen = max(holding, key=lambda snapshot: snapshot.stat().st_mtime)
@@ -502,7 +502,8 @@ def _offline_snapshot(repo_id: str, revision: str, filename: str,
                       record: bool = True) -> Optional[Path]:
     """The cached ``filename`` from another snapshot of ``repo_id``, for when ``revision`` is not cached.
 
-    The newest snapshot by modification time that holds ``filename`` is chosen, never the one
+    The newest snapshot by modification time that holds ``filename``, and the external data
+    of ``filename`` when it is a graph, is chosen, never the one
     ``refs/main`` names: a fetch at a commit writes no ref, so ``refs/main`` stays at the last
     commit an unpinned install fetched. Later files of the same folder come from the same
     snapshot or not at all. A folder that the pinned snapshot holds in part, as after an
@@ -525,7 +526,7 @@ def _offline_snapshot(repo_id: str, revision: str, filename: str,
     chosen = _OFFLINE_SNAPSHOTS.get(key)
     if chosen is None or not chosen.is_dir():
         holding = [snapshot for snapshot in (repo_dir / "snapshots").glob("*")
-                   if snapshot.name != revision and (snapshot / filename).exists()]
+                   if snapshot.name != revision and _holds(snapshot, [filename])]
         if not holding:
             return None
         chosen = max(holding, key=lambda snapshot: snapshot.stat().st_mtime)
