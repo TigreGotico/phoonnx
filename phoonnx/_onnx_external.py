@@ -124,6 +124,9 @@ def _read_locations(path: str, size: int, mtime_ns: int, inode: int) -> Tuple[st
     """``size``, ``mtime_ns`` and ``inode`` only key the cache."""
     with open(path, "rb") as handle, \
             mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as buf:
+        # The walk skips the weights, so read ahead only the pages it touches.
+        if hasattr(mmap, "MADV_RANDOM"):
+            buf.madvise(mmap.MADV_RANDOM)
         locations: List[str] = []
         has_graph = False
         try:
