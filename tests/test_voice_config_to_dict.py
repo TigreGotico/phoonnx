@@ -165,7 +165,7 @@ def test_unset_scales_stay_out_of_the_inference_block():
 # Phonemizers the schema lists before a scriptconv alpha publishes them. Remove a name
 # once the scriptconv floor in pyproject.toml includes it, and give it a row in
 # docs/phonemizers.md.
-SCRIPTCONV_PENDING = {"espeak_lt_accent", "hebrew_ipa", "openjtalk_prosody", "tltk"}
+SCRIPTCONV_PENDING: set = set()
 
 
 def test_schema_enums_list_every_engine_phonemizer_and_alphabet():

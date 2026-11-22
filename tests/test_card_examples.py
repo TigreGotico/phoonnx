@@ -385,8 +385,10 @@ def test_word_blank_folds_no_symbol_across_a_space(fold):
 # --- the vowel marks phoonnx adds before the phonemizer ------------------------
 
 def stub_diacritize(text, lang, diacritizer_model=None, **_):
-    """Stands in for the tashkeel model: a mark after each letter, and the model's name."""
-    return "".join(c + "َ" if c.isalpha() else c for c in text) + (f" {diacritizer_model}" if diacritizer_model else "")
+    """Stands in for the tashkeel model: the model's name, then a mark after each letter.
+
+    The name goes first, because a word after the final question mark would be a sentence of its own."""
+    return (f"{diacritizer_model} " if diacritizer_model else "") + "".join(c + "َ" if c.isalpha() else c for c in text)
 
 
 ARABIC = {**NATIVE, "phoneme_type": "graphemes", "alphabet": "unicode", "lang_code": "ar", "keep_punctuation": False,
@@ -463,7 +465,7 @@ def test_the_vowel_marks_go_to_each_sentence_on_its_own_as_phoonnx_gives_them(mo
     list(voice.prepare(text, NO_SPELLINGS))
     example_diacritizer(monkeypatch, example_calls)
     example_text_ids(ARABIC, text)
-    assert len(phoonnx_calls) == 2  # quebra-frases does not cut at the Arabic question mark
+    assert len(phoonnx_calls) == 3  # the Arabic question mark ends a sentence
     assert example_calls == without_language(phoonnx_calls)
 
 
@@ -664,7 +666,7 @@ def test_shami_example_reads_every_sentence_and_its_language_as_phoonnx(monkeypa
     config = shami_voice()
     voice = voice_of(config)
     sentences = list(voice.prepare(SHAMI_TEXT, NO_SPELLINGS))
-    assert len(sentences) == 2
+    assert len(sentences) == 3
     phoonnx_langs, langs[:] = list(langs), []
     example_diacritizer(monkeypatch, example_calls)
     code = example(config, {"inputs": {"phoneme_ids": 2, "phoneme_lengths": 1, "language_ids": 2}}, text=SHAMI_TEXT)
