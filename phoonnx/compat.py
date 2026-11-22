@@ -684,7 +684,7 @@ class PiperLoader(ConfigLoader):
     def trained_on_split_diphthongs(cls, config: Dict[str, Any]) -> bool:
         """Whether *config* is Piper's default map with no ``vowel_clusters``, so Piper reads
         ``aɪ`` as ``a`` and ``ɪ``."""
-        compounds = {key: ids for key, ids in config["phoneme_id_map"].items() if len(key) > 1}
+        compounds = {key: ids for key, ids in config.get("phoneme_id_map", {}).items() if len(key) > 1}
         return (not config.get("vowel_clusters") and not cls.made_by_phoonnx(config)
                 and bool(compounds) and compounds.items() <= PIPER_DIPHTHONGS.items())
 

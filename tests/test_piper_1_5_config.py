@@ -80,6 +80,12 @@ def test_a_config_with_keys_of_its_own_trainer_keeps_the_folding():
                                                            3, 0, 74, 0, 2]
 
 
+def test_a_map_with_some_of_the_default_diphthongs_reads_them_as_two_ids():
+    config = {key: value for key, value in TUGAO.items() if key != "vowel_clusters"}
+    config["phoneme_id_map"] = {k: v for k, v in TUGAO["phoneme_id_map"].items() if k not in ("aʊ", "ɔɪ", "eɪ", "oʊ")}
+    assert load(config).tokenizer.tokenize("pˈaɪ") == [1, 0, 28, 0, 120, 0, 14, 0, 74, 0, 2]
+
+
 def test_diphthongs_away_from_the_piper_default_ids_keep_the_folding():
     config = {**TWI, "phoneme_id_map": {k: v for k, v in TWI["phoneme_id_map"].items() if k != "dʒ"}}
     assert load(config).tokenizer.tokenize("ˈaɪ") == [1, 0, 192, 0, 180, 0, 2]
