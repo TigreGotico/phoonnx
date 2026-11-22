@@ -34,8 +34,8 @@
   },
   "ghananlpcommunity/poto-tts-kokoro-gh": {
     "voice_id": "ghananlpcommunity/poto-tts-kokoro-gh",
-    "model_url": "https://huggingface.co/Phoonnx/styletts2-en_gh-poto_kokoro-espeak/resolve/4189cfe7957575c411d5d2213f3804de213350bf/model.onnx",
-    "config_url": "https://huggingface.co/Phoonnx/styletts2-en_gh-poto_kokoro-espeak/resolve/4189cfe7957575c411d5d2213f3804de213350bf/config.json",
+    "model_url": "https://huggingface.co/Phoonnx/styletts2-en_gh-poto_kokoro-espeak/resolve/30a0b59b95256b131d0b88780825652826730a00/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/styletts2-en_gh-poto_kokoro-espeak/resolve/30a0b59b95256b131d0b88780825652826730a00/config.json",
     "vocab_url": null,
     "tokenizer_config_url": null,
     "tokens_url": null,
@@ -45,7 +45,7 @@
     "engine": "styletts2",
     "lang": "en-GH",
     "phonemizer_lang": "en-gb",
-    "style_url": "https://huggingface.co/Phoonnx/styletts2-en_gh-poto_kokoro-espeak/resolve/4189cfe7957575c411d5d2213f3804de213350bf/voices/bf_alice.bin",
+    "style_url": "https://huggingface.co/Phoonnx/styletts2-en_gh-poto_kokoro-espeak/resolve/30a0b59b95256b131d0b88780825652826730a00/voices/bf_alice.bin",
     "display_name": "Ghanaian English (poto-tts Kokoro, {engine})"
   }
 }
