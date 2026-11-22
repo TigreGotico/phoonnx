@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.125.7a1](https://github.com/TigreGotico/phoonnx/tree/1.125.7a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.6a1...1.125.7a1)
+
+**Merged pull requests:**
+
+- fix: encode each MOSS-TTS chunk from its source text [\#874](https://github.com/TigreGotico/phoonnx/pull/874) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.125.6a1](https://github.com/TigreGotico/phoonnx/tree/1.125.6a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.5a1...1.125.6a1)
@@ -140,7 +148,6 @@
 **Merged pull requests:**
 
 - fix: the voice CLI exits non-zero on failure and filters by the full language tag [\#833](https://github.com/TigreGotico/phoonnx/pull/833) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- feat: phoonnx.compat converts third-party configs to the native config.json [\#767](https://github.com/TigreGotico/phoonnx/pull/767) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.123.7a1](https://github.com/TigreGotico/phoonnx/tree/1.123.7a1) (2026-11-19)
 
@@ -315,7 +322,6 @@
 
 - fix: keep the voice-conversion cache key and value in one attribute [\#774](https://github.com/TigreGotico/phoonnx/pull/774) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - feat\(voice\): stream Pocket TTS audio as the decoder makes it [\#769](https://github.com/TigreGotico/phoonnx/pull/769) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- perf: faster pure-Python BPE and phoneme tokenizer [\#768](https://github.com/TigreGotico/phoonnx/pull/768) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.116.1a1](https://github.com/TigreGotico/phoonnx/tree/1.116.1a1) (2026-11-19)
 
