@@ -396,11 +396,12 @@ class NeuTTSAdapter(BaseOnnxAdapter):
                 if word_chunk:
                     pieces.append(word_chunk)
             for index, piece in enumerate(pieces):
-                if current and len(current) + 1 + len(piece) > max_chars:
+                separator = joint if index == 0 else " "
+                if current and len(current) + len(separator) + len(piece) > max_chars:
                     chunks.append(current)
                     current = ""
                 if current:
-                    current += joint if index == 0 else " "
+                    current += separator
                 current += piece
         if current:
             chunks.append(current)
