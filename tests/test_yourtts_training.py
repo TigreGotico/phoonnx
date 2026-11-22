@@ -476,6 +476,50 @@ def test_preprocess_cli_exposes_engine_options():
 
 
 # ----------------------------------------------------------------------
+# language count
+# ----------------------------------------------------------------------
+
+def _model_for_dataset(tmp_path, language_ids, dataset_config=None, extra=None):
+    """Build the engine's model on a dataset whose utterances carry the given
+    language ids (None: no id on that utterance)."""
+    from phoonnx_train.engines.base import TrainingEngineConfig
+
+    row = {"phoneme_ids": [1, 2, 3], "audio_norm_path": "a.pt", "audio_spec_path": "a.spec.pt"}
+    rows = [row if i is None else {**row, "language_id": i} for i in language_ids]
+    (tmp_path / "dataset.jsonl").write_text(
+        "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+    (tmp_path / "config.json").write_text(json.dumps(dataset_config or {}), encoding="utf-8")
+    config = TrainingEngineConfig(num_symbols=20, num_speakers=1, sample_rate=22050,
+                                  extra={"quality": "x-low", "num_test_examples": 0,
+                                         "validation_split": 0.0, **(extra or {})})
+    return YourttsTrainingEngine().create_model(config, [tmp_path])
+
+
+def test_create_model_counts_the_languages_of_the_utterances(tmp_path):
+    # ids 0 and 2: the embedding needs rows 0, 1 and 2
+    model = _model_for_dataset(tmp_path, [0, 2, 2, 0])
+    assert model.hparams.n_langs == 3
+    assert model.model_g.emb_l.num_embeddings == 3
+
+
+def test_create_model_without_language_ids_has_no_language_embedding(tmp_path):
+    model = _model_for_dataset(tmp_path, [None, None])
+    assert model.hparams.n_langs == 0
+    assert not hasattr(model.model_g, "emb_l")
+
+
+def test_dataset_config_n_langs_wins_over_the_count(tmp_path):
+    model = _model_for_dataset(tmp_path, [0, 1], dataset_config={"n_langs": 5})
+    assert model.hparams.n_langs == 5
+
+
+def test_engine_params_n_langs_wins_over_the_dataset(tmp_path):
+    model = _model_for_dataset(tmp_path, [0, 1], dataset_config={"n_langs": 5},
+                               extra={"n_langs": 4})
+    assert model.hparams.n_langs == 4
+
+
+# ----------------------------------------------------------------------
 # mean d-vector renormalization
 # ----------------------------------------------------------------------
 

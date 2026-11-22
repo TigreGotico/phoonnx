@@ -298,8 +298,7 @@ python -m phoonnx_train.export_onnx epoch=500.ckpt \
 ```
 
 `--add-phoneme-alignment` runs after the engine export and adds a phoneme-alignment output
-to the exported graph. `BaseTrainingEngine.extra_cli_options()` exists, but neither
-`train.py` nor `export_onnx.py` adds the options that it returns.
+to the exported graph.
 
 ---
 

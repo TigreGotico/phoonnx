@@ -252,11 +252,3 @@ class GlowTTSTrainingEngine(BaseTrainingEngine):
     def quality_presets(self) -> Dict[str, Dict[str, Any]]:
         """Return GlowTTS quality tier -> hyper-parameter overrides."""
         return _QUALITY_PRESETS
-
-    # ------------------------------------------------------------------
-    # Optional
-    # ------------------------------------------------------------------
-
-    def extra_cli_options(self) -> List[Any]:
-        """GlowTTS has no engine-specific CLI options beyond the shared ones."""
-        return []
