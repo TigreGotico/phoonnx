@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.129.0a1](https://github.com/TigreGotico/phoonnx/tree/1.129.0a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.128.0a1...1.129.0a1)
+
+**Merged pull requests:**
+
+- feat: export a voice to Piper and sherpa-onnx [\#915](https://github.com/TigreGotico/phoonnx/pull/915) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.128.0a1](https://github.com/TigreGotico/phoonnx/tree/1.128.0a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.127.0a1...1.128.0a1)
