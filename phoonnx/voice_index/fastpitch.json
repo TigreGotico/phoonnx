@@ -17,8 +17,8 @@
     },
     "coqui/en-ljspeech-fast_pitch": {
         "voice_id": "coqui/en-ljspeech-fast_pitch",
-        "model_url": "https://huggingface.co/Phoonnx/fastpitch-en_us-ljspeech-gruut/resolve/08317912db60e3eb6640944b6e4ae42c71bedc76/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/fastpitch-en_us-ljspeech-gruut/resolve/08317912db60e3eb6640944b6e4ae42c71bedc76/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/fastpitch-en_us-ljspeech-gruut/resolve/857b16e8c6309eaea6ac7b0501f73fd64d385224/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/fastpitch-en_us-ljspeech-gruut/resolve/857b16e8c6309eaea6ac7b0501f73fd64d385224/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -33,8 +33,8 @@
     },
     "coqui/en-ljspeech-speedy-speech": {
         "voice_id": "coqui/en-ljspeech-speedy-speech",
-        "model_url": "https://huggingface.co/Phoonnx/fastpitch-en_us-ljspeech_speedyspeech-gruut/resolve/ecdd296c7dcd12370ad77c2da532057f61b4e310/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/fastpitch-en_us-ljspeech_speedyspeech-gruut/resolve/ecdd296c7dcd12370ad77c2da532057f61b4e310/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/fastpitch-en_us-ljspeech_speedyspeech-gruut/resolve/7675c8062dbdc76f29011f4bcf9463c45cc7865c/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/fastpitch-en_us-ljspeech_speedyspeech-gruut/resolve/7675c8062dbdc76f29011f4bcf9463c45cc7865c/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -49,8 +49,8 @@
     },
     "coqui/en-vctk-fast_pitch": {
         "voice_id": "coqui/en-vctk-fast_pitch",
-        "model_url": "https://huggingface.co/Phoonnx/fastpitch-en_us-vctk-gruut/resolve/9da51d0b8a2eff555e281dcbd9cd0b756c108e84/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/fastpitch-en_us-vctk-gruut/resolve/9da51d0b8a2eff555e281dcbd9cd0b756c108e84/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/fastpitch-en_us-vctk-gruut/resolve/eaf8b6e084160f35aa554202b362e8ff81756073/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/fastpitch-en_us-vctk-gruut/resolve/eaf8b6e084160f35aa554202b362e8ff81756073/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,

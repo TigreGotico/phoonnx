@@ -2,6 +2,8 @@ import sys, glob, json5
 import os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import torch
 from types import SimpleNamespace
+import onnx
+from add_pace import add_pace_input
 from forward_tts import ForwardTTS, ForwardTTSArgs
 
 class FPWrap(torch.nn.Module):
@@ -33,4 +35,5 @@ else:
 with torch.no_grad(): print("mel", tuple(w(*eargs).shape), "| speakers:", nspk)
 torch.onnx.export(w, eargs, out, input_names=names, output_names=["mel_spec"],
                   dynamic_axes=dyn, opset_version=14, dynamo=False)
+onnx.save(add_pace_input(onnx.load(out)), out)
 print("exported", out)
