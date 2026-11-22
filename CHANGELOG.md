@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.129.3a1](https://github.com/TigreGotico/phoonnx/tree/1.129.3a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.2a1...1.129.3a1)
+
+**Merged pull requests:**
+
+- fix: configured plugin voice, voice ids in list-voices, relative decoder path, empty dataset exit [\#921](https://github.com/TigreGotico/phoonnx/pull/921) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.129.2a1](https://github.com/TigreGotico/phoonnx/tree/1.129.2a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.1a1...1.129.2a1)
@@ -289,10 +297,6 @@
 ## [1.124.1a1](https://github.com/TigreGotico/phoonnx/tree/1.124.1a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.0a1...1.124.1a1)
-
-**Merged pull requests:**
-
-- fix: kokoro-82m voices load the full-precision graph [\#817](https://github.com/TigreGotico/phoonnx/pull/817) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.124.0a1](https://github.com/TigreGotico/phoonnx/tree/1.124.0a1) (2026-11-19)
 
