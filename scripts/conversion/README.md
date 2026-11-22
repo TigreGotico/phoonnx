@@ -32,6 +32,11 @@ correctly (all applied in the vendored copy; pretrained weights load unchanged):
 python export_fp.py <coqui_config.json> <coqui_model.pth> out.onnx
 ```
 
+The exporter then runs `add_pace.py`, which adds a `pace` input (float32 `[1]`, >1
+faster). The tracer bakes ForwardTTS's `length_scale` into the graph as a constant,
+and `add_pace.py` divides that constant by `pace`. It also runs alone on an exported
+graph: `python add_pace.py in.onnx out.onnx`.
+
 The matched `hifigan_v2` vocoder exports from `hifigan_generator.py` (mel → audio).
 
 ## `coqui_glowtts_export/`
