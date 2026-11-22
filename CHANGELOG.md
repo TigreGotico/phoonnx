@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.130.0a1](https://github.com/TigreGotico/phoonnx/tree/1.130.0a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.12a1...1.130.0a1)
+
+**Merged pull requests:**
+
+- feat\(providers\): a thread count for every session of a voice [\#940](https://github.com/TigreGotico/phoonnx/pull/940) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.129.12a1](https://github.com/TigreGotico/phoonnx/tree/1.129.12a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.11a1...1.129.12a1)
@@ -330,10 +338,6 @@
 ## [1.124.3a1](https://github.com/TigreGotico/phoonnx/tree/1.124.3a1) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.2a2...1.124.3a1)
-
-**Merged pull requests:**
-
-- fix: Piper voice configs tokenize and phonemize as Piper 1.5 does [\#837](https://github.com/TigreGotico/phoonnx/pull/837) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.124.2a2](https://github.com/TigreGotico/phoonnx/tree/1.124.2a2) (2026-11-21)
 
