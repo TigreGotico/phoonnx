@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.125.9a3](https://github.com/TigreGotico/phoonnx/tree/1.125.9a3) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.9a2...1.125.9a3)
+
+**Merged pull requests:**
+
+- test: check the cache merge\_default\_voices stores, not a mocked update [\#886](https://github.com/TigreGotico/phoonnx/pull/886) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.125.9a2](https://github.com/TigreGotico/phoonnx/tree/1.125.9a2) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.9a1...1.125.9a2)
@@ -299,8 +307,6 @@
 
 - fix: restore green CI after linguatag 0.3.1a1 and \#748 [\#796](https://github.com/TigreGotico/phoonnx/pull/796) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - fix: level\_audio returns an empty sentence as is [\#792](https://github.com/TigreGotico/phoonnx/pull/792) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- perf: samplers keep only the top candidates [\#776](https://github.com/TigreGotico/phoonnx/pull/776) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix\(config\): an unset inference scale leaves the engine default [\#775](https://github.com/TigreGotico/phoonnx/pull/775) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.118.3a1](https://github.com/TigreGotico/phoonnx/tree/1.118.3a1) (2026-11-19)
 
