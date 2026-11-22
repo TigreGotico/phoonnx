@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.125.3a1](https://github.com/TigreGotico/phoonnx/tree/1.125.3a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.2a1...1.125.3a1)
+
+**Merged pull requests:**
+
+- fix: keep the source gap between packed sentences [\#872](https://github.com/TigreGotico/phoonnx/pull/872) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.125.2a1](https://github.com/TigreGotico/phoonnx/tree/1.125.2a1) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.1a2...1.125.2a1)
@@ -331,10 +339,6 @@
 ## [1.115.0a1](https://github.com/TigreGotico/phoonnx/tree/1.115.0a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.114.2a1...1.115.0a1)
-
-**Merged pull requests:**
-
-- fix: hold the cloned-voice cache key and value in one attribute [\#759](https://github.com/TigreGotico/phoonnx/pull/759) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.114.2a1](https://github.com/TigreGotico/phoonnx/tree/1.114.2a1) (2026-11-18)
 
