@@ -956,16 +956,21 @@ class TestPhonemizerLangOverride(HubTestCase):
         self.assertIsNone(d["phonemizer_lang"])
         self.assertIsNone(TTSModelInfo(**d).phonemizer_lang)
 
-    def test_phonemizer_lang_wins_over_catalogue_lang_for_config_resolution(self):
+    def test_phonemizer_lang_sets_the_phonemizer_and_lang_the_text(self):
         # No config_url: config resolution starts from the graphemes/unicode
-        # default dict, isolating exactly what feeds VoiceConfig.from_dict's
-        # lang_code override.
+        # default dict, isolating what the index passes to VoiceConfig.from_dict.
         info = self.make_info(lang="tdt-TL", phonemizer_lang="pt",
                               phoneme_type="espeak", alphabet="ipa",
                               engine="piper")
-        self.assertEqual(info.config.lang_code, "pt")
-        # lang stays the catalogue-facing value; unaffected by the override.
+        self.assertEqual((info.config.lang_code, info.config.phonemizer_lang), ("tdt-TL", "pt"))
         self.assertEqual(info.lang, "tdt-TL")
+
+    def test_an_es_co_entry_normalises_as_es_co_and_phonemizes_as_es_419(self):
+        info = self.make_info(lang="es-CO", phonemizer_lang="es-419",
+                              phoneme_type="espeak", alphabet="ipa", engine="piper")
+        from phoonnx.voice import TTSVoice
+        frontend = TTSVoice(session=None, config=info.config).frontend
+        self.assertEqual((frontend.config.lang, frontend.config.phonemizer_lang), ("es-CO", "es-419"))
 
     def test_without_phonemizer_lang_index_lang_still_wins(self):
         # Regression guard for the kakao-enterprise/vits-ljs shape: an entry
@@ -1408,14 +1413,14 @@ class TestLanglessVoiceRoundTrip(ManagerTestCase):
                     info = TTSModelInfo(voice_id=voice_id, lang="",
                                         model_url=f"{HUB}/model.onnx",
                                         config_url=f"{HUB}/config.json")
-                    first = info.config.lang_code
+                    first = info.config.phonemizer_lang or info.config.lang_code
                     manager.add_voice(info)
                     manager.save()
 
                     reloaded_manager = TTSModelManager(cache_path=self.cache_path)
                     reloaded_manager.load()
                     reloaded = reloaded_manager.voices[voice_id]
-                    second = reloaded.config.lang_code
+                    second = reloaded.config.phonemizer_lang or reloaded.config.lang_code
 
                 self.assertEqual(first, standardize_lang(voice))
                 self.assertEqual(second, standardize_lang(voice))

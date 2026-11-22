@@ -32,7 +32,7 @@ def _voice(symbols, phonemizer=None, phoneme_type=None):
                              use_eos_bos=False, blank_at_end=False, blank_at_start=False)
     voice = TTSVoice.__new__(TTSVoice)
     voice.phonemizer = phonemizer or _FixedPhonemizer("")
-    voice.config = types.SimpleNamespace(lang_code="en-US", alphabet=Alphabet.IPA, text_casing="ignore",
+    voice.config = types.SimpleNamespace(lang_code="en-US", phonemizer_lang=None, alphabet=Alphabet.IPA, text_casing="ignore",
                                          phoneme_type=phoneme_type, add_diacritics=False,
                                          diacritizer_model=None, tokenizer=tokenizer)
     voice.adapter = types.SimpleNamespace(takes_symbols=True, READS_TEXT=False)

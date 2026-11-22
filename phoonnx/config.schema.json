@@ -35,6 +35,10 @@
       "type": "string",
       "description": "The language of the voice, as a BCP 47 tag."
     },
+    "phonemizer_lang": {
+      "type": "string",
+      "description": "The language the phonemizer reads when it differs from lang_code, the text language: the eSpeak voice en of an en-US Piper voice. Absent means lang_code."
+    },
     "audio": {
       "type": "object",
       "required": [

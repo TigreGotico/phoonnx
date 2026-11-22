@@ -29,6 +29,7 @@ from phoonnx.config import VoiceConfig
 | `num_langs` | `int` | `1` | Number of languages (1 for monolingual) |
 | `sample_rate` | `int` | `16000` | Output audio sample rate in Hz |
 | `lang_code` | `str` \| `None` | `"und"` | BCP-47 language code (e.g. `"en-US"`) |
+| `phonemizer_lang` | `str` \| `None` | `None` | The language the phonemizer reads when it differs from `lang_code`. Text normalisation keeps `lang_code`. A Piper config sets it from `espeak.voice`, so an en_US voice with the eSpeak voice `en` reads dates as en-US and gets the phonemes of `en` |
 | `phoneme_type` | `PhonemeType` | — | Phonemizer backend |
 | `alphabet` | `Alphabet` | — | Phoneme representation |
 | `engine` | `Engine` | `PHOONNX` | Training framework the model was built with |

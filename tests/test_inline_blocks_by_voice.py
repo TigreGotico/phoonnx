@@ -34,7 +34,7 @@ def _voice(alphabet, adapter):
     voice.adapter = adapter
     voice.config = types.SimpleNamespace(
         text_casing="ignore",
-        phoneme_type=PhonemeType.UNICODE, alphabet=alphabet, lang_code="en", lang_tokens={},
+        phoneme_type=PhonemeType.UNICODE, alphabet=alphabet, lang_code="en", phonemizer_lang=None, lang_tokens={},
         add_diacritics=False, diacritizer_model=None, sample_rate=22050,
         tokenizer=types.SimpleNamespace(tokenize=lambda symbols: [1] * len(symbols)))
     return voice
