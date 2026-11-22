@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.129.11a1](https://github.com/TigreGotico/phoonnx/tree/1.129.11a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.10a1...1.129.11a1)
+
+**Merged pull requests:**
+
+- fix\(kittentts\): the converter writes num\_symbols as the embedding rows [\#935](https://github.com/TigreGotico/phoonnx/pull/935) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.129.10a1](https://github.com/TigreGotico/phoonnx/tree/1.129.10a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.9a1...1.129.10a1)
@@ -311,10 +319,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.3a1...1.124.3a2)
 
-**Merged pull requests:**
-
-- docs: correct the reference pages against the code [\#834](https://github.com/TigreGotico/phoonnx/pull/834) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.124.3a1](https://github.com/TigreGotico/phoonnx/tree/1.124.3a1) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.2a2...1.124.3a1)
@@ -358,10 +362,6 @@
 ## [1.123.8a1](https://github.com/TigreGotico/phoonnx/tree/1.123.8a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.7a1...1.123.8a1)
-
-**Merged pull requests:**
-
-- fix: the voice CLI exits non-zero on failure and filters by the full language tag [\#833](https://github.com/TigreGotico/phoonnx/pull/833) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.123.7a1](https://github.com/TigreGotico/phoonnx/tree/1.123.7a1) (2026-11-19)
 
