@@ -743,11 +743,11 @@ def test_voice_index_entries_carry_every_auxiliary_graph():
         assert required <= set(entry["aux_model_urls"])
 
 
-def test_voice_index_urls_point_at_the_mirror():
+def test_voice_index_urls_point_at_one_repo_per_model():
     for entry in _index().values():
         urls = [entry["model_url"], *entry["aux_model_urls"].values()]
-        assert all(u.startswith("https://huggingface.co/Phoonnx/phoonnx-pocket-tts/")
-                   for u in urls)
+        assert all(u.startswith("https://huggingface.co/Phoonnx/pockettts-") for u in urls)
+        assert len({u.split("/resolve/")[0] for u in urls}) == 1
 
 
 def test_voice_index_auxiliary_filenames_do_not_collide():

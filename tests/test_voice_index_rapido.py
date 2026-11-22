@@ -44,7 +44,7 @@ class TestRapidoIndex(unittest.TestCase):
         for voice_id, files in self._file_sets():
             urls = [files["model_url"], files["config_url"], *files["aux_model_urls"].values()]
             for url in urls:
-                self.assertTrue(url.startswith("https://huggingface.co/Phoonnx/phoonnx-rapido/"), (voice_id, url))
+                self.assertTrue(url.startswith("https://huggingface.co/Phoonnx/"), (voice_id, url))
 
     def test_each_precision_names_the_three_graphs_from_its_own_folder(self):
         # The int8 files share the fp32 text encoder, aligner and decoder by

@@ -1,8 +1,8 @@
 {
     "edwixx/pt-BR-rapido": {
         "voice_id": "edwixx/pt-BR-rapido",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/8d6d98e49364086419f327e0eff5f08869ad6faa/edwixx__rapido-tts/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/8d6d98e49364086419f327e0eff5f08869ad6faa/edwixx__rapido-tts/config.json",
+        "model_url": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/05b666d1d7fed4398e107a5a4a060a69d1c8a7eb/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/05b666d1d7fed4398e107a5a4a060a69d1c8a7eb/config.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -12,9 +12,9 @@
         "engine": "rapido",
         "lang": "pt-BR",
         "aux_model_urls": {
-            "text_encoder_path": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/8d6d98e49364086419f327e0eff5f08869ad6faa/edwixx__rapido-tts/text_encoder.onnx",
-            "aligner_path": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/8d6d98e49364086419f327e0eff5f08869ad6faa/edwixx__rapido-tts/aligner.onnx",
-            "decoder_path": "https://huggingface.co/Phoonnx/phoonnx-rapido/resolve/8d6d98e49364086419f327e0eff5f08869ad6faa/edwixx__rapido-tts/decoder.onnx"
+            "text_encoder_path": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/05b666d1d7fed4398e107a5a4a060a69d1c8a7eb/text_encoder.onnx",
+            "aligner_path": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/05b666d1d7fed4398e107a5a4a060a69d1c8a7eb/aligner.onnx",
+            "decoder_path": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/05b666d1d7fed4398e107a5a4a060a69d1c8a7eb/decoder.onnx"
         },
         "display_name": "Rápido pt-BR",
         "variants": {

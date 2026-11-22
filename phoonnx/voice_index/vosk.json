@@ -1,9 +1,9 @@
 {
     "vosk/tamara": {
         "voice_id": "vosk/tamara",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/vosk__tamara/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/vosk__tamara/config.json",
-        "dictionary_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/vosk__tamara/dictionary",
+        "model_url": "https://huggingface.co/Phoonnx/vits-ru_ru-tamara-vosk/resolve/5812602da63cd781b643bb337188f3cdf9948e6c/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-ru_ru-tamara-vosk/resolve/5812602da63cd781b643bb337188f3cdf9948e6c/config.json",
+        "dictionary_url": "https://huggingface.co/Phoonnx/vits-ru_ru-tamara-vosk/resolve/5812602da63cd781b643bb337188f3cdf9948e6c/dictionary",
         "phoneme_type": "vosk",
         "lang": "ru-RU",
         "tokens_url": null,
@@ -15,9 +15,9 @@
     },
     "vosk/irina": {
         "voice_id": "vosk/irina",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/vosk__irina/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/vosk__irina/config.json",
-        "dictionary_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/vosk__irina/dictionary",
+        "model_url": "https://huggingface.co/Phoonnx/vits-ru_ru-irina-vosk/resolve/670bd674411ef71861c47cd03b4c3b78d74a366e/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-ru_ru-irina-vosk/resolve/670bd674411ef71861c47cd03b4c3b78d74a366e/config.json",
+        "dictionary_url": "https://huggingface.co/Phoonnx/vits-ru_ru-irina-vosk/resolve/670bd674411ef71861c47cd03b4c3b78d74a366e/dictionary",
         "phoneme_type": "vosk",
         "lang": "ru-RU",
         "tokens_url": null,
@@ -29,9 +29,9 @@
     },
     "vosk/natasha": {
         "voice_id": "vosk/natasha",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/vosk__natasha/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/vosk__natasha/config.json",
-        "dictionary_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/vosk__natasha/dictionary",
+        "model_url": "https://huggingface.co/Phoonnx/vits-ru_ru-natasha-vosk/resolve/81173683ac5a1098869d580a529d17e6829bbe75/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-ru_ru-natasha-vosk/resolve/81173683ac5a1098869d580a529d17e6829bbe75/config.json",
+        "dictionary_url": "https://huggingface.co/Phoonnx/vits-ru_ru-natasha-vosk/resolve/81173683ac5a1098869d580a529d17e6829bbe75/dictionary",
         "phoneme_type": "vosk",
         "lang": "ru-RU",
         "tokens_url": null,

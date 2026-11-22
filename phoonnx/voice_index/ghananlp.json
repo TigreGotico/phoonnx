@@ -1,8 +1,8 @@
 {
   "ghananlpcommunity/stable-twi-tts": {
     "voice_id": "ghananlpcommunity/stable-twi-tts",
-    "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/ghananlpcommunity__stable-twi-tts/model.onnx",
-    "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/ghananlpcommunity__stable-twi-tts/config.json",
+    "model_url": "https://huggingface.co/Phoonnx/vits-tw-stable-espeak/resolve/d19492c45fd15c7e9173411298e29475a0b591f5/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/vits-tw-stable-espeak/resolve/d19492c45fd15c7e9173411298e29475a0b591f5/config.json",
     "vocab_url": null,
     "tokenizer_config_url": null,
     "tokens_url": null,
@@ -16,8 +16,8 @@
   },
   "ghananlpcommunity/nano-twi": {
     "voice_id": "ghananlpcommunity/nano-twi",
-    "model_url": "https://huggingface.co/Phoonnx/phoonnx-matcha/resolve/65bf71e4c8b2e5d4170c9905243cae412a268acb/ghananlpcommunity__nano-twi/model.onnx",
-    "config_url": "https://huggingface.co/Phoonnx/phoonnx-matcha/resolve/65bf71e4c8b2e5d4170c9905243cae412a268acb/ghananlpcommunity__nano-twi/config.json",
+    "model_url": "https://huggingface.co/Phoonnx/matcha-tw-ghananlpcommunity-nano-espeak/resolve/d61277fcd46056fd9f089c72ea9835131500c184/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/matcha-tw-ghananlpcommunity-nano-espeak/resolve/d61277fcd46056fd9f089c72ea9835131500c184/config.json",
     "vocab_url": null,
     "tokenizer_config_url": null,
     "tokens_url": null,
@@ -27,15 +27,15 @@
     "engine": "matcha",
     "lang": "tw",
     "phonemizer_lang": "lfn",
-    "vocoder_url": "https://huggingface.co/Phoonnx/phoonnx-matcha/resolve/65bf71e4c8b2e5d4170c9905243cae412a268acb/ghananlpcommunity__nano-twi/vocoder.onnx",
+    "vocoder_url": "https://huggingface.co/Phoonnx/matcha-tw-ghananlpcommunity-nano-espeak/resolve/d61277fcd46056fd9f089c72ea9835131500c184/vocoder.onnx",
     "vocoder_config_url": null,
     "vocoder_type": "vocos",
     "display_name": "Twi (nano-twi, {engine})"
   },
   "ghananlpcommunity/poto-tts-kokoro-gh": {
     "voice_id": "ghananlpcommunity/poto-tts-kokoro-gh",
-    "model_url": "https://huggingface.co/Phoonnx/phoonnx-styletts2/resolve/a6aca4615d27cfb00e4e2879a4e8ff404296ccbb/ghananlpcommunity__poto-tts-kokoro-gh/model.onnx",
-    "config_url": "https://huggingface.co/Phoonnx/phoonnx-styletts2/resolve/a6aca4615d27cfb00e4e2879a4e8ff404296ccbb/ghananlpcommunity__poto-tts-kokoro-gh/config.json",
+    "model_url": "https://huggingface.co/Phoonnx/styletts2-en_gh-poto_kokoro-espeak/resolve/4189cfe7957575c411d5d2213f3804de213350bf/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/styletts2-en_gh-poto_kokoro-espeak/resolve/4189cfe7957575c411d5d2213f3804de213350bf/config.json",
     "vocab_url": null,
     "tokenizer_config_url": null,
     "tokens_url": null,
@@ -45,7 +45,7 @@
     "engine": "styletts2",
     "lang": "en-GH",
     "phonemizer_lang": "en-gb",
-    "style_url": "https://huggingface.co/Phoonnx/phoonnx-styletts2/resolve/a6aca4615d27cfb00e4e2879a4e8ff404296ccbb/ghananlpcommunity__poto-tts-kokoro-gh/voices/bf_alice.bin",
+    "style_url": "https://huggingface.co/Phoonnx/styletts2-en_gh-poto_kokoro-espeak/resolve/4189cfe7957575c411d5d2213f3804de213350bf/voices/bf_alice.bin",
     "display_name": "Ghanaian English (poto-tts Kokoro, {engine})"
   }
 }
