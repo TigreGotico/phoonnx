@@ -111,6 +111,7 @@ PINYIN_CONFIG = {**F5_CONFIG, "phoneme_type": "f5tts_pinyin", "lang_code": "mul"
     ("今天天气很好。", "我爱模型。"),
     ("Hello there, my friend!", "你好世界"),
     ("Hello there, my friend\n", "你好世界"),  # no terminator: the newline is whitespace at the end
+    ("  你好，世界。", "  AI 模型很好。"),  # whitespace at the start of the reference and of the text
 ])
 def test_f5tts_pinyin_example_matches_the_adapter(tmp_path, monkeypatch, reference_text, text):
     (tmp_path / "config.json").write_text(json.dumps(PINYIN_CONFIG), encoding="utf-8")
@@ -149,6 +150,7 @@ def test_f5tts_pinyin_example_matches_the_adapter(tmp_path, monkeypatch, referen
     result = adapter.synthesize(request, graphs["model.onnx"])
     expected = adapter._reference_ids(prompt, reference_text, text_ids).ravel().tolist() + text_ids
     assert names["ids"] == expected
+    assert '"scriptconv[zh-phonemizers]>=0.0.4a142"' in block.splitlines()[1]  # pip takes a prerelease floor only when named
     np.testing.assert_array_equal(names["audio"], result.audio)
 
 

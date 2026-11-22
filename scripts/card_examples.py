@@ -979,7 +979,7 @@ def _f5tts(config: Dict[str, Any], files: Dict[str, Any], *, repo_id: str, text:
     graphs = ", ".join(f'"{files[k]["file"]}"' for k in ("preprocess_path", "model", "decode_path"))
     pinyin = config.get("phoneme_type") == "f5tts_pinyin"
     if pinyin:
-        packages, imports = ' "scriptconv[zh-phonemizers]"', ["from scriptconv.phonemizers import get_phonemizer"]
+        packages, imports = ' "scriptconv[zh-phonemizers]>=0.0.4a142"', ["from scriptconv.phonemizers import get_phonemizer"]
         to_ids = [
             'phonemizer = get_phonemizer("f5tts_pinyin", "unicode")',
             "",
