@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.128.0a1](https://github.com/TigreGotico/phoonnx/tree/1.128.0a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.127.0a1...1.128.0a1)
+
+**Merged pull requests:**
+
+- feat: list the int8 copies of 57 Piper mirror voices in the index [\#913](https://github.com/TigreGotico/phoonnx/pull/913) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.127.0a1](https://github.com/TigreGotico/phoonnx/tree/1.127.0a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.126.1a1...1.127.0a1)
