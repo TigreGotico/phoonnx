@@ -1,7 +1,7 @@
 {
     "piper_neurlang/ar_zayd0-arabic-diacritized": {
         "voice_id": "piper_neurlang/ar_zayd0-arabic-diacritized",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/piper_neurlang__ar_zayd0-arabic-diacritized/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/vits-ar-zayd0_diacritized-goruut/resolve/7c6d787b994d2ff3d20a02d91fa7dd4ffc2da969/model.onnx",
         "phoneme_type": "goruut",
         "lang": "ar",
         "tokens_url": null,
@@ -10,11 +10,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/piper_neurlang__ar_zayd0-arabic-diacritized/config.json"
+        "config_url": "https://huggingface.co/Phoonnx/vits-ar-zayd0_diacritized-goruut/resolve/7c6d787b994d2ff3d20a02d91fa7dd4ffc2da969/config.json"
     },
     "piper_neurlang/en-GB_jane-eyre-english-british": {
         "voice_id": "piper_neurlang/en-GB_jane-eyre-english-british",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/piper_neurlang__en-GB_jane-eyre-english-british/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/vits-en_gb-jane_eyre_british-goruut/resolve/e41c3f68564a008f134f548dd3606e1a258520c1/model.onnx",
         "phoneme_type": "goruut",
         "lang": "en-GB",
         "tokens_url": null,
@@ -23,11 +23,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/piper_neurlang__en-GB_jane-eyre-english-british/config.json"
+        "config_url": "https://huggingface.co/Phoonnx/vits-en_gb-jane_eyre_british-goruut/resolve/e41c3f68564a008f134f548dd3606e1a258520c1/config.json"
     },
     "piper_neurlang/sl-SI_slovakspeech-female-slovak": {
         "voice_id": "piper_neurlang/sl-SI_slovakspeech-female-slovak",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/piper_neurlang__sl-SI_slovakspeech-female-slovak/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/vits-sl_si-slovakspeech_female_slovak-goruut/resolve/88f8ec276724fca2e8ee4a9baddf560e6c05f07b/model.onnx",
         "phoneme_type": "goruut",
         "lang": "sl-SI",
         "tokens_url": null,
@@ -36,11 +36,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/piper_neurlang__sl-SI_slovakspeech-female-slovak/config.json"
+        "config_url": "https://huggingface.co/Phoonnx/vits-sl_si-slovakspeech_female_slovak-goruut/resolve/88f8ec276724fca2e8ee4a9baddf560e6c05f07b/config.json"
     },
     "piper_neurlang/ko-KO_kss-korean": {
         "voice_id": "piper_neurlang/ko-KO_kss-korean",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/piper_neurlang__ko-KO_kss-korean/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/vits-ko_kr-kss-goruut/resolve/93258578f4a929cbb5527295e17a43a5dd701983/model.onnx",
         "phoneme_type": "goruut",
         "lang": "ko-KR",
         "tokens_url": null,
@@ -49,6 +49,6 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/piper_neurlang__ko-KO_kss-korean/config.json"
+        "config_url": "https://huggingface.co/Phoonnx/vits-ko_kr-kss-goruut/resolve/93258578f4a929cbb5527295e17a43a5dd701983/config.json"
     }
 }

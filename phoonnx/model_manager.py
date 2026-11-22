@@ -18,7 +18,8 @@ import requests
 from huggingface_hub import constants as hub_constants, hf_hub_download
 from huggingface_hub.constants import HF_HUB_CACHE
 from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
-                                    OfflineModeIsEnabled)
+                                    OfflineModeIsEnabled, RepositoryNotFoundError,
+                                    RevisionNotFoundError)
 from json_database import JsonStorageXDG, JsonStorage, load_commented_json
 
 from phoonnx.config import (PhonemeType, _removal_version, _voice_phonemizer, VoiceConfig, Engine,
@@ -272,6 +273,15 @@ _MOVED_FROM = {"Phoonnx": "OpenVoiceOS"}
 # Repos that also changed name: current id -> the ids it had before, newest first.
 _RENAMED_FROM: Dict[str, List[str]] = json.loads(
     (Path(__file__).parent / "moved_repos.json").read_text(encoding="utf-8"))
+# Each model of a Phoonnx mirror repo (Phoonnx/phoonnx-<family>) has a repo of its own, with the
+# model's folder at the repo root. The table maps such a repo to its mirror, the folder, the mirror
+# commit the index pinned (rev), and the files that keep their mirror path (kept: shared files from
+# outside the folder). "also" lists other mirror folders that served the same files, each with its
+# commit and its own repo path -> mirror path map. The mirrors are to be deleted, so a voice is
+# fetched through a mirror only while the cache holds every file the voice names there; a voice
+# the cache does not hold comes from its own repo.
+_SPLIT_FROM: Dict[str, Dict[str, Any]] = json.loads(
+    (Path(__file__).parent / "split_repos.json").read_text(encoding="utf-8"))
 
 
 def _earlier_ids(repo_id: str) -> List[str]:
@@ -286,6 +296,62 @@ def _repo_cached_before_move(repo_id: str) -> Optional[str]:
     """The newest old repo id that the cache holds the repo under. Reads no network."""
     return next((old for old in _earlier_ids(repo_id)
                  if (Path(HF_HUB_CACHE) / f"models--{old.replace('/', '--')}").is_dir()), None)
+
+
+_Route = Tuple[str, str, str, Dict[str, str]]
+
+
+def _mirror_route(repo_id: str, filenames: Set[str]) -> Optional[_Route]:
+    """The (mirror id, mirror commit, mirror folder, repo path -> mirror path) through which the
+    cache holds every one of ``filenames`` of the split repo ``repo_id``, in one snapshot.
+    Reads no network."""
+    split = _SPLIT_FROM.get(repo_id)
+    if not split:
+        return None
+    kept = split.get("kept", ())
+    main = {name: name if name in kept else f"{split['folder']}/{name}" for name in filenames}
+    ways = [(split["rev"], split["folder"], main)] + [
+        (other["rev"], posixpath.dirname(next(iter(other["paths"].values()))), other["paths"])
+        for other in split.get("also", ())]
+    for mirror in [split["from"], *_earlier_ids(split["from"])]:
+        snapshots = list((Path(HF_HUB_CACHE) / f"models--{mirror.replace('/', '--')}" / "snapshots").glob("*"))
+        for rev, folder, paths in ways:
+            if filenames <= paths.keys() and any(all((snapshot / paths[name]).exists() for name in filenames)
+                                                 for snapshot in snapshots):
+                return mirror, rev, folder, paths
+    return None
+
+
+# The mirror route of each split repo of the voice being loaded, by (repo id, pinned commit).
+_VOICE_ROUTES: contextvars.ContextVar[Optional[Dict[Tuple[str, str], Optional[_Route]]]] = \
+    contextvars.ContextVar("phoonnx_voice_routes", default=None)
+
+
+def _fetch_source(repo_id: str, revision: str, filename: str) -> Tuple[str, str, str]:
+    """The (repo id, commit, path) to fetch a hub file through. Reads no network.
+
+    A split repo goes through the mirror route that holds the voice's files (or this file,
+    outside a voice load); a file the route does not name, such as the external data of its
+    graph, follows the folder rule of the route. Any other repo goes through the newest earlier
+    id the cache holds, else its own.
+    """
+    if repo_id in _SPLIT_FROM:
+        routes = _VOICE_ROUTES.get()
+        if routes is not None and (repo_id, revision) in routes:
+            route = routes[(repo_id, revision)]
+        else:
+            route = _mirror_route(repo_id, {filename})
+        if route is None:
+            return repo_id, revision, filename
+        mirror, rev, folder, paths = route
+        if filename in paths:
+            return mirror, rev, paths[filename]
+        split = _SPLIT_FROM[repo_id]
+        if folder == split["folder"] and filename in split.get("kept", ()):
+            return mirror, rev, filename
+        return mirror, rev, f"{folder}/{filename}"
+    old = _repo_cached_before_move(repo_id)
+    return (old or repo_id), revision, filename
 
 
 # The snapshot an offline load reads in place of a pinned commit the cache does not hold. The
@@ -314,16 +380,23 @@ def _voice_scope(info: "TTSModelInfo") -> Iterator[None]:
     urls = [getattr(info, f.name) for f in fields(info)
             if f.name.endswith("_url") and f.name != "dictionary_url"]
     urls += list((info.aux_model_urls or {}).values())
+    named: Dict[Tuple[str, str], Set[str]] = {}
     for url in urls:
         match = _HF_URL.match(url.split("?")[0]) if isinstance(url, str) else None
         if match:
-            repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
-            files.setdefault((repo_id, match["rev"]), set()).add(match["path"])
+            named.setdefault((match["repo"], match["rev"]), set()).add(match["path"])
+    routes = {key: _mirror_route(key[0], paths) for key, paths in named.items() if key[0] in _SPLIT_FROM}
+    route_token = _VOICE_ROUTES.set(routes)
+    for (repo, rev), paths in named.items():
+        for path in paths:
+            repo_id, revision, source_path = _fetch_source(repo, rev, path)
+            files.setdefault((repo_id, revision), set()).add(source_path)
     token = _VOICE_FILES.set(files)
     try:
         yield
     finally:
         _VOICE_FILES.reset(token)
+        _VOICE_ROUTES.reset(route_token)
 
 
 def _in_voice_scope(method: Callable) -> Callable:
@@ -436,18 +509,29 @@ def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
     match = _HF_URL.match(url.split("?")[0])
     if not match:
         return None
-    repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
+    repo_id, revision, path = _fetch_source(match["repo"], match["rev"], match["path"])
     try:
         return Path(hf_hub_download(repo_id=repo_id,
-                                    filename=match["path"],
-                                    revision=match["rev"],
+                                    filename=path,
+                                    revision=revision,
                                     etag_timeout=min(timeout, _ETAG_TIMEOUT)))
     except (LocalEntryNotFoundError, OfflineModeIsEnabled):
         # offline, or the hub did not answer, and the cache lacks this commit
-        fallback = _offline_snapshot(repo_id, match["rev"], match["path"])
+        fallback = _offline_snapshot(repo_id, revision, path)
         if fallback is None:
             raise
         return fallback
+    except (RepositoryNotFoundError, RevisionNotFoundError, EntryNotFoundError):
+        if (repo_id, revision, path) == (match["repo"], match["rev"], match["path"]):
+            raise
+        # a deleted mirror: the cached copy, else the repo the index names
+        fallback = _offline_snapshot(repo_id, revision, path)
+        if fallback is not None:
+            return fallback
+        return Path(hf_hub_download(repo_id=match["repo"],
+                                    filename=match["path"],
+                                    revision=match["rev"],
+                                    etag_timeout=min(timeout, _ETAG_TIMEOUT)))
 
 
 def _warn_offhub(url: str) -> None:
@@ -466,29 +550,29 @@ def _cached_path(url: str, graph_url: Optional[str] = None) -> Optional[Path]:
         return None
     match = _HF_URL.match(url.split("?")[0])
     if match:
-        repo_id = _repo_cached_before_move(match["repo"]) or match["repo"]
+        repo_id, revision, path = _fetch_source(match["repo"], match["rev"], match["path"])
         try:
             return Path(hf_hub_download(repo_id=repo_id,
-                                        filename=match["path"],
-                                        revision=match["rev"],
+                                        filename=path,
+                                        revision=revision,
                                         local_files_only=True))
         except Exception:
             pass
         # A fallback that _hf_fetch took is what loaded, also when HF_HUB_OFFLINE is
         # unset and the hub was unreachable, so its file is the one to measure.
         repo_dir = Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
-        key = _voice_key(repo_id, match["rev"], match["path"])
+        key = _voice_key(repo_id, revision, path)
         chosen = _VOICE_SNAPSHOTS.get(key) if key is not None else None
         if chosen is None:
-            chosen = _OFFLINE_SNAPSHOTS.get((repo_dir, match["rev"], posixpath.dirname(match["path"])))
+            chosen = _OFFLINE_SNAPSHOTS.get((repo_dir, revision, posixpath.dirname(path)))
         if chosen is not None:
-            path = chosen / match["path"]
-            if path.exists():
-                return path
+            cached = chosen / path
+            if cached.exists():
+                return cached
         if not hub_constants.HF_HUB_OFFLINE:
             return None
         try:
-            return _offline_snapshot(repo_id, match["rev"], match["path"], record=False)
+            return _offline_snapshot(repo_id, revision, path, record=False)
         except OSError:
             return None
     dest = _direct_path(url, graph_url)

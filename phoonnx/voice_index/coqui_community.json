@@ -1,7 +1,7 @@
 {
     "hf_community/projecte-aina/tts-ca-coqui-vits-multispeaker": {
         "voice_id": "hf_community/projecte-aina/tts-ca-coqui-vits-multispeaker",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/hf_community__projecte-aina__tts-ca-coqui-vits-multispeaker/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/vits-ca_es-multispeaker-graphemes/resolve/5fbbce69e469391e70fa62091dae82d082a44ec6/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "ca-ES",
         "tokens_url": null,
@@ -10,11 +10,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/hf_community__projecte-aina__tts-ca-coqui-vits-multispeaker/config.json"
+        "config_url": "https://huggingface.co/Phoonnx/vits-ca_es-multispeaker-graphemes/resolve/5fbbce69e469391e70fa62091dae82d082a44ec6/config.json"
     },
     "hf_community/denZLS/luxembourgish-male-vits-tts": {
         "voice_id": "hf_community/denZLS/luxembourgish-male-vits-tts",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/hf_community__denZLS__luxembourgish-male-vits-tts/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/vits-lb_lu-male-graphemes/resolve/d0fa42204e6ef1afdab168a1f731a5426b30acd6/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "lb-LU",
         "tokens_url": null,
@@ -23,11 +23,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/hf_community__denZLS__luxembourgish-male-vits-tts/config.json"
+        "config_url": "https://huggingface.co/Phoonnx/vits-lb_lu-male-graphemes/resolve/d0fa42204e6ef1afdab168a1f731a5426b30acd6/config.json"
     },
     "hf_community/denZLS/luxembourgish-female-vits-tts": {
         "voice_id": "hf_community/denZLS/luxembourgish-female-vits-tts",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/hf_community__denZLS__luxembourgish-female-vits-tts/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/vits-lb_lu-female-graphemes/resolve/255cdbc1a8b718e9f4dadb0f02bf83658eb21a1e/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "lb-LU",
         "tokens_url": null,
@@ -36,11 +36,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/hf_community__denZLS__luxembourgish-female-vits-tts/config.json"
+        "config_url": "https://huggingface.co/Phoonnx/vits-lb_lu-female-graphemes/resolve/255cdbc1a8b718e9f4dadb0f02bf83658eb21a1e/config.json"
     },
     "hf_community/anzorq/kbd-vits-tts-female": {
         "voice_id": "hf_community/anzorq/kbd-vits-tts-female",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/hf_community__anzorq__kbd-vits-tts-female/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/vits-kbd-female-graphemes/resolve/0704c974a267a0140d749ef03a2cea5b3dc767a2/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "kbd",
         "tokens_url": null,
@@ -49,11 +49,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/hf_community__anzorq__kbd-vits-tts-female/config.json"
+        "config_url": "https://huggingface.co/Phoonnx/vits-kbd-female-graphemes/resolve/0704c974a267a0140d749ef03a2cea5b3dc767a2/config.json"
     },
     "hf_community/anzorq/kbd-vits-tts-male": {
         "voice_id": "hf_community/anzorq/kbd-vits-tts-male",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/hf_community__anzorq__kbd-vits-tts-male/model.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/vits-kbd-male-graphemes/resolve/b108891a9f85253373297fb53d01020e2ac1299e/model.onnx",
         "phoneme_type": "graphemes",
         "lang": "kbd",
         "tokens_url": null,
@@ -62,7 +62,7 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "coqui",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx-vits/resolve/c0d756d3ddf45220865bdfbd1e0a29d08b0fbdfa/hf_community__anzorq__kbd-vits-tts-male/config.json"
+        "config_url": "https://huggingface.co/Phoonnx/vits-kbd-male-graphemes/resolve/b108891a9f85253373297fb53d01020e2ac1299e/config.json"
     },
     "hf_community/multilingual-tts/VITS-OpenBible-Igbo": {
         "voice_id": "hf_community/multilingual-tts/VITS-OpenBible-Igbo",
