@@ -9,6 +9,7 @@ from huggingface_hub.errors import LocalEntryNotFoundError, RemoteEntryNotFoundE
 
 from phoonnx import model_manager
 from phoonnx.model_manager import _HF_URL, _hf_fetch
+from tests.test_model_manager import _external_data_graph
 from tests.test_offline_pinned_cache import _Cache
 
 PACKAGE = Path(model_manager.__file__).parent
@@ -174,6 +175,34 @@ class TestAfterTheMirrorIsDeleted(_Cache):
         with patch.object(model_manager, "hf_hub_download", side_effect=_gone):
             path = _hf_fetch(index_url(MMS, "model.onnx"))
         self.assertEqual(path.read_bytes(), b"graph")
+
+
+class TestAGraphWhoseWeightsWereCutOff(_Cache):
+    """The cache holds a mirror graph but not the external data it names, as after an interrupted download."""
+
+    def setUp(self):
+        super().setUp()
+        patch.object(model_manager.hub_constants, "HF_HUB_OFFLINE", False).start()
+        self.graph, self.data, _ = _external_data_graph(["model.onnx_data"])
+        self.folder = SPLIT[OUTETTS]["folder"]
+        self.mirror = SPLIT[OUTETTS]["from"]
+
+    def test_the_voice_does_not_route_through_the_mirror(self):
+        self.snapshot(PINNED, {f"{self.folder}/model.onnx": self.graph}, mtime=1000, repo=self.mirror)
+        self.assertIsNone(model_manager._mirror_route(OUTETTS, {"model.onnx"}))
+        with patch.object(model_manager, "hf_hub_download", side_effect=_gone) as download:
+            _hf_fetch(index_url(OUTETTS, "model.onnx"))
+        [call] = download.call_args_list
+        self.assertEqual((call.kwargs["repo_id"], call.kwargs["filename"]), (OUTETTS, "model.onnx"))
+
+    def test_a_graph_with_its_data_still_routes_through_the_mirror(self):
+        self.snapshot(PINNED, {f"{self.folder}/model.onnx": self.graph,
+                               f"{self.folder}/model.onnx_data": self.data["model.onnx_data"]},
+                      mtime=1000, repo=self.mirror)
+        route = model_manager._mirror_route(OUTETTS, {"model.onnx"})
+        self.assertEqual(route[:3], (self.mirror, SPLIT[OUTETTS]["rev"], self.folder))
+        with patch.object(model_manager, "hf_hub_download", side_effect=_gone):
+            self.assertEqual(_hf_fetch(index_url(OUTETTS, "model.onnx")).read_bytes(), self.graph)
 
 
 class TestTheIndexNamesTheModelRepos(unittest.TestCase):
