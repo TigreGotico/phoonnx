@@ -54,9 +54,10 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import onnxruntime
-from quebra_frases import sentence_tokenize
 
-from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
+from phoonnx.engines.base import (
+    AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter, pack_sentences,
+)
 from scriptconv.phonemizers.base import UnicodeCodepointPhonemizer
 from phoonnx.providers import make_session
 from phoonnx.tokenizer import TTSTokenizer, Vocabulary
@@ -138,17 +139,7 @@ def chunk_text(text: str, max_len: int = 300) -> List[str]:
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n+", text.strip()) if p.strip()]
     chunks: List[str] = []
     for paragraph in paragraphs:
-        sentences = sentence_tokenize(paragraph)
-        current = ""
-        for sentence in sentences:
-            if len(current) + len(sentence) + 1 <= max_len:
-                current += (" " if current else "") + sentence
-            else:
-                if current:
-                    chunks.append(current.strip())
-                current = sentence
-        if current:
-            chunks.append(current.strip())
+        chunks.extend(pack_sentences(paragraph, max_len))
     return chunks
 
 

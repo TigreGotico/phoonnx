@@ -1440,10 +1440,15 @@ class TTSModelManager:
         Parameters:
             store (bool): If True, persist the updated cache to disk after merging.
         """
-        indexes = [JsonStorage(str(f)) for f in self.voice_index_files()]
+        bundled = {}
+        for f in self.voice_index_files():
+            bundled.update(JsonStorage(str(f)))
         with self._registry_lock:
-            for index in indexes:
-                self.cache.update(index)
+            # bundled voices first, in index order: get_lang_voices breaks ties by this order
+            others = {k: v for k, v in self.cache.items() if k not in bundled}
+            self.cache.clear()
+            self.cache.update(bundled)
+            self.cache.update(others)
             self.voices = self._registry_from_cache()
             if store:
                 self.cache.store()

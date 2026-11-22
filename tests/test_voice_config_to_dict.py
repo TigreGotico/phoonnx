@@ -161,11 +161,22 @@ def test_unset_scales_stay_out_of_the_inference_block():
     jsonschema.validate(native, SCHEMA)
 
 
+# Phonemizers the schema lists before a scriptconv alpha publishes them. Remove a name
+# once the scriptconv floor in pyproject.toml includes it.
+SCRIPTCONV_PENDING = {"espeak_lt_accent", "hebrew_ipa", "openjtalk_prosody", "tltk"}
+
+
 def test_schema_enums_list_every_engine_phonemizer_and_alphabet():
     properties = SCHEMA["properties"]
     assert properties["engine"]["enum"] == [e.value for e in Engine]
-    assert properties["phoneme_type"]["enum"] == [p.value for p in PhonemeType]
-    assert properties["alphabet"]["enum"] == [a.value for a in Alphabet]
+    # PhonemeType and Alphabet come from scriptconv, so the installed scriptconv may be
+    # older than the schema: a value the schema lists must be scriptconv's or pending
+    for key, enum, pending in (("phoneme_type", PhonemeType, SCRIPTCONV_PENDING), ("alphabet", Alphabet, set())):
+        values = {v.value for v in enum}
+        missing = [v for v in values if v not in properties[key]["enum"]]
+        assert missing == [], f"{key} enum lacks {missing}"
+        unknown = [v for v in properties[key]["enum"] if v not in values | pending]
+        assert unknown == [], f"{key} enum lists values scriptconv does not have: {unknown}"
 
 
 def test_schema_refuses_a_config_without_a_symbol_table():
