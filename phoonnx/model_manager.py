@@ -314,10 +314,17 @@ def _mirror_route(repo_id: str, filenames: Set[str]) -> Optional[_Route]:
         (other["rev"], posixpath.dirname(next(iter(other["paths"].values()))), other["paths"])
         for other in split.get("also", ())]
     for mirror in [split["from"], *_earlier_ids(split["from"])]:
-        snapshots = list((Path(HF_HUB_CACHE) / f"models--{mirror.replace('/', '--')}" / "snapshots").glob("*"))
+        snapshot_dir = Path(HF_HUB_CACHE) / f"models--{mirror.replace('/', '--')}" / "snapshots"
+        snapshots = list(snapshot_dir.glob("*"))
         for rev, folder, paths in ways:
-            if filenames <= paths.keys() and any(_holds(snapshot, [paths[name] for name in filenames])
-                                                 for snapshot in snapshots):
+            if not filenames <= paths.keys():
+                continue
+            wanted = [paths[name] for name in filenames]
+            # The download reads the snapshot at ``rev`` first, so a partial one there is the
+            # only one that counts, as in ``_voice_snapshot``.
+            pinned = snapshot_dir / rev
+            candidates = [pinned] if any((pinned / path).exists() for path in wanted) else snapshots
+            if any(_holds(snapshot, wanted) for snapshot in candidates):
                 return mirror, rev, folder, paths
     return None
 
@@ -342,6 +349,10 @@ def _holds(snapshot: Path, paths: List[str]) -> bool:
                 return False
     return True
 
+
+# The voice whose scope is open.
+_VOICE_INFO: contextvars.ContextVar[Optional["TTSModelInfo"]] = \
+    contextvars.ContextVar("phoonnx_voice_info", default=None)
 
 # The mirror route of each split repo of the voice being loaded, by (repo id, pinned commit).
 _VOICE_ROUTES: contextvars.ContextVar[Optional[Dict[Tuple[str, str], Optional[_Route]]]] = \
@@ -408,22 +419,32 @@ def _voice_scope(info: "TTSModelInfo") -> Iterator[None]:
             named.setdefault((match["repo"], match["rev"]), set()).add(match["path"])
     routes = {key: _mirror_route(key[0], paths) for key, paths in named.items() if key[0] in _SPLIT_FROM}
     route_token = _VOICE_ROUTES.set(routes)
-    for (repo, rev), paths in named.items():
-        for path in paths:
-            repo_id, revision, source_path = _fetch_source(repo, rev, path)
-            files.setdefault((repo_id, revision), set()).add(source_path)
-    token = _VOICE_FILES.set(files)
+    info_token = _VOICE_INFO.set(info)
     try:
-        yield
+        for (repo, rev), paths in named.items():
+            for path in paths:
+                repo_id, revision, source_path = _fetch_source(repo, rev, path)
+                files.setdefault((repo_id, revision), set()).add(source_path)
+        files_token = _VOICE_FILES.set(files)
+        try:
+            yield
+        finally:
+            _VOICE_FILES.reset(files_token)
     finally:
-        _VOICE_FILES.reset(token)
         _VOICE_ROUTES.reset(route_token)
+        _VOICE_INFO.reset(info_token)
 
 
 def _in_voice_scope(method: Callable) -> Callable:
-    """Run a :class:`TTSModelInfo` method inside :func:`_voice_scope` of its voice."""
+    """Run a :class:`TTSModelInfo` method inside :func:`_voice_scope` of its voice.
+
+    Inside a scope already open for the same voice, the routes chosen at its start stay: choosing
+    them again after some files are downloaded could send the rest of the voice elsewhere.
+    """
     @functools.wraps(method)
     def scoped(self, *args, **kwargs):
+        if _VOICE_INFO.get() is self:
+            return method(self, *args, **kwargs)
         with _voice_scope(self):
             return method(self, *args, **kwargs)
     return scoped
@@ -1075,6 +1096,7 @@ class TTSModelInfo:
                 LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
         return path
 
+    @_in_voice_scope
     def download_model(self) -> Path:
         """Give the ONNX graph's path in the hub cache."""
         return self._fetch_onnx(self.model_url)
