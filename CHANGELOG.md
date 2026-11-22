@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.129.1a1](https://github.com/TigreGotico/phoonnx/tree/1.129.1a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.0a1...1.129.1a1)
+
+**Merged pull requests:**
+
+- fix: name the file for an empty, cut or extensible reference WAV [\#918](https://github.com/TigreGotico/phoonnx/pull/918) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.129.0a1](https://github.com/TigreGotico/phoonnx/tree/1.129.0a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.128.0a1...1.129.0a1)
