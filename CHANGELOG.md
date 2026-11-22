@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.130.3a1](https://github.com/TigreGotico/phoonnx/tree/1.130.3a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.2a1...1.130.3a1)
+
+**Merged pull requests:**
+
+- fix: raise the text2spoken floor to 0.0.2a98 for Tetun Dili readings [\#948](https://github.com/TigreGotico/phoonnx/pull/948) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.130.2a1](https://github.com/TigreGotico/phoonnx/tree/1.130.2a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.1a1...1.130.2a1)
