@@ -1,6 +1,7 @@
 """VoiceConfig.to_dict writes the native config.json: it reads back to the same ids and fits the schema."""
 import copy
 import json
+import re
 from pathlib import Path
 
 import jsonschema
@@ -162,7 +163,8 @@ def test_unset_scales_stay_out_of_the_inference_block():
 
 
 # Phonemizers the schema lists before a scriptconv alpha publishes them. Remove a name
-# once the scriptconv floor in pyproject.toml includes it.
+# once the scriptconv floor in pyproject.toml includes it, and give it a row in
+# docs/phonemizers.md.
 SCRIPTCONV_PENDING = {"espeak_lt_accent", "hebrew_ipa", "openjtalk_prosody", "tltk"}
 
 
@@ -177,6 +179,15 @@ def test_schema_enums_list_every_engine_phonemizer_and_alphabet():
         assert missing == [], f"{key} enum lacks {missing}"
         unknown = [v for v in properties[key]["enum"] if v not in values | pending]
         assert unknown == [], f"{key} enum lists values scriptconv does not have: {unknown}"
+
+
+def test_the_phonemizer_docs_have_a_row_for_every_published_phonemizer():
+    docs = (Path(phoonnx.__file__).parent.parent / "docs" / "phonemizers.md").read_text(encoding="utf-8")
+    # the Alphabet table has rows of the same shape, and some names are in both tables
+    table = docs.split("## PhonemeType Reference", 1)[1].split("## Alphabet Reference", 1)[0]
+    rows = set(re.findall(r"^\| `([a-z0-9_]+)` \|", table, flags=re.MULTILINE))
+    published = set(SCHEMA["properties"]["phoneme_type"]["enum"]) - SCRIPTCONV_PENDING
+    assert sorted(published - rows) == []
 
 
 def test_schema_refuses_a_config_without_a_symbol_table():
