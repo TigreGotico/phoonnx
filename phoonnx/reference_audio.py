@@ -139,8 +139,8 @@ def _read_pcm_wav(ref: Any) -> Tuple[np.ndarray, int]:
         if str(e) == f"unknown format: {WAVE_FORMAT_EXTENSIBLE}":
             raise ValueError(
                 f"reference audio {ref} has a WAVE_FORMAT_EXTENSIBLE header, which the wave "
-                f"module of Python 3.11 cannot read; use Python 3.12 or later, or install "
-                f"phoonnx[cloning] to read it with soundfile") from e
+                f"module of Python 3.11 cannot read; install phoonnx[cloning] to read it "
+                f"with soundfile") from e
         raise ValueError(
             f"reference audio {ref} is not a PCM WAV file ({e}); without "
             f"soundfile only 8, 16, 24 and 32-bit PCM WAV is supported, "
