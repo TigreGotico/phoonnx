@@ -1,7 +1,7 @@
 ## Supported Voices
 
 **Total Voices:** 3254
-**Total Languages:** 1819
+**Total Languages:** 1824
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
 
@@ -24,6 +24,7 @@
 | `facebook/mms-tts-acf-Lesser Antillean French Creole` | `acf` | `transformers` | `graphemes` |
 | `facebook/mms-tts-ach-Acholi` | `ach` | `transformers` | `graphemes` |
 | `omnivoice/acm` | `acm` | `omnivoice` | `unicode` |
+| `habibi/ar-irq` | `acm-IQ` | `f5tts` | `f5tts_char` |
 | `facebook/mms-tts-acn-Achang` | `acn` | `transformers` | `graphemes` |
 | `facebook/mms-tts-acr-Achi` | `acr` | `transformers` | `graphemes` |
 | `facebook/mms-tts-acu-Achuar-Shiwiar` | `acu` | `transformers` | `graphemes` |
@@ -42,6 +43,7 @@
 | `omnivoice/af` | `af` | `omnivoice` | `unicode` |
 | `mimic3/af_ZA/google-nwu_low` | `af-ZA` | `mimic3` | `espeak` |
 | `omnivoice/afb` | `afb` | `omnivoice` | `unicode` |
+| `habibi/ar-uae` | `afb-AE` | `f5tts` | `f5tts_char` |
 | `omnivoice/afo` | `afo` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-agd-Agarabi` | `agd` | `transformers` | `graphemes` |
 | `facebook/mms-tts-agg-Angor` | `agg` | `transformers` | `graphemes` |
@@ -119,25 +121,18 @@
 | `supertonic/M3/ar` | `ar` | `supertonic` | `unicode` |
 | `supertonic/M4/ar` | `ar` | `supertonic` | `unicode` |
 | `supertonic/M5/ar` | `ar` | `supertonic` | `unicode` |
-| `habibi/ar-uae` | `ar-AE` | `f5tts` | `f5tts_char` |
 | `piper_community/vadimbelsky/arabic-emirati-female-piper` | `ar-AE` | `piper` | `espeak` |
-| `habibi/ar-alg` | `ar-DZ` | `f5tts` | `f5tts_char` |
 | `chatterbox/lahgtna/eg` | `ar-EG` | `chatterbox` | `unicode` |
-| `habibi/ar-egy` | `ar-EG` | `f5tts` | `f5tts_char` |
 | `chatterbox/lahgtna/iq` | `ar-IQ` | `chatterbox` | `unicode` |
-| `habibi/ar-irq` | `ar-IQ` | `f5tts` | `f5tts_char` |
 | `piper/ar_JO-kareem-low` | `ar-JO` | `piper` | `espeak` |
 | `piper/ar_JO-kareem-medium` | `ar-JO` | `piper` | `espeak` |
 | `chatterbox/lahgtna/lb` | `ar-LB` | `chatterbox` | `unicode` |
 | `chatterbox/lahgtna/ly` | `ar-LY` | `chatterbox` | `unicode` |
 | `chatterbox/lahgtna/mo` | `ar-MA` | `chatterbox` | `unicode` |
-| `habibi/ar-mar` | `ar-MA` | `f5tts` | `f5tts_char` |
 | `chatterbox/lahgtna/ps` | `ar-PS` | `chatterbox` | `unicode` |
 | `chatterbox/lahgtna/sa` | `ar-SA` | `chatterbox` | `unicode` |
-| `habibi/ar-sau` | `ar-SA` | `f5tts` | `f5tts_char` |
 | `hf_community/wasmdashai/vits-ar-sa-A` | `ar-SA` | `transformers` | `graphemes` |
 | `hf_community/wasmdashai/vits-ar-sa-huba-v2` | `ar-SA` | `transformers` | `graphemes` |
-| `namaa/ar-sa-v2` | `ar-SA` | `f5tts` | `f5tts_char` |
 | `outetts/1B/ar` | `ar-SA` | `outetts` | `unicode` |
 | `chatterbox/lahgtna/sd` | `ar-SD` | `chatterbox` | `unicode` |
 | `chatterbox/lahgtna/sy` | `ar-SY` | `chatterbox` | `unicode` |
@@ -145,9 +140,14 @@
 | `omnivoice/arb` | `arb` | `omnivoice` | `unicode` |
 | `facebook/mms-tts-arl-Arabela` | `arl` | `transformers` | `graphemes` |
 | `omnivoice/arq` | `arq` | `omnivoice` | `unicode` |
+| `habibi/ar-alg` | `arq-DZ` | `f5tts` | `f5tts_char` |
 | `omnivoice/ars` | `ars` | `omnivoice` | `unicode` |
+| `habibi/ar-sau` | `ars-SA` | `f5tts` | `f5tts_char` |
+| `namaa/ar-sa-v2` | `ars-SA` | `f5tts` | `f5tts_char` |
 | `omnivoice/ary` | `ary` | `omnivoice` | `unicode` |
+| `habibi/ar-mar` | `ary-MA` | `f5tts` | `f5tts_char` |
 | `omnivoice/arz` | `arz` | `omnivoice` | `unicode` |
+| `habibi/ar-egy` | `arz-EG` | `f5tts` | `f5tts_char` |
 | `indic_parler/amit/as` | `as` | `indic_parler` | `unicode` |
 | `indic_parler/sita/as` | `as` | `indic_parler` | `unicode` |
 | `omnivoice/as` | `as` | `omnivoice` | `unicode` |

@@ -399,7 +399,7 @@ def test_namaa_saudi_voice_index_entry():
     assert "namaa/ar-sa-v2" in entries
     info = TTSModelInfo(**entries["namaa/ar-sa-v2"])
     assert info.engine == "f5tts"
-    assert info.lang == "ar-SA"
+    assert info.lang == "ars-SA"
     assert info.phoneme_type == "f5tts_char"
     assert info.model_url.startswith("https://huggingface.co/Phoonnx/f5tts-ar_sa-namaa_space-v2-graphemes/")
     assert info.model_url.endswith("model.onnx")
@@ -407,16 +407,16 @@ def test_namaa_saudi_voice_index_entry():
     assert info.aux_model_urls["decode_path"].endswith("F5_Decode.onnx")
 
 
-def test_namaa_saudi_listed_for_arabic():
-    """The model manager surfaces the NAMAA Saudi voice for ar lookups."""
+def test_namaa_saudi_listed_for_saudi_arabic():
+    """The NAMAA voice speaks Najdi (ars), so it answers ar-SA and not ar."""
     from phoonnx.model_manager import TTSModelManager
 
     manager = TTSModelManager()
     manager.cache.clear()
     manager.merge_default_voices()
     assert "namaa/ar-sa-v2" in manager.voices
-    ar_ids = [v.voice_id for v in manager.get_lang_voices("ar")]
-    assert "namaa/ar-sa-v2" in ar_ids
+    assert "namaa/ar-sa-v2" in [v.voice_id for v in manager.get_lang_voices("ar-SA")]
+    assert "namaa/ar-sa-v2" not in [v.voice_id for v in manager.get_lang_voices("ar")]
 
 
 # Whole model calls recorded with the upstream code: the reference text ends as

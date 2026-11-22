@@ -1126,10 +1126,10 @@ class TestManagerRegistry(ManagerTestCase):
 
 def _scan(voices, lang):
     """The lookup with nothing kept: every voice's distance, every time."""
-    from phoonnx.util import match_lang
-    ranked = sorted(((v, match_lang(v.lang, lang)[-1]) for v in voices.values()),
+    from phoonnx.model_manager import _lookup_distance
+    ranked = sorted(((v, _lookup_distance(v.lang, lang)) for v in voices.values()),
                     key=lambda k: k[1])
-    return [v.voice_id for v, distance in ranked if distance < 10]
+    return [v.voice_id for v, distance in ranked if distance <= 10]
 
 
 class TestLangVoicesAreKeptPerLanguage(ManagerTestCase):
@@ -1149,7 +1149,7 @@ class TestLangVoicesAreKeptPerLanguage(ManagerTestCase):
     def test_the_bundled_index_gives_the_answers_of_a_full_scan(self):
         manager = TTSModelManager(cache_path=self.cache_path)
         manager.merge_default_voices()
-        langs = ["en", "en-US", "en-GB", "pt", "pt-BR", "gl", "apc-LB", "zz-ZZ"]
+        langs = ["en", "en-US", "en-GB", "pt", "pt-BR", "gl", "apc-LB", "ar-EG", "ar", "zz-ZZ"]
         expected = {lang: _scan(manager.voices, lang) for lang in langs}
         self.assertTrue(expected["pt-BR"])
         self.assertEqual(expected["zz-ZZ"], [], "an unknown language has no voice")
