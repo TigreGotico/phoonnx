@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.125.10a2](https://github.com/TigreGotico/phoonnx/tree/1.125.10a2) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.10a1...1.125.10a2)
+
+**Merged pull requests:**
+
+- test: the Indic Parler seed decides the sampled codes [\#891](https://github.com/TigreGotico/phoonnx/pull/891) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.125.10a1](https://github.com/TigreGotico/phoonnx/tree/1.125.10a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.9a4...1.125.10a1)
