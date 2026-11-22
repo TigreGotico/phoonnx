@@ -164,8 +164,12 @@ def test_unset_scales_stay_out_of_the_inference_block():
 def test_schema_enums_list_every_engine_phonemizer_and_alphabet():
     properties = SCHEMA["properties"]
     assert properties["engine"]["enum"] == [e.value for e in Engine]
-    assert properties["phoneme_type"]["enum"] == [p.value for p in PhonemeType]
-    assert properties["alphabet"]["enum"] == [a.value for a in Alphabet]
+    # PhonemeType and Alphabet come from scriptconv: the schema may list a value
+    # before the installed scriptconv has it, so a new scriptconv alpha never
+    # meets a schema that refuses its value
+    for key, enum in (("phoneme_type", PhonemeType), ("alphabet", Alphabet)):
+        missing = [v.value for v in enum if v.value not in properties[key]["enum"]]
+        assert missing == [], f"{key} enum lacks {missing}"
 
 
 def test_schema_refuses_a_config_without_a_symbol_table():
