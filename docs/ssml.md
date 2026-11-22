@@ -53,8 +53,8 @@ The voice's text frontend reads `say-as` (see [usage](usage.md#ssml)), so a `say
 | say-as interpret-as=date format="dmy" | supported | the text frontend reads "1/2/2026" with format dmy, in the language in force |
 | say-as interpret-as=time | supported | the text frontend reads "14:30" in the language in force |
 | say-as interpret-as=time format="hms12" | supported | the text frontend reads "7:30 pm" with format hms12, in the language in force |
-| say-as interpret-as=time detail="1" | supported | the text frontend reads "9 pm" with detail 1, in the language in force |
-| say-as interpret-as=date detail="written" | supported | the text frontend reads "9 novembre 2026" with detail written, in the language in force |
+| say-as interpret-as=time detail="1" | degraded | the text frontend reads "9 pm" with detail 1, in the language in force |
+| say-as interpret-as=date detail="written" | degraded | the text frontend reads "9 novembre 2026" with detail written, in the language in force |
 | say-as interpret-as=currency | supported | the text frontend reads "$12.50" in the language in force |
 | say-as interpret-as=address | supported | the text frontend reads "12 Rue de la Paix" in the language in force |
 | say-as interpret-as=telephone | supported | the text frontend reads "555-0100" in the language in force |
@@ -63,7 +63,7 @@ The voice's text frontend reads `say-as` (see [usage](usage.md#ssml)), so a `say
 | say-as interpret-as=verbatim | supported | the text frontend reads "XK7" in the language in force |
 | say-as interpret-as=interjection | supported | the text frontend reads "wow" in the language in force |
 | say-as interpret-as=an unknown type | degraded | the text frontend reads "abc" in the language in force |
-| say-as detail with no reading for its type | degraded | the text frontend gets "12" with detail 2 |
+| say-as detail on a type other than cardinal | degraded | the text frontend gets "12" with detail 2 |
 | say-as expletive | supported | says "words then (a sound) then words"; beep 350 ms |
 | phoneme ipa | supported | says "[[ bɔ̃ʒuʁ ]]" |
 | phoneme x-sampa | supported | says "[[ həˈləʊ ]]" |
@@ -199,6 +199,8 @@ Reading the markup takes about 20 ms for 40 kB (300 paragraphs with breaks, emph
 * `<par>` and `<media>` timing (`begin`, `end`, `repeatCount`, `soundLevel`, fades): read one after the other.
 * `<w role>`, `<amazon:domain>`, `<amazon:emotion>`, `<alexa:name>`: styles and parts of speech are not
   something this engine does; the words are read.
+* `<say-as detail>` on any type but `cardinal`: the reader hands it to the text frontend, and text2spoken
+  reads the text as if no detail were given (SSML 1.1 section 3.1.9).
 * Alphabets other than IPA and X-SAMPA for `<phoneme>`.
 * `<prosody volume="silent">` skips its words (they are not synthesized silently, so they take no time).
 
