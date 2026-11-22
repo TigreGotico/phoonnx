@@ -262,11 +262,12 @@ WARNING - Voice pt_PT-tugão was trained with another phonemizer: revision: trai
 The comparison follows these rules:
 
 - `revision` is the hash that scriptconv records for the phonemes. An `sc2:`
-  revision hashes the scriptconv source that makes the phonemes, the versions
-  of the packages that source imports, the engine release with its language
-  extra (such as `gruut[fr]`), and the data files the backend names. A revision
-  from the older `sc1:` scheme always differs from an `sc2:` revision, so a
-  voice trained with it warns on each load. A new release of one of those
+  revision hashes the scriptconv source that makes the phonemes, the data files
+  next to that source, the engine release with its language extra (such as
+  `gruut[fr]`), and the versions of the packages that the backend's extras
+  require, at any depth. A revision from the older `sc1:` scheme always
+  differs from an `sc2:` revision, so a voice trained with it warns on each
+  load. A new release of one of those
   packages changes the revision, even when the phonemes stay the same. A block
   with a `frontend` holds the frontend revision, which also covers the frontend
   stages. When both revisions are set and equal, a different `version` gives no

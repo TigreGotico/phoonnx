@@ -30,7 +30,7 @@ dependencies = [
     "text2spoken>=0.0.2a98",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
-    # >=0.0.4a149: the backend revision is sc2, with no probe process. Earlier
+    # >=0.0.4a149: the backend revision is sc2, and scriptconv runs no probe for it. Earlier
     # floors: Shami reads a run of more than 15 digits digit by digit, in any
     # decimal digit script, and gives espeak-ng the text on stdin; a backend
     # that owns normalisation gets no casing, every backend records a revision, FrontendConfig.phonemizer_lang, a
