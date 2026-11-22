@@ -321,9 +321,11 @@ def _mirror_route(repo_id: str, filenames: Set[str]) -> Optional[_Route]:
                 continue
             wanted = [paths[name] for name in filenames]
             # The download reads the snapshot at ``rev`` first, so a partial one there is the
-            # only one that counts, as in ``_voice_snapshot``.
+            # only one that counts, as in ``_voice_snapshot``. Holding the model's folder counts
+            # too: a graph and its data are routed one file at a time outside a voice load.
             pinned = snapshot_dir / rev
-            candidates = [pinned] if any((pinned / path).exists() for path in wanted) else snapshots
+            started = (pinned / folder).is_dir() or any((pinned / path).exists() for path in wanted)
+            candidates = [pinned] if started else snapshots
             if any(_holds(snapshot, wanted) for snapshot in candidates):
                 return mirror, rev, folder, paths
     return None

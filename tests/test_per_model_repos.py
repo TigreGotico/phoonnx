@@ -211,10 +211,27 @@ class TestAGraphWhoseWeightsWereCutOff(_Cache):
                                f"{self.folder}/model.onnx_data": self.data["model.onnx_data"]},
                       mtime=1000, repo=self.mirror)
         self.assertIsNone(model_manager._mirror_route(OUTETTS, {"model.onnx"}))
+        # outside a voice load the data file is routed alone, and must follow its graph
+        self.assertIsNone(model_manager._mirror_route(OUTETTS, {"model.onnx_data"}))
         with patch.object(model_manager, "hf_hub_download", side_effect=_gone) as download:
             _hf_fetch(index_url(OUTETTS, "model.onnx"))
         [call] = download.call_args_list
         self.assertEqual((call.kwargs["repo_id"], call.kwargs["filename"]), (OUTETTS, "model.onnx"))
+
+    def test_a_voice_missing_one_file_at_the_table_commit_is_not_rescued_by_an_older_one(self):
+        files = {f"{self.folder}/model.onnx": self.graph,
+                 f"{self.folder}/model.onnx_data": self.data["model.onnx_data"]}
+        self.snapshot(SPLIT[OUTETTS]["rev"], files, mtime=2000, repo=self.mirror)
+        self.snapshot(PINNED, {**files, f"{self.folder}/config.json": b"{}"}, mtime=1000, repo=self.mirror)
+        self.assertIsNone(model_manager._mirror_route(OUTETTS, {"model.onnx", "config.json"}))
+
+    def test_a_table_commit_snapshot_of_another_model_does_not_hide_an_older_full_one(self):
+        self.snapshot(SPLIT[OUTETTS]["rev"], {"another-model/model.onnx": b"x"}, mtime=2000, repo=self.mirror)
+        self.snapshot(PINNED, {f"{self.folder}/model.onnx": self.graph,
+                               f"{self.folder}/model.onnx_data": self.data["model.onnx_data"]},
+                      mtime=1000, repo=self.mirror)
+        self.assertEqual(model_manager._mirror_route(OUTETTS, {"model.onnx"})[:2],
+                         (self.mirror, SPLIT[OUTETTS]["rev"]))
 
 
 class TestTheIndexNamesTheModelRepos(unittest.TestCase):
