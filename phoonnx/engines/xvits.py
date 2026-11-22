@@ -226,7 +226,7 @@ class XVitsAdapter(BaseOnnxAdapter):
         for attribute, key in (("durations", "durations_path"), ("acoustic", "acoustic_path"),
                                ("predictor", "predictor_path"), ("prominence", "prominence_path")):
             if getattr(self, attribute) is None and ep.get(key):
-                setattr(self, attribute, make_session(ep[key], providers=ep.get("providers")))
+                setattr(self, attribute, make_session(ep[key], providers=ep.get("providers"), threads=ep.get("threads")))
         if ep.get("dp_cond_path"):
             with np.load(ep["dp_cond_path"]) as archive:
                 self.style_offsets = archive["style"].astype(np.float32)

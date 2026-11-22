@@ -403,7 +403,7 @@ class VoiceConfig:
             **flags,
             "word_sep_token": self.word_sep_token,
             "blank_between": self.blank_between.value,
-            "engine_params": {k: v for k, v in self.engine_params.items() if k != "providers"},
+            "engine_params": {k: v for k, v in self.engine_params.items() if k not in ("providers", "threads")},
         }
         if self.phonemizer_identity is not None:
             native["phonemizer_identity"] = dict(self.phonemizer_identity)

@@ -9,6 +9,8 @@ the adapter code is responsible for is the slice/hop/concatenate bookkeeping and
 the interface adaptation (named ``z``/``y_mask`` for pre-split "+RT" voices vs. a
 single arbitrarily-named latent tensor for auto-split models).
 """
+import os
+
 import numpy as np
 import pytest
 
@@ -266,6 +268,34 @@ def test_decoder_runs_on_the_voice_providers(monkeypatch):
     adapter.configure_from_params({"decoder_path": "d.onnx", "intra_op_num_threads": 3,
                                    "providers": ["CPUExecutionProvider"]})
     assert seen == {"path": "d.onnx", "providers": ["CPUExecutionProvider"], "threads": 3}
+
+
+@pytest.mark.parametrize("params, env, expected", [
+    ({"threads": 2}, None, 2),  # the thread count of the voice
+    ({}, "5", 5),  # PHOONNX_ORT_THREADS
+    ({"threads": 2, "intra_op_num_threads": 3}, "5", 3),  # the decoder key wins
+    ({"threads": 2, "intra_op_num_threads": 0}, None, 0),  # also when it asks for ONNX Runtime's default
+    ({}, None, max(1, (os.cpu_count() or 4) // 2)),  # the decoder default
+])
+def test_decoder_threads_follow_the_voice_unless_it_names_its_own(monkeypatch, params, env, expected):
+    seen = {}
+
+    class Session:
+        def __init__(self, path, sess_options=None, providers=None):
+            seen["threads"] = sess_options.intra_op_num_threads
+
+        def get_providers(self):
+            return providers
+
+    providers = ["CPUExecutionProvider"]
+    monkeypatch.setattr("onnxruntime.InferenceSession", Session)
+    monkeypatch.delenv("PHOONNX_ORT_CACHE_DIR", raising=False)
+    if env is None:
+        monkeypatch.delenv("PHOONNX_ORT_THREADS", raising=False)
+    else:
+        monkeypatch.setenv("PHOONNX_ORT_THREADS", env)
+    VitsStreamingAdapter().configure_from_params({"decoder_path": "d.onnx", "providers": providers, **params})
+    assert seen == {"threads": expected}
 
 
 def test_decoder_keeps_its_threads_when_loaded_from_the_ort_cache(tmp_path, monkeypatch):

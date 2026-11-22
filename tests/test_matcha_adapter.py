@@ -173,9 +173,11 @@ def test_configure_from_voice_config_engine_params(monkeypatch):
 
     class Cfg:
         engine_params = {"vocoder_path": "v.onnx", "vocoder_type": "wavenext",
-                         "vocoder_config": {"n_fft": 1024}}
+                         "vocoder_config": {"n_fft": 1024}, "providers": ["CPUExecutionProvider"], "threads": 2}
 
     adapter = MatchaAdapter()
     adapter.configure(Cfg())
-    assert built["args"] == ("v.onnx", "wavenext", {"n_fft": 1024})
+    # the vocoder runs on the providers and threads of the voice
+    assert built["args"] == ("v.onnx", "wavenext",
+                             {"providers": ["CPUExecutionProvider"], "threads": 2, "n_fft": 1024})
     assert isinstance(adapter.vocoder, FakeVocoder)

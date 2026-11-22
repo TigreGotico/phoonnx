@@ -61,7 +61,10 @@ class MixerTTSAdapter(BaseOnnxAdapter):
             self.vocoder = build_vocoder(
                 model_path=self._engine_params.get("vocoder_path"),
                 vocoder_type=self._engine_params.get("vocoder_type"),
-                config=self._engine_params.get("vocoder_config") or {},
+                # the vocoder runs on the providers and threads of the voice
+                config={"providers": self._engine_params.get("providers"),
+                        "threads": self._engine_params.get("threads"),
+                        **(self._engine_params.get("vocoder_config") or {})},
             )
 
     def _require_vocoder(self) -> BaseVocoder:

@@ -12,7 +12,8 @@ class CoquiResNetSpeakerEncoder(BaseSpeakerEncoder):
     sample_rate = 16000
 
     def __init__(self, model_path: str, config: Optional[Dict[str, Any]] = None):
-        self.session = make_session(model_path, providers=(config or {}).get("providers"))
+        self.session = make_session(model_path, providers=(config or {}).get("providers"),
+                                    threads=(config or {}).get("threads"))
         self._input = self.session.get_inputs()[0].name
 
     def encode(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:

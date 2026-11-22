@@ -201,7 +201,7 @@ class VitsPriorSplitAdapter(VitsAdapter):
     def configure(self, voice_config: Any) -> None:
         ep = voice_config.engine_params
         if self.decode is None and ep.get("decode_path"):
-            self.decode = make_session(ep["decode_path"], providers=ep.get("providers"))
+            self.decode = make_session(ep["decode_path"], providers=ep.get("providers"), threads=ep.get("threads"))
 
     def default_params(self) -> Dict[str, float]:
         defaults = dict(super().default_params())

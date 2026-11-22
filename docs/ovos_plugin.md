@@ -112,6 +112,25 @@ is accepted as an alias. Running on a GPU needs the matching ONNX Runtime build
 (`onnxruntime-rocm`, `onnxruntime-gpu`, `onnxruntime-directml`, ...) — see
 [configuration.md](configuration.md#execution-providers).
 
+### Thread count
+
+`onnx_threads` sets the number of threads that each graph operator of a voice
+runs on. Unset, it comes from the `PHOONNX_ORT_THREADS` environment variable, else
+ONNX Runtime uses one thread per core. Set it on a host that serves several voices
+or shares the CPU with other jobs. See
+[configuration.md](configuration.md#thread-count).
+
+```json
+{
+  "tts": {
+    "module": "ovos-tts-plugin-phoonnx",
+    "ovos-tts-plugin-phoonnx": {
+      "onnx_threads": 2
+    }
+  }
+}
+```
+
 ### Precision
 
 `precision` picks the files of a voice that has full files and int8 files:
@@ -215,6 +234,7 @@ underscore name plus legacy aliases (resolved by `_cfg_opt` in `phoonnx/opm.py`)
 | Reference text | `speaker_reference_text`, `ref_text` | In-context reference transcription |
 | Reference lang | `speaker_reference_lang`, `ref_lang` | In-context reference language |
 | Providers | `onnx_providers`, `providers` | ONNX Runtime execution providers |
+| Threads | `onnx_threads` | Threads per graph operator (see above) |
 | Precision | `precision` | `auto`, `int8` or `full` (see above) |
 | Super-resolution | `super_resolution` | Enable 48 kHz upscaling (bool, off by default) |
 | Super-resolution model | `super_resolution_model` | `audiosronnx` engine name (default `novasr`) |

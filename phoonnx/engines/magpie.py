@@ -266,7 +266,7 @@ class MagpieAdapter(BaseOnnxAdapter):
                                ("lt_embed", "lt_embed_path"),
                                ("codec", "codec_decoder_path")):
             if getattr(self, attribute) is None and ep.get(key):
-                setattr(self, attribute, make_session(ep[key], providers=providers))
+                setattr(self, attribute, make_session(ep[key], providers=providers, threads=ep.get("threads")))
 
         if self.tokenizer is None and ep.get("tokenizer_path"):
             self.tokenizer = MagpieTokenizer(ep["tokenizer_path"])

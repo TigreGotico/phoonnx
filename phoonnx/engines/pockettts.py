@@ -161,6 +161,7 @@ class PocketTTSAdapter(BaseOnnxAdapter):
         # Only voice cloning runs the encoder, so it is built on first use.
         self._mimi_encoder_path: Optional[str] = None
         self._providers: Any = None
+        self._threads: Optional[int] = None
         self.tokenizer = None
         self.metadata: Dict[str, Any] = {}
         self.bos_before_voice: Optional[np.ndarray] = None
@@ -209,7 +210,7 @@ class PocketTTSAdapter(BaseOnnxAdapter):
             self._apply_metadata(self.metadata)
 
         def sess(path):
-            return make_session(path, providers=ep.get("providers"))
+            return make_session(path, providers=ep.get("providers"), threads=ep.get("threads"))
 
         if self.text_conditioner is None and ep.get("text_conditioner_path"):
             self.text_conditioner = sess(ep["text_conditioner_path"])
@@ -220,6 +221,7 @@ class PocketTTSAdapter(BaseOnnxAdapter):
         if ep.get("mimi_encoder_path"):
             self._mimi_encoder_path = ep["mimi_encoder_path"]
             self._providers = ep.get("providers")
+            self._threads = ep.get("threads")
 
         if self.tokenizer is None and ep.get("tokenizer_path"):
             from phoonnx._sentencepiece import SentencePieceProcessor
@@ -366,7 +368,7 @@ class PocketTTSAdapter(BaseOnnxAdapter):
         if self.mimi_encoder is None:
             if self._mimi_encoder_path is None:
                 raise RuntimeError("Pocket TTS voice missing mimi_encoder_path in engine_params")
-            self.mimi_encoder = make_session(self._mimi_encoder_path, providers=self._providers)
+            self.mimi_encoder = make_session(self._mimi_encoder_path, providers=self._providers, threads=self._threads)
         audio = np.asarray(audio, dtype=np.float32).reshape(1, 1, -1)
         embeddings = self.mimi_encoder.run(None, {"audio": audio})[0]
         while embeddings.ndim > 3:

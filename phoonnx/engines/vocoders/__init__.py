@@ -80,7 +80,8 @@ def build_vocoder(
 
     # Auto-detection needs the session to inspect the output layout.
     if session is None and model_path:
-        session = load_onnx_session(model_path, providers=config.get("providers"))
+        session = load_onnx_session(model_path, providers=config.get("providers"),
+                                    threads=config.get("threads"))
 
     for name in _DETECT_ORDER:
         try:

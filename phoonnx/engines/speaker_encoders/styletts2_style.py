@@ -12,7 +12,8 @@ class StyleTTS2StyleEncoder(BaseSpeakerEncoder):
     sample_rate = 24000
 
     def __init__(self, model_path: str, config: Optional[Dict[str, Any]] = None):
-        self.session = make_session(model_path, providers=(config or {}).get("providers"))
+        self.session = make_session(model_path, providers=(config or {}).get("providers"),
+                                    threads=(config or {}).get("threads"))
         self._input = self.session.get_inputs()[0].name
         self._outs = [o.name for o in self.session.get_outputs()]
 

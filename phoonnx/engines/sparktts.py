@@ -248,7 +248,7 @@ class SparkTTSAdapter(BaseOnnxAdapter):
         self._params = dict(ep)
 
         if self.vocoder is None and ep.get("vocoder_path"):
-            self.vocoder = make_session(ep["vocoder_path"], providers=ep.get("providers"))
+            self.vocoder = make_session(ep["vocoder_path"], providers=ep.get("providers"), threads=ep.get("threads"))
         if self.tokenizer is None and ep.get("bpe_tokenizer_path"):
             self.tokenizer = BPETokenizer(ep["bpe_tokenizer_path"])
             self.special = {t: self.tokenizer._tok.token_to_id(t) for t in _SPECIAL_TOKENS}
@@ -316,7 +316,8 @@ class SparkTTSAdapter(BaseOnnxAdapter):
             path = self._params.get(key)
             if not path:
                 raise RuntimeError(f"Spark-TTS voice cannot clone: no {key} in engine_params")
-            session = make_session(path, providers=self._params.get("providers"))
+            session = make_session(path, providers=self._params.get("providers"),
+                                   threads=self._params.get("threads"))
             setattr(self, attribute, session)
         return session
 

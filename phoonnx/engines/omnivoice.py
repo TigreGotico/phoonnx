@@ -164,7 +164,7 @@ class OmniVoiceAdapter(BaseOnnxAdapter):
         ep = voice_config.engine_params
         self._params = dict(ep)
         if self.decoder is None and ep.get("decoder_path"):
-            self.decoder = make_session(ep["decoder_path"], providers=ep.get("providers"))
+            self.decoder = make_session(ep["decoder_path"], providers=ep.get("providers"), threads=ep.get("threads"))
         if self.tokenizer is None and ep.get("bpe_tokenizer_path"):
             from phoonnx.tokenizer import BPETokenizer
             self.tokenizer = BPETokenizer(ep["bpe_tokenizer_path"])
@@ -175,7 +175,8 @@ class OmniVoiceAdapter(BaseOnnxAdapter):
             path = self._params.get(key)
             if not path:
                 raise RuntimeError(f"OmniVoice voice cannot clone: no {key} in engine_params")
-            session = make_session(path, providers=self._params.get("providers"))
+            session = make_session(path, providers=self._params.get("providers"),
+                                   threads=self._params.get("threads"))
             setattr(self, attribute, session)
         return session
 

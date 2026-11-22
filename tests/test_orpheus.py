@@ -529,9 +529,10 @@ def test_a_seeded_decode_holds_the_seed_lock_until_it_reseeds(monkeypatch):
             events.append(("run", orpheus._SEED_LOCK.locked()))
             return super().run(_none, feed)
 
-    def make_session(path, providers=None, sess_options=None):
+    def make_session(path, providers=None, sess_options=None, threads=None):
         events.append(("build", path, providers, sess_options is not None,
-                       orpheus._SEED_LOCK.locked()))
+                       orpheus._SEED_LOCK.locked(),
+                       sess_options.intra_op_num_threads if sess_options else threads))
         return _RecordingSnac()
 
     monkeypatch.setattr(orpheus, "make_session", make_session)
@@ -541,7 +542,7 @@ def test_a_seeded_decode_holds_the_seed_lock_until_it_reseeds(monkeypatch):
     a = OrpheusAdapter()
     a.tokenizer = _FakeTokenizer()
     a.configure(_Cfg(engine_params={"snac_decoder_path": "snac.onnx",
-                                    "providers": ["CPUExecutionProvider"]}))
+                                    "providers": ["CPUExecutionProvider"], "threads": 2}))
     frame = [AUDIO_TOKEN_BASE + i * CODEBOOK_SIZE for i in range(TOKENS_PER_FRAME)]
 
     def call(**seed):
@@ -553,12 +554,12 @@ def test_a_seeded_decode_holds_the_seed_lock_until_it_reseeds(monkeypatch):
         events.clear()
         return out
 
-    assert call() == [("build", "snac.onnx", ["CPUExecutionProvider"], False, True),
+    assert call() == [("build", "snac.onnx", ["CPUExecutionProvider"], False, True, 2),
                       ("run", False)]
     first, second = call(seed=7), call(seed=7)
     for seeded in (first, second):
         assert seeded[:3] == [("set_seed", 7, True),
-                              ("build", "snac.onnx", ["CPUExecutionProvider"], True, True),
+                              ("build", "snac.onnx", ["CPUExecutionProvider"], True, True, 2),
                               ("run", True)]
         assert len(seeded) == 4 and seeded[3][0] == "set_seed" and seeded[3][2] is True
     assert first[3][1] != second[3][1], "the reseed draws from entropy, not a constant"
