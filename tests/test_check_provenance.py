@@ -109,7 +109,7 @@ def test_a_recorded_frontend_version_is_compared(tmp_path):
 
 def test_a_frontend_block_with_the_backend_revision_warns(tmp_path):
     # A block recorded through a frontend carries the backend's revision, not the
-    # frontend's ``sc1:`` revision, so comparing it with the frontend identity names
+    # frontend's revision, so comparing it with the frontend identity names
     # ``revision``.
     model = tmp_path / "pt_PT-provenance.onnx"
     _write_model(model)

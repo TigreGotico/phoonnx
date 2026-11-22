@@ -240,7 +240,7 @@ Preprocessing (`phoonnx_train/preprocess.py`, see the
     "distribution": "orthography2ipa",
     "version": "7.124.36a2",
     "lang": "pt-PT",
-    "revision": "sc1:4400b8fe1ef289a79a94fa4fd8c7753467e16b4237e3881f5ca5e3b8cfd59e84",
+    "revision": "sc2:4e4965fdc13657a68e80b5b5a9f8710f470efd0965d86bd881868cdb72ac419a",
     "frontend": null
   }
 }
@@ -256,15 +256,22 @@ The voice loads and speaks as usual. This example is a voice that was trained
 on another phonemizer revision:
 
 ```text
-WARNING - Voice pt_PT-tugão was trained with another phonemizer: revision: trained 'sc1:0000000000000000000000000000000000000000000000000000000000000000', running 'sc1:4400b8fe1ef289a79a94fa4fd8c7753467e16b4237e3881f5ca5e3b8cfd59e84'. The voice loads, but its pronunciation can differ from training.
+WARNING - Voice pt_PT-tugão was trained with another phonemizer: revision: trained 'sc2:0000000000000000000000000000000000000000000000000000000000000000', running 'sc2:4e4965fdc13657a68e80b5b5a9f8710f470efd0965d86bd881868cdb72ac419a'. The voice loads, but its pronunciation can differ from training.
 ```
 
 The comparison follows these rules:
 
-- `revision` is a hash of the spec, code and data that make the phonemes, as
-  scriptconv records it. A block with a `frontend` holds the frontend revision,
-  which also covers the frontend stages. When both revisions are set and equal,
-  a different `version` gives no warning, because the phonemes did not change.
+- `revision` is the hash that scriptconv records for the phonemes. An `sc2:`
+  revision hashes the scriptconv source that makes the phonemes, the data files
+  next to that source, the engine release with its language extra (such as
+  `gruut[fr]`), and the versions of the packages that the backend's extras
+  require, at any depth. A revision from the older `sc1:` scheme always
+  differs from an `sc2:` revision, so a voice trained with it warns on each
+  load. A new release of one of those
+  packages changes the revision, even when the phonemes stay the same. A block
+  with a `frontend` holds the frontend revision, which also covers the frontend
+  stages. When both revisions are set and equal, a different `version` gives no
+  warning, because the phonemes did not change.
 - `lang` is the lect that the phonemizer resolved. A voice trained on `es-ES`
   that runs on `pt-PT` gives a warning.
 - `frontend` is `null` when preprocess called the backend directly. A `null`

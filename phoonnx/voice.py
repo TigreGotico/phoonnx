@@ -470,8 +470,8 @@ class TTSVoice:
             trained = PhonemizerIdentity(**recorded)
             if frontend is None:
                 frontend = self.frontend
-            # identity() leaves the backend's engine cache alone, and its revision
-            # probes run in a subprocess, so it needs no lock against a synthesis.
+            # identity() leaves the engine cache alone. An engine that runs for it, as
+            # the tugaphone probe, runs in a child process, so it needs no lock against a synthesis.
             running = frontend.identity()
             if trained.frontend is None:
                 # Preprocessing calls the backend directly and records no frontend version.
