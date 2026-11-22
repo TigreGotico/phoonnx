@@ -18,6 +18,7 @@ from phoonnx.engines.glowtts import GlowTTSAdapter
 from phoonnx.engines.matcha import MatchaAdapter
 from phoonnx.engines.mixertts import MixerTTSAdapter
 from phoonnx.engines.speaker_encoders.coqui_resnet import CoquiResNetSpeakerEncoder
+from phoonnx.engines.speaker_encoders.styletts2_style import StyleTTS2StyleEncoder
 from phoonnx.engines.vocoders.vocos import VocosVocoder
 from phoonnx.providers import THREADS_ENV_VAR, make_session, resolve_threads
 from phoonnx.voice import TTSVoice
@@ -138,7 +139,8 @@ def test_auxiliary_graphs_read_the_thread_count_of_the_engine_params(tmp_path):
     params = {"providers": CPU, "threads": 2}
     vocoder = VocosVocoder(model_path=tiny_model(tmp_path / "vocoder.onnx"), config=params)
     encoder = CoquiResNetSpeakerEncoder(tiny_model(tmp_path / "encoder.onnx"), config=params)
-    assert (threads_of(vocoder.session), threads_of(encoder.session)) == (2, 2)
+    style = StyleTTS2StyleEncoder(tiny_model(tmp_path / "style.onnx"), config=params)
+    assert (threads_of(vocoder.session), threads_of(encoder.session), threads_of(style.session)) == (2, 2, 2)
 
 
 def test_the_alignment_copy_runs_on_the_thread_count_of_the_voice(tmp_path):
@@ -174,3 +176,12 @@ def test_a_mel_engine_builds_its_vocoder_on_the_threads_of_the_voice(tmp_path, a
     engine.configure_from_params({"vocoder_path": tiny_model(tmp_path / "vocoder.onnx"), "vocoder_type": "hifigan",
                                   "vocoder_config": {}, "providers": CPU, "threads": 2})
     assert threads_of(engine.vocoder.session) == 2
+
+
+def test_the_alignment_copy_of_a_threads_zero_voice_keeps_the_default(tmp_path, monkeypatch):
+    monkeypatch.setenv(THREADS_ENV_VAR, "3")
+    path = tiny_model(tmp_path / "voice.onnx")
+    (tmp_path / "voice.onnx.json").write_text(json.dumps({"phoneme_type": "unicode", "alphabet": "unicode"}))
+    voice = TTSVoice.load(path, providers=CPU, threads=0)
+    monkeypatch.setattr(alignment, "export_alignment_model", lambda source, destination: tiny_model(destination))
+    assert threads_of(voice._ensure_alignment_session()) == 0

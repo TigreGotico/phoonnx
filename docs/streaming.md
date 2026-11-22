@@ -199,7 +199,7 @@ them only to tune. The defaults come from measurements on high-tier voices (see
 | `first_chunk` | 8 | Frames in the first chunk. Smaller → lower TTFA. |
 | `next_chunk` | 160 | Frames per subsequent chunk. Balances per-chunk overhead vs. throughput. |
 | `fallback_frames` | 128 | Sentences this short or shorter are decoded one-shot (streaming can't help). |
-| `intra_op_num_threads` | the thread count of the voice, else `cores / 2` | onnxruntime threads for the decoder. Set it in `engine_params`, not in `engine_params.streaming`. See below. |
+| `intra_op_num_threads` | the thread count of the voice, else `cores / 2` (`0` gives ONNX Runtime's default of all cores) | onnxruntime threads for the decoder. Set it in `engine_params`, not in `engine_params.streaming`. See below. |
 
 ## Tuning notes
 

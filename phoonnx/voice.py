@@ -1198,7 +1198,7 @@ class TTSVoice:
         else:
             try:
                 providers = self.session.get_providers()
-                threads = self.session.get_session_options().intra_op_num_threads or None
+                threads = self.session.get_session_options().intra_op_num_threads
             except Exception:
                 providers = threads = None
             result = ensure_alignment_session(self.model_path, providers, threads)
