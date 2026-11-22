@@ -62,8 +62,9 @@ def test_the_voice_config_loads_with_the_installed_scriptconv(kind):
 LANGUAGE_EXTRAS = {"pinyin": "zh", "hebrew": "he", "japanese": "ja", "thai": "th", "lithuanian": "lt"}
 
 
+@pytest.mark.parametrize("extra", ["language", "all"])
 @pytest.mark.parametrize("kind", TYPES)
-def test_the_language_extra_installs_the_backend(kind):
+def test_the_language_extra_installs_the_backend(kind, extra):
     import tomllib
 
     from packaging.requirements import Requirement
@@ -71,7 +72,8 @@ def test_the_language_extra_installs_the_backend(kind):
     from scriptconv.phonemizers.registry import PHONEMIZER_REGISTRY
 
     pyproject = tomllib.loads((Path(__file__).parent.parent / "pyproject.toml").read_text(encoding="utf-8"))
-    requirements = [Requirement(r) for r in pyproject["project"]["optional-dependencies"][LANGUAGE_EXTRAS[kind]]]
+    name = LANGUAGE_EXTRAS[kind] if extra == "language" else "all"
+    requirements = [Requirement(r) for r in pyproject["project"]["optional-dependencies"][name]]
     _, _, backend_extra = PHONEMIZER_REGISTRY[Phonemizer(BACKENDS[kind][0])]
     assert any(r.name == "scriptconv" and backend_extra in r.extras for r in requirements)
 

@@ -481,6 +481,8 @@ all = [
     # eSpeak, Cotovia, AhoTTS and misaki wrappers; "ar-phonemizers" installs
     # scriptconv-nonfree, which holds the mantoq wrapper.
     "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he,espeak,gl,eu]>=0.0.4a142",
+    # tltk, the Thai backend, needs gensim, which has no wheel for Python 3.14
+    "scriptconv[th]>=0.0.4a142; python_version < '3.14'",
     "scriptconv-nonfree>=0.2.1a1",
     # scriptconv's own "stress" extra floors stressonnx at >=0.0.2, which
     # resolves to the latest *stable* release. The BCP-47 language resolver
