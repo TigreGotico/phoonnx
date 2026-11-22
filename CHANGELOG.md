@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.125.2a1](https://github.com/TigreGotico/phoonnx/tree/1.125.2a1) (2026-11-21)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.1a2...1.125.2a1)
+
+**Merged pull requests:**
+
+- fix: rank bundled voices in index order when a cache exists [\#870](https://github.com/TigreGotico/phoonnx/pull/870) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.125.1a2](https://github.com/TigreGotico/phoonnx/tree/1.125.1a2) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.1a1...1.125.1a2)
@@ -283,7 +291,6 @@
 - perf: cache the OPM default-voice lookup and graph metadata [\#764](https://github.com/TigreGotico/phoonnx/pull/764) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - perf: stop repeating per-call work in Indic Parler, MOSS and Vocos [\#763](https://github.com/TigreGotico/phoonnx/pull/763) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - feat: add the Encoder, the step from text to model ids [\#761](https://github.com/TigreGotico/phoonnx/pull/761) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- refactor: delete dead engine hooks and test that the Engine enum names the registry [\#757](https://github.com/TigreGotico/phoonnx/pull/757) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.116.1a1](https://github.com/TigreGotico/phoonnx/tree/1.116.1a1) (2026-11-19)
 
