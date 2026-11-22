@@ -122,13 +122,12 @@ class TestEmptyTranscript(unittest.TestCase):
             src = tmp / "a.jsonl"
             _jsonl(src, [{"text": "", "audio": "a.wav", "phon": ""}])
             out = tmp / "out"
-            with self.assertLogs("preprocess", level="ERROR") as logs:
-                result = _invoke([
-                    "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
-                    "--phonemes-column", "phon",
-                ])
-            self.assertEqual(result.exit_code, 0, result.output)
-            self.assertTrue(any("No valid utterances found" in m for m in logs.output))
+            result = _invoke([
+                "-i", str(src), "-o", str(out), "-l", "en", "--skip-audio",
+                "--phonemes-column", "phon",
+            ])
+            self.assertEqual(result.exit_code, 1, result.output)
+            self.assertIn("No valid utterances found", result.output)
 
     def test_empty_transcript_without_precomputed_phonemes_dropped(self):
         # no phonemes-column -> normalize()+phonemizer runs; an empty

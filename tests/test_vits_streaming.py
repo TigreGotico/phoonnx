@@ -284,3 +284,29 @@ def test_decoder_keeps_its_threads_when_loaded_from_the_ort_cache(tmp_path, monk
         adapter.configure_from_params(params)
         options = adapter.decoder.get_session_options()
         assert (options.intra_op_num_threads, options.inter_op_num_threads) == (3, 1)
+
+
+def test_a_relative_decoder_path_is_read_from_the_config_folder(tmp_path, monkeypatch):
+    onnx = pytest.importorskip("onnx")
+    import json
+    from onnx import TensorProto, helper
+    from phoonnx.tokenizer import DEFAULT_IPA_PHONEME_ID_MAP
+    from phoonnx.voice import TTSVoice
+    voice_dir, elsewhere = tmp_path / "voice", tmp_path / "elsewhere"
+    voice_dir.mkdir()
+    elsewhere.mkdir()
+    for name in ("model.onnx", "decoder.onnx"):
+        graph = helper.make_graph(
+            [helper.make_node("Identity", ["x"], ["y"])], "g",
+            [helper.make_tensor_value_info("x", TensorProto.FLOAT, [1])],
+            [helper.make_tensor_value_info("y", TensorProto.FLOAT, [1])])
+        onnx.save(helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)]), voice_dir / name)
+    config = {"streaming": True, "engine_params": {"decoder_path": "decoder.onnx"},
+              "phoneme_type": "espeak", "alphabet": "ipa", "lang_code": "en-US",
+              "audio": {"sample_rate": 22050}, "phoneme_id_map": DEFAULT_IPA_PHONEME_ID_MAP}
+    (voice_dir / "model.onnx.json").write_text(json.dumps(config), encoding="utf-8")
+    monkeypatch.chdir(elsewhere)
+    voice = TTSVoice.load(str(voice_dir / "model.onnx"))
+    assert isinstance(voice.adapter, VitsStreamingAdapter)
+    assert voice.adapter.decoder is not None
+    assert voice.config.engine_params["decoder_path"] == str(voice_dir / "decoder.onnx")

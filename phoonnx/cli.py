@@ -118,10 +118,8 @@ def list_voices(lang, verbose):
         if verbose:
             print_voice_info(voice)
         else:
-            if voice.display_name:
-                click.echo(f"* {voice.display_name} ({voice.lang})")
-            else:
-                click.echo(f"* {voice.voice_id} ({voice.lang})")
+            name = f" - {voice.display_name}" if voice.display_name else ""
+            click.echo(f"* {voice.voice_id} ({voice.lang}){name}")
 
 @cli.command(name="list-available")
 def list_available():
