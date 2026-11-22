@@ -725,6 +725,11 @@ def cli(
             _write_metrics_sidecar(metrics_out, recorded)
             _LOGGER.info("Wrote metrics sidecar for %d rows to %s", len(recorded), metrics_out)
         if not utterances:
+            # A row the filter dropped never reaches dataset.jsonl, so a resume
+            # meets it again as new; the manifest it resumes stays as it is.
+            if resume_rows:
+                _LOGGER.info("Resume: the filters dropped every new row, nothing new to write.")
+                return
             raise click.ClickException("No utterances left after quality filtering.")
 
     num_utterances: int = len(utterances)
