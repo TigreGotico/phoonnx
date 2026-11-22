@@ -75,7 +75,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import onnxruntime
-from quebra_frases import sentence_tokenize
+from quebra_frases import span_indexed_sentence_tokenize
 
 from phoonnx.audio_fx import resample_rate
 from phoonnx.engines._sampling import softmax
@@ -257,25 +257,34 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
         return [int(i) for i in self.sp.encode(text, out_type=int)]
 
     def _chunk(self, text: str, budget: int) -> List[List[int]]:
+        """Pack whole sentences into chunks of at most ``budget`` tokens.
+
+        A chunk is encoded from its slice of ``text``, so the gap between two
+        sentences stays as the text has it: none in Chinese or Japanese, a space
+        in Latin script. A sentence longer than the budget is hard-split.
+        """
         text = (text or "").strip()
         if not text:
             return []
         chunks: List[List[int]] = []
         current: List[int] = []
-        for sentence in sentence_tokenize(text) or [text]:
-            sentence = sentence.strip()
-            if not sentence:
+        start = end = None
+        for sentence_start, sentence_end, sentence in (
+                span_indexed_sentence_tokenize(text) or [(0, len(text), text)]):
+            if not sentence.strip():
                 continue
-            ids = self._encode(sentence)
-            # a sentence longer than the budget is hard-split rather than dropped
-            pieces = ([ids[i:i + budget] for i in range(0, len(ids), budget)]
-                      if len(ids) > budget else [ids])
-            for piece in pieces:
-                if current and len(current) + len(piece) > budget:
-                    chunks.append(current)
-                    current = []
-                current.extend(piece)
-        if current:
+            if start is not None:
+                joined = self._encode(text[start:sentence_end].strip())
+                if len(joined) <= budget:
+                    current, end = joined, sentence_end
+                    continue
+                chunks.append(current)
+            start, end = sentence_start, sentence_end
+            current = self._encode(text[start:end].strip())
+            if len(current) > budget:
+                chunks.extend(current[i:i + budget] for i in range(0, len(current), budget))
+                start = None
+        if start is not None:
             chunks.append(current)
         return chunks
 
