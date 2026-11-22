@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.125.12a2](https://github.com/TigreGotico/phoonnx/tree/1.125.12a2) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.12a1...1.125.12a2)
+
+**Merged pull requests:**
+
+- perf: read only the pages the external-data walk touches [\#902](https://github.com/TigreGotico/phoonnx/pull/902) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.125.12a1](https://github.com/TigreGotico/phoonnx/tree/1.125.12a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.11a1...1.125.12a1)
@@ -343,10 +351,6 @@
 ## [1.118.4a1](https://github.com/TigreGotico/phoonnx/tree/1.118.4a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.3a1...1.118.4a1)
-
-**Merged pull requests:**
-
-- fix: restore green CI after linguatag 0.3.1a1 and \#748 [\#796](https://github.com/TigreGotico/phoonnx/pull/796) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.118.3a1](https://github.com/TigreGotico/phoonnx/tree/1.118.3a1) (2026-11-19)
 
