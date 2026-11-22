@@ -107,8 +107,8 @@ MATRIX: list[Row] = [
     say_as("date", "1/2/2026", extra='format="dmy"', fmt="dmy"),
     say_as("time", "14:30"),
     say_as("time", "7:30 pm", extra='format="hms12"', fmt="hms12"),
-    say_as("time", "9 pm", extra='detail="1"', detail="1"),
-    say_as("date", "9 novembre 2026", extra='detail="written"', detail="written"),
+    say_as("time", "9 pm", DEGRADED, extra='detail="1"', detail="1"),
+    say_as("date", "9 novembre 2026", DEGRADED, extra='detail="written"', detail="written"),
     say_as("currency", "$12.50"),
     say_as("address", "12 Rue de la Paix"),
     say_as("telephone", "555-0100"),
@@ -117,7 +117,7 @@ MATRIX: list[Row] = [
     say_as("verbatim", "XK7"),
     say_as("interjection", "wow"),
     say_as("an unknown type", "abc", DEGRADED),
-    Row("say-as detail", DEGRADED, '<speak><say-as interpret-as="digits" detail="2">12</say-as></speak>',
+    Row("say-as detail on a type other than cardinal", DEGRADED, '<speak><say-as interpret-as="digits" detail="2">12</say-as></speak>',
         handed("12", "digits", detail="2")),
     Row("say-as expletive", SUPPORTED, "<speak>{t} <say-as interpret-as=\"expletive\">damn</say-as> {t}</speak>",
         lambda ps, t, lang: [(p.text, p.sound) for p in ps] == [(t, None), ("", ("beep", 350, 1.0)), (t, None)]),
@@ -153,7 +153,7 @@ MATRIX: list[Row] = [
     # -- prosody -----------------------------------------------------------------------------
     Row("prosody rate keyword", SUPPORTED, '<speak><prosody rate="slow">{t}</prosody></speak>', field("rate", 0.8)),
     Row("prosody rate percent", SUPPORTED, '<speak><prosody rate="150%">{t}</prosody></speak>', field("rate", 1.5)),
-    Row("prosody rate relative", SUPPORTED, '<speak><prosody rate="-20%">{t}</prosody></speak>', field("rate", 0.8)),
+    Row("prosody rate relative", EXTENSION, '<speak><prosody rate="-20%">{t}</prosody></speak>', field("rate", 0.8)),
     Row("prosody rate number", EXTENSION, '<speak><prosody rate="1.5">{t}</prosody></speak>', field("rate", 1.5)),
     Row("prosody pitch semitones", SUPPORTED, '<speak><prosody pitch="+3st">{t}</prosody></speak>', field("pitch", 3.0)),
     Row("prosody pitch percent", SUPPORTED, '<speak><prosody pitch="+100%">{t}</prosody></speak>', field("pitch", 12.0)),
@@ -168,7 +168,7 @@ MATRIX: list[Row] = [
     Row("prosody volume number", EXTENSION, '<speak><prosody volume="50">{t}</prosody></speak>', field("volume", 0.5)),
     Row("prosody duration", SUPPORTED, '<speak><prosody duration="3s">{t}</prosody></speak>',
         lambda ps, t, lang: ps[0].duration_ms == 3000),
-    Row("prosody amazon:max-duration", SUPPORTED, '<speak><prosody amazon:max-duration="2s">{t}</prosody></speak>',
+    Row("prosody amazon:max-duration", EXTENSION, '<speak><prosody amazon:max-duration="2s">{t}</prosody></speak>',
         lambda ps, t, lang: ps[0].max_duration_ms == 2000 and spoken(ps) == t),
     Row("nested prosody", SUPPORTED, '<speak><prosody rate="fast" pitch="+2st"><prosody rate="fast">{t}</prosody></prosody></speak>',
         lambda ps, t, lang: (ps[0].rate, ps[0].pitch) == (1.5625, 2.0)),
@@ -191,29 +191,29 @@ MATRIX: list[Row] = [
         "<speak><seq><media><speak>{t}</speak></media><par><media>one</media><media>two</media></par></seq></speak>",
         lambda ps, t, lang: spoken(ps) == f"{t} | one | two"),
     # -- Amazon Polly and Alexa --------------------------------------------------------------
-    Row("amazon:effect name=whispered", SUPPORTED, '<speak><amazon:effect name="whispered">{t}</amazon:effect></speak>',
+    Row("amazon:effect name=whispered", EXTENSION, '<speak><amazon:effect name="whispered">{t}</amazon:effect></speak>',
         field("effects", ("whisper",))),
-    Row("amazon:effect name=drc", SUPPORTED, '<speak><amazon:effect name="drc">{t}</amazon:effect></speak>',
+    Row("amazon:effect name=drc", EXTENSION, '<speak><amazon:effect name="drc">{t}</amazon:effect></speak>',
         field("effects", ("drc",))),
-    Row("amazon:effect phonation=soft", SUPPORTED, '<speak><amazon:effect phonation="soft">{t}</amazon:effect></speak>',
+    Row("amazon:effect phonation=soft", EXTENSION, '<speak><amazon:effect phonation="soft">{t}</amazon:effect></speak>',
         field("effects", ("soft",))),
-    Row("amazon:effect name=phonation value=soft", SUPPORTED,
+    Row("amazon:effect name=phonation value=soft", EXTENSION,
         '<speak><amazon:effect name="phonation" value="soft">{t}</amazon:effect></speak>',
         field("effects", ("soft",))),
-    Row("amazon:effect vocal-tract-length", SUPPORTED,
+    Row("amazon:effect vocal-tract-length", EXTENSION,
         '<speak><amazon:effect vocal-tract-length="-20%">{t}</amazon:effect></speak>',
         lambda ps, t, lang: 3.0 < ps[0].pitch < 4.0),
-    Row("amazon:auto-breaths", SUPPORTED,
+    Row("amazon:auto-breaths", EXTENSION,
         '<speak><amazon:auto-breaths volume="soft" frequency="high" duration="short">{t}</amazon:auto-breaths></speak>',
         lambda ps, t, lang: ps[0].breaths == (0.65, 250, 2)),
-    Row("amazon:breath", SUPPORTED, '<speak>{t}<amazon:breath duration="long" volume="x-soft"/>x</speak>',
+    Row("amazon:breath", EXTENSION, '<speak>{t}<amazon:breath duration="long" volume="x-soft"/>x</speak>',
         lambda ps, t, lang: [p.sound for p in ps] == [None, ("breath", 500, 0.4), None]),
     Row("amazon:domain", DEGRADED, '<speak><amazon:domain name="news">{t}</amazon:domain></speak>', only("{t}")),
     Row("amazon:emotion", DEGRADED,
         '<speak><amazon:emotion name="excited" intensity="high">{t}</amazon:emotion></speak>', only("{t}")),
     Row("alexa:name", DEGRADED, '<speak>{t} <alexa:name type="first" personId="amzn1.ask.person.X"/></speak>',
         only("{t}")),
-    Row("amazon prefix declared by the document", SUPPORTED,
+    Row("amazon prefix declared by the document", EXTENSION,
         '<speak xmlns:amazon="https://amazon.com/ssml/2014"><amazon:effect name="whispered">{t}</amazon:effect></speak>',
         field("effects", ("whisper",))),
     Row("unknown element", DEGRADED, '<speak><bogus attr="1">{t}</bogus><unknown/> end</speak>', only("{t} end")),
@@ -235,5 +235,10 @@ def test_the_statuses_are_the_ones_the_docs_use():
 
 def test_the_docs_list_every_row():
     page = (Path(__file__).parent.parent / "docs" / "ssml.md").read_text(encoding="utf-8")
-    missing = [row.feature for row in MATRIX if f"| {row.feature} | {row.status} |" not in page]
-    assert not missing, f"docs/ssml.md lacks (or has another status for): {missing}"
+    table = page.split("## Support table", 1)[1].split("\n## ", 1)[0]
+    rows = {(cells[1].strip(), cells[2].strip()) for line in table.splitlines()
+            if line.startswith("| ") and len(cells := line.split("|")) > 3}
+    rows -= {("Element or attribute", "Status"), ("---", "---")}
+    expected = {(row.feature, row.status) for row in MATRIX}
+    assert sorted(expected - rows) == [], "docs/ssml.md lacks these rows, or has another status for them"
+    assert sorted(rows - expected) == [], "docs/ssml.md has rows the audit does not check"

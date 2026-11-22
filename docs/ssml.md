@@ -11,7 +11,7 @@ see: usage.md, alignment.md
 `TTSVoice.synthesize_ssml()` and `synthesize_ssml_wav()` read SSML 1.1 and the Amazon Polly and
 Alexa extensions (`phoonnx.ssml.parse_ssml`, then `phoonnx.voice.TTSVoice.synthesize_ssml`). This
 page is what the reader was measured to do, in English and in French, by running it
-(`tests/test_ssml_audit.py` is the table below, one row per line, and fails if the two disagree).
+(`tests/test_ssml_audit.py` is the table below, one row per line, and fails if a row or a status differs).
 The short version, with examples, is in [usage](usage.md#ssml).
 
 ## Status
@@ -53,8 +53,8 @@ The voice's text frontend reads `say-as` (see [usage](usage.md#ssml)), so a `say
 | say-as interpret-as=date format="dmy" | supported | the text frontend reads "1/2/2026" with format dmy, in the language in force |
 | say-as interpret-as=time | supported | the text frontend reads "14:30" in the language in force |
 | say-as interpret-as=time format="hms12" | supported | the text frontend reads "7:30 pm" with format hms12, in the language in force |
-| say-as interpret-as=time detail="1" | supported | the text frontend reads "9 pm" with detail 1, in the language in force |
-| say-as interpret-as=date detail="written" | supported | the text frontend reads "9 novembre 2026" with detail written, in the language in force |
+| say-as interpret-as=time detail="1" | degraded | the text frontend reads "9 pm" with detail 1, in the language in force |
+| say-as interpret-as=date detail="written" | degraded | the text frontend reads "9 novembre 2026" with detail written, in the language in force |
 | say-as interpret-as=currency | supported | the text frontend reads "$12.50" in the language in force |
 | say-as interpret-as=address | supported | the text frontend reads "12 Rue de la Paix" in the language in force |
 | say-as interpret-as=telephone | supported | the text frontend reads "555-0100" in the language in force |
@@ -63,7 +63,7 @@ The voice's text frontend reads `say-as` (see [usage](usage.md#ssml)), so a `say
 | say-as interpret-as=verbatim | supported | the text frontend reads "XK7" in the language in force |
 | say-as interpret-as=interjection | supported | the text frontend reads "wow" in the language in force |
 | say-as interpret-as=an unknown type | degraded | the text frontend reads "abc" in the language in force |
-| say-as detail | degraded | the text frontend gets "12" with detail 2 |
+| say-as detail on a type other than cardinal | degraded | the text frontend gets "12" with detail 2 |
 | say-as expletive | supported | says "words then (a sound) then words"; beep 350 ms |
 | phoneme ipa | supported | says "[[ bɔ̃ʒuʁ ]]" |
 | phoneme x-sampa | supported | says "[[ həˈləʊ ]]" |
@@ -83,7 +83,7 @@ The voice's text frontend reads `say-as` (see [usage](usage.md#ssml)), so a `say
 | emphasis level reduced | supported | words kept; rate x1.05; volume x0.85 |
 | prosody rate keyword | supported | words kept; rate x0.8 |
 | prosody rate percent | supported | words kept; rate x1.5 |
-| prosody rate relative | supported | words kept; rate x0.8 |
+| prosody rate relative | extension | words kept; rate x0.8 |
 | prosody rate number | extension | words kept; rate x1.5 |
 | prosody pitch semitones | supported | words kept; pitch +3.0 st |
 | prosody pitch percent | supported | words kept; pitch +12.0 st |
@@ -95,7 +95,7 @@ The voice's text frontend reads `say-as` (see [usage](usage.md#ssml)), so a `say
 | prosody volume dB | supported | words kept; volume x0.50 |
 | prosody volume number | extension | words kept; volume x0.50 |
 | prosody duration | supported | words kept; duration 3000 ms |
-| prosody amazon:max-duration | supported | words kept; max duration 2000 ms |
+| prosody amazon:max-duration | extension | words kept; max duration 2000 ms |
 | nested prosody | supported | words kept; rate x1.5625; pitch +2.0 st |
 | voice languages | supported | words kept; voice language de-DE (the accent dropped); the language of the words stays as it was |
 | voice name, gender, age, variant, required, ordering | degraded | words kept |
@@ -106,17 +106,17 @@ The voice's text frontend reads `say-as` (see [usage](usage.md#ssml)), so a `say
 | metadata | degraded | words kept |
 | meta | degraded | words kept |
 | seq, par, media | degraded | says "words then one then two"; pause 150 ms |
-| amazon:effect name=whispered | supported | words kept; effects whisper |
-| amazon:effect name=drc | supported | words kept; effects drc |
-| amazon:effect phonation=soft | supported | words kept; effects soft |
-| amazon:effect name=phonation value=soft | supported | words kept; effects soft |
-| amazon:effect vocal-tract-length | supported | words kept; pitch +3.9 st |
-| amazon:auto-breaths | supported | words kept; breath every 2 sentences (250 ms) |
-| amazon:breath | supported | says "words then (a sound) then x"; breath 500 ms |
+| amazon:effect name=whispered | extension | words kept; effects whisper |
+| amazon:effect name=drc | extension | words kept; effects drc |
+| amazon:effect phonation=soft | extension | words kept; effects soft |
+| amazon:effect name=phonation value=soft | extension | words kept; effects soft |
+| amazon:effect vocal-tract-length | extension | words kept; pitch +3.9 st |
+| amazon:auto-breaths | extension | words kept; breath every 2 sentences (250 ms) |
+| amazon:breath | extension | says "words then (a sound) then x"; breath 500 ms |
 | amazon:domain | degraded | words kept |
 | amazon:emotion | degraded | words kept |
 | alexa:name | degraded | words kept |
-| amazon prefix declared by the document | supported | words kept; effects whisper |
+| amazon prefix declared by the document | extension | words kept; effects whisper |
 | unknown element | degraded | says "words end" |
 
 ## How a document is read
@@ -199,7 +199,9 @@ Reading the markup takes about 20 ms for 40 kB (300 paragraphs with breaks, emph
 * `<par>` and `<media>` timing (`begin`, `end`, `repeatCount`, `soundLevel`, fades): read one after the other.
 * `<w role>`, `<amazon:domain>`, `<amazon:emotion>`, `<alexa:name>`: styles and parts of speech are not
   something this engine does; the words are read.
-* `<say-as detail>` and alphabets other than IPA and X-SAMPA for `<phoneme>`.
+* `<say-as detail>` on any type but `cardinal`: the reader hands it to the text frontend, and text2spoken
+  reads the text as if no detail were given (SSML 1.1 section 3.1.9).
+* Alphabets other than IPA and X-SAMPA for `<phoneme>`.
 * `<prosody volume="silent">` skips its words (they are not synthesized silently, so they take no time).
 
 ---
