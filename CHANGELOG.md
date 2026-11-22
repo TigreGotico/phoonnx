@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.129.7a1](https://github.com/TigreGotico/phoonnx/tree/1.129.7a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.6a1...1.129.7a1)
+
+**Merged pull requests:**
+
+- fix\(index\): frappuccino/vits2-ru-natasha loads again [\#927](https://github.com/TigreGotico/phoonnx/pull/927) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.129.6a1](https://github.com/TigreGotico/phoonnx/tree/1.129.6a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.5a1...1.129.6a1)
@@ -370,10 +378,6 @@
 ## [1.123.2a1](https://github.com/TigreGotico/phoonnx/tree/1.123.2a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.1a2...1.123.2a1)
-
-**Merged pull requests:**
-
-- fix: normalise the reference text, keep x-vits marks, seed Chatterbox [\#825](https://github.com/TigreGotico/phoonnx/pull/825) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.123.1a2](https://github.com/TigreGotico/phoonnx/tree/1.123.1a2) (2026-11-19)
 
