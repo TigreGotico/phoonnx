@@ -612,6 +612,11 @@ PIPER_PHONEMIZERS: Dict[str, Tuple[str, Alphabet]] = {
 # src/piper/phonemize_chinese.py, OHF-Voice/piper1-gpl v1.8.0).
 PINYIN_GROUP_END = frozenset("12345。？！.?!—…、，：；,:; ")
 
+# The multi-character keys of Piper's default phoneme id map, at their default ids
+# (DEFAULT_PHONEME_ID_MAP of src/piper/phoneme_ids.py, OHF-Voice/piper1-gpl v1.5.0).
+# Piper merges them into one id only for a config that lists them in vowel_clusters.
+PIPER_DIPHTHONGS = {"aɪ": [161], "aʊ": [162], "ɔɪ": [163], "eɪ": [164], "oʊ": [165]}
+
 
 class PiperLoader(ConfigLoader):
     """piper checkpoints.
@@ -634,7 +639,11 @@ class PiperLoader(ConfigLoader):
     (``es-419`` for an ``es_MX`` voice), and it reads the phonemes decomposed
     (NFD). The ``vowel_clusters`` of a Piper 1.5 config, such as ``a`` + ``ɪ``,
     each have their own key in ``phoneme_id_map``, and the tokenizer's compound
-    folding gives such a key its own id.
+    folding gives such a key its own id. A Piper config with no
+    ``vowel_clusters`` whose only multi-character keys are the diphthongs of
+    Piper's default map (:data:`PIPER_DIPHTHONGS`) was trained on the split
+    ids, so it folds nothing. Other trainers write Piper configs too, with
+    keys of their own that they fold, and those configs keep the folding.
     """
 
     @classmethod
@@ -672,6 +681,14 @@ class PiperLoader(ConfigLoader):
                 or "alphabet" in config)
 
     @classmethod
+    def trained_on_split_diphthongs(cls, config: Dict[str, Any]) -> bool:
+        """Whether *config* is Piper's default map with no ``vowel_clusters``, so Piper reads
+        ``aɪ`` as ``a`` and ``ɪ``."""
+        compounds = {key: ids for key, ids in config["phoneme_id_map"].items() if len(key) > 1}
+        return (not config.get("vowel_clusters") and not cls.made_by_phoonnx(config)
+                and bool(compounds) and compounds.items() <= PIPER_DIPHTHONGS.items())
+
+    @classmethod
     def load(cls, request: LoadRequest) -> LoadedFields:
         config = request.config
 
@@ -705,7 +722,7 @@ class PiperLoader(ConfigLoader):
 
         tokenizer = from_piper_config(config, decompose=not cls.made_by_phoonnx(config))
         add_diacritics, diacritizer_model = is_arabic(lang_code or ""), None
-        if piper_type is not None:
+        if piper_type is not None or cls.trained_on_split_diphthongs(config):
             tokenizer.fold_compounds = False
         if piper_type == "pinyin":
             tokenizer.blank_after = PINYIN_GROUP_END

@@ -55,6 +55,42 @@ def test_a_vowel_cluster_reads_as_its_own_id(phonemes, ids):
     assert load(TUGAO).tokenizer.tokenize(phonemes) == ids
 
 
+@pytest.mark.parametrize("phonemes, ids", [
+    ("pˈaɪ", [1, 0, 28, 0, 120, 0, 14, 0, 74, 0, 2]),
+    ("mˈaʊ", [1, 0, 25, 0, 120, 0, 14, 0, 100, 0, 2]),
+    ("dˈɔɪ", [1, 0, 17, 0, 120, 0, 54, 0, 74, 0, 2]),
+])
+def test_piper_default_map_without_vowel_clusters_reads_a_diphthong_as_two_ids(phonemes, ids):
+    # no_NO-nvcc-medium: Piper merges only the clusters in vowel_clusters, and this config has none
+    config = {key: value for key, value in TUGAO.items() if key != "vowel_clusters"}
+    assert load(config).tokenizer.tokenize(phonemes) == ids
+
+
+# ghananlpcommunity/stable-twi-tts: a Piper 1.5.0 config from another trainer, which folded its
+# own multi-character keys; the ids are those of its phoneme_id_map
+TWI = {**{key: value for key, value in TUGAO.items() if key not in ("vowel_clusters", "language", "dataset")},
+       "espeak": {"voice": "lfn"},
+       "phoneme_id_map": {"_": [0], "^": [1], "$": [2], " ": [3], ".": [10], "a": [14], "d": [17], "ɪ": [74],
+                          "ʒ": [108], "ˈ": [192], "dʒ": [46], "aɪ": [180], "aʊ": [181], "eɪ": [182]},
+       "phoneme_counts": {}}
+
+
+def test_a_config_with_keys_of_its_own_trainer_keeps_the_folding():
+    assert load(TWI).tokenizer.tokenize("dʒˈaɪ. ˈa ɪ") == [1, 0, 46, 0, 192, 0, 180, 0, 10, 0, 3, 0, 192, 0, 14, 0,
+                                                           3, 0, 74, 0, 2]
+
+
+def test_diphthongs_away_from_the_piper_default_ids_keep_the_folding():
+    config = {**TWI, "phoneme_id_map": {k: v for k, v in TWI["phoneme_id_map"].items() if k != "dʒ"}}
+    assert load(config).tokenizer.tokenize("ˈaɪ") == [1, 0, 192, 0, 180, 0, 2]
+
+
+def test_a_phoonnx_side_car_without_vowel_clusters_keeps_the_folding():
+    config = {key: value for key, value in TUGAO.items() if key != "vowel_clusters"}
+    side_car = {**config, "piper_version": "phoonnx-1.0"}
+    assert load(side_car).tokenizer.tokenize("pˈaɪ") == [1, 0, 28, 0, 120, 0, 161, 0, 2]
+
+
 def test_a_precomposed_symbol_reads_as_its_decomposition():
     # Piper reads its phonemes in NFD: "ç" is "c" and U+0327, and id 40 never reaches the model
     assert load(TUGAO).tokenizer.tokenize("ˈɪç") == [1, 0, 120, 0, 74, 0, 16, 0, 140, 0, 2]

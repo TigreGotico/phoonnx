@@ -185,7 +185,7 @@ These keys of the native format control how the phonemes become ids.
 | `add_blank_word` | `false` | Put the `blank_word` symbol after each word that gives an id. With `blank_at_end`, the last word gets one too. |
 | `blank_word` | none | The symbol that `add_blank_word` puts between words. Without it, a space gives no id. |
 | `use_eos_bos` | `true` | Put `bos` before the ids and `eos` after them. |
-| `fold_compounds` | `true` | Read the longest map key that starts at each symbol, so that `t͡ʃ` gives one id. |
+| `fold_compounds` | `true` | Read the longest map key that starts at each symbol, so that `t͡ʃ` gives one id. A Piper config with no `vowel_clusters` whose only multi-character keys are Piper's default diphthongs (`aɪ`, `aʊ`, `ɔɪ`, `eɪ`, `oʊ` at ids 161 to 165) loads with `false`, because Piper reads `aɪ` as `a` and `ɪ` for such a voice. |
 | `blank_after` | `null` | A list of symbols. When it is set, the `blank` symbol follows only these symbols, and `add_blank_char` and `blank_at_start` have no effect. `blank_at_end` then adds only the trailing `blank_word` of `add_blank_word`. Piper's pinyin voices (`zh_CN-chaowen-medium`, `zh_CN-xiao_ya-medium`) set it to the tone digits `1` to `5`, the pause marks and the space. |
 | `keep_punctuation` | `false` | Keep the clause punctuation `, . ? ! : ;` for the map to read. |
 
