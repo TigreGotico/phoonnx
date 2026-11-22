@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.125.9a2](https://github.com/TigreGotico/phoonnx/tree/1.125.9a2) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.9a1...1.125.9a2)
+
+**Merged pull requests:**
+
+- test: seed the Indic Parler tests that count decode steps [\#885](https://github.com/TigreGotico/phoonnx/pull/885) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.125.9a1](https://github.com/TigreGotico/phoonnx/tree/1.125.9a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.8a1...1.125.9a1)
@@ -333,10 +341,6 @@
 ## [1.116.1a2](https://github.com/TigreGotico/phoonnx/tree/1.116.1a2) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.116.1a1...1.116.1a2)
-
-**Merged pull requests:**
-
-- fix: keep the voice-conversion cache key and value in one attribute [\#774](https://github.com/TigreGotico/phoonnx/pull/774) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.116.1a1](https://github.com/TigreGotico/phoonnx/tree/1.116.1a1) (2026-11-19)
 
