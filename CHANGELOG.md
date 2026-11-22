@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.129.6a1](https://github.com/TigreGotico/phoonnx/tree/1.129.6a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.5a1...1.129.6a1)
+
+**Merged pull requests:**
+
+- fix\(deps\): text2spoken\>=0.0.2a88 [\#925](https://github.com/TigreGotico/phoonnx/pull/925) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.129.5a1](https://github.com/TigreGotico/phoonnx/tree/1.129.5a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.4a1...1.129.5a1)
@@ -359,10 +367,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.2a1...1.123.3a1)
 
-**Merged pull requests:**
-
-- fix: refuse a side stream whose length differs from the ids [\#823](https://github.com/TigreGotico/phoonnx/pull/823) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.123.2a1](https://github.com/TigreGotico/phoonnx/tree/1.123.2a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.1a2...1.123.2a1)
@@ -378,7 +382,6 @@
 **Merged pull requests:**
 
 - fix: CI passes on quebra-frases 0.3.8a2 and linguatag 0.4.0a1 [\#828](https://github.com/TigreGotico/phoonnx/pull/828) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- test: raw-text normalisation and text casing test gaps [\#824](https://github.com/TigreGotico/phoonnx/pull/824) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.123.1a1](https://github.com/TigreGotico/phoonnx/tree/1.123.1a1) (2026-11-19)
 
