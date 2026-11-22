@@ -1,7 +1,7 @@
 import unicodedata
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Mapping, List, Dict, Optional, Any, Sequence, Set, Tuple, Union
+from typing import Mapping, List, Dict, FrozenSet, Optional, Any, Sequence, Set, Tuple, Union
 
 from phoonnx.util import LOG
 
@@ -396,6 +396,10 @@ class TTSTokenizer:
     (mimic3 diphthongs). Must be ``False`` when the input is already a list of
     complete phoneme tokens (e.g. vosk), where merging would corrupt genuine
     consonant clusters like ``s h`` -> ``sh``."""
+    blank_after: Optional[FrozenSet[str]] = None
+    """When set, a blank follows only the symbols in this set, in place of the
+    blank between every symbol. Piper's pinyin voices put it after a tone
+    digit, a pause mark or a space."""
     unknown_id: Optional[int] = None
     """The id that a symbol takes when the vocabulary lacks it. ``None`` drops
     the symbol. A set id also turns off the decomposition and lowercase
@@ -588,8 +592,11 @@ class TTSTokenizer:
         """The ids of :meth:`tokenize`, with the index in *text* of the symbol behind each (``None`` for an added id)."""
         token_ids, sources = self._encode(text)
 
-        # 2. Inter-character Blank Insertion
-        if self.add_blank_char and self.blank_id is not None:
+        # 2. Blank Insertion: after the symbols of blank_after, or between every symbol
+        if self.blank_after is not None:
+            if self.blank_id is not None:
+                token_ids, sources = self._blank_after_symbols(text, token_ids, sources)
+        elif self.add_blank_char and self.blank_id is not None:
             token_ids = self.intersperse_blank_char(token_ids)
             sources = self._intersperse(sources, None)
         # 3. Start Blank Insertion (only if intersperse wasn't done, as intersperse already handles start/end)
@@ -602,6 +609,20 @@ class TTSTokenizer:
             token_ids = self.pad_with_bos_eos(token_ids)
             sources = [None] + sources + [None]
         return token_ids, sources
+
+    def _blank_after_symbols(self, text: Union[str, List[str]], token_ids: List[int],
+                             sources: List[Optional[int]]) -> Tuple[List[int], List[Optional[int]]]:
+        """*token_ids* with a blank after the last id of each symbol in :attr:`blank_after`."""
+        ids: List[int] = []
+        srcs: List[Optional[int]] = []
+        for k, (token_id, src) in enumerate(zip(token_ids, sources)):
+            ids.append(token_id)
+            srcs.append(src)
+            symbol_ends = k + 1 == len(sources) or sources[k + 1] != src
+            if src is not None and symbol_ends and text[src] in self.blank_after:
+                ids.append(self.blank_id)
+                srcs.append(None)
+        return ids, srcs
 
     def pad_with_bos_eos(self, token_sequence: List[int]) -> List[int]:
         """
@@ -679,6 +700,7 @@ class TTSTokenizer:
         use_eos_bos: bool = cfg.get("use_eos_bos", True)
         add_blank_word: bool = cfg.get("add_blank_word", False)
         fold_compounds: bool = cfg.get("fold_compounds", True)
+        blank_after = cfg.get("blank_after")
         # F5-TTS gives id 0 to a token that its vocabulary lacks:
         # list_str_to_idx in src/f5_tts/model/utils.py (SWivid/F5-TTS 600e5fd)
         # reads vocab_char_map.get(c, 0), and Habibi-TTS and SILMA TTS run the same code.
@@ -686,6 +708,7 @@ class TTSTokenizer:
         return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
                             blank_at_end=blank_at_end, blank_at_start=blank_at_start,
                             use_eos_bos=use_eos_bos, fold_compounds=fold_compounds,
+                            blank_after=None if blank_after is None else frozenset(blank_after),
                             unknown_id=unknown_id)
 
     from_piper_config = _moved_to_compat("TTSTokenizer.from_piper_config", "from_piper_config")

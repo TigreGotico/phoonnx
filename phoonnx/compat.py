@@ -44,7 +44,7 @@ import json
 import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, FrozenSet, List, Optional, Type, Union
+from typing import Any, Dict, FrozenSet, List, Optional, Tuple, Type, Union
 
 from scriptconv.phonemizers.enums import Alphabet, Phonemizer as PhonemeType
 
@@ -595,12 +595,34 @@ class VoskLoader(ConfigLoader):
         )
 
 
+# Piper phoneme types that name a phonemizer of their own, and the scriptconv
+# backend and alphabet that give the same symbols. Each backend gives one
+# symbol per code point (a pinyin initial, final or tone digit for g2pW), and
+# Piper merges no vowel clusters for these types.
+PIPER_PHONEMIZERS: Dict[str, Tuple[str, Alphabet]] = {
+    "pinyin": ("g2pw", Alphabet.PINYIN),
+    "hebrew": ("hebrew_ipa", Alphabet.IPA),
+    "japanese": ("openjtalk_prosody", Alphabet.IPA),
+    "thai": ("tltk", Alphabet.IPA),
+    "lithuanian": ("espeak_lt_accent", Alphabet.IPA),
+}
+
+# The symbols after which a Piper pinyin voice reads a blank: the tone digits,
+# the pause marks and the space (GROUP_END_PHONEMES of
+# src/piper/phonemize_chinese.py, OHF-Voice/piper1-gpl v1.8.0).
+PINYIN_GROUP_END = frozenset("12345。？！.?!—…、，：；,:; ")
+
+
 class PiperLoader(ConfigLoader):
     """piper checkpoints.
 
     ``text`` and ``pygoruut`` models pin both the phoneme type and the
     alphabet: their vocabulary is the model's own character or goruut token
-    set, so a caller-supplied alphabet would mis-tokenise.
+    set, so a caller-supplied alphabet would mis-tokenise. The Piper types of
+    :data:`PIPER_PHONEMIZERS` pin them too, and read each symbol as one id
+    with no compound folding. Hebrew voices diacritize with Nakdimon first,
+    as Piper does, and pinyin voices put a blank only after the symbols of
+    :data:`PINYIN_GROUP_END`.
 
     Piper trains with clause punctuation, so its voices keep it at synthesis.
     phoonnx's own ``--piper`` export side-cars are piper-shaped too, but their
@@ -641,7 +663,7 @@ class PiperLoader(ConfigLoader):
         if not all(isinstance(v, (list, tuple)) for v in pid.values()):
             return False
 
-        return config["phoneme_type"] in ("text", "espeak")
+        return config["phoneme_type"] in ("text", "espeak", *PIPER_PHONEMIZERS)
 
     @staticmethod
     def made_by_phoonnx(config: Dict[str, Any]) -> bool:
@@ -659,12 +681,17 @@ class PiperLoader(ConfigLoader):
                      or config.get("language", {}).get("code") or espeak_voice)
         alphabet = request.alphabet
         pinned = set()
+        piper_type = None
         if phoneme_type == "text":
             phoneme_type, alphabet = PhonemeType.UNICODE, Alphabet.UNICODE
             pinned = {"phoneme_type", "alphabet"}
         elif phoneme_type == "pygoruut":
             # special case: neurlang models
             phoneme_type, alphabet = PhonemeType.GORUUT, Alphabet.IPA
+            pinned = {"phoneme_type", "alphabet"}
+        elif phoneme_type in PIPER_PHONEMIZERS:
+            piper_type = phoneme_type
+            phoneme_type, alphabet = PIPER_PHONEMIZERS[piper_type]
             pinned = {"phoneme_type", "alphabet"}
         else:
             alphabet = alphabet or Alphabet.IPA
@@ -676,13 +703,23 @@ class PiperLoader(ConfigLoader):
         config["bos"] = DEFAULT_BOS_TOKEN
         config["eos"] = DEFAULT_EOS_TOKEN
 
+        tokenizer = from_piper_config(config, decompose=not cls.made_by_phoonnx(config))
+        add_diacritics, diacritizer_model = is_arabic(lang_code or ""), None
+        if piper_type is not None:
+            tokenizer.fold_compounds = False
+        if piper_type == "pinyin":
+            tokenizer.blank_after = PINYIN_GROUP_END
+        elif piper_type == "hebrew":
+            add_diacritics, diacritizer_model = True, "nakdimon"
+
         return LoadedFields(
-            tokenizer=from_piper_config(config, decompose=not cls.made_by_phoonnx(config)),
+            tokenizer=tokenizer,
             engine=Engine.PIPER,
             lang_code=lang_code,
             phoneme_type=phoneme_type,
             alphabet=alphabet,
-            add_diacritics=is_arabic(lang_code or ""),
+            add_diacritics=add_diacritics,
+            diacritizer_model=diacritizer_model,
             keep_punctuation=not cls.made_by_phoonnx(config),
             pinned=frozenset(pinned),
         )

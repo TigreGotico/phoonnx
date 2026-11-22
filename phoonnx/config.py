@@ -358,6 +358,8 @@ class VoiceConfig:
                      "blank_at_start": tok.blank_at_start and voc.blank_id is not None,
                      "blank_at_end": tok.blank_at_end,
                      "fold_compounds": tok.fold_compounds}
+            if tok.blank_after is not None:
+                flags["blank_after"] = sorted(tok.blank_after)
         else:
             voc = Vocabulary(char2idx={})
             flags = dict.fromkeys(("add_blank_char", "add_blank_word", "use_eos_bos", "blank_at_start",

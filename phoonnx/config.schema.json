@@ -200,6 +200,12 @@
     "fold_compounds": {
       "type": "boolean"
     },
+    "blank_after": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "string"
+      }
+    },
     "word_sep_token": {
       "type": [
         "string",
