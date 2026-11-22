@@ -262,6 +262,16 @@ class TestAGraphWhoseWeightsWereCutOff(_Cache):
                 patch.object(model_manager.TTSModelInfo, "_fetch_onnx", return_value=Path("model.onnx")):
             info.download_model()
 
+    def test_a_scope_that_fails_to_open_leaves_no_voice_behind(self):
+        info = model_manager.TTSModelInfo(voice_id="outetts/0.6b", lang="en",
+                                          model_url=index_url(OUTETTS, "model.onnx"))
+        with patch.object(model_manager, "_fetch_source", side_effect=OSError("disk")), \
+                self.assertRaises(OSError):
+            with model_manager._voice_scope(info):
+                pass
+        self.assertIsNone(model_manager._VOICE_INFO.get())
+        self.assertIsNone(model_manager._VOICE_ROUTES.get())
+
 
 class TestTheIndexNamesTheModelRepos(unittest.TestCase):
 

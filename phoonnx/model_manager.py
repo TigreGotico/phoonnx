@@ -420,15 +420,17 @@ def _voice_scope(info: "TTSModelInfo") -> Iterator[None]:
     routes = {key: _mirror_route(key[0], paths) for key, paths in named.items() if key[0] in _SPLIT_FROM}
     route_token = _VOICE_ROUTES.set(routes)
     info_token = _VOICE_INFO.set(info)
-    for (repo, rev), paths in named.items():
-        for path in paths:
-            repo_id, revision, source_path = _fetch_source(repo, rev, path)
-            files.setdefault((repo_id, revision), set()).add(source_path)
-    token = _VOICE_FILES.set(files)
     try:
-        yield
+        for (repo, rev), paths in named.items():
+            for path in paths:
+                repo_id, revision, source_path = _fetch_source(repo, rev, path)
+                files.setdefault((repo_id, revision), set()).add(source_path)
+        files_token = _VOICE_FILES.set(files)
+        try:
+            yield
+        finally:
+            _VOICE_FILES.reset(files_token)
     finally:
-        _VOICE_FILES.reset(token)
         _VOICE_ROUTES.reset(route_token)
         _VOICE_INFO.reset(info_token)
 
