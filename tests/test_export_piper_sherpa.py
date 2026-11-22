@@ -131,6 +131,42 @@ def test_piper_export_merges_a_precomposed_symbol_back_into_its_own_id(tmp_path)
         assert piper_ids(config, phonemes) == voice.config.tokenizer.tokenize(phonemes), phonemes
 
 
+@pytest.mark.parametrize("fold_compounds", [True, False])
+def test_phoonnx_reads_its_piper_export_back_with_the_same_ids(tmp_path, fold_compounds):
+    # "ç": [16, 140] reads as the ids of its decomposition, a key the export writes as it is
+    voice = load_voice(tmp_path, native_config(fold_compounds=fold_compounds))
+    exported = TTSVoice.load(str(export_piper(voice, tmp_path / "piper")))
+    for phonemes in PHONEMES:
+        assert exported.config.tokenizer.tokenize(phonemes) == voice.config.tokenizer.tokenize(phonemes), phonemes
+
+
+def test_piper_export_keeps_the_default_speaker(tmp_path):
+    config = native_config(fold_compounds=False, num_speakers=3, default_speaker_id=2,
+                           speaker_id_map={"ana": 0, "rui": 1, "eva": 2})
+    voice = load_voice(tmp_path, config, inputs=("input", "input_lengths", "scales", "sid"))
+    export_piper(voice, tmp_path / "piper")
+    exported = json.loads((tmp_path / "piper" / "model.onnx.json").read_text(encoding="utf-8"))
+    assert exported["default_speaker_id"] == 2
+
+
+def test_piper_export_names_the_espeak_voice_of_the_language(tmp_path):
+    voice = load_voice(tmp_path, native_config(fold_compounds=False, lang_code="es-MX"))
+    export_piper(voice, tmp_path / "piper")
+    exported = json.loads((tmp_path / "piper" / "model.onnx.json").read_text(encoding="utf-8"))
+    assert exported["espeak"] == {"voice": voice.phonemizer.get_lang("es-MX")} != {"voice": "es-MX"}
+
+
+def test_sherpa_export_of_a_precomposed_symbol_whose_mark_the_map_lacks(tmp_path):
+    # sv_SE-alma-medium: "ç" has the id of "c" and U+0327 has none, so sherpa-onnx feeds [16]
+    id_map = {key: ids[0] for key, ids in DEFAULT_IPA_PHONEME_ID_MAP.items() if key != "\u0327"}
+    id_map["ç"] = [16]
+    voice = load_voice(tmp_path, native_config(fold_compounds=False, phoneme_id_map=id_map))
+    export_sherpa(voice, tmp_path / "sherpa")
+    tokens = (tmp_path / "sherpa" / "tokens.txt").read_text(encoding="utf-8")
+    for phonemes in PHONEMES:
+        assert sherpa_ids(tokens, phonemes) == voice.config.tokenizer.tokenize(phonemes), phonemes
+
+
 def test_sherpa_export_gives_the_ids_of_a_voice(tmp_path):
     voice = load_voice(tmp_path, native_config(fold_compounds=False))
     export_sherpa(voice, tmp_path / "sherpa")

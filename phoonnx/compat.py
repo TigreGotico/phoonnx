@@ -65,7 +65,9 @@ def vocabulary_from_piper_config(cfg: Dict[str, Any], decompose: bool = False) -
     """
     Creates a Vocabulary instance from a Piper configuration dictionary.
 
-    The Piper config format assumes `phoneme_id_map` values are lists where the ID is the first element.
+    Piper reads every id of a ``phoneme_id_map`` list. A list of one id gives that id, and a
+    longer list, which phoonnx's own export writes for a precomposed symbol that reads as the
+    ids of its parts, keeps all of them.
 
     Parameters:
         cfg: The Piper configuration dictionary.
@@ -75,9 +77,9 @@ def vocabulary_from_piper_config(cfg: Dict[str, Any], decompose: bool = False) -
     Returns:
         A Vocabulary instance.
     """
-    # Piper format has value as list of [id, ...]
+    id_map = cfg.get("phoneme_id_map", {})
     char2idx: Dict[str, Union[int, List[int]]] = {
-        char: idx[0] for char, idx in cfg.get("phoneme_id_map", {}).items()}
+        char: idx[0] if len(idx) == 1 else list(idx) for char, idx in id_map.items()}
     if decompose:
         # Piper decomposes the espeak-ng phonemes (NFD) before the id lookup, so
         # "ç" reaches the model as "c" and U+0327 and its own id is never trained
@@ -86,7 +88,7 @@ def vocabulary_from_piper_config(cfg: Dict[str, Any], decompose: bool = False) -
         for char in list(char2idx):
             parts = unicodedata.normalize("NFD", char)
             if parts != char:
-                char2idx[char] = [char2idx[part] for part in parts if part in char2idx]
+                char2idx[char] = [i for part in parts if part in id_map for i in id_map[part]]
     pad: Optional[str] = cfg.get("pad") or DEFAULT_PAD_TOKEN
     eos: Optional[str] = cfg.get("eos") or DEFAULT_EOS_TOKEN
     bos: Optional[str] = cfg.get("bos") or DEFAULT_BOS_TOKEN
@@ -1124,6 +1126,7 @@ def to_piper_config(config: Dict[str, Any]) -> Dict[str, Any]:
         "phoneme_id_map": {p: i if isinstance(i, list) else [i]
                            for p, i in config.get("phoneme_id_map", {}).items()},
         "speaker_id_map": config.get("speaker_id_map", {}),
+        "default_speaker_id": config.get("default_speaker_id"),
         "language": config.get("language") or {"code": lang_code},
         "espeak": config.get("espeak") or {"voice": lang_code},
         "phoneme_type": config.get("phoneme_type", ""),
@@ -1227,8 +1230,9 @@ def _piper_phoneme_id_map(voice: "TTSVoice", target: str,
         if len(key) > 1 and not tokenizer.fold_compounds:
             # phoonnx reads such a key as its characters, and so does the target
             continue
-        if len(key) == 1 and ids == [char2idx.get(part) for part in parts]:
-            # the target reads the code points of the key, with the ids phoonnx gives the key
+        if len(key) == 1 and ids == [char2idx[part] for part in parts if part in char2idx]:
+            # the target reads the code points of the key and skips those the map lacks,
+            # which gives the ids phoonnx gives the key
             id_map[key] = ids
             continue
         if not clusters:
