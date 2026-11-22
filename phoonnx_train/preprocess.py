@@ -725,8 +725,7 @@ def cli(
             _write_metrics_sidecar(metrics_out, recorded)
             _LOGGER.info("Wrote metrics sidecar for %d rows to %s", len(recorded), metrics_out)
         if not utterances:
-            _LOGGER.error("No utterances left after quality filtering.")
-            return
+            raise click.ClickException("No utterances left after quality filtering.")
 
     num_utterances: int = len(utterances)
     _LOGGER.info("Found %d utterances.", num_utterances)
@@ -1046,6 +1045,10 @@ def cli(
             else:
                 written_phonemized += 1
 
+    if not valid_utterances_count:
+        dataset_tmp.unlink()
+        raise click.ClickException("No utterance was written: every row failed phonemization "
+                                   "or the audio checks. The log names each one.")
     dataset_tmp.rename(config.output_dir / "dataset.jsonl")
 
     # --- Record which phonemizer produced the phonemes ---

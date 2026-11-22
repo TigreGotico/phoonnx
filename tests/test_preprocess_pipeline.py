@@ -88,9 +88,9 @@ class TestMalformedAndMissingAudio(unittest.TestCase):
             # caching inside the worker fails, so this is NOT the load-time
             # "No valid utterances found" early-return -- it reaches the
             # writer with zero surviving rows.
-            self.assertEqual(result.exit_code, 0, result.output)
-            lines = [x for x in (out / "dataset.jsonl").read_text().splitlines() if x]
-            self.assertEqual(lines, [])
+            self.assertEqual(result.exit_code, 1, result.output)
+            self.assertIn("No utterance was written", result.output)
+            self.assertFalse((out / "dataset.jsonl").exists())
 
     def test_malformed_audio_bytes_dropped_others_kept(self):
         with TemporaryDirectory() as tmp:
@@ -143,9 +143,11 @@ class TestEmptyTranscript(unittest.TestCase):
             ])
             # loads fine (non-empty raw text field); only phonemization of
             # the normalized (blank) text fails inside the worker.
-            self.assertEqual(result.exit_code, 0, result.output)
-            lines = [x for x in (out / "dataset.jsonl").read_text().splitlines() if x]
-            self.assertEqual(lines, [])
+            self.assertEqual(result.exit_code, 1, result.output)
+            self.assertIn("No utterance was written", result.output)
+            self.assertFalse((out / "dataset.jsonl").exists())
+            self.assertFalse((out / "dataset.jsonl.tmp").exists())
+            self.assertFalse((out / "config.json").exists())
 
 
 class TestQualityFilterWiring(unittest.TestCase):
@@ -159,19 +161,18 @@ class TestQualityFilterWiring(unittest.TestCase):
         _jsonl(src, [{"text": "hello world this is a test", "audio": str(wav), "phon": "h e l l o"}])
         return src
 
-    def test_filter_dropping_every_utterance_is_handled_gracefully(self):
+    def test_filter_dropping_every_utterance_exits_with_an_error(self):
         with TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             src = self._dataset(tmp)
             out = tmp / "out"
             # wpm (words per minute) of a real clip is nowhere near 1e6
-            with self.assertLogs("preprocess", level="ERROR") as logs:
-                result = _invoke([
-                    "-i", str(src), "-o", str(out), "-l", "en", "--phonemes-column", "phon",
-                    "--filter", "wpm:1000000:",
-                ])
-            self.assertEqual(result.exit_code, 0, result.output)
-            self.assertTrue(any("No utterances left after quality filtering" in m for m in logs.output))
+            result = _invoke([
+                "-i", str(src), "-o", str(out), "-l", "en", "--phonemes-column", "phon",
+                "--filter", "wpm:1000000:",
+            ])
+            self.assertEqual(result.exit_code, 1, result.output)
+            self.assertIn("No utterances left after quality filtering", result.output)
             self.assertFalse((out / "dataset.jsonl").exists())
 
     def test_a_metrics_sidecar_without_pandas_stops_before_any_work(self):
@@ -809,10 +810,9 @@ class TestSpectrogramTooShortSkip(unittest.TestCase):
                     result = _invoke([
                         "-i", str(src), "-o", str(out), "-l", "en", "--phonemes-column", "phon",
                     ])
-            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(result.exit_code, 1, result.output)
             self.assertTrue(any("Skipping utterance with more phonemes" in m for m in logs.output))
-            lines = [x for x in (out / "dataset.jsonl").read_text().splitlines() if x]
-            self.assertEqual(lines, [])
+            self.assertFalse((out / "dataset.jsonl").exists())
 
 
 class _FakeSilenceDetector:
@@ -1030,7 +1030,7 @@ class TestFrameCountComesFromTheWorker(unittest.TestCase):
                         "-i", str(src), "-o", str(tmp / "out"), "-l", "en",
                         "--phonemes-column", "phon",
                     ])
-            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(result.exit_code, 1, result.output)
             self.assertTrue(any("too short for its text" in m for m in logs.output))
 
     def test_a_row_without_a_count_still_falls_back_to_the_file(self):
@@ -1058,7 +1058,7 @@ class TestFrameCountComesFromTheWorker(unittest.TestCase):
                         "-i", str(src), "-o", str(tmp / "out"), "-l", "en",
                         "--phonemes-column", "phon",
                     ])
-            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(result.exit_code, 1, result.output)
             self.assertTrue(any("too short for its text" in m for m in logs.output))
 
     def test_a_long_enough_utterance_is_still_written(self):
