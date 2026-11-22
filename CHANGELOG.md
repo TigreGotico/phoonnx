@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.125.8a1](https://github.com/TigreGotico/phoonnx/tree/1.125.8a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.7a1...1.125.8a1)
+
+**Merged pull requests:**
+
+- fix: point the voice index at one repo per model [\#881](https://github.com/TigreGotico/phoonnx/pull/881) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.125.7a1](https://github.com/TigreGotico/phoonnx/tree/1.125.7a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.6a1...1.125.7a1)
@@ -321,7 +329,6 @@
 **Merged pull requests:**
 
 - fix: keep the voice-conversion cache key and value in one attribute [\#774](https://github.com/TigreGotico/phoonnx/pull/774) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- feat\(voice\): stream Pocket TTS audio as the decoder makes it [\#769](https://github.com/TigreGotico/phoonnx/pull/769) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.116.1a1](https://github.com/TigreGotico/phoonnx/tree/1.116.1a1) (2026-11-19)
 
