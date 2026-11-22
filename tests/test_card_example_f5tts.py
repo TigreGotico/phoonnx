@@ -94,6 +94,66 @@ def test_f5tts_example_matches_the_adapter(tmp_path, monkeypatch):
     np.testing.assert_array_equal(names["audio"], result.audio)
 
 
+PINYIN_HUB = "https://huggingface.co/Phoonnx/f5tts-pinyin/resolve/main/"
+PINYIN_ENTRY = {**F5_ENTRY, "voice_id": "f5tts/v1-base", "lang": "mul", "phoneme_type": "f5tts_pinyin",
+                "model_url": PINYIN_HUB + "model.onnx", "config_url": PINYIN_HUB + "config.json",
+                "aux_model_urls": {"preprocess_path": PINYIN_HUB + "F5_Preprocess.onnx",
+                                   "decode_path": PINYIN_HUB + "F5_Decode.onnx"}}
+PINYIN_SYMBOLS = [*" !,.?:'\"-0123456789", *"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", *"，。！？",
+                  "ni3", "ni2", "hao3", "shi4", "jie4", "wo3", "ai4", "mo2", "xing2", "hen3", "jin1", "tian1", "qi4"]
+PINYIN_CONFIG = {**F5_CONFIG, "phoneme_type": "f5tts_pinyin", "lang_code": "mul", "fold_compounds": False,
+                 "engine_params": {"nfe": 6, "speed": 1.0},
+                 "phoneme_id_map": {c: i for i, c in enumerate(PINYIN_SYMBOLS)}}
+
+
+@pytest.mark.parametrize("reference_text, text", [
+    ("你好，世界。\n", "AI 模型很好! Hello World."),  # a "。" end and an ASCII word: the pinyin space
+    ("今天天气很好。", "我爱模型。"),
+    ("Hello there, my friend!", "你好世界"),
+    ("Hello there, my friend\n", "你好世界"),  # no terminator: the newline is whitespace at the end
+    ("  你好，世界。", "  AI 模型很好。"),  # whitespace at the start of the reference and of the text
+])
+def test_f5tts_pinyin_example_matches_the_adapter(tmp_path, monkeypatch, reference_text, text):
+    (tmp_path / "config.json").write_text(json.dumps(PINYIN_CONFIG), encoding="utf-8")
+    (tmp_path / "reference.txt").write_text(reference_text, encoding="utf-8")
+    pcm = (np.sin(np.arange(24000) / 7.0) * 12000).astype(np.int16)
+    with wave.open(str(tmp_path / "reference.wav"), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(24000)
+        wav.writeframes(pcm.tobytes())
+    names_in = ["noise", "rope_cos_q", "rope_sin_q", "rope_cos_k", "rope_sin_k", "cat_mel_text",
+                "cat_mel_text_drop", "time_step.1"]
+    graphs = {"F5_Preprocess.onnx": FakeF5Graph(["audio"]), "model.onnx": FakeF5Graph(names_in),
+              "F5_Decode.onnx": FakeF5Graph()}
+    hub = types.ModuleType("huggingface_hub")
+    hub.hf_hub_download = lambda repo, name: str(tmp_path / name)
+    ort = types.ModuleType("onnxruntime")
+    ort.InferenceSession = lambda path: graphs[Path(path).name]
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub)
+    monkeypatch.setitem(sys.modules, "onnxruntime", ort)
+    monkeypatch.chdir(tmp_path)
+    block = standalone_example(PINYIN_ENTRY, index_files(PINYIN_ENTRY), repo_id="Phoonnx/f5tts-pinyin", text=text)
+    names = {}
+    exec(compile(block.removeprefix("```python\n").removesuffix("\n```"), "example", "exec"), names)
+
+    voice = TTSVoice(session=graphs["model.onnx"], config=VoiceConfig.from_dict(PINYIN_CONFIG))
+    prompt = voice._prompt_token_ids(reference_text)
+    text_ids = voice._prompt_token_ids(text)
+    adapter = F5TTSAdapter()
+    adapter.preprocess, adapter.decode = graphs["F5_Preprocess.onnx"], graphs["F5_Decode.onnx"]
+    adapter.configure(voice.config)
+    exact = ((pcm.astype(np.float64) + 0.5 * np.sign(pcm)) / 32767).astype(np.float32)
+    request = AdapterSynthesisRequest(np.array([text_ids]), np.array([len(text_ids)]),
+                                      params={"reference_audio": (exact, 24000), "prompt_tokens": prompt, "nfe": 6,
+                                              "speaker_reference_text": reference_text})
+    result = adapter.synthesize(request, graphs["model.onnx"])
+    expected = adapter._reference_ids(prompt, reference_text, text_ids).ravel().tolist() + text_ids
+    assert names["ids"] == expected
+    assert '"scriptconv[zh-phonemizers]>=0.0.4a142"' in block.splitlines()[1]  # pip takes a prerelease floor only when named
+    np.testing.assert_array_equal(names["audio"], result.audio)
+
+
 def test_f5tts_refuses_a_preprocess_graph_with_other_outputs():
     files = index_files(F5_ENTRY)
     files["preprocess_path"].update(inputs={"audio": 3, "text_ids": 2, "max_duration": 1},
