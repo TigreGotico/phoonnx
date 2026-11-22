@@ -881,8 +881,7 @@ class TTSModelInfo:
             if self.phonemizer_model:
                 config["phonemizer_model"] = self.phonemizer_model
 
-            override_lang = self.phonemizer_lang or self.lang
-            lang_code = normalize_lang(override_lang, default_region=False) if override_lang else None
+            lang_code = normalize_lang(self.lang, default_region=False) if self.lang else None
             alphabet = self.alphabet if self.alphabet else None
             phoneme_type = self.phoneme_type if self.phoneme_type else None
             engine = self.engine if self.engine else None
@@ -895,6 +894,7 @@ class TTSModelInfo:
                                                      phoneme_type=phoneme_type,
                                                      engine=engine,
                                                      lang_code=lang_code,
+                                                     phonemizer_lang=self.phonemizer_lang,
                                                      bpe_tokenizer_json=str(tok_json) if tok_json else None,
                                                      lang_tokens=self.lang_tokens)
             elif self.vocab_override:
@@ -903,7 +903,8 @@ class TTSModelInfo:
                                                      alphabet=alphabet,
                                                      phoneme_type=phoneme_type,
                                                      engine=engine,
-                                                     lang_code=lang_code)
+                                                     lang_code=lang_code,
+                                                     phonemizer_lang=self.phonemizer_lang)
             elif self.vocab_url:
                 vocab = self.download_vocab()
                 if self.tokenizer_config_url:
@@ -916,7 +917,8 @@ class TTSModelInfo:
                                                      phoneme_type=phoneme_type,
                                                      engine=engine,
                                                      tokenizer_config=tokenizer_config,
-                                                     lang_code=lang_code)
+                                                     lang_code=lang_code,
+                                                     phonemizer_lang=self.phonemizer_lang)
             elif self.tokens_url:
                 self.download_tokens_txt()
                 self._config = VoiceConfig.from_dict(config,
@@ -924,13 +926,15 @@ class TTSModelInfo:
                                                      phoneme_type=phoneme_type,
                                                      engine=engine,
                                                      tokens_txt=str(self.hub_path(self.tokens_url) or ""),
-                                                     lang_code=lang_code)
+                                                     lang_code=lang_code,
+                                                     phonemizer_lang=self.phonemizer_lang)
             else:
                 self._config = VoiceConfig.from_dict(config,
                                                      alphabet=alphabet,
                                                      phoneme_type=phoneme_type,
                                                      engine=engine,
-                                                     lang_code=lang_code)
+                                                     lang_code=lang_code,
+                                                     phonemizer_lang=self.phonemizer_lang)
 
             # populate any missing properties. The catalogue lang takes the
             # default region and the phonemizer lang_code does not, so a voice
@@ -938,7 +942,8 @@ class TTSModelInfo:
             # language: a saved voice then reloads with the phonemes it had.
             if not self.lang:
                 self.lang = normalize_lang(self._config.lang_code)
-                self.phonemizer_lang = self.phonemizer_lang or self._config.lang_code
+                self.phonemizer_lang = (self.phonemizer_lang or self._config.phonemizer_lang
+                                        or self._config.lang_code)
             self.alphabet = self.alphabet or self._config.alphabet
             self.phoneme_type = self.phoneme_type or self._config.phoneme_type
             self.engine = self.engine or self._config.engine
@@ -1298,7 +1303,8 @@ class TTSModelInfo:
         # applied) from the small config.json, if any -- cheap next to
         # download_model()'s multi-MB model weights, so the language check
         # runs before that download rather than after it.
-        check_lang_supported(self.voice_id, self.config.lang_code, self.config.phoneme_type)
+        check_lang_supported(self.voice_id, self.config.phonemizer_lang or self.config.lang_code,
+                             self.config.phoneme_type)
 
         model_path = self.download_model()
         config_path = self.hub_path(self.config_url)
@@ -1328,6 +1334,7 @@ class TTSModelInfo:
                               vocab_path=vocab_path,
                               tokenizer_config_path=tokenizer_config_path,
                               lang_code=self.config.lang_code,
+                              phonemizer_lang=self.config.phonemizer_lang,
                               phoneme_type_str=self.config.phoneme_type,
                               alphabet_str=self.config.alphabet,
                               engine_params=self.engine_params() or None,
@@ -1350,7 +1357,8 @@ class TTSModelInfo:
             # voice.config.lang_code is read from the downloaded config.json and
             # can differ from the pre-download self.config.lang_code above, so
             # this re-checks against the phoneme_type actually being installed.
-            check_lang_supported(self.voice_id, voice.config.lang_code, self.phoneme_type)
+            check_lang_supported(self.voice_id, voice.config.phonemizer_lang or voice.config.lang_code,
+                                 self.phoneme_type)
             voice.phonemizer = _voice_phonemizer(self.phoneme_type,
                                                  alphabet=self.alphabet,
                                                  model=voice.config.phonemizer_model,

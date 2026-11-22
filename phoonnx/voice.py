@@ -391,7 +391,7 @@ class TTSVoice:
             # synthesis with an opaque ValueError once text is sent.
             check_lang_supported(
                 voice_name,
-                self.config.lang_code,
+                self.config.phonemizer_lang or self.config.lang_code,
                 self.config.phoneme_type,
             )
             self.phonemizer = _voice_phonemizer(
@@ -540,6 +540,7 @@ class TTSVoice:
             providers: Optional[Sequence[ProviderSpec]] = None,
             use_cuda: bool = False,
             warmup: bool = False,
+            phonemizer_lang: Optional[str] = None,
     ) -> "TTSVoice":
         """
         Load a TTS voice ONNX model and its configuration into a TTSVoice instance.
@@ -551,6 +552,8 @@ class TTSVoice:
             phonemes_txt (str, optional): Path to a tokens file (``.txt`` or ``.json``) to override the config's phoneme list.
             phoneme_map (str, optional): Optional phoneme mapping specification or file path used to map phonemes (may be None).
             lang_code (str, optional): Language code to override or set in the loaded voice configuration.
+            phonemizer_lang (str, optional): The language the phonemizer reads when it differs from
+                ``lang_code``. Overrides the configuration's own.
             phoneme_type_str (str, optional): Phoneme type identifier to override the configuration (for example, "arpabet" or "ipa").
             alphabet_str (str, optional): Alphabet override to pass into the VoiceConfig during load.
             providers (Sequence, optional): Ordered ONNX Runtime execution providers, e.g.
@@ -629,6 +632,7 @@ class TTSVoice:
             alphabet=alphabet_str,
             tokens_txt=phonemes_txt,
             lang_code=lang_code,
+            phonemizer_lang=phonemizer_lang,
             phoneme_type=phoneme_type_str,
             engine_params=engine_params,
         )
@@ -674,11 +678,12 @@ class TTSVoice:
         ``text_casing`` after normalisation, as training did.
         """
         phonemizer = self.phonemizer
-        key = (self.config.phoneme_type, self.config.lang_code, self.config.text_casing,
-               phonemizer.keep_punctuation, phonemizer.normalizer)
+        key = (self.config.phoneme_type, self.config.lang_code, self.config.phonemizer_lang,
+               self.config.text_casing, phonemizer.keep_punctuation, phonemizer.normalizer)
         if self._frontend is None or key != self._frontend_key:
             casing = None if self.config.text_casing == "ignore" else get_text_casing(self.config.text_casing)
-            self._frontend = voice_frontend(phonemizer, self.config.lang_code, Stages(casing=casing))
+            self._frontend = voice_frontend(phonemizer, self.config.lang_code, Stages(casing=casing),
+                                            phonemizer_lang=self.config.phonemizer_lang)
             self._frontend_key = key
         elif phonemizer is not self._frontend_phonemizer:
             self._frontend = self._frontend.with_backend(without_normalizer(phonemizer))
