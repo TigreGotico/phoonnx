@@ -36,7 +36,7 @@ def _make_voice():
         text_casing="ignore",
         phoneme_type=PhonemeType.UNICODE,
         alphabet=Alphabet.IPA,
-        lang_code="ru-RU",
+        lang_code="ru-RU", phonemizer_lang=None,
         add_diacritics=True,
         diacritizer_model=None,
         sample_rate=22050,

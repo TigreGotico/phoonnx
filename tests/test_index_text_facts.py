@@ -69,9 +69,16 @@ def test_the_voice_loads_with_the_text_path_of_its_config(manager, voice_id):
     config = json.loads(config_path.read_text(encoding="utf-8"))
     voice = graph_free_load(manager.get_voice(voice_id), config_path)
     loaded = voice.config
-    assert (loaded.lang_code, loaded.phoneme_type.value, loaded.alphabet.value) == \
+    # the config's language is the language its phonemizer was trained in
+    assert (loaded.phonemizer_lang or loaded.lang_code, loaded.phoneme_type.value, loaded.alphabet.value) == \
            (config["lang_code"], config["phoneme_type"], config["alphabet"])
     assert loaded.engine.value == config.get("engine", "phoonnx")
+
+
+@pytest.mark.parametrize("voice_id", ["OpenVoiceOS/phoonnx_es-CO_dii_espeak", "OpenVoiceOS/phoonnx_es-CO_miro_espeak"])
+def test_an_es_co_voice_reads_its_text_as_es_co_on_an_es_419_phonemizer(manager, voice_id):
+    loaded = graph_free_load(manager.get_voice(voice_id), FIXTURES / VOICES[voice_id]).config
+    assert (loaded.lang_code, loaded.phonemizer_lang) == ("es-CO", "es-419")
 
 
 @pytest.mark.parametrize("voice_id", sorted(CATALOGUE_LANG))

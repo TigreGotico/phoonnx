@@ -248,7 +248,7 @@ class TestModelManagerKeepsTheFlag:
         info = model_manager.TTSModelInfo(voice_id="test/voice", lang="en-us",
                                           model_url="model.onnx", config_url="config.json",
                                           **info_kwargs)
-        index_config = SimpleNamespace(lang_code="en-us", phoneme_type=PhonemeType.ESPEAK,
+        index_config = SimpleNamespace(lang_code="en-us", phonemizer_lang=None, phoneme_type=PhonemeType.ESPEAK,
                                        alphabet=Alphabet.IPA)
         with patch.object(model_manager.TTSModelInfo, "config", new_callable=PropertyMock,
                           return_value=index_config), \

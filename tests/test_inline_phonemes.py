@@ -18,6 +18,7 @@ def _voice(phonemizer):
 
     class _Cfg:
         lang_code = "ar"
+        phonemizer_lang = None
         phoneme_type = PhonemeType.UNICODE
         text_casing = "ignore"
 
