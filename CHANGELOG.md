@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.125.9a1](https://github.com/TigreGotico/phoonnx/tree/1.125.9a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.8a1...1.125.9a1)
+
+**Merged pull requests:**
+
+- fix: a mirror route needs the external data of each cached graph [\#884](https://github.com/TigreGotico/phoonnx/pull/884) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.125.8a1](https://github.com/TigreGotico/phoonnx/tree/1.125.8a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.7a1...1.125.8a1)
