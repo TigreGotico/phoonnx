@@ -1541,6 +1541,8 @@ class TTSModelManager:
         Merge a set of predefined voice indexes into the manager's cache and rebuild the in-memory voice registry.
         
         Loads multiple JSON voice index files bundled with the package into the manager's cache, constructs TTSModelInfo objects for each entry, and logs (but skips) any entries that fail to load. If store is True, the updated cache is persisted to disk.
+
+        The cache is rebuilt, not updated in place: the bundled voices come first, in index order, and replace any cached copy; the voices only the cache holds follow, in their cached order. `get_lang_voices` breaks ties by this order, so a bundled voice wins a tie with a cached voice, and the order of an older cache does not change which bundled voice is the default.
         
         Parameters:
             store (bool): If True, persist the updated cache to disk after merging.
