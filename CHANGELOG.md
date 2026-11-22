@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.129.8a1](https://github.com/TigreGotico/phoonnx/tree/1.129.8a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.7a1...1.129.8a1)
+
+**Merged pull requests:**
+
+- fix\(preprocess\): exit 1 when filtering or the workers leave no row [\#929](https://github.com/TigreGotico/phoonnx/pull/929) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.129.7a1](https://github.com/TigreGotico/phoonnx/tree/1.129.7a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.6a1...1.129.7a1)
@@ -361,7 +369,6 @@
 **Merged pull requests:**
 
 - fix: the streaming decoder runs on the voice's execution providers [\#832](https://github.com/TigreGotico/phoonnx/pull/832) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: check num\_symbols for every VITS graph, name one engine in SpeedySpeech exports, pickle typed errors [\#829](https://github.com/TigreGotico/phoonnx/pull/829) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.123.4a1](https://github.com/TigreGotico/phoonnx/tree/1.123.4a1) (2026-11-19)
 
@@ -382,10 +389,6 @@
 ## [1.123.1a2](https://github.com/TigreGotico/phoonnx/tree/1.123.1a2) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.1a1...1.123.1a2)
-
-**Merged pull requests:**
-
-- fix: CI passes on quebra-frases 0.3.8a2 and linguatag 0.4.0a1 [\#828](https://github.com/TigreGotico/phoonnx/pull/828) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.123.1a1](https://github.com/TigreGotico/phoonnx/tree/1.123.1a1) (2026-11-19)
 
