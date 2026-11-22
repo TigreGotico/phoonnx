@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.129.2a1](https://github.com/TigreGotico/phoonnx/tree/1.129.2a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.1a1...1.129.2a1)
+
+**Merged pull requests:**
+
+- fix: Piper and sherpa-onnx export round trip, default speaker, unmapped marks [\#917](https://github.com/TigreGotico/phoonnx/pull/917) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.129.1a1](https://github.com/TigreGotico/phoonnx/tree/1.129.1a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.0a1...1.129.1a1)
@@ -356,10 +364,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.123.0a1...1.123.1a1)
 
-**Merged pull requests:**
-
-- fix: raise when a model returns non-finite audio [\#816](https://github.com/TigreGotico/phoonnx/pull/816) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.123.0a1](https://github.com/TigreGotico/phoonnx/tree/1.123.0a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.122.0a1...1.123.0a1)
@@ -383,10 +387,6 @@
 ## [1.120.0a1](https://github.com/TigreGotico/phoonnx/tree/1.120.0a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.119.0a1...1.120.0a1)
-
-**Merged pull requests:**
-
-- test: expect the grapheme revision preprocess records [\#814](https://github.com/TigreGotico/phoonnx/pull/814) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.119.0a1](https://github.com/TigreGotico/phoonnx/tree/1.119.0a1) (2026-11-19)
 
