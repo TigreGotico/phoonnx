@@ -74,6 +74,10 @@ matching [install extra](installation.md#language-extras).
 | `matoub_kab` | The Kabyle rule set that the Matoub-82M voice was trained on | Kabyle |
 | `leokani` | Leokani: lexicon, ONNX letter-to-sound and context models; emits the Kokoro (misaki) codes | en-US |
 | `kolokwa` | kolokwa-g2p model | Liberian English (lir) |
+| `espeak_lt_accent` | eSpeak IPA with the three Lithuanian pitch accents | Lithuanian |
+| `hebrew_ipa` | IPA with stress, from text that carries niqqud | Hebrew |
+| `openjtalk_prosody` | Open JTalk IPA with accent rise, fall and phrase marks | Japanese |
+| `tltk` | TLTK IPA with a tone digit after each syllable | Thai |
 
 ## Alphabet Reference
 

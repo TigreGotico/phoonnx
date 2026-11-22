@@ -18,7 +18,7 @@ requires-python = ">=3.11"
 dependencies = [
     "numpy",
     "onnxruntime",
-    "quebra-frases",
+    "quebra-frases>=0.3.8a5",
     "langcodes",
     "linguatag>=0.4.1a1",
     # >=0.0.2a78: text2spoken.SayAs, which TextFrontend.say_as passes to the hook, and its
@@ -26,7 +26,7 @@ dependencies = [
     "text2spoken>=0.0.2a78",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
-    # >=0.0.4a137: the leokani and kolokwa phonemizers that the config schema lists,
+    # >=0.0.4a142: the leokani and kolokwa phonemizers that the config schema lists,
     # the f5tts_char and f5tts_pinyin text phonemizers of the F5-TTS
     # voices, the dizione phonemizer of the tiny-voca voices, owned_stages on every
     # phonemizer, TextFrontend skipping the hook for a backend that owns
@@ -34,7 +34,7 @@ dependencies = [
     # sentence split, TextFrontend.say_as for SSML <say-as>, Segment.text, and
     # dizione reading a very long letter run in bounded pieces. Every extra relies
     # on this floor.
-    "scriptconv[phonemizers]>=0.0.4a137",
+    "scriptconv[phonemizers]>=0.0.4a142",
     # the F5-TTS pinyin text function (f5tts_pinyin) of F5-TTS v1 Base and Twi
     # Asante segments with rjieba and reads hanzi with pypinyin
     "rjieba>=0.2.2",
@@ -86,7 +86,7 @@ test = [
     # ahotts-g2p stay listed here for their version floors. pt-phonemizers installs
     # tugaphone, which the card example tests run as a backend that owns its
     # diacritize stage.
-    "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a137",
+    "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a142",
     # >=0.2.1a1: mantoq reads a very long digit run digit by digit, not as one int
     "scriptconv-nonfree>=0.2.1a1",
     # the model card tests render the text stack that the cards recommend, from
@@ -183,7 +183,7 @@ test = [
 streaming = ["onnx"]
 # The eSpeak wrapper is in scriptconv-copyleft (GPL), so an eSpeak voice needs
 # this extra even when the espeak-ng binary is installed.
-espeak = ["scriptconv[espeak]>=0.0.4a137", "espyak>=0.0.3a1"]
+espeak = ["scriptconv[espeak]>=0.0.4a142", "espyak>=0.0.3a1"]
 matcha = [
     "scipy",
 ]
@@ -330,9 +330,9 @@ train-pyworld = [
 ]
 # scriptconv[ar-phonemizers] installs arbtok and scriptconv-nonfree, which holds
 # the mantoq, Halabi and Iqra wrappers (CC BY-NC 4.0).
-ar = ["epitran", "scriptconv[ar-phonemizers]>=0.0.4a137", "scriptconv-nonfree>=0.2.1a1", "arbtok>=0.0.3a2", "text2tashkeel>=0.3.1a3", "gruut[ar]>=2.3.0"]
+ar = ["epitran", "scriptconv[ar-phonemizers]>=0.0.4a142", "scriptconv-nonfree>=0.2.1a1", "arbtok>=0.0.3a2", "text2tashkeel>=0.3.1a3", "gruut[ar]>=2.3.0"]
 ca = ["epitran", "gruut[ca]>=2.3.0"]
-gl = ["scriptconv[gl]>=0.0.4a137", "pycotovia>=0.4.0a1", "epitran"]
+gl = ["scriptconv[gl]>=0.0.4a142", "pycotovia>=0.4.0a1", "epitran"]
 cs = ["epitran", "gruut[cs]>=2.3.0"]
 de = ["epitran", "gruut[de]>=2.3.0"]
 # scriptconv-copyleft holds the misaki wrappers. The scriptconv[misaki] extra
@@ -340,20 +340,20 @@ de = ["epitran", "gruut[de]>=2.3.0"]
 # spacy<4.0 in the en, ja, vi and zh extras: see the spacy comment in the test extra.
 en = ["epitran", "gruut[en]>=2.3.0", "scriptconv-copyleft>=0.1.0a1", "misaki[en]", "spacy>=3.7,<4.0"]
 es = ["epitran", "gruut[es]>=2.3.0"]
-eu = ["scriptconv[eu]>=0.0.4a137", "ahotts-g2p>=0.1.0", "euskaphone", "epitran"]
-fa = ["epitran", "scriptconv[fa]>=0.0.4a137"]
+eu = ["scriptconv[eu]>=0.0.4a142", "ahotts-g2p>=0.1.0", "euskaphone", "epitran"]
+fa = ["epitran", "scriptconv[fa]>=0.0.4a142"]
 fr = ["epitran", "gruut[fr]>=2.3.0"]
 he = ["epitran", "phonikud_onnx", "phonikud"]
 it = ["epitran", "gruut[it]>=2.3.0"]
-ja = ["epitran", "gruut[ja]>=2.3.0", "scriptconv[ja-phonemizers]>=0.0.4a137", "misaki", "fugashi", "jaconv", "mojimoji", "spacy>=3.7,<4.0", "pyopenjtalk-plus[onnxruntime]>=0.4.1.post10", "pykakasi", "cutlet", "unidic-lite"]
-ko = ["epitran", "scriptconv[ko]>=0.0.4a137", "g2pk", "misaki[ko]"]
+ja = ["epitran", "gruut[ja]>=2.3.0", "scriptconv[ja-phonemizers]>=0.0.4a142", "misaki", "fugashi", "jaconv", "mojimoji", "spacy>=3.7,<4.0", "pyopenjtalk-plus[onnxruntime]>=0.4.1.post10", "pykakasi", "cutlet", "unidic-lite"]
+ko = ["epitran", "scriptconv[ko]>=0.0.4a142", "g2pk", "misaki[ko]"]
 mwl = ["scriptconv[mwl]"]
 pt = ["epitran", "scriptconv[o2i]", "tugaphone", "gruut[pt]>=2.3.0"]
 ru = ["epitran", "gruut[ru]>=2.3.0"]
 sv = ["epitran", "gruut[sv]>=2.3.0"]
 sw = ["epitran", "gruut[sw]>=2.3.0"]
-vi = ["epitran", "gruut[vi]>=2.3.0", "scriptconv[vi]>=0.0.4a137", "scriptconv-copyleft>=0.1.0a1", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
-zh = ["scriptconv[zh-phonemizers]>=0.0.4a137", "epitran", "gruut[zh]>=2.3.0", "scriptconv-copyleft>=0.1.0a1", "misaki[zh]", "spacy>=3.7,<4.0", "g2pM", "pypinyin", "xpinyin", "pinyin_to_ipa", "jieba", "cn2an"]
+vi = ["epitran", "gruut[vi]>=2.3.0", "scriptconv[vi]>=0.0.4a142", "scriptconv-copyleft>=0.1.0a1", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
+zh = ["scriptconv[zh-phonemizers]>=0.0.4a142", "epitran", "gruut[zh]>=2.3.0", "scriptconv-copyleft>=0.1.0a1", "misaki[zh]", "spacy>=3.7,<4.0", "g2pM", "pypinyin", "xpinyin", "pinyin_to_ipa", "jieba", "cn2an"]
 aa = ["epitran"]
 aii = ["epitran"]
 am = ["epitran"]
@@ -475,7 +475,7 @@ all = [
     # "espeak", "gl" and "eu" install scriptconv-copyleft, which holds the
     # eSpeak, Cotovia, AhoTTS and misaki wrappers; "ar-phonemizers" installs
     # scriptconv-nonfree, which holds the mantoq wrapper.
-    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he,espeak,gl,eu]>=0.0.4a137",
+    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he,espeak,gl,eu]>=0.0.4a142",
     "scriptconv-nonfree>=0.2.1a1",
     # scriptconv's own "stress" extra floors stressonnx at >=0.0.2, which
     # resolves to the latest *stable* release. The BCP-47 language resolver
