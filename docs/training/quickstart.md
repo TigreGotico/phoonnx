@@ -79,10 +79,12 @@ The final log line reports how many utterances survived:
 
 **Common failures**
 
-- **`No valid utterances found in dataset.`** The script exits with status 0. The cause is
+- **`No valid utterances found in dataset.`** The script exits with status 1. The cause is
   usually in `metadata.csv`: a wrong path, a wrong delimiter (it must be `|`), or audio files
-  that do not match the filenames. This log line is the only sign of a zero result, so always
-  read it.
+  that do not match the filenames.
+- **`No utterances left after quality filtering.`** or **`No utterance was written`** —
+  every row was dropped by a `--filter`, or failed phonemization or the audio checks. The script
+  exits with status 1 and writes no `dataset.jsonl`. The log names each row that failed phonemization or the audio checks, and gives a count for each filter.
 - **`Missing metadata file: .../metadata.csv`** — the file is not directly under
   `--input-dir`.
 - **Rows warning `Skipping malformed row`** — a line has fewer than two `|`-separated fields.
