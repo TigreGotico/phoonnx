@@ -73,7 +73,8 @@ class PhoonnxTTSPlugin(TTS):
         # loads, so its memory accounting measures those files.
         self.voice_cache = VoiceCache(
             resolve=lambda voice_id: self._as_loaded(self.get_voice_info(voice_id)),
-            load=lambda info: info.load(providers=self._providers(), precision=self._precision()),
+            load=lambda info: info.load(providers=self._providers(), precision=self._precision(),
+                                        threads=self.config.get("onnx_threads")),
             max_loaded_voices=self.config.get("max_loaded_voices"),
             max_loaded_bytes=self.config.get("max_loaded_bytes"),
             pinned_voices=self.config.get("pinned_voices"),

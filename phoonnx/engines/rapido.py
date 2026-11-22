@@ -110,7 +110,7 @@ class RapidoAdapter(BaseOnnxAdapter):
                                ("aligner", "aligner_path"),
                                ("decoder", "decoder_path")):
             if getattr(self, attribute) is None and ep.get(key):
-                setattr(self, attribute, make_session(ep[key], providers=ep.get("providers")))
+                setattr(self, attribute, make_session(ep[key], providers=ep.get("providers"), threads=ep.get("threads")))
         if "latent_mean" in ep:
             self.latent_mean = np.asarray(ep["latent_mean"], dtype=np.float32)
             self.latent_std = np.asarray(ep["latent_std"], dtype=np.float32)

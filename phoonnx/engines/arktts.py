@@ -222,7 +222,7 @@ class ArkTTSAdapter(BaseOnnxAdapter):
 
         for attribute, key in (("fast_ar", "fast_ar_path"), ("decoder", "codec_decoder_path")):
             if getattr(self, attribute) is None and ep.get(key):
-                setattr(self, attribute, make_session(ep[key], providers=providers))
+                setattr(self, attribute, make_session(ep[key], providers=providers, threads=ep.get("threads")))
 
         if self.tokenizer is None and ep.get("bpe_tokenizer_path"):
             self.tokenizer = BPETokenizer(ep["bpe_tokenizer_path"])

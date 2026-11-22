@@ -25,7 +25,7 @@ from json_database import JsonStorageXDG, JsonStorage, load_commented_json
 from phoonnx.config import (PhonemeType, _removal_version, _voice_phonemizer, VoiceConfig, Engine,
                             Alphabet, check_lang_supported)
 from phoonnx.util import match_lang, normalize_lang, LOG
-from phoonnx.providers import ProviderSpec, make_session, resolve_providers, uses_gpu
+from phoonnx.providers import ProviderSpec, make_session, resolve_providers, resolve_threads, uses_gpu
 from phoonnx.voice import TTSVoice
 from phoonnx._onnx_external import external_data_locations
 from phoonnx.errors import PrecisionUnavailable, UnknownVoice
@@ -1277,7 +1277,7 @@ class TTSModelInfo:
 
     @_in_voice_scope
     def load(self, providers: Optional[Sequence[ProviderSpec]] = None,
-             precision: Optional[str] = None) -> TTSVoice:
+             precision: Optional[str] = None, threads: Optional[int] = None) -> TTSVoice:
         """
         Load and return a TTSVoice for this model, ensuring the ONNX model is downloaded and the voice configuration is applied.
 
@@ -1287,6 +1287,8 @@ class TTSModelInfo:
                 providers are resolved from the environment / auto-detection.
             precision (str, optional): ``int8``, ``full`` or ``auto``. When omitted it comes
                 from ``PHOONNX_PRECISION``, else ``auto``. See :meth:`with_precision`.
+            threads (int, optional): Threads per graph operator in every session of the voice.
+                When omitted it comes from ``PHOONNX_ORT_THREADS``, else ONNX Runtime's default.
 
         Loads a TTSVoice from the cached model and config files (and tokens file if available). If this TTSModelInfo specifies a different phoneme type or alphabet than the loaded voice, updates the loaded voice's phoneme_type and alphabet and rebuilds its phonemizer accordingly.
 
@@ -1298,7 +1300,7 @@ class TTSModelInfo:
         """
         info = self.with_precision(precision, providers)
         if info is not self:
-            return info.load(providers=providers, precision="int8")
+            return info.load(providers=providers, precision="int8", threads=threads)
         # self.config resolves the final phoneme_type/lang_code (index override
         # applied) from the small config.json, if any -- cheap next to
         # download_model()'s multi-MB model weights, so the language check
@@ -1318,15 +1320,18 @@ class TTSModelInfo:
         if self.engine and not self.config_url:
             config = self.config
             resolved_providers = resolve_providers(providers)
+            resolved_threads = resolve_threads(threads)
             engine_params = {
                 **(config.engine_params or {}),
                 **self.engine_params(),
             }
             engine_params["providers"] = resolved_providers
+            if resolved_threads is not None:
+                engine_params["threads"] = resolved_threads
             config.engine_params = engine_params
             # Through make_session, so this path shares one session between
             # voices that name the same graph like every other path does.
-            session = make_session(model_path, providers=resolved_providers)
+            session = make_session(model_path, providers=resolved_providers, threads=resolved_threads)
             return TTSVoice(session=session, config=config)
 
         voice = TTSVoice.load(model_path=model_path,
@@ -1339,6 +1344,7 @@ class TTSModelInfo:
                               alphabet_str=self.config.alphabet,
                               engine_params=self.engine_params() or None,
                               providers=providers,
+                              threads=threads,
                               phonemes_txt=str(tokens_path) if self.tokens_url else None)
         # A phonemizer_model resolved from the index (the vosk pronunciation
         # dictionary) is an index-level artifact: the published config.json never

@@ -292,7 +292,7 @@ class TestOneModelOneSession(unittest.TestCase):
         # it did before: this only changes behaviour for models that have one.
         self.assertEqual(providers._external_data_paths(str(self.model_path)), [])
         key = providers.session_key(self.model_path, [CPU_PROVIDER], None)
-        self.assertEqual(len(key), 4)
+        self.assertEqual(len(key[1]), 3)  # size, mtime and inode of the graph, no sidecar
 
     def test_a_replaced_graph_with_the_same_size_and_time_gets_a_new_key(self):
         # An extracted archive or ``cp -p`` keeps the modification time.

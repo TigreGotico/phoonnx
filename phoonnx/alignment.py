@@ -101,6 +101,7 @@ def export_alignment_model(model_path: str,
 def ensure_alignment_session(
         model_path: str,
         providers=None,
+        threads: Optional[int] = None,
 ) -> Optional[onnxruntime.InferenceSession]:
     """Load an alignment-capable session for ``model_path``, patching if needed.
 
@@ -115,7 +116,7 @@ def ensure_alignment_session(
     already written, and never loads a partially saved graph.
     """
     dest = alignment_model_path(model_path)
-    session = _load_if_fresh(dest, model_path, providers)
+    session = _load_if_fresh(dest, model_path, providers, threads)
     if session is not None:
         return session
 
@@ -123,7 +124,7 @@ def ensure_alignment_session(
         # Re-checked under the lock: another thread may have written it while
         # this one waited, and redoing the surgery would rewrite the file
         # underneath the session that thread is about to load.
-        session = _load_if_fresh(dest, model_path, providers)
+        session = _load_if_fresh(dest, model_path, providers, threads)
         if session is not None:
             return session
         try:
@@ -154,7 +155,7 @@ def ensure_alignment_session(
             return None
 
         try:
-            return make_session(str(dest), providers=providers)
+            return make_session(str(dest), providers=providers, threads=threads)
         except Exception as e:
             LOG.info(f"wrote an alignment-patched model to '{dest}' but "
                      f"failed to load it ({e}); include_alignments=True will "
@@ -162,8 +163,8 @@ def ensure_alignment_session(
             return None
 
 
-def _load_if_fresh(dest: Path, model_path: str,
-                   providers) -> Optional[onnxruntime.InferenceSession]:
+def _load_if_fresh(dest: Path, model_path: str, providers,
+                   threads: Optional[int] = None) -> Optional[onnxruntime.InferenceSession]:
     """Load an already-patched ``dest``, if it exists and predates no edit of
     the model it was derived from. ``None`` means "not usable, do the surgery".
     """
@@ -173,7 +174,7 @@ def _load_if_fresh(dest: Path, model_path: str,
     except OSError:
         return None
     try:
-        return make_session(str(dest), providers=providers)
+        return make_session(str(dest), providers=providers, threads=threads)
     except Exception as e:
         LOG.debug(f"cached alignment model '{dest}' did not load ({e})")
         return None

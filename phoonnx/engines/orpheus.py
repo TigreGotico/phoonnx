@@ -83,7 +83,7 @@ from quebra_frases import span_indexed_sentence_tokenize
 from phoonnx.engines._sampling import apply_repetition_penalty
 from phoonnx.engines._sampling import NUCLEUS_HEAD, ranked, softmax
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
-from phoonnx.providers import make_session
+from phoonnx.providers import make_session, resolve_threads
 from phoonnx.util import LOG
 
 SAMPLE_RATE = 24000
@@ -157,6 +157,7 @@ class OrpheusAdapter(BaseOnnxAdapter):
         self.snac: Optional[onnxruntime.InferenceSession] = None
         self.snac_path: Optional[str] = None
         self.snac_providers: Optional[List[Any]] = None
+        self.snac_threads: Optional[int] = None
         self.tokenizer = None
         self.voices: List[str] = []
         self.default_voice: Optional[str] = None
@@ -190,9 +191,10 @@ class OrpheusAdapter(BaseOnnxAdapter):
         if self.snac is None and ep.get("snac_decoder_path"):
             self.snac_path = ep["snac_decoder_path"]
             self.snac_providers = ep.get("providers")
+            self.snac_threads = ep.get("threads")
             # a session built while a seeded call holds the seed would repeat its noise
             with _SEED_LOCK:
-                self.snac = make_session(self.snac_path, providers=self.snac_providers)
+                self.snac = make_session(self.snac_path, providers=self.snac_providers, threads=self.snac_threads)
         if self.tokenizer is None and ep.get("tokenizer_path"):
             from phoonnx.tokenizer import load_hf_tokenizer
             self.tokenizer = load_hf_tokenizer(ep["tokenizer_path"])
@@ -372,8 +374,9 @@ class OrpheusAdapter(BaseOnnxAdapter):
         with _SEED_LOCK:
             onnxruntime.set_seed(seed % _ORT_SEED_RANGE)
             try:
-                snac = make_session(self.snac_path, providers=self.snac_providers,
-                                    sess_options=onnxruntime.SessionOptions())
+                options = onnxruntime.SessionOptions()
+                options.intra_op_num_threads = resolve_threads(self.snac_threads) or 0
+                snac = make_session(self.snac_path, providers=self.snac_providers, sess_options=options)
                 return self.decode_codes(streams, snac)
             finally:
                 onnxruntime.set_seed(secrets.randbits(63))

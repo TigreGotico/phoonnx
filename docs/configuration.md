@@ -389,6 +389,31 @@ import onnxruntime
 print(onnxruntime.get_available_providers())
 ```
 
+### Thread count
+
+ONNX Runtime runs each graph operator on one thread per core. Several voices in
+one process, or a voice beside other jobs, then compete for every core. To limit
+a voice, pass `threads`. The voice model and every auxiliary graph of the voice
+run each operator on that many threads (`intra_op_num_threads`):
+
+```python
+voice = TTSVoice.load("model.onnx", "config.json", threads=2)
+```
+
+Or set it once for the process:
+
+```bash
+export PHOONNX_ORT_THREADS=2
+```
+
+The `threads` argument comes first, then `PHOONNX_ORT_THREADS`. With neither,
+ONNX Runtime keeps its default. `threads=0` asks for that default too, also when
+`PHOONNX_ORT_THREADS` is set. `TTSModelInfo.load` takes the same
+argument, and the OVOS plugin reads the `onnx_threads` key. A voice with a
+different thread count gets its own session, so voices share a session only when
+they ask for the same count. The decoder of a [streaming VITS voice](streaming.md)
+reads its own `intra_op_num_threads` key first.
+
 ## Precision
 
 Some voices have two sets of files: full files and smaller int8 files. The

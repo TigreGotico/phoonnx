@@ -113,7 +113,8 @@ class ChatterboxAdapter(BaseOnnxAdapter):
         # sharing a checkpoint, so building them with a bare InferenceSession
         # both loaded that weight again per voice and left it unaccounted for
         # by the model manager's budget, which only sees make_session sessions.
-        sess = lambda p: make_session(str(p), providers=ep.get("providers") or ["CPUExecutionProvider"])
+        sess = lambda p: make_session(str(p), providers=ep.get("providers") or ["CPUExecutionProvider"],
+                                         threads=ep.get("threads"))
         if self.embed_tokens is None and ep.get("embed_tokens_path"):
             self.embed_tokens = sess(ep["embed_tokens_path"])
         if self.embed_tokens is not None:

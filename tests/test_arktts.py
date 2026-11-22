@@ -729,7 +729,7 @@ class _VoiceConfig:
 
 
 def test_configure_loads_the_voice_asset(tmp_path, monkeypatch):
-    monkeypatch.setattr("phoonnx.engines.arktts.make_session", lambda path, providers=None: path)
+    monkeypatch.setattr("phoonnx.engines.arktts.make_session", lambda path, providers=None, threads=None: path)
     monkeypatch.setattr("phoonnx.engines.arktts.BPETokenizer", lambda path: path)
     adapter = ArkTTSAdapter()
     adapter.configure(_VoiceConfig(fast_ar_path="fast", codec_decoder_path="codec",
@@ -747,7 +747,7 @@ def test_configure_is_language_agnostic(tmp_path, monkeypatch, lang_code):
     ArkTTS has no language token — the language comes from the text and the reference
     clip — so nothing in the adapter may branch on the voice's language.
     """
-    monkeypatch.setattr("phoonnx.engines.arktts.make_session", lambda path, providers=None: path)
+    monkeypatch.setattr("phoonnx.engines.arktts.make_session", lambda path, providers=None, threads=None: path)
     monkeypatch.setattr("phoonnx.engines.arktts.BPETokenizer", lambda path: path)
     adapter = ArkTTSAdapter()
     adapter.configure(_VoiceConfig(fast_ar_path="fast", codec_decoder_path="codec",

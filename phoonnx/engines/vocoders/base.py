@@ -24,9 +24,10 @@ from phoonnx.providers import ProviderSpec, make_session
 
 
 def load_onnx_session(model_path: str,
-                      providers: Optional[Sequence[ProviderSpec]] = None) -> onnxruntime.InferenceSession:
-    """Load an ONNX vocoder on the given (or auto-detected) execution providers."""
-    return make_session(model_path, providers=providers)
+                      providers: Optional[Sequence[ProviderSpec]] = None,
+                      threads: Optional[int] = None) -> onnxruntime.InferenceSession:
+    """Load an ONNX vocoder on the given (or auto-detected) execution providers and thread count."""
+    return make_session(model_path, providers=providers, threads=threads)
 
 
 class BaseVocoder(ABC):
@@ -95,7 +96,8 @@ class BaseVocoder(ABC):
                     f"(set engine_params.vocoder_path)"
                 )
             self._session = load_onnx_session(self.model_path,
-                                              providers=self.config.get("providers"))
+                                              providers=self.config.get("providers"),
+                                              threads=self.config.get("threads"))
         return self._session
 
     @property

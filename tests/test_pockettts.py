@@ -769,16 +769,16 @@ def test_the_encoder_is_built_on_first_use_only(monkeypatch):
 
     built = []
 
-    def fake_session(path, providers=None):
-        built.append((path, providers))
+    def fake_session(path, providers=None, threads=None):
+        built.append((path, providers, threads))
         return _CaptureEncoderSession()
 
     monkeypatch.setattr(pockettts, "make_session", fake_session)
     a = PocketTTSAdapter()
     a.configure(types.SimpleNamespace(engine_params={
-        "mimi_encoder_path": "mimi_encoder.onnx", "providers": ["CPUExecutionProvider"]}))
+        "mimi_encoder_path": "mimi_encoder.onnx", "providers": ["CPUExecutionProvider"], "threads": 2}))
     assert built == []
 
     a.encode_reference(np.zeros(160, np.float32))
     a.encode_reference(np.zeros(160, np.float32))
-    assert built == [("mimi_encoder.onnx", ["CPUExecutionProvider"])]
+    assert built == [("mimi_encoder.onnx", ["CPUExecutionProvider"], 2)]
