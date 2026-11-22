@@ -139,5 +139,5 @@ def test_effects_accept_other_shapes_and_silence():
 
 def test_extreme_durations_and_volumes_for_sounds():
     assert len(audio_fx.breath(22050, 0)) == 1
-    assert np.max(np.abs(audio_fx.breath(22050, 500, volume=1e9))) <= 0.25
+    assert np.max(np.abs(audio_fx.breath(22050, 500, volume=1e9, seed=1))) <= 0.25
     assert len(audio_fx.beep(22050, 10)) == 220
