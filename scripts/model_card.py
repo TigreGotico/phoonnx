@@ -176,7 +176,7 @@ def _phonemizer(config: Dict[str, Any], engine: str) -> str:
         text = f"{identity['distribution']} {identity['version'] or '(version not recorded)'}"
         text += f", backend `{identity['backend']}`, lect `{identity['lang']}`"
         if identity.get("revision"):
-            text += f", spec revision {identity['revision']}"
+            text += f", revision {identity['revision']}"
         return text
     if config.get("phonemizer_registry"):
         version = config.get("phonemizer_registry_version") or "version not recorded"

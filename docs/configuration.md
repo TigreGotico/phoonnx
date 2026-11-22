@@ -41,7 +41,7 @@ from phoonnx.config import VoiceConfig
 | `diacritizer_model` | `str` \| `None` | `None` | Diacritizer model name, read from the config's `inference` block. `None` lets scriptconv pick the default of each backend, `rawi-ensemble` for Arabic |
 | `phonemizer_model` | `str` \| `None` | `None` | Model path/id or variant selector for phonemizers that take one (ByT5, AhoTTS, Cotovia, arbtok) |
 | `keep_punctuation` | `bool` | `False` (`True` for Piper configs) | The model was trained with clause punctuation (`, . ? ! : ;`), so synthesis keeps it. A phoonnx config without the key, or a Piper side-car phoonnx exported (`piper_version` starting with `phoonnx`, or an `alphabet` key), was trained without it |
-| `text_casing` | `str` | `"ignore"` | The casing training applied to the text: `lower`, `upper`, `casefold` or `ignore`. Synthesis applies the same casing after normalisation. A backend that normalises its own text (tugaphone, dizione) receives the cased text before that step. A config without the key keeps the text as written |
+| `text_casing` | `str` | `"ignore"` | The casing training applied to the text: `lower`, `upper`, `casefold` or `ignore`. Synthesis applies the same casing after normalisation. A backend that normalises its own text, such as tugaphone, euskaphone, dizione or tltk, receives no casing, and scriptconv logs a warning. A config without the key keeps the text as written |
 | `phonemizer_identity` | `dict` \| `None` | `None` | The phonemizer that made the training phonemes. See [Phonemizer provenance](#phonemizer-provenance) |
 | `speaker_id_map` | `dict` | `{}` | Maps speaker names to integer IDs |
 | `lang_id_map` | `dict` | `{}` | Maps language codes to integer IDs (multi-lang voices) |
@@ -238,9 +238,9 @@ Preprocessing (`phoonnx_train/preprocess.py`, see the
   "phonemizer_identity": {
     "backend": "orthography2ipa",
     "distribution": "orthography2ipa",
-    "version": "7.123.11a2",
+    "version": "7.124.36a2",
     "lang": "pt-PT",
-    "revision": "sha256:7188b00e1bd7f3f8400628ce46e037ea038a5ad8312f74fa45d69c2f728ef1c3",
+    "revision": "sc1:4400b8fe1ef289a79a94fa4fd8c7753467e16b4237e3881f5ca5e3b8cfd59e84",
     "frontend": null
   }
 }
@@ -253,17 +253,18 @@ does not wait for it. Thus the warning can come after `load` returns.
 When a field is different, phoonnx logs one warning. The warning names the
 voice, each field that is different, and the trained and the running value.
 The voice loads and speaks as usual. This example is a voice that was trained
-on another orthography2ipa spec revision:
+on another phonemizer revision:
 
 ```text
-WARNING - Voice pt_PT-tugão was trained with another phonemizer: revision: trained 'sha256:0000000000000000000000000000000000000000000000000000000000000000', running 'sha256:7188b00e1bd7f3f8400628ce46e037ea038a5ad8312f74fa45d69c2f728ef1c3'. The voice loads, but its pronunciation can differ from training.
+WARNING - Voice pt_PT-tugão was trained with another phonemizer: revision: trained 'sc1:0000000000000000000000000000000000000000000000000000000000000000', running 'sc1:4400b8fe1ef289a79a94fa4fd8c7753467e16b4237e3881f5ca5e3b8cfd59e84'. The voice loads, but its pronunciation can differ from training.
 ```
 
 The comparison follows these rules:
 
-- `revision` is the orthography2ipa spec revision. When the two revisions are
-  equal, a different `version` gives no warning, because the spec that makes
-  the phonemes did not change.
+- `revision` is a hash of the spec, code and data that make the phonemes, as
+  scriptconv records it. A block with a `frontend` holds the frontend revision,
+  which also covers the frontend stages. When both revisions are set and equal,
+  a different `version` gives no warning, because the phonemes did not change.
 - `lang` is the lect that the phonemizer resolved. A voice trained on `es-ES`
   that runs on `pt-PT` gives a warning.
 - `frontend` is `null` when preprocess called the backend directly. A `null`
