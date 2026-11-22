@@ -136,7 +136,9 @@ def test_kittentts_vocab_ids_line_up_with_embedding_table_size():
     spec.loader.exec_module(mod)
     for tier in mod.TIERS:
         cfg = mod.build_config(tier)
-        assert cfg["num_symbols"] == len(cfg["phoneme_id_map"])
+        # the token embedding of every Kitten graph has 178 rows; the map has 175 keys
+        assert cfg["num_symbols"] == 178
+        assert max(cfg["phoneme_id_map"].values()) < cfg["num_symbols"]
         assert cfg["engine"] == "styletts2"
         assert cfg["phoneme_type"] == "espeak"
         assert cfg["alphabet"] == "ipa"
