@@ -49,10 +49,6 @@ def test_quality_presets_complete():
             < presets["high"]["hidden_channels"])
 
 
-def test_engine_has_no_extra_cli_options():
-    assert GlowTTSTrainingEngine().extra_cli_options() == []
-
-
 def test_engine_module_importable_without_torch():
     """The engine module must stay importable in torch-free environments —
     heavy imports are deferred until a model is built or exported. Prove it

@@ -101,6 +101,10 @@ class YourttsTrainingEngine(BaseTrainingEngine):
         # pre-processed dataset, not the quality preset; the shared train CLI
         # only threads num_symbols/num_speakers/sample_rate, so read them from
         # the dataset's config.json when the caller did not pass them in extra.
+        # Preprocessing records a language id per utterance and no count, so
+        # the count falls back to the ids of the utterances.
+        dataset_files = [Path(p) / "dataset.jsonl" if Path(p).is_dir() else Path(p)
+                         for p in dataset_paths]
         dataset_cfg: Dict[str, Any] = {}
         for p in dataset_paths:
             cfg_path = Path(p) / "config.json" if Path(p).is_dir() else Path(p).parent / "config.json"
@@ -109,7 +113,9 @@ class YourttsTrainingEngine(BaseTrainingEngine):
                     dataset_cfg = json.load(f)
                 break
 
-        n_langs = int(extra.pop("n_langs", dataset_cfg.get("n_langs", 0)))
+        n_langs = extra.pop("n_langs", dataset_cfg.get("n_langs"))
+        if n_langs is None:
+            n_langs = _count_languages(dataset_files)
         speaker_embedding_dim = int(
             extra.pop(
                 "speaker_embedding_dim",
@@ -122,13 +128,10 @@ class YourttsTrainingEngine(BaseTrainingEngine):
             # YourTTS conditions on a d-vector, not a per-speaker id table.
             num_speakers=1,
             sample_rate=config.sample_rate,
-            dataset=[
-                str(Path(p) / "dataset.jsonl" if Path(p).is_dir() else Path(p))
-                for p in dataset_paths
-            ],
+            dataset=[str(path) for path in dataset_files],
             external_speaker_embedding=True,
             speaker_embedding_dim=speaker_embedding_dim,
-            n_langs=n_langs,
+            n_langs=int(n_langs),
             **extra,
             **kwargs,
         )
@@ -330,41 +333,26 @@ class YourttsTrainingEngine(BaseTrainingEngine):
         self._speaker_encoder_path = speaker_encoder_path
         return encoder
 
-    def extra_cli_options(self) -> List[Any]:
-        """CLI options for driving YourTTS preprocessing/training."""
-        import click
-
-        return [
-            click.option(
-                "--speaker-encoder-path",
-                "speaker_encoder_path",
-                default=None,
-                help="Path to the Coqui ResNet ONNX speaker encoder used to "
-                     "compute training d-vectors (must match the encoder "
-                     "bundled with the resulting voice at inference time).",
-            ),
-            click.option(
-                "--language-id",
-                "language_id",
-                type=int,
-                default=None,
-                help="Numeric language id for this dataset run, used by the "
-                     "additive language embedding in multilingual training.",
-            ),
-            click.option(
-                "--n-langs",
-                "n_langs",
-                type=int,
-                default=0,
-                help="Total number of languages for the additive language "
-                     "embedding (0 disables it).",
-            ),
-        ]
-
 
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
+def _count_languages(dataset_files: List[Path]) -> int:
+    """One more than the highest ``language_id`` of the utterances, so every id
+    has a row in the language embedding; 0 when no utterance has an id."""
+    highest = -1
+    for path in dataset_files:
+        if not path.is_file():
+            continue
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    language_id = json.loads(line).get("language_id")
+                    if language_id is not None:
+                        highest = max(highest, int(language_id))
+    return highest + 1
+
 
 def _renormalize(vec):
     """Every individual d-vector is L2-normalized; their mean is not

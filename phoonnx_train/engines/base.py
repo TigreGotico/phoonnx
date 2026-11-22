@@ -50,7 +50,6 @@ class BaseTrainingEngine(ABC):
 
     - ``extra_preprocess``  — additional feature extraction beyond
                               the shared phonemization + audio norm
-    - ``extra_cli_options`` — click options specific to this engine
     - ``load_checkpoint``   — custom checkpoint loading logic
     """
 
@@ -130,13 +129,6 @@ class BaseTrainingEngine(ABC):
         Lightning rejects a global clip with manual optimization.
         """
         return {}
-
-    def extra_cli_options(self) -> List[Any]:
-        """
-        Return additional ``click.option`` decorators that should be
-        added to the training CLI for this engine.  Default is empty.
-        """
-        return []
 
     def load_checkpoint(
         self,

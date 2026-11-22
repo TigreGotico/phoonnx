@@ -256,11 +256,10 @@ conditions each utterance on a 512-d **d-vector** from the Coqui ResNet speaker 
 that inference also uses (`phoonnx.engines.speaker_encoders.coqui_resnet`), so the
 training and inference embeddings match.
 
-An optional additive language embedding supports multilingual training. The engine reads
-its size from an `n_langs` key in the `config.json` of the preprocessed dataset.
-`preprocess.py` does not write that key, so add it by hand for a multilingual run. The
-engine also declares a `--n-langs` option, but `train.py` does not add it to its
-command line.
+An optional additive language embedding supports multilingual training. Its size is one
+more than the highest `language_id` of the preprocessed utterances, so ids 0, 1 and 2 give
+three languages. The embedding is on when the size is 2 or more. An `n_langs` key in the
+`config.json` of the preprocessed dataset sets the size instead.
 
 ### 1. Preprocess
 
@@ -313,7 +312,7 @@ the tier by the same size/quality trade-off as any other phoonnx_train run. Inte
 `YourttsTrainingEngine.create_model` builds the same `phoonnx_train.vits.lightning
 .VitsModel` used by the `vits` engine, with `external_speaker_embedding=True` and
 `num_speakers=1` (speaker identity comes from the d-vector, not an id table), and
-`n_langs` set from your preprocessing run if you're training multilingually.
+`n_langs` counted from the language ids of the utterances.
 
 ### 3. Export
 
