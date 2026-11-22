@@ -14,7 +14,7 @@ Two checkpoints share one interface (upstream's "interface v3")::
 The 14 languages the 0.6B was trained on resolve to the 0.6B: it is the permissively
 licensed one and the one that runs comfortably on CPU. The nine languages only the 1B
 covers (Arabic, Belarusian, Bengali, Lithuanian, Persian, Portuguese, Swahili, Tamil,
-Ukrainian) resolve to the 1B — see ``VOICES.md`` for the license note.
+Ukrainian) resolve to the 1B, under its CC-BY-NC-SA-4.0 licence.
 
 Two ONNX graphs::
 
