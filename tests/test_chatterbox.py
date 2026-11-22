@@ -209,8 +209,9 @@ def test_mtl_tokenizer_lang_tokens_override():
 
 def test_lahgtna_voice_index_entries():
     # the 10 Arabic-dialect lahgtna voices must build valid TTSModelInfo objects:
-    # unified model (one URL set), dialect-accurate lang codes, and NO lang_tokens —
-    # the MTL tokenizer derives the [ar] token from the lang code by itself
+    # unified model (one URL set), the dialect's ISO 639-3 tag, and the language token
+    # that upstream reads the dialect under (ARABIC_DIALECTS_MAPPING in
+    # Oddadmix/lahgtna-chatterbox src/chatterbox/mtl_tts.py)
     import json
     from pathlib import Path
     import phoonnx
@@ -218,14 +219,15 @@ def test_lahgtna_voice_index_entries():
 
     index = json.loads((Path(phoonnx.__file__).parent / "voice_index" /
                         "chatterbox.json").read_text())
-    dialects = {"eg": "ar-EG", "sa": "ar-SA", "mo": "ar-MA", "iq": "ar-IQ",
-                "lb": "ar-LB", "sd": "ar-SD", "ly": "ar-LY", "sy": "ar-SY",
-                "tn": "ar-TN", "ps": "ar-PS"}
-    for dia, lang in dialects.items():
+    dialects = {"eg": ("arz-EG", "ms"), "sa": ("afb-SA", "sv"), "mo": ("ary-MA", "pl"),
+                "iq": ("acm-IQ", "no"), "lb": ("apc-LB", "nl"), "sd": ("apd-SD", "pt"),
+                "ly": ("ayl-LY", "sw"), "sy": ("apc-SY", "ko"), "tn": ("aeb-TN", "da"),
+                "ps": ("apc-PS", "he")}
+    for dia, (lang, token) in dialects.items():
         vid = f"chatterbox/lahgtna/{dia}"
         assert vid in index, vid
         entry = index[vid]
-        assert "lang_tokens" not in entry
+        assert entry["lang_tokens"] == {lang: token}
         info = TTSModelInfo(**entry)
         assert info.engine == "chatterbox"
         assert info.lang == lang

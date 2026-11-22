@@ -815,9 +815,8 @@ class ChatterboxMTLTokenizer(BPETokenizer):
             text = "".join(text)
         lang = (language or "").replace("_", "-").split("-")[0].lower()
         # An explicit ``lang_tokens`` map (BCP47/code -> token string) wins and is prepended
-        # **literally**, even when the token isn't a single vocab id (it BPE-splits) — this
-        # is how dialect "hacks" work, e.g. lahgtna repurposes the base model with a literal
-        # ``[eg]`` for Egyptian, and it sidesteps lang-code normalization (eg -> eg-US).
+        # **literally**, even when the token isn't a single vocab id (it BPE-splits). A dialect
+        # model can reuse another language's token: lahgtna reads Egyptian Arabic under ``[ms]``.
         # Otherwise derive ``[<lang>]`` and require it in the vocab (the standard variants).
         token = None
         if lang_tokens:
@@ -827,7 +826,8 @@ class ChatterboxMTLTokenizer(BPETokenizer):
         if not token:
             return list(self._tok.encode(text).ids)
         import unicodedata
-        norm = self._script_transform(unicodedata.normalize("NFKD", text.lower()), token)
+        # The transform follows the language of the text, not a reused token
+        norm = self._script_transform(unicodedata.normalize("NFKD", text.lower()), lang)
         encoded = f"[{token}]{norm}".replace(" ", "[SPACE]")
         return list(self._tok.encode(encoded).ids)
 

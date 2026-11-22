@@ -195,6 +195,23 @@ def test_the_habibi_dialect_voices_answer_their_regional_request(tmp_path):
         assert sorted(i for i in ids if i in dialect_voices) == voice_ids, request
 
 
+
+def test_each_lahgtna_voice_carries_its_dialect_and_answers_its_region(tmp_path):
+    # The card of oddadmix/lahgtna-chatterbox-v1 names one dialect per country
+    # (tags masri, darija, iraqi, levantine, gulf-arabic, sudanese, libyan, tunisian)
+    manager = TTSModelManager(cache_path=str(tmp_path / "cache.json"))
+    manager.merge_default_voices()
+    lects = {"eg": "arz-EG", "sa": "afb-SA", "mo": "ary-MA", "iq": "acm-IQ", "lb": "apc-LB",
+             "sd": "apd-SD", "ly": "ayl-LY", "sy": "apc-SY", "tn": "aeb-TN", "ps": "apc-PS"}
+    lahgtna = {f"chatterbox/lahgtna/{key}" for key in lects}
+    for key, lect in lects.items():
+        voice_id = f"chatterbox/lahgtna/{key}"
+        assert manager.voices[voice_id].lang == lect
+        request = "ar-" + lect.split("-")[1]
+        ids = [v.voice_id for v in manager.get_lang_voices(request)]
+        assert [i for i in ids if i in lahgtna] == [voice_id], request
+
+
 class TestPhoneticSpellingsDefaultRegion(unittest.TestCase):
     def _locale(self, *langs):
         tmpdir = tempfile.TemporaryDirectory()
