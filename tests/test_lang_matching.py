@@ -94,6 +94,63 @@ class TestGetLangVoicesDefaultRegion(unittest.TestCase):
                          ["pt-PT", "pt-BR"])
 
 
+
+class TestGetLangVoicesDialects(TestGetLangVoicesDefaultRegion):
+    """A voice in a dialect of the requested language and region serves the request.
+
+    text2spoken reads colloquial numbers only for a dialect tag such as ``arz``
+    (Egyptian Arabic), so a dialect voice carries that tag. linguatag gives
+    ``arz-EG`` asking for ``ar-EG`` the distance 10 and the other way round 80.
+    """
+
+    def _ids(self, lang):
+        return [v.lang for v in self.manager.get_lang_voices(lang)]
+
+    def test_a_regional_request_finds_the_dialect_voice_of_its_region(self):
+        self._voices("arz-EG", "ary-MA", "ar-EG", "ar")
+        self.assertEqual(self._ids("ar-EG"), ["ar-EG", "ar", "arz-EG"])
+
+    def test_each_habibi_region_finds_its_dialect(self):
+        pairs = {"ar-DZ": "arq-DZ", "ar-EG": "arz-EG", "ar-IQ": "acm-IQ",
+                 "ar-MA": "ary-MA", "ar-SA": "ars-SA", "ar-AE": "afb-AE"}
+        self._voices(*pairs.values())
+        for request, dialect in pairs.items():
+            with self.subTest(request=request):
+                self.assertEqual(self._ids(request), [dialect])
+
+    def test_standard_arabic_does_not_take_a_dialect_voice(self):
+        self._voices("ary-MA", "arz-EG", "ar")
+        self.assertEqual(self._ids("ar"), ["ar"])
+
+    def test_a_dialect_request_does_not_take_a_voice_of_the_macrolanguage(self):
+        self._voices("ar-EG")
+        self.assertEqual(self._ids("arz-EG"), [])
+
+    def test_another_language_stays_out(self):
+        self._voices("he-IL", "fa-IR")
+        self.assertEqual(self._ids("ar-EG"), [])
+
+    def test_the_rule_holds_for_arabic_only(self):
+        # linguatag also measures lb asking for de, and vro asking for et, at 10
+        self._voices("lb-LU", "vro-EE")
+        self.assertEqual((self._ids("de"), self._ids("et")), ([], []))
+
+    def test_a_member_language_request_stays_as_strict_as_before(self):
+        # vro asking for et is 10, at the threshold, and the lookup keeps under 10
+        self._voices("et-EE")
+        self.assertEqual(self._ids("vro"), [])
+
+
+def test_the_habibi_dialect_voices_answer_their_regional_request(tmp_path):
+    manager = TTSModelManager(cache_path=str(tmp_path / "cache.json"))
+    manager.merge_default_voices()
+    expected = {"ar-DZ": "habibi/ar-alg", "ar-EG": "habibi/ar-egy", "ar-IQ": "habibi/ar-irq",
+                "ar-MA": "habibi/ar-mar", "ar-SA": "habibi/ar-sau", "ar-AE": "habibi/ar-uae"}
+    for request, voice_id in expected.items():
+        ids = [v.voice_id for v in manager.get_lang_voices(request)]
+        assert voice_id in ids, request
+        assert [i for i in ids if i in expected.values()] == [voice_id], request
+
 class TestPhoneticSpellingsDefaultRegion(unittest.TestCase):
     def _locale(self, *langs):
         tmpdir = tempfile.TemporaryDirectory()

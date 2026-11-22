@@ -21,10 +21,11 @@ from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
                                     OfflineModeIsEnabled, RepositoryNotFoundError,
                                     RevisionNotFoundError)
 from json_database import JsonStorageXDG, JsonStorage, load_commented_json
+from linguatag import lang_distance
 
 from phoonnx.config import (PhonemeType, _removal_version, _voice_phonemizer, VoiceConfig, Engine,
                             Alphabet, check_lang_supported)
-from phoonnx.util import match_lang, normalize_lang, LOG
+from phoonnx.util import is_arabic, match_lang, normalize_lang, LOG
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers, resolve_threads, uses_gpu
 from phoonnx.voice import TTSVoice
 from phoonnx._onnx_external import external_data_locations
@@ -1400,6 +1401,28 @@ class _VoiceRegistry(dict):
         raise UnknownVoice(voice_id)
 
 
+def _lookup_distance(voice_lang: str, lang: str) -> int:
+    """How well a voice in ``voice_lang`` serves a request for ``lang``; above 10 it does not.
+
+    A voice in a regional form of the language is under 10. A voice in an
+    Arabic dialect is 10 for an Arabic request in its region: an Egyptian
+    Arabic voice (``arz-EG``) serves ``ar-EG``, but not ``ar-MA``, and not
+    ``ar``, which asks for Standard Arabic. text2spoken reads colloquial
+    numbers only for the dialect tag. linguatag measures the pair from the
+    dialect side only, at 10 for ``ar-EG`` (the other way 80), 14 for
+    ``ar-MA`` and 5 for ``ar``, so the lookup asks it that way round.
+    """
+    distance = match_lang(voice_lang, lang)[-1]
+    if distance < 10:
+        return distance
+    if voice_lang and _is_arabic(lang) and _is_arabic(voice_lang) and lang_distance(voice_lang, lang) == 10:
+        return 10
+    return 10000
+
+
+_is_arabic = functools.lru_cache(maxsize=4096)(is_arabic)
+
+
 class TTSModelManager:
     # Explicit merge order for the bundled indexes: later files win when two
     # sources publish the same voice_id. Any index file not listed here is
@@ -1566,9 +1589,9 @@ class TTSModelManager:
         if voices is None:
             # checked before the scan: a voice gets its lang when its config loads
             complete = all(voice_info.lang for voice_info in registry.values())
-            ranked = sorted(((voice_info, match_lang(voice_info.lang, lang)[-1])
+            ranked = sorted(((voice_info, _lookup_distance(voice_info.lang, lang))
                              for voice_info in registry.values()), key=lambda k: k[1])
-            voices = [v[0] for v in ranked if v[1] < 10]
+            voices = [v[0] for v in ranked if v[1] <= 10]
             if complete:
                 answers[lang] = voices
         return list(voices)

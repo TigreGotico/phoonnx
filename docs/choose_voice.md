@@ -43,6 +43,8 @@ The tag decides which voices you see:
 | A tag with a region, `pt-PT` | The voices of that region only. |
 | A tag with no region, `pt` | The voices of every region, nearest first. |
 | A region that has no voice, `en-AU` | The voices of the nearest regions, nearest first. |
+| An Arabic tag with a region, `ar-EG` | The Arabic voices, nearest first, then the dialect voices of that region, such as Egyptian Arabic (`arz-EG`). |
+| `ar` | The Arabic voices of every region, nearest first. A dialect voice (`arz-EG`) answers only its own region or its own dialect tag. |
 
 The `en-AU` list starts with British English, because the default region of English is `en-GB`:
 
