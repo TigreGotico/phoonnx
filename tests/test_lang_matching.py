@@ -68,7 +68,7 @@ class TestMatchLangUnparseableEntry(unittest.TestCase):
                          ("de-Thorsten1234", 0))
 
 
-class TestGetLangVoicesDefaultRegion(unittest.TestCase):
+class _VoiceListCase(unittest.TestCase):
     def setUp(self):
         tmpdir = tempfile.TemporaryDirectory()
         self.addCleanup(tmpdir.cleanup)
@@ -83,6 +83,8 @@ class TestGetLangVoicesDefaultRegion(unittest.TestCase):
                   for lang in langs]
         self.manager.voices = {v.voice_id: v for v in voices}
 
+
+class TestGetLangVoicesDefaultRegion(_VoiceListCase):
     def test_bare_en_lists_british_voice_first(self):
         self._voices("en-US", "en-GB")
         self.assertEqual([v.lang for v in self.manager.get_lang_voices("en")],
@@ -95,7 +97,7 @@ class TestGetLangVoicesDefaultRegion(unittest.TestCase):
 
 
 
-class TestGetLangVoicesDialects(TestGetLangVoicesDefaultRegion):
+class TestGetLangVoicesDialects(_VoiceListCase):
     """A voice in a dialect of the requested language and region serves the request.
 
     text2spoken reads colloquial numbers only for a dialect tag such as ``arz``
@@ -107,8 +109,29 @@ class TestGetLangVoicesDialects(TestGetLangVoicesDefaultRegion):
         return [v.lang for v in self.manager.get_lang_voices(lang)]
 
     def test_a_regional_request_finds_the_dialect_voice_of_its_region(self):
-        self._voices("arz-EG", "ary-MA", "ar-EG", "ar")
-        self.assertEqual(self._ids("ar-EG"), ["ar-EG", "ar", "arz-EG"])
+        self._voices("ary-MA", "ar", "arz-EG")
+        self.assertEqual(self._ids("ar-EG"), ["arz-EG", "ar"])
+
+    def test_a_dialect_voice_ranks_as_its_regional_tag(self):
+        # The order with arz-EG must equal the order with ar-EG in its place
+        langs = ["ar-MA", "ar", "ar-SA", "arz-EG", "ar-EG"]
+        for request in ("ar-EG", "ar-eg", "ar_EG", "ar-Arab-EG"):
+            with self.subTest(request=request):
+                self._voices(*[lang.replace("arz-EG", "ar-XX") for lang in langs])
+                self.manager.voices["v/ar-XX"].lang = "ar-EG"
+                regional = [v.voice_id for v in self.manager.get_lang_voices(request)]
+                self._voices(*langs)
+                dialect = [v.voice_id for v in self.manager.get_lang_voices(request)]
+                self.assertEqual(dialect, [i.replace("ar-XX", "arz-EG") for i in regional])
+                self.assertIn("v/arz-EG", dialect)
+
+    def test_a_dialect_voice_with_no_region_comes_after_the_arabic_voices(self):
+        # linguatag places arz in Egypt, so arz asking for ar-EG is 10
+        self._voices("arz", "ar-MA", "ar")
+        ids = self._ids("ar-EG")
+        self.assertEqual(ids[-1], "arz")
+        self.assertEqual(sorted(ids[:-1]), ["ar", "ar-MA"])
+        self.assertNotIn("arz", self._ids("ar-MA"))
 
     def test_each_habibi_region_finds_its_dialect(self):
         pairs = {"ar-DZ": "arq-DZ", "ar-EG": "arz-EG", "ar-IQ": "acm-IQ",
@@ -132,8 +155,10 @@ class TestGetLangVoicesDialects(TestGetLangVoicesDefaultRegion):
 
     def test_the_rule_holds_for_arabic_only(self):
         # linguatag also measures lb asking for de, and vro asking for et, at 10
-        self._voices("lb-LU", "vro-EE")
-        self.assertEqual((self._ids("de"), self._ids("et")), ([], []))
+        self._voices("lb-LU", "vro-EE", "lb", "vro")
+        for request in ("de", "de-DE", "et", "et-EE"):
+            with self.subTest(request=request):
+                self.assertEqual(self._ids(request), [])
 
     def test_a_member_language_request_stays_as_strict_as_before(self):
         # vro asking for et is 10, at the threshold, and the lookup keeps under 10
@@ -144,12 +169,14 @@ class TestGetLangVoicesDialects(TestGetLangVoicesDefaultRegion):
 def test_the_habibi_dialect_voices_answer_their_regional_request(tmp_path):
     manager = TTSModelManager(cache_path=str(tmp_path / "cache.json"))
     manager.merge_default_voices()
-    expected = {"ar-DZ": "habibi/ar-alg", "ar-EG": "habibi/ar-egy", "ar-IQ": "habibi/ar-irq",
-                "ar-MA": "habibi/ar-mar", "ar-SA": "habibi/ar-sau", "ar-AE": "habibi/ar-uae"}
-    for request, voice_id in expected.items():
+    expected = {"ar-DZ": ["habibi/ar-alg"], "ar-EG": ["habibi/ar-egy"], "ar-IQ": ["habibi/ar-irq"],
+                "ar-MA": ["habibi/ar-mar"], "ar-SA": ["habibi/ar-sau", "namaa/ar-sa-v2"],
+                "ar-AE": ["habibi/ar-uae"]}
+    dialect_voices = {i for ids in expected.values() for i in ids}
+    for request, voice_ids in expected.items():
         ids = [v.voice_id for v in manager.get_lang_voices(request)]
-        assert voice_id in ids, request
-        assert [i for i in ids if i in expected.values()] == [voice_id], request
+        assert sorted(i for i in ids if i in dialect_voices) == voice_ids, request
+
 
 class TestPhoneticSpellingsDefaultRegion(unittest.TestCase):
     def _locale(self, *langs):

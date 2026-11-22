@@ -1405,18 +1405,21 @@ def _lookup_distance(voice_lang: str, lang: str) -> int:
     """How well a voice in ``voice_lang`` serves a request for ``lang``; above 10 it does not.
 
     A voice in a regional form of the language is under 10. A voice in an
-    Arabic dialect is 10 for an Arabic request in its region: an Egyptian
-    Arabic voice (``arz-EG``) serves ``ar-EG``, but not ``ar-MA``, and not
-    ``ar``, which asks for Standard Arabic. text2spoken reads colloquial
-    numbers only for the dialect tag. linguatag measures the pair from the
-    dialect side only, at 10 for ``ar-EG`` (the other way 80), 14 for
-    ``ar-MA`` and 5 for ``ar``, so the lookup asks it that way round.
+    Arabic dialect serves an Arabic request in its own region: an Egyptian
+    Arabic voice (``arz-EG``) serves ``ar-EG`` as an ``ar-EG`` voice does,
+    but not ``ar-MA``, and not ``ar``, which asks for Standard Arabic. A
+    dialect voice with no region (``arz``) comes after the other Arabic
+    voices, at 10. text2spoken reads colloquial numbers only for the
+    dialect tag. linguatag measures the pair from the dialect
+    side only, at 10 for ``ar-EG`` (the other way 80), 14 for ``ar-MA`` and
+    5 for ``ar``, so the lookup asks it that way round.
     """
     distance = match_lang(voice_lang, lang)[-1]
     if distance < 10:
         return distance
-    if voice_lang and _is_arabic(lang) and _is_arabic(voice_lang) and lang_distance(voice_lang, lang) == 10:
-        return 10
+    if _is_arabic(lang) and lang_distance(voice_lang, lang) == 10:
+        region = voice_lang.partition("-")[2]
+        return match_lang("ar-" + region, lang)[-1] if region else 10
     return 10000
 
 
