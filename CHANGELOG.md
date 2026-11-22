@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.125.5a1](https://github.com/TigreGotico/phoonnx/tree/1.125.5a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.4a1...1.125.5a1)
+
+**Merged pull requests:**
+
+- fix\(ssml\): a quiet breathy whisper, and a breath that is not a machine [\#875](https://github.com/TigreGotico/phoonnx/pull/875) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.125.4a1](https://github.com/TigreGotico/phoonnx/tree/1.125.4a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.3a1...1.125.4a1)
@@ -304,8 +312,6 @@
 - fix: keep the voice-conversion cache key and value in one attribute [\#774](https://github.com/TigreGotico/phoonnx/pull/774) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - feat\(voice\): stream Pocket TTS audio as the decoder makes it [\#769](https://github.com/TigreGotico/phoonnx/pull/769) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - perf: faster pure-Python BPE and phoneme tokenizer [\#768](https://github.com/TigreGotico/phoonnx/pull/768) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- perf: cache the OPM default-voice lookup and graph metadata [\#764](https://github.com/TigreGotico/phoonnx/pull/764) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- perf: stop repeating per-call work in Indic Parler, MOSS and Vocos [\#763](https://github.com/TigreGotico/phoonnx/pull/763) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.116.1a1](https://github.com/TigreGotico/phoonnx/tree/1.116.1a1) (2026-11-19)
 
