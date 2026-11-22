@@ -467,7 +467,8 @@ def test_encoder_attention_mask_is_forwarded_to_the_decode_graph():
 
 def test_generation_stops_on_eos_and_reaches_the_dac():
     ad = _wired(eos_after=14)
-    res = ad.synthesize(_req(), _FakePrefill())
+    # sampling picks EOS with a probability just under 1, so an unseeded run can miss it once
+    res = ad.synthesize(_req(seed=0), _FakePrefill())
     # EOS may only move one codebook per step, so once the model first wants to stop
     # (step 14) the staircase still needs one step per remaining codebook to unwind.
     assert len(ad.decode_session.feeds) == 14 + NUM_CODEBOOKS - 1
@@ -481,7 +482,7 @@ def test_generation_stops_on_eos_and_reaches_the_dac():
 def test_an_immediate_stop_yields_no_frames_and_no_dac_call():
     """Nothing but end-of-speech means there is no complete frame to decode."""
     ad = _wired(eos_after=1)
-    res = ad.synthesize(_req(), _FakePrefill())
+    res = ad.synthesize(_req(seed=0), _FakePrefill())
     assert res.extras["codes"].shape[1] == 0
     assert ad.dac_decoder.last_codes is None
     assert res.audio.shape == (0,)
