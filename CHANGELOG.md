@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.125.11a1](https://github.com/TigreGotico/phoonnx/tree/1.125.11a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.10a3...1.125.11a1)
+
+**Merged pull requests:**
+
+- fix: a partial mirror snapshot at the table commit routes the voice to its repo [\#888](https://github.com/TigreGotico/phoonnx/pull/888) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.125.10a3](https://github.com/TigreGotico/phoonnx/tree/1.125.10a3) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.10a2...1.125.10a3)
@@ -324,10 +332,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.4a1...1.118.4a2)
 
-**Merged pull requests:**
-
-- fix: the Mimic 3 loader reads its tokens file, and a null pad stays null [\#793](https://github.com/TigreGotico/phoonnx/pull/793) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.118.4a1](https://github.com/TigreGotico/phoonnx/tree/1.118.4a1) (2026-11-19)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.118.3a1...1.118.4a1)
@@ -335,7 +339,6 @@
 **Merged pull requests:**
 
 - fix: restore green CI after linguatag 0.3.1a1 and \#748 [\#796](https://github.com/TigreGotico/phoonnx/pull/796) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: level\_audio returns an empty sentence as is [\#792](https://github.com/TigreGotico/phoonnx/pull/792) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.118.3a1](https://github.com/TigreGotico/phoonnx/tree/1.118.3a1) (2026-11-19)
 
