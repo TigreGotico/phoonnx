@@ -23,10 +23,11 @@ dependencies = [
     "quebra-frases>=0.3.8a5",
     "langcodes",
     "linguatag>=0.4.1a1",
-    # >=0.0.2a97: Tetun Dili (tdt) reads a numeric date in Portuguese. Earlier floors:
-    # a Korean number before a counter reads (사과 3개 as 사과 세 개),
+    # >=0.0.2a98: Tetun Dili (tdt) reads prices, telephone numbers, clock times,
+    # percentages and measures in Portuguese. Earlier floors: tdt reads a numeric
+    # date in Portuguese, a Korean number before a counter reads (사과 3개 as 사과 세 개),
     # after text2spoken.SayAs and its digits, telephone, characters, ordinal and date readings
-    "text2spoken>=0.0.2a97",
+    "text2spoken>=0.0.2a98",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
     # >=0.0.4a145: a backend that owns normalisation gets no casing, and every
@@ -98,7 +99,7 @@ test = [
     "scriptconv-nonfree>=0.2.1a1",
     # the model card tests render the text stack that the cards recommend, from
     # these libraries' own language list, call names and default model
-    "text2spoken>=0.0.2a97",
+    "text2spoken>=0.0.2a98",
     "bifonia>=0.5.0",
     "text2tashkeel>=0.3.1a3",
     "espyak>=0.0.3a1",
