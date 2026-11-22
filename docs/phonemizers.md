@@ -72,6 +72,8 @@ matching [install extra](installation.md#language-extras).
 | `africa_g2p` | africa-g2p rules: native-orthography units or IPA | 400+ African languages |
 | `ghana_g2p` | africa-g2p rules, patched for Ghanaian languages: native units or IPA | 42 Ghanaian languages |
 | `matoub_kab` | The Kabyle rule set that the Matoub-82M voice was trained on | Kabyle |
+| `leokani` | Leokani: lexicon, ONNX letter-to-sound and context models; emits the Kokoro (misaki) codes | en-US |
+| `kolokwa` | kolokwa-g2p model | Liberian English (lir) |
 
 ## Alphabet Reference
 
