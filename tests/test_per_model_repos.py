@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from huggingface_hub.errors import RemoteEntryNotFoundError, LocalEntryNotFoundError
+from huggingface_hub.errors import LocalEntryNotFoundError, RemoteEntryNotFoundError, RepositoryNotFoundError
 
 from phoonnx import model_manager
 from phoonnx.model_manager import _HF_URL, _hf_fetch
@@ -18,6 +18,9 @@ OUTETTS = "Phoonnx/outetts-multi-outeai-0.6b-unicode"
 MIRROR_MMS = SPLIT[MMS]["from"]
 FOLDER = SPLIT[MMS]["folder"]
 PINNED = "a" * 40
+RAPIDO = "Phoonnx/rapido-pt_br-edwixx-graphemes"
+RAPIDO_INT8 = ("model_int8.onnx", "config.json", "text_encoder.onnx", "aligner.onnx", "decoder.onnx")
+VOCOS = "Phoonnx/vocos-multi-alvocat-22khz"
 
 
 def index_urls():
@@ -100,6 +103,77 @@ class TestFetchWithoutTheMirrorCache(unittest.TestCase):
                              side_effect=RemoteEntryNotFoundError("404", response=MagicMock(status_code=404))):
             with self.assertRaises(RemoteEntryNotFoundError):
                 _hf_fetch(index_url(MMS, "model.onnx"))
+
+
+def _gone(repo_id, **kwargs):
+    """A hub whose mirror repos are deleted: every mirror id answers repository not found."""
+    if repo_id.split("/", 1)[1].startswith("phoonnx-"):
+        raise RepositoryNotFoundError("gone", response=MagicMock(status_code=401))
+    return f"/hub/{repo_id}/{kwargs['revision']}/{kwargs['filename']}"
+
+
+def _rapido_int8():
+    urls = {name: index_url(RAPIDO, name) for name in RAPIDO_INT8}
+    return model_manager.TTSModelInfo(
+        voice_id="edwixx/pt-BR-rapido", lang="pt-BR", model_url=urls["model_int8.onnx"],
+        config_url=urls["config.json"],
+        aux_model_urls={name: urls[name] for name in RAPIDO_INT8[2:]})
+
+
+class TestAVoiceTheMirrorServedFromAnotherFolder(_Cache):
+    """A per-model repo whose files a voice cached from a second mirror folder."""
+
+    def test_rapido_int8_cached_from_the_int8_folder_loads_offline(self):
+        mirror = SPLIT[RAPIDO]["from"]
+        self.snapshot(PINNED, {f"edwixx__rapido-tts-int8/{name}": name.encode() for name in
+                               ("model.onnx", *RAPIDO_INT8[1:])}, mtime=1000, repo=mirror)
+        info = _rapido_int8()
+        with model_manager._voice_scope(info):
+            graph = _hf_fetch(info.model_url)
+            aux = [_hf_fetch(url) for url in info.aux_model_urls.values()]
+        self.assertEqual(graph.read_bytes(), b"model.onnx")
+        self.assertEqual(sorted(path.read_bytes() for path in aux),
+                         sorted(name.encode() for name in RAPIDO_INT8[2:]))
+
+    def test_rapido_int8_with_only_the_fp32_folder_cached_comes_from_its_repo(self):
+        mirror = SPLIT[RAPIDO]["from"]
+        self.snapshot(PINNED, {f"edwixx__rapido-tts/{name}": b"fp32" for name in
+                               ("model.onnx", *RAPIDO_INT8[1:])}, mtime=1000, repo=mirror)
+        info = _rapido_int8()
+        with patch.object(model_manager, "hf_hub_download", side_effect=_gone) as download, \
+                model_manager._voice_scope(info):
+            _hf_fetch(info.model_url)
+        [call] = download.call_args_list
+        self.assertEqual((call.kwargs["repo_id"], call.kwargs["filename"]), (RAPIDO, "model_int8.onnx"))
+
+    def test_the_merged_vocoder_cached_from_its_other_folder_loads_offline(self):
+        mirror = SPLIT[VOCOS]["from"]
+        self.snapshot(PINNED, {"alvocat-vocos-22khz/model.onnx": b"vocos",
+                               "alvocat-vocos-22khz/vocoder.json": b"{}"}, mtime=1000, repo=mirror)
+        self.assertEqual(_hf_fetch(index_url(VOCOS, "model.onnx")).read_bytes(), b"vocos")
+        self.assertEqual(_hf_fetch(index_url(VOCOS, "vocoder.json")).read_bytes(), b"{}")
+
+
+class TestAfterTheMirrorIsDeleted(_Cache):
+    """Online, with every mirror repo deleted from the hub."""
+
+    def setUp(self):
+        super().setUp()
+        patch.object(model_manager.hub_constants, "HF_HUB_OFFLINE", False).start()
+
+    def test_a_voice_the_cache_never_held_comes_from_its_own_repo(self):
+        self.snapshot(PINNED, {f"{SPLIT['Phoonnx/vits-ace-mms-graphemes']['folder']}/model.onnx": b"x"},
+                      mtime=1000, repo=MIRROR_MMS)
+        with patch.object(model_manager, "hf_hub_download", side_effect=_gone) as download:
+            _hf_fetch(index_url(MMS, "model.onnx"))
+        [call] = download.call_args_list
+        self.assertEqual(call.kwargs["repo_id"], MMS)
+
+    def test_a_voice_cached_at_an_older_mirror_commit_loads_from_the_cache(self):
+        self.snapshot(PINNED, {f"{FOLDER}/model.onnx": b"graph"}, mtime=1000, repo=MIRROR_MMS)
+        with patch.object(model_manager, "hf_hub_download", side_effect=_gone):
+            path = _hf_fetch(index_url(MMS, "model.onnx"))
+        self.assertEqual(path.read_bytes(), b"graph")
 
 
 class TestTheIndexNamesTheModelRepos(unittest.TestCase):

@@ -535,6 +535,18 @@
   "rev": "81b240f24f896f4cc480dc90858d1f72c9b7d64a"
  },
  "Phoonnx/rapido-pt_br-edwixx-graphemes": {
+  "also": [
+   {
+    "paths": {
+     "aligner.onnx": "edwixx__rapido-tts-int8/aligner.onnx",
+     "config.json": "edwixx__rapido-tts-int8/config.json",
+     "decoder.onnx": "edwixx__rapido-tts-int8/decoder.onnx",
+     "model_int8.onnx": "edwixx__rapido-tts-int8/model.onnx",
+     "text_encoder.onnx": "edwixx__rapido-tts-int8/text_encoder.onnx"
+    },
+    "rev": "8d6d98e49364086419f327e0eff5f08869ad6faa"
+   }
+  ],
   "folder": "edwixx__rapido-tts",
   "from": "Phoonnx/phoonnx-rapido",
   "rev": "8d6d98e49364086419f327e0eff5f08869ad6faa"
@@ -8120,6 +8132,15 @@
   "rev": "ec8861fb20cade4d7a51604402442c032302ebd1"
  },
  "Phoonnx/vocos-multi-alvocat-22khz": {
+  "also": [
+   {
+    "paths": {
+     "model.onnx": "alvocat-vocos-22khz/model.onnx",
+     "vocoder.json": "alvocat-vocos-22khz/vocoder.json"
+    },
+    "rev": "71f313fd2cf3f9897b7fb850fb9514f7e83689c7"
+   }
+  ],
   "folder": "vocos-mel-22khz-univ",
   "from": "Phoonnx/phoonnx-vocoders",
   "rev": "71f313fd2cf3f9897b7fb850fb9514f7e83689c7"
