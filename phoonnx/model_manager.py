@@ -316,10 +316,31 @@ def _mirror_route(repo_id: str, filenames: Set[str]) -> Optional[_Route]:
     for mirror in [split["from"], *_earlier_ids(split["from"])]:
         snapshots = list((Path(HF_HUB_CACHE) / f"models--{mirror.replace('/', '--')}" / "snapshots").glob("*"))
         for rev, folder, paths in ways:
-            if filenames <= paths.keys() and any(all((snapshot / paths[name]).exists() for name in filenames)
+            if filenames <= paths.keys() and any(_holds(snapshot, [paths[name] for name in filenames])
                                                  for snapshot in snapshots):
                 return mirror, rev, folder, paths
     return None
+
+
+def _holds(snapshot: Path, paths: List[str]) -> bool:
+    """Whether ``snapshot`` holds every one of ``paths`` and the external data each graph names.
+
+    A graph whose weights were cut off mid-download must not route through a mirror: once the
+    mirror is gone, the missing file would come from another repo's folder, where onnxruntime
+    does not look. A graph that cannot be read counts as holding its data.
+    """
+    for path in paths:
+        file = snapshot / path
+        if not file.exists():
+            return False
+        if path.endswith(".onnx"):
+            try:
+                locations = external_data_locations(file)
+            except (OSError, ValueError):
+                continue
+            if not all((file.parent / location).exists() for location in locations):
+                return False
+    return True
 
 
 # The mirror route of each split repo of the voice being loaded, by (repo id, pinned commit).
