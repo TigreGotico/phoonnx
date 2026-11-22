@@ -1,7 +1,7 @@
 """Packed sentences keep the gap the source text has between them."""
 import pytest
 
-from phoonnx.engines import base
+from phoonnx.engines import base, llasa, neutts, orpheus
 from phoonnx.engines.arktts import chunk_text as arktts_chunk
 from phoonnx.engines.base import pack_sentences
 from phoonnx.engines.llasa import LlasaAdapter
@@ -55,3 +55,14 @@ def test_pack_sentences_splits_only_at_sentence_ends(monkeypatch):
     assert pack_sentences(CHINESE, 11) == ["我有三本书。你有几本？", "太好了！"]
     assert pack_sentences(CHINESE, 10) == ["我有三本书。", "你有几本？太好了！"]
     assert pack_sentences(CHINESE, 3) == ["我有三本书。", "你有几本？", "太好了！"]
+
+
+@pytest.mark.parametrize("module, pack", [(llasa, METHOD_PACKERS[0]), (neutts, METHOD_PACKERS[1]),
+                                          (orpheus, METHOD_PACKERS[2])])
+def test_the_method_packers_split_only_at_sentence_ends(monkeypatch, module, pack):
+    # the same spans as above: the sentences touch, so the chunk budget counts no space between them
+    spans = [(0, 6, "我有三本书。"), (6, 11, "你有几本？"), (11, 15, "太好了！")]
+    monkeypatch.setattr(module, "span_indexed_sentence_tokenize", lambda text: spans)
+    assert pack(CHINESE, 11) == ["我有三本书。你有几本？", "太好了！"]
+    assert pack(CHINESE, 10) == ["我有三本书。", "你有几本？太好了！"]
+    assert pack(CHINESE, 3) == ["我有三本书。", "你有几本？", "太好了！"]
