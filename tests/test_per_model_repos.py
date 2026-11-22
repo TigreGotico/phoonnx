@@ -204,6 +204,18 @@ class TestAGraphWhoseWeightsWereCutOff(_Cache):
         with patch.object(model_manager, "hf_hub_download", side_effect=_gone):
             self.assertEqual(_hf_fetch(index_url(OUTETTS, "model.onnx")).read_bytes(), self.graph)
 
+    def test_a_partial_snapshot_at_the_table_commit_is_not_rescued_by_an_older_one(self):
+        self.snapshot(SPLIT[OUTETTS]["rev"], {f"{self.folder}/model.onnx": self.graph},
+                      mtime=2000, repo=self.mirror)
+        self.snapshot(PINNED, {f"{self.folder}/model.onnx": self.graph,
+                               f"{self.folder}/model.onnx_data": self.data["model.onnx_data"]},
+                      mtime=1000, repo=self.mirror)
+        self.assertIsNone(model_manager._mirror_route(OUTETTS, {"model.onnx"}))
+        with patch.object(model_manager, "hf_hub_download", side_effect=_gone) as download:
+            _hf_fetch(index_url(OUTETTS, "model.onnx"))
+        [call] = download.call_args_list
+        self.assertEqual((call.kwargs["repo_id"], call.kwargs["filename"]), (OUTETTS, "model.onnx"))
+
 
 class TestTheIndexNamesTheModelRepos(unittest.TestCase):
 

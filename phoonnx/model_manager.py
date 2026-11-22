@@ -314,10 +314,17 @@ def _mirror_route(repo_id: str, filenames: Set[str]) -> Optional[_Route]:
         (other["rev"], posixpath.dirname(next(iter(other["paths"].values()))), other["paths"])
         for other in split.get("also", ())]
     for mirror in [split["from"], *_earlier_ids(split["from"])]:
-        snapshots = list((Path(HF_HUB_CACHE) / f"models--{mirror.replace('/', '--')}" / "snapshots").glob("*"))
+        snapshot_dir = Path(HF_HUB_CACHE) / f"models--{mirror.replace('/', '--')}" / "snapshots"
+        snapshots = list(snapshot_dir.glob("*"))
         for rev, folder, paths in ways:
-            if filenames <= paths.keys() and any(_holds(snapshot, [paths[name] for name in filenames])
-                                                 for snapshot in snapshots):
+            if not filenames <= paths.keys():
+                continue
+            wanted = [paths[name] for name in filenames]
+            # The download reads the snapshot at ``rev`` first, so a partial one there is the
+            # only one that counts, as in ``_voice_snapshot``.
+            pinned = snapshot_dir / rev
+            candidates = [pinned] if any((pinned / path).exists() for path in wanted) else snapshots
+            if any(_holds(snapshot, wanted) for snapshot in candidates):
                 return mirror, rev, folder, paths
     return None
 
