@@ -28,8 +28,9 @@ dependencies = [
     "text2spoken>=0.0.2a88",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
-    # >=0.0.4a145: FrontendConfig.phonemizer_lang, a phonemizer language apart from the
-    # text language. Earlier floors: the leokani and kolokwa phonemizers that the config schema lists,
+    # >=0.0.4a145: a backend that owns normalisation gets no casing, and every
+    # backend records a revision. Earlier floors: FrontendConfig.phonemizer_lang, a
+    # phonemizer language apart from the text language, the leokani and kolokwa phonemizers that the config schema lists,
     # the f5tts_char and f5tts_pinyin text phonemizers of the F5-TTS
     # voices, the dizione phonemizer of the tiny-voca voices, owned_stages on every
     # phonemizer, TextFrontend skipping the hook for a backend that owns
