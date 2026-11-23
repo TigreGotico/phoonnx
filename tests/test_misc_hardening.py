@@ -1,6 +1,5 @@
 import subprocess
 import sys
-import threading
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -86,7 +85,7 @@ class TestGruutEmptySentence(unittest.TestCase):
         fake_gruut.TextProcessor.return_value = processor
 
         with patch.dict(sys.modules, {"gruut": fake_gruut}), \
-                patch.object(scriptconv_mul, "_GRUUT", threading.local()):
+                patch.object(scriptconv_mul, "_GRUUT", type(scriptconv_mul._GRUUT)()):
             # must not raise IndexError; empty result is simply skipped
             result = list(GruutPhonemizer()._text_to_phonemes("...", "en"))
         self.assertEqual(result, [])

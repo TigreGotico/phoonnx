@@ -7,7 +7,6 @@ onnxruntime models) are mocked so these run without the optional extras.
 """
 import subprocess
 import sys
-import threading
 import unittest
 from unittest.mock import MagicMock, call, patch
 
@@ -172,7 +171,7 @@ class TestGruutGetLangAndDispatch(unittest.TestCase):
         fake_gruut = MagicMock()
         fake_gruut.TextProcessor.return_value = processor
         with patch.dict(sys.modules, {"gruut": fake_gruut}), \
-                patch.object(scriptconv_mul, "_GRUUT", threading.local()):
+                patch.object(scriptconv_mul, "_GRUUT", type(scriptconv_mul._GRUUT)()):
             return GruutPhonemizer().phonemize_string(text, "en")
 
     # Real gruut ends a sentence that has end punctuation with a "‖" word, and
