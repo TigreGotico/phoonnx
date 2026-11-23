@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.131.0a1](https://github.com/TigreGotico/phoonnx/tree/1.131.0a1) (2026-11-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.9a1...1.131.0a1)
+
+**Merged pull requests:**
+
+- feat\(schema\): list the nemo\_ipa phonemizer as pending [\#967](https://github.com/TigreGotico/phoonnx/pull/967) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.130.9a1](https://github.com/TigreGotico/phoonnx/tree/1.130.9a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.8a1...1.130.9a1)
