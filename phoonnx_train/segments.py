@@ -16,8 +16,11 @@ from typing import List
 ATTACHING = frozenset("ʰʱʲʷᶣˠˤˀːˑ˞ʼⁿˡ˔˕˖˗")
 #: Tie bars, which join the symbols before and after them into one segment.
 TIES = frozenset("͜͡")
-#: Chao tone letters. A run of them is one segment, the contour.
-TONE_LETTERS = frozenset("˥˦˧˨˩")
+#: Tone letters with a level: Chao tone letters, the left-stem tone letters
+#: U+A712 to U+A716 and the tone numerals ¹ to ⁵. A run of them is one segment,
+#: the contour, so ``⁵¹`` and ``˥˩`` are one id each. The neutral-tone ⁰ has no
+#: level and stands alone.
+TONE_LETTERS = frozenset("˥˦˧˨˩\ua712\ua713\ua714\ua715\ua716¹²³⁴⁵")
 
 
 def segment_phonemes(text: str) -> List[str]:

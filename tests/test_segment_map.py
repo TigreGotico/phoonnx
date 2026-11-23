@@ -28,6 +28,13 @@ class TestSegmentPhonemes(unittest.TestCase):
     def test_tone_diacritic_stays_on_its_vowel(self):
         self.assertEqual(segment_phonemes("má"), ["m", "á"])
 
+    def test_a_run_of_tone_numerals_or_left_stem_letters_is_one_contour(self):
+        self.assertEqual(segment_phonemes("ma⁵¹"), ["m", "a", "⁵¹"])
+        self.assertEqual(segment_phonemes("ma²¹⁴ ta³"), ["m", "a", "²¹⁴", " ", "t", "a", "³"])
+        self.assertEqual(segment_phonemes("ma\ua712\ua716"), ["m", "a", "\ua712\ua716"])
+        self.assertEqual(segment_phonemes("ma⁰"), ["m", "a", "⁰"])
+        self.assertEqual(segment_phonemes("ma⁵⁰"), ["m", "a", "⁵", "⁰"])
+
     def test_stress_and_syllable_dot_do_not_join(self):
         self.assertEqual(segment_phonemes("ˌa.ˈb"), ["ˌ", "a", ".", "ˈ", "b"])
 
@@ -41,7 +48,7 @@ class TestSegmentPhonemes(unittest.TestCase):
         self.assertEqual(segment_phonemes("̃a"), ["̃", "a"])
 
     def test_segments_join_back_to_the_input(self):
-        for text in (TEXT, "ɐ̃ˈmaɲɐ ˈvɔw ɐ ˈkazɐ.", "tʃʰa˧˥ ʔa˨˩˦"):
+        for text in (TEXT, "ɐ̃ˈmaɲɐ ˈvɔw ɐ ˈkazɐ.", "tʃʰa˧˥ ʔa˨˩˦", "ma⁵¹ ta\ua713\ua715"):
             self.assertEqual("".join(segment_phonemes(text)), text)
 
 
