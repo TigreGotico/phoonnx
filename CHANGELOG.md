@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.133.1a1](https://github.com/TigreGotico/phoonnx/tree/1.133.1a1) (2026-11-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.133.0a1...1.133.1a1)
+
+**Merged pull requests:**
+
+- fix: align the features.json generator with its format [\#982](https://github.com/TigreGotico/phoonnx/pull/982) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.133.0a1](https://github.com/TigreGotico/phoonnx/tree/1.133.0a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.132.0a1...1.133.0a1)
@@ -386,10 +394,6 @@
 ## [1.125.4a1](https://github.com/TigreGotico/phoonnx/tree/1.125.4a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.3a1...1.125.4a1)
-
-**Merged pull requests:**
-
-- fix: list new scriptconv phonemizers in the config schema [\#877](https://github.com/TigreGotico/phoonnx/pull/877) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.3a1](https://github.com/TigreGotico/phoonnx/tree/1.125.3a1) (2026-11-22)
 
