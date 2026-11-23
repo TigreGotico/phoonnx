@@ -553,14 +553,14 @@ class TestAddedTokenFlags(unittest.TestCase):
         normalized = Tokenizer(_flagged(path, {"normalized": True}, lowercase, pair))
         token = raw.token_to_id("<mask>")
         self.assertNotIn(token, self._ids(raw, "<Mask>"))
-        self.assertEqual(self._ids(normalized, "<Mask>"), [normalized.token_to_id("<mask>")])
+        self.assertEqual(self._ids(normalized, "<Mask>"), [normalized.token_to_id("<MASK>")])
 
-    def test_two_normalized_tokens_with_one_form_take_the_first(self):
+    def test_two_normalized_tokens_with_one_form_take_the_last(self):
+        """tokenizers 1.0 keeps the last; 0.23 picks one at random on each load."""
         path = os.path.join(FIXTURES, "tokenizer_bpe_qwen.json")
-        mine = Tokenizer(_flagged(path, {"normalized": True}, {"type": "Lowercase"}, ["<mask>", "<MASK>"]))
-        first = mine.token_to_id("<mask>")
-        self.assertLess(first, mine.token_to_id("<MASK>"))
-        self.assertEqual(self._ids(mine, "a<MASK>b"), self._ids(mine, "a") + [first] + self._ids(mine, "b"))
+        mine = Tokenizer(_flagged(path, {"normalized": True}, {"type": "Lowercase"}, ["<mask>", "<MASK>", "<Mask>"]))
+        last = mine.token_to_id("<Mask>")
+        self.assertEqual(self._ids(mine, "a<MASK>b"), self._ids(mine, "a") + [last] + self._ids(mine, "b"))
 
     def test_an_rstrip_token_does_not_give_its_space_to_the_next_match(self):
         path = os.path.join(FIXTURES, "tokenizer_bpe_qwen.json")
