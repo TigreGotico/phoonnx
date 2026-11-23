@@ -10,6 +10,7 @@ from phoonnx.engines.magpie import (
     BYTE_TOKENIZER_PREFIX,
     CHAR_LANGUAGES,
     IPA_PHONEMIZERS,
+    MAX_CHUNK_CHARS,
     MagpieAdapter,
     MagpieTokenizer,
     chunk_text,
@@ -429,20 +430,44 @@ def test_chunk_text_breaks_an_oversized_sentence_on_whitespace():
 
 
 def test_chunk_text_keeps_a_phoneme_span_whole():
-    assert chunk_text("Say |h ə . ˈ l o ʊ| now. Then go.") == ["Say |h ə . ˈ l o ʊ| now.", "Then go."]
+    assert chunk_text("Say |h ə . ˈ l o ʊ| now. Then go.", spans=True) == [
+        "Say |h ə . ˈ l o ʊ| now.", "Then go."]
 
 
 def test_chunk_text_does_not_cut_a_phoneme_span_at_the_length_limit():
     span = "|" + " ".join(["ə"] * 30) + "|"
-    chunks = chunk_text(" ".join(["word"] * 5) + " " + span + " end", max_len=40)
+    chunks = chunk_text(" ".join(["word"] * 5) + " " + span + " end", max_len=40, spans=True)
     assert sum(chunk.count(span) for chunk in chunks) == 1
 
 
-def test_a_phoneme_span_reads_as_phonemes_after_chunking():
-    tokenizer = MagpieTokenizer(str(BASE))
-    text = "Say |h ə . ˈ l o ʊ| now."
-    (ids,) = [tokenizer.encode(chunk, "en", "english_phoneme") for chunk in chunk_text(text)]
-    symbols = tokenizer.symbol_map("english_phoneme")
+def test_chunk_text_measures_the_length_on_the_text_with_its_spans():
+    text = " ".join(f"|a{i}|" for i in range(300))
+    chunks = chunk_text(text, max_len=40, spans=True)
+    assert all(len(chunk) <= 40 for chunk in chunks)
+    assert " ".join(chunks) == text
+
+
+def test_a_span_longer_than_the_limit_is_a_chunk_of_its_own():
+    span = "|" + " ".join(["ə"] * 30) + "|"
+    assert chunk_text(f"one two {span} three four", max_len=20, spans=True) == ["one two", span, "three four"]
+
+
+def test_pipes_do_not_change_the_chunks_of_a_language_without_spans():
+    assert chunk_text("Il a dit | non. Elle a répondu | oui. Fin.") == [
+        "Il a dit | non.", "Elle a répondu | oui.", "Fin."]
+    text = " ".join(["mot"] * 200) + " | " + " ".join(["mot"] * 200) + " | fin"
+    assert all(len(chunk) <= MAX_CHUNK_CHARS for chunk in chunk_text(text))
+
+
+def test_an_english_voice_reads_a_span_with_a_full_stop_as_phonemes():
+    class VC:
+        engine_params = {"tokenizer_path": str(BASE), "tokenizer_name": "english_phoneme", "lang": "en-US"}
+        lang_code = "en-US"
+
+    adapter = MagpieAdapter()
+    adapter.configure(VC())
+    (ids,) = adapter.encode_text("Say |h ə . ˈ l o ʊ| now.", None, None)
+    symbols = adapter.tokenizer.symbol_map("english_phoneme")
     span = [symbols[c] for c in "hə.ˈloʊ"]
     assert any(ids[i:i + len(span)] == span for i in range(len(ids)))
 

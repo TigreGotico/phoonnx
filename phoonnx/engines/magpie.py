@@ -79,10 +79,10 @@ N_SPECIAL_TOKENS = 8
 
 MAX_CHUNK_CHARS = 200
 
-#: A ``|...|`` span, which NeMo's IPA sub-tokenizers read as phonemes, unchanged.
-PHONEME_SPAN = re.compile(r"\|[^|]*\|")
-#: Each span stands as one private-use character while the text is split.
-_SPAN_MARK = 0xF0000
+#: The units of a text for a whitespace cut when ``|...|`` spans are phonemes: a run of
+#: spans and other characters with no white space between them, where a span can hold
+#: white space. NeMo's IPA sub-tokenizers read such a span unchanged.
+SPAN_WORD = re.compile(r"(?:\|[^|]*\||[^\s|]+|\|)+")
 
 
 def _softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:
@@ -91,27 +91,33 @@ def _softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:
     return e / np.sum(e, axis=axis, keepdims=True)
 
 
-def chunk_text(text: str, max_len: int = MAX_CHUNK_CHARS) -> List[str]:
+def chunk_text(text: str, max_len: int = MAX_CHUNK_CHARS, spans: bool = False) -> List[str]:
     """Split text into pieces short enough for one autoregressive pass.
 
     Magpie drifts on long inputs: the attention prior only tracks one text position at a
     time, and ``max_decoder_steps`` caps a pass at a few seconds of audio. Sentences are
-    the natural unit, and oversized sentences are cut on whitespace. A ``|...|`` phoneme
-    span is never cut, even when it holds a full stop or a space.
+    the natural unit, and oversized sentences are cut on whitespace.
+
+    With ``spans``, for an IPA sub-tokenizer, a ``|...|`` phoneme span is never cut: a
+    sentence that ends inside a span joins the next one, and the whitespace cut keeps a
+    span whole. A span longer than ``max_len`` is a chunk of its own.
     """
-    spans = PHONEME_SPAN.findall(text)
-    text = PHONEME_SPAN.sub(lambda m, n=iter(range(len(spans))): chr(_SPAN_MARK + next(n)), text)
-    restore = {_SPAN_MARK + i: span for i, span in enumerate(spans)}
-    chunks: List[str] = []
+    sentences: List[str] = []
     for sentence in sentence_tokenize(text):
         sentence = sentence.strip()
         if not sentence:
             continue
+        if spans and sentences and sentences[-1].count("|") % 2:
+            sentences[-1] += " " + sentence
+        else:
+            sentences.append(sentence)
+    chunks: List[str] = []
+    for sentence in sentences:
         if len(sentence) <= max_len:
             chunks.append(sentence)
             continue
         current = ""
-        for word in sentence.split():
+        for word in (SPAN_WORD.findall(sentence) if spans else sentence.split()):
             if current and len(current) + len(word) + 1 > max_len:
                 chunks.append(current)
                 current = word
@@ -119,8 +125,7 @@ def chunk_text(text: str, max_len: int = MAX_CHUNK_CHARS) -> List[str]:
                 current = f"{current} {word}".strip()
         if current:
             chunks.append(current)
-    chunks = chunks or ([text.strip()] if text.strip() else [])
-    return [chunk.translate(restore) for chunk in chunks]
+    return chunks or ([text.strip()] if text.strip() else [])
 
 
 class MagpieTokenizer:
@@ -417,7 +422,8 @@ class MagpieAdapter(BaseOnnxAdapter):
                 or getattr(getattr(voice, "config", None), "lang_code", None)
                 or self._lang)
         name = self.sub_tokenizer_name(lang)
-        return [self.tokenizer.encode(chunk, lang, name) for chunk in chunk_text(text)]
+        spans = self.tokenizer.kinds.get(name, {}).get("kind") == "IPATokenizer"
+        return [self.tokenizer.encode(chunk, lang, name) for chunk in chunk_text(text, spans=spans)]
 
     # ------------------------------------------------------------------
     # Sampling
