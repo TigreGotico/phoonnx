@@ -296,7 +296,11 @@ class VitsTrainingEngine(BaseTrainingEngine):
                 ckpt_single = VitsModel.load_from_checkpoint(
                     checkpoint_path, dataset=None
                 )
+            if model.model_g.enc_p.input_layer is None and ckpt_single.model_g.enc_p.input_layer is not None:
+                ckpt_single.model_g.enc_p.bake_input()
             g_dict = ckpt_single.model_g.state_dict()
+            self._drop_input_layer(g_dict, model.model_g.state_dict(), ckpt_single.hparams, model.hparams,
+                                   discard_encoder, prefix="enc_p.input_layer.")
 
             # Strip speaker-conditional layers so they stay randomly init'd
             for key in list(g_dict.keys()):
@@ -325,7 +329,8 @@ class VitsTrainingEngine(BaseTrainingEngine):
             ckpt.model_g.enc_p.bake_input()
         saved_state_dict = ckpt.state_dict()
         model_state = model.state_dict()
-        self._drop_input_layer(saved_state_dict, model_state, ckpt.hparams, model.hparams, discard_encoder)
+        self._drop_input_layer(saved_state_dict, model_state, ckpt.hparams, model.hparams, discard_encoder,
+                               prefix="model_g.enc_p.input_layer.")
 
         enc_key = "model_g.enc_p.emb.weight"
         # a feature input layer has no id embedding: the saved one is not loaded
@@ -353,14 +358,13 @@ class VitsTrainingEngine(BaseTrainingEngine):
 
     @staticmethod
     def _drop_input_layer(saved_state_dict: Dict[str, Any], model_state: Dict[str, Any],
-                          saved_hparams: Any, hparams: Any, discard_encoder: bool) -> None:
+                          saved_hparams: Any, hparams: Any, discard_encoder: bool, prefix: str) -> None:
         """Leave out the saved feature input layer weights that do not fit this model.
 
         The projection fits when the feature names are the same. The per-id, per-base
         and per-mark tables fit only when the symbols are the same, because their rows
         follow the symbols. ``--discard-encoder`` leaves out the whole layer.
         """
-        prefix = "model_g.enc_p.input_layer."
         saved_features = saved_hparams.get("input_features") or {}
         features = hparams.get("input_features") or {}
         same_names = saved_features.get("feature_names") == features.get("feature_names")

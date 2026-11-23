@@ -353,6 +353,38 @@ class TestCheckpoints(unittest.TestCase):
         for key in ("model_g.enc_p.input_layer.base.weight", "model_g.enc_p.input_layer.marks.weight"):
             self.assertTrue(torch.equal(state[key], built[key]), key)
 
+    def test_other_feature_names_drop_the_projection(self):
+        from phoonnx_train.engines import get_engine
+        source = _feature_model(seed=1)
+        model = _feature_model(seed=2, feature_names=["f3", "f2", "f1"])
+        built = {k: v.clone() for k, v in model.state_dict().items() if "input_layer" in k}
+        with TemporaryDirectory() as tmp:
+            get_engine("vits").load_checkpoint(model, _save(source, Path(tmp) / "f.ckpt"))
+        state, saved = model.state_dict(), source.state_dict()
+        for key in ("model_g.enc_p.input_layer.proj.weight", "model_g.enc_p.input_layer.proj.bias"):
+            self.assertTrue(torch.equal(state[key], built[key]), key)
+        key = "model_g.enc_p.input_layer.residual.weight"
+        self.assertTrue(torch.equal(state[key], saved[key]))
+
+    def test_a_single_speaker_conversion_drops_tables_of_other_symbols(self):
+        from phoonnx_train.engines import get_engine
+        source = _feature_model("composition", seed=1)
+        renamed = {str(i): {"symbol": "z" if s == "a" else s, "vector": VECTORS.get(i)} for s, i in MAP.items()}
+        torch.manual_seed(2)
+        model = VitsModel(dataset=None, num_symbols=NUM_SYMBOLS, num_speakers=2, input_layer="composition",
+                          input_features=_features(vectors=renamed), **TINY)
+        for p in model.model_g.enc_p.input_layer.parameters():
+            torch.nn.init.normal_(p)
+        built = {k: v.clone() for k, v in model.state_dict().items() if "input_layer" in k}
+        with TemporaryDirectory() as tmp:
+            get_engine("vits").load_checkpoint(model, _save(source, Path(tmp) / "f.ckpt"),
+                                               resume_from_single_speaker_checkpoint=True)
+        state, saved = model.state_dict(), source.state_dict()
+        for key in ("model_g.enc_p.input_layer.base.weight", "model_g.enc_p.input_layer.marks.weight"):
+            self.assertTrue(torch.equal(state[key], built[key]), key)
+        key = "model_g.enc_p.input_layer.proj.weight"
+        self.assertTrue(torch.equal(state[key], saved[key]))
+
     def test_a_config_without_a_map_is_refused(self):
         from phoonnx_train import train
         with TemporaryDirectory() as tmp:

@@ -195,7 +195,8 @@ class VitsModel(pl.LightningModule):
                 self.hparams.input_layer, self.hparams.input_features):
             raise ValueError(
                 "the checkpoint was trained with another text-encoder input layer or feature table; "
-                "resume with the same --input-layer and --input-features, or fine-tune from it instead")
+                "resume with the same --input-layer and --input-features, or warm-start from it with "
+                "--discard-encoder, which keeps every weight but the text-encoder input")
         # Restore the random state first, so the shuffle sequence continues from
         # where the run left off. A checkpoint written before this was recorded
         # carries no rng_state and resumes as it always did.
