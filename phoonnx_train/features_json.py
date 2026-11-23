@@ -49,7 +49,7 @@ NON_PHONE_SYMBOLS: Dict[str, str] = {
     "_": "pad",
     "^": "BOS",
     "$": "EOS",
-    "|": "minor pause",
+    "|": "null by default; rule it a pause with --pause |",
 }
 #: Unicode categories that are never phones: punctuation with no prosody row,
 #: and digits.
@@ -123,14 +123,17 @@ def tone_block(symbol: str) -> Optional[List[float]]:
 
 def split_tone_marks(symbol: str) -> Optional[Tuple[str, str]]:
     """The base and the tone letters of a phone written with IPA tone diacritics
-    (``á`` is ``a`` and ``˦``), or None when *symbol* has no tone diacritic.
-    phonematcher's diacritic table gives the tone letters of each mark.
+    (``á`` is ``a`` and ``˦``), or None when *symbol* has no tone diacritic or
+    its base is neither a vowel nor a syllabic consonant, as phonematcher's
+    ``is_vowel_phone`` reads it (``ḿ̩`` is ``m̩`` and ``˦``; ``ś`` is not ``s``
+    with a tone). phonematcher's diacritic table gives the tone letters of each mark.
     """
+    from phonematcher.features import is_vowel_phone
     from phonematcher.tone import DIACRITIC_TONES
     decomposed = unicodedata.normalize("NFD", symbol)
     letters = "".join(DIACRITIC_TONES.get(ch, "") for ch in decomposed)
     base = unicodedata.normalize("NFC", "".join(ch for ch in decomposed if ch not in DIACRITIC_TONES))
-    if not letters or not base:
+    if not letters or not base or not is_vowel_phone(base):
         return None
     return base, letters
 
@@ -200,7 +203,8 @@ def build_features(phoneme_id_map: dict, source: str,
                     vector = [_TERNARY[v] for v in vectorize(phone)] + [0] * len(PROSODY) + tone
                 except ValueError as e:
                     if source == "orthography2ipa" and TIE_BARS & set(symbol):
-                        e = "orthography2ipa feats.py does not read tie bars; use --source phonematcher"
+                        e = ("orthography2ipa feats.py does not read tie bars; a tied affricate or "
+                             "double articulation reads with --source phonematcher")
                     unread.append(f"  id {i} {symbol!r} ({' '.join(f'U+{ord(c):04X}' for c in symbol)}): {e}")
                     continue
         if vector is None:

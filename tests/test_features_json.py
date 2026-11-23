@@ -243,7 +243,8 @@ def test_orthography2ipa_feature_names_in_feats_order(tmp_path):
 def test_tone_points_are_exact_json_numbers(tmp_path, source):
     _, table = run(tmp_path, {**TINY_MAP, "˥": [4], "˦": [5], "˧˦": [6]}, source)
     raw = (tmp_path / "features.json").read_text(encoding="utf-8")
-    assert '1.0' not in raw and '0.0' not in raw
+    vectors = json.dumps(json.loads(raw)["vectors"])
+    assert "1.0" not in vectors and "0.0" not in vectors
     points = {k: table["vectors"][k]["vector"][-4:] for k in ("4", "5", "6")}
     assert points == {"4": [1, 1, 1, 1], "5": [1, 0.5, 0.5, 0.5], "6": [1, 0, 0.25, 0.5]}
     assert [type(v) for v in points["4"]] == [int] * 4
@@ -311,12 +312,13 @@ def test_bad_flag_value_writes_nothing(tmp_path, args):
     assert "ids in" not in result.output
 
 
-@pytest.mark.parametrize("tied", ["d͡ʒ", "t͡ʃ"])
+@pytest.mark.parametrize("tied", ["d͡ʒ", "t͡ʃ", "k\u035cp"])
 def test_orthography2ipa_refuses_tie_bars_with_advice(tmp_path, tied):
     result, table = run(tmp_path, {**TINY_MAP, tied: [4]}, "orthography2ipa")
     assert result.exit_code != 0
     assert table is None
-    assert "orthography2ipa feats.py does not read tie bars; use --source phonematcher" in result.output
+    assert ("orthography2ipa feats.py does not read tie bars; a tied affricate or "
+            "double articulation reads with --source phonematcher") in result.output.replace("\n", " ")
     (tmp_path / "pm").mkdir()
     result, table = run(tmp_path / "pm", {**TINY_MAP, tied: [4]}, "phonematcher")
     assert result.exit_code == 0, result.output
@@ -336,3 +338,36 @@ def test_merged_segments_glottalised_and_diphthong(tmp_path):
     assert table is None
     assert "id 4 'a͡i' (U+0061 U+0361 U+0069)" in result.output
     assert "a diphthong is two segments" in result.output
+
+
+def test_orthography2ipa_other_refusal_keeps_its_message(tmp_path):
+    result, table = run(tmp_path, {**TINY_MAP, "kʰ": [4]}, "orthography2ipa")
+    assert result.exit_code != 0
+    assert table is None
+    assert "Unrecognized phone 'ʰ'" in result.output
+    assert "tie bars" not in result.output
+
+
+@pytest.mark.parametrize("symbol", ["ś", "ć", "ʃ\u0301", "t\u0302", "s\u0300", "ḿ", "ń", "ǹ"])
+def test_tone_mark_on_a_non_syllabic_consonant_is_refused(tmp_path, symbol):
+    result, table = run(tmp_path, {**TINY_MAP, symbol: [4]}, "phonematcher")
+    assert result.exit_code != 0
+    assert table is None
+    assert f"id 4 {symbol!r}" in result.output
+
+
+def test_tone_mark_on_a_syllabic_consonant(tmp_path):
+    result, table = run(tmp_path, {**TINY_MAP, "m\u0329\u0301": [4]}, "phonematcher")
+    assert result.exit_code == 0, result.output
+    vector = table["vectors"]["4"]["vector"]
+    assert vector[:-11] == ternary(phonematcher.vectorize_phones("m\u0329"))
+    # syllabic +, sonorant +, consonantal +
+    assert vector[:3] == [1, 1, 1]
+    assert vector[-11:] == NO_PROSODY + [1, 0.5, 0.5, 0.5]
+
+
+def test_bar_reason_says_null_by_default(tmp_path):
+    result, table = run(tmp_path, {**TINY_MAP, "|": [4]}, "phonematcher")
+    assert result.exit_code == 0, result.output
+    assert table["vectors"]["4"]["vector"] is None
+    assert "4 '|' null by default; rule it a pause with --pause |" in result.output
