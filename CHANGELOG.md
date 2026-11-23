@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.130.6a1](https://github.com/TigreGotico/phoonnx/tree/1.130.6a1) (2026-11-22)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.5a2...1.130.6a1)
+
+**Merged pull requests:**
+
+- fix\(deps\): raise the scriptconv floor to the sc2 revision [\#955](https://github.com/TigreGotico/phoonnx/pull/955) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.130.5a2](https://github.com/TigreGotico/phoonnx/tree/1.130.5a2) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.5a1...1.130.5a2)
