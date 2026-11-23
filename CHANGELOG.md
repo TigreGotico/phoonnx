@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.133.0a1](https://github.com/TigreGotico/phoonnx/tree/1.133.0a1) (2026-11-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.132.0a1...1.133.0a1)
+
+**Merged pull requests:**
+
+- feat\(train\): segment phoneme map for feature-input training [\#976](https://github.com/TigreGotico/phoonnx/pull/976) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.132.0a1](https://github.com/TigreGotico/phoonnx/tree/1.132.0a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.131.1a2...1.132.0a1)
@@ -371,17 +379,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.5a1...1.125.6a1)
 
-**Merged pull requests:**
-
-- fix\(ssml\): audit against SSML 1.1: namespaces, entities, durations, marks at their offsets, no clicks [\#876](https://github.com/TigreGotico/phoonnx/pull/876) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.125.5a1](https://github.com/TigreGotico/phoonnx/tree/1.125.5a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.4a1...1.125.5a1)
-
-**Merged pull requests:**
-
-- fix\(ssml\): a quiet breathy whisper, and a breath that is not a machine [\#875](https://github.com/TigreGotico/phoonnx/pull/875) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.4a1](https://github.com/TigreGotico/phoonnx/tree/1.125.4a1) (2026-11-22)
 
