@@ -902,7 +902,7 @@ def not_run_against_phoonnx(entry):
     language = entry["lang"].split("-")[0]
     return entry["engine"] in card_examples.REFUSED_ENGINES or (
         entry["engine"] == "chatterbox" and entry["voice_id"].split("/")[1] in ("multilingual", "lahgtna")
-        and language in ("ar", "he", "ja", "ru", "zh"))
+        and (language in ("ar", "he", "ja", "ru", "zh") or card_examples._is_arabic(entry["lang"])))
 
 
 @pytest.mark.parametrize("entry", INDEX_ENTRIES, ids=[entry["voice_id"] for entry in INDEX_ENTRIES])
@@ -929,6 +929,16 @@ def test_index_files_names_each_file_of_the_entry_in_the_repo_that_holds_it():
 
 
 # --- the text above the example: what prepares the text ------------------------------
+
+
+def test_a_chatterbox_voice_with_an_arabic_dialect_tag_gets_no_example():
+    # phoonnx diacritizes the text of every Arabic tag, a dialect tag such as arz-EG too
+    for entry in INDEX_ENTRIES:
+        if entry["engine"] == "chatterbox" and entry["voice_id"].startswith("chatterbox/lahgtna/"):
+            files = {key[:-4]: {"repo": "R", "url": url, "file": url.rsplit("/", 1)[1]}
+                     for key, url in entry.items() if key.endswith("_url") and url}
+            with pytest.raises(card_examples.UnsupportedExample, match="vowel marks"):
+                card_examples._chatterbox(dict(entry), files, repo_id="R", text="مرحبا")
 
 def test_the_rawi_model_is_the_one_phoonnx_diacritizes_with():
     import inspect

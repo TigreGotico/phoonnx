@@ -557,7 +557,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-EG",
+        "lang": "arz-EG",
+        "lang_tokens": {"arz-EG": "ms"},
         "requires_reference": true
     },
     "chatterbox/lahgtna/sa": {
@@ -574,7 +575,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-SA",
+        "lang": "afb-SA",
+        "lang_tokens": {"afb-SA": "sv"},
         "requires_reference": true
     },
     "chatterbox/lahgtna/mo": {
@@ -591,7 +593,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-MA",
+        "lang": "ary-MA",
+        "lang_tokens": {"ary-MA": "pl"},
         "requires_reference": true
     },
     "chatterbox/lahgtna/iq": {
@@ -608,7 +611,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-IQ",
+        "lang": "acm-IQ",
+        "lang_tokens": {"acm-IQ": "no"},
         "requires_reference": true
     },
     "chatterbox/lahgtna/lb": {
@@ -625,7 +629,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-LB",
+        "lang": "apc-LB",
+        "lang_tokens": {"apc-LB": "nl"},
         "requires_reference": true
     },
     "chatterbox/lahgtna/sd": {
@@ -642,7 +647,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-SD",
+        "lang": "apd-SD",
+        "lang_tokens": {"apd-SD": "pt"},
         "requires_reference": true
     },
     "chatterbox/lahgtna/ly": {
@@ -659,7 +665,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-LY",
+        "lang": "ayl-LY",
+        "lang_tokens": {"ayl-LY": "sw"},
         "requires_reference": true
     },
     "chatterbox/lahgtna/sy": {
@@ -676,7 +683,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-SY",
+        "lang": "apc-SY",
+        "lang_tokens": {"apc-SY": "ko"},
         "requires_reference": true
     },
     "chatterbox/lahgtna/tn": {
@@ -693,7 +701,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-TN",
+        "lang": "aeb-TN",
+        "lang_tokens": {"aeb-TN": "da"},
         "requires_reference": true
     },
     "chatterbox/lahgtna/ps": {
@@ -710,7 +719,8 @@
         "phoneme_type": "unicode",
         "alphabet": "unicode",
         "engine": "chatterbox",
-        "lang": "ar-PS",
+        "lang": "apc-PS",
+        "lang_tokens": {"apc-PS": "he"},
         "requires_reference": true
     }
 }

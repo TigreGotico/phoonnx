@@ -1968,6 +1968,9 @@ def _chatterbox(config: Dict[str, Any], files: Dict[str, Any], *, repo_id: str, 
     lang = config.get("lang") or ""
     language = lang.replace("_", "-").split("-")[0].lower()
     multilingual = variant in ("multilingual", "lahgtna")
+    if multilingual and _is_arabic(lang):
+        # an Arabic dialect tag (arz, apc, ...) gets the vowel marks too
+        raise UnsupportedExample(_CHATTERBOX_REFUSED["ar"])
     if multilingual and language in _CHATTERBOX_REFUSED:
         raise UnsupportedExample(_CHATTERBOX_REFUSED[language])
     for key in (*_CHATTERBOX_GRAPHS, "tokenizer_config"):

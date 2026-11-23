@@ -254,6 +254,14 @@ class TestChatterboxTokenizerLoading(unittest.TestCase):
         out_derived = tok.tokenize("hello", language="pt")
         self.assertEqual(out_literal, out_derived)
 
+    def test_mtl_tokenizer_reused_token_keeps_the_text_language_transform(self):
+        # lahgtna reads Syrian Arabic under [ko]: the Korean transform must not run on it
+        from unittest.mock import patch
+        tok = load_chatterbox_tokenizer(self.mtl_path)
+        with patch.dict("phoonnx.lang_preprocess.SCRIPT_TRANSFORMS", {"ko": lambda text: "zzz"}):
+            out = tok.tokenize("hello", language="apc-SY", lang_tokens={"apc-SY": "ko"})
+        self.assertEqual(out, list(tok._tok.encode("[ko]hello").ids))
+
 
 class TestPhonemeMapSeedAndUntrainedSymbols(unittest.TestCase):
     def test_seed_includes_default_ipa_table_when_requested(self):
