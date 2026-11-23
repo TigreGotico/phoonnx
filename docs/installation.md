@@ -170,6 +170,7 @@ code, for example `fi`, `hi`, `pl`, `tr` or `uk`. The full list is in `pyproject
 | `train-data` | Multi-format dataset loading for preprocessing (jsonl/parquet/HF repos with embedded audio bytes) |
 | `train-optispeech` | The OptiSpeech training engine |
 | `train-mosstts` | The MOSS-TTS-Nano training pipeline |
+| `train-features` | The feature sources (phonematcher, orthography2ipa) of the features.json generator |
 
 See the [Training quickstart](training/quickstart.md) for how these fit together.
 

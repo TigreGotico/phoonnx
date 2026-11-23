@@ -4,7 +4,8 @@ The file gives each id of a ``phoneme_id_map`` a distinctive-feature vector,
 in the ``phoonnx-input-features/1`` format that a feature-input text encoder
 reads. Seven prosody features for space, pauses, question, exclamation and
 stress, then four tone features, end every vector; punctuation of any script sets them by a rule over its
-Unicode name. Pad, BOS, EOS and other ids that are not phones get ``null``. A symbol that looks like a phone
+Unicode name. A phone written with IPA tone diacritics (``á``) gets the phone features of
+its base and the tone block of its marks. Pad, BOS, EOS and other ids that are not phones get ``null``. A symbol that looks like a phone
 and that the feature source cannot read stops the run, with the list.
 
 The feature source runs here, once, and never at training or synthesis time,
@@ -33,12 +34,12 @@ FORMAT = "phoonnx-input-features/1"
 #: stress rows take their symbols. A phone is 0 on all of them, and a prosody
 #: symbol is 0 on every phone feature.
 PROSODY: Dict[str, dict] = {
-    "pros_word_boundary": {"category": "Zs"},
+    "pros_word_boundary": {"category": "Zs", "symbols": ("\u1361",)},
     "pros_pause_minor": {"names": ("COMMA", "SEMICOLON", "COLON", "ANO TELEIA", "SECTION MARK")},
-    "pros_pause_major": {"names": ("FULL STOP", "QUESTION MARK", "EXCLAMATION MARK", "DANDA", "ELLIPSIS"),
-                         "not": ("INVERTED",)},
-    "pros_question": {"names": ("QUESTION MARK",)},
-    "pros_exclamation": {"names": ("EXCLAMATION MARK",)},
+    "pros_pause_major": {"names": ("FULL STOP", "QUESTION", "EXCLAMATION", "INTERROBANG", "DANDA", "ELLIPSIS"),
+                         "not": ("INVERTED",), "symbols": ("‖",)},
+    "pros_question": {"names": ("QUESTION", "INTERROBANG")},
+    "pros_exclamation": {"names": ("EXCLAMATION", "INTERROBANG")},
     "pros_stress_primary": {"symbols": ("ˈ",)},
     "pros_stress_secondary": {"symbols": ("ˌ",)},
 }
@@ -49,7 +50,6 @@ NON_PHONE_SYMBOLS: Dict[str, str] = {
     "^": "BOS",
     "$": "EOS",
     "|": "minor pause",
-    "‖": "major pause",
 }
 #: Unicode categories that are never phones: punctuation with no prosody row,
 #: and digits.
@@ -72,6 +72,9 @@ O2I_FEATURES: Tuple[str, ...] = (
 #: The tone features after the prosody block: a tone id has tone_is 1 and its
 #: pitch at the start, middle and end, each Chao level 1-5 as (level - 3) / 2.
 TONE = ("tone_is", "tone_start", "tone_mid", "tone_end")
+
+#: The IPA tie bars above and below, which join two symbols into one segment.
+TIE_BARS = {"\u0361", "\u035c"}
 
 _TERNARY = {True: 1, False: -1, None: 0}
 
@@ -116,6 +119,20 @@ def tone_block(symbol: str) -> Optional[List[float]]:
         return None
     points = [(level - 3) / 2 for level in _contour(tone_levels(letters))]
     return [1] + [int(p) if p.is_integer() else p for p in points]
+
+
+def split_tone_marks(symbol: str) -> Optional[Tuple[str, str]]:
+    """The base and the tone letters of a phone written with IPA tone diacritics
+    (``á`` is ``a`` and ``˦``), or None when *symbol* has no tone diacritic.
+    phonematcher's diacritic table gives the tone letters of each mark.
+    """
+    from phonematcher.tone import DIACRITIC_TONES
+    decomposed = unicodedata.normalize("NFD", symbol)
+    letters = "".join(DIACRITIC_TONES.get(ch, "") for ch in decomposed)
+    base = unicodedata.normalize("NFC", "".join(ch for ch in decomposed if ch not in DIACRITIC_TONES))
+    if not letters or not base:
+        return None
+    return base, letters
 
 
 def prosody_rows(symbol: str, pauses: Sequence[str] = ()) -> List[str]:
@@ -176,9 +193,14 @@ def build_features(phoneme_id_map: dict, source: str,
             if reason == "punctuation" and len(symbol) == 1:
                 reason = f"punctuation {unicodedata.name(symbol, '?')}, no prosody rule"
             if reason is None:
+                phone, tone = symbol, [0] * len(TONE)
+                if marked := split_tone_marks(symbol):
+                    phone, tone = marked[0], tone_block(marked[1])
                 try:
-                    vector = [_TERNARY[v] for v in vectorize(symbol)] + [0] * (len(PROSODY) + len(TONE))
+                    vector = [_TERNARY[v] for v in vectorize(phone)] + [0] * len(PROSODY) + tone
                 except ValueError as e:
+                    if source == "orthography2ipa" and TIE_BARS & set(symbol):
+                        e = "orthography2ipa feats.py does not read tie bars; use --source phonematcher"
                     unread.append(f"  id {i} {symbol!r} ({' '.join(f'U+{ord(c):04X}' for c in symbol)}): {e}")
                     continue
         if vector is None:
@@ -191,7 +213,8 @@ def build_features(phoneme_id_map: dict, source: str,
             + "\nFix the source, or pass --non-phone SYMBOL for a symbol that is not a phone.")
     table = {
         "format": FORMAT,
-        "source": {"name": source, "version": src_version},
+        "source": {"name": source, "version": src_version,
+                   "tone": {"name": "phonematcher", "version": version("phonematcher")}},
         "feature_names": list(names) + list(PROSODY) + list(TONE),
         "phoneme_id_map_sha256": map_sha256(phoneme_id_map),
         "vectors": vectors,
@@ -211,6 +234,12 @@ def build_features(phoneme_id_map: dict, source: str,
 def cli(config: str, source: str, out: str, non_phones: Tuple[str, ...],
         pauses: Tuple[str, ...]) -> None:
     """Write features.json for CONFIG, a voice config.json or a phoneme_id_map JSON."""
+    for flag, values in (("--non-phone", non_phones), ("--pause", pauses)):
+        if "" in values:
+            raise click.BadParameter("an empty symbol", param_hint=flag)
+    if long := [p for p in pauses if len(p) != 1]:
+        raise click.BadParameter(f"a pause is one character: {', '.join(map(repr, long))}",
+                                 param_hint="--pause")
     data = json.loads(Path(config).read_text(encoding="utf-8"))
     phoneme_id_map = data.get("phoneme_id_map", data)
     n_in = len(id_symbols(phoneme_id_map))
@@ -220,7 +249,6 @@ def cli(config: str, source: str, out: str, non_phones: Tuple[str, ...],
         + [f"{c} {r}" for c, r in NON_PHONE_CATEGORIES.items()]
         + [f"{s!r} --non-phone" for s in non_phones]))
     table, nulls, prosody = build_features(phoneme_id_map, source, non_phones, pauses)
-    Path(out).write_text(json.dumps(table, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     click.echo(f"prosody ids: {len(prosody)}")
     for i, symbol, rows in prosody:
         click.echo(f"  {i} {symbol!r} {unicodedata.name(symbol, '?')}: {' '.join(rows)}")
@@ -230,6 +258,9 @@ def cli(config: str, source: str, out: str, non_phones: Tuple[str, ...],
     click.echo(f"ids out: {len(table['vectors'])}")
     if len(table["vectors"]) != n_in:
         sys.exit(f"id count mismatch: {n_in} in, {len(table['vectors'])} out")
+    partial = Path(f"{out}.partial")
+    partial.write_text(json.dumps(table, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    partial.replace(out)
     click.echo(f"wrote {out} ({source} {table['source']['version']}, "
                f"{len(table['feature_names'])} features, {len(PROSODY)} prosody, {len(TONE)} tone)")
 
