@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.132.0a1](https://github.com/TigreGotico/phoonnx/tree/1.132.0a1) (2026-11-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.131.1a2...1.132.0a1)
+
+**Merged pull requests:**
+
+- feat: features.json generator for phoonnx\_train [\#972](https://github.com/TigreGotico/phoonnx/pull/972) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.131.1a2](https://github.com/TigreGotico/phoonnx/tree/1.131.1a2) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.131.1a1...1.131.1a2)
@@ -358,10 +366,6 @@
 ## [1.125.7a1](https://github.com/TigreGotico/phoonnx/tree/1.125.7a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.6a1...1.125.7a1)
-
-**Merged pull requests:**
-
-- fix: encode each MOSS-TTS chunk from its source text [\#874](https://github.com/TigreGotico/phoonnx/pull/874) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.6a1](https://github.com/TigreGotico/phoonnx/tree/1.125.6a1) (2026-11-22)
 
