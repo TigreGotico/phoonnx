@@ -1,8 +1,8 @@
 # Training reference
 
 <!-- agent-hint
-covers: every phoonnx_train.train flag, the training engines, their quality presets and the evaluation and vocoder tools
-source: phoonnx_train/train.py:main, phoonnx_train/engines/__init__.py:_register_builtins, phoonnx_train/engines/*.py:_QUALITY_PRESETS, phoonnx_train/eval_loop.py:main, phoonnx_train/train_vocos.py:main, phoonnx_train/export_vocos.py:main
+covers: every phoonnx_train.train flag, the training engines, their quality presets and the evaluation and vocoder tools, and the features.json generator
+source: phoonnx_train/train.py:main, phoonnx_train/engines/__init__.py:_register_builtins, phoonnx_train/engines/*.py:_QUALITY_PRESETS, phoonnx_train/eval_loop.py:main, phoonnx_train/train_vocos.py:main, phoonnx_train/export_vocos.py:main, phoonnx_train/features_json.py:cli
 generated: no
 verify: ! comm -3 <(grep '^| `--' docs/training/training.md | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | sort -u) <(python -m phoonnx_train.train --help | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | grep -vx -- --help | sort -u) | grep .; the eval_loop and Vocos flags and the preset tables: none, checked by reading phoonnx_train/eval_loop.py:main, phoonnx_train/train_vocos.py:main, phoonnx_train/export_vocos.py:main and phoonnx_train/engines/*.py:_QUALITY_PRESETS
 see: preprocess.md, export.md, engines/matcha.md, ../vocoders.md
@@ -386,6 +386,51 @@ dir / `speakeronnx` missing) selection falls back to UTMOS-only and logs a warni
   forever (ERROR logged); no infinite retry.
 - `stop.flag` — a single reason line. Its presence means "stop training"; the trainer's
   `StopFileCallback` reads the reason, logs it and stops at the next epoch boundary.
+
+## Writing a feature table (features.json)
+
+A feature-input text encoder reads one distinctive-feature vector per phone id from a `features.json` file. `phoonnx_train.features_json` writes that file from a voice `config.json` or from a bare `phoneme_id_map` JSON. Install its feature sources first:
+
+```bash
+pip install "phoonnx[train-features]"
+```
+
+The `--source` option selects the feature table: `phonematcher` (36 features) or `orthography2ipa` (the 23 features of its `feats.py`). Each value is 1 (plus), -1 (minus) or 0 (does not apply). The file also records the source version and the sha256 of the map, so a text encoder can refuse a table made for a different map.
+
+Seven prosody features end every vector. A space sets `pros_word_boundary`, and `ˈ` and `ˌ` set the two stress rows. A punctuation character sets rows by its Unicode name, so the rule reads every script:
+
+- COMMA, SEMICOLON, COLON, ANO TELEIA or SECTION MARK sets `pros_pause_minor`.
+- FULL STOP, QUESTION MARK, EXCLAMATION MARK, DANDA or ELLIPSIS sets `pros_pause_major`, unless the name also has INVERTED.
+- QUESTION MARK sets `pros_question`, and EXCLAMATION MARK sets `pros_exclamation`.
+
+So `?` and `؟` set a major pause and a question, and `¿` sets only a question. A phone is 0 on all seven rows, and a prosody symbol is 0 on every phone feature.
+
+Four tone features come after the prosody block. phonematcher's `is_tone` finds a tone id: Chao tone letters, contours and superscript numerals. A tone id has `tone_is` 1 and its pitch at the start, middle and end, where each Chao level 1 to 5 becomes (level − 3) / 2. So `˥` gives 1, 1, 1, `˧˥` gives 0, 0.5, 1, and `⁵¹` gives 1, 0, −1. The orthography2ipa source uses the same tone block, from phonematcher. A tone id is 0 on every phone and prosody feature, and every other id is 0 on the tone block.
+
+Pad, BOS, EOS, digits, pause bars and punctuation that matches no rule get `null`. The command prints each punctuation character with its name and rows, and each null id with its reason. When a symbol looks like a phone and the source cannot read it, the command writes nothing and lists each such symbol with its code points. Fix the source, or rule the symbol a non-phone with `--non-phone SYMBOL` (repeatable).
+
+U+00B7 MIDDLE DOT gets `null`, because a voice map uses it more often for a syllable boundary or the Catalan l·l than for a pause. NFC turns U+0387 GREEK ANO TELEIA into U+00B7. For a voice where it is a pause, `--pause SYMBOL` (repeatable) rules the symbol `pros_pause_minor`.
+
+```bash
+echo '{"_":[0],"a":[1],"ɐ̃":[2],"ˈ":[3]," ":[4],"?":[5],"،":[6],"§":[7],"˧˥":[8]}' > small_map.json
+python -m phoonnx_train.features_json small_map.json --source phonematcher --out small_features.json
+```
+
+```text
+ids in: 9
+non-phone allowlist: '_' pad, '^' BOS, '$' EOS, '|' minor pause, '‖' major pause, Pc punctuation, Pd punctuation, Ps punctuation, Pe punctuation, Pi punctuation, Pf punctuation, Po punctuation, Nd digit
+prosody ids: 3
+  3 'ˈ' MODIFIER LETTER VERTICAL LINE: pros_stress_primary
+  5 '?' QUESTION MARK: pros_pause_major pros_question
+  6 '،' ARABIC COMMA: pros_pause_minor
+null ids: 2
+  0 '_' pad
+  7 '§' punctuation SECTION SIGN, no prosody rule
+ids out: 9
+wrote small_features.json (phonematcher 2.3.10a3, 47 features, 7 prosody, 4 tone)
+```
+
+A codepoint-level map has a separate id for each combining mark and modifier letter, and the source reads none of them alone. Such a map is refused. Use a map with one id per whole segment.
 
 ## Training a Vocos vocoder
 

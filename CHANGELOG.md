@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.131.1a2](https://github.com/TigreGotico/phoonnx/tree/1.131.1a2) (2026-11-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.131.1a1...1.131.1a2)
+
+**Merged pull requests:**
+
+- test: patch the gruut processor cache with scriptconv's own class [\#975](https://github.com/TigreGotico/phoonnx/pull/975) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.131.1a1](https://github.com/TigreGotico/phoonnx/tree/1.131.1a1) (2026-11-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.131.0a2...1.131.1a1)
+
+**Merged pull requests:**
+
+- test: pin the BPE reader's added-token overlaps and normalized collisions [\#970](https://github.com/TigreGotico/phoonnx/pull/970) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.131.0a2](https://github.com/TigreGotico/phoonnx/tree/1.131.0a2) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.131.0a1...1.131.0a2)
@@ -375,17 +391,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.2a1...1.125.3a1)
 
-**Merged pull requests:**
-
-- fix: keep the source gap between packed sentences [\#872](https://github.com/TigreGotico/phoonnx/pull/872) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.125.2a1](https://github.com/TigreGotico/phoonnx/tree/1.125.2a1) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.1a2...1.125.2a1)
-
-**Merged pull requests:**
-
-- fix: rank bundled voices in index order when a cache exists [\#870](https://github.com/TigreGotico/phoonnx/pull/870) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.1a2](https://github.com/TigreGotico/phoonnx/tree/1.125.1a2) (2026-11-21)
 

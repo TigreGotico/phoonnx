@@ -34,6 +34,9 @@ class TestSegmentPhonemes(unittest.TestCase):
     def test_tie_bar_joins_three_symbols(self):
         self.assertEqual(segment_phonemes("k͡pʷa"), ["k͡pʷ", "a"])
 
+    def test_glottalized_and_labio_palatalized_symbols_are_one_segment(self):
+        self.assertEqual(segment_phonemes("tᶣaˀ"), ["tᶣ", "aˀ"])
+
     def test_a_leading_mark_is_kept(self):
         self.assertEqual(segment_phonemes("̃a"), ["̃", "a"])
 
@@ -77,6 +80,52 @@ class TestSegmentMapCli(unittest.TestCase):
             result = self._run(Path(tmp), "--segment-map", "--resume")
             self.assertNotEqual(result.exit_code, 0)
             self.assertIn("--resume cannot be combined", result.output)
+
+
+class TestSegmentMapInputs(unittest.TestCase):
+    def test_column_items_longer_than_a_code_point_are_not_lost(self):
+        """A column row of whole items is read whole: an item the map lacks stops the run."""
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a.jsonl"
+            _jsonl(src, [{"text": "tsaj ˈtʲaː", "audio": "a.wav", "phonemes": None},
+                         {"text": "x", "audio": "b.wav", "phonemes": "ts a j ˈtʲ aː"}])
+            result = _invoke(["-i", str(src), "-o", str(tmp / "out"), "-l", "pt", "--skip-audio",
+                              "--phoneme-type", "graphemes", "--alphabet", "ipa", "--segment-map",
+                              "--phonemes-column", "phonemes"])
+            self.assertNotEqual(result.exit_code, 0)
+            self.assertIn("ts", str(result.exception))
+            self.assertIn("ˈtʲ", str(result.exception))
+
+    def _first_run(self, tmp: Path) -> Path:
+        src = tmp / "a.jsonl"
+        _jsonl(src, [{"text": CLI_TEXT, "audio": "a.wav"}])
+        argv = ["-i", str(src), "--skip-audio", "-l", "pt", "--phoneme-type", "graphemes", "--alphabet", "ipa"]
+        self.assertEqual(_invoke([*argv, "-o", str(tmp / "first"), "--segment-map"]).exit_code, 0)
+        return src
+
+    def test_a_segment_voice_fine_tunes_without_the_flag(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = self._first_run(tmp)
+            with self.assertLogs("preprocess", "INFO") as logs:
+                result = _invoke(["-i", str(src), "--skip-audio", "-l", "pt", "--phoneme-type", "graphemes",
+                                  "--alphabet", "ipa", "-o", str(tmp / "tuned"), "--drop-extra-phonemes", "False",
+                                  "--prev-config", str(tmp / "first" / "config.json")])
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertFalse([line for line in logs.output if "never occur in the corpus" in line])
+            first, tuned = ((tmp / d / "dataset.jsonl").read_text(encoding="utf-8") for d in ("first", "tuned"))
+            self.assertEqual(json.loads(tuned)["phoneme_ids"], json.loads(first)["phoneme_ids"])
+
+    def test_segment_map_refuses_prev_config(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = self._first_run(tmp)
+            result = _invoke(["-i", str(src), "--skip-audio", "-l", "pt", "--phoneme-type", "graphemes",
+                              "--alphabet", "ipa", "-o", str(tmp / "tuned"), "--segment-map",
+                              "--prev-config", str(tmp / "first" / "config.json")])
+            self.assertNotEqual(result.exit_code, 0)
+            self.assertIn("--segment-map cannot be combined with --prev-config", result.output)
 
 
 if __name__ == "__main__":

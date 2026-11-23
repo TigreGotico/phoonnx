@@ -9,9 +9,11 @@ import unicodedata
 from typing import List
 
 #: Modifier letters that modify the symbol before them: aspiration, breathy
-#: voice, palatalization, labialization, velarization, pharyngealization, long,
-#: half-long, rhotic hook, ejective, nasal and lateral release.
-ATTACHING = frozenset("ʰʱʲʷˠˤːˑ˞ʼⁿˡ")
+#: voice, palatalization, labialization, labio-palatalization, velarization,
+#: pharyngealization, glottalization, long, half-long, rhotic hook, ejective,
+#: nasal and lateral release, and the spacing raised, lowered, advanced and
+#: retracted marks.
+ATTACHING = frozenset("ʰʱʲʷᶣˠˤˀːˑ˞ʼⁿˡ˔˕˖˗")
 #: Tie bars, which join the symbols before and after them into one segment.
 TIES = frozenset("͜͡")
 #: Chao tone letters. A run of them is one segment, the contour.
