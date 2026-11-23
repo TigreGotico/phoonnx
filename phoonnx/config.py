@@ -86,23 +86,17 @@ ENGINE_ALIASES = {"kokoro": Engine.STYLETTS2.value}
 from scriptconv.phonemizers.enums import Alphabet, Phonemizer as PhonemeType
 from scriptconv.frontend import Chunk, FrontendConfig, Stages, TextFrontend, spoken_normalizer
 
+TEXT_CASINGS: Dict[str, Callable[[str], str]] = {
+    "ignore": lambda s: s,
+    "lower": str.lower,
+    "upper": str.upper,
+    "casefold": str.casefold,
+}
+
+
 def get_text_casing(casing: str) -> Callable[[str], str]:
-    """
-    Returns a function to apply text casing based on a string name.
-
-    Args:
-        casing: The name of the casing function ('lower', 'upper', 'casefold', or 'ignore').
-
-    Returns:
-        A callable function (str) -> str.
-    """
-    if casing == "lower":
-        return str.lower
-    if casing == "upper":
-        return str.upper
-    if casing == "casefold":
-        return str.casefold
-    return lambda s: s
+    """The casing function named by ``casing`` (a key of ``TEXT_CASINGS``); any other name leaves the text as is."""
+    return TEXT_CASINGS.get(casing, TEXT_CASINGS["ignore"])
 
 
 @dataclass
