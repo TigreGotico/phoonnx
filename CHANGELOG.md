@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.130.9a1](https://github.com/TigreGotico/phoonnx/tree/1.130.9a1) (2026-11-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.8a1...1.130.9a1)
+
+**Merged pull requests:**
+
+- fix\(chatterbox\): drop sampled ids outside the speech codebook [\#964](https://github.com/TigreGotico/phoonnx/pull/964) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.130.8a1](https://github.com/TigreGotico/phoonnx/tree/1.130.8a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.7a1...1.130.8a1)
@@ -367,10 +375,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.1a1...1.125.1a2)
 
-**Merged pull requests:**
-
-- docs: README, docs index, navigation and agent hints [\#863](https://github.com/TigreGotico/phoonnx/pull/863) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.125.1a1](https://github.com/TigreGotico/phoonnx/tree/1.125.1a1) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.0a1...1.125.1a1)
@@ -378,10 +382,6 @@
 ## [1.125.0a1](https://github.com/TigreGotico/phoonnx/tree/1.125.0a1) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.6a1...1.125.0a1)
-
-**Merged pull requests:**
-
-- feat: add the Kabyle voices phoonnx\_kab-DZ\_miro\_o2i and phoonnx\_kab-DZ\_dii\_o2i [\#862](https://github.com/TigreGotico/phoonnx/pull/862) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.124.6a1](https://github.com/TigreGotico/phoonnx/tree/1.124.6a1) (2026-11-21)
 
