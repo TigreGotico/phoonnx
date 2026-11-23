@@ -170,7 +170,10 @@ def phonemize_worker(
 
                     # Put the processed utterance and its phonemes into the result queue
                     # The result is a tuple of (Utterance, set of unique phonemes in that utterance)
-                    symbols = segment_phonemes("".join(utt.phonemes)) if config.segment_map else utt.phonemes
+                    symbols = utt.phonemes
+                    if config.segment_map and all(len(p) == 1 for p in utt.phonemes):
+                        # the tokenizer reads a longer item whole, so only single code points are cut
+                        symbols = segment_phonemes("".join(utt.phonemes))
                     result_queue.put((utt, set(symbols)))
                 except Exception:
                     _LOGGER.exception("Failed to process utterance: %s", utt.audio_path)
@@ -651,6 +654,10 @@ def cli(
         _LOGGER.fatal("--single-speaker and --speaker-id cannot both be provided")
         raise click.Abort()
 
+    if segment_map and prev_config:
+        raise click.UsageError(
+            "--segment-map cannot be combined with --prev-config: the previous "
+            "config's phoneme map is kept, and its own tokenizer reads the corpus.")
     # the default seed table holds single code points, not segments
     corpus_only_map = corpus_only_map or segment_map
     if resume and corpus_only_map:
@@ -875,6 +882,9 @@ def cli(
 
         prev_num_symbols = cfg.get("num_symbols", MAX_PHONEMES)
         _LOGGER.info(f"Loaded phoneme map from previous config: '{prev_config}'")
+        # The previous voice's tokenizer reads the corpus as the fine-tuned voice
+        # will, whether its map holds code points or whole segments.
+        all_phonemes, precomputed_symbols, corpus_phonemes = tokenizer_reading(cfg, processed_utterances)
         all_phonemes.update(prev_phoneme_id_map.keys())
         final_phoneme_id_map = prev_phoneme_id_map
         _LOGGER.info("previous phoneme map contains %d phonemes.", len(final_phoneme_id_map))
@@ -1183,6 +1193,19 @@ def _write_metrics_sidecar(path: Path, recorded: Dict[str, Dict[str, float]]) ->
     tmp = Path(str(path) + ".tmp")
     pd.DataFrame(rows).to_parquet(tmp)
     tmp.rename(path)
+
+
+def tokenizer_reading(cfg: Dict[str, Any], utterances: List[Utterance]) -> Tuple[Set[str], Set[str], Set[str]]:
+    """How the tokenizer of *cfg* reads *utterances*: the symbols it cannot read
+    in phonemized rows and in dataset-column rows, and the map keys it uses."""
+    phonemized, from_column = TTSTokenizer.from_phoonnx_config(cfg), TTSTokenizer.from_phoonnx_config(cfg)
+    used: Set[int] = set()
+    for utt in utterances:
+        tokenizer = from_column if utt.phonemes_precomputed else phonemized
+        used.update(tokenizer.encode(utt.phonemes))
+    keys = {k for k, v in cfg["phoneme_id_map"].items()
+            if any(i in used for i in (v if isinstance(v, list) else [v]))}
+    return set(phonemized.not_found_characters), set(from_column.not_found_characters), keys
 
 
 def batched(iterable: Iterable[Any], n: int) -> Iterable[List[Any]]:
