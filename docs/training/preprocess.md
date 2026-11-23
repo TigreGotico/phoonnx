@@ -84,6 +84,7 @@ read the bytes explicitly and materialize audio on demand.
 | `-c, --prev-config FILE` | none | Reuse the `phoneme_id_map` from a previous `config.json` so the vocabulary is preserved |
 | `--drop-extra-phonemes BOOL` | `True` | When the data has symbols absent from the previous map, discard them (so fine-tuning can proceed). Set to `False` to instead raise on any such symbol |
 | `--corpus-only-map` | off | Build the phoneme map only from symbols the corpus actually contains, instead of seeding it with the full default IPA table. Symbols outside the map then fail at tokenization rather than mapping to untrained embeddings. Models built this way can only be fine-tuned from a compatible (subset) map |
+| `--segment-map` | off | Give each phoneme segment one id: a symbol with its combining marks, its attaching modifier letters (`ʲ`, `ː`, `ʰ`), and the symbol a tie bar joins to it. So `ɐ̃`, `tʲ`, `aː` and `d͡ʒ` are one id each. Stress marks, spaces and punctuation keep their own ids. A `features.json` input table needs this map, because it describes whole segments. Implies `--corpus-only-map`, so it cannot be combined with `--resume` |
 
 > `--drop-extra-phonemes` defaults to **`True`**. When fine-tuning with `--prev-config`, a
 > symbol that the previous map does not have is dropped with a warning unless you pass `--drop-extra-phonemes False`, which turns
