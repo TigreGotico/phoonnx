@@ -673,12 +673,15 @@ class Tokenizer:
         # special token is never split by the pre-tokenizer.
         added_tokens = spec.get("added_tokens", [])
         # A token with ``normalized`` set is matched in the normalized text, so
-        # its content goes through the normalizer too.
+        # its content goes through the normalizer too. When two of them
+        # normalize to the same text, the first one wins, as in tokenizers 0.23.
         self._raw_added = _AddedTokens(
             {t["content"]: t for t in added_tokens if not t.get("normalized")})
-        self._normalized_added = _AddedTokens(
-            {_normalize(t["content"], self._normalizer): t
-             for t in added_tokens if t.get("normalized")})
+        normalized: Dict[str, dict] = {}
+        for t in added_tokens:
+            if t.get("normalized"):
+                normalized.setdefault(_normalize(t["content"], self._normalizer), t)
+        self._normalized_added = _AddedTokens(normalized)
 
     @classmethod
     def from_file(cls, path: str) -> "Tokenizer":
