@@ -9,10 +9,15 @@ from phoonnx.engines.magpie import (
     BYTE_LANGUAGES,
     BYTE_TOKENIZER_PREFIX,
     CHAR_LANGUAGES,
+    IPA_PHONEMIZERS,
     MagpieAdapter,
     MagpieTokenizer,
     chunk_text,
 )
+
+#: The languages of the indexed voices: the byte and character ones, and the language of
+#: each IPA sub-tokenizer that scriptconv reads.
+INDEX_LANGUAGES = BYTE_LANGUAGES | CHAR_LANGUAGES | {lang for _, lang in IPA_PHONEMIZERS.values()}
 
 # A miniature stand-in for the real checkpoint: 2 codebooks over 2 stacked frames,
 # a codebook of 10 real tokens plus the 8 special ones, and 2 decoder layers.
@@ -421,6 +426,25 @@ def test_chunk_text_breaks_an_oversized_sentence_on_whitespace():
     assert len(chunks) > 1
     assert all(len(c) <= 40 for c in chunks)
     assert " ".join(chunks).split() == sentence.split()
+
+
+def test_chunk_text_keeps_a_phoneme_span_whole():
+    assert chunk_text("Say |h ə . ˈ l o ʊ| now. Then go.") == ["Say |h ə . ˈ l o ʊ| now.", "Then go."]
+
+
+def test_chunk_text_does_not_cut_a_phoneme_span_at_the_length_limit():
+    span = "|" + " ".join(["ə"] * 30) + "|"
+    chunks = chunk_text(" ".join(["word"] * 5) + " " + span + " end", max_len=40)
+    assert sum(chunk.count(span) for chunk in chunks) == 1
+
+
+def test_a_phoneme_span_reads_as_phonemes_after_chunking():
+    tokenizer = MagpieTokenizer(str(BASE))
+    text = "Say |h ə . ˈ l o ʊ| now."
+    (ids,) = [tokenizer.encode(chunk, "en", "english_phoneme") for chunk in chunk_text(text)]
+    symbols = tokenizer.symbol_map("english_phoneme")
+    span = [symbols[c] for c in "hə.ˈloʊ"]
+    assert any(ids[i:i + len(span)] == span for i in range(len(ids)))
 
 
 def test_chunk_text_of_blank_input_is_empty():
@@ -928,7 +952,7 @@ def test_voice_index_entries_are_consistent():
     for voice_id, entry in index.items():
         assert entry["voice_id"] == voice_id
         assert entry["engine"] == "magpie"
-        assert entry["lang"] in (BYTE_LANGUAGES | CHAR_LANGUAGES)
+        assert entry["lang"] in INDEX_LANGUAGES
         aux = entry["aux_model_urls"]
         for key in ("text_encoder_path", "cross_kv_path", "local_step_path",
                     "audio_embed_path", "lt_embed_path", "codec_decoder_path",
@@ -945,7 +969,7 @@ def test_voice_index_covers_every_speaker_and_language():
     speakers = {e["engine_options"]["speaker"] for e in index.values()}
     langs = {e["lang"] for e in index.values()}
     assert speakers == {"Aria", "Jason", "John", "Leo", "Sofia"}
-    assert langs == BYTE_LANGUAGES | CHAR_LANGUAGES
+    assert langs == INDEX_LANGUAGES
     assert len(index) == len(speakers) * len(langs)
 
 

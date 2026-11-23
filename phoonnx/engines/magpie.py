@@ -30,6 +30,7 @@ path, not a rounding difference. Both modes are supported and both match the mat
 NeMo setting exactly; see ``exact_decode`` in the engine params.
 """
 import json
+import re
 import unicodedata
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -78,6 +79,11 @@ N_SPECIAL_TOKENS = 8
 
 MAX_CHUNK_CHARS = 200
 
+#: A ``|...|`` span, which NeMo's IPA sub-tokenizers read as phonemes, unchanged.
+PHONEME_SPAN = re.compile(r"\|[^|]*\|")
+#: Each span stands as one private-use character while the text is split.
+_SPAN_MARK = 0xF0000
+
 
 def _softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:
     x = x - np.max(x, axis=axis, keepdims=True)
@@ -90,8 +96,12 @@ def chunk_text(text: str, max_len: int = MAX_CHUNK_CHARS) -> List[str]:
 
     Magpie drifts on long inputs: the attention prior only tracks one text position at a
     time, and ``max_decoder_steps`` caps a pass at a few seconds of audio. Sentences are
-    the natural unit, and oversized sentences are cut on whitespace.
+    the natural unit, and oversized sentences are cut on whitespace. A ``|...|`` phoneme
+    span is never cut, even when it holds a full stop or a space.
     """
+    spans = PHONEME_SPAN.findall(text)
+    text = PHONEME_SPAN.sub(lambda m, n=iter(range(len(spans))): chr(_SPAN_MARK + next(n)), text)
+    restore = {_SPAN_MARK + i: span for i, span in enumerate(spans)}
     chunks: List[str] = []
     for sentence in sentence_tokenize(text):
         sentence = sentence.strip()
@@ -109,7 +119,8 @@ def chunk_text(text: str, max_len: int = MAX_CHUNK_CHARS) -> List[str]:
                 current = f"{current} {word}".strip()
         if current:
             chunks.append(current)
-    return chunks or ([text.strip()] if text.strip() else [])
+    chunks = chunks or ([text.strip()] if text.strip() else [])
+    return [chunk.translate(restore) for chunk in chunks]
 
 
 class MagpieTokenizer:

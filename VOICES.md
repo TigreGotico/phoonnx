@@ -1,6 +1,6 @@
 ## Supported Voices
 
-**Total Voices:** 3254
+**Total Voices:** 3259
 **Total Languages:** 1822
 
 > ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)
@@ -877,6 +877,11 @@
 | `larynx/en-us-southern_english_male-glow_tts` | `en-US` | `glowtts` | `gruut` |
 | `llasa/HKUST/en/en_female_a` | `en-US` | `llasa` | `unicode` |
 | `llasa/HKUST/en/en_male_a` | `en-US` | `llasa` | `unicode` |
+| `magpie/Aria/en-US` | `en-US` | `magpie` | `unicode` |
+| `magpie/Jason/en-US` | `en-US` | `magpie` | `unicode` |
+| `magpie/John/en-US` | `en-US` | `magpie` | `unicode` |
+| `magpie/Leo/en-US` | `en-US` | `magpie` | `unicode` |
+| `magpie/Sofia/en-US` | `en-US` | `magpie` | `unicode` |
 | `mimic3/en_US/cmu-arctic_low` | `en-US` | `mimic3` | `gruut` |
 | `mimic3/en_US/hifi-tts_low` | `en-US` | `mimic3` | `gruut` |
 | `mimic3/en_US/ljspeech_low` | `en-US` | `mimic3` | `gruut` |
