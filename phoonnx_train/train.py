@@ -212,6 +212,8 @@ def main(
         if input_layer == "ids" or not input_features:
             raise click.UsageError("--input-features needs --input-layer residual or composition, "
                                    "and those layers need --input-features")
+        if "phoneme_id_map" not in dataset_config:
+            raise click.UsageError(f"--input-features needs a phoneme_id_map in {config_path}")
         extra["input_layer"] = input_layer
         extra["input_features"] = load_input_features(
             Path(input_features), dataset_config["phoneme_id_map"], num_symbols)

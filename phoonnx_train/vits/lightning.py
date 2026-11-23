@@ -189,6 +189,13 @@ class VitsModel(pl.LightningModule):
             }
 
     def on_load_checkpoint(self, checkpoint: dict) -> None:
+        # The feature table is not a weight, so a resume would read a changed one without a word.
+        saved = checkpoint.get("hyper_parameters", {})
+        if (saved.get("input_layer", "ids"), saved.get("input_features")) != (
+                self.hparams.input_layer, self.hparams.input_features):
+            raise ValueError(
+                "the checkpoint was trained with another text-encoder input layer or feature table; "
+                "resume with the same --input-layer and --input-features, or fine-tune from it instead")
         # Restore the random state first, so the shuffle sequence continues from
         # where the run left off. A checkpoint written before this was recorded
         # carries no rng_state and resumes as it always did.

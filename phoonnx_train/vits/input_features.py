@@ -13,13 +13,16 @@ is not a phone. Two input layers read it:
 Every learned table starts at zero. A phone that never occurs in training gets
 no gradient in its own rows, so it keeps the projection of its features, which
 places it near the trained phones that share them. An id with ``null`` features
-gets only the learned part.
+gets only the learned part. The learned part is scaled by the square root of
+the hidden size, as the id embedding is, so it learns at the speed of an id
+embedding.
 
 Export replaces either layer with a plain embedding table of the same values
 (:meth:`FeatureInput.table`), so an exported voice runs as any other.
 """
 import hashlib
 import json
+import math
 import unicodedata
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
@@ -30,6 +33,8 @@ from torch import nn
 from phoonnx_train.segments import ATTACHING, TIES
 
 FORMAT = "phoonnx-input-features/1"
+#: Combining marks that make a letter of their own in the IPA: ç is a fricative, not c with a mark.
+LETTER_MARKS = frozenset("\u0327")
 INPUT_LAYERS = ("ids", "residual", "composition")
 
 
@@ -82,13 +87,14 @@ def load_input_features(path: Path, phoneme_id_map: Mapping[str, Any], num_symbo
 def split_marks(symbol: str) -> Tuple[str, List[str]]:
     """The base of *symbol* and its marks, in canonical decomposition.
 
-    A mark is a combining mark other than a tie bar, or an attaching modifier
-    letter: ``ɐ̃`` gives ``ɐ`` and U+0303, ``tʲ`` gives ``t`` and ``ʲ``, and
-    ``d͡ʒ`` is a base with no marks. A symbol made only of marks is its own base.
+    A mark is a combining mark other than a tie bar or a cedilla, or an
+    attaching modifier letter: ``ɐ̃`` gives ``ɐ`` and U+0303, ``tʲ`` gives ``t``
+    and ``ʲ``, ``ç`` is a base, and ``d͡ʒ`` is a base with no marks. A symbol
+    made only of marks is its own base.
     """
     chars = unicodedata.normalize("NFD", symbol)
-    marks = [c for c in chars
-             if c in ATTACHING or (unicodedata.category(c) == "Mn" and c not in TIES)]
+    marks = [c for c in chars if c in ATTACHING or (
+        unicodedata.category(c) == "Mn" and c not in TIES and c not in LETTER_MARKS)]
     base = "".join(c for c in chars if c not in marks)
     return (base, marks) if base else (chars, [])
 
@@ -103,6 +109,10 @@ class FeatureInput(nn.Module):
         self.mode = mode
         features = torch.tensor(input_features["features"], dtype=torch.float32)
         self.register_buffer("features", features, persistent=False)
+        # a null id takes no projection, not even its bias
+        self.register_buffer("has_vector", torch.tensor(input_features["has_vector"], dtype=torch.float32)[:, None],
+                             persistent=False)
+        self.scale = math.sqrt(hidden_channels)
         self.proj = nn.Linear(features.size(1), hidden_channels)
         n_vocab = features.size(0)
         if mode == "residual":
@@ -124,15 +134,14 @@ class FeatureInput(nn.Module):
 
     def table(self) -> torch.Tensor:
         """The input vector of every id, ``[n_vocab, hidden]``."""
-        learned = (self.residual.weight if self.mode == "residual"
-                   else self.base(self.base_ids) + self.marks(self.mark_ids).sum(1))
-        return self.proj(self.features) + learned
+        return self(torch.arange(self.features.size(0), device=self.features.device))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.mode == "residual":
-            return self.proj(self.features[x]) + self.residual(x)
-        return (self.proj(self.features[x]) + self.base(self.base_ids[x])
-                + self.marks(self.mark_ids[x]).sum(-2))
+            learned = self.residual(x)
+        else:
+            learned = self.base(self.base_ids[x]) + self.marks(self.mark_ids[x]).sum(-2)
+        return self.proj(self.features[x]) * self.has_vector[x] + learned * self.scale
 
 
 def make_input_layer(input_layer: str, input_features: Optional[Dict[str, Any]],

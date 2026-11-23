@@ -205,8 +205,14 @@ class TextEncoder(nn.Module):
         if self.input_layer is None:
             return
         with torch.no_grad():
-            table = self.input_layer.table() / math.sqrt(self.hidden_channels)
-        self.emb = nn.Embedding.from_pretrained(table, freeze=False)
+            table = self.input_layer.table()
+            emb = nn.Embedding.from_pretrained(table / math.sqrt(self.hidden_channels), freeze=False)
+            ids = torch.arange(table.size(0), device=table.device)
+            baked = emb(ids) * math.sqrt(self.hidden_channels)
+            if not torch.allclose(baked, table, rtol=1e-5, atol=1e-5):
+                raise RuntimeError("the baked id table differs from the feature input layer by "
+                                   f"{(baked - table).abs().max().item():.3g}")
+        self.emb = emb
         self.input_layer = None
 
     def forward(self, x, x_lengths):
