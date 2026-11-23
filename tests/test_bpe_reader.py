@@ -555,6 +555,27 @@ class TestAddedTokenFlags(unittest.TestCase):
         self.assertNotIn(token, self._ids(raw, "<Mask>"))
         self.assertEqual(self._ids(normalized, "<Mask>"), [normalized.token_to_id("<MASK>")])
 
+    def test_two_normalized_tokens_with_one_form_take_the_last(self):
+        """tokenizers 1.0 keeps the last; 0.23 picks one at random on each load."""
+        path = os.path.join(FIXTURES, "tokenizer_bpe_qwen.json")
+        mine = Tokenizer(_flagged(path, {"normalized": True}, {"type": "Lowercase"}, ["<mask>", "<MASK>", "<Mask>"]))
+        last = mine.token_to_id("<Mask>")
+        self.assertEqual(self._ids(mine, "a<MASK>b"), self._ids(mine, "a") + [last] + self._ids(mine, "b"))
+
+    def test_an_rstrip_token_does_not_give_its_space_to_the_next_match(self):
+        path = os.path.join(FIXTURES, "tokenizer_bpe_qwen.json")
+        mine = Tokenizer(_flagged(path, {"rstrip": True}, tokens=[" y"]))
+        token = mine.token_to_id(" y")
+        self.assertEqual(self._ids(mine, " y y"), [token, token])
+        self.assertEqual(self._ids(mine, "a y y y"), self._ids(mine, "a") + [token] * 3)
+
+    def test_a_single_word_token_is_found_again_after_an_overlapping_match(self):
+        path = os.path.join(FIXTURES, "tokenizer_bpe_qwen.json")
+        spec = _flagged(path, {}, tokens=["ab", "b c"])
+        spec["added_tokens"][-2]["single_word"] = True
+        mine = Tokenizer(spec)
+        self.assertEqual(self._ids(mine, "ab cab c"), self._ids(mine, "ab c") * 2)
+
     @unittest.skipIf(ReferenceTokenizer is None, "the `tokenizers` package is not installed")
     def test_every_flag_encodes_as_the_reference_does(self):
         rng = random.Random(777)
