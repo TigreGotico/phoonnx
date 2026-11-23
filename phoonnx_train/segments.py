@@ -16,18 +16,20 @@ from typing import List
 ATTACHING = frozenset("ʰʱʲʷᶣˠˤˀːˑ˞ʼⁿˡ˔˕˖˗")
 #: Tie bars, which join the symbols before and after them into one segment.
 TIES = frozenset("͜͡")
-#: Tone letters with a level: Chao tone letters, the left-stem tone letters
-#: U+A712 to U+A716 and the tone numerals ¹ to ⁵. A run of them is one segment,
-#: the contour, so ``⁵¹`` and ``˥˩`` are one id each. The neutral-tone ⁰ has no
-#: level and stands alone.
-TONE_LETTERS = frozenset("˥˦˧˨˩\ua712\ua713\ua714\ua715\ua716¹²³⁴⁵")
+#: The three tone notations with levels: Chao tone letters, the left-stem tone
+#: letters U+A712 to U+A716, and the tone numerals ¹ to ⁵. A run in one notation
+#: is one segment, the contour, so ``˥˩`` and ``⁵¹`` are one id each. A change of
+#: notation starts a segment: ``˨˩˦꜔꜒`` is the IPA sandhi notation, an underlying
+#: 214 and then a surface 35. The neutral-tone ⁰ has no level and stands alone.
+TONE_NOTATIONS = (frozenset("˥˦˧˨˩"), frozenset("\ua712\ua713\ua714\ua715\ua716"), frozenset("¹²³⁴⁵"))
 
 
 def segment_phonemes(text: str) -> List[str]:
     """Cut *text* into segments that join back into it unchanged.
 
     A combining mark, an attaching modifier letter, and the symbol after a tie
-    bar join the segment before them. A run of tone letters is one segment.
+    bar join the segment before them. A run of tone letters in one notation is
+    one segment.
     Every other character, the stress marks, spaces and punctuation included,
     starts a segment of its own.
     """
@@ -38,7 +40,7 @@ def segment_phonemes(text: str) -> List[str]:
             after_tie
             or unicodedata.category(char) == "Mn"
             or char in ATTACHING
-            or (char in TONE_LETTERS and segments[-1][-1] in TONE_LETTERS))
+            or any(char in notation and segments[-1][-1] in notation for notation in TONE_NOTATIONS))
         if joins:
             segments[-1] += char
         else:
