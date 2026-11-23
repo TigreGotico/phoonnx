@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.130.7a1](https://github.com/TigreGotico/phoonnx/tree/1.130.7a1) (2026-11-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.6a2...1.130.7a1)
+
+**Merged pull requests:**
+
+- fix\(deps\): raise scriptconv to 0.0.4a150 and scriptconv-copyleft to 0.3.1a1 [\#961](https://github.com/TigreGotico/phoonnx/pull/961) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.130.6a2](https://github.com/TigreGotico/phoonnx/tree/1.130.6a2) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.6a1...1.130.6a2)
@@ -382,10 +390,6 @@
 ## [1.124.4a1](https://github.com/TigreGotico/phoonnx/tree/1.124.4a1) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.3a2...1.124.4a1)
-
-**Merged pull requests:**
-
-- fix: decode reference WAVs by sample width without soundfile [\#858](https://github.com/TigreGotico/phoonnx/pull/858) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.124.3a2](https://github.com/TigreGotico/phoonnx/tree/1.124.3a2) (2026-11-21)
 
