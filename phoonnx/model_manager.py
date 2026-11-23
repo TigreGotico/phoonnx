@@ -808,8 +808,8 @@ class TTSModelInfo:
     engine_options: Optional[Dict[str, Any]] = field(default_factory=dict)
 
     # Optional BCP47 -> language-token map: how this voice's lang_code becomes the model's
-    # language token. Dialect models (e.g. lahgtna) repurpose the base tokens, so a literal
-    # token like "eg" is mapped here rather than derived from the (normalized) lang code.
+    # language token. A dialect model can reuse another language's token (lahgtna reads
+    # Egyptian Arabic under "ms"), so the token is mapped here rather than derived from the lang code.
     lang_tokens: Optional[Dict[str, str]] = None
 
     # user-friendly name for UIs/CLIs; may contain "{engine}"/"{phoneme_type}"
