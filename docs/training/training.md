@@ -448,15 +448,15 @@ python -m phoonnx_train.train --dataset-dir train_out --default-root-dir train_o
 | `residual` | A linear projection of its features, plus one learned vector per id |
 | `composition` | A linear projection of its features, plus a learned vector for its base symbol and one for each of its marks. `ɐ̃` is `ɐ` plus U+0303, and `ç` is a base of its own |
 
-Every learned table starts at zero. A phone that never occurs in training keeps the projection of its features, so it lands near the trained phones that share them. A `null` id, such as pad, stress or a pause, gets only its learned part. The learned part is scaled as the id embedding is.
+Every learned table starts at zero. A phone that never occurs in training keeps the projection of its features, so it lands near the trained phones that share them. A `null` id, such as pad, BOS, EOS or the `|` and `‖` group marks, gets only its learned part. The learned part is scaled as the id embedding is.
 
 The table must come from the dataset's own map. Training stops when the table's `phoneme_id_map_sha256` differs from the hash of the map in `config.json`, when the map has an id that the table does not list, or when a vector has the wrong length.
 
 Checkpoints and export follow these rules:
 
 - The checkpoint keeps the table. A resume with another table or another input layer stops with a message.
-- A warm start from an id checkpoint loads every weight except the input layer. The feature layer starts as built.
-- From a feature checkpoint, an id model loads the layer as its id table. A feature model loads the projection when the feature names match. It loads the per-id, base and mark tables only when the symbols match. `--discard-encoder` keeps the whole layer as built.
+- A feature model warm-starts from an id checkpoint with `--discard-encoder`. Every weight except the text-encoder input loads, and the feature layer starts as built.
+- An id model reads a feature checkpoint through `--resume-from-single-speaker-checkpoint` or a weights-only file, and then loads the layer as its id table. A Lightning checkpoint given to `--resume-from-checkpoint` resumes the run, so the input layer must match. A feature model loads the projection when the feature names match. It loads the per-id, base and mark tables only when the symbols match. `--discard-encoder` keeps the whole layer as built.
 - Export turns the layer into a plain id embedding with the same values and checks that the two match. The exported voice runs as any VITS voice, and the runtime needs no feature table.
 
 ## Training a Vocos vocoder

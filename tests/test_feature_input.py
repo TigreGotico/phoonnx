@@ -385,6 +385,18 @@ class TestCheckpoints(unittest.TestCase):
         key = "model_g.enc_p.input_layer.proj.weight"
         self.assertTrue(torch.equal(state[key], saved[key]))
 
+    def test_a_single_speaker_conversion_bakes_a_feature_checkpoint_for_an_id_model(self):
+        from phoonnx_train.engines import get_engine
+        source = _feature_model("composition").eval()
+        with torch.no_grad():
+            table = source.model_g.enc_p.input_layer.table()
+        model = VitsModel(dataset=None, num_symbols=NUM_SYMBOLS, num_speakers=2, **TINY)
+        with TemporaryDirectory() as tmp:
+            get_engine("vits").load_checkpoint(model, _save(source, Path(tmp) / "f.ckpt"),
+                                               resume_from_single_speaker_checkpoint=True)
+        loaded = model.model_g.enc_p.emb.weight * (TINY["hidden_channels"] ** 0.5)
+        self.assertTrue(torch.allclose(loaded, table, atol=1e-5))
+
     def test_a_config_without_a_map_is_refused(self):
         from phoonnx_train import train
         with TemporaryDirectory() as tmp:

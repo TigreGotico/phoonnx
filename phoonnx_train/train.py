@@ -94,11 +94,11 @@ def _validate_engine(ctx, param, value):
 @click.option('--discard-encoder', is_flag=True, default=False)
 @click.option('--input-layer', type=click.Choice(INPUT_LAYERS), default='ids',
               help='VITS text-encoder input: an embedding per id (default), or a projection '
-                   'of --input-features plus a learned vector per id (residual) or per base '
+                   'of the feature table plus a learned vector per id (residual) or per base '
                    'symbol and mark (composition)')
 @click.option('--input-features', type=click.Path(exists=True, dir_okay=False), default=None,
-              help='features.json table for --input-layer residual or composition; it must be '
-                   'made from the dataset config\'s phoneme_id_map')
+              help='features.json table for the residual or composition input layer; it must '
+                   'be made from the dataset config\'s phoneme_id_map')
 # In-training evaluation / early stopping (all opt-in; default = off)
 @click.option('--eval-sentences', type=click.Path(exists=True, dir_okay=False), default=None,
               help='Held-out sentences file (one per line); enables in-training scoring')
