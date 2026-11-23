@@ -9,6 +9,7 @@ from torch.nn.utils import remove_weight_norm, spectral_norm, weight_norm
 
 from . import attentions, commons, modules, monotonic_align
 from .commons import get_padding, init_weights
+from .input_features import make_input_layer
 
 
 class StochasticDurationPredictor(nn.Module):
@@ -176,6 +177,7 @@ class TextEncoder(nn.Module):
         n_layers: int,
         kernel_size: int,
         p_dropout: float,
+        input_layer: typing.Optional[nn.Module] = None,
     ):
         super().__init__()
         self.n_vocab = n_vocab
@@ -187,16 +189,31 @@ class TextEncoder(nn.Module):
         self.kernel_size = kernel_size
         self.p_dropout = p_dropout
 
-        self.emb = nn.Embedding(n_vocab, hidden_channels)
-        nn.init.normal_(self.emb.weight, 0.0, hidden_channels**-0.5)
+        # a feature table replaces the id embedding; export bakes it back into one
+        self.input_layer = input_layer
+        if input_layer is None:
+            self.emb = nn.Embedding(n_vocab, hidden_channels)
+            nn.init.normal_(self.emb.weight, 0.0, hidden_channels**-0.5)
 
         self.encoder = attentions.Encoder(
             hidden_channels, filter_channels, n_heads, n_layers, kernel_size, p_dropout
         )
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
+    def bake_input(self) -> None:
+        """Replace a feature input layer with the id embedding that gives the same values."""
+        if self.input_layer is None:
+            return
+        with torch.no_grad():
+            table = self.input_layer.table() / math.sqrt(self.hidden_channels)
+        self.emb = nn.Embedding.from_pretrained(table, freeze=False)
+        self.input_layer = None
+
     def forward(self, x, x_lengths):
-        x = self.emb(x) * math.sqrt(self.hidden_channels)  # [b, t, h]
+        if self.input_layer is None:
+            x = self.emb(x) * math.sqrt(self.hidden_channels)  # [b, t, h]
+        else:
+            x = self.input_layer(x)
         x = torch.transpose(x, 1, -1)  # [b, h, t]
         x_mask = torch.unsqueeze(
             commons.sequence_mask(x_lengths, x.size(2)), 1
@@ -548,10 +565,19 @@ class SynthesizerTrn(nn.Module):
         n_langs: int = 0,
         external_speaker_embedding: bool = False,
         speaker_embedding_dim: int = 512,
+        input_layer: str = "ids",
+        input_features: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ):
         """
         Parameters
         ----------
+        input_layer : str
+            ``"ids"`` for the id embedding (default), or ``"residual"`` or
+            ``"composition"`` to build the text-encoder input from
+            ``input_features``, as :mod:`phoonnx_train.vits.input_features` describes.
+        input_features : dict, optional
+            A feature table read by
+            :func:`phoonnx_train.vits.input_features.load_input_features`.
         n_langs : int
             Number of languages for an additive language embedding, added on
             top of the speaker-conditioning vector ``g``. ``0`` disables it
@@ -603,6 +629,7 @@ class SynthesizerTrn(nn.Module):
             n_layers,
             kernel_size,
             p_dropout,
+            input_layer=make_input_layer(input_layer, input_features, hidden_channels),
         )
         self.dec = Generator(
             inter_channels,

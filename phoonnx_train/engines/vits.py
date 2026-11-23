@@ -113,6 +113,8 @@ class VitsTrainingEngine(BaseTrainingEngine):
         model_g.eval()
         with torch.no_grad():
             model_g.dec.remove_weight_norm()
+        # a feature input layer exports as the id table it computes
+        model_g.enc_p.bake_input()
 
         # Forward wrapper
         def infer_forward(
@@ -322,7 +324,8 @@ class VitsTrainingEngine(BaseTrainingEngine):
         model_state = model.state_dict()
 
         enc_key = "model_g.enc_p.emb.weight"
-        if enc_key in saved_state_dict:
+        # a feature input layer has no id embedding: the saved one is not loaded
+        if enc_key in saved_state_dict and enc_key in model_state:
             if saved_state_dict[enc_key].shape != model_state[enc_key].shape:
                 _LOG.warning(
                     "Encoder embedding size mismatch (%s vs %s) — "

@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pytorch_lightning as pl
 import torch
@@ -69,6 +69,10 @@ class VitsModel(pl.LightningModule):
         external_speaker_embedding: bool = False,
         speaker_embedding_dim: int = 512,
         n_langs: int = 0,
+        # text-encoder input: "ids", or a features.json table read by
+        # phoonnx_train.vits.input_features with "residual" or "composition"
+        input_layer: str = "ids",
+        input_features: Optional[Dict[str, Any]] = None,
         # training
         dataset: Optional[List[Union[str, Path]]] = None,
         learning_rate: float = 2e-4,
@@ -126,6 +130,8 @@ class VitsModel(pl.LightningModule):
             external_speaker_embedding=self.hparams.external_speaker_embedding,
             speaker_embedding_dim=self.hparams.speaker_embedding_dim,
             n_langs=self.hparams.n_langs,
+            input_layer=self.hparams.input_layer,
+            input_features=self.hparams.input_features,
         )
         self.model_d = MultiPeriodDiscriminator(
             use_spectral_norm=self.hparams.use_spectral_norm
