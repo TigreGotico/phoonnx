@@ -24,7 +24,7 @@
       "description": "The architecture or the config format of the voice."
     },
     "phoneme_type": {
-      "enum": ["unicode", "graphemes", "misaki", "misaki_en", "misaki_ja", "misaki_zh", "misaki_ko", "misaki_vi", "espeak", "gruut", "goruut", "epitran", "byt5", "charsiu", "transphone", "phonetisaurus", "mwl_phonemizer", "deepphonemizer", "openphonemizer", "g2pen", "dizione", "leokani", "kolokwa", "tugaphone", "g2pfa", "openjtalk", "cutlet", "pykakasi", "cotovia", "ahotts", "phonikud", "mantoq", "halabi", "iqra", "viphoneme", "g2pk", "kog2p", "g2pc", "g2pm", "g2pw", "pypinyin", "xpinyin", "jieba", "f5tts_char", "f5tts_pinyin", "vosk", "shami", "arbtok", "euskaphone", "barranquenho", "orthography2ipa", "africa_g2p", "ghana_g2p", "matoub_kab", "espeak_lt_accent", "hebrew_ipa", "openjtalk_prosody", "tltk"],
+      "enum": ["unicode", "graphemes", "misaki", "misaki_en", "misaki_ja", "misaki_zh", "misaki_ko", "misaki_vi", "espeak", "gruut", "goruut", "epitran", "byt5", "charsiu", "transphone", "phonetisaurus", "mwl_phonemizer", "deepphonemizer", "openphonemizer", "g2pen", "dizione", "leokani", "kolokwa", "tugaphone", "g2pfa", "openjtalk", "cutlet", "pykakasi", "cotovia", "ahotts", "phonikud", "mantoq", "halabi", "iqra", "viphoneme", "g2pk", "kog2p", "g2pc", "g2pm", "g2pw", "pypinyin", "xpinyin", "jieba", "f5tts_char", "f5tts_pinyin", "vosk", "shami", "arbtok", "euskaphone", "barranquenho", "orthography2ipa", "africa_g2p", "ghana_g2p", "matoub_kab", "espeak_lt_accent", "hebrew_ipa", "openjtalk_prosody", "tltk", "nemo_ipa"],
       "description": "The phonemizer backend, and the tokenisation recipe that matches it."
     },
     "alphabet": {
