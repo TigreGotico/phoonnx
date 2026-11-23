@@ -117,6 +117,7 @@ class PreprocessorConfig:
     speaker_column: Optional[str] = None
     phonemes_column: Optional[str] = None
     lang_column: Optional[str] = None
+    segment_map: bool = False
 
 
 # -----------------------------------------------------------------------------
