@@ -92,6 +92,40 @@ def test_chatterbox_requires_reference():
         ad.synthesize(_req(), None)                                    # no reference_audio
 
 
+
+class _Session:
+    def __init__(self, run, inputs=()):
+        self._run, self._inputs = run, [type("Input", (), {"name": n})() for n in inputs]
+
+    def run(self, _names, feed):
+        return self._run(feed)
+
+    def get_inputs(self):
+        return self._inputs
+
+
+def test_a_sampled_id_outside_the_speech_codebook_never_reaches_the_decoder():
+    from phoonnx.engines.chatterbox import START_SPEECH_TOKEN, STOP_SPEECH_TOKEN
+    emitted = iter([7995, 100, START_SPEECH_TOKEN, START_SPEECH_TOKEN - 1, STOP_SPEECH_TOKEN])
+    decoded = []
+
+    def lm(feed):
+        logits = np.zeros((1, 1, 8194), np.float32)
+        logits[0, 0, next(emitted)] = 10.0
+        return [logits]
+
+    def decoder(feed):
+        decoded.append(feed["speech_tokens"])
+        return [np.zeros(10, np.float32)]
+
+    ad = ChatterboxAdapter()
+    ad.speech_encoder = _Session(lambda feed: [np.zeros((1, 1, 4), np.float32), np.array([[7, 8]], np.int64),
+                                               np.zeros((1, 4), np.float32), np.zeros((1, 2, 4), np.float32)])
+    ad.embed_tokens = _Session(lambda feed: [np.zeros((1, feed["input_ids"].shape[1], 4), np.float32)])
+    ad.cond_decoder = _Session(decoder)
+    ad.synthesize(_req(reference_audio=(np.zeros(2400, np.float32), 24000), temperature=0.0), _Session(lm))
+    assert decoded[0].tolist() == [[7, 8, 100, START_SPEECH_TOKEN - 1, 4299, 4299, 4299]]
+
 def test_repetition_penalty():
     scores = np.array([[1.0, 2.0, -1.0, 4.0]])
     prev = np.array([[1, 2]])                       # tokens 1 (+) and 2 (-) already emitted

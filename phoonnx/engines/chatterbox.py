@@ -203,6 +203,9 @@ class ChatterboxAdapter(BaseOnnxAdapter):
 
         # strip start/stop, prepend the reference prompt token, append a little silence
         speech_tokens = generated[:, 1:-1]
+        # the decoder's codebook ends below START_SPEECH_TOKEN, but the LM can sample a higher id,
+        # which the decoder cannot embed; upstream's tts.py drops those ids the same way
+        speech_tokens = speech_tokens[:, speech_tokens[0] < START_SPEECH_TOKEN]
         silence = np.full((speech_tokens.shape[0], 3), SILENCE_TOKEN, np.int64)
         speech_tokens = np.concatenate([prompt_token, speech_tokens, silence], axis=1)
         wav = self.cond_decoder.run(None, {"speech_tokens": speech_tokens,
