@@ -38,6 +38,7 @@ matching [install extra](installation.md#language-extras).
 | `deepphonemizer` | DeepPhonemizer | English |
 | `openphonemizer` | OpenPhonemizer | English |
 | `g2pen` | g2p-en | English |
+| `nemo_ipa` | NVIDIA NeMo IPA G2P, as the Magpie `english_phoneme` sub-tokenizer reads it | American English |
 | `tugaphone` | TugaPhone | Portuguese |
 | `g2pfa` | Persian G2P | Persian |
 | `openjtalk` | Open JTalk | Japanese |

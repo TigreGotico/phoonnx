@@ -49,6 +49,11 @@ BYTE_TOKENIZER_PREFIX = 3
 BYTE_LANGUAGES = {"fr", "it", "vi", "ko"}
 CHAR_LANGUAGES = {"ar"}
 
+#: The ``IPATokenizer`` sub-tokenizers that a scriptconv phonemizer reads as NeMo does:
+#: the phoneme type and its language. The phonemizer gives one character per symbol of
+#: the sub-tokenizer's vocabulary.
+IPA_PHONEMIZERS = {"english_phoneme": ("nemo_ipa", "en-US")}
+
 
 def _base_language(tag: str) -> str:
     """``ar`` for ``ar-SA``, ``ar_SA`` or ``AR``."""
@@ -114,18 +119,21 @@ class MagpieTokenizer:
     at a fixed offset. Character and byte sub-tokenizers are reproduced exactly here. The
     IPA sub-tokenizers (en, de, es, pt, hi) and the two that need external engines
     (zh via jieba, ja via pyopenjtalk) need a grapheme-to-phoneme step, which phoonnx
-    keeps in scriptconv, so they are refused with a clear message rather than
+    keeps in scriptconv. Those that scriptconv reads as NeMo does are in
+    :data:`IPA_PHONEMIZERS`; the rest are refused with a clear message rather than
     approximated.
 
     An export that records ``tokenizer_kinds`` names the encoder of each sub-tokenizer,
     so any sub-tokenizer of a byte or character kind works, whatever language a
-    fine-tune put behind it:
+    fine-tune put behind it, and so does an IPA sub-tokenizer of :data:`IPA_PHONEMIZERS`:
 
     * ``{"kind": "byt5"}``: the transformers ``ByT5Tokenizer`` that NeMo calls with
       ``encode(text)``. Each UTF-8 byte is ``3 + byte``, and ``</s>`` (1) closes the text.
     * ``{"kind": "chars", "accept": ..., "punct": [...], "pad_with_space": ...,
       "preprocessing": ...}``: NeMo's ``BaseCharsTokenizer`` (``accept: "alnum"``) or
       ``ArabicCharsTokenizer`` (``accept: "any"``).
+    * ``{"kind": "IPATokenizer"}``: NeMo's ``IPATokenizer`` over ``IpaG2p``. The scriptconv
+      phonemizer gives one character per vocabulary symbol, and each takes its id.
 
     An export without ``tokenizer_kinds`` keeps the language-based encoders above.
     """
@@ -140,6 +148,7 @@ class MagpieTokenizer:
         self.vocab_size: int = int(data["vocab_size"])
         self.kinds: Dict[str, Dict[str, Any]] = data.get("tokenizer_kinds", {})
         self._symbol_maps: Dict[str, Dict[str, int]] = {}
+        self._phonemizers: Dict[str, Any] = {}
 
     def symbol_map(self, tokenizer_name: str) -> Dict[str, int]:
         """Symbol to global id for one sub-tokenizer, built once and kept."""
@@ -181,11 +190,12 @@ class MagpieTokenizer:
         if tokenizer_name not in self.offsets:
             raise ValueError(f"Magpie tokenizer has no sub-tokenizer {tokenizer_name!r}")
         kind = self.kinds.get(tokenizer_name, {})
-        if kind.get("kind") not in ("byt5", "chars"):
+        ipa = kind.get("kind") == "IPATokenizer" and tokenizer_name in IPA_PHONEMIZERS
+        if kind.get("kind") not in ("byt5", "chars") and not ipa:
             raise NotImplementedError(
                 f"Magpie sub-tokenizer {tokenizer_name!r} is of kind {kind.get('kind')!r}, which "
-                f"needs grapheme-to-phoneme conversion. phoonnx keeps phonemizers in scriptconv; "
-                f"only the byt5 and chars kinds are supported so far."
+                f"needs grapheme-to-phoneme conversion that scriptconv does not have. Supported: "
+                f"the byt5 and chars kinds, and the IPATokenizer of {sorted(IPA_PHONEMIZERS)}."
             )
         return kind
 
@@ -196,7 +206,18 @@ class MagpieTokenizer:
         if kind["kind"] == "byt5":
             offset = self.offsets[tokenizer_name]
             return [offset + BYTE_TOKENIZER_PREFIX + b for b in text.encode("utf-8")] + [offset + 1]
+        if kind["kind"] == "IPATokenizer":
+            symbols = self.symbol_map(tokenizer_name)
+            return [symbols[c] for c in self._phonemize(text, tokenizer_name)]
         return self._encode_chars(text, tokenizer_name, kind)
+
+    def _phonemize(self, text: str, tokenizer_name: str) -> str:
+        """The symbols of an IPA sub-tokenizer for *text*, from its scriptconv phonemizer."""
+        phoneme_type, lang = IPA_PHONEMIZERS[tokenizer_name]
+        if phoneme_type not in self._phonemizers:
+            from scriptconv.phonemizers import get_phonemizer
+            self._phonemizers[phoneme_type] = get_phonemizer(phoneme_type)
+        return self._phonemizers[phoneme_type].phonemize_string(text, lang)
 
     def _encode_chars(self, text: str, tokenizer_name: str, kind: Dict[str, Any]) -> List[int]:
         """NeMo's character tokenizers: one space between words and none at either end,

@@ -209,6 +209,7 @@ def test_supported_language_sets_do_not_overlap():
 # ids NeMo itself gives them: ``model.tokenizer.encode(text, name) + [model.eos_id]``.
 FIXTURES = __import__("pathlib").Path(__file__).parent / "fixtures"
 GEORGIAN = FIXTURES / "magpie_ka_tokenizer.json"   # NMikka/Magpie-TTS-Geo-357m
+BASE = FIXTURES / "magpie_base_tokenizer.json"   # Phoonnx/magpietts-multi-357m-unicode
 THIRTEEN = FIXTURES / "magpie_13lang_tokenizer.json"   # infiniatechnologies/magpie-tts-13lang-357m
 
 
@@ -234,6 +235,18 @@ def test_an_arabic_chars_sub_tokenizer_gives_nemo_ids(row):
     assert MagpieTokenizer(str(THIRTEEN)).encode(row["text"], "ar", "arabic_SA_chartokenizer") == row["ids"]
 
 
+@pytest.mark.parametrize("row", _nemo_rows("magpie_en_nemo_ids.json"), ids=lambda r: repr(r["text"][:12]))
+def test_the_english_ipa_sub_tokenizer_gives_nemo_ids(row):
+    """NeMo 3.0.0 ``IPATokenizer`` over ``IpaG2p`` at phoneme probability 1.0, read through
+    scriptconv's NeMo IPA phonemizer: heteronyms, unknown words, suffixes, digits, spaces."""
+    assert MagpieTokenizer(str(BASE)).encode(row["text"], "en", "english_phoneme") == row["ids"]
+
+
+def test_an_ipa_sub_tokenizer_without_a_scriptconv_phonemizer_is_refused():
+    with pytest.raises(NotImplementedError, match="german_phoneme"):
+        MagpieTokenizer(str(BASE)).encode("hallo", "de", "german_phoneme")
+
+
 def test_the_byt5_kind_closes_the_text_with_its_own_end_token():
     tokenizer = MagpieTokenizer(str(GEORGIAN))
     offset = tokenizer.offsets["text_ce_tokenizer"]
@@ -252,10 +265,6 @@ def test_the_voice_names_a_sub_tokenizer_its_checkpoint_has_no_language_for():
     adapter.configure(VC())
     assert adapter.encode_text(row["text"], None, None) == [row["ids"]]
 
-
-def test_a_sub_tokenizer_that_needs_g2p_is_refused():
-    with pytest.raises(NotImplementedError, match="english_phoneme"):
-        MagpieTokenizer(str(GEORGIAN)).encode("hello", "en", "english_phoneme")
 
 
 def test_an_alnum_chars_kind_drops_symbols_that_are_neither_letters_nor_punctuation(tmp_path):
@@ -365,7 +374,7 @@ def test_the_tokenizer_name_is_checked_again_for_the_language_of_the_call(tmp_pa
 @pytest.mark.parametrize("tokenizer_name, error", [
     ("French_Chartokenizer", ValueError),   # names are case-sensitive
     ("nope", ValueError),
-    ("english_phoneme", NotImplementedError),   # a G2P sub-tokenizer
+    ("german_phoneme", NotImplementedError),   # a G2P sub-tokenizer scriptconv lacks
 ])
 def test_an_asset_with_kinds_refuses_a_sub_tokenizer_it_cannot_encode_at_load(
         tmp_path, tokenizer_name, error):

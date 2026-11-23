@@ -157,12 +157,12 @@ decide which sub-tokenizer encodes a voice's text and how:
 
 | Key | Where | What it sets |
 | --- | --- | --- |
-| `tokenizer_kinds` | `tokenizer.json`, written by `scripts/conversion/magpie/dump_assets.py` | The encoder of each sub-tokenizer. `{"kind": "byt5"}` is NeMo's ByT5 byte tokenizer: each UTF-8 byte, then `</s>`. `{"kind": "chars", ...}` is NeMo's `BaseCharsTokenizer` (`"accept": "alnum"`) or `ArabicCharsTokenizer` (`"accept": "any"`), with its punctuation list, `pad_with_space` and text preprocessing. Any other kind is a NeMo class name, and phoonnx refuses it, because it needs G2P. |
+| `tokenizer_kinds` | `tokenizer.json`, written by `scripts/conversion/magpie/dump_assets.py` | The encoder of each sub-tokenizer. `{"kind": "byt5"}` is NeMo's ByT5 byte tokenizer: each UTF-8 byte, then `</s>`. `{"kind": "chars", ...}` is NeMo's `BaseCharsTokenizer` (`"accept": "alnum"`) or `ArabicCharsTokenizer` (`"accept": "any"`), with its punctuation list, `pad_with_space` and text preprocessing. `{"kind": "IPATokenizer"}` is NeMo's `IPATokenizer` over `IpaG2p`; phoonnx reads `english_phoneme` through scriptconv's `nemo_ipa` phonemizer, which gives one character per vocabulary symbol. Any other kind, and an `IPATokenizer` of another language, needs a G2P that scriptconv does not have, and phoonnx refuses it. |
 | `tokenizer_name` | the voice's `engine_params` | The sub-tokenizer to use, for example `text_ce_tokenizer` or `swahili_chartokenizer`. Without it, the voice uses the sub-tokenizer that the checkpoint's `language_to_tokenizer` gives for its exact tag, such as `ar-SA`. A tag with no entry of its own takes the first entry with the same base language: on the base checkpoint, `ar` takes `ar-AE`. |
 
 A `tokenizer.json` with `tokenizer_kinds` encodes as NeMo's `AggregatedTTSTokenizer`
-does, and a voice can name any byte or character sub-tokenizer in it. A voice that names
-a sub-tokenizer the asset does not have, or a G2P one, does not load.
+does, and a voice can name any byte or character sub-tokenizer in it, or `english_phoneme`.
+A voice that names a sub-tokenizer the asset does not have, or another G2P one, does not load.
 
 A `tokenizer.json` without `tokenizer_kinds` uses fixed encoders: fr, it, vi and ko
 as bytes with no `</s>`, and ar as every known character, with no space collapse and no

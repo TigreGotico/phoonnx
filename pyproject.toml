@@ -30,8 +30,10 @@ dependencies = [
     "text2spoken>=0.0.2a98",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
-    # >=0.0.4a150: the Shami espeak-ng timeout grows with the length of the text.
-    # Earlier floors: the backend revision is sc2, and scriptconv runs no probe
+    # >=0.0.4a151: the nemo_ipa phonemizer, which reads English for the Magpie
+    # english_phoneme sub-tokenizer as NeMo does.
+    # Earlier floors: the Shami espeak-ng timeout grows with the length of the
+    # text; the backend revision is sc2, and scriptconv runs no probe
     # for it; Shami reads a run of more than 15 digits digit by digit, in any
     # decimal digit script, and gives espeak-ng the text on stdin; a backend
     # that owns normalisation gets no casing, every backend records a revision,
@@ -46,7 +48,7 @@ dependencies = [
     # the gap of the source, the Shami emphatics, and the espeak_lt_accent,
     # hebrew_ipa, openjtalk_prosody and tltk phonemizers. Every extra relies on
     # this floor.
-    "scriptconv[phonemizers]>=0.0.4a150",
+    "scriptconv[phonemizers]>=0.0.4a151",
     # the F5-TTS pinyin text function (f5tts_pinyin) of F5-TTS v1 Base and Twi
     # Asante segments with rjieba and reads hanzi with pypinyin
     "rjieba>=0.2.2",
