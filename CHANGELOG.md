@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.130.8a1](https://github.com/TigreGotico/phoonnx/tree/1.130.8a1) (2026-11-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.7a1...1.130.8a1)
+
+**Merged pull requests:**
+
+- fix\(index\): give each Lahgtna voice its dialect tag and upstream token [\#957](https://github.com/TigreGotico/phoonnx/pull/957) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.130.7a1](https://github.com/TigreGotico/phoonnx/tree/1.130.7a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.6a2...1.130.7a1)
@@ -382,10 +390,6 @@
 ## [1.124.5a1](https://github.com/TigreGotico/phoonnx/tree/1.124.5a1) (2026-11-21)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.124.4a1...1.124.5a1)
-
-**Merged pull requests:**
-
-- fix: list text\_casing in the config schema [\#860](https://github.com/TigreGotico/phoonnx/pull/860) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.124.4a1](https://github.com/TigreGotico/phoonnx/tree/1.124.4a1) (2026-11-21)
 
