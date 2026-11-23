@@ -2,7 +2,7 @@
 
 <!-- agent-hint
 covers: every phoonnx_train.train flag, the training engines, their quality presets and the evaluation and vocoder tools, and the features.json generator
-source: phoonnx_train/train.py:main, phoonnx_train/engines/__init__.py:_register_builtins, phoonnx_train/engines/*.py:_QUALITY_PRESETS, phoonnx_train/eval_loop.py:main, phoonnx_train/train_vocos.py:main, phoonnx_train/export_vocos.py:main, phoonnx_train/features_json.py:cli
+source: phoonnx_train/train.py:main, phoonnx_train/engines/__init__.py:_register_builtins, phoonnx_train/engines/*.py:_QUALITY_PRESETS, phoonnx_train/eval_loop.py:main, phoonnx_train/train_vocos.py:main, phoonnx_train/export_vocos.py:main, phoonnx_train/features_json.py:cli, phoonnx_train/vits/input_features.py
 generated: no
 verify: ! comm -3 <(grep '^| `--' docs/training/training.md | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | sort -u) <(python -m phoonnx_train.train --help | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | grep -vx -- --help | sort -u) | grep .; the eval_loop and Vocos flags and the preset tables: none, checked by reading phoonnx_train/eval_loop.py:main, phoonnx_train/train_vocos.py:main, phoonnx_train/export_vocos.py:main and phoonnx_train/engines/*.py:_QUALITY_PRESETS
 see: preprocess.md, export.md, engines/matcha.md, ../vocoders.md
@@ -38,6 +38,8 @@ python -m phoonnx_train.train --dataset-dir DIR [options]
 | `--resume-from-checkpoint PATH` | none | Resume the run of a Lightning checkpoint, a URL or a remote path. The engine loads a local file that Lightning did not write as a weight-only warm start, and the log gives a warning. `vits` needs a Lightning checkpoint and stops with an error on any other file |
 | `--resume-from-single-speaker-checkpoint PATH` | none | Convert a single-speaker checkpoint to multi-speaker and resume |
 | `--discard-encoder` | off | Discard encoder weights from the base checkpoint (not supported by all engines) |
+| `--input-layer ids\|residual\|composition` | `ids` | VITS text-encoder input. `ids` learns one vector per id. `residual` and `composition` read `--input-features` (see [Training with a feature table](#training-with-a-feature-table)) |
+| `--input-features PATH` | none | A `features.json` made from this dataset's `phoneme_id_map`. Needs `--input-layer residual` or `composition`. `vits` only |
 | `--log-audio-samples / --no-log-audio-samples` | off | Log synthesized validation audio each epoch (needs a TensorBoard logger) |
 | `--compile` | off | Compile the model with `torch.compile` for faster training |
 | `--compile-mode {default,reduce-overhead,max-autotune,max-autotune-no-cudagraphs}` | `default` | `torch.compile` mode; only relevant with `--compile` |
@@ -431,6 +433,31 @@ wrote small_features.json (phonematcher 2.3.10a3, 47 features, 7 prosody, 4 tone
 ```
 
 A codepoint-level map has a separate id for each combining mark and modifier letter, and the source reads none of them alone. Such a map is refused. Use a map with one id per whole segment.
+
+### Training with a feature table
+
+Give the table with `--input-features` and choose a layer with `--input-layer`. Only the `vits` engine reads them:
+
+```bash
+python -m phoonnx_train.train --dataset-dir train_out --default-root-dir train_out/runs \
+  --input-layer residual --input-features train_out/features.json
+```
+
+| Layer | Input vector of an id |
+|---|---|
+| `residual` | A linear projection of its features, plus one learned vector per id |
+| `composition` | A linear projection of its features, plus a learned vector for its base symbol and one for each of its marks. `ɐ̃` is `ɐ` plus U+0303, and `ç` is a base of its own |
+
+Every learned table starts at zero. A phone that never occurs in training keeps the projection of its features, so it lands near the trained phones that share them. A `null` id, such as pad, stress or a pause, gets only its learned part. The learned part is scaled as the id embedding is.
+
+The table must come from the dataset's own map. Training stops when the table's `phoneme_id_map_sha256` differs from the hash of the map in `config.json`, when the map has an id that the table does not list, or when a vector has the wrong length.
+
+Checkpoints and export follow these rules:
+
+- The checkpoint keeps the table. A resume with another table or another input layer stops with a message.
+- A warm start from an id checkpoint loads every weight except the input layer. The feature layer starts as built.
+- From a feature checkpoint, an id model loads the layer as its id table. A feature model loads the projection when the feature names match. It loads the per-id, base and mark tables only when the symbols match. `--discard-encoder` keeps the whole layer as built.
+- Export turns the layer into a plain id embedding with the same values and checks that the two match. The exported voice runs as any VITS voice, and the runtime needs no feature table.
 
 ## Training a Vocos vocoder
 
