@@ -8,7 +8,7 @@ import jsonschema
 import pytest
 
 import phoonnx
-from phoonnx.config import Alphabet, Engine, PhonemeType, VoiceConfig
+from phoonnx.config import TEXT_CASINGS, Alphabet, Engine, PhonemeType, VoiceConfig
 from phoonnx.engines.coqui_config import voice_config_from_coqui
 from phoonnx.engines.glowtts_config import voice_config_from_larynx
 from phoonnx.engines.mixertts_config import voice_config_from_mixer
@@ -171,6 +171,7 @@ SCRIPTCONV_PENDING: set = {"nemo_ipa"}
 def test_schema_enums_list_every_engine_phonemizer_and_alphabet():
     properties = SCHEMA["properties"]
     assert properties["engine"]["enum"] == [e.value for e in Engine]
+    assert properties["text_casing"]["enum"] == list(TEXT_CASINGS)
     # PhonemeType and Alphabet come from scriptconv, so the installed scriptconv may be
     # older than the schema: a value the schema lists must be scriptconv's or pending
     for key, enum, pending in (("phoneme_type", PhonemeType, SCRIPTCONV_PENDING), ("alphabet", Alphabet, set())):
@@ -197,7 +198,7 @@ def test_schema_refuses_a_config_without_a_symbol_table():
         jsonschema.validate(native, SCHEMA)
 
 
-@pytest.mark.parametrize("casing", ["ignore", "lower", "upper", "casefold"])
+@pytest.mark.parametrize("casing", list(TEXT_CASINGS))
 def test_schema_takes_every_text_casing(casing):
     native = load(PIPER).to_dict()
     native["text_casing"] = casing
