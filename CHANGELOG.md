@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.130.6a2](https://github.com/TigreGotico/phoonnx/tree/1.130.6a2) (2026-11-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.6a1...1.130.6a2)
+
+**Merged pull requests:**
+
+- test: wait for each test's provenance checks before the next test runs [\#960](https://github.com/TigreGotico/phoonnx/pull/960) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.130.6a1](https://github.com/TigreGotico/phoonnx/tree/1.130.6a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.5a2...1.130.6a1)
@@ -370,7 +378,6 @@
 **Merged pull requests:**
 
 - fix: list text\_casing in the config schema [\#860](https://github.com/TigreGotico/phoonnx/pull/860) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: optimized-graph cache with sidecars, BPE added-token flags, length\_scale for four engines [\#856](https://github.com/TigreGotico/phoonnx/pull/856) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.124.4a1](https://github.com/TigreGotico/phoonnx/tree/1.124.4a1) (2026-11-21)
 
