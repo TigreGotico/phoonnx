@@ -8,8 +8,10 @@ multi-hundred-MB model files; these are transient network conditions, not
 test bugs, so we retry a bounded number of times before letting the error
 propagate.
 """
+import threading
 import time
 
+import pytest
 import requests
 import urllib3
 
@@ -49,3 +51,17 @@ def count_walks(fields) -> int:
     """Top-level external-data walks seen by a mock of ``_onnx_external._fields``:
     a walk starts at offset 0 of the file."""
     return sum(1 for call in fields.call_args_list if call.args[1] == 0)
+
+
+@pytest.fixture(autouse=True)
+def _join_provenance_threads():
+    """Wait for the provenance checks that a test's voices started, before the next test runs.
+
+    A voice load checks its recorded phonemizer in a daemon thread that logs through
+    ``phoonnx.voice.LOG``. Left running, it logs into whatever mock a later test installs.
+    """
+    yield
+    for thread in threading.enumerate():
+        if thread.name.startswith("phoonnx-provenance-"):
+            thread.join(timeout=60)
+
