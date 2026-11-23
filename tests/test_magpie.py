@@ -452,6 +452,10 @@ def test_a_span_longer_than_the_limit_is_a_chunk_of_its_own():
     assert chunk_text(f"one two {span} three four", max_len=20, spans=True) == ["one two", span, "three four"]
 
 
+def test_an_unclosed_pipe_keeps_the_sentence_ends():
+    assert chunk_text("Use a | b here. Then go. Stop.", spans=True) == ["Use a | b here.", "Then go.", "Stop."]
+
+
 def test_pipes_do_not_change_the_chunks_of_a_language_without_spans():
     assert chunk_text("Il a dit | non. Elle a répondu | oui. Fin.") == [
         "Il a dit | non.", "Elle a répondu | oui.", "Fin."]

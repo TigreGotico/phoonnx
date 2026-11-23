@@ -100,14 +100,17 @@ def chunk_text(text: str, max_len: int = MAX_CHUNK_CHARS, spans: bool = False) -
 
     With ``spans``, for an IPA sub-tokenizer, a ``|...|`` phoneme span is never cut: a
     sentence that ends inside a span joins the next one, and the whitespace cut keeps a
-    span whole. A span longer than ``max_len`` is a chunk of its own.
+    span whole. A span longer than ``max_len`` is a chunk of its own. A ``|`` that no later
+    ``|`` closes is a plain character, as in NeMo.
     """
+    split = [sentence.strip() for sentence in sentence_tokenize(text) if sentence.strip()]
+    # pipes_after[i]: a sentence from i on holds a "|" that can close an open span
+    pipes_after = [False] * (len(split) + 1)
+    for i in range(len(split) - 1, -1, -1):
+        pipes_after[i] = pipes_after[i + 1] or "|" in split[i]
     sentences: List[str] = []
-    for sentence in sentence_tokenize(text):
-        sentence = sentence.strip()
-        if not sentence:
-            continue
-        if spans and sentences and sentences[-1].count("|") % 2:
+    for i, sentence in enumerate(split):
+        if spans and sentences and sentences[-1].count("|") % 2 and pipes_after[i]:
             sentences[-1] += " " + sentence
         else:
             sentences.append(sentence)
