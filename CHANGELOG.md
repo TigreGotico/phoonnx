@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.136.4a1](https://github.com/TigreGotico/phoonnx/tree/1.136.4a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.3a2...1.136.4a1)
+
+**Merged pull requests:**
+
+- fix: ZipVoice training gives ScaledAdam the parameter names [\#1027](https://github.com/TigreGotico/phoonnx/pull/1027) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.136.3a2](https://github.com/TigreGotico/phoonnx/tree/1.136.3a2) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.3a1...1.136.3a2)
@@ -382,17 +390,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.126.1a1...1.127.0a1)
 
-**Merged pull requests:**
-
-- feat: index 63 Piper VITS voices from rhasspy/piper-voices [\#910](https://github.com/TigreGotico/phoonnx/pull/910) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.126.1a1](https://github.com/TigreGotico/phoonnx/tree/1.126.1a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.126.0a1...1.126.1a1)
-
-**Merged pull requests:**
-
-- fix: read Piper's default diphthongs as two ids when vowel\_clusters is absent [\#909](https://github.com/TigreGotico/phoonnx/pull/909) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.126.0a1](https://github.com/TigreGotico/phoonnx/tree/1.126.0a1) (2026-11-22)
 
