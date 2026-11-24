@@ -206,8 +206,7 @@ def test_mixertts_round_trip(toy_22k_f0, tmp_path):
 
 
 def test_matcha_round_trip(toy_22k, tmp_path):
-    # The Matcha adapter builds a vocoder only from engine_params["vocoder_path"],
-    # so the parametric Griffin-Lim vocoder, which has no file, is set on it here.
+    # The parametric Griffin-Lim vocoder, which has no file, is set on the adapter here.
     vocoder = build_vocoder(vocoder_type="griffinlim", config=GRIFFIN_LIM["vocoder_config"])
     _round_trip("matcha", toy_22k, tmp_path, vocoder=vocoder,
                 training_ids=lambda module: _training_ids(module, lambda item: item["x"]),
