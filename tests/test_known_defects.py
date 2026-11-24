@@ -9,6 +9,7 @@ import importlib.util
 import json
 import logging
 import multiprocessing
+import re
 import warnings
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -103,22 +104,20 @@ def _export_with_alignment(tmp_path):
         ])
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="export-alignment: a failed --add-phoneme-alignment still exits 0")
 def test_failed_alignment_export_exits_non_zero(tmp_path):
     result = _export_with_alignment(tmp_path)
-    assert result.exit_code != 0, result.output
+    assert result.exit_code == 1, result.output
+    assert "No Ceil tensor found" in result.output, result.output
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="export-alignment: the error names a --tensor-name flag the CLI does not have")
 def test_alignment_errors_name_only_real_flags(tmp_path, caplog):
     from phoonnx_train.export_onnx import cli
 
     with caplog.at_level(logging.DEBUG, logger="phoonnx_train.export_onnx"):
-        _export_with_alignment(tmp_path)
+        result = _export_with_alignment(tmp_path)
     flags = {opt for param in cli.params for opt in param.opts}
-    assert "--tensor-name" in flags or "--tensor-name" not in caplog.text, caplog.text
+    named = set(re.findall(r"--[a-z][a-z-]*", caplog.text + result.output))
+    assert named <= flags, (named - flags, result.output, caplog.text)
 
 
 # --- preprocess --jsonl-audio-path / --jsonl-audio-spec-path ---------------
