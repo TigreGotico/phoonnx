@@ -110,14 +110,24 @@ def id_symbols(phoneme_id_map: dict) -> Dict[int, str]:
 def tone_block(symbol: str) -> Optional[List[float]]:
     """The tone features of *symbol*, or None for a symbol that is not a tone.
 
-    phonematcher reads the tone: its numeral table turns superscript numerals
-    into tone letters, and its contour gives the levels at three points.
+    phonematcher reads the levels from tone letters, superscript numerals and
+    left-stem tone letters; the pitch at the start, middle and end of the
+    syllable is a linear interpolation of those levels.
     """
-    from phonematcher.tone import NUMERALS, _contour, is_tone, tone_levels
-    letters = "".join(NUMERALS.get(ch, ch) for ch in symbol)
-    if not is_tone(letters):
+    from phonematcher import tone_levels
+    try:
+        levels = tone_levels(symbol)
+    except ValueError:
         return None
-    points = [(level - 3) / 2 for level in _contour(tone_levels(letters))]
+    if len(levels) == 1:
+        contour = levels * 3
+    else:
+        contour = []
+        for k in range(3):
+            x = k * (len(levels) - 1) / 2
+            i = min(int(x), len(levels) - 2)
+            contour.append(levels[i] + (levels[i + 1] - levels[i]) * (x - i))
+    points = [(level - 3) / 2 for level in contour]
     return [1] + [int(p) if p.is_integer() else p for p in points]
 
 
