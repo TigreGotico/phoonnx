@@ -23,6 +23,8 @@ PROSODY_NAMES = ["pros_word_boundary", "pros_pause_minor", "pros_pause_major", "
 TONE_NAMES = ["tone_is", "tone_start", "tone_mid", "tone_end"]
 NO_PROSODY = [0] * 7
 NO_TONE = [0] * 4
+# phonematcher's features end with the four tone features
+PM_PHONE = len(phonematcher.FEATURES) - 4
 
 
 def ternary(values):
@@ -54,22 +56,32 @@ def test_phonematcher_tiny_map(tmp_path):
     assert table["format"] == "phoonnx-input-features/1"
     assert table["source"] == {"name": "phonematcher", "version": phonematcher.__version__,
                                "tone": {"name": "phonematcher", "version": phonematcher.__version__}}
-    assert table["feature_names"] == list(phonematcher.FEATURES) + PROSODY_NAMES + TONE_NAMES
+    assert list(phonematcher.FEATURES[PM_PHONE:]) == TONE_NAMES
+    assert table["feature_names"] == list(phonematcher.FEATURES) + PROSODY_NAMES
     assert set(table["vectors"]) == {"0", "1", "2", "3"}
     assert table["vectors"]["0"] == {"symbol": "_", "vector": None}
     assert table["vectors"]["1"] == {"symbol": "a",
-                                     "vector": ternary(phonematcher.vectorize_phones("a")) + NO_PROSODY + NO_TONE}
-    assert table["vectors"]["2"]["vector"] == ternary(phonematcher.vectorize_phones("ɐ̃")) + NO_PROSODY + NO_TONE
+                                     "vector": ternary(phonematcher.vectorize_phones("a")) + NO_PROSODY}
+    assert table["vectors"]["2"]["vector"] == ternary(phonematcher.vectorize_phones("ɐ̃")) + NO_PROSODY
+    # a toneless phone is 0 on the tone features
+    assert table["vectors"]["1"]["vector"][PM_PHONE:PM_PHONE + 4] == NO_TONE
     assert "ids in: 4" in result.output and "ids out: 4" in result.output
     assert "null ids: 1" in result.output and "0 '_' pad" in result.output
 
 
-def prosody_of(table, key):
+def parts(table, key):
+    """The phone, prosody and tone values of an id, read by feature name."""
     vector = table["vectors"][key]["vector"]
     names = table["feature_names"]
     assert len(vector) == len(names)
-    phone_part, prosody_part, tone_part = vector[:-11], vector[-11:-4], vector[-4:]
-    assert phone_part == [0] * (len(names) - 11)
+    values = dict(zip(names, vector))
+    phone = [v for n, v in values.items() if n not in PROSODY_NAMES and n not in TONE_NAMES]
+    return phone, [values[n] for n in PROSODY_NAMES], [values[n] for n in TONE_NAMES]
+
+
+def prosody_of(table, key):
+    phone_part, prosody_part, tone_part = parts(table, key)
+    assert phone_part == [0] * len(phone_part)
     assert tone_part == NO_TONE
     return {name for name, v in zip(PROSODY_NAMES, prosody_part) if v == 1}, set(prosody_part)
 
@@ -91,7 +103,7 @@ def test_question_mark_is_pause_major_and_question(tmp_path):
 def test_phone_is_zero_on_prosody(tmp_path, source):
     _, table = run(tmp_path, TINY_MAP, source)
     for key in ("1", "2"):
-        assert table["vectors"][key]["vector"][-11:] == NO_PROSODY + NO_TONE
+        assert parts(table, key)[1:] == (NO_PROSODY, NO_TONE)
 
 
 def test_map_sha256_recipe(tmp_path):
@@ -211,16 +223,16 @@ TONES = [
 def test_tone_block(tmp_path, source, symbol, tone):
     result, table = run(tmp_path, {**TINY_MAP, symbol: [4]}, source)
     assert result.exit_code == 0, result.output
-    assert table["feature_names"][-4:] == TONE_NAMES
-    vector = table["vectors"]["4"]["vector"]
-    assert vector[-4:] == tone
-    assert vector[:-4] == [0] * (len(vector) - 4)
+    phone, prosody, tone_part = parts(table, "4")
+    assert tone_part == tone
+    assert phone == [0] * len(phone)
+    assert prosody == NO_PROSODY
 
 
 def test_phone_is_zero_on_tone_block(tmp_path):
     _, table = run(tmp_path, {**TINY_MAP, "˥": [4]}, "phonematcher")
-    assert table["vectors"]["1"]["vector"][-4:] == NO_TONE
-    assert table["vectors"]["3"]["vector"][-4:] == NO_TONE
+    assert parts(table, "1")[2] == NO_TONE
+    assert parts(table, "3")[2] == NO_TONE
 
 
 def o2i_docstring_names():
@@ -241,15 +253,18 @@ def test_orthography2ipa_feature_names_in_feats_order(tmp_path):
 
 @pytest.mark.parametrize("source", ["phonematcher", "orthography2ipa"])
 def test_tone_points_are_exact_json_numbers(tmp_path, source):
-    _, table = run(tmp_path, {**TINY_MAP, "˥": [4], "˦": [5], "˧˦": [6]}, source)
+    _, table = run(tmp_path, {**TINY_MAP, "˥": [4], "˦": [5], "˧˦": [6], "a˥˩": [7], "ā": [8]}, source)
     raw = (tmp_path / "features.json").read_text(encoding="utf-8")
     vectors = json.dumps(json.loads(raw)["vectors"])
     assert "1.0" not in vectors and "0.0" not in vectors
-    points = {k: table["vectors"][k]["vector"][-4:] for k in ("4", "5", "6")}
-    assert points == {"4": [1, 1, 1, 1], "5": [1, 0.5, 0.5, 0.5], "6": [1, 0, 0.25, 0.5]}
+    points = {k: parts(table, k)[2] for k in ("4", "5", "6", "7", "8")}
+    assert points == {"4": [1, 1, 1, 1], "5": [1, 0.5, 0.5, 0.5], "6": [1, 0, 0.25, 0.5],
+                      "7": [1, 1, 0, -1], "8": [1, 0, 0, 0]}
     assert [type(v) for v in points["4"]] == [int] * 4
     assert [type(v) for v in points["5"]] == [int, float, float, float]
     assert [type(v) for v in points["6"]] == [int, int, float, float]
+    assert [type(v) for v in points["7"]] == [int] * 4
+    assert [type(v) for v in points["8"]] == [int] * 4
 
 
 def test_bar_is_a_minor_pause_when_ruled(tmp_path):
@@ -263,7 +278,7 @@ def test_click_letters_are_phones(tmp_path, click):
     result, table = run(tmp_path, {**TINY_MAP, click: [4]}, "phonematcher")
     assert result.exit_code == 0, result.output
     vector = table["vectors"]["4"]["vector"]
-    assert vector == ternary(phonematcher.vectorize_phones(click)) + NO_PROSODY + NO_TONE
+    assert vector == ternary(phonematcher.vectorize_phones(click)) + NO_PROSODY
     # syllabic -, sonorant -, consonantal +
     assert vector[:3] == [-1, -1, 1]
 
@@ -291,16 +306,60 @@ TONE_ACCENTED = [
 ]
 
 
+def base_features(source, base):
+    """The phone features of *base*, without phonematcher's tone features."""
+    if source == "phonematcher":
+        return ternary(phonematcher.vectorize_phones(base))[:PM_PHONE]
+    return ternary(o2i_feats.vectorize_phones(base))
+
+
 @pytest.mark.parametrize("source", ["phonematcher", "orthography2ipa"])
 @pytest.mark.parametrize("symbol,base,tone", TONE_ACCENTED)
 def test_tone_accented_phone(tmp_path, source, symbol, base, tone):
-    vectorize = phonematcher.vectorize_phones if source == "phonematcher" else o2i_feats.vectorize_phones
     result, table = run(tmp_path, {**TINY_MAP, symbol: [4]}, source)
     assert result.exit_code == 0, result.output
-    vector = table["vectors"]["4"]["vector"]
-    assert vector[:-11] == ternary(vectorize(base))
-    assert vector[-11:-4] == NO_PROSODY
-    assert vector[-4:] == tone
+    assert parts(table, "4") == (base_features(source, base), NO_PROSODY, tone)
+
+
+# a phone followed by Chao tone letters, numerals or left-stem letters: the
+# levels are 5 then 1, so the pitch is 1, 0 and -1
+TONE_LETTERED = [("a˥˩", "a"), ("a⁵¹", "a"), ("a\ua712\ua716", "a"), ("ɐ̃˥˩", "ɐ̃")]
+
+
+@pytest.mark.parametrize("source", ["phonematcher", "orthography2ipa"])
+@pytest.mark.parametrize("symbol,base", TONE_LETTERED)
+def test_tone_letters_after_their_vowel(tmp_path, source, symbol, base):
+    result, table = run(tmp_path, {**TINY_MAP, symbol: [4]}, source)
+    assert result.exit_code == 0, result.output
+    assert parts(table, "4") == (base_features(source, base), NO_PROSODY, [1, 1, 0, -1])
+
+
+def test_phonematcher_reads_the_tone_of_a_phone_itself(tmp_path):
+    # the tone sits in phonematcher's own tone features, before the prosody block
+    result, table = run(tmp_path, {**TINY_MAP, "a˥˩": [4], "á": [5]}, "phonematcher")
+    assert result.exit_code == 0, result.output
+    assert table["vectors"]["4"]["vector"] == base_features("phonematcher", "a") + [1, 1, 0, -1] + NO_PROSODY
+    assert table["vectors"]["5"]["vector"] == base_features("phonematcher", "a") + [1, 0.5, 0.5, 0.5] + NO_PROSODY
+
+
+def test_orthography2ipa_appends_the_tone_block(tmp_path):
+    result, table = run(tmp_path, {**TINY_MAP, "a˥˩": [4], "˧˧": [5]}, "orthography2ipa")
+    assert result.exit_code == 0, result.output
+    assert table["feature_names"][-4:] == TONE_NAMES
+    assert table["vectors"]["4"]["vector"] == ternary(o2i_feats.vectorize_phones("a")) + NO_PROSODY + [1, 1, 0, -1]
+    assert table["vectors"]["5"]["vector"] == [0] * o2i_feats.NUM_FEATURES + NO_PROSODY + [1, 0, 0, 0]
+
+
+# a tone id that follows a coda or a sandhi tone: ˧˧ is level 3; ꜔꜒ is 3 then 5,
+# so its middle is the mean, 4, which is 0.5
+LONE_TONES = [("˧˧", [1, 0, 0, 0]), ("\ua714\ua712", [1, 0, 0.5, 1]), ("⁵¹", [1, 1, 0, -1])]
+
+
+@pytest.mark.parametrize("symbol,tone", LONE_TONES)
+def test_a_lone_tone_id_fills_the_tone_features_of_phonematcher(tmp_path, symbol, tone):
+    result, table = run(tmp_path, {**TINY_MAP, symbol: [4]}, "phonematcher")
+    assert result.exit_code == 0, result.output
+    assert table["vectors"]["4"]["vector"] == [0] * PM_PHONE + tone + NO_PROSODY
 
 
 @pytest.mark.parametrize("args", [("--pause", ".."), ("--pause", ""), ("--non-phone", "")])
@@ -322,14 +381,14 @@ def test_orthography2ipa_refuses_tie_bars_with_advice(tmp_path, tied):
     (tmp_path / "pm").mkdir()
     result, table = run(tmp_path / "pm", {**TINY_MAP, tied: [4]}, "phonematcher")
     assert result.exit_code == 0, result.output
-    assert table["vectors"]["4"]["vector"] == ternary(phonematcher.vectorize_phones(tied)) + NO_PROSODY + NO_TONE
+    assert table["vectors"]["4"]["vector"] == ternary(phonematcher.vectorize_phones(tied)) + NO_PROSODY
 
 
 def test_merged_segments_glottalised_and_diphthong(tmp_path):
     result, table = run(tmp_path, {**TINY_MAP, "uˀ": [4]}, "phonematcher")
     assert result.exit_code == 0, result.output
     vector = table["vectors"]["4"]["vector"]
-    assert vector == ternary(phonematcher.vectorize_phones("uˀ")) + NO_PROSODY + NO_TONE
+    assert vector == ternary(phonematcher.vectorize_phones("uˀ")) + NO_PROSODY
     # syllabic +, sonorant +, consonantal -
     assert vector[:3] == [1, 1, -1]
     (tmp_path / "diphthong").mkdir()
@@ -359,11 +418,11 @@ def test_tone_mark_on_a_non_syllabic_consonant_is_refused(tmp_path, symbol):
 def test_tone_mark_on_a_syllabic_consonant(tmp_path):
     result, table = run(tmp_path, {**TINY_MAP, "m\u0329\u0301": [4]}, "phonematcher")
     assert result.exit_code == 0, result.output
-    vector = table["vectors"]["4"]["vector"]
-    assert vector[:-11] == ternary(phonematcher.vectorize_phones("m\u0329"))
+    phone, prosody, tone = parts(table, "4")
+    assert phone == base_features("phonematcher", "m\u0329")
     # syllabic +, sonorant +, consonantal +
-    assert vector[:3] == [1, 1, 1]
-    assert vector[-11:] == NO_PROSODY + [1, 0.5, 0.5, 0.5]
+    assert phone[:3] == [1, 1, 1]
+    assert (prosody, tone) == (NO_PROSODY, [1, 0.5, 0.5, 0.5])
 
 
 def test_bar_reason_says_null_by_default(tmp_path):
@@ -371,36 +430,3 @@ def test_bar_reason_says_null_by_default(tmp_path):
     assert result.exit_code == 0, result.output
     assert table["vectors"]["4"]["vector"] is None
     assert "4 '|' null by default; rule it a pause with --pause |" in result.output
-
-
-def source_with_tone(monkeypatch, tone):
-    """A source shaped like phonematcher 3: its features end with the four tone
-    features: on a tone bearer tone_is is True and the pitches are floats, and a
-    toneless phone has None in all four."""
-    from phoonnx_train import features_json
-    names = tuple(phonematcher.FEATURES) + tuple(TONE_NAMES)
-    monkeypatch.setattr(features_json, "load_source", lambda source: (
-        "3.0.0", names, lambda phone: list(phonematcher.vectorize_phones(phone)) + list(tone)))
-    return len(phonematcher.FEATURES)
-
-
-def test_float_features_of_the_source_pass_through(tmp_path, monkeypatch):
-    n = source_with_tone(monkeypatch, [True, 1.0, 0.0, -1.0])
-    result, table = run(tmp_path, TINY_MAP, "phonematcher")
-    assert result.exit_code == 0, result.output
-    vector = table["vectors"]["1"]["vector"]
-    assert vector[:n] == ternary(phonematcher.vectorize_phones("a"))
-    assert vector[n:n + 4] == [1, 1.0, 0.0, -1.0]
-    assert vector[n + 4:] == NO_PROSODY
-
-
-def test_a_source_with_tone_features_gets_no_second_tone_block(tmp_path, monkeypatch):
-    n = source_with_tone(monkeypatch, [None, None, None, None])
-    _, table = run(tmp_path, {**TINY_MAP, "˧˥": [4], "á": [5]}, "phonematcher")
-    names = table["feature_names"]
-    assert names == list(phonematcher.FEATURES) + TONE_NAMES + PROSODY_NAMES
-    assert all(len(v["vector"]) == len(names) for v in table["vectors"].values() if v["vector"])
-    assert table["vectors"]["4"]["vector"] == [0] * n + [1, 0, 0.5, 1] + NO_PROSODY
-    assert table["vectors"]["1"]["vector"][n:n + 4] == [0, 0, 0, 0]
-    assert table["vectors"]["5"]["vector"][n:n + 4] == [1, 0.5, 0.5, 0.5]
-    assert table["vectors"]["3"]["vector"] == [0] * (n + 4) + [0, 0, 0, 0, 0, 1, 0]

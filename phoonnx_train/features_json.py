@@ -3,11 +3,21 @@
 The file gives each id of a ``phoneme_id_map`` a distinctive-feature vector,
 in the ``phoonnx-input-features/1`` format that a feature-input text encoder
 reads. Seven prosody features for space, pauses, question, exclamation and
-stress, then four tone features, end every vector; punctuation of any script sets them by a rule over its
-Unicode name. A source whose own features include the four tone features keeps them in
-place, and the table adds no second tone block. A phone written with IPA tone diacritics
-(``á``) gets the phone features of its base and the tone values of its marks. Pad, BOS, EOS and other ids that are not phones get ``null``. A symbol that looks like a phone
-and that the feature source cannot read stops the run, with the list.
+stress end every vector; punctuation of any script sets them by a rule over its
+Unicode name.
+
+Four tone features, tone_is, tone_start, tone_mid and tone_end, give the pitch
+of a tone. phonematcher has them among its own features, and its vector of a
+tone-bearing phone (``á``, ``a˥˩``) holds the tone of that phone.
+orthography2ipa has no tone features, so the table adds the four after the
+prosody features, and a phone with tone diacritics or tone letters gets the
+phone features of its base and the tone of its marks. A tone id with no phone
+(``˧˧`` after a coda, ``꜔꜒`` in sandhi) is zero on every phone feature and has
+its tone in the four tone features.
+
+Pad, BOS, EOS and other ids that are not phones get ``null``. A symbol that
+looks like a phone and that the feature source cannot read stops the run, with
+the list.
 
 The feature source runs here, once, and never at training or synthesis time,
 so phonematcher and orthography2ipa are in the ``train-features`` extra only.
@@ -70,8 +80,9 @@ O2I_FEATURES: Tuple[str, ...] = (
     "high", "low", "back", "round", "tense", "long", "click", "nasal_vowel",
 )
 
-#: The tone features after the prosody block: a tone id has tone_is 1 and its
-#: pitch at the start, middle and end, each Chao level 1-5 as (level - 3) / 2.
+#: The tone features: a tone has tone_is 1 and its pitch at the start, middle
+#: and end, each Chao level 1-5 as (level - 3) / 2. phonematcher has them in its
+#: own vector; for a source without them they follow the prosody block.
 TONE = ("tone_is", "tone_start", "tone_mid", "tone_end")
 
 #: The IPA tie bars above and below, which join two symbols into one segment.
@@ -81,8 +92,11 @@ _TERNARY = {True: 1, False: -1, None: 0}
 
 
 def _value(v: Optional[Union[bool, float]]) -> float:
-    """A feature value: a binary feature as 1, -1 or 0 (unknown), a scalar as it is."""
-    return v if isinstance(v, float) else _TERNARY[v]
+    """A feature value: a binary feature as 1, -1 or 0 (unknown), a scalar as it
+    is, written as an integer when it is whole."""
+    if isinstance(v, float):
+        return int(v) if v.is_integer() else v
+    return _TERNARY[v]
 
 
 def load_source(name: str) -> Tuple[str, Tuple[str, ...], Callable[[str], Sequence[Optional[Union[bool, float]]]]]:
@@ -138,17 +152,20 @@ def tone_block(symbol: str) -> Optional[List[float]]:
 
 
 def split_tone_marks(symbol: str) -> Optional[Tuple[str, str]]:
-    """The base and the tone letters of a phone written with IPA tone diacritics
-    (``á`` is ``a`` and ``˦``), or None when *symbol* has no tone diacritic or
-    its base is neither a vowel nor a syllabic consonant, as phonematcher's
-    ``is_vowel_phone`` reads it (``ḿ̩`` is ``m̩`` and ``˦``; ``ś`` is not ``s``
-    with a tone). phonematcher's diacritic table gives the tone letters of each mark.
+    """The base and the tone letters of a toned phone, for a source with no tone
+    features: IPA tone diacritics (``á`` is ``a`` and ``˦``) and tone letters
+    after the phone (``a˥˩`` is ``a`` and ``˥˩``). None when *symbol* has no
+    tone or its base is neither a vowel nor a syllabic consonant, as
+    phonematcher's ``is_vowel_phone`` reads it (``ḿ̩`` is ``m̩`` and ``˦``;
+    ``ś`` is not ``s`` with a tone). phonematcher's diacritic table gives the
+    tone letters of each mark.
     """
     from phonematcher.features import is_vowel_phone
-    from phonematcher.tone import DIACRITIC_TONES
+    from phonematcher.tone import DIACRITIC_TONES, LEVELS, NUMERALS
     decomposed = unicodedata.normalize("NFD", symbol)
-    letters = "".join(DIACRITIC_TONES.get(ch, "") for ch in decomposed)
-    base = unicodedata.normalize("NFC", "".join(ch for ch in decomposed if ch not in DIACRITIC_TONES))
+    phone = decomposed.rstrip("".join(LEVELS) + "".join(NUMERALS))
+    letters = "".join(DIACRITIC_TONES.get(ch, "") for ch in phone) + decomposed[len(phone):]
+    base = unicodedata.normalize("NFC", "".join(ch for ch in phone if ch not in DIACRITIC_TONES))
     if not letters or not base or not is_vowel_phone(base):
         return None
     return base, letters
@@ -191,7 +208,7 @@ def build_features(phoneme_id_map: dict, source: str,
     phone and does not read.
     """
     src_version, names, vectorize = load_source(source)
-    # a source that has the tone features keeps them in its own vector
+    # a source that has the tone features reads the tone of a phone itself
     tone_at = [names.index(n) for n in TONE] if set(TONE) <= set(names) else None
     tail = [] if tone_at else [0] * len(TONE)
 
@@ -224,7 +241,7 @@ def build_features(phoneme_id_map: dict, source: str,
                 reason = f"punctuation {unicodedata.name(symbol, '?')}, no prosody rule"
             if reason is None:
                 phone, tone = symbol, None
-                if marked := split_tone_marks(symbol):
+                if tone_at is None and (marked := split_tone_marks(symbol)):
                     phone, tone = marked[0], tone_block(marked[1])
                 try:
                     vector = [_value(v) for v in vectorize(phone)]
