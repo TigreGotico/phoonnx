@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.136.3a2](https://github.com/TigreGotico/phoonnx/tree/1.136.3a2) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.3a1...1.136.3a2)
+
+**Merged pull requests:**
+
+- test: train, export and run a tiny model of each training engine [\#1002](https://github.com/TigreGotico/phoonnx/pull/1002) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.136.3a1](https://github.com/TigreGotico/phoonnx/tree/1.136.3a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.2a1...1.136.3a1)
