@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.136.1a1](https://github.com/TigreGotico/phoonnx/tree/1.136.1a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.0a1...1.136.1a1)
+
+**Merged pull requests:**
+
+- fix: segment maps cut phonemes with phonematcher.segment\_spans [\#1016](https://github.com/TigreGotico/phoonnx/pull/1016) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.136.0a1](https://github.com/TigreGotico/phoonnx/tree/1.136.0a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.2a2...1.136.0a1)
@@ -385,10 +393,6 @@
 ## [1.125.12a2](https://github.com/TigreGotico/phoonnx/tree/1.125.12a2) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.12a1...1.125.12a2)
-
-**Merged pull requests:**
-
-- perf: read only the pages the external-data walk touches [\#902](https://github.com/TigreGotico/phoonnx/pull/902) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.12a1](https://github.com/TigreGotico/phoonnx/tree/1.125.12a1) (2026-11-22)
 
