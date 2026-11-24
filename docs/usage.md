@@ -1,16 +1,16 @@
 # Usage Guide
 
 <!-- agent-hint
-covers: loading a voice, synthesis to WAV or a stream, SynthesisConfig, inline phonemes, phonetic spellings, SSML, multi-speaker voices and the low-level phonemize, tokenize and vocode calls
-source: phoonnx/voice.py:TTSVoice, phoonnx/config.py:SynthesisConfig, phoonnx/ssml.py, phoonnx/providers.py, phoonnx/audio.py
+covers: loading a voice, synthesis to WAV or a stream, SynthesisConfig, inline phonemes, phonetic spellings, SSML, multi-speaker voices and the low-level prepare, render, phonemize and tokenize calls
+source: phoonnx/voice.py:TTSVoice, phoonnx/voice.py:AudioChunk, phoonnx/voice.py:PhoneticSpellings, phoonnx/encoders.py:Utterance, phoonnx/config.py:SynthesisConfig, phoonnx/ssml.py, phoonnx/providers.py
 generated: no
-verify: pytest tests/test_voice_chunks.py tests/test_scale_precedence.py tests/test_synthesis_config_chunk.py tests/test_inline_phonemes.py tests/test_phonetic_spellings.py tests/test_ssml.py; the calls and their output: none, checked by reading phoonnx/voice.py:TTSVoice and phoonnx/config.py:SynthesisConfig
+verify: .venv/bin/python -m doctest -o NORMALIZE_WHITESPACE docs/usage.md
 see: quickstart.md, configuration.md, streaming.md
 -->
 
-This guide is for Python developers driving phoonnx directly. After reading it you can load a
-voice, synthesize to a WAV or a stream, tune synthesis, and reach the low-level phonemize /
-tokenize / vocode calls.
+This guide is for Python developers who use phoonnx directly. It shows how to load a
+voice, synthesize to a WAV file or a stream, tune synthesis, and use the low-level
+`prepare` and `render` calls.
 
 ## Loading a Voice
 
@@ -37,8 +37,9 @@ with wave.open("output.wav", "wb") as wav_file:
     voice.synthesize_wav("Hello, world!", wav_file)
 ```
 
-The first `load()` downloads the voice, about 60 MB, into the Hugging Face cache. Later loads
-read it from the cache. The script writes `output.wav`:
+The first `load()` downloads the voice, about 64 MB, into the Hugging Face cache. Later loads
+read it from the cache. The script writes `output.wav`, at the 22050 Hz rate of the voice,
+mono, 2 bytes per sample:
 
 ```
 $ python speak.py
@@ -63,8 +64,12 @@ When you omit `providers`, phoonnx reads the `PHOONNX_ONNX_PROVIDERS` environmen
 and then detects the providers that the installed ONNX Runtime has. See the
 [Configuration reference](configuration.md#execution-providers).
 
-Set `PHOONNX_ORT_CACHE_DIR` to a writable directory to cache the ONNX Runtime-optimized graph
-across process restarts. This cuts the start time after the first run.
+The `threads` argument sets the threads per graph operator in each session of the voice.
+When you omit it, phoonnx reads `PHOONNX_ORT_THREADS`, and then uses the ONNX Runtime
+default of one thread per core.
+
+Set `PHOONNX_ORT_CACHE_DIR` to a writable directory to cache the graph that ONNX Runtime
+optimizes. Later processes load the optimized graph and skip the optimization pass.
 
 ### Loading from files
 
@@ -80,8 +85,9 @@ voice = TTSVoice.load(
 ```
 
 Without `config_path`, `TTSVoice.load` looks for `<model_path>.json`, for example
-`model.onnx.json`. Use this for your own files only. In the Hugging Face cache, the file
-names change from voice to voice, and `manager.voices[voice_id].load()` finds them for you.
+`model.onnx.json`. If that file is missing, it raises `VoiceLoadError`. Use this call for
+your own files only. In the Hugging Face cache, the file names change from voice to voice,
+and `manager.voices[voice_id].load()` finds them for you.
 
 `TTSVoice.load` also takes overrides for the phonemizer and the language:
 
@@ -95,9 +101,10 @@ voice = TTSVoice.load(
 )
 ```
 
-Pass `warmup=True` to `TTSVoice.load` to pay the first-inference kernel-selection cost during
-the load instead of on the first `synthesize` call. `use_cuda=True` is a **deprecated** alias
-for `providers=["CUDAExecutionProvider"]`. Use `providers`.
+Pass `warmup=True` to `TTSVoice.load` to run one inference during the load. The first
+`synthesize` call then does not pay the kernel selection cost of ONNX Runtime.
+`use_cuda=True` is a deprecated alias for `providers=["CUDAExecutionProvider"]`. Use
+`providers`.
 
 ## Synthesizing Speech
 
@@ -112,7 +119,22 @@ with wave.open("output.wav", "wb") as wav_file:
 
 ### Streaming Audio Chunks
 
-`synthesize()` is a generator that yields one `AudioChunk` per sentence, as the sentence splitter cuts the text. This enables low-latency streaming. A short exclamation can stay in one chunk with the sentence after it: "Hello! How are you today?" gives one chunk, and "Hello world. How are you today?" gives two. `SynthesisConfig(chunk=...)` changes the size of a chunk: `clause` gives the first audio sooner on a long sentence, and `paragraph` or `none` gives fewer false sentence ends.
+`synthesize()` is a generator that yields one `AudioChunk` per sentence. You can play the
+first sentence while the voice makes the next one. The text frontend of the voice splits the
+text into sentences. You can see the split without a voice:
+
+```python
+>>> from scriptconv.phonemizers import get_phonemizer
+>>> from phoonnx.config import PhonemeType, voice_frontend
+>>> frontend = voice_frontend(get_phonemizer(PhonemeType.UNICODE), "en-US")
+>>> [segment.text for segment in frontend.segments("Hello! How are you today?")]
+['Hello!', 'How are you today?']
+>>> len(list(frontend.segments("Hello world. How are you today?")))
+2
+
+```
+
+Each of these texts thus gives two chunks.
 
 ```python
 from phoonnx.config import SynthesisConfig
@@ -122,8 +144,13 @@ syn_config = SynthesisConfig(length_scale=1.2)  # slightly slower speech
 for chunk in voice.synthesize("Hello world. How are you today?", syn_config=syn_config):
     print(f"Sample rate: {chunk.sample_rate}")
     print(f"Audio shape: {chunk.audio_float_array.shape}")
-    # chunk.audio_int16_bytes — raw PCM bytes for playback
+    # chunk.audio_int16_bytes holds raw PCM bytes for playback
 ```
+
+`SynthesisConfig(chunk=...)` sets how much text one engine call reads: `"sentence"` (the
+default), `"clause"`, `"paragraph"` or `"none"` (the whole text). Any other value raises a
+`ValueError`. `voice.stream()` yields parts of a sentence as soon as the engine makes them,
+for engines that can stream. See [Streaming](streaming.md).
 
 ### From Phoneme IDs Directly
 
@@ -139,8 +166,8 @@ audio = chunk.audio_float_array
 ### Phoneme Alignment
 
 Every `AudioChunk` carries the `phonemes` and `phoneme_ids` that produced it.
-Pass `include_alignments=True` to also get per-phoneme timing — how many audio
-samples each phoneme spans — when the model exposes a duration output:
+Pass `include_alignments=True` to also get the timing of each phoneme, as the number of
+audio samples that it spans, when the model has a duration output:
 
 ```python
 for chunk in voice.synthesize("Hello world.", include_alignments=True):
@@ -150,19 +177,31 @@ for chunk in voice.synthesize("Hello world.", include_alignments=True):
 ```
 
 `include_alignments=False` (the default) does not change the audio. For a model
-with no duration output, `phoneme_alignments` comes back `None`. If a model was
-exported without a duration output but has one to find, the first
-`include_alignments=True` call adds it with graph surgery at load time (see
-[Phoneme alignment](alignment.md), "Runtime alignment for models exported
-without the flag"). This needs the `onnx` package from
-`pip install --pre "phoonnx[streaming]"`. Without it, phoonnx logs an INFO
-message and `phoneme_alignments` comes back `None`. See [Phoneme alignment](alignment.md) for the full
-guide, the engine support matrix, and how to export a VITS model with
-alignment.
+with no duration output, `phoneme_alignments` is `None`. If a VITS model has no duration
+output but has a duration tensor inside it, the first `include_alignments=True` call adds
+the output with graph surgery. This needs the `onnx` package from
+`pip install --pre "phoonnx[streaming]"`. Without it, phoonnx logs an INFO message and
+`phoneme_alignments` is `None`. See [Phoneme alignment](alignment.md) for the engine
+support table and how to export a VITS model with alignment.
 
 ## SynthesisConfig
 
-`SynthesisConfig` controls synthesis parameters at runtime:
+`SynthesisConfig` controls synthesis parameters at runtime. Each field has a default. Some
+defaults are `None`, which lets the voice config decide. The other defaults are fixed values:
+
+```python
+>>> from phoonnx.config import SynthesisConfig
+>>> config = SynthesisConfig()
+>>> config.speaker_id, config.lang_id, config.length_scale, config.noise_scale, config.noise_w_scale
+(None, None, None, None, None)
+>>> config.add_diacritics, config.diacritizer_model
+(None, None)
+>>> config.normalize_audio, config.volume, config.enable_phonetic_spellings
+(True, 1.0, True)
+
+```
+
+This example sets each field explicitly:
 
 ```python
 from phoonnx.config import SynthesisConfig
@@ -180,13 +219,14 @@ syn_config = SynthesisConfig(
 )
 ```
 
-`add_diacritics` defaults to `None`, meaning "use the voice's own setting"; set it to `True`
-or `False` only to force diacritization on or off for this call. `diacritizer_model` (default
-`None`) likewise inherits the voice config's choice — set it to override the Arabic
-`text2tashkeel` model for this call. Cloning and autoregressive engines add more fields —
-`speaker_reference`, `speaker_reference_text`, `speaker_reference_lang`, `exaggeration`,
-`temperature`, `top_p`, `extra_params` — documented in [Cloning](cloning.md) and the
-[Configuration reference](configuration.md#synthesisconfig).
+`speaker_id`, `lang_id`, `length_scale`, `noise_scale` and `noise_w_scale` default to `None`,
+which uses the value of the voice config. `add_diacritics` defaults to `None`, which uses the
+setting of the voice. Set it to `True` or `False` only to force diacritization on or off for
+this call. `diacritizer_model` (default `None`) also uses the choice of the voice config. Set
+it to override the Arabic `text2tashkeel` model for this call. Cloning and autoregressive
+engines add more fields, such as `speaker_reference`, `speaker_reference_text`,
+`speaker_reference_lang`, `exaggeration`, `temperature`, `top_p` and `extra_params`. See
+[Cloning](cloning.md) and the [Configuration reference](configuration.md#synthesisconfig).
 
 ## Inline Phoneme Input
 
@@ -198,77 +238,47 @@ for chunk in voice.synthesize(text):
     ...
 ```
 
-A block holds IPA. A voice that reads another alphabet, such as X-SAMPA, gets the block converted
-to that alphabet. A voice that takes no symbol input, tiny-voca or an engine that reads raw text,
-logs one warning that names the voice and the block, and leaves the block out. An ARPA voice gets the
-block as IPA, which its vocabulary does not hold, so the tokenizer drops the block with an
-out-of-vocabulary warning. A skipped block leaves one space between the words around it, or the
-line break next to it when there is one. An SSML `<phoneme>` on such a voice reads its written word.
+A block holds IPA. A voice that reads another alphabet, such as X-SAMPA, gets the block
+converted to that alphabet. A voice that takes no symbol input, such as tiny-voca or an
+engine that reads raw text, logs one warning that names the voice and the blocks, and
+leaves the blocks out. An ARPA voice gets the block as IPA, which its vocabulary does not
+hold, so the tokenizer drops the block with an out-of-vocabulary warning.
+
+A skipped block leaves one space between the words around it, or the line break next to it
+when there is one. Before a punctuation mark, it leaves nothing. An SSML `<phoneme>` on such
+a voice reads its written word.
 
 ## Phonetic Spellings
 
-Word-level respellings are applied to the text before phonemization (`enable_phonetic_spellings`,
-on by default). They come from `phoonnx/locale/<lang>/phonetic_spellings.txt`, one `word: spelling`
-per line (`#` starts a comment), matched as whole words, ignoring case.
+Phonetic spellings replace words in the text before phonemization. The
+`enable_phonetic_spellings` setting turns them on, and it is on by default. The packaged
+spellings are in `phoonnx/locale/<lang>/phonetic_spellings.txt`, one `word: spelling` per
+line. A `#` starts a comment. Matches are whole words, and case does not matter.
 
-Add your own without touching the package: put `<lang>.txt` files in a directory and point
-`PHOONNX_PHONETIC_SPELLINGS_DIR` at it.
-
-```
-$ cat ~/.config/phoonnx/spellings/fr.txt
-Thalovant: Talovant
-d'accord: dakor
-
-$ PHOONNX_PHONETIC_SPELLINGS_DIR=~/.config/phoonnx/spellings python my_app.py
-```
-
-A file is named by primary language (`fr.txt`) and/or full tag (`fr-CA.txt`); they are applied
-over the packaged file, the full tag over the primary language. The directory can also be passed
-to `PhoneticSpellings.from_lang(lang, user_dir=...)` (`from phoonnx.voice import PhoneticSpellings`).
+To add your own, put `<lang>.txt` files in a directory and set
+`PHOONNX_PHONETIC_SPELLINGS_DIR` to it. You can also give the directory to
+`PhoneticSpellings.from_lang` as `user_dir`:
 
 ```python
-voice.phonetic_spellings  # PhoneticSpellings (.replacements dict, .apply(text)), or None
+>>> import pathlib, tempfile
+>>> from phoonnx.voice import PhoneticSpellings
+>>> user_dir = tempfile.mkdtemp()
+>>> _ = pathlib.Path(user_dir, "fr.txt").write_text("Thalovant: Talovant\nd'accord: dakor\n")
+>>> spellings = PhoneticSpellings.from_lang("fr-CA", user_dir=user_dir)
+>>> spellings.apply("Bonjour THALOVANT, d'accord?")
+'Bonjour Talovant, dakor?'
+
 ```
+
+Name a file by the primary language (`fr.txt`) or by the full tag (`fr-CA.txt`), or both.
+The user files apply over the packaged file, and the full tag applies over the primary
+language. `voice.phonetic_spellings` holds the `PhoneticSpellings` of a voice, or `None`.
 
 ## SSML
 
-`TTSVoice.synthesize_ssml()` and `synthesize_ssml_wav()` read SSML and turn it into silence, pace,
-loudness, pitch, language and sound effects. Input that is not SSML is synthesized as it is.
-The full support table (every W3C SSML 1.1, Polly and Alexa element, measured in English and French), the
-limits and the cost of each feature are in [SSML](ssml.md).
-
-| Tag | Effect |
-| --- | --- |
-| `<break time="500ms"/>`, `strength=` | silence of that length |
-| `<p>`, `<s>` | a pause at the paragraph / sentence edge |
-| `<prosody rate= volume= pitch=>` | pace (the voice's length scale), loudness, and pitch (`+2st`, `-10%`, `high`; Hz is ignored) |
-| `<prosody duration=>`, `amazon:max-duration=` | the speech is stretched or squeezed (0.5x to 2x) to that time, or to at most that time |
-| `<emphasis level=>` | a little slower and louder (or softer for `reduced`) |
-| `<lang xml:lang=>`, `<voice languages=>` | a multilingual voice uses that language's id for the piece; a monolingual voice says the words in its own language. `<say-as>` inside `xml:lang` also reads its value in that language; `<voice languages>` picks the voice only |
-| `<say-as interpret-as=...>` | `cardinal`, `number`, `ordinal`, `digits`, `fraction`, `unit`, `date` (+`format="mdy"`), `time`, `currency`, `telephone`, `characters`/`spell-out`/`letters`/`verbatim`, and `expletive` (a bleep) |
-| `<sub alias=>` | substituted text |
-| `<phoneme alphabet="ipa\|x-sampa" ph=>` | inline phonemes (X-SAMPA is converted to IPA) |
-| `<mark name=>` | `on_mark(name, seconds)` is called as the audio that follows is produced |
-| `<amazon:effect name="whispered\|drc">`, `phonation="soft"`, `vocal-tract-length="+10%"` | whisper, soft voice, dynamic range compression, a longer or shorter vocal tract |
-| `<amazon:auto-breaths>`, `<amazon:breath>` | breaths between sentences, or at a point |
-
-The voice's text frontend reads `say-as` with `TextFrontend.say_as` from scriptconv. That method
-calls text2spoken through the normalisation hook of the voice. So `say-as` reads with the
-settings of the voice, and in the language of the text: `<lang>` changes how a value is read.
-Each value text2spoken does not read, such as `address` or `interjection`, reads as plain text,
-with a warning. A text that does not hold the value (`<say-as interpret-as="date">soon</say-as>`)
-also reads as plain text, with a warning.
-
-```python
-voice.frontend.say_as("3", "ordinal", lang="en-US")  # 'third'
-```
-
-Pitch, whisper, soft, compression, breaths and bleeps are applied to the finished audio
-(`phoonnx.audio_fx`, numpy only), not by the model: pitch shifts move the formants with the pitch,
-so keep them within a few semitones; whisper is breath shaped like the words (no pitch, nothing below about 180 Hz) and 8 dB quieter than the speech, set with `level_db` in `audio_fx.whisper`; a breath is quiet and different every time. Emotions and speaking styles are not something a VITS voice can do and are read as plain
-text. A document that does not parse is spoken as its text with the tags removed, and plain text
-containing a stray `<` is never mistaken for SSML (`phoonnx.ssml.looks_like_ssml`). The OVOS plugin
-(`phoonnx.opm`) routes SSML input here and advertises `ssml_tags`.
+`TTSVoice.synthesize_ssml()` and `synthesize_ssml_wav()` read SSML. They turn it into
+silence, pace, loudness, pitch, language and sound effects. Input that is not SSML is
+synthesized as it is.
 
 ```python
 marks = []
@@ -278,6 +288,17 @@ with wave.open("out.wav", "wb") as wav:
         '<prosody rate="slow" pitch="-2st">Feels like <say-as interpret-as="cardinal">4</say-as>.</prosody>'
         '</speak>', wav, on_mark=lambda name, seconds: marks.append((name, seconds)))
 ```
+
+`on_mark(name, seconds)` is called for each `<mark>` as the audio after it is produced.
+The text frontend of the voice reads `<say-as>` with `TextFrontend.say_as` from scriptconv,
+in the language of the text:
+
+```python
+voice.frontend.say_as("3", "ordinal", lang="en-US")  # 'third'
+```
+
+The [SSML](ssml.md) page lists each element and attribute that phoonnx supports, with its
+limits and its cost. The OVOS plugin (`phoonnx.opm`) sends SSML input to these methods.
 
 ## Multi-Speaker Voices
 
@@ -291,13 +312,26 @@ for chunk in voice.synthesize("Hello!", syn_config=syn_config):
 
 ## Audio Output Format
 
-Each `AudioChunk` has the following attributes:
+An `AudioChunk` holds the audio as a float32 array in `[-1.0, 1.0]`, and it converts the
+array to int16 samples on request:
+
+```python
+>>> import numpy as np
+>>> from phoonnx.voice import AudioChunk
+>>> chunk = AudioChunk(sample_rate=22050, sample_width=2, sample_channels=1,
+...                    audio_float_array=np.array([0.0, 0.5, -1.0], dtype=np.float32))
+>>> chunk.audio_int16_array
+array([     0,  16383, -32767], dtype=int16)
+>>> len(chunk.audio_int16_bytes)
+6
+
+```
 
 | Attribute | Description |
 |-----------|-------------|
 | `audio_float_array` | `np.ndarray` (float32), values in `[-1.0, 1.0]` |
-| `audio_int16_array` | `np.ndarray` (int16), the float array clipped and scaled |
-| `audio_int16_bytes` | Raw PCM bytes (int16, little-endian) |
+| `audio_int16_array` | `np.ndarray` (int16), the float array scaled by 32767 and clipped |
+| `audio_int16_bytes` | Raw PCM bytes (int16, in the byte order of the machine) |
 | `sample_rate` | Sample rate in Hz (e.g. 22050) |
 | `sample_width` | Bytes per sample (always 2) |
 | `sample_channels` | Number of channels (always 1, mono) |
@@ -318,11 +352,23 @@ for utterance in voice.prepare("Hello world. How are you?", config):
 ```
 
 `prepare()` yields one `Utterance` for each engine call, usually one for each sentence. An
-`Utterance` cannot be changed after it is made. It has five fields:
+`Utterance` cannot be changed after it is made:
+
+```python
+>>> from phoonnx.voice import Utterance
+>>> utterance = Utterance(text="", symbols=None, ids=(1, 5, 23, 7, 2))
+>>> utterance.ids = (1,)
+Traceback (most recent call last):
+    ...
+dataclasses.FrozenInstanceError: cannot assign to field 'ids'
+
+```
+
+It has five fields:
 
 | Field | Value |
 |-------|-------|
-| `text` | The text of this engine call's chunk. `""` when the previous utterance's text covers this chunk, and `None` when it is unknown |
+| `text` | The text of the chunk of this engine call. `""` when the text of the previous utterance covers this chunk, and `None` when it is unknown |
 | `symbols` | The phonemes or characters that the tokenizer read. `None` for an engine that reads text, such as Pocket TTS. Its adapter makes the IDs from the text |
 | `ids` | The token IDs |
 | `streams` | Values that some phonemizers give for each ID, such as `language_ids` from Shami |
@@ -334,9 +380,9 @@ Use `render(utterance, config, alignments=True)` to get the durations of the pho
 chunk.
 
 The two steps let you do work between them. For example, you can keep the utterances of a
-text and render them again with another speaker or another length scale.
-The text settings of `SynthesisConfig` (diacritics, phonetic spellings, input alphabet) apply
-in `prepare()`, and the engine and audio settings apply in `render()`.
+text and render them again with another speaker or another length scale. The text settings
+of `SynthesisConfig` (diacritics, phonetic spellings, input alphabet, chunk) apply in
+`prepare()`, and the engine and audio settings apply in `render()`.
 
 `phonemize()` gives the phonemes of a text with no diacritizer, one list for each sentence.
 It accepts an optional `lang`, so that a cloning reference can be phonemized in its own

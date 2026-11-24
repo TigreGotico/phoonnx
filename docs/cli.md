@@ -4,11 +4,11 @@
 covers: every phoonnx-voices subcommand, its options, its output and its exit status
 source: phoonnx/cli.py, pyproject.toml [project.scripts]
 generated: no
-verify: python -m pytest tests/test_cli.py tests/test_export_piper_sherpa.py; phoonnx-voices --help
+verify: diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices --help) <(sed -n '/^\$ phoonnx-voices --help$/,/^\x60\x60\x60$/{//!p}' docs/cli.md) && diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices update-cache | sed -E 's/(: |Languages \(|Voices \(|^Found )[0-9]+/\1.../') <(sed -n '/^\$ phoonnx-voices update-cache$/,/^\x60\x60\x60$/{//!p}' docs/cli.md) && [ $(sed -n '/^\$ phoonnx-voices list-langs | head -5$/,/^\x60\x60\x60$/{//!p}' docs/cli.md | wc -l) -gt 3 ] && ! grep -vxF -e '...' -f <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices list-langs | sed -E 's/(: |Languages \(|Voices \(|^Found )[0-9]+/\1.../') <(sed -n '/^\$ phoonnx-voices list-langs | head -5$/,/^\x60\x60\x60$/{//!p}' docs/cli.md) && [ $(sed -n '/^\$ phoonnx-voices list-voices --lang pt-PT | head -4$/,/^\x60\x60\x60$/{//!p}' docs/cli.md | wc -l) -gt 3 ] && ! grep -vxF -e '...' -f <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices list-voices --lang pt-PT | sed -E 's/(: |Languages \(|Voices \(|^Found )[0-9]+/\1.../') <(sed -n '/^\$ phoonnx-voices list-voices --lang pt-PT | head -4$/,/^\x60\x60\x60$/{//!p}' docs/cli.md) && [ $(sed -n '/^\$ phoonnx-voices list-available | head -6$/,/^\x60\x60\x60$/{//!p}' docs/cli.md | wc -l) -gt 3 ] && ! grep -vxF -e '...' -f <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices list-available | sed -E 's/(: |Languages \(|Voices \(|^Found )[0-9]+/\1.../') <(sed -n '/^\$ phoonnx-voices list-available | head -6$/,/^\x60\x60\x60$/{//!p}' docs/cli.md) && ! comm -3 <(sed '/<!-- agent-hint/,/-->/d' docs/cli.md | grep -oP -- '(?<![\w-])--[a-z][a-z-]*' | sort -u) <(for c in update-cache list-langs list-voices list-available download add-alignment export; do .venv/bin/phoonnx-voices $c --help; done | grep -oP -- '(?<![\w-])--[a-z][a-z-]*' | sort -u) | grep .
 see: quickstart.md, choose_voice.md, voice_manager.md, offline.md
 -->
 
-This page shows how to manage voices from the shell with the `phoonnx-voices` command. It is for anyone who finds, downloads or prepares voices without writing Python.
+This page shows how to manage voices from the shell with the `phoonnx-voices` command. It is for anyone who finds, downloads or prepares voices without Python code.
 
 ## A first session
 
@@ -20,16 +20,18 @@ Clearing local voice cache...
 Loading bundled voice indexes...
 
 Cache updated successfully!
-Total voices available: 3191
-Total languages supported: 1817
+Total voices available: ...
+Total languages supported: ...
 ```
+
+The last two lines give the number of voices and language tags in the bundled index.
 
 List the languages:
 
 ```
 $ phoonnx-voices list-langs | head -5
 
-Supported Languages (1817):
+Supported Languages (...):
  - aae
  - aal
  - aao
@@ -40,7 +42,7 @@ Find the voices for a language:
 ```
 $ phoonnx-voices list-voices --lang pt-PT | head -4
 
-Found 51 voices for language 'pt-PT':
+Found ... voices for language 'pt-PT':
 * OpenVoiceOS/phoonnx_pt-PT_miro_unicode (pt-PT)
 * OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone (pt-PT)
 ```
@@ -109,7 +111,7 @@ Lists the voices in the local catalog. When the catalog is empty, it prints `No 
 | `--lang LANG` | List the voices for a language. A tag with a region (`pt-PT`) keeps the voices of that region. A tag with no region (`pt`), or a region with no voice (`en-AU`), lists the nearest voices first. [Choose a voice](choose_voice.md) shows the output of each case. |
 | `-v`, `--verbose` | Print the id, name, language, engine, phoneme type, model URL and config URL of each voice. A voice that needs a reference clip also gets the line `Requires reference: yes (needs speaker_reference / a style path)`. |
 
-Each line starts with the voice id, which `--voice` takes. A voice with a display name shows that name after the language, for example `* pockettts/it/alba (it) - Pocket TTS Alba`.
+Each line starts with the voice id. A voice with a display name shows that name after the language, for example `* pockettts/it/alba (it) - Pocket TTS Alba`.
 
 ### `list-available`
 
@@ -118,9 +120,9 @@ Lists every voice id in the bundled index files, grouped by source. It reads the
 ```
 $ phoonnx-voices list-available | head -6
 
-Total available voices found (bundled indexes): 3191
+Total available voices found (bundled indexes): ...
 
---- OVOS Voices (39) ---
+--- OVOS Voices (...) ---
   OpenVoiceOS/phoonnx_an_dii_unicode
   OpenVoiceOS/phoonnx_an_miro_unicode
 ```
@@ -164,7 +166,7 @@ It also exits with status 1 when the graph has no duration tensor that it can fi
 
 ### `export`
 
-Writes a voice as a Piper voice or a sherpa-onnx voice in a new folder. The command copies the model and writes the config that the runtime reads. The source model does not change.
+Writes a voice as a Piper voice or a sherpa-onnx voice in the folder DEST. The command copies the model and writes the config that the runtime reads. The source model does not change.
 
 ```bash
 phoonnx-voices export MODEL_PATH DEST --to piper|sherpa [--config CONFIG]

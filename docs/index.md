@@ -4,7 +4,7 @@
 covers: every hand-written docs page in reading order, grouped by reader task
 source: docs/*.md, docs/training/*.md, docs/training/engines/*.md
 generated: no
-verify: cd docs && for f in *.md training/*.md training/engines/*.md; do [ "$f" = index.md ] || grep -q "($f)" index.md || echo "missing $f"; done
+verify: .venv/bin/python -I -c "import re, sys, glob, os; os.chdir('docs'); order = [l for l in re.findall(r'^- \[[^]]+\]\(([^)#]+)\)', open('index.md').read(), re.M) if not l.startswith('..')]; pages = [p for p in glob.glob('*.md') + glob.glob('training/*.md') + glob.glob('training/engines/*.md') if p != 'index.md']; bad = sorted(set(pages) ^ set(order)) + [p for p in set(order) if order.count(p) > 1]; seq = ['index.md'] + order + [None]; rel = lambda q, p: os.path.relpath(q, os.path.dirname(p) or '.'); bad += [p for i, p in enumerate(order) if os.path.exists(p) and not ((last := open(p).read().rstrip().splitlines()[-1]).startswith('[Docs index](' + rel('index.md', p) + ')') and ('](' + rel(seq[i], p) + ') ·' in last.split('Next:')[0] + ' ·') and (last.endswith('](' + rel(seq[i + 2], p) + ')') if seq[i + 2] else 'Next:' not in last))]; print(bad); sys.exit(bool(bad))"
 see: ../README.md, quickstart.md, ../AGENTS.md
 -->
 
@@ -27,12 +27,12 @@ phoonnx runs text-to-speech voices from many ecosystems through ONNX Runtime, an
 - [Pocket TTS](pockettts.md): the small multilingual Kyutai model for CPU.
 - [Orpheus](orpheus.md): the large codec language model voices, their cost and their limits.
 - [Galician phonemizer](galician.md): the Cotovia phonemizer and the Galician voices that use it.
-- [BSC multispeaker StyleTTS2](bsc_multispeaker.md): the Spanish and Catalan speakers and how well each one speaks.
+- [BSC multispeaker StyleTTS2](bsc_multispeaker.md): the Spanish and Catalan speakers, where they come from and how their styles are made.
 
 ## Use
 
 - [Usage guide](usage.md): load a voice, synthesize to a file or a stream, and tune each call from Python.
-- [SSML](ssml.md): what each SSML element and attribute does, measured, with the time rules, the bounds and the cost.
+- [SSML](ssml.md): what each SSML element and attribute does, with the time rules, the bounds and the cost.
 - [Voice cloning](cloning.md): clone a speaker from a reference clip.
 - [Voice conversion](voice_conversion.md): convert the output of any voice to a target speaker.
 - [Streaming](streaming.md): low-latency streaming with split encoder and decoder VITS voices.

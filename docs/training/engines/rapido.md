@@ -2,17 +2,15 @@
 
 <!-- agent-hint
 covers: how to train, fine-tune and export a Rápido voice with --engine rapido
-source: phoonnx_train/engines/rapido.py, phoonnx_train/rapido/lightning.py, phoonnx_train/rapido/export_onnx.py
+source: phoonnx_train/engines/rapido.py, phoonnx_train/rapido/lightning.py, phoonnx_train/rapido/dataset.py, phoonnx_train/rapido/export_onnx.py, phoonnx/engines/rapido.py:layout_boundary_ids
 generated: no
-verify: pytest tests/test_rapido_training.py tests/test_rapido_export.py; the hyperparameter defaults: none, checked by reading phoonnx_train/rapido/lightning.py:RapidoModule
+verify: ! comm -23 <(grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' docs/training/engines/rapido.md | grep -vx -- --pre | sort -u) <(for m in preprocess train export_onnx; do .venv/bin/python -m phoonnx_train.$m --help; done | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | sort -u) | grep . && .venv/bin/python -W ignore -c "import inspect, re, sys; from phoonnx_train.rapido.lightning import RapidoModule; from phoonnx.engines.rapido import CLAUSE_TOKENS; d = {k: v.default for k, v in inspect.signature(RapidoModule).parameters.items()}; p = open('docs/training/engines/rapido.md').read(); table = p.split(chr(10) + '| Option | Default | Effect |')[1].split(chr(10) + chr(10))[0]; rows = re.findall(r'^\| \x60(\w+)\x60 \| \x60([^\x60]+)\x60 \|', table, re.M); bad = [(k, v, d.get(k)) for k, v in rows if str(d.get(k)).lower() != v]; clause = re.search(r'clause\s+tokens \x60([^\x60]+)\x60', p).group(1).split(); bad += [] if tuple(clause) == CLAUSE_TOKENS else [clause]; print(len(rows), bad); sys.exit(bool(bad) or not rows)"
 see: ../training.md, ../export.md, ../../engines.md
 -->
 
 This page shows how to train or fine-tune a Rápido voice with `--engine rapido` and export it, for anyone with a prepared dataset.
 
-> Related: [training reference](../training.md) ·
-> [adapter architecture](../../engines.md) ·
-> [configuration](../../configuration.md)
+See also the [training reference](../training.md), the [adapter architecture](../../engines.md) and the [configuration reference](../../configuration.md).
 
 ## What it trains
 
@@ -25,8 +23,7 @@ turns the latents into 48 kHz audio. The model has four parts:
 - An aligner turns the word and frame layout into a condition for each frame.
 - A DiT predicts the flow-matching velocity of the latents.
 
-The upstream release ships no training code. The training loop in
-`phoonnx_train/rapido/lightning.py` is our own.
+The model code is a port of the upstream rapido-tts code (Apache-2.0). The upstream release has no training code, so the training loop in `phoonnx_train/rapido/lightning.py` is specific to phoonnx.
 
 ## Extras needed
 
@@ -114,11 +111,16 @@ Engine options go in the `engine_params` object of the dataset `config.json`:
 
 | Option | Default | Effect |
 |---|---|---|
-| `learning_rate` | `1e-4` | AdamW learning rate |
+| `learning_rate` | `0.0001` | AdamW learning rate |
+| `weight_decay` | `0.01` | AdamW weight decay |
 | `cond_drop` | `0.1` | share of the batch trained without the condition |
 | `mas_upsample` | `4` | time resolution of the alignment search |
+| `prior_weight` | `1.0` | weight of the prior loss |
+| `duration_weight` | `1.0` | weight of the duration loss |
 | `freeze_backbone_steps` | `0` | train only the text encoder, duration predictor, aligner, speakers and prior head for this many steps |
 | `text_only` | `false` | train only the text encoder, duration predictor and prior head |
+
+The total loss is the flow loss plus `prior_weight` times the prior loss plus `duration_weight` times the duration loss.
 
 ## Fine-tune from the released weights
 
@@ -143,9 +145,7 @@ A warm start does not keep the released latent normalization: the engine
 replaces the mean and standard deviation of `rapido.pt` with the statistics of
 your training set.
 
-A two-phase recipe that works for a language the released model does not speak: train with
-`freeze_backbone_steps` set for the early steps, then continue with
-`text_only` to adapt the duration predictor and text encoder.
+For a language that the released model does not speak, train in two phases. First, set `freeze_backbone_steps` for the early steps. Then continue with `text_only` to adapt the duration predictor and the text encoder.
 
 ---
 
