@@ -8,8 +8,11 @@ strict xfail into a failure, so the pin cannot go stale.
 import importlib.util
 import json
 import logging
+import multiprocessing
 import warnings
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import click.testing
@@ -120,7 +123,7 @@ def test_alignment_errors_name_only_real_flags(tmp_path, caplog):
 
 # --- preprocess --jsonl-audio-path / --jsonl-audio-spec-path ---------------
 
-def _preprocess(args):
+def _run_preprocess(args):
     from phoonnx.config import Alphabet
     from phoonnx_train import preprocess
     from scriptconv.phonemizers.base import GraphemePhonemizer, PhonemizerIdentity
@@ -133,8 +136,16 @@ def _preprocess(args):
             return PhonemizerIdentity("dummy", "dummy", "0", lang)
 
     with patch.object(preprocess, "get_phonemizer", return_value=Phonemizer()):
-        return click.testing.CliRunner().invoke(
+        result = click.testing.CliRunner().invoke(
             preprocess.cli, [*args, "--max-workers", "1"], catch_exceptions=False)
+    return SimpleNamespace(exit_code=result.exit_code, output=result.output)
+
+
+def _preprocess(args):
+    # preprocess forks its workers, and a fork after earlier tests started torch's
+    # thread pools in this process deadlocks, so each run gets a fresh interpreter
+    with ProcessPoolExecutor(1, mp_context=multiprocessing.get_context("spawn")) as pool:
+        return pool.submit(_run_preprocess, args).result()
 
 
 def _manifest(out: Path):
