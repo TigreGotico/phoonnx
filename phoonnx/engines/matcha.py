@@ -67,7 +67,9 @@ class MatchaAdapter(BaseOnnxAdapter):
     def configure_from_params(self, engine_params: Dict[str, Any]) -> None:
         """Build the vocoder directly from an engine_params dict."""
         self._engine_params = engine_params or {}
-        if self.vocoder is None and self._engine_params.get("vocoder_path"):
+        # A parametric vocoder such as Griffin-Lim has no model file: vocoder_type alone builds it.
+        if self.vocoder is None and (self._engine_params.get("vocoder_path")
+                                     or self._engine_params.get("vocoder_type")):
             self.vocoder = build_vocoder(
                 model_path=self._engine_params.get("vocoder_path"),
                 vocoder_type=self._engine_params.get("vocoder_type"),
@@ -83,8 +85,8 @@ class MatchaAdapter(BaseOnnxAdapter):
             self.configure_from_params(self._engine_params)
         if self.vocoder is None:
             raise RuntimeError(
-                "Matcha-TTS requires a vocoder. Set 'vocoder_path' in "
-                "config.engine_params (and optionally 'vocoder_type')."
+                "Matcha-TTS requires a vocoder. Set 'vocoder_path' or "
+                "'vocoder_type' in config.engine_params."
             )
         return self.vocoder
 

@@ -57,9 +57,10 @@ class ZipVoiceAdapter(BaseOnnxAdapter):
             self.text_encoder = sess(ep["text_encoder_path"])
         if self.mel is None and ep.get("mel_path"):
             self.mel = sess(ep["mel_path"])
-        if self.vocoder is None and ep.get("vocoder_path"):
+        # A parametric vocoder such as Griffin-Lim has no model file: vocoder_type alone builds it.
+        if self.vocoder is None and (ep.get("vocoder_path") or ep.get("vocoder_type")):
             from phoonnx.engines.vocoders import build_vocoder
-            self.vocoder = build_vocoder(ep["vocoder_path"], ep.get("vocoder_type", "vocos"), ep)
+            self.vocoder = build_vocoder(ep.get("vocoder_path"), ep.get("vocoder_type", "vocos"), ep)
         if "num_step" in ep:
             self.num_step = int(ep["num_step"])
         if "guidance_scale" in ep:
@@ -76,7 +77,7 @@ class ZipVoiceAdapter(BaseOnnxAdapter):
     def synthesize(self, request: AdapterSynthesisRequest,
                    session: onnxruntime.InferenceSession) -> AdapterSynthesisResult:
         if self.text_encoder is None or self.mel is None or self.vocoder is None:
-            raise RuntimeError("ZipVoice voice missing text_encoder_path / mel_path / vocoder_path")
+            raise RuntimeError("ZipVoice voice missing text_encoder_path / mel_path / vocoder_path or vocoder_type")
         p = request.params
         ref = p.get("reference_audio")
         prompt_tokens = p.get("prompt_tokens")

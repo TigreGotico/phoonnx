@@ -535,8 +535,6 @@ def test_a_json_round_trip_keeps_the_language_of_a_1x_lang_id():
 
 # --- Matcha and ZipVoice vocoder_type ----------------------------------------
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="#1029: the Matcha adapter builds a vocoder only from vocoder_path")
 def test_matcha_builds_the_vocoder_of_a_vocoder_type():
     from phoonnx.engines.matcha import MatchaAdapter
     from phoonnx.engines.vocoders.griffinlim import GriffinLimVocoder
@@ -546,8 +544,6 @@ def test_matcha_builds_the_vocoder_of_a_vocoder_type():
     assert isinstance(adapter.vocoder, GriffinLimVocoder), adapter.vocoder
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="#1029: the ZipVoice adapter builds a vocoder only from vocoder_path")
 def test_zipvoice_builds_the_vocoder_of_a_vocoder_type():
     from phoonnx.engines.vocoders.griffinlim import GriffinLimVocoder
     from phoonnx.engines.zipvoice import ZipVoiceAdapter
