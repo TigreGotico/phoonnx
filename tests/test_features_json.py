@@ -375,7 +375,8 @@ def test_bar_reason_says_null_by_default(tmp_path):
 
 def source_with_tone(monkeypatch, tone):
     """A source shaped like phonematcher 3: its features end with the four tone
-    features, tone_is a bool and the three pitches floats."""
+    features: on a tone bearer tone_is is True and the pitches are floats, and a
+    toneless phone has None in all four."""
     from phoonnx_train import features_json
     names = tuple(phonematcher.FEATURES) + tuple(TONE_NAMES)
     monkeypatch.setattr(features_json, "load_source", lambda source: (
@@ -394,12 +395,12 @@ def test_float_features_of_the_source_pass_through(tmp_path, monkeypatch):
 
 
 def test_a_source_with_tone_features_gets_no_second_tone_block(tmp_path, monkeypatch):
-    n = source_with_tone(monkeypatch, [False, 0.0, 0.0, 0.0])
+    n = source_with_tone(monkeypatch, [None, None, None, None])
     _, table = run(tmp_path, {**TINY_MAP, "˧˥": [4], "á": [5]}, "phonematcher")
     names = table["feature_names"]
     assert names == list(phonematcher.FEATURES) + TONE_NAMES + PROSODY_NAMES
     assert all(len(v["vector"]) == len(names) for v in table["vectors"].values() if v["vector"])
     assert table["vectors"]["4"]["vector"] == [0] * n + [1, 0, 0.5, 1] + NO_PROSODY
-    assert table["vectors"]["1"]["vector"][n:n + 4] == [-1, 0.0, 0.0, 0.0]
+    assert table["vectors"]["1"]["vector"][n:n + 4] == [0, 0, 0, 0]
     assert table["vectors"]["5"]["vector"][n:n + 4] == [1, 0.5, 0.5, 0.5]
     assert table["vectors"]["3"]["vector"] == [0] * (n + 4) + [0, 0, 0, 0, 0, 1, 0]
