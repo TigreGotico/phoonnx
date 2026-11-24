@@ -17,7 +17,7 @@ import click
 import torch
 from tqdm import tqdm
 
-from phoonnx.config import PhonemeType, get_phonemizer, get_text_casing, Alphabet, voice_frontend
+from phoonnx.config import PhonemeType, _voice_phonemizer, get_text_casing, Alphabet, voice_frontend
 from scriptconv.diacritics import diacritize
 from scriptconv.frontend import Stages, TextFrontend
 from phoonnx.tokenizer import TTSTokenizer, DEFAULT_IPA_PHONEME_ID_MAP, DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, \
@@ -106,7 +106,7 @@ def build_frontend(phoneme_type: PhonemeType, alphabet: Alphabet, model: Optiona
     rather than trained on text without that stage. Module level, so a partial
     of it pickles.
     """
-    phonemizer = get_phonemizer(phoneme_type, alphabet, model, keep_punctuation=keep_punctuation)
+    phonemizer = _voice_phonemizer(phoneme_type, alphabet, model, keep_punctuation=keep_punctuation)
     return voice_frontend(phonemizer, language, Stages(diacritize=add_diacritics), strict=True)
 
 
@@ -801,10 +801,10 @@ def cli(
                                       config.phonemizer_model, keep_punctuation, config.language,
                                       config.add_diacritics)
     # The parent keeps its own phonemizer for the alphabet and the provenance record.
-    phonemizer = get_phonemizer(config.phoneme_type,
-                                config.alphabet,
-                                config.phonemizer_model,
-                                keep_punctuation=keep_punctuation)
+    phonemizer = _voice_phonemizer(config.phoneme_type,
+                                   config.alphabet,
+                                   config.phonemizer_model,
+                                   keep_punctuation=keep_punctuation)
 
     if any(not utt.phonemes_precomputed for utt in utterances):
         # A worker that cannot build its frontend (an unsupported language, a

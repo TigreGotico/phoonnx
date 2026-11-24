@@ -135,7 +135,7 @@ def _run_preprocess(args):
         def identity(self, lang):
             return PhonemizerIdentity("dummy", "dummy", "0", lang)
 
-    with patch.object(preprocess, "get_phonemizer", return_value=Phonemizer()):
+    with patch.object(preprocess, "_voice_phonemizer", return_value=Phonemizer()):
         result = click.testing.CliRunner().invoke(
             preprocess.cli, [*args, "--max-workers", "1"], catch_exceptions=False)
     return SimpleNamespace(exit_code=result.exit_code, output=result.output)
@@ -195,9 +195,6 @@ def test_jsonl_audio_spec_path_keeps_the_cache_folder_of_the_default_cache_dir(t
 
 # --- preprocess calls a deprecated phoonnx API -----------------------------
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="preprocess-deprecated-api: build_frontend calls the deprecated "
-                          "phoonnx.config.get_phonemizer")
 def test_preprocess_frontend_uses_no_deprecated_phoonnx_api():
     from phoonnx.config import Alphabet, PhonemeType
     from phoonnx_train import preprocess
@@ -208,6 +205,29 @@ def test_preprocess_frontend_uses_no_deprecated_phoonnx_api():
                                   keep_punctuation=True, language="en", add_diacritics=False)
     moved = [str(w.message) for w in caught
              if issubclass(w.category, DeprecationWarning) and "phoonnx.config" in str(w.message)]
+    assert not moved, moved
+
+
+def _phoonnx_deprecations_of_a_run(args) -> list:
+    from phoonnx_train import preprocess
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        result = click.testing.CliRunner().invoke(
+            preprocess.cli, [*args, "--max-workers", "1"], catch_exceptions=False)
+    assert result.exit_code == 0, result.output
+    return [str(w.message) for w in caught
+            if issubclass(w.category, DeprecationWarning) and "phoonnx.config" in str(w.message)]
+
+
+def test_a_preprocess_run_uses_no_deprecated_phoonnx_api(tmp_path):
+    # no stub phonemizer, so the parent builds its own phonemizer and a worker frontend
+    source = tmp_path / "a.jsonl"
+    source.write_text(json.dumps({"text": "hi", "audio": "a.wav"}) + "\n")
+    args = ["-i", str(source), "-o", str(tmp_path / "out"), "-l", "en", "--skip-audio",
+            "--phoneme-type", "graphemes", "--alphabet", "unicode"]
+    with ProcessPoolExecutor(1, mp_context=multiprocessing.get_context("spawn")) as pool:
+        moved = pool.submit(_phoonnx_deprecations_of_a_run, args).result()
     assert not moved, moved
 
 
