@@ -30,6 +30,7 @@ path, not a rounding difference. Both modes are supported and both match the mat
 NeMo setting exactly; see ``exact_decode`` in the engine params.
 """
 import json
+import re
 import unicodedata
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -48,6 +49,11 @@ BYTE_TOKENIZER_PREFIX = 3
 # in scriptconv rather than here.
 BYTE_LANGUAGES = {"fr", "it", "vi", "ko"}
 CHAR_LANGUAGES = {"ar"}
+
+#: The ``IPATokenizer`` sub-tokenizers that a scriptconv phonemizer reads as NeMo does:
+#: the phoneme type and its language. The phonemizer gives one character per symbol of
+#: the sub-tokenizer's vocabulary.
+IPA_PHONEMIZERS = {"english_phoneme": ("nemo_ipa", "en-US")}
 
 
 def _base_language(tag: str) -> str:
@@ -73,6 +79,11 @@ N_SPECIAL_TOKENS = 8
 
 MAX_CHUNK_CHARS = 200
 
+#: The units of a text for a whitespace cut when ``|...|`` spans are phonemes: a run of
+#: spans and other characters with no white space between them, where a span can hold
+#: white space. NeMo's IPA sub-tokenizers read such a span unchanged.
+SPAN_WORD = re.compile(r"(?:\|[^|]*\||[^\s|]+|\|)+")
+
 
 def _softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:
     x = x - np.max(x, axis=axis, keepdims=True)
@@ -80,23 +91,36 @@ def _softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:
     return e / np.sum(e, axis=axis, keepdims=True)
 
 
-def chunk_text(text: str, max_len: int = MAX_CHUNK_CHARS) -> List[str]:
+def chunk_text(text: str, max_len: int = MAX_CHUNK_CHARS, spans: bool = False) -> List[str]:
     """Split text into pieces short enough for one autoregressive pass.
 
     Magpie drifts on long inputs: the attention prior only tracks one text position at a
     time, and ``max_decoder_steps`` caps a pass at a few seconds of audio. Sentences are
     the natural unit, and oversized sentences are cut on whitespace.
+
+    With ``spans``, for an IPA sub-tokenizer, a ``|...|`` phoneme span is never cut: a
+    sentence that ends inside a span joins the next one, and the whitespace cut keeps a
+    span whole. A span longer than ``max_len`` is a chunk of its own. A ``|`` that no later
+    ``|`` closes is a plain character, as in NeMo.
     """
+    split = [sentence.strip() for sentence in sentence_tokenize(text) if sentence.strip()]
+    # pipes_after[i]: a sentence from i on holds a "|" that can close an open span
+    pipes_after = [False] * (len(split) + 1)
+    for i in range(len(split) - 1, -1, -1):
+        pipes_after[i] = pipes_after[i + 1] or "|" in split[i]
+    sentences: List[str] = []
+    for i, sentence in enumerate(split):
+        if spans and sentences and sentences[-1].count("|") % 2 and pipes_after[i]:
+            sentences[-1] += " " + sentence
+        else:
+            sentences.append(sentence)
     chunks: List[str] = []
-    for sentence in sentence_tokenize(text):
-        sentence = sentence.strip()
-        if not sentence:
-            continue
+    for sentence in sentences:
         if len(sentence) <= max_len:
             chunks.append(sentence)
             continue
         current = ""
-        for word in sentence.split():
+        for word in (SPAN_WORD.findall(sentence) if spans else sentence.split()):
             if current and len(current) + len(word) + 1 > max_len:
                 chunks.append(current)
                 current = word
@@ -114,18 +138,21 @@ class MagpieTokenizer:
     at a fixed offset. Character and byte sub-tokenizers are reproduced exactly here. The
     IPA sub-tokenizers (en, de, es, pt, hi) and the two that need external engines
     (zh via jieba, ja via pyopenjtalk) need a grapheme-to-phoneme step, which phoonnx
-    keeps in scriptconv, so they are refused with a clear message rather than
+    keeps in scriptconv. Those that scriptconv reads as NeMo does are in
+    :data:`IPA_PHONEMIZERS`; the rest are refused with a clear message rather than
     approximated.
 
     An export that records ``tokenizer_kinds`` names the encoder of each sub-tokenizer,
     so any sub-tokenizer of a byte or character kind works, whatever language a
-    fine-tune put behind it:
+    fine-tune put behind it, and so does an IPA sub-tokenizer of :data:`IPA_PHONEMIZERS`:
 
     * ``{"kind": "byt5"}``: the transformers ``ByT5Tokenizer`` that NeMo calls with
       ``encode(text)``. Each UTF-8 byte is ``3 + byte``, and ``</s>`` (1) closes the text.
     * ``{"kind": "chars", "accept": ..., "punct": [...], "pad_with_space": ...,
       "preprocessing": ...}``: NeMo's ``BaseCharsTokenizer`` (``accept: "alnum"``) or
       ``ArabicCharsTokenizer`` (``accept: "any"``).
+    * ``{"kind": "IPATokenizer"}``: NeMo's ``IPATokenizer`` over ``IpaG2p``. The scriptconv
+      phonemizer gives one character per vocabulary symbol, and each takes its id.
 
     An export without ``tokenizer_kinds`` keeps the language-based encoders above.
     """
@@ -140,6 +167,7 @@ class MagpieTokenizer:
         self.vocab_size: int = int(data["vocab_size"])
         self.kinds: Dict[str, Dict[str, Any]] = data.get("tokenizer_kinds", {})
         self._symbol_maps: Dict[str, Dict[str, int]] = {}
+        self._phonemizers: Dict[str, Any] = {}
 
     def symbol_map(self, tokenizer_name: str) -> Dict[str, int]:
         """Symbol to global id for one sub-tokenizer, built once and kept."""
@@ -181,11 +209,12 @@ class MagpieTokenizer:
         if tokenizer_name not in self.offsets:
             raise ValueError(f"Magpie tokenizer has no sub-tokenizer {tokenizer_name!r}")
         kind = self.kinds.get(tokenizer_name, {})
-        if kind.get("kind") not in ("byt5", "chars"):
+        ipa = kind.get("kind") == "IPATokenizer" and tokenizer_name in IPA_PHONEMIZERS
+        if kind.get("kind") not in ("byt5", "chars") and not ipa:
             raise NotImplementedError(
                 f"Magpie sub-tokenizer {tokenizer_name!r} is of kind {kind.get('kind')!r}, which "
-                f"needs grapheme-to-phoneme conversion. phoonnx keeps phonemizers in scriptconv; "
-                f"only the byt5 and chars kinds are supported so far."
+                f"needs grapheme-to-phoneme conversion that scriptconv does not have. Supported: "
+                f"the byt5 and chars kinds, and the IPATokenizer of {sorted(IPA_PHONEMIZERS)}."
             )
         return kind
 
@@ -196,7 +225,18 @@ class MagpieTokenizer:
         if kind["kind"] == "byt5":
             offset = self.offsets[tokenizer_name]
             return [offset + BYTE_TOKENIZER_PREFIX + b for b in text.encode("utf-8")] + [offset + 1]
+        if kind["kind"] == "IPATokenizer":
+            symbols = self.symbol_map(tokenizer_name)
+            return [symbols[c] for c in self._phonemize(text, tokenizer_name)]
         return self._encode_chars(text, tokenizer_name, kind)
+
+    def _phonemize(self, text: str, tokenizer_name: str) -> str:
+        """The symbols of an IPA sub-tokenizer for *text*, from its scriptconv phonemizer."""
+        phoneme_type, lang = IPA_PHONEMIZERS[tokenizer_name]
+        if phoneme_type not in self._phonemizers:
+            from scriptconv.phonemizers import get_phonemizer
+            self._phonemizers[phoneme_type] = get_phonemizer(phoneme_type)
+        return self._phonemizers[phoneme_type].phonemize_string(text, lang)
 
     def _encode_chars(self, text: str, tokenizer_name: str, kind: Dict[str, Any]) -> List[int]:
         """NeMo's character tokenizers: one space between words and none at either end,
@@ -385,7 +425,8 @@ class MagpieAdapter(BaseOnnxAdapter):
                 or getattr(getattr(voice, "config", None), "lang_code", None)
                 or self._lang)
         name = self.sub_tokenizer_name(lang)
-        return [self.tokenizer.encode(chunk, lang, name) for chunk in chunk_text(text)]
+        spans = self.tokenizer.kinds.get(name, {}).get("kind") == "IPATokenizer"
+        return [self.tokenizer.encode(chunk, lang, name) for chunk in chunk_text(text, spans=spans)]
 
     # ------------------------------------------------------------------
     # Sampling

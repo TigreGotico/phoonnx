@@ -32,6 +32,7 @@ import time
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
 
 from phoonnx.engines import get_adapter
+from phoonnx.engines.magpie import IPA_PHONEMIZERS as MAGPIE_IPA_PHONEMIZERS
 from scriptconv.phonemizers import get_phonemizer
 from scriptconv.phonemizers.enums import Phonemizer
 from scriptconv.phonemizers.registry import PHONEMIZER_REGISTRY
@@ -1653,14 +1654,16 @@ _MAGPIE_IO = {"model": ({"x", "pos", "self_k", "self_v", "cross_k", "cross_v", "
               "codec_decoder_path": ({"codes"}, {"audio"})}
 # phoonnx.engines.magpie: the languages whose sub-tokenizer is a byte or a character table
 _MAGPIE_BYTES, _MAGPIE_CHARS = ("fr", "it", "vi", "ko"), ("ar",)
+# and the languages whose IPA sub-tokenizer a scriptconv phonemizer reads, by language
+_MAGPIE_IPA = {lang.split("-")[0]: (phoneme_type, lang) for phoneme_type, lang in MAGPIE_IPA_PHONEMIZERS.values()}
 
 
 def _magpie(config: Dict[str, Any], files: Dict[str, Any], *, repo_id: str, text: Optional[str]) -> str:
     options = config.get("engine_options") or {}
     lang = str(options.get("lang") or config.get("lang") or "")
     base = lang.split("-")[0].split("_")[0].lower()
-    if base not in _MAGPIE_BYTES + _MAGPIE_CHARS:
-        raise UnsupportedExample(f"Magpie reads {lang!r} through NeMo's IPA G2P, which phoonnx does not run")
+    if base not in _MAGPIE_BYTES + _MAGPIE_CHARS + tuple(_MAGPIE_IPA):
+        raise UnsupportedExample(f"Magpie reads {lang!r} through a NeMo IPA G2P that scriptconv does not run")
     if not options.get("exact_decode", True):
         raise UnsupportedExample("Magpie with a KV cache (exact_decode false) has no template")
     for key in _MAGPIE_GRAPHS + ("tokenizer_path", "context_embeddings_path", "magpie_config_path"):
@@ -1672,7 +1675,17 @@ def _magpie(config: Dict[str, Any], files: Dict[str, Any], *, repo_id: str, text
     speaker = int(options.get("speaker_id", 0))
     sentence = json.dumps(text, ensure_ascii=False) if text else f'"..."  # a sentence in {lang}'
     graphs = ", ".join(f'"{files[k]["file"]}"' for k in _MAGPIE_GRAPHS)
-    if base in _MAGPIE_BYTES:
+    install, imports = "onnxruntime numpy huggingface_hub", ""
+    if base in _MAGPIE_IPA:
+        phoneme_type, phoneme_lang = _MAGPIE_IPA[base]
+        install += ' "scriptconv[phonemizers]"'
+        imports = "from scriptconv.phonemizers import get_phonemizer\n"
+        tokens = ("offset, count = tokens[\"tokenizer_offsets\"][tokenizer], tokens[\"num_tokens_per_tokenizer\"][tokenizer]\n"
+                  "symbols = {s: offset + i for i, s in enumerate(tokens[\"tokens\"][offset:offset + count])}\n"
+                  f"phonemes = get_phonemizer(\"{phoneme_type}\").phonemize_string(text, \"{phoneme_lang}\")"
+                  "  # NeMo's IPA G2P, as scriptconv runs it\n"
+                  "ids = [symbols[c] for c in phonemes] + [tokens[\"eos_id\"]]  # one id a symbol")
+    elif base in _MAGPIE_BYTES:
         tokens = ("offset = tokens[\"tokenizer_offsets\"][tokenizer]\n"
                   "ids = [offset + 3 + b for b in text.encode()] + [tokens[\"eos_id\"]]"
                   "  # byt5: pad, end, unknown, then the 256 bytes")
@@ -1680,14 +1693,14 @@ def _magpie(config: Dict[str, Any], files: Dict[str, Any], *, repo_id: str, text
         tokens = ("offset, count = tokens[\"tokenizer_offsets\"][tokenizer], tokens[\"num_tokens_per_tokenizer\"][tokenizer]\n"
                   "symbols = {s: offset + i for i, s in enumerate(tokens[\"tokens\"][offset:offset + count])}\n"
                   "ids = [symbols[c] for c in text if c in symbols] + [tokens[\"eos_id\"]]  # one id a character")
-    return f'''# pip install onnxruntime numpy huggingface_hub
+    return f'''# pip install {install}
 import json
 import wave
 
 import numpy as np
 import onnxruntime
 from huggingface_hub import hf_hub_download
-
+{imports}
 repo = "{repo_id}"
 text = {sentence}
 speaker = {speaker}  # {options.get("speaker") or "the voice"}; assets/speakers.json names the five voices of the model

@@ -9,10 +9,16 @@ from phoonnx.engines.magpie import (
     BYTE_LANGUAGES,
     BYTE_TOKENIZER_PREFIX,
     CHAR_LANGUAGES,
+    IPA_PHONEMIZERS,
+    MAX_CHUNK_CHARS,
     MagpieAdapter,
     MagpieTokenizer,
     chunk_text,
 )
+
+#: The languages of the indexed voices: the byte and character ones, and the language of
+#: each IPA sub-tokenizer that scriptconv reads.
+INDEX_LANGUAGES = BYTE_LANGUAGES | CHAR_LANGUAGES | {lang for _, lang in IPA_PHONEMIZERS.values()}
 
 # A miniature stand-in for the real checkpoint: 2 codebooks over 2 stacked frames,
 # a codebook of 10 real tokens plus the 8 special ones, and 2 decoder layers.
@@ -209,6 +215,7 @@ def test_supported_language_sets_do_not_overlap():
 # ids NeMo itself gives them: ``model.tokenizer.encode(text, name) + [model.eos_id]``.
 FIXTURES = __import__("pathlib").Path(__file__).parent / "fixtures"
 GEORGIAN = FIXTURES / "magpie_ka_tokenizer.json"   # NMikka/Magpie-TTS-Geo-357m
+BASE = FIXTURES / "magpie_base_tokenizer.json"   # Phoonnx/magpietts-multi-357m-unicode
 THIRTEEN = FIXTURES / "magpie_13lang_tokenizer.json"   # infiniatechnologies/magpie-tts-13lang-357m
 
 
@@ -234,6 +241,18 @@ def test_an_arabic_chars_sub_tokenizer_gives_nemo_ids(row):
     assert MagpieTokenizer(str(THIRTEEN)).encode(row["text"], "ar", "arabic_SA_chartokenizer") == row["ids"]
 
 
+@pytest.mark.parametrize("row", _nemo_rows("magpie_en_nemo_ids.json"), ids=lambda r: repr(r["text"][:12]))
+def test_the_english_ipa_sub_tokenizer_gives_nemo_ids(row):
+    """NeMo 3.0.0 ``IPATokenizer`` over ``IpaG2p`` at phoneme probability 1.0, read through
+    scriptconv's NeMo IPA phonemizer: heteronyms, unknown words, suffixes, digits, spaces."""
+    assert MagpieTokenizer(str(BASE)).encode(row["text"], "en", "english_phoneme") == row["ids"]
+
+
+def test_an_ipa_sub_tokenizer_without_a_scriptconv_phonemizer_is_refused():
+    with pytest.raises(NotImplementedError, match="german_phoneme"):
+        MagpieTokenizer(str(BASE)).encode("hallo", "de", "german_phoneme")
+
+
 def test_the_byt5_kind_closes_the_text_with_its_own_end_token():
     tokenizer = MagpieTokenizer(str(GEORGIAN))
     offset = tokenizer.offsets["text_ce_tokenizer"]
@@ -252,10 +271,6 @@ def test_the_voice_names_a_sub_tokenizer_its_checkpoint_has_no_language_for():
     adapter.configure(VC())
     assert adapter.encode_text(row["text"], None, None) == [row["ids"]]
 
-
-def test_a_sub_tokenizer_that_needs_g2p_is_refused():
-    with pytest.raises(NotImplementedError, match="english_phoneme"):
-        MagpieTokenizer(str(GEORGIAN)).encode("hello", "en", "english_phoneme")
 
 
 def test_an_alnum_chars_kind_drops_symbols_that_are_neither_letters_nor_punctuation(tmp_path):
@@ -365,7 +380,7 @@ def test_the_tokenizer_name_is_checked_again_for_the_language_of_the_call(tmp_pa
 @pytest.mark.parametrize("tokenizer_name, error", [
     ("French_Chartokenizer", ValueError),   # names are case-sensitive
     ("nope", ValueError),
-    ("english_phoneme", NotImplementedError),   # a G2P sub-tokenizer
+    ("german_phoneme", NotImplementedError),   # a G2P sub-tokenizer scriptconv lacks
 ])
 def test_an_asset_with_kinds_refuses_a_sub_tokenizer_it_cannot_encode_at_load(
         tmp_path, tokenizer_name, error):
@@ -412,6 +427,53 @@ def test_chunk_text_breaks_an_oversized_sentence_on_whitespace():
     assert len(chunks) > 1
     assert all(len(c) <= 40 for c in chunks)
     assert " ".join(chunks).split() == sentence.split()
+
+
+def test_chunk_text_keeps_a_phoneme_span_whole():
+    assert chunk_text("Say |h ə . ˈ l o ʊ| now. Then go.", spans=True) == [
+        "Say |h ə . ˈ l o ʊ| now.", "Then go."]
+
+
+def test_chunk_text_does_not_cut_a_phoneme_span_at_the_length_limit():
+    span = "|" + " ".join(["ə"] * 30) + "|"
+    chunks = chunk_text(" ".join(["word"] * 5) + " " + span + " end", max_len=40, spans=True)
+    assert sum(chunk.count(span) for chunk in chunks) == 1
+
+
+def test_chunk_text_measures_the_length_on_the_text_with_its_spans():
+    text = " ".join(f"|a{i}|" for i in range(300))
+    chunks = chunk_text(text, max_len=40, spans=True)
+    assert all(len(chunk) <= 40 for chunk in chunks)
+    assert " ".join(chunks) == text
+
+
+def test_a_span_longer_than_the_limit_is_a_chunk_of_its_own():
+    span = "|" + " ".join(["ə"] * 30) + "|"
+    assert chunk_text(f"one two {span} three four", max_len=20, spans=True) == ["one two", span, "three four"]
+
+
+def test_an_unclosed_pipe_keeps_the_sentence_ends():
+    assert chunk_text("Use a | b here. Then go. Stop.", spans=True) == ["Use a | b here.", "Then go.", "Stop."]
+
+
+def test_pipes_do_not_change_the_chunks_of_a_language_without_spans():
+    assert chunk_text("Il a dit | non. Elle a répondu | oui. Fin.") == [
+        "Il a dit | non.", "Elle a répondu | oui.", "Fin."]
+    text = " ".join(["mot"] * 200) + " | " + " ".join(["mot"] * 200) + " | fin"
+    assert all(len(chunk) <= MAX_CHUNK_CHARS for chunk in chunk_text(text))
+
+
+def test_an_english_voice_reads_a_span_with_a_full_stop_as_phonemes():
+    class VC:
+        engine_params = {"tokenizer_path": str(BASE), "tokenizer_name": "english_phoneme", "lang": "en-US"}
+        lang_code = "en-US"
+
+    adapter = MagpieAdapter()
+    adapter.configure(VC())
+    (ids,) = adapter.encode_text("Say |h ə . ˈ l o ʊ| now.", None, None)
+    symbols = adapter.tokenizer.symbol_map("english_phoneme")
+    span = [symbols[c] for c in "hə.ˈloʊ"]
+    assert any(ids[i:i + len(span)] == span for i in range(len(ids)))
 
 
 def test_chunk_text_of_blank_input_is_empty():
@@ -919,7 +981,7 @@ def test_voice_index_entries_are_consistent():
     for voice_id, entry in index.items():
         assert entry["voice_id"] == voice_id
         assert entry["engine"] == "magpie"
-        assert entry["lang"] in (BYTE_LANGUAGES | CHAR_LANGUAGES)
+        assert entry["lang"] in INDEX_LANGUAGES
         aux = entry["aux_model_urls"]
         for key in ("text_encoder_path", "cross_kv_path", "local_step_path",
                     "audio_embed_path", "lt_embed_path", "codec_decoder_path",
@@ -936,7 +998,7 @@ def test_voice_index_covers_every_speaker_and_language():
     speakers = {e["engine_options"]["speaker"] for e in index.values()}
     langs = {e["lang"] for e in index.values()}
     assert speakers == {"Aria", "Jason", "John", "Leo", "Sofia"}
-    assert langs == BYTE_LANGUAGES | CHAR_LANGUAGES
+    assert langs == INDEX_LANGUAGES
     assert len(index) == len(speakers) * len(langs)
 
 

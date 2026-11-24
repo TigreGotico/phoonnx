@@ -118,8 +118,8 @@ The engine of a voice sets the size of its download. The table gives the downloa
 | `chatterbox` | 42 | `chatterbox/base/en` | 1548 MB |
 | `mimic3` | 40 | `mimic3/af_ZA/google-nwu_low` | 76 MB |
 | `indic_parler` | 33 | `indic_parler/amit/as` | 5183 MB |
+| `magpie` | 30 | `magpie/Aria/ar` | 1476 MB |
 | `arktts` | 25 | `arktts/zortzi-maider/eu` | 1501 MB |
-| `magpie` | 25 | `magpie/Aria/ar` | 1476 MB |
 | `phoonnx` | 24 | `OpenVoiceOS/phoonnx_oc_miro_unicode` | 63 MB |
 | `outetts` | 23 | `outetts/0.6B/en` | 2649 MB |
 | `mosstts` | 19 | `mosstts/nano/zh` | 762 MB |

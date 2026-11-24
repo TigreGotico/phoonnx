@@ -17,7 +17,7 @@ ENTRIES = [e for e in json.loads((ROOT / "phoonnx/voice_index/magpie.json").read
 CONFIG = {"num_audio_codebooks": 2, "frame_stacking_factor": 2, "codebook_size": 92, "num_all_tokens_per_codebook": 100,
           "sa_n_heads": 1, "sa_d_head": 2, "decoder_n_layers": 3, "local_transformer_n_layers": 1,
           "estimate_alignment_from_layers": [0, 2], "transcript_decoder_layers": [0, 1, 2],
-          "language_to_tokenizer": {"fr": ["french_bytes"], "ar": ["arabic_chars"]},
+          "language_to_tokenizer": {"fr": ["french_bytes"], "ar": ["arabic_chars"], "en": ["english_phoneme"]},
           "inference": {"max_decoder_steps": 80, "min_generated_frames": 2}}
 ARABIC = "ابتثجحخدذرزسشصضطظعغفقكلمنهوي ،."
 TOKENS = {"tokens": [f"t{i}" for i in range(10)] + ["<pad>", "</s>", "<unk>"] + [f"b{i}" for i in range(256)]
@@ -25,6 +25,8 @@ TOKENS = {"tokens": [f"t{i}" for i in range(10)] + ["<pad>", "</s>", "<unk>"] + 
           "tokenizer_offsets": {"french_bytes": 10, "arabic_chars": 269}, "eos_id": 2,
           "num_tokens_per_tokenizer": {"french_bytes": 259, "arabic_chars": len(ARABIC)}}
 TOKENS["vocab_size"] = len(TOKENS["tokens"])
+# English reads the IPA sub-tokenizer of the real base checkpoint
+BASE_TOKENS = json.loads((ROOT / "tests/fixtures/magpie_base_tokenizer.json").read_text(encoding="utf-8"))
 
 
 def _code(entry, text="Bonjour."):
@@ -42,9 +44,9 @@ def test_magpie_example_compiles():
     compile(_code(ENTRIES[0], None), "magpie", "exec")
 
 
-def test_magpie_refuses_a_language_that_needs_ipa():
+def test_magpie_refuses_a_language_whose_ipa_scriptconv_does_not_read():
     with pytest.raises(UnsupportedExample):
-        _code(dict(ENTRIES[0], lang="en", engine_options={"speaker_id": 0, "lang": "en"}))
+        _code(dict(ENTRIES[0], lang="de", engine_options={"speaker_id": 0, "lang": "de"}))
 
 
 def _rng(*arrays):
@@ -83,17 +85,24 @@ GRAPHS = {
 }
 
 
-@pytest.mark.parametrize("voice,text", [("magpie/Jason/fr", "Bonjour, ça va?"), ("magpie/Leo/ar", "مرحبا، كيف حالك.")])
+@pytest.mark.parametrize("voice,text", [("magpie/Jason/fr", "Bonjour, ça va?"), ("magpie/Leo/ar", "مرحبا، كيف حالك."),
+                                        ("magpie/Aria/en-US", "Hello, how are you?")])
 def test_magpie_loop_is_phoonnx_loop(voice, text, tmp_path, monkeypatch):
     """The example's tokens, codes and audio equal phoonnx's, both run on the same stand-in graphs and seed."""
     import huggingface_hub
     import onnxruntime
-    files = {"assets/magpie_config.json": json.dumps(CONFIG), "assets/tokenizer.json": json.dumps(TOKENS)}
+    tokens = BASE_TOKENS if voice.endswith("/en-US") else TOKENS
+    files = {"assets/magpie_config.json": json.dumps(CONFIG), "assets/tokenizer.json": json.dumps(tokens)}
     for name, content in files.items():
         (tmp_path / Path(name).name).write_text(content, encoding="utf-8")
     context = np.random.default_rng(3).standard_normal((5, 6, 4)).astype(np.float32)
     np.save(tmp_path / "context_embeddings.npy", context)
-    monkeypatch.setattr(huggingface_hub, "hf_hub_download", lambda repo, name: str(tmp_path / Path(name).name))
+    real_download = huggingface_hub.hf_hub_download
+
+    def download(repo, name, **kwargs):  # the example passes no keywords; scriptconv's G2P dictionary does
+        return real_download(repo, name, **kwargs) if kwargs else str(tmp_path / Path(name).name)
+
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", download)
     monkeypatch.setattr(onnxruntime, "InferenceSession", lambda path: _Graph(GRAPHS[Path(path).name]))
     monkeypatch.chdir(tmp_path)
     names = {}
