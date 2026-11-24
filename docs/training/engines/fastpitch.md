@@ -84,7 +84,7 @@ The exported model is the mel model only. To run it, add a vocoder to the `engin
 | `coqui/en-ljspeech-speedy-speech` | `gruut` | `vocos` |
 | `coqui/en-vctk-fast_pitch` | `gruut` | `vocos` |
 
-The two `vocos` voices use `Phoonnx/vocos-multi-alvocat-22khz`, a mirror of `projecte-aina/alvocat-vocos-22khz`, which is for non-commercial use only (cc-by-nc-4.0).
+BSC publishes the 22 kHz Vocos graph of the `vocos` voices twice, with the same bytes: `BSC-LT/vocos-mel-22khz` under Apache-2.0, and `projecte-aina/alvocat-vocos-22khz` under CC-BY-NC-4.0, for non-commercial use. The two releases differ only in their license. The `vocoder_url` of each index entry names the release that the voice loads.
 
 ### Quality presets
 

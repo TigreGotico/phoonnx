@@ -86,7 +86,7 @@ A config that names its `engine` is not given to the loader of another engine. A
 
 ## SynthesisConfig
 
-`SynthesisConfig` holds the settings of one synthesis call. Each field is optional. A `None` value takes the value of the voice.
+`SynthesisConfig` holds the settings of one synthesis call. Each field is optional and has the default in the table below. A `None` default has a different effect for each field, and the Description column gives it. For the speaker, the language and the three scales, `None` uses the value of the voice.
 
 ```python
 from phoonnx.config import SynthesisConfig
@@ -109,11 +109,11 @@ syn_config = SynthesisConfig(
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `alphabet` | `Alphabet` \| `None` | `None` | The alphabet of the input text. `None` means plain text. Set it to pass text that is already phonemic, such as IPA, so that scriptconv converts it and does not phonemize it |
-| `speaker_id` | `int` \| `None` | `None` | Speaker index for multi-speaker models |
-| `lang_id` | `int` \| `None` | `None` | Language index for multi-language models |
-| `length_scale` | `float` \| `None` | `None` | Speed control: < 1 faster, > 1 slower |
-| `noise_scale` | `float` \| `None` | `None` | Generator noise: affects naturalness |
-| `noise_w_scale` | `float` \| `None` | `None` | Phoneme duration noise |
+| `speaker_id` | `int` \| `None` | `None` | Speaker index for multi-speaker models. `None` uses the speaker of the voice, or speaker 0 |
+| `lang_id` | `int` \| `None` | `None` | Language index for multi-language models. `None` uses the language of the voice, or language 0 |
+| `length_scale` | `float` \| `None` | `None` | Speed control: < 1 faster, > 1 slower. `None` uses the value of the voice |
+| `noise_scale` | `float` \| `None` | `None` | Generator noise: affects naturalness. `None` uses the value of the voice |
+| `noise_w_scale` | `float` \| `None` | `None` | Phoneme duration noise. `None` uses the value of the voice |
 | `normalize_audio` | `bool` | `True` | Scale the peak of the audio to full scale |
 | `target_loudness` | `float` \| `None` | `None` | Bring each sentence to this integrated loudness in LUFS, such as `-16.0`, with peaks limited to -1 dBFS. `None` keeps the peak normalisation. Needs `scipy`. Without it, phoonnx logs one warning and uses peak normalisation |
 | `volume` | `float` | `1.0` | Volume multiplier |
@@ -121,13 +121,13 @@ syn_config = SynthesisConfig(
 | `add_diacritics` | `bool` \| `None` | `None` | Add vowel diacritics before phonemization. `None` uses the value of the voice config |
 | `diacritizer_model` | `str` \| `None` | `None` | The diacritizer model for this call. `None` uses the `diacritizer_model` of the voice config |
 | `chunk` | `str` \| `None` | `None` | How much text one engine call reads: `sentence`, `clause`, `paragraph` (the text between blank lines) or `none` (the whole text). `None` reads one sentence per call. The text is read whole before it is cut. An engine that reads text, not phonemes, gets the whole text. Phonemic input (`alphabet` set) is cut per sentence whatever the value. Any other value raises `ValueError` when the config is built |
-| `speaker_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Reference clip for zero-shot [voice cloning](cloning.md) |
+| `speaker_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Reference clip for zero-shot [voice cloning](cloning.md). `None` means no clip |
 | `speaker_reference_text` | `str` \| `None` | `None` | Reference transcription, required by in-context cloning engines (ZipVoice) |
 | `speaker_reference_lang` | `str` \| `None` | `None` | Language of the transcription, for cross-lingual cloning (defaults to the voice's `lang_code`) |
-| `exaggeration` | `float` \| `None` | `None` | Expressiveness/intensity for engines that support it (Chatterbox, ~0.5) |
-| `temperature` | `float` \| `None` | `None` | Sampling temperature for autoregressive engines, about 0.8 for Chatterbox. `0` is greedy decoding |
-| `top_p` | `float` \| `None` | `None` | Nucleus sampling cutoff for autoregressive engines (Chatterbox, ~0.95) |
-| `vc_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Target-speaker clip for [voice conversion](voice_conversion.md) after synthesis. It works with every engine |
+| `exaggeration` | `float` \| `None` | `None` | Expressiveness/intensity for engines that support it. `None` uses the engine default (Chatterbox, ~0.5) |
+| `temperature` | `float` \| `None` | `None` | Sampling temperature for autoregressive engines. `None` uses the engine default, about 0.8 for Chatterbox. `0` is greedy decoding |
+| `top_p` | `float` \| `None` | `None` | Nucleus sampling cutoff for autoregressive engines. `None` uses the engine default (Chatterbox, ~0.95) |
+| `vc_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Target-speaker clip for [voice conversion](voice_conversion.md) after synthesis. It works with every engine. `None` means no conversion |
 | `vc_engine` | `str` \| `None` | `None` | The voiceclonnx engine for `vc_reference`. `None` selects `"openvoice"` |
 | `super_resolution` | `bool` | `False` | Upscale each chunk to 48 kHz with `audiosronnx` (the `audiosr` extra). The chunk reports the upscaled sample rate |
 | `super_resolution_model` | `str` \| `None` | `None` | The `audiosronnx` engine, such as `"novasr"` or `"lavasr"`. `None` selects `"novasr"`. Ignored unless `super_resolution` is `True` |

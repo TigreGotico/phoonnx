@@ -20,7 +20,7 @@ A voice entry in the bundled index has one of three forms:
 | Full files and an int8 variant | The full files, or the int8 files when you ask for them. |
 | Int8 files only | The int8 files, always. |
 
-This script counts the entries of each form in the bundled index:
+This script sorts the entries of the bundled index by form, and prints the forms it finds:
 
 ```python
 >>> from collections import Counter
@@ -31,21 +31,23 @@ This script counts the entries of each form in the bundled index:
 ...     if info.precision == "int8":
 ...         return "int8 only"
 ...     return "full and int8" if info.variants else "full only"
->>> sorted(Counter(form(info) for info in manager.all_voices).items())
-[('full and int8', 100), ('full only', 3029), ('int8 only', 130)]
+>>> forms = Counter(form(info) for info in manager.all_voices)
+>>> sorted(forms)
+['full and int8', 'full only', 'int8 only']
 
 ```
 
-The entries with an int8 variant are 57 Piper voices, the 26 Italian Pocket TTS voices
-(`pockettts/it/...`), the 16 F5-TTS voices (`f5tts/...`, `habibi/...`, `namaa/ar-sa-v2`,
-`silma/...`, `openbible/...`) and `edwixx/pt-BR-rapido`. The int8-only entries are the
-English, French, German, Portuguese and Spanish Pocket TTS voices, 26 for each language:
+`forms` holds the number of entries of each form. The entries with an int8 variant are
+Piper voices, the Italian Pocket TTS voices (`pockettts/it/...`), the F5-TTS voices
+(`f5tts/...`, `habibi/...`, `namaa/ar-sa-v2`, `silma/...`, `openbible/...`) and
+`edwixx/pt-BR-rapido`. The int8-only entries are the English, French, German, Portuguese and
+Spanish Pocket TTS voices:
 
 ```python
->>> Counter(info.engine.value for info in manager.all_voices if info.variants)
-Counter({'piper': 57, 'pockettts': 26, 'f5tts': 16, 'rapido': 1})
->>> sorted(Counter(info.voice_id.split("/")[1] for info in manager.all_voices if info.precision == "int8").items())
-[('de', 26), ('en', 26), ('es', 26), ('fr', 26), ('pt', 26)]
+>>> sorted({info.engine.value for info in manager.all_voices if info.variants})
+['f5tts', 'piper', 'pockettts', 'rapido']
+>>> sorted({info.voice_id.split("/")[1] for info in manager.all_voices if info.precision == "int8"})
+['de', 'en', 'es', 'fr', 'pt']
 
 ```
 

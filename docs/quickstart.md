@@ -4,7 +4,7 @@
 covers: install phoonnx, download one voice, speak a WAV from Python, tune it, and add an extra for a voice that needs one
 source: phoonnx/cli.py, phoonnx/model_manager.py:TTSModelManager, phoonnx/voice.py:TTSVoice.load, phoonnx/voice.py:TTSVoice.synthesize_wav, phoonnx/audio.py:write_wav, phoonnx/config.py:SynthesisConfig
 generated: no
-verify: diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices update-cache) <(sed -n '/^\$ phoonnx-voices update-cache$/,/^\x60\x60\x60$/{//!p}' docs/quickstart.md) && diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices list-voices --lang pt-PT | head -6) <(sed -n '/^\$ phoonnx-voices list-voices --lang pt-PT$/,/^\.\.\.$/{//!p}' docs/quickstart.md)
+verify: diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices update-cache | sed -E 's/: [0-9]+$/: .../') <(sed -n '/^\$ phoonnx-voices update-cache$/,/^\x60\x60\x60$/{//!p}' docs/quickstart.md) && [ $(sed -n '/^\$ phoonnx-voices list-voices --lang pt-PT$/,/^\x60\x60\x60$/{//!p}' docs/quickstart.md | wc -l) -gt 3 ] && ! grep -vxF -e '...' -f <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices list-voices --lang pt-PT | sed -E 's/^Found [0-9]+ /Found ... /') <(sed -n '/^\$ phoonnx-voices list-voices --lang pt-PT$/,/^\x60\x60\x60$/{//!p}' docs/quickstart.md) && .venv/bin/python -I -c "import re, sys, json, glob, tomllib; t = open('docs/quickstart.md').read().split(chr(10) + '-' + '->', 1)[1]; ids = set(); [ids.update(json.load(open(f))) for f in glob.glob('phoonnx/voice_index/*.json')]; x = tomllib.load(open('pyproject.toml', 'rb'))['project']['optional-dependencies']; used = set(re.findall(r'phoonnx-voices download (\S+)', t) + re.findall(r'voices\[\"([^\"]+)\"\]', t)); named = set(re.findall(r'phoonnx\[([a-z0-9-]+)\]', t)); bad = sorted(used - ids) + sorted(named - set(x)); print(bad); sys.exit(bool(bad) or not used)"
 see: installation.md, choose_voice.md, usage.md, offline.md
 -->
 
@@ -36,16 +36,18 @@ Clearing local voice cache...
 Loading bundled voice indexes...
 
 Cache updated successfully!
-Total voices available: 3259
-Total languages supported: 1822
+Total voices available: ...
+Total languages supported: ...
 ```
+
+The last two lines give the number of voices and language tags in the bundled index.
 
 List the voices for a language. The list starts like this:
 
 ```
 $ phoonnx-voices list-voices --lang pt-PT
 
-Found 52 voices for language 'pt-PT':
+Found ... voices for language 'pt-PT':
 * OpenVoiceOS/phoonnx_pt-PT_miro_unicode (pt-PT)
 * OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone (pt-PT)
 * OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone (pt-PT)

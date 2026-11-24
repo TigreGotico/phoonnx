@@ -120,8 +120,21 @@ with wave.open("output.wav", "wb") as wav_file:
 ### Streaming Audio Chunks
 
 `synthesize()` is a generator that yields one `AudioChunk` per sentence. You can play the
-first sentence while the voice makes the next one. "Hello world. How are you today?" gives
-two chunks, and so does "Hello! How are you today?".
+first sentence while the voice makes the next one. The text frontend of the voice splits the
+text into sentences. You can see the split without a voice:
+
+```python
+>>> from scriptconv.phonemizers import get_phonemizer
+>>> from phoonnx.config import PhonemeType, voice_frontend
+>>> frontend = voice_frontend(get_phonemizer(PhonemeType.UNICODE), "en-US")
+>>> [segment.text for segment in frontend.segments("Hello! How are you today?")]
+['Hello!', 'How are you today?']
+>>> len(list(frontend.segments("Hello world. How are you today?")))
+2
+
+```
+
+Each of these texts thus gives two chunks.
 
 ```python
 from phoonnx.config import SynthesisConfig
@@ -173,8 +186,22 @@ support table and how to export a VITS model with alignment.
 
 ## SynthesisConfig
 
-`SynthesisConfig` controls synthesis parameters at runtime. A field that you do not set
-uses the value of the voice:
+`SynthesisConfig` controls synthesis parameters at runtime. Each field has a default. Some
+defaults are `None`, which lets the voice config decide. The other defaults are fixed values:
+
+```python
+>>> from phoonnx.config import SynthesisConfig
+>>> config = SynthesisConfig()
+>>> config.speaker_id, config.lang_id, config.length_scale, config.noise_scale, config.noise_w_scale
+(None, None, None, None, None)
+>>> config.add_diacritics, config.diacritizer_model
+(None, None)
+>>> config.normalize_audio, config.volume, config.enable_phonetic_spellings
+(True, 1.0, True)
+
+```
+
+This example sets each field explicitly:
 
 ```python
 from phoonnx.config import SynthesisConfig

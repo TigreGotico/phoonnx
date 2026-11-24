@@ -41,8 +41,8 @@ files of a voice only when you download it, load it or read its `config`.
 >>> manager = TTSModelManager()
 >>> manager.load()                  # read the catalog file into memory
 >>> manager.merge_default_voices()  # merge the bundled voice indexes in
->>> len(manager.all_voices)
-3259
+>>> "OpenVoiceOS/phoonnx_pt-PT_miro_unicode" in manager.voices
+True
 
 ```
 
@@ -58,15 +58,15 @@ catalog is `phoonnx/voices.json` in the XDG cache directory, which is
 OpenVoiceOS/phoonnx_oc_miro_unicode oc-FR
 OpenVoiceOS/phoonnx_oc_dii_unicode oc-FR
 >>> pt_voices = manager.get_lang_voices("pt-PT")  # the voices for a language, nearest first
->>> len(pt_voices)
-68
->>> manager.supported_langs[:3]                  # the language codes of the catalog
-['aae', 'aal', 'aao']
+>>> pt_voices[0].voice_id
+'OpenVoiceOS/phoonnx_pt-PT_miro_unicode'
+>>> "pt-PT" in manager.supported_langs           # the language codes of the catalog
+True
 
 ```
 
 `get_lang_voices("pt-PT")` gives every Portuguese voice, with the `pt-PT` voices first. The
-`phoonnx-voices list-voices --lang pt-PT` command keeps only the 52 `pt-PT` voices.
+`phoonnx-voices list-voices --lang pt-PT` command keeps only the `pt-PT` voices.
 
 ### List without the catalog
 

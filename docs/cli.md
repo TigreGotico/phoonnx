@@ -4,7 +4,7 @@
 covers: every phoonnx-voices subcommand, its options, its output and its exit status
 source: phoonnx/cli.py, pyproject.toml [project.scripts]
 generated: no
-verify: diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices --help) <(sed -n '/^\$ phoonnx-voices --help$/,/^\x60\x60\x60$/{//!p}' docs/cli.md) && diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices update-cache) <(sed -n '/^\$ phoonnx-voices update-cache$/,/^\x60\x60\x60$/{//!p}' docs/cli.md) && diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices list-langs | head -5) <(sed -n '/^\$ phoonnx-voices list-langs | head -5$/,/^\x60\x60\x60$/{//!p}' docs/cli.md) && diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices list-available | head -6) <(sed -n '/^\$ phoonnx-voices list-available | head -6$/,/^\x60\x60\x60$/{//!p}' docs/cli.md) && ! comm -3 <(sed '/<!-- agent-hint/,/-->/d' docs/cli.md | grep -oP -- '(?<![\w-])--[a-z][a-z-]*' | sort -u) <(for c in update-cache list-langs list-voices list-available download add-alignment export; do .venv/bin/phoonnx-voices $c --help; done | grep -oP -- '(?<![\w-])--[a-z][a-z-]*' | sort -u) | grep .
+verify: diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices --help) <(sed -n '/^\$ phoonnx-voices --help$/,/^\x60\x60\x60$/{//!p}' docs/cli.md) && diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices update-cache | sed -E 's/(: |Languages \(|Voices \(|^Found )[0-9]+/\1.../') <(sed -n '/^\$ phoonnx-voices update-cache$/,/^\x60\x60\x60$/{//!p}' docs/cli.md) && [ $(sed -n '/^\$ phoonnx-voices list-langs | head -5$/,/^\x60\x60\x60$/{//!p}' docs/cli.md | wc -l) -gt 3 ] && ! grep -vxF -e '...' -f <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices list-langs | sed -E 's/(: |Languages \(|Voices \(|^Found )[0-9]+/\1.../') <(sed -n '/^\$ phoonnx-voices list-langs | head -5$/,/^\x60\x60\x60$/{//!p}' docs/cli.md) && [ $(sed -n '/^\$ phoonnx-voices list-voices --lang pt-PT | head -4$/,/^\x60\x60\x60$/{//!p}' docs/cli.md | wc -l) -gt 3 ] && ! grep -vxF -e '...' -f <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices list-voices --lang pt-PT | sed -E 's/(: |Languages \(|Voices \(|^Found )[0-9]+/\1.../') <(sed -n '/^\$ phoonnx-voices list-voices --lang pt-PT | head -4$/,/^\x60\x60\x60$/{//!p}' docs/cli.md) && [ $(sed -n '/^\$ phoonnx-voices list-available | head -6$/,/^\x60\x60\x60$/{//!p}' docs/cli.md | wc -l) -gt 3 ] && ! grep -vxF -e '...' -f <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices list-available | sed -E 's/(: |Languages \(|Voices \(|^Found )[0-9]+/\1.../') <(sed -n '/^\$ phoonnx-voices list-available | head -6$/,/^\x60\x60\x60$/{//!p}' docs/cli.md) && ! comm -3 <(sed '/<!-- agent-hint/,/-->/d' docs/cli.md | grep -oP -- '(?<![\w-])--[a-z][a-z-]*' | sort -u) <(for c in update-cache list-langs list-voices list-available download add-alignment export; do .venv/bin/phoonnx-voices $c --help; done | grep -oP -- '(?<![\w-])--[a-z][a-z-]*' | sort -u) | grep .
 see: quickstart.md, choose_voice.md, voice_manager.md, offline.md
 -->
 
@@ -20,16 +20,18 @@ Clearing local voice cache...
 Loading bundled voice indexes...
 
 Cache updated successfully!
-Total voices available: 3259
-Total languages supported: 1822
+Total voices available: ...
+Total languages supported: ...
 ```
+
+The last two lines give the number of voices and language tags in the bundled index.
 
 List the languages:
 
 ```
 $ phoonnx-voices list-langs | head -5
 
-Supported Languages (1822):
+Supported Languages (...):
  - aae
  - aal
  - aao
@@ -40,7 +42,7 @@ Find the voices for a language:
 ```
 $ phoonnx-voices list-voices --lang pt-PT | head -4
 
-Found 52 voices for language 'pt-PT':
+Found ... voices for language 'pt-PT':
 * OpenVoiceOS/phoonnx_pt-PT_miro_unicode (pt-PT)
 * OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone (pt-PT)
 ```
@@ -118,9 +120,9 @@ Lists every voice id in the bundled index files, grouped by source. It reads the
 ```
 $ phoonnx-voices list-available | head -6
 
-Total available voices found (bundled indexes): 3259
+Total available voices found (bundled indexes): ...
 
---- OVOS Voices (39) ---
+--- OVOS Voices (...) ---
   OpenVoiceOS/phoonnx_an_dii_unicode
   OpenVoiceOS/phoonnx_an_miro_unicode
 ```

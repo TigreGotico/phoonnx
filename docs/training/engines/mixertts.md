@@ -67,7 +67,7 @@ The export gives the inference inputs and output of the contract below, and it r
 
 ## Vocoders
 
-Each indexed voice names its vocoder. The English voices use the `vocos` vocoder of `Phoonnx/vocos-multi-alvocat-22khz`, a mirror of `projecte-aina/alvocat-vocos-22khz`. That vocoder is for non-commercial use only (cc-by-nc-4.0). The Arabic voices use the `hifigan` vocoder of `Phoonnx/hifigan-ar-nipponjo`. Griffin-Lim also works, with `spec_gain = ln(10)` to invert the natural-log mel, and it needs no model file. See [Vocoders](../../vocoders.md).
+Each indexed voice names its vocoder. BSC publishes the 22 kHz Vocos graph of the English voices twice, with the same bytes: `BSC-LT/vocos-mel-22khz` under Apache-2.0, and `projecte-aina/alvocat-vocos-22khz` under CC-BY-NC-4.0, for non-commercial use. The two releases differ only in their license. The `vocoder_url` of each index entry names the release that the voice loads. The Arabic voices use the `hifigan` vocoder of `Phoonnx/hifigan-ar-nipponjo`. Griffin-Lim also works, with `spec_gain = ln(10)` to invert the natural-log mel, and it needs no model file. See [Vocoders](../../vocoders.md).
 
 ## Notes
 
