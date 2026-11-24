@@ -110,8 +110,8 @@ syn_config = SynthesisConfig(
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `speaker` | `int` \| `str` \| `None` | `None` | Speaker of a multi-speaker voice: an id, or a name in the voice's `speaker_id_map` |
-| `language` | `int` \| `str` \| `None` | `None` | Language of a multi-language voice: an id, or a code in the voice's `lang_id_map`. A code also sets `stages.lang` |
+| `speaker` | `int` \| `str` \| `None` | `None` | Speaker of a multi-speaker voice: an id, or a name in the voice's `speaker_id_map`. A digit string that is not a name, such as `"5"`, is the id 5 |
+| `language` | `int` \| `str` \| `None` | `None` | Language of a multi-language voice: an id, or a code in the voice's `lang_id_map`. A code also sets `stages.lang`. A digit string is an id |
 | `length_scale` | `float` \| `None` | `None` | Speed control: < 1 faster, > 1 slower |
 | `noise_scale` | `float` \| `None` | `None` | Generator noise: affects naturalness |
 | `noise_w_scale` | `float` \| `None` | `None` | Phoneme duration noise |
@@ -159,7 +159,9 @@ The engine settings `temperature`, `top_p` and `exaggeration` are fields of `Syn
 
 A scale comes from the first of these that sets it: the call's `SynthesisConfig`, the voice's `engine_params`, the `inference` block of the voice's `config.json`, the engine's `default_params()`. The keys of `extra` are applied last and win over all four.
 
-The flat names of phoonnx 1.x still work as keywords, attributes and `SynthesisConfig.from_dict` keys. Each use raises a `DeprecationWarning` that names the new field. The names stop working in phoonnx 2.0.0.
+`SynthesisConfig.to_dict()` gives the config as plain data, and `SynthesisConfig.from_dict()` reads it back. The JSON Schema `phoonnx/synthesis_config.schema.json`, in the wheel, describes that data. A reference in plain data is a path or URL. A reference that holds samples, or a `stages.casing` callable, makes `to_dict()` raise `ValueError`. The constructor also accepts the groups as dicts, so `SynthesisConfig(**dataclasses.asdict(config))` builds the same config.
+
+The flat names of phoonnx 1.x still work as keywords, attributes, `dataclasses.replace()` keywords and `SynthesisConfig.from_dict` keys. Positional arguments in the 1.x field order work too. Each use raises a `DeprecationWarning` that names the new field and points at the caller's line. The names and the positional form stop working in phoonnx 2.0.0.
 
 | Flat name | Field |
 |-----------|-------|

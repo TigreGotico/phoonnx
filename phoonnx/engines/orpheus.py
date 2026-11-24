@@ -230,7 +230,7 @@ class OrpheusAdapter(BaseOnnxAdapter):
             name = syn_config.extra.get("voice")
         cfg = getattr(voice, "config", None)
         speaker = None if syn_config is None else syn_config.speaker
-        if not name and isinstance(speaker, str):
+        if not name and isinstance(speaker, str) and not speaker.isdigit():
             name = speaker
         elif not name and speaker is not None:
             id_map = getattr(cfg, "speaker_id_map", None) or {}

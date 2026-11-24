@@ -56,8 +56,9 @@ class Encoder(Protocol):
 
 def stages_of(config: SynthesisConfig) -> Stages:
     """The text stages of *config*. A language code in ``config.language`` sets the
-    stage language when *config* leaves it unset."""
-    if config.stages.lang is None and isinstance(config.language, str):
+    stage language when *config* leaves it unset. The digits of an id are not a code."""
+    language = config.language
+    if config.stages.lang is None and isinstance(language, str) and not language.isdigit():
         return replace(config.stages, lang=config.language)
     return config.stages
 

@@ -1,4 +1,7 @@
 import copy
+import dataclasses
+import os
+import sys
 import warnings
 from dataclasses import MISSING, asdict, dataclass, field, fields, replace
 from enum import Enum
@@ -479,6 +482,28 @@ _1X_NAMES = {
 _GROUPS = {"stages": Stages, "audio": AudioPost, "reference": SpeakerReference,
            "voice_conversion": SpeakerReference}
 
+# The 1.x field order, which positional arguments follow.
+_1X_ORDER = ("alphabet", "speaker_id", "lang_id", "speaker_reference", "speaker_reference_text",
+             "speaker_reference_lang", "exaggeration", "temperature", "top_p", "length_scale",
+             "noise_scale", "noise_w_scale", "normalize_audio", "target_loudness", "volume",
+             "enable_phonetic_spellings", "add_diacritics", "diacritizer_model", "chunk",
+             "super_resolution", "super_resolution_model", "vc_reference", "vc_engine", "extra_params")
+
+
+def _warn_1x(old: str, new: str) -> None:
+    """A ``DeprecationWarning`` attributed to the first caller outside this module and
+    :mod:`dataclasses`, so that ``from_dict`` and ``replace`` warn at the caller's line."""
+    level, frame = 2, sys._getframe(1)
+    while frame.f_back is not None and frame.f_code.co_filename in (__file__, dataclasses.__file__):
+        level, frame = level + 1, frame.f_back
+    warnings.warn(f"{old} is deprecated and will be removed in phoonnx {_removal_version()}. Use {new}.",
+                  DeprecationWarning, stacklevel=level)
+
+
+def _as_group(group: type, value: Any) -> Any:
+    """*value*, or the *group* that *value* describes when it is a mapping."""
+    return group(**value) if isinstance(value, Mapping) else value
+
 
 def _with_path(group: Any, path: str, value: Any) -> Any:
     """A copy of *group* with the field at the dotted *path* set to *value*."""
@@ -542,7 +567,15 @@ class SynthesisConfig:
     """The alphabet of the caller's text. ``None`` means graphemes. Set it for text
     that is already phonemic, such as IPA, so that it is converted and not phonemized."""
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, *args: Any, **kwargs: Any):
+        if len(args) > len(_1X_ORDER):
+            raise TypeError(f"SynthesisConfig takes at most {len(_1X_ORDER)} positional arguments")
+        if args:
+            _warn_1x("Positional construction of SynthesisConfig", "keywords")
+        for name, value in zip(_1X_ORDER, args):
+            if name in kwargs:
+                raise TypeError(f"SynthesisConfig got multiple values for argument {name!r}")
+            kwargs[name] = value
         renamed = {name: kwargs.pop(name) for name in list(kwargs) if name in _1X_NAMES}
         names = {f.name for f in fields(self)}
         for name in kwargs.keys() - names:
@@ -550,9 +583,15 @@ class SynthesisConfig:
         for f in fields(self):
             default = f.default_factory() if f.default is MISSING else f.default
             object.__setattr__(self, f.name, kwargs.get(f.name, default))
+        object.__setattr__(self, "stages", _as_group(Stages, self.stages))
+        object.__setattr__(self, "reference", _as_group(SpeakerReference, self.reference))
+        if isinstance(self.audio, Mapping):
+            audio = dict(self.audio)
+            audio["voice_conversion"] = _as_group(SpeakerReference, audio.get("voice_conversion"))
+            object.__setattr__(self, "audio", AudioPost(**audio))
         for name, value in renamed.items():
             path = _1X_NAMES[name]
-            _warn_moved(f"SynthesisConfig.{name}", f"SynthesisConfig.{path}")
+            _warn_1x(f"SynthesisConfig.{name}", f"SynthesisConfig.{path}")
             head, _, rest = path.partition(".")
             if rest:
                 value = _with_path(getattr(self, head) or _GROUPS[head](), rest, value)
@@ -563,7 +602,7 @@ class SynthesisConfig:
     def __getattr__(self, name: str) -> Any:
         if name not in _1X_NAMES:
             raise AttributeError(f"'SynthesisConfig' object has no attribute {name!r}")
-        _warn_moved(f"SynthesisConfig.{name}", f"SynthesisConfig.{_1X_NAMES[name]}")
+        _warn_1x(f"SynthesisConfig.{name}", f"SynthesisConfig.{_1X_NAMES[name]}")
         value = self
         for part in _1X_NAMES[name].split("."):
             value = None if value is None else getattr(value, part)
@@ -573,20 +612,23 @@ class SynthesisConfig:
     def from_dict(cls, data: Mapping[str, Any]) -> "SynthesisConfig":
         """The config that *data* describes: the output of :meth:`to_dict`, or the 1.x
         flat names, which give a ``DeprecationWarning``."""
-        values = dict(data)
-        if isinstance(values.get("stages"), Mapping):
-            values["stages"] = Stages(**values["stages"])
-        if isinstance(values.get("reference"), Mapping):
-            values["reference"] = SpeakerReference(**values["reference"])
-        if isinstance(values.get("audio"), Mapping):
-            audio = dict(values["audio"])
-            if isinstance(audio.get("voice_conversion"), Mapping):
-                audio["voice_conversion"] = SpeakerReference(**audio["voice_conversion"])
-            values["audio"] = AudioPost(**audio)
-        return cls(**values)
+        return cls(**data)
 
     def to_dict(self) -> Dict[str, Any]:
-        """The config as plain data, which :meth:`from_dict` reads back."""
+        """The config as plain data, which :meth:`from_dict` reads back and
+        ``phoonnx/synthesis_config.schema.json`` describes.
+
+        Raises:
+            ValueError: If ``stages.casing`` is set, or a reference holds samples
+                and not a path or URL.
+        """
+        def reference(ref: Optional[SpeakerReference]) -> Optional[Dict[str, Any]]:
+            if ref is None:
+                return None
+            if not isinstance(ref.audio, (str, os.PathLike, type(None))):
+                raise ValueError("a SpeakerReference with samples has no plain-data form: use a path or URL")
+            return {"audio": None if ref.audio is None else os.fspath(ref.audio), "text": ref.text, "lang": ref.lang}
+
         data = {f.name: getattr(self, f.name) for f in fields(self)}
         stages = asdict(self.stages)
         if stages.pop("casing") is not None:
@@ -594,8 +636,8 @@ class SynthesisConfig:
         if self.stages.chunk is not None:
             stages["chunk"] = self.stages.chunk.value
         data["stages"] = stages
-        data["audio"] = asdict(self.audio)
-        data["reference"] = None if self.reference is None else asdict(self.reference)
+        data["audio"] = {**asdict(self.audio), "voice_conversion": reference(self.audio.voice_conversion)}
+        data["reference"] = reference(self.reference)
         data["extra"] = dict(self.extra)
         if self.input_alphabet is not None:
             data["input_alphabet"] = self.input_alphabet.value

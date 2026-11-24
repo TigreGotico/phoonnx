@@ -171,3 +171,97 @@ def test_a_speaker_id_and_a_language_id_pass_through():
 def test_an_unknown_speaker_name_fails():
     with pytest.raises(ValueError, match="'zé'.*'ana', 'rui'"):
         _voice()._request([3], SynthesisConfig(speaker="zé"))
+
+
+def test_a_digit_string_speaker_or_language_is_an_id():
+    with pytest.warns(DeprecationWarning):
+        config = SynthesisConfig(speaker_id="2", lang_id="1")
+    request = _voice()._request([3], config)
+    assert (request.speaker_id, request.language_id) == (2, 1)
+    assert stages_of(config).lang is None
+
+
+def test_a_speaker_name_wins_over_the_digits_of_an_id():
+    voice = _voice()
+    voice.config = dataclasses.replace(voice.config, speaker_id_map={"0": 2, "ana": 0})
+    assert voice._request([3], SynthesisConfig(speaker="0")).speaker_id == 2
+
+
+ORDER_1X = [("alphabet", Alphabet.IPA), ("speaker_id", 3), ("lang_id", 1), ("speaker_reference", "me.wav"),
+            ("speaker_reference_text", "olá"), ("speaker_reference_lang", "pt"), ("exaggeration", 0.6),
+            ("temperature", 0.7), ("top_p", 0.9), ("length_scale", 1.1), ("noise_scale", 0.5),
+            ("noise_w_scale", 0.4), ("normalize_audio", False), ("target_loudness", -16.0), ("volume", 0.5),
+            ("enable_phonetic_spellings", False), ("add_diacritics", True), ("diacritizer_model", "rawi"),
+            ("chunk", "clause"), ("super_resolution", True), ("super_resolution_model", "lavasr"),
+            ("vc_reference", "t.wav"), ("vc_engine", "knnvc"), ("extra_params", {"seed": 1})]
+
+
+def test_positional_arguments_follow_the_1x_field_order():
+    with pytest.warns(DeprecationWarning, match="Positional construction of SynthesisConfig is deprecated"):
+        config = SynthesisConfig(*[value for _, value in ORDER_1X])
+    assert config == SynthesisConfig(
+        stages=Stages(diacritize=True, diacritizer_model="rawi", chunk="clause"), speaker=3, language=1,
+        exaggeration=0.6, temperature=0.7, top_p=0.9, length_scale=1.1, noise_scale=0.5, noise_w_scale=0.4,
+        reference=SpeakerReference(audio="me.wav", text="olá", lang="pt"), extra={"seed": 1},
+        audio=AudioPost(normalize=False, target_loudness=-16.0, volume=0.5, super_resolution=True,
+                        super_resolution_model="lavasr", voice_conversion=SpeakerReference(audio="t.wav"),
+                        voice_conversion_engine="knnvc"),
+        phonetic_spellings=False, input_alphabet=Alphabet.IPA)
+
+
+def test_a_positional_argument_and_its_keyword_clash():
+    with pytest.raises(TypeError, match="multiple values for argument 'alphabet'"):
+        SynthesisConfig(Alphabet.IPA, alphabet=Alphabet.IPA)
+    with pytest.raises(TypeError, match="at most 24 positional arguments"):
+        SynthesisConfig(*range(25))
+
+
+def _full_config():
+    return SynthesisConfig(
+        stages=Stages(diacritize=False, diacritizer_model="rawi", chunk="paragraph", lang="pt-PT", normalize=True),
+        speaker="ana", language="pt", length_scale=1.2, noise_scale=0.5, noise_w_scale=0.4, temperature=0.7,
+        top_p=0.9, exaggeration=0.5, reference=SpeakerReference(audio="me.wav", text="olá", lang="pt"),
+        extra={"seed": 3}, audio=AudioPost(normalize=False, target_loudness=-16.0, volume=0.8,
+                                          super_resolution=True, super_resolution_model="novasr",
+                                          voice_conversion=SpeakerReference(audio="t.wav"),
+                                          voice_conversion_engine="knnvc"),
+        phonetic_spellings=False, input_alphabet=Alphabet.IPA)
+
+
+def test_the_asdict_of_a_config_builds_the_same_config():
+    config = _full_config()
+    assert SynthesisConfig(**dataclasses.asdict(config)) == config
+
+
+def test_each_1x_warning_points_at_the_callers_line():
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        config = SynthesisConfig(speaker_id=1)
+        _ = config.normalize_audio
+        SynthesisConfig.from_dict({"lang_id": 1})
+        dataclasses.replace(config, volume=0.5)
+        SynthesisConfig(Alphabet.IPA)
+    deprecations = [w for w in caught if issubclass(w.category, DeprecationWarning)]
+    assert len(deprecations) == 6
+    assert {w.filename for w in deprecations} == {__file__}
+
+
+def test_to_dict_of_a_full_config_fits_the_schema():
+    import json
+    from pathlib import Path
+
+    import jsonschema
+
+    schema = json.loads((Path(phoonnx.version.__file__).parent / "synthesis_config.schema.json").read_text())
+    jsonschema.Draft202012Validator.check_schema(schema)
+    data = _full_config().to_dict()
+    jsonschema.validate(json.loads(json.dumps(data)), schema)
+    assert set(data) == set(schema["properties"])
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate({"speaker_id": 1}, schema)
+
+
+def test_a_reference_with_samples_has_no_plain_data_form():
+    config = SynthesisConfig(reference=SpeakerReference(audio=(np.zeros(4), 16000)))
+    with pytest.raises(ValueError, match="path or URL"):
+        config.to_dict()

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TigreGotico/phoonnx/blob/dev/phoonnx/synthesis_config.schema.json",
+  "title": "phoonnx SynthesisConfig",
+  "description": "The plain data that SynthesisConfig.to_dict writes and SynthesisConfig.from_dict reads. A null value takes the voice's own value.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "stages": {
+      "type": "object",
+      "description": "The text stages, as scriptconv.frontend.Stages holds them.",
+      "additionalProperties": false,
+      "properties": {
+        "normalize": {"type": ["boolean", "null"]},
+        "diacritize": {"type": ["boolean", "null"]},
+        "diacritizer_model": {"type": ["string", "null"]},
+        "lang": {"type": ["string", "null"]},
+        "chunk": {"type": ["string", "null"], "description": "A scriptconv.frontend.Chunk value, such as \"clause\"."}
+      }
+    },
+    "speaker": {"type": ["integer", "string", "null"], "description": "A speaker id, or a name in the voice's speaker_id_map."},
+    "language": {"type": ["integer", "string", "null"], "description": "A language id, or a code in the voice's lang_id_map."},
+    "length_scale": {"type": ["number", "null"]},
+    "noise_scale": {"type": ["number", "null"]},
+    "noise_w_scale": {"type": ["number", "null"]},
+    "temperature": {"type": ["number", "null"]},
+    "top_p": {"type": ["number", "null"]},
+    "exaggeration": {"type": ["number", "null"]},
+    "reference": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/speaker_reference"}],
+      "description": "The speaker that a cloning engine imitates."
+    },
+    "extra": {"type": "object", "description": "Engine-specific settings of one call."},
+    "audio": {
+      "type": "object",
+      "description": "What happens to the audio after the engine call.",
+      "additionalProperties": false,
+      "properties": {
+        "normalize": {"type": "boolean"},
+        "target_loudness": {"type": ["number", "null"], "description": "Integrated loudness in LUFS."},
+        "volume": {"type": "number"},
+        "super_resolution": {"type": "boolean"},
+        "super_resolution_model": {"type": ["string", "null"]},
+        "voice_conversion": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/speaker_reference"}]},
+        "voice_conversion_engine": {"type": ["string", "null"]}
+      }
+    },
+    "phonetic_spellings": {"type": "boolean"},
+    "input_alphabet": {"type": ["string", "null"], "description": "A scriptconv Alphabet value, such as \"ipa\". null means graphemes."}
+  },
+  "$defs": {
+    "speaker_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "audio": {"type": ["string", "null"], "description": "A path or URL of a wav file."},
+        "text": {"type": ["string", "null"]},
+        "lang": {"type": ["string", "null"]}
+      }
+    }
+  }
+}
