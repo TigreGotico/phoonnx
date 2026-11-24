@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.133.2a1](https://github.com/TigreGotico/phoonnx/tree/1.133.2a1) (2026-11-23)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.133.1a1...1.133.2a1)
+
+**Merged pull requests:**
+
+- fix\(train\): a run of tone numerals is one segment [\#983](https://github.com/TigreGotico/phoonnx/pull/983) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.133.1a1](https://github.com/TigreGotico/phoonnx/tree/1.133.1a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.133.0a1...1.133.1a1)
@@ -374,10 +382,6 @@
 ## [1.125.8a1](https://github.com/TigreGotico/phoonnx/tree/1.125.8a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.7a1...1.125.8a1)
-
-**Merged pull requests:**
-
-- fix: point the voice index at one repo per model [\#881](https://github.com/TigreGotico/phoonnx/pull/881) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.7a1](https://github.com/TigreGotico/phoonnx/tree/1.125.7a1) (2026-11-22)
 
