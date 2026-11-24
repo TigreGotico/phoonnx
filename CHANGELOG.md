@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.134.0a1](https://github.com/TigreGotico/phoonnx/tree/1.134.0a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.133.2a1...1.134.0a1)
+
+**Merged pull requests:**
+
+- feat\(train\): VITS text-encoder input from a features.json table [\#977](https://github.com/TigreGotico/phoonnx/pull/977) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.133.2a1](https://github.com/TigreGotico/phoonnx/tree/1.133.2a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.133.1a1...1.133.2a1)
