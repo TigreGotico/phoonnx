@@ -39,24 +39,25 @@ CONVERTERS = {
     "vits_streaming": "`ensure_split_vits` on a `vits` export",
 }
 
-# The folders of scripts/conversion, which export upstream checkpoints, by architecture.
+# The folders of scripts/conversion by the architecture whose upstream checkpoint they
+# export. None: the folder holds tools around an export, not a model exporter.
 CONVERSION_DIRS = {
     "arktts": "arktts",
     "coqui_fastpitch_export": "fastpitch",
     "coqui_glowtts_export": "glowtts",
     "coqui_vits_export": "vits",
     "indicparler": "indic_parler",
-    "inflect": "vits_prior_split",
+    "inflect": "vits",  # a single-graph VITS
     "llasa": "llasa",
     "magpie": "magpie",
     "neutts": "neutts",
-    "orpheus": "orpheus",
+    "orpheus": None,  # parity checks of the upstream graphs
     "outetts": "outetts",
     "qwen3tts": "qwen3tts",
     "shami_tts": "shami",
     "styletts2": "styletts2",
     "yourtts": "yourtts",
-    "zipvoice": "zipvoice",
+    "zipvoice": None,  # the mel front end only
 }
 
 # The roadmap task that closes a gap: an architecture with no training engine,

@@ -49,6 +49,10 @@ def test_known_cells():
     assert rows["shami"]["Training"] == "R4.8"
     assert rows["magpie"]["Export"] == "`scripts/conversion/magpie`"
     assert rows["pockettts"]["Export"] == "none"
+    assert rows["orpheus"]["Export"] == "none"
+    assert rows["zipvoice"]["Export"] == "`export_onnx`"
+    assert "`scripts/conversion/inflect`" in rows["vits"]["Export"]
+    assert "conversion" not in rows["vits_prior_split"]["Export"]
     entries = set()
     for path in engine_matrix.INDEX.glob("*.json"):
         entries |= set(json.loads(path.read_text(encoding="utf-8")))

@@ -304,7 +304,7 @@ The open tasks are in `TRAINING_TASKS` and `VOICE_TASKS` in the script.
 | `neutts` | `NeuTTSAdapter` | R4.8 | `scripts/conversion/neutts` | 9 | no |  |
 | `omnivoice` | `OmniVoiceAdapter` | R4.8 | none | 646 | no |  |
 | `optispeech` | `OptiSpeechAdapter` | `optispeech` | `export_onnx` | 3 | no |  |
-| `orpheus` | `OrpheusAdapter` | R4.8 | `scripts/conversion/orpheus` | 8 | no |  |
+| `orpheus` | `OrpheusAdapter` | R4.8 | none | 8 | no |  |
 | `outetts` | `OuteTTSAdapter` | R4.8 | `scripts/conversion/outetts` | 23 | no |  |
 | `pockettts` | `PocketTTSAdapter` | R4.8 | none | 156 | no |  |
 | `qwen3tts` | `Qwen3TTSAdapter` | R4.8 | `scripts/conversion/qwen3tts` | 15 | no |  |
@@ -314,13 +314,13 @@ The open tasks are in `TRAINING_TASKS` and `VOICE_TASKS` in the script.
 | `styletts2` | `StyleTTS2Adapter` | `styletts2`, `styletts2-aligner`, `styletts2-plbert`, `styletts2-pitch` | `export_onnx`, `scripts/conversion/styletts2` | 228 | no |  |
 | `supertonic` | `SuperTonicAdapter` | `supertonic` | `export_onnx` | 310 | no |  |
 | `tinyvoca` | `TinyVocaAdapter` | R4.8 | none | 0 | no | R3.4 |
-| `vits` | `VitsAdapter` | `vits` | `export_onnx`, `export_piper`, `export_sherpa`, `scripts/conversion/coqui_vits_export` | 1601 | yes |  |
-| `vits_prior_split` | `VitsPriorSplitAdapter` | R4.8 | `scripts/conversion/inflect` | 2 | no |  |
+| `vits` | `VitsAdapter` | `vits` | `export_onnx`, `export_piper`, `export_sherpa`, `scripts/conversion/coqui_vits_export`, `scripts/conversion/inflect` | 1601 | yes |  |
+| `vits_prior_split` | `VitsPriorSplitAdapter` | R4.8 | none | 2 | no |  |
 | `vits_streaming` | `VitsStreamingAdapter` | R4.8 | `ensure_split_vits` on a `vits` export | 0 | no | R2.7 |
 | `vosk` | `VitsAdapter` | R4.8 | none | 3 | no |  |
 | `xvits` | `XVitsAdapter` | R4.8 | none | 0 | no | R2.7 |
 | `yourtts` | `YourTTSAdapter` | `yourtts` | `export_onnx`, `scripts/conversion/yourtts` | 0 | no | R2.7 |
-| `zipvoice` | `ZipVoiceAdapter` | `zipvoice` | `export_onnx`, `scripts/conversion/zipvoice` | 0 | no | R2.7 |
+| `zipvoice` | `ZipVoiceAdapter` | `zipvoice` | `export_onnx` | 0 | no | R2.7 |
 <!-- engine-matrix:end -->
 
 ---
