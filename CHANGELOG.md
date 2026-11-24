@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.136.3a1](https://github.com/TigreGotico/phoonnx/tree/1.136.3a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.2a1...1.136.3a1)
+
+**Merged pull requests:**
+
+- fix: features.json keeps float and in-vector tone features of its source [\#1023](https://github.com/TigreGotico/phoonnx/pull/1023) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.136.2a1](https://github.com/TigreGotico/phoonnx/tree/1.136.2a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.1a1...1.136.2a1)
@@ -385,10 +393,6 @@
 ## [1.125.14a1](https://github.com/TigreGotico/phoonnx/tree/1.125.14a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.13a1...1.125.14a1)
-
-**Merged pull requests:**
-
-- fix: the F5-TTS card example reads hanzi as pinyin for the pinyin voice [\#905](https://github.com/TigreGotico/phoonnx/pull/905) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.13a1](https://github.com/TigreGotico/phoonnx/tree/1.125.13a1) (2026-11-22)
 
