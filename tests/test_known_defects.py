@@ -555,8 +555,6 @@ def test_zipvoice_builds_the_vocoder_of_a_vocoder_type():
 
 # --- Mixer-TTS durations that round to 0 frames ------------------------------
 
-@pytest.mark.xfail(strict=True, raises=RuntimeError,
-                   reason="#1030: Mixer-TTS has no 1-frame floor, so a 0-frame mel reaches the decoder conv")
 def test_mixertts_gives_each_token_one_frame_at_least():
     import torch
 
@@ -573,6 +571,39 @@ def test_mixertts_gives_each_token_one_frame_at_least():
     with torch.no_grad():
         spect = model.infer(text=tokens)
     assert spect.shape[1] >= tokens.shape[1], spect.shape
+
+
+@pytest.mark.parametrize("log_dur, pace, frames", [
+    (-10.0, 3.0, [4, 2]),  # 0 frames each: the floor gives a real token 1 frame
+    (float(np.log(4.0)), 1.0, [12, 6]),  # 3 frames each: the floor changes nothing
+])
+def test_mixertts_frames_per_token_at_a_pace(log_dur, pace, frames):
+    import torch
+
+    from phoonnx_train.mixertts.models.mixer_tts import mixer_tts as mixer_tts_module
+
+    torch.manual_seed(0)
+    model = mixer_tts_module.MixerTTSModel(
+        num_tokens=16, symbols_embedding_dim=16, encoder_kernel_sizes=[3],
+        encoder_num_layers=1, decoder_kernel_sizes=[15], decoder_num_layers=1,
+        duration_predictor_filter_size=16, pitch_predictor_filter_size=16,
+        energy_predictor_filter_size=16, n_speakers=1, n_emotions=1).eval()
+    # the predictor masks its output, so a padding token predicts 0 frames
+    model.duration_predictor.forward = lambda enc_out, enc_mask: (
+        torch.full(enc_out.shape[:2], log_dur) * enc_mask.squeeze(2))
+    # the second row has 2 padding tokens (id 0), which get no frame
+    tokens = torch.tensor([[5, 6, 7, 8], [5, 6, 0, 0]])
+    captured = {}
+    regulate = mixer_tts_module.regulate_len
+
+    def spy(durations, enc_out, pace=1.0, **kwargs):
+        out, dec_lens = regulate(durations, enc_out, pace=pace, **kwargs)
+        captured["dec_lens"] = dec_lens.tolist()
+        return out, dec_lens
+
+    with patch.object(mixer_tts_module, "regulate_len", spy), torch.no_grad():
+        model.infer(text=tokens, pace=pace)
+    assert captured["dec_lens"] == frames
 
 
 # --- OptiSpeech export phoneme map -------------------------------------------

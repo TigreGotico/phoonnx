@@ -575,6 +575,9 @@ class MixerTTSModel(nn.Module):
         # Duration predictor
         log_durs_predicted = self.duration_predictor(enc_out, enc_mask)
         durs_predicted = torch.clamp(log_durs_predicted.exp() - 1, 0)
+        # Each real token keeps one frame at least at any pace: the decoder
+        # convolution cannot read a 0-frame mel.
+        durs_predicted = torch.maximum(durs_predicted, pace * enc_mask.squeeze(2))
 
 
         # Avg pitch, pitch predictor
