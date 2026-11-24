@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from phoonnx.tokenizer import DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN, DEFAULT_PAD_TOKEN, DEFAULT_BLANK_WORD_TOKEN
-from phoonnx_train.segments import segment_phonemes
+from phoonnx_train.segments import NASALS, segment_phonemes
 from tests.test_preprocess_pipeline import _invoke, _jsonl
 
 SPECIALS = {DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN}
@@ -24,6 +24,24 @@ class TestSegmentPhonemes(unittest.TestCase):
     def test_decomposed_nasal_vowel_is_one_segment_as_written(self):
         self.assertEqual(segment_phonemes("ẽj"), ["ẽ", "j"])
         self.assertEqual(segment_phonemes("ẽj"), ["ẽ", "j"])
+
+    def test_a_superscript_nasal_prenasalizes_the_stop_after_it(self):
+        # phonematcher 2.7.4a1 segments these the same way: a vowel has no nasal release
+        self.assertEqual(segment_phonemes("aⁿda"), ["a", "ⁿd", "a"])
+        self.assertEqual(segment_phonemes("ⁿda"), ["ⁿd", "a"])
+        self.assertEqual(segment_phonemes("ˈⁿda"), ["ˈ", "ⁿd", "a"])
+        self.assertEqual(segment_phonemes("aːᵐba"), ["aː", "ᵐb", "a"])
+
+    def test_a_superscript_nasal_after_a_consonant_is_nasal_release(self):
+        self.assertEqual(segment_phonemes("tⁿa"), ["tⁿ", "a"])
+        self.assertEqual(segment_phonemes("a ⁿ a"), ["a", " ", "ⁿ", " ", "a"])
+
+    def test_superscript_nasals_split_as_phonematcher_splits_them(self):
+        from phonematcher import segments
+        for text in ("aⁿda", "ⁿda", "tⁿa", "aːᵐba", "mbaⁿɡo", "ʔⁿa", "uᵑɡu", "a ⁿ a"):
+            ours = [s for s in segment_phonemes(text) if NASALS & set(s)]
+            theirs = [s for s in segments(text) if NASALS & set(s)]
+            self.assertEqual(ours, theirs, text)
 
     def test_tone_diacritic_stays_on_its_vowel(self):
         self.assertEqual(segment_phonemes("má"), ["m", "á"])
