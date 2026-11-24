@@ -72,6 +72,10 @@ class TestSegmentPhonemes(unittest.TestCase):
                 for second in notation:
                     self.assertEqual(segment_phonemes("am" + first + second), ["a", "m", first + second])
 
+    def test_a_syllabic_mark_above_a_descender_keeps_its_tone(self):
+        # Cantonese ŋ̍ (U+030D above) is syllabic like ŋ̩, so its tone joins it
+        self.assertEqual(segment_phonemes("m\u014b\u030d\u02e9\u02e7"), ["m", "\u014b\u030d\u02e9\u02e7"])
+
     def test_a_change_of_tone_notation_starts_a_segment(self):
         # IPA sandhi notation: underlying 214 in Chao letters, surface 35 in left-stem letters
         self.assertEqual(segment_phonemes("ni˨˩˦\ua714\ua712"), ["n", "i˨˩˦", "\ua714\ua712"])
