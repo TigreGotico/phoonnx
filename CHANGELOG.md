@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.137.5a1](https://github.com/TigreGotico/phoonnx/tree/1.137.5a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.4a1...1.137.5a1)
+
+## [1.137.4a1](https://github.com/TigreGotico/phoonnx/tree/1.137.4a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.3a1...1.137.4a1)
+
+## [1.137.3a1](https://github.com/TigreGotico/phoonnx/tree/1.137.3a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.2a1...1.137.3a1)
+
+## [1.137.2a1](https://github.com/TigreGotico/phoonnx/tree/1.137.2a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.1a1...1.137.2a1)
+
+**Merged pull requests:**
+
+- fix: --jsonl-audio-path uses one base for every run over the same sources [\#1047](https://github.com/TigreGotico/phoonnx/pull/1047) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: a failed export\_onnx --add-phoneme-alignment exits non-zero [\#1043](https://github.com/TigreGotico/phoonnx/pull/1043) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: bench\_latency reads the config that the voice index names [\#1042](https://github.com/TigreGotico/phoonnx/pull/1042) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: preprocess builds its phonemizer without the deprecated API [\#1041](https://github.com/TigreGotico/phoonnx/pull/1041) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.137.1a1](https://github.com/TigreGotico/phoonnx/tree/1.137.1a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.0a2...1.137.1a1)
@@ -350,33 +373,17 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.5a1...1.129.6a1)
 
-**Merged pull requests:**
-
-- fix\(deps\): text2spoken\>=0.0.2a88 [\#925](https://github.com/TigreGotico/phoonnx/pull/925) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.129.5a1](https://github.com/TigreGotico/phoonnx/tree/1.129.5a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.4a1...1.129.5a1)
-
-**Merged pull requests:**
-
-- fix: YourTTS counts its languages and the unused CLI option hook goes [\#922](https://github.com/TigreGotico/phoonnx/pull/922) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.129.4a1](https://github.com/TigreGotico/phoonnx/tree/1.129.4a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.3a1...1.129.4a1)
 
-**Merged pull requests:**
-
-- fix: build VOICES.md from the bundled index [\#923](https://github.com/TigreGotico/phoonnx/pull/923) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.129.3a1](https://github.com/TigreGotico/phoonnx/tree/1.129.3a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.2a1...1.129.3a1)
-
-**Merged pull requests:**
-
-- fix: configured plugin voice, voice ids in list-voices, relative decoder path, empty dataset exit [\#921](https://github.com/TigreGotico/phoonnx/pull/921) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.129.2a1](https://github.com/TigreGotico/phoonnx/tree/1.129.2a1) (2026-11-22)
 
