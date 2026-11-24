@@ -487,8 +487,6 @@ def _voice(engine: str, **config):
     return TTSVoice(session=session, config=VoiceConfig.from_dict(config), adapter=get_adapter(engine))
 
 
-@pytest.mark.xfail(strict=True, raises=pytest.fail.Exception,
-                   reason="#1020: an unknown language code reaches the engine as no language id")
 def test_an_unknown_language_code_names_the_codes_of_the_voice():
     from phoonnx.config import SynthesisConfig
 
@@ -498,8 +496,6 @@ def test_an_unknown_language_code_names_the_codes_of_the_voice():
     assert "gl" in str(caught.value) and "pt" in str(caught.value), caught.value
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="#1020: an unknown speaker name fails in the engine's int() cast")
 def test_an_unknown_speaker_name_names_the_speakers_of_the_voice():
     from phoonnx.config import SynthesisConfig
 

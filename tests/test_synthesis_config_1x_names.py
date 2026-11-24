@@ -6,6 +6,7 @@ the old name. The expected removal release is the next major of ``phoonnx.versio
 """
 import dataclasses
 import warnings
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -14,6 +15,7 @@ from scriptconv.frontend import Chunk, Stages
 import phoonnx.version
 from phoonnx.config import Alphabet, AudioPost, SpeakerReference, SynthesisConfig, VoiceConfig
 from phoonnx.encoders import stages_of
+from phoonnx.engines.magpie import MagpieAdapter
 from phoonnx.voice import TTSVoice
 
 REMOVAL = f"{phoonnx.version.VERSION_MAJOR + 1}.0.0"
@@ -144,7 +146,8 @@ def test_a_language_code_sets_the_stage_language():
     assert stages_of(SynthesisConfig(language=1)).lang is None
 
 
-def _voice():
+def _voice(speaker_names=False):
+    """A voice whose engine has speaker names of its own when *speaker_names* is set, as Magpie has."""
     config = VoiceConfig.from_dict({
         "phoonnx_version": "1.0", "engine": "phoonnx", "phoneme_type": "unicode", "alphabet": "unicode",
         "lang_code": "pt-PT", "audio": {"sample_rate": 16000}, "num_symbols": 8, "num_speakers": 3,
@@ -153,7 +156,8 @@ def _voice():
     voice = TTSVoice.__new__(TTSVoice)
     voice.config, voice.adapter, voice.session = config, None, None
     voice.adapter = type("Adapter", (), {"default_params": lambda self: {},
-                                         "length_scale_params": lambda self, scale: {}})()
+                                         "length_scale_params": lambda self, scale: {},
+                                         "SPEAKER_NAMES": speaker_names})()
     return voice
 
 
@@ -161,6 +165,18 @@ def test_a_speaker_name_and_a_language_code_reach_the_engine_as_ids():
     request = _voice()._request([3], SynthesisConfig(speaker="rui", language="en"))
     assert (request.speaker_id, request.language_id) == (2, 1)
     np.testing.assert_array_equal(request.phoneme_ids, [[3]])
+
+
+def test_an_unknown_speaker_name_fails_before_the_engine_request():
+    with pytest.raises(ValueError, match=r"no speaker 'Leo'.*\['ana', 'rui'\]"):
+        _voice()._request([3], SynthesisConfig(speaker="Leo"))
+
+
+def test_an_unknown_language_code_fails_before_the_text_is_read():
+    with patch.object(TTSVoice, "_inline_blocks") as read:
+        with pytest.raises(ValueError, match=r"no language 'Jason'.*\['en', 'pt'\]"):
+            list(_voice().prepare("a", SynthesisConfig(language="Jason")))
+    read.assert_not_called()
 
 
 def test_a_speaker_id_and_a_language_id_pass_through():
@@ -210,7 +226,7 @@ def test_a_1x_lang_id_string_reaches_the_engine_as_given(value):
 
 def test_a_speaker_name_that_the_voice_map_lacks_reaches_the_engine():
     for config in [SynthesisConfig(speaker="Leo"), *_1x_ways("speaker_id", "Leo")]:
-        request = _voice()._request([3], config)
+        request = _voice(speaker_names=MagpieAdapter.SPEAKER_NAMES)._request([3], config)
         assert request.speaker_id == "Leo"
         assert _magpie_speaker(request) == 1
 
@@ -218,7 +234,7 @@ def test_a_speaker_name_that_the_voice_map_lacks_reaches_the_engine():
 def test_the_engine_refuses_a_name_it_does_not_have():
     for config in [SynthesisConfig(speaker="zé"), *_1x_ways("speaker_id", " 1")]:
         with pytest.raises(ValueError, match="no voice"):
-            _magpie_speaker(_voice()._request([3], config))
+            _magpie_speaker(_voice(speaker_names=MagpieAdapter.SPEAKER_NAMES)._request([3], config))
 
 
 def test_the_speaker_field_reads_a_name_in_the_voice_map():

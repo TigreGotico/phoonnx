@@ -832,8 +832,12 @@ class TTSVoice:
 
         :param text: The text to read.
         :param config: The synthesis settings. Only the text settings apply.
+        :raises ValueError: If ``config.language`` is a code that the
+            ``lang_id_map`` of a multilingual voice lacks.
         """
         config = self._with_voice_defaults(config or SynthesisConfig())
+        # An unknown language code fails here, before the phonemizer reads it.
+        self._language_id(config.language)
         LOG.debug("text=%s", text)
         spoken = text
         if self.phonetic_spellings and config.phonetic_spellings:
@@ -1484,11 +1488,36 @@ class TTSVoice:
     def _speaker_id(self, speaker: Optional[Union[int, str]]) -> Optional[Union[int, str]]:
         """The speaker that the engine gets: the id of a name in the voice's
         ``speaker_id_map``, or else *speaker* as it is. An engine with its own
-        speaker names, such as Magpie, reads a name that the map lacks."""
-        if isinstance(speaker, str) and not isinstance(speaker, _LegacyId) \
-                and speaker in self.config.speaker_id_map:
-            return int(self.config.speaker_id_map[speaker])
+        speaker names, such as Magpie, reads a name that the map lacks.
+
+        Raises:
+            ValueError: If *speaker* is a name that the map lacks and the engine has no
+                speaker names of its own.
+        """
+        if isinstance(speaker, str) and not isinstance(speaker, _LegacyId):
+            if speaker in self.config.speaker_id_map:
+                return int(self.config.speaker_id_map[speaker])
+            # A digit string is an id, which the engine reads with int().
+            if not self.adapter.SPEAKER_NAMES and not speaker.isdigit():
+                raise ValueError(f"voice {self._voice_name} has no speaker {speaker!r}. "
+                                 f"Its speakers are: {sorted(self.config.speaker_id_map)}")
         return speaker
+
+    def _language_id(self, language: Optional[Union[int, str]]) -> Optional[Union[int, str]]:
+        """The language that the engine gets: the id of a code in the voice's
+        ``lang_id_map``, or else *language* as it is. A code on a voice with no map
+        gives ``None``, because the code then only sets the text-stage language.
+
+        Raises:
+            ValueError: If *language* is a code that the map of a multilingual voice lacks.
+        """
+        if not isinstance(language, str) or isinstance(language, _LegacyId):
+            return language
+        language_id = self._lang_id_for(language)
+        if language_id is None and self.config.lang_id_map:
+            raise ValueError(f"voice {self._voice_name} has no language {language!r}. "
+                             f"Its languages are: {sorted(self.config.lang_id_map)}")
+        return language_id
 
     def _lang_id_for(self, tag: Optional[str]) -> Optional[int]:
         """The language id of a multilingual voice for *tag*, or None (monolingual, or unknown)."""
@@ -1618,9 +1647,7 @@ class TTSVoice:
         speaker_id = self._speaker_id(syn_config.speaker)
         if speaker_id is None and self.config.num_speakers > 1:
             speaker_id = self.config.default_speaker_id
-        language_id = syn_config.language
-        if isinstance(language_id, str) and not isinstance(language_id, _LegacyId):
-            language_id = self._lang_id_for(language_id)
+        language_id = self._language_id(syn_config.language)
 
         return AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,

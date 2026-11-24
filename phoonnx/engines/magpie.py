@@ -262,6 +262,8 @@ class MagpieTokenizer:
 class MagpieAdapter(BaseOnnxAdapter):
     """Adapter for NVIDIA Magpie-TTS Multilingual (multi-codebook autoregressive)."""
 
+    SPEAKER_NAMES = True
+
     MEMOIZED_WRITES = {
         # The decoder step graph, when the voice layer's own session is it.
         "_bind_decoder": frozenset({"decoder"}),
