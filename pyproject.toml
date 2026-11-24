@@ -122,7 +122,7 @@ test = [
     # tests/test_features_json.py runs the feature-table generator, and
     # tests/test_segment_map.py cuts segments with its segment_spans();
     # 3.0 puts a tone on its tone-bearing segment as four features
-    "phonematcher>=3.0.0a1",
+    "phonematcher>=3.0.1a1",
     "o2i-lexicons>=0.1.0a1",
     "arbtok>=0.0.3a2",
     "euskaphone",
@@ -314,7 +314,7 @@ train-data = [
 # map and that JSON, so these are never runtime dependencies. phonematcher 3.0
 # reads the tone of a toned phone as four of its own features.
 train-features = [
-    "phonematcher>=3.0.0a1",
+    "phonematcher>=3.0.1a1",
     "orthography2ipa>=7.124.46a4",
 ]
 # extra deps for the FastPitch / SpeedySpeech training engine
