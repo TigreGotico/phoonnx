@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.137.11a2](https://github.com/TigreGotico/phoonnx/tree/1.137.11a2) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.11a1...1.137.11a2)
+
+**Merged pull requests:**
+
+- docs: make the api and voice manager verifies exact and order-free [\#1070](https://github.com/TigreGotico/phoonnx/pull/1070) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.137.11a1](https://github.com/TigreGotico/phoonnx/tree/1.137.11a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.10a1...1.137.11a1)
