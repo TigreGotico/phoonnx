@@ -45,6 +45,11 @@ DEFAULT_SPECIAL_PHONEME_ID_MAP: Dict[str, int] = {
     DEFAULT_BLANK_WORD_TOKEN: 3,
 }
 MAX_PHONEMES = 256
+# Path fields of a dataset.jsonl row that hold cache files, such as an engine
+# step's d-vector. audio_path has its own override.
+_CACHE_PATH_FIELDS: Tuple[str, ...] = tuple(
+    field.name for field in dataclasses.fields(Utterance)
+    if field.type == Optional[Path] and field.name != "audio_path")
 # -----------------------------------------------------------------------------
 
 def phonemizer_registry(phonemizer: Any) -> Tuple[str, str]:
@@ -435,7 +440,8 @@ def next_result(result_queue: Queue, task_queue: JoinableQueue,
 @click.option(
     "--jsonl-audio-spec-path",
     default=None,
-    help="Replace the base folder of each audio_norm_path and audio_spec_path in dataset.jsonl: "
+    help="Replace the base folder of each cache path in dataset.jsonl, such as audio_norm_path, "
+         "audio_spec_path and the d_vector_path of --engine yourtts: "
          "the parent of --cache-dir, or --output-dir when --cache-dir is not given. "
          "The rest of each path stays."
 )
@@ -598,7 +604,7 @@ def cli(
         add_diacritics (bool): Instruct the inference settings in the config to add diacritics.
         keep_punctuation (bool): Keep clause punctuation in the phonemes and record it in the config.
         jsonl_audio_path (Optional[str]): Optional base path override for audio paths written into dataset.jsonl.
-        jsonl_audio_spec_path (Optional[str]): Optional base path override for cached audio/spec paths in dataset.jsonl.
+        jsonl_audio_spec_path (Optional[str]): Optional base path override for the cache paths in dataset.jsonl.
         quality_filters (Tuple[str, ...]): Repeatable 'column:min:max' quality-metric filters (e.g. 'utmos:3.0:'),
             applied at manifest-load time before phonemization/audio caching. See phoonnx_train.quality_filter.
         vad_model (str): vadonnx model name used by the 'vad_ratio' quality filter.
@@ -1099,12 +1105,14 @@ def cli(
             # They run after the engine step, which must read the local audio.
             if audio_base is not None and str(utt.audio_path) != ".":
                 utt.audio_path = Path(jsonl_audio_path) / utt.audio_path.absolute().relative_to(audio_base)
-            if jsonl_audio_spec_path and utt.audio_norm_path is not None:
-                utt.audio_norm_path = Path(jsonl_audio_spec_path) / utt.audio_norm_path.relative_to(cache_base)
-                utt.audio_spec_path = Path(jsonl_audio_spec_path) / utt.audio_spec_path.relative_to(cache_base)
+            row = utt.asdict()
+            if jsonl_audio_spec_path:
+                for key in _CACHE_PATH_FIELDS:
+                    if row[key] and Path(row[key]).is_relative_to(cache_base):
+                        row[key] = str(Path(jsonl_audio_spec_path) / Path(row[key]).relative_to(cache_base))
 
             json.dump(
-                utt.asdict(),
+                row,
                 dataset_file,
                 ensure_ascii=False,
                 cls=PathEncoder,
