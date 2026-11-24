@@ -505,8 +505,6 @@ def test_an_unknown_speaker_name_names_the_speakers_of_the_voice():
     assert "alice" in str(caught.value) and "bob" in str(caught.value), caught.value
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="#1021: SynthesisConfig.to_dict writes a 1.x speaker_id as a speaker name")
 def test_a_json_round_trip_keeps_the_speaker_of_a_1x_speaker_id():
     from phoonnx.config import SynthesisConfig
 
@@ -521,8 +519,6 @@ def test_a_json_round_trip_keeps_the_speaker_of_a_1x_speaker_id():
     assert round_tripped == original, (original, round_tripped)
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="#1021: SynthesisConfig.to_dict writes a 1.x lang_id as a language name")
 def test_a_json_round_trip_keeps_the_language_of_a_1x_lang_id():
     from phoonnx.config import SynthesisConfig
 

@@ -310,7 +310,12 @@ def test_to_dict_of_a_full_config_fits_the_schema():
     jsonschema.Draft202012Validator.check_schema(schema)
     data = _full_config().to_dict()
     jsonschema.validate(json.loads(json.dumps(data)), schema)
-    assert set(data) == set(schema["properties"])
+    assert set(data) == set(schema["properties"]) - {"speaker_id", "lang_id"}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        data_1x = dataclasses.replace(_full_config(), speaker_id="40", lang_id="1").to_dict()
+    jsonschema.validate(json.loads(json.dumps(data_1x)), schema)
+    assert set(data_1x) == set(schema["properties"]) - {"speaker", "language"}
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate({"speaker_id": 1}, schema)
 
