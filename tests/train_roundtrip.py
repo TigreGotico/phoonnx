@@ -6,10 +6,13 @@ synthesis feeds the graph both come from one encoder: the voice frontend that
 preprocess and ``TTSVoice`` share.
 """
 import json
+import re
 import subprocess
 import sys
+from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -23,6 +26,11 @@ TEXTS = (
 SPOKEN = TEXTS[1]
 
 
+def clip_seconds(text: str) -> float:
+    """The length of the toy clip of ``text``."""
+    return 0.6 + 0.05 * len(text)
+
+
 def write_clips(folder: Path, sample_rate: int) -> Path:
     """Write one tone-plus-noise wav per text and a jsonl that lists them."""
     import soundfile as sf
@@ -30,7 +38,7 @@ def write_clips(folder: Path, sample_rate: int) -> Path:
     rng = np.random.default_rng(0)
     rows = []
     for i, text in enumerate(TEXTS):
-        n = int(sample_rate * (0.6 + 0.05 * len(text)))
+        n = int(sample_rate * clip_seconds(text))
         t = np.arange(n) / sample_rate
         audio = 0.3 * np.sin(2 * np.pi * (150 + 40 * i) * t) + 0.02 * rng.standard_normal(n)
         wav = folder / f"u{i}.wav"
@@ -58,6 +66,12 @@ def preprocess(folder: Path, sample_rate: int, engine: Optional[str] = None) -> 
     assert result.returncode == 0, result.stdout + result.stderr
     assert len((data / "dataset.jsonl").read_text(encoding="utf-8").splitlines()) == len(TEXTS)
     return data
+
+
+def dataset_ids(data: Path, text: str = SPOKEN) -> List[int]:
+    """The ids that preprocess wrote for ``text``."""
+    rows = [json.loads(line) for line in (data / "dataset.jsonl").read_text(encoding="utf-8").splitlines()]
+    return next(row["phoneme_ids"] for row in rows if row["text"] == text)
 
 
 def dataset_config(data: Path) -> Dict[str, Any]:
@@ -92,13 +106,17 @@ def fit(module, steps: int, root: Path) -> Path:
 
 
 def speak(voice, text: str = SPOKEN, syn_config=None) -> Tuple[np.ndarray, List[List[int]]]:
-    """Synthesize ``text``; return the audio and each integer id row that any graph read.
+    """Render ``text`` as one sentence with no peak normalisation; return the raw
+    audio of the graph and each integer id row that any graph read.
 
     The recorder sits on ``onnxruntime.InferenceSession.run``, so it sees the ids
     of an engine that reads its text in an auxiliary graph too.
     """
     import onnxruntime
 
+    from phoonnx.config import SynthesisConfig
+
+    config = replace(syn_config or SynthesisConfig(), normalize_audio=False)
     fed: List[List[int]] = []
     run = onnxruntime.InferenceSession.run
 
@@ -111,18 +129,51 @@ def speak(voice, text: str = SPOKEN, syn_config=None) -> Tuple[np.ndarray, List[
 
     onnxruntime.InferenceSession.run = recording_run
     try:
-        chunks = list(voice.synthesize(text, syn_config))
+        utterances = list(voice.prepare(text, config))
+        assert len(utterances) == 1, f"{text!r} gave {len(utterances)} utterances"
+        audio = voice.render(utterances[0], config).audio_float_array
     finally:
         onnxruntime.InferenceSession.run = run
-    assert len(chunks) == 1, f"{text!r} gave {len(chunks)} chunks"
-    return chunks[0].audio_float_array, fed
+    return np.asarray(audio, dtype=np.float32), fed
 
 
-def assert_round_trip(training_ids: Sequence[int], fed: List[List[int]], audio: np.ndarray) -> None:
-    """The graph read the ids that training read, and the audio is not silence."""
+# The audio floors. A tiny model trained a few steps makes loud noise. The quietest
+# passing engine peaks at 0.52 (VITS) and has an RMS of 0.09 (Matcha), after the
+# clip to [-1, 1]. The floors sit 10 and 18 times lower, at -26 and -46 dBFS. The
+# loudest raw output, ZipVoice through Griffin-Lim, peaks near 1.2e4 before the
+# clip, so output scaled by 1e-6 falls under the peak floor for every engine.
+PEAK_FLOOR = 0.05
+RMS_FLOOR = 0.005
+
+
+def assert_round_trip(training_ids: Sequence[int], fed: List[List[int]], audio: np.ndarray,
+                      min_samples: int) -> None:
+    """The graph read the ids that training read, and the raw audio is long and loud
+    enough to be speech-shaped: at least ``min_samples`` samples, not near silence."""
     assert list(training_ids) in fed, (
         f"training read {list(training_ids)}; the graph read {fed}")
-    audio = np.asarray(audio, dtype=np.float32)
-    assert audio.size > 0, "the voice gave no audio"
+    assert audio.size >= min_samples, f"the voice gave {audio.size} samples, under {min_samples}"
     assert np.isfinite(audio).all(), "the voice gave non-finite audio"
-    assert np.abs(audio).max() > 1e-4, "the voice gave silence"
+    peak, rms = float(np.abs(audio).max()), float(np.sqrt(np.mean(audio ** 2)))
+    assert peak >= PEAK_FLOOR and rms >= RMS_FLOOR, (
+        f"the voice gave near silence: peak {peak:.3g}, RMS {rms:.3g}")
+
+
+class KnownDefect(Exception):
+    """The failure that a strict xfail names, told apart from any other failure."""
+
+
+@contextmanager
+def known_defect(error: type, pattern: str) -> Iterator[None]:
+    """Raise :class:`KnownDefect` for an ``error`` whose message matches ``pattern``.
+
+    A strict xfail with ``raises=KnownDefect`` then holds only for its own defect:
+    any other error fails the test, and a fix makes it pass, which strict mode
+    reports as a failure until the mark goes.
+    """
+    try:
+        yield
+    except error as exc:
+        if re.search(pattern, str(exc)):
+            raise KnownDefect(str(exc)) from exc
+        raise

@@ -4,13 +4,17 @@ Each test builds a tiny model of one architecture through its engine's real
 ``create_model``, trains it a few steps on the toy dataset of
 tests/train_roundtrip.py, exports it with the engine's own ``export_onnx`` and
 loads the export with ``TTSVoice.load``. The test then checks that the ids the
-graph reads for a sentence are the ids training read for it, and that the voice
-gives audio that is not silence. A tiny model makes noise, which is enough.
+graph reads for a sentence are the ids training read for it, and that the raw
+audio of the graph, with no peak normalisation, is long and loud enough: one
+decoder hop per id at least, and above the floors of tests/train_roundtrip.py.
+A tiny model makes noise, which is enough.
 """
 import json
 import math
+import re
 import shutil
 import time
+from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
@@ -58,8 +62,15 @@ def _training_ids(module, ids_of=lambda item: item.phoneme_ids):
     return [int(x) for x in ids_of(base[index])]
 
 
+def _min_samples(voice, ids):
+    """One decoder hop of the voice per id that training read. With a blank between
+    the symbols, that is two frames per symbol."""
+    return voice.config.hop_length * len(ids)
+
+
 def _round_trip(engine_name, data, tmp_path, steps=2, voice_params=None, vocoder=None,
-                training_ids=_training_ids, export_kwargs=None, syn_config=None, **extra):
+                training_ids=_training_ids, export_kwargs=None, syn_config=None, defect=None,
+                **extra):
     """Build, train, export and load one engine, then check the ids and the audio."""
     engine = get_engine(engine_name)
     torch.manual_seed(0)
@@ -74,7 +85,8 @@ def _round_trip(engine_name, data, tmp_path, steps=2, voice_params=None, vocoder
     if vocoder is not None:
         voice.adapter.vocoder = vocoder
     audio, fed = rt.speak(voice, syn_config=syn_config)
-    rt.assert_round_trip(ids, fed, audio)
+    with rt.known_defect(AssertionError, defect) if defect else nullcontext():
+        rt.assert_round_trip(ids, fed, audio, _min_samples(voice, ids))
     return ids, onnx_path, config_path
 
 
@@ -97,17 +109,18 @@ def test_vits_round_trip(toy_22k, tmp_path):
     swapped.write_text(json.dumps(config), encoding="utf-8")
     audio, fed = rt.speak(TTSVoice.load(onnx_path, config_path=swapped))
     with pytest.raises(AssertionError, match="training read"):
-        rt.assert_round_trip(ids, fed, audio)
+        rt.assert_round_trip(ids, fed, audio, 0)
 
 
 # ------------------------------------------------------- mel engines + vocoder
 # The mel engines train on natural-log mels (phoonnx_train.vits.mel_processing).
 # Griffin-Lim clips a mel to [-max_norm, max_norm], maps it linearly onto
 # [min_level_db, 0] and reads amp = 10 ** ((db + ref_level_db) / spec_gain). With
-# these values the map is db = mel - 12 and amp = exp(mel), and the clip keeps the
-# large mels of an untrained model finite.
+# these values the map is db = mel - 4 and amp = exp(mel). The clip at 4 is above
+# the loudest mel of speech, and it keeps the large mels of an untrained model
+# from giving audio that only the final clip to [-1, 1] holds in range.
 GRIFFIN_LIM = {"vocoder_type": "griffinlim",
-               "vocoder_config": {"max_norm": 12.0, "min_level_db": -24.0, "ref_level_db": 12.0,
+               "vocoder_config": {"max_norm": 4.0, "min_level_db": -8.0, "ref_level_db": 4.0,
                                   "spec_gain": math.log(10), "mel_fmax": 8000.0}}
 
 
@@ -138,8 +151,8 @@ def test_speedyspeech_round_trip(toy_22k_f0, tmp_path):
 
 def test_mixertts_round_trip(toy_22k_f0, tmp_path):
     # 20 steps at a high rate with no warm-up teach the duration predictor the frame
-    # rate of the toy clips. Before that it predicts nearly no frames, and a mel
-    # under 15 frames is shorter than a decoder kernel.
+    # rate of the toy clips. Before that, every duration can round to 0 frames, and
+    # the decoder cannot read an empty mel.
     _round_trip("mixertts", toy_22k_f0, tmp_path, steps=20, voice_params=GRIFFIN_LIM,
                 symbols_embedding_dim=16, num_test_examples=0, learning_rate=1e-2,
                 warmup_steps=1)
@@ -180,12 +193,14 @@ def _optispeech_ids(module):
     return [int(x) for x in dataset[index]["x"]]
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+@pytest.mark.xfail(strict=True, raises=rt.KnownDefect, reason=(
     "OptiSpeech trains on the ids of its own TextProcessor (a fixed IPA table, no blanks, no "
     "BOS/EOS), but the export writes the dataset's phoneme_id_map into model.json and the "
     "voice encodes with that map, so synthesis feeds ids the model never read"))
 def test_optispeech_round_trip(toy_22k, tmp_path):
+    sidecar_ids = re.escape(str(rt.dataset_ids(toy_22k)))
     _round_trip("optispeech", toy_22k, tmp_path, training_ids=_optispeech_ids,
+                defect=f"the graph read .*{sidecar_ids}",
                 dim=32, n_feats=40, hop_length=256, n_fft=256, win_length=256,
                 encoder_intermediate_dim=48, decoder_intermediate_dim=48, encoder_num_layers=1,
                 decoder_num_layers=1, vocoder_dim=32, vocoder_intermediate_dim=48,
@@ -194,9 +209,10 @@ def test_optispeech_round_trip(toy_22k, tmp_path):
 
 
 def test_rapido_round_trip(toy_22k, tmp_path, monkeypatch):
-    """Rápido trains on AudioVAE latents. Preprocess encodes them with the released
-    AudioVAE; here each clip gets random latents, and the export decodes with a
-    tiny random AudioVAE, so no model is downloaded."""
+    """Rápido trains on AudioVAE latents at 25 frames a second. Preprocess encodes
+    them with the released AudioVAE, a 377 MB download. Here each clip gets random
+    latents of its own length, and the export decodes with a small random AudioVAE
+    of the released frame rate."""
     from phoonnx_train.engines.rapido import _QUALITY_PRESETS
     from phoonnx_train.rapido.audio_vae import AudioVAE, AudioVAEConfig
     from phoonnx_train.rapido.dataset import latent_cache_path
@@ -206,32 +222,43 @@ def test_rapido_round_trip(toy_22k, tmp_path, monkeypatch):
     shutil.copy(toy_22k / "config.json", data / "config.json")
     rows = [json.loads(line) for line in (toy_22k / "dataset.jsonl").read_text("utf-8").splitlines()]
     generator = torch.Generator().manual_seed(0)
+    latents = []
     for i, row in enumerate(rows):
+        frames = math.ceil(rt.clip_seconds(row["text"]) * 25)
+        latents.append(torch.randn(frames, 64, generator=generator) + torch.arange(64) / 8)
         row["audio_norm_path"] = str(data / f"u{i}.pt")
-        torch.save(torch.randn(40, 64, generator=generator) + torch.arange(64) / 8,
-                   latent_cache_path(row["audio_norm_path"]))
+        torch.save(latents[-1], latent_cache_path(row["audio_norm_path"]))
     (data / "dataset.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), "utf-8")
 
+    # Untrained, the duration predictor gives each token about 0.2 frame, and the
+    # adapter's floor of one frame per word sets the length. After 50 steps at 1e-3
+    # the durations of the spoken sentence add up to the 42 frames of its clip.
     engine = get_engine("rapido")
     torch.manual_seed(0)
-    module = engine.create_model(_engine_config(data, **_QUALITY_PRESETS["low"]), [data])
-    checkpoint = rt.fit(module, steps=2, root=tmp_path)
+    module = engine.create_model(
+        _engine_config(data, **_QUALITY_PRESETS["low"], learning_rate=1e-3), [data])
+    checkpoint = rt.fit(module, steps=50, root=tmp_path)
     training = module._train_dataset.dataset
     index = next(i for i, utt in enumerate(training.utterances) if utt["text"] == rt.SPOKEN)
 
-    def tiny_vae():
-        torch.manual_seed(0)
-        return AudioVAE(AudioVAEConfig(encoder_dim=4, encoder_rates=(2, 2), latent_dim=64,
-                                       decoder_dim=16, decoder_rates=(2, 2))).eval()
-
-    monkeypatch.setattr("phoonnx_train.rapido.audio_vae.load_audio_vae", tiny_vae)
+    # A random decoder gives an RMS near 1e-9. Its last convolution is scaled so that
+    # the training latents decode at an RMS of 0.3, the level of the toy clips. The
+    # level check then shows that the latents the exported graphs make decode at
+    # the level of the training latents.
+    torch.manual_seed(0)
+    vae = AudioVAE(AudioVAEConfig(encoder_dim=4, latent_dim=64, decoder_dim=64)).eval()
+    with torch.no_grad():
+        decoded = torch.cat([vae.decode(z.T[None]).reshape(-1) for z in latents])
+        vae.decoder.model[-2].weight_g *= 0.3 / decoded.square().mean().sqrt()
+    monkeypatch.setattr("phoonnx_train.rapido.audio_vae.load_audio_vae", lambda: vae)
     config_path = engine.export_onnx(checkpoint, data / "config.json", tmp_path / "voice")
     voice = TTSVoice.load(tmp_path / "voice" / "model.onnx", config_path=config_path)
+    ids = training[index]["ids"].tolist()
     audio, fed = rt.speak(voice)
-    rt.assert_round_trip(training[index]["ids"].tolist(), fed, audio)
+    rt.assert_round_trip(ids, fed, audio, _min_samples(voice, ids))
 
 
-@pytest.mark.xfail(strict=True, raises=RuntimeError, reason=(
+@pytest.mark.xfail(strict=True, raises=rt.KnownDefect, reason=(
     "SuperTonic export writes the four graphs, tts.json and unicode_indexer.json, "
     "but no per-voice style JSON and no phoonnx voice config, so TTSVoice cannot "
     "speak a model trained from zero"))
@@ -272,8 +299,9 @@ def test_supertonic_round_trip(toy_22k, tmp_path):
         "vocoder_path": str(out / "vocoder.onnx"),
         "unicode_indexer_path": str(out / "unicode_indexer.json"),
         "tts_config_path": str(out / "tts.json")})
-    audio, fed = rt.speak(voice)
-    rt.assert_round_trip(training_ids, fed, audio)
+    with rt.known_defect(RuntimeError, "missing style_path"):
+        audio, fed = rt.speak(voice)
+    rt.assert_round_trip(training_ids, fed, audio, _min_samples(voice, training_ids))
 
 
 def test_zipvoice_round_trip(toy_22k, tmp_path):
@@ -319,21 +347,21 @@ HIFIGAN = {"type": "hifigan", "resblock_kernel_sizes": [3], "upsample_rates": [1
 ISTFTNET = {"type": "istftnet", "resblock_kernel_sizes": [3], "upsample_rates": [10, 6],
             "upsample_initial_channel": 512, "resblock_dilation_sizes": [[1, 3, 5]],
             "upsample_kernel_sizes": [20, 12], "gen_istft_n_fft": 20, "gen_istft_hop_size": 5}
-TRAILING_PAD = pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+TRAILING_PAD = pytest.mark.xfail(strict=True, raises=rt.KnownDefect, reason=(
     "StyleTTS2 training reads [0, *ids, 0] (meldataset.FilePathDataset._load_tensor pads both "
     "ends), but StyleTTS2Adapter pads the start only for a voice with no style pack, so the "
     "graph never reads the trailing pad that training read"))
-ISTFT_EXPORT = pytest.mark.xfail(strict=True, raises=RuntimeError, reason=(
+ISTFT_EXPORT = pytest.mark.xfail(strict=True, raises=rt.KnownDefect, reason=(
     "the iSTFTNet decoder of the low and medium presets calls torch.stft with "
     "return_complex=True, and the TorchScript ONNX exporter stops with "
     "'Unknown number type: complex'"))
 
 
-@pytest.mark.parametrize("decoder", [
-    pytest.param(HIFIGAN, id="hifigan", marks=TRAILING_PAD),
-    pytest.param(ISTFTNET, id="istftnet", marks=ISTFT_EXPORT),
+@pytest.mark.parametrize("decoder, defect", [
+    pytest.param(HIFIGAN, "trailing pad", id="hifigan", marks=[TRAILING_PAD, pytest.mark.slow]),
+    pytest.param(ISTFTNET, "complex stft", id="istftnet", marks=ISTFT_EXPORT),
 ])
-def test_styletts2_round_trip(decoder, tmp_path):
+def test_styletts2_round_trip(decoder, defect, tmp_path):
     """StyleTTS2 reads the upstream list layout at 24 kHz, and tokenizes each line
     with the fixed 178-symbol table of phoonnx_train.styletts2.meldataset."""
     from phoonnx_train.styletts2.meldataset import dicts as styletts2_symbols
@@ -362,11 +390,16 @@ def test_styletts2_round_trip(decoder, tmp_path):
     training_ids = training[index][2].tolist()
 
     out = tmp_path / "voice"
-    onnx_path = engine.export_onnx(checkpoint, data / "config.json", out,
-                                   phoneme_id_map={k: [v] for k, v in styletts2_symbols.items()})
+    istft = defect == "complex stft"
+    with rt.known_defect(RuntimeError, "Unknown number type: complex") if istft else nullcontext():
+        onnx_path = engine.export_onnx(checkpoint, data / "config.json", out,
+                                       phoneme_id_map={k: [v] for k, v in styletts2_symbols.items()})
     voice = TTSVoice.load(onnx_path, config_path=out / "config.json", engine_params={
         "speaker_encoder_path": str(out / "style_encoder.onnx"),
         "speaker_encoder_type": "styletts2_style"})
     audio, fed = rt.speak(voice, syn_config=SynthesisConfig(
         speaker_reference=str(data / "wavs" / "u0.wav")))
-    rt.assert_round_trip(training_ids, fed, audio)
+    # The trailing-pad defect: the graph reads the training ids without the last pad.
+    without_pad = f"the graph read .*{re.escape(str(training_ids[:-1]))}"
+    with rt.known_defect(AssertionError, without_pad) if defect == "trailing pad" else nullcontext():
+        rt.assert_round_trip(training_ids, fed, audio, _min_samples(voice, training_ids))
