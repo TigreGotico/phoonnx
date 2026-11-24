@@ -232,12 +232,15 @@ def test_a_preprocess_run_uses_no_deprecated_phoonnx_api(tmp_path):
 
 # --- scripts/bench_latency.py with a voice id ------------------------------
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="bench-latency-config: resolve_model returns <dir>/model.json, which no index voice has")
-def test_bench_latency_resolves_the_config_of_an_index_voice(tmp_path):
+def _bench_latency():
     spec = importlib.util.spec_from_file_location("bench_latency", REPO / "scripts" / "bench_latency.py")
     bench = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(bench)
+    return bench
+
+
+def test_bench_latency_resolves_the_config_of_an_index_voice(tmp_path):
+    bench = _bench_latency()
 
     snapshot = tmp_path / "snapshot"
     snapshot.mkdir()
@@ -253,7 +256,16 @@ def test_bench_latency_resolves_the_config_of_an_index_voice(tmp_path):
     manager.download_voice_by_id.return_value = True
     with patch("phoonnx.model_manager.TTSModelManager", return_value=manager):
         _, config_path = bench.resolve_model("org/voice", None)
-    assert Path(config_path).is_file(), config_path
+    assert config_path == str(snapshot / "config.json"), config_path
+
+
+def test_bench_latency_says_when_it_uses_the_fallback_config(tmp_path, capsys):
+    bench = _bench_latency()
+    model = tmp_path / "voice.onnx"
+    with patch("phoonnx.providers.make_session"), patch("phoonnx.engines.detect_engine"), \
+            patch.object(bench, "TTSVoice"):
+        bench.load_voice_timed(str(model), None)
+    assert f"No config at {model}.json" in capsys.readouterr().err
 
 
 # --- log-domain duration outputs read as frame counts ----------------------
