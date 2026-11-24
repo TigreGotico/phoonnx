@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.135.0a1](https://github.com/TigreGotico/phoonnx/tree/1.135.0a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.134.0a2...1.135.0a1)
+
+**Merged pull requests:**
+
+- feat\(magpie\): read English through scriptconv's NeMo IPA phonemizer [\#973](https://github.com/TigreGotico/phoonnx/pull/973) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.134.0a2](https://github.com/TigreGotico/phoonnx/tree/1.134.0a2) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.134.0a1...1.134.0a2)
@@ -375,17 +383,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.9a2...1.125.9a3)
 
-**Merged pull requests:**
-
-- test: check the cache merge\_default\_voices stores, not a mocked update [\#886](https://github.com/TigreGotico/phoonnx/pull/886) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.125.9a2](https://github.com/TigreGotico/phoonnx/tree/1.125.9a2) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.9a1...1.125.9a2)
-
-**Merged pull requests:**
-
-- test: seed the Indic Parler tests that count decode steps [\#885](https://github.com/TigreGotico/phoonnx/pull/885) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.9a1](https://github.com/TigreGotico/phoonnx/tree/1.125.9a1) (2026-11-22)
 
