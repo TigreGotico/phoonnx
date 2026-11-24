@@ -139,9 +139,10 @@ def speak(voice, text: str = SPOKEN, syn_config=None) -> Tuple[np.ndarray, List[
 
 # The audio floors. A tiny model trained a few steps makes loud noise. The quietest
 # passing engine peaks at 0.52 (VITS) and has an RMS of 0.09 (Matcha), after the
-# clip to [-1, 1]. The floors sit 10 and 18 times lower, at -26 and -46 dBFS. The
-# loudest raw output, ZipVoice through Griffin-Lim, peaks near 1.2e4 before the
-# clip, so output scaled by 1e-6 falls under the peak floor for every engine.
+# clip to [-1, 1]. The floors sit 10 and 17 times lower, at -26 and -46 dBFS. A
+# silent mel through Griffin-Lim peaks near 5e-7, under the floors. Output scaled
+# by 1e-6 falls under the floors for every engine except ZipVoice, whose raw
+# output peaks near 1e9 before the clip.
 PEAK_FLOOR = 0.05
 RMS_FLOOR = 0.005
 
