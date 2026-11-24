@@ -116,11 +116,11 @@ def test_vits_round_trip(toy_22k, tmp_path):
 # The mel engines train on natural-log mels (phoonnx_train.vits.mel_processing).
 # Griffin-Lim clips a mel to [-max_norm, max_norm], maps it linearly onto
 # [min_level_db, 0] and reads amp = 10 ** ((db + ref_level_db) / spec_gain). With
-# these values the map is db = mel - 4 and amp = exp(mel). The clip at 4 is above
-# the loudest mel of speech, and it keeps the large mels of an untrained model
-# from giving audio that only the final clip to [-1, 1] holds in range.
+# these values the map is db = mel - 12 and amp = exp(mel). The clip at -12 sits
+# under the log-mel floor of silence, so a model that gives a silent mel gives
+# audio under the level floors; the clip at 12 keeps an untrained mel finite.
 GRIFFIN_LIM = {"vocoder_type": "griffinlim",
-               "vocoder_config": {"max_norm": 4.0, "min_level_db": -8.0, "ref_level_db": 4.0,
+               "vocoder_config": {"max_norm": 12.0, "min_level_db": -24.0, "ref_level_db": 12.0,
                                   "spec_gain": math.log(10), "mel_fmax": 8000.0}}
 
 
@@ -146,7 +146,11 @@ def test_fastpitch_round_trip(toy_22k_f0, tmp_path):
 
 
 def test_speedyspeech_round_trip(toy_22k_f0, tmp_path):
-    _round_trip("speedyspeech", toy_22k_f0, tmp_path, voice_params=GRIFFIN_LIM, **TINY_FORWARD)
+    # After 2 steps the mel of SpeedySpeech sits at the clip of 12 in most bins, and
+    # the raw audio peaks near 1e9, so audio scaled down a millionfold is still loud.
+    # After 50 steps at 1e-2 the raw peak is near 30.
+    _round_trip("speedyspeech", toy_22k_f0, tmp_path, steps=50, voice_params=GRIFFIN_LIM,
+                learning_rate=1e-2, **TINY_FORWARD)
 
 
 def test_mixertts_round_trip(toy_22k_f0, tmp_path):
@@ -242,9 +246,12 @@ def test_rapido_round_trip(toy_22k, tmp_path, monkeypatch):
     index = next(i for i, utt in enumerate(training.utterances) if utt["text"] == rt.SPOKEN)
 
     # A random decoder gives an RMS near 1e-9. Its last convolution is scaled so that
-    # the training latents decode at an RMS of 0.3, the level of the toy clips. The
-    # level check then shows that the latents the exported graphs make decode at
-    # the level of the training latents.
+    # the training latents decode at an RMS of 0.3, the level of the toy clips. With a
+    # random decoder the level check shows only that the latents are not zero, and
+    # nearly any other input decodes loud. So the test also checks the latents that
+    # the decoder gets: they must vary over time at least a tenth as much as the
+    # training latents do. A constant output, such as latent_mean in every frame,
+    # fails. Neither check shows that the latents encode speech.
     torch.manual_seed(0)
     vae = AudioVAE(AudioVAEConfig(encoder_dim=4, latent_dim=64, decoder_dim=64)).eval()
     with torch.no_grad():
@@ -253,9 +260,29 @@ def test_rapido_round_trip(toy_22k, tmp_path, monkeypatch):
     monkeypatch.setattr("phoonnx_train.rapido.audio_vae.load_audio_vae", lambda: vae)
     config_path = engine.export_onnx(checkpoint, data / "config.json", tmp_path / "voice")
     voice = TTSVoice.load(tmp_path / "voice" / "model.onnx", config_path=config_path)
+    decoder = _RecordingSession(voice.adapter.decoder)
+    voice.adapter.decoder = decoder
     ids = training[index]["ids"].tolist()
     audio, fed = rt.speak(voice)
     rt.assert_round_trip(ids, fed, audio, _min_samples(voice, ids))
+
+    (fed_latents,) = (feed["latents"][0] for feed in decoder.feeds)  # [latent, frames]
+    training_variation = float(torch.stack([z.std(dim=0).mean() for z in latents]).mean())
+    variation = float(fed_latents.std(axis=-1).mean())
+    assert variation >= 0.1 * training_variation, (
+        f"the decoder latents vary {variation:.3g} over time, the training latents "
+        f"{training_variation:.3g}")
+
+
+class _RecordingSession:
+    """An ONNX session that keeps each feed it runs."""
+
+    def __init__(self, session):
+        self.session, self.feeds = session, []
+
+    def run(self, output_names, feed):
+        self.feeds.append(feed)
+        return self.session.run(output_names, feed)
 
 
 @pytest.mark.xfail(strict=True, raises=rt.KnownDefect, reason=(
@@ -308,7 +335,12 @@ def test_zipvoice_round_trip(toy_22k, tmp_path):
     """ZipVoice clones in context from a reference clip and its text. The export
     writes the text encoder and the flow-matching decoder; the mel front end comes
     from scripts/conversion/zipvoice/export_mel.py, as for a released voice, and
-    Griffin-Lim stands in for the Vocos vocoder."""
+    Griffin-Lim stands in for the Vocos vocoder.
+
+    The untrained flow model returns its starting noise, which the adapter divides
+    by feat_scale 0.1, so most mel bins sit at the clip of 12 and the raw audio
+    peaks near 1e9. 200 training steps do not change that. The level floors still
+    fail a silent mel, but not audio scaled down a millionfold."""
     import importlib.util
 
     script = Path(__file__).parent.parent / "scripts" / "conversion" / "zipvoice" / "export_mel.py"
