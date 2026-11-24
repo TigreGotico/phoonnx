@@ -487,7 +487,8 @@ def _voice(engine: str, **config):
     return TTSVoice(session=session, config=VoiceConfig.from_dict(config), adapter=get_adapter(engine))
 
 
-@pytest.mark.xfail(strict=True, reason="#1020: an unknown language code reaches the engine as no language id")
+@pytest.mark.xfail(strict=True, raises=pytest.fail.Exception,
+                   reason="#1020: an unknown language code reaches the engine as no language id")
 def test_an_unknown_language_code_names_the_codes_of_the_voice():
     from phoonnx.config import SynthesisConfig
 
@@ -521,6 +522,22 @@ def test_a_json_round_trip_keeps_the_speaker_of_a_1x_speaker_id():
         list(voice.synthesize("abc", config))
         list(voice.synthesize("abc", reloaded))
     original, round_tripped = (call.args[0].speaker_id for call in engine.call_args_list)
+    assert round_tripped == original, (original, round_tripped)
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="#1021: SynthesisConfig.to_dict writes a 1.x lang_id as a language name")
+def test_a_json_round_trip_keeps_the_language_of_a_1x_lang_id():
+    from phoonnx.config import SynthesisConfig
+
+    voice = _voice("vits", lang_id_map={"gl": 0, "1": 2, "pt": 1})
+    with pytest.warns(DeprecationWarning):
+        config = SynthesisConfig(lang_id="1")
+    reloaded = SynthesisConfig.from_dict(json.loads(json.dumps(config.to_dict())))
+    with patch.object(voice.adapter, "synthesize", wraps=voice.adapter.synthesize) as engine:
+        list(voice.synthesize("abc", config))
+        list(voice.synthesize("abc", reloaded))
+    original, round_tripped = (call.args[0].language_id for call in engine.call_args_list)
     assert round_tripped == original, (original, round_tripped)
 
 
