@@ -191,6 +191,42 @@ def test_jsonl_audio_path_keeps_one_base_across_a_resume(tmp_path):
         "/override/base/wav/spk1/a.wav", "/override/base/wav/spk2/b.wav", "/override/base/wav/spk2/c.wav"]
 
 
+def test_jsonl_audio_path_keeps_the_first_base_when_a_resume_adds_a_folder(tmp_path):
+    def row(name: str) -> str:
+        clip = _wav(tmp_path / "ds" / "wav" / name, sr=16000)
+        return json.dumps({"text": "hi", "audio": str(clip), "phon": "h i"}) + "\n"
+
+    source = tmp_path / "a.jsonl"
+    source.write_text(row("spk1/a.wav") + row("spk1/b.wav"))
+    out = tmp_path / "out"
+    args = ["-i", str(source), "-o", str(out), "-l", "en", "--phonemes-column", "phon",
+            "--jsonl-audio-path", "/override/base"]
+    assert _preprocess(args).exit_code == 0
+    with open(source, "a") as handle:
+        handle.write(row("spk2/c.wav"))
+    result = _preprocess([*args, "--resume"])
+    assert result.exit_code == 0, result.output
+    assert [r["audio_path"] for r in _manifest(out)] == [
+        "/override/base/spk1/a.wav", "/override/base/spk1/b.wav", "/override/base/spk2/c.wav"]
+
+
+def test_jsonl_audio_path_refuses_a_resume_outside_the_first_base(tmp_path):
+    first = tmp_path / "a.jsonl"
+    first.write_text(json.dumps({"text": "hi", "audio": str(_wav(tmp_path / "ds1" / "wav" / "a.wav")),
+                                 "phon": "h i"}) + "\n")
+    second = tmp_path / "b.jsonl"
+    second.write_text(json.dumps({"text": "hi", "audio": str(_wav(tmp_path / "ds2" / "wav" / "b.wav")),
+                                  "phon": "h i"}) + "\n")
+    out = tmp_path / "out"
+    args = ["-o", str(out), "-l", "en", "--phonemes-column", "phon", "--jsonl-audio-path", "/override/base"]
+    assert _preprocess(["-i", str(first), *args]).exit_code == 0
+    result = _preprocess(["-i", str(first), "-i", str(second), *args, "--resume"])
+    assert result.exit_code == 2, result.output
+    assert f"its rows use {tmp_path / 'ds1'}, and the new rows need {tmp_path.parent}." in result.output, \
+        result.output
+    assert [r["audio_path"] for r in _manifest(out)] == ["/override/base/wav/a.wav"]
+
+
 def test_jsonl_audio_path_base_of_a_dataset_directory_is_that_directory(tmp_path):
     dataset = tmp_path / "ds"
     _wav(dataset / "wav" / "spk1" / "a.wav", sr=16000)

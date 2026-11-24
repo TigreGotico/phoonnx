@@ -733,6 +733,15 @@ def cli(
         if not utterances:
             _LOGGER.info("Resume: nothing new to process.")
             return
+        if audio_base is not None:
+            # the new rows have to share the base the existing rows were written with
+            first_base = _written_audio_base(resume_rows, Path(jsonl_audio_path), config.cache_dir)
+            if first_base is None or not Path(os.path.commonpath(audio_dirs)).is_relative_to(first_base):
+                raise click.UsageError(
+                    f"--resume would write a second audio base into {dataset_path}: its rows use "
+                    f"{first_base or 'a base that cannot be read back'}, and the new rows need {audio_base}. "
+                    "Write the new rows to another output folder.")
+            audio_base = first_base
 
     if quality_filters:
         configure_vad_model(vad_model)
@@ -1184,6 +1193,24 @@ def _row_key(row: Dict[str, Any]) -> str:
 def _utt_key(utt: Utterance) -> str:
     """Resume identity for a freshly loaded utterance: row_id or audio path."""
     return str(utt.row_id or utt.audio_path or "")
+
+
+def _written_audio_base(rows: List[Dict[str, Any]], jsonl_audio_path: Path, cache_dir: Path) -> Optional[Path]:
+    """The local audio base that *rows* were written with under *jsonl_audio_path*, or None.
+
+    A row of an audio file keeps its local path in ``row_id``. A row of embedded
+    audio was decoded to ``<cache_dir>/audio`` under the same file name.
+    """
+    for row in rows:
+        written = Path(row.get("audio_path") or "")
+        if written == jsonl_audio_path or not written.is_relative_to(jsonl_audio_path):
+            continue
+        tail = written.relative_to(jsonl_audio_path).parts
+        for local in (Path(row.get("row_id") or ""), cache_dir / "audio" / tail[-1]):
+            local = local.absolute()
+            if local.parts[-len(tail):] == tail:
+                return Path(*local.parts[:-len(tail)])
+    return None
 
 
 def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
