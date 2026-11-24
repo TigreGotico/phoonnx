@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.137.0a1](https://github.com/TigreGotico/phoonnx/tree/1.137.0a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.4a1...1.137.0a1)
+
+**Merged pull requests:**
+
+- feat: adopt phonematcher 3.0 tone features [\#1037](https://github.com/TigreGotico/phoonnx/pull/1037) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.136.4a1](https://github.com/TigreGotico/phoonnx/tree/1.136.4a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.3a2...1.136.4a1)
