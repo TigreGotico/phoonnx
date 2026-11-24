@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.137.8a1](https://github.com/TigreGotico/phoonnx/tree/1.137.8a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.7a1...1.137.8a1)
+
+## [1.137.7a1](https://github.com/TigreGotico/phoonnx/tree/1.137.7a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.6a1...1.137.7a1)
+
 ## [1.137.6a1](https://github.com/TigreGotico/phoonnx/tree/1.137.6a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.5a1...1.137.6a1)
@@ -366,10 +374,6 @@
 ## [1.129.8a1](https://github.com/TigreGotico/phoonnx/tree/1.129.8a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.7a1...1.129.8a1)
-
-**Merged pull requests:**
-
-- fix\(preprocess\): exit 1 when filtering or the workers leave no row [\#929](https://github.com/TigreGotico/phoonnx/pull/929) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.129.7a1](https://github.com/TigreGotico/phoonnx/tree/1.129.7a1) (2026-11-22)
 
