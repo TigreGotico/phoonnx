@@ -1482,20 +1482,17 @@ class TTSVoice:
                        _audio_int16_array=None, _audio_int16_bytes=None)
 
     def _speaker_id(self, speaker: Optional[Union[int, str]]) -> Optional[int]:
-        """The id of *speaker*: an id, a name in the voice's ``speaker_id_map``, or the
-        digits of an id.
+        """The id of *speaker*, an id or a name in the voice's ``speaker_id_map``.
 
         Raises:
             ValueError: If the voice has no speaker of that name.
         """
         if not isinstance(speaker, str):
             return speaker
-        if speaker in self.config.speaker_id_map:
-            return int(self.config.speaker_id_map[speaker])
-        if speaker.isdigit():
-            return int(speaker)
-        raise ValueError(f"voice {self._voice_name} has no speaker {speaker!r}; "
-                         f"it has {sorted(self.config.speaker_id_map)}")
+        if speaker not in self.config.speaker_id_map:
+            raise ValueError(f"voice {self._voice_name} has no speaker {speaker!r}; "
+                             f"it has {sorted(self.config.speaker_id_map)}")
+        return int(self.config.speaker_id_map[speaker])
 
     def _lang_id_for(self, tag: Optional[str]) -> Optional[int]:
         """The language id of a multilingual voice for *tag*, or None (monolingual, or unknown)."""
@@ -1627,7 +1624,7 @@ class TTSVoice:
             speaker_id = self.config.default_speaker_id
         language_id = syn_config.language
         if isinstance(language_id, str):
-            language_id = int(language_id) if language_id.isdigit() else self._lang_id_for(language_id)
+            language_id = self._lang_id_for(language_id)
 
         return AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,

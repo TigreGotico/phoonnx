@@ -500,6 +500,18 @@ def _warn_1x(old: str, new: str) -> None:
                   DeprecationWarning, stacklevel=level)
 
 
+def _1x_id(value: str) -> Union[int, str]:
+    """A 1.x ``speaker_id`` or ``lang_id`` string as the id that 1.x read from it.
+
+    1.x passed the string to the engine, which cast it with ``int()``. A string that
+    ``int()`` refuses stays a string, which the voice reads as a name.
+    """
+    try:
+        return int(value)
+    except ValueError:
+        return value
+
+
 def _as_group(group: type, value: Any) -> Any:
     """*value*, or the *group* that *value* describes when it is a mapping."""
     return group(**value) if isinstance(value, Mapping) else value
@@ -592,6 +604,8 @@ class SynthesisConfig:
         for name, value in renamed.items():
             path = _1X_NAMES[name]
             _warn_1x(f"SynthesisConfig.{name}", f"SynthesisConfig.{path}")
+            if name in ("speaker_id", "lang_id") and isinstance(value, str):
+                value = _1x_id(value)
             head, _, rest = path.partition(".")
             if rest:
                 value = _with_path(getattr(self, head) or _GROUPS[head](), rest, value)

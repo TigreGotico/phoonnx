@@ -110,8 +110,8 @@ syn_config = SynthesisConfig(
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `speaker` | `int` \| `str` \| `None` | `None` | Speaker of a multi-speaker voice: an id, or a name in the voice's `speaker_id_map`. A digit string that is not a name, such as `"5"`, is the id 5 |
-| `language` | `int` \| `str` \| `None` | `None` | Language of a multi-language voice: an id, or a code in the voice's `lang_id_map`. A code also sets `stages.lang`. A digit string is an id |
+| `speaker` | `int` \| `str` \| `None` | `None` | Speaker of a multi-speaker voice: an id, or a name in the voice's `speaker_id_map` |
+| `language` | `int` \| `str` \| `None` | `None` | Language of a multi-language voice: an id, or a code in the voice's `lang_id_map`. A code also sets `stages.lang` |
 | `length_scale` | `float` \| `None` | `None` | Speed control: < 1 faster, > 1 slower |
 | `noise_scale` | `float` \| `None` | `None` | Generator noise: affects naturalness |
 | `noise_w_scale` | `float` \| `None` | `None` | Phoneme duration noise |
@@ -161,7 +161,7 @@ A scale comes from the first of these that sets it: the call's `SynthesisConfig`
 
 `SynthesisConfig.to_dict()` gives the config as plain data, and `SynthesisConfig.from_dict()` reads it back. The JSON Schema `phoonnx/synthesis_config.schema.json`, in the wheel, describes that data. A reference in plain data is a path or URL. A reference that holds samples, or a `stages.casing` callable, makes `to_dict()` raise `ValueError`. The constructor also accepts the groups as dicts, so `SynthesisConfig(**dataclasses.asdict(config))` builds the same config.
 
-The flat names of phoonnx 1.x still work as keywords, attributes, `dataclasses.replace()` keywords and `SynthesisConfig.from_dict` keys. Positional arguments in the 1.x field order work too. Each use raises a `DeprecationWarning` that names the new field and points at the caller's line. The names and the positional form stop working in phoonnx 2.0.0.
+The flat names of phoonnx 1.x still work as keywords, attributes, `dataclasses.replace()` keywords and `SynthesisConfig.from_dict` keys. Positional arguments in the 1.x field order work too. Each use raises a `DeprecationWarning` that names the new field and points at the caller's line. A string in `speaker_id` or `lang_id` is read with `int()`, as in 1.x, so `speaker_id="40"` is the id 40. In the new `speaker` and `language` fields a string is a name or a code, so `speaker="40"` is the speaker named `40`. The names and the positional form stop working in phoonnx 2.0.0.
 
 | Flat name | Field |
 |-----------|-------|

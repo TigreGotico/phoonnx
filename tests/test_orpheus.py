@@ -162,7 +162,6 @@ def test_speaker_id_maps_back_to_a_name():
     a = _adapter()
     cfg = _Cfg(speaker_id_map={v: i for i, v in enumerate(EN_VOICES)})
     assert a.resolve_voice(_Voice(cfg), _Syn(speaker=3)) == "leo"
-    assert a.resolve_voice(_Voice(cfg), _Syn(speaker="3")) == "leo"
 
 
 def test_unknown_voice_is_rejected():
