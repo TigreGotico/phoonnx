@@ -70,7 +70,7 @@ def _invoke(args, catch_exceptions=True):
     # -w 1: these fixtures are 1-2 rows; the CLI's os.cpu_count() worker
     # default would fork a full pool of processes per test for no benefit.
     args = [*args, "--max-workers", "1"]
-    with patch.object(preprocess, "get_phonemizer", return_value=_DummyPhonemizer()):
+    with patch.object(preprocess, "_voice_phonemizer", return_value=_DummyPhonemizer()):
         return click.testing.CliRunner().invoke(preprocess.cli, args, catch_exceptions=catch_exceptions)
 
 
@@ -1151,9 +1151,9 @@ class TestTheWorkerStartsUnderWhateverTheDefaultIs(unittest.TestCase):
         import pickle
 
         from phoonnx.config import Alphabet, PhonemeType
-        from phoonnx_train.preprocess import get_phonemizer
+        from phoonnx_train.preprocess import _voice_phonemizer
 
-        phonemizer = get_phonemizer(PhonemeType.GRAPHEMES, Alphabet.UNICODE, "")
+        phonemizer = _voice_phonemizer(PhonemeType.GRAPHEMES, Alphabet.UNICODE, "")
         restored = pickle.loads(pickle.dumps(phonemizer))
         self.assertEqual(type(restored), type(phonemizer))
         self.assertIn(multiprocessing.get_start_method(),
@@ -1202,7 +1202,7 @@ class TestWorkersBuildTheirOwnPhonemizer(unittest.TestCase):
         import threading
         import click.testing
 
-        real = preprocess.get_phonemizer
+        real = preprocess._voice_phonemizer
 
         def with_native_handle(*args, **kwargs):
             phonemizer = real(*args, **kwargs)
@@ -1217,7 +1217,7 @@ class TestWorkersBuildTheirOwnPhonemizer(unittest.TestCase):
             out = tmp / "out"
             # The queues must come from the same context as the processes.
             forkserver = multiprocessing.get_context("forkserver")
-            with patch.object(preprocess, "get_phonemizer", side_effect=with_native_handle), \
+            with patch.object(preprocess, "_voice_phonemizer", side_effect=with_native_handle), \
                     patch.object(preprocess, "Process", forkserver.Process), \
                     patch.object(preprocess, "Queue", forkserver.Queue), \
                     patch.object(preprocess, "JoinableQueue", forkserver.JoinableQueue):

@@ -361,7 +361,7 @@ class TestPreprocessIntegration(unittest.TestCase):
     def _invoke(self, args):
         import click.testing
         from phoonnx_train import preprocess
-        with patch.object(preprocess, "get_phonemizer", return_value=self._DummyPhonemizer()):
+        with patch.object(preprocess, "_voice_phonemizer", return_value=self._DummyPhonemizer()):
             return click.testing.CliRunner().invoke(preprocess.cli, args, catch_exceptions=False)
 
     def test_multi_source_speaker_namespacing_and_resume(self):
