@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.136.2a1](https://github.com/TigreGotico/phoonnx/tree/1.136.2a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.1a1...1.136.2a1)
+
+**Merged pull requests:**
+
+- fix: --segment-map without phonematcher stops before any utterance [\#1024](https://github.com/TigreGotico/phoonnx/pull/1024) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.136.1a1](https://github.com/TigreGotico/phoonnx/tree/1.136.1a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.0a1...1.136.1a1)
@@ -385,10 +393,6 @@
 ## [1.125.13a1](https://github.com/TigreGotico/phoonnx/tree/1.125.13a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.12a2...1.125.13a1)
-
-**Merged pull requests:**
-
-- fix: require the quebra-frases and scriptconv releases that split and join CJK and ! sentences [\#904](https://github.com/TigreGotico/phoonnx/pull/904) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.12a2](https://github.com/TigreGotico/phoonnx/tree/1.125.12a2) (2026-11-22)
 
