@@ -205,8 +205,7 @@ class ZipVoiceModule(pl.LightningModule):
         from phoonnx_train.zipvoice.lr_scheduler import Eden
         from phoonnx_train.zipvoice.optim import ScaledAdam
 
-        params = [{"params": list(self.model.parameters()),
-                   "names": [n for n, _ in self.model.named_parameters()]}]
+        params = [{"named_params": list(self.model.named_parameters())}]
         opt = ScaledAdam(params, lr=self.hparams.base_lr,
                          clipping_scale=self.hparams.clipping_scale)
         sched = Eden(opt, lr_batches=self.hparams.lr_batches,
