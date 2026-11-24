@@ -5,7 +5,6 @@ one id to each code point, so that an input feature table can describe whole
 segments. Every segment is a substring of the phonemizer output, so the
 runtime tokenizer, which matches the longest key first, finds the same ids.
 """
-import unicodedata
 from typing import List
 
 #: Modifier letters that modify the symbol before them: aspiration, breathy
@@ -16,34 +15,29 @@ from typing import List
 ATTACHING = frozenset("ʰʱʲʷᶣˠˤˀːˑ˞ʼⁿˡ˔˕˖˗")
 #: Tie bars, which join the symbols before and after them into one segment.
 TIES = frozenset("͜͡")
-#: The three tone notations with levels: Chao tone letters, the left-stem tone
-#: letters U+A712 to U+A716, and the tone numerals ¹ to ⁵. A run in one notation
-#: is one segment, the contour, so ``˥˩`` and ``⁵¹`` are one id each. A change of
-#: notation starts a segment: ``˨˩˦꜔꜒`` is the IPA sandhi notation, an underlying
-#: 214 and then a surface 35. The neutral-tone ⁰ has no level and stands alone.
-TONE_NOTATIONS = (frozenset("˥˦˧˨˩"), frozenset("\ua712\ua713\ua714\ua715\ua716"), frozenset("¹²³⁴⁵"))
-
-
 def segment_phonemes(text: str) -> List[str]:
     """Cut *text* into segments that join back into it unchanged.
 
-    A combining mark, an attaching modifier letter, and the symbol after a tie
-    bar join the segment before them. A run of tone letters in one notation is
-    one segment.
-    Every other character, the stress marks, spaces and punctuation included,
-    starts a segment of its own.
+    phonematcher's ``segment_spans`` decides each segment, so the map and the
+    feature table read the text the way phonematcher's distance does: ``aⁿda``
+    is ``a``, ``ⁿd``, ``a``, and ``tⁿ`` keeps its nasal release. A tie bar
+    between two spans joins them, so ``a͡i`` stays one segment. Every other
+    character between spans, the stress marks, spaces and punctuation
+    included, is a segment of its own.
     """
+    try:
+        from phonematcher import segment_spans
+    except ImportError as e:
+        raise ImportError("--segment-map needs phonematcher: install phoonnx[train-features]") from e
     segments: List[str] = []
-    after_tie = False
-    for char in text:
-        joins = segments and (
-            after_tie
-            or unicodedata.category(char) == "Mn"
-            or char in ATTACHING
-            or any(char in notation and segments[-1][-1] in notation for notation in TONE_NOTATIONS))
-        if joins:
-            segments[-1] += char
+    pos = 0
+    for start, end in segment_spans(text):
+        gap = text[pos:start]
+        if pos and gap and set(gap) <= TIES:
+            segments[-1] += gap + text[start:end]
         else:
-            segments.append(char)
-        after_tie = char in TIES
+            segments.extend(gap)
+            segments.append(text[start:end])
+        pos = end
+    segments.extend(text[pos:])
     return segments

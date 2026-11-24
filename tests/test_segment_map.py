@@ -25,6 +25,26 @@ class TestSegmentPhonemes(unittest.TestCase):
         self.assertEqual(segment_phonemes("ẽj"), ["ẽ", "j"])
         self.assertEqual(segment_phonemes("ẽj"), ["ẽ", "j"])
 
+    def test_a_superscript_nasal_prenasalizes_the_stop_after_it(self):
+        # phonematcher 2.7.4a1 segments these the same way: a vowel has no nasal release
+        self.assertEqual(segment_phonemes("aⁿda"), ["a", "ⁿd", "a"])
+        self.assertEqual(segment_phonemes("ⁿda"), ["ⁿd", "a"])
+        self.assertEqual(segment_phonemes("ˈⁿda"), ["ˈ", "ⁿd", "a"])
+        self.assertEqual(segment_phonemes("aːᵐba"), ["aː", "ᵐb", "a"])
+
+    def test_a_superscript_nasal_after_a_consonant_is_nasal_release(self):
+        self.assertEqual(segment_phonemes("tⁿa"), ["tⁿ", "a"])
+        self.assertEqual(segment_phonemes("a ⁿ a"), ["a", " ", "ⁿ", " ", "a"])
+
+    def test_a_tie_bar_keeps_a_vowel_pair_and_a_double_articulation_whole(self):
+        self.assertEqual(segment_phonemes("ba͡i"), ["b", "a͡i"])
+        self.assertEqual(segment_phonemes("ᵑᵐɡ͡bala"), ["ᵑᵐɡ͡b", "a", "l", "a"])
+
+    def test_stress_spaces_and_spelling_stay_as_written(self):
+        text = "ˈaⁿda ɡa, ga ɚɝ"
+        self.assertEqual(segment_phonemes(text),
+                         ["ˈ", "a", "ⁿd", "a", " ", "ɡ", "a", ",", " ", "g", "a", " ", "ɚ", "ɝ"])
+
     def test_tone_diacritic_stays_on_its_vowel(self):
         self.assertEqual(segment_phonemes("má"), ["m", "á"])
 
