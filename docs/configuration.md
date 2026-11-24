@@ -4,7 +4,7 @@
 covers: every VoiceConfig and SynthesisConfig field, the native config.json schema, phonemizer provenance, the Engine enum, execution providers and precision
 source: phoonnx/config.py:VoiceConfig, phoonnx/config.py:SynthesisConfig, phoonnx/config.py:Engine, phoonnx/compat.py:LOADERS, phoonnx/providers.py, phoonnx/model_manager.py:PRECISIONS
 generated: no
-verify: .venv/bin/python -W ignore -c "import re,sys,dataclasses as d; from phoonnx.config import VoiceConfig,SynthesisConfig,Engine; from phoonnx.compat import LOADERS; p=open('docs/configuration.md').read(); q=chr(96); n=chr(10); rows=lambda h: [[re.findall(q+'([^'+q+']*)'+q,c) for c in re.split('(?<!'+chr(92)*2+')[|]',l)[1:4]] for l in p.split(n+h,1)[1].split(n+'#',1)[0].splitlines() if l.startswith('| '+q)]; vc=VoiceConfig.from_dict({'phoonnx_version':'1.0','phoneme_type':'graphemes','alphabet':'unicode','phoneme_id_map':{'_':[0],'^':[1],'$':[2],' ':[3]}}); sc=SynthesisConfig(); same=lambda t,v: t.strip(chr(34))==str(v) or t==getattr(v,'name',None); bad=[]; [bad.append(h) for h,o,C in (('### VoiceConfig fields',vc,VoiceConfig),('### SynthesisConfig fields',sc,SynthesisConfig)) if sorted(r[0][0] for r in rows(h))!=sorted(f.name for f in d.fields(C))]; [bad.append(r[0][0]) for h,o in (('### VoiceConfig fields',vc),('### SynthesisConfig fields',sc)) for r in rows(h) if r[2] and not same(r[2][0],getattr(o,r[0][0]))]; eng=[r[0][0] for r in rows('## Engine Enum') if r[0][0]!='Engine']; bad+=[] if sorted(eng)==sorted(e.value for e in Engine) else ['engine table']; ld=[l.__name__ for l in LOADERS]; bad+=[x for x in re.findall(q+'([A-Za-z0-9]+Loader)'+q,p) if x not in ld]; print(bad); sys.exit(1 if bad else 0)"
+verify: .venv/bin/python -W ignore -c "import re,sys,dataclasses as d; from phoonnx.config import VoiceConfig,SynthesisConfig,Engine,AudioPost,SpeakerReference,_1X_NAMES; from scriptconv.frontend import Stages; from phoonnx.compat import LOADERS; p=open('docs/configuration.md').read(); q=chr(96); n=chr(10); rows=lambda h: [[re.findall(q+'([^'+q+']*)'+q,c) for c in re.split('(?<!'+chr(92)*2+')[|]',l)[1:4]] for l in p.split(n+h,1)[1].split(n+'#',1)[0].splitlines() if l.startswith('| '+q)]; vc=VoiceConfig.from_dict({'phoonnx_version':'1.0','phoneme_type':'graphemes','alphabet':'unicode','phoneme_id_map':{'_':[0],'^':[1],'$':[2],' ':[3]}}); sc=SynthesisConfig(); T=[('### VoiceConfig fields',vc,VoiceConfig),('### SynthesisConfig fields',sc,SynthesisConfig),('### stages fields',Stages(),Stages),('### reference fields',SpeakerReference(),SpeakerReference),('### audio fields',AudioPost(),AudioPost)]; same=lambda t,v: t.strip(chr(34))==str(v) or t==getattr(v,'name',None); bad=[]; [bad.append(h) for h,o,C in T if sorted(r[0][0] for r in rows(h))!=sorted(f.name for f in d.fields(C))]; [bad.append(h+' '+r[0][0]) for h,o,C in T for r in rows(h) if r[2] and not same(r[2][0],getattr(o,r[0][0]))]; bad+=[] if {r[0][0]:r[1][0] for r in rows('### 1.x names')}==_1X_NAMES else ['1.x names']; eng=[r[0][0] for r in rows('## Engine Enum') if r[0][0]!='Engine']; bad+=[] if sorted(eng)==sorted(e.value for e in Engine) else ['engine table']; ld=[l.__name__ for l in LOADERS]; bad+=[x for x in re.findall(q+'([A-Za-z0-9]+Loader)'+q,p) if x not in ld]; print(bad); sys.exit(1 if bad else 0)"
 see: usage.md, phonemizers.md, precision.md
 -->
 
@@ -136,6 +136,7 @@ A scale comes from the first of these that sets it: the call's `SynthesisConfig`
 | `normalize` | `bool` \| `None` | `None` | `False` skips the text normalisation hook |
 | `chunk` | `str` \| `None` | `None` | How much text one engine call reads: `sentence`, `clause`, `paragraph` (the text between blank lines) or `none` (the whole text). `None` reads one sentence per call. The text is read whole before it is cut. An engine that reads text, not phonemes, gets the whole text. Phonemic input (`input_alphabet` set) is cut per sentence whatever the value. Any other value raises `ValueError` when the config is built |
 | `lang` | `str` \| `None` | `None` | The language of the text |
+| `casing` | callable \| `None` | `None` | A function that sets the text casing. `to_dict()` raises `ValueError` when it is set, because a function has no plain-data form |
 
 ### reference fields
 
@@ -187,7 +188,7 @@ The flat names of phoonnx 1.x still work as keywords, attributes, `dataclasses.r
 | `volume` | `audio.volume` |
 | `super_resolution` | `audio.super_resolution` |
 | `super_resolution_model` | `audio.super_resolution_model` |
-| `vc_reference` | `audio.voice_conversion` |
+| `vc_reference` | `audio.voice_conversion.audio` |
 | `vc_engine` | `audio.voice_conversion_engine` |
 
 ## config.json Format

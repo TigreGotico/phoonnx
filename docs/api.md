@@ -128,7 +128,7 @@ The keys of `SynthesisConfig.extra` come last and win over all four.
 
 ## Part 2: Name list
 
-This part lists the names that exist in the code. The package root exports nine names, listed below. Import every other name from its own module.
+This part lists the names that exist in the code. The package root exports eleven names, listed below. Import every other name from its own module.
 
 ### Voice and audio
 
@@ -156,7 +156,8 @@ This part lists the names that exist in the code. The package root exports nine 
 | Name | Module | Role |
 | --- | --- | --- |
 | `VoiceConfig` | `phoonnx.config` | What the model is. `from_dict` reads a config and `to_dict` writes the native format. |
-| `SynthesisConfig` | `phoonnx.config` | One call. A flat list of fields. |
+| `SynthesisConfig` | `phoonnx.config` | One call. Frozen. The groups `stages`, `reference` and `audio` hold the text stages, the cloning reference and the audio steps. The other fields are flat. |
+| `AudioPost`, `SpeakerReference` | `phoonnx.config` | The `audio` group of `SynthesisConfig`, and the reference of `reference` and `audio.voice_conversion`. |
 | `Engine` | `phoonnx.config` | Names a file format or an architecture. The alias `kokoro` gives `Engine.STYLETTS2`. |
 | `Alphabet`, `PhonemeType` | `phoonnx.config` | Re-exports of scriptconv enums. `PhonemeType` is scriptconv `Phonemizer`. |
 | `Chunk` | `phoonnx.config` | Re-export of the scriptconv enum behind `SynthesisConfig.stages.chunk`. |
@@ -282,10 +283,10 @@ This part is a design, not a description of the code. Its objects do not exist, 
 | `VoiceConfig.speakers`, `languages` | `speaker_id_map`, `lang_id_map` |
 | `VoiceConfig.defaults` | `length_scale`, `noise_scale`, `noise_w_scale`, which are `None` when `config.json` omits them, so the engine's default applies |
 | `VoiceConfig.assets` | `engine_params`, without `providers` |
-| `SynthesisConfig.stages: Stages` | `add_diacritics`, `diacritizer_model`, `chunk` |
-| `SynthesisConfig.speaker`, `language`, `reference` | `speaker_id`, `lang_id`, `speaker_reference`, `speaker_reference_text`, `speaker_reference_lang` |
-| `SynthesisConfig.audio: AudioPost` | `normalize_audio`, `target_loudness`, `volume`, `super_resolution`, `super_resolution_model`, `vc_reference`, `vc_engine` |
-| `SynthesisConfig.extra` | `extra_params` |
+| `SynthesisConfig.stages: Stages` | Exists in the code. Replaces `add_diacritics`, `diacritizer_model`, `chunk`, which work with a `DeprecationWarning` |
+| `SynthesisConfig.speaker`, `language`, `reference` | Exist in the code. Replace `speaker_id`, `lang_id`, `speaker_reference`, `speaker_reference_text`, `speaker_reference_lang`, which work with a `DeprecationWarning` |
+| `SynthesisConfig.audio: AudioPost` | Exists in the code. Replaces `normalize_audio`, `target_loudness`, `volume`, `super_resolution`, `super_resolution_model`, `vc_reference`, `vc_engine`, which work with a `DeprecationWarning` |
+| `SynthesisConfig.extra` | Exists in the code. Replaces `extra_params`, which works with a `DeprecationWarning` |
 | `TTSVoice.load(model, config=None, *, frontend=None, providers=None, runtime=None, warmup=False)` | `TTSVoice.load(model_path, config_path, vocab_path, tokenizer_config_path, phonemes_txt, phoneme_map, lang_code, phoneme_type_str, alphabet_str, engine_params, providers, use_cuda, warmup)` |
 | `voice.with_frontend(frontend)` | Reassignment of `voice.phonemizer`, `phoneme_type` and `alphabet` after load, as the model manager does |
 | `voice.prepare`, `voice.render` | Exist in the code with this signature |
@@ -339,7 +340,7 @@ An adapter must define `detect(session, config)` (static), `default_params()`, `
 
 ### Package root and errors
 
-The root of the code exports `TTSVoice`, `VoiceConfig`, `SynthesisConfig`, `Utterance`, `AudioChunk`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. The target adds `AudioPost`, `SpeakerReference` and `Runtime`.
+The root of the code exports `TTSVoice`, `VoiceConfig`, `SynthesisConfig`, `AudioPost`, `SpeakerReference`, `Utterance`, `AudioChunk`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. The target adds `Runtime`.
 
 The hierarchy of `phoonnx.errors` exists in the code, and `VoiceLoadError` and `ExportNotSupported` have their raise sites. The target is the other raise sites. `with_frontend` raises `FrontendMismatchError`. A foreign config raises `UnsupportedConfigError`.
 
