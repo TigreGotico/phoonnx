@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.135.2a1](https://github.com/TigreGotico/phoonnx/tree/1.135.2a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.1a2...1.135.2a1)
+
+**Merged pull requests:**
+
+- fix: English Vocos voices cite the Apache-2.0 universal vocoder [\#1015](https://github.com/TigreGotico/phoonnx/pull/1015) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.135.1a2](https://github.com/TigreGotico/phoonnx/tree/1.135.1a2) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.1a1...1.135.1a2)
