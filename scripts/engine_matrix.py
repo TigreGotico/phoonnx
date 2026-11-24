@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs" / "engines.md"
 INDEX = ROOT / "phoonnx" / "voice_index"
 FIXTURE = ROOT / "tests" / "fixtures" / "id_parity.json"
+CONVERSION = ROOT / "scripts" / "conversion"
 BEGIN = "<!-- engine-matrix:begin -->"
 END = "<!-- engine-matrix:end -->"
 
@@ -38,11 +39,32 @@ CONVERTERS = {
     "vits_streaming": "`ensure_split_vits` on a `vits` export",
 }
 
+# The folders of scripts/conversion, which export upstream checkpoints, by architecture.
+CONVERSION_DIRS = {
+    "arktts": "arktts",
+    "coqui_fastpitch_export": "fastpitch",
+    "coqui_glowtts_export": "glowtts",
+    "coqui_vits_export": "vits",
+    "indicparler": "indic_parler",
+    "inflect": "vits_prior_split",
+    "llasa": "llasa",
+    "magpie": "magpie",
+    "neutts": "neutts",
+    "orpheus": "orpheus",
+    "outetts": "outetts",
+    "qwen3tts": "qwen3tts",
+    "shami_tts": "shami",
+    "styletts2": "styletts2",
+    "yourtts": "yourtts",
+    "zipvoice": "zipvoice",
+}
+
 # The roadmap task that closes a gap: an architecture with no training engine,
 # or an inference engine with no index voice.
 TRAINING_TASKS = {name: "R4.8" for name in (
     "arktts", "chatterbox", "f5tts", "indic_parler", "llasa", "magpie", "mosstts", "neutts",
-    "omnivoice", "orpheus", "outetts", "pockettts", "qwen3tts", "sparktts", "tinyvoca", "xvits")}
+    "omnivoice", "orpheus", "outetts", "pockettts", "qwen3tts", "sparktts", "tinyvoca", "xvits",
+    "shami", "vits_prior_split", "vosk", "vits_streaming")}
 VOICE_TASKS = {
     "tinyvoca": "R3.4",
     "vits_streaming": "R2.7",
@@ -100,6 +122,7 @@ def render_table() -> str:
         export = ["`export_onnx`"] if names else []
         if arch in CONVERTERS:
             export.append(CONVERTERS[arch])
+        export += [f"`scripts/conversion/{folder}`" for folder, target in CONVERSION_DIRS.items() if target == arch]
         lines.append("| " + " | ".join((
             f"`{arch}`",
             f"`{inference[arch]}`" if arch in inference else "none",

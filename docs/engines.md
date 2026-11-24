@@ -290,37 +290,37 @@ The open tasks are in `TRAINING_TASKS` and `VOICE_TASKS` in the script.
 <!-- engine-matrix:begin -->
 | Architecture | Inference | Training | Export | Index voices | Id fixture | Open task |
 | --- | --- | --- | --- | --- | --- | --- |
-| `arktts` | `ArkTTSAdapter` | R4.8 | none | 25 | no |  |
+| `arktts` | `ArkTTSAdapter` | R4.8 | `scripts/conversion/arktts` | 25 | no |  |
 | `chatterbox` | `ChatterboxAdapter` | R4.8 | none | 42 | no |  |
 | `f5tts` | `F5TTSAdapter` | R4.8 | none | 16 | no |  |
-| `fastpitch` | `FastPitchAdapter` | `fastpitch`, `speedyspeech` | `export_onnx` | 4 | no |  |
-| `glowtts` | `GlowTTSAdapter` | `glowtts` | `export_onnx` | 58 | no |  |
-| `indic_parler` | `IndicParlerAdapter` | R4.8 | none | 33 | no |  |
-| `llasa` | `LlasaAdapter` | R4.8 | none | 4 | no |  |
-| `magpie` | `MagpieAdapter` | R4.8 | none | 30 | no |  |
+| `fastpitch` | `FastPitchAdapter` | `fastpitch`, `speedyspeech` | `export_onnx`, `scripts/conversion/coqui_fastpitch_export` | 4 | no |  |
+| `glowtts` | `GlowTTSAdapter` | `glowtts` | `export_onnx`, `scripts/conversion/coqui_glowtts_export` | 58 | no |  |
+| `indic_parler` | `IndicParlerAdapter` | R4.8 | `scripts/conversion/indicparler` | 33 | no |  |
+| `llasa` | `LlasaAdapter` | R4.8 | `scripts/conversion/llasa` | 4 | no |  |
+| `magpie` | `MagpieAdapter` | R4.8 | `scripts/conversion/magpie` | 30 | no |  |
 | `matcha` | `MatchaAdapter` | `matcha` | `export_onnx` | 13 | no |  |
 | `mixertts` | `MixerTTSAdapter` | `mixer`, `mixertts` | `export_onnx` | 5 | no |  |
 | `mosstts` | `MossTTSNanoAdapter` | R4.8 | none | 19 | no |  |
-| `neutts` | `NeuTTSAdapter` | R4.8 | none | 9 | no |  |
+| `neutts` | `NeuTTSAdapter` | R4.8 | `scripts/conversion/neutts` | 9 | no |  |
 | `omnivoice` | `OmniVoiceAdapter` | R4.8 | none | 646 | no |  |
 | `optispeech` | `OptiSpeechAdapter` | `optispeech` | `export_onnx` | 3 | no |  |
-| `orpheus` | `OrpheusAdapter` | R4.8 | none | 8 | no |  |
-| `outetts` | `OuteTTSAdapter` | R4.8 | none | 23 | no |  |
+| `orpheus` | `OrpheusAdapter` | R4.8 | `scripts/conversion/orpheus` | 8 | no |  |
+| `outetts` | `OuteTTSAdapter` | R4.8 | `scripts/conversion/outetts` | 23 | no |  |
 | `pockettts` | `PocketTTSAdapter` | R4.8 | none | 156 | no |  |
-| `qwen3tts` | `Qwen3TTSAdapter` | R4.8 | none | 15 | no |  |
+| `qwen3tts` | `Qwen3TTSAdapter` | R4.8 | `scripts/conversion/qwen3tts` | 15 | no |  |
 | `rapido` | `RapidoAdapter` | `rapido` | `export_onnx` | 1 | no |  |
-| `shami` | `ShamiAdapter` | none | none | 1 | no |  |
+| `shami` | `ShamiAdapter` | R4.8 | `scripts/conversion/shami_tts` | 1 | no |  |
 | `sparktts` | `SparkTTSAdapter` | R4.8 | none | 4 | no |  |
-| `styletts2` | `StyleTTS2Adapter` | `styletts2`, `styletts2-aligner`, `styletts2-plbert`, `styletts2-pitch` | `export_onnx` | 228 | no |  |
+| `styletts2` | `StyleTTS2Adapter` | `styletts2`, `styletts2-aligner`, `styletts2-plbert`, `styletts2-pitch` | `export_onnx`, `scripts/conversion/styletts2` | 228 | no |  |
 | `supertonic` | `SuperTonicAdapter` | `supertonic` | `export_onnx` | 310 | no |  |
 | `tinyvoca` | `TinyVocaAdapter` | R4.8 | none | 0 | no | R3.4 |
-| `vits` | `VitsAdapter` | `vits` | `export_onnx`, `export_piper`, `export_sherpa` | 1601 | yes |  |
-| `vits_prior_split` | `VitsPriorSplitAdapter` | none | none | 2 | no |  |
-| `vits_streaming` | `VitsStreamingAdapter` | none | `ensure_split_vits` on a `vits` export | 0 | no | R2.7 |
-| `vosk` | `VitsAdapter` | none | none | 3 | no |  |
+| `vits` | `VitsAdapter` | `vits` | `export_onnx`, `export_piper`, `export_sherpa`, `scripts/conversion/coqui_vits_export` | 1601 | yes |  |
+| `vits_prior_split` | `VitsPriorSplitAdapter` | R4.8 | `scripts/conversion/inflect` | 2 | no |  |
+| `vits_streaming` | `VitsStreamingAdapter` | R4.8 | `ensure_split_vits` on a `vits` export | 0 | no | R2.7 |
+| `vosk` | `VitsAdapter` | R4.8 | none | 3 | no |  |
 | `xvits` | `XVitsAdapter` | R4.8 | none | 0 | no | R2.7 |
-| `yourtts` | `YourTTSAdapter` | `yourtts` | `export_onnx` | 0 | no | R2.7 |
-| `zipvoice` | `ZipVoiceAdapter` | `zipvoice` | `export_onnx` | 0 | no | R2.7 |
+| `yourtts` | `YourTTSAdapter` | `yourtts` | `export_onnx`, `scripts/conversion/yourtts` | 0 | no | R2.7 |
+| `zipvoice` | `ZipVoiceAdapter` | `zipvoice` | `export_onnx`, `scripts/conversion/zipvoice` | 0 | no | R2.7 |
 <!-- engine-matrix:end -->
 
 ---
