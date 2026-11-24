@@ -152,34 +152,45 @@ def _manifest(out: Path):
     return [json.loads(line) for line in (out / "dataset.jsonl").read_text().splitlines() if line]
 
 
-@pytest.mark.xfail(strict=True, raises=ValueError,
-                   reason="preprocess-path-override: --jsonl-audio-path splits on '/wav/' only")
+def _audio_override_row(tmp_path: Path, clip: Path, *extra: str) -> dict:
+    source = tmp_path / "a.jsonl"
+    source.write_text(json.dumps({"text": "hi", "audio": str(clip), "phon": "h i"}) + "\n")
+    out = tmp_path / "out"
+    result = _preprocess(["-i", str(source), "-o", str(out), "-l", "en", "--phonemes-column", "phon", *extra])
+    assert result.exit_code == 0, result.output
+    return _manifest(out)[0]
+
+
 def test_jsonl_audio_path_rewrites_the_ljspeech_wavs_layout(tmp_path):
     clip = _wav(tmp_path / "LJSpeech" / "wavs" / "clip1.wav", sr=16000)
-    source = tmp_path / "a.jsonl"
-    source.write_text(json.dumps({"text": "hi", "audio": str(clip), "phon": "h i"}) + "\n")
-    out = tmp_path / "out"
-    result = _preprocess(["-i", str(source), "-o", str(out), "-l", "en", "--phonemes-column", "phon",
-                          "--jsonl-audio-path", "/override/base"])
-    assert result.exit_code == 0, result.output
-    audio_path = _manifest(out)[0]["audio_path"]
-    assert audio_path.startswith("/override/base/") and audio_path.endswith("/clip1.wav"), audio_path
+    row = _audio_override_row(tmp_path, clip, "--jsonl-audio-path", "/override/base")
+    assert row["audio_path"] == "/override/base/wavs/clip1.wav", row["audio_path"]
 
 
-@pytest.mark.xfail(strict=True, raises=ValueError,
-                   reason="preprocess-path-override: --jsonl-audio-spec-path splits on '/cache/' only")
+def test_jsonl_audio_path_keeps_only_the_audio_folder_of_a_path_with_two_wav_folders(tmp_path):
+    clip = _wav(tmp_path / "wav" / "x" / "wav" / "clip1.wav", sr=16000)
+    row = _audio_override_row(tmp_path, clip, "--jsonl-audio-path", "/override/base")
+    assert row["audio_path"] == "/override/base/wav/clip1.wav", row["audio_path"]
+
+
 def test_jsonl_audio_spec_path_rewrites_a_custom_cache_dir(tmp_path):
     clip = _wav(tmp_path / "wav" / "clip1.wav", sr=16000)
-    source = tmp_path / "a.jsonl"
-    source.write_text(json.dumps({"text": "hi", "audio": str(clip), "phon": "h i"}) + "\n")
-    out = tmp_path / "out"
-    result = _preprocess(["-i", str(source), "-o", str(out), "-l", "en", "--phonemes-column", "phon",
-                          "--cache-dir", str(tmp_path / "features"),
-                          "--jsonl-audio-spec-path", "/override/base"])
-    assert result.exit_code == 0, result.output
-    row = _manifest(out)[0]
+    features = tmp_path / "features"
+    row = _audio_override_row(tmp_path, clip, "--cache-dir", str(features),
+                              "--jsonl-audio-spec-path", "/override/base")
     for key in ("audio_norm_path", "audio_spec_path"):
-        assert row[key].startswith("/override/base/"), row[key]
+        path = Path(row[key])
+        assert path.parent == Path("/override/base/features"), row[key]
+        assert (features / path.name).is_file(), row[key]
+
+
+def test_jsonl_audio_spec_path_keeps_the_cache_folder_of_the_default_cache_dir(tmp_path):
+    clip = _wav(tmp_path / "wav" / "clip1.wav", sr=16000)
+    row = _audio_override_row(tmp_path, clip, "--jsonl-audio-spec-path", "/override/base")
+    for key in ("audio_norm_path", "audio_spec_path"):
+        path = Path(row[key])
+        assert path.parent == Path("/override/base/cache/22050"), row[key]
+        assert (tmp_path / "out" / "cache" / "22050" / path.name).is_file(), row[key]
 
 
 # --- preprocess calls a deprecated phoonnx API -----------------------------

@@ -427,12 +427,15 @@ def next_result(result_queue: Queue, task_queue: JoinableQueue,
 @click.option(
     "--jsonl-audio-path",
     default=None,
-    help="override audio_path base directory (everything before '/wav') in generated dataset.jsonl"
+    help="Replace the base folder of each audio_path in dataset.jsonl: the parent of the "
+         "folder that holds every audio file. The rest of each path stays."
 )
 @click.option(
     "--jsonl-audio-spec-path",
     default=None,
-    help="override audio_norm_path/audio_spec_path base directory (everything before '/cache') in generated dataset.jsonl"
+    help="Replace the base folder of each audio_norm_path and audio_spec_path in dataset.jsonl: "
+         "the parent of --cache-dir, or --output-dir when --cache-dir is not given. "
+         "The rest of each path stays."
 )
 @click.option(
     "--engine",
@@ -986,6 +989,17 @@ def cli(
     if resume_rows and prior_config_path.is_file():
         prior_config = json.loads(prior_config_path.read_text(encoding="utf-8"))
 
+    # A path override replaces the base folder of each path and keeps the rest.
+    # The audio base is the parent of the folder that holds every audio file;
+    # the cache base is the parent of --cache-dir, or --output-dir by default.
+    audio_base: Optional[Path] = None
+    if jsonl_audio_path:
+        audio_dirs = [str(utt.audio_path.absolute().parent) for utt in processed_utterances
+                      if str(utt.audio_path) != "."]
+        if audio_dirs:
+            audio_base = Path(os.path.commonpath(audio_dirs)).parent
+    cache_base = config.cache_dir.parent if cache_dir else config.output_dir
+
     # --- Apply final phoneme IDs and write dataset.jsonl ---
     # Writes go to a temp file and are atomically renamed into place so an
     # interrupted run never leaves a half-written manifest. With --resume the
@@ -1051,16 +1065,12 @@ def cli(
                         len(utt.phoneme_ids), spec_frames, utt.audio_path)
                     continue
 
-            # apply path overrides if needed
-            # this allows pre-processing the dataset in one system and then train in other
-            if jsonl_audio_path:
-                base_path, fname = str(utt.audio_path).split("/wav/")
-                utt.audio_path = Path(f"{jsonl_audio_path}/wav/{fname}")
-            if jsonl_audio_spec_path:
-                base_path, fname = str(utt.audio_norm_path).split("/cache/")
-                utt.audio_norm_path = Path(f"{jsonl_audio_spec_path}/cache/{fname}")
-                base_path, fname = str(utt.audio_spec_path).split("/cache/")
-                utt.audio_spec_path = Path(f"{jsonl_audio_spec_path}/cache/{fname}")
+            # path overrides, so a dataset preprocessed on one machine trains on another
+            if audio_base is not None and str(utt.audio_path) != ".":
+                utt.audio_path = Path(jsonl_audio_path) / utt.audio_path.absolute().relative_to(audio_base)
+            if jsonl_audio_spec_path and utt.audio_norm_path is not None:
+                utt.audio_norm_path = Path(jsonl_audio_spec_path) / utt.audio_norm_path.relative_to(cache_base)
+                utt.audio_spec_path = Path(jsonl_audio_spec_path) / utt.audio_spec_path.relative_to(cache_base)
 
             if training_engine is not None and utt.audio_path:
                 extra = training_engine.extra_preprocess(
