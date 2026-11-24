@@ -94,9 +94,13 @@ When you fine-tune with `--prev-config`, preprocess drops each symbol that the e
 
 ### Segment map
 
-With `--segment-map`, one id holds a whole phoneme segment: a symbol, its combining marks, its attached modifier letters (`ʲ`, `ː`, `ʰ`) and the symbol that a tie bar joins to it. So `ɐ̃`, `tʲ`, `aː` and `d͡ʒ` get one id each.
+With `--segment-map`, one id holds a whole phoneme segment: a symbol, its combining marks, its attached modifier letters (`ʲ`, `ː`, `ʰ`) and the symbol that a tie bar joins to it. So `ɐ̃`, `tʲ`, `aː`, `d͡ʒ` and `a͡i` get one id each. The segments come from `segment_spans` of phonematcher, so install the `train-features` extra.
 
-A run of tone letters in one notation gets one id. The notations are Chao letters, left-stem letters and the numerals ¹ to ⁵, so `˥˩` and `⁵¹` get one id each. A change of notation starts a new id, and the neutral tone `⁰` keeps its own id. Stress marks, spaces and punctuation keep their own ids. A phonemizer item longer than one code point, such as a token from a dataset column, keeps its own id.
+A superscript nasal after a consonant is a nasal release, as in `tⁿ`. After a vowel or at the start of a word, it joins the next stop, so `aⁿda` gives `a`, `ⁿd`, `a`.
+
+A tone joins the vowel or syllabic consonant right before it, so `ma˥˩` gives `m` and `a˥˩`, and `á` is one id. A run of tone letters after any other phone gets one id of its own. So `tam˧˧` gives `t`, `a`, `m` and `˧˧`, and `ai̯˥`, with the offglide `i̯`, gives `a`, `i̯` and `˥`. The tone notations are Chao letters, left-stem letters and the numerals ¹ to ⁵. A change of notation starts a new id, so the sandhi form `ni˨˩˦꜔꜒` gives `n`, `i˨˩˦` and `꜔꜒`. The neutral tone `⁰` keeps its own id.
+
+Stress marks, spaces and punctuation keep their own ids. A phonemizer item longer than one code point, such as a token from a dataset column, keeps its own id.
 
 A `features.json` input table needs this map, because the table describes whole segments.
 

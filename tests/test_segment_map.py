@@ -1,8 +1,10 @@
 """The segment phoneme map: phoonnx_train.segments and preprocess --segment-map."""
 import json
+import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 from phoonnx.tokenizer import DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN, DEFAULT_PAD_TOKEN, DEFAULT_BLANK_WORD_TOKEN
 from phoonnx_train.segments import segment_phonemes
@@ -11,10 +13,10 @@ from tests.test_preprocess_pipeline import _invoke, _jsonl
 SPECIALS = {DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN}
 # segments written out by hand: the expected value is not computed by the code under test
 TEXT = "ˈtʲaː ɐ̃d͡ʒa, ma˥˩."
-SEGMENTS = ["ˈ", "tʲ", "aː", " ", "ɐ̃", "d͡ʒ", "a", ",", " ", "m", "a", "˥˩", "."]
+SEGMENTS = ["ˈ", "tʲ", "aː", " ", "ɐ̃", "d͡ʒ", "a", ",", " ", "m", "a˥˩", "."]
 # the stub frontend drops punctuation, and the space is the word-blank special
 CLI_TEXT = "ˈtʲaː ɐ̃d͡ʒa ma˥˩"
-CLI_SEGMENTS = ["ˈ", "tʲ", "aː", "ɐ̃", "d͡ʒ", "a", "m", "a", "˥˩"]
+CLI_SEGMENTS = ["ˈ", "tʲ", "aː", "ɐ̃", "d͡ʒ", "a", "m", "a˥˩"]
 
 
 class TestSegmentPhonemes(unittest.TestCase):
@@ -25,25 +27,57 @@ class TestSegmentPhonemes(unittest.TestCase):
         self.assertEqual(segment_phonemes("ẽj"), ["ẽ", "j"])
         self.assertEqual(segment_phonemes("ẽj"), ["ẽ", "j"])
 
+    def test_a_superscript_nasal_prenasalizes_the_stop_after_it(self):
+        # phonematcher 2.7.4a1 segments these the same way: a vowel has no nasal release
+        self.assertEqual(segment_phonemes("aⁿda"), ["a", "ⁿd", "a"])
+        self.assertEqual(segment_phonemes("ⁿda"), ["ⁿd", "a"])
+        self.assertEqual(segment_phonemes("ˈⁿda"), ["ˈ", "ⁿd", "a"])
+        self.assertEqual(segment_phonemes("aːᵐba"), ["aː", "ᵐb", "a"])
+
+    def test_a_superscript_nasal_after_a_consonant_is_nasal_release(self):
+        self.assertEqual(segment_phonemes("tⁿa"), ["tⁿ", "a"])
+        self.assertEqual(segment_phonemes("a ⁿ a"), ["a", " ", "ⁿ", " ", "a"])
+
+    def test_a_tie_bar_keeps_a_vowel_pair_and_a_double_articulation_whole(self):
+        self.assertEqual(segment_phonemes("ba͡i"), ["b", "a͡i"])
+        self.assertEqual(segment_phonemes("ᵑᵐɡ͡bala"), ["ᵑᵐɡ͡b", "a", "l", "a"])
+
+    def test_stress_spaces_and_spelling_stay_as_written(self):
+        text = "ˈaⁿda ɡa, ga ɚɝ"
+        self.assertEqual(segment_phonemes(text),
+                         ["ˈ", "a", "ⁿd", "a", " ", "ɡ", "a", ",", " ", "g", "a", " ", "ɚ", "ɝ"])
+
     def test_tone_diacritic_stays_on_its_vowel(self):
         self.assertEqual(segment_phonemes("má"), ["m", "á"])
 
-    def test_a_run_of_tone_numerals_or_left_stem_letters_is_one_contour(self):
+    def test_a_tone_right_after_its_vowel_is_part_of_the_vowel(self):
+        # the ruling: tone is a feature of the tone-bearing segment
+        self.assertEqual(segment_phonemes("ma˥˩"), ["m", "a˥˩"])
         for notation in ("˥˦˧˨˩", "\ua712\ua713\ua714\ua715\ua716", "¹²³⁴⁵"):
             for first in notation:
                 for second in notation:
-                    self.assertEqual(segment_phonemes("a" + first + second), ["a", first + second])
-        self.assertEqual(segment_phonemes("ma⁵¹"), ["m", "a", "⁵¹"])
-        self.assertEqual(segment_phonemes("ma²¹⁴ ta³"), ["m", "a", "²¹⁴", " ", "t", "a", "³"])
-        self.assertEqual(segment_phonemes("ma\ua712\ua716"), ["m", "a", "\ua712\ua716"])
+                    self.assertEqual(segment_phonemes("a" + first + second), ["a" + first + second])
+        self.assertEqual(segment_phonemes("ma⁵¹"), ["m", "a⁵¹"])
+        self.assertEqual(segment_phonemes("ma²¹⁴ ta³"), ["m", "a²¹⁴", " ", "t", "a³"])
+        self.assertEqual(segment_phonemes("ma\ua712\ua716"), ["m", "a\ua712\ua716"])
+        # the neutral-tone ⁰ has no level and stands alone
         self.assertEqual(segment_phonemes("ma⁰"), ["m", "a", "⁰"])
-        self.assertEqual(segment_phonemes("ma⁵⁰"), ["m", "a", "⁵", "⁰"])
+        self.assertEqual(segment_phonemes("ma⁵⁰"), ["m", "a⁵", "⁰"])
+
+    def test_a_tone_after_a_coda_is_one_segment(self):
+        self.assertEqual(segment_phonemes("tam˧˧"), ["t", "a", "m", "˧˧"])
+        self.assertEqual(segment_phonemes("tan⁵¹ ma"), ["t", "a", "n", "⁵¹", " ", "m", "a"])
+        for notation in ("˥˦˧˨˩", "\ua712\ua713\ua714\ua715\ua716", "¹²³⁴⁵"):
+            for first in notation:
+                for second in notation:
+                    self.assertEqual(segment_phonemes("am" + first + second), ["a", "m", first + second])
 
     def test_a_change_of_tone_notation_starts_a_segment(self):
         # IPA sandhi notation: underlying 214 in Chao letters, surface 35 in left-stem letters
-        self.assertEqual(segment_phonemes("ni˨˩˦\ua714\ua712"), ["n", "i", "˨˩˦", "\ua714\ua712"])
-        self.assertEqual(segment_phonemes("a⁵˩"), ["a", "⁵", "˩"])
-        self.assertEqual(segment_phonemes("a\ua712¹"), ["a", "\ua712", "¹"])
+        self.assertEqual(segment_phonemes("ni˨˩˦\ua714\ua712"), ["n", "i˨˩˦", "\ua714\ua712"])
+        self.assertEqual(segment_phonemes("a⁵˩"), ["a⁵", "˩"])
+        self.assertEqual(segment_phonemes("a\ua712¹"), ["a\ua712", "¹"])
+        self.assertEqual(segment_phonemes("am˧˧\ua714"), ["a", "m", "˧˧", "\ua714"])
 
     def test_stress_and_syllable_dot_do_not_join(self):
         self.assertEqual(segment_phonemes("ˌa.ˈb"), ["ˌ", "a", ".", "ˈ", "b"])
@@ -58,7 +92,8 @@ class TestSegmentPhonemes(unittest.TestCase):
         self.assertEqual(segment_phonemes("̃a"), ["̃", "a"])
 
     def test_segments_join_back_to_the_input(self):
-        for text in (TEXT, "ɐ̃ˈmaɲɐ ˈvɔw ɐ ˈkazɐ.", "tʃʰa˧˥ ʔa˨˩˦", "ma⁵¹ ta\ua713\ua715"):
+        for text in (TEXT, "ɐ̃ˈmaɲɐ ˈvɔw ɐ ˈkazɐ.", "tʃʰa˧˥ ʔa˨˩˦", "ma⁵¹ ta\ua713\ua715",
+                     "tam˧˧, ni˨˩˦\ua714\ua712."):
             self.assertEqual("".join(segment_phonemes(text)), text)
 
 
@@ -91,6 +126,13 @@ class TestSegmentMapCli(unittest.TestCase):
             config = json.loads((tmp / "out" / "config.json").read_text(encoding="utf-8"))
             self.assertEqual(set(config["phoneme_id_map"]) - SPECIALS, set(CLI_TEXT) - SPECIALS)
             self.assertNotIn("fold_compounds", config)
+
+    def test_segment_map_without_phonematcher_stops_before_any_utterance(self):
+        with TemporaryDirectory() as tmp, mock.patch.dict(sys.modules, {"phonematcher": None}):
+            result = self._run(Path(tmp), "--segment-map")
+            self.assertNotEqual(result.exit_code, 0)
+            self.assertIn("phoonnx[train-features]", result.output)
+            self.assertFalse((Path(tmp) / "out" / "dataset.jsonl").exists())
 
     def test_segment_map_refuses_resume(self):
         with TemporaryDirectory() as tmp:
