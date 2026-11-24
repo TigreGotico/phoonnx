@@ -79,7 +79,7 @@ The sampler follows the upstream order, which is not the HuggingFace order. The 
 
 The sampler also applies repetition-aware sampling. If a draw lands on a semantic token that is in the last 10 emitted tokens, the sampler discards it and draws again with top-p 0.9 at temperature 1.0. That second draw stops the loops. With sampling off, both draws give the same argmax, so greedy decoding cannot stop.
 
-To make a call reproducible, pass a `seed` in `engine_params` or in `SynthesisConfig.extra_params`.
+To make a call reproducible, pass a `seed` in `engine_params` or in `SynthesisConfig.extra`.
 
 ## Graphs
 

@@ -99,7 +99,7 @@ def test_magpie_jason_speaks_as_jason_with_no_speaker_in_the_call():
 def test_magpie_speaker_in_the_call_wins_over_the_index_speaker(speaker):
     assert speaker != MAGPIE_INDEX["magpie/Jason/ar"]["engine_options"]["speaker_id"]
     voice = _magpie_voice("magpie/Jason/ar")
-    voice.phoneme_ids_to_audio([5, 6, 7], SynthesisConfig(speaker_id=speaker))
+    voice.phoneme_ids_to_audio([5, 6, 7], SynthesisConfig(speaker=speaker))
     assert voice.adapter.speakers_seen == [speaker]
 
 
@@ -123,7 +123,7 @@ def test_voice_with_no_preset_feeds_speaker_0_and_language_0():
 def test_voice_with_no_preset_feeds_the_speaker_and_language_of_the_call():
     session = _Session(["input", "input_lengths", "scales", "sid", "langid"])
     voice = _vits_voice(session)
-    voice.phoneme_ids_to_audio([1, 2, 3], SynthesisConfig(speaker_id=2, lang_id=1))
+    voice.phoneme_ids_to_audio([1, 2, 3], SynthesisConfig(speaker=2, language=1))
     assert session.feeds[-1]["sid"].tolist() == [2]
     assert session.feeds[-1]["langid"].tolist() == [1]
 

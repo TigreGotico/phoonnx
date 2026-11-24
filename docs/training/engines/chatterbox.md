@@ -28,17 +28,17 @@ The Japanese and Chinese transforms of the multilingual voices need `pip install
 
 ## Clone a voice
 
-Every Chatterbox voice needs a reference clip. Give it in `SynthesisConfig.speaker_reference`:
+Every Chatterbox voice needs a reference clip. Give it in `SynthesisConfig.reference`:
 
 ```python
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import SpeakerReference, SynthesisConfig
 from phoonnx.model_manager import TTSModelManager
 
 m = TTSModelManager()
 m.merge_default_voices()
 voice = m.voices["chatterbox/multilingual/pt"].load()
 for chunk in voice.synthesize("Qualquer frase na voz clonada.", SynthesisConfig(
-        speaker_reference="reference.wav",
+        reference=SpeakerReference(audio="reference.wav"),
         exaggeration=0.6,
         temperature=0.8,
         top_p=0.95)):
@@ -98,7 +98,7 @@ Chatterbox reads raw text with its own subword BPE, not phonemes. The adapter ov
 | zh | Cangjie codes | `spacy-pkuseg` and the Hub file `Cangjie5_TC.json` |
 | ru | Add stress marks | `stressonnx` |
 
-If a dependency is missing, the transform logs a warning and returns the text unchanged. For Hebrew and Arabic voices, set the `add_diacritics` field of `SynthesisConfig`. It is not a tokenizer transform.
+If a dependency is missing, the transform logs a warning and returns the text unchanged. For Hebrew and Arabic voices, set `diacritize` in the `stages` field of `SynthesisConfig`. It is not a tokenizer transform.
 
 ## Reference
 

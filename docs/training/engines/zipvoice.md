@@ -27,19 +27,19 @@ Cloning needs `pip install --pre "phoonnx[cloning]"` (`soundfile` and `scipy`) t
 ZipVoice clones in context, so it needs the reference audio and its transcript:
 
 ```python
-voice.synthesize("A line the reference never spoke.", SynthesisConfig(
-    speaker_reference="alice.wav",
-    speaker_reference_text="hello, this is the reference clip",
-    speaker_reference_lang="en",   # set for a non-target-language reference
-))
+voice.synthesize("A line the reference never spoke.", SynthesisConfig(reference=SpeakerReference(
+    audio="alice.wav",
+    text="hello, this is the reference clip",
+    lang="en",   # set for a non-target-language reference
+)))
 ```
 
 `TTSVoice` gives the cloning fields to the adapter as two parameters:
 
-- `speaker_reference` becomes `reference_audio`. The mel frontend turns it into the `speech_condition` (the prompt mel).
-- `speaker_reference_text` becomes `prompt_tokens`. The `text_encoder` reads them with the target `tokens`, as the alignment anchor.
+- `reference.audio` becomes `reference_audio`. The mel frontend turns it into the `speech_condition` (the prompt mel).
+- `reference.text` becomes `prompt_tokens`. The `text_encoder` reads them with the target `tokens`, as the alignment anchor.
 
-`speaker_reference_lang` selects the phonemizer of the reference text when it differs from the target language. Without a reference audio or a transcript, the adapter raises an error. Audio alone cannot replace the transcript.
+`reference.lang` selects the phonemizer of the reference text when it differs from the target language. Without a reference audio or a transcript, the adapter raises an error. Audio alone cannot replace the transcript.
 
 ## Configure the graphs
 
@@ -54,7 +54,7 @@ engine_params = {
 }
 ```
 
-`engine_params` can also set `num_step` and `guidance_scale`. A synthesis call can set `speed`, `num_step`, `guidance_scale` and `t_shift` through `SynthesisConfig.extra_params`. The defaults are:
+`engine_params` can also set `num_step` and `guidance_scale`. A synthesis call can set `speed`, `num_step`, `guidance_scale` and `t_shift` through `SynthesisConfig.extra`. The defaults are:
 
 | Parameter | Default | Effect |
 |---|---|---|

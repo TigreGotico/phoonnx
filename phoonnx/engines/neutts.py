@@ -62,7 +62,7 @@ Cloning is **in-context and pre-encoded**: a voice preset is a reference transcr
 the NeuCodec codes of its recording (a ``voices.json``, spec ``vieneu.voice.presets``),
 shipped as a per-voice asset. Neuphonic publishes NeuCodec's *decoder* as ONNX but not
 its encoder, so this adapter cannot encode a fresh reference clip — it clones from the
-presets only, and ``speaker_reference`` is not supported.
+presets only, and ``SynthesisConfig.reference`` is not supported.
 """
 import json
 import re
@@ -343,7 +343,7 @@ class NeuTTSAdapter(BaseOnnxAdapter):
         phoonnx voice is pinned to, else ``voices.json``'s ``default_voice``."""
         name = None
         if syn_config is not None:
-            name = (syn_config.extra_params or {}).get("voice")
+            name = syn_config.extra.get("voice")
         cfg = getattr(voice, "config", None)
         if not name:
             name = (getattr(cfg, "engine_params", None) or {}).get("voice")
@@ -430,7 +430,7 @@ class NeuTTSAdapter(BaseOnnxAdapter):
             raise RuntimeError("NeuTTS voice missing tokenizer_path in engine_params")
         budget = int(self.MAX_CHUNK_CHARS)
         if syn_config is not None:
-            budget = int((syn_config.extra_params or {}).get("max_chunk_chars", budget))
+            budget = int(syn_config.extra.get("max_chunk_chars", budget))
         preset = self.resolve_preset(voice, syn_config)
         ref_phones, ref_codes = "", None
         if preset is not None:
@@ -532,7 +532,7 @@ class NeuTTSAdapter(BaseOnnxAdapter):
             raise RuntimeError(
                 "NeuTTS clones from pre-encoded voice presets, not from a reference clip: "
                 "NeuCodec's encoder is not published as ONNX. Select a preset with "
-                "extra_params={'voice': ...}")
+                "extra={'voice': ...}")
 
         p = {**self.default_params(), **request.params}
         seed = p.get("seed")

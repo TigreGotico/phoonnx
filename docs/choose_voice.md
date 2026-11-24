@@ -109,7 +109,7 @@ A voice that shows `None` names its phonemizer in its own config file.
 
 A voice that needs a missing extra stops at load with an `ImportError`. The message names the package. [Installation](installation.md#errors-you-may-see) shows these errors and the fix for each one.
 
-Some voices clone a speaker and need a reference clip. For those voices, `--verbose` adds the line `Requires reference: yes (needs speaker_reference / a style path)`. These are the Chatterbox voices and the zero-shot BSC StyleTTS2 voices, such as `bsc/es-styletts2`. To list them, run `phoonnx-voices list-voices --verbose | grep -B6 'Requires reference' | grep 'ID:'`. See [Voice cloning](cloning.md).
+Some voices clone a speaker and need a reference clip. For those voices, `--verbose` adds the line `Requires reference: yes (needs a SynthesisConfig.reference / a style path)`. These are the Chatterbox voices and the zero-shot BSC StyleTTS2 voices, such as `bsc/es-styletts2`. To list them, run `phoonnx-voices list-voices --verbose | grep -B6 'Requires reference' | grep 'ID:'`. See [Voice cloning](cloning.md).
 
 ## 3. Check the download size
 

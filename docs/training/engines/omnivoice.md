@@ -55,15 +55,17 @@ The adapter joins the reference transcription and the target text into one strin
 Like ZipVoice, OmniVoice clones in context: it needs the reference clip and its transcription. See [Voice cloning](../../cloning.md). The adapter trims the silence of the reference clip with `pydub`, which the `omnivoice` extra installs (`pip install --pre "phoonnx[omnivoice,cloning]"`).
 
 ```python
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import SpeakerReference, SynthesisConfig
 from phoonnx.model_manager import TTSModelManager
 
 manager = TTSModelManager()
 manager.merge_default_voices()
 voice = manager.voices["omnivoice/en"].load()
 syn = SynthesisConfig(
-    speaker_reference="reference.wav",
-    speaker_reference_text="Transcription of the reference clip.",
+    reference=SpeakerReference(
+        audio="reference.wav",
+        text="Transcription of the reference clip.",
+    ),
 )
 for chunk in voice.synthesize("Speech models speak in hundreds of languages.", syn):
     audio = chunk.audio_float_array  # 24 kHz

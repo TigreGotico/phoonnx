@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
-from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig
+from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig, AudioPost
 from phoonnx.voice import AudioChunk, TTSVoice
 from scriptconv.phonemizers.base import BasePhonemizer
 
@@ -56,7 +56,7 @@ class TestInlinePhonemeBlockDispatchOrder(unittest.TestCase):
         voice = _make_voice(_LangAwarePhonemizer(events))
         text = "hello [[wɜːld]] there."
 
-        list(voice.synthesize(text, SynthesisConfig(normalize_audio=False)))
+        list(voice.synthesize(text, SynthesisConfig(audio=AudioPost(normalize=False))))
 
         self.assertEqual(events, ["hello", "there"])
         for seen_text in events:

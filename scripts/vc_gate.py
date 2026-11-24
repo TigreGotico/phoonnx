@@ -171,7 +171,7 @@ def main() -> int:
 
     import onnx_asr
     import speakeronnx
-    from phoonnx.config import SynthesisConfig
+    from phoonnx.config import AudioPost, SpeakerReference, SynthesisConfig
     from phoonnx.version import VERSION_STR
 
     embedder = speakeronnx.SpeakerEmbedder(args.speaker_model)
@@ -215,8 +215,9 @@ def main() -> int:
             base_wer = wer(text, base_hyp)
 
             for tgt_name, ref in refs.items():
-                cfg = SynthesisConfig(vc_reference=ref["path"],
-                                      vc_engine=args.vc_engine)
+                cfg = SynthesisConfig(audio=AudioPost(
+                    voice_conversion=SpeakerReference(audio=ref["path"]),
+                    voice_conversion_engine=args.vc_engine))
                 t0 = time.time()
                 conv_audio, conv_sr = synth(voice, text, cfg)
                 elapsed = time.time() - t0

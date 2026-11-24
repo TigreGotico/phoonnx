@@ -9,6 +9,7 @@ from phoonnx.audio_fx import resample_rate
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.f5tts import F5TTSAdapter
 from tests.conftest import retry_download
+from phoonnx.config import SpeakerReference
 
 
 def _req(**params):
@@ -561,8 +562,7 @@ def _f5_voice(phoneme_type, phoneme_id_map, lang):
 
 def _synthesize(voice, reference_text, text):
     from phoonnx.config import SynthesisConfig
-    list(voice.synthesize(text, SynthesisConfig(
-        speaker_reference=(np.zeros(24000, np.float32), 24000), speaker_reference_text=reference_text)))
+    list(voice.synthesize(text, SynthesisConfig(reference=SpeakerReference(audio=(np.zeros(24000, np.float32), 24000), text=reference_text))))
     return voice.adapter.preprocess
 
 

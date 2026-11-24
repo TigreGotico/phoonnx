@@ -4,7 +4,7 @@
 covers: every VoiceConfig and SynthesisConfig field, the native config.json schema, phonemizer provenance, the Engine enum, execution providers and precision
 source: phoonnx/config.py:VoiceConfig, phoonnx/config.py:SynthesisConfig, phoonnx/config.py:Engine, phoonnx/compat.py:LOADERS, phoonnx/providers.py, phoonnx/model_manager.py:PRECISIONS
 generated: no
-verify: .venv/bin/python -W ignore -c "import re,sys,dataclasses as d; from phoonnx.config import VoiceConfig,SynthesisConfig,Engine; from phoonnx.compat import LOADERS; p=open('docs/configuration.md').read(); q=chr(96); n=chr(10); rows=lambda h: [[re.findall(q+'([^'+q+']*)'+q,c) for c in re.split('(?<!'+chr(92)*2+')[|]',l)[1:4]] for l in p.split(n+h,1)[1].split(n+'#',1)[0].splitlines() if l.startswith('| '+q)]; vc=VoiceConfig.from_dict({'phoonnx_version':'1.0','phoneme_type':'graphemes','alphabet':'unicode','phoneme_id_map':{'_':[0],'^':[1],'$':[2],' ':[3]}}); sc=SynthesisConfig(); same=lambda t,v: t.strip(chr(34))==str(v) or t==getattr(v,'name',None); bad=[]; [bad.append(h) for h,o,C in (('### VoiceConfig fields',vc,VoiceConfig),('### SynthesisConfig fields',sc,SynthesisConfig)) if sorted(r[0][0] for r in rows(h))!=sorted(f.name for f in d.fields(C))]; [bad.append(r[0][0]) for h,o in (('### VoiceConfig fields',vc),('### SynthesisConfig fields',sc)) for r in rows(h) if r[2] and not same(r[2][0],getattr(o,r[0][0]))]; eng=[r[0][0] for r in rows('## Engine Enum') if r[0][0]!='Engine']; bad+=[] if sorted(eng)==sorted(e.value for e in Engine) else ['engine table']; ld=[l.__name__ for l in LOADERS]; bad+=[x for x in re.findall(q+'([A-Za-z0-9]+Loader)'+q,p) if x not in ld]; print(bad); sys.exit(1 if bad else 0)"
+verify: .venv/bin/python -W ignore -c "import re,sys,dataclasses as d; from phoonnx.config import VoiceConfig,SynthesisConfig,Engine,AudioPost,SpeakerReference,_1X_NAMES; from scriptconv.frontend import Stages; from phoonnx.compat import LOADERS; p=open('docs/configuration.md').read(); q=chr(96); n=chr(10); rows=lambda h: [[re.findall(q+'([^'+q+']*)'+q,c) for c in re.split('(?<!'+chr(92)*2+')[|]',l)[1:4]] for l in p.split(n+h,1)[1].split(n+'#',1)[0].splitlines() if l.startswith('| '+q)]; vc=VoiceConfig.from_dict({'phoonnx_version':'1.0','phoneme_type':'graphemes','alphabet':'unicode','phoneme_id_map':{'_':[0],'^':[1],'$':[2],' ':[3]}}); sc=SynthesisConfig(); T=[('### VoiceConfig fields',vc,VoiceConfig),('### SynthesisConfig fields',sc,SynthesisConfig),('### stages fields',Stages(),Stages),('### reference fields',SpeakerReference(),SpeakerReference),('### audio fields',AudioPost(),AudioPost)]; same=lambda t,v: t.strip(chr(34))==str(v) or t==getattr(v,'name',None); bad=[]; [bad.append(h) for h,o,C in T if sorted(r[0][0] for r in rows(h))!=sorted(f.name for f in d.fields(C))]; [bad.append(h+' '+r[0][0]) for h,o,C in T for r in rows(h) if r[2] and not same(r[2][0],getattr(o,r[0][0]))]; bad+=[] if {r[0][0]:r[1][0] for r in rows('### 1.x names')}==_1X_NAMES else ['1.x names']; eng=[r[0][0] for r in rows('## Engine Enum') if r[0][0]!='Engine']; bad+=[] if sorted(eng)==sorted(e.value for e in Engine) else ['engine table']; ld=[l.__name__ for l in LOADERS]; bad+=[x for x in re.findall(q+'([A-Za-z0-9]+Loader)'+q,p) if x not in ld]; print(bad); sys.exit(1 if bad else 0)"
 see: usage.md, phonemizers.md, precision.md
 -->
 
@@ -86,21 +86,21 @@ A config that names its `engine` is not given to the loader of another engine. A
 
 ## SynthesisConfig
 
-`SynthesisConfig` holds the settings of one synthesis call. Each field is optional and has the default in the table below. A `None` default has a different effect for each field, and the Description column gives it. For the speaker, the language and the three scales, `None` uses the value of the voice.
+`SynthesisConfig` holds the settings of one synthesis call. Each field is optional and has the default in the table below. A `None` default has a different effect for each field, and the Description column gives it. For the speaker, the language and the three scales, `None` uses the value of the voice. The config is frozen: build a changed copy with `dataclasses.replace`.
 
 ```python
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import AudioPost, SynthesisConfig
+from scriptconv.frontend import Stages
 
 syn_config = SynthesisConfig(
-    speaker_id=None,
-    lang_id=None,
+    stages=Stages(diacritize=True),
+    speaker=None,
+    language=None,
     length_scale=None,
     noise_scale=None,
     noise_w_scale=None,
-    normalize_audio=True,
-    volume=1.0,
-    enable_phonetic_spellings=True,
-    add_diacritics=True,
+    audio=AudioPost(normalize=True, volume=1.0),
+    phonetic_spellings=True,
 )
 ```
 
@@ -108,32 +108,88 @@ syn_config = SynthesisConfig(
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `alphabet` | `Alphabet` \| `None` | `None` | The alphabet of the input text. `None` means plain text. Set it to pass text that is already phonemic, such as IPA, so that scriptconv converts it and does not phonemize it |
-| `speaker_id` | `int` \| `None` | `None` | Speaker index for multi-speaker models. `None` uses the speaker of the voice, or speaker 0 |
-| `lang_id` | `int` \| `None` | `None` | Language index for multi-language models. `None` uses the language of the voice, or language 0 |
+| `stages` | `Stages` | empty | The text stages of the call, from `scriptconv.frontend`. The stages table below lists its fields |
+| `speaker` | `int` \| `str` \| `None` | `None` | Speaker of a multi-speaker voice: an id, or a name in the voice's `speaker_id_map`. A name that the map lacks goes to the engine, which may hold its own names (Magpie). `None` uses the speaker of the voice, or speaker 0 |
+| `language` | `int` \| `str` \| `None` | `None` | Language of a multi-language voice: an id, or a code in the voice's `lang_id_map`. A code also sets `stages.lang`. `None` uses the language of the voice, or language 0 |
 | `length_scale` | `float` \| `None` | `None` | Speed control: < 1 faster, > 1 slower. `None` uses the value of the voice |
 | `noise_scale` | `float` \| `None` | `None` | Generator noise: affects naturalness. `None` uses the value of the voice |
 | `noise_w_scale` | `float` \| `None` | `None` | Phoneme duration noise. `None` uses the value of the voice |
-| `normalize_audio` | `bool` | `True` | Scale the peak of the audio to full scale |
-| `target_loudness` | `float` \| `None` | `None` | Bring each sentence to this integrated loudness in LUFS, such as `-16.0`, with peaks limited to -1 dBFS. `None` keeps the peak normalisation. Needs `scipy`. Without it, phoonnx logs one warning and uses peak normalisation |
-| `volume` | `float` | `1.0` | Volume multiplier |
-| `enable_phonetic_spellings` | `bool` | `True` | Apply word-level pronunciation overrides |
-| `add_diacritics` | `bool` \| `None` | `None` | Add vowel diacritics before phonemization. `None` uses the value of the voice config |
-| `diacritizer_model` | `str` \| `None` | `None` | The diacritizer model for this call. `None` uses the `diacritizer_model` of the voice config |
-| `chunk` | `str` \| `None` | `None` | How much text one engine call reads: `sentence`, `clause`, `paragraph` (the text between blank lines) or `none` (the whole text). `None` reads one sentence per call. The text is read whole before it is cut. An engine that reads text, not phonemes, gets the whole text. Phonemic input (`alphabet` set) is cut per sentence whatever the value. Any other value raises `ValueError` when the config is built |
-| `speaker_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Reference clip for zero-shot [voice cloning](cloning.md). `None` means no clip |
-| `speaker_reference_text` | `str` \| `None` | `None` | Reference transcription, required by in-context cloning engines (ZipVoice) |
-| `speaker_reference_lang` | `str` \| `None` | `None` | Language of the transcription, for cross-lingual cloning (defaults to the voice's `lang_code`) |
 | `exaggeration` | `float` \| `None` | `None` | Expressiveness/intensity for engines that support it. `None` uses the engine default (Chatterbox, ~0.5) |
 | `temperature` | `float` \| `None` | `None` | Sampling temperature for autoregressive engines. `None` uses the engine default, about 0.8 for Chatterbox. `0` is greedy decoding |
 | `top_p` | `float` \| `None` | `None` | Nucleus sampling cutoff for autoregressive engines. `None` uses the engine default (Chatterbox, ~0.95) |
-| `vc_reference` | `str` \| `(audio, sr)` \| `None` | `None` | Target-speaker clip for [voice conversion](voice_conversion.md) after synthesis. It works with every engine. `None` means no conversion |
-| `vc_engine` | `str` \| `None` | `None` | The voiceclonnx engine for `vc_reference`. `None` selects `"openvoice"` |
+| `reference` | `SpeakerReference` \| `None` | `None` | The speaker that a cloning engine imitates. The reference table below lists its fields. `None` means no clip |
+| `extra` | `dict` | `{}` | Engine-specific per-call parameters (e.g. `d_factor`, `p_factor`, `e_factor`) |
+| `audio` | `AudioPost` | the defaults below | What happens to the audio after the engine call. The audio table below lists its fields |
+| `phonetic_spellings` | `bool` | `True` | Apply word-level pronunciation overrides |
+| `input_alphabet` | `Alphabet` \| `None` | `None` | The alphabet of the input text. `None` means plain text. Set it to pass text that is already phonemic, such as IPA, so that scriptconv converts it and does not phonemize it |
+
+A scale comes from the first of these that sets it: the call's `SynthesisConfig`, the voice's `engine_params`, the `inference` block of the voice's `config.json`, the engine's `default_params()`. The keys of `extra` are applied last and win over all four.
+
+### stages fields
+
+`stages` is a `Stages` from `scriptconv.frontend`.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `diacritize` | `bool` \| `None` | `None` | Add vowel diacritics before phonemization. `None` uses the value of the voice config |
+| `diacritizer_model` | `str` \| `None` | `None` | The diacritizer model for this call. `None` uses the `diacritizer_model` of the voice config |
+| `normalize` | `bool` \| `None` | `None` | `False` skips the text normalisation hook |
+| `chunk` | `str` \| `None` | `None` | How much text one engine call reads: `sentence`, `clause`, `paragraph` (the text between blank lines) or `none` (the whole text). `None` reads one sentence per call. The text is read whole before it is cut. An engine that reads text, not phonemes, gets the whole text. Phonemic input (`input_alphabet` set) is cut per sentence whatever the value. Any other value raises `ValueError` when the config is built |
+| `lang` | `str` \| `None` | `None` | The language of the text |
+| `casing` | callable \| `None` | `None` | A function that sets the text casing. `to_dict()` raises `ValueError` when it is set, because a function has no plain-data form |
+
+### reference fields
+
+`reference` is a `SpeakerReference` from `phoonnx.config`.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `audio` | `str` \| `(audio, sr)` \| `None` | `None` | Reference clip for zero-shot [voice cloning](cloning.md) |
+| `text` | `str` \| `None` | `None` | Reference transcription, required by in-context cloning engines (ZipVoice) |
+| `lang` | `str` \| `None` | `None` | Language of the transcription, for cross-lingual cloning (defaults to the voice's `lang_code`) |
+
+### audio fields
+
+`audio` is an `AudioPost` from `phoonnx.config`.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `normalize` | `bool` | `True` | Scale the peak of the audio to full scale |
+| `target_loudness` | `float` \| `None` | `None` | Bring each sentence to this integrated loudness in LUFS, such as `-16.0`, with peaks limited to -1 dBFS. `None` keeps the peak normalisation. Needs `scipy`. Without it, phoonnx logs one warning and uses peak normalisation |
+| `volume` | `float` | `1.0` | Volume multiplier |
 | `super_resolution` | `bool` | `False` | Upscale each chunk to 48 kHz with `audiosronnx` (the `audiosr` extra). The chunk reports the upscaled sample rate |
 | `super_resolution_model` | `str` \| `None` | `None` | The `audiosronnx` engine, such as `"novasr"` or `"lavasr"`. `None` selects `"novasr"`. Ignored unless `super_resolution` is `True` |
-| `extra_params` | `dict` | `{}` | Engine-specific per-call parameters (e.g. `d_factor`, `p_factor`, `e_factor`) |
+| `voice_conversion` | `SpeakerReference` \| `None` | `None` | Target-speaker clip, in its `audio` field, for [voice conversion](voice_conversion.md) after synthesis. It works with every engine. `None` means no conversion |
+| `voice_conversion_engine` | `str` \| `None` | `None` | The voiceclonnx engine for `voice_conversion`. `None` selects `"openvoice"` |
 
-A scale comes from the first of these that sets it: the call's `SynthesisConfig`, the voice's `engine_params`, the `inference` block of the voice's `config.json`, the engine's `default_params()`. The keys of `extra_params` are applied last and win over all four.
+### Plain data
+
+`SynthesisConfig.to_dict()` gives the config as plain data, and `SynthesisConfig.from_dict()` reads it back. The JSON Schema `phoonnx/synthesis_config.schema.json`, in the wheel, describes that data. A reference in plain data is a path or URL. A reference that holds samples, or a `stages.casing` callable, makes `to_dict()` raise `ValueError`. The constructor also accepts the groups as dicts, so `SynthesisConfig(**dataclasses.asdict(config))` builds the same config.
+
+### 1.x names
+
+The flat names of phoonnx 1.x still work as keywords, attributes, `dataclasses.replace()` keywords and `SynthesisConfig.from_dict` keys. Positional arguments in the 1.x field order work too. Each use raises a `DeprecationWarning` that names the new field and points at the caller's line. A string in `speaker_id` or `lang_id` goes to the engine as it is, as in 1.x: no voice map and no text stage reads it. Most engines read it with `int()`, so `speaker_id="40"` is the id 40, and Magpie reads it as a voice name. In the new `speaker` and `language` fields a string is a name or a code first, so `speaker="40"` is the speaker named `40`. The names and the positional form stop working in phoonnx 2.0.0.
+
+| Flat name | Field |
+|-----------|-------|
+| `alphabet` | `input_alphabet` |
+| `enable_phonetic_spellings` | `phonetic_spellings` |
+| `speaker_id` | `speaker` |
+| `lang_id` | `language` |
+| `extra_params` | `extra` |
+| `speaker_reference` | `reference.audio` |
+| `speaker_reference_text` | `reference.text` |
+| `speaker_reference_lang` | `reference.lang` |
+| `add_diacritics` | `stages.diacritize` |
+| `diacritizer_model` | `stages.diacritizer_model` |
+| `chunk` | `stages.chunk` |
+| `normalize_audio` | `audio.normalize` |
+| `target_loudness` | `audio.target_loudness` |
+| `volume` | `audio.volume` |
+| `super_resolution` | `audio.super_resolution` |
+| `super_resolution_model` | `audio.super_resolution_model` |
+| `vc_reference` | `audio.voice_conversion.audio` |
+| `vc_engine` | `audio.voice_conversion_engine` |
 
 ## config.json Format
 

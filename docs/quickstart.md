@@ -110,12 +110,12 @@ sample rate of 22050 Hz. Play the file with any audio player.
 end of `hello.py`:
 
 ```python
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import AudioPost, SynthesisConfig
 
 cfg = SynthesisConfig(
     length_scale=1.1,   # >1 slower, <1 faster
     noise_scale=0.667,  # generator noise / variation
-    volume=1.0,
+    audio=AudioPost(volume=1.0),
 )
 with wave.open("hello.wav", "wb") as wav_file:
     voice.synthesize_wav("Olá, isto é um teste.", wav_file, cfg)

@@ -115,7 +115,7 @@ def test_the_encoder_is_built_once_and_rebuilt_with_the_frontend():
 
 def test_phonemic_input_is_not_phonemized_and_reaches_the_symbol_tokenizer():
     voice = _vits_voice()
-    utterances = list(voice.prepare("hi", SynthesisConfig(alphabet=Alphabet.UNICODE)))
+    utterances = list(voice.prepare("hi", SynthesisConfig(input_alphabet=Alphabet.UNICODE)))
     # blank, BOS and EOS around h=10 and i=11, by the vocabulary written in _vits_voice
     assert [(u.text, u.symbols, list(u.ids)) for u in utterances] == [
         (None, ("h", "i"), [1, 0, 10, 0, 11, 0, 2])]

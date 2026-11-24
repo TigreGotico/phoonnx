@@ -36,17 +36,17 @@ conversational realism:
 `tara`, `leah`, `jess`, `leo`, `dan`, `mia`, `zac`, `zoe`
 
 Each index entry pins one name in its `engine_options`, for example `{"voice": "leo"}`.
-To select another name for one call, pass it in `extra_params`:
+To select another name for one call, pass it in `extra`:
 
 ```python
 from phoonnx.config import SynthesisConfig
 
-voice.synthesize("Hello there.", syn_config=SynthesisConfig(extra_params={"voice": "leo"}))
+voice.synthesize("Hello there.", syn_config=SynthesisConfig(extra={"voice": "leo"}))
 ```
 
 A name that the checkpoint does not have raises `ValueError`, and the message lists the
-names it has. A plain `speaker_id` selects a name only when the voice config has a
-`speaker_id_map`. The index entries ship no voice config, so they have no map.
+names it has. A string `speaker` is a name. An integer `speaker` selects a name only when the voice
+config has a `speaker_id_map`. The index entries ship no voice config, so they have no map.
 
 ### Emotive tags
 
@@ -62,8 +62,8 @@ A tag is a hint, not a control. The model can render a tag, soften it, or ignore
 
 ## Cloning
 
-Orpheus does not clone. A call with a `speaker_reference` raises `RuntimeError`, also
-when `speaker_reference_text` is set. Use one of the named voices.
+Orpheus does not clone. A call with a `reference` raises `RuntimeError`, also
+when `reference.text` is set. Use one of the named voices.
 
 ## Multilingual research releases
 

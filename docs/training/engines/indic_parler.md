@@ -37,7 +37,7 @@ To use another speaker of the upstream list, or a voice of your own words, pass 
 ```python
 from phoonnx.config import SynthesisConfig
 
-syn = SynthesisConfig(extra_params={"description": "Divya's voice is calm and slow."})
+syn = SynthesisConfig(extra={"description": "Divya's voice is calm and slow."})
 for chunk in voice.synthesize("नमस्ते, आप कैसे हैं?", syn):
     audio = chunk.audio_float_array
 ```

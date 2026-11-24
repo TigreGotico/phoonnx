@@ -1,8 +1,8 @@
 # Voice Conversion
 
 <!-- agent-hint
-covers: how to convert the output of any voice to a target speaker with vc_reference, and how scripts/vc_gate.py checks the conversion
-source: phoonnx/config.py:SynthesisConfig.vc_reference, phoonnx/voice.py:TTSVoice._load_voice_conversion, phoonnx/voice.py:TTSVoice._maybe_convert, scripts/vc_gate.py
+covers: how to convert the output of any voice to a target speaker with audio.voice_conversion, and how scripts/vc_gate.py checks the conversion
+source: phoonnx/config.py:AudioPost.voice_conversion, phoonnx/voice.py:TTSVoice._load_voice_conversion, phoonnx/voice.py:TTSVoice._maybe_convert, scripts/vc_gate.py
 generated: no
 verify: .venv/bin/python -m doctest -o NORMALIZE_WHITESPACE docs/voice_conversion.md && .venv/bin/python -c "import re, sys; sys.path.insert(0, 'scripts'); import vc_gate as g; t = open('docs/voice_conversion.md').read(); sys.exit(0 if re.search(r'margin of at least %.2f' % g.SIM_MARGIN_GATE, t) and 'at most %.2f' % g.LEAKAGE_GATE in t and 'at most %g percentage points' % g.WER_DELTA_GATE in t and '%d sentences' % len(g.UTTERANCES) in t else 1)"
 see: cloning.md, ovos_plugin.md
@@ -22,16 +22,16 @@ conversion. Install it with the extra:
 pip install --pre "phoonnx[vc]"
 ```
 
-Then pass a clip of the target speaker as `vc_reference`:
+Then pass a clip of the target speaker as `audio.voice_conversion`:
 
 ```python
 from phoonnx.voice import TTSVoice
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import AudioPost, SpeakerReference, SynthesisConfig
 
 voice = TTSVoice.load("model.onnx", "model.json")
 for chunk in voice.synthesize(
     "This sentence comes out in the voice of the target speaker.",
-    SynthesisConfig(vc_reference="target_speaker.wav"),
+    SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio="target_speaker.wav"))),
 ):
     print(chunk.sample_rate, len(chunk.audio_float_array) > 0)
 ```
@@ -48,7 +48,7 @@ at 22050 Hz, whatever the rate of the voice:
 phoonnx has two ways to make a voice sound like another person, and they do different
 things:
 
-| | `speaker_reference` (native cloning) | `vc_reference` (voice conversion) |
+| | `reference` (native cloning) | `audio.voice_conversion` (voice conversion) |
 |---|---|---|
 | When it happens | during generation | after generation, on the waveform |
 | What it changes | timbre and prosody, because the model is conditioned on the reference | timbre only: the rhythm and intonation of the source voice stay |
@@ -56,7 +56,7 @@ things:
 | Quality | higher, because nothing is made again from generated audio | a second pass over generated audio |
 | Cost | the inference of the engine only | one more ONNX pass per sentence |
 
-Use `speaker_reference` when the voice supports it. Use `vc_reference` when it does not,
+Use `reference` when the voice supports it. Use `audio.voice_conversion` when it does not,
 such as for a Piper VITS, Kokoro or KittenTTS voice, or when you want one target speaker
 on several engines.
 
@@ -65,24 +65,26 @@ conversion pass after it only adds loss.
 
 ## Configuration
 
+The two fields are in `SynthesisConfig.audio`, an `AudioPost`:
+
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `vc_reference` | `str` path or URL, or `(audio, sample_rate)` | `None` | the clip of the target speaker. `None` turns the stage off |
-| `vc_engine` | `str` | `None` | the voiceclonnx engine. `None` uses `"openvoice"` |
+| `voice_conversion` | `SpeakerReference` \| `None` | `None` | the clip of the target speaker, in its `audio` field: a `str` path or URL, or `(audio, sample_rate)`. `None` turns the stage off |
+| `voice_conversion_engine` | `str` | `None` | the voiceclonnx engine. `None` uses `"openvoice"` |
 
 ```python
 >>> from phoonnx.config import SynthesisConfig
 >>> config = SynthesisConfig()
->>> config.vc_reference, config.vc_engine
+>>> config.audio.voice_conversion, config.audio.voice_conversion_engine
 (None, None)
 
 ```
 
-With `vc_reference=None`, phoonnx does not import `voiceclonnx`, and the audio is the
+With `voice_conversion=None`, phoonnx does not import `voiceclonnx`, and the audio is the
 output of the engine, bit for bit.
 
 Use a reference clip of 5 to 30 seconds of clean speech from one speaker. A path, a URL
-and an `(audio, sample_rate)` tuple all work. These are the forms that `speaker_reference`
+and an `(audio, sample_rate)` tuple all work. These are the forms that `reference.audio`
 takes, and the same loader reads them, so a URL has the same address and size limits. See
 [Voice cloning](cloning.md#reference-audio-formats). phoonnx decodes the reference and
 writes it to a temporary WAV file, which voiceclonnx reads.
@@ -100,7 +102,8 @@ them. Check another engine on your own material with `scripts/vc_gate.py` (see b
 before you use it.
 
 ```python
-SynthesisConfig(vc_reference="target.wav", vc_engine="knnvc")
+SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio="target.wav"),
+                                voice_conversion_engine="knnvc"))
 ```
 
 ## Check the conversion
@@ -140,7 +143,7 @@ The converted audio has the sample rate of the conversion engine, 22050 Hz for O
 and the `AudioChunk` reports that rate, not the rate of the voice. `synthesize_wav()` takes
 the header from the chunk, so the file is correct.
 
-When super-resolution is also on (`SynthesisConfig(super_resolution=True)`, see
+When super-resolution is also on (`SynthesisConfig(audio=AudioPost(super_resolution=True))`, see
 [Audio super-resolution](ovos_plugin.md#audio-super-resolution)), the conversion runs first,
 so the upscaler works on the final timbre.
 
@@ -149,10 +152,10 @@ so the upscaler works on the final timbre.
 Voice conversion fails with an error, unlike super-resolution. Audio in the source voice,
 after you asked for another speaker, is a wrong answer, not a degraded one:
 
-* `vc_reference` without `voiceclonnx` installed raises `ImportError`, which names the
+* `audio.voice_conversion` without `voiceclonnx` installed raises `ImportError`, which names the
   `phoonnx[vc]` extra.
 * A reference path that is not a file raises `FileNotFoundError`:
-  `vc_reference points at no readable file: 'missing.wav'`.
+  `audio.voice_conversion points at no readable file: 'missing.wav'`.
 * A conversion failure during synthesis raises the error, and no source voice audio comes
   out.
 

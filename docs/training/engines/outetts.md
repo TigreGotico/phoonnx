@@ -38,7 +38,7 @@ from phoonnx.model_manager import TTSModelManager
 manager = TTSModelManager()
 manager.merge_default_voices()
 voice = manager.voices["outetts/0.6B/de"].load()
-syn = SynthesisConfig(extra_params={"voice": "en-female-1-neutral"})
+syn = SynthesisConfig(extra={"voice": "en-female-1-neutral"})
 for chunk in voice.synthesize("Der alte Leuchtturm steht an der Küste.", syn):
     audio = chunk.audio_float_array  # 24 kHz mono
 ```
@@ -49,9 +49,9 @@ The model can also speak languages that it was not trained on, with variable qua
 
 An OuteTTS voice needs a speaker profile, or it makes up a random voice. A profile is an in-context audio prompt: a transcript in which each word has a duration, three prosody buckets (energy, spectral centroid, pitch) and its DAC codes. The transcript of the profile goes in front of your text, and its codes start the generated stream, so the model continues a real utterance.
 
-All bundled voices use the OuteAI profile `en-female-1-neutral`. The model carries the speaker across languages, so this English profile gives an English accent to the other languages. For production in one language, build a profile from a clip in that language. When a voice ships more than one profile, select one per call with `extra_params={"voice": ...}`. An unknown profile name raises `ValueError`.
+All bundled voices use the OuteAI profile `en-female-1-neutral`. The model carries the speaker across languages, so this English profile gives an English accent to the other languages. For production in one language, build a profile from a clip in that language. When a voice ships more than one profile, select one per call with `extra={"voice": ...}`. An unknown profile name raises `ValueError`.
 
-phoonnx cannot build a profile from a reference clip, because that needs Whisper word alignment, the DAC encoder and a prosody analysis. A call with `speaker_reference` raises `RuntimeError`. Build the profile with the upstream `outetts` package and ship the JSON file.
+phoonnx cannot build a profile from a reference clip, because that needs Whisper word alignment, the DAC encoder and a prosody analysis. A call with `reference` raises `RuntimeError`. Build the profile with the upstream `outetts` package and ship the JSON file.
 
 Sampling can make the model repeat part of a sentence. Greedy decoding (`temperature=0`) does not loop, but it is not the default.
 

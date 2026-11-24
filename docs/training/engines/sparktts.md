@@ -86,14 +86,14 @@ for chunk in voice.synthesize("Spark-TTS speaks English and Mandarin."):
 Give a reference clip, and the speaker comes from the audio:
 
 ```python
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import SpeakerReference, SynthesisConfig
 
-syn = SynthesisConfig(speaker_reference="reference.wav")
+syn = SynthesisConfig(reference=SpeakerReference(audio="reference.wav"))
 for chunk in voice.synthesize("This sentence uses the cloned voice.", syn):
     audio = chunk.audio_float_array
 ```
 
-For the in-context variant, also set `speaker_reference_text` to the transcription of the clip. The prompt then also holds the semantic tokens of the clip, and the model continues a real utterance. Only this variant needs the wav2vec2 and semantic encoder graphs.
+For the in-context variant, also set `reference.text` to the transcription of the clip. The prompt then also holds the semantic tokens of the clip, and the model continues a real utterance. Only this variant needs the wav2vec2 and semantic encoder graphs.
 
 ## Decoding parameters
 

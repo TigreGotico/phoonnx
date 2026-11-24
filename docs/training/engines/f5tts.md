@@ -31,7 +31,7 @@ Every call needs the reference clip and its transcription. With an index voice, 
 ```python
 import wave
 
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import SpeakerReference, SynthesisConfig
 from phoonnx.model_manager import TTSModelManager
 
 m = TTSModelManager()
@@ -39,10 +39,10 @@ m.merge_default_voices()
 voice = m.voices["f5tts/v1-base"].load()
 with wave.open("out.wav", "wb") as f:
     voice.synthesize_wav("A line the reference never spoke.", f,
-        SynthesisConfig(
-            speaker_reference="reference.wav",
-            speaker_reference_text="transcription of the reference clip",
-        ))
+        SynthesisConfig(reference=SpeakerReference(
+            audio="reference.wav",
+            text="transcription of the reference clip",
+        )))
 ```
 
 To load a downloaded voice folder yourself, name the auxiliary graphs in `engine_params`:
@@ -89,7 +89,7 @@ The Habibi-TTS Unified model was trained with dialect control tokens. Upstream w
 
 The vocabulary also holds `OMN ⑧ · TUN ⑨ · LEV ⑩ · SDN ⑪ · LBY ⑫`, but these dialects had no training data. Only the first eight are meaningful.
 
-Set the tag with the `dialect` engine parameter. The `habibi/ar-unified` voice config sets `"dialect": "UNK"`. To change it for one call, use `SynthesisConfig(extra_params={"dialect": "EGY"})`. The adapter applies the tag at token level, through the `phoneme_id_map` of the voice. The per-dialect models take plain text with no tag.
+Set the tag with the `dialect` engine parameter. The `habibi/ar-unified` voice config sets `"dialect": "UNK"`. To change it for one call, use `SynthesisConfig(extra={"dialect": "EGY"})`. The adapter applies the tag at token level, through the `phoneme_id_map` of the voice. The per-dialect models take plain text with no tag.
 
 An unknown dialect name raises `ValueError`. If the vocabulary of the voice lacks the control tokens, as in the per-dialect models and plain F5-TTS, the adapter logs a warning and skips the tag.
 
@@ -161,7 +161,7 @@ If neither `decode_path` nor `vocoder_path` is set, synthesis raises `RuntimeErr
 
 ### Parameters
 
-`speed` is also settable per call in `SynthesisConfig.extra_params`.
+`speed` is also settable per call in `SynthesisConfig.extra`.
 
 | Param | Default | Description |
 |---|---|---|

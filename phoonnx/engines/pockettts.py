@@ -566,7 +566,7 @@ class PocketTTSAdapter(BaseOnnxAdapter):
             voice_state = self.voice_state
         else:
             raise RuntimeError("Pocket TTS voice missing voice_state_path in engine_params "
-                               "and no speaker_reference was given")
+                               "and no reference was given")
 
         token_ids = np.asarray(request.phoneme_ids, np.int64).reshape(1, -1)
         latents = self.iter_latents(token_ids, voice_state, session, temperature,

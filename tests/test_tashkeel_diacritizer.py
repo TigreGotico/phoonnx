@@ -8,22 +8,23 @@ phoonnx keeps is the *config* — SynthesisConfig / VoiceConfig carry the
 import unittest
 
 from phoonnx.config import SynthesisConfig, VoiceConfig
+from scriptconv.frontend import Stages
 
 
 class TestSynthesisConfigDiacritizerModelDefaults(unittest.TestCase):
     def test_default_is_none(self):
-        self.assertIsNone(SynthesisConfig().diacritizer_model)
+        self.assertIsNone(SynthesisConfig().stages.diacritizer_model)
 
     def test_effective_model_falls_back_to_voice_config(self):
         voice_config_model = "rawi-ensemble"
         syn_config = SynthesisConfig()
-        effective = syn_config.diacritizer_model or voice_config_model
+        effective = syn_config.stages.diacritizer_model or voice_config_model
         self.assertEqual(effective, "rawi-ensemble")
 
     def test_explicit_syn_config_model_overrides_voice_config(self):
         voice_config_model = "rawi-ensemble"
-        syn_config = SynthesisConfig(diacritizer_model="other-model")
-        effective = syn_config.diacritizer_model or voice_config_model
+        syn_config = SynthesisConfig(stages=Stages(diacritizer_model="other-model"))
+        effective = syn_config.stages.diacritizer_model or voice_config_model
         self.assertEqual(effective, "other-model")
 
 

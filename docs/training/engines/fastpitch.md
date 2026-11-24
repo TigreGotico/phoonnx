@@ -34,12 +34,12 @@ for chunk in voice.synthesize("السَّلامُ عَلَيكُم."):
     audio = chunk.audio_float_array
 ```
 
-The synthesis parameters (`pace`, `pitch_mul`, `pitch_add`, `emotion`) and `SynthesisConfig.speaker_id` work as on the [Mixer-TTS](mixertts.md) page:
+The synthesis parameters (`pace`, `pitch_mul`, `pitch_add`, `emotion`) and `SynthesisConfig.speaker` work as on the [Mixer-TTS](mixertts.md) page:
 
 ```python
 from phoonnx.config import SynthesisConfig
 
-voice.synthesize("السَّلامُ عَلَيكُم.", SynthesisConfig(extra_params={"pace": 1.1}))
+voice.synthesize("السَّلامُ عَلَيكُم.", SynthesisConfig(extra={"pace": 1.1}))
 ```
 
 ## Convert a Coqui FastPitch model

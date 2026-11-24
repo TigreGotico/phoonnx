@@ -12,7 +12,7 @@ import unittest
 
 import numpy as np
 
-from phoonnx.config import SynthesisConfig, VoiceConfig
+from phoonnx.config import SynthesisConfig, VoiceConfig, SpeakerReference
 from phoonnx.engines.base import AdapterSynthesisResult
 from phoonnx.engines.vits import VitsAdapter
 from phoonnx.voice import TTSVoice, Utterance
@@ -41,7 +41,7 @@ def _reference_text(voice, syn_config):
 class TestSpeakerReferenceTextReachesRequestParams(unittest.TestCase):
     def test_speaker_reference_text_lands_in_request_params(self):
         voice = _voice()
-        syn_config = SynthesisConfig(speaker_reference_text="A reference clip transcript")
+        syn_config = SynthesisConfig(reference=SpeakerReference(text="A reference clip transcript"))
         self.assertEqual(_reference_text(voice, syn_config), "A reference clip transcript")
 
     def test_absent_when_no_reference_text_was_given(self):
@@ -52,7 +52,7 @@ class TestSpeakerReferenceTextReachesRequestParams(unittest.TestCase):
     def test_each_chunk_of_a_multi_chunk_call_sees_its_own_fresh_params(self):
         """render is called once per chunk; the params are built again from syn_config each time."""
         voice = _voice()
-        syn_config = SynthesisConfig(speaker_reference_text="Shared reference text")
+        syn_config = SynthesisConfig(reference=SpeakerReference(text="Shared reference text"))
 
         voice.render(Utterance("", None, (1, 2)), syn_config)
         voice.render(Utterance("", None, (3, 4)), syn_config)
@@ -67,14 +67,14 @@ class TestSpeakerReferenceTextIsNormalised(unittest.TestCase):
     def test_digits_read_as_the_target_text_reads_them(self):
         voice = _voice()
         text = "I have 3 cats."
-        reference = _reference_text(voice, SynthesisConfig(speaker_reference_text=text))
+        reference = _reference_text(voice, SynthesisConfig(reference=SpeakerReference(text=text)))
         self.assertEqual(reference, "I have three cats.")
         (target,) = voice.prepare(text)
         self.assertEqual(reference, target.text)
 
     def test_the_reference_language_reads_the_reference(self):
         voice = _voice()
-        syn_config = SynthesisConfig(speaker_reference_text="Tenho 3 gatos.", speaker_reference_lang="pt-PT")
+        syn_config = SynthesisConfig(reference=SpeakerReference(text="Tenho 3 gatos.", lang="pt-PT"))
         self.assertEqual(_reference_text(voice, syn_config), "Tenho três gatos.")
 
 

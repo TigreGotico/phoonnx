@@ -9,14 +9,14 @@ import unittest
 
 import numpy as np
 
-from phoonnx.config import SynthesisConfig, VoiceConfig
+from phoonnx.config import SynthesisConfig, VoiceConfig, AudioPost
 from phoonnx.engines.vits import VitsAdapter
 from phoonnx.errors import NonFiniteAudioError, PhoonnxError
 from phoonnx.voice import TTSVoice
 from tests.test_failed_synthesis_cache import _plugin
 from tests.test_prepare_render import CONFIG, RAW, TEXT, _engine_audio, _session
 
-STREAM_PARTS = SynthesisConfig(normalize_audio=False)
+STREAM_PARTS = SynthesisConfig(audio=AudioPost(normalize=False))
 """With no whole-sentence step, ``stream`` yields the engine's parts directly."""
 
 
@@ -47,7 +47,7 @@ class TestNonFiniteAudioRaises(unittest.TestCase):
     def test_synthesize(self):
         for name, poison, where in BAD:
             for config in (SynthesisConfig(), RAW):
-                with self.subTest(name, normalize=config.normalize_audio):
+                with self.subTest(name, normalize=config.audio.normalize):
                     with self.assertRaises(NonFiniteAudioError) as caught:
                         list(_voice(poison, where).synthesize(TEXT, config))
                     self.assertIn("non-finite", str(caught.exception))
@@ -55,7 +55,7 @@ class TestNonFiniteAudioRaises(unittest.TestCase):
     def test_stream(self):
         for name, poison, where in BAD:
             for config in (SynthesisConfig(), STREAM_PARTS):
-                with self.subTest(name, normalize=config.normalize_audio):
+                with self.subTest(name, normalize=config.audio.normalize):
                     with self.assertRaises(NonFiniteAudioError):
                         list(_voice(poison, where).stream(TEXT, config))
 

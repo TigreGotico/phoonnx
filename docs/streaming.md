@@ -170,14 +170,14 @@ The decoder runs on the `providers` of the voice, the same list as the encoder. 
 ## Stream the audio
 
 `TTSVoice.stream()` yields each decoded chunk as soon as the decoder makes it. Peak
-normalization needs the whole sentence, so turn it off. With `normalize_audio=True` (the
+normalization needs the whole sentence, so turn it off. With `audio.normalize=True` (the
 default), a target loudness, voice conversion or super-resolution, `stream()` yields one
 chunk per sentence.
 
 ```python
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import AudioPost, SynthesisConfig
 
-config = SynthesisConfig(normalize_audio=False)
+config = SynthesisConfig(audio=AudioPost(normalize=False))
 for chunk in voice.stream("A long sentence that the decoder reads in chunks.", config):
     play(chunk.audio_int16_bytes)  # your audio sink
 ```

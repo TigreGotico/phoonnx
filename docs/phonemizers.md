@@ -193,10 +193,11 @@ A call can override the voice with `SynthesisConfig`:
 
 ```python
 from phoonnx.config import SynthesisConfig
-syn_config = SynthesisConfig(add_diacritics=True)
+from scriptconv.frontend import Stages
+syn_config = SynthesisConfig(stages=Stages(diacritize=True))
 ```
 
-Arabic diacritization uses [`text2tashkeel`](https://pypi.org/project/text2tashkeel/), which the [`ar` extra](installation.md#language-extras) installs. The default diacritizer model is `rawi-ensemble`. To use another model, set the `diacritizer_model` field of the voice config, or of the `SynthesisConfig` of one call. Arabic diacritics without `text2tashkeel` raise an `ImportError` that names the package. Hebrew uses Phonikud.
+Arabic diacritization uses [`text2tashkeel`](https://pypi.org/project/text2tashkeel/), which the [`ar` extra](installation.md#language-extras) installs. The default diacritizer model is `rawi-ensemble`. To use another model, set the `diacritizer_model` field of the voice config, or `stages.diacritizer_model` in the `SynthesisConfig` of one call. Arabic diacritics without `text2tashkeel` raise an `ImportError` that names the package. Hebrew uses Phonikud.
 
 ### Galician (Cotovia)
 
@@ -218,7 +219,7 @@ Each phonemizer is a subclass of the scriptconv `BasePhonemizer`, which has thes
 | `phonemize_segments(text, lang)` | The segments, with the side streams of the backend, such as stress |
 | `chunk_text(text)` | The sentence chunks of the text, with their punctuation |
 
-Diacritization is not a phonemizer method. It is a separate step, `scriptconv.diacritics.diacritize(text, lang)`, which runs before the phonemizer when a voice sets `add_diacritics`. scriptconv owns the diacritizer backends. It downloads the Hebrew phonikud model on first use.
+Diacritization is not a phonemizer method. It is a separate step, `scriptconv.diacritics.diacritize(text, lang)`, which runs before the phonemizer when a voice sets `add_diacritics` or a call sets `stages.diacritize`. scriptconv owns the diacritizer backends. It downloads the Hebrew phonikud model on first use.
 
 ## G2P for OVOS
 

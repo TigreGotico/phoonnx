@@ -146,7 +146,7 @@ When `super_resolution` is on and the extra is not installed, the first synthesi
 `TTSVoice` does the upscaling, so it also works when you use the library directly. It is a `SynthesisConfig` field, so you can turn it on for one call:
 
 ```python
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import AudioPost, SynthesisConfig
 from phoonnx.model_manager import TTSModelManager
 
 manager = TTSModelManager()
@@ -154,7 +154,7 @@ manager.load()
 manager.merge_default_voices()
 
 voice = manager.voices["OpenVoiceOS/pipertts_en-US_miro"].load()
-cfg = SynthesisConfig(super_resolution=True, super_resolution_model="novasr")
+cfg = SynthesisConfig(audio=AudioPost(super_resolution=True, super_resolution_model="novasr"))
 for chunk in voice.synthesize("hello", cfg):
     print(chunk.sample_rate)
 ```

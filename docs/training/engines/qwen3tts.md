@@ -116,7 +116,7 @@ Defaults come from the checkpoint's own `generation_config.json`:
 | `subtalker_top_k` | 50 | Code-predictor top-k |
 | `subtalker_top_p` | 1.0 | Code-predictor nucleus |
 
-The adapter also reads `do_sample`, `seed` and `max_new_tokens` from `SynthesisConfig.extra_params`. `do_sample=False` decodes greedily and gives the same result on each call. `scripts/conversion/qwen3tts/verify_parity.py` uses it to compare with the upstream PyTorch model. Do not use greedy decoding for synthesis: on some inputs it makes this model repeat itself and never stop, so upstream samples by default.
+The adapter also reads `do_sample`, `seed` and `max_new_tokens` from `SynthesisConfig.extra`. `do_sample=False` decodes greedily and gives the same result on each call. `scripts/conversion/qwen3tts/verify_parity.py` uses it to compare with the upstream PyTorch model. Do not use greedy decoding for synthesis: on some inputs it makes this model repeat itself and never stop, so upstream samples by default.
 
 A rare sampled draw can also make the model continue past the text. To bound the output, set `max_new_tokens`. At 12.5 frames per second, 250 frames is 20 seconds of audio.
 

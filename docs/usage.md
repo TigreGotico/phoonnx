@@ -147,7 +147,7 @@ for chunk in voice.synthesize("Hello world. How are you today?", syn_config=syn_
     # chunk.audio_int16_bytes holds raw PCM bytes for playback
 ```
 
-`SynthesisConfig(chunk=...)` sets how much text one engine call reads: `"sentence"` (the
+`SynthesisConfig(stages=Stages(chunk=...))` sets how much text one engine call reads: `"sentence"` (the
 default), `"clause"`, `"paragraph"` or `"none"` (the whole text). Any other value raises a
 `ValueError`. `voice.stream()` yields parts of a sentence as soon as the engine makes them,
 for engines that can stream. See [Streaming](streaming.md).
@@ -192,11 +192,11 @@ defaults are `None`, which lets the voice config decide. The other defaults are 
 ```python
 >>> from phoonnx.config import SynthesisConfig
 >>> config = SynthesisConfig()
->>> config.speaker_id, config.lang_id, config.length_scale, config.noise_scale, config.noise_w_scale
+>>> config.speaker, config.language, config.length_scale, config.noise_scale, config.noise_w_scale
 (None, None, None, None, None)
->>> config.add_diacritics, config.diacritizer_model
+>>> config.stages.diacritize, config.stages.diacritizer_model
 (None, None)
->>> config.normalize_audio, config.volume, config.enable_phonetic_spellings
+>>> config.audio.normalize, config.audio.volume, config.phonetic_spellings
 (True, 1.0, True)
 
 ```
@@ -204,28 +204,29 @@ defaults are `None`, which lets the voice config decide. The other defaults are 
 This example sets each field explicitly:
 
 ```python
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import AudioPost, SynthesisConfig
+from scriptconv.frontend import Stages
 
 syn_config = SynthesisConfig(
-    speaker_id=0,           # for multi-speaker voices
-    lang_id=0,              # for multi-language voices
+    speaker=0,              # for multi-speaker voices: an id or a name
+    language=0,             # for multi-language voices: an id or a code
     length_scale=1.0,       # 1.0 = normal speed, <1 faster, >1 slower
     noise_scale=0.667,      # generator noise (affects naturalness/variation)
     noise_w_scale=0.8,      # phoneme duration noise
-    normalize_audio=True,   # normalize output to full amplitude range
-    volume=1.0,             # volume multiplier
-    enable_phonetic_spellings=True,  # apply user-defined word replacements
-    add_diacritics=None,    # None defers to the voice config (Arabic/Hebrew)
+    audio=AudioPost(normalize=True, volume=1.0),  # full amplitude range, volume multiplier
+    phonetic_spellings=True,  # apply user-defined word replacements
+    stages=Stages(diacritize=None),  # None defers to the voice config (Arabic/Hebrew)
 )
 ```
 
-`speaker_id`, `lang_id`, `length_scale`, `noise_scale` and `noise_w_scale` default to `None`,
-which uses the value of the voice config. `add_diacritics` defaults to `None`, which uses the
+`speaker`, `language`, `length_scale`, `noise_scale` and `noise_w_scale` default to `None`,
+which uses the value of the voice config. `stages.diacritize` defaults to `None`, which uses the
 setting of the voice. Set it to `True` or `False` only to force diacritization on or off for
-this call. `diacritizer_model` (default `None`) also uses the choice of the voice config. Set
+this call. `stages.diacritizer_model` (default `None`) also uses the choice of the voice config. Set
 it to override the Arabic `text2tashkeel` model for this call. Cloning and autoregressive
-engines add more fields, such as `speaker_reference`, `speaker_reference_text`,
-`speaker_reference_lang`, `exaggeration`, `temperature`, `top_p` and `extra_params`. See
+engines use more fields, such as `reference` (a `SpeakerReference` with `audio`, `text` and
+`lang`), `exaggeration`, `temperature`, `top_p` and `extra`. The config is frozen: build a
+changed copy with `dataclasses.replace`. See
 [Cloning](cloning.md) and the [Configuration reference](configuration.md#synthesisconfig).
 
 ## Inline Phoneme Input
@@ -251,7 +252,7 @@ a voice reads its written word.
 ## Phonetic Spellings
 
 Phonetic spellings replace words in the text before phonemization. The
-`enable_phonetic_spellings` setting turns them on, and it is on by default. The packaged
+`phonetic_spellings` setting turns them on, and it is on by default. The packaged
 spellings are in `phoonnx/locale/<lang>/phonetic_spellings.txt`, one `word: spelling` per
 line. A `#` starts a comment. Matches are whole words, and case does not matter.
 
@@ -302,10 +303,11 @@ limits and its cost. The OVOS plugin (`phoonnx.opm`) sends SSML input to these m
 
 ## Multi-Speaker Voices
 
-For voices with multiple speakers, set `speaker_id` in `SynthesisConfig`:
+For voices with multiple speakers, set `speaker` in `SynthesisConfig`, as an id or as a name in
+the voice's `speaker_id_map`:
 
 ```python
-syn_config = SynthesisConfig(speaker_id=2)
+syn_config = SynthesisConfig(speaker=2)
 for chunk in voice.synthesize("Hello!", syn_config=syn_config):
     ...
 ```

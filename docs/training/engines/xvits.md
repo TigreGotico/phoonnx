@@ -44,7 +44,7 @@ voice = TTSVoice.load(
     engine_params={key: str(path) for key, path in engine_params.items()},
 )
 
-config = SynthesisConfig(extra_params={"style": "happy", "seed": 1})
+config = SynthesisConfig(extra={"style": "happy", "seed": 1})
 for chunk in voice.synthesize("I *really* did not expect that.", config):
     print(chunk.sample_rate, len(chunk.audio_float_array))
 ```
@@ -55,7 +55,7 @@ Set `lang_code="en"`. The voice config names the espeak voice `en` and the langu
 
 ## Options
 
-Pass the options in `SynthesisConfig.extra_params`. `length_scale` is a normal `SynthesisConfig` field.
+Pass the options in `SynthesisConfig.extra`. `length_scale` is a normal `SynthesisConfig` field.
 
 | Option | Values | Effect |
 | --- | --- | --- |

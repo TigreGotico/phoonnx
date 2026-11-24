@@ -382,14 +382,14 @@ A voice config for the `shefowl/neutts-nano-polish` fine-tune:
 
 ### Synthesis extra params
 
-A call gives engine settings through `SynthesisConfig.extra_params`. They win over the `engine_params` of the voice:
+A call gives engine settings through `SynthesisConfig.extra`. They win over the `engine_params` of the voice:
 
 ```python
 from phoonnx.config import SynthesisConfig
 
 syn = SynthesisConfig(
     length_scale=1.2,
-    extra_params={"d_factor": 0.9}
+    extra={"d_factor": 0.9}
 )
 ```
 

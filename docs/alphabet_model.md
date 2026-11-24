@@ -1,7 +1,7 @@
 # Alphabet conversion model
 
 <!-- agent-hint
-covers: how VoiceConfig.alphabet, VoiceConfig.phoneme_type and SynthesisConfig.alphabet select the conversion of input text, the scriptconv conversion graph, and the respelling of r-coloured vowels
+covers: how VoiceConfig.alphabet, VoiceConfig.phoneme_type and SynthesisConfig.input_alphabet select the conversion of input text, the scriptconv conversion graph, and the respelling of r-coloured vowels
 source: phoonnx/voice.py:TTSVoice._iter_phonemes, phoonnx/voice.py:_respell_rhotics, phoonnx/config.py:SynthesisConfig, scriptconv.graph:DEFAULT_GRAPH, pyproject.toml:cjk
 generated: no
 verify: .venv/bin/python -m doctest -o ELLIPSIS -o NORMALIZE_WHITESPACE docs/alphabet_model.md && .venv/bin/python -c "import re,sys,tomllib; p=open('docs/alphabet_model.md').read(); cjk=tomllib.load(open('pyproject.toml','rb'))['project']['optional-dependencies']['cjk']; doc=re.search(chr(10)+'# installs: (.*)',p).group(1).split(', '); print(doc,cjk); sys.exit(0 if doc==cjk else 1)"
@@ -18,16 +18,16 @@ Three fields decide the conversion:
 |---|---|---|
 | `VoiceConfig.alphabet` | The symbols that the model reads | `Alphabet.IPA` |
 | `VoiceConfig.phoneme_type` | The phonemizer that makes those symbols from text, and the tokenizer rules that go with it | `PhonemeType.ESPEAK` |
-| `SynthesisConfig.alphabet` | The symbols of the text that the caller gives | `None`, which is plain text |
+| `SynthesisConfig.input_alphabet` | The symbols of the text that the caller gives | `None`, which is plain text |
 
-`SynthesisConfig.alphabet` is `None` by default, and phoonnx reads `None` as `Alphabet.GRAPHEMES`, plain text. Set it only when you give text that is already phonemic, such as an IPA or ARPABET string.
+`SynthesisConfig.input_alphabet` is `None` by default, and phoonnx reads `None` as `Alphabet.GRAPHEMES`, plain text. Set it only when you give text that is already phonemic, such as an IPA or ARPABET string.
 
 ## How a call reaches the model alphabet
 
-`TTSVoice.prepare` and `synthesize` select one of two paths from `SynthesisConfig.alphabet`:
+`TTSVoice.prepare` and `synthesize` select one of two paths from `SynthesisConfig.input_alphabet`:
 
 - Plain text goes through `TTSVoice.frontend`, the scriptconv `TextFrontend` of the voice. The frontend normalizes the text, splits it into sentences and runs the phonemizer of `phoneme_type`. A phonemizer that gives side streams, such as the language ids of Shami, gives them here.
-- Phonemic text goes through the scriptconv conversion graph, from `SynthesisConfig.alphabet` to `VoiceConfig.alphabet`. When the two are equal, the text stays as it is. When the graph has no path, phoonnx keeps the text as written and logs a debug message. phoonnx then splits the text into sentences. ARPABET splits on spaces, and each other alphabet splits into characters.
+- Phonemic text goes through the scriptconv conversion graph, from `SynthesisConfig.input_alphabet` to `VoiceConfig.alphabet`. When the two are equal, the text stays as it is. When the graph has no path, phoonnx keeps the text as written and logs a debug message. phoonnx then splits the text into sentences. ARPABET splits on spaces, and each other alphabet splits into characters.
 
 This example gives ARPABET to an IPA voice. The graph converts `B ER D` to `bɝd`:
 
@@ -40,7 +40,7 @@ This example gives ARPABET to an IPA voice. The graph converts `B ER D` to `bɝd
 ...                                     "phoneme_type": phoneme_type, "alphabet": "ipa",
 ...                                     "phoneme_id_map": symbols})
 ...     voice = TTSVoice(session=None, config=config)
-...     return [u.symbols for u in voice.prepare("B ER D", SynthesisConfig(alphabet=Alphabet.ARPA))]
+...     return [u.symbols for u in voice.prepare("B ER D", SynthesisConfig(input_alphabet=Alphabet.ARPA))]
 >>> arpabet_to_voice("gruut")
 [('b', 'ɜ', 'ɹ', 'd')]
 >>> arpabet_to_voice("espeak")

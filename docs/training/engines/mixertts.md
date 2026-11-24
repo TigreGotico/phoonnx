@@ -32,7 +32,7 @@ m = TTSModelManager()
 m.merge_default_voices()
 voice = m.voices["nipponjo/mixer-tts-ljspeech-384"].load()
 for chunk in voice.synthesize("Hello from Mixer-TTS.",
-                              SynthesisConfig(extra_params={"pace": 1.1})):
+                              SynthesisConfig(extra={"pace": 1.1})):
     audio = chunk.audio_float_array
 ```
 
@@ -40,7 +40,7 @@ The English voices use a fixed symbol table (pad, punctuation, letters and IPA) 
 
 ### Arabic voices
 
-The [tts_arabic](https://github.com/nipponjo/tts_arabic) Mixer-TTS models (`nipponjo/tts-arabic-mixer80` and `nipponjo/tts-arabic-mixer128`) are multi-speaker Arabic voices with a Buckwalter phoneme table. They tokenize with the `mantoq` phonemizer (`phoneme_type: mantoq`, `alphabet: buckwalter`, `_+_` word separator). The input can be vocalized Arabic or Buckwalter transliteration. Select a speaker with `SynthesisConfig(speaker_id=...)`.
+The [tts_arabic](https://github.com/nipponjo/tts_arabic) Mixer-TTS models (`nipponjo/tts-arabic-mixer80` and `nipponjo/tts-arabic-mixer128`) are multi-speaker Arabic voices with a Buckwalter phoneme table. They tokenize with the `mantoq` phonemizer (`phoneme_type: mantoq`, `alphabet: buckwalter`, `_+_` word separator). The input can be vocalized Arabic or Buckwalter transliteration. Select a speaker with `SynthesisConfig(speaker=...)`.
 
 ## Train a model
 
@@ -82,7 +82,7 @@ Each indexed voice names its vocoder. BSC publishes the 22 kHz Vocos graph of th
 |------|------|-------|-------------|
 | `token_ids` | int64 | `[B, T]` | Symbol IDs |
 | `pace` | float32 | `[1]` | Speaking rate (above 1 is faster) |
-| `speaker` | int32 | `[1]` | Speaker ID, from `SynthesisConfig.speaker_id` (0 by default) |
+| `speaker` | int32 | `[1]` | Speaker ID, from `SynthesisConfig.speaker` (0 by default) |
 | `emotion` | int32 | `[1]` | Emotion ID |
 | `pitch_mul` | float32 | `[1]` | Pitch multiplier |
 | `pitch_add` | float32 | `[1]` | Pitch offset |
@@ -91,7 +91,7 @@ The output is a mel spectrogram `mel_spec [B, 80, T]`.
 
 ### Synthesis parameters
 
-Set these in `SynthesisConfig.extra_params`.
+Set these in `SynthesisConfig.extra`.
 
 | Param | Default | Description |
 |-------|---------|-------------|

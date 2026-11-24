@@ -21,7 +21,9 @@ from typing import Dict, List, Optional
 from ovos_utils.log import LOG
 from linguatag import standardize_lang
 from ovos_plugin_manager.templates.tts import TTS, TTSContext
+from scriptconv.frontend import Stages
 
+from phoonnx.config import AudioPost, SpeakerReference
 from phoonnx.model_manager import TTSModelManager, TTSModelInfo, choose_precision, resolve_precision
 from phoonnx.ssml import SUPPORTED_TAGS, looks_like_ssml
 from phoonnx.util import normalize_lang
@@ -438,20 +440,34 @@ class PhoonnxTTSPlugin(TTS):
         with self.voice_cache.lease(voice_id) as model:
             voice_info = voice_info or self.get_voice_info(voice_id)
 
+            # zero-shot voice cloning. A path to a reference wav; cloning engines turn
+            # it into the conditioning signal. In-context engines (ZipVoice) also need
+            # the reference's transcription + its language, e.g.:
+            #   {"ref_wav": "/home/user/me.wav", "ref_text": "olá tudo bem",
+            #    "ref_lang": "pt"}   ->   clone a Portuguese voice speaking English
+            reference = SpeakerReference(
+                audio=speaker_reference or self._cfg_opt(
+                    None, "speaker_reference", "ref_wav", "clone_voice"),
+                text=speaker_reference_text or self._cfg_opt(
+                    None, "speaker_reference_text", "ref_text"),
+                lang=speaker_reference_lang or self._cfg_opt(
+                    None, "speaker_reference_lang", "ref_lang"))
             synth_params = SynthesisConfig(
                 # speaker selection for multi-speaker voices (e.g. the Catalan
                 # multiaccent matxa model). ``speaker_id`` (int) or ``speaker``
                 # (name via the voice's speaker_id_map); ignored by single-speaker
                 # voices, which only have speaker 0.
-                speaker_id=self._resolve_speaker(
+                speaker=self._resolve_speaker(
                     voice_info, speaker_id if speaker_id is not None else speaker),
-                enable_phonetic_spellings=self._cfg_opt(
+                phonetic_spellings=self._cfg_opt(
                     voice_info.config.enable_phonetic_spellings
                     if hasattr(voice_info.config, "enable_phonetic_spellings") else True,
                     "enable_phonetic_spellings", "enable_phonetic_spelling"),
-                add_diacritics=self._cfg_opt(
-                    voice_info.config.add_diacritics,  # arabic and hebrew only
-                    "add_diacritics"),
+                stages=Stages(
+                    diacritize=self._cfg_opt(
+                        voice_info.config.add_diacritics,  # arabic and hebrew only
+                        "add_diacritics"),
+                    chunk=self._cfg_opt(None, "chunk")),
                 noise_scale=float(noise_scale) if noise_scale is not None else self._cfg_opt(
                     None,  # unset: the loaded voice's own default
                     "noise_scale", "noise-scale"),
@@ -461,24 +477,14 @@ class PhoonnxTTSPlugin(TTS):
                 noise_w_scale=float(noise_w_scale) if noise_w_scale is not None else self._cfg_opt(
                     None,  # unset: the loaded voice's own default
                     "noise_w_scale", "noise_w", "noise-w"),
-                # zero-shot voice cloning. A path to a reference wav; cloning engines turn
-                # it into the conditioning signal. In-context engines (ZipVoice) also need
-                # the reference's transcription + its language, e.g.:
-                #   {"ref_wav": "/home/user/me.wav", "ref_text": "olá tudo bem",
-                #    "ref_lang": "pt"}   ->   clone a Portuguese voice speaking English
-                speaker_reference=speaker_reference or self._cfg_opt(
-                    None, "speaker_reference", "ref_wav", "clone_voice"),
-                speaker_reference_text=speaker_reference_text or self._cfg_opt(
-                    None, "speaker_reference_text", "ref_text"),
-                speaker_reference_lang=speaker_reference_lang or self._cfg_opt(
-                    None, "speaker_reference_lang", "ref_lang"),
+                reference=reference if reference != SpeakerReference() else None,
                 # optional post-synthesis audio super-resolution (audiosronnx), off unless
                 # switched on in mycroft.conf. The core TTSVoice loads the engine lazily and
                 # upscales each chunk; synthesize_wav takes the sample rate from the first
                 # chunk, so the WAV header follows.
-                super_resolution=bool(self._cfg_opt(False, "super_resolution")),
-                super_resolution_model=self._cfg_opt(None, "super_resolution_model"),
-                chunk=self._cfg_opt(None, "chunk"),
+                audio=AudioPost(
+                    super_resolution=bool(self._cfg_opt(False, "super_resolution")),
+                    super_resolution_model=self._cfg_opt(None, "super_resolution_model")),
             )
             # Written beside the target and moved into place only once the
             # synthesis has finished. Opening the target directly creates it

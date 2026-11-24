@@ -8,6 +8,7 @@ Covers:
 """
 import pytest
 from scriptconv.phonemizers.base import BasePhonemizer
+from phoonnx.config import AudioPost
 
 
 
@@ -245,8 +246,7 @@ def test_voice_diacritization_delegates_to_scriptconv():
         return _Tashkeel()
 
     with patch.object(scd, "_tashkeel", tashkeel):
-        list(voice.synthesize("نص", SynthesisConfig(alphabet=Alphabet.GRAPHEMES,
-                                                     normalize_audio=False)))
+        list(voice.synthesize("نص", SynthesisConfig(input_alphabet=Alphabet.GRAPHEMES, audio=AudioPost(normalize=False))))
     assert seen == {"text": "نص", "model": "rawi-ensemble"}
     assert voice.phonemizer.seen == ["نصَ"]
 
@@ -291,7 +291,7 @@ def test_phonemic_input_transcodes_to_model_alphabet_via_scriptconv():
     with the deleted phoonnx-side conversion module."""
     from phoonnx.config import Alphabet, SynthesisConfig
     voice = _phonemic_voice(Alphabet.ARPA)
-    out = list(voice.prepare("S@", SynthesisConfig(alphabet=Alphabet.XSAMPA)))
+    out = list(voice.prepare("S@", SynthesisConfig(input_alphabet=Alphabet.XSAMPA)))
     assert [list(utterance.symbols) for utterance in out] == [["SH", "AX"]]
 
 
@@ -299,7 +299,7 @@ def test_phonemic_input_same_alphabet_passes_through_unchanged():
     """src == tgt is a no-op route: the text reaches _phonemic_chunks untouched."""
     from phoonnx.config import Alphabet, SynthesisConfig
     voice = _phonemic_voice(Alphabet.ARPA)
-    out = list(voice.prepare("SH AX", SynthesisConfig(alphabet=Alphabet.ARPA)))
+    out = list(voice.prepare("SH AX", SynthesisConfig(input_alphabet=Alphabet.ARPA)))
     assert [list(utterance.symbols) for utterance in out] == [["SH", "AX"]]
 
 
@@ -308,7 +308,7 @@ def test_unroutable_phonemic_pair_passes_text_through():
     through unchanged rather than raising (best-effort, matching the old BFS)."""
     from phoonnx.config import Alphabet, SynthesisConfig
     voice = _phonemic_voice(Alphabet.ARPA)
-    out = list(voice.prepare("abc", SynthesisConfig(alphabet=Alphabet.HANGUL)))
+    out = list(voice.prepare("abc", SynthesisConfig(input_alphabet=Alphabet.HANGUL)))
     assert [list(utterance.symbols) for utterance in out] == [["abc"]]
 
 
@@ -333,6 +333,5 @@ def test_hebrew_diacritizer_model_carries_the_phonikud_path():
         return _Phonikud()
 
     with patch.object(scd, "_phonikud", phonikud):
-        list(voice.synthesize("שלום", SynthesisConfig(alphabet=Alphabet.GRAPHEMES,
-                                                      normalize_audio=False)))
+        list(voice.synthesize("שלום", SynthesisConfig(input_alphabet=Alphabet.GRAPHEMES, audio=AudioPost(normalize=False))))
     assert seen == {"text": "שלום", "model": "/models/phonikud.onnx"}

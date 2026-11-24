@@ -36,11 +36,11 @@ m = TTSModelManager()
 m.merge_default_voices()
 voice = m.voices["hf_community/mush42/optispeech-lightspeech-en-us-emily"].load()
 for chunk in voice.synthesize("Hello from OptiSpeech.",
-                              SynthesisConfig(extra_params={"d_factor": 0.9})):
+                              SynthesisConfig(extra={"d_factor": 0.9})):
     audio = chunk.audio_float_array
 ```
 
-`d_factor`, `p_factor` and `e_factor` scale the duration, the pitch and the energy. Pass them in `SynthesisConfig.extra_params`.
+`d_factor`, `p_factor` and `e_factor` scale the duration, the pitch and the energy. Pass them in `SynthesisConfig.extra`.
 
 ## Read the embedded metadata
 

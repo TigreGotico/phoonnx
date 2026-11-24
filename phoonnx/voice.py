@@ -30,7 +30,7 @@ from scriptconv.frontend import Stages, TextFrontend
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
-from phoonnx.config import VoiceConfig, SynthesisConfig, Alphabet, PhonemeType, _voice_phonemizer, \
+from phoonnx.config import VoiceConfig, SynthesisConfig, SpeakerReference, Alphabet, _LegacyId, PhonemeType, _voice_phonemizer, \
     _removal_version, check_lang_supported, get_text_casing, voice_frontend, without_normalizer
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
@@ -232,16 +232,16 @@ def level_audio(audio: np.ndarray, syn_config: "SynthesisConfig", sample_rate: i
     global _LOUDNESS_WARNED
     if not audio.size:
         return audio
-    if syn_config.target_loudness is not None:
+    if syn_config.audio.target_loudness is not None:
         try:
             from phoonnx.audio_fx import normalize_loudness
-            return normalize_loudness(audio, float(syn_config.target_loudness), rate=sample_rate)
+            return normalize_loudness(audio, float(syn_config.audio.target_loudness), rate=sample_rate)
         except ImportError:
             if not _LOUDNESS_WARNED:
                 _LOUDNESS_WARNED = True
                 LOG.warning("target_loudness needs scipy, which is not installed: "
                             "using peak normalization")
-    if syn_config.normalize_audio:
+    if syn_config.audio.normalize:
         max_val = np.max(np.abs(audio))
         if max_val < 1e-8:
             # Prevent division by zero
@@ -332,7 +332,7 @@ class TTSVoice:
 
     _sr_engine: Any = field(default=None, init=False, repr=False)
     _sr_loaded: bool = field(default=False, init=False, repr=False)
-    # Post-synthesis voice-conversion state (``SynthesisConfig.vc_reference``).
+    # Post-synthesis voice-conversion state (``SynthesisConfig.audio.voice_conversion``).
     # ``(key, conversion)`` in one attribute, where ``key`` is the (engine,
     # reference content) the ``_VoiceConversion`` was built for. A later call naming
     # a different engine or target speaker, or the same path holding a different
@@ -718,11 +718,13 @@ class TTSVoice:
 
     def _with_voice_defaults(self, syn_config: SynthesisConfig) -> SynthesisConfig:
         """*syn_config* with the voice's own text settings where it sets none."""
-        diacritize = syn_config.add_diacritics
+        stages = syn_config.stages
+        diacritize = stages.diacritize
         if diacritize is None:
             diacritize = self.config.add_diacritics
-        return replace(syn_config, add_diacritics=diacritize,
-                       diacritizer_model=syn_config.diacritizer_model or self.config.diacritizer_model)
+        return replace(syn_config, stages=replace(
+            stages, diacritize=diacritize,
+            diacritizer_model=stages.diacritizer_model or self.config.diacritizer_model))
 
     def _stages(self, syn_config: SynthesisConfig) -> Stages:
         """The text stages of one synthesis call: an explicit setting wins, then the voice's own."""
@@ -820,8 +822,8 @@ class TTSVoice:
         This is the text half of :meth:`synthesize`. It applies the phonetic
         spellings and reads the text through :attr:`frontend` with the stages of
         *config*. :attr:`encoder` turns each chunk into ids, a sentence unless
-        ``config.chunk`` names another size. Input in a phonemic alphabet
-        (``config.alphabet``) is converted to the voice's alphabet, is not
+        ``config.stages.chunk`` names another size. Input in a phonemic alphabet
+        (``config.input_alphabet``) is converted to the voice's alphabet, is not
         phonemized, and goes to ``encoder.encode_symbols``.
 
         The method is a generator, so the second chunk is read only after
@@ -834,10 +836,10 @@ class TTSVoice:
         config = self._with_voice_defaults(config or SynthesisConfig())
         LOG.debug("text=%s", text)
         spoken = text
-        if self.phonetic_spellings and config.enable_phonetic_spellings:
+        if self.phonetic_spellings and config.phonetic_spellings:
             spoken = self.phonetic_spellings.apply(spoken)
 
-        src_alphabet = config.alphabet if config.alphabet is not None else Alphabet.GRAPHEMES
+        src_alphabet = config.input_alphabet if config.input_alphabet is not None else Alphabet.GRAPHEMES
         if src_alphabet == Alphabet.GRAPHEMES:
             spoken = self._inline_blocks(spoken, self.config.alphabet)
             if self.adapter.READS_TEXT is True:
@@ -860,8 +862,8 @@ class TTSVoice:
         """
         Lazily load the audio super-resolution engine when enabled in ``syn_config``.
 
-        Reads ``syn_config.super_resolution`` (a bool) and
-        ``syn_config.super_resolution_model`` (the ``audiosronnx`` engine name).
+        Reads ``syn_config.audio.super_resolution`` (a bool) and
+        ``syn_config.audio.super_resolution_model`` (the ``audiosronnx`` engine name).
         Disabled — the default — is a strict no-op: ``audiosronnx`` is never imported
         and synthesis is untouched. When explicitly enabled, ``audiosronnx`` is
         imported lazily and the chosen engine is loaded once and cached on the
@@ -871,19 +873,19 @@ class TTSVoice:
         Returns:
             The loaded SR engine, or None when disabled.
         """
-        if not syn_config.super_resolution:
+        if not syn_config.audio.super_resolution:
             return None
         if self._sr_loaded:
             return self._sr_engine
 
-        engine = syn_config.super_resolution_model or "novasr"
+        engine = syn_config.audio.super_resolution_model or "novasr"
         try:
             from audiosronnx import load_sr
         except ImportError as e:
             raise ImportError(
-                "super_resolution is enabled but 'audiosronnx' is not installed; "
+                "audio.super_resolution is enabled but 'audiosronnx' is not installed; "
                 "install it with `pip install phoonnx[audiosr]` (or set "
-                "super_resolution=False)") from e
+                "audio.super_resolution=False)") from e
 
         self._sr_engine = load_sr(engine=engine)
         self._sr_loaded = True
@@ -915,9 +917,9 @@ class TTSVoice:
     def _load_voice_conversion(
             self, syn_config: SynthesisConfig) -> Optional[_VoiceConversion]:
         """
-        Lazily build the ``voiceclonnx`` cloner for ``syn_config.vc_reference``.
+        Lazily build the ``voiceclonnx`` cloner for ``syn_config.audio.voice_conversion``.
 
-        Disabled — ``vc_reference is None``, the default — is a strict no-op:
+        Disabled — no reference, the default — is a strict no-op:
         ``voiceclonnx`` is never imported and synthesis is untouched. When enabled,
         the cloner and its materialized reference WAV are cached as one
         :class:`_VoiceConversion`, so repeated calls naming the same target speaker
@@ -927,7 +929,7 @@ class TTSVoice:
 
         The reference is normalised by
         :func:`phoonnx.reference_audio.load_reference_audio`, the same guarded
-        loader ``speaker_reference`` uses, so URLs are fetched under its address and
+        loader ``reference`` uses, so URLs are fetched under its address and
         size limits and non-WAV clips are decoded rather than handed to voiceclonnx
         raw. The cache is keyed on the resulting *samples*, not on the path or URL
         that produced them, because a path is not a stable identity for a
@@ -944,15 +946,16 @@ class TTSVoice:
         Returns:
             The :class:`_VoiceConversion` to convert with, or None when disabled.
         """
-        ref = syn_config.vc_reference
+        target = syn_config.audio.voice_conversion
+        ref = None if target is None else target.audio
         if ref is None:
             return None
 
-        engine = syn_config.vc_engine or "openvoice"
+        engine = syn_config.audio.voice_conversion_engine or "openvoice"
         if isinstance(ref, (str, Path)) and not str(ref).lower().startswith(
                 ("http://", "https://")) and not os.path.isfile(str(ref)):
             raise FileNotFoundError(
-                f"vc_reference points at no readable file: {str(ref)!r}")
+                f"audio.voice_conversion points at no readable file: {str(ref)!r}")
 
         audio, sr = load_reference_audio(ref)
         key = (engine, hashlib.sha1(audio.tobytes()).hexdigest(), int(sr))
@@ -964,9 +967,9 @@ class TTSVoice:
             from voiceclonnx import VoiceCloner
         except ImportError as e:
             raise ImportError(
-                "vc_reference is set but 'voiceclonnx' is not installed; "
+                "audio.voice_conversion is set but 'voiceclonnx' is not installed; "
                 "install it with `pip install phoonnx[vc]` (or set "
-                "vc_reference=None)") from e
+                "audio.voice_conversion=None)") from e
 
         cloner = VoiceCloner(engine=engine)
         fd, ref_path = tempfile.mkstemp(prefix="phoonnx_vc_ref_", suffix=".wav")
@@ -1037,7 +1040,7 @@ class TTSVoice:
 
         Parameters:
             text (str): The input text to synthesize.
-            syn_config (Optional[SynthesisConfig]): Optional synthesis options (e.g., enable_phonetic_spellings, add_diacritics, normalize_audio, volume). If omitted, a default SynthesisConfig is used.
+            syn_config (Optional[SynthesisConfig]): Optional synthesis options (e.g., phonetic_spellings, stages, audio). If omitted, a default SynthesisConfig is used.
             include_alignments (bool): When True, and the model exposes a
                 per-phoneme duration output, each yielded AudioChunk also carries
                 ``phoneme_id_samples`` and reconstructed ``phoneme_alignments``.
@@ -1071,7 +1074,7 @@ class TTSVoice:
             config = SynthesisConfig()
         sr_engine = self._load_super_resolution(config)
         vc = self._load_voice_conversion(config)
-        whole_sentence = (config.normalize_audio or config.target_loudness is not None
+        whole_sentence = (config.audio.normalize or config.audio.target_loudness is not None
                           or sr_engine is not None or vc is not None)
         for utterance in self.prepare(text, config):
             if whole_sentence:
@@ -1092,7 +1095,7 @@ class TTSVoice:
 
         The engine reads the ids and streams of *utterance* with the engine
         settings of *config*. The audio is then levelled, scaled by
-        ``config.volume`` and clipped to [-1, 1]. Voice conversion and
+        ``config.audio.volume`` and clipped to [-1, 1]. Voice conversion and
         super-resolution run last, when *config* asks for them, and the chunk
         reports the sample rate that they give.
 
@@ -1159,13 +1162,13 @@ class TTSVoice:
 
     @staticmethod
     def _with_params(syn_config: SynthesisConfig, utterance: Utterance) -> SynthesisConfig:
-        """*syn_config* with the params of *utterance* joined to its ``extra_params``."""
+        """*syn_config* with the params of *utterance* joined to its ``extra``."""
         if not utterance.params:
             return syn_config
-        return replace(syn_config, extra_params={**syn_config.extra_params, **utterance.params})
+        return replace(syn_config, extra={**syn_config.extra, **utterance.params})
 
     def _level(self, audio: np.ndarray, syn_config: SynthesisConfig) -> np.ndarray:
-        """The engine's *audio* levelled, scaled by ``syn_config.volume`` and clipped to [-1, 1].
+        """The engine's *audio* levelled, scaled by ``syn_config.audio.volume`` and clipped to [-1, 1].
 
         Raises :class:`NonFiniteAudioError` when the engine returned NaN or inf, which
         the int16 cast would write as silence.
@@ -1173,8 +1176,8 @@ class TTSVoice:
         if not np.isfinite(audio).all():
             raise NonFiniteAudioError(self.model_path or "<voice>")
         audio = level_audio(audio, syn_config, self.config.sample_rate)
-        if syn_config.volume != 1.0:
-            audio = audio * syn_config.volume
+        if syn_config.audio.volume != 1.0:
+            audio = audio * syn_config.audio.volume
         return np.clip(audio, -1.0, 1.0).astype(np.float32)
 
     def _alignment_model_path(self) -> Optional[Path]:
@@ -1393,10 +1396,10 @@ class TTSVoice:
             if piece.rate != 1.0:
                 settings["length_scale"] = base_length / piece.rate
             if piece.volume != 1.0:
-                settings["volume"] = base.volume * piece.volume
+                settings["audio"] = replace(base.audio, volume=base.audio.volume * piece.volume)
             lang_id = self._lang_id_for(piece.voice_lang or piece.lang)
             if lang_id is not None:
-                settings["lang_id"] = lang_id
+                settings["language"] = lang_id
             piece_config = replace(base, **settings) if settings else base
             if rate is not None:
                 # The silence and the marks ahead of this speech do not wait for it to be made: a
@@ -1477,6 +1480,15 @@ class TTSVoice:
             samples = audio_fx.compress(samples, chunk.sample_rate)
         return replace(chunk, audio_float_array=samples,
                        _audio_int16_array=None, _audio_int16_bytes=None)
+
+    def _speaker_id(self, speaker: Optional[Union[int, str]]) -> Optional[Union[int, str]]:
+        """The speaker that the engine gets: the id of a name in the voice's
+        ``speaker_id_map``, or else *speaker* as it is. An engine with its own
+        speaker names, such as Magpie, reads a name that the map lacks."""
+        if isinstance(speaker, str) and not isinstance(speaker, _LegacyId) \
+                and speaker in self.config.speaker_id_map:
+            return int(self.config.speaker_id_map[speaker])
+        return speaker
 
     def _lang_id_for(self, tag: Optional[str]) -> Optional[int]:
         """The language id of a multilingual voice for *tag*, or None (monolingual, or unknown)."""
@@ -1568,20 +1580,21 @@ class TTSVoice:
         if syn_config.noise_w_scale is not None:
             params["noise_w_scale"] = syn_config.noise_w_scale
         # Engine-specific extras from SynthesisConfig
-        params.update(syn_config.extra_params)
+        params.update(syn_config.extra)
         # An engine with a speed key of its own gets it from the length scale,
         # unless the voice config or the call names that key itself.
         if "length_scale" in params:
-            named = {**self.config.engine_params, **syn_config.extra_params}
+            named = {**self.config.engine_params, **syn_config.extra}
             params.update({key: value for key, value
                            in self.adapter.length_scale_params(params["length_scale"]).items()
                            if key not in named})
         # Voice cloning: hand the cloning adapter the reference clip and — for
         # in-context engines (ZipVoice) — the prompt tokens of its transcription.
-        if syn_config.speaker_reference is not None:
-            params["reference_audio"] = load_reference_audio(syn_config.speaker_reference)
-        if syn_config.speaker_reference_text:
-            reference_text, reference_lang = syn_config.speaker_reference_text, syn_config.speaker_reference_lang
+        reference = syn_config.reference or SpeakerReference()
+        if reference.audio is not None:
+            params["reference_audio"] = load_reference_audio(reference.audio)
+        if reference.text:
+            reference_text, reference_lang = reference.text, reference.lang
             params["prompt_tokens"] = self._prompt_token_ids(reference_text, reference_lang)
             # The text, for text-token adapters (OmniVoice, Spark-TTS) that tokenize the
             # reference transcription themselves. It is normalised as the target text is,
@@ -1602,15 +1615,18 @@ class TTSVoice:
                 raise ValueError(f"side stream {name!r} has {len(values)} values for {len(phoneme_ids)} phoneme ids")
             side_streams[name] = np.array([values], dtype=np.int64)
 
-        speaker_id = syn_config.speaker_id
+        speaker_id = self._speaker_id(syn_config.speaker)
         if speaker_id is None and self.config.num_speakers > 1:
             speaker_id = self.config.default_speaker_id
+        language_id = syn_config.language
+        if isinstance(language_id, str) and not isinstance(language_id, _LegacyId):
+            language_id = self._lang_id_for(language_id)
 
         return AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,
             phoneme_lengths=phoneme_ids_lengths,
             speaker_id=speaker_id,
-            language_id=syn_config.lang_id,
+            language_id=language_id,
             params=params,
             text=text,
             **side_streams,

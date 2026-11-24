@@ -64,7 +64,7 @@ def _voice(lang, phoneme_type=PhonemeType.UNICODE, alphabet=Alphabet.UNICODE,
 
 def _prepared(voice, text, syn_config=None):
     """The utterances of one synthesis call, before the user's phonetic spellings."""
-    return list(voice.prepare(text, replace(syn_config or SynthesisConfig(), enable_phonetic_spellings=False)))
+    return list(voice.prepare(text, replace(syn_config or SynthesisConfig(), phonetic_spellings=False)))
 
 
 def _synthesis_phonemes(voice, text, syn_config=None):
@@ -162,7 +162,7 @@ class TestTextTokenEngines(unittest.TestCase):
         voice = _voice("ar", PhonemeType.GRAPHEMES, Alphabet.GRAPHEMES, add_diacritics=True)
         seen = []
         with _recording_tashkeel(seen):
-            encoded = _encoded_text(voice, ARABIC_DIGITS, SynthesisConfig(add_diacritics=False))
+            encoded = _encoded_text(voice, ARABIC_DIGITS, SynthesisConfig(stages=Stages(diacritize=False)))
         self.assertEqual(seen, [])
         self.assertEqual(encoded, normalize(ARABIC_DIGITS, "ar"))
 
@@ -203,7 +203,7 @@ class TestPerCallSettings(unittest.TestCase):
         text = "عندي 3 قطط"
         seen = []
         with _recording_tashkeel(seen):
-            phonemes = _synthesis_phonemes(voice, text, SynthesisConfig(add_diacritics=True))
+            phonemes = _synthesis_phonemes(voice, text, SynthesisConfig(stages=Stages(diacritize=True)))
         self.assertEqual(seen, [normalize(text, "ar")])
         self.assertEqual(phonemes, [list(normalize(text, "ar") + "َ")])
 
@@ -216,7 +216,7 @@ class TestPerCallSettings(unittest.TestCase):
             return _RecordingDiacritizer([])
 
         with patch.object(scd, "_tashkeel", tashkeel):
-            _synthesis_phonemes(voice, "قطط", SynthesisConfig(diacritizer_model="call-model"))
+            _synthesis_phonemes(voice, "قطط", SynthesisConfig(stages=Stages(diacritizer_model="call-model")))
             _synthesis_phonemes(voice, "قطط")
         self.assertEqual(models, ["call-model", "voice-model"])
 
@@ -240,7 +240,7 @@ class TestNormaliser(unittest.TestCase):
     def test_a_shami_voice_runs_the_hook(self):
         voice = _voice("ar", PhonemeType.SHAMI, Alphabet.IPA)
         text = "عندي 12 قطة"
-        self.assertEqual(_synthesis_phonemes(voice, text, SynthesisConfig(add_diacritics=False)),
+        self.assertEqual(_synthesis_phonemes(voice, text, SynthesisConfig(stages=Stages(diacritize=False))),
                          ShamiPhonemizer().phonemize(normalize(text, "ar"), "ar"))
         self.assertNotEqual(normalize(text, "ar"), text)
 

@@ -26,7 +26,7 @@ Three properties of the model shape this adapter. Upstream's
   each piece again.
 * The audio can peak above 1.0. The adapter scales each sentence down to a
   peak of 0.99. phoonnx levels each sentence afterwards when
-  ``normalize_audio`` is on, so the limit matters only with it off.
+  ``audio.normalize`` is on, so the limit matters only with it off.
 
 Durations come back for the request's tokens. The frames of an added full
 stop go to ``<eos>``. A cut sentence returns no durations.

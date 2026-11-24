@@ -103,9 +103,9 @@ class _Voice:
 
 
 class _Syn:
-    def __init__(self, extra_params=None, speaker_id=None):
-        self.extra_params = extra_params or {}
-        self.speaker_id = speaker_id
+    def __init__(self, extra=None, speaker=None):
+        self.extra = extra or {}
+        self.speaker = speaker
 
 
 # ----------------------------------------------------------------------
@@ -158,10 +158,19 @@ def test_voice_precedence_call_over_config_over_default():
 
 
 def test_speaker_id_maps_back_to_a_name():
-    """A plain speaker_id must reach the model as the *name*, via speaker_id_map."""
+    """A speaker id must reach the model as the *name*, via speaker_id_map."""
     a = _adapter()
     cfg = _Cfg(speaker_id_map={v: i for i, v in enumerate(EN_VOICES)})
-    assert a.resolve_voice(_Voice(cfg), _Syn(speaker_id=3)) == "leo"
+    assert a.resolve_voice(_Voice(cfg), _Syn(speaker=3)) == "leo"
+
+
+def test_a_1x_speaker_id_string_is_an_index_as_in_1x():
+    from phoonnx.config import SynthesisConfig
+    a = _adapter()
+    cfg = _Cfg(speaker_id_map={v: i for i, v in enumerate(EN_VOICES)})
+    with pytest.warns(DeprecationWarning):
+        syn = SynthesisConfig(speaker_id="3")
+    assert a.resolve_voice(_Voice(cfg), syn) == "leo"
 
 
 def test_unknown_voice_is_rejected():
@@ -345,7 +354,7 @@ def test_synthesize_rejects_a_bare_reference_clip():
     with pytest.raises(RuntimeError, match="do not clone") as err:
         a.synthesize(req, _FakeSession(_logits_emitting([END_OF_SPEECH])))
     message = str(err.value)
-    assert "extra_params={'voice': ...}" in message
+    assert "extra={'voice': ...}" in message
     assert "speaker_reference" not in message.replace("a speaker reference", "")
 
 

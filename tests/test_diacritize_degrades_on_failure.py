@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 import scriptconv.diacritics as scd
-from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig
+from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig, AudioPost
 from phoonnx.voice import TTSVoice
 from scriptconv.phonemizers.base import BasePhonemizer
 
@@ -50,7 +50,7 @@ def _make_voice():
 class TestDiacritizeDegradesOnFailure(unittest.TestCase):
     def test_diacritize_failure_degrades_to_unstressed_text_with_warning(self):
         voice = _make_voice()
-        syn_config = SynthesisConfig(alphabet=Alphabet.GRAPHEMES, normalize_audio=False)
+        syn_config = SynthesisConfig(input_alphabet=Alphabet.GRAPHEMES, audio=AudioPost(normalize=False))
 
         def _raise(*_, **__):
             raise RuntimeError("UnsupportedLanguageError('ru-RU')")
