@@ -12,6 +12,7 @@ three times must never be retried.
 import csv
 import json
 import unittest
+import warnings
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
@@ -344,6 +345,22 @@ class TestScorerDeterminism(unittest.TestCase):
             for i in range(3):
                 self.assertEqual((w1 / f"utt{i:02d}.wav").read_bytes(),
                                  (w2 / f"utt{i:02d}.wav").read_bytes())
+
+
+class TestBuildEncoder(unittest.TestCase):
+    def test_builds_its_frontend_without_a_deprecated_api(self):
+        from phoonnx.version import VERSION_STR
+        from phoonnx_train.evaluation.scorer import build_encoder, text_to_ids
+
+        # the native config.json that preprocess writes
+        config = {"phoonnx_version": VERSION_STR,
+                  "phoneme_type": "graphemes", "alphabet": "unicode", "lang_code": "en",
+                  "phoneme_id_map": {"_": [0], "^": [1], "$": [2], "h": [3], "i": [4]}}
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            frontend, tokenizer, lang, _, _ = build_encoder(config)
+            phonemes, _ = text_to_ids("hi", frontend, tokenizer, lang)
+        self.assertEqual(phonemes, ["h", "i"])
 
 
 # ---------------------------------------------------------------------------
