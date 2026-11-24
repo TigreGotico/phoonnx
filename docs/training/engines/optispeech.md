@@ -4,90 +4,47 @@
 covers: how to load an OptiSpeech voice, control duration, pitch and energy, and train one
 source: phoonnx/engines/optispeech.py, phoonnx/engines/optispeech_config.py, phoonnx_train/engines/optispeech.py, phoonnx/voice_index/optispeech.json
 generated: no
-verify: pytest tests/test_optispeech.py tests/test_optispeech_training.py; the preset table: none, checked by reading phoonnx_train/engines/optispeech.py:_QUALITY_PRESETS
+verify: .venv/bin/python -c "import re,sys,json; from phoonnx.engines.optispeech import OptiSpeechAdapter as A; from phoonnx_train.engines.optispeech import _QUALITY_PRESETS as Q; p=open('docs/training/engines/optispeech.md').read().replace(chr(96),''); d={k:float(v) for k,v in re.findall(r'^\| ([a-z_]+) \| ([\d.]+) \| [A-Z]',p,re.M)}; q={r[0]:tuple(map(int,r[1:])) for r in re.findall(r'^\| ([\w-]+) \| (\d+) \| (\d+) / (\d+) \| (\d+) / (\d+) \|',p,re.M)}; ids=set(re.findall(r'^\| (hf_community/[\w/-]+) \|',p,re.M)); sys.exit(0 if d==A().default_params() and q=={k:(v['dim'],v['encoder_num_layers'],v['decoder_num_layers'],v['vocoder_dim'],v['vocoder_num_layers']) for k,v in Q.items()} and ids==set(json.load(open('phoonnx/voice_index/optispeech.json'))) else 1)"
 see: ../training.md, ../export.md, ../../engines.md
 -->
 
-This page explains how to load and train OptiSpeech voices, for integrators and voice builders.
-
-> Related: [adapter architecture](../../engines.md) ·
-> [configuration](../../configuration.md) ·
-> [training reference](../training.md)
+This page shows how to load an OptiSpeech voice, set its rate, pitch and energy, and train and export your own model.
 
 ## What it is
 
-OptiSpeech is a non-autoregressive, **FastSpeech2-style** TTS: an acoustic model
-with explicit duration / pitch / energy prediction and a GAN vocoder, exported
-as a **single ONNX file** that outputs the waveform directly (no separate
-vocoder stage). It embeds **all of its config inside the ONNX metadata** (no
-external config file needed).
+OptiSpeech is a non-autoregressive TTS in the FastSpeech2 family. It has an acoustic model with explicit duration, pitch and energy prediction, and a GAN vocoder. The export is one ONNX file that outputs the waveform, so there is no separate vocoder. The file also holds its whole config in the ONNX metadata.
 
-## When to pick it
+Pick OptiSpeech for a one-file voice with per-call control of speaking rate, pitch and energy.
 
-Choose OptiSpeech when you want a single-file, end-to-end voice (no vocoder to
-manage) with fine per-call control over speaking rate, pitch and energy — for
-example the English LightSpeech / ConvNeXt-TTS voices below.
+## Install
 
-## Extras needed
+Inference needs only the phonemizer of the voice. The indexed English voices phonemize with espeak:
 
-Inference needs no engine-specific extra beyond a phonemizer. English voices
-phonemize with espeak (`pip install phoonnx[espeak]`); Arabic-buckwalter voices
-run in grapheme mode (see Gotchas).
-
-## Inference contract
-
-OptiSpeech uses a different ONNX I/O contract from VITS.
-
-### ONNX inputs
-
-| Name | Type | Shape | Description |
-|------|------|-------|-------------|
-| `x` | int64 | `[B, T]` | Phoneme IDs |
-| `x_lengths` | int64 | `[B]` | Sequence lengths |
-| `scales` | float32 | `[3]` | `[d_factor, p_factor, e_factor]` |
-| `sids` | int64 | `[B]` | Speaker IDs (optional, multi-speaker) |
-| `lids` | int64 | `[B]` | Language IDs (optional, multi-language) |
-
-### ONNX outputs
-
-| Name | Type | Shape | Description |
-|------|------|-------|-------------|
-| `wav` | float32 | `[B, 1, T]` | Waveform |
-| `wav_lengths` | int64 | `[B]` | Sample counts |
-| `durations` | int64 | `[B, T_text]` | Per-phoneme durations |
-
-> The `scales` tensor differs from VITS, where it packs
-> `[noise_scale, length_scale, noise_w_scale]`. OptiSpeech shares the
-> `x` / `x_lengths` / `scales` input names with Matcha-TTS, so the adapter is
-> probed **before** Matcha — it is identified by its embedded metadata and
-> `wav` / `durations` outputs.
-
-Parameters:
-
-| Param | Default | Description |
-|-------|---------|-------------|
-| `d_factor` | 1.0 | Duration scale — speaking rate (>1 slower, <1 faster) |
-| `p_factor` | 1.0 | Pitch scale |
-| `e_factor` | 1.0 | Energy scale |
-
-Pass them per call via `SynthesisConfig.extra_params`:
-
-```python
-voice.synthesize("hello", SynthesisConfig(extra_params={"d_factor": 0.9}))
+```bash
+pip install --pre "phoonnx[espeak]"
 ```
 
-## Obtaining
+## Load an indexed voice
 
-### Embedded metadata → native config
+The OptiSpeech voices are in `phoonnx/voice_index/optispeech.json`. They mirror [`mush42/optispeech`](https://huggingface.co/mush42/optispeech), and each voice has its own Hub repository under `Phoonnx/` with `model.onnx` and a native `config.json`.
 
-OptiSpeech stores its config inside the ONNX model under the `inference`
-metadata key (a JSON blob): `sample_rate`, `input_symbols` (symbol→id),
-`special_symbols`, `text_processor` (`add_blank` / `add_bos_eos` / `tokenizer`),
-`speakers` and `languages`.
-`phoonnx.engines.optispeech_config.voice_config_from_optispeech_meta` converts
-that metadata into a native phoonnx `VoiceConfig` (folding `input_symbols` into
-the tokenizer `phoneme_id_map` and honouring the `add_blank` / `add_bos_eos`
-flags):
+```python
+from phoonnx.config import SynthesisConfig
+from phoonnx.model_manager import TTSModelManager
+
+m = TTSModelManager()
+m.merge_default_voices()
+voice = m.voices["hf_community/mush42/optispeech-lightspeech-en-us-emily"].load()
+for chunk in voice.synthesize("Hello from OptiSpeech.",
+                              SynthesisConfig(extra_params={"d_factor": 0.9})):
+    audio = chunk.audio_float_array
+```
+
+`d_factor`, `p_factor` and `e_factor` scale the duration, the pitch and the energy. Pass them in `SynthesisConfig.extra_params`.
+
+## Read the embedded metadata
+
+OptiSpeech stores its config in the ONNX model under the `inference` metadata key, as JSON: `sample_rate`, `input_symbols` (symbol to ID), `special_symbols`, `text_processor` (`add_blank`, `add_bos_eos`, `tokenizer`), `speakers` and `languages`. `voice_config_from_optispeech_meta` turns that metadata into a native `VoiceConfig`. It puts `input_symbols` into the tokenizer `phoneme_id_map` and applies the `add_blank` and `add_bos_eos` flags:
 
 ```python
 import onnxruntime as ort
@@ -99,122 +56,104 @@ meta = OptiSpeechAdapter().parse_onnx_meta(sess)
 config = voice_config_from_optispeech_meta(meta)
 ```
 
-The mirrored voices ship this as a **native `config.json`** alongside the model,
-so they load through the standard path — `engine: optispeech` routes to
-`OptiSpeechAdapter` with no runtime metadata extraction.
+The indexed voices ship this native `config.json` beside the model. `engine: optispeech` selects `OptiSpeechAdapter`, and the voice loads through the standard path.
 
-### Voice index
+The tokenizer name in `text_processor` selects the phonemizer. For `arabic-buck`, the config builder sets `phoneme_type: graphemes`, so the voice does not phonemize. For any other name, it sets espeak (`alphabet: ipa`). The `add_blank` and `add_bos_eos` flags also come from the metadata, so phoonnx feeds the token sequence that the model was trained on.
 
-OptiSpeech voices ship in `phoonnx/voice_index/optispeech.json`, mirrored under
-`Phoonnx/phoonnx-optispeech` (each subfolder = `model.onnx` + native
-`config.json`):
+## Train a model
 
-```python
-from phoonnx.model_manager import TTSModelManager
+OptiSpeech trains on the standard phoonnx preprocessed dataset. The model code is in `phoonnx_train/optispeech/`, and a quality preset sets the whole model, with no other config file.
 
-m = TTSModelManager(); m.merge_default_voices()
-voice = m.voices["hf_community/mush42/optispeech-lightspeech-en-us-emily"].load()
-for chunk in voice.synthesize("Hello from OptiSpeech."):
-    ...   # chunk.audio_float_array
-```
+1. Install the engine extra:
 
-Current entries (mirror of [`mush42/optispeech`](https://huggingface.co/mush42/optispeech), 24 kHz, en-US):
+   ```bash
+   pip install --pre "phoonnx[train,train-optispeech]"
+   ```
 
-| voice_id | acoustic | speaker |
-|----------|----------|---------|
-| `…/optispeech-lightspeech-en-us-emily` | LightSpeech | emily |
-| `…/optispeech-lightspeech-en-us-mike` | LightSpeech | mike |
-| `…/optispeech-convnext-en-us-emily` | ConvNeXt-TTS | emily |
+2. Train:
 
-## Synthesis example
+   ```bash
+   python -m phoonnx_train.train \
+       --engine optispeech \
+       --dataset-dir ./dataset \
+       --default-root-dir ./checkpoints \
+       --quality medium
+   ```
 
-```python
-voice.synthesize("Hello.", SynthesisConfig(extra_params={"d_factor": 1.0,
-                                                          "p_factor": 1.0,
-                                                          "e_factor": 1.0}))
-```
+   Use `--quality` to pick a preset from the table below. A key in the `engine_params` of the dataset's `config.json` overrides the same preset key, for example `{"engine_params": {"dim": 320}}`.
 
-## Training
+3. To resume a run, give its checkpoint. PyTorch Lightning writes the checkpoints under `<default-root-dir>/lightning_logs/version_<N>/checkpoints/`. A checkpoint holds the optimizer state, the scheduler state and the epoch.
 
-OptiSpeech trains on the standard phoonnx preprocessed dataset. The vendored
-model code lives under `phoonnx_train/optispeech/` and is constructed entirely
-in plain Python — a quality preset fully determines the model, no external
-config file is involved. Install the engine extra:
+   ```bash
+   python -m phoonnx_train.train --engine optispeech --dataset-dir ./dataset \
+       --default-root-dir ./checkpoints \
+       --resume-from-checkpoint ./checkpoints/lightning_logs/version_0/checkpoints/epoch=99-step=25000.ckpt
+   ```
 
-```bash
-pip install --pre "phoonnx[train,train-optispeech]"
-```
+4. Export the checkpoint:
 
-```bash
-python -m phoonnx_train.train \
-    --engine optispeech \
-    --dataset-dir ./dataset \
-    --default-root-dir ./checkpoints \
-    --quality medium
-```
+   ```bash
+   python -m phoonnx_train.export_onnx \
+       ./checkpoints/lightning_logs/version_0/checkpoints/epoch=99-step=25000.ckpt \
+       --config ./dataset/config.json \
+       --engine optispeech \
+       --output-dir ./onnx
+   ```
 
-Quality presets change the constructed model (hidden width, encoder/decoder
-depth and the WaveNeXt vocoder size):
+   The export writes `model.onnx`. It outputs the waveform, and it holds the runtime config (sample rate, inference defaults, symbol table and text-processor flags) under the `inference` metadata key. The adapter reads that key when it loads the file.
+
+To fine-tune from a checkpoint with a different vocabulary, speaker count or vocoder size, the engine warm-starts. It loads the tensors that match by name and shape, and it logs which keys it loaded and which it skipped.
+
+The model has a ConvNeXt text encoder with scaled sinusoidal positional embeddings, FastSpeech2 duration, pitch and energy predictors, and a learned monotonic alignment (ForwardSum and Viterbi) with Gaussian upsampling. A ConvNeXt decoder feeds a WaveNeXt vocoder, which trains against multi-period and multi-resolution discriminators. Training uses manual optimization with two optimizers, one for the generator and one for the discriminator, each with a cosine schedule and warmup.
+
+## Notes
+
+- OptiSpeech and Matcha-TTS share the input names `x`, `x_lengths` and `scales`. The registry probes OptiSpeech first, and the probe reads the embedded metadata and the `wav` and `durations` outputs.
+- The `scales` input of OptiSpeech holds `[d_factor, p_factor, e_factor]`. The `scales` input of VITS holds `[noise_scale, length_scale, noise_w_scale]`.
+
+## Reference
+
+### ONNX inputs
+
+| Name | Type | Shape | Description |
+|------|------|-------|-------------|
+| `x` | int64 | `[B, T]` | Phoneme IDs |
+| `x_lengths` | int64 | `[B]` | Sequence lengths |
+| `scales` | float32 | `[3]` | `[d_factor, p_factor, e_factor]` |
+| `sids` | int64 | `[B]` | Speaker IDs, for a multi-speaker graph |
+| `lids` | int64 | `[B]` | Language IDs, for a multi-language graph |
+
+### ONNX outputs
+
+| Name | Type | Shape | Description |
+|------|------|-------|-------------|
+| `wav` | float32 | `[B, 1, T]` | Waveform |
+| `wav_lengths` | int64 | `[B]` | Sample counts |
+| `durations` | int64 | `[B, T_text]` | Duration of each phoneme |
+
+### Synthesis parameters
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `d_factor` | 1.0 | Duration scale (above 1 is slower) |
+| `p_factor` | 1.0 | Pitch scale |
+| `e_factor` | 1.0 | Energy scale |
+
+### Indexed voices
+
+| voice_id | Acoustic model | Speaker |
+|----------|----------------|---------|
+| `hf_community/mush42/optispeech-lightspeech-en-us-emily` | LightSpeech | emily |
+| `hf_community/mush42/optispeech-lightspeech-en-us-mike` | LightSpeech | mike |
+| `hf_community/mush42/optispeech-convnext-en-us-emily` | ConvNeXt-TTS | emily |
+
+### Quality presets
 
 | Preset | Acoustic `dim` | Encoder / decoder layers | Vocoder `dim` / layers |
 |--------|----------------|--------------------------|------------------------|
 | `x-low` | 128 | 2 / 2 | 256 / 4 |
 | `medium` | 256 | 4 / 4 | 384 / 8 |
 | `high` | 384 | 6 / 6 | 512 / 8 |
-
-Use `--quality <preset>`. A key in the `engine_params` of the dataset's `config.json`
-overrides the same preset key, for example `{"engine_params": {"dim": 320}}`.
-
-Architecture: a ConvNeXt text encoder with scaled sinusoidal positional
-embeddings, FastSpeech2-style duration / pitch / energy variance predictors, a
-learned monotonic alignment (ForwardSum + Viterbi) with Gaussian upsampling, a
-ConvNeXt decoder, and a **WaveNeXt** neural vocoder trained adversarially against
-multi-period and multi-resolution discriminators. Losses combine alignment,
-duration, pitch and energy terms with the GAN mel / multi-resolution-STFT /
-feature-matching terms.
-
-Training uses manual optimization (two optimizers — generator and
-discriminator — each with a cosine-with-warmup schedule). Checkpoints carry the
-optimizer state, scheduler state and epoch, so a run is fully resumable. PyTorch Lightning
-writes the checkpoints under `<default-root-dir>/lightning_logs/version_<N>/checkpoints/`:
-
-```bash
-python -m phoonnx_train.train --engine optispeech --dataset-dir ./dataset \
-    --default-root-dir ./checkpoints \
-    --resume-from-checkpoint ./checkpoints/lightning_logs/version_0/checkpoints/epoch=99-step=25000.ckpt
-```
-
-To fine-tune from an existing checkpoint whose vocabulary, speaker count or
-vocoder size differs, the engine warm-starts by mapping matching tensors by
-name and shape and logs exactly which keys were loaded and which were skipped.
-
-Export a trained checkpoint to the single-file ONNX described above:
-
-```bash
-python -m phoonnx_train.export_onnx \
-    ./checkpoints/lightning_logs/version_0/checkpoints/epoch=99-step=25000.ckpt \
-    --config ./dataset/config.json \
-    --engine optispeech \
-    --output-dir ./onnx
-```
-
-The exported `model.onnx` is self-contained: the waveform comes straight out
-(no separate vocoder ONNX) and the full runtime config — sample rate, inference
-defaults, symbol table and text-processor flags — is embedded under the
-`inference` metadata key, which the adapter reads back automatically.
-
-## Gotchas / aliases
-
-- **Text processing depends on the tokenizer name.** The tokenizer flags come
-  from the model's `text_processor` metadata. When `tokenizer == "arabic-buck"`
-  the config builder forces `PhonemeType.GRAPHEMES`; **otherwise** it uses
-  espeak (`PhonemeType.ESPEAK`, `alphabet: ipa`). So the English
-  LightSpeech / ConvNeXt voices phonemize with espeak, while an
-  arabic-buckwalter voice runs in grapheme mode — it does *not* phonemize with
-  espeak.
-- **Add-blank / BOS-EOS** flags also come from the metadata (these voices use
-  `add_blank: false` / `add_bos_eos: false`), so phoonnx feeds the exact token
-  sequence the model was trained on.
 
 ## References
 

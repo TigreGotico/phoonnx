@@ -4,11 +4,11 @@
 covers: how to load and synthesise every index voice, check the audio and the ASR transcript, and compare two runs
 source: scripts/voice_sweep.py
 generated: no
-verify: python -I scripts/voice_sweep.py --help, and python -I scripts/voice_sweep.py run --help
+verify: ! comm -23 <(sed '/<!-- agent-hint/,/-->/d;/^uv /d;/^VIRTUAL_ENV/d' docs/voice_sweep.md | grep -oP -- '(?<![\w-])--[a-z][a-z-]*' | sort -u) <(for c in run floor diff; do .venv/bin/python -I scripts/voice_sweep.py $c --help; done | grep -oP -- '(?<![\w-])--[a-z][a-z-]*' | sort -u) | grep . && .venv/bin/python -c "import re,sys; sys.path.insert(0,'scripts'); import voice_sweep as v; p=open('docs/voice_sweep.md').read(); rows=re.findall('^[|] '+chr(96)+'([a-z_]+)'+chr(96)+' [|] (.*) [|]$', p, re.M)[:6]; nums=[float(x) for r in rows for x in re.findall('[0-9]+[.][0-9]+', r[1])]; pct=[float(x)/100 for r in rows for x in re.findall('([0-9]+)%', r[1])]; ok=[r[0] for r in rows]==list(v.PROBLEMS) and nums==[v.SILENCE_RMS, v.MIN_SECONDS_PER_CHAR, v.DC_LIMIT, v.FULL_SCALE, v.NOISE_FLATNESS] and pct==[v.CLIP_FRACTION]; print(rows); sys.exit(0 if ok else 1)"
 see: benchmarking.md, choose_voice.md
 -->
 
-This page shows how to check every voice in the bundled index with `scripts/voice_sweep.py`, for maintainers who change the index or the synthesis code.
+This page shows how to check every voice in the bundled index with `scripts/voice_sweep.py`. It is for maintainers who change the index or the synthesis code.
 
 The script loads every voice, makes it speak, and checks the audio. Use it to find index entries that do not load or do not speak, and to compare two commits.
 
@@ -23,9 +23,9 @@ A voice passes when it loads through the index path (`TTSModelInfo.load`) and `T
 | `clipped` | more than 1% of the samples at full scale (0.99) |
 | `noise` | a median spectral flatness above 0.3 in the frames within 20 dB of the loudest |
 
-Six cached voices of five engines (piper, VITS, MMS, glow-tts, matcha) set the bounds. In English, Basque, Catalan and Occitan they measured 0.061 to 0.146 s per character, a mean of at most 0.002, at most 0.004% of samples at full scale, and a flatness of at most 0.009. A line dense in fricatives measured 0.164. White noise has a flatness of 0.56.
+Each bound sits far from the values of working voices. Voices of five engines give 0.061 to 0.146 s of audio per character and a flatness of at most 0.009, or 0.164 on a line dense in fricatives. White noise has a flatness of 0.56.
 
-Where an ASR model is verified for the language, the tool also transcribes the audio and records WER and CER. A wrong token id or a wrong phonemizer gives fluent audio that says the wrong thing, and only the transcript shows it. Coloured noise and speech under noise also pass the audio checks, so for a language without a verified ASR model, `ok` means that the audio has none of the faults above, not that it is intelligible.
+Where an ASR model is verified for the language, the tool also transcribes the audio and records WER and CER. A wrong token id or a wrong phonemizer gives fluent audio that says the wrong thing, and only the transcript shows it. Coloured noise and speech under noise also pass the audio checks. For a language without a verified ASR model, `ok` means that the audio has none of the faults above. It does not mean that the speech is intelligible.
 
 ## Install
 
@@ -41,7 +41,7 @@ A voice whose phonemizer is not installed fails to load, and the sweep records t
 
 ## Verify the ASR models first
 
-An ASR model that does not know a language still returns fluent text, so its WER means nothing. `floor` scores each model on 15 clips of the FLEURS test split and keeps the languages where the WER is at most 0.30 (CER at most 0.20 for Chinese, Japanese, Thai and other scripts without spaces):
+An ASR model that does not know a language still returns fluent text, so its WER means nothing. `floor` scores each model on 15 clips of the FLEURS test split. It keeps the languages where the WER is at most 0.30, or the CER is at most 0.20 for Chinese, Japanese, Thai and other scripts without spaces:
 
 ```bash
 python scripts/voice_sweep.py floor --out floor.json --reference-dir refs/
@@ -61,11 +61,11 @@ A separate `HF_HUB_CACHE` keeps the downloads of the sweep away from the cache t
 
 - `--sentences` is a TSV with the columns `lang`, `id`, `category`, `text` and `source`. Each voice gets the rows of its language whose `id` is in `--sentence-ids` (default `plain digits`). A row whose source starts with `script:` is a sentence for the script, not the language, so it gets no WER.
 - `--reference-dir` holds `<lang>.wav` and `<lang>.txt`, or `default.wav`, for voices with `requires_reference`.
-- Voices that share model files run together in one worker process, so the files download once. A group of more than `--group-size` voices (default 40) is split between the slots. With `--evict` a repo that the run downloaded leaves the Hugging Face cache when no pending voice downloads from it. A repo that was in the cache when the run started stays, under its `Phoonnx/` id or its old `OpenVoiceOS/` id. `--max-cache-gb` starts no further group while the cache holds more than that, and `--min-free-gb` waits while the cache disk has less free space than that.
-- `--timeout` is the limit per voice in seconds. A voice that runs out of time is recorded as `timeout`, with the sentences it spoke before. A worker that crashes or stops answering is replaced, and the voice it was on is recorded as `crash` or `timeout`. A worker that ends before it starts a voice is blamed on its next voice, so each replacement worker uses up one voice and the run always ends.
-- The run checks its options before it starts a worker. A missing or unreadable sentence file, a sentence file with no row for `--sentence-ids`, an unreadable `--asr-floor` file, and a `--voices` id that is not in the index are errors, and the run stops with exit status 2.
+- Voices that share model files run together in one worker process, so the files download once. A group of more than `--group-size` voices (default 40) is split between the slots. With `--evict` a repo that the run downloaded leaves the Hugging Face cache when no pending voice downloads from it. A repo that was in the cache when the run started stays, under its `Phoonnx/` id or its earlier `OpenVoiceOS/` id. `--max-cache-gb` starts no further group while the cache holds more than that. `--min-free-gb` waits while the cache disk has less free space than that.
+- `--timeout` is the limit per voice in seconds. A voice that runs out of time is recorded as `timeout`, with the sentences it spoke before. A worker that crashes or stops answering is replaced, and the voice it was on is recorded as `crash` or `timeout`. When a worker ends before it starts a voice, the run records the failure on its next voice. So each replacement worker uses up one voice, and the run always ends.
+- The run checks its options before it starts a worker. It stops with exit status 2 for a missing or unreadable sentence file, a sentence file with no row for `--sentence-ids`, an unreadable `--asr-floor` file, or a `--voices` id that is not in the index.
 - `--max-wer` (default 0.5) and `--max-cer` (default 0.35, for scripts without spaces) are the limits for a voice's mean score. An ASR model passes `floor` at a WER of up to 0.30 on human speech, so the voice limit sits above that.
-- `--threads` caps the onnxruntime threads of every session. Without the cap onnxruntime starts one pinned thread per core, and `--cpus` has no effect.
+- `--threads` caps the onnxruntime threads of every session. The default is 4. With no cap, onnxruntime starts one pinned thread per core, and `--cpus` has no effect.
 
 The run writes `run.jsonl.synth` while it synthesises, then adds the ASR results and writes `run.jsonl`. Both files resume: a stopped run continues where it stopped. The last line states the voices in, the results out and the number of failing voices. The command exits 1 when the counts differ or when any voice fails. Every status except `ok`, `no_sentences` and `needs_reference` is a failure.
 
@@ -73,7 +73,7 @@ Each line of `run.jsonl` is one voice:
 
 | Field | Meaning |
 | --- | --- |
-| `status` | `ok`; `partial` when some sentences pass and others do not; `unintelligible` when the WER or CER is above the limit; `load_failed`, `synth_failed`, `timeout` or `crash`; a fault from the table above when no sentence passes; `needs_reference` or `no_sentences` when the run could not test the voice |
+| `status` | `ok`, or `partial` when some sentences pass and others do not, or `unintelligible` when the WER or CER is above the limit. A failure is `load_failed`, `synth_failed`, `timeout`, `crash`, or a fault from the table above when no sentence passes. `needs_reference` and `no_sentences` mean that the run could not test the voice |
 | `error` | what failed: the load or synthesis error, or each failing sentence with its faults |
 | `resolved` | adapter, language code, phoneme type, alphabet and sample rate that the loaded voice uses |
 | `snapshot` | the Hugging Face revision of the model file |

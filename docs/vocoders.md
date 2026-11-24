@@ -1,154 +1,135 @@
 # Vocoders
 
 <!-- agent-hint
-covers: which vocoder types exist, how a voice selects one, and how to add a vocoder type
-source: phoonnx/engines/vocoders/__init__.py, phoonnx/engines/vocoders/base.py:BaseVocoder, phoonnx/model_manager.py:TTSModelInfo
+covers: which vocoder types exist, how a voice selects one, how a vocoder config changes the mel, and how to add a vocoder type
+source: phoonnx/engines/vocoders/__init__.py, phoonnx/engines/vocoders/base.py:BaseVocoder, phoonnx/engines/vocoders/raw.py, phoonnx/engines/vocoders/vocos.py, phoonnx/engines/vocoders/griffinlim.py, phoonnx/model_manager.py:TTSModelInfo
 generated: no
-verify: pytest tests/test_vocoders.py, plus the vocoder registry example on the page
+verify: .venv/bin/python -m doctest -o ELLIPSIS -o NORMALIZE_WHITESPACE docs/vocoders.md
 see: engines.md, training/engines/glowtts.md, training/engines/matcha.md
 -->
 
-This page describes the vocoder registry in `phoonnx/engines/vocoders/`, for developers who pair a mel-producing acoustic model with a vocoder or add a vocoder type.
+This page describes the vocoder registry in `phoonnx/engines/vocoders/`. Read it when you pair an acoustic model that makes a mel spectrogram with a vocoder, or when you add a vocoder type.
 
-Two-stage acoustic models — **GlowTTS**, **Matcha-TTS**, **OptiSpeech** (when it
-emits a mel) — produce a **mel spectrogram** and rely on a separate **vocoder** to
-turn that mel into a waveform. `phoonnx` keeps vocoders behind a small registry so
-any two-stage adapter can drive any vocoder without knowing its internals.
+Some acoustic models, such as GlowTTS, Matcha-TTS and some OptiSpeech voices, make a mel spectrogram. A separate vocoder turns that mel into a waveform. The registry lets each of these adapters use any vocoder through one method, `mel_to_audio`.
 
 ```
 text ──[acoustic model]──▶ mel ──[vocoder]──▶ waveform
 ```
 
-## Vocoder families
+## Use a vocoder directly
 
-| `vocoder_type` | Class | ONNX output | Notes |
-|---|---|---|---|
-| `vocos` | `VocosVocoder` | STFT mag + real + imag (3) | inverse-STFT reconstruction; supports `denoise` |
-| `wavenext` | `WavenextVocoder` | waveform (1) | Vocos with a trained ISTFT-replacement layer |
-| `hifigan` | `HiFiGANVocoder` | waveform (1) | GAN vocoder |
-| `melgan` | `HiFiGANVocoder` (alias) | waveform (1) | (multiband-)MelGAN — same 1-output mel→audio contract |
-| `raw` | `RawWaveformVocoder` | waveform (1) | generic single-output mel→audio |
-| `griffinlim` | `GriffinLimVocoder` | — (no model) | parametric, no ONNX; works with any mel config; needs `librosa`, which the `train` and `all` extras install |
+`list_vocoders` gives the registered vocoder types:
 
-All live in `phoonnx/engines/vocoders/`.
+```python
+>>> from phoonnx.engines.vocoders import list_vocoders
+>>> list_vocoders()
+['griffinlim', 'wavenext', 'hifigan', 'melgan', 'vocos', 'raw']
+
+```
+
+`build_vocoder` makes a vocoder. A neural vocoder needs its ONNX file, for example `build_vocoder(model_path="hifigan.onnx", vocoder_type="hifigan")`. Then `vocoder.mel_to_audio(mel)` takes a mel of shape `[B, n_mels, T]` and gives a 1-D float32 waveform.
+
+Griffin-Lim needs no model file. Its parameters come from the config:
+
+```python
+>>> from phoonnx.engines.vocoders import build_vocoder
+>>> gl = build_vocoder(vocoder_type="griffinlim",
+...                    config={"sample_rate": 22050, "n_fft": 1024, "hop_length": 256, "num_mels": 80})
+>>> type(gl).__name__, gl.sample_rate, gl.num_iters
+('GriffinLimVocoder', 22050, 60)
+
+```
+
+Griffin-Lim imports `librosa` when it runs. The `train` and `all` extras install it.
+
+When `vocoder_type` names a registered type, `build_vocoder` uses it. With no type, or an unknown one, it opens the ONNX file and asks each vocoder type in turn if the file matches. When no type matches, it logs a warning and uses Vocos.
 
 ## How a voice selects its vocoder
 
-A two-stage voice declares its vocoder in the **voice index** entry; the model
-manager resolves it at load time and hands it to the adapter via `engine_params`:
+A voice that needs a vocoder names it in its voice index entry. This is the Turkish GlowTTS entry, with the URLs shortened:
 
 ```json
 {
   "voice_id": "coqui-tr-common-voice-glow-tts",
   "engine": "glowtts",
-  "model_url": ".../model.onnx",
-  "config_url": ".../config.json",
-  "vocoder_url": ".../phoonnx-vocoders/tr-common-voice-hifigan/model.onnx",
-  "vocoder_config_url": ".../tr-common-voice-hifigan/vocoder.json",
+  "model_url": ".../glowtts-tr_tr-common-graphemes/.../model.onnx",
+  "config_url": ".../glowtts-tr_tr-common-graphemes/.../config.json",
+  "vocoder_url": ".../hifigan-tr_tr-common/.../model.onnx",
+  "vocoder_config_url": ".../hifigan-tr_tr-common/.../vocoder.json",
   "vocoder_type": "hifigan"
 }
 ```
 
-- **`vocoder_url`** — the vocoder ONNX (downloaded alongside the model). Omit for
-  a parametric vocoder (Griffin-Lim).
-- **`vocoder_type`** — selects the implementation explicitly. If absent, the
-  vocoder is **auto-detected** from the ONNX output layout: 3+ outputs → Vocos,
-  a single output → a raw-waveform vocoder.
-- **`vocoder_config_url`** — a small `vocoder.json` of vocoder parameters
-  (sample rate, mel settings, preprocessing flags — see below).
+The model manager downloads the vocoder with the model, reads the vocoder config, and gives both to the adapter in its engine parameters. Your code does not change: `voice.synthesize(...)` gives audio.
 
-Nothing in user code changes: `voice.synthesize(...)` downloads the model + the
-linked vocoder and produces audio.
+- `vocoder_url` is the vocoder ONNX file. Griffin-Lim has no file, so leave it out.
+- `vocoder_type` selects the vocoder type. When it is absent, the ONNX outputs select it: three or more outputs select Vocos, and one output selects a vocoder that gives the waveform directly.
+- `vocoder_config_url` is a small `vocoder.json` with the vocoder parameters: the sample rate, the mel settings and the mel preprocessing flags.
 
-## Mel preprocessing (config-driven flags)
+## Mel preprocessing flags
 
-Different vocoders expect the mel in different conventions. Rather than bake that
-into each ONNX, a converted vocoder **declares its input convention with flags**
-in its `vocoder.json`, and `BaseVocoder._preprocess_mel` applies them before the
-ONNX runs. Flags are **opt-in** — a vocoder that needs nothing is untouched.
+Vocoders expect the mel in different conventions. A vocoder declares its convention with flags in its `vocoder.json`. `BaseVocoder._preprocess_mel` applies the flags before the ONNX session runs. A vocoder with no flags gets the mel as the acoustic model made it.
 
-| Flag | Params | Effect |
-|---|---|---|
-| `stats_norm` | `mel_mean`, `mel_std` (per-channel) | standard-scale the mel `(mel − mean) / std` — required by Coqui stats-normalized vocoders (e.g. multiband-MelGAN), whose `scale_stats.npy` differs from the acoustic model's dB-mel domain |
+The `stats_norm` flag scales each mel channel with `mel_mean` and `mel_std`, as `(mel - mean) / std`. Coqui vocoders that were trained on normalized mels, such as multiband MelGAN, need it:
 
-Example `vocoder.json` for a stats-normalized MelGAN:
+```python
+>>> import numpy as np
+>>> from phoonnx.engines.vocoders.raw import HiFiGANVocoder
+>>> vocoder = HiFiGANVocoder(config={"stats_norm": True, "mel_mean": [1.0, 2.0], "mel_std": [2.0, 4.0]})
+>>> vocoder._preprocess_mel(np.array([[[3.0], [6.0]]])).tolist()
+[[[1.0], [1.0]]]
+
+```
+
+The `vocoder.json` of such a vocoder looks like this:
 
 ```json
 { "vocoder_type": "melgan", "sample_rate": 22050, "stats_norm": true,
   "mel_mean": [ ... 80 floats ... ], "mel_std": [ ... 80 floats ... ] }
 ```
 
-Add a step the same way: a flag in the config and a branch in `_preprocess_mel`. The
-flag ships with the data, not the code.
+To add a step, add a flag to the config and a branch to `_preprocess_mel`. The flag ships with the vocoder data.
 
-## Using a vocoder directly
+## Replace a vocoder
 
-```python
-from phoonnx.engines.vocoders import build_vocoder, list_vocoders
+The vocoder is a link in the index entry, so you can change it and keep the acoustic model.
 
-print(list_vocoders())  # ['griffinlim', 'wavenext', 'hifigan', 'melgan', 'vocos', 'raw']
+- To use another neural vocoder, change `vocoder_url` and `vocoder_type`. The vocoder must use the same mel settings as the acoustic model: sample rate, FFT size, hop length, number of mels, and minimum and maximum frequency. A different mel config gives noise. If only the normalization differs, add the `stats_norm` flag.
+- To use Griffin-Lim, remove `vocoder_url`, set `vocoder_type` to `"griffinlim"`, and point `vocoder_config_url` at a `vocoder.json` with the mel settings of the acoustic model. The audio sounds robotic.
+- To select a vocoder in code, give the adapter a vocoder instance: `GlowTTSAdapter(vocoder=build_vocoder(...))`.
 
-voc = build_vocoder(model_path="hifigan.onnx", vocoder_type="hifigan")
-audio = voc.mel_to_audio(mel)               # mel [B, n_mels, T] -> waveform [N]
+## Add a vocoder type
 
-# parametric Griffin-Lim — no model file, all params in config
-gl = build_vocoder(vocoder_type="griffinlim",
-                   config={"sample_rate": 22050, "n_fft": 1024, "hop_length": 256, "num_mels": 80})
-```
-
-`build_vocoder(vocoder_type=..., config=...)` uses the named vocoder. With no type, it
-probes the ONNX and picks the first match. When nothing matches, it logs a warning and
-uses Vocos.
-
-## Replacing / swapping a vocoder
-
-Because the vocoder is just a link in the index entry, you can swap it without
-touching the acoustic model:
-
-- **Point at a different ONNX** — change `vocoder_url` / `vocoder_type` to another
-  vocoder trained on the **same mel config** (sr, fft, hop, n_mels, fmin/fmax). A
-  mismatched mel config produces garbage; if the only gap is normalization, add a
-  `stats_norm` preprocessing flag, or an equivalent one.
-- **Fall back to Griffin-Lim** — drop `vocoder_url`, set `vocoder_type:
-  "griffinlim"`, and point `vocoder_config_url` at a `vocoder.json` with the mel
-  params of the acoustic model. It needs no neural vocoder. The audio sounds robotic.
-- **At runtime** — construct the adapter with an explicit vocoder instance:
-  `GlowTTSAdapter(vocoder=build_vocoder(...))`.
-
-## Adding a vocoder type
-
-Subclass `BaseVocoder`, implement `mel_to_audio`, and register it:
+Make a subclass of `BaseVocoder`, write its `mel_to_audio` method, and register it:
 
 ```python
-from phoonnx.engines.vocoders.base import BaseVocoder
-from phoonnx.engines.vocoders import register_vocoder
+>>> from phoonnx.engines.vocoders import list_vocoders, register_vocoder
+>>> from phoonnx.engines.vocoders.base import BaseVocoder
+>>> class MyVocoder(BaseVocoder):
+...     name = "myvoc"
+...     def mel_to_audio(self, mel, denoise=False):
+...         mel = self._preprocess_mel(mel)
+...         return self.session.run(None, {self.input_name: mel})[0].squeeze()
+>>> register_vocoder("myvoc", MyVocoder, detect_priority=35)
+>>> list_vocoders()[-1]
+'myvoc'
 
-class MyVocoder(BaseVocoder):
-    name = "myvoc"
-    def mel_to_audio(self, mel, denoise=False):
-        mel = self._preprocess_mel(mel)             # honour config flags
-        return self.session.run(None, {self.input_name: mel})[0].squeeze()
-
-register_vocoder("myvoc", MyVocoder, detect_priority=35)
 ```
 
-`detect_priority` orders auto-detection (lower runs first); set a high value (or
-return `False` from `detect`) for vocoders that should only be chosen explicitly.
+`detect_priority` sets the order of auto-detection: a lower value is asked first. The default is 100. The `detect` method of `BaseVocoder` returns `False`, so a type that does not override it is used only when a voice names it.
 
-## Converting vocoders (provenance)
+## Vocoder types
 
-The ONNX vocoders under `Phoonnx/phoonnx-vocoders` are produced by standalone
-exporters that vendor only the pure-torch generator code (no `coqui-tts` / Larynx
-package dependency):
+| `vocoder_type` | Class | ONNX outputs | Detection priority | Notes |
+|---|---|---|---|---|
+| `wavenext` | `WavenextVocoder` | waveform (1) | 30 | Vocos with a trained layer in place of the inverse STFT |
+| `hifigan` | `HiFiGANVocoder` | waveform (1) | 31 | GAN vocoder |
+| `melgan` | `HiFiGANVocoder` | waveform (1) | 32 | MelGAN and multiband MelGAN, with the same mel to audio contract |
+| `vocos` | `VocosVocoder` | magnitude, real, imaginary (3) | 40 | inverse STFT, honours `denoise` |
+| `raw` | `RawWaveformVocoder` | waveform (1) | 50 | any vocoder with one waveform output |
+| `griffinlim` | `GriffinLimVocoder` | no model | 99 | parametric, never auto-detected, needs `librosa` |
 
-- **HiFi-GAN** — coqui `HifiganGenerator` → ONNX (`mel → audio`).
-- **Multiband-MelGAN** — coqui `MultibandMelganGenerator` + PQMF synthesis → ONNX;
-  the `scale_stats.npy` becomes the `stats_norm` flag in `vocoder.json`.
-- **Larynx HiFi-GAN** — mirrored as-is.
-
-A vocoder only works with an acoustic model whose **mel features match** it
-(sample rate, FFT/hop, n_mels, fmin/fmax, and normalization). Where no matched
-neural vocoder exists, the voice uses Griffin-Lim.
+The neural vocoders of the bundled index live in their own Hugging Face repositories, such as `Phoonnx/hifigan-tr_tr-common` and `Phoonnx/vocos-multi-alvocat-22khz`. The Coqui HiFi-GAN exports use the generator code in `scripts/conversion/coqui_fastpitch_export/hifigan_generator.py`, which needs no `coqui-tts` package. A vocoder works only with an acoustic model whose mel settings and normalization match it.
 
 ---
 

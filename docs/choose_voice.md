@@ -2,9 +2,9 @@
 
 <!-- agent-hint
 covers: how to find the voices for a language, which extra each voice needs, how large its download is, and how to hear it first
-source: phoonnx/cli.py:voices_for_lang, phoonnx/model_manager.py:TTSModelManager.get_lang_voices, phoonnx/voice_index/*.json, pyproject.toml [project.optional-dependencies]
+source: phoonnx/cli.py:voices_for_lang, phoonnx/model_manager.py:TTSModelManager.get_lang_voices, phoonnx/model_manager.py:TTSModelInfo.disk_size, phoonnx/voice_index/*.json, pyproject.toml
 generated: no
-verify: phoonnx-voices list-voices --lang pt-PT; phoonnx-voices list-voices --verbose | grep -A6 'ID:          OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone'
+verify: XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/python -c "import re, sys, tomllib; from collections import Counter; from phoonnx.model_manager import TTSModelManager; m = TTSModelManager(); m.merge_default_voices(); q = chr(96); names = lambda s: re.findall(q + '([^' + q + ']+)' + q, s); pt = Counter(v.phoneme_type.name for v in m.all_voices if v.phoneme_type); en = Counter(v.engine.value for v in m.all_voices); x = tomllib.load(open('pyproject.toml', 'rb'))['project']['optional-dependencies']; rows = [line.split('|')[1:-1] for line in open('docs/choose_voice.md') if line.startswith('| ' + q)]; ptab = {n: int(c) for r in rows if len(r) == 3 for n, c in zip(names(r[0]), re.findall('[0-9]+', r[1]))}; etab = {names(r[0])[0]: int(r[1]) for r in rows if len(r) == 4}; extras = [e for r in rows if len(r) == 3 for e in names(r[2]) if e not in x]; bad = [ptab != dict(pt), etab != dict(en), extras]; print(set(ptab.items()) ^ set(pt.items()), set(etab.items()) ^ set(en.items()), extras); sys.exit(1 if any(bad) else 0)" && diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices update-cache) <(sed -n '/^\$ phoonnx-voices update-cache$/,/^\x60\x60\x60$/{//!p}' docs/choose_voice.md) && XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/python -m doctest -o ELLIPSIS -o NORMALIZE_WHITESPACE docs/choose_voice.md
 see: installation.md, voice_manager.md, precision.md, offline.md
 -->
 
@@ -14,7 +14,7 @@ The steps use the `phoonnx-voices` command and the base install from the [Quicks
 
 ## 1. List the voices for your language
 
-Fill the local catalog, then list the voices for a language tag:
+Fill the local catalog:
 
 ```
 $ phoonnx-voices update-cache
@@ -22,11 +22,16 @@ Clearing local voice cache...
 Loading bundled voice indexes...
 
 Cache updated successfully!
-Total voices available: 3191
-Total languages supported: 1817
+Total voices available: 3259
+Total languages supported: 1822
+```
+
+Then list the voices for a language tag. The list starts like this:
+
+```
 $ phoonnx-voices list-voices --lang pt-PT
 
-Found 51 voices for language 'pt-PT':
+Found 52 voices for language 'pt-PT':
 * OpenVoiceOS/phoonnx_pt-PT_miro_unicode (pt-PT)
 * OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone (pt-PT)
 * OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone (pt-PT)
@@ -51,7 +56,7 @@ The `en-AU` list starts with British English, because the default region of Engl
 ```
 $ phoonnx-voices list-voices --lang en-AU
 
-Found 256 voices for language 'en-AU':
+Found 277 voices for language 'en-AU':
 * OpenVoiceOS/pipertts_en-GB_miro (en-GB)
 * OpenVoiceOS/pipertts_en-GB_dii (en-GB)
 * facebook/mms-tts-eng-English (en)
@@ -79,9 +84,9 @@ The `Phoneme Type` line tells you which extra to install. Most voices in the ind
 
 | Phoneme Type | Voices in the index | Extra to install |
 |---|---|---|
-| `UNICODE` | 1331 | none |
+| `UNICODE` | 1336 | none |
 | `GRAPHEMES` | 1211 | none |
-| `ESPEAK` | 341 | `espeak` |
+| `ESPEAK` | 404 | `espeak` |
 | `MISAKI_ZH`, `MISAKI_EN`, `MISAKI_JA` | 108, 43, 5 | `zh`, `en`, `ja` |
 | `GRUUT` | 78 | the language extra, for example `de` |
 | `COTOVIA` | 19 | `gl` |
@@ -92,6 +97,7 @@ The `Phoneme Type` line tells you which extra to install. Most voices in the ind
 | `GORUUT` | 4 | `all` |
 | `MANTOQ` | 3 | `ar` |
 | `VOSK` | 3 | none |
+| `ORTHOGRAPHY2IPA` | 2 | `o2i` |
 | `PHONIKUD` | 2 | `he` |
 | `SHAMI` | 1 | none |
 
@@ -99,7 +105,7 @@ Two voices show `None`. Each one names its phonemizer in its own config file.
 
 A voice that needs a missing extra stops at load with an `ImportError`. The message names the package. [Installation](installation.md#errors-you-may-see) shows these errors and the fix for each one.
 
-Some voices clone a speaker and need a reference clip. For those voices, `--verbose` adds the line `Requires reference: yes (needs speaker_reference / a style path)`. These are the Chatterbox voices and some StyleTTS2 voices. See [Voice cloning](cloning.md).
+Some voices clone a speaker and need a reference clip. For those voices, `--verbose` adds the line `Requires reference: yes (needs speaker_reference / a style path)`. These are the 42 Chatterbox voices and 2 StyleTTS2 voices. See [Voice cloning](cloning.md).
 
 ## 3. Check the download size
 
@@ -110,7 +116,7 @@ The engine of a voice sets the size of its download. The table gives the downloa
 | `transformers` | 1166 | `facebook/mms-tts-abi-Abidji` | 114 MB |
 | `omnivoice` | 646 | `omnivoice/aae` | 3204 MB |
 | `supertonic` | 310 | `supertonic/F1/en` | 399 MB |
-| `piper` | 244 | `OpenVoiceOS/pipertts_en-GB_miro` | 64 MB |
+| `piper` | 307 | `OpenVoiceOS/pipertts_en-GB_miro` | 64 MB |
 | `styletts2` | 228 | `ddatt/en-styletts2` | 330 MB |
 | `pockettts` | 156 | `pockettts/en/alba` | 171 MB |
 | `coqui` | 64 | `proxectonos/brais` | 132 MB |
@@ -120,7 +126,7 @@ The engine of a voice sets the size of its download. The table gives the downloa
 | `indic_parler` | 33 | `indic_parler/amit/as` | 5183 MB |
 | `magpie` | 30 | `magpie/Aria/ar` | 1476 MB |
 | `arktts` | 25 | `arktts/zortzi-maider/eu` | 1501 MB |
-| `phoonnx` | 24 | `OpenVoiceOS/phoonnx_oc_miro_unicode` | 63 MB |
+| `phoonnx` | 26 | `OpenVoiceOS/phoonnx_oc_miro_unicode` | 63 MB |
 | `outetts` | 23 | `outetts/0.6B/en` | 2649 MB |
 | `mosstts` | 19 | `mosstts/nano/zh` | 762 MB |
 | `f5tts` | 16 | `f5tts/v1-base` | 1453 MB |
@@ -168,21 +174,23 @@ pipertts_pt-PT_miro.wav: piper, espeak, 64 MB
 
 The first load of each voice downloads it. Play the WAV files and keep the voice you like.
 
-To see only the voices that the base install runs, filter on the phoneme type:
+To see only the voices that the base install runs, filter on the phoneme type. This step
+reads the catalog only, so it downloads nothing:
 
 ```python
-for info in manager.get_lang_voices("pt-PT"):
-    if info.lang == "pt-PT" and info.phoneme_type and info.phoneme_type.value in ("unicode", "graphemes"):
-        print(info.voice_id, info.engine.value)
-```
-
-```
+>>> from phoonnx.model_manager import TTSModelManager
+>>> manager = TTSModelManager()
+>>> manager.merge_default_voices()
+>>> for info in manager.get_lang_voices("pt-PT"):
+...     if info.lang == "pt-PT" and info.phoneme_type and info.phoneme_type.value in ("unicode", "graphemes"):
+...         print(info.voice_id, info.engine.value)
 OpenVoiceOS/phoonnx_pt-PT_miro_unicode phoonnx
 chatterbox/multilingual/pt chatterbox
 outetts/1B/pt outetts
+
 ```
 
-The list shows that one small voice serves `pt-PT` on the base install. The other two are large voices from step 3.
+The list shows that one small voice serves `pt-PT` on the base install. The other two are large voices from step 3, and the Chatterbox voice also needs a reference clip.
 
 ---
 
