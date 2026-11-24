@@ -5,6 +5,7 @@ code for the reason in its ``reason``, which names the issue that tracks it.
 The fix PR removes the mark; a fix that lands without that edit turns the
 strict xfail into a failure, so the pin cannot go stale.
 """
+import hashlib
 import importlib.util
 import json
 import logging
@@ -287,6 +288,39 @@ def test_jsonl_audio_spec_path_keeps_the_cache_folder_of_the_default_cache_dir(t
         path = Path(row[key])
         assert path.parent == Path("/override/base/cache/22050"), row[key]
         assert (tmp_path / "out" / "cache" / "22050" / path.name).is_file(), row[key]
+
+
+def _run_preprocess_with_cache_writing_engine(args):
+    class Engine:
+        # the YourTTS d-vector and FastPitch F0 cache layouts, without their models
+        def extra_preprocess(self, utterance_audio_path, cache_dir, sample_rate, **kwargs):
+            name = hashlib.sha1(str(utterance_audio_path).encode("utf-8")).hexdigest()
+            (cache_dir / "dvec").mkdir(parents=True, exist_ok=True)
+            (cache_dir / "dvec" / f"{name}.pt").write_bytes(b"")
+            (cache_dir / f"{name}.f0.npy").write_bytes(b"")
+            return {"d_vector_path": str(cache_dir / "dvec" / f"{name}.pt"),
+                    "f0_path": str(cache_dir / f"{name}.f0.npy")}
+
+    with patch("phoonnx_train.engines.get_engine", return_value=Engine()):
+        return _run_preprocess(args)
+
+
+def test_jsonl_audio_spec_path_rewrites_the_cache_files_of_the_engine_step(tmp_path):
+    clip = _wav(tmp_path / "wav" / "clip1.wav", sr=16000)
+    source = tmp_path / "a.jsonl"
+    source.write_text(json.dumps({"text": "hi", "audio": str(clip), "phon": "h i"}) + "\n")
+    out = tmp_path / "out"
+    args = ["-i", str(source), "-o", str(out), "-l", "en", "--phonemes-column", "phon",
+            "--engine", "cache-writer", "--jsonl-audio-spec-path", "/override/base"]
+    with ProcessPoolExecutor(1, mp_context=multiprocessing.get_context("spawn")) as pool:
+        result = pool.submit(_run_preprocess_with_cache_writing_engine, args).result()
+    assert result.exit_code == 0, result.output
+    row = _manifest(out)[0]
+    name = hashlib.sha1(str(clip).encode("utf-8")).hexdigest()
+    assert row["d_vector_path"] == f"/override/base/cache/22050/dvec/{name}.pt", row["d_vector_path"]
+    assert row["f0_path"] == f"/override/base/cache/22050/{name}.f0.npy", row["f0_path"]
+    assert (out / "cache" / "22050" / "dvec" / f"{name}.pt").is_file()
+    assert row["audio_path"] == str(clip), row["audio_path"]
 
 
 # --- preprocess calls a deprecated phoonnx API -----------------------------
