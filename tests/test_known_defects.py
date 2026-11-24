@@ -466,3 +466,244 @@ def test_mixertts_does_not_read_log_durations_as_frame_counts():
     frames = np.array([[2.0, 3.0, 5.0]], np.float32)
     found = MixerTTSAdapter()._find_duration_output([np.log(frames)], ["log_durations"])
     assert found is None or np.allclose(found, frames), found
+
+
+# --- SynthesisConfig speaker and language names ------------------------------
+
+def _voice(engine: str, **config):
+    from phoonnx.config import VoiceConfig
+    from phoonnx.engines import get_adapter
+    from phoonnx.voice import TTSVoice
+
+    letters = "abcdefghijklmnopqrstuvwxyz"
+    config = {"phoonnx_version": "1.0", "engine": "phoonnx", "phoneme_type": "unicode",
+              "alphabet": "unicode", "lang_code": "en-US", "audio": {"sample_rate": 16000},
+              "phoneme_id_map": {"_": [0], "^": [1], "$": [2], **{c: [i + 3] for i, c in enumerate(letters)}},
+              **config}
+    names = ("input", "input_lengths", "scales", "sid", "lid")
+    session = SimpleNamespace(get_inputs=lambda: [SimpleNamespace(name=n) for n in names],
+                              get_outputs=lambda: [SimpleNamespace(name="output")],
+                              run=lambda outputs, feed: [np.zeros((1, 1, 64), np.float32)])
+    return TTSVoice(session=session, config=VoiceConfig.from_dict(config), adapter=get_adapter(engine))
+
+
+@pytest.mark.xfail(strict=True, reason="#1020: an unknown language code reaches the engine as no language id")
+def test_an_unknown_language_code_names_the_codes_of_the_voice():
+    from phoonnx.config import SynthesisConfig
+
+    voice = _voice("vits", lang_id_map={"gl": 0, "pt": 1})
+    with pytest.raises(ValueError) as caught:
+        list(voice.synthesize("abc", SynthesisConfig(language="Jason")))
+    assert "gl" in str(caught.value) and "pt" in str(caught.value), caught.value
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="#1020: an unknown speaker name fails in the engine's int() cast")
+def test_an_unknown_speaker_name_names_the_speakers_of_the_voice():
+    from phoonnx.config import SynthesisConfig
+
+    voice = _voice("glowtts", num_speakers=2, speaker_id_map={"alice": 0, "bob": 1})
+    with pytest.raises(ValueError) as caught:
+        list(voice.synthesize("abc", SynthesisConfig(speaker="Jason")))
+    assert "alice" in str(caught.value) and "bob" in str(caught.value), caught.value
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="#1021: SynthesisConfig.to_dict writes a 1.x speaker_id as a speaker name")
+def test_a_json_round_trip_keeps_the_speaker_of_a_1x_speaker_id():
+    from phoonnx.config import SynthesisConfig
+
+    voice = _voice("vits", num_speakers=50, speaker_id_map={"40": 3})
+    with pytest.warns(DeprecationWarning):
+        config = SynthesisConfig(speaker_id="40")
+    reloaded = SynthesisConfig.from_dict(json.loads(json.dumps(config.to_dict())))
+    with patch.object(voice.adapter, "synthesize", wraps=voice.adapter.synthesize) as engine:
+        list(voice.synthesize("abc", config))
+        list(voice.synthesize("abc", reloaded))
+    original, round_tripped = (call.args[0].speaker_id for call in engine.call_args_list)
+    assert round_tripped == original, (original, round_tripped)
+
+
+# --- Matcha and ZipVoice vocoder_type ----------------------------------------
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="#1029: the Matcha adapter builds a vocoder only from vocoder_path")
+def test_matcha_builds_the_vocoder_of_a_vocoder_type():
+    from phoonnx.engines.matcha import MatchaAdapter
+    from phoonnx.engines.vocoders.griffinlim import GriffinLimVocoder
+
+    adapter = MatchaAdapter()
+    adapter.configure_from_params({"vocoder_type": "griffinlim"})
+    assert isinstance(adapter.vocoder, GriffinLimVocoder), adapter.vocoder
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="#1029: the ZipVoice adapter builds a vocoder only from vocoder_path")
+def test_zipvoice_builds_the_vocoder_of_a_vocoder_type():
+    from phoonnx.engines.vocoders.griffinlim import GriffinLimVocoder
+    from phoonnx.engines.zipvoice import ZipVoiceAdapter
+
+    adapter = ZipVoiceAdapter()
+    adapter.configure(SimpleNamespace(engine_params={"vocoder_type": "griffinlim"}))
+    assert isinstance(adapter.vocoder, GriffinLimVocoder), adapter.vocoder
+
+
+# --- Mixer-TTS durations that round to 0 frames ------------------------------
+
+@pytest.mark.xfail(strict=True, raises=RuntimeError,
+                   reason="#1030: Mixer-TTS has no 1-frame floor, so a 0-frame mel reaches the decoder conv")
+def test_mixertts_gives_each_token_one_frame_at_least():
+    import torch
+
+    from phoonnx_train.mixertts.models.mixer_tts.mixer_tts import MixerTTSModel
+
+    torch.manual_seed(0)
+    model = MixerTTSModel(num_tokens=16, symbols_embedding_dim=16, encoder_kernel_sizes=[3],
+                          encoder_num_layers=1, decoder_kernel_sizes=[15], decoder_num_layers=1,
+                          duration_predictor_filter_size=16, pitch_predictor_filter_size=16,
+                          energy_predictor_filter_size=16, n_speakers=1, n_emotions=1).eval()
+    # a log duration of -10 is exp(-10) - 1 frames: every token rounds to 0
+    model.duration_predictor.forward = lambda enc_out, enc_mask: torch.full(enc_out.shape[:2], -10.0)
+    tokens = torch.tensor([[5, 6, 7, 8]])
+    with torch.no_grad():
+        spect = model.infer(text=tokens)
+    assert spect.shape[1] >= tokens.shape[1], spect.shape
+
+
+# --- OptiSpeech export phoneme map -------------------------------------------
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="#1031: the OptiSpeech export writes the dataset phoneme map, not the training table")
+def test_an_optispeech_voice_feeds_the_ids_that_training_reads(tmp_path):
+    import torch
+
+    from phoonnx.voice import TTSVoice
+    from phoonnx_train.engines import get_engine
+    from phoonnx_train.engines.base import TrainingEngineConfig
+    from tests import train_roundtrip as rt
+
+    symbols = ["_", "^", "$", " ", ".", *"abcdefghijklmnopqrstuvwxyz"]
+    config = tmp_path / "config.json"
+    config.write_text(json.dumps({
+        "lang_code": "en", "phoneme_type": "graphemes", "alphabet": "graphemes",
+        "audio": {"sample_rate": 22050}, "num_symbols": len(symbols),
+        "phoneme_id_map": {s: [i] for i, s in enumerate(symbols)}}), encoding="utf-8")
+    engine = get_engine("optispeech")
+    torch.manual_seed(0)
+    module = engine.create_model(TrainingEngineConfig(
+        num_symbols=len(symbols), num_speakers=1, sample_rate=22050, extra=dict(
+            dim=32, n_feats=40, hop_length=256, n_fft=256, win_length=256,
+            encoder_intermediate_dim=48, decoder_intermediate_dim=48, encoder_num_layers=1,
+            decoder_num_layers=1, vocoder_dim=32, vocoder_intermediate_dim=48, vocoder_num_layers=1,
+            duration_intermediate_dim=32, pitch_intermediate_dim=32, energy_intermediate_dim=32,
+            pitch_num_layers=1)), [])
+    # the untrained module stands in for a checkpoint: only the export is under test
+    with patch.object(engine, "load_lightning_module", return_value=module):
+        onnx_path = engine.export_onnx(tmp_path / "model.ckpt", config, tmp_path / "voice")
+    # the ids that _JsonlTextWavDataset gives training for one row
+    training_ids, _ = module.text_processor(rt.SPOKEN, None, split_sentences=False)
+    voice = TTSVoice.load(onnx_path, config_path=onnx_path.with_suffix(".json"))
+    _, fed = rt.speak(voice)
+    assert list(training_ids) in fed, (list(training_ids), fed)
+
+
+# --- StyleTTS2 trailing pad and iSTFTNet export ------------------------------
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="#1032: StyleTTS2 training pads both ends, and the adapter pads the start only")
+def test_styletts2_synthesis_pads_the_ids_as_training_does(tmp_path):
+    from phoonnx.engines.base import AdapterSynthesisRequest
+    from phoonnx.engines.styletts2 import StyleTTS2Adapter
+    from phoonnx_train.styletts2.meldataset import FilePathDataset, TextCleaner
+
+    text = "a cat sat."
+    _wav(tmp_path / "u0.wav", sr=24000)
+    training = FilePathDataset([f"u0.wav|{text}|0"], str(tmp_path), OOD_data=None)
+    _, training_ids, _ = training._load_tensor(training.data_list[0])
+
+    # a voice exported with the TextCleaner table gives the adapter these ids, with no pad
+    ids = np.array([TextCleaner()(text)], np.int64)
+    request = AdapterSynthesisRequest(phoneme_ids=ids, phoneme_lengths=np.array([ids.shape[1]]))
+    session = SimpleNamespace(get_inputs=lambda: [SimpleNamespace(name="tokens")])
+    feed = StyleTTS2Adapter().build_feed_dict(request, session)
+    assert feed["tokens"][0].tolist() == training_ids.tolist(), (feed["tokens"], training_ids)
+
+
+@pytest.mark.xfail(strict=True, raises=RuntimeError,
+                   reason="#1032: the TorchScript ONNX exporter cannot trace the complex tensors of "
+                          "TorchSTFT.transform and TorchSTFT.inverse")
+def test_the_istftnet_generator_exports_to_onnx(tmp_path):
+    import torch
+
+    from phoonnx_train.styletts2.Modules.istftnet import Generator
+    from phoonnx_train.torch_compat import onnx_export_kwargs
+
+    # the iSTFTNet layout of the low and medium presets, 32 channels wide in place of 512
+    generator = Generator(style_dim=16, resblock_kernel_sizes=[3], upsample_rates=[10, 6],
+                          upsample_initial_channel=32, resblock_dilation_sizes=[[1, 3, 5]],
+                          upsample_kernel_sizes=[20, 12], gen_istft_n_fft=20, gen_istft_hop_size=5).eval()
+    frames = 8
+    args = (torch.randn(1, 32, frames), torch.randn(1, 16), torch.full((1, frames), 120.0))
+    with torch.no_grad():
+        torch.onnx.export(generator, args, str(tmp_path / "generator.onnx"),
+                          input_names=["x", "s", "f0"], opset_version=17, **onnx_export_kwargs())
+    assert (tmp_path / "generator.onnx").is_file()
+
+
+# --- SuperTonic export of a model trained from zero --------------------------
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="#1033: the SuperTonic export writes no voice config and no voice style")
+def test_a_supertonic_export_gives_a_voice_that_speaks(tmp_path):
+    import torch
+
+    from phoonnx.voice import TTSVoice
+    from phoonnx_train.supertonic.autoencoder import SpeechAutoencoder
+    from phoonnx_train.supertonic.config import tiny_config
+    from phoonnx_train.supertonic.duration_predictor import DurationPredictor
+    from phoonnx_train.supertonic.export_onnx import export_all
+    from phoonnx_train.supertonic.text import CharTokenizer
+    from phoonnx_train.supertonic.text_to_latent import TextToLatentModel
+    from tests import train_roundtrip as rt
+
+    tokenizer = CharTokenizer.build_from_texts(list(rt.TEXTS), ["en"])
+    config = tiny_config(vocab_size=tokenizer.vocab_size)
+    torch.manual_seed(0)
+    paths = export_all(str(tmp_path), config=config, tokenizer=tokenizer,
+                       autoencoder=SpeechAutoencoder(config.ae),
+                       text_to_latent=TextToLatentModel(config.ttl, config.vocab_size),
+                       duration_predictor=DurationPredictor(config.dp, config.vocab_size))
+    voice_configs = [p for p in sorted(tmp_path.glob("*.json"))
+                     if "lang_code" in json.loads(p.read_text(encoding="utf-8"))]
+    assert voice_configs, f"the export wrote {sorted(p.name for p in tmp_path.iterdir())}"
+    voice = TTSVoice.load(paths["vector_estimator"], config_path=voice_configs[0])
+    audio, _ = rt.speak(voice)
+    assert audio.size and np.isfinite(audio).all(), audio
+
+
+# --- preprocess --resume and --jsonl-audio-spec-path -------------------------
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="#1067: a resume without --jsonl-audio-spec-path writes local cache paths beside "
+                          "the rewritten ones")
+def test_a_resume_without_jsonl_audio_spec_path_keeps_the_first_cache_base(tmp_path):
+    def row(name: str) -> str:
+        clip = _wav(tmp_path / "ds" / "wav" / name, sr=16000)
+        return json.dumps({"text": "hi", "audio": str(clip), "phon": "h i"}) + "\n"
+
+    source = tmp_path / "a.jsonl"
+    source.write_text(row("a.wav"))
+    out = tmp_path / "out"
+    args = ["-i", str(source), "-o", str(out), "-l", "en", "--phonemes-column", "phon"]
+    assert _preprocess([*args, "--jsonl-audio-spec-path", "/override/base"]).exit_code == 0
+    with open(source, "a") as handle:
+        handle.write(row("b.wav"))
+    result = _preprocess([*args, "--resume"])
+    if result.exit_code == 2:
+        # a usage error is the other way the issue allows
+        assert "--jsonl-audio-spec-path" in result.output, result.output
+        assert len(_manifest(out)) == 1
+    else:
+        assert result.exit_code == 0, result.output
+        folders = [Path(r[key]).parent for r in _manifest(out) for key in ("audio_norm_path", "audio_spec_path")]
+        assert folders == [Path("/override/base/cache/22050")] * 4, folders
