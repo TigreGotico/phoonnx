@@ -119,7 +119,7 @@ The settings of one engine, such as `asr_path`, `plbert_dir`, `stage`, `backbone
 
 This engine trains the ZipVoice flow-matching model, a Zipformer text encoder and a flow-matching decoder. The code is in `phoonnx_train/zipvoice/`. It reads the same preprocessed dataset as the other engines. It resamples the audio to 24 kHz and makes 100-bin Vocos log-mel features, which it caches beside the audio cache.
 
-`--quality base` has the size of the upstream model, and `--quality low` is a very small model for tests. The training follows the upstream recipe: ScaledAdam with the Eden schedule, a random 70 to 100 percent span of each utterance as the target, and text-condition dropout for classifier-free guidance. `--resume-from-checkpoint` reads Lightning checkpoints and the upstream `{"model": ...}` layout, so a released ZipVoice checkpoint can start a fine-tune.
+`--quality base` has the size of the upstream model, and `--quality low` is a very small model for tests. The training follows the upstream recipe. It uses ScaledAdam with the Eden schedule, and text-condition dropout for classifier-free guidance. The target is a random span of each utterance, from 70 to 100 percent of its length. `--resume-from-checkpoint` reads Lightning checkpoints and the upstream `{"model": ...}` layout, so a released ZipVoice checkpoint can start a fine-tune.
 
 ```bash
 python -m phoonnx_train.train --dataset-dir train_out --engine zipvoice --quality base \
@@ -375,7 +375,7 @@ python -m phoonnx_train.train --dataset-dir train_out --default-root-dir train_o
 
 Every learned table starts at zero. A phone that never occurs in training keeps the projection of its features, so it lands near the trained phones that share them. A `null` id, such as pad, BOS, EOS or the `|` and `‖` group marks, gets only its learned part. The learned part is scaled as the id embedding is.
 
-The table must come from the dataset's own map. Training stops when the table's `phoneme_id_map_sha256` differs from the hash of the map in `config.json`, when the map has an id that the table does not list, or when a vector has the wrong length.
+The table must come from the dataset's own map. Training stops when the table's `phoneme_id_map_sha256` differs from the hash of the map in `config.json`. It also stops when the map has an id that the table does not list, or when a vector has the wrong length.
 
 Checkpoints and export follow these rules:
 

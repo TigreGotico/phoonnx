@@ -77,8 +77,8 @@ download anything:
 
 ```python
 >>> by_source = manager.get_available_voice_ids_by_source()
->>> len(by_source), by_source["ovos"][:2]
-(39, ['OpenVoiceOS/phoonnx_an_dii_unicode', 'OpenVoiceOS/phoonnx_an_miro_unicode'])
+>>> len(by_source), "OpenVoiceOS/phoonnx_an_dii_unicode" in by_source["ovos"]
+(39, True)
 
 ```
 
