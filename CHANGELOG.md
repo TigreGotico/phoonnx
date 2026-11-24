@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.137.1a1](https://github.com/TigreGotico/phoonnx/tree/1.137.1a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.0a2...1.137.1a1)
+
+**Merged pull requests:**
+
+- fix: path overrides in preprocess work for every dataset layout [\#1040](https://github.com/TigreGotico/phoonnx/pull/1040) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.137.0a2](https://github.com/TigreGotico/phoonnx/tree/1.137.0a2) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.0a1...1.137.0a2)
@@ -374,25 +382,13 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.1a1...1.129.2a1)
 
-**Merged pull requests:**
-
-- fix: Piper and sherpa-onnx export round trip, default speaker, unmapped marks [\#917](https://github.com/TigreGotico/phoonnx/pull/917) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.129.1a1](https://github.com/TigreGotico/phoonnx/tree/1.129.1a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.0a1...1.129.1a1)
 
-**Merged pull requests:**
-
-- fix: name the file for an empty, cut or extensible reference WAV [\#918](https://github.com/TigreGotico/phoonnx/pull/918) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.129.0a1](https://github.com/TigreGotico/phoonnx/tree/1.129.0a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.128.0a1...1.129.0a1)
-
-**Merged pull requests:**
-
-- feat: export a voice to Piper and sherpa-onnx [\#915](https://github.com/TigreGotico/phoonnx/pull/915) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.128.0a1](https://github.com/TigreGotico/phoonnx/tree/1.128.0a1) (2026-11-22)
 
