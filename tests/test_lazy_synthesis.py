@@ -16,7 +16,7 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
-from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig
+from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig, AudioPost
 from scriptconv.phonemizers.base import (
     BasePhonemizer,
     GraphemePhonemizer,
@@ -126,7 +126,7 @@ class TestLazyOrdering(unittest.TestCase):
     def test_sentence2_phonemized_after_sentence1_run(self):
         events = []
         voice = _make_lazy_voice(events)
-        gen = voice.synthesize(MULTISENTENCE, SynthesisConfig(normalize_audio=False))
+        gen = voice.synthesize(MULTISENTENCE, SynthesisConfig(audio=AudioPost(normalize=False)))
 
         first_chunk = next(gen)
         self.assertIsInstance(first_chunk, AudioChunk)
@@ -147,7 +147,7 @@ class TestLazyOrdering(unittest.TestCase):
     def test_no_work_before_first_pull(self):
         events = []
         voice = _make_lazy_voice(events)
-        gen = voice.synthesize(MULTISENTENCE, SynthesisConfig(normalize_audio=False))
+        gen = voice.synthesize(MULTISENTENCE, SynthesisConfig(audio=AudioPost(normalize=False)))
         self.assertEqual(events, [])  # generator not yet consumed
 
 

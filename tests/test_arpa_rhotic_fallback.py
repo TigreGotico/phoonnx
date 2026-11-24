@@ -41,7 +41,7 @@ def _voice(symbols, phonemizer=None, phoneme_type=None):
 
 
 def _ids(voice, text, src=Alphabet.ARPA):
-    syn_config = SynthesisConfig(alphabet=None if src == Alphabet.GRAPHEMES else src)
+    syn_config = SynthesisConfig(input_alphabet=None if src == Alphabet.GRAPHEMES else src)
     return [list(utterance.ids) for utterance in voice.prepare(text, syn_config)]
 
 

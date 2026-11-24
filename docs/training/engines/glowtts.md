@@ -2,94 +2,45 @@
 
 <!-- agent-hint
 covers: how to load a GlowTTS voice with its vocoder, convert a Larynx or Coqui voice and train a mel model
-source: phoonnx/engines/glowtts.py, phoonnx/engines/glowtts_config.py, phoonnx_train/engines/glowtts.py, phoonnx/voice_index/glowtts.json
+source: phoonnx/engines/glowtts.py, phoonnx/engines/glowtts_config.py, phoonnx/engines/coqui_config.py, scripts/conversion/coqui_glowtts_export/export.py, phoonnx_train/engines/glowtts.py, phoonnx/voice_index/glowtts.json
 generated: no
-verify: pytest tests/test_glowtts.py tests/test_glowtts_training.py; the preset table: none, checked by reading phoonnx_train/engines/glowtts.py:_QUALITY_PRESETS
+verify: .venv/bin/python -c "import re,sys,json; from phoonnx.engines.glowtts import GlowTTSAdapter as A; from phoonnx_train.engines.glowtts import _QUALITY_PRESETS as Q; p=open('docs/training/engines/glowtts.md').read().replace(chr(96),''); d=dict(re.findall(r'^\| ([a-z_]+) \| ([\d.]+) \| [A-Z]',p,re.M)); q={r[0]:tuple(map(int,r[1:])) for r in re.findall(r'^\| ([\w-]+) \| (\d+) \| (\d+) \| (\d+) / (\d+) \| (\d+) / (\d+) \|',p,re.M)}; idx=json.load(open('phoonnx/voice_index/glowtts.json')); n=int(re.search(r'holds (\d+) voices',p).group(1)); ids=set(re.findall(r'\"((?:larynx/|coqui-)[\w-]+)\"',p)); sys.exit(0 if d=={k:str(v) for k,v in A().default_params().items()} and q=={k:(v['hidden_channels'],v['filter_channels'],v['n_heads'],v['n_layers'],v['dec_n_blocks'],v['dec_n_layers']) for k,v in Q.items()} and n==len(idx) and ids<=set(idx) else 1)"
 see: matcha.md, ../training.md, ../../vocoders.md
 -->
 
-This page explains how to load, convert and train GlowTTS voices, for voice builders and integrators.
-
-> Related: [training reference](../training.md) ·
-> [adapter architecture](../../engines.md) ·
-> [configuration](../../configuration.md) · [vocoders](../../vocoders.md) ·
-> [Matcha — the other two-stage engine](matcha.md)
+This page shows how to load a GlowTTS voice with its vocoder, convert a Larynx or Coqui voice, and train and export a GlowTTS mel model.
 
 ## What it is
 
-GlowTTS is a **flow-based** acoustic model (text → mel spectrogram), best known
-from [Larynx](https://github.com/rhasspy/larynx) — the precursor to Mimic3 and
-Piper. Like Matcha-TTS it is **two-stage**: a separate vocoder (Larynx ships
-HiFi-GAN) turns the mel into a waveform, so the adapter reuses
-[`phoonnx.engines.vocoders`](../../vocoders.md).
+GlowTTS is a flow-based acoustic model that makes a mel spectrogram from phoneme IDs. [Larynx](https://github.com/rhasspy/larynx), the project before Mimic 3 and Piper, made it well known. Like Matcha-TTS, GlowTTS is a two-stage engine: a separate vocoder turns the mel into a waveform. The adapter uses the vocoders of [`phoonnx.engines.vocoders`](../../vocoders.md).
 
-## When to pick it
+Pick GlowTTS to run Larynx or Coqui-TTS GlowTTS voices with ONNX Runtime only, with no `coqui-tts` package. You can also train a small flow-based voice and pair it with a mel-matched vocoder or with Griffin-Lim.
 
-Choose GlowTTS to run existing Larynx or Coqui-TTS GlowTTS voices in a
-pure-ONNX pipeline (no `coqui-tts` / `TTS` dependency), or to train a compact
-flow-based voice where you want to pair the mel model with a mel-matched
-neural vocoder or a universal Griffin-Lim fallback.
+## Install
 
-## Extras needed
+Larynx voices phonemize with gruut. Install the language extra of the voice, for example `pip install --pre "phoonnx[en]"`, which installs `gruut[en]`. Training uses the `train` extra: `pip install --pre "phoonnx[train]"`.
 
-Inference: phonemization uses **gruut** (`pip install gruut`, or the relevant
-language extra). Training uses the `train` extra: `pip install --pre "phoonnx[train]"`.
+## Load an indexed voice
 
-## Inference contract
-
-### ONNX inputs (glow_tts generator)
-
-| Name | Type | Shape | Description |
-|------|------|-------|-------------|
-| `input` | int64 | `[B, T]` | Phoneme IDs (gruut) |
-| `input_lengths` | int64 | `[B]` | Sequence lengths |
-| `scales` | float32 | `[2]` | `[noise_scale, length_scale]` |
-| `sid` | int64 | `[B]` | Speaker ID (**optional**, multi-speaker models only) |
-
-The `sid` input is fed only when the loaded graph declares it; single-speaker
-voices omit it.
-
-### ONNX outputs
-
-A mel spectrogram `[B, n_mels, T]`. Larynx also emits an extra intermediate
-tensor; the adapter finds the mel by its `n_mels` axis rather than by output
-position, then runs the vocoder.
-
-> GlowTTS shares the `scales` input with VITS, so the adapter is probed before
-> VITS — it is distinguished by its **mel** (not waveform) output.
-
-Parameters:
-
-| Param | Default | Description |
-|-------|---------|-------------|
-| `noise_scale` | 0.667 | Flow sampling temperature |
-| `length_scale` | 1.0 | Speech rate (higher = slower) |
-
-## Obtaining / converting / training
-
-### Loading an indexed voice
-
-GlowTTS voices ship in `phoonnx/voice_index/glowtts.json`, mirrored under
-`Phoonnx/phoonnx-glowtts` (model + native config) with the HiFi-GAN vocoder
-under `Phoonnx/phoonnx-vocoders` (linked per entry via `vocoder_url`,
-`vocoder_type: hifigan`):
+`phoonnx/voice_index/glowtts.json` holds 58 voices. Each voice has its own Hub repository under `Phoonnx/`, with the model and a native config. The index entry also names a vocoder with `vocoder_url` and `vocoder_type`, and the voice manager downloads it with the model:
 
 ```python
 from phoonnx.model_manager import TTSModelManager
 
-m = TTSModelManager(); m.merge_default_voices()
-voice = m.voices["larynx/en-us-ljspeech-glow_tts"].load()  # downloads model + vocoder
+m = TTSModelManager()
+m.merge_default_voices()
+voice = m.voices["larynx/en-us-ljspeech-glow_tts"].load()
 for chunk in voice.synthesize("Hello from GlowTTS."):
-    ...
+    audio = chunk.audio_float_array
 ```
 
-### Larynx voice → native config
+The Larynx voices have ids such as `"larynx/en-us-ljspeech-glow_tts"`, and the Coqui voices have ids such as `"coqui-en-ljspeech-glow-tts"`.
 
-A Larynx GlowTTS voice ships a training `config.json` (audio + model params) and
-a `phonemes.txt` symbol table (`<id> <phoneme>` per line, gruut IPA).
-`phoonnx.engines.glowtts_config.voice_config_from_larynx` turns those into a
-native phoonnx `VoiceConfig` (gruut phonemizer, blank-interspersed tokenization,
-mel/audio params):
+## Convert a voice
+
+### Larynx
+
+A Larynx GlowTTS voice ships a training `config.json` and a `phonemes.txt` symbol table, with one `<id> <phoneme>` pair per line. `voice_config_from_larynx` turns them into a native `VoiceConfig` with the gruut phonemizer, blank-interspersed tokens and the audio settings:
 
 ```python
 import json
@@ -99,87 +50,60 @@ cfg = json.load(open("config.json"))
 config = voice_config_from_larynx(cfg, open("phonemes.txt").read(), lang_code="en-us")
 ```
 
-The mirrored voices ship this as a native `config.json` (`engine: glowtts`), so
-they load through the standard path.
+The indexed voices already ship this native `config.json` (`engine: glowtts`), so they load through the standard path.
 
-### Coqui voices
+### Coqui
 
-Coqui-TTS GlowTTS models (`coqui/…` ids) are converted to phoonnx ONNX without
-the coqui-tts package: a standalone exporter vendors only the pure-torch
-`Encoder`/`Decoder` and replicates `GlowTTS.inference` (pre-inverting the flow
-1×1 convs). Their paired `default_vocoder` (HiFi-GAN / multiband-MelGAN) is
-converted the same way; models with no paired vocoder use Griffin-Lim.
-`phoonnx.engines.glowtts_config.voice_config_from_coqui` builds the native
-config (graphemes, or espeak when `use_phonemes`).
+`scripts/conversion/coqui_glowtts_export/export.py` converts a Coqui-TTS GlowTTS model to ONNX without the `coqui-tts` package. It vendors only the pure-torch encoder and decoder, and it gives an ONNX graph with the Larynx inputs and outputs. The paired Coqui vocoder (HiFi-GAN or multiband MelGAN) is converted in the same way. A model with no paired vocoder uses Griffin-Lim. `voice_config_from_coqui` (in `phoonnx.engines.coqui_config`, also importable from `phoonnx.engines.glowtts_config`) builds the native config, with graphemes, or with espeak when the model sets `use_phonemes`.
 
-### Training
+## Train a model
 
-Trainable with `--engine glowtts`. Training uses `phoonnx_train`'s standard
-preprocessing pipeline (phonemization + audio normalization + linear-spectrogram
-extraction, shared with VITS) and a self-contained, pure-torch GlowTTS
-implementation vendored under `phoonnx_train/glowtts/` — no `coqui-tts` / `TTS`
-dependency. See `phoonnx_train/glowtts/__init__.py` for the full provenance
-note: a reimplementation from the published GlowTTS paper architecture (Kim et
-al. 2020), with the training math checked against the original reference
-implementation (jaywalnut310/glow-tts, MIT). The mel basis is pinned to fmin 0 /
-fmax 8000 Hz (matching the HiFi-GAN-family vocoder configs) and recorded in the
-exported ONNX metadata.
+Training uses the standard `phoonnx_train` preprocessing, which GlowTTS shares with VITS. The model is a pure-torch GlowTTS in `phoonnx_train/glowtts/`, with no `coqui-tts` dependency. `phoonnx_train/glowtts/__init__.py` gives its provenance: a reimplementation of the GlowTTS paper (Kim et al. 2020), with the training math checked against jaywalnut310/glow-tts (MIT).
 
-```bash
-# 1. preprocess an LJSpeech-style dataset (shared with VITS)
-python -m phoonnx_train.preprocess \
-  --input-dir /data/my-dataset \
-  --output-dir /data/preprocessed \
-  --language en-us
+1. Preprocess an LJSpeech-style dataset:
 
-# 2. train
-python -m phoonnx_train.train \
-  --dataset-dir /data/preprocessed \
-  --engine glowtts \
-  --quality medium \
-  --batch-size 16 \
-  --max-epochs 1000 \
-  --default-root-dir /data/preprocessed
+   ```bash
+   python -m phoonnx_train.preprocess \
+     --input-dir /data/my-dataset \
+     --output-dir /data/preprocessed \
+     --language en-us
+   ```
 
-# 3. export the mel model to ONNX
-python -m phoonnx_train.export_onnx \
-  /data/preprocessed/lightning_logs/version_0/checkpoints/epoch=999-step=250000.ckpt \
-  --engine glowtts \
-  --config /data/preprocessed/config.json \
-  --output-dir ./onnx
-```
+2. Train:
 
-Without `--default-root-dir`, PyTorch Lightning writes `lightning_logs/` in the current
-folder. The trainer keeps every epoch checkpoint and writes no `last.ckpt`.
+   ```bash
+   python -m phoonnx_train.train \
+     --dataset-dir /data/preprocessed \
+     --engine glowtts \
+     --quality medium \
+     --batch-size 16 \
+     --max-epochs 1000 \
+     --default-root-dir /data/preprocessed
+   ```
 
-`export_onnx` produces **only the mel model** (`<checkpoint-stem>.onnx`), with
-the exact input/output contract above (`input` / `input_lengths` / `scales` →
-`[B, n_mels, T]` mel). You still need a **separate vocoder** ONNX to synthesize
-audio; this engine never produces one.
+   Without `--default-root-dir`, PyTorch Lightning writes `lightning_logs/` in the current folder. The trainer keeps the checkpoint of every save and writes no `last.ckpt`.
 
-Quality presets:
+3. Export the mel model:
 
-| Preset | hidden_channels | filter_channels | heads / layers | decoder blocks / layers |
-|--------|-----------------|------------------|-----------------|--------------------------|
-| `x-low` | 96 | 384 | 2 / 4 | 8 / 3 |
-| `medium` | 192 | 768 | 2 / 6 | 12 / 4 |
-| `high` | 256 | 1024 | 4 / 8 | 12 / 4 |
+   ```bash
+   python -m phoonnx_train.export_onnx \
+     /data/preprocessed/lightning_logs/version_0/checkpoints/epoch=999-step=250000.ckpt \
+     --engine glowtts \
+     --config /data/preprocessed/config.json \
+     --output-dir ./onnx
+   ```
 
-Architecture: a phoneme-embedding → conv prenet → Transformer text encoder
-(shared with VITS's own text encoder) producing a per-token Gaussian prior plus
-a conv duration predictor; an invertible normalizing-flow decoder mapping mel ↔
-latent; Monotonic Alignment Search (reusing the VITS-vendored MAS kernel); MLE
-loss plus an MSE duration loss.
+   The export writes the mel model `<checkpoint-stem>.onnx` and its config `<checkpoint-stem>.json`. The graph has the inputs and the output of the contract below. The export never makes a vocoder.
 
-**Multi-speaker:** set `num_speakers > 1` in the shared `TrainingEngineConfig`; a
-speaker embedding conditions both the duration predictor and the flow's affine
-coupling layers (`gin_channels`, default 512, overridable via `extra`).
+The mel basis uses fmin 0 Hz and fmax 8000 Hz, the same as the HiFi-GAN vocoder configs.
 
-## Synthesis example
+The model has a phoneme embedding, a convolutional prenet and a Transformer text encoder that gives a Gaussian prior per token. A convolutional duration predictor sits beside the encoder. The decoder is an invertible normalizing flow between the mel and a latent. Training uses Monotonic Alignment Search, an MLE loss and an MSE duration loss.
 
-Point a local voice `config.json` at the exported mel model and a vocoder using
-the exact `engine_params` keys `GlowTTSAdapter.configure_from_params`
-(`phoonnx/engines/glowtts.py`) reads — `vocoder_path` and `vocoder_type`:
+To train a multi-speaker model, set `num_speakers` above 1 in the training config. A speaker embedding then conditions the duration predictor and the coupling layers of the flow. Its size is `gin_channels`, 512 by default.
+
+## Run your exported model
+
+Add the vocoder to the `engine_params` of the exported config. `GlowTTSAdapter` reads `vocoder_path` and `vocoder_type`:
 
 ```json
 {
@@ -191,9 +115,7 @@ the exact `engine_params` keys `GlowTTSAdapter.configure_from_params`
 }
 ```
 
-Place this `config.json` next to the exported `.onnx` mel model in a local voice
-directory, then point `ovos-tts-plugin-phoonnx` at it via the plugin's `voice`
-setting (see [ovos_plugin.md](../../ovos_plugin.md)):
+Put the config next to the exported `.onnx` mel model in a folder, then set that folder as the `voice` of `ovos-tts-plugin-phoonnx` (see [OVOS plugin](../../ovos_plugin.md)):
 
 ```json
 {
@@ -209,33 +131,50 @@ setting (see [ovos_plugin.md](../../ovos_plugin.md)):
 
 ## Vocoders
 
-GlowTTS is two-stage, so each indexed voice links a vocoder (see
-[vocoders.md](../../vocoders.md)):
+Each indexed voice names its vocoder (see [Vocoders](../../vocoders.md)):
 
-- **Neural** (`vocoder_type: hifigan` / `melgan`) — an ONNX vocoder under
-  `Phoonnx/phoonnx-vocoders`, downloaded alongside the model. Best quality;
-  used where a **mel-matched** vocoder exists (Larynx HiFi-GAN; Coqui models'
-  paired `default_vocoder`).
-- **Griffin-Lim** (`vocoder_type: griffinlim`) — a parametric fallback (no model
-  file) for voices with no mel-matched neural vocoder. Robotic but universal;
-  its config carries the mel params (`ref_level_db` / `spec_gain` / `max_norm` …)
-  so coqui-domain mels invert correctly.
+- A neural vocoder (`vocoder_type: hifigan` or `melgan`) is an ONNX file in its own `Phoonnx/` repository, downloaded with the model. 51 Larynx voices share `Phoonnx/hifigan-multi-vctk-small`. The Coqui voices use the vocoder that Coqui paired with the model.
+- Griffin-Lim (`vocoder_type: griffinlim`) needs no model file. The voices with no mel-matched neural vocoder use it. Its config carries the mel settings (`ref_level_db`, `spec_gain`, `max_norm`) so that a Coqui mel inverts correctly.
 
-## Gotchas / aliases
+## Notes
 
-- **Detect aliases:** the config `engine` field may be `glowtts`, `glow_tts` or
-  `larynx`; a config with `model_type: glow_tts` is also detected.
-- **Text processing:** GlowTTS/Larynx phonemizes with **gruut**
-  (`phoneme_type: gruut`, `alphabet: ipa`) and interleaves a blank (PAD, id 0)
-  between symbols (`add_blank`), with no BOS/EOS. The 46-symbol table comes from
-  the voice's `phonemes.txt`, folded into `phoneme_id_map`.
-- **Mel domain:** Larynx glow_tts emits a signal-normalized mel; Coqui glow_tts
-  emits a log-domain mel. The adapter reproduces larynx's mel post-processing so
-  each domain feeds its vocoder correctly.
+- The config `engine` field may be `glowtts`, `glow_tts` or `larynx`. A config with `model_type: glow_tts` also selects this adapter.
+- GlowTTS and VITS both take a `scales` input. The registry probes GlowTTS before VITS, and the probe needs a mel output.
+- Larynx voices phonemize with gruut (`phoneme_type: gruut`, `alphabet: ipa`). The tokenizer puts a blank (PAD, id 0) between symbols and adds no BOS or EOS.
+- A Larynx mel is signal-normalized, and a Coqui mel is log-domain. The adapter reproduces the Larynx mel post-processing for the first kind and passes a log-domain mel to the vocoder as it is.
+
+## Reference
+
+### ONNX inputs
+
+| Name | Type | Shape | Description |
+|------|------|-------|-------------|
+| `input` | int64 | `[B, T]` | Phoneme IDs |
+| `input_lengths` | int64 | `[B]` | Sequence lengths |
+| `scales` | float32 | `[2]` | `[noise_scale, length_scale]` |
+| `sid` | int64 | `[B]` | Speaker ID, only when the graph declares it |
+
+The output is a mel spectrogram `[B, n_mels, T]`. A Larynx graph also outputs a second rank-3 tensor. The adapter takes the first rank-3 tensor with a mel axis.
+
+### Synthesis parameters
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `noise_scale` | 0.667 | Flow sampling temperature |
+| `length_scale` | 1.0 | Speech rate (higher is slower) |
+
+### Quality presets
+
+| Preset | hidden_channels | filter_channels | heads / layers | decoder blocks / layers |
+|--------|-----------------|------------------|-----------------|--------------------------|
+| `x-low` | 96 | 384 | 2 / 4 | 8 / 3 |
+| `medium` | 192 | 768 | 2 / 6 | 12 / 4 |
+| `high` | 256 | 1024 | 4 / 8 | 12 / 4 |
 
 ## References
 
-- [Larynx](https://github.com/rhasspy/larynx) · [GlowTTS paper](https://arxiv.org/abs/2005.11129)
+- [Larynx](https://github.com/rhasspy/larynx)
+- [GlowTTS paper](https://arxiv.org/abs/2005.11129)
 
 ---
 

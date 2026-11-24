@@ -4,7 +4,7 @@
 covers: the Python API that the code exports, as a walk-through and as a name list, plus the design of a target API
 source: phoonnx/__init__.py, phoonnx/voice.py:TTSVoice, phoonnx/encoders.py, phoonnx/audio.py:write_wav, phoonnx/config.py, phoonnx/errors.py, phoonnx/engines/__init__.py, phoonnx/config.schema.json
 generated: no
-verify: run the python blocks of Parts 1 and 2 in order in one python -I session and compare each with the text block after it (8 of 8 match)
+verify: diff <(awk '/^## Part 3/{exit} /^\x60\x60\x60python/{f=1;next} /^\x60\x60\x60/{f=0} f' docs/api.md | .venv/bin/python -I -) <(awk '/^## Part 3/{exit} /^\x60\x60\x60text/{f=1;next} /^\x60\x60\x60/{f=0} f' docs/api.md) && .venv/bin/python -c "import inspect,re,sys; import phoonnx,phoonnx.errors as e; from phoonnx.voice import TTSVoice; p=open('docs/api.md').read(); q=chr(96); row=re.search('^[|] '+q+'TTSVoice.load'+q+' [|].*$',p,re.M).group(0); doc=re.findall(q+'([a-z_]+)'+q,row); names=sorted(n for n in e.__all__ if n!='PhoonnxError'); ok=[doc==list(inspect.signature(TTSVoice.load).parameters), all(q+n+q in p for n in names), all(q+n+q in p.split(chr(10)+'The root package exports',1)[1].split(chr(10))[0] for n in phoonnx.__all__)]; print(ok); sys.exit(0 if all(ok) else 1)"
 see: usage.md, architecture.md, configuration.md, engines.md
 -->
 
@@ -109,7 +109,7 @@ With a loaded voice, the same call is `write_wav(voice.synthesize("Hello"), wav_
 from phoonnx.config import SynthesisConfig
 
 print(config.length_scale, SynthesisConfig().length_scale)
-print(SynthesisConfig(speaker_id=2, length_scale=1.2).speaker_id)
+print(SynthesisConfig(speaker=2, length_scale=1.2).speaker)
 ```
 
 ```text
@@ -124,23 +124,23 @@ This config sets no scales and the call sets none, so the engine's own default a
 3. The `inference` block of `config.json`.
 4. The engine's default.
 
-The keys of `SynthesisConfig.extra_params` come last and win over all four.
+The keys of `SynthesisConfig.extra` come last and win over all four.
 
 ## Part 2: Name list
 
-This part lists the names that exist in the code. The package root exports nine names, listed below. Import every other name from its own module.
+This part lists the names that exist in the code. The package root exports eleven names, listed below. Import every other name from its own module.
 
 ### Voice and audio
 
 | Name | Module | Role |
 | --- | --- | --- |
 | `TTSVoice` | `phoonnx.voice` | A loaded voice. A dataclass built by `TTSVoice.load`. |
-| `TTSVoice.load` | `phoonnx.voice` | Takes `model_path`, `config_path`, `vocab_path`, `tokenizer_config_path`, `phonemes_txt`, `phoneme_map`, `lang_code`, `phoneme_type_str`, `alphabet_str`, `engine_params`, `providers`, `warmup` and the deprecated `use_cuda`. |
+| `TTSVoice.load` | `phoonnx.voice` | Takes `model_path`, `config_path`, `vocab_path`, `tokenizer_config_path`, `phonemes_txt`, `phoneme_map`, `lang_code`, `phoneme_type_str`, `alphabet_str`, `engine_params`, `providers`, the deprecated `use_cuda`, `warmup`, `phonemizer_lang` and `threads`. |
 | `TTSVoice.prepare` | `phoonnx.voice` | Text to `Iterator[Utterance]`. |
 | `TTSVoice.render` | `phoonnx.voice` | One `Utterance` to one `AudioChunk`. |
 | `TTSVoice.synthesize` | `phoonnx.voice` | Text to `Iterable[AudioChunk]`. Argument `syn_config`, flag `include_alignments`. |
 | `TTSVoice.stream` | `phoonnx.voice` | Text to `Iterator[AudioChunk]`, yielded as the engine makes the audio. See [Streaming the audio of a sentence](#streaming-the-audio-of-a-sentence). |
-| `TTSVoice.synthesize_ssml` | `phoonnx.voice` | SSML to `Iterable[AudioChunk]`. Arguments `lang` and `on_mark`. |
+| `TTSVoice.synthesize_ssml` | `phoonnx.voice` | SSML to `Iterable[AudioChunk]`. Arguments `syn_config`, `lang`, `include_alignments`, `on_mark` and `seed`. |
 | `TTSVoice.synthesize_wav`, `synthesize_ssml_wav` | `phoonnx.voice` | Write a WAV file through `write_wav`. |
 | `TTSVoice.frontend` | `phoonnx.voice` | The scriptconv `TextFrontend` of the voice. |
 | `TTSVoice.phonemize` | `phoonnx.voice` | Text to phonemes. |
@@ -156,10 +156,11 @@ This part lists the names that exist in the code. The package root exports nine 
 | Name | Module | Role |
 | --- | --- | --- |
 | `VoiceConfig` | `phoonnx.config` | What the model is. `from_dict` reads a config and `to_dict` writes the native format. |
-| `SynthesisConfig` | `phoonnx.config` | One call. A flat list of fields. |
+| `SynthesisConfig` | `phoonnx.config` | One call. Frozen. The groups `stages`, `reference` and `audio` hold the text stages, the cloning reference and the audio steps. The other fields are flat. |
+| `AudioPost`, `SpeakerReference` | `phoonnx.config` | The `audio` group of `SynthesisConfig`, and the reference of `reference` and `audio.voice_conversion`. |
 | `Engine` | `phoonnx.config` | Names a file format or an architecture. The alias `kokoro` gives `Engine.STYLETTS2`. |
 | `Alphabet`, `PhonemeType` | `phoonnx.config` | Re-exports of scriptconv enums. `PhonemeType` is scriptconv `Phonemizer`. |
-| `Chunk` | `phoonnx.config` | Re-export of the scriptconv enum behind `SynthesisConfig.chunk`. |
+| `Chunk` | `phoonnx.config` | Re-export of the scriptconv enum behind `SynthesisConfig.stages.chunk`. |
 | `TTSModelManager`, `TTSModelInfo` | `phoonnx.model_manager` | The voice index and the index entry. |
 
 ### Engines and errors
@@ -185,12 +186,13 @@ An adapter subclasses `BaseOnnxAdapter` in `phoonnx.engines.base`. It receives a
 - `ExportNotSupported`.
 - `NonFiniteAudioError`.
 - `UnsupportedTokenizer`, `UnsupportedSentencePieceModel`, `UnsupportedVoiceLanguage` and `VoiceExceedsMemoryBudget`.
+- `UnknownVoice`.
 
-`PrecisionUnavailable` and `UnsupportedVoiceLanguage` also subclass `ValueError`. `NonFiniteAudioError` and `VoiceExceedsMemoryBudget` also subclass `RuntimeError`.
+`PrecisionUnavailable` and `UnsupportedVoiceLanguage` also subclass `ValueError`. `NonFiniteAudioError` and `VoiceExceedsMemoryBudget` also subclass `RuntimeError`. `UnknownVoice` also subclasses `KeyError`: `TTSModelManager.voices` raises it for a voice id that the index does not have.
 
-`TTSVoice.load` raises `VoiceLoadError` when the config file does not exist. It also raises it for a VITS graph whose vocabulary uses an id that is not below `num_symbols`. Synthesis raises `NonFiniteAudioError` when the model returns NaN or infinite samples, before the audio is levelled. Written as 16-bit samples, such audio would be silence. `phoonnx.compat.export_piper` and `export_sherpa` raise `ExportNotSupported` for a voice that Piper or sherpa-onnx cannot read with the ids that phoonnx gives it. Nothing in the code raises `FrontendMismatchError` or `UnsupportedConfigError`. Part 3 describes where the design raises them.
+`TTSVoice.load` raises `VoiceLoadError` when the config file does not exist. It also raises it for a VITS graph whose vocabulary uses an id that is not below `num_symbols`. Synthesis raises `NonFiniteAudioError` when the model returns NaN or infinite samples, before the audio is levelled. As 16-bit samples, such audio is silence. `phoonnx.compat.export_piper` and `export_sherpa` raise `ExportNotSupported` when Piper or sherpa-onnx cannot read the ids of the voice. Nothing in the code raises `FrontendMismatchError` or `UnsupportedConfigError`. Part 3 describes where the design raises them.
 
-The root package exports `TTSVoice`, `AudioChunk`, `Utterance`, `VoiceConfig`, `SynthesisConfig`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. Each name loads on first access, so `import phoonnx` stays cheap.
+The root package exports `TTSVoice`, `AudioChunk`, `Utterance`, `VoiceConfig`, `SynthesisConfig`, `AudioPost`, `SpeakerReference`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. Each name loads on first access, so `import phoonnx` stays cheap.
 
 ### Writing the native config
 
@@ -254,7 +256,7 @@ The adapter builds the encoder of a voice in `BaseOnnxAdapter.make_encoder`. An 
 
 `TTSVoice.stream(text, config)` yields the audio as the engine makes it. An engine that makes audio in steps, such as Pocket TTS, yields parts of a sentence. Every other engine yields one chunk for each sentence. Joined, the parts give the audio of `synthesize`. The first part of a sentence carries its phonemes and ids.
 
-Peak normalisation, a loudness target, voice conversion and super-resolution need the whole sentence. When one of them is on, each sentence is one chunk. Peak normalisation is on by default, so pass `SynthesisConfig(normalize_audio=False)` to get parts of a sentence.
+Peak normalisation, a loudness target, voice conversion and super-resolution need the whole sentence. When one of them is on, each sentence is one chunk. Peak normalisation is on by default, so pass `SynthesisConfig(audio=AudioPost(normalize=False))` to get parts of a sentence.
 
 An adapter streams by overriding `BaseOnnxAdapter.synthesize_stream(request, session)`. The default yields the one result of `synthesize`.
 
@@ -265,7 +267,7 @@ This part is a design, not a description of the code. Its objects do not exist, 
 ### Design rules
 
 1. One concept has one name and one home.
-2. Three objects have three lifetimes. `VoiceConfig` is what the model is: read once, frozen. `TextFrontend` is how text becomes symbols: built once from `VoiceConfig.frontend`. `SynthesisConfig` is what one call asks for: every field optional, `None` means the voice's value.
+2. Three objects have three lifetimes. `VoiceConfig` is what the model is. It is read one time and frozen. `TextFrontend` is how text becomes symbols. It is built one time from `VoiceConfig.frontend`. `SynthesisConfig` is what one call asks for. Every field is optional, and `None` means the value of the voice.
 3. Every config is plain data with `to_dict()` and `from_dict()`, and a JSON Schema ships in the wheel. A config holds no callable and no instance.
 4. One precedence rule: call, then voice injection, then `config.json`, then engine default.
 5. A loaded voice does not change. A different frontend makes another voice that shares the ONNX session.
@@ -281,10 +283,10 @@ This part is a design, not a description of the code. Its objects do not exist, 
 | `VoiceConfig.speakers`, `languages` | `speaker_id_map`, `lang_id_map` |
 | `VoiceConfig.defaults` | `length_scale`, `noise_scale`, `noise_w_scale`, which are `None` when `config.json` omits them, so the engine's default applies |
 | `VoiceConfig.assets` | `engine_params`, without `providers` |
-| `SynthesisConfig.stages: Stages` | `add_diacritics`, `diacritizer_model`, `chunk` |
-| `SynthesisConfig.speaker`, `language`, `reference` | `speaker_id`, `lang_id`, `speaker_reference`, `speaker_reference_text`, `speaker_reference_lang` |
-| `SynthesisConfig.audio: AudioPost` | `normalize_audio`, `target_loudness`, `volume`, `super_resolution`, `super_resolution_model`, `vc_reference`, `vc_engine` |
-| `SynthesisConfig.extra` | `extra_params` |
+| `SynthesisConfig.stages: Stages` | Exists in the code. Replaces `add_diacritics`, `diacritizer_model`, `chunk`, which work with a `DeprecationWarning` |
+| `SynthesisConfig.speaker`, `language`, `reference` | Exist in the code. Replace `speaker_id`, `lang_id`, `speaker_reference`, `speaker_reference_text`, `speaker_reference_lang`, which work with a `DeprecationWarning` |
+| `SynthesisConfig.audio: AudioPost` | Exists in the code. Replaces `normalize_audio`, `target_loudness`, `volume`, `super_resolution`, `super_resolution_model`, `vc_reference`, `vc_engine`, which work with a `DeprecationWarning` |
+| `SynthesisConfig.extra` | Exists in the code. Replaces `extra_params`, which works with a `DeprecationWarning` |
 | `TTSVoice.load(model, config=None, *, frontend=None, providers=None, runtime=None, warmup=False)` | `TTSVoice.load(model_path, config_path, vocab_path, tokenizer_config_path, phonemes_txt, phoneme_map, lang_code, phoneme_type_str, alphabet_str, engine_params, providers, use_cuda, warmup)` |
 | `voice.with_frontend(frontend)` | Reassignment of `voice.phonemizer`, `phoneme_type` and `alphabet` after load, as the model manager does |
 | `voice.prepare`, `voice.render` | Exist in the code with this signature |
@@ -307,9 +309,10 @@ This part is a design, not a description of the code. Its objects do not exist, 
 
 - `stages`: the scriptconv `Stages` class, with `diacritize`, `diacritizer_model`, `normalize`, `chunk` and `lang`.
 - Flat engine fields: `speaker` (a name or an id), `language`, `length_scale`, `noise_scale`, `noise_w_scale`, `temperature`, `top_p`, `exaggeration`, `reference` and `extra`.
-- `audio`: `normalize`, `target_loudness`, `volume`, `super_resolution` and `voice_conversion`.
+- `audio`: `normalize`, `target_loudness`, `volume`, `super_resolution`, `super_resolution_model`, `voice_conversion` and `voice_conversion_engine`.
+- Text options: `phonetic_spellings` and `input_alphabet` (the alphabet of the caller's text).
 
-`SynthesisConfig.from_dict` also reads the flat names of the code, with a `DeprecationWarning`. The names are `add_diacritics`, `speaker_id`, `lang_id`, `normalize_audio`, `vc_reference`, `extra_params` and `alphabet`.
+The 1.x flat names, such as `add_diacritics`, `speaker_id` and `normalize_audio`, work as keywords, as attributes and in `SynthesisConfig.from_dict`, with a `DeprecationWarning`. [Configuration](configuration.md) has the table of each 1.x name and its field.
 
 ### Voice steps
 
@@ -337,13 +340,13 @@ An adapter must define `detect(session, config)` (static), `default_params()`, `
 
 ### Package root and errors
 
-The root of the code exports `TTSVoice`, `VoiceConfig`, `SynthesisConfig`, `Utterance`, `AudioChunk`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. The target adds `AudioPost`, `SpeakerReference` and `Runtime`.
+The root of the code exports `TTSVoice`, `VoiceConfig`, `SynthesisConfig`, `AudioPost`, `SpeakerReference`, `Utterance`, `AudioChunk`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. The target adds `Runtime`.
 
 The hierarchy of `phoonnx.errors` exists in the code, and `VoiceLoadError` and `ExportNotSupported` have their raise sites. The target is the other raise sites. `with_frontend` raises `FrontendMismatchError`. A foreign config raises `UnsupportedConfigError`.
 
 ### Model manager
 
-`TTSModelInfo` keeps the voice id, the display name, the language, `requires_reference`, the model URLs and a voice preset. Text facts live only in `config.json`. A model with many voices gets one native `config.json` for the model repo, and each index entry names its preset. `Runtime(fetch, open_session)` lets a host such as phoonnx.js supply its own downloads and ONNX sessions. `save()` takes the registry lock.
+`TTSModelInfo` keeps the voice id, the display name, the language, `requires_reference`, the model URLs and a voice preset. Text facts live only in `config.json`. A model with many voices gets one native `config.json` for the model repo. Each index entry names its preset. `Runtime(fetch, open_session)` lets a host such as phoonnx.js supply its own downloads and ONNX sessions. `save()` takes the registry lock.
 
 ### Training
 

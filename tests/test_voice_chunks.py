@@ -17,6 +17,7 @@ from unittest.mock import MagicMock
 
 import pytest
 import text2spoken
+from scriptconv.frontend import Stages
 from scriptconv.phonemizers.shami import ShamiPhonemizer
 
 from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig, VoiceConfig
@@ -50,12 +51,12 @@ def _shami_voice():
     return voice
 
 
-def _utterances(voice, text, **settings):
-    return list(voice.prepare(text, SynthesisConfig(enable_phonetic_spellings=False, **settings)))
+def _utterances(voice, text, **stages):
+    return list(voice.prepare(text, SynthesisConfig(phonetic_spellings=False, stages=Stages(**stages))))
 
 
 class TestChunkSize:
-    """``SynthesisConfig.chunk`` reaches ``Stages(chunk=...)``: one utterance per chunk."""
+    """``SynthesisConfig.stages.chunk`` reaches the frontend: one utterance per chunk."""
 
     # quebra_frases reads a word with no vowel before a period as an
     # abbreviation ("Dr.") and does not end the sentence there

@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import SynthesisConfig, AudioPost
 from phoonnx.voice import TTSVoice
 
 
@@ -30,11 +30,11 @@ class TestLoadSuperResolution(unittest.TestCase):
     def test_defaults_to_disabled(self):
         """The runtime knob is off unless a caller explicitly turns it on."""
         cfg = SynthesisConfig()
-        self.assertIs(cfg.super_resolution, False)
-        self.assertIsNone(cfg.super_resolution_model)
+        self.assertIs(cfg.audio.super_resolution, False)
+        self.assertIsNone(cfg.audio.super_resolution_model)
 
     def test_explicitly_disabled(self):
-        cfg = SynthesisConfig(super_resolution=False)
+        cfg = SynthesisConfig(audio=AudioPost(super_resolution=False))
         self.assertIsNone(_bare_voice()._load_super_resolution(cfg))
 
     def test_disabled_path_never_imports_audiosronnx(self):
@@ -46,7 +46,7 @@ class TestLoadSuperResolution(unittest.TestCase):
             self.assertNotIn("audiosronnx", sys.modules)
 
     def test_enabled_but_not_installed_raises_actionable_import_error(self):
-        cfg = SynthesisConfig(super_resolution=True)
+        cfg = SynthesisConfig(audio=AudioPost(super_resolution=True))
         with patch.dict(sys.modules, {"audiosronnx": None}):
             with self.assertRaises(ImportError) as ctx:
                 _bare_voice()._load_super_resolution(cfg)
@@ -62,21 +62,20 @@ class TestLoadSuperResolution(unittest.TestCase):
         return module, fake_sr
 
     def test_enabled_loads_named_engine(self):
-        cfg = SynthesisConfig(super_resolution=True,
-                              super_resolution_model="lavasr")
+        cfg = SynthesisConfig(audio=AudioPost(super_resolution=True, super_resolution_model="lavasr"))
         module, fake_sr = self._fake_audiosronnx()
         got = _bare_voice()._load_super_resolution(cfg)
         self.assertIs(got, fake_sr)
         module.load_sr.assert_called_once_with(engine="lavasr")
 
     def test_defaults_to_novasr(self):
-        cfg = SynthesisConfig(super_resolution=True)
+        cfg = SynthesisConfig(audio=AudioPost(super_resolution=True))
         module, _ = self._fake_audiosronnx()
         _bare_voice()._load_super_resolution(cfg)
         module.load_sr.assert_called_once_with(engine="novasr")
 
     def test_loaded_once_and_cached(self):
-        cfg = SynthesisConfig(super_resolution=True)
+        cfg = SynthesisConfig(audio=AudioPost(super_resolution=True))
         module, fake_sr = self._fake_audiosronnx()
         v = _bare_voice()
         self.assertIs(v._load_super_resolution(cfg), fake_sr)
@@ -89,12 +88,12 @@ class TestLoadSuperResolution(unittest.TestCase):
         off."""
         module, fake_sr = self._fake_audiosronnx()
         v = _bare_voice()
-        self.assertIs(v._load_super_resolution(SynthesisConfig(super_resolution=True)),
+        self.assertIs(v._load_super_resolution(SynthesisConfig(audio=AudioPost(super_resolution=True))),
                       fake_sr)
         self.assertIsNone(v._load_super_resolution(SynthesisConfig()))
 
     def test_load_failure_propagates(self):
-        cfg = SynthesisConfig(super_resolution=True)
+        cfg = SynthesisConfig(audio=AudioPost(super_resolution=True))
         module, _ = self._fake_audiosronnx()
         module.load_sr.side_effect = RuntimeError("bad weights")
         with self.assertRaises(RuntimeError):

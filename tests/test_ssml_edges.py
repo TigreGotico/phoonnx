@@ -476,7 +476,7 @@ def test_a_multilingual_voice_takes_its_language_id_from_voice_languages_with_an
     settings = []
     voice.synthesize = lambda text, syn_config=None, include_alignments=False: settings.append(syn_config) or iter(())
     list(voice.synthesize_ssml('<speak>hello <voice languages="fr:pt">bonjour</voice></speak>'))
-    assert [getattr(c, "lang_id", None) for c in settings] == [0, 1]
+    assert [c.language for c in settings] == [0, 1]
 
 
 # -- alignments of fitted speech ----------------------------------------------------------------

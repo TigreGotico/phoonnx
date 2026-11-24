@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import SynthesisConfig, AudioPost, SpeakerReference
 from phoonnx.reference_audio import load_reference_audio
 from phoonnx.voice import TTSVoice, Utterance, _VoiceConversion, _write_wav
 
@@ -90,8 +90,8 @@ class TestLoadVoiceConversion(unittest.TestCase):
     def test_defaults_to_disabled(self):
         """The runtime knob is off unless a caller explicitly turns it on."""
         cfg = SynthesisConfig()
-        self.assertIsNone(cfg.vc_reference)
-        self.assertIsNone(cfg.vc_engine)
+        self.assertIsNone(cfg.audio.voice_conversion)
+        self.assertIsNone(cfg.audio.voice_conversion_engine)
 
     def test_disabled_path_never_imports_voiceclonnx(self):
         """The default path must not touch the optional dependency at all."""
@@ -103,7 +103,7 @@ class TestLoadVoiceConversion(unittest.TestCase):
 
     def test_enabled_but_not_installed_raises_actionable_import_error(self):
         with tempfile.TemporaryDirectory() as d:
-            cfg = SynthesisConfig(vc_reference=_ref_wav(d))
+            cfg = SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=_ref_wav(d))))
             with patch.dict(sys.modules, {"voiceclonnx": None}):
                 with self.assertRaises(ImportError) as ctx:
                     _bare_voice(self)._load_voice_conversion(cfg)
@@ -114,7 +114,7 @@ class TestLoadVoiceConversion(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             ref = _ref_wav(d)
             vc = _bare_voice(self)._load_voice_conversion(
-                SynthesisConfig(vc_reference=ref, vc_engine="knnvc"))
+                SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=ref), voice_conversion_engine="knnvc")))
             want, want_sr = load_reference_audio(ref)
             self.assertIs(vc.cloner, cloner)
             module.VoiceCloner.assert_called_once_with(engine="knnvc")
@@ -129,14 +129,14 @@ class TestLoadVoiceConversion(unittest.TestCase):
         module, _ = _fake_voiceclonnx(self)
         with tempfile.TemporaryDirectory() as d:
             _bare_voice(self)._load_voice_conversion(
-                SynthesisConfig(vc_reference=_ref_wav(d)))
+                SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=_ref_wav(d)))))
         module.VoiceCloner.assert_called_once_with(engine="openvoice")
 
     def test_loaded_once_and_cached(self):
         module, cloner = _fake_voiceclonnx(self)
         v = _bare_voice(self)
         with tempfile.TemporaryDirectory() as d:
-            cfg = SynthesisConfig(vc_reference=_ref_wav(d))
+            cfg = SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=_ref_wav(d))))
             self.assertIs(v._load_voice_conversion(cfg).cloner, cloner)
             self.assertIs(v._load_voice_conversion(cfg).cloner, cloner)
         module.VoiceCloner.assert_called_once()
@@ -150,8 +150,8 @@ class TestLoadVoiceConversion(unittest.TestCase):
             a = _ref_wav(d)
             b = _write_wav(os.path.join(d, "b.wav"),
                            np.full(16000, 0.3, dtype=np.float32), 16000)
-            vc_a = v._load_voice_conversion(SynthesisConfig(vc_reference=a))
-            vc_b = v._load_voice_conversion(SynthesisConfig(vc_reference=b))
+            vc_a = v._load_voice_conversion(SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=a))))
+            vc_b = v._load_voice_conversion(SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=b))))
             self.assertEqual(module.VoiceCloner.call_count, 2)
             self.assertIsNot(vc_a, vc_b)
             self.assertNotEqual(vc_a.ref_path, vc_b.ref_path)
@@ -167,7 +167,7 @@ class TestLoadVoiceConversion(unittest.TestCase):
         v = _bare_voice(self)
         with tempfile.TemporaryDirectory() as d:
             ref = _ref_wav(d)
-            cfg = SynthesisConfig(vc_reference=ref)
+            cfg = SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=ref)))
             first = v._load_voice_conversion(cfg)
             _write_wav(ref, np.full(16000, 0.4, dtype=np.float32), 16000)
             second = v._load_voice_conversion(cfg)
@@ -185,10 +185,10 @@ class TestLoadVoiceConversion(unittest.TestCase):
         module, _ = _fake_voiceclonnx(self)
         v = _bare_voice(self)
         audio = np.linspace(-0.5, 0.5, 16000, dtype=np.float32)
-        v._load_voice_conversion(SynthesisConfig(vc_reference=(audio, 16000)))
-        v._load_voice_conversion(SynthesisConfig(vc_reference=(audio.copy(), 16000)))
+        v._load_voice_conversion(SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=(audio, 16000)))))
+        v._load_voice_conversion(SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=(audio.copy(), 16000)))))
         module.VoiceCloner.assert_called_once()
-        v._load_voice_conversion(SynthesisConfig(vc_reference=(audio * -1, 16000)))
+        v._load_voice_conversion(SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=(audio * -1, 16000)))))
         self.assertEqual(module.VoiceCloner.call_count, 2)
 
     def test_cache_never_pairs_one_references_key_with_anothers_conversion(self):
@@ -213,7 +213,7 @@ class TestLoadVoiceConversion(unittest.TestCase):
         v._vc = None
 
         def cfg(level):
-            return SynthesisConfig(vc_reference=(np.full(16000, level, np.float32), 16000))
+            return SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=(np.full(16000, level, np.float32), 16000))))
 
         def level_of(conversion):
             return round(float(load_reference_audio(conversion.ref_path)[0][0]), 1)
@@ -235,7 +235,7 @@ class TestLoadVoiceConversion(unittest.TestCase):
             with patch("phoonnx.reference_audio.fetch_reference_audio",
                        return_value=local) as fetch:
                 vc = _bare_voice(self)._load_voice_conversion(
-                    SynthesisConfig(vc_reference="https://example.invalid/a.wav"))
+                    SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio="https://example.invalid/a.wav"))))
             fetch.assert_called_once_with("https://example.invalid/a.wav")
             self.assertTrue(os.path.isfile(vc.ref_path))
 
@@ -244,9 +244,9 @@ class TestLoadVoiceConversion(unittest.TestCase):
         v = _bare_voice(self)
         with tempfile.TemporaryDirectory() as d:
             ref = _ref_wav(d)
-            v._load_voice_conversion(SynthesisConfig(vc_reference=ref))
+            v._load_voice_conversion(SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=ref))))
             v._load_voice_conversion(
-                SynthesisConfig(vc_reference=ref, vc_engine="focalcodec"))
+                SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=ref), voice_conversion_engine="focalcodec")))
         self.assertEqual(module.VoiceCloner.call_count, 2)
 
     def test_per_call_disable_wins_over_a_loaded_cloner(self):
@@ -257,12 +257,12 @@ class TestLoadVoiceConversion(unittest.TestCase):
         v = _bare_voice(self)
         with tempfile.TemporaryDirectory() as d:
             self.assertIsNotNone(
-                v._load_voice_conversion(SynthesisConfig(vc_reference=_ref_wav(d))))
+                v._load_voice_conversion(SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=_ref_wav(d))))))
         self.assertIsNone(v._load_voice_conversion(SynthesisConfig()))
 
     def test_missing_reference_file_raises(self):
         _fake_voiceclonnx(self)
-        cfg = SynthesisConfig(vc_reference="/nope/does/not/exist.wav")
+        cfg = SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio="/nope/does/not/exist.wav")))
         with self.assertRaises(FileNotFoundError) as ctx:
             _bare_voice(self)._load_voice_conversion(cfg)
         self.assertIn("does/not/exist.wav", str(ctx.exception))
@@ -271,7 +271,7 @@ class TestLoadVoiceConversion(unittest.TestCase):
         _fake_voiceclonnx(self)
         audio = np.linspace(-0.5, 0.5, 16000, dtype=np.float32)
         vc = _bare_voice(self)._load_voice_conversion(
-            SynthesisConfig(vc_reference=(audio, 16000)))
+            SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=(audio, 16000)))))
         self.assertTrue(os.path.isfile(vc.ref_path))
         back, sr = load_reference_audio(vc.ref_path)
         self.assertEqual(sr, 16000)
@@ -284,7 +284,7 @@ class TestLoadVoiceConversion(unittest.TestCase):
         v = _bare_voice(self)
         audio = np.linspace(-0.5, 0.5, 16000, dtype=np.float32)
         ref_path = v._load_voice_conversion(
-            SynthesisConfig(vc_reference=(audio, 16000))).ref_path
+            SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=(audio, 16000))))).ref_path
         self.assertTrue(os.path.isfile(ref_path))
         del v
         gc.collect()
@@ -296,7 +296,7 @@ class TestLoadVoiceConversion(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaises(RuntimeError):
                 _bare_voice(self)._load_voice_conversion(
-                    SynthesisConfig(vc_reference=_ref_wav(d)))
+                    SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=_ref_wav(d)))))
 
 
 class TestMaybeConvert(unittest.TestCase):
@@ -396,7 +396,7 @@ class TestSynthesisPipelineWiring(unittest.TestCase):
         with patch.dict(sys.modules):
             sys.modules.pop("voiceclonnx", None)
             baseline = self._run(SynthesisConfig())
-            explicit_off = self._run(SynthesisConfig(vc_reference=None))
+            explicit_off = self._run(SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=None))))
             self.assertNotIn("voiceclonnx", sys.modules)
         self.assertEqual(len(baseline), 1)
         self.assertEqual(baseline[0].sample_rate, 22050)
@@ -414,7 +414,7 @@ class TestSynthesisPipelineWiring(unittest.TestCase):
 
         cloner.clone_voice.side_effect = fake_clone
         with tempfile.TemporaryDirectory() as d:
-            chunks = self._run(SynthesisConfig(vc_reference=_ref_wav(d)))
+            chunks = self._run(SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=_ref_wav(d)))))
         self.assertEqual(len(chunks), 1)
         self.assertEqual(chunks[0].sample_rate, 24000)
         self.assertEqual(chunks[0].audio_float_array.shape[0], 12000)
@@ -458,10 +458,10 @@ class TestSynthesisPipelineWiring(unittest.TestCase):
                                 np.full(16000, 0.3, dtype=np.float32), 16000)
             stream = TTSVoice.synthesize(
                 v, "one. two. three.",
-                syn_config=SynthesisConfig(vc_reference=mine))
+                syn_config=SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=mine))))
             chunks = [next(stream)]
             # a real second request for a different speaker, not a poked attribute
-            other = v._load_voice_conversion(SynthesisConfig(vc_reference=theirs))
+            other = v._load_voice_conversion(SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=theirs))))
             self.assertIs(other.cloner, cloners[1])
             chunks.extend(stream)
 
@@ -487,8 +487,7 @@ class TestSynthesisPipelineWiring(unittest.TestCase):
         sr_module.load_sr = MagicMock(return_value=sr_engine)
         with patch.dict(sys.modules, {"audiosronnx": sr_module}), \
                 tempfile.TemporaryDirectory() as d:
-            chunks = self._run(SynthesisConfig(vc_reference=_ref_wav(d),
-                                               super_resolution=True))
+            chunks = self._run(SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio=_ref_wav(d)), super_resolution=True)))
         self.assertEqual(chunks[0].sample_rate, 48000)
         # the upscaler was handed the VC engine's rate, not the voice's native one
         self.assertEqual(sr_engine.upscale.call_args.args[1], 16000)

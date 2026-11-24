@@ -2,9 +2,9 @@
 
 <!-- agent-hint
 covers: the base install, the version to install, every optional extra, GPU runtimes, system packages, and the errors a missing piece gives
-source: pyproject.toml [project.optional-dependencies], phoonnx/providers.py:resolve_providers, phoonnx/errors.py, phoonnx/model_manager.py:_VoiceRegistry
+source: pyproject.toml, phoonnx/providers.py:resolve_providers, phoonnx/errors.py, phoonnx/model_manager.py:_VoiceRegistry, phoonnx/opm.py:PhoonnxTTSPlugin.get_voice_info
 generated: no
-verify: uv pip install --prerelease=allow -e '.[espeak]' in a fresh venv, then the GPU provider script below and python -c "from phoonnx.version import VERSION_STR; print(VERSION_STR)"
+verify: .venv/bin/python -c "import re, sys, tomllib; q = chr(96); x = tomllib.load(open('pyproject.toml', 'rb'))['project']['optional-dependencies']; n = lambda r: re.split('[<>=; ]', r.strip().split(chr(91))[0])[0].lower().replace('_', '-'); names = lambda s: re.findall(q + '([^' + q + ']+)' + q, s); rows = re.findall('^[|] (' + q + '[a-z0-9-]+' + q + '(?:, ' + q + '[a-z0-9-]+' + q + ')*) [|][^|\\n]*[|]?([^|\\n]*)[|]?$', open('docs/installation.md').read(), re.M); bad = [(e, p) for a, c in rows for e in names(a) for p in ([None] if e not in x else [] if 'pyproject' in c else names(c)) if p is None or n(p) not in {n(r) for r in x[e]}]; print(len(rows), bad); sys.exit(1 if bad or len(rows) < 45 else 0)"
 see: quickstart.md, choose_voice.md, offline.md, docker.md
 -->
 
@@ -29,14 +29,15 @@ uv pip install --prerelease=allow phoonnx
 
 The base install pulls in the CPU `onnxruntime` wheel, the text frontend (`scriptconv`,
 `text2spoken`, `quebra-frases`, the OVOS number and date parsers), `huggingface_hub` for voice
-downloads and `ovos-plugin-manager` for the OVOS plugin. With nothing else installed you can:
+downloads and `ovos-plugin-manager` for the OVOS plugin.
 
-- run ONNX voices that tokenize with **graphemes** or **unicode** codepoints,
-- use the `phoonnx-voices` CLI (`update-cache`, `list-langs`, `list-voices`,
-  `list-available`, `download`). `add-alignment` also needs the `streaming` extra.
+With nothing else installed, phoonnx runs the ONNX voices that tokenize with graphemes or
+unicode code points. The `phoonnx-voices` commands `update-cache`, `list-langs`,
+`list-voices`, `list-available` and `download` also work. `add-alignment` and
+`export --to sherpa` need the `onnx` package from the `streaming` extra.
 
-The base install does **not** include the language-specific phonemizers, voice cloning,
-streaming auto-split, or the training pipeline. Those come from the extras below.
+The language-specific phonemizers, voice cloning, the streaming auto-split and the training
+pipeline come from the extras below.
 
 ## Which version to install
 
@@ -103,7 +104,7 @@ missing, the voice load stops with an `ImportError` that names the package (see
 | `espeak` | The eSpeak phonemizer, which every eSpeak voice needs | `scriptconv[espeak]`, which gives the eSpeak wrapper in `scriptconv-copyleft`, and `espyak` (a pure-Python port of the eSpeak phonemizer) |
 | `cloning` | Loading non-WAV reference clips for [voice cloning](cloning.md) | `soundfile`, `scipy` |
 | `streaming` | Auto-splitting a monolithic VITS voice into a [streaming](streaming.md) encoder/decoder pair, `phoonnx-voices add-alignment`, and alignment on demand | `onnx` (graph surgery) |
-| `matcha` | Matcha two-stage synthesis helpers | `scipy` |
+| `matcha` | Nothing that the Matcha adapter needs. The Matcha adapter and its vocoders import no `scipy`. | `scipy` |
 | `pockettts` | Pocket TTS voice states | `safetensors` |
 | `omnivoice` | Faster silence trimming for OmniVoice (a pure-numpy fallback runs without it) | `pydub` |
 | `indic-parler` | The Indic Parler tokenizers | `tokenizers` |
@@ -112,7 +113,7 @@ missing, the voice load stops with an `ImportError` that names the package (see
 | `o2i` | The multilingual data-driven IPA backend | `orthography2ipa`, `o2i-lexicons` |
 | `audiosr` | Optional 48 kHz [audio super-resolution](ovos_plugin.md#audio-super-resolution) over synthesized audio | `audiosronnx` |
 | `vc` | Optional [voice conversion](voice_conversion.md) of the output to a target speaker | `voiceclonnx` |
-| `all` | Every language phonemizer, cloning, super-resolution and voice conversion (used by the Docker image) | see `pyproject.toml` |
+| `all` | The phonemizers of most language extras, cloning, super-resolution and voice conversion. The Docker image installs it. | see `pyproject.toml` |
 
 ### Language extras
 
@@ -132,10 +133,10 @@ The extras that use these wrappers install the package that holds them.
 | `en` | English | `epitran`, `gruut[en]`, `misaki[en]`, `scriptconv-copyleft`, `spacy` |
 | `es` | Spanish | `epitran`, `gruut[es]` |
 | `eu` | Basque | `scriptconv[eu]`, `ahotts-g2p`, `euskaphone`, `epitran` |
-| `fa` | Persian | `epitran`, `scriptconv[fa]` (installs `scriptconv-copyleft[fa]`) |
+| `fa` | Persian | `epitran`, `scriptconv[fa]`, which installs the Persian wrapper of scriptconv-copyleft |
 | `fr` | French | `epitran`, `gruut[fr]` |
 | `gl` | Galician | `scriptconv[gl]`, `pycotovia`, `epitran` (see [Galician](galician.md)) |
-| `he` | Hebrew | `epitran`, `phonikud_onnx`, `phonikud` |
+| `he` | Hebrew | `epitran`, `scriptconv[he]`, `phonikud_onnx`, `phonikud` |
 | `it` | Italian | `epitran`, `gruut[it]` |
 | `ja` | Japanese | `epitran`, `gruut[ja]`, `scriptconv[ja-phonemizers]`, `misaki`, `pyopenjtalk-plus`, `fugashi`, `cutlet`, `unidic-lite`, `pykakasi`, `spacy` |
 | `ko` | Korean | `epitran`, `scriptconv[ko]`, `g2pk`, `misaki[ko]` |
@@ -162,7 +163,7 @@ code, for example `fi`, `hi`, `pl`, `tr` or `uk`. The full list is in `pyproject
 |---|---|
 | `train` | The core training pipeline (PyTorch Lightning, librosa, torch) |
 | `train-eval` | Checkpoint evaluation loop (UTMOS, speaker similarity, quality filters) |
-| `train-pyworld` | The `pyworld` F0 extractor, used by FastPitch/SpeedySpeech and Mixer-TTS |
+| `train-pyworld` | The `pyworld` F0 extractor, which the FastPitch, Mixer-TTS, OptiSpeech and StyleTTS2 pitch code can use |
 | `train-fastpitch` | The FastPitch/SpeedySpeech training engine (no extra deps beyond `[train]`) |
 | `train-mixer` | The Mixer-TTS training engine (no extra deps beyond `[train]`) |
 | `train-styletts2` | The StyleTTS2 training engine |
@@ -176,8 +177,8 @@ See the [Training quickstart](training/quickstart.md) for how these fit together
 
 ## GPU inference
 
-Which execution providers exist depends on the installed ONNX Runtime build, not on phoonnx.
-The default `onnxruntime` wheel is CPU-only. Only one GPU build can be installed at a time:
+The installed ONNX Runtime build, not phoonnx, decides which execution providers exist.
+The default `onnxruntime` wheel is CPU-only. Install only one GPU build at a time:
 
 | Hardware | Package | Providers |
 |---|---|---|
@@ -284,7 +285,7 @@ Fix: `pip install --pre "phoonnx[espeak]"`.
 `KeyError` that names the id:
 
 ```
-phoonnx.errors.UnknownVoice: "unknown voice 'OpenVoiceOS/phoonnx_pt-PT_miro'; run 'phoonnx-voices list-voices' to see the voice ids"
+phoonnx.errors.UnknownVoice: unknown voice 'OpenVoiceOS/phoonnx_pt-PT_miro'; run 'phoonnx-voices list-voices' to see the voice ids
 ```
 
 The OVOS plugin stops at start with:
@@ -302,7 +303,7 @@ serves the configured `lang`:
 ValueError: No voices available for language: xx-YY
 ```
 
-`TTSVoice.load(model_path, config_path, lang_code=...)` takes a language that overrides the config. When its phonemizer cannot read that language, the load stops. `manager.voices[id].load()` takes no `lang_code`; it uses the language of the index entry.
+`TTSVoice.load(model_path, config_path, lang_code=...)` takes a language that overrides the config. When its phonemizer cannot read that language, the load stops. `manager.voices[id].load()` takes no `lang_code`. It uses the language of the index entry.
 
 ```
 phoonnx.errors.UnsupportedVoiceLanguage: voice 'dii_es-ES': no phonemizer backend supports lang 'xx-YY' for phoneme_type 'espeak'

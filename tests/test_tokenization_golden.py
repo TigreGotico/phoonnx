@@ -185,7 +185,7 @@ def test_tokenization_mimic3_gruut_ids():
                      adapter=get_adapter("vits"))
     assert voice.config.tokenizer.vocabulary.char2idx, "the voice has an empty phoneme_id_map"
     for text, upstream in fixture["upstream"].items():
-        calls = list(voice.prepare(text, SynthesisConfig(enable_phonetic_spellings=False)))
+        calls = list(voice.prepare(text, SynthesisConfig(phonetic_spellings=False)))
         assert [list(u.ids) for u in calls] == [upstream["ids"]], (
             text, ["".join(u.symbols) for u in calls], upstream["phonemes"])
     assert not voice.config.tokenizer.not_found_characters

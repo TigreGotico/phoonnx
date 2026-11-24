@@ -179,7 +179,7 @@ def _speaker(config, syn_config=SynthesisConfig()):
 def test_default_speaker_id_is_the_speaker_of_a_multi_speaker_voice():
     multi = {**TUGAO, "num_speakers": 4, "default_speaker_id": 2}
     assert _speaker(multi) == 2
-    assert _speaker(multi, SynthesisConfig(speaker_id=0)) == 0
+    assert _speaker(multi, SynthesisConfig(speaker=0)) == 0
     assert _speaker({**multi, "num_speakers": 1}) is None
     assert _speaker({k: v for k, v in multi.items() if k != "default_speaker_id"}) is None
 

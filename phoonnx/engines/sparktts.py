@@ -28,9 +28,9 @@ Voices come in two forms:
 
 * **preset** — the 32 global tokens ship with the voice as an asset, so the speaker is
   fixed and no reference clip is needed;
-* **zero-shot clone** — ``SynthesisConfig.speaker_reference`` gives a reference clip, and
+* **zero-shot clone** — ``SynthesisConfig.reference`` gives a reference clip, and
   the three cloning graphs turn it into global tokens. Add
-  ``speaker_reference_text`` (the transcription of that clip) for the in-context variant,
+  ``reference.text`` (the transcription of that clip) for the in-context variant,
   which also feeds the clip's semantic tokens to the model and clones more closely.
 
 The short-time Fourier transform in front of the speaker encoder stays outside the ONNX
@@ -371,7 +371,7 @@ class SparkTTSAdapter(BaseOnnxAdapter):
             return tokens
         if self.preset_global_tokens is None:
             raise RuntimeError("Spark-TTS voice has neither a speaker_tokens_path preset "
-                               "nor a speaker_reference clip to clone from")
+                               "nor a reference clip to clone from")
         return self.preset_global_tokens, None
 
     # ------------------------------------------------------------------

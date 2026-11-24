@@ -141,8 +141,7 @@ def test_voice_end_to_end_matches_the_torch_sampler(exported):
     assert isinstance(voice.adapter, RapidoAdapter)
     assert voice.config.sample_rate == 48000
     for speaker, length_scale, seed in ((0, 1.0, 0), (2, 1.5, 4)):
-        audio = voice.phoneme_ids_to_audio(IDS, SynthesisConfig(speaker_id=speaker, length_scale=length_scale,
-                                                                 extra_params={"seed": seed}))
+        audio = voice.phoneme_ids_to_audio(IDS, SynthesisConfig(speaker=speaker, length_scale=length_scale, extra={"seed": seed}))
         z = model.generate(IDS, BOUNDARIES, speaker=speaker, length_scale=length_scale, seed=seed)
         expected = reference_vae.decode(z.T[None]).reshape(-1)
         assert audio.shape == expected.shape

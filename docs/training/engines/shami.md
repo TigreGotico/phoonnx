@@ -2,83 +2,42 @@
 
 <!-- agent-hint
 covers: how to export, load and run Levantine-Arabic and English code-switched ShamiVITS voices
-source: phoonnx/engines/shami.py, scripts/conversion/shami_tts/export.py
+source: phoonnx/engines/shami.py, phoonnx/voice_index/shami.json, scripts/conversion/shami_tts/export.py, scriptconv.phonemizers.shami:ShamiPhonemizer
 generated: no
-verify: pytest tests/test_shami.py && ! comm -23 <(grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' docs/training/engines/shami.md | sort -u) <(python scripts/conversion/shami_tts/export.py --help | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | sort -u) | grep .
+verify: ! comm -23 <(grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' docs/training/engines/shami.md | sort -u) <(.venv/bin/python scripts/conversion/shami_tts/export.py --help | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | sort -u) | grep . && .venv/bin/python -W ignore -c "import json, re, sys; from phoonnx.engines.shami import ShamiAdapter; from scriptconv.phonemizers._thirdparty.shami.phoneme_inventory import Lang; p = open('docs/training/engines/shami.md').read(); ids = re.search(r'\x60(0=PAD[^\x60]*)\x60', p).group(1); want = ', '.join(f'{int(x)}={x.name}' for x in Lang); voices = re.findall(r'^voice = manager.voices\[.(.+?).\]', p, re.M); bad = ([] if ids == want else [ids, want]) + [v for v in voices if v not in json.load(open('phoonnx/voice_index/shami.json'))] + [a for a in ('shami', 'hams') if not ShamiAdapter.detect(config={'engine': a})]; print(bad); sys.exit(bool(bad) or not voices)"
 see: ../training.md, ../../engines.md, ../../configuration.md
 -->
 
-This page explains how to export, load and run ShamiVITS voices, which mix Levantine Arabic and English, for integrators who use phoonnx.
+This page shows how to load, run and export ShamiVITS voices, which speak Levantine Arabic mixed with English.
 
-> Related: [adapter architecture](../../engines.md) ·
-> [configuration](../../configuration.md) ·
-> [training reference](../training.md)
+See also the [adapter architecture](../../engines.md), the [configuration reference](../../configuration.md) and the [training reference](../training.md).
 
 ## What it is
 
-The **Shami** engine supports
-[ShamiVITS](https://huggingface.co/Tushe/shami-tts) /
-[HamsVITS](https://github.com/Al-aminI/hams-levantine-tts), a VITS variant
-trained for **Levantine Arabic** with code-switched **English**. It is
-registered at high detect priority (checked early, ahead of the generic VITS
-adapters) because its ONNX contract differs from standard VITS.
+The Shami engine runs [ShamiVITS](https://huggingface.co/Tushe/shami-tts) and [HamsVITS](https://github.com/Al-aminI/hams-levantine-tts) models. These are VITS models trained on Levantine Arabic with English words mixed in. Use the engine for Levantine Arabic text that contains English words. The phonemizer tags each phoneme with its language, so the model says the Arabic and English parts each in their own phonology.
 
-## When to pick it
+Inference needs no engine-specific extra. The text frontend comes with scriptconv, in the package `scriptconv.phonemizers._thirdparty.shami`.
 
-Choose Shami for Levantine Arabic text that mixes in English words — the engine
-tags each phoneme with its source language so the model pronounces the
-Arabic and English segments in their own phonology.
+## Run the index voice
 
-## Extras needed
+The bundled index holds one Shami voice, `Tushe/shami-tts`, with the language tag `apc`:
 
-Inference needs no engine-specific extra. The text front end optionally diacritizes Arabic
-through a pluggable backend and uses an espeak-based English G2P; both come with the vendored
-`scriptconv.phonemizers._thirdparty.shami` package.
+```python
+from phoonnx.model_manager import TTSModelManager
 
-## What makes it different from VITS
+manager = TTSModelManager()
+manager.load()
+manager.merge_default_voices()
+voice = manager.voices["Tushe/shami-tts"].load()
+for chunk in voice.synthesize("مَرحَبا، this is a test."):
+    ...
+```
 
-Standard VITS adapters in phoonnx consume:
+`TTSVoice` gives the model to `ShamiAdapter`, together with the language id of each phoneme from `ShamiPhonemizer`.
 
-- `phoneme_ids` / `phoneme_lengths` / `scales`
-- optional `speaker_id` / `language_id`
+## Export a checkpoint
 
-ShamiVITS ONNX exports **do not have a `scales` input** and **do not have a
-single utterance-level `language_id`**. Instead they expect a parallel
-**per-phoneme language stream**:
-
-| Input | Shape | Meaning |
-|---|---|---|
-| `phoneme_ids` | `[1, T]` | tokenized IPA phonemes |
-| `phoneme_lengths` | `[1]` | `T` |
-| `language_ids` | `[1, T]` | `0=PAD`, `1=AR`, `2=EN`, `3=NEUTRAL` |
-| `speaker_id` (optional) | `[1]` | speaker identifier |
-
-The output is a single float32 `waveform` of shape `[1, samples]` at 24 kHz.
-
-## Text front-end and the language-ID dispatch
-
-`ShamiPhonemizer` (`scriptconv.phonemizers.shami`) wraps the vendored
-`scriptconv.phonemizers._thirdparty.shami` package (ported from `hams_tts.text`). It performs:
-
-1. Arabic text normalization and optional diacritization (pluggable `diacritizer_backend`: `auto` tries `camel` then `catt`; `passthrough` skips it).
-2. English G2P using the same espeak-based approach as the upstream model.
-3. Code-switch detection, tagging Arabic and English segments with `AR` / `EN`
-   language IDs.
-
-Unlike phoneme engines that emit only a token stream, `ShamiPhonemizer` exposes
-a **`phonemize_with_language_ids`** method. `TTSVoice._phonemize`
-(`phoonnx/voice.py`, ~lines 395–404) checks for this hook: when the phonemizer
-has it, phoonnx builds the phoneme stream and the per-phoneme `language_ids`
-stream **together** (from the same call), so the two can never fall out of
-alignment. `ShamiAdapter` then forwards both to the ONNX graph. Engines without
-the hook take the ordinary `encode_text` path.
-
-Because the front-end already emits BOS/EOS symbols, the phoonnx tokenizer is
-configured with `use_eos_bos=False` and `add_blank_char=False`.
-
-## Obtaining / exporting
-
-Use the conversion script to export the upstream PyTorch checkpoint:
+The conversion script exports the upstream PyTorch checkpoint. The checkpoint folder holds `hams_vits.pt` and `hams_vits_config.json`:
 
 ```bash
 python scripts/conversion/shami_tts/export.py \
@@ -86,30 +45,46 @@ python scripts/conversion/shami_tts/export.py \
     --output-dir ./shami_phoonnx
 ```
 
-This writes `model.onnx` and a phoonnx-compatible `config.json` using the
-vendored symbol vocabulary.
-
-## Synthesis example
+This writes `model.onnx` and a phoonnx `config.json` with the symbol vocabulary of the frontend. Load the result as any voice:
 
 ```python
 from phoonnx.voice import TTSVoice
 
-voice = TTSVoice.load("model.onnx", "config.json")
-for chunk in voice.synthesize("مَرحَبا، this is a test."):
-    ...
+voice = TTSVoice.load("shami_phoonnx/model.onnx", "shami_phoonnx/config.json")
 ```
 
-`TTSVoice` routes the model to `ShamiAdapter` and forwards the per-phoneme
-`language_ids` produced by `ShamiPhonemizer`.
+## How it differs from VITS
 
-## Gotchas / aliases
+The standard VITS adapters of phoonnx feed `phoneme_ids`, `phoneme_lengths` and `scales`, and an optional `speaker_id` or `language_id`. A ShamiVITS graph has no `scales` input and no single `language_id` for the utterance. It takes a language id for each phoneme:
 
-- **Detect aliases:** the config `engine` field may be `shami` or `hams`.
-- **No runtime scales:** noise scale and speaking rate are baked into the
-  exported graph. The adapter exposes them as read-only labels for UIs; they
-  cannot be changed at inference time.
-- **Language IDs are per-phoneme**, not per-utterance — this is what enables
-  in-sentence AR/EN code-switching.
+| Input | Shape | Meaning |
+|---|---|---|
+| `phoneme_ids` | `[1, T]` | The tokenized IPA phonemes |
+| `phoneme_lengths` | `[1]` | `T` |
+| `language_ids` | `[1, T]` | `0=PAD, 1=AR, 2=EN, 3=NEUTRAL` |
+| `speaker_id` (optional) | `[1]` | The speaker id |
+
+The output is one float32 `waveform` of shape `[1, samples]` at 24 kHz.
+
+The engine has detect priority 45. phoonnx checks the engines in order of priority, lowest first, so it checks Shami before the generic VITS adapters (48 to 51). A graph with the inputs `phoneme_ids` and `language_ids` is a Shami graph.
+
+## Text frontend and language ids
+
+`ShamiPhonemizer` (`scriptconv.phonemizers.shami`) wraps the frontend in `scriptconv.phonemizers._thirdparty.shami`, which is a port of `hams_tts.text`. It does three things:
+
+1. It normalizes the Arabic text and can add diacritics. The `diacritizer_backend` option selects the diacritizer: `auto` tries `camel` and then `catt`, and `passthrough` adds none.
+2. It converts the English words with an espeak-based G2P, as the upstream model does.
+3. It finds the Arabic and English parts and tags them with the `AR` and `EN` language ids.
+
+Each segment that the phonemizer gives carries a `language_ids` stream, with one value per phoneme. `TTSVoice` passes the phonemes and the stream together to `ShamiAdapter`, so the two always align. When a request has no stream, the adapter feeds a zero for every phoneme, and the model speaks one language.
+
+The frontend writes its own BOS and EOS symbols, so the config of an export sets `use_eos_bos` and `add_blank_char` to `false`.
+
+## Notes
+
+- The `engine` field of the config can be `shami` or `hams`.
+- The graph holds the noise scale and the speaking rate. They cannot change at inference. The adapter gives fixed default values for them, so the generic `TTSVoice` code finds the keys it expects.
+- The language ids are per phoneme, not per utterance. This lets one sentence switch between Arabic and English.
 
 ## References
 

@@ -2,9 +2,9 @@
 
 <!-- agent-hint
 covers: which voices have int8 files, how the precision setting picks full or int8 files, and the errors a wrong value gives
-source: phoonnx/model_manager.py:PRECISIONS, resolve_precision, choose_precision, TTSModelInfo.with_precision, TTSModelInfo.disk_size; phoonnx/errors.py:PrecisionUnavailable; phoonnx/cli.py:download_voice; phoonnx/opm.py:PhoonnxTTSPlugin._precision; phoonnx/voice_index/pockettts.json, rapido.json, f5tts.json
+source: phoonnx/model_manager.py:PRECISIONS, phoonnx/model_manager.py:resolve_precision, phoonnx/model_manager.py:choose_precision, phoonnx/model_manager.py:TTSModelInfo.with_precision, phoonnx/model_manager.py:TTSModelInfo.disk_size, phoonnx/errors.py:PrecisionUnavailable, phoonnx/cli.py:download_voice, phoonnx/opm.py:PhoonnxTTSPlugin._precision, phoonnx/voice_index/*.json
 generated: no
-verify: python -m pytest tests/test_precision.py; the walk-through scripts below, run with HF_HOME set to the shared hub cache
+verify: XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/python -m doctest -o ELLIPSIS -o NORMALIZE_WHITESPACE docs/precision.md
 see: choose_voice.md, voice_manager.md, ovos_plugin.md, configuration.md
 -->
 
@@ -14,37 +14,61 @@ This page shows how to load the smaller int8 files of a voice, and how phoonnx d
 
 A voice entry in the bundled index has one of three forms:
 
-| Form | Entries | What loads |
-|---|---|---|
-| Full files only | 3016 | The full files, always. |
-| Full files and an int8 variant | 43 | The full files, or the int8 files when you ask for them. |
-| Int8 files only | 130 | The int8 files, always. |
+| Form | What loads |
+|---|---|
+| Full files only | The full files, always. |
+| Full files and an int8 variant | The full files, or the int8 files when you ask for them. |
+| Int8 files only | The int8 files, always. |
 
-The 43 entries with an int8 variant are the Italian Pocket TTS voices (`pockettts/it/...`), the F5-TTS voices (`f5tts/...`, `habibi/...`, `namaa/ar-sa-v2`, `silma/...`, `openbible/...`) and `edwixx/pt-BR-rapido`. The 130 int8-only entries are the English, French, German, Portuguese and Spanish Pocket TTS voices.
+This script sorts the entries of the bundled index by form, and prints the forms it finds:
+
+```python
+>>> from collections import Counter
+>>> from phoonnx.model_manager import TTSModelManager
+>>> manager = TTSModelManager()
+>>> manager.merge_default_voices()
+>>> def form(info):
+...     if info.precision == "int8":
+...         return "int8 only"
+...     return "full and int8" if info.variants else "full only"
+>>> forms = Counter(form(info) for info in manager.all_voices)
+>>> sorted(forms)
+['full and int8', 'full only', 'int8 only']
+
+```
+
+`forms` holds the number of entries of each form. The entries with an int8 variant are
+Piper voices, the Italian Pocket TTS voices (`pockettts/it/...`), the F5-TTS voices
+(`f5tts/...`, `habibi/...`, `namaa/ar-sa-v2`, `silma/...`, `openbible/...`) and
+`edwixx/pt-BR-rapido`. The int8-only entries are the English, French, German, Portuguese and
+Spanish Pocket TTS voices:
+
+```python
+>>> sorted({info.engine.value for info in manager.all_voices if info.variants})
+['f5tts', 'piper', 'pockettts', 'rapido']
+>>> sorted({info.voice_id.split("/")[1] for info in manager.all_voices if info.precision == "int8"})
+['de', 'en', 'es', 'fr', 'pt']
+
+```
 
 ## 1. Look at the files of each precision
 
 `with_precision()` gives the entry as it loads under a precision. It downloads nothing:
 
 ```python
-from phoonnx.model_manager import TTSModelManager
-
-manager = TTSModelManager()
-manager.load()
-manager.merge_default_voices()
-
-voice = manager.voices["pockettts/it/alba"]
-print(voice.precision, list(voice.variants))
-print(voice.with_precision("full").model_url.rsplit("/", 1)[-1])
-print(voice.with_precision("int8").model_url.rsplit("/", 1)[-1])
-print(voice.with_precision("auto").model_url.rsplit("/", 1)[-1])
-```
-
-```
+>>> from phoonnx.model_manager import TTSModelManager
+>>> manager = TTSModelManager()
+>>> manager.merge_default_voices()
+>>> voice = manager.voices["pockettts/it/alba"]
+>>> print(voice.precision, list(voice.variants))
 None ['int8']
+>>> print(voice.with_precision("full").model_url.rsplit("/", 1)[-1])
 flow_lm_main.onnx
+>>> print(voice.with_precision("int8").model_url.rsplit("/", 1)[-1])
 flow_lm_main_int8.onnx
+>>> print(voice.with_precision("auto").model_url.rsplit("/", 1)[-1])
 flow_lm_main.onnx
+
 ```
 
 The entry has full files (`precision` is `None`) and an `int8` variant. The `auto` setting picks the full files.
@@ -64,7 +88,7 @@ $ phoonnx-voices download pockettts/it/alba --precision int8
 Attempting to download files for: pockettts/it/alba (it)
 -> Downloading ONNX model and side files (this may take a while)...
 
-Download complete. Files saved to: ~/.cache/huggingface/hub/models--Phoonnx--phoonnx-pocket-tts/snapshots/81b240f24f896f4cc480dc90858d1f72c9b7d64a/italian
+Download complete. Files saved to: ~/.cache/huggingface/hub/models--Phoonnx--pockettts-it-kyutai-unicode/snapshots/8a5d2d456f99075eb69b84f4f5dc009ed683fa9f
 ```
 
 Then load the voice with the same precision and speak:
@@ -91,7 +115,9 @@ int8 on disk: 171 MB
 full on disk: 62 MB
 ```
 
-`disk_size()` counts only the files that are in the cache. The full files are not downloaded, so the full size counts only the files that both precisions share. On the Hub, the full files of this voice are 446 MB and the int8 files are 171 MB.
+`disk_size()` counts only the files that are in the cache. The full files are not
+downloaded, so the full size counts only the 62 MB of files that both precisions share. On
+the Hub, the full files of this voice are 446 MB and the int8 files are 171 MB.
 
 ## 3. Set the precision once
 
@@ -119,24 +145,35 @@ Case and spaces around the value do not matter. An empty value counts as unset.
 | `int8` | `PrecisionUnavailable` | int8 | int8 |
 | `auto` | full | full, or int8 when the variant sets `"auto": true` and no GPU provider runs the voice | int8 |
 
-No entry in the bundled index sets `"auto": true`. So `auto` loads the full files of every voice that has them.
+No entry in the bundled index sets `"auto": true`, so `auto` loads the full files of every
+voice that has them:
+
+```python
+>>> [info.voice_id for info in manager.all_voices if (info.variants or {}).get("int8", {}).get("auto")]
+[]
+
+```
 
 ## Errors you may see
 
 A precision that the voice has no files for raises `PrecisionUnavailable`. It is a `ValueError` and a `VoiceLoadError`:
 
 ```python
-manager.voices["pockettts/en/alba"].with_precision("full")
-```
-
-```
+>>> manager.voices["pockettts/en/alba"].with_precision("full")
+Traceback (most recent call last):
+  ...
 phoonnx.errors.PrecisionUnavailable: voice 'pockettts/en/alba' has no full files; precision 'auto' or 'int8' loads it
+
 ```
 
 A value that is not `int8`, `full` or `auto` raises `ValueError`:
 
-```
+```python
+>>> manager.voices["pockettts/it/alba"].with_precision("fp16")
+Traceback (most recent call last):
+  ...
 ValueError: precision must be one of int8, full, auto, not 'fp16'
+
 ```
 
 The OVOS plugin checks its `precision` key at start, so a wrong value stops the plugin before it loads a voice. A voice with no files for a correct value raises `PrecisionUnavailable` at its first synthesis.

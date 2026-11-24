@@ -1,6 +1,9 @@
 import copy
+import dataclasses
+import os
+import sys
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import MISSING, asdict, dataclass, field, fields, replace
 from enum import Enum
 from typing import Any, Callable, Mapping, Optional, Union, Dict
 
@@ -84,7 +87,7 @@ ENGINE_ALIASES = {"kokoro": Engine.STYLETTS2.value}
 # (not redefinition) keeps enum identity: values stored in voice configs and
 # pickles resolve to the same class everywhere.
 from scriptconv.phonemizers.enums import Alphabet, Phonemizer as PhonemeType
-from scriptconv.frontend import Chunk, FrontendConfig, Stages, TextFrontend, spoken_normalizer
+from scriptconv.frontend import FrontendConfig, Stages, TextFrontend, spoken_normalizer
 
 TEXT_CASINGS: Dict[str, Callable[[str], str]] = {
     "ignore": lambda s: s,
@@ -409,159 +412,249 @@ class VoiceConfig:
         return self.to_dict()
 
 
-@dataclass
-class SynthesisConfig:
-    """Configuration for synthesis."""
+@dataclass(frozen=True)
+class SpeakerReference:
+    """A recording of the speaker to imitate."""
 
-    alphabet: Optional['Alphabet'] = None
-    """Alphabet of the *caller's* input text.
+    audio: Any = None
+    """A path or URL of a wav file, or an ``(audio, sample_rate)`` tuple. ``None`` means no reference."""
 
-    ``None`` means the text is plain graphemes (the default for virtually
-    every use-case).  Set this when passing pre-converted text, for example
-    IPA strings or Hangul, so that scriptconv's conversion graph can skip the
-    phonemization step and apply the correct script-conversion
-    instead.
+    text: Optional[str] = None
+    """The transcription of :attr:`audio`. In-context cloning engines (ZipVoice) need it;
+    d-vector engines (YourTTS, StyleTTS2) ignore it."""
 
-    Relationship to other alphabet fields:
+    lang: Optional[str] = None
+    """The language of :attr:`text`. ``None`` takes the voice's language."""
 
-    +----------------------------+------------------------------+-------------------------------+
-    | concept                    | answers                      | example                       |
-    +============================+==============================+===============================+
-    | ``VoiceConfig.alphabet``   | WHAT the model eats          | ``Alphabet.IPA``              |
-    +----------------------------+------------------------------+-------------------------------+
-    | ``VoiceConfig.phoneme_type`` | HOW to get there (convert  | ``PhonemeType.ESPEAK``        |
-    |                            | backend + tokenisation)      |                               |
-    +----------------------------+------------------------------+-------------------------------+
-    | ``SynthesisConfig.alphabet`` | WHAT the user's text is    | ``Alphabet.GRAPHEMES`` / None |
-    +----------------------------+------------------------------+-------------------------------+
-    """
 
-    speaker_id: Optional[int] = None
-    """Index of speaker to use (multi-speaker voices only). None uses the voice's own
-    speaker, or speaker 0 when the voice names none."""
+@dataclass(frozen=True)
+class AudioPost:
+    """What happens to the engine's audio before it is returned."""
 
-    lang_id: Optional[int] = None
-    """Index of lang to use (multi-lang voices only). None uses the voice's own
-    language, or language 0 when the voice names none."""
-
-    speaker_reference: Optional[Any] = None
-    """Reference audio for zero-shot voice cloning (cloning engines). A path to a wav
-    file, or an ``(audio, sample_rate)`` tuple. The cloning adapter turns it into the
-    conditioning signal (a d-vector, or — for in-context engines like ZipVoice — the
-    prompt mel)."""
-
-    speaker_reference_text: Optional[str] = None
-    """Transcription of ``speaker_reference``, required by **in-context** cloning
-    engines (ZipVoice): the voice tokenizes it into the prompt tokens that prefix
-    generation. Ignored by d-vector engines (YourTTS, StyleTTS2)."""
-
-    speaker_reference_lang: Optional[str] = None
-    """Language of ``speaker_reference_text`` (e.g. ``pt`` for a Portuguese clip),
-    used to phonemize the reference in *its* language — which may differ from the
-    target text's. Defaults to the voice's ``lang_code``. Enables cross-lingual
-    cloning (a Portuguese reference speaking English). In-context engines only."""
-
-    exaggeration: Optional[float] = None
-    """Expressiveness / emotional intensity (0.0–1.0, default 0.5) for engines that
-    support it (Chatterbox). Higher = more exaggerated prosody. Ignored otherwise."""
-
-    temperature: Optional[float] = None
-    """Sampling temperature for autoregressive engines (Chatterbox, default 0.8).
-    Higher = more varied/expressive; ``0`` = deterministic greedy decoding."""
-
-    top_p: Optional[float] = None
-    """Nucleus (top-p) sampling cutoff for autoregressive engines (default 0.95)."""
-
-    length_scale: Optional[float] = None
-    """Phoneme length scale (< 1 is faster, > 1 is slower)."""
-
-    noise_scale: Optional[float] = None
-    """Amount of generator noise to add."""
-
-    noise_w_scale: Optional[float] = None
-    """Amount of phoneme width noise to add."""
-
-    normalize_audio: bool = True
-    """Enable/disable scaling audio samples to fit full range."""
+    normalize: bool = True
+    """Scale each sentence to the full sample range."""
 
     target_loudness: Optional[float] = None
-    """Integrated loudness, in LUFS, each synthesized sentence is brought to (for example ``-16.0``).
-
-    Peak normalization (``normalize_audio``) makes every sentence peak at full scale, so how loud
-    it *sounds* depends on how peaky it is: in a week of real sentences the speech level ranged
-    over 3.5 dB between the 5th and 95th percentile, and consecutive sentences jumped in volume.
-    A loudness target keeps them level, with the peaks limited to -1 dBFS. ``None`` (the default)
-    keeps the peak normalization. It needs ``scipy``; without it a warning is logged once and peak
-    normalization is used."""
+    """The integrated loudness, in LUFS, of each sentence (for example ``-16.0``), with the
+    peaks limited to -1 dBFS. ``None`` keeps :attr:`normalize`. It needs ``scipy``; without
+    it a warning is logged once and :attr:`normalize` applies."""
 
     volume: float = 1.0
-    """Multiplier for audio samples (< 1 is quieter, > 1 is louder)."""
+    """A multiplier for the samples (< 1 is quieter, > 1 is louder)."""
 
-    enable_phonetic_spellings: bool = True
-
-    """for arabic and hebrew models. ``None`` (the default) defers to the voice
-    config's own ``add_diacritics`` so a model that ships undiacritized (e.g.
-    grapheme F5-TTS voices) is not force-diacritized by the caller."""
-    add_diacritics: Optional[bool] = None
-
-    # diacritizer model name (for languages that need one — e.g. Arabic uses text2tashkeel
-    # models like "rawi-ensemble"). ``None`` (the default) defers to the voice config's
-    # own ``diacritizer_model`` choice; an explicit value here overrides it.
-    diacritizer_model: Optional[str] = None
-
-    chunk: Optional[Union[str, Chunk]] = None
-    """How much text one engine call reads: a :class:`scriptconv.frontend.Chunk`
-    or its value, ``"sentence"``, ``"clause"``, ``"paragraph"`` or ``"none"``
-    (the whole text). ``None`` (the default) reads one sentence per call. The
-    size moves only the cuts: the text is read whole before it is cut. An
-    engine that reads text, not symbols, gets the whole text and cuts it
-    itself. Phonemic input (``alphabet`` set) is cut per sentence whatever
-    the value."""
-
-    # post-synthesis audio super-resolution via ``audiosronnx`` (pure-ONNX). Off by
-    # default; when ``True`` each synthesized chunk is upscaled to 48 kHz before being
-    # yielded and the chunk's ``sample_rate`` reports the upscaled rate. ``audiosronnx``
-    # is imported lazily and only when enabled; it ships in the ``[audiosr]`` extra.
     super_resolution: bool = False
+    """Upscale each chunk to 48 kHz with ``audiosronnx`` (the ``audiosr`` extra)."""
 
-    # super-resolution model name (an ``audiosronnx`` engine, e.g. ``"novasr"`` or
-    # ``"lavasr"``). ``None`` (the default) selects ``"novasr"``. Ignored unless
-    # ``super_resolution`` is True.
     super_resolution_model: Optional[str] = None
+    """The ``audiosronnx`` engine. ``None`` selects ``"novasr"``."""
 
-    # post-synthesis universal voice conversion via ``voiceclonnx`` (pure-ONNX).
-    # ``None`` (the default) is a strict no-op: ``voiceclonnx`` is never imported and
-    # the audio is bit-for-bit the engine's own output. When set, every synthesized
-    # chunk is converted to the target speaker *after* generation, so any voice —
-    # including single-speaker models with no cloning support of their own — can speak
-    # with an arbitrary target timbre.
-    #
-    # Value: a path or URL to a short (5–30 s) target-speaker clip, or an
-    # ``(audio, sample_rate)`` tuple — the same shapes ``speaker_reference`` accepts.
-    #
-    # ``vc_reference`` vs ``speaker_reference``: ``speaker_reference`` is engine-native
-    # cloning at generation time, so the model is conditioned on the reference and
-    # prosody follows it as well as timbre, but only cloning-capable engines support
-    # it. ``vc_reference`` is post-hoc conversion on the waveform: it works with every
-    # engine, but prosody stays the source voice's and only the timbre moves. Prefer
-    # ``speaker_reference`` when the voice supports it.
-    vc_reference: Optional[Any] = None
+    voice_conversion: Optional[SpeakerReference] = None
+    """Convert each chunk to the speaker of this reference with ``voiceclonnx``. It works with
+    every engine, but only the timbre changes. :attr:`SynthesisConfig.reference` clones in
+    the engine, so the prosody follows the reference too. ``None`` imports nothing."""
 
-    # voiceclonnx engine alias used for ``vc_reference`` (e.g. ``"openvoice"``,
-    # ``"knnvc"``, ``"focalcodec"``). ``None`` (the default) selects ``"openvoice"``.
-    # Ignored unless ``vc_reference`` is set.
-    vc_engine: Optional[str] = None
+    voice_conversion_engine: Optional[str] = None
+    """The ``voiceclonnx`` engine. ``None`` selects ``"openvoice"``."""
 
-    # Engine-specific per-call params (d_factor, p_factor, e_factor, …)
-    extra_params: Dict[str, Any] = field(default_factory=dict)
 
-    def __post_init__(self):
-        if self.chunk is not None and not isinstance(self.chunk, Chunk):
-            try:
-                Chunk(self.chunk)
-            except ValueError:
-                raise ValueError(f"chunk must be one of {[c.value for c in Chunk]} or None, "
-                                 f"not {self.chunk!r}") from None
+# The 1.x name of each setting, and the path of its new home.
+_1X_NAMES = {
+    "alphabet": "input_alphabet",
+    "enable_phonetic_spellings": "phonetic_spellings",
+    "speaker_id": "speaker",
+    "lang_id": "language",
+    "extra_params": "extra",
+    "speaker_reference": "reference.audio",
+    "speaker_reference_text": "reference.text",
+    "speaker_reference_lang": "reference.lang",
+    "add_diacritics": "stages.diacritize",
+    "diacritizer_model": "stages.diacritizer_model",
+    "chunk": "stages.chunk",
+    "normalize_audio": "audio.normalize",
+    "target_loudness": "audio.target_loudness",
+    "volume": "audio.volume",
+    "super_resolution": "audio.super_resolution",
+    "super_resolution_model": "audio.super_resolution_model",
+    "vc_reference": "audio.voice_conversion.audio",
+    "vc_engine": "audio.voice_conversion_engine",
+}
+
+_GROUPS = {"stages": Stages, "audio": AudioPost, "reference": SpeakerReference,
+           "voice_conversion": SpeakerReference}
+
+# The 1.x field order, which positional arguments follow.
+_1X_ORDER = ("alphabet", "speaker_id", "lang_id", "speaker_reference", "speaker_reference_text",
+             "speaker_reference_lang", "exaggeration", "temperature", "top_p", "length_scale",
+             "noise_scale", "noise_w_scale", "normalize_audio", "target_loudness", "volume",
+             "enable_phonetic_spellings", "add_diacritics", "diacritizer_model", "chunk",
+             "super_resolution", "super_resolution_model", "vc_reference", "vc_engine", "extra_params")
+
+
+def _warn_1x(old: str, new: str) -> None:
+    """A ``DeprecationWarning`` attributed to the first caller outside this module and
+    :mod:`dataclasses`, so that ``from_dict`` and ``replace`` warn at the caller's line."""
+    level, frame = 2, sys._getframe(1)
+    while frame.f_back is not None and frame.f_code.co_filename in (__file__, dataclasses.__file__):
+        level, frame = level + 1, frame.f_back
+    warnings.warn(f"{old} is deprecated and will be removed in phoonnx {_removal_version()}. Use {new}.",
+                  DeprecationWarning, stacklevel=level)
+
+
+class _LegacyId(str):
+    """A string given as the 1.x ``speaker_id`` or ``lang_id``.
+
+    1.x passed it to the engine as it was: most engines read it with ``int()``, and
+    Magpie reads a voice name. So the voice passes it on unread. No voice map and no
+    text stage reads it, and ``speaker_id="40"`` stays id 40 on a voice whose map
+    has a speaker named "40".
+    """
+
+
+def _as_group(group: type, value: Any) -> Any:
+    """*value*, or the *group* that *value* describes when it is a mapping."""
+    return group(**value) if isinstance(value, Mapping) else value
+
+
+def _with_path(group: Any, path: str, value: Any) -> Any:
+    """A copy of *group* with the field at the dotted *path* set to *value*."""
+    head, _, rest = path.partition(".")
+    if rest:
+        value = _with_path(getattr(group, head) or _GROUPS[head](), rest, value)
+    return replace(group, **{head: value})
+
+
+@dataclass(frozen=True, init=False)
+class SynthesisConfig:
+    """What one synthesis call asks for. A ``None`` takes the voice's own value.
+
+    The 1.x flat names (``speaker_id``, ``add_diacritics``, ``normalize_audio`` and the
+    others in ``_1X_NAMES``) still work as keywords and attributes, with a
+    ``DeprecationWarning`` that names the new field.
+    """
+
+    stages: Stages = Stages()
+    """The text stages: ``diacritize``, ``diacritizer_model``, ``normalize``, ``chunk`` and ``lang``."""
+
+    speaker: Optional[Union[int, str]] = None
+    """The speaker of a multi-speaker voice: an id, or a name in the voice's
+    ``speaker_id_map``. A name that the map lacks goes to the engine, which may hold
+    its own names (Magpie). ``None`` takes the voice's own speaker, or speaker 0."""
+
+    language: Optional[Union[int, str]] = None
+    """The language of a multi-language voice: an id, or a code in the voice's
+    ``lang_id_map``. A code also sets ``stages.lang`` when that is ``None``."""
+
+    length_scale: Optional[float] = None
+    """The phoneme length scale (< 1 is faster, > 1 is slower)."""
+
+    noise_scale: Optional[float] = None
+    """The generator noise."""
+
+    noise_w_scale: Optional[float] = None
+    """The phoneme width noise."""
+
+    temperature: Optional[float] = None
+    """The sampling temperature of autoregressive engines; ``0`` is greedy decoding."""
+
+    top_p: Optional[float] = None
+    """The nucleus sampling cutoff of autoregressive engines."""
+
+    exaggeration: Optional[float] = None
+    """The expressiveness (0.0 to 1.0) of engines that support it (Chatterbox)."""
+
+    reference: Optional[SpeakerReference] = None
+    """The speaker that a cloning engine imitates."""
+
+    extra: Mapping[str, Any] = field(default_factory=dict)
+    """Engine-specific settings of one call, such as ``d_factor`` or ``voice``."""
+
+    audio: AudioPost = AudioPost()
+    """What happens to the audio after the engine call."""
+
+    phonetic_spellings: bool = True
+    """Apply the voice's phonetic spellings to the text."""
+
+    input_alphabet: Optional[Alphabet] = None
+    """The alphabet of the caller's text. ``None`` means graphemes. Set it for text
+    that is already phonemic, such as IPA, so that it is converted and not phonemized."""
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        if len(args) > len(_1X_ORDER):
+            raise TypeError(f"SynthesisConfig takes at most {len(_1X_ORDER)} positional arguments")
+        if args:
+            _warn_1x("Positional construction of SynthesisConfig", "keywords")
+        for name, value in zip(_1X_ORDER, args):
+            if name in kwargs:
+                raise TypeError(f"SynthesisConfig got multiple values for argument {name!r}")
+            kwargs[name] = value
+        renamed = {name: kwargs.pop(name) for name in list(kwargs) if name in _1X_NAMES}
+        names = {f.name for f in fields(self)}
+        for name in kwargs.keys() - names:
+            raise TypeError(f"SynthesisConfig got an unexpected keyword argument {name!r}")
+        for f in fields(self):
+            default = f.default_factory() if f.default is MISSING else f.default
+            object.__setattr__(self, f.name, kwargs.get(f.name, default))
+        object.__setattr__(self, "stages", _as_group(Stages, self.stages))
+        object.__setattr__(self, "reference", _as_group(SpeakerReference, self.reference))
+        if isinstance(self.audio, Mapping):
+            audio = dict(self.audio)
+            audio["voice_conversion"] = _as_group(SpeakerReference, audio.get("voice_conversion"))
+            object.__setattr__(self, "audio", AudioPost(**audio))
+        for name, value in renamed.items():
+            path = _1X_NAMES[name]
+            _warn_1x(f"SynthesisConfig.{name}", f"SynthesisConfig.{path}")
+            if name in ("speaker_id", "lang_id") and isinstance(value, str):
+                value = _LegacyId(value)
+            head, _, rest = path.partition(".")
+            if rest:
+                value = _with_path(getattr(self, head) or _GROUPS[head](), rest, value)
+            object.__setattr__(self, head, value)
+        if self.input_alphabet is not None:
+            object.__setattr__(self, "input_alphabet", Alphabet(self.input_alphabet))
+
+    def __getattr__(self, name: str) -> Any:
+        if name not in _1X_NAMES:
+            raise AttributeError(f"'SynthesisConfig' object has no attribute {name!r}")
+        _warn_1x(f"SynthesisConfig.{name}", f"SynthesisConfig.{_1X_NAMES[name]}")
+        value = self
+        for part in _1X_NAMES[name].split("."):
+            value = None if value is None else getattr(value, part)
+        return value
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "SynthesisConfig":
+        """The config that *data* describes: the output of :meth:`to_dict`, or the 1.x
+        flat names, which give a ``DeprecationWarning``."""
+        return cls(**data)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """The config as plain data, which :meth:`from_dict` reads back and
+        ``phoonnx/synthesis_config.schema.json`` describes.
+
+        Raises:
+            ValueError: If ``stages.casing`` is set, or a reference holds samples
+                and not a path or URL.
+        """
+        def reference(ref: Optional[SpeakerReference]) -> Optional[Dict[str, Any]]:
+            if ref is None:
+                return None
+            if not isinstance(ref.audio, (str, os.PathLike, type(None))):
+                raise ValueError("a SpeakerReference with samples has no plain-data form: use a path or URL")
+            return {"audio": None if ref.audio is None else os.fspath(ref.audio), "text": ref.text, "lang": ref.lang}
+
+        data = {f.name: getattr(self, f.name) for f in fields(self)}
+        stages = asdict(self.stages)
+        if stages.pop("casing") is not None:
+            raise ValueError("Stages.casing is a callable and has no plain-data form")
+        if self.stages.chunk is not None:
+            stages["chunk"] = self.stages.chunk.value
+        data["stages"] = stages
+        data["audio"] = {**asdict(self.audio), "voice_conversion": reference(self.audio.voice_conversion)}
+        data["reference"] = reference(self.reference)
+        data["extra"] = dict(self.extra)
+        if self.input_alphabet is not None:
+            data["input_alphabet"] = self.input_alphabet.value
+        return data
 
 
 def check_lang_supported(voice: str, lang_code: Optional[str],
@@ -735,10 +828,10 @@ def get_conversion(phonemizer, voice_config: "VoiceConfig",
     from scriptconv.diacritics import DIACRITIZED, diacritize
 
     # explicit per-call setting wins, else the voice's own
-    enabled = syn_config.add_diacritics
+    enabled = syn_config.stages.diacritize
     if enabled is None:
         enabled = voice_config.add_diacritics
-    model = syn_config.diacritizer_model or voice_config.diacritizer_model
+    model = syn_config.stages.diacritizer_model or voice_config.diacritizer_model
     lang, alpha = voice_config.lang_code, tgt_alphabet.value
 
     def phonemize(text, **_):

@@ -2,56 +2,52 @@
 
 <!-- agent-hint
 covers: how to load a Matcha voice, pair it with a vocoder, and train and export one
-source: phoonnx/engines/matcha.py, phoonnx_train/engines/matcha.py, phoonnx/voice_index/BSC.json
+source: phoonnx/engines/matcha.py, phoonnx/engines/vocoders/__init__.py, phoonnx_train/engines/matcha.py, phoonnx_train/matcha/dataset.py, phoonnx/voice_index/BSC.json
 generated: no
-verify: pytest tests/test_matcha_adapter.py tests/test_matcha_training_preflight.py; the mel statistics cache: none, checked by reading phoonnx_train/matcha/dataset.py:load_or_compute_statistics
+verify: .venv/bin/python -c "import re,sys,json; from phoonnx.engines.matcha import MatchaAdapter as A; from phoonnx_train.engines.matcha import _QUALITY_PRESETS as Q; p=open('docs/training/engines/matcha.md').read().replace(chr(96),''); d=dict(re.findall(r'^\| ([a-z_]+) \| ([\d.]+) \| [A-Z]',p,re.M)); q={r[0]:tuple(map(int,r[1:])) for r in re.findall(r'^\| ([\w-]+) \| (\d+) \| \[(\d+), (\d+)\] \| (\d+) / (\d+) \|',p,re.M)}; ids=set(re.findall(r'^\| (OpenVoiceOS/matxa[\w-]+) \|',p,re.M)); idx={k for k,v in json.load(open('phoonnx/voice_index/BSC.json')).items() if v['engine']=='matcha'}; sys.exit(0 if d=={k:str(v) for k,v in A().default_params().items()} and q=={k:(v['encoder_channels'],*v['decoder_channels'],v['encoder_n_heads'],v['encoder_n_layers']) for k,v in Q.items()} and ids==idx else 1)"
 see: ../training.md, ../../vocoders.md, glowtts.md
 -->
 
-This page explains how to run and train a Matcha-TTS voice, for voice builders and integrators.
-
-> Related: [training reference](../training.md) ·
-> [adapter architecture](../../engines.md) ·
-> [configuration](../../configuration.md) · [vocoders](../../vocoders.md)
+This page shows how to run a Matcha-TTS voice, pair it with a vocoder, and train and export your own model.
 
 ## What it is
 
-Matcha-TTS is a non-autoregressive acoustic model based on **conditional flow
-matching**: a Transformer text encoder, a duration predictor, and a
-flow-matching decoder generate mel spectrograms from phoneme sequences. It is a
-**two-stage** engine — the mel model produces a mel spectrogram, and a separate
-**vocoder** turns the mel into audio. The `MatchaAdapter` also handles fused
-**end-to-end** models transparently (it branches on the mel model's output
-rank):
+Matcha-TTS is a non-autoregressive acoustic model that uses conditional flow matching. A Transformer text encoder, a duration predictor and a flow-matching decoder make a mel spectrogram from phoneme IDs. A Matcha voice comes in one of two forms, and `MatchaAdapter` handles both:
 
-- **Two-stage** — the acoustic model outputs a mel `[B, n_mels, T]` and a
-  separate vocoder ONNX reconstructs the waveform.
-- **End-to-end** — a fused model (e.g. `*_wavenext_e2e.onnx`,
-  `matcha_*_simply.onnx`) outputs the waveform directly. No vocoder is
-  configured; the adapter returns the model output as-is.
+- A two-stage voice has a mel model and a separate vocoder. The mel model outputs a mel spectrogram `[B, n_mels, T]`, and the vocoder ONNX makes the waveform from it.
+- An end-to-end voice is one fused ONNX file that outputs the waveform. It has no vocoder, and the adapter returns the model output as audio.
 
-## When to pick it
+The adapter finds the main output by size and checks its `n_mels` axis, so the order of the output tensors does not matter.
 
-Choose Matcha for fast, high-quality non-autoregressive synthesis where you want
-to swap the acoustic model and vocoder independently — for example the Catalan
-Matxa voices, which pair one acoustic model with whichever vocoder is licensed
-and tested for it. Prefer a fused end-to-end voice, or a Wavenext/HiFi-GAN
-vocoder, when you need a commercial-safe pipeline.
+Pick Matcha when you want to change the acoustic model and the vocoder independently. The Catalan Matxa voices are an example: one acoustic model runs with a Wavenext or a Vocos vocoder.
 
-## Extras needed
+## Install
 
-Matcha-TTS inference requires `scipy`: `pip install --pre "phoonnx[matcha]"`. Training
-uses the vendored `phoonnx_train.matcha` package and needs only the `train`
-extra: `pip install --pre "phoonnx[train]"`.
+Inference needs `scipy`, which the `matcha` extra installs:
 
-## Obtaining / training
+```bash
+pip install --pre "phoonnx[matcha]"
+```
 
-### Loading a voice
+Training uses the vendored `phoonnx_train.matcha` package and needs only the `train` extra: `pip install --pre "phoonnx[train]"`.
 
-Catalan Matxa voices ship in `phoonnx/voice_index/BSC.json`, mirrored under
-`OpenVoiceOS/`. They load like any other voice.
+## Load a voice
 
-End-to-end (single ONNX, no vocoder):
+The Catalan Matxa voices are in `phoonnx/voice_index/BSC.json`. They load like any other index voice:
+
+```python
+from phoonnx.model_manager import TTSModelManager
+
+m = TTSModelManager()
+m.merge_default_voices()
+voice = m.voices["OpenVoiceOS/matxa-cat-multispeaker-wavenext"].load()
+for chunk in voice.synthesize("Bon dia."):
+    audio = chunk.audio_float_array
+```
+
+For a two-stage voice, the index entry has a `vocoder_url` and a `vocoder_type`. The voice manager downloads the vocoder with the model, and it sets `engine_params.vocoder_path` to the local file.
+
+To load a local end-to-end model, give its paths:
 
 ```python
 from phoonnx.voice import TTSVoice
@@ -60,7 +56,7 @@ voice = TTSVoice.load(model_path="matxa_v2_graphemes_10_steps_wavenext.onnx",
                       config_path="config.json")
 ```
 
-Two-stage (acoustic mel model + separate vocoder), via the JSON config:
+A local two-stage voice names its vocoder in the `engine_params` of its `config.json`:
 
 ```json
 {
@@ -73,29 +69,24 @@ Two-stage (acoustic mel model + separate vocoder), via the JSON config:
 }
 ```
 
-The voice manager wires this automatically: index entries carry `vocoder_url`
-and `vocoder_type`, the separate vocoder is downloaded alongside the model, and
-`engine_params.vocoder_path` is set to the local file.
+## Vocoders
 
-Indexed voices:
+`vocoder_type` selects a vocoder from the registry in `phoonnx.engines.vocoders`. The registry has six values. [Vocoders](../../vocoders.md) describes each one.
 
-| voice_id | input | vocoder | license |
-|----------|-------|---------|---------|
-| `OpenVoiceOS/matxa-cat-multispeaker-wavenext` | espeak ca | fused Wavenext (e2e) | gpl-3.0 |
-| `OpenVoiceOS/matxa-cat-multispeaker-hifigan` | espeak ca | fused HiFi-GAN (e2e) | gpl-3.0 |
-| `OpenVoiceOS/matxa-cat-multiaccent-wavenext` | espeak ca | fused Wavenext (e2e) | gpl-3.0 |
-| `OpenVoiceOS/matxa-cat-central-graphemes-v2` | graphemes | fused Wavenext (e2e) | apache-2.0 |
-| `OpenVoiceOS/matxa-cat-multispeaker-wavenext-2stage` | espeak ca | Wavenext (separate) | gpl-3.0 + apache-2.0 |
-| `OpenVoiceOS/matxa-cat-multispeaker-vocos-2stage` | espeak ca | alVoCat Vocos (separate) | gpl-3.0 + **cc-by-nc-4.0** |
+| `vocoder_type` | Family | ONNX output | Reconstruction |
+|----------------|--------|-------------|----------------|
+| `vocos` | Vocos, alVoCat | magnitude, real and imaginary STFT (3 tensors) | inverse STFT overlap-add, with optional denoise |
+| `wavenext` | Wavenext | waveform (1 tensor) | none |
+| `hifigan` | HiFi-GAN | waveform (1 tensor) | none |
+| `melgan` | MelGAN, multiband MelGAN | waveform (1 tensor) | none |
+| `griffinlim` | Griffin-Lim | no model file | phase reconstruction from the mel |
+| `raw` | any ONNX with one output | waveform (1 tensor) | none |
 
-Prefer Wavenext or a fused end-to-end voice for commercial use; the alVoCat-Vocos
-two-stage voice is non-commercial.
+If `vocoder_type` is not set, the adapter reads the vocoder ONNX. A model with three outputs is read as Vocos, and a model with one output is read as a waveform vocoder. Griffin-Lim is never selected automatically.
 
-### Training
+## Train a model
 
-Matcha trains on the standard phoonnx preprocessed dataset (`dataset.jsonl`);
-mel statistics are computed once and cached as `matcha_stats.json` next to the
-dataset.
+Matcha trains on the standard phoonnx preprocessed dataset (`dataset.jsonl`), the same as VITS:
 
 ```bash
 python -m phoonnx_train.train \
@@ -104,22 +95,21 @@ python -m phoonnx_train.train \
     --default-root-dir ./checkpoints
 ```
 
-Quality presets:
+Use `--quality` to pick a preset from the table below. The default preset is `medium`. A key in `engine_params` overrides the same key of the preset.
 
-| Preset | Encoder channels | Decoder channels | Heads / Layers |
-|--------|-----------------|------------------|----------------|
-| `x-low` | 128 | [192, 192] | 2 heads / 4 layers |
-| `medium` | 192 | [256, 256] | 2 heads / 6 layers |
-| `high` | 256 | [384, 384] | 4 heads / 8 layers |
+Matcha normalizes the mels with the mean and the standard deviation of the dataset. When `mel_mean` and `mel_std` are not set, the engine computes them and caches them in `matcha_stats.json` in the dataset folder. To set them yourself, put them in the `engine_params` of the dataset's `config.json`:
 
-Use `--quality <preset>`. A key in `engine_params` overrides the same key of the preset.
+```json
+{
+    "engine_params": { "mel_mean": -5.536622, "mel_std": 2.116101 }
+}
+```
 
-Architecture: a Transformer text encoder with RoPE positional embeddings,
-ConvReluNorm prenet and duration predictor; a conditional flow-matching decoder
-with a UNet1D estimator (ResNet + Transformer/Conformer blocks); trained with
-duration (MSE), prior (Gaussian) and flow-matching (velocity-field MSE) losses.
+The model has a Transformer text encoder with RoPE positional embeddings, a ConvReluNorm prenet and a duration predictor. The decoder is a conditional flow-matching decoder with a UNet1D estimator. The losses are a duration loss (MSE), a prior loss and a flow-matching loss.
 
-Export the mel model to ONNX:
+## Export to ONNX
+
+Export the mel model:
 
 ```bash
 python -m phoonnx_train.export_onnx \
@@ -129,77 +119,44 @@ python -m phoonnx_train.export_onnx \
     --output-dir ./onnx
 ```
 
-The exported ONNX file is the **mel model only** — you still need a separate
-vocoder ONNX for full synthesis; the adapter chains both automatically.
+The exported file is the mel model only. For audio, you also need a vocoder ONNX. Name it in `engine_params.vocoder_path`, and the adapter runs both models.
 
-Matcha normalizes mels with dataset statistics. When `mel_mean` and `mel_std` are not set,
-the engine computes them from the dataset and caches them in `matcha_stats.json`. To set
-them yourself, put them in the `engine_params` of the dataset's `config.json`:
+## Notes
 
-```json
-{
-    "engine_params": { "mel_mean": -5.536622, "mel_std": 2.116101 }
-}
-```
+- The config `engine` field may be `matcha` or `matcha-tts`. A config with `model_type: matcha`, or with a `vocoder_path`, also selects this adapter.
+- The tokenizer sets `blank_id = 0`, so the phoneme sequence already holds the blanks. The adapter passes the sequence to the mel model as it is.
+- A grapheme model, such as `OpenVoiceOS/matxa-cat-central-graphemes-v2`, has no phonemizer. Set `phoneme_type: graphemes` (or `unicode`) and `alphabet: unicode`, and the tokenizer maps each character to an ID.
 
-## Synthesis example
+## Reference
 
-```python
-from phoonnx.model_manager import TTSModelManager
+### Indexed voices
 
-m = TTSModelManager(); m.merge_default_voices()
-voice = m.voices["OpenVoiceOS/matxa-cat-multispeaker-wavenext"].load()
-for chunk in voice.synthesize("Bon dia."):
-    ...  # chunk.audio_float_array
-```
+| voice_id | Input | Vocoder | Licence |
+|----------|-------|---------|---------|
+| `OpenVoiceOS/matxa-cat-multispeaker-wavenext` | espeak ca | fused Wavenext | gpl-3.0 |
+| `OpenVoiceOS/matxa-cat-multispeaker-hifigan` | espeak ca | fused HiFi-GAN | gpl-3.0 |
+| `OpenVoiceOS/matxa-cat-multiaccent-wavenext` | espeak ca | fused Wavenext | gpl-3.0 |
+| `OpenVoiceOS/matxa-cat-central-graphemes-v2` | graphemes | fused Wavenext | gpl-3.0 |
+| `OpenVoiceOS/matxa-cat-multispeaker-wavenext-2stage` | espeak ca | separate Wavenext | gpl-3.0, vocoder apache-2.0 |
+| `OpenVoiceOS/matxa-cat-multispeaker-vocos-2stage` | espeak ca | separate alVoCat Vocos | gpl-3.0, vocoder cc-by-nc-4.0 |
 
-Parameters:
+The alVoCat Vocos vocoder (`projecte-aina/alvocat-vocos-22khz`) is for non-commercial use only. The Wavenext vocoder (`BSC-LT/wavenext-mel`) is Apache-2.0.
+
+### Synthesis parameters
 
 | Param | Default | Description |
 |-------|---------|-------------|
-| `temperature` | 0.667 | Sampling temperature for the flow-matching decoder |
-| `length_scale` | 1.0 | Speech rate multiplier (higher = slower) |
-| `denoise` | true | Spectral-subtraction denoising — Vocos only; ignored by raw-waveform/end-to-end vocoders |
+| `temperature` | 0.667 | Sampling temperature of the flow-matching decoder |
+| `length_scale` | 1.0 | Speech rate multiplier (higher is slower) |
+| `denoise` | true | Spectral-subtraction denoise. Only the Vocos vocoder uses it. |
 
-### Vocoders
+### Quality presets
 
-`vocoder_type` selects from the pluggable vocoder registry
-(`phoonnx.engines.vocoders`), which has **six** registered values — see
-[vocoders.md](../../vocoders.md) for the full system:
-
-| `vocoder_type` | Family | ONNX output | Reconstruction |
-|----------------|--------|-------------|----------------|
-| `vocos` | Vocos / alVoCat | STFT mag + real + imag (3 tensors) | inverse STFT overlap-add (+ optional denoise) |
-| `wavenext` | Wavenext | raw waveform (1 tensor) | none — Vocos with the ISTFT head replaced by a trained linear layer |
-| `hifigan` | HiFi-GAN | raw waveform (1 tensor) | none |
-| `melgan` | MelGAN / multiband-MelGAN | raw waveform (1 tensor) | none |
-| `griffinlim` | Griffin-Lim | none (parametric) | phase reconstruction from the mel, no model file |
-| `raw` | generic 1-output ONNX | raw waveform (1 tensor) | none |
-
-If `vocoder_type` is omitted it is auto-detected from the vocoder ONNX
-(3 outputs → Vocos, 1 output → raw waveform).
-
-Tested vocoders for the Catalan Matxa models (all 22.05 kHz, 80-bin mel):
-
-| Vocoder | Repo / file | License |
-|---------|-------------|---------|
-| Wavenext | `BSC-LT/wavenext-mel` → `mel_spec_22khz_wavenext.onnx` | Apache-2.0 (commercial-safe) |
-| alVoCat (Vocos) | `projecte-aina/alvocat-vocos-22khz` → `mel_spec_22khz_cat.onnx` | **CC-BY-NC-4.0 (non-commercial)** |
-
-## Gotchas / aliases
-
-- **Detect aliases:** the config `engine` field may be `matcha` or `matcha-tts`.
-- **Blank interspersing:** the tokenizer must set `blank_id = 0` so blanks are
-  already present in the phoneme sequence fed to ONNX. The adapter does **not**
-  re-intersperse — it passes the tokenized sequence directly to the mel model.
-- **Grapheme models** (e.g. `matxa-tts-v2-ca-central-graphemes`) have no
-  phonemes: they run the pass-through graphemes/unicode phonemizer
-  (`GraphemePhonemizer` / `UnicodeCodepointPhonemizer`) and the tokenizer maps
-  characters → IDs. Set `phoneme_type: graphemes` (or `unicode`) /
-  `alphabet: unicode`.
-- **Symbol handling lives entirely in the tokenizer**, so `TTSVoice.load`
-  reproduces the model's exact token IDs with no per-model code (espeak voices
-  use the 178-symbol Matcha table; the grapheme voice its 199-symbol char table).
+| Preset | Encoder channels | Decoder channels | Heads / Layers |
+|--------|-----------------|------------------|----------------|
+| `x-low` | 128 | [192, 192] | 2 / 4 |
+| `medium` | 192 | [256, 256] | 2 / 6 |
+| `high` | 256 | [384, 384] | 4 / 8 |
 
 ## References
 

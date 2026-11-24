@@ -65,32 +65,32 @@ class TestPerRequestOverridesConfig(unittest.TestCase):
     def test_the_request_value_reaches_the_engine(self):
         plugin = _plugin(self)
         got = self._captured_config(plugin, speaker_reference="/tmp/mine.wav")
-        self.assertEqual(got["speaker_reference"], "/tmp/mine.wav")
+        self.assertEqual(got["reference"].audio, "/tmp/mine.wav")
 
     def test_the_request_beats_the_configured_default(self):
         # One server, a different cloned voice per request.
         plugin = _plugin(self, speaker_reference="/etc/configured.wav")
         got = self._captured_config(plugin, speaker_reference="/tmp/mine.wav")
-        self.assertEqual(got["speaker_reference"], "/tmp/mine.wav")
+        self.assertEqual(got["reference"].audio, "/tmp/mine.wav")
 
     def test_the_configured_default_still_applies_when_nothing_is_sent(self):
         plugin = _plugin(self, speaker_reference="/etc/configured.wav")
         got = self._captured_config(plugin)
-        self.assertEqual(got["speaker_reference"], "/etc/configured.wav")
+        self.assertEqual(got["reference"].audio, "/etc/configured.wav")
 
     def test_short_aliases_work(self):
         plugin = _plugin(self)
         got = self._captured_config(plugin, ref_wav="/tmp/a.wav",
                                     ref_text="olá", ref_lang="pt")
-        self.assertEqual(got["speaker_reference"], "/tmp/a.wav")
-        self.assertEqual(got["speaker_reference_text"], "olá")
-        self.assertEqual(got["speaker_reference_lang"], "pt")
+        self.assertEqual(got["reference"].audio, "/tmp/a.wav")
+        self.assertEqual(got["reference"].text, "olá")
+        self.assertEqual(got["reference"].lang, "pt")
 
     def test_the_long_name_wins_over_its_alias(self):
         plugin = _plugin(self)
         got = self._captured_config(plugin, speaker_reference="/tmp/long.wav",
                                     ref_wav="/tmp/short.wav")
-        self.assertEqual(got["speaker_reference"], "/tmp/long.wav")
+        self.assertEqual(got["reference"].audio, "/tmp/long.wav")
 
 
 class TestClonedAudioIsNotSharedBetweenReferences(unittest.TestCase):
