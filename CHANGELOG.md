@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.135.0a3](https://github.com/TigreGotico/phoonnx/tree/1.135.0a3) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.0a2...1.135.0a3)
+
+**Merged pull requests:**
+
+- refactor: read tone levels through phonematcher.tone\_levels [\#993](https://github.com/TigreGotico/phoonnx/pull/993) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.135.0a2](https://github.com/TigreGotico/phoonnx/tree/1.135.0a2) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.0a1...1.135.0a2)
@@ -381,7 +389,6 @@
 **Merged pull requests:**
 
 - fix: llasa, neutts and orpheus count no space between touching sentences [\#892](https://github.com/TigreGotico/phoonnx/pull/892) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- docs: list the leokani and kolokwa phonemizers [\#890](https://github.com/TigreGotico/phoonnx/pull/890) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.9a3](https://github.com/TigreGotico/phoonnx/tree/1.125.9a3) (2026-11-22)
 
