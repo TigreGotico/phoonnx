@@ -11,6 +11,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 from phoonnx_train.engines import get_engine, list_engines
 from phoonnx_train.engines.base import TrainingEngineConfig
+from phoonnx_train.vits.input_features import INPUT_LAYERS, load_input_features
 
 # Matrix multiplications benefit from TF32/reduced precision on Ampere+ GPUs;
 # "high" trades a small amount of accuracy for a meaningful speedup and is
@@ -91,6 +92,13 @@ def _validate_engine(ctx, param, value):
               help='Log synthesized validation audio samples to the logger '
                    'each epoch (requires a TensorBoard logger)')
 @click.option('--discard-encoder', is_flag=True, default=False)
+@click.option('--input-layer', type=click.Choice(INPUT_LAYERS), default='ids',
+              help='VITS text-encoder input: an embedding per id (default), or a projection '
+                   'of the feature table plus a learned vector per id (residual) or per base '
+                   'symbol and mark (composition)')
+@click.option('--input-features', type=click.Path(exists=True, dir_okay=False), default=None,
+              help='features.json table for the residual or composition input layer; it must '
+                   'be made from the dataset config\'s phoneme_id_map')
 # In-training evaluation / early stopping (all opt-in; default = off)
 @click.option('--eval-sentences', type=click.Path(exists=True, dir_okay=False), default=None,
               help='Held-out sentences file (one per line); enables in-training scoring')
@@ -130,6 +138,8 @@ def main(
     num_workers: int,
     log_audio_samples: bool,
     discard_encoder: bool,
+    input_layer: str,
+    input_features: Optional[str],
     eval_sentences: Optional[str],
     eval_every: int,
     early_stop_patience: int,
@@ -186,20 +196,34 @@ def main(
     # ------------------------------------------------------------------
     # Build model via the engine
     # ------------------------------------------------------------------
+    extra = _build_extra(
+        quality_kwargs,
+        # engine-specific knobs (asr_path, plbert_dir, stage, backbone,
+        # download_aux, ...) ride in an "engine_params" dict in config.json
+        dataset_config.get("engine_params", {}),
+        batch_size=batch_size,
+        validation_split=validation_split,
+        num_workers=num_workers,
+        log_audio_samples=log_audio_samples,
+    )
+    if input_layer != "ids" or input_features:
+        if engine != "vits":
+            raise click.UsageError("--input-layer and --input-features apply to the vits engine only")
+        if input_layer == "ids" or not input_features:
+            raise click.UsageError("--input-features needs --input-layer residual or composition, "
+                                   "and those layers need --input-features")
+        if "phoneme_id_map" not in dataset_config:
+            raise click.UsageError(f"--input-features needs a phoneme_id_map in {config_path}")
+        extra["input_layer"] = input_layer
+        extra["input_features"] = load_input_features(
+            Path(input_features), dataset_config["phoneme_id_map"], num_symbols)
+        _LOGGER.info("Text-encoder input: %s over %s (%d features)", input_layer, input_features,
+                     len(extra["input_features"]["feature_names"]))
     engine_config = TrainingEngineConfig(
         num_symbols=num_symbols,
         num_speakers=num_speakers,
         sample_rate=sample_rate,
-        extra=_build_extra(
-            quality_kwargs,
-            # engine-specific knobs (asr_path, plbert_dir, stage, backbone,
-            # download_aux, ...) ride in an "engine_params" dict in config.json
-            dataset_config.get("engine_params", {}),
-            batch_size=batch_size,
-            validation_split=validation_split,
-            num_workers=num_workers,
-            log_audio_samples=log_audio_samples,
-        ),
+        extra=extra,
     )
     model = training_engine.create_model(
         config=engine_config,

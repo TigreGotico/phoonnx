@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pytorch_lightning as pl
 import torch
@@ -69,6 +69,10 @@ class VitsModel(pl.LightningModule):
         external_speaker_embedding: bool = False,
         speaker_embedding_dim: int = 512,
         n_langs: int = 0,
+        # text-encoder input: "ids", or a features.json table read by
+        # phoonnx_train.vits.input_features with "residual" or "composition"
+        input_layer: str = "ids",
+        input_features: Optional[Dict[str, Any]] = None,
         # training
         dataset: Optional[List[Union[str, Path]]] = None,
         learning_rate: float = 2e-4,
@@ -126,6 +130,8 @@ class VitsModel(pl.LightningModule):
             external_speaker_embedding=self.hparams.external_speaker_embedding,
             speaker_embedding_dim=self.hparams.speaker_embedding_dim,
             n_langs=self.hparams.n_langs,
+            input_layer=self.hparams.input_layer,
+            input_features=self.hparams.input_features,
         )
         self.model_d = MultiPeriodDiscriminator(
             use_spectral_norm=self.hparams.use_spectral_norm
@@ -183,6 +189,14 @@ class VitsModel(pl.LightningModule):
             }
 
     def on_load_checkpoint(self, checkpoint: dict) -> None:
+        # The feature table is not a weight, so a resume would read a changed one without a word.
+        saved = checkpoint.get("hyper_parameters", {})
+        if (saved.get("input_layer", "ids"), saved.get("input_features")) != (
+                self.hparams.input_layer, self.hparams.input_features):
+            raise ValueError(
+                "the checkpoint was trained with another text-encoder input layer or feature table; "
+                "resume with the same --input-layer and --input-features, or warm-start from it with "
+                "--discard-encoder, which keeps every weight but the text-encoder input")
         # Restore the random state first, so the shuffle sequence continues from
         # where the run left off. A checkpoint written before this was recorded
         # carries no rng_state and resumes as it always did.

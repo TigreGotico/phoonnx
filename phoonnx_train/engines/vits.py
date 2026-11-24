@@ -113,6 +113,8 @@ class VitsTrainingEngine(BaseTrainingEngine):
         model_g.eval()
         with torch.no_grad():
             model_g.dec.remove_weight_norm()
+        # a feature input layer exports as the id table it computes
+        model_g.enc_p.bake_input()
 
         # Forward wrapper
         def infer_forward(
@@ -294,7 +296,11 @@ class VitsTrainingEngine(BaseTrainingEngine):
                 ckpt_single = VitsModel.load_from_checkpoint(
                     checkpoint_path, dataset=None
                 )
+            if model.model_g.enc_p.input_layer is None and ckpt_single.model_g.enc_p.input_layer is not None:
+                ckpt_single.model_g.enc_p.bake_input()
             g_dict = ckpt_single.model_g.state_dict()
+            self._drop_input_layer(g_dict, model.model_g.state_dict(), ckpt_single.hparams, model.hparams,
+                                   discard_encoder, prefix="enc_p.input_layer.")
 
             # Strip speaker-conditional layers so they stay randomly init'd
             for key in list(g_dict.keys()):
@@ -318,11 +324,17 @@ class VitsTrainingEngine(BaseTrainingEngine):
         # ------------------------------------------------------------------
         with trusting_torch_load():
             ckpt = VitsModel.load_from_checkpoint(checkpoint_path, dataset=None)
+        if model.model_g.enc_p.input_layer is None and ckpt.model_g.enc_p.input_layer is not None:
+            _LOG.info("Baking the checkpoint's feature input layer into an id embedding")
+            ckpt.model_g.enc_p.bake_input()
         saved_state_dict = ckpt.state_dict()
         model_state = model.state_dict()
+        self._drop_input_layer(saved_state_dict, model_state, ckpt.hparams, model.hparams, discard_encoder,
+                               prefix="model_g.enc_p.input_layer.")
 
         enc_key = "model_g.enc_p.emb.weight"
-        if enc_key in saved_state_dict:
+        # a feature input layer has no id embedding: the saved one is not loaded
+        if enc_key in saved_state_dict and enc_key in model_state:
             if saved_state_dict[enc_key].shape != model_state[enc_key].shape:
                 _LOG.warning(
                     "Encoder embedding size mismatch (%s vs %s) — "
@@ -343,6 +355,27 @@ class VitsTrainingEngine(BaseTrainingEngine):
         model.load_state_dict(new_state)
         _LOG.info("Loaded checkpoint: %s", checkpoint_path)
         return model
+
+    @staticmethod
+    def _drop_input_layer(saved_state_dict: Dict[str, Any], model_state: Dict[str, Any],
+                          saved_hparams: Any, hparams: Any, discard_encoder: bool, prefix: str) -> None:
+        """Leave out the saved feature input layer weights that do not fit this model.
+
+        The projection fits when the feature names are the same. The per-id, per-base
+        and per-mark tables fit only when the symbols are the same, because their rows
+        follow the symbols. ``--discard-encoder`` leaves out the whole layer.
+        """
+        saved_features = saved_hparams.get("input_features") or {}
+        features = hparams.get("input_features") or {}
+        same_names = saved_features.get("feature_names") == features.get("feature_names")
+        same_symbols = saved_features.get("symbols") == features.get("symbols")
+        for key in [k for k in saved_state_dict if k.startswith(prefix)]:
+            fits = (not discard_encoder and key in model_state
+                    and saved_state_dict[key].shape == model_state[key].shape
+                    and (same_names if key.startswith(prefix + "proj.") else same_symbols))
+            if not fits:
+                _LOG.warning("Not loading %s: it does not fit this model's feature table", key)
+                saved_state_dict.pop(key)
 
     @staticmethod
     def _tolerant_load(model: "torch.nn.Module", state_dict: Dict[str, Any]) -> None:

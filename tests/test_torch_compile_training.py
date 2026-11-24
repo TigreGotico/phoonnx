@@ -167,6 +167,7 @@ class TestCheckpointOrigModStripping(unittest.TestCase):
         torch.nn.Module.__init__(m)
         m.model_g = torch.nn.Linear(2, 2)
         m.model_d = torch.nn.Linear(2, 2)
+        m.hparams.update(input_layer="ids", input_features=None)
         return m
 
     def test_orig_mod_prefix_is_stripped(self):
