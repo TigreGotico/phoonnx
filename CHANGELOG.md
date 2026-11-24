@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.136.0a1](https://github.com/TigreGotico/phoonnx/tree/1.136.0a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.2a2...1.136.0a1)
+
+**Merged pull requests:**
+
+- feat: group SynthesisConfig settings into stages, audio and reference [\#1000](https://github.com/TigreGotico/phoonnx/pull/1000) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.135.2a2](https://github.com/TigreGotico/phoonnx/tree/1.135.2a2) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.2a1...1.135.2a2)
@@ -385,10 +393,6 @@
 ## [1.125.12a1](https://github.com/TigreGotico/phoonnx/tree/1.125.12a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.11a1...1.125.12a1)
-
-**Merged pull requests:**
-
-- fix: an offline fallback skips a snapshot whose graph lacks its data [\#900](https://github.com/TigreGotico/phoonnx/pull/900) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.11a1](https://github.com/TigreGotico/phoonnx/tree/1.125.11a1) (2026-11-22)
 
