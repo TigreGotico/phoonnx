@@ -4,8 +4,9 @@ The file gives each id of a ``phoneme_id_map`` a distinctive-feature vector,
 in the ``phoonnx-input-features/1`` format that a feature-input text encoder
 reads. Seven prosody features for space, pauses, question, exclamation and
 stress, then four tone features, end every vector; punctuation of any script sets them by a rule over its
-Unicode name. A phone written with IPA tone diacritics (``á``) gets the phone features of
-its base and the tone block of its marks. Pad, BOS, EOS and other ids that are not phones get ``null``. A symbol that looks like a phone
+Unicode name. A source whose own features include the four tone features keeps them in
+place, and the table adds no second tone block. A phone written with IPA tone diacritics
+(``á``) gets the phone features of its base and the tone values of its marks. Pad, BOS, EOS and other ids that are not phones get ``null``. A symbol that looks like a phone
 and that the feature source cannot read stops the run, with the list.
 
 The feature source runs here, once, and never at training or synthesis time,
@@ -22,7 +23,7 @@ import sys
 import unicodedata
 from importlib.metadata import version
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import click
 
@@ -79,7 +80,12 @@ TIE_BARS = {"\u0361", "\u035c"}
 _TERNARY = {True: 1, False: -1, None: 0}
 
 
-def load_source(name: str) -> Tuple[str, Tuple[str, ...], Callable[[str], Sequence[Optional[bool]]]]:
+def _value(v: Optional[Union[bool, float]]) -> float:
+    """A feature value: a binary feature as 1, -1 or 0 (unknown), a scalar as it is."""
+    return v if isinstance(v, float) else _TERNARY[v]
+
+
+def load_source(name: str) -> Tuple[str, Tuple[str, ...], Callable[[str], Sequence[Optional[Union[bool, float]]]]]:
     """The installed version, the feature names and the vectorizer of a source."""
     if name == "phonematcher":
         from phonematcher import FEATURES, vectorize_phones
@@ -185,6 +191,17 @@ def build_features(phoneme_id_map: dict, source: str,
     phone and does not read.
     """
     src_version, names, vectorize = load_source(source)
+    # a source that has the tone features keeps them in its own vector
+    tone_at = [names.index(n) for n in TONE] if set(TONE) <= set(names) else None
+    tail = [] if tone_at else [0] * len(TONE)
+
+    def with_tone(vector: List[float], tone: List[float]) -> List[float]:
+        if tone_at is None:
+            return vector + [0] * len(PROSODY) + tone
+        for at, value in zip(tone_at, tone):
+            vector[at] = value
+        return vector + [0] * len(PROSODY)
+
     extra = {s: "ruled a non-phone by --non-phone" for s in non_phones}
     vectors: Dict[str, dict] = {}
     nulls: List[Tuple[int, str, str]] = []
@@ -196,9 +213,9 @@ def build_features(phoneme_id_map: dict, source: str,
         tone = tone_block(symbol) if reason is None else None
         rows = prosody_rows(symbol, pauses) if reason is None and tone is None else []
         if tone:
-            vector = [0] * (len(names) + len(PROSODY)) + tone
+            vector = with_tone([0] * len(names), tone)
         elif rows:
-            vector = [0] * len(names) + [int(row in rows) for row in PROSODY] + [0] * len(TONE)
+            vector = [0] * len(names) + [int(row in rows) for row in PROSODY] + tail
             if not symbol.isspace():
                 prosody.append((i, symbol, rows))
         elif reason is None:
@@ -206,11 +223,15 @@ def build_features(phoneme_id_map: dict, source: str,
             if reason == "punctuation" and len(symbol) == 1:
                 reason = f"punctuation {unicodedata.name(symbol, '?')}, no prosody rule"
             if reason is None:
-                phone, tone = symbol, [0] * len(TONE)
+                phone, tone = symbol, None
                 if marked := split_tone_marks(symbol):
                     phone, tone = marked[0], tone_block(marked[1])
                 try:
-                    vector = [_TERNARY[v] for v in vectorize(phone)] + [0] * len(PROSODY) + tone
+                    vector = [_value(v) for v in vectorize(phone)]
+                    if tone is None:
+                        vector += [0] * len(PROSODY) + tail
+                    else:
+                        vector = with_tone(vector, tone)
                 except ValueError as e:
                     if source == "orthography2ipa" and TIE_BARS & set(symbol):
                         e = ("orthography2ipa feats.py does not read tie bars; a tied affricate or "
@@ -229,7 +250,7 @@ def build_features(phoneme_id_map: dict, source: str,
         "format": FORMAT,
         "source": {"name": source, "version": src_version,
                    "tone": {"name": "phonematcher", "version": version("phonematcher")}},
-        "feature_names": list(names) + list(PROSODY) + list(TONE),
+        "feature_names": list(names) + list(PROSODY) + ([] if tone_at else list(TONE)),
         "phoneme_id_map_sha256": map_sha256(phoneme_id_map),
         "vectors": vectors,
     }
