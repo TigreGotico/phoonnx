@@ -8,6 +8,7 @@ import logging
 import os
 import queue
 from collections import Counter
+from hashlib import sha256
 from importlib.metadata import PackageNotFoundError, packages_distributions, version
 from multiprocessing import JoinableQueue, Process, Queue
 from pathlib import Path
@@ -748,6 +749,10 @@ def cli(
                     f"{first_base or 'a base that cannot be read back'}, and the new rows need {audio_base}. "
                     "Write the new rows to another output folder.")
             audio_base = first_base
+        elif not jsonl_audio_path and any(_has_rewritten_audio_path(r) for r in resume_rows):
+            raise click.UsageError(
+                f"--resume would mix two audio bases in {dataset_path}: its rows were written with "
+                "--jsonl-audio-path. Pass the --jsonl-audio-path of the first run again.")
 
     if quality_filters:
         configure_vad_model(vad_model)
@@ -1220,6 +1225,19 @@ def _written_audio_base(rows: List[Dict[str, Any]], jsonl_audio_path: Path, cach
             if local.parts[-len(tail):] == tail:
                 return Path(*local.parts[:-len(tail)])
     return None
+
+
+def _has_rewritten_audio_path(row: Dict[str, Any]) -> bool:
+    """Whether *row* was written with --jsonl-audio-path.
+
+    A row of an audio file keeps its local path in ``row_id``. A row of embedded
+    audio does not, so it never counts: its decoded file name is the hash of its
+    ``row_id`` under either base.
+    """
+    row_id = row.get("row_id")
+    audio_path = Path(row.get("audio_path") or "")
+    return (bool(row_id) and audio_path != Path("") and audio_path != Path(row_id)
+            and audio_path.name != f"{sha256(row_id.encode('utf-8')).hexdigest()}.wav")
 
 
 def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
