@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.137.11a1](https://github.com/TigreGotico/phoonnx/tree/1.137.11a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.10a1...1.137.11a1)
+
+## [1.137.10a1](https://github.com/TigreGotico/phoonnx/tree/1.137.10a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.9a1...1.137.10a1)
+
+**Merged pull requests:**
+
+- fix: refuse a resume without the --jsonl-audio-path of the first run [\#1061](https://github.com/TigreGotico/phoonnx/pull/1061) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: rewrite every cache path under --jsonl-audio-spec-path [\#1060](https://github.com/TigreGotico/phoonnx/pull/1060) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.137.9a1](https://github.com/TigreGotico/phoonnx/tree/1.137.9a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.8a1...1.137.9a1)
@@ -362,10 +375,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.10a1...1.129.11a1)
 
-**Merged pull requests:**
-
-- fix\(kittentts\): the converter writes num\_symbols as the embedding rows [\#935](https://github.com/TigreGotico/phoonnx/pull/935) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.129.10a1](https://github.com/TigreGotico/phoonnx/tree/1.129.10a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.9a1...1.129.10a1)
@@ -373,10 +382,6 @@
 ## [1.129.9a1](https://github.com/TigreGotico/phoonnx/tree/1.129.9a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.8a1...1.129.9a1)
-
-**Merged pull requests:**
-
-- fix\(fastpitch\): a pace input for the three Coqui ForwardTTS voices [\#934](https://github.com/TigreGotico/phoonnx/pull/934) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.129.8a1](https://github.com/TigreGotico/phoonnx/tree/1.129.8a1) (2026-11-22)
 
