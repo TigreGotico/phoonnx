@@ -139,7 +139,7 @@ To preprocess on one machine and train on another, rewrite the paths in `dataset
 
 | Option | Description |
 |---|---|
-| `--jsonl-audio-path BASE` | Replace the base folder of each audio path in `dataset.jsonl`. The base folder is the parent of the folder that holds every audio file, for example the dataset folder above `wav/` or `wavs/` |
+| `--jsonl-audio-path BASE` | Replace the base folder of each audio path in `dataset.jsonl`. The base folder is the parent of the folder that holds every audio file. In a dataset directory, that folder is the top folder with the audio, such as `wav/` or `wavs/`, so the base folder is the dataset directory |
 | `--jsonl-audio-spec-path BASE` | Replace the base folder of each cache path in `dataset.jsonl`. The base folder is the parent of `--cache-dir`, or `--output-dir` when `--cache-dir` is not given |
 
 ## Miscellaneous

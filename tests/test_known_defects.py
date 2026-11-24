@@ -172,6 +172,38 @@ def test_jsonl_audio_path_keeps_only_the_audio_folder_of_a_path_with_two_wav_fol
     assert row["audio_path"] == "/override/base/wav/clip1.wav", row["audio_path"]
 
 
+def test_jsonl_audio_path_keeps_one_base_across_a_resume(tmp_path):
+    def row(name: str) -> str:
+        clip = _wav(tmp_path / "ds" / "wav" / name, sr=16000)
+        return json.dumps({"text": "hi", "audio": str(clip), "phon": "h i"}) + "\n"
+
+    source = tmp_path / "a.jsonl"
+    source.write_text(row("spk1/a.wav") + row("spk2/b.wav"))
+    out = tmp_path / "out"
+    args = ["-i", str(source), "-o", str(out), "-l", "en", "--phonemes-column", "phon",
+            "--jsonl-audio-path", "/override/base"]
+    assert _preprocess(args).exit_code == 0
+    with open(source, "a") as handle:
+        handle.write(row("spk2/c.wav"))
+    result = _preprocess([*args, "--resume"])
+    assert result.exit_code == 0, result.output
+    assert [r["audio_path"] for r in _manifest(out)] == [
+        "/override/base/wav/spk1/a.wav", "/override/base/wav/spk2/b.wav", "/override/base/wav/spk2/c.wav"]
+
+
+def test_jsonl_audio_path_base_of_a_dataset_directory_is_that_directory(tmp_path):
+    dataset = tmp_path / "ds"
+    _wav(dataset / "wav" / "spk1" / "a.wav", sr=16000)
+    _wav(dataset / "wav" / "spk1" / "b.wav", sr=16000)
+    (dataset / "metadata.csv").write_text("spk1/a|hi\nspk1/b|hi there\n", encoding="utf-8")
+    out = tmp_path / "out"
+    result = _preprocess(["-i", str(dataset), "-o", str(out), "-l", "en",
+                          "--jsonl-audio-path", "/override/base"])
+    assert result.exit_code == 0, result.output
+    assert sorted(r["audio_path"] for r in _manifest(out)) == [
+        "/override/base/wav/spk1/a.wav", "/override/base/wav/spk1/b.wav"]
+
+
 def test_jsonl_audio_spec_path_rewrites_a_custom_cache_dir(tmp_path):
     clip = _wav(tmp_path / "wav" / "clip1.wav", sr=16000)
     features = tmp_path / "features"
