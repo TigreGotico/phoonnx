@@ -142,6 +142,8 @@ To preprocess on one machine and train on another, rewrite the paths in `dataset
 | `--jsonl-audio-path BASE` | Replace the base folder of each audio path in `dataset.jsonl`. The base folder is the parent of the folder that holds every audio file. In a dataset directory, that folder is the top folder with the audio, such as `wav/` or `wavs/`, so the base folder is the dataset directory |
 | `--jsonl-audio-spec-path BASE` | Replace the base folder of each cache path in `dataset.jsonl`. The base folder is the parent of `--cache-dir`, or `--output-dir` when `--cache-dir` is not given |
 
+A `--resume` run needs the same overrides as the first run. Without the `--jsonl-audio-path` of the first run, a resume over rows of audio files stops with a usage error. A resume does not check `--jsonl-audio-spec-path`, because the rows do not record the local cache folder.
+
 ## Miscellaneous
 
 | Option | Default | Description |

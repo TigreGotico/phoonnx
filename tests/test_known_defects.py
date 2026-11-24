@@ -227,6 +227,53 @@ def test_jsonl_audio_path_refuses_a_resume_outside_the_first_base(tmp_path):
     assert [r["audio_path"] for r in _manifest(out)] == ["/override/base/wav/a.wav"]
 
 
+def test_a_resume_without_jsonl_audio_path_refuses_rows_written_with_it(tmp_path):
+    def row(name: str) -> str:
+        clip = _wav(tmp_path / "ds" / "wav" / name, sr=16000)
+        return json.dumps({"text": "hi", "audio": str(clip), "phon": "h i"}) + "\n"
+
+    source = tmp_path / "a.jsonl"
+    source.write_text(row("a.wav"))
+    out = tmp_path / "out"
+    args = ["-i", str(source), "-o", str(out), "-l", "en", "--phonemes-column", "phon"]
+    assert _preprocess([*args, "--jsonl-audio-path", "/override/base"]).exit_code == 0
+    with open(source, "a") as handle:
+        handle.write(row("b.wav"))
+    result = _preprocess([*args, "--resume"])
+    assert result.exit_code == 2, result.output
+    assert "Pass the --jsonl-audio-path of the first run again." in result.output, result.output
+    assert [r["audio_path"] for r in _manifest(out)] == ["/override/base/wav/a.wav"]
+
+
+def _run_preprocess_over_embedded_audio(args, rows: int):
+    import io
+
+    from phoonnx_train import dataset_loaders
+    from phoonnx_train.dataset_loaders import Utterance
+
+    def loader(source, config):
+        for index in range(rows):
+            audio = io.BytesIO()
+            sf.write(audio, np.zeros(8000, np.float32) + 0.1, 16000, format="WAV")
+            yield Utterance(text="hi", audio_path=Path(""), row_id=f"{source}#{index}",
+                            audio_bytes=audio.getvalue())
+
+    dataset_loaders.register_loader("hf", loader)
+    return _run_preprocess(args)
+
+
+def test_a_resume_over_embedded_audio_without_overrides_keeps_going(tmp_path):
+    # embedded rows keep a local path under <cache_dir>/audio that differs from their row_id
+    out = tmp_path / "out"
+    args = ["-i", "org/name", "-o", str(out), "-l", "en"]
+    with ProcessPoolExecutor(1, mp_context=multiprocessing.get_context("spawn")) as pool:
+        assert pool.submit(_run_preprocess_over_embedded_audio, args, 1).result().exit_code == 0
+    with ProcessPoolExecutor(1, mp_context=multiprocessing.get_context("spawn")) as pool:
+        result = pool.submit(_run_preprocess_over_embedded_audio, [*args, "--resume"], 2).result()
+    assert result.exit_code == 0, result.output
+    assert [Path(r["audio_path"]).parent for r in _manifest(out)] == [out / "cache" / "22050" / "audio"] * 2
+
+
 def test_jsonl_audio_path_base_of_a_dataset_directory_is_that_directory(tmp_path):
     dataset = tmp_path / "ds"
     _wav(dataset / "wav" / "spk1" / "a.wav", sr=16000)
