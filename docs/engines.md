@@ -2,9 +2,9 @@
 
 <!-- agent-hint
 covers: how inference adapters and training engines register, detect and run, and how to add one
-source: phoonnx/engines/__init__.py, phoonnx/engines/base.py:BaseOnnxAdapter, phoonnx_train/engines/__init__.py, phoonnx_train/engines/base.py:BaseTrainingEngine, phoonnx_train/train.py, phoonnx_train/export_onnx.py
+source: phoonnx/engines/__init__.py, phoonnx/engines/base.py:BaseOnnxAdapter, phoonnx_train/engines/__init__.py, phoonnx_train/engines/base.py:BaseTrainingEngine, phoonnx_train/train.py, phoonnx_train/export_onnx.py, scripts/engine_matrix.py
 generated: no
-verify: pytest tests/test_engine_coverage.py
+verify: pytest tests/test_engine_coverage.py tests/test_engine_matrix.py
 see: architecture.md, vocoders.md, streaming.md, training/training.md
 -->
 
@@ -260,8 +260,68 @@ register_engine("my_engine", MyTrainingEngine)
 | [Rápido](training/engines/rapido.md) | `phoonnx_train/engines/rapido.py` | `base`, `low` |
 | [SuperTonic](training/engines/supertonic.md) | `phoonnx_train/engines/supertonic.py` | see page |
 
-`Chatterbox`, `F5-TTS` and `Pocket TTS` have inference adapters (`phoonnx/engines/`) and
-no `phoonnx_train` training engine.
+The [architecture matrix](#architecture-matrix) shows which architectures have an inference
+adapter and no training engine.
+
+---
+
+## Architecture Matrix
+
+phoonnx is a training library and an inference library. Each architecture is to have both
+sides. A gap closes when somebody adds the missing side. An engine is never removed to close a gap.
+
+The table has one row for each name in the inference registry (`phoonnx.engines.list_engines()`)
+and for each architecture in the training registry (`phoonnx_train.engines.list_engines()`).
+The columns are:
+
+| Column | Content |
+| --- | --- |
+| Inference | The adapter class that `get_adapter` returns for the name. |
+| Training | The training engines of the architecture. When there is none, the roadmap task that adds one. |
+| Export | `export_onnx` is the export of the training engine. `export_piper` and `export_sherpa` in `phoonnx.compat` write a phoonnx VITS voice for Piper or sherpa-onnx. |
+| Index voices | The entries of `phoonnx/voice_index/` that load with the adapter. An entry in the `phoonnx`, `piper`, `mimic3`, `coqui` or `transformers` format counts for `vits`, or for `vits_prior_split` when it has a `decode_path`. |
+| Id fixture | `yes` when a voice of `tests/fixtures/id_parity.json` loads with the adapter. |
+| Open task | The roadmap task that adds the first index voice of the adapter. |
+
+`python scripts/engine_matrix.py` writes the table. `tests/test_engine_matrix.py` fails when the
+table differs from the registries, and when an inference engine has no index voice and no open task.
+The open tasks are in `TRAINING_TASKS` and `VOICE_TASKS` in the script.
+
+<!-- engine-matrix:begin -->
+| Architecture | Inference | Training | Export | Index voices | Id fixture | Open task |
+| --- | --- | --- | --- | --- | --- | --- |
+| `arktts` | `ArkTTSAdapter` | R4.8 | `scripts/conversion/arktts` | 25 | no |  |
+| `chatterbox` | `ChatterboxAdapter` | R4.8 | none | 42 | no |  |
+| `f5tts` | `F5TTSAdapter` | R4.8 | none | 16 | no |  |
+| `fastpitch` | `FastPitchAdapter` | `fastpitch`, `speedyspeech` | `export_onnx`, `scripts/conversion/coqui_fastpitch_export` | 4 | no |  |
+| `glowtts` | `GlowTTSAdapter` | `glowtts` | `export_onnx`, `scripts/conversion/coqui_glowtts_export` | 58 | no |  |
+| `indic_parler` | `IndicParlerAdapter` | R4.8 | `scripts/conversion/indicparler` | 33 | no |  |
+| `llasa` | `LlasaAdapter` | R4.8 | `scripts/conversion/llasa` | 4 | no |  |
+| `magpie` | `MagpieAdapter` | R4.8 | `scripts/conversion/magpie` | 30 | no |  |
+| `matcha` | `MatchaAdapter` | `matcha` | `export_onnx` | 13 | no |  |
+| `mixertts` | `MixerTTSAdapter` | `mixer`, `mixertts` | `export_onnx` | 5 | no |  |
+| `mosstts` | `MossTTSNanoAdapter` | R4.8 | none | 19 | no |  |
+| `neutts` | `NeuTTSAdapter` | R4.8 | `scripts/conversion/neutts` | 9 | no |  |
+| `omnivoice` | `OmniVoiceAdapter` | R4.8 | none | 646 | no |  |
+| `optispeech` | `OptiSpeechAdapter` | `optispeech` | `export_onnx` | 3 | no |  |
+| `orpheus` | `OrpheusAdapter` | R4.8 | none | 8 | no |  |
+| `outetts` | `OuteTTSAdapter` | R4.8 | `scripts/conversion/outetts` | 23 | no |  |
+| `pockettts` | `PocketTTSAdapter` | R4.8 | none | 156 | no |  |
+| `qwen3tts` | `Qwen3TTSAdapter` | R4.8 | `scripts/conversion/qwen3tts` | 15 | no |  |
+| `rapido` | `RapidoAdapter` | `rapido` | `export_onnx` | 1 | no |  |
+| `shami` | `ShamiAdapter` | R4.8 | `scripts/conversion/shami_tts` | 1 | no |  |
+| `sparktts` | `SparkTTSAdapter` | R4.8 | none | 4 | no |  |
+| `styletts2` | `StyleTTS2Adapter` | `styletts2`, `styletts2-aligner`, `styletts2-plbert`, `styletts2-pitch` | `export_onnx`, `scripts/conversion/styletts2` | 228 | no |  |
+| `supertonic` | `SuperTonicAdapter` | `supertonic` | `export_onnx` | 310 | no |  |
+| `tinyvoca` | `TinyVocaAdapter` | R4.8 | none | 0 | no | R3.4 |
+| `vits` | `VitsAdapter` | `vits` | `export_onnx`, `export_piper`, `export_sherpa`, `scripts/conversion/coqui_vits_export`, `scripts/conversion/inflect` | 1601 | yes |  |
+| `vits_prior_split` | `VitsPriorSplitAdapter` | R4.8 | none | 2 | no |  |
+| `vits_streaming` | `VitsStreamingAdapter` | R4.8 | `ensure_split_vits` on a `vits` export | 0 | no | R2.7 |
+| `vosk` | `VitsAdapter` | R4.8 | none | 3 | no |  |
+| `xvits` | `XVitsAdapter` | R4.8 | none | 0 | no | R2.7 |
+| `yourtts` | `YourTTSAdapter` | `yourtts` | `export_onnx`, `scripts/conversion/yourtts` | 0 | no | R2.7 |
+| `zipvoice` | `ZipVoiceAdapter` | `zipvoice` | `export_onnx` | 0 | no | R2.7 |
+<!-- engine-matrix:end -->
 
 ---
 
