@@ -148,14 +148,14 @@ def speaker_similarity(emb, ref, wav: np.ndarray, sr: int) -> float:
 def build_encoder(config: Dict, noise_scale=None, length_scale=None, noise_w=None):
     """Return ``(frontend, tokenizer, lang, sample_rate, scales)`` matching
     preprocess/train exactly."""
-    from phoonnx.config import Alphabet, PhonemeType, VoiceConfig, get_phonemizer, voice_frontend
+    from phoonnx.config import Alphabet, PhonemeType, VoiceConfig, _voice_phonemizer, voice_frontend
     from phoonnx.tokenizer import TTSTokenizer
     from scriptconv.frontend import Stages
 
     phoneme_type = PhonemeType(config["phoneme_type"])
     alphabet = Alphabet(config.get("alphabet") or "ipa")
-    ph = get_phonemizer(phoneme_type, alphabet, config.get("phonemizer_model"),
-                        keep_punctuation=bool(config.get("keep_punctuation", False)))
+    ph = _voice_phonemizer(phoneme_type, alphabet, config.get("phonemizer_model"),
+                           keep_punctuation=bool(config.get("keep_punctuation", False)))
     tokenizer = TTSTokenizer.from_phoonnx_config(config)
     lang = config.get("lang_code", "")
     # Read the text settings the way synthesis reads them.
