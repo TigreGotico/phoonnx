@@ -248,7 +248,8 @@ def _resolve(url: str, timeout: int = 120, graph_url: Optional[str] = None) -> P
     cached = _hf_fetch(url, timeout)
     if cached is not None:
         return cached
-    _warn_offhub(url)
+    LOG.warning(f"not a HuggingFace file URL, so this download is a private copy "
+                f"that no other voice or program can share: {url}")
     dest = _direct_path(url, graph_url)
     if _is_cached(dest):
         return dest
@@ -579,11 +580,6 @@ def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
                                     etag_timeout=min(timeout, _ETAG_TIMEOUT)))
 
 
-def _warn_offhub(url: str) -> None:
-    LOG.warning(f"not a HuggingFace file URL, so this download is a private copy "
-                f"that no other voice or program can share: {url}")
-
-
 def _cached_path(url: str, graph_url: Optional[str] = None) -> Optional[Path]:
     """Local path of ``url`` if it is already downloaded, else None.
 
@@ -657,11 +653,6 @@ def _read_json(path: Path) -> Any:
     """Parse the JSON at ``path``."""
     with open(path, "r", encoding="utf-8") as handle:
         return json.load(handle)
-
-
-def _hub_json(url: str) -> Any:
-    """Give the parsed JSON at ``url``, from the shared cache."""
-    return _read_json(_resolve(url))
 
 
 #: The values of the ``precision`` setting. ``int8`` and ``full`` name the
@@ -753,7 +744,6 @@ def _alias_info(voice_id: str, lookup: Callable[[str], Optional["TTSModelInfo"]]
 
 
 @dataclass
-
 class TTSModelInfo:
     voice_id: str
     lang: str  # not always present in config.json and often wrong if present
@@ -823,13 +813,9 @@ class TTSModelInfo:
     # skip these voices instead of rediscovering the same failures every run.
     requires_reference: bool = False
 
-    # Override for the phonemizer's lang_code, when it differs from ``lang``.
-    # ``lang`` is catalogue-facing (listings, get_lang_voices) and is not always
-    # the language the model was actually trained to phonemize — some index
-    # entries carry a dialect/locale code (e.g. "tdt-TL") no phonemizer serves,
-    # while the model itself was trained with a different phonemizer voice
-    # (e.g. Portuguese espeak). When set, this field — not ``lang`` — becomes
-    # the lang_code override passed into VoiceConfig.from_dict.
+    # The phonemizer's language, when it differs from the catalogue ``lang``: an entry
+    # may carry a code no phonemizer serves ("tdt-TL") for a model trained with another
+    # phonemizer voice (Portuguese espeak).
     phonemizer_lang: Optional[str] = None
 
     # The precision of the files this entry names: "int8" for an entry that has
@@ -841,10 +827,7 @@ class TTSModelInfo:
     variants: Optional[Dict[str, Dict[str, Any]]] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize every field to a JSON-safe dict, matching the format used by the
-        bundled voice-index JSON files (enum fields become their plain string value).
-        """
+        """Every field as in the bundled voice-index JSON files, enums as their values."""
         d = asdict(self)
         for k, v in d.items():
             if isinstance(v, Enum):
@@ -853,27 +836,17 @@ class TTSModelInfo:
 
     @property
     def config(self) -> VoiceConfig:
-        # lazy loaded
-        """
-        Return the model's VoiceConfig, loading and synchronizing it on first access.
-        
-        On first access, load or construct a VoiceConfig from cached files or remote URLs and apply any provided vocab, tokenizer, or tokens overrides; normalize and propagate language, alphabet, phoneme type, and engine values between the dataclass and the loaded config. Subsequent accesses return the cached VoiceConfig.
-        
-        Returns:
-            VoiceConfig: The loaded and normalized voice configuration instance.
-        """
+        """The voice's VoiceConfig, loaded on first access; the index fields win over config.json."""
         if not self._config:
             if self.config_url:
                 config = self.download_config()
-                # HACK: seen in some published piper voices
-                # "es_MX-ald-medium"
-                if config.get('phoneme_type', "") == "PhonemeType.ESPEAK":
+                # some published piper voices (es_MX-ald-medium) store the enum repr
+                if config.get("phoneme_type", "") == "PhonemeType.ESPEAK":
                     config["phoneme_type"] = "espeak"
             else:
                 config = {"phoneme_type": "graphemes", "alphabet": "unicode"}
-            # vosk voices ship a pronunciation dictionary; its local path is the
-            # phonemizer_model the VoskPhonemizer loads. A failed fetch leaves
-            # phonemizer_model unset rather than pointing at nothing.
+            # The local path of a vosk pronunciation dictionary is the phonemizer_model.
+            # A failed fetch leaves phonemizer_model unset.
             if self.dictionary_url and not self.phonemizer_model:
                 dict_path = self.download_dictionary()
                 if dict_path:
@@ -883,60 +856,27 @@ class TTSModelInfo:
             if self.phonemizer_model:
                 config["phonemizer_model"] = self.phonemizer_model
 
-            lang_code = normalize_lang(self.lang, default_region=False) if self.lang else None
-            alphabet = self.alphabet if self.alphabet else None
-            phoneme_type = self.phoneme_type if self.phoneme_type else None
-            engine = self.engine if self.engine else None
-
+            options: Dict[str, Any] = {
+                "alphabet": self.alphabet,
+                "phoneme_type": self.phoneme_type,
+                "engine": self.engine,
+                "lang_code": normalize_lang(self.lang, default_region=False) if self.lang else None,
+                "phonemizer_lang": self.phonemizer_lang,
+            }
             if self.engine == Engine.CHATTERBOX or config.get("engine") == "chatterbox":
                 # Chatterbox carries its own subword BPE (tokenizer.json); no vocab/tokens.
                 tok_json = self.download_bpe_tokenizer()
-                self._config = VoiceConfig.from_dict(config,
-                                                     alphabet=alphabet,
-                                                     phoneme_type=phoneme_type,
-                                                     engine=engine,
-                                                     lang_code=lang_code,
-                                                     phonemizer_lang=self.phonemizer_lang,
-                                                     bpe_tokenizer_json=str(tok_json) if tok_json else None,
-                                                     lang_tokens=self.lang_tokens)
+                options["bpe_tokenizer_json"] = str(tok_json) if tok_json else None
+                options["lang_tokens"] = self.lang_tokens
             elif self.vocab_override:
-                self._config = VoiceConfig.from_dict(config,
-                                                     vocab=self.vocab_override,
-                                                     alphabet=alphabet,
-                                                     phoneme_type=phoneme_type,
-                                                     engine=engine,
-                                                     lang_code=lang_code,
-                                                     phonemizer_lang=self.phonemizer_lang)
+                options["vocab"] = self.vocab_override
             elif self.vocab_url:
-                vocab = self.download_vocab()
-                if self.tokenizer_config_url:
-                    tokenizer_config = self.download_tokenizer_config()
-                else:
-                    tokenizer_config = {}
-                self._config = VoiceConfig.from_dict(config,
-                                                     vocab=vocab,
-                                                     alphabet=alphabet,
-                                                     phoneme_type=phoneme_type,
-                                                     engine=engine,
-                                                     tokenizer_config=tokenizer_config,
-                                                     lang_code=lang_code,
-                                                     phonemizer_lang=self.phonemizer_lang)
+                options["vocab"] = self.download_vocab()
+                options["tokenizer_config"] = self.download_tokenizer_config()
             elif self.tokens_url:
                 self.download_tokens_txt()
-                self._config = VoiceConfig.from_dict(config,
-                                                     alphabet=alphabet,
-                                                     phoneme_type=phoneme_type,
-                                                     engine=engine,
-                                                     tokens_txt=str(self.hub_path(self.tokens_url) or ""),
-                                                     lang_code=lang_code,
-                                                     phonemizer_lang=self.phonemizer_lang)
-            else:
-                self._config = VoiceConfig.from_dict(config,
-                                                     alphabet=alphabet,
-                                                     phoneme_type=phoneme_type,
-                                                     engine=engine,
-                                                     lang_code=lang_code,
-                                                     phonemizer_lang=self.phonemizer_lang)
+                options["tokens_txt"] = str(self.hub_path(self.tokens_url))
+            self._config = VoiceConfig.from_dict(config, **options)
 
             # populate any missing properties. The catalogue lang takes the
             # default region and the phonemizer lang_code does not, so a voice
@@ -953,24 +893,18 @@ class TTSModelInfo:
         return self._config
 
     def __post_init__(self):
-        """
-        Initialize internal state for TTSModelInfo and normalize persisted values.
-        
-        Sets up the private config storage, ensures the voice cache directory exists, and converts string representations of engine, alphabet, and phoneme_type into their corresponding Enum values so the instance fields are normalized.
-        """
         self._config: Optional[VoiceConfig] = None
 
-        # cast strings to enum for consistency
-        if not isinstance(self.engine, Engine) and isinstance(self.engine, str):
+        # index entries hold the enum values as plain strings
+        if isinstance(self.engine, str):
             self.engine = Engine(self.engine)
-        if not isinstance(self.alphabet, Alphabet) and isinstance(self.alphabet, str):
+        if isinstance(self.alphabet, str):
             self.alphabet = Alphabet(self.alphabet)
-        if not isinstance(self.phoneme_type, PhonemeType) and isinstance(self.phoneme_type, str):
+        if isinstance(self.phoneme_type, str):
             self.phoneme_type = PhonemeType(self.phoneme_type)
 
-        # resolve "{engine}"/"{phoneme_type}" placeholders in display_name,
-        # if those fields are already known (avoids triggering a config
-        # download just to format a label)
+        # fill the "{engine}"/"{phoneme_type}" placeholders only from fields already known,
+        # so a label never starts a config download
         if self.display_name and "{" in self.display_name:
             try:
                 self.display_name = self.display_name.format(
@@ -1018,12 +952,7 @@ class TTSModelInfo:
 
     @property
     def voice_path(self) -> Path:
-        """The directory this voice's graph lives in.
-
-        The hub's snapshot directory, or the direct-download directory for a
-        voice the hub cannot serve. phoonnx owns neither: there is no
-        phoonnx-managed voice cache any more, so nothing here is a copy.
-        """
+        """The directory of this voice's graph: the hub snapshot, or the direct-download folder."""
         return self.download_model().parent
 
     def download_config(self) -> Dict[str, Any]:
@@ -1049,13 +978,10 @@ class TTSModelInfo:
         return path.read_text(encoding="utf-8") if path else ""
 
     def download_dictionary(self) -> Optional[Path]:
-        """Give the vosk pronunciation ``dictionary`` (word -> phonemes) path,
-        from the hub cache, if any.
+        """Give the path of the vosk pronunciation dictionary, if any.
 
-        The file is large (tens of MB) but optional: a failed fetch (offline,
-        a dropped connection, a pruned hub revision) degrades to rule-based
-        g2p for every word rather than failing the whole voice load, the same
-        way the phonemizer already degrades per out-of-dictionary word.
+        The dictionary is optional: when the fetch fails, the voice loads with
+        rule-based g2p for every word.
         """
         if not self.dictionary_url:
             return None
@@ -1068,38 +994,25 @@ class TTSModelInfo:
             return None
 
     def _fetch_onnx(self, url: str) -> Path:
-        """Give the local path of an ONNX graph, with its sidecars alongside.
+        """Give the local path of an ONNX graph, with the external-data files it names beside it.
 
-        A graph with external weights names each sidecar by filename and
-        onnxruntime resolves that name against the directory the graph itself
-        resolves to, so they must share a directory. Fetching every sidecar
-        the graph names from the same source puts it there, and the graph
-        loads where it lies. Single-file graphs (piper/vits exports) simply
-        have no sidecar. A graph that names a file outside its own folder
-        raises ``ValueError``, and that file is not fetched.
+        onnxruntime reads external data only from the graph's own directory, so each
+        file comes from the same source. A graph that names a file outside its own
+        folder raises ``ValueError``.
 
-        "No sidecar" and "the sidecar failed to arrive" are not the same
-        answer. The sidecar carries the weights, so a failure that is mistaken
-        for absence produces a graph that loads and then synthesizes silence.
-        Only a 404, and being offline with nothing cached, count as absence.
+        The external data carries the weights: a failure mistaken for absence gives a
+        graph that loads and synthesizes silence. Only a 404, and being offline with
+        nothing cached, count as absence.
         """
         path = _resolve(url)
         for sidecar in _sidecar_urls(url, path):
             try:
                 _resolve(sidecar, graph_url=url)
-            except _NO_SUCH_FILE as e:
-                # There is no sidecar at that URL, or we are offline and have
-                # never seen one; a single-file graph loads fine either way.
-                LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
-            except (requests.exceptions.ConnectionError,
+            except (*_NO_SUCH_FILE, requests.exceptions.ConnectionError,
                     requests.exceptions.Timeout) as e:
-                # Offline/DNS/timeout on the direct (non-hub) path.
                 LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
             except requests.exceptions.HTTPError as e:
-                # Only a 404 means "no sidecar here". Anything else — a 500, a
-                # 403, a status we cannot read — is a real failure and must not
-                # be swallowed.
-                if getattr(getattr(e, "response", None), "status_code", None) != 404:
+                if e.response is None or e.response.status_code != 404:
                     raise
                 LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
         return path
@@ -1140,10 +1053,7 @@ class TTSModelInfo:
         return self.hub_path(self.tokenizer_config_url)
 
     def engine_params(self) -> Dict[str, Any]:
-        """
-        Build the engine_params dict for synthesis, resolving the vocoder to
-        its locally-downloaded path.  Empty for single-stage engines.
-        """
+        """The engine_options of this voice, plus the local paths of its auxiliary files."""
         params: Dict[str, Any] = dict(self.engine_options or {})
         for key, aux_path in self.download_aux_models().items():
             params[key] = str(aux_path)
@@ -1155,25 +1065,19 @@ class TTSModelInfo:
             params["speaker_encoder_path"] = str(enc_path)
             if self.speaker_encoder_type:
                 params["speaker_encoder_type"] = self.speaker_encoder_type
+        # a parametric vocoder (Griffin-Lim) has a type and a config but no graph
         vocoder_path = self.download_vocoder()
         if vocoder_path:
             params["vocoder_path"] = str(vocoder_path)
-            if self.vocoder_type:
-                params["vocoder_type"] = self.vocoder_type
-            if self.vocoder_config_url:
-                params["vocoder_config"] = _hub_json(self.vocoder_config_url)
-        elif self.vocoder_type:
-            # Parametric vocoder (e.g. Griffin-Lim) — no model file, just config.
+        if self.vocoder_type:
             params["vocoder_type"] = self.vocoder_type
-            if self.vocoder_config_url:
-                params["vocoder_config"] = _hub_json(self.vocoder_config_url)
+        if (vocoder_path or self.vocoder_type) and self.vocoder_config_url:
+            params["vocoder_config"] = _read_json(_resolve(self.vocoder_config_url))
 
         # Chatterbox's three auxiliary graphs (the language_model is the primary model).
-        for url, key, fname in (
-            (self.speech_encoder_url, "speech_encoder_path", "speech_encoder.onnx"),
-            (self.embed_tokens_url, "embed_tokens_path", "embed_tokens.onnx"),
-            (self.conditional_decoder_url, "conditional_decoder_path", "conditional_decoder.onnx"),
-        ):
+        for url, key in ((self.speech_encoder_url, "speech_encoder_path"),
+                         (self.embed_tokens_url, "embed_tokens_path"),
+                         (self.conditional_decoder_url, "conditional_decoder_path")):
             if url:
                 params[key] = str(self._fetch_onnx(url))
         return params
@@ -1181,53 +1085,37 @@ class TTSModelInfo:
     @_in_voice_scope
     def download_all(self, precision: Optional[str] = None,
                      providers: Optional[Sequence[ProviderSpec]] = None) -> Path:
-        """Download everything this voice needs to load offline.
+        """Download every file this voice needs to load offline, and give the graph's path.
 
-        The primary graph, the config JSON, whichever tokenizer artifact the
-        voice uses (BPE tokenizer / vocab + tokenizer config / tokens.txt) and
-        every auxiliary artifact resolved by :meth:`engine_params` (vocoder,
-        style embedding, speaker encoder, extra ONNX graphs).
-
-        This is the single definition of "fully downloaded" shared by the CLI
-        and :meth:`TTSModelManager.download_voice_by_id`.
-
-        ``precision`` and ``providers`` pick the files as :meth:`load` does.
-
-        Returns:
-            Path: local path of the primary ONNX model.
+        The one definition of "fully downloaded", for the CLI and
+        :meth:`TTSModelManager.download_voice_by_id`. ``precision`` and
+        ``providers`` pick the files as :meth:`load` does.
         """
         info = self.with_precision(precision, providers)
         if info is not self:
             return info.download_all(precision="int8")
         model_path = self.download_model()
 
-        cfg: Dict[str, Any] = self.download_config() if self.config_url else {}
-
-        if self.engine == Engine.CHATTERBOX or cfg.get("engine") == "chatterbox":
+        config = self.download_config()
+        if self.engine == Engine.CHATTERBOX or config.get("engine") == "chatterbox":
             self.download_bpe_tokenizer()
         elif self.vocab_override:
             pass  # vocab ships inside the index entry
         elif self.vocab_url:
             self.download_vocab()
-            if self.tokenizer_config_url:
-                self.download_tokenizer_config()
+            self.download_tokenizer_config()
         elif self.tokens_url:
             self.download_tokens_txt()
 
-        # vosk pronunciation dictionary (the phonemizer's model)
         self.download_dictionary()
-
-        # vocoder / style / speaker-encoder / aux graphs
-        self.engine_params()
+        self.engine_params()  # vocoder, style, speaker encoder, aux graphs
         return model_path
 
     def artifact_urls(self) -> List[str]:
         """Every graph this voice loads, each named once, in a stable order.
 
-        One file is often named by several fields, and — far more importantly —
-        by several voices: the bundled omnivoice index has 646 entries over a
-        single 3 GB backbone, and qwen3tts 15 over one 4.2 GB talker. Two
-        voices with the same list here load exactly the same weights.
+        Many voices name the same files (the omnivoice voices share one backbone), and two
+        voices with the same list load the same weights.
         """
         urls = [self.model_url, self.vocoder_url, self.style_url,
                 self.speaker_encoder_url, self.speech_encoder_url,
@@ -1237,51 +1125,26 @@ class TTSModelInfo:
         return list(dict.fromkeys(u for u in urls if u))
 
     def artifact_key(self) -> str:
-        """Identity of the *weights* this voice loads, not of the voice.
+        """Identity of the weights this voice loads, not of the voice.
 
-        Voices that share a key share their memory, so a cache that charges
-        memory has to charge it per key rather than per voice id. What makes
-        two entries different voices — the language, the display name, the
-        engine options applied at synthesis time — is deliberately not in
-        here, because none of it costs a second copy of the graph.
+        Voices that share a key share their memory, so a memory cache charges per key.
         """
         return "|".join(self.artifact_urls())
 
     @_in_voice_scope
     def disk_size(self) -> int:
-        """Total on-disk size, in bytes, of this voice's downloaded artifacts.
+        """Bytes on disk of the cached files of :meth:`artifact_urls` and their external data.
 
-        Sums every graph the voice loads — the primary ONNX model, its
-        external-weights sidecar when it has one, the vocoder, the style
-        embedding, the speaker encoder and any auxiliary graphs — as they lie
-        in the shared cache.
-
-        This is a *proxy* for how much memory the loaded voice occupies, not a
-        measurement of it. It is the honest one available without an optional
-        dependency, and the weights dominate both numbers, so the ordering it
-        gives between a 60 MB piper voice and a 2.2 GB omnivoice voice is the
-        ordering that matters. What it does NOT account for:
-
-        - onnxruntime arena allocations, activation buffers and per-session
-          overhead, which grow with the graph and with sequence length;
-        - weights the runtime materializes larger than they are stored (a
-          quantized graph dequantized at load, for instance);
-        - memory shared between voices that name the same file;
-        - anything the voice allocates later, during synthesis;
-        - artifacts that are not yet downloaded, which count as zero.
-
-        Returns:
-            int: bytes, or 0 when nothing is cached locally.
+        A proxy for the memory of the loaded voice: the weights dominate both. It leaves out
+        onnxruntime allocations, weights dequantized at load, memory shared with other
+        voices, and files not yet downloaded, which count as zero.
         """
-        # One file may be named by several fields (and several voices); count
-        # each distinct file once.
         return _file_bytes(*self.artifact_urls())
 
     @_in_voice_scope
     def load(self, providers: Optional[Sequence[ProviderSpec]] = None,
              precision: Optional[str] = None, threads: Optional[int] = None) -> TTSVoice:
-        """
-        Load and return a TTSVoice for this model, ensuring the ONNX model is downloaded and the voice configuration is applied.
+        """Download this voice and load it, with the index's phoneme_type and alphabet.
 
         Parameters:
             providers (Sequence, optional): Ordered ONNX Runtime execution providers,
@@ -1292,21 +1155,14 @@ class TTSModelInfo:
             threads (int, optional): Threads per graph operator in every session of the voice.
                 When omitted it comes from ``PHOONNX_ORT_THREADS``, else ONNX Runtime's default.
 
-        Loads a TTSVoice from the cached model and config files (and tokens file if available). If this TTSModelInfo specifies a different phoneme type or alphabet than the loaded voice, updates the loaded voice's phoneme_type and alphabet and rebuilds its phonemizer accordingly.
-
-        Returns:
-            TTSVoice: The configured TTSVoice instance ready for synthesis.
-
         Raises:
             PrecisionUnavailable: the voice has no files for ``precision``.
         """
         info = self.with_precision(precision, providers)
         if info is not self:
             return info.load(providers=providers, precision="int8", threads=threads)
-        # self.config resolves the final phoneme_type/lang_code (index override
-        # applied) from the small config.json, if any -- cheap next to
-        # download_model()'s multi-MB model weights, so the language check
-        # runs before that download rather than after it.
+        # self.config needs only the small config.json, so the language check
+        # runs before the model download.
         check_lang_supported(self.voice_id, self.config.phonemizer_lang or self.config.lang_code,
                              self.config.phoneme_type)
 
@@ -1323,11 +1179,8 @@ class TTSModelInfo:
             config = self.config
             resolved_providers = resolve_providers(providers)
             resolved_threads = resolve_threads(threads)
-            engine_params = {
-                **(config.engine_params or {}),
-                **self.engine_params(),
-            }
-            engine_params["providers"] = resolved_providers
+            engine_params = {**(config.engine_params or {}), **self.engine_params(),
+                             "providers": resolved_providers}
             if resolved_threads is not None:
                 engine_params["threads"] = resolved_threads
             config.engine_params = engine_params
@@ -1443,9 +1296,6 @@ class TTSModelManager:
         "coqui_vits.json", "BSC.json", "shami.json", "chatterbox.json",
         "supertonic.json", "neutts.json", "pockettts.json", "sparktts.json",
         "qwen3tts.json",
-        # neutts..mosstts: catch-up entries for engines merged since this list was
-        # last touched; indic_parler.json, llasa.json, orpheus.json and
-        # mosstts.json are new to this change.
         "outetts.json", "arktts.json", "omnivoice.json", "indic_parler.json",
         "parlertts.json", "llasa.json", "orpheus.json", "mosstts.json", "vosk.json",
         "ghananlp.json", "rapido.json",
@@ -1470,14 +1320,7 @@ class TTSModelManager:
         return known + extra
 
     def __init__(self, cache_path: Optional[str] = None):
-        """
-        Initialize the TTSModelManager and prepare persistent cache storage.
-        
-        Creates an empty in-memory registry for voices and sets up JSON-backed cache storage using the provided path or the XDG cache location; ensures the cache file exists.
-        
-        Parameters:
-            cache_path (Optional[str]): Filesystem path for the cache file. If omitted, uses the user's XDG cache directory under "phoonnx/voices".
-        """
+        """``cache_path`` is the voice cache JSON file; unset, the XDG cache ``phoonnx/voices``."""
         # Replaced, never edited in place: get_lang_voices keys its answers on it.
         self.voices: Dict[str, TTSModelInfo] = {}
         # The registry is rebuilt wholesale by ``load``/``merge_default_voices``
@@ -1516,12 +1359,6 @@ class TTSModelManager:
 
     @property
     def all_voices(self) -> List[TTSModelInfo]:
-        """
-        List all registered TTSModelInfo instances.
-        
-        Returns:
-            List[TTSModelInfo]: A list containing the current TTSModelInfo objects stored in the manager.
-        """
         return list(self.voices.values())
 
     @property
@@ -1548,39 +1385,20 @@ class TTSModelManager:
             return self.voices.get(voice_id)
 
     def load(self):
-        """
-        Reload the on-disk voice cache and rebuild the in-memory voice registry.
-        
-        Clears the current in-memory voices, calls the cache reload, and attempts to instantiate
-        TTSModelInfo for each cached entry. Entries that fail to construct are skipped and an
-        error is logged; successful entries are stored in self.voices keyed by voice_id.
-        """
+        """Reload the cache file and rebuild the registry; entries that do not parse are logged and skipped."""
         with self._registry_lock:
             self.cache.reload()
             self.voices = self._registry_from_cache()
 
     def save(self):
-        """
-        Persist in-memory voice metadata to the configured cache storage.
-
-        Writes each managed voice's full metadata (every TTSModelInfo field) to the
-        cache and then persists the cache to disk.
-        """
+        """Write every voice of the registry to the cache file."""
         self.cache.clear()
         for voice_id, voice_info in self.voices.items():
             self.cache[voice_id] = voice_info.to_dict()
         self.cache.store()
 
     def add_voice(self, voice_info: TTSModelInfo):
-        """
-        Add or update a TTS voice in the manager's in-memory registry and persist its full metadata to the cache.
-
-        This stores the given TTSModelInfo under its voice_id in memory and writes every
-        field into the persistent cache, overwriting any existing entry for the same voice_id.
-
-        Parameters:
-            voice_info (TTSModelInfo): The voice metadata to add or update.
-        """
+        """Add or replace a voice in the registry and in the cache; :meth:`save` writes the file."""
         with self._registry_lock:
             self.voices = {**self.voices, voice_info.voice_id: voice_info}
             self.cache[voice_info.voice_id] = voice_info.to_dict()
@@ -1603,15 +1421,11 @@ class TTSModelManager:
         return list(voices)
 
     def merge_default_voices(self, store=False):
-        """
-        Merge a set of predefined voice indexes into the manager's cache and rebuild the in-memory voice registry.
-        
-        Loads multiple JSON voice index files bundled with the package into the manager's cache, constructs TTSModelInfo objects for each entry, and logs (but skips) any entries that fail to load. If store is True, the updated cache is persisted to disk.
+        """Merge the bundled voice indexes into the cache and rebuild the registry.
 
-        The cache is rebuilt, not updated in place: the bundled voices come first, in index order, and replace any cached copy; the voices only the cache holds follow, in their cached order. `get_lang_voices` breaks ties by this order, so a bundled voice wins a tie with a cached voice, and the order of an older cache does not change which bundled voice is the default.
-        
-        Parameters:
-            store (bool): If True, persist the updated cache to disk after merging.
+        The bundled voices come first, in index order, and replace any cached copy; the
+        voices only the cache holds follow. `get_lang_voices` breaks ties by this order, so
+        a bundled voice wins a tie with a cached voice. ``store`` writes the cache file.
         """
         bundled = {}
         for f in self.voice_index_files():
@@ -1644,18 +1458,7 @@ class TTSModelManager:
         return voices
 
     def get_available_voice_ids_by_source(self) -> Dict[str, List[str]]:
-        """
-        List all voice IDs bundled with phoonnx, grouped by source.
-
-        Reads the ``voice_index`` JSON files that ship with the package
-        directly (plain ``json.load``, no ``TTSModelInfo`` construction),
-        so this performs no network access and downloads no model/config
-        files - suitable for a quick "what's available" listing before
-        committing to downloading a specific voice via ``download_voice_by_id``.
-
-        Returns:
-            Dict[str, List[str]]: mapping of source name to sorted voice IDs.
-        """
+        """The bundled voice ids by source index, sorted. Reads no network."""
         result: Dict[str, List[str]] = {}
         for path in self.voice_index_files():
             with open(path, "r", encoding="utf-8") as f:
@@ -1687,22 +1490,10 @@ class TTSModelManager:
         return info
 
     def download_voice_by_id(self, voice_id: str, precision: Optional[str] = None) -> bool:
-        """
-        Download everything a voice needs to load offline, by its ID.
+        """Download every file a voice needs to load offline (:meth:`TTSModelInfo.download_all`).
 
-        Looks the voice up in the in-memory registry first (populated via
-        ``load()``/``merge_default_voices()``); if not found there, falls
-        back to the bundled voice indexes so a voice can be downloaded
-        on-demand without first loading the full catalog into memory.
-
-        Fetches the full set of artifacts via ``TTSModelInfo.download_all``:
-        the ONNX graph, the config JSON, the tokenizer artifacts and any
-        vocoder / style / speaker-encoder / auxiliary graphs. ``precision``
-        picks the files as ``TTSModelInfo.load`` does.
-
-        Returns:
-            bool: True if the voice was found and its download was attempted,
-            False if the voice ID could not be resolved.
+        The voice comes from the registry, else from the bundled indexes, so no catalog
+        load is needed first. Returns False when the id is unknown.
         """
         voice_info = self.get_voice(voice_id)
         if not voice_info:
