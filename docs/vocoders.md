@@ -42,7 +42,7 @@ Griffin-Lim needs no model file. Its parameters come from the config:
 
 Griffin-Lim imports `librosa` when it runs. The `train` and `all` extras install it.
 
-When `vocoder_type` names a registered type, `build_vocoder` uses it. With no type, or an unknown one, it opens the ONNX file and asks each vocoder type in turn if the file matches. When no type matches, it logs a warning and uses Vocos.
+When `vocoder_type` names a registered type, `build_vocoder` uses it. An unknown type stops with a `ValueError` that names the type and lists the known types. With no type, `build_vocoder` opens the ONNX file and asks each vocoder type in turn if the file matches. When no type matches, it logs a warning and uses Vocos.
 
 ## How a voice selects its vocoder
 

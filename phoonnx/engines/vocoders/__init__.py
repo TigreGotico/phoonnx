@@ -67,16 +67,19 @@ def build_vocoder(
     """
     Construct a vocoder.
 
-    If *vocoder_type* (or ``config['vocoder_type']``) names a registered
-    vocoder, it is used directly.  Otherwise the ONNX model is probed and
-    the first matching vocoder wins, falling back to Vocos.
+    If *vocoder_type* (or ``config['vocoder_type']``) is given, it must name
+    a registered vocoder; an unknown type raises ``ValueError``.  With no
+    type, the ONNX model is probed and the first matching vocoder wins,
+    falling back to Vocos.
     """
     config = config or {}
     vtype = vocoder_type or config.get("vocoder_type")
-    if vtype and vtype in _REGISTRY:
-        return _REGISTRY[vtype](model_path=model_path, config=config, session=session)
     if vtype:
-        LOG.warning("Unknown vocoder_type %r — falling back to auto-detection", vtype)
+        if vtype not in _REGISTRY:
+            raise ValueError(
+                f"Unknown vocoder_type {vtype!r}. Known vocoder types: {sorted(_REGISTRY)}"
+            )
+        return _REGISTRY[vtype](model_path=model_path, config=config, session=session)
 
     # Auto-detection needs the session to inspect the output layout.
     if session is None and model_path:
@@ -111,6 +114,7 @@ def _register_builtins() -> None:
     register_vocoder("melgan", HiFiGANVocoder, detect_priority=32)  # melgan/multiband: 1-output mel->audio
     # Generic detection: Vocos (3 outputs) before raw (1 output).
     register_vocoder("vocos", VocosVocoder, detect_priority=40)
+    register_vocoder("alvocat", VocosVocoder, detect_priority=41)  # alVoCat is a Vocos graph
     register_vocoder("raw", RawWaveformVocoder, detect_priority=50)
 
 

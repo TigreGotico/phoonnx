@@ -78,10 +78,26 @@ def test_build_by_type_no_session_needed():
     assert isinstance(build_vocoder(vocoder_type="hifigan"), HiFiGANVocoder)
 
 
-def test_unknown_type_falls_back_to_detection_then_vocos():
-    # No session, unknown type -> auto-detect with nothing -> Vocos fallback
-    voc = build_vocoder(vocoder_type="bogus")
-    assert isinstance(voc, VocosVocoder)
+def test_unknown_type_names_the_type_and_the_known_types():
+    with pytest.raises(ValueError) as err:
+        build_vocoder(vocoder_type="griffin_lim")
+    message = str(err.value)
+    assert "'griffin_lim'" in message
+    for name in ("griffinlim", "hifigan", "melgan", "raw", "vocos", "wavenext"):
+        assert f"'{name}'" in message
+
+
+def test_unknown_type_in_the_config_is_an_error():
+    with pytest.raises(ValueError, match="'bogus'"):
+        build_vocoder(config={"vocoder_type": "bogus"})
+
+
+def test_alvocat_selects_vocos():
+    assert isinstance(build_vocoder(vocoder_type="alvocat"), VocosVocoder)
+
+
+def test_no_type_and_no_session_falls_back_to_vocos():
+    assert isinstance(build_vocoder(), VocosVocoder)
 
 
 def test_detect_vocos_vs_raw_by_output_count():
