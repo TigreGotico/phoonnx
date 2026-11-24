@@ -134,10 +134,14 @@ ZipVoice is an in-context engine, so it needs the reference **and its
 transcription**:
 
 ```python
+from phoonnx.config import SpeakerReference, SynthesisConfig
+
 voice.synthesize("A line the reference never spoke.", SynthesisConfig(
-    speaker_reference="alice.wav",
-    speaker_reference_text="hello, this is the reference clip",
-    speaker_reference_lang="en",   # set for a non-target-language reference
+    reference=SpeakerReference(
+        audio="alice.wav",
+        text="hello, this is the reference clip",
+        lang="en",   # set for a non-target-language reference
+    ),
 ))
 ```
 
@@ -146,14 +150,14 @@ voice.synthesize("A line the reference never spoke.", SynthesisConfig(
 In-context cloning routes the shared cloning fields to the two reference streams
 the graphs consume:
 
-- `SynthesisConfig.speaker_reference` (the reference audio) → the adapter's
+- `SynthesisConfig.reference.audio` (the reference audio) → the adapter's
   **`reference_audio`** — run through the mel front end to become the
   `speech_condition` (prompt mel).
-- `SynthesisConfig.speaker_reference_text` (its transcription) → the adapter's
+- `SynthesisConfig.reference.text` (its transcription) → the adapter's
   **`prompt_tokens`** — tokenized and fed to the `text_encoder` alongside the
   target `tokens` as the alignment anchor.
 
-`speaker_reference_lang` selects the phonemizer for the reference text when it
+`reference.lang` selects the phonemizer for the reference text when it
 differs from the target language.
 
 ## Variants

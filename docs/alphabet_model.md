@@ -1,7 +1,7 @@
 # Alphabet conversion model
 
 <!-- agent-hint
-covers: how VoiceConfig.alphabet, VoiceConfig.phoneme_type and SynthesisConfig.alphabet select a conversion route through the scriptconv graph, and how synthesis dispatches on the result
+covers: how VoiceConfig.alphabet, VoiceConfig.phoneme_type and SynthesisConfig.input_alphabet select a conversion route through the scriptconv graph, and how synthesis dispatches on the result
 source: phoonnx/config.py:VoiceConfig, phoonnx/config.py:SynthesisConfig, phoonnx/voice.py:TTSVoice, scriptconv.graph:DEFAULT_GRAPH, scriptconv.frontend:TextFrontend
 generated: no
 verify: pytest tests/test_inline_phoneme_blocks_dispatch.py tests/test_phoneme_type_default.py tests/test_phoneme_map.py; the conversion routes: none, checked by reading scriptconv.graph:DEFAULT_GRAPH and phoonnx/voice.py:TTSVoice
@@ -19,9 +19,9 @@ Every voice has two alphabet fields:
 |---|---|---|---|
 | model input | `VoiceConfig.alphabet` | WHAT the model eats | `Alphabet.IPA` |
 | conversion backend + tokenisation | `VoiceConfig.phoneme_type` | HOW to get there | `PhonemeType.ESPEAK` |
-| caller's text | `SynthesisConfig.alphabet` | WHAT the user's text is | `None` (= graphemes) |
+| caller's text | `SynthesisConfig.input_alphabet` | WHAT the user's text is | `None` (= graphemes) |
 
-`SynthesisConfig.alphabet` defaults to `None`, which is treated as
+`SynthesisConfig.input_alphabet` defaults to `None`, which is treated as
 `Alphabet.GRAPHEMES` — ordinary transcription text.  Set it only when passing
 pre-converted content (e.g. an IPA string or Hangul text).
 
@@ -31,7 +31,7 @@ holds: `ɝ` as `ɜɹ`, `ɚ` or `əɹ`, and `ɚ` as `əɹ`. For a voice with
 `phoneme_type: espeak`, `ɝ` becomes `ɜː` first, because espeak-ng writes the stressed
 r-coloured vowel that way. A voice that holds the symbol keeps it. With no such
 spelling, the tokenizer drops the symbol with a warning. Text with no
-`SynthesisConfig.alphabet` is not respelled.
+`SynthesisConfig.input_alphabet` is not respelled.
 
 ## Conversion is scriptconv's job
 
@@ -171,7 +171,7 @@ These are also included in `phoonnx[all]`.
 ## Synthesis dispatch
 
 `TTSVoice.synthesize` chooses how to reach the model's alphabet
-(`VoiceConfig.alphabet`) from the caller's input (`SynthesisConfig.alphabet`,
+(`VoiceConfig.alphabet`) from the caller's input (`SynthesisConfig.input_alphabet`,
 default graphemes):
 
 - **`src == tgt`** — grapheme/text-token models tokenise via the adapter;

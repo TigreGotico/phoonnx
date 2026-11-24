@@ -137,7 +137,7 @@ def main() -> None:
         preset = "en_female_a" if lang == "en" else "zh_male_a"
         rows = []
         for idx, sentence in enumerate(SENTENCES[lang]):
-            syn = SynthesisConfig(extra_params={"voice": preset, "seed": 1000 + idx})
+            syn = SynthesisConfig(extra={"voice": preset, "seed": 1000 + idx})
             start = time.time()
             audio = np.concatenate([c.audio_float_array
                                     for c in voice.synthesize(sentence, syn_config=syn)])

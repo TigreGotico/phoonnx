@@ -37,7 +37,7 @@ one `Utterance` (text, symbols, token IDs, side streams, params) for each engine
 `synthesize` calls `render` on each utterance that `prepare` yields, one at a time. Thus the
 first sentence becomes audio before the second sentence is phonemized. Step by step:
 
-1. **Phonetic spellings** — when `enable_phonetic_spellings` is set, word-level
+1. **Phonetic spellings** — when `phonetic_spellings` is set, word-level
    replacements loaded from the voice's `locale/<lang>/phonetic_spellings.txt` are applied
    to the raw text. A `<lang>.txt` file in `$PHOONNX_PHONETIC_SPELLINGS_DIR` adds to them
    and wins over them.
@@ -45,7 +45,7 @@ first sentence becomes audio before the second sentence is phonemized. Step by s
    [phonemizer](phonemizers.md). It runs a fixed order: it splits out inline `[[...]]`
    blocks, normalizes the whole text, splits it into sentences, adds diacritics when
    the voice or the call asks for them, and then runs the phonemizer. The symbols of a block
-   go into the output as written. A per-call `SynthesisConfig.add_diacritics` wins; when it
+   go into the output as written. A per-call `SynthesisConfig.stages.diacritize` wins; when it
    is unset, the voice config decides, so an undiacritized model is never force-diacritized.
    An engine that reads text instead of phonemes gets the text from `TextFrontend.prepare`,
    after the same normalization and diacritics as a phoneme voice.
@@ -63,12 +63,12 @@ first sentence becomes audio before the second sentence is phonemized. Step by s
    on this path.
 4. **Adapter synthesize** — `render` merges the parameters (adapter defaults → the
    `inference` scales of the voice config → the voice's `engine_params` → the scales of
-   the per-call `SynthesisConfig` → its `extra_params`, where a later one wins), builds an
+   the per-call `SynthesisConfig` → its `extra`, where a later one wins), builds an
    `AdapterSynthesisRequest`, and hands it to the engine adapter, which runs the ONNX
    session(s) and returns a float32 waveform.
 5. **Post-process** — a waveform that holds NaN or infinite samples raises
    `NonFiniteAudioError`. Otherwise the waveform is optionally peak-normalized or brought
-   to the `target_loudness`, volume-scaled, and clipped to `[-1, 1]`. Voice conversion and super-resolution run last when the call asks for
+   to the `audio.target_loudness`, volume-scaled, and clipped to `[-1, 1]`. Voice conversion and super-resolution run last when the call asks for
    them. The result is one `AudioChunk` per utterance. `phoonnx.audio.write_wav` writes a
    stream of chunks to a WAV file. `synthesize_wav` and `synthesize_ssml_wav` use it.
 

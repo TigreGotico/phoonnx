@@ -112,7 +112,7 @@ with wave.open("output.wav", "wb") as wav_file:
 
 ### Streaming Audio Chunks
 
-`synthesize()` is a generator that yields one `AudioChunk` per sentence, as the sentence splitter cuts the text. This enables low-latency streaming. A short exclamation can stay in one chunk with the sentence after it: "Hello! How are you today?" gives one chunk, and "Hello world. How are you today?" gives two. `SynthesisConfig(chunk=...)` changes the size of a chunk: `clause` gives the first audio sooner on a long sentence, and `paragraph` or `none` gives fewer false sentence ends.
+`synthesize()` is a generator that yields one `AudioChunk` per sentence, as the sentence splitter cuts the text. This enables low-latency streaming. A short exclamation can stay in one chunk with the sentence after it: "Hello! How are you today?" gives one chunk, and "Hello world. How are you today?" gives two. `SynthesisConfig(stages=Stages(chunk=...))` changes the size of a chunk: `clause` gives the first audio sooner on a long sentence, and `paragraph` or `none` gives fewer false sentence ends.
 
 ```python
 from phoonnx.config import SynthesisConfig
@@ -165,27 +165,30 @@ alignment.
 `SynthesisConfig` controls synthesis parameters at runtime:
 
 ```python
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import AudioPost, SynthesisConfig
+from scriptconv.frontend import Stages
 
 syn_config = SynthesisConfig(
-    speaker_id=0,           # for multi-speaker voices
-    lang_id=0,              # for multi-language voices
+    speaker=0,              # for multi-speaker voices
+    language=0,             # for multi-language voices
     length_scale=1.0,       # 1.0 = normal speed, <1 faster, >1 slower
     noise_scale=0.667,      # generator noise (affects naturalness/variation)
     noise_w_scale=0.8,      # phoneme duration noise
-    normalize_audio=True,   # normalize output to full amplitude range
-    volume=1.0,             # volume multiplier
-    enable_phonetic_spellings=True,  # apply user-defined word replacements
-    add_diacritics=None,    # None defers to the voice config (Arabic/Hebrew)
+    audio=AudioPost(
+        normalize=True,     # normalize output to full amplitude range
+        volume=1.0,         # volume multiplier
+    ),
+    phonetic_spellings=True,  # apply user-defined word replacements
+    stages=Stages(diacritize=None),  # None defers to the voice config (Arabic/Hebrew)
 )
 ```
 
-`add_diacritics` defaults to `None`, meaning "use the voice's own setting"; set it to `True`
-or `False` only to force diacritization on or off for this call. `diacritizer_model` (default
+`stages.diacritize` defaults to `None`, meaning "use the voice's own setting"; set it to `True`
+or `False` only to force diacritization on or off for this call. `stages.diacritizer_model` (default
 `None`) likewise inherits the voice config's choice — set it to override the Arabic
 `text2tashkeel` model for this call. Cloning and autoregressive engines add more fields —
-`speaker_reference`, `speaker_reference_text`, `speaker_reference_lang`, `exaggeration`,
-`temperature`, `top_p`, `extra_params` — documented in [Cloning](cloning.md) and the
+`reference` (a `SpeakerReference` with `audio`, `text` and `lang`), `exaggeration`,
+`temperature`, `top_p`, `extra` — documented in [Cloning](cloning.md) and the
 [Configuration reference](configuration.md#synthesisconfig).
 
 ## Inline Phoneme Input
@@ -207,7 +210,7 @@ line break next to it when there is one. An SSML `<phoneme>` on such a voice rea
 
 ## Phonetic Spellings
 
-Word-level respellings are applied to the text before phonemization (`enable_phonetic_spellings`,
+Word-level respellings are applied to the text before phonemization (`phonetic_spellings`,
 on by default). They come from `phoonnx/locale/<lang>/phonetic_spellings.txt`, one `word: spelling`
 per line (`#` starts a comment), matched as whole words, ignoring case.
 
@@ -281,10 +284,10 @@ with wave.open("out.wav", "wb") as wav:
 
 ## Multi-Speaker Voices
 
-For voices with multiple speakers, set `speaker_id` in `SynthesisConfig`:
+For voices with multiple speakers, set `speaker` in `SynthesisConfig`. It takes an id, or a name from the voice's `speaker_id_map`:
 
 ```python
-syn_config = SynthesisConfig(speaker_id=2)
+syn_config = SynthesisConfig(speaker=2)
 for chunk in voice.synthesize("Hello!", syn_config=syn_config):
     ...
 ```

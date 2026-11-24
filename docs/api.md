@@ -109,7 +109,7 @@ With a loaded voice, the same call is `write_wav(voice.synthesize("Hello"), wav_
 from phoonnx.config import SynthesisConfig
 
 print(config.length_scale, SynthesisConfig().length_scale)
-print(SynthesisConfig(speaker_id=2, length_scale=1.2).speaker_id)
+print(SynthesisConfig(speaker=2, length_scale=1.2).speaker)
 ```
 
 ```text
@@ -124,7 +124,7 @@ This config sets no scales and the call sets none, so the engine's own default a
 3. The `inference` block of `config.json`.
 4. The engine's default.
 
-The keys of `SynthesisConfig.extra_params` come last and win over all four.
+The keys of `SynthesisConfig.extra` come last and win over all four.
 
 ## Part 2: Name list
 
@@ -159,7 +159,7 @@ This part lists the names that exist in the code. The package root exports nine 
 | `SynthesisConfig` | `phoonnx.config` | One call. A flat list of fields. |
 | `Engine` | `phoonnx.config` | Names a file format or an architecture. The alias `kokoro` gives `Engine.STYLETTS2`. |
 | `Alphabet`, `PhonemeType` | `phoonnx.config` | Re-exports of scriptconv enums. `PhonemeType` is scriptconv `Phonemizer`. |
-| `Chunk` | `phoonnx.config` | Re-export of the scriptconv enum behind `SynthesisConfig.chunk`. |
+| `Chunk` | `phoonnx.config` | Re-export of the scriptconv enum behind `SynthesisConfig.stages.chunk`. |
 | `TTSModelManager`, `TTSModelInfo` | `phoonnx.model_manager` | The voice index and the index entry. |
 
 ### Engines and errors
@@ -254,7 +254,7 @@ The adapter builds the encoder of a voice in `BaseOnnxAdapter.make_encoder`. An 
 
 `TTSVoice.stream(text, config)` yields the audio as the engine makes it. An engine that makes audio in steps, such as Pocket TTS, yields parts of a sentence. Every other engine yields one chunk for each sentence. Joined, the parts give the audio of `synthesize`. The first part of a sentence carries its phonemes and ids.
 
-Peak normalisation, a loudness target, voice conversion and super-resolution need the whole sentence. When one of them is on, each sentence is one chunk. Peak normalisation is on by default, so pass `SynthesisConfig(normalize_audio=False)` to get parts of a sentence.
+Peak normalisation, a loudness target, voice conversion and super-resolution need the whole sentence. When one of them is on, each sentence is one chunk. Peak normalisation is on by default, so pass `SynthesisConfig(audio=AudioPost(normalize=False))` to get parts of a sentence.
 
 An adapter streams by overriding `BaseOnnxAdapter.synthesize_stream(request, session)`. The default yields the one result of `synthesize`.
 
@@ -307,9 +307,10 @@ This part is a design, not a description of the code. Its objects do not exist, 
 
 - `stages`: the scriptconv `Stages` class, with `diacritize`, `diacritizer_model`, `normalize`, `chunk` and `lang`.
 - Flat engine fields: `speaker` (a name or an id), `language`, `length_scale`, `noise_scale`, `noise_w_scale`, `temperature`, `top_p`, `exaggeration`, `reference` and `extra`.
-- `audio`: `normalize`, `target_loudness`, `volume`, `super_resolution` and `voice_conversion`.
+- `audio`: `normalize`, `target_loudness`, `volume`, `super_resolution`, `super_resolution_model`, `voice_conversion` and `voice_conversion_engine`.
+- Text options: `phonetic_spellings` and `input_alphabet` (the alphabet of the caller's text).
 
-`SynthesisConfig.from_dict` also reads the flat names of the code, with a `DeprecationWarning`. The names are `add_diacritics`, `speaker_id`, `lang_id`, `normalize_audio`, `vc_reference`, `extra_params` and `alphabet`.
+The 1.x flat names, such as `add_diacritics`, `speaker_id` and `normalize_audio`, work as keywords, as attributes and in `SynthesisConfig.from_dict`, with a `DeprecationWarning`. [Configuration](configuration.md) has the table of each 1.x name and its field.
 
 ### Voice steps
 

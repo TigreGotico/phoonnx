@@ -135,7 +135,7 @@ If **neither** `decode_path` nor `vocoder_path` is supplied, synthesis raises a
 
 | Param | Default | Description |
 |---|---|---|
-| `speed` | 1.0 | Speaking rate — scales the estimated generation duration (>1 faster). Settable in `engine_params` or per call via `extra_params`. |
+| `speed` | 1.0 | Speaking rate — scales the estimated generation duration (>1 faster). Settable in `engine_params` or per call via `extra`. |
 | `nfe` | 32 | ODE steps. The export fixes this value: a graph with `nfe_step` metadata ignores any other value, and for other graphs it must match the export |
 | `cfg_strength` | 2.0 | Classifier-free guidance strength |
 | `dialect` | `UNK` | Habibi Unified dialect control tag (see below) |
@@ -153,7 +153,7 @@ training data — only the first 8 are meaningful).
 The adapter applies the tag at token level (through the voice's `phoneme_id_map`)
 when a `dialect` engine param is set — in the voice config
 (`"engine_params": {"dialect": "UNK"}`, the default for the published unified
-voice) or per call via `SynthesisConfig.extra_params={"dialect": "EGY"}`.
+voice) or per call via `SynthesisConfig(extra={"dialect": "EGY"})`.
 Specialized per-dialect models take plain untagged text.
 
 **Unhandled dialect error.** `_wrap_dialect` raises a `ValueError` for an unknown
@@ -171,7 +171,8 @@ the table below). F5-TTS is in-context, so every call needs the reference clip
 
 ```python
 from huggingface_hub import snapshot_download
-from phoonnx.voice import TTSVoice, SynthesisConfig
+from phoonnx.config import SpeakerReference, SynthesisConfig
+from phoonnx.voice import TTSVoice
 
 voice_dir = snapshot_download("Phoonnx/f5tts-multi-base-v1-graphemes")
 
@@ -188,8 +189,10 @@ import wave
 with wave.open("out.wav", "wb") as f:
     voice.synthesize_wav("A line the reference never spoke.", f,
         SynthesisConfig(
-            speaker_reference="reference.wav",
-            speaker_reference_text="transcription of the reference clip",
+            reference=SpeakerReference(
+                audio="reference.wav",
+                text="transcription of the reference clip",
+            ),
         ))
 ```
 

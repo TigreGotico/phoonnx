@@ -70,10 +70,10 @@ Parameters:
 | `p_factor` | 1.0 | Pitch scale |
 | `e_factor` | 1.0 | Energy scale |
 
-Pass them per call via `SynthesisConfig.extra_params`:
+Pass them per call via `SynthesisConfig.extra`:
 
 ```python
-voice.synthesize("hello", SynthesisConfig(extra_params={"d_factor": 0.9}))
+voice.synthesize("hello", SynthesisConfig(extra={"d_factor": 0.9}))
 ```
 
 ## Obtaining
@@ -129,7 +129,7 @@ Current entries (mirror of [`mush42/optispeech`](https://huggingface.co/mush42/o
 ## Synthesis example
 
 ```python
-voice.synthesize("Hello.", SynthesisConfig(extra_params={"d_factor": 1.0,
+voice.synthesize("Hello.", SynthesisConfig(extra={"d_factor": 1.0,
                                                           "p_factor": 1.0,
                                                           "e_factor": 1.0}))
 ```

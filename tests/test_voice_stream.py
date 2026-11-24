@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from phoonnx.config import SynthesisConfig, VoiceConfig
+from phoonnx.config import SynthesisConfig, VoiceConfig, AudioPost, SpeakerReference
 from phoonnx.engines.vits import VitsAdapter
 from phoonnx.voice import TTSVoice, Utterance
 from tests.test_pockettts_stream import DECODE_CHUNK_FRAMES, _RecordingFlowLM, _voice as _pocket_adapter
@@ -10,7 +10,7 @@ from tests.test_prepare_render import CONFIG, _session, _text_voice
 
 TEXT = "Hi there, my friend. Who is it at the door?"
 FRAMES = 2 * DECODE_CHUNK_FRAMES + 3
-RAW = SynthesisConfig(normalize_audio=False)
+RAW = SynthesisConfig(audio=AudioPost(normalize=False))
 
 
 def _pocket_voice(events=None, frames=FRAMES):
@@ -26,7 +26,7 @@ def _joined(chunks):
     return np.concatenate([c.audio_float_array for c in chunks])
 
 
-@pytest.mark.parametrize("config", [RAW, SynthesisConfig(), SynthesisConfig(volume=0.5, normalize_audio=False)])
+@pytest.mark.parametrize("config", [RAW, SynthesisConfig(), SynthesisConfig(audio=AudioPost(volume=0.5, normalize=False))])
 def test_pocket_stream_joins_to_the_synthesized_audio(config):
     whole = list(_pocket_voice().synthesize(TEXT, config))
     parts = list(_pocket_voice().stream(TEXT, config))
@@ -36,7 +36,7 @@ def test_pocket_stream_joins_to_the_synthesized_audio(config):
     assert [i for c in parts for i in c.phoneme_ids] == [i for c in whole for i in c.phoneme_ids]
 
 
-@pytest.mark.parametrize("config", [RAW, SynthesisConfig(), SynthesisConfig(normalize_audio=False, target_loudness=-20.0)])
+@pytest.mark.parametrize("config", [RAW, SynthesisConfig(), SynthesisConfig(audio=AudioPost(normalize=False, target_loudness=-20.0))])
 def test_a_sentence_with_no_frames_keeps_its_chunk_and_ids(config):
     whole = list(_pocket_voice(frames=0).synthesize(TEXT, config))
     parts = list(_pocket_voice(frames=0).stream(TEXT, config))
@@ -67,16 +67,16 @@ class _PassThroughSR:
 
 @pytest.mark.parametrize("config", [
     SynthesisConfig(),
-    SynthesisConfig(normalize_audio=False, target_loudness=-20.0),
-    SynthesisConfig(normalize_audio=False, super_resolution=True),
-    SynthesisConfig(normalize_audio=False, vc_reference="target.wav"),
+    SynthesisConfig(audio=AudioPost(normalize=False, target_loudness=-20.0)),
+    SynthesisConfig(audio=AudioPost(normalize=False, super_resolution=True)),
+    SynthesisConfig(audio=AudioPost(normalize=False, voice_conversion=SpeakerReference(audio="target.wav"))),
 ])
 def test_a_whole_sentence_step_gives_one_chunk_per_sentence(config):
     voices = [_pocket_voice(), _pocket_voice()]
     for voice in voices:
         voice._sr_engine, voice._sr_loaded = _PassThroughSR(), True
         # a clip shorter than 0.3 s passes voice conversion untouched
-        voice._load_voice_conversion = lambda syn_config: object() if syn_config.vc_reference else None
+        voice._load_voice_conversion = lambda syn_config: object() if syn_config.audio.voice_conversion else None
     whole = list(voices[0].synthesize(TEXT, config))
     parts = list(voices[1].stream(TEXT, config))
     assert len(parts) == len(whole) == 2

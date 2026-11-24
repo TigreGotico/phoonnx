@@ -221,19 +221,22 @@ class OrpheusAdapter(BaseOnnxAdapter):
         """Pick the voice name: an explicit per-call ``voice``, else the speaker this
         phoonnx voice is pinned to, else the checkpoint's default.
 
-        A multi-speaker Orpheus voice carries its names in ``speaker_id_map``, so a plain
-        ``speaker_id`` selects one too — the name, not the index, is what reaches the
-        model.
+        A multi-speaker Orpheus voice carries its names in ``speaker_id_map``, so
+        ``speaker`` selects one too, as a name or an id. The name, not the index,
+        reaches the model.
         """
         name = None
         if syn_config is not None:
-            name = (syn_config.extra_params or {}).get("voice")
+            name = syn_config.extra.get("voice")
         cfg = getattr(voice, "config", None)
-        if not name and syn_config is not None and syn_config.speaker_id is not None:
+        speaker = None if syn_config is None else syn_config.speaker
+        if not name and isinstance(speaker, str):
+            name = speaker
+        elif not name and speaker is not None:
             id_map = getattr(cfg, "speaker_id_map", None) or {}
-            for speaker, index in id_map.items():
-                if int(index) == int(syn_config.speaker_id):
-                    name = speaker
+            for candidate, index in id_map.items():
+                if int(index) == int(speaker):
+                    name = candidate
                     break
         if not name:
             name = (getattr(cfg, "engine_params", None) or {}).get("voice")
@@ -309,7 +312,7 @@ class OrpheusAdapter(BaseOnnxAdapter):
             raise RuntimeError("Orpheus voice missing tokenizer_path in engine_params")
         budget = int(self.MAX_CHUNK_CHARS)
         if syn_config is not None:
-            budget = int((syn_config.extra_params or {}).get("max_chunk_chars", budget))
+            budget = int(syn_config.extra.get("max_chunk_chars", budget))
         name = self.resolve_voice(voice, syn_config)
         return [self.build_prompt_ids(chunk, name)
                 for chunk in self.chunk_text(text, max(1, budget))]
@@ -445,7 +448,7 @@ class OrpheusAdapter(BaseOnnxAdapter):
         if request.params.get("reference_audio") is not None:
             raise RuntimeError(
                 "Orpheus voices do not clone: a speaker reference is not supported. "
-                "Select a preset voice with extra_params={'voice': ...}")
+                "Select a preset voice with extra={'voice': ...}")
 
         p = {**self.default_params(), **request.params}
         seed = p.get("seed")

@@ -74,15 +74,17 @@ OmniVoice is an **in-context** cloner, like ZipVoice: it needs the reference cli
 its transcription. See [cloning.md](../../cloning.md).
 
 ```python
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import SpeakerReference, SynthesisConfig
 from phoonnx.model_manager import TTSModelManager
 
 manager = TTSModelManager()
 manager.merge_default_voices()
 voice = manager.voices["omnivoice/en"].load()
 syn = SynthesisConfig(
-    speaker_reference="reference.wav",
-    speaker_reference_text="Transcription of the reference clip.",
+    reference=SpeakerReference(
+        audio="reference.wav",
+        text="Transcription of the reference clip.",
+    ),
 )
 for chunk in voice.synthesize("Speech models speak in hundreds of languages.", syn):
     ...  # chunk.audio_float_array, 24 kHz

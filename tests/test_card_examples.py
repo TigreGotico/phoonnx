@@ -30,7 +30,7 @@ from scriptconv.phonemizers.enums import Phonemizer  # noqa: E402
 from scriptconv.phonemizers.registry import PHONEMIZER_REGISTRY  # noqa: E402
 
 # The model input that synthesis gives, before the user's phonetic spellings.
-NO_SPELLINGS = SynthesisConfig(enable_phonetic_spellings=False)
+NO_SPELLINGS = SynthesisConfig(phonetic_spellings=False)
 
 PIPER = {"piper_version": "1.0.0", "phoneme_type": "espeak", "audio": {"sample_rate": 22050},
          "espeak": {"voice": "en-us"}, "num_speakers": 1, "lang_code": "en-US",

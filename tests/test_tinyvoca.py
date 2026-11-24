@@ -11,9 +11,10 @@ from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
+from scriptconv.frontend import Stages
 from scriptconv.phonemizers.dizione import DizionePhonemizer
 
-from phoonnx.config import SynthesisConfig, VoiceConfig
+from phoonnx.config import AudioPost, SynthesisConfig, VoiceConfig
 from phoonnx.engines import detect_engine
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.tinyvoca import TinyVocaAdapter
@@ -238,9 +239,9 @@ class TestDizioneTokens:
         adapter.synthesize.return_value = SimpleNamespace(audio=np.zeros(4, np.float32), extras={})
         return TTSVoice(session=MagicMock(), config=_config(), adapter=adapter)
 
-    def _sent(self, text, **settings):
+    def _sent(self, text, **stages):
         voice = self._voice()
-        list(voice.synthesize(text, SynthesisConfig(normalize_audio=False, **settings)))
+        list(voice.synthesize(text, SynthesisConfig(audio=AudioPost(normalize=False), stages=Stages(**stages))))
         return [(tuple(c.args[0].phoneme_ids[0].tolist()), tuple(c.args[0].stress[0].tolist()))
                 for c in voice.adapter.synthesize.call_args_list]
 

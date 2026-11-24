@@ -97,14 +97,14 @@ for chunk in voice.synthesize("Spark-TTS speaks English and Mandarin."):
 **Zero-shot clone.** Give a reference clip and the speaker comes from the audio:
 
 ```python
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import SpeakerReference, SynthesisConfig
 
-syn = SynthesisConfig(speaker_reference="reference.wav")
+syn = SynthesisConfig(reference=SpeakerReference(audio="reference.wav"))
 for chunk in voice.synthesize("This sentence uses the cloned voice.", syn):
     ...
 ```
 
-Add `speaker_reference_text` — the transcription of the clip — for the in-context
+Add `reference.text` — the transcription of the clip — for the in-context
 variant. The prompt then also carries the clip's own semantic tokens, so the model
 continues a real utterance instead of starting cold, which follows the voice more
 closely. This is the only path that needs the two extra cloning graphs.

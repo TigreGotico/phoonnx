@@ -86,8 +86,10 @@ A trailing silence token is appended before the `conditional_decoder`.
 ## Cloning + exaggeration
 
 ```python
+from phoonnx.config import SpeakerReference, SynthesisConfig
+
 voice.synthesize("Any sentence in the cloned voice.", SynthesisConfig(
-    speaker_reference="reference.wav",   # no transcription needed (d-vector)
+    reference=SpeakerReference(audio="reference.wav"),   # no transcription needed (d-vector)
     exaggeration=0.6,                    # 0.0–1.0, default 0.5; higher = more expressive
     temperature=0.8,                     # sampling temperature (0 = greedy)
     top_p=0.95,                          # nucleus sampling cutoff
@@ -139,7 +141,7 @@ directly. Four scripts also need a per-language transform (in
 | **ru** | add stress marks | `stressonnx` (pure-onnxruntime stressor, no torch) |
 
 Install the ja/zh deps with `pip install phoonnx[chatterbox-multilingual]`.
-Hebrew/Arabic use the universal `add_diacritics` SynthesisConfig flag (set it on
+Hebrew/Arabic use the universal `stages.diacritize` SynthesisConfig flag (set it on
 those voices), not a tokenizer transform. Any missing dependency degrades to the
 raw text with a warning (so the rest of the pipeline still runs).
 

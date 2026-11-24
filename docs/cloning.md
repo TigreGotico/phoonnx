@@ -15,12 +15,13 @@ speaker. The page covers the reference-audio API, the cloning families, and how 
 fine-tune a cloning voice.
 
 ```python
-from phoonnx.voice import TTSVoice, SynthesisConfig
+from phoonnx.config import SpeakerReference, SynthesisConfig
+from phoonnx.voice import TTSVoice
 
 voice = TTSVoice.load("model.onnx", "model.json")
 for chunk in voice.synthesize(
     "This sentence is spoken in the cloned voice.",
-    SynthesisConfig(speaker_reference="reference.wav"),
+    SynthesisConfig(reference=SpeakerReference(audio="reference.wav")),
 ):
     ...  # chunk.audio_float_array — see Usage for the full AudioChunk API
 ```
@@ -47,16 +48,17 @@ reference. When a reference is given it **overrides** the default
 
 ## The cloning API
 
-All cloning is driven by three `SynthesisConfig` fields:
+All cloning is driven by `SynthesisConfig.reference`, a `SpeakerReference` from
+`phoonnx.config` with three fields:
 
 | Field | Type | Used by | Meaning |
 |---|---|---|---|
-| `speaker_reference` | `str` path or `(audio, sample_rate)` | all cloning engines | the reference clip |
-| `speaker_reference_text` | `str` | in-context only | the reference's transcription |
-| `speaker_reference_lang` | `str` (e.g. `"pt"`) | in-context only | the language of the transcription (defaults to the voice's `lang_code`) |
+| `reference.audio` | `str` path or `(audio, sample_rate)` | all cloning engines | the reference clip |
+| `reference.text` | `str` | in-context only | the reference's transcription |
+| `reference.lang` | `str` (e.g. `"pt"`) | in-context only | the language of the transcription (defaults to the voice's `lang_code`) |
 
-d-vector engines ignore the two `_text`/`_lang` fields; in-context engines require
-`speaker_reference_text`.
+d-vector engines ignore `reference.text` and `reference.lang`; in-context engines require
+`reference.text`.
 
 ### Reference audio formats
 
@@ -79,7 +81,7 @@ No transcription, any language — the speaker encoder summarizes timbre directl
 ```python
 for chunk in voice.synthesize(
     "Speak this in the cloned voice.",
-    SynthesisConfig(speaker_reference="any_language_clip.wav"),
+    SynthesisConfig(reference=SpeakerReference(audio="any_language_clip.wav")),
 ):
     ...
 ```
@@ -111,10 +113,10 @@ you pass one (see [Galician](galician.md)).
 adds an **`exaggeration`** control (0.0–1.0) for expressiveness:
 
 ```python
-chunks = list(voice.synthesize("...", SynthesisConfig(speaker_reference="ref.wav", exaggeration=0.6)))
+chunks = list(voice.synthesize("...", SynthesisConfig(reference=SpeakerReference(audio="ref.wav"), exaggeration=0.6)))
 ```
 
-The speech tokens are sampled. `extra_params={"seed": 0}` fixes the speech tokens. The decoder adds its own random noise, so two runs with one seed still give slightly different audio.
+The speech tokens are sampled. `extra={"seed": 0}` fixes the speech tokens. The decoder adds its own random noise, so two runs with one seed still give slightly different audio.
 
 ## Preset engine (NeuTTS / Akiti-TTS)
 
@@ -128,17 +130,17 @@ needed:
 chunks = list(voice.synthesize("Meda wo ase paa."))
 ```
 
-Switch presets per call through `extra_params`:
+Switch presets per call through `extra`:
 
 ```python
-SynthesisConfig(extra_params={"voice": "kofi", "temperature": 0.4, "seed": 0})
+SynthesisConfig(extra={"voice": "kofi", "temperature": 0.4, "seed": 0})
 ```
 
-`speaker_reference` is **not** supported here: Neuphonic publishes NeuCodec's decoder as
+`reference` is **not** supported here: Neuphonic publishes NeuCodec's decoder as
 ONNX but not its encoder, so a fresh clip cannot be turned into reference tokens at
 runtime. Passing one raises rather than silently ignoring it.
 
-Sampling is tunable through `extra_params` — `temperature`, `top_p`, `top_k`,
+Sampling is tunable through `extra` — `temperature`, `top_p`, `top_k`,
 `repetition_penalty` and `max_new_tokens` (the autoregressive loop runs at 50 codec
 tokens per second of audio). `seed` makes a run reproducible.
 
@@ -155,14 +157,14 @@ Every bundled preset is therefore machine-generated and disclosed as such
 
 ```python
 chunks = list(voice.synthesize("Dealing with family secrets is never easy."))
-SynthesisConfig(extra_params={"voice": "zh_male_a", "temperature": 0.9, "seed": 0})
+SynthesisConfig(extra={"voice": "zh_male_a", "temperature": 0.9, "seed": 0})
 ```
 
-`speaker_reference` is **not** supported: tokenising a fresh clip needs XCodec2's encoder
+`reference` is **not** supported: tokenising a fresh clip needs XCodec2's encoder
 together with the w2v-BERT filterbank front end, which the bundle does not ship. Passing
 one raises rather than silently ignoring it.
 
-Sampling is tunable through `extra_params` — `temperature`, `top_p` and
+Sampling is tunable through `extra` — `temperature`, `top_p` and
 `max_new_tokens` (50 codec tokens per second of audio). `seed` makes a run reproducible.
 Llasa's sampler follows the **HuggingFace** warper order (temperature, then top-p),
 because that is the stack upstream drives the checkpoint through; NeuTTS uses llama.cpp's
@@ -175,17 +177,17 @@ speaker encoder. The clip is encoded to RVQ-16 audio tokens by the model's own a
 tokenizer and put before the prompt, so cloning works across languages:
 
 ```python
-chunks = list(voice.synthesize("...", SynthesisConfig(speaker_reference="alice.wav")))
+chunks = list(voice.synthesize("...", SynthesisConfig(reference=SpeakerReference(audio="alice.wav"))))
 ```
 
-Sampling is tunable through `extra_params`. By default the engine uses the graph that
+Sampling is tunable through `extra`. By default the engine uses the graph that
 has upstream's sampling constants compiled in (fastest); changing any of
 `audio_temperature` / `audio_top_p` / `audio_top_k` / `audio_repetition_penalty`
 switches to host-side sampling, and `sample_mode="greedy"` is deterministic:
 
 ```python
-SynthesisConfig(speaker_reference="alice.wav",
-                extra_params={"audio_temperature": 0.6, "max_new_frames": 250, "seed": 0})
+SynthesisConfig(reference=SpeakerReference(audio="alice.wav"),
+                extra={"audio_temperature": 0.6, "max_new_frames": 250, "seed": 0})
 ```
 
 `max_new_frames` caps the autoregressive loop at 12.5 frames per second of audio
@@ -201,8 +203,10 @@ aligns the audio to phonemes:
 for chunk in voice.synthesize(
     "A sentence the reference never spoke.",
     SynthesisConfig(
-        speaker_reference="alice.wav",
-        speaker_reference_text="hello, this is the reference clip",
+        reference=SpeakerReference(
+            audio="alice.wav",
+            text="hello, this is the reference clip",
+        ),
     ),
 ):
     ...
@@ -211,15 +215,17 @@ for chunk in voice.synthesize(
 ### Cross-lingual cloning
 
 Because the reference is aligned via its transcription, the reference may be in a
-**different language** than the target — set `speaker_reference_lang` so the
+**different language** than the target — set `reference.lang` so the
 transcription is phonemized in *its* language:
 
 ```python
 # a Portuguese reference clip speaking English
 SynthesisConfig(
-    speaker_reference="miro_pt.wav",
-    speaker_reference_text="olá, tudo bem com você",
-    speaker_reference_lang="pt",
+    reference=SpeakerReference(
+        audio="miro_pt.wav",
+        text="olá, tudo bem com você",
+        lang="pt",
+    ),
 )
 ```
 
@@ -243,7 +249,7 @@ The OpenVoiceOS plugin reads cloning settings from `mycroft.conf`:
 
 The config keys map onto the `SynthesisConfig` fields: `ref_wav` (alias `clone_voice`,
 or the explicit `speaker_reference`) sets the reference clip, `ref_text` sets
-`speaker_reference_text`, and `ref_lang` sets `speaker_reference_lang`. `ref_text` /
+`reference.text`, and `ref_lang` sets `reference.lang`. `ref_text` /
 `ref_lang` are only needed for in-context engines; d-vector voices use `ref_wav` alone.
 
 ## Fine-tuning your own cloning voice (YourTTS)
@@ -336,7 +342,7 @@ paradigms" above).
 ### Use the fine-tuned voice
 
 Load the exported voice from Python with `TTSVoice.load`, as in the first example on this
-page. Leave out `speaker_reference` to use the packaged default speaker.
+page. Leave out `reference` to use the packaged default speaker.
 
 The OVOS plugin loads a voice by its catalog id, so its `voice` setting does not accept a
 path to an `.onnx` file. The `ref_wav`, `ref_text` and `ref_lang` settings work for any

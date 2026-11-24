@@ -19,6 +19,7 @@ import bench_latency  # noqa: E402
 from phoonnx.config import SynthesisConfig  # noqa: E402
 from phoonnx.voice import AudioChunk  # noqa: E402
 from scriptconv.phonemizers.base import GraphemePhonemizer  # noqa: E402
+from scriptconv.frontend import Stages
 
 
 def _make_mock_voice(sample_rate=16000, add_diacritics=False):
@@ -115,7 +116,7 @@ class TestBenchStagesWithMockedVoice:
         voice = _make_mock_voice(add_diacritics=True)
         voice.config.lang_code = "ar"
         voice.phonemizer = GraphemePhonemizer()
-        bench_latency.bench_stages(voice, "hello", SynthesisConfig(diacritizer_model="m"))
+        bench_latency.bench_stages(voice, "hello", SynthesisConfig(stages=Stages(diacritizer_model="m")))
         assert calls == [("hello", "ar", "m")]
         voice.phonemize.assert_called_once_with("hello!")
 

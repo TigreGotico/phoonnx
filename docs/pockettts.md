@@ -78,9 +78,9 @@ made it, so playback can start before the model finishes the sentence. Peak
 normalisation needs the whole sentence, so turn it off to get the sub-chunks:
 
 ```python
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import AudioPost, SynthesisConfig
 
-config = SynthesisConfig(normalize_audio=False, extra_params={"seed": 7})
+config = SynthesisConfig(audio=AudioPost(normalize=False), extra={"seed": 7})
 text = "Hello world. This is a longer second sentence that takes a while to say."
 for chunk in voice.stream(text, config):
     print(len(chunk.audio_float_array))
@@ -134,9 +134,9 @@ chunking is part of the engine rather than a general text utility.
 Pass a reference recording to clone a voice at run time:
 
 ```python
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import SpeakerReference, SynthesisConfig
 
-config = SynthesisConfig(speaker_reference="reference.wav")
+config = SynthesisConfig(reference=SpeakerReference(audio="reference.wav"))
 for chunk in voice.synthesize("Hello world.", config):
     ...
 ```
@@ -156,7 +156,7 @@ Clone voices only with the speaker's consent.
 | `eos_threshold` | -4.0 | When the model is judged to have finished speaking. |
 | `seed` | none | Fixes the random draw, so a run repeats exactly. |
 
-Set them per call through `SynthesisConfig.extra_params`, or per voice through
+Set them per call through `SynthesisConfig.extra`, or per voice through
 `engine_params`.
 
 ## Precision

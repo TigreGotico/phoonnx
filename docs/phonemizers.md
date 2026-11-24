@@ -190,13 +190,14 @@ A key at the top level of the config is not read. When the config has no key, th
 
 ```python
 from phoonnx.config import SynthesisConfig
-syn_config = SynthesisConfig(add_diacritics=True)
+from scriptconv.frontend import Stages
+syn_config = SynthesisConfig(stages=Stages(diacritize=True))
 ```
 
 Arabic diacritization uses [`text2tashkeel`](https://pypi.org/project/text2tashkeel/), installed
 by the [`ar` extra](installation.md#language-extras). The diacritizer model defaults to
 `rawi-ensemble` (which also restores hamza and the dagger alef); override it with the
-`diacritizer_model` field on the voice config or per call on `SynthesisConfig`. Requesting
+`diacritizer_model` field on the voice config or per call in `SynthesisConfig.stages`. Requesting
 Arabic diacritics without `text2tashkeel` installed raises an `ImportError` that names the package. Hebrew uses
 Phonikud.
 

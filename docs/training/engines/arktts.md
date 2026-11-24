@@ -94,7 +94,7 @@ already among the last ten emitted, it is discarded and redrawn under tighter se
 (top-p `0.9` at temperature `1.0`). That fallback is what stops the model looping, and it
 is why greedy decoding cannot terminate — with sampling off, both draws are the same argmax.
 
-Pass a `seed` in `engine_params`, or in `SynthesisConfig.extra_params`, to make a call
+Pass a `seed` in `engine_params`, or in `SynthesisConfig.extra`, to make a call
 reproducible.
 
 ## Graphs

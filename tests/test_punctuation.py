@@ -47,7 +47,7 @@ def synthesis_ids(config: dict, text: str):
     voice_config = VoiceConfig.from_dict(json.loads(json.dumps(config)))
     voice = TTSVoice(session=MagicMock(), config=voice_config, adapter=MagicMock())
     return voice_config, [list(utterance.ids) for utterance in voice.prepare(
-        text, SynthesisConfig(enable_phonetic_spellings=False))]
+        text, SynthesisConfig(phonetic_spellings=False))]
 
 
 def flat(sentences):

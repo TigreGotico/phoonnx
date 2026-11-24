@@ -165,7 +165,7 @@ def _voice(engine, lang):
 
 def _model_input(voice, text):
     """What the model reads, one string per engine call, as the characters of its ids."""
-    syn_config = SynthesisConfig(enable_phonetic_spellings=False)
+    syn_config = SynthesisConfig(phonetic_spellings=False)
     return " ".join("".join(chr(i) for i in utterance.ids) for utterance in voice.prepare(text, syn_config))
 
 

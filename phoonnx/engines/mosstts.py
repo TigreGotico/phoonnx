@@ -250,7 +250,7 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
             raise RuntimeError("MOSS-TTS-Nano voice missing sp_model_path in engine_params")
         budget = self.MAX_TEXT_TOKENS
         if syn_config is not None:
-            budget = int(syn_config.extra_params.get("max_text_tokens", budget))
+            budget = int(syn_config.extra.get("max_text_tokens", budget))
         return self._chunk(text, max(1, budget))
 
     def _encode(self, text: str) -> List[int]:

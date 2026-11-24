@@ -144,7 +144,7 @@ def adapter(tmp_path):
 
 class _SC:
     def __init__(self, **extra):
-        self.extra_params = extra
+        self.extra = extra
 
 
 # ----------------------------------------------------------------- registration

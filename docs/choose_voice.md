@@ -99,7 +99,7 @@ Two voices show `None`. Each one names its phonemizer in its own config file.
 
 A voice that needs a missing extra stops at load with an `ImportError`. The message names the package. [Installation](installation.md#errors-you-may-see) shows these errors and the fix for each one.
 
-Some voices clone a speaker and need a reference clip. For those voices, `--verbose` adds the line `Requires reference: yes (needs speaker_reference / a style path)`. These are the Chatterbox voices and some StyleTTS2 voices. See [Voice cloning](cloning.md).
+Some voices clone a speaker and need a reference clip. For those voices, `--verbose` adds the line `Requires reference: yes (needs a SynthesisConfig.reference / a style path)`. These are the Chatterbox voices and some StyleTTS2 voices. See [Voice cloning](cloning.md).
 
 ## 3. Check the download size
 

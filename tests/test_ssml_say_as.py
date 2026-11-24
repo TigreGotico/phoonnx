@@ -21,7 +21,7 @@ from scriptconv.phonemizers.dizione import DizionePhonemizer
 from text2spoken import SayAs
 
 import phoonnx.voice
-from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig, VoiceConfig
+from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig, VoiceConfig, AudioPost
 from phoonnx.ssml import parse_ssml
 from phoonnx.voice import TTSVoice
 
@@ -189,9 +189,9 @@ def test_a_backend_that_owns_normalize_reads_a_say_as_through_the_hook(interpret
                           voice.frontend)
     assert piece.text == expected
     list(voice.synthesize_ssml(f'<speak><say-as interpret-as="{interpret_as}">{text}</say-as></speak>',
-                               SynthesisConfig(normalize_audio=False)))
+                               SynthesisConfig(audio=AudioPost(normalize=False))))
     got = _sent_ids(voice)
-    list(voice.synthesize(expected, SynthesisConfig(normalize_audio=False)))
+    list(voice.synthesize(expected, SynthesisConfig(audio=AudioPost(normalize=False))))
     assert got == _sent_ids(voice)
 
 
@@ -202,12 +202,12 @@ def test_a_backend_that_owns_normalize_reads_plain_text_without_the_hook(text):
     own = TextFrontend(FrontendConfig(lang="en-US", normalizer=None, keep_punctuation=True),
                        backend=DizionePhonemizer(tokens=True))
     assert voice.frontend.phonemize(text) == own.phonemize(text)
-    list(voice.synthesize(text, SynthesisConfig(normalize_audio=False)))
+    list(voice.synthesize(text, SynthesisConfig(audio=AudioPost(normalize=False))))
     assert _sent_ids(voice) == list(DizionePhonemizer().tokens(text).ids)
 
 
 def test_a_very_long_letter_run_reads_in_bounded_memory():
     """A 20,000-letter run through the dizione voice finishes; it used to exhaust memory."""
     voice = _tinyvoca()
-    list(voice.synthesize("abcdefghij" * 2000, SynthesisConfig(normalize_audio=False)))
+    list(voice.synthesize("abcdefghij" * 2000, SynthesisConfig(audio=AudioPost(normalize=False))))
     assert _sent_ids(voice)

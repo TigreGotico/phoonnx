@@ -114,7 +114,7 @@ needs it.
 | [ZipVoice](training/engines/zipvoice.md) | `phoonnx/engines/zipvoice.py` | `engine == "zipvoice"` — **iterative** engine (flow-matching ODE loop), in-context [cloning](cloning.md) |
 | [F5-TTS](training/engines/f5tts.md) | `phoonnx/engines/f5tts.py` | `engine == "f5tts"` — multi-graph engine (auxiliary ONNX graphs via `aux_model_urls`) |
 | Shami / HamsVITS | `phoonnx/engines/shami.py` | `engine in ("shami", "hams")` — VITS variant with per-phoneme `language_ids` for Levantine Arabic / English code-switching |
-| tiny-voca | `phoonnx/engines/tinyvoca.py` | `engine == "tinyvoca"`, or a graph with `tokens`, `stress`, `voice` and `pitch_range` inputs — 4.5M-parameter American English model with a source-filter waveform head; reads dizione tokens with a stress value each, one engine call per sentence as dizione cuts the text, two voices (F2, M2), 24 kHz. The adapter adds a full stop to a sentence that ends without a mark, cuts a sentence over 500 tokens after a clause mark or between words, and scales the audio to a peak of 0.99. It reads plain text only. An inline `[[...]]` block gets one warning that names the voice and the block, and the voice leaves the block out of the text it reads. Phonetic input (`SynthesisConfig.alphabet`) is not supported: the voice logs one warning, and the tokenizer drops the characters that have no id |
+| tiny-voca | `phoonnx/engines/tinyvoca.py` | `engine == "tinyvoca"`, or a graph with `tokens`, `stress`, `voice` and `pitch_range` inputs — 4.5M-parameter American English model with a source-filter waveform head; reads dizione tokens with a stress value each, one engine call per sentence as dizione cuts the text, two voices (F2, M2), 24 kHz. The adapter adds a full stop to a sentence that ends without a mark, cuts a sentence over 500 tokens after a clause mark or between words, and scales the audio to a peak of 0.99. It reads plain text only. An inline `[[...]]` block gets one warning that names the voice and the block, and the voice leaves the block out of the text it reads. Phonetic input (`SynthesisConfig.input_alphabet`) is not supported: the voice logs one warning, and the tokenizer drops the characters that have no id |
 | [Chatterbox](training/engines/chatterbox.md) | `phoonnx/engines/chatterbox.py` | `engine == "chatterbox"` — **autoregressive** engine (codec-LM), d-vector [cloning](cloning.md) + exaggeration |
 | Vosk | `phoonnx/engines/vits.py` (shared) | `engine == "vosk"` — alphacep vosk-tts Russian voices: plain VITS exports whose front-end is scriptconv's dictionary/rule `VoskPhonemizer` |
 | SuperTonic | `phoonnx/engines/supertonic.py` | `engine == "supertonic"` — multi-graph flow-matching engine (4 ONNX graphs via `aux_model_urls`), raw-text (no phonemizer), fixed per-speaker style instead of cloning |
@@ -344,14 +344,14 @@ The voice config for `shefowl/neutts-nano-polish`:
 
 ### SynthesisConfig extra params
 
-Per-call overrides go through `SynthesisConfig.extra_params`:
+Per-call overrides go through `SynthesisConfig.extra`:
 
 ```python
 from phoonnx.config import SynthesisConfig
 
 syn = SynthesisConfig(
     length_scale=1.2,
-    extra_params={"d_factor": 0.9}
+    extra={"d_factor": 0.9}
 )
 ```
 

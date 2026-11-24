@@ -109,7 +109,7 @@ def test_a_config_length_scale_reaches_the_engines_own_speed_key(adapter, key, e
 
 @pytest.mark.parametrize("adapter, key, expected", OWN_SPEED_KEY)
 def test_a_speed_key_the_call_names_wins_over_length_scale(adapter, key, expected):
-    call = SynthesisConfig(length_scale=2.0, extra_params={key: 0.7})
+    call = SynthesisConfig(length_scale=2.0, extra={key: 0.7})
     assert _sent_params(adapter(), {}, call)[key] == 0.7
 
 

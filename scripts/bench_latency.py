@@ -129,18 +129,18 @@ def bench_stages(voice: TTSVoice, text: str, syn_config: SynthesisConfig) -> Dic
     stages: Dict[str, float] = {}
 
     working_text = text
-    if voice.phonetic_spellings and syn_config.enable_phonetic_spellings:
+    if voice.phonetic_spellings and syn_config.phonetic_spellings:
         working_text, stages["text_normalize"] = timed(
             lambda: voice.phonetic_spellings.apply(working_text)
         )
     else:
         stages["text_normalize"] = 0.0
 
-    do_diacritics = syn_config.add_diacritics
+    do_diacritics = syn_config.stages.diacritize
     if do_diacritics is None:
         do_diacritics = voice.config.add_diacritics
     if do_diacritics:
-        diacritizer_model = syn_config.diacritizer_model or voice.config.diacritizer_model
+        diacritizer_model = syn_config.stages.diacritizer_model or voice.config.diacritizer_model
         working_text, stages["diacritics"] = timed(
             lambda: diacritize(
                 working_text, voice.config.lang_code, diacritizer_model=diacritizer_model
@@ -166,11 +166,11 @@ def bench_stages(voice: TTSVoice, text: str, syn_config: SynthesisConfig) -> Dic
 
         def _postprocess():
             a = audio
-            if syn_config.normalize_audio:
+            if syn_config.audio.normalize:
                 max_val = np.max(np.abs(a))
                 a = np.zeros_like(a) if max_val < 1e-8 else a / max_val
-            if syn_config.volume != 1.0:
-                a = a * syn_config.volume
+            if syn_config.audio.volume != 1.0:
+                a = a * syn_config.audio.volume
             a = np.clip(a, -1.0, 1.0).astype(np.float32)
             return AudioChunk(sample_rate=voice.config.sample_rate, sample_width=2, sample_channels=1,
                                audio_float_array=a)

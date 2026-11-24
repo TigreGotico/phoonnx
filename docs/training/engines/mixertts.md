@@ -94,7 +94,7 @@ using a 44-symbol **buckwalter** phoneme table. They tokenize with phoonnx's
 `_+_` word separator) — the same phonemes as tts_arabic's
 `phonetise_buckwalter` (a golden test guards this). Input may be vocalized
 Arabic or buckwalter transliteration; pick a speaker with
-`SynthesisConfig(speaker_id=...)`.
+`SynthesisConfig(speaker=...)`.
 
 ### Training
 
@@ -126,7 +126,7 @@ recorded in the ONNX metadata).
 
 ```python
 voice.synthesize("Hello from Mixer-TTS.",
-                 SynthesisConfig(extra_params={"pace": 1.1}))
+                 SynthesisConfig(extra={"pace": 1.1}))
 ```
 
 ## Vocoder

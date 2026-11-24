@@ -42,13 +42,13 @@ A named speaker still accepts a reference clip — cloning overrides the shipped
 
 ```python
 from phoonnx.model_manager import TTSModelManager
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import SpeakerReference, SynthesisConfig
 
 manager = TTSModelManager(); manager.load(); manager.merge_default_voices()
 
 voice = manager.voices["bsc/ca-ona"].load()
 shipped = list(voice.synthesize("Bon dia, com estàs?"))
-cloned = list(voice.synthesize("Bon dia.", SynthesisConfig(speaker_reference="ref.wav")))
+cloned = list(voice.synthesize("Bon dia.", SynthesisConfig(reference=SpeakerReference(audio="ref.wav"))))
 ```
 
 `synthesize` yields one `AudioChunk` per sentence, so the example collects them with

@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import SynthesisConfig, AudioPost
 from phoonnx.ssml import SUPPORTED_TAGS, Piece, looks_like_ssml, parse_ssml, strip_ssml
 from unittest.mock import MagicMock
 
@@ -149,10 +149,10 @@ def test_pauses_become_silence_and_speech_keeps_its_order():
 def test_rate_divides_the_length_scale_and_volume_multiplies_the_samples_setting():
     voice = RecordingVoice()
     list(voice.synthesize_ssml('<speak><prosody rate="fast" volume="soft">quick</prosody></speak>',
-                               SynthesisConfig(length_scale=1.2, volume=0.8)))
+                               SynthesisConfig(length_scale=1.2, audio=AudioPost(volume=0.8))))
     (text, config), = voice.calls
     assert config.length_scale == pytest.approx(1.2 / 1.25)
-    assert config.volume == pytest.approx(0.8 * 0.65)
+    assert config.audio.volume == pytest.approx(0.8 * 0.65)
 
 
 def test_a_piece_at_the_ordinary_pace_leaves_the_configuration_alone():
@@ -166,10 +166,10 @@ def test_a_multilingual_voice_gets_the_language_id_and_a_monolingual_one_does_no
     multi = RecordingVoice({"en": 0, "fr": 1})
     list(multi.synthesize_ssml('<speak>Say <lang xml:lang="fr-FR">bonjour</lang>.</speak>'))
     # the English piece gets English's id, the French word French's; the lone "." is dropped
-    assert [(t, c.lang_id) for t, c in multi.calls] == [("Say", 0), ("bonjour", 1)]
+    assert [(t, c.language) for t, c in multi.calls] == [("Say", 0), ("bonjour", 1)]
     mono = RecordingVoice()
     list(mono.synthesize_ssml('<speak>Say <lang xml:lang="fr-FR">bonjour</lang>.</speak>'))
-    assert all(getattr(c, "lang_id", None) is None for _, c in mono.calls)
+    assert all(c.language is None for _, c in mono.calls)
 
 
 def test_the_wav_has_one_format_and_the_pauses_in_it():

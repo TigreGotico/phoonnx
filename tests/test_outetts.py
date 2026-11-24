@@ -326,7 +326,7 @@ class _Voice:
 
 class _Syn:
     def __init__(self, **extra):
-        self.extra_params = extra
+        self.extra = extra
 
 
 def test_per_call_voice_wins_over_the_pinned_one():

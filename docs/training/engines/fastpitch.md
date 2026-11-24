@@ -97,7 +97,7 @@ model and a vocoder (`engine: fastpitch`, `engine_params.vocoder_path` /
 `vocoder_type`), then synthesize:
 
 ```python
-voice.synthesize("Hello.", SynthesisConfig(extra_params={"pace": 1.0}))
+voice.synthesize("Hello.", SynthesisConfig(extra={"pace": 1.0}))
 ```
 
 The mel and per-call params (`pace` / `speaker` / `pitch_mul` / `pitch_add`) are

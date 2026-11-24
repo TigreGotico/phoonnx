@@ -122,13 +122,13 @@ from phoonnx.model_manager import TTSModelManager
 manager = TTSModelManager()
 manager.merge_default_voices()
 voice = manager.voices["outetts/0.6B/de"].load()
-syn = SynthesisConfig(extra_params={"voice": "en-female-1-neutral"})
+syn = SynthesisConfig(extra={"voice": "en-female-1-neutral"})
 for chunk in voice.synthesize("Der alte Leuchtturm steht an der Küste.", syn):
     ...  # chunk.audio_float_array, 24 kHz mono
 ```
 
 phoonnx **cannot build a profile from a reference clip**. That needs Whisper word
-alignment plus the DAC encoder and a prosody analysis pass; `speaker_reference` therefore
+alignment plus the DAC encoder and a prosody analysis pass; `reference` therefore
 raises. Build the profile with the upstream `outetts` package and ship the JSON.
 
 ## Known quality caveats
