@@ -11,8 +11,7 @@
         "alphabet": "ipa",
         "engine": "mixertts",
         "lang": "en-US",
-        "vocoder_url": "https://huggingface.co/Phoonnx/vocos-multi-alvocat-22khz/resolve/fa91e904074f4412a09a689fce2893dc371c2363/model.onnx",
-        "vocoder_config_url": "https://huggingface.co/Phoonnx/vocos-multi-alvocat-22khz/resolve/fa91e904074f4412a09a689fce2893dc371c2363/vocoder.json",
+        "vocoder_url": "https://huggingface.co/BSC-LT/vocos-mel-22khz/resolve/b4b331d85370cdd94c644b5d1922a27a0b219c15/mel_spec_22khz_univ.onnx",
         "vocoder_type": "vocos"
     },
     "nipponjo/mixer-tts-ljspeech-128": {
@@ -27,8 +26,7 @@
         "alphabet": "ipa",
         "engine": "mixertts",
         "lang": "en-US",
-        "vocoder_url": "https://huggingface.co/Phoonnx/vocos-multi-alvocat-22khz/resolve/fa91e904074f4412a09a689fce2893dc371c2363/model.onnx",
-        "vocoder_config_url": "https://huggingface.co/Phoonnx/vocos-multi-alvocat-22khz/resolve/fa91e904074f4412a09a689fce2893dc371c2363/vocoder.json",
+        "vocoder_url": "https://huggingface.co/BSC-LT/vocos-mel-22khz/resolve/b4b331d85370cdd94c644b5d1922a27a0b219c15/mel_spec_22khz_univ.onnx",
         "vocoder_type": "vocos"
     },
     "nipponjo/mixer-tts-ljspeech-384": {
@@ -43,8 +41,7 @@
         "alphabet": "ipa",
         "engine": "mixertts",
         "lang": "en-US",
-        "vocoder_url": "https://huggingface.co/Phoonnx/vocos-multi-alvocat-22khz/resolve/fa91e904074f4412a09a689fce2893dc371c2363/model.onnx",
-        "vocoder_config_url": "https://huggingface.co/Phoonnx/vocos-multi-alvocat-22khz/resolve/fa91e904074f4412a09a689fce2893dc371c2363/vocoder.json",
+        "vocoder_url": "https://huggingface.co/BSC-LT/vocos-mel-22khz/resolve/b4b331d85370cdd94c644b5d1922a27a0b219c15/mel_spec_22khz_univ.onnx",
         "vocoder_type": "vocos"
     },
     "nipponjo/tts-arabic-mixer80": {
