@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.137.9a1](https://github.com/TigreGotico/phoonnx/tree/1.137.9a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.8a1...1.137.9a1)
+
+**Merged pull requests:**
+
+- fix: a syllabic mark above ŋ bears its tone \(phonematcher \>=3.0.1a1\) [\#1065](https://github.com/TigreGotico/phoonnx/pull/1065) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.137.8a1](https://github.com/TigreGotico/phoonnx/tree/1.137.8a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.7a1...1.137.8a1)
@@ -369,7 +377,6 @@
 **Merged pull requests:**
 
 - fix\(fastpitch\): a pace input for the three Coqui ForwardTTS voices [\#934](https://github.com/TigreGotico/phoonnx/pull/934) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix\(voice\_index\): pin the 19 repos whose configs now state num\_symbols [\#932](https://github.com/TigreGotico/phoonnx/pull/932) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.129.8a1](https://github.com/TigreGotico/phoonnx/tree/1.129.8a1) (2026-11-22)
 
