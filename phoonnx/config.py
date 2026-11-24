@@ -500,16 +500,14 @@ def _warn_1x(old: str, new: str) -> None:
                   DeprecationWarning, stacklevel=level)
 
 
-def _1x_id(value: str) -> Union[int, str]:
-    """A 1.x ``speaker_id`` or ``lang_id`` string as the id that 1.x read from it.
+class _LegacyId(str):
+    """A string given as the 1.x ``speaker_id`` or ``lang_id``.
 
-    1.x passed the string to the engine, which cast it with ``int()``. A string that
-    ``int()`` refuses stays a string, which the voice reads as a name.
+    1.x passed it to the engine as it was: most engines read it with ``int()``, and
+    Magpie reads a voice name. So the voice passes it on unread. No voice map and no
+    text stage reads it, and ``speaker_id="40"`` stays id 40 on a voice whose map
+    has a speaker named "40".
     """
-    try:
-        return int(value)
-    except ValueError:
-        return value
 
 
 def _as_group(group: type, value: Any) -> Any:
@@ -539,7 +537,8 @@ class SynthesisConfig:
 
     speaker: Optional[Union[int, str]] = None
     """The speaker of a multi-speaker voice: an id, or a name in the voice's
-    ``speaker_id_map``. ``None`` takes the voice's own speaker, or speaker 0."""
+    ``speaker_id_map``. A name that the map lacks goes to the engine, which may hold
+    its own names (Magpie). ``None`` takes the voice's own speaker, or speaker 0."""
 
     language: Optional[Union[int, str]] = None
     """The language of a multi-language voice: an id, or a code in the voice's
@@ -605,7 +604,7 @@ class SynthesisConfig:
             path = _1X_NAMES[name]
             _warn_1x(f"SynthesisConfig.{name}", f"SynthesisConfig.{path}")
             if name in ("speaker_id", "lang_id") and isinstance(value, str):
-                value = _1x_id(value)
+                value = _LegacyId(value)
             head, _, rest = path.partition(".")
             if rest:
                 value = _with_path(getattr(self, head) or _GROUPS[head](), rest, value)

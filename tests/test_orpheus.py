@@ -164,6 +164,15 @@ def test_speaker_id_maps_back_to_a_name():
     assert a.resolve_voice(_Voice(cfg), _Syn(speaker=3)) == "leo"
 
 
+def test_a_1x_speaker_id_string_is_an_index_as_in_1x():
+    from phoonnx.config import SynthesisConfig
+    a = _adapter()
+    cfg = _Cfg(speaker_id_map={v: i for i, v in enumerate(EN_VOICES)})
+    with pytest.warns(DeprecationWarning):
+        syn = SynthesisConfig(speaker_id="3")
+    assert a.resolve_voice(_Voice(cfg), syn) == "leo"
+
+
 def test_unknown_voice_is_rejected():
     with pytest.raises(ValueError, match="unknown Orpheus voice"):
         _adapter().resolve_voice(_Voice(_Cfg()), _Syn({"voice": "nobody"}))

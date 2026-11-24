@@ -80,6 +80,7 @@ import numpy as np
 import onnxruntime
 from quebra_frases import span_indexed_sentence_tokenize
 
+from phoonnx.config import _LegacyId
 from phoonnx.engines._sampling import apply_repetition_penalty
 from phoonnx.engines._sampling import NUCLEUS_HEAD, ranked, softmax
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
@@ -230,7 +231,7 @@ class OrpheusAdapter(BaseOnnxAdapter):
             name = syn_config.extra.get("voice")
         cfg = getattr(voice, "config", None)
         speaker = None if syn_config is None else syn_config.speaker
-        if not name and isinstance(speaker, str):
+        if not name and isinstance(speaker, str) and not isinstance(speaker, _LegacyId):
             name = speaker
         elif not name and speaker is not None:
             id_map = getattr(cfg, "speaker_id_map", None) or {}

@@ -168,11 +168,6 @@ def test_a_speaker_id_and_a_language_id_pass_through():
     assert (request.speaker_id, request.language_id) == (1, 0)
 
 
-def test_an_unknown_speaker_name_fails():
-    with pytest.raises(ValueError, match="'zé'.*'ana', 'rui'"):
-        _voice()._request([3], SynthesisConfig(speaker="zé"))
-
-
 def _digit_named_voice():
     voice = _voice()
     voice.config = dataclasses.replace(voice.config, speaker_id_map={"40": 6, "5": 0, "ana": 1})
@@ -183,43 +178,51 @@ def _1x_ways(name, value):
     """A config built with the 1.x *name* set to *value* by keyword, positionally,
     through from_dict and through replace."""
     slot = [n for n, _ in ORDER_1X].index(name)
-    yield SynthesisConfig(**{name: value})
-    yield SynthesisConfig(*([None] * slot), value)
-    yield SynthesisConfig.from_dict({name: value})
-    yield dataclasses.replace(SynthesisConfig(), **{name: value})
-
-
-@pytest.mark.parametrize("value, expected", [("40", 40), ("5", 5), ("-1", -1), (" 5", 5), ("７", 7)])
-def test_a_1x_speaker_id_string_is_the_id_that_int_reads(value, expected):
-    # 1.x passed speaker_id to the engine, which read it with int(); a speaker name never applied.
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", DeprecationWarning)
-        for config in _1x_ways("speaker_id", value):
-            assert config.speaker == expected
-            assert _digit_named_voice()._request([3], config).speaker_id == expected
+        yield SynthesisConfig(**{name: value})
+        yield SynthesisConfig(*([None] * slot), value)
+        yield SynthesisConfig.from_dict({name: value})
+        yield dataclasses.replace(SynthesisConfig(), **{name: value})
 
 
-@pytest.mark.parametrize("value, expected", [("1", 1), ("-1", -1), (" 0", 0)])
-def test_a_1x_lang_id_string_is_the_id_that_int_reads(value, expected):
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        for config in _1x_ways("lang_id", value):
-            assert config.language == expected
-            assert _voice()._request([3], config).language_id == expected
-            assert stages_of(config).lang is None
+def _magpie_speaker(request):
+    from phoonnx.engines.base import AdapterSynthesisRequest
+    from tests.test_magpie import _adapter  # speakers {"Aria": 0, "Leo": 1}
+    return _adapter()._resolve_speaker(AdapterSynthesisRequest(
+        phoneme_ids=np.zeros((1, 1), np.int64), phoneme_lengths=np.array([1]), speaker_id=request.speaker_id))
 
 
-def test_a_1x_speaker_id_string_that_int_refuses_stays_a_name():
-    with pytest.warns(DeprecationWarning):
-        config = SynthesisConfig(speaker_id="ana")
-    assert _digit_named_voice()._request([3], config).speaker_id == 1
+# 1.x put speaker_id and lang_id in the engine request as they were given.
+@pytest.mark.parametrize("value", ["40", "5", "-1", " 5", "７", "", "Leo"])
+def test_a_1x_speaker_id_string_reaches_the_engine_as_given(value):
+    for config in _1x_ways("speaker_id", value):
+        request = _digit_named_voice()._request([3], config)
+        assert request.speaker_id == value and isinstance(request.speaker_id, str)
 
 
-def test_the_speaker_field_reads_a_string_as_a_name():
-    voice = _digit_named_voice()
-    assert voice._request([3], SynthesisConfig(speaker="40")).speaker_id == 6
-    with pytest.raises(ValueError, match="has no speaker '41'"):
-        voice._request([3], SynthesisConfig(speaker="41"))
+@pytest.mark.parametrize("value", ["1", "-1", " 0", "en", ""])
+def test_a_1x_lang_id_string_reaches_the_engine_as_given(value):
+    for config in _1x_ways("lang_id", value):
+        assert _voice()._request([3], config).language_id == value
+        assert stages_of(config).lang is None
+
+
+def test_a_speaker_name_that_the_voice_map_lacks_reaches_the_engine():
+    for config in [SynthesisConfig(speaker="Leo"), *_1x_ways("speaker_id", "Leo")]:
+        request = _voice()._request([3], config)
+        assert request.speaker_id == "Leo"
+        assert _magpie_speaker(request) == 1
+
+
+def test_the_engine_refuses_a_name_it_does_not_have():
+    for config in [SynthesisConfig(speaker="zé"), *_1x_ways("speaker_id", " 1")]:
+        with pytest.raises(ValueError, match="no voice"):
+            _magpie_speaker(_voice()._request([3], config))
+
+
+def test_the_speaker_field_reads_a_name_in_the_voice_map():
+    assert _digit_named_voice()._request([3], SynthesisConfig(speaker="40")).speaker_id == 6
 
 
 ORDER_1X = [("alphabet", Alphabet.IPA), ("speaker_id", 3), ("lang_id", 1), ("speaker_reference", "me.wav"),

@@ -15,7 +15,7 @@ from typing import Any, Callable, Iterator, List, Mapping, Optional, Protocol, S
 
 from scriptconv.frontend import Stages, TextFrontend
 
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import SynthesisConfig, _LegacyId
 
 #: The request fields that hold one value per phoneme id, as a phonemizer's side streams fill them.
 SIDE_STREAMS = ("language_ids", "stress")
@@ -57,7 +57,8 @@ class Encoder(Protocol):
 def stages_of(config: SynthesisConfig) -> Stages:
     """The text stages of *config*. A language code in ``config.language`` sets the
     stage language when *config* leaves it unset."""
-    if config.stages.lang is None and isinstance(config.language, str):
+    if config.stages.lang is None and isinstance(config.language, str) \
+            and not isinstance(config.language, _LegacyId):
         return replace(config.stages, lang=config.language)
     return config.stages
 

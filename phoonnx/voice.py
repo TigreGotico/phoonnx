@@ -30,7 +30,7 @@ from scriptconv.frontend import Stages, TextFrontend
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
-from phoonnx.config import VoiceConfig, SynthesisConfig, SpeakerReference, Alphabet, PhonemeType, _voice_phonemizer, \
+from phoonnx.config import VoiceConfig, SynthesisConfig, SpeakerReference, Alphabet, _LegacyId, PhonemeType, _voice_phonemizer, \
     _removal_version, check_lang_supported, get_text_casing, voice_frontend, without_normalizer
 from scriptconv.graph import DEFAULT_GRAPH
 from phoonnx.engines import detect_engine, get_adapter
@@ -1481,18 +1481,14 @@ class TTSVoice:
         return replace(chunk, audio_float_array=samples,
                        _audio_int16_array=None, _audio_int16_bytes=None)
 
-    def _speaker_id(self, speaker: Optional[Union[int, str]]) -> Optional[int]:
-        """The id of *speaker*, an id or a name in the voice's ``speaker_id_map``.
-
-        Raises:
-            ValueError: If the voice has no speaker of that name.
-        """
-        if not isinstance(speaker, str):
-            return speaker
-        if speaker not in self.config.speaker_id_map:
-            raise ValueError(f"voice {self._voice_name} has no speaker {speaker!r}; "
-                             f"it has {sorted(self.config.speaker_id_map)}")
-        return int(self.config.speaker_id_map[speaker])
+    def _speaker_id(self, speaker: Optional[Union[int, str]]) -> Optional[Union[int, str]]:
+        """The speaker that the engine gets: the id of a name in the voice's
+        ``speaker_id_map``, or else *speaker* as it is. An engine with its own
+        speaker names, such as Magpie, reads a name that the map lacks."""
+        if isinstance(speaker, str) and not isinstance(speaker, _LegacyId) \
+                and speaker in self.config.speaker_id_map:
+            return int(self.config.speaker_id_map[speaker])
+        return speaker
 
     def _lang_id_for(self, tag: Optional[str]) -> Optional[int]:
         """The language id of a multilingual voice for *tag*, or None (monolingual, or unknown)."""
@@ -1623,7 +1619,7 @@ class TTSVoice:
         if speaker_id is None and self.config.num_speakers > 1:
             speaker_id = self.config.default_speaker_id
         language_id = syn_config.language
-        if isinstance(language_id, str):
+        if isinstance(language_id, str) and not isinstance(language_id, _LegacyId):
             language_id = self._lang_id_for(language_id)
 
         return AdapterSynthesisRequest(
