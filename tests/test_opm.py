@@ -5,6 +5,8 @@ refresh-on-miss, and synthesis-parameter mapping - without any network
 access or real ONNX models. The model manager, voices and ``wave`` are
 mocked so the tests stay fast and hermetic.
 """
+import os
+import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -553,3 +555,59 @@ class TestLangDefaultVoiceOverrides(unittest.TestCase):
             plugin, _ = _make_plugin(config={"lang": "ru-RU"}, voices=(fallback,))
             self.assertEqual(plugin.get_default_voice("ru-RU").voice_id,
                              "index/fallback")
+
+class TestPiperVoiceNames(unittest.TestCase):
+    """A Piper client says ``lessac-medium`` or ``en_US-lessac-medium``; the catalog says
+    ``piper/en_US-lessac-medium``."""
+
+    def _plugin(self, lang="en-US"):
+        ids = ["piper/en_US-lessac-medium", "piper/en_GB-alan-medium", "piper/fr_FR-mls-medium",
+               "piper/de_DE-mls-medium", "piper/nl_NL-mls-medium", "supertonic/F1/en"]
+        plugin, _ = _make_plugin({"lang": lang}, voices=[_FakeVoiceInfo(v) for v in ids])
+        return plugin
+
+    def test_the_locale_name_and_the_short_name_resolve(self):
+        plugin = self._plugin()
+        for name in ("piper/en_US-lessac-medium", "en_US-lessac-medium", "lessac-medium"):
+            with self.subTest(name=name):
+                self.assertEqual(plugin.get_voice_info(name).voice_id, "piper/en_US-lessac-medium")
+
+    def test_a_piper_speaker_suffix_is_ignored(self):
+        self.assertEqual(self._plugin().get_voice_info("lessac-medium#3").voice_id,
+                         "piper/en_US-lessac-medium")
+
+    def test_a_short_name_other_languages_share_goes_to_the_requested_language(self):
+        plugin = self._plugin()
+        for lang, want in (("fr-FR", "fr_FR"), ("de-DE", "de_DE"), ("nl-NL", "nl_NL")):
+            with self.subTest(lang=lang):
+                self.assertEqual(plugin.get_voice_info("mls-medium", lang).voice_id,
+                                 f"piper/{want}-mls-medium")
+
+    def test_the_plugin_language_settles_it_when_the_call_names_none(self):
+        self.assertEqual(self._plugin("fr-FR").get_voice_info("mls-medium").voice_id,
+                         "piper/fr_FR-mls-medium")
+
+    def test_an_ambiguous_short_name_is_an_error_not_a_guess(self):
+        with self.assertRaises(Exception) as ctx:
+            self._plugin("en-US").get_voice_info("mls-medium")
+        self.assertIn("Unknown voice", str(ctx.exception))
+
+    def test_a_single_voice_in_another_language_is_still_found(self):
+        self.assertEqual(self._plugin("en-US").get_voice_info("alan-medium").voice_id,
+                         "piper/en_GB-alan-medium")
+
+    def test_a_catalog_id_that_is_not_piper_is_left_alone(self):
+        self.assertEqual(self._plugin().get_voice_info("supertonic/F1/en").voice_id,
+                         "supertonic/F1/en")
+        with self.assertRaises(Exception):
+            self._plugin().get_voice_info("F1")
+
+    def test_two_spellings_load_one_model(self):
+        plugin = self._plugin()
+        info = plugin.get_voice_info("lessac-medium")
+        info.load = MagicMock(return_value=info.tts_voice)
+        with patch.object(opm, "wave"):
+            for name in ("lessac-medium", "en_US-lessac-medium", "piper/en_US-lessac-medium"):
+                plugin.get_tts("hello", "/tmp/out.wav", lang="en-US", voice=name)
+        self.assertEqual(info.load.call_count, 1)
+        self.assertEqual(info.tts_voice.synthesize_wav.call_count, 3)

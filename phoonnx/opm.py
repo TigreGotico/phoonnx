@@ -300,13 +300,51 @@ class PhoonnxTTSPlugin(TTS):
         """
         return self.voice_cache.get(voice_id)
 
-    def get_voice_info(self, voice_id: str) -> TTSModelInfo:
+    def piper_alias(self, name: str, lang: Optional[str] = None) -> Optional[str]:
+        """The catalog id of the Piper voice that a Piper client means by ``name``, or None.
+
+        Piper clients (``ovos-tts-plugin-piper``, Home Assistant, ``piper`` itself) name a voice
+        ``en_US-lessac-medium`` or ``lessac-medium``; the catalog calls it
+        ``piper/en_US-lessac-medium``. A short name that several languages share (``mls-medium``)
+        goes to the one that fits ``lang`` (default: the plugin's language): the same locale, then
+        the same language. If none fits it is ambiguous and nothing is chosen.
+        """
+        name = str(name or "").split("#", 1)[0].strip()      # "name#3" is a Piper speaker suffix
+        if not name or "/" in name:
+            return None
+        voices = self.model_manager.voices
+        if f"piper/{name}" in voices:
+            return f"piper/{name}"
+        candidates = [vid for vid in voices
+                      if vid.startswith("piper/") and vid.split("-", 1)[-1] == name
+                      and "-" in vid]
+        if not candidates:
+            return None
+        wanted = standardize_lang(lang or self.lang).lower().replace("_", "-")
+
+        def rank(vid: str) -> int:
+            locale = vid[len("piper/"):].split("-", 1)[0].lower().replace("_", "-")
+            if locale == wanted:
+                return 0
+            return 1 if locale.split("-")[0] == wanted.split("-")[0] else 2
+
+        best = min(rank(vid) for vid in candidates)
+        chosen = sorted(vid for vid in candidates if rank(vid) == best)
+        if best == 2 and len(chosen) > 1:
+            return None
+        return chosen[0]
+
+    def get_voice_info(self, voice_id: str, lang: Optional[str] = None) -> TTSModelInfo:
         """
         Look up a voice in the catalog without loading it, refreshing the
-        catalog once if the id is not already known.
+        catalog once if the id is not already known. A Piper client's own name
+        for a voice (``lessac-medium``, ``en_US-lessac-medium``) is accepted
+        (see :meth:`piper_alias`).
 
         Parameters:
             voice_id (str): Identifier of the voice to look up.
+            lang (str, optional): Language that settles a short Piper name several
+                languages share. Default: the plugin's language.
 
         Returns:
             TTSModelInfo: Catalog entry for the voice.
@@ -315,10 +353,14 @@ class PhoonnxTTSPlugin(TTS):
             Exception: If `voice_id` is still unknown after a refresh.
         """
         info = self.model_manager.get_voice(voice_id)
+        if info is None and (alias := self.piper_alias(voice_id, lang)):
+            return self.model_manager.get_voice(alias)
         if info is None:
             LOG.info(f"{voice_id} not found - refreshing voice list")
             self.refresh_voices(force=True)
             info = self.model_manager.get_voice(voice_id)
+            if info is None and (alias := self.piper_alias(voice_id, lang)):
+                return self.model_manager.get_voice(alias)
             if info is None:
                 raise Exception(f"Unknown voice: {voice_id}")
         return info
@@ -344,7 +386,7 @@ class PhoonnxTTSPlugin(TTS):
         that loads its full files, or has int8 files only, keeps its identity.
         """
         ctxt = super()._get_ctxt(kwargs)
-        info = (self.get_voice_info(ctxt.voice) if ctxt.voice and ctxt.voice != "default"
+        info = (self.get_voice_info(ctxt.voice, ctxt.lang) if ctxt.voice and ctxt.voice != "default"
                 else self.get_default_voice(ctxt.lang))
         if self._loads_int8_variant(info):
             ctxt.voice = f"{ctxt.voice}#int8"
@@ -433,7 +475,10 @@ class PhoonnxTTSPlugin(TTS):
             voice = self.voice
         voice_info = (None if voice and voice != "default"
                       else self.get_default_voice(lang or self.lang))
-        voice_id = voice if voice_info is None else voice_info.voice_id
+        # A Piper client's own name for the voice is the catalog id from here on, so that two
+        # spellings of one voice share one loaded model.
+        voice_id = (self.get_voice_info(voice, lang or self.lang).voice_id
+                    if voice_info is None else voice_info.voice_id)
         # Leased for the whole synthesis: the cache may evict the entry
         # meanwhile, but the weights this call is using stay charged to the
         # memory budget, so no concurrent load is admitted against them.
