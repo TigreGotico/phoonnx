@@ -629,7 +629,9 @@ class SynthesisConfig:
 
     def to_dict(self) -> Dict[str, Any]:
         """The config as plain data, which :meth:`from_dict` reads back and
-        ``phoonnx/synthesis_config.schema.json`` describes.
+        ``phoonnx/synthesis_config.schema.json`` describes. A 1.x ``speaker_id`` or
+        ``lang_id`` string is written under its 1.x key, so that it reaches the engine
+        as it is after :meth:`from_dict` too.
 
         Raises:
             ValueError: If ``stages.casing`` is set, or a reference holds samples
@@ -654,6 +656,9 @@ class SynthesisConfig:
         data["extra"] = dict(self.extra)
         if self.input_alphabet is not None:
             data["input_alphabet"] = self.input_alphabet.value
+        for field_name, name_1x in (("speaker", "speaker_id"), ("language", "lang_id")):
+            if isinstance(data[field_name], _LegacyId):
+                data[name_1x] = str(data.pop(field_name))
         return data
 
 

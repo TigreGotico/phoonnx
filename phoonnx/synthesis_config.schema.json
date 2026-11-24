@@ -20,6 +20,8 @@
     },
     "speaker": {"type": ["integer", "string", "null"], "description": "A speaker id, or a name in the voice's speaker_id_map."},
     "language": {"type": ["integer", "string", "null"], "description": "A language id, or a code in the voice's lang_id_map."},
+    "speaker_id": {"type": "string", "deprecated": true, "description": "A 1.x speaker_id string, in place of speaker. The engine reads it as it is, and no voice map reads it."},
+    "lang_id": {"type": "string", "deprecated": true, "description": "A 1.x lang_id string, in place of language. The engine reads it as it is, and no voice map or text stage reads it."},
     "length_scale": {"type": ["number", "null"]},
     "noise_scale": {"type": ["number", "null"]},
     "noise_w_scale": {"type": ["number", "null"]},

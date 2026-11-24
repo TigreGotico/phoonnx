@@ -168,7 +168,7 @@ A scale comes from the first of these that sets it: the call's `SynthesisConfig`
 
 ### 1.x names
 
-The flat names of phoonnx 1.x still work as keywords, attributes, `dataclasses.replace()` keywords and `SynthesisConfig.from_dict` keys. Positional arguments in the 1.x field order work too. Each use raises a `DeprecationWarning` that names the new field and points at the caller's line. A string in `speaker_id` or `lang_id` goes to the engine as it is, as in 1.x: no voice map and no text stage reads it. Most engines read it with `int()`, so `speaker_id="40"` is the id 40, and Magpie reads it as a voice name. In the new `speaker` and `language` fields a string is a name or a code first, so `speaker="40"` is the speaker named `40`. The names and the positional form stop working in phoonnx 2.0.0.
+The flat names of phoonnx 1.x still work as keywords, attributes, `dataclasses.replace()` keywords and `SynthesisConfig.from_dict` keys. Positional arguments in the 1.x field order work too. Each use raises a `DeprecationWarning` that names the new field and points at the caller's line. A string in `speaker_id` or `lang_id` goes to the engine as it is, as in 1.x: no voice map and no text stage reads it. Most engines read it with `int()`, so `speaker_id="40"` is the id 40, and Magpie reads it as a voice name. In the new `speaker` and `language` fields a string is a name or a code first, so `speaker="40"` is the speaker named `40`. `to_dict()` writes a 1.x string under its 1.x key, so the config keeps that meaning after `from_dict()`. The names and the positional form stop working in phoonnx 2.0.0.
 
 | Flat name | Field |
 |-----------|-------|
