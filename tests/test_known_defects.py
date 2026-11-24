@@ -204,6 +204,35 @@ def test_jsonl_audio_path_base_of_a_dataset_directory_is_that_directory(tmp_path
         "/override/base/wav/spk1/a.wav", "/override/base/wav/spk1/b.wav"]
 
 
+def _run_preprocess_recording_engine_paths(args):
+    class Engine:
+        def __init__(self):
+            self.paths = []
+
+        def extra_preprocess(self, utterance_audio_path, cache_dir, sample_rate, **kwargs):
+            self.paths.append(str(utterance_audio_path))
+            return {}
+
+    engine = Engine()
+    with patch("phoonnx_train.engines.get_engine", return_value=engine):
+        result = _run_preprocess(args)
+    return result, engine.paths
+
+
+def test_jsonl_audio_path_leaves_the_engine_step_on_the_local_audio(tmp_path):
+    clip = _wav(tmp_path / "wav" / "clip1.wav", sr=16000)
+    source = tmp_path / "a.jsonl"
+    source.write_text(json.dumps({"text": "hi", "audio": str(clip), "phon": "h i"}) + "\n")
+    out = tmp_path / "out"
+    args = ["-i", str(source), "-o", str(out), "-l", "en", "--phonemes-column", "phon",
+            "--engine", "recorder", "--jsonl-audio-path", "/override/base"]
+    with ProcessPoolExecutor(1, mp_context=multiprocessing.get_context("spawn")) as pool:
+        result, paths = pool.submit(_run_preprocess_recording_engine_paths, args).result()
+    assert result.exit_code == 0, result.output
+    assert paths == [str(clip)]
+    assert _manifest(out)[0]["audio_path"] == "/override/base/wav/clip1.wav"
+
+
 def test_jsonl_audio_spec_path_rewrites_a_custom_cache_dir(tmp_path):
     clip = _wav(tmp_path / "wav" / "clip1.wav", sr=16000)
     features = tmp_path / "features"

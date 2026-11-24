@@ -1079,19 +1079,20 @@ def cli(
                         len(utt.phoneme_ids), spec_frames, utt.audio_path)
                     continue
 
-            # path overrides, so a dataset preprocessed on one machine trains on another
-            if audio_base is not None and str(utt.audio_path) != ".":
-                utt.audio_path = Path(jsonl_audio_path) / utt.audio_path.absolute().relative_to(audio_base)
-            if jsonl_audio_spec_path and utt.audio_norm_path is not None:
-                utt.audio_norm_path = Path(jsonl_audio_spec_path) / utt.audio_norm_path.relative_to(cache_base)
-                utt.audio_spec_path = Path(jsonl_audio_spec_path) / utt.audio_spec_path.relative_to(cache_base)
-
             if training_engine is not None and utt.audio_path:
                 extra = training_engine.extra_preprocess(
                     Path(utt.audio_path), config.cache_dir,
                     sample_rate, **engine_kwargs)
                 for key, value in extra.items():
                     setattr(utt, key, value)
+
+            # path overrides, so a dataset preprocessed on one machine trains on another.
+            # They run after the engine step, which must read the local audio.
+            if audio_base is not None and str(utt.audio_path) != ".":
+                utt.audio_path = Path(jsonl_audio_path) / utt.audio_path.absolute().relative_to(audio_base)
+            if jsonl_audio_spec_path and utt.audio_norm_path is not None:
+                utt.audio_norm_path = Path(jsonl_audio_spec_path) / utt.audio_norm_path.relative_to(cache_base)
+                utt.audio_spec_path = Path(jsonl_audio_spec_path) / utt.audio_spec_path.relative_to(cache_base)
 
             json.dump(
                 utt.asdict(),
