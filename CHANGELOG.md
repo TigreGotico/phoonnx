@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.135.2a2](https://github.com/TigreGotico/phoonnx/tree/1.135.2a2) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.2a1...1.135.2a2)
+
+**Merged pull requests:**
+
+- docs: README, docs index, navigation and agent hints [\#1003](https://github.com/TigreGotico/phoonnx/pull/1003) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.135.2a1](https://github.com/TigreGotico/phoonnx/tree/1.135.2a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.1a2...1.135.2a1)
