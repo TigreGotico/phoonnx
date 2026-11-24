@@ -1,8 +1,10 @@
 """The segment phoneme map: phoonnx_train.segments and preprocess --segment-map."""
 import json
+import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 from phoonnx.tokenizer import DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN, DEFAULT_PAD_TOKEN, DEFAULT_BLANK_WORD_TOKEN
 from phoonnx_train.segments import segment_phonemes
@@ -111,6 +113,13 @@ class TestSegmentMapCli(unittest.TestCase):
             config = json.loads((tmp / "out" / "config.json").read_text(encoding="utf-8"))
             self.assertEqual(set(config["phoneme_id_map"]) - SPECIALS, set(CLI_TEXT) - SPECIALS)
             self.assertNotIn("fold_compounds", config)
+
+    def test_segment_map_without_phonematcher_stops_before_any_utterance(self):
+        with TemporaryDirectory() as tmp, mock.patch.dict(sys.modules, {"phonematcher": None}):
+            result = self._run(Path(tmp), "--segment-map")
+            self.assertNotEqual(result.exit_code, 0)
+            self.assertIn("phoonnx[train-features]", result.output)
+            self.assertFalse((Path(tmp) / "out" / "dataset.jsonl").exists())
 
     def test_segment_map_refuses_resume(self):
         with TemporaryDirectory() as tmp:

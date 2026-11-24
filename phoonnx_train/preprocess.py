@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import dataclasses
 import functools
+import importlib.util
 import itertools
 import json
 import logging
@@ -654,6 +655,8 @@ def cli(
         _LOGGER.fatal("--single-speaker and --speaker-id cannot both be provided")
         raise click.Abort()
 
+    if segment_map and importlib.util.find_spec("phonematcher") is None:
+        raise click.UsageError("--segment-map needs phonematcher: install phoonnx[train-features]")
     if segment_map and prev_config:
         raise click.UsageError(
             "--segment-map cannot be combined with --prev-config: the previous "
