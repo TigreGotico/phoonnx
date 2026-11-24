@@ -141,23 +141,45 @@ def speak(voice, text: str = SPOKEN, syn_config=None) -> Tuple[np.ndarray, List[
 # passing engine peaks at 0.52 (VITS) and has an RMS of 0.09 (Matcha), after the
 # clip to [-1, 1]. The floors sit 10 and 17 times lower, at -26 and -46 dBFS. A
 # silent mel through Griffin-Lim peaks near 5e-7, under the floors. Output scaled
-# by 1e-6 falls under the floors for every engine except ZipVoice, whose raw
-# output peaks near 1e9 before the clip.
+# by 1e-6 falls under the floors only when the raw output peaks under 5e4 before
+# the clip. Each test that keeps the floors trains its engine until it does.
 PEAK_FLOOR = 0.05
 RMS_FLOOR = 0.005
 
 
 def assert_round_trip(training_ids: Sequence[int], fed: List[List[int]], audio: np.ndarray,
-                      min_samples: int) -> None:
-    """The graph read the ids that training read, and the raw audio is long and loud
-    enough to be speech-shaped: at least ``min_samples`` samples, not near silence."""
+                      min_samples: int, level: bool = True) -> None:
+    """The graph read the ids that training read, and the raw audio is long and finite:
+    at least ``min_samples`` samples. With ``level``, it is also not near silence."""
     assert list(training_ids) in fed, (
         f"training read {list(training_ids)}; the graph read {fed}")
     assert audio.size >= min_samples, f"the voice gave {audio.size} samples, under {min_samples}"
     assert np.isfinite(audio).all(), "the voice gave non-finite audio"
+    if not level:
+        return
     peak, rms = float(np.abs(audio).max()), float(np.sqrt(np.mean(audio ** 2)))
     assert peak >= PEAK_FLOOR and rms >= RMS_FLOOR, (
         f"the voice gave near silence: peak {peak:.3g}, RMS {rms:.3g}")
+
+
+def mel_profile_correlation(mel: np.ndarray, vocoder: Any, wav: Path) -> float:
+    """Correlate the time-mean spectrum of ``mel`` with that of the clip ``wav``.
+
+    The clip is analysed with the vocoder's own mel basis and the natural log of the
+    magnitude, the scale on which the vocoder reads ``mel``. A constant mel gives 0.
+    """
+    import librosa
+    import soundfile as sf
+
+    audio, rate = sf.read(wav)
+    audio = librosa.resample(audio, orig_sr=rate, target_sr=vocoder.sample_rate)
+    spec = np.abs(librosa.stft(audio, n_fft=vocoder.n_fft, hop_length=vocoder.hop_length,
+                               win_length=vocoder.win_length))
+    target = np.log(np.maximum(1e-5, vocoder.mel_basis @ spec)).mean(axis=1)
+    profile = np.asarray(mel, dtype=np.float64).reshape(vocoder.num_mels, -1).mean(axis=1)
+    if profile.std() == 0:
+        return 0.0
+    return float(np.corrcoef(profile, target)[0, 1])
 
 
 class KnownDefect(Exception):

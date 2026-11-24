@@ -3,11 +3,22 @@
 Each test builds a tiny model of one architecture through its engine's real
 ``create_model``, trains it a few steps on the toy dataset of
 tests/train_roundtrip.py, exports it with the engine's own ``export_onnx`` and
-loads the export with ``TTSVoice.load``. The test then checks that the ids the
-graph reads for a sentence are the ids training read for it, and that the raw
-audio of the graph, with no peak normalisation, is long and loud enough: one
-decoder hop per id at least, and above the floors of tests/train_roundtrip.py.
-A tiny model makes noise, which is enough.
+loads the export with ``TTSVoice.load``. What each test then shows:
+
+- Every engine: the ids the graph reads for a sentence are the ids training read
+  for it, and the raw audio, with no peak normalisation, is finite and has one
+  decoder hop of samples per id at least.
+- VITS, YourTTS, Matcha, FastPitch, SpeedySpeech, Mixer-TTS, GlowTTS and Rápido:
+  the raw audio is above the floors of tests/train_roundtrip.py. Their raw output
+  peaks under 5e4, so the same audio scaled down a millionfold fails, and through
+  Griffin-Lim a silent mel fails. The floors do not tell saturated noise from
+  speech: FastPitch clips 91 % of its samples at 1.
+- GlowTTS: the mean spectrum of its mel follows that of the training clip, so a
+  constant mel fails.
+- Rápido: the latents its stand-in decoder gets vary over time. Nothing shows that
+  they encode speech.
+- ZipVoice: the audio is run, not checked. The test shows only that the output of
+  the decoder graph reaches the vocoder.
 """
 import json
 import math
@@ -17,10 +28,12 @@ import time
 from contextlib import nullcontext
 from pathlib import Path
 
+import numpy as np
 import pytest
 import torch
 
 from phoonnx.engines.vocoders import build_vocoder
+from phoonnx.engines.zipvoice import ZipVoiceAdapter
 from phoonnx.voice import SynthesisConfig, TTSVoice
 from phoonnx_train.engines import get_engine
 from phoonnx_train.engines.base import TrainingEngineConfig
@@ -70,8 +83,11 @@ def _min_samples(voice, ids):
 
 def _round_trip(engine_name, data, tmp_path, steps=2, voice_params=None, vocoder=None,
                 training_ids=_training_ids, export_kwargs=None, syn_config=None, defect=None,
-                **extra):
-    """Build, train, export and load one engine, then check the ids and the audio."""
+                probe=None, level=True, **extra):
+    """Build, train, export and load one engine, then check the ids and the audio.
+
+    ``probe`` is called with the loaded voice before it speaks, so that a test can
+    record what reaches the vocoder."""
     engine = get_engine(engine_name)
     torch.manual_seed(0)
     module = engine.create_model(_engine_config(data, **extra), [data])
@@ -84,9 +100,11 @@ def _round_trip(engine_name, data, tmp_path, steps=2, voice_params=None, vocoder
     voice = TTSVoice.load(onnx_path, config_path=config_path, engine_params=voice_params)
     if vocoder is not None:
         voice.adapter.vocoder = vocoder
+    if probe is not None:
+        probe(voice)
     audio, fed = rt.speak(voice, syn_config=syn_config)
     with rt.known_defect(AssertionError, defect) if defect else nullcontext():
-        rt.assert_round_trip(ids, fed, audio, _min_samples(voice, ids))
+        rt.assert_round_trip(ids, fed, audio, _min_samples(voice, ids), level=level)
     return ids, onnx_path, config_path
 
 
@@ -130,11 +148,36 @@ def toy_22k_f0(tmp_path_factory):
     return rt.preprocess(tmp_path_factory.mktemp("toy-22k-f0"), 22050, engine="fastpitch")
 
 
+def _record_mels(mels):
+    """A probe that keeps each (vocoder, mel) pair that the voice sends to its vocoder."""
+    def probe(voice):
+        vocoder = voice.adapter.vocoder
+        mel_to_audio = vocoder.mel_to_audio
+
+        def recording(mel, *args, **kwargs):
+            mels.append((vocoder, np.asarray(mel, dtype=np.float32)))
+            return mel_to_audio(mel, *args, **kwargs)
+
+        vocoder.mel_to_audio = recording
+    return probe
+
+
 def test_glowtts_round_trip(toy_22k, tmp_path):
-    _round_trip("glowtts", toy_22k, tmp_path, voice_params=GRIFFIN_LIM, num_test_examples=0,
-                hidden_channels=16, filter_channels=32, filter_channels_dp=16, n_heads=2,
-                n_layers=1, prenet_n_layers=2, dec_hidden_channels=16, dec_n_blocks=1,
-                dec_n_layers=1, gin_channels=0)
+    """After 2 steps inside the Noam warmup, the raw audio peaks near 1e7, so audio
+    scaled down a millionfold still passes the floors. 50 steps at 1e-2 with no
+    warmup bring the raw peak near 10. A mel of zeros (decoder output dropped) still
+    decodes loud, so the test also checks the mel: its time-mean spectrum must follow
+    that of the training clip (correlation near 0.9 after training, 0 for a
+    constant mel)."""
+    mels = []
+    _round_trip("glowtts", toy_22k, tmp_path, steps=50, voice_params=GRIFFIN_LIM,
+                probe=_record_mels(mels), learning_rate=1e-2, warmup_steps=1,
+                num_test_examples=0, hidden_channels=16, filter_channels=32,
+                filter_channels_dp=16, n_heads=2, n_layers=1, prenet_n_layers=2,
+                dec_hidden_channels=16, dec_n_blocks=1, dec_n_layers=1, gin_channels=0)
+    ((vocoder, mel),) = mels
+    r = rt.mel_profile_correlation(mel, vocoder, toy_22k.parent / "u1.wav")
+    assert r >= 0.5, f"the mean spectrum of the mel correlates {r:.3f} with the training clip"
 
 
 TINY_FORWARD = dict(hidden_channels=16, hidden_channels_ffn=32, encoder_num_layers=1,
@@ -331,16 +374,20 @@ def test_supertonic_round_trip(toy_22k, tmp_path):
     rt.assert_round_trip(training_ids, fed, audio, _min_samples(voice, training_ids))
 
 
-def test_zipvoice_round_trip(toy_22k, tmp_path):
+def test_zipvoice_round_trip_audio_run_only(toy_22k, tmp_path):
     """ZipVoice clones in context from a reference clip and its text. The export
     writes the text encoder and the flow-matching decoder; the mel front end comes
     from scripts/conversion/zipvoice/export_mel.py, as for a released voice, and
     Griffin-Lim stands in for the Vocos vocoder.
 
-    The untrained flow model returns its starting noise, which the adapter divides
-    by feat_scale 0.1, so most mel bins sit at the clip of 12 and the raw audio
-    peaks near 1e9. 200 training steps do not change that. The level floors still
-    fail a silent mel, but not audio scaled down a millionfold."""
+    The ids and the length are checked as for the other engines. The audio is only
+    run, not checked. The adapter divides the flow output by feat_scale 0.1, and the
+    tiny model does not learn the mel at a training scale fit for CI: after 100 steps
+    the mean spectrum of its mel does not correlate with the training clip (0.04),
+    and the raw audio still peaks near 1e9. That audio passes the level floors even
+    with the flow output dropped, or scaled down a millionfold. The test checks
+    only that the decoder graph's output reaches the vocoder: the mel must differ
+    from the start noise alone by at least a tenth of its size."""
     import importlib.util
 
     script = Path(__file__).parent.parent / "scripts" / "conversion" / "zipvoice" / "export_mel.py"
@@ -355,14 +402,28 @@ def test_zipvoice_round_trip(toy_22k, tmp_path):
     vocoder = build_vocoder(vocoder_type="griffinlim", config={
         **GRIFFIN_LIM["vocoder_config"], "sample_rate": 24000, "num_mels": 100, "mel_fmax": 12000.0})
     out = tmp_path / "voice"
+    mels, decoder = [], []
+
+    def probe(voice):
+        _record_mels(mels)(voice)
+        decoder.append(_RecordingSession(voice.session))
+        voice.session = decoder[0]
+
     _round_trip(
-        "zipvoice", toy_22k, tmp_path, vocoder=vocoder,
+        "zipvoice", toy_22k, tmp_path, vocoder=vocoder, probe=probe, level=False,
         training_ids=lambda module: _training_ids(module, lambda item: item[0]),
         voice_params={"text_encoder_path": str(out / "text_encoder.onnx"),
                       "mel_path": str(mel_path), "num_step": 2},
         syn_config=SynthesisConfig(speaker_reference=str(toy_22k.parent / "u0.wav"),
                                    speaker_reference_text=rt.TEXTS[0]),
         quality="low", num_test_examples=0)
+
+    ((_, mel),) = mels
+    feed = decoder[0].feeds[0]
+    start = feed["x"][:, feed["x"].shape[1] - mel.shape[-1]:] / ZipVoiceAdapter.FEAT_SCALE
+    noise_only = np.clip(start.transpose(0, 2, 1), -12.0, 12.0)
+    change = np.linalg.norm(np.clip(mel, -12.0, 12.0) - noise_only) / np.linalg.norm(noise_only)
+    assert change >= 0.1, f"the mel differs {change:.3g} from the start noise alone"
 
 
 TINY_STYLETTS2 = {
