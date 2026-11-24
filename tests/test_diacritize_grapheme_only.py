@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 import scriptconv.diacritics as scd
-from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig
+from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig, AudioPost
 from phoonnx.voice import TTSVoice
 from scriptconv.phonemizers.base import BasePhonemizer
 
@@ -58,7 +58,7 @@ class TestDiacritizeGraphemeOnly(unittest.TestCase):
     def test_phonemic_ipa_input_is_never_diacritized(self):
         calls, seen = [], []
         voice = _make_voice(Alphabet.IPA, seen)
-        syn_config = SynthesisConfig(alphabet=Alphabet.IPA, normalize_audio=False)
+        syn_config = SynthesisConfig(input_alphabet=Alphabet.IPA, audio=AudioPost(normalize=False))
 
         with patch.object(scd, "_tashkeel", lambda *a, **k: _RecordingDiacritizer(calls)):
             list(voice.synthesize("mafʕuːl", syn_config))
@@ -69,7 +69,7 @@ class TestDiacritizeGraphemeOnly(unittest.TestCase):
     def test_grapheme_input_is_still_diacritized_when_enabled(self):
         calls, seen = [], []
         voice = _make_voice(Alphabet.IPA, seen)
-        syn_config = SynthesisConfig(alphabet=Alphabet.GRAPHEMES, normalize_audio=False)
+        syn_config = SynthesisConfig(input_alphabet=Alphabet.GRAPHEMES, audio=AudioPost(normalize=False))
 
         with patch.object(scd, "_tashkeel", lambda *a, **k: _RecordingDiacritizer(calls)):
             list(voice.synthesize("mrhba", syn_config))

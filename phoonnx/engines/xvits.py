@@ -17,7 +17,7 @@ Five ONNX graphs per voice (the encoder is the voice's own ``session``)::
 ``prominence_path``, ``dp_cond_path`` (the per-style duration offsets), ``emphasis_template_path``
 and ``runtime_path`` (``runtime.json``: styles and default settings).
 
-Per-call options go in ``SynthesisConfig.extra_params``: ``style``, ``emphasis`` (``auto``,
+Per-call options go in ``SynthesisConfig.extra``: ``style``, ``emphasis`` (``auto``,
 ``marked`` or ``none``), ``emphasis_scale``, ``steps`` and ``seed``. ``*word*`` marks a stressed word.
 """
 import difflib
@@ -269,7 +269,7 @@ class XVitsAdapter(BaseOnnxAdapter):
         plain, flags = parse_marked(text) if marked else (text, [False] * len(text.split()))
         segments = list(voice.frontend.segments(plain, stages))
         words_of: Optional[List[int]] = None
-        if config.extra_params.get("emphasis", "auto") != "none":
+        if config.extra.get("emphasis", "auto") != "none":
             alone = [voice.frontend.phonemize_flat(word, stages) for word in plain.split()]
             words_of = align_words([symbol for segment in segments for symbol in segment.phonemes], alone)
         tokenizer = voice.tokenizer

@@ -4,109 +4,90 @@
 covers: how to measure where synthesis time goes and how to read time to first audio and the real-time factor
 source: scripts/bench_latency.py, phoonnx/providers.py:PROVIDERS_ENV_VAR, phoonnx/voice.py:TTSVoice.synthesize
 generated: no
-verify: python -I scripts/bench_latency.py model.onnx --config config.json --runs 2 --text "Olá, isto é um teste." (with the files of OpenVoiceOS/phoonnx_pt-PT_miro_unicode)
+verify: ! comm -3 <(sed '/<!-- agent-hint/,/-->/d' docs/benchmarking.md | grep -oP -- '(?<![\w-])--[a-z][a-z-]*' | sort -u) <(.venv/bin/python -I scripts/bench_latency.py --help | grep -oP -- '(?<![\w-])--[a-z][a-z-]*' | grep -vx -- --help | sort -u) | grep .
 see: streaming.md, voice_sweep.md
 -->
 
-This page shows how to measure where the time of a `synthesize()` call goes, for developers who compare voices or execution providers.
+This page shows how to measure where the time of a `synthesize()` call goes. It is for developers who compare voices or execution providers.
 
-## Running the benchmark
+## Run the benchmark
 
-```bash
-python scripts/bench_latency.py MODEL [OPTIONS]
-```
+1. Download a voice and print the paths of its model and config files:
 
-`MODEL` is either a path to a local `.onnx` voice or a voice id downloadable
-through `TTSModelManager` (for example `piper/en_US-amy-low`). The options are:
+   ```bash
+   python -c "
+   from phoonnx.model_manager import TTSModelManager
+   manager = TTSModelManager(); manager.load(); manager.merge_default_voices()
+   info = manager.voices['OpenVoiceOS/phoonnx_kab-DZ_miro_o2i']
+   print(info.download_model()); print(info.hub_path(info.config_url))"
+   ```
 
-- `--config PATH` — voice config JSON, if it doesn't sit next to the model as `MODEL.json`.
-- `--runs N` — number of warm runs to summarize (default 5).
-- `--warmup / --no-warmup` — run one extra untimed pass before the reported cold run (default off).
-- `--text` / `--text-file` — override the built-in 1-sentence and 5-sentence benchmark texts.
-- `--json-out PATH` — write machine-readable results alongside the printed table.
+   The two lines end in `miro_kab-DZ.onnx` and `miro_kab-DZ.json`.
 
-To force a specific ONNX Runtime execution provider, set `PHOONNX_ONNX_PROVIDERS`
-before running, e.g. `PHOONNX_ONNX_PROVIDERS=CPUExecutionProvider` or
-`PHOONNX_ONNX_PROVIDERS=CUDAExecutionProvider,CPUExecutionProvider`. The script
-also reports which providers ONNX Runtime says are available. That list does not prove
-that a GPU provider starts. A missing CUDA or cuDNN shared library makes ONNX Runtime use
-the CPU with no error. Check the `session_create` time and the per-run numbers before
-you trust a GPU result.
+2. Run the script from a checkout of this repository, with the model file and its config. In this example, the two files are copied to `model.onnx` and `config.json`:
 
-A run on a busy 12-core laptop CPU, with the files of
-`OpenVoiceOS/phoonnx_pt-PT_miro_unicode`, gives this output (the 5-sentence table is
-left out):
+   ```bash
+   python scripts/bench_latency.py model.onnx --config config.json --runs 2 --text "Azul, amek telliḍ?"
+   ```
 
-```bash
-python scripts/bench_latency.py model.onnx --config config.json --runs 2 --text "Olá, isto é um teste."
-```
+3. Read the tables. A run on a busy 8-core laptop CPU prints this, followed by a second table for the five-sentence text:
 
-```text
-stage                    seconds
-config_parse              0.1457
-session_create            3.4592
-cold_warmup_run           1.7443
+   ```text
+   === Load (cold, one-shot) ===
+   stage                    seconds
+   config_parse              0.0419
+   session_create            1.7694
+   cold_warmup_run           3.5121
 
-=== 1sentence (warm, N=2) ===
-stage                       median       p95       min       max
-text_normalize              0.0000    0.0000    0.0000    0.0000
-diacritics                  0.0000    0.0000    0.0000    0.0000
-phonemize                   0.0147    0.0233    0.0060    0.0233
-tokenize                    0.0002    0.0003    0.0001    0.0003
-session_run_total           1.1887    1.6273    0.7501    1.6273
-postprocess_total           0.0002    0.0002    0.0002    0.0002
-ttfa                        1.1937    1.5340    0.8534    1.5340
-total                       1.1937    1.5340    0.8534    1.5340
-rtf                         0.6537    0.8207    0.4868    0.8207
-audio_seconds: 1.707
-```
+   === 1sentence (warm, N=2) ===
+   stage                       median       p95       min       max
+   text_normalize              0.0000    0.0000    0.0000    0.0000
+   diacritics                  0.0000    0.0000    0.0000    0.0000
+   phonemize                   0.0276    0.0305    0.0247    0.0305
+   tokenize                    0.0013    0.0025    0.0001    0.0025
+   session_run_total           0.6187    0.6303    0.6070    0.6303
+   postprocess_total           0.0013    0.0024    0.0002    0.0024
+   ttfa                        0.5658    0.5803    0.5514    0.5803
+   total                       0.5659    0.5803    0.5514    0.5803
+   rtf                         0.2220    0.2262    0.2179    0.2262
+   audio_seconds: 2.113
+   ```
 
-With `--text`, both tables use the same text. The numbers change from run to run on a busy
-machine, so compare medians over more runs.
+The numbers change from run to run on a busy machine, so compare medians over more runs.
+
+## Options
+
+The first argument is the path of a local `.onnx` voice. These options change the run:
+
+- `--config PATH` gives the voice config JSON. Without it, the script reads `MODEL.json` next to the model.
+- `--runs N` sets the number of warm runs to summarize. The default is 5.
+- `--warmup` runs one more untimed pass before the cold run. The default is `--no-warmup`.
+- `--text` replaces the built-in one-sentence and five-sentence texts. Both tables then use the same text.
+- `--text-file PATH` reads the text from a file.
+- `--json-out PATH` also writes the results as JSON. The JSON holds the execution providers that ONNX Runtime lists as available.
+
+To select an ONNX Runtime execution provider, set `PHOONNX_ONNX_PROVIDERS` before the run, for example `PHOONNX_ONNX_PROVIDERS=CUDAExecutionProvider,CPUExecutionProvider`. The list of available providers does not prove that a GPU provider starts. When a CUDA or cuDNN shared library is missing, ONNX Runtime uses the CPU and shows no error. Read the `session_create` time and the run times before you trust a GPU result.
 
 ## What the stages mean
 
-Each stage mirrors a step inside `TTSVoice.synthesize()` (see
-`phoonnx/voice.py`).
+The script times each step of synthesis on its own. It runs each step over the whole text before the next step starts, through `phonemize` and the deprecated `phonemes_to_ids` and `phoneme_ids_to_audio` methods. `TTSVoice.synthesize()` runs `prepare` and `render`, which take the text one sentence at a time. The stage times show where the time goes, but their sum can differ from the time of one `synthesize()` call. The timed path patches and mocks nothing.
 
-The script times its own staged path: it runs each step over the whole text before the next step starts, through `phonemize` and the deprecated `phonemes_to_ids` and `phoneme_ids_to_audio`. Synthesis itself runs `prepare` and `render`, which take the text one sentence at a time. Thus the stage times show where the time goes, but their sum can differ from the time of one `synthesize()` call. Nothing is patched or mocked in the timed path:
+- `config_parse` and `session_create` load the voice: the first parses its JSON config, the second builds the ONNX Runtime session. The script reports them one time, because a deployment loads a voice one time.
+- `cold_warmup_run` is the first synthesis after the session is made. ONNX Runtime optimizes the graph and selects kernels during this run, one time per process. The runs after it are faster for that reason alone.
+- `text_normalize` applies the phonetic spellings of the voice, when the voice has a spelling table.
+- `diacritics` adds diacritics, for voices that ask for them, such as Arabic voices. It is zero for other voices.
+- `phonemize` turns the text into phonemes, one sequence per sentence.
+- `tokenize` maps the phonemes to the integer ids of the model.
+- `session_run_total` is the sum of the ONNX Runtime calls for all sentences.
+- `postprocess_total` normalizes the audio, applies the volume and clips the samples into the final `AudioChunk`.
 
-- **config_parse** / **session_create** — loading the voice: parsing its JSON
-  config versus building the ONNX Runtime session. The script reports them once, cold,
-  because a deployment loads a voice once and keeps it in memory.
-- **cold_warmup_run** — the first `session.run` after session creation, which
-  pays for ONNX Runtime's graph optimization and kernel selection. This cost
-  is paid once per process; every run after it is faster for that reason
-  alone, not because anything about the text changed.
-- **text_normalize** — phonetic-spelling substitution (user pronunciation
-  overrides), when the voice ships an override table.
-- **diacritics** — restoring diacritics (Arabic/Hebrew voices only); zero
-  for voices that don't request it.
-- **phonemize** — turning text into phoneme sequences, one per sentence.
-- **tokenize** — mapping phonemes to the model's integer vocabulary.
-- **session_run_total** — the sum of ONNX Runtime inference calls across all
-  sentences in the text.
-- **postprocess_total** — normalization, volume scaling, and clipping into
-  the final `AudioChunk`.
+## Time to first audio and real-time factor
 
-## TTFA vs RTF
+Time to first audio (`ttfa`) is the wall-clock time from the `synthesize()` call to the first `AudioChunk`. `synthesize()` speaks one sentence before it reads the next. For a paragraph, `ttfa` holds the cost of the first sentence, plus the normalization of the whole text, which runs before the text is split into sentences. This number tells how long a user waits before they hear speech.
 
-**Time-to-first-audio (TTFA)** is the wall-clock time from calling
-`synthesize()` to receiving the *first* `AudioChunk`. `synthesize()` phonemizes,
-tokenizes and synthesizes one sentence before it reads the next. Thus TTFA for a
-multi-sentence paragraph carries the cost of the first sentence only, plus the
-normalisation of the whole text, which runs before the text is cut into
-sentences. This is the number that determines how long a user waits in a live
-conversation before hearing anything.
+The real-time factor (`rtf`) is the total synthesis time divided by the seconds of audio. An `rtf` below 1.0 means that synthesis runs faster than playback, so the voice can keep up with streaming. The `rtf` does not tell when the first chunk arrives: a voice with a low `rtf` can still start slowly when its first sentence is long.
 
-**Real-time factor (RTF)** is total synthesis time divided by the seconds of
-audio produced. An RTF below 1.0 means synthesis runs faster than playback —
-the model can keep up with real-time streaming. RTF says nothing about how
-long the *first* chunk takes to arrive; a voice can have a low RTF and still
-feel slow to start if its first sentence is long.
-
-Read them together: TTFA answers "how long until I hear anything," RTF
-answers "can this keep up once it starts."
+Read the two numbers together. `ttfa` tells how long the user waits for the first audio. `rtf` tells if synthesis keeps up after it starts.
 
 ---
 

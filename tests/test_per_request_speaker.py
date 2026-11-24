@@ -55,19 +55,19 @@ class TestTheRequestReachesTheEngine(unittest.TestCase):
 
     def test_a_speaker_index_sent_as_a_query_string(self):
         got = _sent_config(self, _plugin(self), speaker_id="57")
-        self.assertEqual(got["speaker_id"], 57)
+        self.assertEqual(got["speaker"], 57)
 
     def test_a_speaker_named_through_the_voice_map(self):
         got = _sent_config(self, _plugin(self), speaker="p226")
-        self.assertEqual(got["speaker_id"], 1)
+        self.assertEqual(got["speaker"], 1)
 
     def test_the_request_beats_the_configured_speaker(self):
         got = _sent_config(self, _plugin(self, speaker_id=3), speaker_id="57")
-        self.assertEqual(got["speaker_id"], 57)
+        self.assertEqual(got["speaker"], 57)
 
     def test_the_configured_speaker_applies_when_none_is_sent(self):
         got = _sent_config(self, _plugin(self, speaker_id=3))
-        self.assertEqual(got["speaker_id"], 3)
+        self.assertEqual(got["speaker"], 3)
 
     def test_scales_sent_as_query_strings_arrive_as_numbers(self):
         got = _sent_config(self, _plugin(self, length_scale=1.0),

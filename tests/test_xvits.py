@@ -441,7 +441,7 @@ def _spelled(voice, utterance):
 
 def test_a_mark_follows_its_word_when_the_normaliser_moves_it():
     voice, _ = _voice()
-    (utterance,) = voice.prepare("a £3 *billion* deal.", SynthesisConfig(extra_params={"emphasis": "marked"}))
+    (utterance,) = voice.prepare("a £3 *billion* deal.", SynthesisConfig(extra={"emphasis": "marked"}))
     assert utterance.text == "a three billion pounds deal."
     assert utterance.params["word_flags"] == [False, False, True, False]
     assert _spelled(voice, utterance) == {0: "a", 1: "threepounds", 2: "billion", 3: "deal"}
@@ -464,19 +464,19 @@ def test_text_without_marks_still_gets_a_word_for_each_token_and_no_flags():
 
 def test_emphasis_none_reads_no_words():
     voice, _ = _voice()
-    (utterance,) = list(voice.prepare("hi *there*", SynthesisConfig(extra_params={"emphasis": "none"})))
+    (utterance,) = list(voice.prepare("hi *there*", SynthesisConfig(extra={"emphasis": "none"})))
     assert dict(utterance.params) == {}
 
 
 def test_phonemic_input_is_left_to_the_voice():
     voice, _ = _voice()
-    utterances = list(voice.prepare("hi there", SynthesisConfig(alphabet=Alphabet.UNICODE)))
+    utterances = list(voice.prepare("hi there", SynthesisConfig(input_alphabet=Alphabet.UNICODE)))
     assert all(dict(u.params) == {} for u in utterances)
 
 
 def test_utterance_params_join_the_request_params_of_the_engine_call():
     voice, adapter = _voice()
-    list(voice.synthesize("so *really* it is", SynthesisConfig(extra_params={"style": "happy", "seed": 3})))
+    list(voice.synthesize("so *really* it is", SynthesisConfig(extra={"style": "happy", "seed": 3})))
     request = adapter.requests[0]
     assert request.params["style"] == "happy" and request.params["seed"] == 3
     assert request.params["word_flags"] == [False, True, False, False]

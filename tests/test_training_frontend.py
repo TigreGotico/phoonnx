@@ -12,12 +12,12 @@ the training code does not call.
 import queue
 import types
 import unittest
-from dataclasses import replace
 from functools import partial
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import scriptconv.diacritics as scd
+from scriptconv.frontend import Stages
 
 from phoonnx.config import Alphabet, PhonemeType, SynthesisConfig, VoiceConfig
 from phoonnx.voice import TTSVoice
@@ -70,7 +70,7 @@ def _training_symbols(lang, texts, add_diacritics=False, text_casing="ignore"):
 
 
 def _synthesis_ids(voice, text, chunk=None):
-    syn = replace(SynthesisConfig(), enable_phonetic_spellings=False, chunk=chunk)
+    syn = SynthesisConfig(phonetic_spellings=False, stages=Stages(chunk=chunk))
     return [list(u.ids) for u in voice.prepare(text, syn)]
 
 

@@ -57,7 +57,7 @@ reference transcript plus the XCodec2 codes of its recording, appended after
 in-context. That is upstream's own cloning recipe with the encode step done ahead
 of time.
 
-Cloning is therefore **pre-encoded**, like NeuTTS: ``speaker_reference`` (a fresh
+Cloning is therefore **pre-encoded**, like NeuTTS: ``SynthesisConfig.reference`` (a fresh
 clip) is not supported, because tokenising one needs XCodec2's encoder together
 with the w2v-BERT filterbank front end, neither of which this bundle ships.
 """
@@ -211,7 +211,7 @@ class LlasaAdapter(BaseOnnxAdapter):
         phoonnx voice is pinned to, else ``voices.json``'s ``default_voice``."""
         name = None
         if syn_config is not None:
-            name = (syn_config.extra_params or {}).get("voice")
+            name = syn_config.extra.get("voice")
         cfg = getattr(voice, "config", None)
         if not name:
             name = (getattr(cfg, "engine_params", None) or {}).get("voice")
@@ -297,7 +297,7 @@ class LlasaAdapter(BaseOnnxAdapter):
             raise RuntimeError("Llasa voice missing tokenizer_path in engine_params")
         budget = int(self.MAX_CHUNK_CHARS)
         if syn_config is not None:
-            budget = int((syn_config.extra_params or {}).get("max_chunk_chars", budget))
+            budget = int(syn_config.extra.get("max_chunk_chars", budget))
         preset = self.resolve_preset(voice, syn_config)
         ref_text, ref_ids = "", []
         if preset is not None:
@@ -409,7 +409,7 @@ class LlasaAdapter(BaseOnnxAdapter):
             raise RuntimeError(
                 "Llasa clones from pre-encoded voice presets, not from a reference clip: "
                 "tokenising one needs XCodec2's encoder and its w2v-BERT front end, which "
-                "this bundle does not ship. Select a preset with extra_params={'voice': ...}")
+                "this bundle does not ship. Select a preset with extra={'voice': ...}")
 
         p = {**self.default_params(), **request.params}
         seed = p.get("seed")

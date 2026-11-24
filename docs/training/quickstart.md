@@ -4,14 +4,13 @@
 covers: how to go from a folder of audio to a speaking ONNX voice, step by step
 source: phoonnx_train/preprocess.py:cli, phoonnx_train/train.py:main, phoonnx_train/export_onnx.py:cli, phoonnx_train/engines/vits.py:write_sidecars
 generated: no
-verify: ! comm -23 <(grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' docs/training/quickstart.md | grep -vxE -- '--(pre|logdir|learning-rate)' | sort -u) <(for m in preprocess train export_onnx; do python -m phoonnx_train.$m --help; done | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | sort -u) | grep .
+verify: ! comm -23 <(grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' docs/training/quickstart.md | grep -vxE -- '--(pre|logdir|learning-rate)' | sort -u) <(for m in preprocess train export_onnx; do .venv/bin/python -m phoonnx_train.$m --help; done | grep -oP -- '(?<![\w-])--[a-z][a-z0-9-]*' | sort -u) | grep .
 see: datasets.md, training.md, export.md
 -->
 
-This page takes a first-time trainer from a folder of audio to a speaking ONNX voice, step by step.
+This page takes you from a folder of audio to a speaking ONNX voice, step by step.
 
-Follow the steps from top to bottom. Each step shows the command, the output you see, and the usual failures.
-The five steps are: **prepare a dataset → preprocess → train → export → speak.**
+Do the steps in order: prepare a dataset, preprocess it, train, export and speak. Each step shows the command, the output you see and the usual failures.
 
 ## 0. Install the training pipeline
 
@@ -20,7 +19,7 @@ pip install --pre "phoonnx[train]"
 ```
 
 This adds PyTorch, PyTorch Lightning and librosa to the base install. phoonnx ships as alpha
-releases, so the `--pre` flag is necessary. Use a GPU: training on a CPU is too slow to be practical.
+releases, so you must give the `--pre` flag. Use a GPU, because training on a CPU is too slow.
 
 ## 1. Prepare a dataset
 
@@ -35,24 +34,23 @@ my_dataset/
     └── ...
 ```
 
-`metadata.csv` is **pipe-delimited**, one line per clip. For a single speaker:
+`metadata.csv` holds one line per clip, with fields separated by a pipe (`|`). For a single speaker:
 
 ```
 0001|Hello and welcome.
 0002|This is the second utterance.
 ```
 
-The audio folder may be named `wav/` or `wavs/`. For an intelligible voice, use at least 30
-minutes of clean speech from one speaker. More data gives a better voice.
+The audio folder can be `wav/` or `wavs/`. Use clean speech from one speaker. More data gives a better voice.
 
 This page uses LJSpeech, the simplest format. Preprocess also reads JSONL, Parquet and Hugging
-Face datasets, and it can merge several sources in one run: see
-[Datasets](datasets.md#input-formats). [Datasets](datasets.md) also covers multi-speaker
-columns, filename resolution, audio requirements and quality filtering.
+Face datasets, and it can merge several sources in one run. See
+[Datasets](datasets.md#input-formats), which also tells how preprocess finds speakers and audio files,
+and how it filters bad clips.
 
 ## 2. Preprocess
 
-Phonemize the text and cache the audio into a training-ready dataset:
+Phonemize the text and cache the audio:
 
 ```bash
 python -m phoonnx_train.preprocess \
@@ -65,7 +63,7 @@ python -m phoonnx_train.preprocess \
   --single-speaker
 ```
 
-**Expected output** in `train_out/`:
+The output in `train_out/` is:
 
 ```
 train_out/
@@ -74,22 +72,22 @@ train_out/
 └── cache/22050/         # normalized audio + cached spectrograms
 ```
 
-The final log line reports how many utterances survived:
+The last log line gives the number of utterances that preprocess kept:
 `Preprocessing complete. Wrote N valid utterances to dataset.jsonl.`
 
-**Common failures**
+These are the common failures:
 
-- **`No valid utterances found in dataset.`** The script exits with status 1. The cause is
-  usually in `metadata.csv`: a wrong path, a wrong delimiter (it must be `|`), or audio files
-  that do not match the filenames.
-- **`No utterances left after quality filtering.`** or **`No utterance was written`** —
-  every row was dropped by a `--filter`, or failed phonemization or the audio checks. The script
-  exits with status 1 and writes no `dataset.jsonl`. The log names each row that failed phonemization or the audio checks, and gives a count for each filter.
-- **`Missing metadata file: .../metadata.csv`** — the file is not directly under
-  `--input-dir`.
-- **Rows warning `Skipping malformed row`** — a line has fewer than two `|`-separated fields.
-- **Utterances dropped with `audio is too short for its text`.** The clip is shorter than its
-  transcript needs, and preprocess skips it. A few drops are normal. Many drops mean that the
+- `No valid utterances found in dataset.` The script exits with status 1. The cause is
+  usually in `metadata.csv`: a wrong path, a wrong separator (it must be `|`), or audio files
+  that do not match the file names.
+- `No utterances left after quality filtering.` or `No utterance was written`. A `--filter`
+  dropped every row, or every row failed phonemization or the audio checks. The script
+  exits with status 1 and writes no `dataset.jsonl`. The log names each row that failed, and gives a count for each filter.
+- `Missing metadata file: .../metadata.csv`. The file is not directly in the
+  `--input-dir` directory.
+- `Skipping malformed row`. A line has fewer than two fields.
+- `audio is too short for its text`. The clip is shorter than its
+  transcript needs, and preprocess skips it. A few skipped clips are normal. Many skipped clips show that the
   audio and the transcripts do not match.
 
 Add quality filters (`--filter utmos:3.0:`, `--filter wpm:80:400`) to drop bad clips before
@@ -115,37 +113,35 @@ python -m phoonnx_train.train \
 Add `--compile` to compile the model with `torch.compile`. `--compile-mode` sets the
 compile mode. See the [training reference](training.md#trainpy-options).
 
-**Expected output.** Checkpoints appear under the run directory as training progresses:
+Training writes a checkpoint to the run directory after each epoch:
 
 ```
 train_out/runs/lightning_logs/version_0/checkpoints/epoch=49-step=12345.ckpt
 ```
 
-A checkpoint is saved every epoch by default (`--checkpoint-epochs`), and all are kept.
+`--checkpoint-epochs` sets the interval, which is one epoch by default. Training keeps every checkpoint.
 
-**Watch progress** with TensorBoard:
+Watch the progress with TensorBoard:
 
 ```bash
 tensorboard --logdir train_out/runs/lightning_logs
 ```
 
-**When to stop.** There is no fixed epoch count. Listen to samples and watch the losses
-level off. A single-speaker `medium` voice usually speaks clearly after a few hundred epochs,
-and it improves with more epochs. Stop when the samples stop getting better, then use the
+There is no fixed number of epochs. Listen to the samples and watch the losses
+become stable. Stop when the samples stop getting better, then use the
 latest checkpoint.
 
-**Common failures**
+These are the common failures:
 
-- **CUDA out of memory.** Lower `--batch-size` (try 8, then 4). A `medium` VITS voice at
-  batch size 16 needs about 12 GB of GPU memory. A smaller card needs a smaller batch.
+- CUDA out of memory. Lower `--batch-size` (try 8, then 4).
   `--precision 16-mixed` also uses less memory.
-- **`Unknown engine ...`.** The `--engine` name is not registered. See the
-  [Training reference](training.md#engines) for the list.
-- **Very slow, or no GPU used.** Make sure that you set `--accelerator gpu` and that a CUDA or
+- `Unknown engine ...`. No training engine has that `--engine` name. The error lists the names, and the
+  [Training reference](training.md#engines) describes them.
+- Training is very slow, or uses no GPU. Make sure that you set `--accelerator gpu` and that a CUDA or
   ROCm build of PyTorch is installed.
 
-> There is **no** `--learning-rate` option. The optimizer schedule is set by the engine and
-> its quality preset. The complete flag list is in the [Training reference](training.md).
+There is no `--learning-rate` option. The engine and its quality preset set the optimizer schedule.
+The full list of flags is in the [Training reference](training.md).
 
 ## 4. Export to ONNX
 
@@ -160,8 +156,8 @@ python -m phoonnx_train.export_onnx \
   --generate-tokens
 ```
 
-`export_onnx` takes the checkpoint as its **single positional argument**. Set the output
-folder with `-o/--output-dir`. There is no second positional argument. **Expected output**:
+`export_onnx` takes the checkpoint as its only positional argument. Set the output
+folder with `-o/--output-dir`, which defaults to the current directory. The output is:
 
 ```
 exported/
@@ -170,8 +166,8 @@ exported/
 └── epoch=999-step=250000.tokens.txt   # sherpa-onnx tokens, from --generate-tokens
 ```
 
-Add `--piper` to also write `epoch=999-step=250000.piper.json`, a Piper-format config.
-It is useful only for a voice with `phoneme_type=espeak` and `alphabet=ipa`.
+Add `--piper` to also write `epoch=999-step=250000.piper.json`, a config in the Piper format.
+The file is useful only for a voice with `phoneme_type=espeak` and `alphabet=ipa`.
 
 ## 5. Speak
 
@@ -191,8 +187,8 @@ with wave.open("my_voice.wav", "wb") as wav_file:
 The notebook
 [`train_vits.ipynb`](https://github.com/TigreGotico/ml-notebooks/blob/main/tts/train_vits.ipynb)
 in the `ml-notebooks` repository runs the steps of this page on Colab or Kaggle. It clones
-phoonnx and runs the same `preprocess`, `train` and `export_onnx` commands. It gives a trained
-and exported ONNX voice, with no local setup.
+phoonnx and runs the same `preprocess`, `train` and `export_onnx` commands. You get a trained
+and exported ONNX voice with no local setup.
 
 When you do not have a dataset, the notebook
 [`tts_dataset_gen.ipynb`](https://github.com/TigreGotico/ml-notebooks/blob/main/tts/tts_dataset_gen.ipynb)

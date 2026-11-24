@@ -124,7 +124,7 @@ class StyleTTS2Adapter(BaseOnnxAdapter):
             # voice is actually missing.
             raise ValueError(
                 "this StyleTTS2/Kokoro voice needs a conditioning style: pass a "
-                "speaker_reference to synthesize(), or give the voice a "
+                "reference to synthesize(), or give the voice a "
                 "engine_params['style_path']"
             )
         return self._filter_inputs(args, session)

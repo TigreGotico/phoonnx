@@ -12,7 +12,7 @@ Four ONNX graphs (HF: ``onnx-community/chatterbox-ONNX``):
   conditional_decoder  : speech tokens (+ speaker x_vector/feat) -> waveform
 
 Cloning is d-vector style (a reference wav, **no transcription**), so it uses the
-``speaker_reference`` API and not ``speaker_reference_text``. Text is tokenized with the
+``SynthesisConfig.reference`` audio and not its ``text``. Text is tokenized with the
 model's own BPE (``phoonnx.tokenizer.BPETokenizer`` + the UNICODE phonemizer), so
 ``request.phoneme_ids`` already carries the subword ids. The ``seed`` request param fixes
 the sampling of the speech tokens; the conditional decoder's noise nodes stay unseeded.

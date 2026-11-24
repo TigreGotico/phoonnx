@@ -10,12 +10,12 @@ model and stays in the adapter. Two encoders cover the engines of the package:
 
 ``adapter.make_encoder`` builds the encoder of a voice.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Callable, Iterator, List, Mapping, Optional, Protocol, Sequence, Tuple
 
 from scriptconv.frontend import Stages, TextFrontend
 
-from phoonnx.config import SynthesisConfig
+from phoonnx.config import SynthesisConfig, _LegacyId
 
 #: The request fields that hold one value per phoneme id, as a phonemizer's side streams fill them.
 SIDE_STREAMS = ("language_ids", "stress")
@@ -55,9 +55,12 @@ class Encoder(Protocol):
 
 
 def stages_of(config: SynthesisConfig) -> Stages:
-    """The text stages that *config* sets. A value that *config* leaves unset takes the frontend's own."""
-    return Stages(diacritize=config.add_diacritics, diacritizer_model=config.diacritizer_model,
-                  chunk=config.chunk)
+    """The text stages of *config*. A language code in ``config.language`` sets the
+    stage language when *config* leaves it unset."""
+    if config.stages.lang is None and isinstance(config.language, str) \
+            and not isinstance(config.language, _LegacyId):
+        return replace(config.stages, lang=config.language)
+    return config.stages
 
 
 @dataclass(frozen=True)

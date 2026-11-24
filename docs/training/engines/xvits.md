@@ -2,9 +2,9 @@
 
 <!-- agent-hint
 covers: how to load the x-vits voice, choose a style and mark a stressed word
-source: phoonnx/engines/xvits.py
+source: phoonnx/engines/xvits.py, phoonnx/model_manager.py:TTSModelInfo, phoonnx/ssml.py:parse_ssml
 generated: no
-verify: pytest tests/test_xvits.py; the pp_steps and template_scale defaults: none, checked by reading phoonnx/engines/xvits.py:XVitsAdapter.default_params
+verify: .venv/bin/python -c "import re,sys; from phoonnx.engines.xvits import XVitsAdapter as A, EMPHASIS_MODES as E; p=open('docs/training/engines/xvits.md').read().replace(chr(96),''); d={k:float(v) for k,v in re.findall(r'^\| ([a-z_]+) \| [a-z_]+ \| ([\d.]+) \|$',p,re.M)}; m=tuple(re.search(r'^\| emphasis \| ([^|]+) \|',p,re.M).group(1).replace(' ','').split(',')); sys.exit(0 if d==A().default_params() and m==E else 1)"
 see: ../../engines.md, ../../configuration.md
 -->
 
@@ -44,44 +44,45 @@ voice = TTSVoice.load(
     engine_params={key: str(path) for key, path in engine_params.items()},
 )
 
-config = SynthesisConfig(extra_params={"style": "happy", "seed": 1})
+config = SynthesisConfig(extra={"style": "happy", "seed": 1})
 for chunk in voice.synthesize("I *really* did not expect that.", config):
     print(chunk.sample_rate, len(chunk.audio_float_array))
 ```
 
-The output is one chunk per sentence at 22.05 kHz:
+The voice gives one chunk per sentence at 22050 Hz. The stressed word `really` is longer than with `"emphasis": "none"`, and its pitch moves.
 
-```
-22050 45824
-```
-
-The same sentence with `"emphasis": "none"` gives `22050 44032`. The stressed word `really` is longer, and its pitch moves.
-
-`lang_code="en"` matters. The voice config names the espeak voice `en` and the language `en_US`. phoonnx reads the language, so it would phonemize with `en-us`. The voice was trained on the ids of the `en` voice. With `lang_code="en"` the ids are the ones the training used.
+Set `lang_code="en"`. The voice config names the espeak voice `en` and the language `en_US`. phoonnx reads the language, so without `lang_code` it phonemizes with `en-us`. The voice was trained on the IDs of the espeak `en` voice.
 
 ## Options
 
-Pass the options in `SynthesisConfig.extra_params`. `length_scale` is a normal `SynthesisConfig` field.
+Pass the options in `SynthesisConfig.extra`. `length_scale` is a normal `SynthesisConfig` field.
 
 | Option | Values | Effect |
 | --- | --- | --- |
 | `style` | `confused`, `default`, `enunciated`, `happy`, `laughing`, `sad`, or none | The speaking style. A name that is not in the list raises `ValueError`, and the message lists the valid names. With no style, the prosody model runs without a style and without guidance. |
 | `emphasis` | `auto`, `marked`, `none` | `auto` stresses the marked words, or the words the prominence model picks when the text has no marks. `marked` stresses only marked words. `none` turns emphasis off. |
 | `emphasis_scale` | a number | The size of the emphasis. The default is the `template_scale` of `runtime.json`. |
-| `steps` | an integer | The steps of the prosody ODE. The default is the `pp_steps` of `runtime.json`, which is 16 for `fdemelo/x-vits`. Four steps is about 2.5 times faster on a CPU and moves the pitch by about 0.1 semitone on average. |
+| `steps` | an integer | The steps of the prosody ODE. The default is the `pp_steps` of `runtime.json`, which is 16 for `fdemelo/x-vits`. Fewer steps run faster. |
 | `seed` | an integer | The seed of the random generator. The same seed, text and options give the same audio. |
 
-The noise scales and the length scale default to the values in `runtime.json`, not to the numbers in the Piper `config.json`.
-`SynthesisConfig.noise_scale`, `noise_w_scale` and `length_scale` change them for one call.
+The noise scales and the length scale default to the values in `runtime.json`, not to the numbers in the Piper `config.json`. `SynthesisConfig.noise_scale`, `noise_w_scale` and `length_scale` change them for one call. When `runtime.json` lacks a key, the adapter uses the default in this table:
+
+| Setting | `runtime.json` key | Default |
+| --- | --- | --- |
+| `noise_scale` | `noise_scale` | 0.667 |
+| `noise_w_scale` | `noise_scale_w` | 0.4 |
+| `length_scale` | `length_scale` | 1.08 |
+| `steps` | `pp_steps` | 16 |
+| `emphasis_scale` | `template_scale` | 1.5 |
 
 ## Mark a stressed word
 
 Put asterisks around a word, or around several words, in the text: `You *want* the shark?`. Each marked word is stressed.
 When a text has marks, only the marked words are stressed. A text with no marks lets the prominence model pick.
 
-The marks reach the model as the word of each token. phoonnx reads the unmarked text once to make the ids. It finds the word of each phoneme by aligning that reading with the phonemes of each word alone, so a merged word such as `ɪnðə` ("in the") still gives its phonemes back to its two words. A mark follows its word only while the normaliser keeps that word in place. When the normaliser moves a word, the mark can be lost or land on another word: `a £3 *billion* deal.` is read "a three billion pounds deal", and with espeak the mark then reaches no token. Put the mark on a word the normaliser leaves alone, or write the amount in words.
+The marks reach the model as the word of each token. phoonnx reads the unmarked text once to make the ids. It finds the word of each phoneme by aligning that reading with the phonemes of each word alone, so a merged word such as `ɪnðə` ("in the") still gives its phonemes back to its two words. A mark follows its word only while the text normaliser keeps that word in place. When the normaliser moves a word, for example in an amount with a currency sign, the mark can be lost or land on another word. Put the mark on a word that the normaliser leaves alone, or write the amount in words.
 
-SSML `<emphasis>` does not reach the model. `parse_ssml` turns an emphasised span into a separate piece with its own rate and volume, and each piece is a separate engine call, so the span loses its sentence. SSML support needs the reader to keep the span inside its sentence as a mark when the voice reads marks, and to skip the piece-level rate and volume change for it.
+SSML `<emphasis>` does not reach the x-vits model. `parse_ssml` turns an emphasised span into a separate piece with its own rate and volume, and phoonnx synthesizes each piece in a separate engine call.
 
 ## How the graphs fit
 
@@ -98,7 +99,7 @@ The random draws come in a fixed order: prosody noise, duration noise, latent no
 
 ## Index entry
 
-An index entry names the encoder as the model and the other files as `aux_model_urls`:
+The bundled index has no x-vits voice. An index entry names the encoder as the model and the other files as `aux_model_urls`:
 
 ```json
 {
@@ -127,7 +128,7 @@ An index entry names the encoder as the model and the other files as `aux_model_
 ## Licence
 
 The adapter code is a port of the runtime of x-vits by Flavio De Melo (MIT, <https://github.com/femelo/x-vits>).
-The voice weights `fdemelo/x-vits` are CC BY-NC 4.0: you may not use them commercially. The voice was trained on speaker ex02 of the Expresso dataset.
+The voice weights `fdemelo/x-vits` are CC BY-NC 4.0, so you may not use them commercially. The voice was trained on speaker ex02 of the Expresso dataset.
 
 ---
 

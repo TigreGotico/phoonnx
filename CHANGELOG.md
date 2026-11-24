@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.135.2a2](https://github.com/TigreGotico/phoonnx/tree/1.135.2a2) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.2a1...1.135.2a2)
+
+**Merged pull requests:**
+
+- docs: README, docs index, navigation and agent hints [\#1003](https://github.com/TigreGotico/phoonnx/pull/1003) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.135.2a1](https://github.com/TigreGotico/phoonnx/tree/1.135.2a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.1a2...1.135.2a1)
+
+**Merged pull requests:**
+
+- fix: English Vocos voices cite the Apache-2.0 universal vocoder [\#1015](https://github.com/TigreGotico/phoonnx/pull/1015) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.135.1a2](https://github.com/TigreGotico/phoonnx/tree/1.135.1a2) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.1a1...1.135.1a2)
+
+**Merged pull requests:**
+
+- docs: generate the architecture matrix of docs/engines.md [\#995](https://github.com/TigreGotico/phoonnx/pull/995) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.135.1a1](https://github.com/TigreGotico/phoonnx/tree/1.135.1a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.0a3...1.135.1a1)
@@ -373,10 +397,6 @@
 ## [1.125.10a3](https://github.com/TigreGotico/phoonnx/tree/1.125.10a3) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.10a2...1.125.10a3)
-
-**Merged pull requests:**
-
-- docs: SSML 1.0 and Polly forms are extensions, and the docs check finds extra rows [\#893](https://github.com/TigreGotico/phoonnx/pull/893) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.10a2](https://github.com/TigreGotico/phoonnx/tree/1.125.10a2) (2026-11-22)
 

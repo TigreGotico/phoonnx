@@ -2,52 +2,27 @@
 
 <!-- agent-hint
 covers: how to train the three SuperTonic stages, fine-tune them and export the four ONNX graphs
-source: phoonnx_train/supertonic/lightning.py, phoonnx_train/supertonic/text.py, phoonnx_train/supertonic/export_onnx.py, phoonnx_train/supertonic/checkpointing.py
+source: phoonnx_train/supertonic/lightning.py, phoonnx_train/supertonic/text.py, phoonnx_train/supertonic/export_onnx.py, phoonnx_train/supertonic/checkpointing.py, phoonnx_train/supertonic/import_onnx.py, phoonnx_train/supertonic/dataset.py, phoonnx_train/engines/supertonic.py
 generated: no
-verify: pytest tests/test_supertonic.py tests/test_supertonic_training.py; the stages and files: none, checked by reading phoonnx_train/supertonic/lightning.py:AutoencoderModule, phoonnx_train/supertonic/text.py:CharTokenizer and phoonnx_train/supertonic/export_onnx.py:export_from_checkpoints
+verify: .venv/bin/python -W ignore -c "import inspect, re, sys; from phoonnx_train.supertonic import lightning, text; p = open('docs/training/engines/supertonic.md').read(); src = open('phoonnx_train/supertonic/export_onnx.py').read(); norm = lambda s: re.sub(r'\s+', ' ', s); langs = re.findall(r'\x60([a-z]+)\x60', p.split(chr(10) + '| Languages |')[1].split(chr(10))[0]); bad = [] if langs == [x for x in text.AVAILABLE_LANGS if x != 'na'] else ['languages']; rows = [[re.findall(r'\x60([a-z_]+)\x60', c) for c in r.split('|')[2:4]] for r in p.split(chr(10) + '| Graph | Inputs | Output |')[1].split(chr(10) + chr(10))[0].splitlines()[2:]]; bad += [r for r in rows if norm(str(r[0]) + ', ' + str(r[1])).replace(chr(39), chr(34)) not in norm(src)]; calls = re.findall(r'(\w+Module)\(([^)]*)\)', p); bad += [(c, k) for c, args in calls for k in re.findall(r'(\w+)=', args) if k not in inspect.signature(getattr(lightning, c)).parameters]; print(len(rows), len(calls), bad); sys.exit(bool(bad) or not rows or not calls)"
 see: ../training.md, ../export.md, ../../engines.md
 -->
 
-This page shows how to train a SuperTonic model from zero, stage by stage, and export it for the phoonnx `supertonic` runtime.
+This page shows how to train a SuperTonic model from the start, stage by stage, and export it for the phoonnx `supertonic` runtime.
 
-> Related: [training reference](../training.md) ·
-> [adapter architecture](../../engines.md) · [export](../export.md)
+See also the [training reference](../training.md), the [adapter architecture](../../engines.md) and [Export](../export.md).
 
 ## What SuperTonic is
 
-**SuperTonic** (Kim et al., Supertone Inc., *SupertonicTTS*,
-[arXiv:2503.23108](https://arxiv.org/abs/2503.23108)) is a fast, multilingual
-text-to-speech system. Unlike a single end-to-end model, it is built from **three
-networks that are trained one after another**, each solving one piece of the
-problem:
+SuperTonic (Kim et al., Supertone Inc., *SupertonicTTS*, [arXiv:2503.23108](https://arxiv.org/abs/2503.23108)) is a multilingual text-to-speech system. It has three networks, which you train one after another:
 
-1. **Speech autoencoder** — learns to compress a waveform into a compact
-   *latent* sequence and reconstruct the waveform from it. A *latent* here is
-   just a short numeric summary of a slice of audio: instead of ~22050 numbers
-   per second of sound, the autoencoder keeps a few dozen channels at a much
-   lower frame rate. It is trained like a vocoder GAN — a *generator* (the
-   autoencoder) versus *discriminators* that try to tell real audio from
-   reconstructed audio, which pushes the reconstruction to sound natural.
-2. **Text-to-latent** — learns to turn text into one of those latent sequences,
-   in a chosen voice. It uses **flow matching**: think of it as learning the
-   direction to "flow" a cloud of random noise, step by step, until it becomes a
-   valid speech latent for the given text. At synthesis time you start from noise
-   and take a handful of small steps along the learned directions.
-3. **Duration predictor** — learns how *long* the spoken sentence should be (in
-   seconds) from the text and the target voice, so the flow-matching stage knows
-   how many latent frames to generate.
+1. The speech autoencoder compresses a waveform into a latent sequence and rebuilds the waveform from it. A latent is a short numeric summary of a slice of audio, with a few dozen channels at a frame rate much lower than the sample rate. It trains as a vocoder GAN: the autoencoder is the generator, and discriminators try to tell real audio from rebuilt audio.
+2. The text-to-latent model turns text into a latent sequence in a given voice. It uses flow matching: it learns how to move random noise, step by step, to a speech latent for the text. At synthesis, it starts from noise and takes a few steps.
+3. The duration predictor gives the length of the sentence in seconds, from the text and the voice. The text-to-latent stage then knows how many latent frames to make.
 
-The text side is **grapheme-level and G2P-free**: SuperTonic reads raw
-characters (wrapped in a `<lang>…</lang>` tag), so no phonemizer is involved. The
-voice ("style") is supplied at inference as a small per-speaker JSON, so the two
-text stages consume a pre-computed style vector rather than a speaker encoder.
+SuperTonic reads characters, not phonemes. Each text goes in a `<lang>…</lang>` tag, and no phonemizer runs. The voice ("style") comes at inference from a small JSON file for each speaker, so the two text stages read a computed style vector and not a speaker encoder.
 
-## When to pick it
-
-Pick SuperTonic for a fast, compact, multilingual model where you can train all
-three stages, and where reading raw text (no phoneme dictionary) is an advantage.
-It is an **iterative** engine like ZipVoice (a short sampling loop), but with a
-separate learned duration model instead of in-context infilling.
+Use SuperTonic for a small multilingual model when you can train all three stages, and when reading characters is an advantage. Like ZipVoice, it runs a short sampling loop. Unlike ZipVoice, it has a separate duration model.
 
 ## Install
 
@@ -55,30 +30,22 @@ separate learned duration model instead of in-context infilling.
 pip install --pre "phoonnx[train,train-resample]"   # torch, pytorch-lightning, torchaudio
 ```
 
-## Prepare data
+## 1. Prepare the data
 
-SuperTonic is grapheme-level, so it trains directly from **raw text**, not from
-phoneme ids. It therefore uses a simple filelist rather than the phoneme-oriented
-`dataset.jsonl` other engines use. One utterance per line:
+SuperTonic reads text, not phoneme ids, so it uses a file list and not the `dataset.jsonl` of the other engines. Write one utterance per line:
 
 ```
 audio/utt0001.wav|Hello there, this is a test.|en
 audio/utt0002.wav|Another line of speech.|en
 ```
 
-- Column 1: path to an audio file, relative to a `root_dir` you pass in.
-- Column 2: the transcript, exactly as it should be read.
-- Column 3 (optional): a language code (`en`, `ko`, `ja`, `ar`, `pt`, … — the 31
-  SuperTonic languages, defaulting to `en`).
+The first field is the path of an audio file, relative to the `root_dir` that you give. The second field is the transcript as it must be read. The third field is optional: a language code from the [language list](#upstream). It defaults to `en`.
 
-Any `soundfile`-readable format works; audio at a different sample rate is
-resampled on load.
+Any format that `soundfile` reads works. The loader resamples audio at another sample rate.
 
-## Train the three stages
+## 2. Train the three stages
 
-Each stage is a separate LightningModule (`phoonnx_train/supertonic/lightning.py`)
-and is trained in order, because stages 2 and 3 need the frozen stage-1
-autoencoder to produce their target latents.
+Each stage is a separate LightningModule in `phoonnx_train/supertonic/lightning.py`. Train them in order, because stages 2 and 3 use the frozen stage 1 autoencoder to make their target latents.
 
 ```python
 import pytorch_lightning as pl
@@ -93,73 +60,50 @@ tok = CharTokenizer.build_from_texts(open_transcripts, langs)  # build the char-
 files = ["train.filelist"]
 root = "/path/to/audio_root"
 
-# Stage 1 — speech autoencoder (GAN)
+# Stage 1: speech autoencoder (GAN)
 ae = AutoencoderModule(config=cfg, dataset=files, root_dir=root, batch_size=8)
 pl.Trainer(accelerator="gpu", devices=1, max_steps=400_000).fit(ae)
 ae_ckpt = "ae.ckpt"; ae.trainer.save_checkpoint(ae_ckpt)
 
-# Stage 2 — text-to-latent (flow matching), targets from the frozen autoencoder
+# Stage 2: text-to-latent (flow matching), targets from the frozen autoencoder
 ttl = TextToLatentModule(config=cfg, tokenizer=tok, dataset=files, root_dir=root,
                          ae_checkpoint=ae_ckpt, batch_size=8)
 pl.Trainer(accelerator="gpu", devices=1, max_steps=600_000).fit(ttl)
 
-# Stage 3 — duration predictor
+# Stage 3: duration predictor
 dp = DurationPredictorModule(config=cfg, tokenizer=tok, dataset=files, root_dir=root,
                              ae_checkpoint=ae_ckpt, batch_size=8)
 pl.Trainer(accelerator="gpu", devices=1, max_steps=100_000).fit(dp)
 ```
 
-Stage 1 measures the per-channel statistics of its own latent space at the end of
-every epoch and stores them in the checkpoint. Stages 2 and 3 normalize their
-targets with those statistics, so they refuse an autoencoder checkpoint that does
-not carry them — train stage 1 at least to the end of one epoch before starting
-either.
+At the end of every epoch, stage 1 measures the statistics of each channel of its latent space and stores them in the checkpoint. Stages 2 and 3 normalize their targets with these statistics, so they refuse an autoencoder checkpoint without them. Train stage 1 to the end of at least one epoch before you start stage 2 or 3.
 
-Via the shared CLI/registry the engine name is `supertonic` and the stage is
-chosen with `stage=` in the engine's `extra` bag; `--quality low` selects a tiny
-architecture for a smoke run, `--quality base` the full size.
+The training engine registry has the name `supertonic`. It selects the stage with `stage` in the engine `extra` (`autoencoder`, `text_to_latent` or `duration_predictor`). `--quality low` selects a very small model for tests, and `--quality base` the full size. The `phoonnx_train.train` command cannot train it, because it gives the stages the dataset folder, and the stages read a file list. Train SuperTonic from Python, as shown above.
 
 ### Resuming
 
-Every stage writes standard Lightning checkpoints, which carry the model,
-optimizer, LR-scheduler and step — plus the SuperTonic config and tokenizer, so a
-checkpoint fully rebuilds the model. Resume with Lightning's `ckpt_path`:
+Every stage writes standard Lightning checkpoints. A checkpoint holds the model, the optimizer, the scheduler and the step, and also the SuperTonic config and the tokenizer, so it rebuilds the full model. Resume with the `ckpt_path` of Lightning:
 
 ```python
 pl.Trainer(...).fit(module, ckpt_path="last.ckpt")   # continues optimizer + step
 ```
 
-For standalone (non-Lightning) loops, `phoonnx_train/supertonic/checkpointing.py`
-provides **atomic** full-checkpoint saves (`save_checkpoint`) and `resume_into`,
-which restore model + every optimizer + scheduler + step. A truncated or corrupt
-file raises a clear `CheckpointError` rather than loading half a model.
+For training loops without Lightning, `phoonnx_train/supertonic/checkpointing.py` has `save_checkpoint`, which writes a full checkpoint atomically, and `resume_into`, which restores the models, every optimizer, the scheduler and the step. A truncated or damaged file raises `CheckpointError`, so half a model never loads.
 
 ### Fine-tuning from the released `supertonic-3` weights
 
-`phoonnx_train/supertonic/import_onnx.py` reads the initializers out of the
-released ONNX graphs (`vocoder.onnx`, `text_encoder.onnx`,
-`vector_estimator.onnx`, `duration_predictor.onnx`) and copies them into the
-PyTorch modules by an explicit name map, tolerating the conv-1×1↔linear and
-linear-transpose conventions of the export. A `PortReport` records what loaded,
-what was missing, and any shape mismatch — nothing is copied under a wrong shape.
-The encoder-side networks (speech encoder and the two style encoders) are absent
-from the public graphs, so they always start from a fresh initialization and must
-be trained.
+`phoonnx_train/supertonic/import_onnx.py` reads the weights from the released ONNX graphs (`vocoder.onnx`, `text_encoder.onnx`, `vector_estimator.onnx` and `duration_predictor.onnx`). It copies them into the PyTorch modules through an explicit name map, and handles the 1×1 convolution, linear and transposed-linear forms of the export. A `PortReport` records what loaded, what was missing and each shape mismatch. Nothing is copied with a wrong shape. The public graphs do not hold the speech encoder or the two style encoders, so these always start from new weights and you must train them.
 
-To fine-tune onto a language whose script is missing from a pretrained
-tokenizer, grow the vocab **without disturbing existing rows** so the pretrained
-embedding stays aligned:
+To fine-tune on a language whose characters a pretrained tokenizer lacks, add ids to the tokenizer and keep the existing ids, so the pretrained embedding stays aligned:
 
 ```python
 tok2 = tok.extend_with_texts(new_texts, new_langs)   # appends ids only for chars the map lacks
 # then load the pretrained weights with checkpointing.load_state_dict_grow_vocab(...)
 ```
 
-## Export
+## 3. Export
 
-Export produces exactly the four graphs the `supertonic` inference engine
-consumes, with the official input names, plus `tts.json` (runtime config) and
-`unicode_indexer.json` (the code-point → id table):
+The export writes the four graphs that the `supertonic` inference engine reads, with the official input names. It also writes `tts.json`, the runtime config, and `unicode_indexer.json`, the table from code point to id:
 
 ```python
 from phoonnx_train.supertonic.export_onnx import export_from_checkpoints
@@ -178,34 +122,27 @@ export_from_checkpoints(
 | `vector_estimator.onnx` | `noisy_latent`, `text_emb`, `style_ttl`, `text_mask`, `latent_mask`, `current_step`, `total_step` | `latent` |
 | `vocoder.onnx` | `latent` | `wav` |
 
-The two text graphs take the **pre-pooled** style tokens directly (`style_dp` /
-`style_ttl`), matching the released model: the style encoders are not part of any
-graph, and the runtime supplies per-voice style JSONs. The vector-estimator graph
-folds one Euler integration step so the runtime loop feeds its output straight
-back in as `noisy_latent`; the vocoder graph decompresses and denormalizes the
-latent internally before decoding to a waveform.
+The two text graphs take the pooled style tokens (`style_dp` and `style_ttl`) as the released model does. No graph holds the style encoders, and the runtime gives a style JSON for each voice. The vector estimator graph does one Euler step, so the runtime loop feeds its output back as `noisy_latent`. The vocoder graph decompresses and denormalizes the latent before it decodes the waveform.
 
-## Loading the result in phoonnx
+`phoonnx_train.export_onnx --engine supertonic` passes only one checkpoint, so use `export_from_checkpoints`.
 
-Once the four graphs plus `tts.json` and `unicode_indexer.json` are in a voice
-directory, they are loaded by the phoonnx `supertonic` inference engine (added
-separately). See the runtime engine's own guide for `SynthesisConfig`/voice
-wiring.
+## Load the result in phoonnx
+
+Put the four graphs, `tts.json` and `unicode_indexer.json` in one voice folder. The phoonnx `supertonic` inference engine loads them. The [engine architecture](../../engines.md) page describes the adapters.
 
 ## Licensing
 
-The training code in `phoonnx_train/supertonic/` is written from scratch against
-the SuperTonic paper and the public `Supertone/supertonic-3` ONNX graphs. The
-released **weights** are OpenRAIL-M licensed; fine-tuning from them inherits that
-license.
+The training code in `phoonnx_train/supertonic/` is written from the SuperTonic paper and the public `Supertone/supertonic-3` ONNX graphs. The released weights have the OpenRAIL-M licence, and a model fine-tuned from them has the same licence.
 
 ## Upstream
 
 | | |
 |---|---|
-| Paper | *SupertonicTTS* — [arXiv:2503.23108](https://arxiv.org/abs/2503.23108) |
+| Paper | *SupertonicTTS*, [arXiv:2503.23108](https://arxiv.org/abs/2503.23108) |
 | Weights | [`Supertone/supertonic-3`](https://huggingface.co/Supertone/supertonic-3) (OpenRAIL-M) |
 | Languages | 31 (`en`, `ko`, `ja`, `ar`, `bg`, `cs`, `da`, `de`, `el`, `es`, `et`, `fi`, `fr`, `hi`, `hr`, `hu`, `id`, `it`, `lt`, `lv`, `nl`, `pl`, `pt`, `ro`, `ru`, `sk`, `sl`, `sv`, `tr`, `uk`, `vi`) |
+
+The tokenizer also accepts the tag `na`.
 
 ---
 

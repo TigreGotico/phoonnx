@@ -17,11 +17,12 @@ import onnxruntime as ort
 from onnx import TensorProto, helper, numpy_helper
 
 from phoonnx.audio import write_wav
-from phoonnx.config import SynthesisConfig, VoiceConfig
+from phoonnx.config import SynthesisConfig, VoiceConfig, AudioPost
 from phoonnx.engines.vits import VitsAdapter
 from phoonnx.util import normalize
 from phoonnx.version import VERSION_MAJOR
 from phoonnx.voice import AudioChunk, TTSVoice, Utterance
+from scriptconv.frontend import Stages
 
 LETTERS = " abcdefghijklmnopqrstuvwxyz.,?!"
 CONFIG = {"phoonnx_version": "1.0", "engine": "phoonnx", "phoneme_type": "unicode",
@@ -31,7 +32,7 @@ CONFIG = {"phoonnx_version": "1.0", "engine": "phoonnx", "phoneme_type": "unicod
           "phoneme_id_map": {"_": [0], "^": [1], "$": [2], **{c: [i + 3] for i, c in enumerate(LETTERS)}}}
 SCALES = np.array([0.5, 1.0, 0.5], dtype=np.float32)
 TEXT = "Hi there. Who is it?"
-RAW = SynthesisConfig(normalize_audio=False)
+RAW = SynthesisConfig(audio=AudioPost(normalize=False))
 
 
 def _session():
@@ -143,7 +144,7 @@ class TestPrepare(unittest.TestCase):
 
     def test_a_whole_text_utterance_carries_the_joined_text(self):
         voice = _symbol_voice()
-        utterances = list(voice.prepare(TEXT, SynthesisConfig(chunk="none")))
+        utterances = list(voice.prepare(TEXT, SynthesisConfig(stages=Stages(chunk="none"))))
         self.assertEqual([u.text for u in utterances], ["Hi there. Who is it?"])
 
     def test_a_text_voice_gives_the_adapter_ids_and_no_symbols(self):
@@ -160,7 +161,7 @@ class TestPrepare(unittest.TestCase):
         voice = _symbol_voice()
         voice.phonetic_spellings = types.SimpleNamespace(apply=lambda text: text.replace("Hi", "Ha"))
         self.assertEqual(next(voice.prepare(TEXT)).symbols[:2], ("H", "a"))
-        off = SynthesisConfig(enable_phonetic_spellings=False)
+        off = SynthesisConfig(phonetic_spellings=False)
         self.assertEqual(next(voice.prepare(TEXT, off)).symbols[:2], ("H", "i"))
 
     def test_an_utterance_is_frozen(self):
@@ -224,7 +225,7 @@ class TestRender(unittest.TestCase):
     def test_render_levels_and_scales_the_audio(self):
         voice = _symbol_voice()
         utterance = Utterance(text="", symbols=None, ids=(5, 9, 14))
-        chunk = voice.render(utterance, SynthesisConfig(volume=0.5))
+        chunk = voice.render(utterance, SynthesisConfig(audio=AudioPost(volume=0.5)))
         engine = _engine_audio(voice.session, [5, 9, 14])
         np.testing.assert_allclose(chunk.audio_float_array, engine / engine.max() * 0.5, rtol=1e-6)
 
@@ -272,7 +273,7 @@ class TestSynthesizeIsRenderOverPrepare(unittest.TestCase):
     def test_a_symbol_voice(self):
         voice = _symbol_voice()
         chunks = self.assert_same_chunks(voice, TEXT)
-        self.assert_same_chunks(voice, TEXT, SynthesisConfig(length_scale=1.5, volume=0.7), alignments=True)
+        self.assert_same_chunks(voice, TEXT, SynthesisConfig(length_scale=1.5, audio=AudioPost(volume=0.7)), alignments=True)
         # the engine audio of the first sentence, peak-normalised
         engine = _engine_audio(voice.session, chunks[0].phoneme_ids)
         np.testing.assert_allclose(chunks[0].audio_float_array, engine / engine.max(), rtol=1e-6)

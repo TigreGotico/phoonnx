@@ -9,6 +9,7 @@ from phoonnx.engines.chatterbox import ChatterboxAdapter
 from phoonnx.engines.neutts import NeuTTSAdapter
 from phoonnx.ssml import parse_ssml
 from phoonnx.voice import TTSVoice
+from scriptconv.frontend import Stages
 
 
 class _Echo(BasePhonemizer):
@@ -58,14 +59,14 @@ def test_a_skipped_block_before_a_mark_leaves_no_space():
 
 def test_a_skipped_block_keeps_a_paragraph_break():
     # a paragraph chunk ends only at a blank line, so a space in its place gives one chunk
-    by_paragraph = SynthesisConfig(chunk="paragraph")
+    by_paragraph = SynthesisConfig(stages=Stages(chunk="paragraph"))
     assert _read("para one.\n\n[[x]] para two.", by_paragraph) == ["para one.", "para two."]
     assert _read("para one. [[x]] para two.", by_paragraph) == ["para one. para two."]
 
 
 def test_a_line_break_between_skipped_blocks_stays():
     assert _read("a [[x]]\n[[y]] b") == ["a\nb"]
-    assert _read("a\n[[x]]\n\n[[y]] b", SynthesisConfig(chunk="paragraph")) == ["a", "b"]
+    assert _read("a\n[[x]]\n\n[[y]] b", SynthesisConfig(stages=Stages(chunk="paragraph"))) == ["a", "b"]
 
 
 def test_a_mark_after_the_last_skipped_block_keeps_its_word():
@@ -97,6 +98,6 @@ def test_phonetic_input_on_a_voice_with_no_symbols_warns_once(monkeypatch):
     sent = []
     voice = _voice(ChatterboxAdapter(), sent)
     voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda symbols, **_: [1] * len(symbols))
-    list(voice.prepare("ʃə", SynthesisConfig(alphabet=Alphabet.IPA)))
+    list(voice.prepare("ʃə", SynthesisConfig(input_alphabet=Alphabet.IPA)))
     assert len(warnings) == 1
     assert "test-voice" in warnings[0] and "phonetic input" in warnings[0]

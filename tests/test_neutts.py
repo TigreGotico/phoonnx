@@ -237,12 +237,12 @@ def test_voice_config_pins_a_preset(adapter):
 
 def test_per_call_voice_wins_over_the_pinned_one(adapter):
     voice = type("V", (), {"config": type("C", (), {"engine_params": {"voice": "kofi"}})})
-    syn = type("S", (), {"extra_params": {"voice": "ama"}})
+    syn = type("S", (), {"extra": {"voice": "ama"}})
     assert adapter.resolve_preset(voice, syn)["text"] == "meda wo ase"
 
 
 def test_unknown_preset_is_rejected(adapter):
-    syn = type("S", (), {"extra_params": {"voice": "nobody"}})
+    syn = type("S", (), {"extra": {"voice": "nobody"}})
     with pytest.raises(ValueError, match="unknown NeuTTS voice preset"):
         adapter.resolve_preset(None, syn)
 

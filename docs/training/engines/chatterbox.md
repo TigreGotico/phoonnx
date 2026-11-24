@@ -2,47 +2,64 @@
 
 <!-- agent-hint
 covers: how to clone a voice with Chatterbox, its decoding parameters and its four-graph runtime
-source: phoonnx/engines/chatterbox.py, phoonnx/tokenizer.py:ChatterboxMTLTokenizer, phoonnx/lang_preprocess.py:SCRIPT_TRANSFORMS
+source: phoonnx/engines/chatterbox.py, phoonnx/voice_index/chatterbox.json, phoonnx/tokenizer.py:ChatterboxMTLTokenizer, phoonnx/lang_preprocess.py:SCRIPT_TRANSFORMS
 generated: no
-verify: pytest tests/test_chatterbox.py tests/test_card_example_chatterbox.py; the sampling defaults: none, checked by reading phoonnx/engines/chatterbox.py:ChatterboxAdapter.default_params
+verify: .venv/bin/python -c "import re,sys,json; from phoonnx.engines.chatterbox import ChatterboxAdapter as A; from phoonnx.lang_preprocess import SCRIPT_TRANSFORMS as S; p=open('docs/training/engines/chatterbox.md').read().replace(chr(96),''); d={k:float(v) for k,v in re.findall(r'^\| ([a-z_]+) \| ([\d.]+) \| [A-Z]',p,re.M)}; c={k:float(v) for k,v in re.findall(r'^\| ([A-Z_]+) \| ([\d.]+) \|',p,re.M)}; s=set(re.findall(r'^\| (\w\w) \| [A-Z]',p,re.M)); idx=json.load(open('phoonnx/voice_index/chatterbox.json')); n=int(re.search(r'holds (\d+) Chatterbox voices',p).group(1)); sys.exit(0 if d==A().default_params() and c=={'REPETITION_PENALTY':A.REPETITION_PENALTY,'MAX_NEW_TOKENS':A.MAX_NEW_TOKENS} and s==set(S) and n==len(idx) else 1)"
 see: ../../cloning.md, zipvoice.md, ../../engines.md
 -->
 
-This page explains how to clone a voice with Chatterbox and control its expressiveness, for integrators who use phoonnx.
-
-> Related: [adapter architecture](../../engines.md) ·
-> [configuration](../../configuration.md) · [voice cloning](../../cloning.md) ·
-> [ZipVoice — the in-context iterative engine](zipvoice.md)
+This page shows how to clone a voice with Chatterbox and control how expressive it sounds.
 
 ## What it is
 
-**Chatterbox** (Resemble AI) is an **autoregressive codec-LM** TTS — a
-Llama-based language model that generates discrete speech tokens conditioned on
-text and a reference speaker, then decodes them to a waveform. It is phoonnx's
-autoregressive iterative engine, driven through the overridable
-`BaseOnnxAdapter.synthesize()`. Its standout features: **zero-shot cloning from a
-reference clip with no transcription** (d-vector style) and an **`exaggeration`**
-control for expressiveness.
+Chatterbox (Resemble AI) is an autoregressive codec language model. A Llama language model makes discrete speech tokens from the text and a reference speaker, and a decoder turns the tokens into a waveform. The adapter runs this loop in its own `synthesize()`. Chatterbox clones a voice from a reference clip with no transcription, and its `exaggeration` setting controls how expressive the speech is.
 
-## When to pick it
+Pick Chatterbox for expressive zero-shot cloning when you have only a reference clip. [ZipVoice](zipvoice.md) also clones, but it needs the transcription of the clip. The `speech_encoder` reads the voice from the audio alone, in any language. See [Voice cloning](../../cloning.md).
 
-Choose Chatterbox for expressive zero-shot cloning when you have only a reference
-clip (no transcription) — unlike [ZipVoice](zipvoice.md) (in-context, needs the
-reference's transcription). The `speech_encoder` summarizes the voice from audio
-alone, in any language. See [Voice Cloning](../../cloning.md).
+## Install
 
-## Extras needed
+Reference loading needs the `cloning` extra:
 
-Cloning (reference loading) uses `pip install phoonnx[cloning]`. The multilingual
-variant's ja/zh script transforms need
-`pip install phoonnx[chatterbox-multilingual]` (`pykakasi`, `spacy-pkuseg`); ko
-is pure-Python and always on; he/ru degrade gracefully when their optional
-stressors/diacritizers are absent.
+```bash
+pip install --pre "phoonnx[cloning]"
+```
 
-## Architecture
+The Japanese and Chinese transforms of the multilingual voices need `pip install --pre "phoonnx[chatterbox-multilingual]"`, which installs `pykakasi` and `spacy-pkuseg`.
 
-Four ONNX graphs — `language_model` + `speech_encoder` + `embed_tokens` +
-`conditional_decoder`:
+## Clone a voice
+
+Every Chatterbox voice needs a reference clip. Give it in `SynthesisConfig.reference`:
+
+```python
+from phoonnx.config import SpeakerReference, SynthesisConfig
+from phoonnx.model_manager import TTSModelManager
+
+m = TTSModelManager()
+m.merge_default_voices()
+voice = m.voices["chatterbox/multilingual/pt"].load()
+for chunk in voice.synthesize("Qualquer frase na voz clonada.", SynthesisConfig(
+        reference=SpeakerReference(audio="reference.wav"),
+        exaggeration=0.6,
+        temperature=0.8,
+        top_p=0.95)):
+    audio = chunk.audio_float_array
+```
+
+`exaggeration` goes from 0.0 to 1.0, and a higher value is more expressive. A `SynthesisConfig` field that you set overrides the default of the adapter for one call. With the default `temperature` of 0.8, the adapter samples with top-p. Set `temperature` to 0 or below for greedy decoding.
+
+## Indexed voices
+
+The bundled index holds 42 Chatterbox voices in `phoonnx/voice_index/chatterbox.json`:
+
+- `chatterbox/base/en` and `chatterbox/turbo/en`, the English base and turbo models.
+- `chatterbox/multilingual/<lang>`, one entry per language of the multilingual model.
+- `chatterbox/lahgtna/<region>`, Arabic dialect voices. Their index entries map the dialect tag to a language token of the model with `lang_tokens`, for example `arz-EG` to `ms`.
+
+The index entries use the q4 quantized `language_model_q4.onnx`. Synthesis time grows with the output length, because the model runs one Llama step per speech token.
+
+## How generation works
+
+A voice has four ONNX graphs. The `language_model` is the primary session of the voice. `embed_tokens`, `speech_encoder` and `conditional_decoder` load from `engine_params`.
 
 ```
 ref.wav@24k ─► speech_encoder ─► (cond_emb, prompt_token, x_vector, prompt_feat)
@@ -54,119 +71,62 @@ text ─► BPE ─► ids ─┐
        language_model (Llama, KV-cached) ──loop──► speech tokens ─► conditional_decoder(+x_vector,feat) ─► wav
 ```
 
-The generation loop is standard codec-LM autoregression: prefill (cond embedding
-+ text embeddings), then step-by-step — `embed_tokens` the last token, run the
-KV-cached Llama, apply a repetition penalty, then **sample the next token
-(temperature / top-p) or pick greedily when `temperature <= 0`**, stopping at the
-speech-EOS token (`6562`) or after `MAX_NEW_TOKENS`. The KV-cache shape
-(layers / heads / head-dim) is read from the LM's own input signature, so no
-model config is hardcoded. The `language_model` is the voice's primary
-`session`; the other three graphs load from `engine_params`.
+The prefill feeds the conditioning embedding and the text embeddings. Then each step embeds the last token, runs the KV-cached language model, applies a repetition penalty, and samples the next token, or picks the best one when `temperature <= 0`. The loop stops at the speech end token (6562) or after `MAX_NEW_TOKENS`. The adapter reads the KV-cache shape (layers, heads, head size) from the input signature of the language model. Before the `conditional_decoder`, the adapter adds a short run of silence tokens.
 
-### Decoding parameters and caps
+All three variants run on one adapter, which reads the inputs and outputs of each graph. The base and multilingual variants use a Llama language model with the positions in `embed_tokens`. The turbo variant uses GPT-2, with the positions fed to the language model.
 
-The adapter's `default_params()` gives the defaults (`temperature=0.8`, `top_p=0.95`,
-`exaggeration=0.5`). A `SynthesisConfig` field that is set overrides its default for one call:
+## Required files
 
-| Param | Default | Meaning |
-|---|---|---|
-| `exaggeration` | 0.5 | Expressiveness (0.0–1.0), fed to `embed_tokens` |
-| `temperature` | 0.8 | Sampling temperature; **`0` (or ≤0) = greedy decoding** |
-| `top_p` | 0.95 | Nucleus-sampling cutoff (only when sampling) |
+`engine_params` must give `embed_tokens_path`, `speech_encoder_path` and `conditional_decoder_path`. If one is missing, synthesis raises `RuntimeError`:
 
-Two internal caps are fixed by the adapter, not configurable:
-
-| Constant | Value | Meaning |
-|---|---|---|
-| `REPETITION_PENALTY` | 1.2 | Applied over all emitted tokens each step, before sampling, to suppress codec-LM babble |
-| `MAX_NEW_TOKENS` | 1000 | Hard cap on generated speech tokens (stops runaway generation) |
-
-A trailing silence token is appended before the `conditional_decoder`.
-
-## Cloning + exaggeration
-
-```python
-voice.synthesize("Any sentence in the cloned voice.", SynthesisConfig(
-    speaker_reference="reference.wav",   # no transcription needed (d-vector)
-    exaggeration=0.6,                    # 0.0–1.0, default 0.5; higher = more expressive
-    temperature=0.8,                     # sampling temperature (0 = greedy)
-    top_p=0.95,                          # nucleus sampling cutoff
-))
+```
+Chatterbox voice missing embed_tokens / speech_encoder / conditional_decoder paths in engine_params
 ```
 
-## Runtime configuration
-
-Chatterbox splits inference across **four ONNX graphs** and needs a
-`tokenizer.json` (subword BPE). The `language_model` is the primary voice
-session; the other three graphs load from `engine_params`. The adapter raises a
-`RuntimeError` at synthesis if any of the auxiliary paths is missing:
-
-> `Chatterbox voice missing embed_tokens / speech_encoder / conditional_decoder
-> paths in engine_params`
-
-so `engine_params` must supply `embed_tokens_path`, `speech_encoder_path` and
-`conditional_decoder_path`. A synthesis call without `reference_audio` (the
-reference clip) also raises `RuntimeError` — Chatterbox always needs a reference.
-
-Use the quantized `language_model_q4.onnx` for the smallest/fastest build
-(~350 MB vs ~2 GB); synthesis cost scales with output length (one Llama step per
-speech token).
+A call with no reference clip also raises `RuntimeError`.
 
 ## Text tokenization
 
-Chatterbox tokenizes **raw text with its own subword BPE**, not phonemes. The
-adapter overrides `BaseOnnxAdapter.encode_text` to BPE the text directly (phoneme
-front ends would strip punctuation / expand numbers); the tokenizer owns
-normalization. Base + turbo use `phoonnx.tokenizer.BPETokenizer`; the
-multilingual variant uses its `ChatterboxMTLTokenizer` subclass, which adds the
-language-aware front end (below). **Each variant ships its own `tokenizer.json`**
-— base/multilingual a custom BPE, turbo a GPT-2 BPE — so a voice must point its
-`BPETokenizer` at the matching model's tokenizer.
+Chatterbox reads raw text with its own subword BPE, not phonemes. The adapter overrides `BaseOnnxAdapter.encode_text` to tokenize the text directly, and the tokenizer owns the normalization. The base and turbo variants use `phoonnx.tokenizer.BPETokenizer`. The multilingual variant uses its subclass `ChatterboxMTLTokenizer`. Each variant ships its own `tokenizer.json` (a custom BPE for base and multilingual, a GPT-2 BPE for turbo), so a voice must use the tokenizer of its own model.
 
-### Multilingual language selection
+`ChatterboxMTLTokenizer` lowercases and NFKD-normalizes the text, puts a `[<lang>]` token from the `lang_code` of the voice in front, and replaces each space with `[SPACE]`. Latin, Greek and Cyrillic languages need nothing more. Four languages also need a script transform from `SCRIPT_TRANSFORMS` in `phoonnx.lang_preprocess`:
 
-`ChatterboxMTLTokenizer` prefixes a `[<lang>]` token from the voice's
-`lang_code`, lowercases + NFKD-normalises, and replaces spaces with `[SPACE]`.
-Latin/Greek/Cyrillic languages (en, pt, es, fr, de, it, nl, el, tr, sv, …) work
-directly. Four scripts also need a per-language transform (in
-`phoonnx.lang_preprocess`, dispatched via `SCRIPT_TRANSFORMS`):
-
-| lang | transform | dependency |
+| Language | Transform | Dependency |
 |---|---|---|
-| **ko** | Hangul → Jamo | none (pure Python, always on) |
-| **ja** | kanji → hiragana | `pykakasi` |
-| **zh** | Cangjie codes | `spacy-pkuseg` (+ HF `Cangjie5_TC.json`) |
-| **ru** | add stress marks | `stressonnx` (pure-onnxruntime stressor, no torch) |
+| ko | Hangul to Jamo | none |
+| ja | Kanji to hiragana | `pykakasi` |
+| zh | Cangjie codes | `spacy-pkuseg` and the Hub file `Cangjie5_TC.json` |
+| ru | Add stress marks | `stressonnx` |
 
-Install the ja/zh deps with `pip install phoonnx[chatterbox-multilingual]`.
-Hebrew/Arabic use the universal `add_diacritics` SynthesisConfig flag (set it on
-those voices), not a tokenizer transform. Any missing dependency degrades to the
-raw text with a warning (so the rest of the pipeline still runs).
+If a dependency is missing, the transform logs a warning and returns the text unchanged. For Hebrew and Arabic voices, set `diacritize` in the `stages` field of `SynthesisConfig`. It is not a tokenizer transform.
 
-## Variants
+## Reference
 
-All three variants run on one adapter, which reads each graph's I/O signature:
-base + multilingual use a Llama LM (positions in `embed_tokens`), turbo uses
-GPT-2 (positions fed to the LM).
+### Decoding parameters
 
-## Gotchas / aliases
+| Param | Default | Meaning |
+|---|---|---|
+| `exaggeration` | 0.5 | Expressiveness (0.0 to 1.0), fed to `embed_tokens` |
+| `temperature` | 0.8 | Sampling temperature. 0 or below gives greedy decoding. |
+| `top_p` | 0.95 | Nucleus-sampling cutoff, used only when sampling |
 
-- **Decoding is sampling by default**, not greedy: with the default
-  `temperature=0.8` the adapter samples with top-p `0.95`. Greedy decoding
-  happens only when `temperature <= 0`.
-- **Four graphs are mandatory:** missing `embed_tokens` / `speech_encoder` /
-  `conditional_decoder` paths, or a missing `reference_audio`, each raise a
-  `RuntimeError`.
-- **Match the tokenizer to the model:** each variant's `tokenizer.json` differs.
+### Fixed limits
 
-## Upstream
+These constants are class attributes of `ChatterboxAdapter`. No setting changes them.
+
+| Constant | Value | Meaning |
+|---|---|---|
+| `REPETITION_PENALTY` | 1.2 | Applied over all emitted tokens at each step, before sampling |
+| `MAX_NEW_TOKENS` | 1000 | Maximum number of generated speech tokens |
+
+### Upstream
 
 | | |
 |---|---|
 | Model | [Resemble AI Chatterbox](https://github.com/resemble-ai/chatterbox) |
 | ONNX | [`onnx-community/chatterbox-ONNX`](https://huggingface.co/onnx-community/chatterbox-ONNX) (4 graphs, external-data weights) |
-| Converter | [VladOS95-cyber/onnx_conversion_scripts](https://github.com/VladOS95-cyber/onnx_conversion_scripts) — the LM is built with [onnxruntime-genai's `builder.py`](https://github.com/microsoft/onnxruntime-genai) |
-| Variants | base, multilingual (Llama), turbo (GPT-2 + meanflow) — all supported by the I/O-driven adapter |
+| Converter | [VladOS95-cyber/onnx_conversion_scripts](https://github.com/VladOS95-cyber/onnx_conversion_scripts). The language model is built with [onnxruntime-genai's `builder.py`](https://github.com/microsoft/onnxruntime-genai). |
+| Variants | base and multilingual (Llama), turbo (GPT-2 and meanflow) |
 
 ---
 

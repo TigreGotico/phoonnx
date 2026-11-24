@@ -236,7 +236,7 @@ class TestGetTts(unittest.TestCase):
         self.assertAlmostEqual(cfg.noise_scale, 0.1)
         self.assertAlmostEqual(cfg.length_scale, 2.0)
         self.assertAlmostEqual(cfg.noise_w_scale, 0.3)
-        self.assertFalse(cfg.enable_phonetic_spellings)
+        self.assertFalse(cfg.phonetic_spellings)
 
     def test_legacy_hyphen_config_keys_still_work(self):
         """Backwards compat: old hyphenated keys remain accepted as fallbacks."""
@@ -289,7 +289,7 @@ class TestGetTts(unittest.TestCase):
 
 
 class TestSpeakerSelection(unittest.TestCase):
-    """``speaker_id`` / ``speaker`` config -> SynthesisConfig.speaker_id."""
+    """``speaker_id`` / ``speaker`` config -> SynthesisConfig.speaker."""
 
     # the Catalan multiaccent matxa model: accent/name -> id
     CAT_MAP = {"quim": 0, "olga": 1, "grau": 2, "elia": 3,
@@ -303,7 +303,7 @@ class TestSpeakerSelection(unittest.TestCase):
         args, kwargs = v.tts_voice.synthesize_wav.call_args
         for cand in (*args, *kwargs.values()):
             if isinstance(cand, SynthesisConfig):
-                return cand.speaker_id
+                return cand.speaker
         self.fail("no SynthesisConfig passed to synthesize_wav")
 
     def test_no_speaker_config_is_none(self):
@@ -356,8 +356,8 @@ class TestSuperResolutionConfigThreading(unittest.TestCase):
 
     def test_no_config_is_disabled(self):
         cfg = self._synthesize()
-        self.assertIs(cfg.super_resolution, False)
-        self.assertIsNone(cfg.super_resolution_model)
+        self.assertIs(cfg.audio.super_resolution, False)
+        self.assertIsNone(cfg.audio.super_resolution_model)
 
     def test_mycroft_conf_block_reaches_synthesis_config(self):
         """Exactly the keys a user would write under
@@ -365,19 +365,19 @@ class TestSuperResolutionConfigThreading(unittest.TestCase):
         cfg = self._synthesize({"voice": "OpenVoiceOS/v",
                                 "super_resolution": True,
                                 "super_resolution_model": "novasr"})
-        self.assertIs(cfg.super_resolution, True)
-        self.assertEqual(cfg.super_resolution_model, "novasr")
+        self.assertIs(cfg.audio.super_resolution, True)
+        self.assertEqual(cfg.audio.super_resolution_model, "novasr")
 
     def test_enabled_without_model_defers_to_engine_default(self):
         cfg = self._synthesize({"super_resolution": True})
-        self.assertIs(cfg.super_resolution, True)
-        self.assertIsNone(cfg.super_resolution_model)
+        self.assertIs(cfg.audio.super_resolution, True)
+        self.assertIsNone(cfg.audio.super_resolution_model)
 
     def test_the_chunk_key_reaches_synthesis_config(self):
-        self.assertEqual(self._synthesize({"chunk": "clause"}).chunk, "clause")
+        self.assertEqual(self._synthesize({"chunk": "clause"}).stages.chunk, "clause")
 
     def test_no_chunk_key_reads_one_sentence_per_call(self):
-        self.assertIsNone(self._synthesize().chunk)
+        self.assertIsNone(self._synthesize().stages.chunk)
 
 
 if __name__ == "__main__":

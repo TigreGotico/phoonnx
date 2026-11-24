@@ -57,7 +57,7 @@ Cloning is **in-context and pre-encoded**: a speaker profile is a JSON transcrip
 words each carry a duration, three prosody buckets and their DAC codes (upstream's
 ``speaker`` dict, ``interface_version: 3``). Building a profile from a fresh clip needs
 Whisper word-alignment plus the DAC *encoder*; this adapter clones from published
-profiles only, so ``speaker_reference`` is not supported.
+profiles only, so ``SynthesisConfig.reference`` is not supported.
 
 Sampling follows upstream's **HuggingFace** stack — ``outetts``'s default backend is
 ``Backend.HF`` — which is a different order from the llama.cpp one NeuTTS uses:
@@ -412,7 +412,7 @@ class OuteTTSAdapter(BaseOnnxAdapter):
         phoonnx voice is pinned to, else the bundle's ``default_voice``."""
         name = None
         if syn_config is not None:
-            name = (syn_config.extra_params or {}).get("voice")
+            name = syn_config.extra.get("voice")
         if not name:
             cfg = getattr(voice, "config", None)
             name = (getattr(cfg, "engine_params", None) or {}).get("voice")
@@ -498,7 +498,7 @@ class OuteTTSAdapter(BaseOnnxAdapter):
             raise RuntimeError("OuteTTS voice missing tokenizer_path in engine_params")
         budget = CHUNK_MAX_WORDS
         if syn_config is not None:
-            budget = int((syn_config.extra_params or {}).get("max_chunk_words", budget))
+            budget = int(syn_config.extra.get("max_chunk_words", budget))
         speaker = self.resolve_speaker(voice, syn_config)
         prompts = [self.build_prompt(chunk, speaker)
                    for chunk in chunk_text(text, max_words=max(1, budget))]
@@ -615,7 +615,7 @@ class OuteTTSAdapter(BaseOnnxAdapter):
             raise RuntimeError(
                 "OuteTTS clones from pre-encoded speaker profiles, not from a reference "
                 "clip: building one needs Whisper word alignment and the DAC encoder. "
-                "Select a profile with extra_params={'voice': ...}")
+                "Select a profile with extra={'voice': ...}")
 
         p = {**self.default_params(), **request.params}
         seed = p.get("seed")

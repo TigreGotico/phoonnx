@@ -32,7 +32,7 @@ The step count is fixed at export time on both contracts. The name-bound export
 stores it in its metadata as ``nfe_step``: the adapter then runs exactly that many
 steps and logs a warning when a call asks for another ``nfe``. On a graph without
 that key, and on the older contract, ``nfe`` comes from ``engine_params`` or from
-``SynthesisConfig.extra_params`` (default 32) and must equal the export's value.
+``SynthesisConfig.extra`` (default 32) and must equal the export's value.
 The voice config's ``inference`` section does not set it.
 
 This adapter overrides :meth:`synthesize` to drive the iterative ODE loop
