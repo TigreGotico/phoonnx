@@ -46,14 +46,10 @@ class _CompiledWrapper(torch.nn.Module):
 
 
 def _bare_model():
-    """A VitsModel instance without running __init__ (no dataset/torch build);
-    we only exercise the checkpoint hooks, which read model_g/model_d."""
-    m = VitsModel.__new__(VitsModel)
-    torch.nn.Module.__init__(m)
-    m.model_g = torch.nn.Linear(2, 2)
-    m.model_d = torch.nn.Linear(2, 2)
-    m.hparams.update(input_layer="ids", input_features=None)
-    return m
+    """A tiny VitsModel built through its real ``__init__``, with no dataset."""
+    return VitsModel(num_symbols=8, num_speakers=1, inter_channels=8, hidden_channels=8,
+                     filter_channels=16, n_layers=1, resblock_kernel_sizes=(3,),
+                     resblock_dilation_sizes=((1, 3),), upsample_initial_channel=8)
 
 
 def _compile(model):
@@ -116,18 +112,10 @@ class TestCompileResumeMatrix(unittest.TestCase):
     def test_loaded_state_actually_restores_into_compiled_model(self):
         # End-to-end: a clean checkpoint loads via load_state_dict into a
         # compiled model without missing/unexpected keys.
-        model = _compile(_bare_model())
-        real = {
-            f"model_g._orig_mod.{k}": v
-            for k, v in torch.nn.Linear(2, 2).state_dict().items()
-        }
-        real.update(
-            {
-                f"model_d._orig_mod.{k}": v
-                for k, v in torch.nn.Linear(2, 2).state_dict().items()
-            }
-        )
-        clean = {k.replace("._orig_mod.", "."): v for k, v in real.items()}
+        model = _bare_model()
+        clean = {f"model_g.{k}": v for k, v in model.model_g.state_dict().items()}
+        clean.update({f"model_d.{k}": v for k, v in model.model_d.state_dict().items()})
+        model = _compile(model)
         ckpt = {"state_dict": clean}
         model.on_load_checkpoint(ckpt)
         combined = torch.nn.Module()

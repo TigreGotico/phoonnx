@@ -13,6 +13,7 @@ Covers:
     @compiler_disable no-op wrapper on this torch version
   - the dataset's weights_only=True torch.load path against a real tensor
 """
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -25,7 +26,7 @@ from click.testing import CliRunner
 from phoonnx_train import train as train_module
 from phoonnx_train.torch_compat import compiler_disable
 from phoonnx_train.vits import transforms
-from phoonnx_train.vits.dataset import PhoonnxDataset, Utterance
+from phoonnx_train.vits.dataset import PhoonnxDataset
 from phoonnx_train.vits.lightning import VitsModel
 
 
@@ -160,15 +161,12 @@ class TestCompileInvocation(unittest.TestCase):
 class TestCheckpointOrigModStripping(unittest.TestCase):
     @staticmethod
     def _uncompiled_model():
-        # A bare (uncompiled) VitsModel: on_load_checkpoint reconciles keys
-        # against the CURRENT model, so an uncompiled model strips "_orig_mod."
-        # exactly as before.
-        m = VitsModel.__new__(VitsModel)
-        torch.nn.Module.__init__(m)
-        m.model_g = torch.nn.Linear(2, 2)
-        m.model_d = torch.nn.Linear(2, 2)
-        m.hparams.update(input_layer="ids", input_features=None)
-        return m
+        # A tiny uncompiled VitsModel built through its real __init__:
+        # on_load_checkpoint reconciles keys against the CURRENT model, so an
+        # uncompiled model strips "_orig_mod." exactly as before.
+        return VitsModel(num_symbols=8, num_speakers=1, inter_channels=8, hidden_channels=8,
+                         filter_channels=16, n_layers=1, resblock_kernel_sizes=(3,),
+                         resblock_dilation_sizes=((1, 3),), upsample_initial_channel=8)
 
     def test_orig_mod_prefix_is_stripped(self):
         checkpoint = {
@@ -274,6 +272,14 @@ class TestCompilerDisableShim(unittest.TestCase):
         importlib.reload(modules)
 
 
+def _dataset(folder, phoneme_ids, norm_path, spec_path):
+    """A PhoonnxDataset built through its real ``__init__`` from a one-line dataset.jsonl."""
+    jsonl = folder / "dataset.jsonl"
+    jsonl.write_text(json.dumps({"phoneme_ids": phoneme_ids, "audio_norm_path": str(norm_path),
+                                 "audio_spec_path": str(spec_path)}) + "\n", encoding="utf-8")
+    return PhoonnxDataset([jsonl])
+
+
 class TestDatasetWeightsOnlyLoad(unittest.TestCase):
     def test_getitem_loads_cached_tensors_with_weights_only(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -286,14 +292,7 @@ class TestDatasetWeightsOnlyLoad(unittest.TestCase):
             torch.save(norm_tensor, norm_path)
             torch.save(spec_tensor, spec_path)
 
-            dataset = object.__new__(PhoonnxDataset)
-            dataset.utterances = [
-                Utterance(
-                    phoneme_ids=[1, 2, 3],
-                    audio_norm_path=norm_path,
-                    audio_spec_path=spec_path,
-                )
-            ]
+            dataset = _dataset(tmp_path, [1, 2, 3], norm_path, spec_path)
 
             item = dataset[0]
             self.assertTrue(torch.equal(item.audio_norm, norm_tensor))
@@ -311,14 +310,7 @@ class TestDatasetWeightsOnlyLoad(unittest.TestCase):
             torch.save({"not": "a tensor", "obj": SimpleNamespace(x=1)}, norm_path)
             torch.save(torch.rand(4), spec_path)
 
-            dataset = object.__new__(PhoonnxDataset)
-            dataset.utterances = [
-                Utterance(
-                    phoneme_ids=[1],
-                    audio_norm_path=norm_path,
-                    audio_spec_path=spec_path,
-                )
-            ]
+            dataset = _dataset(tmp_path, [1], norm_path, spec_path)
 
             with self.assertRaises(Exception):
                 dataset[0]

@@ -65,3 +65,8 @@ def _join_provenance_threads():
         if thread.name.startswith("phoonnx-provenance-"):
             thread.join(timeout=60)
 
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "slow: a test that can take over 60 s on one CPU thread; CI runs it")
