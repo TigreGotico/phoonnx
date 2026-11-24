@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.135.0a2](https://github.com/TigreGotico/phoonnx/tree/1.135.0a2) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.0a1...1.135.0a2)
+
+**Merged pull requests:**
+
+- refactor: make model\_manager shorter and easier to read [\#991](https://github.com/TigreGotico/phoonnx/pull/991) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.135.0a1](https://github.com/TigreGotico/phoonnx/tree/1.135.0a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.134.0a2...1.135.0a1)
@@ -345,10 +353,6 @@
 ## [1.125.11a1](https://github.com/TigreGotico/phoonnx/tree/1.125.11a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.10a3...1.125.11a1)
-
-**Merged pull requests:**
-
-- fix: a partial mirror snapshot at the table commit routes the voice to its repo [\#888](https://github.com/TigreGotico/phoonnx/pull/888) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.10a3](https://github.com/TigreGotico/phoonnx/tree/1.125.10a3) (2026-11-22)
 
