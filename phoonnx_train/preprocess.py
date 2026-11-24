@@ -428,7 +428,9 @@ def next_result(result_queue: Queue, task_queue: JoinableQueue,
     "--jsonl-audio-path",
     default=None,
     help="Replace the base folder of each audio_path in dataset.jsonl: the parent of the "
-         "folder that holds every audio file. The rest of each path stays."
+         "folder that holds every audio file. In a dataset directory, that folder is the top "
+         "folder with the audio, such as wav/, so the base is the dataset directory. "
+         "The rest of each path stays."
 )
 @click.option(
     "--jsonl-audio-spec-path",
@@ -684,17 +686,36 @@ def cli(
     # identical speaker ids across datasets do not collide.
     _LOGGER.info("Loading utterances from %d source(s)...", len(sources))
     utterances: List[Utterance] = []
+    audio_dirs: List[str] = []
     for src_index, source in enumerate(sources):
         source_tag = Path(source).stem or Path(source).name or source
+        source_dir = Path(source).absolute() if Path(source).is_dir() else None
         source_speakers: Set[str] = set()
         for utt in load_source(source, config):
             if len(sources) > 1 and utt.speaker is not None:
                 source_speakers.add(utt.speaker)
                 utt.speaker = f"{source_tag}:{utt.speaker}"
             utterances.append(utt)
+            if not jsonl_audio_path:
+                continue
+            if str(utt.audio_path) != ".":
+                audio_dir = utt.audio_path.absolute().parent
+                # inside a dataset directory, the audio folder is its top folder, such as wav/
+                if source_dir is not None and source_dir in audio_dir.parents:
+                    audio_dir = source_dir / audio_dir.relative_to(source_dir).parts[0]
+                audio_dirs.append(str(audio_dir))
+            elif utt.audio_bytes is not None and not config.skip_audio:
+                # ensure_audio_path decodes these rows into <cache_dir>/audio
+                audio_dirs.append(str((config.cache_dir / "audio").absolute()))
         if len(sources) > 1 and source_speakers:
             _LOGGER.info("Source %r speakers namespaced as %s", source,
                          ", ".join(f"{source_tag}:{s}" for s in sorted(source_speakers)))
+
+    # A path override replaces the base folder of each audio path and keeps the
+    # rest. The audio base is the parent of the folder that holds every audio
+    # file. It comes from every loaded row, before --resume or a filter drops
+    # any, so each run over the same sources writes the same base.
+    audio_base: Optional[Path] = Path(os.path.commonpath(audio_dirs)).parent if audio_dirs else None
 
     if not utterances:
         raise click.ClickException("No valid utterances found in dataset.")
@@ -989,15 +1010,8 @@ def cli(
     if resume_rows and prior_config_path.is_file():
         prior_config = json.loads(prior_config_path.read_text(encoding="utf-8"))
 
-    # A path override replaces the base folder of each path and keeps the rest.
-    # The audio base is the parent of the folder that holds every audio file;
-    # the cache base is the parent of --cache-dir, or --output-dir by default.
-    audio_base: Optional[Path] = None
-    if jsonl_audio_path:
-        audio_dirs = [str(utt.audio_path.absolute().parent) for utt in processed_utterances
-                      if str(utt.audio_path) != "."]
-        if audio_dirs:
-            audio_base = Path(os.path.commonpath(audio_dirs)).parent
+    # The cache path override replaces the parent of --cache-dir, or
+    # --output-dir by default, and keeps the rest.
     cache_base = config.cache_dir.parent if cache_dir else config.output_dir
 
     # --- Apply final phoneme IDs and write dataset.jsonl ---
