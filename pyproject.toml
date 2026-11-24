@@ -23,16 +23,19 @@ dependencies = [
     "quebra-frases>=0.3.8a5",
     "langcodes",
     "linguatag>=0.4.1a1",
-    # >=0.0.2a98: Tetun Dili (tdt) reads prices, telephone numbers, clock times,
-    # percentages and measures in Portuguese. Earlier floors: tdt reads a numeric
+    # >=0.0.2a107: a group of digits joined by spaces reads as one number or stays as
+    # written, and a pt word after a number takes the number's gender. Earlier floors:
+    # tdt reads prices, telephone numbers, clock times, percentages and measures in
+    # Portuguese; tdt reads a numeric
     # date in Portuguese, a Korean number before a counter reads (사과 3개 as 사과 세 개),
     # after text2spoken.SayAs and its digits, telephone, characters, ordinal and date readings
-    "text2spoken>=0.0.2a98",
+    "text2spoken>=0.0.2a107",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
-    # >=0.0.4a151: the nemo_ipa phonemizer, which reads English for the Magpie
-    # english_phoneme sub-tokenizer as NeMo does.
-    # Earlier floors: the Shami espeak-ng timeout grows with the length of the
+    # >=0.0.4a156: one consistent floor for every scriptconv extra; the same phonemes
+    # as 0.0.4a151. Earlier floors: the nemo_ipa phonemizer, which reads English for
+    # the Magpie english_phoneme sub-tokenizer as NeMo does; the Shami espeak-ng
+    # timeout grows with the length of the
     # text; the backend revision is sc2, and scriptconv runs no probe
     # for it; Shami reads a run of more than 15 digits digit by digit, in any
     # decimal digit script, and gives espeak-ng the text on stdin; a backend
@@ -48,7 +51,7 @@ dependencies = [
     # the gap of the source, the Shami emphatics, and the espeak_lt_accent,
     # hebrew_ipa, openjtalk_prosody and tltk phonemizers. Every extra relies on
     # this floor.
-    "scriptconv[phonemizers]>=0.0.4a151",
+    "scriptconv[phonemizers]>=0.0.4a156",
     # the F5-TTS pinyin text function (f5tts_pinyin) of F5-TTS v1 Base and Twi
     # Asante segments with rjieba and reads hanzi with pypinyin
     "rjieba>=0.2.2",
@@ -100,7 +103,7 @@ test = [
     # ahotts-g2p stay listed here for their version floors. pt-phonemizers installs
     # tugaphone, which the card example tests run as a backend that owns its
     # diacritize stage.
-    "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a150",
+    "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a156",
     # >=0.2.1a1: mantoq reads a very long digit run digit by digit, not as one int
     "scriptconv-nonfree>=0.2.1a1",
     # >=0.3.1a1: the eSpeak wrapper gives espeak-ng the text on stdin, so a line
@@ -108,7 +111,7 @@ test = [
     "scriptconv-copyleft>=0.3.1a1",
     # the model card tests render the text stack that the cards recommend, from
     # these libraries' own language list, call names and default model
-    "text2spoken>=0.0.2a98",
+    "text2spoken>=0.0.2a107",
     "bifonia>=0.5.0",
     "text2tashkeel>=0.3.1a3",
     "espyak>=0.0.3a1",
@@ -202,7 +205,7 @@ test = [
 streaming = ["onnx"]
 # The eSpeak wrapper is in scriptconv-copyleft (GPL), so an eSpeak voice needs
 # this extra even when the espeak-ng binary is installed.
-espeak = ["scriptconv[espeak]>=0.0.4a150", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+espeak = ["scriptconv[espeak]>=0.0.4a156", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 matcha = [
     "scipy",
 ]
@@ -356,9 +359,9 @@ train-pyworld = [
 ]
 # scriptconv[ar-phonemizers] installs arbtok and scriptconv-nonfree, which holds
 # the mantoq, Halabi and Iqra wrappers (CC BY-NC 4.0).
-ar = ["epitran", "scriptconv[ar-phonemizers]>=0.0.4a150", "scriptconv-nonfree>=0.2.1a1", "arbtok>=0.0.3a2", "text2tashkeel>=0.3.1a3", "gruut[ar]>=2.3.0"]
+ar = ["epitran", "scriptconv[ar-phonemizers]>=0.0.4a156", "scriptconv-nonfree>=0.2.1a1", "arbtok>=0.0.3a2", "text2tashkeel>=0.3.1a3", "gruut[ar]>=2.3.0"]
 ca = ["epitran", "gruut[ca]>=2.3.0"]
-gl = ["scriptconv[gl]>=0.0.4a150", "pycotovia>=0.4.0a1", "epitran"]
+gl = ["scriptconv[gl]>=0.0.4a156", "pycotovia>=0.4.0a1", "epitran"]
 cs = ["epitran", "gruut[cs]>=2.3.0"]
 de = ["epitran", "gruut[de]>=2.3.0"]
 # scriptconv-copyleft holds the misaki wrappers. The scriptconv[misaki] extra
@@ -366,20 +369,20 @@ de = ["epitran", "gruut[de]>=2.3.0"]
 # spacy<4.0 in the en, ja, vi and zh extras: see the spacy comment in the test extra.
 en = ["epitran", "gruut[en]>=2.3.0", "scriptconv-copyleft>=0.3.1a1", "misaki[en]", "spacy>=3.7,<4.0"]
 es = ["epitran", "gruut[es]>=2.3.0"]
-eu = ["scriptconv[eu]>=0.0.4a150", "ahotts-g2p>=0.1.0", "euskaphone", "epitran"]
-fa = ["epitran", "scriptconv[fa]>=0.0.4a150"]
+eu = ["scriptconv[eu]>=0.0.4a156", "ahotts-g2p>=0.1.0", "euskaphone", "epitran"]
+fa = ["epitran", "scriptconv[fa]>=0.0.4a156"]
 fr = ["epitran", "gruut[fr]>=2.3.0"]
-he = ["epitran", "phonikud_onnx", "phonikud", "scriptconv[he]>=0.0.4a150"]
+he = ["epitran", "phonikud_onnx", "phonikud", "scriptconv[he]>=0.0.4a156"]
 it = ["epitran", "gruut[it]>=2.3.0"]
-ja = ["epitran", "gruut[ja]>=2.3.0", "scriptconv[ja-phonemizers]>=0.0.4a150", "misaki", "fugashi", "jaconv", "mojimoji", "spacy>=3.7,<4.0", "pyopenjtalk-plus[onnxruntime]>=0.4.1.post10", "pykakasi", "cutlet", "unidic-lite"]
-ko = ["epitran", "scriptconv[ko]>=0.0.4a150", "g2pk", "misaki[ko]"]
+ja = ["epitran", "gruut[ja]>=2.3.0", "scriptconv[ja-phonemizers]>=0.0.4a156", "misaki", "fugashi", "jaconv", "mojimoji", "spacy>=3.7,<4.0", "pyopenjtalk-plus[onnxruntime]>=0.4.1.post10", "pykakasi", "cutlet", "unidic-lite"]
+ko = ["epitran", "scriptconv[ko]>=0.0.4a156", "g2pk", "misaki[ko]"]
 mwl = ["scriptconv[mwl]"]
 pt = ["epitran", "scriptconv[o2i]", "tugaphone", "gruut[pt]>=2.3.0"]
 ru = ["epitran", "gruut[ru]>=2.3.0"]
 sv = ["epitran", "gruut[sv]>=2.3.0"]
 sw = ["epitran", "gruut[sw]>=2.3.0"]
-vi = ["epitran", "gruut[vi]>=2.3.0", "scriptconv[vi]>=0.0.4a150", "scriptconv-copyleft>=0.3.1a1", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
-zh = ["scriptconv[zh-phonemizers]>=0.0.4a150", "epitran", "gruut[zh]>=2.3.0", "scriptconv-copyleft>=0.3.1a1", "misaki[zh]", "spacy>=3.7,<4.0", "g2pM", "pypinyin", "xpinyin", "pinyin_to_ipa", "jieba", "cn2an"]
+vi = ["epitran", "gruut[vi]>=2.3.0", "scriptconv[vi]>=0.0.4a156", "scriptconv-copyleft>=0.3.1a1", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
+zh = ["scriptconv[zh-phonemizers]>=0.0.4a156", "epitran", "gruut[zh]>=2.3.0", "scriptconv-copyleft>=0.3.1a1", "misaki[zh]", "spacy>=3.7,<4.0", "g2pM", "pypinyin", "xpinyin", "pinyin_to_ipa", "jieba", "cn2an"]
 aa = ["epitran"]
 aii = ["epitran"]
 am = ["epitran"]
@@ -419,7 +422,7 @@ lez = ["epitran"]
 lij = ["epitran"]
 lo = ["epitran"]
 lsm = ["epitran"]
-lt = ["epitran", "scriptconv[espeak]>=0.0.4a150", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+lt = ["epitran", "scriptconv[espeak]>=0.0.4a156", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 luy = ["epitran"]
 lv = ["epitran"]
 mi = ["epitran"]
@@ -449,7 +452,7 @@ ta = ["epitran"]
 te = ["epitran"]
 tg = ["epitran"]
 # tltk, the Thai backend, needs gensim, which has no wheel for Python 3.14
-th = ["epitran", "scriptconv[th]>=0.0.4a150; python_version < '3.14'"]
+th = ["epitran", "scriptconv[th]>=0.0.4a156; python_version < '3.14'"]
 ti = ["epitran"]
 tk = ["epitran"]
 tpi = ["epitran"]
@@ -502,9 +505,9 @@ all = [
     # "espeak", "gl" and "eu" install scriptconv-copyleft, which holds the
     # eSpeak, Cotovia, AhoTTS and misaki wrappers; "ar-phonemizers" installs
     # scriptconv-nonfree, which holds the mantoq wrapper.
-    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he,espeak,gl,eu]>=0.0.4a150",
+    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he,espeak,gl,eu]>=0.0.4a156",
     # tltk, the Thai backend, needs gensim, which has no wheel for Python 3.14
-    "scriptconv[th]>=0.0.4a150; python_version < '3.14'",
+    "scriptconv[th]>=0.0.4a156; python_version < '3.14'",
     "scriptconv-nonfree>=0.2.1a1",
     "scriptconv-copyleft>=0.3.1a1",
     # scriptconv's own "stress" extra floors stressonnx at >=0.0.2, which
