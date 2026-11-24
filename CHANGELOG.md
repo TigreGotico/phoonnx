@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.137.0a2](https://github.com/TigreGotico/phoonnx/tree/1.137.0a2) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.0a1...1.137.0a2)
+
+**Merged pull requests:**
+
+- test: pin known defects as strict xfails [\#1004](https://github.com/TigreGotico/phoonnx/pull/1004) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.137.0a1](https://github.com/TigreGotico/phoonnx/tree/1.137.0a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.4a1...1.137.0a1)
@@ -389,10 +397,6 @@
 ## [1.128.0a1](https://github.com/TigreGotico/phoonnx/tree/1.128.0a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.127.0a1...1.128.0a1)
-
-**Merged pull requests:**
-
-- feat: list the int8 copies of 57 Piper mirror voices in the index [\#913](https://github.com/TigreGotico/phoonnx/pull/913) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.127.0a1](https://github.com/TigreGotico/phoonnx/tree/1.127.0a1) (2026-11-22)
 
