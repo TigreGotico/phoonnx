@@ -69,10 +69,9 @@ def resolve_model(model: str, config: Optional[str]) -> tuple:
     if info is None:
         raise click.ClickException(f"Downloaded '{model}' but could not reload its metadata")
     local_model_path = info.download_model()
-    local_config_path = local_model_path.parent / "model.json"
-    if not local_config_path.is_file():
-        info.download_config()
-    return str(local_model_path), str(local_config_path)
+    # None for a voice whose index entry names no config
+    local_config_path = info.hub_path(info.config_url)
+    return str(local_model_path), str(local_config_path) if local_config_path else None
 
 
 def load_voice_timed(model_path: str, config_path: Optional[str]) -> Dict[str, Any]:
@@ -87,6 +86,9 @@ def load_voice_timed(model_path: str, config_path: Optional[str]) -> Dict[str, A
 
     if config_path is None:
         config_path = f"{model_path}.json"
+    if not Path(config_path).is_file():
+        click.echo(f"No config at {config_path}; the benchmark uses a unicode fallback config, "
+                   "not the config the voice runs with.", err=True)
 
     def _parse_config():
         import os
