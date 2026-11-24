@@ -813,11 +813,20 @@ class OptiSpeechTrainingEngine(BaseTrainingEngine):
             **onnx_export_kwargs(),
         )
 
-        self._embed_metadata(output_path, model)
+        inference_meta = self._embed_metadata(output_path, model)
         if model_config is None:
             _LOG.warning("No training config was given, so no config was written beside %s", output_path)
         else:
-            write_sidecars({**model_config, "engine": "optispeech"}, output_dir, output_path.stem,
+            from phoonnx.engines.optispeech_config import voice_config_from_optispeech_meta
+
+            # Training tokenizes with the TextProcessor of the model, not the phoneme map
+            # of the dataset config: the voice config takes the table of the metadata.
+            voice_config = voice_config_from_optispeech_meta(inference_meta).to_dict()
+            # The metadata names no speakers, so the speaker map stays the dataset's.
+            for key in ("num_speakers", "speaker_id_map"):
+                if key in model_config:
+                    voice_config[key] = model_config[key]
+            write_sidecars(voice_config, output_dir, output_path.stem,
                            generate_tokens=kwargs.get("generate_tokens", False),
                            piper=kwargs.get("piper", False))
         _LOG.info("ONNX model exported to %s", output_path)
@@ -1014,7 +1023,7 @@ class OptiSpeechTrainingEngine(BaseTrainingEngine):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _embed_metadata(onnx_path: Path, model: "pl.LightningModule") -> None:
+    def _embed_metadata(onnx_path: Path, model: "pl.LightningModule") -> Dict[str, Any]:
         import onnx
 
         tp = model.text_processor
@@ -1053,3 +1062,4 @@ class OptiSpeechTrainingEngine(BaseTrainingEngine):
         type_entry.key = "model_type"
         type_entry.value = "optispeech"
         onnx.save(onnx_model, str(onnx_path))
+        return inference_meta
