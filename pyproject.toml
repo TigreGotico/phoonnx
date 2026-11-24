@@ -117,7 +117,7 @@ test = [
     "voiceclonnx>=0.0.3a3",
     "orthography2ipa>=7.112.0a1",
     # tests/test_features_json.py runs the feature-table generator
-    "phonematcher>=2.3.10a3",
+    "phonematcher>=2.5.0a1",
     "o2i-lexicons>=0.1.0a1",
     "arbtok>=0.0.3a2",
     "euskaphone",
@@ -307,7 +307,7 @@ train-data = [
 # features.json table of a phoneme id map once, before training. Training and
 # synthesis read only that JSON, so these are never runtime dependencies.
 train-features = [
-    "phonematcher>=2.3.10a3",
+    "phonematcher>=2.5.0a1",
     "orthography2ipa>=7.124.46a4",
 ]
 # extra deps for the FastPitch / SpeedySpeech training engine
