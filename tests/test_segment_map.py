@@ -13,10 +13,10 @@ from tests.test_preprocess_pipeline import _invoke, _jsonl
 SPECIALS = {DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN}
 # segments written out by hand: the expected value is not computed by the code under test
 TEXT = "ˈtʲaː ɐ̃d͡ʒa, ma˥˩."
-SEGMENTS = ["ˈ", "tʲ", "aː", " ", "ɐ̃", "d͡ʒ", "a", ",", " ", "m", "a", "˥˩", "."]
+SEGMENTS = ["ˈ", "tʲ", "aː", " ", "ɐ̃", "d͡ʒ", "a", ",", " ", "m", "a˥˩", "."]
 # the stub frontend drops punctuation, and the space is the word-blank special
 CLI_TEXT = "ˈtʲaː ɐ̃d͡ʒa ma˥˩"
-CLI_SEGMENTS = ["ˈ", "tʲ", "aː", "ɐ̃", "d͡ʒ", "a", "m", "a", "˥˩"]
+CLI_SEGMENTS = ["ˈ", "tʲ", "aː", "ɐ̃", "d͡ʒ", "a", "m", "a˥˩"]
 
 
 class TestSegmentPhonemes(unittest.TestCase):
@@ -50,22 +50,34 @@ class TestSegmentPhonemes(unittest.TestCase):
     def test_tone_diacritic_stays_on_its_vowel(self):
         self.assertEqual(segment_phonemes("má"), ["m", "á"])
 
-    def test_a_run_of_tone_numerals_or_left_stem_letters_is_one_contour(self):
+    def test_a_tone_right_after_its_vowel_is_part_of_the_vowel(self):
+        # the ruling: tone is a feature of the tone-bearing segment
+        self.assertEqual(segment_phonemes("ma˥˩"), ["m", "a˥˩"])
         for notation in ("˥˦˧˨˩", "\ua712\ua713\ua714\ua715\ua716", "¹²³⁴⁵"):
             for first in notation:
                 for second in notation:
-                    self.assertEqual(segment_phonemes("a" + first + second), ["a", first + second])
-        self.assertEqual(segment_phonemes("ma⁵¹"), ["m", "a", "⁵¹"])
-        self.assertEqual(segment_phonemes("ma²¹⁴ ta³"), ["m", "a", "²¹⁴", " ", "t", "a", "³"])
-        self.assertEqual(segment_phonemes("ma\ua712\ua716"), ["m", "a", "\ua712\ua716"])
+                    self.assertEqual(segment_phonemes("a" + first + second), ["a" + first + second])
+        self.assertEqual(segment_phonemes("ma⁵¹"), ["m", "a⁵¹"])
+        self.assertEqual(segment_phonemes("ma²¹⁴ ta³"), ["m", "a²¹⁴", " ", "t", "a³"])
+        self.assertEqual(segment_phonemes("ma\ua712\ua716"), ["m", "a\ua712\ua716"])
+        # the neutral-tone ⁰ has no level and stands alone
         self.assertEqual(segment_phonemes("ma⁰"), ["m", "a", "⁰"])
-        self.assertEqual(segment_phonemes("ma⁵⁰"), ["m", "a", "⁵", "⁰"])
+        self.assertEqual(segment_phonemes("ma⁵⁰"), ["m", "a⁵", "⁰"])
+
+    def test_a_tone_after_a_coda_is_one_segment(self):
+        self.assertEqual(segment_phonemes("tam˧˧"), ["t", "a", "m", "˧˧"])
+        self.assertEqual(segment_phonemes("tan⁵¹ ma"), ["t", "a", "n", "⁵¹", " ", "m", "a"])
+        for notation in ("˥˦˧˨˩", "\ua712\ua713\ua714\ua715\ua716", "¹²³⁴⁵"):
+            for first in notation:
+                for second in notation:
+                    self.assertEqual(segment_phonemes("am" + first + second), ["a", "m", first + second])
 
     def test_a_change_of_tone_notation_starts_a_segment(self):
         # IPA sandhi notation: underlying 214 in Chao letters, surface 35 in left-stem letters
-        self.assertEqual(segment_phonemes("ni˨˩˦\ua714\ua712"), ["n", "i", "˨˩˦", "\ua714\ua712"])
-        self.assertEqual(segment_phonemes("a⁵˩"), ["a", "⁵", "˩"])
-        self.assertEqual(segment_phonemes("a\ua712¹"), ["a", "\ua712", "¹"])
+        self.assertEqual(segment_phonemes("ni˨˩˦\ua714\ua712"), ["n", "i˨˩˦", "\ua714\ua712"])
+        self.assertEqual(segment_phonemes("a⁵˩"), ["a⁵", "˩"])
+        self.assertEqual(segment_phonemes("a\ua712¹"), ["a\ua712", "¹"])
+        self.assertEqual(segment_phonemes("am˧˧\ua714"), ["a", "m", "˧˧", "\ua714"])
 
     def test_stress_and_syllable_dot_do_not_join(self):
         self.assertEqual(segment_phonemes("ˌa.ˈb"), ["ˌ", "a", ".", "ˈ", "b"])
@@ -80,7 +92,8 @@ class TestSegmentPhonemes(unittest.TestCase):
         self.assertEqual(segment_phonemes("̃a"), ["̃", "a"])
 
     def test_segments_join_back_to_the_input(self):
-        for text in (TEXT, "ɐ̃ˈmaɲɐ ˈvɔw ɐ ˈkazɐ.", "tʃʰa˧˥ ʔa˨˩˦", "ma⁵¹ ta\ua713\ua715"):
+        for text in (TEXT, "ɐ̃ˈmaɲɐ ˈvɔw ɐ ˈkazɐ.", "tʃʰa˧˥ ʔa˨˩˦", "ma⁵¹ ta\ua713\ua715",
+                     "tam˧˧, ni˨˩˦\ua714\ua712."):
             self.assertEqual("".join(segment_phonemes(text)), text)
 
 

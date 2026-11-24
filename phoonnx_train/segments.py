@@ -5,7 +5,7 @@ one id to each code point, so that an input feature table can describe whole
 segments. Every segment is a substring of the phonemizer output, so the
 runtime tokenizer, which matches the longest key first, finds the same ids.
 """
-from typing import List
+from typing import Callable, List, Tuple
 
 #: Modifier letters that modify the symbol before them: aspiration, breathy
 #: voice, palatalization, labialization, labio-palatalization, velarization,
@@ -20,8 +20,11 @@ def segment_phonemes(text: str) -> List[str]:
 
     phonematcher's ``segment_spans`` decides each segment, so the map and the
     feature table read the text the way phonematcher's distance does: ``aⁿda``
-    is ``a``, ``ⁿd``, ``a``, and ``tⁿ`` keeps its nasal release. A tie bar
-    between two spans joins them, so ``a͡i`` stays one segment. Every other
+    is ``a``, ``ⁿd``, ``a``, and ``tⁿ`` keeps its nasal release. A tone right
+    after its vowel is part of the vowel's segment (``ma˥˩`` is ``m``,
+    ``a˥˩``). A tie bar between two spans joins them, so ``a͡i`` stays one
+    segment. The text between two spans is cut with ``segment_spans`` again,
+    so a tone after a coda (``tam˧˧``) is one segment, ``˧˧``. Every other
     character between spans, the stress marks, spaces and punctuation
     included, is a segment of its own.
     """
@@ -36,8 +39,21 @@ def segment_phonemes(text: str) -> List[str]:
         if pos and gap and set(gap) <= TIES:
             segments[-1] += gap + text[start:end]
         else:
-            segments.extend(gap)
+            segments.extend(_cut_gap(gap, segment_spans))
             segments.append(text[start:end])
         pos = end
-    segments.extend(text[pos:])
+    segments.extend(_cut_gap(text[pos:], segment_spans))
+    return segments
+
+
+def _cut_gap(gap: str, segment_spans: Callable[[str], List[Tuple[int, int]]]) -> List[str]:
+    """The segments of text between two spans: each span that ``segment_spans``
+    finds in it alone, such as a tone run, and every other character on its own."""
+    segments: List[str] = []
+    pos = 0
+    for start, end in segment_spans(gap):
+        segments.extend(gap[pos:start])
+        segments.append(gap[start:end])
+        pos = end
+    segments.extend(gap[pos:])
     return segments
