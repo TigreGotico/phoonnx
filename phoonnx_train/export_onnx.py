@@ -52,6 +52,10 @@ def add_phoneme_alignment_output(
         output_path: Where to save the modified model (defaults to overwriting).
         tensor_name: Tensor to mark as an output. ``"autodetect"`` looks for a
             unique ``Ceil`` node output.
+
+    Raises:
+        click.ClickException: If the model does not load or save, if no unique
+            duration tensor is found, or if that tensor is already an output.
     """
     import onnx
 
@@ -63,40 +67,32 @@ def add_phoneme_alignment_output(
     try:
         model: "onnx.ModelProto" = onnx.load(model_path)
     except Exception as e:
-        _LOGGER.fatal(f"Failed to load ONNX model from {model_path}: {e}")
-        return
+        raise click.ClickException(f"Failed to load ONNX model from {model_path}: {e}") from e
 
     tensor = find_duration_tensor(model, tensor_name=tensor_name)
     if tensor is None:
-        if tensor_name != "autodetect":
-            _LOGGER.fatal(f"Tensor '{tensor_name}' not found in {model_path}. Use --tensor-name manually.")
-            return
         ceil_tensor_names: Set[str] = {
             o for node in model.graph.node if node.op_type == "Ceil" for o in node.output
         }
         if not ceil_tensor_names:
-            _LOGGER.fatal(f"No ceil tensors detected in {model_path}. Use --tensor-name manually.")
-        else:
-            names_str = ', '.join(sorted(ceil_tensor_names))
-            _LOGGER.fatal(
-                f"Multiple ceil tensors detected in {model_path}. Use --tensor-name manually: {names_str}"
-            )
-        return
+            raise click.ClickException(f"No Ceil tensor found in {model_path}, so the phoneme "
+                                       "durations cannot be exposed.")
+        names_str = ', '.join(sorted(ceil_tensor_names))
+        raise click.ClickException(f"Several Ceil tensors found in {model_path}, so the phoneme "
+                                   f"duration tensor is ambiguous: {names_str}")
 
     if tensor_name == "autodetect":
         _LOGGER.info(f"Detected tensor name: {tensor}")
 
     if any(output.name == tensor for output in model.graph.output):
-        _LOGGER.fatal(f"Tensor '{tensor}' is already marked as output. Aborting.")
-        return
+        raise click.ClickException(f"Tensor '{tensor}' is already a graph output of {model_path}.")
 
     _surgery(model, tensor_name=tensor)
 
     try:
         onnx.save(model, output_path)
     except Exception as e:
-        _LOGGER.fatal(f"Failed to save modified ONNX model to {output_path}: {e}")
-        return
+        raise click.ClickException(f"Failed to save modified ONNX model to {output_path}: {e}") from e
 
     _LOGGER.info(f"Successfully wrote modified model with new output '{tensor}' to {output_path}")
 
