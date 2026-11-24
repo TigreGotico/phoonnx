@@ -2,40 +2,35 @@
 
 <!-- agent-hint
 covers: what the Orpheus engine is, its voices, parameters and limits
-source: phoonnx/engines/orpheus.py:OrpheusAdapter, phoonnx/voice_index/orpheus.json, scripts/conversion/orpheus/evidence/README.md
+source: phoonnx/engines/orpheus.py:OrpheusAdapter, phoonnx/voice_index/orpheus.json, scripts/conversion/orpheus/evidence/wer.json, scripts/conversion/orpheus/evidence/probe_prompt_output.txt
 generated: no
-verify: pytest tests/test_orpheus.py
+verify: .venv/bin/python -c "import re, sys, json; from phoonnx.engines.orpheus import OrpheusAdapter, SAMPLES_PER_FRAME; q = chr(96); page = re.sub('<!-- agent-hint.*?\n-->', '', open('docs/orpheus.md').read(), flags=re.S); code = {k: float(v) for k, v in OrpheusAdapter().default_params().items()}; table = {k: float(v) for k, v in re.findall('^[|] ' + q + '([a-z_]+)' + q + ' [|] ([0-9.]+) [|]', page, re.M)}; idx = [v['engine_options']['voice'] for v in json.load(open('phoonnx/voice_index/orpheus.json')).values()]; names = re.findall(q + '([a-z]+)' + q, re.search('conversational realism:(.*?)Each index entry', page, re.S).group(1)); bad = [table != code, names != idx, str(SAMPLES_PER_FRAME) + ' samples' not in page]; print(bad, table, names); sys.exit(1 if any(bad) else 0)"
 see: engines.md, benchmarking.md
 -->
 
 This page describes the Orpheus engine, its voices and its limits, for developers who consider a large codec language model voice.
 
 [Orpheus](https://github.com/canopyai/Orpheus-TTS) (Canopy Labs, Apache-2.0) is a
-Llama-3.2-3B causal language model whose vocabulary carries 28 672 audio tokens. It
-emits a flat token stream; every seven tokens form one
-[SNAC](https://huggingface.co/hubertsiuzdak/snac_24khz) frame, which SNAC's decoder
-turns into 2048 samples at 24 kHz.
+Llama-3.2-3B causal language model whose vocabulary holds 28 672 audio tokens. It gives a
+flat stream of tokens. Every seven tokens form one
+[SNAC](https://huggingface.co/hubertsiuzdak/snac_24khz) frame, which the SNAC decoder turns
+into 2048 samples at 24 kHz.
 
-## Read this first: Orpheus is a GPU engine
+## Orpheus is a GPU engine
 
-SNAC needs about 82 tokens for every second of audio, and the 3B backbone makes one
-token per step. On a 12-core CPU in fp32, the backbone took 0.43 to 0.56 s per token,
-so it ran **36-46x slower than real time**: mean 38.7x over 7 sentences, backbone time
-only ([measurement](../scripts/conversion/orpheus/evidence/README.md)).
+SNAC needs about 82 tokens for each second of audio, and the 3B backbone makes one token
+per step. On a 12-core CPU in fp32, the backbone needs 0.43 to 0.56 s per token. The voice
+thus runs 36 to 46 times slower than real time, 38.7 times on average over seven sentences
+([measurements](../scripts/conversion/orpheus/evidence/wer.json), backbone time only).
 
-Upstream serves Orpheus through vLLM on a GPU.
-
-Canopy Labs announced 1B, 400M and 150M tiers, but did not release them. Their own
-loader refuses those names with `"not supported ... will be released very soon"`,
-and the `canopylabs` org on Hugging Face holds only 3B checkpoints. There is no smaller
-Orpheus to fall back to.
-
-The voices are indexed so the catalog is complete. Do not pick one as a CPU default.
+Upstream serves Orpheus through vLLM on a GPU. Canopy Labs publishes only 3B checkpoints,
+so no smaller Orpheus exists. The index holds the voices so that the catalog is complete.
+Do not use one as a CPU default.
 
 ## Voices
 
-The speaker is a **name written into the prompt text** — not an embedding, not a
-speaker id. English (`canopylabs/orpheus-3b-0.1-ft`), in Canopy Labs' own order of
+The speaker is a name in the prompt text, not an embedding and not a speaker id. The English
+checkpoint (`canopylabs/orpheus-3b-0.1-ft`) has these names, in the Canopy Labs order of
 conversational realism:
 
 `tara`, `leah`, `jess`, `leo`, `dan`, `mia`, `zac`, `zoe`
@@ -50,13 +45,12 @@ voice.synthesize("Hello there.", syn_config=SynthesisConfig(extra={"voice": "leo
 ```
 
 A name that the checkpoint does not have raises `ValueError`, and the message lists the
-names it has. A plain `speaker` id selects a name only when the voice config has a
-`speaker_id_map`. The index entries ship no voice config, so they have no map.
+names it has. A string `speaker` is a name. An integer `speaker` selects a name only when the voice
+config has a `speaker_id_map`. The index entries ship no voice config, so they have no map.
 
 ### Emotive tags
 
-Tags are ordinary text that the checkpoint's own BPE encodes, so nothing phonemizes
-them away:
+The BPE of the checkpoint encodes a tag as ordinary text, so no phonemizer removes it:
 
 `<laugh>`, `<chuckle>`, `<sigh>`, `<cough>`, `<sniffle>`, `<groan>`, `<yawn>`, `<gasp>`
 
@@ -64,28 +58,28 @@ them away:
 voice.synthesize("That is really funny <laugh> I cannot believe it.")
 ```
 
-They are a hint, not a control: the model may render a tag, soften it, or ignore it.
+A tag is a hint, not a control. The model can render a tag, soften it, or ignore it.
 
-## Parameters
+## Cloning
 
-| Parameter | Default | What it does |
-|---|---|---|
-| `temperature` | 0.6 | sampling temperature; 0 is greedy |
-| `top_p` | 0.8 | nucleus, applied **after** the temperature |
-| `repetition_penalty` | 1.3 | divides the scores of tokens already seen |
-| `max_new_tokens` | 1200 | ceiling on the AR loop (~14.6 s of audio) |
-| `max_chunk_chars` | 300 | characters of text per model call |
+Orpheus does not clone. A call with a `reference` raises `RuntimeError`, also
+when `reference.text` is set. Use one of the named voices.
 
-These are the values upstream's **server** uses, which are not the checkpoint's
-`generation_config.json` (that says `top_p` 0.9). The served values are the ones the
-model was tuned against, so they are what the adapter defaults to.
+## Multilingual research releases
 
-## Two details a plausible reimplementation gets wrong
+Canopy Labs also publishes six gated 3B research fine-tunes on the Hugging Face Hub. They
+cover French, German, Spanish and Italian (one checkpoint), Mandarin, Korean and Hindi.
+phoonnx does not mirror or index them, and each one has the CPU cost of the English
+checkpoint.
 
-**The prompt carries a double BOS.** `OrpheusModel` builds its ids, decodes them back
-to a *string*, and hands the string to vLLM, which re-tokenizes it with
-`add_special_tokens=True` and prepends a second `<|begin_of_text|>`. Reading the
-upstream source literally produces a prompt the model is never served:
+## Prompt and sampler details
+
+Two details of the upstream server decide what the model receives. A port that reads the
+upstream source literally gets both of them wrong.
+
+The prompt carries two BOS tokens. `OrpheusModel` builds its ids, decodes them back to a
+string, and gives the string to vLLM. vLLM tokenizes it again with `add_special_tokens=True`
+and puts a second `<|begin_of_text|>` in front. The adapter sends the same ids:
 
 ```
 128000  <|begin_of_text|>   added by vLLM
@@ -98,39 +92,27 @@ upstream source literally produces a prompt the model is never served:
 128257  <custom_token_1>    start of speech
 ```
 
-**The sampler order is vLLM's, not llama.cpp's.** vLLM applies the penalties, then the
-temperature, and truncates to the nucleus last — so `top_p` selects over the *tempered*
-distribution. llama.cpp does the reverse. The
-[NeuTTS](engines.md) adapter implements the other order on purpose, because that is
-the stack *it* is served through.
+The sampler order is the vLLM order, not the llama.cpp order. vLLM applies the penalties,
+then the temperature, and cuts to the nucleus last, so `top_p` selects over the tempered
+distribution. llama.cpp does the reverse. The [NeuTTS](engines.md) adapter uses the
+llama.cpp order, because upstream serves NeuTTS through llama.cpp.
 
-Upstream also passes `stop_token_ids=[49158]`, which is the text token `Ġrez` and can
-never appear mid-audio. It is dead code in their serving path; generation really ends on
-`<custom_token_2>` (end of speech) or the checkpoint's EOS.
+Upstream also passes `stop_token_ids=[49158]`. That id is the text token `Ġrez`, which never
+appears in the audio part of a run, so it stops nothing. Generation ends on
+`<custom_token_2>` (end of speech) or on the EOS of the checkpoint.
 
-## Cloning
+## Parameters
 
-Orpheus does not clone. A call with a `reference` raises `RuntimeError`, also
-when `reference.text` is set. Use one of the named voices.
-
-## Multilingual research releases
-
-Canopy Labs also published seven 3B research checkpoints. They are gated on Hugging Face,
-and their voices are:
-
-| Language | Repo | Voices |
+| Parameter | Default | What it does |
 |---|---|---|
-| French | `canopylabs/3b-fr-ft-research_release` | pierre, amelie, marie |
-| German | `canopylabs/3b-de-ft-research_release` | jana, thomas, max |
-| Spanish | `canopylabs/3b-es_it-ft-research_release` | javi, sergio, maria |
-| Italian | `canopylabs/3b-es_it-ft-research_release` | pietro, giulia, carlo |
-| Mandarin | `canopylabs/3b-zh-ft-research_release` | 长乐, 白芷 |
-| Korean | `canopylabs/3b-ko-ft-research_release` | 유나, 준서 |
-| Hindi | `canopylabs/3b-hi-ft-research_release` | ऋतिका |
+| `temperature` | 0.6 | Sampling temperature. 0 is greedy. |
+| `top_p` | 0.8 | Nucleus, applied after the temperature. |
+| `repetition_penalty` | 1.3 | Divides the scores of the tokens already seen. |
+| `max_new_tokens` | 1200 | Limit on the generation loop, about 14.6 s of audio. |
+| `max_chunk_chars` | 300 | Characters of text per model call. |
 
-Canopy Labs rate their own Spanish, Italian and Hindi fine-tunes as poor, and the
-others as fair. phoonnx does not mirror or index them. Each is another 12.7 GB ONNX
-export, and all of them share the English checkpoint's CPU cost.
+These are the values of the upstream server. The `generation_config.json` of the checkpoint
+sets `top_p` to 0.9. The model was tuned against the served values, so the adapter uses them.
 
 ---
 

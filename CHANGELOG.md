@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.135.1a2](https://github.com/TigreGotico/phoonnx/tree/1.135.1a2) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.1a1...1.135.1a2)
+
+**Merged pull requests:**
+
+- docs: generate the architecture matrix of docs/engines.md [\#995](https://github.com/TigreGotico/phoonnx/pull/995) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.135.1a1](https://github.com/TigreGotico/phoonnx/tree/1.135.1a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.0a3...1.135.1a1)
+
+**Merged pull requests:**
+
+- fix\(deps\): raise text2spoken to 0.0.2a107 and every scriptconv floor to 0.0.4a156 [\#997](https://github.com/TigreGotico/phoonnx/pull/997) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.135.0a3](https://github.com/TigreGotico/phoonnx/tree/1.135.0a3) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.0a2...1.135.0a3)
+
+**Merged pull requests:**
+
+- refactor: read tone levels through phonematcher.tone\_levels [\#993](https://github.com/TigreGotico/phoonnx/pull/993) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.135.0a2](https://github.com/TigreGotico/phoonnx/tree/1.135.0a2) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.0a1...1.135.0a2)
@@ -358,17 +382,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.10a2...1.125.10a3)
 
-**Merged pull requests:**
-
-- docs: SSML 1.0 and Polly forms are extensions, and the docs check finds extra rows [\#893](https://github.com/TigreGotico/phoonnx/pull/893) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.125.10a2](https://github.com/TigreGotico/phoonnx/tree/1.125.10a2) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.10a1...1.125.10a2)
-
-**Merged pull requests:**
-
-- test: the Indic Parler seed decides the sampled codes [\#891](https://github.com/TigreGotico/phoonnx/pull/891) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.10a1](https://github.com/TigreGotico/phoonnx/tree/1.125.10a1) (2026-11-22)
 
@@ -377,11 +393,6 @@
 ## [1.125.9a4](https://github.com/TigreGotico/phoonnx/tree/1.125.9a4) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.125.9a3...1.125.9a4)
-
-**Merged pull requests:**
-
-- fix: llasa, neutts and orpheus count no space between touching sentences [\#892](https://github.com/TigreGotico/phoonnx/pull/892) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- docs: list the leokani and kolokwa phonemizers [\#890](https://github.com/TigreGotico/phoonnx/pull/890) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.125.9a3](https://github.com/TigreGotico/phoonnx/tree/1.125.9a3) (2026-11-22)
 

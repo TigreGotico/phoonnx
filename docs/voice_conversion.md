@@ -1,37 +1,19 @@
 # Voice Conversion
 
 <!-- agent-hint
-covers: how to convert the output of any voice to a target speaker with audio.voice_conversion
-source: phoonnx/config.py:AudioPost.voice_conversion, phoonnx/voice.py:TTSVoice._load_voice_conversion, scripts/vc_gate.py
+covers: how to convert the output of any voice to a target speaker with audio.voice_conversion, and how scripts/vc_gate.py checks the conversion
+source: phoonnx/config.py:AudioPost.voice_conversion, phoonnx/voice.py:TTSVoice._load_voice_conversion, phoonnx/voice.py:TTSVoice._maybe_convert, scripts/vc_gate.py
 generated: no
-verify: python -I -c "from phoonnx.config import SynthesisConfig; print(SynthesisConfig().audio.voice_conversion_engine)" (prints None), plus the audio.voice_conversion example on the page
+verify: .venv/bin/python -m doctest -o NORMALIZE_WHITESPACE docs/voice_conversion.md && .venv/bin/python -c "import re, sys; sys.path.insert(0, 'scripts'); import vc_gate as g; t = open('docs/voice_conversion.md').read(); sys.exit(0 if re.search(r'margin of at least %.2f' % g.SIM_MARGIN_GATE, t) and 'at most %.2f' % g.LEAKAGE_GATE in t and 'at most %g percentage points' % g.WER_DELTA_GATE in t and '%d sentences' % len(g.UTTERANCES) in t else 1)"
 see: cloning.md, ovos_plugin.md
 -->
 
-This page shows how to convert the output of any voice to a target speaker, for developers who use phoonnx from Python.
+This page shows how to convert the output of any voice to a target speaker, for
+developers who use phoonnx from Python.
 
-Voice conversion changes **who** the audio sounds like, after synthesis. It runs on the
-waveform, so it works with every phoonnx engine. This includes single-speaker models that
+Voice conversion changes who the audio sounds like, after synthesis. It runs on the
+waveform, so it works with every phoonnx engine, also with single-speaker models that
 cannot clone. One model can thus speak in the voice of any reference clip.
-
-```python
-from phoonnx.voice import TTSVoice
-from phoonnx.config import AudioPost, SpeakerReference, SynthesisConfig
-
-voice = TTSVoice.load("model.onnx", "model.json")
-for chunk in voice.synthesize(
-    "This sentence comes out in the target speaker's voice.",
-    SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio="target_speaker.wav"))),
-):
-    print(chunk.sample_rate, len(chunk.audio_float_array) > 0)
-```
-
-With a Portuguese unicode voice and a 6-second reference clip, the loop prints one line
-for the sentence. The audio comes back at the 22 050 Hz rate of the OpenVoice engine:
-
-```text
-22050 True
-```
 
 [voiceclonnx](https://github.com/TigreGotico/voiceclonnx), a pure-ONNX library, does the
 conversion. Install it with the extra:
@@ -40,120 +22,148 @@ conversion. Install it with the extra:
 pip install --pre "phoonnx[vc]"
 ```
 
+Then pass a clip of the target speaker as `audio.voice_conversion`:
+
+```python
+from phoonnx.voice import TTSVoice
+from phoonnx.config import AudioPost, SpeakerReference, SynthesisConfig
+
+voice = TTSVoice.load("model.onnx", "model.json")
+for chunk in voice.synthesize(
+    "This sentence comes out in the voice of the target speaker.",
+    SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio="target_speaker.wav"))),
+):
+    print(chunk.sample_rate, len(chunk.audio_float_array) > 0)
+```
+
+The loop prints one line for the sentence. The default OpenVoice engine gives its audio
+at 22050 Hz, whatever the rate of the voice:
+
+```text
+22050 True
+```
+
 ## Voice conversion or native cloning?
 
-phoonnx has two ways to make a voice sound like somebody else, and they are not
-interchangeable.
+phoonnx has two ways to make a voice sound like another person, and they do different
+things:
 
 | | `reference` (native cloning) | `audio.voice_conversion` (voice conversion) |
 |---|---|---|
 | When it happens | during generation | after generation, on the waveform |
-| What it changes | timbre **and** prosody — the model is conditioned on the reference | timbre only — the source voice's rhythm and intonation stay |
-| Which engines | cloning engines only (YourTTS, StyleTTS2, ZipVoice, F5-TTS, Chatterbox, …) | **all** of them |
-| Quality | higher — nothing is re-synthesized from an already-lossy waveform | good, but it is a second pass over generated audio |
-| Cost | none beyond the engine's own inference | one extra ONNX pass per sentence |
+| What it changes | timbre and prosody, because the model is conditioned on the reference | timbre only: the rhythm and intonation of the source voice stay |
+| Which engines | cloning engines only (YourTTS, StyleTTS2, ZipVoice, F5-TTS, Chatterbox and others) | all engines |
+| Quality | higher, because nothing is made again from generated audio | a second pass over generated audio |
+| Cost | the inference of the engine only | one more ONNX pass per sentence |
 
-**Prefer `reference` when the voice supports it.** Reach for
-`audio.voice_conversion` when it does not — a piper VITS voice, a kokoro voice, a kittentts
-voice — or when you want one target speaker applied uniformly across several
-different engines.
+Use `reference` when the voice supports it. Use `audio.voice_conversion` when it does not,
+such as for a Piper VITS, Kokoro or KittenTTS voice, or when you want one target speaker
+on several engines.
 
-The two are independent and may be combined, though there is rarely a reason to:
-native cloning already puts you at the target speaker, and a conversion pass on
-top only adds loss.
+You can use the two together, but native cloning already gives the target speaker, and a
+conversion pass after it only adds loss.
 
 ## Configuration
 
+The two fields are in `SynthesisConfig.audio`, an `AudioPost`:
+
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `audio.voice_conversion` | `SpeakerReference` | `None` | target speaker; its `audio` is a `str` path or URL, or `(audio, sample_rate)`; `None` disables the stage entirely |
-| `audio.voice_conversion_engine` | `str` | `None` | which voiceclonnx engine to use; `None` uses `"openvoice"` |
-
-`None` is a strict no-op: `voiceclonnx` is never imported and the audio is
-bit-for-bit the engine's own output.
-
-The reference clip should be 5–30 seconds of clean speech from one speaker. Paths,
-URLs and in-memory `(audio, sample_rate)` tuples are all accepted — the same shapes
-`reference.audio` takes, loaded by the same guarded loader, so remote clips are
-subject to its address and size limits. Whatever you pass is decoded and written to
-a temporary WAV, which is what voiceclonnx reads.
-
-The loaded engine is cached against the reference's **samples**, not against the
-path or URL you named, so rewriting a reference file in place gives you the changed
-speaker rather than the previous one. The cost is that the reference is read —
-and, for a URL, fetched — once per `synthesize()` call. Pass an
-`(audio, sample_rate)` tuple if you want to do that reading yourself.
-
-### Choosing an engine
-
-`openvoice` is the default because it is the only engine tested here that transfers
-the voice **and** keeps the words intact. `knnvc` transfers harder but costs about
-9 percentage points of word error rate — pick it only if you care more about timbre
-than about being understood, and measure it on your own material first. The full
-engine list is in the voiceclonnx README.
+| `voice_conversion` | `SpeakerReference` \| `None` | `None` | the clip of the target speaker, in its `audio` field: a `str` path or URL, or `(audio, sample_rate)`. `None` turns the stage off |
+| `voice_conversion_engine` | `str` | `None` | the voiceclonnx engine. `None` uses `"openvoice"` |
 
 ```python
-SynthesisConfig(audio=AudioPost(
-    voice_conversion=SpeakerReference(audio="target.wav"),
-    voice_conversion_engine="knnvc",
-))
+>>> from phoonnx.config import SynthesisConfig
+>>> config = SynthesisConfig()
+>>> config.audio.voice_conversion, config.audio.voice_conversion_engine
+(None, None)
+
 ```
 
-## What to expect
+With `voice_conversion=None`, phoonnx does not import `voiceclonnx`, and the audio is the
+output of the engine, bit for bit.
 
-Measured on 5 utterances × 3 source voices × 2 target speakers, with
-`wespeaker-resnet34` for similarity and parakeet for word error rate:
+Use a reference clip of 5 to 30 seconds of clean speech from one speaker. A path, a URL
+and an `(audio, sample_rate)` tuple all work. These are the forms that `reference.audio`
+takes, and the same loader reads them, so a URL has the same address and size limits. See
+[Voice cloning](cloning.md#reference-audio-formats). phoonnx decodes the reference and
+writes it to a temporary WAV file, which voiceclonnx reads.
 
-* Speaker similarity to the target rises **+0.24 cosine** on average over the
-  unconverted floor, on every source/target pair.
-* Word error rate rises **+2.5 pp** on average — conversion is close to
-  intelligibility-neutral but not free.
-* Prosody does not move. A flat source voice stays flat; converting it to an
-  expressive speaker's timbre will not make it expressive.
+phoonnx caches the loaded engine by the samples of the reference, not by the path or URL.
+If you write a new clip to the same file, you get the new speaker. In exchange, each
+`synthesize()` call reads the reference again, and downloads it again for a URL. Pass an
+`(audio, sample_rate)` tuple to read the clip yourself.
 
-Reproduce it all with:
+### Choose an engine
+
+`openvoice` is the default engine. voiceclonnx has others, such as `knnvc`, `focalcodec`,
+`facodec` and `cosyvoice`. Each has its own sample rate, and the voiceclonnx README lists
+them. Check another engine on your own material with `scripts/vc_gate.py` (see below)
+before you use it.
+
+```python
+SynthesisConfig(audio=AudioPost(voice_conversion=SpeakerReference(audio="target.wav"),
+                                voice_conversion_engine="knnvc"))
+```
+
+## Check the conversion
+
+`scripts/vc_gate.py` converts 5 sentences from 3 source voices to 2 target speakers. It
+scores the speaker similarity with `wespeaker-resnet34` and the word error rate with
+Parakeet. It writes a run JSON and a table, and it exits with a non-zero status when a
+gate fails:
 
 ```bash
 python scripts/vc_gate.py --out vc-run.json
 ```
 
-The script exits non-zero when a gate fails.
+The gates are:
+
+1. Each pair of source voice and target speaker moves toward the target: its mean
+   similarity to the target is above the similarity with no conversion. Over the whole
+   run, the similarity to the target is above that floor by a margin of at least 0.10.
+2. The similarity of the converted audio to the source voice is at most 0.85 for each
+   pair. Audio that passes through with no conversion scores near 1.0.
+3. The mean word error rate rises by at most 5 percentage points.
+
+`--vc-engine` selects another voiceclonnx engine for the run.
+
+Prosody does not change. A flat source voice stays flat: the timbre of an expressive
+speaker does not make it expressive.
 
 ## How it fits in the pipeline
 
-Conversion is applied **per chunk** — one sentence at a time — not to the whole
-utterance. Every voiceclonnx engine is stateless across calls and conditions only
-on the reference, so per-sentence conversion gives the same result as converting
-the whole utterance while keeping synthesis streaming. Sentences under roughly
-0.3 s carry too little content for the engines' content encoders and pass through
-unconverted rather than becoming artefacts.
+phoonnx converts each chunk, one sentence at a time, not the whole utterance. Each
+voiceclonnx engine keeps no state between calls and conditions only on the reference, so
+the result is the same, and synthesis can still stream. A sentence shorter than 0.3 s has
+too little content for the content encoders of the engines, so it passes through with no
+conversion.
 
-The converted audio comes back at the VC engine's own sample rate (22 050 Hz for
-OpenVoice), and the `AudioChunk` reports that rate — not the voice's native one.
-`synthesize_wav()` takes the header from the chunk, so files come out correct
-without any extra work on your side.
+The converted audio has the sample rate of the conversion engine, 22050 Hz for OpenVoice,
+and the `AudioChunk` reports that rate, not the rate of the voice. `synthesize_wav()` takes
+the header from the chunk, so the file is correct.
 
-When super-resolution (`SynthesisConfig(audio=AudioPost(super_resolution=True))`, see
-[Audio super-resolution](ovos_plugin.md#audio-super-resolution)) is also on, conversion runs **first**, so
-the upscaler works on the final timbre.
+When super-resolution is also on (`SynthesisConfig(audio=AudioPost(super_resolution=True))`, see
+[Audio super-resolution](ovos_plugin.md#audio-super-resolution)), the conversion runs first,
+so the upscaler works on the final timbre.
 
 ## Errors
 
-Voice conversion fails loudly, unlike super-resolution. Returning the source
-speaker after you asked for a different one is a wrong answer, not a degraded one,
-so:
+Voice conversion fails with an error, unlike super-resolution. Audio in the source voice,
+after you asked for another speaker, is a wrong answer, not a degraded one:
 
-* `audio.voice_conversion` set without `voiceclonnx` installed raises `ImportError` naming
-  the `phoonnx[vc]` extra.
-* A reference path that is not a readable file raises `FileNotFoundError`:
+* `audio.voice_conversion` without `voiceclonnx` installed raises `ImportError`, which names the
+  `phoonnx[vc]` extra.
+* A reference path that is not a file raises `FileNotFoundError`:
   `audio.voice_conversion points at no readable file: 'missing.wav'`.
-* A conversion failure mid-stream propagates instead of yielding the source voice.
+* A conversion failure during synthesis raises the error, and no source voice audio comes
+  out.
 
 ## Models
 
 voiceclonnx downloads its own weights from Hugging Face on first use
-(`TigreGotico/voiceclonnx-openvoice-v2` for the default engine) and caches them.
-phoonnx does not mirror or manage them. The voiceclonnx project owns the one mirror.
+(`TigreGotico/voiceclonnx-openvoice-v2` for the default engine) and caches them. phoonnx
+does not mirror or manage them.
 
 ---
 

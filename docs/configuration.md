@@ -1,26 +1,26 @@
 # Configuration Reference
 
 <!-- agent-hint
-covers: every VoiceConfig and SynthesisConfig field, the model.json schema, phonemizer provenance, the Engine enum, execution providers and precision
-source: phoonnx/config.py:VoiceConfig, phoonnx/config.py:SynthesisConfig, phoonnx/config.py:Engine, phoonnx/config_loaders.py, phoonnx/providers.py, phoonnx/model_manager.py:PRECISIONS
+covers: every VoiceConfig and SynthesisConfig field, the native config.json schema, phonemizer provenance, the Engine enum, execution providers and precision
+source: phoonnx/config.py:VoiceConfig, phoonnx/config.py:SynthesisConfig, phoonnx/config.py:Engine, phoonnx/compat.py:LOADERS, phoonnx/providers.py, phoonnx/model_manager.py:PRECISIONS
 generated: no
-verify: pytest tests/test_voice_config_to_dict.py tests/test_precision.py tests/test_providers.py tests/test_text_casing.py; the fields and defaults: none, checked by reading phoonnx/config.py:VoiceConfig, phoonnx/config.py:SynthesisConfig and phoonnx/config.py:Engine
+verify: .venv/bin/python -W ignore -c "import re,sys,dataclasses as d; from phoonnx.config import VoiceConfig,SynthesisConfig,Engine; from phoonnx.compat import LOADERS; p=open('docs/configuration.md').read(); q=chr(96); n=chr(10); rows=lambda h: [[re.findall(q+'([^'+q+']*)'+q,c) for c in re.split('(?<!'+chr(92)*2+')[|]',l)[1:4]] for l in p.split(n+h,1)[1].split(n+'#',1)[0].splitlines() if l.startswith('| '+q)]; vc=VoiceConfig.from_dict({'phoonnx_version':'1.0','phoneme_type':'graphemes','alphabet':'unicode','phoneme_id_map':{'_':[0],'^':[1],'$':[2],' ':[3]}}); sc=SynthesisConfig(); same=lambda t,v: t.strip(chr(34))==str(v) or t==getattr(v,'name',None); bad=[]; [bad.append(h) for h,o,C in (('### VoiceConfig fields',vc,VoiceConfig),('### SynthesisConfig fields',sc,SynthesisConfig)) if sorted(r[0][0] for r in rows(h))!=sorted(f.name for f in d.fields(C))]; [bad.append(r[0][0]) for h,o in (('### VoiceConfig fields',vc),('### SynthesisConfig fields',sc)) for r in rows(h) if r[2] and not same(r[2][0],getattr(o,r[0][0]))]; eng=[r[0][0] for r in rows('## Engine Enum') if r[0][0]!='Engine']; bad+=[] if sorted(eng)==sorted(e.value for e in Engine) else ['engine table']; ld=[l.__name__ for l in LOADERS]; bad+=[x for x in re.findall(q+'([A-Za-z0-9]+Loader)'+q,p) if x not in ld]; print(bad); sys.exit(1 if bad else 0)"
 see: usage.md, phonemizers.md, precision.md
 -->
 
-This page is the exhaustive reference for advanced users: every `VoiceConfig` and
-`SynthesisConfig` field, the `model.json` schema, engine detection, execution providers and precision.
-For a task-oriented walkthrough see [Usage](usage.md) instead.
+This page is the reference for advanced users. It lists each `VoiceConfig` and `SynthesisConfig` field, the native `config.json` format, engine detection, execution providers and precision. For a walk-through, read [Usage](usage.md).
 
 ## VoiceConfig
 
-`VoiceConfig` holds all model-level configuration parsed from the voice's `model.json`.
+`VoiceConfig` holds the configuration of a model, read from the `config.json` of the voice.
 
 ```python
 from phoonnx.config import VoiceConfig
 ```
 
-### Fields
+### VoiceConfig fields
+
+The default is the value that `VoiceConfig.from_dict` gives when a native config does not have the key.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -32,7 +32,7 @@ from phoonnx.config import VoiceConfig
 | `phonemizer_lang` | `str` \| `None` | `None` | The language the phonemizer reads when it differs from `lang_code`. Text normalisation keeps `lang_code`. A Piper config sets it from `espeak.voice`, so an en_US voice with the eSpeak voice `en` reads dates as en-US and gets the phonemes of `en` |
 | `phoneme_type` | `PhonemeType` | — | Phonemizer backend |
 | `alphabet` | `Alphabet` | — | Phoneme representation |
-| `engine` | `Engine` | `PHOONNX` | Training framework the model was built with |
+| `engine` | `Engine` | `PHOONNX` | The file format or the architecture of the model. See [Engine Enum](#engine-enum) |
 | `noise_scale` | `float` \| `None` | `None` | Generator noise scale from `inference.noise_scale`. `None` gives the engine's default |
 | `length_scale` | `float` \| `None` | `None` | Phoneme length scale from `inference.length_scale`. `None` gives the engine's default |
 | `noise_w_scale` | `float` \| `None` | `None` | Phoneme width noise scale from `inference.noise_w`. `None` gives the engine's default |
@@ -44,22 +44,23 @@ from phoonnx.config import VoiceConfig
 | `text_casing` | `str` | `"ignore"` | The casing training applied to the text: `lower`, `upper`, `casefold` or `ignore`. Synthesis applies the same casing after normalisation. A backend that normalises its own text, such as tugaphone, euskaphone, dizione or tltk, receives no casing, and scriptconv logs a warning. A config without the key keeps the text as written |
 | `phonemizer_identity` | `dict` \| `None` | `None` | The phonemizer that made the training phonemes. See [Phonemizer provenance](#phonemizer-provenance) |
 | `speaker_id_map` | `dict` | `{}` | Maps speaker names to integer IDs |
+| `default_speaker_id` | `int` \| `None` | `None` | The speaker of a multi-speaker voice when the call names none. `None` is speaker 0 |
 | `lang_id_map` | `dict` | `{}` | Maps language codes to integer IDs (multi-lang voices) |
 | `lang_tokens` | `dict` | `{}` | Optional BCP-47 → model language-token override (dialect models) |
 | `engine_params` | `dict` | `{}` | Adapter-specific parameters (vocoder/speaker-encoder/style paths, etc.) |
-| `tokenizer` | `TTSTokenizer` | — | Tokenizer instance |
+| `tokenizer` | `TTSTokenizer` \| `None` | — | The tokenizer that `from_dict` builds from the vocabulary |
 | `blank_at_start` | `bool` | `True` | Insert a blank token before the sequence |
 | `blank_at_end` | `bool` | `True` | Insert a blank token after the sequence |
 | `pad_token` | `str` \| `None` | `_` | Padding token |
 | `blank_token` | `str` \| `None` | `_` | Blank token inserted between tokens |
 | `bos_token` | `str` \| `None` | `^` | Beginning-of-sequence token |
 | `eos_token` | `str` \| `None` | `$` | End-of-sequence token |
-| `word_sep_token` | `str` \| `None` | word-blank default | Token inserted between words |
+| `word_sep_token` | `str` \| `None` | `" "` | Token inserted between words. `from_dict` reads `word_sep_token`, then `blank_word` |
 | `blank_between` | `BlankBetween` | `TOKENS_AND_WORDS` | Where blank tokens are inserted |
 
 ### Loading from a Config File
 
-`VoiceConfig` is not usually constructed directly. It is loaded automatically from a `model.json` file via `TTSVoice.load()`. To load manually:
+`TTSVoice.load(model_path, config_path)` reads the config file and builds the `VoiceConfig`. Without `config_path`, it reads `<model_path>.json`, such as `model.onnx.json`. To build a `VoiceConfig` from a dict:
 
 ```python
 config = VoiceConfig.from_dict(my_config_dict)
@@ -69,28 +70,26 @@ config = VoiceConfig.from_dict(my_config_dict)
 
 ### Engine Auto-Detection
 
-`VoiceConfig.from_dict()` automatically detects the training engine from the config structure:
+`VoiceConfig.from_dict()` gives the config to the loaders of `phoonnx.compat.LOADERS`, in this order, and uses the first loader that accepts it:
 
-- **Chatterbox** — an explicit `engine: "chatterbox"` (needs a BPE `tokenizer.json`)
-- **NeuTTS** — an explicit `engine: "neutts"` (the adapter loads its own BPE `tokenizer.json` and `voices.json` from `engine_params`)
-- **Llasa** — an explicit `engine: "llasa"` (the adapter loads its own BPE `tokenizer.json` and `voices.json` from `engine_params`)
-- **Pocket TTS** — an explicit `engine: "pockettts"` (multi-graph flow-matching codec LM with explicit stream state; raw-text, no phonemizer)
-- **MOSS-TTS-Nano** — an explicit `engine: "mosstts"` (needs a SentencePiece `tokenizer.model`)
-- **phoonnx** — presence of `phoonnx_version`
-- **Piper** — presence of `piper_version`, or a list-valued `phoneme_id_map` + `phoneme_type: "espeak"|"text"` (an explicitly declared non-piper engine wins over shape-sniffing)
-- **Mimic3** — presence of `phonemizer` + `phonemes` dict (requires an external `phonemes.txt`)
-- **Coqui VITS** — presence of a `characters` dict with a recognized `characters_class`
-- **Transformers** — driven by an external `vocab` argument passed to `from_dict()` (the voice manager supplies it from `vocab.json`), not by the ONNX shape
-- **Canonical / fallback** — a config that ships its own `phoneme_id_map` and declares its `engine`/`phoneme_type`/`alphabet` is honored as-is
+1. `ChatterboxLoader` and the raw-text loaders accept a config whose `engine` is `chatterbox`, `llasa`, `neutts`, `orpheus`, `mosstts`, `supertonic`, `pockettts`, `sparktts`, `indic_parler`, `omnivoice`, `magpie`, `arktts`, `qwen3tts` or `outetts`. These engines read text with their own tokenizer, and use no phonemizer. Chatterbox needs a BPE `tokenizer.json`.
+2. `PhoonnxLoader` accepts a config with `phoonnx_version`.
+3. `VoskLoader` accepts a config with `engine: "vosk"`, or a `phoneme_id_map` with the vosk symbols `a0` and `sch` and no `phoneme_type`.
+4. `PiperLoader` accepts a config with `piper_version`. It also accepts a config whose `phoneme_type` is a Piper phonemizer, such as `espeak` or `text`, and whose `phoneme_id_map` values are all lists.
+5. `Mimic3Loader` accepts a config with a `phonemes` section and a `phonemizer` of `symbols`, `gruut`, `espeak` or `epitran`. It needs the `phonemes.txt` file of the voice.
+6. `CoquiLoader` accepts a config with a `characters` section and a known `characters_class`.
+7. `TransformersLoader` accepts the `vocab` argument of `from_dict()`. The voice manager gives it from `vocab.json`.
+8. `TokensTxtLoader` accepts the `tokens_txt` argument, for sherpa-onnx models that have only a tokens file.
+9. `CanonicalLoader` accepts every other config. It uses the `phoneme_id_map`, `engine`, `phoneme_type` and `alphabet` of the config as written.
 
-A `config.json` that explicitly declares its `engine` is trusted over shape-sniffing.
+A config that names its `engine` is not given to the loader of another engine. A config without `phoonnx_version` loads with a `DeprecationWarning`. `phoonnx.compat.convert_config` writes the native config one time.
 
 ## SynthesisConfig
 
-`SynthesisConfig` controls synthesis behavior per request. All fields are optional and fall back to model defaults when `None`.
+`SynthesisConfig` holds the settings of one synthesis call. Each field is optional and has the default in the table below. A `None` default has a different effect for each field, and the Description column gives it. For the speaker, the language and the three scales, `None` uses the value of the voice. The config is frozen: build a changed copy with `dataclasses.replace`.
 
 ```python
-from phoonnx.config import AudioPost, SpeakerReference, SynthesisConfig
+from phoonnx.config import AudioPost, SynthesisConfig
 from scriptconv.frontend import Stages
 
 syn_config = SynthesisConfig(
@@ -100,66 +99,73 @@ syn_config = SynthesisConfig(
     length_scale=None,
     noise_scale=None,
     noise_w_scale=None,
-    reference=SpeakerReference(audio="reference.wav"),
     audio=AudioPost(normalize=True, volume=1.0),
     phonetic_spellings=True,
 )
 ```
 
-### Fields
+### SynthesisConfig fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `speaker` | `int` \| `str` \| `None` | `None` | Speaker of a multi-speaker voice: an id, or a name in the voice's `speaker_id_map`. A name that the map lacks goes to the engine, which may hold its own names (Magpie) |
-| `language` | `int` \| `str` \| `None` | `None` | Language of a multi-language voice: an id, or a code in the voice's `lang_id_map`. A code also sets `stages.lang` |
-| `length_scale` | `float` \| `None` | `None` | Speed control: < 1 faster, > 1 slower |
-| `noise_scale` | `float` \| `None` | `None` | Generator noise: affects naturalness |
-| `noise_w_scale` | `float` \| `None` | `None` | Phoneme duration noise |
+| `stages` | `Stages` | empty | The text stages of the call, from `scriptconv.frontend`. The stages table below lists its fields |
+| `speaker` | `int` \| `str` \| `None` | `None` | Speaker of a multi-speaker voice: an id, or a name in the voice's `speaker_id_map`. A name that the map lacks goes to the engine, which may hold its own names (Magpie). `None` uses the speaker of the voice, or speaker 0 |
+| `language` | `int` \| `str` \| `None` | `None` | Language of a multi-language voice: an id, or a code in the voice's `lang_id_map`. A code also sets `stages.lang`. `None` uses the language of the voice, or language 0 |
+| `length_scale` | `float` \| `None` | `None` | Speed control: < 1 faster, > 1 slower. `None` uses the value of the voice |
+| `noise_scale` | `float` \| `None` | `None` | Generator noise: affects naturalness. `None` uses the value of the voice |
+| `noise_w_scale` | `float` \| `None` | `None` | Phoneme duration noise. `None` uses the value of the voice |
+| `exaggeration` | `float` \| `None` | `None` | Expressiveness/intensity for engines that support it. `None` uses the engine default (Chatterbox, ~0.5) |
+| `temperature` | `float` \| `None` | `None` | Sampling temperature for autoregressive engines. `None` uses the engine default, about 0.8 for Chatterbox. `0` is greedy decoding |
+| `top_p` | `float` \| `None` | `None` | Nucleus sampling cutoff for autoregressive engines. `None` uses the engine default (Chatterbox, ~0.95) |
+| `reference` | `SpeakerReference` \| `None` | `None` | The speaker that a cloning engine imitates. The reference table below lists its fields. `None` means no clip |
+| `extra` | `dict` | `{}` | Engine-specific per-call parameters (e.g. `d_factor`, `p_factor`, `e_factor`) |
+| `audio` | `AudioPost` | the defaults below | What happens to the audio after the engine call. The audio table below lists its fields |
 | `phonetic_spellings` | `bool` | `True` | Apply word-level pronunciation overrides |
 | `input_alphabet` | `Alphabet` \| `None` | `None` | The alphabet of the input text. `None` means plain text. Set it to pass text that is already phonemic, such as IPA, so that scriptconv converts it and does not phonemize it |
-| `extra` | `dict` | `{}` | Engine-specific per-call parameters (e.g. `d_factor`, `p_factor`, `e_factor`) |
 
-The engine settings `temperature`, `top_p` and `exaggeration` are fields of `SynthesisConfig` too.
+A scale comes from the first of these that sets it: the call's `SynthesisConfig`, the voice's `engine_params`, the `inference` block of the voice's `config.json`, the engine's `default_params()`. The keys of `extra` are applied last and win over all four.
 
-| Engine setting | Type | Default | Description |
-|----------------|------|---------|-------------|
-| `exaggeration` | `float` \| `None` | `None` | Expressiveness/intensity for engines that support it (Chatterbox, ~0.5) |
-| `temperature` | `float` \| `None` | `None` | Sampling temperature for autoregressive engines (Chatterbox, ~0.8; `0` = greedy) |
-| `top_p` | `float` \| `None` | `None` | Nucleus sampling cutoff for autoregressive engines (Chatterbox, ~0.95) |
+### stages fields
 
-`stages` is a `Stages` from `scriptconv.frontend`. Its fields are the text stages of the call.
+`stages` is a `Stages` from `scriptconv.frontend`.
 
-| `stages` field | Type | Default | Description |
-|----------------|------|---------|-------------|
-| `diacritize` | `bool` \| `None` | `None` | Add vowel diacritics before phonemization; `None` defers to the voice config |
-| `diacritizer_model` | `str` \| `None` | `None` | Override the diacritizer model for this call; `None` inherits the voice config's `diacritizer_model` |
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `diacritize` | `bool` \| `None` | `None` | Add vowel diacritics before phonemization. `None` uses the value of the voice config |
+| `diacritizer_model` | `str` \| `None` | `None` | The diacritizer model for this call. `None` uses the `diacritizer_model` of the voice config |
 | `normalize` | `bool` \| `None` | `None` | `False` skips the text normalisation hook |
 | `chunk` | `str` \| `None` | `None` | How much text one engine call reads: `sentence`, `clause`, `paragraph` (the text between blank lines) or `none` (the whole text). `None` reads one sentence per call. The text is read whole before it is cut. An engine that reads text, not phonemes, gets the whole text. Phonemic input (`input_alphabet` set) is cut per sentence whatever the value. Any other value raises `ValueError` when the config is built |
 | `lang` | `str` \| `None` | `None` | The language of the text |
 
-`reference` is a `SpeakerReference` from `phoonnx.config`, or `None`. It sets the speaker that a cloning engine imitates.
+### reference fields
 
-| `reference` field | Type | Default | Description |
-|-------------------|------|---------|-------------|
+`reference` is a `SpeakerReference` from `phoonnx.config`.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
 | `audio` | `str` \| `(audio, sr)` \| `None` | `None` | Reference clip for zero-shot [voice cloning](cloning.md) |
 | `text` | `str` \| `None` | `None` | Reference transcription, required by in-context cloning engines (ZipVoice) |
 | `lang` | `str` \| `None` | `None` | Language of the transcription, for cross-lingual cloning (defaults to the voice's `lang_code`) |
 
-`audio` is an `AudioPost` from `phoonnx.config`. Its fields set what happens to the audio after the engine call.
+### audio fields
 
-| `audio` field | Type | Default | Description |
-|---------------|------|---------|-------------|
-| `normalize` | `bool` | `True` | Scale audio to full amplitude range |
+`audio` is an `AudioPost` from `phoonnx.config`.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `normalize` | `bool` | `True` | Scale the peak of the audio to full scale |
 | `target_loudness` | `float` \| `None` | `None` | Bring each sentence to this integrated loudness in LUFS, such as `-16.0`, with peaks limited to -1 dBFS. `None` keeps the peak normalisation. Needs `scipy`. Without it, phoonnx logs one warning and uses peak normalisation |
 | `volume` | `float` | `1.0` | Volume multiplier |
 | `super_resolution` | `bool` | `False` | Upscale each chunk to 48 kHz with `audiosronnx` (the `audiosr` extra). The chunk reports the upscaled sample rate |
 | `super_resolution_model` | `str` \| `None` | `None` | The `audiosronnx` engine, such as `"novasr"` or `"lavasr"`. `None` selects `"novasr"`. Ignored unless `super_resolution` is `True` |
-| `voice_conversion` | `SpeakerReference` \| `None` | `None` | Target-speaker clip, in its `audio` field, for post-synthesis [voice conversion](voice_conversion.md); works with every engine |
-| `voice_conversion_engine` | `str` \| `None` | `None` | voiceclonnx engine for `voice_conversion`; `None` selects `"openvoice"` |
+| `voice_conversion` | `SpeakerReference` \| `None` | `None` | Target-speaker clip, in its `audio` field, for [voice conversion](voice_conversion.md) after synthesis. It works with every engine. `None` means no conversion |
+| `voice_conversion_engine` | `str` \| `None` | `None` | The voiceclonnx engine for `voice_conversion`. `None` selects `"openvoice"` |
 
-A scale comes from the first of these that sets it: the call's `SynthesisConfig`, the voice's `engine_params`, the `inference` block of the voice's `config.json`, the engine's `default_params()`. The keys of `extra` are applied last and win over all four.
+### Plain data
 
 `SynthesisConfig.to_dict()` gives the config as plain data, and `SynthesisConfig.from_dict()` reads it back. The JSON Schema `phoonnx/synthesis_config.schema.json`, in the wheel, describes that data. A reference in plain data is a path or URL. A reference that holds samples, or a `stages.casing` callable, makes `to_dict()` raise `ValueError`. The constructor also accepts the groups as dicts, so `SynthesisConfig(**dataclasses.asdict(config))` builds the same config.
+
+### 1.x names
 
 The flat names of phoonnx 1.x still work as keywords, attributes, `dataclasses.replace()` keywords and `SynthesisConfig.from_dict` keys. Positional arguments in the 1.x field order work too. Each use raises a `DeprecationWarning` that names the new field and points at the caller's line. A string in `speaker_id` or `lang_id` goes to the engine as it is, as in 1.x: no voice map and no text stage reads it. Most engines read it with `int()`, so `speaker_id="40"` is the id 40, and Magpie reads it as a voice name. In the new `speaker` and `language` fields a string is a name or a code first, so `speaker="40"` is the speaker named `40`. The names and the positional form stop working in phoonnx 2.0.0.
 
@@ -184,9 +190,9 @@ The flat names of phoonnx 1.x still work as keywords, attributes, `dataclasses.r
 | `vc_reference` | `audio.voice_conversion` |
 | `vc_engine` | `audio.voice_conversion_engine` |
 
-## model.json Format
+## config.json Format
 
-phoonnx supports multiple JSON config schemas. The native phoonnx format looks like:
+This is a config in the native phoonnx format:
 
 ```json
 {
@@ -220,7 +226,7 @@ phoonnx supports multiple JSON config schemas. The native phoonnx format looks l
 
 The wheel ships a JSON Schema of the native format as `phoonnx/config.schema.json`. `VoiceConfig.to_dict()` writes a config that the schema accepts. See [Writing the native config](api.md#writing-the-native-config).
 
-Piper, Mimic3, and Coqui config formats are also parsed automatically.
+phoonnx also reads the config formats of [Engine Auto-Detection](#engine-auto-detection).
 
 ### Tokenizer keys
 
@@ -315,7 +321,7 @@ The comparison follows these rules:
   `gruut[fr]`), and the versions of the packages that the backend's extras
   require, at any depth. A revision from the older `sc1:` scheme always
   differs from an `sc2:` revision, so a voice trained with it warns on each
-  load. A new release of one of those
+  load. A later release of one of those
   packages changes the revision, even when the phonemes stay the same. A block
   with a `frontend` holds the frontend revision, which also covers the frontend
   stages. When both revisions are set and equal, a different `version` gives no
@@ -336,10 +342,7 @@ train the voice again with the running phonemizer.
 
 ## Engine Enum
 
-`Engine` (in `phoonnx.config`) records which framework a voice was built with. The table
-below lists every member. `phoonnx`, `piper`, `mimic3`, `coqui` and `transformers` name a
-file format, and they all run through the single VITS adapter, `vits`. Each other member
-names an adapter.
+`Engine` in `phoonnx.config` names the file format or the architecture of a voice. The table lists each member. `phoonnx`, `piper`, `mimic3`, `coqui` and `transformers` name a file format, and all of them run through the VITS adapter, `vits`. Each other member names an adapter.
 
 The adapter registry itself is described in [Engines](engines.md).
 
@@ -387,12 +390,10 @@ The adapter registry itself is described in [Engines](engines.md).
 
 ## Execution Providers
 
-Every ONNX session phoonnx creates — the voice model and the auxiliary graphs an
-engine loads (vocoders, speaker encoders, text encoders, diacritizers) — runs on a
-resolved, ordered list of ONNX Runtime execution providers. The decoder of a
+Each ONNX session of phoonnx runs on one ordered list of ONNX Runtime execution providers. This includes the voice model and the auxiliary graphs of an engine, such as vocoders, speaker encoders, text encoders and diacritizers. The decoder of a
 [streaming VITS voice](streaming.md) uses the same list as its encoder.
 
-Pass the list explicitly:
+Give the list to the load:
 
 ```python
 from phoonnx.voice import TTSVoice
@@ -407,28 +408,23 @@ Or set it once for the process:
 
 ```bash
 export PHOONNX_ONNX_PROVIDERS="ROCMExecutionProvider,CPUExecutionProvider"
-export PHOONNX_ONNX_PROVIDERS="auto"   # the default: pick the best available
+export PHOONNX_ONNX_PROVIDERS="auto"   # the default: detect the best provider
 ```
 
-With neither, the best provider the installed runtime offers is auto-detected, in
-this preference order:
+Without both, phoonnx selects the best provider of the installed runtime, in this order:
 
 `CUDAExecutionProvider` (NVIDIA) → `ROCMExecutionProvider` (AMD) →
 `MIGraphXExecutionProvider` (AMD) → `DmlExecutionProvider` (DirectML) →
 `CoreMLExecutionProvider` (Apple) → `OpenVINOExecutionProvider` (Intel) →
 `CPUExecutionProvider`
 
-A requested provider that the installed runtime does not offer is skipped with a
-warning, and `CPUExecutionProvider` is always appended, so synthesis keeps working
-on any machine.
+phoonnx skips a requested provider that the installed runtime does not have, and logs a warning. It always adds `CPUExecutionProvider` at the end, so synthesis works on each machine.
 
 `use_cuda=True` is a deprecated alias for `providers=["CUDAExecutionProvider"]`.
 
 ### Runtime packages
 
-Which providers exist depends on the installed ONNX Runtime build, not on phoonnx.
-The default `onnxruntime` wheel is CPU-only (plus a few platform providers); GPU
-providers need a matching build, and only one of them can be installed at a time:
+The installed ONNX Runtime build sets the available providers, not phoonnx. The default `onnxruntime` wheel has the CPU provider and some platform providers. GPU providers need a matching build, and you can install only one of these builds at a time:
 
 | Hardware | Package | Provider |
 |---|---|---|
@@ -438,7 +434,7 @@ providers need a matching build, and only one of them can be installed at a time
 | Intel | `onnxruntime-openvino` | `OpenVINOExecutionProvider` |
 | Apple | `onnxruntime` | `CoreMLExecutionProvider` |
 
-Check what a machine actually offers:
+To see the providers of a machine:
 
 ```python
 import onnxruntime

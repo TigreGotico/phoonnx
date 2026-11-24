@@ -4,18 +4,13 @@
 covers: how to configure ovos-tts-plugin-phoonnx in mycroft.conf, every config key it reads, and how it picks, caches and loads voices
 source: phoonnx/opm.py:PhoonnxTTSPlugin, phoonnx/voice_cache.py:VoiceCache, pyproject.toml [project.entry-points."opm.tts"]
 generated: no
-verify: python -m pytest tests/test_opm.py; the plugin check script below, run with the espeak extra
+verify: HF_HUB_OFFLINE=1 .venv/bin/python -m doctest -o ELLIPSIS -o NORMALIZE_WHITESPACE docs/ovos_plugin.md && .venv/bin/python -c "import re,sys; p=open('docs/ovos_plugin.md').read(); src=open('phoonnx/opm.py').read(); q=chr(96); t=p.split(chr(10)+'### Synthesis and cloning config keys',1)[1].split(chr(10)+'## ',1)[0]+p.split(chr(10)+'### Voice caching',1)[1].split(chr(10)+'### ',1)[0]; keys=[k for line in t.splitlines() if line.startswith('| ') for k in re.findall(q+'([a-z_-]+)'+q, line.split('|')[2] if line.count('|')>3 else line.split('|')[1])]; bad=[k for k in keys if chr(34)+k+chr(34) not in src]; print(len(keys), bad); sys.exit(1 if bad or not keys else 0)"
 see: docker.md, deployment.md, precision.md, cloning.md
 -->
 
 This page shows how to use phoonnx as the text-to-speech engine of OpenVoiceOS. It is for OpenVoiceOS users and integrators who configure the `ovos-tts-plugin-phoonnx` plugin.
 
-phoonnx registers the plugin class `PhoonnxTTSPlugin` under the `opm.tts` entry point
-`ovos-tts-plugin-phoonnx`.
-
-For grapheme-to-phoneme (G2P) conversion without TTS, use
-[ovos-scriptconv-g2p-plugin](https://github.com/TigreGotico/ovos-scriptconv-g2p-plugin),
-a separate OPM plugin. See [G2P for OVOS](phonemizers.md#g2p-for-ovos).
+phoonnx registers the plugin class `PhoonnxTTSPlugin` under the `opm.tts` entry point `ovos-tts-plugin-phoonnx`. For grapheme-to-phoneme (G2P) conversion without speech, use the separate [ovos-scriptconv-g2p-plugin](https://github.com/TigreGotico/ovos-scriptconv-g2p-plugin). See [G2P for OVOS](phonemizers.md#g2p-for-ovos).
 
 ## Configuration
 
@@ -33,9 +28,7 @@ In your OpenVoiceOS `mycroft.conf` or skills config, set:
 }
 ```
 
-The module name and the config sub-key are both the entry-point name,
-`ovos-tts-plugin-phoonnx`. This voice uses the eSpeak phonemizer, so the machine that runs
-the plugin needs the `espeak` extra:
+The module name and the config sub-key are both the entry point name, `ovos-tts-plugin-phoonnx`. This voice uses the eSpeak phonemizer, so the machine that runs the plugin needs the `espeak` extra:
 
 ```bash
 pip install --pre "phoonnx[espeak]"
@@ -43,33 +36,21 @@ pip install --pre "phoonnx[espeak]"
 
 If `voice` is omitted or set to `"default"`, the plugin selects a default voice for the configured language.
 
-To check that the plugin speaks before you restart OVOS, run the plugin with the same
-settings from Python:
+To check that the plugin speaks before you restart OVOS, run it with the same settings from Python:
 
 ```python
 from phoonnx.opm import PhoonnxTTSPlugin
 
 config = {"lang": "en-US", "voice": "OpenVoiceOS/pipertts_en-US_miro"}
 plugin = PhoonnxTTSPlugin(config=config)
-print(plugin.get_tts("Hello from phoonnx.", "check.wav", voice=config["voice"]))
+plugin.get_tts("Hello from phoonnx.", "check.wav", voice=config["voice"])
 ```
 
-```
-('check.wav', None)
-```
-
-The first call downloads the voice. Play `check.wav` to hear it. A call without `voice`
-speaks the configured `voice` when its language is the plugin's language. A call in another
-language uses the default voice of that language. If the plugin stops at start
-instead, see [Errors you may see](installation.md#errors-you-may-see).
+`get_tts` returns the path of the WAV file and `None`. The first call downloads the voice. Play `check.wav` to hear it. A call without `voice` speaks the configured `voice` when its language is the language of the plugin. A call in another language uses the default voice of that language. If the plugin stops at start, read [Errors you may see](installation.md#errors-you-may-see).
 
 ### Multi-speaker voices
 
-Some models bundle several speakers in one voice. The Catalan multiaccent matxa model
-`OpenVoiceOS/matxa-cat-multiaccent-wavenext`, for example, holds four dialects with two
-speakers each. Pick a speaker with `speaker_id` (an integer index) or `speaker` (a name
-that the plugin looks up in the model's `speaker_id_map`, bare or accent-qualified).
-`speaker_id` wins if both are set. Single-speaker voices ignore both.
+Some models hold several speakers in one voice. For example, the Catalan multiaccent matxa model `OpenVoiceOS/matxa-cat-multiaccent-wavenext` holds four dialects with two speakers each. Select a speaker with `speaker_id`, an integer index, or with `speaker`, a name that the plugin finds in the `speaker_id_map` of the model. The name can be bare (`elia`) or carry its accent (`central/elia`). `speaker_id` wins when both are set. Single-speaker voices ignore both.
 
 ```json
 {
@@ -83,18 +64,13 @@ that the plugin looks up in the model's `speaker_id_map`, bare or accent-qualifi
 }
 ```
 
-The config of the Catalan multiaccent model has no `speaker_id_map`, so pick its speaker
-with `speaker_id`. A `speaker` name logs a warning and falls back to the default speaker.
-The upstream model card (`projecte-aina/matxa-tts-cat-multiaccent`) gives the indices:
+The config of the Catalan multiaccent model has no `speaker_id_map`, so select its speaker with `speaker_id`. A `speaker` name logs a warning, and the voice uses its default speaker. The upstream model card, `projecte-aina/matxa-tts-cat-multiaccent`, gives the indices:
 `quim` 0 / `olga` 1 (balear), `grau` 2 / `elia` 3 (central), `pere` 4 / `emma` 5
 (nord-occidental), `lluc` 6 / `gina` 7 (valencià).
 
 ### Execution providers
 
-`onnx_providers` takes an ordered list of ONNX Runtime execution providers; the
-first one available on the machine runs the models, with `CPUExecutionProvider`
-always kept as a final fallback. Unset, providers come from the
-`PHOONNX_ONNX_PROVIDERS` environment variable or are auto-detected.
+`onnx_providers` takes an ordered list of ONNX Runtime execution providers. The first provider that the machine has runs the models, and `CPUExecutionProvider` is always the last fallback. When the key is unset, the providers come from the `PHOONNX_ONNX_PROVIDERS` environment variable, or from detection.
 
 ```json
 {
@@ -107,18 +83,11 @@ always kept as a final fallback. Unset, providers come from the
 }
 ```
 
-`onnx_providers` may also be given as a bare string for a single provider; `providers`
-is accepted as an alias. Running on a GPU needs the matching ONNX Runtime build
-(`onnxruntime-rocm`, `onnxruntime-gpu`, `onnxruntime-directml`, ...) — see
-[configuration.md](configuration.md#execution-providers).
+`onnx_providers` can also be one string, for one provider. `providers` is an alias of the key. A GPU needs the matching ONNX Runtime build, such as `onnxruntime-gpu`, `onnxruntime-rocm` or `onnxruntime-directml`. Read [Execution providers](configuration.md#execution-providers).
 
 ### Thread count
 
-`onnx_threads` sets the number of threads that each graph operator of a voice
-runs on. Unset, it comes from the `PHOONNX_ORT_THREADS` environment variable, else
-ONNX Runtime uses one thread per core. Set it on a host that serves several voices
-or shares the CPU with other jobs. See
-[configuration.md](configuration.md#thread-count).
+`onnx_threads` sets the number of threads that each graph operator of a voice runs on. When the key is unset, the value comes from the `PHOONNX_ORT_THREADS` environment variable. Without both, ONNX Runtime uses one thread per core. Set it on a host that serves several voices or shares the CPU with other jobs. Read [Thread count](configuration.md#thread-count).
 
 ```json
 {
@@ -133,9 +102,7 @@ or shares the CPU with other jobs. See
 
 ### Precision
 
-`precision` picks the files of a voice that has full files and int8 files:
-`auto` (the default), `int8` or `full`. When the key is unset, `null` or an
-empty string, the value comes from the `PHOONNX_PRECISION` environment variable.
+`precision` selects the files of a voice that has full files and int8 files: `auto` (the default), `int8` or `full`. When the key is unset, `null` or an empty string, the value comes from the `PHOONNX_PRECISION` environment variable.
 
 ```json
 {
@@ -148,18 +115,11 @@ empty string, the value comes from the `PHOONNX_PRECISION` environment variable.
 }
 ```
 
-A value that is not a string, or not one of the three, stops the plugin at start. A voice that
-has no files for the value raises `PrecisionUnavailable` at its first synthesis.
-Audio from int8 files is cached apart from audio of the full files. See
-[Precision variants](precision.md) for what `auto` picks.
+A value that is not a string, or not one of the three, stops the plugin at start. A voice that has no files for the value raises `PrecisionUnavailable` at its first synthesis. The plugin caches the audio of int8 files apart from the audio of full files. [Precision variants](precision.md) tells what `auto` selects.
 
 ### Audio super-resolution
 
-The optional `super_resolution` switch upscales synthesized audio to 48 kHz after
-synthesis, using [`audiosronnx`](https://github.com/TigreGotico/audiosronnx)
-(pure-ONNX, no torch at runtime). It is **off by default** — when disabled the
-audio and its sample rate are exactly what the voice produced, and `audiosronnx`
-is never imported.
+The `super_resolution` switch upscales the synthesized audio to 48 kHz with [`audiosronnx`](https://github.com/TigreGotico/audiosronnx), which runs on ONNX with no torch. It is off by default. When it is off, the audio and its sample rate are what the voice made, and phoonnx does not import `audiosronnx`.
 
 ```json
 {
@@ -173,28 +133,17 @@ is never imported.
 }
 ```
 
-`super_resolution_model` names the `audiosronnx` engine; omitting it selects
-`novasr`, which extends the high band in a way that tracks
-the speech harmonics and sounds natural on TTS output. Other engines are
-available (`lavasr`, `hifiganbwe`, `apbwe`) — see the
-[audiosronnx](https://github.com/TigreGotico/audiosronnx) engine table — but
-`lavasr` tends to add audible high-frequency noise on already-wideband (>=22 kHz)
-TTS voices, so it is better suited to genuinely low-rate inputs. Super-resolution
-gives the biggest quality win on low-sample-rate voices, where there is a real
-missing band to reconstruct.
+`super_resolution_model` names the `audiosronnx` engine. Without it, phoonnx uses `novasr`. The [audiosronnx](https://github.com/TigreGotico/audiosronnx) engine table lists the other engines. Super-resolution helps most on voices with a low sample rate, which have a missing high band.
 
-Install the extra (pulls `audiosronnx`, which fetches its models from HuggingFace
-on first use):
+Install the `audiosr` extra. It installs `audiosronnx`, which downloads its models from Hugging Face on first use:
 
 ```bash
 pip install --pre "phoonnx[audiosr]"
 ```
 
-Enabling `super_resolution` without that extra installed raises an `ImportError`
-naming it, at the first synthesis.
+When `super_resolution` is on and the extra is not installed, the first synthesis raises an `ImportError` that names the extra.
 
-The upscaling lives in the core `TTSVoice`, so it also applies to direct library
-use — and, being a `SynthesisConfig` field, it can be switched on per call:
+`TTSVoice` does the upscaling, so it also works when you use the library directly. It is a `SynthesisConfig` field, so you can turn it on for one call:
 
 ```python
 from phoonnx.config import AudioPost, SynthesisConfig
@@ -210,44 +159,35 @@ for chunk in voice.synthesize("hello", cfg):
     print(chunk.sample_rate)
 ```
 
-```
-48000
-```
-
-`synthesize_wav` takes its format from the first chunk, so the written WAV header
-carries the upscaled rate too.
+Each chunk reports the sample rate that the super-resolution engine gives. `synthesize_wav` takes its format from the first chunk, so the WAV header also has the upscaled rate.
 
 ### Synthesis and cloning config keys
 
-The plugin reads synthesis options from its config, accepting the documented
-underscore name plus legacy aliases (resolved by `_cfg_opt` in `phoonnx/opm.py`):
+The plugin reads these synthesis options from its config. Each option has an underscore name and can have aliases. The first key in the list that the config holds wins:
 
 | Option | Accepted keys | Meaning |
 |--------|---------------|---------|
-| Phonetic spellings | `enable_phonetic_spellings`, `enable_phonetic_spelling` | Toggle phonetic-spelling substitutions |
-| Diacritics | `add_diacritics` | Add diacritics (Arabic/Hebrew) |
+| Phonetic spellings | `enable_phonetic_spellings`, `enable_phonetic_spelling` | Turn the phonetic spelling replacements on or off |
+| Diacritics | `add_diacritics` | Add diacritics, for Arabic and Hebrew voices |
 | Generator noise | `noise_scale`, `noise-scale` | VITS noise scale |
 | Phoneme length | `length_scale`, `length-scale` | VITS length scale |
-| Phoneme width noise | `noise_w_scale`, `noise_w`, `noise-w` | VITS noise-W scale |
-| Speaker | `speaker_id`, `speaker` | Multi-speaker selection (see above) |
+| Phoneme width noise | `noise_w_scale`, `noise_w`, `noise-w` | VITS noise W scale |
+| Speaker | `speaker_id`, `speaker` | Multi-speaker selection, see above |
 | Reference clip | `speaker_reference`, `ref_wav`, `clone_voice` | Cloning reference audio |
 | Reference text | `speaker_reference_text`, `ref_text` | In-context reference transcription |
 | Reference lang | `speaker_reference_lang`, `ref_lang` | In-context reference language |
 | Providers | `onnx_providers`, `providers` | ONNX Runtime execution providers |
-| Threads | `onnx_threads` | Threads per graph operator (see above) |
-| Precision | `precision` | `auto`, `int8` or `full` (see above) |
-| Super-resolution | `super_resolution` | Enable 48 kHz upscaling (bool, off by default) |
-| Super-resolution model | `super_resolution_model` | `audiosronnx` engine name (default `novasr`) |
+| Threads | `onnx_threads` | Threads per graph operator, see above |
+| Precision | `precision` | `auto`, `int8` or `full`, see above |
+| Super-resolution | `super_resolution` | Turn on 48 kHz upscaling, a bool that is off by default |
+| Super-resolution model | `super_resolution_model` | The `audiosronnx` engine name, `novasr` by default |
 | Chunk | `chunk` | Text per engine call: `sentence` (default), `clause`, `paragraph` or `none` |
 
-See [cloning.md](cloning.md) for the cloning keys in detail.
+[Voice cloning](cloning.md) describes the cloning keys.
 
 ## Per-language default voices
 
-`voice` pins one voice for every request. To serve **many languages from one
-server**, leave it unset and map languages to voices instead. The plugin then
-picks the voice for the language of each request, and downloads and caches it on
-first use:
+`voice` sets one voice for the requests in the language of the plugin. To serve many languages from one server, map languages to voices with `lang2voice`. The plugin then selects the voice for the language of each request, and downloads and caches it on first use:
 
 ```json
 {
@@ -258,15 +198,15 @@ first use:
         "gl": "proxectonos/celtia",
         "ca": "OpenVoiceOS/matxa-cat-multispeaker-wavenext",
         "pt-br": "OpenVoiceOS/pipertts_pt-BR_miro",
-        "pt": "OpenVoiceOS/phoonnx_pt-PT_miro_unicode"
+        "pt": "OpenVoiceOS/phoonnx_pt-PT_miro_unicode",
+        "en-GB": "OpenVoiceOS/pipertts_en-GB_miro"
       }
     }
   }
 }
 ```
 
-Keys are BCP-47 tags. A requested language is tried in three forms, in this
-order:
+Keys are BCP-47 tags. The plugin tries the language of a request in three forms, in this order:
 
 1. Its standard form: a request for `pt-br` matches a `pt-BR` key.
 2. Its default region, which is the place where the language first appeared
@@ -274,13 +214,29 @@ order:
    matches an `en-GB` key.
 3. Its primary subtag: a request for `pt-BR` matches a `pt` key.
 
-A regional key therefore differs from the base language, and a bare key serves
-every region.
+So a regional key can differ from the base language, and a bare key serves every region. This example uses the `lang2voice` table above:
 
-The same mapping can come from the environment, which is usually easier for
-containers whose `mycroft.conf` carries no `lang2voice` entry for a given
-language. Set `PHOONNX_DEFAULT_VOICE_<LANG>`, with underscores in place of
-dashes:
+```python
+>>> from phoonnx.opm import PhoonnxTTSPlugin
+>>> plugin = PhoonnxTTSPlugin(config={"lang": "pt-PT", "lang2voice": {
+...     "gl": "proxectonos/celtia",
+...     "ca": "OpenVoiceOS/matxa-cat-multispeaker-wavenext",
+...     "pt-br": "OpenVoiceOS/pipertts_pt-BR_miro",
+...     "pt": "OpenVoiceOS/phoonnx_pt-PT_miro_unicode",
+...     "en-GB": "OpenVoiceOS/pipertts_en-GB_miro"}})
+>>> for lang in ("pt_br", "pt-AO", "gl-ES", "en", "en-US"):
+...     print(lang, plugin.configured_voice_for_lang(lang))
+pt_br OpenVoiceOS/pipertts_pt-BR_miro
+pt-AO OpenVoiceOS/phoonnx_pt-PT_miro_unicode
+gl-ES proxectonos/celtia
+en OpenVoiceOS/pipertts_en-GB_miro
+en-US None
+
+```
+
+`en-US` has no key, so the default voice of the voice index for `en-US` speaks it.
+
+The same table can come from the environment. This is often easier for a container whose `mycroft.conf` has no `lang2voice` entry for a language. Set `PHOONNX_DEFAULT_VOICE_<LANG>`, with underscores in place of dashes:
 
 ```bash
 docker run -e PHOONNX_DEFAULT_VOICE_GL=proxectonos/celtia \
@@ -288,17 +244,11 @@ docker run -e PHOONNX_DEFAULT_VOICE_GL=proxectonos/celtia \
            -p 9666:9666 ghcr.io/tigregotico/phoonnx:dev
 ```
 
-The plugin tries the whole `lang2voice` table before it reads the environment.
-It tries the three forms of the tag (standard form, default region, primary subtag) against
-`lang2voice` first. So a `lang2voice` entry for `pt` wins over a more specific
-`PHOONNX_DEFAULT_VOICE_PT_BR` variable. The config wins for every language that it names,
-and the environment variables fill in only the languages that the config leaves out. Below
-both, the default of the voice index for the language applies. Keys and tags are compared
-after normalisation, so `gl-ES` and `gl`, or `pt-br` and `pt_BR`, agree.
+The plugin tries the three forms of the tag against the whole `lang2voice` table before it reads the environment. So a `lang2voice` entry for `pt` wins over a more specific `PHOONNX_DEFAULT_VOICE_PT_BR` variable. The config wins for each language that it names, and the environment variables add only the languages that the config leaves out. When neither names a voice, the default of the voice index for the language applies. The plugin compares keys and tags after normalization, so `pt-br` and `pt_BR` agree. A configured voice id that the index does not have logs a warning, and the default of the voice index applies.
 
 ## How It Works
 
-`PhoonnxTTSPlugin` extends the `ovos-plugin-manager` `TTS` base class. On initialization, it:
+`PhoonnxTTSPlugin` is a subclass of the `TTS` base class of `ovos-plugin-manager`. When it starts, it does these steps:
 
 1. Creates a `TTSModelManager` and loads the local voice cache.
 2. Merges in the bundled voice indexes.
@@ -307,27 +257,26 @@ after normalisation, so `gl-ES` and `gl`, or `pt-br` and `pt_BR`, agree.
    here.
 4. Loads the voices in `pinned_voices`, if any.
 
-The first synthesis downloads and loads the voice. A missing extra or a missing download
-shows up at that point, not at start.
+The first synthesis downloads and loads the voice. A missing extra or a failed download shows at that point, not at start.
 
-### Voice Caching
+### Voice caching
 
-Loaded voices are cached in memory (`plugin.voice_cache`) to avoid re-loading on every utterance. The first call for a voice that is not loaded downloads it when needed. Memory is charged per model rather than per voice: a family of catalog entries that name the same graph (for example the `omnivoice` or `qwen3tts` voice-config variants) shares one ONNX Runtime session and counts against the budget once, however many of its voices are loaded.
+The plugin keeps loaded voices in memory, in `plugin.voice_cache`, so it does not load a voice again for each sentence. The first call for a voice that is not loaded downloads it when needed. The memory budget counts each model one time, not each voice: index entries that name the same graph, such as the `omnivoice` entries, share one ONNX Runtime session.
 
-Two config keys bound how much stays resident:
+These config keys limit what stays in memory:
 
 | Option | Meaning |
 |--------|---------|
-| `max_loaded_voices` | Maximum number of voices resident at once (pinned ones included). Unset never evicts anything. |
-| `max_loaded_bytes` | Memory budget for resident voice weights, as a plain byte count or a size string (`"3GB"`, `"512 MB"`, `"1.5GiB"` — `KB/MB/GB/TB` are powers of 1000, `KiB/MiB/GiB/TiB` powers of 1024). Unset never evicts anything. |
-| `pinned_voices` | Voice id or list of voice ids to load at startup and never evict, regardless of the other limits. |
-| `load_wait_timeout` | Seconds a cold load waits for memory in use to come back before loading anyway. Defaults to 300; a memory bound must never become a hang. |
+| `max_loaded_voices` | The most voices in memory at one time, pinned voices included. When it is unset, the plugin removes no voice. |
+| `max_loaded_bytes` | The memory budget for the voice weights in memory, as a byte count or a size string such as `"3GB"`, `"512 MB"` or `"1.5GiB"`. `KB`, `MB`, `GB` and `TB` are powers of 1000, and `KiB`, `MiB`, `GiB` and `TiB` are powers of 1024. When it is unset, the plugin removes no voice. |
+| `pinned_voices` | A voice id, or a list of voice ids, that the plugin loads at start and never removes. |
+| `load_wait_timeout` | The seconds that a load waits for memory before it loads anyway. The default is 300, so a memory limit never hangs a request. |
 
-A voice whose own weights are bigger than the whole `max_loaded_bytes` budget is refused with `VoiceExceedsMemoryBudget` rather than loaded, because loading it is a guaranteed OOM kill. A voice that fits on its own but not beside what is already in memory waits for room, and takes it anyway once `load_wait_timeout` seconds pass, logging a warning that memory use will exceed the budget: a voice a request is still synthesizing with is charged to the budget until that request finishes, so there are moments when nothing can be evicted. See [deployment.md](deployment.md#memory-budgeting) for sizing this against the container's memory limit.
+A voice whose weights are larger than the whole `max_loaded_bytes` budget raises `VoiceExceedsMemoryBudget` and does not load. A voice that fits alone, but not beside the voices in memory, waits for room. After `load_wait_timeout` seconds it loads anyway, and the plugin logs a warning that memory use goes above the budget. A voice stays in the budget until each request that uses it finishes, so for some time the plugin can remove nothing. [Deployment](deployment.md#set-a-memory-budget) tells how to size the budget for the memory limit of a container.
 
-### Refreshing Voices
+### Refresh the voices
 
-Call `refresh_voices()` to reload the voice list from the model manager:
+Call `refresh_voices()` to merge the bundled voice index into the voice list again:
 
 ```python
 plugin.refresh_voices(force=True)
@@ -348,14 +297,13 @@ plugin = PhoonnxTTSPlugin(config={
 
 | Method | Description |
 |--------|-------------|
-| `get_tts(sentence, wav_file, lang=None, voice=None, ...)` | Synthesize `sentence`, write it to the WAV file path, and return `(wav_file, None)`. `lang` and `voice` select the voice for one call. Without `voice`, a call in the plugin's language speaks the configured `voice`, and a call in another language uses the default voice of that language. The other keyword arguments set cloning (`speaker_reference`, `ref_wav`, ...), the speaker (`speaker_id`, `speaker`) and the scales (`length_scale`, `noise_scale`, `noise_w_scale`) for one call |
-| `get_default_voice(lang)` | Returns the default `TTSModelInfo` for a language |
-| `refresh_voices(force=False)` | Refresh the voice catalog from the model manager |
+| `get_tts(sentence, wav_file, lang=None, voice=None, ...)` | Synthesize `sentence`, write it to the WAV file path, and return `(wav_file, None)`. `lang` and `voice` select the voice for one call. Without `voice`, a call in the language of the plugin speaks the configured `voice`, and a call in another language uses the default voice of that language. The other keyword arguments set cloning (`speaker_reference`, `ref_wav` and the others), the speaker (`speaker_id`, `speaker`) and the scales (`length_scale`, `noise_scale`, `noise_w_scale`) for one call |
+| `get_default_voice(lang)` | Return the default `TTSModelInfo` for a language, from `lang2voice`, the environment or the voice index |
+| `refresh_voices(force=False)` | Merge the bundled voice index into the voice list, when the list is empty or `force` is set |
 
 ## Supported Voices
 
-All voices available through `TTSModelManager` are accessible to the plugin. Use the
-[`phoonnx-voices`](cli.md) command to see available options:
+The plugin can use each voice of `TTSModelManager`. The [`phoonnx-voices`](cli.md) command lists them:
 
 ```bash
 phoonnx-voices update-cache

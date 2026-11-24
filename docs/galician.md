@@ -4,116 +4,110 @@
 covers: how the Galician Cotovia phonemizer works and how the Galician StyleTTS2 voices use it
 source: scriptconv_copyleft.phonemizers.gl:CotoviaPhonemizer (scriptconv[gl] extra), phoonnx/voice_index/styletts2.json, scripts/conversion/styletts2/export_proxectonos_gl.py, scripts/conversion/styletts2/gl_vocab.py
 generated: no
-verify: pytest tests/test_pycotovia_gl.py tests/test_styletts2.py, plus the CotoviaPhonemizer examples on the page
+verify: HF_HUB_OFFLINE=1 .venv/bin/python -m doctest -o NORMALIZE_WHITESPACE docs/galician.md
 see: phonemizers.md, bsc_multispeaker.md, cloning.md
 -->
 
-This page describes the Galician Cotovia phonemizer and the Galician StyleTTS2 voices, for anyone who works with Galician voices.
+This page describes the Galician Cotovia phonemizer and the two Galician StyleTTS2 voices that use it.
+It is part of the [phonemizer catalog](phonemizers.md).
 
-It shows how the phonemizer emits IPA or native Cotovia notation and how to select the
-stress-marked variant. It is part of the [phonemizer catalog](phonemizers.md).
-
-The `CotoviaPhonemizer` class in `scriptconv_copyleft.phonemizers.gl` produces Galician
-phonemes using [pycotovia](https://github.com/TigreGotico/pycotovia), a pure-Python
+The `CotoviaPhonemizer` class in `scriptconv_copyleft.phonemizers.gl` makes Galician
+phonemes with [pycotovia](https://github.com/TigreGotico/pycotovia), a pure-Python
 port of the [Cotovia](http://webs.uvigo.es/gtm_voz) G2P engine.
-
-## Output alphabets
-
-| `Alphabet` value | Output format | Use case |
-|---|---|---|
-| `Alphabet.IPA` | IPA string via `pycotovia.cotovia_to_ipa` | Most phonemizer pipelines |
-| `Alphabet.COTOVIA` | Raw Cotovia notation (e.g. `este E uN sistema`) | Voices trained on Cotovia alphabet output |
-
-Voices trained on Cotovia-alphabet output (e.g. ProxectoNos, Sabela, Celtia)
-receive strings identical to the original Cotovia C binary's: pycotovia is
-binary-parity-tested against it (see `pycotovia/docs/parity.md`).
 
 ## Installation
 
 ```bash
 pip install --pre "phoonnx[gl]"
-# or directly:
-pip install --pre "scriptconv[gl]"
 ```
 
-## Usage
+The `gl` extra installs `scriptconv[gl]`, which brings `pycotovia`.
+
+## Phonemize a sentence
+
+The phonemizer gives IPA or the native Cotovia notation. The `alphabet` argument selects
+the output, and `Alphabet.COTOVIA` is the default.
 
 ```python
-from scriptconv_copyleft.phonemizers.gl import CotoviaPhonemizer
-from phoonnx.config import Alphabet
-
-p_ipa = CotoviaPhonemizer(alphabet=Alphabet.IPA)
-p_cot = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA)
-
-text = "Este é un sistema de conversión de texto a voz en lingua galega."
-
-print(p_ipa.phonemize_string(text, "gl"))   # IPA
-print(p_cot.phonemize_string(text, "gl"))   # Cotovia notation
-```
-
-```text
+>>> from phoonnx.config import Alphabet
+>>> from scriptconv_copyleft.phonemizers.gl import CotoviaPhonemizer
+>>> text = "Este é un sistema de conversión de texto a voz en lingua galega."
+>>> print(CotoviaPhonemizer(alphabet=Alphabet.IPA).phonemize_string(text, "gl"))
 este ɛ uŋ sistema ðe kombeɾsjon de teksto a βoθ eŋ liŋɡwa ɣaleɣa
+>>> print(CotoviaPhonemizer(alphabet=Alphabet.COTOVIA).phonemize_string(text, "gl"))
 este E uN sistema De kombersjon de teksto a BoT eN liNgwa GaleGa
+
 ```
 
-## Accepted language codes
+Voices trained on Cotovia notation get the same strings as from the original Cotovia C
+binary, because pycotovia is tested for parity with it.
 
-`CotoviaPhonemizer` accepts any language tag that matches `gl-ES` within a
-`langcodes` distance of ≤ 10 (e.g. `"gl"`, `"gl-ES"`).
+The phonemizer accepts a language tag that matches `gl-ES`, such as `gl` or `gl-ES`.
+Any other tag raises `UnsupportedLanguageError`.
 
-## Stress-marked variant (HiTZ voices)
+## Mark the stressed vowels
 
-The constructor takes a `model` argument that selects the notation. `model="stress"` selects
-the stress-marked Cotovia notation used by the HiTZ Galician VITS voices; the default is
-stressless. The voice manager passes this through from the voice's `phonemizer_model` field.
+The `model` argument selects a variant. `model="stress"` gives the Cotovia notation with
+a `^` after each stressed vowel. The voice manager passes this value from the
+`phonemizer_model` field of the voice config.
 
 ```python
-p_stress = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA, model="stress")
-print(p_stress.phonemize_string(text, "gl"))
-```
-
-```text
+>>> from phoonnx.config import Alphabet
+>>> from scriptconv_copyleft.phonemizers.gl import CotoviaPhonemizer
+>>> text = "Este é un sistema de conversión de texto a voz en lingua galega."
+>>> p_stress = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA, model="stress")
+>>> print(p_stress.phonemize_string(text, "gl"))
 e^ste E^ u^N siste^ma De^ kombersjo^n de^ te^ksto a^ Bo^T e^N li^Ngwa Gale^Ga
+
 ```
 
-## Building it from a config
+The stress variant always gives Cotovia notation. It ignores `alphabet=Alphabet.IPA`.
+
+## Build the phonemizer from a config
 
 A `scriptconv` `TextFrontend` builds the phonemizer that its `FrontendConfig` names:
 
 ```python
-from phoonnx.config import Alphabet, PhonemeType
-from scriptconv.frontend import FrontendConfig, TextFrontend
+>>> from phoonnx.config import Alphabet, PhonemeType
+>>> from scriptconv.frontend import FrontendConfig, TextFrontend
+>>> frontend = TextFrontend(FrontendConfig(lang="gl", phonemizer=PhonemeType.COTOVIA,
+...                                        alphabet=Alphabet.COTOVIA, model="stress"))
+>>> type(frontend.backend).__name__
+'CotoviaPhonemizer'
 
-frontend = TextFrontend(FrontendConfig(lang="gl", phonemizer=PhonemeType.COTOVIA,
-                                       alphabet=Alphabet.IPA, model="stress"))
-print(type(frontend.backend).__name__)
 ```
 
-```text
-CotoviaPhonemizer
+`phoonnx.config.get_phonemizer` also builds it, but that function is deprecated. Its
+warning names the release that removes it.
+
+## Galician StyleTTS2 voices (Proxecto Nós Celtia and Brais)
+
+Two Galician StyleTTS2 voices are in the voice index. Both speak `gl-ES` at 24 kHz, and
+both read Cotovia notation:
+
+```python
+>>> from phoonnx.model_manager import TTSModelManager
+>>> manager = TTSModelManager()
+>>> manager.merge_default_voices()
+>>> for voice_id in ("proxectonos/celtia-styletts2", "proxectonos/brais-styletts2"):
+...     info = manager.get_voice(voice_id)
+...     print(voice_id, info.engine.value, info.lang, info.phoneme_type.value, info.speaker_encoder_type)
+proxectonos/celtia-styletts2 styletts2 gl-ES cotovia styletts2_style
+proxectonos/brais-styletts2 styletts2 gl-ES cotovia styletts2_style
+
 ```
 
-`phoonnx.config.get_phonemizer` works, but it is deprecated. It warns with the release
-that removes it.
+Celtia is a female speaker and Brais is a male speaker. The voices come from the
+Apache-2.0 checkpoints of [Proxecto Nós](https://nos.gal/gl/proxecto-nos)
+(`proxectonos/Nos_StyleTTS2-Celtia-GL` and `proxectonos/Nos_StyleTTS2-Brais-GL`).
+`scripts/conversion/styletts2/export_proxectonos_gl.py` converts them to ONNX. The
+files are on the Hub in
+[`Phoonnx/styletts2-gl_es-celtia-cotovia`](https://huggingface.co/Phoonnx/styletts2-gl_es-celtia-cotovia)
+and `Phoonnx/styletts2-gl_es-brais-cotovia`.
 
-## Galician StyleTTS2 voices (ProxectoNos Celtia and Brais)
-
-Two Galician StyleTTS2 voices ship in the voice index:
-
-| Voice id | Speaker | Engine | Sample rate |
-|---|---|---|---|
-| `proxectonos/celtia-styletts2` | Celtia (female) | `styletts2` | 24 kHz |
-| `proxectonos/brais-styletts2` | Brais (male) | `styletts2` | 24 kHz |
-
-They come from the Apache-2.0 checkpoints of
-[Proxecto Nós](https://nos.gal/gl/proxecto-nos) (`proxectonos/Nos_StyleTTS2-Celtia-GL`
-and `proxectonos/Nos_StyleTTS2-Brais-GL`), converted to ONNX by
-`scripts/conversion/styletts2/export_proxectonos_gl.py` and mirrored to
-[`Phoonnx/phoonnx-styletts2`](https://huggingface.co/Phoonnx/phoonnx-styletts2).
-
-Each voice speaks with its own speaker style by default. It also accepts a
-reference clip, because the export ships a `styletts2_style` speaker encoder —
-see [voice cloning](cloning.md).
+Each voice speaks with its own speaker style by default. It also accepts a reference
+clip, because the export ships a `styletts2_style` speaker encoder. See
+[voice cloning](cloning.md).
 
 ```python
 from phoonnx.config import SynthesisConfig
@@ -129,84 +123,61 @@ for chunk in voice.synthesize("Bo día, como estás?", SynthesisConfig()):
 
 ### Front end
 
-These models were trained on **Cotovía notation with stress marks**, not on IPA.
-The voices therefore set `phoneme_type: cotovia`, `alphabet: cotovia` and
-`phonemizer_model: stress`. Their vocabulary is the 69-symbol Galician phoneset
-of the upstream `phoneme_token_maps.json`, not the 178-symbol espeak set of the
-other StyleTTS2 voices. `scripts/conversion/styletts2/gl_vocab.py` builds that
-vocabulary, and `tests/test_styletts2.py` checks it against the vendored table.
+The checkpoints learned Cotovia notation with stress marks, not IPA. The voice config
+therefore sets `phoneme_type: cotovia`, `alphabet: cotovia` and
+`phonemizer_model: stress`. The vocabulary is the 69-symbol Galician phoneset of the
+upstream `phoneme_token_maps.json`, not the 178-symbol espeak set of the other
+StyleTTS2 voices. `scripts/conversion/styletts2/gl_vocab.py` builds that vocabulary,
+and `tests/test_styletts2.py` checks it.
 
-The tokenizer folds the multi-character Cotovía forms onto the single ids the
-model was trained with: `rr` → `R`, `tS` → `W`, and a stressed vowel `V^` → the
-accented vowel (`o^` → `ó`).
-
-### Intelligibility gate
-
-Galician ASR is the instrument for judging these voices, and the choice of model
-dominates the result. `onnx-asr`'s multilingual models do not help: both
-`nemo-canary-1b-v2` and `parakeet-tdt-v3` cover 25 European languages, Galician
-not among them, and only `whisper-base` in that library handles `gl` at all.
-
-Use the two Galician ONNX exports instead:
-
-| Repo | Model | Notes |
-|---|---|---|
-| [`OpenVoiceOS/Nos_ASR-wav2vec2-xls-r-300m-gl-onnx`](https://huggingface.co/OpenVoiceOS/Nos_ASR-wav2vec2-xls-r-300m-gl-onnx) | wav2vec2 XLS-R 300M CTC | strongest; 5.9 % WER on Celtia's own recordings |
-| [`OpenVoiceOS/proxectonos-gl-conformer-ctc-large-onnx`](https://huggingface.co/OpenVoiceOS/proxectonos-gl-conformer-ctc-large-onnx) | NeMo Conformer-CTC large | second opinion; much weaker (22-23 % on human speech) |
-
-Both are Apache-2.0 exports of Proxecto Nós models and run on onnxruntime CPU.
-Always report the **human-speech floor** — the same ASR on the speaker's own
-recordings — next to the synthesized WER. The gap is the number that says
-something about the voice; the absolute WER says more about the ASR.
-
-Measured on 52 Galician sentences per voice — the two speakers' published test
-splits — with each speaker's own recordings of those sentences as the floor
-(16 clips for Brais, 20 for Celtia):
-
-| Voice | wav2vec2 synth | wav2vec2 floor | gap | conformer synth | conformer floor | gap |
-|---|---|---|---|---|---|---|
-| Celtia | 0.170 | 0.059 | +0.111 | 0.284 | 0.233 | +0.051 |
-| Brais | 0.122 | 0.057 | +0.065 | 0.275 | 0.218 | +0.057 |
-
-Report a distribution, not only a mean. A single sentence says almost nothing:
-on the pangram `O raposo veloz salta por riba do can preguiceiro preto da vella
-ponte` both voices score 0.308, because the ASR merges `can preguiceiro` into
-one word for either of them.
+The tokenizer folds the multi-character Cotovia forms onto the single ids that the
+model learned: `rr` becomes `R`, `tS` becomes `W`, and a stressed vowel `V^` becomes the
+accented vowel (`o^` becomes `ó`).
 
 ### Padding token
 
-The Galician checkpoints pad with `X` (id 0), the token upstream's
-`meldataset.py` inserts and appends on every training sample. Upstream's own
-`inference.py` instead prepends the word separator (id 1). Do not copy that:
-the word separator is a trained speech symbol, so a leading id 1 makes the
-voice speak an extra syllable at the start of every utterance. It costs Brais
-0.196 WER against 0.122, and Celtia 0.180 against 0.170.
+The Galician checkpoints pad with `X` (id 0), the token that the upstream training code
+adds to each sample. The upstream `inference.py` uses the word separator (id 1) instead.
+Do not copy that. The word separator is a trained speech symbol, so a leading id 1 makes
+the voice speak an extra syllable at the start of each utterance.
+
+### Check intelligibility
+
+Use a Galician ASR model to check these voices. The `onnx-asr` multilingual models
+`nemo-canary-1b-v2` and `parakeet-tdt-v3` do not cover Galician. Two Galician ONNX
+exports of Proxecto Nós models do:
+[`OpenVoiceOS/Nos_ASR-wav2vec2-xls-r-300m-gl-onnx`](https://huggingface.co/OpenVoiceOS/Nos_ASR-wav2vec2-xls-r-300m-gl-onnx)
+(wav2vec2 XLS-R 300M CTC) and
+[`OpenVoiceOS/proxectonos-gl-conformer-ctc-large-onnx`](https://huggingface.co/OpenVoiceOS/proxectonos-gl-conformer-ctc-large-onnx)
+(NeMo Conformer-CTC large). Both run on onnxruntime CPU.
+
+Score the speaker's own recordings with the same ASR, and report that score next to the
+score of the synthesized audio. The gap between the two says how good the voice is. The
+absolute word error rate says more about the ASR.
 
 ### Known front-end gaps
 
-`pycotovia` does not reproduce the Cotovía binary's transcription in two places. Measured against the gold `phonetic_transcription` column of the
-`proxectonos/Nos_Celtia-GL` test split (30 sentences):
+pycotovia marks stress on unstressed function words, such as `o` and `de`, and it drops
+punctuation:
 
-| Comparison | Word error |
-|---|---|
-| Phone string, ignoring stress and vowel timbre | 1.9 % |
-| Adding open/closed vowel timbre (`É`, `Ó`) | 14.2 % |
-| Adding stress placement | 47.6 % |
+```python
+>>> from phoonnx.config import Alphabet
+>>> from scriptconv_copyleft.phonemizers.gl import CotoviaPhonemizer
+>>> p_stress = CotoviaPhonemizer(alphabet=Alphabet.COTOVIA, model="stress")
+>>> print(p_stress.phonemize_string("Ola. Que tal?", "gl"))
+o^la ke^ ta^l
 
-The base transcription is correct. The remaining errors are that `pycotovia`
-never emits the open vowels `É` and `Ó`, and that it marks stress on unstressed
-function words that the binary leaves unmarked. Punctuation is also dropped,
-although the models accept it. These gaps belong to `pycotovia`. With them, the voices
-are intelligible, but their prosody is flatter than upstream's.
+```
 
-### Training a Galician StyleTTS2 voice
+The models accept punctuation, so the voices speak with flatter prosody than the
+upstream front end gives. These gaps belong to pycotovia.
+
+### Train a Galician StyleTTS2 voice
 
 [`proxectonos/PL-ModernBERT-gl`](https://huggingface.co/proxectonos/PL-ModernBERT-gl)
-is the Galician phoneme-level BERT to use with the `styletts2-plbert` training
-engine, which supports ModernBERT backbones. It shares the same 69-symbol
-Cotovía vocabulary. The two shipped voices do **not** embed it, because their
-checkpoints carry an ALBERT-style PL-BERT. It is a resource for training runs, not a
-replacement part for the shipped voices.
+is a Galician phoneme-level BERT for the `styletts2-plbert` training engine, which
+supports a ModernBERT backbone. It uses the same 69-symbol Cotovia vocabulary. The two
+shipped voices do not contain it, because their checkpoints hold an ALBERT-style PL-BERT.
 
 ---
 
