@@ -49,6 +49,7 @@ Copyright Supertone Inc.) from Supertone's official ``py/helper.py`` inference r
 in the ``Supertone/supertonic-3`` model card.
 """
 import json
+import os
 import re
 from typing import Any, Dict, List, Optional
 
@@ -201,25 +202,29 @@ def sample_noisy_latent(duration_s: float, sample_rate: int, base_chunk_size: in
     dim = latent_dim * chunk_compress_factor
     size = bucket_size(latent_len, pad_to)
     latent_mask = length_to_mask(latent_len, size)
-    noisy_latent = rng.standard_normal((1, dim, size)).astype(np.float32)
-    return noisy_latent * latent_mask, latent_mask
+    # Drawn at the real length and then padded with zeros, so one seed gives the same noise at the
+    # real frames with or without padding.
+    noisy_latent = np.zeros((1, dim, size), np.float32)
+    noisy_latent[..., :latent_len] = rng.standard_normal((1, dim, latent_len)).astype(np.float32)
+    return noisy_latent, latent_mask
 
 
-#: Shape floor (tokens of text, frames of latent) used on a GPU when ``engine_params`` does not
-#: say. 256 frames is about 18 s of speech and 256 tokens about a 300-character chunk, so almost
-#: every request runs at one shape. See :meth:`SuperTonicAdapter._pad_floors`.
-GPU_PAD_FLOOR = 256
-_SHAPE_SENSITIVE_PROVIDERS = ("CUDAExecutionProvider",)
+#: Environment variable that sets both shape floors for every SuperTonic voice that does not set
+#: its own (see :meth:`SuperTonicAdapter._pad_floors`). Unset or 0: no padding.
+PAD_ENV = "PHOONNX_SUPERTONIC_PAD_TO"
 
 
 class SuperTonicAdapter(BaseOnnxAdapter):
     """Adapter for SuperTonic (4-graph flow-matching, fixed per-speaker style).
 
-    On a CUDA GPU every call is padded to a fixed shape (``pad_text_to`` and ``pad_latent_to`` of
-    ``engine_params``, 256 by default there, 0 to keep exact shapes): a CUDA session pays a
-    set-up cost of 0.1 to 0.2 s each time one of its four graphs sees a shape different from the
-    last, which on a Tesla P40 was the larger part of a 1.3 s request (0.55 s padded, same audio).
-    The graphs take a mask for both inputs, so the padding is ignored.
+    Optional, off by default: ``pad_text_to`` and ``pad_latent_to`` of ``engine_params`` (or the
+    environment variable ``PHOONNX_SUPERTONIC_PAD_TO`` for both) pad every call to a fixed shape,
+    doubled for an input that does not fit. A CUDA session pays a set-up cost of 0.1 to 0.2 s each
+    time one of its four graphs sees a shape different from the last, which on a Tesla P40 was
+    most of a 1.3 s request (0.55 s padded). The padding is **not** invisible to the graphs:
+    with the same noise the padded text encoder output differs by 4 to 12 % at the real positions
+    and the padded vector estimator makes a different, equally intelligible sample (as far from
+    the unpadded one as another noise draw is). Turn it on for speed, not for bit-equal output.
     """
 
     def __init__(self, total_step: int = 8, speed: float = 1.05, silence_duration: float = 0.3):
@@ -292,16 +297,14 @@ class SuperTonicAdapter(BaseOnnxAdapter):
             self.pad_latent_to = int(ep["pad_latent_to"])
 
     def _pad_floors(self, session: onnxruntime.InferenceSession) -> tuple:
-        """(text, latent) shape floors for this call: the voice's own, else ``GPU_PAD_FLOOR`` when
-        the session runs on a CUDA GPU, else 0 (a CPU gains nothing and pays for the padding)."""
-        auto = 0
-        get_providers = getattr(session, "get_providers", None)
-        if get_providers is not None:
-            providers = get_providers()
-            if providers and providers[0] in _SHAPE_SENSITIVE_PROVIDERS:
-                auto = GPU_PAD_FLOOR
-        return (auto if self.pad_text_to is None else self.pad_text_to,
-                auto if self.pad_latent_to is None else self.pad_latent_to)
+        """(text, latent) shape floors for this call: the voice's own, else the environment's,
+        else 0 (exact shapes)."""
+        try:
+            env = max(int(os.environ.get(PAD_ENV, "0") or 0), 0)
+        except ValueError:
+            env = 0
+        return (env if self.pad_text_to is None else self.pad_text_to,
+                env if self.pad_latent_to is None else self.pad_latent_to)
 
     def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
         """Preprocess + chunk raw text, then map each chunk through the standard
