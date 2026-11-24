@@ -155,6 +155,10 @@ class BaseOnnxAdapter(ABC):
     # True for an adapter that reads the text of a phonemizing voice itself, in ``read_text``.
     READS_TEXT: bool = False
 
+    # True for an adapter whose engine has speaker names of its own. The voice then
+    # passes a name that its ``speaker_id_map`` lacks to the engine, and does not reject it.
+    SPEAKER_NAMES: bool = False
+
     # The most ids one model call reads. ``None`` means the engine is never cut.
     # An engine that sets it also sets ``bos``, ``eos``, ``word_gap`` and
     # ``clause_marks`` (a set of ids) in ``configure``; :meth:`_cut` reads them.

@@ -142,6 +142,8 @@ def _sample(scores: np.ndarray, temperature: float, top_p: float,
 class OrpheusAdapter(BaseOnnxAdapter):
     """Adapter for the Orpheus family (Llama codec-LM + SNAC 24 kHz decoder)."""
 
+    SPEAKER_NAMES = True
+
     MEMOIZED_WRITES = {
         # KV-cache geometry, read off the model's own input shapes.
         "_read_kv_shape": frozenset({"past_names", "present_names",

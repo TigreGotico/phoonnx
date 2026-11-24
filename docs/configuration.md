@@ -109,8 +109,8 @@ syn_config = SynthesisConfig(
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `stages` | `Stages` | empty | The text stages of the call, from `scriptconv.frontend`. The stages table below lists its fields |
-| `speaker` | `int` \| `str` \| `None` | `None` | Speaker of a multi-speaker voice: an id, or a name in the voice's `speaker_id_map`. A name that the map lacks goes to the engine, which may hold its own names (Magpie). `None` uses the speaker of the voice, or speaker 0 |
-| `language` | `int` \| `str` \| `None` | `None` | Language of a multi-language voice: an id, or a code in the voice's `lang_id_map`. A code also sets `stages.lang`. `None` uses the language of the voice, or language 0 |
+| `speaker` | `int` \| `str` \| `None` | `None` | Speaker of a multi-speaker voice: an id, or a name in the voice's `speaker_id_map`. A name that the map lacks goes to an engine with names of its own (Magpie, Orpheus). Any other engine gets a `ValueError` that lists the names of the voice. `None` uses the speaker of the voice, or speaker 0 |
+| `language` | `int` \| `str` \| `None` | `None` | Language of a multi-language voice: an id, or a code in the voice's `lang_id_map`. A code that the map of a multilingual voice lacks gives a `ValueError` that lists the codes of the voice. A code also sets `stages.lang`. `None` uses the language of the voice, or language 0 |
 | `length_scale` | `float` \| `None` | `None` | Speed control: < 1 faster, > 1 slower. `None` uses the value of the voice |
 | `noise_scale` | `float` \| `None` | `None` | Generator noise: affects naturalness. `None` uses the value of the voice |
 | `noise_w_scale` | `float` \| `None` | `None` | Phoneme duration noise. `None` uses the value of the voice |
