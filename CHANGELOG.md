@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.137.11a3](https://github.com/TigreGotico/phoonnx/tree/1.137.11a3) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.11a2...1.137.11a3)
+
+**Merged pull requests:**
+
+- test: pin open defects as strict xfails [\#1072](https://github.com/TigreGotico/phoonnx/pull/1072) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.137.11a2](https://github.com/TigreGotico/phoonnx/tree/1.137.11a2) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.11a1...1.137.11a2)
@@ -359,25 +367,13 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.0a1...1.130.1a1)
 
-**Merged pull requests:**
-
-- fix: scriptconv 0.0.4a145 and text2spoken 0.0.2a97 floors, casing docs [\#942](https://github.com/TigreGotico/phoonnx/pull/942) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.130.0a1](https://github.com/TigreGotico/phoonnx/tree/1.130.0a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.12a1...1.130.0a1)
 
-**Merged pull requests:**
-
-- feat\(providers\): a thread count for every session of a voice [\#940](https://github.com/TigreGotico/phoonnx/pull/940) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.129.12a1](https://github.com/TigreGotico/phoonnx/tree/1.129.12a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.129.11a1...1.129.12a1)
-
-**Merged pull requests:**
-
-- fix\(config\): a phonemizer language apart from the text language [\#939](https://github.com/TigreGotico/phoonnx/pull/939) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.129.11a1](https://github.com/TigreGotico/phoonnx/tree/1.129.11a1) (2026-11-22)
 
