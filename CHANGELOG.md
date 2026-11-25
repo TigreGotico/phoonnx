@@ -365,10 +365,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.134.0a1...1.134.0a2)
 
-**Merged pull requests:**
-
-- docs: state how tone numerals map to Chao levels [\#987](https://github.com/TigreGotico/phoonnx/pull/987) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.134.0a1](https://github.com/TigreGotico/phoonnx/tree/1.134.0a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.133.2a1...1.134.0a1)
