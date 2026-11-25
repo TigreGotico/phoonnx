@@ -181,3 +181,11 @@ def test_configure_from_voice_config_engine_params(monkeypatch):
     assert built["args"] == ("v.onnx", "wavenext",
                              {"providers": ["CPUExecutionProvider"], "threads": 2, "n_fft": 1024})
     assert isinstance(adapter.vocoder, FakeVocoder)
+
+
+def test_a_misspelled_vocoder_type_stops_the_voice_load():
+    class Cfg:
+        engine_params = {"vocoder_type": "griffin_lim"}
+
+    with pytest.raises(ValueError, match=r"Unknown vocoder_type 'griffin_lim'.*'griffinlim'"):
+        MatchaAdapter().configure(Cfg())
