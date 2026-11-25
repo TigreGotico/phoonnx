@@ -23,7 +23,7 @@ text ──[acoustic model]──▶ mel ──[vocoder]──▶ waveform
 ```python
 >>> from phoonnx.engines.vocoders import list_vocoders
 >>> list_vocoders()
-['griffinlim', 'wavenext', 'hifigan', 'melgan', 'vocos', 'raw']
+['griffinlim', 'wavenext', 'hifigan', 'melgan', 'vocos', 'alvocat', 'raw']
 
 ```
 
@@ -126,6 +126,7 @@ Make a subclass of `BaseVocoder`, write its `mel_to_audio` method, and register 
 | `hifigan` | `HiFiGANVocoder` | waveform (1) | 31 | GAN vocoder |
 | `melgan` | `HiFiGANVocoder` | waveform (1) | 32 | MelGAN and multiband MelGAN, with the same mel to audio contract |
 | `vocos` | `VocosVocoder` | magnitude, real, imaginary (3) | 40 | inverse STFT, honours `denoise` |
+| `alvocat` | `VocosVocoder` | magnitude, real, imaginary (3) | 41 | another name for `vocos`, for the alVoCat Catalan release |
 | `raw` | `RawWaveformVocoder` | waveform (1) | 50 | any vocoder with one waveform output |
 | `griffinlim` | `GriffinLimVocoder` | no model | 99 | parametric, never auto-detected, needs `librosa` |
 
