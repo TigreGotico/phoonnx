@@ -1,5 +1,6 @@
 import contextlib
 import contextvars
+import copy
 import functools
 import hashlib
 import itertools
@@ -28,7 +29,7 @@ from phoonnx.config import (PhonemeType, _removal_version, VoiceConfig, Engine,
                             Alphabet, check_lang_supported)
 from phoonnx.util import is_arabic, match_lang, normalize_lang, LOG
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers, resolve_threads, uses_gpu
-from phoonnx.voice import TTSVoice, check_num_symbols
+from phoonnx.voice import TTSVoice, check_num_symbols, streaming_graphs
 from phoonnx._onnx_external import external_data_locations
 from phoonnx.errors import PrecisionUnavailable, UnknownVoice
 
@@ -1179,18 +1180,23 @@ class TTSModelInfo:
                              self.config.phoneme_type)
 
         model_path = self.download_model()
-        config = self.config
+        config_dict = self.download_config()
+        config_dir = str(self.hub_path(self.config_url).parent) if config_dict else ""
+        entry_params = self.engine_params()
+        model_path, config_params = streaming_graphs(model_path, config_dict, config_dir, entry_params)
         resolved_providers = resolve_providers(providers)
         resolved_threads = resolve_threads(threads)
-        engine_params = {**(config.engine_params or {}), **self.engine_params(),
+        engine_params = {**(self.config.engine_params or {}), **config_params, **entry_params,
                          "providers": resolved_providers}
         if resolved_threads is not None:
             engine_params["threads"] = resolved_threads
+        # each voice gets its own config, so one load never changes the settings of another
+        config = copy.copy(self.config)
         config.engine_params = engine_params
         # Through make_session, so voices that name the same graph share one session.
         session = make_session(model_path, providers=resolved_providers, threads=resolved_threads)
         voice = TTSVoice(session=session, config=config, model_path=str(model_path))
-        if self.config_url and "num_symbols" in self.download_config():
+        if "num_symbols" in config_dict:
             check_num_symbols(config, voice.adapter, self.config_url)
         return voice
 
