@@ -166,6 +166,7 @@ def test_unset_scales_stay_out_of_the_inference_block():
 # once the scriptconv floor in pyproject.toml includes it, and give it a row in
 # docs/phonemizers.md.
 SCRIPTCONV_PENDING: set = set()
+ALPHABET_PENDING = {"misaki"}
 
 
 def test_schema_enums_list_every_engine_phonemizer_and_alphabet():
@@ -174,7 +175,7 @@ def test_schema_enums_list_every_engine_phonemizer_and_alphabet():
     assert properties["text_casing"]["enum"] == list(TEXT_CASINGS)
     # PhonemeType and Alphabet come from scriptconv, so the installed scriptconv may be
     # older than the schema: a value the schema lists must be scriptconv's or pending
-    for key, enum, pending in (("phoneme_type", PhonemeType, SCRIPTCONV_PENDING), ("alphabet", Alphabet, set())):
+    for key, enum, pending in (("phoneme_type", PhonemeType, SCRIPTCONV_PENDING), ("alphabet", Alphabet, ALPHABET_PENDING)):
         values = {v.value for v in enum}
         missing = [v for v in values if v not in properties[key]["enum"]]
         assert missing == [], f"{key} enum lacks {missing}"
