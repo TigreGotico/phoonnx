@@ -257,11 +257,15 @@ class TestModelManagerKeepsTheFlag:
             return info.load()
 
     def test_a_dictionary_from_the_index(self):
+        from unittest.mock import patch
         from phoonnx.config import PhonemeType
-        voice = self._load(phonemizer_model="dictionary", dictionary_url="dictionary",
-                           phoneme_type=PhonemeType.ESPEAK, alphabet=Alphabet.IPA)
+        with patch("phoonnx.model_manager._voice_phonemizer") as build:
+            voice = self._load(phonemizer_model="dictionary", dictionary_url="dictionary",
+                               phoneme_type=PhonemeType.ESPEAK, alphabet=Alphabet.IPA)
         assert voice.config.phonemizer_model == "dictionary"
-        assert voice.phonemizer.keep_punctuation is True
+        assert voice.phonemizer is build.return_value
+        assert build.call_args.kwargs["model"] == "dictionary"
+        assert build.call_args.kwargs["keep_punctuation"] is True
 
 
 def test_a_yourtts_export_keeps_the_punctuation_flag_it_was_trained_with():
