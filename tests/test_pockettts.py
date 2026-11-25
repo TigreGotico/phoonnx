@@ -1,5 +1,6 @@
 import json
 
+import re
 import numpy as np
 import pytest
 
@@ -732,7 +733,10 @@ def test_voice_index_entries_are_self_consistent():
         assert entry["voice_id"] == voice_id
         assert entry["engine"] == "pockettts"
         assert entry["alphabet"] == "graphemes"
-        assert entry["config_url"] is None
+        # the model-only native config of the model repo, at the commit of the graph
+        repo, rev = re.fullmatch(r"https://huggingface\.co/([^/]+/[^/]+)/resolve/([0-9a-f]{40})/phoonnx\.json",
+                                 entry["config_url"]).groups()
+        assert entry["model_url"].startswith(f"https://huggingface.co/{repo}/resolve/{rev}/")
 
 
 def test_voice_index_entries_carry_every_auxiliary_graph():
