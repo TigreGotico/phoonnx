@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.138.4a2](https://github.com/TigreGotico/phoonnx/tree/1.138.4a2) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.4a1...1.138.4a2)
+
+**Merged pull requests:**
+
+- test: follow scriptconv 0.0.4a174 and linguatag 0.4.3 in three tests [\#1113](https://github.com/TigreGotico/phoonnx/pull/1113) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.138.4a1](https://github.com/TigreGotico/phoonnx/tree/1.138.4a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.3a2...1.138.4a1)
+
+**Merged pull requests:**
+
+- fix\(index\): point the voices with no config at their phoonnx.json [\#1105](https://github.com/TigreGotico/phoonnx/pull/1105) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.3a2](https://github.com/TigreGotico/phoonnx/tree/1.138.3a2) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.3a1...1.138.3a2)
@@ -308,10 +324,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.134.0a2...1.135.0a1)
 
-**Merged pull requests:**
-
-- feat\(magpie\): read English through scriptconv's NeMo IPA phonemizer [\#973](https://github.com/TigreGotico/phoonnx/pull/973) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.134.0a2](https://github.com/TigreGotico/phoonnx/tree/1.134.0a2) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.134.0a1...1.134.0a2)
@@ -356,17 +368,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.131.1a2...1.132.0a1)
 
-**Merged pull requests:**
-
-- feat: features.json generator for phoonnx\_train [\#972](https://github.com/TigreGotico/phoonnx/pull/972) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.131.1a2](https://github.com/TigreGotico/phoonnx/tree/1.131.1a2) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.131.1a1...1.131.1a2)
-
-**Merged pull requests:**
-
-- test: patch the gruut processor cache with scriptconv's own class [\#975](https://github.com/TigreGotico/phoonnx/pull/975) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.131.1a1](https://github.com/TigreGotico/phoonnx/tree/1.131.1a1) (2026-11-23)
 
