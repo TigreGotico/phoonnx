@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.137.15a1](https://github.com/TigreGotico/phoonnx/tree/1.137.15a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.14a1...1.137.15a1)
+
+**Merged pull requests:**
+
+- fix: the config schema accepts the misaki alphabet [\#1084](https://github.com/TigreGotico/phoonnx/pull/1084) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.137.14a1](https://github.com/TigreGotico/phoonnx/tree/1.137.14a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.13a1...1.137.14a1)
