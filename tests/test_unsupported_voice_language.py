@@ -18,7 +18,7 @@ from unittest import mock
 
 import onnxruntime
 
-import phoonnx.voice
+import phoonnx.model_manager
 
 from phoonnx.config import (
     Alphabet,
@@ -186,7 +186,7 @@ class TestTheCheckReadsThePhonemizerLanguage(HubTestCase):
                               config_url=f"{HUB}/config.json", **info_fields)
         with mock.patch.object(TTSModelInfo, "hub_path", lambda self, url: config_path if url else None), \
                 mock.patch.object(TTSModelInfo, "download_model", lambda self: Path("graph-not-fetched.onnx")), \
-                mock.patch.object(phoonnx.voice, "make_session", lambda *args, **kwargs: None):
+                mock.patch.object(phoonnx.model_manager, "make_session", lambda *args, **kwargs: None):
             return info.load()
 
     def test_the_load_checks_the_phonemizer_language_before_the_download(self):

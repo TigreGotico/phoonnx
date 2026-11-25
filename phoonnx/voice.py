@@ -322,6 +322,22 @@ class AudioChunk:
         return self.audio_int16_array.tobytes()
 
 
+def check_num_symbols(config: VoiceConfig, adapter: BaseOnnxAdapter, source: object) -> None:
+    """Raise VoiceLoadError when a VITS-family vocabulary uses an id the embedding does not have.
+
+    num_symbols sizes the embedding of a VITS-family graph only; other engines
+    carry the field without using it.
+    """
+    if not isinstance(adapter, (VitsAdapter, VitsStreamingAdapter, YourTTSAdapter, ShamiAdapter, XVitsAdapter)) \
+            or not isinstance(config.tokenizer, TTSTokenizer):
+        return
+    ids = [i for value in config.tokenizer.vocabulary.char2idx.values()
+           for i in (value if isinstance(value, list) else [value])]
+    if ids and max(ids) >= config.num_symbols:
+        raise VoiceLoadError(f"{source}: the vocabulary uses id {max(ids)}, but the model "
+                             f"has num_symbols={config.num_symbols}")
+
+
 @dataclass
 class TTSVoice:
     session: onnxruntime.InferenceSession
@@ -644,16 +660,8 @@ class TTSVoice:
             engine_params=engine_params,
         )
 
-        # num_symbols sizes the embedding of a VITS-family graph only; other engines
-        # carry the field without using it.
-        if isinstance(adapter, (VitsAdapter, VitsStreamingAdapter, YourTTSAdapter, ShamiAdapter, XVitsAdapter)) \
-                and "num_symbols" in config_dict \
-                and isinstance(voice_config.tokenizer, TTSTokenizer):
-            ids = [i for value in voice_config.tokenizer.vocabulary.char2idx.values()
-                   for i in (value if isinstance(value, list) else [value])]
-            if ids and max(ids) >= voice_config.num_symbols:
-                raise VoiceLoadError(f"{config_path}: the vocabulary uses id {max(ids)}, but the model "
-                                     f"has num_symbols={voice_config.num_symbols}")
+        if "num_symbols" in config_dict:
+            check_num_symbols(voice_config, adapter, config_path)
 
         voice = TTSVoice(
             config=voice_config,
