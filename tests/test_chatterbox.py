@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
@@ -75,6 +77,7 @@ def test_chatterbox_encode_text_is_bpe():
 
     class _Voice:
         tokenizer = _Bpe()
+        config = SimpleNamespace(lang_code=None, lang_tokens={})
 
     out = ChatterboxAdapter().encode_text("hi!", _Voice(), None)
     assert out == [[ord("h"), ord("i"), ord("!")]]

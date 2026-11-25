@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -53,6 +54,10 @@ CONFIG = {
 STACKED = CONFIG["num_audio_codebooks"] * CONFIG["frame_stacking_factor"]
 VOCAB = CONFIG["num_all_tokens_per_codebook"]
 EOS_ID = CONFIG["codebook_size"] + AUDIO_EOS
+
+
+# a voice with no language and no pinned preset
+_NO_VOICE = SimpleNamespace(config=SimpleNamespace(lang_code=None, engine_params={}))
 
 
 def _tokenizer_asset(tmp_path):
@@ -269,7 +274,7 @@ def test_the_voice_names_a_sub_tokenizer_its_checkpoint_has_no_language_for():
     row = _nemo_rows("magpie_ka_nemo_ids.json")[1]
     adapter = MagpieAdapter()
     adapter.configure(VC())
-    assert adapter.encode_text(row["text"], None, None) == [row["ids"]]
+    assert adapter.encode_text(row["text"], _NO_VOICE, None) == [row["ids"]]
 
 
 
@@ -332,7 +337,7 @@ def test_an_asset_without_kinds_accepts_the_tokenizer_name_of_its_language(tmp_p
     named = _voice_on_an_asset_without_kinds(tmp_path, "fr", "french_chartokenizer")
     unnamed = _voice_on_an_asset_without_kinds(tmp_path, "fr")
     offset = named.tokenizer.offsets["french_chartokenizer"]
-    assert named.encode_text("Ça", None, None) == unnamed.encode_text("Ça", None, None) == [
+    assert named.encode_text("Ça", _NO_VOICE, None) == unnamed.encode_text("Ça", _NO_VOICE, None) == [
         [offset + BYTE_TOKENIZER_PREFIX + b for b in "Ça".encode("utf-8")] + [named.tokenizer.eos_id]]
 
 
@@ -361,7 +366,7 @@ def test_an_asset_without_kinds_accepts_a_sub_tokenizer_of_the_same_base_languag
     adapter = _voice_on_an_asset_without_kinds(tmp_path, lang, tokenizer_name)
     offsets = adapter.tokenizer.offsets
     shift = offsets[tokenizer_name] - offsets["arabic_SA_chartokenizer"]
-    assert adapter.encode_text(row["text"], None, None) == [
+    assert adapter.encode_text(row["text"], _NO_VOICE, None) == [
         [i + shift for i in row["ids"][1:-2]] + [adapter.tokenizer.eos_id]]
 
 
@@ -370,11 +375,9 @@ def test_the_tokenizer_name_is_checked_again_for_the_language_of_the_call(tmp_pa
     adapter = _voice_on_an_asset_without_kinds(tmp_path, "fr", "french_chartokenizer")
     del adapter._params["lang"]
 
-    class ArabicVoice:
-        lang = "ar"
-
+    arabic = SimpleNamespace(config=SimpleNamespace(lang_code="ar"))
     with pytest.raises(ValueError, match="'french_chartokenizer' for language 'ar'"):
-        adapter.encode_text("مرحبا", ArabicVoice(), None)
+        adapter.encode_text("مرحبا", arabic, None)
 
 
 @pytest.mark.parametrize("tokenizer_name, error", [
@@ -400,17 +403,15 @@ def test_tokenizer_name_lookup_handles_region_tags(tmp_path):
 def test_encode_text_returns_one_id_list_per_chunk(tmp_path):
     adapter = _adapter(tmp_path)
 
-    class _Voice:
-        lang = "fr"
-
-    chunks = adapter.encode_text("Bonjour. Ca va?", _Voice(), None)
+    french = SimpleNamespace(config=SimpleNamespace(lang_code="fr"))
+    chunks = adapter.encode_text("Bonjour. Ca va?", french, None)
     assert len(chunks) == 2
     assert all(ids[-1] == adapter.tokenizer.eos_id for ids in chunks)
 
 
 def test_encode_text_without_a_tokenizer_is_an_error():
     with pytest.raises(RuntimeError, match="tokenizer_path"):
-        _adapter().encode_text("hi", None, None)
+        _adapter().encode_text("hi", _NO_VOICE, None)
 
 
 # ----------------------------------------------------------------------
@@ -470,7 +471,7 @@ def test_an_english_voice_reads_a_span_with_a_full_stop_as_phonemes():
 
     adapter = MagpieAdapter()
     adapter.configure(VC())
-    (ids,) = adapter.encode_text("Say |h ə . ˈ l o ʊ| now.", None, None)
+    (ids,) = adapter.encode_text("Say |h ə . ˈ l o ʊ| now.", _NO_VOICE, None)
     symbols = adapter.tokenizer.symbol_map("english_phoneme")
     span = [symbols[c] for c in "hə.ˈloʊ"]
     assert any(ids[i:i + len(span)] == span for i in range(len(ids)))

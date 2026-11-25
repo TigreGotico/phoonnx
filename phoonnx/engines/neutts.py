@@ -344,9 +344,8 @@ class NeuTTSAdapter(BaseOnnxAdapter):
         name = None
         if syn_config is not None:
             name = syn_config.extra.get("voice")
-        cfg = getattr(voice, "config", None)
         if not name:
-            name = (getattr(cfg, "engine_params", None) or {}).get("voice")
+            name = voice.config.engine_params.get("voice")
         if not name:
             name = self.default_preset
         if not name:

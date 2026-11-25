@@ -178,7 +178,7 @@ class PhoonnxTTSPlugin(TTS):
         if isinstance(spk, str):
             if spk.lstrip("-").isdigit():
                 return int(spk)
-            smap = getattr(voice_info.config, "speaker_id_map", None) or {}
+            smap = voice_info.config.speaker_id_map
             if spk in smap:
                 return smap[spk]
             bare = spk.split("/")[-1]
@@ -460,8 +460,7 @@ class PhoonnxTTSPlugin(TTS):
                 speaker=self._resolve_speaker(
                     voice_info, speaker_id if speaker_id is not None else speaker),
                 phonetic_spellings=self._cfg_opt(
-                    voice_info.config.enable_phonetic_spellings
-                    if hasattr(voice_info.config, "enable_phonetic_spellings") else True,
+                    True,
                     "enable_phonetic_spellings", "enable_phonetic_spelling"),
                 stages=Stages(
                     diacritize=self._cfg_opt(

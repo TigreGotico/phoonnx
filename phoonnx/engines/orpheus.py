@@ -231,18 +231,16 @@ class OrpheusAdapter(BaseOnnxAdapter):
         name = None
         if syn_config is not None:
             name = syn_config.extra.get("voice")
-        cfg = getattr(voice, "config", None)
         speaker = None if syn_config is None else syn_config.speaker
         if not name and isinstance(speaker, str) and not isinstance(speaker, _LegacyId):
             name = speaker
         elif not name and speaker is not None:
-            id_map = getattr(cfg, "speaker_id_map", None) or {}
-            for candidate, index in id_map.items():
+            for candidate, index in voice.config.speaker_id_map.items():
                 if int(index) == int(speaker):
                     name = candidate
                     break
         if not name:
-            name = (getattr(cfg, "engine_params", None) or {}).get("voice")
+            name = voice.config.engine_params.get("voice")
         if not name:
             name = self.default_voice
         if name and self.voices and name not in self.voices:

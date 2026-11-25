@@ -159,9 +159,8 @@ class F5TTSAdapter(BaseOnnxAdapter):
 
         # The pinyin text function adds a space between the reference and the
         # generation text in some cases (see _join_space).
-        phoneme_type = getattr(voice_config, "phoneme_type", None)
         self._text_tokens = None
-        if getattr(phoneme_type, "value", phoneme_type) == "f5tts_pinyin":
+        if voice_config.phoneme_type == "f5tts_pinyin":
             from scriptconv.phonemizers.f5tts import F5TTSPinyinPhonemizer
             self._text_tokens = F5TTSPinyinPhonemizer().text_tokens
 

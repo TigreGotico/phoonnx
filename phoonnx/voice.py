@@ -1521,7 +1521,7 @@ class TTSVoice:
 
     def _lang_id_for(self, tag: Optional[str]) -> Optional[int]:
         """The language id of a multilingual voice for *tag*, or None (monolingual, or unknown)."""
-        mapping = getattr(self.config, "lang_id_map", None) or {}
+        mapping = self.config.lang_id_map
         if not tag or not mapping:
             return None
         wanted = tag.replace("_", "-").lower()
