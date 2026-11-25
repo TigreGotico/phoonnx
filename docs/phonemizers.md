@@ -71,7 +71,7 @@ Each value below is a member of `PhonemeType`. A backend for one language needs 
 | `africa_g2p` | africa-g2p rules: native-orthography units or IPA | 400+ African languages |
 | `ghana_g2p` | africa-g2p rules, patched for Ghanaian languages: native units or IPA | 42 Ghanaian languages |
 | `matoub_kab` | The Kabyle rule set that the Matoub-82M voice was trained on | Kabyle |
-| `leokani` | Leokani: lexicon, ONNX letter-to-sound and context models. Gives the Kokoro (misaki) codes | en-US |
+| `leokani` | Leokani: lexicon, ONNX letter-to-sound and context models. Gives the Kokoro (misaki) codes with `Alphabet.MISAKI` or `Alphabet.IPA` | en-US |
 | `kolokwa` | kolokwa-g2p model | Liberian English (lir) |
 | `espeak_lt_accent` | eSpeak IPA with the three Lithuanian pitch accents | Lithuanian |
 | `hebrew_ipa` | IPA with stress, from text that carries niqqud | Hebrew |
