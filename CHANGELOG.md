@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.137.18a1](https://github.com/TigreGotico/phoonnx/tree/1.137.18a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.17a1...1.137.18a1)
+
+**Merged pull requests:**
+
+- fix: write the OptiSpeech training table into the exported voice config [\#1083](https://github.com/TigreGotico/phoonnx/pull/1083) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.137.17a1](https://github.com/TigreGotico/phoonnx/tree/1.137.17a1) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.16a1...1.137.17a1)
@@ -364,17 +372,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.5a2...1.130.6a1)
 
-**Merged pull requests:**
-
-- fix\(deps\): raise the scriptconv floor to the sc2 revision [\#955](https://github.com/TigreGotico/phoonnx/pull/955) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.130.5a2](https://github.com/TigreGotico/phoonnx/tree/1.130.5a2) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.5a1...1.130.5a2)
-
-**Merged pull requests:**
-
-- test: count only the warnings that the test's own thread logs [\#956](https://github.com/TigreGotico/phoonnx/pull/956) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.130.5a1](https://github.com/TigreGotico/phoonnx/tree/1.130.5a1) (2026-11-22)
 
