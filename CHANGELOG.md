@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.4a1](https://github.com/TigreGotico/phoonnx/tree/1.138.4a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.3a2...1.138.4a1)
+
+**Merged pull requests:**
+
+- fix\(index\): point the voices with no config at their phoonnx.json [\#1105](https://github.com/TigreGotico/phoonnx/pull/1105) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.3a2](https://github.com/TigreGotico/phoonnx/tree/1.138.3a2) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.3a1...1.138.3a2)
@@ -355,10 +363,6 @@
 ## [1.132.0a1](https://github.com/TigreGotico/phoonnx/tree/1.132.0a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.131.1a2...1.132.0a1)
-
-**Merged pull requests:**
-
-- feat: features.json generator for phoonnx\_train [\#972](https://github.com/TigreGotico/phoonnx/pull/972) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.131.1a2](https://github.com/TigreGotico/phoonnx/tree/1.131.1a2) (2026-11-23)
 
