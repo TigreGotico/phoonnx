@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.137.16a1](https://github.com/TigreGotico/phoonnx/tree/1.137.16a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.15a1...1.137.16a1)
+
+**Merged pull requests:**
+
+- fix: give each Mixer-TTS token one frame at least at inference [\#1082](https://github.com/TigreGotico/phoonnx/pull/1082) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.137.15a1](https://github.com/TigreGotico/phoonnx/tree/1.137.15a1) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.14a1...1.137.15a1)
@@ -367,10 +375,6 @@
 ## [1.130.4a1](https://github.com/TigreGotico/phoonnx/tree/1.130.4a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.3a1...1.130.4a1)
-
-**Merged pull requests:**
-
-- fix: a subtag after a private-use or extension singleton is not a region [\#950](https://github.com/TigreGotico/phoonnx/pull/950) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.130.3a1](https://github.com/TigreGotico/phoonnx/tree/1.130.3a1) (2026-11-22)
 
