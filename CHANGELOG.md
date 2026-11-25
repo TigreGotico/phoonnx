@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.3a2](https://github.com/TigreGotico/phoonnx/tree/1.138.3a2) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.3a1...1.138.3a2)
+
+**Merged pull requests:**
+
+- docs: state the config.json text path rule in two stale texts [\#1106](https://github.com/TigreGotico/phoonnx/pull/1106) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.3a1](https://github.com/TigreGotico/phoonnx/tree/1.138.3a1) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.2a2...1.138.3a1)
@@ -364,17 +372,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.131.0a2...1.131.1a1)
 
-**Merged pull requests:**
-
-- test: pin the BPE reader's added-token overlaps and normalized collisions [\#970](https://github.com/TigreGotico/phoonnx/pull/970) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.131.0a2](https://github.com/TigreGotico/phoonnx/tree/1.131.0a2) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.131.0a1...1.131.0a2)
-
-**Merged pull requests:**
-
-- test\(schema\): tie the text\_casing enum to the code's casing names [\#969](https://github.com/TigreGotico/phoonnx/pull/969) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.131.0a1](https://github.com/TigreGotico/phoonnx/tree/1.131.0a1) (2026-11-23)
 
