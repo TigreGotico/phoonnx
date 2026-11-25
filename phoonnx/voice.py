@@ -322,28 +322,38 @@ class AudioChunk:
         return self.audio_int16_array.tobytes()
 
 
+# engine values that name a VITS graph, which streams once it is split
+_VITS_ENGINES = ("vits", "vits_streaming", "piper", "mimic3", "coqui", "phoonnx", "transformers")
+
+
 def streaming_graphs(model_path, config_dict: dict, config_dir: str,
-                     engine_params: Optional[dict] = None) -> Tuple[Any, dict]:
-    """Give the graph to open and the config ``engine_params`` of a voice.
+                     engine_params: Optional[dict] = None) -> Tuple[Any, dict, bool]:
+    """Give the graph to open, the config ``engine_params`` of a voice, and whether it streams.
 
     A config names its decoder graph relative to its own folder. A voice whose
     config sets ``"streaming": true`` and names no decoder graph gets one: its
     single VITS graph is split into an encoder and a decoder, cached next to
     it, so it can stream with no re-export. A graph that does not split loads
-    as a normal voice.
+    as a normal voice. The voice streams when its config sets ``"streaming": true``,
+    it has a decoder graph, and its engine is unset or a VITS one; it then reads
+    the encoder graph through the ``vits_streaming`` adapter.
     """
     params = config_dict.get("engine_params") or {}
     if params.get("decoder_path") and not os.path.isabs(params["decoder_path"]):
         params = {**params, "decoder_path": os.path.join(config_dir, params["decoder_path"])}
-    if config_dict.get("streaming") and not (params.get("decoder_path") or (engine_params or {}).get("decoder_path")):
+    has_decoder = bool(params.get("decoder_path") or (engine_params or {}).get("decoder_path"))
+    if config_dict.get("streaming") and not has_decoder:
         try:
             from phoonnx.engines.vits_split import ensure_split_vits
             model_path, decoder_path = ensure_split_vits(str(model_path))
             params = {**params, "decoder_path": decoder_path}
+            has_decoder = True
         except Exception as e:
             LOG.warning(f"Streaming requested but auto-split of '{model_path}' failed ({e}); "
                         f"loading as a normal single-graph voice.")
-    return model_path, params
+    engine = getattr(config_dict.get("engine"), "value", config_dict.get("engine")) or "vits"
+    streams = bool(config_dict.get("streaming")) and has_decoder and str(engine).lower() in _VITS_ENGINES
+    return model_path, params, streams
 
 
 def check_num_symbols(config: VoiceConfig, adapter: BaseOnnxAdapter, source: object) -> None:
@@ -633,7 +643,7 @@ class TTSVoice:
         resolved_providers = resolve_providers(providers, use_cuda=use_cuda)
         resolved_threads = resolve_threads(threads)
 
-        model_path, config_params = streaming_graphs(
+        model_path, config_params, streams = streaming_graphs(
             model_path, config_dict, os.path.dirname(os.path.abspath(config_path)), engine_params)
         if config_params:
             config_dict["engine_params"] = config_params
@@ -641,7 +651,7 @@ class TTSVoice:
         session = make_session(model_path, providers=resolved_providers, threads=resolved_threads)
 
         # Auto-detect engine adapter from config + session
-        adapter = detect_engine(config=config_dict, session=session)
+        adapter = get_adapter("vits_streaming") if streams else detect_engine(config=config_dict, session=session)
 
         # Engine-specific params (e.g. Matcha's vocoder_path) come either from
         # the caller (the voice manager injects locally-downloaded paths) or

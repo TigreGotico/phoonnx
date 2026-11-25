@@ -746,6 +746,32 @@ class TestLoad(HubTestCase):
         self.assertEqual(voice_cls.call_args.kwargs["model_path"], "model.encoder.onnx")
         self.assertEqual(voice_cls.call_args.kwargs["config"].engine_params["decoder_path"], "model.decoder.onnx")
 
+    def test_a_split_voice_reads_its_encoder_through_the_streaming_adapter(self):
+        from phoonnx.engines.vits import VitsAdapter
+        from phoonnx.engines.vits_streaming import VitsStreamingAdapter
+        for engine in (None, "vits", "piper"):
+            with self.subTest(engine=engine):
+                config = {"phoneme_type": "unicode", "alphabet": "unicode", "audio": {"sample_rate": 22050},
+                          "phoneme_id_map": {"_": [0], "^": [1], "$": [2], "a": [3]}, "streaming": True}
+                if engine:
+                    config["engine"] = engine
+                self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+                self.hub.stage(f"{HUB}/config.json", config)
+                info = self.make_info(config_url=f"{HUB}/config.json", **({"engine": engine} if engine else {}))
+                with patch("phoonnx.model_manager.make_session", return_value=MagicMock()), \
+                        patch("phoonnx.engines.vits_streaming.VitsStreamingAdapter.configure_from_params"), \
+                        patch("phoonnx.engines.vits_split.ensure_split_vits",
+                              return_value=("model.encoder.onnx", "model.decoder.onnx")):
+                    voice = info.load()
+                self.assertIsInstance(voice.adapter, VitsStreamingAdapter)
+                self.assertEqual(voice.model_path, "model.encoder.onnx")
+        # a config that does not stream keeps the one-graph adapter
+        self.hub.stage(f"{HUB}/config.json", {**config, "streaming": False})
+        info = self.make_info(engine="vits", config_url=f"{HUB}/config.json")
+        with patch("phoonnx.model_manager.make_session", return_value=MagicMock()):
+            voice = info.load()
+        self.assertIs(type(voice.adapter), VitsAdapter)
+
     def test_a_decoder_graph_is_found_beside_its_config(self):
         self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
         self.hub.stage(f"{HUB}/config.json", {"audio": {"sample_rate": 22050},

@@ -29,6 +29,7 @@ from phoonnx.config import (PhonemeType, _removal_version, VoiceConfig, Engine,
                             Alphabet, check_lang_supported)
 from phoonnx.util import is_arabic, match_lang, normalize_lang, LOG
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers, resolve_threads, uses_gpu
+from phoonnx.engines import get_adapter
 from phoonnx.voice import TTSVoice, check_num_symbols, streaming_graphs
 from phoonnx._onnx_external import external_data_locations
 from phoonnx.errors import PrecisionUnavailable, UnknownVoice
@@ -1183,7 +1184,7 @@ class TTSModelInfo:
         config_dict = self.download_config()
         config_dir = str(self.hub_path(self.config_url).parent) if config_dict else ""
         entry_params = self.engine_params()
-        model_path, config_params = streaming_graphs(model_path, config_dict, config_dir, entry_params)
+        model_path, config_params, streams = streaming_graphs(model_path, config_dict, config_dir, entry_params)
         resolved_providers = resolve_providers(providers)
         resolved_threads = resolve_threads(threads)
         engine_params = {**(self.config.engine_params or {}), **config_params, **entry_params,
@@ -1195,7 +1196,8 @@ class TTSModelInfo:
         config.engine_params = engine_params
         # Through make_session, so voices that name the same graph share one session.
         session = make_session(model_path, providers=resolved_providers, threads=resolved_threads)
-        voice = TTSVoice(session=session, config=config, model_path=str(model_path))
+        adapter = get_adapter("vits_streaming") if streams else None
+        voice = TTSVoice(session=session, config=config, adapter=adapter, model_path=str(model_path))
         if "num_symbols" in config_dict:
             check_num_symbols(config, voice.adapter, self.config_url)
         return voice
