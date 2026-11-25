@@ -230,11 +230,10 @@ class TestPhoonnxPiperSideCars:
 
 
 class TestModelManagerKeepsTheFlag:
-    """The voice manager rebuilds a voice's phonemizer when the index overrides
-    the phoneme type or names a phonemizer model; the rebuilt one must keep the
-    voice's punctuation setting."""
+    """The voice manager rebuilds a voice's phonemizer when the index gives it a
+    vosk dictionary; the rebuilt one must keep the voice's punctuation setting."""
 
-    def _load(self, override_phoneme_type: bool, **info_kwargs):
+    def _load(self, **info_kwargs):
         from types import SimpleNamespace
         from unittest.mock import PropertyMock, patch
         from phoonnx import model_manager
@@ -242,8 +241,6 @@ class TestModelManagerKeepsTheFlag:
 
         voice_config = VoiceConfig.from_dict(piper_config())
         assert voice_config.keep_punctuation is True
-        if override_phoneme_type:
-            voice_config.phoneme_type = PhonemeType.GRAPHEMES  # the index says espeak
         voice = SimpleNamespace(config=voice_config, phonemizer=None)
         info = model_manager.TTSModelInfo(voice_id="test/voice", lang="en-us",
                                           model_url="model.onnx", config_url="config.json",
@@ -259,17 +256,11 @@ class TestModelManagerKeepsTheFlag:
                 patch.object(model_manager.TTSVoice, "load", return_value=voice):
             return info.load()
 
-    def test_phonemizer_model_from_the_index(self):
+    def test_a_dictionary_from_the_index(self):
         from phoonnx.config import PhonemeType
-        voice = self._load(False, phonemizer_model="variant",
+        voice = self._load(phonemizer_model="dictionary", dictionary_url="dictionary",
                            phoneme_type=PhonemeType.ESPEAK, alphabet=Alphabet.IPA)
-        assert voice.config.phonemizer_model == "variant"
-        assert voice.phonemizer.keep_punctuation is True
-
-    def test_phoneme_type_override_from_the_index(self):
-        from phoonnx.config import PhonemeType
-        voice = self._load(True, phoneme_type=PhonemeType.ESPEAK, alphabet=Alphabet.IPA)
-        assert voice.config.phoneme_type == PhonemeType.ESPEAK
+        assert voice.config.phonemizer_model == "dictionary"
         assert voice.phonemizer.keep_punctuation is True
 
 

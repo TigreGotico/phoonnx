@@ -235,8 +235,8 @@ families. See [Engine architecture](engines.md), [Voice cloning](cloning.md) and
 | `vocab_url` | `str` \| `None` | URL to `vocab.json` (Transformers style) |
 | `tokens_url` | `str` \| `None` | URL to `tokens.txt` (Mimic3/Sherpa style) |
 | `tokenizer_config_url` | `str` \| `None` | Transformers tokenizer config, or the Chatterbox BPE `tokenizer.json` |
-| `phoneme_type` | `PhonemeType` \| `None` | Override for phonemizer type |
-| `alphabet` | `Alphabet` \| `None` | Override for phoneme alphabet |
+| `phoneme_type` | `PhonemeType` \| `None` | Phonemizer type. A voice with a `config_url` reads it from its config, and the index value is for search only. A voice with no config reads it here. |
+| `alphabet` | `Alphabet` \| `None` | Phoneme alphabet. The same rule as `phoneme_type` applies. |
 | `engine` | `Engine` \| `None` | TTS engine the voice was trained with |
 | `vocoder_url` | `str` \| `None` | Separate vocoder ONNX (two-stage engines) |
 | `vocoder_config_url` | `str` \| `None` | Vocoder `vocoder.json` parameters |

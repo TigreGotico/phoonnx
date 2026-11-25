@@ -569,6 +569,7 @@ def index_route_ids(config, entry, text, dictionary=None):
 def card_example_ids(config, entry, text):
     """The ids of the example that ``model_card`` renders for the voice of the index *entry*."""
     import model_card
+    entry = {"config_url": HUB + "config.json", **entry}
     section = model_card._example("Phoonnx/test-voice", config, entry, "model.onnx", "config.json", text,
                                   lambda name: {"inputs": VITS_FILES["inputs"], "outputs": {"output": 3}})
     assert section.startswith("### Without phoonnx\n")
@@ -588,15 +589,15 @@ TDT = {**PIPER, "lang_code": None, "espeak": {"voice": "pt"}, "language": {"code
 
 
 @pytest.mark.parametrize("config, entry, text", [
-    # the hitz Basque voices: the index names the classic AhoTTS engine, and the config names none
-    (AHOTTS, {"lang": "eu-ES", "phoneme_type": "ahotts", "alphabet": "ipa", "phonemizer_model": "classic"}, BASQUE[0]),
-    (AHOTTS, {"lang": "eu-ES", "phoneme_type": "ahotts", "alphabet": "ipa", "phonemizer_model": "classic"}, BASQUE[1]),
-    # the index wins over a config that names another engine
+    # the hitz Basque voices: the config names the classic AhoTTS engine
+    ({**AHOTTS, "phonemizer_model": "classic"}, {"lang": "eu-ES", "phoneme_type": "ahotts", "alphabet": "ipa"}, BASQUE[0]),
+    ({**AHOTTS, "phonemizer_model": "classic"}, {"lang": "eu-ES", "phoneme_type": "ahotts", "alphabet": "ipa"}, BASQUE[1]),
+    # the config wins over an index entry that names another engine
     ({**AHOTTS, "phonemizer_model": "modern"}, {"lang": "eu-ES", "phonemizer_model": "classic"}, BASQUE[0]),
     ({**AHOTTS, "phonemizer_model": "classic"}, {"lang": "eu-ES", "phonemizer_model": "modern"}, BASQUE[0]),
     # tdt-TL_joao: espeak reads the text in the index phonemizer_lang, not in the voice's own language
     (TDT, {"lang": "tdt-TL", "phonemizer_lang": "pt", "phoneme_type": "espeak", "alphabet": "ipa"}, "Bom dia, amigo."),
-], ids=["classic-1", "classic-2", "index-over-config", "index-over-config-modern", "phonemizer-lang"])
+], ids=["classic-1", "classic-2", "config-over-index", "config-over-index-modern", "phonemizer-lang"])
 def test_the_index_entry_reaches_the_example_as_phoonnx_reads_it(config, entry, text):
     expected = index_route_ids(config, entry, text)
     assert expected
@@ -609,10 +610,11 @@ VOSK_DICTIONARY = {"мама": "m a1 m a0", "мыла": "m y0 l a1", "раму":
 
 
 def vosk_voice():
-    """A vosk config, as the vosk voices publish it: no phoneme_type, and a map of the vosk symbols."""
+    """A vosk config that states its text path, with a map of the vosk symbols."""
     symbols = set(get_phonemizer("vosk", "vosk").phonemize_to_list(VOSK_TEXT, "ru-RU"))
     symbols |= {p for phonemes in VOSK_DICTIONARY.values() for p in phonemes.split()}
     return {"audio": {"sample_rate": 22050}, "espeak": {"voice": "ru"}, "num_speakers": 1, "speaker_id_map": {},
+            "phoneme_type": "vosk", "alphabet": "vosk",
             "inference": {"noise_scale": 0.667, "length_scale": 1, "noise_w": 0.8},
             "phoneme_id_map": {"_": [0], "^": [1], "$": [2], **{s: [n] for n, s in enumerate(sorted(symbols - set("_^$")), 3)}}}
 
@@ -636,25 +638,26 @@ def test_a_vosk_voice_reads_its_index_dictionary_as_phoonnx_reads_it(tmp_path, m
     assert downloads == [("Phoonnx/test-voice", "vosk__test/dictionary")]
 
 
-def test_the_index_phoneme_type_decides_the_diacritize_step(monkeypatch):
-    # the index reads an espeak config with arbtok, which restores the vowel marks itself
+def test_the_config_phoneme_type_decides_the_diacritize_step(monkeypatch):
+    # an index entry that names arbtok does not change an espeak config, which does not restore the vowel marks
     monkeypatch.setattr(scriptconv.frontend, "diacritize", stub_diacritize)
     example_diacritizer(monkeypatch)
     config, entry = {**OWNERS["arbtok"], "phoneme_type": "espeak"}, {"lang": "ar", "phoneme_type": "arbtok"}
     assert card_example_ids(config, entry, ARBTOK_TEXT) == index_route_ids(config, entry, ARBTOK_TEXT)
 
 
-def test_index_overrides_name_each_key_that_phoonnx_writes_over_the_config():
-    # TTSModelInfo.config writes these three keys of the entry over the config's own; the language reaches the
-    # example as its lang argument, and the vosk dictionary as a file
-    expected = {"phoneme_type": "ahotts", "alphabet": "ipa", "phonemizer_model": "classic"}
-    entry = {"lang": "eu-ES", "phonemizer_lang": "eu", **expected}
+def test_index_overrides_apply_only_to_an_entry_with_no_config():
+    # a voice with a config.json reads the text path from that file; the language reaches the example as its
+    # lang argument, and the vosk dictionary as a file
+    listed = {"phoneme_type": "ahotts", "alphabet": "ipa", "phonemizer_model": "classic"}
+    entry = {"lang": "eu-ES", "phonemizer_lang": "eu", **listed}
     info = TTSModelInfo(voice_id="test/voice", model_url=HUB + "model.onnx", config_url=HUB + "config.json", **entry)
-    config = {**AHOTTS, "phoneme_type": "espeak", "alphabet": "unicode", "phonemizer_model": "modern"}
+    config = {**AHOTTS, "phoneme_type": "ahotts", "alphabet": "ipa", "phonemizer_model": "modern"}
     info.download_config = lambda: copy.deepcopy(config)
     loaded = info.config
-    assert {key: getattr(loaded, key) for key in expected} == expected
-    assert card_examples.index_overrides(entry) == expected
+    assert {key: getattr(loaded, key) for key in listed} == {**listed, "phonemizer_model": "modern"}
+    assert card_examples.index_overrides({**entry, "config_url": HUB + "config.json"}) == {}
+    assert card_examples.index_overrides(entry) == listed
 
 
 def test_a_backend_that_does_not_import_refuses_the_example(monkeypatch):

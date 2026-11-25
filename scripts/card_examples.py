@@ -296,7 +296,13 @@ def _bifonia(voice: Dict[str, Any], tag: str, owned: frozenset) -> bool:
 
 
 def index_overrides(entry: Dict[str, Any]) -> Dict[str, str]:
-    """The keys of :data:`INDEX_OVERRIDES` that the voice index *entry* sets: the ``overrides`` of :func:`standalone_example`."""
+    """The ``overrides`` of :func:`standalone_example` for the voice index *entry*.
+
+    A voice with a config.json reads its text path from that file, so only an
+    entry with no ``config_url`` gives the keys of :data:`INDEX_OVERRIDES`.
+    """
+    if entry.get("config_url"):
+        return {}
     return {key: entry[key] for key in INDEX_OVERRIDES if entry.get(key)}
 
 
