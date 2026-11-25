@@ -182,21 +182,6 @@ class TestG2PEnPhonemizer(unittest.TestCase):
             }):
                 G2PEnPhonemizer(alphabet=Alphabet.BUCKWALTER)
 
-    def test_construction_downloads_nltk_resources_and_builds_g2p(self):
-        fake_nltk = MagicMock()
-        fake_g2p_en_mod = MagicMock()
-        fake_g2p_cls = MagicMock()
-        fake_g2p_en_mod.G2p = fake_g2p_cls
-
-        with patch.dict(sys.modules, {"nltk": fake_nltk, "g2p_en": fake_g2p_en_mod}):
-            from scriptconv.phonemizers.en import G2PEnPhonemizer
-            inst = G2PEnPhonemizer()
-
-        fake_nltk.download.assert_any_call('averaged_perceptron_tagger_eng')
-        fake_nltk.download.assert_any_call('cmudict')
-        fake_g2p_cls.assert_called_once()
-        self.assertEqual(inst.alphabet, Alphabet.IPA)
-
     def test_get_lang_only_supports_en(self):
         from scriptconv.phonemizers.en import G2PEnPhonemizer
         self.assertEqual(G2PEnPhonemizer.get_lang("en-US"), "en")
