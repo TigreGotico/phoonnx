@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.7a1](https://github.com/TigreGotico/phoonnx/tree/1.138.7a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.6a1...1.138.7a1)
+
+**Merged pull requests:**
+
+- fix: point 172 Piper voices at configs that split ç as Piper does [\#1120](https://github.com/TigreGotico/phoonnx/pull/1120) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.6a1](https://github.com/TigreGotico/phoonnx/tree/1.138.6a1) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.5a1...1.138.6a1)
@@ -360,10 +368,6 @@
 ## [1.133.2a1](https://github.com/TigreGotico/phoonnx/tree/1.133.2a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.133.1a1...1.133.2a1)
-
-**Merged pull requests:**
-
-- fix\(train\): a run of tone numerals is one segment [\#983](https://github.com/TigreGotico/phoonnx/pull/983) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.133.1a1](https://github.com/TigreGotico/phoonnx/tree/1.133.1a1) (2026-11-23)
 
