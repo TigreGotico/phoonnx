@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.1a1](https://github.com/TigreGotico/phoonnx/tree/1.138.1a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.0a1...1.138.1a1)
+
+**Merged pull requests:**
+
+- fix: a voice with a config.json reads its text path from that file [\#1093](https://github.com/TigreGotico/phoonnx/pull/1093) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.0a1](https://github.com/TigreGotico/phoonnx/tree/1.138.0a1) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.18a1...1.138.0a1)
@@ -367,10 +375,6 @@
 ## [1.130.6a2](https://github.com/TigreGotico/phoonnx/tree/1.130.6a2) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.6a1...1.130.6a2)
-
-**Merged pull requests:**
-
-- test: wait for each test's provenance checks before the next test runs [\#960](https://github.com/TigreGotico/phoonnx/pull/960) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.130.6a1](https://github.com/TigreGotico/phoonnx/tree/1.130.6a1) (2026-11-22)
 
