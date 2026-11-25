@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.0a1](https://github.com/TigreGotico/phoonnx/tree/1.138.0a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.18a1...1.138.0a1)
+
+**Merged pull requests:**
+
+- feat: accept the misaki alphabet from scriptconv [\#1089](https://github.com/TigreGotico/phoonnx/pull/1089) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.137.18a1](https://github.com/TigreGotico/phoonnx/tree/1.137.18a1) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.17a1...1.137.18a1)
@@ -347,10 +355,6 @@
 ## [1.130.8a1](https://github.com/TigreGotico/phoonnx/tree/1.130.8a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.7a1...1.130.8a1)
-
-**Merged pull requests:**
-
-- fix\(index\): give each Lahgtna voice its dialect tag and upstream token [\#957](https://github.com/TigreGotico/phoonnx/pull/957) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.130.7a1](https://github.com/TigreGotico/phoonnx/tree/1.130.7a1) (2026-11-23)
 
