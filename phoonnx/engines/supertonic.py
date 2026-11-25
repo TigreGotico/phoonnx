@@ -256,8 +256,7 @@ class SuperTonicAdapter(BaseOnnxAdapter):
         dropped with a warning, the same as every other tokenizer-backed engine."""
         if self.tokenizer is None:
             raise RuntimeError("SuperTonic voice missing unicode_indexer_path in engine_params")
-        cfg = getattr(voice, "config", None)
-        lang = (getattr(cfg, "lang_code", None) or "en").split("-")[0].lower()
+        lang = (voice.config.lang_code or "en").split("-")[0].lower()
         if lang not in AVAILABLE_LANGS:
             raise ValueError(f"Invalid language for supertonic: {lang}")
         max_len = 120 if lang in ("ko", "ja") else 300

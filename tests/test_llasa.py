@@ -6,6 +6,7 @@ loop and the codec hand-off — is observable without the real weights, so the O
 sessions here are fakes that record their feeds.
 """
 import json
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -24,6 +25,10 @@ HEAD_DIM = 8
 SPEECH_BASE = 10
 END_ID = 5
 VOCAB = SPEECH_BASE + 40
+
+
+# a voice with no language and no pinned preset
+_NO_VOICE = SimpleNamespace(config=SimpleNamespace(lang_code=None, engine_params={}))
 
 
 def _req(prompt_ids=(1, 2, 3), **params):
@@ -205,14 +210,14 @@ def test_reference_transcript_is_prepended_inside_the_text_block():
 
 
 def test_encode_text_appends_preset_codes_as_speech_ids(adapter):
-    ids = adapter.encode_text("hello", None, _SC(voice="zh_male_a"))
+    ids = adapter.encode_text("hello", _NO_VOICE, _SC(voice="zh_male_a"))
     assert len(ids) == 1
     # the three preset codes 7, 8, 9 land at the end as base+code
     assert ids[0][-3:] == [SPEECH_BASE + 7, SPEECH_BASE + 8, SPEECH_BASE + 9]
 
 
 def test_encode_text_truncates_a_long_reference(adapter):
-    ids = adapter.encode_text("hello", None, _SC(voice="en_female_a"))
+    ids = adapter.encode_text("hello", _NO_VOICE, _SC(voice="en_female_a"))
     speech = [i for i in ids[0] if i >= SPEECH_BASE]
     assert len(speech) == MAX_REFERENCE_CODES < len(VOICES_JSON["presets"]["en_female_a"]["codes"])
 
@@ -221,27 +226,27 @@ def test_encode_text_without_a_preset_carries_no_speech_prefix():
     ad = LlasaAdapter()
     ad.tokenizer = _FakeTokenizer()
     ad.speech_token_base = SPEECH_BASE
-    ids = ad.encode_text("hello", None, None)
+    ids = ad.encode_text("hello", _NO_VOICE, None)
     assert all(i < SPEECH_BASE for i in ids[0])
 
 
 def test_encode_text_requires_a_tokenizer():
     with pytest.raises(RuntimeError, match="tokenizer_path"):
-        LlasaAdapter().encode_text("hi", None, None)
+        LlasaAdapter().encode_text("hi", _NO_VOICE, None)
 
 
 # ------------------------------------------------------------------ presets
 def test_default_preset_is_used_when_nothing_is_requested(adapter):
-    assert adapter.resolve_preset(None, None)["lang"] == "en"
+    assert adapter.resolve_preset(_NO_VOICE, None)["lang"] == "en"
 
 
 def test_per_call_voice_wins(adapter):
-    assert adapter.resolve_preset(None, _SC(voice="zh_male_a"))["lang"] == "zh"
+    assert adapter.resolve_preset(_NO_VOICE, _SC(voice="zh_male_a"))["lang"] == "zh"
 
 
 def test_unknown_preset_is_an_error(adapter):
     with pytest.raises(ValueError, match="unknown Llasa voice preset"):
-        adapter.resolve_preset(None, _SC(voice="nope"))
+        adapter.resolve_preset(_NO_VOICE, _SC(voice="nope"))
 
 
 # ------------------------------------------------------------------ chunking
@@ -488,7 +493,7 @@ def test_preset_missing_codes_key_degrades_to_no_reference(adapter):
     key must not crash prompt assembly — it degrades to a text-only reference,
     same as a preset with an explicitly empty code list."""
     adapter.presets["broken"] = {"text": "hello there"}  # no "codes" key at all
-    ids_list = adapter.encode_text("hi", voice=None, syn_config=_SC(voice="broken"))
+    ids_list = adapter.encode_text("hi", voice=_NO_VOICE, syn_config=_SC(voice="broken"))
     assert ids_list  # still produces at least one chunk of prompt ids
     assert isinstance(ids_list[0], list)
 

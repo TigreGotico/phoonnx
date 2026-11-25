@@ -1058,7 +1058,7 @@ def build_voice_config(config: Dict[str, Any],
         text_casing=config.get("text_casing", "ignore"),
         phonemizer_identity=config.get("phonemizer_identity"),
         phoneme_type=loaded.phoneme_type,
-        speaker_id_map=config.get("speaker_id_map", {}),
+        speaker_id_map=config.get("speaker_id_map") or {},
         default_speaker_id=config.get("default_speaker_id"),
         blank_between=BlankBetween(loaded.blank_between),
         blank_at_start=config.get("blank_at_start", True),
@@ -1072,7 +1072,7 @@ def build_voice_config(config: Dict[str, Any],
         # any locally-resolved paths the manager passes in (the latter win).
         engine_params={**(config.get("engine_params") or {}), **(engine_params or {})},
         lang_tokens=lang_tokens or config.get("lang_tokens") or {},
-        lang_id_map=config.get("lang_id_map", {}),
+        lang_id_map=config.get("lang_id_map") or {},
     )
 
 

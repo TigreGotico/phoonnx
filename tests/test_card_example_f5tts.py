@@ -81,7 +81,8 @@ def test_f5tts_example_matches_the_adapter(tmp_path, monkeypatch):
     text_ids = voice._prompt_token_ids(F5_TEXT)
     adapter = F5TTSAdapter()
     adapter.preprocess, adapter.decode = graphs["F5_Preprocess.onnx"], graphs["F5_Decode.onnx"]
-    adapter.configure(types.SimpleNamespace(engine_params=F5_CONFIG["engine_params"], tokenizer=voice.config.tokenizer))
+    adapter.configure(types.SimpleNamespace(engine_params=F5_CONFIG["engine_params"], tokenizer=voice.config.tokenizer,
+                                            phoneme_type=voice.config.phoneme_type))
     exact = ((pcm.astype(np.float64) + 0.5 * np.sign(pcm)) / 32767).astype(np.float32)
     result = adapter.synthesize(AdapterSynthesisRequest(
         np.array([text_ids]), np.array([len(text_ids)]),

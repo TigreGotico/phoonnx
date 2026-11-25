@@ -6,6 +6,7 @@ hand-off — is observable without the real weights, so the ONNX sessions here a
 that record their feeds.
 """
 import json
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -27,6 +28,10 @@ VOCAB = 64
 SPEECH_BASE = 10
 END_ID = 5
 EOS_ID = 6
+
+
+# a voice with no language and no pinned preset
+_NO_VOICE = SimpleNamespace(config=SimpleNamespace(lang_code=None, engine_params={}))
 
 
 def _req(prompt_ids=(1, 2, 3), **params):
@@ -227,7 +232,7 @@ def test_presets_and_default_are_read_from_voices_json(adapter):
 
 
 def test_preset_falls_back_to_the_json_default(adapter):
-    assert adapter.resolve_preset(None, None)["text"] == "meda wo ase"
+    assert adapter.resolve_preset(_NO_VOICE, None)["text"] == "meda wo ase"
 
 
 def test_voice_config_pins_a_preset(adapter):
@@ -244,7 +249,7 @@ def test_per_call_voice_wins_over_the_pinned_one(adapter):
 def test_unknown_preset_is_rejected(adapter):
     syn = type("S", (), {"extra": {"voice": "nobody"}})
     with pytest.raises(ValueError, match="unknown NeuTTS voice preset"):
-        adapter.resolve_preset(None, syn)
+        adapter.resolve_preset(_NO_VOICE, syn)
 
 
 def test_reference_phones_are_cached(adapter):
@@ -274,7 +279,7 @@ def test_reference_codes_are_truncated(adapter):
 
 
 def test_encode_text_builds_one_prompt_per_chunk(adapter):
-    ids = adapter.encode_text("hello", None, None)
+    ids = adapter.encode_text("hello", _NO_VOICE, None)
     assert len(ids) == 1
     assert len(ids[0]) > 0
 
@@ -282,7 +287,7 @@ def test_encode_text_builds_one_prompt_per_chunk(adapter):
 def test_encode_text_without_a_tokenizer_is_an_error(adapter):
     adapter.tokenizer = None
     with pytest.raises(RuntimeError, match="tokenizer_path"):
-        adapter.encode_text("hello", None, None)
+        adapter.encode_text("hello", _NO_VOICE, None)
 
 
 # ------------------------------------------------- the checkpoint's own front end
@@ -331,7 +336,7 @@ def polish(tmp_path):
 def test_neuphonic_fine_tune_prompts_match_upstream_ids(polish):
     adapter, up = polish
     for row in up["rows"]:
-        assert adapter.encode_text(row["text"], None, None) == [row["ids"]], row["text"]
+        assert adapter.encode_text(row["text"], _NO_VOICE, None) == [row["ids"]], row["text"]
 
 
 def test_neuphonic_fine_tune_phones_match_upstream(polish):
@@ -343,7 +348,7 @@ def test_neuphonic_fine_tune_phones_match_upstream(polish):
 
 def test_the_chat_prompt_starts_with_the_tokenizers_bos(polish):
     adapter, up = polish
-    ids = adapter.encode_text(up["rows"][0]["text"], None, None)[0]
+    ids = adapter.encode_text(up["rows"][0]["text"], _NO_VOICE, None)[0]
     assert ids[0] == adapter.tokenizer.token_to_id("<|begin_of_text|>")
 
 

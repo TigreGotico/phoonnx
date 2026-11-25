@@ -170,3 +170,11 @@ def test_the_transformers_blank_is_token_id_zero_not_the_pad_token():
                                                  "pad_token": "<pad>"},
                                phoneme_type="graphemes", alphabet="unicode")
     assert vc.tokenizer.tokenize(["п", "р"]) == [0, 19, 0, 20, 0]
+
+
+def test_a_null_speaker_or_language_map_loads_as_empty():
+    from tests.config_fixtures import CANONICAL, PIPER
+    for config in (PIPER, CANONICAL):
+        vc = VoiceConfig.from_dict({**config, "speaker_id_map": None, "lang_id_map": None})
+        assert (vc.speaker_id_map, vc.lang_id_map) == ({}, {})
+        assert (vc.to_dict()["speaker_id_map"], vc.to_dict()["lang_id_map"]) == ({}, {})

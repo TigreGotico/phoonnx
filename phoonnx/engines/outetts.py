@@ -414,8 +414,7 @@ class OuteTTSAdapter(BaseOnnxAdapter):
         if syn_config is not None:
             name = syn_config.extra.get("voice")
         if not name:
-            cfg = getattr(voice, "config", None)
-            name = (getattr(cfg, "engine_params", None) or {}).get("voice")
+            name = voice.config.engine_params.get("voice")
         if not name:
             name = self.default_speaker
         if not name:

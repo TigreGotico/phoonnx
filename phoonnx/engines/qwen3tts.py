@@ -294,7 +294,7 @@ class Qwen3TTSAdapter(BaseOnnxAdapter):
                              f"known speakers: {sorted(SPEAKER_IDS)}")
         self.speaker = speaker
         self.language = resolve_language_name(
-            ep.get("language") or getattr(voice_config, "lang_code", None))
+            ep.get("language") or voice_config.lang_code)
 
     # ------------------------------------------------------------------
     # Text
