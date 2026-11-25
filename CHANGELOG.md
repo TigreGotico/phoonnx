@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.138.5a1](https://github.com/TigreGotico/phoonnx/tree/1.138.5a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.4a3...1.138.5a1)
+
+## [1.138.4a3](https://github.com/TigreGotico/phoonnx/tree/1.138.4a3) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.4a2...1.138.4a3)
+
+**Merged pull requests:**
+
+- test: add a German Piper voice that reads ç to the id parity fixture [\#1116](https://github.com/TigreGotico/phoonnx/pull/1116) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: name the missing file when a voice cannot load offline [\#1110](https://github.com/TigreGotico/phoonnx/pull/1110) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.4a2](https://github.com/TigreGotico/phoonnx/tree/1.138.4a2) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.4a1...1.138.4a2)
@@ -336,10 +349,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.133.2a1...1.134.0a1)
 
-**Merged pull requests:**
-
-- feat\(train\): VITS text-encoder input from a features.json table [\#977](https://github.com/TigreGotico/phoonnx/pull/977) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.133.2a1](https://github.com/TigreGotico/phoonnx/tree/1.133.2a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.133.1a1...1.133.2a1)
@@ -359,10 +368,6 @@
 ## [1.133.0a1](https://github.com/TigreGotico/phoonnx/tree/1.133.0a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.132.0a1...1.133.0a1)
-
-**Merged pull requests:**
-
-- feat\(train\): segment phoneme map for feature-input training [\#976](https://github.com/TigreGotico/phoonnx/pull/976) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.132.0a1](https://github.com/TigreGotico/phoonnx/tree/1.132.0a1) (2026-11-23)
 
