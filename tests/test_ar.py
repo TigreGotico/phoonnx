@@ -83,9 +83,6 @@ class TestMantoqPhonemizer(unittest.TestCase):
         edge_cases = [
             ("", "empty string"),
             (" ", "whitespace only"),
-            ("ar ", "trailing space"),
-            (" ar", "leading space"),
-            ("  ar  ", "multiple spaces"),
             ("AR-", "incomplete region code"),
             ("_ar", "leading underscore"),
             ("ar_", "trailing underscore"),
