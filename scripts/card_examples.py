@@ -358,7 +358,8 @@ def _phoneme_type(config: Dict[str, Any]) -> str:
 
 
 def _keeps_punctuation(config: Dict[str, Any], piper: bool) -> bool:
-    """phoonnx's keep_punctuation for *config*, read before the voice index overrides apply."""
+    """phoonnx's keep_punctuation for *config*: the config's own value, else true for a Piper
+    config that phoonnx did not make, as the config loader reads it."""
     if "keep_punctuation" in config:
         return bool(config["keep_punctuation"])
     # Piper trains with clause punctuation; phoonnx's piper-shaped side-cars do not
