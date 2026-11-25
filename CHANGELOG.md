@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.7a2](https://github.com/TigreGotico/phoonnx/tree/1.138.7a2) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.7a1...1.138.7a2)
+
+**Merged pull requests:**
+
+- docs: show the current index pins in five examples [\#1114](https://github.com/TigreGotico/phoonnx/pull/1114) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.7a1](https://github.com/TigreGotico/phoonnx/tree/1.138.7a1) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.6a1...1.138.7a1)
