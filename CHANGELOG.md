@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.2a1](https://github.com/TigreGotico/phoonnx/tree/1.138.2a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.1a2...1.138.2a1)
+
+**Merged pull requests:**
+
+- fix: warn on a different index phonemizer\_model, and on a plain string [\#1095](https://github.com/TigreGotico/phoonnx/pull/1095) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.1a2](https://github.com/TigreGotico/phoonnx/tree/1.138.1a2) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.1a1...1.138.1a2)
@@ -363,10 +371,6 @@
 ## [1.130.9a1](https://github.com/TigreGotico/phoonnx/tree/1.130.9a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.8a1...1.130.9a1)
-
-**Merged pull requests:**
-
-- fix\(chatterbox\): drop sampled ids outside the speech codebook [\#964](https://github.com/TigreGotico/phoonnx/pull/964) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.130.8a1](https://github.com/TigreGotico/phoonnx/tree/1.130.8a1) (2026-11-23)
 
