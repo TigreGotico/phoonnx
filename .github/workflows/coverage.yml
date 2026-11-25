@@ -5,6 +5,11 @@ on:
     branches: [dev]
   workflow_dispatch:
 
+# a newer push to the same pull request or branch cancels the older run
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   coverage:
     uses: OpenVoiceOS/gh-automations/.github/workflows/coverage.yml@dev
@@ -16,3 +21,5 @@ jobs:
       install_extras: '-e .[test,train,train-styletts2,train-eval,train-data,train-optispeech,train-pyworld]'
       min_coverage: 43
       system_deps: 'espeak-ng'
+      # one worker per core, as in build-tests.yml
+      pytest_args: '-n auto --dist loadfile'
