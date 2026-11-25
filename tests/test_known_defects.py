@@ -608,8 +608,14 @@ def test_mixertts_frames_per_token_at_a_pace(log_dur, pace, frames):
 
 # --- OptiSpeech export phoneme map -------------------------------------------
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="#1031: the OptiSpeech export writes the dataset phoneme map, not the training table")
+TINY_OPTISPEECH = dict(
+    dim=32, n_feats=40, hop_length=256, n_fft=256, win_length=256,
+    encoder_intermediate_dim=48, decoder_intermediate_dim=48, encoder_num_layers=1,
+    decoder_num_layers=1, vocoder_dim=32, vocoder_intermediate_dim=48, vocoder_num_layers=1,
+    duration_intermediate_dim=32, pitch_intermediate_dim=32, energy_intermediate_dim=32,
+    pitch_num_layers=1)
+
+
 def test_an_optispeech_voice_feeds_the_ids_that_training_reads(tmp_path):
     import torch
 
@@ -627,12 +633,7 @@ def test_an_optispeech_voice_feeds_the_ids_that_training_reads(tmp_path):
     engine = get_engine("optispeech")
     torch.manual_seed(0)
     module = engine.create_model(TrainingEngineConfig(
-        num_symbols=len(symbols), num_speakers=1, sample_rate=22050, extra=dict(
-            dim=32, n_feats=40, hop_length=256, n_fft=256, win_length=256,
-            encoder_intermediate_dim=48, decoder_intermediate_dim=48, encoder_num_layers=1,
-            decoder_num_layers=1, vocoder_dim=32, vocoder_intermediate_dim=48, vocoder_num_layers=1,
-            duration_intermediate_dim=32, pitch_intermediate_dim=32, energy_intermediate_dim=32,
-            pitch_num_layers=1)), [])
+        num_symbols=len(symbols), num_speakers=1, sample_rate=22050, extra=TINY_OPTISPEECH), [])
     # the untrained module stands in for a checkpoint: only the export is under test
     with patch.object(engine, "load_lightning_module", return_value=module):
         onnx_path = engine.export_onnx(tmp_path / "model.ckpt", config, tmp_path / "voice")
@@ -641,6 +642,28 @@ def test_an_optispeech_voice_feeds_the_ids_that_training_reads(tmp_path):
     voice = TTSVoice.load(onnx_path, config_path=onnx_path.with_suffix(".json"))
     _, fed = rt.speak(voice)
     assert list(training_ids) in fed, (list(training_ids), fed)
+
+
+def test_an_optispeech_export_keeps_the_speaker_map_of_the_dataset(tmp_path):
+    import torch
+
+    from phoonnx_train.engines import get_engine
+    from phoonnx_train.engines.base import TrainingEngineConfig
+
+    speakers = {"alice": 0, "bob": 1}
+    config = tmp_path / "config.json"
+    config.write_text(json.dumps({
+        "lang_code": "en", "phoneme_type": "graphemes", "alphabet": "graphemes",
+        "audio": {"sample_rate": 22050}, "num_symbols": 3, "phoneme_id_map": {"_": [0], "a": [1], "b": [2]},
+        "num_speakers": 2, "speaker_id_map": speakers}), encoding="utf-8")
+    engine = get_engine("optispeech")
+    torch.manual_seed(0)
+    module = engine.create_model(TrainingEngineConfig(
+        num_symbols=3, num_speakers=2, sample_rate=22050, extra=TINY_OPTISPEECH), [])
+    with patch.object(engine, "load_lightning_module", return_value=module):
+        onnx_path = engine.export_onnx(tmp_path / "model.ckpt", config, tmp_path / "voice")
+    written = json.loads(onnx_path.with_suffix(".json").read_text(encoding="utf-8"))
+    assert (written["num_speakers"], written["speaker_id_map"]) == (2, speakers)
 
 
 # --- StyleTTS2 trailing pad and iSTFTNet export ------------------------------
