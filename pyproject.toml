@@ -56,7 +56,7 @@ Homepage = "https://github.com/TigreGotico/phoonnx"
 [project.optional-dependencies]
 test = [
     "pytest",
-    # CI runs the suite on every runner core (pytest_args in build-tests.yml)
+    # CI runs the suite on two workers (pytest_args in build-tests.yml)
     "pytest-xdist",
     "jsonschema",
     # tests/test_packaging_data.py builds a wheel with --no-isolation, so the
