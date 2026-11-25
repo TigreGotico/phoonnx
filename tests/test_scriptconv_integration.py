@@ -16,18 +16,11 @@ from phoonnx.config import AudioPost
 # ARPABET → IPA
 # ---------------------------------------------------------------------------
 
-def test_arpa_to_ipa_lookup_importable():
-    """arpa_to_ipa_lookup must remain importable from its historic location."""
-    from scriptconv.notation import _ARPA_TO_IPA as arpa_to_ipa_lookup
-    assert isinstance(arpa_to_ipa_lookup, dict)
-    assert len(arpa_to_ipa_lookup) > 50
-
-
-def test_arpa_to_ipa_lookup_basic_phonemes():
-    from scriptconv.notation import _ARPA_TO_IPA as arpa_to_ipa_lookup
-    assert arpa_to_ipa_lookup["B"] == "b"
-    assert arpa_to_ipa_lookup["IY1"] == "i"
-    assert arpa_to_ipa_lookup["AH0"] == "ə"
+def test_arpa_to_ipa_basic_phonemes():
+    from scriptconv.notation import arpa_to_ipa
+    assert arpa_to_ipa("B") == "b"
+    assert arpa_to_ipa("IY1") == "i"
+    assert arpa_to_ipa("AH0") == "ə"
 
 
 def test_arpa_to_ipa_function():
@@ -41,12 +34,10 @@ def test_arpa_to_ipa_function():
 
 
 def test_arpa_to_ipa_stress_digits_stripped():
-    """Stress-digit variants (AH0, AH1) should both map to IPA without KeyError."""
-    from scriptconv.notation import _ARPA_TO_IPA as arpa_to_ipa_lookup
-    assert "AH0" in arpa_to_ipa_lookup
-    assert "AH1" in arpa_to_ipa_lookup
-    assert arpa_to_ipa_lookup["AH0"] == "ə"
-    assert arpa_to_ipa_lookup["AH1"] == "ʌ"
+    """Stress-digit variants (AH0, AH1) map to different IPA vowels."""
+    from scriptconv.notation import arpa_to_ipa
+    assert arpa_to_ipa("AH0") == "ə"
+    assert arpa_to_ipa("AH1") == "ʌ"
 
 
 def test_en_phonemizer_uses_arpa_lookup():
@@ -63,10 +54,7 @@ def test_en_phonemizer_uses_arpa_lookup():
 
 def test_arabic_to_buckwalter_roundtrip():
     """arabic_to_buckwalter → buckwalter_to_arabic should recover the original."""
-    from scriptconv_nonfree.phonemizers._vendored.mantoq.buck.phonetise_buckwalter import (
-        arabic_to_buckwalter,
-        buckwalter_to_arabic,
-    )
+    from scriptconv.notation import arabic_to_buckwalter, buckwalter_to_arabic
     samples = ["مرحبا", "الشمس", "بيت", "كتاب"]
     for word in samples:
         bw = arabic_to_buckwalter(word)
@@ -75,7 +63,7 @@ def test_arabic_to_buckwalter_roundtrip():
 
 
 def test_arabic_to_buckwalter_known_values():
-    from scriptconv_nonfree.phonemizers._vendored.mantoq.buck.phonetise_buckwalter import arabic_to_buckwalter
+    from scriptconv.notation import arabic_to_buckwalter
     assert arabic_to_buckwalter("مرحبا") == "mrHbA"
     assert arabic_to_buckwalter("الشمس") == "Al$ms"
 
