@@ -22,3 +22,5 @@ jobs:
       install_extras: 'test,train,train-styletts2,train-eval,train-data,train-optispeech,train-pyworld'
       test_path: 'tests'
       system_deps: 'espeak-ng'
+      # one worker per core; a test file stays on one worker, so its module state is not shared
+      pytest_args: '-n auto --dist loadfile --durations=20'
