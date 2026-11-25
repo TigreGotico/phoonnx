@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.6a1](https://github.com/TigreGotico/phoonnx/tree/1.138.6a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.5a1...1.138.6a1)
+
+**Merged pull requests:**
+
+- fix: load every index voice through the VoiceConfig of its entry [\#1121](https://github.com/TigreGotico/phoonnx/pull/1121) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.5a1](https://github.com/TigreGotico/phoonnx/tree/1.138.5a1) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.4a3...1.138.5a1)
@@ -360,10 +368,6 @@
 ## [1.133.1a1](https://github.com/TigreGotico/phoonnx/tree/1.133.1a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.133.0a1...1.133.1a1)
-
-**Merged pull requests:**
-
-- fix: align the features.json generator with its format [\#982](https://github.com/TigreGotico/phoonnx/pull/982) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.133.0a1](https://github.com/TigreGotico/phoonnx/tree/1.133.0a1) (2026-11-23)
 
