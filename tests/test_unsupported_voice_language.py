@@ -194,16 +194,6 @@ class TestTheCheckReadsThePhonemizerLanguage(HubTestCase):
                           phonemizer_lang="lfn", phoneme_type=PhonemeType.ESPEAK)
         self.assertEqual((voice.config.lang_code, voice.config.phonemizer_lang), ("tw", "lfn"))
 
-    def test_the_index_phoneme_type_is_checked_in_the_phonemizer_language(self):
-        # a loaded voice whose phoneme type the index overrides is checked again, for the index phonemizer
-        config = self.twi_config(lang_code="tw", phonemizer_lang="lfn")
-        config.phoneme_type, config.alphabet = PhonemeType.UNICODE, Alphabet.UNICODE
-        loaded = TTSVoice(session=None, config=config, model_path="/cache/kasanoma-twi.onnx")
-        with mock.patch.object(TTSVoice, "load", lambda **kwargs: loaded):
-            voice = self.load({"phoneme_type": "espeak", "alphabet": "ipa", "lang_code": "lfn"},
-                              phonemizer_lang="lfn", phoneme_type=PhonemeType.ESPEAK, alphabet=Alphabet.IPA)
-        self.assertEqual((voice.config.phoneme_type, voice.config.phonemizer_lang), (PhonemeType.ESPEAK, "lfn"))
-
 
 if __name__ == "__main__":
     unittest.main()

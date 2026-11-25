@@ -1,10 +1,10 @@
 """Bundled voices load with the text path of their own config.json.
 
 Each fixture is the config.json that the voice's index entry names, as the Hub
-serves it. The index writes its text fields over the config at load, so an
-index value that disagrees with a correct config gives the model the wrong
-symbols. These voices load graph-free through ``TTSModelInfo.load`` and must
-end with the config's language, phoneme type and alphabet.
+serves it. A voice with a config.json takes its phoneme type, alphabet and
+phonemizer model from that file, and the index copies are catalogue data. These
+voices load graph-free through ``TTSModelInfo.load`` and must end with the
+config's language, phoneme type and alphabet.
 """
 import json
 from pathlib import Path
@@ -84,3 +84,28 @@ def test_an_es_co_voice_reads_its_text_as_es_co_on_an_es_419_phonemizer(manager,
 @pytest.mark.parametrize("voice_id", sorted(CATALOGUE_LANG))
 def test_the_catalogue_language_is_the_voice_s_own(manager, voice_id):
     assert manager.get_voice(voice_id).lang == CATALOGUE_LANG[voice_id]
+
+
+# a config.json that states its text path, and an index entry that lists another one
+STATED = {"engine": "phoonnx", "phoneme_type": "espeak", "alphabet": "ipa", "lang_code": "be",
+          "phoneme_id_map": {"_": [0], "^": [1], "$": [2], " ": [3], "a": [4]}, "num_symbols": 5}
+
+
+def test_the_config_json_text_path_wins_over_the_index():
+    info = TTSModelInfo(voice_id="test/voice", lang="be", engine="vits", model_url="https://x/m.onnx",
+                        config_url="https://x/config.json", phoneme_type="graphemes", alphabet="unicode",
+                        phonemizer_model="variant")
+    with mock.patch.object(TTSModelInfo, "download_config", return_value=dict(STATED)), \
+            mock.patch("phoonnx.model_manager.LOG") as log:
+        loaded = info.config
+    assert (loaded.phoneme_type.value, loaded.alphabet.value, loaded.phonemizer_model) == ("espeak", "ipa", None)
+    warnings = " | ".join(call.args[0] for call in log.warning.call_args_list)
+    assert "lists phoneme_type graphemes, config.json gives espeak" in warnings
+    assert "lists alphabet unicode, config.json gives ipa" in warnings
+
+
+def test_a_voice_with_no_config_json_reads_its_text_path_from_the_index():
+    info = TTSModelInfo(voice_id="test/voice", lang="be", engine="vits", model_url="https://x/m.onnx",
+                        phoneme_type="espeak", alphabet="ipa", phonemizer_model="variant")
+    loaded = info.config
+    assert (loaded.phoneme_type.value, loaded.alphabet.value, loaded.phonemizer_model) == ("espeak", "ipa", "variant")

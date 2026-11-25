@@ -836,33 +836,34 @@ class TTSModelInfo:
 
     @property
     def config(self) -> VoiceConfig:
-        """The voice's VoiceConfig, loaded on first access; the index fields win over config.json."""
+        """The voice's VoiceConfig, loaded on first access.
+
+        A voice with a config.json takes its phoneme_type, alphabet and
+        phonemizer_model from that file; the index copies of these fields are
+        catalogue data. A voice with no config.json takes them from the index.
+        """
         if not self._config:
+            options: Dict[str, Any] = {
+                "engine": self.engine,
+                "lang_code": normalize_lang(self.lang, default_region=False) if self.lang else None,
+                "phonemizer_lang": self.phonemizer_lang,
+            }
             if self.config_url:
                 config = self.download_config()
                 # some published piper voices (es_MX-ald-medium) store the enum repr
                 if config.get("phoneme_type", "") == "PhonemeType.ESPEAK":
                     config["phoneme_type"] = "espeak"
             else:
-                config = {"phoneme_type": "graphemes", "alphabet": "unicode"}
-            # The local path of a vosk pronunciation dictionary is the phonemizer_model.
-            # A failed fetch leaves phonemizer_model unset.
-            if self.dictionary_url and not self.phonemizer_model:
+                config = {"phoneme_type": self.phoneme_type or "graphemes", "alphabet": "unicode"}
+                if self.phonemizer_model:
+                    config["phonemizer_model"] = self.phonemizer_model
+                options.update(alphabet=self.alphabet, phoneme_type=self.phoneme_type)
+            # A vosk pronunciation dictionary is a file of the index entry, and its
+            # local path is the phonemizer_model. A failed fetch leaves it unset.
+            if self.dictionary_url and not config.get("phonemizer_model"):
                 dict_path = self.download_dictionary()
                 if dict_path:
-                    self.phonemizer_model = str(dict_path)
-            if self.phoneme_type:
-                config["phoneme_type"] = self.phoneme_type
-            if self.phonemizer_model:
-                config["phonemizer_model"] = self.phonemizer_model
-
-            options: Dict[str, Any] = {
-                "alphabet": self.alphabet,
-                "phoneme_type": self.phoneme_type,
-                "engine": self.engine,
-                "lang_code": normalize_lang(self.lang, default_region=False) if self.lang else None,
-                "phonemizer_lang": self.phonemizer_lang,
-            }
+                    config["phonemizer_model"] = self.phonemizer_model = str(dict_path)
             if self.engine == Engine.CHATTERBOX or config.get("engine") == "chatterbox":
                 # Chatterbox carries its own subword BPE (tokenizer.json); no vocab/tokens.
                 tok_json = self.download_bpe_tokenizer()
@@ -877,6 +878,12 @@ class TTSModelInfo:
                 self.download_tokens_txt()
                 options["tokens_txt"] = str(self.hub_path(self.tokens_url))
             self._config = VoiceConfig.from_dict(config, **options)
+            if self.config_url:
+                for name in ("phoneme_type", "alphabet"):
+                    listed, loaded = getattr(self, name), getattr(self._config, name)
+                    if listed and listed != loaded:
+                        LOG.warning(f"{self.voice_id}: the voice index lists {name} {listed.value}, "
+                                    f"config.json gives {loaded.value if loaded else None}; config.json wins")
 
             # populate any missing properties. The catalogue lang takes the
             # default region and the phonemizer lang_code does not, so a voice
@@ -1205,24 +1212,11 @@ class TTSModelInfo:
         # dictionary) is an index-level artifact: the published config.json never
         # references it, so the config loaded from disk cannot carry it.
         # TTSVoice.frontend reads the phonemizer assigned here, also after a first synthesis.
-        if self.phonemizer_model and not voice.config.phonemizer_model:
+        if self.phonemizer_model and not voice.config.phonemizer_model and (self.dictionary_url or not self.config_url):
             voice.config.phonemizer_model = self.phonemizer_model
             voice.phonemizer = _voice_phonemizer(voice.config.phoneme_type,
                                                  alphabet=voice.config.alphabet,
                                                  model=self.phonemizer_model,
-                                                 keep_punctuation=voice.config.keep_punctuation)
-        # override phoneme_type, if config.json is wrong
-        if self.phoneme_type != voice.config.phoneme_type or self.alphabet != voice.config.alphabet:
-            voice.config.phoneme_type = self.phoneme_type
-            voice.config.alphabet = self.alphabet
-            # voice.config.lang_code is read from the downloaded config.json and
-            # can differ from the pre-download self.config.lang_code above, so
-            # this re-checks against the phoneme_type actually being installed.
-            check_lang_supported(self.voice_id, voice.config.phonemizer_lang or voice.config.lang_code,
-                                 self.phoneme_type)
-            voice.phonemizer = _voice_phonemizer(self.phoneme_type,
-                                                 alphabet=self.alphabet,
-                                                 model=voice.config.phonemizer_model,
                                                  keep_punctuation=voice.config.keep_punctuation)
         return voice
 
