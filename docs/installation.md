@@ -86,7 +86,7 @@ $ phoonnx-voices list-voices --verbose | grep -A4 'ID:          OpenVoiceOS/phoo
   Language:    pt-PT
   Engine:      phoonnx
   Phoneme Type: Phonemizer.TUGAPHONE
-  Model URL:   https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_tugaphone/resolve/b081738cde545e32a8c27fd780c5a2d948f1fb1f/miro_pt-PT.onnx
+  Model URL:   https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_tugaphone/resolve/ddaeacc8fdb74ceed69eb9f8c3b9571c8327d6b9/miro_pt-PT.onnx
 ```
 
 [Choose a voice](choose_voice.md#2-read-what-the-voice-needs) maps each phoneme type to its extra.
