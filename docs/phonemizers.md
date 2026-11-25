@@ -107,6 +107,7 @@ Each value below is a member of `Alphabet`, the symbol set of the phonemizer out
 | `cangjie` | Cangjie input-method decomposition (Chinese) |
 | `halabi` | Halabi Arabic-Phonetiser phoneme notation (Arabic) |
 | `africa_g2p` | africa-g2p native-orthography phoneme units (African languages) |
+| `misaki` | misaki and Kokoro phoneme codes: IPA, with `A`, `I`, `O`, `Q`, `W` and `Y` for diphthongs (English) |
 
 ## Selecting a Phonemizer
 
