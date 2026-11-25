@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.137.17a1](https://github.com/TigreGotico/phoonnx/tree/1.137.17a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.16a1...1.137.17a1)
+
+**Merged pull requests:**
+
+- fix: stop the vocoder build on an unknown vocoder\_type [\#1081](https://github.com/TigreGotico/phoonnx/pull/1081) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.137.16a1](https://github.com/TigreGotico/phoonnx/tree/1.137.16a1) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.15a1...1.137.16a1)
