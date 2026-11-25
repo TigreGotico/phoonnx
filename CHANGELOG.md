@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.2a2](https://github.com/TigreGotico/phoonnx/tree/1.138.2a2) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.2a1...1.138.2a2)
+
+**Merged pull requests:**
+
+- refactor: keep only the current reason in the pyproject comments [\#1097](https://github.com/TigreGotico/phoonnx/pull/1097) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.2a1](https://github.com/TigreGotico/phoonnx/tree/1.138.2a1) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.1a2...1.138.2a1)
