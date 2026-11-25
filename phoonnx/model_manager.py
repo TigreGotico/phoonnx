@@ -879,11 +879,12 @@ class TTSModelInfo:
                 options["tokens_txt"] = str(self.hub_path(self.tokens_url))
             self._config = VoiceConfig.from_dict(config, **options)
             if self.config_url:
-                for name in ("phoneme_type", "alphabet"):
+                for name in ("phoneme_type", "alphabet", "phonemizer_model"):
                     listed, loaded = getattr(self, name), getattr(self._config, name)
                     if listed and listed != loaded:
-                        LOG.warning(f"{self.voice_id}: the voice index lists {name} {listed.value}, "
-                                    f"config.json gives {loaded.value if loaded else None}; config.json wins")
+                        listed, loaded = (v.value if isinstance(v, Enum) else v for v in (listed, loaded))
+                        LOG.warning(f"{self.voice_id}: the voice index lists {name} {listed}, "
+                                    f"config.json gives {loaded}; config.json wins")
 
             # populate any missing properties. The catalogue lang takes the
             # default region and the phonemizer lang_code does not, so a voice
@@ -1151,7 +1152,7 @@ class TTSModelInfo:
     @_in_voice_scope
     def load(self, providers: Optional[Sequence[ProviderSpec]] = None,
              precision: Optional[str] = None, threads: Optional[int] = None) -> TTSVoice:
-        """Download this voice and load it, with the index's phoneme_type and alphabet.
+        """Download this voice and load it, with the text path of its config.json.
 
         Parameters:
             providers (Sequence, optional): Ordered ONNX Runtime execution providers,
