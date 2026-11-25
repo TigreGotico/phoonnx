@@ -687,15 +687,22 @@ class TTSVoice:
         alphabet, and the same choice to keep or drop punctuation. With *probe_text*,
         the new frontend phonemizes it, and every symbol must be in the voice
         vocabulary. A raw-text engine reads no symbols, so it skips the probe.
-        Later phonemizer changes do not reach the new voice: its frontend stays fixed.
+        A ``FrontendConfig`` that sets no normaliser, casing or ``phonemizer_lang``
+        takes the voice's own, so numbers and abbreviations read as they do in the
+        voice. Later phonemizer changes do not reach the new voice: its frontend stays fixed.
 
         Raises:
             FrontendMismatchError: the alphabet or the punctuation setting differs,
                 or the probe gives a symbol that the vocabulary lacks.
         """
-        if isinstance(frontend, FrontendConfig):
-            frontend = TextFrontend(frontend)
         own = self.frontend
+        if isinstance(frontend, FrontendConfig):
+            stages = frontend.stages
+            if stages.casing is None:
+                stages = replace(stages, casing=own.config.stages.casing)
+            frontend = TextFrontend(replace(
+                frontend, stages=stages, normalizer=frontend.normalizer or own.config.normalizer,
+                phonemizer_lang=frontend.phonemizer_lang or own.config.phonemizer_lang))
         for name, new, old in (("alphabet", frontend.backend.alphabet, own.backend.alphabet),
                                ("keep_punctuation", frontend.config.keep_punctuation,
                                 own.config.keep_punctuation)):

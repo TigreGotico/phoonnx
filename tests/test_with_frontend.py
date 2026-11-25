@@ -57,6 +57,19 @@ def test_a_probe_symbol_outside_the_vocabulary_is_refused(voice):
     voice.with_frontend(frontend(voice), probe_text="hello")
 
 
+def test_the_probe_leaves_the_voice_tokenizer_as_it_was(voice):
+    before = set(voice.tokenizer.not_found_characters)
+    with pytest.raises(FrontendMismatchError):
+        voice.with_frontend(frontend(voice), probe_text="a quick")
+    assert voice.tokenizer.not_found_characters == before
+
+
+def test_a_frontend_config_takes_the_voice_normalisation(voice):
+    """A digit reads as a word in the new frontend, as it does in the voice's own."""
+    assert voice.phonemize("3 bad") == [list("three bad")]
+    assert voice.with_frontend(frontend(voice)).phonemize("3 bad") == [list("three bad")]
+
+
 def test_the_new_voice_reads_through_the_given_frontend_and_keeps_it(voice):
     given = TextFrontend(frontend(voice))
     own = voice.frontend
