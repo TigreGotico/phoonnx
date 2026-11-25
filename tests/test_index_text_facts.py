@@ -102,6 +102,17 @@ def test_the_config_json_text_path_wins_over_the_index():
     warnings = " | ".join(call.args[0] for call in log.warning.call_args_list)
     assert "lists phoneme_type graphemes, config.json gives espeak" in warnings
     assert "lists alphabet unicode, config.json gives ipa" in warnings
+    assert "lists phonemizer_model variant, config.json gives None" in warnings
+
+
+def test_the_warning_reads_an_index_value_set_as_a_plain_string():
+    info = TTSModelInfo(voice_id="test/voice", lang="be", engine="vits", model_url="https://x/m.onnx",
+                        config_url="https://x/config.json")
+    info.phoneme_type = "graphemes"
+    with mock.patch.object(TTSModelInfo, "download_config", return_value=dict(STATED)), \
+            mock.patch("phoonnx.model_manager.LOG") as log:
+        assert info.config.phoneme_type.value == "espeak"
+    assert "lists phoneme_type graphemes, config.json gives espeak" in log.warning.call_args.args[0]
 
 
 def test_a_voice_with_no_config_json_reads_its_text_path_from_the_index():
