@@ -561,11 +561,16 @@ def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
                                     filename=path,
                                     revision=revision,
                                     etag_timeout=min(timeout, _ETAG_TIMEOUT)))
-    except (LocalEntryNotFoundError, OfflineModeIsEnabled):
+    except (LocalEntryNotFoundError, OfflineModeIsEnabled) as error:
         # offline, or the hub did not answer, and the cache lacks this commit
         fallback = _offline_snapshot(repo_id, revision, path)
         if fallback is None:
-            raise
+            # after an upgrade the index can name a file, such as phoonnx.json, that no
+            # cached snapshot holds; the hub client's own message does not say so
+            raise LocalEntryNotFoundError(
+                f"{path} of {repo_id} at commit {revision} is not in the hub cache, and the hub "
+                f"cannot be reached. Connect once so that phoonnx can download it. After a phoonnx "
+                f"upgrade, the voice index can name a file that no cached snapshot holds.") from error
         return fallback
     except (RepositoryNotFoundError, RevisionNotFoundError, EntryNotFoundError):
         if (repo_id, revision, path) == (match["repo"], match["rev"], match["path"]):

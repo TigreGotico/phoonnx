@@ -316,7 +316,7 @@ or with no connection to the Hugging Face Hub, a voice that is not in the local 
 load:
 
 ```
-huggingface_hub.errors.LocalEntryNotFoundError: An error happened while trying to locate the file on the Hub and we cannot find the requested files in the local cache. Please check your connection and try again or make sure your Internet connection is on.
+huggingface_hub.errors.LocalEntryNotFoundError: model.onnx of Phoonnx/vits-en_us-danny-low-espeak at commit aeaf5a3ab43f6d25a6798581793de0b97818e3ab is not in the hub cache, and the hub cannot be reached. Connect once so that phoonnx can download it. After a phoonnx upgrade, the voice index can name a file that no cached snapshot holds.
 ```
 
 Fix: run `phoonnx-voices download <voice_id>` while the machine is online. After that, the
