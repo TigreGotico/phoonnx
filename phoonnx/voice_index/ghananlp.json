@@ -1,8 +1,8 @@
 {
   "ghananlpcommunity/stable-twi-tts": {
     "voice_id": "ghananlpcommunity/stable-twi-tts",
-    "model_url": "https://huggingface.co/Phoonnx/vits-tw-stable-espeak/resolve/2763d591c0b47b364fd87aa7fc843fb3775ee02b/model.onnx",
-    "config_url": "https://huggingface.co/Phoonnx/vits-tw-stable-espeak/resolve/2763d591c0b47b364fd87aa7fc843fb3775ee02b/config.json",
+    "model_url": "https://huggingface.co/Phoonnx/vits-tw-stable-espeak/resolve/6db188d8fd4964741827c9029c412ff081e4f1d4/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/vits-tw-stable-espeak/resolve/6db188d8fd4964741827c9029c412ff081e4f1d4/phoonnx.json",
     "vocab_url": null,
     "tokenizer_config_url": null,
     "tokens_url": null,
