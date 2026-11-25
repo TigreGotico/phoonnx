@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.138.9a1](https://github.com/TigreGotico/phoonnx/tree/1.138.9a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.8a1...1.138.9a1)
+
+## [1.138.8a1](https://github.com/TigreGotico/phoonnx/tree/1.138.8a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.7a2...1.138.8a1)
+
+**Merged pull requests:**
+
+- fix: point the two Kabyle o2i voices at native phoonnx.json configs [\#1130](https://github.com/TigreGotico/phoonnx/pull/1130) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: point the 42 chatterbox voices at native phoonnx.json configs [\#1128](https://github.com/TigreGotico/phoonnx/pull/1128) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.7a2](https://github.com/TigreGotico/phoonnx/tree/1.138.7a2) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.7a1...1.138.7a2)
@@ -352,10 +365,6 @@
 ## [1.135.0a2](https://github.com/TigreGotico/phoonnx/tree/1.135.0a2) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.0a1...1.135.0a2)
-
-**Merged pull requests:**
-
-- refactor: make model\_manager shorter and easier to read [\#991](https://github.com/TigreGotico/phoonnx/pull/991) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.135.0a1](https://github.com/TigreGotico/phoonnx/tree/1.135.0a1) (2026-11-24)
 
