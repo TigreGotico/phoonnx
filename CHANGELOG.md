@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.137.14a1](https://github.com/TigreGotico/phoonnx/tree/1.137.14a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.13a1...1.137.14a1)
+
+## [1.137.13a1](https://github.com/TigreGotico/phoonnx/tree/1.137.13a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.12a1...1.137.13a1)
+
+## [1.137.12a1](https://github.com/TigreGotico/phoonnx/tree/1.137.12a1) (2026-11-24)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.11a3...1.137.12a1)
+
+**Merged pull requests:**
+
+- fix: build the Matcha and ZipVoice vocoder from vocoder\_type alone [\#1076](https://github.com/TigreGotico/phoonnx/pull/1076) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: keep a 1.x speaker\_id or lang\_id through a JSON round trip [\#1075](https://github.com/TigreGotico/phoonnx/pull/1075) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: name the speakers or languages of a voice for an unknown name [\#1074](https://github.com/TigreGotico/phoonnx/pull/1074) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.137.11a3](https://github.com/TigreGotico/phoonnx/tree/1.137.11a3) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.11a2...1.137.11a3)
@@ -345,23 +363,14 @@
 **Merged pull requests:**
 
 - fix: a subtag after a private-use or extension singleton is not a region [\#950](https://github.com/TigreGotico/phoonnx/pull/950) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: raise the scriptconv floor to 0.0.4a148 for long digit runs in Shami [\#947](https://github.com/TigreGotico/phoonnx/pull/947) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.130.3a1](https://github.com/TigreGotico/phoonnx/tree/1.130.3a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.2a1...1.130.3a1)
 
-**Merged pull requests:**
-
-- fix: raise the text2spoken floor to 0.0.2a98 for Tetun Dili readings [\#948](https://github.com/TigreGotico/phoonnx/pull/948) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.130.2a1](https://github.com/TigreGotico/phoonnx/tree/1.130.2a1) (2026-11-22)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.1a1...1.130.2a1)
-
-**Merged pull requests:**
-
-- fix: Arabic dialect voices carry their dialect tag and answer their region [\#945](https://github.com/TigreGotico/phoonnx/pull/945) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.130.1a1](https://github.com/TigreGotico/phoonnx/tree/1.130.1a1) (2026-11-22)
 
