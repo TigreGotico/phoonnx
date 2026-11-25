@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.3a1](https://github.com/TigreGotico/phoonnx/tree/1.138.3a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.2a2...1.138.3a1)
+
+**Merged pull requests:**
+
+- fix: read the native config of 66 voice repos from phoonnx.json [\#1100](https://github.com/TigreGotico/phoonnx/pull/1100) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.2a2](https://github.com/TigreGotico/phoonnx/tree/1.138.2a2) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.2a1...1.138.2a2)
@@ -371,10 +379,6 @@
 ## [1.131.0a1](https://github.com/TigreGotico/phoonnx/tree/1.131.0a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.130.9a1...1.131.0a1)
-
-**Merged pull requests:**
-
-- feat\(schema\): list the nemo\_ipa phonemizer as pending [\#967](https://github.com/TigreGotico/phoonnx/pull/967) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.130.9a1](https://github.com/TigreGotico/phoonnx/tree/1.130.9a1) (2026-11-23)
 
