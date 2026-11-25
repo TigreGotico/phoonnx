@@ -788,7 +788,7 @@ _UPSTREAM_TEXT_FUNCTION = {
 
 @pytest.mark.parametrize("voice_id", sorted(_UPSTREAM_TEXT_FUNCTION))
 def test_entry_selects_the_text_function_of_its_upstream_code(voice_id):
-    """TTSModelInfo.load gives the voice the entry's phoneme_type over the config's."""
+    """The entry lists the text function of the voice's upstream code."""
     assert _f5_index()[voice_id]["phoneme_type"] == _UPSTREAM_TEXT_FUNCTION[voice_id]
 
 
