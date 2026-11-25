@@ -2,8 +2,8 @@
     "inflect/micro-en": {
         "voice_id": "inflect/micro-en",
         "engine": "phoonnx",
-        "model_url": "https://huggingface.co/Phoonnx/vits-en_us-inflect-micro_v2-espeak/resolve/f06285345490c7da0688d10bae0075e8934b73a4/duration.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/vits-en_us-inflect-micro_v2-espeak/resolve/f06285345490c7da0688d10bae0075e8934b73a4/duration.onnx.json",
+        "model_url": "https://huggingface.co/Phoonnx/vits-en_us-inflect-micro_v2-espeak/resolve/8e93193c424380d0ad9ce0958af7d2a11f55b9c6/duration.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-en_us-inflect-micro_v2-espeak/resolve/8e93193c424380d0ad9ce0958af7d2a11f55b9c6/duration.onnx.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -12,14 +12,14 @@
         "alphabet": "ipa",
         "lang": "en-us",
         "aux_model_urls": {
-            "decode_path": "https://huggingface.co/Phoonnx/vits-en_us-inflect-micro_v2-espeak/resolve/f06285345490c7da0688d10bae0075e8934b73a4/decode.onnx"
+            "decode_path": "https://huggingface.co/Phoonnx/vits-en_us-inflect-micro_v2-espeak/resolve/8e93193c424380d0ad9ce0958af7d2a11f55b9c6/decode.onnx"
         }
     },
     "inflect/nano-en": {
         "voice_id": "inflect/nano-en",
         "engine": "phoonnx",
-        "model_url": "https://huggingface.co/Phoonnx/vits-en_us-inflect-nano_v2-espeak/resolve/da16fe71c2c933f041e2f8015d4e8be8b0e358a1/duration.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/vits-en_us-inflect-nano_v2-espeak/resolve/da16fe71c2c933f041e2f8015d4e8be8b0e358a1/duration.onnx.json",
+        "model_url": "https://huggingface.co/Phoonnx/vits-en_us-inflect-nano_v2-espeak/resolve/c2848aa8f1890a7bae43f768ba637218dbfb5c7f/duration.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-en_us-inflect-nano_v2-espeak/resolve/c2848aa8f1890a7bae43f768ba637218dbfb5c7f/duration.onnx.json",
         "vocab_url": null,
         "tokenizer_config_url": null,
         "tokens_url": null,
@@ -28,7 +28,7 @@
         "alphabet": "ipa",
         "lang": "en-us",
         "aux_model_urls": {
-            "decode_path": "https://huggingface.co/Phoonnx/vits-en_us-inflect-nano_v2-espeak/resolve/da16fe71c2c933f041e2f8015d4e8be8b0e358a1/decode.onnx"
+            "decode_path": "https://huggingface.co/Phoonnx/vits-en_us-inflect-nano_v2-espeak/resolve/c2848aa8f1890a7bae43f768ba637218dbfb5c7f/decode.onnx"
         }
     }
 }

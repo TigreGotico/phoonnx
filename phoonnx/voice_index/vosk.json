@@ -1,9 +1,9 @@
 {
     "vosk/tamara": {
         "voice_id": "vosk/tamara",
-        "model_url": "https://huggingface.co/Phoonnx/vits-ru_ru-tamara-vosk/resolve/5812602da63cd781b643bb337188f3cdf9948e6c/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/vits-ru_ru-tamara-vosk/resolve/5812602da63cd781b643bb337188f3cdf9948e6c/config.json",
-        "dictionary_url": "https://huggingface.co/Phoonnx/vits-ru_ru-tamara-vosk/resolve/5812602da63cd781b643bb337188f3cdf9948e6c/dictionary",
+        "model_url": "https://huggingface.co/Phoonnx/vits-ru_ru-tamara-vosk/resolve/41ed3768331913d69d5e61b31c3a1f95a0c1dc1d/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-ru_ru-tamara-vosk/resolve/41ed3768331913d69d5e61b31c3a1f95a0c1dc1d/config.json",
+        "dictionary_url": "https://huggingface.co/Phoonnx/vits-ru_ru-tamara-vosk/resolve/41ed3768331913d69d5e61b31c3a1f95a0c1dc1d/dictionary",
         "phoneme_type": "vosk",
         "lang": "ru-RU",
         "tokens_url": null,
@@ -15,9 +15,9 @@
     },
     "vosk/irina": {
         "voice_id": "vosk/irina",
-        "model_url": "https://huggingface.co/Phoonnx/vits-ru_ru-irina-vosk/resolve/670bd674411ef71861c47cd03b4c3b78d74a366e/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/vits-ru_ru-irina-vosk/resolve/670bd674411ef71861c47cd03b4c3b78d74a366e/config.json",
-        "dictionary_url": "https://huggingface.co/Phoonnx/vits-ru_ru-irina-vosk/resolve/670bd674411ef71861c47cd03b4c3b78d74a366e/dictionary",
+        "model_url": "https://huggingface.co/Phoonnx/vits-ru_ru-irina-vosk/resolve/2cfda6876bd7b8009bc4c2adee1df8d31df352f0/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-ru_ru-irina-vosk/resolve/2cfda6876bd7b8009bc4c2adee1df8d31df352f0/config.json",
+        "dictionary_url": "https://huggingface.co/Phoonnx/vits-ru_ru-irina-vosk/resolve/2cfda6876bd7b8009bc4c2adee1df8d31df352f0/dictionary",
         "phoneme_type": "vosk",
         "lang": "ru-RU",
         "tokens_url": null,
@@ -29,9 +29,9 @@
     },
     "vosk/natasha": {
         "voice_id": "vosk/natasha",
-        "model_url": "https://huggingface.co/Phoonnx/vits-ru_ru-natasha-vosk/resolve/81173683ac5a1098869d580a529d17e6829bbe75/model.onnx",
-        "config_url": "https://huggingface.co/Phoonnx/vits-ru_ru-natasha-vosk/resolve/81173683ac5a1098869d580a529d17e6829bbe75/config.json",
-        "dictionary_url": "https://huggingface.co/Phoonnx/vits-ru_ru-natasha-vosk/resolve/81173683ac5a1098869d580a529d17e6829bbe75/dictionary",
+        "model_url": "https://huggingface.co/Phoonnx/vits-ru_ru-natasha-vosk/resolve/914c3f0c1daa11baa25727f2d31fec9afb2a496f/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-ru_ru-natasha-vosk/resolve/914c3f0c1daa11baa25727f2d31fec9afb2a496f/config.json",
+        "dictionary_url": "https://huggingface.co/Phoonnx/vits-ru_ru-natasha-vosk/resolve/914c3f0c1daa11baa25727f2d31fec9afb2a496f/dictionary",
         "phoneme_type": "vosk",
         "lang": "ru-RU",
         "tokens_url": null,
