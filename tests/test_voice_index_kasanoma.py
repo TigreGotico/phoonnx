@@ -70,4 +70,4 @@ class TestKasanomaIndex(unittest.TestCase):
                 entry = entries[voice_id]
                 base = rf"https://huggingface\.co/Phoonnx/{re.escape(repo)}/resolve/[0-9a-f]{{40}}/"
                 self.assertRegex(entry["model_url"], f"^{base}model\\.onnx$")
-                self.assertRegex(entry["config_url"], f"^{base}model\\.onnx\\.json$")
+                self.assertRegex(entry["config_url"], f"^{base}phoonnx\\.json$")
