@@ -396,12 +396,12 @@ def _recording_fetches():
     voice.synthesize_wav.side_effect = _write_silence
     with patch.object(TTSModelInfo, "config", new_callable=PropertyMock), \
             patch.object(model_manager, "check_lang_supported"), \
-            patch.object(model_manager, "_voice_phonemizer"), \
+            patch.object(model_manager, "make_session"), \
             patch.object(TTSModelInfo, "hub_path", return_value=None), \
             patch.object(TTSModelInfo, "_fetch_onnx",
                          side_effect=lambda url: fetched.append(url) or Path("model.onnx")), \
             patch.object(model_manager, "TTSVoice") as tts_voice:
-        tts_voice.load.return_value = voice
+        tts_voice.return_value = voice
         yield fetched
 
 

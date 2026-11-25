@@ -699,20 +699,45 @@ class TestExternalDataNames(HubTestCase):
 
 
 class TestLoad(HubTestCase):
-    def test_load_hands_every_artifact_path_to_ttsvoice(self):
+    def test_load_gives_ttsvoice_the_graph_and_the_config_of_the_entry(self):
         self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
-        self.hub.stage(f"{HUB}/config.json", {"sample_rate": 22050})
+        self.hub.stage(f"{HUB}/config.json", {"audio": {"sample_rate": 22050}})
         self.hub.stage(f"{HUB}/tokens.txt", "a\nb\n")
         info = self.make_info(config_url=f"{HUB}/config.json",
                               tokens_url=f"{HUB}/tokens.txt")
         with patch("phoonnx.model_manager.TTSVoice") as voice_cls, \
-                patch("phoonnx.model_manager._voice_phonemizer"):
+                patch("phoonnx.model_manager.make_session") as make_session:
             info.load()
-        kwargs = voice_cls.load.call_args.kwargs
+        kwargs = voice_cls.call_args.kwargs
         self.assertEqual(Path(kwargs["model_path"]).read_bytes(), b"onnxdata")
-        self.assertEqual(json.loads(Path(kwargs["config_path"]).read_text()),
-                         {"sample_rate": 22050})
-        self.assertIsNone(kwargs["vocab_path"], "this voice has no vocab.json")
+        self.assertIs(kwargs["session"], make_session.return_value)
+        self.assertIs(kwargs["config"], info.config)
+        self.assertEqual(kwargs["config"].sample_rate, 22050)
+
+
+    def test_a_chatterbox_voice_with_a_config_url_reads_its_tokenizer_and_lang_tokens(self):
+        """A native chatterbox config holds no tokenizer; the entry's tokenizer.json and
+        lang_tokens reach the voice as they do for an entry with no config."""
+        bpe = Path(__file__).parent / "fixtures" / "tokenizer_bpe_whitespace.json"
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+        self.hub.stage(f"{HUB}/phoonnx.json", {
+            "phoonnx_version": "1.0.0", "engine": "chatterbox", "phoneme_type": "unicode",
+            "alphabet": "unicode", "lang_code": "und", "audio": {"sample_rate": 24000},
+            "num_symbols": 0, "phoneme_id_map": {}})
+        self.hub.stage(f"{HUB}/tokenizer.json", json.loads(bpe.read_text()))
+        info = self.make_info(engine="chatterbox", lang="ar-EG", phoneme_type="unicode",
+                              alphabet="unicode", config_url=f"{HUB}/phoonnx.json",
+                              tokenizer_config_url=f"{HUB}/tokenizer.json",
+                              lang_tokens={"ar-EG": "eg"})
+        with patch("phoonnx.model_manager.make_session"), patch("phoonnx.voice.make_session"), \
+                patch("phoonnx.engines.chatterbox.ChatterboxAdapter.configure"):
+            voice = info.load()
+        self.assertEqual(type(voice.adapter).__name__, "ChatterboxAdapter")
+        self.assertEqual(voice.config.lang_tokens, {"ar-EG": "eg"})
+        self.assertTrue(voice.config.add_diacritics)
+        from phoonnx.tokenizer import load_chatterbox_tokenizer
+        self.assertEqual(voice.config.tokenizer.encode("a b"),
+                         load_chatterbox_tokenizer(str(bpe)).encode("a b"))
 
 
 class TestEngineParams(HubTestCase):

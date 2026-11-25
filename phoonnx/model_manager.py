@@ -24,11 +24,11 @@ from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
 from json_database import JsonStorageXDG, JsonStorage, load_commented_json
 from linguatag import lang_distance
 
-from phoonnx.config import (PhonemeType, _removal_version, _voice_phonemizer, VoiceConfig, Engine,
+from phoonnx.config import (PhonemeType, _removal_version, VoiceConfig, Engine,
                             Alphabet, check_lang_supported)
 from phoonnx.util import is_arabic, match_lang, normalize_lang, LOG
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers, resolve_threads, uses_gpu
-from phoonnx.voice import TTSVoice
+from phoonnx.voice import TTSVoice, check_num_symbols
 from phoonnx._onnx_external import external_data_locations
 from phoonnx.errors import PrecisionUnavailable, UnknownVoice
 
@@ -843,13 +843,12 @@ class TTSModelInfo:
     def config(self) -> VoiceConfig:
         """The voice's VoiceConfig, loaded on first access.
 
-        A voice with a config.json takes its phoneme_type, alphabet and
+        A voice with a config.json takes its engine, phoneme_type, alphabet and
         phonemizer_model from that file; the index copies of these fields are
         catalogue data. A voice with no config.json takes them from the index.
         """
         if not self._config:
             options: Dict[str, Any] = {
-                "engine": self.engine,
                 "lang_code": normalize_lang(self.lang, default_region=False) if self.lang else None,
                 "phonemizer_lang": self.phonemizer_lang,
             }
@@ -862,7 +861,7 @@ class TTSModelInfo:
                 config = {"phoneme_type": self.phoneme_type or "graphemes", "alphabet": "unicode"}
                 if self.phonemizer_model:
                     config["phonemizer_model"] = self.phonemizer_model
-                options.update(alphabet=self.alphabet, phoneme_type=self.phoneme_type)
+                options.update(engine=self.engine, alphabet=self.alphabet, phoneme_type=self.phoneme_type)
             # A vosk pronunciation dictionary is a file of the index entry, and its
             # local path is the phonemizer_model. A failed fetch leaves it unset.
             if self.dictionary_url and not config.get("phonemizer_model"):
@@ -1180,50 +1179,19 @@ class TTSModelInfo:
                              self.config.phoneme_type)
 
         model_path = self.download_model()
-        config_path = self.hub_path(self.config_url)
-        vocab_path = self.hub_path(self.vocab_url)
-        tokenizer_config_path = self.hub_path(self.tokenizer_config_url)
-        tokens_path = self.hub_path(self.tokens_url)
-
-        # Voices without a published config.json can't be engine-detected from
-        # files on disk. Build them from the index-derived VoiceConfig, which
-        # already carries the engine and its tokenizer/runtime metadata.
-        if self.engine and not self.config_url:
-            config = self.config
-            resolved_providers = resolve_providers(providers)
-            resolved_threads = resolve_threads(threads)
-            engine_params = {**(config.engine_params or {}), **self.engine_params(),
-                             "providers": resolved_providers}
-            if resolved_threads is not None:
-                engine_params["threads"] = resolved_threads
-            config.engine_params = engine_params
-            # Through make_session, so this path shares one session between
-            # voices that name the same graph like every other path does.
-            session = make_session(model_path, providers=resolved_providers, threads=resolved_threads)
-            return TTSVoice(session=session, config=config)
-
-        voice = TTSVoice.load(model_path=model_path,
-                              config_path=config_path,
-                              vocab_path=vocab_path,
-                              tokenizer_config_path=tokenizer_config_path,
-                              lang_code=self.config.lang_code,
-                              phonemizer_lang=self.config.phonemizer_lang,
-                              phoneme_type_str=self.config.phoneme_type,
-                              alphabet_str=self.config.alphabet,
-                              engine_params=self.engine_params() or None,
-                              providers=providers,
-                              threads=threads,
-                              phonemes_txt=str(tokens_path) if self.tokens_url else None)
-        # A phonemizer_model resolved from the index (the vosk pronunciation
-        # dictionary) is an index-level artifact: the published config.json never
-        # references it, so the config loaded from disk cannot carry it.
-        # TTSVoice.frontend reads the phonemizer assigned here, also after a first synthesis.
-        if self.phonemizer_model and not voice.config.phonemizer_model and (self.dictionary_url or not self.config_url):
-            voice.config.phonemizer_model = self.phonemizer_model
-            voice.phonemizer = _voice_phonemizer(voice.config.phoneme_type,
-                                                 alphabet=voice.config.alphabet,
-                                                 model=self.phonemizer_model,
-                                                 keep_punctuation=voice.config.keep_punctuation)
+        config = self.config
+        resolved_providers = resolve_providers(providers)
+        resolved_threads = resolve_threads(threads)
+        engine_params = {**(config.engine_params or {}), **self.engine_params(),
+                         "providers": resolved_providers}
+        if resolved_threads is not None:
+            engine_params["threads"] = resolved_threads
+        config.engine_params = engine_params
+        # Through make_session, so voices that name the same graph share one session.
+        session = make_session(model_path, providers=resolved_providers, threads=resolved_threads)
+        voice = TTSVoice(session=session, config=config, model_path=str(model_path))
+        if self.config_url and "num_symbols" in self.download_config():
+            check_num_symbols(config, voice.adapter, self.config_url)
         return voice
 
 
