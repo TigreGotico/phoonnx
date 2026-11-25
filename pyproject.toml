@@ -23,13 +23,13 @@ dependencies = [
     "quebra-frases>=0.3.8a5",
     "langcodes",
     "linguatag>=0.4.1a1",
-    # >=0.0.2a107: a group of digits joined by spaces reads as one number, and a
-    # pt word after a number takes the number's gender
+    # >=0.0.2a107: a group of digits joined by spaces reads as one number or stays
+    # as written, and a pt word after a number takes the number's gender
     "text2spoken>=0.0.2a107",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
     # >=0.0.4a161: Alphabet.MISAKI, which the config schema lists. Every
-    # scriptconv requirement in this file uses this floor.
+    # scriptconv extra in this file relies on this floor.
     "scriptconv[phonemizers]>=0.0.4a161",
     # the f5tts_pinyin text function segments with rjieba and reads hanzi with pypinyin
     "rjieba>=0.2.2",
@@ -98,9 +98,9 @@ test = [
     "o2i-lexicons>=0.1.0a1",
     "arbtok>=0.0.3a2",
     "euskaphone",
-    # the Kokoro-family voices phonemize through misaki. misaki requires
-    # Python <3.13 (spacy's blis has no 3.13 wheels), and its tests in
-    # tests/test_scriptconv_phonemizer_coverage.py skip on 3.13 and later.
+    # the Kokoro-family voices phonemize through misaki. misaki declares
+    # Python <3.13, and its tests in tests/test_scriptconv_phonemizer_coverage.py
+    # skip on 3.13 and later.
     "misaki[en]; python_version<'3.13'",
     "misaki[zh]; python_version<'3.13'",
     # misaki[en] leaves spacy unbounded, so prerelease resolution can pick a
@@ -392,13 +392,12 @@ all = [
     "scriptconv[th]>=0.0.4a161; python_version < '3.14'",
     "scriptconv-nonfree>=0.2.1a1",
     "scriptconv-copyleft>=0.3.1a1",
-    # scriptconv[stress] allows a stressonnx stable that lacks the BCP-47
-    # language resolver, which arrived in the 0.0.3 alphas
+    # the BCP-47 language resolver, which scriptconv[stress] also requires
     "stressonnx>=0.0.3a2",
     "text2tashkeel>=0.3.1a3",
     "epitran",
-    # the languages that index voices read with gruut. gruut has no ja, vi or
-    # zh extra, so those three entries install only gruut itself.
+    # index voices read de, en, es, fr, it, nl, ru, sv and sw with gruut. gruut
+    # has no ja, vi or zh extra, so those three entries install only gruut itself.
     "gruut[de]>=2.3.0", "gruut[en]>=2.3.0", "gruut[es]>=2.3.0",
     "gruut[fr]>=2.3.0", "gruut[it]>=2.3.0", "gruut[ja]>=2.3.0",
     "gruut[nl]>=2.3.0", "gruut[ru]>=2.3.0", "gruut[sv]>=2.3.0",
@@ -415,7 +414,7 @@ all = [
     "audioop-lts; python_version >= '3.13'",
     # Indic Parler needs the compiled reader, and the image installs `all`
     "tokenizers",
-    # the reference SentencePiece reader, next to phoonnx/_sentencepiece.py
+    # MOSS-TTS-Nano imports sentencepiece at runtime (phoonnx/engines/mosstts.py)
     "sentencepiece",
     # Pocket TTS voice state loading (phoonnx/engines/pockettts.py).
     "safetensors",
