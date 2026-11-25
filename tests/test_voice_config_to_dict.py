@@ -166,7 +166,7 @@ def test_unset_scales_stay_out_of_the_inference_block():
 # once the scriptconv floor in pyproject.toml includes it, and give it a row in
 # docs/phonemizers.md.
 SCRIPTCONV_PENDING: set = set()
-ALPHABET_PENDING = {"misaki"}
+ALPHABET_PENDING: set = set()
 
 
 def test_schema_enums_list_every_engine_phonemizer_and_alphabet():
