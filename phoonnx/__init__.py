@@ -14,6 +14,7 @@ _HOMES = {
     "AudioPost": "phoonnx.config",
     "SpeakerReference": "phoonnx.config",
     "TTSModelManager": "phoonnx.model_manager",
+    "Runtime": "phoonnx.runtime",
     "Stages": "scriptconv.frontend",
     "FrontendConfig": "scriptconv.frontend",
     "Chunk": "scriptconv.frontend",

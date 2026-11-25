@@ -48,6 +48,7 @@ from phoonnx.reference_audio import load_reference_audio
 from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
 from scriptconv.phonemizers.base import PhonemizedChunks
+from phoonnx.runtime import Runtime, using_runtime
 from phoonnx.errors import FrontendMismatchError, NonFiniteAudioError, VoiceLoadError
 from phoonnx.engines.shami import ShamiAdapter
 from phoonnx.engines.vits import VitsAdapter
@@ -596,6 +597,7 @@ class TTSVoice:
             phonemizer_lang: Optional[str] = None,
             threads: Optional[int] = None,
             frontend: Optional[Union[FrontendConfig, TextFrontend]] = None,
+            runtime: Optional[Runtime] = None,
     ) -> "TTSVoice":
         """
         Load a TTS voice ONNX model and its configuration into a TTSVoice instance.
@@ -624,76 +626,81 @@ class TTSVoice:
             threads (int, optional): Threads per graph operator in every session of the voice
                 (``intra_op_num_threads``). When omitted, the ``PHOONNX_ORT_THREADS`` environment
                 variable is used, falling back to ONNX Runtime's one thread per core.
+            frontend (FrontendConfig | TextFrontend, optional): Another text frontend; see
+                :meth:`with_frontend`.
+            runtime (Runtime, optional): How the load opens its graphs. See
+                :class:`phoonnx.runtime.Runtime`.
 
         Returns:
             TTSVoice: A TTSVoice instance prepared with the loaded ONNX session and merged configuration.
         """
-        if config_path is None:
-            config_path = f"{model_path}.json"
+        with using_runtime(runtime):
+            if config_path is None:
+                config_path = f"{model_path}.json"
 
-        if not os.path.isfile(config_path):
-            raise VoiceLoadError(f"No voice config at {config_path}; pass config_path to TTSVoice.load")
-        with open(config_path, "r", encoding="utf-8") as config_file:
-            config_dict = json.load(config_file)
+            if not os.path.isfile(config_path):
+                raise VoiceLoadError(f"No voice config at {config_path}; pass config_path to TTSVoice.load")
+            with open(config_path, "r", encoding="utf-8") as config_file:
+                config_dict = json.load(config_file)
 
-        vocab_dict = {}
-        tokenizer_dict = {}
-        if vocab_path and os.path.isfile(vocab_path):
-            with open(vocab_path, "r", encoding="utf-8") as vocab_file:
-                vocab_dict = json.load(vocab_file)
-            if tokenizer_config_path and os.path.isfile(tokenizer_config_path):
-                with open(tokenizer_config_path, "r", encoding="utf-8") as tokenizer_file:
-                    tokenizer_dict = json.load(tokenizer_file)
-        resolved_providers = resolve_providers(providers, use_cuda=use_cuda)
-        resolved_threads = resolve_threads(threads)
+            vocab_dict = {}
+            tokenizer_dict = {}
+            if vocab_path and os.path.isfile(vocab_path):
+                with open(vocab_path, "r", encoding="utf-8") as vocab_file:
+                    vocab_dict = json.load(vocab_file)
+                if tokenizer_config_path and os.path.isfile(tokenizer_config_path):
+                    with open(tokenizer_config_path, "r", encoding="utf-8") as tokenizer_file:
+                        tokenizer_dict = json.load(tokenizer_file)
+            resolved_providers = resolve_providers(providers, use_cuda=use_cuda)
+            resolved_threads = resolve_threads(threads)
 
-        model_path, config_params, streams = streaming_graphs(
-            model_path, config_dict, os.path.dirname(os.path.abspath(config_path)), engine_params)
-        if config_params:
-            config_dict["engine_params"] = config_params
+            model_path, config_params, streams = streaming_graphs(
+                model_path, config_dict, os.path.dirname(os.path.abspath(config_path)), engine_params)
+            if config_params:
+                config_dict["engine_params"] = config_params
 
-        session = make_session(model_path, providers=resolved_providers, threads=resolved_threads)
+            session = make_session(model_path, providers=resolved_providers, threads=resolved_threads)
 
-        # Auto-detect engine adapter from config + session
-        adapter = get_adapter("vits_streaming") if streams else detect_engine(config=config_dict, session=session)
+            # Auto-detect engine adapter from config + session
+            adapter = get_adapter("vits_streaming") if streams else detect_engine(config=config_dict, session=session)
 
-        # Engine-specific params (e.g. Matcha's vocoder_path) come either from
-        # the caller (the voice manager injects locally-downloaded paths) or
-        # from the model's own config JSON.
-        engine_params = engine_params or config_dict.get("engine_params") or {}
-        # Engines load auxiliary graphs of their own (vocoders, speaker encoders,
-        # text encoders); they run on the same providers and threads as the voice itself.
-        engine_params = dict(engine_params)
-        engine_params.setdefault("providers", resolved_providers)
-        if resolved_threads is not None:
-            engine_params.setdefault("threads", resolved_threads)
+            # Engine-specific params (e.g. Matcha's vocoder_path) come either from
+            # the caller (the voice manager injects locally-downloaded paths) or
+            # from the model's own config JSON.
+            engine_params = engine_params or config_dict.get("engine_params") or {}
+            # Engines load auxiliary graphs of their own (vocoders, speaker encoders,
+            # text encoders); they run on the same providers and threads as the voice itself.
+            engine_params = dict(engine_params)
+            engine_params.setdefault("providers", resolved_providers)
+            if resolved_threads is not None:
+                engine_params.setdefault("threads", resolved_threads)
 
-        voice_config = VoiceConfig.from_dict(
-            config_dict,
-            vocab=vocab_dict,
-            tokenizer_config=tokenizer_dict,
-            alphabet=alphabet_str,
-            tokens_txt=phonemes_txt,
-            lang_code=lang_code,
-            phonemizer_lang=phonemizer_lang,
-            phoneme_type=phoneme_type_str,
-            engine_params=engine_params,
-        )
+            voice_config = VoiceConfig.from_dict(
+                config_dict,
+                vocab=vocab_dict,
+                tokenizer_config=tokenizer_dict,
+                alphabet=alphabet_str,
+                tokens_txt=phonemes_txt,
+                lang_code=lang_code,
+                phonemizer_lang=phonemizer_lang,
+                phoneme_type=phoneme_type_str,
+                engine_params=engine_params,
+            )
 
-        if "num_symbols" in config_dict:
-            check_num_symbols(voice_config, adapter, config_path)
+            if "num_symbols" in config_dict:
+                check_num_symbols(voice_config, adapter, config_path)
 
-        voice = TTSVoice(
-            config=voice_config,
-            session=session,
-            adapter=adapter,
-            model_path=str(model_path),
-        )
-        if frontend is not None:
-            voice = voice.with_frontend(frontend)
-        if warmup:
-            voice.warmup()
-        return voice
+            voice = TTSVoice(
+                config=voice_config,
+                session=session,
+                adapter=adapter,
+                model_path=str(model_path),
+            )
+            if frontend is not None:
+                voice = voice.with_frontend(frontend)
+            if warmup:
+                voice.warmup()
+            return voice
 
     def with_frontend(self, frontend: Union[FrontendConfig, TextFrontend],
                       probe_text: Optional[str] = None) -> "TTSVoice":

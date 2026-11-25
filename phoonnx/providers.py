@@ -41,6 +41,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import onnxruntime
 
+from phoonnx.runtime import current_runtime
+
 from phoonnx._onnx_external import external_data_locations
 from phoonnx.util import LOG
 
@@ -435,9 +437,15 @@ def make_session(
         threads: Threads per graph operator (``intra_op_num_threads``), as
             :func:`resolve_threads` reads it. An explicit ``sess_options``
             keeps its own thread settings.
+
+    During a load with a :class:`phoonnx.runtime.Runtime` that has an
+    ``open_session``, the runtime opens the graph instead.
     """
     resolved = resolve_providers(providers, use_cuda=use_cuda)
     threads = resolve_threads(threads)
+    runtime = current_runtime()
+    if runtime is not None and runtime.open_session is not None:
+        return runtime.open_session(model_path, providers=resolved, threads=threads)
     cache_dir = cache_dir if cache_dir is not None else os.environ.get(CACHE_DIR_ENV_VAR)
 
     if sess_options is not None or not _sharing_enabled():

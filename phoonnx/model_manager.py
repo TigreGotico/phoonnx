@@ -30,6 +30,7 @@ from phoonnx.config import (PhonemeType, _removal_version, VoiceConfig, Engine,
 from phoonnx.util import is_arabic, match_lang, normalize_lang, LOG
 from phoonnx.providers import ProviderSpec, make_session, resolve_providers, resolve_threads, uses_gpu
 from phoonnx.engines import get_adapter
+from phoonnx.runtime import Runtime, current_runtime, using_runtime
 from phoonnx.voice import TTSVoice, check_num_symbols, streaming_graphs
 from phoonnx._onnx_external import external_data_locations
 from phoonnx.errors import PrecisionUnavailable, UnknownVoice
@@ -247,6 +248,9 @@ def _resolve(url: str, timeout: int = 120, graph_url: Optional[str] = None) -> P
         huggingface_hub.errors.EntryNotFoundError: no such file on the hub.
         requests.exceptions.RequestException: the direct download failed.
     """
+    runtime = current_runtime()
+    if runtime is not None and runtime.fetch is not None:
+        return Path(runtime.fetch(url))
     cached = _hf_fetch(url, timeout)
     if cached is not None:
         return cached
@@ -1019,6 +1023,9 @@ class TTSModelInfo:
         nothing cached, count as absence.
         """
         path = _resolve(url)
+        runtime = current_runtime()
+        if runtime is not None and runtime.open_session is not None:
+            return path
         for sidecar in _sidecar_urls(url, path):
             try:
                 _resolve(sidecar, graph_url=url)
@@ -1157,7 +1164,8 @@ class TTSModelInfo:
 
     @_in_voice_scope
     def load(self, providers: Optional[Sequence[ProviderSpec]] = None,
-             precision: Optional[str] = None, threads: Optional[int] = None) -> TTSVoice:
+             precision: Optional[str] = None, threads: Optional[int] = None,
+             runtime: Optional[Runtime] = None) -> TTSVoice:
         """Download this voice and load it, with the text path of its config.json.
 
         Parameters:
@@ -1168,39 +1176,42 @@ class TTSModelInfo:
                 from ``PHOONNX_PRECISION``, else ``auto``. See :meth:`with_precision`.
             threads (int, optional): Threads per graph operator in every session of the voice.
                 When omitted it comes from ``PHOONNX_ORT_THREADS``, else ONNX Runtime's default.
+            runtime (Runtime, optional): Where the load gets its files and how it opens its
+                graphs. See :class:`phoonnx.runtime.Runtime`.
 
         Raises:
             PrecisionUnavailable: the voice has no files for ``precision``.
         """
-        info = self.with_precision(precision, providers)
-        if info is not self:
-            return info.load(providers=providers, precision="int8", threads=threads)
-        # self.config needs only the small config.json, so the language check
-        # runs before the model download.
-        check_lang_supported(self.voice_id, self.config.phonemizer_lang or self.config.lang_code,
-                             self.config.phoneme_type)
+        with using_runtime(runtime):
+            info = self.with_precision(precision, providers)
+            if info is not self:
+                return info.load(providers=providers, precision="int8", threads=threads, runtime=runtime)
+            # self.config needs only the small config.json, so the language check
+            # runs before the model download.
+            check_lang_supported(self.voice_id, self.config.phonemizer_lang or self.config.lang_code,
+                                 self.config.phoneme_type)
 
-        model_path = self.download_model()
-        config_dict = self.download_config()
-        config_dir = str(self.hub_path(self.config_url).parent) if config_dict else ""
-        entry_params = self.engine_params()
-        model_path, config_params, streams = streaming_graphs(model_path, config_dict, config_dir, entry_params)
-        resolved_providers = resolve_providers(providers)
-        resolved_threads = resolve_threads(threads)
-        engine_params = {**(self.config.engine_params or {}), **config_params, **entry_params,
-                         "providers": resolved_providers}
-        if resolved_threads is not None:
-            engine_params["threads"] = resolved_threads
-        # each voice gets its own config, so one load never changes the settings of another
-        config = copy.copy(self.config)
-        config.engine_params = engine_params
-        # Through make_session, so voices that name the same graph share one session.
-        session = make_session(model_path, providers=resolved_providers, threads=resolved_threads)
-        adapter = get_adapter("vits_streaming") if streams else None
-        voice = TTSVoice(session=session, config=config, adapter=adapter, model_path=str(model_path))
-        if "num_symbols" in config_dict:
-            check_num_symbols(config, voice.adapter, self.config_url)
-        return voice
+            model_path = self.download_model()
+            config_dict = self.download_config()
+            config_dir = str(self.hub_path(self.config_url).parent) if config_dict else ""
+            entry_params = self.engine_params()
+            model_path, config_params, streams = streaming_graphs(model_path, config_dict, config_dir, entry_params)
+            resolved_providers = resolve_providers(providers)
+            resolved_threads = resolve_threads(threads)
+            engine_params = {**(self.config.engine_params or {}), **config_params, **entry_params,
+                             "providers": resolved_providers}
+            if resolved_threads is not None:
+                engine_params["threads"] = resolved_threads
+            # each voice gets its own config, so one load never changes the settings of another
+            config = copy.copy(self.config)
+            config.engine_params = engine_params
+            # Through make_session, so voices that name the same graph share one session.
+            session = make_session(model_path, providers=resolved_providers, threads=resolved_threads)
+            adapter = get_adapter("vits_streaming") if streams else None
+            voice = TTSVoice(session=session, config=config, adapter=adapter, model_path=str(model_path))
+            if "num_symbols" in config_dict:
+                check_num_symbols(config, voice.adapter, self.config_url)
+            return voice
 
 
 _INDEX_FIELDS = frozenset(f.name for f in fields(TTSModelInfo))

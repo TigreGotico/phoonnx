@@ -23,6 +23,7 @@ class TestPackageRoot(unittest.TestCase):
 
         import phoonnx.config
         import phoonnx.model_manager
+        import phoonnx.runtime
         import phoonnx.voice
 
         homes = {
@@ -34,6 +35,7 @@ class TestPackageRoot(unittest.TestCase):
             "AudioPost": phoonnx.config,
             "SpeakerReference": phoonnx.config,
             "TTSModelManager": phoonnx.model_manager,
+            "Runtime": phoonnx.runtime,
             "Stages": scriptconv.frontend,
             "FrontendConfig": scriptconv.frontend,
             "Chunk": scriptconv.frontend,
