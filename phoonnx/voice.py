@@ -6,6 +6,7 @@ all ONNX-specific I/O to an engine adapter (``phoonnx.engines``),
 which means the same TTSVoice class works for VITS or
 any future architecture without code changes here.
 """
+import copy
 import hashlib
 import json
 import os.path
@@ -26,7 +27,7 @@ from typing import (Any, Callable, Iterable, Iterator, List, Mapping, Optional, 
 import numpy as np
 import onnxruntime
 from linguatag import closest_lang
-from scriptconv.frontend import Stages, TextFrontend
+from scriptconv.frontend import FrontendConfig, Stages, TextFrontend
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
@@ -47,7 +48,7 @@ from phoonnx.reference_audio import load_reference_audio
 from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
 from scriptconv.phonemizers.base import PhonemizedChunks
-from phoonnx.errors import NonFiniteAudioError, VoiceLoadError
+from phoonnx.errors import FrontendMismatchError, NonFiniteAudioError, VoiceLoadError
 from phoonnx.engines.shami import ShamiAdapter
 from phoonnx.engines.vits import VitsAdapter
 from phoonnx.engines.vits_streaming import VitsStreamingAdapter
@@ -408,6 +409,8 @@ class TTSVoice:
     _frontend_phonemizer: Optional[BasePhonemizer] = field(default=None, init=False, repr=False,
                                                            compare=False)
     _frontend_key: Any = field(default=None, init=False, repr=False, compare=False)
+    # The frontend that with_frontend gave this voice; it replaces the one built from the phonemizer.
+    _pinned_frontend: Optional[TextFrontend] = field(default=None, init=False, repr=False, compare=False)
     # The encoder, with the frontend, tokenizer and adapter it was built from.
     _encoder: Optional[Encoder] = field(default=None, init=False, repr=False, compare=False)
     _encoder_parts: Tuple[Any, ...] = field(default=(), init=False, repr=False, compare=False)
@@ -592,6 +595,7 @@ class TTSVoice:
             warmup: bool = False,
             phonemizer_lang: Optional[str] = None,
             threads: Optional[int] = None,
+            frontend: Optional[Union[FrontendConfig, TextFrontend]] = None,
     ) -> "TTSVoice":
         """
         Load a TTS voice ONNX model and its configuration into a TTSVoice instance.
@@ -685,8 +689,49 @@ class TTSVoice:
             adapter=adapter,
             model_path=str(model_path),
         )
+        if frontend is not None:
+            voice = voice.with_frontend(frontend)
         if warmup:
             voice.warmup()
+        return voice
+
+    def with_frontend(self, frontend: Union[FrontendConfig, TextFrontend],
+                      probe_text: Optional[str] = None) -> "TTSVoice":
+        """A voice that reads text through *frontend*, and shares this voice's session, tokenizer and adapter.
+
+        The new frontend must give the symbols this voice was trained on: the same
+        alphabet, and the same choice to keep or drop punctuation. With *probe_text*,
+        the new frontend phonemizes it, and every symbol must be in the voice
+        vocabulary. A raw-text engine reads no symbols, so it skips the probe.
+        Later phonemizer changes do not reach the new voice: its frontend stays fixed.
+
+        Raises:
+            FrontendMismatchError: the alphabet or the punctuation setting differs,
+                or the probe gives a symbol that the vocabulary lacks.
+        """
+        if isinstance(frontend, FrontendConfig):
+            frontend = TextFrontend(frontend)
+        own = self.frontend
+        for name, new, old in (("alphabet", frontend.backend.alphabet, own.backend.alphabet),
+                               ("keep_punctuation", frontend.config.keep_punctuation,
+                                own.config.keep_punctuation)):
+            if new != old:
+                raise FrontendMismatchError(f"the frontend gives {name} {new!r}, and the voice reads {old!r}")
+        if probe_text and self.adapter.takes_symbols:
+            tokenizer = copy.copy(self.tokenizer)
+            tokenizer.not_found_characters = set()
+            encoder = (self.adapter.make_encoder(self.config, frontend, tokenizer)
+                       if isinstance(self.adapter, BaseOnnxAdapter) else SymbolEncoder(frontend, tokenizer))
+            for _ in encoder.encode(probe_text, SynthesisConfig()):
+                pass
+            if tokenizer.not_found_characters:
+                raise FrontendMismatchError(
+                    f"the frontend gives symbols that the voice vocabulary lacks: "
+                    f"{sorted(tokenizer.not_found_characters)}")
+        voice = copy.copy(self)
+        voice.phonemizer = frontend.backend
+        voice._pinned_frontend = frontend
+        voice._encoder = None
         return voice
 
     @property
@@ -708,6 +753,8 @@ class TTSVoice:
         ``normalizer`` builds a new frontend. The frontend applies the voice's
         ``text_casing`` after normalisation, as training did.
         """
+        if self._pinned_frontend is not None:
+            return self._pinned_frontend
         phonemizer = self.phonemizer
         key = (self.config.phoneme_type, self.config.lang_code, self.config.phonemizer_lang,
                self.config.text_casing, phonemizer.keep_punctuation, phonemizer.normalizer)
