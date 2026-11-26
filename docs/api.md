@@ -135,7 +135,7 @@ This part lists the names that exist in the code. The package root exports eleve
 | Name | Module | Role |
 | --- | --- | --- |
 | `TTSVoice` | `phoonnx.voice` | A loaded voice. A dataclass built by `TTSVoice.load`. |
-| `TTSVoice.load` | `phoonnx.voice` | Takes `model_path`, `config_path`, `vocab_path`, `tokenizer_config_path`, `phonemes_txt`, `phoneme_map`, `lang_code`, `phoneme_type_str`, `alphabet_str`, `engine_params`, `providers`, the deprecated `use_cuda`, `warmup`, `phonemizer_lang` and `threads`. |
+| `TTSVoice.load` | `phoonnx.voice` | Takes `model_path`, `config_path`, `vocab_path`, `tokenizer_config_path`, `phonemes_txt`, `phoneme_map`, `lang_code`, `phoneme_type_str`, `alphabet_str`, `engine_params`, `providers`, the deprecated `use_cuda`, `warmup`, `phonemizer_lang`, `threads` and `frontend`. |
 | `TTSVoice.prepare` | `phoonnx.voice` | Text to `Iterator[Utterance]`. |
 | `TTSVoice.render` | `phoonnx.voice` | One `Utterance` to one `AudioChunk`. |
 | `TTSVoice.synthesize` | `phoonnx.voice` | Text to `Iterable[AudioChunk]`. Argument `syn_config`, flag `include_alignments`. |
@@ -190,7 +190,7 @@ An adapter subclasses `BaseOnnxAdapter` in `phoonnx.engines.base`. It receives a
 
 `PrecisionUnavailable` and `UnsupportedVoiceLanguage` also subclass `ValueError`. `NonFiniteAudioError` and `VoiceExceedsMemoryBudget` also subclass `RuntimeError`. `UnknownVoice` also subclasses `KeyError`: `TTSModelManager.voices` raises it for a voice id that the index does not have.
 
-`TTSVoice.load` raises `VoiceLoadError` when the config file does not exist. It also raises it for a VITS graph whose vocabulary uses an id that is not below `num_symbols`. Synthesis raises `NonFiniteAudioError` when the model returns NaN or infinite samples, before the audio is levelled. As 16-bit samples, such audio is silence. `phoonnx.compat.export_piper` and `export_sherpa` raise `ExportNotSupported` when Piper or sherpa-onnx cannot read the ids of the voice. Nothing in the code raises `FrontendMismatchError` or `UnsupportedConfigError`. Part 3 describes where the design raises them.
+`TTSVoice.load` raises `VoiceLoadError` when the config file does not exist. It also raises it for a VITS graph whose vocabulary uses an id that is not below `num_symbols`. Synthesis raises `NonFiniteAudioError` when the model returns NaN or infinite samples, before the audio is levelled. As 16-bit samples, such audio is silence. `phoonnx.compat.export_piper` and `export_sherpa` raise `ExportNotSupported` when Piper or sherpa-onnx cannot read the ids of the voice. `TTSVoice.load(frontend=...)` and `TTSVoice.with_frontend` raise `FrontendMismatchError` when the frontend gives another alphabet or punctuation setting than the voice reads, or when the probe text gives a symbol that the voice vocabulary lacks. Nothing in the code raises `UnsupportedConfigError`. Part 3 describes where the design raises it.
 
 The root package exports `TTSVoice`, `AudioChunk`, `Utterance`, `VoiceConfig`, `SynthesisConfig`, `AudioPost`, `SpeakerReference`, `TTSModelManager`, `Stages`, `FrontendConfig` and `Chunk`. Each name loads on first access, so `import phoonnx` stays cheap.
 
@@ -299,7 +299,7 @@ This part is a design, not a description of the code. Its objects do not exist, 
 | `phoonnx.compat.convert_config` | The loaders of `config_loaders.py` and the `from_piper_config`, `from_vosk_config`, `from_mimic3_config`, `from_coqui_config` and `from_tokens_txt` constructors |
 | `phoonnx.compat.export_piper`, `export_sherpa` | Exist in the code. The training side-cars use their writers, `to_piper_config` and `to_sherpa_tokens` |
 | `OPTION_ALIASES` in the OPM plugin | The per-key handling of `mycroft.conf` options |
-| Raise sites for `FrontendMismatchError` and `UnsupportedConfigError` | The classes exist in the code. Nothing raises them |
+| Raise sites for `UnsupportedConfigError` | The class exists in the code. Nothing raises it |
 
 ### The three configs
 
