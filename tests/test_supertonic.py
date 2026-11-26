@@ -7,7 +7,7 @@ import pytest
 from phoonnx.engines.base import AdapterSynthesisRequest
 from phoonnx.engines.supertonic import (
     SuperTonicAdapter, AVAILABLE_LANGS, preprocess_text, chunk_text,
-    load_unicode_indexer, length_to_mask, sample_noisy_latent,
+    load_unicode_indexer, length_to_mask, sample_noisy_latent, bucket_size, PAD_ENV,
 )
 from phoonnx.tokenizer import TTSTokenizer, Vocabulary
 
@@ -395,6 +395,76 @@ def test_synthesize_speed_scales_duration():
     ad.synthesize(_req(speed=2.0), vector_estimator)
     # duration_predictor always returns 1.0s; speed=2.0 halves it before latent sizing
     assert ad.duration_predictor.last_feed is not None
+
+
+def test_bucket_size():
+    assert bucket_size(1, 256) == 256
+    assert bucket_size(256, 256) == 256
+    assert bucket_size(257, 256) == 512
+    assert bucket_size(1000, 256) == 1024
+    assert bucket_size(7, 0) == 7            # floor 0: exact shape
+    assert bucket_size(0, 256) == 0
+
+
+def test_length_to_mask_pads_with_zeros():
+    mask = length_to_mask(3, 8)
+    assert mask.shape == (1, 1, 8)
+    assert mask[0, 0].tolist() == [1, 1, 1, 0, 0, 0, 0, 0]
+    assert length_to_mask(3).shape == (1, 1, 3)
+
+
+def test_sample_noisy_latent_padded_is_zero_past_the_frames():
+    xt, mask = sample_noisy_latent(1.0, 44100, 512, 6, 24, pad_to=64)
+    frames = int(mask.sum())
+    assert xt.shape[-1] == mask.shape[-1] == 64 and 0 < frames < 64
+    assert not xt[..., frames:].any()
+    assert xt[..., :frames].any()
+
+
+def test_synthesize_pads_every_graph_to_a_fixed_shape_when_asked(monkeypatch):
+    monkeypatch.setenv(PAD_ENV, "256")
+    ad = _configured_adapter()
+    # the real vocoder makes one chunk (base_chunk_size x chunk_compress_factor samples) a frame
+    ad.vocoder = _FakeSession(
+        outputs=lambda feed: [np.ones((1, feed["latent"].shape[-1] * 512 * 6), np.float32)])
+    vector_estimator = _FakeSession(outputs=lambda feed: [feed["noisy_latent"]])
+    result = ad.synthesize(_req(), vector_estimator)
+    feed = vector_estimator.last_feed
+    assert feed["noisy_latent"].shape[-1] == feed["latent_mask"].shape[-1] == 256
+    assert feed["text_mask"].shape[-1] == 256
+    assert ad.duration_predictor.last_feed["text_ids"].shape == (1, 256)
+    assert ad.duration_predictor.last_feed["text_mask"].sum() == 3     # three real tokens
+    frames = int(feed["latent_mask"].sum())
+    assert 0 < frames < 256
+    assert result.audio.size == frames * 512 * 6                       # the padded frames are cut
+
+
+def test_synthesize_keeps_exact_shapes_by_default(monkeypatch):
+    monkeypatch.delenv(PAD_ENV, raising=False)
+    ad = _configured_adapter()
+    vector_estimator = _FakeSession(outputs=lambda feed: [feed["noisy_latent"]])
+    ad.synthesize(_req(), vector_estimator)
+    assert vector_estimator.last_feed["text_mask"].shape[-1] == 3
+    assert vector_estimator.last_feed["noisy_latent"].shape[-1] == int(
+        vector_estimator.last_feed["latent_mask"].sum())
+
+
+def test_pad_floors_engine_params_beat_the_environment(monkeypatch):
+    monkeypatch.setenv(PAD_ENV, "128")
+    ad = _configured_adapter()
+    assert ad._pad_floors(_FakeSession()) == (128, 128)
+    ad.configure(SimpleNamespace(engine_params={"pad_text_to": 0, "pad_latent_to": 64}))
+    assert ad._pad_floors(_FakeSession()) == (0, 64)                  # 0 = never
+    monkeypatch.setenv(PAD_ENV, "not a number")
+    assert _configured_adapter()._pad_floors(_FakeSession()) == (0, 0)
+
+
+def test_same_seed_gives_the_same_noise_padded_or_not():
+    exact, _ = sample_noisy_latent(1.0, 44100, 512, 6, 24, rng=np.random.default_rng(3))
+    padded, mask = sample_noisy_latent(1.0, 44100, 512, 6, 24, rng=np.random.default_rng(3),
+                                       pad_to=64)
+    frames = int(mask.sum())
+    assert np.array_equal(exact, padded[..., :frames])
 
 
 def test_build_feed_dict_and_parse_outputs_not_implemented():
