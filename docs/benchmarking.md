@@ -91,4 +91,4 @@ Read the two numbers together. `ttfa` tells how long the user waits for the firs
 
 ---
 
-[Docs index](index.md) · Previous: [Deployment](deployment.md) · Next: [Voice sweep](voice_sweep.md)
+[← Deployment](deployment.md) · [Home](index.md) · [Voice sweep →](voice_sweep.md)

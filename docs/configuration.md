@@ -546,4 +546,4 @@ it. Use `edwixx/pt-BR-rapido` with `precision="int8"`.
 
 ---
 
-[Docs index](index.md) · Previous: [Phoneme alignment](alignment.md) · Next: [Phonemizers](phonemizers.md)
+[← Phoneme alignment](alignment.md) · [Home](index.md) · [Phonemizers →](phonemizers.md)

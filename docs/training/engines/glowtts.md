@@ -178,4 +178,4 @@ The output is a mel spectrogram `[B, n_mels, T]`. A Larynx graph also outputs a 
 
 ---
 
-[Docs index](../../index.md) · Previous: [Matcha-TTS](matcha.md) · Next: [Mixer-TTS](mixertts.md)
+[← Matcha-TTS](matcha.md) · [Home](../../index.md) · [Mixer-TTS →](mixertts.md)

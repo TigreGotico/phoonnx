@@ -302,4 +302,4 @@ marks each word boundary. Use these times to move the text highlight with the au
 
 ---
 
-[Docs index](index.md) · Previous: [Streaming](streaming.md) · Next: [Configuration reference](configuration.md)
+[← Streaming](streaming.md) · [Home](index.md) · [Configuration reference →](configuration.md)

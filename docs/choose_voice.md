@@ -196,4 +196,4 @@ reads the catalog only, so it downloads nothing:
 
 ---
 
-[Docs index](index.md) · Previous: [Quickstart](quickstart.md) · Next: [Voice manager](voice_manager.md)
+[← Quickstart](quickstart.md) · [Home](index.md) · [Voice manager →](voice_manager.md)

@@ -189,4 +189,4 @@ Error: sherpa-onnx reads one code point per symbol; this voice reads 'aɪ' (2 co
 
 ---
 
-[Docs index](index.md) · Previous: [Voice manager](voice_manager.md) · Next: [Precision variants](precision.md)
+[← Voice manager](voice_manager.md) · [Home](index.md) · [Precision variants →](precision.md)

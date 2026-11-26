@@ -394,4 +394,4 @@ override.
 
 ---
 
-[Docs index](index.md) · Previous: [SSML](ssml.md) · Next: [Voice conversion](voice_conversion.md)
+[← SSML](ssml.md) · [Home](index.md) · [Voice conversion →](voice_conversion.md)

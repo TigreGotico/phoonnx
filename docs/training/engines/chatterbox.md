@@ -130,4 +130,4 @@ These constants are class attributes of `ChatterboxAdapter`. No setting changes 
 
 ---
 
-[Docs index](../../index.md) · Previous: [ZipVoice](zipvoice.md) · Next: [Spark-TTS](sparktts.md)
+[← ZipVoice](zipvoice.md) · [Home](../../index.md) · [Spark-TTS →](sparktts.md)

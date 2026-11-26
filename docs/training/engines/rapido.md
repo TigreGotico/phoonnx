@@ -149,4 +149,4 @@ For a language that the released model does not speak, train in two phases. Firs
 
 ---
 
-[Docs index](../../index.md) · Previous: [SuperTonic](supertonic.md) · Next: [Indic Parler-TTS](indic_parler.md)
+[← SuperTonic](supertonic.md) · [Home](../../index.md) · [Indic Parler-TTS →](indic_parler.md)
