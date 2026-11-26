@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.9a2](https://github.com/TigreGotico/phoonnx/tree/1.138.9a2) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.9a1...1.138.9a2)
+
+**Merged pull requests:**
+
+- test: use the public scriptconv names for ARPAbet, Buckwalter and the Shami symbols [\#1142](https://github.com/TigreGotico/phoonnx/pull/1142) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.9a1](https://github.com/TigreGotico/phoonnx/tree/1.138.9a1) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.8a1...1.138.9a1)
@@ -357,10 +365,6 @@
 ## [1.135.0a3](https://github.com/TigreGotico/phoonnx/tree/1.135.0a3) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.0a2...1.135.0a3)
-
-**Merged pull requests:**
-
-- refactor: read tone levels through phonematcher.tone\_levels [\#993](https://github.com/TigreGotico/phoonnx/pull/993) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.135.0a2](https://github.com/TigreGotico/phoonnx/tree/1.135.0a2) (2026-11-24)
 
