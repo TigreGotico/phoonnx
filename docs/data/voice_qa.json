@@ -1,0 +1,467 @@
+[
+ {
+  "lang": "pt-PT",
+  "sentences": [
+   "O comboio parte às 8 horas, não te atrases!",
+   "Comprei 3 livros na feira."
+  ],
+  "phoonnx": "1.139.0a1",
+  "text2spoken": "0.0.2a158",
+  "voice_id": "OpenVoiceOS/phoonnx_pt-PT_miro_unicode",
+  "engine": "phoonnx",
+  "lang_code": "pt-PT",
+  "phoneme_type": "unicode",
+  "alphabet": "unicode",
+  "asr_model": "OpenVoiceOS/yuriyvnv-parakeet-tdt-0.6b-pt-onnx",
+  "asr_quantization": null,
+  "asr_floor": 0.021,
+  "manual": {
+   "wer": [
+    0.222,
+    0.0
+   ],
+   "mean": 0.111,
+   "class": "PASS"
+  },
+  "index": {
+   "wer": [
+    0.222,
+    0.0
+   ],
+   "mean": 0.111,
+   "class": "PASS"
+  },
+  "plugin": {
+   "wer": [
+    0.222,
+    0.0
+   ],
+   "mean": 0.111,
+   "class": "PASS"
+  }
+ },
+ {
+  "lang": "pt-BR",
+  "sentences": [
+   "O ônibus chega em 5 minutos, fique tranquilo.",
+   "Tenho 2 irmãos e uma irmã."
+  ],
+  "phoonnx": "1.139.0a1",
+  "text2spoken": "0.0.2a158",
+  "voice_id": "OpenVoiceOS/pipertts_pt-BR_miro",
+  "engine": "piper",
+  "lang_code": "pt-BR",
+  "phoneme_type": "espeak",
+  "alphabet": "ipa",
+  "asr_model": "OpenVoiceOS/yuriyvnv-parakeet-tdt-0.6b-pt-onnx",
+  "asr_quantization": null,
+  "asr_floor": 0.021,
+  "manual": {
+   "wer": [
+    0.125,
+    0.0
+   ],
+   "mean": 0.062,
+   "class": "PASS"
+  },
+  "index": {
+   "wer": [
+    0.125,
+    0.0
+   ],
+   "mean": 0.062,
+   "class": "PASS"
+  },
+  "plugin": {
+   "wer": [
+    0.125,
+    0.0
+   ],
+   "mean": 0.062,
+   "class": "PASS"
+  }
+ },
+ {
+  "lang": "es-CO",
+  "sentences": [
+   "El bus sale a las 7, ¿vienes conmigo?",
+   "Compré 4 mangos en la plaza."
+  ],
+  "phoonnx": "1.139.0a1",
+  "text2spoken": "0.0.2a158",
+  "voice_id": "OpenVoiceOS/phoonnx_es-CO_miro_espeak",
+  "engine": "phoonnx",
+  "lang_code": "es-CO",
+  "phoneme_type": "espeak",
+  "alphabet": "ipa",
+  "asr_model": "OpenVoiceOS/stt_es_fastconformer_hybrid_large_pc_onnx",
+  "asr_quantization": null,
+  "asr_floor": 0.08,
+  "manual": {
+   "wer": [
+    0.25,
+    0.0
+   ],
+   "mean": 0.125,
+   "class": "PASS"
+  },
+  "index": {
+   "wer": [
+    0.25,
+    0.0
+   ],
+   "mean": 0.125,
+   "class": "PASS"
+  },
+  "plugin": {
+   "wer": [
+    0.25,
+    0.0
+   ],
+   "mean": 0.125,
+   "class": "PASS"
+  }
+ },
+ {
+  "lang": "fr-FR",
+  "sentences": [
+   "Le train part à 9 heures, ne sois pas en retard !",
+   "J'ai acheté 3 baguettes ce matin."
+  ],
+  "phoonnx": "1.139.0a1",
+  "text2spoken": "0.0.2a158",
+  "voice_id": "OpenVoiceOS/pipertts_fr-FR_miro",
+  "engine": "piper",
+  "lang_code": "fr-FR",
+  "phoneme_type": "espeak",
+  "alphabet": "ipa",
+  "asr_model": "OpenVoiceOS/stt_fr_fastconformer_hybrid_large_pc_onnx",
+  "asr_quantization": null,
+  "asr_floor": 0.032,
+  "manual": {
+   "wer": [
+    0.182,
+    0.0
+   ],
+   "mean": 0.091,
+   "class": "PASS"
+  },
+  "index": {
+   "wer": [
+    0.182,
+    0.0
+   ],
+   "mean": 0.091,
+   "class": "PASS"
+  },
+  "plugin": {
+   "wer": [
+    0.182,
+    0.0
+   ],
+   "mean": 0.091,
+   "class": "PASS"
+  }
+ },
+ {
+  "lang": "it-IT",
+  "sentences": [
+   "Il treno parte alle 6, non fare tardi!",
+   "Ho comprato 2 chili di mele."
+  ],
+  "phoonnx": "1.139.0a1",
+  "text2spoken": "0.0.2a158",
+  "voice_id": "OpenVoiceOS/pipertts_it-IT_miro",
+  "engine": "piper",
+  "lang_code": "it-IT",
+  "phoneme_type": "espeak",
+  "alphabet": "ipa",
+  "asr_model": "OpenVoiceOS/stt_it_fastconformer_hybrid_large_pc_onnx",
+  "asr_quantization": null,
+  "asr_floor": 0.016,
+  "manual": {
+   "wer": [
+    0.0,
+    0.0
+   ],
+   "mean": 0.0,
+   "class": "PASS"
+  },
+  "index": {
+   "wer": [
+    0.0,
+    0.0
+   ],
+   "mean": 0.0,
+   "class": "PASS"
+  },
+  "plugin": {
+   "wer": [
+    0.0,
+    0.0
+   ],
+   "mean": 0.0,
+   "class": "PASS"
+  }
+ },
+ {
+  "lang": "de-DE",
+  "sentences": [
+   "Der Zug fährt um 8 Uhr ab, sei pünktlich!",
+   "Ich habe 3 Bücher gekauft."
+  ],
+  "phoonnx": "1.139.0a1",
+  "text2spoken": "0.0.2a158",
+  "voice_id": "OpenVoiceOS/pipertts_de-DE_miro",
+  "engine": "piper",
+  "lang_code": "de-DE",
+  "phoneme_type": "espeak",
+  "alphabet": "ipa",
+  "asr_model": "OpenVoiceOS/stt_de_fastconformer_hybrid_large_pc_onnx",
+  "asr_quantization": null,
+  "asr_floor": 0.075,
+  "manual": {
+   "wer": [
+    0.111,
+    0.0
+   ],
+   "mean": 0.056,
+   "class": "PASS"
+  },
+  "index": {
+   "wer": [
+    0.111,
+    0.0
+   ],
+   "mean": 0.056,
+   "class": "PASS"
+  },
+  "plugin": {
+   "wer": [
+    0.111,
+    0.0
+   ],
+   "mean": 0.056,
+   "class": "PASS"
+  }
+ },
+ {
+  "lang": "nl-NL",
+  "sentences": [
+   "De trein vertrekt om 7 uur, kom niet te laat!",
+   "Ik heb 4 appels gekocht."
+  ],
+  "phoonnx": "1.139.0a1",
+  "text2spoken": "0.0.2a158",
+  "voice_id": "OpenVoiceOS/pipertts_nl-NL_miro",
+  "engine": "piper",
+  "lang_code": "nl-NL",
+  "phoneme_type": "espeak",
+  "alphabet": "ipa",
+  "asr_model": "OpenVoiceOS/yuriyvnv-parakeet-tdt-0.6b-nl-onnx",
+  "asr_quantization": null,
+  "asr_floor": 0.067,
+  "manual": {
+   "wer": [
+    0.0,
+    0.0
+   ],
+   "mean": 0.0,
+   "class": "PASS"
+  },
+  "index": {
+   "wer": [
+    0.0,
+    0.0
+   ],
+   "mean": 0.0,
+   "class": "PASS"
+  },
+  "plugin": {
+   "wer": [
+    0.0,
+    0.0
+   ],
+   "mean": 0.0,
+   "class": "PASS"
+  }
+ },
+ {
+  "lang": "da-DK",
+  "sentences": [
+   "Toget kører klokken 8, kom ikke for sent!",
+   "Jeg har købt 3 bøger."
+  ],
+  "phoonnx": "1.139.0a1",
+  "text2spoken": "0.0.2a158",
+  "voice_id": "OpenVoiceOS/phoonnx_da-DK_miro_espeak",
+  "engine": "phoonnx",
+  "lang_code": "da-DK",
+  "phoneme_type": "espeak",
+  "alphabet": "ipa",
+  "asr_model": "nemo-parakeet-tdt-0.6b-v3",
+  "asr_quantization": "int8",
+  "asr_floor": 0.341,
+  "manual": {
+   "wer": [
+    0.75,
+    1.0
+   ],
+   "mean": 0.875,
+   "class": "FAIL",
+   "issue": "https://github.com/TigreGotico/phoonnx/issues/1186"
+  },
+  "index": {
+   "wer": [
+    0.75,
+    1.0
+   ],
+   "mean": 0.875,
+   "class": "FAIL",
+   "issue": "https://github.com/TigreGotico/phoonnx/issues/1186"
+  },
+  "plugin": {
+   "wer": [
+    0.75,
+    1.0
+   ],
+   "mean": 0.875,
+   "class": "FAIL",
+   "issue": "https://github.com/TigreGotico/phoonnx/issues/1186"
+  }
+ },
+ {
+  "lang": "kab",
+  "sentences": [
+   "Azul, ɣriɣ 2 n yedlisen ass-a.",
+   "Ad d-uɣaleɣ ɣef 5, ur ttɛeṭṭil ara!"
+  ],
+  "phoonnx": "1.139.0a1",
+  "text2spoken": "0.0.2a158",
+  "voice_id": "OpenVoiceOS/phoonnx_kab-DZ_miro_o2i",
+  "engine": "phoonnx",
+  "lang_code": "kab-DZ",
+  "phoneme_type": "orthography2ipa",
+  "alphabet": "ipa",
+  "asr_model": "OpenVoiceOS/nvidia-kab-conformer-transducer-large-onnx",
+  "asr_quantization": null,
+  "asr_floor": 0.1,
+  "manual": {
+   "wer": [
+    0.571,
+    0.5
+   ],
+   "mean": 0.535,
+   "class": "FAIL"
+  },
+  "index": {
+   "wer": [
+    0.571,
+    0.5
+   ],
+   "mean": 0.535,
+   "class": "FAIL"
+  },
+  "plugin": {
+   "wer": [
+    0.571,
+    0.5
+   ],
+   "mean": 0.535,
+   "class": "FAIL"
+  }
+ },
+ {
+  "lang": "hi-IN",
+  "sentences": [
+   "मेरे पास 3 किताबें हैं।",
+   "ट्रेन 5 बजे आएगी, देर मत करना!"
+  ],
+  "phoonnx": "1.139.0a1",
+  "text2spoken": "0.0.2a158",
+  "voice_id": "facebook/mms-tts-hin-Hindi",
+  "engine": "transformers",
+  "lang_code": "hi",
+  "phoneme_type": "graphemes",
+  "alphabet": "unicode",
+  "asr_model": "OpenVoiceOS/ai4bharat-indicconformer-hi-onnx",
+  "asr_quantization": null,
+  "asr_floor": 0.021,
+  "manual": {
+   "wer": [
+    0.0,
+    0.286
+   ],
+   "mean": 0.143,
+   "class": "PASS"
+  },
+  "index": {
+   "wer": [
+    0.0,
+    0.286
+   ],
+   "mean": 0.143,
+   "class": "PASS"
+  },
+  "plugin": {
+   "wer": [
+    0.0,
+    0.286
+   ],
+   "mean": 0.143,
+   "class": "PASS"
+  }
+ },
+ {
+  "lang": "bn-IN",
+  "sentences": [
+   "আমার 2 ভাই আছে।",
+   "ট্রেন 5 টায় আসবে, দেরি কোরো না!"
+  ],
+  "phoonnx": "1.139.0a1",
+  "text2spoken": "0.0.2a158",
+  "voice_id": "facebook/mms-tts-ben-Bengali",
+  "engine": "transformers",
+  "lang_code": "bn",
+  "phoneme_type": "graphemes",
+  "alphabet": "unicode",
+  "asr_model": "OpenVoiceOS/ai4bharat-indicconformer-bn-onnx",
+  "asr_quantization": null,
+  "asr_floor": 0.153,
+  "manual": {
+   "wer": [
+    0.25,
+    0.857
+   ],
+   "mean": 0.553,
+   "class": "FAIL",
+   "issue": "https://github.com/TigreGotico/phoonnx/issues/1182"
+  },
+  "index": {
+   "wer": [
+    0.25,
+    0.857
+   ],
+   "mean": 0.553,
+   "class": "FAIL",
+   "issue": "https://github.com/TigreGotico/phoonnx/issues/1182"
+  },
+  "plugin": {
+   "wer": [
+    0.25,
+    0.857
+   ],
+   "mean": 0.553,
+   "class": "FAIL",
+   "issue": "https://github.com/TigreGotico/phoonnx/issues/1182"
+  }
+ },
+ {
+  "lang": "mwr",
+  "sentences": [],
+  "phoonnx": "1.139.0a1",
+  "text2spoken": "0.0.2a158",
+  "voice_id": null,
+  "class": "NO-VOICE"
+ }
+]

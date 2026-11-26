@@ -197,4 +197,4 @@ the LJSpeech layout that [step 1](#1-prepare-a-dataset) uses.
 
 ---
 
-[← Voice sweep](../voice_sweep.md) · [Home](../index.md) · [Datasets →](datasets.md)
+[← Voice QA](../voices.md) · [Home](../index.md) · [Datasets →](datasets.md)
