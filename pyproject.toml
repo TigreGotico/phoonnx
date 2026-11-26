@@ -28,9 +28,9 @@ dependencies = [
     "text2spoken>=0.0.2a107",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
-    # >=0.0.4a183: Shami normalises each script run (#344); every backend has get_lang (#486). Every
+    # >=0.0.4a185: Shami normalises each script run (#344), an Arabic run as apc (#491); every backend has get_lang (#486). Every
     # scriptconv extra in this file relies on this floor.
-    "scriptconv[phonemizers]>=0.0.4a183",
+    "scriptconv[phonemizers]>=0.0.4a185",
     # the f5tts_pinyin text function segments with rjieba and reads hanzi with pypinyin
     "rjieba>=0.2.2",
     "pypinyin>=0.50",
@@ -76,7 +76,7 @@ test = [
     # and scriptconv-nonfree the mantoq, Halabi and Iqra wrappers. espyak,
     # pycotovia and ahotts-g2p stay listed for their floors. pt-phonemizers gives
     # tugaphone, a backend that owns its diacritize stage, for the card tests.
-    "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a183",
+    "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a185",
     # >=0.2.1a1: mantoq reads a very long digit run digit by digit, not as one int
     "scriptconv-nonfree>=0.2.1a1",
     # >=0.3.1a1: the eSpeak wrapper gives espeak-ng the text on stdin, so a line
@@ -138,7 +138,7 @@ test = [
 streaming = ["onnx"]
 # The eSpeak wrapper is in scriptconv-copyleft (GPL), so an eSpeak voice needs
 # this extra even when the espeak-ng binary is installed.
-espeak = ["scriptconv[espeak]>=0.0.4a183", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+espeak = ["scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 matcha = [
     "scipy",
 ]
@@ -257,9 +257,9 @@ train-pyworld = [
 ]
 # scriptconv[ar-phonemizers] installs arbtok and scriptconv-nonfree, which holds
 # the mantoq, Halabi and Iqra wrappers (CC BY-NC 4.0).
-ar = ["epitran", "scriptconv[ar-phonemizers]>=0.0.4a183", "scriptconv-nonfree>=0.2.1a1", "arbtok>=0.0.3a2", "text2tashkeel>=0.3.1a3", "gruut[ar]>=2.3.0"]
+ar = ["epitran", "scriptconv[ar-phonemizers]>=0.0.4a185", "scriptconv-nonfree>=0.2.1a1", "arbtok>=0.0.3a2", "text2tashkeel>=0.3.1a3", "gruut[ar]>=2.3.0"]
 ca = ["epitran", "gruut[ca]>=2.3.0"]
-gl = ["scriptconv[gl]>=0.0.4a183", "pycotovia>=0.4.0a1", "epitran"]
+gl = ["scriptconv[gl]>=0.0.4a185", "pycotovia>=0.4.0a1", "epitran"]
 cs = ["epitran", "gruut[cs]>=2.3.0"]
 de = ["epitran", "gruut[de]>=2.3.0"]
 # scriptconv-copyleft holds the misaki wrappers. The scriptconv[misaki] extra
@@ -267,20 +267,20 @@ de = ["epitran", "gruut[de]>=2.3.0"]
 # spacy<4.0 in the en, ja, vi and zh extras: see the spacy comment in the test extra.
 en = ["epitran", "gruut[en]>=2.3.0", "scriptconv-copyleft>=0.3.1a1", "misaki[en]", "spacy>=3.7,<4.0"]
 es = ["epitran", "gruut[es]>=2.3.0"]
-eu = ["scriptconv[eu]>=0.0.4a183", "ahotts-g2p>=0.1.0", "euskaphone", "epitran"]
-fa = ["epitran", "scriptconv[fa]>=0.0.4a183"]
+eu = ["scriptconv[eu]>=0.0.4a185", "ahotts-g2p>=0.1.0", "euskaphone", "epitran"]
+fa = ["epitran", "scriptconv[fa]>=0.0.4a185"]
 fr = ["epitran", "gruut[fr]>=2.3.0"]
-he = ["epitran", "phonikud_onnx", "phonikud", "scriptconv[he]>=0.0.4a183"]
+he = ["epitran", "phonikud_onnx", "phonikud", "scriptconv[he]>=0.0.4a185"]
 it = ["epitran", "gruut[it]>=2.3.0"]
-ja = ["epitran", "gruut[ja]>=2.3.0", "scriptconv[ja-phonemizers]>=0.0.4a183", "misaki", "fugashi", "jaconv", "mojimoji", "spacy>=3.7,<4.0", "pyopenjtalk-plus[onnxruntime]>=0.4.1.post10", "pykakasi", "cutlet", "unidic-lite"]
-ko = ["epitran", "scriptconv[ko]>=0.0.4a183", "g2pk", "misaki[ko]"]
+ja = ["epitran", "gruut[ja]>=2.3.0", "scriptconv[ja-phonemizers]>=0.0.4a185", "misaki", "fugashi", "jaconv", "mojimoji", "spacy>=3.7,<4.0", "pyopenjtalk-plus[onnxruntime]>=0.4.1.post10", "pykakasi", "cutlet", "unidic-lite"]
+ko = ["epitran", "scriptconv[ko]>=0.0.4a185", "g2pk", "misaki[ko]"]
 mwl = ["scriptconv[mwl]"]
 pt = ["epitran", "scriptconv[o2i]", "tugaphone", "gruut[pt]>=2.3.0"]
 ru = ["epitran", "gruut[ru]>=2.3.0"]
 sv = ["epitran", "gruut[sv]>=2.3.0"]
 sw = ["epitran", "gruut[sw]>=2.3.0"]
-vi = ["epitran", "gruut[vi]>=2.3.0", "scriptconv[vi]>=0.0.4a183", "scriptconv-copyleft>=0.3.1a1", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
-zh = ["scriptconv[zh-phonemizers]>=0.0.4a183", "epitran", "gruut[zh]>=2.3.0", "scriptconv-copyleft>=0.3.1a1", "misaki[zh]", "spacy>=3.7,<4.0", "g2pM", "pypinyin", "xpinyin", "pinyin_to_ipa", "jieba", "cn2an"]
+vi = ["epitran", "gruut[vi]>=2.3.0", "scriptconv[vi]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
+zh = ["scriptconv[zh-phonemizers]>=0.0.4a185", "epitran", "gruut[zh]>=2.3.0", "scriptconv-copyleft>=0.3.1a1", "misaki[zh]", "spacy>=3.7,<4.0", "g2pM", "pypinyin", "xpinyin", "pinyin_to_ipa", "jieba", "cn2an"]
 aa = ["epitran"]
 aii = ["epitran"]
 am = ["epitran"]
@@ -320,7 +320,7 @@ lez = ["epitran"]
 lij = ["epitran"]
 lo = ["epitran"]
 lsm = ["epitran"]
-lt = ["epitran", "scriptconv[espeak]>=0.0.4a183", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+lt = ["epitran", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 luy = ["epitran"]
 lv = ["epitran"]
 mi = ["epitran"]
@@ -350,7 +350,7 @@ ta = ["epitran"]
 te = ["epitran"]
 tg = ["epitran"]
 # tltk, the Thai backend, needs gensim, which has no wheel for Python 3.14
-th = ["epitran", "scriptconv[th]>=0.0.4a183; python_version < '3.14'"]
+th = ["epitran", "scriptconv[th]>=0.0.4a185; python_version < '3.14'"]
 ti = ["epitran"]
 tk = ["epitran"]
 tpi = ["epitran"]
@@ -387,9 +387,9 @@ all = [
     # missing fails at synthesis. goruut gives pygoruut, stress gives stressonnx,
     # pt gives bifonia, he gives phonikud-onnx, espeak, gl and eu give
     # scriptconv-copyleft, and ar-phonemizers gives scriptconv-nonfree.
-    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he,espeak,gl,eu]>=0.0.4a183",
+    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he,espeak,gl,eu]>=0.0.4a185",
     # tltk, the Thai backend, needs gensim, which has no wheel for Python 3.14
-    "scriptconv[th]>=0.0.4a183; python_version < '3.14'",
+    "scriptconv[th]>=0.0.4a185; python_version < '3.14'",
     "scriptconv-nonfree>=0.2.1a1",
     "scriptconv-copyleft>=0.3.1a1",
     # the BCP-47 language resolver, which scriptconv[stress] also requires
