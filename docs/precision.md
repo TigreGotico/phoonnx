@@ -116,8 +116,7 @@ full on disk: 62 MB
 ```
 
 `disk_size()` counts only the files that are in the cache. The full files are not
-downloaded, so the full size counts only the 62 MB of files that both precisions share. On
-the Hub, the full files of this voice are 446 MB and the int8 files are 171 MB.
+downloaded, so the full size counts only the files that both precisions share.
 
 ## 3. Set the precision once
 
