@@ -159,6 +159,9 @@ class BaseOnnxAdapter(ABC):
     # passes a name that its ``speaker_id_map`` lacks to the engine, and does not reject it.
     SPEAKER_NAMES: bool = False
 
+    # True for an adapter that runs a VITS graph, whose embedding has ``num_symbols`` rows.
+    VITS_GRAPH: bool = False
+
     # The most ids one model call reads. ``None`` means the engine is never cut.
     # An engine that sets it also sets ``bos``, ``eos``, ``word_gap`` and
     # ``clause_marks`` (a set of ids) in ``configure``; :meth:`_cut` reads them.

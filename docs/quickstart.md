@@ -192,4 +192,4 @@ extra, an unknown voice id, a language with no voice, and a voice that is not do
 
 ---
 
-[Docs index](index.md) · Previous: [Installation](installation.md) · Next: [Choose a voice](choose_voice.md)
+[← Installation](installation.md) · [Home](index.md) · [Choose a voice →](choose_voice.md)

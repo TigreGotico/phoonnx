@@ -181,4 +181,4 @@ shipped voices do not contain it, because their checkpoints hold an ALBERT-style
 
 ---
 
-[Docs index](index.md) · Previous: [Orpheus](orpheus.md) · Next: [BSC multispeaker StyleTTS2](bsc_multispeaker.md)
+[← Orpheus](orpheus.md) · [Home](index.md) · [BSC multispeaker StyleTTS2 →](bsc_multispeaker.md)

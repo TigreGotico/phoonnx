@@ -137,4 +137,4 @@ The upstream repository (github.com/OpenMOSS/MOSS-TTS-Nano) has an Apache-2.0 `L
 
 ---
 
-[Docs index](../../index.md) · Previous: [F5-TTS](f5tts.md) · Next: [Shami](shami.md)
+[← F5-TTS](f5tts.md) · [Home](../../index.md) · [Shami →](shami.md)

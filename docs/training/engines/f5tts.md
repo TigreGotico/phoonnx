@@ -209,4 +209,4 @@ The Habibi-TTS licence is per model (see its [model card](https://huggingface.co
 
 ---
 
-[Docs index](../../index.md) · Previous: [ArkTTS](arktts.md) · Next: [MOSS-TTS-Nano](mosstts.md)
+[← ArkTTS](arktts.md) · [Home](../../index.md) · [MOSS-TTS-Nano →](mosstts.md)

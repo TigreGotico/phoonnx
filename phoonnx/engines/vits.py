@@ -30,6 +30,7 @@ from phoonnx.providers import make_session
 
 class VitsAdapter(BaseOnnxAdapter):
     """Adapter for VITS-family ONNX models (piper, mimic3, coqui, phoonnx)."""
+    VITS_GRAPH = True
 
     # phoonnx's own exports name the alignment output "phoneme_id_samples";
     # other candidate names are speculative, for future/foreign exports that

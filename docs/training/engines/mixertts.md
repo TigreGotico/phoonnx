@@ -127,4 +127,4 @@ The preset sets `symbols_embedding_dim`.
 
 ---
 
-[Docs index](../../index.md) · Previous: [GlowTTS](glowtts.md) · Next: [OptiSpeech](optispeech.md)
+[← GlowTTS](glowtts.md) · [Home](../../index.md) · [OptiSpeech →](optispeech.md)

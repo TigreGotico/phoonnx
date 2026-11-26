@@ -159,4 +159,4 @@ You cannot use `--resume` together with `--corpus-only-map`, because the rows al
 
 ---
 
-[Docs index](../index.md) · Previous: [Training quickstart](quickstart.md) · Next: [Preprocess reference](preprocess.md)
+[← Training quickstart](quickstart.md) · [Home](../index.md) · [Preprocess reference →](preprocess.md)

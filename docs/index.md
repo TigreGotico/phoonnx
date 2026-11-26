@@ -4,7 +4,7 @@
 covers: every hand-written docs page in reading order, grouped by reader task
 source: docs/*.md, docs/training/*.md, docs/training/engines/*.md
 generated: no
-verify: .venv/bin/python -I -c "import re, sys, glob, os; os.chdir('docs'); order = [l for l in re.findall(r'^- \[[^]]+\]\(([^)#]+)\)', open('index.md').read(), re.M) if not l.startswith('..')]; pages = [p for p in glob.glob('*.md') + glob.glob('training/*.md') + glob.glob('training/engines/*.md') if p != 'index.md']; bad = sorted(set(pages) ^ set(order)) + [p for p in set(order) if order.count(p) > 1]; seq = ['index.md'] + order + [None]; rel = lambda q, p: os.path.relpath(q, os.path.dirname(p) or '.'); bad += [p for i, p in enumerate(order) if os.path.exists(p) and not ((last := open(p).read().rstrip().splitlines()[-1]).startswith('[Docs index](' + rel('index.md', p) + ')') and ('](' + rel(seq[i], p) + ') ·' in last.split('Next:')[0] + ' ·') and (last.endswith('](' + rel(seq[i + 2], p) + ')') if seq[i + 2] else 'Next:' not in last))]; print(bad); sys.exit(bool(bad))"
+verify: .venv/bin/python -I -c "import re, sys, glob, os; os.chdir('docs'); order = [l for l in re.findall(r'^- \[[^]]+\]\(([^)#]+)\)', open('index.md').read(), re.M) if not l.startswith('..')]; pages = [p for p in glob.glob('*.md') + glob.glob('training/*.md') + glob.glob('training/engines/*.md') if p != 'index.md']; bad = sorted(set(pages) ^ set(order)) + [p for p in set(order) if order.count(p) > 1]; seq = ['index.md'] + order + [None]; rel = lambda q, p: os.path.relpath(q, os.path.dirname(p) or '.'); want = lambda i, p: ' · '.join(([re.escape('[← ') + '[^]]+' + re.escape('](' + rel(seq[i], p) + ')')] if i else []) + [re.escape('[Home](' + rel('index.md', p) + ')')] + ([r'\[[^]]+ →' + re.escape('](' + rel(seq[i + 2], p) + ')')] if seq[i + 2] else [])); bad += [p for i, p in enumerate(order) if os.path.exists(p) and not re.fullmatch(want(i, p), open(p).read().rstrip().splitlines()[-1])]; print(bad); sys.exit(bool(bad))"
 see: ../README.md, quickstart.md, ../AGENTS.md
 -->
 
@@ -96,4 +96,4 @@ Two files outside `docs/` hold data:
 
 ---
 
-[Docs index](index.md) · Previous: [README](../README.md) · Next: [Installation](installation.md)
+[← README](../README.md) · [Next: Installation →](installation.md)

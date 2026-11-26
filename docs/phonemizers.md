@@ -244,4 +244,4 @@ Multilingual and neural backends include eSpeak, [gruut](https://github.com/rhas
 
 ---
 
-[Docs index](index.md) · Previous: [Configuration reference](configuration.md) · Next: [Alphabet conversion model](alphabet_model.md)
+[← Configuration reference](configuration.md) · [Home](index.md) · [Alphabet conversion model →](alphabet_model.md)

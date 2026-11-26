@@ -183,4 +183,4 @@ The id `edwixx/pt-BR-rapido-int8` loads the int8 files of `edwixx/pt-BR-rapido`.
 
 ---
 
-[Docs index](index.md) · Previous: [CLI reference](cli.md) · Next: [Use phoonnx offline](offline.md)
+[← CLI reference](cli.md) · [Home](index.md) · [Use phoonnx offline →](offline.md)

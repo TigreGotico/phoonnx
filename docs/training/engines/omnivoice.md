@@ -115,4 +115,4 @@ The OmniVoice weights are CC-BY-NC-4.0, so you may not use them commercially.
 
 ---
 
-[Docs index](../../index.md) · Previous: [OuteTTS](outetts.md) · Next: [SuperTonic](supertonic.md)
+[← OuteTTS](outetts.md) · [Home](../../index.md) · [SuperTonic →](supertonic.md)

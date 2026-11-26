@@ -99,4 +99,4 @@ pip install phoonnx[cjk]
 
 ---
 
-[Docs index](index.md) · Previous: [Phonemizers](phonemizers.md) · Next: [OVOS plugin](ovos_plugin.md)
+[← Phonemizers](phonemizers.md) · [Home](index.md) · [OVOS plugin →](ovos_plugin.md)

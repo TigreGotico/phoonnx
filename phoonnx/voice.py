@@ -48,11 +48,6 @@ from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
 from scriptconv.phonemizers.base import PhonemizedChunks
 from phoonnx.errors import NonFiniteAudioError, VoiceLoadError
-from phoonnx.engines.shami import ShamiAdapter
-from phoonnx.engines.vits import VitsAdapter
-from phoonnx.engines.vits_streaming import VitsStreamingAdapter
-from phoonnx.engines.xvits import XVitsAdapter
-from phoonnx.engines.yourtts import YourTTSAdapter
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
@@ -362,8 +357,7 @@ def check_num_symbols(config: VoiceConfig, adapter: BaseOnnxAdapter, source: obj
     num_symbols sizes the embedding of a VITS-family graph only; other engines
     carry the field without using it.
     """
-    if not isinstance(adapter, (VitsAdapter, VitsStreamingAdapter, YourTTSAdapter, ShamiAdapter, XVitsAdapter)) \
-            or not isinstance(config.tokenizer, TTSTokenizer):
+    if not adapter.VITS_GRAPH or not isinstance(config.tokenizer, TTSTokenizer):
         return
     ids = [i for value in config.tokenizer.vocabulary.char2idx.values()
            for i in (value if isinstance(value, list) else [value])]

@@ -117,4 +117,4 @@ SparkAudio releases the Spark-TTS 0.5B weights under CC-BY-NC-SA-4.0, so you may
 
 ---
 
-[Docs index](../../index.md) · Previous: [Chatterbox](chatterbox.md) · Next: [Qwen3-TTS](qwen3tts.md)
+[← Chatterbox](chatterbox.md) · [Home](../../index.md) · [Qwen3-TTS →](qwen3tts.md)

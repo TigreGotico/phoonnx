@@ -167,4 +167,4 @@ does not mirror or manage them.
 
 ---
 
-[Docs index](index.md) · Previous: [Voice cloning](cloning.md) · Next: [Streaming](streaming.md)
+[← Voice cloning](cloning.md) · [Home](index.md) · [Streaming →](streaming.md)

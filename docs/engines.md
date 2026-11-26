@@ -429,4 +429,4 @@ assert adapter.__class__.__name__ == "YourEngineAdapter"
 
 ---
 
-[Docs index](index.md) · Previous: [Architecture](architecture.md) · Next: [Vocoders](vocoders.md)
+[← Architecture](architecture.md) · [Home](index.md) · [Vocoders →](vocoders.md)
