@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.139.0a1](https://github.com/TigreGotico/phoonnx/tree/1.139.0a1) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a10...1.139.0a1)
+
+**Merged pull requests:**
+
+- feat: give a voice another text frontend with TTSVoice.with\_frontend [\#1137](https://github.com/TigreGotico/phoonnx/pull/1137) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.10a10](https://github.com/TigreGotico/phoonnx/tree/1.138.10a10) (2026-11-26)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a9...1.138.10a10)
@@ -354,17 +362,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.4a1...1.137.0a1)
 
-**Merged pull requests:**
-
-- feat: adopt phonematcher 3.0 tone features [\#1037](https://github.com/TigreGotico/phoonnx/pull/1037) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.136.4a1](https://github.com/TigreGotico/phoonnx/tree/1.136.4a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.3a2...1.136.4a1)
-
-**Merged pull requests:**
-
-- fix: ZipVoice training gives ScaledAdam the parameter names [\#1027](https://github.com/TigreGotico/phoonnx/pull/1027) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.136.3a2](https://github.com/TigreGotico/phoonnx/tree/1.136.3a2) (2026-11-24)
 
