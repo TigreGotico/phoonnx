@@ -86,7 +86,7 @@ These are the edges of the extended graph:
 
 ```python
 >>> sorted({(edge.src, edge.dst) for edge in graph.edges})
-[('arabic', 'buckwalter'), ('arpa', 'ipa'), ('buckwalter', 'arabic'), ('cotovia', 'ipa'), ('halabi', 'ipa'), ('hangul', 'jamo'), ('hanzi', 'bopomofo'), ('hanzi', 'cangjie'), ('hanzi', 'pinyin'), ('hira', 'kana'), ('ipa', 'arpa'), ('ipa', 'cotovia'), ('ipa', 'kirshenbaum'), ('ipa', 'lexique'), ('ipa', 'rfe'), ('ipa', 'x-sampa'), ('japanese', 'hira'), ('japanese', 'kana'), ('kana', 'hira'), ('kirshenbaum', 'ipa'), ('lexique', 'ipa'), ('rfe', 'ipa'), ('text', 'ipa'), ('text-diacritized', 'ipa'), ('x-sampa', 'ipa')]
+[('arabic', 'buckwalter'), ('arpa', 'ipa'), ('buckwalter', 'arabic'), ('cotovia', 'ipa'), ('halabi', 'ipa'), ('hangul', 'jamo'), ('hanzi', 'bopomofo'), ('hanzi', 'cangjie'), ('hanzi', 'pinyin'), ('hira', 'kana'), ('ipa', 'arpa'), ('ipa', 'cotovia'), ('ipa', 'kirshenbaum'), ('ipa', 'lexique'), ('ipa', 'rfe'), ('ipa', 'x-sampa'), ('japanese', 'hira'), ('japanese', 'kana'), ('kana', 'hira'), ('kirshenbaum', 'ipa'), ('lexique', 'ipa'), ('misaki', 'ipa'), ('rfe', 'ipa'), ('text', 'ipa'), ('text-diacritized', 'ipa'), ('x-sampa', 'ipa')]
 
 ```
 
