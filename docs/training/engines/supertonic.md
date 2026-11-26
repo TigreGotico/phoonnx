@@ -146,4 +146,4 @@ The tokenizer also accepts the tag `na`.
 
 ---
 
-[Docs index](../../index.md) · Previous: [OmniVoice](omnivoice.md) · Next: [Rápido](rapido.md)
+[← OmniVoice](omnivoice.md) · [Home](../../index.md) · [Rápido →](rapido.md)

@@ -116,4 +116,4 @@ sets `top_p` to 0.9. The model was tuned against the served values, so the adapt
 
 ---
 
-[Docs index](index.md) · Previous: [Pocket TTS](pockettts.md) · Next: [Galician phonemizer](galician.md)
+[← Pocket TTS](pockettts.md) · [Home](index.md) · [Galician phonemizer →](galician.md)

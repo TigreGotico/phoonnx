@@ -147,6 +147,8 @@ The engine of a voice sets the size of its download. The table gives the downloa
 | `shami` | `Tushe/shami-tts` | 113 MB |
 | `rapido` | `edwixx/pt-BR-rapido` | 267 MB |
 
+`scripts/download_sizes.py` writes these sizes to `docs/data/download_sizes.json` from the pinned files of each voice, and `tests/test_docs_verify.py` compares the table with that file.
+
 The download size is also a guide to the memory that the loaded voice takes, because the weights fill most of both. Some large voices have smaller int8 files. See [Precision variants](precision.md).
 
 ## 4. Hear the voices before you decide
@@ -196,4 +198,4 @@ reads the catalog only, so it downloads nothing:
 
 ---
 
-[Docs index](index.md) · Previous: [Quickstart](quickstart.md) · Next: [Voice manager](voice_manager.md)
+[← Quickstart](quickstart.md) · [Home](index.md) · [Voice manager →](voice_manager.md)

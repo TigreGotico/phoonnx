@@ -155,4 +155,4 @@ A `--resume` run needs the same overrides as the first run. Without the `--jsonl
 
 ---
 
-[Docs index](../index.md) · Previous: [Datasets](datasets.md) · Next: [Training reference](training.md)
+[← Datasets](datasets.md) · [Home](../index.md) · [Training reference →](training.md)

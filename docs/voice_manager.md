@@ -174,12 +174,12 @@ files of an index voice:
 ```python
 from phoonnx.model_manager import TTSModelInfo
 
-base = "https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_unicode/resolve/eb9a020da900534d7232f11a6cf5d1ae1c545219"
+base = "https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_unicode/resolve/aec14a0428e6b67a47eb54b2baa4a604d42c0063"
 info = TTSModelInfo(
     voice_id="my-copy-of-miro",
     lang="pt-PT",
     model_url=f"{base}/miro_pt-PT.onnx",
-    config_url=f"{base}/miro_pt-PT.json",
+    config_url=f"{base}/phoonnx.json",
     engine="phoonnx",  # optional override
 )
 
@@ -253,4 +253,4 @@ families. See [Engine architecture](engines.md), [Voice cloning](cloning.md) and
 
 ---
 
-[Docs index](index.md) · Previous: [Choose a voice](choose_voice.md) · Next: [CLI reference](cli.md)
+[← Choose a voice](choose_voice.md) · [Home](index.md) · [CLI reference →](cli.md)

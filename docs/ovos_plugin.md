@@ -312,4 +312,4 @@ phoonnx-voices list-voices --lang en-US
 
 ---
 
-[Docs index](index.md) · Previous: [Alphabet conversion model](alphabet_model.md) · Next: [Docker TTS server](docker.md)
+[← Alphabet conversion model](alphabet_model.md) · [Home](index.md) · [Docker TTS server →](docker.md)

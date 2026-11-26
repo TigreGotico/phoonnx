@@ -132,4 +132,4 @@ The voice weights `fdemelo/x-vits` are CC BY-NC 4.0, so you may not use them com
 
 ---
 
-[Docs index](../../index.md) · Previous: [FastPitch](fastpitch.md) · Next: [ZipVoice](zipvoice.md)
+[← FastPitch](fastpitch.md) · [Home](../../index.md) · [ZipVoice →](zipvoice.md)

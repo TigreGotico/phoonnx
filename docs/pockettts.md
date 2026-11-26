@@ -44,7 +44,7 @@ for chunk in voice.synthesize("Hello world."):
 24000 float32 1
 ```
 
-The download of an English voice is 171 MB.
+[Choose a voice](choose_voice.md) shows the download size of each voice.
 
 Voice ids follow `pockettts/<language>/<speaker>`. The languages are `en`, `fr`, `de`, `it`, `pt` and `es`.
 
@@ -187,4 +187,4 @@ deception, or for unlawful content.
 
 ---
 
-[Docs index](index.md) · Previous: [Use phoonnx offline](offline.md) · Next: [Orpheus](orpheus.md)
+[← Use phoonnx offline](offline.md) · [Home](index.md) · [Orpheus →](orpheus.md)

@@ -178,4 +178,4 @@ The same voice exports for Piper, because Piper joins `a` and `ɪ` into `aɪ` th
 
 ---
 
-[Docs index](../index.md) · Previous: [Training reference](training.md) · Next: [Matcha-TTS](engines/matcha.md)
+[← Training reference](training.md) · [Home](../index.md) · [Matcha-TTS →](engines/matcha.md)

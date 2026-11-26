@@ -126,4 +126,4 @@ The model is Apache-2.0, the licence of the upstream model. The weights, the arc
 
 ---
 
-[Docs index](../../index.md) · Previous: [Spark-TTS](sparktts.md) · Next: [ArkTTS](arktts.md)
+[← Spark-TTS](sparktts.md) · [Home](../../index.md) · [ArkTTS →](arktts.md)

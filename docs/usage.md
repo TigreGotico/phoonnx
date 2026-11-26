@@ -431,4 +431,4 @@ and clip steps.
 
 ---
 
-[Docs index](index.md) · Previous: [BSC multispeaker StyleTTS2](bsc_multispeaker.md) · Next: [SSML](ssml.md)
+[← BSC multispeaker StyleTTS2](bsc_multispeaker.md) · [Home](index.md) · [SSML →](ssml.md)

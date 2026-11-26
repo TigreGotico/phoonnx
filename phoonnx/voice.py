@@ -49,11 +49,6 @@ from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
 from scriptconv.phonemizers.base import PhonemizedChunks
 from phoonnx.errors import FrontendMismatchError, NonFiniteAudioError, VoiceLoadError
-from phoonnx.engines.shami import ShamiAdapter
-from phoonnx.engines.vits import VitsAdapter
-from phoonnx.engines.vits_streaming import VitsStreamingAdapter
-from phoonnx.engines.xvits import XVitsAdapter
-from phoonnx.engines.yourtts import YourTTSAdapter
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
@@ -323,14 +318,47 @@ class AudioChunk:
         return self.audio_int16_array.tobytes()
 
 
+# engine values that name a VITS graph, which streams once it is split
+_VITS_ENGINES = ("vits", "vits_streaming", "piper", "mimic3", "coqui", "phoonnx", "transformers")
+
+
+def streaming_graphs(model_path, config_dict: dict, config_dir: str,
+                     engine_params: Optional[dict] = None) -> Tuple[Any, dict, bool]:
+    """Give the graph to open, the config ``engine_params`` of a voice, and whether it streams.
+
+    A config names its decoder graph relative to its own folder. A voice whose
+    config sets ``"streaming": true`` and names no decoder graph gets one: its
+    single VITS graph is split into an encoder and a decoder, cached next to
+    it, so it can stream with no re-export. A graph that does not split loads
+    as a normal voice. The voice streams when its config sets ``"streaming": true``,
+    it has a decoder graph, and its engine is unset or a VITS one; it then reads
+    the encoder graph through the ``vits_streaming`` adapter.
+    """
+    params = config_dict.get("engine_params") or {}
+    if params.get("decoder_path") and not os.path.isabs(params["decoder_path"]):
+        params = {**params, "decoder_path": os.path.join(config_dir, params["decoder_path"])}
+    has_decoder = bool(params.get("decoder_path") or (engine_params or {}).get("decoder_path"))
+    if config_dict.get("streaming") and not has_decoder:
+        try:
+            from phoonnx.engines.vits_split import ensure_split_vits
+            model_path, decoder_path = ensure_split_vits(str(model_path))
+            params = {**params, "decoder_path": decoder_path}
+            has_decoder = True
+        except Exception as e:
+            LOG.warning(f"Streaming requested but auto-split of '{model_path}' failed ({e}); "
+                        f"loading as a normal single-graph voice.")
+    engine = getattr(config_dict.get("engine"), "value", config_dict.get("engine")) or "vits"
+    streams = bool(config_dict.get("streaming")) and has_decoder and str(engine).lower() in _VITS_ENGINES
+    return model_path, params, streams
+
+
 def check_num_symbols(config: VoiceConfig, adapter: BaseOnnxAdapter, source: object) -> None:
     """Raise VoiceLoadError when a VITS-family vocabulary uses an id the embedding does not have.
 
     num_symbols sizes the embedding of a VITS-family graph only; other engines
     carry the field without using it.
     """
-    if not isinstance(adapter, (VitsAdapter, VitsStreamingAdapter, YourTTSAdapter, ShamiAdapter, XVitsAdapter)) \
-            or not isinstance(config.tokenizer, TTSTokenizer):
+    if not adapter.VITS_GRAPH or not isinstance(config.tokenizer, TTSTokenizer):
         return
     ids = [i for value in config.tokenizer.vocabulary.char2idx.values()
            for i in (value if isinstance(value, list) else [value])]
@@ -613,33 +641,15 @@ class TTSVoice:
         resolved_providers = resolve_providers(providers, use_cuda=use_cuda)
         resolved_threads = resolve_threads(threads)
 
-        # Auto-split: a voice may request streaming on a monolithic single-graph
-        # VITS model. When it declares "streaming": true but ships no decoder
-        # graph, split the model into an encoder/decoder pair on the fly (cached
-        # next to the model) so it can stream without a re-export. If the model
-        # is not a splittable VITS, fall back to loading it as a normal voice.
-        _cfg_ep = config_dict.get("engine_params") or {}
-        if _cfg_ep.get("decoder_path") and not os.path.isabs(_cfg_ep["decoder_path"]):
-            # a config names its decoder graph relative to its own folder
-            _cfg_ep = {**_cfg_ep, "decoder_path": os.path.join(
-                os.path.dirname(os.path.abspath(config_path)), _cfg_ep["decoder_path"])}
-            config_dict["engine_params"] = _cfg_ep
-        _has_decoder = _cfg_ep.get("decoder_path") or (engine_params or {}).get("decoder_path")
-        if config_dict.get("streaming") and not _has_decoder:
-            try:
-                from phoonnx.engines.vits_split import ensure_split_vits
-                enc_path, dec_path = ensure_split_vits(str(model_path))
-                model_path = enc_path
-                config_dict["engine_params"] = {**_cfg_ep, "decoder_path": dec_path}
-            except Exception as e:
-                LOG.warning(f"Streaming requested but auto-split of "
-                            f"'{model_path}' failed ({e}); loading as a normal "
-                            f"single-graph voice.")
+        model_path, config_params, streams = streaming_graphs(
+            model_path, config_dict, os.path.dirname(os.path.abspath(config_path)), engine_params)
+        if config_params:
+            config_dict["engine_params"] = config_params
 
         session = make_session(model_path, providers=resolved_providers, threads=resolved_threads)
 
         # Auto-detect engine adapter from config + session
-        adapter = detect_engine(config=config_dict, session=session)
+        adapter = get_adapter("vits_streaming") if streams else detect_engine(config=config_dict, session=session)
 
         # Engine-specific params (e.g. Matcha's vocoder_path) come either from
         # the caller (the voice manager injects locally-downloaded paths) or

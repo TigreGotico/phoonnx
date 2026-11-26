@@ -124,4 +124,4 @@ The `/status` response also shows the configured voice in `default_voice`. If yo
 
 ---
 
-[Docs index](index.md) · Previous: [Docker TTS server](docker.md) · Next: [Benchmarking](benchmarking.md)
+[← Docker TTS server](docker.md) · [Home](index.md) · [Benchmarking →](benchmarking.md)

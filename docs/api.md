@@ -354,4 +354,4 @@ The hierarchy of `phoonnx.errors` exists in the code, and `VoiceLoadError` and `
 
 ---
 
-[Docs index](index.md) · Previous: [Vocoders](vocoders.md)
+[← Vocoders](vocoders.md) · [Home](index.md)
