@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.10a7](https://github.com/TigreGotico/phoonnx/tree/1.138.10a7) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a6...1.138.10a7)
+
+**Merged pull requests:**
+
+- test: warm the mocks before the concurrent cache test [\#1170](https://github.com/TigreGotico/phoonnx/pull/1170) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.10a6](https://github.com/TigreGotico/phoonnx/tree/1.138.10a6) (2026-11-26)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a5...1.138.10a6)
