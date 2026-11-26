@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.10a8](https://github.com/TigreGotico/phoonnx/tree/1.138.10a8) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a7...1.138.10a8)
+
+**Merged pull requests:**
+
+- test: Shami voices normalise each script run in its own language [\#1173](https://github.com/TigreGotico/phoonnx/pull/1173) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.10a7](https://github.com/TigreGotico/phoonnx/tree/1.138.10a7) (2026-11-26)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a6...1.138.10a7)
