@@ -12,7 +12,11 @@
         "engine": "mixertts",
         "lang": "en-US",
         "vocoder_url": "https://huggingface.co/BSC-LT/vocos-mel-22khz/resolve/b4b331d85370cdd94c644b5d1922a27a0b219c15/mel_spec_22khz_univ.onnx",
-        "vocoder_type": "vocos"
+        "vocoder_type": "vocos",
+        "engine_options": {
+            "pitch_mean": 211.4,
+            "pitch_std": 53.1
+        }
     },
     "nipponjo/mixer-tts-ljspeech-128": {
         "voice_id": "nipponjo/mixer-tts-ljspeech-128",
@@ -27,7 +31,11 @@
         "engine": "mixertts",
         "lang": "en-US",
         "vocoder_url": "https://huggingface.co/BSC-LT/vocos-mel-22khz/resolve/b4b331d85370cdd94c644b5d1922a27a0b219c15/mel_spec_22khz_univ.onnx",
-        "vocoder_type": "vocos"
+        "vocoder_type": "vocos",
+        "engine_options": {
+            "pitch_mean": 210.8,
+            "pitch_std": 53.4
+        }
     },
     "nipponjo/mixer-tts-ljspeech-384": {
         "voice_id": "nipponjo/mixer-tts-ljspeech-384",
@@ -42,7 +50,11 @@
         "engine": "mixertts",
         "lang": "en-US",
         "vocoder_url": "https://huggingface.co/BSC-LT/vocos-mel-22khz/resolve/b4b331d85370cdd94c644b5d1922a27a0b219c15/mel_spec_22khz_univ.onnx",
-        "vocoder_type": "vocos"
+        "vocoder_type": "vocos",
+        "engine_options": {
+            "pitch_mean": 211.6,
+            "pitch_std": 52.4
+        }
     },
     "nipponjo/tts-arabic-mixer80": {
         "voice_id": "nipponjo/tts-arabic-mixer80",

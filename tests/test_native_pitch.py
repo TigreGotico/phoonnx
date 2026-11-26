@@ -5,7 +5,9 @@ dropped. An engine with pitch inputs of its own now gets them (tiny-voca's ``pit
 ``pitch_range``, Mixer-TTS and FastPitch's ``pitch_mul`` and ``pitch_add``). The engine calls are
 recorded, so no model runs.
 """
+import json
 import math
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -263,3 +265,17 @@ def test_a_pitch_the_call_sets_is_shifted_from_where_it_is(shifts):
     list(voice.synthesize_ssml('<speak><prosody pitch="-3st">down</prosody> plain</speak>', call))
     assert sent[0]["pitch_shift"] == pytest.approx(0.2 - 3 * SEMITONE)
     assert sent[1]["pitch_shift"] == pytest.approx(0.2)
+
+
+# -- the voice index -------------------------------------------------------------------------
+
+def test_the_single_speaker_nipponjo_voices_state_their_pitch_statistics():
+    """Measured from each model: with pitch_mul 0 every z-score is 0, so the F0 is the training
+    mean, and pitch_add 1 on top adds one standard deviation (medians of 3 sentences). The
+    four-speaker Arabic voices are z-scored per speaker, so one pair cannot serve them."""
+    index = json.loads((Path(__file__).parent.parent / "phoonnx" / "voice_index" / "mixertts.json").read_text())
+    stated = {vid: entry.get("engine_options", {}) for vid, entry in index.items()}
+    for vid in ("nipponjo/mixer-tts-ljspeech-80", "nipponjo/mixer-tts-ljspeech-128", "nipponjo/mixer-tts-ljspeech-384"):
+        assert 200 < stated[vid]["pitch_mean"] < 225 and 45 < stated[vid]["pitch_std"] < 60, vid
+    for vid in ("nipponjo/tts-arabic-mixer80", "nipponjo/tts-arabic-mixer128"):
+        assert "pitch_mean" not in stated[vid] and "pitch_std" not in stated[vid], vid
