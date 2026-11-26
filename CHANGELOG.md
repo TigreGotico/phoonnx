@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.139.0a2](https://github.com/TigreGotico/phoonnx/tree/1.139.0a2) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.139.0a1...1.139.0a2)
+
+**Merged pull requests:**
+
+- test: strict xfail for Bengali digits read as written \(\#1182\) [\#1183](https://github.com/TigreGotico/phoonnx/pull/1183) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix\(index\): Pocket TTS loads its full-precision graphs, int8 as a variant [\#1180](https://github.com/TigreGotico/phoonnx/pull/1180) ([goldyfruit](https://github.com/goldyfruit))
+
 ## [1.139.0a1](https://github.com/TigreGotico/phoonnx/tree/1.139.0a1) (2026-11-26)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a10...1.139.0a1)
@@ -343,16 +352,10 @@
 
 - fix: --jsonl-audio-path uses one base for every run over the same sources [\#1047](https://github.com/TigreGotico/phoonnx/pull/1047) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - fix: a failed export\_onnx --add-phoneme-alignment exits non-zero [\#1043](https://github.com/TigreGotico/phoonnx/pull/1043) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: bench\_latency reads the config that the voice index names [\#1042](https://github.com/TigreGotico/phoonnx/pull/1042) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: preprocess builds its phonemizer without the deprecated API [\#1041](https://github.com/TigreGotico/phoonnx/pull/1041) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.137.1a1](https://github.com/TigreGotico/phoonnx/tree/1.137.1a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.0a2...1.137.1a1)
-
-**Merged pull requests:**
-
-- fix: path overrides in preprocess work for every dataset layout [\#1040](https://github.com/TigreGotico/phoonnx/pull/1040) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.137.0a2](https://github.com/TigreGotico/phoonnx/tree/1.137.0a2) (2026-11-24)
 
