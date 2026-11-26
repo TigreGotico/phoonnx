@@ -1619,6 +1619,8 @@ class TTSVoice:
         })
         # Override with any engine-specific extras from voice config
         params.update(self.config.engine_params)
+        # The voice's own length scale, before the call changes it
+        voice_length = params.get("length_scale")
         # Override with per-call SynthesisConfig
         if syn_config.noise_scale is not None:
             params["noise_scale"] = syn_config.noise_scale
@@ -1629,12 +1631,24 @@ class TTSVoice:
         # Engine-specific extras from SynthesisConfig
         params.update(syn_config.extra)
         # An engine with a speed key of its own gets it from the length scale,
-        # unless the voice config or the call names that key itself.
+        # unless the voice config or the call names that key itself. A call that
+        # changes the length scale (an SSML rate, or a length_scale of its own)
+        # still scales a speed the voice config names: the configured speed is the
+        # voice's normal pace, and the call's change is relative to the voice's own
+        # length scale. A speed the call names wins outright.
         if "length_scale" in params:
-            named = {**self.config.engine_params, **syn_config.extra}
-            params.update({key: value for key, value
-                           in self.adapter.length_scale_params(params["length_scale"]).items()
-                           if key not in named})
+            named, extra = self.config.engine_params, syn_config.extra
+            own = self.adapter.length_scale_params(params["length_scale"])
+            params.update({key: value for key, value in own.items()
+                           if key not in named and key not in extra})
+            base = 1.0 if voice_length is None else voice_length
+            if params["length_scale"] != base:
+                normal = self.adapter.length_scale_params(base)
+                params.update({key: float(named[key]) * value / normal[key]
+                               for key, value in own.items()
+                               if key in named and key not in extra and normal.get(key)
+                               and isinstance(named[key], (int, float))
+                               and not isinstance(named[key], bool)})
         # Voice cloning: hand the cloning adapter the reference clip and — for
         # in-context engines (ZipVoice) — the prompt tokens of its transcription.
         reference = syn_config.reference or SpeakerReference()

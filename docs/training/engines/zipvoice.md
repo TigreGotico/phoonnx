@@ -60,7 +60,7 @@ engine_params = {
 |---|---|---|
 | `num_step` | `16` | Number of ODE steps |
 | `guidance_scale` | `1.0` | Classifier-free guidance scale |
-| `speed` | `1.0` | Speaking rate, given to the text encoder |
+| `speed` | `1.0` | Speaking rate, given to the text encoder (above 1 is faster). `<prosody rate>` and a call's `length_scale` scale it, also when the voice config names it. A `speed` in the call's `extra` wins |
 | `t_shift` | `0.5` | Warp of the time grid |
 
 The upstream ONNX weights are in [`k2-fsa/ZipVoice`](https://huggingface.co/k2-fsa/ZipVoice): `zipvoice/text_encoder.onnx`, `zipvoice/fm_decoder.onnx` and `tokens.txt`, a vocabulary of 360 espeak and pinyin tokens. The `zipvoice_distill/` folder holds ZipVoice-Distill, a version trained for 4 to 8 steps. Set `num_step` to a value in that range for it. The Vocos vocoder is `vocos_24khz.onnx` in `jasonzhang76/zipvoice`. `scripts/conversion/zipvoice/export_mel.py` writes the mel graph.

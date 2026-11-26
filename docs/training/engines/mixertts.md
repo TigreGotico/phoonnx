@@ -72,7 +72,7 @@ Each indexed voice names its vocoder. BSC publishes the 22 kHz Vocos graph of th
 ## Notes
 
 - The config `engine` field may be `mixertts` or `mixer_tts`. A graph with the inputs `token_ids`, `pace` and `pitch_mul`, or with a `mel_spec` output and a `token_ids` input, also selects this adapter.
-- `SynthesisConfig.length_scale` sets `pace` to `1 / length_scale`.
+- `SynthesisConfig.length_scale` sets `pace` to `1 / length_scale`. When the voice's `engine_params` names `pace`, a call's length scale scales that `pace` instead, relative to the voice's own length scale.
 
 ## Reference
 

@@ -213,8 +213,9 @@ class SuperTonicAdapter(BaseOnnxAdapter):
         default is not 1 (1.05). The length scale scales that default: 1 leaves the voice
         as it is, 2 makes it twice as slow. Without this, ``<prosody rate>``, the pace of
         ``<emphasis>`` and a ``length_scale`` in a call or in the voice config never reached
-        the model. A voice whose ``engine_params`` or a call whose ``extra`` names ``speed``
-        keeps that speed: a key named there wins over the length scale (``TTSVoice``).
+        the model. A ``speed`` in a call's ``extra`` wins. A ``speed`` in the
+        voice's ``engine_params`` is the voice's normal pace: a call's rate scales it, the
+        voice config's own ``length_scale`` does not (``TTSVoice``).
         """
         return {"speed": self.speed / length_scale}
 
