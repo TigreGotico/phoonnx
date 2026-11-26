@@ -19,8 +19,8 @@ def verify_command(page: str) -> str:
 
 @pytest.mark.parametrize("page", PAGES)
 def test_the_verify_command_of_a_docs_page_exits_0(page):
-    result = subprocess.run(verify_command(page), shell=True, capture_output=True, text=True,
-                            cwd=ROOT, timeout=600)
+    result = subprocess.run(verify_command(page), shell=True, executable="/bin/bash",
+                            capture_output=True, text=True, cwd=ROOT, timeout=600)
     assert result.returncode == 0, result.stdout[-3000:] + result.stderr[-3000:]
 
 
