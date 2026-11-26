@@ -71,6 +71,7 @@ Each indexed voice names its vocoder. BSC publishes the 22 kHz Vocos graph of th
 
 ## Notes
 
+- `<prosody range>` scales `pitch_mul` on a single-speaker voice. `<prosody pitch>` sets `pitch_mul` and `pitch_add` when the voice states the pitch mean and standard deviation in Hz it was trained with, as `pitch_mean` and `pitch_std` in `engine_params` or in the graph's metadata (the Mixer-TTS export writes them). The graph applies `pitch * pitch_mul + pitch_add` to z-scored pitch, so a shift of `k = 2 ** (st / 12)` is `pitch_mul * k` and `pitch_add * k + pitch_mean * (k - 1) / pitch_std`. The indexed nipponjo voices state no statistics, so their pitch is shifted on the audio. For `nipponjo/mixer-tts-ljspeech-80`, `pitch_mean` 213.1 and `pitch_std` 53.2, measured from its output (a mean F0 of 213.1 Hz, and 53.2 Hz more for `pitch_add` 1), put a +4 st and a -4 st shift within 0.2 st. See [SSML](../../ssml.md#pitch-made-by-the-engine).
 - The config `engine` field may be `mixertts` or `mixer_tts`. A graph with the inputs `token_ids`, `pace` and `pitch_mul`, or with a `mel_spec` output and a `token_ids` input, also selects this adapter.
 - `SynthesisConfig.length_scale` sets `pace` to `1 / length_scale`.
 
