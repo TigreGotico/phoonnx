@@ -261,6 +261,7 @@ class MagpieTokenizer:
 
 class MagpieAdapter(BaseOnnxAdapter):
     """Adapter for NVIDIA Magpie-TTS Multilingual (multi-codebook autoregressive)."""
+    PACE_CONTROL = False  # a codec language model: the model decides when the speech ends
 
     SPEAKER_NAMES = True
 

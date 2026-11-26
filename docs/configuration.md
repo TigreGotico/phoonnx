@@ -161,6 +161,7 @@ A scale comes from the first of these that sets it: the call's `SynthesisConfig`
 | `super_resolution_model` | `str` \| `None` | `None` | The `audiosronnx` engine, such as `"novasr"` or `"lavasr"`. `None` selects `"novasr"`. Ignored unless `super_resolution` is `True` |
 | `voice_conversion` | `SpeakerReference` \| `None` | `None` | Target-speaker clip, in its `audio` field, for [voice conversion](voice_conversion.md) after synthesis. It works with every engine. `None` means no conversion |
 | `voice_conversion_engine` | `str` \| `None` | `None` | The voiceclonnx engine for `voice_conversion`. `None` selects `"openvoice"` |
+| `stretch_pace` | `bool` | `False` | Time-stretch the audio of an engine that cannot change its pace (the codec language models and Shami) to the call's `length_scale`, `<prosody rate>` or `<emphasis>`, against the voice's own length scale. The pitch is kept, within 0.5x and 2x. Other engines change their pace themselves and are not stretched. [SSML](ssml.md#engines-without-pace-control) lists the engines |
 
 ### Plain data
 

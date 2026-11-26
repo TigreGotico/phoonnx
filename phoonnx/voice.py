@@ -1097,7 +1097,8 @@ class TTSVoice:
         sr_engine = self._load_super_resolution(config)
         vc = self._load_voice_conversion(config)
         whole_sentence = (config.audio.normalize or config.audio.target_loudness is not None
-                          or sr_engine is not None or vc is not None)
+                          or sr_engine is not None or vc is not None
+                          or self._pace_stretch(config) != 1.0)
         for utterance in self.prepare(text, config):
             if whole_sentence:
                 yield self._render(utterance, config, False, sr_engine, vc)
@@ -1158,6 +1159,16 @@ class TTSVoice:
             utterance.ids, syn_config, include_alignments, utterance.streams,
             text=utterance.text)
 
+        factor = self._pace_stretch(syn_config)
+        mono = np.squeeze(np.asarray(audio, dtype=np.float32))
+        if factor != 1.0 and mono.ndim <= 1:  # a stretch is for one channel of samples
+            mono = mono.reshape(-1)
+            stretched = audio_fx.time_stretch(mono, factor, self.config.sample_rate)
+            if phoneme_id_samples is not None:
+                phoneme_id_samples = _stretched_counts(phoneme_id_samples,
+                                                       len(stretched) / max(1, mono.size))
+            audio = stretched
+
         audio = self._level(audio, syn_config)
 
         phoneme_alignments = self._reconstruct_alignments(
@@ -1181,6 +1192,37 @@ class TTSVoice:
             phoneme_id_samples=phoneme_id_samples,
             phoneme_alignments=phoneme_alignments,
         )
+
+    def _voice_length_scale(self) -> Any:
+        """The voice's own length scale, the one a call's is measured against: the voice's
+        ``engine_params``, then its ``inference`` block, then the engine's default, then 1.
+        It is the order in which :meth:`_request` merges them."""
+        engine_params = getattr(self.config, "engine_params", None) or {}
+        for value in (engine_params.get("length_scale"), self.config.length_scale,
+                      self.adapter.default_params().get("length_scale")):
+            if value is not None:
+                return value
+        return 1.0
+
+    def _pace_stretch(self, syn_config: SynthesisConfig) -> float:
+        """How much ``audio.stretch_pace`` stretches this call's audio (1.0: not at all).
+
+        Only an engine without pace control is stretched. The factor is the call's length
+        scale (``extra`` first, then ``length_scale``) over the voice's own
+        (:meth:`_voice_length_scale`), within 0.5 to 2.
+        """
+        if not syn_config.audio.stretch_pace or self.adapter.PACE_CONTROL:
+            return 1.0
+        call = syn_config.extra.get("length_scale", syn_config.length_scale)
+        if call is None:
+            return 1.0
+        try:
+            factor = float(call) / float(self._voice_length_scale())
+        except (TypeError, ValueError, ZeroDivisionError):
+            return 1.0
+        if not np.isfinite(factor) or factor <= 0 or abs(factor - 1.0) < 1e-3:
+            return 1.0
+        return min(2.0, max(0.5, factor))
 
     @staticmethod
     def _with_params(syn_config: SynthesisConfig, utterance: Utterance) -> SynthesisConfig:
@@ -1337,9 +1379,7 @@ class TTSVoice:
         base = syn_config or SynthesisConfig()
         base_length = base.length_scale
         if base_length is None:
-            base_length = self.config.length_scale
-        if base_length is None:
-            base_length = self.adapter.default_params().get("length_scale", 1.0)
+            base_length = self._voice_length_scale()
         voice_lang = lang or self.config.lang_code
         # Set by the first speech chunk: voice conversion and super-resolution can move it off
         # the model's own rate, and every chunk of one stream must share it.

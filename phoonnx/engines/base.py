@@ -162,6 +162,11 @@ class BaseOnnxAdapter(ABC):
     # True for an adapter that runs a VITS graph, whose embedding has ``num_symbols`` rows.
     VITS_GRAPH: bool = False
 
+    # False for an adapter whose engine cannot change its pace: it reads neither
+    # ``length_scale`` nor a speed key of its own. ``AudioPost.stretch_pace`` then
+    # stretches its audio instead.
+    PACE_CONTROL: bool = True
+
     # The most ids one model call reads. ``None`` means the engine is never cut.
     # An engine that sets it also sets ``bos``, ``eos``, ``word_gap`` and
     # ``clause_marks`` (a set of ids) in ``configure``; :meth:`_cut` reads them.

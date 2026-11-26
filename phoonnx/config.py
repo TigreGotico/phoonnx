@@ -456,6 +456,14 @@ class AudioPost:
     voice_conversion_engine: Optional[str] = None
     """The ``voiceclonnx`` engine. ``None`` selects ``"openvoice"``."""
 
+    stretch_pace: bool = False
+    """Stretch the audio of an engine that cannot change its pace (a codec language model
+    such as Orpheus, or a graph with its speed baked in) to the pace the call asks for: the
+    call's ``length_scale``, an SSML ``<prosody rate>`` or ``<emphasis>``, against the voice's
+    own length scale. A WSOLA time stretch keeps the pitch and stays within 0.5x and 2x. It
+    does nothing for an engine that changes its pace itself. :meth:`TTSVoice.stream` then
+    yields each sentence as one chunk."""
+
 
 # The 1.x name of each setting, and the path of its new home.
 _1X_NAMES = {

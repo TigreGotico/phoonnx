@@ -309,7 +309,7 @@ This part is a design, not a description of the code. Its objects do not exist, 
 
 - `stages`: the scriptconv `Stages` class, with `diacritize`, `diacritizer_model`, `normalize`, `chunk` and `lang`.
 - Flat engine fields: `speaker` (a name or an id), `language`, `length_scale`, `noise_scale`, `noise_w_scale`, `temperature`, `top_p`, `exaggeration`, `reference` and `extra`.
-- `audio`: `normalize`, `target_loudness`, `volume`, `super_resolution`, `super_resolution_model`, `voice_conversion` and `voice_conversion_engine`.
+- `audio`: `normalize`, `target_loudness`, `volume`, `super_resolution`, `super_resolution_model`, `voice_conversion`, `voice_conversion_engine` and `stretch_pace`.
 - Text options: `phonetic_spellings` and `input_alphabet` (the alphabet of the caller's text).
 
 The 1.x flat names, such as `add_diacritics`, `speaker_id` and `normalize_audio`, work as keywords, as attributes and in `SynthesisConfig.from_dict`, with a `DeprecationWarning`. [Configuration](configuration.md) has the table of each 1.x name and its field.
