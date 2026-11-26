@@ -204,6 +204,33 @@ def test_ssml_rate_scales_a_speed_the_config_names(adapter, key, expected):
         "the words outside it keep the voice's speed")
 
 
+@pytest.mark.parametrize("adapter, key, expected", OWN_SPEED_KEY)
+def test_ssml_rate_is_relative_to_a_length_scale_in_engine_params(adapter, key, expected):
+    # engine_params length_scale 2.0 and speed 0.8, x-slow: the call's length scale is
+    # 2.0 / 0.6, so the speed changes as from 2.0 to 2.0 / 0.6, not as from 1.0 to 1.0 / 0.6
+    sent = []
+    engine = adapter()
+    engine.synthesize = lambda request, session: (
+        sent.append(request.params) or AdapterSynthesisResult(audio=np.zeros(1, dtype=np.float32)))
+
+    class _Voice(TTSVoice):
+        frontend = None  # the document holds no say-as
+
+        def __init__(self):  # no model: the engine call is recorded
+            self.config = _config({}, {"length_scale": 2.0, key: 0.8})
+            self.adapter, self.session = engine, None
+
+        def synthesize(self, text, syn_config=None, include_alignments=False):
+            self._infer([3], syn_config or SynthesisConfig())
+            yield AudioChunk(sample_rate=16000, sample_width=2, sample_channels=1,
+                             audio_float_array=np.full(160, 0.1, dtype=np.float32))
+
+    list(_Voice().synthesize_ssml('<speak><prosody rate="x-slow">slow</prosody> plain</speak>'))
+    assert sent[0]["length_scale"] == pytest.approx(2.0 / 0.6)
+    slow = engine.length_scale_params(2.0 / 0.6)[key] / engine.length_scale_params(2.0)[key]
+    assert [p[key] for p in sent] == [pytest.approx(0.8 * slow), 0.8]
+
+
 class _RecordingVoice(TTSVoice):
     """A voice whose synthesize() records its settings instead of running a model."""
 

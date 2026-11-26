@@ -1337,6 +1337,9 @@ class TTSVoice:
         base = syn_config or SynthesisConfig()
         base_length = base.length_scale
         if base_length is None:
+            # the voice's own length scale, in the order _request merges it
+            base_length = (getattr(self.config, "engine_params", None) or {}).get("length_scale")
+        if base_length is None:
             base_length = self.config.length_scale
         if base_length is None:
             base_length = self.adapter.default_params().get("length_scale", 1.0)
