@@ -678,10 +678,9 @@ def check_lang_supported(voice: str, lang_code: Optional[str],
     others (euskaphone, arbtok) import their optional backing package to
     check. A missing optional package therefore surfaces as ``ImportError``
     here, not ``ValueError`` -- that is not an unsupported-language verdict,
-    so it is treated the same as "no get_lang": skip, don't reject. Backends
-    without ``get_lang`` (grapheme/unicode passthroughs) accept any language
-    and are silently skipped, as are unresolvable phoneme types
-    (``get_phonemizer`` raises its own error for those).
+    so it is skipped, not rejected. A grapheme or unicode passthrough returns
+    the tag unchanged, so it accepts any language. Unresolvable phoneme types
+    are skipped (``get_phonemizer`` raises its own error for those).
 
     Raises:
         UnsupportedVoiceLanguage: If the resolved backend cannot serve
@@ -694,18 +693,15 @@ def check_lang_supported(voice: str, lang_code: Optional[str],
         phonemizer_cls = get_phonemizer_class(phoneme_type)
     except (KeyError, ImportError, ValueError):
         return
-    get_lang = getattr(phonemizer_cls, "get_lang", None)
-    if get_lang is None:
-        return
-    # "und" names no language; a fuzzy matcher can still map it to some spec
-    if lang_code.split("-")[0].lower() == "und":
-        raise UnsupportedVoiceLanguage(voice, lang_code, phoneme_type)
     try:
-        get_lang(lang_code)
+        resolved = phonemizer_cls.get_lang(lang_code)
     except ImportError:
         return
     except ValueError as e:
         raise UnsupportedVoiceLanguage(voice, lang_code, phoneme_type) from e
+    # "und" names no language: a passthrough keeps it, but a fuzzy matcher maps it to some language
+    if lang_code.split("-")[0].lower() == "und" and resolved != lang_code:
+        raise UnsupportedVoiceLanguage(voice, lang_code, phoneme_type)
 
 
 def _removal_version() -> str:
