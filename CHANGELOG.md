@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.10a5](https://github.com/TigreGotico/phoonnx/tree/1.138.10a5) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a4...1.138.10a5)
+
+**Merged pull requests:**
+
+- docs: README, docs index, navigation and agent hints [\#1158](https://github.com/TigreGotico/phoonnx/pull/1158) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.10a4](https://github.com/TigreGotico/phoonnx/tree/1.138.10a4) (2026-11-26)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a3...1.138.10a4)
@@ -302,10 +310,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.0a1...1.137.0a2)
 
-**Merged pull requests:**
-
-- test: pin known defects as strict xfails [\#1004](https://github.com/TigreGotico/phoonnx/pull/1004) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.137.0a1](https://github.com/TigreGotico/phoonnx/tree/1.137.0a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.4a1...1.137.0a1)
@@ -357,10 +361,6 @@
 ## [1.135.2a2](https://github.com/TigreGotico/phoonnx/tree/1.135.2a2) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.2a1...1.135.2a2)
-
-**Merged pull requests:**
-
-- docs: README, docs index, navigation and agent hints [\#1003](https://github.com/TigreGotico/phoonnx/pull/1003) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.135.2a1](https://github.com/TigreGotico/phoonnx/tree/1.135.2a1) (2026-11-24)
 
