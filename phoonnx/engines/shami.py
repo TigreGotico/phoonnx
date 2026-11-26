@@ -28,6 +28,7 @@ from phoonnx.engines.base import (
 
 class ShamiAdapter(BaseOnnxAdapter):
     """Adapter for ShamiVITS-family ONNX models."""
+    PACE_CONTROL = False  # its speed is fixed inside the exported graph
     VITS_GRAPH = True
 
     def build_feed_dict(

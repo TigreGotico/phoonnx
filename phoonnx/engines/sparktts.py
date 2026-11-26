@@ -197,6 +197,7 @@ def chunk_text(text: str, max_len: int = MAX_CHUNK_CHARS) -> List[str]:
 
 class SparkTTSAdapter(BaseOnnxAdapter):
     """Adapter for Spark-TTS (Qwen2 codec-LM + BiCodec, preset or cloned speakers)."""
+    PACE_CONTROL = False  # a codec language model: the model decides when the speech ends
 
     MEMOIZED_WRITES = {
         # KV-cache geometry, read off the model's own input shapes.

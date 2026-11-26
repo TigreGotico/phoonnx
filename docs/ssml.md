@@ -143,6 +143,24 @@ or a status on this page differs from its table.
   `interpret-as`, `format`, `detail` and the language in force. phoonnx holds no reading
   rule. text2spoken reads the value.
 
+## Engines without pace control
+
+`<prosody rate>` and `<emphasis>` change the length scale of the call, and most engines read it
+or a speed key of their own. The codec language models make speech token by token until the
+model ends it, so a length scale cannot reach them: ArkTTS, Chatterbox, Indic Parler-TTS,
+Llasa, Magpie, MOSS-TTS-Nano, NeuTTS, Orpheus, OuteTTS, Pocket TTS, Qwen3-TTS and Spark-TTS.
+Shami has its speed fixed inside the exported graph. Their adapters set `PACE_CONTROL = False`.
+Indic Parler-TTS can also be asked for a pace in its description text, such as "a moderate
+speed"; that is separate from SSML.
+
+On these engines a rate is dropped, unless `SynthesisConfig.audio.stretch_pace` is on. Then the
+finished audio of each sentence is time-stretched (WSOLA, the pitch kept) by the call's length
+scale over the voice's own, within 0.5x and 2x. A stretch changes the recording, not the
+speech: the pauses and breaths get longer or shorter with the words. A speech recogniser reads
+stretched Piper speech as well as Piper's own slower and faster speech, from 0.5x to 2x.
+`TTSVoice.stream` yields a stretched sentence as one chunk. `<prosody duration>` fits the
+stretched audio, as it fits any other.
+
 ## Time
 
 * A `<break>` adds to the pause that is already pending. The edge of a `<p>` or `<s>` only
@@ -185,6 +203,8 @@ the reader slow down more than that.
 
 The markup elements that change the text or the model settings cost nothing after the model:
 `<prosody rate>`, `volume`, `<emphasis>`, `<break>`, `<mark>`, `say-as`, `sub` and `phoneme`.
+With `audio.stretch_pace` on, `<prosody rate>` and `<emphasis>` on an engine without pace
+control run a WSOLA time stretch (below).
 The effects below run on the finished audio with numpy. Their cost grows in proportion to the
 length of the audio, and it does not include the model:
 
@@ -192,6 +212,7 @@ length of the audio, and it does not include the model:
 | --- | --- |
 | `<prosody pitch>`, `vocal-tract-length` | a pitch shift (resample and time stretch) |
 | `<prosody duration>`, `amazon:max-duration` | a WSOLA time stretch |
+| `<prosody rate>`, `<emphasis>` with `stretch_pace`, on an [engine without pace control](#engines-without-pace-control) | a WSOLA time stretch, 15 to 30 ms per 2 s of 24 kHz audio |
 | `<amazon:effect name="whispered">`, `phonation="soft"` | shaped breath noise from a short-time Fourier transform |
 | `<amazon:effect name="drc">` | a dynamic range compressor, under 1 ms per second of audio |
 | `<amazon:auto-breaths>`, `<amazon:breath>` | a short generated breath |

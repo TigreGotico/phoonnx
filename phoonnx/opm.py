@@ -481,9 +481,12 @@ class PhoonnxTTSPlugin(TTS):
                 # switched on in mycroft.conf. The core TTSVoice loads the engine lazily and
                 # upscales each chunk; synthesize_wav takes the sample rate from the first
                 # chunk, so the WAV header follows.
+                # stretch_pace: an engine that cannot change its pace (Orpheus, Llasa, ...)
+                # follows length_scale and SSML rate by a time stretch; off unless asked for.
                 audio=AudioPost(
                     super_resolution=bool(self._cfg_opt(False, "super_resolution")),
-                    super_resolution_model=self._cfg_opt(None, "super_resolution_model")),
+                    super_resolution_model=self._cfg_opt(None, "super_resolution_model"),
+                    stretch_pace=bool(self._cfg_opt(False, "stretch_pace"))),
             )
             # Written beside the target and moved into place only once the
             # synthesis has finished. Opening the target directly creates it

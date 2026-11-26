@@ -94,6 +94,8 @@ The base class gives a default for each hook below. Override a hook only when th
 | `synthesize(request, session)` | `build_feed_dict`, `session.run` and `parse_outputs`, one time for each piece of the request. | The engine runs more than one graph or a sampling loop. |
 | `synthesize_stream(request, session)` | Yields the one result of `synthesize`. | The engine makes audio in steps, and `TTSVoice.stream` must yield each part when it exists. Joined, the parts must give the audio of `synthesize`. |
 | `configure(voice_config)` | Does nothing. | The engine loads auxiliary graphs or reads `engine_params` one time at load. |
+| `length_scale_params(length_scale)` | Returns nothing: the engine reads `length_scale` itself. | The engine has a speed key of its own, such as `speed` or `pace`. Return that key for the length scale, scaled the way the engine reads it. |
+| `PACE_CONTROL` | `True` | The engine cannot change its pace at all: it reads neither `length_scale` nor a speed key, as a codec language model does. Set it to `False`, and `audio.stretch_pace` then time-stretches its audio. See [SSML](ssml.md#engines-without-pace-control). |
 
 ### Existing adapters
 
