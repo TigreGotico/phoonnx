@@ -14,7 +14,7 @@ PAGES = ["README.md", *sorted(str(p.relative_to(ROOT)) for p in (ROOT / "docs").
 def verify_command(page: str) -> str:
     match = re.search(r"^verify: (.+)$", (ROOT / page).read_text(encoding="utf-8"), re.M)
     assert match, f"{page} has no verify line in its agent hint"
-    return match.group(1).replace(".venv/bin/python", sys.executable)
+    return match.group(1).replace(".venv/bin/", str(Path(sys.executable).parent) + "/")
 
 
 @pytest.mark.parametrize("page", PAGES)
