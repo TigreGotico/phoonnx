@@ -4,7 +4,7 @@
 covers: how to use the Pocket TTS voices, how the engine runs, and its controls and precision
 source: phoonnx/engines/pockettts.py:PocketTTSAdapter, phoonnx/engines/pockettts.py:AVAILABLE_LANGS, phoonnx/voice.py:TTSVoice.stream, phoonnx/voice_index/pockettts.json
 generated: no
-verify: .venv/bin/python -c "import re, sys, json; from collections import Counter; from phoonnx.engines.pockettts import PocketTTSAdapter, AVAILABLE_LANGS, DECODE_CHUNK_FRAMES; q = chr(96); page = re.sub('<!-- agent-hint.*?\n-->', '', open('docs/pockettts.md').read(), flags=re.S); a = PocketTTSAdapter(); code = {'temperature': str(a.temperature), 'lsd_steps': str(a.lsd_steps), 'eos_threshold': str(a.eos_threshold), 'seed': 'none'}; table = {k: v for k, v in re.findall('^[|] ' + q + '([a-z_]+)' + q + ' [|] ([^ |]+) [|]', page, re.M) if k in code}; idx = json.load(open('phoonnx/voice_index/pockettts.json')); per = Counter(k.split('/')[1] for k in idx); langs = re.findall(q + '([a-z]{2})' + q, re.search('The languages are (.*)', page).group(1)); speakers = int(re.search('with ([0-9]+) speakers per language', page).group(1)); int8 = all((v.get('precision') == 'int8') != k.startswith('pockettts/it/') for k, v in idx.items()); frames = str(DECODE_CHUNK_FRAMES) + ' frames of 1920 samples' in page; bad = [table != code, langs != AVAILABLE_LANGS, set(per.values()) != {speakers}, not int8, not frames]; print(bad, table); sys.exit(1 if any(bad) else 0)"
+verify: .venv/bin/python -c "import re, sys, json; from collections import Counter; from phoonnx.engines.pockettts import PocketTTSAdapter, AVAILABLE_LANGS, DECODE_CHUNK_FRAMES; q = chr(96); page = re.sub('<!-- agent-hint.*?\n-->', '', open('docs/pockettts.md').read(), flags=re.S); a = PocketTTSAdapter(); code = {'temperature': str(a.temperature), 'lsd_steps': str(a.lsd_steps), 'eos_threshold': str(a.eos_threshold), 'seed': 'none'}; table = {k: v for k, v in re.findall('^[|] ' + q + '([a-z_]+)' + q + ' [|] ([^ |]+) [|]', page, re.M) if k in code}; idx = json.load(open('phoonnx/voice_index/pockettts.json')); per = Counter(k.split('/')[1] for k in idx); langs = re.findall(q + '([a-z]{2})' + q, re.search('The languages are (.*)', page).group(1)); speakers = int(re.search('with ([0-9]+) speakers per language', page).group(1)); int8 = all(v.get('precision') is None and 'int8' in (v.get('variants') or {}) for v in idx.values()); frames = str(DECODE_CHUNK_FRAMES) + ' frames of 1920 samples' in page; bad = [table != code, langs != AVAILABLE_LANGS, set(per.values()) != {speakers}, not int8, not frames]; print(bad, table); sys.exit(1 if any(bad) else 0)"
 see: precision.md, cloning.md
 -->
 
@@ -163,21 +163,21 @@ Set them per call through `SynthesisConfig.extra`, or per voice through
 
 ## Precision
 
-The index entries of English, French, German, Portuguese and Spanish point at the 8-bit
-graphs, which make the model real time on a small CPU. These entries carry
-`"precision": "int8"`, so a load with `precision="full"` raises `PrecisionUnavailable`:
+Every index entry loads the full-precision graphs, and carries the 8-bit graphs of the
+same repository and commit as an `int8` variant. Load a voice with `precision="int8"` to
+get them. See [Precision variants](precision.md).
 
-```text
-PrecisionUnavailable: voice 'pockettts/en/alba' has no full files; precision 'auto' or 'int8' loads it
-```
+The 8-bit graphs are not the default for three reasons:
 
-Each language repository also holds the full-precision graphs, under the same names
-without the `_int8` suffix. To load them, write your own index entry whose `model_url` and
-auxiliary URLs point at those graphs.
+- On a GPU, ONNX Runtime's CUDA provider does not run their quantized operators, so they
+  run on the CPU instead. On a Tesla P40 whose host CPU has no AVX2, `pockettts/en/alba`
+  took 99 s for 2.16 s of audio with the 8-bit graphs, and 4.4 s with the full ones.
+- On a CPU without VNNI, they were not faster: six English sentences took 7.1 s with the
+  8-bit graphs and 6.2 s with the full ones, on an AMD Ryzen 7 5800.
+- The Italian 8-bit graphs repeat words on some sentences.
 
-The Italian voices are different. Their 8-bit graphs repeat words on some sentences, so
-the Italian entries load the full-precision graphs. Load an Italian voice with
-`precision="int8"` to get the 8-bit graphs. See [Precision variants](precision.md).
+The full graphs are larger: about 380 MB per language against about 110 MB, and 1.3 GB for
+French, whose model has 24 layers.
 
 ## Licensing
 
