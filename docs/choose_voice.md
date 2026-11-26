@@ -122,7 +122,7 @@ The engine of a voice sets the size of its download. The table gives the downloa
 | `supertonic` | `supertonic/F1/en` | 399 MB |
 | `piper` | `OpenVoiceOS/pipertts_en-GB_miro` | 64 MB |
 | `styletts2` | `ddatt/en-styletts2` | 330 MB |
-| `pockettts` | `pockettts/en/alba` | 171 MB |
+| `pockettts` | `pockettts/en/alba` | 446 MB |
 | `coqui` | `proxectonos/brais` | 132 MB |
 | `glowtts` | `larynx/de-de-eva_k-glow_tts` | 120 MB |
 | `chatterbox` | `chatterbox/base/en` | 1548 MB |
