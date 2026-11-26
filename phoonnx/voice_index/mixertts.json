@@ -12,7 +12,11 @@
         "engine": "mixertts",
         "lang": "en-US",
         "vocoder_url": "https://huggingface.co/BSC-LT/vocos-mel-22khz/resolve/b4b331d85370cdd94c644b5d1922a27a0b219c15/mel_spec_22khz_univ.onnx",
-        "vocoder_type": "vocos"
+        "vocoder_type": "vocos",
+        "engine_options": {
+            "pitch_mean": 211.4,
+            "pitch_std": 53.1
+        }
     },
     "nipponjo/mixer-tts-ljspeech-128": {
         "voice_id": "nipponjo/mixer-tts-ljspeech-128",
@@ -27,7 +31,11 @@
         "engine": "mixertts",
         "lang": "en-US",
         "vocoder_url": "https://huggingface.co/BSC-LT/vocos-mel-22khz/resolve/b4b331d85370cdd94c644b5d1922a27a0b219c15/mel_spec_22khz_univ.onnx",
-        "vocoder_type": "vocos"
+        "vocoder_type": "vocos",
+        "engine_options": {
+            "pitch_mean": 210.8,
+            "pitch_std": 53.4
+        }
     },
     "nipponjo/mixer-tts-ljspeech-384": {
         "voice_id": "nipponjo/mixer-tts-ljspeech-384",
@@ -42,7 +50,11 @@
         "engine": "mixertts",
         "lang": "en-US",
         "vocoder_url": "https://huggingface.co/BSC-LT/vocos-mel-22khz/resolve/b4b331d85370cdd94c644b5d1922a27a0b219c15/mel_spec_22khz_univ.onnx",
-        "vocoder_type": "vocos"
+        "vocoder_type": "vocos",
+        "engine_options": {
+            "pitch_mean": 211.6,
+            "pitch_std": 52.4
+        }
     },
     "nipponjo/tts-arabic-mixer80": {
         "voice_id": "nipponjo/tts-arabic-mixer80",
@@ -58,7 +70,21 @@
         "lang": "ar",
         "vocoder_url": "https://huggingface.co/Phoonnx/hifigan-ar-nipponjo/resolve/c93a80616dee828de265d456989a365050728868/model.onnx",
         "vocoder_config_url": "https://huggingface.co/Phoonnx/hifigan-ar-nipponjo/resolve/c93a80616dee828de265d456989a365050728868/vocoder.json",
-        "vocoder_type": "hifigan"
+        "vocoder_type": "hifigan",
+        "engine_options": {
+            "pitch_mean": [
+                130.7,
+                104.0,
+                220.9,
+                205.4
+            ],
+            "pitch_std": [
+                22.1,
+                10.3,
+                33.2,
+                39.0
+            ]
+        }
     },
     "nipponjo/tts-arabic-mixer128": {
         "voice_id": "nipponjo/tts-arabic-mixer128",
@@ -74,6 +100,20 @@
         "lang": "ar",
         "vocoder_url": "https://huggingface.co/Phoonnx/hifigan-ar-nipponjo/resolve/c93a80616dee828de265d456989a365050728868/model.onnx",
         "vocoder_config_url": "https://huggingface.co/Phoonnx/hifigan-ar-nipponjo/resolve/c93a80616dee828de265d456989a365050728868/vocoder.json",
-        "vocoder_type": "hifigan"
+        "vocoder_type": "hifigan",
+        "engine_options": {
+            "pitch_mean": [
+                130.4,
+                103.7,
+                219.9,
+                204.8
+            ],
+            "pitch_std": [
+                22.5,
+                10.7,
+                34.7,
+                39.3
+            ]
+        }
     }
 }

@@ -1399,7 +1399,10 @@ class TTSVoice:
         The markup is read by :func:`phoonnx.ssml.parse_ssml`. ``<break>``, ``<p>`` and ``<s>``
         become silence; ``<prosody rate>`` and ``<emphasis>`` change the length scale (a rate of
         1.25 is ``length_scale / 1.25``); ``<prosody volume>`` scales the samples; ``<prosody
-        pitch>`` and ``vocal-tract-length`` shift the finished audio (:mod:`phoonnx.audio_fx`);
+        pitch>`` is made by an engine with pitch controls of its own (``pitch_shift_params``), and
+        else shifts the finished audio (:mod:`phoonnx.audio_fx`), as ``vocal-tract-length`` always
+        does; ``<prosody range>`` reaches only an engine with a range control
+        (``pitch_range_params``);
         ``<prosody duration>`` and ``amazon:max-duration`` stretch the speech to the time asked
         for (within a factor of two); ``<lang>`` (or ``xml:lang`` on any element) picks the language
         id of a multilingual voice when it has one (a monolingual voice says the words in its own
@@ -1514,7 +1517,12 @@ class TTSVoice:
             lang_id = self._lang_id_for(piece.voice_lang or piece.lang)
             if lang_id is not None:
                 settings["language"] = lang_id
+            native, shifted = self._native_pitch(piece, base)
+            if native:
+                settings["extra"] = {**base.extra, **native}
             piece_config = replace(base, **settings) if settings else base
+            # The engine made the prosody pitch itself: only the vocal tract is left to the audio.
+            effects_piece = replace(piece, pitch=getattr(piece, "tract", 0.0)) if shifted else piece
             if rate is not None:
                 # The silence and the marks ahead of this speech do not wait for it to be made: a
                 # listener should not wait for the model to hear the pause they asked for.
@@ -1529,12 +1537,63 @@ class TTSVoice:
                 yield from before_audio(chunk.sample_rate)
                 if piece.breaths and index and index % piece.breaths[2] == 0:
                     yield passed(tone("breath", piece.breaths[1], piece.breaths[0], chunk.sample_rate))
-                chunk = self._with_effects(chunk, piece, seed=None if seed is None else seed + 1000 + index)
+                chunk = self._with_effects(chunk, effects_piece,
+                                           seed=None if seed is None else seed + 1000 + index)
                 yield passed(self._declicked(chunk))
             # A piece that made no audio still owes its pause and its marks.
             yield from before_audio(rate or self.config.sample_rate)
         for piece in waiting:  # no words at all: the model's own rate
             yield from sound(piece, self.config.sample_rate)
+
+    def _native_pitch(self, piece: Any, base: SynthesisConfig) -> Tuple[Dict[str, Any], bool]:
+        """The engine's own pitch keys for a piece's ``<prosody pitch>`` and ``range``, and
+        whether they make the pitch shift (else it is left to the finished audio).
+
+        The keys build on the engine's settings as the call resolves them: its defaults, the
+        voice's ``engine_params``, then the call's ``extra``. The range is applied first, then
+        the shift. The part of the pitch that ``vocal-tract-length`` asks for is never sent to
+        the engine: it moves the formants too, which only the audio shift does.
+        """
+        # pitch and tract are each within +-12 st, so their difference can reach 24
+        semitones = max(-12.0, min(12.0, piece.pitch - getattr(piece, "tract", 0.0)))
+        pitch_range = getattr(piece, "pitch_range", 1.0)
+        if not semitones and pitch_range == 1.0:
+            return {}, False
+        params = {**self.adapter.default_params(),
+                  **(getattr(self.config, "engine_params", None) or {}), **base.extra}
+        session = getattr(self, "session", None)
+        speaker = self._pitch_speaker(base)
+        keys: Dict[str, Any] = {}
+        if pitch_range != 1.0:
+            ranged = self.adapter.pitch_range_params(pitch_range, params, session, speaker)
+            if isinstance(ranged, Mapping):
+                keys.update(ranged)
+                params.update(ranged)
+        shifted = False
+        if semitones:
+            shift = self.adapter.pitch_shift_params(semitones, params, session, speaker)
+            if isinstance(shift, Mapping) and shift:
+                keys.update(shift)
+                shifted = True
+        return keys, shifted
+
+    def _pitch_speaker(self, syn_config: SynthesisConfig) -> Optional[int]:
+        """The speaker id a call resolves to, as :meth:`_request` resolves it: the call's
+        speaker (a name through the voice's ``speaker_id_map``), else the voice's default on a
+        multi-speaker voice. ``None`` when there is none, which the engine reads as speaker 0:
+        a single-speaker voice, a multi-speaker voice without a default, or a name only the
+        engine knows."""
+        config = self.config
+        try:
+            speaker = self._speaker_id(syn_config.speaker)
+        except (ValueError, AttributeError):
+            return None
+        if speaker is None and (getattr(config, "num_speakers", 1) or 1) > 1:
+            speaker = getattr(config, "default_speaker_id", None)
+        try:
+            return None if speaker is None else int(speaker)
+        except (TypeError, ValueError):
+            return None
 
     @staticmethod
     def _fitted(chunks: list, piece: Any) -> list:
