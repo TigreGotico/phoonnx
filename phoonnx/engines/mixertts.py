@@ -183,12 +183,12 @@ class MixerTTSAdapter(BaseOnnxAdapter):
     # turns it into ``pitch * pitch_mul + pitch_add`` before it is embedded.
 
     def pitch_range_params(self, pitch_range: float, params: Mapping[str, Any],
-                           session: Any = None) -> Dict[str, float]:
+                           session: Any = None, speaker: Optional[int] = None) -> Dict[str, float]:
         """A range of *pitch_range* times the voice's: ``pitch_mul`` scales the movement of the
         z-scored pitch around its mean, and ``pitch_add`` (where the voice puts that mean) is
-        kept. It needs no statistics. The z-score's mean is the training corpus's, which is the
-        speaker's own only in a single-speaker voice; a multi-speaker voice gets no range, as
-        scaling around the corpus mean would move a speaker who sits off it."""
+        kept. It needs no statistics. A multi-speaker voice gets no range: on the voices
+        measured (nipponjo's Arabic ones) it moved each speaker's mean pitch by up to 0.6 st
+        and widened the movement 1.0 to 1.7 times, depending on the speaker."""
         inputs = self._graph_inputs(session)
         if inputs is not None and not {"pitch_mul", "pitch_add"} <= inputs:
             return {}
@@ -197,20 +197,22 @@ class MixerTTSAdapter(BaseOnnxAdapter):
         return {"pitch_mul": float(params.get("pitch_mul", 1.0)) * pitch_range}
 
     def pitch_shift_params(self, semitones: float, params: Mapping[str, Any],
-                           session: Any = None) -> Dict[str, float]:
+                           session: Any = None, speaker: Optional[int] = None) -> Dict[str, float]:
         """A shift of *semitones*: every frequency times ``k = 2 ** (semitones / 12)``.
 
         In the z-scored domain that is ``z * k + mean * (k - 1) / std``, so it needs the pitch
         mean and standard deviation in Hz that the model was trained with: ``pitch_mean`` and
         ``pitch_std`` in the voice's ``engine_params``, else in the graph's metadata (phoonnx's
         Mixer-TTS export writes them; its FastPitch export does not). Without them, nothing:
-        the shift is made on the finished audio. Unvoiced tokens, which training marks with
-        a z-score of 0, are moved as the mean is.
+        the shift is made on the finished audio. A voice whose speakers are z-scored apart
+        states a list of each, indexed by speaker id; a call to a speaker the lists lack is
+        shifted on the audio. Unvoiced tokens, which training marks with a z-score of 0, are
+        moved as the mean is.
         """
         inputs = self._graph_inputs(session)
         if inputs is not None and not {"pitch_mul", "pitch_add"} <= inputs:
             return {}
-        stats = self._pitch_stats(params, session)
+        stats = self._pitch_stats(params, session, speaker)
         if stats is None:
             return {}
         mean, std = stats
@@ -219,8 +221,10 @@ class MixerTTSAdapter(BaseOnnxAdapter):
                 "pitch_add": float(params.get("pitch_add", 0.0)) * k + mean * (k - 1.0) / std}
 
     @staticmethod
-    def _pitch_stats(params: Mapping[str, Any], session: Any) -> Optional[Tuple[float, float]]:
-        """The speaker's pitch mean and standard deviation in Hz, when the voice states them."""
+    def _pitch_stats(params: Mapping[str, Any], session: Any,
+                     speaker: Optional[int] = None) -> Optional[Tuple[float, float]]:
+        """The pitch mean and standard deviation in Hz of the call's speaker, when the voice
+        states them: one number each, or a list of each indexed by speaker id."""
         found = {key: params.get(key) for key in ("pitch_mean", "pitch_std")}
         if None in found.values():
             try:
@@ -228,8 +232,16 @@ class MixerTTSAdapter(BaseOnnxAdapter):
             except Exception:
                 meta = {}
             found = {key: found[key] if found[key] is not None else meta.get(key) for key in found}
+        picked = {}
+        for key, value in found.items():
+            if isinstance(value, (list, tuple)):
+                index = 0 if speaker is None else speaker
+                if not isinstance(index, int) or not 0 <= index < len(value):
+                    return None
+                value = value[index]
+            picked[key] = value
         try:
-            mean, std = float(found["pitch_mean"]), float(found["pitch_std"])
+            mean, std = float(picked["pitch_mean"]), float(picked["pitch_std"])
         except (TypeError, ValueError):
             return None
         # The export writes 0 and 1 when training kept no statistics: those are not a speaker's.

@@ -135,7 +135,7 @@ reaches only these engines:
 | Engine | `pitch` | `range` |
 | --- | --- | --- |
 | tiny-voca | `pitch_shift`, ln(2)/12 for each semitone | `pitch_range` |
-| Mixer-TTS, and FastPitch graphs with `pitch_mul` and `pitch_add` | `pitch_mul` and `pitch_add`, when the voice states the pitch mean and standard deviation in Hz it was trained with (`pitch_mean` and `pitch_std` in `engine_params`, or in the graph's metadata, which phoonnx's Mixer-TTS export writes). Without them, the audio is shifted | `pitch_mul`, on a single-speaker voice. A multi-speaker voice gets none: its pitch is z-scored around the mean of all its speakers |
+| Mixer-TTS, and FastPitch graphs with `pitch_mul` and `pitch_add` | `pitch_mul` and `pitch_add`, when the voice states the pitch mean and standard deviation in Hz it was trained with (`pitch_mean` and `pitch_std` in `engine_params`, or in the graph's metadata, which phoonnx's Mixer-TTS export writes; a voice z-scored per speaker gives a list of each, by speaker id). Without them, the audio is shifted | `pitch_mul`, on a single-speaker voice. A multi-speaker voice gets none: measured on the Arabic voices, the range moved each speaker's mean pitch and widened it unevenly |
 | any other engine | the finished audio is shifted | no effect |
 
 The engine's keys build on the voice's own and the call's `extra`: a voice that sets

@@ -150,6 +150,22 @@ def test_a_mixer_shift_without_the_speakers_statistics_is_left_to_the_audio(para
     assert adapter.pitch_shift_params(4.0, {**adapter.default_params(), **params}, _Session(MIXER._inputs, meta)) == {}
 
 
+PER_SPEAKER = {"pitch_mean": [130.0, 104.6, 220.7], "pitch_std": [21.5, 10.3, 34.1]}
+
+
+@pytest.mark.parametrize("speaker, mean, std", [(0, 130.0, 21.5), (2, 220.7, 34.1), (None, 130.0, 21.5)])
+def test_per_speaker_statistics_are_read_by_the_calls_speaker(speaker, mean, std):
+    adapter = MixerTTSAdapter()
+    keys = adapter.pitch_shift_params(12.0, {**adapter.default_params(), **PER_SPEAKER}, MIXER, speaker)
+    assert keys == {"pitch_mul": pytest.approx(2.0), "pitch_add": pytest.approx(mean / std)}
+
+
+@pytest.mark.parametrize("speaker", [3, -1, 99])
+def test_a_speaker_the_lists_lack_is_shifted_on_the_audio(speaker):
+    adapter = MixerTTSAdapter()
+    assert adapter.pitch_shift_params(4.0, {**adapter.default_params(), **PER_SPEAKER}, MIXER, speaker) == {}
+
+
 def test_a_graph_without_pitch_inputs_gets_neither():
     adapter = MixerTTSAdapter()
     params = {**adapter.default_params(), "pitch_mean": 213.1, "pitch_std": 53.2}
@@ -212,6 +228,33 @@ def test_a_mixer_voice_with_statistics_makes_the_shift_itself(shifts):
     assert shifts == [], "a shift the engine made is not made again on the audio"
 
 
+@pytest.mark.parametrize("call_speaker, expected", [(1, 104.6 / 10.3), (None, 220.7 / 34.1)])
+def test_ssml_pitch_uses_the_statistics_of_the_calls_speaker(shifts, call_speaker, expected):
+    # a three-speaker voice whose default speaker is 2
+    adapter = MixerTTSAdapter()
+    voice, sent = _voice(adapter, MIXER, PER_SPEAKER)
+    voice.config.num_speakers, voice.config.default_speaker_id = 3, 2
+    call = SynthesisConfig(speaker=call_speaker, audio=AudioPost(normalize=False))
+    list(voice.synthesize_ssml('<speak><prosody pitch="+12st">up</prosody></speak>', call))
+    assert sent[0]["pitch_add"] == pytest.approx(expected) and shifts == []
+
+
+def test_a_speaker_named_in_the_voices_map_uses_that_speakers_statistics(shifts):
+    voice, sent = _voice(MixerTTSAdapter(), MIXER, PER_SPEAKER)
+    voice.config.num_speakers, voice.config.speaker_id_map = 3, {"Huda": 2}
+    call = SynthesisConfig(speaker="Huda", audio=AudioPost(normalize=False))
+    list(voice.synthesize_ssml('<speak><prosody pitch="+12st">up</prosody></speak>', call))
+    assert sent[0]["pitch_add"] == pytest.approx(220.7 / 34.1) and shifts == []
+
+
+def test_a_single_speaker_voice_ignores_a_default_speaker_id(shifts):
+    # _request applies default_speaker_id only to a multi-speaker voice; so does the pitch
+    voice, sent = _voice(MixerTTSAdapter(), MIXER, PER_SPEAKER)
+    voice.config.num_speakers, voice.config.default_speaker_id = 1, 2
+    list(voice.synthesize_ssml('<speak><prosody pitch="+12st">up</prosody></speak>', RAW))
+    assert sent[0]["pitch_add"] == pytest.approx(130.0 / 21.5) and shifts == []
+
+
 def test_a_mixer_voice_without_statistics_shifts_the_audio_as_before(shifts):
     voice, sent = _voice(MixerTTSAdapter(), MIXER)
     list(voice.synthesize_ssml('<speak><prosody pitch="+4st">up</prosody></speak>', RAW))
@@ -269,13 +312,20 @@ def test_a_pitch_the_call_sets_is_shifted_from_where_it_is(shifts):
 
 # -- the voice index -------------------------------------------------------------------------
 
-def test_the_single_speaker_nipponjo_voices_state_their_pitch_statistics():
+def _index(name):
+    path = Path(__file__).parent.parent / "phoonnx" / "voice_index" / name
+    return {vid: entry.get("engine_options", {}) for vid, entry in json.loads(path.read_text()).items()}
+
+
+def test_the_nipponjo_voices_state_their_pitch_statistics():
     """Measured from each model: with pitch_mul 0 every z-score is 0, so the F0 is the training
     mean, and pitch_add 1 on top adds one standard deviation (medians of 3 sentences). The
-    four-speaker Arabic voices are z-scored per speaker, so one pair cannot serve them."""
-    index = json.loads((Path(__file__).parent.parent / "phoonnx" / "voice_index" / "mixertts.json").read_text())
-    stated = {vid: entry.get("engine_options", {}) for vid, entry in index.items()}
+    four-speaker Arabic voices are z-scored per speaker: one value each, by speaker id."""
+    stated = {**_index("mixertts.json"), **_index("fastpitch.json")}
     for vid in ("nipponjo/mixer-tts-ljspeech-80", "nipponjo/mixer-tts-ljspeech-128", "nipponjo/mixer-tts-ljspeech-384"):
         assert 200 < stated[vid]["pitch_mean"] < 225 and 45 < stated[vid]["pitch_std"] < 60, vid
-    for vid in ("nipponjo/tts-arabic-mixer80", "nipponjo/tts-arabic-mixer128"):
-        assert "pitch_mean" not in stated[vid] and "pitch_std" not in stated[vid], vid
+    for vid in ("nipponjo/tts-arabic-mixer80", "nipponjo/tts-arabic-mixer128", "nipponjo/tts-arabic-fastpitch"):
+        means, stds = stated[vid]["pitch_mean"], stated[vid]["pitch_std"]
+        assert len(means) == len(stds) == 4, vid
+        # two low voices and two high ones, the same speakers in all three models
+        assert means == pytest.approx([130, 104, 220, 206], abs=10) and all(9 < s < 45 for s in stds), vid

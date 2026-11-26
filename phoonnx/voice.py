@@ -1470,19 +1470,38 @@ class TTSVoice:
         params = {**self.adapter.default_params(),
                   **(getattr(self.config, "engine_params", None) or {}), **base.extra}
         session = getattr(self, "session", None)
+        speaker = self._pitch_speaker(base)
         keys: Dict[str, Any] = {}
         if pitch_range != 1.0:
-            ranged = self.adapter.pitch_range_params(pitch_range, params, session)
+            ranged = self.adapter.pitch_range_params(pitch_range, params, session, speaker)
             if isinstance(ranged, Mapping):
                 keys.update(ranged)
                 params.update(ranged)
         shifted = False
         if semitones:
-            shift = self.adapter.pitch_shift_params(semitones, params, session)
+            shift = self.adapter.pitch_shift_params(semitones, params, session, speaker)
             if isinstance(shift, Mapping) and shift:
                 keys.update(shift)
                 shifted = True
         return keys, shifted
+
+    def _pitch_speaker(self, syn_config: SynthesisConfig) -> Optional[int]:
+        """The speaker id a call resolves to, as :meth:`_request` resolves it: the call's
+        speaker (a name through the voice's ``speaker_id_map``), else the voice's default on a
+        multi-speaker voice. ``None`` when there is none, which the engine reads as speaker 0:
+        a single-speaker voice, a multi-speaker voice without a default, or a name only the
+        engine knows."""
+        config = self.config
+        try:
+            speaker = self._speaker_id(syn_config.speaker)
+        except (ValueError, AttributeError):
+            return None
+        if speaker is None and (getattr(config, "num_speakers", 1) or 1) > 1:
+            speaker = getattr(config, "default_speaker_id", None)
+        try:
+            return None if speaker is None else int(speaker)
+        except (TypeError, ValueError):
+            return None
 
     @staticmethod
     def _fitted(chunks: list, piece: Any) -> list:

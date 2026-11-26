@@ -232,24 +232,27 @@ class BaseOnnxAdapter(ABC):
         return {}
 
     def pitch_shift_params(self, semitones: float, params: Mapping[str, Any],
-                           session: Any = None) -> Dict[str, float]:
+                           session: Any = None, speaker: Optional[int] = None) -> Dict[str, float]:
         """The engine's own pitch keys for a shift of *semitones*, or nothing.
 
         *params* are the engine's settings as the voice resolves them (the engine's defaults,
         the voice's ``engine_params`` and the call's ``extra``), so a pitch the voice already
         sets is shifted from where it is. *session* is the voice's model, for an engine whose
-        graph may lack the inputs. Returning nothing leaves the shift to the finished audio
+        graph may lack the inputs. *speaker* is the speaker id the call resolves to, for an
+        engine whose pitch depends on the speaker. ``None`` means the engine's first speaker
+        (speaker 0): a single-speaker voice, or a multi-speaker voice with no default speaker,
+        whose engine is fed speaker 0. Returning nothing leaves the shift to the finished audio
         (:func:`phoonnx.audio_fx.pitch_shift`). An engine that returns keys makes the shift
         itself, so the formants stay where the voice has them.
         """
         return {}
 
     def pitch_range_params(self, pitch_range: float, params: Mapping[str, Any],
-                           session: Any = None) -> Dict[str, float]:
+                           session: Any = None, speaker: Optional[int] = None) -> Dict[str, float]:
         """The engine's own keys for a pitch range of *pitch_range* times the voice's, or nothing.
 
         ``<prosody range>`` reaches only an engine that returns keys here; on any other it
-        has no effect. *params* and *session* are as for :meth:`pitch_shift_params`.
+        has no effect. *params*, *session* and *speaker* are as for :meth:`pitch_shift_params`.
         """
         return {}
 
