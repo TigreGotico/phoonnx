@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.10a6](https://github.com/TigreGotico/phoonnx/tree/1.138.10a6) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a5...1.138.10a6)
+
+**Merged pull requests:**
+
+- test: check each docs page, the download table and the Orpheus speed against their sources [\#1162](https://github.com/TigreGotico/phoonnx/pull/1162) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.10a5](https://github.com/TigreGotico/phoonnx/tree/1.138.10a5) (2026-11-26)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a4...1.138.10a5)
@@ -350,10 +358,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.0a1...1.136.1a1)
 
-**Merged pull requests:**
-
-- fix: segment maps cut phonemes with phonematcher.segment\_spans [\#1016](https://github.com/TigreGotico/phoonnx/pull/1016) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.136.0a1](https://github.com/TigreGotico/phoonnx/tree/1.136.0a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.2a2...1.136.0a1)
@@ -365,10 +369,6 @@
 ## [1.135.2a1](https://github.com/TigreGotico/phoonnx/tree/1.135.2a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.1a2...1.135.2a1)
-
-**Merged pull requests:**
-
-- fix: English Vocos voices cite the Apache-2.0 universal vocoder [\#1015](https://github.com/TigreGotico/phoonnx/pull/1015) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.135.1a2](https://github.com/TigreGotico/phoonnx/tree/1.135.1a2) (2026-11-24)
 
