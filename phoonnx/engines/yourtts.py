@@ -24,6 +24,7 @@ from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult
 
 class YourTTSAdapter(BaseOnnxAdapter):
     """Adapter for YourTTS (multilingual VITS + d-vector conditioning)."""
+    VITS_GRAPH = True
 
     # Same VITS-family duration-predictor contract as VitsAdapter — a second
     # output tensor with per-phoneme frame counts, when the export has one.
