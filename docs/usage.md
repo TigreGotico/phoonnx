@@ -106,6 +106,41 @@ Pass `warmup=True` to `TTSVoice.load` to run one inference during the load. The 
 `use_cuda=True` is a deprecated alias for `providers=["CUDAExecutionProvider"]`. Use
 `providers`.
 
+### Reading text through another frontend
+
+A voice reads text through the frontend that its config describes. To give it another
+frontend, for example another phonemizer of the same alphabet, call `with_frontend`. It
+returns a new voice that shares the ONNX session, the tokenizer and the engine adapter. The
+old voice does not change.
+
+1. Make a `FrontendConfig` or a `TextFrontend` from scriptconv:
+
+   ```python
+   from scriptconv.frontend import FrontendConfig
+   from scriptconv.phonemizers.enums import Alphabet, Phonemizer
+
+   frontend = FrontendConfig(lang="en-US", phonemizer=Phonemizer.GRAPHEMES, alphabet=Alphabet.UNICODE)
+   ```
+
+2. Give it to the voice. Pass a probe text to check the symbols that the frontend gives:
+
+   ```python
+   voice = voice.with_frontend(frontend, probe_text="The quick brown fox.")
+   ```
+
+   You can also pass it to the load: `TTSVoice.load("model.onnx", frontend=frontend)`.
+
+The frontend must give the symbols that the voice was trained on. A different alphabet, a
+different `keep_punctuation`, or a probe symbol that the voice vocabulary lacks raises
+`FrontendMismatchError`:
+
+```text
+phoonnx.errors.FrontendMismatchError: the frontend gives alphabet <Alphabet.IPA: 'ipa'>, and the voice reads <Alphabet.UNICODE: 'unicode'>
+phoonnx.errors.FrontendMismatchError: the frontend gives symbols that the voice vocabulary lacks: ['q', 'u']
+```
+
+The new voice keeps its frontend. A later change to `voice.phonemizer` does not reach it.
+
 ## Synthesizing Speech
 
 ### To a WAV File

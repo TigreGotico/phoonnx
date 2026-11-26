@@ -15,7 +15,7 @@ import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, replace
 from types import SimpleNamespace
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Mapping, Optional
 
 import numpy as np
 import onnxruntime
@@ -162,6 +162,11 @@ class BaseOnnxAdapter(ABC):
     # True for an adapter that runs a VITS graph, whose embedding has ``num_symbols`` rows.
     VITS_GRAPH: bool = False
 
+    # False for an adapter whose engine cannot change its pace: it reads neither
+    # ``length_scale`` nor a speed key of its own. ``AudioPost.stretch_pace`` then
+    # stretches its audio instead.
+    PACE_CONTROL: bool = True
+
     # The most ids one model call reads. ``None`` means the engine is never cut.
     # An engine that sets it also sets ``bos``, ``eos``, ``word_gap`` and
     # ``clause_marks`` (a set of ids) in ``configure``; :meth:`_cut` reads them.
@@ -233,6 +238,39 @@ class BaseOnnxAdapter(ABC):
         call's length scale and the voice's.
         """
         return {}
+
+    def pitch_shift_params(self, semitones: float, params: Mapping[str, Any],
+                           session: Any = None, speaker: Optional[int] = None) -> Dict[str, float]:
+        """The engine's own pitch keys for a shift of *semitones*, or nothing.
+
+        *params* are the engine's settings as the voice resolves them (the engine's defaults,
+        the voice's ``engine_params`` and the call's ``extra``), so a pitch the voice already
+        sets is shifted from where it is. *session* is the voice's model, for an engine whose
+        graph may lack the inputs. *speaker* is the speaker id the call resolves to, for an
+        engine whose pitch depends on the speaker. ``None`` means the engine's first speaker
+        (speaker 0): a single-speaker voice, or a multi-speaker voice with no default speaker,
+        whose engine is fed speaker 0. Returning nothing leaves the shift to the finished audio
+        (:func:`phoonnx.audio_fx.pitch_shift`). An engine that returns keys makes the shift
+        itself, so the formants stay where the voice has them.
+        """
+        return {}
+
+    def pitch_range_params(self, pitch_range: float, params: Mapping[str, Any],
+                           session: Any = None, speaker: Optional[int] = None) -> Dict[str, float]:
+        """The engine's own keys for a pitch range of *pitch_range* times the voice's, or nothing.
+
+        ``<prosody range>`` reaches only an engine that returns keys here; on any other it
+        has no effect. *params*, *session* and *speaker* are as for :meth:`pitch_shift_params`.
+        """
+        return {}
+
+    @staticmethod
+    def _graph_inputs(session: Any) -> Optional[set]:
+        """The names of the inputs of *session*, or ``None`` when there is no session to ask."""
+        try:
+            return {inp.name for inp in session.get_inputs()}
+        except Exception:
+            return None
 
     @property
     def takes_symbols(self) -> bool:

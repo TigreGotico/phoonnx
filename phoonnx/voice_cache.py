@@ -321,7 +321,7 @@ class VoiceCache:
             # concurrent 2.2 GB loads each evicted the one before and the
             # cache looked healthy, after the OOM killer had already taken
             # the process.
-            reserved, measured, key = self._reserve(voice_id, info)
+            reserved, _, key = self._reserve(voice_id, info)
             # Loaded outside the lock: a cold load takes seconds to minutes,
             # and holding the lock would stall every other request meanwhile.
             voice = self._load(info)
@@ -348,12 +348,13 @@ class VoiceCache:
             # used to leave the gate installed with nothing to ever set it,
             # and every later caller for that voice id waited on it forever.
             try:
-                # Measured outside the lock: it only stats files, but it stats
-                # one per artifact and there is no reason to hold up every
-                # other request for it. A voice that could be measured before
-                # the load is not measured twice; one that could not (its
-                # files were not downloaded yet) now can be.
-                size = measured if measured else self._measure(voice_id, info)
+                # Measured outside the lock, after the load: it only stats
+                # files, but it stats one per artifact and there is no reason
+                # to hold up every other request for it. A measurement taken
+                # before the load is not enough: a voice whose cache held only
+                # some of its files measured those, and the load fetched the
+                # rest. A fully downloaded voice measures the same both times.
+                size = self._measure(voice_id, info)
 
                 with self._lock:
                     self._release(reserved)
@@ -361,7 +362,10 @@ class VoiceCache:
                     # same call, and releasing twice would shrink the budget
                     # by a voice that was never holding it.
                     reserved = 0
-                    self._key_bytes.setdefault(key, size)
+                    # The larger of a charge already on the key and this
+                    # measurement: a key first charged for some of its files
+                    # is charged for all of them once they are on disk.
+                    self._key_bytes[key] = max(self._key_bytes.get(key, 0), size)
                     if voice_id not in self.voices:
                         # Evicted before this voice is tracked: _evict_for
                         # skips a key that is already resident, and this

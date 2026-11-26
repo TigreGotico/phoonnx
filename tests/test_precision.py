@@ -564,17 +564,19 @@ class TestTheBundledIndex(unittest.TestCase):
         self.assertGreater(seen, 3000)
         self.assertEqual(changed, [])
 
-    def test_every_int8_only_entry_is_pocket_tts(self):
+    def test_no_bundled_entry_is_int8_only(self):
+        # Pocket TTS was the last engine with int8-only entries: on a GPU the int8 graphs
+        # fall back to the CPU (ONNX Runtime's CUDA provider does not run their operators).
         int8_only = [voice_id for path in TTSModelManager.voice_index_files()
                      for voice_id, entry in json.loads(path.read_text(encoding="utf-8")).items()
                      if entry.get("precision") == "int8"]
-        self.assertEqual(len(int8_only), 130)
-        self.assertTrue(all(v.startswith("pockettts/") for v in int8_only))
+        self.assertEqual(int8_only, [])
 
-    def test_italian_pocket_tts_defaults_to_full_and_other_languages_to_int8(self):
-        # The int8 Italian graphs repeat words on long sentences, so the
-        # Italian voices load the full graphs of the same folder and commit
-        # unless int8 is asked for. Every other language has only int8 files.
+    def test_pocket_tts_defaults_to_full_with_an_int8_variant(self):
+        # Every language loads the full graphs of its folder and commit unless int8 is
+        # asked for: the int8 Italian graphs repeat words on long sentences, and on a GPU
+        # the int8 graphs of every language fall back to the CPU. On a CPU without VNNI
+        # int8 was not faster either (pockettts/en/alba, six sentences: 7.1 s against 6.2 s).
         path = next(p for p in TTSModelManager.voice_index_files() if p.name == "pockettts.json")
         entries = json.loads(path.read_text(encoding="utf-8"))
         langs = {entry["lang"].split("-")[0] for entry in entries.values()}
@@ -584,11 +586,6 @@ class TestTheBundledIndex(unittest.TestCase):
                 info = TTSModelInfo(**entry)
                 graphs = [info.model_url, info.aux_model_urls["flow_lm_flow_path"],
                           info.aux_model_urls["mimi_decoder_path"]]
-                if info.lang != "it":
-                    self.assertEqual(info.precision, "int8")
-                    self.assertIsNone(info.variants)
-                    self.assertTrue(all(url.endswith("_int8.onnx") for url in graphs))
-                    continue
                 self.assertIsNone(info.precision)
                 self.assertEqual([url.rsplit("/", 1)[1] for url in graphs],
                                  ["flow_lm_main.onnx", "flow_lm_flow.onnx", "mimi_decoder.onnx"])

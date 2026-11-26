@@ -189,6 +189,7 @@ def sample_semantic(logits: np.ndarray, window: List[int], rng: np.random.Genera
 
 class ArkTTSAdapter(BaseOnnxAdapter):
     """Adapter for ArkTTS (slow AR + fast AR + 44.1 kHz codec decoder)."""
+    PACE_CONTROL = False  # a codec language model: the model decides when the speech ends
 
     MEMOIZED_WRITES = {
         # The reference system block never changes for a loaded voice.

@@ -1,5 +1,45 @@
 # Changelog
 
+## [1.139.0a1](https://github.com/TigreGotico/phoonnx/tree/1.139.0a1) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a10...1.139.0a1)
+
+**Merged pull requests:**
+
+- feat: give a voice another text frontend with TTSVoice.with\_frontend [\#1137](https://github.com/TigreGotico/phoonnx/pull/1137) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.138.10a10](https://github.com/TigreGotico/phoonnx/tree/1.138.10a10) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a9...1.138.10a10)
+
+**Merged pull requests:**
+
+- chore: require scriptconv 0.0.4a185 [\#1177](https://github.com/TigreGotico/phoonnx/pull/1177) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.138.10a9](https://github.com/TigreGotico/phoonnx/tree/1.138.10a9) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a8...1.138.10a9)
+
+**Merged pull requests:**
+
+- test: Shami frontend tests read Shami's own script languages [\#1174](https://github.com/TigreGotico/phoonnx/pull/1174) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.138.10a8](https://github.com/TigreGotico/phoonnx/tree/1.138.10a8) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a7...1.138.10a8)
+
+**Merged pull requests:**
+
+- test: Shami voices normalise each script run in its own language [\#1173](https://github.com/TigreGotico/phoonnx/pull/1173) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.138.10a7](https://github.com/TigreGotico/phoonnx/tree/1.138.10a7) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a6...1.138.10a7)
+
+**Merged pull requests:**
+
+- test: warm the mocks before the concurrent cache test [\#1170](https://github.com/TigreGotico/phoonnx/pull/1170) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.10a6](https://github.com/TigreGotico/phoonnx/tree/1.138.10a6) (2026-11-26)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a5...1.138.10a6)
@@ -322,17 +362,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.4a1...1.137.0a1)
 
-**Merged pull requests:**
-
-- feat: adopt phonematcher 3.0 tone features [\#1037](https://github.com/TigreGotico/phoonnx/pull/1037) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.136.4a1](https://github.com/TigreGotico/phoonnx/tree/1.136.4a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.3a2...1.136.4a1)
-
-**Merged pull requests:**
-
-- fix: ZipVoice training gives ScaledAdam the parameter names [\#1027](https://github.com/TigreGotico/phoonnx/pull/1027) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.136.3a2](https://github.com/TigreGotico/phoonnx/tree/1.136.3a2) (2026-11-24)
 
@@ -342,17 +374,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.2a1...1.136.3a1)
 
-**Merged pull requests:**
-
-- fix: features.json keeps float and in-vector tone features of its source [\#1023](https://github.com/TigreGotico/phoonnx/pull/1023) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.136.2a1](https://github.com/TigreGotico/phoonnx/tree/1.136.2a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.1a1...1.136.2a1)
-
-**Merged pull requests:**
-
-- fix: --segment-map without phonematcher stops before any utterance [\#1024](https://github.com/TigreGotico/phoonnx/pull/1024) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.136.1a1](https://github.com/TigreGotico/phoonnx/tree/1.136.1a1) (2026-11-24)
 

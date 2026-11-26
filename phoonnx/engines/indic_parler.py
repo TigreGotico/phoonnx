@@ -135,6 +135,7 @@ def sample_logits(logits: np.ndarray, temperature: float, top_k: int, rng) -> np
 
 class IndicParlerAdapter(BaseOnnxAdapter):
     """Adapter for Indic Parler-TTS (T5 encoder -> AR decoder over DAC codes -> DAC decoder)."""
+    PACE_CONTROL = False  # a codec language model: the model decides when the speech ends
 
     MEMOIZED_WRITES = {
         # The prefill graph's output names, read off the session.
